@@ -2337,6 +2337,10 @@ class objMetaClass : public Object {
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    int     OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    CCF     Category;                    // The system category that a class belongs to.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
    inline ERR findField(int ID, struct Field ** Field, objMetaClass ** Source) noexcept {
       struct mc::FindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
       ERR error = Action(AC(-1), this, &args);
@@ -2459,6 +2463,10 @@ class objStorageDevice : public Object {
    int64_t DeviceSize;    // The storage size of the device in bytes, without accounting for the file system format.
    int64_t BytesFree;     // Total amount of storage space that is available, measured in bytes.
    int64_t BytesUsed;     // Total amount of storage space in use.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
@@ -3644,6 +3652,10 @@ class objCompressedStream : public Object {
    OBJECTPTR Input;        // An input object that will supply data for decompression.
    OBJECTPTR Output;       // A target object that will receive data compressed by the stream.
    CF        Format;       // The format of the compressed stream.  The default is GZIP.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 

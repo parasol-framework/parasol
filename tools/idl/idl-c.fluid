@@ -259,7 +259,7 @@ function outputClassHeader(class, Private, Custom)
    end
 
    priority('class obj' .. class.name .. ';') -- Forward declaration
-   output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
+   output('class obj' .. class.name ..  ' : public ' .. (class.base ? 'Object') .. ' {')
    output('   public:')
    output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
    output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
@@ -275,13 +275,13 @@ function outputClassHeader(class, Private, Custom)
          if not f.virtual then
             local left
             local field_name = cName(f, true)
-            if nz(field_name) then
+            if field_name?? then
                left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
             else
                left = string.format('   %-' .. class.longestType .. 's;', f.type)
             end
 
-            if nz(f.comment) then
+            if f.comment?? then
                local clean_comment = f.comment:gsub('[`!@#]', '')
                output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
             else
@@ -305,7 +305,7 @@ function outputClassHeader(class, Private, Custom)
 
    -- Insert registered actions
 
-   if nz(class.sortedActions) then
+   if class.sortedActions?? then
       output('')
       output('   // Action stubs\n')
       for _, action in ipairs(class.sortedActions) do
@@ -327,7 +327,7 @@ function outputClassHeader(class, Private, Custom)
 
    -- Insert registered methods
 
-   if nz(class.methods) then
+   if class.methods?? then
       for _, m in ipairs(class.methods) do
          if m.nestedInline then output(m.nestedInline) end
       end
@@ -342,7 +342,7 @@ function outputClassHeader(class, Private, Custom)
 
    for _, f in ipairs(class.fields) do
       local field_name = cName(f, true)
-      if nz(field_name) and (f.write != nil) then
+      if field_name?? and f.write then
          local fid_name = field_name
          local id = fid_name:sub(-3)
          if id:find('^%lID$') then
@@ -369,7 +369,7 @@ function outputClassHeader(class, Private, Custom)
             end
          end
 
-         if (f.write is 'Set') or nz(f.setField) or f.virtual then
+         if (f.write is 'Set') or f.setField?? or f.virtual then
             if f.struct then
                if field_type:sub(-1) != '*' then
                   field_type = field_type .. ' *'
@@ -471,21 +471,21 @@ function extractFields(Def, Origin)
    for line, content in ipairs(Def:split("\n")) do
       -- Extract comment, if specified
       local comment = content:match("^.+#%s-(.+)$")
-      if nz(comment) then
+      if comment?? then
          content = content:match("^(.+)#%s-.+$")
       else
          -- Support for alternative comment format where the colon is used.
          comment = content:match("^.+:%s-(.+)$")
-         if nz(comment) then
+         if comment?? then
             content = content:match("^(.+):%s-.+$")
          end
       end
 
       local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
-      if (type != nil) then
+      if type?? then
          local field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
          table.insert(fields, field)
-      elseif not nz(content:trim()) then
+      elseif not content:trim()?? then
          -- Ignore empty line
       else
          error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
@@ -540,9 +540,9 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if (Def is nil) then Def = { } end
 
-   if nz(Def.result) then
+   if Def.result?? then
       func.result = Def.result
-   elseif nz(Def.errors) then
+   elseif Def.errors?? then
       func.result = cType({ type="error", values=Def.errors, isFunction=true }, "Function " .. Name)
    end
 
@@ -554,13 +554,13 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    local variadic   = false
    local last_param = nil
 
-   if nz(Def.input) then
+   if Def.input?? then
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
          local comment = content:match("^.-:%s-(.+)$")
-         if nz(comment) then
+         if comment?? then
             content = content:match("^(.-):%s-.+$")
-         elseif nz(content) then
+         elseif content?? then
             error('No comment found for function parameter in ' .. Name .. '()')
          end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
@@ -570,7 +570,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             }, "Function " .. Name)
             table.insert(func.input, param)
 
-            if nz(argSeq) then
+            if argSeq?? then
                argSeq = argSeq .. ", "
                proto = proto .. ", "
                doc_proto = doc_proto .. ", "
@@ -591,7 +591,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             if (param.type is "...") then
                proto = proto .. "..."
                doc_proto = doc_proto .. "..."
-               if not nz(outValues) then
+               if not outValues?? then
                   -- This special case is required when '...' is the first parameter.
                   if (param.fullType.fd is "FD_VARTAGS") then
                      proto = "int64_t," .. proto
@@ -602,13 +602,13 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. "Tags..."
                variadic = true
             else
-               proto = proto .. nz(param.extType, param.type) .. " " .. cName(param)
-               doc_proto = doc_proto .. nz(param.docType, param.type) .. " " .. cName(param)
+               proto = proto .. (param.extType ? param.type) .. " " .. cName(param)
+               doc_proto = doc_proto .. (param.docType ? param.type) .. " " .. cName(param)
                outValues = outValues .. param.name
             end
 
             last_param = param
-         elseif nz(content:trim()) then
+         elseif content:trim()?? then
             error("Unable to process line '" .. tostring(content) .. "' for function '" .. Name .. "'")
          end
       end
@@ -632,7 +632,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    -- The func.def is used for building the jump table
    func.def = "   " .. tostring(response.type)
    if Def.attrib then func.def = func.def .. " " .. Def.attrib end
-   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(jumpArgs,"void") .. ");"
+   func.def = func.def  .. " (*_" .. func.name .. ")(" .. (jumpArgs ? "void") .. ");"
 
    func.c_proto = proto
    func.doc_proto = doc_proto
@@ -642,28 +642,28 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if (variadic) then
       func.macro = function()
          return "template<class... Args> " .. tostring(response.type) .. " " .. func.name ..
-            "(" .. nz(argSeq,"void") .. ")" ..
-            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+            "(" .. (argSeq ? "void") .. ")" ..
+            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. (outValues ? "") .. "); }"
       end
 
       func.staticMacro = function()
-         if nz(glFunctionPrefix) then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         if glFunctionPrefix?? then
+            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
          end
       end
    else
       func.macro = function()
-         return 'inline ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. nz(argSeq,'void') .. ')' ..
-            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. nz(outValues,'') .. '); }'
+         return 'inline ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (argSeq ? 'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ? '') .. '); }'
       end
 
       func.staticMacro = function()
-         if nz(glFunctionPrefix) then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         if glFunctionPrefix?? then
+            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
          end
       end
    end
@@ -672,10 +672,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   local tempPath = "temp:" .. nz(glModule.name,"idl-c-" .. math.random(1000000)):lower() .. ".h"
+   local tempPath = "temp:" .. (glModule.name ? "idl-c-" .. math.random(1000000)):lower() .. ".h"
    local outPath = glOutputPath
    if (outPath is nil) then
-      if nz(glModule.name) then
+      if glModule.name?? then
          outPath = "sdk:include/parasol/modules/" .. glModule.name:lower() .. ".h"
       else
          error("No output path specified in command-line.")
@@ -724,7 +724,7 @@ function saveOutput()
             out = out .. "struct " .. glModule.name .. "Base {\n"
             out = out .. "#ifndef PARASOL_STATIC\n"
             for k, func in ipairs(glFunctions) do
-               if nz(func.def) then
+               if func.def?? then
                   out = out .. func.def .. "\n"
                end
             end
@@ -733,27 +733,27 @@ function saveOutput()
 
             out = out .. "#if !defined(PARASOL_STATIC) and !defined(PRV_" .. glModule.name:upper() .. "_MODULE)\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
-            if nz(glFunctionPrefix) then
+            if glFunctionPrefix?? then
                out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
             end
             for k, func in ipairs(glFunctions) do
-               if nz(func.macro) then
+               if func.macro?? then
                   out = out .. func.macro() .. "\n"
                end
             end
-            if nz(glFunctionPrefix) then
+            if glFunctionPrefix?? then
                out = out .. "} // namespace\n"
             end
             out = out .. "#else\n"
-            if nz(glFunctionPrefix) then
+            if glFunctionPrefix?? then
                out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
             end
             for k, func in ipairs(glFunctions) do
-               if nz(func.staticMacro) and (func.status != 'private') then
+               if func.staticMacro?? and (func.status != 'private') then
                   out = out .. func.staticMacro() .. "\n"
                end
             end
-            if nz(glFunctionPrefix) then
+            if glFunctionPrefix?? then
                out = out .. "} // namespace\n"
             end
             out = out .. "#endif // PARASOL_STATIC\n\n"
@@ -782,12 +782,12 @@ end
 function buildPrototypes()
    if (glClasses != nil) then
       for className, cl in pairs(glClasses) do
-         if nz(cl.methods) then
+         if cl.methods?? then
             for _, method in ipairs(cl.methods) do
                local proto = "OBJECTPTR Object"
-               if nz(method.params) then
+               if method.params?? then
                   for _, param in ipairs(method.params) do
-                     proto = proto .. ", " .. nz(param.extType, param.docType) .. " " .. param.name
+                     proto = proto .. ", " .. (param.extType ? param.docType) .. " " .. param.name
                   end
                end
                method.prototype = "ERR " .. cl.methodPrefix:lower() .. '::' .. method.name .. "(" .. proto .. ")"
@@ -796,10 +796,10 @@ function buildPrototypes()
       end
    end
 
-   if nz(glFunctions) then
+   if glFunctions?? then
       local proto = ''
       local prefix = ''
-      if nz(glFunctionPrefix) then
+      if glFunctionPrefix?? then
          proto = 'namespace ' .. glFunctionPrefix .. ' {\n'
          prefix = glFunctionPrefix .. '::'
       end
@@ -812,17 +812,17 @@ function buildPrototypes()
             response = "void"
          end
 
-         func.prototype = nz(func.c_response,"void") .. " " .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
-         func.docPrototype = nz(func.doc_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
+         func.prototype = (func.c_response ? "void") .. " " .. func.name .. "(" .. (func.c_proto ? "") .. ")"
+         func.docPrototype = (func.doc_response ? "void") .. " " .. prefix .. func.name .. "(" .. (func.doc_proto ? "") .. ")"
 
-         if nz(glFunctionPrefix) then
+         if glFunctionPrefix?? then
             proto = proto .. 'extern ' .. func.prototype .. ";\n"
          else
             proto = proto .. 'extern "C" ' .. func.prototype .. ";\n"
          end
       end
 
-      if nz(glFunctionPrefix) then
+      if glFunctionPrefix?? then
          proto = proto .. '\n} // namespace\n'
       end
 
@@ -836,10 +836,10 @@ end
 -- Generate private C definitions that describe the public functions of a module.
 
 function buildDefs()
-   if not nz(glFunctions) then return "" end
+   if not glFunctions?? then return "" end
 
    local prefix = ''
-   if nz(glFunctionPrefix) then prefix = glFunctionPrefix .. '::' end
+   if glFunctionPrefix?? then prefix = glFunctionPrefix .. '::' end
 
    local flist = "\nconst struct Function glFunctions[] = {\n"
    for _, func in ipairs(glFunctions) do
@@ -959,27 +959,27 @@ end
 
       local protoDef = buildPrototypes()
 
-      if nz(glOutputDefs) then
+      if glOutputDefs?? then
          catch(function()
             local file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
             file.acWrite('// Auto-generated by idl-c.fluid\n\n')
-            if (glOutputProto is glOutputDefs) and nz(protoDef) then
+            if (glOutputProto is glOutputDefs) and protoDef?? then
                glOutputProto = nil
                file.acWrite(protoDef)
             end
             local defs = buildDefs()
-            if nz(defs) then file.acWrite(defs) end
+            if defs?? then file.acWrite(defs) end
          end,
          function(Exception)
             error('Failed to open or write file "' .. glOutputDefs .. '" ' .. Exception.message)
          end)
       end
 
-      if nz(glOutputProto) then
+      if glOutputProto?? then
          catch(function()
             local file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
             file.acWrite('// Auto-generated by idl-c.fluid\n\n')
-            if nz(protoDef) then file.acWrite(protoDef) end
+            if protoDef?? then file.acWrite(protoDef) end
          end,
          function(Exception)
             error('Failed to open or write file "' .. glOutputProto .. '" ' .. Exception.message)

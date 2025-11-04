@@ -600,6 +600,10 @@ class objVectorColour : public Object {
    double Blue;   // The blue component value.
    double Alpha;  // The alpha component value.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setRed(const double Value) noexcept {
@@ -634,6 +638,10 @@ class objVectorTransition : public Object {
    static constexpr CSTRING CLASS_NAME = "VectorTransition";
 
    using create = pf::Create<objVectorTransition>;
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
@@ -789,6 +797,10 @@ class objVectorImage : public Object {
    VSPREAD SpreadMethod;    // Defines image tiling behaviour, if desired.
    ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setX(const double Value) noexcept {
@@ -862,6 +874,10 @@ class objVectorPattern : public Object {
    VUNIT   Units;                   // Defines the coordinate system for fields X, Y, Width and Height.
    VUNIT   ContentUnits;            // Private. Not yet implemented.
    DMF     Dimensions;              // Dimension flags are stored here.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
@@ -2008,6 +2024,10 @@ class objVectorClip : public Object {
    VUNIT Units;                     // Defines the coordinate system for fields X, Y, Width and Height.
    VCLF  Flags;                     // Optional flags.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setUnits(const VUNIT Value) noexcept {
@@ -2726,6 +2746,10 @@ class objVectorGroup : public objVector {
 
    using create = pf::Create<objVectorGroup>;
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
 };
@@ -2740,6 +2764,10 @@ class objVectorWave : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorWave";
 
    using create = pf::Create<objVectorWave>;
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
@@ -2832,6 +2860,10 @@ class objVectorRectangle : public objVector {
 
    using create = pf::Create<objVectorRectangle>;
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setRounding(const double * Value, int Elements) noexcept {
@@ -2915,6 +2947,10 @@ class objVectorPolygon : public objVector {
 
    using create = pf::Create<objVectorPolygon>;
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setClosed(const int Value) noexcept {
@@ -2981,6 +3017,10 @@ class objVectorShape : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorShape";
 
    using create = pf::Create<objVectorShape>;
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
@@ -3096,6 +3136,10 @@ class objVectorSpiral : public objVector {
 
    using create = pf::Create<objVectorSpiral>;
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setPathLength(const int Value) noexcept {
@@ -3175,6 +3219,10 @@ class objVectorEllipse : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
 
    using create = pf::Create<objVectorEllipse>;
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 

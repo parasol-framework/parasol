@@ -1257,6 +1257,10 @@ class objPointer : public Object {
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    int      ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
 
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
    // Customised field setting
 
    inline ERR setSpeed(const double Value) noexcept {

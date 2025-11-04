@@ -418,6 +418,10 @@ class objScintillaSearch : public Object {
    STF     Flags;               // Optional flags.
    int     Start;               // Start of the current/most recent selection
    int     End;                 // End of the current/most recent selection
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
    inline ERR next(int * Pos) noexcept {
       struct ss::Next args = { (int)0 };
       ERR error = Action(AC(-1), this, &args);
