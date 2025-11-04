@@ -156,7 +156,7 @@ typedef enum BinOpr {
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
   OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
-  OPR_AND, OPR_OR,
+  OPR_AND, OPR_OR, OPR_OR_QUESTION,
   OPR_NOBINOPR
 } BinOpr;
 
@@ -187,7 +187,7 @@ static const struct {
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
   {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
-  {2,2,NULL,0}, {1,1,NULL,0}					/* AND OR */
+  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0}			/* AND OR OR_QUESTION */
 };
 
 /* -- Error handling ------------------------------------------------------ */
@@ -907,6 +907,33 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
     bcemit_branch_t(fs, e);
   } else if (op == OPR_OR) {
     bcemit_branch_f(fs, e);
+  } else if (op == OPR_OR_QUESTION) {
+    /* For or?, handle extended falsey checks - only set up jumps for compile-time constants */
+    BCPos pc;
+    expr_discharge(fs, e);
+    /* Extended falsey: nil, false, 0, "" */
+    if (e->k == VKNIL || e->k == VKFALSE)
+      pc = NO_JMP;  /* Never jump - these are falsey, evaluate RHS */
+    else if (e->k == VKNUM && expr_numiszero(e))
+      pc = NO_JMP;  /* Zero is falsey, evaluate RHS */
+    else if (e->k == VKSTR && e->u.sval && e->u.sval->len == 0)
+      pc = NO_JMP;  /* Empty string is falsey, evaluate RHS */
+    else if (e->k == VJMP)
+      pc = e->u.s.info;
+    else if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
+      /* Truthy constant - load to register and emit jump to skip RHS */
+      bcreg_reserve(fs, 1);
+      expr_toreg_nobranch(fs, e, fs->freereg-1);
+      pc = bcemit_jmp(fs);
+    } else {
+      /* Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness */
+      /* Just ensure expression is in a register; extended falsey checks happen in bcemit_binop() */
+      if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+      pc = NO_JMP;  /* No jump - will check extended falsey in bcemit_binop() */
+    }
+    jmp_append(fs, &e->t, pc);
+    jmp_tohere(fs, e->f);
+    e->f = NO_JMP;
   } else if (op == OPR_CONCAT) {
     expr_tonextreg(fs, e);
   } else if (op == OPR_EQ || op == OPR_NE) {
@@ -1051,6 +1078,73 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->t, e1->t);
     *e1 = *e2;
+  }
+  else if (op == OPR_OR_QUESTION) {
+    lj_assertFS(e1->f == NO_JMP, "jump list not closed");
+    /* bcemit_binop_left() already set up jumps in e1->t for truthy LHS */
+    /* If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS */
+    if (e1->t != NO_JMP) {
+      /* Patch jumps to skip RHS */
+      jmp_patch(fs, e1->t, fs->pc);
+      e1->t = NO_JMP;
+      /* LHS is truthy - no need to evaluate RHS */
+      /* bcemit_binop_left() already loaded truthy constants to a register */
+      /* Just ensure expression is properly set up */
+      if (e1->k != VNONRELOC && e1->k != VRELOCABLE) {
+	if (expr_isk(e1)) {
+	  /* Constant - load to register */
+	  bcreg_reserve(fs, 1);
+	  expr_toreg_nobranch(fs, e1, fs->freereg-1);
+	} else {
+	  expr_toanyreg(fs, e1);
+	}
+      }
+    } else {
+      /* LHS is falsey (no jumps) OR runtime value - need to check */
+      expr_discharge(fs, e1);
+      if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
+	/* Runtime value - emit extended falsey checks */
+	BCReg reg = expr_toanyreg(fs, e1);
+	ExpDesc nilv, falsev, zerov, emptyv;
+	BCPos skip;
+	BCPos check_nil, check_false, check_zero, check_empty;
+	/* Check for nil */
+	expr_init(&nilv, VKNIL, 0);
+	bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+	check_nil = bcemit_jmp(fs);
+	/* Check for false */
+	expr_init(&falsev, VKFALSE, 0);
+	bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+	check_false = bcemit_jmp(fs);
+	/* Check for zero */
+	expr_init(&zerov, VKNUM, 0);
+	setnumV(&zerov.u.nval, 0.0);
+	bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+	check_zero = bcemit_jmp(fs);
+	/* Check for empty string */
+	expr_init(&emptyv, VKSTR, 0);
+	emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+	bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+	check_empty = bcemit_jmp(fs);
+	/* If all checks pass (value is truthy), skip RHS */
+	skip = bcemit_jmp(fs);
+	/* Patch falsey checks to jump to RHS evaluation */
+	jmp_patch(fs, check_nil, fs->pc);
+	jmp_patch(fs, check_false, fs->pc);
+	jmp_patch(fs, check_zero, fs->pc);
+	jmp_patch(fs, check_empty, fs->pc);
+	/* Evaluate RHS */
+	expr_discharge(fs, e2);
+	expr_toreg(fs, e2, reg);
+	/* Patch skip to after RHS */
+	jmp_patch(fs, skip, fs->pc);
+	*e1 = *e2;
+      } else {
+	/* Constant falsey value - evaluate RHS directly */
+	expr_discharge(fs, e2);
+	*e1 = *e2;
+      }
+    }
   }
   else if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BOR) || (op == OPR_BXOR)) {
     bcemit_bit_call(fs, priority[op].name, (MSize)priority[op].name_len, e1, e2);
@@ -2327,6 +2421,7 @@ static BinOpr token2binop(LexToken tok)
   case TK_shr: return OPR_SHR;
   case TK_and:	return OPR_AND;
   case TK_or:	return OPR_OR;
+  case TK_or_question: return OPR_OR_QUESTION;
   default:	return OPR_NOBINOPR;
   }
 }
