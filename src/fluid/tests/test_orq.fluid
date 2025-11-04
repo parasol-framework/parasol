@@ -73,18 +73,18 @@ function testDifferenceFromLuaOr()
    assert(d is "C", "or? should replace empty string with RHS; got '" .. tostring(d) .. "'")
 end
 
-function testCodex()
+function testRuntimeZero()
    local x = 0
    local v = x or? "A"
-   assert(v is "A", "Codex test failed: expected 'A', got '" .. tostring(v) .. "'")
+   assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 
+      tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testCodex'
+         'testRuntimeZero'
       }
    }

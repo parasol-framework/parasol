@@ -908,7 +908,7 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
   } else if (op == OPR_OR) {
     bcemit_branch_f(fs, e);
   } else if (op == OPR_OR_QUESTION) {
-    /* For or?, handle extended falsey checks similar to bcemit_branch_f() */
+    /* For or?, handle extended falsey checks - only set up jumps for compile-time constants */
     BCPos pc;
     expr_discharge(fs, e);
     /* Extended falsey: nil, false, 0, "" */
@@ -925,8 +925,12 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
       bcreg_reserve(fs, 1);
       expr_toreg_nobranch(fs, e, fs->freereg-1);
       pc = bcemit_jmp(fs);
-    } else
-      pc = bcemit_branch(fs, e, 1);  /* Runtime check needed */
+    } else {
+      /* Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness */
+      /* Just ensure expression is in a register; extended falsey checks happen in bcemit_binop() */
+      if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+      pc = NO_JMP;  /* No jump - will check extended falsey in bcemit_binop() */
+    }
     jmp_append(fs, &e->t, pc);
     jmp_tohere(fs, e->f);
     e->f = NO_JMP;
@@ -1096,8 +1100,7 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 	}
       }
     } else {
-      /* LHS is falsey (no jumps) - evaluate RHS */
-      /* Check if we need runtime checks (for non-constant falsey values) */
+      /* LHS is falsey (no jumps) OR runtime value - need to check */
       expr_discharge(fs, e1);
       if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
 	/* Runtime value - emit extended falsey checks */
