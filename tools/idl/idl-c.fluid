@@ -13,7 +13,7 @@
    require './include/functions'
    require './include/types'
    require './include/doc'
-   
+
    glHeader = { }
    glOutput = { }
    glConstants = { }
