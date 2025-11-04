@@ -158,7 +158,7 @@ one function call.
 
 ### Implementing Binary Logical Operators with Short-Circuiting
 
-When implementing binary logical operators (like `or`, `and`, or custom variants like `or?`),
+When implementing binary logical operators (like `or`, `and`, or custom variants like `?`),
 follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bcemit_binop()`.
 
 **The Pattern:**
@@ -233,26 +233,29 @@ in addition to `nil` and `false`):
    emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
    ```
 
-### Multi-Character Token Recognition
+### Single-Character Token Recognition
 
-When adding operators that extend reserved words (like `or?` from `or`):
+When adding single-character operators (like `?`):
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
    ```c
-   __(or_question, or?)
+   __(or_question, ?)
    ```
 
-2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word:
+2. **Handle recognition in the lexer** (`lj_lex.c`) in the switch statement:
    ```c
-   if (s->reserved > 0) {
-     LexToken tok = TK_OFS + s->reserved;
-     if (tok == TK_or && ls->c == '?') {  // Check next character
-       lex_next(ls);  // Consume the '?'
-       return TK_or_question;
-     }
-     return tok;
-   }
+   case '?':
+     lex_next(ls);
+     return TK_or_question;
    ```
+
+### Multi-Character Token Recognition
+
+When adding operators that extend reserved words:
+
+1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro.
+
+2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word by checking the next character.
    **Important**: Check the next character (`ls->c`) **after** recognizing the reserved word,
    not in the character switch statement.
 

@@ -312,11 +312,6 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       setstrV(ls->L, tv, s);
       if (s->reserved > 0) {  /* Reserved word? */
          LexToken tok = TK_OFS + s->reserved;
-         /* Check for or? operator */
-         if (tok == TK_or && ls->c == '?') {
-            lex_next(ls);
-            return TK_or_question;
-         }
          return tok;
       }
       return TK_name;
@@ -408,6 +403,9 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
     case ':':
       lex_next(ls);
       if (ls->c != ':') return ':'; else { lex_next(ls); return TK_label; }
+    case '?':
+      lex_next(ls);
+      return TK_or_question;
     case '"':
     case '\'':
       lex_string(ls, tv);
@@ -557,4 +555,3 @@ void lj_lex_init(lua_State *L)
     s->reserved = (uint8_t)(i+1);
   }
 }
-
