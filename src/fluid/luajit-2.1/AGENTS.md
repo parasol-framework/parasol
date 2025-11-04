@@ -151,6 +151,63 @@ follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bc
 - Check `e1->k == VNONRELOC` before trying to load it again in `bcemit_binop()`
 - If the constant was already loaded in `bcemit_binop_left()`, it's already in a register
 
+### Understanding Comparison Bytecode Semantics
+
+**CRITICAL**: LuaJIT's comparison bytecode instructions (`BC_ISEQP`, `BC_ISEQN`, `BC_ISEQS`, `BC_ISNEP`, `BC_ISNEN`, `BC_ISNES`) have specific semantics that are essential to understand:
+
+- **`BC_ISEQP/BC_ISEQN/BC_ISEQS`** (Is Equal): When the values **ARE equal**, the instruction **modifies the program counter (PC) to skip the next instruction**. When values are **NOT equal**, execution continues to the next instruction normally.
+
+- **`BC_ISNEP/BC_ISNEN/BC_ISNES`** (Is Not Equal): When the values **are NOT equal**, the instruction **modifies PC to skip the next instruction**. When values **ARE equal**, execution continues normally.
+
+**Key Point**: "Skip the next instruction" means the instruction immediately following the comparison is conditionally skipped. This is typically a `BC_JMP` instruction that is patched later.
+
+**Example Pattern**:
+```c
+// Check if reg == nil
+bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+check_nil = bcemit_jmp(fs);  // This JMP is SKIPPED when reg == nil
+// Behavior:
+//   - If reg == nil: BC_ISEQP skips the JMP → execution continues to next instruction
+//   - If reg != nil: BC_ISEQP doesn't skip → JMP executes → jumps to its target
+```
+
+**Pattern for Extended Falsey Checks** (as used in `or?` and presence check):
+
+The pattern chains multiple equality checks, where each check's JMP is patched to the same "falsey branch". The logic works as follows:
+
+```c
+// Check for nil
+bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+check_nil = bcemit_jmp(fs);  // Skipped when reg == nil
+// Check for false
+bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+check_false = bcemit_jmp(fs);  // Skipped when reg == false
+// Check for zero
+bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+check_zero = bcemit_jmp(fs);  // Skipped when reg == 0
+// Check for empty string
+bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+check_empty = bcemit_jmp(fs);  // Skipped when reg == ""
+
+// Patch all JMPs to the falsey branch (e.g., RHS evaluation)
+jmp_patch(fs, check_nil, falsey_branch_pc);
+jmp_patch(fs, check_false, falsey_branch_pc);
+jmp_patch(fs, check_zero, falsey_branch_pc);
+jmp_patch(fs, check_empty, falsey_branch_pc);
+```
+
+**How This Works**:
+- **When value is falsey** (e.g., `reg == nil`): The matching `BC_ISEQP` (e.g., `BC_ISEQP reg, VKNIL`) finds equality → skips its JMP → execution continues past all checks → eventually reaches code that handles the falsey case (e.g., load false, evaluate RHS)
+- **When value is truthy** (e.g., `reg == "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
+
+**Note**: This pattern works because we chain multiple checks and patch all JMPs to the same location. If the value matches any falsey check, that check's JMP is skipped and execution continues. If the value matches none of the checks (is truthy), all JMPs execute and the first one jumps to the falsey branch. The exact behavior depends on how the falsey branch is structured.
+
+**Important**: The PR comment that claimed "BC_ISEQP skips when comparison succeeds" was **ambiguous** because "succeeds" could mean either:
+1. "The comparison operation completes successfully" (always true - incorrect interpretation)
+2. "The comparison condition is true" (values ARE equal - correct interpretation)
+
+The correct interpretation is #2: `BC_ISEQP` skips the next instruction when the comparison condition is **true** (values ARE equal).
+
 ### Implementing Operators with Extended Falsey Semantics
 
 When implementing operators with custom falsey semantics (e.g., treating `0` and `""` as falsey
@@ -187,6 +244,12 @@ in addition to `nil` and `false`):
    jmp_patch(fs, check_false, fs->pc);
    // ... etc
    ```
+
+   **How This Works**:
+   - When `reg == nil`: `BC_ISEQP` skips the `JMP` → execution continues past all checks
+   - When `reg != nil`: `BC_ISEQP` doesn't skip → `JMP` executes → jumps to RHS evaluation
+   - Since we want to evaluate RHS when ANY falsey value is found, we patch all jumps to the RHS evaluation point
+   - If the value is truthy, ALL checks skip their jumps, and execution continues (returning the truthy value)
 
 3. **Use `lj_parse_keepstr()` for string constants** to ensure they're anchored and not GC'd:
    ```c

@@ -1060,6 +1060,103 @@ static void bcemit_unary_bit_call(FuncState *fs, const char *fname, MSize fname_
    lj_assertFS(arg->k == VNONRELOC && arg->u.s.info == base, "bitwise result not in base register");
 }
 
+/* Emit bytecode for postfix presence check operator (x?).
+** Returns boolean: true if value is truthy (extended falsey semantics),
+** false if value is falsey (nil, false, 0, "").
+*/
+static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
+{
+   expr_discharge(fs, e);
+
+   /* Handle compile-time constants */
+   if (e->k == VKNIL || e->k == VKFALSE) {
+      /* Falsey constant - set to false */
+      expr_init(e, VKFALSE, 0);
+      return;
+   }
+
+   if (e->k == VKNUM && expr_numiszero(e)) {
+      /* Zero is falsey - set to false */
+      expr_init(e, VKFALSE, 0);
+      return;
+   }
+
+   if (e->k == VKSTR && e->u.sval && e->u.sval->len == 0) {
+      /* Empty string is falsey - set to false */
+      expr_init(e, VKFALSE, 0);
+      return;
+   }
+
+   if (e->k == VKTRUE || (e->k == VKNUM && !expr_numiszero(e)) ||
+       (e->k == VKSTR && e->u.sval && e->u.sval->len > 0)) {
+      /* Truthy constant - set to true */
+      expr_init(e, VKTRUE, 0);
+      return;
+   }
+
+   /* Runtime value - emit checks */
+   /* Follow or? pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
+   /*
+    * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
+    * Pattern: BC_ISEQP reg, VKNIL + JMP means:
+    *   - If reg == nil: skip JMP, continue to next check
+    *   - If reg != nil: execute JMP, jump to target (patched to false branch)
+    * By chaining multiple checks and patching all JMPs to the same false branch:
+    *   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
+    *   - Truthy values: all checks fail, first JMP executes, jumps to false branch
+    */
+   BCReg reg = expr_toanyreg(fs, e);
+   ExpDesc nilv, falsev, zerov, emptyv;
+   BCPos jmp_false_branch;
+   BCPos check_nil, check_false, check_zero, check_empty;
+
+   /* Check for nil */
+   expr_init(&nilv, VKNIL, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+   check_nil = bcemit_jmp(fs);
+
+   /* Check for false */
+   expr_init(&falsev, VKFALSE, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+   check_false = bcemit_jmp(fs);
+
+   /* Check for zero */
+   expr_init(&zerov, VKNUM, 0);
+   setnumV(&zerov.u.nval, 0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+   check_zero = bcemit_jmp(fs);
+
+   /* Check for empty string */
+   expr_init(&emptyv, VKSTR, 0);
+   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+   check_empty = bcemit_jmp(fs);
+
+   /* Reserve a register for the result */
+   BCReg dest = fs->freereg;
+   bcreg_reserve(fs, 1);
+
+   /* Free the old expression register after reserving new one */
+   expr_free(fs, e);
+
+   /* If all checks pass (value is truthy), load true */
+   bcemit_AD(fs, BC_KPRI, dest, VKTRUE);
+   jmp_false_branch = bcemit_jmp(fs);
+
+   /* False branch: patch all falsey jumps here and load false */
+   BCPos false_pos = fs->pc;
+   jmp_patch(fs, check_nil, false_pos);
+   jmp_patch(fs, check_false, false_pos);
+   jmp_patch(fs, check_zero, false_pos);
+   jmp_patch(fs, check_empty, false_pos);
+   bcemit_AD(fs, BC_KPRI, dest, VKFALSE);
+
+   /* Patch skip jump to after false load */
+   jmp_patch(fs, jmp_false_branch, fs->pc);
+
+   expr_init(e, VNONRELOC, dest);
+}
+
 /* Emit binary operator. */
 
 static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
@@ -2297,6 +2394,10 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     } else if (ls->tok == TK_plusplus) {
       lj_lex_next(ls);
       inc_dec_op(ls, OPR_ADD, v, 1);
+    } else if (ls->tok == '?') {
+      /* Postfix presence check operator: x? */
+      lj_lex_next(ls);  /* Consume '?' */
+      bcemit_presence_check(fs, v);
     } else if (ls->tok == '(' || ls->tok == TK_string || ls->tok == '{') {
       expr_tonextreg(fs, v);
       if (LJ_FR2) bcreg_reserve(fs, 1);
@@ -2556,6 +2657,11 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_LEN;
   } else {
     expr_simple(ls, v);
+    /* Check for postfix presence check operator after simple expressions */
+    if (ls->tok == '?') {
+      lj_lex_next(ls);
+      bcemit_presence_check(ls->fs, v);
+    }
     return;
   }
   lj_lex_next(ls);
