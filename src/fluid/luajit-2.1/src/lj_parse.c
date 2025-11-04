@@ -2394,9 +2394,9 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     } else if (ls->tok == TK_plusplus) {
       lj_lex_next(ls);
       inc_dec_op(ls, OPR_ADD, v, 1);
-    } else if (ls->tok == '?') {
-      /* Postfix presence check operator: x? */
-      lj_lex_next(ls);  /* Consume '?' */
+    } else if (ls->tok == TK_presence) {
+      /* Postfix presence check operator: x?? */
+      lj_lex_next(ls);  /* Consume '??' */
       bcemit_presence_check(fs, v);
     } else if (ls->tok == '(' || ls->tok == TK_string || ls->tok == '{') {
       expr_tonextreg(fs, v);
@@ -2657,8 +2657,8 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_LEN;
   } else {
     expr_simple(ls, v);
-    /* Check for postfix presence check operator after simple expressions */
-    if (ls->tok == '?') {
+    /* Check for postfix presence check operator after simple expressions (constants) */
+    if (ls->tok == TK_presence) {
       lj_lex_next(ls);
       bcemit_presence_check(ls->fs, v);
     }

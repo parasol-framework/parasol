@@ -405,7 +405,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       if (ls->c != ':') return ':'; else { lex_next(ls); return TK_label; }
     case '?':
       lex_next(ls);
-      return TK_or_question;
+      if (ls->c != '?') return TK_or_question; else { lex_next(ls); return TK_presence; }
     case '"':
     case '\'':
       lex_string(ls, tv);
