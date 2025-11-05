@@ -6,6 +6,11 @@
 -- system rather than our compression API).
 
 function testIconArchive()
+   if mSys.AnalysePath('styles:icons/Default.zip') != ERR_Okay then
+      print('Icon archive not found; skipping test.')
+      return
+   end
+
    local file_count = 0
    local cmp = obj.new('compression', {
       path     = 'styles:icons/Default.zip',
