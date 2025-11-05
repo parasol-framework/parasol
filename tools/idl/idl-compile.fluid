@@ -56,21 +56,21 @@ end
 function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
+   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing flags ' .. Prefix)
 
    local list = { }
    local f = 0
    for _, flag_def in ipairs({...}) do
-      if (type(flag_def) == 'string') then
+      if (type(flag_def) is 'string') then
          local key, comment = flag_def:match('^(.+):%s+(.+)$')
-         if (key == nil) then key = flag_def end
+         if not key then key = flag_def end
 
          for _, v in ipairs(key:split('|')) do
             list[v] = bit.lshift(1, f)
          end
-      elseif (type(flag_def) == 'table') then
+      elseif (type(flag_def) is 'table') then
          for flag, ref in pairs(flag_def) do
             local key, comment
             if (type(ref) != 'number') then
@@ -82,9 +82,9 @@ function flags(Prefix, Options, ...)
                end
             end
 
-            if (key == nil) then key = ref end
+            if not key then key = ref end
 
-            if (type(key) == 'number') then
+            if (type(key) is 'number') then
                list[flag] = key
             else
                local f = 0
@@ -112,21 +112,21 @@ end
 function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
+   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing enum ' .. Prefix)
 
    local list = { }
    local inc = nz(Options.start, 0)
    for k, enum_def in ipairs({...}) do
-      if (type(enum_def) == 'string') then
+      if (type(enum_def) is 'string') then
          local val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
-         if (val == nil) then val = enum_def end
+         if not val then val = enum_def end
 
          for _, name in ipairs(val:split('|')) do
             list[name] = inc
          end
-      elseif (type(enum_def) == 'table') then -- The client provided a table of fixed values
+      elseif (type(enum_def) is 'table') then -- The client provided a table of fixed values
          for name, client_val in pairs(enum_def) do
             list[name] = client_val
          end
@@ -144,19 +144,19 @@ end
 function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
+   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing constants ' .. Prefix)
 
    local list = { }
    for k, const_def in ipairs({...}) do
-      if (type(const_def) == 'table') then
+      if (type(const_def) is 'table') then
          for k, v in pairs(const_def) do
             local val, comment
-            if (type(v) == 'string') then
+            if (type(v) is 'string') then
                val, comment = v:match('^(.-):%s+(.+)$')
             end
-            if (val == nil) then val = v end
+            if not val then val = v end
 
             if (string.find(val, '^0x%d+$')) or (string.find(val, '^[+-]?%d+$')) then
                val = tonumber(val)
@@ -185,11 +185,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function platform(Platform, Function)
-   if (Platform:lower() == 'windows') then
+   if (Platform:lower() is 'windows') then
       Function()
-   elseif (Platform:lower() == 'linux') then
+   elseif (Platform:lower() is 'linux') then
       Function()
-   elseif (Platform:lower() == 'x11') then
+   elseif (Platform:lower() is 'x11') then
       Function()
    else
       error("Unrecognised platform '" .. Platform .. "'")
@@ -242,7 +242,7 @@ glTypes = {
 }
 
 function cType(Field, Origin)
-   if (Field.type == nil) then
+   if not Field.type then
       error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
    end
 
@@ -330,7 +330,7 @@ function cType(Field, Origin)
       local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
       if (count != nil) then
          Field.type = 'c'
-         if nz(unsigned) then Field.type = 'uc' end
+         if unsigned?? then Field.type = 'uc' end
          Field.name = Field.name .. '[' .. count .. ']'
          return Field
       end
@@ -339,7 +339,7 @@ function cType(Field, Origin)
    do -- Integer arrays
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
       if (count != nil) then
-         if nz(unsigned) then
+         if unsigned?? then
             Field.type = 'ul'
          else
             Field.type = 'l'
@@ -402,7 +402,7 @@ function cType(Field, Origin)
       end
    end
 
-   if (glTypes[Field.type] == nil) then
+   if not glTypes[Field.type] then
       error('No handling for field type "' .. Field.type .. '" from ' .. Origin)
    end
 
@@ -418,12 +418,12 @@ function extractFields(Def, Origin)
    for line, content in ipairs(Def:split('\n')) do
       -- Extract comment, if specified
       local comment = content:match('^.+#%s-(.+)$')
-      if nz(comment) then
+      if comment?? then
          content = content:match('^(.+)#%s-.+$')
       else
          -- Support for alternative comment format where the colon is used.
          comment = content:match('^.+:%s-(.+)$')
-         if nz(comment) then
+         if comment?? then
             content = content:match('^(.+):%s-.+$')
          end
       end
@@ -432,7 +432,7 @@ function extractFields(Def, Origin)
       if (type != nil) then
          local field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
-      elseif not nz(content:trim()) then
+      elseif not content:trim()?? then
          -- Ignore empty line
       else
          error("Unable to process line '" .. nz(content,"NULL") .. "' for '" .. nz(Origin,'NIL') .. "'")
@@ -446,8 +446,8 @@ end
 
 function struct(Name, Options, Def, Append)
    Options = checkOptions(Options)
-   if nz(Options.restrict) or (glRestrict) then return end -- Restricted structures are never exported
-   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
+   if Options.restrict?? or (glRestrict) then return end -- Restricted structures are never exported
+   if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing structure ' .. Name)
    local struct = {
       name    = Name,
@@ -466,7 +466,7 @@ end
 function sequenceStruct(fields)
    local seq = ''
    for _, f in ipairs(fields) do
-      if nz(seq) then seq = seq .. ',' end
+      if seq?? then seq = seq .. ',' end
       if (f.sequence != nil) then
          seq = seq .. 'e' .. f.name:cap() .. ':' .. f.type
       else
@@ -481,8 +481,8 @@ end
 function saveOutput()
    local outPath = glOutputPath
 
-   if (outPath == nil) then
-      if nz(glModuleName) then
+   if not outPath then
+      if glModuleName?? then
          outPath = 'sdk:data/config/defs/' .. glModuleName:lower() .. '.def'
       else
          error('No putput path specified in command-line.')
@@ -507,7 +507,7 @@ function saveOutput()
    end
 
    local EOL = '\n'
-   if (glFormat == 'c') then EOL = '\\n' end
+   if (glFormat is 'c') then EOL = '\\n' end
 
    -- Build structures string
 
@@ -536,34 +536,34 @@ function saveOutput()
       c = c .. 'c.' .. group.prefix .. ':'
       local e = ''
       for _, const in ipairs(group.table) do
-         if nz(e) then e = e .. ',' end
-         if (type(const.value) == 'string') then
+         if e?? then e = e .. ',' end
+         if (type(const.value) is 'string') then
             local val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
-            if (val == nil) then val = v end
+            if not val then val = v end
             e = e .. const.name .. '="' .. const.value .. '"'
          else
             local hexval = string.format('%x', const.value)
-            if (hexval:len() == 16) then hexval = hexval:sub(-8) end
+            if (hexval:len() is 16) then hexval = hexval:sub(-8) end
             e = e .. const.name .. '=0x' .. hexval
          end
       end
       c = c .. e .. EOL
    end
 
-   if (glFormat == 'c') then
+   if (glFormat is 'c') then
       if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
          file.acWrite('char glIDL[] = { ')
          file.acWrite(str_to_bytes(nz(s,'') .. nz(c,'')))
          file.acWrite(',0 };\n')
       else
          file.acWrite('#undef MOD_IDL\n#define MOD_IDL "')
-         if nz(s) then file.acWrite(s) end
-         if nz(c) then file.acWrite(c) end
+         if s?? then file.acWrite(s) end
+         if c?? then file.acWrite(c) end
          file.acWrite('"\n')
       end
    else
-      if nz(s) then file.acWrite(s) end
-      if nz(c) then file.acWrite(c) end
+      if s?? then file.acWrite(s) end
+      if c?? then file.acWrite(c) end
    end
 end
 
@@ -576,7 +576,7 @@ end
    glFormat     = arg('format')
    glAppend     = arg('append')
 
-   if (glSource == nil) then
+   if not glSource then
       print('This command is used to compile IDL definition files.  Provide a reference to a')
       print('source file, or directory of source files in the SRC argument.  The resulting data will be')
       print('printed to the output object that was used in executing the command.')

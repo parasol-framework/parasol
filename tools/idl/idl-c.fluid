@@ -615,7 +615,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 
    local response = func.result
-   if (func.result is nil) then
+   if not func.result then
       response = { type="void" }
    end
 
@@ -639,7 +639,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.c_response = response.type
    func.doc_response = response.docType
 
-   if (variadic) then
+   if variadic then
       func.macro = function()
          return "template<class... Args> " .. tostring(response.type) .. " " .. func.name ..
             "(" .. (argSeq ? "void") .. ")" ..
@@ -859,7 +859,7 @@ function buildDefs()
       if (func.result != nil) and (func.result.type != nil) then
          local type = func.result.fullType
 
-         if (type != nil) then
+         if type?? then
             local fd = type.fd
             local result_name = "Result"
             if (fd is "FD_INT|FD_ERROR") then
@@ -889,7 +889,7 @@ end
 
 function buildInputParameters(List)
    local plist = ""
-   if (List != nil) then
+   if List then
       for _, param in ipairs(List) do
          local fd = param.fullType.fd
          if (param.allocated) then fd = fd .. "|FD_ALLOC" end
