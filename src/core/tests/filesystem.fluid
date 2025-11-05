@@ -3,7 +3,7 @@ Tests for file functions
 --]]
 
    glPath = 'parasol:'
-   
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that the standard extraction pattern for folder and file names works as expected.
 

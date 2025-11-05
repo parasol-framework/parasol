@@ -12,7 +12,7 @@
       mGfx = mod.load('display') -- Required for the 'icons:' volume
    end)
 
-   if ex then 
+   if ex then
       print('Display module is disabled in this build, skipping test')
       return
    end

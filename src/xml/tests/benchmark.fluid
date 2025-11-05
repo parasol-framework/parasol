@@ -38,7 +38,7 @@ function measureTime(func, iterations)
    for i = 1, iterations do
       local start_time = mSys.PreciseTime()
       func()
-      
+
       mem_usage += glXQuery.memoryUsage
 
       local end_time = mSys.PreciseTime()

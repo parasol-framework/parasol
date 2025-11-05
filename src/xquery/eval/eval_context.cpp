@@ -196,7 +196,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
    //       The handlers funnel into specialised evaluation entry points rather than the
    //       expression dispatcher, so it intentionally remains separate from the central
    //       NODE_HANDLERS map.
-   
+
    switch (Node->type) {
       case XQueryNodeType::LOCATION_PATH:
          return evaluate_location_path(Node, CurrentPrefix);

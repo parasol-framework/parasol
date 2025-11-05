@@ -146,7 +146,7 @@ static ERR build_query(extXQuery *Self)
    }
 
    Self->ErrorMsg.clear();
-   
+
    XPathTokeniser tokeniser;
    XPathParser parser;
 
@@ -251,12 +251,12 @@ static ERR XQUERY_Activate(extXQuery *Self)
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
    log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
-   
+
 #ifdef ANALYSE_MEMORY_USAGE
    auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() { 
+   auto cleanup = pf::Defer([&]() {
       auto stats = mt.getStats();
-      log.msg("Blocks allocated: %" PRId64 ", Total Size: %" PRId64 ", Avg Size: %" PRId64 " bytes", 
+      log.msg("Blocks allocated: %" PRId64 ", Total Size: %" PRId64 ", Avg Size: %" PRId64 " bytes",
          stats.total_alloc, stats.total_size, stats.avg_size());
       Self->MemUsage = stats.total_size;
    });
@@ -324,10 +324,10 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
    log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
-   
+
 #ifdef ANALYSE_MEMORY_USAGE
    auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() { 
+   auto cleanup = pf::Defer([&]() {
       auto stats = mt.getStats();
       log.msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
@@ -406,7 +406,7 @@ static ERR XQUERY_Init(extXQuery *Self)
 {
 #ifdef ANALYSE_MEMORY_USAGE
    auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() { 
+   auto cleanup = pf::Defer([&]() {
       auto stats = mt.getStats();
       pf::Log().msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
@@ -643,10 +643,10 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
    log.branch("Expression: %.*s; Callback: %c, BasePath: %s", len, Self->Statement.c_str(), Args->Callback ? (Args->Callback->Type != CALL::NIL ? 'Y' : 'N') : 'N', Self->Path.c_str());
-   
+
 #ifdef ANALYSE_MEMORY_USAGE
    auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() { 
+   auto cleanup = pf::Defer([&]() {
       auto stats = mt.getStats();
       log.msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
