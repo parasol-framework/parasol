@@ -9,7 +9,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
-set (LUAJIT_ORIGINAL_BUILD TRUE)
+set (LUAJIT_ORIGINAL_BUILD FALSE)
 
 if (MSVC)
    set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
@@ -133,12 +133,19 @@ elseif (LUAJIT_ORIGINAL_BUILD)
 
    set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
 else ()
-   # Non-MSVC build (Linux, MinGW, etc.)
+   # Non-MSVC build (Linux, MinGW, etc.) - LuaJIT build using CMake
    # Separated into code generation and library compilation
-   # Code generation creates headers and lj_vm.S via host tools
+   # On Windows (MinGW), use peobj like MSVC; on Unix, use assembly
+   # Library compilation is handled by CMake for proper incremental builds
 
-   set (LUAJIT_VM_S "${LUAJIT_BUILD_DIR}/lj_vm.S")
-   set (LUAJIT_VM_O "${LUAJIT_BUILD_DIR}/lj_vm.o")
+   if (WIN32)
+      # MinGW uses PE object format like MSVC
+      set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
+   else ()
+      # Unix platforms use assembly source
+      set (LUAJIT_VM_S "${LUAJIT_BUILD_DIR}/lj_vm.S")
+      set (LUAJIT_VM_O "${LUAJIT_BUILD_DIR}/lj_vm.o")
+   endif ()
 
    # Host tool sources
 
@@ -312,48 +319,69 @@ else ()
       "${LUAJIT_SRC}/lib_buffer.c"
    )
 
-   # Generate headers and VM assembly file using buildvm
-   # Determine assembly format: coffasm for Windows (MinGW/MSVC), elfasm for Unix
+   # Generate headers and VM file using buildvm
+   # Windows (MinGW) uses peobj to generate .obj directly like MSVC
+   # Unix uses elfasm to generate .S assembly source that gets compiled later
+   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
    if (WIN32)
-      set (LUAJIT_ASM_MODE "coffasm")
+      # MinGW: Generate PE object file directly (no assembly step needed)
+      add_custom_command(
+         OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
+         COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
+         COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m peobj -o ${LUAJIT_VM_OBJ}
+         DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+         WORKING_DIRECTORY ${LUAJIT_SRC}
+         COMMENT "Generating LuaJIT headers and VM object via buildvm"
+         VERBATIM
+      )
    else ()
-      set (LUAJIT_ASM_MODE "elfasm")
+      # Unix: Generate assembly source for later compilation
+      add_custom_command(
+         OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
+         COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
+         COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
+         COMMAND ${BUILDVM_TARGET} -m elfasm -o ${LUAJIT_VM_S}
+         DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+         WORKING_DIRECTORY ${LUAJIT_SRC}
+         COMMENT "Generating LuaJIT headers and VM assembly via buildvm"
+         VERBATIM
+      )
    endif ()
 
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
-   add_custom_command(
-      OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
-      COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
-      COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m ${LUAJIT_ASM_MODE} -o ${LUAJIT_VM_S}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
-      WORKING_DIRECTORY ${LUAJIT_SRC}
-      COMMENT "Generating LuaJIT headers and VM assembly via buildvm"
-      VERBATIM
-   )
+   if (WIN32)
+      # MinGW: VM object file is already generated by buildvm, no compilation needed
+      add_custom_target(luajit_codegen
+         DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
+      )
+   else ()
+      # Unix: Need to compile the assembly source
+      add_custom_target(luajit_codegen
+         DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
+      )
 
-   add_custom_target(luajit_codegen
-      DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
-   )
-
-   # Compile VM assembly file
-
-   add_custom_command(
-      OUTPUT ${LUAJIT_VM_O}
-      COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
-         -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
-         ${LUAJIT_NON_MSVC_DEFS}
-         -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
-         -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
-      DEPENDS ${LUAJIT_VM_S}
-      COMMENT "Compiling LuaJIT VM assembly"
-      VERBATIM
-   )
+      # Compile VM assembly file
+      add_custom_command(
+         OUTPUT ${LUAJIT_VM_O}
+         COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+            ${LUAJIT_NON_MSVC_DEFS}
+            -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
+            -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
+         DEPENDS ${LUAJIT_VM_S}
+         COMMENT "Compiling LuaJIT VM assembly"
+         VERBATIM
+      )
+   endif ()
 
    # Compile amalgamated source
 
@@ -375,15 +403,30 @@ else ()
    set (LUAJIT_LIB_DIR "${CMAKE_BINARY_DIR}/luajit-2.1/lib")
    file(MAKE_DIRECTORY "${LUAJIT_LIB_DIR}")
    set (LUAJIT_LINK "${LUAJIT_LIB_DIR}/libluajit-5.1.a")
-   add_custom_command(
-      OUTPUT ${LUAJIT_LINK}
-      COMMAND ${CMAKE_AR} rcus ${LUAJIT_LINK} ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
-      DEPENDS ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
-      COMMENT "Creating LuaJIT static library"
-      VERBATIM
-   )
 
-   add_custom_target(luajit_lib DEPENDS ${LUAJIT_LINK})
+   if (WIN32)
+      # MinGW: Use the .obj file generated by buildvm
+      add_custom_command(
+         OUTPUT ${LUAJIT_LINK}
+         COMMAND ${CMAKE_AR} rcus ${LUAJIT_LINK} ${LUAJIT_VM_OBJ} ${LUAJIT_AMALG_O}
+         DEPENDS ${LUAJIT_VM_OBJ} ${LUAJIT_AMALG_O}
+         COMMENT "Creating LuaJIT static library"
+         VERBATIM
+      )
+   else ()
+      # Unix: Use the compiled .o file
+      add_custom_command(
+         OUTPUT ${LUAJIT_LINK}
+         COMMAND ${CMAKE_AR} rcus ${LUAJIT_LINK} ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
+         DEPENDS ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
+         COMMENT "Creating LuaJIT static library"
+         VERBATIM
+      )
+   endif ()
+
+   add_custom_target(luajit_lib
+      DEPENDS ${LUAJIT_LINK}
+   )
    add_dependencies(luajit_lib luajit_codegen)
 
    # Create an alias for backward compatibility
