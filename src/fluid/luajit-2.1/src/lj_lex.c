@@ -402,7 +402,9 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       if (ls->c != '=') return '~'; else { lex_next(ls); return TK_ne; }
     case ':':
       lex_next(ls);
-      if (ls->c != ':') return ':'; else { lex_next(ls); return TK_label; }
+      if (ls->c == '>') { lex_next(ls); return TK_ternary_sep; }
+      else if (ls->c == ':') { lex_next(ls); return TK_label; }
+      else return ':';
     case '?':
       lex_next(ls);
       if (ls->c != '?') return TK_or_question; else { lex_next(ls); return TK_presence; }

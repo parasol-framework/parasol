@@ -1,0 +1,551 @@
+-- Comprehensive test suite for ternary operator in Fluid
+-- Tests both full ternary (condition ? true_expr :> false_expr) and optional form (condition ? default_value)
+
+-- Basic ternary tests
+function testBasicTrue()
+   local v = true ? "A" :> "B"
+   assert(v is "A", "Failed basic true: expected 'A', got " .. tostring(v))
+end
+
+function testBasicFalse()
+   local v2 = false ? "A" :> "B"
+   assert(v2 is "B", "Failed basic false: expected 'B', got " .. tostring(v2))
+end
+
+-- Extended falsey semantics tests for full ternary
+function testExtendedFalseyNil()
+   local v = nil ? "A" :> "B"
+   assert(v is "B", "Failed nil: expected 'B', got " .. tostring(v))
+end
+
+function testExtendedFalseyZero()
+   local v = 0 ? "A" :> "B"
+   assert(v is "B", "Failed zero: expected 'B', got " .. tostring(v))
+end
+
+function testExtendedFalseyEmptyString()
+   local v = "" ? "A" :> "B"
+   assert(v is "B", "Failed empty string: expected 'B', got " .. tostring(v))
+end
+
+function testExtendedFalseyFalse()
+   local v = false ? "A" :> "B"
+   assert(v is "B", "Failed false: expected 'B', got " .. tostring(v))
+end
+
+function testExtendedTruthyNonZero()
+   local v = 5 ? "A" :> "B"
+   assert(v is "A", "Failed non-zero: expected 'A', got " .. tostring(v))
+end
+
+function testExtendedTruthyNonEmptyString()
+   local v = "hello" ? "A" :> "B"
+   assert(v is "A", "Failed non-empty string: expected 'A', got " .. tostring(v))
+end
+
+-- Short-circuit tests
+function testShortCircuitTrue()
+   local called = false
+   local function false_branch()
+      called = true
+      return "B"
+   end
+   local v = true ? "A" :> false_branch()
+   assert(v is "A", "Failed short-circuit true")
+   assert(not called, "False branch should not be called")
+end
+
+function testShortCircuitFalse()
+   local called = false
+   local function true_branch()
+      called = true
+      return "A"
+   end
+   local v = false ? true_branch() :> "B"
+   assert(v is "B", "Failed short-circuit false")
+   assert(not called, "True branch should not be called")
+end
+
+-- Nested ternary (right-associative)
+function testNestedRightAssociative()
+   local v = true ? (false ? "A" :> "B") :> "C"
+   -- Parses as: true ? (false ? "A" :> "B") :> "C"
+   -- Result: false ? "A" :> "B" = "B"
+   assert(v is "B", "Failed nested: expected 'B', got " .. tostring(v))
+end
+
+function testNestedMultiLevel()
+   local v = false ? "A" :> true ? "B" :> "C"
+   -- Parses as: false ? "A" :> (true ? "B" :> "C")
+   -- Result: true ? "B" :> "C" = "B"
+   assert(v is "B", "Failed multi-level nested: expected 'B', got " .. tostring(v))
+end
+
+-- Runtime condition tests
+function testRuntimePositive()
+   local x = 5
+   local v = x > 0 ? "positive" :> "non-positive"
+   assert(v is "positive", "Failed runtime positive: expected 'positive', got " .. tostring(v))
+end
+
+function testRuntimeNegative()
+   local x = -5
+   local v = x > 0 ? "positive" :> "non-positive"
+   assert(v is "non-positive", "Failed runtime negative: expected 'non-positive', got " .. tostring(v))
+end
+
+-- Precedence tests
+function testPrecedenceArithmetic()
+   local a, b = 5, 3
+   local v = a > b ? a :> b
+   assert(v is 5, "Failed precedence: expected 5, got " .. tostring(v))
+end
+
+function testPrecedenceComparison()
+   local a, b = 3, 5
+   local v = a > b ? a :> b
+   assert(v is 5, "Failed precedence comparison: expected 5, got " .. tostring(v))
+end
+
+-- Optional ternary tests (condition ? default_value)
+
+-- Optional - truthy condition
+function testOptionalTruthyString()
+   local msg = "Hello" ? "No message"
+   assert(msg is "Hello", "Failed optional truthy string: expected 'Hello', got " .. tostring(msg))
+end
+
+function testOptionalTruthyNumber()
+   local count = 5 ? 0
+   assert(count is 5, "Failed optional truthy number: expected 5, got " .. tostring(count))
+end
+
+function testOptionalTruthyNegative()
+   local num = -10 ? 0
+   assert(num is -10, "Failed optional truthy negative: expected -10, got " .. tostring(num))
+end
+
+-- Optional - falsey condition (nil)
+function testOptionalNil()
+   local msg = nil ? "No message given"
+   assert(msg is "No message given", "Failed optional nil: expected 'No message given', got " .. tostring(msg))
+end
+
+-- Optional - falsey condition (false)
+function testOptionalFalse()
+   local msg = false ? "No message given"
+   assert(msg is "No message given", "Failed optional false: expected 'No message given', got " .. tostring(msg))
+end
+
+-- Optional - falsey condition (0)
+function testOptionalZero()
+   local count = 0 ? 1
+   assert(count is 1, "Failed optional zero: expected 1, got " .. tostring(count))
+end
+
+-- Optional - falsey condition (empty string)
+function testOptionalEmptyString()
+   local name = "" ? "Anonymous"
+   assert(name is "Anonymous", "Failed optional empty string: expected 'Anonymous', got " .. tostring(name))
+end
+
+-- Optional - short-circuit
+function testOptionalShortCircuit()
+   local called = false
+   local function expensive()
+      called = true
+      return "default"
+   end
+   local msg = "Hello" ? expensive()
+   assert(msg is "Hello", "Failed optional short-circuit: expected 'Hello', got " .. tostring(msg))
+   assert(not called, "Expensive function should not be called")
+end
+
+-- Optional - runtime condition
+function testOptionalRuntimeTruthy()
+   local x = 10
+   local result = x ? 0
+   assert(result is 10, "Failed optional runtime truthy: expected 10, got " .. tostring(result))
+end
+
+function testOptionalRuntimeFalsey()
+   local x = 0
+   local result = x ? 100
+   assert(result is 100, "Failed optional runtime falsey: expected 100, got " .. tostring(result))
+end
+
+-- Complex expressions in branches
+function testComplexExpressions()
+   local a, b = 10, 20
+   local v = a > b ? a + b :> a * b
+   assert(v is 200, "Failed complex expressions: expected 200, got " .. tostring(v))
+end
+
+function testFunctionCallInBranch()
+   local function double(x)
+      return x * 2
+   end
+   local x = 5
+   local v = x > 0 ? double(x) :> 0
+   assert(v is 10, "Failed function call in branch: expected 10, got " .. tostring(v))
+end
+
+-- Assignment tests
+function testAssignment()
+   local result
+   result = true ? "yes" :> "no"
+   assert(result is "yes", "Failed assignment: expected 'yes', got " .. tostring(result))
+end
+
+function testMultipleAssignments()
+   local a = true ? 1 :> 2
+   local b = false ? 3 :> 4
+   assert(a is 1 and b is 4, "Failed multiple assignments")
+end
+
+-- Compile-time constant optimization tests
+function testConstantTrue()
+   local v = true ? "A" :> error("Should not be called")
+   assert(v is "A", "Failed constant true")
+end
+
+function testConstantFalse()
+   local v = false ? error("Should not be called") :> "B"
+   assert(v is "B", "Failed constant false")
+end
+
+function testConstantZero()
+   local v = 0 ? error("Should not be called") :> "B"
+   assert(v is "B", "Failed constant zero")
+end
+
+function testConstantEmptyString()
+   local v = "" ? error("Should not be called") :> "B"
+   assert(v is "B", "Failed constant empty string")
+end
+
+function testConstantNonZero()
+   local v = 5 ? "A" :> error("Should not be called")
+   assert(v is "A", "Failed constant non-zero")
+end
+
+function testConstantNonEmptyString()
+   local v = "hello" ? "A" :> error("Should not be called")
+   assert(v is "A", "Failed constant non-empty string")
+end
+
+-- Table/field tests
+function testTableField()
+   local t = { value = 10 }
+   local v = t.value > 5 ? "high" :> "low"
+   assert(v is "high", "Failed table field: expected 'high', got " .. tostring(v))
+end
+
+function testOptionalTableField()
+   local t = { msg = "Hello" }
+   local v = t.msg ? "default"
+   assert(v is "Hello", "Failed optional table field: expected 'Hello', got " .. tostring(v))
+end
+
+function testOptionalMissingField()
+   local t = {}
+   local v = t.missing ? "default"
+   assert(v is "default", "Failed optional missing field: expected 'default', got " .. tostring(v))
+end
+
+-- Return value tests
+function testReturnValue()
+   local function test()
+      return true ? "yes" :> "no"
+   end
+   local result = test()
+   assert(result is "yes", "Failed return value: expected 'yes', got " .. tostring(result))
+end
+
+function testOptionalReturnValue()
+   local function test()
+      return nil ? "default"
+   end
+   local result = test()
+   assert(result is "default", "Failed optional return value: expected 'default', got " .. tostring(result))
+end
+
+-- Edge cases
+function testChainedComparisons()
+   local a, b, c = 1, 2, 3
+   local v = a < b and b < c ? "ordered" :> "not ordered"
+   assert(v is "ordered", "Failed chained comparisons")
+end
+
+function testNestedOptional()
+   local v = (nil ? "A") ? "B"
+   -- First: nil ? "A" = "A"
+   -- Then: "A" ? "B" = "A"
+   assert(v is "A", "Failed nested optional: expected 'A', got " .. tostring(v))
+end
+
+function testMixedOptionalAndFull()
+   local v = (5 ? 0) > 3 ? "high" :> "low"
+   -- First: 5 ? 0 = 5
+   -- Then: 5 > 3 ? "high" :> "low" = "high"
+   assert(v is "high", "Failed mixed optional and full: expected 'high', got " .. tostring(v))
+end
+
+-- Method call tests (critical for in_ternary flag implementation)
+function testMethodCallInTrueBranch()
+   local obj = {
+      getValue = function(self)
+         return "method_result"
+      end
+   }
+   local v = true ? obj:getValue() :> "other"
+   assert(v is "method_result", "Failed method call in true branch: expected 'method_result', got " .. tostring(v))
+end
+
+function testMethodCallInFalseBranch()
+   local obj = {
+      getValue = function(self)
+         return "method_result"
+      end
+   }
+   local v = false ? "other" :> obj:getValue()
+   assert(v is "method_result", "Failed method call in false branch: expected 'method_result', got " .. tostring(v))
+end
+
+function testMethodCallInOptionalForm()
+   local obj = {
+      getValue = function(self)
+         return "method_result"
+      end
+   }
+   local v = obj:getValue() ? "default"
+   assert(v is "method_result", "Failed method call in optional form: expected 'method_result', got " .. tostring(v))
+end
+
+function testNestedTernaryWithMethodCallInTrueBranch()
+   local obj = {
+      getValue = function(self)
+         return "inner_method"
+      end
+   }
+   -- cond1 ? (cond2 ? obj:method() :> other) :> default
+   local v = true ? (true ? obj:getValue() :> "other") :> "default"
+   assert(v is "inner_method", "Failed nested ternary with method call in true branch: expected 'inner_method', got " .. tostring(v))
+end
+
+function testNestedTernaryWithMethodCallInFalseBranch()
+   local obj = {
+      getValue = function(self)
+         return "inner_method"
+      end
+   }
+   -- cond1 ? true_val :> (cond2 ? obj:method() :> other)
+   local v = false ? "true_val" :> (true ? obj:getValue() :> "other")
+   assert(v is "inner_method", "Failed nested ternary with method call in false branch: expected 'inner_method', got " .. tostring(v))
+end
+
+function testMethodCallWithArgumentsInTernary()
+   local obj = {
+      multiply = function(self, x, y)
+         return x * y
+      end
+   }
+   local v = true ? obj:multiply(5, 6) :> 0
+   assert(v is 30, "Failed method call with arguments: expected 30, got " .. tostring(v))
+end
+
+function testMethodCallInCondition()
+   local obj = {
+      isActive = function(self)
+         return true
+      end
+   }
+   local v = obj:isActive() ? "active" :> "inactive"
+   assert(v is "active", "Failed method call in condition: expected 'active', got " .. tostring(v))
+end
+
+-- Operator precedence and chaining tests
+function testTernaryWithArithmetic()
+   local v = 5 + 3 > 6 ? 10 :> 5
+   -- Parses as: (5 + 3) > 6 ? 10 :> 5 = 8 > 6 ? 10 :> 5 = 10
+   assert(v is 10, "Failed ternary with arithmetic: expected 10, got " .. tostring(v))
+end
+
+function testTernaryChainedWithAnd()
+   local a, b = 5, 10
+   local v = a > 0 and b > 0 ? "both positive" :> "not both positive"
+   assert(v is "both positive", "Failed ternary chained with and: expected 'both positive', got " .. tostring(v))
+end
+
+function testTernaryChainedWithOr()
+   local a, b = -5, 10
+   local v = a > 0 or b > 0 ? "at least one positive" :> "both negative"
+   assert(v is "at least one positive", "Failed ternary chained with or: expected 'at least one positive', got " .. tostring(v))
+end
+
+function testTernaryInArithmeticExpression()
+   local v = (true ? 10 :> 5) + 5
+   assert(v is 15, "Failed ternary in arithmetic expression: expected 15, got " .. tostring(v))
+end
+
+function testTernaryWithComparison()
+   local a, b, c = 5, 3, 8
+   local v = a > b ? c :> b
+   assert(v is 8, "Failed ternary with comparison: expected 8, got " .. tostring(v))
+end
+
+-- Parentheses and grouping tests
+function testParenthesizedTernary()
+   local v = (true ? "A" :> "B")
+   assert(v is "A", "Failed parenthesized ternary: expected 'A', got " .. tostring(v))
+end
+
+function testTernaryWithParenthesizedCondition()
+   local v = (5 > 3) ? "yes" :> "no"
+   assert(v is "yes", "Failed ternary with parenthesized condition: expected 'yes', got " .. tostring(v))
+end
+
+function testTernaryWithParenthesizedBranches()
+   local v = true ? (10 + 5) :> (20 - 5)
+   assert(v is 15, "Failed ternary with parenthesized branches: expected 15, got " .. tostring(v))
+end
+
+-- Array/table indexing tests
+function testArrayIndexingInBranch()
+   local arr = { "first", "second", "third" }
+   local v = true ? arr[2] :> arr[3]
+   assert(v is "second", "Failed array indexing in branch: expected 'second', got " .. tostring(v))
+end
+
+function testNestedTableAccessInBranch()
+   local t = {
+      user = {
+         name = "Alice",
+         age = 30
+      }
+   }
+   local v = true ? t.user.name :> "Unknown"
+   assert(v is "Alice", "Failed nested table access in branch: expected 'Alice', got " .. tostring(v))
+end
+
+-- Multiple assignment tests
+function testTernaryInMultipleAssignment()
+   local a, b = true ? 1, 2 :> 3, 4
+   -- Ternary returns single value, so only first gets assigned
+   assert(a is 1, "Failed ternary in multiple assignment: expected a=1, got " .. tostring(a))
+end
+
+-- Whitespace and formatting tests (edge cases)
+function testTernaryWithExtraWhitespace()
+   local v = true ? "A" :> "B"
+   assert(v is "A", "Failed ternary with whitespace: expected 'A', got " .. tostring(v))
+end
+
+function testTernaryNoSpaces()
+   local v = true?"A":"B"
+   assert(v is "A", "Failed ternary without spaces: expected 'A', got " .. tostring(v))
+end
+
+-- String concatenation in branches
+function testStringConcatenationInBranch()
+   local v = true ? "Hello" .. " " .. "World" :> "Goodbye"
+   assert(v is "Hello World", "Failed string concatenation in branch: expected 'Hello World', got " .. tostring(v))
+end
+
+-- Negative numbers
+function testNegativeNumberInCondition()
+   local v = -5 ? "negative" :> "zero_or_positive"
+   assert(v is "negative", "Failed negative number in condition: expected 'negative', got " .. tostring(v))
+end
+
+function testNegativeNumberInBranch()
+   local v = true ? -10 :> 10
+   assert(v is -10, "Failed negative number in branch: expected -10, got " .. tostring(v))
+end
+
+-- Boolean expressions
+function testBooleanExpressionInCondition()
+   local v = (true and false) ? "true" :> "false"
+   assert(v is "false", "Failed boolean expression in condition: expected 'false', got " .. tostring(v))
+end
+
+-- Empty branches (edge case)
+function testEmptyBranchesNotPossible()
+   -- Note: Empty branches would be syntax errors, but we test that valid expressions work
+   local v = true ? 1 :> 2
+   assert(v is 1, "Valid ternary should work")
+end
+
+-- Ternary as function argument
+function testTernaryAsFunctionArgument()
+   local function process(x)
+      return x * 2
+   end
+   local v = process(true ? 5 :> 10)
+   assert(v is 10, "Failed ternary as function argument: expected 10, got " .. tostring(v))
+end
+
+-- Ternary in table constructor
+function testTernaryInTableConstructor()
+   local t = {
+      value = true ? "yes" :> "no",
+      count = false ? 1 :> 2
+   }
+   assert(t.value is "yes", "Failed ternary in table constructor value: expected 'yes'")
+   assert(t.count is 2, "Failed ternary in table constructor count: expected 2")
+end
+
+-- Ternary with ? operator (coalesce/or_question)
+function testTernaryWithOrQuestionOperator()
+   local v = (nil ? "default") ? "fallback" :> "final"
+   -- First: nil ? "default" = "default"
+   -- Then: "default" ? "fallback" :> "final" = "default" (truthy)
+   assert(v is "default", "Failed ternary with ? operator: expected 'default', got " .. tostring(v))
+end
+
+return {
+   tests = {
+      'testBasicTrue', 'testBasicFalse',
+      'testExtendedFalseyNil', 'testExtendedFalseyZero', 'testExtendedFalseyEmptyString', 'testExtendedFalseyFalse',
+      'testExtendedTruthyNonZero', 'testExtendedTruthyNonEmptyString',
+      'testShortCircuitTrue', 'testShortCircuitFalse',
+      'testNestedRightAssociative', 'testNestedMultiLevel',
+      'testRuntimePositive', 'testRuntimeNegative',
+      'testPrecedenceArithmetic', 'testPrecedenceComparison',
+      'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
+      'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testOptionalEmptyString',
+      'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
+      'testComplexExpressions', 'testFunctionCallInBranch',
+      'testAssignment', 'testMultipleAssignments',
+      'testConstantTrue', 'testConstantFalse', 'testConstantZero', 'testConstantEmptyString',
+      'testConstantNonZero', 'testConstantNonEmptyString',
+      'testTableField', 'testOptionalTableField', 'testOptionalMissingField',
+      'testReturnValue', 'testOptionalReturnValue',
+      'testChainedComparisons', 'testNestedOptional', 'testMixedOptionalAndFull',
+      -- Method call tests (critical for in_ternary flag)
+      'testMethodCallInTrueBranch', 'testMethodCallInFalseBranch', 'testMethodCallInOptionalForm',
+      'testNestedTernaryWithMethodCallInTrueBranch', 'testNestedTernaryWithMethodCallInFalseBranch',
+      'testMethodCallWithArgumentsInTernary', 'testMethodCallInCondition',
+      -- Operator precedence and chaining
+      'testTernaryWithArithmetic', 'testTernaryChainedWithAnd', 'testTernaryChainedWithOr',
+      'testTernaryInArithmeticExpression', 'testTernaryWithComparison',
+      -- Parentheses and grouping
+      'testParenthesizedTernary', 'testTernaryWithParenthesizedCondition', 'testTernaryWithParenthesizedBranches',
+      -- Array/table indexing
+      'testArrayIndexingInBranch', 'testNestedTableAccessInBranch',
+      -- Multiple assignment
+      'testTernaryInMultipleAssignment',
+      -- Whitespace and formatting
+      'testTernaryWithExtraWhitespace', 'testTernaryNoSpaces',
+      -- String operations
+      'testStringConcatenationInBranch',
+      -- Negative numbers
+      'testNegativeNumberInCondition', 'testNegativeNumberInBranch',
+      -- Boolean expressions
+      'testBooleanExpressionInCondition',
+      -- Function arguments and table constructors
+      'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
+      -- Interaction with other operators
+      'testTernaryWithOrQuestionOperator'
+   }
+}

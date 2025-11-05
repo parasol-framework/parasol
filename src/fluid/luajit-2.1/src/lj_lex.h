@@ -18,7 +18,7 @@
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
   __(or_question, ?) __(presence, ??) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
-  __(shl, <<) __(shr, >>) \
+  __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
   __(label, ::) __(number, <number>) __(name, <name>) __(string, <string>) \
   __(cadd, +=) __(csub, -=) __(cmul, *=) __(cdiv, /=) __(cconcat, ..=) __(cmod, %=) \
   __(plusplus, ++) \

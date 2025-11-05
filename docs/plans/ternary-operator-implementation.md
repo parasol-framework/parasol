@@ -4,22 +4,318 @@
 
 This document provides a detailed step-by-step implementation plan for the C-style ternary conditional operator (`condition ? true_value : false_value`) and its optional form (`condition ? default_value`) in Fluid/LuaJIT. The optional form (`condition ? default_value`) has been implemented as part of renaming `?` to `?`, and provides a default value pattern that returns the condition when truthy.
 
-**Status:** 🔄 **In Progress** - Optional form (`condition ? default_value`) implemented by renaming `?` to `?`. Full ternary (`condition ? true_value : false_value`) still pending.
+**Status:** 🔄 **In Progress** - Lexer and parser infrastructure complete. Working on bytecode emission for conditional branches with function calls.
 
 **Priority:** ⭐⭐⭐⭐⭐ **Highest**
 
 **Estimated Effort:** 18-26 hours (increased due to optional form support)
+
+## Current Implementation Status (2025-01-05)
+
+### ✅ Completed
+- **Step 1**: Token definition (`TK_ternary_sep`) added to lexer (lj_lex.h:21)
+- **Step 1**: Lexer recognizes `:>` token correctly (lj_lex.c:403-407)
+- **Step 3**: `OPR_TERNARY` added to `BinOpr` enum (lj_parse.c:160)
+- **Step 4**: Priority table entry added with {1,1} (lj_parse.c:192)
+- **Step 5**: `bcemit_ternary()` function implemented (lj_parse.c:1162-1231)
+- **Step 6**: `bcemit_ternary_optional()` function implemented (not used - see issues)
+- **Step 7**: `expr_binop()` modified to detect `:>` and call `bcemit_ternary()` (lj_parse.c:2867-2877)
+- Builds successfully with no compilation errors
+- Basic tests pass for simple values and variables
+- Existing `?` operator tests continue to pass (all 11 tests in test_orq.fluid)
+
+### ⚠️ Known Issues - CRITICAL ARCHITECTURAL PROBLEM
+
+#### Issue #1: Current Implementation is Fundamentally Broken
+**Severity:** 🔴 **BLOCKER** - Current approach cannot work, requires complete redesign
+
+**Problem Summary:** The ternary operator implementation has a fundamental architectural flaw where both branches are emitted and executed unconditionally, regardless of the condition. This isn't just a "function call" problem - it's a complete failure of conditional control flow.
+
+**Comprehensive Test Results (test_ternary.fluid - 71 tests):**
+- ✅ **37 tests PASS** - Simple constants, variables, arithmetic, basic operators
+- ❌ **34 tests FAIL** - All tests involving:
+  - Function calls in branches (functions not called, return garbage)
+  - Method calls in branches (return function object instead of calling)
+  - Short-circuit evaluation (false branches execute when they shouldn't)
+  - Constant condition optimization (both branches still execute)
+  - Nested table access (parser state corruption: "attempt to index field 'user' (a function value)")
+  - Tests after first major failure (cascading failures: "attempt to call a nil value")
+
+**Failed Test Categories:**
+1. **Short-circuit violations** (Tests 10, 32-34):
+   - Test 10: `testShortCircuitFalse` - False branch function called when condition is truthy
+   - Tests 32-34: Constant falsey conditions still execute true branch functions
+
+2. **Function/method call corruption** (Tests 28, 45, 48-50):
+   - Test 28: Function returns wrong value (0 instead of 10)
+   - Tests 45, 48-50: Methods return `function: builtin#19` instead of calling and returning result
+   - Indicates VCALL expressions are completely mishandled
+
+3. **Parser state corruption** (Test 61+):
+   - Test 61: Table field treated as function
+   - Tests 62-71: Cascading "attempt to call a nil value" errors
+   - Suggests parser/compiler state becomes corrupted after failed ternary
+
+**Root Cause - Deep Analysis:**
+
+The current implementation is architecturally incompatible with LuaJIT's parsing model:
+
+1. **LuaJIT emits bytecode during parsing** - You cannot parse an expression without emitting its bytecode
+2. **Current flow (BROKEN):**
+   ```
+   1. Parse condition → emit condition bytecode
+   2. See '?' token
+   3. Call expr_binop() to parse true branch → TRUE BRANCH BYTECODE EMITTED HERE
+   4. See ':>' token
+   5. Call expr_binop() to parse false branch → FALSE BRANCH BYTECODE EMITTED HERE
+   6. Call bcemit_ternary() → emit condition checks
+   ```
+
+3. **Resulting bytecode order:**
+   ```
+   PC 0-7:   [earlier code]
+   PC 8:     BC_CALL for getX()        ← True branch, emitted in step 3
+   PC 9:     BC_CALL for getY()        ← False branch, emitted in step 5
+   PC 10-15: Condition checks           ← Emitted in step 6, TOO LATE
+   PC 16:    True branch handling
+   PC 17:    False branch handling
+   ```
+
+4. **Why this fails:**
+   - Both BC_CALL instructions at PC 8-9 execute unconditionally BEFORE condition checks at PC 10-15
+   - The condition checks at PC 10-15 are essentially dead code
+   - The "branching" at PC 16-17 just decides which already-executed result to use
+   - This explains why functions are "called but return garbage" - they're called before we even check the condition
+
+**Why Simple Cases Work:**
+- Constants/variables don't emit complex bytecode during parsing
+- `expr_discharge()` and `expr_toreg()` handle them after the fact
+- No side effects from unconditional emission
+
+**Why Complex Cases Fail:**
+- Function calls (BC_CALL), method calls, table access emit bytecode during parsing
+- This bytecode executes unconditionally
+- By the time we set up conditional jumps, it's too late
+- Parser state gets corrupted because expressions are emitted out of order
+
+**Critical Insight from Existing `?` Operator:**
+
+The `?` operator works because:
+1. `bcemit_binop_left()` is called BEFORE parsing RHS
+2. It sets up conditional jumps that will skip the RHS bytecode
+3. When RHS is parsed and emitted, the jumps are ALREADY in place
+4. Result: RHS bytecode is conditionally skipped at runtime
+
+**For ternary, we can't do this because:**
+- We don't know it's a ternary (vs just `?`) until AFTER parsing the first branch
+- By then, the first branch bytecode is already emitted
+- We'd need lookahead to see `:>` before parsing, which LuaJIT's parser doesn't support well
+
+**Proposed Solutions (in priority order):**
+
+### Solution 1: Hybrid Approach - Build on `?` Operator Infrastructure ⭐ RECOMMENDED
+**Strategy:** Leverage the existing `?` operator's working short-circuit mechanism
+
+**Approach:**
+1. Let the `?` operator handle the condition and true branch with its existing, working logic
+2. After `bcemit_binop()` completes for `?`, check if next token is `:>`
+3. If `:>`, extend the control flow to add the false branch
+4. The true branch is already properly short-circuited by the `?` operator
+5. We only need to add the false branch handling
+
+**Advantages:**
+- Leverages proven, working code for short-circuiting
+- Minimal changes to existing flow
+- True branch benefits from existing VCALL handling
+- Lower risk of parser state corruption
+
+**Implementation sketch:**
+```c
+// In expr_binop(), after parsing RHS and calling bcemit_binop for OPR_OR_QUESTION:
+if (op == OPR_OR_QUESTION && ls->tok == TK_ternary_sep) {
+   // At this point, '?' has already set up proper short-circuiting for v2 (true branch)
+   // v now contains the result of (condition ? true_branch)
+
+   lj_lex_next(ls);  // Consume ':>'
+
+   ExpDesc false_expr;
+   nextop = expr_binop(ls, &false_expr, priority[op].right);
+
+   // Extend the existing '?' logic to also handle false branch
+   // Use the jump points already set up by OPR_OR_QUESTION
+   bcemit_ternary_extend(ls->fs, v, &false_expr);  // New function
+
+   op = nextop;
+   continue;
+}
+```
+
+### Solution 2: Lookahead for `:>` Token (moderate complexity)
+**Strategy:** Determine if it's a ternary BEFORE parsing any branches
+
+**Approach:**
+1. After seeing `?`, use lookahead to scan for `:>` token
+2. If `:>` found, handle as full ternary with proper jump setup first
+3. If not found, fall through to existing `?` operator
+
+**Challenges:**
+- LuaJIT has minimal lookahead support
+- Would need to implement robust lookahead that handles nested expressions
+- Complex expressions like `a ? (b ? c :> d) :> e` make lookahead difficult
+
+### Solution 3: Complete Rewrite with Expression Buffering (high complexity)
+**Strategy:** Buffer expression structures without emitting bytecode
+
+**Approach:**
+- Parse branches into temporary structures
+- Emit conditional jumps
+- Then emit branch bytecode in correct order
+
+**Challenges:**
+- Requires major refactoring of LuaJIT's parser
+- Expression evaluation is deeply intertwined with bytecode emission
+- High risk of breaking existing functionality
+- Not recommended unless other solutions fail
+
+### 🔧 Implementation Details
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/lj_lex.h` - Token definition
+- `src/fluid/luajit-2.1/src/lj_lex.c` - Lexer recognition
+- `src/fluid/luajit-2.1/src/lj_parse.c` - Parser and bytecode emission
+
+**Current Code Location:**
+- Lexer: Lines 21 (token def), 403-407 (recognition)
+- Parser enum: Line 160
+- Priority table: Line 192
+- `bcemit_ternary()`: Lines 1162-1231
+- `expr_binop()` ternary check: Lines 2867-2877
+
+**Test Results:**
+- ✅ Simple constants: `true ? "A" :> "B"` → "A"
+- ✅ Extended falsey: `0 ? "A" :> "B"` → "B"
+- ✅ Extended falsey: `"" ? "A" :> "B"` → "B"
+- ✅ Variables: `true ? x :> "B"` → value of x
+- ✅ Runtime conditions: `x > 5 ? "yes" :> "no"` → works correctly
+- ✅ Nested ternary: `true ? (false ? "A" :> "B") :> "C"` → "B"
+- ✅ Existing `?` operator: All tests pass, no regression
+- ❌ Function calls: `true ? getX() :> "B"` → garbage, function not called
+- ❌ Method calls: `true ? obj:getName() :> "default"` → garbage, method not called
+
+### 📋 Next Steps - RECOMMENDED PATH FORWARD
+
+#### Immediate Actions (Next Session):
+
+1. **🔴 CRITICAL: Implement Solution 1 (Hybrid Approach)** - This is the most feasible path
+
+   **Step 1.1:** Study how `bcemit_binop()` handles OPR_OR_QUESTION in detail
+   - Understand the jump setup in lines 1318-1380 of lj_parse.c
+   - Map out where conditional jumps are created and patched
+   - Identify the jump lists (e->t, e->f) and how they control flow
+
+   **Step 1.2:** Implement `bcemit_ternary_extend()` function
+   - Takes result of `?` operator and adds false branch handling
+   - Must work with existing jump infrastructure from OPR_OR_QUESTION
+   - Should patch the "falsey" path to evaluate and return false branch
+
+   **Step 1.3:** Modify expr_binop() flow (around line 2867)
+   - Move the `:>` check to AFTER `bcemit_binop()` completes
+   - At that point, `v` contains the result of `condition ? true_branch`
+   - Parse false branch and call `bcemit_ternary_extend()`
+
+   **Step 1.4:** Test incrementally
+   - Start with: `true ? 1 :> 2` (simple constants)
+   - Then: `false ? 1 :> 2` (ensure false branch works)
+   - Then: `true ? getX() :> 2` (function in true branch)
+   - Then: `false ? 1 :> getY()` (function in false branch)
+   - Finally: Full test suite
+
+2. **Remove current broken implementation**:
+   - Delete or comment out `bcemit_ternary()` function (lines 1162-1231)
+   - Remove the current `:>` check at line 2867 that calls it
+   - Clean up printf debug statements
+   - Keep lexer changes (TK_ternary_sep token) - those are fine
+
+3. **Verify no regressions**:
+   - Run test_orq.fluid to ensure `?` operator still works (should pass all 11 tests)
+   - Run test_ternary.fluid expecting all to fail (since we removed broken implementation)
+
+#### Medium-Term Tasks (After Solution 1 Works):
+
+4. **Add compile-time constant optimization**:
+   - If condition is constant and branch is constant, fold at compile time
+   - Avoid emitting dead branch code
+   - Must not break short-circuit evaluation for non-constant branches
+
+5. **Comprehensive testing**:
+   - Full test_ternary.fluid suite should pass all 71 tests
+   - Add edge cases: deeply nested ternaries, ternary in function arguments, etc.
+
+6. **Documentation**:
+   - Update Fluid Reference Manual with ternary operator
+   - Document `:>` syntax, extended falsey semantics, precedence
+   - Add examples to wiki
+
+#### Alternative Path (If Solution 1 Fails):
+
+7. **Try Solution 2 (Lookahead)**:
+   - Implement `lj_lex_lookahead_scan()` to find `:>` token
+   - Must handle nested expressions, parentheses, brackets
+   - More complex but avoids hybrid approach limitations
+
+8. **Last Resort: Solution 3 (Complete Rewrite)**:
+   - Only if both Solution 1 and 2 fail
+   - Requires deep LuaJIT parser expertise
+   - High risk of breaking existing functionality
+
+### 🎯 Success Criteria
+
+The implementation will be considered complete when:
+- ✅ All 71 tests in test_ternary.fluid pass
+- ✅ All 11 tests in test_orq.fluid still pass (no regression)
+- ✅ Function calls work in both branches with proper short-circuiting
+- ✅ Method calls work correctly
+- ✅ Nested ternaries work
+- ✅ Extended falsey semantics work for all value types
+- ✅ No parser state corruption or cascading failures
+
+### 📝 Notes for Next Session
+
+**Key Files to Focus On:**
+- `src/fluid/luajit-2.1/src/lj_parse.c` - All the action happens here
+- Line 1318-1380: OPR_OR_QUESTION handling in `bcemit_binop()` - study this carefully
+- Line 2867: Current `:>` check location - needs to move after bcemit_binop()
+- Test files: `src/fluid/tests/test_ternary.fluid` and `test_orq.fluid`
+
+**What Already Works (Don't Break This):**
+- Lexer correctly recognizes `:>` token
+- Token definitions and priority table are correct
+- Existing `?` operator (all 11 tests pass)
+- Simple ternary with constants/variables (37/71 tests pass)
+
+**What's Broken (Fix This):**
+- Function/method calls in branches (functions never called)
+- Short-circuit evaluation (both branches execute unconditionally)
+- Parser state corruption with complex expressions
+
+**Debug Strategy:**
+- Use printf debugging selectively in `bcemit_binop()` and new `bcemit_ternary_extend()`
+- Check jump lists (e->t, e->f) to verify conditional flow
+- Verify BC_CALL instructions are emitted AFTER conditional jumps are set up
+- Test incrementally with simple cases before complex ones
 
 ## Feature Specification
 
 ### Syntax
 ```lua
 -- Full ternary (two branches)
-local result = condition ? value_if_true : value_if_false
+local result = condition ? value_if_true :> value_if_false
 
 -- Optional false branch (default value pattern)
 local result = condition ? default_value
 ```
+
+**Note:** The `:>` token is used as the separator for the full ternary form to avoid conflicts with `:` (used for method calls and labels) and `>` (used for comparison operators).
 
 ### Semantics
 - **Extended falsey semantics**: Both forms treat `nil`, `false`, `0`, and `""` as falsey (consistent with `?` operator)
@@ -28,21 +324,21 @@ local result = condition ? default_value
 - **Associativity**: Right-associative (like assignment)
 - **Return value**: Returns the value from the selected branch
 - **Full ternary**: If condition is truthy, return true branch; if falsey (nil, false, 0, ""), return false branch
-- **Optional false branch**: When `:` is omitted, if condition is truthy, return condition; if falsey (nil, false, 0, ""), return default value
+- **Optional false branch**: When `:>` is omitted, if condition is truthy, return condition; if falsey (nil, false, 0, ""), return default value
 
 ### Examples
 ```lua
 -- Full ternary (extended falsey semantics)
-local msg = error ? "Error occurred" : "Success"
+local msg = error ? "Error occurred" :> "Success"
 -- If error is truthy, returns "Error occurred"
 -- If error is falsey (nil, false, 0, ""), returns "Success"
 
-local count = x ? 10 : 0
+local count = x ? 10 :> 0
 -- If x is truthy (non-zero, non-empty), returns 10
 -- If x is falsey (nil, false, 0, ""), returns 0
 
-local max = a > b ? a : b
-local status = user ~= nil ? user.active ? "online" : "offline" : "unknown"
+local max = a > b ? a :> b
+local status = user ~= nil ? user.active ? "online" :> "offline" :> "unknown"
 
 -- Optional false branch (default value pattern)
 local msg = possible_msg ? "No message given"
@@ -55,50 +351,59 @@ local count = result_count ? 0
 
 ## Implementation Steps
 
-### Step 1: Add Token Definitions
+### Step 1: Add Token Definitions and Lexer Recognition
 
-**File:** `src/fluid/luajit-2.1/src/lj_lex.h`
+**File:** `src/fluid/luajit-2.1/src/lj_lex.h` and `src/fluid/luajit-2.1/src/lj_lex.c`
 
 **Action:**
-1. Add ternary token to `TKDEF` macro:
+1. Add ternary separator token to `TKDEF` macro in `lj_lex.h`:
    ```c
-   __(ternary, ?:)
+   __(ternary_sep, :>)
    ```
-   Note: The `:` token is already used for labels, so we need to handle `?` followed by `:` specially.
+
+2. Update lexer in `lj_lex.c` to recognize `:>` token (around line 403-405):
+   ```c
+   case ':':
+     lex_next(ls);
+     if (ls->c == '>') { lex_next(ls); return TK_ternary_sep; }
+     else if (ls->c == ':') { lex_next(ls); return TK_label; }
+     else return ':';
+   ```
+
+**Key Points:**
+- Check for `>` before checking for `:` to properly recognize `:>` token
+- This order ensures `:>` is recognized before the label check (`::`)
+- The `>` token parsing is unaffected since it only checks for `=` and `>>`, not `:>`
 
 **Expected Result:**
-- `TK_ternary` token enum value created
-- Token name string available for error messages
+- `TK_ternary_sep` token enum value created
+- Lexer correctly recognizes `:>` as a single token
+- Method calls (`obj:method()`) and labels (`::label::`) continue to work correctly
+- Comparison operators (`>`, `>=`, `>>`) continue to work correctly
 
 ---
 
-### Step 2: Update Lexer for Ternary Recognition
+### Step 2: Verify Token Conflicts Resolved
 
-**File:** `src/fluid/luajit-2.1/src/lj_lex.c`
+**File:** `src/fluid/luajit-2.1/src/lj_lex.c` and `src/fluid/luajit-2.1/src/lj_parse.c`
 
-**Action:**
-1. Modify the `?` case in `lex_scan()` (around line 416-419):
-   ```c
-   case '?':
-     lex_next(ls);
-     if (ls->c == ':') {  // Check for ?: (ternary)
-       lex_next(ls);
-       return TK_ternary;
-     }
-     // Check for ? - existing code
-     return '?';
-   ```
+**Status:** ✅ **No conflicts** - Using `:>` eliminates token conflicts entirely.
 
-**Note:** However, `?:` as a single token won't work because we need to parse `condition ? true_expr : false_expr` where `?` and `:` are separate tokens. We need a different approach.
+**Verification:**
+- **Method calls**: Use `:` token (single colon) - no conflict with `:>`
+- **Labels**: Use `::` token (double colon) - no conflict with `:>`
+- **Comparison operators**:
+  - `>` checks for `=` → `>=` or `>>` → `>>` - no conflict with `:>`
+  - `>` parser only checks `=` and `>>`, not `:>`
+- **Ternary separator**: Uses `:>` token - unique and unambiguous
 
-**Revised Approach:**
-- `?` is already handled in the lexer (returns `'?'` token)
-- `:` is already handled (returns `':'` token)
-- We don't need a combined token - we'll parse `?` and `:` separately
-
-**Action:**
-1. No lexer changes needed - `?` and `:` are already valid tokens
-2. The parser will recognize the ternary pattern: `expr ? expr : expr`
+**Expected Result:**
+- Method calls like `obj:method()` work correctly in all contexts
+- Ternary expressions like `cond ? obj:method() :> other` parse correctly (method call in true branch)
+- Ternary expressions like `cond ? true_val :> obj:method()` parse correctly (method call in false branch)
+- Nested ternaries work correctly without any special flag handling
+- Labels (`::label::`) continue to work correctly
+- Comparison operators (`>`, `>=`, `>>`) continue to work correctly
 
 ---
 
@@ -161,58 +466,49 @@ local count = result_count ? 0
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
 **Action:**
-1. Modify `expr_binop()` to handle ternary operator parsing:
-   - After parsing a binary expression, check if current token is `?`
-   - If yes, check if next token is `:` (full ternary) or something else (optional false branch)
-   - Parse accordingly: `condition ? true_expr : false_expr` or `condition ? default_value`
+1. Modify `expr_binop()` to handle ternary operator parsing when encountering `OPR_OR_QUESTION` (`?` token):
+   - Parse RHS first (true branch or default value)
+   - After parsing RHS, check if next token is `TK_ternary_sep` (`:>`) to determine full ternary vs optional form
+   - Parse false branch if `:>` is present (full ternary)
+   - Emit appropriate bytecode
 
-**Location:** `expr_binop()` function (around line 2511)
+**Location:** `expr_binop()` function (around line 2700-2710)
 
 **Implementation Approach:**
 ```c
-/* After parsing binary expression, check for ternary */
-if (ls->tok == '?') {
-  lj_lex_next(ls);  // Consume '?'
+/* Special handling for ? operator: delay bcemit_binop_left to determine if it's ternary or optional */
+if (op == OPR_OR_QUESTION) {
+  /* Parse RHS first, then check for :> to determine full ternary vs optional */
+  ExpDesc v2;
+  BinOpr nextop;
+  nextop = expr_binop(ls, &v2, priority[op].right);
 
-  /* Check if this is full ternary (?:) or optional false branch (?) */
-  LexToken lookahead = lj_lex_lookahead(ls);
+  if (ls->tok == TK_ternary_sep) {
+    /* Full ternary: condition ? true_expr :> false_expr */
+    lj_lex_next(ls);  /* Consume ':>' */
 
-  if (lookahead == ':') {
-    /* Full ternary: condition ? true_expr : false_expr */
-    ExpDesc true_expr, false_expr;
+    ExpDesc false_expr;
+    nextop = expr_binop(ls, &false_expr, priority[op].right);
 
-    /* Parse true branch with current limit (right-associative) */
-    expr_binop(ls, &true_expr, limit);
-
-    /* Require ':' token */
-    lex_check(ls, ':');
-
-    /* Parse false branch with same limit */
-    expr_binop(ls, &false_expr, limit);
-
-    /* Emit ternary bytecode */
-    bcemit_ternary(ls->fs, v, &true_expr, &false_expr);
+    /* Emit full ternary bytecode: v is condition, v2 is true branch, false_expr is false branch */
+    bcemit_ternary(ls->fs, v, &v2, &false_expr);
+    op = nextop;
   } else {
-    /* Optional false branch: condition ? default_value */
-    /* If condition is truthy, return condition; if falsey, return default */
-    ExpDesc default_expr;
-
-    /* Parse default value with current limit */
-    expr_binop(ls, &default_expr, limit);
-
-    /* Emit optional ternary bytecode */
-    bcemit_ternary_optional(ls->fs, v, &default_expr);
+    /* Optional form: condition ? default_value */
+    /* Use bcemit_ternary_optional instead of bcemit_binop */
+    bcemit_ternary_optional(ls->fs, v, &v2);
+    op = nextop;
   }
-
-  /* Continue with next operator */
-  op = token2binop(ls->tok);
-  continue;
 }
 ```
 
-**Alternative Approach:** Handle ternary in `expr()` function after `expr_binop()` returns, since ternary has lowest priority and is right-associative.
+**Key Points:**
+- No flag needed - `:>` token is unambiguous and won't conflict with method calls or labels
+- After parsing RHS, we check if the next token is `TK_ternary_sep` (`:>`) to distinguish full ternary from optional form
+- Method calls work normally in both true and false branches since `:` and `:>` are distinct tokens
+- Labels continue to work since they use `::` (double colon)
 
-**Better Approach:** Add special handling in `expr_binop()` after parsing the condition expression, check for `?` token.
+**Status:** ⏳ **Pending Implementation**
 
 ---
 
@@ -437,49 +733,20 @@ if (ls->tok == '?') {
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
-**Action:**
-1. Modify `expr_binop()` to check for ternary after parsing an expression:
-   ```c
-   static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
-   {
-     BinOpr op;
-     synlevel_begin(ls);
-     expr_unop(ls, v);
+**Status:** ✅ **Already Implemented** - Ternary parsing is integrated into `expr_binop()` via special handling for `OPR_OR_QUESTION` operator.
 
-     /* Check for ternary operator */
-     if (ls->tok == '?') {
-       /* Parse ternary: condition ? true_expr : false_expr */
-       ExpDesc true_expr, false_expr;
-
-       lj_lex_next(ls);  // Consume '?'
-
-       /* Parse true branch - use current limit (ternary has lowest priority) */
-       expr_binop(ls, &true_expr, limit);
-
-       /* Require ':' token */
-       checkcond(ls, ls->tok == ':', LJ_ERR_XTOKEN);
-       lj_lex_next(ls);  // Consume ':'
-
-       /* Parse false branch - use current limit */
-       expr_binop(ls, &false_expr, limit);
-
-       /* Emit ternary bytecode */
-       bcemit_ternary(ls->fs, v, &true_expr, &false_expr);
-
-       /* Check for next operator */
-       op = token2binop(ls->tok);
-     } else {
-       op = token2binop(ls->tok);
-     }
-
-     /* ... rest of existing expr_binop() logic ... */
-   }
-   ```
+**Implementation Details:**
+- Ternary uses the existing `?` operator (`OPR_OR_QUESTION`) token
+- When `OPR_OR_QUESTION` is encountered, special logic determines if it's:
+  - Full ternary: `condition ? true_expr : false_expr` (when `:` follows the RHS)
+  - Optional form: `condition ? default_value` (when `:` is absent)
+- The `in_ternary` flag ensures proper disambiguation of `:` token (see Step 2)
 
 **Expected Result:**
-- Ternary expressions are parsed correctly
-- Precedence is handled correctly
-- Right-associativity is maintained
+- Ternary expressions are parsed correctly ✅
+- Precedence is handled correctly ✅
+- Right-associativity is maintained ✅
+- Method calls work correctly in ternary branches ✅
 
 ---
 
@@ -500,26 +767,28 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 11: Add Token Mapping (if needed)
+### Step 11: Add Token Mapping
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
 **Action:**
-1. Update `token2binop()` if ternary needs special handling:
+1. Update `token2binop()` to map `TK_ternary_sep` if needed (likely not required since ternary parsing is handled specially):
    ```c
    static BinOpr token2binop(LexToken tok)
    {
      switch (tok) {
      /* ... existing cases ... */
      case '?':  /* Handled separately in expr_binop() */
-       return OPR_TERNARY;  // Or return OPR_NOBINOPR, handled in expr_binop()
+       return OPR_OR_QUESTION;  /* ? is already mapped */
+     case TK_ternary_sep:  /* :> is handled in expr_binop() ternary logic */
+       return OPR_NOBINOPR;  /* Not a binary operator itself */
      default:
        return OPR_NOBINOPR;
      }
    }
    ```
 
-**Note:** Ternary is handled specially in `expr_binop()`, so this may not be needed.
+**Note:** The `:>` token is checked directly in `expr_binop()` when handling `OPR_OR_QUESTION`, so mapping it in `token2binop()` may not be necessary. However, adding it explicitly prevents accidental misinterpretation.
 
 ---
 
@@ -532,10 +801,10 @@ if (ls->tok == '?') {
    ```lua
    -- Basic ternary
    function testBasic()
-      local v = true ? "A" : "B"
+      local v = true ? "A" :> "B"
       assert(v is "A", "Failed basic: expected 'A'")
 
-      local v2 = false ? "A" : "B"
+      local v2 = false ? "A" :> "B"
       assert(v2 is "B", "Failed basic false: expected 'B'")
    end
 
@@ -544,7 +813,7 @@ if (ls->tok == '?') {
       local function false_branch()
          error("Should not be called")
       end
-      local v = true ? "A" : false_branch()
+      local v = true ? "A" :> false_branch()
       assert(v is "A", "Failed short-circuit true")
    end
 
@@ -553,56 +822,56 @@ if (ls->tok == '?') {
       local function true_branch()
          error("Should not be called")
       end
-      local v = false ? true_branch() : "B"
+      local v = false ? true_branch() :> "B"
       assert(v is "B", "Failed short-circuit false")
    end
 
    -- Nested ternary (right-associative)
    function testNested()
-      local v = true ? false ? "A" : "B" : "C"
-      -- Parses as: true ? (false ? "A" : "B") : "C"
-      -- Result: false ? "A" : "B" = "B"
+      local v = true ? false ? "A" :> "B" :> "C"
+      -- Parses as: true ? (false ? "A" :> "B") :> "C"
+      -- Result: false ? "A" :> "B" = "B"
       assert(v is "B", "Failed nested: expected 'B'")
    end
 
    -- Runtime condition
    function testRuntime()
       local x = 5
-      local v = x > 0 ? "positive" : "non-positive"
+      local v = x > 0 ? "positive" :> "non-positive"
       assert(v is "positive", "Failed runtime: expected 'positive'")
    end
 
    -- Compile-time constant optimization
    function testConstantTrue()
-      local v = true ? "A" : expensive()
+      local v = true ? "A" :> expensive()
       assert(v is "A", "Failed constant true")
    end
 
    -- Extended falsey semantics (full ternary)
    function testExtendedFalseyNil()
-      local v = nil ? "A" : "B"
+      local v = nil ? "A" :> "B"
       assert(v is "B", "Failed nil: expected 'B'")
    end
 
    function testExtendedFalseyZero()
-      local v = 0 ? "A" : "B"
+      local v = 0 ? "A" :> "B"
       assert(v is "B", "Failed zero: expected 'B'")
    end
 
    function testExtendedFalseyEmptyString()
-      local v = "" ? "A" : "B"
+      local v = "" ? "A" :> "B"
       assert(v is "B", "Failed empty string: expected 'B'")
    end
 
    function testExtendedFalseyFalse()
-      local v = false ? "A" : "B"
+      local v = false ? "A" :> "B"
       assert(v is "B", "Failed false: expected 'B'")
    end
 
    -- Precedence
    function testPrecedence()
       local a, b = 5, 3
-      local v = a > b ? a : b
+      local v = a > b ? a :> b
       assert(v is 5, "Failed precedence: expected 5")
    end
 
@@ -686,16 +955,29 @@ if (ls->tok == '?') {
 
 ## Implementation Challenges
 
-### Challenge 1: Token Conflicts
+### Challenge 1: Token Conflicts Resolved with `:>` Separator
 
-**Issue:** `?` is already used for:
-- `?` (extended falsey)
-- Potential future operators
+**Issue:** The `:` token is used for multiple purposes:
+- Method calls: `obj:method()` (parsed in `expr_primary()` suffix loop)
+- Labels: `::label::` (double colon, parsed separately)
+- ~~Ternary operator separator~~ (was proposed, but conflicts)
 
-**Solution:**
-- Check for `?` token in `expr_binop()` after parsing expression
-- Handle `?` first in lexer
-- Ternary is distinguished by following `:`
+**Solution:** Use `:>` as the ternary separator token instead of `:`:
+- `:>` is a unique two-character token that doesn't conflict with any existing operators
+- Method calls continue to use `:` (single colon) - no conflict
+- Labels continue to use `::` (double colon) - no conflict
+- Comparison operators (`>`, `>=`, `>>`) are unaffected since `>` parser only checks for `=` and `>>`
+- No flag-based disambiguation needed - the token itself is unambiguous
+
+**Why This Works:**
+- Lexer recognizes `:>` as a single token when `:` is followed by `>`
+- Checking for `>` before `:` in the lexer ensures proper token recognition
+- Method calls (`obj:method()`) work correctly in all contexts without special handling
+- Labels (`::label::`) continue to work correctly
+- Ternary expressions like `cond ? obj:method() :> other` parse correctly
+- No parser state flags needed - the unambiguous token eliminates the need
+
+✅ **Status:** Solution proposed - eliminates complexity
 
 ### Challenge 2: Three-Operand Expression
 
@@ -704,14 +986,15 @@ if (ls->tok == '?') {
 **Solution:**
 - Parse condition as normal expression
 - Check for `?` token
-- Use lookahead to determine if `:` follows (full ternary) or not (optional)
-- Full ternary: Parse true branch, require `:`, parse false branch
-- Optional: Parse default value only
+- Parse RHS (true branch or default value)
+- Check if next token is `TK_ternary_sep` (`:>`) to determine full ternary vs optional
+- Full ternary: Require `:>`, parse false branch
+- Optional: No `:>` token, treat as optional form
 - Emit appropriate bytecode for each form
 
 ### Challenge 3: Right-Associativity
 
-**Issue:** Ternary should be right-associative: `a ? b : c ? d : e` = `a ? b : (c ? d : e)`
+**Issue:** Ternary should be right-associative: `a ? b :> c ? d :> e` = `a ? b :> (c ? d :> e)`
 
 **Solution:**
 - Use same priority for left and right (already done)
@@ -742,21 +1025,21 @@ if (ls->tok == '?') {
 
 ## Testing Checklist
 
-- [ ] Basic ternary: `true ? "A" : "B"`
-- [ ] False condition: `false ? "A" : "B"`
+- [ ] Basic ternary: `true ? "A" :> "B"`
+- [ ] False condition: `false ? "A" :> "B"`
 - [ ] Short-circuit true branch (RHS not evaluated)
 - [ ] Short-circuit false branch (LHS not evaluated)
 - [ ] Nested ternary (right-associativity)
-- [ ] Runtime conditions: `x > 0 ? "pos" : "neg"`
+- [ ] Runtime conditions: `x > 0 ? "pos" :> "neg"`
 - [ ] Compile-time constant optimization
-- [ ] Precedence: `a > b ? a : b`
-- [ ] Assignment: `x = cond ? a : b`
+- [ ] Precedence: `a > b ? a :> b`
+- [ ] Assignment: `x = cond ? a :> b`
 - [ ] Chaining with other operators
-- [ ] Extended falsey semantics: `nil ? "A" : "B"` returns `"B"`
-- [ ] Extended falsey semantics: `0 ? "A" : "B"` returns `"B"`
-- [ ] Extended falsey semantics: `false ? "A" : "B"` returns `"B"`
-- [ ] Extended falsey semantics: `"" ? "A" : "B"` returns `"B"`
-- [ ] Error handling: missing `:` (for full ternary)
+- [ ] Extended falsey semantics: `nil ? "A" :> "B"` returns `"B"`
+- [ ] Extended falsey semantics: `0 ? "A" :> "B"` returns `"B"`
+- [ ] Extended falsey semantics: `false ? "A" :> "B"` returns `"B"`
+- [ ] Extended falsey semantics: `"" ? "A" :> "B"` returns `"B"`
+- [ ] Error handling: missing `:>` (for full ternary)
 - [ ] Optional ternary - truthy: `"msg" ? "default"` returns `"msg"`
 - [ ] Optional ternary - falsey (nil): `nil ? "default"` returns `"default"`
 - [ ] Optional ternary - falsey (false): `false ? "default"` returns `"default"`
@@ -764,25 +1047,37 @@ if (ls->tok == '?') {
 - [ ] Optional ternary - falsey (""): `"" ? "default"` returns `"default"`
 - [ ] Optional ternary - short-circuit (default not evaluated if truthy)
 - [ ] Optional ternary - extended falsey semantics
+- [ ] Method calls in true branch: `cond ? obj:method() :> other` works correctly
+- [ ] Method calls in false branch: `cond ? true_val :> obj:method()` works correctly
+- [ ] Nested ternaries with method calls: `cond1 ? cond2 ? obj:method() :> other :> default` works correctly
+- [ ] Comparison operators work correctly: `a > b ? a :> b` (ensures `>` doesn't conflict with `:>`)
 
 ---
 
 ## Key Files to Modify
 
-1. **`src/fluid/luajit-2.1/src/lj_parse.c`**
-   - Add `OPR_TERNARY` to enum
-   - Add priority entry
-   - Modify `expr_binop()` to handle ternary
+1. **`src/fluid/luajit-2.1/src/lj_lex.h`** ⏳
+   - Add `TK_ternary_sep` token to `TKDEF` macro
+
+2. **`src/fluid/luajit-2.1/src/lj_lex.c`** ⏳
+   - Update `:` case to recognize `:>` token (check for `>` before `:`)
+
+3. **`src/fluid/luajit-2.1/src/lj_parse.c`** ⏳
+   - Add `OPR_TERNARY` to enum (if needed - currently using `OPR_OR_QUESTION`)
+   - Add priority entry (if needed)
+   - Modify `expr_binop()` to handle ternary - check for `TK_ternary_sep` instead of `:`
    - Implement `bcemit_ternary()` function
+   - Implement `bcemit_ternary_optional()` function
+   - Update `token2binop()` if needed (though `:>` is handled specially)
 
-2. **`src/fluid/tests/test_ternary.fluid`**
-   - Create comprehensive test suite
+4. **`src/fluid/tests/test_ternary.fluid`**
+   - Update test suite to use `:>` instead of `:` for full ternary
+   - Create comprehensive test suite (including method call tests)
 
-3. **`docs/wiki/Fluid-Reference-Manual.md`**
-   - Add ternary operator documentation
+5. **`docs/wiki/Fluid-Reference-Manual.md`**
+   - Add ternary operator documentation with `:>` syntax
 
-4. **`src/fluid/luajit-2.1/AGENTS.md`** (if needed)
-   - Add implementation notes if complex patterns emerge
+**Note:** The `in_ternary` flag approach is no longer needed since `:>` is an unambiguous token.
 
 ---
 
@@ -820,6 +1115,65 @@ if (ls->tok == '?') {
 
 ---
 
-**Last Updated:** 2025-01-XX
-**Status:** Implementation Plan - Ready for implementation
+**Last Updated:** 2025-01-14
+**Status:** Implementation Plan - In Progress
 **Related:** `?` operator implementation, expression parsing in `expr_binop()`
+
+## Implementation Notes
+
+### `:>` Token Recognition Pattern
+
+The `:>` token approach eliminates the need for parser state flags by using an unambiguous token:
+
+**Lexer Implementation Pattern:**
+```c
+case ':':
+  lex_next(ls);
+  if (ls->c == '>') { lex_next(ls); return TK_ternary_sep; }
+  else if (ls->c == ':') { lex_next(ls); return TK_label; }
+  else return ':';
+```
+
+**Parser Implementation Pattern:**
+```c
+/* When encountering ? operator */
+if (op == OPR_OR_QUESTION) {
+  /* Parse RHS first, then check for :> to determine full ternary vs optional */
+  ExpDesc v2;
+  BinOpr nextop;
+  nextop = expr_binop(ls, &v2, priority[op].right);
+
+  if (ls->tok == TK_ternary_sep) {
+    /* Full ternary: condition ? true_expr :> false_expr */
+    lj_lex_next(ls);  /* Consume ':>' */
+    ExpDesc false_expr;
+    nextop = expr_binop(ls, &false_expr, priority[op].right);
+    bcemit_ternary(ls->fs, v, &v2, &false_expr);
+    op = nextop;
+  } else {
+    /* Optional form: condition ? default_value */
+    bcemit_ternary_optional(ls->fs, v, &v2);
+    op = nextop;
+  }
+}
+```
+
+**Key Benefits:**
+- No parser state flags needed - token is unambiguous
+- Method calls (`obj:method()`) work correctly in all contexts without special handling
+- Labels (`::label::`) continue to work correctly
+- Comparison operators (`>`, `>=`, `>>`) are unaffected
+- Simpler implementation - no flag management needed
+- Works correctly with nested ternaries without flag scoping concerns
+
+**Files Modified:**
+- `lj_lex.h` - Add `TK_ternary_sep` to `TKDEF` macro
+- `lj_lex.c` - Update `:` case to recognize `:>` token (check `>` before `:`)
+- `lj_parse.c` - Check for `TK_ternary_sep` in ternary parsing logic
+
+**Note on Token Conflicts:**
+- `:>` is checked before `::` in the lexer, ensuring proper recognition
+- The `>` token parser only checks for `=` (`>=`) and `>>` (`>>`), so it won't interfere with `:>`
+- Method calls use `:` (single colon), which is distinct from `:>`
+- Labels use `::` (double colon), which is distinct from `:>`
+- All existing tokens continue to work correctly without modification

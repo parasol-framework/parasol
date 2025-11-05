@@ -157,6 +157,7 @@ typedef enum BinOpr {
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
   OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
   OPR_AND, OPR_OR, OPR_OR_QUESTION,
+  OPR_TERNARY,
   OPR_NOBINOPR
 } BinOpr;
 
@@ -187,7 +188,8 @@ static const struct {
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
   {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
-  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0}			/* AND OR OR_QUESTION */
+  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},			/* AND OR OR_QUESTION */
+  {1,1,NULL,0}							/* TERNARY */
 };
 
 /* -- Error handling ------------------------------------------------------ */
@@ -1155,6 +1157,164 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
    jmp_patch(fs, jmp_false_branch, fs->pc);
 
    expr_init(e, VNONRELOC, dest);
+}
+
+/* Emit full ternary operator: condition ? true_expr :> false_expr */
+static void bcemit_ternary(FuncState *fs, ExpDesc *cond, ExpDesc *true_expr, ExpDesc *false_expr)
+{
+   /* Handle compile-time constant conditions first */
+   expr_discharge(fs, cond);
+
+   /* Check for compile-time truthy constants */
+   if (cond->k == VKTRUE || (cond->k == VKNUM && !expr_numiszero(cond)) ||
+      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len > 0)) {
+      /* Condition is always truthy - only evaluate true branch */
+      /* Use expr_tonextreg to ensure proper evaluation, especially for VCALL */
+      expr_tonextreg(fs, true_expr);
+      *cond = *true_expr;
+      return;
+   }
+
+   /* Check for compile-time falsey constants */
+   if (cond->k == VKFALSE || cond->k == VKNIL ||
+      (cond->k == VKNUM && expr_numiszero(cond)) ||
+      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len == 0)) {
+      /* Condition is always falsey - only evaluate false branch */
+      /* Use expr_tonextreg to ensure proper evaluation, especially for VCALL */
+      expr_tonextreg(fs, false_expr);
+      *cond = *false_expr;
+      return;
+   }
+
+   /* Runtime condition - emit bytecode with extended falsey semantics */
+   /* Ensure condition is in a register */
+   BCReg cond_reg = expr_toanyreg(fs, cond);
+   BCReg result_reg = cond_reg;
+
+   /* Emit checks for extended falsey semantics (nil, false, 0, "") */
+   ExpDesc nilv, falsev, zerov, emptyv;
+   BCPos check_nil, check_false, check_zero, check_empty;
+
+   /* Check for nil */
+   expr_init(&nilv, VKNIL, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+   check_nil = bcemit_jmp(fs);
+
+   /* Check for false */
+   expr_init(&falsev, VKFALSE, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+   check_false = bcemit_jmp(fs);
+
+   /* Check for zero */
+   expr_init(&zerov, VKNUM, 0);
+   setnumV(&zerov.u.nval, 0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+   check_zero = bcemit_jmp(fs);
+
+   /* Check for empty string */
+   expr_init(&emptyv, VKSTR, 0);
+   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+   check_empty = bcemit_jmp(fs);
+
+   /* Condition is truthy - use true branch */
+   expr_discharge(fs, true_expr);
+   expr_toreg(fs, true_expr, result_reg);
+
+   /* Jump to end (after false branch) */
+   BCPos skip_false = bcemit_jmp(fs);
+
+   /* Condition is falsey - patch jumps and use false branch */
+   BCPos false_start = fs->pc;
+   jmp_patch(fs, check_nil, false_start);
+   jmp_patch(fs, check_false, false_start);
+   jmp_patch(fs, check_zero, false_start);
+   jmp_patch(fs, check_empty, false_start);
+
+   expr_discharge(fs, false_expr);
+   expr_toreg(fs, false_expr, result_reg);
+
+   /* Patch skip to end */
+   jmp_patch(fs, skip_false, fs->pc);
+
+   /* Result is in result_reg */
+   cond->u.s.info = result_reg;
+   cond->k = VNONRELOC;
+}
+
+/* Emit optional ternary operator: condition ? default_value */
+static void bcemit_ternary_optional(FuncState *fs, ExpDesc *cond, ExpDesc *default_expr)
+{
+   /* Handle compile-time constant conditions */
+   expr_discharge(fs, cond);
+
+   if (cond->k == VKTRUE || (cond->k == VKNUM && !expr_numiszero(cond)) ||
+      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len > 0)) {
+      /* Condition is truthy - return condition itself */
+      return;  /* cond already contains the result */
+   }
+
+   if (cond->k == VKFALSE || cond->k == VKNIL ||
+      (cond->k == VKNUM && expr_numiszero(cond)) ||
+      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len == 0)) {
+      /* Condition is falsey - return default value */
+      expr_discharge(fs, default_expr);
+      *cond = *default_expr;
+      return;
+   }
+
+   /* Runtime condition - emit bytecode */
+   /* Ensure condition is in a register */
+   BCReg cond_reg = expr_toanyreg(fs, cond);
+   BCReg result_reg = cond_reg;
+
+   /* Check if condition is truthy (extended falsey semantics) */
+   /* Emit checks for nil, false, 0, "" */
+   ExpDesc nilv, falsev, zerov, emptyv;
+   BCPos check_nil, check_false, check_zero, check_empty;
+
+   /* Check for nil */
+   expr_init(&nilv, VKNIL, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+   check_nil = bcemit_jmp(fs);
+
+   /* Check for false */
+   expr_init(&falsev, VKFALSE, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+   check_false = bcemit_jmp(fs);
+
+   /* Check for zero */
+   expr_init(&zerov, VKNUM, 0);
+   setnumV(&zerov.u.nval, 0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+   check_zero = bcemit_jmp(fs);
+
+   /* Check for empty string */
+   expr_init(&emptyv, VKSTR, 0);
+   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+   check_empty = bcemit_jmp(fs);
+
+   /* Condition is truthy - use condition value */
+   /* Condition is already in cond_reg, so result is ready */
+   BCPos skip_default = bcemit_jmp(fs);
+
+   /* Condition is falsey - patch jumps and use default value */
+   BCPos default_start = fs->pc;
+   jmp_patch(fs, check_nil, default_start);
+   jmp_patch(fs, check_false, default_start);
+   jmp_patch(fs, check_zero, default_start);
+   jmp_patch(fs, check_empty, default_start);
+
+   expr_discharge(fs, default_expr);
+   expr_toreg(fs, default_expr, result_reg);
+
+   /* Patch skip to end */
+   jmp_patch(fs, skip_default, fs->pc);
+
+   /* Result is in result_reg */
+   cond->u.s.info = result_reg;
+   cond->k = VNONRELOC;
 }
 
 /* Emit binary operator. */
@@ -2704,6 +2864,21 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ExpDesc v2;
     BinOpr nextop;
     nextop = expr_binop(ls, &v2, priority[op].right);
+
+    /* Special handling for ? operator: check for :> to determine if it's full ternary */
+    if (op == OPR_OR_QUESTION && ls->tok == TK_ternary_sep) {
+      /* Full ternary: condition ? true_expr :> false_expr */
+      lj_lex_next(ls);  /* Consume ':>' */
+
+      ExpDesc false_expr;
+      nextop = expr_binop(ls, &false_expr, priority[op].right);
+
+      /* Emit full ternary bytecode: v is condition, v2 is true branch, false_expr is false branch */
+      bcemit_ternary(ls->fs, v, &v2, &false_expr);
+      op = nextop;
+      continue;
+    }
+
     bcemit_binop(ls->fs, op, v, &v2);
     op = nextop;
   }
