@@ -1,5 +1,18 @@
 {
   "env": {
      "BASH_DEFAULT_TIMEOUT_MS": 300000
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/start_linux_session.sh"
+          }
+        ]
+      }
+    ]
   }
 }
