@@ -1573,7 +1573,8 @@ static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
         lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
         lj_assertLS(strref(vg->name) != NAME_CONTINUE, "unexpected continue");
 	lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
-		     strdata(strref(vg->name)), strdata(name));
+		     strdata(strref(vg->name)),
+		     name == NAME_BLANK ? "_" : strdata(name));
       }
       gola_patch(ls, vg, vl);
     }

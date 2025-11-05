@@ -1,5 +1,9 @@
 -- Flute tests for the blank identifier (_) feature
 -- The blank identifier allows explicitly ignoring values in assignments and for loops
+--
+-- Note: Goto statements that jump into the scope of a blank identifier will
+-- produce a compile-time error: "<goto label> jumps into the scope of local '_'"
+-- This prevents crashes when the parser encounters such invalid code.
 
 function testBasicAssignment()
    local x, _ = 10, 20
