@@ -6,33 +6,10 @@ set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
-set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
-
-# Common LuaJIT build configuration used by both MSVC and non-MSVC builds
-
-# Define build directory for generated files (avoids polluting source tree)
-set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
-file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
-
-# Generated header files (same for all platforms)
-set (LUAJIT_GENERATED_HEADERS
-   "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
-   "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
-   "${LUAJIT_BUILD_DIR}/lj_libdef.h"
-   "${LUAJIT_BUILD_DIR}/lj_recdef.h"
-   "${LUAJIT_BUILD_DIR}/lj_folddef.h"
-)
-
-# VM definition Lua file (same for all platforms)
-set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-
-# Common LuaJIT compile definitions
-set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
-# Non-MSVC builds disable FFI and need additional flags (as a CMake list for proper expansion)
-set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
-
-# We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
+# We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
+
+set (LUAJIT_ORIGINAL_BUILD FALSE)
 
 if (MSVC)
    set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
@@ -53,10 +30,28 @@ ExternalProject_Add(libffi-3.3
 
 # LuaJIT library custom build
 
+set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
+
+# Define build directory for generated files (avoids polluting source tree)
+set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
+file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+
+# Generated header files
+set (LUAJIT_GENERATED_HEADERS
+   "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_libdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_recdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_folddef.h"
+)
+
+set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
+set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
+set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
+
 if (MSVC)
    # LuaJIT build for MSVC - separated into code generation and library compilation
    # Code generation creates headers and lj_vm.obj via custom batch script
-   # Library compilation is handled by CMake for proper incremental builds
 
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
 
@@ -117,21 +112,43 @@ if (MSVC)
 
    # Create an alias for backward compatibility
    add_custom_target(luajit DEPENDS luajit_lib)
+
+elseif (LUAJIT_ORIGINAL_BUILD)
+   # Build using the original LuaJIT build system (Makefile)
+
+   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
+   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+
+   ExternalProject_Add(
+      luajit
+      SOURCE_DIR ${LUAJIT_SRC}
+      CONFIGURE_COMMAND ""
+      BUILD_ALWAYS TRUE
+      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
+      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX=" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
+      BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
+      # Specifying the WORKING_DIRECTORY triggers a bug in GitHub's auto-build as of 2024-11 (and we don't really need it in order to build)
+      #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"
+      COMMENT "Compiling LuaJIT library")
+
+   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
 else ()
-   # Non-MSVC build (Linux, MinGW, etc.) - LuaJIT build using CMake
+   # Non-MSVC build (Linux, MinGW, etc.)
    # Separated into code generation and library compilation
    # Code generation creates headers and lj_vm.S via host tools
-   # Library compilation is handled by CMake for proper incremental builds
 
    set (LUAJIT_VM_S "${LUAJIT_BUILD_DIR}/lj_vm.S")
    set (LUAJIT_VM_O "${LUAJIT_BUILD_DIR}/lj_vm.o")
 
    # Host tool sources
+
    set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
    set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
 
    # Build minilua host tool first
+
    set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+
    if (WIN32)
       set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
       set (MINILUA_LIBS "")
@@ -139,6 +156,7 @@ else ()
       set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua")
       set (MINILUA_LIBS "-lm")
    endif ()
+
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
       COMMAND ${CMAKE_C_COMPILER} -std=c99 -O2 -Wall -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
@@ -149,8 +167,11 @@ else ()
 
    # Determine target architecture for dynasm by preprocessing lj_arch.h
    # This mimics the Makefile's TARGET_TESTARCH approach
+
    set (LUAJIT_DETECT_ARCH "${LUAJIT_BUILD_DIR}/detect_arch.c")
+
    # Only write the file if it doesn't exist to avoid unnecessary rebuilds
+
    if (NOT EXISTS ${LUAJIT_DETECT_ARCH})
       file(WRITE ${LUAJIT_DETECT_ARCH}
          "#include \"${LUAJIT_SRC}/lj_arch.h\"\n"
@@ -182,11 +203,13 @@ else ()
    endif ()
 
    # Detect architecture
+
    if (WIN32)
       set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch.exe")
    else ()
       set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch")
    endif ()
+
    add_custom_command(
       OUTPUT ${LUAJIT_ARCH_DETECT}
       COMMAND ${CMAKE_C_COMPILER} -I${LUAJIT_SRC} -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
@@ -198,10 +221,15 @@ else ()
    # Generate buildvm_arch.h using dynasm
    # Detect architecture at build time and use the appropriate .dasc file
    # The dynasm step uses minimal flags - architecture-specific flags are handled by dynasm
+
    set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
+
    # Use a CMake script to detect architecture and run dynasm
+
    set (DYNASM_SCRIPT "${LUAJIT_BUILD_DIR}/run_dynasm.cmake")
+
    # Only write the script if it doesn't exist to avoid unnecessary rebuilds
+
    if (NOT EXISTS ${DYNASM_SCRIPT})
       file(WRITE ${DYNASM_SCRIPT}
          "file(READ \"${LUAJIT_BUILD_DIR}/arch.txt\" ARCH)\n"
@@ -221,6 +249,7 @@ else ()
          "endif()\n"
       )
    endif ()
+
    add_custom_command(
       OUTPUT ${LUAJIT_BUILD_DIR}/arch.txt
       COMMAND ${LUAJIT_ARCH_DETECT} > ${LUAJIT_BUILD_DIR}/arch.txt
@@ -228,6 +257,7 @@ else ()
       COMMENT "Writing detected architecture to file"
       VERBATIM
    )
+
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
@@ -240,6 +270,7 @@ else ()
    )
 
    # Build buildvm host tool
+
    set (BUILDVM_SOURCES
       "${LUAJIT_HOST_DIR}/buildvm.c"
       "${LUAJIT_HOST_DIR}/buildvm_asm.c"
@@ -247,6 +278,7 @@ else ()
       "${LUAJIT_HOST_DIR}/buildvm_lib.c"
       "${LUAJIT_HOST_DIR}/buildvm_fold.c"
    )
+
    if (WIN32)
       set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm.exe")
       set (BUILDVM_LIBS "")
@@ -254,6 +286,7 @@ else ()
       set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm")
       set (BUILDVM_LIBS "-lm")
    endif ()
+
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} -std=c99 -O2 -Wall
@@ -267,6 +300,7 @@ else ()
 
    # Library source files needed for buildvm header generation
    # Note: lib_ffi.c excluded because FFI is disabled
+
    set (LJLIB_C
       "${LUAJIT_SRC}/lib_base.c"
       "${LUAJIT_SRC}/lib_math.c"
@@ -280,6 +314,7 @@ else ()
 
    # Generate headers and VM assembly file using buildvm
    # Determine assembly format: coffasm for Windows (MinGW/MSVC), elfasm for Unix
+
    if (WIN32)
       set (LUAJIT_ASM_MODE "coffasm")
    else ()
@@ -307,6 +342,7 @@ else ()
    )
 
    # Compile VM assembly file
+
    add_custom_command(
       OUTPUT ${LUAJIT_VM_O}
       COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
@@ -320,11 +356,11 @@ else ()
    )
 
    # Compile amalgamated source
+
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
-         -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+      COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
@@ -335,6 +371,7 @@ else ()
    )
 
    # Create static library
+
    set (LUAJIT_LIB_DIR "${CMAKE_BINARY_DIR}/luajit-2.1/lib")
    file(MAKE_DIRECTORY "${LUAJIT_LIB_DIR}")
    set (LUAJIT_LINK "${LUAJIT_LIB_DIR}/libluajit-5.1.a")
@@ -346,9 +383,7 @@ else ()
       VERBATIM
    )
 
-   add_custom_target(luajit_lib
-      DEPENDS ${LUAJIT_LINK}
-   )
+   add_custom_target(luajit_lib DEPENDS ${LUAJIT_LINK})
    add_dependencies(luajit_lib luajit_codegen)
 
    # Create an alias for backward compatibility
