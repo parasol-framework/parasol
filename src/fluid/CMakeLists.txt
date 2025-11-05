@@ -49,6 +49,29 @@ set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
 set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
 
+# Common compiler flags and paths
+set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
+set (LUAJIT_INCLUDE_DIRS "-I${LUAJIT_SRC}" "-I${LUAJIT_BUILD_DIR}")
+set (LUAJIT_COMMON_CFLAGS "-fPIC" "-O2" "-fomit-frame-pointer" "-Wall")
+
+# Helper function to set platform-specific executable name
+function(set_platform_executable VAR_NAME BASE_NAME)
+   if (WIN32)
+      set(${VAR_NAME} "${LUAJIT_BUILD_DIR}/${BASE_NAME}.exe" PARENT_SCOPE)
+   else ()
+      set(${VAR_NAME} "${LUAJIT_BUILD_DIR}/${BASE_NAME}" PARENT_SCOPE)
+   endif ()
+endfunction()
+
+# Helper function to set platform-specific math library
+function(set_platform_math_lib VAR_NAME)
+   if (WIN32)
+      set(${VAR_NAME} "" PARENT_SCOPE)
+   else ()
+      set(${VAR_NAME} "-lm" PARENT_SCOPE)
+   endif ()
+endfunction()
+
 if (MSVC)
    # LuaJIT build for MSVC - separated into code generation and library compilation
    # Code generation creates headers and lj_vm.obj via custom batch script
@@ -73,20 +96,14 @@ if (MSVC)
       VERBATIM
    )
 
-   add_custom_target(luajit_codegen
-      DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ}
-   )
+   add_custom_target(luajit_codegen DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ})
 
    # Collect all LuaJIT source files
    file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
 
    # Create LuaJIT static library
-   add_library(luajit_lib STATIC
-      ${LUAJIT_CORE_SOURCES}
-      ${LUAJIT_LIB_SOURCES}
-      ${LUAJIT_VM_OBJ}
-   )
+   add_library(luajit_lib STATIC ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES} ${LUAJIT_VM_OBJ})
 
    add_dependencies(luajit_lib luajit_codegen)
 
@@ -115,9 +132,6 @@ if (MSVC)
 
 elseif (LUAJIT_ORIGINAL_BUILD)
    # Build using the original LuaJIT build system (Makefile)
-
-   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
 
    ExternalProject_Add(
       luajit
@@ -155,18 +169,12 @@ else ()
    # Build minilua host tool first
 
    set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
-
-   if (WIN32)
-      set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
-      set (MINILUA_LIBS "")
-   else ()
-      set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua")
-      set (MINILUA_LIBS "-lm")
-   endif ()
+   set_platform_executable(MINILUA_TARGET "minilua")
+   set_platform_math_lib(MINILUA_LIBS)
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} -std=c99 -O2 -Wall -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
       VERBATIM
@@ -211,11 +219,7 @@ else ()
 
    # Detect architecture
 
-   if (WIN32)
-      set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch.exe")
-   else ()
-      set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch")
-   endif ()
+   set_platform_executable(LUAJIT_ARCH_DETECT "detect_arch")
 
    add_custom_command(
       OUTPUT ${LUAJIT_ARCH_DETECT}
@@ -286,19 +290,14 @@ else ()
       "${LUAJIT_HOST_DIR}/buildvm_fold.c"
    )
 
-   if (WIN32)
-      set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm.exe")
-      set (BUILDVM_LIBS "")
-   else ()
-      set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm")
-      set (BUILDVM_LIBS "-lm")
-   endif ()
+   set_platform_executable(BUILDVM_TARGET "buildvm")
+   set_platform_math_lib(BUILDVM_LIBS)
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} -std=c99 -O2 -Wall
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
-         -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
+         ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
       DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
       COMMENT "Building buildvm host tool"
@@ -322,41 +321,37 @@ else ()
    # Generate headers and VM file using buildvm
    # Windows (MinGW) uses peobj to generate .obj directly like MSVC
    # Unix uses elfasm to generate .S assembly source that gets compiled later
+
    file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
+
+   # Set platform-specific VM generation parameters
 
    if (WIN32)
       # MinGW: Generate PE object file directly (no assembly step needed)
-      add_custom_command(
-         OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
-         COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
-         COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m peobj -o ${LUAJIT_VM_OBJ}
-         DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
-         WORKING_DIRECTORY ${LUAJIT_SRC}
-         COMMENT "Generating LuaJIT headers and VM object via buildvm"
-         VERBATIM
-      )
+      set(LUAJIT_VM_OUTPUT ${LUAJIT_VM_OBJ})
+      set(LUAJIT_VM_MODE "peobj")
+      set(LUAJIT_VM_COMMENT "Generating LuaJIT headers and VM object via buildvm")
    else ()
       # Unix: Generate assembly source for later compilation
-      add_custom_command(
-         OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
-         COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
-         COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
-         COMMAND ${BUILDVM_TARGET} -m elfasm -o ${LUAJIT_VM_S}
-         DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
-         WORKING_DIRECTORY ${LUAJIT_SRC}
-         COMMENT "Generating LuaJIT headers and VM assembly via buildvm"
-         VERBATIM
-      )
+      set(LUAJIT_VM_OUTPUT ${LUAJIT_VM_S})
+      set(LUAJIT_VM_MODE "elfasm")
+      set(LUAJIT_VM_COMMENT "Generating LuaJIT headers and VM assembly via buildvm")
    endif ()
+
+   add_custom_command(
+      OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OUTPUT} ${LUAJIT_VMDEF_LUA}
+      COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
+      COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m ${LUAJIT_VM_MODE} -o ${LUAJIT_VM_OUTPUT}
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+      WORKING_DIRECTORY ${LUAJIT_SRC}
+      COMMENT ${LUAJIT_VM_COMMENT}
+      VERBATIM
+   )
 
    if (WIN32)
       # MinGW: VM object file is already generated by buildvm, no compilation needed
@@ -372,10 +367,10 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
+         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
-            -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
+            ${LUAJIT_INCLUDE_DIRS}
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
          DEPENDS ${LUAJIT_VM_S}
          COMMENT "Compiling LuaJIT VM assembly"
@@ -388,10 +383,10 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
-         -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
+         ${LUAJIT_INCLUDE_DIRS}
          -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
       DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS}
       COMMENT "Compiling LuaJIT amalgamated source"
@@ -424,13 +419,9 @@ else ()
       )
    endif ()
 
-   add_custom_target(luajit_lib
-      DEPENDS ${LUAJIT_LINK}
-   )
+   add_custom_target(luajit_lib DEPENDS ${LUAJIT_LINK})
    add_dependencies(luajit_lib luajit_codegen)
-
-   # Create an alias for backward compatibility
-   add_custom_target(luajit DEPENDS luajit_lib)
+   add_custom_target(luajit DEPENDS luajit_lib)  # Create an alias for backward compatibility
 endif ()
 
 # Fluid library build
@@ -445,19 +436,9 @@ if (BUILD_DEFS)
    add_dependencies (${MOD} ${MOD}_hashes)
 endif ()
 
-set (FLUID_SOURCES
-   "${MOD}.cpp"
-   "fluid_module.cpp"
-   "fluid_thread.cpp"
-   "fluid_struct.cpp"
-   "fluid_processing.cpp"
-   "fluid_number.cpp"
-   "fluid_functions.cpp"
-   "fluid_objects.cpp"
-   "fluid_array.cpp"
-   "fluid_regex.cpp"
-   "fluid_io.cpp"
-   "fluid_class.cpp")
+set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
+   "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
+   "fluid_io.cpp" "fluid_class.cpp")
 
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")
@@ -480,20 +461,12 @@ if (DISABLE_DISPLAY)
    target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)
 endif ()
 
-flute_test(fluid_catch "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catch.fluid")
-flute_test(fluid_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_io.fluid")
-flute_test(fluid_nz "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_nz.fluid")
-flute_test(fluid_object "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_object.fluid")
-flute_test(fluid_processing "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_processing.fluid")
-flute_test(fluid_regex "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_regex.fluid")
-flute_test(fluid_struct "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_struct.fluid")
-flute_test(fluid_threads "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_action_threads.fluid")
-flute_test(fluid_xml "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_to_xml.fluid")
-flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_strings.fluid")
-flute_test(fluid_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_math.fluid")
-flute_test(fluid_array "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_array.fluid")
-flute_test(fluid_compound "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_compound.fluid")
-flute_test(fluid_bitshift "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitshift.fluid")
-flute_test(fluid_bitwise "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitwise.fluid")
-flute_test(fluid_orq "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_orq.fluid")
-flute_test(fluid_presence "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_presence.fluid")
+# Register Flute tests
+
+set (FLUID_TESTS
+   catch io nz object processing regex struct threads xml strings math array compound bitshift bitwise orq presence
+)
+
+foreach (TEST_NAME ${FLUID_TESTS})
+   flute_test(fluid_${TEST_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_${TEST_NAME}.fluid")
+endforeach ()
