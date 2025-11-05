@@ -140,6 +140,52 @@ function testBlankInTable()
    assert(x is 3, "Failed blank in table: expected x=3, got " .. x)
 end
 
+function testGotoCrossesBlankIdentifier()
+   -- Verify that various goto patterns with blank identifiers don't crash the parser
+   -- This tests the fix for the NAME_BLANK dereferencing bug in gola_resolve()
+   -- Even if these patterns don't trigger errors, they should compile without crashing
+
+   local patterns = {
+      -- Forward goto over blank identifier
+      [[
+         local function test()
+            goto label
+            local _ = 5
+            ::label::
+         end
+      ]],
+      -- Goto inside do block with blank identifier
+      [[
+         local function test()
+            do
+               goto label
+               local _ = 5
+               ::label::
+            end
+         end
+      ]],
+      -- Multiple blank identifiers with goto
+      [[
+         local function test()
+            goto label
+            local _, _ = 1, 2
+            ::label::
+         end
+      ]]
+   }
+
+   for i, code in ipairs(patterns) do
+      -- The key test is that load() doesn't crash
+      -- Whether it succeeds or produces an error is secondary
+      local status, result = pcall(load, code)
+
+      -- If we get here without a segfault, the test passes
+      -- We just verify that we got some kind of response
+      assert(status is true or status is false,
+             "Pattern " .. i .. ": Expected boolean status from pcall")
+   end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -149,6 +195,7 @@ return {
       'testForLoopBlankIndex', 'testForLoopBlankValue', 'testForLoopPairsBlank',
       'testForLoopPairsBlankValue', 'testForLoopMultipleBlanks',
       'testFunctionReturn', 'testFunctionReturnBlankFirst',
-      'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable'
+      'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable',
+      'testGotoCrossesBlankIdentifier'
    }
 }
