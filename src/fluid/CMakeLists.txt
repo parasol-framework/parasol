@@ -50,9 +50,9 @@ set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
 set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
 
 # Common compiler flags and paths
-set (LUAJIT_HOST_CFLAGS "-std=c99 -O2 -Wall")
-set (LUAJIT_INCLUDE_DIRS "-I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}")
-set (LUAJIT_COMMON_CFLAGS "-fPIC -O2 -fomit-frame-pointer -Wall")
+set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
+set (LUAJIT_INCLUDE_DIRS "-I${LUAJIT_SRC}" "-I${LUAJIT_BUILD_DIR}")
+set (LUAJIT_COMMON_CFLAGS "-fPIC" "-O2" "-fomit-frame-pointer" "-Wall")
 
 # Helper function to set platform-specific executable name
 function(set_platform_executable VAR_NAME BASE_NAME)
