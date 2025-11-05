@@ -4,11 +4,11 @@
 
 This document provides a detailed step-by-step implementation plan for the C-style ternary conditional operator (`condition ? true_value : false_value`) and its optional form (`condition ? default_value`) in Fluid/LuaJIT. The optional form (`condition ? default_value`) has been implemented as part of renaming `?` to `?`, and provides a default value pattern that returns the condition when truthy.
 
-**Status:** 🔄 **In Progress** - Lexer and parser infrastructure complete. Working on bytecode emission for conditional branches with function calls.
+**Status:** 🔄 **Plan Updated** - Adopt lookahead-based full ternary parsing. Lexer/token work is solid. Current full-ternary emission path will be replaced with a control-flow-first approach; optional form (`x ? default`) remains passing.
 
 **Priority:** ⭐⭐⭐⭐⭐ **Highest**
 
-**Estimated Effort:** 18-26 hours (increased due to optional form support)
+**Estimated Effort:** 12-18 hours remaining (lookahead + emission rewrite + tests)
 
 ## Current Implementation Status (2025-01-05)
 
@@ -113,69 +113,20 @@ The `?` operator works because:
 
 **Proposed Solutions (in priority order):**
 
-### Solution 1: Hybrid Approach - Build on `?` Operator Infrastructure ⭐ RECOMMENDED
-**Strategy:** Leverage the existing `?` operator's working short-circuit mechanism
+### Chosen Approach: Lookahead for `:>` (determine full ternary before emitting)
+**Why:** LuaJIT emits bytecode during parsing. To preserve short-circuiting, conditional jumps must be in place before either branch is parsed/emitted. This requires deciding “full ternary vs optional form” up-front.
 
-**Approach:**
-1. Let the `?` operator handle the condition and true branch with its existing, working logic
-2. After `bcemit_binop()` completes for `?`, check if next token is `:>`
-3. If `:>`, extend the control flow to add the false branch
-4. The true branch is already properly short-circuited by the `?` operator
-5. We only need to add the false branch handling
+**Strategy:**
+- After encountering `?`, perform a lookahead that determines whether a top-level `TK_ternary_sep` (`:>`) appears for this operator (respect parentheses/nesting).
+- If found: emit extended-falsey condition checks immediately, then parse/emit true branch to a fixed result register, emit skip-to-end, patch falsey jumps to parse/emit false branch into the same register, then patch skip.
+- If not found: fall back to existing optional form (`condition ? default`) emission path, which already passes.
 
-**Advantages:**
-- Leverages proven, working code for short-circuiting
-- Minimal changes to existing flow
-- True branch benefits from existing VCALL handling
-- Lower risk of parser state corruption
+**Notes:**
+- Lookahead operates on lexer state without emitting bytecode; no changes to branch expressions during scanning.
+- This ensures function/method calls (VCALL) in branches are only emitted in the selected branch.
 
-**Implementation sketch:**
-```c
-// In expr_binop(), after parsing RHS and calling bcemit_binop for OPR_OR_QUESTION:
-if (op == OPR_OR_QUESTION && ls->tok == TK_ternary_sep) {
-   // At this point, '?' has already set up proper short-circuiting for v2 (true branch)
-   // v now contains the result of (condition ? true_branch)
-
-   lj_lex_next(ls);  // Consume ':>'
-
-   ExpDesc false_expr;
-   nextop = expr_binop(ls, &false_expr, priority[op].right);
-
-   // Extend the existing '?' logic to also handle false branch
-   // Use the jump points already set up by OPR_OR_QUESTION
-   bcemit_ternary_extend(ls->fs, v, &false_expr);  // New function
-
-   op = nextop;
-   continue;
-}
-```
-
-### Solution 2: Lookahead for `:>` Token (moderate complexity)
-**Strategy:** Determine if it's a ternary BEFORE parsing any branches
-
-**Approach:**
-1. After seeing `?`, use lookahead to scan for `:>` token
-2. If `:>` found, handle as full ternary with proper jump setup first
-3. If not found, fall through to existing `?` operator
-
-**Challenges:**
-- LuaJIT has minimal lookahead support
-- Would need to implement robust lookahead that handles nested expressions
-- Complex expressions like `a ? (b ? c :> d) :> e` make lookahead difficult
-
-### Solution 3: Complete Rewrite with Expression Buffering (high complexity)
-**Strategy:** Buffer expression structures without emitting bytecode
-
-**Approach:**
-- Parse branches into temporary structures
-- Emit conditional jumps
-- Then emit branch bytecode in correct order
-
-**Challenges:**
-- Requires major refactoring of LuaJIT's parser
-- Expression evaluation is deeply intertwined with bytecode emission
-- High risk of breaking existing functionality
-- Not recommended unless other solutions fail
+### Rejected: Hybrid extension of the `?` operator
+Parsing and emitting the RHS (true branch) before knowing whether `:>` follows unconditionally emits its bytecode, breaking short-circuiting for full ternary and corrupting VCALL/method semantics. Extending after-the-fact cannot retroactively prevent already-emitted calls.
 
 ### 🔧 Implementation Details
 
@@ -202,43 +153,34 @@ if (op == OPR_OR_QUESTION && ls->tok == TK_ternary_sep) {
 - ❌ Function calls: `true ? getX() :> "B"` → garbage, function not called
 - ❌ Method calls: `true ? obj:getName() :> "default"` → garbage, method not called
 
-### 📋 Next Steps - RECOMMENDED PATH FORWARD
+### 📋 Next Steps — Focused Plan (Lookahead)
 
-#### Immediate Actions (Next Session):
+#### Immediate Actions
 
-1. **🔴 CRITICAL: Implement Solution 1 (Hybrid Approach)** - This is the most feasible path
+1. Implement lookahead for `:>` at the `?` operator site
+   - Scan tokens from just after `?` to find a top-level `TK_ternary_sep` for this operator instance (respect parentheses and nested subexpressions).
+   - Operate on lexer state without emitting bytecode; do not mutate parsed expressions during the scan.
 
-   **Step 1.1:** Study how `bcemit_binop()` handles OPR_OR_QUESTION in detail
-   - Understand the jump setup in lines 1318-1380 of lj_parse.c
-   - Map out where conditional jumps are created and patched
-   - Identify the jump lists (e->t, e->f) and how they control flow
+2. Rewire `expr_binop()` handling of `OPR_OR_QUESTION`
+   - If lookahead says “no :>”: use existing optional form emission (unchanged).
+   - If lookahead says “has :>”: emit extended-falsey condition checks first, then:
+     - Parse/emit true branch into a fixed result register.
+     - Emit skip-to-end.
+     - Patch falsey checks to current pc; parse/emit false branch into the same result register.
+     - Patch skip to end.
 
-   **Step 1.2:** Implement `bcemit_ternary_extend()` function
-   - Takes result of `?` operator and adds false branch handling
-   - Must work with existing jump infrastructure from OPR_OR_QUESTION
-   - Should patch the "falsey" path to evaluate and return false branch
+3. Remove the current full-ternary path that emits after parsing both branches
+   - Delete the special-case in `expr_binop()` that calls `bcemit_ternary()` after parsing `v2` and `false_expr`.
+   - Either delete the old `bcemit_ternary()` or refactor/rename it into an internal helper called only by the new lookahead-based path.
 
-   **Step 1.3:** Modify expr_binop() flow (around line 2867)
-   - Move the `:>` check to AFTER `bcemit_binop()` completes
-   - At that point, `v` contains the result of `condition ? true_branch`
-   - Parse false branch and call `bcemit_ternary_extend()`
+4. Guardrails for VCALL/method calls
+   - Ensure `expr_discharge()` is applied to branch expressions so only a single value is produced.
+   - Always write branch results to the same destination register via `expr_toreg()`.
 
-   **Step 1.4:** Test incrementally
-   - Start with: `true ? 1 :> 2` (simple constants)
-   - Then: `false ? 1 :> 2` (ensure false branch works)
-   - Then: `true ? getX() :> 2` (function in true branch)
-   - Then: `false ? 1 :> getY()` (function in false branch)
-   - Finally: Full test suite
-
-2. **Remove current broken implementation**:
-   - Delete or comment out `bcemit_ternary()` function (lines 1162-1231)
-   - Remove the current `:>` check at line 2867 that calls it
-   - Clean up printf debug statements
-   - Keep lexer changes (TK_ternary_sep token) - those are fine
-
-3. **Verify no regressions**:
-   - Run test_orq.fluid to ensure `?` operator still works (should pass all 11 tests)
-   - Run test_ternary.fluid expecting all to fail (since we removed broken implementation)
+5. Test incrementally
+   - Constants → variables → functions/methods in branches → nested ternaries.
+   - Re-run `src/fluid/tests/test_orq.fluid` to confirm no regression in optional form.
+   - Run `src/fluid/tests/test_ternary.fluid` and iterate.
 
 #### Medium-Term Tasks (After Solution 1 Works):
 
@@ -512,202 +454,30 @@ if (op == OPR_OR_QUESTION) {
 
 ---
 
-### Step 6: Implement Ternary Bytecode Emission
+### Step 6: Implement full ternary emission (control-first)
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
 **Action:**
-1. Create `bcemit_ternary()` function with extended falsey semantics:
-   ```c
-   static void bcemit_ternary(FuncState *fs, ExpDesc *cond, ExpDesc *true_expr, ExpDesc *false_expr)
-   {
-     /* Handle compile-time constant conditions first */
-     expr_discharge(fs, cond);
-
-     /* Check for compile-time truthy constants */
-     if (cond->k == VKTRUE || (cond->k == VKNUM && !expr_numiszero(cond)) ||
-         (cond->k == VKSTR && cond->u.sval->len > 0)) {
-        /* Condition is always truthy - only evaluate true branch */
-        expr_discharge(fs, true_expr);
-        *cond = *true_expr;
-        return;
-     }
-
-     /* Check for compile-time falsey constants */
-     if (cond->k == VKFALSE || cond->k == VKNIL ||
-         (cond->k == VKNUM && expr_numiszero(cond)) ||
-         (cond->k == VKSTR && cond->u.sval->len == 0)) {
-        /* Condition is always falsey - only evaluate false branch */
-        expr_discharge(fs, false_expr);
-        *cond = *false_expr;
-        return;
-     }
-
-     /* Runtime condition - emit bytecode with extended falsey semantics */
-     /* Ensure condition is in a register */
-     BCReg cond_reg = expr_toanyreg(fs, cond);
-     BCReg result_reg = cond_reg;
-
-     /* Emit checks for extended falsey semantics (nil, false, 0, "") */
-     /* Similar to ? operator implementation */
-     BCPos check_nil = NO_JMP, check_false = NO_JMP;
-     BCPos check_zero = NO_JMP, check_empty = NO_JMP;
-     BCPos use_false_branch = NO_JMP;
-
-     /* Check for nil */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(fs, &nilv)));
-     check_nil = bcemit_jmp(fs);
-
-     /* Check for false */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(fs, &falsev)));
-     check_false = bcemit_jmp(fs);
-
-     /* Check for zero */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
-     check_zero = bcemit_jmp(fs);
-
-     /* Check for empty string */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
-     check_empty = bcemit_jmp(fs);
-
-     /* All falsey checks jump to false branch */
-     use_false_branch = fs->pc;
-     jmp_patch(fs, check_nil, use_false_branch);
-     jmp_patch(fs, check_false, use_false_branch);
-     jmp_patch(fs, check_zero, use_false_branch);
-     jmp_patch(fs, check_empty, use_false_branch);
-
-     /* Condition is truthy - use true branch */
-     BCPos true_start = fs->pc;
-     expr_discharge(fs, true_expr);
-     expr_toreg(fs, true_expr, result_reg);
-
-     /* Jump to end (after false branch) */
-     BCPos skip_false = bcemit_jmp(fs);
-
-     /* Condition is falsey - use false branch */
-     BCPos false_start = fs->pc;
-     expr_discharge(fs, false_expr);
-     expr_toreg(fs, false_expr, result_reg);
-
-     /* Patch skip to end */
-     BCPos end = fs->pc;
-     jmp_patch(fs, skip_false, end);
-
-     /* Result is in result_reg */
-     cond->u.s.info = result_reg;
-     cond->k = VNONRELOC;
-   }
-   ```
+- In the lookahead-affirmed full-ternary path, emit extended-falsey checks for the condition BEFORE parsing branches.
+- Parse/emit the true branch into a fixed destination register, then emit a skip-to-end jump.
+- Patch falsey checks to current pc; parse/emit the false branch into the same destination register; patch skip to end.
 
 **Key Considerations:**
-- **Extended falsey semantics**: nil, false, 0, "" are all treated as falsey
-- Short-circuit: only one branch executes
-- Both branches write to same register
-- Jump patching ensures correct flow
-- Handle compile-time constant conditions
-- Runtime checks for all falsey values (nil, false, 0, "")
+- Extended falsey semantics (nil, false, 0, "").
+- Ensure `expr_discharge()` restricts VCALLs to single values; use `expr_toreg()` to place results.
+- Optimise compile-time constants by selecting the branch without emitting the other.
 
 ---
 
-### Step 7: Implement Optional Ternary Bytecode Emission
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
+### Step 7: Optional form (`x ? default`) stays as-is
 
 **Action:**
-1. Create `bcemit_ternary_optional()` function for optional false branch:
-   ```c
-   static void bcemit_ternary_optional(FuncState *fs, ExpDesc *cond, ExpDesc *default_expr)
-   {
-     /* Handle compile-time constant conditions */
-     expr_discharge(fs, cond);
-
-     if (cond->k == VKTRUE || (cond->k == VKNUM && !expr_numiszero(cond)) ||
-         (cond->k == VKSTR && cond->u.sval->len > 0)) {
-        /* Condition is truthy - return condition itself */
-        /* Condition is already in correct form, just return it */
-        return;  /* cond already contains the result */
-     }
-
-     if (cond->k == VKFALSE || cond->k == VKNIL ||
-         (cond->k == VKNUM && expr_numiszero(cond)) ||
-         (cond->k == VKSTR && cond->u.sval->len == 0)) {
-        /* Condition is falsey - return default value */
-        expr_discharge(fs, default_expr);
-        *cond = *default_expr;
-        return;
-     }
-
-     /* Runtime condition - emit bytecode */
-     /* Ensure condition is in a register */
-     BCReg cond_reg = expr_toanyreg(fs, cond);
-     BCReg result_reg = cond_reg;
-
-     /* Check if condition is truthy (extended falsey semantics) */
-     /* Emit checks for nil, false, 0, "" */
-
-     /* Jump to default if condition is falsey */
-     BCPos check_nil = NO_JMP, check_false = NO_JMP;
-     BCPos check_zero = NO_JMP, check_empty = NO_JMP;
-     BCPos use_default = NO_JMP;
-
-     /* Check for nil */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(fs, &nilv)));
-     check_nil = bcemit_jmp(fs);
-
-     /* Check for false */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(fs, &falsev)));
-     check_false = bcemit_jmp(fs);
-
-     /* Check for zero (if numeric) */
-     /* Only check if condition might be a number */
-     /* For simplicity, always check */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
-     check_zero = bcemit_jmp(fs);
-
-     /* Check for empty string */
-     bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
-     check_empty = bcemit_jmp(fs);
-
-     /* All falsey checks jump to default */
-     use_default = fs->pc;
-     jmp_patch(fs, check_nil, use_default);
-     jmp_patch(fs, check_false, use_default);
-     jmp_patch(fs, check_zero, use_default);
-     jmp_patch(fs, check_empty, use_default);
-
-     /* Condition is truthy - use condition value */
-     /* Condition is already in cond_reg, so result is ready */
-     BCPos skip_default = bcemit_jmp(fs);
-
-     /* Condition is falsey - use default value */
-     BCPos default_start = fs->pc;
-     expr_discharge(fs, default_expr);
-     expr_toreg(fs, default_expr, result_reg);
-
-     /* Patch skip to end */
-     BCPos end = fs->pc;
-     jmp_patch(fs, skip_default, end);
-
-     /* Result is in result_reg */
-     cond->u.s.info = result_reg;
-     cond->k = VNONRELOC;
-   }
-   ```
-
-**Key Considerations:**
-- Extended falsey semantics: nil, false, 0, ""
-- If truthy, return condition itself
-- If falsey, return default value
-- Short-circuit: default value only evaluated if condition is falsey
-- Handle compile-time constants
-
-**Note:** This is similar to `?` operator logic but returns condition when truthy instead of skipping to RHS.
+- Retain the existing implementation (already covered by tests in `test_orq.fluid`).
+- Ensure the lookahead path does not disturb this emission path.
 
 **Expected Result:**
-- Optional ternary works correctly
-- Proper short-circuit behavior
-- Extended falsey semantics
+- Optional form remains fully functional with extended falsey semantics and short-circuiting.
 
 ---
 
@@ -794,146 +564,9 @@ if (op == OPR_OR_QUESTION) {
 
 ### Step 12: Create Test Suite
 
+DONE
+
 **File:** `src/fluid/tests/test_ternary.fluid`
-
-**Action:**
-1. Create comprehensive test suite:
-   ```lua
-   -- Basic ternary
-   function testBasic()
-      local v = true ? "A" :> "B"
-      assert(v is "A", "Failed basic: expected 'A'")
-
-      local v2 = false ? "A" :> "B"
-      assert(v2 is "B", "Failed basic false: expected 'B'")
-   end
-
-   -- Short-circuit true branch
-   function testShortCircuitTrue()
-      local function false_branch()
-         error("Should not be called")
-      end
-      local v = true ? "A" :> false_branch()
-      assert(v is "A", "Failed short-circuit true")
-   end
-
-   -- Short-circuit false branch
-   function testShortCircuitFalse()
-      local function true_branch()
-         error("Should not be called")
-      end
-      local v = false ? true_branch() :> "B"
-      assert(v is "B", "Failed short-circuit false")
-   end
-
-   -- Nested ternary (right-associative)
-   function testNested()
-      local v = true ? false ? "A" :> "B" :> "C"
-      -- Parses as: true ? (false ? "A" :> "B") :> "C"
-      -- Result: false ? "A" :> "B" = "B"
-      assert(v is "B", "Failed nested: expected 'B'")
-   end
-
-   -- Runtime condition
-   function testRuntime()
-      local x = 5
-      local v = x > 0 ? "positive" :> "non-positive"
-      assert(v is "positive", "Failed runtime: expected 'positive'")
-   end
-
-   -- Compile-time constant optimization
-   function testConstantTrue()
-      local v = true ? "A" :> expensive()
-      assert(v is "A", "Failed constant true")
-   end
-
-   -- Extended falsey semantics (full ternary)
-   function testExtendedFalseyNil()
-      local v = nil ? "A" :> "B"
-      assert(v is "B", "Failed nil: expected 'B'")
-   end
-
-   function testExtendedFalseyZero()
-      local v = 0 ? "A" :> "B"
-      assert(v is "B", "Failed zero: expected 'B'")
-   end
-
-   function testExtendedFalseyEmptyString()
-      local v = "" ? "A" :> "B"
-      assert(v is "B", "Failed empty string: expected 'B'")
-   end
-
-   function testExtendedFalseyFalse()
-      local v = false ? "A" :> "B"
-      assert(v is "B", "Failed false: expected 'B'")
-   end
-
-   -- Precedence
-   function testPrecedence()
-      local a, b = 5, 3
-      local v = a > b ? a :> b
-      assert(v is 5, "Failed precedence: expected 5")
-   end
-
-   -- Optional false branch - truthy condition
-   function testOptionalTruthy()
-      local msg = "Hello" ? "No message"
-      assert(msg is "Hello", "Failed optional truthy: expected 'Hello'")
-
-      local count = 5 ? 0
-      assert(count is 5, "Failed optional truthy number: expected 5")
-   end
-
-   -- Optional false branch - falsey condition (nil)
-   function testOptionalNil()
-      local msg = nil ? "No message given"
-      assert(msg is "No message given", "Failed optional nil: expected default")
-   end
-
-   -- Optional false branch - falsey condition (false)
-   function testOptionalFalse()
-      local msg = false ? "No message given"
-      assert(msg is "No message given", "Failed optional false: expected default")
-   end
-
-   -- Optional false branch - falsey condition (0)
-   function testOptionalZero()
-      local count = 0 ? 1
-      assert(count is 1, "Failed optional zero: expected default 1")
-   end
-
-   -- Optional false branch - falsey condition (empty string)
-   function testOptionalEmptyString()
-      local name = "" ? "Anonymous"
-      assert(name is "Anonymous", "Failed optional empty string: expected default")
-   end
-
-   -- Optional false branch - short-circuit
-   function testOptionalShortCircuit()
-      local function expensive()
-         error("Should not be called")
-      end
-      local msg = "Hello" ? expensive()
-      assert(msg is "Hello", "Failed optional short-circuit: expected 'Hello'")
-   end
-
-   -- Optional false branch - runtime condition
-   function testOptionalRuntime()
-      local possible_msg = getUserMessage()
-      local msg = possible_msg ? "No message given"
-      -- If possible_msg is truthy, use it; otherwise use default
-   end
-
-   return {
-      tests = { 'testBasic', 'testShortCircuitTrue', 'testShortCircuitFalse',
-                'testNested', 'testRuntime', 'testConstantTrue', 'testPrecedence',
-                'testExtendedFalseyNil', 'testExtendedFalseyZero',
-                'testExtendedFalseyEmptyString', 'testExtendedFalseyFalse',
-                'testOptionalTruthy', 'testOptionalNil', 'testOptionalFalse',
-                'testOptionalZero', 'testOptionalEmptyString', 'testOptionalShortCircuit',
-                'testOptionalRuntime' }
-   }
-   ```
 
 ---
 

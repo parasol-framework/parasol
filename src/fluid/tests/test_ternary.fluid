@@ -430,7 +430,7 @@ end
 
 -- Multiple assignment tests
 function testTernaryInMultipleAssignment()
-   local a, b = true ? 1, 2 :> 3, 4
+   local a, b = true ? 1 :> 3, 4
    -- Ternary returns single value, so only first gets assigned
    assert(a is 1, "Failed ternary in multiple assignment: expected a=1, got " .. tostring(a))
 end
@@ -442,7 +442,7 @@ function testTernaryWithExtraWhitespace()
 end
 
 function testTernaryNoSpaces()
-   local v = true?"A":"B"
+   local v = true?"A":>"B"
    assert(v is "A", "Failed ternary without spaces: expected 'A', got " .. tostring(v))
 end
 
