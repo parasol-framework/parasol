@@ -485,7 +485,7 @@ function saveOutput()
       if glModuleName?? then
          outPath = 'sdk:data/config/defs/' .. glModuleName:lower() .. '.def'
       else
-         error('No putput path specified in command-line.')
+         error('No output path specified in command-line.')
       end
    end
 
