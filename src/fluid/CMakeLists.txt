@@ -9,7 +9,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
-set (LUAJIT_ORIGINAL_BUILD FALSE)
+set (LUAJIT_ORIGINAL_BUILD TRUE)
 
 if (MSVC)
    set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
