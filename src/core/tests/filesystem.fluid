@@ -4,7 +4,7 @@ Tests for file functions
 
    glPath = 'parasol:'
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- Test that the standard extraction pattern for folder and file names works as expected.
 
 function testPathExtract()
@@ -39,7 +39,7 @@ function testPathExtract()
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testFolderScan()
    local folder = obj.new('file', { src=glPath } )
@@ -70,7 +70,7 @@ function testFolderScan()
    return 'Found ' .. count .. ' files.'
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testScanDir()
    local err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
@@ -93,7 +93,7 @@ function testScanDir()
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testScanVolumes()
    local err, dir = mSys.OpenDir(':', bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
@@ -123,7 +123,7 @@ function testScanVolumes()
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
 
 function testStringify()
@@ -136,9 +136,14 @@ function testStringify()
    fl.acWrite(buf:reverse())
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testFileIcons()
+   if mSys.AnalysePath('icons:') != ERR_Okay then
+      -- Icons not available, skip test
+      return
+   end
+
    local icon_pairs = {
       { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
       { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
@@ -154,7 +159,7 @@ function testFileIcons()
    end
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testAnalyseVolume()
    local err, type = mSys.AnalysePath('user:')
@@ -163,16 +168,16 @@ function testAnalyseVolume()
    assert(type == LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testAnalyseFile()
-   local err, type = mSys.AnalysePath('fonts:fonts.cfg')
+   local err, type = mSys.AnalysePath('scripts:gui.fluid')
    assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
 
    assert(type == LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {

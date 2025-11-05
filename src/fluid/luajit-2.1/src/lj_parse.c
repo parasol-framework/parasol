@@ -113,6 +113,7 @@ typedef struct FuncScope {
 
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
 #define NAME_CONTINUE	((GCstr *)(uintptr_t)2)
+#define NAME_BLANK		((GCstr *)(uintptr_t)3)
 
 /* Index into variable stack. */
 typedef uint16_t VarIndex;
@@ -462,6 +463,9 @@ static BCPos bcemit_INS(FuncState *fs, BCIns ins)
 
 /* -- Bytecode emitter for expressions ------------------------------------ */
 
+/* Forward declaration. */
+static int is_blank_identifier(GCstr *name);
+
 /* Discharge non-constant expression to any register. */
 static void expr_discharge(FuncState *fs, ExpDesc *e)
 {
@@ -469,6 +473,11 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
   if (e->k == VUPVAL) {
     ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
   } else if (e->k == VGLOBAL) {
+    /* Check if trying to read blank identifier. */
+    if (is_blank_identifier(e->u.sval)) {
+      lj_lex_error(fs->ls, fs->ls->tok, LJ_ERR_XNEAR,
+                   "cannot read blank identifier");
+    }
     ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
   } else if (e->k == VINDEXED) {
     BCReg rc = e->u.s.aux;
@@ -1517,6 +1526,12 @@ static GCstr *lex_str(LexState *ls)
 
 #define var_get(ls, fs, i)	((ls)->vstack[(fs)->varmap[(i)]])
 
+/* Check if a string is the blank identifier '_'. */
+static int is_blank_identifier(GCstr *name)
+{
+  return (name != NULL && name->len == 1 && *(strdata(name)) == '_');
+}
+
 /* Define a new local variable. */
 static void var_new(LexState *ls, BCReg n, GCstr *name)
 {
@@ -1528,9 +1543,7 @@ static void var_new(LexState *ls, BCReg n, GCstr *name)
       lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
     lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
   }
-  lj_assertFS((uintptr_t)name < VARNAME__MAX ||
-	      lj_tab_getstr(fs->kt, name) != NULL,
-	      "unanchored variable name");
+  lj_assertFS(name == NAME_BLANK || (uintptr_t)name < VARNAME__MAX || lj_tab_getstr(fs->kt, name) != NULL, "unanchored variable name");
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
   setgcref(ls->vstack[vtop].name, obj2gco(name));
   fs->varmap[fs->nactvar+n] = (uint16_t)vtop;
@@ -1570,7 +1583,10 @@ static BCReg var_lookup_local(FuncState *fs, GCstr *n)
 {
   int i;
   for (i = fs->nactvar-1; i >= 0; i--) {
-    if (n == strref(var_get(fs->ls, fs, i).name))
+    GCstr *varname = strref(var_get(fs->ls, fs, i).name);
+    if (varname == NAME_BLANK)
+      continue;  /* Skip blank identifiers. */
+    if (n == varname)
       return (BCReg)i;
   }
   return (BCReg)-1;  /* Not found. */
@@ -1694,7 +1710,8 @@ static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
         lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
         lj_assertLS(strref(vg->name) != NAME_CONTINUE, "unexpected continue");
 	lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
-		     strdata(strref(vg->name)), strdata(name));
+		     strdata(strref(vg->name)),
+		     name == NAME_BLANK ? "_" : strdata(name));
       }
       gola_patch(ls, vg, vl);
     }
@@ -3105,7 +3122,9 @@ static void parse_local(LexState *ls)
     ExpDesc e;
     BCReg nexps, nvars = 0;
     do {  /* Collect LHS. */
-      var_new(ls, nvars++, lex_str(ls));
+      GCstr *name = lex_str(ls);
+      /* Use NAME_BLANK marker for blank identifiers. */
+      var_new(ls, nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
     } while (lex_opt(ls, ','));
     if (lex_opt(ls, '=')) {  /* Optional RHS. */
       nexps = expr_list(ls, &e);
@@ -3397,9 +3416,11 @@ static void parse_for_iter(LexState *ls, GCstr *indexname)
   var_new_fixed(ls, nvars++, VARNAME_FOR_STATE);
   var_new_fixed(ls, nvars++, VARNAME_FOR_CTL);
   /* Visible variables returned from iterator. */
-  var_new(ls, nvars++, indexname);
-  while (lex_opt(ls, ','))
-    var_new(ls, nvars++, lex_str(ls));
+  var_new(ls, nvars++, is_blank_identifier(indexname) ? NAME_BLANK : indexname);
+  while (lex_opt(ls, ',')) {
+    GCstr *name = lex_str(ls);
+    var_new(ls, nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
+  }
   lex_check(ls, TK_in);
   line = ls->linenumber;
   assign_adjust(ls, 3, expr_list(ls, &e), &e);

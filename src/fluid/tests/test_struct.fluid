@@ -2,12 +2,21 @@
 Flute tests for the struct interface.
 --]]
 
+   local mFont
+   local ex = catch(function()
+      mFont = mod.load("font")
+   end)
+
+   if ex then
+      print("Font module is disabled in this build, skipping test")
+      return
+   end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Retrieve a known struct from a function and then list its field values.  GetList() is chosen in particular because
 -- it features a null-terminated array in the Points field.
 
 function testFontList()
-   local mFont = mod.load("font")
    local err, list = mFont.GetList()
    if (list == nil) then error("Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err)) end
 
