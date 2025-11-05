@@ -21,6 +21,7 @@
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
    glIDLTimestamp = 20241015
+   math.randomseed(mSys.preciseTime())
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -290,14 +291,14 @@ function outputClassHeader(class, Private, Custom)
          end
       end
 
-      if (Private != nil) then
+      if Private?? then
          output()
          output('#ifdef PRV_' .. class.name:upper())
          output(Private)
          output('#endif')
       end
 
-      if (Custom != nil) then
+      if Custom?? then
          output('   public:')
          output(Custom)
       end
@@ -538,7 +539,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.description = Description
    func.category    = Category
 
-   if (Def is nil) then Def = { } end
+   if not Def then Def = { } end
 
    if Def.result?? then
       func.result = Def.result
@@ -615,7 +616,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 
    local response = func.result
-   if (func.result is nil) then
+   if not func.result then
       response = { type="void" }
    end
 
@@ -639,7 +640,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.c_response = response.type
    func.doc_response = response.docType
 
-   if (variadic) then
+   if variadic then
       func.macro = function()
          return "template<class... Args> " .. tostring(response.type) .. " " .. func.name ..
             "(" .. (argSeq ? "void") .. ")" ..
@@ -859,7 +860,7 @@ function buildDefs()
       if (func.result != nil) and (func.result.type != nil) then
          local type = func.result.fullType
 
-         if (type != nil) then
+         if type?? then
             local fd = type.fd
             local result_name = "Result"
             if (fd is "FD_INT|FD_ERROR") then
@@ -889,7 +890,7 @@ end
 
 function buildInputParameters(List)
    local plist = ""
-   if (List != nil) then
+   if List then
       for _, param in ipairs(List) do
          local fd = param.fullType.fd
          if (param.allocated) then fd = fd .. "|FD_ALLOC" end
@@ -914,7 +915,7 @@ end
    glOutputProto = arg('output-proto')
    glPrototypes  = arg('prototypes')
 
-   if (glSource is nil) then
+   if not glSource then
       print("This command is used to compile self-documenting source files.  Provide a reference to a")
       print("source '.fdl' file in the src parameter.  The resulting data will be saved to the file")
       print("referenced in the output parameter.")
