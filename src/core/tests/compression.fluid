@@ -33,10 +33,10 @@ end
 function testCreateCompress()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
 
-   local err = cmp.mtCompressFile('config:fonts/fixed/clean.fon', '')
+   local err = cmp.mtCompressFile('scripts:gui.fluid', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
-   err = cmp.mtCompressFile('fonts:fonts.cfg', '')
+   err = cmp.mtCompressFile('config:styles/default/window.fluid', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
    cmp = null
@@ -46,7 +46,7 @@ end
 function testDecompressWild()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
-   local err = cmp.mtDecompressFile('*.fon', 'temp:')
+   local err = cmp.mtDecompressFile('*.fluid', 'temp:')
    assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
@@ -106,10 +106,10 @@ end
 function testStreamedCompression()
    local cmp = obj.new('compression' , { } )
 
-   local file = obj.new('file', { src='fonts:truetype/Courier Prime.ttf', flags='!READ' } )
+   local file = obj.new('file', { src='scripts:gui.fluid', flags='!READ' } )
    assert(file, 'Failed to open source file.')
 
-   glOutFile = obj.new('file', { src='temp:fonts.gz', flags='!WRITE|NEW' } )
+   glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtCompressStreamStart() == ERR_Okay) then
          local input = string.alloc(16384)
@@ -178,10 +178,10 @@ end
 function testStreamedDecompression()
    local cmp = obj.new('compression' , { } )
 
-   local file = obj.new('file', { src='temp:fonts.gz', flags='!READ' } )
+   local file = obj.new('file', { src='temp:scripts.gz', flags='!READ' } )
    assert(file, 'Failed to open source file.')
 
-   glOutFile = obj.new('file', { src='temp:Courier Prime.ttf', flags='!WRITE|NEW' } )
+   glOutFile = obj.new('file', { src='temp:gui.fluid', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtDecompressStreamStart() == ERR_Okay) then
          local input = string.alloc(16384)
@@ -229,8 +229,8 @@ end
          mSys.DeleteFile('temp:cmp_icons/')
          mSys.DeleteFile('temp:cmp_test_json.zip')
          mSys.DeleteFile('temp:cmp_test_scripts.zip')
-         mSys.DeleteFile('temp:fonts.gz')
-         mSys.DeleteFile('temp:clean.fon')
-         mSys.DeleteFile('temp:Courier Prime.ttf')
+         mSys.DeleteFile('temp:scripts.gz')
+         mSys.DeleteFile('temp:gui.fluid')
+         mSys.DeleteFile('temp:window.fluid')
       end
    }

@@ -7,7 +7,15 @@
 
    local proc = processing.new(5.0)
 
-   local mDisplay = mod.load('display') -- Required for the 'icons:' volume
+   local mGfx
+   local ex = catch(function()
+      mGfx = mod.load('display') -- Required for the 'icons:' volume
+   end)
+
+   if ex then 
+      print('Display module is disabled in this build, skipping test')
+      return
+   end
 
 -----------------------------------------------------------------------------------------------------------------------
 
