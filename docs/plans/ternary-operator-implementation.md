@@ -4,7 +4,7 @@
 
 This document provides a detailed step-by-step implementation plan for the C-style ternary conditional operator (`condition ? true_value : false_value`) and its optional form (`condition ? default_value`) in Fluid/LuaJIT. The optional form (`condition ? default_value`) has been implemented as part of renaming `?` to `?`, and provides a default value pattern that returns the condition when truthy.
 
-**Status:** 🔄 **Plan Updated** - Adopt lookahead-based full ternary parsing. Lexer/token work is solid. Current full-ternary emission path will be replaced with a control-flow-first approach; optional form (`x ? default`) remains passing.
+**Status:** 🔄 **Implemented (pending one edge case)** - Token-based lookahead and control-first ternary emission are in place; optional form (`x ? default`) remains passing; all ternary tests pass except one coalesce+ternary edge case (see Known Issues).
 
 **Priority:** ⭐⭐⭐⭐⭐ **Highest**
 
@@ -24,79 +24,26 @@ This document provides a detailed step-by-step implementation plan for the C-sty
 - Basic tests pass for simple values and variables
 - Existing `?` operator tests continue to pass (all 11 tests in test_orq.fluid)
 
-### ⚠️ Known Issues - CRITICAL ARCHITECTURAL PROBLEM
+### ✅ Session Outcomes (this iteration)
+- Implemented safe token-based lookahead (`lookahead_has_top_level_ternary_sep`) using a copied `LexState`
+- Rewired full ternary to emit extended-falsey checks before parsing branches (control-first)
+- Removed previously broken post-parse ternary path; resolved prior parse crashes and `:>` tokenisation issues
+- Verified: optional `?` suite passes; ternary suite passes except one edge case
 
-#### Issue #1: Current Implementation is Fundamentally Broken
-**Severity:** 🔴 **BLOCKER** - Current approach cannot work, requires complete redesign
+### ⚠️ Known Issues
 
-**Problem Summary:** The ternary operator implementation has a fundamental architectural flaw where both branches are emitted and executed unconditionally, regardless of the condition. This isn't just a "function call" problem - it's a complete failure of conditional control flow.
+#### Remaining edge case: Coalesce + Ternary
+**Severity:** 🟠 Minor — all other tests pass
 
-**Comprehensive Test Results (test_ternary.fluid - 71 tests):**
-- ✅ **37 tests PASS** - Simple constants, variables, arithmetic, basic operators
-- ❌ **34 tests FAIL** - All tests involving:
-  - Function calls in branches (functions not called, return garbage)
-  - Method calls in branches (return function object instead of calling)
-  - Short-circuit evaluation (false branches execute when they shouldn't)
-  - Constant condition optimization (both branches still execute)
-  - Nested table access (parser state corruption: "attempt to index field 'user' (a function value)")
-  - Tests after first major failure (cascading failures: "attempt to call a nil value")
+`testTernaryWithOrQuestionOperator` expects `(nil ? "default") ? "fallback" :> "final"` to return `"default"`. Standard ternary would return the true branch (`"fallback"`). We need a spec decision:
+- Either special-case: when the ternary condition is the result of coalesce and is truthy, return that condition value (evaluate true branch for side effects only), or
+- Keep standard ternary semantics and adjust the test.
 
-**Failed Test Categories:**
-1. **Short-circuit violations** (Tests 10, 32-34):
-   - Test 10: `testShortCircuitFalse` - False branch function called when condition is truthy
-   - Tests 32-34: Constant falsey conditions still execute true branch functions
+Note: Parenthesise ternaries in expression lists/arguments to avoid ambiguity, e.g. `local a, b = (cond ? x :> y), z`.
 
-2. **Function/method call corruption** (Tests 28, 45, 48-50):
-   - Test 28: Function returns wrong value (0 instead of 10)
-   - Tests 45, 48-50: Methods return `function: builtin#19` instead of calling and returning result
-   - Indicates VCALL expressions are completely mishandled
+**Note:** Legacy detailed test result breakdown removed (superseded by current status below).
 
-3. **Parser state corruption** (Test 61+):
-   - Test 61: Table field treated as function
-   - Tests 62-71: Cascading "attempt to call a nil value" errors
-   - Suggests parser/compiler state becomes corrupted after failed ternary
-
-**Root Cause - Deep Analysis:**
-
-The current implementation is architecturally incompatible with LuaJIT's parsing model:
-
-1. **LuaJIT emits bytecode during parsing** - You cannot parse an expression without emitting its bytecode
-2. **Current flow (BROKEN):**
-   ```
-   1. Parse condition → emit condition bytecode
-   2. See '?' token
-   3. Call expr_binop() to parse true branch → TRUE BRANCH BYTECODE EMITTED HERE
-   4. See ':>' token
-   5. Call expr_binop() to parse false branch → FALSE BRANCH BYTECODE EMITTED HERE
-   6. Call bcemit_ternary() → emit condition checks
-   ```
-
-3. **Resulting bytecode order:**
-   ```
-   PC 0-7:   [earlier code]
-   PC 8:     BC_CALL for getX()        ← True branch, emitted in step 3
-   PC 9:     BC_CALL for getY()        ← False branch, emitted in step 5
-   PC 10-15: Condition checks           ← Emitted in step 6, TOO LATE
-   PC 16:    True branch handling
-   PC 17:    False branch handling
-   ```
-
-4. **Why this fails:**
-   - Both BC_CALL instructions at PC 8-9 execute unconditionally BEFORE condition checks at PC 10-15
-   - The condition checks at PC 10-15 are essentially dead code
-   - The "branching" at PC 16-17 just decides which already-executed result to use
-   - This explains why functions are "called but return garbage" - they're called before we even check the condition
-
-**Why Simple Cases Work:**
-- Constants/variables don't emit complex bytecode during parsing
-- `expr_discharge()` and `expr_toreg()` handle them after the fact
-- No side effects from unconditional emission
-
-**Why Complex Cases Fail:**
-- Function calls (BC_CALL), method calls, table access emit bytecode during parsing
-- This bytecode executes unconditionally
-- By the time we set up conditional jumps, it's too late
-- Parser state gets corrupted because expressions are emitted out of order
+**Note:** Legacy root-cause analysis removed (superseded by implemented solution below).
 
 **Critical Insight from Existing `?` Operator:**
 
@@ -562,13 +509,7 @@ if (op == OPR_OR_QUESTION) {
 
 ---
 
-### Step 12: Create Test Suite
-
-DONE
-
-**File:** `src/fluid/tests/test_ternary.fluid`
-
----
+### Step 12: Create Test Suite — DONE
 
 ### Step 13: Update Documentation
 
