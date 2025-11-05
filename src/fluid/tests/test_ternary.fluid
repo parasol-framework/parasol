@@ -499,8 +499,8 @@ end
 function testTernaryWithOrQuestionOperator()
    local v = (nil ? "default") ? "fallback" :> "final"
    -- First: nil ? "default" = "default"
-   -- Then: "default" ? "fallback" :> "final" = "default" (truthy)
-   assert(v is "default", "Failed ternary with ? operator: expected 'default', got " .. tostring(v))
+   -- Then: "default" ? "fallback" :> "final" = "fallback" (truthy)
+   assert(v is "fallback", "Failed ternary with ? operator: expected 'fallback', got " .. tostring(v))
 end
 
 return {
