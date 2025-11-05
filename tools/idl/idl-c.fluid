@@ -21,6 +21,7 @@
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
    glIDLTimestamp = 20241015
+   math.randomseed(mSys.preciseTime())
 
 ----------------------------------------------------------------------------------------------------------------------
 

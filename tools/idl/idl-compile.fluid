@@ -539,7 +539,7 @@ function saveOutput()
          if e?? then e = e .. ',' end
          if (type(const.value) is 'string') then
             local val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
-            if not val then val = v end
+            if not val then val = const.value end
             e = e .. const.name .. '="' .. const.value .. '"'
          else
             local hexval = string.format('%x', const.value)
