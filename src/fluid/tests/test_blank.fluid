@@ -1,0 +1,150 @@
+-- Flute tests for the blank identifier (_) feature
+-- The blank identifier allows explicitly ignoring values in assignments and for loops
+
+function testBasicAssignment()
+   local x, _ = 10, 20
+   assert(x is 10, "Failed basic assignment: expected x=10, got " .. x)
+end
+
+function testBlankFirst()
+   local _, x = 10, 20
+   assert(x is 20, "Failed blank first: expected x=20, got " .. x)
+end
+
+function testBlankLast()
+   local x, _ = 10, 20
+   assert(x is 10, "Failed blank last: expected x=10, got " .. x)
+end
+
+function testBlankMiddle()
+   local x, _, y = 1, 2, 3
+   assert(x is 1, "Failed blank middle: expected x=1, got " .. x)
+   assert(y is 3, "Failed blank middle: expected y=3, got " .. y)
+end
+
+function testMultipleBlanks()
+   local _, _, x = 1, 2, 3
+   assert(x is 3, "Failed multiple blanks: expected x=3, got " .. x)
+end
+
+function testAllBlanks()
+   -- All blanks should work - values consumed but not stored
+   local _, _, _ = 1, 2, 3
+end
+
+function testBlankWithNil()
+   local x, _ = 10, nil
+   assert(x is 10, "Failed blank with nil: expected x=10, got " .. x)
+end
+
+function testBlankPartialAssignment()
+   -- When RHS has fewer values than LHS, blanks still work
+   local x, _, y = 10, 20
+   assert(x is 10, "Failed partial assignment: expected x=10, got " .. x)
+   assert(y is nil, "Failed partial assignment: expected y=nil, got " .. tostring(y))
+end
+
+-- For loop tests
+
+function testForLoopBlankIndex()
+   local t = {10, 20, 30}
+   local sum = 0
+   for _, value in ipairs(t) do
+      sum += value
+   end
+   assert(sum is 60, "Failed for loop blank index: expected sum=60, got " .. sum)
+end
+
+function testForLoopBlankValue()
+   local t = {10, 20, 30}
+   local count = 0
+   for i, _ in ipairs(t) do
+      count += 1
+   end
+   assert(count is 3, "Failed for loop blank value: expected count=3, got " .. count)
+end
+
+function testForLoopPairsBlank()
+   local t = {a=1, b=2, c=3}
+   local sum = 0
+   for _, val in pairs(t) do
+      sum += val
+   end
+   assert(sum is 6, "Failed for loop pairs blank: expected sum=6, got " .. sum)
+end
+
+function testForLoopPairsBlankValue()
+   local t = {a=1, b=2, c=3}
+   local keys = {}
+   for key, _ in pairs(t) do
+      table.insert(keys, key)
+   end
+   assert(#keys is 3, "Failed for loop pairs blank value: expected 3 keys, got " .. #keys)
+end
+
+function testForLoopMultipleBlanks()
+   -- In generic for, only first variable can be omitted in standard Lua
+   -- Additional blanks still work
+   local t = {10, 20, 30}
+   local iterations = 0
+   for _, _, _ in ipairs(t) do
+      iterations += 1
+   end
+   assert(iterations is 3, "Failed for loop multiple blanks: expected 3 iterations, got " .. iterations)
+end
+
+-- Function return tests
+
+function testFunctionReturn()
+   function getValues()
+      return 1, 2, 3
+   end
+   local _, _, x = getValues()
+   assert(x is 3, "Failed function return: expected x=3, got " .. x)
+end
+
+function testFunctionReturnBlankFirst()
+   local function getValues2()
+      return 10, 20
+   end
+   local _, x = getValues2()
+   assert(x is 20, "Failed function return blank first: expected x=20, got " .. x)
+end
+
+-- Edge cases
+
+function testNestedFunctions()
+   function outer()
+      local _, x = 1, 2
+      return x
+   end
+   local result = outer()
+   assert(result is 2, "Failed nested function: expected result=2, got " .. result)
+end
+
+function testMultipleStatements()
+   local x, _ = 10, 20
+   local _, y = 30, 40
+   assert(x is 10, "Failed multiple statements: expected x=10, got " .. x)
+   assert(y is 40, "Failed multiple statements: expected y=40, got " .. y)
+end
+
+function testBlankInTable()
+   -- Blank identifiers work with table destructuring patterns
+   local t = {1, 2, 3}
+   local _, _, x = t[1], t[2], t[3]
+   assert(x is 3, "Failed blank in table: expected x=3, got " .. x)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testBasicAssignment', 'testBlankFirst', 'testBlankLast', 'testBlankMiddle',
+      'testMultipleBlanks', 'testAllBlanks', 'testBlankWithNil', 'testBlankPartialAssignment',
+      'testForLoopBlankIndex', 'testForLoopBlankValue', 'testForLoopPairsBlank',
+      'testForLoopPairsBlankValue', 'testForLoopMultipleBlanks',
+      'testFunctionReturn', 'testFunctionReturnBlankFirst',
+      'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable'
+   }
+}
