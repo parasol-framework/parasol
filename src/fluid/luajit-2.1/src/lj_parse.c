@@ -1162,31 +1162,7 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
 /* Emit full ternary operator: condition ? true_expr :> false_expr */
 static void bcemit_ternary(FuncState *fs, ExpDesc *cond, ExpDesc *true_expr, ExpDesc *false_expr)
 {
-   /* Handle compile-time constant conditions first */
-   expr_discharge(fs, cond);
-
-   /* Check for compile-time truthy constants */
-   if (cond->k == VKTRUE || (cond->k == VKNUM && !expr_numiszero(cond)) ||
-      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len > 0)) {
-      /* Condition is always truthy - only evaluate true branch */
-      /* Use expr_tonextreg to ensure proper evaluation, especially for VCALL */
-      expr_tonextreg(fs, true_expr);
-      *cond = *true_expr;
-      return;
-   }
-
-   /* Check for compile-time falsey constants */
-   if (cond->k == VKFALSE || cond->k == VKNIL ||
-      (cond->k == VKNUM && expr_numiszero(cond)) ||
-      (cond->k == VKSTR && cond->u.sval && cond->u.sval->len == 0)) {
-      /* Condition is always falsey - only evaluate false branch */
-      /* Use expr_tonextreg to ensure proper evaluation, especially for VCALL */
-      expr_tonextreg(fs, false_expr);
-      *cond = *false_expr;
-      return;
-   }
-
-   /* Runtime condition - emit bytecode with extended falsey semantics */
+   /* Emit bytecode with extended falsey semantics */
    /* Ensure condition is in a register */
    BCReg cond_reg = expr_toanyreg(fs, cond);
    BCReg result_reg = cond_reg;
