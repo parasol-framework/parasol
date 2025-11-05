@@ -1,0 +1,101 @@
+-- Flute tests for the blank identifier '_' feature
+-- The blank identifier allows explicitly ignoring return values
+
+function testBasicAssignment()
+   local x, _ = 10, 20
+   assert(x is 10, "Failed: expected x to be 10")
+end
+
+function testMultipleBlanks()
+   local _, _, x = 1, 2, 3
+   assert(x is 3, "Failed: expected x to be 3")
+end
+
+function testBlankFirst()
+   local _, x, y = 1, 2, 3
+   assert(x is 2, "Failed: expected x to be 2")
+   assert(y is 3, "Failed: expected y to be 3")
+end
+
+function testBlankMiddle()
+   local x, _, y = 1, 2, 3
+   assert(x is 1, "Failed: expected x to be 1")
+   assert(y is 3, "Failed: expected y to be 3")
+end
+
+function testBlankLast()
+   local x, y, _ = 1, 2, 3
+   assert(x is 1, "Failed: expected x to be 1")
+   assert(y is 2, "Failed: expected y to be 2")
+end
+
+function testForLoopBlankIndex()
+   local t = {10, 20, 30}
+   local sum = 0
+   for _, value in ipairs(t) do
+      sum += value
+   end
+   assert(sum is 60, "Failed: expected sum to be 60")
+end
+
+function testForLoopBlankValue()
+   local t = {10, 20, 30}
+   local count = 0
+   for i, _ in ipairs(t) do
+      count += 1
+   end
+   assert(count is 3, "Failed: expected count to be 3")
+end
+
+function testForLoopPairsBlank()
+   local t = {a=1, b=2, c=3}
+   local count = 0
+   for _, val in pairs(t) do
+      count += val
+   end
+   assert(count is 6, "Failed: expected count to be 6")
+end
+
+function testFunctionReturn()
+   function getValues()
+      return 1, 2, 3
+   end
+   local _, _, x = getValues()
+   assert(x is 3, "Failed: expected x to be 3")
+end
+
+function testAllBlanks()
+   function getValues()
+      return 1, 2, 3
+   end
+   _, _, _ = getValues()
+   -- Should work but do nothing
+end
+
+function testBlankWithNil()
+   local x, _ = 10, nil
+   assert(x is 10, "Failed: expected x to be 10")
+end
+
+function testBlankPartialAssignment()
+   local x, _ = 10
+   assert(x is 10, "Failed: expected x to be 10")
+   -- Second value should be nil but blank doesn't store it
+end
+
+-- Test that reading blank identifier causes error
+function testReadError()
+   local success, err = pcall(function()
+      local x = _
+   end)
+   assert(success is false, "Failed: should error when reading blank identifier")
+   assert(err:find("cannot read blank identifier"), "Failed: wrong error message")
+end
+
+return {
+   tests = { 'testBasicAssignment', 'testMultipleBlanks', 'testBlankFirst',
+             'testBlankMiddle', 'testBlankLast', 'testForLoopBlankIndex',
+             'testForLoopBlankValue', 'testForLoopPairsBlank',
+             'testFunctionReturn', 'testAllBlanks', 'testBlankWithNil',
+             'testBlankPartialAssignment', 'testReadError' }
+}

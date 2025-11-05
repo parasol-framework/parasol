@@ -1,0 +1,10 @@
+-- Test without blank to verify assignment works
+
+function testNormal()
+   print("Testing normal assignment")
+   local x, y = 10, 20
+   print("x = " .. x)
+   print("y = " .. y)
+end
+
+testNormal()
