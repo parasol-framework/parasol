@@ -461,6 +461,9 @@ static BCPos bcemit_INS(FuncState *fs, BCIns ins)
 
 /* -- Bytecode emitter for expressions ------------------------------------ */
 
+/* Forward declaration. */
+static int is_blank_identifier(GCstr *name);
+
 /* Discharge non-constant expression to any register. */
 static void expr_discharge(FuncState *fs, ExpDesc *e)
 {
@@ -468,6 +471,11 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
   if (e->k == VUPVAL) {
     ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
   } else if (e->k == VGLOBAL) {
+    /* Check if trying to read blank identifier. */
+    if (is_blank_identifier(e->u.sval)) {
+      lj_lex_error(fs->ls, fs->ls->tok, LJ_ERR_XNEAR,
+                   "cannot read blank identifier");
+    }
     ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
   } else if (e->k == VINDEXED) {
     BCReg rc = e->u.s.aux;
@@ -1472,11 +1480,6 @@ static void fscope_uvmark(FuncState *fs, BCReg level);
 /* Recursively lookup variables in enclosing functions. */
 static MSize var_lookup_(FuncState *fs, GCstr *name, ExpDesc *e, int first)
 {
-  /* Check if trying to read blank identifier. */
-  if (is_blank_identifier(name)) {
-    lj_lex_error(fs->ls, fs->ls->tok, LJ_ERR_XSYNTAX,
-                 "cannot read blank identifier '_'");
-  }
   if (fs) {
     BCReg reg = var_lookup_local(fs, name);
     if ((int32_t)reg >= 0) {  /* Local in this function? */

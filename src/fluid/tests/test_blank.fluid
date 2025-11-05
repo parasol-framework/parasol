@@ -140,6 +140,33 @@ function testBlankInTable()
    assert(x is 3, "Failed blank in table: expected x=3, got " .. x)
 end
 
+-- Non-local assignment tests
+
+function testNonLocalAssignment()
+   -- Blank identifier in non-local assignment (not local declaration)
+   local function getValues()
+      return 1, 2, 3
+   end
+   _, value, _ = getValues()
+   assert(value is 2, "Failed non-local assignment: expected value=2, got " .. value)
+end
+
+function testNonLocalAssignmentSimple()
+   -- Simple non-local assignment with blank identifier
+   _ = 42
+   -- No assertion needed - just verify it doesn't error
+end
+
+function testNonLocalInFunction()
+   -- Non-local assignment inside a function
+   local function test()
+      _, x = 10, 20
+      return x
+   end
+   local result = test()
+   assert(result is 20, "Failed non-local in function: expected result=20, got " .. result)
+end
+
 function testGotoCrossesBlankIdentifier()
    -- Verify that various goto patterns with blank identifiers don't crash the parser
    -- This tests the fix for the NAME_BLANK dereferencing bug in gola_resolve()
@@ -196,6 +223,7 @@ return {
       'testForLoopPairsBlankValue', 'testForLoopMultipleBlanks',
       'testFunctionReturn', 'testFunctionReturnBlankFirst',
       'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable',
+      'testNonLocalAssignment', 'testNonLocalAssignmentSimple', 'testNonLocalInFunction',
       'testGotoCrossesBlankIdentifier'
    }
 }
