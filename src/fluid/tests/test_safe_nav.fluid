@@ -1,0 +1,94 @@
+-- Flute tests for the safe navigation operators (?., ?: and ?[)
+
+function testSafeFieldOnNil()
+   local user = nil
+   local name = user?.profile?.name
+   assert(name is nil, "Safe field on nil should yield nil")
+end
+
+function testSafeFieldChain()
+   local user = { profile = { name = "Alex" } }
+   local name = user?.profile?.name
+   assert(name is "Alex", "Safe field chain should return nested value")
+   local missing = user?.profile?.address
+   assert(missing is nil, "Missing field in chain should yield nil")
+end
+
+function testSafeIndexOnNil()
+   local items = nil
+   local value = items?[1]
+   assert(value is nil, "Safe index on nil should yield nil")
+end
+
+function testSafeIndexValue()
+   local container = { values = { [1] = "First", [2] = "Second" } }
+   local value = container?.values?[2]
+   assert(value is "Second", "Safe index should return stored element when present")
+end
+
+function testSafeIndexShortCircuit()
+   local calls = 0
+   local function nextIndex()
+      calls += 1
+      return 2
+   end
+   local arr = nil
+   local value = arr?[nextIndex()]
+   assert(value is nil, "Safe index should produce nil when base is nil")
+   assert(calls is 0, "Index expression must not be evaluated when base is nil")
+end
+
+function testSafeMethodOnNil()
+   local calls = 0
+   local function argument()
+      calls += 1
+      return "ignored"
+   end
+   local target = nil
+   local result = target?:speak(argument())
+   assert(result is nil, "Safe method on nil should yield nil")
+   assert(calls is 0, "Method arguments must not be evaluated when base is nil")
+end
+
+function testSafeMethodValue()
+   local greeter = { prefix = "Hello" }
+   function greeter:say(name)
+      return self.prefix .. ", " .. name
+   end
+   local result = greeter?:say("World")
+   assert(result is "Hello, World", "Safe method should call method when base exists")
+end
+
+function testSafeMethodChain()
+   local account = { profile = { email = "user@example.com" } }
+   function account:getProfile()
+      return self.profile
+   end
+   local email = account?:getProfile()?.email
+   assert(email is "user@example.com", "Safe method chain should propagate returned table")
+   local missing = nil?:getProfile()?.email
+   assert(missing is nil, "Safe method chain should short-circuit on nil base")
+end
+
+function testIntegrationWithPresence()
+   local guest = nil
+   local display = guest?.profile?.name ?? "Guest"
+   assert(display is "Guest", "Presence operator should provide default when safe chain yields nil")
+   local member = { profile = { name = "Chloe" } }
+   local memberDisplay = member?.profile?.name ?? "Guest"
+   assert(memberDisplay is "Chloe", "Presence operator should see real value when safe chain succeeds")
+end
+
+function testSafeFieldWithOrQuestion()
+   local fallback = { label = "Fallback" }
+   local label = fallback?.missingField or? "Default"
+   assert(label is "Default", "or? should observe nil result from safe field")
+end
+
+   return {
+      tests = {
+         'testSafeFieldOnNil', 'testSafeFieldChain', 'testSafeIndexOnNil', 'testSafeIndexValue',
+         'testSafeIndexShortCircuit', 'testSafeMethodOnNil', 'testSafeMethodValue',
+         'testSafeMethodChain', 'testIntegrationWithPresence', 'testSafeFieldWithOrQuestion'
+      }
+   }

@@ -2081,6 +2081,21 @@ static void expr_safe_field(LexState *ls, ExpDesc *v)
   ExpDesc key, tab, nilv;
   BCReg obj_reg;
   BCPos skip_nil, skip_end, non_nil_pos;
+  BCPos save_pc = fs->pc;
+  BCPos save_lasttarget = fs->lasttarget;
+  BCPos save_jpc = fs->jpc;
+  BCReg save_freereg = fs->freereg;
+
+  if (v->k == VKNIL) {
+    lj_lex_next(ls);
+    expr_str(ls, &key);
+    fs->pc = save_pc;
+    fs->lasttarget = save_lasttarget;
+    fs->jpc = save_jpc;
+    fs->freereg = save_freereg;
+    expr_init(v, VKNIL, 0);
+    return;
+  }
 
   obj_reg = expr_toanyreg(fs, v);
   lj_lex_next(ls);
@@ -2117,6 +2132,21 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
   ExpDesc key, tab, nilv;
   BCReg obj_reg;
   BCPos skip_nil, skip_end, non_nil_pos;
+  BCPos save_pc = fs->pc;
+  BCPos save_lasttarget = fs->lasttarget;
+  BCPos save_jpc = fs->jpc;
+  BCReg save_freereg = fs->freereg;
+
+  if (v->k == VKNIL) {
+    lj_lex_next(ls);
+    expr_bracket(ls, &key);
+    fs->pc = save_pc;
+    fs->lasttarget = save_lasttarget;
+    fs->jpc = save_jpc;
+    fs->freereg = save_freereg;
+    expr_init(v, VKNIL, 0);
+    return;
+  }
 
   obj_reg = expr_toanyreg(fs, v);
 
@@ -2145,6 +2175,31 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   ExpDesc key, nilv;
   BCReg obj_reg;
   BCPos skip_nil, skip_end, nil_pos, non_nil_pos;
+  BCPos save_pc = fs->pc;
+  BCPos save_lasttarget = fs->lasttarget;
+  BCPos save_jpc = fs->jpc;
+  BCReg save_freereg = fs->freereg;
+
+  if (v->k == VKNIL) {
+    ExpDesc dummy;
+    BCReg base;
+
+    lj_lex_next(ls);
+    expr_str(ls, &key);
+
+    base = fs->freereg;
+    bcreg_reserve(fs, 2+LJ_FR2);
+    expr_init(&dummy, VNONRELOC, base);
+    dummy.u.s.aux = base;
+    parse_args(ls, &dummy);
+
+    fs->pc = save_pc;
+    fs->lasttarget = save_lasttarget;
+    fs->jpc = save_jpc;
+    fs->freereg = save_freereg;
+    expr_init(v, VKNIL, 0);
+    return;
+  }
 
   obj_reg = expr_toanyreg(fs, v);
 
