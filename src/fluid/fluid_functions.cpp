@@ -80,7 +80,7 @@ int fcmd_raise(lua_State *Lua)
 //   end,
 //   function(Exception)
 //      // Exception handler
-//      print("Code: " .. nz(Exception.code,"LUA") .. ", Message: " .. Exception.message)
+//      print("Code: " .. (Exception.code ? "LUA") .. ", Message: " .. Exception.message)
 //   end)
 //
 // As above, but the handler is only called if certain codes are raised.  Any mismatched errors will throw to the parent code.
@@ -829,16 +829,7 @@ int fcmd_arg(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Returns the 2nd argument if the 1st argument is evaluated as nil, zero, an empty string, table or array.  Otherwise
-// the 1st argument is returned.
-//
-// If the 2nd argument is not given, nil is returned if the 1st argument is evaluated as being empty, otherwise 1 is
-// returned.
-//
-// Usage: result = nz(checkval, zeroval)
-//
-// 'nz' is short for 'nonzero' and its use can be described as 'if checkval is non zero then return checkval, else
-// return zeroval'.
+// DEPRECATED
 
 int fcmd_nz(lua_State *Lua)
 {

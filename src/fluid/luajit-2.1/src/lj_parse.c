@@ -158,6 +158,7 @@ typedef enum BinOpr {
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
   OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
   OPR_AND, OPR_OR, OPR_OR_QUESTION,
+  OPR_TERNARY,
   OPR_NOBINOPR
 } BinOpr;
 
@@ -188,7 +189,8 @@ static const struct {
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
   {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
-  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0}			/* AND OR OR_QUESTION */
+  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},			/* AND OR OR_QUESTION */
+  {1,1,NULL,0}							/* TERNARY */
 };
 
 /* -- Error handling ------------------------------------------------------ */
@@ -2546,6 +2548,78 @@ static BinOpr token2binop(LexToken tok)
 
 #define UNARY_PRIORITY		8  /* Priority for unary operators. */
 
+/* Lookahead to determine if a top-level ':>' (TK_ternary_sep) follows this '?' operator.
+** This respects nesting of parentheses/brackets/braces and nested ternaries.
+** Returns 1 if a matching top-level ':>' is found; 0 otherwise.
+*/
+static int lookahead_has_top_level_ternary_sep(LexState *ls)
+{
+  /* Character-level, non-destructive scan from current input position. */
+  const char *p = ls->p;
+  const char *pe = ls->pe;
+  int depth_paren = 0, depth_brack = 0, depth_brace = 0, depth_tern = 0;
+  int in_squote = 0, in_dquote = 0;
+  LexChar c = ls->c;  /* Current character already loaded by lexer. */
+
+  while (1) {
+    char ch;
+    if (c == -1) break;  /* EOF. */
+    ch = (char)c;
+
+    /* Inside single/double quoted strings: handle escapes and closing quote. */
+    if (in_squote) {
+      if (ch == '\\') { if (p < pe) { c = (LexChar)(uint8_t)*p++; } else { c = -1; } }
+      else if (ch == '\'') { in_squote = 0; }
+      goto next_char;
+    }
+    if (in_dquote) {
+      if (ch == '\\') { if (p < pe) { c = (LexChar)(uint8_t)*p++; } else { c = -1; } }
+      else if (ch == '"') { in_dquote = 0; }
+      goto next_char;
+    }
+
+    /* Enter quoted strings. */
+    if (ch == '\'') { in_squote = 1; goto next_char; }
+    if (ch == '"') { in_dquote = 1; goto next_char; }
+
+    /* Skip line comments: '--...' or '//' ... until EOL. */
+    if (ch == '-' && p < pe && *p == '-') {
+      p++;
+      while (p < pe) { char cc = *p++; if (cc == '\n' || cc == '\r') break; }
+      c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
+      continue;
+    }
+    if (ch == '/' && p < pe && *p == '/') {
+      p++;
+      while (p < pe) { char cc = *p++; if (cc == '\n' || cc == '\r') break; }
+      c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
+      continue;
+    }
+
+    /* Track simple bracket nesting. */
+    if (ch == '(') { depth_paren++; goto next_char; }
+    if (ch == ')') { if (depth_paren > 0) depth_paren--; goto next_char; }
+    if (ch == '[') { depth_brack++; goto next_char; }
+    if (ch == ']') { if (depth_brack > 0) depth_brack--; goto next_char; }
+    if (ch == '{') { depth_brace++; goto next_char; }
+    if (ch == '}') { if (depth_brace > 0) depth_brace--; goto next_char; }
+
+    /* Ternary depth: increment on '?', decrement on matching ':>' */
+    if (ch == '?') { depth_tern++; goto next_char; }
+    if (ch == ':' && p < pe && *p == '>') {
+      if (depth_paren == 0 && depth_brack == 0 && depth_brace == 0) {
+        if (depth_tern == 0) return 1;  /* Found top-level ':>' for our '?'. */
+        /* Matches an inner ternary: consume '>' and reduce depth. */
+        p++; c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1; depth_tern--; continue;
+      }
+    }
+
+next_char:
+    c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
+  }
+  return 0;
+}
+
 /* Forward declaration. */
 static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit);
 
@@ -2708,8 +2782,75 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
 
     if (!(lpri > limit)) break;
 
-    lj_lex_next(ls);
+  lj_lex_next(ls);
+
+  /* Handle ? specially: decide ternary vs optional BEFORE any emission. */
+  if (op == OPR_OR_QUESTION) {
+    if (lookahead_has_top_level_ternary_sep(ls)) {
+      FuncState *fs = ls->fs;
+      ExpDesc nilv, falsev, zerov, emptyv;
+      BCReg cond_reg, result_reg;
+      BCPos check_nil, check_false, check_zero, check_empty;
+      BCPos skip_false;
+
+      /* Prepare condition value and emit extended-falsey checks BEFORE branches. */
+      expr_discharge(fs, v);
+      cond_reg = expr_toanyreg(fs, v);
+      result_reg = cond_reg;
+
+      /* Emit comparisons followed by JMP; ISEQP/S/N skip the JMP when equal. */
+      /* nil */
+      expr_init(&nilv, VKNIL, 0);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+      check_nil = bcemit_jmp(fs);
+      /* false */
+      expr_init(&falsev, VKFALSE, 0);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+      check_false = bcemit_jmp(fs);
+      /* zero */
+      expr_init(&zerov, VKNUM, 0);
+      setnumV(&zerov.u.nval, 0.0);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+      check_zero = bcemit_jmp(fs);
+      /* empty string */
+      expr_init(&emptyv, VKSTR, 0);
+      emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+      check_empty = bcemit_jmp(fs);
+
+      /* TRUE branch (falls through when value is truthy). */
+      {
+        ExpDesc v2;
+        expr_binop(ls, &v2, priority[op].right);
+        expr_discharge(fs, &v2); expr_toreg(fs, &v2, result_reg);
+      }
+
+      /* Skip FALSE branch after executing TRUE branch. */
+      skip_false = bcemit_jmp(fs);
+
+      /* Require and consume ':>' separator. */
+      lex_check(ls, TK_ternary_sep);
+
+      /* Patch all falsey checks to jump here (start of FALSE branch). */
+      {
+        BCPos false_start = fs->pc;
+        jmp_patch(fs, check_nil, false_start);
+        jmp_patch(fs, check_false, false_start);
+        jmp_patch(fs, check_zero, false_start);
+        jmp_patch(fs, check_empty, false_start);
+      }
+
+      /* FALSE branch. */
+      { ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[op].right);
+        expr_discharge(fs, &fexp); expr_toreg(fs, &fexp, result_reg);
+        jmp_patch(fs, skip_false, fs->pc);
+        v->u.s.info = result_reg; v->k = VNONRELOC; op = nextop3; continue; }
+    }
+    /* Optional form: fall back to existing emission path. */
     bcemit_binop_left(ls->fs, op, v);
+  } else {
+    bcemit_binop_left(ls->fs, op, v);
+  }
 
     if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
       op = expr_shift_chain(ls, v, op);
@@ -2721,6 +2862,7 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ExpDesc v2;
     BinOpr nextop;
     nextop = expr_binop(ls, &v2, priority[op].right);
+
     bcemit_binop(ls->fs, op, v, &v2);
     op = nextop;
   }

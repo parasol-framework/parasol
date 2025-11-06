@@ -464,7 +464,7 @@ endif ()
 # Register Flute tests
 
 set (FLUID_TESTS
-   catch io nz object processing regex struct threads xml strings math array compound bitshift bitwise orq presence blank
+   catch io nz object processing regex struct threads xml strings math array compound bitshift bitwise orq presence blank ternary table
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})
