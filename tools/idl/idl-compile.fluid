@@ -70,7 +70,7 @@ function flags(Prefix, Options, ...)
          for _, v in ipairs(key:split('|')) do
             list[v] = bit.lshift(1, f)
          end
-      elseif (type(flag_def) is 'table') then
+      elseif type(flag_def) is 'table' then
          for flag, ref in pairs(flag_def) do
             local key, comment
             if (type(ref) != 'number') then
@@ -84,12 +84,12 @@ function flags(Prefix, Options, ...)
 
             if not key then key = ref end
 
-            if (type(key) is 'number') then
+            if type(key) is 'number' then
                list[flag] = key
             else
                local f = 0
                for _, v in ipairs(key:split('|')) do
-                  if (list[v] != nil) then
+                  if list[v] then
                      f = bit.bor(f, list[v])
                   else
                      print("Failed to lookup reference '" .. v .. "'")
@@ -101,7 +101,7 @@ function flags(Prefix, Options, ...)
       else
          error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flag_def) .. "'")
       end
-      f = f + 1
+      f += 1
    end
 
    glConstants[Prefix] = list
@@ -133,7 +133,7 @@ function enum(Prefix, Options, ...)
       else
          error("Invalid enum type for '" .. Prefix .. "', expected string, got '" .. type(enum_def) .. "'")
       end
-      inc = inc + 1
+      inc += 1
    end
 
    glConstants[Prefix] = list
@@ -144,16 +144,16 @@ end
 function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing constants ' .. Prefix)
 
    local list = { }
    for k, const_def in ipairs({...}) do
-      if (type(const_def) is 'table') then
+      if type(const_def) is 'table' then
          for k, v in pairs(const_def) do
             local val, comment
-            if (type(v) is 'string') then
+            if type(v) is 'string' then
                val, comment = v:match('^(.-):%s+(.+)$')
             end
             if not val then val = v end
@@ -203,7 +203,7 @@ function str_to_bytes(String)
    String = String:gsub("\\n", string.char(10))
    for i = 1, #String do
       if list then
-         list = list .. string.format(',%d', String:byte(i))
+         list ..= string.format(',%d', String:byte(i))
       else
          list = string.format('%d', String:byte(i))
       end
@@ -248,7 +248,7 @@ function cType(Field, Origin)
 
    do
       local cpp_type = Field.type:match("^cpp%((.+)%)$")
-      if (cpp_type != nil) then
+      if cpp_type then
          Field.cpp  = true
          Field.type = cpp_type
          cType(Field, Origin)
@@ -259,18 +259,13 @@ function cType(Field, Origin)
 
    do
       local const, struct = Field.type:match('^(c-)struct%((.+)%)$')
-      if (struct != nil) then
+      if struct then
          local ptr_struct = struct:match('%*(.+)')
-         if (ptr_struct != nil) then struct = ptr_struct end
+         if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
-         if (ptr_struct != nil) then
-            Field.type = 'p'
-            Field.name = Field.name .. ':' .. struct
-         else
-            Field.type = 'e'
-            Field.name = Field.name .. ':' .. struct
-         end
+         Field.type = ptr_struct ? 'p' :> 'e'
+         Field.name ..= ':' .. struct
 
          return Field
       end
@@ -278,20 +273,16 @@ function cType(Field, Origin)
 
    do
       local object = Field.type:match('^obj%((.+)%)$')
-      if (object != nil) then
+      if object then
          local ptr_struct = object:match('%*(.+)')
-         if (ptr_object != nil) then
-            Field.type = 'p'
-         else
-            Field.type = 'o'
-         end
+         Field.type = ptr_object ? 'p' :> 'o'
          return Field
       end
    end
 
    do
       local bit = Field.type:match('^bit%((.+)%)$')
-      if (bit != nil) then
+      if bit then
          Field.type = cType({ type=bit, name='Bit' }, Origin).type
          Field.name = 'Bit'
          return Field
@@ -299,28 +290,28 @@ function cType(Field, Origin)
    end
 
    do -- Char flags / Strong typing
-      if (Field.type:match('^char%((%a+)%)') != nil) then
+      if Field.type:match('^char%((%a+)%)') then
          Field.type = 'c'
          return Field
       end
    end
 
    do -- Short flags / Strong typing
-      if (Field.type:match('^short%((%a+)%)') != nil) then
+      if Field.type:match('^short%((%a+)%)') then
          Field.type = 'w'
          return Field
       end
    end
 
    do -- Integer flags / Strong typing
-      if (Field.type:match('^int%((%a+)%)') != nil) then
+      if Field.type:match('^int%((%a+)%)') then
          Field.type = 'l'
          return Field
       end
    end
 
    do -- Large flags / Strong typing
-      if (Field.type:match('^large%((%a+)%)') != nil) then
+      if Field.type:match('^large%((%a+)%)') then
          Field.type = 'x'
          return Field
       end
@@ -328,48 +319,48 @@ function cType(Field, Origin)
 
    do -- Char arrays
       local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
-      if (count != nil) then
+      if count then
          Field.type = 'c'
          if unsigned?? then Field.type = 'uc' end
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Integer arrays
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
-      if (count != nil) then
+      if count then
          if unsigned?? then
             Field.type = 'ul'
          else
             Field.type = 'l'
          end
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Double arrays
       local count = Field.type:match('^double%((.+)%)')
-      if (count != nil) then
+      if count then
          Field.type = 'd'
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do -- Float arrays
       local count = Field.type:match('^float%((.+)%)')
-      if (count != nil) then
+      if count then
          Field.type = 'f'
-         Field.name = Field.name .. '[' .. count .. ']'
+         Field.name ..= '[' .. count .. ']'
          return Field
       end
    end
 
    do
       local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
-      if (ptr_type != nil) then
+      if ptr_type then
          Field.type = 'p'
          return Field
       end
@@ -377,26 +368,26 @@ function cType(Field, Origin)
 
    do
       local array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
-      if (array_type != nil) then
+      if array_type then
          Field.type = array_type
          Field = cType(Field, Origin)
-         Field.name = Field.name .. '[' .. array_size .. ']'
+         Field.name ..= '[' .. array_size .. ']'
          return Field
       end
    end
 
    do
       local array_type = Field.type:match('^array%((.+)%)$')
-      if (array_type != nil) then
+      if array_type then
          Field.type = array_type
          Field = cType(Field, Origin)
-         Field.name = Field.name .. '[]'
+         Field.name ..= '[]'
          return Field
       end
    end
 
    do
-      if (Field.type:match('^fptr%((.+)%)$') != nil) then
+      if Field.type:match('^fptr%((.+)%)$') then
          Field.type = 'p'
          return Field
       end
@@ -429,13 +420,13 @@ function extractFields(Def, Origin)
       end
 
       local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
-      if (type != nil) then
+      if type then
          local field = cType({ type=type:trim(), name=name:trim() }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. (content ? "NULL") .. "' for '" .. (Origin ? 'NIL') .. "'")
+         error("Unable to process line '" .. tostring(content) .. "' for '" .. tostring(Origin) .. "'")
       end
    end
 
@@ -467,10 +458,10 @@ function sequenceStruct(fields)
    local seq = ''
    for _, f in ipairs(fields) do
       if seq?? then seq = seq .. ',' end
-      if (f.sequence != nil) then
-         seq = seq .. 'e' .. f.name:cap() .. ':' .. f.type
+      if f.sequence then
+         seq ..= 'e' .. f.name:cap() .. ':' .. f.type
       else
-         seq = seq .. f.type .. f.name:cap()
+         seq ..= f.type .. f.name:cap()
       end
    end
    return seq
@@ -514,7 +505,7 @@ function saveOutput()
    local s = ''
    for _, struct in pairs(glOrderedStructures) do
       if struct.fields then
-         s = s .. 's.' .. struct.name .. ':' .. struct.sequence .. EOL
+         s ..= 's.' .. struct.name .. ':' .. struct.sequence .. EOL
       end
    end
 
@@ -533,21 +524,21 @@ function saveOutput()
 
    local c = ''
    for _, group in ipairs(sortedConstants) do
-      c = c .. 'c.' .. group.prefix .. ':'
+      c ..= 'c.' .. group.prefix .. ':'
       local e = ''
       for _, const in ipairs(group.table) do
-         if e?? then e = e .. ',' end
+         if e?? then e ..= ',' end
          if (type(const.value) is 'string') then
             local val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
             if not val then val = const.value end
-            e = e .. const.name .. '="' .. const.value .. '"'
+            e ..= const.name .. '="' .. const.value .. '"'
          else
             local hexval = string.format('%x', const.value)
             if (hexval:len() is 16) then hexval = hexval:sub(-8) end
-            e = e .. const.name .. '=0x' .. hexval
+            e ..= const.name .. '=0x' .. hexval
          end
       end
-      c = c .. e .. EOL
+      c ..= e .. EOL
    end
 
    if (glFormat is 'c') then

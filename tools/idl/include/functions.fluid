@@ -244,7 +244,7 @@ function flags(Prefix, Options, ...)
          error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flags[a]) .. "'")
       end
 
-      f = f + 1
+      f += 1
    end
 
    table.sort(sortedFlags, function(a,b) return a.value < b.value end)
@@ -262,7 +262,7 @@ function flags(Prefix, Options, ...)
 
    if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
-   elseif (glRestrict == nil) then
+   elseif not glRestrict then
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 

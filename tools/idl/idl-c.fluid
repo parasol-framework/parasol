@@ -697,7 +697,7 @@ function saveOutput()
       for a=1, #glHeader do
          local str = glHeader[a] .. "\n"
          if (str is "\n") then
-            blank = blank + 1
+            blank += 1
          else
             blank = 0
          end
@@ -708,7 +708,7 @@ function saveOutput()
       for a=1, #glConstants do
          local str = glConstants[a] .. "\n"
          if (str is "\n") then
-            blank = blank + 1
+            blank += 1
          else
             blank = 0
          end
@@ -765,7 +765,7 @@ function saveOutput()
          else
             local str = glOutput[a] .. "\n"
             if (str is "\n") then
-               blank = blank + 1
+               blank += 1
             else
                blank = 0
             end
