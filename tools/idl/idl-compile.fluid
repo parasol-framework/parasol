@@ -275,7 +275,7 @@ function cType(Field, Origin)
       local object = Field.type:match('^obj%((.+)%)$')
       if object then
          local ptr_struct = object:match('%*(.+)')
-         Field.type = ptr_object ? 'p' :> 'o'
+         Field.type = ptr_struct ? 'p' :> 'o'
          return Field
       end
    end
