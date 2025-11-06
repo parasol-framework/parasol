@@ -157,7 +157,7 @@ typedef enum BinOpr {
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
   OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
-  OPR_AND, OPR_OR, OPR_OR_QUESTION,
+  OPR_AND, OPR_OR, OPR_IF_EMPTY,
   OPR_TERNARY,
   OPR_NOBINOPR
 } BinOpr;
@@ -189,7 +189,7 @@ static const struct {
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
   {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
-  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},			/* AND OR OR_QUESTION */
+  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},			/* AND OR IF_NULL */
   {1,1,NULL,0}							/* TERNARY */
 };
 
@@ -918,7 +918,7 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
     bcemit_branch_t(fs, e);
   } else if (op == OPR_OR) {
     bcemit_branch_f(fs, e);
-  } else if (op == OPR_OR_QUESTION) {
+  } else if (op == OPR_IF_EMPTY) {
     /* For ?, handle extended falsey checks - only set up jumps for compile-time constants */
     BCPos pc;
     expr_discharge(fs, e);
@@ -1106,7 +1106,7 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
    }
 
    /* Runtime value - emit checks */
-   /* Follow or? pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
+   /* Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
    /*
     * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
     * Pattern: BC_ISEQP reg, VKNIL + JMP means:
@@ -1187,7 +1187,7 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     jmp_append(fs, &e2->t, e1->t);
     *e1 = *e2;
   }
-  else if (op == OPR_OR_QUESTION) {
+  else if (op == OPR_IF_EMPTY) {
     lj_assertFS(e1->f == NO_JMP, "jump list not closed");
     /* bcemit_binop_left() already set up jumps in e1->t for truthy LHS */
     /* If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS */
@@ -2541,7 +2541,7 @@ static BinOpr token2binop(LexToken tok)
   case TK_shr: return OPR_SHR;
   case TK_and:	return OPR_AND;
   case TK_or:	return OPR_OR;
-  case TK_or_question: return OPR_OR_QUESTION;
+  case TK_if_null: return OPR_IF_EMPTY;
   default:	return OPR_NOBINOPR;
   }
 }
@@ -2785,7 +2785,7 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
   lj_lex_next(ls);
 
   /* Handle ? specially: decide ternary vs optional BEFORE any emission. */
-  if (op == OPR_OR_QUESTION) {
+  if (op == OPR_IF_EMPTY) {
     if (lookahead_has_top_level_ternary_sep(ls)) {
       FuncState *fs = ls->fs;
       ExpDesc nilv, falsev, zerov, emptyv;
