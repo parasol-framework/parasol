@@ -3706,14 +3706,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  // else: non-zero integer -> branch
       |2:
     } else {
-      |  jb >1			// Truthy by type: may still be zero (falsey for ISF)
-      |  // False by type: branch
-      |  jmp >9
-      |3:
-      |  // (unused label placeholder)
-      |3:
-      |  nop
-      |  // Truthy by type: special-case numbers where 0 is falsey
+      |  jae >9			// False by type: branch (ISF/ISFC)
+      |  // Truthy by type: may still be zero for numbers (which are falsey)
       |  cmp RB, LJ_TISNUM
       |  je >8			// Integer fast-path
       |  jb >6			// Potential number (double)
@@ -3722,13 +3716,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  movsd xmm0, qword [BASE+RD*8]
       |  xorps xmm1, xmm1
       |  ucomisd xmm0, xmm1
-      |  je >9			// Zero: branch
+      |  je >9			// Zero: branch (falsey)
       |  jmp >1			// Non-zero: fallthrough
       |8:
       |  mov TMPR, [BASE+RD*8]
       |  test TMPR, TMPR
-      |  jnz >1			// Non-zero: fallthrough
-      |  // Zero integer: branch
+      |  jz >9			// Zero integer: branch (falsey)
+      |  jmp >1			// Non-zero: fallthrough
       |9:
     }
     if (op == BC_ISTC || op == BC_ISFC) {

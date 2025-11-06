@@ -3125,24 +3125,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  jz >9			// Zero: take branch
       |  jmp >1			// Non-zero: fallthrough
     } else {
-      |  jae >3			// Truthy by type: may still be zero (falsey for ISF)
-      |  jmp >1			// False by type: fallthrough (no branch)
-      |3:
-      |  // Truthy by type: special-case numbers where 0 is falsey (fallthrough)
+      |  jae >9			// False by type: branch (ISF/ISFC)
+      |  // Truthy by type: may still be zero for numbers (which are falsey)
       |  cmp ITYPEd, LJ_TISNUM
-      |  ja >9			// Not a number: take branch
+      |  ja >1			// Not a number: fallthrough (no branch)
       |  je >8			// Integer fast-path
       |  // Floating-point number: check for +0/-0
       |  movsd xmm0, qword [BASE+RD*8]
       |  xorps xmm1, xmm1
       |  ucomisd xmm0, xmm1
-      |  je >1			// Zero: fallthrough (no branch)
-      |  jmp >9			// Non-zero: take branch
+      |  je >9			// Zero: branch (falsey)
+      |  jmp >1			// Non-zero: fallthrough
       |8:
       |  mov TMPRd, dword [BASE+RD*8]
       |  test TMPRd, TMPRd
-      |  jz >1			// Zero: fallthrough (no branch)
-      |  jmp >9			// Non-zero: take branch
+      |  jz >9			// Zero: branch (falsey)
+      |  jmp >1			// Non-zero: fallthrough
     }
     |1:					// Fallthrough to the next instruction.
     if (op == BC_ISTC || op == BC_ISFC) {
