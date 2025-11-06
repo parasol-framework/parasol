@@ -274,6 +274,7 @@
 <li><a href="#comments">Comments</a></li>
 <li><a href="#script-parameters">Script Parameters</a></li>
 <li><a href="#non-zero-value-detection">Non-Zero Value Detection</a></li>
+<li><a href="#safe-navigation-operators">Safe Navigation Operators</a></li>
 <li><a href="#compound-assignment-operators">Compound Assignment Operators</a></li>
 <li><a href="#concatenation-assignment">Concatenation Assignment</a></li>
 <li><a href="#postfix-increment">Postfix Increment</a></li>
@@ -422,6 +423,25 @@
 <p>A non-zero value detection function, <code>nz()</code>, is included to simplify the handling of nil and zero values (such as a zero length string). Using <code>nz()</code> simplifies program flow where variables must have a value, for example:</p>
 <p><code>myvalue = nz(var.shoppinglist, &#39;Empty Basket&#39;)</code></p>
 <p>The first parameter is checked if it is empty. If so, the function&#39;s second parameter is returned if provided. Otherwise a value of <code>true</code> is returned.</p>
+<h3 id="safe-navigation-operators">Safe Navigation Operators</h3>
+<p>Fluid provides safe navigation operators for optional lookups:</p>
+<ul>
+<li><code>expr?.field</code> returns <code>nil</code> when <code>expr</code> is <code>nil</code>; otherwise it behaves like <code>expr.field</code>.</li>
+<li><code>expr?:method(args)</code> returns <code>nil</code> when <code>expr</code> is <code>nil</code>; otherwise it invokes <code>expr:method(args)</code>. Method arguments are only evaluated when the receiver exists.</li>
+<li><code>expr?[index]</code> returns <code>nil</code> when <code>expr</code> is <code>nil</code>; otherwise it behaves like <code>expr[index]</code>. The index expression is only evaluated when the receiver exists.</li>
+</ul>
+<p>The operators chain from left to right, short-circuiting as soon as a receiver is <code>nil</code>:</p>
+<div class="sourceCode" id="cbSafe1"><pre class="sourceCode lua"><code class="sourceCode lua">local name = user?.profile?.contact?.name
+local email = account?:loadProfile()?.email
+local primary = metrics?.scores?[1]</code></pre></div>
+<p>Safe navigation composes cleanly with the coalescing helpers:</p>
+<div class="sourceCode" id="cbSafe2"><pre class="sourceCode lua"><code class="sourceCode lua">local label = widget?.text ?? "Untitled"
+local summary = report?.totals?["score"] or? "n/a"</code></pre></div>
+<p>Behavioural notes:</p>
+<ul>
+<li>Only <code>nil</code> is treated as missing; other falsey values such as <code>false</code> or <code>0</code> are preserved.</li>
+<li>Bytecode generation skips the guarded suffix when the receiver is <code>nil</code>, so guarded method arguments and index expressions retain their side-effect behaviour.</li>
+</ul>
 <h3 id="compound-assignment-operators">Compound Assignment Operators</h3>
 <p>Fluid adds C-style compound assignment operators for convenience:</p>
 <ul>

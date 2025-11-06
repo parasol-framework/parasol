@@ -407,7 +407,11 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       else return ':';
     case '?':
       lex_next(ls);
-      if (ls->c != '?') return TK_or_question; else { lex_next(ls); return TK_presence; }
+      if (ls->c == '.') { lex_next(ls); return TK_safe_field; }
+      if (ls->c == ':') { lex_next(ls); return TK_safe_method; }
+      if (ls->c == '[') { lex_next(ls); return TK_safe_bracket; }
+      if (ls->c == '?') { lex_next(ls); return TK_presence; }
+      return TK_or_question;
     case '"':
     case '\'':
       lex_string(ls, tv);

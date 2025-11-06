@@ -2083,6 +2083,104 @@ static void expr_bracket(LexState *ls, ExpDesc *v)
   lex_check(ls, ']');
 }
 
+/* Parse safe navigation for named field access: value?.name */
+static void expr_safe_field(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, table, nilv;
+  BCReg base_reg;
+  BCPos jump_not_nil, jump_end;
+
+  expr_discharge(fs, v);
+  lj_lex_next(ls);  /* Skip '?.'. */
+  expr_str(ls, &key);
+
+  base_reg = expr_toanyreg(fs, v);
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, base_reg, const_pri(&nilv)));
+  jump_not_nil = bcemit_jmp(fs);
+
+  bcemit_nil(fs, base_reg, 1);
+  jump_end = bcemit_jmp(fs);
+
+  jmp_patch(fs, jump_not_nil, fs->pc);
+
+  expr_init(&table, VNONRELOC, base_reg);
+  expr_index(fs, &table, &key);
+  expr_toreg(fs, &table, base_reg);
+
+  jmp_patch(fs, jump_end, fs->pc);
+
+  expr_init(v, VNONRELOC, base_reg);
+}
+
+/* Parse safe navigation for bracket access: value?[index] */
+static void expr_safe_bracket(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, table, nilv;
+  BCReg base_reg;
+  BCPos jump_not_nil, jump_end;
+
+  expr_discharge(fs, v);
+  base_reg = expr_toanyreg(fs, v);
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, base_reg, const_pri(&nilv)));
+  jump_not_nil = bcemit_jmp(fs);
+
+  bcemit_nil(fs, base_reg, 1);
+  jump_end = bcemit_jmp(fs);
+
+  jmp_patch(fs, jump_not_nil, fs->pc);
+
+  lj_lex_next(ls);  /* Skip '?['. */
+  expr(ls, &key);
+  expr_toval(fs, &key);
+  lex_check(ls, ']');
+
+  expr_init(&table, VNONRELOC, base_reg);
+  expr_index(fs, &table, &key);
+  expr_toreg(fs, &table, base_reg);
+
+  jmp_patch(fs, jump_end, fs->pc);
+
+  expr_init(v, VNONRELOC, base_reg);
+}
+
+/* Parse safe navigation for method calls: value?:method(args) */
+static void expr_safe_method(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg;
+  BCPos jump_not_nil, nil_load_pc, jump_end;
+
+  expr_discharge(fs, v);
+  lj_lex_next(ls);  /* Skip '?:'. */
+  expr_str(ls, &key);
+
+  obj_reg = expr_toanyreg(fs, v);
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  jump_not_nil = bcemit_jmp(fs);
+
+  nil_load_pc = bcemit_AD(fs, BC_KPRI, 0, VKNIL);
+  jump_end = bcemit_jmp(fs);
+
+  jmp_patch(fs, jump_not_nil, fs->pc);
+
+  expr_init(v, VNONRELOC, obj_reg);
+  bcemit_method(fs, v, &key);
+  parse_args(ls, v);
+
+  setbc_a(&fs->bcbase[nil_load_pc].ins, v->u.s.aux);
+
+  jmp_patch(fs, jump_end, fs->pc);
+}
+
 /* Get value of constant expression. */
 static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {
@@ -2397,7 +2495,13 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     err_syntax(ls, LJ_ERR_XSYMBOL);
   }
   for (;;) {  /* Parse multiple expression suffixes. */
-    if (ls->tok == '.') {
+    if (ls->tok == TK_safe_field) {
+      expr_safe_field(ls, v);
+    } else if (ls->tok == TK_safe_bracket) {
+      expr_safe_bracket(ls, v);
+    } else if (ls->tok == TK_safe_method) {
+      expr_safe_method(ls, v);
+    } else if (ls->tok == '.') {
       expr_field(ls, v);
     } else if (ls->tok == '[') {
       ExpDesc key;
@@ -2748,6 +2852,17 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_LEN;
   } else {
     expr_simple(ls, v);
+    for (;;) {
+      if (ls->tok == TK_safe_field) {
+        expr_safe_field(ls, v);
+      } else if (ls->tok == TK_safe_bracket) {
+        expr_safe_bracket(ls, v);
+      } else if (ls->tok == TK_safe_method) {
+        expr_safe_method(ls, v);
+      } else {
+        break;
+      }
+    }
     /* Check for postfix presence check operator after simple expressions (constants) */
     if (ls->tok == TK_presence) {
       lj_lex_next(ls);
