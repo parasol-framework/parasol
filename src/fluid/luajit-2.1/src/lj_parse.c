@@ -1106,7 +1106,7 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
    }
 
    /* Runtime value - emit checks */
-   /* Follow or? pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
+   /* Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
    /*
     * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
     * Pattern: BC_ISEQP reg, VKNIL + JMP means:

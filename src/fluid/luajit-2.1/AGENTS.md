@@ -211,7 +211,7 @@ check_nil = bcemit_jmp(fs);  // This JMP is SKIPPED when reg == nil
 //   - If reg != nil: BC_ISEQP doesn't skip → JMP executes → jumps to its target
 ```
 
-**Pattern for Extended Falsey Checks** (as used in `or?` and presence check):
+**Pattern for Extended Falsey Checks** (as used in `?` and presence check):
 
 The pattern chains multiple equality checks, where each check's JMP is patched to the same "falsey branch". The logic works as follows:
 
