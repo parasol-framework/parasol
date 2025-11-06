@@ -1,0 +1,57 @@
+-- Flute tests for table.empty()
+
+function test_nil_and_empty()
+   -- nil is treated as an empty table
+   assert(table.empty(nil) is true, "nil should be considered empty")
+
+   -- empty table literal
+   local t = {}
+   assert(table.empty(t) is true, "{} should be empty")
+end
+
+function test_array_and_hash()
+   -- Non-empty array part
+   local arr = {1}
+   assert(table.empty(arr) is false, "Array with one element should not be empty")
+
+   -- Non-empty hash part
+   local map = { a = 1 }
+   assert(table.empty(map) is false, "Hash with one key should not be empty")
+end
+
+function test_sparse_and_holes()
+   -- Sparse array with only a high index populated
+   local t = {}
+   t[100] = 1
+   assert(table.empty(t) is false, "Sparse table with an entry should not be empty")
+
+   -- Table with only holes (all nil)
+   local holes = {}
+   holes[1] = nil
+   holes[2] = nil
+   assert(table.empty(holes) is true, "Table with only nil entries should be empty")
+end
+
+function test_clear_and_mutation()
+   local t = { a = 5, 7 }
+   assert(table.empty(t) is false, "Initially non-empty table should not be empty")
+
+   -- Use table.clear() provided by our LuaJIT patch to clear the table
+   table.clear(t)
+   assert(table.empty(t) is true, "table.clear() should result in an empty table")
+
+   -- Re-populate and re-check
+   t[1] = 10
+   assert(table.empty(t) is false, "Re-populated table should not be empty")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'test_nil_and_empty',
+         'test_array_and_hash',
+         'test_sparse_and_holes',
+         'test_clear_and_mutation'
+      }
+   }

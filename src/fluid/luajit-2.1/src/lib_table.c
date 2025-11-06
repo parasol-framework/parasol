@@ -155,14 +155,14 @@ LJLIB_CF(table_concat)		LJLIB_REC(.)
   GCstr *sep = lj_lib_optstr(L, 2);
   int32_t i = lj_lib_optint(L, 3, 1);
   int32_t e = (L->base+3 < L->top && !tvisnil(L->base+3)) ?
-	      lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
+              lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
   SBuf *sb = lj_buf_tmp_(L);
   SBuf *sbx = lj_buf_puttab(sb, t, sep, i, e);
   if (LJ_UNLIKELY(!sbx)) {  /* Error: bad element type. */
     int32_t idx = (int32_t)(intptr_t)sb->w;
     cTValue *o = lj_tab_getint(t, idx);
     lj_err_callerv(L, LJ_ERR_TABCAT,
-		   lj_obj_itypename[o ? itypemap(o) : ~LJ_TNIL], idx);
+                   lj_obj_itypename[o ? itypemap(o) : ~LJ_TNIL], idx);
   }
   setstrV(L, L->top-1, lj_buf_str(L, sbx));
   lj_gc_check(L);
@@ -294,6 +294,34 @@ LJLIB_NOREG LJLIB_CF(table_new)		LJLIB_REC(.)
 }
 
 // PARASOL PATCHED IN
+
+// table.empty(t)
+// Returns true if the given table is empty. If the argument is nil, it is treated as empty and returns true. This
+// mirrors the emptiness check used in Parasol's user-facing helpers, but implemented natively.
+
+LJLIB_CF(table_empty)
+{
+   GCtab *t = lj_lib_checktabornil(L, 1);
+   if (!t) {
+      setboolV(L->top-1, 1);
+      return 1;
+   }
+
+   if (lj_tab_len(t) != 0) {
+      setboolV(L->top-1, 0);
+      return 1;
+   }
+
+   TValue key, kv[2];
+   setnilV(&key);
+   if (lj_tab_next(t, &key, kv)) {
+      setboolV(L->top-1, 0);  /* Found at least one entry. */
+   }
+   else setboolV(L->top-1, 1);  /* Confirmed empty. */
+
+   return 1;
+}
+
 LJLIB_CF(table_clear)	LJLIB_REC(.)
 {
   lj_tab_clear(lj_lib_checktab(L, 1));
@@ -304,8 +332,6 @@ static int luaopen_table_new(lua_State *L)
 {
   return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
 }
-
-// PARASOL PATCHED IN
 
 /* ------------------------------------------------------------------------ */
 
@@ -319,7 +345,5 @@ LUALIB_API int luaopen_table(lua_State *L)
   lua_setfield(L, -2, "unpack");
 #endif
   lj_lib_prereg(L, LUA_TABLIBNAME ".new", luaopen_table_new, tabV(L->top-1));
-// PARASOL PATCHED IN
   return 1;
 }
-
