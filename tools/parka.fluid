@@ -55,14 +55,14 @@ function parseInfo()
    info.args = iArgs
    info.permissions = iPermissions
 
-   if not nz(info.built) then
+   if not info.built?? then
       local now = obj.new("time", { })
       now.acQuery()
       info.built = string.format("%d-%02d-%02d %02d:%02d", now.year, now.month, now.day, now.hour, now.minute)
       local error, index = glInfoXML.mtInsertXML(infoIndex, XMI_CHILD_END, "<built>" .. info.built .. "</built>")
    end
 
-   if nz(glPublicKey) then
+   if glPublicKey?? then
       local error, index = glInfoXML.mtInsertXML(infoIndex, XMI_CHILD_END, "<key>" .. glPublicKey .. "</key>")
    end
 
@@ -75,22 +75,22 @@ function printPackage()
    print("")
    print("Package Details")
    print("---------------")
-   print("Name:      " .. nz(glInfo.name, "NULL"))
-   print("Author:    " .. nz(glInfo.author, "NULL"))
-   print("Version:   " .. nz(glInfo.version, "NULL"))
-   print("Built:     " .. nz(glInfo.built, "NULL"))
-   print("WebSite:   " .. nz(glInfo.website, "NULL"))
-   print("Short:     " .. nz(glInfo.short, "NULL"))
-   print("Run:       " .. nz(glInfo.run, "NULL"))
-   print("License:   " .. nz(glInfo.license, "NULL"))
-   print("Copyright: " .. nz(glInfo.copyright, "NULL"))
+   print("Name:      " .. (glInfo.name ? "NULL"))
+   print("Author:    " .. (glInfo.author ? "NULL"))
+   print("Version:   " .. (glInfo.version ? "NULL"))
+   print("Built:     " .. (glInfo.built ? "NULL"))
+   print("WebSite:   " .. (glInfo.website ? "NULL"))
+   print("Short:     " .. (glInfo.short ? "NULL"))
+   print("Run:       " .. (glInfo.run ? "NULL"))
+   print("License:   " .. (glInfo.license ? "NULL"))
+   print("Copyright: " .. (glInfo.copyright ? "NULL"))
    print("")
 end
 
 ------------------------------------------------------------------------------
 
 function validateInfo()
-   if not nz(glInfo) then print("A name is required in the info header."); return; end
+   if not glInfo?? then print("A name is required in the info header."); return; end
 
 
 --  <args>
@@ -109,7 +109,7 @@ function zipPackage()
    end
 
    local folder = obj.new("file", { path=glLocation } )
-   if not nz(folder) then
+   if not folder?? then
       print("Invalid location for packaging.")
       return
    end
@@ -267,13 +267,13 @@ end
    mSys = mod.load("core")
    mSSL = mod.load("openssl")
 
-   if nz(glVerify) then
+   if glVerify?? then
       // Verification mode - check that the signature of an existing package is correct.
       verifyPackage()
       return
    end
 
-   if not nz(glLocation) then
+   if not glLocation?? then
       print("Parka is used to generate Parasol archives (PARC files).  It requires a valid parc.xml file and release")
       print("folder containing the files to be archived.  More information on how to structure a build is documented in the")
       print("parasol-doc package, as well as on the Parasol website.")
@@ -292,7 +292,7 @@ end
       glLocation = glLocation .. "/"
    end
 
-   if nz(glPrivateKeyFile) then
+   if glPrivateKeyFile?? then
       glPrivateKey = file.readAll(glPrivateKeyFile)
       if (glPrivateKey == nil) then
          print("Failed to load RSA key file: " .. glPrivateKeyFile)
@@ -300,7 +300,7 @@ end
       end
    end
 
-   if nz(glPrivateKey) then
+   if glPrivateKey?? then
       error, glPublicKey = mSSL.GenerateRSAPublicKey(glPrivateKey, glKeyPassword)
       if (glPublicKey == nil) then
          print("Failed to get generate the public key from " .. glPrivateKeyFile .. ", error " .. mSys.GetErrorMsg(error))
@@ -317,7 +317,7 @@ end
 
    zipPackage()
 
-   if nz(glPrivateKey) then
+   if glPrivateKey?? then
       signPackage(glPrivateKey)
    else
       print("No RSA private key supplied - the package will not be signed.")

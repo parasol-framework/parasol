@@ -70,10 +70,10 @@ function runTests()
          collectgarbage()
 
          if (status == false) then
-            if nz(result) then logOutput(result) end
+            if result?? then logOutput(result) end
             print(string.format("FAIL: %.6f sec", totalTime))
          else
-            if nz(result) then logOutput(result) end
+            if result?? then logOutput(result) end
             print(string.format("PASS: %.6f sec", totalTime))
             glTestsPassed = glTestsPassed + 1
          end
@@ -112,7 +112,7 @@ end
 
    mSys = mod.load("core")
 
-   if not nz(glFile) then
+   if not glFile?? then
       print(glHelp)
       return
    end

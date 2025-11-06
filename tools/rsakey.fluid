@@ -4,12 +4,12 @@
 ------------------------------------------------------------------------------
 
 function saveKeys()
-   if nz(glPrivateFile) then
+   if glPrivateFile?? then
       local file = obj.new("file", { path=glPrivateFile, flags="!NEW|WRITE" } )
       file.acWrite(privateKey)
    end
 
-   if nz(glPublicFile) then
+   if glPublicFile?? then
       local file = obj.new("file", { path=glPublicFile, flags="!NEW|WRITE" } )
       file.acWrite(publicKey)
    end
@@ -18,14 +18,14 @@ end
 ------------------------------------------------------------------------------
 
 function signFiles(destPath)
-   if not nz(destPath) then return end
+   if not destPath?? then return end
 
    print("Generating signature for file: \"" .. destPath .. "\"")
    local input = obj.new("file", { path=destPath, flags="READ" } )
    local error, sig = mSSL.CalcSigFromObject(input, 0, privateKey, nil, "sha256")
 
    if (error == ERR_Okay) and (sig != nil) then
-      if nz(glSigFile) then
+      if glSigFile?? then
          print("Saving signature to " .. glSigFile)
          local sigfile = obj.new("file", { path=glSigFile, flags="!NEW|WRITE" } )
          sigfile.acWrite(sig)
@@ -68,7 +68,7 @@ end
    mSys  = mod.load("core")
    mSSL  = mod.load("openssl")
 
-   if not nz(glBits) then glBits = 2048 end
+   if not glBits?? then glBits = 2048 end
 
    local error, privateKey, publicKey = mSSL.GenerateRSAKey(glBits, glPassword)
 

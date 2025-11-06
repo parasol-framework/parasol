@@ -13,7 +13,7 @@ end
 -- Add a line to the output. If the string ends with a newline character, preserve it, otherwise trim trailing spaces.
 
 function output(String)
-   if nz(String) then
+   if String?? then
       if (String:sub(-1) == '\n') then
          table.insert(glOutput, String)
       else
@@ -51,7 +51,7 @@ function priority(Input)
          table.insert(glHeader, v)
       end
       glOutput = saveOutput
-   elseif (type(Input) == 'string') and nz(Input) then
+   elseif (type(Input) == 'string') and Input?? then
       table.insert(glHeader, Input:rtrim())
    else
       table.insert(glHeader,'')
@@ -100,7 +100,7 @@ end
 -- To:   <something>content</something>
 
 function cleanXMLString(str, caller)
-   if nz(str) then
+   if str?? then
       if (str:find('[<>]')) then
          str = '<ROOT>' .. str .. '</ROOT>'
 
@@ -113,7 +113,7 @@ function cleanXMLString(str, caller)
             local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
-            error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')
+            error('Failed to parse XML for ' .. (caller ? 'undefined') .. '.')
          end
       end
    else
@@ -126,7 +126,7 @@ end
 -- Register a class by name and return its table. If the class already exists, return the existing table.
 
 function registerClass(Name)
-   if not nz(Name) then error('No Name provided to registerClass()') end
+   if not Name?? then error('No Name provided to registerClass()') end
    if (glClasses == nil) then glClasses = { } end
    if (glClasses[Name:lower()] == nil) then
       glClasses[Name:lower()] = { name=Name:cap() }
@@ -150,14 +150,14 @@ function getMetaFieldDefinition(Field)
       fl.synonym = true
    end
 
-   if nz(Field.getField) then
+   if Field.getField?? then
       fl.read = 'Get'
       fl.get = Field.getField
    elseif bit.band(Field.flags, FD_READ) != 0 then
       fl.read = 'Read'
    end
 
-   if nz(Field.setField) then
+   if Field.setField?? then
       fl.write = 'Set'
       fl.set = Field.setField
    elseif bit.band(Field.flags, FD_WRITE) != 0 then
@@ -166,11 +166,11 @@ function getMetaFieldDefinition(Field)
       fl.write = 'Init'
    end
 
-   if (nz(fl.read) and nz(fl.write)) then
+   if (fl.read?? and fl.write??) then
       fl.access = fl.read .. '/' .. fl.write
-   elseif nz(fl.read) then
+   elseif fl.read?? then
       fl.access = fl.read
-   elseif nz(fl.write) then
+   elseif fl.write?? then
       fl.access = fl.write
    else
       fl.access = 'Private'
@@ -192,7 +192,7 @@ function loadActions()
    verbose("Loading core actions...")
    glActions = { }
    for id, actions in ipairs(mSys.ActionList()) do
-      if nz(actions) and nz(actions.name) then
+      if actions?? and actions.name?? then
          glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id-1 }
       end
    end
