@@ -4,7 +4,7 @@
 -- Print a message to stdout if verbose mode is enabled
 
 function verbose(String)
-   if glFeedback == 'verbose' then
+   if glFeedback is 'verbose' then
       print(String)
    end
 end
@@ -14,7 +14,7 @@ end
 
 function output(String)
    if String?? then
-      if (String:sub(-1) == '\n') then
+      if (String:sub(-1) is '\n') then
          table.insert(glOutput, String)
       else
          table.insert(glOutput, String:rtrim())
@@ -43,7 +43,7 @@ end
 -- header.
 
 function priority(Input)
-   if (type(Input) == 'function') then
+   if (type(Input) is 'function') then
       local saveOutput = glOutput
       glOutput = { }
       Input()
@@ -51,7 +51,7 @@ function priority(Input)
          table.insert(glHeader, v)
       end
       glOutput = saveOutput
-   elseif (type(Input) == 'string') and Input?? then
+   elseif (type(Input) is 'string') and Input?? then
       table.insert(glHeader, Input:rtrim())
    else
       table.insert(glHeader,'')
@@ -64,13 +64,13 @@ end
 function shortName(Name)
    local result = ""
    for _, n in ipairs(Name:split("_")) do
-      if (n=="XY") or (n=="SSL") or (n=="HTML") or (n=="CDATA") or (n=="2D") or (n =="3D") or (n=="DGA") or
-         (n=="DPMS") or (n=="GTF") or (n=="SRGB") or (n=="RGB") or (n=="HSV") or (n=="CX") or (n=="CY") or
-         (n=="FX") or (n=="FY") then
+      if (n is "XY") or (n is "SSL") or (n is "HTML") or (n is "CDATA") or (n is "2D") or (n  is "3D") or (n is "DGA") or
+         (n is "DPMS") or (n is "GTF") or (n is "SRGB") or (n is "RGB") or (n is "HSV") or (n is "CX") or (n is "CY") or
+         (n is "FX") or (n is "FY") then
          result = result .. n
       else
          local cap, word = n:match("^(.)(.+)$")
-         if (cap == nil) or (word == nil) then
+         if (cap is nil) or (word is nil) then
             result = result .. n:upper()
          else
             result = result .. cap:upper() .. word:lower()
@@ -84,12 +84,14 @@ end
 -- Scan Class.fields for a specific FieldName.
 
 function findClassField(Class, FieldName)
-   if (Class.fields != nil) then
+   if Class.fields then
       for _, f in ipairs(Class.fields) do
-         if (f.name == FieldName) then
+         if (f.name is FieldName) then
             return f
          end
       end
+   else
+      error('Class.fields is empty')
    end
 end
 
@@ -101,17 +103,17 @@ end
 
 function cleanXMLString(str, caller)
    if str?? then
-      if (str:find('[<>]')) then
+      if str:find('[<>]') then
          str = '<ROOT>' .. str .. '</ROOT>'
 
-         if cleanXMLString_xml == nil then
+         if not cleanXMLString_xml then
             cleanXMLString_xml, err = obj.new('xml', { statement=str, flags=XMF_INCLUDE_WHITESPACE })
          end
 
-         if (cleanXMLString_xml != nil) then
+         if cleanXMLString_xml then
             cleanXMLString_xml.statement = str
             local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-            if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
+            if clean_str then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
             error('Failed to parse XML for ' .. (caller ? 'undefined') .. '.')
          end
@@ -127,8 +129,8 @@ end
 
 function registerClass(Name)
    if not Name?? then error('No Name provided to registerClass()') end
-   if (glClasses == nil) then glClasses = { } end
-   if (glClasses[Name:lower()] == nil) then
+   if not glClasses then glClasses = { } end
+   if not glClasses[Name:lower()] then
       glClasses[Name:lower()] = { name=Name:cap() }
    end
    return glClasses[Name:lower()]
@@ -146,27 +148,27 @@ function getMetaFieldDefinition(Field)
    getFieldType(fl, Field.flags, Field.name, Field.arg)
    fl.docType = fl.doc_type
 
-   if (bit.band(Field.flags, FD_SYNONYM) != 0) then
+   if (Field.flags & FD_SYNONYM) != 0 then
       fl.synonym = true
    end
 
    if Field.getField?? then
       fl.read = 'Get'
       fl.get = Field.getField
-   elseif bit.band(Field.flags, FD_READ) != 0 then
+   elseif (Field.flags & FD_READ) != 0 then
       fl.read = 'Read'
    end
 
    if Field.setField?? then
       fl.write = 'Set'
       fl.set = Field.setField
-   elseif bit.band(Field.flags, FD_WRITE) != 0 then
+   elseif (Field.flags & FD_WRITE) != 0 then
       fl.write = 'Write'
-   elseif bit.band(Field.flags, FD_INIT) != 0 then
+   elseif (Field.flags & FD_INIT) != 0 then
       fl.write = 'Init'
    end
 
-   if (fl.read?? and fl.write??) then
+   if fl.read?? and fl.write?? then
       fl.access = fl.read .. '/' .. fl.write
    elseif fl.read?? then
       fl.access = fl.read
@@ -176,7 +178,7 @@ function getMetaFieldDefinition(Field)
       fl.access = 'Private'
    end
 
-   if (bit.band(Field.flags, FD_SYSTEM) != 0) then
+   if ((Field.flags & FD_SYSTEM) != 0) then
       fl.access = 'Private'
       fl.private = true
    end
@@ -219,7 +221,7 @@ function resolveSDKPath(Path)
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
       local msg = ''

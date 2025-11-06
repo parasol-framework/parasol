@@ -2,13 +2,13 @@
 ----------------------------------------------------------------------------------------------------------------------
 
 function parseClassEntry(Class, Type, Extract)
-   if (Type == '-CLASS-') then
+   if (Type is '-CLASS-') then
       parseClassHeader(Class, Extract)
-   elseif (Type == '-METHOD-') then
+   elseif (Type is '-METHOD-') then
       parseMethod(Class, Extract)
-   elseif (Type == '-ACTION-') then
+   elseif (Type is '-ACTION-') then
       parseAction(Class, Extract)
-   elseif (Type == '-FIELD-') then
+   elseif (Type is '-FIELD-') then
       parseField(Class, Extract)
    end
 end
@@ -35,12 +35,12 @@ function parseAction(class, extract)
 
    local name    = extract:match('\n[Nn]ame:%s+(.-)\n')
    local comment = extract:match('\n[Cc]omment:%s+(.-)\n')
-   if (name == nil) then
+   if not name then
       name, comment = extract:match('\n(%w+):%s+(.-)\n')
    end
 
    local action = class.actions[name]
-   if (action == nil) then action = { } end
+   if not action then action = { } end
    action.name = name
    action.comment = comment
    action.description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
@@ -53,7 +53,7 @@ function parseAction(class, extract)
          if not line?? then break end -- A double line-break forces a premature end to error processing.
 
          local ecode, comment = line:match('(%a-):%s+(.+)')
-         if (ecode != nil) then
+         if ecode then
             table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match('(%a+):?')
@@ -83,7 +83,7 @@ function parseField(class, extract)
    end
 
    local f = findClassField(class, name)
-   if (f != nil) then
+   if f then
       if comment?? then f.comment = comment end
       if lookup?? then
          if (glCustomTypes[lookup]) then
@@ -98,7 +98,7 @@ function parseField(class, extract)
          f.access = 'Private'
       end
       f.description = description
-   elseif (class.meta != nil) then
+   elseif class.meta then
       print("Field '" .. class.name .. "." .. tostring(name) .. "' is not defined in the FDL or compiled class spec.")
    end
 end
@@ -111,7 +111,7 @@ function parseParameterString(Parameter)
    param.comment = Parameter:match('^.+:%s-(.+)$')
    if param.comment?? then Parameter = Parameter:match('^(.+):%s-.+$') end
    param.type, param.name = Parameter:match('^%s*(.+)%s+([^%s]+)%s-$')
-   if (param.type != nil) then
+   if param.type then
       param.type = param.type:trim()
       param.name = param.name:trim()
       param.comment = param.comment:trim()
@@ -126,14 +126,14 @@ function parseMethod(class, extract)
 
    local name    = extract:match('\n[Nn]ame:%s+(.-)\n')
    local comment = extract:match('\n[Cc]omment:%s+(.-)\n')
-   if (name == nil) then
+   if not name then
       name, comment = extract:match('\n(%w+):%s+(.-)\n')
    end
 
    local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (name:find('%(%)') != nil) then
+   if name:find('%(%)') then
       name = name:match('(%a+)()')
    end
 
@@ -141,12 +141,12 @@ function parseMethod(class, extract)
    if not comment?? then error("Failed to extract a comment tag from -METHOD- definition of '" .. name .. "'")  end
    if not description?? then error("Failed to extract a description from -METHOD- definition of '" .. name .. "'") end
 
-   if (glFeedback == 'verbose') then print('Processing method ' .. name) end
+   if (glFeedback is 'verbose') then print('Processing method ' .. name) end
 
    local method -- Retrieve the definition for this method
-   if (class.methods != nil) then
+   if class.methods then
       method = class.lookupMethods[name]
-      if (method == nil) then error("Method '" .. name .. "' is not registered in the FDL.") end
+      if not method then error("Method '" .. name .. "' is not registered in the FDL.") end
    else
       error("Methods need to be pre-defined for class '" .. tostring(class.name) .. "' with methods()")
    end
@@ -166,7 +166,7 @@ function parseMethod(class, extract)
          if not line?? then break end -- A double line-break forces a premature end to error processing.
 
          local ecode, comment = line:match('(%a-):%s+(.+)')
-         if (ecode != nil) then
+         if ecode then
             table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match('(%a+):?')
@@ -205,27 +205,27 @@ function parseClassFields(class, ClientSpec)
    -- Add compiled fields into the field definitions.  NB: Technically this relies on a circular reference, so such
    -- information can only be taken advantage of for phase 2 processing (class documentation).
 
-   if (class.meta != nil) then
+   if class.meta then
       local newFields = {}
 
       -- NB: Some classes don't output any fields (which is permissable)
 
       local metaFields = class.meta.subFields
-      if (not metaFields) and (class.meta.classID == class.meta.baseClassID) then
+      if (not metaFields) and (class.meta.classID is class.meta.baseClassID) then
          metaFields = class.meta.fields
       end
 
       for k, f in ipairs((metaFields ? { })) do
          local def = getMetaFieldDefinition(f)
-         if (def != nil) and (def.synonym != true) then
+         if def and (def.synonym != true) then
             local f = findClassField(class, def.name) -- Retrieve field parsed from FDL, if defined
-            if (f != nil) then
+            if f then
                f.write  = def.write
                f.read   = def.read
                f.flags  = def.flags
                f.access = (def.access ? def.access)
                f.private = (f.private ? def.private)
-               if (f.type == nil) then f.type = tostring(def.type) end
+               if not f.type then f.type = tostring(def.type) end
             else
                def.virtual = true
                def.fullType = glTypes.void -- Dummy
@@ -240,7 +240,7 @@ function parseClassFields(class, ClientSpec)
    end
 
    class.lookupFields = { }
-   if (class.fields != nil) then
+   if class.fields then
       for _, f in ipairs(class.fields) do
          class.lookupFields[f.name] = f
       end
@@ -269,7 +269,7 @@ function parseClassFields(class, ClientSpec)
             class.longestFieldType = f.type:len() + 2 + field_name:len()
          end
 
-         if (f.ref != nil) then
+         if f.ref then
             cdef = cdef .. outputLookup(class.name .. f.name, f.ref.list)
          end
 
@@ -287,7 +287,7 @@ end
 -- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
 
 function parseSourceFiles()
-   if (glFeedback == 'verbose') then print('Processing source files...') end
+   if (glFeedback is 'verbose') then print('Processing source files...') end
 
    local srcFiles = { }
 
@@ -296,7 +296,7 @@ function parseSourceFiles()
    end
 
    if (#srcFiles < 1) then
-      if (glFeedback == 'verbose') then print('No source files were detected.') end
+      if (glFeedback is 'verbose') then print('No source files were detected.') end
       return
    end
 
@@ -311,13 +311,13 @@ function parseSourceFiles()
          idlExtract = (idlExtract ? '') .. extract
       end
 
-      if (idlExtract != nil) then
+      if idlExtract then
          exec(idlExtract)
       end
 
       -- Process -FUNCTION- definitions
 
-      if (glFeedback == 'verbose') then
+      if (glFeedback is 'verbose') then
          print()
          print('File: ' .. path)
       end
@@ -337,26 +337,26 @@ function parseSourceFiles()
       for line in string.gmatch(content, '(.-\n)') do
          if line?? then
             line = (line:match('^(.*%S)') ? '')
-            if (line == '-CATEGORY-') or (line == '-FUNCTION-') then
-               if (processing == '-CATEGORY-') then parseCategory(currentExtract) end
-               if (processing == '-FUNCTION-') then parseFunction(currentExtract) end
+            if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
+               if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
+               if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
                currentExtract = ''
                processing = line
-            elseif (line == '-END-') or (line == '-INTERNAL-') then
-               if (processing == '-CATEGORY-') then parseCategory(currentExtract) end
-               if (processing == '-FUNCTION-') then parseFunction(currentExtract) end
+            elseif (line is '-END-') or (line is '-INTERNAL-') then
+               if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
+               if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
                currentExtract = nil
                processing = nil
-            elseif (processing != nil) then
+            elseif processing then
                currentExtract = currentExtract .. line .. '\n'
             end
-         elseif (processing != nil) then
+         elseif processing then
             currentExtract = currentExtract .. '\n'
          end
       end
 
-      if (processing == '-CATEGORY-') then parseCategory(currentExtract) end
-      if (processing == '-FUNCTION-') then parseFunction(currentExtract) end
+      if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
+      if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
    end
 end
 
@@ -383,7 +383,7 @@ function parseFunction(extract)
    local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n') -- This value is appended to the jump table name
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (name:find('%(%)') != nil) then
+   if name:find('%(%)') then
       name = name:match('(%a+)()')
    end
 
@@ -399,7 +399,7 @@ function parseFunction(extract)
       error("Failed to extract a description from -FUNCTION- definition of '" .. name .. "'")
    end
 
-   if (glFeedback == "verbose") then
+   if (glFeedback is "verbose") then
       print("Processing function " .. name .. "()")
    end
 
@@ -442,7 +442,7 @@ function parseFunction(extract)
       local result = extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
       if result?? then
          local ext_type, comment = result:match("(.-):%s-(.+)$")
-         if (ext_type == nil) then error("Incorrectly defined result section in function '" .. name .. "'") end
+         if not ext_type then error("Incorrectly defined result section in function '" .. name .. "'") end
          def.result = cType({ type=ext_type, comment=comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
       end
    end

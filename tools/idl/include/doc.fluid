@@ -346,9 +346,9 @@ function saveDocuments()
       for _, func in ipairs(glFunctions) do
          out = out .. docFunction(func)
       end
-      out = out .. docTypes()
-      out = out .. docStructures()
-      out = out .. '</book>\n'
+      out ..= docTypes()
+      out ..= docStructures()
+      out ..= '</book>\n'
 
       if glModule.name?? then
          local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. glModule.name:lower() .. '.xml' } )
@@ -367,9 +367,9 @@ function saveDocuments()
          if cl.meta then
             local status, err = pcall(function()
                local out = docClass(cl)
-               out = out .. docTypes(cl.references)
-               out = out .. docStructures(cl.references)
-               out = out .. '</book>\n'
+               out ..= docTypes(cl.references)
+               out ..= docStructures(cl.references)
+               out ..= '</book>\n'
                if out?? then
                   local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
                   print("Saving XML class documentation to \"" .. file.path .. '"')
@@ -428,12 +428,12 @@ function extractParagraph(Input, Caller, References)
          if (line:match('^!(%w*)$') != nil) then
             action = 'insert'
             line = line:gsub('!(%w*)', function(Lookup)
-               if (glStructures[Lookup]) then
+               if glStructures[Lookup] then
                   if References then
                      References['STRUCT:' .. Lookup] = 1
                   end
                   return '<struct lookup="' .. Lookup .. '"/>'
-               elseif (glCustomTypes[Lookup]) then
+               elseif glCustomTypes[Lookup] then
                   if References then
                      References['TYPE:' .. Lookup] = 1
                   end
@@ -443,14 +443,14 @@ function extractParagraph(Input, Caller, References)
                   --print(debug.traceback())
                end
             end)
-         elseif (line:match('^<pre>.-') != nil) or (line:match('^<h%d>.-') != nil) or
-            (line:match('^<header>.-') != nil) or (line:match('^<list.->')) then
+         elseif line:match('^<pre>.-') or line:match('^<h%d>.-') or
+            line:match('^<header>.-') or line:match('^<list.->') then
             action = 'balance'
-         elseif (line:match('^<%a+(.-)>.-</%a->.-$') != nil) then
+         elseif line:match('^<%a+(.-)>.-</%a->.-$') then
             action = 'paragraph'
-         elseif (line:match('^<%a+(.-)/>$') != nil) then
+         elseif line:match('^<%a+(.-)/>$') then
             action = 'insert'
-         elseif (line:match('^<%a') != nil) then
+         elseif line:match('^<%a') then
             action = 'balance'
          else
            action = 'paragraph'
@@ -462,30 +462,30 @@ function extractParagraph(Input, Caller, References)
             repeat
                string.gsub(lines[i], '<(.-)>', function(key,val)
                   if (key:sub(1,1) == '/') then
-                     balance = balance - 1
+                     balance -= 1
                   else
-                     balance = balance + 1
+                     balance += 1
                   end
                end)
                Input = Input .. lines[i] .. '\n'
-               i = i + 1
+               i += 1
             until (balance <= 0) or (i > #lines)
          elseif (action == 'paragraph') then
             -- Sanity check for tags that start a line but are part of a paragraph.
             if (currentParagraph == nil) then
                currentParagraph = line
             else
-               currentParagraph = currentParagraph .. ' ' .. line
+               currentParagraph ..= ' ' .. line
             end
-            i = i + 1
+            i += 1
          elseif (action == 'insert') then
             closeParagraph()
-            Input = Input .. line .. '\n'
-            i = i + 1
+            Input ..= line .. '\n'
+            i += 1
          end
       else -- Blank line
          closeParagraph()
-         i = i + 1
+         i += 1
       end
    end
 
@@ -778,8 +778,6 @@ function docClass(Class)
    end
 
    if not table.empty(Class.fields) then
-print('Found ' .. tostring(#Class.fields) .. ' fields in class ' .. Class.name)
-
       -- Process fields
       Class.sortedFields = { }
       for _, f in pairs(Class.fields) do
