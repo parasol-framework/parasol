@@ -306,9 +306,10 @@ function outputClassHeader(class, Private, Custom)
 
    -- Insert registered actions
 
+   output('')
+   output('   // Action stubs\n')
+
    if not table.empty(class.sortedActions) then
-      output('')
-      output('   // Action stubs\n')
       for _, action in ipairs(class.sortedActions) do
          if glActionStubs[action.name] then
             if (glActionStubs[action.name]:len() != 0) then
@@ -324,6 +325,8 @@ function outputClassHeader(class, Private, Custom)
       if not class.actions['Init'] then
          output(glActionStubs['Init'])
       end
+   else
+      output(glActionStubs['Init'])
    end
 
    -- Insert registered methods

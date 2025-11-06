@@ -737,7 +737,7 @@ function class(Name, Options, Spec, Private, Custom)
          }
          for _, pattern in pairs(patterns) do
             for actionName in string.gmatch(content, pattern) do
-               if (glActions[actionName] != nil) then
+               if glActions[actionName] then
                   verbose('Discovered action ' .. actionName)
                   class.actions[actionName] = { name=actionName }
                else

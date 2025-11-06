@@ -211,11 +211,13 @@ function parseClassFields(class, ClientSpec)
       -- NB: Some classes don't output any fields (which is permissable)
 
       local metaFields = class.meta.subFields
-      if (not metaFields) and (class.meta.classID is class.meta.baseClassID) then
+      if table.empty(metaFields) and (class.meta.classID is class.meta.baseClassID) then
          metaFields = class.meta.fields
       end
 
-      for k, f in ipairs((metaFields ? { })) do
+      if table.empty(metaFields) then metaFields = { } end
+      
+      for k, f in ipairs(metaFields) do
          local def = getMetaFieldDefinition(f)
          if def and (def.synonym != true) then
             local f = findClassField(class, def.name) -- Retrieve field parsed from FDL, if defined
