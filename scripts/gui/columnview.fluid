@@ -64,14 +64,14 @@ local function columnText(Value, Type)
 
       return string.format('%4d-%02d-%02d %02d:%02d', lDate.year, lDate.month, lDate.day, lDate.hour, lDate.minute)
    elseif Type == 'numeric' then
-      return string.format('%d', tonumber(Value??, 0))
+      return string.format('%d', (tonumber(Value) ? 0))
    elseif Type == 'seconds' then
-      Value = tonumber(Value??, 0)
+      Value = (tonumber(Value) ? 0)
       local min = Value / 60
       local sec = Value % 60
       return string.format('%d:%.2d', min, sec)
    elseif Type == 'float' then
-      return string.format('%.3f', tonumber(Value??, 0))
+      return string.format('%.3f', (tonumber(Value) ? 0))
    end
 
    return Value

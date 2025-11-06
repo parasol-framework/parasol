@@ -123,7 +123,7 @@ function getFieldType(Def, Type, CustomName, Option)
       elseif Type & FD_DOUBLE != 0 then
          result = 'DOUBLE'
          ptr = ptr + 1
-      elseif Type & (FD_OBJECT | (FD_INTEGRAL ? FD_LOCAL)) != 0 then -- FD_INTEGRAL is deprecated
+      elseif Type & (FD_OBJECT | (FD_INTEGRAL or FD_LOCAL)) != 0 then -- FD_INTEGRAL is deprecated
          Def.type = 'OBJECTPTR'
          return
       elseif Type & FD_STRING != 0 then

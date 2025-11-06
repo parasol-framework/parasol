@@ -286,7 +286,7 @@ end
 
    -- Display a file from the commandline, or show the application documentation.
 
-   if arg('file'??) then
+   if arg('file')?? then
       displayFile(arg('file'))
    else
       local doc = glViewArea.new('document', { })

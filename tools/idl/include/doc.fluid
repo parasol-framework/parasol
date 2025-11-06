@@ -804,7 +804,7 @@ function docClass(Class)
                local lookup = ''
                local prototype = ''
                if (f.lookup != nil) then lookup = ' lookup="' .. f.lookup .. '"' end
-               local typeName = (f.docType ? f.type,'NIL'??)
+               local typeName = (f.docType ? (f.type ? 'NIL'))
                if (typeName == 'struct RGB8') then
                   typeName = 'RGB8'
                elseif (typeName == 'int') then

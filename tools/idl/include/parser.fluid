@@ -336,7 +336,7 @@ function parseSourceFiles()
       local processing = nil
       for line in string.gmatch(content, '(.-\n)') do
          if line?? then
-            line = line:match('^(.*%S??'),'')
+            line = (line:match('^(.*%S)') ? '')
             if (line == '-CATEGORY-') or (line == '-FUNCTION-') then
                if (processing == '-CATEGORY-') then parseCategory(currentExtract) end
                if (processing == '-FUNCTION-') then parseFunction(currentExtract) end
