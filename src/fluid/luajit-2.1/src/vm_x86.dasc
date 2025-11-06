@@ -3685,9 +3685,51 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  add PC, 4
     |  cmp RB, LJ_TISTRUECOND
     if (op == BC_IST || op == BC_ISTC) {
-      |  jae >1
+      |  jae >1			// False by type: fallthrough
+      |  // Truthy by type: special-case numbers where 0 is falsey
+      |  cmp RB, LJ_TISNUM
+      |  je >7			// Integer fast-path
+      |  jb >6			// Potential number (double)
+      |  jmp >2			// Not a number: branch
+      |6:
+      |  // Double path: check for +0/-0
+      |  movsd xmm0, qword [BASE+RD*8]
+      |  xorps xmm1, xmm1
+      |  ucomisd xmm0, xmm1
+      |  je >1			// Zero: fallthrough
+      |  jmp >2			// Non-zero: branch
+      |7:
+      |  // Integer path: low 32 bits hold the value
+      |  mov TMPR, [BASE+RD*8]
+      |  test TMPR, TMPR
+      |  jz >1			// Zero: fallthrough
+      |  // else: non-zero integer -> branch
+      |2:
     } else {
-      |  jb >1
+      |  jb >1			// Truthy by type: may still be zero (falsey for ISF)
+      |  // False by type: branch
+      |  jmp >9
+      |3:
+      |  // (unused label placeholder)
+      |3:
+      |  nop
+      |  // Truthy by type: special-case numbers where 0 is falsey
+      |  cmp RB, LJ_TISNUM
+      |  je >8			// Integer fast-path
+      |  jb >6			// Potential number (double)
+      |  jmp >1			// Not a number: fallthrough (no branch)
+      |6:
+      |  movsd xmm0, qword [BASE+RD*8]
+      |  xorps xmm1, xmm1
+      |  ucomisd xmm0, xmm1
+      |  je >9			// Zero: branch
+      |  jmp >1			// Non-zero: fallthrough
+      |8:
+      |  mov TMPR, [BASE+RD*8]
+      |  test TMPR, TMPR
+      |  jnz >1			// Non-zero: fallthrough
+      |  // Zero integer: branch
+      |9:
     }
     if (op == BC_ISTC || op == BC_ISFC) {
       |  mov [BASE+RA*8+4], RB
@@ -5826,4 +5868,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

@@ -3102,22 +3102,59 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov ITYPE, [BASE+RD*8]
     |  add PC, 4
     if (op == BC_ISTC || op == BC_ISFC) {
-      |  mov RB, ITYPE
+      |  mov RB, ITYPE		// Preserve full TValue for copy
     }
     |  sar ITYPE, 47
     |  cmp ITYPEd, LJ_TISTRUECOND
     if (op == BC_IST || op == BC_ISTC) {
-      |  jae >1
+      |  jb >9			// False by type: take branch
+      |  // Truthy by type: special-case numbers where 0 is falsey
+      |  cmp ITYPEd, LJ_TISNUM
+      |  ja >1			// Not a number: fallthrough (no branch)
+      |  je >7			// Integer fast-path
+      |  // Floating-point number: check for +0/-0
+      |  movsd xmm0, qword [BASE+RD*8]
+      |  xorps xmm1, xmm1
+      |  ucomisd xmm0, xmm1
+      |  je >9			// Zero: take branch
+      |  jmp >1			// Non-zero: fallthrough
+      |7:
+      |  // Integer number: low 32 bits hold the value
+      |  mov TMPRd, dword [BASE+RD*8]
+      |  test TMPRd, TMPRd
+      |  jz >9			// Zero: take branch
+      |  jmp >1			// Non-zero: fallthrough
     } else {
-      |  jb >1
+      |  jae >3			// Truthy by type: may still be zero (falsey for ISF)
+      |  jmp >1			// False by type: fallthrough (no branch)
+      |3:
+      |  // Truthy by type: special-case numbers where 0 is falsey (fallthrough)
+      |  cmp ITYPEd, LJ_TISNUM
+      |  ja >9			// Not a number: take branch
+      |  je >8			// Integer fast-path
+      |  // Floating-point number: check for +0/-0
+      |  movsd xmm0, qword [BASE+RD*8]
+      |  xorps xmm1, xmm1
+      |  ucomisd xmm0, xmm1
+      |  je >1			// Zero: fallthrough (no branch)
+      |  jmp >9			// Non-zero: take branch
+      |8:
+      |  mov TMPRd, dword [BASE+RD*8]
+      |  test TMPRd, TMPRd
+      |  jz >1			// Zero: fallthrough (no branch)
+      |  jmp >9			// Non-zero: take branch
     }
+    |1:					// Fallthrough to the next instruction.
+    if (op == BC_ISTC || op == BC_ISFC) {
+      |  mov [BASE+RA*8], RB
+    }
+    |  ins_next
+    |9:
     if (op == BC_ISTC || op == BC_ISFC) {
       |  mov [BASE+RA*8], RB
     }
     |  movzx RDd, PC_RD
     |  branchPC RD
-    |1:					// Fallthrough to the next instruction.
-    |  ins_next
     break;
 
   case BC_ISTYPE:
@@ -4936,4 +4973,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

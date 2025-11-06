@@ -2316,8 +2316,16 @@ void lj_record_ins(jit_State *J)
   /* -- Unary test and copy ops ------------------------------------------- */
 
   case BC_ISTC: case BC_ISFC:
-    if ((op & 1) == tref_istruecond(rc))
-      rc = 0;  /* Don't store if condition is not true. */
+    {
+      int cond_true = tref_istruecond(rc);
+      /* Extended falsey for numbers: zero is falsey. Use runtime value copy rcv. */
+      if (tref_isnumber(rc)) {
+        if (tvisint(rcv)) cond_true = (intV(rcv) != 0);
+        else if (tvisnum(rcv)) cond_true = (!tviszero(rcv));
+      }
+      if ((op & 1) == cond_true)
+        rc = 0;  /* Don't store if condition is not true on this path. */
+    }
     /* fallthrough */
   case BC_IST: case BC_ISF:  /* Type specialization suffices. */
     if (bc_a(pc[1]) < J->maxslot)
@@ -2339,8 +2347,23 @@ void lj_record_ins(jit_State *J)
   /* -- Unary ops --------------------------------------------------------- */
 
   case BC_NOT:
-    /* Type specialization already forces const result. */
-    rc = tref_istruecond(rc) ? TREF_FALSE : TREF_TRUE;
+    /* Respect extended falsey for numbers at JIT-time: 0 is falsey. */
+    if (tref_isnumber(rc)) {
+      if (tref_isk(rc)) {
+        int is_true;
+        if (tvisint(rcv)) is_true = (intV(rcv) != 0);
+        else if (tvisnum(rcv)) is_true = (!tviszero(rcv));
+        else is_true = 1;
+        rc = is_true ? TREF_FALSE : TREF_TRUE;
+      } else {
+        /* Dynamic number: conservative choice is to bail to interpreter for correctness. */
+        lj_record_stop(J, LJ_TRLINK_INTERP, 0);
+        return;
+      }
+    } else {
+      /* Type-based truthiness for non-numbers unchanged. */
+      rc = tref_istruecond(rc) ? TREF_FALSE : TREF_TRUE;
+    }
     break;
 
   case BC_LEN:

@@ -2919,15 +2919,48 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   add RB, PC, RB, lsl #2
     |  checktp CARG2, LJ_TTRUE
     if (op == BC_ISTC || op == BC_IST) {
-      |  subls PC, RB, #0x20000
+      |  bhs >1                 @ False by type: fallthrough
+      |  // Truthy by type: if number and zero, treat as falsey
+      |  checknum RC, >2
+      |  checkint RC, >3
+      |  // Double: compare to +0.0
+      |  vmov.f64 d0, #0.0
+      |  vldr d1, [BASE, RC, lsl #3]
+      |  vcmp.f64 d1, d0
+      |  vmrs APSR_nzcv, FPSCR
+      |  beq >1
+      |  b >2
+      |3:
+      |  ldr TMP0, [BASE, RC, lsl #3]
+      |  cmp TMP0, #0
+      |  beq >1
+      |2:
+      |  sub PC, RB, #0x20000
       if (op == BC_ISTC) {
-	|  strdls CARG12, [BASE, RA]
+	|  strd CARG12, [BASE, RA]
       }
     } else {
-      |  subhi PC, RB, #0x20000
+      |  blo >1                 @ Truthy by type: may still be zero
+      |  // False by type: branch
+      |  sub PC, RB, #0x20000
       if (op == BC_ISFC) {
-	|  strdhi CARG12, [BASE, RA]
+	|  strd CARG12, [BASE, RA]
       }
+      |  b >4
+      |1:
+      |  // Truthy by type: branch only if number is zero
+      |  checknum RC, >4
+      |  checkint RC, >5
+      |  vmov.f64 d0, #0.0
+      |  vldr d1, [BASE, RC, lsl #3]
+      |  vcmp.f64 d1, d0
+      |  vmrs APSR_nzcv, FPSCR
+      |  bne >4
+      |  sub PC, RB, #0x20000
+      if (op == BC_ISFC) {
+	|  strd CARG12, [BASE, RA]
+      }
+      |4:
     }
     |  ins_next
     break;
@@ -4663,4 +4696,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

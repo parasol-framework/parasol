@@ -1,0 +1,131 @@
+-- Flute tests for numeric truthiness (0 is falsey, non-zero is truthy)
+
+function testIfZeroConstant()
+   local flag = "unset"
+   if 0 then
+      flag = "then"
+   else
+      flag = "else"
+   end
+   assert(flag is "else", "if 0 should take else branch")
+end
+
+function testIfZeroVariable()
+   local x = 0
+   local flag = "unset"
+   if x then
+      flag = "then"
+   else
+      flag = "else"
+   end
+   assert(flag is "else", "if x==0 should take else branch")
+end
+
+function testIfNonZero()
+   local y = 5
+   local flag = "unset"
+   if y then
+      flag = "then"
+   else
+      flag = "else"
+   end
+   assert(flag is "then", "if non-zero should take then branch")
+end
+
+function retzero()
+   return 0
+end
+
+function retone()
+   return 1
+end
+
+function testIfFunctionReturns()
+   local a = "unset"
+   if retzero() then
+      a = "then"
+   else
+      a = "else"
+   end
+   assert(a is "else", "if retzero() should take else branch")
+
+   local b = "unset"
+   if retone() then
+      b = "then"
+   else
+      b = "else"
+   end
+   assert(b is "then", "if retone() should take then branch")
+end
+
+function testAndOrConstants()
+   local r1 = (0 and 7)
+   assert(r1 is 0, "0 and 7 should yield 0")
+
+   local r2 = (1 and 7)
+   assert(r2 is 7, "1 and 7 should yield 7")
+
+   local r3 = (0 or 7)
+   assert(r3 is 7, "0 or 7 should yield 7")
+
+   local r4 = (2 or 7)
+   assert(r4 is 2, "2 or 7 should yield 2")
+end
+
+function testAndOrVariables()
+   local a = 0
+   local b = 9
+   local c = 3
+
+   local r1 = (a and b)
+   assert(r1 is 0, "x=0 => x and y should yield 0, got " .. tostring(r1))
+
+   local r2 = (b and c)
+   assert(r2 is 3, "non-zero and non-zero should yield RHS, got " .. tostring(r2))
+
+   local r3 = (a or b)
+   assert(r3 is 9, "x=0 => x or y should yield y, got " .. tostring(r3))
+
+   local r4 = (c or b)
+   assert(r4 is 3, "non-zero or y should yield LHS, got " .. tostring(r4))
+end
+
+function testNotConstants()
+   -- Constant folding path
+   assert((not 0) is true, "not 0 should be true (constant), got " .. tostring((not 0)))
+   assert((not 1) is false, "not 1 should be false (constant), got " .. tostring((not 1)))
+end
+
+function testJitLoopRuntimeIfZero()
+   -- Encourage JIT to trace and ensure runtime zero is falsey in conditionals
+   local sum = 0
+   for i = 1, 2000 do
+      local x = 0
+      if x then
+         sum += 10
+      else
+         sum += 1
+      end
+   end
+   assert(sum is 2000, "looped if x==0 should always take else branch, got " .. tostring(sum))
+end
+
+function testOrQuestionCompatibility()
+   -- Ensure extended falsey for ? operator still treats 0 as falsey
+   local v = (0 ? 5)
+   assert(v is 5, "0 ? 5 should yield 5")
+
+   local w = (2 ? 5)
+   assert(w is 2, "2 ? 5 should yield 2")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testIfZeroConstant', 'testIfZeroVariable', 'testIfNonZero',
+         'testIfFunctionReturns', 'testAndOrConstants', 'testAndOrVariables',
+         'testNotConstants', 'testJitLoopRuntimeIfZero', 'testOrQuestionCompatibility'
+      }
+   }
+

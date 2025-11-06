@@ -2479,15 +2479,48 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp TMP0, TMP1
     |   sub RB, RB, #0x20000
     if (op == BC_ISTC || op == BC_IST) {
+      |  bhs >1                 // False by type: fallthrough
+      |  // Truthy by type: if number and zero, treat as falsey
+      |  checknum RC, >2
+      |  // Number: check zero. Integers have itype LJ_TISNUM, doubles compare to 0.0
+      |  checkint RC, >3
+      |  // Double: compare payload to +0.0
+      |  fmov d0, xzr
+      |  ldr d1, [BASE, RC, lsl #3]
+      |  fcmp d1, d0
+      |  beq >1                 // Zero: fallthrough
+      |  b >2                   // Non-zero: branch
+      |3:
+      |  ldr WTMP1, [BASE, RC, lsl #3]
+      |  cbz WTMP1, >1          // Zero int: fallthrough
+      |2:
       if (op == BC_ISTC) {
-	|  csel RA, RA, RC, lo
+	|  mov RA, RC
       }
-      |  csel PC, RB, PC, lo
+      |  mov PC, RB
     } else {
+      |  blo >1                 // Truthy by type: may still be zero (falsey)
+      |  // False by type: branch
       if (op == BC_ISFC) {
-	|  csel RA, RA, RC, hs
+	|  mov RA, RC
       }
-      |  csel PC, RB, PC, hs
+      |  mov PC, RB
+      |  b >4
+      |1:
+      |  // Truthy by type: branch only if number is zero
+      |  checknum RC, >4
+      |  checkint RC, >5
+      |  // Double compare to +0.0
+      |  fmov d0, xzr
+      |  ldr d1, [BASE, RC, lsl #3]
+      |  fcmp d1, d0
+      |  bne >4                 // Non-zero: fallthrough
+      if (op == BC_ISFC) {
+	|  mov RA, RC
+      }
+      |  mov PC, RB             // Zero: branch
+      |4:
+      // Fallthrough
     }
     if (op == BC_ISTC || op == BC_ISFC) {
       |  str TMP0, [BASE, RA, lsl #3]
@@ -4156,4 +4189,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

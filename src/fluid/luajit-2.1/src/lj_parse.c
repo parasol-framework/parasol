@@ -771,8 +771,18 @@ static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 {
   BCPos pc;
   expr_discharge(fs, e);
-  if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE)
-    pc = NO_JMP;  /* Never jump. */
+  if (e->k == VKTRUE || e->k == VKSTR)
+    pc = NO_JMP;  /* Always truthy. Never jump on true-branch setup. */
+  else if (e->k == VKNUM) {
+    /* Numbers are truthy only if non-zero. */
+    if (expr_numiszero(e)) {
+      /* Constant falsey: arrange a jump and add to false list. */
+      expr_toreg_nobranch(fs, e, NO_REG);
+      pc = bcemit_jmp(fs);
+    } else {
+      pc = NO_JMP;  /* Non-zero numbers are truthy. */
+    }
+  }
   else if (e->k == VJMP)
     invertcond(fs, e), pc = e->u.s.info;
   else if (e->k == VKFALSE || e->k == VKNIL)
@@ -790,10 +800,18 @@ static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
   BCPos pc;
   expr_discharge(fs, e);
   if (e->k == VKNIL || e->k == VKFALSE)
-    pc = NO_JMP;  /* Never jump. */
+    pc = NO_JMP;  /* Always falsey: no jump in false-branch setup. */
+  else if (e->k == VKNUM) {
+    /* Numbers are falsey only if zero. */
+    if (expr_numiszero(e)) {
+      pc = NO_JMP;  /* Zero is falsey: no jump. */
+    } else {
+      expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);  /* Non-zero is truthy: emit jump. */
+    }
+  }
   else if (e->k == VJMP)
     pc = e->u.s.info;
-  else if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE)
+  else if (e->k == VKSTR || e->k == VKTRUE)
     expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
   else
     pc = bcemit_branch(fs, e, 1);
@@ -1293,7 +1311,12 @@ static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
     if (e->k == VKNIL || e->k == VKFALSE) {
       e->k = VKTRUE;
       return;
+    } else if (e->k == VKNUM) {
+      /* Numbers: zero is falsey -> not 0 is true; non-zero -> false. */
+      e->k = expr_numiszero(e) ? VKTRUE : VKFALSE;
+      return;
     } else if (expr_isk(e) || (LJ_HASFFI && e->k == VKCDATA)) {
+      /* Other constants (true, strings) and cdata are truthy -> not is false. */
       e->k = VKFALSE;
       return;
     } else if (e->k == VJMP) {
