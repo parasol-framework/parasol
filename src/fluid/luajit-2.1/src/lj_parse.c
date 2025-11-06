@@ -2541,7 +2541,7 @@ static BinOpr token2binop(LexToken tok)
   case TK_shr: return OPR_SHR;
   case TK_and:	return OPR_AND;
   case TK_or:	return OPR_OR;
-  case TK_if_null: return OPR_IF_EMPTY;
+  case TK_if_empty: return OPR_IF_EMPTY;
   default:	return OPR_NOBINOPR;
   }
 }
