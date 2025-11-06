@@ -272,15 +272,15 @@ function parseClassFields(class, ClientSpec)
          end
 
          if f.ref then
-            cdef = cdef .. outputLookup(class.name .. f.name, f.ref.list)
+            cdef ..= outputLookup(class.name .. f.name, f.ref.list)
          end
 
          if not f.fullType?? then error('The fullType is not defined for field ' .. tostring(f.name)) end
 
-         fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
+         fdef ..= "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
       end
    end
-   fdef = fdef .. '};\n\n'
+   fdef ..= '};\n\n'
 
    return cdef
 end
@@ -350,10 +350,10 @@ function parseSourceFiles()
                currentExtract = nil
                processing = nil
             elseif processing then
-               currentExtract = currentExtract .. line .. '\n'
+               currentExtract ..= line .. '\n'
             end
          elseif processing then
-            currentExtract = currentExtract .. '\n'
+            currentExtract ..= '\n'
          end
       end
 

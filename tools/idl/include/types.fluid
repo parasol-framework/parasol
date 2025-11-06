@@ -116,13 +116,13 @@ function getFieldType(Def, Type, CustomName, Option)
       local ptr = 0
       if Type & FD_INT != 0 then
          result = 'INT'
-         ptr = ptr + 1
+         ptr += 1
       elseif Type & FD_INT64 != 0 then
          result = 'INT64'
-         ptr = ptr + 1
+         ptr += 1
       elseif Type & FD_DOUBLE != 0 then
          result = 'DOUBLE'
-         ptr = ptr + 1
+         ptr += 1
       elseif Type & (FD_OBJECT | FD_LOCAL) != 0 then
          Def.type = 'OBJECTPTR'
          return
@@ -131,10 +131,10 @@ function getFieldType(Def, Type, CustomName, Option)
          return
       elseif Type & FD_RGB != 0 then
          result = 'RGB'
-         ptr = ptr + 1
+         ptr += 1
       elseif Type & FD_FUNCTION != 0 then
          result = 'FUNCTION'
-         ptr = ptr + 1
+         ptr += 1
       elseif Type & FD_STRUCT != 0 then
          if Option?? then -- We need a way to convert the Option number to a string address...
             result = 'APTR'
@@ -146,7 +146,7 @@ function getFieldType(Def, Type, CustomName, Option)
          return
       end
 
-      if (ptr > 0) then
+      if ptr > 0 then
          Def.type = result .. ' ' .. string.rep('*', ptr)
       else
          Def.type = result
@@ -179,7 +179,7 @@ end
 -- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment }
 
 function cType(Field, Origin)
-   if (Field.type == nil) then
+   if not Field.type then
       error("Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'")
    end
 
@@ -190,13 +190,13 @@ function cType(Field, Origin)
 
    local resultValue
    local special, result_type = Field.type:match('^([!&]+)(.+)')
-   if (special != nil) and (result_type != nil) then
-      if (special:find('!')) then Field.allocated = true end
+   if special and result_type then
+      if special:find('!') then Field.allocated = true end
       resultValue = true
       Field.type = result_type
    end
 
-   if (Field.type:match('^structsize') != nil) then
+   if Field.type:match('^structsize') then
       Field.sizeof = true
    end
 
@@ -204,7 +204,7 @@ function cType(Field, Origin)
 
    do
       local cpp_type = Field.type:match('^cpp%((.+)%)$')
-      if (cpp_type != nil) then
+      if cpp_type then
          Field.cpp  = true
          Field.type = cpp_type
          Field = cType(Field, Origin)
@@ -215,40 +215,36 @@ function cType(Field, Origin)
 
    do
       local const, struct = Field.type:match('^(c-)class%((.+)%)$')
-      if (struct) then
+      if struct then
          Field.isClass = true
       else
          const, struct = Field.type:match('^(c-)struct%((.+)%)$')
       end
 
-      if (struct != nil) then
+      if struct then
          local ptr_struct = struct:match('%*(.+)')
-         if (ptr_struct != nil) then struct = ptr_struct end
+         if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
-         if Field.isClass then
-            Field.type = 'class ' .. struct
-         else
-            Field.type = 'struct ' .. struct
-         end
+         Field.type = Field.isClass ? ('class ' .. struct) :> ('struct ' .. struct)
 
-         if (glStructures[struct] != nil) then
+         if glStructures[struct] then
             glActiveRefs['STRUCT:' .. struct] = 1
 
-            if (glStructures[struct].version != nil) then
+            if glStructures[struct].version then
                Field.type = Field.type .. 'V' .. glStructures[struct].version
             end
-         elseif (glCurrentStructure != struct) then
+         elseif glCurrentStructure != struct then
             if not glPrivateNames[struct] then
                print('WARN: Unknown struct reference "' .. struct .. '"')
             end
          end
 
-         if (ptr_struct != nil) then
+         if ptr_struct then
             Field.type = Field.type .. ' *'
             Field.fullType = { fd='FD_PTR|FD_STRUCT', c_type='APTR' }
-         elseif (Field.isFunction) then
-            if (Field.isArray) then
+         elseif Field.isFunction then
+            if Field.isArray then
                Field.fullType = { fd='FD_STRUCT', c_type='APTR' }
             else
                Field.type = Field.type .. ' *'
@@ -258,8 +254,8 @@ function cType(Field, Origin)
             Field.fullType = { fd='FD_PTR|FD_STRUCT', c_type='APTR' }
          end
 
-         if (const??) then
-            Field.type =  'const ' .. Field.type
+         if const?? then
+            Field.type = 'const ' .. Field.type
          end
 
          goto finalise
@@ -268,26 +264,26 @@ function cType(Field, Origin)
 
    do -- Resources are structs, but with an FD_RESOURCE marker.
       local const, struct = Field.type:match('^(c-)resource%((.+)%)$')
-      if (struct != nil) then
+      if struct then
          local ptr_struct = struct:match('%*(.+)')
-         if (ptr_struct != nil) then struct = ptr_struct end
+         if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
          Field.type = 'struct ' .. struct
 
-         if (glStructures[struct] != nil) then
+         if glStructures[struct] then
             glActiveRefs['STRUCT:' .. struct] = 1
 
-            if (glStructures[struct].version != nil) then
+            if glStructures[struct].version then
                Field.type = Field.type .. 'V' .. glStructures[struct].version
             end
          end
 
-         if (ptr_struct != nil) then
+         if ptr_struct then
             Field.type = Field.type .. ' *'
             Field.fullType = { fd='FD_PTR|FD_STRUCT|FD_RESOURCE', c_type='APTR' }
-         elseif (Field.isFunction) then
-            if (Field.isArray) then
+         elseif Field.isFunction then
+            if Field.isArray then
                Field.fullType = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' }
             else
                Field.type = Field.type .. ' *'
@@ -297,7 +293,7 @@ function cType(Field, Origin)
             Field.fullType = { fd='FD_PTR|FD_STRUCT|FD_RESOURCE', c_type='APTR' }
          end
 
-         if (const??) then
+         if const?? then
             Field.type =  'const ' .. Field.type
          end
 
@@ -308,15 +304,15 @@ function cType(Field, Origin)
    do
       local ref_obj = Field.type:match('^ext%((.+)%)$')
       local extended = false
-      if (ref_obj != nil) then -- 'ext' indicates an object class extended with private fields.
+      if ref_obj then -- 'ext' indicates an object class extended with private fields.
          extended = true
       else
          ref_obj = Field.type:match('^obj%((.+)%)$')
       end
 
-      if (ref_obj != nil) then
+      if ref_obj then
          local ptr_object = ref_obj:match('%*(.+)')
-         if (ptr_object != nil) then
+         if ptr_object then
             Field.type = 'obj' .. ptr_object .. ' **'
             if extended then Field.extType = 'ext' .. ptr_object .. ' **' end
             Field.className = ptr_object
@@ -332,7 +328,7 @@ function cType(Field, Origin)
 
    do -- Example: bit(int)
       local bitType = Field.type:match('^bit%((.+)%)$')
-      if (bitType != nil) then
+      if bitType then
          Field.type     = cType({ type=bitType, name='' }, Origin).type
          Field.name     = Field.name
          Field.fullType = glTypes[bitType]
@@ -343,13 +339,13 @@ function cType(Field, Origin)
 
    do -- Integer flags type reference, can be used for strongly typed enum flags
       local prefix = Field.type:match('^flags%((%a+)%)')
-      if (prefix != nil) then
+      if prefix then
          Field.type     = prefix
          Field.fullType = glTypes.int
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         if (glCustomTypes[prefix] != nil) then
+         if glCustomTypes[prefix] then
             glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
@@ -360,20 +356,20 @@ function cType(Field, Origin)
 
    do -- Integer/Char/Large type reference
       local t, prefix = Field.type:match('^([intlargecharuso]+)%((%a+)%)')
-      if (prefix != nil) then
-         if (t == 'char') then
+      if prefix then
+         if t is 'char' then
             Field.type     = 'char'
             Field.fullType = glTypes.char
-         elseif (t == 'int') then
+         elseif t is 'int' then
             Field.type     = 'int'
             Field.fullType = glTypes.int
-         elseif (t == 'large') then
+         elseif t is 'large' then
             Field.type     = 'INT64'
             Field.fullType = glTypes.large
-         elseif (t == 'short') then
+         elseif t is 'short' then
             Field.type = 'int16_t'
             Field.fullType = glTypes.short
-         elseif (t == 'ushort') then
+         elseif t is 'ushort' then
             Field.type = 'uint16_t'
             Field.fullType = glTypes.ushort
          else
@@ -383,9 +379,9 @@ function cType(Field, Origin)
          Field.ref    = glCustomTypes[prefix]
          Field.lookup = prefix
 
-         if (glCustomTypes[prefix] != nil) then
+         if glCustomTypes[prefix] then
             glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
+            if glCustomTypes[prefix].type then -- Strongly typed
                Field.type = prefix
             end
          else
@@ -397,7 +393,7 @@ function cType(Field, Origin)
 
    do -- Char arrays
       local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
-      if (count != nil) then
+      if count then
          Field.type = 'char'
          if unsigned?? then Field.type = 'unsigned ' .. Field.type end
          Field.arraySize = tonumber(count)
@@ -408,12 +404,8 @@ function cType(Field, Origin)
 
    do -- Integer arrays
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
-      if (count != nil) then
-         if unsigned?? then
-            Field.type = 'uint32_t'
-         else
-            Field.type = 'int'
-         end
+      if count then
+         Field.type = unsigned?? ? 'uint32_t' :> 'int'
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.int
          goto finalise
@@ -422,7 +414,7 @@ function cType(Field, Origin)
 
    do -- Double arrays
       local count = Field.type:match('^double%((.+)%)')
-      if (count != nil) then
+      if count then
          Field.type = 'double'
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.double
@@ -432,7 +424,7 @@ function cType(Field, Origin)
 
    do -- Float arrays
       local count = Field.type:match('^float%((.+)%)')
-      if (count != nil) then
+      if count then
          Field.type = 'float'
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.float
@@ -442,16 +434,16 @@ function cType(Field, Origin)
 
    do
       local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
-      if (ptr_type != nil) then
+      if ptr_type then
          local ptr_ctype = cType({ type=ptr_type }, Origin)
 
          Field.type = ptr_ctype.type .. ' *'
 
-         if (const??) then
+         if const?? then
             Field.type =  'const ' .. Field.type
          end
 
-         if (ptr_type == 'func') then
+         if ptr_type is 'func' then
             Field.fullType = { fd='FD_FUNCTIONPTR', c_type='FUNCTION *' }
          else
             Field.fullType = { fd='FD_PTR', c_type='APTR' }
@@ -466,7 +458,7 @@ function cType(Field, Origin)
 
    do
       local buf_type = Field.type:match('^buf%((.+)%)')
-      if (buf_type != nil) then
+      if buf_type then
          Field.type = buf_type
          Field = cType(Field, Origin)
          Field.fullType = { fd='FD_BUFFER|' .. Field.fullType.fd, c_type='APTR' }
@@ -482,19 +474,15 @@ function cType(Field, Origin)
 
    do
       local array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
-      if array_type != nil then
+      if array_type then
          array_size = tonumber(array_size)
-         if array_size == 0 then
+         if array_size is 0 then
             Field.isArray = true
             Field.type = array_type
             Field.arraySize = 0
             Field = cType(Field, Origin)
-            if (Field.cpp) then
-               if Field.struct then
-                  Field.type = 'pf::vector<' .. Field.struct .. '>'
-               else
-                  Field.type = 'pf::vector<' .. Field.type .. '>'
-               end
+            if Field.cpp then
+               Field.type = 'pf::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
             else
                Field.type = Field.type .. ' *'
             end
@@ -511,16 +499,12 @@ function cType(Field, Origin)
 
    do
       local array_type = Field.type:match('^array%((.+)%)$')
-      if array_type != nil then
+      if array_type then
          Field.isArray = true
          Field.type = array_type
          Field = cType(Field, Origin)
-         if (Field.cpp) then
-            if Field.struct then
-               Field.type = 'pf::vector<' .. Field.struct .. '>'
-            else
-               Field.type = 'pf::vector<' .. Field.type .. '>'
-            end
+         if Field.cpp then
+            Field.type = 'pf::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
          else
             Field.type = Field.type .. ' *'
          end
@@ -531,18 +515,12 @@ function cType(Field, Origin)
 
    do
       local args = Field.type:match('^fptr%((.+)%)$')
-      if args != nil then
+      if args then
          local arglist = args:split(' ')
 
          -- Process function result type
 
-         if #arglist < 1 then
-            Field.type = 'void'
-         else
-            Field.type = (glTypes[arglist[1]].c_type ? arglist[1])
-         end
-
-         Field.type = Field.type .. ' (*' .. Field.name .. ')'
+         Field.type = ((#arglist < 1) ? 'void' :> (glTypes[arglist[1]].c_type ? arglist[1])) .. ' (*' .. Field.name .. ')'
 
          -- Process function parameters
 
@@ -563,7 +541,7 @@ function cType(Field, Origin)
       end
    end
 
-   if glTypes[Field.type] == nil then
+   if not glTypes[Field.type] then
       error("No handling for field type '" .. Field.type .. "' from " .. tostring(Origin))
    end
 
@@ -580,7 +558,7 @@ function cType(Field, Origin)
    if resultValue then -- If the type is a result value, append a '*'
       Field.resultValue = true
 
-      if (Field.isResponse) then
+      if Field.isResponse then
          -- Do nothing
       elseif Field.type:find('%*$') then
          Field.type = Field.type .. '*'
@@ -601,7 +579,7 @@ function cType(Field, Origin)
 
    local _, count = Field.type:gsub('*', '')
    local _, b_count = Field.docType:gsub('*', '')
-   if count > 0 and b_count == 0 then
+   if count > 0 and b_count is 0 then
       Field.docType = Field.docType .. ' ' .. string.rep('*', count)
    end
 
