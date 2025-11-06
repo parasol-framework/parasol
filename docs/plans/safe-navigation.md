@@ -4,7 +4,7 @@
 
 This document provides a detailed step-by-step implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT. This operator allows safe access to fields and methods on potentially nil objects, returning `nil` if the object is nil instead of raising an error.
 
-**Status:** 📋 **Implementation Plan** - Not yet started
+**Status:** 🚧 **In Progress** - Lexer and parser support implemented for field/method/index chaining
 
 **Priority:** ⭐⭐⭐ **Medium**
 
@@ -34,6 +34,21 @@ local name = user?.profile?.name ?? "Guest"
 local result = obj?.method() or? "default"
 local value = table?[key] ?? 0
 ```
+
+## Progress Summary (2025-02-15)
+
+- ✅ **Lexer support**: Added `TK_safe_field`, `TK_safe_method`, and `TK_safe_index` tokens in `lj_lex.h`/`lj_lex.c`, enabling direct recognition of `?.`, `?:`, and `?[`.
+- ✅ **Parser suffix handling**: Updated `expr_primary()` to dispatch safe navigation suffixes before the standard field/index/method handlers, preserving chaining behaviour.
+- ✅ **Safe navigation semantics**: Implemented `expr_safe_field()`, `expr_safe_method()`, and `expr_safe_index()` in `lj_parse.c`, emitting nil-short-circuit bytecode that reuses the underlying register for chaining.
+- ✅ **Short-circuiting arguments**: Safe method calls jump over argument evaluation when the receiver is nil by emitting guarded blocks and patching the nil-path `BC_KPRI` to the eventual call base register.
+- ✅ **Build verification**: `fluid` and `parasol_cmd` rebuilt and installed via `cmake --build` / `cmake --install` (Release configuration).
+
+## Remaining Work
+
+- ⚙️ Optimise compile-time nil handling (Step 12) to avoid emitting redundant bytecode when the receiver is a constant nil.
+- 🧪 Author dedicated Fluid regression tests (Step 14) covering safe navigation combinations, argument short-circuiting, and chaining edge cases.
+- 📝 Update reference documentation (Step 15) with syntax/semantics, and ensure integration examples reflect the new operator.
+- 🔍 Evaluate additional edge cases (e.g., multi-return receivers, metamethod interactions) and adjust parser logic if needed.
 
 ## Implementation Steps
 
@@ -120,7 +135,7 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 4: Implement Safe Field Access
+### Step 4: Implement Safe Field Access ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -176,7 +191,7 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 5: Implement Safe Method Call
+### Step 5: Implement Safe Method Call ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -230,7 +245,7 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 6: Implement Safe Index Access
+### Step 6: Implement Safe Index Access ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -277,7 +292,7 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 7: Integrate Safe Navigation into expr_primary()
+### Step 7: Integrate Safe Navigation into expr_primary() ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -326,7 +341,7 @@ if (ls->tok == '?') {
 
 ---
 
-### Step 8: Implement Token Lookahead (if needed)
+### Step 8: Implement Token Lookahead (if needed) ✅ *(Not required - tokens implemented in lexer 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_lex.c` and `lj_lex.h`
 
@@ -357,7 +372,7 @@ case '?':
 
 ---
 
-### Step 9: Add Safe Navigation Tokens to Lexer
+### Step 9: Add Safe Navigation Tokens to Lexer ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_lex.h`
 
@@ -392,7 +407,7 @@ case '?':
 
 ---
 
-### Step 10: Update expr_primary() for Safe Navigation Tokens
+### Step 10: Update expr_primary() for Safe Navigation Tokens ✅ *(Completed 2025-02-15)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
