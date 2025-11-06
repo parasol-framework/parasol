@@ -36,12 +36,12 @@ end
 -- This is a universal callback for any menu item that is activated by the user.
 
 function itemClicked(Menu, Item)
-   print('Selected ' .. nz(Item.item,'NIL'))
+   print('Selected ' .. (Item.item ? 'NIL'))
 end
 
 function widgetFocus(Widget)
    --if Widget.effect then return end
-   --Widget.effect = vfx.shake(nz(Widget.inputViewport, Widget.viewport), 0.2, 0, 0.2, function(Effect)
+   --Widget.effect = vfx.shake((Widget.inputViewport ? Widget.viewport), 0.2, 0, 0.2, function(Effect)
    --   Widget.effect = nil
    --end)
 end
@@ -157,7 +157,7 @@ end
                      print('User selected option ' .. Response.id)
                   end
                   if State then
-                     print('User entered string: ' .. nz(State.input,'NIL'))
+                     print('User entered string: ' .. (State.input ? 'NIL'))
                      if State.checkbox then
                         print('The user selected the checkbox.')
                      else
@@ -247,7 +247,7 @@ end
                   end
 
                   for k, v in ipairs(Files) do
-                      print(k, ' = ', nz(Path,'') .. v.filename)
+                      print(k, ' = ', (Path ? '') .. v.filename)
                   end
                end
             })
@@ -321,7 +321,7 @@ end
       text   = 'Your text here',
       events = {
          activate = function(Widget, Event)
-            print('Input state set to "' .. nz(Event.state,'NIL') .. '", text "' .. nz(Event.text,'NIL') .. '"')
+            print('Input state set to "' .. (Event.state ? 'NIL') .. '", text "' .. (Event.text ? 'NIL') .. '"')
          end,
          focus = widgetFocus
       }

@@ -97,8 +97,8 @@ end
 
 function timer(Subscriber, Elapsed, Current)
    local moveflag = bit.bor(MTF_X, MTF_Y)
-   glWinWidth  = nz(glSurface.width, 1)
-   glWinHeight = nz(glSurface.height, 1)
+   glWinWidth  = (glSurface.width ? 1)
+   glWinHeight = (glSurface.height ? 1)
 
    for _,p in pairs(glParticles) do
       -- Calculate next position of particle
@@ -258,7 +258,7 @@ end
    end
 
    glParticles = {}
-   local max = tonumber(nz(arg('maxParticles'),500))
+   local max = tonumber(arg('maxParticles'??,500))
    if (max < 100) then max = 100 end
    for i=1,max do
       table.insert(glParticles, newParticle())
