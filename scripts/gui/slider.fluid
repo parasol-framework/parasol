@@ -18,11 +18,11 @@ local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
 gui.slider = function(Options)
    local self = { -- Public variables
-      min    = nz(Options.min, 0),
-      max    = nz(Options.max, 1),
-      value  = nz(Options.value, Options.min + ((Options.max - Options.min) * 0.5)),
+      min    = (Options.min ? 0),
+      max    = (Options.max ? 1),
+      value  = (Options.value ? Options.min + ((Options.max - Options.min) * 0.5)),
       label  = Options.label,
-      events = nz(Options.events, { }),
+      events = (Options.events ? { }),
       viewport = nil
    }
 
@@ -51,7 +51,7 @@ gui.slider = function(Options)
    self._labelSize = 0
 
    if (self.orientation == 'V') then
-      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, height = nz(Options.size, 100), width = BOX_SIZE, overflow = VOF_HIDDEN })
+      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, height = (Options.size ? 100), width = BOX_SIZE, overflow = VOF_HIDDEN })
 
       self._sliderHostVP = self.viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
       lStyle.background(self, self._sliderHostVP)
@@ -71,7 +71,7 @@ gui.slider = function(Options)
       local max_size = self._sliderHostVP.height - BOX_SIZE
       self._sliderVP.y = max_size - ((self.value - self.min) / ((self.max - self.min) / max_size))
    else
-      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, width = nz(Options.size, 100), height = BOX_SIZE })
+      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, width = (Options.size ? 100), height = BOX_SIZE })
 
       if self.label then
          self.labelText = self.viewport.new('VectorText', {

@@ -64,14 +64,14 @@ local function columnText(Value, Type)
 
       return string.format('%4d-%02d-%02d %02d:%02d', lDate.year, lDate.month, lDate.day, lDate.hour, lDate.minute)
    elseif Type == 'numeric' then
-      return string.format('%d', nz(tonumber(Value), 0))
+      return string.format('%d', tonumber(Value??, 0))
    elseif Type == 'seconds' then
-      Value = nz(tonumber(Value), 0)
+      Value = tonumber(Value??, 0)
       local min = Value / 60
       local sec = Value % 60
       return string.format('%d:%.2d', min, sec)
    elseif Type == 'float' then
-      return string.format('%.3f', nz(tonumber(Value), 0))
+      return string.format('%.3f', tonumber(Value??, 0))
    end
 
    return Value
@@ -184,7 +184,7 @@ local function arrangeColumns(View)
          local selName = 'colSelect' .. lCounter
          lCounter = lCounter + 1
 
-         if nz(col.align, 'left') == 'right' then
+         if (col.align ? 'left') == 'right' then
             col.vecGradient = gui.simpleGradient(View.scene, defName,
                { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
                0, 0, col.px_width, 0, 'userspace')
@@ -440,7 +440,7 @@ gui.columnView = function(Options)
                fontSize  = string.format('%.2fpt', View.fontSize),
                fontStyle = View.fontStyle,
                fill      = View.banner.fgFill,
-               align     = nz(col.align, 'left'),
+               align     = (col.align ? 'left'),
                y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
             })
 
@@ -496,7 +496,7 @@ gui.columnView = function(Options)
             col.vecViewport.width = col.px_width
          end
 
-         col.vecTitle.string = nz(col['title'], 'Untitled')
+         col.vecTitle.string = (col['title'] ? 'Untitled')
 
          x = x + col.px_width
          prev = col
@@ -581,7 +581,7 @@ gui.columnView = function(Options)
 
             if col.showIcons and item.icon then
                pcall(function()
-                  local theme = nz(item.iconTheme, gui.style.page.icon)
+                  local theme = (item.iconTheme ? gui.style.page.icon)
                   local uid = theme .. '+' .. item.icon
                   local info = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
                   item._iconFill = info.fill
@@ -623,14 +623,14 @@ gui.columnView = function(Options)
 --]]
             end
 
-            if nz(item[attrib]) then
+            if item[attrib]?? then
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
                      name      = 'text_' .. attrib,
                      face      = View.fontFace,
                      fontSize  = string.format('%.2fpt', View.fontSize),
                      fontStyle = View.fontStyle,
-                     align     = nz(col.align, 'left'),
+                     align     = (col.align ? 'left'),
                      y         = y + LINE_OFFSET,
                      visibility = vis
                   })
@@ -685,7 +685,7 @@ gui.columnView = function(Options)
       LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
       BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 
-      setColumns(View, nz(Options.columns, { }))
+      setColumns(View, (Options.columns ? { }))
 
       View._last_y = EDGE
       if #View.items > 0 then newItems(View, View.items) end

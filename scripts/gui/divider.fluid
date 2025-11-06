@@ -59,10 +59,10 @@ gui.divider = function(Options)
       _pct          = 0.5,
       _proportional = not Options.fixedSize,
       _buttonHeld   = false,
-      _minA = nz(Options.minA, 5),
-      _minB = nz(Options.minB, 5),
-      _maxA = nz(Options.maxA, 8000),
-      _maxB = nz(Options.maxB, 8000),
+      _minA = (Options.minA ? 5),
+      _minB = (Options.minB ? 5),
+      _maxA = (Options.maxA ? 8000),
+      _maxB = (Options.maxB ? 8000),
       _div  = { } -- Area of the 'strip' between the opposing regions.
    }
 

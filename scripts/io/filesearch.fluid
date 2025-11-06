@@ -76,7 +76,7 @@ file.search = function(Path, Options)
 
    local function scanPath(Path, currentDepth)
       if currentDepth == nil then currentDepth = 0 end
-      msg('scanPath() ' .. nz(Path,':') .. ' (depth: ' .. currentDepth .. ')')
+      msg('scanPath() ' .. (Path ? ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
 
@@ -122,7 +122,7 @@ file.search = function(Path, Options)
             end
          end
 
-         if nz(lOptions.minSize) and (lOptions.minSize > 0) and (fl.size < lOptions.minSize) then match = false end
+         if lOptions.minSize?? and (lOptions.minSize > 0) and (fl.size < lOptions.minSize) then match = false end
          if lOptions.maxSize and (lOptions.maxSize >= 0) and (fl.size > lOptions.maxSize) then match = false end
          if lOptions.minDateSet and dateLessThan(fl.modified, lOptions.minDate) then match = false end
          if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.modified) then match = false end

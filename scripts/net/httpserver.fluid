@@ -953,7 +953,7 @@ local function generateDirectoryListing(self, DirPath, URIPath)
          html = html .. '<tr><td colspan="3"><em>Directory listing truncated at ' .. maxEntries .. ' entries</em></td></tr>\n'
       end
    else
-      logMessage(self, 'Failed to open folder ' .. nz(DirPath,'NIL'))
+      logMessage(self, 'Failed to open folder ' .. (DirPath ? 'NIL'))
    end
 
    html = html .. '</tbody>\n</table>\n'
@@ -1708,7 +1708,7 @@ httpServer.start = function(Options)
 
       local err, filetype = mSys.AnalysePath(self.folder)
       if filetype != LOC_FOLDER then
-         error('Error: folder "' .. nz(self.folder,'NIL') .. '" does not exist')
+         error('Error: folder "' .. (self.folder ? 'NIL') .. '" does not exist')
       end
    end
 

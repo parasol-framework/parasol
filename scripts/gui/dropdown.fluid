@@ -23,14 +23,14 @@ gui.dropdown = function(Options)
       visible  = false,
       client   = Options.client,
       feedback = Options.feedback,
-      x        = nz(Options.x, 0),
-      y        = nz(Options.y, 0),
+      x        = (Options.x ? 0),
+      y        = (Options.y ? 0),
       relative = Options.relative,
       items    = { }
    }
 
    local function initVectorScene()
-      local showIcons = nz(Options.showIcons, true)
+      local showIcons = (Options.showIcons ? true)
       local TEXT_X = HMARGIN
 
       if showIcons then
@@ -192,11 +192,11 @@ gui.dropdown = function(Options)
             local y = rel.absY + self.y - target.absY
 
             if lReverseY then
-               y = rel.absY + nz(Options.y, 0) - target.absY - surface.height
+               y = rel.absY + (Options.y ? 0) - target.absY - surface.height
             end
 
             if y + surface.height > target.height then
-               y = y - surface.height - nz(Options.y, 0)
+               y = y - surface.height - (Options.y ? 0)
             end
 
             surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
@@ -249,7 +249,7 @@ gui.dropdown = function(Options)
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
-   self.surface.width      = nz(Options.width, 400)
+   self.surface.width      = (Options.width ? 400)
    self.surface.parent     = Options.target
    self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
    self.surface.x          = -10000

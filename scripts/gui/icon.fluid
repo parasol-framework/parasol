@@ -23,7 +23,7 @@ end
 gui.icon = function(Options)
    local self = { -- Public variables
       parentViewport = Options.target,
-      events         = nz(Options.events, { }),
+      events         = (Options.events ? { }),
       viewport       = nil -- The icon's primary viewport
    }
 
@@ -32,7 +32,7 @@ gui.icon = function(Options)
    local lClick      = { held=false, x=0, y=0 }
    local lWords      = { }
    local lLines      = { }
-   local lIconSize   = nz(Options.size, 66)
+   local lIconSize   = (Options.size ? 66)
    local lIconWidth  = lIconSize
    local lFontSize   = FONT_HEIGHT
    local lLineHeight = 0
@@ -160,14 +160,14 @@ gui.icon = function(Options)
 
    -- Main entry point
 
-   if nz(Options.text) then
+   if Options.text?? then
       lText = Options.text:trim():gsub('%s+', ' '):split(' ')
    else
       lText = nil
    end
 
    if not Options.target then error('A target viewport is required.') end
-   if not nz(Options.image) then error('The image option is required.') end
+   if not Options.image?? then error('The image option is required.') end
 
    if (Options.theme == 'light') then
       lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
@@ -178,7 +178,7 @@ gui.icon = function(Options)
    calcWords()
 
    self.viewport = Options.target.new('VectorViewport', {
-      x = nz(Options.x, 0), y = nz(Options.y, 0),
+      x = (Options.x ? 0), y = (Options.y ? 0),
       width = lIconSize, height = lIconSize,
       aspectRatio = 'XMid|YMin|Meet',
       cursor = 'hand'

@@ -71,7 +71,7 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
    if not Style then Style = 'shutter' end
 
    local state = {
-      name = 'wipe', viewport = Viewport, seconds = nz(Seconds, 1.0), delay = nz(Delay, 0),
+      name = 'wipe', viewport = Viewport, seconds = (Seconds ? 1.0), delay = (Delay ? 0),
       v_width = Viewport.width, v_height = Viewport.height,
       animate = vfx.wipes[Style].animate, callback = CallbackOnCompletion,
       path_cmd = struct.new('PathCommand')
@@ -115,7 +115,7 @@ end
 -- Delay:   Delays the initial start of the effect, measured in seconds.
 
 vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'fadeIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
+   local state = { name = 'fadeIn', seconds = (Seconds ? 1.0), delay = (Delay ? 0), callback = CallbackOnCompletion }
 
    Viewport.opacity = 0
    local err
@@ -150,7 +150,7 @@ end
 -- Scale the viewport from nothing to full-size within the allotted time.
 
 vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'zoomIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
+   local state = { name = 'zoomIn', seconds = (Seconds ? 1.0), delay = (Delay ? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -193,7 +193,7 @@ end
 -- Scale the viewport from full-size to nothing within the allotted time.
 
 vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'zoomOut', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
+   local state = { name = 'zoomOut', seconds = (Seconds ? 1.0), delay = (Delay ? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -237,7 +237,7 @@ end
 -- affects the number of shakes and maximum angle of rotation.
 
 vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
-   local state = { name = 'shake', intensity = nz(Intensity, 1.0), seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
+   local state = { name = 'shake', intensity = (Intensity ? 1.0), seconds = (Seconds ? 1.0), delay = (Delay ? 0), callback = CallbackOnCompletion }
 
    if (state.intensity < 0.1) then
       state.intensity = 0.1
@@ -295,7 +295,7 @@ end
 -- effects.
 
 vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'rotate', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
+   local state = { name = 'rotate', seconds = (Seconds ? 1.0), delay = (Delay ? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -442,7 +442,7 @@ end
 vfx.wipes.radial.init = function(State, Options)
    vfx.config_circle(State, Options)
 
-   State.segments = nz(Options.segments, 10)
+   State.segments = (Options.segments ? 10)
    if (State.segments < 1) then State.segments = 1 end
    if (State.segments > State.max_radius * 0.33) then State.segments = math.floor(State.max_radius * 0.33) end
 
@@ -492,7 +492,7 @@ end
 vfx.wipes.spiral.init = function(State, Options)
    vfx.config_circle(State, Options)
 
-   State.segments = nz(Options.segments, 2)
+   State.segments = (Options.segments ? 2)
    if (State.segments < 1) then State.segments = 1 end
    if (State.segments > State.max_radius * 0.33) then State.segments = math.floor(State.max_radius * 0.33) end
 
@@ -525,7 +525,7 @@ vfx.wipes.shutter.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
    local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
 
-   local segments = nz(Options.segments, 10)
+   local segments = (Options.segments ? 10)
    if (segments > max_width * 0.33) then segments = max_width * 0.33 end
 
    local pc = State.path_cmd

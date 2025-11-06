@@ -77,7 +77,7 @@ file.readAll = function(Path)
    local ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
 
    if ex then
-      error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. ex.message)
+      error('Failed to open file "' .. (Path ? 'NIL') .. '": ' .. ex.message)
    end
 
    local file_buffer = string.alloc(fl.size)

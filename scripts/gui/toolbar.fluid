@@ -27,16 +27,16 @@ gui.toolbar = function(Options)
       _groupMargin   = 4,
       _groupCount    = 0,
       _round         = 4,
-      _cellMargin    = nz(Options.cellMargin, 6),
+      _cellMargin    = (Options.cellMargin ? 6),
       _disabled      = false,
       _lookup        = { },
-      _iconSize      = nz(Options.iconSize, gui.interface.iconSize),
+      _iconSize      = (Options.iconSize ? gui.interface.iconSize),
       _hasFocus      = false,
-      _iconTheme     = nz(Options.iconTheme, gui.style.page.icon),
-      _iconHighlight = nz(Options.iconHighlight, gui.style.page.iconHighlight),
-      _hoverFill     = nz(Options.hoverFill, gui.style.button.highlight),
-      _selectFill    = nz(Options.selectFill, gui.palette.prime),
-      _groupBorder   = nz(Options.groupBorder, gui.style.widget.stroke)
+      _iconTheme     = (Options.iconTheme ? gui.style.page.icon),
+      _iconHighlight = (Options.iconHighlight ? gui.style.page.iconHighlight),
+      _hoverFill     = (Options.hoverFill ? gui.style.button.highlight),
+      _selectFill    = (Options.selectFill ? gui.palette.prime),
+      _groupBorder   = (Options.groupBorder ? gui.style.widget.stroke)
    }
 
    local function sendFeedback()
@@ -61,7 +61,7 @@ gui.toolbar = function(Options)
       if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
 
       local item = { type=Type, id=ID, name=Name, x=0, y=0, width=0, height=0 }
-      if nz(Name) then
+      if Name?? then
          item.displayName = string.translate(Name)
       end
 
@@ -88,7 +88,7 @@ gui.toolbar = function(Options)
       else
          local err
          err, self._tipTimer = mSys.SubscribeTimer(lTipDelay, function(Elapsed, CurrentTime)
-            if self._current and nz(self._current.tip) then
+            if self._current and self._current.tip?? then
                gui.tooltip({ text=self._current.tip })
             end
             self._tipTimer = nil
@@ -246,7 +246,7 @@ gui.toolbar = function(Options)
                   item.vectorIcon.opacity = 0.5
                end
                item.icon.acMoveToFront()
-            elseif nz(item.displayName) then
+            elseif item.displayName?? then
                local fill_name = 'tbar_' .. self._iconTheme
                gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
                item.textFill = 'url(#' .. fill_name .. ')'
@@ -629,8 +629,8 @@ gui.toolbar = function(Options)
 
    self.host = Options.target
    self.viewport = Options.target.new('VectorViewport')
-   self.viewport.x = nz(Options.x, 0)
-   self.viewport.y = nz(Options.y, 0)
+   self.viewport.x = (Options.x ? 0)
+   self.viewport.y = (Options.y ? 0)
    self.viewport.overflow = 'hidden'
 
    if Options.yOffset then
