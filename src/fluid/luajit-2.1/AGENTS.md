@@ -302,7 +302,7 @@ When adding single-character operators (like `?`):
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
    ```c
-   __(if_null, ?)
+   __(if_empty, ?)
    ```
 
 2. **Handle recognition in the lexer** (`lj_lex.c`) in the switch statement:
