@@ -21,7 +21,7 @@ local lSys = mSys.GetSystemState()
 local copy_list = [[
    require 'gui/file'
    local source_size = arg('source:size')
-   if nz(source_size) then
+   if source_size?? then
       glList = { }
       for i=1, source_size do
          table.insert(glList, arg('source(' .. (i-1) .. ')'))
@@ -424,7 +424,7 @@ local function pasteFromClipboard(Folder)
       self.threads[paste_script.id] = paste_script
 
       thread.action(paste_script, 'Activate', function(ActionID, Script, Error, ScriptID)
-         if nz(Error) then
+         if Error?? then
             print('Failed to paste files: ' .. mSys.GetErrorMsg(Error))
          else
             print('Files successfully pasted.')
@@ -562,11 +562,11 @@ gui.fileview = function(Options)
       timer         = nil,
       resetTimer    = nil,
       refreshRate   = 0.25, -- Cycles per second
-      limitPath     = nz(Options.limitPath),
-      showHidden    = nz(Options.showHidden, false),
-      showSystem    = nz(Options.showSystem, false),
-      showDocs      = nz(Options.showDocs, false),
-      enableSysKeys = nz(Options.sysKeys, false),
+      limitPath     = Options.limitPath,
+      showHidden    = (Options.showHidden ? false),
+      showSystem    = (Options.showSystem ? false),
+      showDocs      = (Options.showDocs ? false),
+      enableSysKeys = (Options.sysKeys ? false),
       pathChanged   = Options.pathChanged,
       filterList    = Options.filterList
    }
@@ -578,7 +578,7 @@ gui.fileview = function(Options)
    local function loadPrefs()
       catch(function()
          local js = file.readAll('user:config/filesystem.json')
-         if nz(js) then
+         if js?? then
             js = json.decode(js)
             if js['showHidden'] then self.showHidden = true end
             if js['showSystem'] then self.showSystem = true end
@@ -615,7 +615,7 @@ gui.fileview = function(Options)
 
    local function deleteItem(File)
       for _, item in pairs(self.view.items) do
-         if File == nz(item.name.value,''):gsub('^(.-)[:/\\]+$', '%1') then
+         if File == (item.name.value ? ''):gsub('^(.-)[:/\\]+$', '%1') then
             self.view.removeItem(item)
             return true
          end
@@ -632,9 +632,9 @@ gui.fileview = function(Options)
          if not lNoFiles then flags = bit.bor(flags, RDF_FILE) end
 
          local err
-         err, lDir = mSys.OpenDir(nz(self.path, ':'), flags)
+         err, lDir = mSys.OpenDir((self.path ? ':'), flags)
          if err != ERR_Okay then
-            error('Failed to resolve path ' .. nz(self.path, ':'))
+            error('Failed to resolve path ' .. (self.path ? ':'))
             return
          end
       end
@@ -690,7 +690,7 @@ gui.fileview = function(Options)
       end
 
       if #self.view.items > 0 then -- Check for deleted files
-         local path = nz(self.path,'')
+         local path = (self.path ? '')
 
          if not self.path then -- Do not resolve the path when at the root view
          else -- Use ResolvePath() to prevent problems with multi-folder volumes
@@ -772,7 +772,7 @@ gui.fileview = function(Options)
 
       local info, info_err
       if bit.band(Flags, MFF_DELETE) == 0 then
-         info_err, info = mSys.GetFileInfo(self.path .. nz(Path,''))
+         info_err, info = mSys.GetFileInfo(self.path .. (Path ? ''))
          if info_err == ERR_Okay then
             if lNoFiles and bit.band(info.Flags, RDF_FILE) != 0 then return end
             -- Use the true file name with the trailing slash if it is a folder (important
@@ -820,7 +820,7 @@ gui.fileview = function(Options)
    local function shortcutBrowse()
       local txtPath = obj.find('txtPath')
 
-      if nz(txtPath) then
+      if txtPath?? then
          self.dlgShortcutBrowse = gui.dialog.file({
             title    = 'Select a Folder',
             path     = txtPath.string,
@@ -852,7 +852,7 @@ gui.fileview = function(Options)
 
    local function checkDocView()
       if self.showDocs then
-         local docfile = mSys.GetDocView(nz(self.path, ':'))
+         local docfile = mSys.GetDocView((self.path ? ':'))
          if docfile then
             if lDoc then
                lDoc.path = docfile
@@ -951,11 +951,11 @@ gui.fileview = function(Options)
    -- Change the current path that is being viewed.
 
    self.browse = function(Path)
-      if not nz(Path) or (Path == ':') then Path = nil end
+      if not Path?? or (Path == ':') then Path = nil end
 
       if Path == self.path then return self.path end
 
-      msg('fileview.browse("' .. nz(Path, 'NIL') .. '")')
+      msg('fileview.browse("' .. (Path ? 'NIL') .. '")')
 
       if Path then
          self.path = file.sanitisePath(Path)
@@ -1030,7 +1030,7 @@ gui.fileview = function(Options)
    -- background.  If a failure occurs, the user will be notified with an error dialog.
 
    self.copyFilesTo = function(Dest)
-      if self.path and nz(Dest) then
+      if self.path and Dest?? then
          for _, items in pairs(self.view.selectedItems()) do
             local file_list = { }
             for _,item in pairs(items) do
@@ -1063,7 +1063,7 @@ gui.fileview = function(Options)
    -- closing the dialog window at any time.
 
    self.createFolder = function()
-      if not nz(self.path) then -- Create a new shortcut/volume at the root level
+      if not self.path?? then -- Create a new shortcut/volume at the root level
          return self.createShortcut()
       else
          self.dlgFolder = gui.dialog.message({
@@ -1078,7 +1078,7 @@ gui.fileview = function(Options)
             userInput = true,
             inputRequired = true,
             feedback = function(Dialog, Response, State)
-               if Response.id > 0 and nz(State.input) then
+               if Response.id > 0 and State.input?? then
                   local path = self.path .. State.input .. '/'
                   if mSys.CreateFolder(path, 0) == ERR_Okay then
                      if not self.watch then
@@ -1100,14 +1100,14 @@ gui.fileview = function(Options)
    -- Prompt the user with a dialog to create a new shortcut.
 
    self.createShortcut = function(Message, Shortcut, Path)
-      if not nz(Message) then
+      if not Message?? then
          Message = [[You can create a personal shortcut that will connect a file path to a named shortcut of your choosing.]] .. '\n'
                 .. [[Please enter the name of the shortcut and the folder that you would like to connect it to.]]
       end
 
       local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
-         .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. nz(Shortcut,'') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
-         .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. nz(Path,'') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
+         .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (Shortcut ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
+         .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (Path ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
          .. [[</table>]]
 
       self.dlgShortcut = gui.dialog.message({
@@ -1126,7 +1126,7 @@ gui.fileview = function(Options)
             if Response.id > 0 then
                local txtName = obj.find('txtName')
                local txtPath = obj.find('txtPath')
-               if nz(txtName) and nz(txtPath) then
+               if txtName?? and txtPath?? then
                   mSys.SetVolume(txtName.string, txtPath.string, nil, nil, nil, bit.bor(ASSIGN_REPLACE, ASSIGN_SAVE))
                end
             end
@@ -1145,8 +1145,8 @@ gui.fileview = function(Options)
       if #items > 1 then
          msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
       else
-         local fl = nz(items[1].filename,'NIL')
-         local item_type = nz(items[1].type,'NIL')
+         local fl = (items[1].filename ? 'NIL')
+         local item_type = (items[1].type ? 'NIL')
          msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
@@ -1178,7 +1178,7 @@ gui.fileview = function(Options)
 
       self.dlgDelete.files = { }
       for _,item in pairs(items) do
-         table.insert(self.dlgDelete.files, nz(self.path,'') .. item.name.value)
+         table.insert(self.dlgDelete.files, (self.path ? '') .. item.name.value)
       end
    end
 
@@ -1200,7 +1200,7 @@ gui.fileview = function(Options)
    -- error dialog.
 
    self.moveFilesTo = function(Dest)
-      if self.path and nz(Dest) then
+      if self.path and Dest?? then
          local items = self.view.selectedItems()
          if #items > 0 then
             local file_list = { }
@@ -1229,10 +1229,10 @@ gui.fileview = function(Options)
    -- Prompt the user to rename the most recently selected item in the file view.
 
    self.renameFile = function()
-      if not nz(self.path) then return end
+      if not self.path?? then return end
 
       local sel = self.selection()
-      if not nz(sel) then return end
+      if not sel?? then return end
 
       self.dlgRename = gui.dialog.message({
          title     = 'Rename',
@@ -1262,14 +1262,14 @@ gui.fileview = function(Options)
    -- See also incrementalRefresh()
 
    local function refreshFiles()
-      msg('refreshFiles() ' .. nz(self.path,'ROOT') .. ' [Limited Logging]')
+      msg('refreshFiles() ' .. (self.path ? 'ROOT') .. ' [Limited Logging]')
 
       self._file_table = { }
       local msg_time  = mSys.PreciseTime()
       local orig_path = self.path
       local flags     = bit.bor(RDF_READ_ALL, RDF_TAGS)
       if lNoFiles then flags = bit.band(flags, bit.bxor(RDF_FILE)) end
-      local err, dir_info = mSys.OpenDir(nz(self.path,':'), flags)
+      local err, dir_info = mSys.OpenDir((self.path ? ':'), flags)
       if err == ERR_Okay then
          mSys.AdjustLogLevel(1)
 
@@ -1362,7 +1362,7 @@ gui.fileview = function(Options)
 
       self.view.itemActivated = function(View, Reason, Item)
          if Item.type == 'folder' then
-            self.browse(nz(self.path,'') .. Item.filename .. '/')
+            self.browse((self.path ? '') .. Item.filename .. '/')
          elseif Item.type == 'volume' then
             self.browse(Item.filename .. ':')
          elseif Item.type == 'parent' then -- Parent
@@ -1553,12 +1553,12 @@ gui.fileview = function(Options)
    self.refresh = function()
       if self.inRefresh then return end -- Recursion detected, aborting request.
 
-      msg('Performing a full refresh of the file view: ' .. nz(self.path, 'NIL'))
+      msg('Performing a full refresh of the file view: ' .. (self.path ? 'NIL'))
 
       local success, err = pcall(function()
          if lDir then lDir = nil end
 
-         if nz(self.path) then
+         if self.path?? then
             self.deviceInfo = obj.new('storagedevice', { volume = self.path })
          else
             self.deviceInfo = nil
@@ -1625,7 +1625,7 @@ gui.fileview = function(Options)
    -- Return the complete, fully-qualified path of the most recently selected item
 
    self.selectionPath = function()
-      if self.view.sItem then return nz(self.path,'') .. self.view.sItem.filename end
+      if self.view.sItem then return (self.path ? '') .. self.view.sItem.filename end
    end
 
    if not Options.target then error('A target viewport must be specified.') end
@@ -1661,7 +1661,7 @@ gui.fileview = function(Options)
       name  = 'fvDragClipboard',
       flags = '!DragDrop',
       requestHandler = function(Clipboard, Requester, Item, Datatypes)
-         if not nz(self.path) then -- Do nothing if we are at the root level
+         if not self.path?? then -- Do nothing if we are at the root level
             gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.');
             return
          end
@@ -1706,11 +1706,11 @@ gui.fileview = function(Options)
             if dest_tag != -1 then
                local tag = self.view.xml.tags[dest_tag+1]
                if 'dir' == tag.attrib.name then
-                  dest = nz(self.path,'') .. dest_tag.name
+                  dest = (self.path ? '') .. dest_tag.name
                end
             end
 
-            if not nz(dest) or dest == ':' then return end
+            if not dest?? or dest == ':' then return end
 
             local dev_dest = obj.new('storagedevice', { volume = dest })
             local dest_device_id = dev_dest.deviceID
@@ -1757,7 +1757,7 @@ gui.fileview = function(Options)
 
    self.refresh()
 
-   if (not self.watch) and nz(self.path) then
+   if (not self.watch) and self.path?? then
       catch(function()
          self.watch = obj.new('file', { path = self.path })
          self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE, MFF_DELETE, MFF_ATTRIB, MFF_CLOSED, MFF_MOVED))

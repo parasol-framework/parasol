@@ -140,7 +140,7 @@ function displayText(Path)
 end
 
 function displayFile(Path)
-   msg('Load file ' .. nz(Path,'NIL'))
+   msg('Load file ' .. (Path ? 'NIL'))
 
    if not Path then return end
 
@@ -286,7 +286,7 @@ end
 
    -- Display a file from the commandline, or show the application documentation.
 
-   if nz(arg('file')) then
+   if arg('file')?? then
       displayFile(arg('file'))
    else
       local doc = glViewArea.new('document', { })

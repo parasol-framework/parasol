@@ -56,7 +56,7 @@ end
 -- FDL function
 
 function module(Options, Function)
-   if (nz(Options['timestamp'],0) > glIDLTimestamp) then
+   if ((Options['timestamp'] ? 0) > glIDLTimestamp) then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
       glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
       return
@@ -64,7 +64,7 @@ function module(Options, Function)
 
    glModule = Options
 
-   if nz(glModule.name) then
+   if glModule.name?? then
       priority('#pragma once')
       priority()
    else
@@ -73,7 +73,7 @@ function module(Options, Function)
 
    priority('// Name:      ' .. glModule.name:lower() .. '.h')
 
-   if nz(Options['copyright']) then
+   if Options['copyright']?? then
       priority('// Copyright: ' .. Options['copyright'])
    end
    priority('// Generator: idl-c')
@@ -82,7 +82,7 @@ function module(Options, Function)
    priority('#include <parasol/main.h>')
    priority()
 
-   if nz(glModule.version) then
+   if glModule.version?? then
       priority('#define MODVERSION_' .. glModule.name:upper() .. ' (' .. glModule.version .. ')')
       priority()
    end
@@ -93,7 +93,7 @@ function module(Options, Function)
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      local extracted_content = nz(string.match(content, '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+      local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
          extracted_content = extracted_content .. '\n' .. extract
       end
@@ -119,7 +119,7 @@ end
 
 function header(Options, Function)
    glHeaderPath = Options['path']
-   if nz(glHeaderPath) then
+   if glHeaderPath?? then
       priority('#pragma once')
       priority()
       priority('// Name:      ' .. glHeaderPath:lower() .. '.h')
@@ -133,7 +133,7 @@ function header(Options, Function)
       priority()
    end
 
-   if nz(Options['copyright']) then
+   if Options['copyright']?? then
       priority('// Copyright: ' .. Options['copyright'])
    end
    priority('// Generator: idl-c')
@@ -159,7 +159,7 @@ function flags(Prefix, Options, ...)
 
    local out = { }
    local sortedFlags = { }
-   if (nz(Options.comment)) then
+   if (Options.comment??) then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
@@ -260,7 +260,7 @@ function flags(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+   if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
    elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
@@ -322,7 +322,7 @@ function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    local out = { }
-   if (nz(Options.comment)) then
+   if (Options.comment??) then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
@@ -382,7 +382,7 @@ function const(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+   if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
    elseif (glRestrict == nil) then //.
       for k,v in pairs(out) do table.insert(glConstants, v) end
@@ -390,7 +390,7 @@ function const(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=nz(glRestrict, Options.restrict),
+      restrict=(glRestrict ? Options.restrict),
       type=Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
@@ -405,7 +405,7 @@ function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    local out = { }
-   if (nz(Options.comment)) then
+   if (Options.comment??) then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
@@ -417,7 +417,7 @@ function enum(Prefix, Options, ...)
    end
 
    local list = { }
-   local inc = nz(Options.start, 0)
+   local inc = (Options.start ? 0)
    for k,va in ipairs({...}) do
       if (type(va) == 'string') then
          local key, comment = va:match('^(.-):%s+(.+)$')
@@ -464,7 +464,7 @@ function enum(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+   if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
      -- Do nothing, module restriction imposed.
    elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
@@ -472,7 +472,7 @@ function enum(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=nz(glRestrict, Options.restrict),
+      restrict=(glRestrict ? Options.restrict),
       bits=Options.bits,
       type=Options.type -- Promotes strong-typing to other C++ definitions
    }
@@ -581,13 +581,13 @@ function struct(Name, Options, Def, Append)
       for i, f in ipairs(fields) do
          local field_name = cName(f, true)
          local left
-         if nz(field_name) then -- field_name can be nil if the field describes a function pointer
-            left = string.format('   %-' .. type_len .. 's %s;', nz(f.extType, f.type), field_name)
+         if field_name?? then -- field_name can be nil if the field describes a function pointer
+            left = string.format('   %-' .. type_len .. 's %s;', (f.extType ? f.type), field_name)
          else
-            left = string.format('   %-' .. type_len .. 's;', nz(f.extType, f.type))
+            left = string.format('   %-' .. type_len .. 's;', (f.extType ? f.type))
          end
 
-         if nz(f.comment) then
+         if f.comment?? then
             local clean_comment = f.comment:gsub('[`!@#]', '')
             table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
@@ -609,7 +609,7 @@ function struct(Name, Options, Def, Append)
          table.insert(out, '')
       end
 
-      if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+      if Options.module?? and (Options.module:lower() != glModule.name:lower()) then
         -- Do nothing, module restriction imposed.
       elseif (glRestrict == nil) then
          for k,v in pairs(out) do table.insert(glOutput, v) end
@@ -617,7 +617,7 @@ function struct(Name, Options, Def, Append)
 
       glStructures[Name] = {
          version = Options.version, type = Options.type, comment = Options.comment, fields = fields,
-         restrict = nz(glRestrict, Options.restrict), name = Name
+         restrict = (glRestrict ? Options.restrict), name = Name
       }
    end,
    function(Exception)
@@ -635,7 +635,7 @@ function cName(Field, CStruct)
    if (Field.isFunctionPtr) then return '' end // Functions have their name embedded in the type.
 
    local name = Field.name
-   if (CStruct) then
+   if CStruct then
       if (Field.type == 'OBJECTID') or (Field.type == 'MEMORYID') then
          if (name:sub(-2) != 'ID') then
             name = name .. 'ID'
@@ -665,7 +665,7 @@ function class(Name, Options, Spec, Private, Custom)
 
    output('// ' .. Name .. ' class definition')
    output()
-   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', nz(Options.version,1.0)) .. ')')
+   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', (Options.version ? 1.0)) .. ')')
    output()
 
    local class = registerClass(Name)
@@ -699,12 +699,12 @@ function class(Name, Options, Spec, Private, Custom)
 
    local cdef = parseClassFields(class, Spec)
 
-   if nz(Options.references) then
+   if not table.empty(Options.references) then
       for _, v in pairs(Options.references) do
-         if nz(glCustomTypes[v]) then
+         if glCustomTypes[v]?? then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
             glCustomTypes[v].restrict = nil
-         elseif nz(glStructures[v]) then
+         elseif glStructures[v]?? then
             class.references['STRUCT:' .. v] = true
             -- A manual reference to a structure will forcibly turn off any restriction
             glStructures[v].restrict = nil
@@ -737,7 +737,7 @@ function class(Name, Options, Spec, Private, Custom)
          }
          for _, pattern in pairs(patterns) do
             for actionName in string.gmatch(content, pattern) do
-               if (glActions[actionName] != nil) then
+               if glActions[actionName] then
                   verbose('Discovered action ' .. actionName)
                   class.actions[actionName] = { name=actionName }
                else
@@ -748,7 +748,7 @@ function class(Name, Options, Spec, Private, Custom)
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         local extracted_content = nz(string.match(content, '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+         local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
          for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
             extracted_content = extracted_content .. '\n' .. extract
          end
@@ -758,8 +758,8 @@ function class(Name, Options, Spec, Private, Custom)
          local currentEntry = nil
          local processing = nil
          for line in string.gmatch(extracted_content, '(.-\n)') do
-            if nz(line) then
-               line = nz(line:match('^(.*%S)'),'')
+            if line?? then
+               line = (line:match('^(.*%S)') ? '')
                if (line == '-CLASS-') or (line == '-METHOD-') or (line == '-ACTION-') or (line == '-FIELD-') then
                   if (currentEntry != nil) then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = ''
@@ -794,7 +794,7 @@ function class(Name, Options, Spec, Private, Custom)
       end
 
       for k, method in ipairs(class.methods) do
-         if nz(method.input) then
+         if method.input?? then
             local t = { }
             local i = 1
             for str in string.gmatch(method.input, '([^;]+)') do
@@ -837,15 +837,15 @@ function class(Name, Options, Spec, Private, Custom)
             for _, param in ipairs(method.params) do
                struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
 
-               if nz(params) then params = params .. ', ' end
+               if params?? then params = params .. ', ' end
 
                if (param.type == 'FUNCTION *') then
                   params = params .. 'FUNCTION ' .. pName(param)
-                  if nz(values) then values = values .. ', ' end
+                  if values?? then values = values .. ', ' end
                   values = values .. '&' .. pName(param)
                else
                   params = params .. param.type .. ' ' .. pName(param)
-                  if nz(values) then values = values .. ', ' end
+                  if values?? then values = values .. ', ' end
 
                   if (param.resultValue) then
                      values  = values .. '(' .. param.basicType .. ')0'
@@ -894,18 +894,18 @@ function class(Name, Options, Spec, Private, Custom)
       output('// ' .. Name:cap() .. ' methods')
       output()
 
-      if nz(lpfx) then
+      if lpfx?? then
          output('namespace ' .. lpfx .. ' {')
       end
 
       for _, method in ipairs(class.methods) do
-         if nz(method.struct) then
+         if method.struct?? then
             output(method.struct)
          end
       end
       output()
 
-      if nz(lpfx) then
+      if lpfx?? then
          output('} // namespace')
       end
 
@@ -917,7 +917,7 @@ function class(Name, Options, Spec, Private, Custom)
       table.insert(class.sortedActions, a)
    end
 
-   if nz(class.sortedActions) then
+   if not table.empty(class.sortedActions) then
       table.sort(class.sortedActions, function(a,b) return a.name < b.name end)
    end
 
@@ -925,11 +925,11 @@ function class(Name, Options, Spec, Private, Custom)
 
    -- Output internal C definitions for class methods & actions, if an output file has been specified.
 
-   if nz(Options.output) then
+   if Options.output?? then
       local mdef = ''
-      if (class.methods != nil) then
+      if not table.empty(class.methods) then
          for k, m in ipairs(class.methods) do
-            if nz(m.params) then
+            if not table.empty(m.params) then
                mdef = mdef .. 'FDEF ma' .. m.name .. '[] = { ' .. buildInputParameters(m.params) .. ' };\n'
             end
          end
@@ -938,7 +938,7 @@ function class(Name, Options, Spec, Private, Custom)
          mdef = mdef .. 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
          for k, m in ipairs(class.methods) do
             local structSize
-            if not nz(m.params) then
+            if table.empty(m.params) then
                mdef = mdef .. '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
                structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
@@ -948,7 +948,7 @@ function class(Name, Options, Spec, Private, Custom)
          mdef = mdef .. '   { AC::NIL, 0, 0, 0, 0 }\n};\n\n'
       end
 
-      if nz(class.sortedActions) then
+      if not table.empty(class.sortedActions) then
          mdef = mdef .. "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
          for _, action in ipairs(class.sortedActions) do
             mdef = mdef .. "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
@@ -958,8 +958,8 @@ function class(Name, Options, Spec, Private, Custom)
 
       local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
       file.acWrite("// Auto-generated by idl-c.fluid\n\n")
-      if nz(cdef) then file.acWrite(cdef) end
-      if nz(mdef) then file.acWrite(mdef) end
+      if cdef?? then file.acWrite(cdef) end
+      if mdef?? then file.acWrite(mdef) end
    end
 end
 
@@ -969,7 +969,7 @@ end
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
 
 function functionNames(Prefix, ...)
-   glFunctionPrefix = nz(Prefix,'')
+   glFunctionPrefix = (Prefix ? '')
    for _, fname in ipairs({...}) do
       if (fname:find('[^%w]')) then
          error('Invalid function name "' .. fname .. '"')

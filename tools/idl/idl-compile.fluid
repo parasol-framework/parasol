@@ -56,7 +56,7 @@ end
 function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing flags ' .. Prefix)
 
@@ -75,7 +75,7 @@ function flags(Prefix, Options, ...)
             local key, comment
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
-               if (key != nil) then
+               if key then
                   if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
                      key = tonumber(key)
                   end
@@ -117,7 +117,7 @@ function enum(Prefix, Options, ...)
    verbose('Processing enum ' .. Prefix)
 
    local list = { }
-   local inc = nz(Options.start, 0)
+   local inc = (Options.start ? 0)
    for k, enum_def in ipairs({...}) do
       if (type(enum_def) is 'string') then
          local val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
@@ -243,7 +243,7 @@ glTypes = {
 
 function cType(Field, Origin)
    if not Field.type then
-      error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
+      error("Field definition incorrect, missing 'type' value for '" .. (Origin ? "NIL") .. "'")
    end
 
    do
@@ -406,7 +406,7 @@ function cType(Field, Origin)
       error('No handling for field type "' .. Field.type .. '" from ' .. Origin)
    end
 
-   Field.type = nz(glTypes[Field.type], Field.type)
+   Field.type = (glTypes[Field.type] ? Field.type)
    return Field
 end
 
@@ -435,7 +435,7 @@ function extractFields(Def, Origin)
       elseif not content:trim()?? then
          -- Ignore empty line
       else
-         error("Unable to process line '" .. nz(content,"NULL") .. "' for '" .. nz(Origin,'NIL') .. "'")
+         error("Unable to process line '" .. (content ? "NULL") .. "' for '" .. (Origin ? 'NIL') .. "'")
       end
    end
 
@@ -492,7 +492,7 @@ function saveOutput()
    print('Saving compressed IDL output to "' .. outPath .. '"')
 
    local err, file = catch(function()
-      if (glAppend) then
+      if glAppend then
          file = obj.new('file', { flags='WRITE', path=outPath } )
          file.acSeek(0, SEEK_END)
          return file
@@ -513,7 +513,7 @@ function saveOutput()
 
    local s = ''
    for _, struct in pairs(glOrderedStructures) do
-      if (struct.fields != nil) then
+      if struct.fields then
          s = s .. 's.' .. struct.name .. ':' .. struct.sequence .. EOL
       end
    end
@@ -553,7 +553,7 @@ function saveOutput()
    if (glFormat is 'c') then
       if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
          file.acWrite('char glIDL[] = { ')
-         file.acWrite(str_to_bytes(nz(s,'') .. nz(c,'')))
+         file.acWrite(str_to_bytes((s ? '') .. (c ? '')))
          file.acWrite(',0 };\n')
       else
          file.acWrite('#undef MOD_IDL\n#define MOD_IDL "')

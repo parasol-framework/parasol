@@ -53,7 +53,7 @@
 
       _, _, hashname = hashname:find("([^%s]+)")
 
-      if (nz(hashname)) then
+      if (hashname??) then
          local hash = string.format("%.8x", hashname:hash())
 
          hashname = string.gsub(hashname, "-", "_")

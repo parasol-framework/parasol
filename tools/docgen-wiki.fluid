@@ -61,7 +61,7 @@ end
 
    local err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
 
-   if not nz(pandoc_path) then
+   if not pandoc_path?? then
       if state.platform == 'Windows' then
          pandoc_path = 'C:\\Program Files\\Pandoc\\pandoc.exe'
          if (mSys.AnalysePath(pandoc_path) != ERR_Okay) then

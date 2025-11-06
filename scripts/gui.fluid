@@ -87,10 +87,10 @@ gui.strToRGB = function(Value)
          for str in string.gmatch(Value, '([^,]+)') do
             table.insert(colours, tonumber(str))
          end
-         local r = nz(colours[1], 0)
-         local g = nz(colours[2], 0)
-         local b = nz(colours[3], 0)
-         local a = nz(colours[4], 255)
+         local r = (colours[1] ? 0)
+         local g = (colours[2] ? 0)
+         local b = (colours[3] ? 0)
+         local a = (colours[4] ? 255)
          if r > 255 then r = 255 end
          if g > 255 then g = 255 end
          if b > 255 then b = 255 end
@@ -113,7 +113,7 @@ end
 -- Convert an RGB table to a SVG colour string
 
 gui.rgbToSVG = function(Value)
-   return string.format('rgba(%d,%d,%d,%g)', Value.r, Value.g, Value.b, nz(Value.a, 255) / 255)
+   return string.format('rgba(%d,%d,%d,%g)', Value.r, Value.g, Value.b, (Value.a ? 255) / 255)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -279,7 +279,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
    local i = 0
    for _, col in pairs(Colours) do
       local vc = struct.new('GradientStop')
-      vc.offset    = nz(col.offset, i / (#Colours-1))
+      vc.offset    = (col.offset ? i / (#Colours-1))
       vc.rgb.red   = col.r / 255
       vc.rgb.green = col.g / 255
       vc.rgb.blue  = col.b / 255
@@ -293,7 +293,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
    end
 
    local gradient = Scene.new('VectorGradient', {
-      name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=(Units ? 'boundingbox')
    })
 
    if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).

@@ -19,8 +19,8 @@ gui.dialog.file = function(Options)
    local self = { -- Public variables
       windowID    = nil,
       currentPath = file.splitPath(Options.path),
-      multiSelect = nz(Options.multiSelect, false),
-      warnExists  = nz(Options.warnExists, false),
+      multiSelect = (Options.multiSelect ? false),
+      warnExists  = (Options.warnExists ? false),
       feedback    = Options.feedback,
       target      = Options.target
    }
@@ -29,7 +29,7 @@ gui.dialog.file = function(Options)
       local list = self.fileview.view.selectedItems()
 
       if (self.warnExists == true) and (#list > 0) then
-         local error, type = mSys.AnalysePath(nz(self.fileview.path,'') .. list[1].filename)
+         local error, type = mSys.AnalysePath((self.fileview.path ? '') .. list[1].filename)
          if (type == LOC_FILE) then
             local msg
 
@@ -81,9 +81,9 @@ gui.dialog.file = function(Options)
       invertPalette = true,
       popOver      = Options.popOver,
       parent       = Options.target,
-      icon         = nz(Options.icon, 'icons:folders/folder'),
-      title        = nz(Options.title, 'Select a file'),
-      modal        = nz(Options.modal, false),
+      icon         = (Options.icon ? 'icons:folders/folder'),
+      title        = (Options.title ? 'Select a file'),
+      modal        = (Options.modal ? false),
       events = {
          close = function(Window)
             if (Options.feedback != nil) then
@@ -127,7 +127,7 @@ gui.dialog.file = function(Options)
 
    local lCancelButton = gui.button({
       target  = self.viewport,
-      text    = nz(Options.cancelText, 'Cancel'),
+      text    = (Options.cancelText ? 'Cancel'),
       xOffset = GAP,
       yOffset = footer,
       icon    = 'items/cancel',
@@ -144,7 +144,7 @@ gui.dialog.file = function(Options)
 
    local lOkayButton = gui.button({
       target     = self.viewport,
-      text       = nz(Options.okText, 'Okay'),
+      text       = (Options.okText ? 'Okay'),
       xOffset    = lCancelButton.viewport.width + (GAP * 2),
       yOffset    = footer,
       icon       = 'items/checkmark',

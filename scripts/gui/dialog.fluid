@@ -40,7 +40,7 @@ gui.dialog.message = function(Options)
       inputRequired = Options.inputRequired,
       message    = Options.message,
       fmtMessage = Options.fmtMessage,
-      scaleWindow = nz(Options.scale, true)
+      scaleWindow = (Options.scale ? true)
    }
 
    -- Wait for the user to respond to the dialog.
@@ -88,7 +88,7 @@ gui.dialog.message = function(Options)
             end
 
             local input = Document.getKey('input')
-            if nz(input) then state.input = input end
+            if input?? then state.input = input end
 
             if self.inputRequired and not state.input then
                -- If input is mandatory, the response is cancelled when no input is given
@@ -116,7 +116,7 @@ gui.dialog.message = function(Options)
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            if nz(option_icons) then option_icons = option_icons .. '\n' end
+            if option_icons?? then option_icons = option_icons .. '\n' end
             option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="48" height="48"/>\n'
          end
       end
@@ -126,7 +126,7 @@ gui.dialog.message = function(Options)
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="256" height="256"/>]]
+    <image id="icon" xlink:href="icons:]] .. (Options.image ? defaultIcon(self)) .. [[" width="256" height="256"/>]]
     .. option_icons .. [[
   </defs>
 </svg>
@@ -145,11 +145,11 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      icon = nz(Options.image, defaultIcon(self))
+      icon = (Options.image ? defaultIcon(self))
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
       local msg = self.fmtMessage
-      if not nz(msg) then
-         msg = string.escXML(nz(self.message, ''))
+      if not msg?? then
+         msg = string.escXML((self.message ? ''))
          msg = string.gsub(msg, '\n', '<br/>')
       end
 
@@ -230,13 +230,13 @@ gui.dialog.message = function(Options)
    -- Work out the dialog width based on the message.
 
    local dlg_width = MIN_WIDTH
-   if nz(self.message) then
+   if self.message?? then
       local longest = 10
       for word in self.message:gmatch("%S+") do
          if word:len() > longest then longest = word:len() end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
-   elseif nz(self.fmtMessage) then
+   elseif self.fmtMessage?? then
       local xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
       local err, content = xml.mtSerialise(0, bit.bor(XMF_OMIT_TAGS, XMF_READABLE))
       local longest = 10
@@ -254,13 +254,13 @@ gui.dialog.message = function(Options)
    self.window = gui.window({
       insideWidth  = dlg_width,
       insideHeight = 300,
-      quit         = nz(Options.quit, false),
+      quit         = (Options.quit ? false),
       popover      = Options.popover,
       parent       = Options.target,
       aspectRatio  = true,
-      icon         = nz(Options.icon, 'items/question'),
-      title        = nz(Options.title, 'Confirmation Required'),
-      modal        = nz(Options.modal, false),
+      icon         = (Options.icon ? 'items/question'),
+      title        = (Options.title ? 'Confirmation Required'),
+      modal        = (Options.modal ? false),
       events = {
          close = function(Window)
             if (self.feedback != nil) then

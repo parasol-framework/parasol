@@ -28,16 +28,16 @@ gui.menu = function(Options)
       visible  = false,
       client   = Options.client,
       feedback = Options.feedback,
-      x        = nz(Options.x, 0),
-      y        = nz(Options.y, 0),
-      popup    = nz(Options.popup, false),
+      x        = (Options.x ? 0),
+      y        = (Options.y ? 0),
+      popup    = (Options.popup ? false),
       relative = Options.relative,
-      style    = nz(Options.style, 'popup'),
+      style    = (Options.style ? 'popup'),
       items    = { }
    }
 
    local function initVectorScene()
-      local showIcons = nz(Options.showIcons, true)
+      local showIcons = (Options.showIcons ? true)
       local TEXT_X = HMARGIN
 
       if showIcons then
@@ -200,7 +200,7 @@ gui.menu = function(Options)
       local surface = self.surface
       if bit.band(surface.flags, RNF_VISIBLE) != 0 then return end
 
-      self.reverseX = nz(Options.reverseX, false)
+      self.reverseX = (Options.reverseX ? false)
 
       if self.popup then
          local err, cursor_x, cursor_y = mGfx.getCursorPos()
@@ -323,14 +323,14 @@ gui.menu = function(Options)
             local y = rel.absY + self.y - target.absY
 
             if lReverseY then
-               y = rel.absY + nz(Options.y, 0) - target.absY - surface.height
+               y = rel.absY + (Options.y ? 0) - target.absY - surface.height
             end
 
             if (y + surface.height > target.height) then
                if self.parentMenu then -- Child menu
                   y = y - surface.height
                else
-                  y = y - surface.height - nz(Options.y, 0)
+                  y = y - surface.height - (Options.y ? 0)
                end
             end
 
@@ -371,7 +371,7 @@ gui.menu = function(Options)
    end
 
    local function timer(Elapsed, CurrentTime)
-      if lCurrentItem and nz(lCurrentItem.tip) then
+      if lCurrentItem and lCurrentItem.tip?? then
          gui.tooltip({ text=lCurrentItem.tip })
       end
       self.tipTimer = nil
@@ -384,7 +384,7 @@ gui.menu = function(Options)
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
-   self.surface.width      = nz(Options.width, 400)
+   self.surface.width      = (Options.width ? 400)
    self.surface.parent     = Options.target
    self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
    self.surface.x          = -10000

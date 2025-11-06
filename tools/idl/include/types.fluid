@@ -54,7 +54,7 @@ function getFieldType(Def, Type, CustomName, Option)
    local result
 
    if Type & FD_CUSTOM != 0 then
-      if nz(CustomName) then
+      if CustomName?? then
          Def.type = CustomName
       else
          Def.type = 'APTR'
@@ -123,7 +123,7 @@ function getFieldType(Def, Type, CustomName, Option)
       elseif Type & FD_DOUBLE != 0 then
          result = 'DOUBLE'
          ptr = ptr + 1
-      elseif Type & (FD_OBJECT | nz(FD_INTEGRAL, FD_LOCAL)) != 0 then -- FD_INTEGRAL is deprecated
+      elseif Type & (FD_OBJECT | FD_LOCAL) != 0 then
          Def.type = 'OBJECTPTR'
          return
       elseif Type & FD_STRING != 0 then
@@ -136,7 +136,7 @@ function getFieldType(Def, Type, CustomName, Option)
          result = 'FUNCTION'
          ptr = ptr + 1
       elseif Type & FD_STRUCT != 0 then
-         if nz(Option) then -- We need a way to convert the Option number to a string address...
+         if Option?? then -- We need a way to convert the Option number to a string address...
             result = 'APTR'
          else
             result = 'APTR'
@@ -258,7 +258,7 @@ function cType(Field, Origin)
             Field.fullType = { fd='FD_PTR|FD_STRUCT', c_type='APTR' }
          end
 
-         if (nz(const)) then
+         if (const??) then
             Field.type =  'const ' .. Field.type
          end
 
@@ -297,7 +297,7 @@ function cType(Field, Origin)
             Field.fullType = { fd='FD_PTR|FD_STRUCT|FD_RESOURCE', c_type='APTR' }
          end
 
-         if (nz(const)) then
+         if (const??) then
             Field.type =  'const ' .. Field.type
          end
 
@@ -399,7 +399,7 @@ function cType(Field, Origin)
       local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
       if (count != nil) then
          Field.type = 'char'
-         if nz(unsigned) then Field.type = 'unsigned ' .. Field.type end
+         if unsigned?? then Field.type = 'unsigned ' .. Field.type end
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.char
          goto finalise
@@ -409,7 +409,7 @@ function cType(Field, Origin)
    do -- Integer arrays
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
       if (count != nil) then
-         if nz(unsigned) then
+         if unsigned?? then
             Field.type = 'uint32_t'
          else
             Field.type = 'int'
@@ -447,7 +447,7 @@ function cType(Field, Origin)
 
          Field.type = ptr_ctype.type .. ' *'
 
-         if (nz(const)) then
+         if (const??) then
             Field.type =  'const ' .. Field.type
          end
 
@@ -539,7 +539,7 @@ function cType(Field, Origin)
          if #arglist < 1 then
             Field.type = 'void'
          else
-            Field.type = nz(glTypes[arglist[1]].c_type, arglist[1])
+            Field.type = (glTypes[arglist[1]].c_type ? arglist[1])
          end
 
          Field.type = Field.type .. ' (*' .. Field.name .. ')'
@@ -551,7 +551,7 @@ function cType(Field, Origin)
          else
             local params = ''
             for i=2, #arglist do
-               if nz(params) then params = params .. ', ' end
+               if params?? then params = params .. ', ' end
                params = params .. cType({ type=arglist[i], name='' }, Origin).type
             end
             Field.type = Field.type .. '(' .. params .. ')'
@@ -569,9 +569,9 @@ function cType(Field, Origin)
 
    Field.fullType = glTypes[Field.type]
    if Field.cpp then
-      Field.type = nz(glTypes[Field.type].cpp_type, Field.type)
+      Field.type = (glTypes[Field.type].cpp_type ? Field.type)
    else
-      Field.type = nz(glTypes[Field.type].c_type, Field.type)
+      Field.type = (glTypes[Field.type].c_type ? Field.type)
    end
 
 ::finalise::

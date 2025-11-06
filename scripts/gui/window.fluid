@@ -40,19 +40,19 @@ end
 
 gui.window = function(Options)
    local self = { -- Public variables
-      events       = nz(Options.events, { }),
-      aspectRatio  = nz(Options.aspectRatio, false),
-      minimiseEnabled = nz(Options.minimise, true),
-      maximiseEnabled = nz(Options.maximise, true),
-      moveToBackEnabled = nz(Options.moveToBack, true),
+      events       = (Options.events ? { }),
+      aspectRatio  = (Options.aspectRatio ? false),
+      minimiseEnabled = (Options.minimise ? true),
+      maximiseEnabled = (Options.maximise ? true),
+      moveToBackEnabled = (Options.moveToBack ? true),
       invertedPalette = Options.invertPalette,
-      closeEnabled = nz(Options.close, true),
-      focus        = nz(Options.focus, true),
-      quit         = nz(Options.quit, true),
-      title        = nz(Options.title, 'Window'),
-      icon         = nz(Options.icon, 'devices/monitor'),
+      closeEnabled = (Options.close ? true),
+      focus        = (Options.focus ? true),
+      quit         = (Options.quit ? true),
+      title        = (Options.title ? 'Window'),
+      icon         = (Options.icon ? 'devices/monitor'),
       restore      = nil, -- { x, y, width, height }
-      orientation  = nz(Options.orientation, 'landscape'),
+      orientation  = (Options.orientation ? 'landscape'),
       client       = { }, -- Client margins
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
@@ -341,10 +341,10 @@ gui.window = function(Options)
    local surface_opts = {
       name      = 'winsurface',
       parent    = self._desktop,
-      width     = nz(Options.width, DEFAULT_WIDTH),
-      height    = nz(Options.height, DEFAULT_HEIGHT),
+      width     = (Options.width ? DEFAULT_WIDTH),
+      height    = (Options.height ? DEFAULT_HEIGHT),
       type      = RT_ROOT,
-      modal     = nz(Options.modal, false),
+      modal     = (Options.modal ? false),
       popOver   = Options.popOver,
       flags = (function()
          local flags = 0
@@ -365,8 +365,8 @@ gui.window = function(Options)
       end)()
    }
 
-   surface_opts.minWidth  = nz(Options.minWidth, 20)
-   surface_opts.minHeight = nz(Options.minHeight, 10)
+   surface_opts.minWidth  = (Options.minWidth ? 20)
+   surface_opts.minHeight = (Options.minHeight ? 10)
 
    if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
    if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end

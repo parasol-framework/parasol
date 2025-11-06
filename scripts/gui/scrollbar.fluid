@@ -17,7 +17,7 @@ gui.scrollbar = function(Options)
    local lTarget   = Options.target
    local lPage     = Options.page
    local lView     = Options.view
-   local lBreadth  = nz(Options.breadth, 16)
+   local lBreadth  = (Options.breadth ? 16)
    local lPageMode = 'fixed'
    local lMinWidth = 0
 
@@ -331,7 +331,7 @@ gui.scrollbar = function(Options)
 
    self.setDynamicPageSize = function(NominalWidth, MinWidth, Height)
       lPageMode = 'dynamic'
-      lMinWidth = nz(MinWidth, 0)
+      lMinWidth = (MinWidth ? 0)
 
       if (NominalWidth < MinWidth) then
          NominalWidth = MinWidth
