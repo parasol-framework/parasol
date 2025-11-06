@@ -192,7 +192,7 @@ function loadActions()
    verbose("Loading core actions...")
    glActions = { }
    for id, actions in ipairs(mSys.ActionList()) do
-      if actions?? and actions.name?? then
+      if not table.empty(actions) and actions.name?? then
          glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id-1 }
       end
    end

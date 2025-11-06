@@ -341,7 +341,7 @@ function saveDocuments()
    local outPath = (glDocPath ? 'sdk:docs/xml/modules/')
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
-   if glFunctions?? then
+   if not table.empty(glFunctions) then
       local out = docModuleHeader()
       for _, func in ipairs(glFunctions) do
          out = out .. docFunction(func)
@@ -360,7 +360,7 @@ function saveDocuments()
    -- Save classes, if any.  Class documentation is only produced if the meta information could be loaded from
    -- a compiled module.
 
-   if (glClasses != nil) then
+   if glClasses then
       for className, cl in pairs(glClasses) do
          verbose('Processing documentation for class ' .. tostring(className))
 
@@ -653,13 +653,16 @@ function docClass(Class)
    local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out = out .. '    <id>' .. class_hash .. '</id>\n'
    out = out .. '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
-   out = out .. '    <category>' .. (meta.get('$category') ? '') .. '</category>\n'
+   local cat = meta.get('$category')
+   if cat?? then
+      out = out .. '    <category>' .. cat .. '</category>\n'
+   end
    if Class.include??      then out = out .. '    <include>' .. Class.include .. '</include>\n' end
    if Class.date??         then out = out .. '    <date>' .. Class.date .. '</date>\n' end
    if glModule.copyright?? then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
    if Class.description??  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class, Class.references) .. '</description>\n' end
 
-   if Class.src?? then
+   if not table.empty(Class.src) then
       out = out .. '    <source>\n'
       local path
       for _, path in pairs(Class.src) do
@@ -674,7 +677,7 @@ function docClass(Class)
 
    out = out .. "  </info>\n"
 
-   if Class.sortedActions?? then
+   if not table.empty(Class.sortedActions) then
       out = out .. "\n  <actions>\n"
       for _, a in ipairs(Class.sortedActions) do
          if (ignoreAction(glActions[a.name].id) != true) or a.description?? then
@@ -705,7 +708,7 @@ function docClass(Class)
                out = out .. '\n      </description>\n'
             end
 
-            if a.results?? then
+            if not table.empty(a.results) then
                local results = ''
                for _, result in ipairs(a.results) do
                   results = results .. '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
@@ -722,7 +725,7 @@ function docClass(Class)
       out = out .. '  </actions>\n'
    end
 
-   if Class.methods?? then
+   if not table.empty(Class.methods) then
       Class.sortedMethods = { }
       for _, f in pairs(Class.methods) do
          table.insert(Class.sortedMethods, f)
@@ -740,7 +743,7 @@ function docClass(Class)
             out = out .. '      <comment>' .. substituteReferences((method.comment ? ''):escXML(), Class) .. '</comment>\n'
             if method.prototype?? then out = out .. '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
 
-            if method.params?? then
+            if not table.empty(method.params) then
                out = out .. '      <input>\n'
                for _, param in ipairs(method.params) do
                   local ref = ''
@@ -757,7 +760,7 @@ function docClass(Class)
                out = out .. '\n      </description>\n'
             end
 
-            if method.results?? then
+            if not table.empty(method.results) then
                local results = ''
                for _, result in ipairs(method.results) do
                   results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
@@ -774,77 +777,77 @@ function docClass(Class)
       out = out .. '  </methods>\n'
    end
 
-   if Class.fields?? then
+   if not table.empty(Class.fields) then
+print('Found ' .. tostring(#Class.fields) .. ' fields in class ' .. Class.name)
+
       -- Process fields
       Class.sortedFields = { }
       for _, f in pairs(Class.fields) do
          table.insert(Class.sortedFields, f)
       end
 
-      if Class.sortedFields?? then
-         table.sort(Class.sortedFields, function(a,b) return a.name < b.name end)
+      table.sort(Class.sortedFields, function(a,b) return a.name < b.name end)
 
-         out = out .. '\n  <fields>\n'
-         for _, f in ipairs(Class.sortedFields) do
-            if (f.private != true) then
-               out = out .. '    <field>\n'
-               out = out .. '      <name>' .. f.name .. '</name>\n'
+      out = out .. '\n  <fields>\n'
+      for _, f in ipairs(Class.sortedFields) do
+         if (f.private != true) then
+            out = out .. '    <field>\n'
+            out = out .. '      <name>' .. f.name .. '</name>\n'
 
-               if f.comment?? then
-                  out = out .. '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
-               else
-                  print("No comment for field '" .. Class.name .. "." .. f.name .. "'.")
-               end
-
-               out = out .. '      <access'
-               if f.read?? then out = out .. ' read="' .. f.read:sub(1,1) .. '"' end
-               if f.write?? then out = out .. ' write="' .. f.write:sub(1,1) .. '"' end
-               out = out .. '>' .. (f.access ? '-/-') .. '</access>\n'
-
-               local lookup = ''
-               local prototype = ''
-               if (f.lookup != nil) then lookup = ' lookup="' .. f.lookup .. '"' end
-               local typeName = (f.docType ? (f.type ? 'NIL'))
-               if (typeName == 'struct RGB8') then
-                  typeName = 'RGB8'
-               elseif (typeName == 'int') then
-                  typeName = 'INT'
-               elseif (typeName == 'int64_t') then
-                  typeName = 'INT64'
-               elseif (f.className) then
-                  typeName = '*' .. f.className
-                  lookup = ' class="' .. f.className .. '"'
-               elseif (f.isFunctionPtr) then
-                  typeName = 'FUNCTION *'
-                  prototype = ' prototype="' .. f.docType .. '"'
-               end
-
-               out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
-
-               local description = f.description
-               if (description) then
-                  description = extractParagraph(description, Class, Class.references)
-               end
-
-               if (f.lookup != nil) then
-                  local lookup = '<types lookup="' .. f.lookup .. '"/>'
-                  if (description) then
-                     if not (description:find('<types lookup="' .. f.lookup .. '"')) then
-                        description = description .. '\n' .. lookup
-                     end
-                  else
-                     description = lookup
-                  end
-               end
-
-               if (description) then
-                  out = out .. '      <description>\n'
-                  out = out .. description
-                  out = out .. '\n      </description>\n'
-               end
-
-               out = out .. '    </field>\n\n'
+            if f.comment?? then
+               out = out .. '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
+            else
+               print("No comment for field '" .. Class.name .. "." .. f.name .. "'.")
             end
+
+            out = out .. '      <access'
+            if f.read?? then out = out .. ' read="' .. f.read:sub(1,1) .. '"' end
+            if f.write?? then out = out .. ' write="' .. f.write:sub(1,1) .. '"' end
+            out = out .. '>' .. (f.access ? '-/-') .. '</access>\n'
+
+            local lookup = ''
+            local prototype = ''
+            if f.lookup then lookup = ' lookup="' .. f.lookup .. '"' end
+            local typeName = (f.docType ? (f.type ? 'NIL'))
+            if (typeName == 'struct RGB8') then
+               typeName = 'RGB8'
+            elseif (typeName == 'int') then
+               typeName = 'INT'
+            elseif (typeName == 'int64_t') then
+               typeName = 'INT64'
+            elseif (f.className) then
+               typeName = '*' .. f.className
+               lookup = ' class="' .. f.className .. '"'
+            elseif (f.isFunctionPtr) then
+               typeName = 'FUNCTION *'
+               prototype = ' prototype="' .. f.docType .. '"'
+            end
+
+            out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
+
+            local description = f.description
+            if description then
+               description = extractParagraph(description, Class, Class.references)
+            end
+
+            if f.lookup then
+               local lookup = '<types lookup="' .. f.lookup .. '"/>'
+               if (description) then
+                  if not (description:find('<types lookup="' .. f.lookup .. '"')) then
+                     description = description .. '\n' .. lookup
+                  end
+               else
+                  description = lookup
+               end
+            end
+
+            if description then
+               out = out .. '      <description>\n'
+               out = out .. description
+               out = out .. '\n      </description>\n'
+            end
+
+            out = out .. '    </field>\n\n'
          end
       end
       out = out .. '  </fields>\n'
@@ -879,7 +882,7 @@ function docModuleHeader()
    if glModule.notes??        then out = out .. '    <notes>\n' .. glModule.notes .. '</notes>\n' end
    if glModule.technical??    then out = out .. '    <technical>\n' .. glModule.technical .. '</technical>\n' end
 
-   if srcFiles?? then
+   if not table.empty(srcFiles) then
       out = out .. '    <source>\n'
       local path
       for _, path in pairs(srcFiles) do
@@ -890,7 +893,7 @@ function docModuleHeader()
       out = out .. '    </source>\n'
    end
 
-   if glClasses?? then
+   if not table.empty(glClasses) then
       out = out .. '    <classes>\n'
       for className, cl in table.sortByKeys(glClasses) do
          out = out .. '      <class>' .. cl.name .. '</class>\n'
@@ -898,7 +901,7 @@ function docModuleHeader()
       out = out .. '    </classes>\n'
    end
 
-   if glCategories?? then
+   if not table.empty(glCategories) then
       out = out .. '    <categories>\n'
       for className, cl in table.sortByKeys(glCategories) do
          out = out .. '      <category>' .. cl.name .. '</category>\n'
@@ -930,7 +933,7 @@ function docFunction(Function)
 
    -- Function arguments
 
-   if Function.input?? then
+   if not table.empty(Function.input) then
       local args = ''
       for k, fa in ipairs(Function.input) do
          local ref = ''
@@ -964,8 +967,8 @@ function docFunction(Function)
 
    -- Results
 
-   if Function.result?? then
-      if Function.result.values?? then
+   if not table.empty(Function.result) then
+      if not table.empty(Function.result.values) then
          local errors = ''
          for _, result in ipairs(Function.result.values) do
             local comment = (result.msg ? mSys.GetErrorMsg(code))

@@ -56,7 +56,7 @@ end
 function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
-   if (Options.restrict??) or (glRestrict) then return end -- Restricted definitions are never exported
+   if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing flags ' .. Prefix)
 
@@ -75,7 +75,7 @@ function flags(Prefix, Options, ...)
             local key, comment
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
-               if (key != nil) then
+               if key then
                   if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
                      key = tonumber(key)
                   end
@@ -492,7 +492,7 @@ function saveOutput()
    print('Saving compressed IDL output to "' .. outPath .. '"')
 
    local err, file = catch(function()
-      if (glAppend) then
+      if glAppend then
          file = obj.new('file', { flags='WRITE', path=outPath } )
          file.acSeek(0, SEEK_END)
          return file
@@ -513,7 +513,7 @@ function saveOutput()
 
    local s = ''
    for _, struct in pairs(glOrderedStructures) do
-      if (struct.fields != nil) then
+      if struct.fields then
          s = s .. 's.' .. struct.name .. ':' .. struct.sequence .. EOL
       end
    end

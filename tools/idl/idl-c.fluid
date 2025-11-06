@@ -306,7 +306,7 @@ function outputClassHeader(class, Private, Custom)
 
    -- Insert registered actions
 
-   if class.sortedActions?? then
+   if not table.empty(class.sortedActions) then
       output('')
       output('   // Action stubs\n')
       for _, action in ipairs(class.sortedActions) do
@@ -328,7 +328,7 @@ function outputClassHeader(class, Private, Custom)
 
    -- Insert registered methods
 
-   if class.methods?? then
+   if not table.empty(class.methods) then
       for _, m in ipairs(class.methods) do
          if m.nestedInline then output(m.nestedInline) end
       end
@@ -543,7 +543,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if Def.result?? then
       func.result = Def.result
-   elseif Def.errors?? then
+   elseif not table.empty(Def.errors) then
       func.result = cType({ type="error", values=Def.errors, isFunction=true }, "Function " .. Name)
    end
 
@@ -783,7 +783,7 @@ end
 function buildPrototypes()
    if (glClasses != nil) then
       for className, cl in pairs(glClasses) do
-         if cl.methods?? then
+         if not table.empty(cl.methods) then
             for _, method in ipairs(cl.methods) do
                local proto = "OBJECTPTR Object"
                if method.params?? then
@@ -797,7 +797,7 @@ function buildPrototypes()
       end
    end
 
-   if glFunctions?? then
+   if not table.empty(glFunctions) then
       local proto = ''
       local prefix = ''
       if glFunctionPrefix?? then
@@ -837,7 +837,7 @@ end
 -- Generate private C definitions that describe the public functions of a module.
 
 function buildDefs()
-   if not glFunctions?? then return "" end
+   if table.empty(glFunctions) then return "" end
 
    local prefix = ''
    if glFunctionPrefix?? then prefix = glFunctionPrefix .. '::' end

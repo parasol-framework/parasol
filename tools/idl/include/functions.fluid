@@ -635,7 +635,7 @@ function cName(Field, CStruct)
    if (Field.isFunctionPtr) then return '' end // Functions have their name embedded in the type.
 
    local name = Field.name
-   if (CStruct) then
+   if CStruct then
       if (Field.type == 'OBJECTID') or (Field.type == 'MEMORYID') then
          if (name:sub(-2) != 'ID') then
             name = name .. 'ID'
@@ -699,7 +699,7 @@ function class(Name, Options, Spec, Private, Custom)
 
    local cdef = parseClassFields(class, Spec)
 
-   if Options.references?? then
+   if not table.empty(Options.references) then
       for _, v in pairs(Options.references) do
          if glCustomTypes[v]?? then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
@@ -917,7 +917,7 @@ function class(Name, Options, Spec, Private, Custom)
       table.insert(class.sortedActions, a)
    end
 
-   if class.sortedActions?? then
+   if not table.empty(class.sortedActions) then
       table.sort(class.sortedActions, function(a,b) return a.name < b.name end)
    end
 
@@ -927,9 +927,9 @@ function class(Name, Options, Spec, Private, Custom)
 
    if Options.output?? then
       local mdef = ''
-      if (class.methods != nil) then
+      if not table.empty(class.methods) then
          for k, m in ipairs(class.methods) do
-            if m.params?? then
+            if not table.empty(m.params) then
                mdef = mdef .. 'FDEF ma' .. m.name .. '[] = { ' .. buildInputParameters(m.params) .. ' };\n'
             end
          end
@@ -938,7 +938,7 @@ function class(Name, Options, Spec, Private, Custom)
          mdef = mdef .. 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
          for k, m in ipairs(class.methods) do
             local structSize
-            if not m.params?? then
+            if table.empty(m.params) then
                mdef = mdef .. '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
                structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
@@ -948,7 +948,7 @@ function class(Name, Options, Spec, Private, Custom)
          mdef = mdef .. '   { AC::NIL, 0, 0, 0, 0 }\n};\n\n'
       end
 
-      if class.sortedActions?? then
+      if not table.empty(class.sortedActions) then
          mdef = mdef .. "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
          for _, action in ipairs(class.sortedActions) do
             mdef = mdef .. "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
