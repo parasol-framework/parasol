@@ -2819,8 +2819,11 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
       check_empty = bcemit_jmp(fs);
 
       /* TRUE branch (falls through when value is truthy). */
-      { ExpDesc v2; BinOpr nextop2 = expr_binop(ls, &v2, priority[op].right);
-        (void)nextop2; expr_discharge(fs, &v2); expr_toreg(fs, &v2, result_reg); }
+      {
+        ExpDesc v2;
+        expr_binop(ls, &v2, priority[op].right);
+        expr_discharge(fs, &v2); expr_toreg(fs, &v2, result_reg);
+      }
 
       /* Skip FALSE branch after executing TRUE branch. */
       skip_false = bcemit_jmp(fs);
