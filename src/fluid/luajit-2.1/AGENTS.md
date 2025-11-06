@@ -158,8 +158,8 @@ one function call.
 
 ### Implementing Binary Logical Operators with Short-Circuiting
 
-When implementing binary logical operators (like `or`, `and`, or custom variants like `?`),
-follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bcemit_binop()`.
+When implementing binary logical operators (like `or`, `and`, or custom variants like the `?`
+if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bcemit_binop()`.
 
 **The Pattern:**
 1. **In `bcemit_binop_left()`**: Set up jumps in `e->t` for truthy LHS (to skip RHS) or
@@ -211,7 +211,7 @@ check_nil = bcemit_jmp(fs);  // This JMP is SKIPPED when reg == nil
 //   - If reg != nil: BC_ISEQP doesn't skip → JMP executes → jumps to its target
 ```
 
-**Pattern for Extended Falsey Checks** (as used in `or?` and presence check):
+**Pattern for Extended Falsey Checks** (as used in `?` if-empty operator and `??` presence check):
 
 The pattern chains multiple equality checks, where each check's JMP is patched to the same "falsey branch". The logic works as follows:
 
@@ -302,14 +302,14 @@ When adding single-character operators (like `?`):
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
    ```c
-   __(or_question, ?)
+   __(if_empty, ?)
    ```
 
 2. **Handle recognition in the lexer** (`lj_lex.c`) in the switch statement:
    ```c
    case '?':
      lex_next(ls);
-     return TK_or_question;
+     return TK_if_empty;
    ```
 
 ### Multi-Character Token Recognition
