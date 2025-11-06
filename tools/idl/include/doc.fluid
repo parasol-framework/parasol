@@ -653,7 +653,7 @@ function docClass(Class)
    local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out = out .. '    <id>' .. class_hash .. '</id>\n'
    out = out .. '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
-   out = out .. '    <category>' .. meta.get('$category'??,'') .. '</category>\n'
+   out = out .. '    <category>' .. (meta.get('$category') ? '') .. '</category>\n'
    if Class.include??      then out = out .. '    <include>' .. Class.include .. '</include>\n' end
    if Class.date??         then out = out .. '    <date>' .. Class.date .. '</date>\n' end
    if glModule.copyright?? then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end

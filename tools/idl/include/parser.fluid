@@ -291,7 +291,7 @@ function parseSourceFiles()
 
    local srcFiles = { }
 
-   for i=1,arg('files:size', 0)?? do
+   for i=1, arg('files:size') ? 0 do
       table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
    end
 

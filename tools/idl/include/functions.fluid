@@ -93,7 +93,7 @@ function module(Options, Function)
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      local extracted_content = (string.match(content ? '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+      local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
          extracted_content = extracted_content .. '\n' .. extract
       end
@@ -748,7 +748,7 @@ function class(Name, Options, Spec, Private, Custom)
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         local extracted_content = (string.match(content ? '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+         local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
          for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
             extracted_content = extracted_content .. '\n' .. extract
          end
