@@ -581,15 +581,6 @@ endif
 ifeq (Darwin,$(TARGET_SYS))
   LJVM_MODE= machasm
 endif
-ifeq (iOS,$(TARGET_SYS))
-  LJVM_MODE= machasm
-endif
-ifeq (SunOS,$(TARGET_SYS))
-  BUILDMODE= static
-endif
-ifeq (PS3,$(TARGET_SYS))
-  BUILDMODE= static
-endif
 
 ifeq (Windows,$(HOST_SYS))
   MINILUA_T= $(OBJDIR_PREFIX)host/minilua.exe
@@ -639,7 +630,7 @@ E= @echo
 default all:	$(TARGET_T)
 
 amalg:
-	$(MAKE) all "LJCORE_O=$(OBJDIR_PREFIX)ljamalg.o" "TARGET_GENDIR=$(TARGET_GENDIR)" "OBJDIR=$(OBJDIR)"
+	$(MAKE) "$(LUAJIT_A)" "LJCORE_O=$(OBJDIR_PREFIX)ljamalg.o" "TARGET_GENDIR=$(TARGET_GENDIR)" "OBJDIR=$(OBJDIR)"
 
 clean:
 	$(HOST_RM) $(ALL_RM)
@@ -741,6 +732,9 @@ $(LUAJIT_O): luajit.c
 $(OBJDIR_PREFIX)host/%.o: host/%.c
 	$(E) "HOSTCC    $@"
 	$(Q)$(HOST_CC) $(HOST_ACFLAGS) -c -o $@ $<
+
+# Amalgamated build dependency on generated headers
+$(OBJDIR_PREFIX)ljamalg.o: ljamalg.c $(ALL_HDRGEN)
 
 include Makefile.dep
 
