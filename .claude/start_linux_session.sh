@@ -10,6 +10,6 @@ if [ "$CLAUDE_CODE_REMOTE" != "true" ]; then
   exit 0
 fi
 
-# Optional configuration here...
+git fetch origin
 
 exit 0
