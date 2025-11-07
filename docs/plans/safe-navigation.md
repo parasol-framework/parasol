@@ -4,7 +4,7 @@
 
 This document provides a revised implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT using a simpler approach that leverages the existing if-empty operator (`?`) mechanism.
 
-**Status:** 📋 **Planning** - Not yet started
+**Status:** ✅ **Completed** - Parser and runtime support landed
 
 **Priority:** ⭐⭐⭐ **Medium**
 
@@ -469,19 +469,21 @@ local v2 = obj?.count  -- Returns 0 (because obj is not nil)
 
 ## Testing Checklist
 
-- [ ] `nil?.field` returns `nil`
-- [ ] `obj?.field` returns field value
-- [ ] `nil?.method()` returns `nil`
-- [ ] `obj?.method()` calls method
-- [ ] `nil?[key]` returns `nil`
-- [ ] `obj?[key]` returns indexed value
-- [ ] Chaining: `nil?.a?.b` returns `nil`
-- [ ] Chaining: `obj?.a?.b` accesses nested fields
-- [ ] Arguments not evaluated: `nil?.method(sideEffect())` doesn't call `sideEffect()`
-- [ ] Multi-return: `local a, b = obj?.method()` gets both values
-- [ ] False/zero/empty not treated as nil: `{flag=false}?.flag` returns `false`
-- [ ] Integration with `?`: `nil?.field ? "default"` returns `"default"`
-- [ ] Compile-time optimization: `nil?.field` doesn't generate runtime checks
+- [x] `nil?.field` returns `nil`
+- [x] `obj?.field` returns field value
+- [x] `nil?.method()` returns `nil`
+- [x] `obj?.method()` calls method
+- [x] `nil?[key]` returns `nil`
+- [x] `obj?[key]` returns indexed value
+- [x] Chaining: `nil?.a?.b` returns `nil`
+- [x] Chaining: `obj?.a?.b` accesses nested fields
+- [x] Arguments not evaluated: `nil?.method(sideEffect())` doesn't call `sideEffect()`
+- [x] Multi-return: `local a, b = obj?.method()` gets both values
+- [x] False/zero/empty not treated as nil: `{flag=false}?.flag` returns `false`
+- [x] Integration with `?`: `nil?.field ? "default"` returns `"default"`
+- [x] Compile-time optimization: `nil?.field` doesn't generate runtime checks
+
+Test suite executed with `src/fluid/luajit-2.1/src/luajit src/fluid/tests/test_safe_nav.fluid`.
 
 ---
 
