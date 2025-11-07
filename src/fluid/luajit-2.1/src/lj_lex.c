@@ -97,9 +97,10 @@ static void lex_number(LexState *ls, TValue *tv)
   StrScanFmt fmt;
   LexChar c, xp = 'e';
   lj_assertLS(lj_char_isdigit(ls->c), "bad usage");
-  if ((c = ls->c) == '0' && (lex_savenext(ls) | 0x20) == 'x')
+  if ((c = ls->c) == '0' && (lex_savenext(ls) | 0x20) == 'x') {
     xp = 'p';
-    while (lj_char_isident(ls->c) || ls->c == '.' || ((ls->c == '-' || ls->c == '+') && (c | 0x20) == xp)) {
+  }
+  while (lj_char_isident(ls->c) || ls->c == '.' || ((ls->c == '-' || ls->c == '+') && (c | 0x20) == xp)) {
     c = ls->c;
     lex_savenext(ls);
   }
@@ -407,6 +408,8 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       else return ':';
     case '?':
       lex_next(ls);
+      if (ls->c == '.') { lex_next(ls); return TK_safe_field; }
+      if (ls->c == ':') { lex_next(ls); return TK_safe_method; }
       if (ls->c != '?') return TK_if_empty; else { lex_next(ls); return TK_presence; }
     case '"':
     case '\'':

@@ -206,7 +206,7 @@ static char *serialize_put(char *w, SBufExt *sbx, cTValue *o)
 	nhash += !tvisnil(&node[i].val);
     }
     /* Write metatable index. */
-    if (LJ_UNLIKELY(tabref(sbx->dict_mt)) && tabref(t->metatable)) {
+    if (LJ_UNLIKELY(gcref(sbx->dict_mt)) && gcref(t->metatable)) {
       TValue mto;
       Node *n;
       settabV(sbufL(sbx), &mto, tabref(t->metatable));

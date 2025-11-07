@@ -4,7 +4,7 @@
 
 This document provides a revised implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT using a simpler approach that leverages the existing if-empty operator (`?`) mechanism.
 
-**Status:** 📋 **Planning** - Not yet started
+**Status:** ✅ **Completed** - Parser and runtime support landed
 
 **Priority:** ⭐⭐⭐ **Medium**
 

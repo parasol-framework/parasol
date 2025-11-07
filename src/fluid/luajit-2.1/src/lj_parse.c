@@ -2023,6 +2023,7 @@ static void fs_init(LexState *ls, FuncState *fs)
 
 /* Forward declaration. */
 static void expr(LexState *ls, ExpDesc *v);
+static void parse_args(LexState *ls, ExpDesc *e);
 
 /* Return string expression. */
 static void expr_str(LexState *ls, ExpDesc *e)
@@ -2081,6 +2082,153 @@ static void expr_bracket(LexState *ls, ExpDesc *v)
   expr(ls, v);
   expr_toval(ls->fs, v);
   lex_check(ls, ']');
+}
+
+/* Parse safe navigation for field access: obj?.field */
+static void expr_safe_field(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, table, nilv;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_nil;
+
+  lj_lex_next(ls);  /* Consume '?.'. */
+  expr_str(ls, &key);
+
+  expr_discharge(fs, v);
+  if (v->k == VKNIL) {
+    expr_init(v, VKNIL, 0);
+    return;
+  }
+
+  obj_reg = expr_toanyreg(fs, v);
+  result_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+
+  fprintf(stderr, "[SAFE_FIELD] obj_reg=%d, result_reg=%d, pc_before_iseqp=%d\n", obj_reg, result_reg, fs->pc);
+  fflush(stderr);
+
+  /* Pattern from OPR_IF_EMPTY: BC_ISEQP skips next instruction when equal */
+  /* If obj == nil: ISEQP skips the JMP, falls through to load nil */
+  /* If obj != nil: ISEQP doesn't skip, executes JMP to field access */
+  expr_init(&nilv, VKNIL, 0);
+  BCPos pc_iseqp = fs->pc;
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  fprintf(stderr, "[SAFE_FIELD] Emitted ISEQP at pc=%d\n", pc_iseqp);
+  fflush(stderr);
+  BCPos pc_before_jmp = fs->pc;
+  check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
+  fprintf(stderr, "[SAFE_FIELD] Emitted JMP at pc=%d, jump index=%d\n", pc_before_jmp, check_nil);
+  fflush(stderr);
+
+  /* Nil case (obj == nil): load nil to result */
+  BCPos pc_kpri = fs->pc;
+  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+  fprintf(stderr, "[SAFE_FIELD] Emitted KPRI at pc=%d\n", pc_kpri);
+  fflush(stderr);
+  BCPos pc_before_skip = fs->pc;
+  skip_nil = bcemit_jmp(fs);  /* Skip field access */
+  fprintf(stderr, "[SAFE_FIELD] Emitted skip JMP at pc=%d, jump index=%d\n", pc_before_skip, skip_nil);
+  fflush(stderr);
+
+  /* Non-nil case (obj != nil): evaluate obj.field */
+  BCPos pc_field_access = fs->pc;
+  jmp_patchins(fs, check_nil, pc_field_access);
+  fprintf(stderr, "[SAFE_FIELD] Patched check_nil (index %d) to target pc=%d with jmp_patchins\n", check_nil, pc_field_access);
+  fflush(stderr);
+  expr_init(&table, VNONRELOC, obj_reg);
+  table.t = table.f = NO_JMP;
+  expr_index(fs, &table, &key);
+  fprintf(stderr, "[SAFE_FIELD] After expr_index, pc=%d, table.k=%d\n", fs->pc, table.k);
+  fflush(stderr);
+  BCPos pc_before_toreg = fs->pc;
+  expr_toreg(fs, &table, result_reg);
+  fprintf(stderr, "[SAFE_FIELD] After expr_toreg, pc_before=%d, pc_after=%d\n", pc_before_toreg, fs->pc);
+  fflush(stderr);
+
+  /* Merge point */
+  jmp_patchins(fs, skip_nil, fs->pc);
+  fprintf(stderr, "[SAFE_FIELD] Patched skip_nil (index %d) to target pc=%d with jmp_patchins\n", skip_nil, fs->pc);
+  fflush(stderr);
+  expr_init(v, VNONRELOC, result_reg);
+}
+
+/* Parse safe navigation for index access: obj?[expr] */
+static void expr_safe_index(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, table, nilv;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_nil;
+
+  lj_lex_next(ls);  /* Consume '?'. '[' remains as current token. */
+
+  expr_discharge(fs, v);
+  obj_reg = expr_toanyreg(fs, v);
+
+  result_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+
+  /* If obj == nil: ISEQP skips JMP, loads nil */
+  /* If obj != nil: ISEQP doesn't skip, JMPs to index access */
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  check_nil = bcemit_jmp(fs);
+
+  /* Nil case: load nil */
+  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+  skip_nil = bcemit_jmp(fs);
+
+  /* Non-nil case: evaluate obj[key] */
+  jmp_patch(fs, check_nil, fs->pc);
+  expr_bracket(ls, &key);
+  expr_init(&table, VNONRELOC, obj_reg);
+  table.t = table.f = NO_JMP;
+  expr_index(fs, &table, &key);
+  expr_toreg(fs, &table, result_reg);
+
+  jmp_patch(fs, skip_nil, fs->pc);
+  expr_init(v, VNONRELOC, result_reg);
+}
+
+/* Parse safe navigation for method calls: obj?:method(...) */
+static void expr_safe_method(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, obj, nilv;
+  BCReg obj_reg, base_reg;
+  BCPos check_nil, skip_nil;
+
+  expr_discharge(fs, v);
+  obj_reg = expr_toanyreg(fs, v);
+
+  lj_lex_next(ls);  /* Consume '?:'. */
+  expr_str(ls, &key);
+
+  base_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+
+  /* If obj == nil: ISEQP skips JMP, loads nil */
+  /* If obj != nil: ISEQP doesn't skip, JMPs to method call */
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  check_nil = bcemit_jmp(fs);
+
+  /* Nil case: load nil and set up obj for return */
+  bcemit_AD(fs, BC_KPRI, base_reg, VKNIL);
+  expr_init(&obj, VNONRELOC, base_reg);
+  skip_nil = bcemit_jmp(fs);
+
+  /* Non-nil case: call method */
+  jmp_patch(fs, check_nil, fs->pc);
+  fs->freereg = base_reg;
+  expr_init(&obj, VNONRELOC, obj_reg);
+  obj.t = obj.f = NO_JMP;
+  bcemit_method(fs, &obj, &key);
+  parse_args(ls, &obj);
+
+  jmp_patch(fs, skip_nil, fs->pc);
+  *v = obj;
 }
 
 /* Get value of constant expression. */
@@ -2397,7 +2545,15 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     err_syntax(ls, LJ_ERR_XSYMBOL);
   }
   for (;;) {  /* Parse multiple expression suffixes. */
-    if (ls->tok == '.') {
+    if (ls->tok == TK_safe_field) {
+      fprintf(stderr, "[PARSER] Detected TK_safe_field token\n");
+      fflush(stderr);
+      expr_safe_field(ls, v);
+    } else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
+      expr_safe_index(ls, v);
+    } else if (ls->tok == TK_safe_method) {
+      expr_safe_method(ls, v);
+    } else if (ls->tok == '.') {
       expr_field(ls, v);
     } else if (ls->tok == '[') {
       ExpDesc key;
@@ -2469,19 +2625,24 @@ static void expr_simple(LexState *ls, ExpDesc *v)
   case TK_number:
     expr_init(v, (LJ_HASFFI && tviscdata(&ls->tokval)) ? VKCDATA : VKNUM, 0);
     copyTV(ls->L, &v->u.nval, &ls->tokval);
+    lj_lex_next(ls);
     break;
   case TK_string:
     expr_init(v, VKSTR, 0);
     v->u.sval = strV(&ls->tokval);
+    lj_lex_next(ls);
     break;
   case TK_nil:
     expr_init(v, VKNIL, 0);
+    lj_lex_next(ls);
     break;
   case TK_true:
     expr_init(v, VKTRUE, 0);
+    lj_lex_next(ls);
     break;
   case TK_false:
     expr_init(v, VKFALSE, 0);
+    lj_lex_next(ls);
     break;
   case TK_dots: {  /* Vararg. */
     FuncState *fs = ls->fs;
@@ -2491,6 +2652,7 @@ static void expr_simple(LexState *ls, ExpDesc *v)
     base = fs->freereg-1;
     expr_init(v, VCALL, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
     v->u.s.aux = base;
+    lj_lex_next(ls);
     break;
   }
   case '{':  /* Table constructor. */
@@ -2504,7 +2666,17 @@ static void expr_simple(LexState *ls, ExpDesc *v)
     expr_primary(ls, v);
     return;
   }
-  lj_lex_next(ls);
+  for (;;) {
+    if (ls->tok == TK_safe_field) {
+      expr_safe_field(ls, v);
+    } else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
+      expr_safe_index(ls, v);
+    } else if (ls->tok == TK_safe_method) {
+      expr_safe_method(ls, v);
+    } else {
+      break;
+    }
+  }
 }
 
 /* Manage syntactic levels to avoid blowing up the stack. */

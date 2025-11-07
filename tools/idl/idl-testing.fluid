@@ -2,13 +2,13 @@
 
    include 'core'
    include 'xml'
-   
+
    require './include/utils'
    require './include/parser'
    require './include/functions'
    require './include/types'
    require './include/doc'
-   
+
    glHeader = { }
    glOutput = { }
    glConstants = { }
@@ -24,11 +24,11 @@
       { str = "int(XIF) ResultFlags: Bitmask.", type='int(XIF)', name='ResultFlags' },
       { str = "ptr(cpp(str)) Result: Result.", type='ptr(cpp(str))', name='Result' }
    }
-         
+
    for k, v in ipairs(param_list) do
       print('Check: ' .. v.str)
       local param = parseParameterString(v.str)
-      
+
       assert(param.type == v.type, "Type mismatch for parameter '" .. v.name .. "': expected '" .. v.type .. "', got '" .. param.type .. "'")
       assert(param.name == v.name, "Name mismatch for parameter: expected '" .. v.name .. "', got '" .. param.name .. "'")
 

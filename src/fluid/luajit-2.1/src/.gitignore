@@ -1,5 +1,0 @@
-luajit
-lj_vm.[sS]
-buildvm.exp
-minilua.exp
-lua51.pdb
