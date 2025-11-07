@@ -115,7 +115,7 @@ function parseParameterString(Parameter)
       param.type = param.type:trim()
       param.name = param.name:trim()
       param.comment = param.comment:trim()
-      return param   
+      return param
    end
 end
 
@@ -216,7 +216,7 @@ function parseClassFields(class, ClientSpec)
       end
 
       if table.empty(metaFields) then metaFields = { } end
-      
+
       for k, f in ipairs(metaFields) do
          local def = getMetaFieldDefinition(f)
          if def and (def.synonym != true) then

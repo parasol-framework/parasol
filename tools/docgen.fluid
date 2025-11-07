@@ -111,7 +111,7 @@ end
          timeout = 20
       })
 
-      task.acActivate() 
+      task.acActivate()
 
       mSys.DeleteFile(output_path)
       print('Finished.')

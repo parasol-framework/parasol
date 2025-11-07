@@ -6,7 +6,7 @@
 
    include 'network'
    local json = require('json')
-   
+
    local glTime = obj.new('time')
 
    local httpServer = { }
@@ -158,56 +158,56 @@ local function processChunkedBody(state, server)
          if not line_end then
             return false -- Need more data for chunk size line
          end
-         
+
          local size_line = state.buffer:sub(1, line_end - 1)
          state.buffer = state.buffer:sub(line_end + 2) -- Remove \r\n
-         
+
          -- Parse chunk size (ignore extensions after semicolon)
          local hex_size = size_line:match('^([0-9a-fA-F]+)')
          if not hex_size then
             logMessage(server, 'Invalid chunk size format: ' .. size_line)
             return false -- Invalid format
          end
-         
+
          state.chunk_size = tonumber(hex_size, 16)
          if not state.chunk_size then
             logMessage(server, 'Could not parse chunk size: ' .. hex_size)
             return false -- Invalid hex
          end
-         
+
          logMessage(server, 'Chunk size: ' .. state.chunk_size .. ' bytes')
-         
+
          if state.chunk_size == 0 then -- End of chunks
             state.chunk_state = 'TRAILER'
          else
             state.chunk_state = 'DATA'
             state.chunk_received = 0
          end
-         
+
       elseif state.chunk_state == 'DATA' then
          -- Read chunk data
          local needed = state.chunk_size - state.chunk_received
          local available = #state.buffer
-         
+
          if available == 0 then
             return false -- Need more data
          end
-         
+
          local to_take = math.min(available, needed)
          state.request.body = state.request.body .. state.buffer:sub(1, to_take)
          state.buffer = state.buffer:sub(to_take + 1)
          state.chunk_received = state.chunk_received + to_take
          state.body_received = state.body_received + to_take
-         
+
          if state.chunk_received >= state.chunk_size then
             -- Chunk data complete, expect trailing \r\n
             state.chunk_state = 'CRLF'
          end
-         
+
       elseif state.chunk_state == 'CRLF' then
          -- Expect \r\n after chunk data
          if #state.buffer < 2 then return false end -- Need more data
-         
+
          if state.buffer:sub(1, 2) == '\r\n' then
             state.buffer = state.buffer:sub(3)
             state.chunk_state = 'SIZE' -- Ready for next chunk
@@ -216,7 +216,7 @@ local function processChunkedBody(state, server)
             logMessage(server, 'Warning: Missing CRLF after chunk, continuing')
             state.chunk_state = 'SIZE'
          end
-         
+
       elseif state.chunk_state == 'TRAILER' then
          -- Look for final \r\n (trailer headers are ignored for now)
          local trailer_end = state.buffer:find('\r\n')
@@ -228,7 +228,7 @@ local function processChunkedBody(state, server)
          end
       end
    end
-   
+
    return false -- Need more data
 end
 
@@ -325,7 +325,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
             end
          end
          chunkSizeLine = chunkSizeLine .. buffer:sub(1, 1)
-         
+
          -- Prevent infinite line reading
          if #chunkSizeLine > 100 then
             return nil, 'invalid_chunk_size', false
@@ -337,7 +337,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
       if not chunkSizeHex then
          return nil, 'invalid_chunk_format', false
       end
-      
+
       local chunkSize = tonumber(chunkSizeHex, 16)
       if not chunkSize then
          return nil, 'invalid_chunk_size', false
@@ -424,7 +424,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
          end
          crlf = crlf .. buffer:sub(1, 1)
       end
-      
+
       -- Be lenient about CRLF validation - some clients may not send it properly
       -- or the connection may close before sending it
    end
@@ -603,8 +603,8 @@ local function sendHttpResponse(self, client, statusCode, statusText, headers, b
    if err != ERR_Okay then
       logMessage(self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
    end
-   
-   if headers['connection'] == 'close' then -- The HTTP server is responsible for socket closure, so do it now. 
+
+   if headers['connection'] == 'close' then -- The HTTP server is responsible for socket closure, so do it now.
       msg('Closing client socket per connection: close')
       client.acDeactivate()
    end
@@ -1307,7 +1307,7 @@ end
 
 local function serverIncoming(self, ClientSocket)
    local state = ClientSocket._state()
-   
+
    if not state.initialised then
       state.buffer = ''
       state.phase = 'READING_HEADERS'
@@ -1322,11 +1322,11 @@ local function serverIncoming(self, ClientSocket)
       state.chunk_state = 'SIZE' -- For chunked encoding: SIZE, DATA, TRAILER
       state.chunk_size = 0
       state.chunk_received = 0
-      
+
       -- Get client IP for rate limiting
       local ip_array = ClientSocket.client.ip
       state.ip = ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3] .. '.' .. ip_array[4]
-      
+
       -- Check rate limit
       if not checkRateLimit(self, state.ip) then
          local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
@@ -1337,7 +1337,7 @@ local function serverIncoming(self, ClientSocket)
          return
       end
    end
-   
+
    -- Check for timeout
    if (mSys.PreciseTime() - state.start_time)/1000000 > self.timeout then
       local errorBody = createErrorPage(408, 'Request Timeout', 'The server did not receive a complete request within the timeout period.', 'Timeout: ' .. self.timeout .. ' seconds')
@@ -1346,25 +1346,25 @@ local function serverIncoming(self, ClientSocket)
       }, errorBody)
       return
    end
-   
+
    local buffer = string.alloc(8192)
    local err, bytes_read = ClientSocket.acRead(buffer, 8192)
-   
+
    if err != ERR_Okay then
       logMessage(self, 'Failed to read from client: ' .. mSys.GetErrorMsg(err))
       return
    end
-   
+
    if bytes_read == 0 then return end -- Sometimes happens with SSL sockets
-   
-   if state.phase == 'CANCELLED' then 
+
+   if state.phase == 'CANCELLED' then
       msg('Processing cancelled.')
-      return 
+      return
    end
 
    -- Accumulate data
 
-   state.buffer = state.buffer .. buffer:sub(1, bytes_read)  
+   state.buffer = state.buffer .. buffer:sub(1, bytes_read)
    if #state.buffer > self.maxRequestSize then
       local errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
       sendHttpResponse(self, ClientSocket, 413, "Payload Too Large", {
@@ -1372,17 +1372,17 @@ local function serverIncoming(self, ClientSocket)
       }, errorBody)
       return
    end
-   
+
    -- Read and parse headers
    if state.phase == 'READING_HEADERS' then
       -- Look for end of headers marker
       local header_end = state.buffer:find('\r\n\r\n')
       if not header_end then return end -- Wait for more data
-      
+
       -- Extract header section
       local header_section = state.buffer:sub(1, header_end + 3) -- Include the \r\n\r\n
       state.request = parseHttpRequest(header_section)
-      
+
       if not state.request then
          local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
          sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
@@ -1390,7 +1390,7 @@ local function serverIncoming(self, ClientSocket)
          }, errorBody)
          return
       end
-      
+
       logMessage(self, state.request.method .. ' ' .. state.request.path)
       if self.verbose then
          logMessage(self, 'Headers:')
@@ -1398,7 +1398,7 @@ local function serverIncoming(self, ClientSocket)
             logMessage(self, '  ' .. k .. ': ' .. v)
          end
       end
-      
+
       -- Check if method is supported
       local supportedMethods = { 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS' }
       local methodSupported = false
@@ -1408,7 +1408,7 @@ local function serverIncoming(self, ClientSocket)
             break
          end
       end
-      
+
       if not methodSupported then
          local errorBody = createErrorPage(405, 'Method Not Allowed', 'HTTP method not supported.', 'Requested method: ' .. state.request.method)
          sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
@@ -1417,17 +1417,17 @@ local function serverIncoming(self, ClientSocket)
          }, errorBody)
          return
       end
-      
+
       -- Remove processed headers from buffer
       state.buffer = state.buffer:sub(header_end + 4) -- Remove \r\n\r\n as well
       state.headers_complete = true
-      
+
       -- Call validateHeader callback if route has one
       local matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
-      
+
       if matchedRoute and matchedRoute.validateHeader then
          local success, validationResult = pcall(matchedRoute.validateHeader, state.request.headers)
-         
+
          if not success then -- validateHeader threw an error
             logMessage(self, 'validateHeader callback error: ' .. tostring(validationResult))
             local errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
@@ -1445,7 +1445,7 @@ local function serverIncoming(self, ClientSocket)
             local statusText = validationResult.statusText or 'Bad Request'
             local message = validationResult.message or 'Request headers failed validation.'
             local details = validationResult.details or 'The request headers do not meet server requirements.'
-            
+
             local errorBody = createErrorPage(statusCode, statusText, message, details)
             sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
             state.invalid_header = true
@@ -1453,18 +1453,18 @@ local function serverIncoming(self, ClientSocket)
          end
          -- If validateHeader returns true or nil, continue processing
       end
-      
+
       -- If header validation failed, don't continue processing
       if state.invalid_header or state.phase == 'CANCELLED' then
          return
       end
-      
+
       -- Determine if we need to read a body
       state.content_length = tonumber(state.request.headers['content-length'])
       state.transfer_encoding = state.request.headers['transfer-encoding']
-      
+
       if state.request.method == 'POST' or state.request.method == 'PUT' or state.request.method == 'PATCH' then
-         if (state.transfer_encoding and state.transfer_encoding:lower():find('chunked')) or 
+         if (state.transfer_encoding and state.transfer_encoding:lower():find('chunked')) or
             (state.content_length and state.content_length > 0) then
             -- Need to read body
             state.phase = 'READING_BODY'
@@ -1477,7 +1477,7 @@ local function serverIncoming(self, ClientSocket)
          state.phase = 'PROCESSING'
       end
    end
-   
+
    -- Read request body
    if state.phase == 'READING_BODY' then
       if state.transfer_encoding and state.transfer_encoding:lower():find('chunked') then
@@ -1488,21 +1488,21 @@ local function serverIncoming(self, ClientSocket)
          -- Accumulate body data from buffer
          local needed = state.content_length - state.body_received
          local available = #state.buffer
-         
+
          if available > 0 then
             local to_take = math.min(available, needed)
             state.request.body = state.request.body .. state.buffer:sub(1, to_take)
             state.buffer = state.buffer:sub(to_take + 1)
             state.body_received = state.body_received + to_take
-            
+
             logMessage(self, 'Body progress: ' .. state.body_received .. '/' .. state.content_length .. ' bytes')
          end
-         
+
          if state.body_received < state.content_length then
             return -- Still need more body data
          end
       end
-      
+
       -- Body reading complete, parse it
       if state.request.body then
          local contentType = state.request.headers['content-type'] or ''
@@ -1517,14 +1517,14 @@ local function serverIncoming(self, ClientSocket)
             state.request.parsedBody = { _raw = state.request.body }
          end
       end
-      
+
       state.phase = 'PROCESSING'
    end
-   
+
    -- Process complete request
    if state.phase == 'PROCESSING' then
       local request = state.request
-      
+
       -- Handle OPTIONS requests for CORS
       if request.method == 'OPTIONS' then
          sendHttpResponse(self, ClientSocket, 200, "OK", {

@@ -196,11 +196,24 @@ endif
 TARGET_GENDIR?= .
 export TARGET_GENDIR
 
+# Directory for object files (can be overridden from command line)
+OBJDIR?= .
+export OBJDIR
+
 # Add TARGET_GENDIR to include path if it's not the current directory
 ifneq ($(TARGET_GENDIR),.)
   GENDIR_INC= -I$(TARGET_GENDIR)
 else
   GENDIR_INC=
+endif
+
+# Add OBJDIR prefix for object files if not current directory
+ifneq ($(OBJDIR),.)
+  OBJDIR_PREFIX= $(OBJDIR)/
+  OBJDIR_INC= -I$(OBJDIR) -I$(OBJDIR)/host
+else
+  OBJDIR_PREFIX=
+  OBJDIR_INC=
 endif
 
 ASOPTIONS= $(CCOPT) $(CCWARN) $(XCFLAGS) $(CFLAGS) $(GENDIR_INC)
@@ -213,7 +226,7 @@ HOST_RM?= rm -f
 # copy of (plain) Lua 5.1 or 5.2, plus Lua BitOp. E.g. with: HOST_LUA=lua
 HOST_LUA=
 
-HOST_XCFLAGS= -I.
+HOST_XCFLAGS= -I. $(GENDIR_INC) $(OBJDIR_INC)
 HOST_XLDFLAGS=
 HOST_XLIBS=
 HOST_ACFLAGS= $(CCOPTIONS) $(HOST_XCFLAGS) $(TARGET_ARCH) $(HOST_CFLAGS)
@@ -239,7 +252,7 @@ TARGET_XSHLDFLAGS= -shared -fPIC -Wl,-soname,$(TARGET_SONAME)
 TARGET_DYNXLDOPTS=
 
 TARGET_LFSFLAGS= -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
-TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE
+TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE $(OBJDIR_INC)
 TARGET_XLDFLAGS=
 TARGET_XLIBS= -lm
 TARGET_TCFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
@@ -399,9 +412,9 @@ endif
 # Files and pathnames.
 ##############################################################################
 
-MINILUA_O= host/minilua.o
+MINILUA_O= $(OBJDIR_PREFIX)host/minilua.o
 MINILUA_LIBS= -lm
-MINILUA_T= host/minilua
+MINILUA_T= $(OBJDIR_PREFIX)host/minilua
 MINILUA_X= $(MINILUA_T)
 
 ifeq (,$(HOST_LUA))
@@ -485,59 +498,59 @@ endif
 DASM_FLAGS= $(DASM_XFLAGS) $(DASM_AFLAGS)
 DASM_DASC= vm_$(DASM_ARCH).dasc
 
-BUILDVM_O= host/buildvm.o host/buildvm_asm.o host/buildvm_peobj.o \
-	   host/buildvm_lib.o host/buildvm_fold.o
-BUILDVM_T= host/buildvm
+BUILDVM_O= $(OBJDIR_PREFIX)host/buildvm.o $(OBJDIR_PREFIX)host/buildvm_asm.o $(OBJDIR_PREFIX)host/buildvm_peobj.o \
+	   $(OBJDIR_PREFIX)host/buildvm_lib.o $(OBJDIR_PREFIX)host/buildvm_fold.o
+BUILDVM_T= $(OBJDIR_PREFIX)host/buildvm
 BUILDVM_X= $(BUILDVM_T)
 
 HOST_O= $(MINILUA_O) $(BUILDVM_O)
 HOST_T= $(MINILUA_T) $(BUILDVM_T)
 
-LJVM_S= lj_vm.S
-LJVM_O= lj_vm.o
+LJVM_S= $(OBJDIR_PREFIX)lj_vm.S
+LJVM_O= $(OBJDIR_PREFIX)lj_vm.o
 LJVM_BOUT= $(LJVM_S)
 LJVM_MODE= elfasm
 
 # PARASOL PATCHED IN
 # lib_io.o lib_os.o lib_package.o
 
-LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
-	 lib_debug.o lib_jit.o lib_ffi.o \
-	 lib_buffer.o
-LJLIB_C= $(LJLIB_O:.o=.c)
+LJLIB_O= $(OBJDIR_PREFIX)lib_base.o $(OBJDIR_PREFIX)lib_math.o $(OBJDIR_PREFIX)lib_bit.o $(OBJDIR_PREFIX)lib_string.o $(OBJDIR_PREFIX)lib_table.o \
+	 $(OBJDIR_PREFIX)lib_debug.o $(OBJDIR_PREFIX)lib_jit.o $(OBJDIR_PREFIX)lib_ffi.o \
+	 $(OBJDIR_PREFIX)lib_buffer.o
+LJLIB_C= $(LJLIB_O:$(OBJDIR_PREFIX)%.o=%.c)
 
-LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
-	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
-	  lj_prng.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o \
-	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_serialize.o \
-	  lj_api.o lj_profile.o \
-	  lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o \
-	  lj_ir.o lj_opt_mem.o lj_opt_fold.o lj_opt_narrow.o \
-	  lj_opt_dce.o lj_opt_loop.o lj_opt_split.o lj_opt_sink.o \
-	  lj_mcode.o lj_snap.o lj_record.o lj_crecord.o lj_ffrecord.o \
-	  lj_asm.o lj_trace.o lj_gdbjit.o \
-	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
-	  lj_carith.o lj_clib.o lj_cparse.o \
-	  lj_lib.o lj_alloc.o lib_aux.o \
-	  $(LJLIB_O) lib_init.o
+LJCORE_O= $(OBJDIR_PREFIX)lj_assert.o $(OBJDIR_PREFIX)lj_gc.o $(OBJDIR_PREFIX)lj_err.o $(OBJDIR_PREFIX)lj_char.o $(OBJDIR_PREFIX)lj_bc.o $(OBJDIR_PREFIX)lj_obj.o $(OBJDIR_PREFIX)lj_buf.o \
+	  $(OBJDIR_PREFIX)lj_str.o $(OBJDIR_PREFIX)lj_tab.o $(OBJDIR_PREFIX)lj_func.o $(OBJDIR_PREFIX)lj_udata.o $(OBJDIR_PREFIX)lj_meta.o $(OBJDIR_PREFIX)lj_debug.o \
+	  $(OBJDIR_PREFIX)lj_prng.o $(OBJDIR_PREFIX)lj_state.o $(OBJDIR_PREFIX)lj_dispatch.o $(OBJDIR_PREFIX)lj_vmevent.o $(OBJDIR_PREFIX)lj_vmmath.o \
+	  $(OBJDIR_PREFIX)lj_strscan.o $(OBJDIR_PREFIX)lj_strfmt.o $(OBJDIR_PREFIX)lj_strfmt_num.o $(OBJDIR_PREFIX)lj_serialize.o \
+	  $(OBJDIR_PREFIX)lj_api.o $(OBJDIR_PREFIX)lj_profile.o \
+	  $(OBJDIR_PREFIX)lj_lex.o $(OBJDIR_PREFIX)lj_parse.o $(OBJDIR_PREFIX)lj_bcread.o $(OBJDIR_PREFIX)lj_bcwrite.o $(OBJDIR_PREFIX)lj_load.o \
+	  $(OBJDIR_PREFIX)lj_ir.o $(OBJDIR_PREFIX)lj_opt_mem.o $(OBJDIR_PREFIX)lj_opt_fold.o $(OBJDIR_PREFIX)lj_opt_narrow.o \
+	  $(OBJDIR_PREFIX)lj_opt_dce.o $(OBJDIR_PREFIX)lj_opt_loop.o $(OBJDIR_PREFIX)lj_opt_split.o $(OBJDIR_PREFIX)lj_opt_sink.o \
+	  $(OBJDIR_PREFIX)lj_mcode.o $(OBJDIR_PREFIX)lj_snap.o $(OBJDIR_PREFIX)lj_record.o $(OBJDIR_PREFIX)lj_crecord.o $(OBJDIR_PREFIX)lj_ffrecord.o \
+	  $(OBJDIR_PREFIX)lj_asm.o $(OBJDIR_PREFIX)lj_trace.o $(OBJDIR_PREFIX)lj_gdbjit.o \
+	  $(OBJDIR_PREFIX)lj_ctype.o $(OBJDIR_PREFIX)lj_cdata.o $(OBJDIR_PREFIX)lj_cconv.o $(OBJDIR_PREFIX)lj_ccall.o $(OBJDIR_PREFIX)lj_ccallback.o \
+	  $(OBJDIR_PREFIX)lj_carith.o $(OBJDIR_PREFIX)lj_clib.o $(OBJDIR_PREFIX)lj_cparse.o \
+	  $(OBJDIR_PREFIX)lj_lib.o $(OBJDIR_PREFIX)lj_alloc.o $(OBJDIR_PREFIX)lib_aux.o \
+	  $(LJLIB_O) $(OBJDIR_PREFIX)lib_init.o
 
 LJVMCORE_O= $(LJVM_O) $(LJCORE_O)
-LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o)
+LJVMCORE_DYNO= $(LJVMCORE_O:%.o=%_dyn.o)
 
 LIB_VMDEF= jit/vmdef.lua
 LIB_VMDEFP= $(LIB_VMDEF)
 
-LUAJIT_O= luajit.o
-LUAJIT_A= libluajit.a
-LUAJIT_SO= libluajit.so
-LUAJIT_T= luajit
+LUAJIT_O= $(OBJDIR_PREFIX)luajit.o
+LUAJIT_A= $(OBJDIR_PREFIX)libluajit.a
+LUAJIT_SO= $(OBJDIR_PREFIX)libluajit.so
+LUAJIT_T= $(OBJDIR_PREFIX)luajit
 
 ALL_T= $(LUAJIT_T) $(LUAJIT_A) $(LUAJIT_SO) $(HOST_T)
 ALL_HDRGEN= lj_bcdef.h lj_ffdef.h lj_libdef.h lj_recdef.h lj_folddef.h \
-	    host/buildvm_arch.h
+	    $(OBJDIR_PREFIX)host/buildvm_arch.h
 ALL_GEN= $(LJVM_S) $(ALL_HDRGEN) $(LIB_VMDEFP)
 WIN_RM= *.obj *.lib *.exp *.dll *.exe *.manifest *.pdb *.ilk
-ALL_RM= $(ALL_T) $(ALL_GEN) *.o host/*.o $(WIN_RM)
+ALL_RM= $(ALL_T) $(ALL_GEN) $(OBJDIR_PREFIX)*.o $(OBJDIR_PREFIX)host/*.o *.o host/*.o $(WIN_RM)
 
 ##############################################################################
 # Build mode handling.
@@ -552,11 +565,11 @@ ifeq (Windows,$(TARGET_SYS))
   TARGET_DYNCC= $(STATIC_CC)
   LJVM_MODE= peobj
   LJVM_BOUT= $(LJVM_O)
-  LUAJIT_T= luajit.exe
+  LUAJIT_T= $(OBJDIR_PREFIX)luajit.exe
   ifeq (cygwin,$(HOST_MSYS))
-    LUAJIT_SO= cyg$(TARGET_DLLNAME)
+    LUAJIT_SO= $(OBJDIR_PREFIX)cyg$(TARGET_DLLNAME)
   else
-    LUAJIT_SO= $(TARGET_DLLNAME)
+    LUAJIT_SO= $(OBJDIR_PREFIX)$(TARGET_DLLNAME)
   endif
   # Mixed mode is not supported on Windows. And static mode doesn't work well.
   # C modules cannot be loaded, because they bind to lua51.dll.
@@ -568,22 +581,13 @@ endif
 ifeq (Darwin,$(TARGET_SYS))
   LJVM_MODE= machasm
 endif
-ifeq (iOS,$(TARGET_SYS))
-  LJVM_MODE= machasm
-endif
-ifeq (SunOS,$(TARGET_SYS))
-  BUILDMODE= static
-endif
-ifeq (PS3,$(TARGET_SYS))
-  BUILDMODE= static
-endif
 
 ifeq (Windows,$(HOST_SYS))
-  MINILUA_T= host/minilua.exe
-  BUILDVM_T= host/buildvm.exe
+  MINILUA_T= $(OBJDIR_PREFIX)host/minilua.exe
+  BUILDVM_T= $(OBJDIR_PREFIX)host/buildvm.exe
   ifeq (,$(HOST_MSYS))
-    MINILUA_X= host\minilua
-    BUILDVM_X= host\buildvm
+    MINILUA_X= $(subst /,\,$(OBJDIR_PREFIX)host\minilua)
+    BUILDVM_X= $(subst /,\,$(OBJDIR_PREFIX)host\buildvm)
     ALL_RM:= $(subst /,\,$(ALL_RM))
     HOST_RM= del
   endif
@@ -626,7 +630,7 @@ E= @echo
 default all:	$(TARGET_T)
 
 amalg:
-	$(MAKE) all "LJCORE_O=ljamalg.o" "TARGET_GENDIR=$(TARGET_GENDIR)"
+	$(MAKE) "$(LUAJIT_A)" "LJCORE_O=$(OBJDIR_PREFIX)ljamalg.o" "TARGET_GENDIR=$(TARGET_GENDIR)" "OBJDIR=$(OBJDIR)"
 
 clean:
 	$(HOST_RM) $(ALL_RM)
@@ -659,11 +663,12 @@ $(MINILUA_T): $(MINILUA_O)
 	$(E) "HOSTLINK  $@"
 	$(Q)$(HOST_CC) $(HOST_ALDFLAGS) -o $@ $(MINILUA_O) $(MINILUA_LIBS) $(HOST_ALIBS)
 
-host/buildvm_arch.h: $(DASM_DASC) $(DASM_DEP) $(DASM_DIR)/*.lua lj_arch.h lua.h luaconf.h
+$(OBJDIR_PREFIX)host/buildvm_arch.h: $(DASM_DASC) $(DASM_DEP) $(DASM_DIR)/*.lua lj_arch.h lua.h luaconf.h
 	$(E) "DYNASM    $@"
+	@mkdir -p $(OBJDIR_PREFIX)host
 	$(Q)$(DASM) $(DASM_FLAGS) -o $@ $(DASM_DASC)
 
-host/buildvm.o: $(DASM_DIR)/dasm_*.h
+$(OBJDIR_PREFIX)host/buildvm.o: $(DASM_DIR)/dasm_*.h $(OBJDIR_PREFIX)host/buildvm_arch.h
 
 $(BUILDVM_T): $(BUILDVM_O)
 	$(E) "HOSTLINK  $@"
@@ -707,23 +712,29 @@ lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 # Object file rules.
 ##############################################################################
 
-%.o: %.c
+# Create OBJDIR and OBJDIR/host if they don't exist
+$(shell mkdir -p $(OBJDIR) $(OBJDIR)/host 2>/dev/null)
+
+$(OBJDIR_PREFIX)%.o: %.c
 	$(E) "CC        $@"
-	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
+	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:%.o=%_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
 
-%.o: %.S
+$(OBJDIR_PREFIX)%.o: %.S
 	$(E) "ASM       $@"
-	$(Q)$(TARGET_DYNCC) $(TARGET_ASFLAGS) -c -o $(@:.o=_dyn.o) $<
+	$(Q)$(TARGET_DYNCC) $(TARGET_ASFLAGS) -c -o $(@:%.o=%_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ASFLAGS) -c -o $@ $<
 
-$(LUAJIT_O):
+$(LUAJIT_O): luajit.c
 	$(E) "CC        $@"
 	$(Q)$(TARGET_STCC) $(TARGET_ACFLAGS) -c -o $@ $<
 
-$(HOST_O): %.o: %.c
+$(OBJDIR_PREFIX)host/%.o: host/%.c
 	$(E) "HOSTCC    $@"
 	$(Q)$(HOST_CC) $(HOST_ACFLAGS) -c -o $@ $<
+
+# Amalgamated build dependency on generated headers
+$(OBJDIR_PREFIX)ljamalg.o: ljamalg.c $(ALL_HDRGEN)
 
 include Makefile.dep
 

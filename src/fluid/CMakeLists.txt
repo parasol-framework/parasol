@@ -9,7 +9,10 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
-set (LUAJIT_ORIGINAL_BUILD FALSE)
+if (MINGW)
+   # MinGW is not yet compatible with the CMake build of LuaJIT
+   set (LUAJIT_ORIGINAL_BUILD TRUE)
+endif ()
 
 if (MSVC)
    set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
@@ -132,20 +135,19 @@ if (MSVC)
 
 elseif (LUAJIT_ORIGINAL_BUILD)
    # Build using the original LuaJIT build system (Makefile)
+   # Object files and binaries will be placed in LUAJIT_BUILD_DIR
 
    ExternalProject_Add(
       luajit
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
-      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX=" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
-      BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
-      # Specifying the WORKING_DIRECTORY triggers a bug in GitHub's auto-build as of 2024-11 (and we don't really need it in order to build)
-      #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"
+      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
+      INSTALL_COMMAND ""
+      BUILD_BYPRODUCTS "${LUAJIT_BUILD_DIR}/libluajit.a"
       COMMENT "Compiling LuaJIT library")
 
-   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
+   set (LUAJIT_LINK "${LUAJIT_BUILD_DIR}/libluajit.a")
 else ()
    # Non-MSVC build (Linux, MinGW, etc.) - LuaJIT build using CMake
    # Separated into code generation and library compilation
@@ -387,6 +389,7 @@ else ()
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
+         -Wno-trigraphs
          -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
       DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS}
       COMMENT "Compiling LuaJIT amalgamated source"
