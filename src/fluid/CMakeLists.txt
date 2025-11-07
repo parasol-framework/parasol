@@ -143,11 +143,11 @@ elseif (LUAJIT_ORIGINAL_BUILD)
       CONFIGURE_COMMAND ""
       BUILD_ALWAYS TRUE
       BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
-      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX=" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
-      BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
+      INSTALL_COMMAND ""
+      BUILD_BYPRODUCTS "${LUAJIT_BUILD_DIR}/libluajit.a"
       COMMENT "Compiling LuaJIT library")
 
-   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
+   set (LUAJIT_LINK "${LUAJIT_BUILD_DIR}/libluajit.a")
 else ()
    # Non-MSVC build (Linux, MinGW, etc.) - LuaJIT build using CMake
    # Separated into code generation and library compilation
