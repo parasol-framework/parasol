@@ -2083,6 +2083,109 @@ static void expr_bracket(LexState *ls, ExpDesc *v)
   lex_check(ls, ']');
 }
 
+static void expr_safe_field(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg, result_reg;
+  BCPos non_nil, skip, non_nil_path;
+
+  expr_discharge(fs, v);
+  if (v->k == VKNIL) {
+    expr_str(ls, &key);
+    expr_init(v, VKNIL, 0);
+    return;
+  }
+
+  obj_reg = expr_toanyreg(fs, v);
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  non_nil = bcemit_jmp(fs);
+
+  result_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+
+  bcemit_nil(fs, result_reg, 1);
+  skip = bcemit_jmp(fs);
+
+  non_nil_path = fs->pc;
+  jmp_patch(fs, non_nil, non_nil_path);
+
+  expr_str(ls, &key);
+  expr_index(fs, v, &key);
+  expr_toreg(fs, v, result_reg);
+
+  jmp_patch(fs, skip, fs->pc);
+
+  expr_init(v, VNONRELOC, result_reg);
+}
+
+static void expr_safe_bracket(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg, result_reg;
+  BCPos non_nil, skip, non_nil_path;
+
+  obj_reg = expr_toanyreg(fs, v);
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  non_nil = bcemit_jmp(fs);
+
+  result_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+
+  bcemit_nil(fs, result_reg, 1);
+  skip = bcemit_jmp(fs);
+
+  non_nil_path = fs->pc;
+  jmp_patch(fs, non_nil, non_nil_path);
+
+  expr_bracket(ls, &key);
+  expr_index(fs, v, &key);
+  expr_toreg(fs, v, result_reg);
+
+  jmp_patch(fs, skip, fs->pc);
+
+  expr_init(v, VNONRELOC, result_reg);
+}
+
+static void expr_safe_method(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg, base;
+  BCPos non_nil, skip, non_nil_path;
+
+  obj_reg = expr_toanyreg(fs, v);
+  base = fs->freereg;
+
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  non_nil = bcemit_jmp(fs);
+
+  bcemit_nil(fs, base, 1);
+  if (fs->freereg <= base) fs->freereg = base+1;
+  skip = bcemit_jmp(fs);
+
+  non_nil_path = fs->pc;
+  jmp_patch(fs, non_nil, non_nil_path);
+
+  fs->freereg = base;
+
+  expr_str(ls, &key);
+  bcemit_method(fs, v, &key);
+  parse_args(ls, v);
+  expr_discharge(fs, v);
+  expr_toreg(fs, v, base);
+
+  jmp_patch(fs, skip, fs->pc);
+
+  expr_init(v, VNONRELOC, base);
+}
+
 /* Get value of constant expression. */
 static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {
@@ -2397,7 +2500,16 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     err_syntax(ls, LJ_ERR_XSYMBOL);
   }
   for (;;) {  /* Parse multiple expression suffixes. */
-    if (ls->tok == '.') {
+    if (ls->tok == TK_safe_field) {
+      lj_lex_next(ls);
+      expr_safe_field(ls, v);
+    } else if (ls->tok == TK_safe_method) {
+      lj_lex_next(ls);
+      expr_safe_method(ls, v);
+    } else if (ls->tok == '?' && lj_lex_lookahead(ls) == '[') {
+      lj_lex_next(ls);
+      expr_safe_bracket(ls, v);
+    } else if (ls->tok == '.') {
       expr_field(ls, v);
     } else if (ls->tok == '[') {
       ExpDesc key;

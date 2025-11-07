@@ -4,7 +4,7 @@
 
 This document provides a detailed step-by-step implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT. This operator allows safe access to fields and methods on potentially nil objects, returning `nil` if the object is nil instead of raising an error.
 
-**Status:** 📋 **Implementation Plan** - Not yet started
+**Status:** 🚧 **In Progress** - Steps 1-13 implemented
 
 **Priority:** ⭐⭐⭐ **Medium**
 
@@ -36,6 +36,18 @@ local value = table?[key] ?? 0
 ```
 
 ## Implementation Steps
+
+### Progress Update (Current Session)
+
+- ✅ Step 1: Confirmed lexer can treat `?.`/`?:` as composed tokens and introduced dedicated `TK_safe_field`/`TK_safe_method` symbols.
+- ✅ Steps 2-3: Parser updated to dispatch safe navigation suffixes without altering `ExpDesc`.
+- ✅ Steps 4-6: Added `expr_safe_field`, `expr_safe_method`, and `expr_safe_bracket` helpers that emit nil-guarded bytecode for fields, methods, and bracket access.
+- ✅ Steps 7-10: Integrated new helpers into `expr_primary()` and wired lexer lookahead for `?[`.
+- ✅ Step 11: Chaining works via suffix loop reuse.
+- ✅ Step 12: Compile-time nil short-circuit implemented for safe field access (bracket/method paths still rely on runtime guards; revisit if optimisation becomes necessary).
+- ✅ Step 13: Safe method path ensures arguments are parsed/emitted only on the non-nil branch.
+
+**Next Steps:** Continue with Step 14 (test suite authoring) and subsequent documentation updates (Steps 15+). Evaluate whether extending the compile-time nil optimisation to bracket/method handling is worth additional complexity during follow-up work.
 
 ### Step 1: Add Token Definition (if needed)
 
