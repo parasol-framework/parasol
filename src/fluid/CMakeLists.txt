@@ -381,6 +381,12 @@ else ()
    endif ()
 
    # Compile amalgamated source
+   # List all source files included by ljamalg.c to ensure proper dependency tracking
+
+   file(GLOB LUAJIT_AMALG_SOURCES
+      "${LUAJIT_SRC}/lj_*.c"
+      "${LUAJIT_SRC}/lib_*.c"
+   )
 
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
@@ -391,7 +397,7 @@ else ()
          ${LUAJIT_INCLUDE_DIRS}
          -Wno-trigraphs
          -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
-      DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS}
+      DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
       COMMENT "Compiling LuaJIT amalgamated source"
       VERBATIM
    )
