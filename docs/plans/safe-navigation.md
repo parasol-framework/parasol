@@ -1,14 +1,29 @@
-# Safe Navigation Operator Implementation Plan
+# Safe Navigation Operator Implementation Plan (Revised)
 
 ## Overview
 
-This document provides a detailed step-by-step implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT. This operator allows safe access to fields and methods on potentially nil objects, returning `nil` if the object is nil instead of raising an error.
+This document provides a revised implementation plan for the Safe Navigation Operator (`?.`) in Fluid/LuaJIT using a simpler approach that leverages the existing if-empty operator (`?`) mechanism.
 
-**Status:** 📋 **Implementation Plan** - Not yet started
+**Status:** 📋 **Planning** - Not yet started
 
 **Priority:** ⭐⭐⭐ **Medium**
 
-**Estimated Effort:** 24-40 hours
+**Estimated Effort:** 8-16 hours
+
+## Core Strategy
+
+Instead of implementing custom bytecode generation for safe navigation, we leverage the existing if-empty operator which already handles nil checks correctly:
+
+- `obj?.field` is equivalent to `obj ? obj.field`
+- `obj?.method()` is equivalent to `obj ? obj:method()`
+- `obj?[key]` is equivalent to `obj ? obj[key]`
+
+The key insight is that the if-empty operator already:
+1. Checks if a value is nil (among other falsey checks)
+2. Returns the RHS when LHS is falsey
+3. Handles expression evaluation correctly without side effects
+
+For safe navigation, we only need to check for **nil specifically** (not false/zero/empty string like the full if-empty operator does).
 
 ## Feature Specification
 
@@ -21,753 +36,628 @@ obj?.field?.subfield
 ```
 
 ### Semantics
-- **Short-circuit evaluation**: If object is `nil`, returns `nil` without accessing field/method
+- **Nil-only check**: If object is `nil`, returns `nil` without accessing field/method
 - **Field access**: `obj?.field` returns `nil` if `obj` is `nil`, otherwise returns `obj.field`
 - **Method calls**: `obj?.method()` returns `nil` if `obj` is `nil`, otherwise calls `obj:method()`
 - **Index access**: `obj?[key]` returns `nil` if `obj` is `nil`, otherwise returns `obj[key]`
 - **Chaining**: Multiple safe navigation operators can chain: `obj?.field?.subfield`
-- **Integration**: Works seamlessly with `??` and `or?` for default values
+- **Integration**: Works seamlessly with `?` (if-empty) for default values
 
 ### Examples
 ```lua
-local name = user?.profile?.name ?? "Guest"
-local result = obj?.method() or? "default"
-local value = table?[key] ?? 0
+local name = user?.profile?.name ? "Guest"
+local result = obj?.method()
+local value = table?[key] ? 0
 ```
 
 ## Implementation Steps
 
-### Step 1: Add Token Definition (if needed)
+### Step 1: Add Token Definitions
 
 **File:** `src/fluid/luajit-2.1/src/lj_lex.h`
 
 **Action:**
-1. Check if `?.` needs a combined token or can be parsed as `?` followed by `.`
-2. Since `?` and `.` are already separate tokens, we can parse `?.` as two tokens
-3. **Decision:** No new token needed - parse `?` then check for `.`
-
-**Expected Result:**
-- Parser can recognize `?.` pattern without new token
-
----
-
-### Step 2: Add Safe Navigation Flag to Expression Descriptor
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. We need to track whether an expression is safe-navigated (object was checked for nil)
-2. **Option A:** Add flag to `ExpDesc` structure (may require struct changes)
-3. **Option B:** Use existing expression state to track safe navigation
-4. **Option C:** Handle safe navigation inline during field/method access
-
-**Recommended Approach:** Option C - Handle inline, no structure changes needed
-
-**Expected Result:**
-- Parser can distinguish between regular field access and safe navigation
-
----
-
-### Step 3: Modify Field Access Parsing
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Location:** `expr_primary()` function (around line 2268-2308)
-
-**Action:**
-1. Modify the suffix parsing loop to handle `?.`:
-   ```c
-   for (;;) {  /* Parse multiple expression suffixes. */
-     if (ls->tok == '?') {
-       /* Check for safe navigation ?. */
-       LexState *ls_save = ls;
-       lex_next(ls);  // Peek at next character
-       if (ls->c == '.') {
-         /* Safe navigation - emit nil check */
-         expr_safe_field(ls, v);
-       } else {
-         /* Not safe nav - restore and handle as regular ? */
-         ls = ls_save;
-         break;  // Let ternary or other operators handle it
-       }
-     } else if (ls->tok == '.') {
-       expr_field(ls, v);
-     } else if (ls->tok == '[') {
-       /* ... existing code ... */
-     }
-     /* ... rest of existing code ... */
-   }
-   ```
-
-**Note:** This approach requires lookahead or token buffering. Alternative: check for `?` in lexer and return special token.
-
-**Better Approach:** Handle `?` in `expr_primary()` and check if next token is `.`:
+Add safe navigation tokens to the `TKDEF` macro:
 ```c
-if (ls->tok == '?') {
-  lj_lex_next(ls);  // Consume '?'
-  if (ls->tok == '.') {
-    /* Safe navigation field access */
-    expr_safe_field(ls, v);
-    continue;
-  } else {
-    /* Not safe nav - restore ? token or handle as ternary */
-    /* This requires token pushback or different approach */
-  }
-}
+__(safe_field, ?.) __(safe_method, ?:)
 ```
 
-**Challenge:** Need to handle token pushback or use lookahead mechanism.
+**Expected Result:**
+- `TK_safe_field` and `TK_safe_method` tokens are defined
+- Token enum values are automatically generated
 
 ---
 
-### Step 4: Implement Safe Field Access
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Create `expr_safe_field()` function:
-   ```c
-   static void expr_safe_field(LexState *ls, ExpDesc *v)
-   {
-     FuncState *fs = ls->fs;
-     ExpDesc key;
-     BCReg obj_reg, result_reg;
-     BCPos nil_check, skip;
-
-     /* Ensure object is in a register */
-     obj_reg = expr_toanyreg(fs, v);
-
-     /* Check if object is nil */
-     ExpDesc nilv;
-     expr_init(&nilv, VKNIL, 0);
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-     nil_check = bcemit_jmp(fs);
-
-     /* Object is not nil - access field */
-     lj_lex_next(ls);  // Consume '.'
-     expr_str(ls, &key);
-     expr_index(fs, v, &key);
-
-     /* Emit field access (standard TGETS/TGETV) */
-     expr_toanyreg(fs, v);
-     result_reg = v->u.s.info;
-
-     /* Jump to end (skip nil path) */
-     skip = bcemit_jmp(fs);
-
-     /* Object was nil - return nil */
-     BCPos nil_path = fs->pc;
-     expr_init(v, VKNIL, 0);
-     bcemit_nil(fs, result_reg, 1);
-     v->u.s.info = result_reg;
-     v->k = VNONRELOC;
-
-     /* Patch jumps */
-     jmp_patch(fs, nil_check, nil_path);  // If nil, jump to nil path
-     jmp_patch(fs, skip, fs->pc);         // If not nil, skip nil path
-   }
-   ```
-
-**Key Considerations:**
-- Nil check before field access
-- Short-circuit to nil if object is nil
-- Both paths must write to same register
-- Handle register allocation carefully
-
----
-
-### Step 5: Implement Safe Method Call
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Create `expr_safe_method()` function:
-   ```c
-   static void expr_safe_method(LexState *ls, ExpDesc *v)
-   {
-     FuncState *fs = ls->fs;
-     ExpDesc key;
-     BCReg obj_reg, result_reg;
-     BCPos nil_check, skip;
-
-     /* Ensure object is in a register */
-     obj_reg = expr_toanyreg(fs, v);
-
-     /* Check if object is nil */
-     ExpDesc nilv;
-     expr_init(&nilv, VKNIL, 0);
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-     nil_check = bcemit_jmp(fs);
-
-     /* Object is not nil - setup method call */
-     lj_lex_next(ls);  // Consume ':'
-     expr_str(ls, &key);
-     bcemit_method(fs, v, &key);
-
-     /* Parse arguments and emit call */
-     parse_args(ls, v);
-     expr_discharge(fs, v);
-     result_reg = v->u.s.info;
-
-     /* Jump to end (skip nil path) */
-     skip = bcemit_jmp(fs);
-
-     /* Object was nil - return nil */
-     BCPos nil_path = fs->pc;
-     bcemit_nil(fs, result_reg, 1);
-     expr_init(v, VNONRELOC, result_reg);
-
-     /* Patch jumps */
-     jmp_patch(fs, nil_check, nil_path);
-     jmp_patch(fs, skip, fs->pc);
-   }
-   ```
-
-**Key Considerations:**
-- Method call setup before nil check
-- Method call happens only if object is not nil
-- Both paths must have same result register
-
----
-
-### Step 6: Implement Safe Index Access
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Create `expr_safe_bracket()` function:
-   ```c
-   static void expr_safe_bracket(LexState *ls, ExpDesc *v)
-   {
-     FuncState *fs = ls->fs;
-     ExpDesc key;
-     BCReg obj_reg, result_reg;
-     BCPos nil_check, skip;
-
-     /* Ensure object is in a register */
-     obj_reg = expr_toanyreg(fs, v);
-
-     /* Check if object is nil */
-     ExpDesc nilv;
-     expr_init(&nilv, VKNIL, 0);
-     bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-     nil_check = bcemit_jmp(fs);
-
-     /* Object is not nil - access index */
-     expr_bracket(ls, &key);
-     expr_index(fs, v, &key);
-
-     /* Emit index access (standard TGETV/TGETS/TGETB) */
-     expr_toanyreg(fs, v);
-     result_reg = v->u.s.info;
-
-     /* Jump to end (skip nil path) */
-     skip = bcemit_jmp(fs);
-
-     /* Object was nil - return nil */
-     BCPos nil_path = fs->pc;
-     bcemit_nil(fs, result_reg, 1);
-     expr_init(v, VNONRELOC, result_reg);
-
-     /* Patch jumps */
-     jmp_patch(fs, nil_check, nil_path);
-     jmp_patch(fs, skip, fs->pc);
-   }
-   ```
-
----
-
-### Step 7: Integrate Safe Navigation into expr_primary()
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Location:** `expr_primary()` function suffix parsing loop
-
-**Action:**
-1. Modify the loop to handle `?.`, `?:`, `?[`:
-   ```c
-   for (;;) {  /* Parse multiple expression suffixes. */
-     if (ls->tok == '?') {
-       /* Check for safe navigation operators */
-       lj_lex_next(ls);  // Consume '?'
-       if (ls->tok == '.') {
-         /* Safe field access: obj?.field */
-         expr_safe_field(ls, v);
-       } else if (ls->tok == ':') {
-         /* Safe method call: obj?:method() */
-         expr_safe_method(ls, v);
-       } else if (ls->tok == '[') {
-         /* Safe index access: obj?[key] */
-         expr_safe_bracket(ls, v);
-       } else {
-         /* Not safe navigation - restore ? for ternary or other operators */
-         /* This requires token pushback - may need different approach */
-         break;
-       }
-     } else if (ls->tok == '.') {
-       expr_field(ls, v);
-     } else if (ls->tok == '[') {
-       /* ... existing code ... */
-     } else if (ls->tok == ':') {
-       /* ... existing code ... */
-     }
-     /* ... rest of existing code ... */
-   }
-   ```
-
-**Challenge:** Token pushback - if `?` is not followed by `.`, `:`, or `[`, we need to restore it for ternary operator or other uses.
-
-**Solution Options:**
-1. **Lookahead mechanism** - Check next token without consuming `?`
-2. **Token buffering** - Save and restore tokens
-3. **Separate parsing path** - Handle `?` in `expr_simple()` before `expr_primary()`
-
-**Recommended:** Use lookahead by checking `ls->lookahead` or modifying lexer to support peek.
-
----
-
-### Step 8: Implement Token Lookahead (if needed)
-
-**File:** `src/fluid/luajit-2.1/src/lj_lex.c` and `lj_lex.h`
-
-**Action:**
-1. Check if lookahead mechanism exists (already present in `LexState`)
-2. Looking at `lj_lex.h`, `LexState` has `lookahead` and `lookaheadval` fields
-3. Use `lj_lex_lookahead()` function if available, or implement peek mechanism
-
-**Alternative:** Modify lexer to handle `?.` as a single token:
-```c
-case '?':
-  lex_next(ls);
-  if (ls->c == '.') {
-    lex_next(ls);
-    return TK_safe_field;  // New token
-  } else if (ls->c == ':') {
-    lex_next(ls);
-    return TK_safe_method;  // New token
-  } else if (ls->c == '[') {
-    // Can't combine with '[', handle separately
-    return '?';  // Return '?' and let parser handle '?['
-  }
-  // ... existing coalesce and or? handling ...
-  return '?';
-```
-
-**Better Approach:** Add `TK_safe_field` and `TK_safe_method` tokens to lexer.
-
----
-
-### Step 9: Add Safe Navigation Tokens to Lexer
-
-**File:** `src/fluid/luajit-2.1/src/lj_lex.h`
-
-**Action:**
-1. Add tokens to `TKDEF` macro:
-   ```c
-   __(safe_field, ?.) __(safe_method, ?:)
-   ```
+### Step 2: Update Lexer to Emit Safe Navigation Tokens
 
 **File:** `src/fluid/luajit-2.1/src/lj_lex.c`
 
 **Action:**
-1. Modify `?` case in `lex_scan()`:
-   ```c
-   case '?':
-     lex_next(ls);
-     if (ls->c == '.') {
-       lex_next(ls);
-       return TK_safe_field;
-     } else if (ls->c == ':') {
-       lex_next(ls);
-       return TK_safe_method;
-     } else if (ls->c == '?') {
-       lex_next(ls);
-       return TK_coalesce;
-     }
-     /* Check for or? - existing code in identifier handling */
-     return '?';
-   ```
-
-**Note:** For `?[`, we'll handle it as `?` followed by `[` in the parser, since `[` is a separate token.
-
----
-
-### Step 10: Update expr_primary() for Safe Navigation Tokens
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Modify suffix parsing loop:
-   ```c
-   for (;;) {  /* Parse multiple expression suffixes. */
-     if (ls->tok == TK_safe_field) {
-       /* Safe field access: obj?.field */
-       lj_lex_next(ls);  // Consume TK_safe_field
-       expr_safe_field(ls, v);
-     } else if (ls->tok == TK_safe_method) {
-       /* Safe method call: obj?:method() */
-       lj_lex_next(ls);  // Consume TK_safe_method
-       expr_safe_method(ls, v);
-     } else if (ls->tok == '?') {
-       /* Check for safe index: obj?[key] */
-       lj_lex_next(ls);  // Consume '?'
-       if (ls->tok == '[') {
-         expr_safe_bracket(ls, v);
-       } else {
-         /* Not safe index - restore for ternary or other operators */
-         /* This requires token pushback or different approach */
-         break;
-       }
-     } else if (ls->tok == '.') {
-       expr_field(ls, v);
-     } else if (ls->tok == '[') {
-       /* ... existing code ... */
-     } else if (ls->tok == ':') {
-       /* ... existing code ... */
-     }
-     /* ... rest of existing code ... */
-   }
-   ```
-
-**Challenge:** For `?[`, we consume `?` but then need to check for `[`. If it's not `[`, we need to restore `?` for ternary operator.
-
-**Solution:** Use a temporary token or check lookahead before consuming `?`.
-
----
-
-### Step 11: Handle Chaining
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Ensure safe navigation functions handle chaining correctly:
-   - `obj?.field?.subfield` should work
-   - Each `?.` adds a nil check
-   - Chaining should be handled by the loop in `expr_primary()`
-
-**Implementation:**
-- The loop in `expr_primary()` already handles multiple suffixes
-- Each `?.` will be processed in sequence
-- Each adds its own nil check before accessing the next level
-
-**Example Flow:**
+Modify the `?` case in `lex_scan()` to recognize `?.` and `?:`:
 ```c
-obj?.field?.subfield
-1. Parse `obj` - VNONRELOC
-2. See `TK_safe_field` - emit nil check, access `field`
-3. Result is VINDEXED (field access)
-4. See `TK_safe_field` again - emit nil check on field result, access `subfield`
-5. Final result
+case '?':
+  lex_next(ls);
+  if (ls->c == '.') { lex_next(ls); return TK_safe_field; }
+  if (ls->c == ':') { lex_next(ls); return TK_safe_method; }
+  if (ls->c != '?') return TK_if_empty;
+  else { lex_next(ls); return TK_presence; }
 ```
 
-**Key Consideration:** Each safe navigation operation needs to check if its input is nil before proceeding.
-
----
-
-### Step 12: Optimize Compile-Time Constants
-
-**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
-
-**Action:**
-1. Add optimization for compile-time nil objects:
-   ```c
-   static void expr_safe_field(LexState *ls, ExpDesc *v)
-   {
-     FuncState *fs = ls->fs;
-
-     /* Check if object is compile-time nil */
-     expr_discharge(fs, v);
-     if (v->k == VKNIL) {
-       /* Object is nil - return nil without field access */
-       /* v is already nil, just return */
-       return;
-     }
-
-     /* ... rest of runtime nil check ... */
-   }
-   ```
+**Note:** For `?[`, we'll handle it as `TK_if_empty` followed by `[` in the parser.
 
 **Expected Result:**
-- Compile-time nil objects don't generate unnecessary bytecode
-- Field access is skipped entirely for known nil values
+- Lexer correctly tokenizes `?.` as `TK_safe_field`
+- Lexer correctly tokenizes `?:` as `TK_safe_method`
+- Solitary `?` returns `TK_if_empty` as before
 
 ---
 
-### Step 13: Handle Method Call Arguments
+### Step 3: Implement Safe Field Access Helper
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
 **Action:**
-1. Ensure `expr_safe_method()` properly handles method arguments:
-   - Method call setup happens after nil check
-   - Arguments are parsed only if object is not nil
-   - Short-circuit ensures arguments are not evaluated if object is nil
+Create `expr_safe_field()` function that uses the if-empty operator pattern:
 
-**Implementation:**
-- Nil check before `bcemit_method()` and `parse_args()`
-- If nil, jump to nil path without evaluating arguments
-- If not nil, proceed with normal method call
+```c
+static void expr_safe_field(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, field_result;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_field;
+
+  /* Compile-time nil optimization */
+  expr_discharge(fs, v);
+  if (v->k == VKNIL) {
+    expr_str(ls, &key);  /* Consume field name token */
+    expr_init(v, VKNIL, 0);
+    return;
+  }
+
+  /* Get object into a register */
+  obj_reg = expr_toanyreg(fs, v);
+  result_reg = obj_reg;  /* Reuse same register for result */
+
+  /* Emit nil check (similar to if-empty operator logic in bcemit_binop) */
+  ExpDesc nilv;
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  check_nil = bcemit_jmp(fs);
+
+  /* Not nil path: skip field access and return nil */
+  /* (BC_ISEQP skips next instruction when equal) */
+  skip_field = bcemit_jmp(fs);
+
+  /* Nil path: return nil */
+  jmp_patch(fs, check_nil, fs->pc);
+  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+  BCPos skip_nil = bcemit_jmp(fs);
+
+  /* Field access path */
+  jmp_patch(fs, skip_field, fs->pc);
+  expr_str(ls, &key);
+  expr_index(fs, v, &key);
+  expr_toreg(fs, v, result_reg);
+
+  /* Merge point */
+  jmp_patch(fs, skip_nil, fs->pc);
+  expr_init(v, VNONRELOC, result_reg);
+}
+```
+
+**Key Points:**
+- Follows the pattern from `bcemit_binop` for `OPR_IF_EMPTY` (lines 1213-1249)
+- Only checks for nil (not false/zero/empty like full if-empty)
+- Both nil and non-nil paths write to the same register
+- Handles compile-time nil optimization
 
 ---
 
-### Step 14: Create Test Suite
+### Step 4: Implement Safe Method Call Helper
+
+**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
+
+**Action:**
+Create `expr_safe_method()` function:
+
+```c
+static void expr_safe_method(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg, base;
+  BCPos check_nil, skip_method, skip_nil;
+
+  /* Get object into a register */
+  obj_reg = expr_toanyreg(fs, v);
+  base = fs->freereg;
+
+  /* Emit nil check */
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  check_nil = bcemit_jmp(fs);
+
+  /* Not nil path: skip method call */
+  skip_method = bcemit_jmp(fs);
+
+  /* Nil path: set result to nil */
+  jmp_patch(fs, check_nil, fs->pc);
+  bcemit_AD(fs, BC_KPRI, base, VKNIL);
+  if (fs->freereg <= base) fs->freereg = base+1;
+  skip_nil = bcemit_jmp(fs);
+
+  /* Method call path */
+  jmp_patch(fs, skip_method, fs->pc);
+  fs->freereg = base;
+  expr_str(ls, &key);
+  bcemit_method(fs, v, &key);
+  parse_args(ls, v);
+
+  /* Preserve VCALL for multi-return semantics */
+  jmp_patch(fs, skip_nil, fs->pc);
+  if (v->k == VCALL) {
+    /* Keep as VCALL - method may return multiple values */
+    v->u.s.aux = base;
+  } else {
+    expr_discharge(fs, v);
+    expr_toreg(fs, v, base);
+    expr_init(v, VNONRELOC, base);
+  }
+}
+```
+
+**Key Points:**
+- Preserves `VCALL` for multi-return semantics (`local a, b = obj?.method()`)
+- Arguments are only evaluated on the non-nil path
+- Nil path returns single nil value
+
+---
+
+### Step 5: Implement Safe Index Access Helper
+
+**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
+
+**Action:**
+Create `expr_safe_bracket()` function (similar to `expr_safe_field`):
+
+```c
+static void expr_safe_bracket(LexState *ls, ExpDesc *v)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc key, nilv;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_index, skip_nil;
+
+  /* Get object into a register */
+  obj_reg = expr_toanyreg(fs, v);
+  result_reg = obj_reg;
+
+  /* Emit nil check */
+  expr_init(&nilv, VKNIL, 0);
+  bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
+  check_nil = bcemit_jmp(fs);
+
+  /* Not nil path: skip index access */
+  skip_index = bcemit_jmp(fs);
+
+  /* Nil path: return nil */
+  jmp_patch(fs, check_nil, fs->pc);
+  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+  skip_nil = bcemit_jmp(fs);
+
+  /* Index access path */
+  jmp_patch(fs, skip_index, fs->pc);
+  lj_lex_next(ls);  /* Consume '[' */
+  expr(ls, &key);
+  expr_toval(fs, &key);
+  lex_check(ls, ']');
+  expr_index(fs, v, &key);
+  expr_toreg(fs, v, result_reg);
+
+  /* Merge point */
+  jmp_patch(fs, skip_nil, fs->pc);
+  expr_init(v, VNONRELOC, result_reg);
+}
+```
+
+---
+
+### Step 6: Add Forward Declarations
+
+**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
+
+**Action:**
+Add forward declaration for `parse_args` since it's called before its definition:
+```c
+/* Forward declarations */
+static void expr(LexState *ls, ExpDesc *v);
+static void parse_args(LexState *ls, ExpDesc *e);
+```
+
+**Location:** Around line 2025, in the forward declarations section
+
+---
+
+### Step 7: Integrate into Expression Suffix Loop
+
+**File:** `src/fluid/luajit-2.1/src/lj_parse.c`
+
+**Location:** `expr_primary()` function, suffix parsing loop (around line 2503)
+
+**Action:**
+Add handling for safe navigation tokens:
+```c
+for (;;) {  /* Parse multiple expression suffixes. */
+  if (ls->tok == TK_safe_field) {
+    lj_lex_next(ls);
+    expr_safe_field(ls, v);
+  } else if (ls->tok == TK_safe_method) {
+    lj_lex_next(ls);
+    expr_safe_method(ls, v);
+  } else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
+    /* Handle ?[ as safe index access */
+    lj_lex_next(ls);  /* Consume TK_if_empty */
+    expr_safe_bracket(ls, v);
+  } else if (ls->tok == '.') {
+    expr_field(ls, v);
+  } else if (ls->tok == '[') {
+    /* ... existing code ... */
+  } else if (ls->tok == ':') {
+    /* ... existing code ... */
+  }
+  /* ... rest of existing code ... */
+}
+```
+
+**Important:** For `?[`, check for `TK_if_empty` (not raw `'?'`) since the lexer returns `TK_if_empty` for solitary `?`.
+
+---
+
+### Step 8: Create Test Suite
 
 **File:** `src/fluid/tests/test_safe_nav.fluid`
 
 **Action:**
-1. Create comprehensive test suite:
-   ```lua
-   -- Basic safe field access
-   function testSafeField()
-      local obj = nil
-      local v = obj?.field
-      assert(v is nil, "Failed safe field: expected nil")
+Create comprehensive Flute test suite:
 
-      local obj2 = { field = "value" }
-      local v2 = obj2?.field
-      assert(v2 is "value", "Failed safe field: expected 'value'")
-   end
+```lua
+-- Basic safe field access on nil
+function testSafeFieldNil()
+   local obj = nil
+   local v = obj?.field
+   assert(v is nil, "Safe field on nil should return nil")
+end
 
-   -- Safe method call
-   function testSafeMethod()
-      local obj = nil
-      local v = obj?:method()
-      assert(v is nil, "Failed safe method: expected nil")
+-- Safe field access on valid object
+function testSafeFieldValid()
+   local obj = { field = "value" }
+   local v = obj?.field
+   assert(v is "value", "Safe field should return value")
+end
 
-      local obj2 = { method = function(self) return "result" end }
-      local v2 = obj2?:method()
-      assert(v2 is "result", "Failed safe method: expected 'result'")
-   end
+-- Chaining with nil at first level
+function testChainingNilFirst()
+   local obj = nil
+   local v = obj?.field?.subfield
+   assert(v is nil, "Chaining should short-circuit on nil")
+end
 
-   -- Safe index access
-   function testSafeIndex()
-      local obj = nil
-      local v = obj?[key]
-      assert(v is nil, "Failed safe index: expected nil")
+-- Chaining with valid objects
+function testChainingValid()
+   local obj = { field = { subfield = 42 } }
+   local v = obj?.field?.subfield
+   assert(v is 42, "Chaining should access nested values")
+end
 
-      local obj2 = { key = "value" }
-      local v2 = obj2?["key"]
-      assert(v2 is "value", "Failed safe index: expected 'value'")
-   end
+-- Safe method call on nil
+function testSafeMethodNil()
+   local obj = nil
+   local v = obj?.method()
+   assert(v is nil, "Safe method on nil should return nil")
+end
 
-   -- Chaining
-   function testChaining()
-      local obj = nil
-      local v = obj?.field?.subfield
-      assert(v is nil, "Failed chaining: expected nil")
-
-      local obj2 = { field = { subfield = "value" } }
-      local v2 = obj2?.field?.subfield
-      assert(v2 is "value", "Failed chaining: expected 'value'")
-   end
-
-   -- Short-circuit with arguments
-   function testShortCircuitArgs()
-      local function expensive()
-         error("Should not be called")
-      end
-      local obj = nil
-      local v = obj?:method(expensive())
-      assert(v is nil, "Failed short-circuit args")
-   end
-
-   -- Integration with coalesce
-   function testIntegrationCoalesce()
-      local obj = nil
-      local v = obj?.field ?? "default"
-      assert(v is "default", "Failed coalesce integration")
-   end
-
-   -- Integration with or?
-   function testIntegrationOrQ()
-      local obj = nil
-      local v = obj?.field or? "default"
-      assert(v is "default", "Failed or? integration")
-   end
-
-   return {
-      tests = { 'testSafeField', 'testSafeMethod', 'testSafeIndex', 'testChaining',
-                'testShortCircuitArgs', 'testIntegrationCoalesce', 'testIntegrationOrQ' }
+-- Safe method call on valid object
+function testSafeMethodValid()
+   local obj = {
+      getValue = function(self) return 123 end
    }
-   ```
+   local v = obj?.getValue()
+   assert(v is 123, "Safe method should call method")
+end
+
+-- Safe method with multiple return values
+function testSafeMethodMultiReturn()
+   local obj = {
+      getTwoValues = function(self) return 1, 2 end
+   }
+   local a, b = obj?.getTwoValues()
+   assert(a is 1, "First return value should be 1")
+   assert(b is 2, "Second return value should be 2")
+end
+
+-- Safe method arguments not evaluated on nil
+function testSafeMethodArgsNotEvaluated()
+   local called = false
+   local function sideEffect()
+      called = true
+      return "arg"
+   end
+
+   local obj = nil
+   local v = obj?.method(sideEffect())
+   assert(v is nil, "Safe method on nil should return nil")
+   assert(called is false, "Arguments should not be evaluated when object is nil")
+end
+
+-- Safe index access on nil
+function testSafeIndexNil()
+   local obj = nil
+   local v = obj?[1]
+   assert(v is nil, "Safe index on nil should return nil")
+end
+
+-- Safe index access on table
+function testSafeIndexValid()
+   local obj = { [1] = "first", [2] = "second" }
+   local v = obj?[2]
+   assert(v is "second", "Safe index should return element")
+end
+
+-- Integration with if-empty operator
+function testWithIfEmpty()
+   local obj = nil
+   local v = obj?.field ? "default"
+   assert(v is "default", "Should use default when safe nav returns nil")
+
+   local obj2 = { field = "value" }
+   local v2 = obj2?.field ? "default"
+   assert(v2 is "value", "Should use value when present")
+end
+
+-- Safe navigation with false/zero/empty (should NOT treat as nil)
+function testNotNilButFalsey()
+   local obj = { flag = false, count = 0, text = "" }
+
+   local v1 = obj?.flag
+   assert(v1 is false, "Safe nav should return false, not nil")
+
+   local v2 = obj?.count
+   assert(v2 is 0, "Safe nav should return 0, not nil")
+
+   local v3 = obj?.text
+   assert(v3 is "", "Safe nav should return empty string, not nil")
+end
+
+return {
+   tests = {
+      'testSafeFieldNil', 'testSafeFieldValid',
+      'testChainingNilFirst', 'testChainingValid',
+      'testSafeMethodNil', 'testSafeMethodValid', 'testSafeMethodMultiReturn',
+      'testSafeMethodArgsNotEvaluated',
+      'testSafeIndexNil', 'testSafeIndexValid',
+      'testWithIfEmpty',
+      'testNotNilButFalsey'
+   }
+}
+```
 
 ---
 
-### Step 15: Update Documentation
+### Step 9: Add Test to CMake
+
+**File:** `src/fluid/tests/CMakeLists.txt`
+
+**Action:**
+Add Flute test registration (if not already auto-discovered):
+```cmake
+flute_test(safe_nav test_safe_nav.fluid)
+```
+
+---
+
+### Step 10: Build and Test
+
+**Commands:**
+```bash
+# Clean LuaJIT artifacts (MSVC only)
+cd src/fluid/luajit-2.1/src && rm -f *.o *.lib
+
+# Build
+cmake --build build/agents --config Debug --target fluid parasol_cmd --parallel
+
+# Install
+cmake --install build/agents --config Debug
+
+# Run tests
+cd src/fluid/tests
+../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/fluid/tests/test_safe_nav.fluid --gfx-driver=headless
+```
+
+---
+
+### Step 11: Update Documentation
 
 **File:** `docs/wiki/Fluid-Reference-Manual.md`
 
 **Action:**
-1. Add Safe Navigation Operator section:
-   - Syntax and semantics
-   - Examples for field, method, and index access
-   - Chaining behavior
-   - Integration with `??` and `or?`
-   - Short-circuit behavior
+Add section documenting the safe navigation operator:
+
+```markdown
+## Safe Navigation Operator
+
+The safe navigation operator (`?.`) provides null-safe access to object fields, methods, and indexes.
+
+### Syntax
+
+```lua
+obj?.field           -- Safe field access
+obj?.method()        -- Safe method call
+obj?[key]            -- Safe index access
+obj?.a?.b?.c         -- Chaining
+```
+
+### Behavior
+
+If the object is `nil`, the safe navigation operator returns `nil` without attempting to access the field/method/index. This prevents "attempt to index a nil value" errors.
+
+**Important:** The safe navigation operator only checks for `nil`. Other falsey values like `false`, `0`, or `""` are treated as valid objects and field access proceeds normally.
+
+### Examples
+
+```lua
+-- Safe field access
+local user = nil
+local name = user?.name  -- Returns nil instead of error
+
+local user2 = { name = "Alice" }
+local name2 = user2?.name  -- Returns "Alice"
+
+-- Chaining
+local city = user?.profile?.address?.city  -- Returns nil if any level is nil
+
+-- With default values using if-empty operator
+local displayName = user?.name ? "Guest"  -- "Guest" if user or name is nil
+
+-- Safe method calls
+local result = obj?.calculate()  -- Returns nil if obj is nil
+
+-- Multiple return values preserved
+local a, b = obj?.getTwoValues()  -- Both a and b will be nil if obj is nil
+
+-- Safe index access
+local value = table?[key]  -- Returns nil if table is nil
+```
+
+### Integration with Other Operators
+
+The safe navigation operator works seamlessly with:
+- **If-empty operator (`?`)**: `obj?.field ? "default"`
+- **Chaining**: `obj?.a?.b?.c`
+- **Method calls**: Return values and multi-return preserved
+
+### Differences from If-Empty Operator
+
+| Operator | Checks | Use Case |
+|----------|--------|----------|
+| `?` (if-empty) | nil, false, 0, "" | Provide defaults for any falsey value |
+| `?.` (safe nav) | nil only | Safe access to potentially nil objects |
+
+```lua
+local obj = { count = 0 }
+
+-- If-empty treats 0 as falsey
+local v1 = obj.count ? 10  -- Returns 10 (because 0 is falsey)
+
+-- Safe nav treats 0 as valid
+local v2 = obj?.count  -- Returns 0 (because obj is not nil)
+```
+```
 
 ---
+
+## Key Differences from Original Plan
+
+### Simpler Implementation
+- Leverages existing if-empty operator bytecode patterns
+- Only checks for nil (not false/zero/empty like full if-empty)
+- Reuses proven register management and jump patching
+
+### Better Integration
+- Works naturally with existing `?` operator for defaults
+- No need for custom bytecode instructions
+- Follows established patterns in the codebase
+
+### Reduced Complexity
+- ~100 lines of code vs. ~200+ in original plan
+- No need to understand/modify complex ternary operator logic
+- Easier to maintain and debug
 
 ## Implementation Challenges
 
-### Challenge 1: Token Recognition
+### Challenge 1: Token Recognition for `?[`
 
-**Issue:** `?` is used for multiple operators (`??`, `or?`, ternary `? :`, safe nav `?.`)
+**Issue:** Lexer returns `TK_if_empty` for solitary `?`, not raw `'?'` character.
 
-**Solution:**
-- Handle `?.` and `?:` in lexer as combined tokens (`TK_safe_field`, `TK_safe_method`)
-- Handle `?[` in parser by checking for `[` after consuming `?`
-- Ternary operator checks for `:` after `?` (not `?` then `.`)
+**Solution:** In suffix loop, check for `ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '['`
 
-### Challenge 2: Token Pushback
+### Challenge 2: Register Management
 
-**Issue:** When checking `?` for safe navigation, if it's not followed by `.`, `:`, or `[`, we need to restore it for ternary
+**Issue:** Both nil and non-nil paths must write to same register.
 
-**Solution:**
-- Use lookahead mechanism (`ls->lookahead`)
-- Or handle `?` in lexer with multiple checks
-- Or use separate parsing path for ternary vs safe navigation
+**Solution:** Follow pattern from if-empty operator - allocate result register upfront, both paths write to it.
 
-### Challenge 3: Register Management
+### Challenge 3: Multi-Return Method Calls
 
-**Issue:** Both nil and non-nil paths must write to same register
+**Issue:** `local a, b = obj?.method()` should receive multiple returns when obj is not nil.
 
-**Solution:**
-- Allocate result register before nil check
-- Both paths write to same register
-- Ensure proper register cleanup
+**Solution:** Check if `v->k == VCALL` after method call and preserve it instead of discharging to single value.
 
-### Challenge 4: Method Call Setup
+### Challenge 4: Argument Evaluation
 
-**Issue:** Method calls require setup before nil check, but arguments should not be evaluated if nil
+**Issue:** Method arguments should not be evaluated when object is nil.
 
-**Solution:**
-- Check nil before method setup
-- If nil, skip method setup and argument parsing entirely
-- Jump directly to nil result
-
-### Challenge 5: Chaining Complexity
-
-**Issue:** Multiple `?.` operators chain: `obj?.field?.subfield`
-
-**Solution:**
-- Each `?.` in the loop processes independently
-- Each adds its own nil check before accessing next level
-- Result of previous safe navigation becomes input to next
-
----
-
-## Key Files to Modify
-
-1. **`src/fluid/luajit-2.1/src/lj_lex.h`**
-   - Add `TK_safe_field` and `TK_safe_method` tokens
-
-2. **`src/fluid/luajit-2.1/src/lj_lex.c`**
-   - Handle `?.` and `?:` in lexer
-
-3. **`src/fluid/luajit-2.1/src/lj_parse.c`**
-   - Implement `expr_safe_field()`, `expr_safe_method()`, `expr_safe_bracket()`
-   - Modify `expr_primary()` to handle safe navigation tokens
-   - Handle `?[` pattern for safe index access
-
-4. **`src/fluid/tests/test_safe_nav.fluid`**
-   - Create comprehensive test suite
-
-5. **`docs/wiki/Fluid-Reference-Manual.md`**
-   - Add safe navigation operator documentation
-
----
-
-## Implementation Order
-
-### Phase 1: Lexer and Token Recognition (4-6 hours)
-- Steps 1, 9: Add tokens, modify lexer
-- Basic token recognition working
-
-### Phase 2: Field Access (6-8 hours)
-- Steps 2, 4, 10: Implement safe field access
-- Basic `obj?.field` working
-
-### Phase 3: Method and Index Access (6-8 hours)
-- Steps 5, 6: Implement safe method and index access
-- `obj?:method()` and `obj?[key]` working
-
-### Phase 4: Chaining and Integration (4-6 hours)
-- Step 11: Handle chaining
-- Integration with `??` and `or?`
-
-### Phase 5: Optimization and Testing (4-6 hours)
-- Steps 12, 14: Optimize constants, comprehensive testing
-
-### Phase 6: Documentation (2-4 hours)
-- Step 15: User documentation
+**Solution:** Emit nil check BEFORE calling `parse_args()`, only parse arguments in non-nil branch.
 
 ---
 
 ## Testing Checklist
 
-- [ ] Basic safe field: `nil?.field` returns `nil`
-- [ ] Basic safe field: `obj?.field` returns value
-- [ ] Safe method: `nil?:method()` returns `nil`
-- [ ] Safe method: `obj?:method()` calls method
-- [ ] Safe index: `nil?[key]` returns `nil`
-- [ ] Safe index: `obj?[key]` returns value
-- [ ] Chaining: `nil?.field?.subfield` returns `nil`
-- [ ] Chaining: `obj?.field?.subfield` works correctly
-- [ ] Short-circuit: Arguments not evaluated when object is nil
-- [ ] Integration: Works with `??` operator
-- [ ] Integration: Works with `or?` operator
-- [ ] Compile-time optimization: Nil constant doesn't generate bytecode
-- [ ] Edge cases: Empty tables, zero, false
+- [ ] `nil?.field` returns `nil`
+- [ ] `obj?.field` returns field value
+- [ ] `nil?.method()` returns `nil`
+- [ ] `obj?.method()` calls method
+- [ ] `nil?[key]` returns `nil`
+- [ ] `obj?[key]` returns indexed value
+- [ ] Chaining: `nil?.a?.b` returns `nil`
+- [ ] Chaining: `obj?.a?.b` accesses nested fields
+- [ ] Arguments not evaluated: `nil?.method(sideEffect())` doesn't call `sideEffect()`
+- [ ] Multi-return: `local a, b = obj?.method()` gets both values
+- [ ] False/zero/empty not treated as nil: `{flag=false}?.flag` returns `false`
+- [ ] Integration with `?`: `nil?.field ? "default"` returns `"default"`
+- [ ] Compile-time optimization: `nil?.field` doesn't generate runtime checks
 
 ---
 
-## Alternative Implementation Approaches
+## Implementation Order
 
-### Approach A: Library Function (Simpler, Less Efficient)
+### Phase 1: Lexer (1-2 hours)
+- Step 1-2: Add tokens, modify lexer
+- Test: Verify tokens are emitted correctly
 
-Instead of bytecode-level implementation, could provide a library function:
-```lua
-function safe_get(obj, key)
-   return obj ~= nil and obj[key] or nil
-end
-```
+### Phase 2: Field Access (2-3 hours)
+- Steps 3, 6, 7: Implement safe field access
+- Test: `obj?.field` works
 
-**Pros:** Easy to implement, no parser changes
-**Cons:** Less efficient, no short-circuiting for method arguments, verbose syntax
+### Phase 3: Method and Index (2-3 hours)
+- Steps 4-5, 7: Implement safe method and index
+- Test: `obj?.method()` and `obj?[key]` work
 
-### Approach B: VM Instruction (Most Complex)
+### Phase 4: Testing (2-3 hours)
+- Steps 8-10: Comprehensive test suite
+- Fix any issues found
 
-Add new bytecode instruction `BC_SAFE_GET` that handles nil checks at VM level.
-
-**Pros:** Most efficient, clean bytecode
-**Cons:** Requires VM changes, most complex
-
-### Approach C: Parser-Level (Recommended)
-
-Implement at parser level with bytecode emission (as outlined in this plan).
-
-**Pros:** Good balance of efficiency and complexity
-**Cons:** Moderate complexity, requires careful jump patching
+### Phase 5: Documentation (1-2 hours)
+- Step 11: User documentation
 
 ---
 
 ## References
 
-### Existing Implementations to Study
-- Field access: `expr_field()` function (`lj_parse.c:1951-1959`)
-- Method calls: `bcemit_method()` function (`lj_parse.c:689-735`)
-- Index access: `expr_index()` function (`lj_parse.c:1919-1948`)
-- Nil checks: Coalesce operator (`??`) implementation
-- Short-circuit: `or?` operator implementation
+### Code References
+- If-empty operator: `bcemit_binop()` handling of `OPR_IF_EMPTY` (lj_parse.c:1190-1256)
+- Field access: `expr_field()` (lj_parse.c:2068-2076)
+- Method calls: `bcemit_method()` (lj_parse.c:689-735)
+- Ternary operator: Extended falsey checks (lj_parse.c:2920-2984)
 
 ### External References
 - JavaScript: Optional chaining (`?.`)
 - Kotlin: Safe call operator (`?.`)
 - Swift: Optional chaining (`?.`)
-- Ruby: Safe navigation (`&.`)
+- C#: Null-conditional operator (`?.`)
 
 ---
 
-**Last Updated:** 2025-01-XX
-**Status:** Implementation Plan - Ready for implementation
-**Related:** `or?` operator implementation, ternary operator plan, expression parsing in `expr_primary()`
+**Last Updated:** 2025-01-07
+**Status:** Planning Complete - Ready for Implementation
+**Related:** If-empty operator (`?`), ternary operator, expression parsing
