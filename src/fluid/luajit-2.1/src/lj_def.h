@@ -127,7 +127,7 @@ typedef uintptr_t BloomFilter;
 #define LJ_INLINE	inline
 #define LJ_AINLINE	inline __attribute__((always_inline))
 #define LJ_NOINLINE	__attribute__((noinline))
-#define LJ_UNUSED	__attribute__((unused))
+#define LJ_UNUSED    __attribute__((unused))
 
 #if defined(__ELF__) || defined(__MACH__) || defined(__psp2__)
 #if !((defined(__sun__) && defined(__svr4__)) || defined(__CELLOS_LV2__))

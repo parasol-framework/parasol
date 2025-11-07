@@ -97,9 +97,7 @@ static void lex_number(LexState *ls, TValue *tv)
   StrScanFmt fmt;
   LexChar c, xp = 'e';
   lj_assertLS(lj_char_isdigit(ls->c), "bad usage");
-  if ((c = ls->c) == '0' && (lex_savenext(ls) | 0x20) == 'x') {
-    xp = 'p';
-  }
+  if ((c = ls->c) == '0' && (lex_savenext(ls) | 0x20) == 'x') xp = 'p';
   while (lj_char_isident(ls->c) || ls->c == '.' || ((ls->c == '-' || ls->c == '+') && (c | 0x20) == xp)) {
     c = ls->c;
     lex_savenext(ls);
