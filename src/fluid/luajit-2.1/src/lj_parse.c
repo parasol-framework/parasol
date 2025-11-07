@@ -27,6 +27,7 @@
 #include "lj_parse.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
+#include <stdio.h>
 
 #define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
 
