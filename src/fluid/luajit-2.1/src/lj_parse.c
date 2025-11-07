@@ -2110,14 +2110,14 @@ static void expr_safe_field(LexState *ls, ExpDesc *v)
   jump_call = bcemit_jmp(fs);
   bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
   skip_end = bcemit_jmp(fs);
-  jmp_patchins(fs, jump_call, fs->pc);
+  jmp_patch(fs, jump_call, fs->pc);
 
   expr_init(&table, VNONRELOC, obj_reg);
   table.t = table.f = NO_JMP;
   expr_index(fs, &table, &key);
   expr_toreg(fs, &table, result_reg);
 
-  jmp_patchins(fs, skip_end, fs->pc);
+  jmp_patch(fs, skip_end, fs->pc);
 
   expr_init(v, VNONRELOC, result_reg);
 }
@@ -2143,7 +2143,7 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
   jump_call = bcemit_jmp(fs);
   bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
   skip_end = bcemit_jmp(fs);
-  jmp_patchins(fs, jump_call, fs->pc);
+  jmp_patch(fs, jump_call, fs->pc);
 
   expr_bracket(ls, &key);
   expr_init(&table, VNONRELOC, obj_reg);
@@ -2151,7 +2151,7 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
   expr_index(fs, &table, &key);
   expr_toreg(fs, &table, result_reg);
 
-  jmp_patchins(fs, skip_end, fs->pc);
+  jmp_patch(fs, skip_end, fs->pc);
 
   expr_init(v, VNONRELOC, result_reg);
 }
@@ -2179,7 +2179,7 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   bcemit_AD(fs, BC_KPRI, base_reg, VKNIL);
   expr_init(&obj, VNONRELOC, base_reg);
   skip_end = bcemit_jmp(fs);
-  jmp_patchins(fs, jump_call, fs->pc);
+  jmp_patch(fs, jump_call, fs->pc);
 
   fs->freereg = base_reg;
   expr_init(&obj, VNONRELOC, obj_reg);
@@ -2187,7 +2187,7 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   bcemit_method(fs, &obj, &key);
   parse_args(ls, &obj);
 
-  jmp_patchins(fs, skip_end, fs->pc);
+  jmp_patch(fs, skip_end, fs->pc);
 
   *v = obj;
 }
