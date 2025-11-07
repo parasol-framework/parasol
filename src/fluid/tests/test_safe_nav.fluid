@@ -2,7 +2,24 @@
 
 function testSafeFieldOnNil()
    local user = nil
-   local name = user?.profile?.name
+
+   -- Short circuit equivalent performed with if-then-else.
+   -- In real terms, the JIT code should be shifting the tested conditional logic in the registers, as defined in the attached comments:
+   if user != nil then -- REG = [EMPTY]
+      if user.profile != nil then -- REG = user
+         if user.profile.details != nil then -- REG = user.profile
+            return user.profile.details.name -- REG = user.profile.details
+         else
+            return nil
+         end
+      else
+         return nil
+      end
+   else
+      return nil
+   end
+
+   local name = user?.profile?.details.name
    assert(name is nil, "Safe field on nil should yield nil")
 end
 
