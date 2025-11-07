@@ -387,6 +387,7 @@ else ()
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
+         -Wno-trigraphs
          -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
       DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS}
       COMMENT "Compiling LuaJIT amalgamated source"
