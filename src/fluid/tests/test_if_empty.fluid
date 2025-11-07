@@ -1,4 +1,4 @@
--- Flute tests for the ? operator (extended falsey: nil, false, 0, "")
+-- Flute tests for the ? operator (if-empty: nil, false, 0, "")
 
 function testNil()
    local v = nil ? "A"
