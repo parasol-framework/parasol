@@ -305,6 +305,16 @@ static void bcread_uv(LexState *ls, GCproto *pt, MSize sizeuv)
     }
   }
 }
+static int bcread_scan_defer(GCproto *pt)
+{
+  BCIns *bc = proto_bc(pt);
+  MSize i;
+  for (i = 1; i < pt->sizebc; i++)
+    if (bc_op(bc[i]) == BC_DEFER)
+      return 1;
+  return 0;
+}
+
 
 /* Read a prototype. */
 GCproto *lj_bcread_proto(LexState *ls)
@@ -314,9 +324,12 @@ GCproto *lj_bcread_proto(LexState *ls)
   MSize ofsk, ofsuv, ofsdbg;
   MSize sizedbg = 0;
   BCLine firstline = 0, numline = 0;
+  uint32_t gflag = 0;
 
   /* Read prototype header. */
   flags = bcread_byte(ls);
+  if (bcread_flags(ls) & BCDUMP_F_DEFER)
+    gflag = bcread_byte(ls);
   numparams = bcread_byte(ls);
   framesize = bcread_byte(ls);
   sizeuv = bcread_byte(ls);
@@ -353,6 +366,7 @@ GCproto *lj_bcread_proto(LexState *ls)
   pt->sizept = sizept;
   pt->sizeuv = (uint8_t)sizeuv;
   pt->flags = (uint8_t)flags;
+  pt->gflag = (uint8_t)gflag;
   pt->trace = 0;
   setgcref(pt->chunkname, obj2gco(ls->chunkname));
 
@@ -367,6 +381,8 @@ GCproto *lj_bcread_proto(LexState *ls)
   bcread_kgc(ls, pt, sizekgc);
   pt->sizekgc = sizekgc;
   bcread_knum(ls, pt, sizekn);
+  if (!(pt->gflag & PROTOG_HAS_DEFER) && bcread_scan_defer(pt))
+    pt->gflag |= PROTOG_HAS_DEFER;
 
   /* Read and initialize debug info. */
   pt->firstline = firstline;

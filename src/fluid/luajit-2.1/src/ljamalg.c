@@ -33,6 +33,7 @@
 #include "lj_debug.c"
 #include "lj_prng.c"
 #include "lj_state.c"
+#include "lj_defer.c"
 #include "lj_dispatch.c"
 #include "lj_vmevent.c"
 #include "lj_vmmath.c"

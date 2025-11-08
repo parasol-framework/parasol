@@ -4,7 +4,7 @@
 
 This document provides a detailed step-by-step implementation plan for the `defer` keyword in Fluid/LuaJIT. The `defer` keyword allows functions to be registered for execution at the end of the scope in which they are created, similar to Go's `defer` statement.
 
-**Status:** 🚧 **Implementation In Progress** - Lexer keyword and scope bookkeeping staged
+**Status:** 🚧 **Implementation In Progress** - Runtime registration and unwinding in place; tooling and JIT integration pending (Step 9 onwards)
 
 **Priority:** ⭐⭐⭐⭐ **High**
 
@@ -13,6 +13,10 @@ This document provides a detailed step-by-step implementation plan for the `defe
 ## Progress Log
 
 - ✅ Lexer recognises the `defer` keyword and parser scopes now track deferred handler bookkeeping fields (Step 1 & partial Step 2).
+- ✅ Parser-side scaffolding complete (Steps 2-5): scope helpers allocate/recycle `DeferEntry` nodes, `parse_defer()` handles syntax and arguments, and `BC_DEFER` is emitted with register cleanup.
+- ✅ Runtime support added (Steps 6-8): interpreter stores defer frames, emits `BC_UNDEFER` on scope exit and return paths, and raises queued errors after unwinding.
+- ✅ Control-flow unwinding and prototype flags added (Steps 9-10): breaks/continues emit defer clean-up and functions record defer usage for runtime setup.
+- ✅ Tooling integration and parser diagnostics updated (Steps 11-13): bytecode dumps capture defer flags, legacy chunks rescan for BC_DEFER, and parser errors report scope misuse.
 
 ## Feature Specification
 
@@ -91,7 +95,7 @@ end
 
 ---
 
-### Step 2: Extend Parser Scope Structures for Defer Tracking
+### Step 2: Extend Parser Scope Structures for Defer Tracking *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -123,7 +127,7 @@ end
 
 ---
 
-### Step 3: Add Scope Flag for Defer Handlers
+### Step 3: Add Scope Flag for Defer Handlers *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -140,7 +144,7 @@ end
 
 ---
 
-### Step 4: Parse the `defer` Statement
+### Step 4: Parse the `defer` Statement *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -159,7 +163,7 @@ end
 
 ---
 
-### Step 5: Emit Defer Registration Bytecode
+### Step 5: Emit Defer Registration Bytecode *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -176,7 +180,7 @@ end
 
 ---
 
-### Step 6: Provide Runtime Support for Defer Frames
+### Step 6: Provide Runtime Support for Defer Frames *(✅ Completed)*
 
 **Files:**
 - `src/fluid/luajit-2.1/src/lj_bc.h`
@@ -198,9 +202,13 @@ end
 - The VM can store defer handlers efficiently and run them in LIFO order regardless of how the scope exits.
 - The new opcodes integrate with the interpreter, the unwinder, and trace recording without regressing existing bytecode.
 
+**Implementation Notes:**
+- Introduced `lj_defer.c`/`.h`, extended `lua_State`, and wired `BC_DEFER`/`BC_UNDEFER` through the x64 interpreter and GC scanning.
+- Exported the runtime entry points with `LJ_FUNCA` so the interpreter's DynASM stubs link against them without relying on linker GC quirks.
+
 ---
 
-### Step 7: Emit Unwind Bytecode When a Scope Ends
+### Step 7: Emit Unwind Bytecode When a Scope Ends *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -218,9 +226,12 @@ end
 - Normal scope exits now always emit unwind bytecode ahead of the existing clean-up logic.
 - Nested scopes unwind only their own defers because operand `D` encodes the scope boundary explicitly.
 
+**Implementation Notes:**
+- `fscope_end()` now emits `BC_UNDEFER` batches and normalises scope metadata once handlers have been scheduled.
+
 ---
 
-### Step 8: Unwind Defers on `return`
+### Step 8: Unwind Defers on `return` *(✅ Completed)*
 
 **File:** `src/fluid/luajit-2.1/src/lj_parse.c`
 
@@ -231,6 +242,9 @@ end
 **Expected Result:**
 - Returning from a function reliably runs all pending defers before control leaves the frame.
 - The compiler reuses a single helper for all early-exit paths, reducing maintenance burden.
+
+**Implementation Notes:**
+- Added `bcemit_defer_unwind_to()` and invoked it from `parse_return()` to collapse pending scopes into compact `BC_UNDEFER` sequences.
 
 ---
 
@@ -246,6 +260,8 @@ end
 - Control transfers out of inner scopes never leak defers.
 - Code generation stays symmetric between `break` and `continue`.
 
+**Status:** ✅ Parser now emits unwind opcodes for both `break` and `continue`.
+
 ---
 
 ### Step 10: Initialise Defer Accounting in Function Prologues
@@ -259,6 +275,8 @@ end
 **Expected Result:**
 - Per-function counters start from a clean slate and the generated prototypes expose whether defer support is required.
 - The VM only pays the cost of allocating a defer frame when a function actually uses `defer`.
+
+**Status:** ✅ Functions tag defer usage in `gflag`, ready for runtime allocation policies.
 
 ---
 
@@ -278,6 +296,8 @@ end
 - Tooling and debugging aids remain functional when the new opcodes appear in bytecode dumps.
 - The JIT subsystem fails gracefully if support for the new instructions is postponed.
 
+**Status:** ✅ Bytecode dumps mark defer usage with BCDUMP_F_DEFER, `lj_bcread` rescans legacy chunks for BC_DEFER, and the trace recorder now aborts when BC_DEFER/BC_UNDEFER enter recording.
+
 ---
 
 ### Step 12: Statement Parser Integration
@@ -291,6 +311,8 @@ end
 **Expected Result:**
 - `defer` slots naturally into the statement grammar with precise error handling.
 - Users receive actionable diagnostics when they mistype a defer block.
+
+**Status:** ✅ `parse_defer` now raises `LJ_ERR_XDEFER` outside scoped functions while existing grammar hooks surface token-specific syntax failures.
 
 ---
 ### Step 13: Add Defer to Statement Parser
@@ -318,6 +340,8 @@ end
 **Expected Result:**
 - `defer` statements are recognized and parsed
 - Parser handles defer syntax correctly
+
+**Status:** ✅ `parse_stmt()` already dispatches `TK_defer` to `parse_defer`, so statement handling is in place.
 
 ---
 
