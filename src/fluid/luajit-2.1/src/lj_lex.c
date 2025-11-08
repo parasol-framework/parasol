@@ -406,6 +406,8 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       else return ':';
     case '?':
       lex_next(ls);
+      if (ls->c == '.') { lex_next(ls); return TK_safe_field; }
+      if (ls->c == ':') { lex_next(ls); return TK_safe_method; }
       if (ls->c != '?') return TK_if_empty; else { lex_next(ls); return TK_presence; }
     case '"':
     case '\'':
