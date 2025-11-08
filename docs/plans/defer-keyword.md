@@ -2,17 +2,20 @@
 
 ## Status & Scope
 
-**Status:** 📝 Draft ready for implementation review  
-**Priority:** ⭐⭐⭐⭐ High  
+**Status:** 📝 Draft ready for implementation review
+**Priority:** ⭐⭐⭐⭐ High
 **Estimated Effort:** 10–14 hours (parser + VM + tests)
 
-This plan replaces the earlier heavy-weight proposal for a Fluid `defer`
+This plan proposes a Fluid `defer`
 keyword with a keep-it-simple approach that relies entirely on LuaJIT's
 existing anonymous function machinery. Each `defer` statement is lowered
 into an ordinary closure stored in a synthetic local. Scope management code
 records those locals and emits standard `function` creation/call bytecode to
 execute them when the scope unwinds. No bespoke opcodes or exotic runtime
 subsystems are introduced.
+
+Examples of how `defer` would be used in the Fluid language can be
+observed in the file at `src/fluid/tests/test_defer.fluid`.
 
 ## Investigation Summary
 
