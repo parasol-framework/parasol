@@ -2128,18 +2128,12 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
 {
   FuncState *fs = ls->fs;
   ExpDesc key, nilv;
-  BCReg obj_reg, result_reg;
+  BCReg obj_reg;
   BCPos check_nil, skip_index;
 
   lj_lex_next(ls);  /* Consume '?'. '[' remains as current token. */
 
   expr_discharge(fs, v);
-  if (v->k == VKNIL) {
-    expr_init(v, VKNIL, 0);
-    expr_bracket(ls, &key);  /* Still consume the bracket expression */
-    return;
-  }
-
   obj_reg = expr_toanyreg(fs, v);
 
   /* Check if obj == nil BEFORE evaluating the key expression */
@@ -2173,24 +2167,6 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   BCPos check_nil, skip_nil;
 
   expr_discharge(fs, v);
-  if (v->k == VKNIL) {
-    ExpDesc dummy;
-    lj_lex_next(ls);  /* Consume '?:'. */
-    expr_str(ls, &key);  /* Consume method name */
-    lex_check(ls, '(');  /* Consume opening paren */
-    if (ls->tok != ')') {
-      /* Skip arguments */
-      do {
-        expr(ls, &dummy);
-        if (ls->tok == ',') lj_lex_next(ls);
-        else break;
-      } while (ls->tok != ')');
-    }
-    lex_check(ls, ')');  /* Consume closing paren */
-    expr_init(v, VKNIL, 0);
-    return;
-  }
-
   obj_reg = expr_toanyreg(fs, v);
 
   lj_lex_next(ls);  /* Consume '?:'. */
@@ -2205,8 +2181,9 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);
 
-  /* Nil case: set v to VKNIL and skip method call */
-  expr_init(v, VKNIL, 0);
+  /* Nil case: write nil to result register and skip method call */
+  bcemit_AD(fs, BC_KPRI, base_reg, VKNIL);
+  expr_init(v, VNONRELOC, base_reg);
   skip_nil = bcemit_jmp(fs);
 
   /* Non-nil case: call method */
@@ -2536,8 +2513,6 @@ static void expr_primary(LexState *ls, ExpDesc *v)
   }
   for (;;) {  /* Parse multiple expression suffixes. */
     if (ls->tok == TK_safe_field) {
-      fprintf(stderr, "[PARSER] Detected TK_safe_field token\n");
-      fflush(stderr);
       expr_safe_field(ls, v);
     } else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
       expr_safe_index(ls, v);
