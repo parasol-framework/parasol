@@ -688,13 +688,13 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
 XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
-      XMLTag * node;
+      XTag * node;
       const XMLAttrib * attribute;
    };
 
    struct NodeIdentityHash {
       size_t operator()(const NodeIdentity &Value) const {
-         size_t node_hash = std::hash<XMLTag *>()(Value.node);
+         size_t node_hash = std::hash<XTag *>()(Value.node);
          size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
          return node_hash ^ (attrib_hash << 1);
       }
@@ -714,7 +714,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
    seen_entries.reserve(Branches.size() * 4);
 
    struct UnionEntry {
-      XMLTag * node = nullptr;
+      XTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
       std::string string_value;
    };
@@ -747,7 +747,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       }
 
       for (size_t index = 0; index < branch_value.node_set.size(); ++index) {
-         XMLTag *node = branch_value.node_set[index];
+         XTag *node = branch_value.node_set[index];
          const XMLAttrib *attribute = nullptr;
          if (index < branch_value.node_set_attributes.size()) attribute = branch_value.node_set_attributes[index];
 
@@ -809,13 +809,13 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
-      XMLTag * node;
+      XTag * node;
       const XMLAttrib * attribute;
    };
 
    struct NodeIdentityHash {
       size_t operator()(const NodeIdentity &Value) const {
-         size_t node_hash = std::hash<XMLTag *>()(Value.node);
+         size_t node_hash = std::hash<XTag *>()(Value.node);
          size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
          return node_hash ^ (attrib_hash << 1);
       }
@@ -828,7 +828,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    };
 
    struct SetEntry {
-      XMLTag * node = nullptr;
+      XTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
       std::string string_value;
    };
@@ -874,7 +874,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    right_entries.reserve(right_value.node_set.size() * 2);
 
    for (size_t index = 0; index < right_value.node_set.size(); ++index) {
-      XMLTag *node = right_value.node_set[index];
+      XTag *node = right_value.node_set[index];
       const XMLAttrib *attribute = nullptr;
       if (index < right_value.node_set_attributes.size()) attribute = right_value.node_set_attributes[index];
 
@@ -891,7 +891,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    std::optional<std::string> combined_override = left_value.node_set_string_override;
 
    for (size_t index = 0; index < left_value.node_set.size(); ++index) {
-      XMLTag *node = left_value.node_set[index];
+      XTag *node = left_value.node_set[index];
       const XMLAttrib *attribute = nullptr;
       if (index < left_value.node_set_attributes.size()) attribute = left_value.node_set_attributes[index];
 
@@ -950,13 +950,13 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
 XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
-      XMLTag * node;
+      XTag * node;
       const XMLAttrib * attribute;
    };
 
    struct NodeIdentityHash {
       size_t operator()(const NodeIdentity &Value) const {
-         size_t node_hash = std::hash<XMLTag *>()(Value.node);
+         size_t node_hash = std::hash<XTag *>()(Value.node);
          size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
          return node_hash ^ (attrib_hash << 1);
       }
@@ -969,7 +969,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    };
 
    struct SetEntry {
-      XMLTag * node = nullptr;
+      XTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
       std::string string_value;
    };
@@ -1015,7 +1015,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    right_entries.reserve(right_value.node_set.size() * 2);
 
    for (size_t index = 0; index < right_value.node_set.size(); ++index) {
-      XMLTag *node = right_value.node_set[index];
+      XTag *node = right_value.node_set[index];
       const XMLAttrib *attribute = nullptr;
       if (index < right_value.node_set_attributes.size()) attribute = right_value.node_set_attributes[index];
 
@@ -1032,7 +1032,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    std::optional<std::string> combined_override = left_value.node_set_string_override;
 
    for (size_t index = 0; index < left_value.node_set.size(); ++index) {
-      XMLTag *node = left_value.node_set[index];
+      XTag *node = left_value.node_set[index];
       const XMLAttrib *attribute = nullptr;
       if (index < left_value.node_set_attributes.size()) attribute = left_value.node_set_attributes[index];
 
@@ -1127,9 +1127,9 @@ std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const Constru
 // Recursively clones an XML node subtree so constructor operations can duplicate existing content without mutating
 // the original document tree.
 
-XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
+XTag XPathEvaluator::clone_node_subtree(const XTag &Source, int ParentID)
 {
-   XMLTag clone(next_constructed_node_id--, Source.LineNo);
+   XTag clone(next_constructed_node_id--, Source.LineNo);
    clone.ParentID = ParentID;
    clone.Flags = Source.Flags;
    clone.NamespaceID = Source.NamespaceID;
@@ -1137,7 +1137,7 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 
    clone.Children.reserve(Source.Children.size());
    for (const auto &child : Source.Children) {
-      XMLTag child_clone = clone_node_subtree(child, clone.ID);
+      XTag child_clone = clone_node_subtree(child, clone.ID);
       clone.Children.push_back(std::move(child_clone));
    }
 
@@ -1148,14 +1148,14 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 // Appends a sequence value produced by constructor content into the target element, handling node cloning, attribute
 // creation, and text concatenation according to the XPath constructor rules.
 
-bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix,
+bool XPathEvaluator::append_constructor_sequence(XTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix,
    const ConstructorNamespaceScope &Scope, bool PreserveConstruction)
 {
    if (Value.Type IS XPVT::NodeSet) {
       Parent.Children.reserve(Parent.Children.size() + Value.node_set.size());
 
       for (size_t index = 0; index < Value.node_set.size(); ++index) {
-         XMLTag *node = Value.node_set[index];
+         XTag *node = Value.node_set[index];
          if (not node) continue;
 
          const XMLAttrib *attribute = nullptr;
@@ -1181,7 +1181,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
             continue;
          }
 
-         XMLTag clone = clone_node_subtree(*node, Parent.ID);
+         XTag clone = clone_node_subtree(*node, Parent.ID);
          Parent.Children.push_back(std::move(clone));
       }
 
@@ -1200,7 +1200,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
    pf::vector<XMLAttrib> text_attribs;
    text_attribs.emplace_back("", text);
 
-   XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+   XTag text_node(next_constructed_node_id--, 0, text_attribs);
    text_node.ParentID = Parent.ID;
    Parent.Children.push_back(std::move(text_node));
    return true;
@@ -1339,7 +1339,7 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
                continue;
             }
 
-            XMLTag *node = value.node_set[index];
+            XTag *node = value.node_set[index];
             if (not node) continue;
             result += XPathVal::node_string_value(node);
          }
@@ -1391,11 +1391,11 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
 }
 
 //********************************************************************************************************************
-// Builds an XMLTag representing a direct element constructor.  The function walks the parsed constructor metadata,
+// Builds an XTag representing a direct element constructor.  The function walks the parsed constructor metadata,
 // creates namespace scopes, instantiates attributes, and recursively processes nested constructors and enclosed
 // expressions.
 
-std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
+std::optional<XTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
    ConstructorNamespaceScope *ParentScope, int ParentID)
 {
    pf::Log log("XPath");
@@ -1521,7 +1521,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    }
    else if (element_scope.default_namespace.has_value()) namespace_id = *element_scope.default_namespace;
 
-   XMLTag element(next_constructed_node_id--, 0);
+   XTag element(next_constructed_node_id--, 0);
    element.ParentID = ParentID;
    element.Flags = XTF::NIL;
    element.NamespaceID = namespace_id;
@@ -1550,7 +1550,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", *text_value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            XTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = element.ID;
             element.Children.push_back(std::move(text_node));
             continue;
@@ -1589,8 +1589,8 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
       return XPathVal();
    }
 
-   auto stored = std::make_unique<XMLTag>(*element);
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(*element);
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -1679,7 +1679,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    pf::vector<XMLAttrib> element_attributes;
    element_attributes.emplace_back(element_name, "");
 
-   XMLTag element(next_constructed_node_id--, 0, element_attributes);
+   XTag element(next_constructed_node_id--, 0, element_attributes);
    element.ParentID = 0;
    element.Flags = XTF::NIL;
    element.NamespaceID = namespace_id;
@@ -1694,7 +1694,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
          if (text_value.has_value()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", *text_value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            XTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = element.ID;
             element.Children.push_back(std::move(text_node));
          }
@@ -1711,8 +1711,8 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
       }
    }
 
-   auto stored = std::make_unique<XMLTag>(std::move(element));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(element));
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -1809,13 +1809,13 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    attribute_attribs.emplace_back("$attribute", "");
    attribute_attribs.emplace_back(attribute_name, *value_string);
 
-   XMLTag attribute_tag(next_constructed_node_id--, 0, attribute_attribs);
+   XTag attribute_tag(next_constructed_node_id--, 0, attribute_attribs);
    attribute_tag.ParentID = 0;
    attribute_tag.Flags = XTF::NIL;
    attribute_tag.NamespaceID = namespace_id;
 
-   auto stored = std::make_unique<XMLTag>(std::move(attribute_tag));
-   XMLTag *owner = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(attribute_tag));
+   XTag *owner = stored.get();
    const XMLAttrib *attribute_ptr = owner->Attribs.size() > 1 ? &owner->Attribs[1] : nullptr;
    constructed_nodes.push_back(std::move(stored));
 
@@ -1847,13 +1847,13 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
    pf::vector<XMLAttrib> text_attribs;
    text_attribs.emplace_back("", *content);
 
-   XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+   XTag text_node(next_constructed_node_id--, 0, text_attribs);
    text_node.ParentID = 0;
    text_node.Flags = XTF::NIL;
    text_node.NamespaceID = 0;
 
-   auto stored = std::make_unique<XMLTag>(std::move(text_node));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(text_node));
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -1894,13 +1894,13 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
    pf::vector<XMLAttrib> comment_attribs;
    comment_attribs.emplace_back("", *content);
 
-   XMLTag comment_node(next_constructed_node_id--, 0, comment_attribs);
+   XTag comment_node(next_constructed_node_id--, 0, comment_attribs);
    comment_node.ParentID = 0;
    comment_node.Flags = XTF::COMMENT;
    comment_node.NamespaceID = 0;
 
-   auto stored = std::make_unique<XMLTag>(std::move(comment_node));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(comment_node));
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -1959,13 +1959,13 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    pf::vector<XMLAttrib> instruction_attribs;
    instruction_attribs.emplace_back(attribute_name, *content);
 
-   XMLTag instruction(next_constructed_node_id--, 0, instruction_attribs);
+   XTag instruction(next_constructed_node_id--, 0, instruction_attribs);
    instruction.ParentID = 0;
    instruction.Flags = XTF::INSTRUCTION;
    instruction.NamespaceID = 0;
 
-   auto stored = std::make_unique<XMLTag>(std::move(instruction));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(instruction));
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -1991,7 +1991,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
    pf::vector<XMLAttrib> document_attribs;
    document_attribs.emplace_back("#document", "");
 
-   XMLTag document_node(next_constructed_node_id--, 0, document_attribs);
+   XTag document_node(next_constructed_node_id--, 0, document_attribs);
    document_node.ParentID = 0;
    document_node.Flags = XTF::NIL;
    document_node.NamespaceID = 0;
@@ -2006,7 +2006,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
          if (text_value.has_value()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", *text_value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            XTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = document_node.ID;
             document_node.Children.push_back(std::move(text_node));
          }
@@ -2023,8 +2023,8 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
       }
    }
 
-   auto stored = std::make_unique<XMLTag>(std::move(document_node));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(document_node));
+   XTag *root = stored.get();
    constructed_nodes.push_back(std::move(stored));
 
    NODES nodes;
@@ -2053,7 +2053,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    };
 
    struct NodeEntry {
-      XMLTag * node = nullptr;
+      XTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
       size_t original_index = 0;
    };
@@ -2062,7 +2062,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    entries.reserve(Value.node_set.size());
 
    for (size_t index = 0; index < Value.node_set.size(); ++index) {
-      XMLTag *candidate = Value.node_set[index];
+      XTag *candidate = Value.node_set[index];
       if (not candidate) continue;
 
       const XMLAttrib *attribute = nullptr;
@@ -2161,7 +2161,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 
    for (size_t index = 0; index < entries.size(); ++index) {
       auto &entry = entries[index];
-      XMLTag *candidate = entry.node;
+      XTag *candidate = entry.node;
       push_context(candidate, index + 1, entries.size(), entry.attribute);
 
       if (not candidate) {

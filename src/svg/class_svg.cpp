@@ -370,7 +370,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
          ERR error = xml->insertXML(0, XMI::NIL, header, nullptr);
          int index = xml->Tags.back().ID;
 
-         XMLTag *tag;
+         XTag *tag;
          if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {

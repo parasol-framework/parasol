@@ -260,7 +260,7 @@ static const std::string uri_name(const std::string Ref)
 
 //********************************************************************************************************************
 
-static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
+static XTag * find_href_tag(extSVG *Self, std::string Ref)
 {
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
@@ -428,7 +428,7 @@ template<class T = double> std::vector<T> read_array(const std::string Value, in
 // This function is called before fully parsing the document so that we can extract all tags making use of the
 // 'id' attribute.
 
-static void parse_ids(extSVG *Self, XMLTag &Tag)
+static void parse_ids(extSVG *Self, XTag &Tag)
 {
    for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &name = Tag.Attribs[a].Name;

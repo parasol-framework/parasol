@@ -123,7 +123,7 @@ static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
 //********************************************************************************************************************
 // Returns a human-readable description of the node kind (element, attribute, text, comment, processing-instruction).
 
-static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttrib *Attribute)
+static std::string describe_nodeset_item_kind(const XTag *Node, const XMLAttrib *Attribute)
 {
    if (Attribute) return std::string("attribute()");
    if (!Node) return std::string("item()");
@@ -137,7 +137,7 @@ static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttri
 //********************************************************************************************************************
 // Determines whether the given node is a text node (identified by an empty attribute name in Attribs[0]).
 
-static bool is_text_node(const XMLTag *Node)
+static bool is_text_node(const XTag *Node)
 {
    if (!Node) return false;
    if (Node->Attribs.empty()) return false;
@@ -147,7 +147,7 @@ static bool is_text_node(const XMLTag *Node)
 //********************************************************************************************************************
 // Identifies text nodes that were constructed (have zero parent ID) rather than parsed from a document.
 
-static bool is_constructed_scalar_text(const XMLTag *Node)
+static bool is_constructed_scalar_text(const XTag *Node)
 {
    if (!is_text_node(Node)) return false;
    return Node->ParentID IS 0;
@@ -413,12 +413,12 @@ static std::string canonicalise_variable_qname(std::string_view Candidate,
 // Appends a value to a sequence, decomposing node-sets into individual nodes or wrapping scalars as text nodes.
 
 static void append_value_to_sequence(const XPathVal &Value, std::vector<SequenceEntry> &Entries,
-   int &NextConstructedNodeId, std::vector<std::unique_ptr<XMLTag>> &ConstructedNodes)
+   int &NextConstructedNodeId, std::vector<std::unique_ptr<XTag>> &ConstructedNodes)
 {
    if (Value.Type IS XPVT::NodeSet) {
       bool use_override = Value.node_set_string_override.has_value() and Value.node_set_string_values.empty();
       for (size_t index = 0; index < Value.node_set.size(); ++index) {
-         XMLTag *node = Value.node_set[index];
+         XTag *node = Value.node_set[index];
          if (not node) continue;
 
          const XMLAttrib *attribute = nullptr;
@@ -439,11 +439,11 @@ static void append_value_to_sequence(const XPathVal &Value, std::vector<Sequence
    pf::vector<XMLAttrib> text_attribs;
    text_attribs.emplace_back("", text);
 
-   XMLTag text_node(NextConstructedNodeId--, 0, text_attribs);
+   XTag text_node(NextConstructedNodeId--, 0, text_attribs);
    text_node.ParentID = 0;
 
-   auto stored = std::make_unique<XMLTag>(std::move(text_node));
-   XMLTag *root = stored.get();
+   auto stored = std::make_unique<XTag>(std::move(text_node));
+   XTag *root = stored.get();
    ConstructedNodes.push_back(std::move(stored));
 
    Entries.push_back({ root, nullptr, std::move(text) });
@@ -528,7 +528,7 @@ static bool append_iteration_value_helper(const XPathVal &IterationValue, NODES 
       if ((length IS 0) and IterationValue.node_set_string_override.has_value()) length = 1;
 
       for (size_t node_index = 0; node_index < length; ++node_index) {
-         XMLTag *node = node_index < IterationValue.node_set.size() ? IterationValue.node_set[node_index] : nullptr;
+         XTag *node = node_index < IterationValue.node_set.size() ? IterationValue.node_set[node_index] : nullptr;
          CombinedNodes.push_back(node);
 
          const XMLAttrib *attribute = nullptr;
@@ -600,7 +600,7 @@ static bool evaluate_for_bindings_recursive(XPathEvaluator &Self, XPathContext &
    if (sequence_size IS 0) return true;
 
    for (size_t index = 0; index < sequence_size; ++index) {
-      XMLTag *item_node = sequence_value.node_set[index];
+      XTag *item_node = sequence_value.node_set[index];
       const XMLAttrib *item_attribute = nullptr;
       if (index < sequence_value.node_set_attributes.size()) {
          item_attribute = sequence_value.node_set_attributes[index];
@@ -672,7 +672,7 @@ static bool evaluate_quantified_binding_recursive(XPathEvaluator &Self, XPathCon
    if (sequence_size IS 0) return IsEvery;
 
    for (size_t index = 0; index < sequence_size; ++index) {
-      XMLTag *item_node = sequence_value.node_set[index];
+      XTag *item_node = sequence_value.node_set[index];
       const XMLAttrib *item_attribute = nullptr;
       if (index < sequence_value.node_set_attributes.size()) {
          item_attribute = sequence_value.node_set_attributes[index];
@@ -981,7 +981,7 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
          for (size_t index = 0; index < item_count; ++index) {
             const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
                Value.node_set_attributes[index] : nullptr;
-            XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+            XTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
 
             if (attribute) continue;
             if (!node) return false;
@@ -997,7 +997,7 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
          for (size_t index = 0; index < item_count; ++index) {
             const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
                Value.node_set_attributes[index] : nullptr;
-            XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+            XTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
             if (attribute or (not node) or (not node->isTag())) return false;
          }
          return true;
@@ -1022,7 +1022,7 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
          for (size_t index = 0; index < item_count; ++index) {
             const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
                Value.node_set_attributes[index] : nullptr;
-            XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+            XTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
             if (attribute or (not is_text_node(node))) return false;
          }
          return true;
@@ -1044,7 +1044,7 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
       for (size_t index = 0; index < item_count; ++index) {
          const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
             Value.node_set_attributes[index] : nullptr;
-         XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+         XTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
 
          bool atomic_source = false;
          if (attribute) atomic_source = true;
@@ -1116,7 +1116,7 @@ XPathVal XPathEvaluator::handle_empty_sequence(const XPathNode *Node, uint32_t C
 {
    (void)Node;
    (void)CurrentPrefix;
-   return XPathVal(pf::vector<XMLTag *>{});
+   return XPathVal(pf::vector<XTag *>{});
 }
 
 //********************************************************************************************************************
@@ -1248,7 +1248,7 @@ XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t 
    if (operand_value.Type IS XPVT::NodeSet) {
       size_t item_count = operand_value.node_set.size();
       if (item_count IS 0) {
-         if (target_info.allows_empty) return XPathVal(pf::vector<XMLTag *>{});
+         if (target_info.allows_empty) return XPathVal(pf::vector<XTag *>{});
          auto message = std::format("XPTY0004: Cast to '{}' requires a single item, but the operand was empty.",
             target_descriptor->type_name);
          record_error(message, Node, true);
@@ -1467,7 +1467,7 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
          for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
             const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
                operand_value.node_set_attributes[index] : nullptr;
-            XMLTag *node = operand_value.node_set[index];
+            XTag *node = operand_value.node_set[index];
 
             if (attribute or (not node) or (not node->isTag())) {
                auto encountered = describe_nodeset_item_kind(node, attribute);
@@ -1514,7 +1514,7 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
          for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
             const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
                operand_value.node_set_attributes[index] : nullptr;
-            XMLTag *node = operand_value.node_set[index];
+            XTag *node = operand_value.node_set[index];
 
             bool text_node = node and (not node->Attribs.empty()) and node->Attribs[0].Name.empty();
             if (attribute or (not text_node)) {
@@ -1549,7 +1549,7 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
       for (size_t index = 0; index < length; ++index) {
          const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
             operand_value.node_set_attributes[index] : nullptr;
-         XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
+         XTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
 
          if (attribute) {
             auto encountered = describe_nodeset_item_kind(node, attribute);
@@ -2226,7 +2226,7 @@ XPathVal XPathEvaluator::handle_filter(const XPathNode *Node, uint32_t CurrentPr
 
       for (size_t position = 0; position < working_indices.size(); ++position) {
          size_t base_index = working_indices[position];
-         XMLTag *candidate = base_value.node_set[base_index];
+         XTag *candidate = base_value.node_set[base_index];
          const XMLAttrib *attribute = nullptr;
          if (base_index < base_value.node_set_attributes.size()) {
             attribute = base_value.node_set_attributes[base_index];

@@ -56,7 +56,7 @@ struct TupleSchema {
 struct FlworTuple {
    std::vector<XPathVal> bindings;           // Indexed by TupleSchema
    std::vector<uint8_t> binding_set;         // Flags for presence
-   XMLTag *context_node = nullptr;
+   XTag *context_node = nullptr;
    const XMLAttrib *context_attribute = nullptr;
    size_t context_position = 1;
    size_t context_size = 1;
@@ -150,7 +150,7 @@ static std::string group_nodeset_string(const XPathVal &Value, size_t Index)
    }
 
    if (Index < Value.node_set.size()) {
-      XMLTag *node = Value.node_set[Index];
+      XTag *node = Value.node_set[Index];
       if (node) return XPathVal::node_string_value(node);
    }
 
@@ -243,7 +243,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       }
 
       if (index < value.node_set.size()) {
-         XMLTag *node = value.node_set[index];
+         XTag *node = value.node_set[index];
          if (node) return XPathVal::node_string_value(node);
       }
 
@@ -351,7 +351,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       if (source_value.Type IS XPVT::NodeSet) {
          size_t length = nodeset_length(source_value);
          for (size_t value_index = 0; value_index < length; ++value_index) {
-            XMLTag *node = value_index < source_value.node_set.size() ? source_value.node_set[value_index] : nullptr;
+            XTag *node = value_index < source_value.node_set.size() ? source_value.node_set[value_index] : nullptr;
             target_nodeset.node_set.push_back(node);
 
             const XMLAttrib *attribute = nullptr;
@@ -530,7 +530,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             for (size_t item_index = 0; item_index < sequence_size; ++item_index) {
                FlworTuple next_tuple = tuple;
 
-               XMLTag *item_node = sequence_value.node_set[item_index];
+               XTag *item_node = sequence_value.node_set[item_index];
                const XMLAttrib *item_attribute = nullptr;
                if (item_index < sequence_value.node_set_attributes.size()) {
                   item_attribute = sequence_value.node_set_attributes[item_index];
@@ -971,7 +971,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             trace_detail("FLWOR return tuple[%zu] produced node-set length=%zu", tuple_index, length);
             if (length > 0) {
                for (size_t value_index = 0; value_index < length; ++value_index) {
-                  XMLTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
+                  XTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
                   int node_id = node ? node->ID : -1;
                   const XMLAttrib *attribute = value_index < iteration_value.node_set_attributes.size() ?
                      iteration_value.node_set_attributes[value_index] : nullptr;
@@ -988,7 +988,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          if (length IS 0) continue;
 
          for (size_t value_index = 0; value_index < length; ++value_index) {
-            XMLTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
+            XTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
             combined_nodes.push_back(node);
 
             const XMLAttrib *attribute = nullptr;

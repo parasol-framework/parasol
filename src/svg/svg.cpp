@@ -83,7 +83,7 @@ struct svgState;
 class extSVG : public objSVG {
    public:
    FUNCTION FrameCallback;
-   ankerl::unordered_dense::map<std::string, XMLTag *> IDs;
+   ankerl::unordered_dense::map<std::string, XTag *> IDs;
    ankerl::unordered_dense::map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    double SVGVersion;
    double AnimEpoch;  // Epoch time for the animations.
@@ -191,69 +191,69 @@ public:
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }
 
-   void process_children(XMLTag &, OBJECTPTR) noexcept;
-   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
+   void process_children(XTag &, OBJECTPTR) noexcept;
+   void proc_svg(XTag &, OBJECTPTR, objVector *&) noexcept;
 
 private:
-   void applyTag(const XMLTag &) noexcept;
+   void applyTag(const XTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
-   const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
-   ERR  set_property(objVector *, uint32_t, XMLTag &, const std::string) noexcept;
-   ERR  process_tag(XMLTag &, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   const std::vector<GradientStop> process_gradient_stops(const XTag &) noexcept;
+   ERR  set_property(objVector *, uint32_t, XTag &, const std::string) noexcept;
+   ERR  process_tag(XTag &, XTag &, OBJECTPTR, objVector * &) noexcept;
 
-   ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_set(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_colour(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_motion(XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_transform(XMLTag &, OBJECTPTR) noexcept;
-   void proc_def_image(XMLTag &) noexcept;
-   void proc_filter(XMLTag &) noexcept;
-   void proc_group(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   ERR  proc_image(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_link(XMLTag &, OBJECTPTR, objVector * &Vector) noexcept;
-   void proc_mask(XMLTag &) noexcept;
-   void proc_pathtransition(XMLTag &) noexcept;
-   void proc_pattern(XMLTag &) noexcept;
-   ERR  proc_shape(CLASSID, XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_switch(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_use(XMLTag &, OBJECTPTR) noexcept;
-   void proc_clippath(XMLTag &) noexcept;
-   void proc_morph(XMLTag &Tag, OBJECTPTR Parent) noexcept;
-   ERR  proc_style(XMLTag &);
-   void proc_symbol(XMLTag &Tag) noexcept;
-   ERR  proc_conicgradient(const XMLTag &) noexcept;
-   ERR  proc_contourgradient(const XMLTag &) noexcept;
-   ERR  proc_diamondgradient(const XMLTag &) noexcept;
-   ERR  proc_lineargradient(const XMLTag &) noexcept;
-   ERR  proc_radialgradient(const XMLTag &) noexcept;
+   ERR  proc_defs(XTag &, OBJECTPTR) noexcept;
+   ERR  proc_set(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_colour(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_motion(XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_transform(XTag &, OBJECTPTR) noexcept;
+   void proc_def_image(XTag &) noexcept;
+   void proc_filter(XTag &) noexcept;
+   void proc_group(XTag &, OBJECTPTR, objVector * &) noexcept;
+   ERR  proc_image(XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_link(XTag &, OBJECTPTR, objVector * &Vector) noexcept;
+   void proc_mask(XTag &) noexcept;
+   void proc_pathtransition(XTag &) noexcept;
+   void proc_pattern(XTag &) noexcept;
+   ERR  proc_shape(CLASSID, XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_switch(XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_use(XTag &, OBJECTPTR) noexcept;
+   void proc_clippath(XTag &) noexcept;
+   void proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept;
+   ERR  proc_style(XTag &);
+   void proc_symbol(XTag &Tag) noexcept;
+   ERR  proc_conicgradient(const XTag &) noexcept;
+   ERR  proc_contourgradient(const XTag &) noexcept;
+   ERR  proc_diamondgradient(const XTag &) noexcept;
+   ERR  proc_lineargradient(const XTag &) noexcept;
+   ERR  proc_radialgradient(const XTag &) noexcept;
 
-   void process_attrib(XMLTag &, objVector *) noexcept;
-   void process_inherit_refs(XMLTag &) noexcept;
-   void process_shape_children(XMLTag &, OBJECTPTR) noexcept;
+   void process_attrib(XTag &, objVector *) noexcept;
+   void process_inherit_refs(XTag &) noexcept;
+   void process_shape_children(XTag &, OBJECTPTR) noexcept;
    ERR  set_paint_server(objVector *, FIELD, const std::string);
    ERR  current_colour(objVector *, FRGB &) noexcept;
 
-   void parse_contourgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_diamondgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_radialgradient(const XMLTag &, objVectorGradient &, std::string &) noexcept;
+   void parse_contourgradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_diamondgradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_lineargradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_radialgradient(const XTag &, objVectorGradient &, std::string &) noexcept;
 
-   ERR  parse_fe_blur(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_component_xfer(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_composite(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_convolve_matrix(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_displacement_map(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_flood(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_image(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_lighting(objVectorFilter *, XMLTag &, LT) noexcept;
-   ERR  parse_fe_merge(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_morphology(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_offset(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
-   ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_wavefunction(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_blur(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_colour_matrix(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_component_xfer(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_composite(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_convolve_matrix(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_displacement_map(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_flood(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_image(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_lighting(objVectorFilter *, XTag &, LT) noexcept;
+   ERR  parse_fe_merge(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_morphology(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_offset(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_source(objVectorFilter * , XTag &) noexcept;
+   ERR  parse_fe_turbulence(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_wavefunction(objVectorFilter *, XTag &) noexcept;
 };
 
 //********************************************************************************************************************

@@ -465,7 +465,7 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
          if (ch != '\r') str.push_back(ch);
       }
 
-      auto &content_tag = Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(str) } }));
+      auto &content_tag = Tags.emplace_back(XTag(glTagID++, 0, { { "", std::move(str) } }));
       Self->BaseURIMap[content_tag.ID] = State.CurrentBase;
    }
 }
@@ -569,7 +569,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
 
       std::string comment_text(State.cursor.data(), comment - State);
-      auto &comment_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, { { "", comment_text } }));
+      auto &comment_tag = Tags.emplace_back(XTag(glTagID++, line_no, { { "", comment_text } }));
       comment_tag.Flags |= XTF::COMMENT;
       Self->BaseURIMap[comment_tag.ID] = State.CurrentBase;
       State = comment;
@@ -620,7 +620,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       // CDATA sections are assimilated into the parent tag as content
 
-      auto &cdata_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, {
+      auto &cdata_tag = Tags.emplace_back(XTag(glTagID++, line_no, {
          { "", std::string(content.cursor.data(), State - content) }
       }));
       cdata_tag.Flags |= XTF::CDATA;
@@ -661,7 +661,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    State.Balance++;
 
-   auto &tag = Tags.emplace_back(XMLTag(glTagID++, line_no));
+   auto &tag = Tags.emplace_back(XTag(glTagID++, line_no));
    std::string node_base = State.CurrentBase;
    std::string inherited_base = State.CurrentBase;
 
@@ -948,7 +948,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
+static void serialise_xml(XTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (not Tag.Attribs[0].Value.empty()) {

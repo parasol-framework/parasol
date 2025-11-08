@@ -25,7 +25,7 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/xquery.h>
 
-using NODES = pf::vector<XMLTag *>;
+using NODES = pf::vector<XTag *>;
 
 namespace xml::schema {
 
@@ -52,7 +52,7 @@ class XPathVal : public XPathValue
    explicit XPathVal(std::string value) : XPathValue(XPVT::String) { StringValue = std::move(value); }
    explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { StringValue = std::move(value); }
 
-   explicit XPathVal(const pf::vector<XMLTag *> &Nodes, std::optional<std::string> NodeSetString = std::nullopt,
+   explicit XPathVal(const pf::vector<XTag *> &Nodes, std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {}, std::vector<const XMLAttrib *> NodeSetAttributes = {})
       : XPathValue(Nodes, NodeSetString, NodeSetStrings, NodeSetAttributes) {}
 
@@ -69,12 +69,12 @@ class XPathVal : public XPathValue
    bool validate_against_schema() const;
    xml::schema::SchemaType get_schema_type() const;
 
-   static std::string node_string_value(XMLTag *Node);
+   static std::string node_string_value(XTag *Node);
    static double string_to_number(const std::string &Value);
 };
 
 std::string format_xpath_number(double Value);
 std::optional<bool> parse_schema_boolean(std::string_view);
-XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *>, std::vector<const XMLAttrib *> Attributes = {},
+XPathVal xpath_nodeset_from_components(pf::vector<XTag *>, std::vector<const XMLAttrib *> Attributes = {},
    std::vector<std::string> Strings = {}, std::optional<std::string> Override = std::nullopt);
-XPathVal xpath_nodeset_singleton(XMLTag *, const XMLAttrib *, std::string);
+XPathVal xpath_nodeset_singleton(XTag *, const XMLAttrib *, std::string);

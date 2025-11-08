@@ -30,7 +30,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, uint32_t
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &Tag) noexcept
+const std::vector<GradientStop> svgState::process_gradient_stops(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -117,7 +117,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
 
 //********************************************************************************************************************
 
-void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_lineargradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -200,7 +200,7 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
 
 //********************************************************************************************************************
 
-void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient &Gradient, std::string &ID) noexcept
+void svgState::parse_radialgradient(const XTag &Tag, objVectorGradient &Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -281,7 +281,7 @@ void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient &Gradie
 
 //********************************************************************************************************************
 
-void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_diamondgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -354,7 +354,7 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
 
 //********************************************************************************************************************
 
-void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
+void svgState::parse_contourgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -424,7 +424,7 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
 
 //********************************************************************************************************************
 
-ERR svgState::proc_lineargradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_lineargradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -462,7 +462,7 @@ ERR svgState::proc_lineargradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_radialgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_radialgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -499,7 +499,7 @@ ERR svgState::proc_radialgradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_diamondgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_diamondgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -532,7 +532,7 @@ ERR svgState::proc_diamondgradient(const XMLTag &Tag) noexcept
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_contourgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -565,7 +565,7 @@ ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
+ERR svgState::proc_conicgradient(const XTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
