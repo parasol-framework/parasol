@@ -3434,7 +3434,7 @@ static void parse_local(LexState *ls)
   }
 }
 
-/* Parse 'function' statement. */
+/* Parse 'defer' statement. */
 static void parse_defer(LexState *ls, BCLine line)
 {
   FuncState *fs = ls->fs;
