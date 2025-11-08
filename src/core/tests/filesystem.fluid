@@ -10,33 +10,13 @@ Tests for file functions
 function testPathExtract()
    local pattern = '([^:/]+)/-$'
 
-   if (string.match('temp:test.txt', pattern) != 'test.txt') then
-      error('Failed to extract "test.txt"')
-   end
-
-   if (string.match('temp:folder/', pattern) != 'folder') then
-      error('Failed to extract "folder"')
-   end
-
-   if (string.match('temp:folder/test.', pattern) != 'test.') then
-      error('Failed to extract "test."')
-   end
-
-   if (string.match('temp:folder/subfolder/', pattern) != 'subfolder') then
-      error('Failed to extract "subfolder"')
-   end
-
-   if (string.match('temp:.hidden', pattern) != '.hidden') then
-      error('Failed to extract ".hidden"')
-   end
-
-   if (string.match('simple.txt', pattern) != 'simple.txt') then
-      error('Failed to extract "simple.txt"')
-   end
-
-   if (string.match('temp:', pattern) != nil) then
-      error('Expected no result when extracting file name from path "temp:"')
-   end
+   assert(string.match('temp:test.txt', pattern) is 'test.txt', 'Failed to extract "test.txt"')
+   assert(string.match('temp:folder/', pattern) is 'folder', 'Failed to extract "folder"')
+   assert(string.match('temp:folder/test.', pattern) is 'test.', 'Failed to extract "test."')
+   assert(string.match('temp:folder/subfolder/', pattern) is 'subfolder', 'Failed to extract "subfolder"')
+   assert(string.match('temp:.hidden', pattern) is '.hidden', 'Failed to extract ".hidden"')
+   assert(string.match('simple.txt', pattern) is 'simple.txt', 'Failed to extract "simple.txt"')
+   assert(string.match('temp:', pattern) is nil, 'Expected no result when extracting file name from path "temp:"')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -47,25 +27,23 @@ function testFolderScan()
    local names
    local err, file = folder.mtNext()
    local count = 0
-   while (err == ERR_Okay) do
-      count = count + 1
+   while err is ERR_Okay do
+      count += 1
       local date = file.date
-      if (date == nil) then error("Unable to get file's modification date.") end
+      if not date then error("Unable to get file's modification date.") end
 
       local name = file.path:match('([^:/]+)/-$')
 
-      if not nz(names) then
-         names = '"' .. nz(name,'NIL') .. '"'
+      if not names then
+         names = '"' .. tostring(name) .. '"'
       else
-         names = names .. ', "' .. nz(name,'NIL') .. '"'
+         names ..= ', "' .. tostring(name) .. '"'
       end
-      logOutput(nz(name,'NIL') .. ', Size: ' .. file.size .. ', Date: ' .. date.year .. '/' .. date.month .. '/' .. date.day)
+      logOutput(tostring(name) .. ', Size: ' .. file.size .. ', Date: ' .. date.year .. '/' .. date.month .. '/' .. date.day)
       err, file = folder.mtNext()
    end
 
-   if (count == 0) then
-      error('No files found in "' .. glPath .. '": ' .. mSys.GetErrorMsg(err))
-   end
+   assert(count != 0, 'No files found in "' .. glPath .. '": ' .. mSys.GetErrorMsg(err))
 
    return 'Found ' .. count .. ' files.'
 end
@@ -74,9 +52,9 @@ end
 
 function testScanDir()
    local err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       local err = mSys.ScanDir(dir)
-      while (err == ERR_Okay) do
+      while (err is ERR_Okay) do
          local fl = dir.info
          local created = fl.created
 
@@ -97,27 +75,23 @@ end
 
 function testScanVolumes()
    local err, dir = mSys.OpenDir(':', bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
-   if (err == ERR_Okay) then
+   if err is ERR_Okay then
       local volumes = { }
       local names
       local err = mSys.ScanDir(dir)
-      while (err == ERR_Okay) do
+      while (err is ERR_Okay) do
          local fl = dir.info
-         if (names == nil) then
-            names = fl.name
-         else
-            names = names .. ' ' .. fl.name
-         end
+         names = not names ? fl.name :> names .. ' ' .. fl.name
          volumes[fl.name] = true
          err = mSys.ScanDir(dir)
       end
 
       logOutput(names)
 
-      if (not volumes['parasol']) then error("The expected 'parasol' volume is not present.") end
-      --if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
-      if (not volumes['user']) then error("The expected 'user' volume is not present.") end
-      if (not volumes['system']) then error("The expected 'system' volume is not present.") end
+      if not volumes['parasol'] then error("The expected 'parasol' volume is not present.") end
+      --if not volumes['bin'] then error("The expected 'bin' volume is not present.") end
+      if not volumes['user'] then error("The expected 'user' volume is not present.") end
+      if not volumes['system'] then error("The expected 'system' volume is not present.") end
    else
       error("OpenDir() error: " .. mSys.GetErrorMsg(err))
    end
@@ -130,7 +104,7 @@ function testStringify()
    local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
    local buf = string.alloc(fl.size)
    local err, result = fl.acRead(buf, fl.size)
-   assert(err == ERR_Okay, 'Failed to read file ' .. fl.location)
+   assert(err is ERR_Okay, 'Failed to read file ' .. fl.location)
 
    fl.acSeek(POS_START, 0)
    fl.acWrite(buf:reverse())
@@ -163,18 +137,18 @@ end
 
 function testAnalyseVolume()
    local err, type = mSys.AnalysePath('user:')
-   assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
 
-   assert(type == LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
+   assert(type is LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 function testAnalyseFile()
    local err, type = mSys.AnalysePath('scripts:gui.fluid')
-   assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
 
-   assert(type == LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
+   assert(type is LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -188,13 +162,9 @@ end
       init = function()
          glRawPath = 'user:test.out'
          local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
-         if nz(out) then
-            out.acWrite('ABCD', 4)
-            out = nil
-            collectgarbage()
-         else
-            error('Failed to create new file.')
-         end
+         out.acWrite('ABCD', 4)
+         out = nil
+         collectgarbage()
       end,
       cleanup = function()
          mSys.DeleteFile(glRawPath)
