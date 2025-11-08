@@ -2128,8 +2128,8 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
 {
   FuncState *fs = ls->fs;
   ExpDesc key, nilv;
-  BCReg obj_reg;
-  BCPos check_nil, skip_nil;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_index;
 
   lj_lex_next(ls);  /* Consume '?'. '[' remains as current token. */
 
@@ -2147,22 +2147,21 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
 
-  /* Nil case (obj == nil): set v to VKNIL and skip to merge */
+  /* Nil case (obj == nil): set v to VKNIL */
   expr_init(v, VKNIL, 0);
-  skip_nil = bcemit_jmp(fs);  /* Jump over key evaluation bytecode */
+  skip_index = bcemit_jmp(fs);  /* Jump over key evaluation and indexing */
 
-  /* Parse key expression at compile time (consumes tokens) */
-  /* This bytecode is only executed at runtime if obj != nil */
+  /* Non-nil case: parse key and perform indexing */
   jmp_patch(fs, check_nil, fs->pc);
   expr_bracket(ls, &key);  /* Parse and emit key evaluation */
 
-  /* Non-nil case (obj != nil): perform index operation */
+  /* Reconstruct v to point to obj_reg and perform indexing */
   v->k = VNONRELOC;
   v->u.s.info = obj_reg;
   expr_index(fs, v, &key);
 
   /* Merge point */
-  jmp_patch(fs, skip_nil, fs->pc);
+  jmp_patch(fs, skip_index, fs->pc);
 }
 
 /* Parse safe navigation for method calls: obj?:method(...) */
