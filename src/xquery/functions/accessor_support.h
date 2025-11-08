@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-struct XMLTag;
+struct XTag;
 class extXML;
 struct XPathContext;
 struct XMLAttrib;
@@ -23,17 +23,17 @@ namespace xml::schema
 
 namespace xpath::accessor
 {
-   [[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XMLTag *Node);
+   [[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XTag *Node);
 
-   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode);
+   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XTag *Node, const XMLAttrib *AttributeNode);
 
-   std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node);
+   std::optional<std::string> resolve_document_uri(const XPathContext &Context, XTag *Node);
 
    std::optional<std::string> resolve_document_base_directory(std::string_view);
 
-   std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
+   std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XTag *Node,
       const XMLAttrib *AttributeNode);
 
-   bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node);
+   bool is_element_explicitly_nilled(const XPathContext &Context, XTag *Node);
 }
 

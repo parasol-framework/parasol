@@ -1,9 +1,9 @@
 /*********************************************************************************************************************
 
-To create a struct definition:                    MAKESTRUCT('XMLTag', 'Definition')
-To create a struct from a registered definition:  xmltag = struct.new('XMLTag')
-To create a struct with pre-configured values:    xmltag = struct.new('XMLTag', { name='Hello' })
-To get the byte size of any structure definition: size = struct.size('XMLTag')
+To create a struct definition:                    MAKESTRUCT('XTag', 'Definition')
+To create a struct from a registered definition:  xmltag = struct.new('XTag')
+To create a struct with pre-configured values:    xmltag = struct.new('XTag', { name='Hello' })
+To get the byte size of any structure definition: size = struct.size('XTag')
 To get the total number of fields in a structure: #xmltag
 To get the byte size of a created structure:      xmltag.structsize()
 

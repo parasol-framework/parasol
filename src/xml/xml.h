@@ -98,7 +98,7 @@ struct ParseState {
 };
 
 using TAGS = objXML::TAGS;
-using CURSOR = pf::vector<XMLTag>::iterator;
+using CURSOR = pf::vector<XTag>::iterator;
 
 //********************************************************************************************************************
 // Generic lookup templates with concepts
@@ -129,7 +129,7 @@ using PREFIX = std::string;
 
 class extXML : public objXML {
    public:
-   ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
+   ankerl::unordered_dense::map<int, XTag *> Map; // Lookup for any indexed tag.
    ankerl::unordered_dense::map<int, std::string> BaseURIMap;
    std::string ErrorMsg;    // The most recent error message for an activity, e.g. XPath parsing error
    std::string Statement;
@@ -141,7 +141,7 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities
    ankerl::unordered_dense::map<std::string, std::string> Notations; // For notation declarations
 
-   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
+   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XTag structures.
    ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
 
    // Link prefixes to namespace URIs
@@ -154,7 +154,7 @@ class extXML : public objXML {
    ~extXML() {
    }
 
-   [[nodiscard]] ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
+   [[nodiscard]] ankerl::unordered_dense::map<int, XTag *> & getMap() {
       if (StaleMap) {
          Map.clear();
          updateIDs(Tags, 0);
@@ -166,7 +166,7 @@ class extXML : public objXML {
 
    // Return the tag for a particular ID.
 
-   [[nodiscard]] inline XMLTag * getTag(int ID) noexcept {
+   [[nodiscard]] inline XTag * getTag(int ID) noexcept {
       auto &map = getMap();
       auto it = map.find(ID);
       if (it IS map.end()) return nullptr;
@@ -182,7 +182,7 @@ class extXML : public objXML {
 
    // For a given tag, return its vector array
 
-   [[nodiscard]] inline TAGS * getTags(XMLTag *Tag) {
+   [[nodiscard]] inline TAGS * getTags(XTag *Tag) {
       if (!Tag->ParentID) return &Tags;
       else if (auto parent = getTag(Tag->ParentID)) return &parent->Children;
       else return nullptr;
@@ -190,7 +190,7 @@ class extXML : public objXML {
 
    // For a given tag, return its vector array and cursor position.
 
-   [[nodiscard]] TAGS * getInsert(XMLTag *Tag, CURSOR &Iterator) {
+   [[nodiscard]] TAGS * getInsert(XTag *Tag, CURSOR &Iterator) {
       TAGS *tags;
 
       if (Tag->ParentID) {
@@ -268,7 +268,7 @@ class extXML : public objXML {
    // Nullify references in the map to make it safe, without incurring performance penalties
    // that arise from the removal of tags.
 
-   inline void nullifyMap(XMLTag &Tag) {
+   inline void nullifyMap(XTag &Tag) {
       Map[Tag.ID] = nullptr;
       if (!Tag.Children.empty()) {
          for (auto &child : Tag.Children) nullifyMap(child);
@@ -277,7 +277,7 @@ class extXML : public objXML {
 
    // Appends a tag and its children to the XML structure, updating IDs as necessary.
 
-   inline void appendTags(XMLTag &Tag) {
+   inline void appendTags(XTag &Tag) {
       Tags.push_back(Tag);
       auto &added_tag = *(Tags.end() - 1);
       Map[added_tag.ID] = &added_tag;
@@ -294,12 +294,12 @@ class extXML : public objXML {
 };
 
 template<typename F>
-concept XMLCallback = requires(F f, extXML* xml, XMLTag& tag, const char* attrib) {
+concept XMLCallback = requires(F f, extXML* xml, XTag& tag, const char* attrib) {
    { f(xml, tag, attrib) } -> std::same_as<ERR>;
 };
 
 template<typename F>
-concept XMLTagPredicate = requires(F f, const XMLTag& tag) {
+concept XTagPredicate = requires(F f, const XTag& tag) {
    { f(tag) } -> std::convertible_to<bool>;
 };
 
@@ -386,4 +386,4 @@ constexpr std::array<char, 256> to_lower_table = []() {
    return output;
 }
 
-using NODES = pf::vector<XMLTag *>;
+using NODES = pf::vector<XTag *>;

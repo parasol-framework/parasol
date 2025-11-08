@@ -1163,16 +1163,16 @@ class AxisEvaluator {
    CompiledXQuery *state;
    extXML *xml;
    XPathArena & arena;
-   std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
+   std::vector<std::unique_ptr<XTag>> namespace_node_storage;
    bool id_cache_built = false;
 
    struct AncestorPathView {
-      std::span<XMLTag *const> Path;
+      std::span<XTag *const> Path;
       NODES * Storage = nullptr;
       bool Cached = false;
    };
 
-   ankerl::unordered_dense::map<XMLTag *, NODES *> ancestor_path_cache;
+   ankerl::unordered_dense::map<XTag *, NODES *> ancestor_path_cache;
    std::vector<std::unique_ptr<NODES>> ancestor_path_storage;
    ankerl::unordered_dense::map<uint64_t, bool> document_order_cache;
 
@@ -1191,54 +1191,54 @@ class AxisEvaluator {
    std::vector<int> visited_node_ids;
 
    // Namespace node pool for reuse to reduce allocations
-   std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
+   std::vector<std::unique_ptr<XTag>> namespace_node_pool;
 
    // Helper methods for specific axes
-   void evaluate_child_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_descendant_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_parent_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_ancestor_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_following_sibling_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_preceding_sibling_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_following_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_preceding_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_namespace_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_self_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_descendant_or_self_axis(XMLTag *ContextNode, NODES &Output);
-   void evaluate_ancestor_or_self_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_child_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_descendant_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_parent_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_following_sibling_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_preceding_sibling_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_following_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_preceding_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_namespace_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_self_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_descendant_or_self_axis(XTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_or_self_axis(XTag *ContextNode, NODES &Output);
 
-   void collect_subtree_reverse(XMLTag *Node, NODES &Output);
+   void collect_subtree_reverse(XTag *Node, NODES &Output);
 
    // Optimized namespace collection
-   void collect_namespace_declarations(XMLTag *Node, std::vector<NamespaceDeclaration> &declarations);
+   void collect_namespace_declarations(XTag *Node, std::vector<NamespaceDeclaration> &declarations);
 
    // Namespace node pooling helpers
-   XMLTag * acquire_namespace_node();
+   XTag * acquire_namespace_node();
    void recycle_namespace_nodes();
 
    // Document order utilities
    void sort_document_order(NODES &Nodes);
-   AncestorPathView build_ancestor_path(XMLTag *Node);
+   AncestorPathView build_ancestor_path(XTag *Node);
    void release_ancestor_path(AncestorPathView &View);
-   uint64_t make_document_order_key(XMLTag *Left, XMLTag *Right);
+   uint64_t make_document_order_key(XTag *Left, XTag *Right);
 
    // Helper methods for tag lookup
    void build_id_cache();
-   XMLTag * find_parent(XMLTag *ReferenceNode);
+   XTag * find_parent(XTag *ReferenceNode);
 
    public:
    explicit AxisEvaluator(CompiledXQuery *State, extXML *XML, XPathArena &Arena)
       : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
-   void evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output);
+   void evaluate_axis(AxisType Axis, XTag *ContextNode, NODES &Output);
 
    // Evaluation lifecycle helpers
    void reset_namespace_nodes();
 
    // Node-set utilities
    void normalise_node_set(NODES &Nodes);
-   bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
+   bool is_before_in_document_order(XTag *Node1, XTag *Node2);
 
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);
@@ -1246,7 +1246,7 @@ class AxisEvaluator {
    static bool is_reverse_axis(AxisType Axis);
 
    // Capacity estimation helper
-   size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
+   size_t estimate_result_size(AxisType Axis, XTag *ContextNode);
 };
 
 struct XMLAttrib;
@@ -1260,7 +1260,7 @@ class XPathEvaluator;
 
 struct XPathContext {
    mutable XPathEvaluator *eval = nullptr;
-   XMLTag *context_node = nullptr;
+   XTag *context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
@@ -1311,11 +1311,11 @@ class XPathEvaluator : public XPathErrorReporter {
       std::optional<uint32_t> default_namespace;
    };
 
-   std::vector<std::unique_ptr<XMLTag>> constructed_nodes;
+   std::vector<std::unique_ptr<XTag>> constructed_nodes;
    int next_constructed_node_id = -1;
 
    struct AxisMatch {
-      XMLTag * node = nullptr;
+      XTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
    };
 
@@ -1339,9 +1339,9 @@ class XPathEvaluator : public XPathErrorReporter {
    [[nodiscard]] inline uint64_t binary_operator_cache_misses() const { return binary_operator_cache_fallbacks; }
    [[nodiscard]] inline uint64_t unary_operator_cache_misses() const { return unary_operator_cache_fallbacks; }
 
-   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
-   extXML * resolve_document_for_node(XMLTag *Node) const;
-   bool is_foreign_document_node(XMLTag *Node) const;
+   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
+   extXML * resolve_document_for_node(XTag *Node) const;
+   bool is_foreign_document_node(XTag *Node) const;
    NODES collect_step_results(const std::vector<AxisMatch> &,
       const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
    XPathVal evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -1360,8 +1360,8 @@ class XPathEvaluator : public XPathErrorReporter {
    std::optional<uint32_t> resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
       std::string_view Prefix) const;
    uint32_t register_constructor_namespace(const std::string &URI) const;
-   XMLTag clone_node_subtree(const XMLTag &Source, int ParentID);
-   bool append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
+   XTag clone_node_subtree(const XTag &Source, int ParentID);
+   bool append_constructor_sequence(XTag &Parent, const XPathVal &Value,
       uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope, bool PreserveConstruction);
    std::optional<std::string> evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
       uint32_t CurrentPrefix);
@@ -1373,7 +1373,7 @@ class XPathEvaluator : public XPathErrorReporter {
    bool prolog_construction_preserve() const;
    bool prolog_ordering_is_ordered() const;
    bool prolog_empty_is_greatest() const;
-   std::optional<XMLTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
+   std::optional<XTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
       ConstructorNamespaceScope *ParentScope, int ParentID);
    XPathVal evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
@@ -1427,7 +1427,7 @@ class XPathEvaluator : public XPathErrorReporter {
       uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer);
    ERR process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
       bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate);
-   ERR invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate);
+   ERR invoke_callback(XTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate);
 
    PredicateResult dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
       uint32_t CurrentPrefix);
@@ -1455,7 +1455,7 @@ class XPathEvaluator : public XPathErrorReporter {
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
    ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
    ERR evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
-   bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
+   bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
    PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 
    XPathVal evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
@@ -1470,16 +1470,16 @@ class XPathEvaluator : public XPathErrorReporter {
    ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);
 
    // Context management for AST evaluation
-   void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
+   void push_context(XTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
    void pop_context();
 
-   [[nodiscard]] inline XMLTag * get_context_node() const;
+   [[nodiscard]] inline XTag * get_context_node() const;
 };
 
 //********************************************************************************************************************
 
 struct SequenceEntry {
-   XMLTag * node = nullptr;
+   XTag * node = nullptr;
    const XMLAttrib * attribute = nullptr;
    std::string string_value;
 };
@@ -1546,7 +1546,7 @@ class VariableBindingGuard
    VariableBindingGuard & operator=(VariableBindingGuard &&) = default;
 };
 
-[[nodiscard]] inline XMLTag * XPathEvaluator::get_context_node() const { return context.context_node; };
+[[nodiscard]] inline XTag * XPathEvaluator::get_context_node() const { return context.context_node; };
 [[nodiscard]] inline std::shared_ptr<XQueryModuleCache> XPathContext::modules() { return eval->parse_context->module_cache; };
 
 extern "C" ERR load_regex(void);

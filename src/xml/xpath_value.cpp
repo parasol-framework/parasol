@@ -44,7 +44,7 @@ namespace
       return Value.substr(start, end - start + 1);
    }
 
-   void append_node_text(XMLTag *Node, std::string &Output)
+   void append_node_text(XTag *Node, std::string &Output)
    {
       if (!Node) return;
 
@@ -148,7 +148,7 @@ double XPathVal::string_to_number(const std::string &Value) {
    return result;
 }
 
-std::string XPathVal::node_string_value(XMLTag *Node)
+std::string XPathVal::node_string_value(XTag *Node)
 {
    if (not Node) return std::string();
 
@@ -312,7 +312,7 @@ xml::schema::SchemaType XPathVal::get_schema_type() const
    return xml::schema::schema_type_for_xpath(Type);
 }
 
-XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *> Nodes,
+XPathVal xpath_nodeset_from_components(pf::vector<XTag *> Nodes,
    std::vector<const XMLAttrib *> Attributes,
    std::vector<std::string> Strings,
    std::optional<std::string> Override)
@@ -326,10 +326,10 @@ XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *> Nodes,
    return value;
 }
 
-XPathVal xpath_nodeset_singleton(XMLTag *Node, const XMLAttrib *Attribute,
+XPathVal xpath_nodeset_singleton(XTag *Node, const XMLAttrib *Attribute,
    std::string StringValue)
 {
-   pf::vector<XMLTag *> nodes;
+   pf::vector<XTag *> nodes;
    nodes.push_back(Node);
 
    std::vector<const XMLAttrib *> attributes;

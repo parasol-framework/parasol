@@ -30,7 +30,7 @@ XPathVal XPathFunctionLibrary::function_lang(const std::vector<XPathVal> &Args, 
    std::string requested = Args[0].to_string();
    if (requested.empty()) return XPathVal(false);
 
-   XMLTag *node = Context.context_node;
+   XTag *node = Context.context_node;
    if (not node) return XPathVal(false);
 
    std::string language = find_language_for_node(node, Context.xml);

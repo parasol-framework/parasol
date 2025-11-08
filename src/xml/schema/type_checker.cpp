@@ -131,7 +131,7 @@ namespace xml::schema
    }
 
    // Validates that the tag node satisfies the structural requirements of the descriptor.
-   bool TypeChecker::validate_node(const XMLTag &Tag, const SchemaTypeDescriptor &Descriptor) const
+   bool TypeChecker::validate_node(const XTag &Tag, const SchemaTypeDescriptor &Descriptor) const
    {
       if (Descriptor.schema_type IS SchemaType::XPathNodeSet) return true;
       if (Descriptor.can_coerce_to(SchemaType::XPathString)) {
@@ -149,7 +149,7 @@ namespace xml::schema
    }
 
    // Validates an element against the descriptor, recursively checking child elements as required.
-   bool TypeChecker::validate_element(const XMLTag &Tag, const ElementDescriptor &Descriptor) const
+   bool TypeChecker::validate_element(const XTag &Tag, const ElementDescriptor &Descriptor) const
    {
       if (Descriptor.type and Descriptor.children.empty()) {
          XPathVal value(Tag.getContent());

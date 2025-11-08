@@ -18,25 +18,25 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
 
   -- Note that if a tag specifies a namespace prefix then it will appear in the first XMLAttrib with the name
 
-  struct("XMLTag", { type="XMLTag" }, [[
+  struct("XTag", { type="XTag" }, [[
     int ID           # Globally unique ID assigned to the tag on creation.
     int ParentID     # UID of the parent tag
     int LineNo       # Line number on which this tag was encountered
     int(XTF) Flags   # Optional flags
     uint NamespaceID # Hash of namespace URI or 0 for no namespace
     cpp(array(struct(XMLAttrib))) Attribs # Array of attributes for this tag
-    cpp(array(struct(XMLTag))) Children   # Array of child tags
+    cpp(array(struct(XTag))) Children   # Array of child tags
   ]],
   [[
-   XMLTag(int pID, int pLine = 0) :
+   XTag(int pID, int pLine = 0) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
 
-   XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
+   XTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Attribs(pAttribs)
       { }
 
-   XMLTag() { XMLTag(0); }
+   XTag() { XTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
    inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
@@ -118,12 +118,12 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
   ]],
   nil,
   [[
-   typedef pf::vector<XMLTag> TAGS;
+   typedef pf::vector<XTag> TAGS;
    TAGS Tags;
 
-   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
+   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XTag **Result) {
       int index_result;
-      XMLTag *tag_result;
+      XTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);
          *Result = tag_result;
@@ -151,7 +151,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
     cpp(str)  StringValue  # Defined if the type is String
   ]],
   [[
-   pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet
+   pf::vector<XTag *> node_set; // Defined if the type is NodeSet
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
@@ -159,7 +159,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
-   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
+   explicit XPathValue(const pf::vector<XTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
@@ -177,7 +177,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
 
 namespace xml {
 
-inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+inline void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
       if (pf::iequals(Name, a->Name)) {
@@ -190,15 +190,15 @@ inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string 
    if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag &Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag &Tag, const std::string Name, const std::string Value) {
    Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag *Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag *Tag, const std::string Name, const std::string Value) {
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-inline std::string GetContent(const XMLTag &Tag) {
+inline std::string GetContent(const XTag &Tag) {
    std::string value;
    for (auto &scan : Tag.Children) {
       if (scan.Attribs.empty()) continue;

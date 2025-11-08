@@ -16,7 +16,7 @@ XPathVal XPathFunctionLibrary::function_count(const std::vector<XPathVal> &Args,
 }
 
 XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, const XPathContext &Context) {
-   pf::vector<XMLTag *> results;
+   pf::vector<XTag *> results;
 
    if (Args.empty()) return XPathVal(results);
 
@@ -73,7 +73,7 @@ XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, co
 
    std::unordered_set<int> seen_tags;
 
-   std::function<void(XMLTag &)> visit = [&](XMLTag &Tag) {
+   std::function<void(XTag &)> visit = [&](XTag &Tag) {
       if (Tag.isTag()) {
          for (size_t index = 1; index < Tag.Attribs.size(); ++index) {
             const auto &attrib = Tag.Attribs[index];
@@ -102,7 +102,7 @@ XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, co
 }
 
 XPathVal XPathFunctionLibrary::function_local_name(const std::vector<XPathVal> &Args, const XPathContext &Context) {
-   XMLTag *target_node = nullptr;
+   XTag *target_node = nullptr;
    const XMLAttrib *target_attribute = nullptr;
 
    if (Args.empty()) {
@@ -133,7 +133,7 @@ XPathVal XPathFunctionLibrary::function_local_name(const std::vector<XPathVal> &
 }
 
 XPathVal XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathVal> &Args, const XPathContext &Context) {
-   XMLTag *target_node = nullptr;
+   XTag *target_node = nullptr;
    const XMLAttrib *target_attribute = nullptr;
 
    if (Args.empty()) {
@@ -152,7 +152,7 @@ XPathVal XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathVal
       if (pf::iequals(prefix, "xml")) return XPathVal("http://www.w3.org/XML/1998/namespace");
       if (pf::iequals(prefix, "xmlns")) return XPathVal("http://www.w3.org/2000/xmlns/");
 
-      XMLTag *scope_node = target_node ? target_node : Context.context_node;
+      XTag *scope_node = target_node ? target_node : Context.context_node;
       if (not scope_node) return XPathVal(std::string());
 
       if (Context.xml) {
@@ -192,7 +192,7 @@ XPathVal XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathVal
 }
 
 XPathVal XPathFunctionLibrary::function_name(const std::vector<XPathVal> &Args, const XPathContext &Context) {
-   XMLTag *target_node = nullptr;
+   XTag *target_node = nullptr;
    const XMLAttrib *target_attribute = nullptr;
 
    if (Args.empty()) {

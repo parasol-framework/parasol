@@ -25,7 +25,7 @@ namespace xml::schema
       }
 
       // Retrieves the value of the named attribute from the supplied node if present.
-      std::string find_attribute_value(const XMLTag &Node, std::string_view Name)
+      std::string find_attribute_value(const XTag &Node, std::string_view Name)
       {
          for (size_t index = 1u; index < Node.Attribs.size(); ++index) {
             const auto &Attrib = Node.Attribs[index];
@@ -144,7 +144,7 @@ namespace xml::schema
    }
 
    // Parses an XML schema root node into a schema document with context and descriptors.
-   SchemaDocument SchemaParser::parse(const XMLTag &Root) const
+   SchemaDocument SchemaParser::parse(const XTag &Root) const
    {
       SchemaDocument Document;
       if (Root.Attribs.empty()) return Document;
@@ -216,14 +216,14 @@ namespace xml::schema
       return Document;
    }
 
-   std::shared_ptr<SchemaContext> SchemaParser::parse_context(const XMLTag &Root) const
+   std::shared_ptr<SchemaContext> SchemaParser::parse_context(const XTag &Root) const
    {
       auto Document = parse(Root);
       return Document.context;
    }
 
    // Extracts a named simple type definition and records it against the document.
-   void SchemaParser::parse_simple_type(const XMLTag &Node, SchemaDocument &Document) const
+   void SchemaParser::parse_simple_type(const XTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
       if (declared_name.empty()) return;
@@ -254,7 +254,7 @@ namespace xml::schema
    }
 
    // Extracts a named complex type definition and stores its descriptor in the document context.
-   void SchemaParser::parse_complex_type(const XMLTag &Node, SchemaDocument &Document) const
+   void SchemaParser::parse_complex_type(const XTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
       if (declared_name.empty()) return;
@@ -273,7 +273,7 @@ namespace xml::schema
    }
 
    // Parses a top-level element definition and resolves its associated type information.
-   void SchemaParser::parse_element(const XMLTag &Node, SchemaDocument &Document) const
+   void SchemaParser::parse_element(const XTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
       if (declared_name.empty()) return;
@@ -327,7 +327,7 @@ namespace xml::schema
    }
 
    // Processes inline complexType definitions embedded within other schema elements.
-   void SchemaParser::parse_inline_complex_type(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
+   void SchemaParser::parse_inline_complex_type(const XTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
    {
       for (const auto &Child : Node.Children) {
          if (Child.Attribs.empty()) continue;
@@ -359,7 +359,7 @@ namespace xml::schema
    }
 
    // Adds element descriptors defined within a sequence child of a complex type.
-   void SchemaParser::parse_sequence(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
+   void SchemaParser::parse_sequence(const XTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
    {
       for (const auto &SequenceChild : Node.Children) {
          if (SequenceChild.Attribs.empty()) continue;
@@ -375,7 +375,7 @@ namespace xml::schema
    }
 
    // Builds a descriptor for a child element, resolving occurrence constraints and type information.
-   std::shared_ptr<ElementDescriptor> SchemaParser::parse_child_element_descriptor(const XMLTag &Node,
+   std::shared_ptr<ElementDescriptor> SchemaParser::parse_child_element_descriptor(const XTag &Node,
                                                                                    SchemaDocument &Document) const
    {
       auto element_name = find_attribute_value(Node, "name");

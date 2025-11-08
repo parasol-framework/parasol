@@ -37,13 +37,13 @@ instances rather than creating new ones.
 
 <header>Document Structure and Access</header>
 
-Successfully parsed XML data is accessible through the #Tags field, which contains a hierarchical array of !XMLTag
-structures.  Each XMLTag represents a complete XML element including its attributes, content and child elements.
+Successfully parsed XML data is accessible through the #Tags field, which contains a hierarchical array of !XTag
+structures.  Each XTag represents a complete XML element including its attributes, content and child elements.
 The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.
 
-C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XMLTag&gt;`.  This provides
+C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XTag&gt;`.  This provides
 efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods
-to do so are provided in the C++ header for `objXML` and `XMLTag`, with additional functions in the `xml` namespace.
+to do so are provided in the C++ header for `objXML` and `XTag`, with additional functions in the `xml` namespace.
 Check the header for details.
 
 Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
@@ -717,14 +717,14 @@ static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
+GetTag: Returns a pointer to the !XTag structure for a given tag index.
 
-This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
+This method will return the !XTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
 prior to retrieval, and an `ERR::OutOfRange` error will be returned if it is invalid.
 
 -INPUT-
 int Index:  The index of the tag that is being retrieved.
-&struct(*XMLTag) Result: The !XMLTag is returned in this parameter.
+&struct(*XTag) Result: The !XTag is returned in this parameter.
 
 -ERRORS-
 Okay
@@ -827,7 +827,7 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
    std::ostringstream buffer;
    auto content_view = std::string_view(Args->Content);
    output_attribvalue(content_view, buffer);
-   XMLTag content(glTagID++, 0, { { "", buffer.str() } });
+   XTag content(glTagID++, 0, { { "", buffer.str() } });
 
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
@@ -896,7 +896,7 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
    if (insert.empty()) return ERR::NoData;
    auto result = insert[0].ID;
 
-   XMLTag *parent_scope = nullptr;
+   XTag *parent_scope = nullptr;
    if ((Args->Where IS XMI::CHILD) or (Args->Where IS XMI::CHILD_END)) parent_scope = src;
    else if (src->ParentID) parent_scope = Self->getTag(src->ParentID);
 
@@ -1596,7 +1596,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
                Self->Modified++;
             }
             else {
-               tag->Children.emplace_back(XMLTag(glTagID++, 0, {
+               tag->Children.emplace_back(XTag(glTagID++, 0, {
                   { "", std::string(Args->Value) }
                }));
                Self->modified();
@@ -1766,16 +1766,16 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
    // Build a sorting array (extract a sort value for each tag and keep a tag reference).
 
    struct ListSort {
-      XMLTag *Tag;
+      XTag *Tag;
       std::string Value;
-      ListSort(XMLTag *pTag, const std::string pValue) : Tag(pTag), Value(pValue) { }
+      ListSort(XTag *pTag, const std::string pValue) : Tag(pTag), Value(pValue) { }
    };
 
    std::vector<ListSort> list;
    for (auto &scan : branch[0]) {
       std::string sortval;
       for (auto &filter : filters) {
-         XMLTag *tag = nullptr;
+         XTag *tag = nullptr;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
          if (pf::wildcmp(filter.first, scan.Attribs[0].Name)) {
             tag = &scan;
@@ -2094,10 +2094,10 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
 -FIELD-
 Tags: Provides direct access to the XML document structure.
 
-The Tags field exposes the complete XML document structure as a hierarchical array of !XMLTag structures.  This field
+The Tags field exposes the complete XML document structure as a hierarchical array of !XTag structures.  This field
 becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.
 
-Each !XMLTag will have at least one attribute set in the `Attribs` array.  The first attribute will either reflect
+Each !XTag will have at least one attribute set in the `Attribs` array.  The first attribute will either reflect
 the tag name or a content string if the `Name` is undefined.  The `Children` array provides access to all child elements.
 
 Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However,
@@ -2108,7 +2108,7 @@ NOTE: Fluid will copy this field on read, caching the value is therefore recomme
 
 *********************************************************************************************************************/
 
-static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
+static ERR GET_Tags(extXML *Self, XTag **Values, int *Elements)
 {
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
@@ -2148,7 +2148,7 @@ static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
 
       // Find the first non-instruction tag
 
-      XMLTag *root_tag = nullptr;
+      XTag *root_tag = nullptr;
       for (auto &tag : schema->Tags) {
          if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { root_tag = &tag; break; }
       }
@@ -2225,7 +2225,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       return nullptr;
    };
 
-   XMLTag *document_root = nullptr;
+   XTag *document_root = nullptr;
    for (auto &tag : Self->Tags) {
       if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { document_root = &tag; break; }
    }
@@ -2354,7 +2354,7 @@ static const FieldArray clFields[] = {
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
    { "Src",        FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
    { "Statement",  FDF_STRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },
-   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, nullptr, "XMLTag" },
+   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, nullptr, "XTag" },
    END_FIELD
 };
 

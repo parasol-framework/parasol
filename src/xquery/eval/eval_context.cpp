@@ -25,7 +25,7 @@ class ContextGuard {
    bool active{false};
 
    public:
-   ContextGuard(XPathEvaluator &Evaluator, XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
+   ContextGuard(XPathEvaluator &Evaluator, XTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
       : evaluator(&Evaluator), active(true) {
       evaluator->push_context(Node, Position, Size, Attribute);
    }
@@ -155,7 +155,7 @@ static std::vector<ParsedStep> parse_steps_vector(const std::vector<const XPathN
 //********************************************************************************************************************
 // Save the current context and establish a new context with the provided node, position, size, and optional attribute.
 
-void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
+void XPathEvaluator::push_context(XTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
    context_stack.push_back(context); // Save frame
    // Set new frame details
@@ -462,7 +462,7 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
 //********************************************************************************************************************
 // Invoke the registered callback for a matched node, handling both C and script callbacks.
 
-ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
+ERR XPathEvaluator::invoke_callback(XTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
 {
    pf::Log log(__FUNCTION__);
 
@@ -838,7 +838,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
 //********************************************************************************************************************
 // Resolve which XML document owns a given node by checking ID maps and registrations.
 
-extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
+extXML * XPathEvaluator::resolve_document_for_node(XTag *Node) const
 {
    if ((not Node) or (not xml)) return nullptr;
 
@@ -858,7 +858,7 @@ extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 //********************************************************************************************************************
 // Determines if a node belongs to a different XML document than the evaluator's primary document.
 
-bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
+bool XPathEvaluator::is_foreign_document_node(XTag *Node) const
 {
    auto *document = resolve_document_for_node(Node);
    return (document) and (document != xml);

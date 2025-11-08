@@ -151,7 +151,7 @@ struct XPathValue {
    XPVT Type;              // Type identifier (NodeSet, Boolean, Number, String, Date, Time, DateTime)
    double NumberValue;     // For Number and Boolean types
    std::string StringValue; // For String type
-   pf::vector<XMLTag *> node_set; // For NodeSet type
+   pf::vector<XTag *> node_set; // For NodeSet type
 }
 ```
 
@@ -839,7 +839,7 @@ if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
 ```cpp
 // C++ example - process each matching node
 static ERR process_book(objXML *XML, int TagID, CSTRING Attrib) {
-   XMLTag *tag;
+   XTag *tag;
    if (XML->getTag(TagID, &tag) IS ERR::Okay) {
       log.msg("Processing book: %s", tag->getContent().c_str());
    }
@@ -973,7 +973,7 @@ The XQuery module depends on the XML module for document structures and the sche
 ### With XML Module
 
 The XQuery module has a tight integration with the XML module:
-- Operates on `XMLTag` structures from XML documents
+- Operates on `XTag` structures from XML documents
 - Uses XML namespace resolution
 - Leverages XML schema type system
 - Accesses XML document metadata

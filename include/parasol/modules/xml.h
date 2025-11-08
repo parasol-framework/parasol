@@ -77,7 +77,7 @@ enum class XMI : int {
    END = 4,
 };
 
-// Standard flags for XMLTag.
+// Standard flags for XTag.
 
 enum class XTF : uint32_t {
    NIL = 0,
@@ -111,23 +111,23 @@ typedef struct XMLAttrib {
    XMLAttrib() = default;
 } XMLATTRIB;
 
-typedef struct XMLTag {
+typedef struct XTag {
    int      ID;                      // Globally unique ID assigned to the tag on creation.
    int      ParentID;                // UID of the parent tag
    int      LineNo;                  // Line number on which this tag was encountered
    XTF      Flags;                   // Optional flags
    uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
-   pf::vector<XMLTag> Children;      // Array of child tags
-   XMLTag(int pID, int pLine = 0) :
+   pf::vector<XTag> Children;      // Array of child tags
+   XTag(int pID, int pLine = 0) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
 
-   XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
+   XTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Attribs(pAttribs)
       { }
 
-   XMLTag() { XMLTag(0); }
+   XTag() { XTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
    inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
@@ -168,7 +168,7 @@ typedef struct XMLTag {
       }
       return result;
    }
-} XMLTAG;
+} XTAG;
 
 // XML class definition
 
@@ -192,7 +192,7 @@ struct Evaluate { CSTRING Statement; CSTRING Result; static const AC id = AC(-12
 struct ValidateDocument { static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-16); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTag { int Index; struct XTag * Result; static const AC id = AC(-16); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-17); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -220,12 +220,12 @@ class objXML : public Object {
    ERR       ParseError; // Private
    int       LineNo;  // Private
    public:
-   typedef pf::vector<XMLTag> TAGS;
+   typedef pf::vector<XTag> TAGS;
    TAGS Tags;
 
-   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
+   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XTag **Result) {
       int index_result;
-      XMLTag *tag_result;
+      XTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);
          *Result = tag_result;
@@ -342,8 +342,8 @@ class objXML : public Object {
       struct xml::RemoveXPath args = { XPath, Limit };
       return(Action(AC(-15), this, &args));
    }
-   inline ERR getTag(int Index, struct XMLTag ** Result) noexcept {
-      struct xml::GetTag args = { Index, (struct XMLTag *)0 };
+   inline ERR getTag(int Index, struct XTag ** Result) noexcept {
+      struct xml::GetTag args = { Index, (struct XTag *)0 };
       ERR error = Action(AC(-16), this, &args);
       if (Result) *Result = args.Result;
       return(error);
@@ -442,7 +442,7 @@ typedef struct XPathValue {
    XPVT   Type;                // Identifies the type of value stored
    double NumberValue;         // Defined if the type is Number or Boolean
    std::string StringValue;    // Defined if the type is String
-   pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet
+   pf::vector<XTag *> node_set; // Defined if the type is NodeSet
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
@@ -450,7 +450,7 @@ typedef struct XPathValue {
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
-   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
+   explicit XPathValue(const pf::vector<XTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
@@ -466,7 +466,7 @@ typedef struct XPathValue {
 
 namespace xml {
 
-inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+inline void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
       if (pf::iequals(Name, a->Name)) {
@@ -479,15 +479,15 @@ inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string 
    if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag &Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag &Tag, const std::string Name, const std::string Value) {
    Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void NewAttrib(XMLTag *Tag, const std::string Name, const std::string Value) {
+inline void NewAttrib(XTag *Tag, const std::string Name, const std::string Value) {
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-inline std::string GetContent(const XMLTag &Tag) {
+inline std::string GetContent(const XTag &Tag) {
    std::string value;
    for (auto &scan : Tag.Children) {
       if (scan.Attribs.empty()) continue;
@@ -524,7 +524,7 @@ struct XMLBase {
 #ifndef PARASOL_STATIC
    ERR (*_XValueToNumber)(struct XPathValue *Value, double *Result);
    ERR (*_XValueToString)(const struct XPathValue *Value, std::string *Result);
-   ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+   ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
 #endif // PARASOL_STATIC
 };
 
@@ -533,13 +533,13 @@ extern struct XMLBase *XMLBase;
 namespace xml {
 inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
 inline ERR XValueToString(const struct XPathValue *Value, std::string *Result) { return XMLBase->_XValueToString(Value,Result); }
-inline ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
+inline ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
 } // namespace
 #else
 namespace xml {
 extern ERR XValueToNumber(struct XPathValue *Value, double *Result);
 extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
-extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
 } // namespace
 #endif // PARASOL_STATIC
 

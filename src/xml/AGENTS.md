@@ -70,28 +70,28 @@ Primary class for XML document handling with comprehensive parsing and manipulat
 - `Flags` (XMF) - Parsing and behavior flags
 - `Start` (int) - Starting cursor position for operations
 - `Modified` (int) - Modification timestamp
-- `Tags` (TAGS) - Hierarchical array of XMLTag structures
+- `Tags` (TAGS) - Hierarchical array of XTag structures
 
 **Critical Implementation Notes:**
-- C++ developers get direct access to `Tags` field as `pf::vector<XMLTag>`
+- C++ developers get direct access to `Tags` field as `pf::vector<XTag>`
 - Fluid developers should cache `Tags` reads as they create full copies
 - Thread-safe due to object locking principles.
 
-### XMLTag Structure
+### XTag Structure
 
 Represents complete XML elements with attributes, content, and hierarchy.
 
 **Include:** `<parasol/modules/xml.h>`
 
 ```cpp
-struct XMLTag {
+struct XTag {
    int ID;                             // Unique tag identifier
    int ParentID;                       // Parent tag ID (0 for root)
    int LineNo;                         // Source line number
    XTF Flags;                          // Tag flags (CDATA, INSTRUCTION, etc.)
    uint NamespaceID;                   // Namespace URI hash
    pf::vector<XMLAttrib> Attribs;      // Attributes array
-   pf::vector<XMLTag> Children;        // Child elements array
+   pf::vector<XTag> Children;        // Child elements array
 }
 ```
 
@@ -127,7 +127,7 @@ struct XMLAttrib {
 - `PARSE_HTML` - Handle HTML escape codes
 - `INCLUDE_WHITESPACE` - Retain whitespace between tags
 
-**XTF Flags** - XMLTag type indicators
+**XTF Flags** - XTag type indicators
 **Include:** `<parasol/modules/xml.h>`
 - `CDATA` - Tag represents CDATA section
 - `INSTRUCTION` - Processing instruction (<?xml?>)
@@ -225,9 +225,9 @@ For detailed XPath functionality, see the XPath module documentation at `src/xpa
 
 ```cpp
 // Direct tag attribute manipulation
-void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
-void NewAttrib(XMLTag &Tag, const std::string Name, const std::string Value)
-std::string GetContent(const XMLTag &Tag)
+void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+void NewAttrib(XTag &Tag, const std::string Name, const std::string Value)
+std::string GetContent(const XTag &Tag)
 
 // Process all attributes in XML tree
 void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &Function)

@@ -70,7 +70,7 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 
 //********************************************************************************************************************
 
-[[nodiscard]] static XMLTag * parent_for_node(extXML *Document, XMLTag *Node)
+[[nodiscard]] static XTag * parent_for_node(extXML *Document, XTag *Node)
 {
    if ((!Document) or (!Node)) return nullptr;
    if (Node->ParentID IS 0) return nullptr;
@@ -79,13 +79,13 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 
 //********************************************************************************************************************
 
-[[nodiscard]] static XMLTag * find_attribute_owner(extXML *Document, const XMLAttrib *Attribute)
+[[nodiscard]] static XTag * find_attribute_owner(extXML *Document, const XMLAttrib *Attribute)
 {
    if ((!Document) or (!Attribute)) return nullptr;
 
    auto &map = Document->getMap();
    for (auto &entry : map) {
-      XMLTag *candidate = entry.second;
+      XTag *candidate = entry.second;
       if (not candidate) continue;
 
       for (auto &attrib : candidate->Attribs) {
@@ -98,9 +98,9 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 }
 
 //********************************************************************************************************************
-// Returns the XMLTag that owns an attribute.  If a NodeHint is provided, it is checked first to see if it owns the attribute.
+// Returns the XTag that owns an attribute.  If a NodeHint is provided, it is checked first to see if it owns the attribute.
 
-[[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint, const XMLAttrib *Attribute, extXML *&Document)
+[[nodiscard]] static XTag * resolve_attribute_scope(const XPathContext &Context, XTag *NodeHint, const XMLAttrib *Attribute, extXML *&Document)
 {
    if (not Attribute) return NodeHint;
 
@@ -111,9 +111,9 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
       }
    }
 
-   auto locate_in_document = [&](extXML *Candidate) -> XMLTag * {
+   auto locate_in_document = [&](extXML *Candidate) -> XTag * {
       if (not Candidate) return nullptr;
-      if (XMLTag *owner = find_attribute_owner(Candidate, Attribute); owner) {
+      if (XTag *owner = find_attribute_owner(Candidate, Attribute); owner) {
          Document = Candidate;
          return owner;
       }
@@ -187,7 +187,7 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 
 //********************************************************************************************************************
 
-[[nodiscard]] static bool attribute_matches_nil(const XMLAttrib &Attribute, XMLTag *Scope, extXML *Document)
+[[nodiscard]] static bool attribute_matches_nil(const XMLAttrib &Attribute, XTag *Scope, extXML *Document)
 {
    if (Attribute.Name.empty()) return false;
 
@@ -213,7 +213,7 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 //********************************************************************************************************************
 // Locates the document that contains a particular node.
 
-[[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
+[[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XTag *Node)
 {
    if (not Node) return nullptr;
 
@@ -238,7 +238,7 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
 // Builds the base URI chain for a node or attribute-only node-set.  Note that setting AttributeNode will result in
 // Node being recomputed.
 
-std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode)
+std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XTag *Node, const XMLAttrib *AttributeNode)
 {
    extXML *document;
    if (extXML *origin = locate_node_document(Context, Node)) document = origin;
@@ -283,7 +283,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    if (cached_base) return xml::uri::normalise_uri_separators(*cached_base);
 
    std::vector<std::string> chain;
-   for (XMLTag *current = Node; current; ) {
+   for (XTag *current = Node; current; ) {
       bool skip_current_xml_base = (not current->ParentID) and (current IS Node) and (not AttributeNode);
 
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
@@ -293,7 +293,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
          chain.push_back(attrib.Value);
       }
 
-      XMLTag *parent = parent_for_node(document, current);
+      XTag *parent = parent_for_node(document, current);
       if (not parent) break;
       current = parent;
    }
@@ -312,7 +312,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
 //********************************************************************************************************************
 // Resolves the document URI for a node.
 
-std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node)
+std::optional<std::string> resolve_document_uri(const XPathContext &Context, XTag *Node)
 {
    if (not Node) return std::nullopt;
 
@@ -338,7 +338,7 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 //********************************************************************************************************************
 // Infers the schema type for an element node.
 
-std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
+std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XTag *Node,
    const XMLAttrib *AttributeNode)
 {
    if (not Context.schema_registry) return nullptr;
@@ -366,7 +366,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPath
 //********************************************************************************************************************
 // Determines whether an element is explicitly marked as nilled via the xsi:nil attribute.
 
-bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node)
+bool is_element_explicitly_nilled(const XPathContext &Context, XTag *Node)
 {
    if ((!Node) or Node->Attribs.empty()) return false;
    if (Node->Attribs[0].Name.empty()) return false;

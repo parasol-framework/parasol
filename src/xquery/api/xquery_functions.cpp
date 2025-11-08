@@ -1149,7 +1149,7 @@ static std::string describe_xpath_value(const XPathVal &Value)
             entries.insert(entries.end(), Value.node_set_string_values.begin(), Value.node_set_string_values.end());
          }
          else {
-            for (XMLTag *node : Value.node_set) {
+            for (XTag *node : Value.node_set) {
                if (not node) continue;
                entries.push_back(XPathVal::node_string_value(node));
             }
@@ -1246,7 +1246,7 @@ static void append_numbers_from_nodeset(const XPathVal &Value, std::vector<doubl
       return;
    }
 
-   for (XMLTag *node : Value.node_set) {
+   for (XTag *node : Value.node_set) {
       if (not node) continue;
       std::string content = XPathVal::node_string_value(node);
       double number = XPathVal::string_to_number(content);
@@ -1341,7 +1341,7 @@ static std::string sequence_item_string(const XPathVal &Value, size_t Index)
       }
 
       if (Index < Value.node_set.size()) {
-         XMLTag *node = Value.node_set[Index];
+         XTag *node = Value.node_set[Index];
          if (node) return XPathVal::node_string_value(node);
       }
 
@@ -1357,7 +1357,7 @@ static std::string sequence_item_string(const XPathVal &Value, size_t Index)
 
 static void append_sequence_item(const XPathVal &Value, size_t Index, SequenceBuilder &Builder)
 {
-   XMLTag *node = nullptr;
+   XTag *node = nullptr;
    if (Index < Value.node_set.size()) node = Value.node_set[Index];
    Builder.nodes.push_back(node);
 
@@ -1421,7 +1421,7 @@ static XPathVal extract_sequence_item(const XPathVal &Value, size_t Index)
       XPathVal result;
       result.Type = XPVT::NodeSet;
 
-      XMLTag *node = nullptr;
+      XTag *node = nullptr;
       if (Index < Value.node_set.size()) node = Value.node_set[Index];
       result.node_set.push_back(node);
 
@@ -1494,8 +1494,8 @@ static bool xpath_values_equal(const XPathVal &Left, const XPathVal &Right)
 
    if ((left_type IS XPVT::NodeSet) or (right_type IS XPVT::NodeSet)) {
       if ((left_type IS XPVT::NodeSet) and (right_type IS XPVT::NodeSet)) {
-         XMLTag *left_node = Left.node_set.empty() ? nullptr : Left.node_set[0];
-         XMLTag *right_node = Right.node_set.empty() ? nullptr : Right.node_set[0];
+         XTag *left_node = Left.node_set.empty() ? nullptr : Left.node_set[0];
+         XTag *right_node = Right.node_set.empty() ? nullptr : Right.node_set[0];
          if (left_node or right_node) {
             if (left_node IS right_node) return true;
             if ((left_node IS nullptr) or (right_node IS nullptr)) return false;
@@ -1546,9 +1546,9 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
 // empty prefix, finds the default namespace. Returns an empty string if no matching declaration is found in any
 // ancestor element.
 
-static std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_view Prefix)
+static std::string find_in_scope_namespace(XTag *Node, extXML *Document, std::string_view Prefix)
 {
-   XMLTag *current = Node;
+   XTag *current = Node;
 
    while (current) {
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
@@ -1577,9 +1577,9 @@ static std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::
 // Searches up the element tree for an xml:lang attribute. Returns the first discovered language tag or an empty
 // string if no language declaration is found in the element or any ancestor.
 
-static std::string find_language_for_node(XMLTag *Node, extXML *Document)
+static std::string find_language_for_node(XTag *Node, extXML *Document)
 {
-   XMLTag *current = Node;
+   XTag *current = Node;
 
    while (current) {
       for (size_t index = 1; index < current->Attribs.size(); ++index) {

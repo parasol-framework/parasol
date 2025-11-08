@@ -85,7 +85,7 @@ static std::atomic<uint32_t> glTagID = 1;
    return xml::uri::normalise_uri_separators(std::string(Document->Path));
 }
 
-[[nodiscard]] static std::string resolve_inherited_base(extXML *Document, XMLTag *Parent)
+[[nodiscard]] static std::string resolve_inherited_base(extXML *Document, XTag *Parent)
 {
    if (!Document) return std::string();
    if (!Parent) return document_base(Document);
@@ -93,7 +93,7 @@ static std::atomic<uint32_t> glTagID = 1;
    if (auto cached = Document->findBaseURI(Parent->ID)) return *cached;
 
    std::vector<std::string> chain;
-   for (XMLTag *current = Parent; current; ) {
+   for (XTag *current = Parent; current; ) {
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
          const XMLAttrib &attrib = current->Attribs[index];
          if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
@@ -113,7 +113,7 @@ static std::atomic<uint32_t> glTagID = 1;
    return base;
 }
 
-static void refresh_base_uris(extXML *Document, XMLTag &Node, const std::string &InheritedBase)
+static void refresh_base_uris(extXML *Document, XTag &Node, const std::string &InheritedBase)
 {
    std::string node_base = InheritedBase;
 
@@ -134,7 +134,7 @@ static void refresh_base_uris(extXML *Document, XMLTag &Node, const std::string 
    for (auto &child : Node.Children) refresh_base_uris(Document, child, node_base);
 }
 
-static void refresh_base_uris_for_insert(extXML *Document, TAGS &Inserted, XMLTag *Parent)
+static void refresh_base_uris_for_insert(extXML *Document, TAGS &Inserted, XTag *Parent)
 {
    if ((!Document) or Inserted.empty()) return;
 
@@ -206,7 +206,7 @@ Note: The integrity of the array is not guaranteed if the original XML document 
 
 -INPUT-
 ptr(struct(XPathValue)) Value: The XPathValue to convert.
-&cpp(array(ptr(struct(XMLTag)))) Result: The node-set is returned here as an array of !XMLTag structures.
+&cpp(array(ptr(struct(XTag)))) Result: The node-set is returned here as an array of !XTag structures.
 
 -ERRORS-
 Okay
@@ -215,7 +215,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR XValueNodes(XPathValue *Value, pf::vector<XMLTag *> *Result)
+ERR XValueNodes(XPathValue *Value, pf::vector<XTag *> *Result)
 {
    pf::Log log(__FUNCTION__);
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
@@ -319,7 +319,7 @@ ERR XValueToString(const XPathValue *Value, std::string *Result)
 #include "xml_class.cpp"
 
 static STRUCTS glStructures = {
-   { "XMLTag", sizeof(XMLTag) },
+   { "XTag", sizeof(XTag) },
    { "XPathValue", sizeof(XPathValue) }
 };
 

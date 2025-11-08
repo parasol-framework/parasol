@@ -25,7 +25,7 @@
 // (null context node) and attribute context restrictions on certain axes.
 
 std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Axis,
-   XMLTag *ContextNode, const XMLAttrib *ContextAttribute)
+   XTag *ContextNode, const XMLAttrib *ContextAttribute)
 {
    std::vector<AxisMatch> matches;
 
@@ -243,16 +243,16 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 // instruction tests. Supports both attribute and element matching based on the axis type, with full wildcard
 // support for both prefixes and local names.
 
-bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix)
+bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix)
 {
    bool attribute_axis = (Axis IS AxisType::ATTRIBUTE) or ((Axis IS AxisType::SELF) and (Attribute != nullptr));
 
-   auto resolve_namespace = [&](std::string_view Prefix, XMLTag *Scope) -> std::optional<uint32_t> {
+   auto resolve_namespace = [&](std::string_view Prefix, XTag *Scope) -> std::optional<uint32_t> {
       if (not xml) return std::nullopt;
 
       std::string prefix_string(Prefix);
       uint32_t namespace_hash = 0;
-      XMLTag *lookup_scope = Scope ? Scope : context.context_node;
+      XTag *lookup_scope = Scope ? Scope : context.context_node;
       int tag_id = lookup_scope ? lookup_scope->ID : 0;
 
       if (xml->resolvePrefix(prefix_string, tag_id, namespace_hash) IS ERR::Okay) {
