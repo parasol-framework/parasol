@@ -2089,8 +2089,8 @@ static void expr_bracket(LexState *ls, ExpDesc *v)
 static void expr_safe_field(LexState *ls, ExpDesc *v)
 {
   FuncState *fs = ls->fs;
-  ExpDesc key, table, nilv;
-  BCReg obj_reg, result_reg;
+  ExpDesc key, nilv;
+  BCReg obj_reg;
   BCPos check_nil, skip_nil;
 
   lj_lex_next(ls);  /* Consume '?.'. */
@@ -2103,93 +2103,63 @@ static void expr_safe_field(LexState *ls, ExpDesc *v)
   }
 
   obj_reg = expr_toanyreg(fs, v);
-  result_reg = fs->freereg;
-  bcreg_reserve(fs, 1);
 
-  fprintf(stderr, "[SAFE_FIELD] obj_reg=%d, result_reg=%d, pc_before_iseqp=%d\n", obj_reg, result_reg, fs->pc);
-  fflush(stderr);
-
-  /* Pattern from OPR_IF_EMPTY: BC_ISEQP skips next instruction when equal */
-  /* If obj == nil: ISEQP skips the JMP, falls through to load nil */
+  /* Check if obj == nil: BC_ISEQP skips next instruction when equal */
+  /* If obj == nil: ISEQP skips the JMP, falls through to return nil */
   /* If obj != nil: ISEQP doesn't skip, executes JMP to field access */
   expr_init(&nilv, VKNIL, 0);
-  BCPos pc_iseqp = fs->pc;
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-  fprintf(stderr, "[SAFE_FIELD] Emitted ISEQP at pc=%d\n", pc_iseqp);
-  fflush(stderr);
-  BCPos pc_before_jmp = fs->pc;
   check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
-  fprintf(stderr, "[SAFE_FIELD] Emitted JMP at pc=%d, jump index=%d\n", pc_before_jmp, check_nil);
-  fflush(stderr);
 
-  /* Nil case (obj == nil): load nil to result */
-  BCPos pc_kpri = fs->pc;
-  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
-  fprintf(stderr, "[SAFE_FIELD] Emitted KPRI at pc=%d\n", pc_kpri);
-  fflush(stderr);
-  BCPos pc_before_skip = fs->pc;
+  /* Nil case (obj == nil): return nil */
+  expr_init(v, VKNIL, 0);
   skip_nil = bcemit_jmp(fs);  /* Skip field access */
-  fprintf(stderr, "[SAFE_FIELD] Emitted skip JMP at pc=%d, jump index=%d\n", pc_before_skip, skip_nil);
-  fflush(stderr);
 
   /* Non-nil case (obj != nil): evaluate obj.field */
-  BCPos pc_field_access = fs->pc;
-  jmp_patchins(fs, check_nil, pc_field_access);
-  fprintf(stderr, "[SAFE_FIELD] Patched check_nil (index %d) to target pc=%d with jmp_patchins\n", check_nil, pc_field_access);
-  fflush(stderr);
-  expr_init(&table, VNONRELOC, obj_reg);
-  table.t = table.f = NO_JMP;
-  expr_index(fs, &table, &key);
-  fprintf(stderr, "[SAFE_FIELD] After expr_index, pc=%d, table.k=%d\n", fs->pc, table.k);
-  fflush(stderr);
-  BCPos pc_before_toreg = fs->pc;
-  expr_toreg(fs, &table, result_reg);
-  fprintf(stderr, "[SAFE_FIELD] After expr_toreg, pc_before=%d, pc_after=%d\n", pc_before_toreg, fs->pc);
-  fflush(stderr);
+  jmp_patch(fs, check_nil, fs->pc);
+  expr_index(fs, v, &key);
 
   /* Merge point */
-  jmp_patchins(fs, skip_nil, fs->pc);
-  fprintf(stderr, "[SAFE_FIELD] Patched skip_nil (index %d) to target pc=%d with jmp_patchins\n", skip_nil, fs->pc);
-  fflush(stderr);
-  expr_init(v, VNONRELOC, result_reg);
+  jmp_patch(fs, skip_nil, fs->pc);
 }
 
 /* Parse safe navigation for index access: obj?[expr] */
 static void expr_safe_index(LexState *ls, ExpDesc *v)
 {
   FuncState *fs = ls->fs;
-  ExpDesc key, table, nilv;
-  BCReg obj_reg, result_reg;
+  ExpDesc key, nilv;
+  BCReg obj_reg;
   BCPos check_nil, skip_nil;
 
   lj_lex_next(ls);  /* Consume '?'. '[' remains as current token. */
 
   expr_discharge(fs, v);
+  if (v->k == VKNIL) {
+    expr_init(v, VKNIL, 0);
+    expr_bracket(ls, &key);  /* Still consume the bracket expression */
+    return;
+  }
+
   obj_reg = expr_toanyreg(fs, v);
 
-  result_reg = fs->freereg;
-  bcreg_reserve(fs, 1);
-
-  /* If obj == nil: ISEQP skips JMP, loads nil */
-  /* If obj != nil: ISEQP doesn't skip, JMPs to index access */
+  /* Check if obj == nil: BC_ISEQP skips next instruction when equal */
+  /* If obj == nil: ISEQP skips the JMP, falls through to return nil */
+  /* If obj != nil: ISEQP doesn't skip, executes JMP to index access */
   expr_init(&nilv, VKNIL, 0);
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-  check_nil = bcemit_jmp(fs);
+  check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
 
-  /* Nil case: load nil */
-  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
-  skip_nil = bcemit_jmp(fs);
+  /* Nil case (obj == nil): return nil */
+  expr_init(v, VKNIL, 0);
+  skip_nil = bcemit_jmp(fs);  /* Skip index access */
 
-  /* Non-nil case: evaluate obj[key] */
+  /* Non-nil case (obj != nil): evaluate obj[key] */
   jmp_patch(fs, check_nil, fs->pc);
   expr_bracket(ls, &key);
-  expr_init(&table, VNONRELOC, obj_reg);
-  table.t = table.f = NO_JMP;
-  expr_index(fs, &table, &key);
-  expr_toreg(fs, &table, result_reg);
+  expr_index(fs, v, &key);
 
+  /* Merge point */
   jmp_patch(fs, skip_nil, fs->pc);
-  expr_init(v, VNONRELOC, result_reg);
 }
 
 /* Parse safe navigation for method calls: obj?:method(...) */

@@ -25,8 +25,9 @@ end
 
 function testSafeFieldChain()
    local user = { profile = { name = "Alex" } }
+   local name = user.profile.name -- To prove no exception thrown for access
    local name = user?.profile?.name
-   assert(name is "Alex", "Safe field chain should return nested value")
+   assert(name is "Alex", "Safe field chain should return nested value, got " .. tostring(name))
    local missing = user?.profile?.address
    assert(missing is nil, "Missing field in chain should yield nil")
 end
@@ -34,13 +35,13 @@ end
 function testSafeIndexOnNil()
    local items = nil
    local value = items?[1]
-   assert(value is nil, "Safe index on nil should yield nil")
+   assert(value is nil, "Safe index on nil should yield nil, got " .. tostring(value))
 end
 
 function testSafeIndexValue()
    local container = { values = { [1] = "First", [2] = "Second" } }
    local value = container?.values?[2]
-   assert(value is "Second", "Safe index should return stored element when present")
+   assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 end
 
 function testSafeIndexShortCircuit()
