@@ -13,7 +13,7 @@
 
 /* Lua lexer tokens. */
 #define TKDEF(_, __) \
-  _(and) _(break) _(continue) _(do) _(else) _(elseif) _(end) _(false) \
+  _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
   _(for) _(function) _(goto) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
   __(if_empty, ?) __(presence, ??) \
@@ -53,7 +53,14 @@ typedef struct VarInfo {
   uint8_t info;		/* Variable/goto/label info. */
 } VarInfo;
 
+/* Info for deferred closures captured during parsing. */
+typedef struct DeferInfo {
+  MSize scope_top;
+  BCReg slot;
+} DeferInfo;
+
 /* Lua lexer state. */
+
 typedef struct LexState {
   struct FuncState *fs;	/* Current FuncState. Defined in lj_parse.c. */
   struct lua_State *L;	/* Lua state. */
@@ -75,6 +82,9 @@ typedef struct LexState {
   VarInfo *vstack;	/* Stack for names and extents of local variables. */
   MSize sizevstack;	/* Size of variable stack. */
   MSize vtop;		/* Top of variable stack. */
+  DeferInfo *dstack;	/* Stack for deferred closures. */
+  MSize sizedstack;		/* Size of defer stack. */
+  MSize dtop;		/* Top of defer stack. */
   BCInsLine *bcstack;	/* Stack for bytecode instructions/line numbers. */
   MSize sizebcstack;	/* Size of bytecode stack. */
   uint32_t level;	/* Syntactical nesting level. */

@@ -2,7 +2,7 @@
 
 ## Status & Scope
 
-**Status:** 📝 Draft ready for implementation review
+**Status:** 🚧 Implementation in progress — Phases 1–4 delivered
 **Priority:** ⭐⭐⭐⭐ High
 **Estimated Effort:** 10–14 hours (parser + VM + tests)
 
@@ -51,6 +51,7 @@ observed in the file at `src/fluid/tests/test_defer.fluid`.
 ## Phased Implementation
 
 ### Phase 1 – Lexical & Grammar Wiring
+**Status:** ✅ Implemented.
 1. Extend `TKDEF` in `lj_lex.h` with the reserved word `_ (defer)` so
    the lexer interns it like other keywords; the token tables in `lj_lex.c`
    update automatically.【F:src/fluid/luajit-2.1/src/lj_lex.h†L14-L26】
@@ -63,6 +64,7 @@ observed in the file at `src/fluid/tests/test_defer.fluid`.
 `defer end` is parsed (even if semantics are stubbed).
 
 ### Phase 2 – Parser Data Model for Deferred Locals
+**Status:** ✅ Implemented.
 1. Introduce a lightweight `DeferInfo` (e.g. `{MSize scope_top; BCReg slot;}`)
    stored on a growable array inside `LexState`; snapshot/restore the stack in
    `fs_init()`/`fs_finish()` so nested functions inherit outer state cleanly.【F:src/fluid/luajit-2.1/src/lj_parse.c†L2004-L2030】
@@ -78,6 +80,7 @@ observed in the file at `src/fluid/tests/test_defer.fluid`.
 scopes maintain LIFO order, and no bytecode is emitted yet.
 
 ### Phase 3 – Lowering `defer` to Closure Storage
+**Status:** ✅ Implemented.
 1. Inside `parse_defer()`, after parsing the block body:
    - Discharge the resulting closure into the synthetic local register using
      `expr_toreg()`.
@@ -93,6 +96,7 @@ scopes maintain LIFO order, and no bytecode is emitted yet.
 `luajit -bl`) while the helper that actually executes it is still a stub.
 
 ### Phase 4 – Unified Scope-Unwind Emission
+**Status:** ✅ Implemented.
 1. Implement `emit_scope_defers(FuncState *fs, FuncScope *scope)` that pops
    all `DeferInfo` entries newer than `scope->defer_top` and, for each,
    generates:
@@ -111,25 +115,74 @@ scopes maintain LIFO order, and no bytecode is emitted yet.
 **Exit criteria:** Runtime reaches defer closures in normal execution paths,
 with bytecode limited to the existing instruction set.
 
-### Phase 5 – Error-Unwind Integration
-1. Audit interpreter/JIT `BC_UCLO` handlers (`vm_*.dasc`, `lj_dispatch.c`)
-   to confirm they execute on both normal scope exits and VM errors. If a
-   scope containing defers lacks an auto-generated `BC_UCLO`, update the
-   parser to insert one explicitly when `emit_scope_defers()` runs.【F:src/fluid/luajit-2.1/src/lj_dispatch.c†L392-L421】
-2. Add a C helper (e.g. `lj_vm_defer_run(lua_State *L, TValue *base, BCReg n)`) that
-   expects the closures to be stored contiguously on the stack and calls them
-   via `lj_vm_pcall()` to suppress cascading errors.
-3. Adjust each architecture backend’s `BC_UCLO` case to invoke the helper
-   immediately before closing upvalues when the compiler signalled pending
-   defers (e.g. via a flag stored in `GCproto` or an unused slot in the stack
-   frame header). Aim to re-use existing registers so no new bytecode format is
-   required.
-4. Extend `lj_record.c` to record the helper call as an ordinary function call
-   so traces remain valid.
+### Phase 5 – Error-Unwind Integration *(updated after investigation)*
 
-**Exit criteria:** Injected runtime helper runs during `pcall`-captured errors
-and during normal unwinds; tests that throw within deferred scopes still see
-all defers executed exactly once.
+**Status:** ⏳ Not started. The previous engineering pass stalled because the
+plan never spelled out how runtime error unwinds discover which stack slots
+still hold deferred closures. The clarifications below break the phase into
+concrete parser, metadata, and VM tasks so future work has a precise target.
+
+1. **Parser bookkeeping**
+   - Extend `DeferInfo` handling in `emit_scope_defers()` so that, while the
+     parser emits the normal `BC_MOV`/`BC_CALL` sequence, it also records the
+     stack slots popped for that scope into a temporary buffer that survives
+     until `fs_finish()`.【F:src/fluid/luajit-2.1/src/lj_parse.c†L1658-L1759】
+   - After each deferred call is emitted, append a `BC_KPRI` write that sets the
+     original local slot to `nil`; this guarantees the runtime can detect
+     whether a given defer has already executed when `BC_UCLO` later fires.
+   - Introduce a small structure (e.g. `{BCPos uclo_pc; BCReg level;
+     uint8_t count; uint16_t slots[count];}`) that captures the `BC_UCLO`
+     instruction index returned by `bcemit_AJ()`, the register level (`A`), and
+     the stack slots to visit in LIFO order. Keep one growable array per
+     function in `FuncState` so returns/breaks/continues all append their own
+     descriptor before discarding the corresponding `DeferInfo` entries.
+   - Update every call site that emits a `BC_UCLO` because of defers
+     (`fscope_end()`, `parse_return()`, loop jumps, and the fix-up path in
+     `fs_fixup_ret()`) to push one descriptor into that array at the moment the
+     `BC_UCLO` is created.【F:src/fluid/luajit-2.1/src/lj_parse.c†L1750-L2019】【F:src/fluid/luajit-2.1/src/lj_parse.c†L3333-L3512】
+
+2. **Prototype metadata**
+   - Add storage in `GCproto` for the defer descriptors: a count field plus an
+     `MRef` pointing to a packed array copied from the `FuncState` buffer during
+     `fs_finish()`.【F:src/fluid/luajit-2.1/src/lj_obj.h†L372-L408】
+   - Teach `fs_prep_var()`/`fs_fixup_var()` (and the `LUAJIT_DISABLE_DEBUGINFO`
+     fallback) to reserve space for the encoded descriptors even when debug
+     info is stripped so runtime error handling can always consult them.
+   - Ensure the serializer/deserializer (`lj_bcwrite.c`, `lj_bcread.c`) include
+     the new section so bytecode round-trips preserve defer metadata.
+   - Mark prototypes that own defer descriptors by checking whether the stored
+     count is non-zero instead of consuming extra flag bits; this avoids
+     colliding with `PROTO_CLCOUNT` saturation logic.
+   - Extend the GC traversal (`lj_gc.c`) and finaliser fast paths to visit the
+     new array so it remains alive.
+
+3. **Runtime helper**
+   - Implement `lj_vm_defer_run(lua_State *L, GCproto *pt, TValue *base,
+     const BCIns *pc)` which locates the descriptor whose `uclo_pc` matches the
+     current bytecode position, iterates the recorded slots from newest to
+     oldest, and—for any slot that still holds a callable closure—invokes it in
+     protected mode (use `lj_vm_pcall()` with zero arguments/results) and then
+     writes `nil` back into the slot. Errors raised by the defer must be chained
+     onto the outstanding exception without clobbering the original stack trace.
+   - Expose the helper from `lj_vm.h` and provide a tiny wrapper in
+     `lj_vm.c` for architectures that need a C entry point.
+
+4. **Interpreter / recorder glue**
+   - In every `vm_*.dasc` backend, adjust the `BC_UCLO` case so that, after the
+     `branchPC` but before calling `lj_func_closeuv`, it checks whether the
+     current prototype carries defer descriptors and, if so, calls the helper
+     above.【F:src/fluid/luajit-2.1/src/vm_x64.dasc†L3529-L3560】 Mirror the same
+     sequencing in `lj_dispatch.c` for the slow-path interpreter used by hooks
+     and unwinds.【F:src/fluid/luajit-2.1/src/lj_dispatch.c†L392-L421】
+   - Extend `lj_record.c` so the trace recorder understands that `BC_UCLO`
+     triggers a side-effecting helper call. The JIT already aborts on
+     `BC_UCLO`, but the recorder must maintain correctness if future work lifts
+     that restriction.
+
+**Exit criteria:** During both normal execution and protected-call unwinds, a
+`BC_UCLO` instruction runs the helper exactly once for each pending defer, each
+recorded closure fires in LIFO order, and slots are cleared so the same defer is
+never executed twice.
 
 ### Phase 6 – Tooling, Tests, and Documentation
 1. **Testing:**
@@ -150,7 +203,7 @@ materials describe usage clearly.
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Missing stack metadata for error unwinds | High | Validate the `BC_UCLO` execution path early; if gaps exist, add an explicit proto flag so the VM can detect scopes with defers. |
+| Missing stack metadata for error unwinds | High | Validate the new `GCproto` defer descriptor table early and ensure every `BC_UCLO` instruction that pops a defer records an entry so the VM helper can find pending closures. |
 | Register pressure in tight scopes | Medium | Always reserve scratch registers via `bcreg_reserve()` and release them promptly; add regression tests with nested defers to monitor stack growth. |
 | JIT trace divergence | Medium | Ensure the helper call is traceable and side-effect free beyond invoking closures; extend `lj_record.c` if needed. |
 | User-visible synthetic locals | Low | Flag `VarInfo` entries so debugger/introspection tools can hide them. |
@@ -164,4 +217,4 @@ materials describe usage clearly.
 - Fluid tests covering the new keyword pass alongside the existing suite.
 - Documentation clearly explains the sugar and its limitations.
 
-**Last Updated:** 2025-02-15
+**Last Updated:** 2025-02-16

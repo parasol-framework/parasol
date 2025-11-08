@@ -53,7 +53,8 @@ LJ_FUNC void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt,
   _(FOR_STEP, "(for step)") \
   _(FOR_GEN, "(for generator)") \
   _(FOR_STATE, "(for state)") \
-  _(FOR_CTL, "(for control)")
+  _(FOR_CTL, "(for control)") \
+  _(DEFER, "(defer)")
 
 enum {
   VARNAME_END,

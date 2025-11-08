@@ -104,6 +104,7 @@ typedef struct FuncScope {
   MSize vstart;			/* Start of block-local variables. */
   uint8_t nactvar;		/* Number of active vars outside the scope. */
   uint8_t flags;		/* Scope flags. */
+  MSize defer_top;		/* Top of defer stack at scope entry. */
 } FuncScope;
 
 #define FSCOPE_LOOP		0x01	/* Scope is a (breakable) loop. */
@@ -112,6 +113,7 @@ typedef struct FuncScope {
 #define FSCOPE_UPVAL		0x08	/* Upvalue in scope. */
 #define FSCOPE_NOCLOSE		0x10	/* Do not close upvalues. */
 #define FSCOPE_CONTINUE	0x20	/* Continue used in scope. */
+#define FSCOPE_DEFER	0x40	/* Scope owns deferred closures. */
 
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
 #define NAME_CONTINUE	((GCstr *)(uintptr_t)2)
@@ -120,11 +122,13 @@ typedef struct FuncScope {
 /* Index into variable stack. */
 typedef uint16_t VarIndex;
 #define LJ_MAX_VSTACK		(65536 - LJ_MAX_UPVAL)
+#define LJ_MAX_DSTACK		LJ_MAX_VSTACK
 
 /* Variable/goto/label info. */
 #define VSTACK_VAR_RW		0x01	/* R/W variable. */
 #define VSTACK_GOTO		0x02	/* Pending goto. */
 #define VSTACK_LABEL		0x04	/* Label. */
+#define VSTACK_DEFER		0x08	/* Synthetic defer local. */
 
 /* Per-function state. */
 typedef struct FuncState {
@@ -143,6 +147,7 @@ typedef struct FuncState {
   BCInsLine *bcbase;		/* Base of bytecode stack. */
   BCPos bclim;			/* Limit of bytecode stack. */
   MSize vbase;			/* Base of variable stack for this function. */
+  MSize dbase;			/* Base of defer stack for this function. */
   uint8_t flags;		/* Prototype flags. */
   uint8_t numparams;		/* Number of parameters. */
   uint8_t framesize;		/* Fixed frame size. */
@@ -1400,6 +1405,19 @@ static int is_blank_identifier(GCstr *name)
   return (name != NULL && name->len == 1 && *(strdata(name)) == '_');
 }
 
+/* Push a new defer record onto the defer stack. */
+static DeferInfo *defer_push(LexState *ls)
+{
+  MSize dtop = ls->dtop;
+  if (LJ_UNLIKELY(dtop >= ls->sizedstack)) {
+    if (ls->sizedstack >= LJ_MAX_DSTACK)
+      lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_DSTACK);
+    lj_mem_growvec(ls->L, ls->dstack, ls->sizedstack, LJ_MAX_DSTACK, DeferInfo);
+  }
+  ls->dtop = dtop+1;
+  return &ls->dstack[dtop];
+}
+
 /* Define a new local variable. */
 static void var_new(LexState *ls, BCReg n, GCstr *name)
 {
@@ -1572,14 +1590,14 @@ static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
   for (; vg < vl; vg++)
     if (gcrefeq(vg->name, vl->name) && gola_isgoto(vg)) {
       if (vg->slot < vl->slot) {
-	GCstr *name = strref(var_get(ls, ls->fs, vg->slot).name);
-	lj_assertLS((uintptr_t)name >= VARNAME__MAX, "expected goto name");
-	ls->linenumber = ls->fs->bcbase[vg->startpc].line;
+        GCstr *name = strref(var_get(ls, ls->fs, vg->slot).name);
+        lj_assertLS((uintptr_t)name >= VARNAME__MAX, "expected goto name");
+        ls->linenumber = ls->fs->bcbase[vg->startpc].line;
         lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
         lj_assertLS(strref(vg->name) != NAME_CONTINUE, "unexpected continue");
-	lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
-		     strdata(strref(vg->name)),
-		     name == NAME_BLANK ? "_" : strdata(name));
+        lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
+                     strdata(strref(vg->name)),
+                     name == NAME_BLANK ? "_" : strdata(name));
       }
       gola_patch(ls, vg, vl);
     }
@@ -1598,17 +1616,17 @@ static void gola_fixup(LexState *ls, FuncScope *bl)
 	setgcrefnull(v->name);  /* Invalidate label that goes out of scope. */
 	for (vg = v+1; vg < ve; vg++)  /* Resolve pending backward gotos. */
 	  if (strref(vg->name) == name && gola_isgoto(vg)) {
-	    if ((bl->flags&FSCOPE_UPVAL) && vg->slot > v->slot)
-	      gola_close(ls, vg);
-	    gola_patch(ls, vg, v);
-	  }
+            if ((bl->flags & (FSCOPE_UPVAL|FSCOPE_DEFER)) && vg->slot > v->slot)
+              gola_close(ls, vg);
+            gola_patch(ls, vg, v);
+          }
       } else if (gola_isgoto(v)) {
         if (bl->prev) {  /* Propagate goto or break to outer scope. */
           bl->prev->flags |= name == NAME_BREAK ? FSCOPE_BREAK :
                              (name == NAME_CONTINUE ? FSCOPE_CONTINUE :
                               FSCOPE_GOLA);
           v->slot = bl->nactvar;
-          if ((bl->flags & FSCOPE_UPVAL))
+          if ((bl->flags & (FSCOPE_UPVAL|FSCOPE_DEFER)))
             gola_close(ls, v);
         } else {  /* No outer scope: undefined goto label or no loop. */
           ls->linenumber = ls->fs->bcbase[v->startpc].line;
@@ -1637,12 +1655,68 @@ static VarInfo *gola_findlabel(LexState *ls, GCstr *name)
 
 /* -- Scope handling ------------------------------------------------------ */
 
+/* Emit deferred closures for a specific scope. */
+static int emit_scope_defers(FuncState *fs, FuncScope *scope, MSize *top)
+{
+  LexState *ls = fs->ls;
+  MSize cur = *top;
+  int emitted = 0;
+
+  while (cur > scope->defer_top) {
+    DeferInfo *info = &ls->dstack[cur-1];
+    BCReg base = fs->freereg;
+
+    lj_assertFS(info->scope_top == scope->defer_top, "bad defer scope");
+    bcreg_reserve(fs, 1);
+#if LJ_FR2
+    bcreg_reserve(fs, 1);
+#endif
+    bcemit_AD(fs, BC_MOV, base, info->slot);
+    bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 1,
+                             fs->freereg - base - LJ_FR2));
+    fs->freereg = base;
+    cur--;
+    emitted = 1;
+  }
+
+  *top = cur;
+  return emitted;
+}
+
+/* Emit deferred closures for all scopes up to, but excluding, stop. */
+static int emit_defer_chain(FuncState *fs, FuncScope *stop, int discard)
+{
+  LexState *ls = fs->ls;
+  FuncScope *scope = fs->bl;
+  MSize top = ls->dtop;
+  int emitted = 0;
+
+  while (scope != stop) {
+    if (emit_scope_defers(fs, scope, &top))
+      emitted = 1;
+    scope = scope->prev;
+  }
+
+  if (discard)
+    ls->dtop = top;
+  return emitted;
+}
+
+/* Locate nearest loop scope from the current scope chain. */
+static FuncScope *fscope_findloop(FuncScope *bl)
+{
+  while (bl && !(bl->flags & FSCOPE_LOOP))
+    bl = bl->prev;
+  return bl;
+}
+
 /* Begin a scope. */
 static void fscope_begin(FuncState *fs, FuncScope *bl, int flags)
 {
   bl->nactvar = (uint8_t)fs->nactvar;
   bl->flags = flags;
   bl->vstart = fs->ls->vtop;
+  bl->defer_top = fs->ls->dtop;
   bl->prev = fs->bl;
   fs->bl = bl;
   lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
@@ -1672,11 +1746,15 @@ static void fscope_end(FuncState *fs)
 {
   FuncScope *bl = fs->bl;
   LexState *ls = fs->ls;
+  MSize top = ls->dtop;
+  int has_defer = emit_scope_defers(fs, bl, &top);
   fs->bl = bl->prev;
+  ls->dtop = top;
   var_remove(ls, bl->nactvar);
   fs->freereg = fs->nactvar;
   lj_assertFS(bl->nactvar == fs->nactvar, "bad regalloc");
-  if ((bl->flags & (FSCOPE_UPVAL|FSCOPE_NOCLOSE)) == FSCOPE_UPVAL)
+  if (has_defer ||
+      ((bl->flags & (FSCOPE_UPVAL|FSCOPE_NOCLOSE)) == FSCOPE_UPVAL))
     bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
   if ((bl->flags & FSCOPE_BREAK)) {
     if ((bl->flags & FSCOPE_LOOP)) {
@@ -1914,7 +1992,7 @@ static void fs_fixup_ret(FuncState *fs)
 {
   BCPos lastpc = fs->pc;
   if (lastpc <= fs->lasttarget || !bcopisret(bc_op(fs->bcbase[lastpc-1].ins))) {
-    if ((fs->bl->flags & FSCOPE_UPVAL))
+    if ((fs->bl->flags & (FSCOPE_UPVAL|FSCOPE_DEFER)))
       bcemit_AJ(fs, BC_UCLO, 0, 0);
     bcemit_AD(fs, BC_RET0, 0, 1);  /* Need final return. */
   }
@@ -1991,6 +2069,7 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
 
   L->top--;  /* Pop table of constants. */
   ls->vtop = fs->vbase;  /* Reset variable stack. */
+  ls->dtop = fs->dbase;  /* Reset defer stack. */
   ls->fs = fs->prev;
   lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
   return pt;
@@ -2003,6 +2082,7 @@ static void fs_init(LexState *ls, FuncState *fs)
   fs->prev = ls->fs; ls->fs = fs;  /* Append to list. */
   fs->ls = ls;
   fs->vbase = ls->vtop;
+  fs->dbase = ls->dtop;
   fs->L = L;
   fs->pc = 0;
   fs->lasttarget = 0;
@@ -2404,6 +2484,41 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   }
   lj_lex_next(ls);
 }
+/* Parse the body for a defer block as a zero-parameter closure. */
+static void parse_defer_closure(LexState *ls, ExpDesc *e, BCLine line)
+{
+  FuncState fs, *pfs = ls->fs;
+  FuncScope bl;
+  GCproto *pt;
+  ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
+
+  fs_init(ls, &fs);
+  fscope_begin(&fs, &bl, 0);
+  fs.linedefined = line;
+  fs.numparams = 0;
+  fs.bcbase = pfs->bcbase + pfs->pc;
+  fs.bclim = pfs->bclim - pfs->pc;
+  bcemit_AD(&fs, BC_FUNCF, 0, 0);
+  parse_chunk(ls);
+  if (ls->tok != TK_end)
+    lex_match(ls, TK_end, TK_defer, line);
+  pt = fs_finish(ls, (ls->lastline = ls->linenumber));
+  pfs->bcbase = ls->bcstack + oldbase;
+  pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+  expr_init(e, VRELOCABLE,
+            bcemit_AD(pfs, BC_FNEW, 0,
+                      const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+#if LJ_HASFFI
+  pfs->flags |= (fs.flags & PROTO_FFI);
+#endif
+  if (!(pfs->flags & PROTO_CHILD)) {
+    if (pfs->flags & PROTO_HAS_RETURN)
+      pfs->flags |= PROTO_FIXUP_RETURN;
+    pfs->flags |= PROTO_CHILD;
+  }
+  lj_lex_next(ls);
+}
+
 
 /* Parse expression list. Last expression is left open.
 **
@@ -3334,6 +3449,7 @@ static void parse_return(LexState *ls)
 {
   BCIns ins;
   FuncState *fs = ls->fs;
+  int has_defer;
   lj_lex_next(ls);  /* Skip 'return'. */
   fs->flags |= PROTO_HAS_RETURN;
   if (parse_isend(ls->tok) || ls->tok == ';') {  /* Bare return. */
@@ -3362,7 +3478,8 @@ static void parse_return(LexState *ls)
       }
     }
   }
-  if (fs->flags & PROTO_CHILD)
+  has_defer = emit_defer_chain(fs, NULL, 0);
+  if ((fs->flags & PROTO_CHILD) || has_defer)
     bcemit_AJ(fs, BC_UCLO, 0, 0);  /* May need to close upvalues first. */
   bcemit_INS(fs, ins);
 }
@@ -3370,15 +3487,31 @@ static void parse_return(LexState *ls)
 /* Parse 'continue' statement. */
 static void parse_continue(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_CONTINUE;
-  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fscope_findloop(fs->bl);
+  int has_defer = 0;
+
+  if (loop)
+    has_defer = emit_defer_chain(fs, loop, 0);
+  if (has_defer)
+    bcemit_AJ(fs, BC_UCLO, fs->bl->nactvar, 0);
+  fs->bl->flags |= FSCOPE_CONTINUE;
+  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'break' statement. */
 static void parse_break(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_BREAK;
-  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fscope_findloop(fs->bl);
+  int has_defer = 0;
+
+  if (loop)
+    has_defer = emit_defer_chain(fs, loop ? loop->prev : NULL, 0);
+  if (has_defer && loop)
+    bcemit_AJ(fs, BC_UCLO, loop->nactvar, 0);
+  fs->bl->flags |= FSCOPE_BREAK;
+  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'goto' statement. */
@@ -3473,7 +3606,7 @@ static void parse_repeat(LexState *ls, BCLine line)
   lex_match(ls, TK_until, TK_repeat, line);
   iter = fs->pc;
   condexit = expr_cond(ls);  /* Parse condition (still inside inner scope). */
-  if (!(bl2.flags & FSCOPE_UPVAL)) {  /* No upvalues? Just end inner scope. */
+  if (!(bl2.flags & (FSCOPE_UPVAL|FSCOPE_DEFER))) {  /* No upvalues? Just end inner scope. */
     fscope_end(fs);
   } else {  /* Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop. */
     parse_break(ls);  /* Break from loop and close upvalues. */
@@ -3657,6 +3790,34 @@ static void parse_if(LexState *ls, BCLine line)
   lex_match(ls, TK_end, TK_if, line);
 }
 
+/* Lower a defer statement into a stored closure. */
+static void parse_defer(LexState *ls, BCLine line)
+{
+  FuncState *fs = ls->fs;
+  DeferInfo *info;
+  ExpDesc closure;
+  BCReg slot;
+  VarInfo *var;
+
+  lj_lex_next(ls);
+
+  slot = fs->freereg;
+  var_new_fixed(ls, 0, VARNAME_DEFER);
+  bcreg_reserve(fs, 1);
+  var_add(ls, 1);
+
+  parse_defer_closure(ls, &closure, line);
+  expr_toreg(fs, &closure, slot);
+
+  var = &var_get(ls, fs, fs->nactvar-1);
+  var->info |= VSTACK_DEFER;
+
+  info = defer_push(ls);
+  info->scope_top = fs->bl->defer_top;
+  info->slot = slot;
+  fs->bl->flags |= FSCOPE_DEFER;
+}
+
 /* -- Parse statements ---------------------------------------------------- */
 
 /* Parse a statement. Returns 1 if it must be the last one in a chunk. */
@@ -3669,6 +3830,9 @@ static int parse_stmt(LexState *ls)
     break;
   case TK_while:
     parse_while(ls, line);
+    break;
+  case TK_defer:
+    parse_defer(ls, line);
     break;
   case TK_do:
     lj_lex_next(ls);
