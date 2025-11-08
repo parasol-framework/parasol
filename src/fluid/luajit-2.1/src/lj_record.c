@@ -2609,6 +2609,12 @@ void lj_record_ins(jit_State *J)
     lj_ffrecord_func(J);
     break;
 
+  case BC_DEFER:
+  case BC_UNDEFER:
+    setintV(&J->errinfo, (int32_t)op);
+    lj_trace_err_info(J, LJ_TRERR_NYIBC);
+    break;
+
   default:
     if (op >= BC__MAX) {
       lj_ffrecord_func(J);

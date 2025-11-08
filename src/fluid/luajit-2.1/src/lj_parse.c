@@ -124,6 +124,8 @@ typedef struct FuncScope {
 #define FSCOPE_CONTINUE	0x20	/* Continue used in scope. */
 #define FSCOPE_DEFER	0x40	/* Scope owns one or more defers. */
 
+#define PROTF_HAS_DEFER	0x80	/* Function declares one or more defers. */
+
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
 #define NAME_CONTINUE	((GCstr *)(uintptr_t)2)
 #define NAME_BLANK		((GCstr *)(uintptr_t)3)
@@ -156,6 +158,7 @@ typedef struct FuncState {
   MSize vbase;			/* Base of variable stack for this function. */
   uint8_t flags;		/* Prototype flags. */
   uint16_t total_defer;         /* Total number of defers declared so far. */
+  DeferEntry *defer_free;       /* Free list for recycled defer nodes. */
   uint8_t numparams;		/* Number of parameters. */
   uint8_t framesize;		/* Fixed frame size. */
   uint8_t nuv;			/* Number of upvalues */
@@ -710,6 +713,60 @@ static void bcemit_store(FuncState *fs, ExpDesc *var, ExpDesc *e)
   bcemit_INS(fs, ins);
   expr_free(fs, e);
 }
+static void bcemit_defer_unwind_emit(FuncState *fs, uint16_t base, uint16_t count)
+{
+  while (count) {
+    uint16_t chunk = (count > BCMAX_A) ? BCMAX_A : count;
+    bcemit_AD(fs, BC_UNDEFER, (BCReg)chunk, base);
+    count -= chunk;
+  }
+}
+
+static void bcemit_defer_unwind_to(FuncState *fs, FuncScope *target)
+{
+  FuncScope *bl = fs->bl;
+  uint16_t run_base = 0;
+  uint16_t run_count = 0;
+
+  while (bl != target) {
+    if ((bl->flags & FSCOPE_DEFER) && bl->defer_count) {
+      uint16_t scope_base = bl->defer_base;
+      uint16_t scope_count = bl->defer_count;
+      if (run_count && run_base == (uint16_t)(scope_base + scope_count)) {
+        run_count = (uint16_t)(run_count + scope_count);
+        run_base = scope_base;
+      } else {
+        if (run_count)
+          bcemit_defer_unwind_emit(fs, run_base, run_count);
+        run_base = scope_base;
+        run_count = scope_count;
+      }
+      fs->total_defer = (uint16_t)(fs->total_defer - scope_count);
+      bl->defer_count = 0;
+      bl->defer_top = NULL;
+      bl->flags &= (uint8_t)~FSCOPE_DEFER;
+    }
+    bl = bl->prev;
+  }
+  if (run_count)
+    bcemit_defer_unwind_emit(fs, run_base, run_count);
+}
+
+static void bcemit_defer_register(FuncState *fs, FuncScope *bl, DeferEntry *entry)
+{
+  BCReg defer_idx;
+  lj_assertFS(bl->defer_top == entry, "defer stack mismatch");
+  lj_assertFS(entry->arg_base + entry->nargs == fs->freereg,
+              "defer argument span mismatch");
+  defer_idx = (BCReg)(bl->defer_base + bl->defer_count - 1);
+  lj_assertFS(defer_idx <= BCMAX_C, "defer index overflow");
+  bcemit_ABC(fs, BC_DEFER, entry->handler_reg, entry->nargs, defer_idx);
+  fs->freereg = entry->handler_reg;
+  bl->defer_top = entry->prev;
+  entry->prev = fs->defer_free;
+  fs->defer_free = entry;
+}
+
 
 /* Emit method lookup expression. */
 static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
@@ -1649,16 +1706,72 @@ static VarInfo *gola_findlabel(LexState *ls, GCstr *name)
 
 /* -- Scope handling ------------------------------------------------------ */
 
+static void defer_scope_init(FuncState *fs, FuncScope *bl)
+{
+  bl->defer_base = fs->total_defer;
+  bl->defer_count = 0;
+  bl->defer_top = NULL;
+}
+
+static DeferEntry *defer_scope_push(FuncState *fs, FuncScope *bl,
+                                   BCReg handler_reg, BCReg arg_base,
+                                   uint8_t nargs)
+{
+  DeferEntry *entry;
+  checklimit(fs, (MSize)nargs, BCMAX_B+1, "defer arguments");
+  checklimit(fs, (MSize)(bl->defer_base + bl->defer_count + 1), BCMAX_C+1,
+             "defer handlers");
+  if (fs->defer_free) {
+    entry = fs->defer_free;
+    fs->defer_free = entry->prev;
+  } else {
+    entry = (DeferEntry *)lj_mem_new(fs->L, sizeof(DeferEntry));
+  }
+  entry->handler_reg = handler_reg;
+  entry->arg_base = arg_base;
+  entry->nargs = nargs;
+  entry->prev = bl->defer_top;
+  bl->defer_top = entry;
+  bl->defer_count++;
+  fs->total_defer++;
+  bl->flags |= FSCOPE_DEFER;
+  fs->flags |= PROTF_HAS_DEFER;
+  return entry;
+}
+
+static LJ_UNUSED void defer_scope_pop_all(FuncState *fs, FuncScope *bl)
+{
+  DeferEntry *entry = bl->defer_top;
+  while (entry) {
+    DeferEntry *prev = entry->prev;
+    entry->prev = fs->defer_free;
+    fs->defer_free = entry;
+    entry = prev;
+  }
+  bl->defer_top = NULL;
+}
+
+static void defer_scope_release_free(FuncState *fs)
+{
+  DeferEntry *entry = fs->defer_free;
+  global_State *g = G(fs->L);
+  while (entry) {
+    DeferEntry *prev = entry->prev;
+    lj_mem_free(g, entry, sizeof(DeferEntry));
+    entry = prev;
+  }
+  fs->defer_free = NULL;
+}
+
 /* Begin a scope. */
 static void fscope_begin(FuncState *fs, FuncScope *bl, int flags)
 {
   bl->nactvar = (uint8_t)fs->nactvar;
-  bl->flags = flags;
+  bl->flags = (uint8_t)flags;
+  bl->flags &= (uint8_t)~FSCOPE_DEFER;
   bl->vstart = fs->ls->vtop;
   bl->prev = fs->bl;
-  bl->defer_base = fs->total_defer;
-  bl->defer_count = 0;
-  bl->defer_top = NULL;
+  defer_scope_init(fs, bl);
   fs->bl = bl;
   lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
 }
@@ -1687,6 +1800,13 @@ static void fscope_end(FuncState *fs)
 {
   FuncScope *bl = fs->bl;
   LexState *ls = fs->ls;
+  if ((bl->flags & FSCOPE_DEFER) && bl->defer_count) {
+    bcemit_defer_unwind_emit(fs, bl->defer_base, bl->defer_count);
+    fs->total_defer = (uint16_t)(fs->total_defer - bl->defer_count);
+    bl->defer_count = 0;
+    bl->defer_top = NULL;
+    bl->flags &= (uint8_t)~FSCOPE_DEFER;
+  }
   fs->bl = bl->prev;
   var_remove(ls, bl->nactvar);
   fs->freereg = fs->nactvar;
@@ -1987,7 +2107,8 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
   pt->gct = ~LJ_TPROTO;
   pt->sizept = (MSize)sizept;
   pt->trace = 0;
-  pt->flags = (uint8_t)(fs->flags & ~(PROTO_HAS_RETURN|PROTO_FIXUP_RETURN));
+  pt->flags = (uint8_t)(fs->flags & ~(PROTO_HAS_RETURN|PROTO_FIXUP_RETURN|PROTF_HAS_DEFER));
+  pt->gflag = (fs->flags & PROTF_HAS_DEFER) ? PROTOG_HAS_DEFER : 0;
   pt->numparams = fs->numparams;
   pt->framesize = fs->framesize;
   setgcref(pt->chunkname, obj2gco(ls->chunkname));
@@ -2006,6 +2127,7 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
 
   L->top--;  /* Pop table of constants. */
   ls->vtop = fs->vbase;  /* Reset variable stack. */
+  defer_scope_release_free(fs);
   ls->fs = fs->prev;
   lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
   return pt;
@@ -2030,6 +2152,7 @@ static void fs_init(LexState *ls, FuncState *fs)
   fs->bl = NULL;
   fs->flags = 0;
   fs->total_defer = 0;
+  fs->defer_free = NULL;
   fs->framesize = 1;  /* Minimum frame size. */
   fs->kt = lj_tab_new(L, 0, 0);
   /* Anchor table of constants in stack to avoid being collected. */
@@ -3311,7 +3434,44 @@ static void parse_local(LexState *ls)
   }
 }
 
-/* Parse 'function' statement. */
+/* Parse 'defer' statement. */
+static void parse_defer(LexState *ls, BCLine line)
+{
+  FuncState *fs = ls->fs;
+  FuncScope *bl = fs->bl;
+  ExpDesc handler;
+  BCReg handler_reg;
+  BCReg arg_base;
+  BCReg nargs = 0;
+  DeferEntry *entry;
+
+  if (LJ_UNLIKELY(bl == NULL))
+    err_syntax(ls, LJ_ERR_XDEFER);
+
+  lj_lex_next(ls);
+  parse_body(ls, &handler, 0, line);
+  handler_reg = fs->freereg;
+  bcreg_reserve(fs, 1);
+  expr_free(fs, &handler);
+  expr_toreg(fs, &handler, handler_reg);
+
+  arg_base = fs->freereg;
+  if (ls->tok == '(') {
+    ExpDesc argexp;
+
+    lj_lex_next(ls);
+    if (ls->tok != ')') {
+      arg_base = fs->freereg;
+      nargs = expr_list(ls, &argexp);
+      expr_tonextreg(fs, &argexp);
+    }
+    lex_check(ls, ')');
+  }
+
+  entry = defer_scope_push(fs, bl, handler_reg, arg_base, (uint8_t)nargs);
+  bcemit_defer_register(fs, bl, entry);
+}
+
 static void parse_func(LexState *ls, BCLine line)
 {
   FuncState *fs;
@@ -3352,6 +3512,7 @@ static void parse_return(LexState *ls)
   FuncState *fs = ls->fs;
   lj_lex_next(ls);  /* Skip 'return'. */
   fs->flags |= PROTO_HAS_RETURN;
+  bcemit_defer_unwind_to(fs, NULL);
   if (parse_isend(ls->tok) || ls->tok == ';') {  /* Bare return. */
     ins = BCINS_AD(BC_RET0, 0, 1);
   } else {  /* Return with one or more values. */
@@ -3386,15 +3547,33 @@ static void parse_return(LexState *ls)
 /* Parse 'continue' statement. */
 static void parse_continue(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_CONTINUE;
-  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  if (loop)
+    bcemit_defer_unwind_to(fs, loop);
+
+  fs->bl->flags |= FSCOPE_CONTINUE;
+  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'break' statement. */
 static void parse_break(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_BREAK;
-  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  if (loop) {
+    FuncScope *target = loop->prev;
+    bcemit_defer_unwind_to(fs, target);
+  }
+
+  fs->bl->flags |= FSCOPE_BREAK;
+  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'goto' statement. */
@@ -3696,6 +3875,9 @@ static int parse_stmt(LexState *ls)
     break;
   case TK_repeat:
     parse_repeat(ls, line);
+    break;
+  case TK_defer:
+    parse_defer(ls, line);
     break;
   case TK_function:
     parse_func(ls, line);

@@ -161,6 +161,8 @@
   _(ITERN,	base,	lit,	lit,	call) \
   _(VARG,	base,	lit,	lit,	___) \
   _(ISNEXT,	base,	___,	jump,	___) \
+  _(DEFER,	base,	lit,	lit,	___) \
+  _(UNDEFER,	lit,	___,	lit,	___) \
   \
   /* Returns. */ \
   _(RETM,	base,	___,	lit,	___) \

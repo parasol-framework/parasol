@@ -16,7 +16,7 @@
 ** header = ESC 'L' 'J' versionB flagsU [namelenU nameB*]
 ** proto  = lengthU pdata
 ** pdata  = phead bcinsW* uvdataH* kgc* knum* [debugB*]
-** phead  = flagsB numparamsB framesizeB numuvB numkgcU numknU numbcU
+** phead  = flagsB [gflagB] numparamsB framesizeB numuvB numkgcU numknU numbcU
 **          [debuglenU [firstlineU numlineU]]
 ** kgc    = kgctypeU { ktab | (loU hiU) | (rloU rhiU iloU ihiU) | strB* }
 ** knum   = intU0 | (loU1 hiU)
@@ -43,8 +43,9 @@
 #define BCDUMP_F_STRIP		0x02
 #define BCDUMP_F_FFI		0x04
 #define BCDUMP_F_FR2		0x08
+#define BCDUMP_F_DEFER		0x10
 
-#define BCDUMP_F_KNOWN		(BCDUMP_F_FR2*2-1)
+#define BCDUMP_F_KNOWN		(BCDUMP_F_DEFER*2-1)
 
 /* Type codes for the GC constants of a prototype. Plus length for strings. */
 enum {

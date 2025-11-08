@@ -18,6 +18,7 @@
 #include "lj_func.h"
 #include "lj_udata.h"
 #include "lj_meta.h"
+#include "lj_defer.h"
 #include "lj_state.h"
 #include "lj_frame.h"
 #if LJ_HASFFI
@@ -316,8 +317,25 @@ static void gc_traverse_thread(global_State *g, lua_State *th)
       setnilV(o);
   }
   gc_markobj(g, tabref(th->env));
+  {
+    DeferFrame *df = th->defer_frame;
+    while (df) {
+      DeferRecord *entry = df->top;
+      while (entry) {
+        MSize total = (MSize)(entry->nargs + 1);
+        MSize i;
+        for (i = 0; i < total; i++)
+          gc_marktv(g, &entry->slot[i]);
+        entry = entry->prev;
+      }
+      df = df->prev;
+    }
+    if (th->defer_pending)
+      gc_marktv(g, &th->defer_error);
+  }
   lj_state_shrinkstack(th, gc_traverse_frames(g, th));
 }
+
 
 /* Propagate one gray object. Traverse it and turn it black. */
 static size_t propagatemark(global_State *g)

@@ -4166,6 +4166,31 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.endif
     break;
 
+  case BC_DEFER:
+    |  ins_ABC  // RA = handler reg, RB = nargs, RC = defer index
+    |  mov L:CARG1, SAVE_L
+    |  mov L:CARG1->base, BASE
+    |  lea CARG2, [BASE+RA*8]
+    |  mov CARG3d, RBd
+    |  mov CARG4d, RCd
+    |  mov SAVE_PC, PC
+    |  call extern lj_defer_register    // (lua_State *L, TValue *slot, uint32_t nargs, uint32_t index)
+    |  mov BASE, L:CARG1->base
+    |  ins_next
+    break;
+
+  case BC_UNDEFER:
+    |  ins_AD   // RA = count, RD = base index
+    |  mov L:CARG1, SAVE_L
+    |  mov L:CARG1->base, BASE
+    |  mov CARG2d, RAd
+    |  mov CARG3d, RDd
+    |  mov SAVE_PC, PC
+    |  call extern lj_defer_unwind      // (lua_State *L, uint32_t count, uint32_t base)
+    |  mov BASE, L:CARG1->base
+    |  ins_next
+    break;
+
   case BC_VARG:
     |  ins_ABC	// RA = base, RB = nresults+1, RC = numparams
     |  lea TMPR, [BASE+RC*8+(16+FRAME_VARG)]

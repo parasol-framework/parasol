@@ -18,6 +18,7 @@
 #include "lj_func.h"
 #include "lj_meta.h"
 #include "lj_state.h"
+#include "lj_defer.h"
 #include "lj_frame.h"
 #if LJ_HASFFI
 #include "lj_ctype.h"
@@ -136,7 +137,9 @@ static void stack_init(lua_State *L1, lua_State *L)
   L1->base = L1->top = st;
   while (st < stend)  /* Clear new slots. */
     setnilV(st++);
+  lj_defer_state_init(L1);
 }
+
 
 /* -- State handling ------------------------------------------------------ */
 
@@ -164,6 +167,7 @@ static void close_state(lua_State *L)
 {
   global_State *g = G(L);
   lj_func_closeuv(L, tvref(L->stack));
+  lj_defer_state_close(L);
   lj_gc_freeall(g);
   lj_assertG(gcref(g->gc.root) == obj2gco(L),
 	     "main thread is not first GC object");
@@ -329,6 +333,7 @@ void LJ_FASTCALL lj_state_free(global_State *g, lua_State *L)
     setgcrefnull(g->cur_L);
   lj_func_closeuv(L, tvref(L->stack));
   lj_assertG(gcref(L->openupval) == NULL, "stale open upvalues");
+  lj_defer_state_close(L);
   lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
   lj_mem_freet(g, L);
 }

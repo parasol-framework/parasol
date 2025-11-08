@@ -385,6 +385,7 @@ typedef struct GCproto {
   MSize sizept;		/* Total size including colocated arrays. */
   uint8_t sizeuv;	/* Number of upvalues. */
   uint8_t flags;	/* Miscellaneous flags (see below). */
+  uint8_t gflag;	/* Extended runtime flags. */
   uint16_t trace;	/* Anchor for chain of root traces. */
   /* ------ The following fields are for debugging/tracebacks only ------ */
   GCRef chunkname;	/* Name of the chunk this function was defined in. */
@@ -408,6 +409,9 @@ typedef struct GCproto {
 #define PROTO_CLCOUNT		0x20	/* Base of saturating 3 bit counter. */
 #define PROTO_CLC_BITS		3
 #define PROTO_CLC_POLY		(3*PROTO_CLCOUNT)  /* Polymorphic threshold. */
+
+/* Extended flags stored in GCproto::gflag. */
+#define PROTOG_HAS_DEFER		0x01	/* Function registers defer handlers. */
 
 #define PROTO_UV_LOCAL		0x8000	/* Upvalue for local slot. */
 #define PROTO_UV_IMMUTABLE	0x4000	/* Immutable upvalue. */
@@ -682,6 +686,8 @@ typedef struct global_State {
 #define hook_restore(g, h) \
   ((g)->hookmask = ((g)->hookmask & HOOK_EVENTMASK) | (h))
 
+struct DeferFrame;
+
 /* Per-thread state object. */
 struct lua_State {
   GCHeader;
@@ -703,6 +709,11 @@ struct lua_State {
   struct objScript *Script;
   #endif
   uint8_t ProtectedGlobals; // PARASOL PATCHED IN
+  struct DeferFrame *defer_frame;   /* Active defer frame stack. */
+  struct DeferFrame *defer_free;    /* Recycled frames. */
+  TValue defer_error;               /* Stored error while unwinding. */
+  uint8_t defer_pending;            /* Pending error flag. */
+  uint8_t defer_pad[3];
 };
 
 #define G(L)			(mref(L->glref, global_State))

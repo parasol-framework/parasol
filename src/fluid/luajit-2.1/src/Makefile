@@ -521,7 +521,7 @@ LJLIB_C= $(LJLIB_O:$(OBJDIR_PREFIX)%.o=%.c)
 
 LJCORE_O= $(OBJDIR_PREFIX)lj_assert.o $(OBJDIR_PREFIX)lj_gc.o $(OBJDIR_PREFIX)lj_err.o $(OBJDIR_PREFIX)lj_char.o $(OBJDIR_PREFIX)lj_bc.o $(OBJDIR_PREFIX)lj_obj.o $(OBJDIR_PREFIX)lj_buf.o \
 	  $(OBJDIR_PREFIX)lj_str.o $(OBJDIR_PREFIX)lj_tab.o $(OBJDIR_PREFIX)lj_func.o $(OBJDIR_PREFIX)lj_udata.o $(OBJDIR_PREFIX)lj_meta.o $(OBJDIR_PREFIX)lj_debug.o \
-	  $(OBJDIR_PREFIX)lj_prng.o $(OBJDIR_PREFIX)lj_state.o $(OBJDIR_PREFIX)lj_dispatch.o $(OBJDIR_PREFIX)lj_vmevent.o $(OBJDIR_PREFIX)lj_vmmath.o \
+	  $(OBJDIR_PREFIX)lj_prng.o $(OBJDIR_PREFIX)lj_state.o $(OBJDIR_PREFIX)lj_defer.o $(OBJDIR_PREFIX)lj_dispatch.o $(OBJDIR_PREFIX)lj_vmevent.o $(OBJDIR_PREFIX)lj_vmmath.o \
 	  $(OBJDIR_PREFIX)lj_strscan.o $(OBJDIR_PREFIX)lj_strfmt.o $(OBJDIR_PREFIX)lj_strfmt_num.o $(OBJDIR_PREFIX)lj_serialize.o \
 	  $(OBJDIR_PREFIX)lj_api.o $(OBJDIR_PREFIX)lj_profile.o \
 	  $(OBJDIR_PREFIX)lj_lex.o $(OBJDIR_PREFIX)lj_parse.o $(OBJDIR_PREFIX)lj_bcread.o $(OBJDIR_PREFIX)lj_bcwrite.o $(OBJDIR_PREFIX)lj_load.o \
