@@ -2169,11 +2169,29 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
 static void expr_safe_method(LexState *ls, ExpDesc *v)
 {
   FuncState *fs = ls->fs;
-  ExpDesc key, obj, nilv;
+  ExpDesc key, nilv;
   BCReg obj_reg, base_reg;
   BCPos check_nil, skip_nil;
 
   expr_discharge(fs, v);
+  if (v->k == VKNIL) {
+    ExpDesc dummy;
+    lj_lex_next(ls);  /* Consume '?:'. */
+    expr_str(ls, &key);  /* Consume method name */
+    lex_check(ls, '(');  /* Consume opening paren */
+    if (ls->tok != ')') {
+      /* Skip arguments */
+      do {
+        expr(ls, &dummy);
+        if (ls->tok == ',') lj_lex_next(ls);
+        else break;
+      } while (ls->tok != ')');
+    }
+    lex_check(ls, ')');  /* Consume closing paren */
+    expr_init(v, VKNIL, 0);
+    return;
+  }
+
   obj_reg = expr_toanyreg(fs, v);
 
   lj_lex_next(ls);  /* Consume '?:'. */
@@ -2188,21 +2206,20 @@ static void expr_safe_method(LexState *ls, ExpDesc *v)
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);
 
-  /* Nil case: load nil and set up obj for return */
-  bcemit_AD(fs, BC_KPRI, base_reg, VKNIL);
-  expr_init(&obj, VNONRELOC, base_reg);
+  /* Nil case: set v to VKNIL and skip method call */
+  expr_init(v, VKNIL, 0);
   skip_nil = bcemit_jmp(fs);
 
   /* Non-nil case: call method */
   jmp_patch(fs, check_nil, fs->pc);
   fs->freereg = base_reg;
-  expr_init(&obj, VNONRELOC, obj_reg);
-  obj.t = obj.f = NO_JMP;
-  bcemit_method(fs, &obj, &key);
-  parse_args(ls, &obj);
+  v->k = VNONRELOC;
+  v->u.s.info = obj_reg;
+  v->t = v->f = NO_JMP;
+  bcemit_method(fs, v, &key);
+  parse_args(ls, v);
 
   jmp_patch(fs, skip_nil, fs->pc);
-  *v = obj;
 }
 
 /* Get value of constant expression. */
