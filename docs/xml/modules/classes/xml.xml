@@ -24,8 +24,8 @@
 <p>The <fl>Source</fl> field provides object-based input, allowing XML data to be sourced from any object supporting the Read action.</p>
 <p>For batch processing scenarios, the <fl>Path</fl> or <fl>Statement</fl> fields can be changed post-initialisation, causing the XML object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object instances rather than creating new ones.</p>
 <header>Document Structure and Access</header>
-<p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XMLTag</st> structures.  Each XMLTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
-<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XMLTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods to do so are provided in the C++ header for <code>objXML</code> and <code>XMLTag</code>, with additional functions in the <code>xml</code> namespace. Check the header for details.</p>
+<p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XTag</st> structures.  Each XTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
+<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods to do so are provided in the C++ header for <code>objXML</code> and <code>XTag</code>, with additional functions in the <code>xml</code> namespace. Check the header for details.</p>
 <p>Fluid developers need to be aware that reading the <fl>Tags</fl> field generates a copy of the entire tag structure - it should therefore be read only as needed and cached until the XML object is modified.</p>
 <header>Not Supported</header>
 <p>DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for validation instead.</p></description>
@@ -271,14 +271,14 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <method>
       <name>GetTag</name>
-      <comment>Returns a pointer to the <st>XMLTag</st> structure for a given tag index.</comment>
-      <prototype>ERR xml::GetTag(OBJECTPTR Object, INT Index, struct XMLTag ** Result)</prototype>
+      <comment>Returns a pointer to the <st>XTag</st> structure for a given tag index.</comment>
+      <prototype>ERR xml::GetTag(OBJECTPTR Object, INT Index, struct XTag ** Result)</prototype>
       <input>
         <param type="INT" name="Index">The index of the tag that is being retrieved.</param>
-        <param type="struct XMLTag **" name="Result">The <st>XMLTag</st> is returned in this parameter.</param>
+        <param type="struct XTag **" name="Result">The <st>XTag</st> is returned in this parameter.</param>
       </input>
       <description>
-<p>This method will return the <st>XMLTag</st> structure for a given tag <code>Index</code>.  The <code>Index</code> is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
+<p>This method will return the <st>XTag</st> structure for a given tag <code>Index</code>.  The <code>Index</code> is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -716,8 +716,8 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <access read="G">Get</access>
       <type>STRUCT []</type>
       <description>
-<p>The Tags field exposes the complete XML document structure as a hierarchical array of <st>XMLTag</st> structures.  This field becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.</p>
-<p>Each <st>XMLTag</st> will have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
+<p>The Tags field exposes the complete XML document structure as a hierarchical array of <st>XTag</st> structures.  This field becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.</p>
+<p>Each <st>XTag</st> will have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
 <p>Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However, modifications should be performed using the XML object's methods (<method>InsertXML</method>, <method>SetAttrib</method>, <method>RemoveTag</method>, etc.) to maintain internal consistency and trigger appropriate cache invalidation.</p>
 <p>NOTE: Fluid will copy this field on read, caching the value is therefore recommended.</p>
       </description>
@@ -782,20 +782,20 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <field name="Value" type="std::string">Value of the attribute</field>
     </struct>
 
-    <struct name="XMLTag" typeName="XMLTAG">
+    <struct name="XPathValue" typeName="XPATHVALUE">
+      <field name="Type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
+      <field name="NumberValue" type="DOUBLE">Defined if the type is Number or Boolean</field>
+      <field name="StringValue" type="std::string">Defined if the type is String</field>
+    </struct>
+
+    <struct name="XTag" typeName="XTAG">
       <field name="ID" type="INT">Globally unique ID assigned to the tag on creation.</field>
       <field name="ParentID" type="INT">UID of the parent tag</field>
       <field name="LineNo" type="INT">Line number on which this tag was encountered</field>
       <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
       <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>
       <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
-      <field name="Children" type="pf::vector&lt;XMLTag&gt;">Array of child tags</field>
-    </struct>
-
-    <struct name="XPathValue" typeName="XPATHVALUE">
-      <field name="Type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
-      <field name="NumberValue" type="DOUBLE">Defined if the type is Number or Boolean</field>
-      <field name="StringValue" type="std::string">Defined if the type is String</field>
+      <field name="Children" type="pf::vector&lt;XTag&gt;">Array of child tags</field>
     </struct>
 
   </structs>

@@ -118,7 +118,7 @@ typedef struct XTag {
    XTF      Flags;                   // Optional flags
    uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
-   pf::vector<XTag> Children;      // Array of child tags
+   pf::vector<XTag> Children;        // Array of child tags
    XTag(int pID, int pLine = 0) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
