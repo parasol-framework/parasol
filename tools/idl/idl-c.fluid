@@ -242,7 +242,7 @@ function outputLookup(Name, List)
         if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
             -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
             local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
-            if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(int)' .. hash_id end
+            if hash_id:match('^0x[8f][%dabcdef]+') then hash_id = '(int)' .. hash_id end
             list = list .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
         end
     end
@@ -529,7 +529,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       end
    end
 
-   if (func is nil) then
+   if not func then
       local list = ''
       for k, f in ipairs(glFunctions) do
          list = list .. f.name .. '\n'
@@ -537,7 +537,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       error("Function '" .. Name .. "' is not declared in the FDL.  Known functions are:\n" .. list)
    end
 
-   if (Status) then func.status = Status:lower() end
+   if Status then func.status = Status:lower() end
    func.comment     = Comment
    func.description = Description
    func.category    = Category
@@ -568,7 +568,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             error('No comment found for function parameter in ' .. Name .. '()')
          end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
-         if (type != nil) then
+         if type then
             local param = cType({
                type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true
             }, "Function " .. Name)
@@ -581,19 +581,19 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. ","
             end
 
-            if (param.type is '...') then
+            if param.type is '...' then
                jumpArgs = argSeq .. "..."
-               argSeq = argSeq .. "Args... Tags"
+               argSeq ..= "Args... Tags"
             else
                if param.type:find('*$') then
-                  argSeq = argSeq .. param.type .. cName(param)
+                  argSeq ..= param.type .. cName(param)
                else
-                  argSeq = argSeq .. param.type .. " " .. cName(param)
+                  argSeq ..= param.type .. " " .. cName(param)
                end
             end
 
-            if (param.type is "...") then
-               proto = proto .. "..."
+            if param.type is "..." then
+               proto ..= "..."
                doc_proto = doc_proto .. "..."
                if not outValues?? then
                   -- This special case is required when '...' is the first parameter.
@@ -606,9 +606,9 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. "Tags..."
                variadic = true
             else
-               proto = proto .. (param.extType ? param.type) .. " " .. cName(param)
-               doc_proto = doc_proto .. (param.docType ? param.type) .. " " .. cName(param)
-               outValues = outValues .. param.name
+               proto ..= (param.extType ? param.type) .. " " .. cName(param)
+               doc_proto ..= (param.docType ? param.type) .. " " .. cName(param)
+               outValues ..= param.name
             end
 
             last_param = param
@@ -678,7 +678,7 @@ end
 function saveOutput()
    local tempPath = "temp:" .. (glModule.name ? "idl-c-" .. math.random(1000000)):lower() .. ".h"
    local outPath = glOutputPath
-   if (outPath is nil) then
+   if not outPath then
       if glModule.name?? then
          outPath = "sdk:include/parasol/modules/" .. glModule.name:lower() .. ".h"
       else
@@ -719,42 +719,42 @@ function saveOutput()
       for a=1, #glOutput do
          if (glOutput[a] is "__FUNCTION_TABLE__") then
             local out = ''
-            out = out .. "#ifdef PARASOL_STATIC\n"
-            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " [[maybe_unused]] static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
-            out = out .. "#else\n"
-            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
-            out = out .. "#endif\n\n"
+            out ..= "#ifdef PARASOL_STATIC\n"
+            out ..= "#define JUMPTABLE_" .. glModule.name:upper() .. " [[maybe_unused]] static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
+            out ..= "#else\n"
+            out ..= "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
+            out ..= "#endif\n\n"
 
-            out = out .. "struct " .. glModule.name .. "Base {\n"
-            out = out .. "#ifndef PARASOL_STATIC\n"
+            out ..= "struct " .. glModule.name .. "Base {\n"
+            out ..= "#ifndef PARASOL_STATIC\n"
             for k, func in ipairs(glFunctions) do
                if func.def?? then
-                  out = out .. func.def .. "\n"
+                  out ..= func.def .. "\n"
                end
             end
-            out = out .. "#endif // PARASOL_STATIC\n"
-            out = out .. "};\n\n"
+            out ..= "#endif // PARASOL_STATIC\n"
+            out ..= "};\n\n"
 
-            out = out .. "#if !defined(PARASOL_STATIC) and !defined(PRV_" .. glModule.name:upper() .. "_MODULE)\n"
-            out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out ..= "#if !defined(PARASOL_STATIC) and !defined(PRV_" .. glModule.name:upper() .. "_MODULE)\n"
+            out ..= "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
             if glFunctionPrefix?? then
-               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+               out ..= "namespace " .. glFunctionPrefix:lower() .. " {\n"
             end
             for k, func in ipairs(glFunctions) do
                if func.macro?? then
-                  out = out .. func.macro() .. "\n"
+                  out ..= func.macro() .. "\n"
                end
             end
             if glFunctionPrefix?? then
-               out = out .. "} // namespace\n"
+               out ..= "} // namespace\n"
             end
-            out = out .. "#else\n"
+            out ..= "#else\n"
             if glFunctionPrefix?? then
-               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+               out ..= "namespace " .. glFunctionPrefix:lower() .. " {\n"
             end
             for k, func in ipairs(glFunctions) do
                if func.staticMacro?? and (func.status != 'private') then
-                  out = out .. func.staticMacro() .. "\n"
+                  out ..= func.staticMacro() .. "\n"
                end
             end
             if glFunctionPrefix?? then
@@ -770,7 +770,7 @@ function saveOutput()
                blank = 0
             end
 
-            if (blank < 2) then file.acWrite(str, str:len()) end
+            if blank < 2 then file.acWrite(str, str:len()) end
          end
       end
    end
@@ -784,7 +784,7 @@ end
 -- Generate private C function prototypes for the module.
 
 function buildPrototypes()
-   if (glClasses != nil) then
+   if glClasses then
       for className, cl in pairs(glClasses) do
          if not table.empty(cl.methods) then
             for _, method in ipairs(cl.methods) do
@@ -810,7 +810,7 @@ function buildPrototypes()
 
       for k, func in ipairs(glFunctions) do
          local response
-         if (func.result != nil) and (func.result.type != nil) then
+         if func.result and func.result.type then
             response = func.result.fullType.c_type
          else
             response = "void"
@@ -820,14 +820,14 @@ function buildPrototypes()
          func.docPrototype = (func.doc_response ? "void") .. " " .. prefix .. func.name .. "(" .. (func.doc_proto ? "") .. ")"
 
          if glFunctionPrefix?? then
-            proto = proto .. 'extern ' .. func.prototype .. ";\n"
+            proto ..= 'extern ' .. func.prototype .. ";\n"
          else
-            proto = proto .. 'extern "C" ' .. func.prototype .. ";\n"
+            proto ..= 'extern "C" ' .. func.prototype .. ";\n"
          end
       end
 
       if glFunctionPrefix?? then
-         proto = proto .. '\n} // namespace\n'
+         proto ..= '\n} // namespace\n'
       end
 
       return proto
@@ -847,20 +847,20 @@ function buildDefs()
 
    local flist = "\nconst struct Function glFunctions[] = {\n"
    for _, func in ipairs(glFunctions) do
-      flist = flist .. "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
+      flist ..= "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
-   flist = flist .. "   { nullptr, nullptr, nullptr }\n"
-   flist = flist .. "};\n\n"
+   flist ..= "   { nullptr, nullptr, nullptr }\n"
+   flist ..= "};\n\n"
 
    table.sort(glFunctions, function(a,b) return a.name < b.name end)
 
    local plist = ""
    for _, func in ipairs(glFunctions) do
-      plist = plist .."FDEF args" .. func.name .. "[] = {"
+      plist ..= "FDEF args" .. func.name .. "[] = {"
 
-      // Process the result type first
+      -- Process the result type first
 
-      if (func.result != nil) and (func.result.type != nil) then
+      if func.result and func.result.type then
          local type = func.result.fullType
 
          if type?? then
@@ -870,19 +870,19 @@ function buildDefs()
                result_name = "Error"
             elseif (fd is "FD_OBJECTPTR") then
                result_name = "Object"
-            elseif func.result.struct != nil then
+            elseif func.result.struct then
                result_name = func.result.struct
             end
-            if (func.result.allocated) then fd = fd .. "|FD_ALLOC" end
-            plist = plist .. " { \"" .. result_name .. "\", " .. fd .. " }, "
+            if func.result.allocated then fd = fd .. "|FD_ALLOC" end
+            plist ..= " { \"" .. result_name .. "\", " .. fd .. " }, "
          else
-            plist = plist .. " { \"" .. func.result.type .. "\", FD_VOID }, "
+            plist ..= " { \"" .. func.result.type .. "\", FD_VOID }, "
          end
       else
-         plist = plist .. " { \"Void\", FD_VOID }, "
+         plist ..= " { \"Void\", FD_VOID }, "
       end
 
-      plist = plist .. buildInputParameters(func.input) .. " };\n"
+      plist ..= buildInputParameters(func.input) .. " };\n"
    end
 
    return "#ifndef FDEF\n#define FDEF static const struct FunctionField\n#endif\n\n" .. plist .. flist
@@ -896,9 +896,9 @@ function buildInputParameters(List)
    if List then
       for _, param in ipairs(List) do
          local fd = param.fullType.fd
-         if (param.allocated) then fd = fd .. "|FD_ALLOC" end
-         if (param.resultValue) then fd = fd .. "|FD_RESULT" end
-         if (param.struct != nil) then
+         if param.allocated then fd = fd .. "|FD_ALLOC" end
+         if param.resultValue then fd = fd .. "|FD_RESULT" end
+         if param.struct then
             plist = plist .. "{ \"" .. param.struct .. ":" .. param.name .. "\", " .. fd .. " }, "
          else
             plist = plist .. "{ \"" .. param.name .. "\", " .. fd .. " }, "

@@ -1379,7 +1379,7 @@ typedef struct RGB8 {
    uint8_t Blue;   // Blue component value
    uint8_t Alpha;  // Alpha component value
    constexpr RGB8() noexcept = default;
-   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept 
+   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept
       : Red(r), Green(g), Blue(b), Alpha(a) { }
 } RGB8;
 

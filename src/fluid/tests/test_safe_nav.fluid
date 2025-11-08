@@ -57,7 +57,7 @@ function testSafeMethodValue()
       return self.prefix .. ", " .. name
    end
    local result = greeter?:say("World")
-   assert(result is "Hello, World", "Safe method should call method when base exists")
+   assert(result is "Hello, World", "Safe method should call method when base exists, got " .. tostring(result))
 end
 
 function testSafeMethodChain()
@@ -66,9 +66,9 @@ function testSafeMethodChain()
       return self.profile
    end
    local email = account?:getProfile()?.email
-   assert(email is "user@example.com", "Safe method chain should propagate returned table")
+   assert(email is "user@example.com", "Safe method chain should propagate returned table, got " .. tostring(email))
    local missing = nil?:getProfile()?.email
-   assert(missing is nil, "Safe method chain should short-circuit on nil base")
+   assert(missing is nil, "Safe method chain should short-circuit on nil base, got " .. tostring(missing))
 end
 
 function testIntegrationWithPresence()
@@ -126,7 +126,7 @@ function testSafeMethodMultipleArgs()
       end
    }
    local result = calculator?:add(1, 2, 3)
-   assert(result is 6, "Safe method should handle multiple arguments")
+   assert(result is 6, "Safe method should handle multiple arguments, got " .. tostring(result))
 end
 
 -- Test safe index with variable key
@@ -168,7 +168,7 @@ function testChainingMethodsAndFields()
       end
    }
    local v = service?:getData()?.value
-   assert(v is 42, "Chaining methods and fields should work")
+   assert(v is 42, "Chaining methods and fields should work, got " .. tostring(v))
 
    local nilService = nil
    local v2 = nilService?:getData()?.value
