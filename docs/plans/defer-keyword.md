@@ -64,6 +64,18 @@ end
 
 The key insight: we create a local variable holding an anonymous function, mark it with a special flag, and execute it when the variable goes out of scope.
 
+## Findings from 2025-02-16 Investigation
+
+The previous implementation attempt (see attached chat log) did not reach a working MVP. A closer inspection of the LuaJIT parser highlighted several concrete pitfalls that must be addressed explicitly in the plan before resuming work:
+
+1. **Scope teardown order in `fscope_end()`** (`src/fluid/luajit-2.1/src/lj_parse.c`, lines ~1671-1695). The original attempt added defer execution *after* the existing `var_remove()` call. Because `var_remove()` shrinks both the register file and the variable metadata, the deferred closures were unreachable by the time execution was attempted. Any helper must therefore run **before** `var_remove()` adjusts `fs->nactvar`/`fs->freereg`.
+2. **Implicit returns in `fs_fixup_ret()`** (`src/fluid/luajit-2.1/src/lj_parse.c`, lines ~1913-1947). Functions that end without an explicit `return` emit a trailing `BC_RET0` *after* all scopes have already been closed. Without a hook here, top-level defers never fire. We need a single helper that both `parse_return()` and `fs_fixup_ret()` can call before emitting return bytecode.
+3. **Loop semantics and `continue` handling** (`parse_break()`/`parse_continue()` around lines ~3333-3405 and the loop lowering paths around lines ~3450-3600). The failed attempt tried to execute every defer when encountering `continue`, which incorrectly drained outer-scope handlers and broke subsequent iterations. The parser must differentiate between the current loop scope (`FuncScope` with `FSCOPE_LOOP`) and surrounding scopes so that only the innermost active defers execute for `continue`/`break`.
+4. **Register reuse across iterations**. Hidden locals for defers reuse the same register slot each time a defer statement is encountered in a loop body. The investigation confirmed that this is safe as long as the helper executes defers before `var_remove()` in every scope exit (including loop bodies). No additional runtime list structure is required once ordering is corrected.
+5. **Test suite location**. The plan referenced `src/fluid/tests/test_defer.fluid`, but this file is currently absent from the repository. Phase 1 should provision a minimal smoke test (e.g., temporary Flute script under `src/fluid/tests/`) or update the plan to create it alongside the implementation.
+
+These findings are reflected in the revised breakdown below.
+
 ## Detailed Implementation Steps
 
 ### 1. Add `defer` Keyword Token
@@ -562,8 +574,8 @@ static void parse_defer(LexState *ls)
 2. JIT compiler compatibility (may need to disable JIT for defer initially)
 3. Edge cases like defer in tail-call positions
 
-**File**: Already exists at `src/fluid/tests/test_defer.fluid`
-**Impact**: Zero - tests are ready
+**File**: To be added at `src/fluid/tests/test_defer.fluid` during Phase 1.6
+**Impact**: Medium - new automated test harness required
 
 ## Implementation Phases
 
@@ -579,44 +591,69 @@ static void parse_defer(LexState *ls)
 
 ### Phase 1: MVP (Minimal Viable Product)
 
-**Goal**: Basic defer functionality without argument support or error path handling.
+**Goal**: Basic defer functionality without argument support or specialised error recovery.
 
-**Scope**:
-- Add `defer` keyword token
-- Add `VSTACK_DEFER` flag
-- Implement `parse_defer()` for parameter-less defers
-- Modify `fscope_end()` to execute defers
-- Handle `return`, `break`, `continue` early exits
-- Pass basic test cases
+**Progression**: Phase 1 is split into six incremental sub-phases so that each behavioural milestone can be validated independently.
 
-**Estimated effort**: 8-12 hours
+#### Phase 1.1 – Lexical and flag scaffolding
+- Extend `src/fluid/luajit-2.1/src/lj_lex.h` with `_(defer)`.
+- Introduce `VSTACK_DEFER` beside the existing `VSTACK_*` bits in `lj_parse.c`.
+- Acceptance: repository builds successfully; lexer recognises `defer` (sanity check using a minimal Fluid script that only tokenises the keyword).
 
-**Completion criteria**: **10 of 13 tests passing**
+#### Phase 1.2 – Parser recognition for `defer`
+- Add a `parse_defer()` prototype near the other statement helpers.
+- Hook `parse_stmt()` to dispatch on `TK_defer`.
+- Inside `parse_defer()` create a hidden local (name can reuse `NAME_BLANK`) that stores the anonymous closure produced by `parse_body()`; mark its `VarInfo` with `VSTACK_DEFER` and ensure `fs->freereg` advances exactly once.
+- Acceptance: AST/bytecode emission should succeed for a script containing a defer with an empty body; no execution yet.
 
-The following tests MUST pass before Phase 2:
-1. ✓ `testBasicExecution` - Core: defer executes at scope end
-2. ✓ `testLifoOrder` - Core: multiple defers execute in reverse order
-3. ✓ `testEarlyReturn` - Core: defer executes before return
-4. ✓ `testNestedScopes` - Core: nested scopes handle defers correctly
-5. ✓ `testBreak` - Core: defer executes on break
-6. ✓ `testContinue` - Core: defer executes on continue
-7. ✓ `testUpvalues` - Core: defers capture upvalues correctly
-8. ✓ `testConditionalScopes` - Core: defers in if/else blocks work
-9. ✓ `testLoopMultipleDefers` - Core: complex nested loop scenarios
-10. ✓ `testRecursive` - Core: defer works in recursive functions
-11. ✓ `testClosureReturn` - Core: defer in closures with upvalues
+#### Phase 1.3 – Scope-exit execution helper
+- Implement `execute_defers(FuncState *fs, BCReg limit)` (or similar) that scans locals from `fs->nactvar-1` down to `limit`, emitting `BC_CALL` for each `VSTACK_DEFER` entry.
+- Call this helper **before** `var_remove()` inside `fscope_end()` and adjust `fs->freereg` so that the helper does not clobber live registers.
+- Update `fs_fixup_ret()` to run the helper before emitting implicit `BC_RET0` so that bare returns honour defer handlers.
+- Acceptance: manually inspect generated bytecode for a simple function containing a defer and confirm a `BC_CALL` precedes the return slot; run a headless script to ensure scope-exit calls trigger on implicit returns.
 
-**Expected failures** (Phase 2 features):
-- ✗ `testArgumentSnapshot` - Requires argument snapshot support
-- ✗ `testResourceCleanupPattern` - Requires argument snapshot support
+#### Phase 1.4 – Explicit `return`
+- Invoke the helper from `parse_return()` immediately before generating any `BC_RET*` instruction.
+- Ensure tail-call optimisation paths still work (verify `BC_CALLT`/`BC_RETM` emission); update helper signature if it needs to temporarily park return registers.
+- Acceptance: Fluid snippet with an early `return` inside a function must execute defers once before returning control.
 
-**Expected failures** (Phase 3 features):
-- ✗ `testHandlerError` - Requires error path handling
+#### Phase 1.5 – Loop control flow (`break`/`continue`)
+- Teach the helper to limit execution to the active loop scope: locate the innermost `FuncScope` flagged with `FSCOPE_LOOP` and use its `nactvar` as the lower bound when responding to `continue`.
+- Modify `parse_break()` to drain all defers from the current `FuncScope` chain up to (but excluding) the surrounding loop’s outer variables; modify `parse_continue()` to stop at the loop scope.
+- Ensure `fscope_loop_continue()` remains a no-op until after defer execution so jump targets stay intact.
+- Acceptance: create Fluid snippets covering `break` and `continue` in loops; confirm LIFO ordering and per-iteration execution (e.g., use print statements during manual testing).
 
-**Validation command**:
+#### Phase 1.6 – Minimal regression test harness
+- Author `src/fluid/tests/test_defer.fluid` (or a new Flute-based harness if naming conflicts exist) implementing at least the ten Phase 1 scenarios listed below.
+- Wire the test into the existing Fluid test runner (update `CMakeLists.txt` or Flute manifest if necessary).
+- Acceptance: `parasol --log-warning --gfx-driver=headless` run of the new test passes for sub-phases 1.1–1.5; document the command in this plan for future runs.
+
+**Completion criteria**: After Phase 1.6, the following behavioural checks must pass (automated once the new test exists):
+1. ✓ `testBasicExecution`
+2. ✓ `testLifoOrder`
+3. ✓ `testEarlyReturn`
+4. ✓ `testNestedScopes`
+5. ✓ `testBreak`
+6. ✓ `testContinue`
+7. ✓ `testUpvalues`
+8. ✓ `testConditionalScopes`
+9. ✓ `testLoopMultipleDefers`
+10. ✓ `testRecursive`
+11. ✓ `testClosureReturn`
+
+**Expected failures** while Phase 1 is in progress:
+- ✗ `testArgumentSnapshot`
+- ✗ `testResourceCleanupPattern`
+- ✗ `testHandlerError`
+
+**Validation command** (to be finalised in Phase 1.6):
 ```bash
-cd src/fluid/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/fluid/tests/test_defer.fluid --gfx-driver=headless
+cmake --build build/agents --config Release --parallel
+cmake --install build/agents --config Release
+build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid
 ```
+
+> Note: Replace the final command with the precise path once the new test harness lands.
 
 **Do NOT proceed to Phase 2 until all 10 Phase 1 tests pass.**
 
