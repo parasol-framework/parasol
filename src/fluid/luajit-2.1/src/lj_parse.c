@@ -99,11 +99,21 @@ static int expr_numiszero(ExpDesc *e)
 }
 
 /* Per-function linked list of scope blocks. */
+typedef struct DeferEntry {
+  struct DeferEntry *prev;      /* Link to next newest defer in this scope. */
+  BCReg handler_reg;            /* Register holding the handler closure. */
+  BCReg arg_base;               /* Base register containing captured args. */
+  uint8_t nargs;                /* Number of captured arguments. */
+} DeferEntry;
+
 typedef struct FuncScope {
   struct FuncScope *prev;	/* Link to outer scope. */
   MSize vstart;			/* Start of block-local variables. */
   uint8_t nactvar;		/* Number of active vars outside the scope. */
   uint8_t flags;		/* Scope flags. */
+  uint16_t defer_base;          /* Number of defers owned by outer scopes. */
+  uint16_t defer_count;         /* Defers registered inside this scope. */
+  DeferEntry *defer_top;        /* Stack of defers declared in this scope. */
 } FuncScope;
 
 #define FSCOPE_LOOP		0x01	/* Scope is a (breakable) loop. */
@@ -112,6 +122,7 @@ typedef struct FuncScope {
 #define FSCOPE_UPVAL		0x08	/* Upvalue in scope. */
 #define FSCOPE_NOCLOSE		0x10	/* Do not close upvalues. */
 #define FSCOPE_CONTINUE	0x20	/* Continue used in scope. */
+#define FSCOPE_DEFER	0x40	/* Scope owns one or more defers. */
 
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
 #define NAME_CONTINUE	((GCstr *)(uintptr_t)2)
@@ -144,6 +155,7 @@ typedef struct FuncState {
   BCPos bclim;			/* Limit of bytecode stack. */
   MSize vbase;			/* Base of variable stack for this function. */
   uint8_t flags;		/* Prototype flags. */
+  uint16_t total_defer;         /* Total number of defers declared so far. */
   uint8_t numparams;		/* Number of parameters. */
   uint8_t framesize;		/* Fixed frame size. */
   uint8_t nuv;			/* Number of upvalues */
@@ -1644,6 +1656,9 @@ static void fscope_begin(FuncState *fs, FuncScope *bl, int flags)
   bl->flags = flags;
   bl->vstart = fs->ls->vtop;
   bl->prev = fs->bl;
+  bl->defer_base = fs->total_defer;
+  bl->defer_count = 0;
+  bl->defer_top = NULL;
   fs->bl = bl;
   lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
 }
@@ -2014,6 +2029,7 @@ static void fs_init(LexState *ls, FuncState *fs)
   fs->nuv = 0;
   fs->bl = NULL;
   fs->flags = 0;
+  fs->total_defer = 0;
   fs->framesize = 1;  /* Minimum frame size. */
   fs->kt = lj_tab_new(L, 0, 0);
   /* Anchor table of constants in stack to avoid being collected. */

@@ -4,11 +4,15 @@
 
 This document provides a detailed step-by-step implementation plan for the `defer` keyword in Fluid/LuaJIT. The `defer` keyword allows functions to be registered for execution at the end of the scope in which they are created, similar to Go's `defer` statement.
 
-**Status:** 📋 **Implementation Plan** - Not yet started
+**Status:** 🚧 **Implementation In Progress** - Lexer keyword and scope bookkeeping staged
 
 **Priority:** ⭐⭐⭐⭐ **High**
 
 **Estimated Effort:** 20-30 hours
+
+## Progress Log
+
+- ✅ Lexer recognises the `defer` keyword and parser scopes now track deferred handler bookkeeping fields (Step 1 & partial Step 2).
 
 ## Feature Specification
 
