@@ -2091,7 +2091,7 @@ static void expr_safe_field(LexState *ls, ExpDesc *v)
   FuncState *fs = ls->fs;
   ExpDesc key, nilv;
   BCReg obj_reg;
-  BCPos check_nil, skip_nil;
+  BCPos check_nil, skip_field;
 
   lj_lex_next(ls);  /* Consume '?.'. */
   expr_str(ls, &key);
@@ -2105,22 +2105,22 @@ static void expr_safe_field(LexState *ls, ExpDesc *v)
   obj_reg = expr_toanyreg(fs, v);
 
   /* Check if obj == nil: BC_ISEQP skips next instruction when equal */
-  /* If obj == nil: ISEQP skips the JMP, falls through to return nil */
-  /* If obj != nil: ISEQP doesn't skip, executes JMP to field access */
   expr_init(&nilv, VKNIL, 0);
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
 
-  /* Nil case (obj == nil): return nil */
+  /* Nil case: set v to VKNIL */
   expr_init(v, VKNIL, 0);
-  skip_nil = bcemit_jmp(fs);  /* Skip field access */
+  skip_field = bcemit_jmp(fs);  /* Skip field access */
 
-  /* Non-nil case (obj != nil): evaluate obj.field */
+  /* Non-nil case: evaluate obj.field */
   jmp_patch(fs, check_nil, fs->pc);
+  v->k = VNONRELOC;
+  v->u.s.info = obj_reg;
   expr_index(fs, v, &key);
 
-  /* Merge point */
-  jmp_patch(fs, skip_nil, fs->pc);
+  /* Merge point: patch skip to here */
+  jmp_patch(fs, skip_field, fs->pc);
 }
 
 /* Parse safe navigation for index access: obj?[expr] */
@@ -2142,20 +2142,23 @@ static void expr_safe_index(LexState *ls, ExpDesc *v)
 
   obj_reg = expr_toanyreg(fs, v);
 
-  /* Check if obj == nil: BC_ISEQP skips next instruction when equal */
-  /* If obj == nil: ISEQP skips the JMP, falls through to return nil */
-  /* If obj != nil: ISEQP doesn't skip, executes JMP to index access */
+  /* Check if obj == nil BEFORE evaluating the key expression */
   expr_init(&nilv, VKNIL, 0);
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);  /* Jumped to when obj != nil */
 
-  /* Nil case (obj == nil): return nil */
+  /* Nil case (obj == nil): set v to VKNIL and skip to merge */
   expr_init(v, VKNIL, 0);
-  skip_nil = bcemit_jmp(fs);  /* Skip index access */
+  skip_nil = bcemit_jmp(fs);  /* Jump over key evaluation bytecode */
 
-  /* Non-nil case (obj != nil): evaluate obj[key] */
+  /* Parse key expression at compile time (consumes tokens) */
+  /* This bytecode is only executed at runtime if obj != nil */
   jmp_patch(fs, check_nil, fs->pc);
-  expr_bracket(ls, &key);
+  expr_bracket(ls, &key);  /* Parse and emit key evaluation */
+
+  /* Non-nil case (obj != nil): perform index operation */
+  v->k = VNONRELOC;
+  v->u.s.info = obj_reg;
   expr_index(fs, v, &key);
 
   /* Merge point */
