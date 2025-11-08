@@ -2246,45 +2246,48 @@ static void expr_safe_index_chain(LexState *ls, ExpDesc *v)
   v->u.s.aux |= SAFE_NAV_CHAIN_FLAG;
 }
 
-/* Parse safe navigation for method calls: obj?:method(...) */
-static void expr_safe_method(LexState *ls, ExpDesc *v)
+static void expr_safe_method_call(LexState *ls, ExpDesc *v, ExpDesc *key)
 {
   FuncState *fs = ls->fs;
-  ExpDesc key, nilv;
-  BCReg obj_reg, base_reg;
-  BCPos check_nil, skip_nil;
+  ExpDesc nilv;
+  BCReg obj_reg, result_reg;
+  BCPos check_nil, skip_call;
 
   expr_discharge(fs, v);
   obj_reg = expr_toanyreg(fs, v);
 
-  lj_lex_next(ls);  /* Consume '?:'. */
-  expr_str(ls, &key);
+  result_reg = fs->freereg;
 
-  base_reg = fs->freereg;
-  bcreg_reserve(fs, 1);
-
-  /* If obj == nil: ISEQP skips JMP, loads nil */
-  /* If obj != nil: ISEQP doesn't skip, JMPs to method call */
   expr_init(&nilv, VKNIL, 0);
   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
   check_nil = bcemit_jmp(fs);
 
-  /* Nil case: write nil to result register and skip method call */
-  bcemit_AD(fs, BC_KPRI, base_reg, VKNIL);
-  expr_init(v, VNONRELOC, base_reg);
-  skip_nil = bcemit_jmp(fs);
-
-  /* Non-nil case: call method */
-  jmp_patch(fs, check_nil, fs->pc);
-  fs->freereg = base_reg;
   v->k = VNONRELOC;
   v->u.s.info = obj_reg;
   v->t = v->f = NO_JMP;
-  bcemit_method(fs, v, &key);
+  bcemit_method(fs, v, key);
   parse_args(ls, v);
+  expr_discharge(fs, v);
+  expr_toreg(fs, v, result_reg);
 
-  jmp_patch(fs, skip_nil, fs->pc);
+  skip_call = bcemit_jmp(fs);
+
+  jmp_patch(fs, check_nil, fs->pc);
+  bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+
+  jmp_patch(fs, skip_call, fs->pc);
+  expr_init(v, VNONRELOC, result_reg);
   v->u.s.aux |= SAFE_NAV_CHAIN_FLAG;
+}
+
+/* Parse safe navigation for method calls: obj?:method(...) */
+static void expr_safe_method(LexState *ls, ExpDesc *v)
+{
+  ExpDesc key;
+
+  lj_lex_next(ls);  /* Consume '?:'. */
+  expr_str(ls, &key);
+  expr_safe_method_call(ls, v, &key);
 }
 
 /* Get value of constant expression. */
@@ -2624,8 +2627,12 @@ static void expr_primary(LexState *ls, ExpDesc *v)
       ExpDesc key;
       lj_lex_next(ls);
       expr_str(ls, &key);
-      bcemit_method(fs, v, &key);
-      parse_args(ls, v);
+      if (v->k == VNONRELOC && (v->u.s.aux & SAFE_NAV_CHAIN_FLAG)) {
+        expr_safe_method_call(ls, v, &key);
+      } else {
+        bcemit_method(fs, v, &key);
+        parse_args(ls, v);
+      }
     } else if (ls->tok == TK_plusplus) {
       lj_lex_next(ls);
       inc_dec_op(ls, OPR_ADD, v, 1);
