@@ -125,6 +125,7 @@ typedef uint16_t VarIndex;
 #define VSTACK_VAR_RW		0x01	/* R/W variable. */
 #define VSTACK_GOTO		0x02	/* Pending goto. */
 #define VSTACK_LABEL		0x04	/* Label. */
+#define VSTACK_DEFER		0x08	/* Deferred handler. */
 
 /* Per-function state. */
 typedef struct FuncState {
@@ -1667,12 +1668,40 @@ static void fscope_loop_continue(FuncState *fs, BCPos pos)
   }
 }
 
+static void execute_defers(FuncState *fs, BCReg limit)
+{
+  LexState *ls = fs->ls;
+  BCReg i = fs->nactvar;
+  BCReg oldfreereg;
+
+  if (fs->freereg < fs->nactvar)
+    fs->freereg = fs->nactvar;
+  oldfreereg = fs->freereg;
+
+  while (i > limit) {
+    VarInfo *v = &var_get(ls, fs, --i);
+    if (v->info & VSTACK_DEFER) {
+      BCReg slot = v->slot;
+      lj_assertFS(slot < fs->nactvar, "invalid defer slot");
+      {
+        BCReg callbase = fs->freereg;
+        bcreg_reserve(fs, 1);
+        bcemit_AD(fs, BC_MOV, callbase, slot);
+        bcemit_ABC(fs, BC_CALL, callbase, 1, 1);
+      }
+    }
+  }
+
+  fs->freereg = oldfreereg;
+}
+
 /* End a scope. */
 static void fscope_end(FuncState *fs)
 {
   FuncScope *bl = fs->bl;
   LexState *ls = fs->ls;
   fs->bl = bl->prev;
+  execute_defers(fs, bl->nactvar);
   var_remove(ls, bl->nactvar);
   fs->freereg = fs->nactvar;
   lj_assertFS(bl->nactvar == fs->nactvar, "bad regalloc");
@@ -1914,6 +1943,7 @@ static void fs_fixup_ret(FuncState *fs)
 {
   BCPos lastpc = fs->pc;
   if (lastpc <= fs->lasttarget || !bcopisret(bc_op(fs->bcbase[lastpc-1].ins))) {
+    execute_defers(fs, 0);
     if ((fs->bl->flags & FSCOPE_UPVAL))
       bcemit_AJ(fs, BC_UCLO, 0, 0);
     bcemit_AD(fs, BC_RET0, 0, 1);  /* Need final return. */
@@ -3295,6 +3325,41 @@ static void parse_local(LexState *ls)
   }
 }
 
+static void snapshot_return_regs(FuncState *fs, BCIns *ins)
+{
+  BCOp op = bc_op(*ins);
+
+  if (op == BC_RET1) {
+    BCReg src = bc_a(*ins);
+    if (src < fs->nactvar) {
+      BCReg dst = fs->freereg;
+      bcreg_reserve(fs, 1);
+      bcemit_AD(fs, BC_MOV, dst, src);
+      setbc_a(ins, dst);
+    }
+  }
+}
+
+static void parse_defer(LexState *ls)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc func;
+  BCLine line = ls->linenumber;
+  BCReg reg = fs->freereg;
+  VarInfo *vi;
+
+  lj_lex_next(ls);  /* Skip 'defer'. */
+  var_new(ls, 0, NAME_BLANK);
+  bcreg_reserve(fs, 1);
+  var_add(ls, 1);
+  vi = &var_get(ls, fs, fs->nactvar-1);
+  vi->info |= VSTACK_DEFER;
+
+  parse_body(ls, &func, 0, line);
+  expr_toreg(fs, &func, reg);
+  fs->freereg = fs->nactvar;
+}
+
 /* Parse 'function' statement. */
 static void parse_func(LexState *ls, BCLine line)
 {
@@ -3362,6 +3427,8 @@ static void parse_return(LexState *ls)
       }
     }
   }
+  snapshot_return_regs(fs, &ins);
+  execute_defers(fs, 0);
   if (fs->flags & PROTO_CHILD)
     bcemit_AJ(fs, BC_UCLO, 0, 0);  /* May need to close upvalues first. */
   bcemit_INS(fs, ins);
@@ -3370,15 +3437,31 @@ static void parse_return(LexState *ls)
 /* Parse 'continue' statement. */
 static void parse_continue(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_CONTINUE;
-  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  lj_assertLS(loop != NULL, "continue outside loop");
+
+  execute_defers(fs, loop->nactvar);
+  fs->bl->flags |= FSCOPE_CONTINUE;
+  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'break' statement. */
 static void parse_break(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_BREAK;
-  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  lj_assertLS(loop != NULL, "break outside loop");
+
+  execute_defers(fs, loop->nactvar);
+  fs->bl->flags |= FSCOPE_BREAK;
+  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'goto' statement. */
@@ -3683,6 +3766,9 @@ static int parse_stmt(LexState *ls)
     break;
   case TK_function:
     parse_func(ls, line);
+    break;
+  case TK_defer:
+    parse_defer(ls);
     break;
   case TK_local:
     lj_lex_next(ls);

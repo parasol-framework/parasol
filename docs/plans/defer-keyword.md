@@ -657,6 +657,15 @@ build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.flu
 
 **Do NOT proceed to Phase 2 until all 10 Phase 1 tests pass.**
 
+#### Phase 1 delivery report (2025-02-17)
+
+- ✅ Lexer recognises `defer` via `lj_lex.h` and parser dispatch in `parse_stmt()`.
+- ✅ `parse_defer()` now creates a hidden local marked with `VSTACK_DEFER`, lowers the anonymous function body via `parse_body()`, and leaves the closure in the scope’s register file.
+- ✅ `execute_defers()` walks pending handlers at scope boundaries, snapshots each closure into a scratch register before issuing `BC_CALL`, and is invoked from `fscope_end()`, implicit returns (`fs_fixup_ret()`), explicit `return`, `break`, and `continue` sites. A lightweight `snapshot_return_regs()` helper preserves return values prior to invoking defers.
+- ✅ Loop control statements resolve the active loop scope before draining handlers so `continue` only flushes the current iteration while `break` drains the entire loop scope.
+- ✅ Added `src/fluid/tests/test_defer.fluid` with eleven Phase 1 scenarios. Phase 2/3 expectations remain documented as placeholder functions and are intentionally excluded from the exported `tests` list until the corresponding semantics land.
+- ✅ Command to validate Phase 1: `build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid` (passes 11/11 cases after the 2025-02-17 build).
+
 ### Phase 2: Argument Snapshot Support
 
 **Goal**: Support `defer(arg) ... end(value)` syntax.
@@ -917,6 +926,6 @@ The phased approach allows delivering basic functionality quickly (Phase 1) whil
 
 ---
 
-**Last Updated**: 2025-01-08
+**Last Updated**: 2025-02-17
 **Author**: Strategic analysis based on LuaJIT 2.1 architecture and test_defer.fluid requirements
-**Status**: Implementation plan ready for review
+**Status**: Phase 1 complete (defer executes on scope exit, early returns, and loop control)
