@@ -1467,8 +1467,8 @@ static void LJ_FASTCALL recff_table_clear(jit_State *J, RecordFFData *rd)
 static TRef recff_io_fp(jit_State *J, TRef *udp, int32_t id)
 {
   TRef tr, ud, fp;
-  if (id) {  // io.func() 
-    ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot[id]));
+  if (id) {  // io.func()
+    ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot) + (int)(id * sizeof(GCRef)));
   } else {  // fp:method() 
     ud = J->base[0];
     if (!tref_isudata(ud))

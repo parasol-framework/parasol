@@ -131,7 +131,11 @@ typedef uintptr_t BloomFilter;
 
 #if defined(__ELF__) || defined(__MACH__) || defined(__psp2__)
 #if !((defined(__sun__) && defined(__svr4__)) || defined(__CELLOS_LV2__))
+#ifdef __cplusplus
+#define LJ_NOAPI	extern "C" __attribute__((visibility("hidden")))
+#else
 #define LJ_NOAPI	extern __attribute__((visibility("hidden")))
+#endif
 #endif
 #endif
 

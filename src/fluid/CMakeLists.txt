@@ -369,8 +369,8 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}
-            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_CXX_FLAGS}
+            -fPIC -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
@@ -392,7 +392,7 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_CXX_FLAGS} -fPIC -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
