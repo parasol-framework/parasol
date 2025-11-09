@@ -638,6 +638,19 @@ extern void *LJ_WIN_LOADLIBA(const char *path);
 #define LJ_NO_UNWIND		1
 #endif
 
+/*
+** LJ_UNWIND_EXT controls whether external frame unwinding is used.
+**
+** When set to 1, LuaJIT uses the system-provided unwind handler (e.g., libgcc_s
+** on Linux, system exception handling on Windows). This provides full C++ exception
+** interoperability and allows Lua errors to propagate through C++ frames with proper
+** destructor calls. However, it requires all C code on the stack to have unwind tables.
+**
+** When set to 0, LuaJIT uses internal frame unwinding which is faster and doesn't
+** require unwind tables, but has limited C++ exception support.
+**
+** See detailed discussion in lj_err.cpp lines 21-85 for pros/cons of each approach.
+*/
 #if !LJ_NO_UNWIND && !defined(LUAJIT_UNWIND_INTERNAL) && (LJ_ABI_WIN || (defined(LUAJIT_UNWIND_EXTERNAL) && (defined(__GNUC__) || defined(__clang__))))
 #define LJ_UNWIND_EXT		1
 #else

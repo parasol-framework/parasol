@@ -450,7 +450,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State *J, RecordFFData *rd)
 {
   TRef tr = J->base[0];
   if (!((LJ_52 || (LJ_HASFFI && tref_iscdata(tr))) &&
-	recff_metacall(J, rd, MM_pairs + rd->data))) {
+	recff_metacall(J, rd, (MMS)(MM_pairs + rd->data)))) {
     if (tref_istab(tr)) {
       J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
       J->base[1] = tr;
@@ -613,7 +613,7 @@ static void LJ_FASTCALL recff_math_atan2(jit_State *J, RecordFFData *rd)
 {
   TRef tr = lj_ir_tonum(J, J->base[0]);
   TRef tr2 = lj_ir_tonum(J, J->base[1]);
-  J->base[0] = lj_ir_call(J, IRCALL_atan2, tr, tr2);
+  J->base[0] = lj_ir_call(J, IRCALL_cmath_atan2, tr, tr2);
   UNUSED(rd);
 }
 
@@ -921,7 +921,7 @@ static void LJ_FASTCALL recff_string_op(jit_State *J, RecordFFData *rd)
 {
   TRef str = lj_ir_tostr(J, J->base[0]);
   TRef hdr = recff_bufhdr(J);
-  TRef tr = lj_ir_call(J, rd->data, hdr, str);
+  TRef tr = lj_ir_call(J, (IRCallID)rd->data, hdr, str);
   J->base[0] = emitir(IRTG(IR_BUFSTR, IRT_STR), tr, hdr);
 }
 
@@ -1467,8 +1467,8 @@ static void LJ_FASTCALL recff_table_clear(jit_State *J, RecordFFData *rd)
 static TRef recff_io_fp(jit_State *J, TRef *udp, int32_t id)
 {
   TRef tr, ud, fp;
-  if (id) {  // io.func() 
-    ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot[id]));
+  if (id) {  // io.func()
+    ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot) + (int)(id * sizeof(GCRef)));
   } else {  // fp:method() 
     ud = J->base[0];
     if (!tref_isudata(ud))

@@ -471,7 +471,7 @@ static Reg asm_fuseload(ASMState *as, IRRef ref, RegSet allow)
 	return RID_MRM;
       }
     } else if (ir->o == IR_ALOAD || ir->o == IR_HLOAD || ir->o == IR_ULOAD) {
-      if (noconflict(as, ref, ir->o + IRDELTA_L2S, 0) &&
+      if (noconflict(as, ref, (IROp)(ir->o + IRDELTA_L2S), 0) &&
 	  !(LJ_GC64 && irt_isaddr(ir->t))) {
 	asm_fuseahuref(as, ir->op1, xallow);
 	return RID_MRM;
@@ -1278,7 +1278,7 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
 	emit_gri(as, XG_ARITHi(XOg_XOR), dest, irt_toitype(kt) << 15);
 	if ((as->flags & JIT_F_BMI2)) {
 	  emit_i8(as, 32);
-	  emit_mrm(as, XV_RORX|VEX_64, dest, key);
+	  emit_mrm(as, (x86Op)(XV_RORX|VEX_64), dest, key);
 	} else {
 	  emit_shifti(as, XOg_SHR|REX_64, dest, 32);
 	  emit_rr(as, XO_MOV, dest|REX_64, key|REX_64);
@@ -1566,7 +1566,7 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
       emit_i8(as, XI_O16);
       if ((as->flags & JIT_F_BMI2)) {
 	emit_i8(as, 47);
-	emit_mrm(as, XV_RORX|VEX_64, dest, RID_MRM);
+	emit_mrm(as, (x86Op)(XV_RORX|VEX_64), dest, RID_MRM);
       } else {
 	emit_shifti(as, XOg_ROR|REX_64, dest, 47);
 	emit_mrm(as, XO_MOV, dest|REX_64, RID_MRM);
@@ -1747,7 +1747,7 @@ static void asm_sload(ASMState *as, IRIns *ir)
 	}
 	if ((as->flags & JIT_F_BMI2)) {
 	  emit_i8(as, 47);
-	  emit_rmro(as, XV_RORX|VEX_64, dest, base, ofs);
+	  emit_rmro(as, (x86Op)(XV_RORX|VEX_64), dest, base, ofs);
 	} else {
 	  if ((ir->op2 & IRSLOAD_TYPECHECK))
 	    emit_shifti(as, XOg_ROR|REX_64, dest, 47);
@@ -1997,7 +1997,7 @@ static void asm_fpmath(ASMState *as, IRIns *ir)
       ra_left(as, RID_XMM0, ir->op1);
     }
   } else {
-    asm_callid(as, ir, IRCALL_lj_vm_floor + fpm);
+    asm_callid(as, ir, (IRCallID)(IRCALL_lj_vm_floor + fpm));
   }
 }
 
@@ -2238,7 +2238,7 @@ static void asm_intmin_max(ASMState *as, IRIns *ir, int cc)
   IRRef lref = ir->op1, rref = ir->op2;
   if (irref_isk(rref)) { lref = rref; rref = ir->op1; }
   right = ra_alloc1(as, rref, rset_exclude(RSET_GPR, dest));
-  emit_rr(as, XO_CMOV + (cc<<24), REX_64IR(ir, dest), right);
+  emit_rr(as, (x86Op)(XO_CMOV + (cc<<24)), REX_64IR(ir, dest), right);
   emit_rr(as, XO_CMP, REX_64IR(ir, dest), right);
   ra_left(as, dest, lref);
 }
@@ -2269,7 +2269,7 @@ static void asm_max(ASMState *as, IRIns *ir)
 static void asm_bswap(ASMState *as, IRIns *ir)
 {
   Reg dest = ra_dest(as, ir, RSET_GPR);
-  as->mcp = emit_op(XO_BSWAP + ((dest&7) << 24),
+  as->mcp = emit_op((x86Op)(XO_BSWAP + ((dest&7) << 24)),
 		    REX_64IR(ir, 0), dest, 0, as->mcp, 1);
   ra_left(as, dest, ir->op1);
 }
@@ -2291,13 +2291,13 @@ static void asm_bitshift(ASMState *as, IRIns *ir, x86Shift xs, x86Op xv)
       Reg left = asm_fuseloadm(as, ir->op1, RSET_GPR, irt_is64(ir->t));
       if (left != dest) {  // BMI2 rotate right by constant. 
 	emit_i8(as, xs == XOg_ROL ? -shift : shift);
-	emit_mrm(as, VEX_64IR(ir, XV_RORX), dest, left);
+	emit_mrm(as, (x86Op)VEX_64IR(ir, XV_RORX), dest, left);
 	return;
       }
     }
     switch (shift) {
     case 0: break;
-    case 1: emit_rr(as, XO_SHIFT1, REX_64IR(ir, xs), dest); break;
+    case 1: emit_rr(as, XO_SHIFT1, (Reg)REX_64IR(ir, xs), dest); break;
     default: emit_shifti(as, REX_64IR(ir, xs), dest, shift); break;
     }
   } else if ((as->flags & JIT_F_BMI2) && xv) {  // BMI2 variable shifts. 
@@ -2306,7 +2306,7 @@ static void asm_bitshift(ASMState *as, IRIns *ir, x86Shift xs, x86Op xv)
     right = ra_alloc1(as, rref, RSET_GPR);
     left = asm_fuseloadm(as, ir->op1, rset_exclude(RSET_GPR, right),
 			 irt_is64(ir->t));
-    emit_mrm(as, VEX_64IR(ir, xv) ^ (right << 19), dest, left);
+    emit_mrm(as, (x86Op)(VEX_64IR(ir, xv) ^ (right << 19)), dest, left);
     return;
   } else {  // Variable shifts implicitly use register cl (i.e. ecx). 
     Reg right;
@@ -2336,8 +2336,8 @@ static void asm_bitshift(ASMState *as, IRIns *ir, x86Shift xs, x86Op xv)
 #define asm_bshl(as, ir)	asm_bitshift(as, ir, XOg_SHL, XV_SHLX)
 #define asm_bshr(as, ir)	asm_bitshift(as, ir, XOg_SHR, XV_SHRX)
 #define asm_bsar(as, ir)	asm_bitshift(as, ir, XOg_SAR, XV_SARX)
-#define asm_brol(as, ir)	asm_bitshift(as, ir, XOg_ROL, 0)
-#define asm_bror(as, ir)	asm_bitshift(as, ir, XOg_ROR, 0)
+#define asm_brol(as, ir)	asm_bitshift(as, ir, XOg_ROL, (x86Op)0)
+#define asm_bror(as, ir)	asm_bitshift(as, ir, XOg_ROR, (x86Op)0)
 
 /* -- Comparisons --------------------------------------------------------- */
 

@@ -28,12 +28,12 @@
 @set DASC=vm_x64.dasc
 @set LJLIBNAME=lua51.lib
 @set BUILDTYPE=release
-@set ALL_LIB=lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
+@set ALL_LIB=lib_base.cpp lib_math.cpp lib_bit.cpp lib_string.cpp lib_table.cpp lib_io.cpp lib_os.cpp lib_package.cpp lib_debug.cpp lib_jit.cpp lib_ffi.cpp lib_buffer.cpp
 
 @rem Incremental builds are enabled. Comment out the line below to disable.
 @rem if exist %LJLIBNAME% exit 0
 
-%LJCOMPILE% host\minilua.c
+%LJCOMPILE% host\minilua.cpp
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:minilua.exe minilua.obj
 @if errorlevel 1 goto :BAD
@@ -57,7 +57,7 @@ if exist minilua.exe.manifest^
 .\minilua.exe %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h %DASC%
 @if errorlevel 1 goto :BAD
 
-%LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.c
+%LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.cpp
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:buildvm.exe buildvm*.obj
 @if errorlevel 1 goto :BAD
@@ -76,7 +76,7 @@ if exist buildvm.exe.manifest^
 @if errorlevel 1 goto :BAD
 .\buildvm.exe -m vmdef -o jit\vmdef.lua %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m folddef -o lj_folddef.h lj_opt_fold.c
+.\buildvm.exe -m folddef -o lj_folddef.h lj_opt_fold.cpp
 @if errorlevel 1 goto :BAD
 
 @if "%1" neq "debug" goto :NODEBUG
@@ -86,12 +86,12 @@ if exist buildvm.exe.manifest^
 @set LJLINK=%LJLINK% /opt:ref /opt:icf /incremental:no
 :NODEBUG
 @set LJLINK=%LJLINK% /%BUILDTYPE%
-%LJCOMPILE% lj_*.c lib_*.c
+%LJCOMPILE% lj_*.cpp lib_*.cpp
 @if errorlevel 1 goto :BAD
 %LJLIB% /OUT:%LJLIBNAME% lj_*.obj lib_*.obj
 @if errorlevel 1 goto :BAD
 
-%LJCOMPILE% luajit.c
+%LJCOMPILE% luajit.cpp
 @if errorlevel 1 goto :BAD
 
 @del *.obj *.manifest minilua.exe buildvm.exe

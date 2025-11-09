@@ -278,7 +278,7 @@ static char *serialize_put(char *w, SBufExt *sbx, cTValue *o)
   } else if (tviscdata(o)) {
     CTState *cts = ctype_cts(sbufL(sbx));
     CType *s = ctype_raw(cts, cdataV(o)->ctypeid);
-    uint8_t *sp = cdataptr(cdataV(o));
+    uint8_t *sp = (uint8_t *)cdataptr(cdataV(o));
     if (ctype_isinteger(s->info) && s->size == 8) {
       w = serialize_more(w, sbx, 1+8);
       *w++ = (s->info & CTF_UNSIGNED) ? SER_TAG_UINT64 : SER_TAG_INT64;

@@ -8,6 +8,10 @@
 
 #include "lj_obj.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Entry points for ASM parts of VM. */
 LJ_ASMF void lj_vm_call(lua_State *L, TValue *base, int nres1);
 LJ_ASMF int lj_vm_pcall(lua_State *L, TValue *base, int nres1, ptrdiff_t ef);
@@ -69,10 +73,28 @@ LJ_ASMF double lj_vm_floor_sf(double);
 LJ_ASMF double lj_vm_ceil_sf(double);
 #endif
 #endif
+/* C math library wrappers for C++ compatibility. */
+LJ_ASMF double cmath_log10(double);
+LJ_ASMF double cmath_exp(double);
+LJ_ASMF double cmath_sin(double);
+LJ_ASMF double cmath_cos(double);
+LJ_ASMF double cmath_tan(double);
+LJ_ASMF double cmath_asin(double);
+LJ_ASMF double cmath_acos(double);
+LJ_ASMF double cmath_atan(double);
+LJ_ASMF double cmath_sinh(double);
+LJ_ASMF double cmath_cosh(double);
+LJ_ASMF double cmath_tanh(double);
+LJ_ASMF double cmath_sqrt(double);
+LJ_ASMF double cmath_log(double);
+LJ_ASMF double cmath_log2(double);
+LJ_ASMF double cmath_atan2(double, double);
+LJ_ASMF double cmath_ldexp(double, int);
+
 #ifdef LUAJIT_NO_LOG2
 LJ_ASMF double lj_vm_log2(double);
 #else
-#define lj_vm_log2	log2
+#define lj_vm_log2	cmath_log2
 #endif
 #if !(defined(_LJ_DISPATCH_H) && LJ_TARGET_MIPS)
 LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t, int32_t);
@@ -115,5 +137,9 @@ LJ_ASMF char lj_vm_asm_begin[];
 
 /* Bytecode offsets are relative to lj_vm_asm_begin. */
 #define makeasmfunc(ofs)	((ASMFunction)(lj_vm_asm_begin + (ofs)))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

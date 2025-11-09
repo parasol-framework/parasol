@@ -627,9 +627,9 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	    lj_buf_putmem(sb, "[builtin#", 9);
 	    lj_strfmt_putint(sb, fn->c.ffid);
 	    lj_buf_putb(sb, ']');
-	  } else {  // Dump C function address. 
+	  } else {  // Dump C function address.
 	    lj_buf_putb(sb, '@');
-	    lj_strfmt_putptr(sb, fn->c.f);
+	    lj_strfmt_putptr(sb, (const void*)fn->c.f);
 	  }
 	  break;
 	case 'Z':  /* Zap trailing separator. */

@@ -140,7 +140,7 @@ OPR_AND,OPR_OR,
 OPR_NOBINOPR
 }BinOpr;
 typedef enum UnOpr{OPR_MINUS,OPR_NOT,OPR_LEN,OPR_NOUNOPR}UnOpr;
-#define LUA_QL(x)"'"x"'"
+#define LUA_QL(x) "'" x "'"
 #define luai_apicheck(L,o){(void)L;}
 #define lua_number2str(s,n)sprintf((s),"%.14g",(n))
 #define lua_str2number(s,p)strtod((s),(p))
@@ -185,7 +185,7 @@ static void lua_setfield(lua_State*L,int idx,const char*k);
 #define lua_isboolean(L,n)(lua_type(L,(n))==1)
 #define lua_isnone(L,n)(lua_type(L,(n))==(-1))
 #define lua_isnoneornil(L,n)(lua_type(L,(n))<=0)
-#define lua_pushliteral(L,s)lua_pushlstring(L,""s,(sizeof(s)/sizeof(char))-1)
+#define lua_pushliteral(L,s)lua_pushlstring(L,(s),(sizeof(s)/sizeof(char))-1)
 #define lua_setglobal(L,s)lua_setfield(L,(-10002),(s))
 #define lua_tostring(L,i)lua_tolstring(L,(i),NULL)
 typedef struct lua_Debug lua_Debug;
@@ -367,7 +367,7 @@ int sizearray;
 #define lmod(s,size)(check_exp((size&(size-1))==0,(cast(int,(s)&((size)-1)))))
 #define twoto(x)((size_t)1<<(x))
 #define sizenode(t)(twoto((t)->lsizenode))
-static const TValue luaO_nilobject_;
+static const TValue luaO_nilobject_={{NULL},0};
 #define ceillog2(x)(luaO_log2((x)-1)+1)
 static int luaO_log2(unsigned int x);
 #define gfasttm(g,et,e)((et)==NULL?NULL:((et)->flags&(1u<<(e)))?NULL:luaT_gettm(et,e,(g)->tmname[e]))
@@ -590,7 +590,7 @@ static void luaC_barrierback(lua_State*L,Table*t);
 #define sizestring(s)(sizeof(union TString)+((s)->len+1)*sizeof(char))
 #define sizeudata(u)(sizeof(union Udata)+(u)->len)
 #define luaS_new(L,s)(luaS_newlstr(L,s,strlen(s)))
-#define luaS_newliteral(L,s)(luaS_newlstr(L,""s,(sizeof(s)/sizeof(char))-1))
+#define luaS_newliteral(L,s) (luaS_newlstr(L,(s),(sizeof(s)/sizeof(char))-1))
 #define luaS_fix(s)l_setbit((s)->tsv.marked,5)
 static TString*luaS_newlstr(lua_State*L,const char*str,size_t l);
 #define tostring(L,o)((ttype(o)==4)||(luaV_tostring(L,o)))
@@ -601,7 +601,6 @@ static const TValue*luaV_tonumber(const TValue*obj,TValue*n);
 static int luaV_tostring(lua_State*L,StkId obj);
 static void luaV_execute(lua_State*L,int nexeccalls);
 static void luaV_concat(lua_State*L,int total,int last);
-static const TValue luaO_nilobject_={{NULL},0};
 static int luaO_int2fb(unsigned int x){
 int e=0;
 while(x>=16){
@@ -943,7 +942,6 @@ luaM_freemem(L,c,size);
 #define ISK(x)((x)&(1<<(9-1)))
 #define INDEXK(r)((int)(r)&~(1<<(9-1)))
 #define RKASK(x)((x)|(1<<(9-1)))
-static const lu_byte luaP_opmodes[(cast(int,OP_VARARG)+1)];
 #define getBMode(m)(cast(enum OpArgMask,(luaP_opmodes[m]>>4)&3))
 #define getCMode(m)(cast(enum OpArgMask,(luaP_opmodes[m]>>2)&3))
 #define testTMode(m)(luaP_opmodes[m]&(1<<7))
@@ -1394,7 +1392,7 @@ return i+t->sizearray;
 }
 else n=gnext(n);
 }while(n);
-luaG_runerror(L,"invalid key to "LUA_QL("next"));
+luaG_runerror(L,"invalid key to " LUA_QL("next"));
 return 0;
 }
 }
@@ -2488,7 +2486,7 @@ ar->nups=f->c.nupvalues;
 break;
 }
 case'n':{
-ar->namewhat=(ci)?NULL:NULL;
+ar->namewhat=(ci)?NULL:(const char*)NULL;
 if(ar->namewhat==NULL){
 ar->namewhat="";
 ar->name=NULL;
@@ -2537,11 +2535,9 @@ return 0;
 static void luaG_typeerror(lua_State*L,const TValue*o,const char*op){
 const char*name=NULL;
 const char*t=luaT_typenames[ttype(o)];
-const char*kind=(isinstack(L->ci,o))?
-NULL:
-NULL;
+const char*kind=(isinstack(L->ci,o))?(const char*)NULL:(const char*)NULL;
 if(kind)
-luaG_runerror(L,"attempt to %s %s "LUA_QL("%s")" (a %s value)",
+luaG_runerror(L,"attempt to %s %s " LUA_QL("%s") " (a %s value)",
 op,kind,name,t);
 else
 luaG_runerror(L,"attempt to %s a %s value",op,t);
@@ -2712,7 +2708,7 @@ char buff[80];
 luaO_chunkid(buff,getstr(ls->source),80);
 msg=luaO_pushfstring(ls->L,"%s:%d: %s",buff,ls->linenumber,msg);
 if(token)
-luaO_pushfstring(ls->L,"%s near "LUA_QL("%s"),msg,txtToken(ls,token));
+luaO_pushfstring(ls->L,"%s near " LUA_QL("%s"),msg,txtToken(ls,token));
 luaD_throw(ls->L,3);
 }
 static void luaX_syntaxerror(LexState*ls,const char*msg){
@@ -3672,7 +3668,7 @@ luaX_newstring(ls,getstr(ts),ts->tsv.len);
 }
 static void error_expected(LexState*ls,int token){
 luaX_syntaxerror(ls,
-luaO_pushfstring(ls->L,LUA_QL("%s")" expected",luaX_token2str(ls,token)));
+luaO_pushfstring(ls->L,LUA_QL("%s") " expected",luaX_token2str(ls,token)));
 }
 static void errorlimit(FuncState*fs,int limit,const char*what){
 const char*msg=(fs->f->linedefined==0)?
@@ -3703,7 +3699,7 @@ if(where==ls->linenumber)
 error_expected(ls,what);
 else{
 luaX_syntaxerror(ls,luaO_pushfstring(ls->L,
-LUA_QL("%s")" expected (to close "LUA_QL("%s")" at line %d)",
+LUA_QL("%s") " expected (to close " LUA_QL("%s") " at line %d)",
 luaX_token2str(ls,what),luaX_token2str(ls,who),where));
 }
 }
@@ -3737,7 +3733,7 @@ f->locvars[fs->nlocvars].varname=varname;
 luaC_objbarrier(ls->L,f,varname);
 return fs->nlocvars++;
 }
-#define new_localvarliteral(ls,v,n)new_localvar(ls,luaX_newstring(ls,""v,(sizeof(v)/sizeof(char))-1),n)
+#define new_localvarliteral(ls,v,n)new_localvar(ls,luaX_newstring(ls,(v),(sizeof(v)/sizeof(char))-1),n)
 static void new_localvar(LexState*ls,TString*name,int n){
 FuncState*fs=ls->fs;
 luaY_checklimit(fs,fs->nactvar+n+1,200,"local variables");
@@ -4053,7 +4049,7 @@ luaX_next(ls);
 f->is_vararg|=2;
 break;
 }
-default:luaX_syntaxerror(ls,"<name> or "LUA_QL("...")" expected");
+default:luaX_syntaxerror(ls,"<name> or " LUA_QL("...") " expected");
 }
 }while(!f->is_vararg&&testnext(ls,','));
 }
@@ -4212,7 +4208,7 @@ break;
 case TK_DOTS:{
 FuncState*fs=ls->fs;
 check_condition(ls,fs->f->is_vararg,
-"cannot use "LUA_QL("...")" outside a vararg function");
+"cannot use " LUA_QL("...") " outside a vararg function");
 fs->f->is_vararg&=~4;
 init_exp(v,VVARARG,luaK_codeABC(fs,OP_VARARG,0,1,0));
 break;
@@ -4503,7 +4499,7 @@ varname=str_checkname(ls);
 switch(ls->t.token){
 case'=':fornum(ls,varname,line);break;
 case',':case TK_IN:forlist(ls,varname);break;
-default:luaX_syntaxerror(ls,LUA_QL("=")" or "LUA_QL("in")" expected");
+default:luaX_syntaxerror(ls,LUA_QL("=") " or " LUA_QL("in") " expected");
 }
 check_match(ls,TK_END,TK_FOR,line);
 leaveblock(fs);
@@ -5213,11 +5209,11 @@ const TValue*plimit=ra+1;
 const TValue*pstep=ra+2;
 L->savedpc=pc;
 if(!tonumber(init,ra))
-luaG_runerror(L,LUA_QL("for")" initial value must be a number");
+luaG_runerror(L,LUA_QL("for") " initial value must be a number");
 else if(!tonumber(plimit,ra+1))
-luaG_runerror(L,LUA_QL("for")" limit must be a number");
+luaG_runerror(L,LUA_QL("for") " limit must be a number");
 else if(!tonumber(pstep,ra+2))
-luaG_runerror(L,LUA_QL("for")" step must be a number");
+luaG_runerror(L,LUA_QL("for") " step must be a number");
 setnvalue(ra,luai_numsub(nvalue(ra),nvalue(pstep)));
 dojump(L,pc,GETARG_sBx(i));
 continue;
@@ -5876,12 +5872,12 @@ lua_getinfo(L,"n",&ar);
 if(strcmp(ar.namewhat,"method")==0){
 narg--;
 if(narg==0)
-return luaL_error(L,"calling "LUA_QL("%s")" on bad self (%s)",
+return luaL_error(L,"calling " LUA_QL("%s") " on bad self (%s)",
 ar.name,extramsg);
 }
 if(ar.name==NULL)
 ar.name="?";
-return luaL_error(L,"bad argument #%d to "LUA_QL("%s")" (%s)",
+return luaL_error(L,"bad argument #%d to " LUA_QL("%s") " (%s)",
 narg,ar.name,extramsg);
 }
 static int luaL_typerror(lua_State*L,int narg,const char*tname){
@@ -6010,7 +6006,7 @@ lua_getfield(L,-1,libname);
 if(!lua_istable(L,-1)){
 lua_pop(L,1);
 if(luaL_findtable(L,(-10002),libname,size)!=NULL)
-luaL_error(L,"name conflict for module "LUA_QL("%s"),libname);
+luaL_error(L,"name conflict for module " LUA_QL("%s"),libname);
 lua_pushvalue(L,-1);
 lua_setfield(L,-3,libname);
 }
@@ -6290,7 +6286,7 @@ return 0;
 }
 else if(lua_iscfunction(L,-2)||lua_setfenv(L,-2)==0)
 luaL_error(L,
-LUA_QL("setfenv")" cannot change environment of given object");
+LUA_QL("setfenv") " cannot change environment of given object");
 return 1;
 }
 static int luaB_rawget(lua_State*L){
@@ -6469,7 +6465,7 @@ lua_rawseti(L,1,i);
 break;
 }
 default:{
-return luaL_error(L,"wrong number of arguments to "LUA_QL("insert"));
+return luaL_error(L,"wrong number of arguments to " LUA_QL("insert"));
 }
 }
 luaL_setn(L,1,e);
@@ -6495,7 +6491,7 @@ static void addfield(lua_State*L,luaL_Buffer*b,int i){
 lua_rawgeti(L,1,i);
 if(!lua_isstring(L,-1))
 luaL_error(L,"invalid value (%s) at index %d in table for "
-LUA_QL("concat"),luaL_typename(L,-1),i);
+LUA_QL("concat"), luaL_typename(L,-1),i);
 luaL_addvalue(b);
 }
 static int tconcat(lua_State*L){
@@ -7100,14 +7096,14 @@ static const char*classend(MatchState*ms,const char*p){
 switch(*p++){
 case'%':{
 if(*p=='\0')
-luaL_error(ms->L,"malformed pattern (ends with "LUA_QL("%%")")");
+luaL_error(ms->L,"malformed pattern (ends with " LUA_QL("%%") ")");
 return p+1;
 }
 case'[':{
 if(*p=='^')p++;
 do{
 if(*p=='\0')
-luaL_error(ms->L,"malformed pattern (missing "LUA_QL("]")")");
+luaL_error(ms->L,"malformed pattern (missing " LUA_QL("]") ")");
 if(*(p++)=='%'&&*p!='\0')
 p++;
 }while(*p!=']');
@@ -7259,8 +7255,8 @@ case'f':{
 const char*ep;char previous;
 p+=2;
 if(*p!='[')
-luaL_error(ms->L,"missing "LUA_QL("[")" after "
-LUA_QL("%%f")" in pattern");
+luaL_error(ms->L,"missing " LUA_QL("[") " after "
+LUA_QL("%%f") " in pattern");
 ep=classend(ms,p);
 previous=(s==ms->src_init)?'\0':*(s-1);
 if(matchbracketclass(uchar(previous),p,ep-1)||
@@ -7634,8 +7630,8 @@ break;
 }
 }
 default:{
-return luaL_error(L,"invalid option "LUA_QL("%%%c")" to "
-LUA_QL("format"),*(strfrmt-1));
+return luaL_error(L,"invalid option " LUA_QL("%%%c") " to "
+LUA_QL("format"), *(strfrmt-1));
 }
 }
 luaL_addlstring(&b,buff,strlen(buff));

@@ -559,12 +559,12 @@ void lj_cconv_ct_tv(CTState *cts, CType *d,
     sid = CTID_DOUBLE;
     flags |= CCF_FROMTV;
   } else if (tviscdata(o)) {
-    sp = cdataptr(cdataV(o));
+    sp = (uint8_t *)cdataptr(cdataV(o));
     sid = cdataV(o)->ctypeid;
     s = ctype_get(cts, sid);
     if (ctype_isref(s->info)) {  // Resolve reference for value. 
       lj_assertCTS(s->size == CTSIZE_PTR, "ref is not pointer-sized");
-      sp = *(void **)sp;
+      sp = (uint8_t *)*(void **)sp;
       sid = ctype_cid(s->info);
     }
     s = ctype_raw(cts, sid);

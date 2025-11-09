@@ -17,7 +17,7 @@ local isbe = (string.byte(string.dump(function() end), 5) % 2 == 1)
 
 local function usage(arg)
   io.stderr:write("Usage: ", arg and arg[0] or "genlibbc",
-		  " [-o buildvm_libbc.h] lib_*.c\n")
+		  " [-o buildvm_libbc.h] lib_*.cpp\n")
   os.exit(1)
 end
 

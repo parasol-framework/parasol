@@ -129,15 +129,16 @@ collect_attrib:
   /* Interning rejects refs to refs. */
   lj_assertCTS(!ctype_isref(ct->info), "bad ref of ref");
 
+  lua_Number n;
+#ifdef _MSC_VER
+  /* Workaround for MSVC bug. */
+  volatile lua_Number dummy = 0;
+#endif
   if (tvisint(key)) {
     idx = (ptrdiff_t)intV(key);
     goto integer_key;
-  } else if (tvisnum(key)) {  // Numeric key. 
-#ifdef _MSC_VER
-    /* Workaround for MSVC bug. */
-    volatile
-#endif
-    lua_Number n = numV(key);
+  } else if (tvisnum(key)) {  // Numeric key.
+    n = numV(key);
     idx = LJ_64 ? (ptrdiff_t)n : (ptrdiff_t)lj_num2int(n);
   integer_key:
     if (ctype_ispointer(ct->info)) {
@@ -159,7 +160,7 @@ collect_attrib:
     if (ctype_isenum(ctk->info)) ctk = ctype_child(cts, ctk);
     if (ctype_isinteger(ctk->info)) {
       lj_cconv_ct_ct(cts, ctype_get(cts, CTID_INT_PSZ), ctk,
-		     (uint8_t *)&idx, cdataptr(cdk), 0);
+		     (uint8_t *)&idx, (uint8_t *)cdataptr(cdk), 0);
       goto integer_key;
     }
   } else if (tvisstr(key)) {  // String key. 

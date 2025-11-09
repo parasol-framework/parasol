@@ -14,6 +14,9 @@
 
 #include "lua.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* extra error code for `luaL_load' */
 #define LUA_ERRFILE     (LUA_ERRERR+1)
@@ -157,5 +160,9 @@ LUALIB_API void (luaL_pushresult) (luaL_Buffer *B);
 
 
 /* }====================================================== */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

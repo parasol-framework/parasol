@@ -26,17 +26,17 @@ end
 
 function testIncrement()
    local counter = 0
-   counter++;
+   counter++
    assert(counter == 1, 'counter++ should increment value once')
-   counter++;
+   counter++
    assert(counter == 2, 'counter++ should allow repeated increments')
 
    local object = { tally = 4 }
-   object.tally++;
+   object.tally++
    assert(object.tally == 5, 'table field ++ should store incremented value')
 
    local data = { 1, 2, 3 }
-   data[3]++;
+   data[3]++
    assert(data[3] == 4, 'indexed ++ should store incremented value')
 end
 

@@ -21,6 +21,18 @@ before diving into changes.
 - Install (`cmake --install build/agents --config Release`) before running
   tests; the integrator copies `parasol.exe` and scripts to `install/agents/`.
 
+## Error Handling Configuration
+- LuaJIT is configured to use **internal frame unwinding** (`LJ_NO_UNWIND=1`)
+  rather than external unwinding. This is set via `LUAJIT_NO_UNWIND` in
+  `CMakeLists.txt` for all build variants (MSVC, GCC, Clang).
+- Internal unwinding is appropriate because Parasol builds with `-fno-exceptions`.
+  It's faster for error handling and doesn't require unwind tables throughout
+  the C call stack.
+- The flag sets `LJ_UNWIND_EXT=0` in `lj_arch.h`, which causes `lj_err.cpp` to
+  use LuaJIT's own stack unwinding mechanism instead of system exception handlers.
+- See `lj_err.cpp` lines 21-85 for detailed documentation on internal vs external
+  unwinding trade-offs.
+
 ## Testing
 - Use `ctest --build-config Release --test-dir build/agents -R <label>`
   to run a subset. Full Fluid test runs ensure parser and VM changes do not
