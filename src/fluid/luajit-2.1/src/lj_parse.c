@@ -1529,6 +1529,10 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
   setgcref(ls->vstack[vtop].name, obj2gco(name));
   ls->vstack[vtop].startpc = pc;
+  /* For goto statements, endpc is repurposed to store the active variable count (nactvar)
+   * at the point of the goto. This is used to track which defers need to be executed
+   * when the goto is resolved.
+   */
   ls->vstack[vtop].endpc = (info & VSTACK_GOTO) ? (BCPos)fs->nactvar : 0;
   ls->vstack[vtop].slot = (uint8_t)fs->nactvar;
   ls->vstack[vtop].info = info;
