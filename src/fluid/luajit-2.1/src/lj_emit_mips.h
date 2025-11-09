@@ -241,7 +241,7 @@ static void emit_call(ASMState *as, void *target, int needcfa)
   MCode *p = as->mcp;
 #if LJ_TARGET_MIPSR6
   ptrdiff_t delta = (char *)target - (char *)p;
-  if ((((delta>>2) + 0x02000000) >> 26) == 0) {  /* Try compact call first. */
+  if ((((delta>>2) + 0x02000000) >> 26) == 0) {  // Try compact call first. 
     *--p = MIPSI_BALC | (((uintptr_t)delta >>2) & 0x03ffffffu);
     as->mcp = p;
     return;
@@ -255,7 +255,7 @@ static void emit_call(ASMState *as, void *target, int needcfa)
 #else
     *--p = MIPSI_JAL | (((uintptr_t)target >>2) & 0x03ffffffu);
 #endif
-  } else {  /* Target out of range: need indirect call. */
+  } else {  // Target out of range: need indirect call. 
     *--p = MIPSI_JALR | MIPSF_S(RID_CFUNCADDR);
     needcfa = 1;
   }

@@ -162,7 +162,7 @@ static void emit_call(ASMState *as, void *target)
   ptrdiff_t delta = (char *)target - (char *)p;
   if ((((delta>>2) + 0x00800000) >> 24) == 0) {
     *p = PPCI_BL | (delta & 0x03fffffcu);
-  } else {  /* Target out of range: need indirect call. Don't use arg reg. */
+  } else {  // Target out of range: need indirect call. Don't use arg reg. 
     RegSet allow = RSET_GPR & ~RSET_RANGE(RID_R0, REGARG_LASTGPR+1);
     Reg r = ra_allock(as, i32ptr(target), allow);
     *p = PPCI_BCTRL;

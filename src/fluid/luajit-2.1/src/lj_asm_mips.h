@@ -261,7 +261,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
     as->cost[gpr] = REGCOST(~0u, ASMREF_L);
   gpr = REGARG_FIRSTGPR;
 #endif
-  for (n = 0; n < nargs; n++) {  /* Setup args. */
+  for (n = 0; n < nargs; n++) {  // Setup args. 
     IRRef ref = args[n];
     if (ref) {
       IRIns *ir = IR(ref);
@@ -407,9 +407,9 @@ static void asm_callx(ASMState *as, IRIns *ir)
   asm_setupresult(as, ir, &ci);
   func = ir->op2; irf = IR(func);
   if (irf->o == IR_CARG) { func = irf->op1; irf = IR(func); }
-  if (irref_isk(func)) {  /* Call to constant address. */
+  if (irref_isk(func)) {  // Call to constant address. 
     ci.func = (ASMFunction)(void *)get_kval(as, func);
-  } else {  /* Need specific register for indirect calls. */
+  } else {  // Need specific register for indirect calls. 
     Reg r = ra_alloc1(as, func, RID2RSET(RID_CFUNCADDR));
     MCode *p = as->mcp;
     if (r == RID_CFUNCADDR)
@@ -562,10 +562,10 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #if !LJ_SOFTFP
   if (irt_isfp(ir->t)) {
     Reg dest = ra_dest(as, ir, RSET_FPR);
-    if (stfp) {  /* FP to FP conversion. */
+    if (stfp) {  // FP to FP conversion. 
       emit_fg(as, st == IRT_NUM ? MIPSI_CVT_S_D : MIPSI_CVT_D_S,
 	      dest, ra_alloc1(as, lref, RSET_FPR));
-    } else if (st == IRT_U32) {  /* U32 to FP conversion. */
+    } else if (st == IRT_U32) {  // U32 to FP conversion. 
       /* y = (x ^ 0x8000000) + 2147483648.0 */
       Reg left = ra_alloc1(as, lref, RSET_GPR);
       Reg tmp = ra_scratch(as, rset_exclude(RSET_FPR, dest));
@@ -580,7 +580,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       emit_dst(as, MIPSI_XOR, RID_TMP, RID_TMP, left);
       emit_ti(as, MIPSI_LUI, RID_TMP, 0x8000);
 #if LJ_64
-    } else if(st == IRT_U64) {  /* U64 to FP conversion. */
+    } else if(st == IRT_U64) {  // U64 to FP conversion. 
       /* if (x >= 1u<<63) y = (double)(int64_t)(x&(1u<<63)-1) + pow(2.0, 63) */
       Reg left = ra_alloc1(as, lref, RSET_GPR);
       Reg tmp = ra_scratch(as, rset_exclude(RSET_FPR, dest));
@@ -600,7 +600,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       emit_tg(as, MIPSI_DMTC1, RID_TMP, dest);
       emit_tsml(as, MIPSI_DEXTM, RID_TMP, left, 30, 0);
 #endif
-    } else {  /* Integer to FP conversion. */
+    } else {  // Integer to FP conversion. 
       Reg left = ra_alloc1(as, lref, RSET_GPR);
 #if LJ_32
       emit_fg(as, irt_isfloat(ir->t) ? MIPSI_CVT_S_W : MIPSI_CVT_D_W,
@@ -614,7 +614,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       emit_tg(as, st64 ? MIPSI_DMTC1 : MIPSI_MTC1, left, dest);
 #endif
     }
-  } else if (stfp) {  /* FP to integer conversion. */
+  } else if (stfp) {  // FP to integer conversion. 
     if (irt_isguard(ir->t)) {
       /* Checked conversions are only supported from number to int. */
       lj_assertA(irt_isint(ir->t) && st == IRT_NUM,
@@ -624,7 +624,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       Reg dest = ra_dest(as, ir, RSET_GPR);
       Reg left = ra_alloc1(as, lref, RSET_FPR);
       Reg tmp = ra_scratch(as, rset_exclude(RSET_FPR, left));
-      if (irt_isu32(ir->t)) {  /* FP to U32 conversion. */
+      if (irt_isu32(ir->t)) {  // FP to U32 conversion. 
 	/* y = (int)floor(x - 2147483648.0) ^ 0x80000000 */
 	emit_dst(as, MIPSI_XOR, dest, dest, RID_TMP);
 	emit_ti(as, MIPSI_LUI, RID_TMP, 0x8000);
@@ -640,7 +640,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 	  emit_lsptr(as, MIPSI_LDC1, (tmp & 31),
 		     (void *)&as->J->k64[LJ_K64_2P31], RSET_GPR);
 #if LJ_64
-      } else if (irt_isu64(ir->t)) {  /* FP to U64 conversion. */
+      } else if (irt_isu64(ir->t)) {  // FP to U64 conversion. 
 	MCLabel l_end;
 	emit_tg(as, MIPSI_DMFC1, dest, tmp);
 	l_end = emit_label(as);
@@ -699,10 +699,10 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #else
   if (irt_isfp(ir->t)) {
 #if LJ_64 && LJ_HASFFI
-    if (stfp) {  /* FP to FP conversion. */
+    if (stfp) {  // FP to FP conversion. 
       asm_callid(as, ir, irt_isnum(ir->t) ? IRCALL_softfp_f2d :
 					    IRCALL_softfp_d2f);
-    } else {  /* Integer to FP conversion. */
+    } else {  // Integer to FP conversion. 
       IRCallID cid = ((IRT_IS64 >> st) & 1) ?
 	(irt_isnum(ir->t) ?
 	 (st == IRT_I64 ? IRCALL_fp64_l2d : IRCALL_fp64_ul2d) :
@@ -715,7 +715,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #else
     asm_callid(as, ir, IRCALL_softfp_i2d);
 #endif
-  } else if (stfp) {  /* FP to integer conversion. */
+  } else if (stfp) {  // FP to integer conversion. 
     if (irt_isguard(ir->t)) {
       /* Checked conversions are only supported from number to int. */
       lj_assertA(irt_isint(ir->t) && st == IRT_NUM,
@@ -736,7 +736,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #endif
   {
     Reg dest = ra_dest(as, ir, RSET_GPR);
-    if (st >= IRT_I8 && st <= IRT_U16) {  /* Extend to 32 bit integer. */
+    if (st >= IRT_I8 && st <= IRT_U16) {  // Extend to 32 bit integer. 
       Reg left = ra_alloc1(as, ir->op1, RSET_GPR);
       lj_assertA(irt_isint(ir->t) || irt_isu32(ir->t), "bad type for CONV EXT");
       if ((ir->op2 & IRCONV_SEXT)) {
@@ -751,7 +751,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 	emit_tsi(as, MIPSI_ANDI, dest, left,
 		 (int32_t)(st == IRT_U8 ? 0xff : 0xffff));
       }
-    } else {  /* 32/64 bit integer conversions. */
+    } else {  // 32/64 bit integer conversions. 
 #if LJ_32
       /* Only need to handle 32/32 bit no-op (cast) on 32 bit archs. */
       ra_leftov(as, dest, lref);  /* Do nothing, but may need to move regs. */
@@ -762,9 +762,9 @@ static void asm_conv(ASMState *as, IRIns *ir)
 	  ra_leftov(as, dest, lref);
 	} else {
 	  Reg left = ra_alloc1(as, lref, RSET_GPR);
-	  if ((ir->op2 & IRCONV_SEXT)) {  /* 32 to 64 bit sign extension. */
+	  if ((ir->op2 & IRCONV_SEXT)) {  // 32 to 64 bit sign extension. 
 	    emit_dta(as, MIPSI_SLL, dest, left, 0);
-	  } else {  /* 32 to 64 bit zero extension. */
+	  } else {  // 32 to 64 bit zero extension. 
 	    emit_tsml(as, MIPSI_DEXT, dest, left, 31, 0);
 	  }
 	}
@@ -775,7 +775,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 	  */
 	  Reg left = ra_alloc1(as, lref, RSET_GPR);
 	  emit_tsml(as, MIPSI_DEXT, dest, left, 31, 0);
-	} else {  /* 32/32 bit no-op (cast). */
+	} else {  // 32/32 bit no-op (cast). 
 	  /* Do nothing, but may need to move regs. */
 	  ra_leftov(as, dest, lref);
 	}
@@ -1030,7 +1030,7 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
   l_next = emit_label(as);
 
   /* Type and value comparison. */
-  if (merge == IR_EQ) {  /* Must match asm_guard(). */
+  if (merge == IR_EQ) {  // Must match asm_guard(). 
     emit_ti(as, MIPSI_LI, RID_TMP, as->snapno);
     l_end = asm_exitstub_addr(as);
   }
@@ -1094,7 +1094,7 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
       /* Nothing to do. */
     } else if (irt_isstr(kt)) {
       emit_tsi(as, MIPSI_LW, tmp1, key, (int32_t)offsetof(GCstr, sid));
-    } else {  /* Must match with hash*() in lj_tab.c. */
+    } else {  // Must match with hash*() in lj_tab.c. 
       emit_dst(as, MIPSI_SUBU, tmp1, tmp1, tmp2);
       emit_rotr(as, tmp2, tmp2, dest, (-HASH_ROT3)&31);
       emit_dst(as, MIPSI_XOR, tmp1, tmp1, tmp2);
@@ -1324,14 +1324,14 @@ static void asm_fload(ASMState *as, IRIns *ir)
   MIPSIns mi = asm_fxloadins(as, ir);
   Reg idx;
   int32_t ofs;
-  if (ir->op1 == REF_NIL) {  /* FLOAD from GG_State with offset. */
+  if (ir->op1 == REF_NIL) {  // FLOAD from GG_State with offset. 
     idx = RID_JGL;
     ofs = (ir->op2 << 2) - 32768 - GG_OFS(g);
   } else {
     idx = ra_alloc1(as, ir->op1, RSET_GPR);
     if (ir->op2 == IRFL_TAB_ARRAY) {
       ofs = asm_fuseabase(as, ir->op1);
-      if (ofs) {  /* Turn the t->array load into an add for colocated arrays. */
+      if (ofs) {  // Turn the t->array load into an add for colocated arrays. 
 	emit_tsi(as, MIPSI_AADDIU, dest, idx, ofs);
 	return;
       }
@@ -1662,7 +1662,7 @@ static void asm_cnew(ASMState *as, IRIns *ir)
 	     RID_RET, sizeof(GCcdata));
 #endif
     lj_assertA(sz == 4 || sz == 8, "bad CNEWI size %d", sz);
-  } else if (ir->op2 != REF_NIL) {  /* Create VLA/VLS/aligned cdata. */
+  } else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata. 
     ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
     args[0] = ASMREF_L;     /* lua_State *L */
     args[1] = ir->op1;      /* CTypeID id   */
@@ -1891,7 +1891,7 @@ static void asm_arithov(ASMState *as, IRIns *ir)
   if (irref_isk(ir->op2)) {
     int k = IR(ir->op2)->i;
     if (ir->o == IR_SUBOV) k = -k;
-    if (checki16(k)) {  /* (dest < left) == (k >= 0 ? 1 : 0) */
+    if (checki16(k)) {  // (dest < left) == (k >= 0 ? 1 : 0) 
       left = ra_alloc1(as, ir->op1, RSET_GPR);
       asm_guard(as, k >= 0 ? MIPSI_BNE : MIPSI_BEQ, RID_TMP, RID_ZERO);
       emit_dst(as, MIPSI_SLT, RID_TMP, dest, dest == left ? RID_TMP : left);
@@ -1906,9 +1906,9 @@ static void asm_arithov(ASMState *as, IRIns *ir)
 						 right), dest));
   asm_guard(as, MIPSI_BLTZ, RID_TMP, 0);
   emit_dst(as, MIPSI_AND, RID_TMP, RID_TMP, tmp);
-  if (ir->o == IR_ADDOV) {  /* ((dest^left) & (dest^right)) < 0 */
+  if (ir->o == IR_ADDOV) {  // ((dest^left) & (dest^right)) < 0 
     emit_dst(as, MIPSI_XOR, RID_TMP, dest, dest == right ? RID_TMP : right);
-  } else {  /* ((dest^left) & (dest^~right)) < 0 */
+  } else {  // ((dest^left) & (dest^~right)) < 0 
     emit_dst(as, MIPSI_XOR, RID_TMP, RID_TMP, dest);
     emit_dst(as, MIPSI_NOR, RID_TMP, dest == right ? RID_TMP : right, RID_ZERO);
   }
@@ -2091,7 +2091,7 @@ static void asm_bitop(ASMState *as, IRIns *ir, MIPSIns mi, MIPSIns mik)
 static void asm_bitshift(ASMState *as, IRIns *ir, MIPSIns mi, MIPSIns mik)
 {
   Reg dest = ra_dest(as, ir, RSET_GPR);
-  if (irref_isk(ir->op2)) {  /* Constant shifts. */
+  if (irref_isk(ir->op2)) {  // Constant shifts. 
     uint32_t shift = (uint32_t)IR(ir->op2)->i;
     if (LJ_64 && irt_is64(ir->t)) mik |= (shift & 32) ? MIPSI_D32 : MIPSI_D;
     emit_dta(as, mik, dest, ra_hintalloc(as, ir->op1, dest, RSET_GPR),
@@ -2115,7 +2115,7 @@ static void asm_bror(ASMState *as, IRIns *ir)
     asm_bitshift(as, ir, MIPSI_ROTRV, MIPSI_ROTR);
   } else {
     Reg dest = ra_dest(as, ir, RSET_GPR);
-    if (irref_isk(ir->op2)) {  /* Constant shifts. */
+    if (irref_isk(ir->op2)) {  // Constant shifts. 
       uint32_t shift = (uint32_t)(IR(ir->op2)->i & 31);
       Reg left = ra_hintalloc(as, ir->op1, dest, RSET_GPR);
       emit_rotr(as, dest, left, RID_TMP, shift);
@@ -2389,14 +2389,14 @@ static void asm_hiop(ASMState *as, IRIns *ir)
   int uselo = ra_used(ir-1), usehi = ra_used(ir);  /* Loword/hiword used? */
   if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
 #if LJ_32 && (LJ_HASFFI || LJ_SOFTFP)
-  if ((ir-1)->o == IR_CONV) {  /* Conversions to/from 64 bit. */
+  if ((ir-1)->o == IR_CONV) {  // Conversions to/from 64 bit. 
     as->curins--;  /* Always skip the CONV. */
 #if LJ_HASFFI && !LJ_SOFTFP
     if (usehi || uselo)
       asm_conv64(as, ir);
     return;
 #endif
-  } else if ((ir-1)->o < IR_EQ) {  /* 64 bit integer comparisons. ORDER IR. */
+  } else if ((ir-1)->o < IR_EQ) {  // 64 bit integer comparisons. ORDER IR. 
     as->curins--;  /* Always skip the loword comparison. */
 #if LJ_SOFTFP
     if (!irt_isint(ir->t)) {
@@ -2408,7 +2408,7 @@ static void asm_hiop(ASMState *as, IRIns *ir)
     asm_comp64(as, ir);
 #endif
     return;
-  } else if ((ir-1)->o <= IR_NE) {  /* 64 bit integer comparisons. ORDER IR. */
+  } else if ((ir-1)->o <= IR_NE) {  // 64 bit integer comparisons. ORDER IR. 
     as->curins--;  /* Always skip the loword comparison. */
 #if LJ_SOFTFP
     if (!irt_isint(ir->t)) {
@@ -2617,7 +2617,7 @@ static void asm_loop_fixup(ASMState *as)
   MCode *p = as->mctop;
   MCode *target = as->mcp;
   p[-1] = MIPSI_NOP;
-  if (as->loopinv) {  /* Inverted loop branch? */
+  if (as->loopinv) {  // Inverted loop branch? 
     /* asm_guard already inverted the cond branch. Only patch the target. */
     p[-3] |= ((target-p+2) & 0x0000ffffu);
   } else {
@@ -2742,7 +2742,7 @@ void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target)
   MCode exitload = MIPSI_LI | MIPSF_T(RID_TMP) | exitno;
   MCode tjump = MIPSI_J|(((uintptr_t)target>>2)&0x03ffffffu);
   for (p++; p < pe; p++) {
-    if (*p == exitload) {  /* Look for load of exit number. */
+    if (*p == exitload) {  // Look for load of exit number. 
       /* Look for exitstub branch. Yes, this covers all used branch variants. */
       if (((p[-1] ^ (px-p)) & 0xffffu) == 0 &&
 	  ((p[-1] & 0xf0000000u) == MIPSI_BEQ ||
@@ -2754,13 +2754,13 @@ void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target)
 #endif
 	  ) && p[-2] != MIPS_NOPATCH_GC_CHECK) {
 	ptrdiff_t delta = target - p;
-	if (((delta + 0x8000) >> 16) == 0) {  /* Patch in-range branch. */
+	if (((delta + 0x8000) >> 16) == 0) {  // Patch in-range branch. 
 	patchbranch:
 	  p[-1] = (p[-1] & 0xffff0000u) | (delta & 0xffffu);
 	  *p = MIPSI_NOP;  /* Replace the load of the exit number. */
 	  cstop = p+1;
 	  if (!cstart) cstart = p-1;
-	} else {  /* Branch out of range. Use spare jump slot in mcarea. */
+	} else {  // Branch out of range. Use spare jump slot in mcarea. 
 	  MCode *mcjump = asm_sparejump_use(mcarea, tjump);
 	  if (mcjump) {
 	    lj_mcode_sync(mcjump, mcjump+1);

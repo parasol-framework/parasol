@@ -435,7 +435,7 @@ typedef struct GCupval {
   uint8_t immutable;	/* Immutable value. */
   union {
     TValue tv;		/* If closed: the value itself. */
-    struct {		/* If open: double linked list, anchored at thread. */
+    struct {  // If open: double linked list, anchored at thread. 
       GCRef prev;
       GCRef next;
     };
