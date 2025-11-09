@@ -196,17 +196,17 @@ typedef struct CCallInfo {
   _(ANY,	lj_mem_newgco,		2,  FA, PGC, CCI_L|CCI_T) \
   _(ANY,	lj_prng_u64d,		1,  FS, NUM, CCI_CASTU64) \
   _(ANY,	lj_vm_modi,		2,  FN, INT, 0) \
-  _(ANY,	(double(*)(double))log10,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))exp,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))sin,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))cos,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))tan,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))asin,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))acos,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))atan,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))sinh,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))cosh,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))tanh,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_log10,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_exp,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_sin,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_cos,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_tan,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_asin,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_acos,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_atan,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_sinh,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_cosh,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_tanh,		1,   N, NUM, XA_FP) \
   _(ANY,	fputc,			2,   S, INT, 0) \
   _(ANY,	fwrite,			4,   S, INT, 0) \
   _(ANY,	fflush,			1,   S, INT, 0) \
@@ -214,13 +214,13 @@ typedef struct CCallInfo {
   _(FPMATH,	lj_vm_floor,		1,   N, NUM, XA_FP) \
   _(FPMATH,	lj_vm_ceil,		1,   N, NUM, XA_FP) \
   _(FPMATH,	lj_vm_trunc,		1,   N, NUM, XA_FP) \
-  _(FPMATH,	(double(*)(double))sqrt,		1,   N, NUM, XA_FP) \
-  _(ANY,	(double(*)(double))log,		1,   N, NUM, XA_FP) \
+  _(FPMATH,	_ircall_sqrt,		1,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_log,		1,   N, NUM, XA_FP) \
   _(ANY,	lj_vm_log2,		1,   N, NUM, XA_FP) \
   _(ANY,	lj_vm_powi,		2,   N, NUM, XA_FP) \
   _(ANY,	lj_vm_pow,		2,   N, NUM, XA2_FP) \
-  _(ANY,	(double(*)(double,double))atan2,		2,   N, NUM, XA2_FP) \
-  _(ANY,	(double(*)(double,int))ldexp,		2,   N, NUM, XA_FP) \
+  _(ANY,	_ircall_atan2,		2,   N, NUM, XA2_FP) \
+  _(ANY,	_ircall_ldexp,		2,   N, NUM, XA_FP) \
   _(SOFTFP,	lj_vm_tobit,		1,   N, INT, XA_FP32) \
   _(SOFTFP,	softfp_add,		2,   N, NUM, XA2_FP32) \
   _(SOFTFP,	softfp_sub,		2,   N, NUM, XA2_FP32) \

@@ -57,6 +57,25 @@ IRTDEF(IRTSIZE)
   0
 };
 
+/* Wrapper function pointers for C++ math functions */
+extern "C" {
+  double _ircall_log(double x) { return log(x); }
+  double _ircall_log10(double x) { return log10(x); }
+  double _ircall_exp(double x) { return exp(x); }
+  double _ircall_sin(double x) { return sin(x); }
+  double _ircall_cos(double x) { return cos(x); }
+  double _ircall_tan(double x) { return tan(x); }
+  double _ircall_asin(double x) { return asin(x); }
+  double _ircall_acos(double x) { return acos(x); }
+  double _ircall_atan(double x) { return atan(x); }
+  double _ircall_sinh(double x) { return sinh(x); }
+  double _ircall_cosh(double x) { return cosh(x); }
+  double _ircall_tanh(double x) { return tanh(x); }
+  double _ircall_sqrt(double x) { return sqrt(x); }
+  double _ircall_atan2(double y, double x) { return atan2(y, x); }
+  double _ircall_ldexp(double x, int i) { return ldexp(x, i); }
+}
+
 /* C call info for CALL* instructions. */
 LJ_DATADEF const CCallInfo lj_ir_callinfo[] = {
 #define IRCALLCI(cond, name, nargs, kind, type, flags) \

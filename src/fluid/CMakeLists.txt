@@ -175,10 +175,9 @@ else ()
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -x c -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_CXX_COMPILER} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
-      VERBATIM
    )
 
    # Determine target architecture for dynasm by preprocessing lj_arch.h
@@ -296,13 +295,12 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -x c
+      COMMAND ${CMAKE_CXX_COMPILER}
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
       DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
       COMMENT "Building buildvm host tool"
-      VERBATIM
    )
 
    # Library source files needed for buildvm header generation
@@ -375,6 +373,7 @@ else ()
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
          DEPENDS ${LUAJIT_VM_S}
          COMMENT "Compiling LuaJIT VM assembly"
+         COMMAND_EXPAND_LISTS
          VERBATIM
       )
    endif ()
@@ -390,7 +389,7 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL -x c
+      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
@@ -398,6 +397,7 @@ else ()
          -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
       DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
       COMMENT "Compiling LuaJIT amalgamated source"
+      COMMAND_EXPAND_LISTS
       VERBATIM
    )
 
