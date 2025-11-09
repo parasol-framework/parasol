@@ -616,10 +616,10 @@ LJFOLDF(bufput_bufstr)
 	if (ir->op2 == IRCALL_lj_buf_putstr_rep) {
 	  IRIns *carg2 = IR(carg1->op1);
 	  if (carg2->op1 == hdr) {
-	    return lj_ir_call(J, ir->op2, fins->op1, carg2->op2, carg1->op2);
+	    return lj_ir_call(J, IRCallID(ir->op2), fins->op1, carg2->op2, carg1->op2);
 	  }
 	} else if (carg1->op1 == hdr) {
-	  return lj_ir_call(J, ir->op2, fins->op1, carg1->op2);
+	  return lj_ir_call(J, IRCallID(ir->op2), fins->op1, carg1->op2);
 	}
       }
     }
@@ -803,7 +803,7 @@ LJFOLDF(kfold_add_kptr)
 #else
   ptrdiff_t ofs = fright->i;
 #endif
-  return lj_ir_kptr_(J, fleft->o, (char *)p + ofs);
+  return lj_ir_kptr_(J, IROp(fleft->o), (char *)p + ofs);
 }
 
 LJFOLD(ADD any KGC)
@@ -1256,20 +1256,21 @@ LJFOLDF(simplify_conv_sext)
 {
   IRRef ref = fins->op1;
   int64_t ofs = 0;
+  IRRef lo = 0;  /* Declare before goto */
   if (!(fins->op2 & IRCONV_SEXT))
     return NEXTFOLD;
   PHIBARRIER(fleft);
-  if (fleft->o == IR_XLOAD && (irt_isu8(fleft->t) || irt_isu16(fleft->t)))
+  if (fleft->o == IR_XLOAD and (irt_isu8(fleft->t) or irt_isu16(fleft->t)))
     goto ok_reduce;
-  if (fleft->o == IR_ADD && irref_isk(fleft->op2)) {
+  if (fleft->o == IR_ADD and irref_isk(fleft->op2)) {
     ofs = (int64_t)IR(fleft->op2)->i;
     ref = fleft->op1;
   }
   /* Use scalar evolution analysis results to strength-reduce sign-extension. */
   if (ref == J->scev.idx) {
-    IRRef lo = J->scev.dir ? J->scev.start : J->scev.stop;
+    lo = J->scev.dir ? J->scev.start : J->scev.stop;
     lj_assertJ(irt_isint(J->scev.t), "only int SCEV supported");
-    if (lo && IR(lo)->o == IR_KINT && IR(lo)->i + ofs >= 0) {
+    if (lo and IR(lo)->o == IR_KINT and IR(lo)->i + ofs >= 0) {
     ok_reduce:
 #if LJ_TARGET_X64
       /* Eliminate widening. All 32 bit ops do an implicit zero-extension. */
@@ -1886,7 +1887,7 @@ LJFOLDF(reassoc_minmax_k)
   IRIns *irk = IR(fleft->op2);
   if (irk->o == IR_KINT) {
     int32_t a = irk->i;
-    int32_t y = kfold_intop(a, fright->i, fins->o);
+    int32_t y = kfold_intop(a, fright->i, IROp(fins->o));
     if (a == y)  /* (x o k1) o k2 ==> x o k1, if (k1 o k2) == k1. */
       return LEFTFOLD;
     PHIBARRIER(fleft);
@@ -2572,7 +2573,7 @@ TRef LJ_FASTCALL lj_opt_cse(jit_State *J)
 {
   /* Avoid narrow to wide store-to-load forwarding stall */
   IRRef2 op12 = (IRRef2)fins->op1 + ((IRRef2)fins->op2 << 16);
-  IROp op = fins->o;
+  IROp op = IROp(fins->o);
   if (LJ_LIKELY(J->flags & JIT_F_OPT_CSE)) {
     /* Limited search for same operands in per-opcode chain. */
     IRRef ref = J->chain[op];

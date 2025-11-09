@@ -40,7 +40,7 @@ static LJ_AINLINE MCode *emit_op(x86Op xo, Reg rr, Reg rb, Reg rx,
   int n = (int8_t)xo;
   if (n == -60) {  // VEX-encoded instruction 
 #if LJ_64
-    xo ^= (((rr>>1)&4)+((rx>>2)&2)+((rb>>3)&1))<<13;
+    xo = (x86Op)(xo ^ ((((rr>>1)&4)+((rx>>2)&2)+((rb>>3)&1))<<13));
 #endif
     *(uint32_t *)(p+delta-5) = (uint32_t)xo;
     return p+delta-5;

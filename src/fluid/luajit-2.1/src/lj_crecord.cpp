@@ -107,7 +107,7 @@ static IRType crec_ct2irt(CTState *cts, CType *ct)
     } else {
       uint32_t b = lj_fls(ct->size);
       if (b <= 3)
-	return IRT_I8 + 2*b + ((ct->info & CTF_UNSIGNED) ? 1 : 0);
+	return (IRType)(IRT_I8 + 2*b + ((ct->info & CTF_UNSIGNED) ? 1 : 0));
     }
   } else if (ctype_isptr(ct->info)) {
     return (LJ_64 && ct->size == 8) ? IRT_P64 : IRT_P32;
@@ -184,7 +184,7 @@ static MSize crec_copy_unroll(CRecMemList *ml, CTSize len, CTSize step,
 {
   CTSize ofs = 0;
   MSize mlp = 0;
-  if (tp == IRT_CDATA) tp = IRT_U8 + 2*lj_fls(step);
+  if (tp == IRT_CDATA) tp = (IRType)(IRT_U8 + 2*lj_fls(step));
   do {
     while (ofs + step <= len) {
       if (mlp >= CREC_COPY_MAXUNROLL) return 0;
@@ -194,7 +194,7 @@ static MSize crec_copy_unroll(CRecMemList *ml, CTSize len, CTSize step,
       ofs += step;
     }
     step >>= 1;
-    tp -= 2;
+    tp = (IRType)(tp - 2);
   } while (ofs < len);
   return mlp;
 }
@@ -279,7 +279,7 @@ static MSize crec_fill_unroll(CRecMemList *ml, CTSize len, CTSize step)
 {
   CTSize ofs = 0;
   MSize mlp = 0;
-  IRType tp = IRT_U8 + 2*lj_fls(step);
+  IRType tp = (IRType)(IRT_U8 + 2*lj_fls(step));
   do {
     while (ofs + step <= len) {
       if (mlp >= CREC_COPY_MAXUNROLL) return 0;
@@ -289,7 +289,7 @@ static MSize crec_fill_unroll(CRecMemList *ml, CTSize len, CTSize step)
       ofs += step;
     }
     step >>= 1;
-    tp -= 2;
+    tp = (IRType)(tp - 2);
   } while (ofs < len);
   return mlp;
 }
@@ -758,7 +758,7 @@ static void crec_index_meta(jit_State *J, CTState *cts, CType *ct,
 /* Record bitfield load/store. */
 static void crec_index_bf(jit_State *J, RecordFFData *rd, TRef ptr, CTInfo info)
 {
-  IRType t = IRT_I8 + 2*lj_fls(ctype_bitcsz(info)) + ((info&CTF_UNSIGNED)?1:0);
+  IRType t = (IRType)(IRT_I8 + 2*lj_fls(ctype_bitcsz(info)) + ((info&CTF_UNSIGNED)?1:0));
   TRef tr = emitir(IRT(IR_XLOAD, t), ptr, 0);
   CTSize pos = ctype_bitpos(info), bsz = ctype_bitbsz(info), shift = 32 - bsz;
   lj_assertJ(t <= IRT_U32, "only 32 bit bitfields supported");  /* NYI */
@@ -1361,7 +1361,7 @@ static TRef crec_arith_int64(jit_State *J, TRef *sp, CType **s, MMS mm)
       } else {
 	op = mm == MM_lt ? IR_LT : IR_LE;
 	if (dt == IRT_U32 || dt == IRT_U64)
-	  op += (IR_ULT-IR_LT);
+	  op = (IROp)(op + (IR_ULT-IR_LT));
       }
       lj_ir_set(J, IRTG(op, dt), sp[0], sp[1]);
       J->postproc = LJ_POST_FIXGUARD;

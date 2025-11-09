@@ -81,7 +81,7 @@ static int carith_checkarg(lua_State *L, CTState *cts, CDArith *ca)
       }
     } else {
       ca->ct[i] = NULL;
-      ca->p[i] = (void *)(intptr_t)1;  /* To make it unequal. */
+      ca->p[i] = (uint8_t *)(intptr_t)1;  /* To make it unequal. */
       ok = 0;
     }
   }
@@ -326,7 +326,7 @@ uint64_t lj_carith_check64(lua_State *L, int narg, CTypeID *id)
     CType *s = ctype_get(cts, sid);
     uint64_t x;
     if (ctype_isref(s->info)) {
-      sp = *(void **)sp;
+      sp = (uint8_t *)*(void **)sp;
       sid = ctype_cid(s->info);
     }
     s = ctype_raw(cts, sid);

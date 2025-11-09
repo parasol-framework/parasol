@@ -93,7 +93,7 @@ void LJ_FASTCALL lj_buf_shrink(lua_State *L, SBuf *sb)
   MSize osz = (MSize)(sb->e - b);
   if (osz > 2*LJ_MIN_SBUF) {
     MSize n = (MSize)(sb->w - b);
-    b = lj_mem_realloc(L, b, osz, (osz >> 1));
+    b = (char *)lj_mem_realloc(L, b, osz, (osz >> 1));
     sb->b = b;
     sb->w = b + n;
     sb->e = b + (osz >> 1);

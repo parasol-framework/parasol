@@ -20,7 +20,7 @@
 @set DASMDIR=..\dynasm
 @set DASM=%DASMDIR%\dynasm.lua
 @set DASC=vm_x64.dasc
-@set ALL_LIB=lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
+@set ALL_LIB=lib_base.cpp lib_math.cpp lib_bit.cpp lib_string.cpp lib_table.cpp lib_io.cpp lib_os.cpp lib_package.cpp lib_debug.cpp lib_jit.cpp lib_ffi.cpp lib_buffer.cpp
 
 @rem Set output directory (default to current directory if not specified)
 @if "%~1"=="" (
@@ -35,7 +35,7 @@
 if not exist minilua.exe goto :BUILD_MINILUA
 goto :MINILUA_DONE
 :BUILD_MINILUA
-%LJCOMPILE% host\minilua.c
+%LJCOMPILE% host\minilua.cpp
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:minilua.exe minilua.obj
 @if errorlevel 1 goto :BAD
@@ -68,7 +68,7 @@ if exist minilua.exe.manifest^
 if not exist buildvm.exe goto :BUILD_BUILDVM
 goto :BUILDVM_DONE
 :BUILD_BUILDVM
-%LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.c
+%LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.cpp
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:buildvm.exe buildvm*.obj
 @if errorlevel 1 goto :BAD
@@ -90,7 +90,7 @@ if exist buildvm.exe.manifest^
 @if errorlevel 1 goto :BAD
 .\buildvm.exe -m vmdef -o "%OUTDIR%\jit\vmdef.lua" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m folddef -o "%OUTDIR%\lj_folddef.h" lj_opt_fold.c
+.\buildvm.exe -m folddef -o "%OUTDIR%\lj_folddef.h" lj_opt_fold.cpp
 @if errorlevel 1 goto :BAD
 
 @rem Clean up temporary build artifacts (keep minilua.exe and buildvm.exe for incremental builds)

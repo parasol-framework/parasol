@@ -319,7 +319,11 @@ static LJ_AINLINE uint32_t lj_getu32(const void *v)
 #define LJ_NORET
 #endif
 #ifndef LJ_NOAPI
+#ifdef __cplusplus
+#define LJ_NOAPI	extern "C"
+#else
 #define LJ_NOAPI	extern
+#endif
 #endif
 #ifndef LJ_LIKELY
 #define LJ_LIKELY(x)	(x)

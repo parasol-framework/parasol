@@ -24,7 +24,7 @@ NODOTABIVER= 51
 # removing the '#' in front of them. Make sure you force a full recompile
 # with "make clean", followed by "make" if you change any options.
 #
-DEFAULT_CC = gcc
+DEFAULT_CC = g++
 #
 # LuaJIT builds as a native 32 or 64 bit binary by default.
 CC= $(DEFAULT_CC)
@@ -517,7 +517,7 @@ LJVM_MODE= elfasm
 LJLIB_O= $(OBJDIR_PREFIX)lib_base.o $(OBJDIR_PREFIX)lib_math.o $(OBJDIR_PREFIX)lib_bit.o $(OBJDIR_PREFIX)lib_string.o $(OBJDIR_PREFIX)lib_table.o \
 	 $(OBJDIR_PREFIX)lib_debug.o $(OBJDIR_PREFIX)lib_jit.o $(OBJDIR_PREFIX)lib_ffi.o \
 	 $(OBJDIR_PREFIX)lib_buffer.o
-LJLIB_C= $(LJLIB_O:$(OBJDIR_PREFIX)%.o=%.c)
+LJLIB_C= $(LJLIB_O:$(OBJDIR_PREFIX)%.o=%.cpp)
 
 LJCORE_O= $(OBJDIR_PREFIX)lj_assert.o $(OBJDIR_PREFIX)lj_gc.o $(OBJDIR_PREFIX)lj_err.o $(OBJDIR_PREFIX)lj_char.o $(OBJDIR_PREFIX)lj_bc.o $(OBJDIR_PREFIX)lj_obj.o $(OBJDIR_PREFIX)lj_buf.o \
 	  $(OBJDIR_PREFIX)lj_str.o $(OBJDIR_PREFIX)lj_tab.o $(OBJDIR_PREFIX)lj_func.o $(OBJDIR_PREFIX)lj_udata.o $(OBJDIR_PREFIX)lj_meta.o $(OBJDIR_PREFIX)lj_debug.o \
@@ -643,7 +643,7 @@ depend:
 	@for file in $(ALL_HDRGEN); do \
 	  test -f $$file || touch $$file; \
 	  done
-	@$(HOST_CC) $(HOST_ACFLAGS) -MM *.c host/*.c | \
+	@$(HOST_CC) $(HOST_ACFLAGS) -MM *.cpp host/*.cpp | \
 	  sed -e "s| [^ ]*/dasm_\S*\.h||g" \
 	      -e "s|^\([^l ]\)|host/\1|" \
 	      -e "s| lj_target_\S*\.h| lj_target_*.h|g" \
@@ -703,10 +703,10 @@ $(LIB_VMDEF): $(BUILDVM_T) $(LJLIB_C)
 	@mkdir -p $(TARGET_GENDIR)/jit
 	$(Q)$(BUILDVM_X) -m vmdef -o $(TARGET_GENDIR)/$(LIB_VMDEFP) $(LJLIB_C)
 
-lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
+lj_folddef.h: $(BUILDVM_T) lj_opt_fold.cpp
 	$(E) "BUILDVM   $@"
 	@mkdir -p $(TARGET_GENDIR)
-	$(Q)$(BUILDVM_X) -m folddef -o $(TARGET_GENDIR)/$@ lj_opt_fold.c
+	$(Q)$(BUILDVM_X) -m folddef -o $(TARGET_GENDIR)/$@ lj_opt_fold.cpp
 
 ##############################################################################
 # Object file rules.
@@ -715,7 +715,7 @@ lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 # Create OBJDIR and OBJDIR/host if they don't exist
 $(shell mkdir -p $(OBJDIR) $(OBJDIR)/host 2>/dev/null)
 
-$(OBJDIR_PREFIX)%.o: %.c
+$(OBJDIR_PREFIX)%.o: %.cpp
 	$(E) "CC        $@"
 	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:%.o=%_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
@@ -725,16 +725,16 @@ $(OBJDIR_PREFIX)%.o: %.S
 	$(Q)$(TARGET_DYNCC) $(TARGET_ASFLAGS) -c -o $(@:%.o=%_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ASFLAGS) -c -o $@ $<
 
-$(LUAJIT_O): luajit.c
+$(LUAJIT_O): luajit.cpp
 	$(E) "CC        $@"
 	$(Q)$(TARGET_STCC) $(TARGET_ACFLAGS) -c -o $@ $<
 
-$(OBJDIR_PREFIX)host/%.o: host/%.c
+$(OBJDIR_PREFIX)host/%.o: host/%.cpp
 	$(E) "HOSTCC    $@"
 	$(Q)$(HOST_CC) $(HOST_ACFLAGS) -c -o $@ $<
 
 # Amalgamated build dependency on generated headers
-$(OBJDIR_PREFIX)ljamalg.o: ljamalg.c $(ALL_HDRGEN)
+$(OBJDIR_PREFIX)ljamalg.o: ljamalg.cpp $(ALL_HDRGEN)
 
 include Makefile.dep
 

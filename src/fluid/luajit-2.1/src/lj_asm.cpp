@@ -1796,7 +1796,7 @@ static void asm_ir(ASMState *as, IRIns *ir)
 
   /* Memory references. */
   case IR_AREF: asm_aref(as, ir); break;
-  case IR_HREF: asm_href(as, ir, 0); break;
+  case IR_HREF: asm_href(as, ir, (IROp)0); break;
   case IR_HREFK: asm_hrefk(as, ir); break;
   case IR_NEWREF: asm_newref(as, ir); break;
   case IR_UREFO: case IR_UREFC: asm_uref(as, ir); break;

@@ -381,7 +381,7 @@ LJLIB_CF(ffi_clib___index)	LJLIB_REC(clib_index 1)
       CTypeID sid = ctype_cid(s->info);
       void *sp = *(void **)cdataptr(cd);
       CType *ct = ctype_raw(cts, sid);
-      if (lj_cconv_tv_ct(cts, ct, sid, L->top-1, sp))
+      if (lj_cconv_tv_ct(cts, ct, sid, L->top-1, (uint8_t *)sp))
 	lj_gc_check(L);
       return 1;
     }
@@ -406,7 +406,7 @@ LJLIB_CF(ffi_clib___newindex)	LJLIB_REC(clib_index 0)
 	if (ctype_attrib(d->info) == CTA_QUAL) qual |= d->size;
       }
       if (!((d->info|qual) & CTF_CONST)) {
-	lj_cconv_ct_tv(cts, d, *(void **)cdataptr(cd), o, 0);
+	lj_cconv_ct_tv(cts, d, (uint8_t *)*(void **)cdataptr(cd), o, 0);
 	return 0;
       }
     }
@@ -507,7 +507,7 @@ LJLIB_CF(ffi_new)	LJLIB_REC(.)
     lj_err_arg(L, 1, LJ_ERR_FFI_INVSIZE);
   cd = lj_cdata_newx(cts, id, sz, info);
   setcdataV(L, o-1, cd);  /* Anchor the uninitialized cdata. */
-  lj_cconv_ct_init(cts, ct, sz, cdataptr(cd),
+  lj_cconv_ct_init(cts, ct, sz, (uint8_t *)cdataptr(cd),
 		   o, (MSize)(L->top - o));  /* Initialize cdata. */
   if (ctype_isstruct(ct->info)) {
     /* Handle ctype __gc metamethod. Use the fast lookup here. */
@@ -538,7 +538,7 @@ LJLIB_CF(ffi_cast)	LJLIB_REC(ffi_new)
     lj_err_arg(L, 1, LJ_ERR_FFI_INVTYPE);
   if (!(tviscdata(o) && cdataV(o)->ctypeid == id)) {
     GCcdata *cd = lj_cdata_new(cts, id, d->size);
-    lj_cconv_ct_tv(cts, d, cdataptr(cd), o, CCF_CAST);
+    lj_cconv_ct_tv(cts, d, (uint8_t *)cdataptr(cd), o, CCF_CAST);
     setcdataV(L, o, cd);
     lj_gc_check(L);
   }

@@ -285,7 +285,7 @@ static void callback_mcode_new(CTState *cts)
   p = lj_mem_new(cts->L, sz);
 #endif
   cts->cb.mcode = p;
-  pe = callback_mcode_init(cts->g, p);
+  pe = callback_mcode_init(cts->g, (uint8_t *)p);
   UNUSED(pe);
   lj_assertCTS((size_t)((char *)pe - (char *)p) <= sz,
 	       "miscalculated CALLBACK_MAX_SLOT");
@@ -609,7 +609,7 @@ static void callback_conv_args(CTState *cts, lua_State *L)
 #endif
 	 )
 	sp = (void *)((uint8_t *)sp + CTSIZE_PTR-cta->size);
-      gcsteps += lj_cconv_tv_ct(cts, cta, 0, o++, sp);
+      gcsteps += lj_cconv_tv_ct(cts, cta, 0, o++, (uint8_t *)sp);
     }
     fid = ctf->sib;
   }

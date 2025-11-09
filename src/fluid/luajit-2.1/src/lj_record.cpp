@@ -370,9 +370,9 @@ static TRef fori_load(jit_State *J, BCReg slot, IRType t, int mode)
 {
   int conv = (tvisint(&J->L->base[slot]) != (t==IRT_INT)) ? IRSLOAD_CONVERT : 0;
   return sloadt(J, (int32_t)slot,
-		t + (((mode & IRSLOAD_TYPECHECK) ||
-		      (conv && t == IRT_INT && !(mode >> 16))) ?
-		     IRT_GUARD : 0),
+		IRType(t + (((mode & IRSLOAD_TYPECHECK) or
+		      (conv and t == IRT_INT and !(mode >> 16))) ?
+		     IRT_GUARD : 0)),
 		mode + conv);
 }
 
@@ -505,17 +505,17 @@ static LoopEvent rec_for(jit_State *J, const BCIns *fori, int isforl)
   LoopEvent ev;
   TRef stop;
   IRType t;
-  if (isforl) {  // Handle FORL/JFORL opcodes. 
+  if (isforl) {  // Handle FORL/JFORL opcodes.
     TRef idx = tr[FORL_IDX];
-    if (mref(J->scev.pc, const BCIns) == fori && tref_ref(idx) == J->scev.idx) {
-      t = J->scev.t.irt;
+    if (mref(J->scev.pc, const BCIns) == fori and tref_ref(idx) == J->scev.idx) {
+      t = IRType(J->scev.t.irt);
       stop = J->scev.stop;
       idx = emitir(IRT(IR_ADD, t), idx, J->scev.step);
       tr[FORL_EXT] = tr[FORL_IDX] = idx;
     } else {
       ScEvEntry scev;
       rec_for_loop(J, fori, &scev, 0);
-      t = scev.t.irt;
+      t = IRType(scev.t.irt);
       stop = scev.stop;
     }
   } else {  // Handle FORI/JFORI opcodes. 
@@ -1052,16 +1052,17 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex *ix, MMS mm)
 {
   RecordIndex mix;
   GCtab *mt;
+  int udtype = 0;  /* Declare before goto */
+  cTValue *mo = NULL;  /* Declare before goto */
   if (tref_istab(ix->tab)) {
     mt = tabref(tabV(&ix->tabv)->metatable);
     mix.tab = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);
   } else if (tref_isudata(ix->tab)) {
-    int udtype = udataV(&ix->tabv)->udtype;
+    udtype = udataV(&ix->tabv)->udtype;
     mt = tabref(udataV(&ix->tabv)->metatable);
     /* The metatables of special userdata objects are treated as immutable. */
     if (udtype != UDTYPE_USERDATA) {
-      cTValue *mo;
-      if (LJ_HASFFI && udtype == UDTYPE_FFI_CLIB) {
+      if (LJ_HASFFI and udtype == UDTYPE_FFI_CLIB) {
 	/* Specialize to the C library namespace object. */
 	emitir(IRTG(IR_EQ, IRT_PGC), ix->tab, lj_ir_kptr(J, udataV(&ix->tabv)));
       } else {
@@ -1071,10 +1072,10 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex *ix, MMS mm)
       }
   immutable_mt:
       mo = lj_tab_getstr(mt, mmname_str(J2G(J), mm));
-      if (!mo || tvisnil(mo))
+      if (!mo or tvisnil(mo))
 	return 0;  /* No metamethod. */
       /* Treat metamethod or index table as immutable, too. */
-      if (!(tvisfunc(mo) || tvistab(mo)))
+      if (!(tvisfunc(mo) or tvistab(mo)))
 	lj_trace_err(J, LJ_TRERR_BADTYPE);
       copyTV(J->L, &ix->mobjv, mo);
       ix->mobj = lj_ir_kgc(J, gcV(mo), tvisfunc(mo) ? IRT_FUNC : IRT_TAB);
@@ -1544,7 +1545,7 @@ TRef lj_record_idx(jit_State *J, RecordIndex *ix)
 
   /* Record the key lookup. */
   xref = rec_idx_key(J, ix, &rbref, &rbguard);
-  xrefop = IR(tref_ref(xref))->o;
+  xrefop = (IROp)IR(tref_ref(xref))->o;
   loadop = xrefop == IR_AREF ? IR_ALOAD : IR_HLOAD;
   /* The lj_meta_tset() inconsistency is gone, but better play safe. */
   oldv = xrefop == IR_KKPTR ? (cTValue *)ir_kptr(IR(tref_ref(xref))) : ix->oldv;
@@ -1640,15 +1641,15 @@ static IRType rec_next_types(GCtab *t, uint32_t idx)
   for (; idx < t->asize; idx++) {
     cTValue *a = arrayslot(t, idx);
     if (LJ_LIKELY(!tvisnil(a)))
-      return (LJ_DUALNUM ? IRT_INT : IRT_NUM) + (itype2irt(a) << 8);
+      return (IRType)((LJ_DUALNUM ? IRT_INT : IRT_NUM) + (itype2irt(a) << 8));
   }
   idx -= t->asize;
   for (; idx <= t->hmask; idx++) {
     Node *n = &noderef(t->node)[idx];
     if (!tvisnil(&n->val))
-      return itype2irt(&n->key) + (itype2irt(&n->val) << 8);
+      return (IRType)(itype2irt(&n->key) + (itype2irt(&n->val) << 8));
   }
-  return IRT_NIL + (IRT_NIL << 8);
+  return (IRType)(IRT_NIL + (IRT_NIL << 8));
 }
 
 /* Record a table traversal step aka next(). */
@@ -1657,7 +1658,7 @@ int lj_record_next(jit_State *J, RecordIndex *ix)
   IRType t, tkey, tval;
   TRef trvk;
   t = rec_next_types(tabV(&ix->tabv), ix->keyv.u32.lo);
-  tkey = (t & 0xff); tval = (t >> 8);
+  tkey = (IRType)(t & 0xff); tval = (IRType)(t >> 8);
   trvk = lj_ir_call(J, IRCALL_lj_vm_next, ix->tab, ix->key);
   if (ix->mobj || tkey == IRT_NIL) {
     TRef idx = emitir(IRTI(IR_HIOP), trvk, trvk);
@@ -2378,7 +2379,7 @@ void lj_record_ins(jit_State *J)
     MMS mm = bcmode_mm(op);
     if (tref_isnumber_str(rb) && tref_isnumber_str(rc))
       rc = lj_opt_narrow_arith(J, rb, rc, rbv, rcv,
-			       (int)mm - (int)MM_add + (int)IR_ADD);
+			       (IROp)((int)mm - (int)MM_add + (int)IR_ADD));
     else
       rc = rec_mm_arith(J, &ix, mm);
     break;

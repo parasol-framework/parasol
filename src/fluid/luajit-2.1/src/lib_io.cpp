@@ -249,7 +249,7 @@ static int io_file_write(lua_State *L, IOFileUD *iof, int start)
 static int io_file_iter(lua_State *L)
 {
   GCfunc *fn = curr_func(L);
-  IOFileUD *iof = uddata(udataV(&fn->c.upvalue[0]));
+  IOFileUD *iof = (IOFileUD *)uddata(udataV(&fn->c.upvalue[0]));
   int n = fn->c.nupvalues - 1;
   if (iof->fp == NULL)
     lj_err_caller(L, LJ_ERR_IOCLFL);

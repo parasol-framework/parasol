@@ -450,7 +450,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State *J, RecordFFData *rd)
 {
   TRef tr = J->base[0];
   if (!((LJ_52 || (LJ_HASFFI && tref_iscdata(tr))) &&
-	recff_metacall(J, rd, MM_pairs + rd->data))) {
+	recff_metacall(J, rd, (MMS)(MM_pairs + rd->data)))) {
     if (tref_istab(tr)) {
       J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
       J->base[1] = tr;
@@ -921,7 +921,7 @@ static void LJ_FASTCALL recff_string_op(jit_State *J, RecordFFData *rd)
 {
   TRef str = lj_ir_tostr(J, J->base[0]);
   TRef hdr = recff_bufhdr(J);
-  TRef tr = lj_ir_call(J, rd->data, hdr, str);
+  TRef tr = lj_ir_call(J, (IRCallID)rd->data, hdr, str);
   J->base[0] = emitir(IRTG(IR_BUFSTR, IRT_STR), tr, hdr);
 }
 

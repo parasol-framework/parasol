@@ -8,6 +8,10 @@
 
 #include "lj_obj.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Entry points for ASM parts of VM. */
 LJ_ASMF void lj_vm_call(lua_State *L, TValue *base, int nres1);
 LJ_ASMF int lj_vm_pcall(lua_State *L, TValue *base, int nres1, ptrdiff_t ef);
@@ -115,5 +119,9 @@ LJ_ASMF char lj_vm_asm_begin[];
 
 /* Bytecode offsets are relative to lj_vm_asm_begin. */
 #define makeasmfunc(ofs)	((ASMFunction)(lj_vm_asm_begin + (ofs)))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

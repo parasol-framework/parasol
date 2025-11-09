@@ -118,7 +118,7 @@ TRef LJ_FASTCALL lj_ir_emit(jit_State *J)
 {
   IRRef ref = lj_ir_nextins(J);
   IRIns *ir = IR(ref);
-  IROp op = fins->o;
+  IROp op = (IROp)fins->o;
   ir->prev = J->chain[op];
   J->chain[op] = (IRRef1)ref;
   ir->o = op;

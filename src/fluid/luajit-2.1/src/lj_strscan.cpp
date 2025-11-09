@@ -482,12 +482,12 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
 	if (casecmp(*p, 'u')) p++, fmt = STRSCAN_U32;
 	if (casecmp(*p, 'l')) {
 	  p++;
-	  if (casecmp(*p, 'l')) p++, fmt += STRSCAN_I64 - STRSCAN_INT;
+	  if (casecmp(*p, 'l')) p++, fmt = (StrScanFmt)(fmt + STRSCAN_I64 - STRSCAN_INT);
 	  else if (!(opt & STRSCAN_OPT_C)) return STRSCAN_ERROR;
-	  else if (sizeof(long) == 8) fmt += STRSCAN_I64 - STRSCAN_INT;
+	  else if (sizeof(long) == 8) fmt = (StrScanFmt)(fmt + STRSCAN_I64 - STRSCAN_INT);
 	}
 	if (casecmp(*p, 'u') && (fmt == STRSCAN_INT || fmt == STRSCAN_I64))
-	  p++, fmt += STRSCAN_U32 - STRSCAN_INT;
+	  p++, fmt = (StrScanFmt)(fmt + STRSCAN_U32 - STRSCAN_INT);
 	if ((fmt == STRSCAN_U32 && !(opt & STRSCAN_OPT_C)) ||
 	    (fmt >= STRSCAN_I64 && !(opt & STRSCAN_OPT_LL)))
 	  return STRSCAN_ERROR;

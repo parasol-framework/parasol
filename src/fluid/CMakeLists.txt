@@ -53,9 +53,7 @@ set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
 set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
 
 # Common compiler flags and paths
-set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
 set (LUAJIT_INCLUDE_DIRS "-I${LUAJIT_SRC}" "-I${LUAJIT_BUILD_DIR}")
-set (LUAJIT_COMMON_CFLAGS "-fPIC" "-O2" "-fomit-frame-pointer" "-Wall")
 
 # Helper function to set platform-specific executable name
 function(set_platform_executable VAR_NAME BASE_NAME)
@@ -127,6 +125,7 @@ if (MSVC)
 
    # Disable specific warnings from LuaJIT
    target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
+   #target_compile_options(luajit_lib PRIVATE ${CMAKE_CXX_FLAGS})
 
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
@@ -142,7 +141,7 @@ elseif (LUAJIT_ORIGINAL_BUILD)
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
+      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CMAKE_CXX_FLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS "${LUAJIT_BUILD_DIR}/libluajit.a"
       COMMENT "Compiling LuaJIT library")
@@ -176,7 +175,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -x c -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -x c -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
       VERBATIM
@@ -225,7 +224,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${LUAJIT_ARCH_DETECT}
-      COMMAND ${CMAKE_C_COMPILER} -I${LUAJIT_SRC} -x c -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
+      COMMAND ${CMAKE_CXX_COMPILER} -I${LUAJIT_SRC} -x c -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
       DEPENDS ${LUAJIT_DETECT_ARCH} "${LUAJIT_SRC}/lj_arch.h"
       COMMENT "Detecting LuaJIT target architecture"
       VERBATIM
@@ -297,7 +296,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -x c
+      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -x c
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
@@ -369,7 +368,7 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
+         COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
@@ -391,7 +390,7 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL -x c
+      COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL -x c
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
