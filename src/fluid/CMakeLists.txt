@@ -82,8 +82,8 @@ if (MSVC)
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
-   file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
-   file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.cpp")
+   file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.cpp")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
    # Generate headers and VM object file directly to build directory
@@ -102,8 +102,8 @@ if (MSVC)
    add_custom_target(luajit_codegen DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ})
 
    # Collect all LuaJIT source files
-   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
-   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.cpp")
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.cpp")
 
    # Create LuaJIT static library
    add_library(luajit_lib STATIC ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES} ${LUAJIT_VM_OBJ})
@@ -170,13 +170,13 @@ else ()
 
    # Build minilua host tool first
 
-   set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+   set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.cpp")
    set_platform_executable(MINILUA_TARGET "minilua")
    set_platform_math_lib(MINILUA_LIBS)
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -x c -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
       VERBATIM
@@ -225,7 +225,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${LUAJIT_ARCH_DETECT}
-      COMMAND ${CMAKE_C_COMPILER} -I${LUAJIT_SRC} -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
+      COMMAND ${CMAKE_C_COMPILER} -I${LUAJIT_SRC} -x c -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
       DEPENDS ${LUAJIT_DETECT_ARCH} "${LUAJIT_SRC}/lj_arch.h"
       COMMENT "Detecting LuaJIT target architecture"
       VERBATIM
@@ -285,11 +285,11 @@ else ()
    # Build buildvm host tool
 
    set (BUILDVM_SOURCES
-      "${LUAJIT_HOST_DIR}/buildvm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_asm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
-      "${LUAJIT_HOST_DIR}/buildvm_lib.c"
-      "${LUAJIT_HOST_DIR}/buildvm_fold.c"
+      "${LUAJIT_HOST_DIR}/buildvm.cpp"
+      "${LUAJIT_HOST_DIR}/buildvm_asm.cpp"
+      "${LUAJIT_HOST_DIR}/buildvm_peobj.cpp"
+      "${LUAJIT_HOST_DIR}/buildvm_lib.cpp"
+      "${LUAJIT_HOST_DIR}/buildvm_fold.cpp"
    )
 
    set_platform_executable(BUILDVM_TARGET "buildvm")
@@ -297,7 +297,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS}
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -x c
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
@@ -307,17 +307,17 @@ else ()
    )
 
    # Library source files needed for buildvm header generation
-   # Note: lib_ffi.c excluded because FFI is disabled
+   # Note: lib_ffi.cpp excluded because FFI is disabled
 
    set (LJLIB_C
-      "${LUAJIT_SRC}/lib_base.c"
-      "${LUAJIT_SRC}/lib_math.c"
-      "${LUAJIT_SRC}/lib_bit.c"
-      "${LUAJIT_SRC}/lib_string.c"
-      "${LUAJIT_SRC}/lib_table.c"
-      "${LUAJIT_SRC}/lib_debug.c"
-      "${LUAJIT_SRC}/lib_jit.c"
-      "${LUAJIT_SRC}/lib_buffer.c"
+      "${LUAJIT_SRC}/lib_base.cpp"
+      "${LUAJIT_SRC}/lib_math.cpp"
+      "${LUAJIT_SRC}/lib_bit.cpp"
+      "${LUAJIT_SRC}/lib_string.cpp"
+      "${LUAJIT_SRC}/lib_table.cpp"
+      "${LUAJIT_SRC}/lib_debug.cpp"
+      "${LUAJIT_SRC}/lib_jit.cpp"
+      "${LUAJIT_SRC}/lib_buffer.cpp"
    )
 
    # Generate headers and VM file using buildvm
@@ -346,10 +346,10 @@ else ()
       COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
+      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.cpp"
       COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m ${LUAJIT_VM_MODE} -o ${LUAJIT_VM_OUTPUT}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp"
       WORKING_DIRECTORY ${LUAJIT_SRC}
       COMMENT ${LUAJIT_VM_COMMENT}
       VERBATIM
@@ -381,23 +381,23 @@ else ()
    endif ()
 
    # Compile amalgamated source
-   # List all source files included by ljamalg.c to ensure proper dependency tracking
+   # List all source files included by ljamalg.cpp to ensure proper dependency tracking
 
    file(GLOB LUAJIT_AMALG_SOURCES
-      "${LUAJIT_SRC}/lj_*.c"
-      "${LUAJIT_SRC}/lib_*.c"
+      "${LUAJIT_SRC}/lj_*.cpp"
+      "${LUAJIT_SRC}/lib_*.cpp"
    )
 
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL -x c
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
          -Wno-trigraphs
-         -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
-      DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
+         -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
+      DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
       COMMENT "Compiling LuaJIT amalgamated source"
       VERBATIM
    )
