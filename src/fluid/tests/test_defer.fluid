@@ -7,7 +7,7 @@ end
 function testBasicExecution()
    local order = {}
    local function subject()
-      defer()
+      defer
          table.insert(order, 'deferred')
       end
       table.insert(order, 'body')
@@ -15,6 +15,26 @@ function testBasicExecution()
 
    subject()
    assert(join(order) is 'body,deferred', "Expected body before deferred handler, got '" .. join(order) .. "'")
+end
+
+function testDeferWithoutParens()
+   local order = {}
+
+   local function subject()
+      defer
+         table.insert(order, 'alpha')
+      end
+
+      defer()
+         table.insert(order, 'beta')
+      end
+
+      table.insert(order, 'body')
+   end
+
+   subject()
+
+   assert(join(order) is 'body,beta,alpha', "Expected mix of defer syntaxes to preserve order, got '" .. join(order) .. "'")
 end
 
 function testLifoOrder()
@@ -293,8 +313,9 @@ end
 
    local tests = {
       -- PHASE 1: MVP - Basic defer without arguments or error handling
-      -- Expected to pass: 10 tests
+      -- Expected to pass: 13 tests (covers both paren and no-paren syntax)
       'testBasicExecution',      -- Core: defer executes at scope end
+      'testDeferWithoutParens',  -- Core: defer keyword works without parentheses
       'testLifoOrder',           -- Core: multiple defers execute in reverse order
       'testEarlyReturn',         -- Core: defer executes before return
       'testNestedScopes',        -- Core: nested scopes handle defers correctly

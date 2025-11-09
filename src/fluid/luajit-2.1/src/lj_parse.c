@@ -2415,8 +2415,8 @@ static BCReg parse_params(LexState *ls, int needself)
 /* Forward declaration. */
 static void parse_chunk(LexState *ls);
 
-/* Parse body of a function. */
-static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
+static void parse_body_impl(LexState *ls, ExpDesc *e, int needself,
+                            BCLine line, int optparams)
 {
   FuncState fs, *pfs = ls->fs;
   FuncScope bl;
@@ -2425,7 +2425,12 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   fs_init(ls, &fs);
   fscope_begin(&fs, &bl, 0);
   fs.linedefined = line;
-  fs.numparams = (uint8_t)parse_params(ls, needself);
+  if (optparams && ls->tok != '(') {
+    lj_assertLS(!needself, "optional parameters require explicit self");
+    fs.numparams = 0;
+  } else {
+    fs.numparams = (uint8_t)parse_params(ls, needself);
+  }
   fs.bcbase = pfs->bcbase + pfs->pc;
   fs.bclim = pfs->bclim - pfs->pc;
   bcemit_AD(&fs, BC_FUNCF, 0, 0);  /* Placeholder. */
@@ -2436,7 +2441,7 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
   /* Store new prototype in the constant array of the parent. */
   expr_init(e, VRELOCABLE,
-	    bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+            bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
 #if LJ_HASFFI
   pfs->flags |= (fs.flags & PROTO_FFI);
 #endif
@@ -2446,6 +2451,18 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
     pfs->flags |= PROTO_CHILD;
   }
   lj_lex_next(ls);
+}
+
+/* Parse body of a function. */
+static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
+{
+  parse_body_impl(ls, e, needself, line, 0);
+}
+
+/* Parse body of a defer handler where parameter list is optional. */
+static void parse_body_defer(LexState *ls, ExpDesc *e, BCLine line)
+{
+  parse_body_impl(ls, e, 0, line, 1);
 }
 
 /* Parse expression list. Last expression is left open.
@@ -3383,7 +3400,7 @@ static void parse_defer(LexState *ls)
   vi = &var_get(ls, fs, fs->nactvar-1);
   vi->info |= VSTACK_DEFER;
 
-  parse_body(ls, &func, 0, line);
+  parse_body_defer(ls, &func, line);
   expr_toreg(fs, &func, reg);
 
   if (ls->tok == '(') {
