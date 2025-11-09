@@ -132,7 +132,24 @@ function testUpvalues()
 end
 
 function testArgumentSnapshot()
-   -- Phase 2 placeholder: argument snapshot support to be implemented.
+   local events = {}
+
+   local function subject()
+      local value = 5
+
+      defer(arg)
+         table.insert(events, 'defer-' .. tostring(arg))
+      end(value)
+
+      table.insert(events, 'body-' .. tostring(value))
+      value += 10
+      table.insert(events, 'mutated-' .. tostring(value))
+   end
+
+   subject()
+
+   assert(join(events) is 'body-5,mutated-15,defer-5',
+      "Deferred argument should snapshot initial value: '" .. join(events) .. "'")
 end
 
 function testConditionalScopes()
@@ -220,12 +237,39 @@ function testClosureReturn()
 end
 
 function testResourceCleanupPattern()
-   -- Phase 2 placeholder: resource cleanup pattern test will be restored later.
+   local log = {}
+
+   local function cleanup(resource, token)
+      table.insert(log, 'cleanup-' .. resource.name .. '-' .. token)
+   end
+
+   local function acquire(name)
+      table.insert(log, 'acquire-' .. name)
+      return { name = name }
+   end
+
+   local function subject()
+      local resource = acquire('alpha')
+      local label = 'start'
+
+      defer(handler, handle, token)
+         handler(handle, token)
+      end(cleanup, resource, label .. '-token')
+
+      resource.name = 'beta'
+      label = 'updated'
+      table.insert(log, 'body-' .. resource.name .. '-' .. label)
+   end
+
+   subject()
+
+   assert(join(log) is 'acquire-alpha,body-beta-updated,cleanup-beta-start-token',
+      "Resource cleanup should receive original token value: '" .. join(log) .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-   local supportsArgumentSnapshot = false
+   local supportsArgumentSnapshot = true
    local supportsErrorPropagation = false
 
    local tests = {

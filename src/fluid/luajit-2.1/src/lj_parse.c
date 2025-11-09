@@ -126,6 +126,7 @@ typedef uint16_t VarIndex;
 #define VSTACK_GOTO		0x02	/* Pending goto. */
 #define VSTACK_LABEL		0x04	/* Label. */
 #define VSTACK_DEFER		0x08	/* Deferred handler. */
+#define VSTACK_DEFERARG	0x10	/* Deferred handler argument. */
 
 /* Per-function state. */
 typedef struct FuncState {
@@ -1673,6 +1674,8 @@ static void execute_defers(FuncState *fs, BCReg limit)
   LexState *ls = fs->ls;
   BCReg i = fs->nactvar;
   BCReg oldfreereg;
+  BCReg argc = 0;
+  BCReg argslots[LJ_MAX_SLOTS];
 
   if (fs->freereg < fs->nactvar)
     fs->freereg = fs->nactvar;
@@ -1680,18 +1683,28 @@ static void execute_defers(FuncState *fs, BCReg limit)
 
   while (i > limit) {
     VarInfo *v = &var_get(ls, fs, --i);
-    if (v->info & VSTACK_DEFER) {
-      BCReg slot = v->slot;
-      lj_assertFS(slot < fs->nactvar, "invalid defer slot");
-      {
-        BCReg callbase = fs->freereg;
-        bcreg_reserve(fs, 1);
-        bcemit_AD(fs, BC_MOV, callbase, slot);
-        bcemit_ABC(fs, BC_CALL, callbase, 1, 1);
-      }
+    if (v->info & VSTACK_DEFERARG) {
+      lj_assertFS(argc < LJ_MAX_SLOTS, "too many defer args");
+      argslots[argc++] = v->slot;
+      continue;
     }
+    if (v->info & VSTACK_DEFER) {
+      BCReg callbase = fs->freereg;
+      BCReg j;
+      bcreg_reserve(fs, argc + 1 + LJ_FR2);
+      bcemit_AD(fs, BC_MOV, callbase, v->slot);
+      for (j = 0; j < argc; j++) {
+        BCReg src = argslots[argc - 1 - j];
+        bcemit_AD(fs, BC_MOV, callbase + LJ_FR2 + j + 1, src);
+      }
+      bcemit_ABC(fs, BC_CALL, callbase, 1, argc + 1);
+      argc = 0;
+      continue;
+    }
+    lj_assertFS(argc == 0, "dangling defer arguments");
   }
 
+  lj_assertFS(argc == 0, "dangling defer arguments");
   fs->freereg = oldfreereg;
 }
 
@@ -3343,9 +3356,10 @@ static void snapshot_return_regs(FuncState *fs, BCIns *ins)
 static void parse_defer(LexState *ls)
 {
   FuncState *fs = ls->fs;
-  ExpDesc func;
+  ExpDesc func, arg;
   BCLine line = ls->linenumber;
   BCReg reg = fs->freereg;
+  BCReg nargs = 0;
   VarInfo *vi;
 
   lj_lex_next(ls);  /* Skip 'defer'. */
@@ -3357,6 +3371,30 @@ static void parse_defer(LexState *ls)
 
   parse_body(ls, &func, 0, line);
   expr_toreg(fs, &func, reg);
+
+  if (ls->tok == '(') {
+    BCLine argline = ls->linenumber;
+    lj_lex_next(ls);
+    if (ls->tok != ')') {
+      do {
+        expr(ls, &arg);
+        expr_tonextreg(fs, &arg);
+        nargs++;
+      } while (lex_opt(ls, ','));
+    }
+    lex_match(ls, ')', '(', argline);
+    if (nargs) {
+      BCReg i;
+      for (i = 0; i < nargs; i++)
+        var_new(ls, i, NAME_BLANK);
+      var_add(ls, nargs);
+      for (i = 0; i < nargs; i++) {
+        VarInfo *argi = &var_get(ls, fs, fs->nactvar - nargs + i);
+        argi->info |= VSTACK_DEFERARG;
+      }
+    }
+  }
+
   fs->freereg = fs->nactvar;
 }
 

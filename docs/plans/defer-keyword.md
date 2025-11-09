@@ -666,6 +666,13 @@ build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.flu
 - ✅ Added `src/fluid/tests/test_defer.fluid` with eleven Phase 1 scenarios. Phase 2/3 expectations remain documented as placeholder functions and are intentionally excluded from the exported `tests` list until the corresponding semantics land.
 - ✅ Command to validate Phase 1: `build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid` (passes 11/11 cases after the 2025-02-17 build).
 
+#### Phase 2 delivery report (2025-11-08)
+
+- ✅ `parse_defer()` now snapshots optional argument expressions into hidden locals flagged with `VSTACK_DEFERARG`, ensuring values are captured at registration time.
+- ✅ `execute_defers()` drains both handlers and their argument payloads in LIFO order and emits `BC_CALL` with the correct arity while staging calls safely above live locals.
+- ✅ Re-enabled `testArgumentSnapshot` and `testResourceCleanupPattern`; the Flute suite now reports 13/13 passing scenarios with `supportsErrorPropagation` still gating the Phase 3 error test.
+- ✅ Validation command: `build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid` (passes 13/13 active cases on 2025-11-08).
+
 ### Phase 2: Argument Snapshot Support
 
 **Goal**: Support `defer(arg) ... end(value)` syntax.
@@ -928,4 +935,4 @@ The phased approach allows delivering basic functionality quickly (Phase 1) whil
 
 **Last Updated**: 2025-02-17
 **Author**: Strategic analysis based on LuaJIT 2.1 architecture and test_defer.fluid requirements
-**Status**: Phase 1 complete (defer executes on scope exit, early returns, and loop control)
+**Status**: Phase 2 complete (argument snapshots enabled; 13/13 active regression tests passing while error unwinding remains deferred)
