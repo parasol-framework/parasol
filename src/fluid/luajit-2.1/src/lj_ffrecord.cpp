@@ -613,7 +613,7 @@ static void LJ_FASTCALL recff_math_atan2(jit_State *J, RecordFFData *rd)
 {
   TRef tr = lj_ir_tonum(J, J->base[0]);
   TRef tr2 = lj_ir_tonum(J, J->base[1]);
-  J->base[0] = lj_ir_call(J, IRCALL_atan2, tr, tr2);
+  J->base[0] = lj_ir_call(J, IRCALL_cmath_atan2, tr, tr2);
   UNUSED(rd);
 }
 

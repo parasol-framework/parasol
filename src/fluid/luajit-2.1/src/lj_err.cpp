@@ -574,7 +574,7 @@ extern void __deregister_frame(const void *);
 
 uint8_t *lj_err_register_mcode(void *base, size_t sz, uint8_t *info)
 {
-  void **handler;
+  void *handler;
   memcpy(info, err_frame_jit_template, sizeof(err_frame_jit_template));
   handler = (void *)err_unwind_jit;
   memcpy(info + ERR_FRAME_JIT_OFS_HANDLER, &handler, sizeof(handler));

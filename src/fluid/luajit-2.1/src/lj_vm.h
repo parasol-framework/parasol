@@ -76,7 +76,7 @@ LJ_ASMF double lj_vm_ceil_sf(double);
 #ifdef LUAJIT_NO_LOG2
 LJ_ASMF double lj_vm_log2(double);
 #else
-#define lj_vm_log2	log2
+#define lj_vm_log2	cmath_log2
 #endif
 #if !(defined(_LJ_DISPATCH_H) && LJ_TARGET_MIPS)
 LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t, int32_t);
