@@ -73,6 +73,24 @@ LJ_ASMF double lj_vm_floor_sf(double);
 LJ_ASMF double lj_vm_ceil_sf(double);
 #endif
 #endif
+/* C math library wrappers for C++ compatibility. */
+LJ_ASMF double cmath_log10(double);
+LJ_ASMF double cmath_exp(double);
+LJ_ASMF double cmath_sin(double);
+LJ_ASMF double cmath_cos(double);
+LJ_ASMF double cmath_tan(double);
+LJ_ASMF double cmath_asin(double);
+LJ_ASMF double cmath_acos(double);
+LJ_ASMF double cmath_atan(double);
+LJ_ASMF double cmath_sinh(double);
+LJ_ASMF double cmath_cosh(double);
+LJ_ASMF double cmath_tanh(double);
+LJ_ASMF double cmath_sqrt(double);
+LJ_ASMF double cmath_log(double);
+LJ_ASMF double cmath_log2(double);
+LJ_ASMF double cmath_atan2(double, double);
+LJ_ASMF double cmath_ldexp(double, int);
+
 #ifdef LUAJIT_NO_LOG2
 LJ_ASMF double lj_vm_log2(double);
 #else
