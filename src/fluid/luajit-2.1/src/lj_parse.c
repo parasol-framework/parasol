@@ -70,6 +70,8 @@ typedef struct ExpDesc {
 } ExpDesc;
 
 #define SAFE_NAV_CHAIN_FLAG      0x80000000u
+/* Flag carried in ExpDesc.aux to signal that a postfix increment formed a statement. */
+#define POSTFIX_INC_STMT_FLAG    0x40000000u
 
 /* Macros for expressions. */
 #define expr_hasjump(e)		((e)->t != (e)->f)
@@ -2702,11 +2704,12 @@ static void inc_dec_op(LexState *ls, BinOpr op, ExpDesc *v, int isPost)
     if (v->k == VINDEXED)
       bcreg_reserve(fs, 1);
     expr_tonextreg(fs, v);
+    /* Remember that this expression was consumed as a standalone postfix increment. */
+    v->u.s.aux |= POSTFIX_INC_STMT_FLAG;
     bcreg_reserve(fs, 1);
     bcemit_arith(fs, op, &e1, &e2);
     bcemit_store(fs, &lv, &e1);
     fs->freereg--;
-    ls->postinc_pending = 1;
     return;
   }
   expr_primary(ls, v);
@@ -3349,12 +3352,8 @@ static void parse_call_assign(LexState *ls)
   FuncState *fs = ls->fs;
   LHSVarList vl;
   expr_primary(ls, &vl.v);
-  int had_postinc = ls->postinc_pending;
-  if (had_postinc) {
-    /* Allow postfix increment statements without an explicit semicolon. */
-    ls->postinc_pending = 0;
+  if (vl.v.k == VNONRELOC && (vl.v.u.s.aux & POSTFIX_INC_STMT_FLAG))
     return;
-  }
   if (vl.v.k == VCALL) {  /* Function call statement. */
     setbc_b(bcptr(fs, &vl.v), 1);  /* No results. */
   }
@@ -3868,8 +3867,6 @@ static void parse_if(LexState *ls, BCLine line)
 static int parse_stmt(LexState *ls)
 {
   BCLine line = ls->linenumber;
-  /* Reset any pending postfix increment before starting a new statement. */
-  ls->postinc_pending = 0;
   switch (ls->tok) {
   case TK_if:
     parse_if(ls, line);

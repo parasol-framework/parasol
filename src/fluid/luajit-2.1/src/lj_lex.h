@@ -78,7 +78,6 @@ typedef struct LexState {
   BCInsLine *bcstack;	/* Stack for bytecode instructions/line numbers. */
   MSize sizebcstack;	/* Size of bytecode stack. */
   uint32_t level;	/* Syntactical nesting level. */
-  uint8_t postinc_pending;	/* Tracks pending postfix increment statements. */
   int endmark;		/* Trust bytecode end marker, even if not at EOF. */
 } LexState;
 
