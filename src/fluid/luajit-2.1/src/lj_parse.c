@@ -125,6 +125,8 @@ typedef uint16_t VarIndex;
 #define VSTACK_VAR_RW		0x01	/* R/W variable. */
 #define VSTACK_GOTO		0x02	/* Pending goto. */
 #define VSTACK_LABEL		0x04	/* Label. */
+#define VSTACK_DEFER		0x08	/* Deferred handler. */
+#define VSTACK_DEFERARG	0x10	/* Deferred handler argument. */
 
 /* Per-function state. */
 typedef struct FuncState {
@@ -1667,12 +1669,52 @@ static void fscope_loop_continue(FuncState *fs, BCPos pos)
   }
 }
 
+static void execute_defers(FuncState *fs, BCReg limit)
+{
+  LexState *ls = fs->ls;
+  BCReg i = fs->nactvar;
+  BCReg oldfreereg;
+  BCReg argc = 0;
+  BCReg argslots[LJ_MAX_SLOTS];
+
+  if (fs->freereg < fs->nactvar)
+    fs->freereg = fs->nactvar;
+  oldfreereg = fs->freereg;
+
+  while (i > limit) {
+    VarInfo *v = &var_get(ls, fs, --i);
+    if (v->info & VSTACK_DEFERARG) {
+      lj_assertFS(argc < LJ_MAX_SLOTS, "too many defer args");
+      argslots[argc++] = v->slot;
+      continue;
+    }
+    if (v->info & VSTACK_DEFER) {
+      BCReg callbase = fs->freereg;
+      BCReg j;
+      bcreg_reserve(fs, argc + 1 + LJ_FR2);
+      bcemit_AD(fs, BC_MOV, callbase, v->slot);
+      for (j = 0; j < argc; j++) {
+        BCReg src = argslots[argc - 1 - j];
+        bcemit_AD(fs, BC_MOV, callbase + LJ_FR2 + j + 1, src);
+      }
+      bcemit_ABC(fs, BC_CALL, callbase, 1, argc + 1);
+      argc = 0;
+      continue;
+    }
+    lj_assertFS(argc == 0, "dangling defer arguments");
+  }
+
+  lj_assertFS(argc == 0, "dangling defer arguments");
+  fs->freereg = oldfreereg;
+}
+
 /* End a scope. */
 static void fscope_end(FuncState *fs)
 {
   FuncScope *bl = fs->bl;
   LexState *ls = fs->ls;
   fs->bl = bl->prev;
+  execute_defers(fs, bl->nactvar);
   var_remove(ls, bl->nactvar);
   fs->freereg = fs->nactvar;
   lj_assertFS(bl->nactvar == fs->nactvar, "bad regalloc");
@@ -1914,6 +1956,7 @@ static void fs_fixup_ret(FuncState *fs)
 {
   BCPos lastpc = fs->pc;
   if (lastpc <= fs->lasttarget || !bcopisret(bc_op(fs->bcbase[lastpc-1].ins))) {
+    execute_defers(fs, 0);
     if ((fs->bl->flags & FSCOPE_UPVAL))
       bcemit_AJ(fs, BC_UCLO, 0, 0);
     bcemit_AD(fs, BC_RET0, 0, 1);  /* Need final return. */
@@ -2372,8 +2415,8 @@ static BCReg parse_params(LexState *ls, int needself)
 /* Forward declaration. */
 static void parse_chunk(LexState *ls);
 
-/* Parse body of a function. */
-static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
+static void parse_body_impl(LexState *ls, ExpDesc *e, int needself,
+                            BCLine line, int optparams)
 {
   FuncState fs, *pfs = ls->fs;
   FuncScope bl;
@@ -2382,7 +2425,12 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   fs_init(ls, &fs);
   fscope_begin(&fs, &bl, 0);
   fs.linedefined = line;
-  fs.numparams = (uint8_t)parse_params(ls, needself);
+  if (optparams && ls->tok != '(') {
+    lj_assertLS(!needself, "optional parameters require explicit self");
+    fs.numparams = 0;
+  } else {
+    fs.numparams = (uint8_t)parse_params(ls, needself);
+  }
   fs.bcbase = pfs->bcbase + pfs->pc;
   fs.bclim = pfs->bclim - pfs->pc;
   bcemit_AD(&fs, BC_FUNCF, 0, 0);  /* Placeholder. */
@@ -2393,7 +2441,7 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
   /* Store new prototype in the constant array of the parent. */
   expr_init(e, VRELOCABLE,
-	    bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+            bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
 #if LJ_HASFFI
   pfs->flags |= (fs.flags & PROTO_FFI);
 #endif
@@ -2403,6 +2451,18 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
     pfs->flags |= PROTO_CHILD;
   }
   lj_lex_next(ls);
+}
+
+/* Parse body of a function. */
+static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
+{
+  parse_body_impl(ls, e, needself, line, 0);
+}
+
+/* Parse body of a defer handler where parameter list is optional. */
+static void parse_body_defer(LexState *ls, ExpDesc *e, BCLine line)
+{
+  parse_body_impl(ls, e, 0, line, 1);
 }
 
 /* Parse expression list. Last expression is left open.
@@ -3295,6 +3355,80 @@ static void parse_local(LexState *ls)
   }
 }
 
+static void snapshot_return_regs(FuncState *fs, BCIns *ins)
+{
+  BCOp op = bc_op(*ins);
+
+  if (op == BC_RET1) {
+    BCReg src = bc_a(*ins);
+    if (src < fs->nactvar) {
+      BCReg dst = fs->freereg;
+      bcreg_reserve(fs, 1);
+      bcemit_AD(fs, BC_MOV, dst, src);
+      setbc_a(ins, dst);
+    }
+  } else if (op == BC_RET) {
+    BCReg base = bc_a(*ins);
+    BCReg nres = bc_d(*ins);
+
+    if (nres > 1) {
+      BCReg count = nres - 1;
+      BCReg dst = fs->freereg;
+      BCReg i;
+
+      bcreg_reserve(fs, count);
+      for (i = 0; i < count; i++)
+        bcemit_AD(fs, BC_MOV, dst + i, base + i);
+      setbc_a(ins, dst);
+    }
+  }
+}
+
+static void parse_defer(LexState *ls)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc func, arg;
+  BCLine line = ls->linenumber;
+  BCReg reg = fs->freereg;
+  BCReg nargs = 0;
+  VarInfo *vi;
+
+  lj_lex_next(ls);  /* Skip 'defer'. */
+  var_new(ls, 0, NAME_BLANK);
+  bcreg_reserve(fs, 1);
+  var_add(ls, 1);
+  vi = &var_get(ls, fs, fs->nactvar-1);
+  vi->info |= VSTACK_DEFER;
+
+  parse_body_defer(ls, &func, line);
+  expr_toreg(fs, &func, reg);
+
+  if (ls->tok == '(') {
+    BCLine argline = ls->linenumber;
+    lj_lex_next(ls);
+    if (ls->tok != ')') {
+      do {
+        expr(ls, &arg);
+        expr_tonextreg(fs, &arg);
+        nargs++;
+      } while (lex_opt(ls, ','));
+    }
+    lex_match(ls, ')', '(', argline);
+    if (nargs) {
+      BCReg i;
+      for (i = 0; i < nargs; i++)
+        var_new(ls, i, NAME_BLANK);
+      var_add(ls, nargs);
+      for (i = 0; i < nargs; i++) {
+        VarInfo *argi = &var_get(ls, fs, fs->nactvar - nargs + i);
+        argi->info |= VSTACK_DEFERARG;
+      }
+    }
+  }
+
+  fs->freereg = fs->nactvar;
+}
+
 /* Parse 'function' statement. */
 static void parse_func(LexState *ls, BCLine line)
 {
@@ -3362,6 +3496,8 @@ static void parse_return(LexState *ls)
       }
     }
   }
+  snapshot_return_regs(fs, &ins);
+  execute_defers(fs, 0);
   if (fs->flags & PROTO_CHILD)
     bcemit_AJ(fs, BC_UCLO, 0, 0);  /* May need to close upvalues first. */
   bcemit_INS(fs, ins);
@@ -3370,15 +3506,31 @@ static void parse_return(LexState *ls)
 /* Parse 'continue' statement. */
 static void parse_continue(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_CONTINUE;
-  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  lj_assertLS(loop != NULL, "continue outside loop");
+
+  execute_defers(fs, loop->nactvar);
+  fs->bl->flags |= FSCOPE_CONTINUE;
+  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'break' statement. */
 static void parse_break(LexState *ls)
 {
-  ls->fs->bl->flags |= FSCOPE_BREAK;
-  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(ls->fs));
+  FuncState *fs = ls->fs;
+  FuncScope *loop = fs->bl;
+
+  while (loop && !(loop->flags & FSCOPE_LOOP))
+    loop = loop->prev;
+  lj_assertLS(loop != NULL, "break outside loop");
+
+  execute_defers(fs, loop->nactvar);
+  fs->bl->flags |= FSCOPE_BREAK;
+  gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
 /* Parse 'goto' statement. */
@@ -3683,6 +3835,9 @@ static int parse_stmt(LexState *ls)
     break;
   case TK_function:
     parse_func(ls, line);
+    break;
+  case TK_defer:
+    parse_defer(ls);
     break;
   case TK_local:
     lj_lex_next(ls);

@@ -550,7 +550,7 @@ static void parse_defer(LexState *ls)
 
 **Location**: `src/fluid/tests/test_defer.fluid`
 
-**Status**: Comprehensive test suite already exists with 14 test cases covering:
+**Status**: Comprehensive test suite already exists with 15 test cases covering:
 
 - Basic execution order
 - LIFO ordering
@@ -583,9 +583,9 @@ static void parse_defer(LexState *ls)
 
 | Phase | Tests Passing | Key Features | Go Ahead Criteria |
 |-------|--------------|--------------|-------------------|
-| **Phase 1** | 10/13 (77%) | Basic defer, LIFO order, early exits | All 10 core tests pass |
-| **Phase 2** | 12/13 (92%) | + Argument snapshot support | All 12 tests pass (10 + 2 new) |
-| **Phase 3** | 13/13 (100%) | + Error path handling | All 13 tests pass (12 + 1 new) |
+| **Phase 1** | 13/13 core | Basic defer, LIFO order, early exits, paren-less syntax | All 13 core tests pass |
+| **Phase 2** | 15/15 active | + Argument snapshot support, resource cleanup patterns | All 15 active tests pass |
+| **Phase 3** | 16/16 total | + Error path handling | All 16 total tests pass |
 
 **CRITICAL**: Each phase MUST achieve its test passing criteria before proceeding to the next phase. This ensures stability and prevents regressions.
 
@@ -655,7 +655,23 @@ build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.flu
 
 > Note: Replace the final command with the precise path once the new test harness lands.
 
-**Do NOT proceed to Phase 2 until all 10 Phase 1 tests pass.**
+**Do NOT proceed to Phase 2 until all 13 Phase 1 tests pass.**
+
+#### Phase 1 delivery report (2025-02-17)
+
+- ✅ Lexer recognises `defer` via `lj_lex.h` and parser dispatch in `parse_stmt()`.
+- ✅ `parse_defer()` now creates a hidden local marked with `VSTACK_DEFER`, lowers the anonymous function body via `parse_body()`, and leaves the closure in the scope’s register file.
+- ✅ `execute_defers()` walks pending handlers at scope boundaries, snapshots each closure into a scratch register before issuing `BC_CALL`, and is invoked from `fscope_end()`, implicit returns (`fs_fixup_ret()`), explicit `return`, `break`, and `continue` sites. A lightweight `snapshot_return_regs()` helper preserves return values prior to invoking defers.
+- ✅ Loop control statements resolve the active loop scope before draining handlers so `continue` only flushes the current iteration while `break` drains the entire loop scope.
+- ✅ Added `src/fluid/tests/test_defer.fluid` with thirteen Phase 1 scenarios, including coverage for paren-less `defer` syntax. Phase 2/3 expectations remain documented as placeholder functions and are intentionally excluded from the exported `tests` list until the corresponding semantics land.
+- ✅ Command to validate Phase 1: `build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid` (passes 13/13 cases after the 2025-02-17 build).
+
+#### Phase 2 delivery report (2025-11-08)
+
+- ✅ `parse_defer()` now snapshots optional argument expressions into hidden locals flagged with `VSTACK_DEFERARG`, ensuring values are captured at registration time.
+- ✅ `execute_defers()` drains both handlers and their argument payloads in LIFO order and emits `BC_CALL` with the correct arity while staging calls safely above live locals.
+- ✅ Re-enabled `testArgumentSnapshot` and `testResourceCleanupPattern`, and added `testMultiReturnPreservesLocals` plus `testDeferWithoutParens` to guard both multi-value returns and syntax ergonomics; the Flute suite now reports 15/15 passing scenarios with `supportsErrorPropagation` still gating the Phase 3 error test.
+- ✅ Validation command: `build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.fluid file=src/fluid/tests/test_defer.fluid` (passes 15/15 active cases on 2025-11-08).
 
 ### Phase 2: Argument Snapshot Support
 
@@ -668,7 +684,7 @@ build/agents-install/parasol --log-warning --gfx-driver=headless tools/flute.flu
 
 **Estimated effort**: 6-10 hours
 
-**Completion criteria**: **12 of 13 tests passing** (all Phase 1 tests + 2 new tests)
+**Completion criteria**: **15 of 16 tests passing** (all Phase 1 tests + 2 new tests)
 
 The following ADDITIONAL tests must pass before Phase 3:
 1. ✓ `testArgumentSnapshot` - Argument passing: defer(arg)...end(value)
@@ -684,7 +700,7 @@ The following ADDITIONAL tests must pass before Phase 3:
 cd src/fluid/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/fluid/tests/test_defer.fluid --gfx-driver=headless
 ```
 
-**Do NOT proceed to Phase 3 until all 12 tests pass.**
+**Do NOT proceed to Phase 3 until all 15 tests pass.**
 
 ### Phase 3: Error Path Handling (Optional)
 
@@ -698,7 +714,7 @@ cd src/fluid/tests && ../../../build/agents-install/parasol.exe ../../../tools/f
 
 **Estimated effort**: 16-24 hours
 
-**Completion criteria**: **13 of 13 tests passing** (100% test coverage)
+**Completion criteria**: **16 of 16 tests passing** (100% test coverage)
 
 The following FINAL test must pass:
 1. ✓ `testHandlerError` - Error handling: defers execute during errors
@@ -715,7 +731,7 @@ cd src/fluid/tests && ../../../build/agents-install/parasol.exe ../../../tools/f
 - Error-path defer execution is critical for resource safety
 - Time budget allows for VM-level integration work
 
-**Recommendation**: Defer Phase 3 (pun intended again) until proven necessary. Many use cases don't require error path execution. Phase 1 and 2 provide 92% of Go's defer functionality (12 of 13 tests).
+**Recommendation**: Defer Phase 3 (pun intended again) until proven necessary. Many use cases don't require error path execution. Phase 1 and 2 provide over 93% of Go's defer functionality (15 of 16 tests).
 
 ### Running Tests for Specific Phases
 
@@ -727,9 +743,9 @@ cd src/fluid/tests && ../../../build/agents-install/parasol.exe ../../../tools/f
 ```
 
 **Interpreting results**:
-- **10 passing**: Phase 1 complete, ready for Phase 2
-- **12 passing**: Phase 2 complete, ready for Phase 3 (or ship!)
-- **13 passing**: Phase 3 complete (full implementation)
+- **13 passing**: Phase 1 complete, ready for Phase 2
+- **15 passing**: Phase 2 complete, ready for Phase 3 (or ship!)
+- **16 passing**: Phase 3 complete (full implementation)
 
 **Individual test debugging** (if needed):
 
@@ -870,7 +886,7 @@ Summary of all file changes:
 
 After implementation, success is measured by:
 
-1. **Test coverage**: All 14 tests in test_defer.fluid pass (Phase 1: 8-10 tests, Phase 2: all 14)
+1. **Test coverage**: All 15 active tests in test_defer.fluid pass (Phase 1: 13 core tests, Phase 2: all 15 active cases)
 2. **Performance**: < 5% overhead vs manual cleanup in benchmarks
 3. **Code quality**: No new compiler warnings, passes static analysis
 4. **Compilation**: Builds successfully on Windows/Linux/macOS
@@ -917,6 +933,6 @@ The phased approach allows delivering basic functionality quickly (Phase 1) whil
 
 ---
 
-**Last Updated**: 2025-01-08
+**Last Updated**: 2025-02-17
 **Author**: Strategic analysis based on LuaJIT 2.1 architecture and test_defer.fluid requirements
-**Status**: Implementation plan ready for review
+**Status**: Phase 2 complete (argument snapshots enabled; 15/15 active regression tests passing, including paren-less defer syntax, while error unwinding remains deferred)
