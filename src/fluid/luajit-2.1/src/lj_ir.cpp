@@ -8,15 +8,7 @@
 
 /* For pointers to libc/libm functions. */
 #include <stdio.h>
-
-/* C++ compatibility: use C library math functions to avoid overload issues */
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include <math.h>
-#ifdef __cplusplus
-}
-#endif
 
 #include "lj_obj.h"
 

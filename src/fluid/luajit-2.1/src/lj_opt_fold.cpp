@@ -223,7 +223,7 @@ LJFOLDF(kfold_fpcall1)
   return NEXTFOLD;
 }
 
-LJFOLD(CALLN CARG IRCALL_atan2)
+LJFOLD(CALLN CARG IRCALL_cmath_atan2)
 LJFOLDF(kfold_fpcall2)
 {
   if (irref_isk(fleft->op1) && irref_isk(fleft->op2)) {
