@@ -40,13 +40,13 @@ end
 function testLifoOrder()
    local order = {}
    local function subject()
-      defer()
+      defer
          table.insert(order, 'first')
       end
-      defer()
+      defer
          table.insert(order, 'second')
       end
-      defer()
+      defer
          table.insert(order, 'third')
       end
       table.insert(order, 'body')
@@ -57,7 +57,7 @@ function testLifoOrder()
 end
 
 local function subjectReturn(order)
-   defer()
+   defer
       table.insert(order, 'deferred')
    end
    table.insert(order, 'before-return')
@@ -76,12 +76,12 @@ function testNestedScopes()
    local order = {}
 
    local function subject()
-      defer()
+      defer
          table.insert(order, 'outer')
       end
 
       do
-         defer()
+         defer
             table.insert(order, 'inner')
          end
          table.insert(order, 'inner-body')
@@ -100,7 +100,7 @@ function testBreak()
 
    local function subject()
       for i = 1, 3 do
-         defer()
+         defer
             table.insert(order, 'loop-' .. tostring(i))
          end
          table.insert(order, 'before-break-' .. tostring(i))
@@ -117,7 +117,7 @@ function testContinue()
 
    local function subject()
       for i = 1, 2 do
-         defer()
+         defer
             table.insert(order, 'defer-' .. tostring(i))
          end
          table.insert(order, 'body-' .. tostring(i))
@@ -170,7 +170,7 @@ function testUpvalues()
 
    local function subject()
       local value = 10
-      defer()
+      defer
          table.insert(captures, value)
       end
       value = 25
@@ -209,7 +209,7 @@ function testMultiReturnPreservesLocals()
       local head = 'alpha'
       local tail = 'omega'
 
-      defer()
+      defer
          head = 'mutated-alpha'
          tail = 'mutated-omega'
       end
@@ -227,12 +227,12 @@ function testConditionalScopes()
    local order = {}
 
    local function subject()
-      defer()
+      defer
          table.insert(order, 'outer')
       end
 
       if true then
-         defer()
+         defer
             table.insert(order, 'if-block')
          end
          table.insert(order, 'if-body')
@@ -251,11 +251,11 @@ function testLoopMultipleDefers()
 
    local function subject()
       for i = 1, 2 do
-         defer()
+         defer
             table.insert(order, 'outer-' .. tostring(i))
          end
          do
-            defer()
+            defer
                table.insert(order, 'inner-' .. tostring(i))
             end
             table.insert(order, 'inner-body-' .. tostring(i))
@@ -273,7 +273,7 @@ function testHandlerError()
 end
 
 local function recurse(n, order)
-   defer()
+   defer
       table.insert(order, 'defer-' .. tostring(n))
    end
    table.insert(order, 'enter-' .. tostring(n))
@@ -294,7 +294,7 @@ function testClosureReturn()
    local calls = {}
    local function make()
       local sum = 0
-      defer()
+      defer
          sum += 5
          table.insert(calls, sum)
       end
@@ -340,40 +340,26 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-   local supportsArgumentSnapshot = true
-   local supportsGotoDefers = true
    local supportsErrorPropagation = false
 
    local tests = {
-      -- PHASE 1: MVP - Basic defer without arguments or error handling
-      -- Expected to pass: 13 tests (covers both paren and no-paren syntax)
-      'testBasicExecution',      -- Core: defer executes at scope end
-      'testDeferWithoutParens',  -- Core: defer keyword works without parentheses
-      'testLifoOrder',           -- Core: multiple defers execute in reverse order
-      'testEarlyReturn',         -- Core: defer executes before return
-      'testNestedScopes',        -- Core: nested scopes handle defers correctly
-      'testBreak',               -- Core: defer executes on break
-      'testContinue',            -- Core: defer executes on continue
-      'testUpvalues',            -- Core: defers capture upvalues correctly
-      'testConditionalScopes',   -- Core: defers in if/else blocks work
-      'testLoopMultipleDefers',  -- Core: complex nested loop scenarios
-      'testRecursive',           -- Core: defer works in recursive functions
-      'testClosureReturn',       -- Core: defer in closures with upvalues
-      'testMultiReturnPreservesLocals'         -- Core: multi-value returns keep snapshots
+      'testBasicExecution',      
+      'testDeferWithoutParens',  
+      'testLifoOrder',           
+      'testEarlyReturn',         
+      'testNestedScopes',        
+      'testBreak',               
+      'testContinue',            
+      'testUpvalues',            
+      'testConditionalScopes',   
+      'testLoopMultipleDefers',  
+      'testRecursive',           
+      'testClosureReturn',       
+      'testMultiReturnPreservesLocals',
+      'testArgumentSnapshot',
+      'testResourceCleanupPattern',
+      'testGotoExecutesDeferredHandlers'
    }
-
-   if supportsArgumentSnapshot then
-      table.insert(tests, 'testArgumentSnapshot')
-      table.insert(tests, 'testResourceCleanupPattern')
-   end
-
-   if supportsGotoDefers then
-      table.insert(tests, 'testGotoExecutesDeferredHandlers')
-   end
-
-   if supportsErrorPropagation then
-      table.insert(tests, 'testHandlerError')
-   end
 
    return {
       tests = tests
