@@ -254,7 +254,7 @@ static int numistrueint(lua_Number n, int32_t *kp)
   int32_t k = lj_num2int(n);
   if (n == (lua_Number)k) {
     if (kp) *kp = k;
-    if (k == 0) {  /* Special check for -0. */
+    if (k == 0) {  // Special check for -0. 
       TValue tv;
       setnumV(&tv, n);
       if (tv.u32.hi != 0)

@@ -176,7 +176,7 @@ LJLIB_CF(os_date)
 #if LJ_TARGET_POSIX
   struct tm rtm;
 #endif
-  if (*s == '!') {  /* UTC? */
+  if (*s == '!') {  // UTC? 
     s++;  /* Skip '!' */
 #if LJ_TARGET_POSIX
     stm = gmtime_r(&t, &rtm);
@@ -190,7 +190,7 @@ LJLIB_CF(os_date)
     stm = localtime(&t);
 #endif
   }
-  if (stm == NULL) {  /* Invalid date? */
+  if (stm == NULL) {  // Invalid date? 
     setnilV(L->top++);
   } else if (strcmp(s, "*t") == 0) {
     lua_createtable(L, 0, 9);  /* 9 = number of fields */
@@ -210,7 +210,7 @@ LJLIB_CF(os_date)
     for (q = s; *q; q++)
       sz += (*q == '%') ? 30 : 1;  /* Overflow doesn't matter. */
     setsbufL(sb, L);
-    while (retry--) {  /* Limit growth for invalid format or empty result. */
+    while (retry--) {  // Limit growth for invalid format or empty result. 
       char *buf = lj_buf_need(sb, sz);
       size_t len = strftime(buf, sbufsz(sb), s, stm);
       if (len) {
@@ -229,7 +229,7 @@ LJLIB_CF(os_date)
 LJLIB_CF(os_time)
 {
   time_t t;
-  if (lua_isnoneornil(L, 1)) {  /* called without args? */
+  if (lua_isnoneornil(L, 1)) {  // called without args? 
     t = time(NULL);  /* get current time */
   } else {
     struct tm ts;

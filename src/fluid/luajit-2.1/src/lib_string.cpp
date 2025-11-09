@@ -564,7 +564,7 @@ static const char *classend(MatchState *ms, const char *p)
     return p+1;
   case '[':
     if (*p == '^') p++;
-    do {  /* look for a `]' */
+    do {  // look for a `]' 
       if (*p == '\0')
 	lj_err_caller(ms->L, LJ_ERR_STRPATM);
       if (*(p++) == L_ESC && *p != '\0')
@@ -740,7 +740,7 @@ static const char *match(MatchState *ms, const char *s, const char *p)
       if (s == NULL) break;
       p+=4;
       goto init;  /* else s = match(ms, s, p+4); */
-    case 'f': {  /* frontier? */
+    case 'f': {  // frontier? 
       const char *ep; char previous;
       p += 2;
       if (*p != '[')
@@ -753,7 +753,7 @@ static const char *match(MatchState *ms, const char *s, const char *p)
       goto init;  /* else s = match(ms, s, ep); */
       }
     default:
-      if (lj_char_isdigit(uchar(*(p+1)))) {  /* capture results (%0-%9)? */
+      if (lj_char_isdigit(uchar(*(p+1)))) {  // capture results (%0-%9)? 
 	s = match_capture(ms, s, uchar(*(p+1)));
 	if (s == NULL) break;
 	p+=2;
@@ -769,11 +769,11 @@ static const char *match(MatchState *ms, const char *s, const char *p)
     if (*(p+1) != '\0') goto dflt;
     if (s != ms->src_end) s = NULL;  /* check end of string */
     break;
-  default: dflt: {  /* it is a pattern item */
+  default: dflt: {  // it is a pattern item 
     const char *ep = classend(ms, p);  /* points to what is next */
     int m = s<ms->src_end && singlematch(uchar(*s), p, ep);
     switch (*ep) {
-    case '?': {  /* optional */
+    case '?': {  // optional 
       const char *res;
       if (m && ((res=match(ms, s+1, ep+1)) != NULL)) {
 	s = res;
@@ -792,7 +792,7 @@ static const char *match(MatchState *ms, const char *s, const char *p)
       s = min_expand(ms, s, p, ep);
       break;
     default:
-      if (m) { s++; p=ep; goto init; }  /* else s = match(ms, s+1, ep); */
+      if (m) { s++; p=ep; goto init; }  // else s = match(ms, s+1, ep); 
       s = NULL;
       break;
     }
@@ -848,14 +848,14 @@ static int str_find_aux(lua_State *L, int find)
 #endif
   }
   if (find && ((L->base+3 < L->top && tvistruecond(L->base+3)) ||
-	       !lj_str_haspattern(p))) {  /* Search for fixed string. */
+	       !lj_str_haspattern(p))) {  // Search for fixed string. 
     const char *q = lj_str_find(strdata(s)+st, strdata(p), s->len-st, p->len);
     if (q) {
       setintV(L->top-2, (int32_t)(q-strdata(s)) + 1);
       setintV(L->top-1, (int32_t)(q-strdata(s)) + (int32_t)p->len);
       return 2;
     }
-  } else {  /* Search for pattern. */
+  } else {  // Search for pattern. 
     MatchState ms;
     const char *pstr = strdata(p);
     const char *sstr = strdata(s) + st;
@@ -864,7 +864,7 @@ static int str_find_aux(lua_State *L, int find)
     ms.L = L;
     ms.src_init = strdata(s);
     ms.src_end = strdata(s) + s->len;
-    do {  /* Loop through string and try to match the pattern. */
+    do {  // Loop through string and try to match the pattern. 
       const char *q;
       ms.level = ms.depth = 0;
       q = match(&ms, sstr, pstr);
@@ -971,7 +971,7 @@ static void add_value(MatchState *ms, luaL_Buffer *b,
       break;
     }
   }
-  if (!lua_toboolean(L, -1)) {  /* nil or false? */
+  if (!lua_toboolean(L, -1)) {  // nil or false? 
     lua_pop(L, 1);
     lua_pushlstring(L, s, (size_t)(e - s));  /* keep original text */
   } else if (!lua_isstring(L, -1)) {

@@ -544,7 +544,7 @@ static void callback_conv_args(CTState *cts, lua_State *L)
     rid = ctype_cid(ct->info);  /* Return type. x86: +(spadj<<16). */
     fn = funcV(lj_tab_getint(cts->miscmap, (int32_t)slot));
     fntp = LJ_TFUNC;
-  } else {  /* Must set up frame first, before throwing the error. */
+  } else {  // Must set up frame first, before throwing the error. 
     ct = NULL;
     rid = 0;
     fn = (GCfunc *)L;

@@ -57,9 +57,9 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
   BCPos pos;
   lj_assertL(fn->c.gct == ~LJ_TFUNC || fn->c.gct == ~LJ_TTHREAD,
 	     "function or frame expected");
-  if (!isluafunc(fn)) {  /* Cannot derive a PC for non-Lua functions. */
+  if (!isluafunc(fn)) {  // Cannot derive a PC for non-Lua functions. 
     return NO_BCPOS;
-  } else if (nextframe == NULL) {  /* Lua function on top. */
+  } else if (nextframe == NULL) {  // Lua function on top. 
     void *cf = cframe_raw(L->cframe);
     if (cf == NULL || (char *)cframe_pc(cf) == (char *)cframe_L(cf))
       return NO_BCPOS;
@@ -100,7 +100,7 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
   pt = funcproto(fn);
   pos = proto_bcpos(pt, ins) - 1;
 #if LJ_HASJIT
-  if (pos > pt->sizebc) {  /* Undo the effects of lj_trace_exit for JLOOP. */
+  if (pos > pt->sizebc) {  // Undo the effects of lj_trace_exit for JLOOP. 
     GCtrace *T = (GCtrace *)((char *)(ins-1) - offsetof(GCtrace, startins));
     lj_assertL(bc_isret(bc_op(ins[-1])), "return bytecode expected");
     pos = proto_bcpos(pt, mref(T->startpc, const BCIns));
@@ -187,12 +187,12 @@ static TValue *debug_localname(lua_State *L, const lua_Debug *ar,
   GCfunc *fn = frame_func(frame);
   BCPos pc = debug_framepc(L, fn, nextframe);
   if (!nextframe) nextframe = L->top+LJ_FR2;
-  if ((int)slot1 < 0) {  /* Negative slot number is for varargs. */
+  if ((int)slot1 < 0) {  // Negative slot number is for varargs. 
     if (pc != NO_BCPOS) {
       GCproto *pt = funcproto(fn);
       if ((pt->flags & PROTO_VARARG)) {
 	slot1 = pt->numparams + (BCReg)(-(int)slot1);
-	if (frame_isvarg(frame)) {  /* Vararg frame has been set up? (pc!=0) */
+	if (frame_isvarg(frame)) {  // Vararg frame has been set up? (pc!=0) 
 	  nextframe = frame;
 	  frame = frame_prevd(frame);
 	}
@@ -327,7 +327,7 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
   if (*src == '=') {
     strncpy(out, src+1, LUA_IDSIZE);  /* Remove first char. */
     out[LUA_IDSIZE-1] = '\0';  /* Ensures null termination. */
-  } else if (*src == '@') {  /* Output "source", or "...source". */
+  } else if (*src == '@') {  // Output "source", or "...source". 
     size_t len = str->len-1;
     src++;  /* Skip the `@' */
     if (len >= LUA_IDSIZE) {
@@ -335,12 +335,12 @@ void lj_debug_shortname(char *out, GCstr *str, BCLine line)
       *out++ = '.'; *out++ = '.'; *out++ = '.';
     }
     strcpy(out, src);
-  } else {  /* Output [string "string"] or [builtin:name]. */
+  } else {  // Output [string "string"] or [builtin:name]. 
     size_t len;  /* Length, up to first control char. */
     for (len = 0; len < LUA_IDSIZE-12; len++)
       if (((const unsigned char *)src)[len] < ' ') break;
     strcpy(out, line == ~(BCLine)0 ? "[builtin:" : "[string \""); out += 9;
-    if (src[len] != '\0') {  /* Must truncate? */
+    if (src[len] != '\0') {  // Must truncate? 
       if (len > LUA_IDSIZE-15) len = LUA_IDSIZE-15;
       strncpy(out, src, len); out += len;
       strcpy(out, "..."); out += 3;
@@ -583,8 +583,8 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 {
   int level = 0, dir = 1, pathstrip = 1;
   MSize lastlen = 0;
-  if (depth < 0) { level = ~depth; depth = dir = -1; }  /* Reverse frames. */
-  while (level != depth) {  /* Loop through all frame. */
+  if (depth < 0) { level = ~depth; depth = dir = -1; }  // Reverse frames. 
+  while (level != depth) {  // Loop through all frame. 
     int size;
     cTValue *frame = lj_debug_frame(L, level, &size);
     if (frame) {
@@ -597,20 +597,20 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	case 'p':  /* Preserve full path. */
 	  pathstrip = 0;
 	  break;
-	case 'F': case 'f': {  /* Dump function name. */
+	case 'F': case 'f': {  // Dump function name. 
 	  const char *name;
 	  const char *what = lj_debug_funcname(L, frame, &name);
 	  if (what) {
-	    if (c == 'F' && isluafunc(fn)) {  /* Dump module:name for 'F'. */
+	    if (c == 'F' && isluafunc(fn)) {  // Dump module:name for 'F'. 
 	      GCproto *pt = funcproto(fn);
-	      if (pt->firstline != ~(BCLine)0) {  /* Not a bytecode builtin. */
+	      if (pt->firstline != ~(BCLine)0) {  // Not a bytecode builtin. 
 		debug_putchunkname(sb, pt, pathstrip);
 		lj_buf_putb(sb, ':');
 	      }
 	    }
 	    lj_buf_putmem(sb, name, (MSize)strlen(name));
 	    break;
-	  }  /* else: can't derive a name, dump module:line. */
+	  }  // else: can't derive a name, dump module:line. 
 	  }
 	  /* fallthrough */
 	case 'l':  /* Dump module:line. */
@@ -623,11 +623,11 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	      lj_buf_putb(sb, ':');
 	      lj_strfmt_putint(sb, line >= 0 ? line : pt->firstline);
 	    }
-	  } else if (isffunc(fn)) {  /* Dump numbered builtins. */
+	  } else if (isffunc(fn)) {  // Dump numbered builtins. 
 	    lj_buf_putmem(sb, "[builtin#", 9);
 	    lj_strfmt_putint(sb, fn->c.ffid);
 	    lj_buf_putb(sb, ']');
-	  } else {  /* Dump C function address. */
+	  } else {  // Dump C function address. 
 	    lj_buf_putb(sb, '@');
 	    lj_strfmt_putptr(sb, fn->c.f);
 	  }

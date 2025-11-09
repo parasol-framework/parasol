@@ -188,7 +188,7 @@ LJLIB_CF(math_random)		LJLIB_REC(.)
       return 1;
     }
 #endif
-  }  /* else: d is a double in range [0, 1] */
+  }  // else: d is a double in range [0, 1] 
   setnumV(L->top++, d);
   return 1;
 }

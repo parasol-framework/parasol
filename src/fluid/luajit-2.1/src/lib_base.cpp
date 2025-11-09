@@ -483,14 +483,14 @@ LJLIB_CF(newproxy)
 {
   lua_settop(L, 1);
   lua_newuserdata(L, 0);
-  if (lua_toboolean(L, 1) == 0) {  /* newproxy(): without metatable. */
+  if (lua_toboolean(L, 1) == 0) {  // newproxy(): without metatable. 
     return 1;
-  } else if (lua_isboolean(L, 1)) {  /* newproxy(true): with metatable. */
+  } else if (lua_isboolean(L, 1)) {  // newproxy(true): with metatable. 
     lua_newtable(L);
     lua_pushvalue(L, -1);
     lua_pushboolean(L, 1);
     lua_rawset(L, lua_upvalueindex(1));  /* Remember mt in weak table. */
-  } else {  /* newproxy(proxy): inherit metatable. */
+  } else {  // newproxy(proxy): inherit metatable. 
     int validproxy = 0;
     if (lua_getmetatable(L, 1)) {
       lua_rawget(L, lua_upvalueindex(1));

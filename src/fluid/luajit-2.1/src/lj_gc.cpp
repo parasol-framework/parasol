@@ -148,16 +148,16 @@ size_t lj_gc_separateudata(global_State *g, int all)
     } else if (!lj_meta_fastg(g, tabref(gco2ud(o)->metatable), MM_gc)) {
       markfinalized(o);  /* Done, as there's no __gc metamethod. */
       p = &o->gch.nextgc;
-    } else {  /* Otherwise move userdata to be finalized to mmudata list. */
+    } else {  // Otherwise move userdata to be finalized to mmudata list. 
       m += sizeudata(gco2ud(o));
       markfinalized(o);
       *p = o->gch.nextgc;
-      if (gcref(g->gc.mmudata)) {  /* Link to end of mmudata list. */
+      if (gcref(g->gc.mmudata)) {  // Link to end of mmudata list. 
 	GCobj *root = gcref(g->gc.mmudata);
 	setgcrefr(o->gch.nextgc, root->gch.nextgc);
 	setgcref(root->gch.nextgc, o);
 	setgcref(g->gc.mmudata, o);
-      } else {  /* Create circular list. */
+      } else {  // Create circular list. 
 	setgcref(o->gch.nextgc, o);
 	setgcref(g->gc.mmudata, o);
       }
@@ -177,14 +177,14 @@ static int gc_traverse_tab(global_State *g, GCtab *t)
   if (mt)
     gc_markobj(g, mt);
   mode = lj_meta_fastg(g, mt, MM_mode);
-  if (mode && tvisstr(mode)) {  /* Valid __mode field? */
+  if (mode && tvisstr(mode)) {  // Valid __mode field? 
     const char *modestr = strVdata(mode);
     int c;
     while ((c = *modestr++)) {
       if (c == 'k') weak |= LJ_GC_WEAKKEY;
       else if (c == 'v') weak |= LJ_GC_WEAKVAL;
     }
-    if (weak) {  /* Weak tables are cleared in the atomic phase. */
+    if (weak) {  // Weak tables are cleared in the atomic phase. 
 #if LJ_HASFFI
       CTState *cts = ctype_ctsG(g);
       if (cts && cts->finalizer == t) {
@@ -200,17 +200,17 @@ static int gc_traverse_tab(global_State *g, GCtab *t)
   }
   if (weak == LJ_GC_WEAK)  /* Nothing to mark if both keys/values are weak. */
     return 1;
-  if (!(weak & LJ_GC_WEAKVAL)) {  /* Mark array part. */
+  if (!(weak & LJ_GC_WEAKVAL)) {  // Mark array part. 
     MSize i, asize = t->asize;
     for (i = 0; i < asize; i++)
       gc_marktv(g, arrayslot(t, i));
   }
-  if (t->hmask > 0) {  /* Mark hash part. */
+  if (t->hmask > 0) {  // Mark hash part. 
     Node *node = noderef(t->node);
     MSize i, hmask = t->hmask;
     for (i = 0; i <= hmask; i++) {
       Node *n = &node[i];
-      if (!tvisnil(&n->val)) {  /* Mark non-empty slot. */
+      if (!tvisnil(&n->val)) {  // Mark non-empty slot. 
 	lj_assertG(!tvisnil(&n->key), "mark of nil key in non-empty slot");
 	if (!(weak & LJ_GC_WEAKKEY)) gc_marktv(g, &n->key);
 	if (!(weak & LJ_GC_WEAKVAL)) gc_marktv(g, &n->val);
@@ -409,12 +409,12 @@ static GCRef *gc_sweep(global_State *g, GCRef *p, uint32_t lim)
   while ((o = gcref(*p)) != NULL && lim-- > 0) {
     if (o->gch.gct == ~LJ_TTHREAD)  /* Need to sweep open upvalues, too. */
       gc_fullsweep(g, &gco2th(o)->openupval);
-    if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  /* Black or current white? */
+    if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white? 
       lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
 		 "sweep of undead object");
       makewhite(g, o);  /* Value is alive, change to the current white. */
       p = &o->gch.nextgc;
-    } else {  /* Otherwise value is dead, free it. */
+    } else {  // Otherwise value is dead, free it. 
       lj_assertG(isdead(g, o) || ow == LJ_GC_SFIXED,
 		 "sweep of unlive object");
       setgcrefr(*p, o->gch.nextgc);
@@ -437,12 +437,12 @@ static void gc_sweepstr(global_State *g, GCRef *chain)
   GCobj *o;
   setgcrefp(q, (u & ~(uintptr_t)1));
   while ((o = gcref(*p)) != NULL) {
-    if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  /* Black or current white? */
+    if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white? 
       lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
 		 "sweep of undead string");
       makewhite(g, o);  /* String is alive, change to the current white. */
       p = &o->gch.nextgc;
-    } else {  /* Otherwise string is dead, free it. */
+    } else {  // Otherwise string is dead, free it. 
       lj_assertG(isdead(g, o) || ow == LJ_GC_SFIXED,
 		 "sweep of unlive string");
       setgcrefr(*p, o->gch.nextgc);
@@ -455,8 +455,8 @@ static void gc_sweepstr(global_State *g, GCRef *chain)
 /* Check whether we can clear a key or a value slot from a table. */
 static int gc_mayclear(cTValue *o, int val)
 {
-  if (tvisgcv(o)) {  /* Only collectable objects can be weak references. */
-    if (tvisstr(o)) {  /* But strings cannot be used as weak references. */
+  if (tvisgcv(o)) {  // Only collectable objects can be weak references. 
+    if (tvisstr(o)) {  // But strings cannot be used as weak references. 
       gc_mark_str(strV(o));  /* And need to be marked. */
       return 0;
     }
@@ -686,12 +686,12 @@ static size_t gc_onestep(lua_State *L)
     if (gcref(*mref(g->gc.sweep, GCRef)) == NULL) {
       if (g->str.num <= (g->str.mask >> 2) && g->str.mask > LJ_MIN_STRTAB*2-1)
 	lj_str_resize(L, g->str.mask >> 1);  /* Shrink string table. */
-      if (gcref(g->gc.mmudata)) {  /* Need any finalizations? */
+      if (gcref(g->gc.mmudata)) {  // Need any finalizations? 
 	g->gc.state = GCSfinalize;
 #if LJ_HASFFI
 	g->gc.nocdatafin = 1;
 #endif
-      } else {  /* Otherwise skip this phase to help the JIT. */
+      } else {  // Otherwise skip this phase to help the JIT. 
 	g->gc.state = GCSpause;  /* End of GC cycle. */
 	g->gc.debt = 0;
       }
@@ -781,7 +781,7 @@ void lj_gc_fullgc(lua_State *L)
   global_State *g = G(L);
   int32_t ostate = g->vmstate;
   setvmstate(g, GC);
-  if (g->gc.state <= GCSatomic) {  /* Caught somewhere in the middle. */
+  if (g->gc.state <= GCSatomic) {  // Caught somewhere in the middle. 
     setmref(g->gc.sweep, &g->gc.root);  /* Sweep everything (preserving it). */
     setgcrefnull(g->gc.gray);  /* Reset lists from partial propagation. */
     setgcrefnull(g->gc.grayagain);
@@ -839,7 +839,7 @@ void lj_gc_closeuv(global_State *g, GCupval *uv)
   uv->closed = 1;
   setgcrefr(o->gch.nextgc, g->gc.root);
   setgcref(g->gc.root, o);
-  if (isgray(o)) {  /* A closed upvalue is never gray, so fix this. */
+  if (isgray(o)) {  // A closed upvalue is never gray, so fix this. 
     if (g->gc.state == GCSpropagate || g->gc.state == GCSatomic) {
       gray2black(o);  /* Make it black and preserve invariant. */
       if (tviswhite(&uv->tv))

@@ -44,9 +44,9 @@ static uint32_t emit_isk12(int64_t n)
 static uint32_t emit_isk13(uint64_t n, int is64)
 {
   int inv = 0, w = 128, lz, tz;
-  if (n & 1) { n = ~n; w = 64; inv = 1; }  /* Avoid wrap-around of ones. */
+  if (n & 1) { n = ~n; w = 64; inv = 1; }  // Avoid wrap-around of ones. 
   if (!n) return 0;  /* Neither all-zero nor all-ones are allowed. */
-  do {  /* Find the repeat width. */
+  do {  // Find the repeat width. 
     if (is64 && (uint32_t)(n^(n>>32))) break;
     n = (uint32_t)n;
     if (!n) return 0;  /* Ditto when passing n=0xffffffff and is64=0. */
@@ -203,7 +203,7 @@ static void emit_loadk(ASMState *as, Reg rd, uint64_t u64, int is64)
     ones += (frag == 0xffff);
   }
   neg = ones > zeros;  /* Use MOVN if it pays off. */
-  if ((neg ? ones : zeros) < 3) {  /* Need 2+ ins. Try shorter K13 encoding. */
+  if ((neg ? ones : zeros) < 3) {  // Need 2+ ins. Try shorter K13 encoding. 
     uint32_t k13 = emit_isk13(u64, is64);
     if (k13) {
       emit_dn(as, (is64|A64I_ORRw)^k13, rd, RID_ZERO);
@@ -258,7 +258,7 @@ static void emit_lsptr(ASMState *as, A64Ins ai, Reg r, void *p)
   } else {
     Reg base = RID_GL;  /* Next, try GL + offset. */
     int64_t ofs = glofs(as, p);
-    if (!emit_checkofs(ai, ofs)) {  /* Else split up into base reg + offset. */
+    if (!emit_checkofs(ai, ofs)) {  // Else split up into base reg + offset. 
       int64_t i64 = i64ptr(p);
       base = ra_allock(as, (i64 & ~0x7fffull), rset_exclude(RSET_GPR, r));
       ofs = i64 & 0x7fffull;
@@ -354,7 +354,7 @@ static void emit_call(ASMState *as, void *target)
   ptrdiff_t delta = (char *)target - (char *)p;
   if (A64F_S_OK(delta>>2, 26)) {
     *p = A64I_BL | A64F_S26(delta>>2);
-  } else {  /* Target out of range: need indirect call. But don't use R0-R7. */
+  } else {  // Target out of range: need indirect call. But don't use R0-R7. 
     Reg r = ra_allock(as, i64ptr(target),
 		      RSET_RANGE(RID_X8, RID_MAX_GPR)-RSET_FIXED);
     *p = A64I_BLR | A64F_N(r);
@@ -371,7 +371,7 @@ static void emit_movrr(ASMState *as, IRIns *ir, Reg dst, Reg src)
 	    (dst & 31), (src & 31));
     return;
   }
-  if (as->mcp != as->mcloop) {  /* Swap early registers for loads/stores. */
+  if (as->mcp != as->mcloop) {  // Swap early registers for loads/stores. 
     MCode ins = *as->mcp, swp = (src^dst);
     if ((ins & 0xbf800000) == 0xb9000000) {
       if (!((ins ^ (dst << 5)) & 0x000003e0))

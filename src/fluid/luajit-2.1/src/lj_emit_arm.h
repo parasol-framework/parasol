@@ -281,7 +281,7 @@ static void emit_call(ASMState *as, void *target)
       *p = ARMI_BLX | ((uint32_t)(delta>>2) & 0x00ffffffu) | ((delta&2) << 23);
     else
       *p = ARMI_BL | ((uint32_t)(delta>>2) & 0x00ffffffu);
-  } else {  /* Target out of range: need indirect call. But don't use R0-R3. */
+  } else {  // Target out of range: need indirect call. But don't use R0-R3. 
     Reg r = ra_allock(as, i32ptr(target), RSET_RANGE(RID_R4, RID_R12+1));
     *p = ARMI_BLXr | ARMF_M(r);
   }
@@ -301,7 +301,7 @@ static void emit_movrr(ASMState *as, IRIns *ir, Reg dst, Reg src)
     return;
   }
 #endif
-  if (as->mcp != as->mcloop) {  /* Swap early registers for loads/stores. */
+  if (as->mcp != as->mcloop) {  // Swap early registers for loads/stores. 
     MCode ins = *as->mcp, swp = (src^dst);
     if ((ins & 0x0c000000) == 0x04000000 && (ins & 0x02000010) != 0x02000010) {
       if (!((ins ^ (dst << 16)) & 0x000f0000))

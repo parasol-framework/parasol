@@ -210,10 +210,10 @@ static StrScanFmt strscan_dec(const uint8_t *p, TValue *o,
 	p++;
       } while (--dig > STRSCAN_MAXDIG);
       dig = STRSCAN_MAXDIG;
-    } else {  /* Simplify exponent. */
+    } else {  // Simplify exponent. 
       while (ex10 > 0 && dig <= 18) *xip++ = 0, ex10 -= 2, dig += 2;
     }
-  } else {  /* Only got zeros. */
+  } else {  // Only got zeros. 
     ex10 = 0;
     xi[0] = 0;
   }
@@ -224,7 +224,7 @@ static StrScanFmt strscan_dec(const uint8_t *p, TValue *o,
     uint64_t x = xi[0];
     double n;
     for (xis = xi+1; xis < xip; xis++) x = x * 100 + *xis;
-    if (!(dig == 20 && (xi[0] > 18 || (int64_t)x >= 0))) {  /* No overflow? */
+    if (!(dig == 20 && (xi[0] > 18 || (int64_t)x >= 0))) {  // No overflow? 
       /* Format-specific handling. */
       switch (fmt) {
       case STRSCAN_INT:
@@ -315,7 +315,7 @@ static StrScanFmt strscan_dec(const uint8_t *p, TValue *o,
 	x = x * 100 + xi[i];
       if (i == lo) {
 	while (--idig >= 0) x = x * 100;
-      } else {  /* Gather round bit from remaining digits. */
+      } else {  // Gather round bit from remaining digits. 
 	x <<= 1; ex2--;
 	do {
 	  if (xi[i]) { x |= 1; break; }
@@ -382,7 +382,7 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
   if (LJ_UNLIKELY(!lj_char_isdigit(*p))) {
     while (lj_char_isspace(*p)) p++;
     if (*p == '+' || *p == '-') neg = (*p++ == '-');
-    if (LJ_UNLIKELY(*p >= 'A')) {  /* Parse "inf", "infinity" or "nan". */
+    if (LJ_UNLIKELY(*p >= 'A')) {  // Parse "inf", "infinity" or "nan". 
       TValue tmp;
       setnanV(&tmp);
       if (casecmp(p[0],'i') && casecmp(p[1],'n') && casecmp(p[2],'f')) {

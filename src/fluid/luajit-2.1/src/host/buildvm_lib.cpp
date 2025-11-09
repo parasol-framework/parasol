@@ -38,7 +38,7 @@ static void libdef_name(const char *p, int kind)
     fprintf(stderr, "Error: string too long: '%s'\n",  p);
     exit(1);
   }
-  if (optr+1+n+2 > obuf+sizeof(obuf)) {  /* +2 for caller. */
+  if (optr+1+n+2 > obuf+sizeof(obuf)) {  // +2 for caller. 
     fprintf(stderr, "Error: output buffer overflow\n");
     exit(1);
   }

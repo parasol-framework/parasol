@@ -55,11 +55,11 @@ static LJ_NOINLINE void bcread_fill(LexState *ls, MSize len, int need)
     size_t sz;
     char *p = ls->sb.b;
     MSize n = (MSize)(ls->pe - ls->p);
-    if (n) {  /* Copy remainder to buffer. */
-      if (sbuflen(&ls->sb)) {  /* Move down in buffer. */
+    if (n) {  // Copy remainder to buffer. 
+      if (sbuflen(&ls->sb)) {  // Move down in buffer. 
 	lj_assertLS(ls->pe == ls->sb.w, "bad buffer pointer");
 	if (ls->p != p) memmove(p, ls->p, n);
-      } else {  /* Copy from buffer provided by reader. */
+      } else {  // Copy from buffer provided by reader. 
 	p = lj_buf_need(&ls->sb, len);
 	memcpy(p, ls->p, n);
       }
@@ -68,20 +68,20 @@ static LJ_NOINLINE void bcread_fill(LexState *ls, MSize len, int need)
     }
     ls->sb.w = p + n;
     buf = ls->rfunc(ls->L, ls->rdata, &sz);  /* Get more data from reader. */
-    if (buf == NULL || sz == 0) {  /* EOF? */
+    if (buf == NULL || sz == 0) {  // EOF? 
       if (need) bcread_error(ls, LJ_ERR_BCBAD);
       ls->c = -1;  /* Only bad if we get called again. */
       break;
     }
     if (sz >= LJ_MAX_BUF - n) lj_err_mem(ls->L);
-    if (n) {  /* Append to buffer. */
+    if (n) {  // Append to buffer. 
       n += (MSize)sz;
       p = lj_buf_need(&ls->sb, n < len ? len : n);
       memcpy(ls->sb.w, buf, sz);
       ls->sb.w = p + n;
       ls->p = p;
       ls->pe = p + n;
-    } else {  /* Return buffer provided by reader. */
+    } else {  // Return buffer provided by reader. 
       ls->p = buf;
       ls->pe = buf + sz;
     }
@@ -203,13 +203,13 @@ static GCtab *bcread_ktab(LexState *ls)
   MSize narray = bcread_uleb128(ls);
   MSize nhash = bcread_uleb128(ls);
   GCtab *t = lj_tab_new(ls->L, narray, hsize2hbits(nhash));
-  if (narray) {  /* Read array entries. */
+  if (narray) {  // Read array entries. 
     MSize i;
     TValue *o = tvref(t->array);
     for (i = 0; i < narray; i++, o++)
       bcread_ktabk(ls, o);
   }
-  if (nhash) {  /* Read hash entries. */
+  if (nhash) {  // Read hash entries. 
     MSize i;
     for (i = 0; i < nhash; i++) {
       TValue key;
@@ -424,12 +424,12 @@ GCproto *lj_bcread(LexState *ls)
   /* Check for a valid bytecode dump header. */
   if (!bcread_header(ls))
     bcread_error(ls, LJ_ERR_BCFMT);
-  for (;;) {  /* Process all prototypes in the bytecode dump. */
+  for (;;) {  // Process all prototypes in the bytecode dump. 
     GCproto *pt;
     MSize len;
     const char *startp;
     /* Read length. */
-    if (ls->p < ls->pe && ls->p[0] == 0) {  /* Shortcut EOF. */
+    if (ls->p < ls->pe && ls->p[0] == 0) {  // Shortcut EOF. 
       ls->p++;
       break;
     }

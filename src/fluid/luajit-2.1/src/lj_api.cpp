@@ -225,7 +225,7 @@ LUA_API int lua_type(lua_State *L, int idx)
 #endif
   } else if (o == niltv(L)) {
     return LUA_TNONE;
-  } else {  /* Magic internal/external tag conversion. ORDER LJ_T */
+  } else {  // Magic internal/external tag conversion. ORDER LJ_T 
     uint32_t t = ~itype(o);
 #if LJ_64
     int tt = (int)((U64x(75a06,98042110) >> 4*t) & 15u);
@@ -785,7 +785,7 @@ LUA_API void lua_concat(lua_State *L, int n)
       L->top -= 1+LJ_FR2;
       copyTV(L, L->top-1, L->top+LJ_FR2);
     } while (--n > 0);
-  } else if (n == 0) {  /* Push empty string. */
+  } else if (n == 0) {  // Push empty string. 
     setstrV(L, L->top, &G(L)->strempty);
     incr_top(L);
   }
@@ -896,7 +896,7 @@ LUA_API int lua_next(lua_State *L, int idx)
   more = lj_tab_next(tabV(t), L->top-1, L->top-1);
   if (more > 0) {
     incr_top(L);  /* Return new key and value slot. */
-  } else if (!more) {  /* End of traversal. */
+  } else if (!more) {  // End of traversal. 
     L->top--;  /* Remove key slot. */
   } else {
     lj_err_msg(L, LJ_ERR_NEXTIDX);
@@ -1201,7 +1201,7 @@ LUA_API int lua_yield(lua_State *L, int nresults)
   global_State *g = G(L);
   if (cframe_canyield(cf)) {
     cf = cframe_raw(cf);
-    if (!hook_active(g)) {  /* Regular yield: move results down if needed. */
+    if (!hook_active(g)) {  // Regular yield: move results down if needed. 
       cTValue *f = L->top - nresults;
       if (f > L->base) {
 	TValue *t = L->base;
@@ -1211,7 +1211,7 @@ LUA_API int lua_yield(lua_State *L, int nresults)
       L->cframe = NULL;
       L->status = LUA_YIELD;
       return -1;
-    } else {  /* Yield from hook: add a pseudo-frame. */
+    } else {  // Yield from hook: add a pseudo-frame. 
       TValue *top = L->top;
       hook_leave(g);
       (top++)->u64 = cframe_multres(cf);

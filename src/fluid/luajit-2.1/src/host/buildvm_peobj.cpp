@@ -126,7 +126,7 @@ static void emit_peobj_sym(BuildCtx *ctx, const char *name, uint32_t value,
 {
   PEsym sym;
   size_t len = strlen(name);
-  if (!strtab) {  /* Pass 1: only calculate string table length. */
+  if (!strtab) {  // Pass 1: only calculate string table length. 
     if (len > 8) strtabofs += len+1;
     return;
   }
@@ -258,7 +258,7 @@ void emit_peobj(BuildCtx *ctx)
   }
 
 #if LJ_TARGET_X64
-  { /* Write .pdata section. */
+  {  // Write .pdata section. 
     uint32_t fcofs = (uint32_t)ctx->sym[ctx->nsym-1].ofs;
     uint32_t pdata[3];  /* Start of .text, end of .text and .xdata. */
     PEreloc reloc;
@@ -285,7 +285,7 @@ void emit_peobj(BuildCtx *ctx)
     reloc.type = PEOBJ_RELOC_ADDR32NB;
     owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
   }
-  { /* Write .xdata section. */
+  {  // Write .xdata section. 
     uint16_t xdata[8+2+6];
     PEreloc reloc;
     xdata[0] = 0x01|0x08|0x10;  /* Ver. 1, uhandler/ehandler, prolog size 0. */

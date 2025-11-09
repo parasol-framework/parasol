@@ -43,7 +43,7 @@ static CTypeID ffi_checkctype(lua_State *L, CTState *cts, TValue *param)
   err_argtype:
     lj_err_argtype(L, 1, "C type");
   }
-  if (tvisstr(o)) {  /* Parse an abstract C type declaration. */
+  if (tvisstr(o)) {  // Parse an abstract C type declaration. 
     GCstr *s = strV(o);
     CPState cp;
     int errcode;
@@ -400,7 +400,7 @@ LJLIB_CF(ffi_clib___newindex)	LJLIB_REC(clib_index 0)
     CType *d = ctype_get(cts, cd->ctypeid);
     if (ctype_isextern(d->info)) {
       CTInfo qual = 0;
-      for (;;) {  /* Skip attributes and collect qualifiers. */
+      for (;;) {  // Skip attributes and collect qualifiers. 
 	d = ctype_child(cts, d);
 	if (!ctype_isattrib(d->info)) break;
 	if (ctype_attrib(d->info) == CTA_QUAL) qual |= d->size;

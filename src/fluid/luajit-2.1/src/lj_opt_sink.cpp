@@ -130,7 +130,7 @@ static void sink_mark_ins(jit_State *J)
       break;
       }
     default:
-      if (irt_ismarked(ir->t) || irt_isguard(ir->t)) {  /* Propagate mark. */
+      if (irt_ismarked(ir->t) || irt_isguard(ir->t)) {  // Propagate mark. 
 	if (ir->op1 >= REF_FIRST) irt_setmark(IR(ir->op1)->t);
 	if (ir->op2 >= REF_FIRST) irt_setmark(IR(ir->op2)->t);
       }

@@ -355,7 +355,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
     as->cost[gpr] = REGCOST(~0u, ASMREF_L);
   gpr = REGARG_FIRSTGPR;
 #endif
-  for (n = 0; n < nargs; n++) {  /* Setup args. */
+  for (n = 0; n < nargs; n++) {  // Setup args. 
     IRRef ref = args[n];
     IRIns *ir = IR(ref);
 #if !LJ_SOFTFP
@@ -369,7 +369,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 	    fpr++;
 	    continue;
 	  }
-	} else if (fprodd) {  /* Ick. */
+	} else if (fprodd) {  // Ick. 
 	  src = ra_alloc1(as, ref, RSET_FPR);
 	  emit_dm(as, ARMI_VMOV_S, (fprodd & 15), (src & 15) | 0x00400000);
 	  fprodd = 0;
@@ -470,9 +470,9 @@ static void asm_callx(ASMState *as, IRIns *ir)
   asm_setupresult(as, ir, &ci);
   func = ir->op2; irf = IR(func);
   if (irf->o == IR_CARG) { func = irf->op1; irf = IR(func); }
-  if (irref_isk(func)) {  /* Call to constant address. */
+  if (irref_isk(func)) {  // Call to constant address. 
     ci.func = (ASMFunction)(void *)(irf->i);
-  } else {  /* Need a non-argument register for indirect calls. */
+  } else {  // Need a non-argument register for indirect calls. 
     Reg freg = ra_alloc1(as, func, RSET_RANGE(RID_R4, RID_R12+1));
     emit_m(as, ARMI_BLXr, freg);
     ci.func = (ASMFunction)(void *)0;
@@ -573,10 +573,10 @@ static void asm_conv(ASMState *as, IRIns *ir)
   lj_assertA(irt_type(ir->t) != st, "inconsistent types for CONV");
   if (irt_isfp(ir->t)) {
     Reg dest = ra_dest(as, ir, RSET_FPR);
-    if (stfp) {  /* FP to FP conversion. */
+    if (stfp) {  // FP to FP conversion. 
       emit_dm(as, st == IRT_NUM ? ARMI_VCVT_F32_F64 : ARMI_VCVT_F64_F32,
 	      (dest & 15), (ra_alloc1(as, lref, RSET_FPR) & 15));
-    } else {  /* Integer to FP conversion. */
+    } else {  // Integer to FP conversion. 
       Reg left = ra_alloc1(as, lref, RSET_GPR);
       ARMIns ai = irt_isfloat(ir->t) ?
 	(st == IRT_INT ? ARMI_VCVT_F32_S32 : ARMI_VCVT_F32_U32) :
@@ -584,7 +584,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       emit_dm(as, ai, (dest & 15), (dest & 15));
       emit_dn(as, ARMI_VMOV_S_R, left, (dest & 15));
     }
-  } else if (stfp) {  /* FP to integer conversion. */
+  } else if (stfp) {  // FP to integer conversion. 
     if (irt_isguard(ir->t)) {
       /* Checked conversions are only supported from number to int. */
       lj_assertA(irt_isint(ir->t) && st == IRT_NUM,
@@ -605,7 +605,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #endif
   {
     Reg dest = ra_dest(as, ir, RSET_GPR);
-    if (st >= IRT_I8 && st <= IRT_U16) {  /* Extend to 32 bit integer. */
+    if (st >= IRT_I8 && st <= IRT_U16) {  // Extend to 32 bit integer. 
       Reg left = ra_alloc1(as, lref, RSET_GPR);
       lj_assertA(irt_isint(ir->t) || irt_isu32(ir->t), "bad type for CONV EXT");
       if ((as->flags & JIT_F_ARMV6)) {
@@ -621,7 +621,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
 	emit_dm(as, ARMI_MOV|ARMF_SH(sh, shift), dest, RID_TMP);
 	emit_dm(as, ARMI_MOV|ARMF_SH(ARMSH_LSL, shift), RID_TMP, left);
       }
-    } else {  /* Handle 32/32 bit no-op (cast). */
+    } else {  // Handle 32/32 bit no-op (cast). 
       ra_leftov(as, dest, lref);  /* Do nothing, but may need to move regs. */
     }
   }
@@ -872,7 +872,7 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
   } else {
     emit_dnm(as, ARMI_ADD|ARMF_SH(ARMSH_LSL, 3), dest, dest, tmp);
     emit_dnm(as, ARMI_ADD|ARMF_SH(ARMSH_LSL, 1), tmp, tmp, tmp);
-    if (irt_isstr(kt)) {  /* Fetch of str->sid is cheaper than ra_allock. */
+    if (irt_isstr(kt)) {  // Fetch of str->sid is cheaper than ra_allock. 
       emit_dnm(as, ARMI_AND, tmp, tmp+1, RID_TMP);
       emit_lso(as, ARMI_LDR, dest, tab, (int32_t)offsetof(GCtab, node));
       emit_lso(as, ARMI_LDR, tmp+1, key, (int32_t)offsetof(GCstr, sid));
@@ -882,8 +882,8 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
 	       rset_exclude(rset_exclude(RSET_GPR, tab), dest));
       emit_lso(as, ARMI_LDR, dest, tab, (int32_t)offsetof(GCtab, node));
       emit_lso(as, ARMI_LDR, RID_TMP, tab, (int32_t)offsetof(GCtab, hmask));
-    } else {  /* Must match with hash*() in lj_tab.c. */
-      if (ra_hasreg(keynumhi)) {  /* Canonicalize +-0.0 to 0.0. */
+    } else {  // Must match with hash*() in lj_tab.c. 
+      if (ra_hasreg(keynumhi)) {  // Canonicalize +-0.0 to 0.0. 
 	if (keyhi == RID_TMP)
 	  emit_dm(as, ARMF_CC(ARMI_MOV, CC_NE), keyhi, keynumhi);
 	emit_d(as, ARMF_CC(ARMI_MOV, CC_EQ)|ARMI_K12|0, keyhi);
@@ -1058,14 +1058,14 @@ static void asm_fload(ASMState *as, IRIns *ir)
   ARMIns ai = asm_fxloadins(as, ir);
   Reg idx;
   int32_t ofs;
-  if (ir->op1 == REF_NIL) {  /* FLOAD from GG_State with offset. */
+  if (ir->op1 == REF_NIL) {  // FLOAD from GG_State with offset. 
     idx = ra_allock(as, (int32_t)(ir->op2<<2) + (int32_t)J2GG(as->J), RSET_GPR);
     ofs = 0;
   } else {
     idx = ra_alloc1(as, ir->op1, RSET_GPR);
     if (ir->op2 == IRFL_TAB_ARRAY) {
       ofs = asm_fuseabase(as, ir->op1);
-      if (ofs) {  /* Turn the t->array load into an add for colocated arrays. */
+      if (ofs) {  // Turn the t->array load into an add for colocated arrays. 
 	emit_dn(as, ARMI_ADD|ARMI_K12|ofs, dest, idx);
 	return;
       }
@@ -1308,7 +1308,7 @@ static void asm_cnew(ASMState *as, IRIns *ir)
       if (ofs == sizeof(GCcdata)) break;
       ofs -= 4; ir--;
     }
-  } else if (ir->op2 != REF_NIL) {  /* Create VLA/VLS/aligned cdata. */
+  } else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata. 
     ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
     args[0] = ASMREF_L;     /* lua_State *L */
     args[1] = ir->op1;      /* CTypeID id   */
@@ -1467,7 +1467,7 @@ static void asm_intop(ASMState *as, IRIns *ir, ARMIns ai)
   }
   left = ra_hintalloc(as, lref, dest, RSET_GPR);
   m = asm_fuseopm(as, ai, rref, rset_exclude(RSET_GPR, left));
-  if (irt_isguard(ir->t)) {  /* For IR_ADDOV etc. */
+  if (irt_isguard(ir->t)) {  // For IR_ADDOV etc. 
     asm_guardcc(as, CC_VS);
     ai |= ARMI_S;
   }
@@ -1489,7 +1489,7 @@ static ARMIns asm_drop_cmp0(ASMState *as, ARMIns ai)
     } else if (cc == CC_LT) {
       *++as->mcp ^= ((CC_LT^CC_MI) << 28);
       ai |= ARMI_S;
-    }  /* else: other conds don't work in general. */
+    }  // else: other conds don't work in general. 
   }
   return ai;
 }
@@ -1515,7 +1515,7 @@ static void asm_intmul(ASMState *as, IRIns *ir)
   Reg tmp = RID_NONE;
   /* ARMv5 restriction: dest != left and dest_hi != left. */
   if (dest == left && left != right) { left = right; right = dest; }
-  if (irt_isguard(ir->t)) {  /* IR_MULOV */
+  if (irt_isguard(ir->t)) {  // IR_MULOV 
     if (!(as->flags & JIT_F_ARMV6) && dest == left)
       tmp = left = ra_scratch(as, rset_exclude(RSET_GPR, left));
     asm_guardcc(as, CC_NE);
@@ -1622,7 +1622,7 @@ static void asm_bswap(ASMState *as, IRIns *ir)
 
 static void asm_bitshift(ASMState *as, IRIns *ir, ARMShift sh)
 {
-  if (irref_isk(ir->op2)) {  /* Constant shifts. */
+  if (irref_isk(ir->op2)) {  // Constant shifts. 
     /* NYI: Turn SHL+SHR or BAND+SHR into uxtb, uxth or ubfx. */
     /* NYI: Turn SHL+ASR into sxtb, sxth or sbfx. */
     Reg dest = ra_dest(as, ir, RSET_GPR);
@@ -1894,7 +1894,7 @@ static void asm_hiop(ASMState *as, IRIns *ir)
   int uselo = ra_used(ir-1), usehi = ra_used(ir);  /* Loword/hiword used? */
   if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
 #if LJ_HASFFI || LJ_SOFTFP
-  if ((ir-1)->o <= IR_NE) {  /* 64 bit integer or FP comparisons. ORDER IR. */
+  if ((ir-1)->o <= IR_NE) {  // 64 bit integer or FP comparisons. ORDER IR. 
     as->curins--;  /* Always skip the loword comparison. */
 #if LJ_SOFTFP
     if (!irt_isint(ir->t)) {
@@ -2003,7 +2003,7 @@ static void asm_stack_check(ASMState *as, BCReg topslot,
   emit_dnm(as, ARMI_SUB, RID_TMP, RID_TMP, pbase);
   emit_lso(as, ARMI_LDR, RID_TMP, RID_TMP,
 	   (int32_t)offsetof(lua_State, maxstack));
-  if (irp) {  /* Must not spill arbitrary registers in head of side trace. */
+  if (irp) {  // Must not spill arbitrary registers in head of side trace. 
     int32_t i = i32ptr(&J2G(as->J)->cur_L);
     if (ra_hasspill(irp->s))
       emit_lso(as, ARMI_LDR, pbase, RID_SP, sps_scale(irp->s));
@@ -2119,7 +2119,7 @@ static void asm_loop_fixup(ASMState *as)
 {
   MCode *p = as->mctop;
   MCode *target = as->mcp;
-  if (as->loopinv) {  /* Inverted loop branch? */
+  if (as->loopinv) {  // Inverted loop branch? 
     /* asm_guardcc already inverted the bcc and patched the final bl. */
     p[-2] |= ((uint32_t)(target-p) & 0x00ffffffu);
   } else {

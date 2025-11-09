@@ -254,7 +254,7 @@ static int io_file_iter(lua_State *L)
   if (iof->fp == NULL)
     lj_err_caller(L, LJ_ERR_IOCLFL);
   L->top = L->base;
-  if (n) {  /* Copy upvalues with options to stack. */
+  if (n) {  // Copy upvalues with options to stack. 
     lj_state_checkstack(L, (MSize)n);
     memcpy(L->top, &fn->c.upvalue[1], n*sizeof(TValue));
     L->top += n;
@@ -497,12 +497,12 @@ LJLIB_CF(io_output)
 LJLIB_CF(io_lines)
 {
   if (L->base == L->top) setnilV(L->top++);
-  if (!tvisnil(L->base)) {  /* io.lines(fname) */
+  if (!tvisnil(L->base)) {  // io.lines(fname) 
     IOFileUD *iof = io_file_open(L, "r");
     iof->type = IOFILE_TYPE_FILE|IOFILE_FLAG_CLOSE;
     L->top--;
     setudataV(L, L->base, udataV(L->top));
-  } else {  /* io.lines() iterates over stdin. */
+  } else {  // io.lines() iterates over stdin. 
     setudataV(L, L->base, IOSTDF_UD(L, GCROOT_IO_INPUT));
   }
   return io_file_lines(L);

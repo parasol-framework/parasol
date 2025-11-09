@@ -165,7 +165,7 @@
     if (ccall_struct_arg(cc, cts, d, rcl, o, narg)) goto err_nyi; \
     nsp = cc->nsp; ngpr = cc->ngpr; nfpr = cc->nfpr; \
     continue; \
-  }  /* Pass all other structs by value on stack. */
+  }  // Pass all other structs by value on stack. 
 
 #define CCALL_HANDLE_COMPLEXARG \
   isfp = 2;  /* Pass complex in FPRs or on stack. Needs postprocessing. */
@@ -327,7 +327,7 @@
     sz = CTSIZE_PTR; \
   } else if (cl > 1) {  /* Pass struct in FPRs or on stack. */ \
     isfp = (cl & 4) ? 2 : 1; \
-  }  /* else: Pass struct in GPRs or on stack. */
+  }  // else: Pass struct in GPRs or on stack. 
 
 #define CCALL_HANDLE_COMPLEXARG \
   /* Pass complex by value in separate (!) FPRs or on stack. */ \
@@ -676,7 +676,7 @@ static int ccall_struct_reg(CCallState *cc, CTState *cts, GPRArg *dp, int *rcl)
   UNUSED(cts);
   for (i = 0; i < 2; i++) {
     lj_assertCTS(!(rcl[i] & CCALL_RCL_MEM), "pass mem struct in reg");
-    if ((rcl[i] & CCALL_RCL_INT)) {  /* Integer class takes precedence. */
+    if ((rcl[i] & CCALL_RCL_INT)) {  // Integer class takes precedence. 
       if (ngpr >= CCALL_NARG_GPR) return 1;  /* Register overflow. */
       cc->gpr[ngpr++] = dp[i];
     } else if ((rcl[i] & CCALL_RCL_SSE)) {
@@ -713,7 +713,7 @@ static void ccall_struct_ret(CCallState *cc, int *rcl, uint8_t *dp, CTSize sz)
   MSize ngpr = 0, nfpr = 0;
   uint32_t i;
   for (i = 0; i < 2; i++) {
-    if ((rcl[i] & CCALL_RCL_INT)) {  /* Integer class takes precedence. */
+    if ((rcl[i] & CCALL_RCL_INT)) {  // Integer class takes precedence. 
       sp[i] = cc->gpr[ngpr++];
     } else if ((rcl[i] & CCALL_RCL_SSE)) {
       sp[i] = cc->fpr[nfpr++].l[0];
@@ -991,7 +991,7 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     MSize n, isfp = 0, isva = 0;
     void *dp, *rp = NULL;
 
-    if (fid) {  /* Get argument type from field. */
+    if (fid) {  // Get argument type from field. 
       CType *ctf = ctype_get(cts, fid);
       fid = ctf->sib;
       lj_assertL(ctype_isfield(ctf->info), "field expected");
@@ -1032,7 +1032,7 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
       MSize align = (1u << ctype_align(d->info-CTALIGN_PTR)) -1;
       nsp = (nsp + align) & ~align;  /* Align argument on stack. */
     }
-    if (nsp + n > CCALL_MAXSTACK) {  /* Too many arguments. */
+    if (nsp + n > CCALL_MAXSTACK) {  // Too many arguments. 
     err_nyi:
       lj_err_caller(L, LJ_ERR_FFI_NYICALL);
     }
@@ -1041,7 +1041,7 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     isva = 0;
 
   done:
-    if (rp) {  /* Pass by reference. */
+    if (rp) {  // Pass by reference. 
       gcsteps++;
       *(void **)dp = rp;
       dp = rp;
@@ -1070,7 +1070,7 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     }
 #endif
 #if LJ_TARGET_X64 && LJ_ABI_WIN
-    if (isva) {  /* Windows/x64 mirrors varargs in both register sets. */
+    if (isva) {  // Windows/x64 mirrors varargs in both register sets. 
       if (nfpr == ngpr)
 	cc->gpr[ngpr-1] = cc->fpr[ngpr-1].l[0];
       else
@@ -1165,7 +1165,7 @@ int lj_ccall_func(lua_State *L, GCcdata *cd)
     ct = (CType *)((intptr_t)ct-(intptr_t)cts->tab);
     cts->cb.slot = ~0u;
     lj_vm_ffi_call(&cc);
-    if (cts->cb.slot != ~0u) {  /* Blacklist function that called a callback. */
+    if (cts->cb.slot != ~0u) {  // Blacklist function that called a callback. 
       TValue tv;
       tv.u64 = ((uintptr_t)(void *)cc.func >> 2) | U64x(800000000, 00000000);
       setboolV(lj_tab_set(L, cts->miscmap, &tv), 1);

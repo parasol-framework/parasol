@@ -153,7 +153,7 @@ static void profile_trigger(ProfileState *ps)
   profile_lock(ps);
   ps->samples++;  /* Always increment number of samples. */
   mask = g->hookmask;
-  if (!(mask & (HOOK_PROFILE|HOOK_VMEVENT|HOOK_GC))) {  /* Set profile hook. */
+  if (!(mask & (HOOK_PROFILE|HOOK_VMEVENT|HOOK_GC))) {  // Set profile hook. 
     int st = g->vmstate;
     ps->vmstate = st >= 0 ? 'N' :
 		  st == ~LJ_VMST_INTERP ? 'I' :
@@ -265,7 +265,7 @@ static DWORD WINAPI profile_thread(void *psx)
 static void profile_timer_start(ProfileState *ps)
 {
 #if LJ_TARGET_WINDOWS && !LJ_TARGET_UWP
-  if (!ps->wmm) {  /* Load WinMM library on-demand. */
+  if (!ps->wmm) {  // Load WinMM library on-demand. 
     ps->wmm = LJ_WIN_LOADLIBA("winmm.dll");
     if (ps->wmm) {
       ps->wmm_tbp = (WMM_TPFUNC)GetProcAddress(ps->wmm, "timeBeginPeriod");
@@ -337,7 +337,7 @@ LUA_API void luaJIT_profile_stop(lua_State *L)
 {
   ProfileState *ps = &profile_state;
   global_State *g = ps->g;
-  if (G(L) == g) {  /* Only stop profiler if started by this VM. */
+  if (G(L) == g) {  // Only stop profiler if started by this VM. 
     profile_timer_stop(ps);
     g->hookmask &= ~HOOK_PROFILE;
     lj_dispatch_update(g);

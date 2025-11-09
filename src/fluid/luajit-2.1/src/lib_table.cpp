@@ -158,7 +158,7 @@ LJLIB_CF(table_concat)		LJLIB_REC(.)
               lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
   SBuf *sb = lj_buf_tmp_(L);
   SBuf *sbx = lj_buf_puttab(sb, t, sep, i, e);
-  if (LJ_UNLIKELY(!sbx)) {  /* Error: bad element type. */
+  if (LJ_UNLIKELY(!sbx)) {  // Error: bad element type. 
     int32_t idx = (int32_t)(intptr_t)sb->w;
     cTValue *o = lj_tab_getint(t, idx);
     lj_err_callerv(L, LJ_ERR_TABCAT,
@@ -179,7 +179,7 @@ static void set2(lua_State *L, int i, int j)
 
 static int sort_comp(lua_State *L, int a, int b)
 {
-  if (!lua_isnil(L, 2)) {  /* function? */
+  if (!lua_isnil(L, 2)) {  // function? 
     int res;
     lua_pushvalue(L, 2);
     lua_pushvalue(L, a-1);  /* -1 to compensate function */
@@ -188,14 +188,14 @@ static int sort_comp(lua_State *L, int a, int b)
     res = lua_toboolean(L, -1);
     lua_pop(L, 1);
     return res;
-  } else {  /* a < b? */
+  } else {  // a < b? 
     return lua_lessthan(L, a, b);
   }
 }
 
 static void auxsort(lua_State *L, int l, int u)
 {
-  while (l < u) {  /* for tail recursion */
+  while (l < u) {  // for tail recursion 
     int i, j;
     /* sort elements a[l], a[(l+u)/2] and a[u] */
     lua_rawgeti(L, 1, l);
@@ -208,7 +208,7 @@ static void auxsort(lua_State *L, int l, int u)
     i = (l+u)/2;
     lua_rawgeti(L, 1, i);
     lua_rawgeti(L, 1, l);
-    if (sort_comp(L, -2, -1)) {  /* a[i]<a[l]? */
+    if (sort_comp(L, -2, -1)) {  // a[i]<a[l]? 
       set2(L, i, l);
     } else {
       lua_pop(L, 1);  /* remove a[l] */
@@ -225,7 +225,7 @@ static void auxsort(lua_State *L, int l, int u)
     set2(L, i, u-1);
     /* a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2 */
     i = l; j = u-1;
-    for (;;) {  /* invariant: a[l..i] <= P <= a[j..u] */
+    for (;;) {  // invariant: a[l..i] <= P <= a[j..u] 
       /* repeat ++i until a[i] >= P */
       while (lua_rawgeti(L, 1, ++i), sort_comp(L, -1, -2)) {
 	if (i>=u) lj_err_caller(L, LJ_ERR_TABSORT);
@@ -253,7 +253,7 @@ static void auxsort(lua_State *L, int l, int u)
       j=i+1; i=u; u=j-2;
     }
     auxsort(L, j, i);  /* call recursively the smaller one */
-  }  /* repeat the routine for the larger one */
+  }  // repeat the routine for the larger one 
 }
 
 LJLIB_CF(table_sort)

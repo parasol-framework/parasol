@@ -43,7 +43,7 @@
 static int setjitmode(lua_State *L, int mode)
 {
   int idx = 0;
-  if (L->base == L->top || tvisnil(L->base)) {  /* jit.on/off/flush([nil]) */
+  if (L->base == L->top || tvisnil(L->base)) {  // jit.on/off/flush([nil]) 
     mode |= LUAJIT_MODE_ENGINE;
   } else {
     /* jit.on/off/flush(func|proto, nil|true|false) */
@@ -128,14 +128,14 @@ LJLIB_CF(jit_attach)
   GCfunc *fn = lj_lib_checkfunc(L, 1);
   GCstr *s = lj_lib_optstr(L, 2);
   luaL_findtable(L, LUA_REGISTRYINDEX, LJ_VMEVENTS_REGKEY, LJ_VMEVENTS_HSIZE);
-  if (s) {  /* Attach to given event. */
+  if (s) {  // Attach to given event. 
     const uint8_t *p = (const uint8_t *)strdata(s);
     uint32_t h = s->len;
     while (*p) h = h ^ (lj_rol(h, 6) + *p++);
     lua_pushvalue(L, 1);
     lua_rawseti(L, -2, VMEVENT_HASHIDX(h));
     G(L)->vmevmask = VMEVENT_NOCACHE;  /* Invalidate cache. */
-  } else {  /* Detach if no event given. */
+  } else {  // Detach if no event given. 
     setnilV(L->top++);
     while (lua_next(L, -2)) {
       L->top--;
@@ -404,7 +404,7 @@ LJLIB_CF(jit_util_traceexitstub)
     return 1;
   }
 #else
-  if (L->top > L->base+1) {  /* Don't throw for one-argument variant. */
+  if (L->top > L->base+1) {  // Don't throw for one-argument variant. 
     GCtrace *T = jit_checktrace(L);
     ExitNo exitno = (ExitNo)lj_lib_checkint(L, 2);
     ExitNo maxexit = T->root ? T->nsnap+1 : T->nsnap;
@@ -671,7 +671,7 @@ static uint32_t jit_cpudetect(void)
 
   int ver = LJ_ARCH_VERSION;  /* Compile-time ARM CPU detection. */
 #if LJ_TARGET_LINUX
-  if (ver < 70) {  /* Runtime ARM CPU detection. */
+  if (ver < 70) {  // Runtime ARM CPU detection. 
     struct utsname ut;
     uname(&ut);
     if (strncmp(ut.machine, "armv", 4) == 0) {

@@ -9,12 +9,12 @@
 #include "lj_obj.h"
 
 /* Object type names. */
-LJ_DATADEF const char *const lj_obj_typename[] = {  /* ORDER LUA_T */
+LJ_DATADEF const char *const lj_obj_typename[] = {  // ORDER LUA_T 
   "no value", "nil", "boolean", "userdata", "number", "string",
   "table", "function", "userdata", "thread", "proto", "cdata"
 };
 
-LJ_DATADEF const char *const lj_obj_itypename[] = {  /* ORDER LJ_T */
+LJ_DATADEF const char *const lj_obj_itypename[] = {  // ORDER LJ_T 
   "nil", "boolean", "boolean", "userdata", "string", "upval", "thread",
   "proto", "function", "trace", "cdata", "table", "userdata", "number"
 };

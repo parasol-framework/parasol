@@ -209,9 +209,9 @@ static void **ll_register(lua_State *L, const char *path)
   void **plib;
   lua_pushfstring(L, "LOADLIB: %s", path);
   lua_gettable(L, LUA_REGISTRYINDEX);  /* check library in registry? */
-  if (!lua_isnil(L, -1)) {  /* is there an entry? */
+  if (!lua_isnil(L, -1)) {  // is there an entry? 
     plib = (void **)lua_touserdata(L, -1);
-  } else {  /* no entry yet; create one */
+  } else {  // no entry yet; create one 
     lua_pop(L, 1);
     plib = (void **)lua_newuserdata(L, sizeof(void *));
     *plib = NULL;
@@ -246,7 +246,7 @@ static int ll_loadfunc(lua_State *L, const char *path, const char *name, int r)
   if (*reg == NULL) *reg = ll_load(L, path, (*name == '*'));
   if (*reg == NULL) {
     return PACKAGE_ERR_LIB;  /* Unable to load library. */
-  } else if (*name == '*') {  /* Only load library into global namespace. */
+  } else if (*name == '*') {  // Only load library into global namespace. 
     lua_pushboolean(L, 1);
     return 0;
   } else {
@@ -274,9 +274,9 @@ static int lj_cf_package_loadlib(lua_State *L)
   const char *path = luaL_checkstring(L, 1);
   const char *init = luaL_checkstring(L, 2);
   int st = ll_loadfunc(L, path, init, 1);
-  if (st == 0) {  /* no errors? */
+  if (st == 0) {  // no errors? 
     return 1;  /* return the loaded function */
-  } else {  /* error; error message is on stack top */
+  } else {  // error; error message is on stack top 
     lua_pushnil(L);
     lua_insert(L, -2);
     lua_pushstring(L, (st == PACKAGE_ERR_LIB) ?  PACKAGE_LIB_FAIL : "init");
@@ -343,7 +343,7 @@ static int lj_cf_package_searchpath(lua_State *L)
 				luaL_optstring(L, 4, LUA_DIRSEP));
   if (f != NULL) {
     return 1;
-  } else {  /* error message is on top of the stack */
+  } else {  // error message is on top of the stack 
     lua_pushnil(L);
     lua_insert(L, -2);
     return 2;  /* return nil + error message */
@@ -414,7 +414,7 @@ static int lj_cf_package_loader_preload(lua_State *L)
   if (!lua_istable(L, -1))
     luaL_error(L, LUA_QL("package.preload") " must be a table");
   lua_getfield(L, -1, name);
-  if (lua_isnil(L, -1)) {  /* Not found? */
+  if (lua_isnil(L, -1)) {  // Not found? 
     const char *bcname = mksymname(L, name, SYMPREFIX_BC);
     const char *bcdata = ll_bcsym(NULL, bcname);
     if (bcdata == NULL || luaL_loadbuffer(L, bcdata, ~(size_t)0, name) != 0)
@@ -434,7 +434,7 @@ static int lj_cf_package_require(lua_State *L)
   lua_settop(L, 1);  /* _LOADED table will be at index 2 */
   lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
   lua_getfield(L, 2, name);
-  if (lua_toboolean(L, -1)) {  /* is it there? */
+  if (lua_toboolean(L, -1)) {  // is it there? 
     if ((L->top-1)->u64 == KEY_SENTINEL)  /* check loops */
       luaL_error(L, "loop or previous error loading module " LUA_QS, name);
     return 1;  /* package is already loaded */
@@ -465,7 +465,7 @@ static int lj_cf_package_require(lua_State *L)
   if (!lua_isnil(L, -1))  /* non-nil return? */
     lua_setfield(L, 2, name);  /* _LOADED[name] = returned value */
   lua_getfield(L, 2, name);
-  if ((L->top-1)->u64 == KEY_SENTINEL) {   /* module did not set a value? */
+  if ((L->top-1)->u64 == KEY_SENTINEL) {  // module did not set a value? 
     lua_pushboolean(L, 1);  /* use true as result */
     lua_pushvalue(L, -1);  /* extra copy to be returned */
     lua_setfield(L, 2, name);  /* _LOADED[name] = true */
@@ -518,7 +518,7 @@ static int lj_cf_package_module(lua_State *L)
   int lastarg = (int)(L->top - L->base);
   luaL_pushmodule(L, modname, 1);
   lua_getfield(L, -1, "_NAME");
-  if (!lua_isnil(L, -1)) {  /* Module already initialized? */
+  if (!lua_isnil(L, -1)) {  // Module already initialized? 
     lua_pop(L, 1);
   } else {
     lua_pop(L, 1);

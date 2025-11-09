@@ -25,8 +25,8 @@ static int tryhash(uint32_t *htab, uint32_t sz, uint32_t r, int dorol)
     uint32_t k = key & 0xffffff;
     uint32_t h = (dorol ? lj_rol(lj_rol(k, r>>5) - k, r&31) :
 			  (((k << (r>>5)) - k) << (r&31))) % sz;
-    if (htab[h] != 0xffffffff) {  /* Collision on primary slot. */
-      if (htab[h+1] != 0xffffffff) {  /* Collision on secondary slot. */
+    if (htab[h] != 0xffffffff) {  // Collision on primary slot. 
+      if (htab[h+1] != 0xffffffff) {  // Collision on secondary slot. 
 	/* Try to move the colliding key, if possible. */
 	if (h < sz-1 && htab[h+2] == 0xffffffff) {
 	  uint32_t k2 = htab[h+1] & 0xffffff;

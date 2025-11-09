@@ -88,13 +88,13 @@ LUALIB_API const char *luaL_findtable(lua_State *L, int idx,
     if (e == NULL) e = fname + strlen(fname);
     lua_pushlstring(L, fname, (size_t)(e - fname));
     lua_rawget(L, -2);
-    if (lua_isnil(L, -1)) {  /* no such field? */
+    if (lua_isnil(L, -1)) {  // no such field? 
       lua_pop(L, 1);  /* remove this nil */
       lua_createtable(L, 0, (*e == '.' ? 1 : szhint)); /* new table for field */
       lua_pushlstring(L, fname, (size_t)(e - fname));
       lua_pushvalue(L, -2);
       lua_settable(L, -4);  /* set new table into field */
-    } else if (!lua_istable(L, -1)) {  /* field has a non-table value? */
+    } else if (!lua_istable(L, -1)) {  // field has a non-table value? 
       lua_pop(L, 2);  /* remove table and value */
       return fname;  /* return problematic part of the name */
     }
@@ -246,7 +246,7 @@ LUALIB_API void luaL_addvalue(luaL_Buffer *B)
   lua_State *L = B->L;
   size_t vl;
   const char *s = lua_tolstring(L, -1, &vl);
-  if (vl <= bufffree(B)) {  /* fit into buffer? */
+  if (vl <= bufffree(B)) {  // fit into buffer? 
     memcpy(B->p, s, vl);  /* put it there */
     B->p += vl;
     lua_pop(L, 1);  /* remove from stack */
@@ -284,10 +284,10 @@ LUALIB_API int luaL_ref(lua_State *L, int t)
   lua_rawgeti(L, t, FREELIST_REF);  /* get first free element */
   ref = (int)lua_tointeger(L, -1);  /* ref = t[FREELIST_REF] */
   lua_pop(L, 1);  /* remove it from stack */
-  if (ref != 0) {  /* any free element? */
+  if (ref != 0) {  // any free element? 
     lua_rawgeti(L, t, ref);  /* remove it from list */
     lua_rawseti(L, t, FREELIST_REF);  /* (t[FREELIST_REF] = t[ref]) */
-  } else {  /* no free elements */
+  } else {  // no free elements 
     ref = (int)lua_objlen(L, t);
     ref++;  /* create new reference */
   }

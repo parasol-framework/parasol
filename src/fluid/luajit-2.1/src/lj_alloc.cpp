@@ -825,7 +825,7 @@ static int has_segment_link(mstate m, msegmentptr ss)
 static void *direct_alloc(mstate m, size_t nb)
 {
   size_t mmsize = mmap_align(nb + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
-  if (LJ_LIKELY(mmsize > nb)) {     /* Check for wrap around 0 */
+  if (LJ_LIKELY(mmsize > nb)) {  // Check for wrap around 0 
     char *mm = (char *)(DIRECT_MMAP(m->prng, mmsize));
     if (mm != CMFAIL) {
       size_t offset = align_offset(chunk2mem(mm));
@@ -995,7 +995,7 @@ static void *alloc_sys(mstate m, size_t nb)
   {
     size_t req = nb + TOP_FOOT_SIZE + SIZE_T_ONE;
     size_t rsize = granularity_align(req);
-    if (LJ_LIKELY(rsize > nb)) { /* Fail if wraps around zero */
+    if (LJ_LIKELY(rsize > nb)) {  // Fail if wraps around zero 
       char *mp = (char *)(CALL_MMAP(m->prng, rsize));
       if (mp != CMFAIL) {
 	tbase = mp;
@@ -1009,7 +1009,7 @@ static void *alloc_sys(mstate m, size_t nb)
     /* Try to merge with an existing segment */
     while (sp != 0 && tbase != sp->base + sp->size)
       sp = sp->next;
-    if (sp != 0 && segment_holds(sp, m->top)) { /* append */
+    if (sp != 0 && segment_holds(sp, m->top)) {  // append 
       sp->size += tsize;
       init_top(m, m->top, m->topsize + tsize);
     } else {
@@ -1026,7 +1026,7 @@ static void *alloc_sys(mstate m, size_t nb)
       }
     }
 
-    if (nb < m->topsize) { /* Allocate from new or extended top space */
+    if (nb < m->topsize) {  // Allocate from new or extended top space 
       size_t rsize = m->topsize -= nb;
       mchunkptr p = m->top;
       mchunkptr r = m->top = chunk_plus_offset(p, nb);
@@ -1070,7 +1070,7 @@ static size_t release_unused_segments(mstate m)
 	  /* unlink obsoleted record */
 	  sp = pred;
 	  sp->next = next;
-	} else { /* back out if cannot unmap */
+	} else {  // back out if cannot unmap 
 	  insert_large_chunk(m, tp, psize);
 	}
       }
@@ -1098,7 +1098,7 @@ static int alloc_trim(mstate m, size_t pad)
       msegmentptr sp = segment_holding(m, (char *)m->top);
 
       if (sp->size >= extra &&
-	  !has_segment_link(m, sp)) { /* can't shrink if pinned */
+	  !has_segment_link(m, sp)) {  // can't shrink if pinned 
 	size_t newsize = sp->size - extra;
 	/* Prefer mremap, fall back to munmap */
 	if ((CALL_MREMAP(sp->base, sp->size, newsize, CALL_MREMAP_NOMOVE) != MFAIL) ||
@@ -1159,13 +1159,13 @@ static void *tmalloc_large(mstate m, size_t nb)
     }
   }
 
-  if (t == 0 && v == 0) { /* set t to root of next non-empty treebin */
+  if (t == 0 && v == 0) {  // set t to root of next non-empty treebin 
     binmap_t leftbits = left_bits(idx2bit(idx)) & m->treemap;
     if (leftbits != 0)
       t = *treebin_at(m, lj_ffs(leftbits));
   }
 
-  while (t != 0) { /* find smallest of tree or subtree */
+  while (t != 0) {  // find smallest of tree or subtree 
     size_t trem = chunksize(t) - nb;
     if (trem < rsize) {
       rsize = trem;
@@ -1278,7 +1278,7 @@ static LJ_NOINLINE void *lj_alloc_malloc(void *msp, size_t nsize)
     idx = small_index(nb);
     smallbits = ms->smallmap >> idx;
 
-    if ((smallbits & 0x3U) != 0) { /* Remainderless fit to a smallbin. */
+    if ((smallbits & 0x3U) != 0) {  // Remainderless fit to a smallbin. 
       mchunkptr b, p;
       idx += ~smallbits & 1;       /* Uses next bin if idx empty */
       b = smallbin_at(ms, idx);
@@ -1288,7 +1288,7 @@ static LJ_NOINLINE void *lj_alloc_malloc(void *msp, size_t nsize)
       mem = chunk2mem(p);
       return mem;
     } else if (nb > ms->dvsize) {
-      if (smallbits != 0) { /* Use chunk in next nonempty smallbin */
+      if (smallbits != 0) {  // Use chunk in next nonempty smallbin 
 	mchunkptr b, p, r;
 	size_t rsize;
 	binmap_t leftbits = (smallbits << idx) & left_bits(idx2bit(idx));
@@ -1324,12 +1324,12 @@ static LJ_NOINLINE void *lj_alloc_malloc(void *msp, size_t nsize)
   if (nb <= ms->dvsize) {
     size_t rsize = ms->dvsize - nb;
     mchunkptr p = ms->dv;
-    if (rsize >= MIN_CHUNK_SIZE) { /* split dv */
+    if (rsize >= MIN_CHUNK_SIZE) {  // split dv 
       mchunkptr r = ms->dv = chunk_plus_offset(p, nb);
       ms->dvsize = rsize;
       set_size_and_pinuse_of_free_chunk(r, rsize);
       set_size_and_pinuse_of_inuse_chunk(ms, p, nb);
-    } else { /* exhaust dv */
+    } else {  // exhaust dv 
       size_t dvs = ms->dvsize;
       ms->dvsize = 0;
       ms->dv = 0;
@@ -1337,7 +1337,7 @@ static LJ_NOINLINE void *lj_alloc_malloc(void *msp, size_t nsize)
     }
     mem = chunk2mem(p);
     return mem;
-  } else if (nb < ms->topsize) { /* Split top */
+  } else if (nb < ms->topsize) {  // Split top 
     size_t rsize = ms->topsize -= nb;
     mchunkptr p = ms->top;
     mchunkptr r = ms->top = chunk_plus_offset(p, nb);
@@ -1377,7 +1377,7 @@ static LJ_NOINLINE void *lj_alloc_free(void *msp, void *ptr)
 	}
       }
     }
-    if (!cinuse(next)) {  /* consolidate forward */
+    if (!cinuse(next)) {  // consolidate forward 
       if (next == fm->top) {
 	size_t tsize = fm->topsize += psize;
 	fm->top = p;
@@ -1435,7 +1435,7 @@ static LJ_NOINLINE void *lj_alloc_realloc(void *msp, void *ptr, size_t nsize)
     /* Try to either shrink or extend into top. Else malloc-copy-free */
     if (is_direct(oldp)) {
       newp = direct_resize(oldp, nb);  /* this may return NULL. */
-    } else if (oldsize >= nb) { /* already big enough */
+    } else if (oldsize >= nb) {  // already big enough 
       size_t rsize = oldsize - nb;
       newp = oldp;
       if (rsize >= MIN_CHUNK_SIZE) {

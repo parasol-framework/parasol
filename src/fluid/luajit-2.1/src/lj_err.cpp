@@ -112,9 +112,9 @@ static void *err_unwind(lua_State *L, void *stopcf, int errcode)
   void *cf = L->cframe;
   while (cf) {
     int32_t nres = cframe_nres(cframe_raw(cf));
-    if (nres < 0) {  /* C frame without Lua frame? */
+    if (nres < 0) {  // C frame without Lua frame? 
       TValue *top = restorestack(L, -nres);
-      if (frame < top) {  /* Frame reached? */
+      if (frame < top) {  // Frame reached? 
 	if (errcode) {
 	  L->base = frame+1;
 	  L->cframe = cframe_prev(cf);
@@ -150,7 +150,7 @@ static void *err_unwind(lua_State *L, void *stopcf, int errcode)
       break;
 #endif
     case FRAME_CP:  /* Protected C frame. */
-      if (cframe_canyield(cf)) {  /* Resume? */
+      if (cframe_canyield(cf)) {  // Resume? 
 	if (errcode) {
 	  hook_leave(G(L));  /* Assumes nobody uses coroutines inside hooks. */
 	  L->cframe = NULL;
@@ -267,12 +267,12 @@ LJ_FUNCA int lj_err_unwind_win(EXCEPTION_RECORD *rec,
   lua_State *L = cframe_L(cf);
   int errcode = LJ_EXCODE_CHECK(rec->ExceptionCode) ?
 		LJ_EXCODE_ERRCODE(rec->ExceptionCode) : LUA_ERRRUN;
-  if ((rec->ExceptionFlags & 6)) {  /* EH_UNWINDING|EH_EXIT_UNWIND */
+  if ((rec->ExceptionFlags & 6)) {  // EH_UNWINDING|EH_EXIT_UNWIND 
     /* Unwind internal frames. */
     err_unwind(L, cf, errcode);
   } else {
     void *cf2 = err_unwind(L, cf, 0);
-    if (cf2) {  /* We catch it, so start unwinding the upper frames. */
+    if (cf2) {  // We catch it, so start unwinding the upper frames. 
       if (rec->ExceptionCode == LJ_MSVC_EXCODE ||
 	  rec->ExceptionCode == LJ_GCC_EXCODE) {
 #if !LJ_TARGET_CYGWIN
@@ -332,10 +332,10 @@ static void err_unwind_win_jit(global_State *g, int errcode)
     uintptr_t frame, base, addr = ctx.CONTEXT_REG_PC;
     void *hdata;
     PRUNTIME_FUNCTION func = RtlLookupFunctionEntry(addr, &base, &hist);
-    if (!func) {  /* Found frame without .pdata: must be JIT-compiled code. */
+    if (!func) {  // Found frame without .pdata: must be JIT-compiled code. 
       ExitNo exitno;
       uintptr_t stub = lj_trace_unwind(G2J(g), addr - sizeof(MCode), &exitno);
-      if (stub) {  /* Jump to side exit to unwind the trace. */
+      if (stub) {  // Jump to side exit to unwind the trace. 
 	ctx.CONTEXT_REG_PC = stub;
 	G2J(g)->exitcode = errcode;
 	RtlRestoreContext(&ctx, NULL);  /* Does not return. */
@@ -508,7 +508,7 @@ static int err_unwind_jit(int version, int actions,
     uintptr_t addr = _Unwind_GetIP(ctx);  /* Return address _after_ call. */
     uintptr_t stub = lj_trace_unwind(G2J(g), addr - sizeof(MCode), &exitno);
     lj_assertG(tvref(g->jit_base), "unexpected throw across mcode frame");
-    if (stub) {  /* Jump to side exit to unwind the trace. */
+    if (stub) {  // Jump to side exit to unwind the trace. 
       G2J(g)->exitcode = LJ_UEXCLASS_ERRCODE(uexclass);
 #ifdef LJ_TARGET_MIPS
       _Unwind_SetGR(ctx, 4, stub);
@@ -787,7 +787,7 @@ static ptrdiff_t finderrfunc(lua_State *L)
   cTValue *frame = L->base-1, *bot = tvref(L->stack)+LJ_FR2;
   void *cf = L->cframe;
   while (frame > bot && cf) {
-    while (cframe_nres(cframe_raw(cf)) < 0) {  /* cframe without frame? */
+    while (cframe_nres(cframe_raw(cf)) < 0) {  // cframe without frame? 
       if (frame >= restorestack(L, -cframe_nres(cf)))
 	break;
       if (cframe_errfunc(cf) >= 0)  /* Error handler not inherited (-1)? */

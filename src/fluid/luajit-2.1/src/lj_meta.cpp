@@ -48,7 +48,7 @@ cTValue *lj_meta_cache(GCtab *mt, MMS mm, GCstr *name)
 {
   cTValue *mo = lj_tab_getstr(mt, name);
   lj_assertX(mm <= MM_FAST, "bad metamethod %d", mm);
-  if (!mo || tvisnil(mo)) {  /* No metamethod? */
+  if (!mo || tvisnil(mo)) {  // No metamethod? 
     mt->nomm |= (uint8_t)(1u<<mm);  /* Set negative cache flag. */
     return NULL;
   }
@@ -217,7 +217,7 @@ TValue *lj_meta_arith(lua_State *L, TValue *ra, cTValue *rb, cTValue *rc,
   TValue tempb, tempc;
   cTValue *b, *c;
   if ((b = str2num(rb, &tempb)) != NULL &&
-      (c = str2num(rc, &tempc)) != NULL) {  /* Try coercion first. */
+      (c = str2num(rc, &tempc)) != NULL) {  // Try coercion first. 
     setnumV(ra, lj_vm_foldarith(numV(b), numV(c), (int)mm-MM_add));
     return NULL;
   } else {
@@ -407,7 +407,7 @@ TValue *lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
 	if (tvisnil(mo) || !lj_obj_equal(mo, mo2))
 #endif
 	{
-	  if (op & 2) {  /* MM_le not found: retry with MM_lt. */
+	  if (op & 2) {  // MM_le not found: retry with MM_lt. 
 	    cTValue *ot = o1; o1 = o2; o2 = ot;  /* Swap operands. */
 	    op ^= 3;  /* Use LT and flip condition. */
 	    continue;
@@ -468,11 +468,11 @@ void LJ_FASTCALL lj_meta_for(lua_State *L, TValue *o)
 	k[i] = lj_num2int(numV(o+i)); nint += ((lua_Number)k[i] == numV(o+i));
       }
     }
-    if (nint == 3) {  /* Narrow to integers. */
+    if (nint == 3) {  // Narrow to integers. 
       setintV(o, k[0]);
       setintV(o+1, k[1]);
       setintV(o+2, k[2]);
-    } else if (nint != 0) {  /* Widen to numbers. */
+    } else if (nint != 0) {  // Widen to numbers. 
       if (tvisint(o)) setnumV(o, (lua_Number)intV(o));
       if (tvisint(o+1)) setnumV(o+1, (lua_Number)intV(o+1));
       if (tvisint(o+2)) setnumV(o+2, (lua_Number)intV(o+2));

@@ -38,7 +38,7 @@ static LJ_AINLINE MCode *emit_op(x86Op xo, Reg rr, Reg rb, Reg rx,
 				 MCode *p, int delta)
 {
   int n = (int8_t)xo;
-  if (n == -60) {  /* VEX-encoded instruction */
+  if (n == -60) {  // VEX-encoded instruction 
 #if LJ_64
     xo ^= (((rr>>1)&4)+((rx>>2)&2)+((rb>>3)&1))<<13;
 #endif
@@ -311,9 +311,9 @@ static void emit_loadi(ASMState *as, Reg r, int32_t i)
 /* mov r, imm64 or shorter 32 bit extended load. */
 static void emit_loadu64(ASMState *as, Reg r, uint64_t u64)
 {
-  if (checku32(u64)) {  /* 32 bit load clears upper 32 bits. */
+  if (checku32(u64)) {  // 32 bit load clears upper 32 bits. 
     emit_loadi(as, r, (int32_t)u64);
-  } else if (checki32((int64_t)u64)) {  /* Sign-extended 32 bit load. */
+  } else if (checki32((int64_t)u64)) {  // Sign-extended 32 bit load. 
     MCode *p = as->mcp;
     *(int32_t *)(p-4) = (int32_t)u64;
     as->mcp = emit_opm(XO_MOVmi, XM_REG, REX_64, r, p, -4);
@@ -326,7 +326,7 @@ static void emit_loadu64(ASMState *as, Reg r, uint64_t u64)
     */
     emit_rmro(as, XO_LEA, r|REX_64, RID_RIP, (int32_t)mcpofs(as, u64));
 #endif
-  } else {  /* Full-size 64 bit load. */
+  } else {  // Full-size 64 bit load. 
     MCode *p = as->mcp;
     *(uint64_t *)(p-8) = u64;
     p[-9] = (MCode)(XI_MOVri+(r&7));
@@ -354,7 +354,7 @@ static void emit_rma(ASMState *as, x86Op xo, Reg rr, const void *addr)
       ra = RID_DISPATCH;
       if (checku32(dispaddr)) {
 	emit_loadi(as, ra, (int32_t)dispaddr);
-      } else {  /* Full-size 64 bit load. */
+      } else {  // Full-size 64 bit load. 
 	MCode *p = as->mcp;
 	*(uint64_t *)(p-8) = dispaddr;
 	p[-9] = (MCode)(XI_MOVri+(ra&7));
