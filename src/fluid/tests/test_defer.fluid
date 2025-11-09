@@ -152,6 +152,25 @@ function testArgumentSnapshot()
       "Deferred argument should snapshot initial value: '" .. join(events) .. "'")
 end
 
+function testMultiReturnPreservesLocals()
+   local function subject()
+      local head = 'alpha'
+      local tail = 'omega'
+
+      defer()
+         head = 'mutated-alpha'
+         tail = 'mutated-omega'
+      end
+
+      return head, tail
+   end
+
+   local first, second = subject()
+
+   assert(first is 'alpha', "Expected first return value to remain 'alpha', got '" .. tostring(first) .. "'")
+   assert(second is 'omega', "Expected second return value to remain 'omega', got '" .. tostring(second) .. "'")
+end
+
 function testConditionalScopes()
    local order = {}
 
@@ -285,7 +304,8 @@ end
       'testConditionalScopes',   -- Core: defers in if/else blocks work
       'testLoopMultipleDefers',  -- Core: complex nested loop scenarios
       'testRecursive',           -- Core: defer works in recursive functions
-      'testClosureReturn'        -- Core: defer in closures with upvalues
+      'testClosureReturn',       -- Core: defer in closures with upvalues
+      'testMultiReturnPreservesLocals'         -- Core: multi-value returns keep snapshots
    }
 
    if supportsArgumentSnapshot then

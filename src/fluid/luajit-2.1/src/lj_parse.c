@@ -3350,6 +3350,20 @@ static void snapshot_return_regs(FuncState *fs, BCIns *ins)
       bcemit_AD(fs, BC_MOV, dst, src);
       setbc_a(ins, dst);
     }
+  } else if (op == BC_RET) {
+    BCReg base = bc_a(*ins);
+    BCReg nres = bc_d(*ins);
+
+    if (nres > 1) {
+      BCReg count = nres - 1;
+      BCReg dst = fs->freereg;
+      BCReg i;
+
+      bcreg_reserve(fs, count);
+      for (i = 0; i < count; i++)
+        bcemit_AD(fs, BC_MOV, dst + i, base + i);
+      setbc_a(ins, dst);
+    }
   }
 }
 
