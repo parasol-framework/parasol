@@ -153,6 +153,9 @@ else ()
    # On Windows (MinGW), use peobj like MSVC; on Unix, use assembly
    # Library compilation is handled by CMake for proper incremental builds
 
+   # Convert CMAKE_CXX_FLAGS string to a list for proper CMake handling
+   string(REPLACE " " ";" LUAJIT_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
    if (WIN32)
       # MinGW uses PE object format like MSVC
       set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
@@ -175,7 +178,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_CXX_FLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
    )
@@ -295,7 +298,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER}
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_CXX_FLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
