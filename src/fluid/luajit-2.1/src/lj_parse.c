@@ -1478,8 +1478,9 @@ static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc *e)
   return n;
 }
 
-/* Forward declaration. */
+/* Forward declarations. */
 static void fscope_uvmark(FuncState *fs, BCReg level);
+static void execute_defers(FuncState *fs, BCReg limit);
 
 /* Recursively lookup variables in enclosing functions. */
 static MSize var_lookup_(FuncState *fs, GCstr *name, ExpDesc *e, int first)
@@ -1528,6 +1529,11 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
   setgcref(ls->vstack[vtop].name, obj2gco(name));
   ls->vstack[vtop].startpc = pc;
+  /* For goto statements, endpc is repurposed to store the active variable count (nactvar)
+   * at the point of the goto. This is used to track which defers need to be executed
+   * when the goto is resolved.
+   */
+  ls->vstack[vtop].endpc = (info & VSTACK_GOTO) ? (BCPos)fs->nactvar : 0;
   ls->vstack[vtop].slot = (uint8_t)fs->nactvar;
   ls->vstack[vtop].info = info;
   ls->vtop = vtop+1;
@@ -1538,10 +1544,15 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
 #define gola_islabel(v)		((v)->info & VSTACK_LABEL)
 #define gola_isgotolabel(v)	((v)->info & (VSTACK_GOTO|VSTACK_LABEL))
 
+static void gola_emit_defer(LexState *ls, VarInfo *vg, BCReg limit);
+
 /* Patch goto to jump to label. */
 static void gola_patch(LexState *ls, VarInfo *vg, VarInfo *vl)
 {
   FuncState *fs = ls->fs;
+  GCstr *name = strref(vg->name);
+  if (name != NAME_BREAK && name != NAME_CONTINUE)
+    gola_emit_defer(ls, vg, vl->slot);
   BCPos pc = vg->startpc;
   setgcrefnull(vg->name);  /* Invalidate pending goto. */
   setbc_a(&fs->bcbase[pc].ins, vl->slot);
@@ -1564,6 +1575,39 @@ static void gola_close(LexState *ls, VarInfo *vg)
     setbc_op(ip, BC_UCLO);  /* Turn into UCLO. */
     setbc_j(ip, NO_JMP);
   }
+}
+
+static void gola_emit_defer(LexState *ls, VarInfo *vg, BCReg limit)
+{
+  FuncState *fs = ls->fs;
+  BCReg start = (BCReg)vg->endpc;
+  BCPos gotopc, stubpc, newjmp;
+  BCReg saved_nactvar, saved_freereg;
+
+  if (start <= limit)
+    return;
+
+  gotopc = vg->startpc;
+  saved_nactvar = fs->nactvar;
+  saved_freereg = fs->freereg;
+
+  fs->nactvar = start;
+  if (fs->freereg < fs->nactvar)
+    fs->freereg = fs->nactvar;
+
+  stubpc = fs->pc;
+  execute_defers(fs, limit);
+  newjmp = bcemit_jmp(fs);
+  setbc_a(&fs->bcbase[newjmp].ins, limit);
+
+  jmp_patch(fs, gotopc, stubpc);
+
+  vg->startpc = newjmp;
+  vg->slot = (uint8_t)limit;
+  vg->endpc = (BCPos)limit;
+
+  fs->nactvar = saved_nactvar;
+  fs->freereg = saved_freereg;
 }
 
 /* Resolve pending forward gotos for label. */
@@ -1609,6 +1653,8 @@ static void gola_fixup(LexState *ls, FuncScope *bl)
           bl->prev->flags |= name == NAME_BREAK ? FSCOPE_BREAK :
                              (name == NAME_CONTINUE ? FSCOPE_CONTINUE :
                               FSCOPE_GOLA);
+          if (name != NAME_BREAK && name != NAME_CONTINUE)
+            gola_emit_defer(ls, v, bl->nactvar);
           v->slot = bl->nactvar;
           if ((bl->flags & FSCOPE_UPVAL))
             gola_close(ls, v);
