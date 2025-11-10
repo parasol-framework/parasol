@@ -599,15 +599,15 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          show_funcinfo = true;
       }
       else {
-         show_stack = (opts.find("stack") != std::string::npos);
-         show_locals = (opts.find("locals") != std::string::npos);
+         show_stack    = (opts.find("stack") != std::string::npos);
+         show_locals   = (opts.find("locals") != std::string::npos);
          show_upvalues = (opts.find("upvalues") != std::string::npos);
-         show_globals = (opts.find("globals") != std::string::npos);
-         show_memory = (opts.find("memory") != std::string::npos);
-         show_state = (opts.find("state") != std::string::npos);
+         show_globals  = (opts.find("globals") != std::string::npos);
+         show_memory   = (opts.find("memory") != std::string::npos);
+         show_state    = (opts.find("state") != std::string::npos);
          show_bytecode = (opts.find("bytecode") != std::string::npos);
          show_funcinfo = (opts.find("funcinfo") != std::string::npos);
-         log_output = (opts.find("log") != std::string::npos);
+         log_output    = (opts.find("log") != std::string::npos);
       }
       compact = (opts.find("compact") != std::string::npos);
    }
@@ -703,9 +703,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                   numeric_consts = pt->sizekn;
                   object_consts = pt->sizekgc;
                }
-               else {
-                  is_vararg = true;
-               }
+               else is_vararg = true;
                lua_pop(prv->Lua, 1);
             }
 
@@ -719,9 +717,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                   buf << " bytecode=" << bytecodes;
                   buf << " consts=" << numeric_consts << "+" << object_consts;
                }
-               else {
-                  buf << " <C function>";
-               }
+               else buf << " <C function>";
                buf << "\n";
             }
             else {
@@ -831,7 +827,6 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             if (not compact) buf << "\n";
          }
       }
-
    }
 
    // Here we can process options that are meaningful post-execution.
@@ -920,8 +915,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       buf << "Stack top: " << lua_gettop(prv->Lua) << "\n";
       buf << "Protected globals: " << (prv->Lua->ProtectedGlobals ? "true" : "false") << "\n";
 
-      int hook_mask = lua_gethookmask(prv->Lua);
-      if (hook_mask) {
+      if (auto hook_mask = lua_gethookmask(prv->Lua)) {
          buf << "Hook mask: ";
          bool first = true;
          if (hook_mask & LUA_MASKCALL) { buf << (first ? "" : "|") << "CALL"; first = false; }
@@ -940,7 +934,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       return ERR::AllocMemory;
    }
    else {
-      if (log_output) log.msg("%s", Args->Result);
+      if (log_output) log.msg("%.400s", Args->Result);
       return ERR::Okay;
    }
 }

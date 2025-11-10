@@ -424,7 +424,7 @@ function enum(Prefix, Options, ...)
          if not key then key = va end
          local synonym = false
          for _, name in ipairs(key:split('|')) do
-            if (Options.type) then
+            if Options.type then
                table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
             elseif (Options.bits is 64) then
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc .. 'LL')
@@ -878,7 +878,7 @@ function class(Name, Options, Spec, Private, Custom)
          if (results) then
             inline ..= '      ERR error = Action(AC(-' .. method.id .. '), this, ' .. args .. ');\n'
             for _, p in pairs(method.params) do
-               if (p.resultValue) then
+               if p.resultValue then
                   inline ..= '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
                end
             end

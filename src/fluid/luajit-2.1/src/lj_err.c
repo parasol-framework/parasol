@@ -259,7 +259,7 @@ VOID RtlUnwindEx_FIXED(PVOID,PVOID,PVOID,PVOID,PVOID,PVOID) asm("RtlUnwindEx");
 #define LJ_EXCODE_ERRCODE(cl)	((int)((cl) & 0xff))
 
 /* Windows exception handler for interpreter frame. */
-extern "C" int lj_err_unwind_win(EXCEPTION_RECORD *rec,
+extern int lj_err_unwind_win(EXCEPTION_RECORD *rec,
   void *f, CONTEXT *ctx, UndocumentedDispatcherContext *dispatch)
 {
 #if LJ_TARGET_X86

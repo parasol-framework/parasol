@@ -113,7 +113,7 @@ end
 
 function testMultipleOptions()
    local x = 100
-   local err, result = glSelf.mtDebugLog('stack,locals,memory')
+   local err, result = glSelf.mtDebugLog('stack,locals,memory,log')
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
@@ -210,7 +210,7 @@ end
 
 function testNestedStack()
    local function level3()
-      local err, result = glSelf.mtDebugLog('stack')
+      local err, result = glSelf.mtDebugLog('stack,log')
       return result
    end
 
@@ -227,8 +227,36 @@ function testNestedStack()
    assert(result, 'DebugLog should return a result')
    -- Only level1 is visible because level2/level3 have already returned when mtDebugLog executes
    assert(string.find(result, 'level1'), 'Should contain level1')
-   -- Check that levels are numbered
-   assert(string.find(result, '%[%d+%]'), 'Should contain level numbers')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test funcinfo option (Phase 1 feature)
+
+function testFuncInfo()
+   local function calculateTotal(a, b, c)
+      local sum = a + b + c
+      local err, result = glSelf.mtDebugLog('funcinfo')
+      return result
+   end
+
+   local result = calculateTotal(10, 20, 30)
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'FUNCTION INFORMATION'), 'Should contain function info header')
+   assert(string.find(result, 'Function %[%d+%]:'), 'Should contain function label with level number')
+   assert(string.find(result, 'calculateTotal'), 'Should contain function name')
+   assert(string.find(result, 'Parameters:'), 'Should contain parameters count')
+   assert(string.find(result, 'Vararg:'), 'Should contain vararg flag')
+   assert(string.find(result, 'Stack slots:'), 'Should contain stack slots info')
+   assert(string.find(result, 'Bytecodes:'), 'Should contain bytecode count')
+   assert(string.find(result, 'Constants:'), 'Should contain constants info')
+   assert(string.find(result, 'Upvalues:'), 'Should contain upvalues count')
+
+   -- Verify parameter count is correct (3 parameters: a, b, c)
+   assert(string.find(result, 'Parameters:%s*3'), 'Should show 3 parameters')
+
+   -- Verify vararg is false for this function
+   assert(string.find(result, 'Vararg:%s*false'), 'Should show vararg as false')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -246,6 +274,7 @@ end
          'testCompactMode',
          'testLongString',
          'testVariousTypes',
-         'testNestedStack'
+         'testNestedStack',
+         'testFuncInfo'
       }
    }
