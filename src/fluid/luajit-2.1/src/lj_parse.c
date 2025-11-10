@@ -1530,11 +1530,6 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
   setgcref(ls->vstack[vtop].name, obj2gco(name));
   ls->vstack[vtop].startpc = pc;
-  /* For goto statements, endpc is repurposed to store the active variable count (nactvar)
-   * at the point of the goto. This is used to track which defers need to be executed
-   * when the goto is resolved.
-   */
-  ls->vstack[vtop].endpc = (info & VSTACK_GOTO) ? (BCPos)fs->nactvar : 0;
   ls->vstack[vtop].slot = (uint8_t)fs->nactvar;
   ls->vstack[vtop].info = info;
   ls->vtop = vtop+1;
@@ -1545,15 +1540,10 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
 #define gola_islabel(v)		((v)->info & VSTACK_LABEL)
 #define gola_isgotolabel(v)	((v)->info & (VSTACK_GOTO|VSTACK_LABEL))
 
-static void gola_emit_defer(LexState *ls, VarInfo *vg, BCReg limit);
-
 /* Patch goto to jump to label. */
 static void gola_patch(LexState *ls, VarInfo *vg, VarInfo *vl)
 {
   FuncState *fs = ls->fs;
-  GCstr *name = strref(vg->name);
-  if (name != NAME_BREAK && name != NAME_CONTINUE)
-    gola_emit_defer(ls, vg, vl->slot);
   BCPos pc = vg->startpc;
   setgcrefnull(vg->name);  /* Invalidate pending goto. */
   setbc_a(&fs->bcbase[pc].ins, vl->slot);
@@ -1578,39 +1568,6 @@ static void gola_close(LexState *ls, VarInfo *vg)
   }
 }
 
-static void gola_emit_defer(LexState *ls, VarInfo *vg, BCReg limit)
-{
-  FuncState *fs = ls->fs;
-  BCReg start = (BCReg)vg->endpc;
-  BCPos gotopc, stubpc, newjmp;
-  BCReg saved_nactvar, saved_freereg;
-
-  if (start <= limit)
-    return;
-
-  gotopc = vg->startpc;
-  saved_nactvar = fs->nactvar;
-  saved_freereg = fs->freereg;
-
-  fs->nactvar = start;
-  if (fs->freereg < fs->nactvar)
-    fs->freereg = fs->nactvar;
-
-  stubpc = fs->pc;
-  execute_defers(fs, limit);
-  newjmp = bcemit_jmp(fs);
-  setbc_a(&fs->bcbase[newjmp].ins, limit);
-
-  jmp_patch(fs, gotopc, stubpc);
-
-  vg->startpc = newjmp;
-  vg->slot = (uint8_t)limit;
-  vg->endpc = (BCPos)limit;
-
-  fs->nactvar = saved_nactvar;
-  fs->freereg = saved_freereg;
-}
-
 /* Resolve pending forward jumps (break/continue) for label. */
 static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
 {
@@ -1623,41 +1580,38 @@ static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
 }
 
 /* Fixup remaining gotos and labels for scope. */
-static void gola_fixup(LexState *ls, FuncScope *bl)
+static void gola_fixup(LexState* ls, FuncScope* bl)
 {
-  VarInfo *v = ls->vstack + bl->vstart;
-  VarInfo *ve = ls->vstack + ls->vtop;
-  for (; v < ve; v++) {
-    GCstr *name = strref(v->name);
-    if (name != NULL) {  /* Only consider remaining valid gotos/labels. */
-      if (gola_islabel(v)) {
-	VarInfo *vg;
-	setgcrefnull(v->name);  /* Invalidate label that goes out of scope. */
-	for (vg = v+1; vg < ve; vg++)  /* Resolve pending backward gotos. */
-	  if (strref(vg->name) == name && gola_isgoto(vg)) {
-	    if ((bl->flags&FSCOPE_UPVAL) && vg->slot > v->slot)
-	      gola_close(ls, vg);
-	    gola_patch(ls, vg, v);
-	  }
-      } else if (gola_isgoto(v)) {
-        if (bl->prev) {  /* Propagate break/continue to outer scope. */
-          if (name == NAME_BREAK)
-            bl->prev->flags |= FSCOPE_BREAK;
-          else if (name == NAME_CONTINUE)
-            bl->prev->flags |= FSCOPE_CONTINUE;
-          v->slot = bl->nactvar;
-          if ((bl->flags & FSCOPE_UPVAL))
-            gola_close(ls, v);
-        } else {  /* No outer scope: no loop for break/continue. */
-          ls->linenumber = ls->fs->bcbase[v->startpc].line;
-          if (name == NAME_BREAK)
-            lj_lex_error(ls, 0, LJ_ERR_XBREAK);
-          else if (name == NAME_CONTINUE)
-            lj_lex_error(ls, 0, LJ_ERR_XCONTINUE);
-        }
+   VarInfo* v = ls->vstack + bl->vstart;
+   VarInfo* ve = ls->vstack + ls->vtop;
+   for (; v < ve; v++) {
+      GCstr* name = strref(v->name);
+      if (name != NULL) {  /* Only consider remaining valid gotos/labels. */
+         if (gola_islabel(v)) {
+            VarInfo* vg;
+            setgcrefnull(v->name);  /* Invalidate label that goes out of scope. */
+            for (vg = v + 1; vg < ve; vg++)  /* Resolve pending backward gotos. */
+               if (strref(vg->name) == name && gola_isgoto(vg)) {
+                  if ((bl->flags & FSCOPE_UPVAL) && vg->slot > v->slot)
+                     gola_close(ls, vg);
+                  gola_patch(ls, vg, v);
+               }
+         }
+         else if (gola_isgoto(v)) {
+            if (bl->prev) {  /* Propagate break/continue to outer scope. */
+               if (name == NAME_BREAK) bl->prev->flags |= FSCOPE_BREAK;
+               else if (name == NAME_CONTINUE) bl->prev->flags |= FSCOPE_CONTINUE;
+               v->slot = bl->nactvar;
+               if ((bl->flags & FSCOPE_UPVAL)) gola_close(ls, v);
+            }
+            else {  /* No outer scope: no loop for break/continue. */
+               ls->linenumber = ls->fs->bcbase[v->startpc].line;
+               if (name == NAME_BREAK) lj_lex_error(ls, 0, LJ_ERR_XBREAK);
+               else if (name == NAME_CONTINUE) lj_lex_error(ls, 0, LJ_ERR_XCONTINUE);
+            }
+         }
       }
-    }
-  }
+   }
 }
 
 /* -- Scope handling ------------------------------------------------------ */
