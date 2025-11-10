@@ -419,7 +419,7 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
 
 /* Parse expression list. Last expression is left open.
 **
-** This function parses comma-separated expressions but deliberately leaves the LAST expression
+** This function parses comma-separated expressions but deliberately leaves the last expression
 ** in its original ExpDesc state without discharging it. This is critical for multi-return
 ** function call handling.
 **
