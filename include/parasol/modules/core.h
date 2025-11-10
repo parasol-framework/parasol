@@ -2879,6 +2879,7 @@ struct Exec { CSTRING Procedure; const struct ScriptArg * Args; int TotalArgs; s
 struct DerefProcedure { FUNCTION * Procedure; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Callback { int64_t ProcedureID; const struct ScriptArg * Args; int TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetProcedureID { CSTRING Procedure; int64_t ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DebugLog { CSTRING Options; CSTRING Result; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2951,6 +2952,12 @@ class objScript : public Object {
       struct sc::GetProcedureID args = { Procedure, (int64_t)0 };
       ERR error = Action(AC(-4), this, &args);
       if (ProcedureID) *ProcedureID = args.ProcedureID;
+      return(error);
+   }
+   inline ERR debugLog(CSTRING Options, CSTRING * Result) noexcept {
+      struct sc::DebugLog args = { Options, (CSTRING)0 };
+      ERR error = Action(AC(-5), this, &args);
+      if (Result) *Result = args.Result;
       return(error);
    }
 

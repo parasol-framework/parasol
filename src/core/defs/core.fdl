@@ -1326,7 +1326,8 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
     { id=1, name="Exec" },
     { id=2, name="DerefProcedure" },
     { id=3, name="Callback" },
-    { id=4, name="GetProcedureID" }
+    { id=4, name="GetProcedureID" },
+    { id=5, name="DebugLog" }
   })
 
   class("Script", { src={ "../classes/class_script.cpp" }, output="../classes/class_script_def.c" }, [[

@@ -1,0 +1,251 @@
+-- Flute tests for the DebugLog() method
+
+   glSelf = obj.find('self')
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test default behaviour (stack trace only)
+
+function testDefaultStackTrace()
+   local function innerFunc()
+      local err, result = glSelf.mtDebugLog()
+      return result
+   end
+
+   local function middleFunc()
+      return innerFunc()
+   end
+
+   local result = middleFunc()
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'CALL STACK'), 'Should contain stack trace header')
+   -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller (middleFunc)
+   assert(string.find(result, 'middleFunc'), 'Should contain middleFunc in stack')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test locals option
+
+function testLocals()
+   local function testFunc()
+      local x = 42
+      local name = 'test'
+      local flag = true
+      local err, result = glSelf.mtDebugLog('locals')
+      return result
+   end
+
+   local result = testFunc()
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'LOCALS'), 'Should contain locals header')
+   assert(string.find(result, 'x'), 'Should contain variable x')
+   assert(string.find(result, '42'), 'Should contain value 42')
+   assert(string.find(result, 'name'), 'Should contain variable name')
+   assert(string.find(result, 'test'), 'Should contain value test')
+   assert(string.find(result, 'flag'), 'Should contain variable flag')
+   assert(string.find(result, 'true'), 'Should contain value true')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test upvalues option
+
+function testUpvalues()
+   local counter = 10
+   local config = { enabled = true }
+
+   local function closure()
+      counter = counter + 1
+      if config.enabled then end  -- Use config so it becomes an upvalue
+      local err, result = glSelf.mtDebugLog('upvalues')
+      return result
+   end
+
+   local result = closure()
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'UPVALUES'), 'Should contain upvalues header')
+   assert(string.find(result, 'counter'), 'Should contain upvalue counter')
+   assert(string.find(result, 'config'), 'Should contain upvalue config')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test globals option
+
+testGlobal = 'visible'
+anotherGlobal = 123
+
+function testGlobals()
+   local err, result = glSelf.mtDebugLog('globals')
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'GLOBALS'), 'Should contain globals header')
+   assert(string.find(result, 'testGlobal'), 'Should contain testGlobal')
+   assert(string.find(result, 'visible'), 'Should contain value visible')
+   assert(string.find(result, 'anotherGlobal'), 'Should contain anotherGlobal')
+   assert(string.find(result, '123'), 'Should contain value 123')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test memory option
+
+function testMemory()
+   local err, result = glSelf.mtDebugLog('memory')
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory header')
+   assert(string.find(result, 'Lua heap'), 'Should contain heap information')
+   assert(string.find(result, 'MB'), 'Should contain MB unit')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test state option
+
+function testState()
+   local err, result = glSelf.mtDebugLog('state')
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'STATE'), 'Should contain state header')
+   assert(string.find(result, 'Stack top'), 'Should contain stack top information')
+   assert(string.find(result, 'Protected globals'), 'Should contain protected globals info')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test multiple options (CSV list)
+
+function testMultipleOptions()
+   local x = 100
+   local err, result = glSelf.mtDebugLog('stack,locals,memory')
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
+   assert(string.find(result, 'LOCALS'), 'Should contain locals')
+   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory info')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test 'all' option
+
+function testAllOption()
+   local y = 50
+   local err, result = glSelf.mtDebugLog('all')
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
+   assert(string.find(result, 'LOCALS'), 'Should contain locals')
+   assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory info')
+   assert(string.find(result, 'STATE'), 'Should contain state info')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test compact mode
+
+function testCompactMode()
+   local function compactTest()
+      local x = 42
+      local err, result = glSelf.mtDebugLog('stack,locals,compact')
+      return result
+   end
+
+   local result = compactTest()
+
+   assert(result, 'DebugLog should return a result')
+   -- In compact mode, should NOT contain the header separators
+   assert(not string.find(result, '==='), 'Compact mode should not contain === headers')
+   -- But should still contain the data
+   assert(string.find(result, 'compactTest'), 'Should contain function name')
+   assert(string.find(result, 'x'), 'Should contain variable x')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test with long strings (truncation)
+
+function testLongString()
+   local function longStringTest()
+      local longStr = 'This is a very long string that should be truncated to forty characters maximum'
+      local err, result = glSelf.mtDebugLog('locals')
+      return result
+   end
+
+   local result = longStringTest()
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'longStr'), 'Should contain variable longStr')
+   assert(string.find(result, '%.%.%.'), 'Should contain ellipsis for truncation')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test with various data types
+
+function testVariousTypes()
+   local function typeTest()
+      local numVar = 3.14
+      local strVar = 'hello'
+      local boolVar = false
+      local nilVar = nil
+      local tableVar = { a = 1, b = 2 }
+      local funcVar = function() end
+
+      local err, result = glSelf.mtDebugLog('locals')
+      return result
+   end
+
+   local result = typeTest()
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'numVar'), 'Should contain numVar')
+   assert(string.find(result, '3%.14'), 'Should contain number value')
+   assert(string.find(result, 'strVar'), 'Should contain strVar')
+   assert(string.find(result, 'hello'), 'Should contain string value')
+   assert(string.find(result, 'boolVar'), 'Should contain boolVar')
+   assert(string.find(result, 'false'), 'Should contain false value')
+   assert(string.find(result, 'nilVar'), 'Should contain nilVar')
+   assert(string.find(result, 'nil'), 'Should contain nil value')
+   assert(string.find(result, 'tableVar'), 'Should contain tableVar')
+   assert(string.find(result, '{ ... }'), 'Should show table placeholder')
+   assert(string.find(result, 'funcVar'), 'Should contain funcVar')
+   assert(string.find(result, '<function>'), 'Should show function placeholder')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test nested function calls in stack trace
+
+function testNestedStack()
+   local function level3()
+      local err, result = glSelf.mtDebugLog('stack')
+      return result
+   end
+
+   local function level2()
+      return level3()
+   end
+
+   local function level1()
+      return level2()
+   end
+
+   local result = level1()
+
+   assert(result, 'DebugLog should return a result')
+   -- Only level1 is visible because level2/level3 have already returned when mtDebugLog executes
+   assert(string.find(result, 'level1'), 'Should contain level1')
+   -- Check that levels are numbered
+   assert(string.find(result, '%[%d+%]'), 'Should contain level numbers')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testDefaultStackTrace',
+         'testLocals',
+         'testUpvalues',
+         'testGlobals',
+         'testMemory',
+         'testState',
+         'testMultipleOptions',
+         'testAllOption',
+         'testCompactMode',
+         'testLongString',
+         'testVariousTypes',
+         'testNestedStack'
+      }
+   }
