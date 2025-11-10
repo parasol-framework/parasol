@@ -54,14 +54,13 @@ static APTR find_core()
    folder.clear();
 
    if (folder.empty()) {
-      int len, i;
       WIN32_FIND_DATA find;
       char buffer[MAX_PATH] = {};
 
       // Check local directories for base installation
 
-      if ((len = GetModuleFileNameA(nullptr, buffer, sizeof(buffer)))) {
-         for (i = len; i > 0; i--) {
+      if (auto len = GetModuleFileNameA(nullptr, buffer, sizeof(buffer))) {
+         for (int i = len; i > 0; i--) {
             if (buffer[i] IS '\\') {
                buffer[i+1] = 0;
                AddDllDirectory(buffer);
@@ -79,18 +78,19 @@ static APTR find_core()
 
       if (not folder.empty()) {
          auto test_lib = folder + "lib\\core.dll";
-
          auto handle = INVALID_HANDLE_VALUE;
          while ((handle = FindFirstFileA(test_lib.data(), &find)) IS INVALID_HANDLE_VALUE) {
-            // Regress by one folder to get to the root of the installation.
+            // Traverse one folder towards the root of the installation.
 
-            if (test_lib.back() IS '\\') test_lib.pop_back();
-            while ((not test_lib.empty()) and (test_lib.back() != '\\')) {
-               test_lib.pop_back();
+            if (folder.back() IS '\\') folder.pop_back();
+            while ((not folder.empty()) and (folder.back() != '\\')) {
+               folder.pop_back();
             }
 
+            if (folder.empty()) break;  // No more parent directories
+
             test_lib = folder + "lib\\core.dll";
-            printf("Scan: %s\n", test_lib.c_str());
+            //printf("Scan: %s\n", test_lib.c_str());
          }
 
          if (handle != INVALID_HANDLE_VALUE) { // Success in finding the core.dll file
@@ -117,7 +117,7 @@ static APTR find_core()
 
    // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path.
 
-   auto dll_folder = folder + "lib"; // This is the third party lib folder, not the root lib folder.
+   auto dll_folder = folder + "lib";
    SetDllDirectoryA(folder.c_str());
 
    APTR handle;
