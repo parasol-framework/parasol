@@ -1150,42 +1150,42 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
       return;
    }
 
-   // Runtime value - emit checks 
-   // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch 
+   // Runtime value - emit checks
+   // Follow `?` pattern: use BC_ISNEP/BC_ISNEN/BC_ISNES so truthy values fall through
    /*
-    * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
-    * Pattern: BC_ISEQP reg, VKNIL + JMP means:
-    *   - If reg == nil: skip JMP, continue to next check
-    *   - If reg != nil: execute JMP, jump to target (patched to false branch)
+    * Bytecode semantics: BC_ISNEP/BC_ISNEN/BC_ISNES skip the next instruction when values ARE NOT equal.
+    * Pattern: BC_ISNEP reg, VKNIL + JMP means:
+    *   - If reg != nil: skip JMP, continue to truthy branch
+    *   - If reg == nil: execute JMP, jump to false branch
     * By chaining multiple checks and patching all JMPs to the same false branch:
-    *   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
-    *   - Truthy values: all checks fail, first JMP executes, jumps to false branch
+    *   - Falsey values branch to the false block
+    *   - Truthy values skip every JMP and fall through to emit `true`
     */
    BCReg reg = expr_toanyreg(fs, e);
    ExpDesc nilv, falsev, zerov, emptyv;
    BCPos jmp_false_branch;
    BCPos check_nil, check_false, check_zero, check_empty;
 
-   // Check for nil 
+   // Check for nil
    expr_init(&nilv, VKNIL, 0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
-   // Check for false 
+   // Check for false
    expr_init(&falsev, VKFALSE, 0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
-   // Check for zero 
+   // Check for zero
    expr_init(&zerov, VKNUM, 0);
    setnumV(&zerov.u.nval, 0.0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEN, reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
-   // Check for empty string 
+   // Check for empty string
    expr_init(&emptyv, VKSTR, 0);
    emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNES, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
    // Reserve a register for the result 
@@ -1265,21 +1265,21 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             BCPos check_nil, check_false, check_zero, check_empty;
             // Check for nil 
             expr_init(&nilv, VKNIL, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
-            // Check for false 
+            // Check for false
             expr_init(&falsev, VKFALSE, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
-            // Check for zero 
+            // Check for zero
             expr_init(&zerov, VKNUM, 0);
             setnumV(&zerov.u.nval, 0.0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEN, reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
-            // Check for empty string 
+            // Check for empty string
             expr_init(&emptyv, VKSTR, 0);
             emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNES, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
             // If all checks pass (value is truthy), skip RHS 
             skip = bcemit_jmp(fs);
@@ -3104,24 +3104,24 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             cond_reg = expr_toanyreg(fs, v);
             result_reg = cond_reg;
 
-            // Emit comparisons followed by JMP; ISEQP/S/N skip the JMP when equal. 
+            // Emit comparisons followed by JMP; ISNEP/S/N skip the JMP when not equal.
             // nil 
             expr_init(&nilv, VKNIL, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
-            // false 
+            // false
             expr_init(&falsev, VKFALSE, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
-            // zero 
+            // zero
             expr_init(&zerov, VKNUM, 0);
             setnumV(&zerov.u.nval, 0.0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEN, cond_reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
-            // empty string 
+            // empty string
             expr_init(&emptyv, VKSTR, 0);
             emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNES, cond_reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
             // TRUE branch (falls through when value is truthy). 
