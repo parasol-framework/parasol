@@ -745,8 +745,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             level++;
          }
 
-         if ((not wrote) and (compact)) buf << "(no frames)\n";
-         if ((not wrote) and (not compact)) buf << "(no frames)\n";
+         if (not wrote) buf << "(no frames)\n";
          if (not compact) buf << "\n";
       }
 
