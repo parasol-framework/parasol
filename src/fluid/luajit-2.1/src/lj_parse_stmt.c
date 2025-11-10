@@ -82,8 +82,8 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    lj_lex_next(ls);
 
    /* Preserve table base/index across RHS evaluation by duplicating them
-   ** to the top of the stack && discharging using the duplicates. This retains
-   ** the original registers for the final store && maintains LIFO free order. */
+   ** to the top of the stack and discharging using the duplicates. This retains
+   ** the original registers for the final store and maintains LIFO free order. */
    freg_base = fs->freereg;
    if (lh->v.k == VINDEXED) {
       BCReg new_base, new_idx;
