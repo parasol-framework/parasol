@@ -390,15 +390,24 @@ static ERR FLUID_Activate(objScript *Self)
 
       prv->Lua->ProtectedGlobals = true;
 
+      // Determine chunk name for better debug output.
+      // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.
+      // This ensures debug output shows the actual filename instead of "[string]".
+      std::string chunk_name;
+      if (Self->Path) {
+         chunk_name = std::string("@") + Self->Path;
+      }
+      else chunk_name = "=script";
+
       int result;
       if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          int headerlen = strlen(Self->String) + 1;
-         result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
+         result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, chunk_name.c_str());
       }
       else {
          log.trace("Compiling Lua script.");
-         result = luaL_loadstring(prv->Lua, Self->String);
+         result = luaL_loadbuffer(prv->Lua, Self->String, strlen(Self->String), chunk_name.c_str());
       }
 
       if (result) { // Error reported from parser
@@ -626,7 +635,8 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
 #if LJ_HASPROFILE
          size_t dump_len = 0;
-         const char *dump = luaJIT_profile_dumpstack(prv->Lua, compact ? "F\n" : "Fl\n", 50, &dump_len);
+         // Format codes: F=function name, l=source:line, p=preserve full path
+         const char *dump = luaJIT_profile_dumpstack(prv->Lua, compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
          if (dump and dump_len) buf << std::string_view(dump, dump_len);
 #else
          lua_Debug ar;
@@ -1179,12 +1189,16 @@ static ERR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (not prv) return log.warning(ERR::ObjectCorrupt);
 
-   if (not luaL_loadstring(prv->Lua, Self->String)) {
+   std::string chunk_name;
+   if (Self->Path) chunk_name = std::string("@") + Self->Path;
+   else chunk_name = "=script";
+
+   if (not luaL_loadbuffer(prv->Lua, Self->String, strlen(Self->String), chunk_name.c_str())) {
       ERR error = save_binary(Self, Args->Dest);
       return error;
    }
    else {
-      CSTRING str = lua_tostring(prv->Lua,-1);
+      auto str = lua_tostring(prv->Lua,-1);
       lua_pop(prv->Lua, 1);
       log.warning("Compile Failure: %s", str);
       return ERR::InvalidData;
