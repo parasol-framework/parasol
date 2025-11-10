@@ -287,7 +287,7 @@ function (idl_gen)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         ${COMMAND_LIST}
+         ${COMMAND_LIST} || echo ""
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Generating C header file ${IDLC_OUTPUT} from ${ARGV0}"
