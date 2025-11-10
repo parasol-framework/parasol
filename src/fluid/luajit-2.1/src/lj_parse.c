@@ -110,7 +110,6 @@ typedef struct FuncScope {
 
 #define FSCOPE_LOOP		0x01	/* Scope is a (breakable) loop. */
 #define FSCOPE_BREAK		0x02	/* Break used in scope. */
-#define FSCOPE_GOLA		0x04	/* Goto or label used in scope. */
 #define FSCOPE_UPVAL		0x08	/* Upvalue in scope. */
 #define FSCOPE_NOCLOSE		0x10	/* Do not close upvalues. */
 #define FSCOPE_CONTINUE	0x20	/* Continue used in scope. */
@@ -123,10 +122,10 @@ typedef struct FuncScope {
 typedef uint16_t VarIndex;
 #define LJ_MAX_VSTACK		(65536 - LJ_MAX_UPVAL)
 
-/* Variable/goto/label info. */
+/* Variable info. */
 #define VSTACK_VAR_RW		0x01	/* R/W variable. */
-#define VSTACK_GOTO		0x02	/* Pending goto. */
-#define VSTACK_LABEL		0x04	/* Label. */
+#define VSTACK_GOTO		0x02	/* Pending goto (used by break/continue). */
+#define VSTACK_LABEL		0x04	/* Label (used by break/continue). */
 #define VSTACK_DEFER		0x08	/* Deferred handler. */
 #define VSTACK_DEFERARG	0x10	/* Deferred handler argument. */
 
@@ -1387,7 +1386,7 @@ static void lex_match(LexState *ls, LexToken what, LexToken who, BCLine line)
 static GCstr *lex_str(LexState *ls)
 {
   GCstr *s;
-  if (ls->tok != TK_name && (LJ_52 || ls->tok != TK_goto))
+  if (ls->tok != TK_name)
     err_token(ls, TK_name);
   s = strV(&ls->tokval);
   lj_lex_next(ls);
@@ -1612,23 +1611,13 @@ static void gola_emit_defer(LexState *ls, VarInfo *vg, BCReg limit)
   fs->freereg = saved_freereg;
 }
 
-/* Resolve pending forward gotos for label. */
+/* Resolve pending forward jumps (break/continue) for label. */
 static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
 {
   VarInfo *vg = ls->vstack + bl->vstart;
   VarInfo *vl = ls->vstack + idx;
   for (; vg < vl; vg++)
     if (gcrefeq(vg->name, vl->name) && gola_isgoto(vg)) {
-      if (vg->slot < vl->slot) {
-	GCstr *name = strref(var_get(ls, ls->fs, vg->slot).name);
-	lj_assertLS((uintptr_t)name >= VARNAME__MAX, "expected goto name");
-	ls->linenumber = ls->fs->bcbase[vg->startpc].line;
-        lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
-        lj_assertLS(strref(vg->name) != NAME_CONTINUE, "unexpected continue");
-	lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
-		     strdata(strref(vg->name)),
-		     name == NAME_BLANK ? "_" : strdata(name));
-      }
       gola_patch(ls, vg, vl);
     }
 }
@@ -1651,38 +1640,24 @@ static void gola_fixup(LexState *ls, FuncScope *bl)
 	    gola_patch(ls, vg, v);
 	  }
       } else if (gola_isgoto(v)) {
-        if (bl->prev) {  /* Propagate goto or break to outer scope. */
-          bl->prev->flags |= name == NAME_BREAK ? FSCOPE_BREAK :
-                             (name == NAME_CONTINUE ? FSCOPE_CONTINUE :
-                              FSCOPE_GOLA);
-          if (name != NAME_BREAK && name != NAME_CONTINUE)
-            gola_emit_defer(ls, v, bl->nactvar);
+        if (bl->prev) {  /* Propagate break/continue to outer scope. */
+          if (name == NAME_BREAK)
+            bl->prev->flags |= FSCOPE_BREAK;
+          else if (name == NAME_CONTINUE)
+            bl->prev->flags |= FSCOPE_CONTINUE;
           v->slot = bl->nactvar;
           if ((bl->flags & FSCOPE_UPVAL))
             gola_close(ls, v);
-        } else {  /* No outer scope: undefined goto label or no loop. */
+        } else {  /* No outer scope: no loop for break/continue. */
           ls->linenumber = ls->fs->bcbase[v->startpc].line;
           if (name == NAME_BREAK)
             lj_lex_error(ls, 0, LJ_ERR_XBREAK);
           else if (name == NAME_CONTINUE)
             lj_lex_error(ls, 0, LJ_ERR_XCONTINUE);
-          else
-            lj_lex_error(ls, 0, LJ_ERR_XLUNDEF, strdata(name));
         }
       }
     }
   }
-}
-
-/* Find existing label. */
-static VarInfo *gola_findlabel(LexState *ls, GCstr *name)
-{
-  VarInfo *v = ls->vstack + ls->fs->bl->vstart;
-  VarInfo *ve = ls->vstack + ls->vtop;
-  for (; v < ve; v++)
-    if (strref(v->name) == name && gola_islabel(v))
-      return v;
-  return NULL;
 }
 
 /* -- Scope handling ------------------------------------------------------ */
@@ -1778,7 +1753,7 @@ static void fscope_end(FuncState *fs)
       return;
     }
   }
-  if ((bl->flags & (FSCOPE_GOLA|FSCOPE_CONTINUE))) {
+  if ((bl->flags & FSCOPE_CONTINUE)) {
     gola_fixup(ls, bl);
   }
 }
@@ -2346,8 +2321,7 @@ static void expr_table(LexState *ls, ExpDesc *e)
       if (!expr_isk(&key)) expr_index(fs, e, &key);
       if (expr_isnumk(&key) && expr_numiszero(&key)) needarr = 1; else nhash++;
       lex_check(ls, '=');
-    } else if ((ls->tok == TK_name || (!LJ_52 && ls->tok == TK_goto)) &&
-	       lj_lex_lookahead(ls) == '=') {
+    } else if (ls->tok == TK_name && lj_lex_lookahead(ls) == '=') {
       expr_str(ls, &key);
       lex_check(ls, '=');
       nhash++;
@@ -2442,7 +2416,7 @@ static BCReg parse_params(LexState *ls, int needself)
     var_new_lit(ls, nparams++, "self");
   if (ls->tok != ')') {
     do {
-      if (ls->tok == TK_name || (!LJ_52 && ls->tok == TK_goto)) {
+      if (ls->tok == TK_name) {
 	var_new(ls, nparams++, lex_str(ls));
       } else if (ls->tok == TK_dots) {
 	lj_lex_next(ls);
@@ -2634,7 +2608,7 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     expr(ls, v);
     lex_match(ls, ')', '(', line);
     expr_discharge(ls->fs, v);
-  } else if (ls->tok == TK_name || (!LJ_52 && ls->tok == TK_goto)) {
+  } else if (ls->tok == TK_name) {
     var_lookup(ls, v);
   } else {
     err_syntax(ls, LJ_ERR_XSYMBOL);
@@ -3585,50 +3559,6 @@ static void parse_break(LexState *ls)
   gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(fs));
 }
 
-/* Parse 'goto' statement. */
-static void parse_goto(LexState *ls)
-{
-  FuncState *fs = ls->fs;
-  GCstr *name = lex_str(ls);
-  VarInfo *vl = gola_findlabel(ls, name);
-  if (vl)  /* Treat backwards goto within same scope like a loop. */
-    bcemit_AJ(fs, BC_LOOP, vl->slot, -1);  /* No BC range check. */
-  fs->bl->flags |= FSCOPE_GOLA;
-  gola_new(ls, name, VSTACK_GOTO, bcemit_jmp(fs));
-}
-
-/* Parse label. */
-static void parse_label(LexState *ls)
-{
-  FuncState *fs = ls->fs;
-  GCstr *name;
-  MSize idx;
-  fs->lasttarget = fs->pc;
-  fs->bl->flags |= FSCOPE_GOLA;
-  lj_lex_next(ls);  /* Skip '::'. */
-  name = lex_str(ls);
-  if (gola_findlabel(ls, name))
-    lj_lex_error(ls, 0, LJ_ERR_XLDUP, strdata(name));
-  idx = gola_new(ls, name, VSTACK_LABEL, fs->pc);
-  lex_check(ls, TK_label);
-  /* Recursively parse trailing statements: labels and ';' (Lua 5.2 only). */
-  for (;;) {
-    if (ls->tok == TK_label) {
-      synlevel_begin(ls);
-      parse_label(ls);
-      synlevel_end(ls);
-    } else if (LJ_52 && ls->tok == ';') {
-      lj_lex_next(ls);
-    } else {
-      break;
-    }
-  }
-  /* Trailing label is considered to be outside of scope. */
-  if (parse_isend(ls->tok) && ls->tok != TK_until)
-    ls->vstack[idx].slot = fs->bl->nactvar;
-  gola_resolve(ls, fs->bl, idx);
-}
-
 /* -- Blocks, loops and conditional statements ---------------------------- */
 
 /* Parse a block. */
@@ -3911,16 +3841,6 @@ static int parse_stmt(LexState *ls)
     lj_lex_next(ls);
     break;
 #endif
-  case TK_label:
-    parse_label(ls);
-    break;
-  case TK_goto:
-    if (LJ_52 || lj_lex_lookahead(ls) == TK_name) {
-      lj_lex_next(ls);
-      parse_goto(ls);
-      break;
-    }
-    /* fallthrough */
   default:
     parse_call_assign(ls);
     break;

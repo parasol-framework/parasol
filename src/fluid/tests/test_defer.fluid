@@ -133,38 +133,6 @@ function testContinue()
    assert(join(order) is 'body-1,continue-1,defer-1,body-2,after-2,defer-2', "Unexpected continue defer order: '" .. join(order) .. "'")
 end
 
-function testGotoExecutesDeferredHandlers()
-   local order = {}
-
-   local function subject()
-      do
-         defer
-            table.insert(order, 'outer')
-         end
-
-         do
-            defer
-               table.insert(order, 'inner')
-            end
-
-            table.insert(order, 'before-goto')
-            goto exit_scope
-            table.insert(order, 'unreachable')
-         end
-
-         table.insert(order, 'after-inner')
-      end
-
-      ::exit_scope::
-      table.insert(order, 'after-label')
-   end
-
-   subject()
-
-   assert(join(order) is 'before-goto,inner,outer,after-label',
-      "Expected goto to drain inner scopes before resuming: '" .. join(order) .. "'")
-end
-
 function testUpvalues()
    local captures = {}
 
@@ -343,22 +311,21 @@ end
    local supportsErrorPropagation = false
 
    local tests = {
-      'testBasicExecution',
-      'testDeferWithoutParens',
-      'testLifoOrder',
-      'testEarlyReturn',
-      'testNestedScopes',
-      'testBreak',
-      'testContinue',
-      'testUpvalues',
-      'testConditionalScopes',
+      'testBasicExecution',      
+      'testDeferWithoutParens',  
+      'testLifoOrder',           
+      'testEarlyReturn',         
+      'testNestedScopes',        
+      'testBreak',               
+      'testContinue',            
+      'testUpvalues',            
+      'testConditionalScopes',   
       'testLoopMultipleDefers',
       'testRecursive',
       'testClosureReturn',
       'testMultiReturnPreservesLocals',
       'testArgumentSnapshot',
-      'testResourceCleanupPattern',
-      'testGotoExecutesDeferredHandlers'
+      'testResourceCleanupPattern'
    }
 
    return {

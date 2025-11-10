@@ -14,13 +14,13 @@
 /* Lua lexer tokens. */
 #define TKDEF(_, __) \
   _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
-  _(for) _(function) _(goto) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
+  _(for) _(function) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
   __(if_empty, ?) __(presence, ??) \
   __(safe_field, ?.) __(safe_method, ?:) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
   __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
-  __(label, ::) __(number, <number>) __(name, <name>) __(string, <string>) \
+  __(number, <number>) __(name, <name>) __(string, <string>) \
   __(cadd, +=) __(csub, -=) __(cmul, *=) __(cdiv, /=) __(cconcat, ..=) __(cmod, %=) \
   __(plusplus, ++) \
   __(eof, <eof>)
@@ -46,11 +46,11 @@ typedef struct BCInsLine {
 
 /* Info for local variables. Only used during bytecode generation. */
 typedef struct VarInfo {
-  GCRef name;		/* Local variable name or goto/label name. */
+  GCRef name;		/* Local variable name. */
   BCPos startpc;	/* First point where the local variable is active. */
   BCPos endpc;		/* First point where the local variable is dead. */
   uint8_t slot;		/* Variable slot. */
-  uint8_t info;		/* Variable/goto/label info. */
+  uint8_t info;		/* Variable info. */
 } VarInfo;
 
 /* Lua lexer state. */
