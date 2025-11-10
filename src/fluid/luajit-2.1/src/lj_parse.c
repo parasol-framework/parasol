@@ -1258,42 +1258,50 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          // LHS is falsey (no jumps) OR runtime value - need to check 
          expr_discharge(fs, e1);
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
-            // Runtime value - emit extended falsey checks 
+            // Runtime value - emit extended falsey checks
+            // Use double-jump pattern: BC_ISEQx skips when equal,
+            // so we need: ISEQx + JMP(truthy_continue) + JMP(eval_rhs)
+            // If ==: skip first JMP, execute second JMP to eval_rhs
+            // If !=: execute first JMP to continue checking
             BCReg reg = expr_toanyreg(fs, e1);
             ExpDesc nilv, falsev, zerov, emptyv;
-            BCPos skip;
-            BCPos check_nil, check_false, check_zero, check_empty;
-            // Check for nil 
+            BCPos eval_rhs_list = NO_JMP;
+            BCPos check1, check2, check3;
+            // Check for nil
             expr_init(&nilv, VKNIL, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-            check_nil = bcemit_jmp(fs);
-            // Check for false 
+            check1 = bcemit_jmp(fs);  // Skip if != nil
+            jmp_append(fs, &eval_rhs_list, bcemit_jmp(fs));  // Jump to RHS if == nil
+            // Check for false
+            jmp_patch(fs, check1, fs->pc);
             expr_init(&falsev, VKFALSE, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-            check_false = bcemit_jmp(fs);
-            // Check for zero 
+            check2 = bcemit_jmp(fs);
+            jmp_append(fs, &eval_rhs_list, bcemit_jmp(fs));
+            // Check for zero
+            jmp_patch(fs, check2, fs->pc);
             expr_init(&zerov, VKNUM, 0);
             setnumV(&zerov.u.nval, 0.0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-            check_zero = bcemit_jmp(fs);
-            // Check for empty string 
+            check3 = bcemit_jmp(fs);
+            jmp_append(fs, &eval_rhs_list, bcemit_jmp(fs));
+            // Check for empty string
+            jmp_patch(fs, check3, fs->pc);
             expr_init(&emptyv, VKSTR, 0);
             emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-            check_empty = bcemit_jmp(fs);
-            // If all checks pass (value is truthy), skip RHS 
-            skip = bcemit_jmp(fs);
-            // Patch falsey checks to jump to RHS evaluation 
-            jmp_patch(fs, check_nil, fs->pc);
-            jmp_patch(fs, check_false, fs->pc);
-            jmp_patch(fs, check_zero, fs->pc);
-            jmp_patch(fs, check_empty, fs->pc);
-            // Evaluate RHS 
+            BCPos check4 = bcemit_jmp(fs);
+            jmp_append(fs, &eval_rhs_list, bcemit_jmp(fs));
+            // If we reach here after check4, value is truthy - keep LHS
+            jmp_patch(fs, check4, fs->pc);
+            BCPos skip_rhs = bcemit_jmp(fs);
+            // Eval RHS for falsey values
+            jmp_patch(fs, eval_rhs_list, fs->pc);
             expr_discharge(fs, e2);
             expr_toreg(fs, e2, reg);
-            // Patch skip to after RHS 
-            jmp_patch(fs, skip, fs->pc);
-            *e1 = *e2;
+            // Patch skip to after RHS
+            jmp_patch(fs, skip_rhs, fs->pc);
+            expr_init(e1, VNONRELOC, reg);
          }
          else {
             // Constant falsey value - evaluate RHS directly 
