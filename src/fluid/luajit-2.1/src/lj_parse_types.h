@@ -136,6 +136,9 @@ typedef struct FuncState {
    VarIndex uvtmp[LJ_MAX_UPVAL];   // Temporary upvalue map.
 } FuncState;
 
+// Variable access macro.
+#define var_get(ls, fs, i)   ((ls)->vstack[(fs)->varmap[(i)]])
+
 // Binary and unary operators. ORDER OPR
 typedef enum BinOpr {
    OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  // ORDER ARITH

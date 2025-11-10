@@ -1,7 +1,5 @@
 // -- Variable handling ---------------------------------------------------
 
-#define var_get(ls, fs, i)	((ls)->vstack[(fs)->varmap[(i)]])
-
 // Forward declarations for functions from lj_parse_regalloc.c
 static void bcreg_reserve(FuncState* fs, BCReg n);
 static BCPos bcemit_INS(FuncState* fs, BCIns ins);
