@@ -27,35 +27,35 @@
 
 glActionStubs = {
    -- Hidden actions
-   Free          = "",
-   FreeWarning   = "",
-   NewChild      = "",
-   NewObject     = "",
-   NewOwner      = "",
-   NewPlacement  = "",
+   Free          = '',
+   FreeWarning   = '',
+   NewChild      = '',
+   NewObject     = '',
+   NewOwner      = '',
+   NewPlacement  = '',
 
    -- Actions without parameters
-   Activate     = "   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }",
-   Clear        = "   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }",
-   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }",
-   Disable      = "   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }",
-   Enable       = "   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }",
-   Flush        = "   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }",
-   Focus        = "   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }",
-   Hide         = "   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }",
-   Init         = "   inline ERR init() noexcept { return InitObject(this); }",
-   Lock         = "   inline ERR lock() noexcept { return Action(AC::Lock, this, nullptr); }",
-   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, nullptr); }",
-   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }",
-   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }",
-   Next         = "   inline ERR next() noexcept { return Action(AC::Next, this, nullptr); }",
-   Prev         = "   inline ERR prev() noexcept { return Action(AC::Prev, this, nullptr); }",
-   Query        = "   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }",
-   Refresh      = "   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }",
-   Reset        = "   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }",
-   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }",
-   Show         = "   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }",
-   Unlock       = "   inline ERR unlock() noexcept { return Action(AC::Unlock, this, nullptr); }",
+   Activate     = '   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }',
+   Clear        = '   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }',
+   Deactivate   = '   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }',
+   Disable      = '   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }',
+   Enable       = '   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }',
+   Flush        = '   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }',
+   Focus        = '   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }',
+   Hide         = '   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }',
+   Init         = '   inline ERR init() noexcept { return InitObject(this); }',
+   Lock         = '   inline ERR lock() noexcept { return Action(AC::Lock, this, nullptr); }',
+   LostFocus    = '   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, nullptr); }',
+   MoveToBack   = '   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }',
+   MoveToFront  = '   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }',
+   Next         = '   inline ERR next() noexcept { return Action(AC::Next, this, nullptr); }',
+   Prev         = '   inline ERR prev() noexcept { return Action(AC::Prev, this, nullptr); }',
+   Query        = '   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }',
+   Refresh      = '   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }',
+   Reset        = '   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }',
+   SaveSettings = '   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }',
+   Show         = '   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }',
+   Unlock       = '   inline ERR unlock() noexcept { return Action(AC::Unlock, this, nullptr); }',
 
    CopyData = [[
    inline ERR copyData(OBJECTPTR Dest) noexcept {
@@ -832,7 +832,7 @@ function buildPrototypes()
 
       return proto
    else
-      return ""
+      return ''
    end
 end
 
@@ -840,12 +840,12 @@ end
 -- Generate private C definitions that describe the public functions of a module.
 
 function buildDefs()
-   if table.empty(glFunctions) then return "" end
+   if table.empty(glFunctions) then return '' end
 
    local prefix = ''
    if glFunctionPrefix?? then prefix = glFunctionPrefix .. '::' end
 
-   local flist = "\nconst struct Function glFunctions[] = {\n"
+   local flist = '\nconst struct Function glFunctions[] = {\n'
    for _, func in ipairs(glFunctions) do
       flist ..= "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
@@ -854,9 +854,9 @@ function buildDefs()
 
    table.sort(glFunctions, function(a,b) return a.name < b.name end)
 
-   local plist = ""
+   local plist = ''
    for _, func in ipairs(glFunctions) do
-      plist ..= "FDEF args" .. func.name .. "[] = {"
+      plist ..= 'FDEF args' .. func.name .. '[] = {'
 
       -- Process the result type first
 

@@ -52,7 +52,7 @@ function runTests()
    for _,func in ipairs(body.tests) do
       i += 1
       skip = false
-      if (type(func) == "string") then
+      if type(func) == "string" then
          print("-- Test " .. i .. ": " .. func .. " --")
          if (glTest) and (func != glTest) then
             skip = true

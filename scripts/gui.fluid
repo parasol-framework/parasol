@@ -63,16 +63,16 @@ gui.strToRGB = function(Value)
 
    local result
    xpcall(function()
-      if string.byte(Value) == 35 then
+      if string.byte(Value) is 35 then
          local colour = tonumber(string.sub(Value,2), 16)
-         if Value:len() == 7 then
+         if Value:len() is 7 then
             result = {
                r = bit.band(bit.rshift(colour, 16), 0xff),
                g = bit.band(bit.rshift(colour, 8), 0xff),
                b = bit.band(colour, 0xff),
                a = 255
             }
-         elseif Value:len() == 9 then
+         elseif Value:len() is 9 then
             result = {
                r = bit.band(bit.rshift(colour, 24), 0xff),
                g = bit.band(bit.rshift(colour, 16), 0xff),
@@ -155,21 +155,21 @@ gui.hsvToRGB = function(Value)
    local v = Value.v
    local i = math.floor(h)
    local f = h - i
-   if bit.band(i, 1) == 0 then f = 1 - f end
+   if bit.band(i, 1) is 0 then f = 1 - f end
    local m = v * (1 - s)
    local n = v * (1 - s * f)
 
-   if i == 6 or i == 0 then
+   if i is 6 or i is 0 then
       return { r = v, g = n, b = m, a = Value.a }
-   elseif i == 1 then
+   elseif i is 1 then
       return { r = n, g = v, b = m, a = Value.a }
-   elseif i == 2 then
+   elseif i is 2 then
       return { r = m, g = v, b = n, a = Value.a }
-   elseif i == 3 then
+   elseif i is 3 then
       return { r = m, g = n, b = v, a = Value.a }
-   elseif i == 4 then
+   elseif i is 4 then
       return { r = n, g = m, b = v, a = Value.a }
-   elseif i == 5 then
+   elseif i is 5 then
       return { r = v, g = m, b = n, a = Value.a }
    else
       return { r = 0, g = 0, b = 0, a = Value.a }
@@ -221,7 +221,7 @@ gui.rgbToHSV = function(Value)
 
       local delta = max - min
       hsv.s = delta / max
-      if hsv.s == 0 then
+      if hsv.s is 0 then
          hsv.h = 0
       else
          if Value.r >= max then
@@ -302,7 +302,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
       end)
 
       if ex then
-         if ex.code == ERR_ResourceExists then
+         if ex.code is ERR_ResourceExists then
             gradient.free()
             return nil
          else
@@ -330,9 +330,9 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    gui._counter = gui._counter + 1
    local gname = 'icon_grd' .. gui._counter
 
-   if type(Theme) == 'table' then
+   if type(Theme) is 'table' then
       lGradient = Theme
-   elseif type(Theme) == 'string' then
+   elseif type(Theme) is 'string' then
       gname = 'icon_' .. Theme
       if gui.iconThemes[Theme] then
          lGradient = gui.iconThemes[Theme]
@@ -347,7 +347,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
 
    if not Name then Name = Path end
 
-   if Scene.mtFindDef(Name) == ERR_Okay then -- Return if the icon pattern is already registered
+   if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
       return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
    end
 
@@ -490,7 +490,7 @@ end
      }
    }
 
-   if gui.palette.type == 'light' then
+   if gui.palette.type is 'light' then
       gui.style.page.icon          = 'carbon'
       gui.style.page.iconHighlight = 'pearl'
       gui.style.page.text          = gui.palette.text

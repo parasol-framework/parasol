@@ -7,38 +7,38 @@ table.toXML = function(t)
    local out = ''
    for tag,v in pairs(t) do
       if type(v) is 'table' then -- tag
-         out = out .. '<' .. tag
+         out ..= '<' .. tag
          local child = ''
          for ak,av in pairs(v) do
             if type(ak) is 'number' then -- key-less, can be child tag or content
                if type(av) is 'table' then
                   for ck,cv in pairs(av) do
                      if type(cv) is 'table' then
-                        child = child .. table.toXML({ [ck] = cv })
+                        child ..= table.toXML({ [ck] = cv })
                      else
-                        child = child .. string.escXML(cv)
+                        child ..= string.escXML(cv)
                      end
                   end
                else
-                  child = child .. string.escXML(tostring(av)) -- content
+                  child ..= string.escXML(tostring(av)) -- content
                end
             elseif type(av) is 'string' then -- attribute
-               out = out .. ' ' .. ak .. '="' .. string.escXML(av) .. '"'
+               out ..= ' ' .. ak .. '="' .. string.escXML(av) .. '"'
             elseif type(av) is 'number' then -- attribute
-               out = out .. ' ' .. ak .. '=' .. av
+               out ..= ' ' .. ak .. '=' .. av
             elseif type(av) is 'boolean' then -- attribute
                if av is true then
-                  out = out .. ' ' .. ak
+                  out ..= ' ' .. ak
                end
             else
-               child = child .. string.escXML(tostring(av)) -- content
+               child ..= string.escXML(tostring(av)) -- content
             end
          end
 
          if child != '' then
-            out = out .. '>' .. child .. '</>'
+            out ..= '>' .. child .. '</>'
          else
-            out = out .. '/>'
+            out ..= '/>'
          end
       else
          out = '<' .. tag .. '/>'
@@ -66,7 +66,7 @@ end
 
 ------------------------------------------------------------------------------
 
-if file is nil then
+if not file then
    file = { ui = { } }
 end
 
@@ -120,6 +120,5 @@ end
 ------------------------------------------------------------------------------
 
 file.sanitisePath = function(Path)
-   local v = string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(1,1) end)
-   return v
+   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(1,1) end)
 end

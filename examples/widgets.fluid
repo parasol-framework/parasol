@@ -100,7 +100,7 @@ end
       end
    })
 
-   y = y + lToolbar.viewport.height + 10
+   y += lToolbar.viewport.height + 10
 
    local popupMenu = gui.menu({
       x     = 30,
@@ -130,8 +130,8 @@ end
    local text = viewport.new('vectortext', {
       x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
-   text.y = y + text.fontSize
-   y = y + text.fontSize + 14
+   text.y += text.fontSize
+   y += text.fontSize + 14
 
    local msgButton = gui.button({
       target = viewport,
@@ -256,7 +256,7 @@ end
       }
    })
 
-   y = y + msgButton.viewport.height + 12
+   y += msgButton.viewport.height + 12
 
    local checkbox = gui.checkbox({
       target = viewport,
@@ -286,7 +286,7 @@ end
       }
    })
 
-   y = y + checkbox.viewport.height + 12
+   y += checkbox.viewport.height + 12
 
    local combobox = gui.combobox({
       target = viewport,
@@ -310,7 +310,7 @@ end
          focus = widgetFocus
       }
    })
-   y = y + combobox.viewport.height + 12
+   y += combobox.viewport.height + 12
 
    local input = gui.input({
       target = viewport,
@@ -326,7 +326,7 @@ end
          focus = widgetFocus
       }
    })
-   y = y + input.viewport.height + 16
+   y += input.viewport.height + 16
 
    catch(function()
       sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })

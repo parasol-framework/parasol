@@ -15,7 +15,7 @@ vfx.wipes = { shutter = { }, simple = { }, radial = { }, clock = { }, spiral = {
 vfx.dist = function(X1, Y1, X2, Y2)
    local a = math.abs(X2 - X1)
    local b = math.abs(Y2 - Y1)
-   if (a > b) then
+   if a > b then
       local t = a
       a = b
       b = t
@@ -49,7 +49,7 @@ vfx.chain = function(Effects, CallbackOnCompletion)
    for _, effect in ipairs(Effects) do
       effect.callback = function()
          state.counter = state.counter - 1
-         if (state.counter == 0) and CallbackOnCompletion then
+         if (state.counter is 0) and CallbackOnCompletion then
             CallbackOnCompletion(state)
          end
       end
@@ -131,7 +131,7 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
          end
       else
          local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-         if (value >= 1.0) then
+         if value >= 1.0 then
             Viewport.opacity = 1.0
             Viewport.acDraw()
             if state.callback then state.callback(state) end
@@ -171,7 +171,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
          end
       else
          local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-         if (value >= 1.0) then value = 1.0 end
+         if value >= 1.0 then value = 1.0 end
 
          mVector.ResetMatrix(state.matrix)
          mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
@@ -214,7 +214,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
          end
       else
          local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-         if (value >= 1.0) then value = 1.0 end
+         if value >= 1.0 then value = 1.0 end
 
          mVector.ResetMatrix(state.matrix)
          mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
@@ -222,7 +222,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
          mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
          Viewport.acDraw()
 
-         if (value >= 1.0) then
+         if value >= 1.0 then
             if state.callback then state.callback(state) end
             check(ERR_Terminate)
          end
@@ -274,7 +274,7 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
          local cycle = (state.seconds / SHAKES) * 1000000
          local angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
 
-         if (angle < QRT_ANGLE) then -- (45)
+         if angle < QRT_ANGLE then -- (45)
             angle = angle
          elseif (angle < (MAX_ANGLE - QRT_ANGLE)) then
             angle = QRT_ANGLE - (angle - QRT_ANGLE)
@@ -318,7 +318,7 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
 
          Viewport.acDraw()
 
-         if (value >= 1.0) then
+         if value >= 1.0 then
             if state.callback then state.callback(state) end
             check(ERR_Terminate)
          end
@@ -506,7 +506,7 @@ end
 
 vfx.wipes.spiral.animate = function(State, Options, Progress)
    local radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
-   if (radius < 0.001) then radius = 0.001 end
+   if radius < 0.001 then radius = 0.001 end
    State.spiral.radius = radius
    State.spiral.visibility = VIS_VISIBLE
 end
@@ -578,7 +578,7 @@ vfx.initTimer = function(State, Options)
          end
       else
          local value = (CurrentTime - State.time) / (State.seconds * 1000000)
-         if (value >= 1.0) then
+         if value >= 1.0 then
             if (State.free != nil) then State:free() end
             if State.callback then State.callback(State) end
             check(ERR_Terminate)
