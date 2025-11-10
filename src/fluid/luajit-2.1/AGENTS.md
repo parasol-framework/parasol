@@ -22,16 +22,21 @@ before diving into changes.
   tests; the integrator copies `parasol.exe` and scripts to `install/agents/`.
 
 ## Error Handling Configuration
-- LuaJIT is configured to use **internal frame unwinding** (`LJ_NO_UNWIND=1`)
-  rather than external unwinding. This is set via `LUAJIT_NO_UNWIND` in
-  `CMakeLists.txt` for all build variants (MSVC, GCC, Clang).
-- Internal unwinding is appropriate because Parasol builds with `-fno-exceptions`.
-  It's faster for error handling and doesn't require unwind tables throughout
-  the C call stack.
-- The flag sets `LJ_UNWIND_EXT=0` in `lj_arch.h`, which causes `lj_err.cpp` to
-  use LuaJIT's own stack unwinding mechanism instead of system exception handlers.
-- See `lj_err.cpp` lines 21-85 for detailed documentation on internal vs external
-  unwinding trade-offs.
+- **CRITICAL: Platform-Specific Unwinding Requirements**
+  - **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. Windows always uses
+    Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.
+    There is no "internal unwinding" implementation for Windows - SEH is the only
+    viable mechanism. Setting `LJ_NO_UNWIND` on Windows breaks exception handling
+    and causes catch() tests to fail with "attempt to call a nil value" errors.
+  - **Unix/MinGW (GCC/Clang)**: Should define `LUAJIT_NO_UNWIND` to use internal
+    frame unwinding. This is appropriate because Parasol builds with `-fno-exceptions`.
+    Internal unwinding is faster and doesn't require unwind tables throughout the
+    C call stack.
+- When `LUAJIT_NO_UNWIND` is defined on Unix, it sets `LJ_NO_UNWIND=1` in `lj_arch.h`,
+  which then sets `LJ_UNWIND_EXT=0`, causing `lj_err.cpp` to use LuaJIT's own stack
+  unwinding mechanism instead of libgcc_s/libunwind.
+- See `lj_err.cpp` lines 21-85 and 204-361 for detailed documentation on internal
+  vs external unwinding trade-offs and Windows SEH implementation.
 
 ## Testing
 - Use `ctest --build-config Release --test-dir build/agents -R <label>`
