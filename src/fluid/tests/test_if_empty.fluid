@@ -30,6 +30,15 @@ function testTruthyNumber()
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
 end
 
+function testTable()
+   local t = { a=1, b=2, c=3}
+   local v = t ? 'Nothing'
+   assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
+
+   local v = t ? { 'Nothing' }
+   assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
+end
+
 -- Ensure RHS is not evaluated when LHS is truthy
 function testShortCircuitTruth()
    local function rhs()
@@ -85,6 +94,6 @@ end
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testRuntimeZero'
+         'testRuntimeZero', 'testTable'
       }
    }
