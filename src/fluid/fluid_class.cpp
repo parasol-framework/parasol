@@ -572,7 +572,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    if (not Args) return log.warning(ERR::NullArgs);
    
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (not prv) return log.warning(ERR::NotInitialised);
+   if (not prv->Lua) return log.warning(ERR::NotInitialised);
 
    log.branch("Options: %s", Args->Options ? Args->Options : "(none)");
 
@@ -666,9 +666,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             const char *name;
             while ((name = lua_getlocal(prv->Lua, &ar, idx))) {
                int type = lua_type(prv->Lua, -1);
-
-               if (compact) buf << name << " = ";
-               else buf << name << " = ";
+               buf << name << " = ";
 
                switch (type) {
                   case LUA_TNIL: buf << "nil"; break;
@@ -712,8 +710,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             while ((name = lua_getupvalue(prv->Lua, -1, idx))) {
                int type = lua_type(prv->Lua, -1);
 
-               if (compact) buf << name << " = ";
-               else buf << name << " = ";
+               buf << name << " = ";
 
                switch (type) {
                   case LUA_TNIL: buf << "nil"; break;
@@ -767,7 +764,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
          if (lua_isfunction(prv->Lua, -1)) {
             // The storage table is the first upvalue of the __index closure
-            const char *upvalue_name = lua_getupvalue(prv->Lua, -1, 1);
+            auto upvalue_name = lua_getupvalue(prv->Lua, -1, 1);
             if (upvalue_name and lua_istable(prv->Lua, -1)) {
                int count = 0;
                lua_pushnil(prv->Lua);
@@ -850,7 +847,10 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    if ((Args->Result = pf::strclone(result.c_str())) == nullptr) {
       return ERR::AllocMemory;
    }
-   else return ERR::Okay;
+   else {
+      if (log_output) log.msg("%s", Args->Result);
+      return ERR::Okay;
+   }
 }
 
 //********************************************************************************************************************
