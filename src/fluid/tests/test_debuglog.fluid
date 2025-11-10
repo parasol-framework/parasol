@@ -18,7 +18,7 @@ function testDefaultStackTrace()
    local result = middleFunc()
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace header')
-   -- innerFunc has already returned when mtDebugLog executes, so it won't be in the stack
+   -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller (middleFunc)
    assert(string.find(result, 'middleFunc'), 'Should contain middleFunc in stack')
 end
 
