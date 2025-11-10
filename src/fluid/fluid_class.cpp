@@ -8,6 +8,7 @@
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 #include <sstream>
+#include <string_view>
 
 #include "lua.hpp"
 
@@ -585,6 +586,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    bool show_memory = false;
    bool show_state = false;
    bool show_bytecode = false;
+   bool show_funcinfo = false;
    bool compact = false;
    bool log_output = false;
 
@@ -594,6 +596,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       if (opts.find("all") != std::string::npos) {
          show_stack = show_locals = show_upvalues = show_globals =
          show_memory = show_state = show_bytecode = true;
+         show_funcinfo = true;
       }
       else {
          show_stack = (opts.find("stack") != std::string::npos);
@@ -603,6 +606,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          show_memory = (opts.find("memory") != std::string::npos);
          show_state = (opts.find("state") != std::string::npos);
          show_bytecode = (opts.find("bytecode") != std::string::npos);
+         show_funcinfo = (opts.find("funcinfo") != std::string::npos);
          log_output = (opts.find("log") != std::string::npos);
       }
       compact = (opts.find("compact") != std::string::npos);
@@ -618,10 +622,15 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       // Here we can process options that are exclusive to internal calls.
 
       if (show_stack) { // Stack trace
+         if (not compact) buf << "=== CALL STACK ===\n";
+
+#if LJ_HASPROFILE
+         size_t dump_len = 0;
+         const char *dump = luaJIT_profile_dumpstack(prv->Lua, compact ? "F\n" : "Fl\n", 50, &dump_len);
+         if (dump and dump_len) buf << std::string_view(dump, dump_len);
+#else
          lua_Debug ar;
          int level = 1; // Start at 1 to skip the C function (mtDebugLog) itself
-
-         if (not compact) buf << "=== CALL STACK ===\n";
 
          while (lua_getstack(prv->Lua, level, &ar)) {
             lua_getinfo(prv->Lua, "nSl", &ar);
@@ -653,7 +662,91 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             }
             level++;
          }
+#endif
 
+         if (not compact) buf << "\n";
+      }
+
+      if (show_funcinfo) {
+         if (not compact) buf << "=== FUNCTION INFORMATION ===\n";
+
+         int level = 1;
+         bool wrote = false;
+         lua_Debug ar;
+
+         while (lua_getstack(prv->Lua, level, &ar)) {
+            if (not lua_getinfo(prv->Lua, "nSl", &ar)) {
+               level++;
+               continue;
+            }
+
+            const char *func_name = ar.name ? ar.name : "<anonymous>";
+            bool is_lua_func = false;
+            int param_count = 0;
+            bool is_vararg = false;
+            uint32_t frame_slots = 0;
+            uint32_t bytecodes = 0;
+            uint32_t numeric_consts = 0;
+            uint32_t object_consts = 0;
+            int upvalues = 0;
+
+            if (lua_getinfo(prv->Lua, "f", &ar)) {
+               GCfunc *fn = funcV(prv->Lua->top - 1);
+               upvalues = fn->c.nupvalues;
+               if (isluafunc(fn)) {
+                  is_lua_func = true;
+                  GCproto *pt = funcproto(fn);
+                  param_count = pt->numparams;
+                  is_vararg = (pt->flags & PROTO_VARARG) != 0;
+                  frame_slots = pt->framesize;
+                  bytecodes = pt->sizebc;
+                  numeric_consts = pt->sizekn;
+                  object_consts = pt->sizekgc;
+               }
+               else {
+                  is_vararg = true;
+               }
+               lua_pop(prv->Lua, 1);
+            }
+
+            if (compact) {
+               buf << "[" << level << "] " << func_name;
+               if (is_lua_func) {
+                  buf << " (" << ar.short_src << ":" << ar.linedefined << "-" << ar.lastlinedefined << ")";
+                  buf << " params=" << param_count;
+                  buf << " vararg=" << (is_vararg ? "true" : "false");
+                  buf << " slots=" << frame_slots;
+                  buf << " bytecode=" << bytecodes;
+                  buf << " consts=" << numeric_consts << "+" << object_consts;
+               }
+               else {
+                  buf << " <C function>";
+               }
+               buf << "\n";
+            }
+            else {
+               buf << "Function [" << level << "]: " << func_name;
+               if (is_lua_func) {
+                  buf << " (" << ar.short_src << ":" << ar.linedefined << "-" << ar.lastlinedefined << ")\n";
+                  buf << "   Parameters: " << param_count << "\n";
+                  buf << "   Vararg: " << (is_vararg ? "true" : "false") << "\n";
+                  buf << "   Stack slots: " << frame_slots << "\n";
+                  buf << "   Bytecodes: " << bytecodes << "\n";
+                  buf << "   Constants: " << numeric_consts << " numeric, " << object_consts << " objects\n";
+                  buf << "   Upvalues: " << upvalues << "\n";
+               }
+               else {
+                  buf << " (<C function>)\n";
+                  buf << "   Upvalues: " << upvalues << "\n";
+               }
+            }
+
+            wrote = true;
+            level++;
+         }
+
+         if ((not wrote) and (compact)) buf << "(no frames)\n";
+         if ((not wrote) and (not compact)) buf << "(no frames)\n";
          if (not compact) buf << "\n";
       }
 

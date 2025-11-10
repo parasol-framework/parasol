@@ -1,6 +1,6 @@
 # Fluid DebugLog Enhancement Plan
 
-**Status:** Analysis Complete - Ready for Implementation
+**Status:** Phase 1 Complete - Phase 2 Pending
 **Priority:** Medium
 **Estimated Effort:** 2-4 hours for Phase 1, 4-6 hours for Phase 2
 **Target:** Fluid module (src/fluid/fluid_class.cpp)
@@ -69,6 +69,12 @@ All standard Lua `debug.*` functions are available:
 ## Enhancement Plan
 
 ### Phase 1: Core Improvements (High Priority)
+
+**Completion:** ✅ Implemented 2025-11-10
+
+**Highlights:**
+- Stack traces now rely on LuaJIT's native dumpstack helper (`luaJIT_profile_dumpstack`) with compact/non-compact formatting parity.
+- Added the `funcinfo` option using LuaJIT proto metadata to expose Lua function details (parameters, stack slots, bytecodes, constants, and upvalues).
 
 #### 1.1 Replace Manual Stack Formatting with lj_debug_dumpstack()
 
@@ -757,6 +763,7 @@ void simple_disasm(GCproto *pt) {
 **Implementation Start:** [Pending Approval]
 
 **Recent Updates:**
+- Completed Phase 1 implementation (stack formatter replacement and function metadata option)
 - Added Phase 3.1: Bytecode Disassembly with full implementation details
 - Documented bytecode access methods and instruction format
 - Added Appendix B with comprehensive bytecode API reference
@@ -767,7 +774,7 @@ void simple_disasm(GCproto *pt) {
 
 **Next Steps:**
 1. Review this plan with maintainer
-2. Get approval for Phase 1 implementation
+2. Plan Phase 2 scope and obtain approval
 3. Optionally review Phase 3 bytecode disassembly approach
-4. Begin with Phase 1.1 (stack refactor)
+4. Implement Phase 2 enhancements after validation feedback
 5. Iterate based on feedback and user needs
