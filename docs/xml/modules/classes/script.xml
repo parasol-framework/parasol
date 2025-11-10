@@ -78,6 +78,24 @@
     </method>
 
     <method>
+      <name>DebugLog</name>
+      <comment>Acquire a debug log from a compiled Script.</comment>
+      <prototype>ERR sc::DebugLog(OBJECTPTR Object, CSTRING Options, CSTRING * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Options">Options to pass to the underlying language.</param>
+        <param type="CSTRING *" name="Result">Resulting log information.</param>
+      </input>
+      <description>
+<p>Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log will depend on the scripting language in use.  The Options parameter may be used to pass language-specific options to the underlying implementation.</p>
+<p>The resulting log information is returned as a string, which needs to be deallocated once no longer required.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
       <name>DerefProcedure</name>
       <comment>Dereferences an acquired procedure.</comment>
       <prototype>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>

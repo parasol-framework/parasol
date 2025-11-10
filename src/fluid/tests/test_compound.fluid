@@ -3,41 +3,41 @@
 function testCompoundAssignment()
    local value = 5
    value += 3
-   assert(value == 8, 'value += 3 should add to value')
+   assert(value is 8, 'value += 3 should add to value')
    value -= 2
-   assert(value == 6, 'value -= 2 should subtract from value')
+   assert(value is 6, 'value -= 2 should subtract from value')
    value *= 4
-   assert(value == 24, 'value *= 4 should multiply value')
+   assert(value is 24, 'value *= 4 should multiply value')
    value /= 3
-   assert(value == 8, 'value /= 3 should divide value')
+   assert(value is 8, 'value /= 3 should divide value')
    value %= 3
-   assert(value == 2, 'value %= 3 should keep remainder')
+   assert(value is 2, 'value %= 3 should keep remainder')
 
    local text = 'hello'
    text ..= ' world'
-   assert(text == 'hello world', 'text ..= should concatenate strings')
+   assert(text is 'hello world', 'text ..= should concatenate strings')
 
    local store = { count = 10, list = { 3, 5, 7 } }
    store.count -= 4
-   assert(store.count == 6, 'table field compound assignments should store results')
+   assert(store.count is 6, 'table field compound assignments should store results')
    store.list[2] *= 2
-   assert(store.list[2] == 10, 'indexed table compound assignments should store results')
+   assert(store.list[2] is 10, 'indexed table compound assignments should store results')
 end
 
 function testIncrement()
    local counter = 0
    counter++
-   assert(counter == 1, 'counter++ should increment value once')
+   assert(counter is 1, 'counter++ should increment value once')
    counter++
-   assert(counter == 2, 'counter++ should allow repeated increments')
+   assert(counter is 2, 'counter++ should allow repeated increments')
 
    local object = { tally = 4 }
    object.tally++
-   assert(object.tally == 5, 'table field ++ should store incremented value')
+   assert(object.tally is 5, 'table field ++ should store incremented value')
 
    local data = { 1, 2, 3 }
    data[3]++
-   assert(data[3] == 4, 'indexed ++ should store incremented value')
+   assert(data[3] is 4, 'indexed ++ should store incremented value')
 end
 
 function testContinue()
@@ -46,22 +46,22 @@ function testContinue()
 
    while index < 6 do
       index += 1
-      if index % 2 == 0 then
+      if index % 2 is 0 then
          continue
       end
       total += index
    end
-   assert(total == 9, 'continue should skip to next loop iteration')
+   assert(total is 9, 'continue should skip to next loop iteration')
 
    local seen = {}
    for i = 1, 5 do
-      if i == 3 then
+      if i is 3 then
          continue
       end
       table.insert(seen, i)
    end
-   assert(#seen == 4, 'continue should skip entries in numeric for loop')
-   assert(seen[3] == 4, 'continue should skip the value equal to 3')
+   assert(#seen is 4, 'continue should skip entries in numeric for loop')
+   assert(seen[3] is 4, 'continue should skip the value equal to 3')
 
    local attempts = 0
    local ready = false
@@ -72,7 +72,7 @@ function testContinue()
       end
       ready = true
    until ready
-   assert(attempts == 3, 'continue should jump to repeat condition without executing remainder')
+   assert(attempts is 3, 'continue should jump to repeat condition without executing remainder')
 end
 
 function testIndexedWithFunctionRHS()
@@ -82,7 +82,7 @@ function testIndexedWithFunctionRHS()
       return x + 3
    end
    t[i] += add_three(4)
-   assert(t[2] == 9, 'indexed += with function RHS should preserve base/index registers')
+   assert(t[2] is 9, 'indexed += with function RHS should preserve base/index registers')
 end
 
 function testFieldWithFunctionRHS()
@@ -92,7 +92,7 @@ function testFieldWithFunctionRHS()
       return z * 4
    end
    store.count -= delta()
-   assert(store.count == -3, 'field -= with function RHS should store correct result')
+   assert(store.count is -3, 'field -= with function RHS should store correct result')
 end
 
 function testConcatWithFunctionRHS()
@@ -102,7 +102,7 @@ function testConcatWithFunctionRHS()
       return x .. 'c'
    end
    text ..= tail()
-   assert(text == 'abc', '..= should concatenate with function result')
+   assert(text is 'abc', '..= should concatenate with function result')
 end
 
 function testRegisterIndexPreservedAcrossRHS()
@@ -110,7 +110,7 @@ function testRegisterIndexPreservedAcrossRHS()
    local i = 1
    local u = { 3, 4, 5 }
    t[i] += u[i + 1] + u[3]
-   assert(t[1] == 19, 'indexed += should handle RHS table lookups without corrupting index')
+   assert(t[1] is 19, 'indexed += should handle RHS table lookups without corrupting index')
 end
 
 function testNestedIndexPreservation()
@@ -120,26 +120,26 @@ function testNestedIndexPreservation()
       return 5
    end
    u[i].x += f()
-   assert(u[2].x == 7, 'nested indexed field += should preserve inner base/index registers')
+   assert(u[2].x is 7, 'nested indexed field += should preserve inner base/index registers')
 end
 
 function testByteAndStringKeyVariants()
    local o = { a = 1, b = 'x' }
    o['a'] *= 2
-   assert(o.a == 2, "byte/string key compound ops should use correct TSET variant (TSETS/TSETB)")
+   assert(o.a is 2, "byte/string key compound ops should use correct TSET variant (TSETS/TSETB)")
    o['b'] ..= 'y'
-   assert(o.b == 'xy', 'string key ..= should store concatenated value')
+   assert(o.b is 'xy', 'string key ..= should store concatenated value')
    local t = {}
    t[5] = 3
    t[5] += 4
-   assert(t[5] == 7, 'byte index += should work for numeric constant keys')
+   assert(t[5] is 7, 'byte index += should work for numeric constant keys')
 end
 
 function testSelfReferentialReadOnRHS()
    local t = { 6, 0 }
    local i = 1
    t[i] += t[i]
-   assert(t[1] == 12, 'indexed += with same element on RHS should double the value')
+   assert(t[1] is 12, 'indexed += with same element on RHS should double the value')
 end
 
 function testMultipleReturnOnlyFirstUsed()
@@ -148,14 +148,14 @@ function testMultipleReturnOnlyFirstUsed()
    end
    local x = 1
    x += multi()
-   assert(x == 8, '+= should use only first return value from function')
+   assert(x is 8, '+= should use only first return value from function')
 
    local function s2()
       return 'w', 'ignored'
    end
    local s = 'q'
    s ..= s2()
-   assert(s == 'qw', '..= should use only first return value from function')
+   assert(s is 'qw', '..= should use only first return value from function')
 end
 
 function testIndexRegisterReusedByRHS()
@@ -165,7 +165,7 @@ function testIndexRegisterReusedByRHS()
       return a + b
    end
    t[i] *= f(i, t[1])
-   assert(t[2] == 6, 'indexed *= RHS using index register should keep index intact')
+   assert(t[2] is 6, 'indexed *= RHS using index register should keep index intact')
 end
 
 function testBaseReusedByRHS()
@@ -174,7 +174,7 @@ function testBaseReusedByRHS()
       return tbl[1] + tbl[2]
    end
    t[1] += get_from_same(t)
-   assert(t[1] == 10, 'indexed += RHS reading from same table should use original base for store')
+   assert(t[1] is 10, 'indexed += RHS reading from same table should use original base for store')
 end
 
 return {

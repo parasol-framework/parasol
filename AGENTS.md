@@ -26,6 +26,9 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
 
+**Verify:**
+- If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.
+
 ### CMake Configuration Options
 
 Key build options (use with `-D` flag):
@@ -98,6 +101,8 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - C-style ternary operator: `if ? then :> else`
 - Falsey value checks with `?`, equivalent to `??` in most languages
 - `??` operator can be appended to values as a check for falsey.  Commonly used on potentially empty strings
+- `goto` is deprecated
+- `defer()` function that runs when de-scoped.
 
 #### Fluid Script Execution Model
 

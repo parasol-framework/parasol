@@ -82,10 +82,12 @@ static const ActionArray clActions[] = {
 
 static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
 static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
+static ERR FLUID_DebugLog(objScript *, struct sc::DebugLog *);
 
 static const MethodEntry clMethods[] = {
    { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", nullptr, 0 },
    { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", nullptr, 0 },
+   { sc::DebugLog::id,       (APTR)FLUID_DebugLog,       "DebugLog", nullptr, 0 },
    { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
@@ -95,7 +97,7 @@ static const MethodEntry clMethods[] = {
 static void free_all(objScript *Self)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return; // Not a problem - indicates the object did not pass initialisation
+   if (not prv) return; // Not a problem - indicates the object did not pass initialisation
 
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
 
@@ -177,7 +179,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
    pf::Log log(__FUNCTION__);
    int j;
 
-   if (!args) return ERR::Okay;
+   if (not args) return ERR::Okay;
 
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
@@ -236,7 +238,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
    if (Result != ERR::Okay) return;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return;
+   if (not prv) return;
 
    for (auto &scan : prv->ActionList) {
       if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
@@ -282,14 +284,14 @@ static ERR FLUID_Activate(objScript *Self)
 {
    pf::Log log;
 
-   if ((!Self->String) or (!Self->String[0])) return log.warning(ERR::FieldNotSet);
+   if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
    log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
 
    ERR error = ERR::Failed;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR::ObjectCorrupt);
+   if (not prv) return log.warning(ERR::ObjectCorrupt);
 
    if (prv->Recurse) { // When performing a recursive call, we can assume that the code has already been loaded.
       error = run_script(Self);
@@ -310,16 +312,16 @@ static ERR FLUID_Activate(objScript *Self)
    Self->Error       = ERR::Okay;
 
    bool reload = false;
-   if (!Self->ActivationCount) reload = true;
+   if (not Self->ActivationCount) reload = true;
 
    int i, j;
-   if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
+   if ((Self->ActivationCount) and (not Self->Procedure) and (not Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
       free_all(Self);
       new (prv) prvFluid;
 
-      if (!(prv->Lua = luaL_newstate())) {
+      if (not (prv->Lua = luaL_newstate())) {
          log.warning("Failed to open a Lua instance.");
          goto failure;
       }
@@ -420,7 +422,7 @@ static ERR FLUID_Activate(objScript *Self)
                      if (col IS 120) buf << "...";
                      buf << '\n';
                   }
-                  if (!(str = next_line(str))) break;
+                  if (not (str = next_line(str))) break;
                }
                Self->setErrorString(buf.str().c_str());
 
@@ -488,7 +490,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR::NullArgs;
+   if (not Args) return ERR::NullArgs;
 
    if (Args->Datatype IS DATA::TEXT) {
       Self->setStatement((CSTRING)Args->Buffer);
@@ -513,7 +515,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                if (auto xml = objXML::create::local(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  if (!xml->Tags.empty()) {
+                  if (not xml->Tags.empty()) {
                      auto &tag = xml->Tags[0];
                      int i = 1;
                      if (iequals("receipt", tag.name())) {
@@ -563,16 +565,306 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
 //********************************************************************************************************************
 
+static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+   
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (not prv) return log.warning(ERR::NotInitialised);
+
+   log.branch("Options: %s", Args->Options ? Args->Options : "(none)");
+
+   // Parse options (CSV list)
+
+   bool show_stack = false;
+   bool show_locals = false;
+   bool show_upvalues = false;
+   bool show_globals = false;
+   bool show_memory = false;
+   bool show_state = false;
+   bool show_bytecode = false;
+   bool compact = false;
+   bool log_output = false;
+
+   if (Args->Options) {
+      std::string_view opts = Args->Options;
+
+      if (opts.find("all") != std::string::npos) {
+         show_stack = show_locals = show_upvalues = show_globals =
+         show_memory = show_state = show_bytecode = true;
+      }
+      else {
+         show_stack = (opts.find("stack") != std::string::npos);
+         show_locals = (opts.find("locals") != std::string::npos);
+         show_upvalues = (opts.find("upvalues") != std::string::npos);
+         show_globals = (opts.find("globals") != std::string::npos);
+         show_memory = (opts.find("memory") != std::string::npos);
+         show_state = (opts.find("state") != std::string::npos);
+         show_bytecode = (opts.find("bytecode") != std::string::npos);
+         log_output = (opts.find("log") != std::string::npos);
+      }
+      compact = (opts.find("compact") != std::string::npos);
+   }
+   else show_stack = true; // Default: just the stack trace
+
+   // Build the log message
+
+   std::ostringstream buf;
+
+   if (prv->Recurse) {
+      // If Recurse is defined then we know what we're being called from within the script itself.
+      // Here we can process options that are exclusive to internal calls.
+
+      if (show_stack) { // Stack trace
+         lua_Debug ar;
+         int level = 1; // Start at 1 to skip the C function (mtDebugLog) itself
+
+         if (not compact) buf << "=== CALL STACK ===\n";
+
+         while (lua_getstack(prv->Lua, level, &ar)) {
+            lua_getinfo(prv->Lua, "nSl", &ar);
+
+            if (compact) {
+               buf << "[" << level << "] ";
+               if (ar.name) buf << ar.name;
+               else buf << "?";
+               if (ar.source and ar.source[0]) buf << " (" << ar.short_src << ":" << ar.currentline << ")";
+               buf << "\n";
+            }
+            else {
+               buf << "[" << level << "] ";
+               if (ar.name) buf << ar.name;
+               else buf << "<anonymous>";
+
+               if (ar.source and ar.source[0]) {
+                  buf << " (" << ar.short_src << ":" << ar.currentline << ")";
+               }
+
+               buf << " - ";
+               if (ar.what) {
+                  if (strcmp(ar.what, "Lua") IS 0) buf << "Lua function";
+                  else if (strcmp(ar.what, "C") IS 0) buf << "C function";
+                  else if (strcmp(ar.what, "main") IS 0) buf << "main chunk";
+                  else buf << ar.what;
+               }
+               buf << "\n";
+            }
+            level++;
+         }
+
+         if (not compact) buf << "\n";
+      }
+
+      if (show_locals) { // Local variables
+         lua_Debug ar;
+         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
+            if (not compact) buf << "=== LOCALS ===\n";
+
+            int idx = 1;
+            const char *name;
+            while ((name = lua_getlocal(prv->Lua, &ar, idx))) {
+               int type = lua_type(prv->Lua, -1);
+
+               if (compact) buf << name << " = ";
+               else buf << name << " = ";
+
+               switch (type) {
+                  case LUA_TNIL: buf << "nil"; break;
+                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
+                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
+                  case LUA_TSTRING: {
+                     size_t len;
+                     const char *str = lua_tolstring(prv->Lua, -1, &len);
+                     std::string_view sv(str, len);
+                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
+                     else buf << "\"" << sv << "\"";
+                     break;
+                  }
+                  case LUA_TTABLE: buf << "{ ... }"; break;
+                  case LUA_TFUNCTION: buf << "<function>"; break;
+                  case LUA_TUSERDATA: buf << "<userdata>"; break;
+                  case LUA_TTHREAD: buf << "<thread>"; break;
+                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
+               }
+
+               if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
+               buf << "\n";
+
+               lua_pop(prv->Lua, 1);
+               idx++;
+            }
+
+            if (not compact) buf << "\n";
+         }
+      }
+
+      if (show_upvalues) { // Upvalues
+         lua_Debug ar;
+         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
+            lua_getinfo(prv->Lua, "f", &ar);
+
+            if (not compact) buf << "=== UPVALUES ===\n";
+
+            int idx = 1;
+            const char *name;
+            while ((name = lua_getupvalue(prv->Lua, -1, idx))) {
+               int type = lua_type(prv->Lua, -1);
+
+               if (compact) buf << name << " = ";
+               else buf << name << " = ";
+
+               switch (type) {
+                  case LUA_TNIL: buf << "nil"; break;
+                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
+                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
+                  case LUA_TSTRING: {
+                     size_t len;
+                     const char *str = lua_tolstring(prv->Lua, -1, &len);
+                     std::string_view sv(str, len);
+                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
+                     else buf << "\"" << sv << "\"";
+                     break;
+                  }
+                  case LUA_TTABLE: buf << "{ ... }"; break;
+                  case LUA_TFUNCTION: buf << "<function>"; break;
+                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
+               }
+
+               if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
+               buf << "\n";
+               lua_pop(prv->Lua, 1);
+               idx++;
+            }
+
+            lua_pop(prv->Lua, 1); // Pop the function
+            if (not compact) buf << "\n";
+         }
+      }
+
+   }
+
+   // Here we can process options that are meaningful post-execution.
+   
+   // Bytecode (if available via jit.bc)
+   if (show_bytecode) {
+      if (not compact) buf << "=== BYTECODE ===\n";
+      buf << "(Bytecode inspection requires jit.bc module - use require('jit.bc').dump(func))\n";
+      if (not compact) buf << "\n";
+   }
+
+   if (show_globals) { // Global variables
+      if (not compact) buf << "=== GLOBALS ===\n";
+
+      // Access the storage table where user-defined globals are stored.
+      // The storage table is stored as an upvalue in the __index closure of the global metatable.
+
+      lua_pushvalue(prv->Lua, LUA_GLOBALSINDEX); // Push global environment
+      if (lua_getmetatable(prv->Lua, -1)) {
+         lua_pushstring(prv->Lua, "__index");
+         lua_rawget(prv->Lua, -2); // Get the __index closure
+
+         if (lua_isfunction(prv->Lua, -1)) {
+            // The storage table is the first upvalue of the __index closure
+            const char *upvalue_name = lua_getupvalue(prv->Lua, -1, 1);
+            if (upvalue_name and lua_istable(prv->Lua, -1)) {
+               int count = 0;
+               lua_pushnil(prv->Lua);
+               while (lua_next(prv->Lua, -2)) {
+                  const char *key = lua_tostring(prv->Lua, -2);
+                  buf << key << " = ";
+
+                  int type = lua_type(prv->Lua, -1);
+                  switch (type) {
+                     case LUA_TNIL: buf << "nil"; break;
+                     case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
+                     case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
+                     case LUA_TSTRING: {
+                        size_t len;
+                        const char *str = lua_tolstring(prv->Lua, -1, &len);
+                        std::string_view sv(str, len);
+                        if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
+                        else buf << "\"" << sv << "\"";
+                        break;
+                     }
+                     case LUA_TTABLE: buf << "{ ... }"; break;
+                     case LUA_TFUNCTION: buf << "<function>"; break;
+                     default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
+                  }
+
+                  if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
+                  buf << "\n";
+                  count++;
+
+                  lua_pop(prv->Lua, 1);
+               }
+
+               if (count IS 0) buf << "(none)\n";
+               lua_pop(prv->Lua, 1); // Pop storage table
+            }
+         }
+         lua_pop(prv->Lua, 1); // Pop __index closure
+         lua_pop(prv->Lua, 1); // Pop metatable
+      }
+      lua_pop(prv->Lua, 1); // Pop global environment
+
+      if (not compact) buf << "\n";
+   }
+
+   if (show_memory) { // Memory statistics
+      if (not compact) buf << "=== MEMORY STATISTICS ===\n";
+
+      int kb = lua_gc(prv->Lua, LUA_GCCOUNT, 0);
+      int bytes = lua_gc(prv->Lua, LUA_GCCOUNTB, 0);
+      double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
+
+      if (compact) buf << "Lua heap: " << mb << " MB\n";
+      else buf << "Lua heap usage: " << mb << " MB (" << kb << " KB + " << bytes << " bytes)\n";
+
+      if (not compact) buf << "\n";
+   }
+  
+   if (show_state) { // State information
+      if (not compact) buf << "=== STATE ===\n";
+
+      buf << "Stack top: " << lua_gettop(prv->Lua) << "\n";
+      buf << "Protected globals: " << (prv->Lua->ProtectedGlobals ? "true" : "false") << "\n";
+
+      int hook_mask = lua_gethookmask(prv->Lua);
+      if (hook_mask) {
+         buf << "Hook mask: ";
+         bool first = true;
+         if (hook_mask & LUA_MASKCALL) { buf << (first ? "" : "|") << "CALL"; first = false; }
+         if (hook_mask & LUA_MASKRET) { buf << (first ? "" : "|") << "RET"; first = false; }
+         if (hook_mask & LUA_MASKLINE) { buf << (first ? "" : "|") << "LINE"; first = false; }
+         if (hook_mask & LUA_MASKCOUNT) { buf << (first ? "" : "|") << "COUNT"; first = false; }
+         buf << "\n";
+      }
+      else buf << "Hook mask: none\n";
+
+      if (not compact) buf << "\n";
+   }
+
+   std::string result = buf.str();
+   if ((Args->Result = pf::strclone(result.c_str())) == nullptr) {
+      return ERR::AllocMemory;
+   }
+   else return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 static ERR FLUID_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR::NullArgs;
+   if (not Args) return ERR::NullArgs;
 
    if ((Args->Procedure) and (Args->Procedure->isScript())) {
       if (Args->Procedure->Context IS Self) { // Verification of ownership
          auto prv = (prvFluid *)Self->ChildPrivate;
-         if (!prv) return log.warning(ERR::ObjectCorrupt);
+         if (not prv) return log.warning(ERR::ObjectCorrupt);
 
          log.trace("Dereferencing procedure #%" PF64, (long long)Args->Procedure->ProcedureID);
 
@@ -601,12 +893,12 @@ static ERR FLUID_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Procedure) or (not Args->Procedure[0])) return log.warning(ERR::NullArgs);
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR::ObjectCorrupt);
+   if (not prv) return log.warning(ERR::ObjectCorrupt);
 
-   if ((!prv->Lua) or (!Self->ActivationCount)) {
+   if ((not prv->Lua) or (not Self->ActivationCount)) {
       log.warning("Cannot resolve function '%s'.  Script requires activation.", Args->Procedure);
       return ERR::NotFound;
    }
@@ -630,13 +922,13 @@ static ERR FLUID_Init(objScript *Self)
    pf::Log log;
 
    if (Self->Path) {
-      if (!wildcmp("*.fluid|*.fb|*.lua", Self->Path)) {
+      if (not wildcmp("*.fluid|*.fb|*.lua", Self->Path)) {
          log.warning("No support for path '%s'", Self->Path);
          return ERR::NoSupport;
       }
    }
 
-   if ((Self->defined(NF::RECLASSED)) and (!Self->String)) {
+   if ((Self->defined(NF::RECLASSED)) and (not Self->String)) {
       log.trace("No support for reclassed Script with no String field value.");
       return ERR::NoSupport;
    }
@@ -646,7 +938,7 @@ static ERR FLUID_Init(objScript *Self)
    bool compile = false;
    int loaded_size = 0;
    objFile *src_file = nullptr;
-   if ((!Self->String) and (Self->Path)) {
+   if ((not Self->String) and (Self->Path)) {
       int64_t src_ts = 0, src_size = 0;
 
       if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
@@ -683,7 +975,7 @@ static ERR FLUID_Init(objScript *Self)
          }
       }
 
-      if ((error IS ERR::Okay) and (!loaded_size)) {
+      if ((error IS ERR::Okay) and (not loaded_size)) {
          if (AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String) IS ERR::Okay) {
             int len;
             if (ReadFileToBuffer(Self->Path, Self->String, src_size, &len) IS ERR::Okay) {
@@ -733,7 +1025,7 @@ static ERR FLUID_Init(objScript *Self)
 
    log.trace("Opening a Lua instance.");
 
-   if (!(prv->Lua = luaL_newstate())) {
+   if (not (prv->Lua = luaL_newstate())) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = nullptr;
@@ -741,7 +1033,7 @@ static ERR FLUID_Init(objScript *Self)
       return ERR::Failed;
    }
 
-   if (!(str = Self->String)) {
+   if (not (str = Self->String)) {
       log.trace("No statement specified at this stage.");
       if (src_file) FreeResource(src_file);
       return ERR::Okay; // Assume that the script's text will be incoming later
@@ -768,7 +1060,7 @@ static ERR FLUID_Init(objScript *Self)
 static ERR FLUID_NewChild(objScript *Self, struct acNewChild &Args)
 {
    auto prv = (prvFluid*)Self->ChildPrivate;
-   if (!prv) return ERR::Okay;
+   if (not prv) return ERR::Okay;
 
    if (prv->Recurse) {
       SetOwner(Args.Object, CurrentTask());
@@ -792,16 +1084,16 @@ static ERR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Dest)) return log.warning(ERR::NullArgs);
 
-   if (!Self->String) return log.warning(ERR::FieldNotSet);
+   if (not Self->String) return log.warning(ERR::FieldNotSet);
 
    log.branch("Compiling the statement...");
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR::ObjectCorrupt);
+   if (not prv) return log.warning(ERR::ObjectCorrupt);
 
-   if (!luaL_loadstring(prv->Lua, Self->String)) {
+   if (not luaL_loadstring(prv->Lua, Self->String)) {
       ERR error = save_binary(Self, Args->Dest);
       return error;
    }
@@ -859,14 +1151,14 @@ static ERR save_binary(objScript *Self, OBJECTPTR Target)
 
    log.branch("Save Symbols: %d", Self->Flags & SCF::LOG_ALL);
 
-   if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR::ObjectCorrupt);
+   if (not (prv = Self->ChildPrivate)) return LogReturnError(0, ERR::ObjectCorrupt);
 
    f = clvalue(prv->Lua->top + (-1))->l.p;
 
    // Write the fluid header first.  This must identify the content as compiled, plus include any relevant options,
    // such as the persistent identifier.
 
-   if (!AccessObject(FileID, 3000, &dest)) {
+   if (not AccessObject(FileID, 3000, &dest)) {
       int result;
       UBYTE header[256];
 
@@ -1037,7 +1329,7 @@ static ERR run_script(objScript *Self)
       SetResource(RES::LOG_DEPTH, depth);
    }
 
-   if (!pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.
+   if (not pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.
       int results = lua_gettop(prv->Lua) - top + 1;
 
       if (results > 0) {

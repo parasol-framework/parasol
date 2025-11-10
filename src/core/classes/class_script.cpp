@@ -73,33 +73,6 @@ static ERR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-DerefProcedure: Dereferences an acquired procedure.
-
-This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary
-to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such
-language.  Languages that do not manage functions as a resource will ignore calls to this method.
-
-Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in
-memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.
-
--INPUT-
-ptr(func) Procedure: The procedure to be dereferenced.
-
--ERRORS-
-Okay:
-NullArgs:
-
-*********************************************************************************************************************/
-
-static ERR SCRIPT_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
-{
-   // It is the responsibility of the sub-class to override this method with something appropriate.
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 Callback: An internal method for managing callbacks.
 
 Not for client use.
@@ -152,6 +125,61 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
    Self->ErrorString = saved_error_msg;
 
    return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DebugLog: Acquire a debug log from a compiled Script.
+
+Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log
+will depend on the scripting language in use, but will typically dump readable bytecode for analysis.  The Options 
+parameter is a comma-separated list that may be used to pass language-specific options to the underlying 
+implementation.
+
+The resulting log information is returned as a string, which needs to be deallocated once no longer required.
+
+-INPUT-
+cstr Options: Options to pass to the underlying language.
+&!cstr Result: Resulting log information.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERR SCRIPT_DebugLog(objScript *Self, struct sc::DebugLog *Args)
+{
+   // It is the responsibility of the sub-class to override this method with something appropriate.
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DerefProcedure: Dereferences an acquired procedure.
+
+This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary
+to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such
+language.  Languages that do not manage functions as a resource will ignore calls to this method.
+
+Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in
+memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.
+
+-INPUT-
+ptr(func) Procedure: The procedure to be dereferenced.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERR SCRIPT_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
+{
+   // It is the responsibility of the sub-class to override this method with something appropriate.
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

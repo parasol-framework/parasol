@@ -16,7 +16,7 @@
   _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
   _(for) _(function) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
-  __(if_empty, ?) __(presence, ??) \
+  __(if_empty, ?) __(presence, ?\?) \
   __(safe_field, ?.) __(safe_method, ?:) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
   __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
