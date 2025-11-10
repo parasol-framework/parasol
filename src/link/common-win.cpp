@@ -1,4 +1,3 @@
-
 #ifndef PARASOL_STATIC
 
 #include <string>
@@ -48,17 +47,16 @@ typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
 
 //********************************************************************************************************************
 
-static APTR find_core(std::string &PathBuffer)
+static APTR find_core()
 {
-   size_t pos = 0;
+   std::string core_lib, folder;
 
-   PathBuffer.clear();
+   folder.clear();
 
-   if (PathBuffer.empty()) {
+   if (folder.empty()) {
       int len, i;
-      void *handle;
       WIN32_FIND_DATA find;
-      char buffer[MAX_PATH];
+      char buffer[MAX_PATH] = {};
 
       // Check local directories for base installation
 
@@ -70,55 +68,47 @@ static APTR find_core(std::string &PathBuffer)
                break;
             }
          }
-         PathBuffer = buffer;
+         folder = buffer;
       }
 
       // If GetModuleFileName() failed, try GetCurrentDirectory()
 
-      if (PathBuffer.empty() and GetCurrentDirectoryA(sizeof(buffer), buffer)) {
-         PathBuffer = buffer;
+      if (folder.empty() and GetCurrentDirectoryA(sizeof(buffer), buffer)) {
+         folder = buffer;
       }
 
-      if (!PathBuffer.empty()) {
-         pos = PathBuffer.length();
-         PathBuffer.append("lib\\core.dll");
+      if (not folder.empty()) {
+         auto test_lib = folder + "lib\\core.dll";
 
-         handle = INVALID_HANDLE_VALUE;
-         while ((len = PathBuffer.length()) and ((handle = FindFirstFileA(PathBuffer.data(), &find)) IS INVALID_HANDLE_VALUE)) {
+         auto handle = INVALID_HANDLE_VALUE;
+         while ((handle = FindFirstFileA(test_lib.data(), &find)) IS INVALID_HANDLE_VALUE) {
             // Regress by one folder to get to the root of the installation.
 
-            if (PathBuffer[len-1] IS '\\') {
-               PathBuffer.pop_back();
-               len--;
-            }
-            while ((len > 0) and (PathBuffer[len-1] != '\\')) {
-               PathBuffer.pop_back();
-               len--;
+            if (test_lib.back() IS '\\') test_lib.pop_back();
+            while ((not test_lib.empty()) and (test_lib.back() != '\\')) {
+               test_lib.pop_back();
             }
 
-            PathBuffer.append("lib\\core.dll");
-            //printf("Scan: %s\n", PathBuffer.c_str());
-            pos = len;
+            test_lib = folder + "lib\\core.dll";
+            printf("Scan: %s\n", test_lib.c_str());
          }
 
          if (handle != INVALID_HANDLE_VALUE) { // Success in finding the core.dll file
             FindClose(handle);
+            core_lib = test_lib;
          }
-         else {
-            PathBuffer.clear();
-         }
+         else folder.clear();
       }
    }
 
-   if (PathBuffer.empty()) { // If local core library not found, check the Windows registry
+   if (core_lib.empty()) { // If local core library not found, check the Windows registry
       APTR keyhandle;
-      if (!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
+      if (not RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
          char buffer[MAX_PATH] = {};
          int j = sizeof(buffer);
-         if (!RegQueryValueExA(keyhandle, "Location", 0, 0, buffer, &j)) {
-            PathBuffer = buffer;
-            pos = PathBuffer.length();
-            PathBuffer.append("lib\\core.dll");
+         if (not RegQueryValueExA(keyhandle, "Location", 0, 0, buffer, &j)) {
+            folder.assign(buffer);
+            core_lib = folder + "lib\\core.dll";
          }
          CloseHandle(keyhandle);
          keyhandle = nullptr;
@@ -127,19 +117,13 @@ static APTR find_core(std::string &PathBuffer)
 
    // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path.
 
-   if (pos + 4 < PathBuffer.length()) {
-      PathBuffer.replace(pos, PathBuffer.length() - pos, "lib");
-      SetDllDirectoryA(PathBuffer.c_str());
-      PathBuffer.replace(pos, PathBuffer.length() - pos, "core.dll");
-   }
+   auto dll_folder = folder + "lib"; // This is the third party lib folder, not the root lib folder.
+   SetDllDirectoryA(folder.c_str());
 
-   {
-      APTR handle;
-      if (!(handle = LoadLibraryA(PathBuffer.c_str()))) return nullptr;
-
-      PathBuffer.erase(pos);
-      return handle;
-   }
+   APTR handle;
+   core_lib = folder + "lib\\core.dll";
+   if (!(handle = LoadLibraryA(core_lib.c_str()))) return nullptr;
+   return handle;
 }
 
 #endif // PARASOL_STATIC

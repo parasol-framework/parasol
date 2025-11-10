@@ -21,7 +21,7 @@ using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
 using CLOSECORE = void(void);
 
 struct CoreBase *CoreBase;
-static APTR find_core(std::string &PathBuffer);
+static APTR find_core();
 static APTR corehandle = nullptr;
 CLOSECORE *CloseCore = nullptr;
 #else
@@ -33,8 +33,7 @@ static struct CoreBase *CoreBase; // Dummy
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
 #ifndef PARASOL_STATIC
-   std::string path_buffer;
-   corehandle = find_core(path_buffer);
+   corehandle = find_core();
    if (!corehandle) return "Failed to open Parasol's core library.";
 
    auto OpenCore = (OPENCORE *)GetProcAddress((APTR)corehandle, "OpenCore");
