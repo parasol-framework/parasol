@@ -109,7 +109,7 @@ file.ui.copy = function(Source, Dest, Move)
       if response != 'yes-all' then
          if src_path == dest_path then
             if Move then
-               goto cont -- Do nothing for move operations when the source and destination are identical
+               continue -- Do nothing for move operations when the source and destination are identical
             elseif dest_path:find('^[A-Z].+') then
                dest_path = Dest .. 'Copy of ' .. src_file
             else
@@ -129,7 +129,7 @@ file.ui.copy = function(Source, Dest, Move)
          end
 
          if exists and response == 'no-all' then
-            goto cont
+            continue
          end
 
          if exists then
@@ -202,7 +202,6 @@ file.ui.copy = function(Source, Dest, Move)
             return ERR_File
          end
       end
-::cont::
    end -- for loop
 
    return err
