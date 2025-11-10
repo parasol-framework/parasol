@@ -1,6 +1,7 @@
 #ifndef PARASOL_STATIC
 
 #include <string>
+#include <cstdio>
 
 extern "C" {
 DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
@@ -17,7 +18,54 @@ DLLCALL int WINAPI GetModuleFileNameA(APTR, CSTRING, int);
 DLLCALL int WINAPI SetDllDirectoryA(CSTRING);
 DLLCALL int WINAPI SetDefaultDllDirectories(int DirectoryFlags);
 DLLCALL void * AddDllDirectory(STRING NewDirectory);
+DLLCALL int WINAPI WideCharToMultiByte(unsigned int, unsigned long, const wchar_t *, int, char *, int, const char *, int *);
 }
+
+#define CP_UTF8 65001
+
+// DLL notification structures and function for hooking DLL loads
+typedef struct _UNICODE_STRING {
+   unsigned short Length;
+   unsigned short MaximumLength;
+   wchar_t *Buffer;
+} UNICODE_STRING, *PUNICODE_STRING;
+
+typedef struct _LDR_DLL_LOADED_NOTIFICATION_DATA {
+   unsigned long Flags;
+   PUNICODE_STRING FullDllName;
+   PUNICODE_STRING BaseDllName;
+   void *DllBase;
+   unsigned long SizeOfImage;
+} LDR_DLL_LOADED_NOTIFICATION_DATA, *PLDR_DLL_LOADED_NOTIFICATION_DATA;
+
+typedef struct _LDR_DLL_UNLOADED_NOTIFICATION_DATA {
+   unsigned long Flags;
+   PUNICODE_STRING FullDllName;
+   PUNICODE_STRING BaseDllName;
+   void *DllBase;
+   unsigned long SizeOfImage;
+} LDR_DLL_UNLOADED_NOTIFICATION_DATA, *PLDR_DLL_UNLOADED_NOTIFICATION_DATA;
+
+typedef union _LDR_DLL_NOTIFICATION_DATA {
+   LDR_DLL_LOADED_NOTIFICATION_DATA Loaded;
+   LDR_DLL_UNLOADED_NOTIFICATION_DATA Unloaded;
+} LDR_DLL_NOTIFICATION_DATA, *PLDR_DLL_NOTIFICATION_DATA;
+
+#define LDR_DLL_NOTIFICATION_REASON_LOADED 1
+#define LDR_DLL_NOTIFICATION_REASON_UNLOADED 2
+
+typedef void (WINAPI *PLDR_DLL_NOTIFICATION_FUNCTION)(
+   unsigned long NotificationReason,
+   PLDR_DLL_NOTIFICATION_DATA NotificationData,
+   void *Context
+);
+
+typedef long (WINAPI *PLdrRegisterDllNotification)(
+   unsigned long Flags,
+   PLDR_DLL_NOTIFICATION_FUNCTION NotificationFunction,
+   void *Context,
+   void **Cookie
+);
 
 #define HKEY_LOCAL_MACHINE 0x80000002
 #define KEY_READ 0x20019
@@ -44,11 +92,44 @@ typedef struct _WIN32_FIND_DATAW {
 
 typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
 
+//********************************************************************************************************************
+// DLL load notification callback - prints all DLL loads for debugging
+
+#ifdef DEBUG_DLL_LOADS
+static void WINAPI dll_notification_callback(unsigned long NotificationReason,
+   PLDR_DLL_NOTIFICATION_DATA NotificationData, void *Context)
+{
+   if (NotificationReason IS LDR_DLL_NOTIFICATION_REASON_LOADED) {
+      if (NotificationData and NotificationData->Loaded.FullDllName and
+          NotificationData->Loaded.FullDllName->Buffer) {
+         // Convert wide string to multibyte for proper printing
+         char buffer[1024];
+         int len = WideCharToMultiByte(CP_UTF8, 0, NotificationData->Loaded.FullDllName->Buffer, -1,
+                                       buffer, sizeof(buffer), nullptr, nullptr);
+         if (len > 0) {
+            printf("[DLL LOAD] %s\n", buffer);
+            fflush(stdout);
+         }
+      }
+   }
+}
+#endif
 
 //********************************************************************************************************************
 
 static APTR find_core()
 {
+#ifdef DEBUG_DLL_LOADS
+   // Register DLL load notification callback for debugging
+   if (auto ntdll = LoadLibraryA("ntdll.dll")) {
+      auto ldr_register = (PLdrRegisterDllNotification)GetProcAddress(ntdll, "LdrRegisterDllNotification");
+      if (ldr_register) {
+         void *dll_cookie = nullptr;
+         ldr_register(0, dll_notification_callback, nullptr, &dll_cookie);
+      }
+   }
+#endif
+
    std::string core_lib, folder;
 
    folder.clear();
@@ -90,7 +171,6 @@ static APTR find_core()
             if (folder.empty()) break;  // No more parent directories
 
             test_lib = folder + "lib\\core.dll";
-            //printf("Scan: %s\n", test_lib.c_str());
          }
 
          if (handle != INVALID_HANDLE_VALUE) { // Success in finding the core.dll file
