@@ -1,6 +1,8 @@
 
 #ifndef PARASOL_STATIC
 
+#include <string>
+
 extern "C" {
 DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
 DLLCALL int WINAPI FreeLibrary(APTR);
@@ -46,69 +48,77 @@ typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
 
 //********************************************************************************************************************
 
-static APTR find_core(char *PathBuffer, int Size)
+static APTR find_core(std::string &PathBuffer)
 {
-   int16_t pos = 0;
+   size_t pos = 0;
 
-   PathBuffer[0] = 0;
+   PathBuffer.clear();
 
-   if (!PathBuffer[0]) {
+   if (PathBuffer.empty()) {
       int len, i;
       void *handle;
       WIN32_FIND_DATA find;
+      char buffer[MAX_PATH];
 
       // Check local directories for base installation
 
-      if ((len = GetModuleFileNameA(nullptr, PathBuffer, Size))) {
-         for (i=len; i > 0; i--) {
-            if (PathBuffer[i] IS '\\') {
-               PathBuffer[i+1] = 0;
-               AddDllDirectory(PathBuffer);
+      if ((len = GetModuleFileNameA(nullptr, buffer, sizeof(buffer)))) {
+         for (i = len; i > 0; i--) {
+            if (buffer[i] IS '\\') {
+               buffer[i+1] = 0;
+               AddDllDirectory(buffer);
                break;
             }
          }
+         PathBuffer = buffer;
       }
 
       // If GetModuleFileName() failed, try GetCurrentDirectory()
 
-      if (!PathBuffer[0]) GetCurrentDirectoryA(Size, PathBuffer);
+      if (PathBuffer.empty() and GetCurrentDirectoryA(sizeof(buffer), buffer)) {
+         PathBuffer = buffer;
+      }
 
-      if (PathBuffer[0]) {
-         for (len=0; PathBuffer[len]; len++);
-         pos = len;
-
-         strncpy(PathBuffer+len, "lib\\core.dll", Size-len-1);
+      if (!PathBuffer.empty()) {
+         pos = PathBuffer.length();
+         PathBuffer.append("lib\\core.dll");
 
          handle = INVALID_HANDLE_VALUE;
-         while ((len) && ((handle = FindFirstFileA(PathBuffer, &find)) IS INVALID_HANDLE_VALUE)) {
+         while ((len = PathBuffer.length()) and ((handle = FindFirstFileA(PathBuffer.data(), &find)) IS INVALID_HANDLE_VALUE)) {
             // Regress by one folder to get to the root of the installation.
 
-            if (PathBuffer[len-1] IS '\\') len--;
-            while ((len > 0) && (PathBuffer[len-1] != '\\')) {
+            if (PathBuffer[len-1] IS '\\') {
+               PathBuffer.pop_back();
+               len--;
+            }
+            while ((len > 0) and (PathBuffer[len-1] != '\\')) {
+               PathBuffer.pop_back();
                len--;
             }
 
-            strncpy(PathBuffer+len, "lib\\core.dll", Size-len-1);
-            //printf("Scan: %s\n", PathBuffer);
+            PathBuffer.append("lib\\core.dll");
+            //printf("Scan: %s\n", PathBuffer.c_str());
             pos = len;
          }
 
          if (handle != INVALID_HANDLE_VALUE) { // Success in finding the core.dll file
             FindClose(handle);
          }
-         else PathBuffer[0] = 0;
+         else {
+            PathBuffer.clear();
+         }
       }
    }
 
-   if (!PathBuffer[0]) { // If local core library not found, check the Windows registry
+   if (PathBuffer.empty()) { // If local core library not found, check the Windows registry
       APTR keyhandle;
       if (!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
-         int j = Size;
-         if (!RegQueryValueExA(keyhandle, "Location", 0, 0, PathBuffer, &j)) {
-            int i;
-            for (i=0; PathBuffer[i]; i++);
-            pos = i;
-            strncpy(PathBuffer+i, "lib\\core.dll", Size-i-1);
+         char buffer[MAX_PATH] = {};
+         int j = sizeof(buffer);
+         if (!RegQueryValueExA(keyhandle, "Location", 0, 0, buffer, &j)) {
+            PathBuffer = buffer;
+            pos = PathBuffer.length();
+            PathBuffer.append("lib\\core.dll");
          }
          CloseHandle(keyhandle);
          keyhandle = nullptr;
@@ -117,15 +127,17 @@ static APTR find_core(char *PathBuffer, int Size)
 
    // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path.
 
-   strncpy(PathBuffer+pos+4, "lib", 4);
-   SetDllDirectoryA(PathBuffer);
-   strncpy(PathBuffer+pos+4, "core.dll", 9);
+   if (pos + 4 < PathBuffer.length()) {
+      PathBuffer.replace(pos, PathBuffer.length() - pos, "lib");
+      SetDllDirectoryA(PathBuffer.c_str());
+      PathBuffer.replace(pos, PathBuffer.length() - pos, "core.dll");
+   }
 
    {
       APTR handle;
-      if (!(handle = LoadLibraryA(PathBuffer))) return nullptr;
+      if (!(handle = LoadLibraryA(PathBuffer.c_str()))) return nullptr;
 
-      PathBuffer[pos] = 0;
+      PathBuffer.erase(pos);
       return handle;
    }
 }
