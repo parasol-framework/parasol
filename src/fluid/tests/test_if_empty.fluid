@@ -35,6 +35,9 @@ function testTable()
    local v = t ? 'Nothing'
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
+   local v = 'x' ? { 'Nothing' }
+   assert(v is 'x', "Failed table case: expected table, got '" .. tostring(v) .. "'")
+
    local v = t ? { 'Nothing' }
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 end
