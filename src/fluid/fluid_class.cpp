@@ -253,8 +253,12 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
 
 static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact)
 {
+   if (Proto->sizebc == 0) {
+       // Nothing to disassemble for empty function
+       return;
+   }
    const BCIns *bc_stream = proto_bc(Proto);
-   std::vector<uint8_t> targets(Proto->sizebc ? Proto->sizebc : 1, 0);
+   std::vector<uint8_t> targets(Proto->sizebc, 0);
 
    for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
       BCIns instruction = bc_stream[pc];
