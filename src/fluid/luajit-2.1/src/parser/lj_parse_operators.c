@@ -156,11 +156,11 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
             BCReg src_reg = expr_toanyreg(fs, e);
             BCReg rhs_reg = fs->freereg;
             uint32_t aux_flags = exp_aux_flags(e->u.s.aux);
-            uint32_t payload = (uint32_t)(rhs_reg + 1);
-            lj_assertFS((payload & EXP_AUX_FLAG_MASK) == 0, "rhs register overflow");
+            uint32_t payload = exp_aux_payload_encode(rhs_reg);
+            lj_assertFS(payload != 0u, "rhs register overflow");
             bcreg_reserve(fs, 1);
             expr_init(e, VNONRELOC, src_reg);
-            e->u.s.aux = aux_flags | (payload & EXP_AUX_PAYLOAD_MASK);
+            e->u.s.aux = aux_flags | payload;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
@@ -437,11 +437,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       else {
          // LHS is falsey (no jumps) OR runtime value - need to check
          BCReg rhs_reg = NO_REG;
-         uint32_t aux_payload = exp_aux_payload(e1->u.s.aux);
-         uint32_t aux_flags = exp_aux_flags(e1->u.s.aux);
-         if (aux_payload)
-            rhs_reg = (BCReg)(aux_payload - 1);
-         e1->u.s.aux = aux_flags;
+         uint32_t aux = e1->u.s.aux;
+         if (exp_aux_payload_has(aux))
+            rhs_reg = (BCReg)exp_aux_payload_decode(aux);
+         e1->u.s.aux = exp_aux_flags(aux);
          expr_discharge(fs, e1);
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
@@ -484,7 +483,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             bcemit_AD(fs, BC_MOV, reg, rhs_reg);
             jmp_patch(fs, skip, fs->pc);
             expr_init(e1, VNONRELOC, reg);
-            if (rhs_reg >= fs->nactvar && rhs_reg < fs->freereg)
+            if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && rhs_reg + 1 == fs->freereg)
                fs->freereg = rhs_reg;
          }
          else {
