@@ -1,6 +1,21 @@
 -- Sophisticated multi-level exception test
 -- This test exercises deep nesting of exception handlers to reliably trigger frame chain issues
 
+function testCatch()
+   local exception_raised = false
+
+   local err = catch(function()
+      error("Catch this! (Exception raised on purpose)")
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   assert(err is ERR_Exception, "Expected the error code to be ERR_Exception")
+   assert(exception_raised, "Failed to catch the raised exception.")
+end
+
 function testDeepNesting1()
    local result = {}
 
@@ -43,11 +58,13 @@ function testCrossLuaC1()
       end,
       { ERR_Failed },  -- Wrong filter
       function(Exception)
+         print('Caught in inner filter')
          table.insert(result, "inner")
       end)
    end,
    { ERR_NotSupported },  -- Correct filter
    function(Exception)
+      print('Caught in outer filter')
       table.insert(result, "outer")
    end)
 
@@ -180,7 +197,7 @@ end
 
 return {
    tests = {
-      'testDeepNesting1', 'testCrossLuaC1', 'testMultipleFilterLevels',
+      'testCatch', 'testDeepNesting1', 'testCrossLuaC1', 'testMultipleFilterLevels',
       'testMixedLuaErrors', 'testFilterChaining', 'testObjectMethodErrors',
       'testChainedObjectCalls'
    }
