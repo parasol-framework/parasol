@@ -15,7 +15,7 @@ before diving into changes.
   should be committed.
 
 ## Integration & Build Tips
-- Always rebuild via CMake (e.g. `cmake --build build/agents --config Release`)
+- Always rebuild via CMake (e.g. `cmake --build build/agents --config <BuildType>`)
   after touching LuaJIT or Fluid sources so the static library target is
   regenerated and relinked into the Fluid module.
 - CMake drives three build strategies, matching the logic in
@@ -30,7 +30,7 @@ before diving into changes.
     `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
 - Non-MSVC builds compile with `LUAJIT_DISABLE_FFI`, `LUAJIT_ENABLE_LUA52COMPAT`,
   and `LUAJIT_NO_UNWIND` (see `LUAJIT_NON_MSVC_DEFS` in the CMake file).
-- Install (`cmake --install build/agents --config Release`) before running
+- Install (`cmake --install build/agents --config <BuildType>`) before running
   tests so the freshly built `parasol` binary (or `parasol.exe` on Windows)
   and scripts land in `build/agents-install/`.
 
@@ -49,7 +49,7 @@ before diving into changes.
   unwinding trade-offs.
 
 ## Testing
-- Use `ctest --build-config Release --test-dir build/agents -R <label>` to run
+- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run
   subsets, or omit `-R` for the full suite. Fluid regression tests are under
   `src/fluid/tests/` and catch most parser/VM regressions.
 - For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from
@@ -58,8 +58,8 @@ before diving into changes.
 - **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module
   and `parasol_cmd`, then reinstall:
   ```bash
-  cmake --build build/agents --config Release --parallel
-  cmake --install build/agents --config Release
+  cmake --build build/agents --config <BuildType> --parallel
+  cmake --install build/agents --config <BuildType>
   ```
 - When debugging parser issues, create minimal Fluid scripts to isolate the
   behaviour before running the full test suite.
