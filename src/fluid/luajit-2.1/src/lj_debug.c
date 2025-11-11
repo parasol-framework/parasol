@@ -600,7 +600,10 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	case 'F': case 'f': {  /* Dump function name. */
 	  const char *name;
 	  const char *what = lj_debug_funcname(L, frame, &name);
-	  if (what) {
+	  /* Only show function name if we're confident it's correct.
+	   * Skip "local" because it returns the caller's variable name,
+	   * which may not match the actual function being executed. */
+	  if (what && strcmp(what, "local") != 0) {
 	    if (c == 'F' && isluafunc(fn)) {  /* Dump module:name for 'F'. */
 	      GCproto *pt = funcproto(fn);
 	      if (pt->firstline != ~(BCLine)0) {  /* Not a bytecode builtin. */
@@ -609,10 +612,11 @@ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
 	      }
 	    }
 	    lj_buf_putmem(sb, name, (MSize)strlen(name));
-	    break;
-	  }  /* else: can't derive a name, dump module:line. */
 	  }
-	  /* fallthrough */
+	  /* Don't output anything if function name is unreliable */
+	  break;
+	  }
+
 	case 'l':  /* Dump module:line. */
 	  if (isluafunc(fn)) {
 	    GCproto *pt = funcproto(fn);

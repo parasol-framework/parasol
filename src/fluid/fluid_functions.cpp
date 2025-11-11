@@ -698,7 +698,10 @@ int fcmd_loadfile(lua_State *Lua)
                if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
             }
 
-            if (!lua_load(Lua, &code_reader, &handle, path+i)) {
+            // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
+            std::string chunk_name = std::string("@") + (path + i);
+
+            if (!lua_load(Lua, &code_reader, &handle, chunk_name.c_str())) {
                // TODO Code compilation not currently supported
             /*
                if (recompile) {
