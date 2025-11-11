@@ -155,12 +155,11 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          if (!expr_isk_nojump(e)) {
             BCReg src_reg = expr_toanyreg(fs, e);
             BCReg rhs_reg = fs->freereg;
-            uint32_t aux_flags = exp_aux_flags(e->u.s.aux);
-            uint32_t payload = exp_aux_payload_encode(rhs_reg);
-            lj_assertFS(payload != 0u, "rhs register overflow");
+            uint8_t flags = e->flags;
             bcreg_reserve(fs, 1);
             expr_init(e, VNONRELOC, src_reg);
-            e->u.s.aux = aux_flags | payload;
+            e->u.s.aux = rhs_reg;
+            e->flags = flags | EXP_HAS_RHS_REG_FLAG;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
@@ -437,10 +436,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       else {
          // LHS is falsey (no jumps) OR runtime value - need to check
          BCReg rhs_reg = NO_REG;
-         uint32_t aux = e1->u.s.aux;
-         if (exp_aux_payload_has(aux))
-            rhs_reg = (BCReg)exp_aux_payload_decode(aux);
-         e1->u.s.aux = exp_aux_flags(aux);
+         if (e1->flags & EXP_HAS_RHS_REG_FLAG) {
+            rhs_reg = (BCReg)e1->u.s.aux;
+            e1->flags &= (uint8_t)~EXP_HAS_RHS_REG_FLAG;
+         }
          expr_discharge(fs, e1);
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
