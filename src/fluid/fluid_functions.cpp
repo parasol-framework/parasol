@@ -145,7 +145,10 @@ int fcmd_catch(lua_State *Lua)
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
+               // lua_pcall() leaves the error object on the top of the stack.  luaL_ref() will
+               // pop that value and store a registry reference for later use.
                int raw_error_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+               bool raw_error_valid = (raw_error_ref != LUA_NOREF) and (raw_error_ref != LUA_REFNIL);
 
                ERR filter_error = prv->CaughtError;
                if (filter_error < ERR::ExceptionThreshold) filter_error = ERR::Exception;
@@ -179,7 +182,7 @@ int fcmd_catch(lua_State *Lua)
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "message");
-                  if (raw_error_ref >= 0) {
+                  if (raw_error_valid) {
                      lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
                      if (lua_type(Lua, -1) IS LUA_TSTRING) {
                         // Leave the string for the table assignment.
@@ -198,12 +201,12 @@ int fcmd_catch(lua_State *Lua)
                   lua_pushinteger(Lua, prv->ErrorLine);
                   lua_settable(Lua, -3);
 
-                  if (raw_error_ref >= 0) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                  if (raw_error_valid) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
 
                   lua_call(Lua, 1, 0); // nargs, nresults
                }
                else {
-                  if (raw_error_ref >= 0) {
+                  if (raw_error_valid) {
                      lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
                      luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
                      lua_error(Lua);
