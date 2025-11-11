@@ -262,6 +262,26 @@ function testFuncInfo()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test disassembly option (Phase 3.1 feature)
+
+function testDisassembly()
+   local function sampleFunction(a, b)
+      local scale = b * 2
+      local total = a + scale
+      local err, result = glSelf.mtDebugLog('disasm')
+      return result
+   end
+
+   local result = sampleFunction(5, 7)
+
+   assert(result, 'DebugLog should return a result')
+   assert(string.find(result, 'BYTECODE DISASSEMBLY'), 'Should contain disassembly header')
+   assert(string.find(result, 'Function:'), 'Should contain function summary line')
+   assert(string.find(result, 'FUNCF'), 'Should list function prologue instruction')
+   assert(string.find(result, 'RET'), 'Should list return instruction')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
@@ -277,6 +297,7 @@ end
          'testLongString',
          'testVariousTypes',
          'testNestedStack',
-         'testFuncInfo'
+         'testFuncInfo',
+         'testDisassembly'
       }
    }

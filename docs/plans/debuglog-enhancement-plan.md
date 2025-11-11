@@ -1,6 +1,6 @@
 # Fluid DebugLog Enhancement Plan
 
-**Status:** 🎉 Phase 1 Complete & Tested - Phase 2 Pending
+**Status:** 🎉 Phase 1 Complete & Tested - ✅ Phase 3.1 Complete - Phase 2 Pending
 **Priority:** Medium
 **Effort:** Phase 1 completed in ~6 hours (including testing and bug fixes)
 **Target:** Fluid module (src/fluid/fluid_class.cpp) and LuaJIT debug (src/fluid/luajit-2.1/src/lj_debug.c)
@@ -401,135 +401,21 @@ if (show_state) {
 
 #### 3.1 Bytecode Disassembly
 
-**New Option:** `disasm`
+**Status:** ✅ **COMPLETED 2025-11-11**
 
-**Implementation:** Custom bytecode disassembler using LuaJIT internals
+**New Option:** `disasm` (the legacy `bytecode` keyword remains recognised as an alias for backwards compatibility)
 
-**Rationale:**
-- `lj_bcwrite()` dumps binary bytecode (not human-readable)
-- `jit.bc` module provides nice disassembly but requires `require()` and `package` global (not available in Fluid)
-- `jit.util` module functions are also inaccessible for same reason
-- **Solution:** Build custom disassembler directly in C++ using available LuaJIT APIs
+**What Was Delivered:**
+- Added LuaJIT bytecode reflection helpers directly to `fluid_class.cpp`, reusing `proto_bc()`, operand mode tables, and the prototype line metadata to generate annotated listings without relying on `jit.bc` or `jit.util`.
+- Produced human-friendly output with branch target markers, register/constant decoding, escaped and truncated string literals, and optional compact formatting suitable for inline logs.
+- Emitted descriptive headers summarising function source ranges and constant counts, while gracefully handling C frames or missing Lua stack levels.
 
-**Available Functions:**
-- `proto_bc(pt)` - Get bytecode instruction array
-- `lj_bc_mode[]` - Instruction format modes
-- `lj_bc_names` - Opcode name strings
-- `lj_debug_line()` - Map bytecode PC to source line
-- `bc_op()`, `bc_a()`, `bc_d()` - Decode instruction fields
+**Resulting Benefits:**
+- Fluid developers can inspect live bytecode from within scripts, aiding debugging of control flow, register allocation, and optimisations.
+- Maintains consistent behaviour across environments that disallow `require()` by implementing the feature natively in C++.
+- Provides a foundation for future enhancements (e.g., richer constant descriptions or trace correlation) via the new helper utilities.
 
-**Implementation:**
-```cpp
-if (show_disasm) {
-   lua_Debug ar;
-   if (lua_getstack(prv->Lua, 1, &ar)) {
-      lua_getinfo(prv->Lua, "f", &ar);
-      GCfunc *fn = funcV(prv->Lua->top - 1);
-      prv->Lua->top--;
-
-      if (isluafunc(fn)) {
-         GCproto *pt = funcproto(fn);
-         if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
-
-         buf << "Function: " << ar.short_src << ":" << ar.linedefined << "\n";
-         buf << "Bytecodes: " << pt->sizebc << ", Constants: "
-             << pt->sizekn << " (num), " << pt->sizekgc << " (gc)\n\n";
-
-         // Disassemble each instruction
-         const BCIns *bc = proto_bc(pt);
-         for (BCPos pc = 0; pc < pt->sizebc; pc++) {
-            BCIns ins = bc[pc];
-            BCOp op = bc_op(ins);
-
-            // Format: [PC] OPCODE  A D  ; line
-            if (compact) {
-               buf << std::setw(4) << std::setfill('0') << pc << " ";
-            } else {
-               buf << "[" << std::setw(4) << std::setfill('0') << pc << "] ";
-            }
-
-            // Opcode name (from lj_bc.h: bc_op extracts opcode)
-            const char *op_name = lj_bc_names + (op * 6);  // Names are 6 chars each
-            buf << std::string_view(op_name, 6) << " ";
-
-            // Operands
-            int a = bc_a(ins);
-            int d = bc_d(ins);
-
-            if (not compact) {
-               buf << "A=" << std::setw(3) << a << " D=" << std::setw(5) << d;
-            } else {
-               buf << a << " " << d;
-            }
-
-            // Show source line correlation
-            BCLine line = lj_debug_line(pt, pc);
-            if (line >= 0) {
-               buf << (compact ? " ;" : "  ; line ") << line;
-            }
-
-            buf << "\n";
-         }
-         buf << "\n";
-      } else {
-         buf << "Cannot disassemble: not a Lua function\n\n";
-      }
-   }
-}
-```
-
-**Output Example:**
-```
-=== BYTECODE DISASSEMBLY ===
-Function: example.lua:42
-Bytecodes: 12, Constants: 3 (num), 2 (gc)
-
-[0000] GGET   A=  0 D=    1  ; line 43
-[0001] TGETV  A=  0 D=    2  ; line 43
-[0002] ADDVN  A=  0 D=    3  ; line 43
-[0003] MULVN  A=  0 D=    4  ; line 43
-[0004] RET1   A=  0 D=    2  ; line 43
-...
-```
-
-**Compact Output:**
-```
-0000 GGET   0 1 ;43
-0001 TGETV  0 2 ;43
-0002 ADDVN  0 3 ;43
-0003 MULVN  0 4 ;43
-0004 RET1   0 2 ;43
-```
-
-**Enhanced Version (with constant decoding):**
-Could be extended to show constant values inline:
-```cpp
-// After showing operands, decode constants
-uint16_t mode = lj_bc_mode[op];
-if ((mode & BCMstr) and d < pt->sizekgc) {
-   GCobj *kgc = proto_kgc(pt, d);
-   if (kgc->gch.gct == ~LJ_TSTR) {
-      GCstr *str = gco2str(kgc);
-      buf << "  ; \"" << std::string_view(strdata(str),
-                       std::min(str->len, (MSize)20)) << "\"";
-   }
-}
-```
-
-**Use Cases:**
-- Understanding compilation of complex expressions
-- Debugging closure creation and upvalue handling
-- Performance analysis (identifying expensive operations)
-- Educational (learning how Lua compiles to bytecode)
-
-**Required Headers:**
-```cpp
-#include "lj_obj.h"     // For GCproto, BCIns, etc.
-#include "lj_bc.h"      // For bc_op, bc_a, bc_d, lj_bc_mode, lj_bc_names
-#include "lj_debug.h"   // For lj_debug_line
-```
-
-**New Test Required:** `testDisassembly()` in test_debuglog.fluid
+**Testing:** `testDisassembly()` implemented in `src/fluid/tests/test_debuglog.fluid` to validate headers, instruction listings, and return opcodes.
 
 #### 3.2 Binary Bytecode Dump
 
@@ -633,7 +519,7 @@ All 12 current tests in `test_debuglog.fluid` must continue to pass:
 - `testCoroutineState()` - Verify coroutine info display
 
 #### For Phase 3:
-- `testDisassembly()` - Verify bytecode disassembly output
+- ✅ `testDisassembly()` - Verify bytecode disassembly output (COMPLETED 2025-11-11)
 - `testDisassemblyFormat()` - Verify instruction formatting and line correlation
 - `testDisassemblyCompact()` - Verify compact disassembly mode
 - `testDisassemblyWithConstants()` - Verify constant value display (if implemented)

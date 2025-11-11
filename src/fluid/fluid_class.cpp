@@ -7,13 +7,17 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
+#include <iomanip>
 #include <sstream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "lua.hpp"
 
 extern "C" {
  #include "lj_obj.h"
+ #include "lj_bc.h"
 }
 
 #include "hashes.h"
@@ -29,6 +33,297 @@ inline CSTRING check_bom(CSTRING Value)
    else if (((char)Value[0] IS 0xfe) and ((char)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
    else if (((char)Value[0] IS 0xff) and ((char)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
    return Value;
+}
+
+static const char *const glBytecodeNames[] = {
+#define BCNAME(name, ma, mb, mc, mt) #name,
+   BCDEF(BCNAME)
+#undef BCNAME
+};
+
+static std::string format_string_constant(const char *Data, size_t Length)
+{
+   std::string text;
+   size_t limit = Length;
+   bool truncated = false;
+
+   if (Length > 40) {
+      limit = 40;
+      truncated = true;
+   }
+
+   for (size_t i = 0; i < limit; i++) {
+      unsigned char ch = (unsigned char)Data[i];
+
+      if (ch IS '\n') text += "\\n";
+      else if (ch IS '\r') text += "\\r";
+      else if (ch IS '\t') text += "\\t";
+      else if (ch IS '\\') text += "\\\\";
+      else if (ch IS '"') text += "\\\"";
+      else if (ch < 32) {
+         std::ostringstream hex;
+         const char *digits = "0123456789ABCDEF";
+         hex << "\\x";
+         hex << digits[(ch >> 4) & 15];
+         hex << digits[ch & 15];
+         text += hex.str();
+      }
+      else text += char(ch);
+   }
+
+   if (truncated) text += "...";
+
+   return std::string("\"") + text + "\"";
+}
+
+static BCLine get_proto_line(GCproto *Proto, BCPos Pc)
+{
+   const void *lineinfo = proto_lineinfo(Proto);
+
+   if ((Pc <= Proto->sizebc) and lineinfo) {
+      BCLine first_line = Proto->firstline;
+      if (Pc IS Proto->sizebc) return first_line + Proto->numline;
+      if (Pc IS 0) return first_line;
+
+      BCPos offset = Pc - 1;
+
+      if (Proto->numline < 256) return first_line + (BCLine)((const uint8_t *)lineinfo)[offset];
+      if (Proto->numline < 65536) return first_line + (BCLine)((const uint16_t *)lineinfo)[offset];
+      return first_line + (BCLine)((const uint32_t *)lineinfo)[offset];
+   }
+
+   return 0;
+}
+
+static const char *get_proto_uvname(GCproto *Proto, uint32_t Index)
+{
+   const uint8_t *info = proto_uvinfo(Proto);
+   if (not info) return "";
+   if (Index >= Proto->sizeuv) return "";
+
+   const uint8_t *ptr = info;
+   uint32_t remaining = Index;
+
+   while (remaining) {
+      while (*ptr) ptr++;
+      ptr++;
+      remaining--;
+   }
+
+   return (const char *)ptr;
+}
+
+static std::string describe_num_constant(const TValue *Value)
+{
+   if (tvisint((const TValue *)Value)) return std::to_string(intV((const TValue *)Value));
+
+   if (tvisnum((const TValue *)Value)) {
+      std::ostringstream number;
+      number << numV((const TValue *)Value);
+      return number.str();
+   }
+
+   return std::string("<number>");
+}
+
+static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, bool Compact)
+{
+   GCobj *gc_obj = proto_kgc(Proto, Index);
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
+      GCstr *str_obj = gco2str(gc_obj);
+      return std::string("K") + format_string_constant(strdata(str_obj), str_obj->len);
+   }
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
+      GCproto *child = gco2pt(gc_obj);
+      std::ostringstream info;
+      info << "K<func ";
+      info << child->firstline;
+      info << "-";
+      info << (child->firstline + child->numline);
+      info << ">";
+      return info.str();
+   }
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return std::string("K<table>");
+
+#if LJ_HASFFI
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return std::string("K<cdata>");
+#endif
+
+   (void)Compact;
+   return std::string("K<gc>");
+}
+
+static std::string describe_primitive(int Value)
+{
+   if (Value IS 0) return std::string("nil");
+   if (Value IS 1) return std::string("false");
+   if (Value IS 2) return std::string("true");
+   return std::string("pri(") + std::to_string(Value) + ")";
+}
+
+static void append_operand(std::string &Operands, const char *Label, const std::string &Value)
+{
+   if (not Operands.empty()) Operands += " ";
+   Operands += Label;
+   Operands += "=";
+   Operands += Value;
+}
+
+static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc, bool Compact)
+{
+   switch (Mode) {
+      case BCMdst:
+      case BCMbase:
+      case BCMvar:
+      case BCMrbase:
+         return std::string("R") + std::to_string(Value);
+
+      case BCMuv: {
+         const char *name = get_proto_uvname(Proto, (uint32_t)Value);
+         if (name) {
+            std::string text = "U";
+            text += std::to_string(Value);
+            text += "(";
+            text += name;
+            text += ")";
+            return text;
+         }
+         return std::string("U") + std::to_string(Value);
+      }
+
+      case BCMlit:
+         return std::string("#") + std::to_string(Value);
+
+      case BCMlits:
+         return std::string("#") + std::to_string((int16_t)Value);
+
+      case BCMpri:
+         return describe_primitive(Value);
+
+      case BCMnum: {
+         const TValue *number = proto_knumtv(Proto, Value);
+         return std::string("#") + describe_num_constant(number);
+      }
+
+      case BCMstr: {
+         ptrdiff_t index = -(ptrdiff_t)Value - 1;
+         return describe_gc_constant(Proto, index, Compact);
+      }
+
+      case BCMfunc: {
+         ptrdiff_t index = -(ptrdiff_t)Value - 1;
+         return describe_gc_constant(Proto, index, Compact);
+      }
+
+      case BCMtab: {
+         ptrdiff_t index = -(ptrdiff_t)Value - 1;
+         return describe_gc_constant(Proto, index, Compact);
+      }
+
+      case BCMcdata: {
+         ptrdiff_t index = -(ptrdiff_t)Value - 1;
+         return describe_gc_constant(Proto, index, Compact);
+      }
+
+      case BCMjump: {
+         if ((BCPos)Value IS NO_JMP) return std::string("->(no)");
+
+         ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
+         ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
+
+         if (dest < 0) return std::string("->(neg)");
+         if (dest >= (ptrdiff_t)Proto->sizebc) return std::string("->(out)");
+
+         return std::string("->") + std::to_string((BCPos)dest);
+      }
+
+      case BCMnone:
+      default:
+         break;
+   }
+
+   (void)Proto;
+   (void)Pc;
+   (void)Compact;
+   return std::to_string(Value);
+}
+
+static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact)
+{
+   const BCIns *bc_stream = proto_bc(Proto);
+   std::vector<uint8_t> targets(Proto->sizebc ? Proto->sizebc : 1, 0);
+
+   for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
+      BCIns instruction = bc_stream[pc];
+      BCOp opcode = bc_op(instruction);
+
+      if (bcmode_hasd(opcode)) {
+         BCMode mode_d = bcmode_d(opcode);
+         if (mode_d IS BCMjump) {
+            int value = bc_d(instruction);
+            if ((BCPos)value != NO_JMP) {
+               ptrdiff_t offset = (ptrdiff_t)value - BCBIAS_J;
+               ptrdiff_t dest = (ptrdiff_t)pc + 1 + offset;
+               if (dest >= 0 and dest < (ptrdiff_t)Proto->sizebc) targets[(size_t)dest] = 1;
+            }
+         }
+      }
+   }
+
+   for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
+      BCIns instruction = bc_stream[pc];
+      BCOp opcode = bc_op(instruction);
+      BCMode mode_a = bcmode_a(opcode);
+      BCMode mode_b = bcmode_b(opcode);
+      BCMode mode_c = bcmode_c(opcode);
+      BCMode mode_d = bcmode_d(opcode);
+
+      int value_a = bc_a(instruction);
+      int value_b = bc_b(instruction);
+      int value_c = bc_c(instruction);
+      int value_d = bc_d(instruction);
+
+      std::string operands;
+
+      if (mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(Proto, mode_a, value_a, pc, Compact));
+
+      if (bcmode_hasd(opcode)) {
+         if (mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(Proto, mode_d, value_d, pc, Compact));
+      }
+      else {
+         if (mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(Proto, mode_b, value_b, pc, Compact));
+         if (mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, mode_c, value_c, pc, Compact));
+      }
+
+      BCLine line = get_proto_line(Proto, pc);
+
+      if (Compact) {
+         Buf << "[" << pc << "]";
+         if (targets.size() > pc and targets[pc]) Buf << "*";
+         if (line >= 0) Buf << "(" << line << ")";
+         Buf << " " << glBytecodeNames[opcode];
+         if (not operands.empty()) Buf << " " << operands;
+         Buf << "\n";
+      }
+      else {
+         std::ostringstream line_buf;
+         line_buf << std::setfill('0') << std::setw(4) << pc;
+         line_buf << " ";
+         line_buf << (targets.size() > pc and targets[pc] ? "=>" : "  ");
+         line_buf << " ";
+         line_buf << std::setfill(' ');
+         if (line >= 0) line_buf << std::setw(4) << line;
+         else line_buf << "   -";
+         line_buf << " ";
+         line_buf << std::left << std::setw(9) << glBytecodeNames[opcode];
+         line_buf << std::right;
+         if (not operands.empty()) line_buf << " " << operands;
+         Buf << line_buf.str() << "\n";
+      }
+   }
 }
 
 // Dump the variables of any global table
@@ -594,7 +889,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    bool show_globals = false;
    bool show_memory = false;
    bool show_state = false;
-   bool show_bytecode = false;
+   bool show_disasm = false;
    bool show_funcinfo = false;
    bool compact = false;
    bool log_output = false;
@@ -604,7 +899,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
       if (opts.find("all") != std::string::npos) {
          show_stack = show_locals = show_upvalues = show_globals =
-         show_memory = show_state = show_bytecode = true;
+         show_memory = show_state = show_disasm = true;
          show_funcinfo = true;
       }
       else {
@@ -614,7 +909,8 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          show_globals  = (opts.find("globals") != std::string::npos);
          show_memory   = (opts.find("memory") != std::string::npos);
          show_state    = (opts.find("state") != std::string::npos);
-         show_bytecode = (opts.find("bytecode") != std::string::npos);
+         show_disasm   = (opts.find("disasm") != std::string::npos);
+         if (not show_disasm) show_disasm = (opts.find("bytecode") != std::string::npos);
          show_funcinfo = (opts.find("funcinfo") != std::string::npos);
          log_output    = (opts.find("log") != std::string::npos);
       }
@@ -845,16 +1141,47 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             if (not compact) buf << "\n";
          }
       }
+
+      if (show_disasm) {
+         lua_Debug ar;
+         if (lua_getstack(prv->Lua, 1, &ar)) {
+            lua_getinfo(prv->Lua, "Sln", &ar);
+
+            if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+
+            if (lua_getinfo(prv->Lua, "f", &ar)) {
+               GCfunc *fn = funcV(prv->Lua->top - 1);
+               if (isluafunc(fn)) {
+                  GCproto *proto = funcproto(fn);
+                  const char *func_name = ar.name ? ar.name : "<anonymous>";
+
+                  if (not compact) {
+                     buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
+                         << "-" << ar.lastlinedefined << ")\n";
+                     buf << "Bytecodes: " << proto->sizebc << ", Constants: " << proto->sizekn
+                         << " numeric, " << proto->sizekgc << " objects\n\n";
+                  }
+
+                  emit_disassembly(proto, buf, compact);
+               }
+               else {
+                  buf << "(current frame is a C function; bytecode unavailable)\n";
+               }
+               lua_pop(prv->Lua, 1);
+            }
+            else buf << "(unable to inspect current frame)\n";
+
+            if (not compact) buf << "\n";
+         }
+         else {
+            if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+            buf << "(no active Lua frame)\n";
+            if (not compact) buf << "\n";
+         }
+      }
    }
 
    // Here we can process options that are meaningful post-execution.
-   
-   // Bytecode (if available via jit.bc)
-   if (show_bytecode) {
-      if (not compact) buf << "=== BYTECODE ===\n";
-      buf << "(Bytecode inspection requires jit.bc module - use require('jit.bc').dump(func))\n";
-      if (not compact) buf << "\n";
-   }
 
    if (show_globals) { // Global variables
       if (not compact) buf << "=== GLOBALS ===\n";
