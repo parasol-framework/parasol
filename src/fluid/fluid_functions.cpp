@@ -145,12 +145,20 @@ int fcmd_catch(lua_State *Lua)
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
-               if ((prv->CaughtError >= ERR::ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
+               // lua_pcall() leaves the error object on the top of the stack.  luaL_ref() will
+               // pop that value and store a registry reference for later use.
+               int raw_error_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+               bool raw_error_valid = (raw_error_ref != LUA_NOREF) and (raw_error_ref != LUA_REFNIL);
+
+               ERR filter_error = prv->CaughtError;
+               if (filter_error < ERR::ExceptionThreshold) filter_error = ERR::Exception;
+
+               if ((filter_error >= ERR::ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
                   while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
-                     if (lua_tointeger(Lua, -1) IS int(prv->CaughtError)) {
+                     if (lua_tointeger(Lua, -1) IS int(filter_error)) {
                         caught_by_filter = TRUE;
                         lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
                      }
@@ -174,8 +182,16 @@ int fcmd_catch(lua_State *Lua)
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "message");
-                  if (lua_type(Lua, -4) IS LUA_TSTRING) {
-                     lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
+                  if (raw_error_valid) {
+                     lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                     if (lua_type(Lua, -1) IS LUA_TSTRING) {
+                        // Leave the string for the table assignment.
+                     }
+                     else {
+                        lua_pop(Lua, 1);
+                        if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+                        else lua_pushstring(Lua, "<No message>");
+                     }
                   }
                   else if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
                   else lua_pushstring(Lua, "<No message>");
@@ -185,11 +201,18 @@ int fcmd_catch(lua_State *Lua)
                   lua_pushinteger(Lua, prv->ErrorLine);
                   lua_settable(Lua, -3);
 
-                  lua_call(Lua, 1, 0); // nargs, nresults
+                  if (raw_error_valid) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
 
-                  lua_pop(Lua, 1); // Pop the error message.
+                  lua_call(Lua, 1, 0); // nargs, nresults
                }
-               else luaL_error(Lua, lua_tostring(Lua, -1)); // Rethrow the message
+               else {
+                  if (raw_error_valid) {
+                     lua_rawgeti(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                     luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+                     lua_error(Lua);
+                  }
+                  else luaL_error(Lua, "<No message>");
+               }
 
                lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? int(prv->CaughtError) : int(ERR::Exception));
                return 1;
