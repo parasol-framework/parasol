@@ -52,8 +52,8 @@ function testFunction()
    local v = 'start ' .. (nil ? returnString()) .. ' end'
    assert(v is "start Result end", "Failed function case 3, got '" .. tostring(v) .. "'")
 
-   local options = { }
-   local v = '' .. (options.val ? returnString())
+   local val
+   local v = '' .. (val ? returnString())
    assert(v is "Result", "Failed function case 4, got '" .. tostring(v) .. "'")
 end
 
