@@ -83,19 +83,6 @@ static const ActionArray clActions[] = {
 };
 
 //********************************************************************************************************************
-
-static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
-static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
-static ERR FLUID_DebugLog(objScript *, struct sc::DebugLog *);
-
-static const MethodEntry clMethods[] = {
-   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", nullptr, 0 },
-   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", nullptr, 0 },
-   { sc::DebugLog::id,       (APTR)FLUID_DebugLog,       "DebugLog", nullptr, 0 },
-   { AC::NIL, nullptr, nullptr, nullptr, 0 }
-};
-
-//********************************************************************************************************************
 // NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
 
 static void free_all(objScript *Self)

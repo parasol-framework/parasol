@@ -1,5 +1,20 @@
 // Support methods for the Script class
 
+//********************************************************************************************************************
+
+static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
+static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
+static ERR FLUID_DebugLog(objScript *, struct sc::DebugLog *);
+
+static const MethodEntry clMethods[] = {
+   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", nullptr, 0 },
+   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", nullptr, 0 },
+   { sc::DebugLog::id,       (APTR)FLUID_DebugLog,       "DebugLog", nullptr, 0 },
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
+};
+
+//********************************************************************************************************************
+
 static const char *const glBytecodeNames[] = {
 #define BCNAME(name, ma, mb, mc, mt) #name,
    BCDEF(BCNAME)
