@@ -306,6 +306,25 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+-- Test binary dump option (Phase 3.2 feature)
+
+function testBytecodeDump()
+   local function captureDump(a, b)
+      local temp = a + b
+      local err, result = glSelf.mtDebugLog('dump,log')
+      return result
+   end
+
+   local result = captureDump(4, 9)
+
+   assert(result??, 'DebugLog should return a result')
+   assert(string.find(result, 'BYTECODE DUMP'), 'Should contain dump header')
+   assert(string.find(result, 'Bytes:%s*%d+'), 'Should report byte count')
+   assert(string.find(result, '%d+:%s*%x%x'), 'Should contain hexadecimal byte output')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
    return {
       tests = {
          'testDefaultStackTrace',
@@ -321,6 +340,7 @@ end
          'testVariousTypes',
          'testNestedStack',
          'testFuncInfo',
-         'testDisassembly'
+         'testDisassembly',
+         'testBytecodeDump'
       }
    }

@@ -306,6 +306,68 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
 
 //********************************************************************************************************************
 
+static int append_dump_chunk(lua_State *, const void *Chunk, size_t Size, void *UserData)
+{
+   auto bytes = reinterpret_cast<std::vector<uint8_t> *>(UserData);
+   if (not bytes or not Chunk or (Size IS 0)) return 1;
+
+   auto data = static_cast<const uint8_t *>(Chunk);
+   bytes->insert(bytes->end(), data, data + Size);
+   return 0;
+}
+
+//********************************************************************************************************************
+
+static void append_hex_dump(const std::vector<uint8_t> &Data, std::ostringstream &Buf, bool Compact)
+{
+   if (Data.empty()) {
+      Buf << "(empty)\n";
+      return;
+   }
+
+   constexpr char digits[] = "0123456789abcdef";
+
+   if (Compact) {
+      for (auto byte : Data) {
+         Buf << digits[(byte >> 4) & 0x0f] << digits[byte & 0x0f];
+      }
+      Buf << "\n";
+      return;
+   }
+
+   constexpr size_t bytes_per_line = 16;
+   size_t offset = 0;
+
+   while (offset < Data.size()) {
+      Buf << std::setfill('0') << std::setw(4) << offset << ": ";
+      Buf << std::setfill(' ');
+
+      size_t line_end = std::min(offset + bytes_per_line, Data.size());
+
+      for (size_t index = offset; index < offset + bytes_per_line; index++) {
+         if (index < line_end) {
+            uint8_t byte = Data[index];
+            Buf << digits[(byte >> 4) & 0x0f] << digits[byte & 0x0f];
+         }
+         else Buf << "  ";
+
+         if (index + 1 < offset + bytes_per_line) Buf << ' ';
+      }
+
+      Buf << "  ";
+
+      for (size_t index = offset; index < line_end; index++) {
+         unsigned char ch = Data[index];
+         Buf << (std::isprint(ch) ? char(ch) : '.');
+      }
+
+      Buf << "\n";
+      offset += bytes_per_line;
+   }
+}
+
+//********************************************************************************************************************
+
 static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 {
    pf::Log log;
@@ -326,6 +388,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    bool show_memory = false;
    bool show_state = false;
    bool show_disasm = false;
+   bool show_dump = false;
    bool show_funcinfo = false;
    bool compact = false;
    bool log_output = false;
@@ -347,6 +410,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          show_state    = (opts.find("state") != std::string::npos);
          show_disasm   = (opts.find("disasm") != std::string::npos);
          if (not show_disasm) show_disasm = (opts.find("bytecode") != std::string::npos);
+         show_dump     = (opts.find("dump") != std::string::npos);
          show_funcinfo = (opts.find("funcinfo") != std::string::npos);
          log_output    = (opts.find("log") != std::string::npos);
       }
@@ -613,6 +677,45 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       }
       else {
          if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+         buf << "(no active Lua frame)\n";
+         if (not compact) buf << "\n";
+      }
+   }
+
+   if (show_dump) {
+      lua_Debug ar;
+      if (lua_getstack(prv->Lua, 1, &ar)) {
+         lua_getinfo(prv->Lua, "Sln", &ar);
+
+         if (not compact) buf << "=== BYTECODE DUMP ===\n";
+
+         if (lua_getinfo(prv->Lua, "f", &ar)) {
+            GCfunc *fn = funcV(prv->Lua->top - 1);
+            if (isluafunc(fn)) {
+               std::vector<uint8_t> binary;
+
+               if (lua_dump(prv->Lua, append_dump_chunk, &binary) IS 0) {
+                  if (not compact) {
+                     const char *func_name = ar.name ? ar.name : "<anonymous>";
+                     buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
+                         << "-" << ar.lastlinedefined << ")\n";
+                     buf << "Bytes: " << binary.size() << "\n";
+                  }
+
+                  append_hex_dump(binary, buf, compact);
+               }
+               else buf << "(failed to serialise bytecode)\n";
+            }
+            else buf << "(current frame is a C function; bytecode unavailable)\n";
+
+            lua_pop(prv->Lua, 1);
+         }
+         else buf << "(unable to inspect current frame)\n";
+
+         if (not compact) buf << "\n";
+      }
+      else {
+         if (not compact) buf << "=== BYTECODE DUMP ===\n";
          buf << "(no active Lua frame)\n";
          if (not compact) buf << "\n";
       }

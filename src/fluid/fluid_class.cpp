@@ -7,6 +7,8 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
+#include <algorithm>
+#include <cctype>
 #include <iomanip>
 #include <sstream>
 #include <string>

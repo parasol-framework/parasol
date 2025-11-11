@@ -1,6 +1,6 @@
 # Fluid DebugLog Enhancement Plan
 
-**Status:** 🎉 Phase 1 Complete & Tested - ✅ Phase 3.1 Complete - Phase 2 Pending
+**Status:** 🎉 Phase 1 Complete & Tested - ✅ Phase 3.1 Complete - ✅ Phase 3.2 Complete - Phase 2 Pending
 **Priority:** Medium
 **Effort:** Phase 1 completed in ~6 hours (including testing and bug fixes)
 **Target:** Fluid module (src/fluid/fluid_class.cpp) and LuaJIT debug (src/fluid/luajit-2.1/src/lj_debug.c)
@@ -419,16 +419,20 @@ if (show_state) {
 
 #### 3.2 Binary Bytecode Dump
 
+**Status:** ✅ **COMPLETED 2025-11-11**
+
 **New Option:** `dump` (optional, lower priority than `disasm`)
 
-**Implementation:** Use `lj_bcwrite()` to dump binary bytecode
+**What Was Delivered:**
+- Added native bytecode serialisation using LuaJIT's exposed `lua_dump()` API (internally powered by `lj_bcwrite`) to capture the active Lua frame and render it as a structured hex dump (offsets, byte values, ASCII preview) for readability.
+- Emitted verbose headers describing the function source range and byte count in full mode, while honouring compact output for inline logging scenarios.
+- Surfaced clear diagnostics when bytecode cannot be obtained (e.g., current frame is a C function, no Lua stack frame, or writer failure).
 
-**Use Case:** Exporting bytecode for external analysis tools
+**Resulting Benefits:**
+- Fluid developers can export raw bytecode without leaving the debugger, supporting archival, diffing, or external tooling workflows.
+- The hex representation complements the `disasm` view by showing the exact byte layout that is persisted or transmitted.
 
-**Note:** Less useful than `disasm` for interactive debugging, but useful for:
-- Saving compiled bytecode to file
-- Analyzing with external tools
-- Binary diffing between versions
+**Testing:** `testBytecodeDump()` added to `src/fluid/tests/test_debuglog.fluid` to validate headers, byte counts, and hexadecimal output formatting.
 
 #### 3.3 JIT Trace Information
 
@@ -520,6 +524,7 @@ All 12 current tests in `test_debuglog.fluid` must continue to pass:
 
 #### For Phase 3:
 - ✅ `testDisassembly()` - Verify bytecode disassembly output (COMPLETED 2025-11-11)
+- ✅ `testBytecodeDump()` - Verify binary dump formatting and diagnostics (COMPLETED 2025-11-11)
 - `testDisassemblyFormat()` - Verify instruction formatting and line correlation
 - `testDisassemblyCompact()` - Verify compact disassembly mode
 - `testDisassemblyWithConstants()` - Verify constant value display (if implemented)
