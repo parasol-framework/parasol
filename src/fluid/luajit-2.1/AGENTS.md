@@ -24,11 +24,14 @@ before diving into changes.
 ## Error Handling Configuration
 - LuaJIT is configured to use **internal frame unwinding** (`LJ_NO_UNWIND=1`)
   rather than external unwinding for non-MSVC builds.
-- Internal unwinding is appropriate because Parasol builds with `-fno-exceptions`.
+- **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses
+  Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.
+  There is no "internal unwinding" implementation for MSVC - SEH is the only
+  viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling
+  and causes catch() tests to fail with "attempt to call a nil value" errors.
+- Internal unwinding is appropriate for builds with `-fno-exceptions`.
   It's faster for error handling and doesn't require unwind tables throughout
   the C call stack.
-- The flag sets `LJ_UNWIND_EXT=0` in `lj_arch.h`, which causes `lj_err.cpp` to
-  use LuaJIT's own stack unwinding mechanism instead of system exception handlers.
 - See `lj_err.c` for detailed documentation on internal vs external
   unwinding trade-offs.
 
