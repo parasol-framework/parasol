@@ -56,8 +56,99 @@ static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
       ls->fs->freereg -= nexps - nvars;  // Drop leftover regs.
 }
 
+static int assign_if_empty(LexState* ls, LHSVarList* lh)
+{
+   FuncState* fs = ls->fs;
+   ExpDesc lhv, lhs_eval, rh;
+   ExpDesc nilv, falsev, zerov, emptyv;
+   BCReg freg_base, lhs_reg;
+   BCPos check_nil, check_false, check_zero, check_empty;
+   BCPos skip_assign, assign_pos;
+   BCReg nexps;
+
+   lhv = lh->v;
+
+   checkcond(ls, vkisvar(lh->v.k), LJ_ERR_XLEFTCOMPOUND);
+
+   lj_lex_next(ls);
+
+   freg_base = fs->freereg;
+
+   if (lh->v.k == VINDEXED) {
+      BCReg new_base, new_idx;
+      uint32_t orig_aux = lhv.u.s.aux;
+
+      new_base = fs->freereg;
+      bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
+      bcreg_reserve(fs, 1);
+
+      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+         new_idx = fs->freereg;
+         bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+         bcreg_reserve(fs, 1);
+         lh->v.u.s.info = new_base;
+         lh->v.u.s.aux = new_idx;
+      }
+      else {
+         lh->v.u.s.info = new_base;
+      }
+   }
+
+   lhs_eval = lh->v;
+   expr_discharge(fs, &lhs_eval);
+   lhs_reg = expr_toanyreg(fs, &lhs_eval);
+
+   expr_init(&nilv, VKNIL, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   check_nil = bcemit_jmp(fs);
+
+   expr_init(&falsev, VKFALSE, 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+   check_false = bcemit_jmp(fs);
+
+   expr_init(&zerov, VKNUM, 0);
+   setnumV(&zerov.u.nval, 0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, lhs_reg, const_num(fs, &zerov)));
+   check_zero = bcemit_jmp(fs);
+
+   expr_init(&emptyv, VKSTR, 0);
+   emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
+   check_empty = bcemit_jmp(fs);
+
+   skip_assign = bcemit_jmp(fs);
+
+   assign_pos = fs->pc;
+
+   nexps = expr_list(ls, &rh);
+   checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+
+   expr_discharge(fs, &rh);
+   expr_toreg(fs, &rh, lhs_reg);
+
+   bcemit_store(fs, &lhv, &rh);
+
+   jmp_patch(fs, check_nil, assign_pos);
+   jmp_patch(fs, check_false, assign_pos);
+   jmp_patch(fs, check_zero, assign_pos);
+   jmp_patch(fs, check_empty, assign_pos);
+   jmp_patch(fs, skip_assign, fs->pc);
+
+   fs->freereg = freg_base;
+   if (lhv.k == VINDEXED) {
+      uint32_t orig_aux = lhv.u.s.aux;
+      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
+         bcreg_free(fs, (BCReg)orig_aux);
+      bcreg_free(fs, (BCReg)lhv.u.s.info);
+   }
+   return 1;
+}
+
 static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
 {
+   if (opType == TK_cif_empty)
+      return assign_if_empty(ls, lh);
+
    FuncState* fs = ls->fs;
    ExpDesc lhv, infix, rh;
    int32_t nexps;
@@ -192,7 +283,8 @@ static void parse_call_assign(LexState* ls)
       setbc_b(bcptr(fs, &vl.v), 1);  // No results.
    }
    else if (ls->tok == TK_cadd || ls->tok == TK_csub || ls->tok == TK_cmul ||
-      ls->tok == TK_cdiv || ls->tok == TK_cmod || ls->tok == TK_cconcat) {
+      ls->tok == TK_cdiv || ls->tok == TK_cmod || ls->tok == TK_cconcat ||
+      ls->tok == TK_cif_empty) {
       vl.prev = NULL;
       assign_compound(ls, &vl, ls->tok);
    }

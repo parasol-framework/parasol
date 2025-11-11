@@ -22,6 +22,7 @@
   __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
   __(number, <number>) __(name, <name>) __(string, <string>) \
   __(cadd, +=) __(csub, -=) __(cmul, *=) __(cdiv, /=) __(cconcat, ..=) __(cmod, %=) \
+  __(cif_empty, ?=) \
   __(plusplus, ++) \
   __(eof, <eof>)
 
