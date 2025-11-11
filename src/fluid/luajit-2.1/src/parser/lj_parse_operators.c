@@ -481,10 +481,19 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             expr_toreg(fs, e2, rhs_reg);
             bcemit_AD(fs, BC_MOV, reg, rhs_reg);
             jmp_patch(fs, skip, fs->pc);
+            uint8_t saved_flags = e1->flags;  // Save flags before expr_init
             expr_init(e1, VNONRELOC, reg);
-            // Free the temporary register if it was allocated for the RHS and is at the top of the register stack.
-            if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && rhs_reg + 1 == fs->freereg)
-               fs->freereg = rhs_reg;
+            e1->flags = saved_flags;  // Restore flags after expr_init
+            // Collapse freereg to drop rhs_reg and any temporaries.
+            // After the MOV, the result only lives in reg, so we must free rhs_reg.
+            // Set freereg to max(nactvar, reg + 1) to drop stale copies in rhs_reg.
+            // This prevents BC_CAT from concatenating them when result is used in concatenation.
+            // Only adjust if rhs_reg was actually used (rhs_reg > reg) and not from safe nav chain.
+            if (rhs_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
+               BCReg target_free = (reg >= fs->nactvar) ? reg + 1 : fs->nactvar;
+               if (fs->freereg > target_free)
+                  fs->freereg = target_free;
+            }
          }
          else {
             // Constant falsey value - evaluate RHS directly
