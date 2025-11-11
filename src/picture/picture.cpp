@@ -420,7 +420,10 @@ static ERR PICTURE_Init(extPicture *Self)
             return ERR::File;
          }
       }
-      else return log.warning(ERR::FileNotFound);
+      else {
+         log.warning("Failed to find '%s'", Self->prvPath.c_str());
+         return ERR::FileNotFound;
+      }
    }
 
    return ERR::NoSupport;

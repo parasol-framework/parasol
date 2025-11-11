@@ -2817,18 +2817,18 @@ static const FieldArray DisplayFields[] = {
    // Virtual fields
    { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Chipset },
    { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, GET_Gamma, SET_Gamma },
-   { "HDensity",            FDF_VIRTUAL|FDF_INT|FDF_RW,     GET_HDensity, SET_HDensity },
-   { "VDensity",            FDF_VIRTUAL|FDF_INT|FDF_RW,     GET_VDensity, SET_VDensity },
+   { "HDensity",            FDF_VIRTUAL|FDF_INT|FDF_RW,      GET_HDensity, SET_HDensity },
+   { "VDensity",            FDF_VIRTUAL|FDF_INT|FDF_RW,      GET_VDensity, SET_VDensity },
    { "Display",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Display },
    { "DisplayManufacturer", FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DisplayManufacturer },
-   { "InsideWidth",         FDF_VIRTUAL|FDF_INT|FDF_R,      GET_InsideWidth },
-   { "InsideHeight",        FDF_VIRTUAL|FDF_INT|FDF_R,      GET_InsideHeight },
+   { "InsideWidth",         FDF_VIRTUAL|FDF_INT|FDF_R,       GET_InsideWidth },
+   { "InsideHeight",        FDF_VIRTUAL|FDF_INT|FDF_R,       GET_InsideHeight },
    { "Manufacturer",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Manufacturer },
    { "Opacity",             FDF_VIRTUAL|FDF_DOUBLE|FDF_W,    GET_Opacity, SET_Opacity },
    { "ResizeFeedback",      FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_ResizeFeedback, SET_ResizeFeedback },
    { "WindowHandle",        FDF_VIRTUAL|FDF_POINTER|FDF_RW,  GET_WindowHandle, SET_WindowHandle },
    { "Title",               FDF_VIRTUAL|FDF_STRING|FDF_RW,   GET_Title, SET_Title },
-   { "TotalResolutions",    FDF_VIRTUAL|FDF_INT|FDF_R,      GET_TotalResolutions },
+   { "TotalResolutions",    FDF_VIRTUAL|FDF_INT|FDF_R,       GET_TotalResolutions },
    END_FIELD
 };
 

@@ -3,6 +3,14 @@
 function testNil()
    local v = nil ? "A"
    assert(v is "A", "Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'")
+
+   local Options = { quit = nil }
+   local v = (Options.quit ? nil)
+   assert(v is nil, "Expected nil, got " .. tostring(v))
+
+   Options.quit = true
+   local v = (Options.quit ? nil)
+   assert(v is true, "Expected true, got " .. tostring(v))
 end
 
 function testFalse()
@@ -28,6 +36,25 @@ end
 function testTruthyNumber()
    local v = 5 ? "A"
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
+end
+
+function testFunction()
+   local function returnString()
+      return "Result"
+   end
+
+   local v = returnString() ? "A"
+   assert(v is "Result", "Failed function case 1, got '" .. tostring(v) .. "'")
+   
+   local v = nil ? returnString()
+   assert(v is "Result", "Failed function case 2, got '" .. tostring(v) .. "'")
+      
+   local v = 'start ' .. (nil ? returnString()) .. ' end'
+   assert(v is "start Result end", "Failed function case 3, got '" .. tostring(v) .. "'")
+
+   local options = { }
+   local v = '' .. (options.val ? returnString())
+   assert(v is "Result", "Failed function case 4, got '" .. tostring(v) .. "'")
 end
 
 function testTable()
@@ -97,6 +124,6 @@ end
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testRuntimeZero', 'testTable'
+         'testRuntimeZero', 'testTable', 'testFunction'
       }
    }

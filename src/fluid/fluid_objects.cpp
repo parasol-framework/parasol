@@ -202,6 +202,7 @@ inline void build_read_table(object *Def)
             if (dict[i].Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
             else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
          }
+         else if (dict[i].Flags & FD_FUNCTION); // Unsupported
          else pf::Log().warning("Unable to support field %s.%s for reading", Def->Class->Name, dict[i].Name);
       }
    }

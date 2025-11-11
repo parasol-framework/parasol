@@ -1,6 +1,6 @@
 -- Flute tests for the catch() function
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that catch() does nothing if no error is raised.
 
 function testCatchClean()
@@ -25,7 +25,7 @@ function testCatchClean()
    assert(hello is 'hello' and world is 'world', "Invalid results detected.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that a standard error() will result in the exception being caught.
 
 function testCatch()
@@ -43,7 +43,7 @@ function testCatch()
    assert(exception_raised, "Failed to catch the raised exception.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that an ERROR result other than ERR_Okay will result in the generation of an exception.
 
 function testCatchErrorCode()
@@ -62,7 +62,7 @@ function testCatchErrorCode()
    assert(exception_raised is true, "Failed to catch the raised exception.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that obj.new() raises exceptions correctly.
 
 function testCatchObject()
@@ -79,7 +79,7 @@ function testCatchObject()
    assert(exception_raised is true, "Failed to catch the raised exception.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that object actions raise exceptions correctly.
 
 function testCatchObjectAction()
@@ -97,7 +97,7 @@ function testCatchObjectAction()
    assert(exception_raised is true, "Failed to catch the raised exception.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Check that errors returned from writing to object fields are caught.
 
 function testSetField()
@@ -115,7 +115,7 @@ function testSetField()
    assert(exception_raised is true, "Failed to catch the raised exception.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Test that filtering for error codes works.
 
 function testCatchFilter()
@@ -134,7 +134,7 @@ function testCatchFilter()
    end)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Test that unfiltered errors are thrown to the parent block.
 
 function testMissedFilter()
@@ -157,7 +157,7 @@ function testMissedFilter()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Test simple catch() with no function defined to handle the exception.
 
 function testNoThrow()
@@ -172,12 +172,207 @@ function testNoThrow()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+-- This test exercises deep nesting of exception handlers to reliably trigger frame chain issues
+
+function testDeepNesting1()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         catch(function()
+            catch(function()
+               error("Deeply nested error")
+            end,
+            { ERR_Failed },  -- Wrong filter
+            function(Exception)
+               table.insert(result, "level4")
+            end)
+         end,
+         { ERR_Failed },  -- Wrong filter
+         function(Exception)
+            table.insert(result, "level3")
+         end)
+      end,
+      { ERR_Failed },  -- Wrong filter
+      function(Exception)
+         table.insert(result, "level2")
+      end)
+   end,
+   { ERR_Exception },  -- Correct filter
+   function(Exception)
+      table.insert(result, "level1")
+   end)
+
+   assert(#result == 1 and result[1] == "level1", "Deep nesting filter failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testCrossLuaC1()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         local xml = obj.new("xml", { flags="NEW" })
+         xml.acDraw()  -- Raises error from C
+      end,
+      { ERR_Failed },  -- Wrong filter
+      function(Exception)
+         print('Caught in inner filter')
+         table.insert(result, "inner")
+      end)
+   end,
+   { ERR_NoAction },  -- Correct filter
+   function(Exception)
+      print('Caught in outer filter')
+      table.insert(result, "outer")
+   end)
+
+   assert(#result == 1 and result[1] == "outer", "Lua-C cross boundary exception failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testMultipleFilterLevels()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         catch(function()
+            local xml = obj.new("xml", { flags="NEW" })
+            xml.acDraw()  -- Raises from C
+         end,
+         { ERR_Failed },  -- Wrong
+         function(Exception)
+            table.insert(result, "inner")
+         end)
+      end,
+      { ERR_Init },  -- Also wrong
+      function(Exception)
+         table.insert(result, "middle")
+      end)
+   end,
+   { ERR_NoAction },  -- Correct
+   function(Exception)
+      table.insert(result, "outer")
+   end)
+
+   assert(#result == 1 and result[1] == "outer", "Multi-filter exception failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testMixedLuaErrors()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         catch(function()
+            error("Lua error 1")
+         end,
+         { ERR_Failed },
+         function(Exception)
+            table.insert(result, "level3")
+         end)
+
+         error("Lua error 2")
+      end,
+      { ERR_Failed },
+      function(Exception)
+         table.insert(result, "level2")
+      end)
+
+      error("Lua error 3")
+   end,
+   { ERR_Exception },
+   function(Exception)
+      table.insert(result, "level1")
+   end)
+
+   assert(#result == 1 and result[1] == "level1", "Mixed Lua errors failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testFilterChaining()
+   -- Test the specific pattern from testMissedFilter
+   local status, msg = pcall(function()
+      catch(function()
+         local xml = obj.new("xml", { flags="NEW" })
+         xml.acDraw()
+      end,
+      { ERR_Failed },  -- Filter for the wrong error code
+      function(Exception)
+         -- Do nothing
+      end)
+   end)
+
+   assert(status is false, "Filter chaining test failed - exception should propagate")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testObjectMethodErrors()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         local time = obj.new("time", {})
+         time.acUndo()  -- Unsupported action
+      end,
+      { ERR_Failed },
+      function(Exception)
+         table.insert(result, "wrong")
+      end)
+   end,
+   { ERR_NoAction },
+   function(Exception)
+      table.insert(result, "correct")
+   end)
+
+   assert(#result == 1 and result[1] == "correct", "Object method error failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testChainedObjectCalls()
+   local result = {}
+
+   catch(function()
+      catch(function()
+         catch(function()
+            local time1 = obj.new("time", {})
+            time1.acUndo()
+         end,
+         { ERR_Failed },
+         function(Exception)
+            table.insert(result, "level3")
+         end)
+
+         local time2 = obj.new("time", {})
+         time2.acUndo()
+      end,
+      { ERR_Failed },
+      function(Exception)
+         table.insert(result, "level2")
+      end)
+   end,
+   { ERR_NoAction },
+   function(Exception)
+      table.insert(result, "level1")
+   end)
+
+   assert(#result == 1 and result[1] == "level1", "Chained object calls failed")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-         'testCatchClean', 'testCatch', 'testCatchErrorCode',
-         'testCatchFilter', 'testMissedFilter', 'testCatchObject',
-         'testCatchObjectAction', 'testNoThrow', 'testSetField'
+         'testCatchClean', 'testCatch', 'testCatchErrorCode', 'testCatchFilter', 'testMissedFilter', 'testCatchObject',
+         'testCatchObjectAction', 'testNoThrow', 'testSetField', 'testCatch', 'testDeepNesting1', 'testCrossLuaC1', 
+         'testMultipleFilterLevels', 'testMixedLuaErrors', 'testFilterChaining', 'testObjectMethodErrors',
+         'testChainedObjectCalls'
       }
    }
