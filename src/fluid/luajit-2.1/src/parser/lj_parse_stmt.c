@@ -277,7 +277,7 @@ static void parse_call_assign(LexState* ls)
    FuncState* fs = ls->fs;
    LHSVarList vl;
    expr_primary(ls, &vl.v);
-   if (vl.v.k == VNONRELOC && (vl.v.u.s.aux & POSTFIX_INC_STMT_FLAG))
+   if (vl.v.k == VNONRELOC && (vl.v.flags & POSTFIX_INC_STMT_FLAG))
       return;
    if (vl.v.k == VCALL) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.v), 1);  // No results.

@@ -46,13 +46,23 @@ typedef struct ExpDesc {
       GCstr* sval;   // String value.
    } u;
    ExpKind k;
+   uint8_t flags;      // Expression flags.
    BCPos t;      // True condition jump list.
    BCPos f;      // False condition jump list.
 } ExpDesc;
 
-#define SAFE_NAV_CHAIN_FLAG      0x80000000u
-// Flag carried in ExpDesc.aux to signal that a postfix increment formed a statement.
-#define POSTFIX_INC_STMT_FLAG    0x40000000u
+#define SAFE_NAV_CHAIN_FLAG      0x01u
+// Flag carried in ExpDesc.flags to signal that a postfix increment formed a statement.
+#define POSTFIX_INC_STMT_FLAG    0x02u
+// Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
+#define EXP_HAS_RHS_REG_FLAG     0x04u
+
+/*
+** Expression helpers that previously relied on flag bits within ExpDesc.aux now
+** store their metadata in ExpDesc.flags. The aux field can therefore be used
+** directly for temporary payloads (e.g., register numbers) without additional
+** masking.
+*/
 
 // Macros for expressions.
 #define expr_hasjump(e)      ((e)->t != (e)->f)
@@ -71,6 +81,7 @@ static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
 {
    e->k = k;
    e->u.s.info = info;
+   e->flags = 0;
    e->f = e->t = NO_JMP;
 }
 
