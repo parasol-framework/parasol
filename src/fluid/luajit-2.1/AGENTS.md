@@ -28,25 +28,17 @@ before diving into changes.
   - **Unix-like toolchains**: CMake builds the host tools (`minilua` and
     `buildvm`), generates assembly with DynASM, then archives
     `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
-- Non-MSVC builds compile with `LUAJIT_DISABLE_FFI`, `LUAJIT_ENABLE_LUA52COMPAT`,
-  and `LUAJIT_NO_UNWIND` (see `LUAJIT_NON_MSVC_DEFS` in the CMake file).
 - Install (`cmake --install build/agents --config <BuildType>`) before running
   tests so the freshly built `parasol` binary (or `parasol.exe` on Windows)
   and scripts land in `build/agents-install/`.
 
 ## Error Handling Configuration
-- LuaJIT is configured to use **internal frame unwinding** (`LJ_NO_UNWIND=1`)
-  rather than external unwinding for non-MSVC builds.
 - **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses
   Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.
   There is no "internal unwinding" implementation for MSVC - SEH is the only
   viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling
   and causes catch() tests to fail with "attempt to call a nil value" errors.
-- Internal unwinding is appropriate for builds with `-fno-exceptions`.
-  It's faster for error handling and doesn't require unwind tables throughout
-  the C call stack.
-- See `lj_err.c` for detailed documentation on internal vs external
-  unwinding trade-offs.
+- The `LJ_NO_UNWIND` flag results in broken code that corrupts memory if used in GCC builds.
 
 ## Testing
 - Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run
@@ -439,5 +431,3 @@ When implementing new operators:
   store investigation artefacts there long-term.
 - Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often
   surface as subtle script regressions rather than outright crashes.
-
-_Last updated: 2025-05-09_
