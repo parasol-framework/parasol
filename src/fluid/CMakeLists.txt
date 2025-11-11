@@ -49,7 +49,10 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT" "-DLUAJIT_NO_UNWIND")
+set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
+
+# If switching these off, define "-DLUAJIT_NO_UNWIND" for LUAJIT_NON_MSVC_DEFS
+set (LUAJIT_EXCEPTION_FLAGS "-funwind-tables" "-DLUAJIT_UNWIND_EXTERNAL")
 
 # Common compiler flags and paths
 set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
@@ -367,8 +370,9 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
-            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_C_COMPILER} 
+            ${LUAJIT_COMMON_CFLAGS} 
+            ${LUAJIT_EXCEPTION_FLAGS}
             ${LUAJIT_NON_MSVC_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
@@ -389,7 +393,9 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
+      COMMAND ${CMAKE_C_COMPILER} 
+         ${LUAJIT_COMMON_CFLAGS} 
+         ${LUAJIT_EXCEPTION_FLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
