@@ -115,11 +115,11 @@ static const char *get_proto_uvname(GCproto *Proto, uint32_t Index)
 
 static std::string describe_num_constant(const TValue *Value)
 {
-   if (tvisint((const TValue *)Value)) return std::to_string(intV((const TValue *)Value));
+   if (tvisint(Value)) return std::to_string(intV(Value));
 
-   if (tvisnum((const TValue *)Value)) {
+   if (tvisnum(Value)) {
       std::ostringstream number;
-      number << numV((const TValue *)Value);
+      number << numV(Value);
       return number.str();
    }
 
