@@ -309,7 +309,8 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
 static int append_dump_chunk(lua_State *, const void *Chunk, size_t Size, void *UserData)
 {
    auto bytes = reinterpret_cast<std::vector<uint8_t> *>(UserData);
-   if (not bytes or not Chunk or (Size IS 0)) return 1;
+   if ((not bytes) or (not Chunk)) return 1;
+   if (not Size) return 0; // End of dump signaled.
 
    auto data = static_cast<const uint8_t *>(Chunk);
    bytes->insert(bytes->end(), data, data + Size);
