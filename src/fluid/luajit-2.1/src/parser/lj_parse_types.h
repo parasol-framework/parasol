@@ -60,6 +60,10 @@ typedef struct ExpDesc {
 #define EXP_AUX_PAYLOAD_MASK     (~EXP_AUX_FLAG_MASK)
 #define exp_aux_flags(aux)       ((aux) & EXP_AUX_FLAG_MASK)
 #define exp_aux_payload(aux)     ((aux) & EXP_AUX_PAYLOAD_MASK)
+/* 
+** Add 1 to the register value to distinguish encoded register 0 from an unset payload (which is encoded as 0).
+** This allows register 0 to be represented without ambiguity.
+*/
 #define exp_aux_payload_encode(reg)   ((((uint32_t)(reg)) + 1u) & EXP_AUX_PAYLOAD_MASK)
 #define exp_aux_payload_has(aux)      (exp_aux_payload(aux) != 0u)
 #define exp_aux_payload_decode(aux)   (exp_aux_payload(aux) - 1u)
