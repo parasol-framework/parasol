@@ -62,7 +62,7 @@ function testCrossLuaC1()
          table.insert(result, "inner")
       end)
    end,
-   { ERR_NotSupported },  -- Correct filter
+   { ERR_NoAction },  -- Correct filter
    function(Exception)
       print('Caught in outer filter')
       table.insert(result, "outer")
@@ -77,8 +77,8 @@ function testMultipleFilterLevels()
    catch(function()
       catch(function()
          catch(function()
-            local pic = obj.new("picture", { flags="NEW" })
-            pic.acDraw()  -- Raises from C
+            local xml = obj.new("xml", { flags="NEW" })
+            xml.acDraw()  -- Raises from C
          end,
          { ERR_Failed },  -- Wrong
          function(Exception)
@@ -90,7 +90,7 @@ function testMultipleFilterLevels()
          table.insert(result, "middle")
       end)
    end,
-   { ERR_NotSupported },  -- Correct
+   { ERR_NoAction },  -- Correct
    function(Exception)
       table.insert(result, "outer")
    end)
@@ -157,7 +157,7 @@ function testObjectMethodErrors()
          table.insert(result, "wrong")
       end)
    end,
-   { ERR_NotSupported },
+   { ERR_NoAction },
    function(Exception)
       table.insert(result, "correct")
    end)
@@ -187,7 +187,7 @@ function testChainedObjectCalls()
          table.insert(result, "level2")
       end)
    end,
-   { ERR_NotSupported },
+   { ERR_NoAction },
    function(Exception)
       table.insert(result, "level1")
    end)
