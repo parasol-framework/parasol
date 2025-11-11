@@ -61,12 +61,10 @@ static std::string format_string_constant(const char *Data, size_t Length)
       else if (ch IS '\\') text += "\\\\";
       else if (ch IS '"') text += "\\\"";
       else if (ch < 32) {
-         std::ostringstream hex;
          const char *digits = "0123456789ABCDEF";
-         hex << "\\x";
-         hex << digits[(ch >> 4) & 15];
-         hex << digits[ch & 15];
-         text += hex.str();
+         text += "\\x";
+         text += digits[(ch >> 4) & 15];
+         text += digits[ch & 15];
       }
       else text += char(ch);
    }
