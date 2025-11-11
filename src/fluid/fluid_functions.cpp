@@ -198,9 +198,9 @@ int fcmd_catch(lua_State *Lua)
                   lua_pushinteger(Lua, prv->ErrorLine);
                   lua_settable(Lua, -3);
 
-                  lua_call(Lua, 1, 0); // nargs, nresults
-
                   if (raw_error_ref >= 0) luaL_unref(Lua, LUA_REGISTRYINDEX, raw_error_ref);
+
+                  lua_call(Lua, 1, 0); // nargs, nresults
                }
                else {
                   if (raw_error_ref >= 0) {
