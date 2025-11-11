@@ -183,7 +183,7 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
 
       case BCMuv: {
          const char *name = get_proto_uvname(Proto, (uint32_t)Value);
-         if (name) {
+         if (name && name[0]) {
             std::string text = "U";
             text += std::to_string(Value);
             text += "(";
