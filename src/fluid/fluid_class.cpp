@@ -306,7 +306,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
 
       if (Compact) {
          Buf << "[" << pc << "]";
-         if (targets.size() > pc and targets[pc]) Buf << "*";
+         if (targets[pc]) Buf << "*";
          if (line >= 0) Buf << "(" << line << ")";
          Buf << " " << glBytecodeNames[opcode];
          if (not operands.empty()) Buf << " " << operands;
@@ -316,7 +316,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
          std::ostringstream line_buf;
          line_buf << std::setfill('0') << std::setw(4) << pc;
          line_buf << " ";
-         line_buf << (targets.size() > pc and targets[pc] ? "=>" : "  ");
+         line_buf << (targets[pc] ? "=>" : "  ");
          line_buf << " ";
          line_buf << std::setfill(' ');
          if (line >= 0) line_buf << std::setw(4) << line;
