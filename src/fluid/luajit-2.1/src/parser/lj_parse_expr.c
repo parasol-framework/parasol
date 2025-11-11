@@ -107,7 +107,7 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    // Merge point for both branches.
    jmp_patch(fs, skip_branch, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
-   v->u.s.aux |= SAFE_NAV_CHAIN_FLAG;
+   v->flags |= SAFE_NAV_CHAIN_FLAG;
 }
 
 static void expr_safe_field_branch(LexState* ls, ExpDesc* v,
@@ -190,7 +190,7 @@ static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key)
 
    jmp_patch(fs, skip_call, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
-   v->u.s.aux |= SAFE_NAV_CHAIN_FLAG;
+   v->flags |= SAFE_NAV_CHAIN_FLAG;
 }
 
 // Parse safe navigation for method calls: obj?:method(...)
@@ -552,7 +552,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
    }
    for (;;) {  // Parse multiple expression suffixes.
       if ((ls->tok == '.' || ls->tok == '[') &&
-         v->k == VNONRELOC && (v->u.s.aux & SAFE_NAV_CHAIN_FLAG)) {
+         v->k == VNONRELOC && (v->flags & SAFE_NAV_CHAIN_FLAG)) {
          if (ls->tok == '.')
             expr_safe_field_chain(ls, v);
          else
@@ -580,7 +580,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
          ExpDesc key;
          lj_lex_next(ls);
          expr_str(ls, &key);
-         if (v->k == VNONRELOC && (v->u.s.aux & SAFE_NAV_CHAIN_FLAG)) {
+         if (v->k == VNONRELOC && (v->flags & SAFE_NAV_CHAIN_FLAG)) {
             expr_safe_method_call(ls, v, &key);
          }
          else {
@@ -627,7 +627,7 @@ static void inc_dec_op(LexState* ls, BinOpr op, ExpDesc* v, int isPost)
          bcreg_reserve(fs, 1);
       expr_tonextreg(fs, v);
       // Remember that this expression was consumed as a standalone postfix increment.
-      v->u.s.aux |= POSTFIX_INC_STMT_FLAG;
+      v->flags |= POSTFIX_INC_STMT_FLAG;
       bcreg_reserve(fs, 1);
       bcemit_arith(fs, op, &e1, &e2);
       bcemit_store(fs, &lv, &e1);
