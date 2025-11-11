@@ -483,6 +483,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             bcemit_AD(fs, BC_MOV, reg, rhs_reg);
             jmp_patch(fs, skip, fs->pc);
             expr_init(e1, VNONRELOC, reg);
+            // Free the temporary register if it was allocated for the RHS and is at the top of the register stack.
             if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && rhs_reg + 1 == fs->freereg)
                fs->freereg = rhs_reg;
          }
