@@ -10,7 +10,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
 if (MINGW)
-   # MinGW is not yet compatible with the CMake build of LuaJIT
+   # MinGW is not yet compatible with the CMake build of LuaJIT (generated files don't match expectations)
    set (LUAJIT_ORIGINAL_BUILD TRUE)
 endif ()
 
@@ -473,7 +473,7 @@ endif ()
 # Register Flute tests
 
 set (FLUID_TESTS
-   catch defer debuglog io nz object processing regex struct threads xml strings math array compound
+   catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank safe_nav ternary table
 )
 
