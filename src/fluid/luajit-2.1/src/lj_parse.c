@@ -28,6 +28,23 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
+// Priorities for each binary operator. ORDER OPR.
+
+static const struct {
+   uint8_t left;      // Left priority.
+   uint8_t right;   // Right priority.
+   const char* name;   // Name for bitlib function (if applicable).
+   uint8_t name_len;   // Cached name length for bitlib lookups.
+} priority[] = {
+  {6,6,NULL,0}, {6,6,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0},   // ADD SUB MUL DIV MOD
+  {10,9,NULL,0}, {5,4,NULL,0},                  // POW CONCAT (right associative)
+  {3,3,NULL,0}, {3,3,NULL,0},                  // EQ NE
+  {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},      // LT GE GT LE
+  {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},   // BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR)
+  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},         // AND OR IF_EMPTY
+  {1,1,NULL,0}                     // TERNARY
+};
+
 // Include modular parser components
 #include "parser/lj_parse_types.h"
 #include "parser/lj_parse_core.c"
