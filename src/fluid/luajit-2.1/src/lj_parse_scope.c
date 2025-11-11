@@ -4,6 +4,9 @@
 static void bcreg_reserve(FuncState* fs, BCReg n);
 static BCPos bcemit_INS(FuncState* fs, BCIns ins);
 
+#define bcemit_ABC(fs, o, a, b, c)   bcemit_INS(fs, BCINS_ABC(o, a, b, c))
+#define bcemit_AD(fs, o, a, d)      bcemit_INS(fs, BCINS_AD(o, a, d))
+#define bcemit_AJ(fs, o, a, j)      bcemit_INS(fs, BCINS_AJ(o, a, j))
 
 // Check if a string is the blank identifier '_'.
 static int is_blank_identifier(GCstr* name)
