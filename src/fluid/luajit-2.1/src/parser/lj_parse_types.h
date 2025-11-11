@@ -54,6 +54,13 @@ typedef struct ExpDesc {
 // Flag carried in ExpDesc.aux to signal that a postfix increment formed a statement.
 #define POSTFIX_INC_STMT_FLAG    0x40000000u
 
+// Helpers for preserving flag bits stored in ExpDesc.aux while reusing the
+// lower bits for temporary payloads (e.g., register numbers).
+#define EXP_AUX_FLAG_MASK        (SAFE_NAV_CHAIN_FLAG | POSTFIX_INC_STMT_FLAG)
+#define EXP_AUX_PAYLOAD_MASK     (~EXP_AUX_FLAG_MASK)
+#define exp_aux_flags(aux)       ((aux) & EXP_AUX_FLAG_MASK)
+#define exp_aux_payload(aux)     ((aux) & EXP_AUX_PAYLOAD_MASK)
+
 // Macros for expressions.
 #define expr_hasjump(e)      ((e)->t != (e)->f)
 
