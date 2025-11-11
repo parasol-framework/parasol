@@ -243,7 +243,7 @@ function testFuncInfo()
 
    local result = calculateTotal(10, 20, 30)
 
-   assert(result, 'DebugLog should return a result')
+   assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'FUNCTION INFORMATION'), 'Should contain function info header')
    assert(string.find(result, 'Function %[%d+%]:'), 'Should contain function label with level number')
    assert(string.find(result, 'calculateTotal'), 'Should contain function name')
@@ -268,17 +268,40 @@ function testDisassembly()
    local function sampleFunction(a, b)
       local scale = b * 2
       local total = a + scale
-      local err, result = glSelf.mtDebugLog('disasm')
+      local err, result = glSelf.mtDebugLog('disasm,log')
       return result
    end
 
    local result = sampleFunction(5, 7)
 
-   assert(result, 'DebugLog should return a result')
+   assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'BYTECODE DISASSEMBLY'), 'Should contain disassembly header')
    assert(string.find(result, 'Function:'), 'Should contain function summary line')
    assert(string.find(result, 'FUNCF'), 'Should list function prologue instruction')
    assert(string.find(result, 'RET'), 'Should list return instruction')
+
+   -- Test disassembly of a compiled script
+
+   local script = obj.new('script', { statement = [[
+local function sampleFunction(a, b)
+   local scale = b * 2
+   local total = a + scale
+   return result
+end
+
+local function testFunc()
+   x = 42
+   local name = 'test'
+   flag = true
+   return result
+end
+]] 
+   })
+
+   script.acActivate()
+   local err, result = script.mtDebugLog('disasm,log')
+   assert(err == ERR_Okay, 'DebugLog on script should succeed')
+   assert(result??, 'DebugLog should return a result for script')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
