@@ -149,8 +149,19 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       }
       else {
          // Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness
-         // Just ensure expression is in a register; extended falsey checks happen in bcemit_binop()
-         if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+         // Ensure the value resides in a dedicated register so that RHS evaluation cannot
+         // clobber it. Keep a copy of the original value even if the source lives in an
+         // active local slot.
+         if (!expr_isk_nojump(e)) {
+            BCReg src_reg = expr_toanyreg(fs, e);
+            BCReg rhs_reg = fs->freereg;
+            uint32_t aux_flags = exp_aux_flags(e->u.s.aux);
+            uint32_t payload = exp_aux_payload_encode(rhs_reg);
+            lj_assertFS(payload != 0u, "rhs register overflow");
+            bcreg_reserve(fs, 1);
+            expr_init(e, VNONRELOC, src_reg);
+            e->u.s.aux = aux_flags | payload;
+         }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
       jmp_append(fs, &e->t, pc);
@@ -425,6 +436,11 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       }
       else {
          // LHS is falsey (no jumps) OR runtime value - need to check
+         BCReg rhs_reg = NO_REG;
+         uint32_t aux = e1->u.s.aux;
+         if (exp_aux_payload_has(aux))
+            rhs_reg = (BCReg)exp_aux_payload_decode(aux);
+         e1->u.s.aux = exp_aux_flags(aux);
          expr_discharge(fs, e1);
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
@@ -459,10 +475,16 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, check_empty, fs->pc);
             // Evaluate RHS
             expr_discharge(fs, e2);
-            expr_toreg(fs, e2, reg);
-            // Patch skip to after RHS
+            if (rhs_reg == NO_REG) {
+               rhs_reg = fs->freereg;
+               bcreg_reserve(fs, 1);
+            }
+            expr_toreg(fs, e2, rhs_reg);
+            bcemit_AD(fs, BC_MOV, reg, rhs_reg);
             jmp_patch(fs, skip, fs->pc);
-            *e1 = *e2;
+            expr_init(e1, VNONRELOC, reg);
+            if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && rhs_reg + 1 == fs->freereg)
+               fs->freereg = rhs_reg;
          }
          else {
             // Constant falsey value - evaluate RHS directly
