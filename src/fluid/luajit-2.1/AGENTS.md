@@ -5,50 +5,61 @@ LuaJIT 2.1 sources that ship inside Parasol. Use it as a quick orientation
 before diving into changes.
 
 ## Repository Layout Highlights
-- `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) live here;
-  Parasol-specific tweaks are kept minimal to ease rebases.
+- `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) live here; all
+  Parasol-side changes stay small and well documented to simplify rebases.
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT
   runtime. If you change parser or VM behaviour, run the Fluid suite.
-- Generated artefacts are staged under `build/agents/src/fluid/luajit-generated/`
-  during a CMake build; they do not belong in git.
+- CMake drops generated headers, the VM object/assembly, and host helpers
+  under `build/agents/src/fluid/luajit-generated/`. The final static
+  library ends up in `build/agents/luajit-2.1/lib/`. None of these artefacts
+  should be committed.
 
 ## Integration & Build Tips
-- Always rebuild via CMake (`cmake --build build/agents --config Release`)
-  after touching C/C++ files so the LuaJIT static library is regenerated.
-- On Windows, CMake rebuilds regenerate the LuaJIT VM object using the
-  bundled `minilua.exe`. Expect console noise about setting `LJLINK`; it is
-  harmless.
+- Always rebuild via CMake (e.g. `cmake --build build/agents --config Release`)
+  after touching LuaJIT or Fluid sources so the static library target is
+  regenerated and relinked into the Fluid module.
+- CMake drives three build strategies, matching the logic in
+  `src/fluid/CMakeLists.txt`:
+  - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and
+    `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
+  - **MinGW**: falls back to LuaJIT's original Makefile (`make amalg`), with
+    outputs written to `luajit-generated/` and archived into
+    `libluajit-5.1.a` by CMake.
+  - **Unix-like toolchains**: CMake builds the host tools (`minilua` and
+    `buildvm`), generates assembly with DynASM, then archives
+    `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
+- Non-MSVC builds compile with `LUAJIT_DISABLE_FFI`, `LUAJIT_ENABLE_LUA52COMPAT`,
+  and `LUAJIT_NO_UNWIND` (see `LUAJIT_NON_MSVC_DEFS` in the CMake file).
 - Install (`cmake --install build/agents --config Release`) before running
-  tests; the integrator copies `parasol.exe` and scripts to `install/agents/`.
+  tests so the freshly built `parasol` binary (or `parasol.exe` on Windows)
+  and scripts land in `build/agents-install/`.
 
 ## Error Handling Configuration
-- LuaJIT is configured to use **internal frame unwinding** (`LJ_NO_UNWIND=1`)
-  rather than external unwinding for non-MSVC builds.
-- **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses
-  Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.
-  There is no "internal unwinding" implementation for MSVC - SEH is the only
-  viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling
-  and causes catch() tests to fail with "attempt to call a nil value" errors.
-- Internal unwinding is appropriate for builds with `-fno-exceptions`.
-  It's faster for error handling and doesn't require unwind tables throughout
-  the C call stack.
-- See `lj_err.c` for detailed documentation on internal vs external
-  unwinding trade-offs.
+- Non-MSVC builds explicitly define `LUAJIT_NO_UNWIND`, selecting LuaJIT's
+  internal unwinder (`LJ_NO_UNWIND=1`) that sidesteps system unwind tables.
+- **Windows (MSVC)** builds intentionally avoid `LUAJIT_NO_UNWIND`. They rely
+  on Structured Exception Handling via `lj_err_unwind_win()` and keep the
+  upstream default (`LJ_NO_UNWIND=0`). Forcing internal unwinding here breaks
+  the runtime's error propagation.
+- Internal unwinding plays nicely with Parasol's `-fno-exceptions` policy and
+  keeps the generated assembly compact. Review `lj_err.c` for the upstream
+  commentary on these trade-offs.
 
 ## Testing
-- Use `ctest --build-config Release --test-dir build/agents -R <label>`
-  to run a subset. Full Fluid test runs ensure parser and VM changes do not
-  regress hosted scripts.
-- For quick manual checks, launch `parasol.exe` from `install/agents/` with
-  `--no-crash-handler --gfx-driver=headless` so failures return exit codes.
-- **Critical**: For static builds, after modifying LuaJIT C sources, you must
-  rebuild BOTH the fluid module AND parasol_cmd, then reinstall:
+- Use `ctest --build-config Release --test-dir build/agents -R <label>` to run
+  subsets, or omit `-R` for the full suite. Fluid regression tests are under
+  `src/fluid/tests/` and catch most parser/VM regressions.
+- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from
+  `build/agents-install/bin/` with `--no-crash-handler --gfx-driver=headless`
+  so failures bubble out as exit codes.
+- **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module
+  and `parasol_cmd`, then reinstall:
   ```bash
   cmake --build build/agents --config Release --parallel
   cmake --install build/agents --config Release
   ```
-- When debugging parser issues, create minimal test scripts to isolate the
-  problem before running the full test suite.
+- When debugging parser issues, create minimal Fluid scripts to isolate the
+  behaviour before running the full test suite.
 
 ## Coding Conventions & Constraints
 - LuaJIT is an upstream C project; follow its existing style (tabs, K&R,
@@ -382,4 +393,4 @@ When implementing new operators:
 - Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often
   surface as subtle script regressions rather than outright crashes.
 
-_Last updated: 2025-11-04_
+_Last updated: 2025-05-09_
