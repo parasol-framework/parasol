@@ -29,14 +29,14 @@
 #include "lj_vmevent.h"
 
 // Include modular parser components
-#include "lj_parse_types.h"
-#include "lj_parse_core.c"
-#include "lj_parse_constants.c"
-#include "lj_parse_scope.c"
-#include "lj_parse_regalloc.c"
-#include "lj_parse_expr.c"
-#include "lj_parse_operators.c"
-#include "lj_parse_stmt.c"
+#include "parser/lj_parse_types.h"
+#include "parser/lj_parse_core.c"
+#include "parser/lj_parse_constants.c"
+#include "parser/lj_parse_scope.c"
+#include "parser/lj_parse_regalloc.c"
+#include "parser/lj_parse_expr.c"
+#include "parser/lj_parse_operators.c"
+#include "parser/lj_parse_stmt.c"
 
 // -- Parse statements ----------------------------------------------------
 
@@ -103,7 +103,7 @@ static void parse_chunk(LexState* ls)
    while (!islast && !parse_isend(ls->tok)) {
       islast = parse_stmt(ls);
       lex_opt(ls, ';');
-      lj_assertLS(ls->fs->framesize >= ls->fs->freereg and
+      lj_assertLS(ls->fs->framesize >= ls->fs->freereg &&
          ls->fs->freereg >= ls->fs->nactvar,
          "bad regalloc");
       ls->fs->freereg = ls->fs->nactvar;  // Free registers after each stmt.
@@ -140,7 +140,7 @@ GCproto* lj_parse(LexState* ls)
       err_token(ls, TK_eof);
    pt = fs_finish(ls, ls->linenumber);
    L->top--;  // Drop chunkname.
-   lj_assertL(fs.prev IS NULL && ls->fs IS NULL, "mismatched frame nesting");
-   lj_assertL(pt->sizeuv IS 0, "toplevel proto has upvalues");
+   lj_assertL(fs.prev == NULL && ls->fs == NULL, "mismatched frame nesting");
+   lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
    return pt;
 }
