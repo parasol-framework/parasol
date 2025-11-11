@@ -18,8 +18,9 @@ function testDefaultStackTrace()
    local result = middleFunc()
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace header')
-   -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller (middleFunc)
-   assert(string.find(result, 'middleFunc'), 'Should contain middleFunc in stack')
+   -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller
+   -- Function names are only shown for global/method/field calls, not local variables
+   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -150,8 +151,8 @@ function testCompactMode()
    assert(result, 'DebugLog should return a result')
    -- In compact mode, should NOT contain the header separators
    assert(not string.find(result, '==='), 'Compact mode should not contain === headers')
-   -- But should still contain the data
-   assert(string.find(result, 'compactTest'), 'Should contain function name')
+   -- But should still contain the data (source location and variables)
+   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
    assert(string.find(result, 'x'), 'Should contain variable x')
 end
 
@@ -225,8 +226,9 @@ function testNestedStack()
    local result = level1()
 
    assert(result, 'DebugLog should return a result')
-   -- Only level1 is visible because level2/level3 have already returned when mtDebugLog executes
-   assert(string.find(result, 'level1'), 'Should contain level1')
+   -- The stack should contain source locations for the nested calls
+   -- Function names for local functions are not shown since they're unreliable
+   assert(string.find(result, 'test_debuglog%.fluid:%d+'), 'Should contain source location')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

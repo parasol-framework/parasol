@@ -637,7 +637,15 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          size_t dump_len = 0;
          // Format codes: F=function name, l=source:line, p=preserve full path
          const char *dump = luaJIT_profile_dumpstack(prv->Lua, compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
-         if (dump and dump_len) buf << std::string_view(dump, dump_len);
+         if (dump and dump_len) {
+            // Skip the first line (level 0) which is the C function mtDebugLog itself
+            const char *first_newline = (const char *)memchr(dump, '\n', dump_len);
+            if (first_newline and (first_newline - dump + 1) < dump_len) {
+               const char *start = first_newline + 1;
+               size_t len = dump_len - (start - dump);
+               buf << std::string_view(start, len);
+            }
+         }
 #else
          lua_Debug ar;
          int level = 1; // Start at 1 to skip the C function (mtDebugLog) itself
