@@ -438,7 +438,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          BCReg rhs_reg = NO_REG;
          if (e1->flags & EXP_HAS_RHS_REG_FLAG) {
             rhs_reg = (BCReg)e1->u.s.aux;
-            e1->flags &= (uint8_t)~EXP_HAS_RHS_REG_FLAG;
+            e1->flags &= ~EXP_HAS_RHS_REG_FLAG;
          }
          expr_discharge(fs, e1);
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
