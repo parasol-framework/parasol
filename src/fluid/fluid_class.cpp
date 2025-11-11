@@ -9,6 +9,7 @@
 #include <parasol/strings.hpp>
 #include <algorithm>
 #include <cctype>
+#include <format>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -436,7 +437,14 @@ static ERR FLUID_Activate(objScript *Self)
          lua_pop(prv->Lua, 1);  // Pop error string
          goto failure;
       }
-      else log.trace("Script successfully compiled.");
+      else {
+         log.trace("Script successfully compiled.");
+
+         // Store a reference to the compiled main chunk for post-execution analysis (e.g., bytecode disassembly)
+         if (prv->MainChunkRef) luaL_unref(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
+         lua_pushvalue(prv->Lua, -1); // Duplicate the function on top of the stack
+         prv->MainChunkRef = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Store reference, pops the duplicate
+      }
 
       if (prv->SaveCompiled) { // Compile the script and save the result to the cache file
          log.msg("Compiling the source into the cache file.");

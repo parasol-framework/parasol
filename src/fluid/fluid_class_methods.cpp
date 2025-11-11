@@ -21,37 +21,49 @@ static const char *const glBytecodeNames[] = {
 #undef BCNAME
 };
 
-static std::string format_string_constant(const char *Data, size_t Length)
-{
-   std::string text;
-   size_t limit = Length;
-   bool truncated = false;
+//********************************************************************************************************************
 
-   if (Length > 40) {
-      limit = 40;
-      truncated = true;
-   }
+static std::string format_string_constant(std::string_view Data)
+{
+   static constexpr size_t max_length = 40;
+   static constexpr std::string_view hex_digits = "0123456789ABCDEF";
+
+   std::string text;
+   const auto limit = std::min(Data.size(), max_length);
+   const bool truncated = Data.size() > max_length;
+
+   text.reserve(limit * 2 + (truncated ? 6 : 2)); // Pre-allocate for quotes and possible escapes
 
    for (size_t i = 0; i < limit; i++) {
-      unsigned char ch = (unsigned char)Data[i];
+      const unsigned char ch = Data[i];
 
-      if (ch IS '\n') text += "\\n";
-      else if (ch IS '\r') text += "\\r";
-      else if (ch IS '\t') text += "\\t";
-      else if (ch IS '\\') text += "\\\\";
-      else if (ch IS '"') text += "\\\"";
-      else if (ch < 32) {
-         const char *digits = "0123456789ABCDEF";
-         text += "\\x";
-         text += digits[(ch >> 4) & 15];
-         text += digits[ch & 15];
+      switch (ch) {
+         case '\n': text += "\\n"; break;
+         case '\r': text += "\\r"; break;
+         case '\t': text += "\\t"; break;
+         case '\\': text += "\\\\"; break;
+         case '"':  text += "\\\""; break;
+         default:
+            if (ch < 32) {
+               text += "\\x";
+               text += hex_digits[(ch >> 4) & 15];
+               text += hex_digits[ch & 15];
+            }
+            else text += char(ch);
+            break;
       }
-      else text += char(ch);
    }
 
    if (truncated) text += "...";
 
-   return std::string("\"") + text + "\"";
+   return std::format("\"{}\"", text);
+}
+
+//********************************************************************************************************************
+
+template<typename T>
+static BCLine get_line_from_info(const void *LineInfo, BCPos Offset, BCLine FirstLine) {
+   return FirstLine + (BCLine)((const T *)LineInfo)[Offset];
 }
 
 static BCLine get_proto_line(GCproto *Proto, BCPos Pc)
@@ -59,180 +71,152 @@ static BCLine get_proto_line(GCproto *Proto, BCPos Pc)
    const void *lineinfo = proto_lineinfo(Proto);
 
    if ((Pc <= Proto->sizebc) and lineinfo) {
-      BCLine first_line = Proto->firstline;
+      const BCLine first_line = Proto->firstline;
       if (Pc IS Proto->sizebc) return first_line + Proto->numline;
       if (Pc IS 0) return first_line;
 
-      BCPos offset = Pc - 1;
+      const BCPos offset = Pc - 1;
 
-      if (Proto->numline < 256) return first_line + (BCLine)((const uint8_t *)lineinfo)[offset];
-      if (Proto->numline < 65536) return first_line + (BCLine)((const uint16_t *)lineinfo)[offset];
-      return first_line + (BCLine)((const uint32_t *)lineinfo)[offset];
+      if (Proto->numline < 256) return get_line_from_info<uint8_t>(lineinfo, offset, first_line);
+      if (Proto->numline < 65536) return get_line_from_info<uint16_t>(lineinfo, offset, first_line);
+      return get_line_from_info<uint32_t>(lineinfo, offset, first_line);
    }
 
    return 0;
 }
 
-static const char *get_proto_uvname(GCproto *Proto, uint32_t Index)
+//********************************************************************************************************************
+
+static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
 {
    const uint8_t *info = proto_uvinfo(Proto);
-   if (not info) return "";
-   if (Index >= Proto->sizeuv) return "";
+   if (not info or Index >= Proto->sizeuv) return {};
 
    const uint8_t *ptr = info;
-   uint32_t remaining = Index;
 
-   while (remaining) {
-      while (*ptr) ptr++;
-      ptr++;
-      remaining--;
+   for (uint32_t i = 0; i < Index; ++i) {
+      while (*ptr) ++ptr;
+      ++ptr;
    }
 
    return (const char *)ptr;
 }
 
+//********************************************************************************************************************
+
 static std::string describe_num_constant(const TValue *Value)
 {
-   if (tvisint(Value)) return std::to_string(intV(Value));
-
-   if (tvisnum(Value)) {
-      std::ostringstream number;
-      number << numV(Value);
-      return number.str();
-   }
-
-   return std::string("<number>");
+   if (tvisint(Value)) return std::format("{}", intV(Value));
+   if (tvisnum(Value)) return std::format("{}", numV(Value));
+   return "<number>";
 }
 
-static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, bool Compact)
+//********************************************************************************************************************
+
+static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, [[maybe_unused]] bool Compact)
 {
    GCobj *gc_obj = proto_kgc(Proto, Index);
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
       GCstr *str_obj = gco2str(gc_obj);
-      return std::string("K") + format_string_constant(strdata(str_obj), str_obj->len);
+      return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
    }
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
       GCproto *child = gco2pt(gc_obj);
-      std::ostringstream info;
-      info << "K<func ";
-      info << child->firstline;
-      info << "-";
-      info << (child->firstline + child->numline);
-      info << ">";
-      return info.str();
+      return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
    }
 
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return std::string("K<table>");
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
 
 #if LJ_HASFFI
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return std::string("K<cdata>");
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
 #endif
 
-   (void)Compact;
-   return std::string("K<gc>");
+   return "K<gc>";
 }
+
+//********************************************************************************************************************
 
 static std::string describe_primitive(int Value)
 {
-   if (Value IS 0) return std::string("nil");
-   if (Value IS 1) return std::string("false");
-   if (Value IS 2) return std::string("true");
-   return std::string("pri(") + std::to_string(Value) + ")";
+   switch (Value) {
+      case 0: return "nil";
+      case 1: return "false";
+      case 2: return "true";
+      default: return std::format("pri({})", Value);
+   }
 }
 
-static void append_operand(std::string &Operands, const char *Label, const std::string &Value)
+//********************************************************************************************************************
+
+static void append_operand(std::string &Operands, std::string_view Label, std::string_view Value)
 {
-   if (not Operands.empty()) Operands += " ";
-   Operands += Label;
-   Operands += "=";
-   Operands += Value;
+   if (not Operands.empty()) Operands += ' ';
+   Operands += std::format("{}={}", Label, Value);
 }
 
-static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc, bool Compact)
+//********************************************************************************************************************
+
+static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc, [[maybe_unused]] bool Compact)
 {
    switch (Mode) {
       case BCMdst:
       case BCMbase:
       case BCMvar:
       case BCMrbase:
-         return std::string("R") + std::to_string(Value);
+         return std::format("R{}", Value);
 
       case BCMuv: {
-         const char *name = get_proto_uvname(Proto, (uint32_t)Value);
-         if (name && name[0]) {
-            std::string text = "U";
-            text += std::to_string(Value);
-            text += "(";
-            text += name;
-            text += ")";
-            return text;
-         }
-         return std::string("U") + std::to_string(Value);
+         auto name = get_proto_uvname(Proto, (uint32_t)Value);
+         return name.empty() ? std::format("U{}", Value) : std::format("U{}({})", Value, name);
       }
 
       case BCMlit:
-         return std::string("#") + std::to_string(Value);
+         return std::format("#{}", Value);
 
       case BCMlits:
-         return std::string("#") + std::to_string((int16_t)Value);
+         return std::format("#{}", (int16_t)Value);
 
       case BCMpri:
          return describe_primitive(Value);
 
-      case BCMnum: {
-         const TValue *number = proto_knumtv(Proto, Value);
-         return std::string("#") + describe_num_constant(number);
-      }
+      case BCMnum:
+         return std::format("#{}", describe_num_constant(proto_knumtv(Proto, Value)));
 
-      case BCMstr: {
-         ptrdiff_t index = -(ptrdiff_t)Value - 1;
-         return describe_gc_constant(Proto, index, Compact);
-      }
-
-      case BCMfunc: {
-         ptrdiff_t index = -(ptrdiff_t)Value - 1;
-         return describe_gc_constant(Proto, index, Compact);
-      }
-
-      case BCMtab: {
-         ptrdiff_t index = -(ptrdiff_t)Value - 1;
-         return describe_gc_constant(Proto, index, Compact);
-      }
-
-      case BCMcdata: {
-         ptrdiff_t index = -(ptrdiff_t)Value - 1;
-         return describe_gc_constant(Proto, index, Compact);
-      }
+      case BCMstr:
+      case BCMfunc:
+      case BCMtab:
+      case BCMcdata:
+         return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1, Compact);
 
       case BCMjump: {
-         if ((BCPos)Value IS NO_JMP) return std::string("->(no)");
+         if ((BCPos)Value IS NO_JMP) return "->(no)";
 
-         ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
-         ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
+         const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
+         const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
 
-         if (dest < 0) return std::string("->(neg)");
-         if (dest >= (ptrdiff_t)Proto->sizebc) return std::string("->(out)");
+         if (dest < 0) return "->(neg)";
+         if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
 
-         return std::string("->") + std::to_string((BCPos)dest);
+         return std::format("->{}", (BCPos)dest);
       }
 
       case BCMnone:
       default:
-         break;
+         return std::format("{}", Value);
    }
-
-   (void)Proto;
-   (void)Pc;
-   (void)Compact;
-   return std::to_string(Value);
 }
 
-static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact)
+//********************************************************************************************************************
+
+static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact, int Indent = 0);
+
+static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compact, int Indent)
 {
    const BCIns *bc_stream = proto_bc(Proto);
    std::vector<uint8_t> targets(Proto->sizebc ? Proto->sizebc : 1, 0);
+   std::string indent_str(Indent * 2, ' ');
 
    for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
       BCIns instruction = bc_stream[pc];
@@ -279,40 +263,56 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
       BCLine line = get_proto_line(Proto, pc);
 
       if (Compact) {
-         Buf << "[" << pc << "]";
-         if (targets[pc]) Buf << "*";
-         if (line >= 0) Buf << "(" << line << ")";
-         Buf << " " << glBytecodeNames[opcode];
+         Buf << std::format("{}[{}]{}{} {}",
+            indent_str, pc,
+            targets[pc] ? "*" : "",
+            line >= 0 ? std::format("({})", line) : "",
+            glBytecodeNames[opcode]);
          if (not operands.empty()) Buf << " " << operands;
          Buf << "\n";
       }
       else {
-         std::ostringstream line_buf;
-         line_buf << std::setfill('0') << std::setw(4) << pc;
-         line_buf << " ";
-         line_buf << (targets[pc] ? "=>" : "  ");
-         line_buf << " ";
-         line_buf << std::setfill(' ');
-         if (line >= 0) line_buf << std::setw(4) << line;
-         else line_buf << "   -";
-         line_buf << " ";
-         line_buf << std::left << std::setw(9) << glBytecodeNames[opcode];
-         line_buf << std::right;
-         if (not operands.empty()) line_buf << " " << operands;
-         Buf << line_buf.str() << "\n";
+         Buf << std::format("{}{:04d} {} {} {:<9}",
+            indent_str, pc,
+            targets[pc] ? "=>" : "  ",
+            line >= 0 ? std::format("{:4}", line) : "   -",
+            glBytecodeNames[opcode]);
+         if (not operands.empty()) Buf << " " << operands;
+         Buf << "\n";
+      }
+
+      // If this is a FNEW instruction, recursively disassemble the child prototype
+      if (std::string_view opname = glBytecodeNames[opcode]; opname IS "FNEW") {
+         // FNEW uses D operand (BCMfunc mode) which encodes GC constant index as negative
+         const ptrdiff_t index = -(ptrdiff_t)value_d - 1;
+         // Check if index is valid for proto_kgc (expects negative indices from -1 to -sizekgc)
+         const bool valid = ((uintptr_t)(intptr_t)index >= (uintptr_t)-(intptr_t)Proto->sizekgc);
+         if (valid) {
+            GCobj *gc_obj = proto_kgc(Proto, index);
+            if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
+               GCproto *child = gco2pt(gc_obj);
+
+               if (not Compact) {
+                  Buf << std::format("{}  --- lines {}-{}, {} bytecodes ---\n",
+                     indent_str, child->firstline, child->firstline + child->numline, child->sizebc);
+               }
+
+               emit_disassembly(child, Buf, Compact, Indent + 1);
+            }
+         }
       }
    }
 }
 
 //********************************************************************************************************************
 
-static int append_dump_chunk(lua_State *, const void *Chunk, size_t Size, void *UserData)
+static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, size_t Size, void *UserData)
 {
-   auto bytes = reinterpret_cast<std::vector<uint8_t> *>(UserData);
+   auto bytes = (std::vector<uint8_t> *)UserData;
    if ((not bytes) or (not Chunk)) return 1;
    if (not Size) return 0; // End of dump signaled.
 
-   auto data = static_cast<const uint8_t *>(Chunk);
+   const auto data = (const uint8_t *)Chunk;
    bytes->insert(bytes->end(), data, data + Size);
    return 0;
 }
@@ -326,48 +326,73 @@ static void append_hex_dump(const std::vector<uint8_t> &Data, std::ostringstream
       return;
    }
 
-   constexpr char digits[] = "0123456789abcdef";
+   static constexpr std::string_view hex_digits = "0123456789abcdef";
 
    if (Compact) {
-      for (auto byte : Data) {
-         Buf << digits[(byte >> 4) & 0x0f] << digits[byte & 0x0f];
+      for (const auto byte : Data) {
+         Buf << hex_digits[(byte >> 4) & 0x0f] << hex_digits[byte & 0x0f];
       }
       Buf << "\n";
       return;
    }
 
-   constexpr size_t bytes_per_line = 16;
-   size_t offset = 0;
+   static constexpr size_t bytes_per_line = 16;
 
-   while (offset < Data.size()) {
-      Buf << std::setfill('0') << std::setw(4) << offset << ": ";
-      Buf << std::setfill(' ');
+   for (size_t offset = 0; offset < Data.size(); offset += bytes_per_line) {
+      const size_t line_end = std::min(offset + bytes_per_line, Data.size());
 
-      size_t line_end = std::min(offset + bytes_per_line, Data.size());
+      // Write offset and hex bytes
+      Buf << std::format("{:04x}: ", offset);
 
-      for (size_t index = offset; index < offset + bytes_per_line; index++) {
+      for (size_t index = offset; index < offset + bytes_per_line; ++index) {
          if (index < line_end) {
-            uint8_t byte = Data[index];
-            Buf << digits[(byte >> 4) & 0x0f] << digits[byte & 0x0f];
+            const uint8_t byte = Data[index];
+            Buf << hex_digits[(byte >> 4) & 0x0f] << hex_digits[byte & 0x0f];
          }
          else Buf << "  ";
 
          if (index + 1 < offset + bytes_per_line) Buf << ' ';
       }
 
+      // Write ASCII representation
       Buf << "  ";
-
-      for (size_t index = offset; index < line_end; index++) {
-         unsigned char ch = Data[index];
-         Buf << (std::isprint(ch) ? char(ch) : '.');
+      for (size_t index = offset; index < line_end; ++index) {
+         Buf << (std::isprint(Data[index]) ? char(Data[index]) : '.');
       }
 
       Buf << "\n";
-      offset += bytes_per_line;
    }
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-METHOD-
+DebugLog: Acquire a debug log from a compiled Script.
+
+Use the DebugLog() method to acquire debug information from a Fluid script.  This method can be called from within 
+the script itself, or post-compilation to analyse the generated byte code.
+
+The amount of debug information returned is defined by the Options parameter, which is a CSV list supporting the 
+following options:
+
+<list type="unordered>
+<li>stack: Returns the current stack trace. [L]</li>
+<li>locals: Returns a list of all local variables and their values. [L]</li>
+<li>upvalues: Returns a list of all upvalues. [L]</li>
+<li>globals: Returns a list of all global variables and their values.</li>
+<li>memory: Returns information about memory allocation and usage.</li>
+<li>state: Returns the current state of the Fluid engine.</li>
+<li>disasm: Returns disassembled bytecode.</li>
+<li>dump: Returns a binary dump of the script.</li>
+<li>funcinfo: Returns information about functions in the script.</li>
+<li>compact: Returns a compact representation of the log.</li>
+</list>
+
+Options marked with [L] are only available when calling DebugLog() from inside the script.
+
+The resulting log information is returned as a string, which needs to be deallocated once no longer required.
+
+*********************************************************************************************************************/
 
 static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 {
@@ -382,42 +407,44 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
    // Parse options (CSV list)
 
-   bool show_stack = false;
-   bool show_locals = false;
-   bool show_upvalues = false;
-   bool show_globals = false;
-   bool show_memory = false;
-   bool show_state = false;
-   bool show_disasm = false;
-   bool show_dump = false;
-   bool show_funcinfo = false;
-   bool compact = false;
-   bool log_output = false;
+   struct DebugOptions {
+      bool show_stack = false;
+      bool show_locals = false;
+      bool show_upvalues = false;
+      bool show_globals = false;
+      bool show_memory = false;
+      bool show_state = false;
+      bool show_disasm = false;
+      bool show_dump = false;
+      bool show_funcinfo = false;
+      bool compact = false;
+   } opts;
+
+   auto has_option = [](std::string_view haystack, std::string_view needle) {
+      return haystack.find(needle) != std::string_view::npos;
+   };
 
    if (Args->Options) {
-      std::string_view opts = Args->Options;
+      const std::string_view options = Args->Options;
 
-      if (opts.find("all") != std::string::npos) {
-         show_stack = show_locals = show_upvalues = show_globals =
-         show_memory = show_state = show_disasm = true;
-         show_funcinfo = true;
+      if (has_option(options, "all")) {
+         opts.show_stack = opts.show_locals = opts.show_upvalues = opts.show_globals =
+         opts.show_memory = opts.show_state = opts.show_disasm = opts.show_funcinfo = true;
       }
       else {
-         show_stack    = (opts.find("stack") != std::string::npos);
-         show_locals   = (opts.find("locals") != std::string::npos);
-         show_upvalues = (opts.find("upvalues") != std::string::npos);
-         show_globals  = (opts.find("globals") != std::string::npos);
-         show_memory   = (opts.find("memory") != std::string::npos);
-         show_state    = (opts.find("state") != std::string::npos);
-         show_disasm   = (opts.find("disasm") != std::string::npos);
-         if (not show_disasm) show_disasm = (opts.find("bytecode") != std::string::npos);
-         show_dump     = (opts.find("dump") != std::string::npos);
-         show_funcinfo = (opts.find("funcinfo") != std::string::npos);
-         log_output    = (opts.find("log") != std::string::npos);
+         opts.show_stack    = has_option(options, "stack");
+         opts.show_locals   = has_option(options, "locals");
+         opts.show_upvalues = has_option(options, "upvalues");
+         opts.show_globals  = has_option(options, "globals");
+         opts.show_memory   = has_option(options, "memory");
+         opts.show_state    = has_option(options, "state");
+         opts.show_disasm   = has_option(options, "disasm") or has_option(options, "bytecode");
+         opts.show_dump     = has_option(options, "dump");
+         opts.show_funcinfo = has_option(options, "funcinfo");
       }
-      compact = (opts.find("compact") != std::string::npos);
+      opts.compact = has_option(options, "compact");
    }
-   else show_stack = true; // Default: just the stack trace
+   else opts.show_stack = true; // Default: just the stack trace
 
    // Build the log message
 
@@ -427,13 +454,13 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       // If Recurse is defined then we know what we're being called from within the script itself.
       // Here we can process options that are exclusive to internal calls.
 
-      if (show_stack) { // Stack trace
-         if (not compact) buf << "=== CALL STACK ===\n";
+      if (opts.show_stack) { // Stack trace
+         if (not opts.compact) buf << "=== CALL STACK ===\n";
 
 #if LJ_HASPROFILE
          size_t dump_len = 0;
          // Format codes: F=function name, l=source:line, p=preserve full path
-         auto dump = luaJIT_profile_dumpstack(prv->Lua, compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
+         auto dump = luaJIT_profile_dumpstack(prv->Lua, opts.compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
          if (dump and dump_len) {
             // Skip the first line (level 0) which is the C function mtDebugLog itself
             auto first_newline = (const char *)memchr(dump, '\n', dump_len);
@@ -450,7 +477,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          while (lua_getstack(prv->Lua, level, &ar)) {
             lua_getinfo(prv->Lua, "nSl", &ar);
 
-            if (compact) {
+            if (opts.compact) {
                buf << "[" << level << "] ";
                if (ar.name) buf << ar.name;
                else buf << "?";
@@ -479,12 +506,99 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          }
 #endif
 
-         if (not compact) buf << "\n";
+         if (not opts.compact) buf <<"\n";
       }
 
-      if (show_funcinfo) {
-         if (not compact) buf << "=== FUNCTION INFORMATION ===\n";
+      if (opts.show_locals) { // Local variables
+         lua_Debug ar;
+         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
+            if (not opts.compact) buf <<"=== LOCALS ===\n";
 
+            int idx = 1;
+            const char *name;
+            while ((name = lua_getlocal(prv->Lua, &ar, idx))) {
+               int type = lua_type(prv->Lua, -1);
+               buf << name << " = ";
+
+               switch (type) {
+                  case LUA_TNIL: buf << "nil"; break;
+                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
+                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
+                  case LUA_TSTRING: {
+                     size_t len;
+                     const char *str = lua_tolstring(prv->Lua, -1, &len);
+                     std::string_view sv(str, len);
+                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
+                     else buf << "\"" << sv << "\"";
+                     break;
+                  }
+                  case LUA_TTABLE: buf << "{ ... }"; break;
+                  case LUA_TFUNCTION: buf << "<function>"; break;
+                  case LUA_TUSERDATA: buf << "<userdata>"; break;
+                  case LUA_TTHREAD: buf << "<thread>"; break;
+                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
+               }
+
+               if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
+               buf << "\n";
+
+               lua_pop(prv->Lua, 1);
+               idx++;
+            }
+
+            if (not opts.compact) buf <<"\n";
+         }
+      }
+
+      if (opts.show_upvalues) { // Upvalues
+         lua_Debug ar;
+         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
+            lua_getinfo(prv->Lua, "f", &ar);
+
+            if (not opts.compact) buf <<"=== UPVALUES ===\n";
+
+            int idx = 1;
+            const char *name;
+            while ((name = lua_getupvalue(prv->Lua, -1, idx))) {
+               int type = lua_type(prv->Lua, -1);
+
+               buf << name << " = ";
+
+               switch (type) {
+                  case LUA_TNIL: buf << "nil"; break;
+                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
+                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
+                  case LUA_TSTRING: {
+                     size_t len;
+                     const char *str = lua_tolstring(prv->Lua, -1, &len);
+                     std::string_view sv(str, len);
+                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
+                     else buf << "\"" << sv << "\"";
+                     break;
+                  }
+                  case LUA_TTABLE: buf << "{ ... }"; break;
+                  case LUA_TFUNCTION: buf << "<function>"; break;
+                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
+               }
+
+               if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
+               buf << "\n";
+               lua_pop(prv->Lua, 1);
+               idx++;
+            }
+
+            lua_pop(prv->Lua, 1); // Pop the function
+            if (not opts.compact) buf <<"\n";
+         }
+      }
+   }
+
+   // Here we can process options that are meaningful post-execution.
+   
+   if (opts.show_funcinfo) {
+      if (not opts.compact) buf <<"=== FUNCTION INFORMATION ===\n";
+
+      if (prv->Recurse) {
          int level = 1;
          bool wrote = false;
          lua_Debug ar;
@@ -522,7 +636,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                lua_pop(prv->Lua, 1);
             }
 
-            if (compact) {
+            if (opts.compact) {
                buf << "[" << level << "] " << func_name;
                if (is_lua_func) {
                   buf << " (" << ar.short_src << ":" << ar.linedefined << "-" << ar.lastlinedefined << ")";
@@ -557,101 +671,16 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          }
 
          if (not wrote) buf << "(no frames)";
-         if (not compact) buf << "\n";
-      }
-
-      if (show_locals) { // Local variables
-         lua_Debug ar;
-         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
-            if (not compact) buf << "=== LOCALS ===\n";
-
-            int idx = 1;
-            const char *name;
-            while ((name = lua_getlocal(prv->Lua, &ar, idx))) {
-               int type = lua_type(prv->Lua, -1);
-               buf << name << " = ";
-
-               switch (type) {
-                  case LUA_TNIL: buf << "nil"; break;
-                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
-                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
-                  case LUA_TSTRING: {
-                     size_t len;
-                     const char *str = lua_tolstring(prv->Lua, -1, &len);
-                     std::string_view sv(str, len);
-                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
-                     else buf << "\"" << sv << "\"";
-                     break;
-                  }
-                  case LUA_TTABLE: buf << "{ ... }"; break;
-                  case LUA_TFUNCTION: buf << "<function>"; break;
-                  case LUA_TUSERDATA: buf << "<userdata>"; break;
-                  case LUA_TTHREAD: buf << "<thread>"; break;
-                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
-               }
-
-               if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
-               buf << "\n";
-
-               lua_pop(prv->Lua, 1);
-               idx++;
-            }
-
-            if (not compact) buf << "\n";
-         }
-      }
-
-      if (show_upvalues) { // Upvalues
-         lua_Debug ar;
-         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
-            lua_getinfo(prv->Lua, "f", &ar);
-
-            if (not compact) buf << "=== UPVALUES ===\n";
-
-            int idx = 1;
-            const char *name;
-            while ((name = lua_getupvalue(prv->Lua, -1, idx))) {
-               int type = lua_type(prv->Lua, -1);
-
-               buf << name << " = ";
-
-               switch (type) {
-                  case LUA_TNIL: buf << "nil"; break;
-                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
-                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
-                  case LUA_TSTRING: {
-                     size_t len;
-                     const char *str = lua_tolstring(prv->Lua, -1, &len);
-                     std::string_view sv(str, len);
-                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
-                     else buf << "\"" << sv << "\"";
-                     break;
-                  }
-                  case LUA_TTABLE: buf << "{ ... }"; break;
-                  case LUA_TFUNCTION: buf << "<function>"; break;
-                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
-               }
-
-               if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
-               buf << "\n";
-               lua_pop(prv->Lua, 1);
-               idx++;
-            }
-
-            lua_pop(prv->Lua, 1); // Pop the function
-            if (not compact) buf << "\n";
-         }
+         if (not opts.compact) buf <<"\n";
       }
    }
 
-   // Here we can process options that are meaningful post-execution.
-
-   if (show_disasm) {
+   if (opts.show_disasm) {
       lua_Debug ar;
       if (lua_getstack(prv->Lua, 1, &ar)) {
          lua_getinfo(prv->Lua, "Sln", &ar);
 
-         if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
+         if (not opts.compact) buf <<"=== BYTECODE DISASSEMBLY ===\n";
 
          if (lua_getinfo(prv->Lua, "f", &ar)) {
             GCfunc *fn = funcV(prv->Lua->top - 1);
@@ -659,14 +688,14 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                GCproto *proto = funcproto(fn);
                const char *func_name = ar.name ? ar.name : "<anonymous>";
 
-               if (not compact) {
+               if (not opts.compact) {
                   buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
                       << "-" << ar.lastlinedefined << ")\n";
                   buf << "Bytecodes: " << proto->sizebc << ", Constants: " << proto->sizekn
                       << " numeric, " << proto->sizekgc << " objects\n\n";
                }
 
-               emit_disassembly(proto, buf, compact);
+               emit_disassembly(proto, buf, opts.compact);
             }
             else buf << "(current frame is a C function; bytecode unavailable)\n";
 
@@ -674,21 +703,44 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          }
          else buf << "(unable to inspect current frame)\n";
 
-         if (not compact) buf << "\n";
+         if (not opts.compact) buf <<"\n";
       }
       else {
-         if (not compact) buf << "=== BYTECODE DISASSEMBLY ===\n";
-         buf << "(no active Lua frame)\n";
-         if (not compact) buf << "\n";
+         // No active frame - try to disassemble the main chunk if available
+         if (not opts.compact) buf <<"=== BYTECODE DISASSEMBLY ===\n";
+
+         if (prv->MainChunkRef) {
+            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
+            if (lua_isfunction(prv->Lua, -1)) {
+               GCfunc *fn = funcV(prv->Lua->top - 1);
+               if (isluafunc(fn)) {
+                  GCproto *proto = funcproto(fn);
+
+                  if (not opts.compact) {
+                     buf << "Main chunk (lines " << proto->firstline << "-" << (proto->firstline + proto->numline) << ")\n";
+                     buf << "Bytecodes: " << proto->sizebc << ", Constants: " << proto->sizekn
+                         << " numeric, " << proto->sizekgc << " objects\n\n";
+                  }
+
+                  emit_disassembly(proto, buf, opts.compact);
+               }
+               else buf << "(main chunk is a C function; bytecode unavailable)\n";
+            }
+            else buf << "(main chunk reference is not a function)\n";
+            lua_pop(prv->Lua, 1);
+         }
+         else buf << "(no main chunk reference stored; bytecode disassembly requires calling DebugLog from within a function)\n";
+
+         if (not opts.compact) buf <<"\n";
       }
    }
 
-   if (show_dump) {
+   if (opts.show_dump) {
       lua_Debug ar;
       if (lua_getstack(prv->Lua, 1, &ar)) {
          lua_getinfo(prv->Lua, "Sln", &ar);
 
-         if (not compact) buf << "=== BYTECODE DUMP ===\n";
+         if (not opts.compact) buf <<"=== BYTECODE DUMP ===\n";
 
          if (lua_getinfo(prv->Lua, "f", &ar)) {
             GCfunc *fn = funcV(prv->Lua->top - 1);
@@ -696,14 +748,14 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                std::vector<uint8_t> binary;
 
                if (lua_dump(prv->Lua, append_dump_chunk, &binary) IS 0) {
-                  if (not compact) {
+                  if (not opts.compact) {
                      const char *func_name = ar.name ? ar.name : "<anonymous>";
                      buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
                          << "-" << ar.lastlinedefined << ")\n";
                      buf << "Bytes: " << binary.size() << "\n";
                   }
 
-                  append_hex_dump(binary, buf, compact);
+                  append_hex_dump(binary, buf, opts.compact);
                }
                else buf << "(failed to serialise bytecode)\n";
             }
@@ -713,17 +765,42 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
          }
          else buf << "(unable to inspect current frame)\n";
 
-         if (not compact) buf << "\n";
+         if (not opts.compact) buf <<"\n";
       }
       else {
-         if (not compact) buf << "=== BYTECODE DUMP ===\n";
-         buf << "(no active Lua frame)\n";
-         if (not compact) buf << "\n";
+         // No active frame - try to dump the main chunk if available
+         if (not opts.compact) buf <<"=== BYTECODE DUMP ===\n";
+
+         if (prv->MainChunkRef) {
+            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, prv->MainChunkRef);
+            if (lua_isfunction(prv->Lua, -1)) {
+               GCfunc *fn = funcV(prv->Lua->top - 1);
+               if (isluafunc(fn)) {
+                  std::vector<uint8_t> binary;
+
+                  if (lua_dump(prv->Lua, append_dump_chunk, &binary) IS 0) {
+                     if (not opts.compact) {
+                        buf << "Main chunk\n";
+                        buf << "Bytes: " << binary.size() << "\n";
+                     }
+
+                     append_hex_dump(binary, buf, opts.compact);
+                  }
+                  else buf << "(failed to serialise bytecode)\n";
+               }
+               else buf << "(main chunk is a C function; bytecode unavailable)\n";
+            }
+            else buf << "(main chunk reference is not a function)\n";
+            lua_pop(prv->Lua, 1);
+         }
+         else buf << "(no main chunk reference stored; bytecode dump requires calling DebugLog from within a function)\n";
+
+         if (not opts.compact) buf <<"\n";
       }
    }
 
-   if (show_globals) { // Global variables
-      if (not compact) buf << "=== GLOBALS ===\n";
+   if (opts.show_globals) { // Global variables
+      if (not opts.compact) buf << "=== GLOBALS ===\n";
 
       // Access the storage table where user-defined globals are stored.
       // The storage table is stored as an upvalue in the __index closure of the global metatable.
@@ -761,7 +838,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                      default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
                   }
 
-                  if (not compact) buf << " (" << lua_typename(prv->Lua, type) << ")";
+                  if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
                   buf << "\n";
                   count++;
 
@@ -777,50 +854,53 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       }
       lua_pop(prv->Lua, 1); // Pop global environment
 
-      if (not compact) buf << "\n";
+      if (not opts.compact) buf << "\n";
    }
 
-   if (show_memory) { // Memory statistics
-      if (not compact) buf << "=== MEMORY STATISTICS ===\n";
+   if (opts.show_memory) { // Memory statistics
+      if (not opts.compact) buf << "=== MEMORY STATISTICS ===\n";
 
-      int kb = lua_gc(prv->Lua, LUA_GCCOUNT, 0);
-      int bytes = lua_gc(prv->Lua, LUA_GCCOUNTB, 0);
-      double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
+      const int kb = lua_gc(prv->Lua, LUA_GCCOUNT, 0);
+      const int bytes = lua_gc(prv->Lua, LUA_GCCOUNTB, 0);
+      const double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
 
-      if (compact) buf << "Lua heap: " << mb << " MB\n";
-      else buf << "Lua heap usage: " << mb << " MB (" << kb << " KB + " << bytes << " bytes)\n";
+      buf << (opts.compact
+         ? std::format("Lua heap: {} MB\n", mb)
+         : std::format("Lua heap usage: {} MB ({} KB + {} bytes)\n", mb, kb, bytes));
 
-      if (not compact) buf << "\n";
+      if (not opts.compact) buf << "\n";
    }
   
-   if (show_state) { // State information
-      if (not compact) buf << "=== STATE ===\n";
+   if (opts.show_state) { // State information
+      if (not opts.compact) buf << "=== STATE ===\n";
 
-      buf << "Stack top: " << lua_gettop(prv->Lua) << "\n";
-      buf << "Protected globals: " << (prv->Lua->ProtectedGlobals ? "true" : "false") << "\n";
+      buf << std::format("Stack top: {}\n", lua_gettop(prv->Lua));
+      buf << std::format("Protected globals: {}\n", prv->Lua->ProtectedGlobals ? "true" : "false");
 
       if (auto hook_mask = lua_gethookmask(prv->Lua)) {
+         std::vector<std::string_view> flags;
+         if (hook_mask & LUA_MASKCALL) flags.emplace_back("CALL");
+         if (hook_mask & LUA_MASKRET) flags.emplace_back("RET");
+         if (hook_mask & LUA_MASKLINE) flags.emplace_back("LINE");
+         if (hook_mask & LUA_MASKCOUNT) flags.emplace_back("COUNT");
+
          buf << "Hook mask: ";
-         bool first = true;
-         if (hook_mask & LUA_MASKCALL) { buf << (first ? "" : "|") << "CALL"; first = false; }
-         if (hook_mask & LUA_MASKRET) { buf << (first ? "" : "|") << "RET"; first = false; }
-         if (hook_mask & LUA_MASKLINE) { buf << (first ? "" : "|") << "LINE"; first = false; }
-         if (hook_mask & LUA_MASKCOUNT) { buf << (first ? "" : "|") << "COUNT"; first = false; }
+         for (size_t i = 0; i < flags.size(); ++i) {
+            if (i > 0) buf << "|";
+            buf << flags[i];
+         }
          buf << "\n";
       }
       else buf << "Hook mask: none\n";
 
-      if (not compact) buf << "\n";
+      if (not opts.compact) buf << "\n";
    }
 
-   std::string result = buf.str();
-   if ((Args->Result = pf::strclone(result.c_str())) == nullptr) {
+   const std::string result = buf.str();
+   if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) {
       return ERR::AllocMemory;
    }
-   else {
-      if (log_output) log.msg("%.400s", Args->Result);
-      return ERR::Okay;
-   }
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

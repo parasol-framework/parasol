@@ -240,6 +240,7 @@ struct prvFluid {
    ERR      CaughtError;               // Set to -1 to enable catching of ERR results.
    PERMIT   CachePermissions;
    int      LoadedSize;
+   int      MainChunkRef;              // Registry reference to the main chunk for post-execution analysis
    uint8_t  Recurse;
    uint8_t  SaveCompiled;
    uint16_t Catch;                     // Operating within a catch() block if > 0

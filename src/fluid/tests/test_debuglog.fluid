@@ -114,7 +114,8 @@ end
 
 function testMultipleOptions()
    local x = 100
-   local err, result = glSelf.mtDebugLog('stack,locals,memory,log')
+   local err, result = glSelf.mtDebugLog('stack,locals,memory')
+   msg(result)
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
@@ -211,7 +212,8 @@ end
 
 function testNestedStack()
    local function level3()
-      local err, result = glSelf.mtDebugLog('stack,log')
+      local err, result = glSelf.mtDebugLog('stack')
+      msg(result)
       return result
    end
 
@@ -268,7 +270,8 @@ function testDisassembly()
    local function sampleFunction(a, b)
       local scale = b * 2
       local total = a + scale
-      local err, result = glSelf.mtDebugLog('disasm,log')
+      local err, result = glSelf.mtDebugLog('disasm')
+      msg(result)
       return result
    end
 
@@ -283,23 +286,28 @@ function testDisassembly()
    -- Test disassembly of a compiled script
 
    local script = obj.new('script', { statement = [[
-local function sampleFunction(a, b)
+local function sampleFunction(a, b) -- Local function
    local scale = b * 2
    local total = a + scale
    return result
 end
 
-local function testFunc()
+function testFunc() -- Global function
    x = 42
    local name = 'test'
    flag = true
    return result
 end
+
+   local a = 'a_var'
+   b = 'b_var'
+   c = a .. b
 ]] 
    })
 
    script.acActivate()
-   local err, result = script.mtDebugLog('disasm,log')
+   local err, result = script.mtDebugLog('disasm')
+   msg(result)
    assert(err is ERR_Okay, 'DebugLog on script should succeed')
    assert(result??, 'DebugLog should return a result for script')
 end
@@ -311,7 +319,8 @@ end
 function testBytecodeDump()
    local function captureDump(a, b)
       local temp = a + b
-      local err, result = glSelf.mtDebugLog('dump,log')
+      local err, result = glSelf.mtDebugLog('dump')
+      msg(result)
       return result
    end
 

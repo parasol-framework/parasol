@@ -13,6 +13,12 @@ function()
     loadFile(glPath .. 'common.fdl')
   end)
 
+--[[  
+  class('Fluid', {
+    src={ 'fluid_class.cpp' }
+  })
+--]]
+
   functionNames("fl",
     "SetVariable")
 end)
