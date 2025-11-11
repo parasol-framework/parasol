@@ -10,7 +10,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
 if (MINGW)
-   # MinGW is not yet compatible with the CMake build of LuaJIT (generated files don't match expectations)
+   # MinGW is not yet compatible with the CMake build of LuaJIT
    set (LUAJIT_ORIGINAL_BUILD TRUE)
 endif ()
 
@@ -49,10 +49,8 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
+set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
 set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
-
-# If switching these off, define "-DLUAJIT_NO_UNWIND" for LUAJIT_NON_MSVC_DEFS
-set (LUAJIT_EXCEPTION_FLAGS "-funwind-tables" "-DLUAJIT_UNWIND_EXTERNAL")
 
 # Common compiler flags and paths
 set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
@@ -120,7 +118,7 @@ if (MSVC)
       ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${LUAJIT_SRC}"
       ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${LUAJIT_SRC}"
    )
-   target_compile_definitions(luajit_lib PRIVATE LUAJIT_ENABLE_LUA52COMPAT _CRT_SECURE_NO_DEPRECATE)
+   target_compile_definitions(luajit_lib PRIVATE ${LUAJIT_COMMON_DEFS} _CRT_SECURE_NO_DEPRECATE)
 
    target_include_directories(luajit_lib PRIVATE
       "${LUAJIT_SRC}"
@@ -144,7 +142,7 @@ elseif (LUAJIT_ORIGINAL_BUILD)
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CMAKE_C_FLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
+      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS "${LUAJIT_BUILD_DIR}/libluajit.a"
       COMMENT "Compiling LuaJIT library")
@@ -305,6 +303,7 @@ else ()
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
       DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
       COMMENT "Building buildvm host tool"
+      VERBATIM
    )
 
    # Library source files needed for buildvm header generation
@@ -370,9 +369,8 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_C_COMPILER} 
-            ${LUAJIT_COMMON_CFLAGS} 
-            ${LUAJIT_EXCEPTION_FLAGS}
+         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
@@ -393,9 +391,7 @@ else ()
    set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
    add_custom_command(
       OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} 
-         ${LUAJIT_COMMON_CFLAGS} 
-         ${LUAJIT_EXCEPTION_FLAGS}
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
          ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          ${LUAJIT_INCLUDE_DIRS}
@@ -477,7 +473,7 @@ endif ()
 # Register Flute tests
 
 set (FLUID_TESTS
-   catch defer debuglog io object processing regex struct threads xml strings math array compound
+   catch defer debuglog io nz object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank safe_nav ternary table
 )
 
