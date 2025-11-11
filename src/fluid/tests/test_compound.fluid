@@ -24,6 +24,53 @@ function testCompoundAssignment()
    assert(store.list[2] is 10, 'indexed table compound assignments should store results')
 end
 
+function testIfEmptyAssignment()
+   local count = 5
+   count ?= 1
+   assert(count is 5, 'count ?= should leave truthy values unchanged')
+
+   local missing
+   missing ?= 42
+   assert(missing is 42, 'nil LHS should receive the default value')
+
+   local zero = 0
+   zero ?= 7
+   assert(zero is 7, 'zero should trigger ?= assignment')
+
+   local empty = ''
+   empty ?= 'fallback'
+   assert(empty is 'fallback', 'empty string should trigger ?= assignment')
+
+   local calls = 0
+   local function fallback()
+      calls += 1
+      return 'value'
+   end
+
+   local present = 'has data'
+   present ?= fallback()
+   assert(calls is 0, 'truthy ?= should not evaluate the RHS')
+   assert(present is 'has data', 'truthy ?= should keep the existing value')
+
+   local blank = ''
+   blank ?= fallback()
+   assert(blank is 'value', 'falsey ?= should evaluate the RHS')
+   assert(calls is 1, 'falsey ?= should evaluate the RHS exactly once')
+
+   local store = { retries = 0, label = 'ready', slots = { '' } }
+   store.retries ?= 3
+   assert(store.retries is 3, 'table field ?= should assign when falsey')
+
+   store.label ?= 'idle'
+   assert(store.label is 'ready', 'table field ?= should skip when truthy')
+
+   store.slots[1] ?= 'filled'
+   assert(store.slots[1] is 'filled', 'indexed ?= should assign when entry is falsey')
+
+   store.slots[1] ?= 'ignored'
+   assert(store.slots[1] is 'filled', 'indexed ?= should not reassign when entry is truthy')
+end
+
 function testIncrement()
    local counter = 0
    counter++
@@ -180,6 +227,7 @@ end
 return {
    tests = {
       'testCompoundAssignment',
+      'testIfEmptyAssignment',
       'testIncrement',
       'testContinue',
       'testIndexedWithFunctionRHS',
