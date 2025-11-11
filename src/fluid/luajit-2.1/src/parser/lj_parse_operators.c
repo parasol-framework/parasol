@@ -426,46 +426,63 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       else {
          // LHS is falsey (no jumps) OR runtime value - need to check
          expr_discharge(fs, e1);
-         if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
-            // Runtime value - emit extended falsey checks
-            BCReg reg = expr_toanyreg(fs, e1);
-            ExpDesc nilv, falsev, zerov, emptyv;
-            BCPos skip;
-            BCPos check_nil, check_false, check_zero, check_empty;
-            // Check for nil
-            expr_init(&nilv, VKNIL, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-            check_nil = bcemit_jmp(fs);
-            // Check for false
-            expr_init(&falsev, VKFALSE, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-            check_false = bcemit_jmp(fs);
-            // Check for zero
-            expr_init(&zerov, VKNUM, 0);
-            setnumV(&zerov.u.nval, 0.0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-            check_zero = bcemit_jmp(fs);
-            // Check for empty string
-            expr_init(&emptyv, VKSTR, 0);
-            emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-            check_empty = bcemit_jmp(fs);
-            // If all checks pass (value is truthy), skip RHS
-            skip = bcemit_jmp(fs);
-            // Patch falsey checks to jump to RHS evaluation
-            jmp_patch(fs, check_nil, fs->pc);
-            jmp_patch(fs, check_false, fs->pc);
-            jmp_patch(fs, check_zero, fs->pc);
-            jmp_patch(fs, check_empty, fs->pc);
-            // Evaluate RHS
+         if (e1->k == VKNIL || e1->k == VKFALSE ||
+            (e1->k == VKNUM && expr_numiszero(e1)) ||
+            (e1->k == VKSTR && e1->u.sval && e1->u.sval->len == 0)) {
+            // Compile-time falsey constant: always evaluate RHS.
             expr_discharge(fs, e2);
-            expr_toreg(fs, e2, reg);
-            // Patch skip to after RHS
-            jmp_patch(fs, skip, fs->pc);
             *e1 = *e2;
          }
+         else if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
+            // Runtime value - emit extended falsey checks && funnel result into dedicated register.
+            BCReg dest = fs->freereg;
+            ExpDesc nilv, falsev, zerov, emptyv;
+            BCPos check_nil, check_false, check_zero, check_empty;
+            BCPos skip_rhs;
+
+            bcreg_reserve(fs, 1);
+            expr_toreg(fs, e1, dest);
+
+            // Prepare comparisons against extended falsey set.
+            expr_init(&nilv, VKNIL, 0);
+            bcemit_INS(fs, BCINS_AD(BC_ISEQP, dest, const_pri(&nilv)));
+            check_nil = bcemit_jmp(fs);
+
+            expr_init(&falsev, VKFALSE, 0);
+            bcemit_INS(fs, BCINS_AD(BC_ISEQP, dest, const_pri(&falsev)));
+            check_false = bcemit_jmp(fs);
+
+            expr_init(&zerov, VKNUM, 0);
+            setnumV(&zerov.u.nval, 0.0);
+            bcemit_INS(fs, BCINS_AD(BC_ISEQN, dest, const_num(fs, &zerov)));
+            check_zero = bcemit_jmp(fs);
+
+            expr_init(&emptyv, VKSTR, 0);
+            emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+            bcemit_INS(fs, BCINS_AD(BC_ISEQS, dest, const_str(fs, &emptyv)));
+            check_empty = bcemit_jmp(fs);
+
+            // Truthy values skip RHS evaluation entirely.
+            skip_rhs = bcemit_jmp(fs);
+
+            // Falsey checks land here to evaluate the RHS alternative.
+            {
+               BCPos rhs_pc = fs->pc;
+               jmp_patch(fs, check_nil, rhs_pc);
+               jmp_patch(fs, check_false, rhs_pc);
+               jmp_patch(fs, check_zero, rhs_pc);
+               jmp_patch(fs, check_empty, rhs_pc);
+            }
+
+            expr_discharge(fs, e2);
+            expr_toreg(fs, e2, dest);
+
+            jmp_patch(fs, skip_rhs, fs->pc);
+
+            expr_init(e1, VNONRELOC, dest);
+         }
          else {
-            // Constant falsey value - evaluate RHS directly
+            // Fallback: evaluate RHS directly.
             expr_discharge(fs, e2);
             *e1 = *e2;
          }
