@@ -2,298 +2,298 @@
 
 function testAlloc()
    local s = string.alloc(10)
-   if #s != 10 then error("String size is not 10 characters, got " .. #s) end
+   assert(#s is 10, "String size is not 10 characters, got " .. #s)
 
    -- Test zero size
    local empty = string.alloc(0)
-   if #empty != 0 then error("Zero alloc should create empty string, got " .. #empty) end
+   assert(#empty is 0, "Zero alloc should create empty string, got " .. #empty)
 
    -- Test large size
    local big = string.alloc(1000)
-   if #big != 1000 then error("Large alloc failed, expected 1000, got " .. #big) end
+   assert(#big is 1000, "Large alloc failed, expected 1000, got " .. #big)
 end
 
 function testSplit()
    -- Basic comma split
    local parts = string.split("a,b,c", ",")
-   if #parts != 3 then error("Expected 3 parts, got " .. #parts) end
-   if parts[1] != "a" then error("Expected 'a', got '" .. parts[1] .. "'") end
-   if parts[2] != "b" then error("Expected 'b', got '" .. parts[2] .. "'") end
-   if parts[3] != "c" then error("Expected 'c', got '" .. parts[3] .. "'") end
+   assert(#parts is 3, "Expected 3 parts, got " .. #parts)
+   assert(parts[1] is "a", "Expected 'a', got '" .. parts[1] .. "'")
+   assert(parts[2] is "b", "Expected 'b', got '" .. parts[2] .. "'")
+   assert(parts[3] is "c", "Expected 'c', got '" .. parts[3] .. "'")
 
    -- Whitespace split (default)
    local words = string.split("hello world\ttab\nnewline")
-   if #words != 4 then error("Expected 4 words, got " .. #words) end
-   if words[1] != "hello" then error("Expected 'hello', got '" .. words[1] .. "'") end
-   if words[2] != "world" then error("Expected 'world', got '" .. words[2] .. "'") end
-   if words[3] != "tab" then error("Expected 'tab', got '" .. words[3] .. "'") end
-   if words[4] != "newline" then error("Expected 'newline', got '" .. words[4] .. "'") end
+   assert(#words is 4, "Expected 4 words, got " .. #words)
+   assert(words[1] is "hello", "Expected 'hello', got '" .. words[1] .. "'")
+   assert(words[2] is "world", "Expected 'world', got '" .. words[2] .. "'")
+   assert(words[3] is "tab", "Expected 'tab', got '" .. words[3] .. "'")
+   assert(words[4] is "newline", "Expected 'newline', got '" .. words[4] .. "'")
 
    -- Multi-character separator
    local multi = string.split("one::two::three", "::")
-   if #multi != 3 then error("Expected 3 parts with :: separator, got " .. #multi) end
-   if multi[1] != "one" then error("Expected 'one', got '" .. multi[1] .. "'") end
-   if multi[2] != "two" then error("Expected 'two', got '" .. multi[2] .. "'") end
-   if multi[3] != "three" then error("Expected 'three', got '" .. multi[3] .. "'") end
+   assert(#multi is 3, "Expected 3 parts with :: separator, got " .. #multi)
+   assert(multi[1] is "one", "Expected 'one', got '" .. multi[1] .. "'")
+   assert(multi[2] is "two", "Expected 'two', got '" .. multi[2] .. "'")
+   assert(multi[3] is "three", "Expected 'three', got '" .. multi[3] .. "'")
 
    -- Empty string
    local empty = string.split("")
-   if #empty != 0 then error("Empty string split should return empty table, got " .. #empty) end
+   assert(#empty is 0, "Empty string split should return empty table, got " .. #empty)
 
    -- No separator found
    local nosep = string.split("hello", ",")
-   if #nosep != 1 then error("No separator should return single item, got " .. #nosep) end
-   if nosep[1] != "hello" then error("Expected 'hello', got '" .. nosep[1] .. "'") end
+   assert(#nosep is 1, "No separator should return single item, got " .. #nosep)
+   assert(nosep[1] is "hello", "Expected 'hello', got '" .. nosep[1] .. "'")
 end
 
 function testTrim()
    -- Basic trim
    local trimmed = string.trim("  hello world  ")
-   if trimmed != "hello world" then error("Expected 'hello world', got '" .. trimmed .. "'") end
+   assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
 
    -- Left whitespace only
    local left = string.trim("  hello")
-   if left != "hello" then error("Expected 'hello', got '" .. left .. "'") end
+   assert(left is "hello", "Expected 'hello', got '" .. left .. "'")
 
    -- Right whitespace only
    local right = string.trim("hello  ")
-   if right != "hello" then error("Expected 'hello', got '" .. right .. "'") end
+   assert(right is "hello", "Expected 'hello', got '" .. right .. "'")
 
    -- Mixed whitespace types
    local mixed = string.trim("\t\n  hello world  \r\n\t")
-   if mixed != "hello world" then error("Expected 'hello world', got '" .. mixed .. "'") end
+   assert(mixed is "hello world", "Expected 'hello world', got '" .. mixed .. "'")
 
    -- All whitespace
    local allspace = string.trim("   \t\n\r   ")
-   if allspace != "" then error("All whitespace should return empty string, got '" .. allspace .. "'") end
+   assert(allspace is "", "All whitespace should return empty string, got '" .. allspace .. "'")
 
    -- Empty string
    local empty = string.trim("")
-   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- No whitespace
    local none = string.trim("hello")
-   if none != "hello" then error("No whitespace should be unchanged, got '" .. none .. "'") end
+   assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
 function testRTrim()
    -- Basic right trim
    local trimmed = string.rtrim("hello world  ")
-   if trimmed != "hello world" then error("Expected 'hello world', got '" .. trimmed .. "'") end
+   assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
 
    -- Left whitespace preserved
    local left = string.rtrim("  hello world  ")
-   if left != "  hello world" then error("Expected '  hello world', got '" .. left .. "'") end
+   assert(left is "  hello world", "Expected '  hello world', got '" .. left .. "'")
 
    -- Mixed whitespace types
    local mixed = string.rtrim("hello world  \r\n\t")
-   if mixed != "hello world" then error("Expected 'hello world', got '" .. mixed .. "'") end
+   assert(mixed is "hello world", "Expected 'hello world', got '" .. mixed .. "'")
 
    -- All whitespace
    local allspace = string.rtrim("   \t\n\r   ")
-   if allspace != "" then error("All whitespace should return empty string, got '" .. allspace .. "'") end
+   assert(allspace is "", "All whitespace should return empty string, got '" .. allspace .. "'")
 
    -- Empty string
    local empty = string.rtrim("")
-   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- No whitespace
    local none = string.rtrim("hello")
-   if none != "hello" then error("No whitespace should be unchanged, got '" .. none .. "'") end
+   assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
 function testJoin()
    -- Basic join
    local joined = string.join({"hello", "world"}, " ")
-   if joined != "hello world" then error("Expected 'hello world', got '" .. joined .. "'") end
+   assert(joined is "hello world", "Expected 'hello world', got '" .. joined .. "'")
 
    -- CSV style
    local csv = string.join({"a", "b", "c"}, ",")
-   if csv != "a,b,c" then error("Expected 'a,b,c', got '" .. csv .. "'") end
+   assert(csv is "a,b,c", "Expected 'a,b,c', got '" .. csv .. "'")
 
    -- No separator
    local concat = string.join({"a", "b", "c"})
-   if concat != "abc" then error("Expected 'abc', got '" .. concat .. "'") end
+   assert(concat is "abc", "Expected 'abc', got '" .. concat .. "'")
 
    -- Mixed types (numbers should be converted)
    local mixed = string.join({1, "hello", 2.5, "world"}, "-")
-   if mixed != "1-hello-2.5-world" then error("Expected '1-hello-2.5-world', got '" .. mixed .. "'") end
+   assert(mixed is "1-hello-2.5-world", "Expected '1-hello-2.5-world', got '" .. mixed .. "'")
 
    -- Empty table
    local empty = string.join({}, ",")
-   if empty != "" then error("Empty table should return empty string, got '" .. empty .. "'") end
+   assert(empty is "", "Empty table should return empty string, got '" .. empty .. "'")
 
    -- Single item
    local single = string.join({"hello"}, ",")
-   if single != "hello" then error("Single item should return 'hello', got '" .. single .. "'") end
+   assert(single is "hello", "Single item should return 'hello', got '" .. single .. "'")
 
    -- Empty strings in table
    local withEmpty = string.join({"a", "", "b"}, ",")
-   if withEmpty != "a,,b" then error("Expected 'a,,b', got '" .. withEmpty .. "'") end
+   assert(withEmpty is "a,,b", "Expected 'a,,b', got '" .. withEmpty .. "'")
 end
 
 function testStartsWith()
    -- Basic positive case
-   if not string.startsWith("hello world", "hello") then error("Should start with 'hello'") end
+   assert(string.startsWith("hello world", "hello"), "Should start with 'hello'")
 
    -- Basic negative case
-   if string.startsWith("hello world", "world") then error("Should not start with 'world'") end
+   assert(not string.startsWith("hello world", "world"), "Should not start with 'world'")
 
    -- Empty prefix (should always match)
-   if not string.startsWith("hello", "") then error("Should match empty prefix") end
+   assert(string.startsWith("hello", ""), "Should match empty prefix")
 
    -- Prefix longer than string
-   if string.startsWith("hi", "hello") then error("Should not match longer prefix") end
+   assert(not string.startsWith("hi", "hello"), "Should not match longer prefix")
 
    -- Exact match
-   if not string.startsWith("hello", "hello") then error("Should match exact string") end
+   assert(string.startsWith("hello", "hello"), "Should match exact string")
 
    -- Empty string with empty prefix
-   if not string.startsWith("", "") then error("Empty string should match empty prefix") end
+   assert(string.startsWith("", ""), "Empty string should match empty prefix")
 
    -- Empty string with non-empty prefix
-   if string.startsWith("", "hello") then error("Empty string should not match non-empty prefix") end
+   assert(not string.startsWith("", "hello"), "Empty string should not match non-empty prefix")
 
    -- Case sensitive
-   if string.startsWith("Hello", "hello") then error("Should be case sensitive") end
+   assert(not string.startsWith("Hello", "hello"), "Should be case sensitive")
 end
 
 function testEndsWith()
    -- Basic positive case
-   if not string.endsWith("hello world", "world") then error("Should end with 'world'") end
+   assert(string.endsWith("hello world", "world"), "Should end with 'world'")
 
    -- Basic negative case
-   if string.endsWith("hello world", "hello") then error("Should not end with 'hello'") end
+   assert(not string.endsWith("hello world", "hello"), "Should not end with 'hello'")
 
    -- Empty suffix (should always match)
-   if not string.endsWith("hello", "") then error("Should match empty suffix") end
+   assert(string.endsWith("hello", ""), "Should match empty suffix")
 
    -- Suffix longer than string
-   if string.endsWith("hi", "hello") then error("Should not match longer suffix") end
+   assert(not string.endsWith("hi", "hello"), "Should not match longer suffix")
 
    -- Exact match
-   if not string.endsWith("hello", "hello") then error("Should match exact string") end
+   assert(string.endsWith("hello", "hello"), "Should match exact string")
 
    -- Empty string with empty suffix
-   if not string.endsWith("", "") then error("Empty string should match empty suffix") end
+   assert(string.endsWith("", ""), "Empty string should match empty suffix")
 
    -- Empty string with non-empty suffix
-   if string.endsWith("", "hello") then error("Empty string should not match non-empty suffix") end
+   assert(not string.endsWith("", "hello"), "Empty string should not match non-empty suffix")
 
    -- Case sensitive
-   if string.endsWith("Hello", "hello") then error("Should be case sensitive") end
+   assert(not string.endsWith("Hello", "hello"), "Should be case sensitive")
 end
 
 function testCap()
    -- Basic capitalization
    local capped = string.cap("hello")
-   if capped != "Hello" then error("Expected 'Hello', got '" .. capped .. "'") end
+   assert(capped is "Hello", "Expected 'Hello', got '" .. capped .. "'")
 
    -- Already capitalized
    local already = string.cap("Hello")
-   if already != "Hello" then error("Expected 'Hello', got '" .. already .. "'") end
+   assert(already is "Hello", "Expected 'Hello', got '" .. already .. "'")
 
    -- Single character
    local single = string.cap("a")
-   if single != "A" then error("Expected 'A', got '" .. single .. "'") end
+   assert(single is "A", "Expected 'A', got '" .. single .. "'")
 
    -- Empty string
    local empty = string.cap("")
-   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Non-alphabetic first character
    local nonalpha = string.cap("123hello")
-   if nonalpha != "123hello" then error("Expected '123hello', got '" .. nonalpha .. "'") end
+   assert(nonalpha is "123hello", "Expected '123hello', got '" .. nonalpha .. "'")
 
    -- Mixed case
    local mixed = string.cap("hELLO")
-   if mixed != "HELLO" then error("Expected 'HELLO', got '" .. mixed .. "'") end
+   assert(mixed is "HELLO", "Expected 'HELLO', got '" .. mixed .. "'")
 end
 
 function testDecap()
    -- Basic decapitalization
    local decapped = string.decap("Hello")
-   if decapped != "hello" then error("Expected 'hello', got '" .. decapped .. "'") end
+   assert(decapped is "hello", "Expected 'hello', got '" .. decapped .. "'")
 
    -- Already lowercase
    local already = string.decap("hello")
-   if already != "hello" then error("Expected 'hello', got '" .. already .. "'") end
+   assert(already is "hello", "Expected 'hello', got '" .. already .. "'")
 
    -- Single character
    local single = string.decap("A")
-   if single != "a" then error("Expected 'a', got '" .. single .. "'") end
+   assert(single is "a", "Expected 'a', got '" .. single .. "'")
 
    -- Empty string
    local empty = string.decap("")
-   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Non-alphabetic first character
    local nonalpha = string.decap("123Hello")
-   if nonalpha != "123Hello" then error("Expected '123Hello', got '" .. nonalpha .. "'") end
+   assert(nonalpha is "123Hello", "Expected '123Hello', got '" .. nonalpha .. "'")
 
    -- Mixed case
    local mixed = string.decap("HeLLo")
-   if mixed != "heLLo" then error("Expected 'heLLo', got '" .. mixed .. "'") end
+   assert(mixed is "heLLo", "Expected 'heLLo', got '" .. mixed .. "'")
 end
 
 function testHash()
    -- Basic hash (case insensitive by default)
    local hash1 = string.hash("hello")
    local hash2 = string.hash("HELLO")
-   if hash1 != hash2 then error("Case insensitive hashes should match: " .. hash1 .. " != " .. hash2) end
+   assert(hash1 is hash2, "Case insensitive hashes should match: " .. hash1 .. " != " .. hash2)
 
    -- Case sensitive hash
    local hash3 = string.hash("hello", true)
    local hash4 = string.hash("HELLO", true)
-   if hash3 == hash4 then error("Case sensitive hashes should differ: " .. hash3 .. " == " .. hash4) end
+   assert(hash3 != hash4, "Case sensitive hashes should differ: " .. hash3 .. " is " .. hash4)
 
    -- Empty string
    local emptyHash = string.hash("")
-   if emptyHash == 0 then error("Empty string hash should not be 0, got " .. emptyHash) end
+   assert(emptyHash != 0, "Empty string hash should not be 0, got " .. emptyHash)
 
    -- Same string should produce same hash
    local consistent1 = string.hash("test")
    local consistent2 = string.hash("test")
-   if consistent1 != consistent2 then error("Consistent hashing failed: " .. consistent1 .. " != " .. consistent2) end
+   assert(consistent1 is consistent2, "Consistent hashing failed: " .. consistent1 .. " != " .. consistent2)
 
    -- Different strings should produce different hashes (highly likely)
    local diff1 = string.hash("hello")
    local diff2 = string.hash("world")
-   if diff1 == diff2 then error("Different strings produced same hash (collision): " .. diff1) end
+   assert(diff1 != diff2, "Different strings produced same hash (collision): " .. diff1)
 end
 
 function testEscXML()
    -- Basic XML escaping
    local escaped = string.escXML("Hello & goodbye")
-   if escaped != "Hello &amp; goodbye" then error("Expected 'Hello &amp; goodbye', got '" .. escaped .. "'") end
+   assert(escaped is "Hello &amp; goodbye", "Expected 'Hello &amp; goodbye', got '" .. escaped .. "'")
 
    -- Less than and greater than
    local brackets = string.escXML("<tag>content</tag>")
-   if brackets != "&lt;tag&gt;content&lt;/tag&gt;" then error("Expected '&lt;tag&gt;content&lt;/tag&gt;', got '" .. brackets .. "'") end
+   assert(brackets is "&lt;tag&gt;content&lt;/tag&gt;", "Expected '&lt;tag&gt;content&lt;/tag&gt;', got '" .. brackets .. "'")
 
    -- All three special characters
    local all = string.escXML("A & B < C > D")
-   if all != "A &amp; B &lt; C &gt; D" then error("Expected 'A &amp; B &lt; C &gt; D', got '" .. all .. "'") end
+   assert(all is "A &amp; B &lt; C &gt; D", "Expected 'A &amp; B &lt; C &gt; D', got '" .. all .. "'")
 
    -- No special characters
    local normal = string.escXML("Hello World")
-   if normal != "Hello World" then error("Expected 'Hello World', got '" .. normal .. "'") end
+   assert(normal is "Hello World", "Expected 'Hello World', got '" .. normal .. "'")
 
    -- Empty string
    local empty = string.escXML("")
-   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Nil input (should return empty string)
    local nilResult = string.escXML(nil)
-   if nilResult != "" then error("Nil input should return empty string, got '" .. nilResult .. "'") end
+   assert(nilResult is "", "Nil input should return empty string, got '" .. nilResult .. "'")
 
    -- Multiple ampersands (should not double-escape)
    local amps = string.escXML("A & B & C")
-   if amps != "A &amp; B &amp; C" then error("Expected 'A &amp; B &amp; C', got '" .. amps .. "'") end
+   assert(amps is "A &amp; B &amp; C", "Expected 'A &amp; B &amp; C', got '" .. amps .. "'")
 
    -- Mixed with quotes (should not escape quotes)
    local quotes = string.escXML('Hello "world" & <test>')
-   if quotes != 'Hello "world" &amp; &lt;test&gt;' then error("Expected 'Hello \"world\" &amp; &lt;test&gt;', got '" .. quotes .. "'") end
+   assert(quotes is 'Hello "world" &amp; &lt;test&gt;', "Expected 'Hello \"world\" &amp; &lt;test&gt;', got '" .. quotes .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -29,7 +29,7 @@ end
 
 function freePictures()
    for k, v in ipairs(glPictures) do
-      if (v.pic != nil) then
+      if v.pic != nil then
          v.pic = nil
       end
    end
@@ -43,7 +43,7 @@ function picProcessed(ActionID, pic, Error, Key)
       print('Failed to load picture, error: ' .. mSys.GetErrorMsg(Error))
    end
 
-   glPicsProcessed = glPicsProcessed + 1
+   glPicsProcessed++
 
    if (glPicsProcessed >= #glPictures) then
       --print('All pictures have been processed, exiting now.')
@@ -60,7 +60,7 @@ function testParallel()
    for k, v in ipairs(glPictures) do
       if v.pic then
          thread.action(v.pic, 'Activate', picProcessed, k)
-         count = count + 1
+         count++
       end
    end
 
@@ -76,7 +76,7 @@ end
 
 function testSequential()
    for k, v in ipairs(glPictures) do
-      if (v.pic != nil) then
+      if v.pic != nil then
          v.pic.acActivate()
       end
    end
@@ -95,7 +95,7 @@ end
             nameFilter = '.+%.svg',
             nameWild   = 'lua',
             matchFeedback = function(Path, FileName, File)
-               list = list .. FileName .. ' '
+               list ..= FileName .. ' '
                table.insert(glPictures, { path=Path .. FileName })
             end
          })

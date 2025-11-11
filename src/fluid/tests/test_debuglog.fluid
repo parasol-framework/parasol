@@ -300,7 +300,7 @@ end
 
    script.acActivate()
    local err, result = script.mtDebugLog('disasm,log')
-   assert(err == ERR_Okay, 'DebugLog on script should succeed')
+   assert(err is ERR_Okay, 'DebugLog on script should succeed')
    assert(result??, 'DebugLog should return a result for script')
 end
 

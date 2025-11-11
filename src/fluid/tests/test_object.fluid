@@ -24,7 +24,7 @@ end
 
 function testType()
    local script = obj.find("self")
-   assert(getmetatable(script).__name == 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
+   assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

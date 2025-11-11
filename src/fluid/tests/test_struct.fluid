@@ -18,12 +18,12 @@ Flute tests for the struct interface.
 
 function testFontList()
    local err, list = mFont.GetList()
-   if (list == nil) then error("Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err)) end
+   if (list is nil) then error("Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err)) end
 
    local font = list
-   while (font) do
+   while font do
       if not font.hidden then
-         if (font.scalable == 1) then
+         if font.scalable is 1 then
             print("Scalable: " .. font.name)
          else
             print("Bitmap: " .. font.name)
@@ -32,10 +32,10 @@ function testFontList()
 
          local points = ""
          for _, p in ipairs(font.points) do
-            if nz(points) then points = points .. ", " end
-            points = points .. p
+            if points?? then points ..= ", " end
+            points ..= p
          end
-         if nz(points) then print("Available in fixed sizes: " .. points) end
+         if points?? then print("Available in fixed sizes: " .. points) end
          print("")
       end
 

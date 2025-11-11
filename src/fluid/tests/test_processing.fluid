@@ -22,7 +22,7 @@ function testMultipleSignals()
       local proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
       msg('Sleeping....')
       local err = proc.sleep()
-      assert(err == ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
    end
 end
 

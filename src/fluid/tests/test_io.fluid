@@ -20,7 +20,7 @@ end
 
 function fileExists(path)
    local err, type = mSys.AnalysePath(path)
-   return err == ERR_Okay and type == LOC_FILE
+   return err is ERR_Okay and type is LOC_FILE
 end
 
 function readFileContent(path)
@@ -29,7 +29,7 @@ function readFileContent(path)
 
    local buffer = string.alloc(4096)
    local err, bytes = file.acRead(buffer)
-   if err == ERR_Okay and bytes > 0 then
+   if err is ERR_Okay and bytes > 0 then
       return buffer:sub(1, bytes)
    end
    return nil
@@ -45,7 +45,7 @@ function testIoOpen()
    local test_path = createTestFile('test_read.txt', 'Hello, World!')
    local file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for reading')
-   assert(io.type(file) == 'file', 'io.type should return "file"')
+   assert(io.type(file) is 'file', 'io.type should return "file"')
    file:close()
 
    -- Test opening a new file for writing
@@ -64,11 +64,11 @@ function testIoOpen()
    file:close()
 
    local content = readFileContent(write_path)
-   assert(content == 'Test content - appended', 'Append mode should add to end of file')
+   assert(content is 'Test content - appended', 'Append mode should add to end of file')
 
    -- Test opening non-existent file for reading
    local nonexistent_file, err = io.open(glTestFolder .. 'nonexistent.txt', 'r')
-   assert(nonexistent_file == nil, 'Should return nil for non-existent file')
+   assert(nonexistent_file is nil, 'Should return nil for non-existent file')
    assert(err != nil, 'Should return error message for non-existent file')
 end
 
@@ -80,8 +80,8 @@ function testIoClose()
    assert(file, 'Failed to open file')
 
    local result = io.close(file)
-   assert(result == true, 'io.close should return true on success')
-   assert(io.type(file) == 'closed file', 'File should be marked as closed')
+   assert(result is true, 'io.close should return true on success')
+   assert(io.type(file) is 'closed file', 'File should be marked as closed')
 end
 
 function testIoType()
@@ -90,11 +90,11 @@ function testIoType()
    local test_path = createTestFile('test_type.txt', 'test')
    local file = io.open(test_path, 'r')
 
-   assert(io.type(file) == 'file', 'Should return "file" for open file')
-   assert(io.type('not a file') == nil, 'Should return nil for non-file object')
+   assert(io.type(file) is 'file', 'Should return "file" for open file')
+   assert(io.type('not a file') is nil, 'Should return nil for non-file object')
 
    file:close()
-   assert(io.type(file) == 'closed file', 'Should return "closed file" for closed file')
+   assert(io.type(file) is 'closed file', 'Should return "closed file" for closed file')
 end
 
 function testIoTmpfile()
@@ -102,7 +102,7 @@ function testIoTmpfile()
 
    local tmpfile = io.tmpfile()
    assert(tmpfile, 'Failed to create temporary file')
-   assert(io.type(tmpfile) == 'file', 'Temporary file should be a valid file object')
+   assert(io.type(tmpfile) is 'file', 'Temporary file should be a valid file object')
 
    -- Test writing and reading from tmpfile
    tmpfile:write('temporary data')
@@ -124,16 +124,16 @@ function testFileWrite()
 
    -- Test single string write
    local result = file:write('Hello')
-   assert(result == file, 'file:write should return the file handle')
+   assert(result is file, 'file:write should return the file handle')
 
    -- Test multiple string writes
    result = file:write(' ', 'World', '!')
-   assert(result == file, 'file:write should handle multiple arguments')
+   assert(result is file, 'file:write should handle multiple arguments')
 
    file:close()
 
    local content = readFileContent(test_path)
-   assert(content == 'Hello World!', 'Written content should match expected')
+   assert(content is 'Hello World!', 'Written content should match expected')
 end
 
 function testFileRead()
@@ -147,37 +147,37 @@ function testFileRead()
 
    -- Test reading a line (default behavior)
    local line = file:read()
-   assert(line == '123', 'Should read first line: "123", got "' .. nz(line, 'NIL') .. '"')
+   assert(line is '123', 'Should read first line: "123", got "' .. nz(line, 'NIL') .. '"')
 
    -- Test reading a number
    local num = file:read('*n')
-   assert(num == 456.789, 'Should read number 456.789, got ' .. nz(num, 'NIL'))
+   assert(num is 456.789, 'Should read number 456.789, got ' .. nz(num, 'NIL'))
 
    -- Test reading specific number of bytes
    file:seek('set', 0) -- Reset to start
    local bytes = file:read(3)
-   assert(bytes == '123', 'Should read 3 bytes: "123", got "' .. nz(bytes, 'NIL') .. '"')
+   assert(bytes is '123', 'Should read 3 bytes: "123", got "' .. nz(bytes, 'NIL') .. '"')
 
    -- Test reading entire file
    file:seek('set', 0) -- Reset to start
    local all = file:read('*a')
-   assert(all == test_content, 'Should read entire file content')
+   assert(all is test_content, 'Should read entire file content')
 
    -- Test reading line with *l format
    file:seek('set', 0) -- Reset to start
    local line_l = file:read('*l')
-   assert(line_l == '123', 'Should read line with *l format')
+   assert(line_l is '123', 'Should read line with *l format')
 
    -- Test multiple read operations
    file:seek('set', 0) -- Reset to start
    local first, second = file:read('*l', '*l')
-   assert(first == '123', 'First line should be "123"')
-   assert(second == '456.789', 'Second line should be "456.789"')
+   assert(first is '123', 'First line should be "123"')
+   assert(second is '456.789', 'Second line should be "456.789"')
 
    -- Test reading at end of file
    file:seek('end', 0)
    local eof = file:read()
-   assert(eof == nil, 'Should return nil when reading at end of file')
+   assert(eof is nil, 'Should return nil when reading at end of file')
 
    file:close()
 end
@@ -191,19 +191,19 @@ function testFileSeek()
 
    -- Test seeking to start
    local pos = file:seek('set', 0)
-   assert(pos == 0, 'Should return position 0 when seeking to start')
+   assert(pos is 0, 'Should return position 0 when seeking to start')
 
    -- Test seeking to specific position
    pos = file:seek('set', 5)
-   assert(pos == 5, 'Should return position 5 when seeking to offset 5')
+   assert(pos is 5, 'Should return position 5 when seeking to offset 5')
 
    -- Test seeking to end
    pos = file:seek('end', 0)
-   assert(pos == 10, 'Should return file size when seeking to end')
+   assert(pos is 10, 'Should return file size when seeking to end')
 
    -- Test relative seeking
    pos = file:seek('cur', -2)
-   assert(pos == 8, 'Should return position 8 when seeking back 2 from end')
+   assert(pos is 8, 'Should return position 8 when seeking back 2 from end')
 
    file:close()
 end
@@ -218,7 +218,7 @@ function testFileFlush()
 
    file:write('test data')
    local result = file:flush()
-   assert(result == true, 'file:flush should return true')
+   assert(result is true, 'file:flush should return true')
 
    file:close()
 end
@@ -241,10 +241,10 @@ function testIoLines()
       table.insert(collected_lines, line)
    end
 
-   assert(line_count == 3, 'Should read 3 lines, got ' .. line_count)
-   assert(collected_lines[1] == 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] == 'Line 2', 'Second line should be "Line 2"')
-   assert(collected_lines[3] == 'Line 3', 'Third line should be "Line 3"')
+   assert(line_count is 3, 'Should read 3 lines, got ' .. line_count)
+   assert(collected_lines[1] is 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[1], 'NIL'))
+   assert(collected_lines[2] is 'Line 2', 'Second line should be "Line 2"')
+   assert(collected_lines[3] is 'Line 3', 'Third line should be "Line 3"')
 end
 
 function testFileLines()
@@ -262,10 +262,10 @@ function testFileLines()
       table.insert(collected_lines, line)
    end
 
-   assert(line_count == 3, 'Should read 3 lines from file handle')
-   assert(collected_lines[1] == 'First', 'First line should be "First", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] == 'Second', 'Second line should be "Second"')
-   assert(collected_lines[3] == 'Third', 'Third line should be "Third"')
+   assert(line_count is 3, 'Should read 3 lines from file handle')
+   assert(collected_lines[1] is 'First', 'First line should be "First", got ' .. nz(collected_lines[1], 'NIL'))
+   assert(collected_lines[2] is 'Second', 'Second line should be "Second"')
+   assert(collected_lines[3] is 'Third', 'Third line should be "Third"')
 
    file:close()
 end
@@ -300,7 +300,7 @@ function testIoInputOutput()
    io.output():close()
 
    local content = readFileContent(output_path)
-   assert(content == 'Default output test', 'Default output should work with io.write')
+   assert(content is 'Default output test', 'Default output should work with io.write')
 
    io.input():close()
 end
@@ -327,7 +327,7 @@ function testErrorHandling()
 
    -- Test opening invalid file
    local file, err = io.open('/invalid/path/file.txt', 'r')
-   assert(file == nil, 'Should return nil for invalid file path')
+   assert(file is nil, 'Should return nil for invalid file path')
    assert(err != nil, 'Should return error message for invalid file path')
 
    -- Test operations on closed file
@@ -338,12 +338,12 @@ function testErrorHandling()
    local success, error_msg = catch(function()
       file:write('should fail')
    end)
-   assert(success == nil, 'Writing to closed file should fail')
+   assert(success is nil, 'Writing to closed file should fail')
 
    success, error_msg = catch(function()
       file:seek('set', 0)
    end)
-   assert(success == nil, 'Seeking in closed file should fail')
+   assert(success is nil, 'Seeking in closed file should fail')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -357,10 +357,10 @@ function testIoRead()
    io.input(input_path)
 
    local line = io.read()
-   assert(line == 'io read test', 'Should read from default input')
+   assert(line is 'io read test', 'Should read from default input')
 
    local line2 = io.read('*l')
-   assert(line2 == 'second line', 'Should read second line from default input')
+   assert(line2 is 'second line', 'Should read second line from default input')
 
    io.input():close()
 end
@@ -385,22 +385,22 @@ function testIntegration()
       table.insert(lines_read, line)
    end
 
-   assert(#lines_read == 3, 'Should read exactly 3 lines')
-   assert(lines_read[1] == 'First line of data', 'First line incorrect')
-   assert(lines_read[2] == 'Second line of data', 'Second line incorrect')
-   assert(lines_read[3] == 'Third line of data', 'Third line incorrect')
+   assert(#lines_read is 3, 'Should read exactly 3 lines')
+   assert(lines_read[1] is 'First line of data', 'First line incorrect')
+   assert(lines_read[2] is 'Second line of data', 'Second line incorrect')
+   assert(lines_read[3] is 'Third line of data', 'Third line incorrect')
 
    -- Test seek and read operations with file_read() implementation
    local read_file = io.open(test_path, 'r')
    read_file:seek('set', 6) -- Skip "First "
 
    local partial = read_file:read(4) -- Read "line"
-   assert(partial == 'line', 'Should read 4 bytes after seek, got "' .. nz(partial, 'NIL') .. '"')
+   assert(partial is 'line', 'Should read 4 bytes after seek, got "' .. nz(partial, 'NIL') .. '"')
 
    -- Test reading entire remaining content
    read_file:seek('set', 0)
    local all_content = read_file:read('*a')
-   assert(all_content == test_data, 'Should read entire file content')
+   assert(all_content is test_data, 'Should read entire file content')
 
    read_file:close()
 
@@ -409,7 +409,7 @@ function testIntegration()
    local num_file = io.open(number_path, 'r')
 
    local int_num = num_file:read('*n')
-   assert(int_num == 42, 'Should read integer 42, got ' .. nz(int_num, 'NIL'))
+   assert(int_num is 42, 'Should read integer 42, got ' .. nz(int_num, 'NIL'))
 
    local float_num = num_file:read('*n')
    assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. nz(float_num, 'NIL'))
