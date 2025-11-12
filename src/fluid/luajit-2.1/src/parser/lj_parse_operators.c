@@ -464,6 +464,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             ExpDesc nilv, falsev, zerov, emptyv;
             BCPos skip;
             BCPos check_nil, check_false, check_zero, check_empty;
+            BCReg dest_reg;
             // Check for nil
             expr_init(&nilv, VKNIL, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
@@ -482,6 +483,17 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
+            if (rhs_reg == NO_REG) {
+               dest_reg = fs->freereg;
+               bcreg_reserve(fs, 1);
+               rhs_reg = dest_reg;
+            } else {
+               dest_reg = rhs_reg;
+               if (dest_reg >= fs->freereg)
+                  fs->freereg = dest_reg + 1;
+            }
+            // Preserve original value for truthy path before emitting skip jump.
+            bcemit_AD(fs, BC_MOV, dest_reg, reg);
             // If all checks pass (value is truthy), skip RHS
             skip = bcemit_jmp(fs);
             // Patch falsey checks to jump to RHS evaluation
@@ -490,23 +502,18 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, check_zero, fs->pc);
             jmp_patch(fs, check_empty, fs->pc);
             // Evaluate RHS
-            if (rhs_reg == NO_REG) {
-               rhs_reg = fs->freereg;
-               bcreg_reserve(fs, 1);
-            }
-            expr_toreg(fs, e2, rhs_reg);
-            bcemit_AD(fs, BC_MOV, reg, rhs_reg);
+            expr_toreg(fs, e2, dest_reg);
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
-            expr_init(e1, VNONRELOC, reg);
+            expr_init(e1, VNONRELOC, dest_reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
             // Collapse freereg to drop rhs_reg and any temporaries.
-            // After the MOV, the result only lives in reg, so we must free rhs_reg.
-            // Set freereg to max(nactvar, reg + 1) to drop stale copies in rhs_reg.
+            // After the MOV, the result only lives in dest_reg, so we must free rhs_reg.
+            // Set freereg to max(nactvar, dest_reg + 1) to drop stale copies in rhs_reg.
             // This prevents BC_CAT from concatenating them when result is used in concatenation.
             // Only adjust if rhs_reg was actually used (rhs_reg > reg) and not from safe nav chain.
-            if (rhs_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
-               BCReg target_free = (reg >= fs->nactvar) ? reg + 1 : fs->nactvar;
+            if (dest_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
+               BCReg target_free = (dest_reg >= fs->nactvar) ? dest_reg + 1 : fs->nactvar;
                if (fs->freereg > target_free)
                   fs->freereg = target_free;
             }
