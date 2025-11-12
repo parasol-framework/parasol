@@ -340,7 +340,7 @@ else ()
    add_custom_command(
       OUTPUT ${LUAJIT_BUILD_DIR}/dasm_aflags.txt
       COMMAND ${CMAKE_COMMAND} -P ${ARCH_DETECT_SCRIPT}
-      DEPENDS "${LUAJIT_SRC}/lj_arch.h"
+      DEPENDS "${LUAJIT_SRC}/lj_arch.h" ${ARCH_DETECT_SCRIPT}
       COMMENT "Detecting architecture flags for dynasm"
       VERBATIM
    )
