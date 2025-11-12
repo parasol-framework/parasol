@@ -41,6 +41,24 @@ static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget,
 static void jmp_tohere(FuncState* fs, BCPos list);
 static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 
+// -- Expression flag lifecycle management ------------------------------------
+
+// Helper macros for managing expression flags with explicit lifecycle semantics.
+// These make flag ownership and consumption more explicit and easier to audit.
+
+// Consume a flag from an expression, clearing it and returning whether it was set.
+// Use this when an operator takes ownership of a flagged value.
+#define expr_consume_flag(e, flag) ((e)->flags & (flag) ? ((e)->flags &= ~(flag), 1) : 0)
+
+// Check if an expression has a flag without consuming it.
+#define expr_has_flag(e, flag) (((e)->flags & (flag)) != 0)
+
+// Set a flag on an expression.
+#define expr_set_flag(e, flag) ((e)->flags |= (flag))
+
+// Clear a flag on an expression.
+#define expr_clear_flag(e, flag) ((e)->flags &= ~(flag))
+
 // -- Register allocation (lj_parse_regalloc.c) ----------------------------
 
 static void bcreg_bump(FuncState* fs, BCReg n);
