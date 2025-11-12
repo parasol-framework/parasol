@@ -115,25 +115,33 @@ end
 -- Ensure RHS is not evaluated when LHS is truthy
 
 function testShortCircuitTruth()
+   local counter = 0
    local function rhs()
-      error("RHS should not be evaluated when LHS is truthy")
+      counter++
+      return "RHS"
    end
+
+   -- Primitive truthy values
    local v = "X" ? rhs()
    assert(v is "X", "Failed short-circuit truth: expected 'X', got '" .. tostring(v) .. "'")
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Ensure RHS is evaluated exactly once when LHS is extended-falsey
-
-function testRHSOnce()
-   local count = 0
-   local function rhs()
-      count += 1
-      return "Y"
-   end
+   assert(counter is 0, "RHS was evaluated when LHS was truthy")
+   
+   counter = 0
    local v = 0 ? rhs()
-   assert(v is "Y", "Failed RHS once value: expected 'Y', got '" .. tostring(v) .. "'")
-   assert(count is 1, "Failed RHS once count: expected 1, got " .. tostring(count))
+   assert(v is "RHS", "Failed RHS once value: expected 'RHS', got '" .. tostring(v) .. "'")
+   assert(counter is 1, "Failed RHS once count: expected 1, got " .. tostring(counter))
+
+   -- Table truthy value
+   counter = 0
+   local t = { a=1 }
+   local v = t ? rhs()
+   assert(counter is 0, "RHS was evaluated when LHS was truthy")
+   
+   -- Function truthy value
+   counter = 0
+   function lhs() return true end
+   local v = lhs() ? rhs()
+   assert(v is true and counter is 0, "RHS was evaluated when LHS was truthy")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -173,7 +181,7 @@ end
    return {
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
-         'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
+         'testShortCircuitTruth', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg'
       }
    }
