@@ -38,24 +38,52 @@ function testTruthyNumber()
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
 end
 
+----------------------------------------------------------------------------------------------------------------------
+-- Basic checks with a function on either side
+
 function testFunction()
    local function returnString()
       return "Result"
    end
 
-   local v = returnString() ? "A"
+   local v = returnString('ignore') ? "A"
    assert(v is "Result", "Failed function case 1, got '" .. tostring(v) .. "'")
    
-   local v = nil ? returnString()
+   local v = nil ? returnString('ignore')
    assert(v is "Result", "Failed function case 2, got '" .. tostring(v) .. "'")
-      
-   local v = 'start ' .. (nil ? returnString()) .. ' end'
-   assert(v is "start Result end", "Failed function case 3, got '" .. tostring(v) .. "'")
+end
 
+----------------------------------------------------------------------------------------------------------------------
+-- Test if-empty in conjunction with concatenation - note that bugs raised could be in either feature or in 
+-- combination of both
+
+function testConcat()
+   local function returnString()
+      return "Result"
+   end
+
+   local v = 'start ' .. (nil ? returnString('ignore')) .. ' end'
+   assert(v is "start Result end", "Failed function case 3, got '" .. tostring(v) .. "'")
+   
    local val
-   local v = '' .. (val ? returnString())
+   local v = '' .. (val ? returnString('ignore'))
    assert(v is "Result", "Failed function case 4, got '" .. tostring(v) .. "'")
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- This unusual test has been observed as throwing errors in some cases 
+
+function testConcatMsg()
+   local function fakeFunction()
+      return nil
+   end
+   local Number = 1
+   fakeFunction(Number ? 2) -- Our own function
+   msg(Number ? 2) -- A built-in function
+   msg('<' .. (Number ? 2) .. '>') -- A built-in function with concatenation
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 function testTable()
    local t = { a=1, b=2, c=3}
@@ -69,7 +97,9 @@ function testTable()
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is truthy
+
 function testShortCircuitTruth()
    local function rhs()
       error("RHS should not be evaluated when LHS is truthy")
@@ -78,7 +108,9 @@ function testShortCircuitTruth()
    assert(v is "X", "Failed short-circuit truth: expected 'X', got '" .. tostring(v) .. "'")
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is evaluated exactly once when LHS is extended-falsey
+
 function testRHSOnce()
    local count = 0
    local function rhs()
@@ -90,7 +122,9 @@ function testRHSOnce()
    assert(count is 1, "Failed RHS once count: expected 1, got " .. tostring(count))
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Chaining behaviour
+
 function testChaining()
    local v1 = "" ? 0 ? "A"
    assert(v1 is "A", "Failed chaining case 1: expected 'A', got '" .. tostring(v1) .. "'")
@@ -99,7 +133,9 @@ function testChaining()
    assert(v2 is "X", "Failed chaining case 2: expected 'X', got '" .. tostring(v2) .. "'")
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Interaction with logical or: ensure semantics differ (0 and "" are treated as truthy by Lua or)
+
 function testDifferenceFromLuaOr()
    local a = 0 or "B"      -- Lua or: 0 is truthy
    local b = 0 ? "B"        -- ?: 0 is falsey
@@ -118,12 +154,12 @@ function testRuntimeZero()
    assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testRuntimeZero', 'testTable', 'testFunction'
+         'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg'
       }
    }
