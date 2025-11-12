@@ -314,7 +314,7 @@ local function displayFilters(self)
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
             local ev = Events
             while ev do
-               if bit.band(ev.flags, JTYPE_BUTTON) != 0 then
+               if (ev.flags & JTYPE_BUTTON) != 0 then
                   if ev.type is JET_BUTTON_1 and ev.value is 1 then
                      if item.selected then
                         item.highlight.visibility = VIS_HIDDEN
