@@ -11,9 +11,9 @@ local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
 local function imageLocation(Path)
-   if (Path:find('^icons:') == 1) then
+   if (Path:find('^icons:') is 1) then
       return Path
-   elseif (Path:find('^[%w]+:') == 1) then
+   elseif (Path:find('^[%w]+:') is 1) then
       return Path
    else
       return 'icons:' .. Path
@@ -23,7 +23,7 @@ end
 gui.icon = function(Options)
    local self = { -- Public variables
       parentViewport = Options.target,
-      events         = (Options.events ? { }),
+      events         = Options.events ? { },
       viewport       = nil -- The icon's primary viewport
    }
 
@@ -32,13 +32,13 @@ gui.icon = function(Options)
    local lClick      = { held=false, x=0, y=0 }
    local lWords      = { }
    local lLines      = { }
-   local lIconSize   = (Options.size ? 66)
+   local lIconSize   = Options.size ? 66
    local lIconWidth  = lIconSize
    local lFontSize   = FONT_HEIGHT
    local lLineHeight = 0
 
    local function inputFeedback(Viewport, Msg)
-      if (Msg.type == JET_BUTTON_1) then
+      if (Msg.type is JET_BUTTON_1) then
          if (Msg.value > 0) then
             lClick.held = true
             lClick.x = Msg.absX
@@ -61,7 +61,7 @@ gui.icon = function(Options)
             end
          end
          Viewport.acDraw()
-      elseif (Msg.type == JET_BUTTON_2) then
+      elseif (Msg.type is JET_BUTTON_2) then
          self.events.activate(self, { name='altclick' })
       end
    end
@@ -69,7 +69,7 @@ gui.icon = function(Options)
    local function calcWords()
       lWords = { }
       lLines = { }
-      if (lText == nil) or (#lText == 0) then return end
+      if not lText?? then return end
 
       if (lIconSize < 26) then
          lFontSize = 6
@@ -102,7 +102,7 @@ gui.icon = function(Options)
 
       local current_line
       for _, word in ipairs(lWords) do
-         if (current_line == nil) then
+         if not current_line then
             current_line = word.word
          else
             local new_line = current_line .. ' ' .. word.word
@@ -116,7 +116,7 @@ gui.icon = function(Options)
          end
       end
 
-      if (current_line != nil) then
+      if current_line then
          table.insert(lLines, current_line)
       end
    end
@@ -125,7 +125,7 @@ gui.icon = function(Options)
       -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
       -- against a busy background or one of a similar colour.
 
-      if #lLines == 0 then return end
+      if #lLines is 0 then return end
 
       local box_height = self.viewport.height - (lIconSize + MARGIN)
       local y = lIconSize + MARGIN
@@ -153,7 +153,7 @@ gui.icon = function(Options)
             string    = line
          })
 
-         y = y + lLineHeight
+         y += lLineHeight
          vText.y = math.floor(y)
       end
    end
@@ -166,10 +166,10 @@ gui.icon = function(Options)
       lText = nil
    end
 
-   if not Options.target then error('A target viewport is required.') end
-   if not Options.image?? then error('The image option is required.') end
+   assert(Options.target, 'A target viewport is required.')
+   assert(Options.image??, 'The image option is required.')
 
-   if (Options.theme == 'light') then
+   if (Options.theme is 'light') then
       lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
    else
       lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
@@ -178,7 +178,7 @@ gui.icon = function(Options)
    calcWords()
 
    self.viewport = Options.target.new('VectorViewport', {
-      x = (Options.x ? 0), y = (Options.y ? 0),
+      x = Options.x ? 0, y = Options.y ? 0,
       width = lIconSize, height = lIconSize,
       aspectRatio = 'XMid|YMin|Meet',
       cursor = 'hand'
@@ -206,9 +206,9 @@ gui.icon = function(Options)
    check(self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback))
 
    local gap = self.viewport.height * 0.1
-   if (gap < 2) then gap = 2 end
+   if gap < 2 then gap = 2 end
 
-   self.viewport.height = self.viewport.height + gap + MARGIN + (lLineHeight * #lLines)
+   self.viewport.height += gap + MARGIN + (lLineHeight * #lLines)
 
    initText()
 

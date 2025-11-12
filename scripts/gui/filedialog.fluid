@@ -10,8 +10,8 @@ Documentation is available in the Parasol Wiki.
    require 'gui/input'
    require 'gui/window'
 
-   if (gui == nil) then gui = { } end
-   if (gui.dialog == nil) then gui.dialog = { } end
+   if (gui is nil) then gui = { } end
+   if (gui.dialog is nil) then gui.dialog = { } end
 
 local GAP = 8
 
@@ -19,8 +19,8 @@ gui.dialog.file = function(Options)
    local self = { -- Public variables
       windowID    = nil,
       currentPath = file.splitPath(Options.path),
-      multiSelect = (Options.multiSelect ? false),
-      warnExists  = (Options.warnExists ? false),
+      multiSelect = Options.multiSelect ? false,
+      warnExists  = Options.warnExists ? false,
       feedback    = Options.feedback,
       target      = Options.target
    }
@@ -28,12 +28,12 @@ gui.dialog.file = function(Options)
    local function processFeedback()
       local list = self.fileview.view.selectedItems()
 
-      if (self.warnExists == true) and (#list > 0) then
+      if (self.warnExists is true) and (#list > 0) then
          local error, type = mSys.AnalysePath((self.fileview.path ? '') .. list[1].filename)
-         if (type == LOC_FILE) then
+         if (type is LOC_FILE) then
             local msg
 
-            if #list == 1 then
+            if #list is 1 then
                msg = "You are about to overwrite the file '" .. list[1].filename .. "'.  Do you want to continue?"
             else
                msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
@@ -49,7 +49,7 @@ gui.dialog.file = function(Options)
                message = msg,
                popOver = windowID,
                feedback = function(Dialog, Response, State)
-                  if (Response) and (Response.id == 1) then
+                  if Response and (Response.id is 1) then
                      if self.feedback then
                         self.feedback(self, self.fileview.path, list)
                      end
@@ -63,7 +63,7 @@ gui.dialog.file = function(Options)
       end
 
       if self.feedback then
-         if (#list == 0) then list = nil end
+         if (#list is 0) then list = nil end
          self.feedback(self, self.fileview.path, list)
       end
 
@@ -81,9 +81,9 @@ gui.dialog.file = function(Options)
       invertPalette = true,
       popOver      = Options.popOver,
       parent       = Options.target,
-      icon         = (Options.icon ? 'icons:folders/folder'),
-      title        = (Options.title ? 'Select a file'),
-      modal        = (Options.modal ? false),
+      icon         = Options.icon ? 'icons:folders/folder',
+      title        = Options.title ? 'Select a file',
+      modal        = Options.modal ? false,
       events = {
          close = function(Window)
             if (Options.feedback != nil) then

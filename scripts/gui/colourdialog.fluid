@@ -3,12 +3,12 @@ Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
-   require 'json'
    require 'gui'
+   local json = require('json')
 
-   if not mGfx then mGfx = mod.load('display') end
+   mGfx ?= mod.load('display')
 
-   if (gui.dialog == nil) then gui.dialog = { } end
+   gui.dialog ?= { }
 
 local BTNSIZE    = 20
 local BTNGAP     = 3
@@ -28,7 +28,7 @@ local COMMON = {
 local glRainbowBitmap
 
 local function saveColours(self)
-   if (not self._paletteChanged) then return end
+   if not self._paletteChanged then return end
 
    local output = json.encode(self._userColours)
    if output?? then
@@ -79,18 +79,18 @@ local function getRainbowBitmap()
          local h = x * 6 / glRainbowBitmap.width
          local i = math.floor(h)
          local f = h - i
-         if bit.band(i, 1) == 0 then
+         if (i & 1) is 0 then
             f = 1 - f
          end
          local m = v * (1 - s)
          local n = v * (1 - s * f)
 
          local err, rgb
-         if (i == 1) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
-         elseif (i == 2) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
-         elseif (i == 3) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
-         elseif (i == 4) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
-         elseif (i == 5) then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
+         if (i is 1) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
+         elseif (i is 2) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
+         elseif (i is 3) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
+         elseif (i is 4) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
+         elseif (i is 5) then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
          else err, rgb = glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
          end
 
@@ -107,18 +107,18 @@ local function getRainbowBitmap()
          local h = x * 6.0 / glRainbowBitmap.width
          local i = math.floor(h)
          local f = h - i
-         if bit.band(i, 1) == 0 then
+         if (i & 1) is 0 then
             f = 1 - f
          end
          local m = v * (1 - s)
          local n = v * (1 - s * f)
 
          local err, rgb
-         if (i == 1) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
-         elseif (i == 2) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
-         elseif (i == 3) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
-         elseif (i == 4) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
-         elseif (i == 5) then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
+         if (i is 1) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, v * 255, m * 255, 255)
+         elseif (i is 2) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, v * 255, n * 255, 255)
+         elseif (i is 3) then err, rgb = glRainbowBitmap.mtGetColour(m * 255, n * 255, v * 255, 255)
+         elseif (i is 4) then err, rgb = glRainbowBitmap.mtGetColour(n * 255, m * 255, v * 255, 255)
+         elseif (i is 5) then err, rgb = glRainbowBitmap.mtGetColour(v * 255, m * 255, n * 255, 255)
          else err, rgb = glRainbowBitmap.mtGetColour(v * 255, n * 255, m * 255, 255)
          end
 
@@ -179,10 +179,10 @@ local function buildLayout(self, Options)
             end
          })
 
-         x = x + BTNSIZE + BTNGAP
+         x += BTNSIZE + BTNGAP
          colour = colour + 1
       end
-      y = y + BTNSIZE + BTNGAP
+      y += BTNSIZE + BTNGAP
    end
 
    dy = y + BTNGAP
@@ -234,19 +234,19 @@ local function buildLayout(self, Options)
             end
          })
 
-         x = x + BTNSIZE + BTNGAP
-         ci = ci + 1
+         x += BTNSIZE + BTNGAP
+         ci++
       end
 
       -- Add buttons for the adding and removing of personal colours
 
-      if (row == 1) then
+      if (row is 1) then
          gui.icon({
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/add',
             events = {
                activate = function(Icon)
                   for k, v in pairs(self._userColours) do
-                     if (v.r == self._rgb.r) and (v.g == self._rgb.g) and (v.b == self._rgb.b) then return end
+                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then return end
                   end
 
                   if (#self._userColours < 7 * 2) then
@@ -260,13 +260,13 @@ local function buildLayout(self, Options)
                end
             }
          })
-      elseif (row == 2) then
+      elseif (row is 2) then
          gui.icon({
             target = self.viewport, x = x+2, y = y, size = BTNSIZE, image = 'items/trash',
             events = {
                activate = function(Icon)
                   for k, v in pairs(self._userColours) do
-                     if (v.r == self._rgb.r) and (v.g == self._rgb.g) and (v.b == self._rgb.b) then
+                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then
                         self._paletteChanged = true
                         table.remove(self._userColours, k)
                         refreshColourNodes(self)
@@ -279,14 +279,14 @@ local function buildLayout(self, Options)
          })
       end
 
-      y = y + BTNSIZE + BTNGAP
+      y += BTNSIZE + BTNGAP
    end
 
    local bottom = y + WIDGET_GAP
 
    -- Configure the palette selection area
 
-   dx = dx + ((BTNSIZE + BTNGAP) * 8) + 10
+   dx += ((BTNSIZE + BTNGAP) * 8) + 10
    dy = 0
 
    self.txtRainbowPalette = self.viewport.new('VectorText', {
@@ -300,7 +300,7 @@ local function buildLayout(self, Options)
       align     = 'left'
    })
 
-   dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
+   dy += gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
    local rainbow = getRainbowBitmap()
 
@@ -318,7 +318,7 @@ local function buildLayout(self, Options)
    self._rainbowX = dx
    self._rainbowY = dy
 
-   dy = dy + self.vecRainbowPalette.height + WIDGET_GAP
+   dy += self.vecRainbowPalette.height + WIDGET_GAP
 
    -- The picker selects colours in the rainbow palette and is only visible if the user activates it.
 
@@ -341,7 +341,7 @@ local function buildLayout(self, Options)
       stroke = gui.rgbToSVG(COL_BORDER)
    })
 
-   dy = dy + self.vecChosenColour.height + WIDGET_GAP
+   dy += self.vecChosenColour.height + WIDGET_GAP
 
    self.inputRGB = gui.input({
       target = self.viewport,
@@ -357,7 +357,7 @@ local function buildLayout(self, Options)
       }
    })
 
-   dy = dy + self.inputRGB.viewport.height + WIDGET_GAP
+   dy += self.inputRGB.viewport.height + WIDGET_GAP
 
    -- Okay and cancel buttons
 
@@ -369,7 +369,7 @@ local function buildLayout(self, Options)
       icon    = 'items/cancel',
       events = {
          activate = function(Widget)
-            if (self.feedback != nil) then
+            if self.feedback then
                self.feedback(nil)
             end
             table.clear(self)
@@ -386,7 +386,7 @@ local function buildLayout(self, Options)
       events = {
          activate = function(Widget)
             saveColours(self)
-            if (self.feedback != nil) then
+            if self.feedback then
                self.feedback(self._rgb.r .. ',' .. self._rgb.g .. ',' .. self._rgb.b)
             end
             table.clear(self)
@@ -394,8 +394,8 @@ local function buildLayout(self, Options)
       }
    })
 
-   dy = dy + lOkayButton.viewport.height + WIDGET_GAP
-   if (dy > bottom) then bottom = dy end
+   dy += lOkayButton.viewport.height + WIDGET_GAP
+   if dy > bottom then bottom = dy end
 
    collectgarbage()
 
@@ -441,10 +441,10 @@ end
 -- occurs in order to manage viewport scaling within the display window.
 
 local function selectPalette(self, X, Y)
-   if (X < 0) then X = 0 end
-   if (Y < 0) then Y = 0 end
-   if (X >= self._rainbow.winWidth) then X = self._rainbow.winWidth - 1 end
-   if (Y >= self._rainbow.winHeight) then Y = self._rainbow.winHeight - 1 end
+   if X < 0 then X = 0 end
+   if Y < 0 then Y = 0 end
+   if X >= self._rainbow.winWidth then X = self._rainbow.winWidth - 1 end
+   if Y >= self._rainbow.winHeight then Y = self._rainbow.winHeight - 1 end
 
    local rainbow = getRainbowBitmap()
    local descaleX, descaleY = (rainbow.width / self._rainbow.winWidth), (rainbow.height / self._rainbow.winHeight)
@@ -504,8 +504,8 @@ gui.dialog.colour = function(Options)
    }
 
    local function inputFeedback(Viewport, Msg)
-      if (Msg.type == JET_BUTTON_1) then
-         if (Msg.value > 0) then -- Button down
+      if Msg.type is JET_BUTTON_1 then
+         if Msg.value > 0 then -- Button down
             if (Msg.x >= self._rainbow.winX) and
                (Msg.y >= self._rainbow.winY) and
                (Msg.x < self._rainbow.winX + self._rainbow.winWidth) and
@@ -528,7 +528,7 @@ gui.dialog.colour = function(Options)
                end
             end
          end
-      elseif (Msg.type == JET_ABS_XY) then
+      elseif (Msg.type is JET_ABS_XY) then
          if (self._rainbowClick) then selectPalette(self, Msg.x - self._rainbow.winX, Msg.y - self._rainbow.winY) end
       end
    end
@@ -552,7 +552,7 @@ gui.dialog.colour = function(Options)
       events = {
          close = function(Window)
             saveColours(self)
-            if (self.feedback != nil) then
+            if self.feedback then
                self.feedback(nil)
             end
             table.clear(self)
@@ -572,7 +572,7 @@ gui.dialog.colour = function(Options)
 
    self.viewport.viewWidth, self.viewport.viewHeight = buildLayout(self, Options)
 
-   check(self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), inputFeedback))
+   check(self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback))
 
    -- Manage the aspect ratio.  The current width will determine the height
 
@@ -583,7 +583,7 @@ gui.dialog.colour = function(Options)
    self._window.surface.minWidth  = math.floor(client.width * 0.25)
    self._window.surface.minHeight = math.floor(client.width * scale * 0.25)
 
-   updateRGB(self, gui.strToRGB((Options.colour ? '200,200,200')))
+   updateRGB(self, gui.strToRGB(Options.colour ? '200,200,200'))
 
    self._window:moveToFront()
    self._window:show()
@@ -593,7 +593,7 @@ gui.dialog.colour = function(Options)
    return self
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- This sub-routine is provided for languages other than Fluid to use the interface.
 
    do

@@ -21,8 +21,8 @@ local ICONS = {
    info      = 'items/info'
 }
 
-   if gui == nil then gui = { } end
-   if gui.dialog == nil then gui.dialog = { } end
+   gui ?= { }
+   gui.dialog ?= { }
 
 local function defaultIcon(self)
    if self.type and ICONS[self.type] then
@@ -40,7 +40,7 @@ gui.dialog.message = function(Options)
       inputRequired = Options.inputRequired,
       message    = Options.message,
       fmtMessage = Options.fmtMessage,
-      scaleWindow = (Options.scale ? true)
+      scaleWindow = Options.scale is false ? nil :> true -- Scale by default
    }
 
    -- Wait for the user to respond to the dialog.
@@ -57,8 +57,8 @@ gui.dialog.message = function(Options)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
-      if (page_width < 100) then page_width = 100 end
-      if (page_height < 100) then page_height = 100 end
+      if page_width < 100 then page_width = 100 end
+      if page_height < 100 then page_height = 100 end
 
       self.window:sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, self.scaleWindow)
       self.window.surface.width  = page_width
@@ -75,13 +75,13 @@ gui.dialog.message = function(Options)
    end
 
    local function docEvent(Document, EventFlag, Parameters)
-      if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
+      if (EventFlag & DEF_LINK_ACTIVATED) != 0 then
          if self.feedback then
             local responseIndex = tonumber(Parameters.response)
             local response = self.options[responseIndex]
             local state = { }
 
-            if Document.getKey('checkbox') == '1' then
+            if Document.getKey('checkbox') is '1' then
                state.checkbox = true
             else
                state.checkbox = false
@@ -110,7 +110,7 @@ gui.dialog.message = function(Options)
 
       -- At minimum, there must be an OK option.
 
-      if not ((type(self.options) == 'table') and (#self.options > 0)) then
+      if not ((type(self.options) is 'table') and (#self.options > 0)) then
          self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
       end
 
@@ -145,7 +145,7 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      icon = (Options.image ? defaultIcon(self))
+      icon = Options.image ? defaultIcon(self)
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
       local msg = self.fmtMessage
       if not msg?? then
@@ -169,7 +169,7 @@ gui.dialog.message = function(Options)
          end
 
          local msg
-         if type(Options.userInput) == 'string' then
+         if type(Options.userInput) is 'string' then
             msg = Options.userInput
          else
             msg = ''
@@ -181,28 +181,28 @@ gui.dialog.message = function(Options)
       if Options.checkboxLabel then
          local checkbox_value = 'false'
          if Options.checkboxState then checkbox_value = 'true' end
-         doc = doc .. '<p><checkbox name="checkbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
+         doc ..= '<p><checkbox name="checkbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
       end
 
       if Options.inject then
-         doc = doc .. Options.inject
+         doc ..= Options.inject
       end
 
-      doc = doc .. '<p no-wrap>'
+      doc ..= '<p no-wrap>'
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
+            doc ..= '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
-         doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
+         doc ..= '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
 
          if i < #self.options then
-            doc = doc .. '<advance x="30"/>'
+            doc ..= '<advance x="30"/>'
          end
       end
-      doc = doc .. '</p>'
+      doc ..= '</p>'
 
-      doc = doc .. [[
+      doc ..= [[
       </cell>
     </row>
   </table>
@@ -238,7 +238,7 @@ gui.dialog.message = function(Options)
       dlg_width = 120 + (longest * FONT_HEIGHT)
    elseif self.fmtMessage?? then
       local xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
-      local err, content = xml.mtSerialise(0, bit.bor(XMF_OMIT_TAGS, XMF_READABLE))
+      local err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
       local longest = 10
       for word in content:gmatch("%S+") do
          if word:len() > longest then longest = word:len() end
@@ -254,13 +254,13 @@ gui.dialog.message = function(Options)
    self.window = gui.window({
       insideWidth  = dlg_width,
       insideHeight = 300,
-      quit         = (Options.quit ? false),
+      quit         = Options.quit ? false,
       popover      = Options.popover,
       parent       = Options.target,
       aspectRatio  = true,
-      icon         = (Options.icon ? 'items/question'),
-      title        = (Options.title ? 'Confirmation Required'),
-      modal        = (Options.modal ? false),
+      icon         = Options.icon ? 'items/question',
+      title        = Options.title ? 'Confirmation Required',
+      modal        = Options.modal ? false,
       events = {
          close = function(Window)
             if (self.feedback != nil) then
