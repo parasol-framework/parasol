@@ -162,12 +162,12 @@ end
 function testComplex()
    local first = "Hello World"
    local second = nil
---[[
+
    local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
       .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (first ? '') .. [[" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
       .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (second ? '') .. [[" </cell></row>]]
       .. [[</table>]]
---]]
+
    msg(inject)
 end
 

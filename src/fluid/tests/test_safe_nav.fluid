@@ -103,7 +103,7 @@ end
 function testSafeFieldWithOrQuestion()
    local fallback = { label = "Fallback" }
    local label = fallback?.missingField ? "Default"
-   assert(label is "Default", "? should observe nil result from safe field")
+   assert(label is "Default", "? should observe nil result from safe field, got " .. tostring(label))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
