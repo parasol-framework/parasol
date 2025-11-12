@@ -1,3 +1,40 @@
+# This module integrates LuaJIT 2.1 with the Parasol framework to provide the Fluid scripting language. The build 
+# process generates multiple header files through a multi-stage compilation process.
+#
+# GENERATED HEADERS OVERVIEW:
+#
+# From FDL files (Parasol Interface Definition Language):
+#   hashes.h                  - Hash definitions for Fluid internal use
+#   include/parasol/modules/fluid.h - Public API header for Fluid module
+#
+# From LuaJIT build process:
+#   lj_bcdef.h     - Bytecode definitions (opcode metadata)
+#   lj_ffdef.h     - Fast function definitions (C function bindings)
+#   lj_libdef.h    - Library definitions (standard library metadata)
+#   lj_recdef.h    - Recorder definitions (trace compiler metadata)
+#   lj_folddef.h   - Folding definitions (constant folding rules)
+#   buildvm_arch.h - Architecture-specific VM definitions
+#   jit/vmdef.lua  - VM definitions for LuaJIT runtime
+#
+# LUAJIT BUILD STAGES:
+#
+# 1. Host Tool Compilation (tools that run during build):
+#    - minilua: Minimal Lua interpreter for running dynasm
+#    - buildvm: Code generator that produces headers and VM code
+#
+# 2. Architecture Detection:
+#    - Preprocesses lj_arch.h to detect target architecture
+#    - Determines platform-specific flags for dynasm
+#
+# 3. Code Generation:
+#    - dynasm generates buildvm_arch.h from vm_*.dasc files
+#    - buildvm generates bytecode/library/recorder definitions
+#    - buildvm generates VM assembly or object code
+#
+# 4. Library Compilation:
+#    - Compiles ljamalg.c (amalgamated LuaJIT source)
+#    - Links with generated VM code to create static library
+
 set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
@@ -95,11 +132,7 @@ if (MSVC)
 
    set_target_properties(luajit_lib PROPERTIES
       OUTPUT_NAME "lua51"
-      ARCHIVE_OUTPUT_DIRECTORY "${LUAJIT_SRC}"
-      ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${LUAJIT_SRC}"
-      ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${LUAJIT_SRC}"
-      ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${LUAJIT_SRC}"
-      ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${LUAJIT_SRC}"
+      ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/luajit-2.1/lib"
    )
    target_compile_definitions(luajit_lib PRIVATE ${LUAJIT_COMMON_DEFS} _CRT_SECURE_NO_DEPRECATE)
 
@@ -111,7 +144,8 @@ if (MSVC)
    # Disable specific warnings from LuaJIT
    target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
 
-   set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
+   # Use generator expression for configuration-specific paths in MSVC multi-config builds
+   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/$<$<CONFIG:Debug>:Debug/>$<$<CONFIG:Release>:Release/>$<$<CONFIG:RelWithDebInfo>:RelWithDebInfo/>$<$<CONFIG:MinSizeRel>:MinSizeRel/>lua51.lib")
 
    # Create INTERFACE library to encapsulate LuaJIT usage requirements
    add_library(luajit_interface INTERFACE)
