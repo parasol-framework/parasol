@@ -10,6 +10,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg);
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e);
+static void expr_collapse_freereg(FuncState* fs, BCReg result_reg);
 
 // Return string expression.
 static void expr_str(LexState* ls, ExpDesc* e)
@@ -108,6 +109,13 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    jmp_patch(fs, skip_branch, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
    v->flags |= SAFE_NAV_CHAIN_FLAG;
+}
+
+static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)
+{
+   BCReg target = result_reg + 1;
+   if (target < fs->nactvar) target = (BCReg)fs->nactvar;
+   if (fs->freereg > target) fs->freereg = target;
 }
 
 static void expr_safe_field_branch(LexState* ls, ExpDesc* v,
@@ -1029,7 +1037,9 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             {
                ExpDesc v2;
                expr_binop(ls, &v2, priority[op].right);
-               expr_discharge(fs, &v2); expr_toreg(fs, &v2, result_reg);
+               expr_discharge(fs, &v2);
+               expr_toreg(fs, &v2, result_reg);
+               expr_collapse_freereg(fs, result_reg);
             }
 
             // Skip FALSE branch after executing TRUE branch.
@@ -1050,7 +1060,9 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             // FALSE branch.
             {
                ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[op].right);
-               expr_discharge(fs, &fexp); expr_toreg(fs, &fexp, result_reg);
+               expr_discharge(fs, &fexp);
+               expr_toreg(fs, &fexp, result_reg);
+               expr_collapse_freereg(fs, result_reg);
                jmp_patch(fs, skip_false, fs->pc);
                v->u.s.info = result_reg; v->k = VNONRELOC; op = nextop3; continue;
             }
