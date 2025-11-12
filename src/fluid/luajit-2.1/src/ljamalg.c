@@ -87,6 +87,5 @@
 #include "lib_bit.c"
 #include "lib_jit.c"
 #include "lib_ffi.c"
-#include "lib_buffer.c"
 #include "lib_init.c"
 
