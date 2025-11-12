@@ -1,18 +1,6 @@
 /*********************************************************************************************************************
 
-This source code is placed in the public domain under no warranty from its
-authors.
-
-NOTE REGARDING LUAJIT PATCHES:
-  Search for 'PARASOL PATCHED IN' to discover what we've inserted into the code.
-  Packages removed from ljamalg.c are: lib_io lib_os lib_package lib_jit
-  Modify src/Makefile with the following changes:
-    Enable LUAJIT_ENABLE_LUA52COMPAT
-    Enable LUAJIT_DISABLE_FFI because FFI is not permitted.
-    Switch from BUILDMODE=mixed to BUILDMODE=static
-  Optional changes to src/Makefile:
-    Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
-    Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
+This source code is placed in the public domain under no warranty from its authors.
 
 **********************************************************************************************************************
 

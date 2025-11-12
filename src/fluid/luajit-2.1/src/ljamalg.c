@@ -80,12 +80,8 @@
 #include "lib_math.c"
 #include "lib_string.c"
 #include "lib_table.c"
-//#include "lib_io.c"
-//#include "lib_os.c"
-//#include "lib_package.c"
 #include "lib_debug.c"
 #include "lib_bit.c"
 #include "lib_jit.c"
-#include "lib_ffi.c"
 #include "lib_init.c"
 

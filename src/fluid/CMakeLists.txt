@@ -1,5 +1,9 @@
-# This module integrates LuaJIT 2.1 with the Parasol framework to provide the Fluid scripting language. The build 
+# This module integrates LuaJIT 2.1 with the Parasol framework to provide the Fluid scripting language. The build
 # process generates multiple header files through a multi-stage compilation process.
+#
+# SPECIAL FEATURES:
+#  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
+#  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -379,7 +383,6 @@ else ()
    )
 
    # Library source files needed for buildvm header generation
-   # Note: lib_ffi.c excluded because FFI is disabled
 
    set (LJLIB_C
       "${LUAJIT_SRC}/lib_base.c"
