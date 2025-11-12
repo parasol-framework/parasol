@@ -162,7 +162,7 @@ local function convertPermissions(Permissions)
    if (Permissions & PERMIT_OTHERS_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
    if (Permissions & PERMIT_OTHERS_EXEC) != 0  then out = out .. 'x' else out = out .. '-' end
 
-   if bit.band(Permissions, PERMIT_USERID) != 0 then out = out .. ' s' end
+   if (Permissions & PERMIT_USERID) != 0 then out = out .. ' s' end
 
    return out
 end
