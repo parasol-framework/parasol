@@ -131,6 +131,11 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
    else if (op == OPR_IF_EMPTY) {
       // For ?, handle extended falsey checks - only set up jumps for compile-time constants
       BCPos pc;
+
+      // Save whether we had SAFE_NAV_CHAIN_FLAG but DON'T clear it yet.
+      // We need to preserve flag state through the register reservation logic below.
+      uint8_t had_safe_nav = expr_has_flag(e, SAFE_NAV_CHAIN_FLAG);
+
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
       if (e->k == VKNIL || e->k == VKFALSE)
@@ -159,9 +164,15 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
             bcreg_reserve(fs, 1);
             expr_init(e, VNONRELOC, src_reg);
             e->u.s.aux = rhs_reg;
-            e->flags = flags | EXP_HAS_RHS_REG_FLAG;
+            // Restore flags but NOW clear SAFE_NAV_CHAIN_FLAG since we've captured the register.
+            // The flag has served its purpose and must not interfere with register cleanup.
+            e->flags = (flags & ~SAFE_NAV_CHAIN_FLAG) | EXP_HAS_RHS_REG_FLAG;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
+      }
+      // For constant cases, also clear the flag now that processing is complete
+      if (had_safe_nav) {
+         expr_clear_flag(e, SAFE_NAV_CHAIN_FLAG);
       }
       jmp_append(fs, &e->t, pc);
       jmp_tohere(fs, e->f);
@@ -413,6 +424,12 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    }
    else if (op == OPR_IF_EMPTY) {
       lj_assertFS(e1->f == NO_JMP, "jump list not closed");
+
+      // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
+      // This should already be consumed by bcemit_binop_left(), but we're defensive here
+      // in case the flag somehow persists through other code paths.
+      expr_consume_flag(e1, SAFE_NAV_CHAIN_FLAG);
+
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
       if (e1->t != NO_JMP) {

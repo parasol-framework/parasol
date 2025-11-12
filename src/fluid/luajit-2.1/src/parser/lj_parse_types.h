@@ -51,9 +51,23 @@ typedef struct ExpDesc {
    BCPos f;      // False condition jump list.
 } ExpDesc;
 
+// Flag indicating expression is part of or result from safe navigation chain (?., ?:, ?[).
+// This flag tracks that an expression's value is stored in a temporary register allocated
+// during safe navigation parsing. The flag is consumed (cleared) when the value is used by
+// operators that need to perform their own analysis (e.g., if-empty operator's extended
+// falsey checks).
+//
+// Lifecycle:
+//   SET: In expr_safe_nav_branch() when safe nav produces a result
+//   CONSUMED: In bcemit_binop_left() when entering operators that take ownership of the value
+//   TESTED: In bcemit_binop() to adjust register cleanup behavior (should be clear by then)
+//
+// Use expr_consume_flag(e, SAFE_NAV_CHAIN_FLAG) to consume this flag explicitly.
 #define SAFE_NAV_CHAIN_FLAG      0x01u
+
 // Flag carried in ExpDesc.flags to signal that a postfix increment formed a statement.
 #define POSTFIX_INC_STMT_FLAG    0x02u
+
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
 #define EXP_HAS_RHS_REG_FLAG     0x04u
 
