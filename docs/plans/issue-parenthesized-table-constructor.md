@@ -87,10 +87,11 @@ if (e1->t != NO_JMP) {
 }
 ```
 
-The problem stems from the jump pattern emitted around the falsey checks. The implementation assumes comparison opcodes such as
-`BC_ISEQP/BC_ISEQN/BC_ISEQS` fall through on success and only jump when the comparison fails. In reality, these opcodes branch when
-the comparison fails, so truthy values immediately take the patched `JMP` and enter the RHS evaluation, even though short-circuiting
-should have skipped it. This misalignment causes any RHS (including table constructors) to be evaluated unnecessarily.
+The problem stems from the evaluation order emitted around the falsey checks. Disassembly via `DebugLog` shows the call that
+produces the RHS value is emitted *before* the `BC_ISEQP/BC_ISEQN/BC_ISEQS` comparison opcodes, so the RHS executes regardless of the
+LHS truthiness. By the time the comparisons run, the RHS result has already replaced the original table, which matches the observed
+test failure. The Fluid regression (`fluid_if_empty::testTable`) and a standalone probe that counts RHS invocations both confirm the
+RHS is evaluated even when the LHS is truthy.
 
 ### Expression Kind Analysis
 
