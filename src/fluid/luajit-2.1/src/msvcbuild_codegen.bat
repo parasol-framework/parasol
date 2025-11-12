@@ -47,12 +47,12 @@ if exist "%TOOLDIR%\minilua.exe.manifest"^
 :MINILUA_DONE
 
 @rem Detect architecture
-@set DASMFLAGS=-D WIN -D JIT -D FFI -D P64
+@set DASMFLAGS=-D WIN -D JIT -D P64
 @set LJARCH=x64
 @"%TOOLDIR%\minilua.exe"
 @if errorlevel 8 goto :X64
 @set DASC=vm_x86.dasc
-@set DASMFLAGS=-D WIN -D JIT -D FFI
+@set DASMFLAGS=-D WIN -D JIT
 @set LJARCH=x86
 @set LJCOMPILE=%LJCOMPILE% /arch:SSE2
 :X64
