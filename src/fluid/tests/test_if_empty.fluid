@@ -63,11 +63,11 @@ function testConcat()
    end
 
    local v = 'start ' .. (nil ? returnString('ignore')) .. ' end'
-   assert(v is "start Result end", "Failed function case 3, got '" .. tostring(v) .. "'")
+   assert(v is "start Result end", "Failed concat-function 1, got '" .. tostring(v) .. "'")
    
    local val
    local v = '' .. (val ? returnString('ignore'))
-   assert(v is "Result", "Failed function case 4, got '" .. tostring(v) .. "'")
+   assert(v is "Result", "Failed concat-function 2, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -154,12 +154,23 @@ function testRuntimeZero()
    assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
 end
 
+function testComplex()
+   local Shortcut = "The quick brown fox jumped over the lazy dog"
+   local Path = nil
+
+   local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
+      .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (Shortcut ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
+      .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (Path ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
+      .. [[</table>]]
+   msg(inject)
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg'
+         'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg', 'testComplex'
       }
    }
