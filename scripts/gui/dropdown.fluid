@@ -23,14 +23,14 @@ gui.dropdown = function(Options)
       visible  = false,
       client   = Options.client,
       feedback = Options.feedback,
-      x        = (Options.x ? 0),
-      y        = (Options.y ? 0),
+      x        = Options.x ? 0,
+      y        = Options.y ? 0,
       relative = Options.relative,
       items    = { }
    }
 
    local function initVectorScene()
-      local showIcons = (Options.showIcons ? true)
+      local showIcons = Options.showIcons is false ? nil :> true
       local TEXT_X = HMARGIN
 
       if showIcons then
@@ -170,20 +170,20 @@ gui.dropdown = function(Options)
          -- Correct the position of the menu according to the relative vector that it is offset from.
 
          local err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
-         if err == ERR_Okay then
+         if err is ERR_Okay then
             local rel = { absX = target.absX, absY = target.absY }
             local target = { absX = 0, absY = 0, height = 4096 }
 
             if Options.target then
                local err, target = mGfx.GetSurfaceInfo(Options.target)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   target.absX   = target.absX
                   target.absY   = target.absY
                   target.height = target.height
                end
             else
                local err, display = mGfx.GetDisplayInfo(0)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   target.height = display.height
                end
             end
@@ -199,7 +199,7 @@ gui.dropdown = function(Options)
                y = y - surface.height - (Options.y ? 0)
             end
 
-            surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+            surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
          end
       end
 
@@ -209,7 +209,7 @@ gui.dropdown = function(Options)
    end
 
    local function highlightItem(Item)
-      if Item == self.hItem then
+      if Item is self.hItem then
          return
       elseif Item then
          if Item.lineBreak or Item.disabled then
@@ -249,9 +249,9 @@ gui.dropdown = function(Options)
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
-   self.surface.width      = (Options.width ? 400)
+   self.surface.width      = Options.width ? 400
    self.surface.parent     = Options.target
-   self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
+   self.surface.flags      = RNF_STICK_TO_FRONT|RNF_COMPOSITE
    self.surface.x          = -10000
    self.surface.y          = -10000
    self.surface.windowType = 'NONE'
@@ -283,24 +283,24 @@ gui.dropdown = function(Options)
                check(ERR_Terminate)
             end
 
-            if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
-            if Value == KEY_UP then
-            elseif Value == KEY_DOWN then
+            if (Qualifiers & KQ_PRESSED) is 0 then return end
+            if Value is KEY_UP then
+            elseif Value is KEY_DOWN then
 
-            elseif Value == KEY_RETURN then
+            elseif Value is KEY_RETURN then
 
             end
-         end) == ERR_Okay then
+         end) is ERR_Okay then
             self._subscribedKb = true
          end
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport, Events)
       local ev = Events
       while ev do
-         if ev.type == JET_BUTTON_1 then
-            if ev.value == 1 then
+         if ev.type is JET_BUTTON_1 then
+            if ev.value is 1 then
                if self.hItem then -- Menu item activated
                   if self.hItem.config.feedback then
                      self.hItem.config.feedback(self, self.hItem.config)
@@ -311,7 +311,7 @@ gui.dropdown = function(Options)
                   self.surface.acHide()
                end
             end
-         elseif ev.type == JET_ABS_XY then
+         elseif ev.type is JET_ABS_XY then
             local highlightFound = false
             for _, item in pairs(self.items) do
                if not item.lineBreak then
@@ -330,7 +330,7 @@ gui.dropdown = function(Options)
             if not highlightFound and self.hItem then
                highlightItem(nil)
             end
-         elseif (ev.type == JET_CROSSED_OUT) then
+         elseif (ev.type is JET_CROSSED_OUT) then
             if self.hItem then highlightItem(nil) end
          end
 

@@ -503,6 +503,31 @@ function testTernaryWithOrQuestionOperator()
    assert(v is "fallback", "Failed ternary with ? operator: expected 'fallback', got " .. tostring(v))
 end
 
+----------------------------------------------------------------------------------------------------------------------
+-- Test ternary in conjunction with concatenation - note that bugs raised could be in either feature or in 
+-- combination of both
+
+function testConcat()
+   local function returnString(Arg)
+      if Arg then return Arg else return "Result" end
+   end
+   
+   local baseline = (nil and returnString('true') or returnString('false'))
+   assert(baseline is "false", "Failed baseline, got '" .. tostring(baseline) .. "'")
+
+   local ternary = (nil ? returnString('true') :> returnString('false'))
+   assert(ternary is "false", "Failed concat-function baseline, got '" .. tostring(ternary) .. "'")
+
+   local v = '' .. (nil ? returnString('true') :> returnString('false')) .. ''
+   assert(v is baseline, "Failed concat-function 1, got '" .. tostring(v) .. "'")
+   
+   local val
+   local v = '' .. (val ? returnString('ignore') :> 'false')
+   assert(v is "false", "Failed conat-function 2, got '" .. tostring(v) .. "'")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testBasicTrue', 'testBasicFalse',
@@ -546,6 +571,7 @@ return {
       -- Function arguments and table constructors
       'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
       -- Interaction with other operators
-      'testTernaryWithOrQuestionOperator'
+      'testTernaryWithOrQuestionOperator',
+      'testConcat'
    }
 }

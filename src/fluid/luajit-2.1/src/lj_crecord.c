@@ -1623,6 +1623,7 @@ void LJ_FASTCALL recff_clib_index(jit_State *J, RecordFFData *rd)
 
 /* -- FFI library functions ----------------------------------------------- */
 
+#ifdef LJ_HASFFI
 static TRef crec_toint(jit_State *J, CTState *cts, TRef sp, TValue *sval)
 {
   return crec_ct_tv(J, ctype_get(cts, CTID_INT32), 0, sp, sval);
@@ -1761,6 +1762,7 @@ void LJ_FASTCALL recff_ffi_gc(jit_State *J, RecordFFData *rd)
     lj_trace_err(J, LJ_TRERR_BADTYPE);
   crec_finalizer(J, J->base[0], J->base[1], &rd->argv[1]);
 }
+#endif
 
 /* -- 64 bit bit.* library functions -------------------------------------- */
 

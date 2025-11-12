@@ -84,7 +84,7 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT)
+set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT LUAJIT_DISABLE_FFI)
 set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_ENABLE_LUA52COMPAT)
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
@@ -106,8 +106,8 @@ if (MSVC)
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
-   file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
-   file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
    # Generate headers and VM object file directly to build directory
@@ -116,8 +116,8 @@ if (MSVC)
       COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat" "${LUAJIT_BUILD_DIR}"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       DEPENDS
-         ${LUAJIT_DEP_LJ_C}
-         ${LUAJIT_DEP_LIB_C}
+         ${LUAJIT_CORE_SOURCES}
+         ${LUAJIT_LIB_SOURCES}
          ${LUAJIT_DEP_LJ_H}
       COMMENT "Generating LuaJIT headers and VM object in build directory"
       VERBATIM
@@ -125,9 +125,6 @@ if (MSVC)
 
    add_custom_target(luajit_codegen DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ})
 
-   # Collect all LuaJIT source files
-   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
-   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
 
    # Create LuaJIT static library
    add_library(luajit_lib STATIC ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES} ${LUAJIT_VM_OBJ})
@@ -149,7 +146,13 @@ if (MSVC)
    target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
 
    # Use generator expression for configuration-specific paths in MSVC multi-config builds
-   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/$<$<CONFIG:Debug>:Debug/>$<$<CONFIG:Release>:Release/>$<$<CONFIG:RelWithDebInfo>:RelWithDebInfo/>$<$<CONFIG:MinSizeRel>:MinSizeRel/>lua51.lib")
+   # Check if using a multi-config generator (Visual Studio) vs single-config (Ninja)
+   get_property(MULTICONFIG_GENERATOR GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+   if (MULTICONFIG_GENERATOR)
+      set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/$<CONFIG>/lua51.lib")
+   else()
+      set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/lua51.lib")
+   endif()
 
    # Create INTERFACE library to encapsulate LuaJIT usage requirements
    add_library(luajit_interface INTERFACE)
@@ -295,9 +298,6 @@ else ()
          "endif()\n"
          "if(ARCH_DEFS MATCHES \"LJ_HASJIT 1\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"JIT\")\n"
-         "endif()\n"
-         "if(ARCH_DEFS MATCHES \"LJ_HASFFI 1\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"FFI\")\n"
          "endif()\n"
          "if(ARCH_DEFS MATCHES \"LJ_DUALNUM 1\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"DUALNUM\")\n"

@@ -58,13 +58,8 @@ release-git/
 src/display/simd/
 data/fonts/truetype/NotoColorEmoji.ttf
 build/
-debug-gdb/
-debug-mod/
-local-mod/
-local-gdb/
 out/
-3rdparty/blend2d/
-3rdparty/blend2d-apps/
+3rdparty/blend2d*/
 local-claude/
 CLAUDE.local.md
 msys-debug/
@@ -74,3 +69,4 @@ src/link/resource.rc
 data/ssl/localhost.p12
 data/ssl/localhost.pem
 src/xquery/tests/QT3_1_0/
+docs/kotuku*/
