@@ -20,8 +20,8 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
-- Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents`
-- Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents -L TEST_LABEL`
+- Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure`
+- Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
