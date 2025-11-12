@@ -107,7 +107,7 @@ local function getFileIcon(Path)
    local icon
    catch(function()
       icon = obj.new('file', { path=Path }).icon
-      if icon == 'icons:filetypes/empty' then
+      if icon is 'icons:filetypes/empty' then
          local ext = Path:gsub('^(.+)%.([^:/\\]+)$', '%2')
          icon = extToIcon(ext)
       elseif not icon then
@@ -125,12 +125,12 @@ local function printableTime(Time)
       Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
 end
 
--- Returns the surface that is acting as the window.  Returns 0 if no window surface == detected.
+-- Returns the surface that is acting as the window.  Returns 0 if no window surface is detected.
 
 local function parentWindow(Surface)
    local scan = obj.find(Surface.parent)
    while scan do
-      if mSys.GetClassID(mSys.GetOwnerID(scan.id)) == ID_WINDOW then
+      if mSys.GetClassID(mSys.GetOwnerID(scan.id)) is ID_WINDOW then
          return scan
       end
       scan = obj.find(scan.parent)
@@ -139,37 +139,37 @@ end
 
 local function convertPermissions(Permissions)
    local out = ''
-   if bit.band(Permissions, PERMIT_READ) != 0  then out = out .. 'r' else out = out .. '-' end
-   if bit.band(Permissions, PERMIT_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
-   if bit.band(Permissions, PERMIT_EXEC) != 0  then out = out .. 'x' else out = out .. '-' end
+   if (Permissions & PERMIT_READ) != 0  then out ..= 'r' else out ..= '-' end
+   if (Permissions & PERMIT_WRITE) != 0 then out ..= 'w' else out ..= '-' end
+   if (Permissions & PERMIT_EXEC) != 0  then out ..= 'x' else out ..= '-' end
 
    out = out .. ' '
 
-   if bit.band(Permissions, PERMIT_GROUP_READ) != 0  then out = out .. 'r' else out = out .. '-' end
-   if bit.band(Permissions, PERMIT_GROUP_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
+   if (Permissions & PERMIT_GROUP_READ) != 0  then out ..= 'r' else out = out .. '-' end
+   if (Permissions & PERMIT_GROUP_WRITE) != 0 then out ..= 'w' else out = out .. '-' end
 
-   if bit.band(Permissions, PERMIT_GROUPID) != 0 then
-      out = out .. 'g'
-   elseif bit.band(Permissions, PERMIT_GROUP_EXEC) != 0 then
-      out = out .. 'x'
+   if (Permissions & PERMIT_GROUPID) != 0 then
+      out ..= 'g'
+   elseif (Permissions & PERMIT_GROUP_EXEC) != 0 then
+      out ..= 'x'
    else
-      out = out .. '-'
+      out ..= '-'
    end
 
-   out = out .. ' '
+   out ..= ' '
 
-   if bit.band(Permissions, PERMIT_OTHERS_READ) != 0  then out = out .. 'r' else out = out .. '-' end
-   if bit.band(Permissions, PERMIT_OTHERS_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
-   if bit.band(Permissions, PERMIT_OTHERS_EXEC) != 0  then out = out .. 'x' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_READ) != 0  then out = out .. 'r' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_EXEC) != 0  then out = out .. 'x' else out = out .. '-' end
 
-   if bit.band(Permissions, PERMIT_USERID) != 0 then out = out .. ' s' end
+   if (Permissions & PERMIT_USERID) != 0 then out = out .. ' s' end
 
    return out
 end
 
 local function updateFileAttributes(Item, Info)
    if Item.date then
-      if Item.type == 'folder' then
+      if Item.type is 'folder' then
          Item.date.sort = 'D' .. sortNum(Info.timestamp)
       else
          Item.date.sort = 'F' .. sortNum(Info.timestamp)
@@ -192,7 +192,7 @@ local function defineViewColumns(Path)
          { attrib='freespace', title='Free Space', width=7, type='bytesize', align='right' },
          { attrib='totalsize', title='Total Size', width=7, type='bytesize', align='right' }
       }
-   elseif (lSys.platform == 'Linux') or (lSys.platform == 'Native') then
+   elseif (lSys.platform is 'Linux') or (lSys.platform is 'Native') then
       return {
          { attrib='name',        title='Name',        width=16, showIcons=true },
          { attrib='size',        title='Size',        width=7, type='bytesize', align='right' },
@@ -218,7 +218,7 @@ local function getFilters(self)
    if self.filterList then
       for _, filter in ipairs(self.filterList) do
          if filter.selected then
-            if type(filter.ext) == 'table' then
+            if type(filter.ext) is 'table' then
                for _, ext in pairs(filter.ext) do
                   table.insert(self._filters, ext)
                end
@@ -244,7 +244,7 @@ end
 local function filterCheck(self, Filename)
    local Filename = Filename:lower()
    local filters = getFilters(self)
-   if #filters == 0 then return true end
+   if #filters is 0 then return true end
    for _, f in pairs(filters) do
       if Filename:endsWith(f) then return true end
    end
@@ -256,7 +256,7 @@ end
 local function applyFilters(self)
    local filters = getFilters(self)
    local redraw = false
-   if #filters == 0 then -- No filter, all files will be visible
+   if #filters is 0 then -- No filter, all files will be visible
       for _, item in ipairs(self.view.items) do
          if item.hidden then
             item.hidden = nil
@@ -265,7 +265,7 @@ local function applyFilters(self)
       end
    else
       for _, item in ipairs(self.view.items) do
-         if item.type == 'file' then
+         if item.type is 'file' then
             if filterCheck(self, item.filename) then
                if item.hidden then
                   item.hidden = nil
@@ -314,8 +314,8 @@ local function displayFilters(self)
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
             local ev = Events
             while ev do
-               if bit.band(ev.flags, JTYPE_BUTTON) != 0 then
-                  if ev.type == JET_BUTTON_1 and ev.value == 1 then
+               if (ev.flags & JTYPE_BUTTON) != 0 then
+                  if ev.type is JET_BUTTON_1 and ev.value is 1 then
                      if item.selected then
                         item.highlight.visibility = VIS_HIDDEN
                         item.selected = false
@@ -448,9 +448,9 @@ local function createFileItem(self, Info)
    msg('createFileItem() ' .. Info.name .. string.format(', $%.8x', Info.flags))
 
    local new_item
-   if bit.band(Info.flags, RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
+   if (Info.flags & RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
       local icon = getFileIcon(Info.name .. ':')
-      if icon == 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
+      if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
       if not icon then icon = 'folders/folder_shortcut' end
       local colour = 'blue'
       local total_size = nil
@@ -466,7 +466,7 @@ local function createFileItem(self, Info)
 
       local display_name = Info.name ..':'
       local err, label = mSys.ReadInfoTag(Info, 'Label')
-      if err == ERR_Okay then
+      if err is ERR_Okay then
          display_name = display_name .. ' (' .. label .. ')'
       end
 
@@ -563,10 +563,10 @@ gui.fileview = function(Options)
       resetTimer    = nil,
       refreshRate   = 0.25, -- Cycles per second
       limitPath     = Options.limitPath,
-      showHidden    = (Options.showHidden ? false),
-      showSystem    = (Options.showSystem ? false),
-      showDocs      = (Options.showDocs ? false),
-      enableSysKeys = (Options.sysKeys ? false),
+      showHidden    = Options.showHidden ? false,
+      showSystem    = Options.showSystem ? false,
+      showDocs      = Options.showDocs ? false,
+      enableSysKeys = Options.sysKeys ? false,
       pathChanged   = Options.pathChanged,
       filterList    = Options.filterList
    }
@@ -598,7 +598,7 @@ gui.fileview = function(Options)
 
       if not findItem(Info.name) then -- Add missing volume
          local err, info = mSys.GetFileInfo(Info.name .. ':')
-         if (err == ERR_Okay) and bit.band(info.flags, RDF_HIDDEN) == 0 then
+         if (err is ERR_Okay) and (info.flags & RDF_HIDDEN) is 0 then
             addFileItem(self, info)
             self.view.sort()
          end
@@ -615,7 +615,7 @@ gui.fileview = function(Options)
 
    local function deleteItem(File)
       for _, item in pairs(self.view.items) do
-         if File == (item.name.value ? ''):gsub('^(.-)[:/\\]+$', '%1') then
+         if File is (item.name.value ? ''):gsub('^(.-)[:/\\]+$', '%1') then
             self.view.removeItem(item)
             return true
          end
@@ -628,8 +628,8 @@ gui.fileview = function(Options)
       if self.inRefresh or self.watch then return end
 
       if not lDir then
-         local flags = bit.bor(RDF_FOLDERS, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS)
-         if not lNoFiles then flags = bit.bor(flags, RDF_FILE) end
+         local flags = RDF_FOLDERS|RDF_PERMISSIONS|RDF_DATE|RDF_SIZE|RDF_TAGS
+         if not lNoFiles then flags = flags|RDF_FILE end
 
          local err
          err, lDir = mSys.OpenDir((self.path ? ':'), flags)
@@ -663,9 +663,9 @@ gui.fileview = function(Options)
 
          local info = dirinfo.info
 
-         if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
+         if (info.Flags & RDF_VOLUME) != 0 and (info.Flags & RDF_HIDDEN) != 0 then
             -- Ignore hidden volumes
-         elseif #self.view.items == 0 then -- Empty view, this is the first file.
+         elseif #self.view.items is 0 then -- Empty view, this is the first file.
             addFileItem(self, info)
             break
          else
@@ -690,29 +690,29 @@ gui.fileview = function(Options)
       end
 
       if #self.view.items > 0 then -- Check for deleted files
-         local path = (self.path ? '')
+         local path = self.path ? ''
 
          if not self.path then -- Do not resolve the path when at the root view
          else -- Use ResolvePath() to prevent problems with multi-folder volumes
             local err, resolved_path = mSys.ResolvePath(path, RSF_NO_FILE_CHECK)
-            if err == ERR_Okay then
+            if err is ERR_Okay then
                path = resolved_path
             end
          end
 
-         if path:sub(1,2) == '\\\\' then
+         if path:sub(1,2) is '\\\\' then
             -- Windows doesn't cope well when constantly refreshing UNC paths (folders sometimes fail analysis).
 
          else
             local delete_count = 0
             local restart = true
-            while restart == true do
+            while restart is true do
                restart = false
 
                local vw_items = self.view.items
-               if #vw_items == 0 then break end
+               if #vw_items is 0 then break end
 
-               if (self._delete_index == nil) or (self._delete_index == 0) or (self._delete_index > #vw_items - 1) then
+               if (self._delete_index is nil) or (self._delete_index is 0) or (self._delete_index > #vw_items - 1) then
                   self._delete_index = #vw_items - 1
                end
 
@@ -724,9 +724,9 @@ gui.fileview = function(Options)
 
                   if item.filename then -- Extract the full name of the file for analysis
                      local item_path = path .. item.filename
-                     if item.type == 'volume' then
+                     if item.type is 'volume' then
                         item_path = item_path .. ':'
-                     elseif item.type == 'folder' then
+                     elseif item.type is 'folder' then
                         item_path = item_path .. '/'
                      end
                      if mSys.ResolvePath(item_path, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
@@ -750,17 +750,15 @@ gui.fileview = function(Options)
    local function pathWatch(MonitoredFile, Path, Custom, Flags)
       if self.inRefresh then return end
 
-      if Flags == 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
+      if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
          self.refresh()
          return
       end
 
       if not Path then -- If no file is given, the monitored folder was affected by something.
-         if (bit.band(Flags, MFF_DELETE) != 0 and bit.band(Flags, MFF_SELF) != 0)
-             or bit.band(Flags, MFF_UNMOUNT) != 0 then
-
-            if self.path:sub(1,2) == 'cd' then
-            elseif self.path:sub(1,4) == 'disk' then
+         if ((Flags & MFF_DELETE) != 0 and (Flags & MFF_SELF) != 0) or (Flags & MFF_UNMOUNT) != 0 then
+            if self.path:sub(1,2) is 'cd' then
+            elseif self.path:sub(1,4) is 'disk' then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
                if mSys.AnalysePath(self.path, 0) != ERR_Okay then
                   self.browse(nil)
@@ -771,10 +769,10 @@ gui.fileview = function(Options)
       end
 
       local info, info_err
-      if bit.band(Flags, MFF_DELETE) == 0 then
+      if (Flags & MFF_DELETE) is 0 then
          info_err, info = mSys.GetFileInfo(self.path .. (Path ? ''))
-         if info_err == ERR_Okay then
-            if lNoFiles and bit.band(info.Flags, RDF_FILE) != 0 then return end
+         if info_err is ERR_Okay then
+            if lNoFiles and (info.Flags & RDF_FILE) != 0 then return end
             -- Use the true file name with the trailing slash if it is a folder (important
             -- for symbolically linked directories).
             Path = info.name
@@ -783,15 +781,15 @@ gui.fileview = function(Options)
          info_err = ERR_Failed
       end
 
-      if bit.band(Flags, MFF_CREATE) != 0 then
-         if info_err == ERR_Okay then
+      if (Flags & MFF_CREATE) != 0 then
+         if info_err is ERR_Okay then
             addFileItem(self, info)
             self.view.sort()
          end
-      elseif bit.band(Flags, MFF_DELETE) != 0 then
+      elseif (Flags & MFF_DELETE) != 0 then
          deleteItem(Path)
-      elseif bit.band(Flags, MFF_MOVED) != 0 then -- Determine if the file has been moved in or moved out
-         if info_err == ERR_Okay then
+      elseif (Flags & MFF_MOVED) != 0 then -- Determine if the file has been moved in or moved out
+         if info_err is ERR_Okay then
             -- It is possible that the moved file is replacing an already existing file in
             -- the view (i.e. rename operation), so do a tag-check first.
 
@@ -801,8 +799,8 @@ gui.fileview = function(Options)
          else
             deleteItem(Path)
          end
-      elseif bit.band(Flags, bit.bor(MFF_ATTRIB, MFF_CLOSED)) != 0 and File then
-         if info_err == ERR_Okay then
+      elseif (Flags & (MFF_ATTRIB|MFF_CLOSED)) != 0 and File then
+         if info_err is ERR_Okay then
             local item = findItem(Path)
             if item then
                updateFileAttributes(item, info)
@@ -842,7 +840,7 @@ gui.fileview = function(Options)
 
       for _,item in pairs(Items) do
          local err, class_id, command = mSys.IdentifyFile(self.path .. item.name.value, Mode, 0)
-         if err == ERR_Okay then
+         if err is ERR_Okay then
             obj.new('task', { path = command }).acActivate()
          end
       end
@@ -852,7 +850,7 @@ gui.fileview = function(Options)
 
    local function checkDocView()
       if self.showDocs then
-         local docfile = mSys.GetDocView((self.path ? ':'))
+         local docfile = mSys.GetDocView(self.path ? ':')
          if docfile then
             if lDoc then
                lDoc.path = docfile
@@ -882,14 +880,14 @@ gui.fileview = function(Options)
 
          local dest = self.path .. State.input
 
-         if Dialog.var.src == dest then return end
+         if Dialog.var.src is dest then return end
 
-         local err, path = mSys.ResolvePath(dest, bit.bor(RSF_NO_FILE_CHECK, RSF_CASE_SENSITIVE))
-         if err == ERR_Okay then -- Use ResolvePath() to prevent problems with multi-folder volumes
+         local err, path = mSys.ResolvePath(dest, RSF_NO_FILE_CHECK|RSF_CASE_SENSITIVE)
+         if err is ERR_Okay then -- Use ResolvePath() to prevent problems with multi-folder volumes
             err = mSys.AnalysePath(path, 0)
          end
 
-         if err == ERR_Okay then -- The destination exists
+         if err is ERR_Okay then -- The destination exists
             self.dlgRenameReplace = gui.dialog.message({
                title    = 'Confirmation Required',
                message  = 'A file already exists that uses this name.  Are you sure that you want to overwrite it?',
@@ -899,7 +897,7 @@ gui.fileview = function(Options)
                popover  = self._surface,
                modal    = true,
                feedback = function(Dialog, Response, State)
-                  if mSys.MoveFile(Dialog.var.src, Dialog.var.dest) == ERR_Okay then
+                  if mSys.MoveFile(Dialog.var.src, Dialog.var.dest) is ERR_Okay then
                      --DelayMsg(AC_Refresh, Self.Head.UniqueID, NULL)
                   else
                      gui.dialog.error('File Rename Failure', 'The rename operation failed.')
@@ -910,19 +908,19 @@ gui.fileview = function(Options)
          else
             catch(function()
                local fl = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )
-               if fl.acRename(State.input) == ERR_Okay and not self.watch then
+               if fl.acRename(State.input) is ERR_Okay and not self.watch then
                   local item = findItem(Dialog.var.name)
                   if item then
                      local new_name = State.input
-                     if item.type == 'folder' then
+                     if item.type is 'folder' then
                         item.name.value = new_name .. '/'
-                        item.filename = new_name .. '/'
-                     elseif item.type == 'volume' then
+                        item.filename   = new_name .. '/'
+                     elseif item.type is 'volume' then
                         item.name.value = new_name .. ':'
-                        item.filename = new_name .. ':'
+                        item.filename   = new_name .. ':'
                      else
                         item.name.value = new_name
-                        item.filename = new_name
+                        item.filename   = new_name
                      end
 
                      self.view.sort()
@@ -951,16 +949,16 @@ gui.fileview = function(Options)
    -- Change the current path that is being viewed.
 
    self.browse = function(Path)
-      if not Path?? or (Path == ':') then Path = nil end
+      if (not Path??) or (Path is ':') then Path = nil end
 
-      if Path == self.path then return self.path end
+      if Path is self.path then return self.path end
 
-      msg('fileview.browse("' .. (Path ? 'NIL') .. '")')
+      msg('fileview.browse("' .. tostring(Path) .. '")')
 
       if Path then
          self.path = file.sanitisePath(Path)
          if not string.find(self.path, '^.+[:/\\]$') then
-            self.path = self.path .. '/'
+            self.path ..= '/'
          end
       else
          self.path = nil
@@ -988,7 +986,7 @@ gui.fileview = function(Options)
          msg('Monitor path "' .. self.path .. '"')
          catch(function()
             self.watch = obj.new('file', { path = self.path })
-            if self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED)) != ERR_Okay then
+            if self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
                self.watch = nil
                local err
                err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
@@ -1047,11 +1045,11 @@ gui.fileview = function(Options)
 
    self.parentFolder = function()
       if not self.path then return end
-      if self.limitPath and self.limitPath:lower() == self.path:lower() then return end
+      if self.limitPath and self.limitPath:lower() is self.path:lower() then return end
 
       local reduced_path, count = self.path:sub(1, -2):gsub('(.+[:/\\]+).+', '%1', 1)
 
-      if count == 0 then
+      if count is 0 then
          self.browse(nil)
       else
          self.browse(reduced_path)
@@ -1080,10 +1078,10 @@ gui.fileview = function(Options)
             feedback = function(Dialog, Response, State)
                if Response.id > 0 and State.input?? then
                   local path = self.path .. State.input .. '/'
-                  if mSys.CreateFolder(path, 0) == ERR_Okay then
+                  if mSys.CreateFolder(path, 0) is ERR_Okay then
                      if not self.watch then
                         local err, info = mSys.GetFileInfo(path)
-                        if err == ERR_Okay then
+                        if err is ERR_Okay then
                            addFileItem(self, info)
                            self.view.sort()
                         end
@@ -1105,9 +1103,11 @@ gui.fileview = function(Options)
                 .. [[Please enter the name of the shortcut and the folder that you would like to connect it to.]]
       end
 
+      Shortcut ?= ''
+      Path ?= ''
       local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
-         .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (Shortcut ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
-         .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (Path ? '') .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
+         .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. Shortcut .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
+         .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. Path .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
          .. [[</table>]]
 
       self.dlgShortcut = gui.dialog.message({
@@ -1127,7 +1127,7 @@ gui.fileview = function(Options)
                local txtName = obj.find('txtName')
                local txtPath = obj.find('txtPath')
                if txtName?? and txtPath?? then
-                  mSys.SetVolume(txtName.string, txtPath.string, nil, nil, nil, bit.bor(ASSIGN_REPLACE, ASSIGN_SAVE))
+                  mSys.SetVolume(txtName.string, txtPath.string, nil, nil, nil, ASSIGN_REPLACE|ASSIGN_SAVE)
                end
             end
 
@@ -1145,8 +1145,8 @@ gui.fileview = function(Options)
       if #items > 1 then
          msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
       else
-         local fl = (items[1].filename ? 'NIL')
-         local item_type = (items[1].type ? 'NIL')
+         local fl = items[1].filename ? 'NIL'
+         local item_type = items[1].type ? 'NIL'
          msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
@@ -1267,14 +1267,14 @@ gui.fileview = function(Options)
       self._file_table = { }
       local msg_time  = mSys.PreciseTime()
       local orig_path = self.path
-      local flags     = bit.bor(RDF_READ_ALL, RDF_TAGS)
-      if lNoFiles then flags = bit.band(flags, bit.bxor(RDF_FILE)) end
-      local err, dir_info = mSys.OpenDir((self.path ? ':'), flags)
-      if err == ERR_Okay then
+      local flags     = RDF_READ_ALL|RDF_TAGS
+      if lNoFiles then flags = (flags & bit.bxor(RDF_FILE)) end
+      local err, dir_info = mSys.OpenDir(self.path ? ':', flags)
+      if err is ERR_Okay then
          mSys.AdjustLogLevel(1)
 
             local items = { }
-            while mSys.ScanDir(dir_info) == ERR_Okay do
+            while mSys.ScanDir(dir_info) is ERR_Okay do
                if self.path != orig_path then -- Sanity check in case the user changes the path
                   mSys.AdjustLogLevel(-1)
                   return true
@@ -1313,10 +1313,10 @@ gui.fileview = function(Options)
 
       local err
       if self.deviceInfo and not self.watch and self.path then
-         if bit.band(self.deviceInfo.deviceFlags, DEVICE_REMOVABLE) != 0 then
-            if bit.band(self.deviceInfo.deviceFlags, DEVICE_WRITE) == 0 then
+         if (self.deviceInfo.deviceFlags & DEVICE_REMOVABLE) != 0 then
+            if (self.deviceInfo.deviceFlags & DEVICE_WRITE) is 0 then
                -- Read only device, do not refresh
-            elseif bit.band(self.deviceInfo.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_USB)) then
+            elseif (self.deviceInfo.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_USB)) then
                -- Slow device, do not refresh
             else
                err, self.timer = mSys.SubscribeTimer(2.0, incrementalRefresh) -- Write/Read access to removable device
@@ -1329,31 +1329,31 @@ gui.fileview = function(Options)
 
    local function configureView(self, ViewOptions)
       self.view.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
-         if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
+         if (Qualifiers & KQ_PRESSED) is 0 then return end
          if self.hasFocus != true then return end
 
-         if self.enableSysKeys and bit.band(Qualifiers, KQ_CTRL) != 0 then
+         if self.enableSysKeys and (Qualifiers & KQ_CTRL) != 0 then
             -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
             -- application.
 
-            if Value == KEY_C then
+            if Value is KEY_C then
                copy_files()
-            elseif Value == KEY_X then
+            elseif Value is KEY_X then
                cut_files()
-            elseif Value == KEY_V then
+            elseif Value is KEY_V then
                paste_files()
-            elseif Value == KEY_A then
+            elseif Value is KEY_A then
                self.view.selectAll()
             end
-         elseif Value == KEY_DELETE then
+         elseif Value is KEY_DELETE then
             self.deleteFiles()
          end
       end)
 
-      self.view.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-         if Event == FM_HAS_FOCUS then
+      self.view.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport, Event)
+         if Event is FM_HAS_FOCUS then
             self.hasFocus = true
-         elseif Event == FM_LOST_FOCUS then
+         elseif Event is FM_LOST_FOCUS then
             self.hasFocus = false
          end
       end)
@@ -1361,22 +1361,22 @@ gui.fileview = function(Options)
       -- Browse the currently selected file or folder.
 
       self.view.itemActivated = function(View, Reason, Item)
-         if Item.type == 'folder' then
+         if Item.type is 'folder' then
             self.browse((self.path ? '') .. Item.filename .. '/')
-         elseif Item.type == 'volume' then
+         elseif Item.type is 'volume' then
             self.browse(Item.filename .. ':')
-         elseif Item.type == 'parent' then -- Parent
+         elseif Item.type is 'parent' then -- Parent
             self.parentFolder()
          else -- Activate file
             if lOptions.autoMode then
                local tags = { Item, -1 }
 
                if tags[1] != -1 then
-                  if lOptions.autoMode == 'open' then
+                  if lOptions.autoMode is 'open' then
                      openFiles(tags, 'Open')
-                  elseif lOptions.autoMode == 'edit' then
+                  elseif lOptions.autoMode is 'edit' then
                      openFiles(tags, 'Edit')
-                  elseif lOptions.autoMode == 'view' then
+                  elseif lOptions.autoMode is 'view' then
                      openFiles(tags, 'View')
                   end
                end
@@ -1394,9 +1394,9 @@ gui.fileview = function(Options)
          })
 
          local tbo
-         if (Options.toolBar == true) or (Options.toolBar == 'all') then
+         if (Options.toolBar is true) or (Options.toolBar is 'all') then
             tbo = { navigation=true, clipboard=true, actions=true, views=true }
-         elseif type(Options.toolBar) == 'table' then
+         elseif type(Options.toolBar) is 'table' then
             tbo = Options.toolBar
          else
             error('Invalid value passed to fileview.toolBar')
@@ -1433,11 +1433,11 @@ gui.fileview = function(Options)
                   Bar.addGroup(4, 'Navigation', 2)
 
                   Bar.addItem(TBID.PREV, 'Prev', 'Previous File', 'arrows/fat_left', function()
-                     self.view.selectPrev(function (Item) if Item.type == 'file' then return true end end)
+                     self.view.selectPrev(function (Item) if Item.type is 'file' then return true end end)
                   end)
 
                   Bar.addItem(TBID.NEXT, 'Next', 'Next File', 'arrows/fat_right', function()
-                     self.view.selectNext(function (Item) if Item.type == 'file' then return true end end)
+                     self.view.selectNext(function (Item) if Item.type is 'file' then return true end end)
                   end)
                end
 
@@ -1477,7 +1477,7 @@ gui.fileview = function(Options)
                            { id=1, text='Create Volume', icon='items/checkmark' }
                         },
                         feedback = function(Dialog, Response, State)
-                           if Response and Response.id == 1 and string.len(State.input) > 0 then
+                           if Response and Response.id is 1 and string.len(State.input) > 0 then
                               mSys.SetVolume(State.input, current_path, 'items/bookmark', nil, nil, VOLUME_REPLACE)
                            end
                         end
@@ -1528,9 +1528,9 @@ gui.fileview = function(Options)
                               ViewOptions.fontSize  = Dialog.pointSize
                               ViewOptions.fontStyle = Dialog.style
                               self.view.free()
-                              if self.style == 'column' then
+                              if self.style is 'column' then
                                  self.view = gui.columnView(ViewOptions)
-                              elseif self.style == 'list' then
+                              elseif self.style is 'list' then
                                  self.view = gui.listView(ViewOptions)
                               else
                                  self.view = gui.listView(ViewOptions)
@@ -1553,7 +1553,7 @@ gui.fileview = function(Options)
    self.refresh = function()
       if self.inRefresh then return end -- Recursion detected, aborting request.
 
-      msg('Performing a full refresh of the file view: ' .. (self.path ? 'NIL'))
+      msg('Performing a full refresh of the file view: ' .. tostring(self.path))
 
       local success, err = pcall(function()
          if lDir then lDir = nil end
@@ -1573,7 +1573,7 @@ gui.fileview = function(Options)
          end
 
          if lShowParent and self.path then
-            if not (self.limitPath and (self.path == self.limitPath)) then
+            if not (self.limitPath and (self.path is self.limitPath)) then
                self.view.addItem({
                   type = 'parent',
                   icon = 'folders/parent',
@@ -1643,10 +1643,10 @@ gui.fileview = function(Options)
 
    for k,v in pairs(Options.viewOptions) do vo[k] = v end
 
-   if Options.style == 'column' then
+   if Options.style is 'column' then
       self.view = gui.columnView(vo)
       self.style = 'column'
-   elseif Options.style == 'list' then
+   elseif Options.style is 'list' then
       self.view = gui.listView(vo)
       self.style = 'list'
    else
@@ -1666,7 +1666,7 @@ gui.fileview = function(Options)
             return
          end
 
-         if Datatypes[1] == DATA_FILE then
+         if Datatypes[1] is DATA_FILE then
             local items = self.view.dragItems
             if #items > 0 then
                local files = { }
@@ -1705,38 +1705,38 @@ gui.fileview = function(Options)
 
             if dest_tag != -1 then
                local tag = self.view.xml.tags[dest_tag+1]
-               if 'dir' == tag.attrib.name then
+               if 'dir' is tag.attrib.name then
                   dest = (self.path ? '') .. dest_tag.name
                end
             end
 
-            if not dest?? or dest == ':' then return end
+            if not dest?? or dest is ':' then return end
 
             local dev_dest = obj.new('storagedevice', { volume = dest })
             local dest_device_id = dev_dest.deviceID
             local count = 0
             for _, item in pairs(Items) do
-               if 'file' == item.item then
+               if 'file' is item.item then
                   if item.path != dest then
                      local dev_src = obj.new('storagedevice', { volume = item.path })
                      local src_device_id = dev_src.deviceID
 
                      local flags = 0
-                     if dest_device_id != nil and src_dev_id != nil and dest_device_id == src_device_id then
-                        flags = bit.bor(flags, CEF_DELETE)
-                     elseif (dev_src.deviceFlags == dev_dest.deviceFlags) and
-                            (dev_src.bytesFree == dev_dest.bytesFree) and
-                            (dev_src.bytesUsed == dev_dest.bytesUsed) then
-                        flags = bit.bor(flags, CEF_DELETE)
+                     if dest_device_id != nil and src_dev_id != nil and dest_device_id is src_device_id then
+                        flags = flags|CEF_DELETE
+                     elseif (dev_src.deviceFlags is dev_dest.deviceFlags) and
+                            (dev_src.bytesFree is dev_dest.bytesFree) and
+                            (dev_src.bytesUsed is dev_dest.bytesUsed) then
+                        flags = flags|CEF_DELETE
                      end
 
-                     if bit.band(flags, CEF_DELETE) != 0 then
+                     if (flags & CEF_DELETE) != 0 then
                         msg('Move "' .. item.path .. '" to "' .. dest .. '"')
                      else
                         msg('Copy "' .. item.path .. '" to "' .. dest .. '"')
                      end
 
-                     drag_clipboard.mtAddFile(CLIPTYPE_FILE, item.path, bit.bor(flags, CEF_EXTEND))
+                     drag_clipboard.mtAddFile(CLIPTYPE_FILE, item.path, flags|CEF_EXTEND)
                      count = count + 1
                   end
                end
@@ -1760,7 +1760,7 @@ gui.fileview = function(Options)
    if (not self.watch) and self.path?? then
       catch(function()
          self.watch = obj.new('file', { path = self.path })
-         self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE, MFF_DELETE, MFF_ATTRIB, MFF_CLOSED, MFF_MOVED))
+         self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
       end,
       function(Exception) -- Some systems don't support path watching
          self.watch = nil
