@@ -1,0 +1,29 @@
+-- Debug test for safe nav + if-empty
+
+print("=== Test 1: Simple if-empty ===")
+local x = nil
+local result1 = x ? "default"
+print("nil ? 'default' = " .. tostring(result1))
+
+print("\n=== Test 2: Safe nav returning nil ===")
+local guest = nil
+local result2 = guest?.profile?.name
+print("guest?.profile?.name = " .. tostring(result2))
+
+print("\n=== Test 3: Safe nav + if-empty (THE PROBLEM) ===")
+local guest2 = nil
+local result3 = guest2?.profile?.name ? "Guest"
+print("guest2?.profile?.name ? 'Guest' = " .. tostring(result3))
+print("Type: " .. type(result3))
+
+print("\n=== Test 4: Parenthesized version ===")
+local guest3 = nil
+local result4 = (guest3?.profile?.name) ? "Guest"
+print("(guest3?.profile?.name) ? 'Guest' = " .. tostring(result4))
+
+print("\n=== Test 5: Step by step ===")
+local guest4 = nil
+local step1 = guest4?.profile?.name
+print("Step 1 (safe nav): " .. tostring(step1) .. ", type: " .. type(step1))
+local step2 = step1 ? "Guest"
+print("Step 2 (if-empty): " .. tostring(step2) .. ", type: " .. type(step2))

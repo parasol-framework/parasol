@@ -136,6 +136,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       // We need to preserve flag state through the register reservation logic below.
       uint8_t had_safe_nav = expr_has_flag(e, SAFE_NAV_CHAIN_FLAG);
 
+      fprintf(stderr, "DEBUG bcemit_binop_left IF_EMPTY: k=%d t=%d f=%d flags=0x%02x had_safe_nav=%d\n",
+              e->k, e->t, e->f, e->flags, had_safe_nav);
+
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
       if (e->k == VKNIL || e->k == VKFALSE)
@@ -428,7 +431,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
       // This should already be consumed by bcemit_binop_left(), but we're defensive here
       // in case the flag somehow persists through other code paths.
-      expr_consume_flag(e1, SAFE_NAV_CHAIN_FLAG);
+      uint8_t had_flag = expr_consume_flag(e1, SAFE_NAV_CHAIN_FLAG);
+
+      fprintf(stderr, "DEBUG bcemit_binop IF_EMPTY: k=%d t=%d f=%d flags=0x%02x had_safe_nav=%d\n",
+              e1->k, e1->t, e1->f, e1->flags, had_flag);
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
