@@ -81,7 +81,7 @@ set (LUAJIT_GENERATED_HEADERS
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT)
-set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT)
+set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_ENABLE_LUA52COMPAT)
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -std=c99 -O2 -Wall)
@@ -389,7 +389,6 @@ else ()
       "${LUAJIT_SRC}/lib_table.c"
       "${LUAJIT_SRC}/lib_debug.c"
       "${LUAJIT_SRC}/lib_jit.c"
-      "${LUAJIT_SRC}/lib_buffer.c"
    )
 
    # Generate headers and VM file using buildvm
@@ -469,6 +468,7 @@ else ()
    target_compile_definitions(luajit_lib PRIVATE
       LUAJIT_UNWIND_EXTERNAL
       LUAJIT_DISABLE_FFI
+      LUAJIT_DISABLE_BUFFER
       LUAJIT_ENABLE_LUA52COMPAT
       LUA_ROOT="${CMAKE_INSTALL_PREFIX}"
    )
