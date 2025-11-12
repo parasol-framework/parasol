@@ -110,16 +110,105 @@ if (MSVC)
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
-   # Generate headers and VM object file directly to build directory
+   # Host tool sources and build configuration
+   set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
+   set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
+   set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+   set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
+
+   # Library source files needed for buildvm header generation
+   set (LJLIB_C
+      "${LUAJIT_SRC}/lib_base.c"
+      "${LUAJIT_SRC}/lib_math.c"
+      "${LUAJIT_SRC}/lib_bit.c"
+      "${LUAJIT_SRC}/lib_string.c"
+      "${LUAJIT_SRC}/lib_table.c"
+      "${LUAJIT_SRC}/lib_debug.c"
+      "${LUAJIT_SRC}/lib_jit.c"
+   )
+
+   set (BUILDVM_SOURCES
+      "${LUAJIT_HOST_DIR}/buildvm.c"
+      "${LUAJIT_HOST_DIR}/buildvm_asm.c"
+      "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
+      "${LUAJIT_HOST_DIR}/buildvm_lib.c"
+      "${LUAJIT_HOST_DIR}/buildvm_fold.c"
+   )
+
+   set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm.exe")
+   set (BUILDVM_ARCH_H "${LUAJIT_HOST_DIR}/buildvm_arch.h")
+
+   # Detect target architecture (x64 vs x86)
+   if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x64.dasc")
+      set (LUAJIT_DASMFLAGS -D WIN -D JIT -D P64)
+      set (LUAJIT_ARCH "x64")
+   else()
+      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x86.dasc")
+      set (LUAJIT_DASMFLAGS -D WIN -D JIT)
+      set (LUAJIT_ARCH "x86")
+   endif()
+
+   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
+
+   # Build minilua host tool
+   add_custom_command(
+      OUTPUT ${MINILUA_TARGET}
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE
+         /Fo${LUAJIT_BUILD_DIR}/minilua.obj
+         ${MINILUA_SRC}
+      COMMAND ${CMAKE_LINKER} /nologo /out:${MINILUA_TARGET}
+         ${LUAJIT_BUILD_DIR}/minilua.obj
+      DEPENDS ${MINILUA_SRC}
+      WORKING_DIRECTORY "${LUAJIT_SRC}"
+      COMMENT "Building minilua host tool for ${LUAJIT_ARCH}"
+      VERBATIM
+   )
+
+   # Generate buildvm_arch.h using dynasm
+   add_custom_command(
+      OUTPUT ${BUILDVM_ARCH_H}
+      COMMAND ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua
+         -LN ${LUAJIT_DASMFLAGS} -o ${BUILDVM_ARCH_H} ${LUAJIT_DASC}
+      DEPENDS ${MINILUA_TARGET} "${LUAJIT_DYNASM_DIR}/dynasm.lua" ${LUAJIT_DASC}
+         "${LUAJIT_SRC}/lj_arch.h"
+      WORKING_DIRECTORY "${LUAJIT_SRC}"
+      COMMENT "Generating buildvm_arch.h via dynasm for ${LUAJIT_ARCH}"
+      VERBATIM
+   )
+
+   # Build buildvm host tool
+   add_custom_command(
+      OUTPUT ${BUILDVM_TARGET}
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
+         /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR}
+         ${BUILDVM_SOURCES}
+      COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
+         ${LUAJIT_BUILD_DIR}/buildvm.obj
+         ${LUAJIT_BUILD_DIR}/buildvm_asm.obj
+         ${LUAJIT_BUILD_DIR}/buildvm_peobj.obj
+         ${LUAJIT_BUILD_DIR}/buildvm_lib.obj
+         ${LUAJIT_BUILD_DIR}/buildvm_fold.obj
+      DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
+      WORKING_DIRECTORY "${LUAJIT_BUILD_DIR}"
+      COMMENT "Building buildvm host tool for ${LUAJIT_ARCH}"
+      VERBATIM
+   )
+
+   # Generate headers and VM object file using buildvm
    add_custom_command(
       OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
-      COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat" "${LUAJIT_BUILD_DIR}"
+      COMMAND ${BUILDVM_TARGET} -m peobj -o ${LUAJIT_VM_OBJ}
+      COMMAND ${BUILDVM_TARGET} -m bcdef -o ${LUAJIT_BUILD_DIR}/lj_bcdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
+      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h ${LUAJIT_SRC}/lj_opt_fold.c
+      COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
-      DEPENDS
-         ${LUAJIT_CORE_SOURCES}
-         ${LUAJIT_LIB_SOURCES}
-         ${LUAJIT_DEP_LJ_H}
-      COMMENT "Generating LuaJIT headers and VM object in build directory"
+      COMMENT "Generating LuaJIT headers and VM object for ${LUAJIT_ARCH}"
       VERBATIM
    )
 
