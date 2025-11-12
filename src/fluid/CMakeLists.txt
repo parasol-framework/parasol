@@ -282,61 +282,25 @@ else ()
       VERBATIM
    )
 
-   # Determine target architecture for dynasm by preprocessing lj_arch.h
-   # This mimics the Makefile's TARGET_TESTARCH approach
+   # Determine target architecture using CMake built-in variables
 
-   set (LUAJIT_DETECT_ARCH "${LUAJIT_BUILD_DIR}/detect_arch.c")
-
-   # Only write the file if it doesn't exist to avoid unnecessary rebuilds
-
-   if (NOT EXISTS ${LUAJIT_DETECT_ARCH})
-      file(WRITE ${LUAJIT_DETECT_ARCH}
-         "#include \"${LUAJIT_SRC}/lj_arch.h\"\n"
-         "#include <stdio.h>\n"
-         "#include <string.h>\n"
-         "int main(void) {\n"
-         "#ifdef LJ_TARGET_X64\n"
-         "   #ifdef LJ_FR2\n"
-         "   puts(\"x64\");\n"
-         "   #else\n"
-         "   puts(\"x86\");\n"
-         "   #endif\n"
-         "#elif defined(LJ_TARGET_X86)\n"
-         "   puts(\"x86\");\n"
-         "#elif defined(LJ_TARGET_ARM)\n"
-         "   puts(\"arm\");\n"
-         "#elif defined(LJ_TARGET_ARM64)\n"
-         "   puts(\"arm64\");\n"
-         "#elif defined(LJ_TARGET_PPC)\n"
-         "   puts(\"ppc\");\n"
-         "#elif defined(LJ_TARGET_MIPS)\n"
-         "   puts(\"mips\");\n"
-         "#else\n"
-         "   puts(\"x64\");\n"
-         "#endif\n"
-         "   return 0;\n"
-         "}\n"
-      )
+   if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+      set (LUAJIT_TARGET_ARCH "arm64")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+      set (LUAJIT_TARGET_ARCH "arm")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)")
+      set (LUAJIT_TARGET_ARCH "ppc")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
+      set (LUAJIT_TARGET_ARCH "mips")
+   elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set (LUAJIT_TARGET_ARCH "x64")
+   else ()
+      set (LUAJIT_TARGET_ARCH "x86")
    endif ()
 
-   # Detect architecture
-
-   set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch${CMAKE_EXECUTABLE_SUFFIX}")
-
-   add_custom_command(
-      OUTPUT ${LUAJIT_ARCH_DETECT}
-      COMMAND ${CMAKE_C_COMPILER} -I${LUAJIT_SRC} -o ${LUAJIT_ARCH_DETECT} ${LUAJIT_DETECT_ARCH}
-      DEPENDS ${LUAJIT_DETECT_ARCH} "${LUAJIT_SRC}/lj_arch.h"
-      COMMENT "Detecting LuaJIT target architecture"
-      VERBATIM
-   )
-
    # Generate buildvm_arch.h using dynasm
-   # Detect architecture at build time and use the appropriate .dasc file
+   # Use the detected architecture to select the appropriate .dasc file
    # Extract architecture flags from lj_arch.h preprocessing to pass to dynasm
-
-   # Use a CMake script to detect architecture and run dynasm
-   # This consolidates arch detection and dynasm into a single step
 
    set (DYNASM_SCRIPT "${LUAJIT_BUILD_DIR}/run_dynasm.cmake")
 
@@ -345,20 +309,11 @@ else ()
       file(WRITE "${LUAJIT_BUILD_DIR}/test_arch.c" "#include <lj_arch.h>\n")
    endif ()
 
-   # Only write the script if it doesn't exist to avoid unnecessary rebuilds
+   # Write the dynasm runner script
 
-   if (NOT EXISTS ${DYNASM_SCRIPT})
-      file(WRITE ${DYNASM_SCRIPT}
-         "# Detect architecture\n"
-         "execute_process(\n"
-         "   COMMAND \"${LUAJIT_ARCH_DETECT}\"\n"
-         "   OUTPUT_VARIABLE ARCH\n"
-         "   OUTPUT_STRIP_TRAILING_WHITESPACE\n"
-         "   RESULT_VARIABLE ARCH_RESULT\n"
-         ")\n"
-         "if(ARCH_RESULT)\n"
-         "   message(FATAL_ERROR \"Architecture detection failed\")\n"
-         "endif()\n"
+   file(WRITE ${DYNASM_SCRIPT}
+         "# Use architecture determined by CMake\n"
+         "set(ARCH \"${LUAJIT_TARGET_ARCH}\")\n"
          "set(DASM_DASC \"${LUAJIT_SRC}/vm_\${ARCH}.dasc\")\n"
          "if(NOT EXISTS \"\${DASM_DASC}\")\n"
          "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
@@ -430,12 +385,11 @@ else ()
          "   message(FATAL_ERROR \"Dynasm failed with exit code \${DYNASM_RESULT}\")\n"
          "endif()\n"
       )
-   endif ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
-      DEPENDS ${MINILUA_TARGET} ${LUAJIT_ARCH_DETECT} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
+      DEPENDS ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
