@@ -508,16 +508,22 @@ end
 -- combination of both
 
 function testConcat()
-   local function returnString()
-      return "Result"
+   local function returnString(Arg)
+      if Arg then return Arg else return "Result" end
    end
+   
+   local baseline = (nil and returnString('true') or returnString('false'))
+   assert(baseline is "false", "Failed baseline, got '" .. tostring(baseline) .. "'")
+
+   local ternary = (nil ? returnString('true') :> returnString('false'))
+   assert(ternary is "false", "Failed concat-function baseline, got '" .. tostring(ternary) .. "'")
 
    local v = '' .. (nil ? returnString('true') :> returnString('false')) .. ''
-   assert(v is "Result", "Failed concat-function 1, got '" .. tostring(v) .. "'")
+   assert(v is baseline, "Failed concat-function 1, got '" .. tostring(v) .. "'")
    
    local val
    local v = '' .. (val ? returnString('ignore') :> 'false')
-   assert(v is "Result", "Failed conat-function 2, got '" .. tostring(v) .. "'")
+   assert(v is "false", "Failed conat-function 2, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
