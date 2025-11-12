@@ -43,31 +43,20 @@ set (LUAJIT_GENERATED_HEADERS
 )
 
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
-set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
-set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
+set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT)
+set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT)
 
-# Common compiler flags and paths
-set (LUAJIT_HOST_CFLAGS "-std=c99" "-O2" "-Wall")
-set (LUAJIT_INCLUDE_DIRS "-I${LUAJIT_SRC}" "-I${LUAJIT_BUILD_DIR}")
-set (LUAJIT_COMMON_CFLAGS "-fPIC" "-O2" "-fomit-frame-pointer" "-Wall")
+# Common compiler flags and paths (use lists instead of strings for proper handling)
+set (LUAJIT_HOST_CFLAGS -std=c99 -O2 -Wall)
+set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR})
+set (LUAJIT_COMMON_CFLAGS -fPIC -O2 -fomit-frame-pointer -Wall)
 
-# Helper function to set platform-specific executable name
-function(set_platform_executable VAR_NAME BASE_NAME)
-   if (WIN32)
-      set(${VAR_NAME} "${LUAJIT_BUILD_DIR}/${BASE_NAME}.exe" PARENT_SCOPE)
-   else ()
-      set(${VAR_NAME} "${LUAJIT_BUILD_DIR}/${BASE_NAME}" PARENT_SCOPE)
-   endif ()
-endfunction()
-
-# Helper function to set platform-specific math library
-function(set_platform_math_lib VAR_NAME)
-   if (WIN32)
-      set(${VAR_NAME} "" PARENT_SCOPE)
-   else ()
-      set(${VAR_NAME} "-lm" PARENT_SCOPE)
-   endif ()
-endfunction()
+# Platform-specific math library (empty on Windows, -lm on Unix)
+if (WIN32)
+   set(LUAJIT_MATH_LIB "")
+else ()
+   set(LUAJIT_MATH_LIB "-lm")
+endif ()
 
 if (MSVC)
    # LuaJIT build for MSVC - separated into code generation and library compilation
@@ -124,6 +113,11 @@ if (MSVC)
 
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
+   # Create INTERFACE library to encapsulate LuaJIT usage requirements
+   add_library(luajit_interface INTERFACE)
+   target_include_directories(luajit_interface INTERFACE "${LUAJIT_SRC}")
+   target_compile_definitions(luajit_interface INTERFACE ${LUAJIT_COMMON_DEFS})
+
    # Create an alias for backward compatibility
    add_custom_target(luajit DEPENDS luajit_lib)
 
@@ -150,12 +144,11 @@ else ()
    # Build minilua host tool first
 
    set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
-   set_platform_executable(MINILUA_TARGET "minilua")
-   set_platform_math_lib(MINILUA_LIBS)
+   set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua${CMAKE_EXECUTABLE_SUFFIX}")
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${MINILUA_LIBS}
+      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${LUAJIT_MATH_LIB}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
       VERBATIM
@@ -200,7 +193,7 @@ else ()
 
    # Detect architecture
 
-   set_platform_executable(LUAJIT_ARCH_DETECT "detect_arch")
+   set (LUAJIT_ARCH_DETECT "${LUAJIT_BUILD_DIR}/detect_arch${CMAKE_EXECUTABLE_SUFFIX}")
 
    add_custom_command(
       OUTPUT ${LUAJIT_ARCH_DETECT}
@@ -216,14 +209,35 @@ else ()
 
    set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
 
-   # Create a script to preprocess lj_arch.h and extract architecture defines
-   set (ARCH_DETECT_SCRIPT "${LUAJIT_BUILD_DIR}/detect_arch_flags.cmake")
+   # Use a CMake script to detect architecture and run dynasm
+   # This consolidates arch detection and dynasm into a single step
 
-   if (NOT EXISTS ${ARCH_DETECT_SCRIPT})
-      file(WRITE ${ARCH_DETECT_SCRIPT}
-         "# Preprocess lj_arch.h to extract architecture defines\n"
-         "# Create a temporary C file that includes lj_arch.h\n"
-         "file(WRITE \"${LUAJIT_BUILD_DIR}/test_arch.c\" \"#include <lj_arch.h>\\n\")\n"
+   set (DYNASM_SCRIPT "${LUAJIT_BUILD_DIR}/run_dynasm.cmake")
+
+   # Create test_arch.c for preprocessing
+   if (NOT EXISTS "${LUAJIT_BUILD_DIR}/test_arch.c")
+      file(WRITE "${LUAJIT_BUILD_DIR}/test_arch.c" "#include <lj_arch.h>\n")
+   endif ()
+
+   # Only write the script if it doesn't exist to avoid unnecessary rebuilds
+
+   if (NOT EXISTS ${DYNASM_SCRIPT})
+      file(WRITE ${DYNASM_SCRIPT}
+         "# Detect architecture\n"
+         "execute_process(\n"
+         "   COMMAND \"${LUAJIT_ARCH_DETECT}\"\n"
+         "   OUTPUT_VARIABLE ARCH\n"
+         "   OUTPUT_STRIP_TRAILING_WHITESPACE\n"
+         "   RESULT_VARIABLE ARCH_RESULT\n"
+         ")\n"
+         "if(ARCH_RESULT)\n"
+         "   message(FATAL_ERROR \"Architecture detection failed\")\n"
+         "endif()\n"
+         "set(DASM_DASC \"${LUAJIT_SRC}/vm_\${ARCH}.dasc\")\n"
+         "if(NOT EXISTS \"\${DASM_DASC}\")\n"
+         "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
+         "endif()\n"
+         "# Detect architecture flags by preprocessing lj_arch.h\n"
          "execute_process(\n"
          "   COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -dM ${LUAJIT_BUILD_DIR}/test_arch.c\n"
          "   WORKING_DIRECTORY ${LUAJIT_SRC}\n"
@@ -262,7 +276,6 @@ else ()
          "if(WIN32)\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"WIN\")\n"
          "endif()\n"
-         "# Extract version\n"
          "if(ARCH_DEFS MATCHES \"LJ_ARCH_VERSION ([0-9]+)\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"VER=\${CMAKE_MATCH_1}\")\n"
          "endif()\n"
@@ -283,39 +296,7 @@ else ()
          "      list(APPEND DASM_AFLAGS \"-D\" \"GPR64\")\n"
          "   endif()\n"
          "endif()\n"
-         "# PPE and TOC flags for PS3 systems\n"
-         "if(ARCH_DEFS MATCHES \"__CELLOS_LV2__\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"PPE\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"TOC\")\n"
-         "endif()\n"
-         "# Write flags to file\n"
-         "string(REPLACE \";\" \" \" DASM_AFLAGS_STR \"\${DASM_AFLAGS}\")\n"
-         "file(WRITE \"${LUAJIT_BUILD_DIR}/dasm_aflags.txt\" \"\${DASM_AFLAGS_STR}\")\n"
-      )
-   endif()
-
-   # Use a CMake script to detect architecture and run dynasm
-
-   set (DYNASM_SCRIPT "${LUAJIT_BUILD_DIR}/run_dynasm.cmake")
-
-   # Only write the script if it doesn't exist to avoid unnecessary rebuilds
-
-   if (NOT EXISTS ${DYNASM_SCRIPT})
-      file(WRITE ${DYNASM_SCRIPT}
-         "file(READ \"${LUAJIT_BUILD_DIR}/arch.txt\" ARCH)\n"
-         "string(STRIP \"\${ARCH}\" ARCH)\n"
-         "set(DASM_DASC \"${LUAJIT_SRC}/vm_\${ARCH}.dasc\")\n"
-         "if(NOT EXISTS \"\${DASM_DASC}\")\n"
-         "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
-         "endif()\n"
-         "# Read dynasm flags\n"
-         "file(READ \"${LUAJIT_BUILD_DIR}/dasm_aflags.txt\" DASM_AFLAGS_STR)\n"
-         "string(STRIP \"\${DASM_AFLAGS_STR}\" DASM_AFLAGS_STR)\n"
-         "if(DASM_AFLAGS_STR)\n"
-         "   separate_arguments(DASM_AFLAGS UNIX_COMMAND \"\${DASM_AFLAGS_STR}\")\n"
-         "else()\n"
-         "   set(DASM_AFLAGS \"\")\n"
-         "endif()\n"
+         "# Run dynasm\n"
          "execute_process(\n"
          "   COMMAND \"${MINILUA_TARGET}\" \"${LUAJIT_DYNASM_DIR}/dynasm.lua\" \${DASM_AFLAGS} -o \"${BUILDVM_ARCH_H}\" \"\${DASM_DASC}\"\n"
          "   WORKING_DIRECTORY \"${LUAJIT_SRC}\"\n"
@@ -329,29 +310,13 @@ else ()
    endif ()
 
    add_custom_command(
-      OUTPUT ${LUAJIT_BUILD_DIR}/arch.txt
-      COMMAND ${LUAJIT_ARCH_DETECT} > ${LUAJIT_BUILD_DIR}/arch.txt
-      DEPENDS ${LUAJIT_ARCH_DETECT}
-      COMMENT "Writing detected architecture to file"
-      VERBATIM
-   )
-
-   # Generate dynasm architecture flags file
-   add_custom_command(
-      OUTPUT ${LUAJIT_BUILD_DIR}/dasm_aflags.txt
-      COMMAND ${CMAKE_COMMAND} -P ${ARCH_DETECT_SCRIPT}
-      DEPENDS "${LUAJIT_SRC}/lj_arch.h" ${ARCH_DETECT_SCRIPT}
-      COMMENT "Detecting architecture flags for dynasm"
-      VERBATIM
-   )
-
-   add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
-      DEPENDS ${MINILUA_TARGET} ${LUAJIT_BUILD_DIR}/arch.txt ${LUAJIT_BUILD_DIR}/dasm_aflags.txt ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
+      DEPENDS ${MINILUA_TARGET} ${LUAJIT_ARCH_DETECT} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
+          "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )
@@ -366,15 +331,14 @@ else ()
       "${LUAJIT_HOST_DIR}/buildvm_fold.c"
    )
 
-   set_platform_executable(BUILDVM_TARGET "buildvm")
-   set_platform_math_lib(BUILDVM_LIBS)
+   set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm${CMAKE_EXECUTABLE_SUFFIX}")
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
-         -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
+         -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${LUAJIT_MATH_LIB}
       DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
       COMMENT "Building buildvm host tool"
       VERBATIM
@@ -435,12 +399,17 @@ else ()
          DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
       )
    else ()
-      # Unix: Need to compile the assembly source
+      # Unix: Generate assembly source (compilation happens in library target)
       add_custom_target(luajit_codegen
          DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
       )
+   endif ()
 
-      # Compile VM assembly file
+   if (WIN32)
+      # MinGW: Create library from VM object and amalgamated source
+      add_library(luajit_lib STATIC "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_VM_OBJ})
+   else ()
+      # Unix: Compile assembly first, then create library
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
          COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
@@ -452,58 +421,42 @@ else ()
          COMMENT "Compiling LuaJIT VM assembly"
          VERBATIM
       )
+      add_library(luajit_lib STATIC "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_VM_O})
    endif ()
 
-   # Compile amalgamated source
-   # List all source files included by ljamalg.c to ensure proper dependency tracking
-
-   file(GLOB LUAJIT_AMALG_SOURCES
-      "${LUAJIT_SRC}/lj_*.c"
-      "${LUAJIT_SRC}/lib_*.c"
-   )
-
-   set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
-   add_custom_command(
-      OUTPUT ${LUAJIT_AMALG_O}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
-         ${LUAJIT_NON_MSVC_DEFS}
-         -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
-         ${LUAJIT_INCLUDE_DIRS}
-         -Wno-trigraphs
-         -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
-      DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
-      COMMENT "Compiling LuaJIT amalgamated source"
-      VERBATIM
-   )
-
-   # Create static library
-
-   set (LUAJIT_LIB_DIR "${CMAKE_BINARY_DIR}/luajit-2.1/lib")
-   file(MAKE_DIRECTORY "${LUAJIT_LIB_DIR}")
-   set (LUAJIT_LINK "${LUAJIT_LIB_DIR}/libluajit-5.1.a")
-
-   if (WIN32)
-      # MinGW: Use the .obj file generated by buildvm
-      add_custom_command(
-         OUTPUT ${LUAJIT_LINK}
-         COMMAND ${CMAKE_AR} rcus ${LUAJIT_LINK} ${LUAJIT_VM_OBJ} ${LUAJIT_AMALG_O}
-         DEPENDS ${LUAJIT_VM_OBJ} ${LUAJIT_AMALG_O}
-         COMMENT "Creating LuaJIT static library"
-         VERBATIM
-      )
-   else ()
-      # Unix: Use the compiled .o file
-      add_custom_command(
-         OUTPUT ${LUAJIT_LINK}
-         COMMAND ${CMAKE_AR} rcus ${LUAJIT_LINK} ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
-         DEPENDS ${LUAJIT_VM_O} ${LUAJIT_AMALG_O}
-         COMMENT "Creating LuaJIT static library"
-         VERBATIM
-      )
-   endif ()
-
-   add_custom_target(luajit_lib DEPENDS ${LUAJIT_LINK})
    add_dependencies(luajit_lib luajit_codegen)
+
+   target_compile_options(luajit_lib PRIVATE
+      ${LUAJIT_COMMON_CFLAGS}
+      -funwind-tables
+      -Wno-trigraphs
+   )
+
+   target_compile_definitions(luajit_lib PRIVATE
+      LUAJIT_UNWIND_EXTERNAL
+      LUAJIT_DISABLE_FFI
+      LUAJIT_ENABLE_LUA52COMPAT
+      LUA_ROOT="${CMAKE_INSTALL_PREFIX}"
+   )
+
+   target_include_directories(luajit_lib PRIVATE
+      "${LUAJIT_SRC}"
+      "${LUAJIT_BUILD_DIR}"
+   )
+
+   set_target_properties(luajit_lib PROPERTIES
+      OUTPUT_NAME "luajit-5.1"
+      ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/luajit-2.1/lib"
+   )
+
+   # Set link path for fluid module
+   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/${CMAKE_STATIC_LIBRARY_PREFIX}luajit-5.1${CMAKE_STATIC_LIBRARY_SUFFIX}")
+
+   # Create INTERFACE library to encapsulate LuaJIT usage requirements
+   add_library(luajit_interface INTERFACE)
+   target_include_directories(luajit_interface INTERFACE "${LUAJIT_SRC}")
+   target_compile_definitions(luajit_interface INTERFACE ${LUAJIT_COMMON_DEFS})
+
    add_custom_target(luajit DEPENDS luajit_lib)  # Create an alias for backward compatibility
 endif ()
 
@@ -530,15 +483,13 @@ endif ()
 target_sources (${MOD} PRIVATE ${FLUID_SOURCES})
 
 target_include_directories (${MOD} PRIVATE
-   "${CMAKE_BINARY_DIR}/libffi-3.3/include"
-   "luajit-2.1/src")
+   "${CMAKE_BINARY_DIR}/libffi-3.3/include")
 
 target_link_libraries (${MOD} PRIVATE
+   luajit_interface
    ${FFI_LINK}
    ${LUAJIT_LINK}
    ${MATH_LINK}) # The link order matters, math must come last
-
-add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
 
 if (DISABLE_DISPLAY)
    target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)
