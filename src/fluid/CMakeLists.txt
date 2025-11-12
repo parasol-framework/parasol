@@ -283,17 +283,48 @@ else ()
    )
 
    # Determine target architecture using CMake built-in variables
+   # Normalize to lowercase for case-insensitive matching (Windows/cross-toolchains use uppercase)
 
-   if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" LUAJIT_SYSTEM_PROCESSOR_LOWER)
+
+   if (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^(aarch64|arm64)")
       set (LUAJIT_TARGET_ARCH "arm64")
-   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^arm")
       set (LUAJIT_TARGET_ARCH "arm")
-   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)")
+   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^(powerpc|ppc)")
       set (LUAJIT_TARGET_ARCH "ppc")
-   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
+   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^mips64")
+      set (LUAJIT_TARGET_ARCH "mips64")
+   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^mips")
       set (LUAJIT_TARGET_ARCH "mips")
    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
-      set (LUAJIT_TARGET_ARCH "x64")
+      # For x64 builds, check if LJ_FR2 is enabled (tied to LJ_GC64)
+      # If GC64 is disabled (LJ_FR2=0), we need to use x86 VM instead of x64
+      # Create a test file to detect LJ_FR2 via preprocessing
+      if (NOT EXISTS "${LUAJIT_BUILD_DIR}/detect_fr2.c")
+         file(WRITE "${LUAJIT_BUILD_DIR}/detect_fr2.c"
+            "#include \"lj_arch.h\"\n"
+            "#if LJ_FR2\n"
+            "x64\n"
+            "#else\n"
+            "x86\n"
+            "#endif\n"
+         )
+      endif ()
+
+      # Preprocess to detect LJ_FR2
+      execute_process(
+         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -P "${LUAJIT_BUILD_DIR}/detect_fr2.c"
+         OUTPUT_VARIABLE LUAJIT_FR2_RESULT
+         OUTPUT_STRIP_TRAILING_WHITESPACE
+         ERROR_QUIET
+      )
+
+      if (LUAJIT_FR2_RESULT MATCHES "x64")
+         set (LUAJIT_TARGET_ARCH "x64")
+      else ()
+         set (LUAJIT_TARGET_ARCH "x86")
+      endif ()
    else ()
       set (LUAJIT_TARGET_ARCH "x86")
    endif ()
@@ -393,7 +424,7 @@ else ()
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
-          "${LUAJIT_BUILD_DIR}/test_arch.c"
+         "${LUAJIT_SRC}/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )

@@ -1,6 +1,7 @@
 /*
 ** Object de/serialization.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+** TODO: Buffer support is deprecated but this code could be modified to use our string buffer feature.
 */
 
 #define lj_serialize_c
