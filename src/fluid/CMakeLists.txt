@@ -73,6 +73,7 @@ set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 # Define build directory for generated files (avoids polluting source tree)
 set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
 file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
 # Generated header files
 set (LUAJIT_GENERATED_HEADERS
@@ -86,6 +87,31 @@ set (LUAJIT_GENERATED_HEADERS
 set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 set (LUAJIT_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT LUAJIT_DISABLE_FFI)
 set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_ENABLE_LUA52COMPAT)
+
+# Common host tool sources (used by both MSVC and non-MSVC builds)
+set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
+set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
+set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+
+# Library source files needed for buildvm header generation (used in both build paths)
+set (LJLIB_C
+   "${LUAJIT_SRC}/lib_base.c"
+   "${LUAJIT_SRC}/lib_math.c"
+   "${LUAJIT_SRC}/lib_bit.c"
+   "${LUAJIT_SRC}/lib_string.c"
+   "${LUAJIT_SRC}/lib_table.c"
+   "${LUAJIT_SRC}/lib_debug.c"
+   "${LUAJIT_SRC}/lib_jit.c"
+)
+
+# Buildvm source files (used in both build paths)
+set (BUILDVM_SOURCES
+   "${LUAJIT_HOST_DIR}/buildvm.c"
+   "${LUAJIT_HOST_DIR}/buildvm_asm.c"
+   "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
+   "${LUAJIT_HOST_DIR}/buildvm_lib.c"
+   "${LUAJIT_HOST_DIR}/buildvm_fold.c"
+)
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -std=c99 -O2 -Wall)
@@ -110,31 +136,8 @@ if (MSVC)
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
-   # Host tool sources and build configuration
-   set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
-   set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
-   set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+   # Platform-specific paths
    set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
-
-   # Library source files needed for buildvm header generation
-   set (LJLIB_C
-      "${LUAJIT_SRC}/lib_base.c"
-      "${LUAJIT_SRC}/lib_math.c"
-      "${LUAJIT_SRC}/lib_bit.c"
-      "${LUAJIT_SRC}/lib_string.c"
-      "${LUAJIT_SRC}/lib_table.c"
-      "${LUAJIT_SRC}/lib_debug.c"
-      "${LUAJIT_SRC}/lib_jit.c"
-   )
-
-   set (BUILDVM_SOURCES
-      "${LUAJIT_HOST_DIR}/buildvm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_asm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
-      "${LUAJIT_HOST_DIR}/buildvm_lib.c"
-      "${LUAJIT_HOST_DIR}/buildvm_fold.c"
-   )
-
    set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm.exe")
    set (BUILDVM_ARCH_H "${LUAJIT_HOST_DIR}/buildvm_arch.h")
 
@@ -148,8 +151,6 @@ if (MSVC)
       set (LUAJIT_DASMFLAGS -D WIN -D JIT)
       set (LUAJIT_ARCH "x86")
    endif()
-
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
    # Build minilua host tool
    add_custom_command(
@@ -266,15 +267,12 @@ else ()
       set (LUAJIT_VM_O "${LUAJIT_BUILD_DIR}/lj_vm.o")
    endif ()
 
-   # Host tool sources
-
-   set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
-   set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
+   # Platform-specific paths
+   set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua${CMAKE_EXECUTABLE_SUFFIX}")
+   set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm${CMAKE_EXECUTABLE_SUFFIX}")
+   set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
 
    # Build minilua host tool first
-
-   set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
-   set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua${CMAKE_EXECUTABLE_SUFFIX}")
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
@@ -336,8 +334,6 @@ else ()
    # Generate buildvm_arch.h using dynasm
    # Detect architecture at build time and use the appropriate .dasc file
    # Extract architecture flags from lj_arch.h preprocessing to pass to dynasm
-
-   set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
 
    # Use a CMake script to detect architecture and run dynasm
    # This consolidates arch detection and dynasm into a single step
@@ -450,16 +446,6 @@ else ()
 
    # Build buildvm host tool
 
-   set (BUILDVM_SOURCES
-      "${LUAJIT_HOST_DIR}/buildvm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_asm.c"
-      "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
-      "${LUAJIT_HOST_DIR}/buildvm_lib.c"
-      "${LUAJIT_HOST_DIR}/buildvm_fold.c"
-   )
-
-   set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm${CMAKE_EXECUTABLE_SUFFIX}")
-
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS}
@@ -471,23 +457,9 @@ else ()
       VERBATIM
    )
 
-   # Library source files needed for buildvm header generation
-
-   set (LJLIB_C
-      "${LUAJIT_SRC}/lib_base.c"
-      "${LUAJIT_SRC}/lib_math.c"
-      "${LUAJIT_SRC}/lib_bit.c"
-      "${LUAJIT_SRC}/lib_string.c"
-      "${LUAJIT_SRC}/lib_table.c"
-      "${LUAJIT_SRC}/lib_debug.c"
-      "${LUAJIT_SRC}/lib_jit.c"
-   )
-
    # Generate headers and VM file using buildvm
    # Windows (MinGW) uses peobj to generate .obj directly like MSVC
    # Unix uses elfasm to generate .S assembly source that gets compiled later
-
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
    # Set platform-specific VM generation parameters
 
