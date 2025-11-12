@@ -9,7 +9,7 @@ When using the if-empty operator (`?`) with a table constructor as the right-han
 
 ## Affected Test
 
-**Test:** `fluid_if_empty::testTable` (PREVIOUSLY FAILING)
+**Test:** `fluid_if_empty::testTable`
 **File:** `src/fluid/tests/test_if_empty.fluid`
 
 ```lua
@@ -21,9 +21,23 @@ function testTable()
    local v = 'x' ? { 'Nothing' }
    assert(v is 'x', "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
-   -- THIS CASE FAILS:
+   -- THESE CASES FAIL:
    local v = t ? { 'Nothing' }
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
+
+   local v = t ? { b = 2 }
+   assert(v['a'] is 1, "Failed table case: expected original table when RHS is a constructor, got '" .. tostring(v) .. "'")
+
+   local v = t ? { nested = { x = 1 } }
+   assert(v['a'] is 1, "Failed nested table case: expected original table when RHS is nested constructor, got '" .. tostring(v) .. "'")
+
+   local arr = { 1, 2, 3 }
+   local v = arr ? { 9, 9, 9 }
+   assert(v[1] is 1, "Failed array table case: expected original array when RHS is constructor, got '" .. tostring(v) .. "'")
+
+   local empty = nil
+   local v = empty ? { default = true }
+   assert(v.default is true, "Failed nil LHS table case: expected default table, got '" .. tostring(v) .. "'")
 end
 ```
 
@@ -42,9 +56,9 @@ local v = t ? 'Nothing'
 ## Root Cause Analysis
 
 The issue occurs when:
-1. LHS is a truthy value (non-nil table)
-2. RHS is a table constructor `{ ... }`
-3. The parser incorrectly evaluates to the RHS table instead of the LHS
+1. The LHS evaluates to a truthy value (the original regression was observed with a non-nil table)
+2. The RHS contains any expression (a table constructor highlighted the problem but is not required to reproduce it)
+3. The parser incorrectly executes the RHS instead of preserving the LHS result
 
 ### Parser State Analysis
 
@@ -73,21 +87,19 @@ if (e1->t != NO_JMP) {
 }
 ```
 
-The problem is likely in how table constructors are handled. When the RHS is a table constructor, the parser may:
-- Pre-evaluate the table constructor before checking if it's needed
-- Incorrectly merge the table constructor expression with the LHS
-- Fail to properly short-circuit when LHS is truthy
+The problem stems from the jump pattern emitted around the falsey checks. The implementation assumes comparison opcodes such as
+`BC_ISEQP/BC_ISEQN/BC_ISEQS` fall through on success and only jump when the comparison fails. In reality, these opcodes branch when
+the comparison fails, so truthy values immediately take the patched `JMP` and enter the RHS evaluation, even though short-circuiting
+should have skipped it. This misalignment causes any RHS (including table constructors) to be evaluated unnecessarily.
 
 ### Expression Kind Analysis
 
-Table constructors have a specific expression kind that may not be handled correctly in the if-empty operator's expression discharge logic.
-
-**Hypothesis:** The `expr_discharge()` or `expr_toanyreg()` calls may not properly handle the state when a table constructor appears as the RHS and the LHS is truthy.
+Table constructors continue to work correctly once the branch logic is fixed; `expr_discharge()` does not force their evaluation on its own.
 
 ## Impact
 
 **Severity:** Medium-Low
-- Affects a specific edge case: truthy LHS with table constructor RHS
+- Affects truthy LHS expressions of any kind when paired with the if-empty operator
 - Simple workaround available (assign table to variable first)
 - Uncommon pattern in practice
 
@@ -129,29 +141,16 @@ local v = t ? 'Nothing'  -- Works fine with strings
 ### Expression Kinds Involved
 
 - **VKNUM, VKSTR, VKTRUE:** Simple constants (work correctly)
-- **VTABLE:** Table constructor (problematic)
+- **VTABLE:** Table constructor
 - **VNONRELOC:** Register-based values (work correctly)
 
 ## Proposed Solutions
 
-### Option 1: Explicit Table Constructor Check
-Add special handling in `bcemit_binop()` to detect when RHS is a table constructor (`e2->k == VCALL` for constructor) and ensure it's not evaluated when LHS is truthy:
+### Option 1: Correct Jump Logic In `bcemit_binop()`
+Adjust the short-circuit control flow so that truthy LHS values fall through to the existing result without branching into the RHS. The current implementation assumes the emitted comparison opcodes skip the following `JMP` when the comparison succeeds, but they instead jump when it fails. Updating this logic will prevent unnecessary evaluation of the RHS (including table constructors) and addresses the regression.
 
-```c
-if (e1->t != NO_JMP) {
-   jmp_patch(fs, e1->t, fs->pc);
-   e1->t = NO_JMP;
-   // Ensure RHS (potential table constructor) is not evaluated
-   // by not calling expr_discharge() or expr_toanyreg() on e2
-   // ... handle LHS only
-}
-```
-
-### Option 2: Defer RHS Processing
-Restructure the if-empty logic to completely defer RHS expression processing until it's confirmed that the LHS is falsey. This prevents premature table constructor evaluation.
-
-### Option 3: Fix Expression Discharge
-Review the `expr_discharge()` implementation to ensure it properly handles the case where an expression should be discarded (not evaluated) when short-circuiting occurs.
+### Option 2: Strengthen Regression Tests
+Add dedicated Fluid tests that cover truthy and falsey LHS combinations with table constructors, nested constructors, and other RHS expression kinds to ensure the corrected jump logic stays intact.
 
 ## Debugging Steps
 
@@ -160,32 +159,24 @@ Review the `expr_discharge()` implementation to ensure it properly handles the c
    - Working: `local v = t ? 'Nothing'`
    - Failing: `local v = t ? { 'Nothing' }`
 3. Compare jump list management between the two cases
-4. Check if table constructor initialization bytecode is emitted even when it shouldn't be
+4. Verify that the jump instructions after the falsey checks now fall through for truthy values and only branch into RHS evaluation for falsey cases
 
-## Test Cases to Add
+## Regression Coverage
 
-Once fixed, ensure these all work correctly:
+The failing scenarios above are now codified in `test_if_empty.fluid::testTable`, covering:
 
-```lua
--- Basic table constructor as RHS
-local t = { a=1 }
-local v = t ? { b=2 }
-assert(v.a is 1)
+- Truthy table LHS against literal table constructors (including nested constructors)
+- Array-style constructors used as RHS fallbacks
+- Nil LHS selecting a default table constructor
 
--- Nested table constructors
-local v = t ? { nested = { x = 1 } }
-assert(v.a is 1)
+These tests currently fail under the existing parser, providing direct regression coverage once the short-circuit bug is fixed.
 
--- Array-style table constructors
-local arr = { 1, 2, 3 }
-local v = arr ? { 9, 9, 9 }
-assert(v[1] is 1)
+## Latest Test Results
 
--- Empty table as LHS (falsey)
-local empty = nil
-local v = empty ? { default = true }
-assert(v.default is true)
-```
+Command: `ctest --test-dir build/agents --output-on-failure -R fluid_if_empty`
+
+- `testTable`: still errors with `attempt to index local 'v' (a boolean value)` when the LHS is truthy, confirming that the RHS continues to execute and replace the table result.
+- `testConcat`: continues to fail with `Failed function case 4, got 'ResultResultResult'`, demonstrating that repeated RHS evaluation persists for concatenation contexts.
 
 ## Related Code Sections
 
