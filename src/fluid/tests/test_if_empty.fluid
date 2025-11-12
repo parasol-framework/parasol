@@ -95,6 +95,20 @@ function testTable()
 
    local v = t ? { 'Nothing' }
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
+
+   local v = t ? { b = 2 }
+   assert(v['a'] is 1, "Failed table case: expected original table when RHS is a constructor, got '" .. tostring(v) .. "'")
+
+   local v = t ? { nested = { x = 1 } }
+   assert(v['a'] is 1, "Failed nested table case: expected original table when RHS is nested constructor, got '" .. tostring(v) .. "'")
+
+   local arr = { 1, 2, 3 }
+   local v = arr ? { 9, 9, 9 }
+   assert(v[1] is 1, "Failed array table case: expected original array when RHS is constructor, got '" .. tostring(v) .. "'")
+
+   local empty = nil
+   local v = empty ? { default = true }
+   assert(v.default is true, "Failed nil LHS table case: expected default table, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
