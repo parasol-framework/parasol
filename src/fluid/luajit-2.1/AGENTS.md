@@ -22,9 +22,6 @@ before diving into changes.
   `src/fluid/CMakeLists.txt`:
   - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and
     `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
-  - **MinGW**: falls back to LuaJIT's original Makefile (`make amalg`), with
-    outputs written to `luajit-generated/` and archived into
-    `libluajit-5.1.a` by CMake.
   - **Unix-like toolchains**: CMake builds the host tools (`minilua` and
     `buildvm`), generates assembly with DynASM, then archives
     `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
@@ -45,7 +42,7 @@ before diving into changes.
   subsets, or omit `-R` for the full suite. Fluid regression tests are under
   `src/fluid/tests/` and catch most parser/VM regressions.
 - For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from
-  `build/agents-install/bin/` with `--no-crash-handler --gfx-driver=headless`
+  `build/agents-install/bin/` with `--no-crash-handler --log-warning`
   so failures bubble out as exit codes.
 - **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module
   and `parasol_cmd`, then reinstall:
@@ -211,26 +208,6 @@ if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` a
 - Check `e1->k == VNONRELOC` before trying to load it again in `bcemit_binop()`
 - If the constant was already loaded in `bcemit_binop_left()`, it's already in a register
 
-### Understanding Comparison Bytecode Semantics
-
-**CRITICAL**: LuaJIT's comparison bytecode instructions (`BC_ISEQP`, `BC_ISEQN`, `BC_ISEQS`, `BC_ISNEP`, `BC_ISNEN`, `BC_ISNES`) have specific semantics that are essential to understand:
-
-- **`BC_ISEQP/BC_ISEQN/BC_ISEQS`** (Is Equal): When the values **ARE equal**, the instruction **modifies the program counter (PC) to skip the next instruction**. When values are **NOT equal**, execution continues to the next instruction normally.
-
-- **`BC_ISNEP/BC_ISNEN/BC_ISNES`** (Is Not Equal): When the values **are NOT equal**, the instruction **modifies PC to skip the next instruction**. When values **ARE equal**, execution continues normally.
-
-**Key Point**: "Skip the next instruction" means the instruction immediately following the comparison is conditionally skipped. This is typically a `BC_JMP` instruction that is patched later.
-
-**Example Pattern**:
-```c
-// Check if reg == nil
-bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-check_nil = bcemit_jmp(fs);  // This JMP is SKIPPED when reg == nil
-// Behavior:
-//   - If reg == nil: BC_ISEQP skips the JMP → execution continues to next instruction
-//   - If reg != nil: BC_ISEQP doesn't skip → JMP executes → jumps to its target
-```
-
 **Pattern for Extended Falsey Checks** (as used in `?` if-empty operator and `??` presence check):
 
 The pattern chains multiple equality checks, where each check's JMP is patched to the same "falsey branch". The logic works as follows:
@@ -261,12 +238,6 @@ jmp_patch(fs, check_empty, falsey_branch_pc);
 - **When value is truthy** (e.g., `reg == "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
 
 **Note**: This pattern works because we chain multiple checks and patch all JMPs to the same location. If the value matches any falsey check, that check's JMP is skipped and execution continues. If the value matches none of the checks (is truthy), all JMPs execute and the first one jumps to the falsey branch. The exact behavior depends on how the falsey branch is structured.
-
-**Important**: The PR comment that claimed "BC_ISEQP skips when comparison succeeds" was **ambiguous** because "succeeds" could mean either:
-1. "The comparison operation completes successfully" (always true - incorrect interpretation)
-2. "The comparison condition is true" (values ARE equal - correct interpretation)
-
-The correct interpretation is #2: `BC_ISEQP` skips the next instruction when the comparison condition is **true** (values ARE equal).
 
 ### Implementing Operators with Extended Falsey Semantics
 
@@ -417,12 +388,16 @@ If an operator returns multiple values instead of one:
 
 ### Incremental Testing Strategy
 When implementing new operators:
-1. Start with compile-time constants (`5?`, `nil?`) - test constant folding path
-2. Test simple variables (`x?`) - test basic runtime path
-3. Test field access (`t.field?`) - test suffix loop integration
-4. Test parenthesized expressions (`(x + y)?`) - test complex expressions
-5. Test in various contexts (assignments, function arguments, conditionals)
-
+1. Start with compile-time constants (`5`, `nil`) - test constant folding path
+2. Test simple variables (`x`) - test basic runtime path
+3. Test field access (`t.field`) - test suffix loop integration
+4. Test parenthesized expressions (`(x + y)`) - test complex expressions
+5. Test function calls that return a single result and those that return multiple results 
+   (`f(x)`) - test VCALL handling
+6. Test in various contexts (assignments, function arguments, conditionals)
+7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the 
+   logic of emitted bytecode.
+ 
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
   not collide with upstream naming; we will eventually rebase to newer

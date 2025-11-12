@@ -150,9 +150,6 @@ local v = t ? 'Nothing'  -- Works fine with strings
 ### Option 1: Correct Jump Logic In `bcemit_binop()`
 Adjust the short-circuit control flow so that truthy LHS values fall through to the existing result without branching into the RHS. The current implementation assumes the emitted comparison opcodes skip the following `JMP` when the comparison succeeds, but they instead jump when it fails. Updating this logic will prevent unnecessary evaluation of the RHS (including table constructors) and addresses the regression.
 
-### Option 2: Strengthen Regression Tests
-Add dedicated Fluid tests that cover truthy and falsey LHS combinations with table constructors, nested constructors, and other RHS expression kinds to ensure the corrected jump logic stays intact.
-
 ## Debugging Steps
 
 1. Add debug output to track `e1->k` and `e2->k` values when RHS is a table constructor
