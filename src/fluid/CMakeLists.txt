@@ -326,7 +326,7 @@ else ()
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
-      DEPENDS ${MINILUA_TARGET} ${LUAJIT_BUILD_DIR}/arch.txt ${LUAJIT_BUILD_DIR}/dasm_aflags.txt ${LUAJIT_DYNASM_DIR}/dynasm.lua
+      DEPENDS ${MINILUA_TARGET} ${LUAJIT_BUILD_DIR}/arch.txt ${LUAJIT_BUILD_DIR}/dasm_aflags.txt ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
