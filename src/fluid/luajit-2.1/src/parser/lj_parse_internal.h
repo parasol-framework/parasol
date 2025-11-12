@@ -48,20 +48,16 @@ static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 
 // Consume a flag from an expression, clearing it and returning whether it was set.
 // Use this when an operator takes ownership of a flagged value.
-#define expr_consume_flag(e, flag) \
-   ((e)->flags & (flag) ? ((e)->flags &= ~(flag), 1) : 0)
+#define expr_consume_flag(e, flag) ((e)->flags & (flag) ? ((e)->flags &= ~(flag), 1) : 0)
 
 // Check if an expression has a flag without consuming it.
-#define expr_has_flag(e, flag) \
-   (((e)->flags & (flag)) != 0)
+#define expr_has_flag(e, flag) (((e)->flags & (flag)) != 0)
 
 // Set a flag on an expression.
-#define expr_set_flag(e, flag) \
-   ((e)->flags |= (flag))
+#define expr_set_flag(e, flag) ((e)->flags |= (flag))
 
 // Clear a flag on an expression.
-#define expr_clear_flag(e, flag) \
-   ((e)->flags &= ~(flag))
+#define expr_clear_flag(e, flag) ((e)->flags &= ~(flag))
 
 // -- Register allocation (lj_parse_regalloc.c) ----------------------------
 

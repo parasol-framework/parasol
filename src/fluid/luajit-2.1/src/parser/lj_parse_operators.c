@@ -134,10 +134,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 
       // Save whether we had SAFE_NAV_CHAIN_FLAG but DON'T clear it yet.
       // We need to preserve flag state through the register reservation logic below.
-      uint8_t had_safe_nav = expr_has_flag(e, SAFE_NAV_CHAIN_FLAG);
-
-      fprintf(stderr, "DEBUG bcemit_binop_left IF_EMPTY: k=%d t=%d f=%d flags=0x%02x had_safe_nav=%d\n",
-              e->k, e->t, e->f, e->flags, had_safe_nav);
+      uint8_t had_safe_nav = (e->flags & SAFE_NAV_CHAIN_FLAG) != 0;
 
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
@@ -175,7 +172,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       }
       // For constant cases, also clear the flag now that processing is complete
       if (had_safe_nav) {
-         expr_clear_flag(e, SAFE_NAV_CHAIN_FLAG);
+         e->flags &= ~SAFE_NAV_CHAIN_FLAG;
       }
       jmp_append(fs, &e->t, pc);
       jmp_tohere(fs, e->f);
@@ -431,10 +428,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
       // This should already be consumed by bcemit_binop_left(), but we're defensive here
       // in case the flag somehow persists through other code paths.
-      uint8_t had_flag = expr_consume_flag(e1, SAFE_NAV_CHAIN_FLAG);
-
-      fprintf(stderr, "DEBUG bcemit_binop IF_EMPTY: k=%d t=%d f=%d flags=0x%02x had_safe_nav=%d\n",
-              e1->k, e1->t, e1->f, e1->flags, had_flag);
+      e1->flags &= ~SAFE_NAV_CHAIN_FLAG;
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
@@ -496,7 +490,6 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, check_zero, fs->pc);
             jmp_patch(fs, check_empty, fs->pc);
             // Evaluate RHS
-            expr_discharge(fs, e2);
             if (rhs_reg == NO_REG) {
                rhs_reg = fs->freereg;
                bcreg_reserve(fs, 1);
@@ -504,10 +497,19 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             expr_toreg(fs, e2, rhs_reg);
             bcemit_AD(fs, BC_MOV, reg, rhs_reg);
             jmp_patch(fs, skip, fs->pc);
+            uint8_t saved_flags = e1->flags;  // Save flags before expr_init
             expr_init(e1, VNONRELOC, reg);
-            // Free the temporary register if it was allocated for the RHS and is at the top of the register stack.
-            if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && rhs_reg + 1 == fs->freereg)
-               fs->freereg = rhs_reg;
+            e1->flags = saved_flags;  // Restore flags after expr_init
+            // Collapse freereg to drop rhs_reg and any temporaries.
+            // After the MOV, the result only lives in reg, so we must free rhs_reg.
+            // Set freereg to max(nactvar, reg + 1) to drop stale copies in rhs_reg.
+            // This prevents BC_CAT from concatenating them when result is used in concatenation.
+            // Only adjust if rhs_reg was actually used (rhs_reg > reg) and not from safe nav chain.
+            if (rhs_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
+               BCReg target_free = (reg >= fs->nactvar) ? reg + 1 : fs->nactvar;
+               if (fs->freereg > target_free)
+                  fs->freereg = target_free;
+            }
          }
          else {
             // Constant falsey value - evaluate RHS directly

@@ -1,0 +1,20 @@
+-- Test bytecode for function case
+
+glSelf = obj.find('self')
+
+function test()
+   local function returnString()
+      return "Result"
+   end
+
+   local val
+   local v = '' .. (val ? returnString())
+
+   local err, log = glSelf.mtDebugLog('disasm')
+   print("\\n=== BYTECODE ===")
+   print(log or "No bytecode")
+
+   return v
+end
+
+print("Result: '" .. tostring(test()) .. "'")

@@ -1,0 +1,44 @@
+-- Bytecode analysis for safe nav + if-empty issue
+
+glSelf = obj.find('self')
+
+function testCombined()
+   local guest = nil
+   local result = guest?.profile?.name ? "Guest"
+   return result
+end
+
+function testSplit()
+   local guest = nil
+   local step1 = guest?.profile?.name
+   local step2 = step1 ? "Guest"
+   return step2
+end
+
+function testSimpleIfEmpty()
+   local val = nil
+   local result = val ? "Default"
+   return result
+end
+
+function testSafeNavOnly()
+   local guest = nil
+   local result = guest?.profile?.name
+   return result
+end
+
+-- Run tests
+print("=== RUNTIME RESULTS ===")
+print("Test 1 (combined): " .. tostring(testCombined()))
+print("Test 2 (split): " .. tostring(testSplit()))
+print("Test 3 (simple if-empty): " .. tostring(testSimpleIfEmpty()))
+print("Test 4 (safe nav only): " .. tostring(testSafeNavOnly()))
+
+-- Get bytecode disassembly
+print("\n=== BYTECODE DISASSEMBLY ===")
+local err, log = glSelf.mtDebugLog('disasm')
+if err then
+   print("Error getting bytecode: " .. tostring(err))
+else
+   print(log)
+end

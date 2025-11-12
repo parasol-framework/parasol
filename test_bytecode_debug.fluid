@@ -1,0 +1,57 @@
+-- Test bytecode generation for safe nav + if-empty
+
+local mSys = mod.load('core')
+
+-- Test 1: Combined expression (FAILS)
+print("\n=== Test 1: Combined safe nav + if-empty (FAILS) ===")
+do
+   local guest = nil
+   local result = guest?.profile?.name ? "Guest"
+   print("Result: " .. tostring(result))
+
+   -- Get bytecode disassembly
+   local log = mSys.script.mtDebugLog({ disassemble=true })
+   print("Bytecode for combined expression:")
+   print(log)
+end
+
+-- Test 2: Split into two statements (WORKS)
+print("\n\n=== Test 2: Split statements (WORKS) ===")
+do
+   local guest = nil
+   local step1 = guest?.profile?.name
+   local step2 = step1 ? "Guest"
+   print("Step1: " .. tostring(step1))
+   print("Step2: " .. tostring(step2))
+
+   -- Get bytecode disassembly
+   local log = mSys.script.mtDebugLog({ disassemble=true })
+   print("Bytecode for split statements:")
+   print(log)
+end
+
+-- Test 3: Simple if-empty (WORKS)
+print("\n\n=== Test 3: Simple if-empty (WORKS) ===")
+do
+   local val = nil
+   local result = val ? "Default"
+   print("Result: " .. tostring(result))
+
+   -- Get bytecode disassembly
+   local log = mSys.script.mtDebugLog({ disassemble=true })
+   print("Bytecode for simple if-empty:")
+   print(log)
+end
+
+-- Test 4: Safe nav only (WORKS)
+print("\n\n=== Test 4: Safe nav only (WORKS) ===")
+do
+   local guest = nil
+   local result = guest?.profile?.name
+   print("Result: " .. tostring(result))
+
+   -- Get bytecode disassembly
+   local log = mSys.script.mtDebugLog({ disassemble=true })
+   print("Bytecode for safe nav only:")
+   print(log)
+end
