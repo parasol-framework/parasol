@@ -312,10 +312,11 @@ else ()
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
-      DEPENDS ${MINILUA_TARGET} ${LUAJIT_ARCH_DETECT} ${LUAJIT_DYNASM_DIR}/dynasm.lua
+      DEPENDS ${MINILUA_TARGET} ${LUAJIT_ARCH_DETECT} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
+          "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )
@@ -404,14 +405,6 @@ else ()
       )
    endif ()
 
-   # Compile amalgamated source and create static library using CMake
-   # This replaces manual compilation and ar commands with proper CMake targets
-
-   file(GLOB LUAJIT_AMALG_SOURCES
-      "${LUAJIT_SRC}/lj_*.c"
-      "${LUAJIT_SRC}/lib_*.c"
-   )
-
    if (WIN32)
       # MinGW: Create library from VM object and amalgamated source
       add_library(luajit_lib STATIC "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_VM_OBJ})
@@ -440,8 +433,9 @@ else ()
    )
 
    target_compile_definitions(luajit_lib PRIVATE
-      ${LUAJIT_COMMON_DEFS}
       LUAJIT_UNWIND_EXTERNAL
+      LUAJIT_DISABLE_FFI
+      LUAJIT_ENABLE_LUA52COMPAT
       LUA_ROOT="${CMAKE_INSTALL_PREFIX}"
    )
 
