@@ -263,7 +263,8 @@ function testSafeMethodReturningNil()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Test safe navigation with if-empty on each level
+-- Test safe navigation with if-empty on each level.  NB: Failure could mean a problem with either operator, or 
+-- interference of one with the other.
 
 function testChainingWithIfEmpty()
    local obj = { a = { b = nil } }

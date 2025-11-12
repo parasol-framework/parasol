@@ -76,7 +76,7 @@ file.search = function(Path, Options)
 
    local function scanPath(Path, currentDepth)
       if currentDepth == nil then currentDepth = 0 end
-      msg('scanPath() ' .. (Path ? ':') .. ' (depth: ' .. currentDepth .. ')')
+      msg('scanPath() ' .. nz(Path, ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
 
