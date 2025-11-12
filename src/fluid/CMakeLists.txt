@@ -7,12 +7,6 @@ idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/has
 idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
-# Activate BUILD_ALWAYS if you're working on the library code.
-
-if (MINGW)
-   # MinGW is not yet compatible with the CMake build of LuaJIT (generated files don't match expectations)
-   set (LUAJIT_ORIGINAL_BUILD TRUE)
-endif ()
 
 if (MSVC)
    set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
@@ -133,21 +127,6 @@ if (MSVC)
    # Create an alias for backward compatibility
    add_custom_target(luajit DEPENDS luajit_lib)
 
-elseif (LUAJIT_ORIGINAL_BUILD)
-   # Build using the original LuaJIT build system (Makefile)
-   # Object files and binaries will be placed in LUAJIT_BUILD_DIR
-
-   ExternalProject_Add(
-      luajit
-      SOURCE_DIR ${LUAJIT_SRC}
-      CONFIGURE_COMMAND ""
-      BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CMAKE_C_FLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}" "OBJDIR=${LUAJIT_BUILD_DIR}"
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS "${LUAJIT_BUILD_DIR}/libluajit.a"
-      COMMENT "Compiling LuaJIT library")
-
-   set (LUAJIT_LINK "${LUAJIT_BUILD_DIR}/libluajit.a")
 else ()
    # Non-MSVC build (Linux, MinGW, etc.) - LuaJIT build using CMake
    # Separated into code generation and library compilation
@@ -233,9 +212,87 @@ else ()
 
    # Generate buildvm_arch.h using dynasm
    # Detect architecture at build time and use the appropriate .dasc file
-   # The dynasm step uses minimal flags - architecture-specific flags are handled by dynasm
+   # Extract architecture flags from lj_arch.h preprocessing to pass to dynasm
 
    set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
+
+   # Create a script to preprocess lj_arch.h and extract architecture defines
+   set (ARCH_DETECT_SCRIPT "${LUAJIT_BUILD_DIR}/detect_arch_flags.cmake")
+
+   if (NOT EXISTS ${ARCH_DETECT_SCRIPT})
+      file(WRITE ${ARCH_DETECT_SCRIPT}
+         "# Preprocess lj_arch.h to extract architecture defines\n"
+         "# Create a temporary C file that includes lj_arch.h\n"
+         "file(WRITE \"${LUAJIT_BUILD_DIR}/test_arch.c\" \"#include <lj_arch.h>\\n\")\n"
+         "execute_process(\n"
+         "   COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -dM ${LUAJIT_BUILD_DIR}/test_arch.c\n"
+         "   WORKING_DIRECTORY ${LUAJIT_SRC}\n"
+         "   OUTPUT_VARIABLE ARCH_DEFS\n"
+         "   OUTPUT_STRIP_TRAILING_WHITESPACE\n"
+         "   ERROR_QUIET\n"
+         ")\n"
+         "# Build DASM_AFLAGS based on detected defines\n"
+         "set(DASM_AFLAGS \"\")\n"
+         "if(ARCH_DEFS MATCHES \"LJ_LE 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"ENDIAN_LE\")\n"
+         "else()\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"ENDIAN_BE\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_ARCH_BITS 64\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"P64\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_HASJIT 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"JIT\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_HASFFI 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"FFI\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_DUALNUM 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"DUALNUM\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_ARCH_HASFPU 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"FPU\")\n"
+         "endif()\n"
+         "if(NOT ARCH_DEFS MATCHES \"LJ_ABI_SOFTFP 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"HFABI\")\n"
+         "endif()\n"
+         "if(ARCH_DEFS MATCHES \"LJ_NO_UNWIND 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"NO_UNWIND\")\n"
+         "endif()\n"
+         "if(WIN32)\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"WIN\")\n"
+         "endif()\n"
+         "# Extract version\n"
+         "if(ARCH_DEFS MATCHES \"LJ_ARCH_VERSION ([0-9]+)\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"VER=\${CMAKE_MATCH_1}\")\n"
+         "endif()\n"
+         "# Platform-specific flags\n"
+         "# iOS flag for ARM platforms\n"
+         "if(ARCH_DEFS MATCHES \"__APPLE__\" AND ARCH_DEFS MATCHES \"LJ_ARCH_ARM\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"IOS\")\n"
+         "endif()\n"
+         "# MIPSR6 flag for MIPS R6 architectures\n"
+         "if(ARCH_DEFS MATCHES \"LJ_ARCH_MIPSR6 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"MIPSR6\")\n"
+         "endif()\n"
+         "# SQRT, ROUND, and GPR64 flags for PowerPC\n"
+         "if(ARCH_DEFS MATCHES \"LJ_ARCH_PPC 1\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"SQRT\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"ROUND\")\n"
+         "   if(ARCH_DEFS MATCHES \"LJ_ARCH_PPC64 1\")\n"
+         "      list(APPEND DASM_AFLAGS \"-D\" \"GPR64\")\n"
+         "   endif()\n"
+         "endif()\n"
+         "# PPE and TOC flags for PS3 systems\n"
+         "if(ARCH_DEFS MATCHES \"__CELLOS_LV2__\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"PPE\")\n"
+         "   list(APPEND DASM_AFLAGS \"-D\" \"TOC\")\n"
+         "endif()\n"
+         "# Write flags to file\n"
+         "string(REPLACE \";\" \" \" DASM_AFLAGS_STR \"\${DASM_AFLAGS}\")\n"
+         "file(WRITE \"${LUAJIT_BUILD_DIR}/dasm_aflags.txt\" \"\${DASM_AFLAGS_STR}\")\n"
+      )
+   endif()
 
    # Use a CMake script to detect architecture and run dynasm
 
@@ -251,8 +308,16 @@ else ()
          "if(NOT EXISTS \"\${DASM_DASC}\")\n"
          "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
          "endif()\n"
+         "# Read dynasm flags\n"
+         "file(READ \"${LUAJIT_BUILD_DIR}/dasm_aflags.txt\" DASM_AFLAGS_STR)\n"
+         "string(STRIP \"\${DASM_AFLAGS_STR}\" DASM_AFLAGS_STR)\n"
+         "if(DASM_AFLAGS_STR)\n"
+         "   separate_arguments(DASM_AFLAGS UNIX_COMMAND \"\${DASM_AFLAGS_STR}\")\n"
+         "else()\n"
+         "   set(DASM_AFLAGS \"\")\n"
+         "endif()\n"
          "execute_process(\n"
-         "   COMMAND \"${MINILUA_TARGET}\" \"${LUAJIT_DYNASM_DIR}/dynasm.lua\" -o \"${BUILDVM_ARCH_H}\" \"\${DASM_DASC}\"\n"
+         "   COMMAND \"${MINILUA_TARGET}\" \"${LUAJIT_DYNASM_DIR}/dynasm.lua\" \${DASM_AFLAGS} -o \"${BUILDVM_ARCH_H}\" \"\${DASM_DASC}\"\n"
          "   WORKING_DIRECTORY \"${LUAJIT_SRC}\"\n"
          "   RESULT_VARIABLE DYNASM_RESULT\n"
          "   OUTPUT_QUIET ERROR_QUIET\n"
@@ -271,10 +336,19 @@ else ()
       VERBATIM
    )
 
+   # Generate dynasm architecture flags file
+   add_custom_command(
+      OUTPUT ${LUAJIT_BUILD_DIR}/dasm_aflags.txt
+      COMMAND ${CMAKE_COMMAND} -P ${ARCH_DETECT_SCRIPT}
+      DEPENDS "${LUAJIT_SRC}/lj_arch.h" ${ARCH_DETECT_SCRIPT}
+      COMMENT "Detecting architecture flags for dynasm"
+      VERBATIM
+   )
+
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
-      DEPENDS ${MINILUA_TARGET} ${LUAJIT_BUILD_DIR}/arch.txt ${LUAJIT_DYNASM_DIR}/dynasm.lua
+      DEPENDS ${MINILUA_TARGET} ${LUAJIT_BUILD_DIR}/arch.txt ${LUAJIT_BUILD_DIR}/dasm_aflags.txt ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
          "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
