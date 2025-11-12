@@ -448,7 +448,7 @@ local function createFileItem(self, Info)
    msg('createFileItem() ' .. Info.name .. string.format(', $%.8x', Info.flags))
 
    local new_item
-   if bit.band(Info.flags, RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
+   if (Info.flags & RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
       local icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
       if not icon then icon = 'folders/folder_shortcut' end
