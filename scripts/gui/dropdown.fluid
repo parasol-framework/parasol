@@ -296,7 +296,7 @@ gui.dropdown = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport, Events)
       local ev = Events
       while ev do
          if ev.type is JET_BUTTON_1 then
