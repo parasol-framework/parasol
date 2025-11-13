@@ -133,3 +133,57 @@ jobs:
           build/ci/CMakeFiles/CMakeError.log
           build/ci/Testing/Temporary/LastTest.log
         retention-days: 7
+
+  tag-stable:
+    name: Tag as Stable
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: github.ref == 'refs/heads/master' && success()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Create/Move STABLE tag
+      run: |
+        # Delete existing STABLE tag if it exists (both local and remote)
+        git tag -d STABLE 2>/dev/null || true
+        git push origin :refs/tags/STABLE 2>/dev/null || true
+
+        # Create new STABLE tag at current commit
+        git tag -a STABLE -m "Stable build - passed all tests on $(date -u +%Y-%m-%d)"
+        git push origin STABLE
+
+  tag-unstable:
+    name: Tag as Unstable
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: github.ref == 'refs/heads/master' && failure()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Create/Move UNSTABLE tag
+      run: |
+        # Delete existing UNSTABLE tag if it exists (both local and remote)
+        git tag -d UNSTABLE 2>/dev/null || true
+        git push origin :refs/tags/UNSTABLE 2>/dev/null || true
+
+        # Create new UNSTABLE tag at current commit
+        git tag -a UNSTABLE -m "Unstable build - tests failed on $(date -u +%Y-%m-%d)"
+        git push origin UNSTABLE
