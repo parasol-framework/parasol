@@ -1,0 +1,15 @@
+-- Detailed inspection of the result
+
+local guest = nil
+local result = guest?.profile?.name ? "Guest"
+
+print("Type: " .. type(result))
+print("Value: " .. tostring(result))
+print("Is nil: " .. tostring(result == nil))
+print("Is string: " .. tostring(type(result) == "string"))
+
+if result then
+   print("Truthy result: " .. result)
+else
+   print("Falsy result")
+end

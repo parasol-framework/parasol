@@ -108,7 +108,7 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    // Merge point for both branches.
    jmp_patch(fs, skip_branch, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
-   v->flags |= SAFE_NAV_CHAIN_FLAG;
+   v->flags |= SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG;
 }
 
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)

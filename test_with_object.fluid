@@ -1,0 +1,13 @@
+-- Test with actual object instead of nil
+
+local guest = { profile = { name = "Alice" } }
+local result1 = guest?.profile?.name ? "Guest"
+print("With object: " .. tostring(result1))
+
+local guest2 = { profile = nil }
+local result2 = guest2?.profile?.name ? "Guest"
+print("With nil intermediate: " .. tostring(result2))
+
+local guest3 = nil
+local result3 = guest3?.profile?.name ? "Guest"
+print("With nil root: " .. tostring(result3))

@@ -159,20 +159,32 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          // active local slot.
          if (!expr_isk_nojump(e)) {
             BCReg src_reg = expr_toanyreg(fs, e);
-            BCReg rhs_reg = fs->freereg;
             uint8_t flags = e->flags;
+
+            // Reserve the RHS register BEFORE capturing it to prevent aliasing.
+            // When safe navigation collapses freereg, capturing before reserving would cause
+            // src_reg and rhs_reg to point to the same register, leading to the RHS evaluation
+            // overwriting the LHS value before extended falsey checks can be performed.
             bcreg_reserve(fs, 1);
+            BCReg rhs_reg = fs->freereg - 1;
+
+            // If rhs_reg still aliases src_reg (due to freereg collapse), reserve another register.
+            if (rhs_reg <= src_reg) {
+               bcreg_reserve(fs, 1);
+               rhs_reg = fs->freereg - 1;
+            }
+
             expr_init(e, VNONRELOC, src_reg);
             e->u.s.aux = rhs_reg;
-            // Restore flags but NOW clear SAFE_NAV_CHAIN_FLAG since we've captured the register.
-            // The flag has served its purpose and must not interfere with register cleanup.
-            e->flags = (flags & ~SAFE_NAV_CHAIN_FLAG) | EXP_HAS_RHS_REG_FLAG;
+            // Clear both SAFE_NAV flags since we've captured the register.
+            // The flags have served their purpose and must not interfere with register cleanup.
+            e->flags = (flags & ~(SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG)) | EXP_HAS_RHS_REG_FLAG;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
-      // For constant cases, also clear the flag now that processing is complete
+      // For constant cases, also clear both safe nav flags now that processing is complete
       if (had_safe_nav) {
-         e->flags &= ~SAFE_NAV_CHAIN_FLAG;
+         e->flags &= ~(SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG);
       }
       jmp_append(fs, &e->t, pc);
       jmp_tohere(fs, e->f);
@@ -425,10 +437,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    else if (op == OPR_IF_EMPTY) {
       lj_assertFS(e1->f == NO_JMP, "jump list not closed");
 
-      // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
-      // This should already be consumed by bcemit_binop_left(), but we're defensive here
-      // in case the flag somehow persists through other code paths.
-      e1->flags &= ~SAFE_NAV_CHAIN_FLAG;
+      // DEFENSIVE: Ensure safe navigation flags are consumed.
+      // These should already be consumed by bcemit_binop_left(), but we're defensive here
+      // in case the flags somehow persist through other code paths.
+      e1->flags &= ~(SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG);
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
@@ -498,9 +510,6 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
                dest_reg = rhs_reg;
                if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
             }
-
-            // Preserve original value for truthy path before emitting skip jump.
-            bcemit_AD(fs, BC_MOV, dest_reg, reg);
 
             // If all checks pass (value is truthy), skip RHS
             skip = bcemit_jmp(fs);

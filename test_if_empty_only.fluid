@@ -1,0 +1,5 @@
+-- Test if-empty operator without safe nav
+
+local x = nil
+local result = x ? "Fallback"
+print("Result: " .. tostring(result))

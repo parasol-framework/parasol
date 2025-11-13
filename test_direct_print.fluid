@@ -1,0 +1,4 @@
+-- Test printing directly without assignment
+
+local guest = nil
+print("Result: " .. tostring(guest?.profile?.name ? "Guest"))
