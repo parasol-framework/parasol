@@ -200,6 +200,40 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test the use of if-empty within a function
 
+function testIfEmptyArgumentLeakCapture()
+   local Function = { status = 'Hello' }
+   local record = { count = 0, first = nil, second = nil }
+
+   local function capture(...)
+      local args = { ... }
+      record.count = #args
+      record.first = args[1]
+      record.second = args[2]
+   end
+
+   capture(Function.status ? 'then')
+
+   assert(record.count is 2, "Expected two arguments when leaking fallback, got '" .. tostring(record.count) .. "'")
+   assert(record.first is 'Hello', "Expected first argument to remain 'Hello', got '" .. tostring(record.first) .. "'")
+   assert(record.second is 'Hello', "Expected leaked slot to duplicate the truthy operand, got '" .. tostring(record.second) .. "'")
+end
+
+function testIfEmptyStringFindError()
+   local Function = { status = 'Hello' }
+
+   local ok, err = pcall(function()
+      return string.find((Function.status ? 'then'), 'e')
+   end)
+
+   assert(ok is false, "Expected string.find call to fail while bug is present")
+
+   local message = tostring(err)
+   local index = string.find(message, "bad argument #3")
+   if not index then
+      error("Expected error message to mention the leaked third argument, got '" .. message .. "'")
+   end
+end
+
 function testInFunction()
    local Function = { status = 'Hello' }
    
@@ -218,6 +252,6 @@ end
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
-         'testComplex', 'testTableAccessLHS', 'testInFunction'
+         'testComplex', 'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError', 'testInFunction'
       }
    }
