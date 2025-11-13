@@ -50,9 +50,11 @@ function runTests()
 
    local i = 0
    for _,func in ipairs(body.tests) do
-      i += 1
+      i++
       skip = false
-      if type(func) == "string" then
+      local func_name
+      if type(func) is "string" then
+         func_name = func
          print("-- Test " .. i .. ": " .. func .. " --")
          if (glTest) and (func != glTest) then
             skip = true
@@ -62,14 +64,14 @@ function runTests()
          print(i .. ". <Unnamed>")
       end
 
-      if not skip then
+      if not skip and func then
          local startTime = mSys.PreciseTime()
          local status, result = pcall(func)
          local totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
          collectgarbage()
 
-         if (status == false) then
+         if not status then
             if result?? then logOutput(result) end
             print(string.format("FAIL: %.6f sec", totalTime))
          else
@@ -78,18 +80,22 @@ function runTests()
             glTestsPassed = glTestsPassed + 1
          end
       else
-         print('SKIPPED')
+         if not func and func_name then
+            print('Function ' .. func_name .. ' not found.')
+         else
+            print('SKIPPED')
+         end
          glTestTotal -= 1
       end
    end
 
-   if (body.cleanup != nil) then
+   if body.cleanup then
       body.cleanup()
    end
 
    print("--")
 
-   if (glTestsPassed < glTestTotal) then
+   if glTestsPassed < glTestTotal then
       -- Setting the errorString will ensure that an error code is returned to the shell.
       glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
    end

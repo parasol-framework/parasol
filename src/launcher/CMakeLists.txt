@@ -20,6 +20,39 @@ endif()
 
 message(STATUS "Parasol version: ${PARASOL_VERSION_MAJOR}.${PARASOL_VERSION_MINOR}.${PARASOL_VERSION_PATCH}")
 
+# Extract git information if available
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+   execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_COMMIT_HASH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+   )
+   execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_BRANCH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+   )
+else()
+   set(GIT_COMMIT_HASH "unknown")
+   set(GIT_BRANCH "unknown")
+endif()
+
+message(STATUS "Git branch: ${GIT_BRANCH}, commit: ${GIT_COMMIT_HASH}")
+
+# Generate version header with git information
+# This uses configure_file which only updates the output if content changes,
+# preventing unnecessary rebuilds when git info hasn't changed
+configure_file(
+   "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+   "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+   @ONLY
+)
+
 # Generate versioned manifest and resource files
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/link/parasol.manifest.in"
@@ -53,7 +86,7 @@ endif ()
 
 target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
-target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
+target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link" "${CMAKE_CURRENT_BINARY_DIR}")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")

@@ -4,13 +4,13 @@ This file provides guidance to Agentic programs when working with code in this r
 
 ## Build System and Common Commands
 
-Parasol uses CMake as its primary build system. The framework can be built as either modular (shared libraries) or static libraries.
+Parasol uses CMake for building. It can be built as either modular (shared libraries) or static libraries.
 
 ### Essential Build Commands
 
 **Configure build:**
 - Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
-- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
+- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/debug-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
@@ -28,6 +28,7 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 
 **Verify:**
 - If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.
+- You can inspect the version and git commit hash of the build by running `parasol` with `--version`.
 
 ### CMake Configuration Options
 
@@ -36,16 +37,16 @@ Key build options (use with `-D` flag):
 - `BUILD_TESTS=ON/OFF` - Enable/disable test building
 - `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from FDL files
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
-- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in debug builds (has no effect on release builds).
+- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in Debug builds (has no effect on Release builds).
 
 ### Development in the Cloud
 
 When working in ephemeral cloud environments:
 
-- Prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
 - Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
+- If no `build/agents` folder exists, prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
-- If `parasol` is not already installed in `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+- If `parasol` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
 - If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
@@ -58,7 +59,7 @@ When working in ephemeral cloud environments:
 2. **Vector Graphics Engine** (`src/vector/`) - Main graphics rendering system with scene graphs, filters, and painters
 3. **SVG Support** (`src/svg/`) - W3C-compliant SVG parsing and rendering with SMIL animation
 4. **Display Management** (`src/display/`) - Cross-platform window management, surfaces, and input handling
-5. **Fluid Scripting** (`src/fluid/`) - Lua-based scripting environment built on LuaJIT
+5. **Fluid Scripting** (`src/fluid/`) - An extensively modified Lua-based scripting environment built on LuaJIT
 6. **Document Engine** (`src/document/`) - RIPL text layout engine for rich document rendering
 
 ### Module System
@@ -86,9 +87,11 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Test scripts use `.fluid` extension
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
-- Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
 - The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
 - Fluid scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
+- Fluid scripts execute top-to-bottom with NO entry point function
+- Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
+- General API framework documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
 #### Fluid Features Additional to Lua
 
@@ -98,17 +101,11 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - `..=` for string concatenation
 - Postfix operators: `++`
 - C-style bitwise operators: `&`, `|`, `~`, `<<`, `>>`
-- C-style ternary operator: `if ? then :> else`
+- C-style ternary operator: `condition ? true_val :> false_val`
 - Falsey value checks with `?`, equivalent to `??` in most languages
 - `??` operator can be appended to values as a check for falsey.  Commonly used on potentially empty strings
-- `goto` is deprecated
-- `defer()` function that runs when de-scoped.
-
-#### Fluid Script Execution Model
-
-- Fluid scripts execute top-to-bottom with NO entry point function
-- Always study existing `.fluid` files (like `tools/docgen.fluid`, `examples/*.fluid`) to understand patterns
-- API documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
+- `defer()` statement that runs code when de-scoped.
+- `goto`, labels and `~=` are deprecated
 
 #### Fluid Coding Patterns
 
