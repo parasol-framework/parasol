@@ -47,7 +47,7 @@ do
       if type(obj) != 'table' then return type(obj) end
       local i = 1
       for _ in pairs(obj) do
-         if obj[i] ~= nil then i = i + 1 else return 'table' end
+         if obj[i] then i = i + 1 else return 'table' end
       end
       if i is 1 then return 'table' else return 'array' end
    end
