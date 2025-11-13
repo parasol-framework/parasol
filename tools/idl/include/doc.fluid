@@ -685,7 +685,7 @@ function docClass(Class)
             out ..= '      <name>' .. a.name .. '</name>\n'
             
             if not a.comment then a.comment = glActions[a.name].comment end
-            if a.comment?? then out = out .. '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
+            if a.comment?? then out ..= '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
 
             if glActions[a.name].prototype?? then
                out = out .. '      <prototype>' .. glActions[a.name].prototype:escXML() .. '</prototype>\n'
