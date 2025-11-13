@@ -99,6 +99,32 @@ function testTable()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+function testTableAccessLHS()
+   local t = { }
+   table.insert(t, 10)
+   table.insert(t, 20)
+   table.insert(t, 30)
+   table.insert(t, 40)
+
+   local one = (t[1] ? 0)
+   local two = (t[2] ? 0)
+
+   assert(one is 10, "Array access LHS test failed for first element: expected 10, got '" .. tostring(one) .. "'")
+   assert(two is 20, "Array access LHS test failed for second element: expected 20, got '" .. tostring(two) .. "'")
+
+   local str = (0 ? -1)
+   assert(str is -1, "Array access LHS test failed for zero value: expected -1, got '" .. tostring(str) .. "'")
+   
+   -- Ternary version - establishes a benchmark
+   status = t.missing ? 'exists' :> 'missing'
+   assert(status is 'missing', "Failed table key test: expected 'ok', got '" .. tostring(status) .. "'")
+   
+   status = t.missing ? 'missing'
+   assert(status is 'missing', "Failed table key test: expected 'missing', got '" .. tostring(status) .. "'")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is truthy
 
 function testShortCircuitTruth()
@@ -172,12 +198,26 @@ function testComplex()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Test the use of if-empty within a function
+
+function testInFunction()
+   local Function = { status = 'Hello' }
+   
+   -- Ternary operator within a function
+   local result = string.find((Function.status ? 'then' :> 'else'), 'e')
+   assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
+
+   -- If-empty operator within a function
+   local result = string.find((Function.status ? 'then'), 'e')
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
-         'testComplex'
+         'testComplex', 'testTableAccessLHS', 'testInFunction'
       }
    }
