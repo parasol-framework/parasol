@@ -528,13 +528,14 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             // Collapse freereg to drop rhs_reg and any temporaries.
             // After copying the fallback back into the original register, the extra
             // destination slot is no longer needed. Set freereg to
-            // max(nactvar, dest_reg + 1) to drop stale copies in dest_reg. This
-            // prevents BC_CAT from concatenating them when result is used in
-            // concatenation. Only adjust if dest_reg was actually used (dest_reg > reg)
-            // and not from safe nav chain.
+            // max(nactvar, reg + 1) so the borrowed destination register becomes
+            // reusable. This prevents BC_CAT from concatenating stale values when
+            // the result feeds into concatenations. Only adjust if we actually
+            // borrowed a higher register (dest_reg > reg) and the value did not
+            // originate from a safe navigation chain.
 
             if (dest_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
-               BCReg target_free = (dest_reg >= fs->nactvar) ? dest_reg + 1 : fs->nactvar;
+               BCReg target_free = (reg >= fs->nactvar) ? (reg + 1) : fs->nactvar;
                if (fs->freereg > target_free) fs->freereg = target_free;
             }
          }
