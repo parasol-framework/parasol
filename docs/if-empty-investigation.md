@@ -31,8 +31,11 @@ Because the fallback register is never released, `fs->freereg` continues to grow
 - Manual stress tests confirm that using `Function.status ? 'then'` as a function argument still produces two values. The vararg capture now shows that LuaJIT duplicates the truthy operand across both slots instead of leaving the fallback literal live.
 - Wrapping the `string.find` call in `pcall` consistently surfaces the runtime failure with a “bad argument #3” diagnostic, providing a deterministic signature for the leak without crashing the surrounding test harness.
 
-## Revised Plan
-1. Create targeted Fluid snippets that stress the if-empty operator within function arguments (both built-in and custom) to validate the register-leak hypothesis under multiple call shapes.
-2. Promote the effective snippets into permanent Flute tests in `test_if_empty.fluid` so that the suite documents the current failure mode and guards the eventual fix.
-3. Revisit the bytecode emission for `OPR_IF_EMPTY`, aligning its register reclamation with the ternary operator implementation once the stronger regression coverage is green.
-4. Re-run `fluid_if_empty` (ignoring the known `test_safe_nav.fluid` failures) to confirm the behaviour before and after the parser change.
+## Session 3 Implementation Notes
+- Normalised the optional operator’s truthy path so that it collapses back to the original register and releases any scratch slot reserved for the fallback expression. This mirrors the ternary operator contract and prevents the extra argument that previously leaked into function calls.
+- Updated the regression coverage to assert the fixed behaviour (single argument capture, successful `string.find` invocation, and matching ternary results) so that future changes surface any regressions immediately.
+
+## Next Steps
+1. Exercise the updated bytecode with the custom Fluid snippets recorded in `docs/if-empty-custom-tests.md` to confirm there are no remaining edge cases (e.g., concatenation chains or nested optional operators).
+2. Run the Fluid suite after rebuilding to ensure no regressions emerge elsewhere (known `test_safe_nav.fluid` issues remain acceptable noise).
+3. Trim or relocate any investigation-only artefacts once the fix stabilises to keep the repository tidy.

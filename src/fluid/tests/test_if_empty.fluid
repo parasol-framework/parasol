@@ -213,36 +213,33 @@ function testIfEmptyArgumentLeakCapture()
 
    capture(Function.status ? 'then')
 
-   assert(record.count is 2, "Expected two arguments when leaking fallback, got '" .. tostring(record.count) .. "'")
+   assert(record.count is 1, "Expected a single argument after fixing the leak, got '" .. tostring(record.count) .. "'")
    assert(record.first is 'Hello', "Expected first argument to remain 'Hello', got '" .. tostring(record.first) .. "'")
-   assert(record.second is 'Hello', "Expected leaked slot to duplicate the truthy operand, got '" .. tostring(record.second) .. "'")
+   assert(record.second is nil, "Expected leaked slot to be cleared, got '" .. tostring(record.second) .. "'")
 end
 
 function testIfEmptyStringFindError()
    local Function = { status = 'Hello' }
 
-   local ok, err = pcall(function()
+   local ok, start_index, end_index = pcall(function()
       return string.find((Function.status ? 'then'), 'e')
    end)
 
-   assert(ok is false, "Expected string.find call to fail while bug is present")
-
-   local message = tostring(err)
-   local index = string.find(message, "bad argument #3")
-   if not index then
-      error("Expected error message to mention the leaked third argument, got '" .. message .. "'")
-   end
+   assert(ok is true, "string.find should succeed once the argument leak is fixed")
+   assert(start_index is 2, "Expected search to start at index 2, got '" .. tostring(start_index) .. "'")
+   assert(end_index is 2, "Expected search to end at index 2, got '" .. tostring(end_index) .. "'")
 end
 
 function testInFunction()
    local Function = { status = 'Hello' }
-   
+
    -- Ternary operator within a function
    local result = string.find((Function.status ? 'then' :> 'else'), 'e')
    assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
 
    -- If-empty operator within a function
    local result = string.find((Function.status ? 'then'), 'e')
+   assert(result is 2, "Failed test: expected 2, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
