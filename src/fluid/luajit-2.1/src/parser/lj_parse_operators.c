@@ -166,7 +166,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
             e->u.s.aux = rhs_reg;
             // Restore flags but NOW clear SAFE_NAV_CHAIN_FLAG since we've captured the register.
             // The flag has served its purpose and must not interfere with register cleanup.
-            e->flags = (flags & ~SAFE_NAV_CHAIN_FLAG) | EXP_HAS_RHS_REG_FLAG;
+            uint8_t new_flags = (flags & ~SAFE_NAV_CHAIN_FLAG) | EXP_HAS_RHS_REG_FLAG;
+            if (had_safe_nav) new_flags |= EXP_SAFE_NAV_RESULT_FLAG;
+            e->flags = new_flags;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
@@ -428,6 +430,8 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
       // This should already be consumed by bcemit_binop_left(), but we're defensive here
       // in case the flag somehow persists through other code paths.
+      uint8_t had_safe_nav = (e1->flags & EXP_SAFE_NAV_RESULT_FLAG) != 0;
+      e1->flags &= (uint8_t)~EXP_SAFE_NAV_RESULT_FLAG;
       e1->flags &= ~SAFE_NAV_CHAIN_FLAG;
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
@@ -467,6 +471,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             BCPos skip;
             BCPos check_nil, check_false, check_zero, check_empty;
             BCReg dest_reg;
+            BCReg target_reg = had_safe_nav ? fs->nactvar : NO_REG;
 
             // Check for nil
             expr_init(&nilv, VKNIL, 0);
@@ -501,6 +506,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Preserve original value for truthy path before emitting skip jump.
             bcemit_AD(fs, BC_MOV, dest_reg, reg);
+            if (had_safe_nav && target_reg != NO_REG && target_reg < fs->freereg && target_reg != reg) {
+               bcemit_AD(fs, BC_MOV, target_reg, reg);
+            }
 
             // If all checks pass (value is truthy), skip RHS
             skip = bcemit_jmp(fs);
@@ -513,27 +521,75 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Evaluate RHS
             expr_toreg(fs, e2, dest_reg);
-            if (dest_reg != reg) {
-               // Copy the fallback result back into the original slot so callers
-               // (assignments, returns) continue to observe the same register
-               // they used for the LHS. This mirrors the ternary operator,
-               // which always delivers its result in the condition register.
-               bcemit_AD(fs, BC_MOV, reg, dest_reg);
+            if (rhs_reg != NO_REG) {
+               if (dest_reg != reg) {
+                  // Copy the fallback result back into the original slot so callers
+                  // (assignments, returns) continue to observe the same register
+                  // they used for the LHS. This mirrors the ternary operator,
+                  // which always delivers its result in the condition register.
+                  bcemit_AD(fs, BC_MOV, reg, dest_reg);
+
+                  if (had_safe_nav && dest_reg >= fs->nactvar) {
+                     if (fs->freereg == dest_reg + 1) {
+                        bcreg_free(fs, dest_reg);
+                     }
+                     else if (fs->freereg > dest_reg + 1) {
+                        fs->freereg = dest_reg + 1;
+                     }
+                  }
+               }
+
+               if (had_safe_nav && target_reg != NO_REG && target_reg < fs->freereg && target_reg != reg) {
+                  bcemit_AD(fs, BC_MOV, target_reg, reg);
+               }
+               jmp_patch(fs, skip, fs->pc);
+               uint8_t saved_flags = e1->flags;  // Save flags before expr_init
+
+               if (had_safe_nav) {
+                  expr_init(e1, VNONRELOC, reg);
+                  e1->flags = saved_flags;  // Restore flags after expr_init
+
+                  BCReg min_free = (reg >= fs->nactvar) ? (reg + 1) : fs->nactvar;
+                  if (fs->freereg > min_free) {
+                     fs->freereg = min_free;
+                  }
+               }
+               else {
+                  BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
+                  expr_init(e1, VNONRELOC, result_reg);
+                  e1->flags = saved_flags;  // Restore flags after expr_init
+
+                  if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
+                     fs->freereg = dest_reg + 1;
+                  }
+               }
             }
-            jmp_patch(fs, skip, fs->pc);
-            uint8_t saved_flags = e1->flags;  // Save flags before expr_init
+            else {
+               if (dest_reg != reg) {
+                  // Copy the fallback result back into the original slot so callers
+                  // (assignments, returns) continue to observe the same register
+                  // they used for the LHS. This mirrors the ternary operator,
+                  // which always delivers its result in the condition register.
+                  bcemit_AD(fs, BC_MOV, reg, dest_reg);
+               }
+               if (had_safe_nav && target_reg != NO_REG && target_reg < fs->freereg && target_reg != reg) {
+                  bcemit_AD(fs, BC_MOV, target_reg, reg);
+               }
+               jmp_patch(fs, skip, fs->pc);
+               uint8_t saved_flags = e1->flags;  // Save flags before expr_init
 
-            BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
-            expr_init(e1, VNONRELOC, result_reg);
-            e1->flags = saved_flags;  // Restore flags after expr_init
+               BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
+               expr_init(e1, VNONRELOC, result_reg);
+               e1->flags = saved_flags;  // Restore flags after expr_init
 
-            // Keep the allocator aligned with the register holding the result. This mirrors
-            // the handling of the ternary operator, where the expression descriptor points at
-            // the live destination register. When the optional participates in concatenation
-            // chains, this ensures expr_tonextreg() frees the borrowed slot instead of
-            // expanding the CAT span with duplicated values.
-            if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
-               fs->freereg = dest_reg + 1;
+               // Keep the allocator aligned with the register holding the result. This mirrors
+               // the handling of the ternary operator, where the expression descriptor points at
+               // the live destination register. When the optional participates in concatenation
+               // chains, this ensures expr_tonextreg() frees the borrowed slot instead of
+               // expanding the CAT span with duplicated values.
+               if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
+                  fs->freereg = dest_reg + 1;
+               }
             }
          }
          else { // Constant falsey value - evaluate RHS directly

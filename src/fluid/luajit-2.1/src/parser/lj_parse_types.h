@@ -70,6 +70,7 @@ typedef struct ExpDesc {
 
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
 #define EXP_HAS_RHS_REG_FLAG     0x04u
+#define EXP_SAFE_NAV_RESULT_FLAG 0x08u
 
 /*
 ** Expression helpers that previously relied on flag bits within ExpDesc.aux now
