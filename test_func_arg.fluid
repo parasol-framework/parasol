@@ -1,0 +1,9 @@
+-- Test for safe nav + if-empty as function argument
+
+local guest = nil
+local function capture(value)
+   return value
+end
+
+local result = capture(guest?.profile?.name ? "Guest")
+print("Result: " .. tostring(result))

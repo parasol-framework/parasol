@@ -1,0 +1,5 @@
+-- Minimal test for safe nav + if-empty debugging
+
+local guest = nil
+local display = guest?.profile?.name ? "Guest"
+print("Result: " .. tostring(display))

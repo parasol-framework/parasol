@@ -109,6 +109,8 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    jmp_patch(fs, skip_branch, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
    v->flags |= SAFE_NAV_CHAIN_FLAG;
+   printf("DEBUG[expr_safe_nav_branch]: Setting SAFE_NAV_CHAIN_FLAG, result_reg=%d, freereg=%d\n",
+          result_reg, fs->freereg);
 }
 
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)

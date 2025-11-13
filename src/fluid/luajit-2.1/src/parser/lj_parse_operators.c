@@ -135,22 +135,34 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       // Save whether we had SAFE_NAV_CHAIN_FLAG but DON'T clear it yet.
       // We need to preserve flag state through the register reservation logic below.
       uint8_t had_safe_nav = (e->flags & SAFE_NAV_CHAIN_FLAG) != 0;
+      printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Entry - e->k=%d, e->flags=0x%02x, had_safe_nav=%d, freereg=%d\n",
+             e->k, e->flags, had_safe_nav, fs->freereg);
 
       expr_discharge(fs, e);
+      printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: After discharge - e->k=%d\n", e->k);
       // Extended falsey: nil, false, 0, ""
-      if (e->k == VKNIL || e->k == VKFALSE)
+      if (e->k == VKNIL || e->k == VKFALSE) {
          pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k == VKNUM && expr_numiszero(e))
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Constant falsey (nil/false), pc=NO_JMP\n");
+      }
+      else if (e->k == VKNUM && expr_numiszero(e)) {
          pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k == VKSTR && e->u.sval && e->u.sval->len == 0)
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Constant falsey (zero), pc=NO_JMP\n");
+      }
+      else if (e->k == VKSTR && e->u.sval && e->u.sval->len == 0) {
          pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k == VJMP)
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Constant falsey (empty string), pc=NO_JMP\n");
+      }
+      else if (e->k == VJMP) {
          pc = e->u.s.info;
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: VJMP, pc=%d\n", pc);
+      }
       else if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
          // Truthy constant - load to register && emit jump to skip RHS
          bcreg_reserve(fs, 1);
          expr_toreg_nobranch(fs, e, fs->freereg - 1);
          pc = bcemit_jmp(fs);
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Truthy constant, pc=%d, freereg=%d\n", pc, fs->freereg);
       }
       else {
          // Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness
@@ -167,13 +179,18 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
             // Restore flags but NOW clear SAFE_NAV_CHAIN_FLAG since we've captured the register.
             // The flag has served its purpose and must not interfere with register cleanup.
             e->flags = (flags & ~SAFE_NAV_CHAIN_FLAG) | EXP_HAS_RHS_REG_FLAG;
+            printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Runtime value, src_reg=%d, rhs_reg=%d, flags=0x%02x->0x%02x\n",
+                   src_reg, rhs_reg, flags, e->flags);
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
       // For constant cases, also clear the flag now that processing is complete
       if (had_safe_nav) {
          e->flags &= ~SAFE_NAV_CHAIN_FLAG;
+         printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Clearing SAFE_NAV_CHAIN_FLAG for constant case\n");
       }
+      printf("DEBUG[bcemit_binop_left OPR_IF_EMPTY]: Exit - e->flags=0x%02x, pc=%d, e->t=%d\n",
+             e->flags, pc, e->t);
       jmp_append(fs, &e->t, pc);
       jmp_tohere(fs, e->f);
       e->f = NO_JMP;
@@ -425,14 +442,21 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    else if (op == OPR_IF_EMPTY) {
       lj_assertFS(e1->f == NO_JMP, "jump list not closed");
 
+      printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: Entry - e1->k=%d, e1->flags=0x%02x, e1->t=%d, freereg=%d\n",
+             e1->k, e1->flags, e1->t, fs->freereg);
+
       // DEFENSIVE: Ensure SAFE_NAV_CHAIN_FLAG is consumed.
       // This should already be consumed by bcemit_binop_left(), but we're defensive here
       // in case the flag somehow persists through other code paths.
+      if (e1->flags & SAFE_NAV_CHAIN_FLAG) {
+         printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: WARNING - SAFE_NAV_CHAIN_FLAG still set!\n");
+      }
       e1->flags &= ~SAFE_NAV_CHAIN_FLAG;
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
       if (e1->t != NO_JMP) {
+         printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: Truthy LHS path (e1->t=%d), skipping RHS\n", e1->t);
          // Patch jumps to skip RHS
          jmp_patch(fs, e1->t, fs->pc);
          e1->t = NO_JMP;
@@ -449,16 +473,21 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
                expr_toanyreg(fs, e1);
             }
          }
+         printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: After truthy path - e1->k=%d, e1->u.s.info=%d\n",
+                e1->k, e1->u.s.info);
       }
       else {
+         printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: Falsey/runtime LHS path\n");
          // LHS is falsey (no jumps) OR runtime value - need to check
          BCReg rhs_reg = NO_REG;
          if (e1->flags & EXP_HAS_RHS_REG_FLAG) {
             rhs_reg = (BCReg)e1->u.s.aux;
             e1->flags &= ~EXP_HAS_RHS_REG_FLAG;
+            printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: Has RHS reg, rhs_reg=%d\n", rhs_reg);
          }
 
          expr_discharge(fs, e1);
+         printf("DEBUG[bcemit_binop OPR_IF_EMPTY]: After discharge - e1->k=%d\n", e1->k);
          
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
