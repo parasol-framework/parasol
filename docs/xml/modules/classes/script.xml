@@ -86,7 +86,7 @@
         <param type="CSTRING *" name="Result">Resulting log information.</param>
       </input>
       <description>
-<p>Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log will depend on the scripting language in use.  The Options parameter may be used to pass language-specific options to the underlying implementation.</p>
+<p>Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log will depend on the scripting language in use, but will typically dump readable bytecode for analysis.  The Options parameter is a comma-separated list that may be used to pass language-specific options to the underlying implementation.</p>
 <p>The resulting log information is returned as a string, which needs to be deallocated once no longer required.</p>
       </description>
       <result>

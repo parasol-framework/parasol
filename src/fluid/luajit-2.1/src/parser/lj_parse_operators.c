@@ -523,17 +523,20 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
 
-            BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
-            expr_init(e1, VNONRELOC, result_reg);
+            expr_init(e1, VNONRELOC, reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
 
-            // Keep the allocator aligned with the register holding the result. This mirrors
-            // the handling of the ternary operator, where the expression descriptor points at
-            // the live destination register. When the optional participates in concatenation
-            // chains, this ensures expr_tonextreg() frees the borrowed slot instead of
-            // expanding the CAT span with duplicated values.
-            if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
-               fs->freereg = dest_reg + 1;
+            /*
+            ** Collapse any scratch register reserved for the RHS when it is no longer
+            ** needed. Returning the allocator to the original base mirrors the ternary
+            ** operator semantics and prevents the optional from leaking an extra
+            ** argument slot when used in function-call contexts.
+            */
+            if (dest_reg != reg && dest_reg >= fs->nactvar && fs->freereg > dest_reg) {
+               fs->freereg = dest_reg;
+            }
+            if (reg >= fs->nactvar && fs->freereg > reg + 1) {
+               fs->freereg = reg + 1;
             }
          }
          else { // Constant falsey value - evaluate RHS directly
