@@ -433,3 +433,119 @@ The solution requires:
 - b96df198 - Fix safe-nav if-empty register handling
 
 **Branch**: `claude/investigate-fluid-safe-nav-tests-011CV5uKgLMnY1Kgtx9QtLDp`
+
+---
+
+## Update: 2025-11-13 (Continued Investigation)
+
+### Implementation Progress
+
+**Commits**: 066cde63, 40e86d44, e15e9e90, ea040d7e
+
+#### Fixes Implemented
+
+1. **Added `EXP_SAFE_NAV_RESULT_FLAG` (0x08u)** in `lj_parse_types.h`
+   - Tracks safe navigation results for register management
+   - Set in `expr_safe_nav_branch` alongside `SAFE_NAV_CHAIN_FLAG`
+   - Cleared in `bcemit_binop_left` and `bcemit_binop` after use
+
+2. **Implemented Reserve-Before-Capture Fix** in `bcemit_binop_left`
+   - Calls `bcreg_reserve(fs, 1)` BEFORE capturing `rhs_reg`
+   - Uses `rhs_reg = fs->freereg - 1` to get the just-reserved register
+   - Adds check: if `rhs_reg <= src_reg`, reserves another register
+   - This guarantees `rhs_reg != src_reg` even when freereg is collapsed
+
+3. **Updated Flag Clearing Logic**
+   - Clears both `SAFE_NAV_CHAIN_FLAG` and `EXP_SAFE_NAV_RESULT_FLAG` in `bcemit_binop_left`
+   - Clears flags in `bcemit_binop` OPR_IF_EMPTY handler
+
+#### Test Results (Current Status)
+
+| Test Case | Status | Details |
+|-----------|--------|---------|
+| If-empty only (`nil ? "Fallback"`) | ✅ PASS | Returns "Fallback" correctly |
+| Single safe nav + if-empty (`guest?.profile ? "Guest"`) | ✅ PASS | Returns "Guest" correctly |
+| Double safe nav + if-empty (`guest?.profile?.name ? "Guest"`) | ❌ FAIL | Returns `nil` instead of "Guest" |
+| Successful chain (`{profile:{name:"Alice"}}?.profile?.name`) | ❌ FAIL | Returns `table` instead of "Alice" |
+
+#### Debug Evidence
+
+**Register Separation (Working Correctly)**:
+```
+DEBUG: After first bcreg_reserve: src_reg=2, rhs_reg=2, freereg=3
+DEBUG: After second bcreg_reserve: rhs_reg=3, freereg=4
+DEBUG: Using RHS_REG=3 as dest_reg, freereg now=4
+```
+- `src_reg=2`, `rhs_reg=3`, `dest_reg=3` (proper separation ✓)
+
+**Bytecode Generation (Appears Correct)**:
+```
+PC=12-19: Extended falsey checks (ISEQP nil, ISEQP false, ISEQN 0, ISEQS "")
+PC=20: Skip JMP (for truthy case)
+PC=21: Falsey checks jump here
+PC=21-22: Evaluate RHS ("Guest") into r3
+PC=23: MOV r2, r3
+Skip jump patches to PC=23
+```
+
+**Expression Info**:
+```
+DEBUG: RHS evaluated at PC=22, dest_reg=3, reg=2, need copy=1, e2->k=12, e2->u.s.info=3
+DEBUG: Copying from dest_reg=3 to reg=2, emitting MOV at PC=22
+DEBUG: MOV emitted, now at PC=23
+```
+- `e2->k=12` (VNONRELOC) confirms RHS is in register
+- `e2->u.s.info=3` confirms it's in register 3
+- MOV instruction emitted to copy r3 → r2
+
+### Current Analysis
+
+The reserve-before-capture fix successfully:
+- Prevents register aliasing (rhs_reg ≠ src_reg) ✓
+- Works for single safe navigation ✓
+- Generates apparently correct bytecode ✓
+
+But fails for:
+- Double/chained safe navigation ✗
+- Returns wrong value when chain succeeds ✗
+
+### Hypotheses for Remaining Issue
+
+1. **Bytecode Flow Problem**: Despite debug output showing correct structure, actual bytecode may have sequencing issue specific to chained safe nav
+
+2. **Runtime Execution Issue**: The bytecode is correct but VM execution with multiple safe nav operations has a problem
+
+3. **Register Lifetime Problem**: The second safe nav operation may be interfering with register allocation in a way that's not visible in compile-time debug
+
+4. **Field Access Issue**: When safe nav succeeds, returning a table instead of field value suggests `expr_safe_field_branch` isn't properly loading the field value after the second safe nav
+
+### Next Steps
+
+1. **Investigate expr_safe_field_branch**: Why does successful chain return table instead of field value?
+   - May indicate the field access isn't being performed correctly
+   - Could explain both the nil result and table return issues
+
+2. **Compare Single vs Double Bytecode**: Dump actual bytecode for single vs double safe nav to find differences
+
+3. **Check Jump Target Calculations**: Verify PC values and jump targets are correct for chained case
+
+4. **Review Analysis Report's Additional Recommendations**: The provided analysis mentions call argument misalignment as a second issue - may need to address that separately
+
+### Files Modified
+
+- `src/fluid/luajit-2.1/src/parser/lj_parse_types.h`: Added `EXP_SAFE_NAV_RESULT_FLAG`
+- `src/fluid/luajit-2.1/src/parser/lj_parse_expr.c`: Added extensive debug logging
+- `src/fluid/luajit-2.1/src/parser/lj_parse_operators.c`: Implemented reserve-before-capture fix
+
+### Test Files Created
+
+- `test_if_empty_only.fluid`: Tests if-empty without safe nav (works)
+- `test_single_safe_nav.fluid`: Tests single safe nav + if-empty (works)
+- `test_double_safe_nav.fluid`: Tests double safe nav + if-empty (fails)
+- `test_split_chain.fluid`: Tests split chain (works, confirming issue is with chained expression)
+- `test_with_object.fluid`: Tests with actual object (shows table return issue)
+- `test_inspect.fluid`: Detailed value inspection
+- `test_func_arg.fluid`: Function argument scenario
+
+All changes committed to branch with extensive debug logging still active.
+
