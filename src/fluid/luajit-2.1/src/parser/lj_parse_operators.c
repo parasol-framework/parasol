@@ -160,28 +160,28 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          if (!expr_isk_nojump(e)) {
             printf("DEBUG: [bcemit_binop_left] Before expr_toanyreg: e->k=%d, e->t=%d, e->f=%d\n", e->k, e->t, e->f);
             BCReg src_reg = expr_toanyreg(fs, e);
-            printf("DEBUG: [bcemit_binop_left] After expr_toanyreg: e->k=%d, e->t=%d, e->f=%d, src_reg=%d\n", e->k, e->t, e->f, src_reg);
-            BCReg rhs_reg = fs->freereg;
+            printf("DEBUG: [bcemit_binop_left] After expr_toanyreg: e->k=%d, e->t=%d, e->f=%d, src_reg=%d, freereg=%d\n", e->k, e->t, e->f, src_reg, fs->freereg);
             uint8_t flags = e->flags;
 
-            // CRITICAL FIX: For safe navigation results, ensure rhs_reg doesn't alias with src_reg.
-            // When chained safe nav operations occur (e.g., obj?.a?.b), freereg may not be
-            // properly advanced, causing src_reg and rhs_reg to point to the same register.
-            // This leads to the RHS evaluation overwriting the LHS value before it can be checked.
-            printf("DEBUG: flags=0x%02x, EXP_SAFE_NAV_RESULT_FLAG=0x%02x, check=%d, src_reg=%d, rhs_reg=%d\n",
-                   flags, EXP_SAFE_NAV_RESULT_FLAG, (flags & EXP_SAFE_NAV_RESULT_FLAG), src_reg, rhs_reg);
-            if ((flags & EXP_SAFE_NAV_RESULT_FLAG) && (rhs_reg <= src_reg)) {
-               // Advance freereg to ensure separation between src and rhs registers
-               printf("DEBUG: FIX APPLIED! Advancing freereg from %d to %d, rhs_reg %d->%d\n",
-                      fs->freereg, src_reg + 1, rhs_reg, src_reg + 1);
-               fs->freereg = src_reg + 1;
-               rhs_reg = fs->freereg;
+            // CRITICAL FIX: Reserve the RHS register BEFORE capturing it.
+            // This ensures rhs_reg is always a fresh register that doesn't alias with src_reg.
+            // When safe navigation collapses freereg, we need to ensure rhs_reg != src_reg.
+            bcreg_reserve(fs, 1);
+            BCReg rhs_reg = fs->freereg - 1;  // Use the register we just reserved
+            printf("DEBUG: After first bcreg_reserve: flags=0x%02x, src_reg=%d, rhs_reg=%d, freereg=%d\n",
+                   flags, src_reg, rhs_reg, fs->freereg);
+
+            // If rhs_reg still aliases src_reg (due to freereg collapse), reserve another register
+            if (rhs_reg <= src_reg) {
+               printf("DEBUG: rhs_reg <= src_reg, reserving another register\n");
+               bcreg_reserve(fs, 1);
+               rhs_reg = fs->freereg - 1;
+               printf("DEBUG: After second bcreg_reserve: rhs_reg=%d, freereg=%d\n", rhs_reg, fs->freereg);
             }
 
-            bcreg_reserve(fs, 1);
             expr_init(e, VNONRELOC, src_reg);
             e->u.s.aux = rhs_reg;
-            // Restore flags but clear both SAFE_NAV flags since we've captured the register.
+            // Clear both SAFE_NAV flags since we've captured the register.
             // The flags have served their purpose and must not interfere with register cleanup.
             e->flags = (flags & ~(SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG)) | EXP_HAS_RHS_REG_FLAG;
          }
