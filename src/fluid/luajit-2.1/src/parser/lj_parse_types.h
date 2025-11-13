@@ -70,6 +70,20 @@ typedef struct ExpDesc {
 
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
 #define EXP_HAS_RHS_REG_FLAG     0x04u
+
+// Flag marking that an expression currently resides in the temporary register allocated
+// for safe-navigation results. Downstream operators (e.g., the if-empty `?` operator)
+// use this to determine whether they must take ownership of that register instead of
+// assuming the value already lives in the destination local slot.
+//
+// Lifecycle:
+//   SET:     expr_safe_nav_branch() after emitting the guarded load into the temporary.
+//   TESTED:  bcemit_binop_left() when preparing chained operators that consume the value.
+//   CLEARED: expr_consume_flag() in whichever operator ultimately absorbs the result.
+//
+// Always clear this flag once the expression has been relocated to its owning register so
+// that subsequent operators treat it as a regular value. The helper expr_consume_flag()
+// handles the bookkeeping.
 #define EXP_SAFE_NAV_RESULT_FLAG 0x08u
 
 /*

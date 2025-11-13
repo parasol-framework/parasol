@@ -100,6 +100,37 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+function testSafeNavPresenceInsideCallLosesFallback()
+   local guest = nil
+   local function capture(value)
+      return value
+   end
+   local result = ""
+   local ok, err = pcall(function()
+      result = capture(guest?.profile?.name ? "Guest")
+   end)
+   assert(ok is true, "Function call should succeed, err=" .. tostring(err))
+   assert(result is "Guest", "BUG: safe-nav + ? argument currently yields " .. tostring(result) .. " instead of fallback")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testSafeNavPresenceWithSiblingArgumentLosesFallback()
+   local guest = nil
+   local function capture(first, second)
+      return first, second
+   end
+   local firstResult, secondResult = "", ""
+   local ok, err = pcall(function()
+      firstResult, secondResult = capture(guest?.profile?.name ? "Guest", "suffix")
+   end)
+   assert(ok is true, "Function call with extra argument should succeed, err=" .. tostring(err))
+   assert(firstResult is "Guest", "BUG: safe-nav + ? argument produced " .. tostring(firstResult) .. " instead of fallback")
+   assert(secondResult is "suffix", "BUG: sibling argument should pass through unchanged")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 function testSafeFieldWithOrQuestion()
    local fallback = { label = "Fallback" }
    local label = fallback?.missingField ? "Default"
