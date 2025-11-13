@@ -137,6 +137,9 @@ jobs:
   tag-stable:
     name: Tag as Stable
     runs-on: ubuntu-latest
+    concurrency:
+      group: stable-tag
+      cancel-in-progress: false
     needs: [build-and-test]
     if: github.ref == 'refs/heads/master' && needs.build-and-test.result == 'success'
 
