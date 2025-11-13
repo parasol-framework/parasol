@@ -342,8 +342,7 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
       bcemit_ABC(fs, BC_TGETV, func, obj, func + 2 + LJ_FR2);
       fs->freereg--;
    }
-   e->u.s.info = func;
-   e->k = VNONRELOC;
+   expr_init(e, VNONRELOC, func);
 }
 
 // -- Bytecode emitter for branches ---------------------------------------
