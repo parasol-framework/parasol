@@ -173,6 +173,34 @@ one function call.
 - Check that `fs->freereg` is correctly adjusted after each operation completes
 - Verify that base register reuse logic considers all stack-top scenarios
 
+### Presence Operator Register Discipline
+
+Investigations into the optional `?` operator highlighted several register-handling
+rules that apply to any parser feature borrowing temporary slots:
+
+1. **Surface the final value from the RHS register.**
+   - After emitting the fallback value, update the expression descriptor to point at
+     the RHS slot (e.g. `expr_init(e1, VNONRELOC, rhs_reg);`).
+   - This mirrors the ternary operator contract and keeps concatenation chains over
+     contiguous registers.
+
+2. **Clamp `fs->freereg` using the borrowed register, not the assignment target.**
+   - Collapse with `fs->freereg = rhs_reg + 1;` (or via `bcreg_free`) once the borrowed
+     slot is written back.
+   - Deriving the collapse point from the destination register leaves the borrowed
+     slot marked live, causing `freereg` to drift upwards across chained operators.
+
+3. **Maintain CAT chain contiguity.**
+   - `BC_CAT` expects source registers to be consecutive. If an operator copies a
+     fallback result into a non-contiguous slot, concatenations may emit duplicate
+     values or raise "function or expression too complex" during parsing.
+   - When debugging, dump the bytecode to verify CAT operands stay compact (for
+     example `R3`, `R4`, `R5`).
+
+4. **Use logical operators as a template.**
+   - The `and` / `or` implementations demonstrate how to preserve operand slots across
+     chained expressions with short-circuit semantics.
+
 ### Implementing Binary Logical Operators with Short-Circuiting
 
 When implementing binary logical operators (like `or`, `and`, or custom variants like the `?`

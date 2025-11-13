@@ -229,7 +229,7 @@ For Fluid code, verify:
 - C++ functions that use global variables must be written with thread safety in mind.
 - New and refactored code must target modern C++20 conventions and functionality.
 - C++ global variable names are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
-- The default column width is 120 characters for all languages.
+- The default column width is 120 characters for all languages and markdown files.
 - Always default to British English spelling in code and comments.
 - For C++ `if`, `while`, `else`, `for`, `switch` and `struct` keywords, the opening curly brace must be on the same line if no word-wrapping has occurred.
 
@@ -256,8 +256,6 @@ cmake --build build/agents --config [BuildType] --target [module_name] --paralle
 
 # Examples:
 cmake --build build/agents --config [BuildType] --target network --parallel    # For network changes
-cmake --build build/agents --config [BuildType] --target vector --parallel     # For vector changes
-cmake --build build/agents --config [BuildType] --target svg --parallel        # For SVG changes
 ```
 
 ### Documentation
@@ -271,15 +269,6 @@ cmake --build build/agents --config [BuildType] --target svg --parallel        #
 - Embedded documentation for class fields are identified by the `-FIELD-` marker.
 - Always use British English spelling in documentation, comments and variable names.
 
-## Module Dependencies
-
-Key dependencies between modules:
-- Most graphics modules require `vector`, `display`, and `font`
-- `document` requires `vector`, `display`, and `font` for rich text layout
-- `svg` requires `vector` for scene graph rendering
-- `scintilla` requires `vector` and `font` for text editing widgets
-- `fluid` is independent but provides scripting access to all modules
-
 ## File Organization
 
 - `src/` - All source code organized by module
@@ -291,6 +280,7 @@ Key dependencies between modules:
 - `docs/wiki/` - Markdown files for the GitHub Wiki, includes practical tutorials and guides on how to use Parasol.
 - `docs/html/` - Contains the entire Parasol website for offline viewing.
 - `docs/xml/` - Auto-generated API documentation in XML format.  This content is sourced from the Parasol C++ files.
+- `docs/plans/` - For storing and retrieving your plan files.
 
 Lower snake-case is the preferred string format for new file names.
 
@@ -305,5 +295,5 @@ Lower snake-case is the preferred string format for new file names.
 ## Agentic Behaviour
 
 - Always give an honest, balanced opinion in your responses
-- Encourage testing and validation of changes
+- Encourage testing and validation of changes.  Analysis should be presented alongside evidence.
 - If you are asked to do work that relates to a plan file, update the plan at the end of the session to indicate what was achieved.
