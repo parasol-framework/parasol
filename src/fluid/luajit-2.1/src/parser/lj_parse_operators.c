@@ -158,25 +158,20 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          // clobber it. Keep a copy of the original value even if the source lives in an
          // active local slot.
          if (!expr_isk_nojump(e)) {
-            printf("DEBUG: [bcemit_binop_left] Before expr_toanyreg: e->k=%d, e->t=%d, e->f=%d\n", e->k, e->t, e->f);
             BCReg src_reg = expr_toanyreg(fs, e);
-            printf("DEBUG: [bcemit_binop_left] After expr_toanyreg: e->k=%d, e->t=%d, e->f=%d, src_reg=%d, freereg=%d\n", e->k, e->t, e->f, src_reg, fs->freereg);
             uint8_t flags = e->flags;
 
-            // CRITICAL FIX: Reserve the RHS register BEFORE capturing it.
-            // This ensures rhs_reg is always a fresh register that doesn't alias with src_reg.
-            // When safe navigation collapses freereg, we need to ensure rhs_reg != src_reg.
+            // Reserve the RHS register BEFORE capturing it to prevent aliasing.
+            // When safe navigation collapses freereg, capturing before reserving would cause
+            // src_reg and rhs_reg to point to the same register, leading to the RHS evaluation
+            // overwriting the LHS value before extended falsey checks can be performed.
             bcreg_reserve(fs, 1);
-            BCReg rhs_reg = fs->freereg - 1;  // Use the register we just reserved
-            printf("DEBUG: After first bcreg_reserve: flags=0x%02x, src_reg=%d, rhs_reg=%d, freereg=%d\n",
-                   flags, src_reg, rhs_reg, fs->freereg);
+            BCReg rhs_reg = fs->freereg - 1;
 
-            // If rhs_reg still aliases src_reg (due to freereg collapse), reserve another register
+            // If rhs_reg still aliases src_reg (due to freereg collapse), reserve another register.
             if (rhs_reg <= src_reg) {
-               printf("DEBUG: rhs_reg <= src_reg, reserving another register\n");
                bcreg_reserve(fs, 1);
                rhs_reg = fs->freereg - 1;
-               printf("DEBUG: After second bcreg_reserve: rhs_reg=%d, freereg=%d\n", rhs_reg, fs->freereg);
             }
 
             expr_init(e, VNONRELOC, src_reg);
@@ -475,9 +470,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             e1->flags &= ~EXP_HAS_RHS_REG_FLAG;
          }
 
-         printf("DEBUG: [bcemit_binop OPR_IF_EMPTY] Before expr_discharge: e1->k=%d, e1->t=%d, e1->f=%d\n", e1->k, e1->t, e1->f);
          expr_discharge(fs, e1);
-         printf("DEBUG: [bcemit_binop OPR_IF_EMPTY] After expr_discharge: e1->k=%d, e1->t=%d, e1->f=%d\n", e1->k, e1->t, e1->f);
          
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
@@ -489,17 +482,13 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Check for nil
             expr_init(&nilv, VKNIL, 0);
-            printf("DEBUG: Emitting ISEQP nil at PC=%d for reg=%d\n", fs->pc, reg);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
-            printf("DEBUG: Emitted nil check JMP at PC=%d (check_nil=%d)\n", check_nil, check_nil);
 
             // Check for false
             expr_init(&falsev, VKFALSE, 0);
-            printf("DEBUG: Emitting ISEQP false at PC=%d for reg=%d\n", fs->pc, reg);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
-            printf("DEBUG: Emitted false check JMP at PC=%d (check_false=%d)\n", check_false, check_false);
 
             // Check for zero
             expr_init(&zerov, VKNUM, 0);
@@ -516,46 +505,31 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             if (rhs_reg == NO_REG) {
                dest_reg = fs->freereg;
                bcreg_reserve(fs, 1);
-               printf("DEBUG: No RHS_REG, allocating dest_reg=%d, freereg now=%d\n", dest_reg, fs->freereg);
             }
             else {
                dest_reg = rhs_reg;
                if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
-               printf("DEBUG: Using RHS_REG=%d as dest_reg, freereg now=%d\n", dest_reg, fs->freereg);
             }
-
-            printf("DEBUG: Before skip JMP at PC=%d: reg=%d, dest_reg=%d\n", fs->pc, reg, dest_reg);
 
             // If all checks pass (value is truthy), skip RHS
             skip = bcemit_jmp(fs);
-            printf("DEBUG: Skip JMP emitted at PC=%d (skip=%d), now at PC=%d\n", skip, skip, fs->pc);
 
             // Patch falsey checks to jump to RHS evaluation
-            printf("DEBUG: Patching checks to jump to PC=%d: check_nil=%d, check_false=%d, check_zero=%d, check_empty=%d\n",
-                   fs->pc, check_nil, check_false, check_zero, check_empty);
             jmp_patch(fs, check_nil, fs->pc);
             jmp_patch(fs, check_false, fs->pc);
             jmp_patch(fs, check_zero, fs->pc);
             jmp_patch(fs, check_empty, fs->pc);
-            printf("DEBUG: After patching, still at PC=%d\n", fs->pc);
 
-            printf("DEBUG: About to evaluate RHS at PC=%d into dest_reg=%d, e2->k=%d\n", fs->pc, dest_reg, e2->k);
             // Evaluate RHS
             expr_toreg(fs, e2, dest_reg);
-            printf("DEBUG: RHS evaluated at PC=%d, dest_reg=%d, reg=%d, need copy=%d, e2->k=%d, e2->u.s.info=%d\n",
-                   fs->pc, dest_reg, reg, dest_reg != reg, e2->k, e2->k == VNONRELOC ? e2->u.s.info : 999);
             if (dest_reg != reg) {
                // Copy the fallback result back into the original slot so callers
                // (assignments, returns) continue to observe the same register
                // they used for the LHS. This mirrors the ternary operator,
                // which always delivers its result in the condition register.
-               printf("DEBUG: Copying from dest_reg=%d to reg=%d, emitting MOV at PC=%d\n", dest_reg, reg, fs->pc);
                bcemit_AD(fs, BC_MOV, reg, dest_reg);
-               printf("DEBUG: MOV emitted, now at PC=%d\n", fs->pc);
             }
-            printf("DEBUG: Before jmp_patch(skip=%d, fs->pc=%d)\n", skip, fs->pc);
             jmp_patch(fs, skip, fs->pc);
-            printf("DEBUG: After jmp_patch\n");
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
 
             expr_init(e1, VNONRELOC, reg);
