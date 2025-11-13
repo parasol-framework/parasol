@@ -2,7 +2,7 @@
 
    if not mVector then mVector = mod.load('vector') end
 
-if (vfx == nil) then
+if not vfx then
    vfx = {
       fps = 1/60 -- Desired FPS for the effects, ideally matches the display
    }
@@ -25,14 +25,14 @@ end
 
 vfx.config_circle = function(State, Options)
    State.cx = 0.5 * State.v_width
-   if (type(Options.cx) == 'number') then State.cx = Options.cx * State.v_width end
+   if type(Options.cx) is 'number' then State.cx = Options.cx * State.v_width end
 
    State.cy = 0.5 * State.v_height
-   if (type(Options.cy) == 'number') then State.cy = Options.cy * State.v_height end
+   if type(Options.cy) is 'number' then State.cy = Options.cy * State.v_height end
 
    local ex, ey
-   if (State.cx <= 0.5) then ex = State.v_width else ex = 0 end
-   if (State.cy <= 0.5) then ey = State.v_height else ey = 0 end
+   if State.cx <= 0.5 then ex = State.v_width else ex = 0 end
+   if State.cy <= 0.5 then ey = State.v_height else ey = 0 end
 
    State.max_radius = vfx.dist(State.cx, State.cy, ex, ey)
 end
@@ -122,8 +122,8 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
-      if (state.time == nil) then state.time = CurrentTime end
-      if (state.delay > 0) then
+      if not state.time then state.time = CurrentTime end
+      if state.delay > 0 then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
             state.delay = 0
             mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
@@ -162,8 +162,8 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
-      if (state.time == nil) then state.time = CurrentTime end
-      if (state.delay > 0) then
+      if not state.time then state.time = CurrentTime end
+      if state.delay > 0 then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
             state.delay = 0
             mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
@@ -179,7 +179,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
          mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
          Viewport.acDraw()
 
-         if (value >= 1.0) then
+         if value >= 1.0 then
             if state.callback then state.callback(state) end
             check(ERR_Terminate)
          end
@@ -205,7 +205,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
-      if (state.time == nil) then state.time = CurrentTime end
+      if not state.time then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
             state.delay = 0
@@ -255,8 +255,8 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
-      if (state.time == nil) then state.time = CurrentTime end
-      if (state.delay > 0) then
+      if not state.time then state.time = CurrentTime end
+      if state.delay > 0 then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
             state.delay = 0
             mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
@@ -302,8 +302,8 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
-      if (state.time == nil) then state.time = CurrentTime end
-      if (state.delay > 0) then
+      if not state.time then state.time = CurrentTime end
+      if state.delay > 0 then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
             state.delay = 0
             mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
@@ -493,8 +493,8 @@ vfx.wipes.spiral.init = function(State, Options)
    vfx.config_circle(State, Options)
 
    State.segments = (Options.segments ? 2)
-   if (State.segments < 1) then State.segments = 1 end
-   if (State.segments > State.max_radius * 0.33) then State.segments = math.floor(State.max_radius * 0.33) end
+   if State.segments < 1 then State.segments = 1 end
+   if State.segments > State.max_radius * 0.33 then State.segments = math.floor(State.max_radius * 0.33) end
 
    State.spiral = State.clip.viewport.new('VectorSpiral', {
       cx = State.cx, cy = State.cy,
@@ -569,7 +569,7 @@ vfx.initTimer = function(State, Options)
    err, State.timerID = mSys.SubscribeTimer(1 * vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not State.viewport.exists() then check(ERR_Terminate) end
 
-      if (State.time == nil) then State.time = CurrentTime end
+      if not State.time then State.time = CurrentTime end
       if (State.delay > 0) then
          if ((CurrentTime - State.time) >= State.delay * 1000000) then
             State.delay = 0
@@ -583,11 +583,7 @@ vfx.initTimer = function(State, Options)
             if State.callback then State.callback(State) end
             check(ERR_Terminate)
          else
-            if Options.invert then
-               State.animate(State, Options, 1.0 - value)
-            else
-               State.animate(State, Options, value)
-            end
+            State.animate(State, Options, Options.invert ? 1.0 - value :> value)
             State.viewport.acDraw()
          end
       end
