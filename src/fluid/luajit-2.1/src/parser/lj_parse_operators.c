@@ -493,7 +493,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             if (rhs_reg == NO_REG) {
                dest_reg = fs->freereg;
                bcreg_reserve(fs, 1);
-            } 
+            }
             else {
                dest_reg = rhs_reg;
                if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
@@ -513,20 +513,26 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Evaluate RHS
             expr_toreg(fs, e2, dest_reg);
+            if (dest_reg != reg) {
+               // Copy the fallback result back into the original slot so callers
+               // (assignments, returns) continue to observe the same register
+               // they used for the LHS. This mirrors the ternary operator,
+               // which always delivers its result in the condition register.
+               bcemit_AD(fs, BC_MOV, reg, dest_reg);
+            }
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
-            expr_init(e1, VNONRELOC, dest_reg);
+            BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
+            expr_init(e1, VNONRELOC, result_reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
 
-            // Collapse freereg to drop rhs_reg and any temporaries.
-            // After the MOV, the result only lives in dest_reg, so we must free dest_reg.
-            // Set freereg to max(nactvar, dest_reg + 1) to drop stale copies in dest_reg.
-            // This prevents BC_CAT from concatenating them when result is used in concatenation.
-            // Only adjust if dest_reg was actually used (dest_reg > reg) and not from safe nav chain.
-
-            if (dest_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
-               BCReg target_free = (dest_reg >= fs->nactvar) ? dest_reg + 1 : fs->nactvar;
-               if (fs->freereg > target_free) fs->freereg = target_free;
+            // Keep the allocator aligned with the register holding the result. This mirrors
+            // the handling of the ternary operator, where the expression descriptor points at
+            // the live destination register. When the optional participates in concatenation
+            // chains, this ensures expr_tonextreg() frees the borrowed slot instead of
+            // expanding the CAT span with duplicated values.
+            if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
+               fs->freereg = dest_reg + 1;
             }
          }
          else { // Constant falsey value - evaluate RHS directly
