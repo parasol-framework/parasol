@@ -3,7 +3,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 
 function ignoreAction(actionID)
-   if (actionID is nil) then return nil end
+   if not actionID then return nil end
    return glIgnoreList[actionID]
 end
 
@@ -344,7 +344,7 @@ function saveDocuments()
    if not table.empty(glFunctions) then
       local out = docModuleHeader()
       for _, func in ipairs(glFunctions) do
-         out = out .. docFunction(func)
+         out ..= docFunction(func)
       end
       out ..= docTypes()
       out ..= docStructures()
@@ -464,28 +464,28 @@ function extractParagraph(Input, Caller, References)
                   if (key:sub(1,1) is '/') then
                      balance -= 1
                   else
-                     balance += 1
+                     balance++
                   end
                end)
-               Input = Input .. lines[i] .. '\n'
-               i += 1
+               Input ..= lines[i] .. '\n'
+               i++
             until (balance <= 0) or (i > #lines)
          elseif (action is 'paragraph') then
             -- Sanity check for tags that start a line but are part of a paragraph.
-            if (currentParagraph is nil) then
+            if not currentParagraph then
                currentParagraph = line
             else
                currentParagraph ..= ' ' .. line
             end
-            i += 1
+            i++
          elseif (action is 'insert') then
             closeParagraph()
             Input ..= line .. '\n'
-            i += 1
+            i++
          end
       else -- Blank line
          closeParagraph()
-         i += 1
+         i++
       end
    end
 
@@ -535,7 +535,7 @@ function substituteReferences(String, Class)
    -- Substitute action and method references, identified as #MethodName()
 
    String = String:gsub('#([A-Z]%w*)%(%)', function(CallName)
-      if (Class is nil) then
+      if not Class then
          return '<action>' .. CallName .. '</action>'
       elseif (Class.lookupMethods) and (Class.lookupMethods[CallName]) then
          return '<method>' .. CallName .. '</method>'
@@ -549,7 +549,7 @@ function substituteReferences(String, Class)
    -- Substitute field references, identified as #Field.
 
    String = String:gsub('#([A-Z]%w*)', function(Field)
-      if (Class is nil) then
+      if not Class then
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
             if (Field:match('[A-Z0-9]+') != nil) then return end
@@ -631,60 +631,60 @@ end
 -- Generate a header suitable for class documents.
 
 function docClass(Class)
-   if (Class.meta is nil) then
+   if not Class.meta then
       print('No compiled meta information available for class ' .. Class.name)
       return
    end
    local meta = Class.meta
 
    local out = '<?xml version="1.0"?>\n'
-   out = out .. '<?xml-stylesheet type="text/xsl" href="class.xsl"?>\n\n'
-   out = out .. '<book>\n'
-   out = out .. '  <info>\n'
-   out = out .. '    <name>' .. Class.name .. '</name>\n'
-   out = out .. '    <type>class</type>\n'
-   if glModule.name??      then out = out .. '    <module>' .. glModule.name .. '</module>\n' end
-   if glModule.author??    then out = out .. '    <author>' .. glModule.author:escXML() .. '</author>\n' end
-   if Class.comment??      then out = out .. '    <comment>' .. substituteReferences(Class.comment:escXML(), Class) .. '</comment>\n' end
-   if Class.keywords??     then out = out .. '    <keywords>' .. Class.keywords:escXML() .. '</keywords>\n' end
-   if meta.fileExtension?? then out = out .. '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
+   out ..= '<?xml-stylesheet type="text/xsl" href="class.xsl"?>\n\n'
+   out ..= '<book>\n'
+   out ..= '  <info>\n'
+   out ..= '    <name>' .. Class.name .. '</name>\n'
+   out ..= '    <type>class</type>\n'
+   if glModule.name??      then out ..= '    <module>' .. glModule.name .. '</module>\n' end
+   if glModule.author??    then out ..= '    <author>' .. glModule.author:escXML() .. '</author>\n' end
+   if Class.comment??      then out ..= '    <comment>' .. substituteReferences(Class.comment:escXML(), Class) .. '</comment>\n' end
+   if Class.keywords??     then out ..= '    <keywords>' .. Class.keywords:escXML() .. '</keywords>\n' end
+   if meta.fileExtension?? then out ..= '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
    if meta.fileDescription?? then out = out .. '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
-   out = out .. '    <version>' .. (meta.classVersion ? 1) .. '</version>\n'
+   out ..= '    <version>' .. (meta.classVersion ? 1) .. '</version>\n'
    local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
-   out = out .. '    <id>' .. class_hash .. '</id>\n'
-   out = out .. '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
+   out ..= '    <id>' .. class_hash .. '</id>\n'
+   out ..= '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
    local cat = meta.get('$category')
    if cat?? then
-      out = out .. '    <category>' .. cat .. '</category>\n'
+      out ..= '    <category>' .. cat .. '</category>\n'
    end
-   if Class.include??      then out = out .. '    <include>' .. Class.include .. '</include>\n' end
-   if Class.date??         then out = out .. '    <date>' .. Class.date .. '</date>\n' end
-   if glModule.copyright?? then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
-   if Class.description??  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class, Class.references) .. '</description>\n' end
+   if Class.include??      then out ..= '    <include>' .. Class.include .. '</include>\n' end
+   if Class.date??         then out ..= '    <date>' .. Class.date .. '</date>\n' end
+   if glModule.copyright?? then out ..= '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
+   if Class.description??  then out ..= '    <description>\n' .. extractParagraph(Class.description, Class, Class.references) .. '</description>\n' end
 
    if not table.empty(Class.src) then
-      out = out .. '    <source>\n'
+      out ..= '    <source>\n'
       local path
       for _, path in pairs(Class.src) do
          local filename = path:gsub('.*[:/\\](.-)', '%1', 1)
          local path = path:match('(.*[:/\\])(.-)')
          local xpath = ''
          if path?? then xpath = " path=\"" .. path:escXML() .. '"' end
-         out = out .. "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
+         out ..= "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
       end
-      out = out .. "    </source>\n"
+      out ..= "    </source>\n"
    end
 
-   out = out .. "  </info>\n"
+   out ..= "  </info>\n"
 
    if not table.empty(Class.sortedActions) then
-      out = out .. "\n  <actions>\n"
+      out ..= "\n  <actions>\n"
       for _, a in ipairs(Class.sortedActions) do
          if (ignoreAction(glActions[a.name].id) != true) or a.description?? then
-            out = out .. '    <action>\n'
-            out = out .. '      <name>' .. a.name .. '</name>\n'
-
-            if a.comment is nil then a.comment = glActions[a.name].comment end
+            out ..= '    <action>\n'
+            out ..= '      <name>' .. a.name .. '</name>\n'
+            
+            if not a.comment then a.comment = glActions[a.name].comment end
             if a.comment?? then out = out .. '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
 
             if glActions[a.name].prototype?? then
@@ -696,16 +696,16 @@ function docClass(Class)
                for _, param in ipairs(glActions[a.name].params) do
                   local ref = ''
                   if param.lookup?? then ref = ' lookup="' .. param.lookup .. '"' end
-                  if (param.comment is nil) then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
-                  out = out .. "        <param type=\"" .. (param.docType ? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+                  if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
+                  out ..= "        <param type=\"" .. (param.docType ? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
-               out = out .. '      </input>\n'
+               out ..= '      </input>\n'
             end
 
             if a.description?? then
-               out = out .. '      <description>\n'
-               out = out .. extractParagraph(a.description, Class, Class.references)
-               out = out .. '\n      </description>\n'
+               out ..= '      <description>\n'
+               out ..= extractParagraph(a.description, Class, Class.references)
+               out ..= '\n      </description>\n'
             end
 
             if not table.empty(a.results) then
@@ -748,7 +748,7 @@ function docClass(Class)
                for _, param in ipairs(method.params) do
                   local ref = ''
                   if param.ref?? then ref = " lookup=\"" .. param.lookup .. '"' end
-                  if (param.comment is nil) then error('No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"') end
+                  if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"') end
                   out = out .. "        <param type=\"" .. param.docType:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
                out = out .. '      </input>\n'
@@ -786,11 +786,11 @@ function docClass(Class)
 
       table.sort(Class.sortedFields, function(a,b) return a.name < b.name end)
 
-      out = out .. '\n  <fields>\n'
+      out ..= '\n  <fields>\n'
       for _, f in ipairs(Class.sortedFields) do
          if (f.private != true) then
-            out = out .. '    <field>\n'
-            out = out .. '      <name>' .. f.name .. '</name>\n'
+            out ..= '    <field>\n'
+            out ..= '      <name>' .. f.name .. '</name>\n'
 
             if f.comment?? then
                out = out .. '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
@@ -921,13 +921,13 @@ function docFunction(Function)
 
    local out = '  <function>\n'
 
-   if Function.name??      then out = out .. '    <name>' .. Function.name .. '</name>\n' end
-   if Function.category??  then out = out .. '    <category>' .. Function.category .. '</category>\n' end
-   if Function.version??   then out = out .. '    <version>' .. Function.version .. '</version>\n' end
-   if Function.synonym??   then out = out .. '    <synonym>' .. Function.synonym .. '</synonym>\n' end
-   if Function.comment??   then out = out .. '    <comment>' .. substituteReferences(Function.comment:escXML()) .. '</comment>\n' end
-   if Function.prototype?? then out = out .. '    <prototype>' .. Function.docPrototype:escXML() .. '</prototype>\n' end
-   if Function.id??        then out = out .. '    <id>' .. Function.id .. '</id>\n' end
+   if Function.name??      then out ..= '    <name>' .. Function.name .. '</name>\n' end
+   if Function.category??  then out ..= '    <category>' .. Function.category .. '</category>\n' end
+   if Function.version??   then out ..= '    <version>' .. Function.version .. '</version>\n' end
+   if Function.synonym??   then out ..= '    <synonym>' .. Function.synonym .. '</synonym>\n' end
+   if Function.comment??   then out ..= '    <comment>' .. substituteReferences(Function.comment:escXML()) .. '</comment>\n' end
+   if Function.prototype?? then out ..= '    <prototype>' .. Function.docPrototype:escXML() .. '</prototype>\n' end
+   if Function.id??        then out ..= '    <id>' .. Function.id .. '</id>\n' end
 
    -- Function arguments
 
@@ -940,14 +940,14 @@ function docFunction(Function)
          end
 
          if not fa.type then
-            args = args .. string.format("      <param type=\"?\" name=\"%s\"" .. ref .. ">%s</param>\n",
+            args ..= string.format("      <param type=\"?\" name=\"%s\"" .. ref .. ">%s</param>\n",
                fa.name, substituteReferences(fa.comment:escXML()))
          else
-            args = args .. string.format("      <param type=\"%s\" name=\"%s\"" .. ref .. ">%s</param>\n",
+            args ..= string.format("      <param type=\"%s\" name=\"%s\"" .. ref .. ">%s</param>\n",
                fa.docType:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
          end
 
-         if (fa.comment is 'Undocumented') then
+         if fa.comment is 'Undocumented' then
             error(Function.name .. '() parameter "' .. fa.name .. '" is undocumented.')
          end
       end
@@ -1015,7 +1015,7 @@ function docTypes(References)
 
       if ct.restrict?? then
          -- Ignore private types
-      elseif References and (References['TYPE:' .. ct.prefix] is nil) then
+      elseif References and (not References['TYPE:' .. ct.prefix]) then
          -- Type is not referenced
       else
          out ..= "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
@@ -1066,7 +1066,7 @@ function docStructures(References)
       if struct.restrict?? then
          -- Don't output restricted structures.
          --verbose(struct.name .. ' is restricted.')
-      elseif References and (References['STRUCT:' .. struct.name] is nil) then
+      elseif References and (not References['STRUCT:' .. struct.name]) then
          -- Don't output unreferenced structures.
          --verbose(struct.name .. ' is unreferenced.')
       else

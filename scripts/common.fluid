@@ -57,7 +57,7 @@ table.sortByKeys = function(t, f)
    local i = 0
    local iter = function()
       i = i + 1
-      if a[i] is nil then return nil
+      if not a[i] then return nil
       else return a[i], t[a[i]]
       end
    end
@@ -109,9 +109,9 @@ end
 ------------------------------------------------------------------------------
 
 file.splitPath = function(Path)
-   if Path is nil then return nil, nil end
+   if not Path then return nil, nil end
    local path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
-   if path is nil then
+   if not path then
       return nil, Path
    end
    return path, fl

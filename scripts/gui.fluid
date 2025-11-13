@@ -30,7 +30,7 @@ end
 -- Read a style value and return it in pixel units.  Supports px, in, mm, pt, dp
 
 gui.pixel = function(val)
-   if val != nil then
+   if val then
       local num, alpha = val:match('^(%d+)(%a-)$')
       num = tonumber(num)
       assert(num, 'Invalid graphics unit \'' .. val .. '\'')
@@ -59,7 +59,7 @@ end
 gui.strToRGB = function(Value)
    assert(Value, 'Empty value passed to strToRGB()\n' .. debug.traceback())
 
-   local result
+   local result, fail
    xpcall(function()
       if string.byte(Value) is 35 then
          local colour = tonumber(string.sub(Value,2), 16)
@@ -101,9 +101,10 @@ gui.strToRGB = function(Value)
       end
    end,
    function(Error)
-      error(Error .. '\nInput value: ' .. Value .. '\n' .. debug.traceback())
+      fail = Error .. '\nInput value: ' .. Value .. '\n' .. debug.traceback()
    end)
 
+   assert(not fail, fail)
    return result
 end
 
@@ -248,9 +249,9 @@ gui.applyFill = function(Vector, Fill)
       if Vector.fill != 'none' then
          Vector.fill = Fill
       end
-      if Vector.stroke != nil then Vector.stroke = Fill end
+      if Vector.stroke then Vector.stroke = Fill end
       local child = Vector.child
-      if child != nil then gui.applyFill(child, Fill) end
+      if child then gui.applyFill(child, Fill) end
       Vector = Vector.next
    end
 end
