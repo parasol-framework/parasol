@@ -141,10 +141,15 @@ static void expr_safe_field_branch(LexState* ls, ExpDesc* v,
    FuncState* fs = ls->fs;
    ExpDesc key;
 
+   printf("DEBUG: [expr_safe_field_branch] Entry: obj_reg=%d, result_reg=%d, freereg=%d\n", obj_reg, result_reg, fs->freereg);
    expr_str(ls, &key);
+   printf("DEBUG: [expr_safe_field_branch] After expr_str: freereg=%d\n", fs->freereg);
    expr_init(v, VNONRELOC, obj_reg);
+   printf("DEBUG: [expr_safe_field_branch] After expr_init: v->k=%d, v->u.s.info=%d\n", v->k, v->u.s.info);
    expr_index(fs, v, &key);
+   printf("DEBUG: [expr_safe_field_branch] After expr_index: v->k=%d, v->u.s.info=%d, freereg=%d\n", v->k, v->k == VNONRELOC ? v->u.s.info : 999, fs->freereg);
    expr_toreg(fs, v, result_reg);
+   printf("DEBUG: [expr_safe_field_branch] After expr_toreg: v->k=%d, v->u.s.info=%d, freereg=%d\n", v->k, v->u.s.info, fs->freereg);
 }
 
 // Parse safe navigation for field access: obj?.field
