@@ -100,15 +100,8 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    check_nil = bcemit_jmp(fs);
 
    printf("DEBUG: [expr_safe_nav_branch] Before emit_branch: freereg=%d\n", fs->freereg);
-   BCReg saved_freereg = fs->freereg;
    emit_branch(ls, v, obj_reg, result_reg);
-   printf("DEBUG: [expr_safe_nav_branch] After emit_branch: freereg=%d (was %d)\n", fs->freereg, saved_freereg);
-   // Restore freereg - emit_branch may have collapsed it, but we need to preserve
-   // the register allocation for chained safe navigation operations
-   if (fs->freereg < saved_freereg) {
-      printf("DEBUG: [expr_safe_nav_branch] Restoring freereg from %d to %d\n", fs->freereg, saved_freereg);
-      fs->freereg = saved_freereg;
-   }
+   printf("DEBUG: [expr_safe_nav_branch] After emit_branch: freereg=%d\n", fs->freereg);
 
    // After evaluating the non-nil branch, skip the nil handling.
    skip_branch = bcemit_jmp(fs);
