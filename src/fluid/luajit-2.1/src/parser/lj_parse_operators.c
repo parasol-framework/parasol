@@ -159,9 +159,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          // active local slot.
          if (!expr_isk_nojump(e)) {
             BCReg src_reg = expr_toanyreg(fs, e);
-            BCReg rhs_reg = fs->freereg;
             uint8_t flags = e->flags;
             bcreg_reserve(fs, 1);
+            BCReg rhs_reg = fs->freereg - 1;
             expr_init(e, VNONRELOC, src_reg);
             e->u.s.aux = rhs_reg;
             // Restore flags but NOW clear SAFE_NAV_CHAIN_FLAG since we've captured the register.
@@ -466,7 +466,6 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             ExpDesc nilv, falsev, zerov, emptyv;
             BCPos skip;
             BCPos check_nil, check_false, check_zero, check_empty;
-            BCReg dest_reg;
 
             // Check for nil
             expr_init(&nilv, VKNIL, 0);
@@ -490,17 +489,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
-            if (rhs_reg == NO_REG) {
-               dest_reg = fs->freereg;
-               bcreg_reserve(fs, 1);
+            if (rhs_reg != NO_REG && rhs_reg >= fs->nactvar && fs->freereg > rhs_reg) {
+               fs->freereg = rhs_reg;
             }
-            else {
-               dest_reg = rhs_reg;
-               if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
-            }
-
-            // Preserve original value for truthy path before emitting skip jump.
-            bcemit_AD(fs, BC_MOV, dest_reg, reg);
 
             // If all checks pass (value is truthy), skip RHS
             skip = bcemit_jmp(fs);
@@ -511,15 +502,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, check_zero, fs->pc);
             jmp_patch(fs, check_empty, fs->pc);
 
-            // Evaluate RHS
-            expr_toreg(fs, e2, dest_reg);
-            if (dest_reg != reg) {
-               // Copy the fallback result back into the original slot so callers
-               // (assignments, returns) continue to observe the same register
-               // they used for the LHS. This mirrors the ternary operator,
-               // which always delivers its result in the condition register.
-               bcemit_AD(fs, BC_MOV, reg, dest_reg);
-            }
+            // Evaluate RHS directly into the original register; by this point
+            // we're executing the falsey path, so the original value is no longer
+            // required.
+            expr_toreg(fs, e2, reg);
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
 
@@ -532,11 +518,15 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             ** operator semantics and prevents the optional from leaking an extra
             ** argument slot when used in function-call contexts.
             */
-            if (dest_reg != reg && dest_reg >= fs->nactvar && fs->freereg > dest_reg) {
-               fs->freereg = dest_reg;
-            }
-            if (reg >= fs->nactvar && fs->freereg > reg + 1) {
-               fs->freereg = reg + 1;
+            /*
+            ** Normalise the allocator so subsequent consumers (particularly function
+            ** calls) observe a contiguous stack. The safe-navigation result now lives
+            ** in "reg", so only registers up to either the highest active local or
+            ** that slot need to remain reserved.
+            */
+            BCReg required_top = (reg < fs->nactvar) ? fs->nactvar : (reg + 1);
+            if (fs->freereg > required_top) {
+               fs->freereg = required_top;
             }
          }
          else { // Constant falsey value - evaluate RHS directly
