@@ -5,7 +5,7 @@ that is distributed with this package.  Please refer to it for further informati
 
 **********************************************************************************************************************
 
-This version of the Parasol launcher is intended for use from the command-line only.
+This version of the launcher is intended for use from the command-line only.
 
 *********************************************************************************************************************/
 
@@ -95,6 +95,7 @@ static ERR process_args(void)
          else if (pf::iequals(args[i], "--version")) { // Print version information
             printf("%s\n", PARASOL_VERSION);
             printf("%s:%s\n", PARASOL_GIT_BRANCH, PARASOL_GIT_COMMIT);
+            printf("Build Type: %s\n", PARASOL_BUILD_TYPE);
             return ERR::Terminate;
          }
          else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
