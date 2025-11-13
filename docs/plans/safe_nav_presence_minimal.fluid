@@ -1,3 +1,0 @@
-local guest = nil
-local display = guest?.profile?.name ? "Guest"
-print("display => " .. tostring(display))

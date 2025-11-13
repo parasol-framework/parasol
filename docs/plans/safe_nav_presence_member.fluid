@@ -1,3 +1,0 @@
-local member = { profile = { name = "Chloe" } }
-local display = member?.profile?.name ? "Guest"
-print("member display => " .. tostring(display))
