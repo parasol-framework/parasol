@@ -1,0 +1,5 @@
+-- Test with single safe nav instead of chained
+
+local guest = nil
+local result = guest?.profile ? "Guest"
+print("Result: " .. tostring(result))

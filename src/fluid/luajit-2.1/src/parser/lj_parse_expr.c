@@ -83,11 +83,14 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    BCReg obj_reg, result_reg;
    BCPos check_nil, skip_branch;
 
+   printf("DEBUG: [expr_safe_nav_branch] Entry: v->k=%d, v->flags=0x%02x, PC=%d\n", v->k, v->flags, fs->pc);
    expr_discharge(fs, v);
    obj_reg = expr_toanyreg(fs, v);
 
    result_reg = fs->freereg;
+   printf("DEBUG: [expr_safe_nav_branch] Before bcreg_reserve: freereg=%d, result_reg=%d\n", fs->freereg, result_reg);
    bcreg_reserve(fs, 1);
+   printf("DEBUG: [expr_safe_nav_branch] After bcreg_reserve: freereg=%d, obj_reg=%d, result_reg=%d, PC=%d\n", fs->freereg, obj_reg, result_reg, fs->pc);
 
    /* Emit nil check on the base object. When the comparison succeeds the VM
    ** uses the following BC_JMP as the branch target, so nil values jump to the
@@ -96,21 +99,33 @@ static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
+   printf("DEBUG: [expr_safe_nav_branch] Before emit_branch: freereg=%d\n", fs->freereg);
+   BCReg saved_freereg = fs->freereg;
    emit_branch(ls, v, obj_reg, result_reg);
+   printf("DEBUG: [expr_safe_nav_branch] After emit_branch: freereg=%d (was %d)\n", fs->freereg, saved_freereg);
+   // Restore freereg - emit_branch may have collapsed it, but we need to preserve
+   // the register allocation for chained safe navigation operations
+   if (fs->freereg < saved_freereg) {
+      printf("DEBUG: [expr_safe_nav_branch] Restoring freereg from %d to %d\n", fs->freereg, saved_freereg);
+      fs->freereg = saved_freereg;
+   }
 
    // After evaluating the non-nil branch, skip the nil handling.
    skip_branch = bcemit_jmp(fs);
 
    // Nil branch: patch the jump target && write nil to the result register.
+   printf("DEBUG: [expr_safe_nav_branch] Patching check_nil=%d to PC=%d\n", check_nil, fs->pc);
    jmp_patch(fs, check_nil, fs->pc);
+   printf("DEBUG: [expr_safe_nav_branch] Emitting KPRI result_reg=%d at PC=%d\n", result_reg, fs->pc);
    bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
+   printf("DEBUG: [expr_safe_nav_branch] After KPRI, PC=%d\n", fs->pc);
 
    // Merge point for both branches.
+   printf("DEBUG: [expr_safe_nav_branch] Patching skip_branch=%d to PC=%d\n", skip_branch, fs->pc);
    jmp_patch(fs, skip_branch, fs->pc);
    expr_init(v, VNONRELOC, result_reg);
-   v->flags |= SAFE_NAV_CHAIN_FLAG;
-   printf("DEBUG[expr_safe_nav_branch]: Setting SAFE_NAV_CHAIN_FLAG, result_reg=%d, freereg=%d\n",
-          result_reg, fs->freereg);
+   v->flags |= SAFE_NAV_CHAIN_FLAG | EXP_SAFE_NAV_RESULT_FLAG;
+   printf("DEBUG: [expr_safe_nav_branch] Exit: result_reg=%d, v->flags=0x%02x, freereg=%d, PC=%d\n", result_reg, v->flags, fs->freereg, fs->pc);
 }
 
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)

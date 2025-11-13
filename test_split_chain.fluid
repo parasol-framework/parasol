@@ -1,0 +1,7 @@
+-- Test with split chain
+
+local guest = nil
+local temp1 = guest?.profile
+local temp2 = temp1?.name
+local result = temp2 ? "Guest"
+print("Result: " .. tostring(result))

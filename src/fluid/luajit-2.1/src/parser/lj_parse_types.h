@@ -71,6 +71,18 @@ typedef struct ExpDesc {
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
 #define EXP_HAS_RHS_REG_FLAG     0x04u
 
+// Flag marking expression results from safe navigation that need protected register allocation.
+// This flag prevents premature register collapse in chained safe navigation operations.
+//
+// Lifecycle:
+//   SET: In expr_safe_nav_branch() alongside SAFE_NAV_CHAIN_FLAG
+//   CHECKED: In register management code before collapsing freereg
+//   CLEARED: When value is consumed by operators or register can be safely reused
+//
+// Purpose: Prevents register aliasing when safe navigation results are used with if-empty operator.
+// Example: guest?.profile?.name ? "Guest" - without this flag, src_reg and rhs_reg would alias.
+#define EXP_SAFE_NAV_RESULT_FLAG 0x08u
+
 /*
 ** Expression helpers that previously relied on flag bits within ExpDesc.aux now
 ** store their metadata in ExpDesc.flags. The aux field can therefore be used
