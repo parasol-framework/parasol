@@ -648,7 +648,7 @@ function docClass(Class)
    if Class.comment??      then out ..= '    <comment>' .. substituteReferences(Class.comment:escXML(), Class) .. '</comment>\n' end
    if Class.keywords??     then out ..= '    <keywords>' .. Class.keywords:escXML() .. '</keywords>\n' end
    if meta.fileExtension?? then out ..= '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
-   if meta.fileDescription?? then out = out .. '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
+   if meta.fileDescription?? then out ..= '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
    out ..= '    <version>' .. (meta.classVersion ? 1) .. '</version>\n'
    local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out ..= '    <id>' .. class_hash .. '</id>\n'
