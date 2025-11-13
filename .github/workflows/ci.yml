@@ -191,5 +191,5 @@ jobs:
         git push origin :refs/tags/UNSTABLE 2>/dev/null || true
 
         # Create new UNSTABLE tag at current commit
-        git tag -a UNSTABLE -m "Unstable build - tests failed on $(date -u +%Y-%m-%d)"
+        git tag -a UNSTABLE -m "Unstable build - tests failed on $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
         git push origin UNSTABLE
