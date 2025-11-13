@@ -17,6 +17,7 @@ This version of the Parasol launcher is intended for use from the command-line o
 #include <string.h>
 
 #include "common.h"
+#include "version.h"
 
 extern struct CoreBase *CoreBase;
 
@@ -36,39 +37,43 @@ static bool glBackstage = false;
 
 static ERR exec_source(CSTRING, int, const std::string);
 
-static constexpr char glHelp[] = {
-"This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
-\n\
-   parasol [options] [script.ext] arg1 arg2=value ...\n\
-\n\
-The following options can be used when executing script files:\n\
-\n\
- --procedure [n] The name of a procedure to execute.\n\
- --time          Print the amount of time that it took to execute the script.\n\
- --dialog        Display a file dialog for choosing a script manually.\n\
- --backstage     Enables the backstage REST API (see Wiki).\n\
-\n\
- --log-api       Activates run-time log messages at API level.\n\
- --log-info      Activates run-time log messages at INFO level.\n\
- --log-error     Activates run-time log messages at ERROR level.\n"
-};
+static const std::string glHelp = 
+   "Parasol Framework " PARASOL_VERSION R"(
+
+This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.
+
+   parasol [options] [script.ext] arg1 arg2=value ...
+
+The following options can be used when executing script files:
+   
+ --procedure [n] The name of a procedure to execute.
+ --time          Print the amount of time that it took to execute the script.
+ --dialog        Display a file dialog for choosing a script manually.
+ --backstage     Enables the backstage REST API (see Wiki).
+ 
+ --log-api       Activates run-time log messages at API level.
+ --log-info      Activates run-time log messages at INFO level.
+ --log-error     Activates run-time log messages at ERROR level.
+ --version       Prints the version number on line 1 and git commit on line 2.
+)";
 
 static std::string glDialogScript =
-"STRING:require 'gui/filedialog'\n\
-gui.dialog.file({\n\
- filterList = { { name='Script Files', ext='.fluid' } },\n\
- title      = 'Run a Script',\n\
- okText     = 'Run Script',\n\
- cancelText = 'Exit',\n\
- path       = '%%PATH%%',\n\
- feedback = function(Dialog, Path, Files)\n\
-  if (Files == nil) then mSys.SendMessage(MSGID_QUIT) return end\n\
-  glRunFile = Path .. Files[1].filename\n\
-  processing.signal()\n\
- end\n\
-})\n\
-processing.sleep(nil, true)\n\
-if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end\n";
+R"(STRING:require 'gui/filedialog'
+gui.dialog.file({
+ filterList = { { name='Script Files', ext='.fluid' } },
+ title      = 'Run a Script',
+ okText     = 'Run Script',
+ cancelText = 'Exit',
+ path       = '%%PATH%%',
+ feedback = function(Dialog, Path, Files)
+  if (Files == nil) then mSys.SendMessage(MSGID_QUIT) return end
+  glRunFile = Path .. Files[1].filename
+  processing.signal()
+ end
+})
+processing.sleep(nil, true)
+if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end
+)";
 
 //********************************************************************************************************************
 
@@ -84,7 +89,12 @@ static ERR process_args(void)
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
          if (pf::iequals(args[i], "--help")) { // Print help for the user
-            printf(glHelp);
+            printf("%s", glHelp.c_str());
+            return ERR::Terminate;
+         }
+         else if (pf::iequals(args[i], "--version")) { // Print version information
+            printf("%s\n", PARASOL_VERSION);
+            printf("%s:%s\n", PARASOL_GIT_BRANCH, PARASOL_GIT_COMMIT);
             return ERR::Terminate;
          }
          else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
@@ -203,7 +213,7 @@ extern "C" int main(int argc, char **argv)
             if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
                result = (int)exec_source("main.fluid", glTime, glProcedure);
             }
-            else printf(glHelp);
+            else printf("%s", glHelp.c_str());
          }
       }
    }
