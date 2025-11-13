@@ -916,6 +916,8 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
 
    // Emit the first operation in the chain
    bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
+   lhs->flags = 0;
+   lhs->t = lhs->f = NO_JMP;
 
    /* Continue processing chained operators at the same precedence level.
    ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
@@ -930,12 +932,16 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
       ** This makes the previous result the input for the next operation. */
       lhs->k = VNONRELOC;
       lhs->u.s.info = base_reg;
+      lhs->flags = 0;
+      lhs->t = lhs->f = NO_JMP;
 
       // Parse the next RHS operand
       nextop = expr_binop(ls, &rhs, priority[follow].right);
 
       // Emit the next operation, reusing the same base register
       bcemit_shift_call_at_base(fs, priority[follow].name, (MSize)priority[follow].name_len, lhs, &rhs, base_reg);
+      lhs->flags = 0;
+      lhs->t = lhs->f = NO_JMP;
    }
 
    // Return any unconsumed operator for the caller to handle
@@ -1001,6 +1007,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
       // Handle ? specially: decide ternary vs optional BEFORE any emission.
       if (op == OPR_IF_EMPTY) {
+         uint8_t true_branch_flags = 0;
          if (lookahead_has_top_level_ternary_sep(ls)) {
             FuncState* fs = ls->fs;
             ExpDesc nilv, falsev, zerov, emptyv;
@@ -1040,6 +1047,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
                expr_discharge(fs, &v2);
                expr_toreg(fs, &v2, result_reg);
                expr_collapse_freereg(fs, result_reg);
+               true_branch_flags = v2.flags;
             }
 
             // Skip FALSE branch after executing TRUE branch.
@@ -1064,7 +1072,10 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
                expr_toreg(fs, &fexp, result_reg);
                expr_collapse_freereg(fs, result_reg);
                jmp_patch(fs, skip_false, fs->pc);
-               v->u.s.info = result_reg; v->k = VNONRELOC; op = nextop3; continue;
+               *v = fexp;
+               v->flags |= true_branch_flags;
+               op = nextop3;
+               continue;
             }
          }
          // Optional form: fall back to existing emission path.
