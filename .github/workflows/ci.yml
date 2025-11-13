@@ -167,6 +167,9 @@ jobs:
   tag-unstable:
     name: Tag as Unstable
     runs-on: ubuntu-latest
+    concurrency:
+      group: unstable-tag
+      cancel-in-progress: false
     needs: [build-and-test]
     if: always() && github.ref == 'refs/heads/master' && needs.build-and-test.result == 'failure'
 
