@@ -493,7 +493,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             if (rhs_reg == NO_REG) {
                dest_reg = fs->freereg;
                bcreg_reserve(fs, 1);
-            } 
+            }
             else {
                dest_reg = rhs_reg;
                if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
@@ -522,21 +522,18 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             }
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
-            expr_init(e1, VNONRELOC, reg);
+
+            BCReg result_reg = (dest_reg != reg) ? dest_reg : reg;
+            expr_init(e1, VNONRELOC, result_reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
 
-            // Collapse freereg to drop rhs_reg and any temporaries.
-            // After copying the fallback back into the original register, the extra
-            // destination slot is no longer needed. Set freereg to
-            // max(nactvar, reg + 1) so the borrowed destination register becomes
-            // reusable. This prevents BC_CAT from concatenating stale values when
-            // the result feeds into concatenations. Only adjust if we actually
-            // borrowed a higher register (dest_reg > reg) and the value did not
-            // originate from a safe navigation chain.
-
-            if (dest_reg > reg && !(saved_flags & SAFE_NAV_CHAIN_FLAG)) {
-               BCReg target_free = (reg >= fs->nactvar) ? (reg + 1) : fs->nactvar;
-               if (fs->freereg > target_free) fs->freereg = target_free;
+            // Keep the allocator aligned with the register holding the result. This mirrors
+            // the handling of the ternary operator, where the expression descriptor points at
+            // the live destination register. When the optional participates in concatenation
+            // chains, this ensures expr_tonextreg() frees the borrowed slot instead of
+            // expanding the CAT span with duplicated values.
+            if (dest_reg >= fs->nactvar && fs->freereg > dest_reg + 1) {
+               fs->freereg = dest_reg + 1;
             }
          }
          else { // Constant falsey value - evaluate RHS directly
