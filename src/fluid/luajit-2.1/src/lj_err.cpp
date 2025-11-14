@@ -392,12 +392,12 @@ typedef struct _Unwind_Exception
 } __attribute__((__aligned__)) _Unwind_Exception;
 #define UNWIND_EXCEPTION_TYPE	_Unwind_Exception
 
-extern uintptr_t _Unwind_GetCFA(_Unwind_Context *);
-extern void _Unwind_SetGR(_Unwind_Context *, int, uintptr_t);
-extern uintptr_t _Unwind_GetIP(_Unwind_Context *);
-extern void _Unwind_SetIP(_Unwind_Context *, uintptr_t);
-extern void _Unwind_DeleteException(_Unwind_Exception *);
-extern int _Unwind_RaiseException(_Unwind_Exception *);
+extern "C" uintptr_t _Unwind_GetCFA(_Unwind_Context *);
+extern "C" void _Unwind_SetGR(_Unwind_Context *, int, uintptr_t);
+extern "C" uintptr_t _Unwind_GetIP(_Unwind_Context *);
+extern "C" void _Unwind_SetIP(_Unwind_Context *, uintptr_t);
+extern "C" void _Unwind_DeleteException(_Unwind_Exception *);
+extern "C" int _Unwind_RaiseException(_Unwind_Exception *);
 
 #define _UA_SEARCH_PHASE	1
 #define _UA_CLEANUP_PHASE	2
@@ -469,7 +469,7 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions,
 
 #if LJ_UNWIND_EXT && defined(LUA_USE_ASSERT)
 struct dwarf_eh_bases { void *tbase, *dbase, *func; };
-extern const void *_Unwind_Find_FDE(void *pc, struct dwarf_eh_bases *bases);
+extern "C" const void *_Unwind_Find_FDE(void *pc, struct dwarf_eh_bases *bases);
 
 /* Verify that external error handling actually has a chance to work. */
 void lj_err_verify(void)
@@ -569,8 +569,8 @@ static const uint8_t err_frame_jit_template[] = {
 #define ERR_FRAME_JIT_OFS_REGISTER	0
 #endif
 
-extern void __register_frame(const void *);
-extern void __deregister_frame(const void *);
+extern "C" void __register_frame(const void *);
+extern "C" void __deregister_frame(const void *);
 
 uint8_t *lj_err_register_mcode(void *base, size_t sz, uint8_t *info)
 {
@@ -613,10 +613,10 @@ struct _Unwind_Control_Block {
   uint32_t misc[20];
 };
 
-extern int _Unwind_RaiseException(_Unwind_Control_Block *);
-extern int __gnu_unwind_frame(_Unwind_Control_Block *, _Unwind_Context *);
-extern int _Unwind_VRS_Set(_Unwind_Context *, int, uint32_t, int, void *);
-extern int _Unwind_VRS_Get(_Unwind_Context *, int, uint32_t, int, void *);
+extern "C" int _Unwind_RaiseException(_Unwind_Control_Block *);
+extern "C" int __gnu_unwind_frame(_Unwind_Control_Block *, _Unwind_Context *);
+extern "C" int _Unwind_VRS_Set(_Unwind_Context *, int, uint32_t, int, void *);
+extern "C" int _Unwind_VRS_Get(_Unwind_Context *, int, uint32_t, int, void *);
 
 static inline uint32_t _Unwind_GetGR(_Unwind_Context *ctx, int r)
 {
@@ -630,7 +630,7 @@ static inline void _Unwind_SetGR(_Unwind_Context *ctx, int r, uint32_t v)
   _Unwind_VRS_Set(ctx, 0, r, 0, &v);
 }
 
-extern void lj_vm_unwind_ext(void);
+extern "C" void lj_vm_unwind_ext(void);
 
 /* ARM unwinder personality handler referenced from interpreter .ARM.extab. */
 LJ_FUNCA int lj_err_unwind_arm(int state, _Unwind_Control_Block *ucb,
@@ -676,7 +676,7 @@ LJ_FUNCA int lj_err_unwind_arm(int state, _Unwind_Control_Block *ucb,
 
 #if LJ_UNWIND_EXT && defined(LUA_USE_ASSERT)
 typedef int (*_Unwind_Trace_Fn)(_Unwind_Context *, void *);
-extern int _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
+extern "C" int _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
 
 static int err_verify_bt(_Unwind_Context *ctx, int *got)
 {
