@@ -193,7 +193,11 @@ static int token_starts_expression(LexToken tok)
 
 static int should_emit_presence(LexState* ls)
 {
-   return !token_starts_expression(lj_lex_lookahead(ls));
+   BCLine token_line = ls->lastline;
+   BCLine operator_line = ls->linenumber;
+   LexToken lookahead = (ls->lookahead != TK_eof) ? ls->lookahead : lj_lex_lookahead(ls);
+   if (operator_line > token_line) return 1;
+   return !token_starts_expression(lookahead);
 }
 
 static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key)
@@ -788,78 +792,6 @@ static BinOpr token2binop(LexToken tok)
 
 #define UNARY_PRIORITY		8  // Priority for unary operators.
 
-/* Lookahead to determine if a top-level ':>' (TK_ternary_sep) follows this '?' operator.
-** This respects nesting of parentheses/brackets/braces && nested ternaries.
-** Returns 1 if a matching top-level ':>' is found; 0 otherwise.
-*/
-static int lookahead_has_top_level_ternary_sep(LexState* ls)
-{
-   // Character-level, non-destructive scan from current input position.
-   const char* p = ls->p;
-   const char* pe = ls->pe;
-   int depth_paren = 0, depth_brack = 0, depth_brace = 0, depth_tern = 0;
-   int in_squote = 0, in_dquote = 0;
-   LexChar c = ls->c;  // Current character already loaded by lexer.
-
-   while (1) {
-      char ch;
-      if (c == -1) break;  // EOF.
-      ch = (char)c;
-
-      // Inside single/double quoted strings: handle escapes && closing quote.
-      if (in_squote) {
-         if (ch == '\\') { if (p < pe) { c = (LexChar)(uint8_t)*p++; } else { c = -1; } }
-         else if (ch == '\'') { in_squote = 0; }
-         goto next_char;
-      }
-      if (in_dquote) {
-         if (ch == '\\') { if (p < pe) { c = (LexChar)(uint8_t)*p++; } else { c = -1; } }
-         else if (ch == '"') { in_dquote = 0; }
-         goto next_char;
-      }
-
-      // Enter quoted strings.
-      if (ch == '\'') { in_squote = 1; goto next_char; }
-      if (ch == '"') { in_dquote = 1; goto next_char; }
-
-      // Skip line comments: '--...' || '//' ... until EOL.
-      if (ch == '-' && p < pe && *p == '-') {
-         p++;
-         while (p < pe) { char cc = *p++; if (cc == '\n' || cc == '\r') break; }
-         c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
-         continue;
-      }
-      if (ch == '/' && p < pe && *p == '/') {
-         p++;
-         while (p < pe) { char cc = *p++; if (cc == '\n' || cc == '\r') break; }
-         c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
-         continue;
-      }
-
-      // Track simple bracket nesting.
-      if (ch == '(') { depth_paren++; goto next_char; }
-      if (ch == ')') { if (depth_paren > 0) depth_paren--; goto next_char; }
-      if (ch == '[') { depth_brack++; goto next_char; }
-      if (ch == ']') { if (depth_brack > 0) depth_brack--; goto next_char; }
-      if (ch == '{') { depth_brace++; goto next_char; }
-      if (ch == '}') { if (depth_brace > 0) depth_brace--; goto next_char; }
-
-      // Ternary depth: increment on '?', decrement on matching ':>'
-      if (ch == '?') { depth_tern++; goto next_char; }
-      if (ch == ':' && p < pe && *p == '>') {
-         if (depth_paren == 0 && depth_brack == 0 && depth_brace == 0) {
-            if (depth_tern == 0) return 1;  // Found top-level ':>' for our '?'.
-            // Matches an inner ternary: consume '>' && reduce depth.
-            p++; c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1; depth_tern--; continue;
-         }
-      }
-
-   next_char:
-      c = (p < pe) ? (LexChar)(uint8_t)*p++ : -1;
-   }
-   return 0;
-}
-
 // Forward declaration.
 static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 
@@ -1030,8 +962,6 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       lj_lex_next(ls);
 
       if (op == OPR_TERNARY) {
-         int has_sep = lookahead_has_top_level_ternary_sep(ls);
-         UNUSED(has_sep);
          {
             FuncState* fs = ls->fs;
             ExpDesc nilv, falsev, zerov, emptyv;

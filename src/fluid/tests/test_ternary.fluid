@@ -1,6 +1,6 @@
 -- Comprehensive test suite for ternary operator in Fluid
 -- condition ? true_expr :> false_expr
---fffffffffffffffffffffffffffffffffffffff
+
 -- Basic ternary tests
 function testBasicTrue()
    local v = true ? "A" :> "B"
@@ -191,8 +191,8 @@ function testChainedComparisons()
 end
 
 function testMixedOptionalAndFull()
-   local v = (5 ? 0) > 3 ? "high" :> "low"
-   -- First: 5 ? 0 = 5
+   local v = (5 ?? 0) > 3 ? "high" :> "low"
+   -- First: 5 ?? 0 = 5
    -- Then: 5 > 3 ? "high" :> "low" = "high"
    assert(v is "high", "Failed mixed optional and full: expected 'high', got " .. tostring(v))
 end
@@ -393,8 +393,8 @@ end
 
 -- Ternary with ?? operator (coalesce/or_question)
 function testTernaryWithOrQuestionOperator()
-   local v = (nil ? "default") ? "fallback" :> "final"
-   -- First: nil ? "default" = "default"
+   local v = (nil ?? "default") ? "fallback" :> "final"
+   -- First: nil ?? "default" = "default"
    -- Then: "default" ? "fallback" :> "final" = "fallback" (truthy)
    assert(v is "fallback", "Failed ternary with ? operator: expected 'fallback', got " .. tostring(v))
 end
