@@ -179,8 +179,9 @@ static int token_starts_expression(LexToken tok)
    case TK_function:
    case TK_name:
    case '{':
-   case '(': 
+   case '(':
    case TK_not:
+   case TK_plusplus:
    case '-':
    case '~':
    case '#':
