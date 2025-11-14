@@ -1076,7 +1076,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
          {
             ExpDesc message;
             expr_init(&message, VKSTR, 0);
-            message.u.sval = lj_parse_keepstr(ls, "Invalid ternary mix: use '?' with ':>'", 38);
+            message.u.sval = lj_parse_keepstr(ls, "Invalid ternary mix: use '?' with ':>'", 39);
             bcemit_INS(fs, BCINS_AD(BC_KSTR, arg_reg, const_str(fs, &message)));
          }
 
