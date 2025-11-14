@@ -15,6 +15,26 @@
 #define WINVER 0x0501
 #endif
 
+// Build configuration verification - ensure essential compiler flags were applied during compilation.
+// These checks catch misconfiguration where the build system fails to apply required flags
+// (e.g. when add_library is used instead of custom commands with explicit flags).
+
+#ifndef LUAJIT_ENABLE_LUA52COMPAT
+#error "LUAJIT_ENABLE_LUA52COMPAT not defined - build system failed to apply required flags"
+#endif
+#ifndef LUAJIT_DISABLE_FFI
+#error "LUAJIT_DISABLE_FFI not defined - FFI would be enabled when it should be disabled"
+#endif
+#ifndef LUAJIT_DISABLE_BUFFER
+#error "LUAJIT_DISABLE_BUFFER not defined - buffer API would be enabled when it should be disabled"
+#endif
+#ifndef LUAJIT_UNWIND_EXTERNAL
+#error "LUAJIT_UNWIND_EXTERNAL not defined - unwind tables may not be generated correctly"
+#endif
+#ifndef LUA_ROOT
+#error "LUA_ROOT not defined - Parasol installation path not set, critical for runtime"
+#endif
+
 #include "lua.h"
 #include "lauxlib.h"
 
