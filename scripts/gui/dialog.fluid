@@ -126,7 +126,7 @@ gui.dialog.message = function(Options)
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <image id="icon" xlink:href="icons:]] .. (Options.image ? defaultIcon(self)) .. [[" width="256" height="256"/>]]
+    <image id="icon" xlink:href="icons:]] .. (Options.image ?? defaultIcon(self)) .. [[" width="256" height="256"/>]]
     .. option_icons .. [[
   </defs>
 </svg>
@@ -149,7 +149,7 @@ gui.dialog.message = function(Options)
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
       local msg = self.fmtMessage
       if not msg?? then
-         msg = string.escXML((self.message ?? ''))
+         msg = string.escXML(self.message ?? '')
          msg = string.gsub(msg, '\n', '<br/>')
       end
 

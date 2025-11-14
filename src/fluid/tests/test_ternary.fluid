@@ -432,6 +432,17 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+function testInvalidTernary()
+   -- Declaration is intentionally invalid, mixes ?? with :> instead of ?
+   -- Test should throw without crashing
+   local result = pcall(function()
+      local self = Options.scale is false ?? nil :> true
+   end)
+   assert(result is false, "Invalid ternary did not error as expected")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testBasicTrue', 'testBasicFalse',
@@ -466,6 +477,6 @@ return {
       -- Function arguments and table constructors
       'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
       -- Interaction with other operators
-      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction'
+      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction', 'testInvalidTernary'
    }
 }
