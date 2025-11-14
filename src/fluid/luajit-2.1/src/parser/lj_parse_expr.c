@@ -1058,7 +1058,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
          expr_discharge(fs, &v2);
          expr_free(fs, &v2);
 
-         // Emit a runtime error: error('Invalid ??/:> mix').
+         // Emit a runtime error: error('Invalid ternary mix: use '?' with ':>').
          BCReg base = fs->freereg;
          BCReg arg_reg = base + 1 + LJ_FR2;
 
