@@ -36,8 +36,8 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState *fs)
   const uint8_t *p = fs->p, *e = fs->e;
   fs->str = (const char *)p;
   for (; p < e; p++) {
-    if (*p == '%') {  /* Escape char? */
-      if (p[1] == '%') {  /* '%%'? */
+    if (*p == '%') {  // Escape char? 
+      if (p[1] == '%') {  // '%%'? 
 	fs->p = ++p+1;
 	goto retlit;
       } else {
@@ -54,13 +54,13 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState *fs)
 	  else if (*p == '#') sf |= STRFMT_F_ALT;
 	  else break;
 	}
-	if ((uint32_t)*p - '0' < 10) {  /* Parse width. */
+	if ((uint32_t)*p - '0' < 10) {  // Parse width. 
 	  uint32_t width = (uint32_t)*p++ - '0';
 	  if ((uint32_t)*p - '0' < 10)
 	    width = (uint32_t)*p++ - '0' + width*10;
 	  sf |= (width << STRFMT_SH_WIDTH);
 	}
-	if (*p == '.') {  /* Parse precision. */
+	if (*p == '.') {  // Parse precision. 
 	  uint32_t prec = 0;
 	  p++;
 	  if ((uint32_t)*p - '0' < 10) {
@@ -214,7 +214,7 @@ static SBuf *strfmt_putquotedlen(SBuf *sb, const char *s, MSize len)
     char *w = lj_buf_more(sb, 4);
     if (c == '"' || c == '\\' || c == '\n') {
       *w++ = '\\';
-    } else if (lj_char_iscntrl(c)) {  /* This can only be 0-31 or 127. */
+    } else if (lj_char_iscntrl(c)) {  // This can only be 0-31 or 127. 
       uint32_t d;
       *w++ = '\\';
       if (c >= 100 || lj_char_isdigit((uint8_t)*s)) {
@@ -299,21 +299,21 @@ SBuf *lj_strfmt_putfxint(SBuf *sb, SFormat sf, uint64_t k)
   /* Convert number and store to fixed-size buffer in reverse order. */
   prec = STRFMT_PREC(sf);
   if ((int32_t)prec >= 0) sf &= ~STRFMT_F_ZERO;
-  if (k == 0) {  /* Special-case zero argument. */
+  if (k == 0) {  // Special-case zero argument. 
     if (prec != 0 ||
 	(sf & (STRFMT_T_OCT|STRFMT_F_ALT)) == (STRFMT_T_OCT|STRFMT_F_ALT))
       *--q = '0';
-  } else if (!(sf & (STRFMT_T_HEX|STRFMT_T_OCT))) {  /* Decimal. */
+  } else if (!(sf & (STRFMT_T_HEX|STRFMT_T_OCT))) {  // Decimal. 
     uint32_t k2;
     while ((k >> 32)) { *--q = (char)('0' + k % 10); k /= 10; }
     k2 = (uint32_t)k;
     do { *--q = (char)('0' + k2 % 10); k2 /= 10; } while (k2);
-  } else if ((sf & STRFMT_T_HEX)) {  /* Hex. */
+  } else if ((sf & STRFMT_T_HEX)) {  // Hex. 
     const char *hexdig = (sf & STRFMT_F_UPPER) ? "0123456789ABCDEF" :
 						 "0123456789abcdef";
     do { *--q = hexdig[(k & 15)]; k >>= 4; } while (k);
     if ((sf & STRFMT_F_ALT)) prefix = 512 + ((sf & STRFMT_F_UPPER) ? 'X' : 'x');
-  } else {  /* Octal. */
+  } else {  // Octal. 
     do { *--q = (char)('0' + (uint32_t)(k & 7)); k >>= 3; } while (k);
     if ((sf & STRFMT_F_ALT)) *--q = '0';
   }
@@ -439,7 +439,7 @@ int lj_strfmt_putarg(lua_State *L, SBuf *sb, int arg, int retry)
 	  lua_call(L, 1, 1);
 	  o = &L->base[arg-1];  /* Stack may have been reallocated. */
 	  copyTV(L, o, --L->top);  /* Replace inline for retry. */
-	  if (retry < 2) {  /* Global buffer may have been overwritten. */
+	  if (retry < 2) {  // Global buffer may have been overwritten. 
 	    retry = 1;
 	    break;
 	  }

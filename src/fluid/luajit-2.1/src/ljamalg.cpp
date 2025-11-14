@@ -38,6 +38,7 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#include "lj_cmath.cpp"
 #include "lj_assert.cpp"
 #include "lj_gc.cpp"
 #include "lj_err.cpp"

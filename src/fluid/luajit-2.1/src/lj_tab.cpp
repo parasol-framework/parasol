@@ -98,7 +98,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
 #if LJ_GC64
     setmref(t->freetop, nilnode);
 #endif
-  } else {  /* Otherwise separately allocate the array part. */
+  } else {  // Otherwise separately allocate the array part. 
     Node *nilnode;
     t = lj_mem_newobj(L, GCtab);
     t->gct = ~LJ_TTAB;
@@ -173,7 +173,7 @@ GCtab * LJ_FASTCALL lj_tab_dup(lua_State *L, const GCtab *kt)
   if (asize > 0) {
     TValue *array = tvref(t->array);
     TValue *karray = tvref(kt->array);
-    if (asize < 64) {  /* An inlined loop beats memcpy for < 512 bytes. */
+    if (asize < 64) {  // An inlined loop beats memcpy for < 512 bytes. 
       uint32_t i;
       for (i = 0; i < asize; i++)
 	copyTV(L, &array[i], &karray[i]);
@@ -232,7 +232,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
   Node *oldnode = noderef(t->node);
   uint32_t oldasize = t->asize;
   uint32_t oldhmask = t->hmask;
-  if (asize > oldasize) {  /* Array part grows? */
+  if (asize > oldasize) {  // Array part grows? 
     TValue *array;
     uint32_t i;
     if (asize > LJ_MAX_ASIZE)
@@ -265,7 +265,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
 #endif
     t->hmask = 0;
   }
-  if (asize < oldasize) {  /* Array part shrinks? */
+  if (asize < oldasize) {  // Array part shrinks? 
     TValue *array = tvref(t->array);
     uint32_t i;
     t->asize = asize;  /* Note: This 'shrinks' even colocated arrays. */
@@ -277,7 +277,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
       setmref(t->array, lj_mem_realloc(L, array,
 	      oldasize*sizeof(TValue), asize*sizeof(TValue)));
   }
-  if (oldhmask > 0) {  /* Reinsert pairs from old hash part. */
+  if (oldhmask > 0) {  // Reinsert pairs from old hash part. 
     global_State *g;
     uint32_t i;
     for (i = 0; i <= oldhmask; i++) {
@@ -448,7 +448,7 @@ TValue *lj_tab_newkey(lua_State *L, GCtab *t, cTValue *key)
     lj_assertL(freenode >= nodebase && freenode <= nodebase+t->hmask+1,
 	       "bad freenode");
     do {
-      if (freenode == nodebase) {  /* No free node found? */
+      if (freenode == nodebase) {  // No free node found? 
 	rehashtab(L, t, key);  /* Rehash table. */
 	return lj_tab_set(L, t, key);  /* Retry key insertion. */
       }
@@ -456,7 +456,7 @@ TValue *lj_tab_newkey(lua_State *L, GCtab *t, cTValue *key)
     setfreetop(t, nodebase, freenode);
     lj_assertL(freenode != &G(L)->nilnode, "store to fallback hash");
     collide = hashkey(t, &n->key);
-    if (collide != n) {  /* Colliding node not the main node? */
+    if (collide != n) {  // Colliding node not the main node? 
       while (noderef(collide->next) != n)  /* Find predecessor. */
 	collide = nextnode(collide);
       setmref(collide->next, freenode);  /* Relink chain. */
@@ -500,7 +500,7 @@ TValue *lj_tab_newkey(lua_State *L, GCtab *t, cTValue *key)
 	  freenode = nn;
 	}
       }
-    } else {  /* Otherwise use free node. */
+    } else {  // Otherwise use free node. 
       setmrefr(freenode->next, n->next);  /* Insert into chain. */
       setmref(n->next, freenode);
       n = freenode;
@@ -642,7 +642,7 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab *t, size_t hi)
   while ((tv = lj_tab_getint(t, (int32_t)hi)) && !tvisnil(tv)) {
     lo = hi;
     hi += hi;
-    if (hi > (size_t)(INT_MAX-2)) {  /* Punt and do a linear search. */
+    if (hi > (size_t)(INT_MAX-2)) {  // Punt and do a linear search. 
       lo = 1;
       while ((tv = lj_tab_getint(t, (int32_t)lo)) && !tvisnil(tv)) lo++;
       return (MSize)(lo - 1);

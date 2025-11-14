@@ -430,7 +430,7 @@ static Reg ra_restore(ASMState *as, IRRef ref)
     lj_assertA(ra_hasreg(r), "restore of IR %04d has no reg", ref - REF_BIAS);
     ra_sethint(ir->r, r);  /* Keep hint. */
     ra_free(as, r);
-    if (!rset_test(as->weakset, r)) {  /* Only restore non-weak references. */
+    if (!rset_test(as->weakset, r)) {  // Only restore non-weak references. 
       ra_modified(as, r);
       RA_DBGX((as, "restore   $i $r", ir, r));
       emit_spload(as, ir, r, ofs);
@@ -697,7 +697,7 @@ static void ra_rename(ASMState *as, Reg down, Reg up)
   ra_noweak(as, up);
   RA_DBGX((as, "rename    $f $r $r", regcost_ref(as->cost[up]), down, up));
   emit_movrr(as, ir, down, up);  /* Backwards codegen needs inverse move. */
-  if (!ra_hasspill(IR(ref)->s)) {  /* Add the rename to the IR. */
+  if (!ra_hasspill(IR(ref)->s)) {  // Add the rename to the IR. 
     /*
     ** The rename is effective at the subsequent (already emitted) exit
     ** branch. This is for the current snapshot (as->snapno). Except if we
@@ -909,13 +909,13 @@ static void asm_snap_alloc1(ASMState *as, IRRef ref)
     if (ir->r == RID_SINK) {
       ir->r = RID_SUNK;
 #if LJ_HASFFI
-      if (ir->o == IR_CNEWI) {  /* Allocate CNEWI value. */
+      if (ir->o == IR_CNEWI) {  // Allocate CNEWI value. 
 	asm_snap_alloc1(as, ir->op2);
 	if (LJ_32 && (ir+1)->o == IR_HIOP)
 	  asm_snap_alloc1(as, (ir+1)->op2);
       } else
 #endif
-      {  /* Allocate stored values for TNEW, TDUP and CNEW. */
+      {  // Allocate stored values for TNEW, TDUP and CNEW. 
 	IRIns *irs;
 	lj_assertA(ir->o == IR_TNEW || ir->o == IR_TDUP || ir->o == IR_CNEW,
 		   "sink of IR %04d has bad op %d", ref - REF_BIAS, ir->o);
@@ -1201,13 +1201,13 @@ static void asm_bufput(ASMState *as, IRIns *ir)
 	     "BUFPUT of non-string IR %04d", ir->op2 - REF_BIAS);
   if (irs->o == IR_KGC) {
     GCstr *s = ir_kstr(irs);
-    if (s->len == 1) {  /* Optimize put of single-char string constant. */
+    if (s->len == 1) {  // Optimize put of single-char string constant. 
       kchar = (int8_t)strdata(s)[0];  /* Signed! */
       args[1] = ASMREF_TMP1;  /* int, truncated to char */
       ci = &lj_ir_callinfo[IRCALL_lj_buf_putchar];
     }
   } else if (mayfuse(as, ir->op2) && ra_noreg(irs->r)) {
-    if (irs->o == IR_TOSTR) {  /* Fuse number to string conversions. */
+    if (irs->o == IR_TOSTR) {  // Fuse number to string conversions. 
       if (irs->op2 == IRTOSTR_NUM) {
 	args[1] = ASMREF_TMP1;  /* TValue * */
 	ci = &lj_ir_callinfo[IRCALL_lj_strfmt_putnum];
@@ -1220,7 +1220,7 @@ static void asm_bufput(ASMState *as, IRIns *ir)
 	else
 	  ci = &lj_ir_callinfo[IRCALL_lj_buf_putchar];
       }
-    } else if (irs->o == IR_SNEW) {  /* Fuse string allocation. */
+    } else if (irs->o == IR_SNEW) {  // Fuse string allocation. 
       args[1] = irs->op1;  /* const void * */
       args[2] = irs->op2;  /* MSize */
       ci = &lj_ir_callinfo[IRCALL_lj_buf_putmem];
@@ -1358,13 +1358,13 @@ static void asm_collectargs(ASMState *as, IRIns *ir,
 static uint32_t asm_callx_flags(ASMState *as, IRIns *ir)
 {
   uint32_t nargs = 0;
-  if (ir->op1 != REF_NIL) {  /* Count number of arguments first. */
+  if (ir->op1 != REF_NIL) {  // Count number of arguments first. 
     IRIns *ira = IR(ir->op1);
     nargs++;
     while (ira->o == IR_CARG) { nargs++; ira = IR(ira->op1); }
   }
 #if LJ_HASFFI
-  if (IR(ir->op2)->o == IR_CARG) {  /* Copy calling convention info. */
+  if (IR(ir->op2)->o == IR_CARG) {  // Copy calling convention info. 
     CTypeID id = (CTypeID)IR(IR(ir->op2)->op2)->i;
     CType *ct = ctype_get(ctype_ctsG(J2G(as->J)), id);
     nargs |= ((ct->info & CTF_VARARG) ? CCI_VARARG : 0);
@@ -1402,7 +1402,7 @@ static void asm_phi_break(ASMState *as, RegSet blocked, RegSet blockedby,
 			  RegSet allow)
 {
   RegSet candidates = blocked & allow;
-  if (candidates) {  /* If this register file has candidates. */
+  if (candidates) {  // If this register file has candidates. 
     /* Note: the set for ra_pick cannot be empty, since each register file
     ** has some registers never allocated to PHIs.
     */
@@ -1441,12 +1441,12 @@ static void asm_phi_shuffle(ASMState *as)
     RegSet blocked = RSET_EMPTY;
     RegSet blockedby = RSET_EMPTY;
     RegSet phiset = as->phiset;
-    while (phiset) {  /* Check all left PHI operand registers. */
+    while (phiset) {  // Check all left PHI operand registers. 
       Reg r = rset_pickbot(phiset);
       IRIns *irl = IR(as->phireg[r]);
       Reg left = irl->r;
-      if (r != left) {  /* Mismatch? */
-	if (!rset_test(as->freeset, r)) {  /* PHI register blocked? */
+      if (r != left) {  // Mismatch? 
+	if (!rset_test(as->freeset, r)) {  // PHI register blocked? 
 	  IRRef ref = regcost_ref(as->cost[r]);
 	  /* Blocked by other PHI (w/reg)? */
 	  if (!ra_iskref(ref) && irt_ismarked(IR(ref)->t)) {
@@ -1454,7 +1454,7 @@ static void asm_phi_shuffle(ASMState *as)
 	    if (ra_hasreg(left))
 	      rset_set(blockedby, left);
 	    left = RID_NONE;
-	  } else {  /* Otherwise grab register from invariant. */
+	  } else {  // Otherwise grab register from invariant. 
 	    ra_restore(as, ref);
 	    checkmclim(as);
 	  }
@@ -1467,11 +1467,11 @@ static void asm_phi_shuffle(ASMState *as)
       rset_clear(phiset, r);
     }
     if (!blocked) break;  /* Finished. */
-    if (!(as->freeset & blocked)) {  /* Break cycles if none are free. */
+    if (!(as->freeset & blocked)) {  // Break cycles if none are free. 
       asm_phi_break(as, blocked, blockedby, RSET_GPR);
       if (!LJ_SOFTFP) asm_phi_break(as, blocked, blockedby, RSET_FPR);
       checkmclim(as);
-    }  /* Else retry some more renames. */
+    }  // Else retry some more renames. 
   }
 
   /* Restore/remat invariants whose registers are modified inside the loop. */
@@ -1498,7 +1498,7 @@ static void asm_phi_shuffle(ASMState *as)
     Reg r = rset_picktop(work);
     IRRef lref = as->phireg[r];
     IRIns *ir = IR(lref);
-    if (ra_hasspill(ir->s)) {  /* Left PHI gained a spill slot? */
+    if (ra_hasspill(ir->s)) {  // Left PHI gained a spill slot? 
       irt_clearmark(ir->t);  /* Handled here, so clear marker now. */
       ra_alloc1(as, lref, RID2RSET(r));
       ra_save(as, ir, r);  /* Save to spill slot inside the loop. */
@@ -1516,7 +1516,7 @@ static void asm_phi_copyspill(ASMState *as)
   for (ir = IR(as->orignins-1); ir->o == IR_PHI; ir--)
     if (ra_hasspill(ir->s) && ra_hasspill(IR(ir->op1)->s))
       need |= irt_isfp(ir->t) ? 2 : 1;  /* Unsynced spill slot? */
-  if ((need & 1)) {  /* Copy integer spill slots. */
+  if ((need & 1)) {  // Copy integer spill slots. 
 #if !LJ_TARGET_X86ORX64
     Reg r = RID_TMP;
 #else
@@ -1542,7 +1542,7 @@ static void asm_phi_copyspill(ASMState *as)
 #endif
   }
 #if !LJ_SOFTFP
-  if ((need & 2)) {  /* Copy FP spill slots. */
+  if ((need & 2)) {  // Copy FP spill slots. 
 #if LJ_TARGET_X86
     Reg r = RID_XMM0;
 #else
@@ -1601,11 +1601,11 @@ static void asm_phi(ASMState *as, IRIns *ir)
   if (ra_hasspill(irl->s) || ra_hasspill(irr->s))
     lj_trace_err(as->J, LJ_TRERR_NYIPHI);
   /* Leave at least one register free for non-PHIs (and PHI cycle breaking). */
-  if ((afree & (afree-1))) {  /* Two or more free registers? */
+  if ((afree & (afree-1))) {  // Two or more free registers? 
     Reg r;
-    if (ra_noreg(irr->r)) {  /* Get a register for the right PHI. */
+    if (ra_noreg(irr->r)) {  // Get a register for the right PHI. 
       r = ra_allocref(as, ir->op2, allow);
-    } else {  /* Duplicate right PHI, need a copy (rare). */
+    } else {  // Duplicate right PHI, need a copy (rare). 
       r = ra_scratch(as, allow);
       emit_movrr(as, irr, r, irr->r);
     }
@@ -1615,7 +1615,7 @@ static void asm_phi(ASMState *as, IRIns *ir)
     irt_setmark(irl->t);  /* Marks left PHIs _with_ register. */
     if (ra_noreg(irl->r))
       ra_sethint(irl->r, r); /* Set register hint for left PHI. */
-  } else {  /* Otherwise allocate a spill slot. */
+  } else {  // Otherwise allocate a spill slot. 
     /* This is overly restrictive, but it triggers only on synthetic code. */
     if (ra_hasreg(irl->r) || ra_hasreg(irr->r))
       lj_trace_err(as->J, LJ_TRERR_NYIPHI);
@@ -1796,7 +1796,7 @@ static void asm_ir(ASMState *as, IRIns *ir)
 
   /* Memory references. */
   case IR_AREF: asm_aref(as, ir); break;
-  case IR_HREF: asm_href(as, ir, 0); break;
+  case IR_HREF: asm_href(as, ir, (IROp)0); break;
   case IR_HREFK: asm_hrefk(as, ir); break;
   case IR_NEWREF: asm_newref(as, ir); break;
   case IR_UREFO: case IR_UREFC: asm_uref(as, ir); break;
@@ -1919,7 +1919,7 @@ static void asm_head_side(ASMState *as)
       irt_setmark(ir->t);
       pass2 = 1;
     }
-    if (ir->r == rs) {  /* Coalesce matching registers right now. */
+    if (ir->r == rs) {  // Coalesce matching registers right now. 
       ra_free(as, ir->r);
     } else if (ra_hasspill(regsp_spill(rs))) {
       if (ra_hasreg(ir->r))
@@ -1933,7 +1933,7 @@ static void asm_head_side(ASMState *as)
   /* Calculate stack frame adjustment. */
   spadj = asm_stack_adjust(as);
   spdelta = spadj - (int32_t)as->parent->spadjust;
-  if (spdelta < 0) {  /* Don't shrink the stack frame. */
+  if (spdelta < 0) {  // Don't shrink the stack frame. 
     spadj = (int32_t)as->parent->spadjust;
     spdelta = 0;
   }
@@ -1959,7 +1959,7 @@ static void asm_head_side(ASMState *as)
 	r = ra_allocref(as, i, mask);
 	ra_save(as, ir, r);
 	rset_clear(allow, r);
-	if (r == rs) {  /* Coalesce matching registers right now. */
+	if (r == rs) {  // Coalesce matching registers right now. 
 	  ra_free(as, r);
 	  rset_clear(live, r);
 	} else if (ra_hasspill(regsp_spill(rs))) {
@@ -2035,7 +2035,7 @@ static void asm_head_side(ASMState *as)
 
   /* Inherit top stack slot already checked by parent trace. */
   as->T->topslot = as->parent->topslot;
-  if (as->topslot > as->T->topslot) {  /* Need to check for higher slot? */
+  if (as->topslot > as->T->topslot) {  // Need to check for higher slot? 
 #ifdef EXITSTATE_CHECKEXIT
     /* Highest exit + 1 indicates stack check. */
     ExitNo exitno = as->T->nsnap;
@@ -2081,7 +2081,7 @@ static void asm_tail_link(ASMState *as)
     /* Setup fixed registers for exit to interpreter. */
     const BCIns *pc = snap_pc(&as->T->snapmap[snap->mapofs + snap->nent]);
     int32_t mres;
-    if (bc_op(*pc) == BC_JLOOP) {  /* NYI: find a better way to do this. */
+    if (bc_op(*pc) == BC_JLOOP) {  // NYI: find a better way to do this. 
       BCIns *retpc = &traceref(as->J, bc_d(*pc))->startins;
       if (bc_isret(bc_op(*retpc)))
 	pc = retpc;
@@ -2107,7 +2107,7 @@ static void asm_tail_link(ASMState *as)
   }
   emit_addptr(as, RID_BASE, 8*(int32_t)baseslot);
 
-  if (as->J->ktrace) {  /* Patch ktrace slot with the final GCtrace pointer. */
+  if (as->J->ktrace) {  // Patch ktrace slot with the final GCtrace pointer. 
     setgcref(IR(as->J->ktrace)[LJ_GC64].gcr, obj2gco(as->J->curfinal));
     IR(as->J->ktrace)->o = IR_KGC;
   }
@@ -2190,7 +2190,7 @@ static void asm_setup_regsp(ASMState *as)
     if (sink) {
       if (ir->r == RID_SINK)
 	continue;
-      if (ir->r == RID_SUNK) {  /* Revert after ASM restart. */
+      if (ir->r == RID_SUNK) {  // Revert after ASM restart. 
 	ir->r = RID_SINK;
 	continue;
       }
@@ -2528,7 +2528,7 @@ void lj_asm_trace(jit_State *J, GCtrace *T)
       asm_head_root(as);
     asm_phi_fixup(as);
 
-    if (J->curfinal->nins >= T->nins) {  /* IR didn't grow? */
+    if (J->curfinal->nins >= T->nins) {  // IR didn't grow? 
       lj_assertA(J->curfinal->nk == T->nk, "unexpected IR constant growth");
       memcpy(J->curfinal->ir + as->orignins, T->ir + as->orignins,
 	     (T->nins - as->orignins) * sizeof(IRIns));  /* Copy RENAMEs. */

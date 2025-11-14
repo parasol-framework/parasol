@@ -299,7 +299,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
   for (;;) {
     if (lj_char_isident(ls->c)) {
       GCstr *s;
-      if (lj_char_isdigit(ls->c)) {  /* Numeric literal. */
+      if (lj_char_isdigit(ls->c)) {  // Numeric literal. 
          lex_number(ls, tv);
          return TK_number;
       }
@@ -309,7 +309,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       } while (lj_char_isident(ls->c));
       s = lj_parse_keepstr(ls, ls->sb.b, sbuflen(&ls->sb));
       setstrV(ls->L, tv, s);
-      if (s->reserved > 0) {  /* Reserved word? */
+      if (s->reserved > 0) {  // Reserved word? 
          LexToken tok = TK_OFS + s->reserved;
          return tok;
       }
@@ -332,7 +332,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       if (ls->c == '=') { lex_next(ls); return TK_csub; }
       if (ls->c != '-') return '-';
       lex_next(ls);
-      if (ls->c == '[') {  /* Long comment "--[=*[...]=*]". */
+      if (ls->c == '[') {  // Long comment "--[=*[...]=*]". 
    int sep = lex_skipeq(ls);
    lj_buf_reset(&ls->sb);  /* `lex_skipeq' may dirty the buffer */
    if (sep >= 0) {
@@ -462,12 +462,12 @@ int lj_lex_setup(lua_State *L, LexState *ls)
   ls->endmark = 0;
   lex_next(ls);  /* Read-ahead first char. */
   if (ls->c == 0xef && ls->p + 2 <= ls->pe && (uint8_t)ls->p[0] == 0xbb &&
-      (uint8_t)ls->p[1] == 0xbf) {  /* Skip UTF-8 BOM (if buffered). */
+      (uint8_t)ls->p[1] == 0xbf) {  // Skip UTF-8 BOM (if buffered). 
     ls->p += 2;
     lex_next(ls);
     header = 1;
   }
-  if (ls->c == '#') {  /* Skip POSIX #! header line. */
+  if (ls->c == '#') {  // Skip POSIX #! header line. 
     do {
       lex_next(ls);
       if (ls->c == LEX_EOF) return 0;
@@ -475,7 +475,7 @@ int lj_lex_setup(lua_State *L, LexState *ls)
     lex_newline(ls);
     header = 1;
   }
-  if (ls->c == LUA_SIGNATURE[0]) {  /* Bytecode dump. */
+  if (ls->c == LUA_SIGNATURE[0]) {  // Bytecode dump. 
     if (header) {
       /*
       ** Loading bytecode with an extra header is disabled for security
@@ -504,9 +504,9 @@ void lj_lex_cleanup(lua_State *L, LexState *ls)
 void lj_lex_next(LexState *ls)
 {
   ls->lastline = ls->linenumber;
-  if (LJ_LIKELY(ls->lookahead == TK_eof)) {  /* No lookahead token? */
+  if (LJ_LIKELY(ls->lookahead == TK_eof)) {  // No lookahead token? 
     ls->tok = lex_scan(ls, &ls->tokval);  /* Get next token. */
-  } else {  /* Otherwise return lookahead token. */
+  } else {  // Otherwise return lookahead token. 
     ls->tok = ls->lookahead;
     ls->lookahead = TK_eof;
     ls->tokval = ls->lookaheadval;

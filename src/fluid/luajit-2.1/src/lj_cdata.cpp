@@ -153,16 +153,16 @@ collect_attrib:
       *pp = p + idx*(int32_t)sz;
       return ct;
     }
-  } else if (tviscdata(key)) {  /* Integer cdata key. */
+  } else if (tviscdata(key)) {  // Integer cdata key. 
     GCcdata *cdk = cdataV(key);
     CType *ctk = ctype_raw(cts, cdk->ctypeid);
     if (ctype_isenum(ctk->info)) ctk = ctype_child(cts, ctk);
     if (ctype_isinteger(ctk->info)) {
       lj_cconv_ct_ct(cts, ctype_get(cts, CTID_INT_PSZ), ctk,
-		     (uint8_t *)&idx, cdataptr(cdk), 0);
+		     (uint8_t *)&idx, (uint8_t *)cdataptr(cdk), 0);
       goto integer_key;
     }
-  } else if (tvisstr(key)) {  /* String key. */
+  } else if (tvisstr(key)) {  // String key. 
     GCstr *name = strV(key);
     if (ctype_isstruct(ct->info)) {
       CTSize ofs;
@@ -196,7 +196,7 @@ collect_attrib:
       ct = sct;  /* Allow resolving metamethods for constructors, too. */
     }
   }
-  if (ctype_isptr(ct->info)) {  /* Automatically perform '->'. */
+  if (ctype_isptr(ct->info)) {  // Automatically perform '->'. 
     if (ctype_isstruct(ctype_rawchild(cts, ct)->info)) {
       p = (uint8_t *)cdata_getptr(p, ct->size);
       ct = ctype_child(cts, ct);

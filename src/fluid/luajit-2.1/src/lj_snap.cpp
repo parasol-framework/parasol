@@ -69,7 +69,7 @@ static MSize snapshot_slots(jit_State *J, SnapEntry *map, BCReg nslots)
     TRef tr = J->slot[s];
     IRRef ref = tref_ref(tr);
 #if LJ_FR2
-    if (s == 1) {  /* Ignore slot 1 in LJ_FR2 mode, except if tailcalled. */
+    if (s == 1) {  // Ignore slot 1 in LJ_FR2 mode, except if tailcalled. 
       if ((tr & TREF_FRAME))
 	map[n++] = SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL);
       continue;
@@ -124,7 +124,7 @@ static MSize snapshot_framelinks(jit_State *J, SnapEntry *map, uint8_t *topslot)
   lj_assertJ(!J->pt ||
 	     (J->pc >= proto_bc(J->pt) &&
 	      J->pc < proto_bc(J->pt) + J->pt->sizebc), "bad snapshot PC");
-  while (frame > lim) {  /* Backwards traversal of all frames above base. */
+  while (frame > lim) {  // Backwards traversal of all frames above base. 
     if (frame_islua(frame)) {
 #if !LJ_FR2
       map[f++] = SNAP_MKPC(frame_pc(frame));
@@ -185,7 +185,7 @@ void lj_snap_add(jit_State *J)
   /* Merge if no ins. inbetween or if requested and no guard inbetween. */
   if ((nsnap > 0 && J->cur.snap[nsnap-1].ref == J->cur.nins) ||
       (J->mergesnap && !irt_isguard(J->guardemit))) {
-    if (nsnap == 1) {  /* But preserve snap #0 PC. */
+    if (nsnap == 1) {  // But preserve snap #0 PC. 
       emitir_raw(IRT(IR_NOP, IRT_NIL), 0, 0);
       goto nomerge;
     }
@@ -367,7 +367,7 @@ void lj_snap_shrink(jit_State *J)
   maxslot += baseslot;
   minslot += baseslot;
   snap->nslots = (uint8_t)maxslot;
-  for (n = m = 0; n < nent; n++) {  /* Remove unused slots from snapshot. */
+  for (n = m = 0; n < nent; n++) {  // Remove unused slots from snapshot. 
     BCReg s = snap_slot(map[n]);
     if (s < minslot || (s < maxslot && udf[s-baseslot] == 0))
       map[m++] = map[n];  /* Only copy used slots. */
@@ -591,7 +591,7 @@ void lj_snap_replay(jit_State *J, GCtrace *T)
       IRIns *ir = &T->ir[refp];
       if (regsp_reg(ir->r) == RID_SUNK) {
 	TRef op1, op2;
-	if (J->slot[snap_slot(sn)] != snap_slot(sn)) {  /* De-dup allocs. */
+	if (J->slot[snap_slot(sn)] != snap_slot(sn)) {  // De-dup allocs. 
 	  J->slot[snap_slot(sn)] = J->slot[J->slot[snap_slot(sn)]];
 	  continue;
 	}
@@ -681,7 +681,7 @@ static void snap_restoreval(jit_State *J, GCtrace *T, ExitState *ex,
   IRIns *ir = &T->ir[ref];
   IRType1 t = ir->t;
   RegSP rs = ir->prev;
-  if (irref_isk(ref)) {  /* Restore constant slot. */
+  if (irref_isk(ref)) {  // Restore constant slot. 
     if (ir->o == IR_KPTR) {
       o->u64 = (uint64_t)(uintptr_t)ir_kptr(ir);
     } else {
@@ -694,7 +694,7 @@ static void snap_restoreval(jit_State *J, GCtrace *T, ExitState *ex,
   }
   if (LJ_UNLIKELY(bloomtest(rfilt, ref)))
     rs = snap_renameref(T, snapno, ref, rs);
-  if (ra_hasspill(regsp_spill(rs))) {  /* Restore from spill slot. */
+  if (ra_hasspill(regsp_spill(rs))) {  // Restore from spill slot. 
     int32_t *sps = &ex->spill[regsp_spill(rs)];
     if (irt_isinteger(t)) {
       setintV(o, *sps);
@@ -711,7 +711,7 @@ static void snap_restoreval(jit_State *J, GCtrace *T, ExitState *ex,
       lj_assertJ(!irt_ispri(t), "PRI ref with spill slot");
       setgcV(J->L, o, (GCobj *)(uintptr_t)*(GCSize *)sps, irt_toitype(t));
     }
-  } else {  /* Restore from register. */
+  } else {  // Restore from register. 
     Reg r = regsp_reg(rs);
     if (ra_noreg(r)) {
       lj_assertJ(ir->o == IR_CONV && ir->op2 == IRCONV_NUM_INT,
@@ -785,7 +785,7 @@ static void snap_restoredata(jit_State *J, GCtrace *T, ExitState *ex,
       if (r >= RID_MAX_GPR) {
 	src = (int32_t *)&ex->fpr[r-RID_MIN_FPR];
 #if LJ_TARGET_PPC
-	if (sz == 4) {  /* PPC FPRs are always doubles. */
+	if (sz == 4) {  // PPC FPRs are always doubles. 
 	  *(float *)dst = (float)*(double *)src;
 	  return;
 	}
@@ -944,7 +944,7 @@ const BCIns *lj_snap_restore(jit_State *J, void *exptr)
       if (ir->r == RID_SUNK) {
 	MSize j;
 	for (j = 0; j < n; j++)
-	  if (snap_ref(map[j]) == ref) {  /* De-duplicate sunk allocations. */
+	  if (snap_ref(map[j]) == ref) {  // De-duplicate sunk allocations. 
 	    copyTV(L, o, &frame[snap_slot(map[j])]);
 	    goto dupslot;
 	  }

@@ -56,10 +56,10 @@ static void bcwrite_ktabk(BCWriteCtx *ctx, cTValue *o, int narrow)
     *p++ = BCDUMP_KTAB_INT;
     p = lj_strfmt_wuleb128(p, intV(o));
   } else if (tvisnum(o)) {
-    if (!LJ_DUALNUM && narrow) {  /* Narrow number constants to integers. */
+    if (!LJ_DUALNUM && narrow) {  // Narrow number constants to integers. 
       lua_Number num = numV(o);
       int32_t k = lj_num2int(num);
-      if (num == (lua_Number)k) {  /* -0 is never a constant. */
+      if (num == (lua_Number)k) {  // -0 is never a constant. 
 	*p++ = BCDUMP_KTAB_INT;
 	p = lj_strfmt_wuleb128(p, k);
 	ctx->sb.w = p;
@@ -80,7 +80,7 @@ static void bcwrite_ktabk(BCWriteCtx *ctx, cTValue *o, int narrow)
 static void bcwrite_ktab(BCWriteCtx *ctx, char *p, const GCtab *t)
 {
   MSize narray = 0, nhash = 0;
-  if (t->asize > 0) {  /* Determine max. length of array part. */
+  if (t->asize > 0) {  // Determine max. length of array part. 
     ptrdiff_t i;
     TValue *array = tvref(t->array);
     for (i = (ptrdiff_t)t->asize-1; i >= 0; i--)
@@ -88,7 +88,7 @@ static void bcwrite_ktab(BCWriteCtx *ctx, char *p, const GCtab *t)
 	break;
     narray = (MSize)(i+1);
   }
-  if (t->hmask > 0) {  /* Count number of used hash slots. */
+  if (t->hmask > 0) {  // Count number of used hash slots. 
     MSize i, hmask = t->hmask;
     Node *node = noderef(t->node);
     for (i = 0; i <= hmask; i++)
@@ -98,13 +98,13 @@ static void bcwrite_ktab(BCWriteCtx *ctx, char *p, const GCtab *t)
   p = lj_strfmt_wuleb128(p, narray);
   p = lj_strfmt_wuleb128(p, nhash);
   ctx->sb.w = p;
-  if (narray) {  /* Write array entries (may contain nil). */
+  if (narray) {  // Write array entries (may contain nil). 
     MSize i;
     TValue *o = tvref(t->array);
     for (i = 0; i < narray; i++, o++)
       bcwrite_ktabk(ctx, o, 1);
   }
-  if (nhash) {  /* Write hash entries. */
+  if (nhash) {  // Write hash entries. 
     MSize i = nhash;
     Node *node = noderef(t->node) + t->hmask;
     for (;; node--)
@@ -184,15 +184,16 @@ static void bcwrite_knum(BCWriteCtx *ctx, GCproto *pt)
   char *p = lj_buf_more(&ctx->sb, 10*sizekn);
   for (i = 0; i < sizekn; i++, o++) {
     int32_t k;
+    lua_Number num;
     if (tvisint(o)) {
       k = intV(o);
       goto save_int;
     } else {
       /* Write a 33 bit ULEB128 for the int (lsb=0) or loword (lsb=1). */
-      if (!LJ_DUALNUM) {  /* Narrow number constants to integers. */
-	lua_Number num = numV(o);
+      if (!LJ_DUALNUM) {  // Narrow number constants to integers.
+	num = numV(o);
 	k = lj_num2int(num);
-	if (num == (lua_Number)k) {  /* -0 is never a constant. */
+	if (num == (lua_Number)k) {  // -0 is never a constant.
 	save_int:
 	  p = lj_strfmt_wuleb128(p, 2*(uint32_t)k | ((uint32_t)k&0x80000000u));
 	  if (k < 0)

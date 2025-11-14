@@ -245,9 +245,9 @@ static void trace_flushroot(jit_State *J, GCtrace *T)
   /* First unpatch any modified bytecode. */
   trace_unpatch(J, T);
   /* Unlink root trace from chain anchored in prototype. */
-  if (pt->trace == T->traceno) {  /* Trace is first in chain. Easy. */
+  if (pt->trace == T->traceno) {  // Trace is first in chain. Easy. 
     pt->trace = T->nextroot;
-  } else if (pt->trace) {  /* Otherwise search in chain of root traces. */
+  } else if (pt->trace) {  // Otherwise search in chain of root traces. 
     GCtrace *T2 = traceref(J, pt->trace);
     if (T2) {
       for (; T2->nextroot; T2 = traceref(J, T2->nextroot))
@@ -354,7 +354,7 @@ void lj_trace_freestate(global_State *g)
 {
   jit_State *J = G2J(g);
 #ifdef LUA_USE_ASSERT
-  {  /* This assumes all traces have already been freed. */
+  {  // This assumes all traces have already been freed. 
     ptrdiff_t i;
     for (i = 1; i < (ptrdiff_t)J->sizetrace; i++)
       lj_assertG(i == (ptrdiff_t)J->cur.traceno || traceref(J, i) == NULL,
@@ -387,7 +387,7 @@ static void penalty_pc(jit_State *J, GCproto *pt, BCIns *pc, TraceError e)
 {
   uint32_t i, val = PENALTY_MIN;
   for (i = 0; i < PENALTY_SLOTS; i++)
-    if (mref(J->penalty[i].pc, const BCIns) == pc) {  /* Cache slot found? */
+    if (mref(J->penalty[i].pc, const BCIns) == pc) {  // Cache slot found? 
       /* First try to bump its hotcount several times. */
       val = ((uint32_t)J->penalty[i].val << 1) +
 	    (lj_prng_u64(&J2G(J)->prng) & ((1u<<PENALTY_RNDBITS)-1));
@@ -415,7 +415,7 @@ static void trace_start(jit_State *J)
   lua_State *L;
   TraceNo traceno;
 
-  if ((J->pt->flags & PROTO_NOJIT)) {  /* JIT disabled for this proto? */
+  if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto? 
     if (J->parent == 0 && J->exitno == 0 && bc_op(*J->pc) != BC_ITERN) {
       /* Lazy bytecode patching to disable hotcount events. */
       lj_assertJ(bc_op(*J->pc) == BC_FORL || bc_op(*J->pc) == BC_ITERL ||
@@ -430,7 +430,7 @@ static void trace_start(jit_State *J)
 
   /* Get a new trace number. */
   traceno = trace_findfree(J);
-  if (LJ_UNLIKELY(traceno == 0)) {  /* No free trace? */
+  if (LJ_UNLIKELY(traceno == 0)) {  // No free trace? 
     lj_assertJ((J2G(J)->hookmask & HOOK_GC) == 0,
 	       "recorder called from GC hook");
     lj_trace_flushall(J->L);
@@ -697,7 +697,7 @@ static TValue *trace_state(lua_State *L, lua_CFunction dummy, void *ud)
 	  J->cur.link == J->cur.traceno && J->framedepth + J->retdepth == 0) {
 	setvmstate(J2G(J), OPT);
 	lj_opt_dce(J);
-	if (lj_opt_loop(J)) {  /* Loop optimization failed? */
+	if (lj_opt_loop(J)) {  // Loop optimization failed? 
 	  J->cur.link = 0;
 	  J->cur.linktype = LJ_TRLINK_NONE;
 	  J->loopref = J->cur.nins;
@@ -869,7 +869,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
   GCtrace *T;
 
   setnilV(&exiterr);
-  if (exitcode) {  /* Trace unwound with error code. */
+  if (exitcode) {  // Trace unwound with error code. 
     J->exitcode = 0;
     copyTV(L, &exiterr, L->top-1);
   }
@@ -879,7 +879,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
 #endif
   T = traceref(J, J->parent); UNUSED(T);
 #ifdef EXITSTATE_CHECKEXIT
-  if (J->exitno == T->nsnap) {  /* Treat stack check like a parent exit. */
+  if (J->exitno == T->nsnap) {  // Treat stack check like a parent exit. 
     lj_assertJ(T->root != 0, "stack check in root trace");
     J->exitno = T->ir[REF_BASE].op2;
     J->parent = T->ir[REF_BASE].op1;

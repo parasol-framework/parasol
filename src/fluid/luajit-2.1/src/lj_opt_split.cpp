@@ -202,7 +202,7 @@ static IRRef split_bitshift(jit_State *J, IRRef1 *hisubst,
 {
   IROp op = ir->o;
   IRRef kref = nir->op2;
-  if (irref_isk(kref)) {  /* Optimize constant shifts. */
+  if (irref_isk(kref)) {  // Optimize constant shifts. 
     int32_t k = (IR(kref)->i & 63);
     IRRef lo = nir->op1, hi = hisubst[ir->op1];
     if (op == IR_BROL || op == IR_BROR) {
@@ -273,7 +273,7 @@ static IRRef split_bitop(jit_State *J, IRRef1 *hisubst,
 {
   IROp op = ir->o;
   IRRef hi, kref = nir->op2;
-  if (irref_isk(kref)) {  /* Optimize bit operations with lo constant. */
+  if (irref_isk(kref)) {  // Optimize bit operations with lo constant. 
     int32_t k = IR(kref)->i;
     if (k == 0 || k == -1) {
       if (op == IR_BAND) k = ~k;
@@ -291,7 +291,7 @@ static IRRef split_bitop(jit_State *J, IRRef1 *hisubst,
   }
   hi = hisubst[ir->op1];
   kref = hisubst[ir->op2];
-  if (irref_isk(kref)) {  /* Optimize bit operations with hi constant. */
+  if (irref_isk(kref)) {  // Optimize bit operations with hi constant. 
     int32_t k = IR(kref)->i;
     if (k == 0 || k == -1) {
       if (op == IR_BAND) k = ~k;
@@ -416,7 +416,7 @@ static void split_ir(jit_State *J)
 	       lj_ir_kint(J, (int32_t)(0x7fffffffu + (ir->o == IR_NEG))));
 	break;
       case IR_SLOAD:
-	if ((nir->op2 & IRSLOAD_CONVERT)) {  /* Convert from int to number. */
+	if ((nir->op2 & IRSLOAD_CONVERT)) {  // Convert from int to number. 
 	  nir->op2 &= ~IRSLOAD_CONVERT;
 	  ir->prev = nref = split_emit(J, IRTI(IR_CALLN), nref,
 				       IRCALL_softfp_i2d);
@@ -455,7 +455,7 @@ static void split_ir(jit_State *J)
       case IR_ASTORE: case IR_HSTORE: case IR_USTORE: case IR_XSTORE:
 	split_emit(J, IRT(IR_HIOP, IRT_SOFTFP), nir->op1, hisubst[ir->op2]);
 	break;
-      case IR_CONV: {  /* Conversion to number. Others handled below. */
+      case IR_CONV: {  // Conversion to number. Others handled below. 
 	IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
 	UNUSED(st);
 #if LJ_32 && LJ_HASFFI
@@ -570,34 +570,34 @@ static void split_ir(jit_State *J)
       case IR_XSTORE:
 	split_emit(J, IRTI(IR_HIOP), nir->op1, hisubst[ir->op2]);
 	break;
-      case IR_CONV: {  /* Conversion to 64 bit integer. Others handled below. */
+      case IR_CONV: {  // Conversion to 64 bit integer. Others handled below. 
 	IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
 #if LJ_SOFTFP
-	if (st == IRT_NUM) {  /* NUM to 64 bit int conv. */
+	if (st == IRT_NUM) {  // NUM to 64 bit int conv. 
 	  hi = split_call_l(J, hisubst, oir, ir,
 		 irt_isi64(ir->t) ? IRCALL_fp64_d2l : IRCALL_fp64_d2ul);
-	} else if (st == IRT_FLOAT) {  /* FLOAT to 64 bit int conv. */
+	} else if (st == IRT_FLOAT) {  // FLOAT to 64 bit int conv. 
 	  nir->o = IR_CALLN;
 	  nir->op2 = irt_isi64(ir->t) ? IRCALL_fp64_f2l : IRCALL_fp64_f2ul;
 	  hi = split_emit(J, IRTI(IR_HIOP), nref, nref);
 	}
 #else
-	if (st == IRT_NUM || st == IRT_FLOAT) {  /* FP to 64 bit int conv. */
+	if (st == IRT_NUM || st == IRT_FLOAT) {  // FP to 64 bit int conv. 
 	  hi = split_emit(J, IRTI(IR_HIOP), nir->op1, nref);
 	}
 #endif
-	else if (st == IRT_I64 || st == IRT_U64) {  /* 64/64 bit cast. */
+	else if (st == IRT_I64 || st == IRT_U64) {  // 64/64 bit cast. 
 	  /* Drop cast, since assembler doesn't care. But fwd both parts. */
 	  hi = hiref;
 	  goto fwdlo;
-	} else if ((ir->op2 & IRCONV_SEXT)) {  /* Sign-extend to 64 bit. */
+	} else if ((ir->op2 & IRCONV_SEXT)) {  // Sign-extend to 64 bit. 
 	  IRRef k31 = lj_ir_kint(J, 31);
 	  nir = IR(nref);  /* May have been reallocated. */
 	  ir->prev = nir->op1;  /* Pass through loword. */
 	  nir->o = IR_BSAR;  /* hi = bsar(lo, 31). */
 	  nir->op2 = k31;
 	  hi = nref;
-	} else {  /* Zero-extend to 64 bit. */
+	} else {  // Zero-extend to 64 bit. 
 	  hi = lj_ir_kint(J, 0);
 	  goto fwdlo;
 	}
@@ -629,7 +629,7 @@ static void split_ir(jit_State *J)
 #endif
 #if LJ_SOFTFP
     if (ir->o == IR_SLOAD) {
-      if ((nir->op2 & IRSLOAD_CONVERT)) {  /* Convert from number to int. */
+      if ((nir->op2 & IRSLOAD_CONVERT)) {  // Convert from number to int. 
 	nir->op2 &= ~IRSLOAD_CONVERT;
 	if (!(nir->op2 & IRSLOAD_TYPECHECK))
 	  nir->t.irt = IRT_INT;  /* Drop guard. */
@@ -657,10 +657,10 @@ static void split_ir(jit_State *J)
 	nir->op2 = ir->op2;
     } else
 #endif
-    if (ir->o == IR_CONV) {  /* See above, too. */
+    if (ir->o == IR_CONV) {  // See above, too. 
       IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
 #if LJ_32 && LJ_HASFFI
-      if (st == IRT_I64 || st == IRT_U64) {  /* Conversion from 64 bit int. */
+      if (st == IRT_I64 || st == IRT_U64) {  // Conversion from 64 bit int. 
 #if LJ_SOFTFP
 	if (irt_isfloat(ir->t)) {
 	  split_call_l(J, hisubst, oir, ir,
@@ -668,12 +668,12 @@ static void split_ir(jit_State *J)
 	  J->cur.nins--;  /* Drop unused HIOP. */
 	}
 #else
-	if (irt_isfp(ir->t)) {  /* 64 bit integer to FP conversion. */
+	if (irt_isfp(ir->t)) {  // 64 bit integer to FP conversion. 
 	  ir->prev = split_emit(J, IRT(IR_HIOP, irt_type(ir->t)),
 				hisubst[ir->op1], nref);
 	}
 #endif
-	else {  /* Truncate to lower 32 bits. */
+	else {  // Truncate to lower 32 bits. 
 	fwdlo:
 	  ir->prev = nir->op1;  /* Forward loword. */
 	  /* Replace with NOP to avoid messing up the snapshot logic. */
@@ -754,7 +754,7 @@ static void split_ir(jit_State *J)
 	IRIns *cir;
 	for (cir = IR(nir->op1); cir->o == IR_CARG; cir = IR(cir->op1))
 	  carg++;
-	if ((carg & 1) == 0) {  /* Align 64 bit arguments. */
+	if ((carg & 1) == 0) {  // Align 64 bit arguments. 
 	  IRRef op2 = nir->op2;
 	  nir->op2 = REF_NIL;
 	  nref = split_emit(J, IRT(IR_CARG, IRT_NIL), nref, op2);
@@ -774,7 +774,7 @@ static void split_ir(jit_State *J)
     }
     hisubst[ref] = hi;  /* Store hiword substitution. */
   }
-  if (snref == nins) {  /* Substitution for last snapshot. */
+  if (snref == nins) {  // Substitution for last snapshot. 
     snap->ref = J->cur.nins;
     split_subst_snap(J, snap, oir);
   }

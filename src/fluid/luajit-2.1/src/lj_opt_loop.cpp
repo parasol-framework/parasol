@@ -111,7 +111,7 @@ static void loop_emit_phi(jit_State *J, IRRef1 *subst, IRRef1 *phi, IRRef nphi,
   for (i = 0, j = 0; i < nphi; i++) {
     IRRef lref = phi[i];
     IRRef rref = subst[lref];
-    if (lref == rref || rref == REF_DROP) {  /* Invariants are redundant. */
+    if (lref == rref || rref == REF_DROP) {  // Invariants are redundant. 
       irt_clearphi(IR(lref)->t);
     } else {
       phi[j++] = (IRRef1)lref;
@@ -132,7 +132,7 @@ static void loop_emit_phi(jit_State *J, IRRef1 *subst, IRRef1 *phi, IRRef nphi,
       if (!irref_isk(ir->op1)) {
 	irt_clearmark(IR(ir->op1)->t);
 	if (ir->op1 < invar &&
-	    ir->o >= IR_CALLN && ir->o <= IR_CARG) {  /* ORDER IR */
+	    ir->o >= IR_CALLN && ir->o <= IR_CARG) {  // ORDER IR 
 	  ir = IR(ir->op1);
 	  while (ir->o == IR_CARG) {
 	    if (!irref_isk(ir->op2)) irt_clearmark(IR(ir->op2)->t);
@@ -177,9 +177,9 @@ static void loop_emit_phi(jit_State *J, IRRef1 *subst, IRRef1 *phi, IRRef nphi,
     for (i = 0; i < nphi; i++) {
       IRRef lref = phi[i];
       IRIns *ir = IR(lref);
-      if (!irt_ismarked(ir->t)) {  /* Propagate only from unmarked PHIs. */
+      if (!irt_ismarked(ir->t)) {  // Propagate only from unmarked PHIs. 
 	IRIns *irr = IR(subst[lref]);
-	if (irt_ismarked(irr->t)) {  /* Right ref points to other PHI? */
+	if (irt_ismarked(irr->t)) {  // Right ref points to other PHI? 
 	  irt_clearmark(irr->t);  /* Mark that PHI as non-redundant. */
 	  passx = 1;  /* Retry. */
 	}
@@ -190,12 +190,12 @@ static void loop_emit_phi(jit_State *J, IRRef1 *subst, IRRef1 *phi, IRRef nphi,
   for (i = 0; i < nphi; i++) {
     IRRef lref = phi[i];
     IRIns *ir = IR(lref);
-    if (!irt_ismarked(ir->t)) {  /* Emit PHI if not marked. */
+    if (!irt_ismarked(ir->t)) {  // Emit PHI if not marked. 
       IRRef rref = subst[lref];
       if (rref > invar)
 	irt_setphi(IR(rref)->t);
       emitir_raw(IRT(IR_PHI, irt_type(ir->t)), lref, rref);
-    } else {  /* Otherwise eliminate PHI. */
+    } else {  // Otherwise eliminate PHI. 
       irt_clearmark(ir->t);
       irt_clearphi(ir->t);
     }
@@ -214,10 +214,10 @@ static void loop_subst_snap(jit_State *J, SnapShot *osnap,
   MSize on, ln, nn, onent = osnap->nent;
   BCReg nslots = osnap->nslots;
   SnapShot *snap = &J->cur.snap[J->cur.nsnap];
-  if (irt_isguard(J->guardemit)) {  /* Guard inbetween? */
+  if (irt_isguard(J->guardemit)) {  // Guard inbetween? 
     nmapofs = J->cur.nsnapmap;
     J->cur.nsnap++;  /* Add new snapshot. */
-  } else {  /* Otherwise overwrite previous snapshot. */
+  } else {  // Otherwise overwrite previous snapshot. 
     snap--;
     nmapofs = snap->mapofs;
   }
@@ -234,10 +234,10 @@ static void loop_subst_snap(jit_State *J, SnapShot *osnap,
   on = ln = nn = 0;
   while (on < onent) {
     SnapEntry osn = omap[on], lsn = loopmap[ln];
-    if (snap_slot(lsn) < snap_slot(osn)) {  /* Copy slot from loop map. */
+    if (snap_slot(lsn) < snap_slot(osn)) {  // Copy slot from loop map. 
       nmap[nn++] = lsn;
       ln++;
-    } else {  /* Copy substituted slot from snapshot map. */
+    } else {  // Copy substituted slot from snapshot map. 
       if (snap_slot(lsn) == snap_slot(osn)) ln++;  /* Shadowed loop slot. */
       if (!irref_isk(snap_ref(osn)))
 	osn = snap_setref(osn, subst[snap_ref(osn)]);
@@ -322,7 +322,7 @@ static void loop_unroll(LoopState *lps)
     op2 = ir->op2;
     if (!irref_isk(op2)) op2 = subst[op2];
     if (irm_kind(lj_ir_mode[ir->o]) == IRM_N &&
-	op1 == ir->op1 && op2 == ir->op2) {  /* Regular invariant ins? */
+	op1 == ir->op1 && op2 == ir->op2) {  // Regular invariant ins? 
       subst[ins] = (IRRef1)ins;  /* Shortcut. */
     } else {
       /* Re-emit substituted instruction to the FOLD/CSE/etc. pipeline. */
@@ -331,7 +331,7 @@ static void loop_unroll(LoopState *lps)
       subst[ins] = (IRRef1)ref;
       if (ref != ins) {
 	IRIns *irr = IR(ref);
-	if (ref < invar) {  /* Loop-carried dependency? */
+	if (ref < invar) {  // Loop-carried dependency? 
 	  /* Potential PHI? */
 	  if (!irref_isk(ref) && !irt_isphi(irr->t) && !irt_ispri(irr->t)) {
 	    irt_setphi(irr->t);
@@ -391,12 +391,12 @@ static void loop_undo(jit_State *J, IRRef ins, SnapNo nsnap, MSize nsnapmap)
   J->cur.nsnap = nsnap;
   J->guardemit.irt = 0;
   lj_ir_rollback(J, ins);
-  for (i = 0; i < BPROP_SLOTS; i++) {  /* Remove backprop. cache entries. */
+  for (i = 0; i < BPROP_SLOTS; i++) {  // Remove backprop. cache entries. 
     BPropEntry *bp = &J->bpropcache[i];
     if (bp->val >= ins)
       bp->key = 0;
   }
-  for (ins--; ins >= REF_FIRST; ins--) {  /* Remove flags. */
+  for (ins--; ins >= REF_FIRST; ins--) {  // Remove flags. 
     IRIns *ir = IR(ins);
     irt_clearphi(ir->t);
     irt_clearmark(ir->t);
@@ -426,7 +426,7 @@ int lj_opt_loop(jit_State *J)
   lj_mem_freevec(J2G(J), lps.subst, lps.sizesubst, IRRef1);
   if (LJ_UNLIKELY(errcode)) {
     lua_State *L = J->L;
-    if (errcode == LUA_ERRRUN && tvisnumber(L->top-1)) {  /* Trace error? */
+    if (errcode == LUA_ERRRUN && tvisnumber(L->top-1)) {  // Trace error? 
       int32_t e = numberVint(L->top-1);
       switch ((TraceError)e) {
       case LJ_TRERR_TYPEINS:  /* Type instability. */

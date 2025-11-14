@@ -264,7 +264,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 #endif
   if ((void *)ci->func)
     emit_call(as, (void *)ci->func);
-  for (n = 0; n < nargs; n++) {  /* Setup args. */
+  for (n = 0; n < nargs; n++) {  // Setup args. 
     IRRef ref = args[n];
     if (ref) {
       IRIns *ir = IR(ref);
@@ -359,9 +359,9 @@ static void asm_callx(ASMState *as, IRIns *ir)
   asm_setupresult(as, ir, &ci);
   func = ir->op2; irf = IR(func);
   if (irf->o == IR_CARG) { func = irf->op1; irf = IR(func); }
-  if (irref_isk(func)) {  /* Call to constant address. */
+  if (irref_isk(func)) {  // Call to constant address. 
     ci.func = (ASMFunction)(void *)(intptr_t)(irf->i);
-  } else {  /* Need a non-argument register for indirect calls. */
+  } else {  // Need a non-argument register for indirect calls. 
     RegSet allow = RSET_GPR & ~RSET_RANGE(RID_R0, REGARG_LASTGPR+1);
     Reg freg = ra_alloc1(as, func, allow);
     *--as->mcp = PPCI_BCTRL;
@@ -463,12 +463,12 @@ static void asm_conv(ASMState *as, IRIns *ir)
   lj_assertA(irt_type(ir->t) != st, "inconsistent types for CONV");
   if (irt_isfp(ir->t)) {
     Reg dest = ra_dest(as, ir, RSET_FPR);
-    if (stfp) {  /* FP to FP conversion. */
+    if (stfp) {  // FP to FP conversion. 
       if (st == IRT_NUM)  /* double -> float conversion. */
 	emit_fb(as, PPCI_FRSP, dest, ra_alloc1(as, lref, RSET_FPR));
       else  /* float -> double conversion is a no-op on PPC. */
 	ra_leftov(as, dest, lref);  /* Do nothing, but may need to move regs. */
-    } else {  /* Integer to FP conversion. */
+    } else {  // Integer to FP conversion. 
       /* IRT_INT: Flip hibit, bias with 2^52, subtract 2^52+2^31. */
       /* IRT_U32: Bias with 2^52, subtract 2^52. */
       RegSet allow = RSET_GPR;
@@ -486,7 +486,7 @@ static void asm_conv(ASMState *as, IRIns *ir)
       emit_tai(as, PPCI_STW, hibias, RID_SP, SPOFS_TMPHI);
       if (st != IRT_U32) emit_asi(as, PPCI_XORIS, RID_TMP, left, 0x8000);
     }
-  } else if (stfp) {  /* FP to integer conversion. */
+  } else if (stfp) {  // FP to integer conversion. 
     if (irt_isguard(ir->t)) {
       /* Checked conversions are only supported from number to int. */
       lj_assertA(irt_isint(ir->t) && st == IRT_NUM,
@@ -524,14 +524,14 @@ static void asm_conv(ASMState *as, IRIns *ir)
 #endif
   {
     Reg dest = ra_dest(as, ir, RSET_GPR);
-    if (st >= IRT_I8 && st <= IRT_U16) {  /* Extend to 32 bit integer. */
+    if (st >= IRT_I8 && st <= IRT_U16) {  // Extend to 32 bit integer. 
       Reg left = ra_alloc1(as, ir->op1, RSET_GPR);
       lj_assertA(irt_isint(ir->t) || irt_isu32(ir->t), "bad type for CONV EXT");
       if ((ir->op2 & IRCONV_SEXT))
 	emit_as(as, st == IRT_I8 ? PPCI_EXTSB : PPCI_EXTSH, dest, left);
       else
 	emit_rot(as, PPCI_RLWINM, dest, left, 0, st == IRT_U8 ? 24 : 16, 31);
-    } else {  /* 32/64 bit integer conversions. */
+    } else {  // 32/64 bit integer conversions. 
       /* Only need to handle 32/32 bit no-op (cast) on 32 bit archs. */
       ra_leftov(as, dest, lref);  /* Do nothing, but may need to move regs. */
     }
@@ -764,7 +764,7 @@ static void asm_href(ASMState *as, IRIns *ir, IROp merge)
       /* Nothing to do. */
     } else if (irt_isstr(kt)) {
       emit_tai(as, PPCI_LWZ, tmp1, key, (int32_t)offsetof(GCstr, sid));
-    } else {  /* Must match with hash*() in lj_tab.c. */
+    } else {  // Must match with hash*() in lj_tab.c. 
       emit_tab(as, PPCI_SUBF, tmp1, tmp2, tmp1);
       emit_rotlwi(as, tmp2, tmp2, HASH_ROT3);
       emit_asb(as, PPCI_XOR, tmp1, tmp1, tmp2);
@@ -934,14 +934,14 @@ static void asm_fload(ASMState *as, IRIns *ir)
   PPCIns pi = asm_fxloadins(as, ir);
   Reg idx;
   int32_t ofs;
-  if (ir->op1 == REF_NIL) {  /* FLOAD from GG_State with offset. */
+  if (ir->op1 == REF_NIL) {  // FLOAD from GG_State with offset. 
     idx = RID_JGL;
     ofs = (ir->op2 << 2) - 32768 - GG_OFS(g);
   } else {
     idx = ra_alloc1(as, ir->op1, RSET_GPR);
     if (ir->op2 == IRFL_TAB_ARRAY) {
       ofs = asm_fuseabase(as, ir->op1);
-      if (ofs) {  /* Turn the t->array load into an add for colocated arrays. */
+      if (ofs) {  // Turn the t->array load into an add for colocated arrays. 
 	emit_tai(as, PPCI_ADDI, dest, idx, ofs);
 	return;
       }
@@ -1215,7 +1215,7 @@ static void asm_cnew(ASMState *as, IRIns *ir)
       if (ofs == sizeof(GCcdata)) break;
       ofs -= 4; ir++;
     }
-  } else if (ir->op2 != REF_NIL) {  /* Create VLA/VLS/aligned cdata. */
+  } else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata. 
     ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
     args[0] = ASMREF_L;     /* lua_State *L */
     args[1] = ir->op1;      /* CTypeID id   */
@@ -1716,7 +1716,7 @@ static void asm_bitshift(ASMState *as, IRIns *ir, PPCIns pi, PPCIns pik)
   }
   dest = ra_dest(as, ir, RSET_GPR);
   left = ra_alloc1(as, ir->op1, RSET_GPR);
-  if (irref_isk(ir->op2)) {  /* Constant shifts. */
+  if (irref_isk(ir->op2)) {  // Constant shifts. 
     int32_t shift = (IR(ir->op2)->i & 31);
     if (pik == 0)  /* SLWI */
       emit_rot(as, PPCI_RLWINM|dot, dest, left, shift, 0, 31-shift);
@@ -1827,14 +1827,14 @@ static void asm_intcomp_(ASMState *as, IRRef lref, IRRef rref, Reg cr, PPCCC cc)
   Reg right, left = ra_alloc1(as, lref, RSET_GPR);
   if (irref_isk(rref)) {
     int32_t k = IR(rref)->i;
-    if ((cc & CC_UNSIGNED) == 0) {  /* Signed comparison with constant. */
+    if ((cc & CC_UNSIGNED) == 0) {  // Signed comparison with constant. 
       if (checki16(k)) {
 	emit_tai(as, PPCI_CMPWI, cr, left, k);
 	/* Signed comparison with zero and referencing previous ins? */
 	if (k == 0 && lref == as->curins-1)
 	  as->flagmcp = as->mcp;  /* Allow elimination of the compare. */
 	return;
-      } else if ((cc & 3) == (CC_EQ & 3)) {  /* Use CMPLWI for EQ or NE. */
+      } else if ((cc & 3) == (CC_EQ & 3)) {  // Use CMPLWI for EQ or NE. 
 	if (checku16(k)) {
 	  emit_tai(as, PPCI_CMPLWI, cr, left, k);
 	  return;
@@ -1844,7 +1844,7 @@ static void asm_intcomp_(ASMState *as, IRRef lref, IRRef rref, Reg cr, PPCCC cc)
 	  return;
 	}
       }
-    } else {  /* Unsigned comparison with constant. */
+    } else {  // Unsigned comparison with constant. 
       if (checku16(k)) {
 	emit_tai(as, PPCI_CMPLWI, cr, left, k);
 	return;
@@ -1950,14 +1950,14 @@ static void asm_hiop(ASMState *as, IRIns *ir)
   int uselo = ra_used(ir-1), usehi = ra_used(ir);  /* Loword/hiword used? */
   if (LJ_UNLIKELY(!(as->flags & JIT_F_OPT_DCE))) uselo = usehi = 1;
 #if LJ_HASFFI || LJ_SOFTFP
-  if ((ir-1)->o == IR_CONV) {  /* Conversions to/from 64 bit. */
+  if ((ir-1)->o == IR_CONV) {  // Conversions to/from 64 bit. 
     as->curins--;  /* Always skip the CONV. */
 #if LJ_HASFFI && !LJ_SOFTFP
     if (usehi || uselo)
       asm_conv64(as, ir);
     return;
 #endif
-  } else if ((ir-1)->o <= IR_NE) {  /* 64 bit integer comparisons. ORDER IR. */
+  } else if ((ir-1)->o <= IR_NE) {  // 64 bit integer comparisons. ORDER IR. 
     as->curins--;  /* Always skip the loword comparison. */
 #if LJ_SOFTFP
     if (!irt_isint(ir->t)) {
@@ -2149,7 +2149,7 @@ static void asm_loop_fixup(ASMState *as)
 {
   MCode *p = as->mctop;
   MCode *target = as->mcp;
-  if (as->loopinv) {  /* Inverted loop branch? */
+  if (as->loopinv) {  // Inverted loop branch? 
     /* asm_guardcc already inverted the cond branch and patched the final b. */
     p[-2] = (p[-2] & (0xffff0000u & ~PPCF_Y)) | (((target-p+2) & 0x3fffu) << 2);
   } else {
@@ -2308,7 +2308,7 @@ void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target)
   }
   if (!cstart) cstart = px;
   lj_mcode_sync(cstart, px+1);
-  if (clearso) {  /* Extend the current trace. Ugly workaround. */
+  if (clearso) {  // Extend the current trace. Ugly workaround. 
     MCode *pp = J->cur.mcode;
     J->cur.szmcode += sizeof(MCode);
     *--pp = PPCI_MCRXR;  /* Clear SO flag. */

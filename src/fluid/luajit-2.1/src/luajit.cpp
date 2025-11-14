@@ -99,7 +99,7 @@ static int report(lua_State *L, int status)
 
 static int traceback(lua_State *L)
 {
-  if (!lua_isstring(L, 1)) { /* Non-string error object? Try metamethod. */
+  if (!lua_isstring(L, 1)) {  // Non-string error object? Try metamethod. 
     if (lua_isnoneornil(L, 1) ||
 	!luaL_callmeta(L, 1, "__tostring") ||
 	!lua_isstring(L, -1))
@@ -232,7 +232,7 @@ static int loadline(lua_State *L)
   lua_settop(L, 0);
   if (!pushline(L, 1))
     return -1;  /* no input */
-  for (;;) {  /* repeat until gets a complete line */
+  for (;;) {  // repeat until gets a complete line 
     status = luaL_loadbuffer(L, lua_tostring(L, 1), lua_strlen(L, 1), "=stdin");
     if (!incomplete(L, status)) break;  /* cannot try to add lines? */
     if (!pushline(L, 0))  /* no more input? */
@@ -253,7 +253,7 @@ static void dotty(lua_State *L)
   while ((status = loadline(L)) != -1) {
     if (status == LUA_OK) status = docall(L, 0, 0);
     report(L, status);
-    if (status == LUA_OK && lua_gettop(L) > 0) {  /* any result to print? */
+    if (status == LUA_OK && lua_gettop(L) > 0) {  // any result to print? 
       lua_getglobal(L, "print");
       lua_insert(L, 1);
       if (lua_pcall(L, lua_gettop(L)-1, 0, 0) != 0)
@@ -322,7 +322,7 @@ static int runcmdopt(lua_State *L, const char *opt)
 {
   int narg = 0;
   if (opt && *opt) {
-    for (;;) {  /* Split arguments. */
+    for (;;) {  // Split arguments. 
       const char *p = strchr(opt, ',');
       narg++;
       if (!p) break;
@@ -405,7 +405,7 @@ static int collectargs(char **argv, int *flags)
   for (i = 1; argv[i] != NULL; i++) {
     if (argv[i][0] != '-')  /* Not an option? */
       return i;
-    switch (argv[i][1]) {  /* Check option. */
+    switch (argv[i][1]) {  // Check option. 
     case '-':
       notail(argv[i]);
       return i+1;
@@ -467,7 +467,7 @@ static int runargs(lua_State *L, char **argv, int argn)
 	return 1;
       break;
       }
-    case 'j': {  /* LuaJIT extension. */
+    case 'j': {  // LuaJIT extension. 
       const char *cmd = argv[i] + 2;
       if (*cmd == '\0') cmd = argv[++i];
       lua_assert(cmd != NULL);
@@ -518,7 +518,7 @@ static int pmain(lua_State *L)
   LUAJIT_VERSION_SYM();  /* Linker-enforced version check. */
 
   argn = collectargs(argv, &flags);
-  if (argn < 0) {  /* Invalid args? */
+  if (argn < 0) {  // Invalid args? 
     print_usage();
     s->status = 1;
     return 0;

@@ -170,7 +170,7 @@ void lj_cconv_ct_ct(CTState *cts, CType *d, CType *s,
   case CCX(I, B):
   case CCX(I, I):
   conv_I_I:
-    if (dsize > ssize) {  /* Zero-extend or sign-extend LSB. */
+    if (dsize > ssize) {  // Zero-extend or sign-extend LSB. 
 #if LJ_LE
       uint8_t fill = (!(sinfo & CTF_UNSIGNED) && (sp[ssize-1]&0x80)) ? 0xff : 0;
       memcpy(dp, sp, ssize);
@@ -180,7 +180,7 @@ void lj_cconv_ct_ct(CTState *cts, CType *d, CType *s,
       memset(dp, fill, dsize-ssize);
       memcpy(dp + (dsize-ssize), sp, ssize);
 #endif
-    } else {  /* Copy LSB. */
+    } else {  // Copy LSB. 
 #if LJ_LE
       memcpy(dp, sp, dsize);
 #else
@@ -299,7 +299,7 @@ void lj_cconv_ct_ct(CTState *cts, CType *d, CType *s,
     goto conv_F_F;  /* Convert to re. */
 
   case CCX(C, C):
-    if (dsize != ssize) {  /* Different types: convert re/im separately. */
+    if (dsize != ssize) {  // Different types: convert re/im separately. 
       CType *dc = ctype_child(cts, d);
       CType *sc = ctype_child(cts, s);
       lj_cconv_ct_ct(cts, dc, sc, dp, sp, flags);
@@ -486,10 +486,10 @@ static void cconv_array_tab(CTState *cts, CType *d,
     lj_cconv_ct_tv(cts, dc, dp + ofs, tv, flags);
     ofs += esize;
   }
-  if (size != CTSIZE_INVALID) {  /* Only fill up arrays with known size. */
-    if (ofs == esize) {  /* Replicate a single element. */
+  if (size != CTSIZE_INVALID) {  // Only fill up arrays with known size. 
+    if (ofs == esize) {  // Replicate a single element. 
       for (; ofs < size; ofs += esize) memcpy(dp + ofs, dp, esize);
-    } else {  /* Otherwise fill the remainder with zero. */
+    } else {  // Otherwise fill the remainder with zero. 
       memset(dp + ofs, 0, size - ofs);
     }
   }
@@ -511,8 +511,8 @@ static void cconv_substruct_tab(CTState *cts, CType *d, uint8_t *dp,
       retry:
 	tv = (TValue *)lj_tab_getint(t, i);
 	if (!tv || tvisnil(tv)) {
-	  if (i == 0) { i = 1; goto retry; }  /* 1-based tables. */
-	  if (iz == 0) { *ip = i = -1; goto tryname; }  /* Init named fields. */
+	  if (i == 0) { i = 1; goto retry; }  // 1-based tables. 
+	  if (iz == 0) { *ip = i = -1; goto tryname; }  // Init named fields. 
 	  break;  /* Stop at first nil. */
 	}
 	*ip = i + 1;
@@ -529,7 +529,7 @@ static void cconv_substruct_tab(CTState *cts, CType *d, uint8_t *dp,
     } else if (ctype_isxattrib(df->info, CTA_SUBTYPE)) {
       cconv_substruct_tab(cts, ctype_rawchild(cts, df),
 			  dp+df->size, t, ip, flags);
-    }  /* Ignore all other entries in the chain. */
+    }  // Ignore all other entries in the chain. 
   }
 }
 
@@ -559,12 +559,12 @@ void lj_cconv_ct_tv(CTState *cts, CType *d,
     sid = CTID_DOUBLE;
     flags |= CCF_FROMTV;
   } else if (tviscdata(o)) {
-    sp = cdataptr(cdataV(o));
+    sp = (uint8_t *)cdataptr(cdataV(o));
     sid = cdataV(o)->ctypeid;
     s = ctype_get(cts, sid);
-    if (ctype_isref(s->info)) {  /* Resolve reference for value. */
+    if (ctype_isref(s->info)) {  // Resolve reference for value. 
       lj_assertCTS(s->size == CTSIZE_PTR, "ref is not pointer-sized");
-      sp = *(void **)sp;
+      sp = (uint8_t *)*(void **)sp;
       sid = ctype_cid(s->info);
     }
     s = ctype_raw(cts, sid);
@@ -578,7 +578,7 @@ void lj_cconv_ct_tv(CTState *cts, CType *d,
     }
   } else if (tvisstr(o)) {
     GCstr *str = strV(o);
-    if (ctype_isenum(d->info)) {  /* Match string against enum constant. */
+    if (ctype_isenum(d->info)) {  // Match string against enum constant. 
       CTSize ofs;
       CType *cct = lj_ctype_getfield(cts, d, str, &ofs);
       if (!cct || !ctype_isconstval(cct->info))
@@ -586,7 +586,7 @@ void lj_cconv_ct_tv(CTState *cts, CType *d,
       lj_assertCTS(d->size == 4, "only 32 bit enum supported");  /* NYI */
       sp = (uint8_t *)&cct->size;
       sid = ctype_cid(cct->info);
-    } else if (ctype_isrefarray(d->info)) {  /* Copy string to array. */
+    } else if (ctype_isrefarray(d->info)) {  // Copy string to array. 
       CType *dc = ctype_rawchild(cts, d);
       CTSize sz = str->len+1;
       if (!ctype_isinteger(dc->info) || dc->size != 1)
@@ -595,7 +595,7 @@ void lj_cconv_ct_tv(CTState *cts, CType *d,
 	sz = d->size;
       memcpy(dp, strdata(str), sz);
       return;
-    } else {  /* Otherwise pass it as a const char[]. */
+    } else {  // Otherwise pass it as a const char[]. 
       sp = (uint8_t *)strdata(str);
       sid = CTID_A_CCHAR;
       flags |= CCF_FROMTV;
@@ -692,9 +692,9 @@ static void cconv_array_init(CTState *cts, CType *d, CTSize sz, uint8_t *dp,
     cconv_err_initov(cts, d);
   for (i = 0, ofs = 0; i < len; i++, ofs += esize)
     lj_cconv_ct_tv(cts, dc, dp + ofs, o + i, 0);
-  if (ofs == esize) {  /* Replicate a single element. */
+  if (ofs == esize) {  // Replicate a single element. 
     for (; ofs < sz; ofs += esize) memcpy(dp + ofs, dp, esize);
-  } else {  /* Otherwise fill the remainder with zero. */
+  } else {  // Otherwise fill the remainder with zero. 
     memset(dp + ofs, 0, sz - ofs);
   }
 }
@@ -721,7 +721,7 @@ static void cconv_substruct_init(CTState *cts, CType *d, uint8_t *dp,
       cconv_substruct_init(cts, ctype_rawchild(cts, df),
 			   dp+df->size, o, len, ip);
       if ((d->info & CTF_UNION)) break;
-    }  /* Ignore all other entries in the chain. */
+    }  // Ignore all other entries in the chain. 
   }
 }
 

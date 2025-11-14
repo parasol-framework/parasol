@@ -279,12 +279,12 @@ static int narrow_conv_backprop(NarrowConv *nc, IRRef ref, int depth)
     if (nc->t == IRT_I64)
       *nc->sp++ = NARROWINS(NARROW_SEXT, 0);  /* Sign-extend integer. */
     return 0;
-  } else if (ir->o == IR_KNUM) {  /* Narrow FP constant. */
+  } else if (ir->o == IR_KNUM) {  // Narrow FP constant. 
     lua_Number n = ir_knum(ir)->n;
     if ((nc->mode & IRCONV_CONVMASK) == IRCONV_TOBIT) {
       /* Allows a wider range of constants. */
       int64_t k64 = (int64_t)n;
-      if (n == (lua_Number)k64) {  /* Only if const doesn't lose precision. */
+      if (n == (lua_Number)k64) {  // Only if const doesn't lose precision. 
 	*nc->sp++ = NARROWINS(NARROW_INT, 0);
 	*nc->sp++ = (NarrowIns)k64;  /* But always truncate to 32 bits. */
 	return 0;
@@ -341,7 +341,7 @@ static int narrow_conv_backprop(NarrowConv *nc, IRRef ref, int depth)
       NarrowIns *savesp = nc->sp;
       int count = narrow_conv_backprop(nc, ir->op1, depth);
       count += narrow_conv_backprop(nc, ir->op2, depth);
-      if (count <= 1) {  /* Limit total number of conversions. */
+      if (count <= 1) {  // Limit total number of conversions. 
 	*nc->sp++ = NARROWINS(IRT(ir->o, nc->t), ref);
 	return count;
       }
@@ -364,7 +364,7 @@ static IRRef narrow_conv_emit(jit_State *J, NarrowConv *nc)
   NarrowIns *next = nc->stack;  /* List of instructions from backpropagation. */
   NarrowIns *last = nc->sp;
   NarrowIns *sp = nc->stack;  /* Recycle the stack to store operands. */
-  while (next < last) {  /* Simple stack machine to process the ins. list. */
+  while (next < last) {  // Simple stack machine to process the ins. list. 
     NarrowIns ref = *next++;
     IROpT op = narrow_op(ref);
     if (op == NARROW_REF) {
@@ -380,7 +380,7 @@ static IRRef narrow_conv_emit(jit_State *J, NarrowConv *nc)
       *sp++ = nc->t == IRT_I64 ?
 	      lj_ir_kint64(J, (int64_t)(int32_t)*next++) :
 	      lj_ir_kint(J, *next++);
-    } else {  /* Regular IROpT. Pops two operands and pushes one result. */
+    } else {  // Regular IROpT. Pops two operands and pushes one result. 
       IRRef mode = nc->mode;
       lj_assertJ(sp >= nc->stack+2, "stack underflow");
       sp--;
@@ -597,7 +597,7 @@ TRef lj_opt_narrow_pow(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc)
       /* Guarded conversion to integer! */
       rc = emitir(IRTGI(IR_CONV), rc, IRCONV_INT_NUM|IRCONV_CHECK);
     }
-    if (!tref_isk(rc)) {  /* Range guard: -65536 <= i <= 65536 */
+    if (!tref_isk(rc)) {  // Range guard: -65536 <= i <= 65536 
       TRef tmp = emitir(IRTI(IR_ADD), rc, lj_ir_kint(J, 65536));
       emitir(IRTGI(IR_ULE), tmp, lj_ir_kint(J, 2*65536));
     }

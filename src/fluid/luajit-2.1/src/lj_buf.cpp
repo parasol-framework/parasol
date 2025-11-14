@@ -24,7 +24,7 @@ static void buf_grow(SBuf *sb, MSize sz)
   if (nsz < LJ_MIN_SBUF) nsz = LJ_MIN_SBUF;
   while (nsz < sz) nsz += nsz;
   flag = sbufflag(sb);
-  if ((flag & SBUF_FLAG_COW)) {  /* Copy-on-write semantics. */
+  if ((flag & SBUF_FLAG_COW)) {  // Copy-on-write semantics. 
     lj_assertG_(G(sbufL(sb)), sb->w == sb->e, "bad SBuf COW");
     b = (char *)lj_mem_new(sbufL(sb), nsz);
     setsbufflag(sb, flag & ~(GCSize)SBUF_FLAG_COW);
@@ -40,7 +40,7 @@ static void buf_grow(SBuf *sb, MSize sz)
   sb->b = b;
   sb->w = b + len;
   sb->e = b + nsz;
-  if ((flag & SBUF_FLAG_BORROW)) {  /* Adjust borrowed buffer pointers. */
+  if ((flag & SBUF_FLAG_BORROW)) {  // Adjust borrowed buffer pointers. 
     SBuf *bsb = mref(sbufX(sb)->bsb, SBuf);
     bsb->b = b;
     bsb->w = b + len;
@@ -64,14 +64,14 @@ LJ_NOINLINE char *LJ_FASTCALL lj_buf_more2(SBuf *sb, MSize sz)
     MSize len = sbufxlen(sbx);
     if (LJ_UNLIKELY(sz > LJ_MAX_BUF || len + sz > LJ_MAX_BUF))
       lj_err_mem(sbufL(sbx));
-    if (len + sz > sbufsz(sbx)) {  /* Must grow. */
+    if (len + sz > sbufsz(sbx)) {  // Must grow. 
       buf_grow((SBuf *)sbx, len + sz);
     } else if (sbufxslack(sbx) < (sbufsz(sbx) >> 3)) {
       /* Also grow to avoid excessive compactions, if slack < size/8. */
       buf_grow((SBuf *)sbx, sbuflen(sbx) + sz);  /* Not sbufxlen! */
       return sbx->w;
     }
-    if (sbx->r != sbx->b) {  /* Compact by moving down. */
+    if (sbx->r != sbx->b) {  // Compact by moving down. 
       memmove(sbx->b, sbx->r, len);
       sbx->r = sbx->b;
       sbx->w = sbx->b + len;
@@ -93,7 +93,7 @@ void LJ_FASTCALL lj_buf_shrink(lua_State *L, SBuf *sb)
   MSize osz = (MSize)(sb->e - b);
   if (osz > 2*LJ_MIN_SBUF) {
     MSize n = (MSize)(sb->w - b);
-    b = lj_mem_realloc(L, b, osz, (osz >> 1));
+    b = (char *)lj_mem_realloc(L, b, osz, (osz >> 1));
     sb->b = b;
     sb->w = b + n;
     sb->e = b + (osz >> 1);
@@ -225,7 +225,7 @@ SBuf *lj_buf_putstr_rep(SBuf *sb, GCstr *s, int32_t rep)
     if (LJ_UNLIKELY(tlen > LJ_MAX_STR))
       lj_err_mem(sbufL(sb));
     w = lj_buf_more(sb, (MSize)tlen);
-    if (len == 1) {  /* Optimize a common case. */
+    if (len == 1) {  // Optimize a common case. 
       uint32_t c = strdata(s)[0];
       do { *w++ = c; } while (--rep > 0);
     } else {

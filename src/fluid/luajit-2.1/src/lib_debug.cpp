@@ -346,7 +346,7 @@ LJLIB_CF(debug_gethook)
   char buff[5];
   int mask = lua_gethookmask(L);
   lua_Hook hook = lua_gethook(L);
-  if (hook != NULL && hook != hookf) {  /* external hook? */
+  if (hook != NULL && hook != hookf) {  // external hook? 
     lua_pushliteral(L, "external hook");
   } else {
     (L->top++)->u64 = KEY_HOOK;

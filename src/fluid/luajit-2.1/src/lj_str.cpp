@@ -77,7 +77,7 @@ static LuaStrHash hash_sparse(uint64_t seed, const char *str, MSize len)
 {
   /* Constants taken from lookup3 hash by Bob Jenkins. */
   LuaStrHash a, b, h = len ^ (LuaStrHash)seed;
-  if (len >= 4) {  /* Caveat: unaligned access! */
+  if (len >= 4) {  // Caveat: unaligned access! 
     a = lj_getu32(str);
     h ^= lj_getu32(str+len-4);
     b = lj_getu32(str+(len>>1)-2);
@@ -174,22 +174,22 @@ void lj_str_resize(lua_State *L, MSize newmask)
       MSize hash = s->hash;
 #if LUAJIT_SECURITY_STRHASH
       uintptr_t u;
-      if (LJ_LIKELY(!s->hashalg)) {  /* String hashed with primary hash. */
+      if (LJ_LIKELY(!s->hashalg)) {  // String hashed with primary hash. 
 	hash &= newmask;
 	u = gcrefu(newtab[hash]);
-	if (LJ_UNLIKELY(u & 1)) {  /* Switch string to secondary hash. */
+	if (LJ_UNLIKELY(u & 1)) {  // Switch string to secondary hash. 
 	  s->hash = hash = hash_dense(g->str.seed, s->hash, strdata(s), s->len);
 	  s->hashalg = 1;
 	  hash &= newmask;
 	  u = gcrefu(newtab[hash]);
 	}
-      } else {  /* String hashed with secondary hash. */
+      } else {  // String hashed with secondary hash. 
 	MSize shash = hash_sparse(g->str.seed, strdata(s), s->len);
 	u = gcrefu(newtab[shash & newmask]);
 	if (u & 1) {
 	  hash &= newmask;
 	  u = gcrefu(newtab[hash]);
-	} else {  /* Revert string back to primary hash. */
+	} else {  // Revert string back to primary hash. 
 	  s->hash = shash;
 	  s->hashalg = 0;
 	  hash = (shash & newmask);
@@ -231,12 +231,12 @@ static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, LuaStrHash hashc,
     GCobj *next = gcnext(o);
     GCstr *s = gco2str(o);
     LuaStrHash hash;
-    if (ow) {  /* Must sweep while rechaining. */
-      if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  /* String alive? */
+    if (ow) {  // Must sweep while rechaining. 
+      if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // String alive? 
 	lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
 		   "sweep of undead string");
 	makewhite(g, o);
-      } else {  /* Free dead string. */
+      } else {  // Free dead string. 
 	lj_assertG(isdead(g, o) || ow == LJ_GC_SFIXED,
 		   "sweep of unlive string");
 	lj_str_free(g, s);
@@ -245,7 +245,7 @@ static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, LuaStrHash hashc,
       }
     }
     hash = s->hash;
-    if (!s->hashalg) {  /* Rehash with secondary hash. */
+    if (!s->hashalg) {  // Rehash with secondary hash. 
       hash = hash_dense(g->str.seed, hash, strdata(s), s->len);
       s->hash = hash;
       s->hashalg = 1;
@@ -322,7 +322,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
     /* Check if the string has already been interned. */
     GCobj *o = gcref(g->str.tab[hash & g->str.mask]);
 #if LUAJIT_SECURITY_STRHASH
-    if (LJ_UNLIKELY((uintptr_t)o & 1)) {  /* Secondary hash for this chain? */
+    if (LJ_UNLIKELY((uintptr_t)o & 1)) {  // Secondary hash for this chain? 
       hashalg = 1;
       hash = hash_dense(g->str.seed, hash, str, len);
       o = (GCobj *)(gcrefu(g->str.tab[hash & g->str.mask]) & ~(uintptr_t)1);

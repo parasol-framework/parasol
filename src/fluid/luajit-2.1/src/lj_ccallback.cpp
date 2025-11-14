@@ -285,7 +285,7 @@ static void callback_mcode_new(CTState *cts)
   p = lj_mem_new(cts->L, sz);
 #endif
   cts->cb.mcode = p;
-  pe = callback_mcode_init(cts->g, p);
+  pe = callback_mcode_init(cts->g, (uint8_t *)p);
   UNUSED(pe);
   lj_assertCTS((size_t)((char *)pe - (char *)p) <= sz,
 	       "miscalculated CALLBACK_MAX_SLOT");
@@ -544,7 +544,7 @@ static void callback_conv_args(CTState *cts, lua_State *L)
     rid = ctype_cid(ct->info);  /* Return type. x86: +(spadj<<16). */
     fn = funcV(lj_tab_getint(cts->miscmap, (int32_t)slot));
     fntp = LJ_TFUNC;
-  } else {  /* Must set up frame first, before throwing the error. */
+  } else {  // Must set up frame first, before throwing the error. 
     ct = NULL;
     rid = 0;
     fn = (GCfunc *)L;
@@ -609,7 +609,7 @@ static void callback_conv_args(CTState *cts, lua_State *L)
 #endif
 	 )
 	sp = (void *)((uint8_t *)sp + CTSIZE_PTR-cta->size);
-      gcsteps += lj_cconv_tv_ct(cts, cta, 0, o++, sp);
+      gcsteps += lj_cconv_tv_ct(cts, cta, 0, o++, (uint8_t *)sp);
     }
     fid = ctf->sib;
   }

@@ -118,7 +118,7 @@ void lj_dispatch_update(global_State *g)
   mode |= (g->hookmask & (LUA_MASKLINE|LUA_MASKCOUNT)) ? DISPMODE_INS : 0;
   mode |= (g->hookmask & LUA_MASKCALL) ? DISPMODE_CALL : 0;
   mode |= (g->hookmask & LUA_MASKRET) ? DISPMODE_RET : 0;
-  if (oldmode != mode) {  /* Mode changed? */
+  if (oldmode != mode) {  // Mode changed? 
     ASMFunction *disp = G2GG(g)->dispatch;
     ASMFunction f_forl, f_iterl, f_itern, f_loop, f_funcf, f_funcv;
     g->dispatchmode = mode;
@@ -131,7 +131,7 @@ void lj_dispatch_update(global_State *g)
       f_loop = makeasmfunc(lj_bc_ofs[BC_LOOP]);
       f_funcf = makeasmfunc(lj_bc_ofs[BC_FUNCF]);
       f_funcv = makeasmfunc(lj_bc_ofs[BC_FUNCV]);
-    } else {  /* Otherwise use the non-hotcounting instructions. */
+    } else {  // Otherwise use the non-hotcounting instructions. 
       f_forl = disp[GG_LEN_DDISP+BC_IFORL];
       f_iterl = disp[GG_LEN_DDISP+BC_IITERL];
       f_itern = &lj_vm_IITERN;
@@ -148,7 +148,7 @@ void lj_dispatch_update(global_State *g)
     /* Set dynamic instruction dispatch. */
     if ((oldmode ^ mode) & (DISPMODE_PROF|DISPMODE_REC|DISPMODE_INS)) {
       /* Need to update the whole table. */
-      if (!(mode & DISPMODE_INS)) {  /* No ins dispatch? */
+      if (!(mode & DISPMODE_INS)) {  // No ins dispatch? 
 	/* Copy static dispatch table to dynamic dispatch table. */
 	memcpy(&disp[0], &disp[GG_LEN_DDISP], GG_LEN_SDISP*sizeof(ASMFunction));
 	/* Overwrite with dynamic return dispatch. */
@@ -187,9 +187,9 @@ void lj_dispatch_update(global_State *g)
     }
 
     /* Set dynamic call dispatch. */
-    if ((oldmode ^ mode) & DISPMODE_CALL) {  /* Update the whole table? */
+    if ((oldmode ^ mode) & DISPMODE_CALL) {  // Update the whole table? 
       uint32_t i;
-      if ((mode & DISPMODE_CALL) == 0) {  /* No call hooks? */
+      if ((mode & DISPMODE_CALL) == 0) {  // No call hooks? 
 	for (i = GG_LEN_SDISP; i < GG_LEN_DDISP; i++)
 	  disp[i] = makeasmfunc(lj_bc_ofs[i]);
       } else {
@@ -197,7 +197,7 @@ void lj_dispatch_update(global_State *g)
 	  disp[i] = lj_vm_callhook;
       }
     }
-    if (!(mode & DISPMODE_CALL)) {  /* Overwrite dynamic counting ins. */
+    if (!(mode & DISPMODE_CALL)) {  // Overwrite dynamic counting ins. 
       disp[BC_FUNCF] = f_funcf;
       disp[BC_FUNCV] = f_funcv;
     }
@@ -216,10 +216,10 @@ void lj_dispatch_update(global_State *g)
 /* Set JIT mode for a single prototype. */
 static void setptmode(global_State *g, GCproto *pt, int mode)
 {
-  if ((mode & LUAJIT_MODE_ON)) {  /* (Re-)enable JIT compilation. */
+  if ((mode & LUAJIT_MODE_ON)) {  // (Re-)enable JIT compilation. 
     pt->flags &= ~PROTO_NOJIT;
     lj_trace_reenableproto(pt);  /* Unpatch all ILOOP etc. bytecodes. */
-  } else {  /* Flush and/or disable JIT compilation. */
+  } else {  // Flush and/or disable JIT compilation. 
     if (!(mode & LUAJIT_MODE_FLUSH))
       pt->flags |= PROTO_NOJIT;
     lj_trace_flushproto(g, pt);  /* Flush all traces of prototype. */
@@ -330,7 +330,7 @@ LUA_API int lua_sethook(lua_State *L, lua_Hook func, int mask, int count)
 {
   global_State *g = G(L);
   mask &= HOOK_EVENTMASK;
-  if (func == NULL || mask == 0) { mask = 0; func = NULL; }  /* Consistency. */
+  if (func == NULL || mask == 0) { mask = 0; func = NULL; }  // Consistency. 
   g->hookf = func;
   g->hookcount = g->hookcstart = (int32_t)count;
   g->hookmask = (uint8_t)((g->hookmask & ~HOOK_EVENTMASK) | mask);
@@ -476,7 +476,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State *L, const BCIns *pc)
   int missing = call_init(L, fn);
 #if LJ_HASJIT
   J->L = L;
-  if ((uintptr_t)pc & 1) {  /* Marker for hot call. */
+  if ((uintptr_t)pc & 1) {  // Marker for hot call. 
 #ifdef LUA_USE_ASSERT
     ptrdiff_t delta = L->top - L->base;
 #endif

@@ -81,7 +81,7 @@ static int carith_checkarg(lua_State *L, CTState *cts, CDArith *ca)
       }
     } else {
       ca->ct[i] = NULL;
-      ca->p[i] = (void *)(intptr_t)1;  /* To make it unequal. */
+      ca->p[i] = (uint8_t *)(intptr_t)1;  /* To make it unequal. */
       ok = 0;
     }
   }
@@ -101,13 +101,13 @@ static int carith_ptr(lua_State *L, CTState *cts, CDArith *ca, MMS mm)
     if ((mm == MM_sub || mm == MM_eq || mm == MM_lt || mm == MM_le) &&
 	(ctype_isptr(ca->ct[1]->info) || ctype_isrefarray(ca->ct[1]->info))) {
       uint8_t *pp2 = ca->p[1];
-      if (mm == MM_eq) {  /* Pointer equality. Incompatible pointers are ok. */
+      if (mm == MM_eq) {  // Pointer equality. Incompatible pointers are ok. 
 	setboolV(L->top-1, (pp == pp2));
 	return 1;
       }
       if (!lj_cconv_compatptr(cts, ctp, ca->ct[1], CCF_IGNQUAL))
 	return 0;
-      if (mm == MM_sub) {  /* Pointer difference. */
+      if (mm == MM_sub) {  // Pointer difference. 
 	intptr_t diff;
 	sz = lj_ctype_size(cts, ctype_cid(ctp->info));  /* Element size. */
 	if (sz == 0 || sz == CTSIZE_INVALID)
@@ -118,7 +118,7 @@ static int carith_ptr(lua_State *L, CTState *cts, CDArith *ca, MMS mm)
 	*/
 	setintptrV(L->top-1, (int32_t)diff);
 	return 1;
-      } else if (mm == MM_lt) {  /* Pointer comparison (unsigned). */
+      } else if (mm == MM_lt) {  // Pointer comparison (unsigned). 
 	setboolV(L->top-1, ((uintptr_t)pp < (uintptr_t)pp2));
 	return 1;
       } else {
@@ -237,7 +237,7 @@ static int lj_carith_meta(lua_State *L, CTState *cts, CDArith *ca, MMS mm)
   if (!tv) {
     const char *repr[2];
     int i, isenum = -1, isstr = -1;
-    if (mm == MM_eq) {  /* Equality checks never raise an error. */
+    if (mm == MM_eq) {  // Equality checks never raise an error. 
       int eq = ca->p[0] == ca->p[1];
       setboolV(L->top-1, eq);
       setboolV(&G(L)->tmptv2, eq);  /* Remember for trace recorder. */
@@ -326,7 +326,7 @@ uint64_t lj_carith_check64(lua_State *L, int narg, CTypeID *id)
     CType *s = ctype_get(cts, sid);
     uint64_t x;
     if (ctype_isref(s->info)) {
-      sp = *(void **)sp;
+      sp = (uint8_t *)*(void **)sp;
       sid = ctype_cid(s->info);
     }
     s = ctype_raw(cts, sid);

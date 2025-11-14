@@ -99,12 +99,12 @@ static const char *clib_resolve_lds(lua_State *L, const char *name)
   if (fp) {
     char buf[256];
     if (fgets(buf, sizeof(buf), fp)) {
-      if (!strncmp(buf, "/* GNU ld script", 16)) {  /* ld script magic? */
-	while (fgets(buf, sizeof(buf), fp)) {  /* Check all lines. */
+      if (!strncmp(buf, "/* GNU ld script", 16)) {  // ld script magic? 
+	while (fgets(buf, sizeof(buf), fp)) {  // Check all lines. 
 	  p = clib_check_lds(L, buf);
 	  if (p) break;
 	}
-      } else {  /* Otherwise check only the first line. */
+      } else {  // Otherwise check only the first line. 
 	p = clib_check_lds(L, buf);
       }
     }
@@ -243,11 +243,11 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 static void *clib_getsym(CLibrary *cl, const char *name)
 {
   void *p = NULL;
-  if (cl->handle == CLIB_DEFHANDLE) {  /* Search default libraries. */
+  if (cl->handle == CLIB_DEFHANDLE) {  // Search default libraries. 
     MSize i;
     for (i = 0; i < CLIB_HANDLE_MAX; i++) {
       HINSTANCE h = (HINSTANCE)clib_def_handle[i];
-      if (!(void *)h) {  /* Resolve default library handles (once). */
+      if (!(void *)h) {  // Resolve default library handles (once). 
 #if LJ_TARGET_UWP
 	h = (HINSTANCE)&__ImageBase;
 #else

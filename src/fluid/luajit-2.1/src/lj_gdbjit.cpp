@@ -594,7 +594,7 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx *ctx)
 #else
 #error "Unsupported target architecture"
 #endif
-    if (ctx->spadjp != ctx->spadj) {  /* Parent/interpreter stack frame size. */
+    if (ctx->spadjp != ctx->spadj) {  // Parent/interpreter stack frame size. 
       DB(DW_CFA_def_cfa_offset); DUV(ctx->spadjp);
       DB(DW_CFA_advance_loc|1);  /* Only an approximation. */
     }
