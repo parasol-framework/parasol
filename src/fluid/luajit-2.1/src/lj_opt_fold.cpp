@@ -1256,20 +1256,21 @@ LJFOLDF(simplify_conv_sext)
 {
   IRRef ref = fins->op1;
   int64_t ofs = 0;
+  IRRef lo = 0;  /* Declare before goto */
   if (!(fins->op2 & IRCONV_SEXT))
     return NEXTFOLD;
   PHIBARRIER(fleft);
-  if (fleft->o == IR_XLOAD && (irt_isu8(fleft->t) || irt_isu16(fleft->t)))
+  if (fleft->o == IR_XLOAD and (irt_isu8(fleft->t) or irt_isu16(fleft->t)))
     goto ok_reduce;
-  if (fleft->o == IR_ADD && irref_isk(fleft->op2)) {
+  if (fleft->o == IR_ADD and irref_isk(fleft->op2)) {
     ofs = (int64_t)IR(fleft->op2)->i;
     ref = fleft->op1;
   }
   /* Use scalar evolution analysis results to strength-reduce sign-extension. */
   if (ref == J->scev.idx) {
-    IRRef lo = J->scev.dir ? J->scev.start : J->scev.stop;
+    lo = J->scev.dir ? J->scev.start : J->scev.stop;
     lj_assertJ(irt_isint(J->scev.t), "only int SCEV supported");
-    if (lo && IR(lo)->o == IR_KINT && IR(lo)->i + ofs >= 0) {
+    if (lo and IR(lo)->o == IR_KINT and IR(lo)->i + ofs >= 0) {
     ok_reduce:
 #if LJ_TARGET_X64
       /* Eliminate widening. All 32 bit ops do an implicit zero-extension. */
