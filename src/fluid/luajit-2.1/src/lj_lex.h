@@ -17,7 +17,6 @@
   _(for) _(function) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
   __(if_empty, ?\?) \
-  __(safe_field, ?.) __(safe_method, ?:) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
   __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
   __(number, <number>) __(name, <name>) __(string, <string>) \

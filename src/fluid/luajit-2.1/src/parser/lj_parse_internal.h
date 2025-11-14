@@ -146,18 +146,6 @@ static void expr_str(LexState* ls, ExpDesc* e);
 static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e);
 static void expr_field(LexState* ls, ExpDesc* v);
 static void expr_bracket(LexState* ls, ExpDesc* v);
-static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
-   int branch_on_presence, LexToken next_token);
-static void expr_safe_field_branch(LexState* ls, ExpDesc* v,
-   int branch_on_presence);
-static void expr_safe_field(LexState* ls, ExpDesc* v);
-static void expr_safe_index_branch(LexState* ls, ExpDesc* v,
-   int branch_on_presence);
-static void expr_safe_index(LexState* ls, ExpDesc* v);
-static void expr_safe_field_chain(LexState* ls, ExpDesc* v);
-static void expr_safe_index_chain(LexState* ls, ExpDesc* v);
-static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key);
-static void expr_safe_method(LexState* ls, ExpDesc* v);
 static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e);
 static void expr_table(LexState* ls, ExpDesc* e);
 static BCReg parse_params(LexState* ls, int needself);

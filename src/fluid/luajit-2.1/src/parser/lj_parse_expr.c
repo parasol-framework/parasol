@@ -72,99 +72,11 @@ static void expr_bracket(LexState* ls, ExpDesc* v)
    lex_check(ls, ']');
 }
 
-typedef void (*SafeNavBranchFunc)(LexState* ls, ExpDesc* v,
-   BCReg obj_reg, BCReg result_reg);
-
-static void expr_safe_nav_branch(LexState* ls, ExpDesc* v,
-   SafeNavBranchFunc emit_branch)
-{
-   FuncState* fs = ls->fs;
-   ExpDesc nilv;
-   BCReg obj_reg, result_reg;
-   BCPos check_nil, skip_branch;
-
-   expr_discharge(fs, v);
-   obj_reg = expr_toanyreg(fs, v);
-
-   result_reg = fs->freereg;
-   bcreg_reserve(fs, 1);
-
-   /* Emit nil check on the base object. When the comparison succeeds the VM
-   ** uses the following BC_JMP as the branch target, so nil values jump to the
-   ** patched block below while non-nil values fall through to emit_branch(). */
-   expr_init(&nilv, VKNIL, 0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-   check_nil = bcemit_jmp(fs);
-
-   emit_branch(ls, v, obj_reg, result_reg);
-
-   // After evaluating the non-nil branch, skip the nil handling.
-   skip_branch = bcemit_jmp(fs);
-
-   // Nil branch: patch the jump target && write nil to the result register.
-   jmp_patch(fs, check_nil, fs->pc);
-   bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
-
-   // Merge point for both branches.
-   jmp_patch(fs, skip_branch, fs->pc);
-   expr_init(v, VNONRELOC, result_reg);
-   v->flags |= SAFE_NAV_CHAIN_FLAG;
-}
-
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)
 {
    BCReg target = result_reg + 1;
    if (target < fs->nactvar) target = (BCReg)fs->nactvar;
    if (fs->freereg > target) fs->freereg = target;
-}
-
-static void expr_safe_field_branch(LexState* ls, ExpDesc* v,
-   BCReg obj_reg, BCReg result_reg)
-{
-   FuncState* fs = ls->fs;
-   ExpDesc key;
-
-   expr_str(ls, &key);
-   expr_init(v, VNONRELOC, obj_reg);
-   expr_index(fs, v, &key);
-   expr_toreg(fs, v, result_reg);
-}
-
-// Parse safe navigation for field access: obj?.field
-static void expr_safe_field(LexState* ls, ExpDesc* v)
-{
-   lj_lex_next(ls);  // Consume '?.'.
-   expr_safe_nav_branch(ls, v, expr_safe_field_branch);
-}
-
-static void expr_safe_index_branch(LexState* ls, ExpDesc* v,
-   BCReg obj_reg, BCReg result_reg)
-{
-   FuncState* fs = ls->fs;
-   ExpDesc key;
-
-   expr_bracket(ls, &key);
-   expr_init(v, VNONRELOC, obj_reg);
-   expr_index(fs, v, &key);
-   expr_toreg(fs, v, result_reg);
-}
-
-// Parse safe navigation for index access: obj?[expr]
-static void expr_safe_index(LexState* ls, ExpDesc* v)
-{
-   lj_lex_next(ls);  // Consume '?'. '[' remains as current token.
-   expr_safe_nav_branch(ls, v, expr_safe_index_branch);
-}
-
-static void expr_safe_field_chain(LexState* ls, ExpDesc* v)
-{
-   lj_lex_next(ls);  // Consume '.'.
-   expr_safe_nav_branch(ls, v, expr_safe_field_branch);
-}
-
-static void expr_safe_index_chain(LexState* ls, ExpDesc* v)
-{
-   expr_safe_nav_branch(ls, v, expr_safe_index_branch);
 }
 
 static int token_starts_expression(LexToken tok)
@@ -198,50 +110,6 @@ static int should_emit_presence(LexState* ls)
    LexToken lookahead = (ls->lookahead != TK_eof) ? ls->lookahead : lj_lex_lookahead(ls);
    if (operator_line > token_line) return 1;
    return !token_starts_expression(lookahead);
-}
-
-static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key)
-{
-   FuncState* fs = ls->fs;
-   ExpDesc nilv;
-   BCReg obj_reg, result_reg;
-   BCPos check_nil, skip_call;
-
-   expr_discharge(fs, v);
-   obj_reg = expr_toanyreg(fs, v);
-
-   result_reg = fs->freereg;
-
-   expr_init(&nilv, VKNIL, 0);
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, obj_reg, const_pri(&nilv)));
-   check_nil = bcemit_jmp(fs);
-
-   v->k = VNONRELOC;
-   v->u.s.info = obj_reg;
-   v->t = v->f = NO_JMP;
-   bcemit_method(fs, v, key);
-   parse_args(ls, v);
-   expr_discharge(fs, v);
-   expr_toreg(fs, v, result_reg);
-
-   skip_call = bcemit_jmp(fs);
-
-   jmp_patch(fs, check_nil, fs->pc);
-   bcemit_AD(fs, BC_KPRI, result_reg, VKNIL);
-
-   jmp_patch(fs, skip_call, fs->pc);
-   expr_init(v, VNONRELOC, result_reg);
-   v->flags |= SAFE_NAV_CHAIN_FLAG;
-}
-
-// Parse safe navigation for method calls: obj?:method(...)
-static void expr_safe_method(LexState* ls, ExpDesc* v)
-{
-   ExpDesc key;
-
-   lj_lex_next(ls);  // Consume '?:'.
-   expr_str(ls, &key);
-   expr_safe_method_call(ls, v, &key);
 }
 
 // Get value of constant expression.
@@ -592,23 +460,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
       err_syntax(ls, LJ_ERR_XSYMBOL);
    }
    for (;;) {  // Parse multiple expression suffixes.
-      if ((ls->tok == '.' || ls->tok == '[') &&
-         v->k == VNONRELOC && (v->flags & SAFE_NAV_CHAIN_FLAG)) {
-         if (ls->tok == '.')
-            expr_safe_field_chain(ls, v);
-         else
-            expr_safe_index_chain(ls, v);
-      }
-      else if (ls->tok == TK_safe_field) {
-         expr_safe_field(ls, v);
-      }
-      else if (ls->tok == '?' && lj_lex_lookahead(ls) == '[') {
-         expr_safe_index(ls, v);
-      }
-      else if (ls->tok == TK_safe_method) {
-         expr_safe_method(ls, v);
-      }
-      else if (ls->tok == '.') {
+      if (ls->tok == '.') {
          expr_field(ls, v);
       }
       else if (ls->tok == '[') {
@@ -621,13 +473,8 @@ static void expr_primary(LexState* ls, ExpDesc* v)
          ExpDesc key;
          lj_lex_next(ls);
          expr_str(ls, &key);
-         if (v->k == VNONRELOC && (v->flags & SAFE_NAV_CHAIN_FLAG)) {
-            expr_safe_method_call(ls, v, &key);
-         }
-         else {
-            bcemit_method(fs, v, &key);
-            parse_args(ls, v);
-         }
+         bcemit_method(fs, v, &key);
+         parse_args(ls, v);
       }
       else if (ls->tok == TK_plusplus) {
          lj_lex_next(ls);
@@ -733,20 +580,6 @@ static void expr_simple(LexState* ls, ExpDesc* v)
    default:
       expr_primary(ls, v);
       return;
-   }
-   for (;;) {
-      if (ls->tok == TK_safe_field) {
-         expr_safe_field(ls, v);
-      }
-      else if (ls->tok == '?' && lj_lex_lookahead(ls) == '[') {
-         expr_safe_index(ls, v);
-      }
-      else if (ls->tok == TK_safe_method) {
-         expr_safe_method(ls, v);
-      }
-      else {
-         break;
-      }
    }
 }
 
