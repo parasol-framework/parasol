@@ -488,10 +488,36 @@ else ()
    endif ()
 
    if (WIN32)
-      # MinGW: Create library from VM object and amalgamated source
-      add_library(luajit_lib STATIC "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_VM_OBJ})
+      # MinGW: Compile amalgamated source with explicit flags to ensure consistent configuration
+      # with Unix builds and avoid inheriting global CMAKE_C_FLAGS
+      file(GLOB LUAJIT_AMALG_SOURCES
+         "${LUAJIT_SRC}/lj_*.c"
+         "${LUAJIT_SRC}/lib_*.c"
+      )
+
+      set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
+      add_custom_command(
+         OUTPUT ${LUAJIT_AMALG_O}
+         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+            ${LUAJIT_NON_MSVC_DEFS}
+            -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
+            ${LUAJIT_INCLUDE_DIRS}
+            -Wno-trigraphs
+            -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
+         DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
+         COMMENT "Compiling LuaJIT amalgamated source"
+         VERBATIM
+      )
+
+      # Create library from pre-compiled objects
+      add_library(luajit_lib STATIC)
+      target_sources(luajit_lib PRIVATE ${LUAJIT_AMALG_O} ${LUAJIT_VM_OBJ})
+      set_target_properties(luajit_lib PROPERTIES LINKER_LANGUAGE C)
    else ()
-      # Unix: Compile assembly first, then create library
+      # Unix: Compile VM assembly and amalgamated source with explicit flags to avoid
+      # inheriting problematic global flags (e.g. -fno-var-tracking from FastBuild)
+
+      # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
          COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
@@ -503,29 +529,36 @@ else ()
          COMMENT "Compiling LuaJIT VM assembly"
          VERBATIM
       )
-      add_library(luajit_lib STATIC "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_VM_O})
+
+      # Compile amalgamated source with explicit flags
+      # We use a custom command (rather than add_library with the source file) to prevent
+      # inheriting global CMAKE_C_FLAGS which may contain incompatible flags like -fno-var-tracking
+      file(GLOB LUAJIT_AMALG_SOURCES
+         "${LUAJIT_SRC}/lj_*.c"
+         "${LUAJIT_SRC}/lib_*.c"
+      )
+
+      set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
+      add_custom_command(
+         OUTPUT ${LUAJIT_AMALG_O}
+         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+            ${LUAJIT_NON_MSVC_DEFS}
+            -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
+            ${LUAJIT_INCLUDE_DIRS}
+            -Wno-trigraphs
+            -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
+         DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
+         COMMENT "Compiling LuaJIT amalgamated source"
+         VERBATIM
+      )
+
+      # Create library from pre-compiled objects
+      add_library(luajit_lib STATIC)
+      target_sources(luajit_lib PRIVATE ${LUAJIT_AMALG_O} ${LUAJIT_VM_O})
+      set_target_properties(luajit_lib PROPERTIES LINKER_LANGUAGE C)
    endif ()
 
    add_dependencies(luajit_lib luajit_codegen)
-
-   target_compile_options(luajit_lib PRIVATE
-      ${LUAJIT_COMMON_CFLAGS}
-      -funwind-tables
-      -Wno-trigraphs
-   )
-
-   target_compile_definitions(luajit_lib PRIVATE
-      LUAJIT_UNWIND_EXTERNAL
-      LUAJIT_DISABLE_FFI
-      LUAJIT_DISABLE_BUFFER
-      LUAJIT_ENABLE_LUA52COMPAT
-      LUA_ROOT="${CMAKE_INSTALL_PREFIX}"
-   )
-
-   target_include_directories(luajit_lib PRIVATE
-      "${LUAJIT_SRC}"
-      "${LUAJIT_BUILD_DIR}"
-   )
 
    set_target_properties(luajit_lib PROPERTIES
       OUTPUT_NAME "luajit-5.1"
