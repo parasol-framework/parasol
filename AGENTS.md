@@ -103,7 +103,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - C-style bitwise operators: `&`, `|`, `~`, `<<`, `>>`
 - C-style ternary operator: `condition ? true_val :> false_val`
 - Falsey value checks with `??`, e.g. `if value?? then ...`
-- `??` conditional operator as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
+- `?=` and `??` conditional operators as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
 - `defer()` statement that runs code when de-scoped.
 - `goto`, labels, `==` and `~=` are deprecated
 
