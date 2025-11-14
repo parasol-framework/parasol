@@ -193,7 +193,13 @@ static int token_starts_expression(LexToken tok)
 
 static int should_emit_presence(LexState* ls)
 {
-   return !token_starts_expression(lj_lex_lookahead(ls));
+   BCLine token_line = ls->lastline;
+   LexToken lookahead = (ls->lookahead != TK_eof) ? ls->lookahead : lj_lex_lookahead(ls);
+
+   if (ls->linenumber > token_line)
+      return 1;
+
+   return !token_starts_expression(lookahead);
 }
 
 static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key)
