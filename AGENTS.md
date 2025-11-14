@@ -95,7 +95,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 
 #### Fluid Features Additional to Lua
 
-- `is` equivalent to `==`
+- `is` instead of `==`
 - `continue` statement in loops
 - Compound operators: `+=`, `-=`, `*=`, `/=`, `%=` on numeric values
 - `..=` for string concatenation
@@ -105,7 +105,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Falsey value checks with `??`, e.g. `if value?? then ...`
 - `??` conditional operator as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
 - `defer()` statement that runs code when de-scoped.
-- `goto`, labels and `~=` are deprecated
+- `goto`, labels, `==` and `~=` are deprecated
 
 #### Fluid Coding Patterns
 

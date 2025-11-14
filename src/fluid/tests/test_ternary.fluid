@@ -433,12 +433,17 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function testInvalidTernary()
-   -- Declaration is intentionally invalid, mixes ?? with :> instead of ?
-   -- Test should throw without crashing
-   local result = pcall(function()
-      local self = Options.scale is false ?? nil :> true
-   end)
-   assert(result is false, "Invalid ternary did not error as expected")
+   local script = obj.new('script', {
+      statement = [[
+         local Options = { scale = false }
+         local self = Options.scale is false ?? nil :> true
+         local self = Options.missing is false ?? nil :> true
+      ]]
+   })
+
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Script should have thrown an error code")
+   assert(string.find(script.errorString, 'Invalid ternary') != nil, "Expected invalid ternary error, got: " .. tostring(script.errorString))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
