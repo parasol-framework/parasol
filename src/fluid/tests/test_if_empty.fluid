@@ -182,22 +182,6 @@ function testRuntimeZero()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- This test is formally maintained in test_if_complex, but enabling the commented section occasionally can reveal 
--- parser issues with the exception 'function or expression too complex'
-
-function testComplex()
-   local first = "Hello World"
-   local second = nil
-
-   local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
-      .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (first ?? '') .. [[" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
-      .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (second ?? '') .. [[" </cell></row>]]
-      .. [[</table>]]
-
-   msg(inject)
-end
-
-----------------------------------------------------------------------------------------------------------------------
 -- Test the use of if-empty within a function
 
 function testIfEmptyArgumentLeakCapture()
@@ -347,7 +331,7 @@ end
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
-         'testComplex', 'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError',
+         'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError',
          'testMethodCallInOptionalForm', 'testNestedOptional', 'testOptionalReturnValue',
          'testOptionalTableField', 'testOptionalMissingField', 'testOptionalEmptyString',
          'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
