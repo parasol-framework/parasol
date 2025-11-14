@@ -103,21 +103,21 @@ end
 function testSafeNavPresenceFallbackVariants()
    local guest = nil
 
-   local constantFallback = guest?.profile?.name ? "Guest"
+   local constantFallback = guest?.profile?.name ?? "Guest"
    assert(constantFallback is "Guest", "Constant fallback should survive safe navigation presence chain")
 
    local fallbackLabel = "Visitor"
-   local localFallback = guest?.profile?.name ? fallbackLabel
+   local localFallback = guest?.profile?.name ?? fallbackLabel
    assert(localFallback is "Visitor", "Local fallback should be forwarded when chain is nil")
 
    local function computeFallback()
       return "Computed"
    end
-   local computedFallback = guest?.profile?.name ? computeFallback()
+   local computedFallback = guest?.profile?.name ?? computeFallback()
    assert(computedFallback is "Computed", "Function fallback should be invoked when chain is nil")
 
    local member = { profile = { name = "Chloe" } }
-   local truthyChain = member?.profile?.name ? "Guest"
+   local truthyChain = member?.profile?.name ?? "Guest"
    assert(truthyChain is "Chloe", "Truthy safe navigation chain should bypass the fallback value")
 end
 

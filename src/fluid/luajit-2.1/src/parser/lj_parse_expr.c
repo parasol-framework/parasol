@@ -968,65 +968,64 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       lj_lex_next(ls);
 
       // Handle ? specially: decide ternary vs optional BEFORE any emission.
-      if (op == OPR_IF_EMPTY) {
-         if (lookahead_has_top_level_ternary_sep(ls)) {
-            FuncState* fs = ls->fs;
-            ExpDesc nilv, falsev, zerov, emptyv;
-            BCReg cond_reg, result_reg;
-            BCPos check_nil, check_false, check_zero, check_empty;
-            BCPos skip_false;
+      if (op == OPR_TERNARY) {
+         uint8_t true_branch_flags = 0;
+         FuncState* fs = ls->fs;
+         ExpDesc nilv, falsev, zerov, emptyv;
+         BCReg cond_reg, result_reg;
+         BCPos check_nil, check_false, check_zero, check_empty;
+         BCPos skip_false;
 
-            expr_discharge(fs, v);
-            cond_reg = expr_toanyreg(fs, v);
-            result_reg = cond_reg;
+         expr_discharge(fs, v);
+         cond_reg = expr_toanyreg(fs, v);
+         result_reg = cond_reg;
 
-            expr_init(&nilv, VKNIL, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
-            check_nil = bcemit_jmp(fs);
-            expr_init(&falsev, VKFALSE, 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
-            check_false = bcemit_jmp(fs);
-            expr_init(&zerov, VKNUM, 0);
-            setnumV(&zerov.u.nval, 0.0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
-            check_zero = bcemit_jmp(fs);
-            expr_init(&emptyv, VKSTR, 0);
-            emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
-            check_empty = bcemit_jmp(fs);
+         expr_init(&nilv, VKNIL, 0);
+         bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+         check_nil = bcemit_jmp(fs);
+         expr_init(&falsev, VKFALSE, 0);
+         bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+         check_false = bcemit_jmp(fs);
+         expr_init(&zerov, VKNUM, 0);
+         setnumV(&zerov.u.nval, 0.0);
+         bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+         check_zero = bcemit_jmp(fs);
+         expr_init(&emptyv, VKSTR, 0);
+         emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
+         bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+         check_empty = bcemit_jmp(fs);
 
-            {
-               ExpDesc v2;
-               expr_binop(ls, &v2, priority[OPR_IF_EMPTY].right);
-               expr_discharge(fs, &v2);
-               expr_toreg(fs, &v2, result_reg);
-               expr_collapse_freereg(fs, result_reg);
-               true_branch_flags = v2.flags;
-            }
+         {
+            ExpDesc v2;
+            expr_binop(ls, &v2, priority[OPR_IF_EMPTY].right);
+            expr_discharge(fs, &v2);
+            expr_toreg(fs, &v2, result_reg);
+            expr_collapse_freereg(fs, result_reg);
+            true_branch_flags = v2.flags;
+         }
 
-            skip_false = bcemit_jmp(fs);
+         skip_false = bcemit_jmp(fs);
 
-            lex_check(ls, TK_ternary_sep);
+         lex_check(ls, TK_ternary_sep);
 
-            {
-               BCPos false_start = fs->pc;
-               jmp_patch(fs, check_nil, false_start);
-               jmp_patch(fs, check_false, false_start);
-               jmp_patch(fs, check_zero, false_start);
-               jmp_patch(fs, check_empty, false_start);
-            }
+         {
+            BCPos false_start = fs->pc;
+            jmp_patch(fs, check_nil, false_start);
+            jmp_patch(fs, check_false, false_start);
+            jmp_patch(fs, check_zero, false_start);
+            jmp_patch(fs, check_empty, false_start);
+         }
 
-            {
-               ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[OPR_IF_EMPTY].right);
-               expr_discharge(fs, &fexp);
-               expr_toreg(fs, &fexp, result_reg);
-               expr_collapse_freereg(fs, result_reg);
-               jmp_patch(fs, skip_false, fs->pc);
-               *v = fexp;
-               v->flags |= true_branch_flags;
-               op = nextop3;
-               continue;
-            }
+         {
+            ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[OPR_IF_EMPTY].right);
+            expr_discharge(fs, &fexp);
+            expr_toreg(fs, &fexp, result_reg);
+            expr_collapse_freereg(fs, result_reg);
+            jmp_patch(fs, skip_false, fs->pc);
+            *v = fexp;
+            v->flags |= true_branch_flags;
+            op = nextop3;
+            continue;
          }
       }
 
