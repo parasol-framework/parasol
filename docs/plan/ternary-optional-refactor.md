@@ -24,11 +24,12 @@ Reserve `?` exclusively for ternary expressions by lexing and parsing `??` as th
 5. **Verify the suite.** Build at least the `luajit_codegen` target (or the full Fluid module) and run the Fluid-focused tests once the interpreter is rebuilt to ensure the new spelling behaves as expected.
 
 ## Phase 2 – Remove ternary lookahead
+**Status:** Completed. The parser no longer references `lookahead_has_top_level_ternary_sep()` and ternary evaluation passes the Release Fluid test label (excluding the pre-existing `fluid_safe_nav` failures).
 **Goal:** Deprecate `lookahead_has_top_level_ternary_sep()` now that `?` is unambiguous and validate parser behaviour without changing existing ternary tests.
 
 1. **Excise the lookahead.** Delete `lookahead_has_top_level_ternary_sep()` and simplify the `OPR_IF_EMPTY` branch in `expr_binop()` so ternary handling proceeds immediately after consuming `?`, relying on the new lexer guarantees.【F:src/fluid/luajit-2.1/src/parser/lj_parse_expr.c†L761-L1067】
 2. **Clean up call sites.** Remove any remaining references to the lookahead helper across the parser and adjust documentation or comments that previously described the ambiguity resolution.【F:src/fluid/luajit-2.1/src/parser/lj_parse_expr.c†L761-L1067】
-3. **Regression testing.** Re-run the parser and Fluid suites to ensure ternary expressions (including nested forms) still behave correctly without the lookahead. No new test files are required because ternary syntax remains unchanged.
+3. **Regression testing.** Re-run the parser and Fluid suites to ensure ternary expressions (including nested forms) still behave correctly without the lookahead. No new test files are required because ternary syntax remains unchanged. (`ctest --build-config Release --test-dir build/agents -L fluid --output-on-failure`)
 
 ## Risks and mitigations
 * **Token ambiguity:** Carefully validate the lexer changes with scripts that use `value??`, `value ?? fallback`, and whitespace/comment variations to ensure postfix and infix forms are classified correctly before removing the lookahead.【F:src/fluid/luajit-2.1/src/lj_lex.c†L402-L411】
