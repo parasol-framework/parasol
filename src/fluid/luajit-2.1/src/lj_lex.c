@@ -459,6 +459,9 @@ int lj_lex_setup(lua_State *L, LexState *ls)
   ls->lookahead = TK_eof;  /* No look-ahead token. */
   ls->linenumber = 1;
   ls->lastline = 1;
+  ls->level = 0;
+  ls->ternary_depth = 0;
+  ls->pending_if_empty_colon = 0;
   ls->endmark = 0;
   lex_next(ls);  /* Read-ahead first char. */
   if (ls->c == 0xef && ls->p + 2 <= ls->pe && (uint8_t)ls->p[0] == 0xbb &&

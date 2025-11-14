@@ -973,6 +973,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             cond_reg = expr_toanyreg(fs, v);
             result_reg = cond_reg;
 
+            ls->ternary_depth++;
+
             expr_init(&nilv, VKNIL, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
@@ -999,6 +1001,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             skip_false = bcemit_jmp(fs);
 
             lex_check(ls, TK_ternary_sep);
+            lj_assertLS(ls->ternary_depth > 0, "ternary depth underflow");
+            ls->ternary_depth--;
 
             {
                BCPos false_start = fs->pc;
@@ -1032,10 +1036,82 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       BinOpr nextop;
       nextop = expr_binop(ls, &v2, priority[op].right);
 
+      if (op == OPR_IF_EMPTY && ls->ternary_depth == 0 &&
+         (ls->tok == TK_ternary_sep || ls->pending_if_empty_colon)) {
+         FuncState* fs = ls->fs;
+
+         ls->pending_if_empty_colon = 0;
+
+         if (v->t != NO_JMP) {
+            jmp_patch(fs, v->t, fs->pc);
+            v->t = NO_JMP;
+         }
+
+         if (v->flags & EXP_HAS_RHS_REG_FLAG) {
+            BCReg rhs_reg = (BCReg)v->u.s.aux;
+            v->flags &= ~EXP_HAS_RHS_REG_FLAG;
+            if (rhs_reg >= fs->nactvar && rhs_reg < fs->freereg) {
+               fs->freereg = rhs_reg;
+            }
+         }
+
+         expr_discharge(fs, &v2);
+         expr_free(fs, &v2);
+
+         // Emit a runtime error: error('Invalid ??/:> mix').
+         BCReg base = fs->freereg;
+         BCReg arg_reg = base + 1 + LJ_FR2;
+
+         bcreg_reserve(fs, 1);
+         if (LJ_FR2) bcreg_reserve(fs, 1);
+         bcreg_reserve(fs, 1);
+
+         {
+            ExpDesc callee;
+            expr_init(&callee, VKSTR, 0);
+            callee.u.sval = lj_parse_keepstr(ls, "error", 5);
+            bcemit_INS(fs, BCINS_AD(BC_GGET, base, const_str(fs, &callee)));
+         }
+
+         {
+            ExpDesc message;
+            expr_init(&message, VKSTR, 0);
+            message.u.sval = lj_parse_keepstr(ls, "Invalid ternary mix: use '?' with ':>'", 38);
+            bcemit_INS(fs, BCINS_AD(BC_KSTR, arg_reg, const_str(fs, &message)));
+         }
+
+         if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
+
+         v->k = VCALL;
+         v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+         v->u.s.aux = base;
+         fs->freereg = base + 1;
+         expr_discharge(fs, v);
+
+         lj_lex_next(ls);
+
+         {
+            ExpDesc dummy;
+            BinOpr after = expr_binop(ls, &dummy, priority[OPR_IF_EMPTY].right);
+            expr_discharge(fs, &dummy);
+            expr_free(fs, &dummy);
+            op = after;
+         }
+
+         continue;
+      }
+
       bcemit_binop(ls->fs, op, v, &v2);
       op = nextop;
    }
    synlevel_end(ls);
+   if (ls->tok == TK_ternary_sep && ls->ternary_depth == 0) {
+      if (limit == priority[OPR_IF_EMPTY].right) {
+         ls->pending_if_empty_colon = 1;
+         return op;
+      }
+      err_syntax(ls, LJ_ERR_XSYMBOL);
+   }
    return op;  // Return unconsumed binary operator (if any).
 }
 
