@@ -17,7 +17,7 @@ end
 
 local function validateInput(self)
    if self.inputMask then
-      local userInput = (self.text.string ? '')
+      local userInput = (self.text.string ?? '')
       if string.len(userInput) > 0 then
          if not string.find(userInput, self.inputMask) then
             self.text.string = self._lastGoodInput
@@ -32,7 +32,7 @@ end
 
 gui.input = function(Options)
    local self = { -- Public variables
-      events         = (Options.events ? { }),
+      events         = (Options.events ?? { }),
       label          = Options.label,
       parentViewport = Options.target,
       inputMask      = Options.inputMask,
@@ -108,10 +108,10 @@ gui.input = function(Options)
          name      = 'vt_input_label',
          x         = 0,
          y         = math.round(font_height + math.floor((box_height - font_height) * 0.5)),
-         face      = (Options.textFace ? gui.fonts.label.face),
+         face      = (Options.textFace ?? gui.fonts.label.face),
          fontSize  = string.format('%.2fpt', gui.fonts.label.size),
          fontStyle = gui.fonts.label.style,
-         fill      = (Options.labelFill ? gui.style.window.text),
+         fill      = (Options.labelFill ?? gui.style.window.text),
          string    = self.label,
          lineLimit = 1
       })
@@ -124,7 +124,7 @@ gui.input = function(Options)
    end
 
    self.bkgd = self.inputViewport.new('VectorRectangle', {
-      fill = (Options.bkgd ? gui.style.page.bkgd), x = 0, y = 0, width = '100%', height = '100%',
+      fill = (Options.bkgd ?? gui.style.page.bkgd), x = 0, y = 0, width = '100%', height = '100%',
    })
 
    if not Options.flushEdges then
@@ -145,10 +145,10 @@ gui.input = function(Options)
       name      = 'vt_input',
       x         = 4,
       y         = math.round(font_height + math.floor((box_height - font_height - (gui.style.page.strokeWidth * 2)) * 0.5)),
-      face      = (Options.textFace ? gui.fonts.widget.face),
+      face      = (Options.textFace ?? gui.fonts.widget.face),
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fontStyle = (Options.textStyle ? gui.fonts.widget.style),
-      fill      = (Options.textFill ? gui.style.page.text),
+      fontStyle = (Options.textStyle ?? gui.fonts.widget.style),
+      fill      = (Options.textFill ?? gui.style.page.text),
       string    = Options.text,
       lineLimit = 1,
       textFlags = (function()

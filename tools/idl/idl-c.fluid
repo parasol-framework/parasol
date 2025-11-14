@@ -260,7 +260,7 @@ function outputClassHeader(class, Private, Custom)
    end
 
    priority('class obj' .. class.name .. ';') -- Forward declaration
-   output('class obj' .. class.name ..  ' : public ' .. (class.base ? 'Object') .. ' {')
+   output('class obj' .. class.name ..  ' : public ' .. (class.base ?? 'Object') .. ' {')
    output('   public:')
    output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
    output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
@@ -606,8 +606,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. 'Tags...'
                variadic = true
             else
-               proto ..= (param.extType ? param.type) .. ' ' .. cName(param)
-               doc_proto ..= (param.docType ? param.type) .. ' ' .. cName(param)
+               proto ..= (param.extType ?? param.type) .. ' ' .. cName(param)
+               doc_proto ..= (param.docType ?? param.type) .. ' ' .. cName(param)
                outValues ..= param.name
             end
 
@@ -636,7 +636,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    -- The func.def is used for building the jump table
    func.def = '   ' .. tostring(response.type)
    if Def.attrib then func.def = func.def .. ' ' .. Def.attrib end
-   func.def = func.def  .. ' (*_' .. func.name .. ')(' .. (jumpArgs ? 'void') .. ');'
+   func.def = func.def  .. ' (*_' .. func.name .. ')(' .. (jumpArgs ?? 'void') .. ');'
 
    func.c_proto = proto
    func.doc_proto = doc_proto
@@ -646,28 +646,28 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if variadic then
       func.macro = function()
          return 'template<class... Args> ' .. tostring(response.type) .. ' ' .. func.name ..
-            '(' .. (argSeq ? 'void') .. ')' ..
-            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ? '') .. '); }'
+            '(' .. (argSeq ?? 'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ?? '') .. '); }'
       end
 
       func.staticMacro = function()
          if glFunctionPrefix?? then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
+            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
+            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
          end
       end
    else
       func.macro = function()
-         return 'inline ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (argSeq ? 'void') .. ')' ..
-            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ? '') .. '); }'
+         return 'inline ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (argSeq ?? 'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. (outValues ?? '') .. '); }'
       end
 
       func.staticMacro = function()
          if glFunctionPrefix?? then
-            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
+            return 'extern ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
          else
-            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ? 'void') .. ');'
+            return 'extern "C" ' .. tostring(response.type) .. ' ' .. func.name .. '(' .. (jumpArgs ?? 'void') .. ');'
          end
       end
    end
@@ -676,7 +676,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   local tempPath = 'temp:' .. (glModule.name ? 'idl-c-' .. math.random(1000000)):lower() .. '.h'
+   local tempPath = 'temp:' .. (glModule.name ?? 'idl-c-' .. math.random(1000000)):lower() .. '.h'
    local outPath = glOutputPath
    if not outPath then
       if glModule.name?? then
@@ -791,7 +791,7 @@ function buildPrototypes()
                local proto = 'OBJECTPTR Object'
                if method.params?? then
                   for _, param in ipairs(method.params) do
-                     proto ..= ', ' .. (param.extType ? param.docType) .. ' ' .. param.name
+                     proto ..= ', ' .. (param.extType ?? param.docType) .. ' ' .. param.name
                   end
                end
                method.prototype = 'ERR ' .. cl.methodPrefix:lower() .. '::' .. method.name .. '(' .. proto .. ')'
@@ -816,8 +816,8 @@ function buildPrototypes()
             response = 'void'
          end
 
-         func.prototype = (func.c_response ? 'void') .. ' ' .. func.name .. '(' .. (func.c_proto ? '') .. ')'
-         func.docPrototype = (func.doc_response ? 'void') .. ' ' .. prefix .. func.name .. '(' .. (func.doc_proto ? '') .. ')'
+         func.prototype = (func.c_response ?? 'void') .. ' ' .. func.name .. '(' .. (func.c_proto ?? '') .. ')'
+         func.docPrototype = (func.doc_response ?? 'void') .. ' ' .. prefix .. func.name .. '(' .. (func.doc_proto ?? '') .. ')'
 
          if glFunctionPrefix?? then
             proto ..= 'extern ' .. func.prototype .. ';\n'

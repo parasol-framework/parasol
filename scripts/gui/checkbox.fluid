@@ -34,9 +34,9 @@ end
 
 gui.checkbox = function(Options)
    local self = { -- Public variables
-      events         = Options.events ? { },
+      events         = Options.events ?? { },
       parentViewport = Options.target,
-      state          = Options.state ? 0,
+      state          = Options.state ?? 0,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The checkbox's primary viewport
    }

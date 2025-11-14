@@ -145,11 +145,11 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      icon = Options.image ? defaultIcon(self)
+      icon = Options.image ?? defaultIcon(self)
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
       local msg = self.fmtMessage
       if not msg?? then
-         msg = string.escXML((self.message ? ''))
+         msg = string.escXML((self.message ?? ''))
          msg = string.gsub(msg, '\n', '<br/>')
       end
 
@@ -254,13 +254,13 @@ gui.dialog.message = function(Options)
    self.window = gui.window({
       insideWidth  = dlg_width,
       insideHeight = 300,
-      quit         = Options.quit ? false,
+      quit         = Options.quit ?? false,
       popover      = Options.popover,
       parent       = Options.target,
       aspectRatio  = true,
-      icon         = Options.icon ? 'items/question',
-      title        = Options.title ? 'Confirmation Required',
-      modal        = Options.modal ? false,
+      icon         = Options.icon ?? 'items/question',
+      title        = Options.title ?? 'Confirmation Required',
+      modal        = Options.modal ?? false,
       events = {
          close = function(Window)
             if (self.feedback != nil) then

@@ -15,7 +15,7 @@ glIgnoreList[AC_Init] = true
 glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
-glIgnoreList[(AC_NewPlacement ? 0)] = true
+glIgnoreList[(AC_NewPlacement ?? 0)] = true
 
 function setAction(Action, Options)
    for k, v in pairs(Options) do
@@ -338,7 +338,7 @@ setAction('Write', {
 function saveDocuments()
    -- Save module functions, if any
 
-   local outPath = (glDocPath ? 'sdk:docs/xml/modules/')
+   local outPath = (glDocPath ?? 'sdk:docs/xml/modules/')
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
    if not table.empty(glFunctions) then
@@ -416,7 +416,7 @@ function extractParagraph(Input, Caller, References)
 
    local function closeParagraph()
       if (currentParagraph != nil) then
-         Input = (Input ? '') .. '<p>' .. currentParagraph .. '</p>\n'
+         Input = (Input ?? '') .. '<p>' .. currentParagraph .. '</p>\n'
          currentParagraph = nil
       end
    end
@@ -649,7 +649,7 @@ function docClass(Class)
    if Class.keywords??     then out ..= '    <keywords>' .. Class.keywords:escXML() .. '</keywords>\n' end
    if meta.fileExtension?? then out ..= '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
    if meta.fileDescription?? then out ..= '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
-   out ..= '    <version>' .. (meta.classVersion ? 1) .. '</version>\n'
+   out ..= '    <version>' .. (meta.classVersion ?? 1) .. '</version>\n'
    local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out ..= '    <id>' .. class_hash .. '</id>\n'
    out ..= '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
@@ -697,7 +697,7 @@ function docClass(Class)
                   local ref = ''
                   if param.lookup?? then ref = ' lookup="' .. param.lookup .. '"' end
                   if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
-                  out ..= "        <param type=\"" .. (param.docType ? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+                  out ..= "        <param type=\"" .. (param.docType ?? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
                out ..= '      </input>\n'
             end
@@ -740,7 +740,7 @@ function docClass(Class)
          else
             out = out .. '    <method>\n'
             out = out .. '      <name>' .. method.name .. '</name>\n'
-            out = out .. '      <comment>' .. substituteReferences((method.comment ? ''):escXML(), Class) .. '</comment>\n'
+            out = out .. '      <comment>' .. substituteReferences((method.comment ?? ''):escXML(), Class) .. '</comment>\n'
             if method.prototype?? then out = out .. '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
 
             if not table.empty(method.params) then
@@ -801,12 +801,12 @@ function docClass(Class)
             out = out .. '      <access'
             if f.read?? then out = out .. ' read="' .. f.read:sub(1,1) .. '"' end
             if f.write?? then out = out .. ' write="' .. f.write:sub(1,1) .. '"' end
-            out = out .. '>' .. (f.access ? '-/-') .. '</access>\n'
+            out = out .. '>' .. (f.access ?? '-/-') .. '</access>\n'
 
             local lookup = ''
             local prototype = ''
             if f.lookup then lookup = ' lookup="' .. f.lookup .. '"' end
-            local typeName = (f.docType ? (f.type ? 'NIL'))
+            local typeName = (f.docType ?? (f.type ?? 'NIL'))
             if (typeName is 'struct RGB8') then
                typeName = 'RGB8'
             elseif (typeName is 'int') then
@@ -913,9 +913,9 @@ function docModuleHeader()
 end
 
 function docFunction(Function)
-   if string.find((Function.status ? ''), '^[Pp]rivate') or
-      string.find((Function.status ? ''), '^[Ii]nternal') or
-      string.find((Function.comment ? ''), '^[Pp]rivate') then
+   if string.find((Function.status ?? ''), '^[Pp]rivate') or
+      string.find((Function.status ?? ''), '^[Ii]nternal') or
+      string.find((Function.comment ?? ''), '^[Pp]rivate') then
       return ''
    end
 
@@ -969,7 +969,7 @@ function docFunction(Function)
       if not table.empty(Function.result.values) then
          local errors = ''
          for _, result in ipairs(Function.result.values) do
-            local comment = (result.msg ? mSys.GetErrorMsg(code))
+            local comment = (result.msg ?? mSys.GetErrorMsg(code))
             errors ..= "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
          end
 
@@ -1083,7 +1083,7 @@ function docStructures(References)
             local arraySize = ''
             if f.arraySize then arraySize = " size=\"" .. f.arraySize .. '"' end
 
-            local type = (f.docType ? 'NIL')
+            local type = (f.docType ?? 'NIL')
             local prototype = ''
             if f.isFunctionPtr then
                type = 'FUNCTION *'

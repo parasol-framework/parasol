@@ -140,7 +140,7 @@ function displayText(Path)
 end
 
 function displayFile(Path)
-   msg('Load file ' .. (Path ? 'NIL'))
+   msg('Load file ' .. (Path ?? 'NIL'))
 
    if not Path then return end
 

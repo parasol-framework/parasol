@@ -56,7 +56,7 @@ end
 -- FDL function
 
 function module(Options, Function)
-   if ((Options['timestamp'] ? 0) > glIDLTimestamp) then
+   if ((Options['timestamp'] ?? 0) > glIDLTimestamp) then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
       glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
       return
@@ -93,7 +93,7 @@ function module(Options, Function)
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
+      local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
          extracted_content = extracted_content .. '\n' .. extract
       end
@@ -390,7 +390,7 @@ function const(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=(glRestrict ? Options.restrict),
+      restrict=(glRestrict ?? Options.restrict),
       type=Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
@@ -417,7 +417,7 @@ function enum(Prefix, Options, ...)
    end
 
    local list = { }
-   local inc = (Options.start ? 0)
+   local inc = (Options.start ?? 0)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
          local key, comment = va:match('^(.-):%s+(.+)$')
@@ -472,7 +472,7 @@ function enum(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=(glRestrict ? Options.restrict),
+      restrict=(glRestrict ?? Options.restrict),
       bits=Options.bits,
       type=Options.type -- Promotes strong-typing to other C++ definitions
    }
@@ -582,9 +582,9 @@ function struct(Name, Options, Def, Append)
          local field_name = cName(f, true)
          local left
          if field_name?? then -- field_name can be nil if the field describes a function pointer
-            left = string.format('   %-' .. type_len .. 's %s;', (f.extType ? f.type), field_name)
+            left = string.format('   %-' .. type_len .. 's %s;', (f.extType ?? f.type), field_name)
          else
-            left = string.format('   %-' .. type_len .. 's;', (f.extType ? f.type))
+            left = string.format('   %-' .. type_len .. 's;', (f.extType ?? f.type))
          end
 
          if f.comment?? then
@@ -617,7 +617,7 @@ function struct(Name, Options, Def, Append)
 
       glStructures[Name] = {
          version = Options.version, type = Options.type, comment = Options.comment, fields = fields,
-         restrict = (glRestrict ? Options.restrict), name = Name
+         restrict = (glRestrict ?? Options.restrict), name = Name
       }
    end,
    function(Exception)
@@ -665,7 +665,7 @@ function class(Name, Options, Spec, Private, Custom)
 
    output('// ' .. Name .. ' class definition')
    output()
-   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', (Options.version ? 1.0)) .. ')')
+   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', (Options.version ?? 1.0)) .. ')')
    output()
 
    local class = registerClass(Name)
@@ -748,7 +748,7 @@ function class(Name, Options, Spec, Private, Custom)
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ? '') -- The first line might start with a comment.
+         local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
          for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
             extracted_content = extracted_content .. '\n' .. extract
          end
@@ -759,7 +759,7 @@ function class(Name, Options, Spec, Private, Custom)
          local processing
          for line in string.gmatch(extracted_content, '(.-\n)') do
             if line?? then
-               line = (line:match('^(.*%S)') ? '')
+               line = (line:match('^(.*%S)') ?? '')
                if (line is '-CLASS-') or (line is '-METHOD-') or (line is '-ACTION-') or (line is '-FIELD-') then
                   if currentEntry then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = ''
@@ -969,7 +969,7 @@ end
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
 
 function functionNames(Prefix, ...)
-   glFunctionPrefix = (Prefix ? '')
+   glFunctionPrefix = (Prefix ?? '')
    for _, fname in ipairs({...}) do
       if (fname:find('[^%w]')) then
          error('Invalid function name "' .. fname .. '"')

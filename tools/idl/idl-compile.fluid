@@ -117,7 +117,7 @@ function enum(Prefix, Options, ...)
    verbose('Processing enum ' .. Prefix)
 
    local list = { }
-   local inc = (Options.start ? 0)
+   local inc = (Options.start ?? 0)
    for k, enum_def in ipairs({...}) do
       if (type(enum_def) is 'string') then
          local val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
@@ -243,7 +243,7 @@ glTypes = {
 
 function cType(Field, Origin)
    if not Field.type then
-      error("Field definition incorrect, missing 'type' value for '" .. (Origin ? "NIL") .. "'")
+      error("Field definition incorrect, missing 'type' value for '" .. (Origin ?? "NIL") .. "'")
    end
 
    do
@@ -397,7 +397,7 @@ function cType(Field, Origin)
       error('No handling for field type "' .. Field.type .. '" from ' .. Origin)
    end
 
-   Field.type = (glTypes[Field.type] ? Field.type)
+   Field.type = (glTypes[Field.type] ?? Field.type)
    return Field
 end
 
@@ -544,7 +544,7 @@ function saveOutput()
    if (glFormat is 'c') then
       if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
          file.acWrite('char glIDL[] = { ')
-         file.acWrite(str_to_bytes((s ? '') .. (c ? '')))
+         file.acWrite(str_to_bytes((s ?? '') .. (c ?? '')))
          file.acWrite(',0 };\n')
       else
          file.acWrite('#undef MOD_IDL\n#define MOD_IDL "')
