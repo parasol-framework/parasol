@@ -1,6 +1,6 @@
 -- Comprehensive test suite for ternary operator in Fluid
 -- condition ? true_expr :> false_expr
---fffffffffffffffffffffffffffffffffffffff
+
 -- Basic ternary tests
 function testBasicTrue()
    local v = true ? "A" :> "B"
