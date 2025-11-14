@@ -36,7 +36,7 @@
 #    - buildvm generates VM assembly or object code
 #
 # 4. Library Compilation:
-#    - Compiles ljamalg.c (amalgamated LuaJIT source)
+#    - Compiles ljamalg.cpp (amalgamated LuaJIT source)
 #    - Links with generated VM code to create static library
 
 set (MOD "fluid")
@@ -95,26 +95,26 @@ set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
 
 # Library source files needed for buildvm header generation (used in both build paths)
 set (LJLIB_C
-   "${LUAJIT_SRC}/lib_base.c"
-   "${LUAJIT_SRC}/lib_math.c"
-   "${LUAJIT_SRC}/lib_bit.c"
-   "${LUAJIT_SRC}/lib_string.c"
-   "${LUAJIT_SRC}/lib_table.c"
-   "${LUAJIT_SRC}/lib_debug.c"
-   "${LUAJIT_SRC}/lib_jit.c"
+   "${LUAJIT_SRC}/lib_base.cpp"
+   "${LUAJIT_SRC}/lib_math.cpp"
+   "${LUAJIT_SRC}/lib_bit.cpp"
+   "${LUAJIT_SRC}/lib_string.cpp"
+   "${LUAJIT_SRC}/lib_table.cpp"
+   "${LUAJIT_SRC}/lib_debug.cpp"
+   "${LUAJIT_SRC}/lib_jit.cpp"
 )
 
 # Buildvm source files (used in both build paths)
 set (BUILDVM_SOURCES
-   "${LUAJIT_HOST_DIR}/buildvm.c"
-   "${LUAJIT_HOST_DIR}/buildvm_asm.c"
-   "${LUAJIT_HOST_DIR}/buildvm_peobj.c"
-   "${LUAJIT_HOST_DIR}/buildvm_lib.c"
-   "${LUAJIT_HOST_DIR}/buildvm_fold.c"
+   "${LUAJIT_HOST_DIR}/buildvm.cpp"
+   "${LUAJIT_HOST_DIR}/buildvm_asm.cpp"
+   "${LUAJIT_HOST_DIR}/buildvm_peobj.cpp"
+   "${LUAJIT_HOST_DIR}/buildvm_lib.cpp"
+   "${LUAJIT_HOST_DIR}/buildvm_fold.cpp"
 )
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
-set (LUAJIT_HOST_CFLAGS -std=c99 -O2 -Wall)
+set (LUAJIT_HOST_CFLAGS -O2 -Wall)
 set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR})
 set (LUAJIT_COMMON_CFLAGS -fPIC -O2 -fomit-frame-pointer -Wall)
 
@@ -132,8 +132,8 @@ if (MSVC)
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
-   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
-   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.cpp")
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.cpp")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
    # Platform-specific paths
@@ -205,9 +205,9 @@ if (MSVC)
       COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h ${LUAJIT_SRC}/lj_opt_fold.c
+      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h ${LUAJIT_SRC}/lj_opt_fold.cpp
       COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       COMMENT "Generating LuaJIT headers and VM object for ${LUAJIT_ARCH}"
       VERBATIM
@@ -466,10 +466,10 @@ else ()
       COMMAND ${BUILDVM_TARGET} -m ffdef -o ${LUAJIT_BUILD_DIR}/lj_ffdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m libdef -o ${LUAJIT_BUILD_DIR}/lj_libdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
-      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.c"
+      COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.cpp"
       COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m ${LUAJIT_VM_MODE} -o ${LUAJIT_VM_OUTPUT}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.c"
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp"
       WORKING_DIRECTORY ${LUAJIT_SRC}
       COMMENT ${LUAJIT_VM_COMMENT}
       VERBATIM
@@ -491,8 +491,8 @@ else ()
       # MinGW: Compile amalgamated source with explicit flags to ensure consistent configuration
       # with Unix builds and avoid inheriting global CMAKE_C_FLAGS
       file(GLOB LUAJIT_AMALG_SOURCES
-         "${LUAJIT_SRC}/lj_*.c"
-         "${LUAJIT_SRC}/lib_*.c"
+         "${LUAJIT_SRC}/lj_*.cpp"
+         "${LUAJIT_SRC}/lib_*.cpp"
       )
 
       set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
@@ -503,8 +503,8 @@ else ()
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
             -Wno-trigraphs
-            -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
-         DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
+            -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
+         DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
          COMMENT "Compiling LuaJIT amalgamated source"
          VERBATIM
       )
@@ -534,8 +534,8 @@ else ()
       # We use a custom command (rather than add_library with the source file) to prevent
       # inheriting global CMAKE_C_FLAGS which may contain incompatible flags like -fno-var-tracking
       file(GLOB LUAJIT_AMALG_SOURCES
-         "${LUAJIT_SRC}/lj_*.c"
-         "${LUAJIT_SRC}/lib_*.c"
+         "${LUAJIT_SRC}/lj_*.cpp"
+         "${LUAJIT_SRC}/lib_*.cpp"
       )
 
       set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
@@ -546,8 +546,8 @@ else ()
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
             -Wno-trigraphs
-            -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
-         DEPENDS "${LUAJIT_SRC}/ljamalg.c" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
+            -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
+         DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
          COMMENT "Compiling LuaJIT amalgamated source"
          VERBATIM
       )
