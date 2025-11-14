@@ -27,16 +27,16 @@ gui.toolbar = function(Options)
       _groupMargin   = 4,
       _groupCount    = 0,
       _round         = 4,
-      _cellMargin    = (Options.cellMargin ? 6),
+      _cellMargin    = (Options.cellMargin ?? 6),
       _disabled      = false,
       _lookup        = { },
-      _iconSize      = (Options.iconSize ? gui.interface.iconSize),
+      _iconSize      = (Options.iconSize ?? gui.interface.iconSize),
       _hasFocus      = false,
-      _iconTheme     = (Options.iconTheme ? gui.style.page.icon),
-      _iconHighlight = (Options.iconHighlight ? gui.style.page.iconHighlight),
-      _hoverFill     = (Options.hoverFill ? gui.style.button.highlight),
-      _selectFill    = (Options.selectFill ? gui.palette.prime),
-      _groupBorder   = (Options.groupBorder ? gui.style.widget.stroke)
+      _iconTheme     = (Options.iconTheme ?? gui.style.page.icon),
+      _iconHighlight = (Options.iconHighlight ?? gui.style.page.iconHighlight),
+      _hoverFill     = (Options.hoverFill ?? gui.style.button.highlight),
+      _selectFill    = (Options.selectFill ?? gui.palette.prime),
+      _groupBorder   = (Options.groupBorder ?? gui.style.widget.stroke)
    }
 
    local function sendFeedback()
@@ -629,8 +629,8 @@ gui.toolbar = function(Options)
 
    self.host = Options.target
    self.viewport = Options.target.new('VectorViewport')
-   self.viewport.x = (Options.x ? 0)
-   self.viewport.y = (Options.y ? 0)
+   self.viewport.x = (Options.x ?? 0)
+   self.viewport.y = (Options.y ?? 0)
    self.viewport.overflow = 'hidden'
 
    if Options.yOffset then

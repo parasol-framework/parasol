@@ -18,7 +18,7 @@ A basic demonstration of receiving keyboard input from a viewport.
 
    viewport.mtSubscribeKeyboard(function(Viewport, Flags, Value, Unicode)
       if (Unicode > 0) then
-         glChars = (glChars ? '') .. string.char(Unicode)
+         glChars = (glChars ?? '') .. string.char(Unicode)
          glChars = glChars:sub(-10)
       end
 

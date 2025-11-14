@@ -172,7 +172,6 @@ static void expr_primary(LexState* ls, ExpDesc* v);
 static void expr_simple(LexState* ls, ExpDesc* v);
 static void synlevel_begin(LexState* ls);
 static BinOpr token2binop(LexToken tok);
-static int lookahead_has_top_level_ternary_sep(LexState* ls);
 static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op);
 static void expr_unop(LexState* ls, ExpDesc* v);

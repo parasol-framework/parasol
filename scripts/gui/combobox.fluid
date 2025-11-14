@@ -44,7 +44,7 @@ end
 
 gui.combobox = function(Options)
    local self = { -- Public variables
-      events         = (Options.events ? { }),
+      events         = (Options.events ?? { }),
       label          = Options.label,
       parentViewport = Options.target,
       allowCustom    = Options.allowCustom,

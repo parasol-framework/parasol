@@ -23,8 +23,8 @@ gui.dropdown = function(Options)
       visible  = false,
       client   = Options.client,
       feedback = Options.feedback,
-      x        = Options.x ? 0,
-      y        = Options.y ? 0,
+      x        = Options.x ?? 0,
+      y        = Options.y ?? 0,
       relative = Options.relative,
       items    = { }
    }
@@ -192,11 +192,11 @@ gui.dropdown = function(Options)
             local y = rel.absY + self.y - target.absY
 
             if lReverseY then
-               y = rel.absY + (Options.y ? 0) - target.absY - surface.height
+               y = rel.absY + (Options.y ?? 0) - target.absY - surface.height
             end
 
             if y + surface.height > target.height then
-               y = y - surface.height - (Options.y ? 0)
+               y = y - surface.height - (Options.y ?? 0)
             end
 
             surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
@@ -249,7 +249,7 @@ gui.dropdown = function(Options)
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
-   self.surface.width      = Options.width ? 400
+   self.surface.width      = Options.width ?? 400
    self.surface.parent     = Options.target
    self.surface.flags      = RNF_STICK_TO_FRONT|RNF_COMPOSITE
    self.surface.x          = -10000

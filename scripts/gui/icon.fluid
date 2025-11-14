@@ -23,7 +23,7 @@ end
 gui.icon = function(Options)
    local self = { -- Public variables
       parentViewport = Options.target,
-      events         = Options.events ? { },
+      events         = Options.events ?? { },
       viewport       = nil -- The icon's primary viewport
    }
 
@@ -32,7 +32,7 @@ gui.icon = function(Options)
    local lClick      = { held=false, x=0, y=0 }
    local lWords      = { }
    local lLines      = { }
-   local lIconSize   = Options.size ? 66
+   local lIconSize   = Options.size ?? 66
    local lIconWidth  = lIconSize
    local lFontSize   = FONT_HEIGHT
    local lLineHeight = 0
@@ -178,7 +178,7 @@ gui.icon = function(Options)
    calcWords()
 
    self.viewport = Options.target.new('VectorViewport', {
-      x = Options.x ? 0, y = Options.y ? 0,
+      x = Options.x ?? 0, y = Options.y ?? 0,
       width = lIconSize, height = lIconSize,
       aspectRatio = 'XMid|YMin|Meet',
       cursor = 'hand'

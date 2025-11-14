@@ -36,7 +36,7 @@ end
 -- This is a universal callback for any menu item that is activated by the user.
 
 function itemClicked(Menu, Item)
-   print('Selected ' .. (Item.item ? 'NIL'))
+   print('Selected ' .. (Item.item ?? 'NIL'))
 end
 
 function widgetFocus(Widget)
@@ -157,7 +157,7 @@ end
                      print('User selected option ' .. Response.id)
                   end
                   if State then
-                     print('User entered string: ' .. (State.input ? 'NIL'))
+                     print('User entered string: ' .. (State.input ?? 'NIL'))
                      if State.checkbox then
                         print('The user selected the checkbox.')
                      else
@@ -247,7 +247,7 @@ end
                   end
 
                   for k, v in ipairs(Files) do
-                      print(k, ' = ', (Path ? '') .. v.filename)
+                      print(k, ' = ', (Path ?? '') .. v.filename)
                   end
                end
             })
@@ -321,7 +321,7 @@ end
       text   = 'Your text here',
       events = {
          activate = function(Widget, Event)
-            print('Input state set to "' .. (Event.state ? 'NIL') .. '", text "' .. (Event.text ? 'NIL') .. '"')
+            print('Input state set to "' .. (Event.state ?? 'NIL') .. '", text "' .. (Event.text ?? 'NIL') .. '"')
          end,
          focus = widgetFocus
       }
