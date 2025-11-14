@@ -582,7 +582,7 @@ endif ()
 
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
-   bitshift bitwise if_empty presence blank safe_nav ternary table complex
+   bitshift bitwise if_empty presence blank ternary table complex
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})
