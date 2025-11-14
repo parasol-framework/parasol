@@ -79,6 +79,8 @@ typedef struct LexState {
   BCInsLine *bcstack;	/* Stack for bytecode instructions/line numbers. */
   MSize sizebcstack;	/* Size of bytecode stack. */
   uint32_t level;	/* Syntactical nesting level. */
+  uint32_t ternary_depth;	/* Number of pending ternary operators. */
+  uint8_t pending_if_empty_colon;	/* Tracks ?: misuse after ??. */
   int endmark;		/* Trust bytecode end marker, even if not at EOF. */
 } LexState;
 
