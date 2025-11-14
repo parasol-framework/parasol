@@ -122,7 +122,7 @@ gui.dialog.message = function(Options)
       end
 
       local doc = [[
-<??xml version="1.0"??>
+<?xml version="1.0"?>
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>

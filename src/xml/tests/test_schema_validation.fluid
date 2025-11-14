@@ -1,6 +1,6 @@
 -- Schema validation tests for XML module
 
-glInvalidXML = [[<??xml version="1.0" encoding="UTF-8"??>
+glInvalidXML = [[<?xml version="1.0" encoding="UTF-8"?>
 <inventory xmlns="http://example.com/inventory">
    <item>
       <name>Widget</name>
@@ -8,7 +8,7 @@ glInvalidXML = [[<??xml version="1.0" encoding="UTF-8"??>
 </inventory>
 ]]
 
-glMismatchedRootXML = [[<??xml version="1.0" encoding="UTF-8"??>
+glMismatchedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 <catalog xmlns="http://example.com/inventory">
    <item>
       <name>Widget</name>
@@ -17,7 +17,7 @@ glMismatchedRootXML = [[<??xml version="1.0" encoding="UTF-8"??>
 </catalog>
 ]]
 
-glPrefixedRootXML = [[<??xml version="1.0" encoding="UTF-8"??>
+glPrefixedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 <inv:inventory xmlns="urn:default" xmlns:inv="http://example.com/inventory">
    <inv:item>
       <inv:name>Widget</inv:name>

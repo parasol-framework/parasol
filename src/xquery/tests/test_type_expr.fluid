@@ -534,7 +534,7 @@ function testTypeswitchOccurrenceIndicators()
    -- Test optional type
    local query1 = [[
       typeswitch(())
-         case $i as xs:integer?? return "optional-int"
+         case $i as xs:integer? return "optional-int"
          default return "other"
    ]]
 

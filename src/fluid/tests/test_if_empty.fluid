@@ -230,12 +230,110 @@ function testIfEmptyStringFindError()
    assert(end_index is 2, "Expected search to end at index 2, got '" .. tostring(end_index) .. "'")
 end
 
+function testMethodCallInOptionalForm()
+   local obj = {
+      getValue = function(self)
+         return "method_result"
+      end
+   }
+   local v = obj:getValue() ?? "default"
+   assert(v is "method_result", "Failed method call in optional form: expected 'method_result', got " .. tostring(v))
+end
+
+function testNestedOptional()
+   local v = (nil ?? "A") ?? "B"
+   -- First: nil ?? "A" = "A"
+   -- Then: "A" ?? "B" = "A"
+   assert(v is "A", "Failed nested optional: expected 'A', got " .. tostring(v))
+end
+
+function testOptionalReturnValue()
+   local function test()
+      return nil ?? "default"
+   end
+   local result = test()
+   assert(result is "default", "Failed optional return value: expected 'default', got " .. tostring(result))
+end
+
+function testOptionalTableField()
+   local t = { msg = "Hello" }
+   local v = t.msg ?? "default"
+   assert(v is "Hello", "Failed optional table field: expected 'Hello', got " .. tostring(v))
+end
+
+function testOptionalMissingField()
+   local t = {}
+   local v = t.missing ?? "default"
+   assert(v is "default", "Failed optional missing field: expected 'default', got " .. tostring(v))
+end
+
+-- Optional - falsey condition (empty string)
+function testOptionalEmptyString()
+   local name = "" ?? "Anonymous"
+   assert(name is "Anonymous", "Failed optional empty string: expected 'Anonymous', got " .. tostring(name))
+end
+
+-- Optional - short-circuit
+function testOptionalShortCircuit()
+   local called = false
+   local function expensive()
+      called = true
+      return "default"
+   end
+   local msg = "Hello" ?? expensive()
+   assert(msg is "Hello", "Failed optional short-circuit: expected 'Hello', got " .. tostring(msg))
+   assert(not called, "Expensive function should not be called")
+end
+
+-- Optional - runtime condition
+function testOptionalRuntimeTruthy()
+   local x = 10
+   local result = x ?? 0
+   assert(result is 10, "Failed optional runtime truthy: expected 10, got " .. tostring(result))
+end
+
+function testOptionalRuntimeFalsey()
+   local x = 0
+   local result = x ?? 100
+   assert(result is 100, "Failed optional runtime falsey: expected 100, got " .. tostring(result))
+end
+
+-- Optional - truthy condition
+function testOptionalTruthyString()
+   local msg = "Hello" ?? "No message"
+   assert(msg is "Hello", "Failed optional truthy string: expected 'Hello', got " .. tostring(msg))
+end
+
+function testOptionalTruthyNumber()
+   local count = 5 ?? 0
+   assert(count is 5, "Failed optional truthy number: expected 5, got " .. tostring(count))
+end
+
+function testOptionalTruthyNegative()
+   local num = -10 ?? 0
+   assert(num is -10, "Failed optional truthy negative: expected -10, got " .. tostring(num))
+end
+
+-- Optional - falsey condition (nil)
+function testOptionalNil()
+   local msg = nil ?? "No message given"
+   assert(msg is "No message given", "Failed optional nil: expected 'No message given', got " .. tostring(msg))
+end
+
+-- Optional - falsey condition (false)
+function testOptionalFalse()
+   local msg = false ?? "No message given"
+   assert(msg is "No message given", "Failed optional false: expected 'No message given', got " .. tostring(msg))
+end
+
+-- Optional - falsey condition (0)
+function testOptionalZero()
+   local count = 0 ?? 1
+   assert(count is 1, "Failed optional zero: expected 1, got " .. tostring(count))
+end
+
 function testInFunction()
    local Function = { status = 'Hello' }
-
-   -- Ternary operator within a function
-   local result = string.find((Function.status ? 'then' :> 'else'), 'e')
-   assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
 
    -- If-empty operator within a function
    local result = string.find((Function.status ?? 'then'), 'e')
@@ -249,6 +347,11 @@ end
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
          'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
-         'testComplex', 'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError', 'testInFunction'
+         'testComplex', 'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError',
+         'testMethodCallInOptionalForm', 'testNestedOptional', 'testOptionalReturnValue',
+         'testOptionalTableField', 'testOptionalMissingField', 'testOptionalEmptyString',
+         'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
+         'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
+         'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction'
       }
    }

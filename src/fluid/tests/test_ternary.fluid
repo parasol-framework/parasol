@@ -1,6 +1,6 @@
 -- Comprehensive test suite for ternary operator in Fluid
--- Tests both full ternary (condition ? true_expr :> false_expr) and optional form (condition ?? default_value)
-
+-- condition ? true_expr :> false_expr
+--fffffffffffffffffffffffffffffffffffffff
 -- Basic ternary tests
 function testBasicTrue()
    local v = true ? "A" :> "B"
@@ -107,73 +107,6 @@ function testPrecedenceComparison()
    assert(v is 5, "Failed precedence comparison: expected 5, got " .. tostring(v))
 end
 
--- Optional ternary tests (condition ? default_value)
-
--- Optional - truthy condition
-function testOptionalTruthyString()
-   local msg = "Hello" ?? "No message"
-   assert(msg is "Hello", "Failed optional truthy string: expected 'Hello', got " .. tostring(msg))
-end
-
-function testOptionalTruthyNumber()
-   local count = 5 ?? 0
-   assert(count is 5, "Failed optional truthy number: expected 5, got " .. tostring(count))
-end
-
-function testOptionalTruthyNegative()
-   local num = -10 ?? 0
-   assert(num is -10, "Failed optional truthy negative: expected -10, got " .. tostring(num))
-end
-
--- Optional - falsey condition (nil)
-function testOptionalNil()
-   local msg = nil ?? "No message given"
-   assert(msg is "No message given", "Failed optional nil: expected 'No message given', got " .. tostring(msg))
-end
-
--- Optional - falsey condition (false)
-function testOptionalFalse()
-   local msg = false ?? "No message given"
-   assert(msg is "No message given", "Failed optional false: expected 'No message given', got " .. tostring(msg))
-end
-
--- Optional - falsey condition (0)
-function testOptionalZero()
-   local count = 0 ?? 1
-   assert(count is 1, "Failed optional zero: expected 1, got " .. tostring(count))
-end
-
--- Optional - falsey condition (empty string)
-function testOptionalEmptyString()
-   local name = "" ?? "Anonymous"
-   assert(name is "Anonymous", "Failed optional empty string: expected 'Anonymous', got " .. tostring(name))
-end
-
--- Optional - short-circuit
-function testOptionalShortCircuit()
-   local called = false
-   local function expensive()
-      called = true
-      return "default"
-   end
-   local msg = "Hello" ?? expensive()
-   assert(msg is "Hello", "Failed optional short-circuit: expected 'Hello', got " .. tostring(msg))
-   assert(not called, "Expensive function should not be called")
-end
-
--- Optional - runtime condition
-function testOptionalRuntimeTruthy()
-   local x = 10
-   local result = x ?? 0
-   assert(result is 10, "Failed optional runtime truthy: expected 10, got " .. tostring(result))
-end
-
-function testOptionalRuntimeFalsey()
-   local x = 0
-   local result = x ?? 100
-   assert(result is 100, "Failed optional runtime falsey: expected 100, got " .. tostring(result))
-end
-
 -- Complex expressions in branches
 function testComplexExpressions()
    local a, b = 10, 20
@@ -241,18 +174,6 @@ function testTableField()
    assert(v is "high", "Failed table field: expected 'high', got " .. tostring(v))
 end
 
-function testOptionalTableField()
-   local t = { msg = "Hello" }
-   local v = t.msg ?? "default"
-   assert(v is "Hello", "Failed optional table field: expected 'Hello', got " .. tostring(v))
-end
-
-function testOptionalMissingField()
-   local t = {}
-   local v = t.missing ?? "default"
-   assert(v is "default", "Failed optional missing field: expected 'default', got " .. tostring(v))
-end
-
 -- Return value tests
 function testReturnValue()
    local function test()
@@ -262,26 +183,11 @@ function testReturnValue()
    assert(result is "yes", "Failed return value: expected 'yes', got " .. tostring(result))
 end
 
-function testOptionalReturnValue()
-   local function test()
-      return nil ?? "default"
-   end
-   local result = test()
-   assert(result is "default", "Failed optional return value: expected 'default', got " .. tostring(result))
-end
-
 -- Edge cases
 function testChainedComparisons()
    local a, b, c = 1, 2, 3
    local v = a < b and b < c ? "ordered" :> "not ordered"
    assert(v is "ordered", "Failed chained comparisons")
-end
-
-function testNestedOptional()
-   local v = (nil ?? "A") ?? "B"
-   -- First: nil ? "A" = "A"
-   -- Then: "A" ? "B" = "A"
-   assert(v is "A", "Failed nested optional: expected 'A', got " .. tostring(v))
 end
 
 function testMixedOptionalAndFull()
@@ -310,16 +216,6 @@ function testMethodCallInFalseBranch()
    }
    local v = false ? "other" :> obj:getValue()
    assert(v is "method_result", "Failed method call in false branch: expected 'method_result', got " .. tostring(v))
-end
-
-function testMethodCallInOptionalForm()
-   local obj = {
-      getValue = function(self)
-         return "method_result"
-      end
-   }
-   local v = obj:getValue() ?? "default"
-   assert(v is "method_result", "Failed method call in optional form: expected 'method_result', got " .. tostring(v))
 end
 
 function testNestedTernaryWithMethodCallInTrueBranch()
@@ -526,29 +422,28 @@ function testConcat()
    assert(v is "false", "Failed conat-function 2, got '" .. tostring(v) .. "'")
 end
 
+function testInFunction()
+   local Function = { status = 'Hello' }
+
+   -- Ternary operator within a function
+   local result = string.find((Function.status ? 'then' :> 'else'), 'e')
+   assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testBasicTrue', 'testBasicFalse',
       'testExtendedFalseyNil', 'testExtendedFalseyZero', 'testExtendedFalseyEmptyString', 'testExtendedFalseyFalse',
-      'testExtendedTruthyNonZero', 'testExtendedTruthyNonEmptyString',
-      'testShortCircuitTrue', 'testShortCircuitFalse',
-      'testNestedRightAssociative', 'testNestedMultiLevel',
-      'testRuntimePositive', 'testRuntimeNegative',
-      'testPrecedenceArithmetic', 'testPrecedenceComparison',
-      'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
-      'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testOptionalEmptyString',
-      'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
-      'testComplexExpressions', 'testFunctionCallInBranch',
-      'testAssignment', 'testMultipleAssignments',
-      'testConstantTrue', 'testConstantFalse', 'testConstantZero', 'testConstantEmptyString',
-      'testConstantNonZero', 'testConstantNonEmptyString',
-      'testTableField', 'testOptionalTableField', 'testOptionalMissingField',
-      'testReturnValue', 'testOptionalReturnValue',
-      'testChainedComparisons', 'testNestedOptional', 'testMixedOptionalAndFull',
+      'testExtendedTruthyNonZero', 'testExtendedTruthyNonEmptyString', 'testShortCircuitTrue', 'testShortCircuitFalse',
+      'testNestedRightAssociative', 'testNestedMultiLevel', 'testRuntimePositive', 'testRuntimeNegative',
+      'testPrecedenceArithmetic', 'testPrecedenceComparison', 'testComplexExpressions', 'testFunctionCallInBranch',
+      'testAssignment', 'testMultipleAssignments', 'testConstantTrue', 'testConstantFalse', 'testConstantZero', 
+      'testConstantEmptyString', 'testConstantNonZero', 'testConstantNonEmptyString', 'testTableField',
+      'testReturnValue', 'testChainedComparisons', 'testMixedOptionalAndFull',
       -- Method call tests (critical for in_ternary flag)
-      'testMethodCallInTrueBranch', 'testMethodCallInFalseBranch', 'testMethodCallInOptionalForm',
+      'testMethodCallInTrueBranch', 'testMethodCallInFalseBranch',
       'testNestedTernaryWithMethodCallInTrueBranch', 'testNestedTernaryWithMethodCallInFalseBranch',
       'testMethodCallWithArgumentsInTernary', 'testMethodCallInCondition',
       -- Operator precedence and chaining
@@ -571,7 +466,6 @@ return {
       -- Function arguments and table constructors
       'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
       -- Interaction with other operators
-      'testTernaryWithOrQuestionOperator',
-      'testConcat'
+      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction'
    }
 }
