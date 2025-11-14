@@ -103,7 +103,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          })
       end,
       function()
-         msg('Failed to create example text for ' .. self.face .. ' ' .. (self.style ? 'NIL'))
+         msg('Failed to create example text for ' .. self.face .. ' ' .. (self.style ?? 'NIL'))
       end)
 
       if self.exampleText then
@@ -158,7 +158,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    local function showStyles(Face)
       local styles = { }
       if lFonts[Face].alias?? then Face = lFonts[Face].alias end
-      local font_styles = (lFonts[Face].styles ? { 'Regular' })
+      local font_styles = (lFonts[Face].styles ?? { 'Regular' })
       for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })
       end
@@ -205,8 +205,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       popOver      = lOptions.popOver,
       parent       = lOptions.target,
       icon         = 'items/font',
-      title        = (lOptions.title ? 'Select a font'),
-      modal        = (lOptions.modal ? false),
+      title        = (lOptions.title ?? 'Select a font'),
+      modal        = (lOptions.modal ?? false),
       events = {
          close = function(Window)
             if (lOptions.feedback != nil) then
@@ -338,7 +338,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
          if (lFonts[Item.name] == nil) then
-            error('Font "' .. (Item.name ? 'NIL') .. '" not recognised.')
+            error('Font "' .. (Item.name ?? 'NIL') .. '" not recognised.')
          end
 
          self.face = Item.name
@@ -397,11 +397,11 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Preselect list items based on the preferences supplied by the client.
 
    vwFace.selectItems(function(Item)
-      if Item.id == (lOptions.face ? 'Noto Sans') then return true end
+      if Item.id == (lOptions.face ?? 'Noto Sans') then return true end
    end)
 
    vwStyle.selectItems(function(Item)
-      if Item.id == (lOptions.style ? 'Regular') then return true end
+      if Item.id == (lOptions.style ?? 'Regular') then return true end
    end)
 
    highlightSize(self.pointSize)

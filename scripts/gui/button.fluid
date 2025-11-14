@@ -12,7 +12,7 @@ local GAP           = HEIGHT * 0.35
 
 gui.button = function(Options)
    local self = { -- Public variables
-      events         = Options.events ? { },
+      events         = Options.events ?? { },
       parentViewport = Options.target,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The button's primary viewport

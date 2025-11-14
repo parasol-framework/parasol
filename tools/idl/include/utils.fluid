@@ -115,7 +115,7 @@ function cleanXMLString(str, caller)
             local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if clean_str then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
-            error('Failed to parse XML for ' .. (caller ? 'undefined') .. '.')
+            error('Failed to parse XML for ' .. (caller ?? 'undefined') .. '.')
          end
       end
    else

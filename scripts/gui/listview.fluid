@@ -37,8 +37,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.listView = function(Options)
-   local lTextAttrib = (Options.textAttrib ? 'name')
-   local lCompact    = (Options.compact ? 0)
+   local lTextAttrib = (Options.textAttrib ?? 'name')
+   local lCompact    = (Options.compact ?? 0)
 
    local function setListTextFill(Item, Fill)
       if Item._vectors.text then
@@ -194,7 +194,7 @@ gui.listView = function(Options)
             elseif item.index and (item.index == lHighlightedItem) then
                item._vectors.text.fill = gui.style.page.textHighlight
             else
-               item._vectors.text.fill = (item.colour ? gui.style.page.text)
+               item._vectors.text.fill = (item.colour ?? gui.style.page.text)
             end
          end
 

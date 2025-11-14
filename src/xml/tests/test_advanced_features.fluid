@@ -125,7 +125,7 @@ end
 -- Test standalone declaration handling
 
 function testStandalonePreventsExternalDTD()
-   local standaloneXML = [[<?xml version="1.0" standalone="yes"?>
+   local standaloneXML = [[<??xml version="1.0" standalone="yes"??>
 <!DOCTYPE root SYSTEM "http://example.com/example.dtd">
 <root><child/></root>]]
 

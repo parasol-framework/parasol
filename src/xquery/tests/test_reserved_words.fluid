@@ -308,7 +308,7 @@ end
 -- Test that line number counting works correctly
 
 function testLineCount()
-   local xml_content = [[<?xml version="1.0"?>
+   local xml_content = [[<??xml version="1.0"??>
 <root>
    <item>First</item>
    <item>Second</item>

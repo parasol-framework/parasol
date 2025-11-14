@@ -1,40 +1,40 @@
--- Flute tests for the ? operator (if-empty: nil, false, 0, "")
+-- Flute tests for the ?? operator (if-empty: nil, false, 0, "")
 
 function testNil()
-   local v = nil ? "A"
+   local v = nil ?? "A"
    assert(v is "A", "Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'")
 
    local Options = { quit = nil }
-   local v = (Options.quit ? nil)
+   local v = (Options.quit ?? nil)
    assert(v is nil, "Expected nil, got " .. tostring(v))
 
    Options.quit = true
-   local v = (Options.quit ? nil)
+   local v = (Options.quit ?? nil)
    assert(v is true, "Expected true, got " .. tostring(v))
 end
 
 function testFalse()
-   local v = false ? "A"
+   local v = false ?? "A"
    assert(v is "A", "Failed false case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
 function testZero()
-   local v = 0 ? "A"
+   local v = 0 ?? "A"
    assert(v is "A", "Failed zero case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
 function testEmptyString()
-   local v = "" ? "A"
+   local v = "" ?? "A"
    assert(v is "A", "Failed empty string case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
 function testTruthyString()
-   local v = "X" ? "A"
+   local v = "X" ?? "A"
    assert(v is "X", "Failed truthy string case: expected 'X', got '" .. tostring(v) .. "'")
 end
 
 function testTruthyNumber()
-   local v = 5 ? "A"
+   local v = 5 ?? "A"
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
 end
 
@@ -46,10 +46,10 @@ function testFunction()
       return "Result"
    end
 
-   local v = returnString('ignore') ? "A"
+   local v = returnString('ignore') ?? "A"
    assert(v is "Result", "Failed function case 1, got '" .. tostring(v) .. "'")
    
-   local v = nil ? returnString('ignore')
+   local v = nil ?? returnString('ignore')
    assert(v is "Result", "Failed function case 2, got '" .. tostring(v) .. "'")
 end
 
@@ -62,11 +62,11 @@ function testConcat()
       return "Result"
    end
 
-   local v = 'start ' .. (nil ? returnString('ignore')) .. ' end'
+   local v = 'start ' .. (nil ?? returnString('ignore')) .. ' end'
    assert(v is "start Result end", "Failed concat-function 1, got '" .. tostring(v) .. "'")
    
    local val
-   local v = '' .. (val ? returnString('ignore'))
+   local v = '' .. (val ?? returnString('ignore'))
    assert(v is "Result", "Failed concat-function 2, got '" .. tostring(v) .. "'")
 end
 
@@ -79,22 +79,22 @@ function testConcatMsg()
       return nil
    end
    local Number = 1
-   fakeFunction(Number ? 2) -- Our own function
-   msg(Number ? 2) -- A built-in function
-   msg('<' .. (Number ? 2) .. '>') -- A built-in function with concatenation
+   fakeFunction(Number ?? 2) -- Our own function
+   msg(Number ?? 2) -- A built-in function
+   msg('<' .. (Number ?? 2) .. '>') -- A built-in function with concatenation
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 function testTable()
    local t = { a=1, b=2, c=3}
-   local v = t ? 'Nothing'
+   local v = t ?? 'Nothing'
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
-   local v = 'x' ? { 'Nothing' }
+   local v = 'x' ?? { 'Nothing' }
    assert(v is 'x', "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
-   local v = t ? { 'Nothing' }
+   local v = t ?? { 'Nothing' }
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 end
 
@@ -107,20 +107,20 @@ function testTableAccessLHS()
    table.insert(t, 30)
    table.insert(t, 40)
 
-   local one = (t[1] ? 0)
-   local two = (t[2] ? 0)
+   local one = (t[1] ?? 0)
+   local two = (t[2] ?? 0)
 
    assert(one is 10, "Array access LHS test failed for first element: expected 10, got '" .. tostring(one) .. "'")
    assert(two is 20, "Array access LHS test failed for second element: expected 20, got '" .. tostring(two) .. "'")
 
-   local str = (0 ? -1)
+   local str = (0 ?? -1)
    assert(str is -1, "Array access LHS test failed for zero value: expected -1, got '" .. tostring(str) .. "'")
    
    -- Ternary version - establishes a benchmark
    status = t.missing ? 'exists' :> 'missing'
    assert(status is 'missing', "Failed table key test: expected 'ok', got '" .. tostring(status) .. "'")
    
-   status = t.missing ? 'missing'
+   status = t.missing ?? 'missing'
    assert(status is 'missing', "Failed table key test: expected 'missing', got '" .. tostring(status) .. "'")
 end
 
@@ -131,7 +131,7 @@ function testShortCircuitTruth()
    local function rhs()
       error("RHS should not be evaluated when LHS is truthy")
    end
-   local v = "X" ? rhs()
+   local v = "X" ?? rhs()
    assert(v is "X", "Failed short-circuit truth: expected 'X', got '" .. tostring(v) .. "'")
 end
 
@@ -144,7 +144,7 @@ function testRHSOnce()
       count += 1
       return "Y"
    end
-   local v = 0 ? rhs()
+   local v = 0 ?? rhs()
    assert(v is "Y", "Failed RHS once value: expected 'Y', got '" .. tostring(v) .. "'")
    assert(count is 1, "Failed RHS once count: expected 1, got " .. tostring(count))
 end
@@ -153,10 +153,10 @@ end
 -- Chaining behaviour
 
 function testChaining()
-   local v1 = "" ? 0 ? "A"
+   local v1 = "" ?? 0 ?? "A"
    assert(v1 is "A", "Failed chaining case 1: expected 'A', got '" .. tostring(v1) .. "'")
 
-   local v2 = "X" ? "" ? "A"
+   local v2 = "X" ?? "" ?? "A"
    assert(v2 is "X", "Failed chaining case 2: expected 'X', got '" .. tostring(v2) .. "'")
 end
 
@@ -165,19 +165,19 @@ end
 
 function testDifferenceFromLuaOr()
    local a = 0 or "B"      -- Lua or: 0 is truthy
-   local b = 0 ? "B"        -- ?: 0 is falsey
+   local b = 0 ?? "B"        -- ??: 0 is falsey
    assert(a is 0, "Sanity: Lua 'or' should keep 0; got '" .. tostring(a) .. "'")
-   assert(b is "B", "? should replace 0 with RHS; got '" .. tostring(b) .. "'")
+   assert(b is "B", "?? should replace 0 with RHS; got '" .. tostring(b) .. "'")
 
    local c = "" or "C"      -- Lua or: empty string is truthy
-   local d = "" ? "C"       -- ?: empty string is falsey
+   local d = "" ?? "C"       -- ??: empty string is falsey
    assert(c is "", "Sanity: Lua 'or' should keep empty string; got '" .. tostring(c) .. "'")
-   assert(d is "C", "? should replace empty string with RHS; got '" .. tostring(d) .. "'")
+   assert(d is "C", "?? should replace empty string with RHS; got '" .. tostring(d) .. "'")
 end
 
 function testRuntimeZero()
    local x = 0
-   local v = x ? "A"
+   local v = x ?? "A"
    assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
 end
 
@@ -190,8 +190,8 @@ function testComplex()
    local second = nil
 
    local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
-      .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (first ? '') .. [[" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
-      .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (second ? '') .. [[" </cell></row>]]
+      .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. (first ?? '') .. [[" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
+      .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. (second ?? '') .. [[" </cell></row>]]
       .. [[</table>]]
 
    msg(inject)
@@ -211,7 +211,7 @@ function testIfEmptyArgumentLeakCapture()
       record.second = args[2]
    end
 
-   capture(Function.status ? 'then')
+   capture(Function.status ?? 'then')
 
    assert(record.count is 1, "Expected a single argument after fixing the leak, got '" .. tostring(record.count) .. "'")
    assert(record.first is 'Hello', "Expected first argument to remain 'Hello', got '" .. tostring(record.first) .. "'")
@@ -222,7 +222,7 @@ function testIfEmptyStringFindError()
    local Function = { status = 'Hello' }
 
    local ok, start_index, end_index = pcall(function()
-      return string.find((Function.status ? 'then'), 'e')
+      return string.find((Function.status ?? 'then'), 'e')
    end)
 
    assert(ok is true, "string.find should succeed once the argument leak is fixed")
@@ -238,7 +238,7 @@ function testInFunction()
    assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
 
    -- If-empty operator within a function
-   local result = string.find((Function.status ? 'then'), 'e')
+   local result = string.find((Function.status ?? 'then'), 'e')
    assert(result is 2, "Failed test: expected 2, got " .. tostring(result))
 end
 

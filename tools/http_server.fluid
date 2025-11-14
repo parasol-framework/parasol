@@ -73,7 +73,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    local err, filetype = mSys.AnalysePath(glOptions.folder)
    if filetype != LOC_FOLDER then
-      error('Error: folder "' .. (glOptions.folder ? 'NIL') .. '" does not exist')
+      error('Error: folder "' .. (glOptions.folder ?? 'NIL') .. '" does not exist')
    end
 
    glOptions.logMessage = function(Message)

@@ -241,10 +241,10 @@ gui.menubar = function(Options)
       if (not Options.target) then error('A target viewport is required.') end
 
       self.viewport = Options.target.new('vectorviewport')
-      self.viewport.x      = (Options.x ? 0)
-      self.viewport.y      = (Options.y ? 0)
+      self.viewport.x      = (Options.x ?? 0)
+      self.viewport.y      = (Options.y ?? 0)
       self.viewport.height = 1
-      self.viewport.xOffset = (Options.xOffset ? 0)
+      self.viewport.xOffset = (Options.xOffset ?? 0)
 
       if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
 

@@ -556,7 +556,7 @@ function cType(Field, Origin)
 
          -- Process function result type
 
-         Field.type = ((#arglist < 1) ? 'void' :> (glTypes[arglist[1]].c_type ? arglist[1])) .. ' (*' .. Field.name .. ')'
+         Field.type = ((#arglist < 1) ? 'void' :> (glTypes[arglist[1]].c_type ?? arglist[1])) .. ' (*' .. Field.name .. ')'
 
          -- Process function parameters
 
@@ -583,9 +583,9 @@ function cType(Field, Origin)
 
    Field.fullType = glTypes[Field.type]
    if Field.cpp then
-      Field.type = (glTypes[Field.type].cpp_type ? Field.type)
+      Field.type = (glTypes[Field.type].cpp_type ?? Field.type)
    else
-      Field.type = (glTypes[Field.type].c_type ? Field.type)
+      Field.type = (glTypes[Field.type].c_type ?? Field.type)
    end
 
    return Field

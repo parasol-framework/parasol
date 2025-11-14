@@ -167,6 +167,34 @@ static void expr_safe_index_chain(LexState* ls, ExpDesc* v)
    expr_safe_nav_branch(ls, v, expr_safe_index_branch);
 }
 
+static int token_starts_expression(LexToken tok)
+{
+   switch (tok) {
+   case TK_number:
+   case TK_string:
+   case TK_nil:
+   case TK_true:
+   case TK_false:
+   case TK_dots:
+   case TK_function:
+   case TK_name:
+   case '{':
+   case '(': 
+   case TK_not:
+   case '-':
+   case '~':
+   case '#':
+      return 1;
+   default:
+      return 0;
+   }
+}
+
+static int should_emit_presence(LexState* ls)
+{
+   return !token_starts_expression(lj_lex_lookahead(ls));
+}
+
 static void expr_safe_method_call(LexState* ls, ExpDesc* v, ExpDesc* key)
 {
    FuncState* fs = ls->fs;
@@ -569,7 +597,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
       else if (ls->tok == TK_safe_field) {
          expr_safe_field(ls, v);
       }
-      else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
+      else if (ls->tok == '?' && lj_lex_lookahead(ls) == '[') {
          expr_safe_index(ls, v);
       }
       else if (ls->tok == TK_safe_method) {
@@ -600,7 +628,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
          lj_lex_next(ls);
          inc_dec_op(ls, OPR_ADD, v, 1);
       }
-      else if (ls->tok == TK_presence) {
+      else if (ls->tok == TK_if_empty && should_emit_presence(ls)) {
          // Postfix presence check operator: x??
          lj_lex_next(ls);  // Consume '??'
          bcemit_presence_check(fs, v);
@@ -705,7 +733,7 @@ static void expr_simple(LexState* ls, ExpDesc* v)
       if (ls->tok == TK_safe_field) {
          expr_safe_field(ls, v);
       }
-      else if (ls->tok == TK_if_empty && lj_lex_lookahead(ls) == '[') {
+      else if (ls->tok == '?' && lj_lex_lookahead(ls) == '[') {
          expr_safe_index(ls, v);
       }
       else if (ls->tok == TK_safe_method) {
@@ -752,6 +780,7 @@ static BinOpr token2binop(LexToken tok)
    case TK_and:	return OPR_AND;
    case TK_or:	return OPR_OR;
    case TK_if_empty: return OPR_IF_EMPTY;
+   case '?':    return OPR_TERNARY;
    default:	return OPR_NOBINOPR;
    }
 }
@@ -965,7 +994,7 @@ static void expr_unop(LexState* ls, ExpDesc* v)
    else {
       expr_simple(ls, v);
       // Check for postfix presence check operator after simple expressions (constants)
-      if (ls->tok == TK_presence) {
+      if (ls->tok == TK_if_empty && should_emit_presence(ls)) {
          lj_lex_next(ls);
          bcemit_presence_check(ls->fs, v);
       }
@@ -999,56 +1028,47 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
       lj_lex_next(ls);
 
-      // Handle ? specially: decide ternary vs optional BEFORE any emission.
-      if (op == OPR_IF_EMPTY) {
-         if (lookahead_has_top_level_ternary_sep(ls)) {
+      if (op == OPR_TERNARY) {
+         int has_sep = lookahead_has_top_level_ternary_sep(ls);
+         UNUSED(has_sep);
+         {
             FuncState* fs = ls->fs;
             ExpDesc nilv, falsev, zerov, emptyv;
             BCReg cond_reg, result_reg;
             BCPos check_nil, check_false, check_zero, check_empty;
             BCPos skip_false;
 
-            // Prepare condition value && emit extended-falsey checks BEFORE branches.
             expr_discharge(fs, v);
             cond_reg = expr_toanyreg(fs, v);
             result_reg = cond_reg;
 
-            // Emit comparisons followed by JMP; ISEQP/S/N skip the JMP when equal.
-            // nil
             expr_init(&nilv, VKNIL, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
-            // false
             expr_init(&falsev, VKFALSE, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
-            // zero
             expr_init(&zerov, VKNUM, 0);
             setnumV(&zerov.u.nval, 0.0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
-            // empty string
             expr_init(&emptyv, VKSTR, 0);
             emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
-            // TRUE branch (falls through when value is truthy).
             {
                ExpDesc v2;
-               expr_binop(ls, &v2, priority[op].right);
+               expr_binop(ls, &v2, priority[OPR_IF_EMPTY].right);
                expr_discharge(fs, &v2);
                expr_toreg(fs, &v2, result_reg);
                expr_collapse_freereg(fs, result_reg);
             }
 
-            // Skip FALSE branch after executing TRUE branch.
             skip_false = bcemit_jmp(fs);
 
-            // Require && consume ':>' separator.
             lex_check(ls, TK_ternary_sep);
 
-            // Patch all falsey checks to jump here (start of FALSE branch).
             {
                BCPos false_start = fs->pc;
                jmp_patch(fs, check_nil, false_start);
@@ -1057,9 +1077,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
                jmp_patch(fs, check_empty, false_start);
             }
 
-            // FALSE branch.
             {
-               ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[op].right);
+               ExpDesc fexp; BinOpr nextop3 = expr_binop(ls, &fexp, priority[OPR_IF_EMPTY].right);
                expr_discharge(fs, &fexp);
                expr_toreg(fs, &fexp, result_reg);
                expr_collapse_freereg(fs, result_reg);
@@ -1067,12 +1086,9 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
                v->u.s.info = result_reg; v->k = VNONRELOC; op = nextop3; continue;
             }
          }
-         // Optional form: fall back to existing emission path.
-         bcemit_binop_left(ls->fs, op, v);
       }
-      else {
-         bcemit_binop_left(ls->fs, op, v);
-      }
+
+      bcemit_binop_left(ls->fs, op, v);
 
       if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
          op = expr_shift_chain(ls, v, op);

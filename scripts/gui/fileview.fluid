@@ -563,10 +563,10 @@ gui.fileview = function(Options)
       resetTimer    = nil,
       refreshRate   = 0.25, -- Cycles per second
       limitPath     = Options.limitPath,
-      showHidden    = Options.showHidden ? false,
-      showSystem    = Options.showSystem ? false,
-      showDocs      = Options.showDocs ? false,
-      enableSysKeys = Options.sysKeys ? false,
+      showHidden    = Options.showHidden ?? false,
+      showSystem    = Options.showSystem ?? false,
+      showDocs      = Options.showDocs ?? false,
+      enableSysKeys = Options.sysKeys ?? false,
       pathChanged   = Options.pathChanged,
       filterList    = Options.filterList
    }
@@ -615,7 +615,7 @@ gui.fileview = function(Options)
 
    local function deleteItem(File)
       for _, item in pairs(self.view.items) do
-         if File is (item.name.value ? ''):gsub('^(.-)[:/\\]+$', '%1') then
+         if File is (item.name.value ?? ''):gsub('^(.-)[:/\\]+$', '%1') then
             self.view.removeItem(item)
             return true
          end
@@ -632,9 +632,9 @@ gui.fileview = function(Options)
          if not lNoFiles then flags = flags|RDF_FILE end
 
          local err
-         err, lDir = mSys.OpenDir((self.path ? ':'), flags)
+         err, lDir = mSys.OpenDir((self.path ?? ':'), flags)
          if err != ERR_Okay then
-            error('Failed to resolve path ' .. (self.path ? ':'))
+            error('Failed to resolve path ' .. (self.path ?? ':'))
             return
          end
       end
@@ -690,7 +690,7 @@ gui.fileview = function(Options)
       end
 
       if #self.view.items > 0 then -- Check for deleted files
-         local path = self.path ? ''
+         local path = self.path ?? ''
 
          if not self.path then -- Do not resolve the path when at the root view
          else -- Use ResolvePath() to prevent problems with multi-folder volumes
@@ -770,7 +770,7 @@ gui.fileview = function(Options)
 
       local info, info_err
       if (Flags & MFF_DELETE) is 0 then
-         info_err, info = mSys.GetFileInfo(self.path .. (Path ? ''))
+         info_err, info = mSys.GetFileInfo(self.path .. (Path ?? ''))
          if info_err is ERR_Okay then
             if lNoFiles and (info.Flags & RDF_FILE) != 0 then return end
             -- Use the true file name with the trailing slash if it is a folder (important
@@ -850,7 +850,7 @@ gui.fileview = function(Options)
 
    local function checkDocView()
       if self.showDocs then
-         local docfile = mSys.GetDocView(self.path ? ':')
+         local docfile = mSys.GetDocView(self.path ?? ':')
          if docfile then
             if lDoc then
                lDoc.path = docfile
@@ -1145,8 +1145,8 @@ gui.fileview = function(Options)
       if #items > 1 then
          msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
       else
-         local fl = items[1].filename ? 'NIL'
-         local item_type = items[1].type ? 'NIL'
+         local fl = items[1].filename ?? 'NIL'
+         local item_type = items[1].type ?? 'NIL'
          msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
@@ -1178,7 +1178,7 @@ gui.fileview = function(Options)
 
       self.dlgDelete.files = { }
       for _,item in pairs(items) do
-         table.insert(self.dlgDelete.files, (self.path ? '') .. item.name.value)
+         table.insert(self.dlgDelete.files, (self.path ?? '') .. item.name.value)
       end
    end
 
@@ -1262,14 +1262,14 @@ gui.fileview = function(Options)
    -- See also incrementalRefresh()
 
    local function refreshFiles()
-      msg('refreshFiles() ' .. (self.path ? 'ROOT') .. ' [Limited Logging]')
+      msg('refreshFiles() ' .. (self.path ?? 'ROOT') .. ' [Limited Logging]')
 
       self._file_table = { }
       local msg_time  = mSys.PreciseTime()
       local orig_path = self.path
       local flags     = RDF_READ_ALL|RDF_TAGS
       if lNoFiles then flags = (flags & bit.bxor(RDF_FILE)) end
-      local err, dir_info = mSys.OpenDir(self.path ? ':', flags)
+      local err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
       if err is ERR_Okay then
          mSys.AdjustLogLevel(1)
 
@@ -1362,7 +1362,7 @@ gui.fileview = function(Options)
 
       self.view.itemActivated = function(View, Reason, Item)
          if Item.type is 'folder' then
-            self.browse((self.path ? '') .. Item.filename .. '/')
+            self.browse((self.path ?? '') .. Item.filename .. '/')
          elseif Item.type is 'volume' then
             self.browse(Item.filename .. ':')
          elseif Item.type is 'parent' then -- Parent
@@ -1625,7 +1625,7 @@ gui.fileview = function(Options)
    -- Return the complete, fully-qualified path of the most recently selected item
 
    self.selectionPath = function()
-      if self.view.sItem then return (self.path ? '') .. self.view.sItem.filename end
+      if self.view.sItem then return (self.path ?? '') .. self.view.sItem.filename end
    end
 
    if not Options.target then error('A target viewport must be specified.') end

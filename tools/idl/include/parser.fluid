@@ -93,7 +93,7 @@ function parseField(class, extract)
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
       end
-      if string.match((status ? ''), '^[Pp]rivate') or string.match((comment ? ''), '^[Pp]rivate') then
+      if string.match((status ?? ''), '^[Pp]rivate') or string.match((comment ?? ''), '^[Pp]rivate') then
          f.private = true
          f.access = 'Private'
       end
@@ -176,7 +176,7 @@ function parseMethod(class, extract)
          end
       end
 
-      table.sort(method.results, function(a,b) return (a.code ? -1) < (b.code ? -1) end)
+      table.sort(method.results, function(a,b) return (a.code ?? -1) < (b.code ?? -1) end)
    end
 
    if input?? then
@@ -186,7 +186,7 @@ function parseMethod(class, extract)
             cType(param, name)
             table.insert(method.params, param)
          elseif content:trim()?? then
-            error("Unable to process line '" .. (content ? "NULL") .. "' for method '" .. name .. "'")
+            error("Unable to process line '" .. (content ?? "NULL") .. "' for method '" .. name .. "'")
          end
       end
    end
@@ -225,8 +225,8 @@ function parseClassFields(class, ClientSpec)
                f.write  = def.write
                f.read   = def.read
                f.flags  = def.flags
-               f.access = (def.access ? def.access)
-               f.private = (f.private ? def.private)
+               f.access = (def.access ?? def.access)
+               f.private = (f.private ?? def.private)
                if not f.type then f.type = tostring(def.type) end
             else
                def.virtual = true
@@ -293,7 +293,7 @@ function parseSourceFiles()
 
    local srcFiles = { }
 
-   for i=1, arg('files:size') ? 0 do
+   for i=1, arg('files:size') ?? 0 do
       table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
    end
 
@@ -310,7 +310,7 @@ function parseSourceFiles()
       local content = file.readAll(path)
       content = '\n' .. content:gsub('\r\n', '\n')
       for extract in string.gmatch(content, '%-%-IDL_BEGIN%-%-(.-)%-%-IDL_END%-%-') do
-         idlExtract = (idlExtract ? '') .. extract
+         idlExtract = (idlExtract ?? '') .. extract
       end
 
       if idlExtract then
@@ -338,7 +338,7 @@ function parseSourceFiles()
       local processing = nil
       for line in string.gmatch(content, '(.-\n)') do
          if line?? then
-            line = (line:match('^(.*%S)') ? '')
+            line = (line:match('^(.*%S)') ?? '')
             if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
                if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
                if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
@@ -449,5 +449,5 @@ function parseFunction(extract)
       end
    end
 
-   idlFunction(name, (category ? glCategory), comment, status, description, def)
+   idlFunction(name, (category ?? glCategory), comment, status, description, def)
 end
