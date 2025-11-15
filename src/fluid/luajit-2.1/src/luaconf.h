@@ -86,23 +86,23 @@
 #define LUA_QS      LUA_QL("%s")
 
 // Various tunables.
-#define LUAI_MAXSTACK   65500   /* Max. # of stack slots for a thread (<64K). */
-#define LUAI_MAXCSTACK   8000   /* Max. # of stack slots for a C func (<10K). */
-#define LUAI_GCPAUSE   200   /* Pause GC until memory is at 200%. */
-#define LUAI_GCMUL   200   /* Run GC at 200% of allocation speed. */
-#define LUA_MAXCAPTURES   32   /* Max. pattern captures. */
+constexpr int LUAI_MAXSTACK = 65500;   /* Max. # of stack slots for a thread (<64K). */
+constexpr int LUAI_MAXCSTACK = 8000;   /* Max. # of stack slots for a C func (<10K). */
+constexpr int LUAI_GCPAUSE = 200;   /* Pause GC until memory is at 200%. */
+constexpr int LUAI_GCMUL = 200;   /* Run GC at 200% of allocation speed. */
+constexpr int LUA_MAXCAPTURES = 32;   /* Max. pattern captures. */
 
 // Configuration for the frontend (the luajit executable).
 #if defined(luajit_c)
 #define LUA_PROGNAME   "luajit"  /* Fallback frontend name. */
 #define LUA_PROMPT   "> "   /* Interactive prompt. */
 #define LUA_PROMPT2   ">> "   /* Continuation prompt. */
-#define LUA_MAXINPUT   512   /* Max. input line length. */
+constexpr int LUA_MAXINPUT = 512;   /* Max. input line length. */
 #endif
 
 // Note: changing the following defines breaks the Lua 5.1 ABI.
 #define LUA_INTEGER   ptrdiff_t
-#define LUA_IDSIZE   60   /* Size of lua_Debug.short_src. */
+constexpr int LUA_IDSIZE = 60;   /* Size of lua_Debug.short_src. */
 /*
 ** Size of lauxlib and io.* on-stack buffers. Weird workaround to avoid using
 ** unreasonable amounts of stack space, but still retain ABI compatibility.
@@ -119,7 +119,7 @@
 #define LUA_NUMBER_SCAN      "%lf"
 #define LUA_NUMBER_FMT      "%.14g"
 #define lua_number2str(s, n)   sprintf((s), LUA_NUMBER_FMT, (n))
-#define LUAI_MAXNUMBER2STR   32
+constexpr int LUAI_MAXNUMBER2STR = 32;
 #define LUA_INTFRMLEN      "l"
 #define LUA_INTFRM_T      long
 
