@@ -142,7 +142,6 @@ struct luaL_Buffer {
   lua_State *L;
   char buffer[LUAL_BUFFERSIZE];
 };
-using luaL_Buffer = struct luaL_Buffer;
 
 #define luaL_addchar(B,c) \
   ((void)((B)->p < ((B)->buffer+LUAL_BUFFERSIZE) || luaL_prepbuffer(B)), \
