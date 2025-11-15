@@ -354,7 +354,6 @@ typedef enum {
 
 // Stored IRType.
 struct IRType1 { uint8_t irt; };
-using IRType1 = struct IRType1;
 
 #define IRT(o, t)      ((uint32_t)(((o)<<8) | (t)))
 #define IRTI(o)         (IRT((o), IRT_INT))
