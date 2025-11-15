@@ -301,3 +301,293 @@ Before committing, verify:
 ✅ No API breakage
 ✅ Code follows Parasol style guidelines
 ✅ Changes documented in commit messages
+
+---
+
+## File Upgrade Tracking (185 files total)
+
+### Legend
+- `[  ]` - Not yet processed
+- `[P1]` - Phase 1 complete (constexpr numeric constants)
+- `[P2]` - Phase 2 complete (typedef to using syntax)
+- `[P3]` - Phase 3 complete (string constants & macro functions)
+- `[DONE]` - All applicable phases completed
+
+### Public API Headers (Priority: HIGH)
+
+```
+[P1][P2] lua.h                      ✅ COMPLETED - Version/status codes, function pointers
+[P1][P2] luaconf.h                  ✅ COMPLETED - Configuration constants
+[P1][P2] lualib.h                   ⏳ PENDING - Library constants and function declarations
+[  ] lauxlib.h                      - Auxiliary library interface
+```
+
+### Core System Headers (Priority: HIGH)
+
+```
+[P1][P2] lj_def.h                   ✅ COMPLETED - VM limits, type definitions
+[P1][P2] lj_obj.h                   ✅ COMPLETED - Object system, bytecode types, memory refs
+[P1][P2] lj_arch.h                  ✅ REVIEWED - Architecture detection (macros required)
+[P1][P2] lj_target.h                ✅ COMPLETED - Register allocations, target CPU defs
+[P1][P2] lj_vm.h                    ✅ COMPLETED - VM function pointers
+```
+
+### Register & Target Architecture Headers
+
+```
+[P1][P2] lj_target_x86.h            - X86 target definitions
+[P1][P2] lj_target_arm.h            - ARM target definitions
+[P1][P2] lj_target_arm64.h          - ARM64 target definitions
+[P1][P2] lj_target_ppc.h            - PowerPC target definitions
+[P1][P2] lj_target_mips.h           - MIPS target definitions
+```
+
+### Assembly & Code Generation Headers
+
+```
+[  ] lj_asm.h                       - Assembler interface
+[  ] lj_asm_x86.h                   - X86 assembler
+[  ] lj_asm_arm.h                   - ARM assembler
+[  ] lj_asm_arm64.h                 - ARM64 assembler
+[  ] lj_asm_ppc.h                   - PowerPC assembler
+[  ] lj_asm_mips.h                  - MIPS assembler
+[  ] lj_emit_x86.h                  - X86 emitter
+[  ] lj_emit_arm.h                  - ARM emitter
+[  ] lj_emit_arm64.h                - ARM64 emitter
+[  ] lj_emit_ppc.h                  - PowerPC emitter
+[  ] lj_emit_mips.h                 - MIPS emitter
+```
+
+### Bytecode & Serialization
+
+```
+[  ] lj_bc.h                        - Bytecode instruction definitions
+[  ] lj_bcdump.h                    - Bytecode dump format
+```
+
+### Data Type Definitions
+
+```
+[  ] lj_buf.h                       - String buffer definitions
+[  ] lj_tab.h                       - Table definitions
+[  ] lj_str.h                       - String definitions
+[  ] lj_func.h                      - Function definitions
+[  ] lj_udata.h                     - Userdata definitions
+[  ] lj_cdata.h                     - FFI C data definitions
+[  ] lj_state.h                     - Lua state definitions
+```
+
+### Parser & Compilation
+
+```
+[  ] lj_parse.h                     - Parser interface
+[  ] parser/lj_parse_types.h        - Parser type definitions
+[  ] parser/lj_parse_internal.h     - Parser internal definitions
+```
+
+### IR & Optimization
+
+```
+[  ] lj_ir.h                        - IR instruction definitions
+[  ] lj_ircall.h                    - IR call definitions
+[  ] lj_iropt.h                     - IR optimization definitions
+```
+
+### JIT Compiler
+
+```
+[  ] lj_jit.h                       - JIT compiler definitions
+[  ] lj_record.h                    - Recording interface
+[  ] lj_trace.h                     - Trace definitions
+[  ] lj_snap.h                      - Snapshot definitions
+```
+
+### String & Number Formatting
+
+```
+[  ] lj_strfmt.h                    - String formatting definitions
+[  ] lj_strscan.h                   - String scanning definitions
+```
+
+### FFI & C Interop
+
+```
+[  ] lj_ccall.h                     - C function call interface
+[  ] lj_ccallback.h                 - C callback interface
+[  ] lj_cparse.h                    - C type parser interface
+[  ] lj_ctype.h                     - C type definitions
+[  ] lj_cconv.h                     - C conversion interface
+[  ] lj_carith.h                    - C arithmetic interface
+[  ] lj_clib.h                      - C library interface
+[  ] lj_crecord.h                   - FFI recording interface
+```
+
+### Memory & GC
+
+```
+[  ] lj_alloc.h                     - Memory allocator interface
+[  ] lj_gc.h                        - Garbage collector interface
+[  ] lj_mcode.h                     - Machine code interface
+```
+
+### Debugging & Profiling
+
+```
+[  ] lj_debug.h                     - Debug interface
+[  ] lj_gdbjit.h                    - GDB JIT interface
+[  ] lj_profile.h                   - Profiling interface
+[  ] lj_vmevent.h                   - VM event interface
+```
+
+### Miscellaneous Headers
+
+```
+[  ] lj_dispatch.h                  - VM dispatch definitions
+[  ] lj_meta.h                      - Metamethod interface
+[  ] lj_lib.h                       - Library interface
+[  ] lj_char.h                      - Character class definitions
+[  ] lj_errmsg.h                    - Error message definitions
+[  ] lj_ff.h                        - Fast function definitions
+[  ] lj_frame.h                     - Stack frame definitions
+[  ] lj_lex.h                       - Lexer interface
+[  ] lj_load.h                      - Chunk loading interface
+[  ] lj_prng.h                      - PRNG interface
+[  ] lj_serialize.h                 - Serialization interface
+[  ] lj_traceerr.h                  - Trace error definitions
+[  ] luajit.h                       - LuaJIT public header
+[  ] lualib.h                       - Lua library header
+```
+
+### Implementation Files (CPP/C)
+
+```
+[  ] ljamalg.cpp                    - Amalgamation source
+[  ] lua.cpp                        - Lua core (if present)
+[  ] luajit.cpp                     - LuaJIT main
+```
+
+#### Core Implementation
+
+```
+[  ] lj_alloc.cpp                   - Memory allocation
+[  ] lj_api.cpp                     - Lua C API implementation
+[  ] lj_assert.cpp                  - Assertions
+[  ] lj_bc.cpp                      - Bytecode
+[  ] lj_bcread.cpp                  - Bytecode reader
+[  ] lj_bcwrite.cpp                 - Bytecode writer
+[  ] lj_buf.cpp                     - String buffer
+[  ] lj_carith.cpp                  - C arithmetic
+[  ] lj_ccall.cpp                   - C function calls
+[  ] lj_ccallback.cpp               - C callbacks
+[  ] lj_cconv.cpp                   - C conversion
+[  ] lj_cdata.cpp                   - FFI C data
+[  ] lj_char.cpp                    - Character operations
+[  ] lj_clib.cpp                    - C library loading
+[  ] lj_cmath.cpp                   - C math
+[  ] lj_cparse.cpp                  - C type parser
+[  ] lj_crecord.cpp                 - FFI recording
+[  ] lj_ctype.cpp                   - C types
+[  ] lj_debug.cpp                   - Debugging
+[  ] lj_dispatch.cpp                - VM dispatch
+[  ] lj_err.cpp                     - Error handling
+[  ] lj_ffrecord.cpp                - Fast function recording
+[  ] lj_func.cpp                    - Functions
+[  ] lj_gc.cpp                      - Garbage collection
+[  ] lj_gdbjit.cpp                  - GDB JIT support
+[  ] lj_ir.cpp                      - IR generation
+[  ] lj_lex.cpp                     - Lexer
+[  ] lj_lib.cpp                     - Library base
+[  ] lj_load.cpp                    - Chunk loading
+[  ] lj_mcode.cpp                   - Machine code
+[  ] lj_meta.cpp                    - Metamethods
+[  ] lj_obj.cpp                     - Core objects
+[  ] lj_parse.cpp                   - Parser
+[  ] lj_prng.cpp                    - PRNG
+[  ] lj_profile.cpp                 - Profiling
+[  ] lj_record.cpp                  - Trace recording
+[  ] lj_serialize.cpp               - Serialization
+[  ] lj_snap.cpp                    - Snapshots
+[  ] lj_state.cpp                   - Lua state
+[  ] lj_str.cpp                     - Strings
+[  ] lj_strfmt.cpp                  - String formatting
+[  ] lj_strfmt_num.cpp              - Number formatting
+[  ] lj_strscan.cpp                 - String scanning
+[  ] lj_tab.cpp                     - Tables
+[  ] lj_trace.cpp                   - Tracing
+[  ] lj_udata.cpp                   - Userdata
+[  ] lj_vmevent.cpp                 - VM events
+[  ] lj_vmmath.cpp                  - VM math
+[  ] lj_asm.cpp                     - Assembler
+```
+
+#### Library Implementation
+
+```
+[  ] lib_aux.cpp                    - Auxiliary library
+[  ] lib_base.cpp                   - Base library
+[  ] lib_bit.cpp                    - Bitwise operations
+[  ] lib_debug.cpp                  - Debug library
+[  ] lib_init.cpp                   - Library initialization
+[  ] lib_jit.cpp                    - JIT library
+[  ] lib_math.cpp                   - Math library
+[  ] lib_string.cpp                 - String library
+[  ] lib_table.cpp                  - Table library
+```
+
+#### Optimization Passes
+
+```
+[  ] lj_opt_dce.cpp                 - Dead code elimination
+[  ] lj_opt_fold.cpp                - Constant folding
+[  ] lj_opt_loop.cpp                - Loop optimization
+[  ] lj_opt_mem.cpp                 - Memory optimization
+[  ] lj_opt_narrow.cpp              - Value narrowing
+[  ] lj_opt_sink.cpp                - Allocation sinking
+[  ] lj_opt_split.cpp               - Register splitting
+```
+
+#### Parser Components (parser/)
+
+```
+[  ] parser/lj_parse_constants.cpp  - Parser constants
+[  ] parser/lj_parse_core.cpp       - Parser core
+[  ] parser/lj_parse_expr.cpp       - Expression parsing
+[  ] parser/lj_parse_operators.cpp  - Operator parsing
+[  ] parser/lj_parse_regalloc.cpp   - Register allocation
+[  ] parser/lj_parse_scope.cpp      - Scope handling
+[  ] parser/lj_parse_stmt.cpp       - Statement parsing
+```
+
+#### Build System (host/)
+
+```
+[  ] host/buildvm.cpp               - Build VM generator
+[  ] host/buildvm.h                 - Build VM header
+[  ] host/buildvm_asm.cpp           - ASM generation
+[  ] host/buildvm_fold.cpp          - Fold generation
+[  ] host/buildvm_lib.cpp           - Library generation
+[  ] host/buildvm_libbc.h           - Library bytecode header
+[  ] host/buildvm_peobj.cpp         - PE object generation
+[  ] host/minilua.c                 - Minimal Lua for building
+```
+
+---
+
+### Progress Summary
+
+**Completed: 5 files** (Phase 1 & 2)
+- ✅ lua.h
+- ✅ luaconf.h
+- ✅ lj_def.h
+- ✅ lj_obj.h
+- ✅ lj_target.h
+- ✅ lj_vm.h (P2 only)
+
+**Remaining: 180 files** across 4 phases
+
+**Recommended Priority Order for Remaining Work:**
+1. Public API headers (lualib.h, lauxlib.h)
+2. Core type headers (lj_tab.h, lj_str.h, lj_func.h)
+3. Bytecode/IR headers (lj_bc.h, lj_ir.h)
+4. Implementation files (can be processed in parallel)
+5. Platform-specific headers (last, as they have conditional compilation)
