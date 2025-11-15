@@ -302,7 +302,7 @@ end
    local a = 'a_var'
    b = 'b_var'
    c = a .. b
-]] 
+]]
    })
 
    script.acActivate()

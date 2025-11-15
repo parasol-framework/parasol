@@ -37,7 +37,7 @@ static bool glBackstage = false;
 
 static ERR exec_source(CSTRING, int, const std::string);
 
-static const std::string glHelp = 
+static const std::string glHelp =
    "Parasol Framework " PARASOL_VERSION R"(
 
 This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.
@@ -45,12 +45,12 @@ This command-line program can execute Fluid scripts and PARC files developed for
    parasol [options] [script.ext] arg1 arg2=value ...
 
 The following options can be used when executing script files:
-   
+
  --procedure [n] The name of a procedure to execute.
  --time          Print the amount of time that it took to execute the script.
  --dialog        Display a file dialog for choosing a script manually.
  --backstage     Enables the backstage REST API (see Wiki).
- 
+
  --log-api       Activates run-time log messages at API level.
  --log-info      Activates run-time log messages at INFO level.
  --log-error     Activates run-time log messages at ERROR level.

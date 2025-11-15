@@ -603,7 +603,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                      proto = 'int,' .. proto
                   end
                end
-               outValues = outValues .. 'Tags...'
+               outValues ..= 'Tags...'
                variadic = true
             else
                proto ..= (param.extType ?? param.type) .. ' ' .. cName(param)
@@ -810,7 +810,7 @@ function buildPrototypes()
 
       for k, func in ipairs(glFunctions) do
          local response
-         if func?.result?.fullType then
+         if func.result and func.result.fullType then
             response = func.result.fullType.c_type
          else
             response = 'void'

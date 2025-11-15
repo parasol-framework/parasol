@@ -379,7 +379,7 @@ function sampleFunction(a, b)
    local total = a + scale
    return result
 end
-]] 
+]]
    })
 
    script.acActivate()
@@ -420,12 +420,12 @@ When implementing new operators:
 2. Test simple variables (`x`) - test basic runtime path
 3. Test field access (`t.field`) - test suffix loop integration
 4. Test parenthesized expressions (`(x + y)`) - test complex expressions
-5. Test function calls that return a single result and those that return multiple results 
+5. Test function calls that return a single result and those that return multiple results
    (`f(x)`) - test VCALL handling
 6. Test in various contexts (assignments, function arguments, conditionals)
-7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the 
+7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the
    logic of emitted bytecode.
- 
+
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
   not collide with upstream naming; we will eventually rebase to newer

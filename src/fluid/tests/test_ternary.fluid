@@ -400,14 +400,14 @@ function testTernaryWithOrQuestionOperator()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Test ternary in conjunction with concatenation - note that bugs raised could be in either feature or in 
+-- Test ternary in conjunction with concatenation - note that bugs raised could be in either feature or in
 -- combination of both
 
 function testConcat()
    local function returnString(Arg)
       if Arg then return Arg else return "Result" end
    end
-   
+
    local baseline = (nil and returnString('true') or returnString('false'))
    assert(baseline is "false", "Failed baseline, got '" .. tostring(baseline) .. "'")
 
@@ -416,7 +416,7 @@ function testConcat()
 
    local v = '' .. (nil ? returnString('true') :> returnString('false')) .. ''
    assert(v is baseline, "Failed concat-function 1, got '" .. tostring(v) .. "'")
-   
+
    local val
    local v = '' .. (val ? returnString('ignore') :> 'false')
    assert(v is "false", "Failed conat-function 2, got '" .. tostring(v) .. "'")
@@ -428,6 +428,15 @@ function testInFunction()
    -- Ternary operator within a function
    local result = string.find((Function.status ? 'then' :> 'else'), 'e')
    assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testEmbeddedConcat()
+   local test = 'thing'
+   local struct = 'struct'
+   local type = test ? ('class ' .. struct) :> ('struct ' .. struct)
+   assert(type is 'class struct', "Failed embedded concat test: expected 'class struct', got " .. tostring(type))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -455,7 +464,7 @@ return {
       'testExtendedTruthyNonZero', 'testExtendedTruthyNonEmptyString', 'testShortCircuitTrue', 'testShortCircuitFalse',
       'testNestedRightAssociative', 'testNestedMultiLevel', 'testRuntimePositive', 'testRuntimeNegative',
       'testPrecedenceArithmetic', 'testPrecedenceComparison', 'testComplexExpressions', 'testFunctionCallInBranch',
-      'testAssignment', 'testMultipleAssignments', 'testConstantTrue', 'testConstantFalse', 'testConstantZero', 
+      'testAssignment', 'testMultipleAssignments', 'testConstantTrue', 'testConstantFalse', 'testConstantZero',
       'testConstantEmptyString', 'testConstantNonZero', 'testConstantNonEmptyString', 'testTableField',
       'testReturnValue', 'testChainedComparisons', 'testMixedOptionalAndFull',
       -- Method call tests (critical for in_ternary flag)
@@ -482,6 +491,6 @@ return {
       -- Function arguments and table constructors
       'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
       -- Interaction with other operators
-      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction', 'testInvalidTernary'
+      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction', 'testInvalidTernary', 'testEmbeddedConcat'
    }
 }

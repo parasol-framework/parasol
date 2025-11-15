@@ -371,7 +371,7 @@ end
    return {
       tests = {
          'testCatchClean', 'testCatch', 'testCatchErrorCode', 'testCatchFilter', 'testMissedFilter', 'testCatchObject',
-         'testCatchObjectAction', 'testNoThrow', 'testSetField', 'testCatch', 'testDeepNesting1', 'testCrossLuaC1', 
+         'testCatchObjectAction', 'testNoThrow', 'testSetField', 'testCatch', 'testDeepNesting1', 'testCrossLuaC1',
          'testMultipleFilterLevels', 'testMixedLuaErrors', 'testFilterChaining', 'testObjectMethodErrors',
          'testChainedObjectCalls'
       }

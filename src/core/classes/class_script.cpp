@@ -133,8 +133,8 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
 DebugLog: Acquire a debug log from a compiled Script.
 
 Use the DebugLog() method to acquire debug information from a compiled script.  The exact nature of the log
-will depend on the scripting language in use, but will typically dump readable bytecode for analysis.  The Options 
-parameter is a comma-separated list that may be used to pass language-specific options to the underlying 
+will depend on the scripting language in use, but will typically dump readable bytecode for analysis.  The Options
+parameter is a comma-separated list that may be used to pass language-specific options to the underlying
 implementation.
 
 The resulting log information is returned as a string, which needs to be deallocated once no longer required.

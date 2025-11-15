@@ -48,13 +48,13 @@ function testFunction()
 
    local v = returnString('ignore') ?? "A"
    assert(v is "Result", "Failed function case 1, got '" .. tostring(v) .. "'")
-   
+
    local v = nil ?? returnString('ignore')
    assert(v is "Result", "Failed function case 2, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Test if-empty in conjunction with concatenation - note that bugs raised could be in either feature or in 
+-- Test if-empty in conjunction with concatenation - note that bugs raised could be in either feature or in
 -- combination of both
 
 function testConcat()
@@ -64,14 +64,14 @@ function testConcat()
 
    local v = 'start ' .. (nil ?? returnString('ignore')) .. ' end'
    assert(v is "start Result end", "Failed concat-function 1, got '" .. tostring(v) .. "'")
-   
+
    local val
    local v = '' .. (val ?? returnString('ignore'))
    assert(v is "Result", "Failed concat-function 2, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- This unusual test has been observed as throwing errors in some cases 
+-- This unusual test has been observed as throwing errors in some cases
 
 function testConcatMsg()
    local function fakeFunction(value)
@@ -115,11 +115,11 @@ function testTableAccessLHS()
 
    local str = (0 ?? -1)
    assert(str is -1, "Array access LHS test failed for zero value: expected -1, got '" .. tostring(str) .. "'")
-   
+
    -- Ternary version - establishes a benchmark
    status = t.missing ? 'exists' :> 'missing'
    assert(status is 'missing', "Failed table key test: expected 'ok', got '" .. tostring(status) .. "'")
-   
+
    status = t.missing ?? 'missing'
    assert(status is 'missing', "Failed table key test: expected 'missing', got '" .. tostring(status) .. "'")
 end
