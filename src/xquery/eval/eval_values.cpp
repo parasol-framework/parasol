@@ -13,6 +13,11 @@
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
 #include "../api/xquery_functions.h"
+#include "eval_detail.h"
+#include "../../xml/schema/schema_types.h"
+#include <cmath>
+#include <cctype>
+#include <limits>
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
@@ -2288,9 +2293,18 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    auto &library = XPathFunctionLibrary::instance();
 
    if (builtin_has_expanded) {
+      if (auto constructor = evaluate_type_constructor(builtin_namespace, builtin_local, args, FuncNode)) {
+         return *constructor;
+      }
       static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
+      static const std::string math_namespace_uri("http://www.w3.org/2005/xpath-functions/math");
       if (builtin_namespace IS builtin_namespace_uri) {
          builtin_lookup_name = builtin_local;
+      }
+      else if (builtin_namespace IS math_namespace_uri) {
+         std::string prefixed_name = std::string("math:") + builtin_local;
+         if (library.has_function(prefixed_name)) builtin_lookup_name = std::move(prefixed_name);
+         else if (library.has_function(function_name)) builtin_lookup_name = function_name;
       }
       else {
          if (library.has_function(function_name)) builtin_lookup_name = function_name;
@@ -2301,4 +2315,108 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    }
 
    return library.call_function(builtin_lookup_name, args, context);
+}
+
+std::optional<XPathVal> XPathEvaluator::evaluate_type_constructor(std::string_view NamespaceURI,
+   std::string_view LocalName, const std::vector<XPathVal> &Args, const XPathNode *FuncNode)
+{
+   static constexpr std::string_view schema_namespace("http://www.w3.org/2001/XMLSchema");
+   if (NamespaceURI != schema_namespace) return std::nullopt;
+
+   auto fail = [&](const std::string &Message) -> std::optional<XPathVal> {
+      record_error(Message, FuncNode, true);
+      return XPathVal();
+   };
+
+   if (Args.size() != 1) {
+      auto message = std::format("XPST0003: Constructor '{}' requires exactly one operand.", LocalName);
+      return fail(message);
+   }
+
+   const XPathVal &input_value = Args[0];
+   if ((input_value.Type IS XPVT::NodeSet) and input_value.node_set.empty()) {
+      return XPathVal(pf::vector<XTag *>{});
+   }
+
+   auto &registry = xml::schema::registry();
+   std::string target_name = std::format("xs:{}", LocalName);
+   auto target_descriptor = registry.find_descriptor(target_name);
+   if (!target_descriptor) {
+      auto message = std::format("XPST0051: Constructor type '{}' is not defined.", target_name);
+      return fail(message);
+   }
+
+   XPathVal operand_value = input_value;
+   bool operand_origin_numeric = (operand_value.Type IS XPVT::Number);
+   if (operand_value.Type IS XPVT::NodeSet) {
+      size_t item_count = operand_value.node_set.size();
+      if (item_count > 1) {
+         auto message = std::format("XPTY0004: Constructor '{}' requires a single item, but the operand had {} items.",
+            target_name, item_count);
+         return fail(message);
+      }
+
+      std::string atomised_string = operand_value.to_string();
+      operand_value = XPathVal(std::move(atomised_string));
+      auto string_descriptor = registry.find_descriptor(xml::schema::SchemaType::XPathString);
+      if (string_descriptor) operand_value.set_schema_type(string_descriptor);
+   }
+
+   std::string operand_lexical = operand_value.to_string();
+
+   auto source_descriptor = schema_descriptor_for_value(operand_value);
+   if (!source_descriptor) {
+      source_descriptor = registry.find_descriptor(xml::schema::schema_type_for_xpath(operand_value.Type));
+   }
+
+   if (!source_descriptor) {
+      return fail("XPTY0006: Constructor operand type could not be determined.");
+   }
+
+   auto lexical_is_nan_literal = [](std::string_view Text) {
+      auto trimmed = trim_view(Text);
+      if (trimmed.size() != 3) return false;
+      auto to_lower = [](char Ch) { return char(std::tolower(static_cast<unsigned char>(Ch))); };
+      return (to_lower(trimmed[0]) IS 'n') and (to_lower(trimmed[1]) IS 'a') and (to_lower(trimmed[2]) IS 'n');
+   };
+
+   XPathVal coerced = source_descriptor->coerce_value(operand_value, target_descriptor->schema_type);
+
+   if (xml::schema::is_numeric(target_descriptor->schema_type)) {
+      double numeric_value = coerced.to_number();
+      if (std::isnan(numeric_value)) {
+         bool lexical_nan = operand_origin_numeric or lexical_is_nan_literal(operand_lexical);
+         if (not lexical_nan) {
+            auto message = std::format("XPTY0006: Value '{}' cannot be constructed as '{}'.",
+               operand_lexical, target_name);
+            return fail(message);
+         }
+         coerced = XPathVal(std::numeric_limits<double>::quiet_NaN());
+      }
+      else {
+         coerced = XPathVal(numeric_value);
+      }
+   }
+   else if ((target_descriptor->schema_type IS xml::schema::SchemaType::XPathBoolean) or
+            (target_descriptor->schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      bool lexical_valid = true;
+      bool boolean_result = coerced.to_boolean();
+
+      if (operand_value.Type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(operand_value.StringValue);
+         if (not parsed.has_value()) lexical_valid = false;
+         else boolean_result = *parsed;
+      }
+
+      if (not lexical_valid) {
+         auto message = std::format("XPTY0006: Value '{}' is not a valid xs:boolean literal.", operand_lexical);
+         return fail(message);
+      }
+
+      coerced = XPathVal(boolean_result);
+   }
+
+   coerced.set_schema_type(target_descriptor);
+   coerced.schema_validated = true;
+   return coerced;
 }

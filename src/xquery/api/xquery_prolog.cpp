@@ -102,6 +102,9 @@ XQueryProlog::XQueryProlog()
 {
    default_collation = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
    decimal_formats[std::string()] = DecimalFormat();
+   declared_namespace_uris.insert_or_assign(std::string("fn"), std::string("http://www.w3.org/2005/xpath-functions"));
+   declared_namespace_uris.insert_or_assign(std::string("xs"), std::string("http://www.w3.org/2001/XMLSchema"));
+   declared_namespace_uris.insert_or_assign(std::string("xml"), std::string("http://www.w3.org/XML/1998/namespace"));
 }
 
 //********************************************************************************************************************

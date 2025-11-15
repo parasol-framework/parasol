@@ -1460,6 +1460,8 @@ class XPathEvaluator : public XPathErrorReporter {
 
    XPathVal evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
    XPathVal evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
+   std::optional<XPathVal> evaluate_type_constructor(std::string_view NamespaceURI, std::string_view LocalName,
+      const std::vector<XPathVal> &Args, const XPathNode *FuncNode);
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);
