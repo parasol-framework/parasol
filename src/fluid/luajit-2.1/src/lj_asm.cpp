@@ -2374,7 +2374,7 @@ static void asm_setup_regsp(ASMState* as)
             continue;
 #endif
          }
-         // fallthrough */ /* for integer POW
+         // fallthrough for integer POW
       case IR_DIV: case IR_MOD:
          if ((LJ_64 && LJ_SOFTFP) || !irt_isnum(ir->t)) {
             ir->prev = REGSP_HINT(RID_RET);

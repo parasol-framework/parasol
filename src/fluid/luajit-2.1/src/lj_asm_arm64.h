@@ -1702,7 +1702,7 @@ static const uint8_t asm_compmap[IR_ABC + 1] = {
    /* UGT      */ CC_LS + (CC_LS << 4),
    /* EQ       */ CC_NE + (CC_NE << 4),
    /* NE       */ CC_EQ + (CC_EQ << 4),
-   // ABC      */ CC_LS + (CC_LS << 4)  /* Same as UGT.
+   /* ABC      */ CC_LS + (CC_LS << 4)  // Same as UGT.
 };
 
 // FP comparisons.

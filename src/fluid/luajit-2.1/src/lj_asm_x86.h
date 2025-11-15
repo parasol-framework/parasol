@@ -2489,7 +2489,7 @@ static const uint16_t asm_compmap[IR_ABC + 1] = {
    /* UGT */ COMPFLAGS(CC_BE, CC_B,  CC_BE, VCC_U | VCC_PS),
    /* EQ  */ COMPFLAGS(CC_NE, CC_NE, CC_NE, VCC_P),
    /* NE  */ COMPFLAGS(CC_E,  CC_E,  CC_E,  VCC_U | VCC_P),
-   // ABC */ COMPFLAGS(CC_BE, CC_B,  CC_BE, VCC_U | VCC_PS)  /* Same as UGT.
+   /* ABC */ COMPFLAGS(CC_BE, CC_B,  CC_BE, VCC_U | VCC_PS)  /* Same as UGT. */
 };
 
 // FP and integer comparisons.

@@ -1890,7 +1890,7 @@ static const uint8_t asm_compmap[IR_ABC + 1] = {
    /* UGT */ CC_LE + CC_UNSIGNED + (CC_LT << 4) + CC_TWO,
    /* EQ  */ CC_NE + (CC_NE << 4),
    /* NE  */ CC_EQ + (CC_EQ << 4),
-   // ABC */ CC_LE + CC_UNSIGNED + (CC_LT << 4) + CC_TWO  /* Same as UGT.
+   /* ABC */ CC_LE + CC_UNSIGNED + (CC_LT << 4) + CC_TWO  // Same as UGT.
 };
 
 static void asm_intcomp_(ASMState* as, IRRef lref, IRRef rref, Reg cr, PPCCC cc)
