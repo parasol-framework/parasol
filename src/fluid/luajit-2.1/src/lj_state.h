@@ -11,8 +11,12 @@
 #define incr_top(L) \
   (++L->top >= tvref(L->maxstack) && (lj_state_growstack1(L), 0))
 
-#define savestack(L, p)      ((char *)(p) - mref(L->stack, char))
-#define restorestack(L, n)   ((TValue *)(mref(L->stack, char) + (n)))
+constexpr inline ptrdiff_t savestack(lua_State* L, TValue* p) {
+   return (char*)(p) - mref(L->stack, char);
+}
+constexpr inline TValue* restorestack(lua_State* L, ptrdiff_t n) {
+   return (TValue*)(mref(L->stack, char) + n);
+}
 
 LJ_FUNC void lj_state_relimitstack(lua_State* L);
 LJ_FUNC void lj_state_shrinkstack(lua_State* L, MSize used);

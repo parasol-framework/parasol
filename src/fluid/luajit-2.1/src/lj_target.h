@@ -24,19 +24,19 @@ using Reg = uint32_t;
 #define RID_SINK      (RID_INIT-1)
 #define RID_SUNK      (RID_INIT-2)
 
-#define ra_noreg(r)      ((r) & RID_NONE)
-#define ra_hasreg(r)      (!((r) & RID_NONE))
+constexpr inline bool ra_noreg(Reg r) { return r & RID_NONE; }
+constexpr inline bool ra_hasreg(Reg r) { return !(r & RID_NONE); }
 
-// The ra_hashint() macro assumes a previous test for ra_noreg().
-#define ra_hashint(r)      ((r) < RID_SUNK)
-#define ra_gethint(r)      ((Reg)((r) & RID_MASK))
+// The ra_hashint() function assumes a previous test for ra_noreg().
+constexpr inline bool ra_hashint(Reg r) { return r < RID_SUNK; }
+constexpr inline Reg ra_gethint(Reg r) { return (Reg)(r & RID_MASK); }
 #define ra_sethint(rr, r)   rr = (uint8_t)((r)|RID_NONE)
-#define ra_samehint(r1, r2)   (ra_gethint((r1)^(r2)) == 0)
+constexpr inline bool ra_samehint(Reg r1, Reg r2) { return ra_gethint(r1^r2) == 0; }
 
 // Spill slot 0 means no spill slot has been allocated.
 constexpr uint8_t SPS_NONE = 0;
 
-#define ra_hasspill(s)      ((s) != SPS_NONE)
+constexpr inline bool ra_hasspill(uint8_t s) { return s != SPS_NONE; }
 
 // Combined register and spill slot (uint16_t in ir->prev).
 using RegSP = uint32_t;
@@ -65,10 +65,10 @@ using RegSet = uint32_t;
 #define RSET_EMPTY      ((RegSet)0)
 #define RSET_RANGE(lo, hi)   ((RID2RSET((hi)-(lo))-1) << (lo))
 
-#define rset_test(rs, r)   ((int)((rs) >> (r)) & 1)
+constexpr inline int rset_test(RegSet rs, Reg r) { return (int)((rs) >> (r)) & 1; }
 #define rset_set(rs, r)      (rs |= RID2RSET(r))
 #define rset_clear(rs, r)   (rs &= ~RID2RSET(r))
-#define rset_exclude(rs, r)   (rs & ~RID2RSET(r))
+constexpr inline RegSet rset_exclude(RegSet rs, Reg r) { return rs & ~RID2RSET(r); }
 #if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
 #define rset_picktop(rs)   ((Reg)(__builtin_clzll(rs)^63))
 #define rset_pickbot(rs)   ((Reg)__builtin_ctzll(rs))
