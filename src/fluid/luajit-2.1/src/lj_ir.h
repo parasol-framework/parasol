@@ -158,7 +158,7 @@ typedef enum {
 } IROp;
 
 // Stored opcode.
-typedef uint8_t IROp1;
+using IROp1 = uint8_t;
 
 LJ_STATIC_ASSERT(((int)IR_EQ ^ 1) == (int)IR_NE);
 LJ_STATIC_ASSERT(((int)IR_LT ^ 1) == (int)IR_GE);
@@ -167,7 +167,7 @@ LJ_STATIC_ASSERT(((int)IR_LT ^ 3) == (int)IR_GT);
 LJ_STATIC_ASSERT(((int)IR_LT ^ 4) == (int)IR_ULT);
 
 // Delta between xLOAD and xSTORE.
-#define IRDELTA_L2S      ((int)IR_ASTORE - (int)IR_ALOAD)
+constexpr int IRDELTA_L2S = ((int)IR_ASTORE - (int)IR_ALOAD);
 
 LJ_STATIC_ASSERT((int)IR_HLOAD + IRDELTA_L2S == (int)IR_HSTORE);
 LJ_STATIC_ASSERT((int)IR_ULOAD + IRDELTA_L2S == (int)IR_USTORE);
@@ -225,50 +225,50 @@ typedef enum {
 } IRFieldID;
 
 // TMPREF mode bits, stored in op2.
-#define IRTMPREF_IN1      0x01   /* First input value. */
-#define IRTMPREF_OUT1      0x02   /* First output value. */
-#define IRTMPREF_OUT2      0x04   /* Second output value. */
+constexpr int IRTMPREF_IN1 = 0x01;   /* First input value. */
+constexpr int IRTMPREF_OUT1 = 0x02;   /* First output value. */
+constexpr int IRTMPREF_OUT2 = 0x04;   /* Second output value. */
 
 // SLOAD mode bits, stored in op2.
-#define IRSLOAD_PARENT      0x01   /* Coalesce with parent trace. */
-#define IRSLOAD_FRAME      0x02   /* Load 32 bits of ftsz. */
-#define IRSLOAD_TYPECHECK   0x04   /* Needs type check. */
-#define IRSLOAD_CONVERT      0x08   /* Number to integer conversion. */
-#define IRSLOAD_READONLY   0x10   /* Read-only, omit slot store. */
-#define IRSLOAD_INHERIT      0x20   /* Inherited by exits/side traces. */
-#define IRSLOAD_KEYINDEX   0x40   /* Table traversal key index. */
+constexpr int IRSLOAD_PARENT = 0x01;   /* Coalesce with parent trace. */
+constexpr int IRSLOAD_FRAME = 0x02;   /* Load 32 bits of ftsz. */
+constexpr int IRSLOAD_TYPECHECK = 0x04;   /* Needs type check. */
+constexpr int IRSLOAD_CONVERT = 0x08;   /* Number to integer conversion. */
+constexpr int IRSLOAD_READONLY = 0x10;   /* Read-only, omit slot store. */
+constexpr int IRSLOAD_INHERIT = 0x20;   /* Inherited by exits/side traces. */
+constexpr int IRSLOAD_KEYINDEX = 0x40;   /* Table traversal key index. */
 
 // XLOAD mode bits, stored in op2.
-#define IRXLOAD_READONLY   0x01   /* Load from read-only data. */
-#define IRXLOAD_VOLATILE   0x02   /* Load from volatile data. */
-#define IRXLOAD_UNALIGNED   0x04   /* Unaligned load. */
+constexpr int IRXLOAD_READONLY = 0x01;   /* Load from read-only data. */
+constexpr int IRXLOAD_VOLATILE = 0x02;   /* Load from volatile data. */
+constexpr int IRXLOAD_UNALIGNED = 0x04;   /* Unaligned load. */
 
 // BUFHDR mode, stored in op2.
-#define IRBUFHDR_RESET      0   /* Reset buffer. */
-#define IRBUFHDR_APPEND      1   /* Append to buffer. */
-#define IRBUFHDR_WRITE      2   /* Write to string buffer. */
+constexpr int IRBUFHDR_RESET = 0;   /* Reset buffer. */
+constexpr int IRBUFHDR_APPEND = 1;   /* Append to buffer. */
+constexpr int IRBUFHDR_WRITE = 2;   /* Write to string buffer. */
 
 // CONV mode, stored in op2.
-#define IRCONV_SRCMASK      0x001f   /* Source IRType. */
-#define IRCONV_DSTMASK      0x03e0   /* Dest. IRType (also in ir->t). */
-#define IRCONV_DSH      5
-#define IRCONV_NUM_INT      ((IRT_NUM<<IRCONV_DSH)|IRT_INT)
-#define IRCONV_INT_NUM      ((IRT_INT<<IRCONV_DSH)|IRT_NUM)
-#define IRCONV_SEXT      0x0800   /* Sign-extend integer to integer. */
-#define IRCONV_MODEMASK      0x0fff
-#define IRCONV_CONVMASK      0xf000
-#define IRCONV_CSH      12
+constexpr int IRCONV_SRCMASK = 0x001f;   /* Source IRType. */
+constexpr int IRCONV_DSTMASK = 0x03e0;   /* Dest. IRType (also in ir->t). */
+constexpr int IRCONV_DSH = 5;
+constexpr int IRCONV_NUM_INT = ((IRT_NUM << IRCONV_DSH) | IRT_INT);
+constexpr int IRCONV_INT_NUM = ((IRT_INT << IRCONV_DSH) | IRT_NUM);
+constexpr int IRCONV_SEXT = 0x0800;   /* Sign-extend integer to integer. */
+constexpr int IRCONV_MODEMASK = 0x0fff;
+constexpr int IRCONV_CONVMASK = 0xf000;
+constexpr int IRCONV_CSH = 12;
 // Number to integer conversion mode. Ordered by strength of the checks.
-#define IRCONV_TOBIT  (0<<IRCONV_CSH)   /* None. Cache only: TOBIT conv. */
-#define IRCONV_ANY    (1<<IRCONV_CSH)   /* Any FP number is ok. */
-#define IRCONV_INDEX  (2<<IRCONV_CSH)   /* Check + special backprop rules. */
-#define IRCONV_CHECK  (3<<IRCONV_CSH)   /* Number checked for integerness. */
-#define IRCONV_NONE   IRCONV_ANY   /* INT|*64 no conv, but change type. */
+constexpr int IRCONV_TOBIT = (0 << IRCONV_CSH);   /* None. Cache only: TOBIT conv. */
+constexpr int IRCONV_ANY = (1 << IRCONV_CSH);   /* Any FP number is ok. */
+constexpr int IRCONV_INDEX = (2 << IRCONV_CSH);   /* Check + special backprop rules. */
+constexpr int IRCONV_CHECK = (3 << IRCONV_CSH);   /* Number checked for integerness. */
+constexpr int IRCONV_NONE = IRCONV_ANY;   /* INT|*64 no conv, but change type. */
 
 // TOSTR mode, stored in op2.
-#define IRTOSTR_INT      0   /* Convert integer to string. */
-#define IRTOSTR_NUM      1   /* Convert number to string. */
-#define IRTOSTR_CHAR      2   /* Convert char value to string. */
+constexpr int IRTOSTR_INT = 0;   /* Convert integer to string. */
+constexpr int IRTOSTR_NUM = 1;   /* Convert number to string. */
+constexpr int IRTOSTR_CHAR = 2;   /* Convert char value to string. */
 
 // -- IR operands ---------------------------------------------------------
 
@@ -282,20 +282,20 @@ typedef enum {
 #define IRM___      IRMnone
 
 // Mode bits: Commutative, {Normal/Ref, Alloc, Load, Store}, Non-weak guard.
-#define IRM_C         0x10
+constexpr int IRM_C = 0x10;
 
-#define IRM_N         0x00
-#define IRM_R         IRM_N
-#define IRM_A         0x20
-#define IRM_L         0x40
-#define IRM_S         0x60
+constexpr int IRM_N = 0x00;
+constexpr int IRM_R = IRM_N;
+constexpr int IRM_A = 0x20;
+constexpr int IRM_L = 0x40;
+constexpr int IRM_S = 0x60;
 
-#define IRM_W         0x80
+constexpr int IRM_W = 0x80;
 
-#define IRM_NW         (IRM_N|IRM_W)
-#define IRM_CW         (IRM_C|IRM_W)
-#define IRM_AW         (IRM_A|IRM_W)
-#define IRM_LW         (IRM_L|IRM_W)
+constexpr int IRM_NW = (IRM_N | IRM_W);
+constexpr int IRM_CW = (IRM_C | IRM_W);
+constexpr int IRM_AW = (IRM_A | IRM_W);
+constexpr int IRM_LW = (IRM_L | IRM_W);
 
 #define irm_op1(m)      ((IRMode)((m)&3))
 #define irm_op2(m)      ((IRMode)(((m)>>2)&3))
@@ -353,7 +353,8 @@ typedef enum {
 #define irtype_ispri(irt)   ((uint32_t)(irt) <= IRT_TRUE)
 
 // Stored IRType.
-typedef struct IRType1 { uint8_t irt; } IRType1;
+struct IRType1 { uint8_t irt; };
+using IRType1 = struct IRType1;
 
 #define IRT(o, t)      ((uint32_t)(((o)<<8) | (t)))
 #define IRTI(o)         (IRT((o), IRT_INT))
@@ -450,14 +451,14 @@ static LJ_AINLINE uint32_t irt_toitype_(IRType t)
 #define irt_clearphi(t)      ((t).irt &= ~IRT_ISPHI)
 
 // Stored combined IR opcode and type.
-typedef uint16_t IROpT;
+using IROpT = uint16_t;
 
 // -- IR references -------------------------------------------------------
 
 // IR references.
-typedef uint16_t IRRef1;   /* One stored reference. */
-typedef uint32_t IRRef2;   /* Two stored references. */
-typedef uint32_t IRRef;      /* Used to pass around references. */
+using IRRef1 = uint16_t;   /* One stored reference. */
+using IRRef2 = uint32_t;   /* Two stored references. */
+using IRRef = uint32_t;      /* Used to pass around references. */
 
 // Fixed references.
 enum {
@@ -492,12 +493,12 @@ enum {
 **
 ** The tag holds a copy of the IRType and speeds up IR type checks.
 */
-typedef uint32_t TRef;
+using TRef = uint32_t;
 
-#define TREF_REFMASK      0x0000ffff
-#define TREF_FRAME      0x00010000
-#define TREF_CONT      0x00020000
-#define TREF_KEYINDEX      0x00100000
+constexpr uint32_t TREF_REFMASK = 0x0000ffff;
+constexpr uint32_t TREF_FRAME = 0x00010000;
+constexpr uint32_t TREF_CONT = 0x00020000;
+constexpr uint32_t TREF_KEYINDEX = 0x00100000;
 
 #define TREF(ref, t)      ((TRef)((ref) + ((t)<<24)))
 
@@ -553,7 +554,7 @@ typedef uint32_t TRef;
 ** prev is only valid prior to register allocation and then reused for r + s.
 */
 
-typedef union IRIns {
+union IRIns {
    struct {
       LJ_ENDIAN_LOHI(
          IRRef1 op1;   /* IR operand 1. */
@@ -577,7 +578,8 @@ typedef union IRIns {
    GCRef gcr;      /* GCobj constant (overlaps op12 or entire slot). */
    MRef ptr;      /* Pointer constant (overlaps op12 or entire slot). */
    TValue tv;      /* TValue constant (overlaps entire slot). */
-} IRIns;
+};
+using IRIns = union IRIns;
 
 #define ir_isk64(ir) \
   ((ir)->o == IR_KNUM || (ir)->o == IR_KINT64 || \

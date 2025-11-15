@@ -22,21 +22,13 @@
 */
 
 // Operand ranges and related constants.
-#define BCMAX_A      0xff
-#define BCMAX_B      0xff
-#define BCMAX_C      0xff
-#define BCMAX_D      0xffff
-#define BCBIAS_J   0x8000
-#define NO_REG      BCMAX_A
+constexpr int BCMAX_A = 0xff;
+constexpr int BCMAX_B = 0xff;
+constexpr int BCMAX_C = 0xff;
+constexpr int BCMAX_D = 0xffff;
+constexpr int BCBIAS_J = 0x8000;
+constexpr int NO_REG = BCMAX_A;
 #define NO_JMP      (~(BCPos)0)
-
-// Macros to get instruction fields.
-#define bc_op(i)   ((BCOp)((i)&0xff))
-#define bc_a(i)      ((BCReg)(((i)>>8)&0xff))
-#define bc_b(i)      ((BCReg)((i)>>24))
-#define bc_c(i)      ((BCReg)(((i)>>16)&0xff))
-#define bc_d(i)      ((BCReg)((i)>>16))
-#define bc_j(i)      ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
 // Macros to set instruction fields.
 #define setbc_byte(p, x, ofs) \
@@ -48,13 +40,6 @@
 #define setbc_d(p, x) \
   ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
 #define setbc_j(p, x)   setbc_d(p, (BCPos)((int32_t)(x)+BCBIAS_J))
-
-// Macros to compose instructions.
-#define BCINS_ABC(o, a, b, c) \
-  (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(b)<<24)|((BCIns)(c)<<16))
-#define BCINS_AD(o, a, d) \
-  (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
-#define BCINS_AJ(o, a, j)   BCINS_AD(o, a, (BCPos)((int32_t)(j)+BCBIAS_J))
 
 /* Bytecode instruction definition. Order matters, see below.
 **
@@ -204,6 +189,25 @@ typedef enum {
    BC__MAX
 } BCOp;
 
+// Functions to get instruction fields.
+constexpr inline BCOp bc_op(BCIns i) { return (BCOp)(i & 0xff); }
+constexpr inline BCReg bc_a(BCIns i) { return (BCReg)((i >> 8) & 0xff); }
+constexpr inline BCReg bc_b(BCIns i) { return (BCReg)(i >> 24); }
+constexpr inline BCReg bc_c(BCIns i) { return (BCReg)((i >> 16) & 0xff); }
+constexpr inline BCReg bc_d(BCIns i) { return (BCReg)(i >> 16); }
+constexpr inline ptrdiff_t bc_j(BCIns i) { return (ptrdiff_t)bc_d(i) - BCBIAS_J; }
+
+// Functions to compose instructions.
+constexpr inline BCIns BCINS_ABC(BCOp o, BCReg a, BCReg b, BCReg c) {
+   return ((BCIns)(o)) | ((BCIns)(a) << 8) | ((BCIns)(b) << 24) | ((BCIns)(c) << 16);
+}
+constexpr inline BCIns BCINS_AD(BCOp o, BCReg a, uint32_t d) {
+   return ((BCIns)(o)) | ((BCIns)(a) << 8) | ((BCIns)(d) << 16);
+}
+constexpr inline BCIns BCINS_AJ(BCOp o, BCReg a, int32_t j) {
+   return BCINS_AD(o, a, (BCPos)((int32_t)(j) + BCBIAS_J));
+}
+
 LJ_STATIC_ASSERT((int)BC_ISEQV + 1 == (int)BC_ISNEV);
 LJ_STATIC_ASSERT(((int)BC_ISEQV ^ 1) == (int)BC_ISNEV);
 LJ_STATIC_ASSERT(((int)BC_ISEQS ^ 1) == (int)BC_ISNES);
@@ -228,7 +232,7 @@ LJ_STATIC_ASSERT((int)BC_FUNCV + 1 == (int)BC_IFUNCV);
 LJ_STATIC_ASSERT((int)BC_FUNCV + 2 == (int)BC_JFUNCV);
 
 // This solves a circular dependency problem, change as needed.
-#define FF_next_N   4
+constexpr int FF_next_N = 4;
 
 // Stack slots used by FORI/FORL, relative to operand A.
 enum {
