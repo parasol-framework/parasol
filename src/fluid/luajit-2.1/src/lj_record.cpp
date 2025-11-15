@@ -51,7 +51,7 @@
 static void rec_check_ir(jit_State* J)
 {
    IRRef i, nins = J->cur.nins, nk = J->cur.nk;
-   lj_assertJ(nk <= REF_BIAS && nins >= REF_BIAS && nins < 65536,
+   lj_assertJ(nk <= REF_BIAS and nins >= REF_BIAS and nins < 65536,
       "inconsistent IR layout");
    for (i = nk; i < nins; i++) {
       IRIns* ir = IR(i);
@@ -70,7 +70,7 @@ static void rec_check_ir(jit_State* J)
       case IRMlit: break;
       case IRMcst:
          if (i >= REF_BIAS) { err = "constant in IR range"; break; }
-         if (irt_is64(ir->t) && ir->o != IR_KNULL)
+         if (irt_is64(ir->t) and ir->o != IR_KNULL)
             i++;
          continue;
       }

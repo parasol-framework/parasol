@@ -217,7 +217,7 @@ static BPropEntry* narrow_bpc_get(jit_State* J, IRRef1 key, IRRef mode)
    for (i = 0; i < BPROP_SLOTS; i++) {
       BPropEntry* bp = &J->bpropcache[i];
       // Stronger checks are ok, too.
-      if (bp->key == key && bp->mode >= mode &&
+      if (bp->key == key and bp->mode >= mode &&
          ((bp->mode ^ mode) & IRCONV_MODEMASK) == 0)
          return bp;
    }
@@ -241,12 +241,12 @@ static void narrow_stripov_backprop(NarrowConv* nc, IRRef ref, int depth)
    jit_State* J = nc->J;
    IRIns* ir = IR(ref);
    if (ir->o == IR_ADDOV || ir->o == IR_SUBOV ||
-      (ir->o == IR_MULOV && (nc->mode & IRCONV_CONVMASK) == IRCONV_ANY)) {
+      (ir->o == IR_MULOV and (nc->mode & IRCONV_CONVMASK) == IRCONV_ANY)) {
       BPropEntry* bp = narrow_bpc_get(nc->J, ref, IRCONV_TOBIT);
       if (bp) {
          ref = bp->val;
       }
-      else if (++depth < NARROW_MAX_BACKPROP && nc->sp < nc->maxsp) {
+      else if (++depth < NARROW_MAX_BACKPROP and nc->sp < nc->maxsp) {
          NarrowIns* savesp = nc->sp;
          narrow_stripov_backprop(nc, ir->op1, depth);
          if (nc->sp < nc->maxsp) {
@@ -272,7 +272,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
    if (nc->sp >= nc->maxsp) return 10;  //  Path too deep.
 
    // Check the easy cases first.
-   if (ir->o == IR_CONV && (ir->op2 & IRCONV_SRCMASK) == IRT_INT) {
+   if (ir->o == IR_CONV and (ir->op2 & IRCONV_SRCMASK) == IRT_INT) {
       if ((nc->mode & IRCONV_CONVMASK) <= IRCONV_ANY)
          narrow_stripov_backprop(nc, ir->op1, depth + 1);
       else
@@ -295,7 +295,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
       else {
          int32_t k = lj_num2int(n);
          // Only if constant is a small integer.
-         if (checki16(k) && n == (lua_Number)k) {
+         if (checki16(k) and n == (lua_Number)k) {
             *nc->sp++ = NARROWINS(NARROW_INT, 0);
             *nc->sp++ = (NarrowIns)k;
             return 0;
@@ -324,7 +324,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
       IRRef mode = nc->mode;
       BPropEntry* bp;
       // Inner conversions need a stronger check.
-      if ((mode & IRCONV_CONVMASK) == IRCONV_INDEX && depth > 0)
+      if ((mode & IRCONV_CONVMASK) == IRCONV_INDEX and depth > 0)
          mode += IRCONV_CHECK - IRCONV_INDEX;
       bp = narrow_bpc_get(nc->J, (IRRef1)ref, mode);
       if (bp) {
@@ -341,7 +341,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
             return 0;
          }
       }
-      if (++depth < NARROW_MAX_BACKPROP && nc->sp < nc->maxsp) {
+      if (++depth < NARROW_MAX_BACKPROP and nc->sp < nc->maxsp) {
          NarrowIns* savesp = nc->sp;
          int count = narrow_conv_backprop(nc, ir->op1, depth);
          count += narrow_conv_backprop(nc, ir->op2, depth);
@@ -394,7 +394,7 @@ static IRRef narrow_conv_emit(jit_State* J, NarrowConv* nc)
          sp--;
          // Omit some overflow checks for array indexing. See comments above.
          if ((mode & IRCONV_CONVMASK) == IRCONV_INDEX) {
-            if (next == last && irref_isk(narrow_ref(sp[0])) &&
+            if (next == last and irref_isk(narrow_ref(sp[0])) &&
                (uint32_t)IR(narrow_ref(sp[0]))->i + 0x40000000u < 0x80000000u)
                guardot = 0;
             else  //  Otherwise cache a stronger check.
@@ -439,7 +439,7 @@ static TRef narrow_stripov(jit_State* J, TRef tr, int lastop, IRRef mode)
    IRRef ref = tref_ref(tr);
    IRIns* ir = IR(ref);
    int op = ir->o;
-   if (op >= IR_ADDOV && op <= lastop) {
+   if (op >= IR_ADDOV and op <= lastop) {
       BPropEntry* bp = narrow_bpc_get(J, ref, mode);
       if (bp) {
          return TREF(bp->val, irt_t(IR(bp->val)->t));
@@ -453,7 +453,7 @@ static TRef narrow_stripov(jit_State* J, TRef tr, int lastop, IRRef mode)
          narrow_bpc_set(J, ref, tref_ref(tr), mode);
       }
    }
-   else if (LJ_64 && (mode & IRCONV_SEXT) && !irt_is64(ir->t)) {
+   else if (LJ_64 and (mode & IRCONV_SEXT) and !irt_is64(ir->t)) {
       tr = emitir(IRT(IR_CONV, IRT_INTP), tr, mode);
    }
    return tr;
@@ -468,7 +468,7 @@ TRef LJ_FASTCALL lj_opt_narrow_index(jit_State* J, TRef tr)
       return emitir(IRTGI(IR_CONV), tr, IRCONV_INT_NUM | IRCONV_INDEX);
    // Omit some overflow checks for array indexing. See comments above.
    ir = IR(tref_ref(tr));
-   if ((ir->o == IR_ADDOV || ir->o == IR_SUBOV) && irref_isk(ir->op2) &&
+   if ((ir->o == IR_ADDOV || ir->o == IR_SUBOV) and irref_isk(ir->op2) &&
       (uint32_t)IR(ir->op2)->i + 0x40000000u < 0x80000000u)
       return emitir(IRTI(ir->o - IR_ADDOV + IR_ADD), ir->op1, ir->op2);
    return tr;
@@ -547,8 +547,8 @@ TRef lj_opt_narrow_arith(jit_State* J, TRef rb, TRef rc,
    rb = conv_str_tonum(J, rb, vb);
    rc = conv_str_tonum(J, rc, vc);
    // Must not narrow MUL in non-DUALNUM variant, because it loses -0.
-   if ((op >= IR_ADD && op <= (LJ_DUALNUM ? IR_MUL : IR_SUB)) &&
-      tref_isinteger(rb) && tref_isinteger(rc) &&
+   if ((op >= IR_ADD and op <= (LJ_DUALNUM ? IR_MUL : IR_SUB)) &&
+      tref_isinteger(rb) and tref_isinteger(rc) &&
       numisint(lj_vm_foldarith(numberVnum(vb), numberVnum(vc),
          (int)op - (int)IR_ADD)))
       return emitir(IRTGI((int)op - (int)IR_ADD + (int)IR_ADDOV), rb, rc);
@@ -563,7 +563,7 @@ TRef lj_opt_narrow_unm(jit_State* J, TRef rc, TValue* vc)
    rc = conv_str_tonum(J, rc, vc);
    if (tref_isinteger(rc)) {
       uint32_t k = (uint32_t)numberVint(vc);
-      if ((LJ_DUALNUM || k != 0) && k != 0x80000000u) {
+      if ((LJ_DUALNUM || k != 0) and k != 0x80000000u) {
          TRef zero = lj_ir_kint(J, 0);
          if (!LJ_DUALNUM)
             emitir(IRTGI(IR_NE), rc, zero);
@@ -581,7 +581,7 @@ TRef lj_opt_narrow_mod(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
    rb = conv_str_tonum(J, rb, vb);
    rc = conv_str_tonum(J, rc, vc);
    if ((LJ_DUALNUM || (J->flags & JIT_F_OPT_NARROW)) &&
-      tref_isinteger(rb) && tref_isinteger(rc) &&
+      tref_isinteger(rb) and tref_isinteger(rc) &&
       (tvisint(vc) ? intV(vc) != 0 : !tviszero(vc))) {
       emitir(IRTGI(IR_NE), rc, lj_ir_kint(J, 0));
       return emitir(IRTI(IR_MOD), rb, rc);
@@ -603,7 +603,7 @@ TRef lj_opt_narrow_pow(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
    rc = conv_str_tonum(J, rc, vc);
    if (tvisint(vc) || numisint(numV(vc))) {
       int32_t k = numberVint(vc);
-      if (!(k >= -65536 && k <= 65536)) goto force_pow_num;
+      if (!(k >= -65536 and k <= 65536)) goto force_pow_num;
       if (!tref_isinteger(rc)) {
          // Guarded conversion to integer!
          rc = emitir(IRTGI(IR_CONV), rc, IRCONV_INT_NUM | IRCONV_CHECK);

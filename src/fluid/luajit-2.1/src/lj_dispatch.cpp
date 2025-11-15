@@ -209,7 +209,7 @@ void lj_dispatch_update(global_State* g)
 
 #if LJ_HASJIT
       // Reset hotcounts for JIT off to on transition.
-      if ((mode & DISPMODE_JIT) && !(oldmode & DISPMODE_JIT))
+      if ((mode & DISPMODE_JIT) and !(oldmode & DISPMODE_JIT))
          lj_dispatch_init_hotcount(g);
 #endif
    }
@@ -276,7 +276,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
       cTValue* tv = idx == 0 ? frame_prev(L->base - 1) - LJ_FR2 :
          idx > 0 ? L->base + (idx - 1) : L->top + idx;
       GCproto* pt;
-      if ((idx == 0 || tvisfunc(tv)) && isluafunc(&gcval(tv)->fn))
+      if ((idx == 0 || tvisfunc(tv)) and isluafunc(&gcval(tv)->fn))
          pt = funcproto(&gcval(tv)->fn);  //  Cannot use funcV() for frame slot.
       else if (tvisproto(tv))
          pt = protoV(tv);
@@ -368,7 +368,7 @@ static void callhook(lua_State* L, int event, BCLine line)
 {
    global_State* g = G(L);
    lua_Hook hookf = g->hookf;
-   if (hookf && !hook_active(g)) {
+   if (hookf and !hook_active(g)) {
       lua_Debug ar;
       lj_trace_abort(g);  //  Abort recording on any hook call.
       ar.event = event;
@@ -435,7 +435,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       }
    }
 #endif
-   if ((g->hookmask & LUA_MASKCOUNT) && g->hookcount == 0) {
+   if ((g->hookmask & LUA_MASKCOUNT) and g->hookcount == 0) {
       g->hookcount = g->hookcstart;
       callhook(L, LUA_HOOKCOUNT, -1);
       L->top = L->base + slots;  //  Fix top again.
@@ -449,7 +449,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
          L->top = L->base + slots;  //  Fix top again.
       }
    }
-   if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1])))
+   if ((g->hookmask & LUA_MASKRET) and bc_isret(bc_op(pc[-1])))
       callhook(L, LUA_HOOKRET, -1);
    ERRNO_RESTORE
 }
@@ -513,7 +513,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
          setnilV(L->top++);
       callhook(L, LUA_HOOKCALL, -1);
       // Preserve modifications of missing parameters by lua_setlocal().
-      while (missing-- > 0 && tvisnil(L->top - 1))
+      while (missing-- > 0 and tvisnil(L->top - 1))
          L->top--;
    }
 #if LJ_HASJIT

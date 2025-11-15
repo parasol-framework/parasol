@@ -16,10 +16,10 @@ static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    if (!expr_isnumk_nojump(e1) || !expr_isnumk_nojump(e2)) return 0;
    n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), (int)opr - OPR_ADD);
    setnumV(&o, n);
-   if (tvisnan(&o) || tvismzero(&o)) return 0;  // Avoid NaN && -0 as consts.
+   if (tvisnan(&o) or tvismzero(&o)) return 0;  // Avoid NaN && -0 as consts.
    if (LJ_DUALNUM) {
       int32_t k = lj_num2int(n);
-      if ((lua_Number)k == n) {
+      if (lua_Number(k) == n) {
          setintV(&e1->u.nval, k);
          return 1;
       }
@@ -439,7 +439,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          // LHS is falsey (no jumps) OR runtime value - need to check
          BCReg rhs_reg = NO_REG;
          if (e1->flags & EXP_HAS_RHS_REG_FLAG) {
-            rhs_reg = (BCReg)e1->u.s.aux;
+            rhs_reg = BCReg(e1->u.s.aux);
             e1->flags &= ~EXP_HAS_RHS_REG_FLAG;
          }
 
@@ -530,12 +530,12 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          }
       }
    }
-   else if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BOR) || (op == OPR_BXOR)) {
-      bcemit_bit_call(fs, priority[op].name, (MSize)priority[op].name_len, e1, e2);
+   else if ((op == OPR_SHL) or (op == OPR_SHR) or (op == OPR_BAND) or (op == OPR_BOR) or (op == OPR_BXOR)) {
+      bcemit_bit_call(fs, priority[op].name, MSize(priority[op].name_len), e1, e2);
    }
    else if (op == OPR_CONCAT) {
       expr_toval(fs, e2);
-      if (e2->k == VRELOCABLE && bc_op(*bcptr(fs, e2)) == BC_CAT) {
+      if (e2->k == VRELOCABLE and bc_op(*bcptr(fs, e2)) == BC_CAT) {
          lj_assertFS(e1->u.s.info == bc_b(*bcptr(fs, e2)) - 1,
             "bad CAT stack layout");
          expr_free(fs, e1);
@@ -605,12 +605,12 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          }
          else
 #endif
-            if (expr_isnumk(e) && !expr_numiszero(e)) {  // Avoid folding to -0.
+            if (expr_isnumk(e) and !expr_numiszero(e)) {  // Avoid folding to -0.
                TValue* o = expr_numtv(e);
                if (tvisint(o)) {
                   int32_t k = intV(o);
                   if (k == -k)
-                     setnumV(o, -(lua_Number)k);
+                     setnumV(o, -lua_Number(k));
                   else
                      setintV(o, -k);
                   return;

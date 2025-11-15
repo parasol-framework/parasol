@@ -288,7 +288,7 @@ extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
          ** and errcode.
          */
          lj_vm_rtlunwind(cf, (void*)rec,
-            (cframe_unwind_ff(cf2) && errcode != LUA_YIELD) ?
+            (cframe_unwind_ff(cf2) and errcode != LUA_YIELD) ?
             (void*)lj_vm_unwind_ff : (void*)lj_vm_unwind_c, errcode);
          // lj_vm_rtlunwind does not return.
 #else
@@ -296,7 +296,7 @@ extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
          // (including ourselves) again with EH_UNWINDING set. Then set
          // stack pointer = cf, result = errcode and jump to the specified target.
 
-         RtlUnwindEx(cf, (void*)((cframe_unwind_ff(cf2) && errcode != LUA_YIELD) ?
+         RtlUnwindEx(cf, (void*)((cframe_unwind_ff(cf2) and errcode != LUA_YIELD) ?
             lj_vm_unwind_ff_eh :
             lj_vm_unwind_c_eh),
             rec, (void*)(uintptr_t)errcode, ctx, dispatch->HistoryTable);
@@ -363,7 +363,7 @@ static void err_raise_ext(global_State* g, int errcode)
    RaiseException(LJ_EXCODE_MAKE(errcode), 1 /* EH_NONCONTINUABLE */, 0, NULL);
 }
 
-#elif !LJ_NO_UNWIND && (defined(__GNUC__) || defined(__clang__))
+#elif !LJ_NO_UNWIND and (defined(__GNUC__) || defined(__clang__))
 
 /*
 ** We have to use our own definitions instead of the mandatory (!) unwind.h,
@@ -786,7 +786,7 @@ static ptrdiff_t finderrfunc(lua_State* L)
 {
    cTValue* frame = L->base - 1, * bot = tvref(L->stack) + LJ_FR2;
    void* cf = L->cframe;
-   while (frame > bot && cf) {
+   while (frame > bot and cf) {
       while (cframe_nres(cframe_raw(cf)) < 0) {  // cframe without frame?
          if (frame >= restorestack(L, -cframe_nres(cf)))
             break;
@@ -835,7 +835,7 @@ static ptrdiff_t finderrfunc(lua_State* L)
 // Runtime error.
 LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
 {
-   ptrdiff_t ef = (LJ_HASJIT && tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
+   ptrdiff_t ef = (LJ_HASJIT and tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
    if (ef) {
       TValue* errfunc = restorestack(L, ef);
       TValue* top = L->top;
@@ -945,7 +945,7 @@ LJ_NOINLINE void lj_err_optype_call(lua_State* L, TValue* o)
 LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
 {
    TValue* frame = NULL, * pframe = NULL;
-   if (!(LJ_HASJIT && tvref(G(L)->jit_base))) {
+   if (!(LJ_HASJIT and tvref(G(L)->jit_base))) {
       frame = L->base - 1;
       if (frame_islua(frame)) {
          pframe = frame_prevl(frame);
@@ -996,9 +996,9 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg,
 {
    const char* fname = "?";
    const char* ftype = lj_debug_funcname(L, L->base - 1, &fname);
-   if (narg < 0 && narg > LUA_REGISTRYINDEX)
+   if (narg < 0 and narg > LUA_REGISTRYINDEX)
       narg = (int)(L->top - L->base) + narg + 1;
-   if (ftype && ftype[3] == 'h' && --narg == 0)  //  Check for "method".
+   if (ftype and ftype[3] == 'h' and --narg == 0)  //  Check for "method".
       msg = lj_strfmt_pushf(L, err2msg(LJ_ERR_BADSELF), fname, msg);
    else
       msg = lj_strfmt_pushf(L, err2msg(LJ_ERR_BADARG), narg, fname, msg);

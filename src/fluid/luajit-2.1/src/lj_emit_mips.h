@@ -16,7 +16,7 @@ static intptr_t get_k64val(ASMState* as, IRRef ref)
    else if (ir->o == IR_KPTR || ir->o == IR_KKPTR) {
       return (intptr_t)ir_kptr(ir);
    }
-   else if (LJ_SOFTFP && ir->o == IR_KNUM) {
+   else if (LJ_SOFTFP and ir->o == IR_KNUM) {
       return (intptr_t)ir_knum(ir)->u64;
    }
    else {

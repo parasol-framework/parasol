@@ -36,13 +36,13 @@ static const struct {
    const char* name;   // Name for bitlib function (if applicable).
    uint8_t name_len;   // Cached name length for bitlib lookups.
 } priority[] = {
-  {6,6,NULL,0}, {6,6,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0},   // ADD SUB MUL DIV MOD
-  {10,9,NULL,0}, {5,4,NULL,0},                  // POW CONCAT (right associative)
-  {3,3,NULL,0}, {3,3,NULL,0},                  // EQ NE
-  {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},      // LT GE GT LE
+  {6,6,nullptr,0}, {6,6,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0},   // ADD SUB MUL DIV MOD
+  {10,9,nullptr,0}, {5,4,nullptr,0},                  // POW CONCAT (right associative)
+  {3,3,nullptr,0}, {3,3,nullptr,0},                  // EQ NE
+  {3,3,nullptr,0}, {3,3,nullptr,0}, {3,3,nullptr,0}, {3,3,nullptr,0},      // LT GE GT LE
   {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},   // BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR)
-  {2,2,NULL,0}, {1,1,NULL,0}, {1,1,NULL,0},         // AND OR IF_EMPTY
-  {1,1,NULL,0}                     // TERNARY
+  {2,2,nullptr,0}, {1,1,nullptr,0}, {1,1,nullptr,0},         // AND OR IF_EMPTY
+  {1,1,nullptr,0}                     // TERNARY
 };
 
 // Include modular parser components
@@ -117,7 +117,7 @@ static void parse_chunk(LexState* ls)
 {
    int islast = 0;
    synlevel_begin(ls);
-   while (!islast && !parse_isend(ls->tok)) {
+   while (!islast and !parse_isend(ls->tok)) {
       islast = parse_stmt(ls);
       lex_opt(ls, ';');
       lj_assertLS(ls->fs->framesize >= ls->fs->freereg &&
@@ -157,7 +157,7 @@ GCproto* lj_parse(LexState* ls)
       err_token(ls, TK_eof);
    pt = fs_finish(ls, ls->linenumber);
    L->top--;  // Drop chunkname.
-   lj_assertL(fs.prev == NULL && ls->fs == NULL, "mismatched frame nesting");
+   lj_assertL(fs.prev == NULL and ls->fs == NULL, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
    return pt;
 }

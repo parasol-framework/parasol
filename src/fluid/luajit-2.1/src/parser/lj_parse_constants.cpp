@@ -71,10 +71,10 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 static BCPos jmp_next(FuncState* fs, BCPos pc)
 {
    ptrdiff_t delta = bc_j(fs->bcbase[pc].ins);
-   if ((BCPos)delta == NO_JMP)
+   if (BCPos(delta) == NO_JMP)
       return NO_JMP;
    else
-      return (BCPos)(((ptrdiff_t)pc + 1) + delta);
+      return BCPos((ptrdiff_t(pc) + 1) + delta);
 }
 
 // Check if any of the instructions on the jump list produce no value.

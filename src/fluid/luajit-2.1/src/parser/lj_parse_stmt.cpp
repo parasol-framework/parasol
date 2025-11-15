@@ -36,20 +36,20 @@ static void assign_hazard(LexState* ls, LHSVarList* lh, const ExpDesc* v)
 static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
 {
    FuncState* fs = ls->fs;
-   int32_t extra = (int32_t)nvars - (int32_t)nexps;
+   int32_t extra = int32_t(nvars) - int32_t(nexps);
    if (e->k == VCALL) {
       extra++;  // Compensate for the VCALL itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
-      if (extra > 1) bcreg_reserve(fs, (BCReg)extra - 1);
+      if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
    }
    else {
       if (e->k != VVOID)
          expr_tonextreg(fs, e);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
-         bcreg_reserve(fs, (BCReg)extra);
-         bcemit_nil(fs, reg, (BCReg)extra);
+         bcreg_reserve(fs, BCReg(extra));
+         bcemit_nil(fs, reg, BCReg(extra));
       }
    }
    if (nexps > nvars)
@@ -82,9 +82,9 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
       bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
       bcreg_reserve(fs, 1);
 
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
-         bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+         bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          lh->v.u.s.info = new_base;
          lh->v.u.s.aux = new_idx;
@@ -137,9 +137,9 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    fs->freereg = freg_base;
    if (lhv.k == VINDEXED) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
-         bcreg_free(fs, (BCReg)orig_aux);
-      bcreg_free(fs, (BCReg)lhv.u.s.info);
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
+         bcreg_free(fs, BCReg(orig_aux));
+      bcreg_free(fs, BCReg(lhv.u.s.info));
    }
    return 1;
 }
@@ -186,9 +186,9 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
       bcreg_reserve(fs, 1);
 
       // If index is a register (0..BCMAX_C), duplicate it, too.
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
-         bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+         bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          // Discharge using the duplicates; keep lhv pointing to originals.
          lh->v.u.s.info = new_base;
@@ -225,9 +225,9 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    fs->freereg = freg_base;
    if (lhv.k == VINDEXED) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
-         bcreg_free(fs, (BCReg)orig_aux);
-      bcreg_free(fs, (BCReg)lhv.u.s.info);
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
+         bcreg_free(fs, BCReg(orig_aux));
+      bcreg_free(fs, BCReg(lhv.u.s.info));
    }
    return 1;
 }

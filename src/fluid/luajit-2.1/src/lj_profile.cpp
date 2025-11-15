@@ -305,7 +305,7 @@ LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
     switch (m) {
     case 'i':
       interval = 0;
-      while (*mode >= '0' && *mode <= '9')
+      while (*mode >= '0' and *mode <= '9')
    interval = interval * 10 + (*mode++ - '0');
       if (interval <= 0) interval = 1;
       break;

@@ -175,7 +175,7 @@ static IRRef split_call_ll(jit_State* J, IRRef1* hisubst, IRIns* oir,
 #endif
    ir->prev = tmp = split_emit(J, IRTI(IR_CALLN), tmp, id);
    return split_emit(J,
-      IRT(IR_HIOP, (LJ_SOFTFP && irt_isnum(ir->t)) ? IRT_SOFTFP : IRT_INT),
+      IRT(IR_HIOP, (LJ_SOFTFP and irt_isnum(ir->t)) ? IRT_SOFTFP : IRT_INT),
       tmp, tmp);
 }
 
@@ -187,7 +187,7 @@ static IRRef split_ptr(jit_State* J, IRIns* oir, IRRef ref)
    int32_t ofs = 4;
    if (ir->o == IR_KPTR)
       return lj_ir_kptr(J, (char*)ir_kptr(ir) + ofs);
-   if (ir->o == IR_ADD && irref_isk(ir->op2) && !irt_isphi(oir[ref].t)) {
+   if (ir->o == IR_ADD and irref_isk(ir->op2) and !irt_isphi(oir[ref].t)) {
       // Reassociate address.
       ofs += IR(ir->op2)->i;
       nref = ir->op1;
@@ -327,7 +327,7 @@ static void split_subst_snap(jit_State* J, SnapShot* snap, IRIns* oir)
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
       IRIns* ir = &oir[snap_ref(sn)];
-      if (!(LJ_SOFTFP && (sn & SNAP_SOFTFPNUM) && irref_isk(snap_ref(sn))))
+      if (!(LJ_SOFTFP and (sn & SNAP_SOFTFPNUM) and irref_isk(snap_ref(sn))))
          map[n] = ((sn & 0xffff0000) | ir->prev);
    }
 }
@@ -356,7 +356,7 @@ static void split_ir(jit_State* J)
    // Process constants and fixed references.
    for (ref = nk; ref <= REF_BASE; ref++) {
       IRIns* ir = &oir[ref];
-      if ((LJ_SOFTFP && ir->o == IR_KNUM) || ir->o == IR_KINT64) {
+      if ((LJ_SOFTFP and ir->o == IR_KNUM) || ir->o == IR_KINT64) {
          // Split up 64 bit constant.
          TValue tv = *ir_k64(ir);
          ir->prev = lj_ir_kint(J, (int32_t)tv.u32.lo);
@@ -366,7 +366,7 @@ static void split_ir(jit_State* J)
          ir->prev = ref;  //  Identity substitution for loword.
          hisubst[ref] = 0;
       }
-      if (irt_is64(ir->t) && ir->o != IR_KNULL)
+      if (irt_is64(ir->t) and ir->o != IR_KNULL)
          ref++;
    }
 
@@ -526,7 +526,7 @@ static void split_ir(jit_State* J)
             case IR_ADD:
             case IR_SUB:
                // Use plain op for hiword if loword cannot produce a carry/borrow.
-               if (irref_isk(nir->op2) && IR(nir->op2)->i == 0) {
+               if (irref_isk(nir->op2) and IR(nir->op2)->i == 0) {
                   ir->prev = nir->op1;  //  Pass through loword.
                   nir->op1 = hiref; nir->op2 = hisubst[ir->op2];
                   hi = nref;
@@ -623,11 +623,11 @@ static void split_ir(jit_State* J)
                goto split_call;
             case IR_PHI: {
                IRRef hiref2;
-               if ((irref_isk(nir->op1) && irref_isk(nir->op2)) ||
+               if ((irref_isk(nir->op1) and irref_isk(nir->op2)) ||
                   nir->op1 == nir->op2)
                   J->cur.nins--;  //  Drop useless PHIs.
                hiref2 = hisubst[ir->op2];
-               if (!((irref_isk(hiref) && irref_isk(hiref2)) || hiref == hiref2))
+               if (!((irref_isk(hiref) and irref_isk(hiref2)) || hiref == hiref2))
                   split_emit(J, IRTI(IR_PHI), hiref, hiref2);
                break;
             }
@@ -673,7 +673,7 @@ static void split_ir(jit_State* J)
                }
             }
             else if (ir->o == IR_HREF || ir->o == IR_NEWREF) {
-               if (irref_isk(ir->op2) && hisubst[ir->op2])
+               if (irref_isk(ir->op2) and hisubst[ir->op2])
                   nir->op2 = ir->op2;
             }
             else
@@ -721,9 +721,9 @@ static void split_ir(jit_State* J)
                   else
 #endif
 #if LJ_SOFTFP
-                     if (st == IRT_NUM || (LJ_32 && LJ_HASFFI && st == IRT_FLOAT)) {
+                     if (st == IRT_NUM || (LJ_32 and LJ_HASFFI and st == IRT_FLOAT)) {
                         if (irt_isguard(ir->t)) {
-                           lj_assertJ(st == IRT_NUM && irt_isint(ir->t), "bad CONV types");
+                           lj_assertJ(st == IRT_NUM and irt_isint(ir->t), "bad CONV types");
                            J->cur.nins--;
                            ir->prev = split_num2int(J, nir->op1, hisubst[ir->op1], 1);
                         }
@@ -759,7 +759,7 @@ static void split_ir(jit_State* J)
                   }
                   if (LJ_SOFTFP ? irt_is64(ir->t) : irt_isint64(ir->t))
                      hi = split_emit(J,
-                        IRT(IR_HIOP, (LJ_SOFTFP && irt_isnum(ir->t)) ? IRT_SOFTFP : IRT_INT),
+                        IRT(IR_HIOP, (LJ_SOFTFP and irt_isnum(ir->t)) ? IRT_SOFTFP : IRT_INT),
                         nref, nref);
                }
                else if (ir->o == IR_CARG) {
@@ -844,7 +844,7 @@ static int split_needsplit(jit_State* J)
    }
    for (ref = J->chain[IR_CONV]; ref; ref = IR(ref)->prev) {
       IRType st = (IR(ref)->op2 & IRCONV_SRCMASK);
-      if ((LJ_SOFTFP && (st == IRT_NUM || st == IRT_FLOAT)) ||
+      if ((LJ_SOFTFP and (st == IRT_NUM || st == IRT_FLOAT)) ||
          st == IRT_I64 || st == IRT_U64)
          return 1;
    }

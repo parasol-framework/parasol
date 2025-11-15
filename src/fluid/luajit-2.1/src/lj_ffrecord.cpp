@@ -153,7 +153,7 @@ static void LJ_FASTCALL recff_nyi(jit_State* J, RecordFFData* rd)
    }
    else {
       // Can only stitch from Lua call.
-      if (J->framedepth && frame_islua(J->L->base - 1)) {
+      if (J->framedepth and frame_islua(J->L->base - 1)) {
          BCOp op = bc_op(*frame_pc(J->L->base - 1));
          // Stitched trace cannot start with *M op with variable # of args.
          if (!(op == BC_CALLM || op == BC_CALLMT ||
@@ -192,7 +192,7 @@ static TRef recff_bufhdr(jit_State* J)
 // Emit TMPREF.
 static TRef recff_tmpref(jit_State* J, TRef tr, int mode)
 {
-   if (!LJ_DUALNUM && tref_isinteger(tr))
+   if (!LJ_DUALNUM and tref_isinteger(tr))
       tr = emitir(IRTN(IR_CONV), tr, IRCONV_NUM_INT);
    return emitir(IRT(IR_TMPREF, IRT_PGC), tr, mode);
 }
@@ -211,7 +211,7 @@ static void LJ_FASTCALL recff_type(jit_State* J, RecordFFData* rd)
    uint32_t t;
    if (tvisnumber(&rd->argv[0]))
       t = ~LJ_TNUMX;
-   else if (LJ_64 && !LJ_GC64 && tvislightud(&rd->argv[0]))
+   else if (LJ_64 and !LJ_GC64 and tvislightud(&rd->argv[0]))
       t = ~LJ_TLIGHTUD;
    else
       t = ~itype(&rd->argv[0]);
@@ -237,7 +237,7 @@ static void LJ_FASTCALL recff_setmetatable(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
    TRef mt = J->base[1];
-   if (tref_istab(tr) && (tref_istab(mt) || (mt && tref_isnil(mt)))) {
+   if (tref_istab(tr) and (tref_istab(mt) || (mt and tref_isnil(mt)))) {
       TRef fref, mtref;
       RecordIndex ix;
       ix.tab = tr;
@@ -257,7 +257,7 @@ static void LJ_FASTCALL recff_rawget(jit_State* J, RecordFFData* rd)
 {
    RecordIndex ix;
    ix.tab = J->base[0]; ix.key = J->base[1];
-   if (tref_istab(ix.tab) && ix.key) {
+   if (tref_istab(ix.tab) and ix.key) {
       ix.val = 0; ix.idxchain = 0;
       settabV(J->L, &ix.tabv, tabV(&rd->argv[0]));
       copyTV(J->L, &ix.keyv, &rd->argv[1]);
@@ -269,7 +269,7 @@ static void LJ_FASTCALL recff_rawset(jit_State* J, RecordFFData* rd)
 {
    RecordIndex ix;
    ix.tab = J->base[0]; ix.key = J->base[1]; ix.val = J->base[2];
-   if (tref_istab(ix.tab) && ix.key && ix.val) {
+   if (tref_istab(ix.tab) and ix.key and ix.val) {
       ix.idxchain = 0;
       settabV(J->L, &ix.tabv, tabV(&rd->argv[0]));
       copyTV(J->L, &ix.keyv, &rd->argv[1]);
@@ -283,7 +283,7 @@ static void LJ_FASTCALL recff_rawequal(jit_State* J, RecordFFData* rd)
 {
    TRef tra = J->base[0];
    TRef trb = J->base[1];
-   if (tra && trb) {
+   if (tra and trb) {
       int diff = lj_record_objcmp(J, tra, trb, &rd->argv[0], &rd->argv[1]);
       J->base[0] = diff ? TREF_FALSE : TREF_TRUE;
    }  // else: Interpreter will throw.
@@ -305,7 +305,7 @@ static void LJ_FASTCALL recff_rawlen(jit_State* J, RecordFFData* rd)
 // Determine mode of select() call.
 int32_t lj_ffrecord_select_mode(jit_State* J, TRef tr, TValue* tv)
 {
-   if (tref_isstr(tr) && *strVdata(tv) == '#') {  // select('#', ...)
+   if (tref_isstr(tr) and *strVdata(tv) == '#') {  // select('#', ...)
       if (strV(tv)->len == 1) {
          emitir(IRTG(IR_EQ, IRT_STR), tr, lj_ir_kstr(J, strV(tv)));
       }
@@ -353,7 +353,7 @@ static void LJ_FASTCALL recff_tonumber(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
    TRef base = J->base[1];
-   if (tr && !tref_isnil(base)) {
+   if (tr and !tref_isnil(base)) {
       base = lj_opt_narrow_toint(J, base);
       if (!tref_isk(base) || IR(tref_ref(base))->i != 10) {
          recff_nyiu(J, rd);
@@ -424,7 +424,7 @@ static void LJ_FASTCALL recff_tostring(jit_State* J, RecordFFData* rd)
       // Ignore __tostring in the string base metatable.
       // Pass on result in J->base[0].
    }
-   else if (tr && !recff_metacall(J, rd, MM_tostring)) {
+   else if (tr and !recff_metacall(J, rd, MM_tostring)) {
       if (tref_isnumber(tr)) {
          J->base[0] = emitir(IRT(IR_TOSTR, IRT_STR), tr,
             tref_isnum(tr) ? IRTOSTR_NUM : IRTOSTR_INT);
@@ -459,7 +459,7 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
-   if (!((LJ_52 || (LJ_HASFFI && tref_iscdata(tr))) &&
+   if (!((LJ_52 || (LJ_HASFFI and tref_iscdata(tr))) &&
       recff_metacall(J, rd, (MMS)(MM_pairs + rd->data)))) {
       if (tref_istab(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
@@ -523,7 +523,7 @@ static void LJ_FASTCALL recff_getfenv(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
    // Only support getfenv(0) for now.
-   if (tref_isint(tr) && tref_isk(tr) && IR(tref_ref(tr))->i == 0) {
+   if (tref_isint(tr) and tref_isk(tr) and IR(tref_ref(tr))->i == 0) {
       TRef trl = emitir(IRT(IR_LREF, IRT_THREAD), 0, 0);
       J->base[0] = emitir(IRT(IR_FLOAD, IRT_TAB), trl, IRFL_THREAD_ENV);
       return;
@@ -556,7 +556,7 @@ static void LJ_FASTCALL recff_next(jit_State* J, RecordFFData* rd)
       copyTV(J->L, &ix.tabv, &rd->argv[0]);
       ix.keyv.u32.lo = lj_tab_keyindex(tabV(&ix.tabv), keyv);
       // Omit the value, if not used by the caller.
-      ix.idxchain = (J->framedepth && frame_islua(J->L->base - 1) &&
+      ix.idxchain = (J->framedepth and frame_islua(J->L->base - 1) &&
          bc_b(frame_pc(J->L->base - 1)[-1]) - 1 < 2);
       ix.mobj = 0;  //  We don't need the next index.
       rd->nres = lj_record_next(J, &ix);
@@ -663,7 +663,7 @@ static void LJ_FASTCALL recff_math_minmax(jit_State* J, RecordFFData* rd)
    for (i = 1; J->base[i] != 0; i++) {
       TRef tr2 = lj_ir_tonumber(J, J->base[i]);
       IRType t = IRT_INT;
-      if (!(tref_isinteger(tr) && tref_isinteger(tr2))) {
+      if (!(tref_isinteger(tr) and tref_isinteger(tr2))) {
          if (tref_isinteger(tr)) tr = emitir(IRTN(IR_CONV), tr, IRCONV_NUM_INT);
          if (tref_isinteger(tr2)) tr2 = emitir(IRTN(IR_CONV), tr2, IRCONV_NUM_INT);
          t = IRT_NUM;
@@ -837,7 +837,7 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
          start = argv2int(J, &rd->argv[1]);
          trstart = lj_opt_narrow_toint(J, J->base[1]);
       }
-      if (J->base[1] && !tref_isnil(J->base[2])) {
+      if (J->base[1] and !tref_isnil(J->base[2])) {
          trend = lj_opt_narrow_toint(J, J->base[2]);
          end = argv2int(J, &rd->argv[2]);
       }
@@ -984,7 +984,7 @@ static void LJ_FASTCALL recff_string_find(jit_State* J, RecordFFData* rd)
 #endif
    }
    // Fixed arg or no pattern matching chars? (Specialized to pattern string.)
-   if ((J->base[2] && tref_istruecond(J->base[3])) ||
+   if ((J->base[2] and tref_istruecond(J->base[3])) ||
       (emitir(IRTG(IR_EQ, IRT_STR), trpat, lj_ir_kstr(J, pat)),
          !lj_str_haspattern(pat))) {  // Search for fixed string.
       TRef trsptr = emitir(IRT(IR_STRREF, IRT_PGC), trstr, trstart);
@@ -1446,7 +1446,7 @@ static void LJ_FASTCALL recff_table_insert(jit_State* J, RecordFFData* rd)
    ix.tab = J->base[0];
    ix.val = J->base[1];
    rd->nres = 0;
-   if (tref_istab(ix.tab) && ix.val) {
+   if (tref_istab(ix.tab) and ix.val) {
       if (!J->base[2]) {  // Simple push: t[#t+1] = v
          TRef trlen = emitir(IRTI(IR_ALEN), ix.tab, TREF_NIL);
          GCtab* t = tabV(&rd->argv[0]);
@@ -1469,9 +1469,9 @@ static void LJ_FASTCALL recff_table_concat(jit_State* J, RecordFFData* rd)
    if (tref_istab(tab)) {
       TRef sep = !tref_isnil(J->base[1]) ?
          lj_ir_tostr(J, J->base[1]) : lj_ir_knull(J, IRT_STR);
-      TRef tri = (J->base[1] && !tref_isnil(J->base[2])) ?
+      TRef tri = (J->base[1] and !tref_isnil(J->base[2])) ?
          lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 1);
-      TRef tre = (J->base[1] && J->base[2] && !tref_isnil(J->base[3])) ?
+      TRef tre = (J->base[1] and J->base[2] and !tref_isnil(J->base[3])) ?
          lj_opt_narrow_toint(J, J->base[3]) :
          emitir(IRTI(IR_ALEN), tab, TREF_NIL);
       TRef hdr = recff_bufhdr(J);
@@ -1535,9 +1535,9 @@ static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd)
       TRef str = lj_ir_tostr(J, J->base[i]);
       TRef buf = emitir(IRT(IR_STRREF, IRT_PGC), str, zero);
       TRef len = emitir(IRTI(IR_FLOAD), str, IRFL_STR_LEN);
-      if (tref_isk(len) && IR(tref_ref(len))->i == 1) {
+      if (tref_isk(len) and IR(tref_ref(len))->i == 1) {
          IRIns* irs = IR(tref_ref(str));
-         TRef tr = (irs->o == IR_TOSTR && irs->op2 == IRTOSTR_CHAR) ?
+         TRef tr = (irs->o == IR_TOSTR and irs->op2 == IRTOSTR_CHAR) ?
             irs->op1 :
             emitir(IRT(IR_XLOAD, IRT_U8), buf, IRXLOAD_READONLY);
          tr = lj_ir_call(J, IRCALL_fputc, tr, fp);

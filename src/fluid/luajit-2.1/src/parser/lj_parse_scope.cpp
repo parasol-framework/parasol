@@ -25,10 +25,10 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
          lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
-   lj_assertFS(name == NAME_BLANK || (uintptr_t)name < VARNAME__MAX || lj_tab_getstr(fs->kt, name) != NULL, "unanchored variable name");
+   lj_assertFS(name == NAME_BLANK || uintptr_t(name) < VARNAME__MAX || lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
    // NOBARRIER: name is anchored in fs->kt && ls->vstack is not a GCobj.
    setgcref(ls->vstack[vtop].name, obj2gco(name));
-   fs->varmap[fs->nactvar + n] = (uint16_t)vtop;
+   fs->varmap[fs->nactvar + n] = uint16_t(vtop);
    ls->vtop = vtop + 1;
 }
 
@@ -36,7 +36,7 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
   var_new(ls, (n), lj_parse_keepstr(ls, "" v, sizeof(v)-1))
 
 #define var_new_fixed(ls, n, vn) \
-  var_new(ls, (n), (GCstr *)(uintptr_t)(vn))
+  var_new(ls, (n), (GCstr*)uintptr_t(vn))
 
 // Add local variables.
 static void var_add(LexState* ls, BCReg nvars)
@@ -69,9 +69,9 @@ static BCReg var_lookup_local(FuncState* fs, GCstr* n)
       if (varname == NAME_BLANK)
          continue;  // Skip blank identifiers.
       if (n == varname)
-         return (BCReg)i;
+         return BCReg(i);
    }
-   return (BCReg)-1;  // Not found.
+   return BCReg(-1);  // Not found.
 }
 
 // Lookup || add upvalue index.
@@ -84,8 +84,8 @@ static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
    // Otherwise create a new one.
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
    lj_assertFS(e->k == VLOCAL || e->k == VUPVAL, "bad expr type %d", e->k);
-   fs->uvmap[n] = (uint16_t)vidx;
-   fs->uvtmp[n] = (uint16_t)(e->k == VLOCAL ? vidx : LJ_MAX_VSTACK + e->u.s.info);
+   fs->uvmap[n] = uint16_t(vidx);
+   fs->uvtmp[n] = uint16_t(e->k == VLOCAL ? vidx : LJ_MAX_VSTACK + e->u.s.info);
    fs->nuv = n + 1;
    return n;
 }
@@ -99,16 +99,16 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
 {
    if (fs) {
       BCReg reg = var_lookup_local(fs, name);
-      if ((int32_t)reg >= 0) {  // Local in this function?
+      if (int32_t(reg) >= 0) {  // Local in this function?
          expr_init(e, VLOCAL, reg);
          if (!first)
             fscope_uvmark(fs, reg);  // Scope now has an upvalue.
-         return (MSize)(e->u.s.aux = (uint32_t)fs->varmap[reg]);
+         return MSize(e->u.s.aux = uint32_t(fs->varmap[reg]));
       }
       else {
          MSize vidx = var_lookup_(fs->prev, name, e, 0);  // Var in outer func?
-         if ((int32_t)vidx >= 0) {  // Yes, make it an upvalue here.
-            e->u.s.info = (uint8_t)var_lookup_uv(fs, vidx, e);
+         if (int32_t(vidx) >= 0) {  // Yes, make it an upvalue here.
+            e->u.s.info = uint8_t(var_lookup_uv(fs, vidx, e));
             e->k = VUPVAL;
             return vidx;
          }
@@ -118,7 +118,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
       expr_init(e, VGLOBAL, 0);
       e->u.sval = name;
    }
-   return (MSize)-1;  // Global.
+   return MSize(-1);  // Global.
 }
 
 // Lookup variable name.
@@ -145,7 +145,7 @@ static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc)
    // NOBARRIER: name is anchored in fs->kt && ls->vstack is not a GCobj.
    setgcref(ls->vstack[vtop].name, obj2gco(name));
    ls->vstack[vtop].startpc = pc;
-   ls->vstack[vtop].slot = (uint8_t)fs->nactvar;
+   ls->vstack[vtop].slot = uint8_t(fs->nactvar);
    ls->vstack[vtop].info = info;
    ls->vtop = vtop + 1;
    return vtop;
@@ -234,7 +234,7 @@ static void gola_fixup(LexState* ls, FuncScope* bl)
 // Begin a scope.
 static void fscope_begin(FuncState* fs, FuncScope* bl, int flags)
 {
-   bl->nactvar = (uint8_t)fs->nactvar;
+   bl->nactvar = uint8_t(fs->nactvar);
    bl->flags = flags;
    bl->vstart = fs->ls->vtop;
    bl->prev = fs->bl;
@@ -252,7 +252,7 @@ static void fscope_loop_continue(FuncState* fs, BCPos pos)
    if (!(bl->flags & FSCOPE_CONTINUE))
       return;
 
-   bl->flags &= (uint8_t)~FSCOPE_CONTINUE;
+   bl->flags &= uint8_t(~FSCOPE_CONTINUE);
 
    {
       MSize idx = gola_new(ls, JUMP_CONTINUE, VSTACK_JUMP_TARGET, pos);
@@ -387,16 +387,16 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
       if (tvhaskslot(&array[i])) {
          TValue* tv = &((TValue*)kptr)[tvkslot(&array[i])];
          if (LJ_DUALNUM)
-            setintV(tv, (int32_t)i);
+            setintV(tv, int32_t(i));
          else
-            setnumV(tv, (lua_Number)i);
+            setnumV(tv, lua_Number(i));
       }
    node = noderef(kt->node);
    hmask = kt->hmask;
    for (i = 0; i <= hmask; i++) {
       Node* n = &node[i];
       if (tvhaskslot(&n->val)) {
-         ptrdiff_t kidx = (ptrdiff_t)tvkslot(&n->val);
+         ptrdiff_t kidx = ptrdiff_t(tvkslot(&n->val));
          lj_assertFS(!tvisint(&n->key), "unexpected integer key");
          if (tvisnum(&n->key)) {
             TValue* tv = &((TValue*)kptr)[kidx];
@@ -404,7 +404,7 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
                lua_Number nn = numV(&n->key);
                int32_t k = lj_num2int(nn);
                lj_assertFS(!tvismzero(&n->key), "unexpected -0 key");
-               if ((lua_Number)k == nn)
+               if (lua_Number(k) == nn)
                   setintV(tv, k);
                else
                   *tv = n->key;
@@ -453,16 +453,16 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint8_t* li = (uint8_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         lj_assertFS(delta >= 0 && delta < 256, "bad line delta");
-         li[i] = (uint8_t)delta;
+         lj_assertFS(delta >= 0 and delta < 256, "bad line delta");
+         li[i] = uint8_t(delta);
       } while (++i < n);
    }
    else if (LJ_LIKELY(numline < 65536)) {
       uint16_t* li = (uint16_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         lj_assertFS(delta >= 0 && delta < 65536, "bad line delta");
-         li[i] = (uint16_t)delta;
+         lj_assertFS(delta >= 0 and delta < 65536, "bad line delta");
+         li[i] = uint16_t(delta);
       } while (++i < n);
    }
    else {
@@ -470,7 +470,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       do {
          BCLine delta = base[i].line - first;
          lj_assertFS(delta >= 0, "bad line delta");
-         li[i] = (uint32_t)delta;
+         li[i] = uint32_t(delta);
       } while (++i < n);
    }
 }
@@ -498,9 +498,9 @@ static size_t fs_prep_var(LexState* ls, FuncState* fs, size_t* ofsvar)
          GCstr* s = strref(vs->name);
          BCPos startpc;
          char* p;
-         if ((uintptr_t)s < VARNAME__MAX) {
+         if (uintptr_t(s) < VARNAME__MAX) {
             p = lj_buf_more(&ls->sb, 1 + 2 * 5);
-            *p++ = (char)(uintptr_t)s;
+            *p++ = char(uintptr_t(s));
          }
          else {
             MSize len = s->len + 1;
@@ -609,11 +609,11 @@ static GCproto* fs_finish(LexState* ls, BCLine line)
    ofsdbg = sizept; sizept += fs_prep_var(ls, fs, &ofsvar);
 
    // Allocate prototype && initialize its fields.
-   pt = (GCproto*)lj_mem_newgco(L, (MSize)sizept);
+   pt = (GCproto*)lj_mem_newgco(L, MSize(sizept));
    pt->gct = ~LJ_TPROTO;
-   pt->sizept = (MSize)sizept;
+   pt->sizept = MSize(sizept);
    pt->trace = 0;
-   pt->flags = (uint8_t)(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
+   pt->flags = uint8_t(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
    setgcref(pt->chunkname, obj2gco(ls->chunkname));

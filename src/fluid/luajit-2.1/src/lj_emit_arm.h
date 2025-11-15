@@ -81,7 +81,7 @@ static void emit_m(ASMState* as, ARMIns ai, Reg rm)
 
 static void emit_lsox(ASMState* as, ARMIns ai, Reg rd, Reg rn, int32_t ofs)
 {
-   lj_assertA(ofs >= -255 && ofs <= 255,
+   lj_assertA(ofs >= -255 and ofs <= 255,
       "load/store offset %d out of range", ofs);
    if (ofs < 0) ofs = -ofs; else ai |= ARMI_LS_U;
    *--as->mcp = ai | ARMI_LS_P | ARMI_LSX_I | ARMF_D(rd) | ARMF_N(rn) |
@@ -90,12 +90,12 @@ static void emit_lsox(ASMState* as, ARMIns ai, Reg rd, Reg rn, int32_t ofs)
 
 static void emit_lso(ASMState* as, ARMIns ai, Reg rd, Reg rn, int32_t ofs)
 {
-   lj_assertA(ofs >= -4095 && ofs <= 4095,
+   lj_assertA(ofs >= -4095 and ofs <= 4095,
       "load/store offset %d out of range", ofs);
    // Combine LDR/STR pairs to LDRD/STRD.
    if (*as->mcp == (ai | ARMI_LS_P | ARMI_LS_U | ARMF_D(rd ^ 1) | ARMF_N(rn) | (ofs ^ 4)) &&
-      (ai & ~(ARMI_LDR ^ ARMI_STR)) == ARMI_STR && rd != rn &&
-      (uint32_t)ofs <= 252 && !(ofs & 3) && !((rd ^ (ofs >> 2)) & 1) &&
+      (ai & ~(ARMI_LDR ^ ARMI_STR)) == ARMI_STR and rd != rn &&
+      (uint32_t)ofs <= 252 and !(ofs & 3) and !((rd ^ (ofs >> 2)) & 1) &&
       as->mcp != as->mcloop) {
       as->mcp++;
       emit_lsox(as, ai == ARMI_LDR ? ARMI_LDRD : ARMI_STRD, rd & ~1, rn, ofs & ~4);
@@ -108,7 +108,7 @@ static void emit_lso(ASMState* as, ARMIns ai, Reg rd, Reg rn, int32_t ofs)
 #if !LJ_SOFTFP
 static void emit_vlso(ASMState* as, ARMIns ai, Reg rd, Reg rn, int32_t ofs)
 {
-   lj_assertA(ofs >= -1020 && ofs <= 1020 && (ofs & 3) == 0,
+   lj_assertA(ofs >= -1020 and ofs <= 1020 and (ofs & 3) == 0,
       "load/store offset %d out of range", ofs);
    if (ofs < 0) ofs = -ofs; else ai |= ARMI_LS_U;
    *--as->mcp = ai | ARMI_LS_P | ARMF_D(rd & 15) | ARMF_N(rn) | (ofs >> 2);
@@ -183,7 +183,7 @@ static void emit_loadi(ASMState* as, Reg rd, int32_t i)
       // Standard K12 constant.
       emit_d(as, ARMI_MOV ^ k, rd);
    }
-   else if ((as->flags & JIT_F_ARMV6T2) && (uint32_t)i < 0x00010000u) {
+   else if ((as->flags & JIT_F_ARMV6T2) and (uint32_t)i < 0x00010000u) {
       // 16 bit loword constant for ARMv6T2.
       emit_d(as, ARMI_MOVW | (i & 0x0fff) | ((i & 0xf000) << 4), rd);
    }
@@ -232,10 +232,10 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
 {
    cTValue* tv = ir_knum(ir);
    int32_t i;
-   if ((as->flags & JIT_F_VFPV3) && !tv->u32.lo) {
+   if ((as->flags & JIT_F_VFPV3) and !tv->u32.lo) {
       uint32_t hi = tv->u32.hi;
       uint32_t b = ((hi >> 22) & 0x1ff);
-      if (!(hi & 0xffff) && (b == 0x100 || b == 0x0ff)) {
+      if (!(hi & 0xffff) and (b == 0x100 || b == 0x0ff)) {
          *--as->mcp = ARMI_VMOVI_D | ARMF_D(r & 15) |
             ((tv->u32.hi >> 12) & 0x00080000) |
             ((tv->u32.hi >> 4) & 0x00070000) |
@@ -309,10 +309,10 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
 #endif
    if (as->mcp != as->mcloop) {  // Swap early registers for loads/stores.
       MCode ins = *as->mcp, swp = (src ^ dst);
-      if ((ins & 0x0c000000) == 0x04000000 && (ins & 0x02000010) != 0x02000010) {
+      if ((ins & 0x0c000000) == 0x04000000 and (ins & 0x02000010) != 0x02000010) {
          if (!((ins ^ (dst << 16)) & 0x000f0000))
             *as->mcp = ins ^ (swp << 16);  //  Swap N in load/store.
-         if (!(ins & 0x00100000) && !((ins ^ (dst << 12)) & 0x0000f000))
+         if (!(ins & 0x00100000) and !((ins ^ (dst << 12)) & 0x0000f000))
             *as->mcp = ins ^ (swp << 12);  //  Swap D in store.
       }
    }

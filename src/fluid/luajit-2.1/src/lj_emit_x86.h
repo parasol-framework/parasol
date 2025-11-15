@@ -46,9 +46,9 @@ static LJ_AINLINE MCode* emit_op(x86Op xo, Reg rr, Reg rb, Reg rx,
       return p + delta - 5;
    }
 #if defined(__GNUC__) || defined(__clang__)
-   if (__builtin_constant_p(xo) && n == -2)
+   if (__builtin_constant_p(xo) and n == -2)
       p[delta - 2] = (MCode)(xo >> 24);
-   else if (__builtin_constant_p(xo) && n == -3)
+   else if (__builtin_constant_p(xo) and n == -3)
       *(uint16_t*)(p + delta - 3) = (uint16_t)(xo >> 16);
    else
 #endif
@@ -105,12 +105,12 @@ static void emit_rmro(ASMState* as, x86Op xo, Reg rr, Reg rb, int32_t ofs)
    MCode* p = as->mcp;
    x86Mode mode;
    if (ra_hasreg(rb)) {
-      if (LJ_GC64 && rb == RID_RIP) {
+      if (LJ_GC64 and rb == RID_RIP) {
          mode = XM_OFS0;
          p -= 4;
          *(int32_t*)p = ofs;
       }
-      else if (ofs == 0 && (rb & 7) != RID_EBP) {
+      else if (ofs == 0 and (rb & 7) != RID_EBP) {
          mode = XM_OFS0;
       }
       else if (checki8(ofs)) {
@@ -146,7 +146,7 @@ static void emit_rmrxo(ASMState* as, x86Op xo, Reg rr, Reg rb, Reg rx,
 {
    MCode* p = as->mcp;
    x86Mode mode;
-   if (ofs == 0 && (rb & 7) != RID_EBP) {
+   if (ofs == 0 and (rb & 7) != RID_EBP) {
       mode = XM_OFS0;
    }
    else if (checki8(ofs)) {
@@ -216,14 +216,14 @@ static void emit_mrm(ASMState* as, x86Op xo, Reg rr, Reg rb)
          rb = RID_ESP;
 #endif
       }
-      else if (LJ_GC64 && rb == RID_RIP) {
+      else if (LJ_GC64 and rb == RID_RIP) {
          lj_assertA(as->mrm.idx == RID_NONE, "RIP-rel mrm cannot have index");
          mode = XM_OFS0;
          p -= 4;
          *(int32_t*)p = as->mrm.ofs;
       }
       else {
-         if (as->mrm.ofs == 0 && (rb & 7) != RID_EBP) {
+         if (as->mrm.ofs == 0 and (rb & 7) != RID_EBP) {
             mode = XM_OFS0;
          }
          else if (checki8(as->mrm.ofs)) {
@@ -288,10 +288,10 @@ static void emit_movmroi(ASMState* as, Reg base, int32_t ofs, int32_t i)
 static void emit_loadi(ASMState* as, Reg r, int32_t i)
 {
    // XOR r,r is shorter, but modifies the flags. This is bad for HIOP/jcc.
-   if (i == 0 && !(LJ_32 && (IR(as->curins)->o == IR_HIOP ||
+   if (i == 0 and !(LJ_32 and (IR(as->curins)->o == IR_HIOP ||
       (as->curins + 1 < as->T->nins &&
          IR(as->curins + 1)->o == IR_HIOP))) &&
-      !((*as->mcp == 0x0f && (as->mcp[1] & 0xf0) == XI_JCCn) ||
+      !((*as->mcp == 0x0f and (as->mcp[1] & 0xf0) == XI_JCCn) ||
          (*as->mcp & 0xf0) == XI_JCCs)) {
       emit_rr(as, XO_ARITH(XOg_XOR), r, r);
    }
@@ -337,7 +337,7 @@ static void emit_loadu64(ASMState* as, Reg r, uint64_t u64)
    else if (checki32(dispofs(as, u64))) {
       emit_rmro(as, XO_LEA, r | REX_64, RID_DISPATCH, (int32_t)dispofs(as, u64));
    }
-   else if (checki32(mcpofs(as, u64)) && checki32(mctopofs(as, u64))) {
+   else if (checki32(mcpofs(as, u64)) and checki32(mctopofs(as, u64))) {
       /* Since as->realign assumes the code size doesn't change, check
       ** RIP-relative addressing reachability for both as->mcp and as->mctop.
       */
@@ -362,7 +362,7 @@ static void emit_rma(ASMState* as, x86Op xo, Reg rr, const void* addr)
    if (checki32(dispofs(as, addr))) {
       emit_rmro(as, xo, rr, RID_DISPATCH, (int32_t)dispofs(as, addr));
    }
-   else if (checki32(mcpofs(as, addr)) && checki32(mctopofs(as, addr))) {
+   else if (checki32(mcpofs(as, addr)) and checki32(mctopofs(as, addr))) {
       emit_rmro(as, xo, rr, RID_RIP, (int32_t)mcpofs(as, addr));
    }
    else if (!checki32((intptr_t)addr)) {
@@ -421,7 +421,7 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
 #if LJ_GC64
    }
    else if (checki32((intptr_t)k) || checki32(dispofs(as, k)) ||
-      (checki32(mcpofs(as, k)) && checki32(mctopofs(as, k)))) {
+      (checki32(mcpofs(as, k)) and checki32(mctopofs(as, k)))) {
       emit_rma(as, xo, r64, k);
    }
    else {
@@ -429,7 +429,7 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
          lj_assertA(*k == *(uint64_t*)(as->mctop - ir->i),
             "bad interned 64 bit constant");
       }
-      else if (as->curins <= as->stopins && rset_test(RSET_GPR, r)) {
+      else if (as->curins <= as->stopins and rset_test(RSET_GPR, r)) {
          emit_loadu64(as, r, *k);
          return;
       }

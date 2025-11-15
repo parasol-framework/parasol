@@ -159,7 +159,7 @@ static void bcread_dbg(LexState* ls, GCproto* pt, MSize sizedbg)
    void* lineinfo = (void*)proto_lineinfo(pt);
    bcread_block(ls, lineinfo, sizedbg);
    // Swap lineinfo if the endianess differs.
-   if (bcread_swap(ls) && pt->numline >= 256) {
+   if (bcread_swap(ls) and pt->numline >= 256) {
       MSize i, n = pt->sizebc - 1;
       if (pt->numline < 65536) {
          uint16_t* p = (uint16_t*)lineinfo;
@@ -441,7 +441,7 @@ GCproto* lj_bcread(LexState* ls)
       MSize len;
       const char* startp;
       // Read length.
-      if (ls->p < ls->pe && ls->p[0] == 0) {  // Shortcut EOF.
+      if (ls->p < ls->pe and ls->p[0] == 0) {  // Shortcut EOF.
          ls->p++;
          break;
       }
@@ -456,7 +456,7 @@ GCproto* lj_bcread(LexState* ls)
       setprotoV(L, L->top, pt);
       incr_top(L);
    }
-   if ((ls->pe != ls->p && !ls->endmark) || L->top - 1 != bcread_oldtop(L, ls))
+   if ((ls->pe != ls->p and !ls->endmark) || L->top - 1 != bcread_oldtop(L, ls))
       bcread_error(ls, LJ_ERR_BCBAD);
    // Pop off last prototype.
    L->top--;

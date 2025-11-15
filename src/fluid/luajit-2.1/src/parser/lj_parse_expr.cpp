@@ -29,15 +29,15 @@ static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e)
       if (tvisint(expr_numtv(e))) {
          int32_t k = intV(expr_numtv(e));
          if (checku8(k)) {
-            t->u.s.aux = BCMAX_C + 1 + (uint32_t)k;  // 256..511: const byte key
+            t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
             return;
          }
       }
 #else
       lua_Number n = expr_numberV(e);
       int32_t k = lj_num2int(n);
-      if (checku8(k) && n == (lua_Number)k) {
-         t->u.s.aux = BCMAX_C + 1 + (uint32_t)k;  // 256..511: const byte key
+      if (checku8(k) and n == lua_Number(k)) {
+         t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
          return;
       }
 #endif
@@ -75,7 +75,7 @@ static void expr_bracket(LexState* ls, ExpDesc* v)
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)
 {
    BCReg target = result_reg + 1;
-   if (target < fs->nactvar) target = (BCReg)fs->nactvar;
+   if (target < fs->nactvar) target = BCReg(fs->nactvar);
    if (fs->freereg > target) fs->freereg = target;
 }
 
@@ -117,7 +117,7 @@ static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
 {
    UNUSED(fs);
    if (e->k <= VKTRUE) {
-      setpriV(v, ~(uint32_t)e->k);
+      setpriV(v, ~uint32_t(e->k));
    }
    else if (e->k == VKSTR) {
       setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
@@ -290,7 +290,7 @@ static void parse_body_impl(LexState* ls, ExpDesc* e, int needself,
       fs.numparams = 0;
    }
    else {
-      fs.numparams = (uint8_t)parse_params(ls, needself);
+      fs.numparams = uint8_t(parse_params(ls, needself));
    }
    fs.bcbase = pfs->bcbase + pfs->pc;
    fs.bclim = pfs->bclim - pfs->pc;
@@ -710,12 +710,12 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
    bcreg_reserve(fs, 2);  // Reserve for arguments
 
    // Emit the first operation in the chain
-   bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
+   bcemit_shift_call_at_base(fs, priority[op].name, MSize(priority[op].name_len), lhs, &rhs, base_reg);
 
    /* Continue processing chained operators at the same precedence level.
    ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
    ** C-style precedence is enforced by checking that operators have matching precedence before chaining */
-   while (nextop == OPR_SHL || nextop == OPR_SHR || nextop == OPR_BAND || nextop == OPR_BXOR || nextop == OPR_BOR) {
+   while (nextop == OPR_SHL or nextop == OPR_SHR or nextop == OPR_BAND or nextop == OPR_BXOR or nextop == OPR_BOR) {
       BinOpr follow = nextop;
       // Only chain operators with matching left precedence (same precedence level)
       if (priority[follow].left != priority[op].left) break;
@@ -730,7 +730,7 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
       nextop = expr_binop(ls, &rhs, priority[follow].right);
 
       // Emit the next operation, reusing the same base register
-      bcemit_shift_call_at_base(fs, priority[follow].name, (MSize)priority[follow].name_len, lhs, &rhs, base_reg);
+      bcemit_shift_call_at_base(fs, priority[follow].name, MSize(priority[follow].name_len), lhs, &rhs, base_reg);
    }
 
    // Return any unconsumed operator for the caller to handle
@@ -879,9 +879,9 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
          }
 
          if (v->flags & EXP_HAS_RHS_REG_FLAG) {
-            BCReg rhs_reg = (BCReg)v->u.s.aux;
+            BCReg rhs_reg = BCReg(v->u.s.aux);
             v->flags &= ~EXP_HAS_RHS_REG_FLAG;
-            if (rhs_reg >= fs->nactvar && rhs_reg < fs->freereg) {
+            if (rhs_reg >= fs->nactvar and rhs_reg < fs->freereg) {
                fs->freereg = rhs_reg;
             }
          }
