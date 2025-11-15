@@ -181,7 +181,6 @@ struct x86ModRM {
    uint8_t idx;      /* Index register or RID_NONE. */
    uint8_t scale;   /* Index scale (XM_SCALE1 .. XM_SCALE8). */
 };
-using x86ModRM = struct x86ModRM;
 
 // -- Opcodes -------------------------------------------------------------
 
