@@ -48,7 +48,7 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
 }
 
 /* Invalid bytecode position. */
-#define NO_BCPOS	(~(BCPos)0)
+#define NO_BCPOS   (~(BCPos)0)
 
 /* Return bytecode position for function/frame or NO_BCPOS. */
 static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
@@ -171,7 +171,7 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
          endpc = startpc + lj_buf_ruleb128(&p);
          if (pc < endpc && slot-- == 0) {
             if (vn < VARNAME__MAX) {
-#define VARNAMESTR(name, str)	str "\0"
+#define VARNAMESTR(name, str)   str "\0"
                name = VARNAMEDEF(VARNAMESTR);
 #undef VARNAMESTR
                if (--vn) while (*name++ || --vn);
@@ -665,7 +665,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                }
                else {  /* Dump C function address. */
                   lj_buf_putb(sb, '@');
-                  lj_strfmt_putptr(sb, (const void *)fn->c.f);
+                  lj_strfmt_putptr(sb, (const void*)fn->c.f);
                }
                break;
             case 'Z':  /* Zap trailing separator. */
@@ -691,8 +691,8 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
 #endif
 
 /* Number of frames for the leading and trailing part of a traceback. */
-#define TRACEBACK_LEVELS1	12
-#define TRACEBACK_LEVELS2	10
+#define TRACEBACK_LEVELS1   12
+#define TRACEBACK_LEVELS2   10
 
 LUALIB_API void luaL_traceback(lua_State* L, lua_State* L1, const char* msg,
    int level)

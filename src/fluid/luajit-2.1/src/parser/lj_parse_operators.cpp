@@ -444,7 +444,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          }
 
          expr_discharge(fs, e1);
-         
+
          if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
