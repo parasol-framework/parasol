@@ -6,8 +6,9 @@
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
-#ifndef _LJ_PARSE_INTERNAL_H
-#define _LJ_PARSE_INTERNAL_H
+#pragma once
+
+struct LHSVarList;  // Defined in lj_parse_stmt.cpp
 
 // -- Error handling (lj_parse_core.c) -------------------------------------
 
@@ -81,6 +82,22 @@ static void expr_free(FuncState* fs, ExpDesc* e);
 // -- Bytecode emission (lj_parse_regalloc.c) ------------------------------
 
 static BCPos bcemit_INS(FuncState* fs, BCIns ins);
+
+// Bytecode emission helper functions.
+template<typename Op>
+static inline BCPos bcemit_ABC(FuncState* fs, Op o, BCReg a, BCReg b, BCReg c) {
+   return bcemit_INS(fs, BCINS_ABC(o, a, b, c));
+}
+
+template<typename Op>
+static inline BCPos bcemit_AD(FuncState* fs, Op o, BCReg a, BCReg d) {
+   return bcemit_INS(fs, BCINS_AD(o, a, d));
+}
+
+template<typename Op>
+static inline BCPos bcemit_AJ(FuncState* fs, Op o, BCReg a, BCPos j) {
+   return bcemit_INS(fs, BCINS_AJ(o, a, j));
+}
 static void expr_discharge(FuncState* fs, ExpDesc* e);
 static void bcemit_nil(FuncState* fs, BCReg from, BCReg n);
 static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg);
@@ -197,7 +214,7 @@ static void parse_local(LexState* ls);
 static void snapshot_return_regs(FuncState* fs, BCIns* ins);
 static void parse_defer(LexState* ls);
 static void parse_func(LexState* ls, BCLine line);
-static int parse_isend(LexToken tok);
+static int parse_is_end(LexToken tok);
 static void parse_return(LexState* ls);
 static void parse_continue(LexState* ls);
 static void parse_break(LexState* ls);
@@ -212,5 +229,3 @@ static BCPos parse_then(LexState* ls);
 static void parse_if(LexState* ls, BCLine line);
 static int parse_stmt(LexState* ls);
 static void parse_chunk(LexState* ls);
-
-#endif

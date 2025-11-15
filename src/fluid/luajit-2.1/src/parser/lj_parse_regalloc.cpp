@@ -6,9 +6,8 @@
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
-// -- Bytecode register allocator -----------------------------------------
-
 // Bump frame size.
+
 static void bcreg_bump(FuncState* fs, BCReg n)
 {
    BCReg sz = fs->freereg + n;
@@ -19,14 +18,18 @@ static void bcreg_bump(FuncState* fs, BCReg n)
    }
 }
 
+//********************************************************************************************************************
 // Reserve registers.
+
 static void bcreg_reserve(FuncState* fs, BCReg n)
 {
    bcreg_bump(fs, n);
    fs->freereg += n;
 }
 
+//********************************************************************************************************************
 // Free register.
+
 static void bcreg_free(FuncState* fs, BCReg reg)
 {
    if (reg >= fs->nactvar) {
@@ -35,16 +38,17 @@ static void bcreg_free(FuncState* fs, BCReg reg)
    }
 }
 
+//********************************************************************************************************************
 // Free register for expression.
+
 static void expr_free(FuncState* fs, ExpDesc* e)
 {
-   if (e->k == VNONRELOC)
-      bcreg_free(fs, e->u.s.info);
+   if (e->k == VNONRELOC) bcreg_free(fs, e->u.s.info);
 }
 
-// -- Bytecode emitter ----------------------------------------------------
-
+//********************************************************************************************************************
 // Emit bytecode instruction.
+
 static BCPos bcemit_INS(FuncState* fs, BCIns ins)
 {
    BCPos pc = fs->pc;
@@ -64,22 +68,20 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
    return pc;
 }
 
-// Bytecode emission helper macros.
-#define bcemit_ABC(fs, o, a, b, c)   bcemit_INS(fs, BCINS_ABC(o, a, b, c))
-#define bcemit_AD(fs, o, a, d)      bcemit_INS(fs, BCINS_AD(o, a, d))
-#define bcemit_AJ(fs, o, a, j)      bcemit_INS(fs, BCINS_AJ(o, a, j))
-
+//********************************************************************************************************************
 // Get pointer to bytecode instruction for expression.
+
 [[nodiscard]] static inline BCIns* bcptr(FuncState* fs, const ExpDesc* e) {
    return &fs->bcbase[e->u.s.info].ins;
 }
 
-// -- Bytecode emitter for expressions ------------------------------------
+//********************************************************************************************************************
+// Bytecode emitter for expressions
 
-// Forward declarations
 [[nodiscard]] static BCPos bcemit_jmp(FuncState* fs);
 
 // Discharge non-constant expression to any register.
+
 static void expr_discharge(FuncState* fs, ExpDesc* e)
 {
    BCIns ins;
@@ -117,14 +119,15 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
       e->k = VNONRELOC;
       return;
    }
-   else {
-      return;
-   }
+   else return;
+
    e->u.s.info = bcemit_INS(fs, ins);
    e->k = VRELOCABLE;
 }
 
+//********************************************************************************************************************
 // Emit bytecode to set a range of registers to nil.
+
 static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
 {
    if (fs->pc > fs->lasttarget) {  // No jumps to current position?
@@ -140,16 +143,13 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
             from = pfrom;
             n++;
          }
-         else {
-            break;
-         }
+         else break;
          *ip = BCINS_AD(BC_KNIL, from, from + n - 1);  // Replace KPRI.
          return;
       case BC_KNIL:
          pto = bc_d(*ip);
          if (pfrom <= from and from <= pto + 1) {  // Can we connect both ranges?
-            if (from + n - 1 > pto)
-               setbc_d(ip, from + n - 1);  // Patch previous instruction range.
+            if (from + n - 1 > pto) setbc_d(ip, from + n - 1);  // Patch previous instruction range.
             return;
          }
          break;
@@ -162,7 +162,9 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
       BCINS_AD(BC_KNIL, from, from + n - 1));
 }
 
+//********************************************************************************************************************
 // Discharge an expression to a specific register. Ignore branches.
+
 static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    BCIns ins;
@@ -218,12 +220,13 @@ noins:
    e->k = VNONRELOC;
 }
 
+//********************************************************************************************************************
 // Discharge an expression to a specific register.
+
 static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    expr_toreg_nobranch(fs, e, reg);
-   if (e->k == VJMP)
-      jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
+   if (e->k == VJMP) jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
       if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
@@ -243,7 +246,9 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
    e->k = VNONRELOC;
 }
 
+//********************************************************************************************************************
 // Discharge an expression to the next free register.
+
 static void expr_tonextreg(FuncState* fs, ExpDesc* e)
 {
    expr_discharge(fs, e);
@@ -252,7 +257,9 @@ static void expr_tonextreg(FuncState* fs, ExpDesc* e)
    expr_toreg(fs, e, fs->freereg - 1);
 }
 
+//********************************************************************************************************************
 // Discharge an expression to any register.
+
 static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
 {
    expr_discharge(fs, e);
@@ -267,7 +274,9 @@ static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
    return e->u.s.info;
 }
 
+//********************************************************************************************************************
 // Partially discharge expression to a value.
+
 static void expr_toval(FuncState* fs, ExpDesc* e)
 {
    if (expr_hasjump(e)) [[unlikely]]
@@ -276,7 +285,9 @@ static void expr_toval(FuncState* fs, ExpDesc* e)
       expr_discharge(fs, e);
 }
 
+//********************************************************************************************************************
 // Emit store for LHS expression.
+
 static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 {
    BCIns ins;
@@ -289,14 +300,10 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
    else if (var->k == VUPVAL) {
       fs->ls->vstack[var->u.s.aux].info |= VSTACK_VAR_RW;
       expr_toval(fs, e);
-      if (e->k <= VKTRUE)
-         ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
-      else if (e->k == VKSTR)
-         ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
-      else if (e->k == VKNUM)
-         ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
-      else
-         ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
+      if (e->k <= VKTRUE) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
+      else if (e->k == VKSTR) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
+      else if (e->k == VKNUM) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
+      else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
    }
    else if (var->k == VGLOBAL) {
       BCReg ra = expr_toanyreg(fs, e);
@@ -307,12 +314,8 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
       lj_assertFS(var->k == VINDEXED, "bad expr type %d", var->k);
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
-      if (int32_t(rc) < 0) {
-         ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
-      }
-      else if (rc > BCMAX_C) {
-         ins = BCINS_ABC(BC_TSETB, ra, var->u.s.info, rc - (BCMAX_C + 1));
-      }
+      if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
+      else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TSETB, ra, var->u.s.info, rc - (BCMAX_C + 1));
       else {
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
@@ -327,7 +330,9 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
    expr_free(fs, e);
 }
 
+//********************************************************************************************************************
 // Emit method lookup expression.
+
 static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
 {
    BCReg idx, func, obj = expr_toanyreg(fs, e);
@@ -350,9 +355,9 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
    e->k = VNONRELOC;
 }
 
-// -- Bytecode emitter for branches ---------------------------------------
-
+//********************************************************************************************************************
 // Emit unconditional branch.
+
 [[nodiscard]] static BCPos bcemit_jmp(FuncState* fs)
 {
    BCPos jpc = fs->jpc;
@@ -363,21 +368,23 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
       setbc_j(ip, NO_JMP);
       fs->lasttarget = j + 1;
    }
-   else {
-      j = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-   }
+   else j = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
    jmp_append(fs, &j, jpc);
    return j;
 }
 
+//********************************************************************************************************************
 // Invert branch condition of bytecode instruction.
+
 static void invertcond(FuncState* fs, ExpDesc* e)
 {
    BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
    setbc_op(ip, bc_op(*ip) ^ 1);
 }
 
+//********************************************************************************************************************
 // Emit conditional branch.
+
 [[nodiscard]] static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
 {
    BCPos pc;
@@ -398,37 +405,33 @@ static void invertcond(FuncState* fs, ExpDesc* e)
    return pc;
 }
 
+//********************************************************************************************************************
 // Emit branch on true condition.
+
 static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE)
-      pc = NO_JMP;  // Never jump.
-   else if (e->k == VJMP)
-      invertcond(fs, e), pc = e->u.s.info;
-   else if (e->k == VKFALSE or e->k == VKNIL)
-      expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
-   else
-      pc = bcemit_branch(fs, e, 0);
+   if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) pc = NO_JMP;  // Never jump.
+   else if (e->k == VJMP) invertcond(fs, e), pc = e->u.s.info;
+   else if (e->k == VKFALSE or e->k == VKNIL) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   else pc = bcemit_branch(fs, e, 0);
    jmp_append(fs, &e->f, pc);
    jmp_tohere(fs, e->t);
    e->t = NO_JMP;
 }
 
+//********************************************************************************************************************
 // Emit branch on false condition.
+
 static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == VKNIL or e->k == VKFALSE)
-      pc = NO_JMP;  // Never jump.
-   else if (e->k == VJMP)
-      pc = e->u.s.info;
-   else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE)
-      expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
-   else
-      pc = bcemit_branch(fs, e, 1);
+   if (e->k == VKNIL or e->k == VKFALSE) pc = NO_JMP;  // Never jump.
+   else if (e->k == VJMP) pc = e->u.s.info;
+   else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   else pc = bcemit_branch(fs, e, 1);
    jmp_append(fs, &e->t, pc);
    jmp_tohere(fs, e->f);
    e->f = NO_JMP;

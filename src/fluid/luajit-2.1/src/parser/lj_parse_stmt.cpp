@@ -1,36 +1,42 @@
-// -- Assignments ---------------------------------------------------------
+//********************************************************************************************************************
 
 // List of LHS variables.
+
 typedef struct LHSVarList {
-   ExpDesc v;			// LHS variable.
-   struct LHSVarList* prev;	// Link to previous LHS variable.
+   ExpDesc var;			// LHS variable.
+   struct LHSVarList *prev;	// Link to previous LHS variable.
 } LHSVarList;
 
+//********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
-static void assign_hazard(LexState* ls, LHSVarList* lh, const ExpDesc* v)
+
+static void assign_hazard(LexState *State, LHSVarList *Left, const ExpDesc *Var)
 {
-   FuncState* fs = ls->fs;
-   BCReg reg = v->u.s.info;  // Check against this variable.
+   FuncState* fs = State->fs;
+   BCReg reg = Var->u.s.info;  // Check against this variable.
    BCReg tmp = fs->freereg;  // Rename to this temp. register (if needed).
    int hazard = 0;
-   for (; lh; lh = lh->prev) {
-      if (lh->v.k == VINDEXED) {
-         if (lh->v.u.s.info == reg) {  // t[i], t = 1, 2
+
+   for (; Left; Left = Left->prev) {
+      if (Left->var.k == VINDEXED) {
+         if (Left->var.u.s.info == reg) {  // t[i], t = 1, 2
             hazard = 1;
-            lh->v.u.s.info = tmp;
+            Left->var.u.s.info = tmp;
          }
-         if (lh->v.u.s.aux == reg) {  // t[i], i = 1, 2
+         if (Left->var.u.s.aux == reg) {  // t[i], i = 1, 2
             hazard = 1;
-            lh->v.u.s.aux = tmp;
+            Left->var.u.s.aux = tmp;
          }
       }
    }
+
    if (hazard) {
       bcemit_AD(fs, BC_MOV, tmp, reg);  // Rename conflicting variable.
       bcreg_reserve(fs, 1);
    }
 }
 
+//********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 
 static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
@@ -44,17 +50,18 @@ static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
       if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
    }
    else {
-      if (e->k != VVOID)
-         expr_tonextreg(fs, e);  // Close last expression.
+      if (e->k != VVOID) expr_tonextreg(fs, e);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
          bcreg_reserve(fs, BCReg(extra));
          bcemit_nil(fs, reg, BCReg(extra));
       }
    }
-   if (nexps > nvars)
-      ls->fs->freereg -= nexps - nvars;  // Drop leftover regs.
+
+   if (nexps > nvars) ls->fs->freereg -= nexps - nvars;  // Drop leftover regs.
 }
+
+//********************************************************************************************************************
 
 static int assign_if_empty(LexState* ls, LHSVarList* lh)
 {
@@ -66,15 +73,15 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    BCPos skip_assign, assign_pos;
    BCReg nexps;
 
-   lhv = lh->v;
+   lhv = lh->var;
 
-   checkcond(ls, vkisvar(lh->v.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(ls, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
 
    lj_lex_next(ls);
 
    freg_base = fs->freereg;
 
-   if (lh->v.k == VINDEXED) {
+   if (lh->var.k == VINDEXED) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;
 
@@ -86,15 +93,13 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
          new_idx = fs->freereg;
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
-         lh->v.u.s.info = new_base;
-         lh->v.u.s.aux = new_idx;
+         lh->var.u.s.info = new_base;
+         lh->var.u.s.aux = new_idx;
       }
-      else {
-         lh->v.u.s.info = new_base;
-      }
+      else lh->var.u.s.info = new_base;
    }
 
-   lhs_eval = lh->v;
+   lhs_eval = lh->var;
    expr_discharge(fs, &lhs_eval);
    lhs_reg = expr_toanyreg(fs, &lhs_eval);
 
@@ -144,10 +149,11 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    return 1;
 }
 
+//********************************************************************************************************************
+
 static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
 {
-   if (opType == TK_cif_empty)
-      return assign_if_empty(ls, lh);
+   if (opType == TK_cif_empty) return assign_if_empty(ls, lh);
 
    FuncState* fs = ls->fs;
    ExpDesc lhv, infix, rh;
@@ -155,9 +161,9 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    BinOpr op;
    BCReg freg_base;
 
-   lhv = lh->v;
+   lhv = lh->var;
 
-   checkcond(ls, vkisvar(lh->v.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(ls, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
 
    switch (opType) {
    case TK_cadd: op = OPR_ADD; break;
@@ -172,11 +178,12 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    }
    lj_lex_next(ls);
 
-   /* Preserve table base/index across RHS evaluation by duplicating them
-   ** to the top of the stack and discharging using the duplicates. This retains
-   ** the original registers for the final store and maintains LIFO free order. */
+   // Preserve table base/index across RHS evaluation by duplicating them
+   // to the top of the stack and discharging using the duplicates. This retains
+   // the original registers for the final store and maintains LIFO free order.
+
    freg_base = fs->freereg;
-   if (lh->v.k == VINDEXED) {
+   if (lh->var.k == VINDEXED) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;  // Keep originals for the store.
 
@@ -191,12 +198,12 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          // Discharge using the duplicates; keep lhv pointing to originals.
-         lh->v.u.s.info = new_base;
-         lh->v.u.s.aux = new_idx;
+         lh->var.u.s.info = new_base;
+         lh->var.u.s.aux = new_idx;
       }
       else {
          // For string/byte keys, only the base needs duplicating.
-         lh->v.u.s.info = new_base;
+         lh->var.u.s.info = new_base;
          // aux remains an encoded constant.
       }
    }
@@ -205,44 +212,48 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    // maintain BC_CAT stack adjacency and LIFO freeing semantics.
 
    if (op == OPR_CONCAT) {
-      infix = lh->v;
+      infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
       nexps = expr_list(ls, &rh);
       checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
+
       if (!(op == OPR_BAND or op == OPR_BOR or op == OPR_BXOR or op == OPR_SHL or op == OPR_SHR))
-         expr_tonextreg(fs, &lh->v);
+         expr_tonextreg(fs, &lh->var);
       nexps = expr_list(ls, &rh);
       checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
-      infix = lh->v;
+      infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
    }
    bcemit_binop(fs, op, &infix, &rh);
    bcemit_store(fs, &lhv, &infix);
+
    // Drop any RHS temporaries and release original base/index in LIFO order.
+
    fs->freereg = freg_base;
    if (lhv.k == VINDEXED) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
-         bcreg_free(fs, BCReg(orig_aux));
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) bcreg_free(fs, BCReg(orig_aux));
       bcreg_free(fs, BCReg(lhv.u.s.info));
    }
    return 1;
 }
 
+//********************************************************************************************************************
 // Recursively parse assignment statement.
+
 static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
 {
    ExpDesc e;
-   checkcond(ls, VLOCAL <= lh->v.k and lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
+   checkcond(ls, VLOCAL <= lh->var.k and lh->var.k <= VINDEXED, LJ_ERR_XSYNTAX);
    if (lex_opt(ls, ',')) {  // Collect LHS list and recurse upwards.
       LHSVarList vl;
       vl.prev = lh;
-      expr_primary(ls, &vl.v);
-      if (vl.v.k == VLOCAL)
-         assign_hazard(ls, lh, &vl.v);
+      expr_primary(ls, &vl.var);
+      if (vl.var.k == VLOCAL)
+         assign_hazard(ls, lh, &vl.var);
       checklimit(ls->fs, ls->level + nvars, LJ_MAX_XLEVEL, "variable names");
       parse_assignment(ls, &vl, nvars + 1);
    }
@@ -261,29 +272,32 @@ static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
                e.k = VNONRELOC;
             }
          }
-         bcemit_store(ls->fs, &lh->v, &e);
+         bcemit_store(ls->fs, &lh->var, &e);
          return;
       }
       assign_adjust(ls, nvars, nexps, &e);
    }
+
    // Assign RHS to LHS and recurse downwards.
    expr_init(&e, VNONRELOC, ls->fs->freereg - 1);
-   bcemit_store(ls->fs, &lh->v, &e);
+   bcemit_store(ls->fs, &lh->var, &e);
 }
 
+//********************************************************************************************************************
 // Parse call statement or assignment.
+
 static void parse_call_assign(LexState* ls)
 {
    FuncState* fs = ls->fs;
    LHSVarList vl;
-   expr_primary(ls, &vl.v);
-   if (vl.v.k == VNONRELOC and (vl.v.flags & POSTFIX_INC_STMT_FLAG))
+   expr_primary(ls, &vl.var);
+   if (vl.var.k == VNONRELOC and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
       return;
-   if (vl.v.k == VCALL) {  // Function call statement.
-      setbc_b(bcptr(fs, &vl.v), 1);  // No results.
+   if (vl.var.k == VCALL) {  // Function call statement.
+      setbc_b(bcptr(fs, &vl.var), 1);  // No results.
    }
-   else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul ||
-      ls->tok == TK_cdiv or ls->tok == TK_cmod or ls->tok == TK_cconcat ||
+   else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul or
+      ls->tok == TK_cdiv or ls->tok == TK_cmod or ls->tok == TK_cconcat or
       ls->tok == TK_cif_empty) {
       vl.prev = nullptr;
       assign_compound(ls, &vl, ls->tok);
@@ -297,7 +311,9 @@ static void parse_call_assign(LexState* ls)
    }
 }
 
+//********************************************************************************************************************
 // Parse 'local' statement.
+
 static void parse_local(LexState* ls)
 {
    if (lex_opt(ls, TK_function)) {  // Local function declaration.
@@ -335,6 +351,8 @@ static void parse_local(LexState* ls)
    }
 }
 
+//********************************************************************************************************************
+
 static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 {
    BCOp op = bc_op(*ins);
@@ -364,6 +382,8 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       }
    }
 }
+
+//********************************************************************************************************************
 
 static void parse_defer(LexState* ls)
 {
@@ -411,7 +431,9 @@ static void parse_defer(LexState* ls)
    fs->freereg = fs->nactvar;
 }
 
+//********************************************************************************************************************
 // Parse 'function' statement.
+
 static void parse_func(LexState* ls, BCLine line)
 {
    FuncState* fs;
@@ -432,10 +454,10 @@ static void parse_func(LexState* ls, BCLine line)
    fs->bcbase[fs->pc - 1].line = line;  // Set line for the store.
 }
 
-// -- Control transfer statements -----------------------------------------
-
+//********************************************************************************************************************
 // Check for end of block.
-static int parse_isend(LexToken tok)
+
+static int parse_is_end(LexToken tok)
 {
    switch (tok) {
    case TK_else: case TK_elseif: case TK_end: case TK_until: case TK_eof:
@@ -445,14 +467,16 @@ static int parse_isend(LexToken tok)
    }
 }
 
+//********************************************************************************************************************
 // Parse 'return' statement.
+
 static void parse_return(LexState* ls)
 {
    BCIns ins;
    FuncState* fs = ls->fs;
    lj_lex_next(ls);  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_isend(ls->tok) or ls->tok == ';') {  // Bare return.
+   if (parse_is_end(ls->tok) or ls->tok == ';') {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {  // Return with one or more values.
@@ -489,7 +513,9 @@ static void parse_return(LexState* ls)
    bcemit_INS(fs, ins);
 }
 
+//********************************************************************************************************************
 // Parse 'continue' statement.
+
 static void parse_continue(LexState* ls)
 {
    FuncState* fs = ls->fs;
@@ -519,9 +545,11 @@ static void parse_break(LexState* ls)
    gola_new(ls, JUMP_BREAK, VSTACK_JUMP, bcemit_jmp(fs));
 }
 
-// -- Blocks, loops and conditional statements ----------------------------
+//********************************************************************************************************************
+// Blocks, loops and conditional statements
 
 // Parse a block.
+
 static void parse_block(LexState* ls)
 {
    FuncState* fs = ls->fs;
@@ -531,7 +559,9 @@ static void parse_block(LexState* ls)
    fscope_end(fs);
 }
 
+//********************************************************************************************************************
 // Parse 'while' statement.
+
 static void parse_while(LexState* ls, BCLine line)
 {
    FuncState* fs = ls->fs;
@@ -552,7 +582,9 @@ static void parse_while(LexState* ls, BCLine line)
    jmp_patchins(fs, loop, fs->pc);
 }
 
+//********************************************************************************************************************
 // Parse 'repeat' statement.
+
 static void parse_repeat(LexState* ls, BCLine line)
 {
    FuncState* fs = ls->fs;
@@ -582,7 +614,9 @@ static void parse_repeat(LexState* ls, BCLine line)
    fscope_end(fs);  // End loop scope.
 }
 
+//********************************************************************************************************************
 // Parse numeric 'for'.
+
 static void parse_for_num(LexState* ls, GCstr* varname, BCLine line)
 {
    FuncState* fs = ls->fs;
@@ -622,10 +656,11 @@ static void parse_for_num(LexState* ls, GCstr* varname, BCLine line)
    fscope_loop_continue(fs, loopend); // continue statements jump to loopend.
 }
 
-/* Try to predict whether the iterator is next() and specialize the bytecode.
-** Detecting next() and pairs() by name is simplistic, but quite effective.
-** The interpreter backs off if the check for the closure fails at runtime.
-*/
+//********************************************************************************************************************
+// Try to predict whether the iterator is next() and specialize the bytecode.
+// Detecting next() and pairs() by name is simplistic, but quite effective.
+// The interpreter backs off if the check for the closure fails at runtime.
+
 static int predict_next(LexState* ls, FuncState* fs, BCPos pc)
 {
    BCIns ins = fs->bcbase[pc].ins;
@@ -650,11 +685,13 @@ static int predict_next(LexState* ls, FuncState* fs, BCPos pc)
    default:
       return 0;
    }
-   return (name->len == 5 and !strcmp(strdata(name), "pairs")) ||
+   return (name->len == 5 and !strcmp(strdata(name), "pairs")) or
       (name->len == 4 and !strcmp(strdata(name), "next"));
 }
 
+//********************************************************************************************************************
 // Parse 'for' iterator.
+
 static void parse_for_iter(LexState* ls, GCstr* indexname)
 {
    FuncState* fs = ls->fs;
@@ -699,7 +736,9 @@ static void parse_for_iter(LexState* ls, GCstr* indexname)
    fscope_loop_continue(fs, iter); // continue statements jump to iter.
 }
 
+//********************************************************************************************************************
 // Parse 'for' statement.
+
 static void parse_for(LexState* ls, BCLine line)
 {
    FuncState* fs = ls->fs;
@@ -708,17 +747,16 @@ static void parse_for(LexState* ls, BCLine line)
    fscope_begin(fs, &bl, FSCOPE_LOOP);
    lj_lex_next(ls);  // Skip 'for'.
    varname = lex_str(ls);  // Get first variable name.
-   if (ls->tok == '=')
-      parse_for_num(ls, varname, line);
-   else if (ls->tok == ',' or ls->tok == TK_in)
-      parse_for_iter(ls, varname);
-   else
-      err_syntax(ls, LJ_ERR_XFOR);
+   if (ls->tok == '=') parse_for_num(ls, varname, line);
+   else if (ls->tok == ',' or ls->tok == TK_in) parse_for_iter(ls, varname);
+   else err_syntax(ls, LJ_ERR_XFOR);
    lex_match(ls, TK_end, TK_for, line);
    fscope_end(fs);  // Resolve break list.
 }
 
+//********************************************************************************************************************
 // Parse condition and 'then' block.
+
 static BCPos parse_then(LexState* ls)
 {
    BCPos condexit;
@@ -729,7 +767,9 @@ static BCPos parse_then(LexState* ls)
    return condexit;
 }
 
+//********************************************************************************************************************
 // Parse 'if' statement.
+
 static void parse_if(LexState* ls, BCLine line)
 {
    FuncState* fs = ls->fs;
@@ -741,15 +781,15 @@ static void parse_if(LexState* ls, BCLine line)
       jmp_tohere(fs, flist);
       flist = parse_then(ls);
    }
+
    if (ls->tok == TK_else) {  // Parse optional 'else' block.
       jmp_append(fs, &escapelist, bcemit_jmp(fs));
       jmp_tohere(fs, flist);
       lj_lex_next(ls);  // Skip 'else'.
       parse_block(ls);
    }
-   else {
-      jmp_append(fs, &escapelist, flist);
-   }
+   else jmp_append(fs, &escapelist, flist);
+
    jmp_tohere(fs, escapelist);
    lex_match(ls, TK_end, TK_if, line);
 }

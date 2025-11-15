@@ -60,10 +60,10 @@ typedef struct ExpDesc {
 } ExpDesc;
 
 // Flag carried in ExpDesc.flags to signal that a postfix increment formed a statement.
-#define POSTFIX_INC_STMT_FLAG    0x01u
+inline constexpr uint8_t POSTFIX_INC_STMT_FLAG = 0x01u;
 
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
-#define EXP_HAS_RHS_REG_FLAG     0x02u
+inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 
 /*
 ** Expression helpers that previously relied on flag bits within ExpDesc.aux now
@@ -72,50 +72,30 @@ typedef struct ExpDesc {
 ** masking.
 */
 
-// -- C++20 Concepts for Expression Type Safety -------------------------------
+// -- Expression Query Functions -----------------------------------------------
 
-/*
-** ConstExpressionDescriptor: Concept for const expression descriptor types
-**
-** Ensures a type has the required members for expression handling.
-** Provides compile-time validation and clearer error messages.
-*/
-template<typename T>
-concept ConstExpressionDescriptor = requires(const T* e) {
-   { e->k } -> std::convertible_to<ExpKind>;
-   { e->t } -> std::convertible_to<BCPos>;
-   { e->f } -> std::convertible_to<BCPos>;
-   requires sizeof(e->u) > 0;  // Has union member
-};
-
-// Expression query functions with C++20 concept constraints.
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_hasjump(const E* e) {
+// Expression query functions.
+[[nodiscard]] static inline bool expr_hasjump(const ExpDesc* e) {
    return e->t != e->f;
 }
 
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_isk(const E* e) {
+[[nodiscard]] static inline bool expr_isk(const ExpDesc* e) {
    return e->k <= VKLAST;
 }
 
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_isk_nojump(const E* e) {
+[[nodiscard]] static inline bool expr_isk_nojump(const ExpDesc* e) {
    return expr_isk(e) and not expr_hasjump(e);
 }
 
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_isnumk(const E* e) {
+[[nodiscard]] static inline bool expr_isnumk(const ExpDesc* e) {
    return e->k == VKNUM;
 }
 
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_isnumk_nojump(const E* e) {
+[[nodiscard]] static inline bool expr_isnumk_nojump(const ExpDesc* e) {
    return expr_isnumk(e) and not expr_hasjump(e);
 }
 
-template<ConstExpressionDescriptor E>
-[[nodiscard]] static constexpr bool expr_isstrk(const E* e) {
+[[nodiscard]] static inline bool expr_isstrk(const ExpDesc* e) {
    return e->k == VKSTR;
 }
 
@@ -152,11 +132,11 @@ typedef struct FuncScope {
    uint8_t flags;      // Scope flags.
 } FuncScope;
 
-#define FSCOPE_LOOP      0x01   // Scope is a (breakable) loop.
-#define FSCOPE_BREAK      0x02   // Break used in scope.
-#define FSCOPE_UPVAL      0x08   // Upvalue in scope.
-#define FSCOPE_NOCLOSE      0x10   // Do not close upvalues.
-#define FSCOPE_CONTINUE   0x20   // Continue used in scope.
+inline constexpr uint8_t FSCOPE_LOOP = 0x01;      // Scope is a (breakable) loop.
+inline constexpr uint8_t FSCOPE_BREAK = 0x02;     // Break used in scope.
+inline constexpr uint8_t FSCOPE_UPVAL = 0x08;     // Upvalue in scope.
+inline constexpr uint8_t FSCOPE_NOCLOSE = 0x10;   // Do not close upvalues.
+inline constexpr uint8_t FSCOPE_CONTINUE = 0x20;  // Continue used in scope.
 
 #define NAME_BREAK      ((GCstr*)uintptr_t(1))
 #define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
@@ -164,14 +144,14 @@ typedef struct FuncScope {
 
 // Index into variable stack.
 typedef uint16_t VarIndex;
-#define LJ_MAX_VSTACK      (65536 - LJ_MAX_UPVAL)
+inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 
 // Variable info.
-#define VSTACK_VAR_RW      0x01   // R/W variable.
-#define VSTACK_JUMP      0x02   // Pending goto (used by break/continue).
-#define VSTACK_JUMP_TARGET 0x04   // Jump to (used by break/continue).
-#define VSTACK_DEFER      0x08   // Deferred handler.
-#define VSTACK_DEFERARG   0x10   // Deferred handler argument.
+inline constexpr uint8_t VSTACK_VAR_RW = 0x01;       // R/W variable.
+inline constexpr uint8_t VSTACK_JUMP = 0x02;         // Pending goto (used by break/continue).
+inline constexpr uint8_t VSTACK_JUMP_TARGET = 0x04;  // Jump to (used by break/continue).
+inline constexpr uint8_t VSTACK_DEFER = 0x08;        // Deferred handler.
+inline constexpr uint8_t VSTACK_DEFERARG = 0x10;     // Deferred handler argument.
 
 // Per-function state.
 typedef struct FuncState {
@@ -249,6 +229,6 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 // Error checking macros.
 #define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)
 #define checklimitgt(fs, v, l, m)   if ((v) > (l)) err_limit(fs, l, m)
-#define checkcond(ls, c, em)      { if (!(c)) err_syntax(ls, em); }
+#define checkcond(ls, c, em)      { if (not (c)) err_syntax(ls, em); }
 
 #endif

@@ -97,10 +97,11 @@ concept BinaryOperator = std::is_same_v<T, BinOpr> or
 
 /*
 ** UnaryOperator: Concept for unary operator types
+** Note: Currently unused - UnOpr type not defined in parser.
 */
-template<typename T>
-concept UnaryOperator = std::is_same_v<T, UnOpr> or
-                        (std::integral<T> and sizeof(T) <= sizeof(UnOpr));
+// template<typename T>
+// concept UnaryOperator = std::is_same_v<T, UnOpr> or
+//                         (std::integral<T> and sizeof(T) <= sizeof(UnOpr));
 
 // -- Bytecode Instruction Concepts -----------------------------------------
 
@@ -109,7 +110,7 @@ concept UnaryOperator = std::is_same_v<T, UnOpr> or
 */
 template<typename T>
 concept BytecodeInstruction = std::is_same_v<T, BCIns> or
-                              (std::unsigned_integral<T> and sizeof(T) IS sizeof(BCIns));
+                              (std::unsigned_integral<T> and sizeof(T) == sizeof(BCIns));
 
 /*
 ** BytecodeOpcode: Concept for bytecode opcode types

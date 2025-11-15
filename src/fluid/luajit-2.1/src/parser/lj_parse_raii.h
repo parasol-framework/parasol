@@ -1,27 +1,22 @@
-/*
-** RAII Helper Classes for LuaJIT Parser
-** Copyright (C) 2025 Paul Manias. See Copyright Notice in parasol.h
-*/
+// RAII Helper Classes for LuaJIT Parser
+// Copyright (C) 2025 Paul Manias.
 
-#ifndef _LJ_PARSE_RAII_H
-#define _LJ_PARSE_RAII_H
+#pragma once
 
-// Forward declarations
 static void fscope_end(FuncState* fs);
 static void bcreg_reserve(FuncState* fs, BCReg n);
 
-/*
-** ScopeGuard: RAII wrapper for automatic scope cleanup
-**
-** Ensures fscope_end() is called when the guard goes out of scope,
-** preventing resource leaks even in the presence of early returns.
-**
-** Usage:
-**    FuncScope bl;
-**    ScopeGuard scope_guard(fs, &bl, flags);
-**    // ... parse statements ...
-**    // Automatic cleanup on scope exit
-*/
+// ScopeGuard: RAII wrapper for automatic scope cleanup
+//
+// Ensures fscope_end() is called when the guard goes out of scope,
+// preventing resource leaks even in the presence of early returns.
+//
+// Usage:
+//    FuncScope bl;
+//    ScopeGuard scope_guard(fs, &bl, flags);
+//    // ... parse statements ...
+//    // Automatic cleanup on scope exit
+
 class ScopeGuard {
    FuncState* fs_;
 
@@ -53,17 +48,16 @@ public:
    }
 };
 
-/*
-** RegisterGuard: RAII wrapper for automatic register restoration
-**
-** Saves and restores fs->freereg to ensure register state is properly
-** managed across function calls and expression evaluation.
-**
-** Usage:
-**    RegisterGuard reg_guard(fs);
-**    // ... use registers ...
-**    // Automatic restoration on scope exit
-*/
+// RegisterGuard: RAII wrapper for automatic register restoration
+//
+// Saves and restores fs->freereg to ensure register state is properly
+// managed across function calls and expression evaluation.
+//
+// Usage:
+//    RegisterGuard reg_guard(fs);
+//    // ... use registers ...
+//    // Automatic restoration on scope exit
+
 class RegisterGuard {
    FuncState* fs_;
    BCReg saved_freereg_;
@@ -110,17 +104,16 @@ public:
    }
 };
 
-/*
-** VStackGuard: RAII wrapper for automatic variable stack restoration
-**
-** Saves and restores ls->vtop to manage temporary variable stack entries
-** like goto/label resolution markers.
-**
-** Usage:
-**    VStackGuard vstack_guard(ls);
-**    // ... manipulate vstack ...
-**    // Automatic restoration on scope exit
-*/
+// VStackGuard: RAII wrapper for automatic variable stack restoration
+//
+// Saves and restores ls->vtop to manage temporary variable stack entries
+// like goto/label resolution markers.
+//
+// Usage:
+//    VStackGuard vstack_guard(ls);
+//    // ... manipulate vstack ...
+//    // Automatic restoration on scope exit
+
 class VStackGuard {
    LexState* ls_;
    MSize saved_vtop_;
@@ -161,5 +154,3 @@ public:
       return *this;
    }
 };
-
-#endif
