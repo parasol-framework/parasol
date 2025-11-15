@@ -107,7 +107,6 @@ struct GG_State {
    ASMFunction dispatch[GG_LEN_DISP];   /* Instruction dispatch tables. */
    BCIns bcff[GG_NUM_ASMFF];      /* Bytecode for ASM fast functions. */
 };
-using GG_State = struct GG_State;
 
 #define GG_OFS(field)   ((int)offsetof(GG_State, field))
 #define G2GG(gl)   ((GG_State *)((char *)(gl) - GG_OFS(g)))
