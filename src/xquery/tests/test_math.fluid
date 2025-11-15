@@ -213,6 +213,18 @@ function testMathAcceptsSchemaConstructors()
    assert(err == ERR_Okay, 'math:acos(xs:double(\'NaN\')) should evaluate successfully: ' .. describeError(query, err))
    assert(query.resultString == 'NaN',
       'math:acos(xs:double(\'NaN\')) should return NaN, got ' .. tostring(query.resultString))
+
+   local positive_inf_query
+   positive_inf_query, err = executeMath("xs:double('INF')")
+   assert(err == ERR_Okay, "xs:double('INF') should evaluate successfully: " .. describeError(positive_inf_query, err))
+   assert(positive_inf_query.resultString == 'Infinity',
+      "xs:double('INF') should return Infinity, got " .. tostring(positive_inf_query.resultString))
+
+   local negative_inf_query
+   negative_inf_query, err = executeMath("xs:double('-INF')")
+   assert(err == ERR_Okay, "xs:double('-INF') should evaluate successfully: " .. describeError(negative_inf_query, err))
+   assert(negative_inf_query.resultString == '-Infinity',
+      "xs:double('-INF') should return -Infinity, got " .. tostring(negative_inf_query.resultString))
 end
 
 function testMathSignedZeroAndSpecialCases()

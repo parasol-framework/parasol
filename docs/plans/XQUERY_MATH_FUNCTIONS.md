@@ -53,7 +53,7 @@ The following 16 functions from the `math:` namespace are **not yet implemented*
 - ✅ Phase 3 complete: registered the math namespace functions in the core library for runtime availability.
 - ✅ Phase 4 complete: added targeted Fluid tests for the math namespace and integrated them into the build.
 - ✅ Phase 5 complete: hardened IEEE 754 semantics by preserving signed zero results, aligning `math:pow` with NaN edge-case rules, and extending the Fluid suite with regression coverage.
-- 🔄 Follow-up: enabled schema constructor resolution (e.g. `xs:double('NaN')`) so math namespace queries accept typed constructor inputs and added regression coverage for the NaN scenario.
+- ✅ Follow-up: enabled schema constructor resolution (e.g. `xs:double('NaN')`, `xs:double('INF')`, `xs:double('-INF')`) so math namespace queries accept typed constructor inputs and added regression coverage for NaN and infinity scenarios.
 
 ## Implementation Strategy
 

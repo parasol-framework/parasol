@@ -2373,25 +2373,67 @@ std::optional<XPathVal> XPathEvaluator::evaluate_type_constructor(std::string_vi
       return fail("XPTY0006: Constructor operand type could not be determined.");
    }
 
-   auto lexical_is_nan_literal = [](std::string_view Text) {
-      auto trimmed = trim_view(Text);
-      if (trimmed.size() != 3) return false;
-      auto to_lower = [](char Ch) { return char(std::tolower(static_cast<unsigned char>(Ch))); };
-      return (to_lower(trimmed[0]) IS 'n') and (to_lower(trimmed[1]) IS 'a') and (to_lower(trimmed[2]) IS 'n');
+   auto parse_special_numeric_literal = [](std::string_view Text) -> std::optional<double> {
+      std::string_view trimmed = trim_view(Text);
+      if (trimmed.empty()) return std::nullopt;
+
+      auto matches_literal = [](std::string_view Value, std::string_view Literal) {
+         if (Value.size() != Literal.size()) return false;
+         for (size_t index = 0; index < Literal.size(); ++index) {
+            unsigned char raw = (unsigned char)Value[index];
+            char lower = char(std::tolower(raw));
+            if (lower != Literal[index]) return false;
+         }
+         return true;
+      };
+
+      if (matches_literal(trimmed, "nan")) {
+         return std::numeric_limits<double>::quiet_NaN();
+      }
+
+      bool negative = false;
+      if (!trimmed.empty() and ((trimmed.front() IS '+') or (trimmed.front() IS '-'))) {
+         negative = (trimmed.front() IS '-');
+         trimmed.remove_prefix(1);
+      }
+
+      if (matches_literal(trimmed, "inf") or matches_literal(trimmed, "infinity")) {
+         double infinity_value = std::numeric_limits<double>::infinity();
+         return negative ? -infinity_value : infinity_value;
+      }
+
+      return std::nullopt;
    };
+
+   std::optional<double> lexical_special_value;
+   if (not operand_origin_numeric) {
+      lexical_special_value = parse_special_numeric_literal(operand_lexical);
+   }
 
    XPathVal coerced = source_descriptor->coerce_value(operand_value, target_descriptor->schema_type);
 
    if (xml::schema::is_numeric(target_descriptor->schema_type)) {
-      double numeric_value = coerced.to_number();
+      double numeric_value = lexical_special_value.has_value() ? *lexical_special_value : coerced.to_number();
+
       if (std::isnan(numeric_value)) {
-         bool lexical_nan = operand_origin_numeric or lexical_is_nan_literal(operand_lexical);
+         bool lexical_nan = operand_origin_numeric or
+            (lexical_special_value.has_value() and std::isnan(*lexical_special_value));
          if (not lexical_nan) {
             auto message = std::format("XPTY0006: Value '{}' cannot be constructed as '{}'.",
                operand_lexical, target_name);
             return fail(message);
          }
          coerced = XPathVal(std::numeric_limits<double>::quiet_NaN());
+      }
+      else if (std::isinf(numeric_value)) {
+         bool lexical_inf = operand_origin_numeric or
+            (lexical_special_value.has_value() and std::isinf(*lexical_special_value));
+         if (not lexical_inf) {
+            auto message = std::format("XPTY0006: Value '{}' cannot be constructed as '{}'.",
+               operand_lexical, target_name);
+            return fail(message);
+         }
+         coerced = XPathVal(numeric_value);
       }
       else {
          coerced = XPathVal(numeric_value);
