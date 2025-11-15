@@ -48,7 +48,7 @@ cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
 {
    cTValue* mo = lj_tab_getstr(mt, name);
    lj_assertX(mm <= MM_FAST, "bad metamethod %d", mm);
-   if (!mo || tvisnil(mo)) {  // No metamethod?
+   if (!mo or tvisnil(mo)) {  // No metamethod?
       mt->nomm |= (uint8_t)(1u << mm);  //  Set negative cache flag.
       return NULL;
    }
@@ -244,13 +244,13 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
    do {
-      if (!(tvisstr(top) || tvisnumber(top) || tvisbuf(top)) ||
-         !(tvisstr(top - 1) || tvisnumber(top - 1) || tvisbuf(top - 1))) {
+      if (!(tvisstr(top) or tvisnumber(top) or tvisbuf(top)) ||
+         !(tvisstr(top - 1) or tvisnumber(top - 1) or tvisbuf(top - 1))) {
          cTValue* mo = lj_meta_lookup(L, top - 1, MM_concat);
          if (tvisnil(mo)) {
             mo = lj_meta_lookup(L, top, MM_concat);
             if (tvisnil(mo)) {
-               if (tvisstr(top - 1) || tvisnumber(top - 1)) top++;
+               if (tvisstr(top - 1) or tvisnumber(top - 1)) top++;
                lj_err_optype(L, top - 1, LJ_ERR_OPCAT);
                return NULL;  //  unreachable
             }
@@ -288,7 +288,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
          do {
             o--; tlen += tvisstr(o) ? strV(o)->len :
                tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
-         } while (--left > 0 and (tvisstr(o - 1) || tvisnumber(o - 1)));
+         } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, LJ_ERR_STROV);
          sb = lj_buf_tmp_(L);
          lj_buf_more(sb, (MSize)tlen);
@@ -343,7 +343,7 @@ TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
       uint32_t it;
       if (tabref(o1->gch.metatable) != tabref(o2->gch.metatable)) {
          cTValue* mo2 = lj_meta_fast(L, tabref(o2->gch.metatable), MM_eq);
-         if (mo2 == NULL || !lj_obj_equal(mo, mo2))
+         if (mo2 == NULL or !lj_obj_equal(mo, mo2))
             return (TValue*)(intptr_t)ne;
       }
       top = curr_top(L);
@@ -394,14 +394,14 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
 // Helper for ordered comparisons. String compare, __lt/__le metamethods.
 TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 {
-   if (LJ_HASFFI and (tviscdata(o1) || tviscdata(o2))) {
+   if (LJ_HASFFI and (tviscdata(o1) or tviscdata(o2))) {
       ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
       MMS mm = (op & 2) ? MM_le : MM_lt;
       cTValue* mo = lj_meta_lookup(L, tviscdata(o1) ? o1 : o2, mm);
       if (LJ_UNLIKELY(tvisnil(mo))) goto err;
       return mmcall(L, cont, mo, o1, o2);
    }
-   else if (LJ_52 || itype(o1) == itype(o2)) {
+   else if (LJ_52 or itype(o1) == itype(o2)) {
       // Never called with two numbers.
       if (tvisstr(o1) and tvisstr(o2)) {
          int32_t res = lj_str_cmp(strV(o1), strV(o2));
@@ -417,7 +417,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
             if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm))))
 #else
             cTValue* mo2 = lj_meta_lookup(L, o2, mm);
-            if (tvisnil(mo) || !lj_obj_equal(mo, mo2))
+            if (tvisnil(mo) or !lj_obj_equal(mo, mo2))
 #endif
             {
                if (op & 2) {  // MM_le not found: retry with MM_lt.
@@ -446,7 +446,7 @@ void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp)
 {
    L->top = curr_topL(L);
    ra++; tp--;
-   lj_assertL(LJ_DUALNUM || tp != ~LJ_TNUMX, "bad type for ISTYPE");
+   lj_assertL(LJ_DUALNUM or tp != ~LJ_TNUMX, "bad type for ISTYPE");
    if (LJ_DUALNUM and tp == ~LJ_TNUMX) lj_lib_checkint(L, ra);
    else if (tp == ~LJ_TNUMX + 1) lj_lib_checknum(L, ra);
    else if (tp == ~LJ_TSTR) lj_lib_checkstr(L, ra);

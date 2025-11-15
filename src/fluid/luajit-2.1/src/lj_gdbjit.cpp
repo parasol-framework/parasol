@@ -786,7 +786,7 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
       "start PC out of range");
    ctx.lineno = lj_debug_line(pt, proto_bcpos(pt, startpc));
    ctx.filename = proto_chunknamestr(pt);
-   if (*ctx.filename == '@' || *ctx.filename == '=')
+   if (*ctx.filename == '@' or *ctx.filename == '=')
       ctx.filename++;
    else
       ctx.filename = "(string)";

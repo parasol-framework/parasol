@@ -46,7 +46,7 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
    lj_lib_checkany(L, 1);
    if (L->top == L->base + 1)
       lj_err_caller(L, LJ_ERR_ASSERT);
-   else if (tvisstr(L->base + 1) || tvisnumber(L->base + 1))
+   else if (tvisstr(L->base + 1) or tvisnumber(L->base + 1))
       lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
    else
       lj_err_run(L);
@@ -83,12 +83,12 @@ LJLIB_ASM(next)         LJLIB_REC(.)
    return FFH_UNREACHABLE;
 }
 
-#if LJ_52 || LJ_HASFFI
+#if LJ_52 or LJ_HASFFI
 static int ffh_pairs(lua_State* L, MMS mm)
 {
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo = lj_meta_lookup(L, o, mm);
-   if ((LJ_52 || tviscdata(o)) && !tvisnil(mo)) {
+   if ((LJ_52 or tviscdata(o)) && !tvisnil(mo)) {
       L->top = o + 1;  //  Only keep one argument.
       copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
       return FFH_TAILCALL;
@@ -231,7 +231,7 @@ LJLIB_CF(unpack)
    if (i > e) return 0;
    nu = (uint32_t)e - (uint32_t)i;
    n = (int32_t)(nu + 1);
-   if (nu >= LUAI_MAXCSTACK || !lua_checkstack(L, n))
+   if (nu >= LUAI_MAXCSTACK or !lua_checkstack(L, n))
       lj_err_caller(L, LJ_ERR_UNPACK);
    do {
       cTValue* tv = lj_tab_getint(t, i);
@@ -277,7 +277,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
          CTState* cts = ctype_cts(L);
          CType* ct = lj_ctype_rawref(cts, cdataV(o)->ctypeid);
          if (ctype_isenum(ct->info)) ct = ctype_child(cts, ct);
-         if (ctype_isnum(ct->info) || ctype_iscomplex(ct->info)) {
+         if (ctype_isnum(ct->info) or ctype_iscomplex(ct->info)) {
             if (LJ_DUALNUM && ctype_isinteger_or_bool(ct->info) &&
                ct->size <= 4 && !(ct->size == 4 && (ct->info & CTF_UNSIGNED))) {
                int32_t i;
@@ -297,7 +297,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       char* ep;
       unsigned int neg = 0;
       unsigned long ul;
-      if (base < 2 || base > 36)
+      if (base < 2 or base > 36)
          lj_err_arg(L, 2, LJ_ERR_BASERNG);
       while (lj_char_isspace((unsigned char)(*p))) p++;
       if (*p == '-') { p++; neg = 1; }
@@ -402,7 +402,7 @@ static const char* reader_func(lua_State* L, void* ud, size_t* size)
       *size = 0;
       return NULL;
    }
-   else if (tvisstr(L->top) || tvisnumber(L->top)) {
+   else if (tvisstr(L->top) or tvisnumber(L->top)) {
       copyTV(L, L->base + 4, L->top);  //  Anchor string in reserved stack slot.
       return lua_tolstring(L, 5, size);
    }
@@ -418,7 +418,7 @@ LJLIB_CF(load)
    GCstr* mode = lj_lib_optstr(L, 3);
    int status;
    if (L->base < L->top &&
-      (tvisstr(L->base) || tvisnumber(L->base) || tvisbuf(L->base))) {
+      (tvisstr(L->base) or tvisnumber(L->base) or tvisbuf(L->base))) {
       const char* s;
       MSize len;
       if (tvisbuf(L->base)) {
@@ -479,7 +479,7 @@ LJLIB_CF(collectgarbage)
    }
    else {
       int res = lua_gc(L, opt, data);
-      if (opt == LUA_GCSTEP || opt == LUA_GCISRUNNING)
+      if (opt == LUA_GCSTEP or opt == LUA_GCISRUNNING)
          setboolV(L->top, res);
       else
          setintV(L->top, res);
@@ -624,7 +624,7 @@ LJLIB_ASM(coroutine_yield)
 
 static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 {
-   if (co->cframe != NULL || co->status > LUA_YIELD ||
+   if (co->cframe != NULL or co->status > LUA_YIELD ||
       (co->status == LUA_OK && co->top == co->base)) {
       ErrMsg em = co->cframe ? LJ_ERR_CORUN : LJ_ERR_CODEAD;
       if (wrap) lj_err_caller(L, em);

@@ -219,13 +219,13 @@ static SBuf* strfmt_putquotedlen(SBuf* sb, const char* s, MSize len)
    while (len--) {
       uint32_t c = (uint32_t)(uint8_t)*s++;
       char* w = lj_buf_more(sb, 4);
-      if (c == '"' || c == '\\' || c == '\n') {
+      if (c == '"' or c == '\\' or c == '\n') {
          *w++ = '\\';
       }
       else if (lj_char_iscntrl(c)) {  // This can only be 0-31 or 127.
          uint32_t d;
          *w++ = '\\';
-         if (c >= 100 || lj_char_isdigit((uint8_t)*s)) {
+         if (c >= 100 or lj_char_isdigit((uint8_t)*s)) {
             *w++ = (char)('0' + (c >= 100)); if (c >= 100) c -= 100;
             goto tens;
          }
@@ -416,7 +416,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
 #if LJ_HASFFI
             if (tviscdata(o)) {
                GCcdata* cd = cdataV(o);
-               if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
+               if (cd->ctypeid == CTID_INT64 or cd->ctypeid == CTID_UINT64) {
                   lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
                   break;
                }
@@ -432,7 +432,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
 #if LJ_HASFFI
             if (tviscdata(o)) {
                GCcdata* cd = cdataV(o);
-               if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
+               if (cd->ctypeid == CTID_INT64 or cd->ctypeid == CTID_UINT64) {
                   lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
                   break;
                }

@@ -63,7 +63,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
    if (sbufisext(sb)) {
       SBufExt* sbx = (SBufExt*)sb;
       MSize len = sbufxlen(sbx);
-      if (LJ_UNLIKELY(sz > LJ_MAX_BUF || len + sz > LJ_MAX_BUF))
+      if (LJ_UNLIKELY(sz > LJ_MAX_BUF or len + sz > LJ_MAX_BUF))
          lj_err_mem(sbufL(sbx));
       if (len + sz > sbufsz(sbx)) {  // Must grow.
          buf_grow((SBuf*)sbx, len + sz);
@@ -83,7 +83,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
    else {
       MSize len = sbuflen(sb);
       lj_assertG_(G(sbufL(sb)), sz > sbufleft(sb), "SBuf overflow");
-      if (LJ_UNLIKELY(sz > LJ_MAX_BUF || len + sz > LJ_MAX_BUF))
+      if (LJ_UNLIKELY(sz > LJ_MAX_BUF or len + sz > LJ_MAX_BUF))
          lj_err_mem(sbufL(sb));
       buf_grow(sb, len + sz);
    }
@@ -140,7 +140,7 @@ SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
    return sb;
 }
 
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 static LJ_NOINLINE SBuf* LJ_FASTCALL lj_buf_putchar2(SBuf* sb, int c)
 {
    char* w = lj_buf_more2(sb, 1);

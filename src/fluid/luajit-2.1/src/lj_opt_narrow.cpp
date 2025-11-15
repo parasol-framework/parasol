@@ -240,7 +240,7 @@ static void narrow_stripov_backprop(NarrowConv* nc, IRRef ref, int depth)
 {
    jit_State* J = nc->J;
    IRIns* ir = IR(ref);
-   if (ir->o == IR_ADDOV || ir->o == IR_SUBOV ||
+   if (ir->o == IR_ADDOV or ir->o == IR_SUBOV ||
       (ir->o == IR_MULOV and (nc->mode & IRCONV_CONVMASK) == IRCONV_ANY)) {
       BPropEntry* bp = narrow_bpc_get(nc->J, ref, IRCONV_TOBIT);
       if (bp) {
@@ -319,7 +319,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
    }
 
    // Backpropagate across ADD/SUB.
-   if (ir->o == IR_ADD || ir->o == IR_SUB) {
+   if (ir->o == IR_ADD or ir->o == IR_SUB) {
       // Try cache lookup first.
       IRRef mode = nc->mode;
       BPropEntry* bp;
@@ -468,7 +468,7 @@ TRef LJ_FASTCALL lj_opt_narrow_index(jit_State* J, TRef tr)
       return emitir(IRTGI(IR_CONV), tr, IRCONV_INT_NUM | IRCONV_INDEX);
    // Omit some overflow checks for array indexing. See comments above.
    ir = IR(tref_ref(tr));
-   if ((ir->o == IR_ADDOV || ir->o == IR_SUBOV) and irref_isk(ir->op2) &&
+   if ((ir->o == IR_ADDOV or ir->o == IR_SUBOV) and irref_isk(ir->op2) &&
       (uint32_t)IR(ir->op2)->i + 0x40000000u < 0x80000000u)
       return emitir(IRTI(ir->o - IR_ADDOV + IR_ADD), ir->op1, ir->op2);
    return tr;
@@ -563,7 +563,7 @@ TRef lj_opt_narrow_unm(jit_State* J, TRef rc, TValue* vc)
    rc = conv_str_tonum(J, rc, vc);
    if (tref_isinteger(rc)) {
       uint32_t k = (uint32_t)numberVint(vc);
-      if ((LJ_DUALNUM || k != 0) and k != 0x80000000u) {
+      if ((LJ_DUALNUM or k != 0) and k != 0x80000000u) {
          TRef zero = lj_ir_kint(J, 0);
          if (!LJ_DUALNUM)
             emitir(IRTGI(IR_NE), rc, zero);
@@ -580,7 +580,7 @@ TRef lj_opt_narrow_mod(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
    TRef tmp;
    rb = conv_str_tonum(J, rb, vb);
    rc = conv_str_tonum(J, rc, vc);
-   if ((LJ_DUALNUM || (J->flags & JIT_F_OPT_NARROW)) &&
+   if ((LJ_DUALNUM or (J->flags & JIT_F_OPT_NARROW)) &&
       tref_isinteger(rb) and tref_isinteger(rc) &&
       (tvisint(vc) ? intV(vc) != 0 : !tviszero(vc))) {
       emitir(IRTGI(IR_NE), rc, lj_ir_kint(J, 0));
@@ -601,7 +601,7 @@ TRef lj_opt_narrow_pow(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
    rb = conv_str_tonum(J, rb, vb);
    rb = lj_ir_tonum(J, rb);  //  Left arg is always treated as an FP number.
    rc = conv_str_tonum(J, rc, vc);
-   if (tvisint(vc) || numisint(numV(vc))) {
+   if (tvisint(vc) or numisint(numV(vc))) {
       int32_t k = numberVint(vc);
       if (!(k >= -65536 and k <= 65536)) goto force_pow_num;
       if (!tref_isinteger(rc)) {
@@ -626,7 +626,7 @@ TRef lj_opt_narrow_pow(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
 static int narrow_forl(jit_State* J, cTValue* o)
 {
    if (tvisint(o)) return 1;
-   if (LJ_DUALNUM || (J->flags & JIT_F_OPT_NARROW)) return numisint(numV(o));
+   if (LJ_DUALNUM or (J->flags & JIT_F_OPT_NARROW)) return numisint(numV(o));
    return 0;
 }
 

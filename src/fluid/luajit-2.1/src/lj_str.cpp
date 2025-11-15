@@ -135,7 +135,7 @@ void lj_str_resize(lua_State* L, MSize newmask)
    MSize i;
 
    // No resizing during GC traversal or if already too big.
-   if (g->gc.state == GCSsweepstring || newmask >= LJ_MAX_STRTAB - 1)
+   if (g->gc.state == GCSsweepstring or newmask >= LJ_MAX_STRTAB - 1)
       return;
 
    newtab = lj_mem_newvec(L, newmask + 1, GCRef);
@@ -237,12 +237,12 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
       LuaStrHash hash;
       if (ow) {  // Must sweep while rechaining.
          if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // String alive?
-            lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
+            lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED),
                "sweep of undead string");
             makewhite(g, o);
          }
          else {  // Free dead string.
-            lj_assertG(isdead(g, o) || ow == LJ_GC_SFIXED,
+            lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED,
                "sweep of unlive string");
             lj_str_free(g, s);
             o = next;

@@ -56,14 +56,14 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    const BCIns* ins;
    GCproto* pt;
    BCPos pos;
-   lj_assertL(fn->c.gct == ~LJ_TFUNC || fn->c.gct == ~LJ_TTHREAD,
+   lj_assertL(fn->c.gct == ~LJ_TFUNC or fn->c.gct == ~LJ_TTHREAD,
       "function or frame expected");
    if (!isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
    else if (nextframe == NULL) {  //  Lua function on top.
       void* cf = cframe_raw(L->cframe);
-      if (cf == NULL || (char*)cframe_pc(cf) == (char*)cframe_L(cf))
+      if (cf == NULL or (char*)cframe_pc(cf) == (char*)cframe_L(cf))
          return NO_BCPOS;
       ins = cframe_pc(cf);  //  Only happens during error/hook handling.
    }
@@ -94,7 +94,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
                f = frame_prevl(f);
             }
             else {
-               if (frame_isc(f) || (frame_iscont(f) and frame_iscont_fficb(f)))
+               if (frame_isc(f) or (frame_iscont(f) and frame_iscont_fficb(f)))
                   cf = cframe_raw(cframe_prev(cf));
                f = frame_prevd(f);
             }
@@ -174,7 +174,7 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
 #define VARNAMESTR(name, str)   str "\0"
                name = VARNAMEDEF(VARNAMESTR);
 #undef VARNAMESTR
-               if (--vn) while (*name++ || --vn);
+               if (--vn) while (*name++ or --vn);
             }
             return name;
          }
@@ -225,7 +225,7 @@ const char* lj_debug_uvname(GCproto* pt, uint32_t idx)
    const uint8_t* p = proto_uvinfo(pt);
    lj_assertX(idx < pt->sizeuv, "bad upvalue index");
    if (!p) return "";
-   if (idx) while (*p++ || --idx);
+   if (idx) while (*p++ or --idx);
    return (const char*)p;
 }
 
@@ -267,7 +267,7 @@ restart:
       BCOp op = bc_op(ins);
       BCReg ra = bc_a(ins);
       if (bcmode_a(op) == BCMbase) {
-         if (slot >= ra and (op != BC_KNIL || slot <= bc_d(ins)))
+         if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins)))
             return NULL;
       }
       else if (bcmode_a(op) == BCMdst and ra == slot) {
@@ -397,7 +397,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
    else if (*s == '@') {
       s++; len--;
       for (i = len; i > 0; i--)
-         if (s[i] == '/' || s[i] == '\\') {
+         if (s[i] == '/' or s[i] == '\\') {
             s += i + 1;
             break;
          }
@@ -464,7 +464,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
       frame = tvref(L->stack) + offset;
       if (size) nextframe = frame + size;
       lj_assertL(frame <= tvref(L->maxstack) &&
-         (!nextframe || nextframe <= tvref(L->maxstack)),
+         (!nextframe or nextframe <= tvref(L->maxstack)),
          "broken frame chain");
       fn = frame_func(frame);
       lj_assertL(fn->c.gct == ~LJ_TFUNC, "bad frame function");
@@ -479,7 +479,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
             lj_debug_shortname(ar->short_src, name, pt->firstline);
             ar->linedefined = (int)firstline;
             ar->lastlinedefined = (int)(firstline + pt->numline);
-            ar->what = (firstline || !pt->numline) ? "Lua" : "main";
+            ar->what = (firstline or !pt->numline) ? "Lua" : "main";
          }
          else {
             ar->source = "=[C]";
@@ -588,13 +588,13 @@ static int debug_putchunkname(SBuf* sb, GCproto* pt, int pathstrip)
       lj_buf_putb(sb, ']');
       return 0;
    }
-   if (*p == '=' || *p == '@') {
+   if (*p == '=' or *p == '@') {
       MSize len = name->len - 1;
       p++;
       if (pathstrip) {
          int i;
          for (i = len - 1; i >= 0; i--)
-            if (p[i] == '/' || p[i] == '\\') {
+            if (p[i] == '/' or p[i] == '\\') {
                len -= i + 1;
                p = p + i + 1;
                break;

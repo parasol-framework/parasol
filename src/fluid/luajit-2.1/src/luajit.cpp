@@ -167,13 +167,13 @@ static void createargtable(lua_State* L, char** argv, int argc, int argf)
 
 static int dofile(lua_State* L, const char* name)
 {
-   int status = luaL_loadfile(L, name) || docall(L, 0, 1);
+   int status = luaL_loadfile(L, name) or docall(L, 0, 1);
    return report(L, status);
 }
 
 static int dostring(lua_State* L, const char* s, const char* name)
 {
-   int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+   int status = luaL_loadbuffer(L, s, strlen(s), name) or docall(L, 0, 1);
    return report(L, status);
 }
 
@@ -585,6 +585,6 @@ int main(int argc, char** argv)
    status = lua_cpcall(L, pmain, NULL);
    report(L, status);
    lua_close(L);
-   return (status || smain.status > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
+   return (status or smain.status > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

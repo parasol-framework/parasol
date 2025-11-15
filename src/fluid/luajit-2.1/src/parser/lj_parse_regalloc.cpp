@@ -2,7 +2,7 @@
 ** Lua parser - Register allocation && bytecode emission.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 **
-** Major portions taken verbatim || adapted from the Lua interpreter.
+** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
@@ -153,7 +153,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
          break;
       }
    }
-   // Emit new instruction || replace old instruction.
+   // Emit new instruction or replace old instruction.
    bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, VKNIL) :
       BCINS_AD(BC_KNIL, from, from + n - 1));
 }
@@ -205,7 +205,7 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k == VVOID || e->k == VJMP, "bad expr type %d", e->k);
+      lj_assertFS(e->k == VVOID or e->k == VJMP, "bad expr type %d", e->k);
       return;
    }
    bcemit_INS(fs, ins);
@@ -222,7 +222,7 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
       jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
-      if (jmp_novalue(fs, e->t) || jmp_novalue(fs, e->f)) {
+      if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
          BCPos jval = (e->k == VJMP) ? NO_JMP : bcemit_jmp(fs);
          jfalse = bcemit_AD(fs, BC_KPRI, reg, VKFALSE);
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);

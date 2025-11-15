@@ -450,7 +450,7 @@ cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
 TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
 {
    Node* n = hashkey(t, key);
-   if (!tvisnil(&n->val) || t->hmask == 0) {
+   if (!tvisnil(&n->val) or t->hmask == 0) {
       Node* nodebase = noderef(t->node);
       Node* collide, * freenode = getfreetop(t, nodebase);
       lj_assertL(freenode >= nodebase and freenode <= nodebase + t->hmask + 1,

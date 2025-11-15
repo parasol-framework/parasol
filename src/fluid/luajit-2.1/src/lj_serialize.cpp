@@ -326,7 +326,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       if (ud == 0) {
          *w++ = SER_TAG_NULL;
       }
-      else if (LJ_32 || checku32(ud)) {
+      else if (LJ_32 or checku32(ud)) {
 #if LJ_BE && LJ_64
          ud = lj_bswap64(ud);
 #elif LJ_BE

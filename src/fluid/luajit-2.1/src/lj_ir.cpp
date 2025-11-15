@@ -95,7 +95,7 @@ static void lj_ir_growbot(jit_State* J)
    IRIns* baseir = J->irbuf + J->irbotlim;
    MSize szins = J->irtoplim - J->irbotlim;
    lj_assertJ(szins != 0, "zero IR size");
-   lj_assertJ(J->cur.nk == J->irbotlim || J->cur.nk - 1 == J->irbotlim,
+   lj_assertJ(J->cur.nk == J->irbotlim or J->cur.nk - 1 == J->irbotlim,
       "unexpected IR growth");
    if (J->cur.nins + (szins >> 1) < J->irtoplim) {
       // More than half of the buffer is free on top: shift up by a quarter.

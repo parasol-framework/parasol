@@ -16,13 +16,13 @@
 #include "lj_dispatch.h"
 #include "lj_prng.h"
 #endif
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 #include "lj_vm.h"
 #endif
 
 // -- OS-specific functions -----------------------------------------------
 
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 
 // Define this if you want to run LuaJIT with Valgrind.
 #ifdef LUAJIT_USE_VALGRIND
@@ -45,7 +45,7 @@ void lj_mcode_sync(void* start, void* end)
    sys_icache_invalidate(start, (char*)end - (char*)start);
 #elif LJ_TARGET_PPC
    lj_vm_cachesync(start, end);
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__) or defined(__clang__)
    __clear_cache(start, end);
 #else
 #error "Missing builtin to flush instruction cache"
@@ -225,7 +225,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
          void* p = mcode_alloc_at(J, hint, sz, MCPROT_GEN);
 
          if (mcode_validptr(p) &&
-            ((uintptr_t)p + sz - target < range || target - (uintptr_t)p < range))
+            ((uintptr_t)p + sz - target < range or target - (uintptr_t)p < range))
             return p;
          if (p) mcode_free(J, p, sz);  //  Free badly placed area.
       }
@@ -244,7 +244,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
 // All memory addresses are reachable by relative jumps.
 static void* mcode_alloc(jit_State* J, size_t sz)
 {
-#if defined(__OpenBSD__) || defined(__NetBSD__) || LJ_TARGET_UWP
+#if defined(__OpenBSD__) or defined(__NetBSD__) or LJ_TARGET_UWP
    // Allow better executable memory allocation for OpenBSD W^X mode.
    void* p = mcode_alloc_at(J, 0, sz, MCPROT_RUN);
    if (p and mcode_setprot(p, sz, MCPROT_GEN)) {

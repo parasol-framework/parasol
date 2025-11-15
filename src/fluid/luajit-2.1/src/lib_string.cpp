@@ -137,7 +137,7 @@ LJLIB_CF(string_split)
    GCtab* t;
    int32_t idx = 1;
 
-   if ((!sep) || (sep->len == 0)) {
+   if ((!sep) or (sep->len == 0)) {
       sepstr = " \t\n\r";  //  Default whitespace separators
       seplen = 4;
    }
@@ -165,7 +165,7 @@ LJLIB_CF(string_split)
       else {
          // Multi-character separator or whitespace
          for (const char* p = pos; p <= end - seplen; p++) {
-            if (seplen == 4 and (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+            if (seplen == 4 and (*p == ' ' or *p == '\t' or *p == '\n' or *p == '\r')) {
                found = p;
                break;
             }
@@ -215,11 +215,11 @@ LJLIB_CF(string_trim)
    }
 
    // Skip leading whitespace
-   while (start < end and (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
+   while (start < end and (*start == ' ' or *start == '\t' or *start == '\n' or *start == '\r'))
       start++;
 
    // Skip trailing whitespace
-   while (end > start and (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+   while (end > start and (end[-1] == ' ' or end[-1] == '\t' or end[-1] == '\n' or end[-1] == '\r'))
       end--;
 
    // If all whitespace, return empty string
@@ -253,7 +253,7 @@ LJLIB_CF(string_rtrim)
    }
 
    // Find end of non-whitespace
-   while (end > str and (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+   while (end > str and (end[-1] == ' ' or end[-1] == '\t' or end[-1] == '\n' or end[-1] == '\r'))
       end--;
 
    // Create right-trimmed string
@@ -340,7 +340,7 @@ LJLIB_CF(string_join)
          int isValidType = 0;
 
          // Check if we have a valid type to process
-         if (tvisstr(tv) || tvisnum(tv)) {
+         if (tvisstr(tv) or tvisnum(tv)) {
             isValidType = 1;
          }
 
@@ -512,7 +512,7 @@ LJLIB_CF(string_dump)
    int strip = L->base + 1 < L->top and tvistruecond(L->base + 1);
    SBuf* sb = lj_buf_tmp_(L);  //  Assumes lj_bcwrite() doesn't use tmpbuf.
    L->top = L->base + 1;
-   if (!isluafunc(fn) || lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip))
+   if (!isluafunc(fn) or lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip))
       lj_err_caller(L, LJ_ERR_STRDUMP);
    setstrV(L, L->top - 1, lj_buf_str(L, sb));
    lj_gc_check(L);
@@ -544,7 +544,7 @@ typedef struct MatchState {
 static int check_capture(MatchState* ms, int l)
 {
    l -= '1';
-   if (l < 0 || l >= ms->level || ms->capture[l].len == CAP_UNFINISHED)
+   if (l < 0 or l >= ms->level or ms->capture[l].len == CAP_UNFINISHED)
       lj_err_caller(ms->L, LJ_ERR_STRCAPI);
    return l;
 }
@@ -636,7 +636,7 @@ static const char* match(MatchState* ms, const char* s, const char* p);
 
 static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 {
-   if (*p == 0 || *(p + 1) == 0)
+   if (*p == 0 or *(p + 1) == 0)
       lj_err_caller(ms->L, LJ_ERR_STRPATU);
    if (*s != *p) {
       return NULL;
@@ -1005,8 +1005,8 @@ LJLIB_CF(string_gsub)
    int n = 0;
    MatchState ms;
    luaL_Buffer b;
-   if (!(tr == LUA_TNUMBER || tr == LUA_TSTRING ||
-      tr == LUA_TFUNCTION || tr == LUA_TTABLE))
+   if (!(tr == LUA_TNUMBER or tr == LUA_TSTRING ||
+      tr == LUA_TFUNCTION or tr == LUA_TTABLE))
       lj_err_arg(L, 3, LJ_ERR_NOSFT);
    luaL_buffinit(L, &b);
    ms.L = L;

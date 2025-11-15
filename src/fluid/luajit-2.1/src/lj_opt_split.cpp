@@ -8,7 +8,7 @@
 
 #include "lj_obj.h"
 
-#if LJ_HASJIT && (LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI))
+#if LJ_HASJIT && (LJ_SOFTFP32 or (LJ_32 && LJ_HASFFI))
 
 #include "lj_err.h"
 #include "lj_buf.h"
@@ -205,7 +205,7 @@ static IRRef split_bitshift(jit_State* J, IRRef1* hisubst,
    if (irref_isk(kref)) {  // Optimize constant shifts.
       int32_t k = (IR(kref)->i & 63);
       IRRef lo = nir->op1, hi = hisubst[ir->op1];
-      if (op == IR_BROL || op == IR_BROR) {
+      if (op == IR_BROL or op == IR_BROR) {
          if (op == IR_BROR) k = (-k & 63);
          if (k >= 32) { IRRef t = lo; lo = hi; hi = t; k -= 32; }
          if (k == 0) {
@@ -239,7 +239,7 @@ static IRRef split_bitshift(jit_State* J, IRRef1* hisubst,
          }
          else {
             IRRef t1 = ir->prev, t2;
-            lj_assertJ(op == IR_BSHR || op == IR_BSAR, "bad usage");
+            lj_assertJ(op == IR_BSHR or op == IR_BSAR, "bad usage");
             nir->o = IR_BSHR;
             t2 = split_emit(J, IRTI(IR_BSHL), hi, lj_ir_kint(J, (-k & 31)));
             ir->prev = split_emit(J, IRTI(IR_BOR), t1, t2);
@@ -256,7 +256,7 @@ static IRRef split_bitshift(jit_State* J, IRRef1* hisubst,
             return lo;
          }
          else {
-            lj_assertJ(op == IR_BSHR || op == IR_BSAR, "bad usage");
+            lj_assertJ(op == IR_BSHR or op == IR_BSAR, "bad usage");
             if (k == 32) {
                J->cur.nins--;
                ir->prev = hi;
@@ -282,7 +282,7 @@ static IRRef split_bitop(jit_State* J, IRRef1* hisubst,
    IRRef hi, kref = nir->op2;
    if (irref_isk(kref)) {  // Optimize bit operations with lo constant.
       int32_t k = IR(kref)->i;
-      if (k == 0 || k == -1) {
+      if (k == 0 or k == -1) {
          if (op == IR_BAND) k = ~k;
          if (k == 0) {
             J->cur.nins--;
@@ -302,7 +302,7 @@ static IRRef split_bitop(jit_State* J, IRRef1* hisubst,
    kref = hisubst[ir->op2];
    if (irref_isk(kref)) {  // Optimize bit operations with hi constant.
       int32_t k = IR(kref)->i;
-      if (k == 0 || k == -1) {
+      if (k == 0 or k == -1) {
          if (op == IR_BAND) k = ~k;
          if (k == 0) {
             return hi;
@@ -356,7 +356,7 @@ static void split_ir(jit_State* J)
    // Process constants and fixed references.
    for (ref = nk; ref <= REF_BASE; ref++) {
       IRIns* ir = &oir[ref];
-      if ((LJ_SOFTFP and ir->o == IR_KNUM) || ir->o == IR_KINT64) {
+      if ((LJ_SOFTFP and ir->o == IR_KNUM) or ir->o == IR_KINT64) {
          // Split up 64 bit constant.
          TValue tv = *ir_k64(ir);
          ir->prev = lj_ir_kint(J, (int32_t)tv.u32.lo);
@@ -471,14 +471,14 @@ static void split_ir(jit_State* J)
             IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
             UNUSED(st);
 #if LJ_32 && LJ_HASFFI
-            if (st == IRT_I64 || st == IRT_U64) {
+            if (st == IRT_I64 or st == IRT_U64) {
                hi = split_call_l(J, hisubst, oir, ir,
                   st == IRT_I64 ? IRCALL_fp64_l2d : IRCALL_fp64_ul2d);
                break;
             }
 #endif
             lj_assertJ(st == IRT_INT ||
-               (LJ_32 && LJ_HASFFI && (st == IRT_U32 || st == IRT_FLOAT)),
+               (LJ_32 && LJ_HASFFI && (st == IRT_U32 or st == IRT_FLOAT)),
                "bad source type for CONV");
             nir->o = IR_CALLN;
 #if LJ_32 && LJ_HASFFI
@@ -509,7 +509,7 @@ static void split_ir(jit_State* J)
             hi = nir->op2;
             break;
          default:
-            lj_assertJ(ir->o <= IR_NE || ir->o == IR_MIN || ir->o == IR_MAX,
+            lj_assertJ(ir->o <= IR_NE or ir->o == IR_MIN or ir->o == IR_MAX,
                "bad IR op %d", ir->o);
             hi = split_emit(J, IRTG(IR_HIOP, IRT_SOFTFP),
                hisubst[ir->op1], hisubst[ir->op2]);
@@ -596,11 +596,11 @@ static void split_ir(jit_State* J)
                   hi = split_emit(J, IRTI(IR_HIOP), nref, nref);
                }
 #else
-               if (st == IRT_NUM || st == IRT_FLOAT) {  // FP to 64 bit int conv.
+               if (st == IRT_NUM or st == IRT_FLOAT) {  // FP to 64 bit int conv.
                   hi = split_emit(J, IRTI(IR_HIOP), nir->op1, nref);
                }
 #endif
-               else if (st == IRT_I64 || st == IRT_U64) {  // 64/64 bit cast.
+               else if (st == IRT_I64 or st == IRT_U64) {  // 64/64 bit cast.
                   // Drop cast, since assembler doesn't care. But fwd both parts.
                   hi = hiref;
                   goto fwdlo;
@@ -627,7 +627,7 @@ static void split_ir(jit_State* J)
                   nir->op1 == nir->op2)
                   J->cur.nins--;  //  Drop useless PHIs.
                hiref2 = hisubst[ir->op2];
-               if (!((irref_isk(hiref) and irref_isk(hiref2)) || hiref == hiref2))
+               if (!((irref_isk(hiref) and irref_isk(hiref2)) or hiref == hiref2))
                   split_emit(J, IRTI(IR_PHI), hiref, hiref2);
                break;
             }
@@ -664,7 +664,7 @@ static void split_ir(jit_State* J)
 #endif
                ir->prev = split_emit(J, IRTI(IR_CALLN), tmp, IRCALL_lj_vm_tobit);
             }
-            else if (ir->o == IR_TOSTR || ir->o == IR_TMPREF) {
+            else if (ir->o == IR_TOSTR or ir->o == IR_TMPREF) {
                if (hisubst[ir->op1]) {
                   if (irref_isk(ir->op1))
                      nir->op1 = ir->op1;
@@ -672,7 +672,7 @@ static void split_ir(jit_State* J)
                      split_emit(J, IRT(IR_HIOP, IRT_NIL), hisubst[ir->op1], nref);
                }
             }
-            else if (ir->o == IR_HREF || ir->o == IR_NEWREF) {
+            else if (ir->o == IR_HREF or ir->o == IR_NEWREF) {
                if (irref_isk(ir->op2) and hisubst[ir->op2])
                   nir->op2 = ir->op2;
             }
@@ -681,7 +681,7 @@ static void split_ir(jit_State* J)
                if (ir->o == IR_CONV) {  // See above, too.
                   IRType st = (IRType)(ir->op2 & IRCONV_SRCMASK);
 #if LJ_32 && LJ_HASFFI
-                  if (st == IRT_I64 || st == IRT_U64) {  // Conversion from 64 bit int.
+                  if (st == IRT_I64 or st == IRT_U64) {  // Conversion from 64 bit int.
 #if LJ_SOFTFP
                      if (irt_isfloat(ir->t)) {
                         split_call_l(J, hisubst, oir, ir,
@@ -721,7 +721,7 @@ static void split_ir(jit_State* J)
                   else
 #endif
 #if LJ_SOFTFP
-                     if (st == IRT_NUM || (LJ_32 and LJ_HASFFI and st == IRT_FLOAT)) {
+                     if (st == IRT_NUM or (LJ_32 and LJ_HASFFI and st == IRT_FLOAT)) {
                         if (irt_isguard(ir->t)) {
                            lj_assertJ(st == IRT_NUM and irt_isint(ir->t), "bad CONV types");
                            J->cur.nins--;
@@ -826,7 +826,7 @@ static TValue* cpsplit(lua_State* L, lua_CFunction dummy, void* ud)
    return NULL;
 }
 
-#if defined(LUA_USE_ASSERT) || LJ_SOFTFP
+#if defined(LUA_USE_ASSERT) or LJ_SOFTFP
 // Slow, but sure way to check whether a SPLIT pass is needed.
 static int split_needsplit(jit_State* J)
 {
@@ -844,8 +844,8 @@ static int split_needsplit(jit_State* J)
    }
    for (ref = J->chain[IR_CONV]; ref; ref = IR(ref)->prev) {
       IRType st = (IR(ref)->op2 & IRCONV_SRCMASK);
-      if ((LJ_SOFTFP and (st == IRT_NUM || st == IRT_FLOAT)) ||
-         st == IRT_I64 || st == IRT_U64)
+      if ((LJ_SOFTFP and (st == IRT_NUM or st == IRT_FLOAT)) ||
+         st == IRT_I64 or st == IRT_U64)
          return 1;
    }
    return 0;  //  Nope.

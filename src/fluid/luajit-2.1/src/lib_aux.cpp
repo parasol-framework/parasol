@@ -202,7 +202,7 @@ static void adjuststack(luaL_Buffer* B)
       size_t toplen = lua_strlen(L, -1);
       do {
          size_t l = lua_strlen(L, -(toget + 1));
-         if (!(B->lvl - toget + 1 >= LUA_MINSTACK / 2 || toplen > l))
+         if (!(B->lvl - toget + 1 >= LUA_MINSTACK / 2 or toplen > l))
             break;
          toplen += l;
          toget++;
@@ -276,7 +276,7 @@ LUALIB_API void luaL_buffinit(lua_State* L, luaL_Buffer* B)
 
 // Convert a stack index to an absolute index.
 #define abs_index(L, i) \
-  ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
+  ((i) > 0 or (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 
 LUALIB_API int luaL_ref(lua_State* L, int t)
 {

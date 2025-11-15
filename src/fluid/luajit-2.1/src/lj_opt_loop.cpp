@@ -111,12 +111,12 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
    for (i = 0, j = 0; i < nphi; i++) {
       IRRef lref = phi[i];
       IRRef rref = subst[lref];
-      if (lref == rref || rref == REF_DROP) {  // Invariants are redundant.
+      if (lref == rref or rref == REF_DROP) {  // Invariants are redundant.
          irt_clearphi(IR(lref)->t);
       }
       else {
          phi[j++] = (IRRef1)lref;
-         if (!(IR(rref)->op1 == lref || IR(rref)->op2 == lref)) {
+         if (!(IR(rref)->op1 == lref or IR(rref)->op2 == lref)) {
             // Quick check for simple recurrences failed, need pass2.
             irt_setmark(IR(lref)->t);
             passx = 1;
@@ -161,7 +161,7 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
       while (!irref_isk(ref) and ref != subst[ref]) {
          IRIns* ir = IR(ref);
          irt_clearmark(ir->t);  //  Unmark potential uses, too.
-         if (irt_isphi(ir->t) || irt_ispri(ir->t))
+         if (irt_isphi(ir->t) or irt_ispri(ir->t))
             break;
          irt_setphi(ir->t);
          if (nphi >= LJ_MAX_PHI)

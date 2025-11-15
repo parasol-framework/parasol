@@ -156,8 +156,8 @@ static void LJ_FASTCALL recff_nyi(jit_State* J, RecordFFData* rd)
       if (J->framedepth and frame_islua(J->L->base - 1)) {
          BCOp op = bc_op(*frame_pc(J->L->base - 1));
          // Stitched trace cannot start with *M op with variable # of args.
-         if (!(op == BC_CALLM || op == BC_CALLMT ||
-            op == BC_RETM || op == BC_TSETM)) {
+         if (!(op == BC_CALLM or op == BC_CALLMT ||
+            op == BC_RETM or op == BC_TSETM)) {
             switch (J->fn->c.ffid) {
             case FF_error:
             case FF_debug_sethook:
@@ -237,7 +237,7 @@ static void LJ_FASTCALL recff_setmetatable(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
    TRef mt = J->base[1];
-   if (tref_istab(tr) and (tref_istab(mt) || (mt and tref_isnil(mt)))) {
+   if (tref_istab(tr) and (tref_istab(mt) or (mt and tref_isnil(mt)))) {
       TRef fref, mtref;
       RecordIndex ix;
       ix.tab = tr;
@@ -355,7 +355,7 @@ static void LJ_FASTCALL recff_tonumber(jit_State* J, RecordFFData* rd)
    TRef base = J->base[1];
    if (tr and !tref_isnil(base)) {
       base = lj_opt_narrow_toint(J, base);
-      if (!tref_isk(base) || IR(tref_ref(base))->i != 10) {
+      if (!tref_isk(base) or IR(tref_ref(base))->i != 10) {
          recff_nyiu(J, rd);
          return;
       }
@@ -459,7 +459,7 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
-   if (!((LJ_52 || (LJ_HASFFI and tref_iscdata(tr))) &&
+   if (!((LJ_52 or (LJ_HASFFI and tref_iscdata(tr))) &&
       recff_metacall(J, rd, (MMS)(MM_pairs + rd->data)))) {
       if (tref_istab(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));

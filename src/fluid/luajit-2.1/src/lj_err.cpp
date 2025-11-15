@@ -363,7 +363,7 @@ static void err_raise_ext(global_State* g, int errcode)
    RaiseException(LJ_EXCODE_MAKE(errcode), 1 /* EH_NONCONTINUABLE */, 0, NULL);
 }
 
-#elif !LJ_NO_UNWIND and (defined(__GNUC__) || defined(__clang__))
+#elif !LJ_NO_UNWIND and (defined(__GNUC__) or defined(__clang__))
 
 /*
 ** We have to use our own definitions instead of the mandatory (!) unwind.h,
@@ -496,7 +496,7 @@ static int err_unwind_jit(int version, int actions,
    uint64_t uexclass, _Unwind_Exception* uex, _Unwind_Context* ctx)
 {
    // NYI: FFI C++ exception interoperability.
-   if (version != 1 || !LJ_UEXCLASS_CHECK(uexclass))
+   if (version != 1 or !LJ_UEXCLASS_CHECK(uexclass))
       return _URC_FATAL_PHASE1_ERROR;
    if ((actions & _UA_SEARCH_PHASE)) {
       return _URC_HANDLER_FOUND;
@@ -658,7 +658,7 @@ LJ_FUNCA int lj_err_unwind_arm(int state, _Unwind_Control_Block* ucb,
          setstrV(L, L->top++, lj_err_str(L, LJ_ERR_ERRCPP));
       }
       cf = err_unwind(L, cf, errcode);
-      if ((state & _US_FORCE_UNWIND) || cf == NULL) break;
+      if ((state & _US_FORCE_UNWIND) or cf == NULL) break;
       _Unwind_SetGR(ctx, 15, (uint32_t)lj_vm_unwind_ext);
       _Unwind_SetGR(ctx, 0, (uint32_t)ucb);
       _Unwind_SetGR(ctx, 1, (uint32_t)errcode);
@@ -840,7 +840,7 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
       TValue* errfunc = restorestack(L, ef);
       TValue* top = L->top;
       lj_trace_abort(G(L));
-      if (!tvisfunc(errfunc) || L->status == LUA_ERRERR) {
+      if (!tvisfunc(errfunc) or L->status == LUA_ERRERR) {
          setstrV(L, top - 1, lj_err_str(L, LJ_ERR_ERRERR));
          lj_err_throw(L, LUA_ERRERR);
       }

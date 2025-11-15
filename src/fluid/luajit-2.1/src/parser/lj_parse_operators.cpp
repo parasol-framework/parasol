@@ -2,7 +2,7 @@
 ** Lua parser - Operator bytecode emission.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 **
-** Major portions taken verbatim || adapted from the Lua interpreter.
+** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
@@ -13,7 +13,7 @@ static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    TValue o;
    lua_Number n;
-   if (!expr_isnumk_nojump(e1) || !expr_isnumk_nojump(e2)) return 0;
+   if (!expr_isnumk_nojump(e1) or !expr_isnumk_nojump(e2)) return 0;
    n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), (int)opr - OPR_ADD);
    setnumV(&o, n);
    if (tvisnan(&o) or tvismzero(&o)) return 0;  // Avoid NaN && -0 as consts.
@@ -49,7 +49,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       else
          rc = expr_toanyreg(fs, e2);
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
-      lj_assertFS(expr_isnumk(e1) || e1->k == VNONRELOC,
+      lj_assertFS(expr_isnumk(e1) or e1->k == VNONRELOC,
          "bad expr type %d", e1->k);
       expr_toval(fs, e1);
       // Avoid two consts to satisfy bytecode constraints.
@@ -74,7 +74,7 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    ExpDesc* eret = e1;
    BCIns ins;
    expr_toval(fs, e1);
-   if (opr == OPR_EQ || opr == OPR_NE) {
+   if (opr == OPR_EQ or opr == OPR_NE) {
       BCOp op = opr == OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
@@ -134,7 +134,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
-      if (e->k == VKNIL || e->k == VKFALSE)
+      if (e->k == VKNIL or e->k == VKFALSE)
          pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
       else if (e->k == VKNUM && expr_numiszero(e))
          pc = NO_JMP;  // Zero is falsey, evaluate RHS
@@ -142,7 +142,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          pc = NO_JMP;  // Empty string is falsey, evaluate RHS
       else if (e->k == VJMP)
          pc = e->u.s.info;
-      else if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
+      else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) {
          // Truthy constant - load to register && emit jump to skip RHS
          bcreg_reserve(fs, 1);
          expr_toreg_nobranch(fs, e, fs->freereg - 1);
@@ -171,7 +171,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
    else if (op == OPR_CONCAT) {
       expr_tonextreg(fs, e);
    }
-   else if (op == OPR_EQ || op == OPR_NE) {
+   else if (op == OPR_EQ or op == OPR_NE) {
       if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
    }
    else {
@@ -305,7 +305,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_discharge(fs, e);
 
    // Handle compile-time constants
-   if (e->k == VKNIL || e->k == VKFALSE) {
+   if (e->k == VKNIL or e->k == VKFALSE) {
       // Falsey constant - set to false
       expr_init(e, VKFALSE, 0);
       return;
@@ -323,7 +323,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
       return;
    }
 
-   if (e->k == VKTRUE || (e->k == VKNUM && !expr_numiszero(e)) ||
+   if (e->k == VKTRUE or (e->k == VKNUM && !expr_numiszero(e)) ||
       (e->k == VKSTR && e->u.sval && e->u.sval->len > 0)) {
       // Truthy constant - set to true
       expr_init(e, VKTRUE, 0);
@@ -445,7 +445,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
          expr_discharge(fs, e1);
 
-         if (e1->k == VNONRELOC || e1->k == VRELOCABLE) {
+         if (e1->k == VNONRELOC or e1->k == VRELOCABLE) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
             ExpDesc nilv, falsev, zerov, emptyv;
@@ -551,8 +551,8 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       e1->k = VRELOCABLE;
    }
    else {
-      lj_assertFS(op == OPR_NE || op == OPR_EQ ||
-         op == OPR_LT || op == OPR_GE || op == OPR_LE || op == OPR_GT,
+      lj_assertFS(op == OPR_NE or op == OPR_EQ ||
+         op == OPR_LT or op == OPR_GE or op == OPR_LE or op == OPR_GT,
          "bad binop %d", op);
       bcemit_comp(fs, op, e1, e2);
    }
@@ -568,11 +568,11 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
       jmp_dropval(fs, e->f);
       jmp_dropval(fs, e->t);
       expr_discharge(fs, e);
-      if (e->k == VKNIL || e->k == VKFALSE) {
+      if (e->k == VKNIL or e->k == VKFALSE) {
          e->k = VKTRUE;
          return;
       }
-      else if (expr_isk(e) || (LJ_HASFFI && e->k == VKCDATA)) {
+      else if (expr_isk(e) or (LJ_HASFFI && e->k == VKCDATA)) {
          e->k = VKFALSE;
          return;
       }
@@ -591,7 +591,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
       }
    }
    else {
-      lj_assertFS(op == BC_UNM || op == BC_LEN, "bad unop %d", op);
+      lj_assertFS(op == BC_UNM or op == BC_LEN, "bad unop %d", op);
       if (op == BC_UNM && !expr_hasjump(e)) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k == VKCDATA) {  // Fold in-place since cdata is not interned.

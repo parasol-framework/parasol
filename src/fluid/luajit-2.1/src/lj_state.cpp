@@ -95,7 +95,7 @@ void lj_state_shrinkstack(lua_State* L, MSize used)
    if (4 * used < L->stacksize &&
       2 * (LJ_STACK_START + LJ_STACK_EXTRA) < L->stacksize &&
       // Don't shrink stack of live trace.
-      (tvref(G(L)->jit_base) == NULL || obj2gco(L) != gcref(G(L)->cur_L)))
+      (tvref(G(L)->jit_base) == NULL or obj2gco(L) != gcref(G(L)->cur_L)))
       resizestack(L, L->stacksize >> 1);
 }
 
@@ -217,7 +217,7 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    }
 #endif
    GG = (GG_State*)allocf(allocd, NULL, 0, sizeof(GG_State));
-   if (GG == NULL || !checkptrGC(GG)) return NULL;
+   if (GG == NULL or !checkptrGC(GG)) return NULL;
    memset(GG, 0, sizeof(GG_State));
    L = &GG->L;
    g = &GG->g;

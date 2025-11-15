@@ -197,8 +197,8 @@ static int CALL_MUNMAP(void* ptr, size_t size)
    while (size) {
       if (VirtualQuery(cptr, &minfo, sizeof(minfo)) == 0)
          return -1;
-      if (minfo.BaseAddress != cptr || minfo.AllocationBase != cptr ||
-         minfo.State != MEM_COMMIT || minfo.RegionSize > size)
+      if (minfo.BaseAddress != cptr or minfo.AllocationBase != cptr ||
+         minfo.State != MEM_COMMIT or minfo.RegionSize > size)
          return -1;
       if (VirtualFree(cptr, 0, MEM_RELEASE) == 0)
          return -1;
@@ -332,7 +332,7 @@ static void* mmap_plain(size_t size)
 #define CALL_MMAP(prng, size)   mmap_plain(size)
 #endif
 
-#if LJ_64 && !LJ_GC64 && ((defined(__FreeBSD__) && __FreeBSD__ < 10) || defined(__FreeBSD_kernel__)) && !LJ_TARGET_PS4
+#if LJ_64 && !LJ_GC64 && ((defined(__FreeBSD__) && __FreeBSD__ < 10) or defined(__FreeBSD_kernel__)) && !LJ_TARGET_PS4
 
 #include <sys/resource.h>
 
@@ -367,7 +367,7 @@ static void* CALL_MREMAP_(void* ptr, size_t osz, size_t nsz, int flags)
 #define CALL_MREMAP(addr, osz, nsz, mv) CALL_MREMAP_((addr), (osz), (nsz), (mv))
 #define CALL_MREMAP_NOMOVE   0
 #define CALL_MREMAP_MAYMOVE   1
-#if LJ_64 && (!LJ_GC64 || LJ_TARGET_ARM64)
+#if LJ_64 && (!LJ_GC64 or LJ_TARGET_ARM64)
 #define CALL_MREMAP_MV      CALL_MREMAP_NOMOVE
 #else
 #define CALL_MREMAP_MV      CALL_MREMAP_MAYMOVE

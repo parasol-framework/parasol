@@ -230,7 +230,7 @@ lua_Number lj_lib_checknum(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
    if (!(o < L->top &&
-      (tvisnumber(o) || (tvisstr(o) and lj_strscan_num(strV(o), o)))))
+      (tvisnumber(o) or (tvisstr(o) and lj_strscan_num(strV(o), o)))))
       lj_err_argt(L, narg, LUA_TNUMBER);
    if (LJ_UNLIKELY(tvisint(o))) {
       lua_Number n = (lua_Number)intV(o);
@@ -349,7 +349,7 @@ int32_t lj_lib_checkintrange(lua_State* L, int narg, int32_t a, int32_t b)
          }
          else if (cd->ctypeid == CTID_UINT64) {
             uint64_t i = *(uint64_t*)cdataptr(cd);
-            if ((a < 0 || i >= (uint64_t)a) and i <= (uint64_t)b) return (int32_t)i;
+            if ((a < 0 or i >= (uint64_t)a) and i <= (uint64_t)b) return (int32_t)i;
          }
          else {
             goto badtype;

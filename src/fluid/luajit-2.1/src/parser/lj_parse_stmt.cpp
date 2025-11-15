@@ -212,7 +212,7 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
-      if (!(op == OPR_BAND || op == OPR_BOR || op == OPR_BXOR || op == OPR_SHL || op == OPR_SHR))
+      if (!(op == OPR_BAND or op == OPR_BOR or op == OPR_BXOR or op == OPR_SHL or op == OPR_SHR))
          expr_tonextreg(fs, &lh->v);
       nexps = expr_list(ls, &rh);
       checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
@@ -271,7 +271,7 @@ static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
    bcemit_store(ls->fs, &lh->v, &e);
 }
 
-// Parse call statement || assignment.
+// Parse call statement or assignment.
 static void parse_call_assign(LexState* ls)
 {
    FuncState* fs = ls->fs;
@@ -282,8 +282,8 @@ static void parse_call_assign(LexState* ls)
    if (vl.v.k == VCALL) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.v), 1);  // No results.
    }
-   else if (ls->tok == TK_cadd || ls->tok == TK_csub || ls->tok == TK_cmul ||
-      ls->tok == TK_cdiv || ls->tok == TK_cmod || ls->tok == TK_cconcat ||
+   else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul ||
+      ls->tok == TK_cdiv or ls->tok == TK_cmod or ls->tok == TK_cconcat ||
       ls->tok == TK_cif_empty) {
       vl.prev = NULL;
       assign_compound(ls, &vl, ls->tok);
@@ -452,10 +452,10 @@ static void parse_return(LexState* ls)
    FuncState* fs = ls->fs;
    lj_lex_next(ls);  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_isend(ls->tok) || ls->tok == ';') {  // Bare return.
+   if (parse_isend(ls->tok) or ls->tok == ';') {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
-   else {  // Return with one || more values.
+   else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
       BCReg nret = expr_list(ls, &e);
       if (nret == 1) {  // Return one result.
@@ -710,7 +710,7 @@ static void parse_for(LexState* ls, BCLine line)
    varname = lex_str(ls);  // Get first variable name.
    if (ls->tok == '=')
       parse_for_num(ls, varname, line);
-   else if (ls->tok == ',' || ls->tok == TK_in)
+   else if (ls->tok == ',' or ls->tok == TK_in)
       parse_for_iter(ls, varname);
    else
       err_syntax(ls, LJ_ERR_XFOR);
@@ -722,7 +722,7 @@ static void parse_for(LexState* ls, BCLine line)
 static BCPos parse_then(LexState* ls)
 {
    BCPos condexit;
-   lj_lex_next(ls);  // Skip 'if' || 'elseif'.
+   lj_lex_next(ls);  // Skip 'if' or 'elseif'.
    condexit = expr_cond(ls);
    lex_check(ls, TK_then);
    parse_block(ls);

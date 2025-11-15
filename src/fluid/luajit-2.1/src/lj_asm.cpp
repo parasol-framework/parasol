@@ -121,8 +121,8 @@ typedef struct ASMState {
 #define neverfuse(as)      (as->fuseref == FUSE_DISABLED)
 #define canfuse(as, ir)      (!neverfuse(as) and !irt_isphi((ir)->t))
 #define opisfusableload(o) \
-  ((o) == IR_ALOAD || (o) == IR_HLOAD || (o) == IR_ULOAD || \
-   (o) == IR_FLOAD || (o) == IR_XLOAD || (o) == IR_SLOAD || (o) == IR_VLOAD)
+  ((o) == IR_ALOAD or (o) == IR_HLOAD or (o) == IR_ULOAD or \
+   (o) == IR_FLOAD or (o) == IR_XLOAD or (o) == IR_SLOAD or (o) == IR_VLOAD)
 
 // Sparse limit checks using a red zone before the actual limit.
 #define MCLIM_REDZONE   64
@@ -256,7 +256,7 @@ static void ra_dprintf(ASMState* as, const char* fmt, ...)
             lj_assertA(0, "bad register %d for debug format \"%s\"", r, fmt);
          }
       }
-      else if (e[1] == 'f' || e[1] == 'i') {
+      else if (e[1] == 'f' or e[1] == 'i') {
          IRRef ref;
          if (e[1] == 'f')
             ref = va_arg(argp, IRRef);
@@ -311,7 +311,7 @@ static void ra_dprintf(ASMState* as, const char* fmt, ...)
 #define ra_weak(as, r)      rset_set(as->weakset, (r))
 #define ra_noweak(as, r)   rset_clear(as->weakset, (r))
 
-#define ra_used(ir)      (ra_hasreg((ir)->r) || ra_hasspill((ir)->s))
+#define ra_used(ir)      (ra_hasreg((ir)->r) or ra_hasspill((ir)->s))
 
 // Setup register allocator.
 static void ra_setup(ASMState* as)
@@ -376,14 +376,14 @@ static Reg ra_rematk(ASMState* as, IRRef ref)
       else if (ir->o == IR_KGC) {
          emit_loadu64(as, r, (uintptr_t)ir_kgc(ir));
       }
-      else if (ir->o == IR_KPTR || ir->o == IR_KKPTR) {
+      else if (ir->o == IR_KPTR or ir->o == IR_KKPTR) {
          emit_loadu64(as, r, (uintptr_t)ir_kptr(ir));
 #endif
 #endif
       }
       else {
-         lj_assertA(ir->o == IR_KINT || ir->o == IR_KGC ||
-            ir->o == IR_KPTR || ir->o == IR_KKPTR || ir->o == IR_KNULL,
+         lj_assertA(ir->o == IR_KINT or ir->o == IR_KGC ||
+            ir->o == IR_KPTR or ir->o == IR_KKPTR or ir->o == IR_KNULL,
             "rematk of bad IR op %d", ir->o);
          emit_loadi(as, r, ir->i);
       }
@@ -471,14 +471,14 @@ static Reg ra_evict(ASMState* as, RegSet allow)
    IRRef ref;
    RegCost cost = ~(RegCost)0;
    lj_assertA(allow != RSET_EMPTY, "evict from empty set");
-   if (RID_NUM_FPR == 0 || allow < RID2RSET(RID_MAX_GPR)) {
+   if (RID_NUM_FPR == 0 or allow < RID2RSET(RID_MAX_GPR)) {
       GPRDEF(MINCOST)
    }
    else {
       FPRDEF(MINCOST)
    }
    ref = regcost_ref(cost);
-   lj_assertA(ra_iskref(ref) || (ref >= as->T->nk and ref < as->T->nins),
+   lj_assertA(ra_iskref(ref) or (ref >= as->T->nk and ref < as->T->nins),
       "evict of out-of-range IR %04d", ref - REF_BIAS);
    // Preferably pick any weak ref instead of a non-weak, non-const ref.
    if (!irref_isk(ref) and (as->weakset & allow)) {
@@ -582,7 +582,7 @@ static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow)
 #if LJ_GC64
             (ir->o == IR_KINT and k == ir->i) ||
                (ir->o == IR_KGC and k == (intptr_t)ir_kgc(ir)) ||
-               ((ir->o == IR_KPTR || ir->o == IR_KKPTR) &&
+               ((ir->o == IR_KPTR or ir->o == IR_KKPTR) &&
                   k == (intptr_t)ir_kptr(ir))
 #else
                (ir->o != IR_KINT64 and k == ir->i)
@@ -777,7 +777,7 @@ static void ra_left(ASMState* as, Reg dest, IRRef lref)
       if (irref_isk(lref)) {
          if (ir->o == IR_KNUM) {
             // FP remat needs a load except for +0. Still better than eviction.
-            if (tvispzero(ir_knum(ir)) || !(as->freeset & RSET_FPR)) {
+            if (tvispzero(ir_knum(ir)) or !(as->freeset & RSET_FPR)) {
                emit_loadk64(as, dest, ir);
                return;
             }
@@ -788,15 +788,15 @@ static void ra_left(ASMState* as, Reg dest, IRRef lref)
             return;
 #if LJ_GC64
          }
-         else if (ir->o == IR_KGC || ir->o == IR_KPTR || ir->o == IR_KKPTR) {
+         else if (ir->o == IR_KGC or ir->o == IR_KPTR or ir->o == IR_KKPTR) {
             emit_loadk64(as, dest, ir);
             return;
 #endif
 #endif
          }
          else if (ir->o != IR_KPRI) {
-            lj_assertA(ir->o == IR_KINT || ir->o == IR_KGC ||
-               ir->o == IR_KPTR || ir->o == IR_KKPTR || ir->o == IR_KNULL,
+            lj_assertA(ir->o == IR_KINT or ir->o == IR_KGC ||
+               ir->o == IR_KPTR or ir->o == IR_KKPTR or ir->o == IR_KNULL,
                "K%03d has bad IR op %d", REF_BIAS - lref, ir->o);
             emit_loadi(as, dest, ir->i);
             return;
@@ -828,7 +828,7 @@ static void ra_leftov(ASMState* as, Reg dest, IRRef lref)
    if (ra_noreg(left)) {
       ra_sethint(ir->r, dest);  //  Propagate register hint.
       left = ra_allocref(as, lref,
-         (LJ_SOFTFP || dest < RID_MAX_GPR) ? RSET_GPR : RSET_FPR);
+         (LJ_SOFTFP or dest < RID_MAX_GPR) ? RSET_GPR : RSET_FPR);
    }
    ra_noweak(as, left);
    if (dest != left) {
@@ -916,10 +916,10 @@ static int asm_snap_canremat(ASMState* as)
 static int asm_sunk_store(ASMState* as, IRIns* ira, IRIns* irs)
 {
    if (irs->s == 255) {
-      if (irs->o == IR_ASTORE || irs->o == IR_HSTORE ||
-         irs->o == IR_FSTORE || irs->o == IR_XSTORE) {
+      if (irs->o == IR_ASTORE or irs->o == IR_HSTORE ||
+         irs->o == IR_FSTORE or irs->o == IR_XSTORE) {
          IRIns* irk = IR(irs->op1);
-         if (irk->o == IR_AREF || irk->o == IR_HREFK)
+         if (irk->o == IR_AREF or irk->o == IR_HREFK)
             irk = IR(irk->op1);
          return (IR(irk->op1) == ira);
       }
@@ -950,12 +950,12 @@ static void asm_snap_alloc1(ASMState* as, IRRef ref)
 #endif
          {  // Allocate stored values for TNEW, TDUP and CNEW.
             IRIns* irs;
-            lj_assertA(ir->o == IR_TNEW || ir->o == IR_TDUP || ir->o == IR_CNEW,
+            lj_assertA(ir->o == IR_TNEW or ir->o == IR_TDUP or ir->o == IR_CNEW,
                "sink of IR %04d has bad op %d", ref - REF_BIAS, ir->o);
             for (irs = IR(as->snapref - 1); irs > ir; irs--)
                if (irs->r == RID_SINK and asm_sunk_store(as, ir, irs)) {
-                  lj_assertA(irs->o == IR_ASTORE || irs->o == IR_HSTORE ||
-                     irs->o == IR_FSTORE || irs->o == IR_XSTORE,
+                  lj_assertA(irs->o == IR_ASTORE or irs->o == IR_HSTORE ||
+                     irs->o == IR_FSTORE or irs->o == IR_XSTORE,
                      "sunk store IR %04d has bad op %d",
                      (int)(irs - as->ir) - REF_BIAS, irs->o);
                   asm_snap_alloc1(as, irs->op2);
@@ -969,8 +969,8 @@ static void asm_snap_alloc1(ASMState* as, IRRef ref)
          if (ir->o == IR_CONV and ir->op2 == IRCONV_NUM_INT) {
             IRIns* irc;
             for (irc = IR(as->curins); irc > ir; irc--)
-               if ((irc->op1 == ref || irc->op2 == ref) &&
-                  !(irc->r == RID_SINK || irc->r == RID_SUNK))
+               if ((irc->op1 == ref or irc->op2 == ref) &&
+                  !(irc->r == RID_SINK or irc->r == RID_SUNK))
                   goto nosink;  //  Don't sink conversion if result is used.
             asm_snap_alloc1(as, ir->op1);
             return;
@@ -1171,8 +1171,8 @@ static void asm_gcstep(ASMState* as, IRIns* ir)
 {
    IRIns* ira;
    for (ira = IR(as->stopins + 1); ira < ir; ira++)
-      if ((ira->o == IR_TNEW || ira->o == IR_TDUP ||
-         (LJ_HASFFI and (ira->o == IR_CNEW || ira->o == IR_CNEWI))) &&
+      if ((ira->o == IR_TNEW or ira->o == IR_TDUP ||
+         (LJ_HASFFI and (ira->o == IR_CNEW or ira->o == IR_CNEWI))) &&
          ra_used(ira))
          as->gcsteps++;
    if (as->gcsteps)
@@ -1202,7 +1202,7 @@ static void asm_bufhdr(ASMState* as, IRIns* ir)
    case IRBUFHDR_APPEND: {
       // Rematerialize const buffer pointer instead of likely spill.
       IRIns* irp = IR(ir->op1);
-      if (!(ra_hasreg(irp->r) || irp == ir - 1 ||
+      if (!(ra_hasreg(irp->r) or irp == ir - 1 ||
          (irp == ir - 2 and !ra_used(ir - 1)))) {
          while (!(irp->o == IR_BUFHDR and irp->op2 == IRBUFHDR_RESET))
             irp = IR(irp->op1);
@@ -1326,7 +1326,7 @@ static void asm_conv64(ASMState* as, IRIns* ir)
       "not a CONV/HIOP pair at IR %04d", (int)(ir - as->ir) - REF_BIAS);
    args[LJ_BE] = (ir - 1)->op1;
    args[LJ_LE] = ir->op1;
-   if (st == IRT_NUM || st == IRT_FLOAT) {
+   if (st == IRT_NUM or st == IRT_FLOAT) {
       id = IRCALL_fp64_d2l + ((st == IRT_FLOAT) ? 2 : 0) + (dt - IRT_I64);
       ir--;
    }
@@ -1643,7 +1643,7 @@ static void asm_phi(ASMState* as, IRIns* ir)
    if (ir->r == RID_SINK)  //  Sink PHI.
       return;
    // Spill slot shuffling is not implemented yet (but rarely needed).
-   if (ra_hasspill(irl->s) || ra_hasspill(irr->s))
+   if (ra_hasspill(irl->s) or ra_hasspill(irr->s))
       lj_trace_err(as->J, LJ_TRERR_NYIPHI);
    // Leave at least one register free for non-PHIs (and PHI cycle breaking).
    if ((afree & (afree - 1))) {  // Two or more free registers?
@@ -1664,7 +1664,7 @@ static void asm_phi(ASMState* as, IRIns* ir)
    }
    else {  // Otherwise allocate a spill slot.
       // This is overly restrictive, but it triggers only on synthetic code.
-      if (ra_hasreg(irl->r) || ra_hasreg(irr->r))
+      if (ra_hasreg(irl->r) or ra_hasreg(irr->r))
          lj_trace_err(as->J, LJ_TRERR_NYIPHI);
       ra_spill(as, ir);
       irr->s = ir->s;  //  Set right PHI spill slot. Sync left slot later.
@@ -1953,7 +1953,7 @@ static void asm_head_side(ASMState* as)
       IRIns* ir = IR(i);
       RegSP rs;
       lj_assertA((ir->o == IR_SLOAD and (ir->op2 & IRSLOAD_PARENT)) ||
-         (LJ_SOFTFP and ir->o == IR_HIOP) || ir->o == IR_PVAL,
+         (LJ_SOFTFP and ir->o == IR_HIOP) or ir->o == IR_PVAL,
          "IR %04d has bad parent op %d",
          (int)(ir - as->ir) - REF_BIAS, ir->o);
       rs = as->parentmap[i - REF_FIRST];
@@ -2254,7 +2254,7 @@ static void asm_setup_regsp(ASMState* as)
          break;
 #if LJ_TARGET_ARM
       case IR_SLOAD:
-         if (!((ir->op2 & IRSLOAD_TYPECHECK) || (ir + 1)->o == IR_HIOP))
+         if (!((ir->op2 & IRSLOAD_TYPECHECK) or (ir + 1)->o == IR_HIOP))
             break;
          // fallthrough
       case IR_ALOAD: case IR_HLOAD: case IR_ULOAD: case IR_VLOAD:
@@ -2376,7 +2376,7 @@ static void asm_setup_regsp(ASMState* as)
          }
          // fallthrough for integer POW
       case IR_DIV: case IR_MOD:
-         if ((LJ_64 and LJ_SOFTFP) || !irt_isnum(ir->t)) {
+         if ((LJ_64 and LJ_SOFTFP) or !irt_isnum(ir->t)) {
             ir->prev = REGSP_HINT(RID_RET);
             if (inloop)
                as->modset |= (RSET_SCRATCH & RSET_GPR);
@@ -2435,7 +2435,7 @@ static void asm_setup_regsp(ASMState* as)
 #endif
          break;
       case IR_CONV:
-         if (irt_isfp(ir->t) || (ir->op2 & IRCONV_SRCMASK) == IRT_NUM ||
+         if (irt_isfp(ir->t) or (ir->op2 & IRCONV_SRCMASK) == IRT_NUM ||
             (ir->op2 & IRCONV_SRCMASK) == IRT_FLOAT)
             break;
          // fallthrough
@@ -2468,8 +2468,8 @@ void lj_asm_trace(jit_State* J, GCtrace* T)
    {
       IRRef nins = T->nins;
       IRIns* ir = &T->ir[nins - 1];
-      if (ir->o == IR_NOP || ir->o == IR_RENAME) {
-         do { ir--; nins--; } while (ir->o == IR_NOP || ir->o == IR_RENAME);
+      if (ir->o == IR_NOP or ir->o == IR_RENAME) {
+         do { ir--; nins--; } while (ir->o == IR_NOP or ir->o == IR_RENAME);
          T->nins = nins;
       }
    }

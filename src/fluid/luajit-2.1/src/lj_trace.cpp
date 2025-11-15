@@ -101,7 +101,7 @@ static void perftools_addtrace(GCtrace* T)
    const BCIns* startpc = mref(T->startpc, const BCIns);
    const char* name = proto_chunknamestr(pt);
    BCLine lineno;
-   if (name[0] == '@' || name[0] == '=')
+   if (name[0] == '@' or name[0] == '=')
       name++;
    else
       name = "(string)";
@@ -191,7 +191,7 @@ void lj_trace_reenableproto(GCproto* pt)
          setbc_op(&bc[0], BC_FUNCF);
       for (i = 1; i < sizebc; i++) {
          BCOp op = bc_op(bc[i]);
-         if (op == BC_IFORL || op == BC_IITERL || op == BC_ILOOP)
+         if (op == BC_IFORL or op == BC_IITERL or op == BC_ILOOP)
             setbc_op(&bc[i], (int)op + (int)BC_LOOP - (int)BC_ILOOP);
       }
    }
@@ -215,7 +215,7 @@ static void trace_unpatch(jit_State* J, GCtrace* T)
       break;
    case BC_JITERL:
    case BC_JLOOP:
-      lj_assertJ(op == BC_ITERL || op == BC_ITERN || op == BC_LOOP ||
+      lj_assertJ(op == BC_ITERL or op == BC_ITERN or op == BC_LOOP ||
          bc_isret(op), "bad original bytecode %d", op);
       *pc = T->startins;
       break;
@@ -330,14 +330,14 @@ void lj_trace_initstate(global_State* g)
    J->k64[LJ_K64_2P64].u64 = U64x(43f00000, 00000000);
    J->k32[LJ_K32_M2P64_31] = LJ_64 ? 0xdf800000 : 0xcf000000;
 #endif
-#if LJ_TARGET_X86ORX64 || LJ_TARGET_MIPS64
+#if LJ_TARGET_X86ORX64 or LJ_TARGET_MIPS64
    J->k64[LJ_K64_M2P64].u64 = U64x(c3f00000, 00000000);
 #endif
 #if LJ_TARGET_PPC
    J->k32[LJ_K32_2P52_2P31] = 0x59800004;
    J->k32[LJ_K32_2P52] = 0x59800000;
 #endif
-#if LJ_TARGET_PPC || LJ_TARGET_MIPS
+#if LJ_TARGET_PPC or LJ_TARGET_MIPS
    J->k32[LJ_K32_2P31] = 0x4f000000;
 #endif
 #if LJ_TARGET_MIPS
@@ -358,7 +358,7 @@ void lj_trace_freestate(global_State* g)
    {  // This assumes all traces have already been freed.
       ptrdiff_t i;
       for (i = 1; i < (ptrdiff_t)J->sizetrace; i++)
-         lj_assertG(i == (ptrdiff_t)J->cur.traceno || traceref(J, i) == NULL,
+         lj_assertG(i == (ptrdiff_t)J->cur.traceno or traceref(J, i) == NULL,
             "trace still allocated");
    }
 #endif
@@ -420,8 +420,8 @@ static void trace_start(jit_State* J)
    if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto?
       if (J->parent == 0 and J->exitno == 0 and bc_op(*J->pc) != BC_ITERN) {
          // Lazy bytecode patching to disable hotcount events.
-         lj_assertJ(bc_op(*J->pc) == BC_FORL || bc_op(*J->pc) == BC_ITERL ||
-            bc_op(*J->pc) == BC_LOOP || bc_op(*J->pc) == BC_FUNCF,
+         lj_assertJ(bc_op(*J->pc) == BC_FORL or bc_op(*J->pc) == BC_ITERL ||
+            bc_op(*J->pc) == BC_LOOP or bc_op(*J->pc) == BC_FUNCF,
             "bad hot bytecode %d", bc_op(*J->pc));
          setbc_op(J->pc, (int)bc_op(*J->pc) + (int)BC_ILOOP - (int)BC_LOOP);
          J->pt->flags |= PROTO_ILOOP;
@@ -470,7 +470,7 @@ static void trace_start(jit_State* J)
    }
    else {
       BCOp op = bc_op(*J->pc);
-      if (op == BC_CALLM || op == BC_CALL || op == BC_ITERC) {
+      if (op == BC_CALLM or op == BC_CALL or op == BC_ITERC) {
          setintV(L->top++, J->exitno);  //  Parent of stitched trace.
          setintV(L->top++, -1);
       }
@@ -644,7 +644,7 @@ static int trace_abort(jit_State* J)
 static LJ_AINLINE void trace_pendpatch(jit_State* J, int force)
 {
    if (LJ_UNLIKELY(J->patchpc)) {
-      if (force || J->bcskip == 0) {
+      if (force or J->bcskip == 0) {
          *J->patchpc = J->patchins;
          J->patchpc = NULL;
       }
@@ -845,7 +845,7 @@ static void trace_exit_regs(lua_State* L, ExitState* ex)
 }
 #endif
 
-#if defined(EXITSTATE_PCREG) || (LJ_UNWIND_JIT && !EXITTRACE_VMSTATE)
+#if defined(EXITSTATE_PCREG) or (LJ_UNWIND_JIT && !EXITTRACE_VMSTATE)
 // Determine trace number from pc of exit instruction.
 static TraceNo trace_exit_find(jit_State* J, MCode* pc)
 {
@@ -917,7 +917,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
    else if (LJ_HASPROFILE and (G(L)->hookmask & HOOK_PROFILE)) {
       // Just exit to interpreter.
    }
-   else if (G(L)->gc.state == GCSatomic || G(L)->gc.state == GCSfinalize) {
+   else if (G(L)->gc.state == GCSatomic or G(L)->gc.state == GCSfinalize) {
       if (!(G(L)->hookmask & HOOK_GC))
          lj_gc_step(L);  //  Exited because of GC: drive GC forward.
    }
@@ -927,7 +927,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
    if (bc_op(*pc) == BC_JLOOP) {
       BCIns* retpc = &traceref(J, bc_d(*pc))->startins;
       int isret = bc_isret(bc_op(*retpc));
-      if (isret || bc_op(*retpc) == BC_ITERN) {
+      if (isret or bc_op(*retpc) == BC_ITERN) {
          if (J->state == LJ_TRACE_RECORD) {
             J->patchins = *pc;
             J->patchpc = (BCIns*)pc;

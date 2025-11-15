@@ -40,14 +40,14 @@ TKDEF(TKSTR1, TKSTR2)
 // -- Buffer handling -----------------------------------------------------
 
 #define LEX_EOF         (-1)
-#define lex_iseol(ls)      (ls->c == '\n' || ls->c == '\r')
+#define lex_iseol(ls)      (ls->c == '\n' or ls->c == '\r')
 
 // Get more input from reader.
 static LJ_NOINLINE LexChar lex_more(LexState* ls)
 {
    size_t sz;
    const char* p = ls->rfunc(ls->L, ls->rdata, &sz);
-   if (p == NULL || sz == 0) return LEX_EOF;
+   if (p == NULL or sz == 0) return LEX_EOF;
    if (sz >= LJ_MAX_BUF) {
       if (sz != ~(size_t)0) lj_err_mem(ls->L);
       sz = ~(uintptr_t)0 - (uintptr_t)p;
@@ -98,7 +98,7 @@ static void lex_number(LexState* ls, TValue* tv)
    LexChar c, xp = 'e';
    lj_assertLS(lj_char_isdigit(ls->c), "bad usage");
    if ((c = ls->c) == '0' and (lex_savenext(ls) | 0x20) == 'x') xp = 'p';
-   while (lj_char_isident(ls->c) || ls->c == '.' || ((ls->c == '-' || ls->c == '+') and (c | 0x20) == xp)) {
+   while (lj_char_isident(ls->c) or ls->c == '.' or ((ls->c == '-' or ls->c == '+') and (c | 0x20) == xp)) {
       c = ls->c;
       lex_savenext(ls);
    }
@@ -116,7 +116,7 @@ static void lex_number(LexState* ls, TValue* tv)
    else if (fmt != STRSCAN_ERROR) {
       lua_State* L = ls->L;
       GCcdata* cd;
-      lj_assertLS(fmt == STRSCAN_I64 || fmt == STRSCAN_U64 || fmt == STRSCAN_IMAG,
+      lj_assertLS(fmt == STRSCAN_I64 or fmt == STRSCAN_U64 or fmt == STRSCAN_IMAG,
          "unexpected number format %d", fmt);
       ctype_loadffi(L);
       if (fmt == STRSCAN_IMAG) {
@@ -143,7 +143,7 @@ static int lex_skipeq(LexState* ls)
 {
    int count = 0;
    LexChar s = ls->c;
-   lj_assertLS(s == '[' || s == ']', "bad usage");
+   lj_assertLS(s == '[' or s == ']', "bad usage");
    while (lex_savenext(ls) == '=' and count < 0x20000000)
       count++;
    return (ls->c == s) ? count : (-count) - 1;
@@ -545,7 +545,7 @@ void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...)
    if (tok == 0) {
       tokstr = NULL;
    }
-   else if (tok == TK_name || tok == TK_string || tok == TK_number) {
+   else if (tok == TK_name or tok == TK_string or tok == TK_number) {
       lex_save(ls, '\0');
       tokstr = ls->sb.b;
    }

@@ -162,10 +162,10 @@ typedef IRRef(LJ_FASTCALL* FoldFunc)(jit_State* J);
 */
 #define gcstep_barrier(J, ref) \
   ((ref) < J->chain[IR_LOOP] && \
-   (J->chain[IR_SNEW] || J->chain[IR_XSNEW] || \
-    J->chain[IR_TNEW] || J->chain[IR_TDUP] || \
-    J->chain[IR_CNEW] || J->chain[IR_CNEWI] || \
-    J->chain[IR_BUFSTR] || J->chain[IR_TOSTR] || J->chain[IR_CALLA]))
+   (J->chain[IR_SNEW] or J->chain[IR_XSNEW] or \
+    J->chain[IR_TNEW] or J->chain[IR_TDUP] or \
+    J->chain[IR_CNEW] or J->chain[IR_CNEWI] or \
+    J->chain[IR_BUFSTR] or J->chain[IR_TOSTR] or J->chain[IR_CALLA]))
 
 // -- Constant folding for FP numbers -------------------------------------
 
@@ -601,7 +601,7 @@ LJFOLDF(bufput_bufstr)
          fleft->prev == hdr &&
          fleft->op1 == IR(hdr)->op1 &&
          !(irt_isphi(fright->t) and IR(hdr)->prev) &&
-         (!LJ_HASBUFFER || J->chain[IR_CALLA] < hdr)) {
+         (!LJ_HASBUFFER or J->chain[IR_CALLA] < hdr)) {
          IRRef ref = fins->op1;
          IR(ref)->op2 = IRBUFHDR_APPEND;  //  Modify BUFHDR.
          IR(ref)->op1 = fright->op1;
@@ -655,7 +655,7 @@ LJFOLDF(bufput_kgc)
 LJFOLD(BUFSTR any any)
 LJFOLDF(bufstr_kfold_cse)
 {
-   lj_assertJ(fleft->o == IR_BUFHDR || fleft->o == IR_BUFPUT ||
+   lj_assertJ(fleft->o == IR_BUFHDR or fleft->o == IR_BUFPUT ||
       fleft->o == IR_CALLL,
       "bad buffer constructor IR op %d", fleft->o);
    if (LJ_LIKELY(J->flags & JIT_F_OPT_FOLD)) {
@@ -678,8 +678,8 @@ LJFOLDF(bufstr_kfold_cse)
       while (ref) {
          IRIns* irs = IR(ref), * ira = fleft, * irb = IR(irs->op1);
          while (ira->o == irb->o and ira->op2 == irb->op2) {
-            lj_assertJ(ira->o == IR_BUFHDR || ira->o == IR_BUFPUT ||
-               ira->o == IR_CALLL || ira->o == IR_CARG,
+            lj_assertJ(ira->o == IR_BUFHDR or ira->o == IR_BUFPUT ||
+               ira->o == IR_CALLL or ira->o == IR_CARG,
                "bad buffer constructor IR op %d", ira->o);
             if (ira->o == IR_BUFHDR and ira->op2 == IRBUFHDR_RESET)
                return ref;  //  CSE succeeded.
@@ -787,9 +787,9 @@ LJFOLDF(kfold_add_kgc)
 #if LJ_HASFFI
    if (irt_iscdata(fleft->t)) {
       CType* ct = ctype_raw(ctype_ctsG(J2G(J)), gco2cd(o)->ctypeid);
-      if (ctype_isnum(ct->info) || ctype_isenum(ct->info) ||
-         ctype_isptr(ct->info) || ctype_isfunc(ct->info) ||
-         ctype_iscomplex(ct->info) || ctype_isvector(ct->info))
+      if (ctype_isnum(ct->info) or ctype_isenum(ct->info) ||
+         ctype_isptr(ct->info) or ctype_isfunc(ct->info) ||
+         ctype_iscomplex(ct->info) or ctype_isvector(ct->info))
          return lj_ir_kkptr(J, (char*)o + ofs);
    }
 #endif
@@ -816,7 +816,7 @@ LJFOLD(ADD any KPTR)
 LJFOLD(ADD any KKPTR)
 LJFOLDF(kfold_add_kright)
 {
-   if (fleft->o == IR_KINT || fleft->o == IR_KINT64) {
+   if (fleft->o == IR_KINT or fleft->o == IR_KINT64) {
       IRRef1 tmp = fins->op1; fins->op1 = fins->op2; fins->op2 = tmp;
       return RETRYFOLD;
    }
@@ -984,7 +984,7 @@ LJFOLD(FPMATH FPMATH IRFPM_TRUNC)
 LJFOLDF(shortcut_round)
 {
    IRFPMathOp op = (IRFPMathOp)fleft->op2;
-   if (op == IRFPM_FLOOR || op == IRFPM_CEIL || op == IRFPM_TRUNC)
+   if (op == IRFPM_FLOOR or op == IRFPM_CEIL or op == IRFPM_TRUNC)
       return LEFTFOLD;  //  round(round_left(x)) = round_left(x)
    return NEXTFOLD;
 }
@@ -1207,7 +1207,7 @@ LJFOLDF(simplify_conv_int_i64)
    int src;
    PHIBARRIER(fleft);
    src = (fleft->op2 & IRCONV_SRCMASK);
-   if (src == IRT_INT || src == IRT_U32) {
+   if (src == IRT_INT or src == IRT_U32) {
       if (src == ((fins->op2 & IRCONV_DSTMASK) >> IRCONV_DSH)) {
          return fleft->op1;
       }
@@ -1361,7 +1361,7 @@ LJFOLDF(narrow_convert)
    // Narrowing ignores PHIs and repeating it inside the loop is not useful.
    if (J->chain[IR_LOOP])
       return NEXTFOLD;
-   lj_assertJ(fins->o != IR_CONV || (fins->op2 & IRCONV_CONVMASK) != IRCONV_TOBIT,
+   lj_assertJ(fins->o != IR_CONV or (fins->op2 & IRCONV_CONVMASK) != IRCONV_TOBIT,
       "unexpected CONV TOBIT");
    return lj_opt_narrow_convert(J);
 }
@@ -1707,7 +1707,7 @@ LJFOLDF(simplify_shift2_ki)
 {
    int64_t k = fleft->o == IR_KINT ? (int64_t)fleft->i :
       (int64_t)ir_k64(fleft)->u64;
-   if (k == 0 || k == -1)  //  0 o i ==> 0; -1 o i ==> -1
+   if (k == 0 or k == -1)  //  0 o i ==> 0; -1 o i ==> -1
       return LEFTFOLD;
    return NEXTFOLD;
 }
@@ -1842,7 +1842,7 @@ LJFOLD(BAND BAND any)
 LJFOLD(BOR BOR any)
 LJFOLDF(reassoc_dup)
 {
-   if (fins->op2 == fleft->op1 || fins->op2 == fleft->op2)
+   if (fins->op2 == fleft->op1 or fins->op2 == fleft->op2)
       return LEFTFOLD;  //  (a o b) o a ==> a o b; (a o b) o b ==> a o b
    return NEXTFOLD;
 }
@@ -1880,7 +1880,7 @@ LJFOLDF(reassoc_shift)
       int32_t mask = irt_is64(fins->t) ? 63 : 31;
       int32_t k = (irk->i & mask) + (fright->i & mask);
       if (k > mask) {  // Combined shift too wide?
-         if (fins->o == IR_BSHL || fins->o == IR_BSHR)
+         if (fins->o == IR_BSHL or fins->o == IR_BSHR)
             return mask == 31 ? INTFOLD(0) : INT64FOLD(0);
          else if (fins->o == IR_BSAR)
             k = mask;
@@ -2561,7 +2561,7 @@ retry:
       uint32_t k = key | (any & 0x1ffff);
       uint32_t h = fold_hashkey(k);
       uint32_t fh = fold_hash[h];  //  Lookup key in semi-perfect hash table.
-      if ((fh & 0xffffff) == k || (fh = fold_hash[h + 1], (fh & 0xffffff) == k)) {
+      if ((fh & 0xffffff) == k or (fh = fold_hash[h + 1], (fh & 0xffffff) == k)) {
          ref = (IRRef)tref_ref(fold_func[fh >> 24](J));
          if (ref != NEXTFOLD)
             break;

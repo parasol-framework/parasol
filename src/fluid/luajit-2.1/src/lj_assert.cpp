@@ -6,7 +6,7 @@
 #define lj_assert_c
 #define LUA_CORE
 
-#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+#if defined(LUA_USE_ASSERT) or defined(LUA_USE_APICHECK)
 
 #include <stdio.h>
 

@@ -25,7 +25,7 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
          lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
-   lj_assertFS(name == NAME_BLANK || uintptr_t(name) < VARNAME__MAX || lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
+   lj_assertFS(name == NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
    // NOBARRIER: name is anchored in fs->kt && ls->vstack is not a GCobj.
    setgcref(ls->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
@@ -74,7 +74,7 @@ static BCReg var_lookup_local(FuncState* fs, GCstr* n)
    return BCReg(-1);  // Not found.
 }
 
-// Lookup || add upvalue index.
+// Lookup or add upvalue index.
 static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
 {
    MSize i, n = fs->nuv;
@@ -83,7 +83,7 @@ static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
          return i;  // Already exists.
    // Otherwise create a new one.
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
-   lj_assertFS(e->k == VLOCAL || e->k == VUPVAL, "bad expr type %d", e->k);
+   lj_assertFS(e->k == VLOCAL or e->k == VUPVAL, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
    fs->uvtmp[n] = uint16_t(e->k == VLOCAL ? vidx : LJ_MAX_VSTACK + e->u.s.info);
    fs->nuv = n + 1;
@@ -130,7 +130,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
 // Jump types for break && continue statements.
 enum { JUMP_BREAK, JUMP_CONTINUE };
 
-// Add a new jump || target
+// Add a new jump or target
 
 static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc)
 {
@@ -172,7 +172,7 @@ static void gola_close(LexState* ls, VarInfo* vg)
    BCPos pc = vg->startpc;
    BCIns* ip = &fs->bcbase[pc].ins;
    lj_assertFS(gola_is_jump(vg), "expected goto");
-   lj_assertFS(bc_op(*ip) == BC_JMP || bc_op(*ip) == BC_UCLO,
+   lj_assertFS(bc_op(*ip) == BC_JMP or bc_op(*ip) == BC_UCLO,
       "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
    if (bc_op(*ip) == BC_JMP) {
@@ -553,7 +553,7 @@ static int bcopisret(BCOp op)
 static void fs_fixup_ret(FuncState* fs)
 {
    BCPos lastpc = fs->pc;
-   if (lastpc <= fs->lasttarget || !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
+   if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
       execute_defers(fs, 0);
       if ((fs->bl->flags & FSCOPE_UPVAL))
          bcemit_AJ(fs, BC_UCLO, 0, 0);
@@ -633,7 +633,7 @@ static GCproto* fs_finish(LexState* ls, BCLine line)
    L->top--;  // Pop table of constants.
    ls->vtop = fs->vbase;  // Reset variable stack.
    ls->fs = fs->prev;
-   lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
+   lj_assertL(ls->fs != NULL or ls->tok == TK_eof, "bad parser state");
    return pt;
 }
 

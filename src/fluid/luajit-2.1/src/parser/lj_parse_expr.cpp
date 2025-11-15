@@ -58,7 +58,7 @@ static void expr_field(LexState* ls, ExpDesc* v)
    FuncState* fs = ls->fs;
    ExpDesc key;
    expr_toanyreg(fs, v);
-   lj_lex_next(ls);  // Skip dot || colon.
+   lj_lex_next(ls);  // Skip dot or colon.
    expr_str(ls, &key);
    expr_index(fs, v, &key);
 }
@@ -165,7 +165,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
       }
       expr(ls, &val);
       if (expr_isk(&key) && key.k != VKNIL &&
-         (key.k == VKSTR || expr_isk_nojump(&val))) {
+         (key.k == VKSTR or expr_isk_nojump(&val))) {
          TValue k, * v;
          if (!t) {  // Create template table on demand.
             BCReg kidx;
@@ -406,7 +406,7 @@ static void parse_args(LexState* ls, ExpDesc* e)
       }
       else {
          expr_list(ls, &args);
-         if (args.k == VCALL)  // f(a, b, g()) || f(a, b, ...).
+         if (args.k == VCALL)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
       lex_match(ls, ')', '(', line);
@@ -485,7 +485,7 @@ static void expr_primary(LexState* ls, ExpDesc* v)
          lj_lex_next(ls);  // Consume '??'
          bcemit_presence_check(fs, v);
       }
-      else if (ls->tok == '(' || ls->tok == TK_string || ls->tok == '{') {
+      else if (ls->tok == '(' or ls->tok == TK_string or ls->tok == '{') {
          expr_tonextreg(fs, v);
          if (LJ_FR2) bcreg_reserve(fs, 1);
          parse_args(ls, v);
@@ -631,7 +631,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 /* Handle chained bitwise shift && bitwise logical operators with left-to-right associativity.
 **
 ** This function implements left-associative chaining for bitwise operators, allowing expressions
-** like `x << 2 << 3` || `x & 0xFF | 0x100` to be evaluated correctly. Without this special
+** like `x << 2 << 3` or `x & 0xFF | 0x100` to be evaluated correctly. Without this special
 ** handling, these operators would be right-associative due to their priority levels.
 **
 ** Left Associativity Examples:
@@ -786,8 +786,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       // allowing lower-precedence additions on the RHS to bind tighter.
 
       if (limit == priority[op].right &&
-         (op == OPR_SHL || op == OPR_SHR ||
-            op == OPR_BOR || op == OPR_BXOR || op == OPR_BAND))
+         (op == OPR_SHL or op == OPR_SHR ||
+            op == OPR_BOR or op == OPR_BXOR or op == OPR_BAND))
          lpri = 0;
 
       if (!(lpri > limit)) break;
@@ -856,7 +856,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
       bcemit_binop_left(ls->fs, op, v);
 
-      if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
+      if ((op == OPR_SHL) or (op == OPR_SHR) or (op == OPR_BAND) or (op == OPR_BXOR) or (op == OPR_BOR)) {
          op = expr_shift_chain(ls, v, op);
          continue;
       }
@@ -868,7 +868,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       nextop = expr_binop(ls, &v2, priority[op].right);
 
       if (op == OPR_IF_EMPTY && ls->ternary_depth == 0 &&
-         (ls->tok == TK_ternary_sep || ls->pending_if_empty_colon)) {
+         (ls->tok == TK_ternary_sep or ls->pending_if_empty_colon)) {
          FuncState* fs = ls->fs;
 
          ls->pending_if_empty_colon = 0;

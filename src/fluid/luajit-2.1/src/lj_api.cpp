@@ -1292,7 +1292,7 @@ LUA_API int lua_yield(lua_State* L, int nresults)
          if (LJ_FR2) top++;
          setframe_ftsz(top, ((char*)(top + 1) - (char*)L->base) + FRAME_CONT);
          L->top = L->base = top + 1;
-#if ((defined(__GNUC__) || defined(__clang__)) && (LJ_TARGET_X64 || defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) || LJ_TARGET_WINDOWS
+#if ((defined(__GNUC__) or defined(__clang__)) && (LJ_TARGET_X64 or defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) or LJ_TARGET_WINDOWS
          lj_err_throw(L, LUA_YIELD);
 #else
          L->cframe = NULL;

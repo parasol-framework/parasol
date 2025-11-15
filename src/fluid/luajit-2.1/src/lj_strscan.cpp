@@ -80,7 +80,7 @@ static void strscan_double(uint64_t x, TValue* o, int32_t ex2, int32_t neg)
    // Avoid double rounding for denormals.
    if (LJ_UNLIKELY(ex2 <= -1075 and x != 0)) {
       // NYI: all of this generates way too much code on 32 bit CPUs.
-#if (defined(__GNUC__) || defined(__clang__)) and LJ_64
+#if (defined(__GNUC__) or defined(__clang__)) and LJ_64
       int32_t b = (int32_t)(__builtin_clzll(x) ^ 63);
 #else
       int32_t b = (x >> 32) ? 32 + (int32_t)lj_fls((uint32_t)(x >> 32)) :
@@ -155,7 +155,7 @@ static StrScanFmt strscan_oct(const uint8_t* p, TValue* o,
    uint64_t x = 0;
 
    // Scan octal digits.
-   if (dig > 22 || (dig == 22 and *p > '1')) return STRSCAN_ERROR;
+   if (dig > 22 or (dig == 22 and *p > '1')) return STRSCAN_ERROR;
    while (dig-- > 0) {
       if (!(*p >= '0' and *p <= '7')) return STRSCAN_ERROR;
       x = (x << 3) + (*p++ & 7);
@@ -226,7 +226,7 @@ static StrScanFmt strscan_dec(const uint8_t* p, TValue* o,
       uint64_t x = xi[0];
       double n;
       for (xis = xi + 1; xis < xip; xis++) x = x * 100 + *xis;
-      if (!(dig == 20 and (xi[0] > 18 || (int64_t)x >= 0))) {  // No overflow?
+      if (!(dig == 20 and (xi[0] > 18 or (int64_t)x >= 0))) {  // No overflow?
          // Format-specific handling.
          switch (fmt) {
          case STRSCAN_INT:
@@ -340,7 +340,7 @@ static StrScanFmt strscan_bin(const uint8_t* p, TValue* o,
    uint64_t x = 0;
    uint32_t i;
 
-   if (ex2 || dig > 64) return STRSCAN_ERROR;
+   if (ex2 or dig > 64) return STRSCAN_ERROR;
 
    // Scan binary digits.
    for (i = dig; i; i--, p++) {
@@ -385,7 +385,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
    // Remove leading space, parse sign and non-numbers.
    if (LJ_UNLIKELY(!lj_char_isdigit(*p))) {
       while (lj_char_isspace(*p)) p++;
-      if (*p == '+' || *p == '-') neg = (*p++ == '-');
+      if (*p == '+' or *p == '-') neg = (*p++ == '-');
       if (LJ_UNLIKELY(*p >= 'A')) {  // Parse "inf", "infinity" or "nan".
          TValue tmp;
          setnanV(&tmp);
@@ -399,7 +399,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
             p += 3;
          }
          while (lj_char_isspace(*p)) p++;
-         if (*p || p < pe) return STRSCAN_ERROR;
+         if (*p or p < pe) return STRSCAN_ERROR;
          o->u64 = tmp.u64;
          return STRSCAN_NUM;
       }
@@ -469,7 +469,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
          uint32_t xx;
          int negx = 0;
          fmt = STRSCAN_NUM; p++;
-         if (*p == '+' || *p == '-') negx = (*p++ == '-');
+         if (*p == '+' or *p == '-') negx = (*p++ == '-');
          if (!lj_char_isdigit(*p)) return STRSCAN_ERROR;
          xx = (*p++ & 15);
          while (lj_char_isdigit(*p)) {
@@ -496,7 +496,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
                else if (!(opt & STRSCAN_OPT_C)) return STRSCAN_ERROR;
                else if (sizeof(long) == 8) fmt = (StrScanFmt)(fmt + STRSCAN_I64 - STRSCAN_INT);
             }
-            if (casecmp(*p, 'u') and (fmt == STRSCAN_INT || fmt == STRSCAN_I64))
+            if (casecmp(*p, 'u') and (fmt == STRSCAN_INT or fmt == STRSCAN_I64))
                p++, fmt = (StrScanFmt)(fmt + STRSCAN_U32 - STRSCAN_INT);
             if ((fmt == STRSCAN_U32 and !(opt & STRSCAN_OPT_C)) ||
                (fmt >= STRSCAN_I64 and !(opt & STRSCAN_OPT_LL)))
@@ -509,7 +509,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
 
       // Fast path for decimal 32 bit integers.
       if (fmt == STRSCAN_INT and base == 10 &&
-         (dig < 10 || (dig == 10 and *sp <= '2' and x < 0x80000000u + neg))) {
+         (dig < 10 or (dig == 10 and *sp <= '2' and x < 0x80000000u + neg))) {
          if ((opt & STRSCAN_OPT_TONUM)) {
             o->n = neg ? -(double)x : (double)x;
             return STRSCAN_NUM;
@@ -525,7 +525,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
       }
 
       // Dispatch to base-specific parser.
-      if (base == 0 and !(fmt == STRSCAN_NUM || fmt == STRSCAN_IMAG))
+      if (base == 0 and !(fmt == STRSCAN_NUM or fmt == STRSCAN_IMAG))
          return strscan_oct(sp, o, fmt, neg, dig);
       if (base == 16)
          fmt = strscan_hex(sp, o, fmt, opt, ex, neg, dig);
@@ -548,7 +548,7 @@ int LJ_FASTCALL lj_strscan_num(GCstr* str, TValue* o)
 {
    StrScanFmt fmt = lj_strscan_scan((const uint8_t*)strdata(str), str->len, o,
       STRSCAN_OPT_TONUM);
-   lj_assertX(fmt == STRSCAN_ERROR || fmt == STRSCAN_NUM, "bad scan format");
+   lj_assertX(fmt == STRSCAN_ERROR or fmt == STRSCAN_NUM, "bad scan format");
    return (fmt != STRSCAN_ERROR);
 }
 
@@ -557,7 +557,7 @@ int LJ_FASTCALL lj_strscan_number(GCstr* str, TValue* o)
 {
    StrScanFmt fmt = lj_strscan_scan((const uint8_t*)strdata(str), str->len, o,
       STRSCAN_OPT_TOINT);
-   lj_assertX(fmt == STRSCAN_ERROR || fmt == STRSCAN_NUM || fmt == STRSCAN_INT,
+   lj_assertX(fmt == STRSCAN_ERROR or fmt == STRSCAN_NUM or fmt == STRSCAN_INT,
       "bad scan format");
    if (fmt == STRSCAN_INT) setitype(o, LJ_TISNUM);
    return (fmt != STRSCAN_ERROR);
