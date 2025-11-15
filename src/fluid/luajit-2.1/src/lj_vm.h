@@ -123,13 +123,13 @@ LJ_ASMF double lj_vm_powi(double, int32_t);
 LJ_ASMF double lj_vm_pow(double, double);
 
 // Continuations for metamethods.
-LJ_ASMF void lj_cont_cat(void);  /* Continue with concatenation. */
-LJ_ASMF void lj_cont_ra(void);  /* Store result in RA from instruction. */
-LJ_ASMF void lj_cont_nop(void);  /* Do nothing, just continue execution. */
-LJ_ASMF void lj_cont_condt(void);  /* Branch if result is true. */
-LJ_ASMF void lj_cont_condf(void);  /* Branch if result is false. */
-LJ_ASMF void lj_cont_hook(void);  /* Continue from hook yield. */
-LJ_ASMF void lj_cont_stitch(void);  /* Trace stitching. */
+LJ_ASMF void lj_cont_cat(void);  //  Continue with concatenation.
+LJ_ASMF void lj_cont_ra(void);  //  Store result in RA from instruction.
+LJ_ASMF void lj_cont_nop(void);  //  Do nothing, just continue execution.
+LJ_ASMF void lj_cont_condt(void);  //  Branch if result is true.
+LJ_ASMF void lj_cont_condf(void);  //  Branch if result is false.
+LJ_ASMF void lj_cont_hook(void);  //  Continue from hook yield.
+LJ_ASMF void lj_cont_stitch(void);  //  Trace stitching.
 
 // Start of the ASM code.
 LJ_ASMF char lj_vm_asm_begin[];

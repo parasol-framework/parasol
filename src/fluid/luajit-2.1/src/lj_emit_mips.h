@@ -22,7 +22,7 @@ static intptr_t get_k64val(ASMState* as, IRRef ref)
    else {
       lj_assertA(ir->o == IR_KINT || ir->o == IR_KNULL,
          "bad 64 bit const IR op %d", ir->o);
-      return ir->i;  /* Sign-extended. */
+      return ir->i;  //  Sign-extended.
    }
 }
 #endif
@@ -106,7 +106,7 @@ static int emit_kdelta1(ASMState* as, Reg rd, intptr_t i)
       }
       rset_clear(work, r);
    }
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 // Load a 32 bit constant into a GPR.
@@ -260,7 +260,7 @@ static void emit_call(ASMState* as, void* target, int needcfa)
       return;
    }
 #endif
-   * --p = MIPSI_NOP;  /* Delay slot. */
+   * --p = MIPSI_NOP;  //  Delay slot.
    if ((((uintptr_t)target ^ (uintptr_t)p) >> 28) == 0) {
 #if !LJ_TARGET_MIPSR6
       * --p = (((uintptr_t)target & 1) ? MIPSI_JALX : MIPSI_JAL) |

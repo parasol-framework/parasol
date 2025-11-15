@@ -129,7 +129,7 @@ LJLIB_CF(debug_getinfo)
    }
    if (!lj_debug_getinfo(L1, options, &ar, 1))
       lj_err_arg(L, arg + 2, LJ_ERR_INVOPT);
-   lua_createtable(L, 0, 16);  /* Create result table. */
+   lua_createtable(L, 0, 16);  //  Create result table.
    for (; *options; options++) {
       switch (*options) {
       case 'S':
@@ -158,7 +158,7 @@ LJLIB_CF(debug_getinfo)
    }
    if (opt_L) treatstackoption(L, L1, "activelines");
    if (opt_f) treatstackoption(L, L1, "func");
-   return 1;  /* Return result table. */
+   return 1;  //  Return result table.
 }
 
 LJLIB_CF(debug_getlocal)
@@ -331,7 +331,7 @@ LJLIB_CF(debug_sethook)
    (void)getthread(L, &arg);
    if (lua_isnoneornil(L, arg + 1)) {
       lua_settop(L, arg + 1);
-      func = NULL; mask = 0; count = 0;  /* turn off hooks */
+      func = NULL; mask = 0; count = 0;  //  turn off hooks
    }
    else {
       const char* smask = luaL_checkstring(L, arg + 2);
@@ -356,7 +356,7 @@ LJLIB_CF(debug_gethook)
    }
    else {
       (L->top++)->u64 = KEY_HOOK;
-      lua_rawget(L, LUA_REGISTRYINDEX);   /* get hook */
+      lua_rawget(L, LUA_REGISTRYINDEX);   //  get hook
    }
    lua_pushstring(L, unmakemask(mask, buff));
    lua_pushinteger(L, lua_gethookcount(L));
@@ -379,14 +379,14 @@ LJLIB_CF(debug_debug)
          fputs(s ? s : "(error object is not a string)", stderr);
          fputs("\n", stderr);
       }
-      lua_settop(L, 0);  /* remove eventual returns */
+      lua_settop(L, 0);  //  remove eventual returns
    }
 }
 
 // ------------------------------------------------------------------------
 
-#define LEVELS1   12   /* size of the first part of the stack */
-#define LEVELS2   10   /* size of the second part of the stack */
+#define LEVELS1   12   //  size of the first part of the stack
+#define LEVELS2   10   //  size of the second part of the stack
 
 LJLIB_CF(debug_traceback)
 {

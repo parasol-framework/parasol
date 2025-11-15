@@ -62,7 +62,7 @@ void lj_snap_grow_map_(jit_State* J, MSize need)
 // Add all modified slots to the snapshot.
 static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCReg nslots)
 {
-   IRRef retf = J->chain[IR_RETF];  /* Limits SLOAD restore elimination. */
+   IRRef retf = J->chain[IR_RETF];  //  Limits SLOAD restore elimination.
    BCReg s;
    MSize n = 0;
    for (s = 0; s < nslots; s++) {
@@ -119,7 +119,7 @@ static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
    memcpy(map, &pcbase, sizeof(uint64_t));
 #else
    MSize f = 0;
-   map[f++] = SNAP_MKPC(J->pc);  /* The current PC is always the first entry. */
+   map[f++] = SNAP_MKPC(J->pc);  //  The current PC is always the first entry.
 #endif
    lj_assertJ(!J->pt ||
       (J->pc >= proto_bc(J->pt) &&
@@ -257,7 +257,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
          else if (op >= BC_ITERL && op <= BC_JITERL) minslot += bc_b(pc[-2]) - 1;
          else if (op == BC_UCLO) {
             ptrdiff_t delta = bc_j(ins);
-            if (delta < 0) return maxslot;  /* Prevent loop. */
+            if (delta < 0) return maxslot;  //  Prevent loop.
             pc += delta;
             break;
          }
@@ -276,7 +276,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
             return 0;
          }
          break;
-      case BCMfunc: return maxslot;  /* NYI: will abort, anyway. */
+      case BCMfunc: return maxslot;  //  NYI: will abort, anyway.
       default: break;
       }
       switch (bcmode_a(op)) {
@@ -298,7 +298,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
             }
          }
          else if (op == BC_VARG) {
-            return maxslot;  /* NYI: punt. */
+            return maxslot;  //  NYI: punt.
          }
          else if (op == BC_KNIL) {
             for (s = bc_a(ins); s <= bc_d(ins); s++) DEF_SLOT(s);
@@ -316,7 +316,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
 #undef USE_SLOT
 #undef DEF_SLOT
 
-   return 0;  /* unreachable */
+   return 0;  //  unreachable
 }
 
 // Mark slots used by upvalues of child prototypes as used.
@@ -356,7 +356,7 @@ void lj_snap_purge(jit_State* J)
       snap_useuv(J->pt, udf);
       for (; s < maxslot; s++)
          if (udf[s] != 0)
-            J->base[s] = 0;  /* Purge dead slots. */
+            J->base[s] = 0;  //  Purge dead slots.
    }
 }
 
@@ -377,12 +377,12 @@ void lj_snap_shrink(jit_State* J)
    for (n = m = 0; n < nent; n++) {  // Remove unused slots from snapshot.
       BCReg s = snap_slot(map[n]);
       if (s < minslot || (s < maxslot && udf[s - baseslot] == 0))
-         map[m++] = map[n];  /* Only copy used slots. */
+         map[m++] = map[n];  //  Only copy used slots.
    }
    snap->nent = (uint8_t)m;
    nlim = J->cur.nsnapmap - snap->mapofs - 1;
-   while (n <= nlim) map[m++] = map[n++];  /* Move PC + frame links down. */
-   J->cur.nsnapmap = (uint32_t)(snap->mapofs + m);  /* Free up space in map. */
+   while (n <= nlim) map[m++] = map[n++];  //  Move PC + frame links down.
+   J->cur.nsnapmap = (uint32_t)(snap->mapofs + m);  //  Free up space in map.
 }
 
 // -- Snapshot access -----------------------------------------------------
@@ -462,7 +462,7 @@ static TRef snap_replay_const(jit_State* J, IRIns* ir)
    case IR_KGC: return lj_ir_kgc(J, ir_kgc(ir), irt_t(ir->t));
    case IR_KNUM: case IR_KINT64:
       return lj_ir_k64(J, (IROp)ir->o, ir_k64(ir)->u64);
-   case IR_KPTR: return lj_ir_kptr(J, ir_kptr(ir));  /* Continuation. */
+   case IR_KPTR: return lj_ir_kptr(J, ir_kptr(ir));  //  Continuation.
    default: lj_assertJ(0, "bad IR constant op %d", ir->o); return TREF_NIL;
    }
 }
@@ -509,7 +509,7 @@ static int snap_sunk_store2(GCtrace* T, IRIns* ira, IRIns* irs)
 static LJ_AINLINE int snap_sunk_store(GCtrace* T, IRIns* ira, IRIns* irs)
 {
    if (irs->s != 255)
-      return (ira + irs->s == irs);  /* Fast check. */
+      return (ira + irs->s == irs);  //  Fast check.
    return snap_sunk_store2(T, ira, irs);
 }
 
@@ -615,7 +615,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
             if (op2 >= T->nk) op2 = snap_pref(J, T, map, nent, seen, op2);
             if (LJ_HASFFI && ir->o == IR_CNEWI) {
                if (LJ_32 && refp + 1 < T->nins && (ir + 1)->o == IR_HIOP) {
-                  lj_needsplit(J);  /* Emit joining HIOP. */
+                  lj_needsplit(J);  //  Emit joining HIOP.
                   op2 = emitir_raw(IRT(IR_HIOP, IRT_I64), op2,
                      snap_pref(J, T, map, nent, seen, (ir + 1)->op2));
                }
@@ -681,7 +681,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
    J->base = J->slot + J->baseslot;
    J->maxslot = snap->nslots - J->baseslot;
    lj_snap_add(J);
-   if (pass23)  /* Need explicit GC step _after_ initial snapshot. */
+   if (pass23)  //  Need explicit GC step _after_ initial snapshot.
       emitir_raw(IRTG(IR_GCSTEP, IRT_NIL), 0, 0);
 }
 
@@ -749,7 +749,7 @@ static void snap_restoreval(jit_State* J, GCtrace* T, ExitState* ex,
       }
       else if (irt_isnum(t)) {
          setnumV(o, ex->fpr[r - RID_MIN_FPR]);
-#elif LJ_64  /* && LJ_SOFTFP */
+#elif LJ_64  //  && LJ_SOFTFP
       }
       else if (irt_isnum(t)) {
          o->u64 = ex->gpr[r - RID_MIN_GPR];
@@ -942,7 +942,7 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
 const BCIns* lj_snap_restore(jit_State* J, void* exptr)
 {
    ExitState* ex = (ExitState*)exptr;
-   SnapNo snapno = J->exitno;  /* For now, snapno == exitno. */
+   SnapNo snapno = J->exitno;  //  For now, snapno == exitno.
    GCtrace* T = traceref(J, J->parent);
    SnapShot* snap = &T->snap[snapno];
    MSize n, nent = snap->nent;
@@ -970,7 +970,7 @@ const BCIns* lj_snap_restore(jit_State* J, void* exptr)
    // Fill stack slots with data from the registers and spill slots.
    frame = L->base - 1 - LJ_FR2;
 #if !LJ_FR2
-   ftsz0 = frame_ftsz(frame);  /* Preserve link to previous frame in slot #0. */
+   ftsz0 = frame_ftsz(frame);  //  Preserve link to previous frame in slot #0.
 #endif
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];

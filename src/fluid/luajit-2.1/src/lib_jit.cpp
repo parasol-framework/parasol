@@ -50,7 +50,7 @@ static int setjitmode(lua_State* L, int mode)
       // jit.on/off/flush(func|proto, nil|true|false)
       if (tvisfunc(L->base) || tvisproto(L->base))
          idx = 1;
-      else if (!tvistrue(L->base))  /* jit.on/off/flush(true, nil|true|false) */
+      else if (!tvistrue(L->base))  //  jit.on/off/flush(true, nil|true|false)
          goto err;
       if (L->base + 1 < L->top && tvisbool(L->base + 1))
          mode |= boolV(L->base + 1) ? LUAJIT_MODE_ALLFUNC : LUAJIT_MODE_ALLSUBFUNC;
@@ -135,7 +135,7 @@ LJLIB_CF(jit_attach)
       while (*p) h = h ^ (lj_rol(h, 6) + *p++);
       lua_pushvalue(L, 1);
       lua_rawseti(L, -2, VMEVENT_HASHIDX(h));
-      G(L)->vmevmask = VMEVENT_NOCACHE;  /* Invalidate cache. */
+      G(L)->vmevmask = VMEVENT_NOCACHE;  //  Invalidate cache.
    }
    else {  // Detach if no event given.
       setnilV(L->top++);
@@ -179,7 +179,7 @@ static GCproto* check_Lproto(lua_State* L, int nolua)
       }
    }
    lj_err_argt(L, 1, LUA_TFUNCTION);
-   return NULL;  /* unreachable */
+   return NULL;  //  unreachable
 }
 
 static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
@@ -194,7 +194,7 @@ LJLIB_CF(jit_util_funcinfo)
    if (pt) {
       BCPos pc = (BCPos)lj_lib_optint(L, 2, 0);
       GCtab* t;
-      lua_createtable(L, 0, 16);  /* Increment hash size if fields are added. */
+      lua_createtable(L, 0, 16);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       setintfield(L, t, "linedefined", pt->firstline);
       setintfield(L, t, "lastlinedefined", pt->firstline + pt->numline);
@@ -219,7 +219,7 @@ LJLIB_CF(jit_util_funcinfo)
    else {
       GCfunc* fn = funcV(L->base);
       GCtab* t;
-      lua_createtable(L, 0, 4);  /* Increment hash size if fields are added. */
+      lua_createtable(L, 0, 4);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       if (!iscfunc(fn))
          setintfield(L, t, "ffid", fn->c.ffid);
@@ -306,7 +306,7 @@ LJLIB_CF(jit_util_traceinfo)
    GCtrace* T = jit_checktrace(L);
    if (T) {
       GCtab* t;
-      lua_createtable(L, 0, 8);  /* Increment hash size if fields are added. */
+      lua_createtable(L, 0, 8);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       setintfield(L, t, "nins", (int32_t)T->nins - REF_BIAS - 1);
       setintfield(L, t, "nk", REF_BIAS - (int32_t)T->nk);
@@ -459,9 +459,9 @@ static int jitopt_level(jit_State* J, const char* str)
       else if (str[0] == '2') flags = JIT_F_OPT_2;
       else flags = JIT_F_OPT_3;
       J->flags = (J->flags & ~JIT_F_OPT_MASK) | flags;
-      return 1;  /* Ok. */
+      return 1;  //  Ok.
    }
-   return 0;  /* No match. */
+   return 0;  //  No match.
 }
 
 // Parse optimization flag.
@@ -487,11 +487,11 @@ static int jitopt_flag(jit_State* J, const char* str)
          break;
       if (strncmp(str, lst + 1, len) == 0 && str[len] == '\0') {
          if (set) J->flags |= opt; else J->flags &= ~opt;
-         return 1;  /* Ok. */
+         return 1;  //  Ok.
       }
       lst += 1 + len;
    }
-   return 0;  /* No match. */
+   return 0;  //  No match.
 }
 
 // Parse optimization parameter.
@@ -507,15 +507,15 @@ static int jitopt_param(jit_State* J, const char* str)
          const char* p = &str[len + 1];
          while (*p >= '0' && *p <= '9')
             n = n * 10 + (*p++ - '0');
-         if (*p) return 0;  /* Malformed number. */
+         if (*p) return 0;  //  Malformed number.
          J->param[i] = n;
          if (i == JIT_P_hotloop)
             lj_dispatch_init_hotcount(J2G(J));
-         return 1;  /* Ok. */
+         return 1;  //  Ok.
       }
       lst += 1 + len;
    }
-   return 0;  /* No match. */
+   return 0;  //  No match.
 }
 
 // jit.opt.start(flags...)
@@ -568,7 +568,7 @@ static void jit_profile_callback(lua_State* L2, lua_State* L, int samples,
       setthreadV(L2, L2->top++, L);
       setintV(L2->top++, samples);
       setstrV(L2, L2->top++, lj_str_new(L2, &vmst, 1));
-      status = lua_pcall(L2, 3, 0, 0);  /* callback(thread, samples, vmstate) */
+      status = lua_pcall(L2, 3, 0, 0);  //  callback(thread, samples, vmstate)
       if (status) {
          if (G(L2)->panic) G(L2)->panic(L2);
          exit(EXIT_FAILURE);
@@ -583,7 +583,7 @@ LJLIB_CF(jit_profile_start)
    GCtab* registry = tabV(registry(L));
    GCstr* mode = lj_lib_optstr(L, 1);
    GCfunc* func = lj_lib_checkfunc(L, 2);
-   lua_State* L2 = lua_newthread(L);  /* Thread that runs profiler callback. */
+   lua_State* L2 = lua_newthread(L);  //  Thread that runs profiler callback.
    TValue key;
    // Anchor thread and function in registry.
    key.u64 = KEY_PROFILE_THREAD;
@@ -677,7 +677,7 @@ static uint32_t jit_cpudetect(void)
 
 #elif LJ_TARGET_ARM
 
-   int ver = LJ_ARCH_VERSION;  /* Compile-time ARM CPU detection. */
+   int ver = LJ_ARCH_VERSION;  //  Compile-time ARM CPU detection.
 #if LJ_TARGET_LINUX
    if (ver < 70) {  // Runtime ARM CPU detection.
       struct utsname ut;
@@ -718,12 +718,12 @@ static uint32_t jit_cpudetect(void)
    if (!(flags & JIT_F_MIPSXXR2)) {
       int x;
 #ifdef __mips16
-      x = 0;  /* Runtime detection is difficult. Ensure optimal -march flags. */
+      x = 0;  //  Runtime detection is difficult. Ensure optimal -march flags.
 #else
       // On MIPS32R1 rotr is treated as srl. rotr r2,r2,1 -> srl r2,r2,1.
       __asm__("li $2, 1\n\t.long 0x00221042\n\tmove %0, $2" : "=r"(x) : : "$2");
 #endif
-      if (x) flags |= JIT_F_MIPSXXR2;  /* Either 0x80000000 (R2) or 0 (R1). */
+      if (x) flags |= JIT_F_MIPSXXR2;  //  Either 0x80000000 (R2) or 0 (R1).
    }
 #endif
 

@@ -8,14 +8,14 @@
 
 #include "lj_obj.h"
 
-typedef uint32_t SFormat;  /* Format indicator. */
+typedef uint32_t SFormat;  //  Format indicator.
 
 // Format parser state.
 typedef struct FormatState {
-   const uint8_t* p;   /* Current format string pointer. */
-   const uint8_t* e;   /* End of format string. */
-   const char* str;   /* Returned literal string. */
-   MSize len;      /* Size of literal string. */
+   const uint8_t* p;   //  Current format string pointer.
+   const uint8_t* e;   //  End of format string.
+   const char* str;   //  Returned literal string.
+   MSize len;      //  Size of literal string.
 } FormatState;
 
 // Format types (max. 16).
@@ -25,13 +25,13 @@ typedef enum FormatType {
 } FormatType;
 
 // Format subtypes (bits are reused).
-#define STRFMT_T_HEX   0x0010   /* STRFMT_UINT */
-#define STRFMT_T_OCT   0x0020   /* STRFMT_UINT */
-#define STRFMT_T_FP_A   0x0000   /* STRFMT_NUM */
-#define STRFMT_T_FP_E   0x0010   /* STRFMT_NUM */
-#define STRFMT_T_FP_F   0x0020   /* STRFMT_NUM */
-#define STRFMT_T_FP_G   0x0030   /* STRFMT_NUM */
-#define STRFMT_T_QUOTED   0x0010   /* STRFMT_STR */
+#define STRFMT_T_HEX   0x0010   //  STRFMT_UINT
+#define STRFMT_T_OCT   0x0020   //  STRFMT_UINT
+#define STRFMT_T_FP_A   0x0000   //  STRFMT_NUM
+#define STRFMT_T_FP_E   0x0010   //  STRFMT_NUM
+#define STRFMT_T_FP_F   0x0020   //  STRFMT_NUM
+#define STRFMT_T_FP_G   0x0030   //  STRFMT_NUM
+#define STRFMT_T_QUOTED   0x0010   //  STRFMT_STR
 
 // Format flags.
 #define STRFMT_F_LEFT   0x0100
@@ -67,10 +67,10 @@ typedef enum FormatType {
 #define STRFMT_G14   (STRFMT_G | ((14+1) << STRFMT_SH_PREC))
 
 // Maximum buffer sizes for conversions.
-#define STRFMT_MAXBUF_XINT   (1+22)  /* '0' prefix + uint64_t in octal. */
-#define STRFMT_MAXBUF_INT   (1+10)  /* Sign + int32_t in decimal. */
-#define STRFMT_MAXBUF_NUM   32  /* Must correspond with STRFMT_G14. */
-#define STRFMT_MAXBUF_PTR   (2+2*sizeof(ptrdiff_t))  /* "0x" + hex ptr. */
+#define STRFMT_MAXBUF_XINT   (1+22)  //  '0' prefix + uint64_t in octal.
+#define STRFMT_MAXBUF_INT   (1+10)  //  Sign + int32_t in decimal.
+#define STRFMT_MAXBUF_NUM   32  //  Must correspond with STRFMT_G14.
+#define STRFMT_MAXBUF_PTR   (2+2*sizeof(ptrdiff_t))  //  "0x" + hex ptr.
 
 // Format parser.
 LJ_FUNC SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs);

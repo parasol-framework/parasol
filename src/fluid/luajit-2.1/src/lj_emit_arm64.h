@@ -23,7 +23,7 @@ static uint64_t get_k64val(ASMState* as, IRRef ref)
    else {
       lj_assertA(ir->o == IR_KINT || ir->o == IR_KNULL,
          "bad 64 bit const IR op %d", ir->o);
-      return ir->i;  /* Sign-extended. */
+      return ir->i;  //  Sign-extended.
    }
 }
 
@@ -49,11 +49,11 @@ static uint32_t emit_isk13(uint64_t n, int is64)
 {
    int inv = 0, w = 128, lz, tz;
    if (n & 1) { n = ~n; w = 64; inv = 1; }  // Avoid wrap-around of ones.
-   if (!n) return 0;  /* Neither all-zero nor all-ones are allowed. */
+   if (!n) return 0;  //  Neither all-zero nor all-ones are allowed.
    do {  // Find the repeat width.
       if (is64 && (uint32_t)(n ^ (n >> 32))) break;
       n = (uint32_t)n;
-      if (!n) return 0;  /* Ditto when passing n=0xffffffff and is64=0. */
+      if (!n) return 0;  //  Ditto when passing n=0xffffffff and is64=0.
       w = 32; if ((n ^ (n >> 16)) & 0xffff) break;
       n = n & 0xffff; w = 16; if ((n ^ (n >> 8)) & 0xff) break;
       n = n & 0xff; w = 8; if ((n ^ (n >> 4)) & 0xf) break;
@@ -62,7 +62,7 @@ static uint32_t emit_isk13(uint64_t n, int is64)
    } while (0);
    lz = emit_clz64(n);
    tz = emit_ctz64(n);
-   if ((int64_t)(n << lz) >> (lz + tz) != -1ll) return 0; /* Non-contiguous? */
+   if ((int64_t)(n << lz) >> (lz + tz) != -1ll) return 0; //  Non-contiguous?
    if (inv)
       return A64I_K13 | (((lz - w) & 127) << 16) | (((lz + tz - w - 1) & 63) << 10);
    else
@@ -171,7 +171,7 @@ nopair:
 static int emit_kdelta(ASMState* as, Reg rd, uint64_t k, int lim)
 {
    RegSet work = (~as->freeset & RSET_GPR) | RID2RSET(RID_GL);
-   if (lim <= 1) return 0;  /* Can't beat that. */
+   if (lim <= 1) return 0;  //  Can't beat that.
    while (work) {
       Reg r = rset_picktop(work);
       IRRef ref = regcost_ref(as->cost[r]);
@@ -197,20 +197,20 @@ static int emit_kdelta(ASMState* as, Reg rd, uint64_t k, int lim)
       }
       rset_clear(work, r);
    }
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 static void emit_loadk(ASMState* as, Reg rd, uint64_t u64, int is64)
 {
    int i, zeros = 0, ones = 0, neg;
-   if (!is64) u64 = (int64_t)(int32_t)u64;  /* Sign-extend. */
+   if (!is64) u64 = (int64_t)(int32_t)u64;  //  Sign-extend.
    // Count homogeneous 16 bit fragments.
    for (i = 0; i < 4; i++) {
       uint64_t frag = (u64 >> i * 16) & 0xffff;
       zeros += (frag == 0);
       ones += (frag == 0xffff);
    }
-   neg = ones > zeros;  /* Use MOVN if it pays off. */
+   neg = ones > zeros;  //  Use MOVN if it pays off.
    if ((neg ? ones : zeros) < 3) {  // Need 2+ ins. Try shorter K13 encoding.
       uint32_t k13 = emit_isk13(u64, is64);
       if (k13) {
@@ -265,7 +265,7 @@ static void emit_lsptr(ASMState* as, A64Ins ai, Reg r, void* p)
       emit_d(as, A64I_LDRLx | A64F_S19(mcpofs(as, p) >> 2), r);
    }
    else {
-      Reg base = RID_GL;  /* Next, try GL + offset. */
+      Reg base = RID_GL;  //  Next, try GL + offset.
       int64_t ofs = glofs(as, p);
       if (!emit_checkofs(ai, ofs)) {  // Else split up into base reg + offset.
          int64_t i64 = i64ptr(p);
@@ -386,9 +386,9 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
       MCode ins = *as->mcp, swp = (src ^ dst);
       if ((ins & 0xbf800000) == 0xb9000000) {
          if (!((ins ^ (dst << 5)) & 0x000003e0))
-            *as->mcp = ins ^ (swp << 5);  /* Swap N in load/store. */
+            *as->mcp = ins ^ (swp << 5);  //  Swap N in load/store.
          if (!(ins & 0x00400000) && !((ins ^ dst) & 0x0000001f))
-            *as->mcp = ins ^ swp;  /* Swap D in store. */
+            *as->mcp = ins ^ swp;  //  Swap D in store.
       }
    }
    emit_dm(as, A64I_MOVx, dst, src);

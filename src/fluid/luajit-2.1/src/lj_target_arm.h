@@ -23,8 +23,8 @@
 #define RIDENUM(name)   RID_##name,
 
 enum {
-   GPRDEF(RIDENUM)      /* General-purpose registers (GPRs). */
-   FPRDEF(RIDENUM)      /* Floating-point registers (FPRs). */
+   GPRDEF(RIDENUM)      //  General-purpose registers (GPRs).
+   FPRDEF(RIDENUM)      //  Floating-point registers (FPRs).
    RID_MAX,
    RID_TMP = RID_LR,
 
@@ -39,10 +39,10 @@ enum {
 #endif
 
    // These definitions must match with the *.dasc file(s):
-   RID_BASE = RID_R9,      /* Interpreter BASE. */
-   RID_LPC = RID_R6,      /* Interpreter PC. */
-   RID_DISPATCH = RID_R7,   /* Interpreter DISPATCH table. */
-   RID_LREG = RID_R8,      /* Interpreter L. */
+   RID_BASE = RID_R9,      //  Interpreter BASE.
+   RID_LPC = RID_R6,      //  Interpreter PC.
+   RID_DISPATCH = RID_R7,   //  Interpreter DISPATCH table.
+   RID_LREG = RID_R8,      //  Interpreter L.
 
    // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_R0,
@@ -126,10 +126,10 @@ enum {
 // This definition must match with the *.dasc file(s).
 typedef struct {
 #if !LJ_SOFTFP
-   lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
+   lua_Number fpr[RID_NUM_FPR];   //  Floating-point registers.
 #endif
-   int32_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
-   int32_t spill[256];      /* Spill slots. */
+   int32_t gpr[RID_NUM_GPR];   //  General-purpose registers.
+   int32_t spill[256];      //  Spill slots.
 } ExitState;
 
 // PC after instruction that caused an exit. Used to find the trace number.

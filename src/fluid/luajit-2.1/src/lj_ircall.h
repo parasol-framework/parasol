@@ -12,18 +12,18 @@
 
 // C call info for CALL* instructions.
 typedef struct CCallInfo {
-  ASMFunction func;      /* Function pointer. */
-  uint32_t flags;      /* Number of arguments and flags. */
+  ASMFunction func;      //  Function pointer.
+  uint32_t flags;      //  Number of arguments and flags.
 } CCallInfo;
 
-#define CCI_NARGS(ci)      ((ci)->flags & 0xff)   /* # of args. */
-#define CCI_NARGS_MAX      32         /* Max. # of args. */
+#define CCI_NARGS(ci)      ((ci)->flags & 0xff)   //  # of args.
+#define CCI_NARGS_MAX      32         //  Max. # of args.
 
 #define CCI_OTSHIFT      16
-#define CCI_OPTYPE(ci)      ((ci)->flags >> CCI_OTSHIFT)  /* Get op/type. */
+#define CCI_OPTYPE(ci)      ((ci)->flags >> CCI_OTSHIFT)  //  Get op/type.
 #define CCI_TYPE(ci)      (((ci)->flags>>CCI_OTSHIFT) & IRT_TYPE)
 #define CCI_OPSHIFT      24
-#define CCI_OP(ci)      ((ci)->flags >> CCI_OPSHIFT)  /* Get op. */
+#define CCI_OP(ci)      ((ci)->flags >> CCI_OPSHIFT)  //  Get op.
 
 #define CCI_CALL_N      (IR_CALLN << CCI_OPSHIFT)
 #define CCI_CALL_A      (IR_CALLA << CCI_OPSHIFT)
@@ -35,19 +35,19 @@ typedef struct CCallInfo {
 #define CCI_CALL_FS      (CCI_CALL_S|CCI_CC_FASTCALL)
 
 // C call info flags.
-#define CCI_T         (IRT_GUARD << CCI_OTSHIFT)  /* May throw. */
-#define CCI_L         0x0100   /* Implicit L arg. */
-#define CCI_CASTU64      0x0200   /* Cast u64 result to number. */
-#define CCI_NOFPRCLOBBER   0x0400   /* Does not clobber any FPRs. */
-#define CCI_VARARG      0x0800   /* Vararg function. */
+#define CCI_T         (IRT_GUARD << CCI_OTSHIFT)  //  May throw.
+#define CCI_L         0x0100   //  Implicit L arg.
+#define CCI_CASTU64      0x0200   //  Cast u64 result to number.
+#define CCI_NOFPRCLOBBER   0x0400   //  Does not clobber any FPRs.
+#define CCI_VARARG      0x0800   //  Vararg function.
 
-#define CCI_CC_MASK      0x3000   /* Calling convention mask. */
+#define CCI_CC_MASK      0x3000   //  Calling convention mask.
 #define CCI_CC_SHIFT      12
 // ORDER CC
-#define CCI_CC_CDECL      0x0000   /* Default cdecl calling convention. */
-#define CCI_CC_THISCALL      0x1000   /* Thiscall calling convention. */
-#define CCI_CC_FASTCALL      0x2000   /* Fastcall calling convention. */
-#define CCI_CC_STDCALL      0x3000   /* Stdcall calling convention. */
+#define CCI_CC_CDECL      0x0000   //  Default cdecl calling convention.
+#define CCI_CC_THISCALL      0x1000   //  Thiscall calling convention.
+#define CCI_CC_FASTCALL      0x2000   //  Fastcall calling convention.
+#define CCI_CC_STDCALL      0x3000   //  Stdcall calling convention.
 
 // Extra args for SOFTFP, SPLIT 64 bit.
 #define CCI_XARGS_SHIFT      14

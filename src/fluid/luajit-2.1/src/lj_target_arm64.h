@@ -23,8 +23,8 @@
 #define RIDENUM(name)   RID_##name,
 
 enum {
-   GPRDEF(RIDENUM)      /* General-purpose registers (GPRs). */
-   FPRDEF(RIDENUM)      /* Floating-point registers (FPRs). */
+   GPRDEF(RIDENUM)      //  General-purpose registers (GPRs).
+   FPRDEF(RIDENUM)      //  Floating-point registers (FPRs).
    RID_MAX,
    RID_TMP = RID_LR,
    RID_ZERO = RID_SP,
@@ -36,10 +36,10 @@ enum {
    RID_FPRET = RID_D0,
 
    // These definitions must match with the *.dasc file(s):
-   RID_BASE = RID_X19,      /* Interpreter BASE. */
-   RID_LPC = RID_X21,      /* Interpreter PC. */
-   RID_GL = RID_X22,      /* Interpreter GL. */
-   RID_LREG = RID_X23,      /* Interpreter L. */
+   RID_BASE = RID_X19,      //  Interpreter BASE.
+   RID_LPC = RID_X21,      //  Interpreter PC.
+   RID_GL = RID_X22,      //  Interpreter GL.
+   RID_LREG = RID_X23,      //  Interpreter L.
 
    // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_X0,
@@ -98,9 +98,9 @@ enum {
 
 // This definition must match with the *.dasc file(s).
 typedef struct {
-   lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
-   intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
-   int32_t spill[256];      /* Spill slots. */
+   lua_Number fpr[RID_NUM_FPR];   //  Floating-point registers.
+   intptr_t gpr[RID_NUM_GPR];   //  General-purpose registers.
+   int32_t spill[256];      //  Spill slots.
 } ExitState;
 
 // Highest exit + 1 indicates stack check.
@@ -109,7 +109,7 @@ typedef struct {
 // Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)
 {
-   while (*p == (LJ_LE ? 0xd503201f : 0x1f2003d5)) p++;  /* Skip A64I_NOP. */
+   while (*p == (LJ_LE ? 0xd503201f : 0x1f2003d5)) p++;  //  Skip A64I_NOP.
    return p + 3 + exitno;
 }
 // Avoid dependence on lj_jit.h if only including lj_target.h.
@@ -206,7 +206,7 @@ typedef enum A64Ins {
    A64I_LSLx = 0xd3400000,
    A64I_LSRx = 0xd340fc00,
    A64I_SHRw = 0x1ac02000,
-   A64I_SHRx = 0x9ac02000,   /* lsl/lsr/asr/ror x0, x0, x0 */
+   A64I_SHRx = 0x9ac02000,   //  lsl/lsr/asr/ror x0, x0, x0
    A64I_REVw = 0x5ac00800,
    A64I_REVx = 0xdac00c00,
 

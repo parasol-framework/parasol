@@ -28,10 +28,10 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
    // Traverse frames backwards.
    for (nextframe = frame = L->base - 1; frame > bot; ) {
       if (frame_gc(frame) == obj2gco(L))
-         level++;  /* Skip dummy frames. See lj_err_optype_call(). */
+         level++;  //  Skip dummy frames. See lj_err_optype_call().
       if (level-- == 0) {
          *size = (int)(nextframe - frame);
-         return frame;  /* Level found. */
+         return frame;  //  Level found.
       }
       nextframe = frame;
       if (frame_islua(frame)) {
@@ -39,12 +39,12 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
       }
       else {
          if (frame_isvarg(frame))
-            level++;  /* Skip vararg pseudo-frame. */
+            level++;  //  Skip vararg pseudo-frame.
          frame = frame_prevd(frame);
       }
    }
    *size = level;
-   return NULL;  /* Level not found. */
+   return NULL;  //  Level not found.
 }
 
 // Invalid bytecode position.
@@ -58,14 +58,14 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    BCPos pos;
    lj_assertL(fn->c.gct == ~LJ_TFUNC || fn->c.gct == ~LJ_TTHREAD,
       "function or frame expected");
-   if (!isluafunc(fn)) {  /* Cannot derive a PC for non-Lua functions. */
+   if (!isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
-   else if (nextframe == NULL) {  /* Lua function on top. */
+   else if (nextframe == NULL) {  //  Lua function on top.
       void* cf = cframe_raw(L->cframe);
       if (cf == NULL || (char*)cframe_pc(cf) == (char*)cframe_L(cf))
          return NO_BCPOS;
-      ins = cframe_pc(cf);  /* Only happens during error/hook handling. */
+      ins = cframe_pc(cf);  //  Only happens during error/hook handling.
    }
    else {
       if (frame_islua(nextframe)) {
@@ -106,7 +106,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    pt = funcproto(fn);
    pos = proto_bcpos(pt, ins) - 1;
 #if LJ_HASJIT
-   if (pos > pt->sizebc) {  /* Undo the effects of lj_trace_exit for JLOOP. */
+   if (pos > pt->sizebc) {  //  Undo the effects of lj_trace_exit for JLOOP.
       GCtrace* T = (GCtrace*)((char*)(ins - 1) - offsetof(GCtrace, startins));
       lj_assertL(bc_isret(bc_op(ins[-1])), "return bytecode expected");
       pos = proto_bcpos(pt, mref(T->startpc, const BCIns));
@@ -160,10 +160,10 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
          uint32_t vn = *(const uint8_t*)p;
          BCPos startpc, endpc;
          if (vn < VARNAME__MAX) {
-            if (vn == VARNAME_END) break;  /* End of varinfo. */
+            if (vn == VARNAME_END) break;  //  End of varinfo.
          }
          else {
-            do { p++; } while (*(const uint8_t*)p);  /* Skip over variable name. */
+            do { p++; } while (*(const uint8_t*)p);  //  Skip over variable name.
          }
          p++;
          lastpc = startpc = lastpc + lj_buf_ruleb128(&p);
@@ -194,12 +194,12 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    GCfunc* fn = frame_func(frame);
    BCPos pc = debug_framepc(L, fn, nextframe);
    if (!nextframe) nextframe = L->top + LJ_FR2;
-   if ((int)slot1 < 0) {  /* Negative slot number is for varargs. */
+   if ((int)slot1 < 0) {  //  Negative slot number is for varargs.
       if (pc != NO_BCPOS) {
          GCproto* pt = funcproto(fn);
          if ((pt->flags & PROTO_VARARG)) {
             slot1 = pt->numparams + (BCReg)(-(int)slot1);
-            if (frame_isvarg(frame)) {  /* Vararg frame has been set up? (pc!=0) */
+            if (frame_isvarg(frame)) {  //  Vararg frame has been set up? (pc!=0)
                nextframe = frame;
                frame = frame_prevd(frame);
             }
@@ -335,24 +335,24 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
 {
    const char* src = strdata(str);
    if (*src == '=') {
-      strncpy(out, src + 1, LUA_IDSIZE);  /* Remove first char. */
-      out[LUA_IDSIZE - 1] = '\0';  /* Ensures null termination. */
+      strncpy(out, src + 1, LUA_IDSIZE);  //  Remove first char.
+      out[LUA_IDSIZE - 1] = '\0';  //  Ensures null termination.
    }
-   else if (*src == '@') {  /* Output "source", or "...source". */
+   else if (*src == '@') {  //  Output "source", or "...source".
       size_t len = str->len - 1;
-      src++;  /* Skip the `@' */
+      src++;  //  Skip the `@'
       if (len >= LUA_IDSIZE) {
-         src += len - (LUA_IDSIZE - 4);  /* Get last part of file name. */
+         src += len - (LUA_IDSIZE - 4);  //  Get last part of file name.
          *out++ = '.'; *out++ = '.'; *out++ = '.';
       }
       strcpy(out, src);
    }
-   else {  /* Output [string "string"] or [builtin:name]. */
-      size_t len;  /* Length, up to first control char. */
+   else {  //  Output [string "string"] or [builtin:name].
+      size_t len;  //  Length, up to first control char.
       for (len = 0; len < LUA_IDSIZE - 12; len++)
          if (((const unsigned char*)src)[len] < ' ') break;
       strcpy(out, line == ~(BCLine)0 ? "[builtin:" : "[string \""); out += 9;
-      if (src[len] != '\0') {  /* Must truncate? */
+      if (src[len] != '\0') {  //  Must truncate?
          if (len > LUA_IDSIZE - 15) len = LUA_IDSIZE - 15;
          strncpy(out, src, len); out += len;
          strcpy(out, "..."); out += 3;
@@ -523,7 +523,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
          opt_L = 1;
       }
       else {
-         return 0;  /* Bad option. */
+         return 0;  //  Bad option.
       }
    }
    if (opt_f) {
@@ -554,7 +554,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
       }
       incr_top(L);
    }
-   return 1;  /* Ok. */
+   return 1;  //  Ok.
 }
 
 LUA_API int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
@@ -613,8 +613,8 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
 {
    int level = 0, dir = 1, pathstrip = 1;
    MSize lastlen = 0;
-   if (depth < 0) { level = ~depth; depth = dir = -1; }  /* Reverse frames. */
-   while (level != depth) {  /* Loop through all frame. */
+   if (depth < 0) { level = ~depth; depth = dir = -1; }  //  Reverse frames.
+   while (level != depth) {  //  Loop through all frame.
       int size;
       cTValue* frame = lj_debug_frame(L, level, &size);
       if (frame) {
@@ -624,19 +624,19 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
          int c;
          while ((c = *p++)) {
             switch (c) {
-            case 'p':  /* Preserve full path. */
+            case 'p':  //  Preserve full path.
                pathstrip = 0;
                break;
-            case 'F': case 'f': {  /* Dump function name. */
+            case 'F': case 'f': {  //  Dump function name.
                const char* name;
                const char* what = lj_debug_funcname(L, frame, &name);
                /* Only show function name if we're confident it's correct.
                 * Skip "local" because it returns the caller's variable name,
                 * which may not match the actual function being executed. */
                if (what && strcmp(what, "local") != 0) {
-                  if (c == 'F' && isluafunc(fn)) {  /* Dump module:name for 'F'. */
+                  if (c == 'F' && isluafunc(fn)) {  //  Dump module:name for 'F'.
                      GCproto* pt = funcproto(fn);
-                     if (pt->firstline != ~(BCLine)0) {  /* Not a bytecode builtin. */
+                     if (pt->firstline != ~(BCLine)0) {  //  Not a bytecode builtin.
                         debug_putchunkname(sb, pt, pathstrip);
                         lj_buf_putb(sb, ':');
                      }
@@ -647,7 +647,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                break;
             }
 
-            case 'l':  /* Dump module:line. */
+            case 'l':  //  Dump module:line.
                if (isluafunc(fn)) {
                   GCproto* pt = funcproto(fn);
                   if (debug_putchunkname(sb, pt, pathstrip)) {
@@ -658,17 +658,17 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                      lj_strfmt_putint(sb, line >= 0 ? line : pt->firstline);
                   }
                }
-               else if (isffunc(fn)) {  /* Dump numbered builtins. */
+               else if (isffunc(fn)) {  //  Dump numbered builtins.
                   lj_buf_putmem(sb, "[builtin#", 9);
                   lj_strfmt_putint(sb, fn->c.ffid);
                   lj_buf_putb(sb, ']');
                }
-               else {  /* Dump C function address. */
+               else {  //  Dump C function address.
                   lj_buf_putb(sb, '@');
                   lj_strfmt_putptr(sb, (const void*)fn->c.f);
                }
                break;
-            case 'Z':  /* Zap trailing separator. */
+            case 'Z':  //  Zap trailing separator.
                lastlen = sbuflen(sb);
                break;
             default:
@@ -681,12 +681,12 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
          break;
       }
       else {
-         level -= size;  /* Reverse frame order: quickly skip missing level. */
+         level -= size;  //  Reverse frame order: quickly skip missing level.
       }
       level += dir;
    }
    if (lastlen)
-      sb->w = sb->b + lastlen;  /* Zap trailing separator. */
+      sb->w = sb->b + lastlen;  //  Zap trailing separator.
 }
 #endif
 

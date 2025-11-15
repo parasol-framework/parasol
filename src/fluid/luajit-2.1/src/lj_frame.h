@@ -84,7 +84,7 @@ enum {
 #define frame_delta(f)      (frame_ftsz(f) >> 3)
 #define frame_sized(f)      (frame_ftsz(f) & ~FRAME_TYPEP)
 
-enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  /* Special continuations. */
+enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  //  Special continuations.
 
 #if LJ_FR2
 #define frame_contpc(f)      (frame_pc((f)-2))
@@ -311,7 +311,7 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  /* Special continuations. */
 #endif
 
 #define CFRAME_RESUME      1
-#define CFRAME_UNWIND_FF   2  /* Only used in unwinder. */
+#define CFRAME_UNWIND_FF   2  //  Only used in unwinder.
 #define CFRAME_RAWMASK      (~(intptr_t)(CFRAME_RESUME|CFRAME_UNWIND_FF))
 
 #define cframe_errfunc(cf)   (*(int32_t *)(((char *)(cf))+CFRAME_OFS_ERRF))

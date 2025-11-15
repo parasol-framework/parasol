@@ -353,7 +353,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
    if ((sf & (STRFMT_F_LEFT | STRFMT_F_ZERO)) == STRFMT_F_ZERO)
       while (width-- > pprec) *w++ = '0';
    while (prec-- > len) *w++ = '0';
-   while (q < buf + sizeof(buf)) *w++ = *q++;  /* Add number itself. */
+   while (q < buf + sizeof(buf)) *w++ = *q++;  //  Add number itself.
    if ((sf & STRFMT_F_LEFT))
       while (width-- > pprec) *w++ = ' ';
 
@@ -367,7 +367,7 @@ SBuf* lj_strfmt_putfnum_int(SBuf* sb, SFormat sf, lua_Number n)
 {
    int64_t k = (int64_t)n;
    if (checki32(k) && sf == STRFMT_INT)
-      return lj_strfmt_putint(sb, (int32_t)k);  /* Shortcut for plain %d. */
+      return lj_strfmt_putint(sb, (int32_t)k);  //  Shortcut for plain %d.
    else
       return lj_strfmt_putfxint(sb, sf, (uint64_t)k);
 }
@@ -408,7 +408,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             if (tvisint(o)) {
                int32_t k = intV(o);
                if (sf == STRFMT_INT)
-                  lj_strfmt_putint(sb, k);  /* Shortcut for plain %d. */
+                  lj_strfmt_putint(sb, k);  //  Shortcut for plain %d.
                else
                   lj_strfmt_putfxint(sb, sf, k);
                break;
@@ -453,8 +453,8 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
                copyTV(L, L->top++, mo);
                copyTV(L, L->top++, o);
                lua_call(L, 1, 1);
-               o = &L->base[arg - 1];  /* Stack may have been reallocated. */
-               copyTV(L, o, --L->top);  /* Replace inline for retry. */
+               o = &L->base[arg - 1];  //  Stack may have been reallocated.
+               copyTV(L, o, --L->top);  //  Replace inline for retry.
                if (retry < 2) {  // Global buffer may have been overwritten.
                   retry = 1;
                   break;
@@ -478,7 +478,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
                s = strdata(str);
             }
             if ((sf & STRFMT_T_QUOTED))
-               strfmt_putquotedlen(sb, s, len);  /* No formatting. */
+               strfmt_putquotedlen(sb, s, len);  //  No formatting.
             else
                strfmt_putfstrlen(sb, sf, s, len);
             break;
@@ -486,7 +486,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
          case STRFMT_CHAR:
             lj_strfmt_putfchar(sb, sf, lj_lib_checkint(L, arg));
             break;
-         case STRFMT_PTR:  /* No formatting. */
+         case STRFMT_PTR:  //  No formatting.
             lj_strfmt_putptr(sb, lj_obj_ptr(G(L), o));
             break;
          default:

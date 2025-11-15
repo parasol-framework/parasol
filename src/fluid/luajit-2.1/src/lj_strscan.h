@@ -9,8 +9,8 @@
 #include "lj_obj.h"
 
 // Options for accepted/returned formats.
-#define STRSCAN_OPT_TOINT   0x01  /* Convert to int32_t, if possible. */
-#define STRSCAN_OPT_TONUM   0x02  /* Always convert to double. */
+#define STRSCAN_OPT_TOINT   0x01  //  Convert to int32_t, if possible.
+#define STRSCAN_OPT_TONUM   0x02  //  Always convert to double.
 #define STRSCAN_OPT_IMAG   0x04
 #define STRSCAN_OPT_LL      0x08
 #define STRSCAN_OPT_C      0x10

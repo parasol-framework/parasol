@@ -98,11 +98,11 @@ LJ_FUNC TRef LJ_FASTCALL lj_opt_cselim(jit_State *J, IRRef lim);
 
 // Special return values for the fold functions.
 enum {
-  NEXTFOLD,      /* Couldn't fold, pass on. */
-  RETRYFOLD,      /* Retry fold with modified fins. */
-  KINTFOLD,      /* Return ref for int constant in fins->i. */
-  FAILFOLD,      /* Guard would always fail. */
-  DROPFOLD,      /* Guard eliminated. */
+  NEXTFOLD,      //  Couldn't fold, pass on.
+  RETRYFOLD,      //  Retry fold with modified fins.
+  KINTFOLD,      //  Return ref for int constant in fins->i.
+  FAILFOLD,      //  Guard would always fail.
+  DROPFOLD,      //  Guard eliminated.
   MAX_FOLD
 };
 

@@ -62,7 +62,7 @@ static uint32_t ndigits_dec_threshold[] = {
 // Compute the number of digits in the decimal representation of x.
 static MSize ndigits_dec(uint32_t x)
 {
-   MSize t = ((lj_fls(x | 1) * 77) >> 8) + 1; /* 2^8/77 is roughly log2(10) */
+   MSize t = ((lj_fls(x | 1) * 77) >> 8) + 1; //  2^8/77 is roughly log2(10)
    return t + (x > ndigits_dec_threshold[t]);
 }
 
@@ -338,11 +338,11 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
       }
       if (prefix) *p++ = prefix;
       *p++ = '0';
-      *p++ = hexdig[17]; /* x or X */
+      *p++ = hexdig[17]; //  x or X
       if ((sf & (STRFMT_F_LEFT | STRFMT_F_ZERO)) == STRFMT_F_ZERO) {
          while (width-- > len) *p++ = '0';
       }
-      *p++ = '0' + (t.u32.hi >> 20); /* Usually '1', sometimes '0' or '2'. */
+      *p++ = '0' + (t.u32.hi >> 20); //  Usually '1', sometimes '0' or '2'.
       if ((prec | (sf & STRFMT_F_ALT))) {
          // Emit fractional part.
          char* q = p + 1 + prec;
@@ -352,8 +352,8 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
          while (prec) { p[prec--] = hexdig[t.u64 & 15]; t.u64 >>= 4; }
          p = q;
       }
-      *p++ = hexdig[16]; /* p or P */
-      *p++ = eprefix; /* + or - */
+      *p++ = hexdig[16]; //  p or P
+      *p++ = eprefix; //  + or -
       p = lj_strfmt_wint(p, e);
    }
    else {
@@ -365,7 +365,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
       if (t.u32.hi & 0x80000000) prefix = '-';
       else if ((sf & STRFMT_F_PLUS)) prefix = '+';
       else if ((sf & STRFMT_F_SPACE)) prefix = ' ';
-      prec += ((int32_t)prec >> 31) & 7; /* Default precision is 6. */
+      prec += ((int32_t)prec >> 31) & 7; //  Default precision is 6.
       if (STRFMT_FP(sf) == STRFMT_FP(STRFMT_T_FP_G)) {
          // %g - decrement precision if non-zero (to make it like %e).
          prec--;
@@ -376,7 +376,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
          if ((ndebias = rescale_e[e >> 6])) {
             t.n = n * rescale_n[e >> 6];
             if (LJ_UNLIKELY(!e)) t.n *= 1e10, ndebias -= 10;
-            t.u64 -= 2; /* Convert 2ulp below (later we convert 2ulp above). */
+            t.u64 -= 2; //  Convert 2ulp below (later we convert 2ulp above).
             nd[0] = 0x100000 | (t.u32.hi & 0xfffff);
             e = ((t.u32.hi >> 20) & 0x7ff) - 1075 - (ND_MUL2K_MAX_SHIFT < 29);
             goto load_t_lo; rescale_failed:
@@ -489,11 +489,11 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             while (width-- > len) *p++ = '0';
          }
          q = lj_strfmt_wint(p + 1, nd[ndhi]);
-         p[0] = p[1]; /* Put leading digit in the correct place. */
+         p[0] = p[1]; //  Put leading digit in the correct place.
          if ((prec | (sf & STRFMT_F_ALT))) {
             // Emit fractional part.
             p[1] = '.'; p += 2;
-            prec -= (MSize)(q - p); p = q; /* Account for digits already emitted. */
+            prec -= (MSize)(q - p); p = q; //  Account for digits already emitted.
             // Then emit chunks of 9 digits (this may emit 8 digits too many).
             for (i = ndhi; (int32_t)prec > 0 && i != ndlo; prec -= 9) {
                i = (i - 1) & 0x3f;
@@ -515,8 +515,8 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             p++;
          }
          *p++ = (sf & STRFMT_F_UPPER) ? 'E' : 'e';
-         *p++ = eprefix; /* + or - */
-         if (nde < 10) *p++ = '0'; /* Always at least two digits of exponent. */
+         *p++ = eprefix; //  + or -
+         if (nde < 10) *p++ = '0'; //  Always at least two digits of exponent.
          p = lj_strfmt_wint(p, nde);
       }
       else {

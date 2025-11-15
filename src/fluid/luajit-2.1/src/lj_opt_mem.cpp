@@ -33,9 +33,9 @@
 
 // Return values from alias analysis.
 typedef enum {
-   ALIAS_NO,   /* The two refs CANNOT alias (exact). */
-   ALIAS_MAY,   /* The two refs MAY alias (inexact). */
-   ALIAS_MUST   /* The two refs MUST alias (exact). */
+   ALIAS_NO,   //  The two refs CANNOT alias (exact).
+   ALIAS_MAY,   //  The two refs MAY alias (inexact).
+   ALIAS_MUST   //  The two refs MUST alias (exact).
 } AliasRet;
 
 // -- ALOAD/HLOAD forwarding and ASTORE/HSTORE elimination ----------------
@@ -43,13 +43,13 @@ typedef enum {
 // Simplified escape analysis: check for intervening stores.
 static AliasRet aa_escape(jit_State* J, IRIns* ir, IRIns* stop)
 {
-   IRRef ref = (IRRef)(ir - J->cur.ir);  /* The ref that might be stored. */
+   IRRef ref = (IRRef)(ir - J->cur.ir);  //  The ref that might be stored.
    for (ir++; ir < stop; ir++)
       if (ir->op2 == ref &&
          (ir->o == IR_ASTORE || ir->o == IR_HSTORE ||
             ir->o == IR_USTORE || ir->o == IR_FSTORE))
-         return ALIAS_MAY;  /* Reference was stored and might alias. */
-   return ALIAS_NO;  /* Reference was not stored. */
+         return ALIAS_MAY;  //  Reference was stored and might alias.
+   return ALIAS_NO;  //  Reference was not stored.
 }
 
 // Alias analysis for two different table references.
@@ -63,12 +63,12 @@ static AliasRet aa_table(jit_State* J, IRRef ta, IRRef tb)
    newa = (taba->o == IR_TNEW || taba->o == IR_TDUP);
    newb = (tabb->o == IR_TNEW || tabb->o == IR_TDUP);
    if (newa && newb)
-      return ALIAS_NO;  /* Two different allocations never alias. */
+      return ALIAS_NO;  //  Two different allocations never alias.
    if (newb) {  // At least one allocation?
       IRIns* tmp = taba; taba = tabb; tabb = tmp;
    }
    else if (!newa) {
-      return ALIAS_MAY;  /* Anything else: we just don't know. */
+      return ALIAS_MAY;  //  Anything else: we just don't know.
    }
    return aa_escape(J, taba, tabb);
 }
@@ -81,10 +81,10 @@ static int fwd_aa_tab_clear(jit_State* J, IRRef lim, IRRef ta)
       IRIns* calls = IR(ref);
       if (calls->op2 == IRCALL_lj_tab_clear &&
          (ta == calls->op1 || aa_table(J, ta, calls->op1) != ALIAS_NO))
-         return 0;  /* Conflict. */
+         return 0;  //  Conflict.
       ref = calls->prev;
    }
-   return 1;  /* No conflict. Can safely FOLD/CSE. */
+   return 1;  //  No conflict. Can safely FOLD/CSE.
 }
 
 // Check whether there's no aliasing NEWREF/table.clear for the left operand.
@@ -95,7 +95,7 @@ int LJ_FASTCALL lj_opt_fwd_tptr(jit_State* J, IRRef lim)
    while (ref > lim) {
       IRIns* newref = IR(ref);
       if (ta == newref->op1 || aa_table(J, ta, newref->op1) != ALIAS_NO)
-         return 0;  /* Conflict. */
+         return 0;  //  Conflict.
       ref = newref->prev;
    }
    return fwd_aa_tab_clear(J, lim, ta);
@@ -109,7 +109,7 @@ static AliasRet aa_ahref(jit_State* J, IRIns* refa, IRIns* refb)
    IRIns* keya, * keyb;
    IRRef ta, tb;
    if (refa == refb)
-      return ALIAS_MUST;  /* Shortcut for same refs. */
+      return ALIAS_MUST;  //  Shortcut for same refs.
    keya = IR(ka);
    if (keya->o == IR_KSLOT) { ka = keya->op1; keya = IR(ka); }
    keyb = IR(kb);
@@ -119,12 +119,12 @@ static AliasRet aa_ahref(jit_State* J, IRIns* refa, IRIns* refb)
    if (ka == kb) {
       // Same key. Check for same table with different ref (NEWREF vs. HREF).
       if (ta == tb)
-         return ALIAS_MUST;  /* Same key, same table. */
+         return ALIAS_MUST;  //  Same key, same table.
       else
-         return aa_table(J, ta, tb);  /* Same key, possibly different table. */
+         return aa_table(J, ta, tb);  //  Same key, possibly different table.
    }
    if (irref_isk(ka) && irref_isk(kb))
-      return ALIAS_NO;  /* Different constant keys. */
+      return ALIAS_NO;  //  Different constant keys.
    if (refa->o == IR_AREF) {
       // Disambiguate array references based on index arithmetic.
       int32_t ofsa = 0, ofsb = 0;
@@ -135,16 +135,16 @@ static AliasRet aa_ahref(jit_State* J, IRIns* refa, IRIns* refb)
          basea = keya->op1;
          ofsa = IR(keya->op2)->i;
          if (basea == kb && ofsa != 0)
-            return ALIAS_NO;  /* t[base+-ofs] vs. t[base]. */
+            return ALIAS_NO;  //  t[base+-ofs] vs. t[base].
       }
       if (keyb->o == IR_ADD && irref_isk(keyb->op2)) {
          baseb = keyb->op1;
          ofsb = IR(keyb->op2)->i;
          if (ka == baseb && ofsb != 0)
-            return ALIAS_NO;  /* t[base] vs. t[base+-ofs]. */
+            return ALIAS_NO;  //  t[base] vs. t[base+-ofs].
       }
       if (basea == baseb && ofsa != ofsb)
-         return ALIAS_NO;  /* t[base+-o1] vs. t[base+-o2] and o1 != o2. */
+         return ALIAS_NO;  //  t[base+-o1] vs. t[base+-o2] and o1 != o2.
    }
    else {
       // Disambiguate hash references based on the type of their keys.
@@ -152,19 +152,19 @@ static AliasRet aa_ahref(jit_State* J, IRIns* refa, IRIns* refb)
          (refb->o == IR_HREF || refb->o == IR_HREFK || refb->o == IR_NEWREF),
          "bad xREF IR op %d or %d", refa->o, refb->o);
       if (!irt_sametype(keya->t, keyb->t))
-         return ALIAS_NO;  /* Different key types. */
+         return ALIAS_NO;  //  Different key types.
    }
    if (ta == tb)
-      return ALIAS_MAY;  /* Same table, cannot disambiguate keys. */
+      return ALIAS_MAY;  //  Same table, cannot disambiguate keys.
    else
-      return aa_table(J, ta, tb);  /* Try to disambiguate tables. */
+      return aa_table(J, ta, tb);  //  Try to disambiguate tables.
 }
 
 // Array and hash load forwarding.
 static TRef fwd_ahload(jit_State* J, IRRef xref)
 {
    IRIns* xr = IR(xref);
-   IRRef lim = xref;  /* Search limit. */
+   IRRef lim = xref;  //  Search limit.
    IRRef ref;
 
    // Search for conflicting stores.
@@ -172,9 +172,9 @@ static TRef fwd_ahload(jit_State* J, IRRef xref)
    while (ref > xref) {
       IRIns* store = IR(ref);
       switch (aa_ahref(J, xr, IR(store->op1))) {
-      case ALIAS_NO:   break;  /* Continue searching. */
-      case ALIAS_MAY:  lim = ref; goto cselim;  /* Limit search for load. */
-      case ALIAS_MUST: return store->op2;  /* Store forwarding. */
+      case ALIAS_NO:   break;  //  Continue searching.
+      case ALIAS_MAY:  lim = ref; goto cselim;  //  Limit search for load.
+      case ALIAS_MUST: return store->op2;  //  Store forwarding.
       }
       ref = store->prev;
    }
@@ -207,14 +207,14 @@ static TRef fwd_ahload(jit_State* J, IRRef xref)
          while (ref > tab) {
             IRIns* store = IR(ref);
             switch (aa_ahref(J, xr, IR(store->op1))) {
-            case ALIAS_NO:   break;  /* Continue searching. */
-            case ALIAS_MAY:  goto cselim;  /* Conflicting store. */
-            case ALIAS_MUST: return store->op2;  /* Store forwarding. */
+            case ALIAS_NO:   break;  //  Continue searching.
+            case ALIAS_MAY:  goto cselim;  //  Conflicting store.
+            case ALIAS_MUST: return store->op2;  //  Store forwarding.
             }
             ref = store->prev;
          }
          if (ir->o == IR_TNEW && !irt_isnil(fins->t))
-            return 0;  /* Type instability in loop-carried dependency. */
+            return 0;  //  Type instability in loop-carried dependency.
          if (irt_ispri(fins->t)) {
             return TREF_PRI(irt_type(fins->t));
          }
@@ -245,10 +245,10 @@ cselim:
    while (ref > lim) {
       IRIns* load = IR(ref);
       if (load->op1 == xref)
-         return ref;  /* Load forwarding. */
+         return ref;  //  Load forwarding.
       ref = load->prev;
    }
-   return 0;  /* Conflict or no match. */
+   return 0;  //  Conflict or no match.
 }
 
 // Reassociate ALOAD across PHIs to handle t[i-1] forwarding case.
@@ -302,7 +302,7 @@ TRef LJ_FASTCALL lj_opt_fwd_hrefk(jit_State* J)
       IRIns* newref = IR(ref);
       if (tab == newref->op1) {
          if (fright->op1 == newref->op2 && fwd_aa_tab_clear(J, ref, tab))
-            return ref;  /* Forward from NEWREF. */
+            return ref;  //  Forward from NEWREF.
          else
             goto docse;
       }
@@ -313,7 +313,7 @@ TRef LJ_FASTCALL lj_opt_fwd_hrefk(jit_State* J)
    }
    // No conflicting NEWREF: key location unchanged for HREFK of TDUP.
    if (IR(tab)->o == IR_TDUP && fwd_aa_tab_clear(J, tab, tab))
-      fins->t.irt &= ~IRT_GUARD;  /* Drop HREFK guard. */
+      fins->t.irt &= ~IRT_GUARD;  //  Drop HREFK guard.
 docse:
    return CSEFOLD;
 }
@@ -321,7 +321,7 @@ docse:
 // Check whether HREF of TNEW/TDUP can be folded to niltv.
 int LJ_FASTCALL lj_opt_fwd_href_nokey(jit_State* J)
 {
-   IRRef lim = fins->op1;  /* Search limit. */
+   IRRef lim = fins->op1;  //  Search limit.
    IRRef ref;
 
    // The key for an ASTORE may end up in the hash part after a NEWREF.
@@ -329,7 +329,7 @@ int LJ_FASTCALL lj_opt_fwd_href_nokey(jit_State* J)
       ref = J->chain[IR_ASTORE];
       while (ref > lim) {
          if (ref < J->chain[IR_NEWREF])
-            return 0;  /* Conflict. */
+            return 0;  //  Conflict.
          ref = IR(ref)->prev;
       }
    }
@@ -339,18 +339,18 @@ int LJ_FASTCALL lj_opt_fwd_href_nokey(jit_State* J)
    while (ref > lim) {
       IRIns* store = IR(ref);
       if (aa_ahref(J, fins, IR(store->op1)) != ALIAS_NO)
-         return 0;  /* Conflict. */
+         return 0;  //  Conflict.
       ref = store->prev;
    }
 
-   return 1;  /* No conflict. Can fold to niltv. */
+   return 1;  //  No conflict. Can fold to niltv.
 }
 
 // ASTORE/HSTORE elimination.
 TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State* J)
 {
-   IRRef xref = fins->op1;  /* xREF reference. */
-   IRRef val = fins->op2;  /* Stored value reference. */
+   IRRef xref = fins->op1;  //  xREF reference.
+   IRRef val = fins->op2;  //  Stored value reference.
    IRIns* xr = IR(xref);
    IRRef1* refp = &J->chain[fins->o];
    IRRef ref = *refp;
@@ -358,13 +358,13 @@ TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State* J)
       IRIns* store = IR(ref);
       switch (aa_ahref(J, xr, IR(store->op1))) {
       case ALIAS_NO:
-         break;  /* Continue searching. */
-      case ALIAS_MAY:   /* Store to MAYBE the same location. */
-         if (store->op2 != val)  /* Conflict if the value is different. */
+         break;  //  Continue searching.
+      case ALIAS_MAY:   //  Store to MAYBE the same location.
+         if (store->op2 != val)  //  Conflict if the value is different.
             goto doemit;
-         break;  /* Otherwise continue searching. */
-      case ALIAS_MUST:   /* Store to the same location. */
-         if (store->op2 == val)  /* Same value: drop the new store. */
+         break;  //  Otherwise continue searching.
+      case ALIAS_MUST:   //  Store to the same location.
+         if (store->op2 == val)  //  Same value: drop the new store.
             return DROPFOLD;
          // Different value: try to eliminate the redundant store.
          if (ref > J->chain[IR_LOOP]) {  // Quick check to avoid crossing LOOP.
@@ -375,7 +375,7 @@ TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State* J)
             */
             for (ir = IR(J->cur.nins - 1); ir > store; ir--)
                if (irt_isguard(ir->t) || ir->o == IR_ALEN)
-                  goto doemit;  /* No elimination possible. */
+                  goto doemit;  //  No elimination possible.
             // Remove redundant store from chain and replace with NOP.
             *refp = store->prev;
             lj_ir_nop(store);
@@ -386,14 +386,14 @@ TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State* J)
       ref = *(refp = &store->prev);
    }
 doemit:
-   return EMITFOLD;  /* Otherwise we have a conflict or simply no match. */
+   return EMITFOLD;  //  Otherwise we have a conflict or simply no match.
 }
 
 // ALEN forwarding.
 TRef LJ_FASTCALL lj_opt_fwd_alen(jit_State* J)
 {
-   IRRef tab = fins->op1;  /* Table reference. */
-   IRRef lim = tab;  /* Search limit. */
+   IRRef tab = fins->op1;  //  Table reference.
+   IRRef lim = tab;  //  Search limit.
    IRRef ref;
 
    // Search for conflicting HSTORE with numeric key.
@@ -403,7 +403,7 @@ TRef LJ_FASTCALL lj_opt_fwd_alen(jit_State* J)
       IRIns* href = IR(store->op1);
       IRIns* key = IR(href->op2);
       if (irt_isnum(key->o == IR_KSLOT ? IR(key->op1)->t : key->t)) {
-         lim = ref;  /* Conflicting store found, limits search for ALEN. */
+         lim = ref;  //  Conflicting store found, limits search for ALEN.
          break;
       }
       ref = store->prev;
@@ -433,17 +433,17 @@ TRef LJ_FASTCALL lj_opt_fwd_alen(jit_State* J)
                   idx->o == IR_ADD && idx->op1 == ref &&
                   IR(idx->op2)->o == IR_KINT && IR(idx->op2)->i == 1) {
                   // Note: this requires an extra PHI check in loop unroll.
-                  fins->op2 = aref->op2;  /* Set ALEN hint. */
+                  fins->op2 = aref->op2;  //  Set ALEN hint.
                }
-               goto doemit;  /* Conflicting store, possibly giving a hint. */
+               goto doemit;  //  Conflicting store, possibly giving a hint.
             }
             else if (aa_table(J, tab, fref->op1) == ALIAS_NO) {
-               goto doemit;  /* Conflicting store. */
+               goto doemit;  //  Conflicting store.
             }
             sref = store->prev;
          }
 
-         return ref;  /* Plain ALEN forwarding. */
+         return ref;  //  Plain ALEN forwarding.
       }
       ref = IR(ref)->prev;
    }
@@ -464,18 +464,18 @@ doemit:
 static AliasRet aa_uref(IRIns* refa, IRIns* refb)
 {
    if (refa->o != refb->o)
-      return ALIAS_NO;  /* Different UREFx type. */
+      return ALIAS_NO;  //  Different UREFx type.
    if (refa->op1 == refb->op1) {  // Same function.
       if (refa->op2 == refb->op2)
-         return ALIAS_MUST;  /* Same function, same upvalue idx. */
+         return ALIAS_MUST;  //  Same function, same upvalue idx.
       else
-         return ALIAS_NO;  /* Same function, different upvalue idx. */
+         return ALIAS_NO;  //  Same function, different upvalue idx.
    }
    else {  // Different functions, check disambiguation hash values.
       if (((refa->op2 ^ refb->op2) & 0xff))
-         return ALIAS_NO;  /* Upvalues with different hash values cannot alias. */
+         return ALIAS_NO;  //  Upvalues with different hash values cannot alias.
       else
-         return ALIAS_MAY;  /* No conclusion can be drawn for same hash value. */
+         return ALIAS_MAY;  //  No conclusion can be drawn for same hash value.
    }
 }
 
@@ -483,7 +483,7 @@ static AliasRet aa_uref(IRIns* refa, IRIns* refb)
 TRef LJ_FASTCALL lj_opt_fwd_uload(jit_State* J)
 {
    IRRef uref = fins->op1;
-   IRRef lim = REF_BASE;  /* Search limit. */
+   IRRef lim = REF_BASE;  //  Search limit.
    IRIns* xr = IR(uref);
    IRRef ref;
 
@@ -492,9 +492,9 @@ TRef LJ_FASTCALL lj_opt_fwd_uload(jit_State* J)
    while (ref > lim) {
       IRIns* store = IR(ref);
       switch (aa_uref(xr, IR(store->op1))) {
-      case ALIAS_NO:   break;  /* Continue searching. */
-      case ALIAS_MAY:  lim = ref; goto cselim;  /* Limit search for load. */
-      case ALIAS_MUST: return store->op2;  /* Store forwarding. */
+      case ALIAS_NO:   break;  //  Continue searching.
+      case ALIAS_MAY:  lim = ref; goto cselim;  //  Limit search for load.
+      case ALIAS_MUST: return store->op2;  //  Store forwarding.
       }
       ref = store->prev;
    }
@@ -506,7 +506,7 @@ cselim:
       IRIns* ir = IR(ref);
       if (ir->op1 == uref ||
          (IR(ir->op1)->op12 == IR(uref)->op12 && IR(ir->op1)->o == IR(uref)->o))
-         return ref;  /* Match for identical or equal UREFx (non-CSEable UREFO). */
+         return ref;  //  Match for identical or equal UREFx (non-CSEable UREFO).
       ref = ir->prev;
    }
    return lj_ir_emit(J);
@@ -515,8 +515,8 @@ cselim:
 // USTORE elimination.
 TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State* J)
 {
-   IRRef xref = fins->op1;  /* xREF reference. */
-   IRRef val = fins->op2;  /* Stored value reference. */
+   IRRef xref = fins->op1;  //  xREF reference.
+   IRRef val = fins->op2;  //  Stored value reference.
    IRIns* xr = IR(xref);
    IRRef1* refp = &J->chain[IR_USTORE];
    IRRef ref = *refp;
@@ -524,13 +524,13 @@ TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State* J)
       IRIns* store = IR(ref);
       switch (aa_uref(xr, IR(store->op1))) {
       case ALIAS_NO:
-         break;  /* Continue searching. */
-      case ALIAS_MAY:   /* Store to MAYBE the same location. */
-         if (store->op2 != val)  /* Conflict if the value is different. */
+         break;  //  Continue searching.
+      case ALIAS_MAY:   //  Store to MAYBE the same location.
+         if (store->op2 != val)  //  Conflict if the value is different.
             goto doemit;
-         break;  /* Otherwise continue searching. */
-      case ALIAS_MUST:   /* Store to the same location. */
-         if (store->op2 == val)  /* Same value: drop the new store. */
+         break;  //  Otherwise continue searching.
+      case ALIAS_MUST:   //  Store to the same location.
+         if (store->op2 == val)  //  Same value: drop the new store.
             return DROPFOLD;
          // Different value: try to eliminate the redundant store.
          if (ref > J->chain[IR_LOOP]) {  // Quick check to avoid crossing LOOP.
@@ -538,7 +538,7 @@ TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State* J)
             // Check for any intervening guards (includes conflicting loads).
             for (ir = IR(J->cur.nins - 1); ir > store; ir--)
                if (irt_isguard(ir->t))
-                  goto doemit;  /* No elimination possible. */
+                  goto doemit;  //  No elimination possible.
             // Remove redundant store from chain and replace with NOP.
             *refp = store->prev;
             lj_ir_nop(store);
@@ -559,7 +559,7 @@ TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State* J)
       ref = *(refp = &store->prev);
    }
 doemit:
-   return EMITFOLD;  /* Otherwise we have a conflict or simply no match. */
+   return EMITFOLD;  //  Otherwise we have a conflict or simply no match.
 }
 
 // -- FLOAD forwarding and FSTORE elimination -----------------------------
@@ -571,21 +571,21 @@ doemit:
 static AliasRet aa_fref(jit_State* J, IRIns* refa, IRIns* refb)
 {
    if (refa->op2 != refb->op2)
-      return ALIAS_NO;  /* Different fields. */
+      return ALIAS_NO;  //  Different fields.
    if (refa->op1 == refb->op1)
-      return ALIAS_MUST;  /* Same field, same object. */
+      return ALIAS_MUST;  //  Same field, same object.
    else if (refa->op2 >= IRFL_TAB_META && refa->op2 <= IRFL_TAB_NOMM)
-      return aa_table(J, refa->op1, refb->op1);  /* Disambiguate tables. */
+      return aa_table(J, refa->op1, refb->op1);  //  Disambiguate tables.
    else
-      return ALIAS_MAY;  /* Same field, possibly different object. */
+      return ALIAS_MAY;  //  Same field, possibly different object.
 }
 
 // Only the loads for mutable fields end up here (see FOLD).
 TRef LJ_FASTCALL lj_opt_fwd_fload(jit_State* J)
 {
-   IRRef oref = fins->op1;  /* Object reference. */
-   IRRef fid = fins->op2;  /* Field ID. */
-   IRRef lim = oref;  /* Search limit. */
+   IRRef oref = fins->op1;  //  Object reference.
+   IRRef fid = fins->op2;  //  Field ID.
+   IRRef lim = oref;  //  Search limit.
    IRRef ref;
 
    // Search for conflicting stores.
@@ -593,9 +593,9 @@ TRef LJ_FASTCALL lj_opt_fwd_fload(jit_State* J)
    while (ref > oref) {
       IRIns* store = IR(ref);
       switch (aa_fref(J, fins, IR(store->op1))) {
-      case ALIAS_NO:   break;  /* Continue searching. */
-      case ALIAS_MAY:  lim = ref; goto cselim;  /* Limit search for load. */
-      case ALIAS_MUST: return store->op2;  /* Store forwarding. */
+      case ALIAS_NO:   break;  //  Continue searching.
+      case ALIAS_MAY:  lim = ref; goto cselim;  //  Limit search for load.
+      case ALIAS_MUST: return store->op2;  //  Store forwarding.
       }
       ref = store->prev;
    }
@@ -615,8 +615,8 @@ cselim:
 // FSTORE elimination.
 TRef LJ_FASTCALL lj_opt_dse_fstore(jit_State* J)
 {
-   IRRef fref = fins->op1;  /* FREF reference. */
-   IRRef val = fins->op2;  /* Stored value reference. */
+   IRRef fref = fins->op1;  //  FREF reference.
+   IRRef val = fins->op2;  //  Stored value reference.
    IRIns* xr = IR(fref);
    IRRef1* refp = &J->chain[IR_FSTORE];
    IRRef ref = *refp;
@@ -624,22 +624,22 @@ TRef LJ_FASTCALL lj_opt_dse_fstore(jit_State* J)
       IRIns* store = IR(ref);
       switch (aa_fref(J, xr, IR(store->op1))) {
       case ALIAS_NO:
-         break;  /* Continue searching. */
+         break;  //  Continue searching.
       case ALIAS_MAY:
-         if (store->op2 != val)  /* Conflict if the value is different. */
+         if (store->op2 != val)  //  Conflict if the value is different.
             goto doemit;
-         break;  /* Otherwise continue searching. */
+         break;  //  Otherwise continue searching.
       case ALIAS_MUST:
          if (store->op2 == val &&
             !(xr->op2 >= IRFL_SBUF_W && xr->op2 <= IRFL_SBUF_R))
-            return DROPFOLD;  /* Same value: drop the new store. */
+            return DROPFOLD;  //  Same value: drop the new store.
          // Different value: try to eliminate the redundant store.
          if (ref > J->chain[IR_LOOP]) {  // Quick check to avoid crossing LOOP.
             IRIns* ir;
             // Check for any intervening guards or conflicting loads.
             for (ir = IR(J->cur.nins - 1); ir > store; ir--)
                if (irt_isguard(ir->t) || (ir->o == IR_FLOAD && ir->op2 == xr->op2))
-                  goto doemit;  /* No elimination possible. */
+                  goto doemit;  //  No elimination possible.
             // Remove redundant store from chain and replace with NOP.
             *refp = store->prev;
             lj_ir_nop(store);
@@ -650,7 +650,7 @@ TRef LJ_FASTCALL lj_opt_dse_fstore(jit_State* J)
       ref = *(refp = &store->prev);
    }
 doemit:
-   return EMITFOLD;  /* Otherwise we have a conflict or simply no match. */
+   return EMITFOLD;  //  Otherwise we have a conflict or simply no match.
 }
 
 // Check whether there's no aliasing buffer op between IRFL_SBUF_*.
@@ -658,22 +658,22 @@ int LJ_FASTCALL lj_opt_fwd_sbuf(jit_State* J, IRRef lim)
 {
    IRRef ref;
    if (J->chain[IR_BUFPUT] > lim)
-      return 0;  /* Conflict. */
+      return 0;  //  Conflict.
    ref = J->chain[IR_CALLS];
    while (ref > lim) {
       IRIns* ir = IR(ref);
       if (ir->op2 >= IRCALL_lj_strfmt_putint && ir->op2 < IRCALL_lj_buf_tostr)
-         return 0;  /* Conflict. */
+         return 0;  //  Conflict.
       ref = ir->prev;
    }
    ref = J->chain[IR_CALLL];
    while (ref > lim) {
       IRIns* ir = IR(ref);
       if (ir->op2 >= IRCALL_lj_strfmt_putint && ir->op2 < IRCALL_lj_buf_tostr)
-         return 0;  /* Conflict. */
+         return 0;  //  Conflict.
       ref = ir->prev;
    }
-   return 1;  /* No conflict. Can safely FOLD/CSE. */
+   return 1;  //  No conflict. Can safely FOLD/CSE.
 }
 
 // -- XLOAD forwarding and XSTORE elimination -----------------------------
@@ -683,11 +683,11 @@ static IRIns* aa_findcnew(jit_State* J, IRIns* ir)
 {
    while (ir->o == IR_ADD) {
       if (!irref_isk(ir->op1)) {
-         IRIns* ir1 = aa_findcnew(J, IR(ir->op1));  /* Left-recursion. */
+         IRIns* ir1 = aa_findcnew(J, IR(ir->op1));  //  Left-recursion.
          if (ir1) return ir1;
       }
       if (irref_isk(ir->op2)) return NULL;
-      ir = IR(ir->op2);  /* Flatten right-recursion. */
+      ir = IR(ir->op2);  //  Flatten right-recursion.
    }
    return ir->o == IR_CNEW ? ir : NULL;
 }
@@ -698,9 +698,9 @@ static AliasRet aa_cnew(jit_State* J, IRIns* refa, IRIns* refb)
    IRIns* cnewa = aa_findcnew(J, refa);
    IRIns* cnewb = aa_findcnew(J, refb);
    if (cnewa == cnewb)
-      return ALIAS_MAY;  /* Same allocation or neither is an allocation. */
+      return ALIAS_MAY;  //  Same allocation or neither is an allocation.
    if (cnewa && cnewb)
-      return ALIAS_NO;  /* Two different allocations never alias. */
+      return ALIAS_NO;  //  Two different allocations never alias.
    if (cnewb) { cnewa = cnewb; refb = refa; }
    return aa_escape(J, cnewa, refb);
 }
@@ -712,7 +712,7 @@ static AliasRet aa_xref(jit_State* J, IRIns* refa, IRIns* xa, IRIns* xb)
    IRIns* refb = IR(xb->op1);
    IRIns* basea = refa, * baseb = refb;
    if (refa == refb && irt_sametype(xa->t, xb->t))
-      return ALIAS_MUST;  /* Shortcut for same refs with identical type. */
+      return ALIAS_MUST;  //  Shortcut for same refs with identical type.
    // Offset-based disambiguation.
    if (refa->o == IR_ADD && irref_isk(refa->op2)) {
       IRIns* irk = IR(refa->op2);
@@ -739,20 +739,20 @@ static AliasRet aa_xref(jit_State* J, IRIns* refa, IRIns* xa, IRIns* xb)
       ptrdiff_t sza = irt_size(xa->t), szb = irt_size(xb->t);
       if (ofsa == ofsb) {
          if (sza == szb && irt_isfp(xa->t) == irt_isfp(xb->t))
-            return ALIAS_MUST;  /* Same-sized, same-kind. May need to convert. */
+            return ALIAS_MUST;  //  Same-sized, same-kind. May need to convert.
       }
       else if (ofsa + sza <= ofsb || ofsb + szb <= ofsa) {
-         return ALIAS_NO;  /* Non-overlapping base+-o1 vs. base+-o2. */
+         return ALIAS_NO;  //  Non-overlapping base+-o1 vs. base+-o2.
       }
       // NYI: extract, extend or reinterpret bits (int <-> fp).
-      return ALIAS_MAY;  /* Overlapping or type punning: force reload. */
+      return ALIAS_MAY;  //  Overlapping or type punning: force reload.
    }
    if (!irt_sametype(xa->t, xb->t) &&
       !(irt_typerange(xa->t, IRT_I8, IRT_U64) &&
          ((xa->t.irt - IRT_I8) ^ (xb->t.irt - IRT_I8)) == 1))
       return ALIAS_NO;
    // NYI: structural disambiguation.
-   return aa_cnew(J, basea, baseb);  /* Try to disambiguate allocations. */
+   return aa_cnew(J, basea, baseb);  //  Try to disambiguate allocations.
 }
 
 // Return CSEd reference or 0. Caveat: swaps lower ref to the right!
@@ -811,9 +811,9 @@ static IRRef reassoc_xref(jit_State* J, IRIns* ir)
          if (!(idxref = reassoc_trycse(J, IR_ADD, idxref, refk)))
             return 0;
       }
-      return idxref;  /* Success, found a reassociated index reference. Phew. */
+      return idxref;  //  Success, found a reassociated index reference. Phew.
    }
-   return 0;  /* Failure. */
+   return 0;  //  Failure.
 }
 
 // XLOAD forwarding.
@@ -821,7 +821,7 @@ TRef LJ_FASTCALL lj_opt_fwd_xload(jit_State* J)
 {
    IRRef xref = fins->op1;
    IRIns* xr = IR(xref);
-   IRRef lim = xref;  /* Search limit. */
+   IRRef lim = xref;  //  Search limit.
    IRRef ref;
 
    if ((fins->op2 & IRXLOAD_READONLY))
@@ -837,8 +837,8 @@ retry:
    while (ref > lim) {
       IRIns* store = IR(ref);
       switch (aa_xref(J, xr, fins, store)) {
-      case ALIAS_NO:   break;  /* Continue searching. */
-      case ALIAS_MAY:  lim = ref; goto cselim;  /* Limit search for load. */
+      case ALIAS_NO:   break;  //  Continue searching.
+      case ALIAS_MAY:  lim = ref; goto cselim;  //  Limit search for load.
       case ALIAS_MUST:
          // Emit conversion if the loaded type doesn't match the forwarded type.
          if (!irt_sametype(fins->t, IR(store->op2)->t)) {
@@ -856,7 +856,7 @@ retry:
             fins->op2 = (dt << 5) | st;
             return RETRYFOLD;
          }
-         return store->op2;  /* Store forwarding. */
+         return store->op2;  //  Store forwarding.
       }
       ref = store->prev;
    }
@@ -875,11 +875,11 @@ cselim:
    if (!(fins->op2 & IRXLOAD_READONLY) && J->chain[IR_LOOP] &&
       xref == fins->op1 && (xref = reassoc_xref(J, xr)) != 0) {
       ref = J->chain[IR_XSTORE];
-      while (ref > lim)  /* Skip stores that have already been checked. */
+      while (ref > lim)  //  Skip stores that have already been checked.
          ref = IR(ref)->prev;
       lim = xref;
       xr = IR(xref);
-      goto retry;  /* Retry with the reassociated reference. */
+      goto retry;  //  Retry with the reassociated reference.
    }
 doemit:
    return EMITFOLD;
@@ -890,8 +890,8 @@ TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State* J)
 {
    IRRef xref = fins->op1;
    IRIns* xr = IR(xref);
-   IRRef lim = xref;  /* Search limit. */
-   IRRef val = fins->op2;  /* Stored value reference. */
+   IRRef lim = xref;  //  Search limit.
+   IRRef val = fins->op2;  //  Stored value reference.
    IRRef1* refp = &J->chain[IR_XSTORE];
    IRRef ref = *refp;
    if (J->chain[IR_CALLXS] > lim) lim = J->chain[IR_CALLXS];
@@ -901,13 +901,13 @@ TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State* J)
       IRIns* store = IR(ref);
       switch (aa_xref(J, xr, fins, store)) {
       case ALIAS_NO:
-         break;  /* Continue searching. */
+         break;  //  Continue searching.
       case ALIAS_MAY:
-         if (store->op2 != val)  /* Conflict if the value is different. */
+         if (store->op2 != val)  //  Conflict if the value is different.
             goto doemit;
-         break;  /* Otherwise continue searching. */
+         break;  //  Otherwise continue searching.
       case ALIAS_MUST:
-         if (store->op2 == val)  /* Same value: drop the new store. */
+         if (store->op2 == val)  //  Same value: drop the new store.
             return DROPFOLD;
          // Different value: try to eliminate the redundant store.
          if (ref > J->chain[IR_LOOP]) {  // Quick check to avoid crossing LOOP.
@@ -915,7 +915,7 @@ TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State* J)
             // Check for any intervening guards or any XLOADs (no AA performed).
             for (ir = IR(J->cur.nins - 1); ir > store; ir--)
                if (irt_isguard(ir->t) || ir->o == IR_XLOAD)
-                  goto doemit;  /* No elimination possible. */
+                  goto doemit;  //  No elimination possible.
             // Remove redundant store from chain and replace with NOP.
             *refp = store->prev;
             lj_ir_nop(store);
@@ -926,7 +926,7 @@ TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State* J)
       ref = *(refp = &store->prev);
    }
 doemit:
-   return EMITFOLD;  /* Otherwise we have a conflict or simply no match. */
+   return EMITFOLD;  //  Otherwise we have a conflict or simply no match.
 }
 
 // -- ASTORE/HSTORE previous type analysis --------------------------------
@@ -958,7 +958,7 @@ int lj_opt_fwd_wasnonnil(jit_State* J, IROpT loadop, IRRef xref)
          // Same key type MAY alias. Need ALOAD check due to multiple int types.
          if (loadop == IR_ALOAD || irt_sametype(IR(skref)->t, IR(xkref)->t)) {
             if (skref == xkref || !irref_isk(skref) || !irref_isk(xkref))
-               return 0;  /* A nil store with same const key or var key MAY alias. */
+               return 0;  //  A nil store with same const key or var key MAY alias.
             // Different const keys CANNOT alias.
          }  // Different key types CANNOT alias.
       }  // Other non-nil stores MAY alias.
@@ -975,7 +975,7 @@ int lj_opt_fwd_wasnonnil(jit_State* J, IROpT loadop, IRRef xref)
       }  // Other non-nil loads MAY alias.
       ref = load->prev;
    }
-   return 0;  /* Nothing derived at all, previous value MAY be nil. */
+   return 0;  //  Nothing derived at all, previous value MAY be nil.
 }
 
 // ------------------------------------------------------------------------

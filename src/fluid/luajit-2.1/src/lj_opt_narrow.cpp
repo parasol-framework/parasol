@@ -188,10 +188,10 @@
 ** the IR opcode + type or one of the following special opcodes:
 */
 enum {
-   NARROW_REF,      /* Push ref. */
-   NARROW_CONV,      /* Push conversion of ref. */
-   NARROW_SEXT,      /* Push sign-extension of ref. */
-   NARROW_INT      /* Push KINT ref. The next code holds an int32_t. */
+   NARROW_REF,      //  Push ref.
+   NARROW_CONV,      //  Push conversion of ref.
+   NARROW_SEXT,      //  Push sign-extension of ref.
+   NARROW_INT      //  Push KINT ref. The next code holds an int32_t.
 };
 
 typedef uint32_t NarrowIns;
@@ -202,12 +202,12 @@ typedef uint32_t NarrowIns;
 
 // Context used for narrowing of type conversions.
 typedef struct NarrowConv {
-   jit_State* J;      /* JIT compiler state. */
-   NarrowIns* sp;   /* Current stack pointer. */
-   NarrowIns* maxsp;   /* Maximum stack pointer minus redzone. */
-   IRRef mode;      /* Conversion mode (IRCONV_*). */
-   IRType t;      /* Destination type: IRT_INT or IRT_I64. */
-   NarrowIns stack[NARROW_MAX_STACK];  /* Stack holding stack-machine code. */
+   jit_State* J;      //  JIT compiler state.
+   NarrowIns* sp;   //  Current stack pointer.
+   NarrowIns* maxsp;   //  Maximum stack pointer minus redzone.
+   IRRef mode;      //  Conversion mode (IRCONV_*).
+   IRType t;      //  Destination type: IRT_INT or IRT_I64.
+   NarrowIns stack[NARROW_MAX_STACK];  //  Stack holding stack-machine code.
 } NarrowConv;
 
 // Lookup a reference in the backpropagation cache.
@@ -256,7 +256,7 @@ static void narrow_stripov_backprop(NarrowConv* nc, IRRef ref, int depth)
                return;
             }
          }
-         nc->sp = savesp;  /* Path too deep, need to backtrack. */
+         nc->sp = savesp;  //  Path too deep, need to backtrack.
       }
    }
    *nc->sp++ = NARROWINS(NARROW_REF, ref);
@@ -269,16 +269,16 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
    IRIns* ir = IR(ref);
    IRRef cref;
 
-   if (nc->sp >= nc->maxsp) return 10;  /* Path too deep. */
+   if (nc->sp >= nc->maxsp) return 10;  //  Path too deep.
 
    // Check the easy cases first.
    if (ir->o == IR_CONV && (ir->op2 & IRCONV_SRCMASK) == IRT_INT) {
       if ((nc->mode & IRCONV_CONVMASK) <= IRCONV_ANY)
          narrow_stripov_backprop(nc, ir->op1, depth + 1);
       else
-         *nc->sp++ = NARROWINS(NARROW_REF, ir->op1);  /* Undo conversion. */
+         *nc->sp++ = NARROWINS(NARROW_REF, ir->op1);  //  Undo conversion.
       if (nc->t == IRT_I64)
-         *nc->sp++ = NARROWINS(NARROW_SEXT, 0);  /* Sign-extend integer. */
+         *nc->sp++ = NARROWINS(NARROW_SEXT, 0);  //  Sign-extend integer.
       return 0;
    }
    else if (ir->o == IR_KNUM) {  // Narrow FP constant.
@@ -288,7 +288,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
          int64_t k64 = (int64_t)n;
          if (n == (lua_Number)k64) {  // Only if const doesn't lose precision.
             *nc->sp++ = NARROWINS(NARROW_INT, 0);
-            *nc->sp++ = (NarrowIns)k64;  /* But always truncate to 32 bits. */
+            *nc->sp++ = (NarrowIns)k64;  //  But always truncate to 32 bits.
             return 0;
          }
       }
@@ -301,7 +301,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
             return 0;
          }
       }
-      return 10;  /* Never narrow other FP constants (this is rare). */
+      return 10;  //  Never narrow other FP constants (this is rare).
    }
 
    // Try to CSE the conversion. Stronger checks are ok, too.
@@ -313,7 +313,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
             ((cr->op2 & IRCONV_MODEMASK) == (nc->mode & IRCONV_MODEMASK) &&
                irt_isguard(cr->t) >= irt_isguard(fins->t)))) {
          *nc->sp++ = NARROWINS(NARROW_REF, cref);
-         return 0;  /* Already there, no additional conversion needed. */
+         return 0;  //  Already there, no additional conversion needed.
       }
       cref = cr->prev;
    }
@@ -349,7 +349,7 @@ static int narrow_conv_backprop(NarrowConv* nc, IRRef ref, int depth)
             *nc->sp++ = NARROWINS(IRT(ir->o, nc->t), ref);
             return count;
          }
-         nc->sp = savesp;  /* Too many conversions, need to backtrack. */
+         nc->sp = savesp;  //  Too many conversions, need to backtrack.
       }
    }
 
@@ -365,9 +365,9 @@ static IRRef narrow_conv_emit(jit_State* J, NarrowConv* nc)
    IROpT guardot = irt_isguard(fins->t) ? IRTG(IR_ADDOV - IR_ADD, 0) : 0;
    IROpT convot = fins->ot;
    IRRef1 convop2 = fins->op2;
-   NarrowIns* next = nc->stack;  /* List of instructions from backpropagation. */
+   NarrowIns* next = nc->stack;  //  List of instructions from backpropagation.
    NarrowIns* last = nc->sp;
-   NarrowIns* sp = nc->stack;  /* Recycle the stack to store operands. */
+   NarrowIns* sp = nc->stack;  //  Recycle the stack to store operands.
    while (next < last) {  // Simple stack machine to process the ins. list.
       NarrowIns ref = *next++;
       IROpT op = narrow_op(ref);
@@ -375,7 +375,7 @@ static IRRef narrow_conv_emit(jit_State* J, NarrowConv* nc)
          *sp++ = ref;
       }
       else if (op == NARROW_CONV) {
-         *sp++ = emitir_raw(convot, ref, convop2);  /* Raw emit avoids a loop. */
+         *sp++ = emitir_raw(convot, ref, convop2);  //  Raw emit avoids a loop.
       }
       else if (op == NARROW_SEXT) {
          lj_assertJ(sp >= nc->stack + 1, "stack underflow");
@@ -397,7 +397,7 @@ static IRRef narrow_conv_emit(jit_State* J, NarrowConv* nc)
             if (next == last && irref_isk(narrow_ref(sp[0])) &&
                (uint32_t)IR(narrow_ref(sp[0]))->i + 0x40000000u < 0x80000000u)
                guardot = 0;
-            else  /* Otherwise cache a stronger check. */
+            else  //  Otherwise cache a stronger check.
                mode += IRCONV_CHECK - IRCONV_INDEX;
          }
          sp[-1] = emitir(op + guardot, sp[-1], sp[0]);
@@ -420,7 +420,7 @@ TRef LJ_FASTCALL lj_opt_narrow_convert(jit_State* J)
       nc.maxsp = &nc.stack[NARROW_MAX_STACK - 4];
       nc.t = irt_type(fins->t);
       if (fins->o == IR_TOBIT) {
-         nc.mode = IRCONV_TOBIT;  /* Used only in the backpropagation cache. */
+         nc.mode = IRCONV_TOBIT;  //  Used only in the backpropagation cache.
       }
       else {
          nc.mode = fins->op2;
@@ -445,7 +445,7 @@ static TRef narrow_stripov(jit_State* J, TRef tr, int lastop, IRRef mode)
          return TREF(bp->val, irt_t(IR(bp->val)->t));
       }
       else {
-         IRRef op1 = ir->op1, op2 = ir->op2;  /* The IR may be reallocated. */
+         IRRef op1 = ir->op1, op2 = ir->op2;  //  The IR may be reallocated.
          op1 = narrow_stripov(J, op1, lastop, mode);
          op2 = narrow_stripov(J, op2, lastop, mode);
          tr = emitir(IRT(op - IR_ADDOV + IR_ADD,
@@ -464,7 +464,7 @@ TRef LJ_FASTCALL lj_opt_narrow_index(jit_State* J, TRef tr)
 {
    IRIns* ir;
    lj_assertJ(tref_isnumber(tr), "expected number type");
-   if (tref_isnum(tr))  /* Conversion may be narrowed, too. See above. */
+   if (tref_isnum(tr))  //  Conversion may be narrowed, too. See above.
       return emitir(IRTGI(IR_CONV), tr, IRCONV_INT_NUM | IRCONV_INDEX);
    // Omit some overflow checks for array indexing. See comments above.
    ir = IR(tref_ref(tr));
@@ -479,7 +479,7 @@ TRef LJ_FASTCALL lj_opt_narrow_toint(jit_State* J, TRef tr)
 {
    if (tref_isstr(tr))
       tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
-   if (tref_isnum(tr))  /* Conversion may be narrowed, too. See above. */
+   if (tref_isnum(tr))  //  Conversion may be narrowed, too. See above.
       return emitir(IRTI(IR_CONV), tr, IRCONV_INT_NUM | IRCONV_ANY);
    if (!tref_isinteger(tr))
       lj_trace_err(J, LJ_TRERR_BADTYPE);
@@ -495,7 +495,7 @@ TRef LJ_FASTCALL lj_opt_narrow_tobit(jit_State* J, TRef tr)
 {
    if (tref_isstr(tr))
       tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
-   if (tref_isnum(tr))  /* Conversion may be narrowed, too. See above. */
+   if (tref_isnum(tr))  //  Conversion may be narrowed, too. See above.
       return emitir(IRTI(IR_TOBIT), tr, lj_ir_knum_tobit(J));
    if (!tref_isinteger(tr))
       lj_trace_err(J, LJ_TRERR_BADTYPE);
@@ -534,8 +534,8 @@ static TRef conv_str_tonum(jit_State* J, TRef tr, TValue* o)
    if (tref_isstr(tr)) {
       tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
       // Would need an inverted STRTO for this rare and useless case.
-      if (!lj_strscan_num(strV(o), o))  /* Convert in-place. Value used below. */
-         lj_trace_err(J, LJ_TRERR_BADTYPE);  /* Punt if non-numeric. */
+      if (!lj_strscan_num(strV(o), o))  //  Convert in-place. Value used below.
+         lj_trace_err(J, LJ_TRERR_BADTYPE);  //  Punt if non-numeric.
    }
    return tr;
 }
@@ -599,7 +599,7 @@ TRef lj_opt_narrow_mod(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
 TRef lj_opt_narrow_pow(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
 {
    rb = conv_str_tonum(J, rb, vb);
-   rb = lj_ir_tonum(J, rb);  /* Left arg is always treated as an FP number. */
+   rb = lj_ir_tonum(J, rb);  //  Left arg is always treated as an FP number.
    rc = conv_str_tonum(J, rc, vc);
    if (tvisint(vc) || numisint(numV(vc))) {
       int32_t k = numberVint(vc);
@@ -615,7 +615,7 @@ TRef lj_opt_narrow_pow(jit_State* J, TRef rb, TRef rc, TValue* vb, TValue* vc)
    }
    else {
    force_pow_num:
-      rc = lj_ir_tonum(J, rc);  /* Want POW(num, num), not POW(num, int). */
+      rc = lj_ir_tonum(J, rc);  //  Want POW(num, num), not POW(num, int).
    }
    return emitir(IRTN(IR_POW), rb, rc);
 }

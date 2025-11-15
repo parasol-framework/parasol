@@ -44,7 +44,7 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
    while (gcref(*pp) != NULL && uvval((p = gco2uv(gcref(*pp)))) >= slot) {
       lj_assertG(!p->closed && uvval(p) != &p->tv, "closed upvalue in chain");
       if (uvval(p) == slot) {  // Found open upvalue pointing to same slot?
-         if (isdead(g, obj2gco(p)))  /* Resurrect it, if it's dead. */
+         if (isdead(g, obj2gco(p)))  //  Resurrect it, if it's dead.
             flipwhite(obj2gco(p));
          return p;
       }
@@ -54,12 +54,12 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
    uv = lj_mem_newt(L, sizeof(GCupval), GCupval);
    newwhite(g, uv);
    uv->gct = ~LJ_TUPVAL;
-   uv->closed = 0;  /* Still open. */
-   setmref(uv->v, slot);  /* Pointing to the stack slot. */
+   uv->closed = 0;  //  Still open.
+   setmref(uv->v, slot);  //  Pointing to the stack slot.
    // NOBARRIER: The GCupval is new (marked white) and open.
-   setgcrefr(uv->nextgc, *pp);  /* Insert into sorted list of open upvalues. */
+   setgcrefr(uv->nextgc, *pp);  //  Insert into sorted list of open upvalues.
    setgcref(*pp, obj2gco(uv));
-   setgcref(uv->prev, obj2gco(&g->uvhead));  /* Insert into GC list, too. */
+   setgcref(uv->prev, obj2gco(&g->uvhead));  //  Insert into GC list, too.
    setgcrefr(uv->next, g->uvhead.next);
    setgcref(uvnext(uv)->prev, obj2gco(uv));
    setgcref(g->uvhead.next, obj2gco(uv));
@@ -89,7 +89,7 @@ void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
       GCobj* o = obj2gco(uv);
       lj_assertG(!isblack(o), "bad black upvalue");
       lj_assertG(!uv->closed && uvval(uv) != &uv->tv, "closed upvalue in chain");
-      setgcrefr(L->openupval, uv->nextgc);  /* No longer in open list. */
+      setgcrefr(L->openupval, uv->nextgc);  //  No longer in open list.
       if (isdead(g, o)) {
          lj_func_freeuv(g, uv);
       }
@@ -127,7 +127,7 @@ static GCfunc* func_newL(lua_State* L, GCproto* pt, GCtab* env)
    GCfunc* fn = (GCfunc*)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv));
    fn->l.gct = ~LJ_TFUNC;
    fn->l.ffid = FF_LUA;
-   fn->l.nupvalues = 0;  /* Set to zero until upvalues are initialized. */
+   fn->l.nupvalues = 0;  //  Set to zero until upvalues are initialized.
    // NOBARRIER: Really a setgcref. But the GCfunc is new (marked white).
    setmref(fn->l.pc, proto_bc(pt));
    setgcref(fn->l.env, obj2gco(env));

@@ -69,7 +69,7 @@
 // -------------------------- MMAP support -------------------------------
 
 #define MFAIL         ((void *)(MAX_SIZE_T))
-#define CMFAIL         ((char *)(MFAIL)) /* defined for convenience */
+#define CMFAIL         ((char *)(MFAIL)) //  defined for convenience
 
 #define IS_DIRECT_BIT      (SIZE_T_ONE)
 
@@ -99,12 +99,12 @@
 #define LJ_ALLOC_MMAP_PROBE   1
 
 #if LJ_GC64
-#define LJ_ALLOC_MBITS      47   /* 128 TB in LJ_GC64 mode. */
+#define LJ_ALLOC_MBITS      47   //  128 TB in LJ_GC64 mode.
 #elif LJ_TARGET_X64 && LJ_HASJIT
 // Due to limitations in the x64 compiler backend.
-#define LJ_ALLOC_MBITS      31   /* 2 GB on x64 with !LJ_GC64. */
+#define LJ_ALLOC_MBITS      31   //  2 GB on x64 with !LJ_GC64.
 #else
-#define LJ_ALLOC_MBITS      32   /* 4 GB on other archs with !LJ_GC64. */
+#define LJ_ALLOC_MBITS      32   //  4 GB on other archs with !LJ_GC64.
 #endif
 
 #endif
@@ -340,7 +340,7 @@ static void init_mmap(void)
 {
    struct rlimit rlim;
    rlim.rlim_cur = rlim.rlim_max = 0x10000;
-   setrlimit(RLIMIT_DATA, &rlim);  /* Ignore result. May fail later. */
+   setrlimit(RLIMIT_DATA, &rlim);  //  Ignore result. May fail later.
 }
 #define INIT_MMAP()   init_mmap()
 
@@ -392,18 +392,18 @@ static void* CALL_MREMAP_(void* ptr, size_t osz, size_t nsz, int flags)
 // -----------------------  Chunk representations ------------------------
 
 struct malloc_chunk {
-   size_t               prev_foot;  /* Size of previous chunk (if free).  */
-   size_t               head;       /* Size and inuse bits. */
-   struct malloc_chunk* fd;         /* double links -- used only if free. */
+   size_t               prev_foot;  //  Size of previous chunk (if free). 
+   size_t               head;       //  Size and inuse bits.
+   struct malloc_chunk* fd;         //  double links -- used only if free.
    struct malloc_chunk* bk;
 };
 
 typedef struct malloc_chunk  mchunk;
 typedef struct malloc_chunk* mchunkptr;
-typedef struct malloc_chunk* sbinptr;  /* The type of bins of chunks */
-typedef size_t bindex_t;               /* Described below */
-typedef unsigned int binmap_t;         /* Described below */
-typedef unsigned int flag_t;           /* The type of various bit flag sets */
+typedef struct malloc_chunk* sbinptr;  //  The type of bins of chunks
+typedef size_t bindex_t;               //  Described below
+typedef unsigned int binmap_t;         //  Described below
+typedef unsigned int flag_t;           //  The type of various bit flag sets
 
 // ------------------- Chunks sizes and alignments -----------------------
 
@@ -501,7 +501,7 @@ struct malloc_tree_chunk {
 
 typedef struct malloc_tree_chunk  tchunk;
 typedef struct malloc_tree_chunk* tchunkptr;
-typedef struct malloc_tree_chunk* tbinptr; /* The type of bins of trees */
+typedef struct malloc_tree_chunk* tbinptr; //  The type of bins of trees
 
 // A little helper macro for trees
 #define leftmost_child(t) ((t)->child[0] != 0? (t)->child[0] : (t)->child[1])
@@ -509,9 +509,9 @@ typedef struct malloc_tree_chunk* tbinptr; /* The type of bins of trees */
 // ----------------------------- Segments --------------------------------
 
 struct malloc_segment {
-   char* base;             /* base address */
-   size_t       size;             /* allocated size */
-   struct malloc_segment* next;   /* ptr to next segment */
+   char* base;             //  base address
+   size_t       size;             //  allocated size
+   struct malloc_segment* next;   //  ptr to next segment
 };
 
 typedef struct malloc_segment  msegment;
@@ -847,7 +847,7 @@ static void* direct_alloc(mstate m, size_t nb)
 static mchunkptr direct_resize(mchunkptr oldp, size_t nb)
 {
    size_t oldsize = chunksize(oldp);
-   if (is_small(nb)) /* Can't shrink direct regions below small size */
+   if (is_small(nb)) //  Can't shrink direct regions below small size
       return NULL;
    // Keep old chunk if big enough but not too big
    if (oldsize >= nb + SIZE_T_SIZE &&
@@ -887,7 +887,7 @@ static void init_top(mstate m, mchunkptr p, size_t psize)
    p->head = psize | PINUSE_BIT;
    // set size of fake trailing chunk holding overhead space only once
    chunk_plus_offset(p, psize)->head = TOP_FOOT_SIZE;
-   m->trim_check = DEFAULT_TRIM_THRESHOLD; /* reset on each update */
+   m->trim_check = DEFAULT_TRIM_THRESHOLD; //  reset on each update
 }
 
 // Initialize bins for a new mstate that is otherwise zeroed out
@@ -958,7 +958,7 @@ static void add_segment(mstate m, char* tbase, size_t tsize)
 
    // Set up segment record
    set_size_and_pinuse_of_inuse_chunk(m, sp, ssize);
-   *ss = m->seg; /* Push current record */
+   *ss = m->seg; //  Push current record
    m->seg.base = tbase;
    m->seg.size = tsize;
    m->seg.next = ss;
@@ -1097,7 +1097,7 @@ static int alloc_trim(mstate m, size_t pad)
 {
    size_t released = 0;
    if (pad < MAX_REQUEST && is_initialized(m)) {
-      pad += TOP_FOOT_SIZE; /* ensure enough room for segment overhead */
+      pad += TOP_FOOT_SIZE; //  ensure enough room for segment overhead
 
       if (m->topsize > pad) {
          // Shrink top space in granularity-size units, keeping at least one
@@ -1139,7 +1139,7 @@ static int alloc_trim(mstate m, size_t pad)
 static void* tmalloc_large(mstate m, size_t nb)
 {
    tchunkptr v = 0;
-   size_t rsize = ~nb + 1; /* Unsigned negation */
+   size_t rsize = ~nb + 1; //  Unsigned negation
    tchunkptr t;
    bindex_t idx;
    compute_tree_index(nb, idx);
@@ -1147,7 +1147,7 @@ static void* tmalloc_large(mstate m, size_t nb)
    if ((t = *treebin_at(m, idx)) != 0) {
       // Traverse tree for this bin looking for node with size == nb
       size_t sizebits = nb << leftshift_for_tree_index(idx);
-      tchunkptr rst = 0;  /* The deepest untaken right subtree */
+      tchunkptr rst = 0;  //  The deepest untaken right subtree
       for (;;) {
          tchunkptr rt;
          size_t trem = chunksize(t) - nb;
@@ -1161,7 +1161,7 @@ static void* tmalloc_large(mstate m, size_t nb)
          if (rt != 0 && rt != t)
             rst = rt;
          if (t == 0) {
-            t = rst; /* set t to least subtree holding sizes > nb */
+            t = rst; //  set t to least subtree holding sizes > nb
             break;
          }
          sizebits <<= 1;
@@ -1291,7 +1291,7 @@ static LJ_NOINLINE void* lj_alloc_malloc(void* msp, size_t nsize)
 
       if ((smallbits & 0x3U) != 0) {  // Remainderless fit to a smallbin.
          mchunkptr b, p;
-         idx += ~smallbits & 1;       /* Uses next bin if idx empty */
+         idx += ~smallbits & 1;       //  Uses next bin if idx empty
          b = smallbin_at(ms, idx);
          p = b->fd;
          unlink_first_small_chunk(ms, b, p, idx);
@@ -1328,7 +1328,7 @@ static LJ_NOINLINE void* lj_alloc_malloc(void* msp, size_t nsize)
       }
    }
    else if (nsize >= MAX_REQUEST) {
-      nb = MAX_SIZE_T; /* Too big to allocate. Force failure (in sys alloc) */
+      nb = MAX_SIZE_T; //  Too big to allocate. Force failure (in sys alloc)
    }
    else {
       nb = pad_request(nsize);
@@ -1459,7 +1459,7 @@ static LJ_NOINLINE void* lj_alloc_realloc(void* msp, void* ptr, size_t nsize)
 
       // Try to either shrink or extend into top. Else malloc-copy-free
       if (is_direct(oldp)) {
-         newp = direct_resize(oldp, nb);  /* this may return NULL. */
+         newp = direct_resize(oldp, nb);  //  this may return NULL.
       }
       else if (oldsize >= nb) {  // already big enough
          size_t rsize = oldsize - nb;

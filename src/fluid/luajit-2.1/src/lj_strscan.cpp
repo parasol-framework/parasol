@@ -60,7 +60,7 @@
 
 // Definitions for circular decimal digit buffer (base 100 = 2 digits/byte).
 #define STRSCAN_DIG   1024
-#define STRSCAN_MAXDIG   800      /* 772 + extra are sufficient. */
+#define STRSCAN_MAXDIG   800      //  772 + extra are sufficient.
 #define STRSCAN_DDIG   (STRSCAN_DIG/2)
 #define STRSCAN_DMASK   (STRSCAN_DDIG-1)
 #define STRSCAN_MAXEXP   (1 << 20)
@@ -125,7 +125,7 @@ static StrScanFmt strscan_hex(const uint8_t* p, TValue* o,
       if (!(opt & STRSCAN_OPT_TONUM) && x < 0x80000000u + neg &&
          !(x == 0 && neg)) {
          o->i = neg ? -(int32_t)x : (int32_t)x;
-         return STRSCAN_INT;  /* Fast path for 32 bit integers. */
+         return STRSCAN_INT;  //  Fast path for 32 bit integers.
       }
       if (!(opt & STRSCAN_OPT_C)) { fmt = STRSCAN_NUM; break; }
       // fallthrough
@@ -232,7 +232,7 @@ static StrScanFmt strscan_dec(const uint8_t* p, TValue* o,
          case STRSCAN_INT:
             if (!(opt & STRSCAN_OPT_TONUM) && x < 0x80000000u + neg) {
                o->i = neg ? -(int32_t)x : (int32_t)x;
-               return STRSCAN_INT;  /* Fast path for 32 bit integers. */
+               return STRSCAN_INT;  //  Fast path for 32 bit integers.
             }
             if (!(opt & STRSCAN_OPT_C)) { fmt = STRSCAN_NUM; goto plainnumber; }
             // fallthrough
@@ -245,7 +245,7 @@ static StrScanFmt strscan_dec(const uint8_t* p, TValue* o,
             o->u64 = neg ? (uint64_t)-(int64_t)x : x;
             return fmt;
          default:
-         plainnumber:  /* Fast path for plain numbers < 2^63. */
+         plainnumber:  //  Fast path for plain numbers < 2^63.
             if ((int64_t)x < 0) break;
             n = (double)(int64_t)x;
             if (neg) n = -n;
@@ -279,7 +279,7 @@ static StrScanFmt strscan_dec(const uint8_t* p, TValue* o,
          ex2 -= 6;
          for (i = DPREV(lo); ; i = DPREV(i)) {
             uint32_t d = (xi[i] << 6) + cy;
-            cy = (((d >> 2) * 5243) >> 17); d = d - cy * 100;  /* Div/mod 100. */
+            cy = (((d >> 2) * 5243) >> 17); d = d - cy * 100;  //  Div/mod 100.
             xi[i] = (uint8_t)d;
             if (i == hi) break;
             if (d == 0 && i == DPREV(lo)) lo = i;
@@ -353,7 +353,7 @@ static StrScanFmt strscan_bin(const uint8_t* p, TValue* o,
    case STRSCAN_INT:
       if (!(opt & STRSCAN_OPT_TONUM) && x < 0x80000000u + neg) {
          o->i = neg ? -(int32_t)x : (int32_t)x;
-         return STRSCAN_INT;  /* Fast path for 32 bit integers. */
+         return STRSCAN_INT;  //  Fast path for 32 bit integers.
       }
       if (!(opt & STRSCAN_OPT_C)) { fmt = STRSCAN_NUM; break; }
       // fallthrough
@@ -439,7 +439,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
       // Preliminary digit and decimal point scan.
       for (sp = p; ; p++) {
          if (LJ_LIKELY(lj_char_isa(*p, cmask))) {
-            x = x * 10 + (*p & 15);  /* For fast path below. */
+            x = x * 10 + (*p & 15);  //  For fast path below.
             dig++;
          }
          else if (*p == '.') {
@@ -458,7 +458,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
          fmt = STRSCAN_NUM;
          if (dig) {
             ex = (int32_t)(dp - (p - 1)); dp = p - 1;
-            while (ex < 0 && *dp-- == '0') ex++, dig--;  /* Skip trailing zeros. */
+            while (ex < 0 && *dp-- == '0') ex++, dig--;  //  Skip trailing zeros.
             if (ex <= -STRSCAN_MAXEXP) return STRSCAN_ERROR;
             if (base == 16) ex *= 4;
          }

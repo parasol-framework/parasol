@@ -328,7 +328,7 @@ LUA_API void lua_setlevel   (lua_State *from, lua_State *to);
 #define LUA_MASKLINE   (1 << LUA_HOOKLINE)
 #define LUA_MASKCOUNT   (1 << LUA_HOOKCOUNT)
 
-typedef struct lua_Debug lua_Debug;  /* activation record */
+typedef struct lua_Debug lua_Debug;  //  activation record
 
 
 // Functions to be called by the debuger in specific events
@@ -362,17 +362,17 @@ LUA_API int lua_isyieldable (lua_State *L);
 
 struct lua_Debug {
   int event;
-  const char *name;   /* (n) */
-  const char *namewhat;   /* (n) `global', `local', `field', `method' */
-  const char *what;   /* (S) `Lua', `C', `main', `tail' */
-  const char *source;   /* (S) */
-  int currentline;   /* (l) */
-  int nups;      /* (u) number of upvalues */
-  int linedefined;   /* (S) */
-  int lastlinedefined;   /* (S) */
-  char short_src[LUA_IDSIZE]; /* (S) */
+  const char *name;   //  (n)
+  const char *namewhat;   //  (n) `global', `local', `field', `method'
+  const char *what;   //  (S) `Lua', `C', `main', `tail'
+  const char *source;   //  (S)
+  int currentline;   //  (l)
+  int nups;      //  (u) number of upvalues
+  int linedefined;   //  (S)
+  int lastlinedefined;   //  (S)
+  char short_src[LUA_IDSIZE]; //  (S)
   // private part
-  int i_ci;  /* active function */
+  int i_ci;  //  active function
 };
 
 // }======================================================================
