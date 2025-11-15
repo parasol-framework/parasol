@@ -52,7 +52,7 @@ static int setjitmode(lua_State* L, int mode)
          idx = 1;
       else if (!tvistrue(L->base))  //  jit.on/off/flush(true, nil|true|false)
          goto err;
-      if (L->base + 1 < L->top && tvisbool(L->base + 1))
+      if (L->base + 1 < L->top and tvisbool(L->base + 1))
          mode |= boolV(L->base + 1) ? LUAJIT_MODE_ALLFUNC : LUAJIT_MODE_ALLSUBFUNC;
       else
          mode |= LUAJIT_MODE_FUNC;
@@ -79,7 +79,7 @@ LJLIB_CF(jit_off)
 LJLIB_CF(jit_flush)
 {
 #if LJ_HASJIT
-   if (L->base < L->top && tvisnumber(L->base)) {
+   if (L->base < L->top and tvisnumber(L->base)) {
       int traceno = lj_lib_checkint(L, 1);
       luaJIT_setmode(L, traceno, LUAJIT_MODE_FLUSH | LUAJIT_MODE_TRACE);
       return 0;
@@ -141,7 +141,7 @@ LJLIB_CF(jit_attach)
       setnilV(L->top++);
       while (lua_next(L, -2)) {
          L->top--;
-         if (tvisfunc(L->top) && funcV(L->top) == fn) {
+         if (tvisfunc(L->top) and funcV(L->top) == fn) {
             setnilV(lj_tab_set(L, tabV(L->top - 2), L->top - 1));
          }
       }
@@ -289,7 +289,7 @@ static GCtrace* jit_checktrace(lua_State* L)
 {
    TraceNo tr = (TraceNo)lj_lib_checkint(L, 1);
    jit_State* J = L2J(L);
-   if (tr > 0 && tr < J->sizetrace)
+   if (tr > 0 and tr < J->sizetrace)
       return traceref(J, tr);
    return NULL;
 }
@@ -325,7 +325,7 @@ LJLIB_CF(jit_util_traceir)
 {
    GCtrace* T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
-   if (T && ref >= REF_BIAS && ref < T->nins) {
+   if (T and ref >= REF_BIAS and ref < T->nins) {
       IRIns* ir = &T->ir[ref];
       int32_t m = lj_ir_mode[ir->o];
       setintV(L->top - 2, m);
@@ -343,7 +343,7 @@ LJLIB_CF(jit_util_tracek)
 {
    GCtrace* T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
-   if (T && ref >= T->nk && ref < REF_BIAS) {
+   if (T and ref >= T->nk and ref < REF_BIAS) {
       IRIns* ir = &T->ir[ref];
       int32_t slot = -1;
       if (ir->o == IR_KSLOT) {
@@ -368,7 +368,7 @@ LJLIB_CF(jit_util_tracesnap)
 {
    GCtrace* T = jit_checktrace(L);
    SnapNo sn = (SnapNo)lj_lib_checkint(L, 2);
-   if (T && sn < T->nsnap) {
+   if (T and sn < T->nsnap) {
       SnapShot* snap = &T->snap[sn];
       SnapEntry* map = &T->snapmap[snap->mapofs];
       MSize n, nent = snap->nent;
@@ -389,7 +389,7 @@ LJLIB_CF(jit_util_tracesnap)
 LJLIB_CF(jit_util_tracemc)
 {
    GCtrace* T = jit_checktrace(L);
-   if (T && T->mcode != NULL) {
+   if (T and T->mcode != NULL) {
       setstrV(L, L->top - 1, lj_str_new(L, (const char*)T->mcode, T->szmcode));
       setintptrV(L->top++, (intptr_t)(void*)T->mcode);
       setintV(L->top++, T->mcloop);
@@ -413,7 +413,7 @@ LJLIB_CF(jit_util_traceexitstub)
       GCtrace* T = jit_checktrace(L);
       ExitNo exitno = (ExitNo)lj_lib_checkint(L, 2);
       ExitNo maxexit = T->root ? T->nsnap + 1 : T->nsnap;
-      if (T && T->mcode != NULL && exitno < maxexit) {
+      if (T and T->mcode != NULL and exitno < maxexit) {
          setintptrV(L->top - 1, (intptr_t)(void*)exitstub_trace_addr(T, exitno));
          return 1;
       }
@@ -452,7 +452,7 @@ static int luaopen_jit_util(lua_State* L)
 // Parse optimization level.
 static int jitopt_level(jit_State* J, const char* str)
 {
-   if (str[0] >= '0' && str[0] <= '9' && str[1] == '\0') {
+   if (str[0] >= '0' and str[0] <= '9' and str[1] == '\0') {
       uint32_t flags;
       if (str[0] == '0') flags = JIT_F_OPT_0;
       else if (str[0] == '1') flags = JIT_F_OPT_1;
@@ -477,7 +477,7 @@ static int jitopt_flag(jit_State* J, const char* str)
       str++;
       set = 0;
    }
-   else if (str[0] == 'n' && str[1] == 'o') {
+   else if (str[0] == 'n' and str[1] == 'o') {
       str += str[2] == '-' ? 3 : 2;
       set = 0;
    }
@@ -485,7 +485,7 @@ static int jitopt_flag(jit_State* J, const char* str)
       size_t len = *(const uint8_t*)lst;
       if (len == 0)
          break;
-      if (strncmp(str, lst + 1, len) == 0 && str[len] == '\0') {
+      if (strncmp(str, lst + 1, len) == 0 and str[len] == '\0') {
          if (set) J->flags |= opt; else J->flags &= ~opt;
          return 1;  //  Ok.
       }
@@ -502,10 +502,10 @@ static int jitopt_param(jit_State* J, const char* str)
    for (i = 0; i < JIT_P__MAX; i++) {
       size_t len = *(const uint8_t*)lst;
       lj_assertJ(len != 0, "bad JIT_P_STRING");
-      if (strncmp(str, lst + 1, len) == 0 && str[len] == '=') {
+      if (strncmp(str, lst + 1, len) == 0 and str[len] == '=') {
          int32_t n = 0;
          const char* p = &str[len + 1];
-         while (*p >= '0' && *p <= '9')
+         while (*p >= '0' and *p <= '9')
             n = n * 10 + (*p++ - '0');
          if (*p) return 0;  //  Malformed number.
          J->param[i] = n;
@@ -620,7 +620,7 @@ LJLIB_CF(jit_profile_dumpstack)
    int depth;
    GCstr* fmt;
    const char* p;
-   if (L->top > L->base && tvisthread(L->base)) {
+   if (L->top > L->base and tvisthread(L->base)) {
       L2 = threadV(L->base);
       arg = 1;
    }
@@ -664,7 +664,7 @@ static uint32_t jit_cpudetect(void)
 
    uint32_t vendor[4];
    uint32_t features[4];
-   if (lj_vm_cpuid(0, vendor) && lj_vm_cpuid(1, features)) {
+   if (lj_vm_cpuid(0, vendor) and lj_vm_cpuid(1, features)) {
       flags |= ((features[2] >> 0) & 1) * JIT_F_SSE3;
       flags |= ((features[2] >> 19) & 1) * JIT_F_SSE4_1;
       if (vendor[0] >= 7) {

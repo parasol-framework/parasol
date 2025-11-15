@@ -852,7 +852,7 @@ static TraceNo trace_exit_find(jit_State* J, MCode* pc)
    TraceNo traceno;
    for (traceno = 1; traceno < J->sizetrace; traceno++) {
       GCtrace* T = traceref(J, traceno);
-      if (T && pc >= T->mcode && pc < (MCode*)((char*)T->mcode + T->szmcode))
+      if (T and pc >= T->mcode and pc < (MCode*)((char*)T->mcode + T->szmcode))
          return traceno;
    }
    lj_assertJ(0, "bad exit pc");

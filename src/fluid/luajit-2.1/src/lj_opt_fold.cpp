@@ -161,7 +161,7 @@ typedef IRRef(LJ_FASTCALL* FoldFunc)(jit_State* J);
 ** And the GC is only driven forward if there's at least one allocation.
 */
 #define gcstep_barrier(J, ref) \
-  ((ref) < J->chain[IR_LOOP] && \
+  ((ref) < J->chain[IR_LOOP] and \
    (J->chain[IR_SNEW] or J->chain[IR_XSNEW] or \
     J->chain[IR_TNEW] or J->chain[IR_TDUP] or \
     J->chain[IR_CNEW] or J->chain[IR_CNEWI] or \

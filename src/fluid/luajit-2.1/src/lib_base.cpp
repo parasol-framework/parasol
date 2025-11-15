@@ -88,7 +88,7 @@ static int ffh_pairs(lua_State* L, MMS mm)
 {
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo = lj_meta_lookup(L, o, mm);
-   if ((LJ_52 or tviscdata(o)) && !tvisnil(mo)) {
+   if ((LJ_52 or tviscdata(o)) and !tvisnil(mo)) {
       L->top = o + 1;  //  Only keep one argument.
       copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
       return FFH_TAILCALL;
@@ -145,7 +145,7 @@ LJLIB_CF(getfenv)      LJLIB_REC(.)
 {
    GCfunc* fn;
    cTValue* o = L->base;
-   if (!(o < L->top && tvisfunc(o))) {
+   if (!(o < L->top and tvisfunc(o))) {
       int level = lj_lib_optint(L, 1, 1);
       o = lj_debug_frame(L, level, &level);
       if (o == NULL)
@@ -162,7 +162,7 @@ LJLIB_CF(setfenv)
    GCfunc* fn;
    GCtab* t = lj_lib_checktab(L, 2);
    cTValue* o = L->base;
-   if (!(o < L->top && tvisfunc(o))) {
+   if (!(o < L->top and tvisfunc(o))) {
       int level = lj_lib_checkint(L, 1);
       if (level == 0) {
          // NOBARRIER: A thread (i.e. L) is never black.
@@ -212,7 +212,7 @@ LJLIB_CF(rawlen)      LJLIB_REC(.)
 {
    cTValue* o = L->base;
    int32_t len;
-   if (L->top > o && tvisstr(o))
+   if (L->top > o and tvisstr(o))
       len = (int32_t)strV(o)->len;
    else
       len = (int32_t)lj_tab_len(lj_lib_checktab(L, 1));
@@ -225,7 +225,7 @@ LJLIB_CF(unpack)
 {
    GCtab* t = lj_lib_checktab(L, 1);
    int32_t n, i = lj_lib_optint(L, 2, 1);
-   int32_t e = (L->base + 3 - 1 < L->top && !tvisnil(L->base + 3 - 1)) ?
+   int32_t e = (L->base + 3 - 1 < L->top and !tvisnil(L->base + 3 - 1)) ?
       lj_lib_checkint(L, 3) : (int32_t)lj_tab_len(t);
    uint32_t nu;
    if (i > e) return 0;
@@ -248,7 +248,7 @@ LJLIB_CF(unpack)
 LJLIB_CF(select)      LJLIB_REC(.)
 {
    int32_t n = (int32_t)(L->top - L->base);
-   if (n >= 1 && tvisstr(L->base) && *strVdata(L->base) == '#') {
+   if (n >= 1 and tvisstr(L->base) and *strVdata(L->base) == '#') {
       setintV(L->top - 1, n - 1);
       return 1;
    }
@@ -278,8 +278,8 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
          CType* ct = lj_ctype_rawref(cts, cdataV(o)->ctypeid);
          if (ctype_isenum(ct->info)) ct = ctype_child(cts, ct);
          if (ctype_isnum(ct->info) or ctype_iscomplex(ct->info)) {
-            if (LJ_DUALNUM && ctype_isinteger_or_bool(ct->info) &&
-               ct->size <= 4 && !(ct->size == 4 && (ct->info & CTF_UNSIGNED))) {
+            if (LJ_DUALNUM and ctype_isinteger_or_bool(ct->info) &&
+               ct->size <= 4 and !(ct->size == 4 and (ct->info & CTF_UNSIGNED))) {
                int32_t i;
                lj_cconv_ct_tv(cts, ctype_get(cts, CTID_INT32), (uint8_t*)&i, o, 0);
                setintV(L->base - 1 - LJ_FR2, i);
@@ -307,7 +307,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
          if (p != ep) {
             while (lj_char_isspace((unsigned char)(*ep))) ep++;
             if (*ep == '\0') {
-               if (LJ_DUALNUM && LJ_LIKELY(ul < 0x80000000u + neg)) {
+               if (LJ_DUALNUM and LJ_LIKELY(ul < 0x80000000u + neg)) {
                   if (neg) ul = (unsigned long)-(long)ul;
                   setintV(L->base - 1 - LJ_FR2, (int32_t)ul);
                }
@@ -345,7 +345,7 @@ LJLIB_CF(error)
 {
    int32_t level = lj_lib_optint(L, 2, 1);
    lua_settop(L, 1);
-   if (lua_isstring(L, 1) && level > 0) {
+   if (lua_isstring(L, 1) and level > 0) {
       luaL_where(L, level);
       lua_pushvalue(L, 1);
       lua_concat(L, 2);
@@ -525,7 +525,7 @@ LJLIB_CF(print)
    ptrdiff_t i, nargs = L->top - L->base;
    cTValue* tv = lj_tab_getstr(tabref(L->env), strV(lj_lib_upvalue(L, 1)));
    int shortcut;
-   if (tv && !tvisnil(tv)) {
+   if (tv and !tvisnil(tv)) {
       copyTV(L, L->top++, tv);
    }
    else {
@@ -533,14 +533,14 @@ LJLIB_CF(print)
       lua_gettable(L, LUA_GLOBALSINDEX);
       tv = L->top - 1;
    }
-   shortcut = (tvisfunc(tv) && funcV(tv)->c.ffid == FF_tostring) &&
+   shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid == FF_tostring) &&
       !gcrefu(basemt_it(G(L), LJ_TNUMX));
    for (i = 0; i < nargs; i++) {
       cTValue* o = &L->base[i];
       const char* str;
       size_t size;
       MSize len;
-      if (shortcut && (str = lj_strfmt_wstrnum(L, o, &len)) != NULL) {
+      if (shortcut and (str = lj_strfmt_wstrnum(L, o, &len)) != NULL) {
          size = len;
       }
       else {
@@ -574,7 +574,7 @@ LJLIB_CF(coroutine_status)
 {
    const char* s;
    lua_State* co;
-   if (!(L->top > L->base && tvisthread(L->base)))
+   if (!(L->top > L->base and tvisthread(L->base)))
       lj_err_arg(L, 1, LJ_ERR_NOCORO);
    co = threadV(L->base);
    if (co == L) s = "running";
@@ -609,7 +609,7 @@ LJLIB_CF(coroutine_isyieldable)
 LJLIB_CF(coroutine_create)
 {
    lua_State* L1;
-   if (!(L->base < L->top && tvisfunc(L->base)))
+   if (!(L->base < L->top and tvisfunc(L->base)))
       lj_err_argt(L, 1, LUA_TFUNCTION);
    L1 = lua_newthread(L);
    setfuncV(L, L1->top++, funcV(L->base));
@@ -625,7 +625,7 @@ LJLIB_ASM(coroutine_yield)
 static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 {
    if (co->cframe != NULL or co->status > LUA_YIELD ||
-      (co->status == LUA_OK && co->top == co->base)) {
+      (co->status == LUA_OK and co->top == co->base)) {
       ErrMsg em = co->cframe ? LJ_ERR_CORUN : LJ_ERR_CODEAD;
       if (wrap) lj_err_caller(L, em);
       setboolV(L->base - 1 - LJ_FR2, 0);
@@ -638,7 +638,7 @@ static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 
 LJLIB_ASM(coroutine_resume)
 {
-   if (!(L->top > L->base && tvisthread(L->base)))
+   if (!(L->top > L->base and tvisthread(L->base)))
       lj_err_arg(L, 1, LJ_ERR_NOCORO);
    return ffh_resume(L, threadV(L->base), 0);
 }

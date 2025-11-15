@@ -1,5 +1,5 @@
 /*
-** Lua parser - Register allocation && bytecode emission.
+** Lua parser - Register allocation and bytecode emission.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Major portions taken verbatim or adapted from the Lua interpreter.
@@ -143,7 +143,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
          return;
       case BC_KNIL:
          pto = bc_d(*ip);
-         if (pfrom <= from && from <= pto + 1) {  // Can we connect both ranges?
+         if (pfrom <= from and from <= pto + 1) {  // Can we connect both ranges?
             if (from + n - 1 > pto)
                setbc_d(ip, from + n - 1);  // Patch previous instruction range.
             return;

@@ -11,7 +11,7 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins);
 // Check if a string is the blank identifier '_'.
 static int is_blank_identifier(GCstr* name)
 {
-   return (name != NULL && name->len == 1 && *(strdata(name)) == '_');
+   return (name != NULL and name->len == 1 and *(strdata(name)) == '_');
 }
 
 // Define a new local variable.
@@ -26,7 +26,7 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
    lj_assertFS(name == NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
-   // NOBARRIER: name is anchored in fs->kt && ls->vstack is not a GCobj.
+   // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcref(ls->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
    ls->vtop = vtop + 1;
@@ -125,9 +125,9 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
 #define var_lookup(ls, e) \
   var_lookup_((ls)->fs, lex_str(ls), (e), 1)
 
-// -- Jump && target handling ----------------------------------------------
+// -- Jump and target handling ----------------------------------------------
 
-// Jump types for break && continue statements.
+// Jump types for break and continue statements.
 enum { JUMP_BREAK, JUMP_CONTINUE };
 
 // Add a new jump or target
@@ -142,7 +142,7 @@ static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc)
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
    GCstr* name = (jump_type == JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
-   // NOBARRIER: name is anchored in fs->kt && ls->vstack is not a GCobj.
+   // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcref(ls->vstack[vtop].name, obj2gco(name));
    ls->vstack[vtop].startpc = pc;
    ls->vstack[vtop].slot = uint8_t(fs->nactvar);
@@ -189,12 +189,12 @@ static void gola_resolve(LexState* ls, FuncScope* bl, MSize idx)
    VarInfo* vg = ls->vstack + bl->vstart;
    VarInfo* vl = ls->vstack + idx;
    for (; vg < vl; vg++)
-      if (gcrefeq(vg->name, vl->name) && gola_is_jump(vg)) {
+      if (gcrefeq(vg->name, vl->name) and gola_is_jump(vg)) {
          gola_patch(ls, vg, vl);
       }
 }
 
-// Fixup remaining gotos && targets for scope.
+// Fixup remaining gotos and targets for scope.
 static void gola_fixup(LexState* ls, FuncScope* bl)
 {
    VarInfo* v = ls->vstack + bl->vstart;
@@ -206,8 +206,8 @@ static void gola_fixup(LexState* ls, FuncScope* bl)
             VarInfo* vg;
             setgcrefnull(v->name);  // Invalidate target that goes out of scope.
             for (vg = v + 1; vg < ve; vg++)  // Resolve pending backward gotos.
-               if (strref(vg->name) == name && gola_is_jump(vg)) {
-                  if ((bl->flags & FSCOPE_UPVAL) && vg->slot > v->slot)
+               if (strref(vg->name) == name and gola_is_jump(vg)) {
+                  if ((bl->flags & FSCOPE_UPVAL) and vg->slot > v->slot)
                      gola_close(ls, vg);
                   gola_patch(ls, vg, v);
                }
@@ -332,7 +332,7 @@ static void fscope_end(FuncState* fs)
 static void fscope_uvmark(FuncState* fs, BCReg level)
 {
    FuncScope* bl;
-   for (bl = fs->bl; bl && bl->nactvar > level; bl = bl->prev)
+   for (bl = fs->bl; bl and bl->nactvar > level; bl = bl->prev)
       ;
    if (bl)
       bl->flags |= FSCOPE_UPVAL;
@@ -492,7 +492,7 @@ static size_t fs_prep_var(LexState* ls, FuncState* fs, size_t* ofsvar)
    }
    *ofsvar = sbuflen(&ls->sb);
    lastpc = 0;
-   // Store local variable names && compressed ranges.
+   // Store local variable names and compressed ranges.
    for (ve = vs + ls->vtop, vs += fs->vbase; vs < ve; vs++) {
       if (!gola_is_jump_or_target(vs)) {
          GCstr* s = strref(vs->name);
@@ -588,7 +588,7 @@ static void fs_fixup_ret(FuncState* fs)
    }
 }
 
-// Finish a FuncState && return the new prototype.
+// Finish a FuncState and return the new prototype.
 static GCproto* fs_finish(LexState* ls, BCLine line)
 {
    lua_State* L = ls->L;
@@ -608,7 +608,7 @@ static GCproto* fs_finish(LexState* ls, BCLine line)
    ofsli = sizept; sizept += fs_prep_line(fs, numline);
    ofsdbg = sizept; sizept += fs_prep_var(ls, fs, &ofsvar);
 
-   // Allocate prototype && initialize its fields.
+   // Allocate prototype and initialize its fields.
    pt = (GCproto*)lj_mem_newgco(L, MSize(sizept));
    pt->gct = ~LJ_TPROTO;
    pt->sizept = MSize(sizept);
@@ -618,7 +618,7 @@ static GCproto* fs_finish(LexState* ls, BCLine line)
    pt->framesize = fs->framesize;
    setgcref(pt->chunkname, obj2gco(ls->chunkname));
 
-   // Close potentially uninitialized gap between bc && kgc.
+   // Close potentially uninitialized gap between bc and kgc.
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (fs->nkgc + 1)) = 0;
    fs_fixup_bc(fs, pt, (BCIns*)((char*)pt + sizeof(GCproto)), fs->pc);
    fs_fixup_k(fs, pt, (void*)((char*)pt + ofsk));

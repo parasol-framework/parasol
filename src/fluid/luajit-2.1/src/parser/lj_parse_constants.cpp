@@ -94,7 +94,7 @@ static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
    BCInsLine* ilp = &fs->bcbase[pc >= 1 ? pc - 1 : pc];
    BCOp op = bc_op(ilp->ins);
    if (op == BC_ISTC or op == BC_ISFC) {
-      if (reg != NO_REG && reg != bc_d(ilp->ins)) {
+      if (reg != NO_REG and reg != bc_d(ilp->ins)) {
          setbc_a(&ilp->ins, reg);
       }
       else {  // Nothing to store or already in the right register.

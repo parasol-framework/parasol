@@ -110,7 +110,7 @@ LUALIB_API const char* luaL_findtable(lua_State* L, int idx,
 static int libsize(const luaL_Reg* l)
 {
    int size = 0;
-   for (; l && l->name; l++) size++;
+   for (; l and l->name; l++) size++;
    return size;
 }
 
