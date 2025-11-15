@@ -6,7 +6,7 @@
 #ifndef _LJ_TARGET_PPC_H
 #define _LJ_TARGET_PPC_H
 
-/* -- Registers IDs ------------------------------------------------------- */
+// -- Registers IDs -------------------------------------------------------
 
 #define GPRDEF(_) \
   _(R0) _(SP) _(SYS1) _(R3) _(R4) _(R5) _(R6) _(R7) \
@@ -28,20 +28,20 @@ enum {
    RID_MAX,
    RID_TMP = RID_R0,
 
-   /* Calling conventions. */
+   // Calling conventions.
    RID_RET = RID_R3,
    RID_RETHI = RID_R3,
    RID_RETLO = RID_R4,
    RID_FPRET = RID_F1,
 
-   /* These definitions must match with the *.dasc file(s): */
+   // These definitions must match with the *.dasc file(s):
    RID_BASE = RID_R14,      /* Interpreter BASE. */
    RID_LPC = RID_R16,      /* Interpreter PC. */
    RID_DISPATCH = RID_R17,   /* Interpreter DISPATCH table. */
    RID_LREG = RID_R18,      /* Interpreter L. */
    RID_JGL = RID_R31,      /* On-trace: global_State + 32768. */
 
-   /* Register ranges [min, max) and number of registers. */
+   // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_R0,
    RID_MAX_GPR = RID_R31 + 1,
    RID_MIN_FPR = RID_F0,
@@ -53,9 +53,9 @@ enum {
 #define RID_NUM_KREF      RID_NUM_GPR
 #define RID_MIN_KREF      RID_R0
 
-/* -- Register sets ------------------------------------------------------- */
+// -- Register sets -------------------------------------------------------
 
-/* Make use of all registers, except TMP, SP, SYS1, SYS2 and JGL. */
+// Make use of all registers, except TMP, SP, SYS1, SYS2 and JGL.
 #define RSET_FIXED \
   (RID2RSET(RID_TMP)|RID2RSET(RID_SP)|RID2RSET(RID_SYS1)|\
    RID2RSET(RID_SYS2)|RID2RSET(RID_JGL))
@@ -74,7 +74,7 @@ enum {
 #define REGARG_LASTFPR      RID_F8
 #define REGARG_NUMFPR      8
 
-/* -- Spill slots --------------------------------------------------------- */
+// -- Spill slots ---------------------------------------------------------
 
 /* Spill slots are 32 bit wide. An even/odd pair is used for FPRs.
 **
@@ -90,7 +90,7 @@ enum {
 #define SPS_FIXED   7
 #define SPS_FIRST   4
 
-/* Stack offsets for temporary slots. Used for FP<->int conversions etc. */
+// Stack offsets for temporary slots. Used for FP<->int conversions etc.
 #define SPOFS_TMPW   4
 #define SPOFS_TMP   8
 #define SPOFS_TMPHI   8
@@ -99,31 +99,31 @@ enum {
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 3) & ~3)
 
-/* -- Exit state ---------------------------------------------------------- */
+// -- Exit state ----------------------------------------------------------
 
-/* This definition must match with the *.dasc file(s). */
+// This definition must match with the *.dasc file(s).
 typedef struct {
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
 } ExitState;
 
-/* Highest exit + 1 indicates stack check. */
+// Highest exit + 1 indicates stack check.
 #define EXITSTATE_CHECKEXIT   1
 
-/* Return the address of a per-trace exit stub. */
+// Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)
 {
    while (*p == 0x60000000) p++;  /* Skip PPCI_NOP. */
    return p + 3 + exitno;
 }
-/* Avoid dependence on lj_jit.h if only including lj_target.h. */
+// Avoid dependence on lj_jit.h if only including lj_target.h.
 #define exitstub_trace_addr(T, exitno) \
   exitstub_trace_addr_((MCode *)((char *)(T)->mcode + (T)->szmcode), (exitno))
 
-/* -- Instructions -------------------------------------------------------- */
+// -- Instructions --------------------------------------------------------
 
-/* Instruction fields. */
+// Instruction fields.
 #define PPCF_CC(cc)   ((((cc) & 3) << 16) | (((cc) & 4) << 22))
 #define PPCF_T(r)   ((r) << 21)
 #define PPCF_A(r)   ((r) << 16)
@@ -135,7 +135,7 @@ static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)
 #define PPCF_DOT   0x00000001
 
 typedef enum PPCIns {
-   /* Integer instructions. */
+   // Integer instructions.
    PPCI_MR = 0x7c000378,
    PPCI_NOP = 0x60000000,
 
@@ -219,7 +219,7 @@ typedef enum PPCIns {
 
    PPCI_MCRXR = 0x7c000400,
 
-   /* Load/store instructions. */
+   // Load/store instructions.
    PPCI_LWZ = 0x80000000,
    PPCI_LBZ = 0x88000000,
    PPCI_STW = 0x90000000,
@@ -251,7 +251,7 @@ typedef enum PPCIns {
    PPCI_STFSX = 0x7c00052e,
    PPCI_STFDX = 0x7c0005ae,
 
-   /* FP instructions. */
+   // FP instructions.
    PPCI_FMR = 0xfc000090,
    PPCI_FNEG = 0xfc000050,
    PPCI_FABS = 0xfc000210,

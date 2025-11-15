@@ -24,7 +24,7 @@
 #endif
 #include "lj_serialize.h"
 
-/* Tags for internal serialization format. */
+// Tags for internal serialization format.
 enum {
    SER_TAG_NIL,      /* 0x00 */
    SER_TAG_FALSE,
@@ -57,7 +57,7 @@ enum {
 };
 LJ_STATIC_ASSERT((SER_TAG_TAB & 7) == 0);
 
-/* -- Helper functions ---------------------------------------------------- */
+// -- Helper functions ----------------------------------------------------
 
 static LJ_AINLINE char* serialize_more(char* w, SBufExt* sbx, MSize sz)
 {
@@ -68,7 +68,7 @@ static LJ_AINLINE char* serialize_more(char* w, SBufExt* sbx, MSize sz)
    return w;
 }
 
-/* Write U124 to buffer. */
+// Write U124 to buffer.
 static LJ_NOINLINE char* serialize_wu124_(char* w, uint32_t v)
 {
    if (v < 0x1fe0) {
@@ -127,7 +127,7 @@ static LJ_AINLINE char* serialize_ru124(char* r, char* w, uint32_t* pv)
    return NULL;
 }
 
-/* Prepare string dictionary for use (once). */
+// Prepare string dictionary for use (once).
 void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
@@ -148,7 +148,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
    }
 }
 
-/* Prepare metatable dictionary for use (once). */
+// Prepare metatable dictionary for use (once).
 void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
@@ -169,9 +169,9 @@ void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
    }
 }
 
-/* -- Internal serializer ------------------------------------------------- */
+// -- Internal serializer -------------------------------------------------
 
-/* Put serialized object into buffer. */
+// Put serialized object into buffer.
 static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
 {
    if (LJ_LIKELY(tvisstr(o))) {
@@ -215,7 +215,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
          for (i = 0; i <= hmask; i++)
             nhash += !tvisnil(&node[i].val);
       }
-      /* Write metatable index. */
+      // Write metatable index.
       if (LJ_UNLIKELY(gcref(sbx->dict_mt)) && gcref(t->metatable)) {
          TValue mto;
          Node* n;
@@ -231,7 +231,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
             }
          } while ((n = nextnode(n)));
       }
-      /* Write number of array slots and hash slots. */
+      // Write number of array slots and hash slots.
       w = serialize_more(w, sbx, 1 + 2 * 5);
       *w++ = (char)(SER_TAG_TAB + (nhash ? 1 : 0) + (narray ? one : 0));
       if (narray) w = serialize_wu124(w, narray);
@@ -248,7 +248,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
             for (;; node--)
                if (!tvisnil(&node->val)) {
                   if (LJ_LIKELY(tvisstr(&node->key))) {
-                     /* Inlined lj_tab_getstr is 30% faster. */
+                     // Inlined lj_tab_getstr is 30% faster.
                      const GCstr* str = strV(&node->key);
                      Node* n = hashstr(dict_str, str);
                      do {
@@ -344,7 +344,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       }
    }
    else {
-      /* NYI userdata */
+      // NYI userdata
 #if LJ_HASFFI
       badenc :
 #endif
@@ -353,7 +353,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
    return w;
 }
 
-/* Get serialized object from buffer. */
+// Get serialized object from buffer.
 static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
 {
    char* w = sbx->w;
@@ -417,7 +417,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          r = serialize_ru124(r, w, &nhash); if (LJ_UNLIKELY(!r)) goto eob;
       }
       t = lj_tab_new(sbufL(sbx), narray, hsize2hbits(nhash));
-      /* NOBARRIER: The table is new (marked white). */
+      // NOBARRIER: The table is new (marked white).
       setgcref(t->metatable, obj2gco(mt));
       settabV(sbufL(sbx), o, t);
       if (narray) {
@@ -491,9 +491,9 @@ eob:
    return NULL;
 }
 
-/* -- External serialization API ------------------------------------------ */
+// -- External serialization API ------------------------------------------
 
-/* Encode to buffer. */
+// Encode to buffer.
 SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o)
 {
    sbx->depth = LJ_SERIALIZE_DEPTH;
@@ -501,14 +501,14 @@ SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o)
    return sbx;
 }
 
-/* Decode from buffer. */
+// Decode from buffer.
 char* LJ_FASTCALL lj_serialize_get(SBufExt* sbx, TValue* o)
 {
    sbx->depth = LJ_SERIALIZE_DEPTH;
    return serialize_get(sbx->r, sbx, o);
 }
 
-/* Stand-alone encoding, borrowing from global temporary buffer. */
+// Stand-alone encoding, borrowing from global temporary buffer.
 GCstr* LJ_FASTCALL lj_serialize_encode(lua_State* L, cTValue* o)
 {
    SBufExt sbx;
@@ -520,26 +520,26 @@ GCstr* LJ_FASTCALL lj_serialize_encode(lua_State* L, cTValue* o)
    return lj_str_new(L, sbx.b, (size_t)(w - sbx.b));
 }
 
-/* Stand-alone decoding, copy-on-write from string. */
+// Stand-alone decoding, copy-on-write from string.
 void lj_serialize_decode(lua_State* L, TValue* o, GCstr* str)
 {
    SBufExt sbx;
    char* r;
    memset(&sbx, 0, sizeof(SBufExt));
    lj_bufx_set_cow(L, &sbx, strdata(str), str->len);
-   /* No need to set sbx.cowref here. */
+   // No need to set sbx.cowref here.
    sbx.depth = LJ_SERIALIZE_DEPTH;
    r = serialize_get(sbx.r, &sbx, o);
    if (r != sbx.w) lj_err_caller(L, LJ_ERR_BUFFER_LEFTOV);
 }
 
 #if LJ_HASJIT
-/* Peek into buffer to find the result IRType for specialization purposes. */
+// Peek into buffer to find the result IRType for specialization purposes.
 LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
 {
    uint32_t tp;
    if (serialize_ru124(sbx->r, sbx->w, &tp)) {
-      /* This must match the handling of all tags in the decoder above. */
+      // This must match the handling of all tags in the decoder above.
       switch (tp) {
       case SER_TAG_NIL: return IRT_NIL;
       case SER_TAG_FALSE: return IRT_FALSE;

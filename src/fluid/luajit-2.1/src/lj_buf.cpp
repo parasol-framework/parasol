@@ -14,7 +14,7 @@
 #include "lj_tab.h"
 #include "lj_strfmt.h"
 
-/* -- Buffer management --------------------------------------------------- */
+// -- Buffer management ---------------------------------------------------
 
 static void buf_grow(SBuf* sb, MSize sz)
 {
@@ -37,7 +37,7 @@ static void buf_grow(SBuf* sb, MSize sz)
    if ((flag & SBUF_FLAG_EXT)) {
       sbufX(sb)->r = sbufX(sb)->r - sb->b + b;  /* Adjust read pointer, too. */
    }
-   /* Adjust buffer pointers. */
+   // Adjust buffer pointers.
    sb->b = b;
    sb->w = b + len;
    sb->e = b + nsz;
@@ -69,7 +69,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
          buf_grow((SBuf*)sbx, len + sz);
       }
       else if (sbufxslack(sbx) < (sbufsz(sbx) >> 3)) {
-         /* Also grow to avoid excessive compactions, if slack < size/8. */
+         // Also grow to avoid excessive compactions, if slack < size/8.
          buf_grow((SBuf*)sbx, sbuflen(sbx) + sz);  /* Not sbufxlen! */
          return sbx->w;
       }
@@ -130,7 +130,7 @@ MSize LJ_FASTCALL lj_bufx_more(SBufExt* sbx, MSize sz)
 #endif
 #endif
 
-/* -- Low-level buffer put operations ------------------------------------- */
+// -- Low-level buffer put operations -------------------------------------
 
 SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
 {
@@ -170,7 +170,7 @@ SBuf* LJ_FASTCALL lj_buf_putstr(SBuf* sb, GCstr* s)
    return sb;
 }
 
-/* -- High-level buffer put operations ------------------------------------ */
+// -- High-level buffer put operations ------------------------------------
 
 SBuf* LJ_FASTCALL lj_buf_putstr_reverse(SBuf* sb, GCstr* s)
 {
@@ -280,14 +280,14 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
    return sb;
 }
 
-/* -- Miscellaneous buffer operations ------------------------------------- */
+// -- Miscellaneous buffer operations -------------------------------------
 
 GCstr* LJ_FASTCALL lj_buf_tostr(SBuf* sb)
 {
    return lj_str_new(sbufL(sb), sb->b, sbuflen(sb));
 }
 
-/* Concatenate two strings. */
+// Concatenate two strings.
 GCstr* lj_buf_cat2str(lua_State* L, GCstr* s1, GCstr* s2)
 {
    MSize len1 = s1->len, len2 = s2->len;
@@ -297,7 +297,7 @@ GCstr* lj_buf_cat2str(lua_State* L, GCstr* s1, GCstr* s2)
    return lj_str_new(L, buf, len1 + len2);
 }
 
-/* Read ULEB128 from buffer. */
+// Read ULEB128 from buffer.
 uint32_t LJ_FASTCALL lj_buf_ruleb128(const char** pp)
 {
    const uint8_t* w = (const uint8_t*)*pp;

@@ -46,7 +46,7 @@ static void lstop(lua_State* L, lua_Debug* ar)
 {
    (void)ar;  /* unused arg. */
    lua_sethook(L, NULL, 0, 0);
-   /* Avoid luaL_error -- a C hook doesn't add an extra frame. */
+   // Avoid luaL_error -- a C hook doesn't add an extra frame.
    luaL_where(L, 0);
    lua_pushfstring(L, "%sinterrupted!", lua_tostring(L, -1));
    lua_error(L);
@@ -124,7 +124,7 @@ static int docall(lua_State* L, int narg, int clear)
    signal(SIGINT, SIG_DFL);
 #endif
    lua_remove(L, base);  /* remove traceback function */
-   /* force a complete garbage collection in case of errors */
+   // force a complete garbage collection in case of errors
    if (status != LUA_OK) lua_gc(L, LUA_GCCOLLECT, 0);
    return status;
 }
@@ -275,7 +275,7 @@ static int handle_script(lua_State* L, char** argx)
       fname = NULL;  /* stdin */
    status = luaL_loadfile(L, fname);
    if (status == LUA_OK) {
-      /* Fetch args from arg table. LUA_INIT or -e might have changed them. */
+      // Fetch args from arg table. LUA_INIT or -e might have changed them.
       int narg = 0;
       lua_getglobal(L, "arg");
       if (lua_istable(L, -1)) {
@@ -295,7 +295,7 @@ static int handle_script(lua_State* L, char** argx)
    return report(L, status);
 }
 
-/* Load add-on module. */
+// Load add-on module.
 static int loadjitmodule(lua_State* L)
 {
    lua_getglobal(L, "require");
@@ -318,7 +318,7 @@ static int loadjitmodule(lua_State* L)
    return 0;
 }
 
-/* Run command with options. */
+// Run command with options.
 static int runcmdopt(lua_State* L, const char* opt)
 {
    int narg = 0;
@@ -341,7 +341,7 @@ static int runcmdopt(lua_State* L, const char* opt)
    return report(L, lua_pcall(L, narg, 0, 0));
 }
 
-/* JIT engine control command: try jit library first or load add-on module. */
+// JIT engine control command: try jit library first or load add-on module.
 static int dojitcmd(lua_State* L, const char* cmd)
 {
    const char* opt = strchr(cmd, '=');
@@ -363,7 +363,7 @@ static int dojitcmd(lua_State* L, const char* cmd)
    return runcmdopt(L, opt ? opt + 1 : opt);
 }
 
-/* Optimization flags. */
+// Optimization flags.
 static int dojitopt(lua_State* L, const char* opt)
 {
    lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
@@ -374,7 +374,7 @@ static int dojitopt(lua_State* L, const char* opt)
    return runcmdopt(L, opt);
 }
 
-/* Save or list bytecode. */
+// Save or list bytecode.
 static int dobytecode(lua_State* L, char** argv)
 {
    int narg = 0;
@@ -392,7 +392,7 @@ static int dobytecode(lua_State* L, char** argv)
    return -1;
 }
 
-/* check that argument has no extra characters at the end */
+// check that argument has no extra characters at the end
 #define notail(x)   {if ((x)[2] != '\0') return -1;}
 
 #define FLAGS_INTERACTIVE   1
@@ -416,14 +416,14 @@ static int collectargs(char** argv, int* flags)
       case 'i':
          notail(argv[i]);
          *flags |= FLAGS_INTERACTIVE;
-         /* fallthrough */
+         // fallthrough
       case 'v':
          notail(argv[i]);
          *flags |= FLAGS_VERSION;
          break;
       case 'e':
          *flags |= FLAGS_EXEC;
-         /* fallthrough */
+         // fallthrough
       case 'j':  /* LuaJIT extension */
       case 'l':
          *flags |= FLAGS_OPTION;
@@ -531,7 +531,7 @@ static int pmain(lua_State* L)
       lua_setfield(L, LUA_REGISTRYINDEX, "LUA_NOENV");
    }
 
-   /* Stop collector during library initialization. */
+   // Stop collector during library initialization.
    lua_gc(L, LUA_GCSTOP, 0);
    luaL_openlibs(L);
    lua_gc(L, LUA_GCRESTART, -1);

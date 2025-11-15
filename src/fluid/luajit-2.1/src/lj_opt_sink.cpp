@@ -15,10 +15,10 @@
 #include "lj_iropt.h"
 #include "lj_target.h"
 
-/* Some local macros to save typing. Undef'd at the end. */
+// Some local macros to save typing. Undef'd at the end.
 #define IR(ref)      (&J->cur.ir[(ref)])
 
-/* Check whether the store ref points to an eligible allocation. */
+// Check whether the store ref points to an eligible allocation.
 static IRIns* sink_checkalloc(jit_State* J, IRIns* irs)
 {
    IRIns* ir = IR(irs->op1);
@@ -35,7 +35,7 @@ static IRIns* sink_checkalloc(jit_State* J, IRIns* irs)
    return ir;  /* Return allocation. */
 }
 
-/* Recursively check whether a value depends on a PHI. */
+// Recursively check whether a value depends on a PHI.
 static int sink_phidep(jit_State* J, IRRef ref, int* workp)
 {
    IRIns* ir = IR(ref);
@@ -47,7 +47,7 @@ static int sink_phidep(jit_State* J, IRRef ref, int* workp)
    return 0;
 }
 
-/* Check whether a value is a sinkable PHI or loop-invariant. */
+// Check whether a value is a sinkable PHI or loop-invariant.
 static int sink_checkphi(jit_State* J, IRIns* ira, IRRef ref)
 {
    if (ref >= REF_FIRST) {
@@ -57,9 +57,9 @@ static int sink_checkphi(jit_State* J, IRIns* ira, IRRef ref)
          ira->prev++;
          return 1;  /* Sinkable PHI. */
       }
-      /* Otherwise the value must be loop-invariant. */
+      // Otherwise the value must be loop-invariant.
       if (ref < J->loopref) {
-         /* Check for PHI dependencies, but give up after reasonable effort. */
+         // Check for PHI dependencies, but give up after reasonable effort.
          int work = 64;
          return !sink_phidep(J, ref, &work);
       }
@@ -109,7 +109,7 @@ static void sink_mark_ins(jit_State* J)
                   !sink_checkphi(J, ir, (ir + 1)->op2))))
             irt_setmark(ir->t);  /* Mark ineligible allocation. */
 #endif
-         /* fallthrough */
+         // fallthrough
       case IR_USTORE:
          irt_setmark(IR(ir->op2)->t);  /* Mark stored value. */
          break;
@@ -140,7 +140,7 @@ static void sink_mark_ins(jit_State* J)
    }
 }
 
-/* Mark all instructions referenced by a snapshot. */
+// Mark all instructions referenced by a snapshot.
 static void sink_mark_snap(jit_State* J, SnapShot* snap)
 {
    SnapEntry* map = &J->cur.snapmap[snap->mapofs];
@@ -152,7 +152,7 @@ static void sink_mark_snap(jit_State* J, SnapShot* snap)
    }
 }
 
-/* Iteratively remark PHI refs with differing marks or PHI value counts. */
+// Iteratively remark PHI refs with differing marks or PHI value counts.
 static void sink_remark_phi(jit_State* J)
 {
    IRIns* ir;
@@ -170,7 +170,7 @@ static void sink_remark_phi(jit_State* J)
    } while (remark);
 }
 
-/* Sweep instructions and tag sunken allocations and stores. */
+// Sweep instructions and tag sunken allocations and stores.
 static void sink_sweep_ins(jit_State* J)
 {
    IRIns* ir, * irbase = IR(REF_BASE);
@@ -231,7 +231,7 @@ static void sink_sweep_ins(jit_State* J)
    for (ir = IR(J->cur.nk); ir < irbase; ir++) {
       irt_clearmark(ir->t);
       ir->prev = REGSP_INIT;
-      /* The false-positive of irt_is64() for ASMREF_L (REF_NIL) is OK here. */
+      // The false-positive of irt_is64() for ASMREF_L (REF_NIL) is OK here.
       if (irt_is64(ir->t) && ir->o != IR_KNULL)
          ir++;
    }

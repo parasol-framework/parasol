@@ -19,13 +19,13 @@
 #include "lj_jit.h"
 #endif
 
-/* -- Frames -------------------------------------------------------------- */
+// -- Frames --------------------------------------------------------------
 
-/* Get frame corresponding to a level. */
+// Get frame corresponding to a level.
 cTValue* lj_debug_frame(lua_State* L, int level, int* size)
 {
    cTValue* frame, * nextframe, * bot = tvref(L->stack) + LJ_FR2;
-   /* Traverse frames backwards. */
+   // Traverse frames backwards.
    for (nextframe = frame = L->base - 1; frame > bot; ) {
       if (frame_gc(frame) == obj2gco(L))
          level++;  /* Skip dummy frames. See lj_err_optype_call(). */
@@ -47,10 +47,10 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
    return NULL;  /* Level not found. */
 }
 
-/* Invalid bytecode position. */
+// Invalid bytecode position.
 #define NO_BCPOS   (~(BCPos)0)
 
-/* Return bytecode position for function/frame or NO_BCPOS. */
+// Return bytecode position for function/frame or NO_BCPOS.
 static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
 {
    const BCIns* ins;
@@ -75,7 +75,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
          ins = frame_contpc(nextframe);
       }
       else {
-         /* Lua function below errfunc/gc/hook: find cframe to get the PC. */
+         // Lua function below errfunc/gc/hook: find cframe to get the PC.
          void* cf = cframe_raw(L->cframe);
          TValue* f = L->base - 1;
          for (;;) {
@@ -115,9 +115,9 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    return pos;
 }
 
-/* -- Line numbers -------------------------------------------------------- */
+// -- Line numbers --------------------------------------------------------
 
-/* Get line number for a bytecode position. */
+// Get line number for a bytecode position.
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
 {
    const void* lineinfo = proto_lineinfo(pt);
@@ -135,7 +135,7 @@ BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
    return 0;
 }
 
-/* Get line number for function/frame. */
+// Get line number for function/frame.
 static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
 {
    BCPos pc = debug_framepc(L, fn, nextframe);
@@ -147,9 +147,9 @@ static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
    return -1;
 }
 
-/* -- Variable names ------------------------------------------------------ */
+// -- Variable names ------------------------------------------------------
 
-/* Get name of a local variable from slot number and PC. */
+// Get name of a local variable from slot number and PC.
 static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
 {
    const char* p = (const char*)proto_varinfo(pt);
@@ -183,7 +183,7 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
    return NULL;
 }
 
-/* Get name of local variable from 1-based slot number and function/frame. */
+// Get name of local variable from 1-based slot number and function/frame.
 static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    const char** name, BCReg slot1)
 {
@@ -219,7 +219,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    return frame + slot1;
 }
 
-/* Get name of upvalue. */
+// Get name of upvalue.
 const char* lj_debug_uvname(GCproto* pt, uint32_t idx)
 {
    const uint8_t* p = proto_uvinfo(pt);
@@ -229,7 +229,7 @@ const char* lj_debug_uvname(GCproto* pt, uint32_t idx)
    return (const char*)p;
 }
 
-/* Get name and value of upvalue. */
+// Get name and value of upvalue.
 const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op)
 {
    if (tvisfunc(o)) {
@@ -254,7 +254,7 @@ const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op)
    return NULL;
 }
 
-/* Deduce name of an object from slot number and PC. */
+// Deduce name of an object from slot number and PC.
 const char* lj_debug_slotname(GCproto* pt, const BCIns* ip, BCReg slot,
    const char** name)
 {
@@ -298,7 +298,7 @@ restart:
    return NULL;
 }
 
-/* Deduce function name from caller of a frame. */
+// Deduce function name from caller of a frame.
 const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
 {
    cTValue* pframe;
@@ -328,9 +328,9 @@ const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
    return NULL;
 }
 
-/* -- Source code locations ----------------------------------------------- */
+// -- Source code locations -----------------------------------------------
 
-/* Generate shortened source name. */
+// Generate shortened source name.
 void lj_debug_shortname(char* out, GCstr* str, BCLine line)
 {
    const char* src = strdata(str);
@@ -364,7 +364,7 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
    }
 }
 
-/* Add current location of a frame to error message. */
+// Add current location of a frame to error message.
 void lj_debug_addloc(lua_State* L, const char* msg,
    cTValue* frame, cTValue* nextframe)
 {
@@ -384,7 +384,7 @@ void lj_debug_addloc(lua_State* L, const char* msg,
    lj_strfmt_pushf(L, "%s", msg);
 }
 
-/* Push location string for a bytecode position to Lua stack. */
+// Push location string for a bytecode position to Lua stack.
 void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
 {
    GCstr* name = proto_chunkname(pt);
@@ -414,9 +414,9 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
    }
 }
 
-/* -- Public debug API ---------------------------------------------------- */
+// -- Public debug API ----------------------------------------------------
 
-/* lua_getupvalue() and lua_setupvalue() are in lj_api.c. */
+// lua_getupvalue() and lua_setupvalue() are in lj_api.c.
 
 LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
@@ -577,7 +577,7 @@ LUA_API int lua_getstack(lua_State* L, int level, lua_Debug* ar)
 }
 
 #if LJ_HASPROFILE
-/* Put the chunkname into a buffer. */
+// Put the chunkname into a buffer.
 static int debug_putchunkname(SBuf* sb, GCproto* pt, int pathstrip)
 {
    GCstr* name = proto_chunkname(pt);
@@ -608,7 +608,7 @@ static int debug_putchunkname(SBuf* sb, GCproto* pt, int pathstrip)
    return 1;
 }
 
-/* Put a compact stack dump into a buffer. */
+// Put a compact stack dump into a buffer.
 void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
 {
    int level = 0, dir = 1, pathstrip = 1;
@@ -643,7 +643,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                   }
                   lj_buf_putmem(sb, name, (MSize)strlen(name));
                }
-               /* Don't output anything if function name is unreliable */
+               // Don't output anything if function name is unreliable
                break;
             }
 
@@ -651,7 +651,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                if (isluafunc(fn)) {
                   GCproto* pt = funcproto(fn);
                   if (debug_putchunkname(sb, pt, pathstrip)) {
-                     /* Regular Lua function. */
+                     // Regular Lua function.
                      BCLine line = c == 'l' ? debug_frameline(L, fn, nextframe) :
                         pt->firstline;
                      lj_buf_putb(sb, ':');
@@ -690,7 +690,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
 }
 #endif
 
-/* Number of frames for the leading and trailing part of a traceback. */
+// Number of frames for the leading and trailing part of a traceback.
 #define TRACEBACK_LEVELS1   12
 #define TRACEBACK_LEVELS2   10
 

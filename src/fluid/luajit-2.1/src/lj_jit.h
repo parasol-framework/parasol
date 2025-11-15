@@ -9,12 +9,12 @@
 #include "lj_obj.h"
 #include "lj_ir.h"
 
-/* -- JIT engine flags ---------------------------------------------------- */
+// -- JIT engine flags ----------------------------------------------------
 
-/* General JIT engine flags. 4 bits. */
+// General JIT engine flags. 4 bits.
 #define JIT_F_ON      0x00000001
 
-/* CPU-specific JIT engine flags. 12 bits. Flags and strings must match. */
+// CPU-specific JIT engine flags. 12 bits. Flags and strings must match.
 #define JIT_F_CPU      0x00000010
 
 #if LJ_TARGET_X86ORX64
@@ -72,7 +72,7 @@
 
 #endif
 
-/* Optimization flags. 12 bits. */
+// Optimization flags. 12 bits.
 #define JIT_F_OPT      0x00010000
 #define JIT_F_OPT_MASK      0x0fff0000
 
@@ -87,11 +87,11 @@
 #define JIT_F_OPT_SINK      (JIT_F_OPT << 8)
 #define JIT_F_OPT_FUSE      (JIT_F_OPT << 9)
 
-/* Optimizations names for -O. Must match the order above. */
+// Optimizations names for -O. Must match the order above.
 #define JIT_F_OPTSTRING   \
   "\4fold\3cse\3dce\3fwd\3dse\6narrow\4loop\3abc\4sink\4fuse"
 
-/* Optimization levels set a fixed combination of flags. */
+// Optimization levels set a fixed combination of flags.
 #define JIT_F_OPT_0   0
 #define JIT_F_OPT_1   (JIT_F_OPT_FOLD|JIT_F_OPT_CSE|JIT_F_OPT_DCE)
 #define JIT_F_OPT_2   (JIT_F_OPT_1|JIT_F_OPT_NARROW|JIT_F_OPT_LOOP)
@@ -99,17 +99,17 @@
   JIT_F_OPT_FWD|JIT_F_OPT_DSE|JIT_F_OPT_ABC|JIT_F_OPT_SINK|JIT_F_OPT_FUSE)
 #define JIT_F_OPT_DEFAULT   JIT_F_OPT_3
 
-/* -- JIT engine parameters ----------------------------------------------- */
+// -- JIT engine parameters -----------------------------------------------
 
 #if LJ_TARGET_WINDOWS || LJ_64
-/* See: http://blogs.msdn.com/oldnewthing/archive/2003/10/08/55239.aspx */
+// See: http://blogs.msdn.com/oldnewthing/archive/2003/10/08/55239.aspx
 #define JIT_P_sizemcode_DEFAULT      64
 #else
-/* Could go as low as 4K, but the mmap() overhead would be rather high. */
+// Could go as low as 4K, but the mmap() overhead would be rather high.
 #define JIT_P_sizemcode_DEFAULT      32
 #endif
 
-/* Optimization parameters and their defaults. Length is a char in octal! */
+// Optimization parameters and their defaults. Length is a char in octal!
 #define JIT_PARAMDEF(_) \
   _(\010, maxtrace,   1000)   /* Max. # of traces in cache. */ \
   _(\011, maxrecord,   4000)   /* Max. # of recorded IR instructions. */ \
@@ -131,7 +131,7 @@
   _(\011, sizemcode,   JIT_P_sizemcode_DEFAULT) \
   /* Max. total size of all machine code areas (in KBytes). */ \
   _(\010, maxmcode,   512) \
-  /* End of list. */
+  // End of list.
 
 enum {
 #define JIT_PARAMENUM(len, name, value)   JIT_P_##name,
@@ -143,9 +143,9 @@ JIT_PARAMDEF(JIT_PARAMENUM)
 #define JIT_PARAMSTR(len, name, value)   #len #name
 #define JIT_P_STRING   JIT_PARAMDEF(JIT_PARAMSTR)
 
-/* -- JIT engine data structures ------------------------------------------ */
+// -- JIT engine data structures ------------------------------------------
 
-/* Trace compiler state. */
+// Trace compiler state.
 typedef enum {
   LJ_TRACE_IDLE,   /* Trace compiler idle. */
   LJ_TRACE_ACTIVE = 0x10,
@@ -157,7 +157,7 @@ typedef enum {
   LJ_TRACE_ERR      /* Trace aborted with error. */
 } TraceState;
 
-/* Post-processing action. */
+// Post-processing action.
 typedef enum {
   LJ_POST_NONE,      /* No action. */
   LJ_POST_FIXCOMP,   /* Fixup comparison and emit pending guard. */
@@ -168,20 +168,20 @@ typedef enum {
   LJ_POST_FFRETRY   /* Suppress recording of retried fast functions. */
 } PostProc;
 
-/* Machine code type. */
+// Machine code type.
 #if LJ_TARGET_X86ORX64
 typedef uint8_t MCode;
 #else
 typedef uint32_t MCode;
 #endif
 
-/* Linked list of MCode areas. */
+// Linked list of MCode areas.
 typedef struct MCLink {
   MCode *next;      /* Next area. */
   size_t size;      /* Size of current area. */
 } MCLink;
 
-/* Stack snapshot header. */
+// Stack snapshot header.
 typedef struct SnapShot {
   uint32_t mapofs;   /* Offset into snapshot map. */
   IRRef1 ref;      /* First IR ref for this snapshot. */
@@ -194,7 +194,7 @@ typedef struct SnapShot {
 
 #define SNAPCOUNT_DONE   255   /* Already compiled and linked a side trace. */
 
-/* Compressed snapshot entry. */
+// Compressed snapshot entry.
 typedef uint32_t SnapEntry;
 
 #define SNAP_FRAME      0x010000   /* Frame slot. */
@@ -230,15 +230,15 @@ static LJ_AINLINE const BCIns *snap_pc(SnapEntry *sn)
 #endif
 }
 
-/* Snapshot and exit numbers. */
+// Snapshot and exit numbers.
 typedef uint32_t SnapNo;
 typedef uint32_t ExitNo;
 
-/* Trace number. */
+// Trace number.
 typedef uint32_t TraceNo;   /* Used to pass around trace numbers. */
 typedef uint16_t TraceNo1;   /* Stored trace number. */
 
-/* Type of link. ORDER LJ_TRLINK */
+// Type of link. ORDER LJ_TRLINK
 typedef enum {
   LJ_TRLINK_NONE,      /* Incomplete trace. No link, yet. */
   LJ_TRLINK_ROOT,      /* Link to other root trace. */
@@ -251,7 +251,7 @@ typedef enum {
   LJ_TRLINK_STITCH      /* Trace stitching. */
 } TraceLink;
 
-/* Trace object. */
+// Trace object.
 typedef struct GCtrace {
   GCHeader;
   uint16_t nsnap;   /* Number of snapshots. */
@@ -301,7 +301,7 @@ static LJ_AINLINE MSize snap_nextofs(GCtrace *T, SnapShot *snap)
     return (snap+1)->mapofs;
 }
 
-/* Round-robin penalty cache for bytecodes leading to aborted traces. */
+// Round-robin penalty cache for bytecodes leading to aborted traces.
 typedef struct HotPenalty {
   MRef pc;      /* Starting bytecode PC. */
   uint16_t val;      /* Penalty value, i.e. hotcount start. */
@@ -313,17 +313,17 @@ typedef struct HotPenalty {
 #define PENALTY_MAX   60000   /* Maximum penalty value. */
 #define PENALTY_RNDBITS   4   /* # of random bits to add to penalty value. */
 
-/* Round-robin backpropagation cache for narrowing conversions. */
+// Round-robin backpropagation cache for narrowing conversions.
 typedef struct BPropEntry {
   IRRef1 key;      /* Key: original reference. */
   IRRef1 val;      /* Value: reference after conversion. */
   IRRef mode;      /* Mode for this entry (currently IRCONV_*). */
 } BPropEntry;
 
-/* Number of slots for the backpropagation cache. Must be a power of 2. */
+// Number of slots for the backpropagation cache. Must be a power of 2.
 #define BPROP_SLOTS   16
 
-/* Scalar evolution analysis cache. */
+// Scalar evolution analysis cache.
 typedef struct ScEvEntry {
   MRef pc;      /* Bytecode PC of FORI. */
   IRRef1 idx;      /* Index reference. */
@@ -334,17 +334,17 @@ typedef struct ScEvEntry {
   uint8_t dir;      /* Direction. 1: +, 0: -. */
 } ScEvEntry;
 
-/* Reverse bytecode map (IRRef -> PC). Only for selected instructions. */
+// Reverse bytecode map (IRRef -> PC). Only for selected instructions.
 typedef struct RBCHashEntry {
   MRef pc;      /* Bytecode PC. */
   GCRef pt;      /* Prototype. */
   IRRef ref;      /* IR reference. */
 } RBCHashEntry;
 
-/* Number of slots in the reverse bytecode hash table. Must be a power of 2. */
+// Number of slots in the reverse bytecode hash table. Must be a power of 2.
 #define RBCHASH_SLOTS   8
 
-/* 128 bit SIMD constants. */
+// 128 bit SIMD constants.
 enum {
   LJ_KSIMD_ABS,
   LJ_KSIMD_NEG,
@@ -390,11 +390,11 @@ enum {
   LJ_K32__MAX
 };
 
-/* Get 16 byte aligned pointer to SIMD constant. */
+// Get 16 byte aligned pointer to SIMD constant.
 #define LJ_KSIMD(J, n) \
   ((TValue *)(((intptr_t)&J->ksimd[2*(n)] + 15) & ~(intptr_t)15))
 
-/* Set/reset flag to activate the SPLIT pass for the current trace. */
+// Set/reset flag to activate the SPLIT pass for the current trace.
 #if LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI)
 #define lj_needsplit(J)      (J->needsplit = 1)
 #define lj_resetsplit(J)   (J->needsplit = 0)
@@ -403,14 +403,14 @@ enum {
 #define lj_resetsplit(J)   UNUSED(J)
 #endif
 
-/* Fold state is used to fold instructions on-the-fly. */
+// Fold state is used to fold instructions on-the-fly.
 typedef struct FoldState {
   IRIns ins;      /* Currently emitted instruction. */
   IRIns left[2];   /* Instruction referenced by left operand. */
   IRIns right[2];   /* Instruction referenced by right operand. */
 } FoldState;
 
-/* JIT compiler state. */
+// JIT compiler state.
 typedef struct jit_State {
   GCtrace cur;      /* Current trace. */
   GCtrace *curfinal;   /* Final address of current trace (set during asm). */

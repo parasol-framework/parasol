@@ -13,7 +13,7 @@
 #endif
 
 #if LJ_TARGET_MIPS
-/* Need our own global offset table for the dreaded MIPS calling conventions. */
+// Need our own global offset table for the dreaded MIPS calling conventions.
 
 #ifndef _LJ_VM_H
 LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b);
@@ -66,31 +66,31 @@ enum {
 };
 #endif
 
-/* Type of hot counter. Must match the code in the assembler VM. */
-/* 16 bits are sufficient. Only 0.0015% overhead with maximum slot penalty. */
+// Type of hot counter. Must match the code in the assembler VM.
+// 16 bits are sufficient. Only 0.0015% overhead with maximum slot penalty.
 typedef uint16_t HotCount;
 
-/* Number of hot counter hash table entries (must be a power of two). */
+// Number of hot counter hash table entries (must be a power of two).
 #define HOTCOUNT_SIZE      64
 #define HOTCOUNT_PCMASK      ((HOTCOUNT_SIZE-1)*sizeof(HotCount))
 
-/* Hotcount decrements. */
+// Hotcount decrements.
 #define HOTCOUNT_LOOP      2
 #define HOTCOUNT_CALL      1
 
-/* This solves a circular dependency problem -- bump as needed. Sigh. */
+// This solves a circular dependency problem -- bump as needed. Sigh.
 #define GG_NUM_ASMFF   57
 
 #define GG_LEN_DDISP   (BC__MAX + GG_NUM_ASMFF)
 #define GG_LEN_SDISP   BC_FUNCF
 #define GG_LEN_DISP   (GG_LEN_DDISP + GG_LEN_SDISP)
 
-/* Global state, main thread and extra fields are allocated together. */
+// Global state, main thread and extra fields are allocated together.
 typedef struct GG_State {
    lua_State L;            /* Main thread. */
    global_State g;         /* Global state. */
 #if LJ_TARGET_ARM
-   /* Make g reachable via K12 encoded DISPATCH-relative addressing. */
+   // Make g reachable via K12 encoded DISPATCH-relative addressing.
    uint8_t align1[(16 - sizeof(global_State)) & 15];
 #endif
 #if LJ_TARGET_MIPS
@@ -100,7 +100,7 @@ typedef struct GG_State {
    jit_State J;            /* JIT state. */
    HotCount hotcount[HOTCOUNT_SIZE];   /* Hot counters. */
 #if LJ_TARGET_ARM
-   /* Ditto for J. */
+   // Ditto for J.
    uint8_t align2[(16 - sizeof(jit_State) - sizeof(HotCount) * HOTCOUNT_SIZE) & 15];
 #endif
 #endif
@@ -127,14 +127,14 @@ typedef struct GG_State {
 #define hotcount_set(gg, pc, val) \
   (hotcount_get((gg), (pc)) = (HotCount)(val))
 
-/* Dispatch table management. */
+// Dispatch table management.
 LJ_FUNC void lj_dispatch_init(GG_State* GG);
 #if LJ_HASJIT
 LJ_FUNC void lj_dispatch_init_hotcount(global_State* g);
 #endif
 LJ_FUNC void lj_dispatch_update(global_State* g);
 
-/* Instruction dispatch callback for hooks or when recording. */
+// Instruction dispatch callback for hooks or when recording.
 LJ_FUNCA void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc);
 LJ_FUNCA ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc);
 #if LJ_HASJIT
@@ -145,7 +145,7 @@ LJ_FUNCA void LJ_FASTCALL lj_dispatch_profile(lua_State* L, const BCIns* pc);
 #endif
 
 #if LJ_HASFFI && !defined(_BUILDVM_H)
-/* Save/restore errno and GetLastError() around hooks, exits and recording. */
+// Save/restore errno and GetLastError() around hooks, exits and recording.
 #include <errno.h>
 #if LJ_TARGET_WINDOWS
 #define WIN32_LEAN_AND_MEAN

@@ -8,7 +8,7 @@
 
 #include "lj_obj.h"
 
-/* Registry key for VM event handler table. */
+// Registry key for VM event handler table.
 #define LJ_VMEVENTS_REGKEY   "_VMEVENTS"
 #define LJ_VMEVENTS_HSIZE   4
 
@@ -21,7 +21,7 @@
   LJ_VMEVENT_##name##_, \
   LJ_VMEVENT_##name = ((LJ_VMEVENT_##name##_) & 7)|((hash) << 3)
 
-/* VM event IDs. */
+// VM event IDs.
 typedef enum {
    VMEVENT_DEF(BC, 0x00003883),
    VMEVENT_DEF(TRACE, 0xb2d91467),

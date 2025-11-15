@@ -6,7 +6,7 @@
 #ifndef _LJ_TARGET_MIPS_H
 #define _LJ_TARGET_MIPS_H
 
-/* -- Registers IDs ------------------------------------------------------- */
+// -- Registers IDs -------------------------------------------------------
 
 #define GPRDEF(_) \
   _(R0) _(R1) _(R2) _(R3) _(R4) _(R5) _(R6) _(R7) \
@@ -34,7 +34,7 @@ enum {
    RID_TMP = RID_RA,
    RID_GP = RID_R28,
 
-   /* Calling conventions. */
+   // Calling conventions.
    RID_RET = RID_R2,
 #if LJ_LE
    RID_RETHI = RID_R3,
@@ -50,14 +50,14 @@ enum {
 #endif
    RID_CFUNCADDR = RID_R25,
 
-   /* These definitions must match with the *.dasc file(s): */
+   // These definitions must match with the *.dasc file(s):
    RID_BASE = RID_R16,      /* Interpreter BASE. */
    RID_LPC = RID_R18,      /* Interpreter PC. */
    RID_DISPATCH = RID_R19,   /* Interpreter DISPATCH table. */
    RID_LREG = RID_R20,      /* Interpreter L. */
    RID_JGL = RID_R30,      /* On-trace: global_State + 32768. */
 
-   /* Register ranges [min, max) and number of registers. */
+   // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_R0,
    RID_MAX_GPR = RID_RA + 1,
    RID_MIN_FPR = RID_MAX_GPR,
@@ -73,9 +73,9 @@ enum {
 #define RID_NUM_KREF      RID_NUM_GPR
 #define RID_MIN_KREF      RID_R0
 
-/* -- Register sets ------------------------------------------------------- */
+// -- Register sets -------------------------------------------------------
 
-/* Make use of all registers, except ZERO, TMP, SP, SYS1, SYS2, JGL and GP. */
+// Make use of all registers, except ZERO, TMP, SP, SYS1, SYS2, JGL and GP.
 #define RSET_FIXED \
   (RID2RSET(RID_ZERO)|RID2RSET(RID_TMP)|RID2RSET(RID_SP)|\
    RID2RSET(RID_SYS1)|RID2RSET(RID_SYS2)|RID2RSET(RID_JGL)|RID2RSET(RID_GP))
@@ -135,7 +135,7 @@ enum {
 #endif
 #endif
 
-/* -- Spill slots --------------------------------------------------------- */
+// -- Spill slots ---------------------------------------------------------
 
 /* Spill slots are 32 bit wide. An even/odd pair is used for FPRs.
 **
@@ -156,9 +156,9 @@ enum {
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 1) & ~1)
 
-/* -- Exit state ---------------------------------------------------------- */
+// -- Exit state ----------------------------------------------------------
 
-/* This definition must match with the *.dasc file(s). */
+// This definition must match with the *.dasc file(s).
 typedef struct {
 #if !LJ_SOFTFP
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
@@ -167,22 +167,22 @@ typedef struct {
    int32_t spill[256];      /* Spill slots. */
 } ExitState;
 
-/* Highest exit + 1 indicates stack check. */
+// Highest exit + 1 indicates stack check.
 #define EXITSTATE_CHECKEXIT   1
 
-/* Return the address of a per-trace exit stub. */
+// Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p)
 {
    while (*p == 0x00000000) p++;  /* Skip MIPSI_NOP. */
    return p;
 }
-/* Avoid dependence on lj_jit.h if only including lj_target.h. */
+// Avoid dependence on lj_jit.h if only including lj_target.h.
 #define exitstub_trace_addr(T, exitno) \
   exitstub_trace_addr_((MCode *)((char *)(T)->mcode + (T)->szmcode))
 
-/* -- Instructions -------------------------------------------------------- */
+// -- Instructions --------------------------------------------------------
 
-/* Instruction fields. */
+// Instruction fields.
 #define MIPSF_S(r)   ((r) << 21)
 #define MIPSF_T(r)   ((r) << 16)
 #define MIPSF_D(r)   ((r) << 11)
@@ -198,7 +198,7 @@ typedef enum MIPSIns {
    MIPSI_D = 0x38,
    MIPSI_DV = 0x10,
    MIPSI_D32 = 0x3c,
-   /* Integer instructions. */
+   // Integer instructions.
    MIPSI_MOVE = 0x00000025,
    MIPSI_NOP = 0x00000000,
 
@@ -282,7 +282,7 @@ typedef enum MIPSIns {
    MIPSI_BLTZ = 0x04000000,
    MIPSI_BGEZ = 0x04010000,
 
-   /* Load/store instructions. */
+   // Load/store instructions.
    MIPSI_LW = 0x8c000000,
    MIPSI_LD = 0xdc000000,
    MIPSI_SW = 0xac000000,
@@ -298,7 +298,7 @@ typedef enum MIPSIns {
    MIPSI_LDC1 = 0xd4000000,
    MIPSI_SDC1 = 0xf4000000,
 
-   /* MIPS64 instructions. */
+   // MIPS64 instructions.
    MIPSI_DADD = 0x0000002c,
    MIPSI_DADDU = 0x0000002d,
    MIPSI_DADDIU = 0x64000000,
@@ -340,7 +340,7 @@ typedef enum MIPSIns {
    MIPSI_ALSA = LJ_32 ? MIPSI_LSA : MIPSI_DLSA,
 #endif
 
-   /* Extract/insert instructions. */
+   // Extract/insert instructions.
    MIPSI_DEXTM = 0x7c000001,
    MIPSI_DEXTU = 0x7c000002,
    MIPSI_DEXT = 0x7c000003,
@@ -350,7 +350,7 @@ typedef enum MIPSIns {
 
    MIPSI_FLOOR_D = 0x4620000b,
 
-   /* FP instructions. */
+   // FP instructions.
    MIPSI_MOV_S = 0x46000006,
    MIPSI_MOV_D = 0x46200006,
 #if !LJ_TARGET_MIPSR6

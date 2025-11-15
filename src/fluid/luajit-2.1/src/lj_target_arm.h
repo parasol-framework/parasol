@@ -6,7 +6,7 @@
 #ifndef _LJ_TARGET_ARM_H
 #define _LJ_TARGET_ARM_H
 
-/* -- Registers IDs ------------------------------------------------------- */
+// -- Registers IDs -------------------------------------------------------
 
 #define GPRDEF(_) \
   _(R0) _(R1) _(R2) _(R3) _(R4) _(R5) _(R6) _(R7) \
@@ -28,7 +28,7 @@ enum {
    RID_MAX,
    RID_TMP = RID_LR,
 
-   /* Calling conventions. */
+   // Calling conventions.
    RID_RET = RID_R0,
    RID_RETLO = RID_R0,
    RID_RETHI = RID_R1,
@@ -38,13 +38,13 @@ enum {
    RID_FPRET = RID_D0,
 #endif
 
-   /* These definitions must match with the *.dasc file(s): */
+   // These definitions must match with the *.dasc file(s):
    RID_BASE = RID_R9,      /* Interpreter BASE. */
    RID_LPC = RID_R6,      /* Interpreter PC. */
    RID_DISPATCH = RID_R7,   /* Interpreter DISPATCH table. */
    RID_LREG = RID_R8,      /* Interpreter L. */
 
-   /* Register ranges [min, max) and number of registers. */
+   // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_R0,
    RID_MAX_GPR = RID_PC + 1,
    RID_MIN_FPR = RID_MAX_GPR,
@@ -60,9 +60,9 @@ enum {
 #define RID_NUM_KREF      RID_NUM_GPR
 #define RID_MIN_KREF      RID_R0
 
-/* -- Register sets ------------------------------------------------------- */
+// -- Register sets -------------------------------------------------------
 
-/* Make use of all registers, except sp, lr and pc. */
+// Make use of all registers, except sp, lr and pc.
 #define RSET_GPR      (RSET_RANGE(RID_MIN_GPR, RID_R12+1))
 #define RSET_GPREVEN \
   (RID2RSET(RID_R0)|RID2RSET(RID_R2)|RID2RSET(RID_R4)|RID2RSET(RID_R6)| \
@@ -78,7 +78,7 @@ enum {
 #define RSET_ALL      (RSET_GPR|RSET_FPR)
 #define RSET_INIT      RSET_ALL
 
-/* ABI-specific register sets. lr is an implicit scratch register. */
+// ABI-specific register sets. lr is an implicit scratch register.
 #define RSET_SCRATCH_GPR_   (RSET_RANGE(RID_R0, RID_R3+1)|RID2RSET(RID_R12))
 #ifdef __APPLE__
 #define RSET_SCRATCH_GPR   (RSET_SCRATCH_GPR_|RID2RSET(RID_R9))
@@ -104,7 +104,7 @@ enum {
 #define REGARG_NUMFPR      8
 #endif
 
-/* -- Spill slots --------------------------------------------------------- */
+// -- Spill slots ---------------------------------------------------------
 
 /* Spill slots are 32 bit wide. An even/odd pair is used for FPRs.
 **
@@ -121,9 +121,9 @@ enum {
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 1) & ~1)
 
-/* -- Exit state ---------------------------------------------------------- */
+// -- Exit state ----------------------------------------------------------
 
-/* This definition must match with the *.dasc file(s). */
+// This definition must match with the *.dasc file(s).
 typedef struct {
 #if !LJ_SOFTFP
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
@@ -132,17 +132,17 @@ typedef struct {
    int32_t spill[256];      /* Spill slots. */
 } ExitState;
 
-/* PC after instruction that caused an exit. Used to find the trace number. */
+// PC after instruction that caused an exit. Used to find the trace number.
 #define EXITSTATE_PCREG      RID_PC
-/* Highest exit + 1 indicates stack check. */
+// Highest exit + 1 indicates stack check.
 #define EXITSTATE_CHECKEXIT   1
 
 #define EXITSTUB_SPACING        4
 #define EXITSTUBS_PER_GROUP     32
 
-/* -- Instructions -------------------------------------------------------- */
+// -- Instructions --------------------------------------------------------
 
-/* Instruction fields. */
+// Instruction fields.
 #define ARMF_CC(ai, cc)   (((ai) ^ ARMI_CCAL) | ((cc) << 28))
 #define ARMF_N(r)   ((r) << 16)
 #define ARMF_D(r)   ((r) << 12)
@@ -201,19 +201,19 @@ typedef enum ARMIns {
    ARMI_BLX = 0xfa000000,
    ARMI_BLXr = 0xe12fff30,
 
-   /* ARMv6 */
+   // ARMv6
    ARMI_REV = 0xe6bf0f30,
    ARMI_SXTB = 0xe6af0070,
    ARMI_SXTH = 0xe6bf0070,
    ARMI_UXTB = 0xe6ef0070,
    ARMI_UXTH = 0xe6ff0070,
 
-   /* ARMv6T2 */
+   // ARMv6T2
    ARMI_MOVW = 0xe3000000,
    ARMI_MOVT = 0xe3400000,
    ARMI_BFI = 0xe7c00010,
 
-   /* VFP */
+   // VFP
    ARMI_VMOV_D = 0xeeb00b40,
    ARMI_VMOV_S = 0xeeb00a40,
    ARMI_VMOVI_D = 0xeeb00b00,
@@ -261,7 +261,7 @@ typedef enum ARMShift {
    ARMSH_LSL, ARMSH_LSR, ARMSH_ASR, ARMSH_ROR
 } ARMShift;
 
-/* ARM condition codes. */
+// ARM condition codes.
 typedef enum ARMCC {
    CC_EQ, CC_NE, CC_CS, CC_CC, CC_MI, CC_PL, CC_VS, CC_VC,
    CC_HI, CC_LS, CC_GE, CC_LT, CC_GT, CC_LE, CC_AL,

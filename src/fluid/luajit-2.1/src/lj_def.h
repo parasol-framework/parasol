@@ -9,7 +9,7 @@
 #include "lua.h"
 
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
-/* Old MSVC is stuck in the last century and doesn't have C99's stdint.h. */
+// Old MSVC is stuck in the last century and doesn't have C99's stdint.h.
 typedef __int8 int8_t;
 typedef __int16 int16_t;
 typedef __int32 int32_t;
@@ -26,7 +26,7 @@ typedef __int32 intptr_t;
 typedef unsigned __int32 uintptr_t;
 #endif
 #elif defined(__symbian__)
-/* Cough. */
+// Cough.
 typedef signed char int8_t;
 typedef short int int16_t;
 typedef int int32_t;
@@ -41,14 +41,14 @@ typedef unsigned int uintptr_t;
 #include <stdint.h>
 #endif
 
-/* Needed everywhere. */
+// Needed everywhere.
 #include <string.h>
 #include <stdlib.h>
 
-/* Various VM limits. */
+// Various VM limits.
 #define LJ_MAX_MEM32   0x7fffff00   /* Max. 32 bit memory allocation. */
 #define LJ_MAX_MEM64   ((uint64_t)1<<47)  /* Max. 64 bit memory allocation. */
-/* Max. total memory allocation. */
+// Max. total memory allocation.
 #define LJ_MAX_MEM   (LJ_GC64 ? LJ_MAX_MEM64 : LJ_MAX_MEM32)
 #define LJ_MAX_ALLOC   LJ_MAX_MEM   /* Max. individual allocation length. */
 #define LJ_MAX_STR   LJ_MAX_MEM32   /* Max. string length. */
@@ -73,7 +73,7 @@ typedef unsigned int uintptr_t;
 
 #define LJ_NUM_CBPAGE   1      /* Number of FFI callback pages. */
 
-/* Minimum table/buffer sizes. */
+// Minimum table/buffer sizes.
 #define LJ_MIN_GLOBAL   6      /* Min. global table size (hbits). */
 #define LJ_MIN_REGISTRY   2      /* Min. registry size (hbits). */
 #define LJ_MIN_STRTAB   256      /* Min. string table size (pow2). */
@@ -81,12 +81,12 @@ typedef unsigned int uintptr_t;
 #define LJ_MIN_VECSZ   8      /* Min. size for growable vectors. */
 #define LJ_MIN_IRSZ   32      /* Min. size for growable IR. */
 
-/* JIT compiler limits. */
+// JIT compiler limits.
 #define LJ_MAX_JSLOTS   250      /* Max. # of stack slots for a trace. */
 #define LJ_MAX_PHI   64      /* Max. # of PHIs for a loop. */
 #define LJ_MAX_EXITSTUBGR   16   /* Max. # of exit stub groups. */
 
-/* Various macros. */
+// Various macros.
 #ifndef UNUSED
 #define UNUSED(x)   ((void)(x))   /* to avoid warnings */
 #endif
@@ -109,11 +109,11 @@ typedef unsigned int uintptr_t;
 #define checkptr47(x)   (((uint64_t)(uintptr_t)(x) >> 47) == 0)
 #define checkptrGC(x)   (LJ_GC64 ? checkptr47((x)) : LJ_64 ? checkptr31((x)) :1)
 
-/* Every half-decent C compiler transforms this into a rotate instruction. */
+// Every half-decent C compiler transforms this into a rotate instruction.
 #define lj_rol(x, n)   (((x)<<(n)) | ((x)>>(-(int)(n)&(8*sizeof(x)-1))))
 #define lj_ror(x, n)   (((x)<<(-(int)(n)&(8*sizeof(x)-1))) | ((x)>>(n)))
 
-/* A really naive Bloom filter. But sufficient for our needs. */
+// A really naive Bloom filter. But sufficient for our needs.
 typedef uintptr_t BloomFilter;
 #define BLOOM_MASK   (8*sizeof(BloomFilter) - 1)
 #define bloombit(x)   ((uintptr_t)1 << ((x) & BLOOM_MASK))
@@ -151,7 +151,7 @@ typedef uintptr_t BloomFilter;
 #define LJ_UNLIKELY(x)   __builtin_expect(!!(x), 0)
 
 #define lj_ffs(x)   ((uint32_t)__builtin_ctz(x))
-/* Don't ask ... */
+// Don't ask ...
 #if defined(__INTEL_COMPILER) && (defined(__i386__) || defined(__x86_64__))
 static LJ_AINLINE uint32_t lj_fls(uint32_t x)
 {
@@ -237,13 +237,13 @@ typedef union __attribute__((packed)) Unaligned32 {
    uint8_t b[4];
 } Unaligned32;
 
-/* Unaligned load of uint16_t. */
+// Unaligned load of uint16_t.
 static LJ_AINLINE uint16_t lj_getu16(const void* p)
 {
    return ((const Unaligned16*)p)->u;
 }
 
-/* Unaligned load of uint32_t. */
+// Unaligned load of uint32_t.
 static LJ_AINLINE uint32_t lj_getu32(const void* p)
 {
    return ((const Unaligned32*)p)->u;
@@ -306,7 +306,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
    return (uint32_t)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
 }
 #else
-/* Unaligned loads are generally ok on x86/x64. */
+// Unaligned loads are generally ok on x86/x64.
 #define lj_getu16(p)   (*(uint16_t *)(p))
 #define lj_getu32(p)   (*(uint32_t *)(p))
 #endif
@@ -315,7 +315,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #error "missing defines for your compiler"
 #endif
 
-/* Optional defines. */
+// Optional defines.
 #ifndef LJ_FASTCALL
 #define LJ_FASTCALL
 #endif
@@ -334,7 +334,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define LJ_UNLIKELY(x)   (x)
 #endif
 
-/* Attributes for internal functions. */
+// Attributes for internal functions.
 #define LJ_DATA      LJ_NOAPI
 #define LJ_DATADEF
 #define LJ_ASMF      LJ_NOAPI
@@ -348,7 +348,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define LJ_FUNCA_NORET   LJ_FUNCA LJ_NORET
 #define LJ_ASMF_NORET   LJ_ASMF LJ_NORET
 
-/* Internal assertions. */
+// Internal assertions.
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 #define lj_assert_check(g, c, ...) \
   ((c) ? (void)0 : \
@@ -372,7 +372,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define check_exp(c, e)      (e)
 #endif
 
-/* Static assertions. */
+// Static assertions.
 #define LJ_ASSERT_NAME2(name, line)   name ## line
 #define LJ_ASSERT_NAME(line)      LJ_ASSERT_NAME2(lj_assert_, line)
 #ifdef __COUNTER__
@@ -383,7 +383,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
   extern void LJ_ASSERT_NAME(__LINE__)(int STATIC_ASSERTION_FAILED[(cond)?1:-1])
 #endif
 
-/* PRNG state. Need this here, details in lj_prng.h. */
+// PRNG state. Need this here, details in lj_prng.h.
 typedef struct PRNGState {
    uint64_t u[4];
 } PRNGState;

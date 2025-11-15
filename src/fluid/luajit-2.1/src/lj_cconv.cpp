@@ -15,9 +15,9 @@
 #include "lj_cconv.h"
 #include "lj_ccallback.h"
 
-/* -- Conversion errors --------------------------------------------------- */
+// -- Conversion errors ---------------------------------------------------
 
-/* Bad conversion. */
+// Bad conversion.
 LJ_NORET static void cconv_err_conv(CTState* cts, CType* d, CType* s,
    CTInfo flags)
 {
@@ -34,7 +34,7 @@ LJ_NORET static void cconv_err_conv(CTState* cts, CType* d, CType* s,
       lj_err_callerv(cts->L, LJ_ERR_FFI_BADCONV, src, dst);
 }
 
-/* Bad conversion from TValue. */
+// Bad conversion from TValue.
 LJ_NORET static void cconv_err_convtv(CTState* cts, CType* d, TValue* o,
    CTInfo flags)
 {
@@ -46,16 +46,16 @@ LJ_NORET static void cconv_err_convtv(CTState* cts, CType* d, TValue* o,
       lj_err_callerv(cts->L, LJ_ERR_FFI_BADCONV, src, dst);
 }
 
-/* Initializer overflow. */
+// Initializer overflow.
 LJ_NORET static void cconv_err_initov(CTState* cts, CType* d)
 {
    const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), NULL));
    lj_err_callerv(cts->L, LJ_ERR_FFI_INITOV, dst);
 }
 
-/* -- C type compatibility checks ----------------------------------------- */
+// -- C type compatibility checks -----------------------------------------
 
-/* Get raw type and qualifiers for a child type. Resolves enums, too. */
+// Get raw type and qualifiers for a child type. Resolves enums, too.
 static CType* cconv_childqual(CTState* cts, CType* ct, CTInfo* qual)
 {
    ct = ctype_child(cts, ct);
@@ -100,7 +100,7 @@ int lj_cconv_compatptr(CTState* cts, CType* d, CType* s, CTInfo flags)
             return 0;  /* Different numeric types. */
       }
       else if (ctype_ispointer(d->info)) {
-         /* Check child types for compatibility. */
+         // Check child types for compatibility.
          return lj_cconv_compatptr(cts, d, s, flags | CCF_SAME);
       }
       else if (ctype_isstruct(d->info)) {
@@ -108,13 +108,13 @@ int lj_cconv_compatptr(CTState* cts, CType* d, CType* s, CTInfo flags)
             return 0;  /* Must be exact same type for struct/union. */
       }
       else if (ctype_isfunc(d->info)) {
-         /* NYI: structural equality of functions. */
+         // NYI: structural equality of functions.
       }
    }
    return 1;  /* Types are compatible. */
 }
 
-/* -- C type to C type conversion ----------------------------------------- */
+// -- C type to C type conversion -----------------------------------------
 
 /* Convert C type to C type. Caveat: expects to get the raw CType!
 **
@@ -136,7 +136,7 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
    if (ctype_type(dinfo) > CT_MAYCONVERT || ctype_type(sinfo) > CT_MAYCONVERT)
       goto err_conv;
 
-   /* Some basic sanity checks. */
+   // Some basic sanity checks.
    lj_assertCTS(!ctype_isnum(dinfo) || dsize > 0, "bad size for number type");
    lj_assertCTS(!ctype_isnum(sinfo) || ssize > 0, "bad size for number type");
    lj_assertCTS(!ctype_isbool(dinfo) || dsize == 1 || dsize == 4,
@@ -149,9 +149,9 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       "bad size for integer type");
 
    switch (cconv_idx2(dinfo, sinfo)) {
-      /* Destination is a bool. */
+      // Destination is a bool.
    case CCX(B, B):
-      /* Source operand is already normalized. */
+      // Source operand is already normalized.
       if (dsize == 1) *dp = *sp; else *(int*)dp = *sp;
       break;
    case CCX(B, I): {
@@ -171,7 +171,7 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       break;
    }
 
-                 /* Destination is an integer. */
+                 // Destination is an integer.
    case CCX(I, B):
    case CCX(I, I):
    conv_I_I:
@@ -197,12 +197,12 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
    case CCX(I, F): {
       double n;  /* Always convert via double. */
    conv_I_F:
-      /* Convert source to double. */
+      // Convert source to double.
       if (ssize == sizeof(double)) n = *(double*)sp;
       else if (ssize == sizeof(float)) n = (double)*(float*)sp;
       else goto err_conv;  /* NYI: long double. */
-      /* Then convert double to integer. */
-      /* The conversion must exactly match the semantics of JIT-compiled code! */
+      // Then convert double to integer.
+      // The conversion must exactly match the semantics of JIT-compiled code!
       if (dsize < 4 || (dsize == 4 && !(dinfo & CTF_UNSIGNED))) {
          int32_t i = (int32_t)n;
          if (dsize == 4) *(int32_t*)dp = i;
@@ -240,13 +240,13 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       sp = (uint8_t*)&tmpptr;
       goto conv_I_I;
 
-      /* Destination is a floating-point number. */
+      // Destination is a floating-point number.
    case CCX(F, B):
    case CCX(F, I): {
       double n;  /* Always convert via double. */
    conv_F_I:
-      /* First convert source to double. */
-      /* The conversion must exactly match the semantics of JIT-compiled code! */
+      // First convert source to double.
+      // The conversion must exactly match the semantics of JIT-compiled code!
       if (ssize < 4 || (ssize == 4 && !(sinfo & CTF_UNSIGNED))) {
          int32_t i;
          if (ssize == 4) {
@@ -272,7 +272,7 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       else {
          goto err_conv;  /* NYI: conversion from >64 bit integers. */
       }
-      /* Convert double to destination. */
+      // Convert double to destination.
       if (dsize == sizeof(double)) *(double*)dp = n;
       else if (dsize == sizeof(float)) *(float*)dp = (float)n;
       else goto err_conv;  /* NYI: long double. */
@@ -282,11 +282,11 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       double n;  /* Always convert via double. */
    conv_F_F:
       if (ssize == dsize) goto copyval;
-      /* Convert source to double. */
+      // Convert source to double.
       if (ssize == sizeof(double)) n = *(double*)sp;
       else if (ssize == sizeof(float)) n = (double)*(float*)sp;
       else goto err_conv;  /* NYI: long double. */
-      /* Convert double to destination. */
+      // Convert double to destination.
       if (dsize == sizeof(double)) *(double*)dp = n;
       else if (dsize == sizeof(float)) *(float*)dp = (float)n;
       else goto err_conv;  /* NYI: long double. */
@@ -298,7 +298,7 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       ssize = s->size;
       goto conv_F_F;  /* Ignore im, and convert from re. */
 
-      /* Destination is a complex number. */
+      // Destination is a complex number.
    case CCX(C, I):
       d = ctype_child(cts, d);
       dinfo = d->info;
@@ -322,15 +322,15 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       }
       goto copyval;  /* Otherwise this is easy. */
 
-      /* Destination is a vector. */
+      // Destination is a vector.
    case CCX(V, I):
    case CCX(V, F):
    case CCX(V, C): {
       CType* dc = ctype_child(cts, d);
       CTSize esize;
-      /* First convert the scalar to the first element. */
+      // First convert the scalar to the first element.
       lj_cconv_ct_ct(cts, dc, s, dp, sp, flags);
-      /* Then replicate it to the other elements (splat). */
+      // Then replicate it to the other elements (splat).
       for (sp = dp, esize = dc->size; dsize > esize; dsize -= esize) {
          dp += esize;
          memcpy(dp, sp, esize);
@@ -339,11 +339,11 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
    }
 
    case CCX(V, V):
-      /* Copy same-sized vectors, even for different lengths/element-types. */
+      // Copy same-sized vectors, even for different lengths/element-types.
       if (dsize != ssize) goto err_conv;
       goto copyval;
 
-      /* Destination is a pointer. */
+      // Destination is a pointer.
    case CCX(P, I):
       if (!(flags & CCF_CAST)) goto err_conv;
       dinfo = CTINFO(CT_NUM, CTF_UNSIGNED);
@@ -351,7 +351,7 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
 
    case CCX(P, F):
       if (!(flags & CCF_CAST) || !(flags & CCF_FROMTV)) goto err_conv;
-      /* The signed conversion is cheaper. x64 really has 47 bit pointers. */
+      // The signed conversion is cheaper. x64 really has 47 bit pointers.
       dinfo = CTINFO(CT_NUM, (LJ_64 && dsize == 8) ? 0 : CTF_UNSIGNED);
       goto conv_I_F;
 
@@ -366,14 +366,14 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
       cdata_setptr(dp, dsize, sp);
       break;
 
-      /* Destination is an array. */
+      // Destination is an array.
    case CCX(A, A):
       if ((flags & CCF_CAST) || (d->info & CTF_VLA) || dsize != ssize ||
          d->size == CTSIZE_INVALID || !lj_cconv_compatptr(cts, d, s, flags))
          goto err_conv;
       goto copyval;
 
-      /* Destination is a struct/union. */
+      // Destination is a struct/union.
    case CCX(S, S):
       if ((flags & CCF_CAST) || (d->info & CTF_VLA) || d != s)
          goto err_conv;  /* Must be exact same type. */
@@ -388,9 +388,9 @@ void lj_cconv_ct_ct(CTState* cts, CType* d, CType* s,
    }
 }
 
-/* -- C type to TValue conversion ----------------------------------------- */
+// -- C type to TValue conversion -----------------------------------------
 
-/* Convert C type to TValue. Caveat: expects to get the raw CType! */
+// Convert C type to TValue. Caveat: expects to get the raw CType!
 int lj_cconv_tv_ct(CTState* cts, CType* s, CTypeID sid,
    TValue* o, uint8_t* sp)
 {
@@ -410,7 +410,7 @@ int lj_cconv_tv_ct(CTState* cts, CType* s, CTypeID sid,
          else {
             lj_cconv_ct_ct(cts, ctype_get(cts, CTID_DOUBLE), s,
                (uint8_t*)&o->n, sp, 0);
-            /* Numbers are NOT canonicalized here! Beware of uninitialized data. */
+            // Numbers are NOT canonicalized here! Beware of uninitialized data.
             lj_assertCTS(tvisnum(o), "non-canonical NaN passed");
          }
       }
@@ -422,7 +422,7 @@ int lj_cconv_tv_ct(CTState* cts, CType* s, CTypeID sid,
       return 0;
    }
    else if (ctype_isrefarray(sinfo) || ctype_isstruct(sinfo)) {
-      /* Create reference. */
+      // Create reference.
       setcdataV(cts->L, o, lj_cdata_newref(cts, sp, sid));
       return 1;  /* Need GC step. */
    }
@@ -432,7 +432,7 @@ int lj_cconv_tv_ct(CTState* cts, CType* s, CTypeID sid,
    copyval:  /* Copy value. */
       sz = s->size;
       lj_assertCTS(sz != CTSIZE_INVALID, "value copy with invalid size");
-      /* Attributes are stripped, qualifiers are kept (but mostly ignored). */
+      // Attributes are stripped, qualifiers are kept (but mostly ignored).
       cd = lj_cdata_new(cts, ctype_typeid(cts, s), sz);
       setcdataV(cts->L, o, cd);
       memcpy(cdataptr(cd), sp, sz);
@@ -440,14 +440,14 @@ int lj_cconv_tv_ct(CTState* cts, CType* s, CTypeID sid,
    }
 }
 
-/* Convert bitfield to TValue. */
+// Convert bitfield to TValue.
 int lj_cconv_tv_bf(CTState* cts, CType* s, TValue* o, uint8_t* sp)
 {
    CTInfo info = s->info;
    CTSize pos, bsz;
    uint32_t val;
    lj_assertCTS(ctype_isbitfield(info), "bitfield expected");
-   /* NYI: packed bitfields may cause misaligned reads. */
+   // NYI: packed bitfields may cause misaligned reads.
    switch (ctype_bitcsz(info)) {
    case 4: val = *(uint32_t*)sp; break;
    case 2: val = *(uint16_t*)sp; break;
@@ -457,7 +457,7 @@ int lj_cconv_tv_bf(CTState* cts, CType* s, TValue* o, uint8_t* sp)
       val = 0;
       break;
    }
-   /* Check if a packed bitfield crosses a container boundary. */
+   // Check if a packed bitfield crosses a container boundary.
    pos = ctype_bitpos(info);
    bsz = ctype_bitbsz(info);
    lj_assertCTS(pos < 8 * ctype_bitcsz(info), "bad bitfield position");
@@ -486,9 +486,9 @@ int lj_cconv_tv_bf(CTState* cts, CType* s, TValue* o, uint8_t* sp)
    return 0;  /* No GC step needed. */
 }
 
-/* -- TValue to C type conversion ----------------------------------------- */
+// -- TValue to C type conversion -----------------------------------------
 
-/* Convert table to array. */
+// Convert table to array.
 static void cconv_array_tab(CTState* cts, CType* d,
    uint8_t* dp, GCtab* t, CTInfo flags)
 {
@@ -516,7 +516,7 @@ static void cconv_array_tab(CTState* cts, CType* d,
    }
 }
 
-/* Convert table to sub-struct/union. */
+// Convert table to sub-struct/union.
 static void cconv_substruct_tab(CTState* cts, CType* d, uint8_t* dp,
    GCtab* t, int32_t* ip, CTInfo flags)
 {
@@ -556,7 +556,7 @@ static void cconv_substruct_tab(CTState* cts, CType* d, uint8_t* dp,
    }
 }
 
-/* Convert table to struct/union. */
+// Convert table to struct/union.
 static void cconv_struct_tab(CTState* cts, CType* d,
    uint8_t* dp, GCtab* t, CTInfo flags)
 {
@@ -565,7 +565,7 @@ static void cconv_struct_tab(CTState* cts, CType* d,
    cconv_substruct_tab(cts, d, dp, t, &i, flags);
 }
 
-/* Convert TValue to C type. Caveat: expects to get the raw CType! */
+// Convert TValue to C type. Caveat: expects to get the raw CType!
 void lj_cconv_ct_tv(CTState* cts, CType* d,
    uint8_t* dp, TValue* o, CTInfo flags)
 {
@@ -681,7 +681,7 @@ doconv:
    lj_cconv_ct_ct(cts, d, s, dp, sp, flags);
 }
 
-/* Convert TValue to bitfield. */
+// Convert TValue to bitfield.
 void lj_cconv_bf_tv(CTState* cts, CType* d, uint8_t* dp, TValue* o)
 {
    CTInfo info = d->info;
@@ -702,12 +702,12 @@ void lj_cconv_bf_tv(CTState* cts, CType* d, uint8_t* dp, TValue* o)
    bsz = ctype_bitbsz(info);
    lj_assertCTS(pos < 8 * ctype_bitcsz(info), "bad bitfield position");
    lj_assertCTS(bsz > 0 && bsz <= 8 * ctype_bitcsz(info), "bad bitfield size");
-   /* Check if a packed bitfield crosses a container boundary. */
+   // Check if a packed bitfield crosses a container boundary.
    if (pos + bsz > 8 * ctype_bitcsz(info))
       lj_err_caller(cts->L, LJ_ERR_FFI_NYIPACKBIT);
    mask = ((1u << bsz) - 1u) << pos;
    val = (val << pos) & mask;
-   /* NYI: packed bitfields may cause misaligned reads/writes. */
+   // NYI: packed bitfields may cause misaligned reads/writes.
    switch (ctype_bitcsz(info)) {
    case 4: *(uint32_t*)dp = (*(uint32_t*)dp & ~mask) | (uint32_t)val; break;
    case 2: *(uint16_t*)dp = (*(uint16_t*)dp & ~mask) | (uint16_t)val; break;
@@ -718,9 +718,9 @@ void lj_cconv_bf_tv(CTState* cts, CType* d, uint8_t* dp, TValue* o)
    }
 }
 
-/* -- Initialize C type with TValues -------------------------------------- */
+// -- Initialize C type with TValues --------------------------------------
 
-/* Initialize an array with TValues. */
+// Initialize an array with TValues.
 static void cconv_array_init(CTState* cts, CType* d, CTSize sz, uint8_t* dp,
    TValue* o, MSize len)
 {
@@ -739,7 +739,7 @@ static void cconv_array_init(CTState* cts, CType* d, CTSize sz, uint8_t* dp,
    }
 }
 
-/* Initialize a sub-struct/union with TValues. */
+// Initialize a sub-struct/union with TValues.
 static void cconv_substruct_init(CTState* cts, CType* d, uint8_t* dp,
    TValue* o, MSize len, MSize* ip)
 {
@@ -766,7 +766,7 @@ static void cconv_substruct_init(CTState* cts, CType* d, uint8_t* dp,
    }
 }
 
-/* Initialize a struct/union with TValues. */
+// Initialize a struct/union with TValues.
 static void cconv_struct_init(CTState* cts, CType* d, CTSize sz, uint8_t* dp,
    TValue* o, MSize len)
 {
@@ -792,7 +792,7 @@ int lj_cconv_multi_init(CTState* cts, CType* d, TValue* o)
    return 1;  /* Otherwise the initializer is a value. */
 }
 
-/* Initialize C type with TValues. Caveat: expects to get the raw CType! */
+// Initialize C type with TValues. Caveat: expects to get the raw CType!
 void lj_cconv_ct_init(CTState* cts, CType* d, CTSize sz,
    uint8_t* dp, TValue* o, MSize len)
 {

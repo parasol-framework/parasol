@@ -11,7 +11,7 @@
 
 #if LJ_HASFFI
 
-/* -- C calling conventions ----------------------------------------------- */
+// -- C calling conventions -----------------------------------------------
 
 #if LJ_TARGET_X86ORX64
 
@@ -112,7 +112,7 @@ typedef union FPRArg {
 
 #elif LJ_TARGET_MIPS64
 
-/* FP args are positional and overlay the GPR array. */
+// FP args are positional and overlay the GPR array.
 #define CCALL_NARG_GPR      8
 #define CCALL_NARG_FPR      0
 #define CCALL_NRET_GPR      2
@@ -148,13 +148,13 @@ typedef union FPRArg {
 #define CCALL_NUM_FPR \
   (CCALL_NARG_FPR > CCALL_NRET_FPR ? CCALL_NARG_FPR : CCALL_NRET_FPR)
 
-/* Check against constants in lj_ctype.h. */
+// Check against constants in lj_ctype.h.
 LJ_STATIC_ASSERT(CCALL_NUM_GPR <= CCALL_MAX_GPR);
 LJ_STATIC_ASSERT(CCALL_NUM_FPR <= CCALL_MAX_FPR);
 
 #define CCALL_MAXSTACK      32
 
-/* -- C call state -------------------------------------------------------- */
+// -- C call state --------------------------------------------------------
 
 typedef LJ_ALIGN(CCALL_ALIGN_CALLSTATE) struct CCallState {
    void (*func)(void);      /* Pointer to called function. */
@@ -181,9 +181,9 @@ typedef LJ_ALIGN(CCALL_ALIGN_CALLSTATE) struct CCallState {
    GPRArg stack[CCALL_MAXSTACK];   /* Stack slots. */
 } CCallState;
 
-/* -- C call handling ----------------------------------------------------- */
+// -- C call handling -----------------------------------------------------
 
-/* Really belongs to lj_vm.h. */
+// Really belongs to lj_vm.h.
 LJ_ASMF void LJ_FASTCALL lj_vm_ffi_call(CCallState* cc);
 
 LJ_FUNC CTypeID lj_ccall_ctid_vararg(CTState* cts, cTValue* o);

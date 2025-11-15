@@ -10,7 +10,7 @@
 #include "lj_jit.h"
 
 #if LJ_HASJIT
-/* Data used by handlers to record a fast function. */
+// Data used by handlers to record a fast function.
 typedef struct RecordFFData {
    TValue* argv;      /* Runtime argument values. */
    ptrdiff_t nres;   /* Number of returned results (defaults to 1). */

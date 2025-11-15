@@ -21,7 +21,7 @@
 #include "lj_bcdump.h"
 #include "lj_vm.h"
 
-/* Context for bytecode writer. */
+// Context for bytecode writer.
 typedef struct BCWriteCtx {
    SBuf sb;         /* Output buffer. */
    GCproto* pt;         /* Root prototype. */
@@ -40,9 +40,9 @@ typedef struct BCWriteCtx {
 #define lj_assertBCW(c, ...)   ((void)ctx)
 #endif
 
-/* -- Bytecode writer ----------------------------------------------------- */
+// -- Bytecode writer -----------------------------------------------------
 
-/* Write a single constant key/value of a template table. */
+// Write a single constant key/value of a template table.
 static void bcwrite_ktabk(BCWriteCtx* ctx, cTValue* o, int narrow)
 {
    char* p = lj_buf_more(&ctx->sb, 1 + 10);
@@ -79,7 +79,7 @@ static void bcwrite_ktabk(BCWriteCtx* ctx, cTValue* o, int narrow)
    ctx->sb.w = p;
 }
 
-/* Write a template table. */
+// Write a template table.
 static void bcwrite_ktab(BCWriteCtx* ctx, char* p, const GCtab* t)
 {
    MSize narray = 0, nhash = 0;
@@ -97,7 +97,7 @@ static void bcwrite_ktab(BCWriteCtx* ctx, char* p, const GCtab* t)
       for (i = 0; i <= hmask; i++)
          nhash += !tvisnil(&node[i].val);
    }
-   /* Write number of array slots and hash slots. */
+   // Write number of array slots and hash slots.
    p = lj_strfmt_wuleb128(p, narray);
    p = lj_strfmt_wuleb128(p, nhash);
    ctx->sb.w = p;
@@ -119,7 +119,7 @@ static void bcwrite_ktab(BCWriteCtx* ctx, char* p, const GCtab* t)
    }
 }
 
-/* Write GC constants of a prototype. */
+// Write GC constants of a prototype.
 static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
 {
    MSize i, sizekgc = pt->sizekgc;
@@ -128,7 +128,7 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
       GCobj* o = gcref(*kr);
       MSize tp, need = 1;
       char* p;
-      /* Determine constant type and needed size. */
+      // Determine constant type and needed size.
       if (o->gch.gct == ~LJ_TSTR) {
          tp = BCDUMP_KGC_STR + gco2str(o)->len;
          need = 5 + gco2str(o)->len;
@@ -160,10 +160,10 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
          tp = BCDUMP_KGC_TAB;
          need = 1 + 2 * 5;
       }
-      /* Write constant type. */
+      // Write constant type.
       p = lj_buf_more(&ctx->sb, need);
       p = lj_strfmt_wuleb128(p, tp);
-      /* Write constant data (if any). */
+      // Write constant data (if any).
       if (tp >= BCDUMP_KGC_STR) {
          p = lj_buf_wmem(p, strdata(gco2str(o)), gco2str(o)->len);
       }
@@ -186,7 +186,7 @@ static void bcwrite_kgc(BCWriteCtx* ctx, GCproto* pt)
    }
 }
 
-/* Write number constants of a prototype. */
+// Write number constants of a prototype.
 static void bcwrite_knum(BCWriteCtx* ctx, GCproto* pt)
 {
    MSize i, sizekn = pt->sizekn;
@@ -200,7 +200,7 @@ static void bcwrite_knum(BCWriteCtx* ctx, GCproto* pt)
          goto save_int;
       }
       else {
-         /* Write a 33 bit ULEB128 for the int (lsb=0) or loword (lsb=1). */
+         // Write a 33 bit ULEB128 for the int (lsb=0) or loword (lsb=1).
          if (!LJ_DUALNUM) {  // Narrow number constants to integers.
             num = numV(o);
             k = lj_num2int(num);
@@ -221,7 +221,7 @@ static void bcwrite_knum(BCWriteCtx* ctx, GCproto* pt)
    ctx->sb.w = p;
 }
 
-/* Write bytecode instructions. */
+// Write bytecode instructions.
 static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
 {
    MSize nbc = pt->sizebc - 1;  /* Omit the [JI]FUNC* header. */
@@ -231,7 +231,7 @@ static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
    p = lj_buf_wmem(p, proto_bc(pt) + 1, nbc * (MSize)sizeof(BCIns));
    UNUSED(ctx);
 #if LJ_HASJIT
-   /* Unpatch modified bytecode containing ILOOP/JLOOP etc. */
+   // Unpatch modified bytecode containing ILOOP/JLOOP etc.
    if ((pt->flags & PROTO_ILOOP) || pt->trace) {
       jit_State* J = L2J(sbufL(&ctx->sb));
       MSize i;
@@ -251,13 +251,13 @@ static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
    return p;
 }
 
-/* Write prototype. */
+// Write prototype.
 static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
 {
    MSize sizedbg = 0;
    char* p;
 
-   /* Recursively write children of prototype. */
+   // Recursively write children of prototype.
    if ((pt->flags & PROTO_CHILD)) {
       ptrdiff_t i, n = pt->sizekgc;
       GCRef* kr = mref(pt->k, GCRef) - 1;
@@ -268,12 +268,12 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
       }
    }
 
-   /* Start writing the prototype info to a buffer. */
+   // Start writing the prototype info to a buffer.
    p = lj_buf_need(&ctx->sb,
       5 + 4 + 6 * 5 + (pt->sizebc - 1) * (MSize)sizeof(BCIns) + pt->sizeuv * 2);
    p += 5;  /* Leave room for final size. */
 
-   /* Write prototype header. */
+   // Write prototype header.
    *p++ = (pt->flags & (PROTO_CHILD | PROTO_VARARG | PROTO_FFI));
    *p++ = pt->numparams;
    *p++ = pt->framesize;
@@ -291,23 +291,23 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
       }
    }
 
-   /* Write bytecode instructions and upvalue refs. */
+   // Write bytecode instructions and upvalue refs.
    p = bcwrite_bytecode(ctx, p, pt);
    p = lj_buf_wmem(p, proto_uv(pt), pt->sizeuv * 2);
    ctx->sb.w = p;
 
-   /* Write constants. */
+   // Write constants.
    bcwrite_kgc(ctx, pt);
    bcwrite_knum(ctx, pt);
 
-   /* Write debug info, if not stripped. */
+   // Write debug info, if not stripped.
    if (sizedbg) {
       p = lj_buf_more(&ctx->sb, sizedbg);
       p = lj_buf_wmem(p, proto_lineinfo(pt), sizedbg);
       ctx->sb.w = p;
    }
 
-   /* Pass buffer to writer function. */
+   // Pass buffer to writer function.
    if (ctx->status == 0) {
       MSize n = sbuflen(&ctx->sb) - 5;
       MSize nn = (lj_fls(n) + 8) * 9 >> 6;
@@ -318,7 +318,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
    }
 }
 
-/* Write header of bytecode dump. */
+// Write header of bytecode dump.
 static void bcwrite_header(BCWriteCtx* ctx)
 {
    GCstr* chunkname = proto_chunkname(ctx->pt);
@@ -341,7 +341,7 @@ static void bcwrite_header(BCWriteCtx* ctx)
       (MSize)(p - ctx->sb.b), ctx->wdata);
 }
 
-/* Write footer of bytecode dump. */
+// Write footer of bytecode dump.
 static void bcwrite_footer(BCWriteCtx* ctx)
 {
    if (ctx->status == 0) {
@@ -350,7 +350,7 @@ static void bcwrite_footer(BCWriteCtx* ctx)
    }
 }
 
-/* Protected callback for bytecode writer. */
+// Protected callback for bytecode writer.
 static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
 {
    BCWriteCtx* ctx = (BCWriteCtx*)ud;
@@ -362,7 +362,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
    return NULL;
 }
 
-/* Write bytecode for a prototype. */
+// Write bytecode for a prototype.
 int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data,
    int strip)
 {

@@ -11,13 +11,13 @@
 
 #if LJ_TARGET_X86ORX64
 
-/* Context for PE object emitter. */
+// Context for PE object emitter.
 static char *strtab;
 static size_t strtabofs;
 
-/* -- PE object definitions ----------------------------------------------- */
+// -- PE object definitions -----------------------------------------------
 
-/* PE header. */
+// PE header.
 typedef struct PEheader {
   uint16_t arch;
   uint16_t nsects;
@@ -28,7 +28,7 @@ typedef struct PEheader {
   uint16_t flags;
 } PEheader;
 
-/* PE section. */
+// PE section.
 typedef struct PEsection {
   char name[8];
   uint32_t vsize;
@@ -42,17 +42,17 @@ typedef struct PEsection {
   uint32_t flags;
 } PEsection;
 
-/* PE relocation. */
+// PE relocation.
 typedef struct PEreloc {
   uint32_t vaddr;
   uint32_t symidx;
   uint16_t type;
 } PEreloc;
 
-/* Cannot use sizeof, because it pads up to the max. alignment. */
+// Cannot use sizeof, because it pads up to the max. alignment.
 #define PEOBJ_RELOC_SIZE	(4+4+2)
 
-/* PE symbol table entry. */
+// PE symbol table entry.
 typedef struct PEsym {
   union {
     char name[8];
@@ -65,7 +65,7 @@ typedef struct PEsym {
   uint8_t naux;
 } PEsym;
 
-/* PE symbol table auxiliary entry for a section. */
+// PE symbol table auxiliary entry for a section.
 typedef struct PEsymaux {
   uint32_t size;
   uint16_t nreloc;
@@ -76,10 +76,10 @@ typedef struct PEsymaux {
   uint8_t unused[3];
 } PEsymaux;
 
-/* Cannot use sizeof, because it pads up to the max. alignment. */
+// Cannot use sizeof, because it pads up to the max. alignment.
 #define PEOBJ_SYM_SIZE	(8+4+2+2+1+1)
 
-/* PE object CPU specific defines. */
+// PE object CPU specific defines.
 #if LJ_TARGET_X86
 #define PEOBJ_ARCH_TARGET	0x014c
 #define PEOBJ_RELOC_REL32	0x14  /* MS: REL32, GNU: DISP32. */
@@ -95,7 +95,7 @@ typedef struct PEsymaux {
 #define PEOBJ_TEXT_FLAGS	0x60500020  /* 60=r+x, 50=align16, 20=code. */
 #endif
 
-/* Section numbers (0-based). */
+// Section numbers (0-based).
 enum {
   PEOBJ_SECT_ABS = -2,
   PEOBJ_SECT_UNDEF = -1,
@@ -110,17 +110,17 @@ enum {
   PEOBJ_NSECTIONS
 };
 
-/* Symbol types. */
+// Symbol types.
 #define PEOBJ_TYPE_NULL		0
 #define PEOBJ_TYPE_FUNC		0x20
 
-/* Symbol storage class. */
+// Symbol storage class.
 #define PEOBJ_SCL_EXTERN	2
 #define PEOBJ_SCL_STATIC	3
 
-/* -- PE object emitter --------------------------------------------------- */
+// -- PE object emitter ---------------------------------------------------
 
-/* Emit PE object symbol. */
+// Emit PE object symbol.
 static void emit_peobj_sym(BuildCtx *ctx, const char *name, uint32_t value,
 			   int sect, int type, int scl)
 {
@@ -148,7 +148,7 @@ static void emit_peobj_sym(BuildCtx *ctx, const char *name, uint32_t value,
   owrite(ctx, &sym, PEOBJ_SYM_SIZE);
 }
 
-/* Emit PE object section symbol. */
+// Emit PE object section symbol.
 static void emit_peobj_sym_sect(BuildCtx *ctx, PEsection *pesect, int sect)
 {
   PEsym sym;
@@ -167,7 +167,7 @@ static void emit_peobj_sym_sect(BuildCtx *ctx, PEsection *pesect, int sect)
   owrite(ctx, &aux, PEOBJ_SYM_SIZE);
 }
 
-/* Emit Windows PE object file. */
+// Emit Windows PE object file.
 void emit_peobj(BuildCtx *ctx)
 {
   PEheader pehdr;
@@ -178,14 +178,14 @@ void emit_peobj(BuildCtx *ctx)
 
   sofs = sizeof(PEheader) + PEOBJ_NSECTIONS*sizeof(PEsection);
 
-  /* Fill in PE sections. */
+  // Fill in PE sections.
   memset(&pesect, 0, PEOBJ_NSECTIONS*sizeof(PEsection));
   memcpy(pesect[PEOBJ_SECT_TEXT].name, ".text", sizeof(".text")-1);
   pesect[PEOBJ_SECT_TEXT].ofs = sofs;
   sofs += (pesect[PEOBJ_SECT_TEXT].size = (uint32_t)ctx->codesz);
   pesect[PEOBJ_SECT_TEXT].relocofs = sofs;
   sofs += (pesect[PEOBJ_SECT_TEXT].nreloc = (uint16_t)ctx->nreloc) * PEOBJ_RELOC_SIZE;
-  /* Flags: 60 = read+execute, 50 = align16, 20 = code. */
+  // Flags: 60 = read+execute, 50 = align16, 20 = code.
   pesect[PEOBJ_SECT_TEXT].flags = PEOBJ_TEXT_FLAGS;
 
 #if LJ_TARGET_X64
@@ -194,7 +194,7 @@ void emit_peobj(BuildCtx *ctx)
   sofs += (pesect[PEOBJ_SECT_PDATA].size = 6*4);
   pesect[PEOBJ_SECT_PDATA].relocofs = sofs;
   sofs += (pesect[PEOBJ_SECT_PDATA].nreloc = 6) * PEOBJ_RELOC_SIZE;
-  /* Flags: 40 = read, 30 = align4, 40 = initialized data. */
+  // Flags: 40 = read, 30 = align4, 40 = initialized data.
   pesect[PEOBJ_SECT_PDATA].flags = 0x40300040;
 
   memcpy(pesect[PEOBJ_SECT_XDATA].name, ".xdata", sizeof(".xdata")-1);
@@ -202,24 +202,24 @@ void emit_peobj(BuildCtx *ctx)
   sofs += (pesect[PEOBJ_SECT_XDATA].size = 8*2+4+6*2);  /* See below. */
   pesect[PEOBJ_SECT_XDATA].relocofs = sofs;
   sofs += (pesect[PEOBJ_SECT_XDATA].nreloc = 1) * PEOBJ_RELOC_SIZE;
-  /* Flags: 40 = read, 30 = align4, 40 = initialized data. */
+  // Flags: 40 = read, 30 = align4, 40 = initialized data.
   pesect[PEOBJ_SECT_XDATA].flags = 0x40300040;
 #elif LJ_TARGET_X86
   memcpy(pesect[PEOBJ_SECT_SXDATA].name, ".sxdata", sizeof(".sxdata")-1);
   pesect[PEOBJ_SECT_SXDATA].ofs = sofs;
   sofs += (pesect[PEOBJ_SECT_SXDATA].size = 4);
   pesect[PEOBJ_SECT_SXDATA].relocofs = sofs;
-  /* Flags: 40 = read, 30 = align4, 02 = lnk_info, 40 = initialized data. */
+  // Flags: 40 = read, 30 = align4, 02 = lnk_info, 40 = initialized data.
   pesect[PEOBJ_SECT_SXDATA].flags = 0x40300240;
 #endif
 
   memcpy(pesect[PEOBJ_SECT_RDATA_Z].name, ".rdata$Z", sizeof(".rdata$Z")-1);
   pesect[PEOBJ_SECT_RDATA_Z].ofs = sofs;
   sofs += (pesect[PEOBJ_SECT_RDATA_Z].size = (uint32_t)strlen(ctx->dasm_ident)+1);
-  /* Flags: 40 = read, 30 = align4, 40 = initialized data. */
+  // Flags: 40 = read, 30 = align4, 40 = initialized data.
   pesect[PEOBJ_SECT_RDATA_Z].flags = 0x40300040;
 
-  /* Fill in PE header. */
+  // Fill in PE header.
   pehdr.arch = PEOBJ_ARCH_TARGET;
   pehdr.nsects = PEOBJ_NSECTIONS;
   pehdr.time = 0;  /* Timestamp is optional. */
@@ -238,11 +238,11 @@ void emit_peobj(BuildCtx *ctx)
   pehdr.nsyms += 1;  /* Symbol for lj_err_unwind_win. */
 #endif
 
-  /* Write PE object header and all sections. */
+  // Write PE object header and all sections.
   owrite(ctx, &pehdr, sizeof(PEheader));
   owrite(ctx, &pesect, sizeof(PEsection)*PEOBJ_NSECTIONS);
 
-  /* Write .text section. */
+  // Write .text section.
   host_endian.u = 1;
   if (host_endian.b != LJ_ENDIAN_SELECT(1, 0)) {
     fprintf(stderr, "Error: different byte order for host and target\n");
@@ -309,7 +309,7 @@ void emit_peobj(BuildCtx *ctx)
     owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
   }
 #elif LJ_TARGET_X86
-  /* Write .sxdata section. */
+  // Write .sxdata section.
   for (i = 0; i < nrsym; i++) {
     if (!strcmp(ctx->relocsym[i], "_lj_err_unwind_win")) {
       uint32_t symidx = 1+2+i;
@@ -323,14 +323,14 @@ void emit_peobj(BuildCtx *ctx)
   }
 #endif
 
-  /* Write .rdata$Z section. */
+  // Write .rdata$Z section.
   owrite(ctx, ctx->dasm_ident, strlen(ctx->dasm_ident)+1);
 
-  /* Write symbol table. */
+  // Write symbol table.
   strtab = NULL;  /* 1st pass: collect string sizes. */
   for (;;) {
     strtabofs = 4;
-    /* Mark as SafeSEH compliant. */
+    // Mark as SafeSEH compliant.
     emit_peobj_sym(ctx, "@feat.00", 1,
 		   PEOBJ_SECT_ABS, PEOBJ_TYPE_NULL, PEOBJ_SCL_STATIC);
 
@@ -358,12 +358,12 @@ void emit_peobj(BuildCtx *ctx)
 
     if (strtab)
       break;
-    /* 2nd pass: alloc strtab, write syms and copy strings. */
+    // 2nd pass: alloc strtab, write syms and copy strings.
     strtab = (char *)malloc(strtabofs);
     *(uint32_t *)strtab = (uint32_t)strtabofs;
   }
 
-  /* Write string table. */
+  // Write string table.
   owrite(ctx, strtab, strtabofs);
 }
 

@@ -23,7 +23,7 @@
 #include "lj_bcdump.h"
 #include "lj_parse.h"
 
-/* -- Load Lua source code and bytecode ----------------------------------- */
+// -- Load Lua source code and bytecode -----------------------------------
 
 static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 {
@@ -40,7 +40,7 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    }
    pt = bc ? lj_bcread(ls) : lj_parse(ls);
    fn = lj_func_newL_empty(L, pt, tabref(L->env));
-   /* Don't combine above/below into one statement. */
+   // Don't combine above/below into one statement.
    setfuncV(L, L->top++, fn);
    return NULL;
 }
@@ -155,7 +155,7 @@ LUALIB_API int luaL_loadstring(lua_State* L, const char* s)
    return luaL_loadbuffer(L, s, strlen(s), s);
 }
 
-/* -- Dump bytecode ------------------------------------------------------- */
+// -- Dump bytecode -------------------------------------------------------
 
 LUA_API int lua_dump(lua_State* L, lua_Writer writer, void* data)
 {

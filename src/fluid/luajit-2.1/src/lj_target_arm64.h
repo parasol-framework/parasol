@@ -6,7 +6,7 @@
 #ifndef _LJ_TARGET_ARM64_H
 #define _LJ_TARGET_ARM64_H
 
-/* -- Registers IDs ------------------------------------------------------- */
+// -- Registers IDs -------------------------------------------------------
 
 #define GPRDEF(_) \
   _(X0) _(X1) _(X2) _(X3) _(X4) _(X5) _(X6) _(X7) \
@@ -29,19 +29,19 @@ enum {
    RID_TMP = RID_LR,
    RID_ZERO = RID_SP,
 
-   /* Calling conventions. */
+   // Calling conventions.
    RID_RET = RID_X0,
    RID_RETLO = RID_X0,
    RID_RETHI = RID_X1,
    RID_FPRET = RID_D0,
 
-   /* These definitions must match with the *.dasc file(s): */
+   // These definitions must match with the *.dasc file(s):
    RID_BASE = RID_X19,      /* Interpreter BASE. */
    RID_LPC = RID_X21,      /* Interpreter PC. */
    RID_GL = RID_X22,      /* Interpreter GL. */
    RID_LREG = RID_X23,      /* Interpreter L. */
 
-   /* Register ranges [min, max) and number of registers. */
+   // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_X0,
    RID_MAX_GPR = RID_SP + 1,
    RID_MIN_FPR = RID_MAX_GPR,
@@ -53,9 +53,9 @@ enum {
 #define RID_NUM_KREF      RID_NUM_GPR
 #define RID_MIN_KREF      RID_X0
 
-/* -- Register sets ------------------------------------------------------- */
+// -- Register sets -------------------------------------------------------
 
-/* Make use of all registers, except for x18, fp, lr and sp. */
+// Make use of all registers, except for x18, fp, lr and sp.
 #define RSET_FIXED \
   (RID2RSET(RID_X18)|RID2RSET(RID_FP)|RID2RSET(RID_LR)|RID2RSET(RID_SP)|\
    RID2RSET(RID_GL))
@@ -64,7 +64,7 @@ enum {
 #define RSET_ALL   (RSET_GPR|RSET_FPR)
 #define RSET_INIT   RSET_ALL
 
-/* lr is an implicit scratch register. */
+// lr is an implicit scratch register.
 #define RSET_SCRATCH_GPR   (RSET_RANGE(RID_X0, RID_X17+1))
 #define RSET_SCRATCH_FPR \
   (RSET_RANGE(RID_D0, RID_D7+1)|RSET_RANGE(RID_D16, RID_D31+1))
@@ -76,7 +76,7 @@ enum {
 #define REGARG_LASTFPR      RID_D7
 #define REGARG_NUMFPR      8
 
-/* -- Spill slots --------------------------------------------------------- */
+// -- Spill slots ---------------------------------------------------------
 
 /* Spill slots are 32 bit wide. An even/odd pair is used for FPRs.
 **
@@ -94,38 +94,38 @@ enum {
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 3) & ~3)
 
-/* -- Exit state ---------------------------------------------------------- */
+// -- Exit state ----------------------------------------------------------
 
-/* This definition must match with the *.dasc file(s). */
+// This definition must match with the *.dasc file(s).
 typedef struct {
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
 } ExitState;
 
-/* Highest exit + 1 indicates stack check. */
+// Highest exit + 1 indicates stack check.
 #define EXITSTATE_CHECKEXIT   1
 
-/* Return the address of a per-trace exit stub. */
+// Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)
 {
    while (*p == (LJ_LE ? 0xd503201f : 0x1f2003d5)) p++;  /* Skip A64I_NOP. */
    return p + 3 + exitno;
 }
-/* Avoid dependence on lj_jit.h if only including lj_target.h. */
+// Avoid dependence on lj_jit.h if only including lj_target.h.
 #define exitstub_trace_addr(T, exitno) \
   exitstub_trace_addr_((MCode *)((char *)(T)->mcode + (T)->szmcode), (exitno))
 
-/* -- Instructions -------------------------------------------------------- */
+// -- Instructions --------------------------------------------------------
 
-/* ARM64 instructions are always little-endian. Swap for ARM64BE. */
+// ARM64 instructions are always little-endian. Swap for ARM64BE.
 #if LJ_BE
 #define A64I_LE(x)   (lj_bswap(x))
 #else
 #define A64I_LE(x)   (x)
 #endif
 
-/* Instruction fields. */
+// Instruction fields.
 #define A64F_D(r)   (r)
 #define A64F_N(r)   ((r) << 5)
 #define A64F_A(r)   ((r) << 10)
@@ -147,7 +147,7 @@ static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)
 #define A64F_LSL16(x)   (((x) / 16) << 21)
 #define A64F_BSH(sh)   ((sh) << 10)
 
-/* Check for valid field range. */
+// Check for valid field range.
 #define A64F_S_OK(x, b)   ((((x) + (1 << (b-1))) >> (b)) == 0)
 
 typedef enum A64Ins {
@@ -262,7 +262,7 @@ typedef enum A64Ins {
 
    A64I_NOP = 0xd503201f,
 
-   /* FP */
+   // FP
    A64I_FADDd = 0x1e602800,
    A64I_FSUBd = 0x1e603800,
    A64I_FMADDd = 0x1f400000,
@@ -326,7 +326,7 @@ typedef enum A64Extend {
    A64EX_SXTB, A64EX_SXTH, A64EX_SXTW, A64EX_SXTX,
 } A64Extend;
 
-/* ARM condition codes. */
+// ARM condition codes.
 typedef enum A64CC {
    CC_EQ, CC_NE, CC_CS, CC_CC, CC_MI, CC_PL, CC_VS, CC_VC,
    CC_HI, CC_LS, CC_GE, CC_LT, CC_GT, CC_LE, CC_AL,

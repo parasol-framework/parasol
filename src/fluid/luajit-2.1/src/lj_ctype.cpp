@@ -16,9 +16,9 @@
 #include "lj_ccallback.h"
 #include "lj_buf.h"
 
-/* -- C type definitions -------------------------------------------------- */
+// -- C type definitions --------------------------------------------------
 
-/* Predefined typedefs. */
+// Predefined typedefs.
 #define CTTDDEF(_) \
   /* Vararg handling. */ \
   _("va_list",         P_VOID) \
@@ -41,9 +41,9 @@
   _("uintptr_t",      UINT_PSZ) \
   /* From POSIX. */ \
   _("ssize_t",         INT_PSZ) \
-  /* End of typedef list. */
+  // End of typedef list.
 
-/* Keywords (only the ones we actually care for). */
+// Keywords (only the ones we actually care for).
 #define CTKWDEF(_) \
   /* Type specifiers. */ \
   _("void",      -1,   CTOK_VOID) \
@@ -109,9 +109,9 @@
   _("sizeof",      0,   CTOK_SIZEOF) \
   _("__alignof",   0,   CTOK_ALIGNOF) \
   _("__alignof__",   0,   CTOK_ALIGNOF) \
-  /* End of keyword list. */
+  // End of keyword list.
 
-/* Type info for predefined types. Size merged in. */
+// Type info for predefined types. Size merged in.
 static CTInfo lj_ctype_typeinfo[] = {
 #define CTTYINFODEF(id, sz, ct, info)   CTINFO((ct),(((sz)&0x3fu)<<10)+(info)),
 #define CTTDINFODEF(name, id)      CTINFO(CT_TYPEDEF, CTID_##id),
@@ -125,7 +125,7 @@ CTKWDEF(CTKWINFODEF)
   0
 };
 
-/* Predefined type names collected in a single string. */
+// Predefined type names collected in a single string.
 static const char* const lj_ctype_typenames =
 #define CTTDNAMEDEF(name, id)      name "\0"
 #define CTKWNAMEDEF(name, sz, cds)   name "\0"
@@ -142,13 +142,13 @@ CTKWDEF(CTKWNAMEDEF)
 #define CTTYPETAB_MIN      128
 #endif
 
-/* -- C type interning ---------------------------------------------------- */
+// -- C type interning ----------------------------------------------------
 
 #define ct_hashtype(info, size)   (hashrot(info, size) & CTHASH_MASK)
 #define ct_hashname(name) \
   (hashrot(u32ptr(name), u32ptr(name) + HASH_BIAS) & CTHASH_MASK)
 
-/* Create new type element. */
+// Create new type element.
 CTypeID lj_ctype_new(CTState* cts, CType** ctp)
 {
    CTypeID id = cts->top;
@@ -177,7 +177,7 @@ CTypeID lj_ctype_new(CTState* cts, CType** ctp)
    return id;
 }
 
-/* Intern a type element. */
+// Intern a type element.
 CTypeID lj_ctype_intern(CTState* cts, CTInfo info, CTSize size)
 {
    uint32_t h = ct_hashtype(info, size);
@@ -204,7 +204,7 @@ CTypeID lj_ctype_intern(CTState* cts, CTInfo info, CTSize size)
    return id;
 }
 
-/* Add type element to hash table. */
+// Add type element to hash table.
 static void ctype_addtype(CTState* cts, CType* ct, CTypeID id)
 {
    uint32_t h = ct_hashtype(ct->info, ct->size);
@@ -212,7 +212,7 @@ static void ctype_addtype(CTState* cts, CType* ct, CTypeID id)
    cts->hash[h] = (CTypeID1)id;
 }
 
-/* Add named element to hash table. */
+// Add named element to hash table.
 void lj_ctype_addname(CTState* cts, CType* ct, CTypeID id)
 {
    uint32_t h = ct_hashname(gcref(ct->name));
@@ -220,7 +220,7 @@ void lj_ctype_addname(CTState* cts, CType* ct, CTypeID id)
    cts->hash[h] = (CTypeID1)id;
 }
 
-/* Get a C type by name, matching the type mask. */
+// Get a C type by name, matching the type mask.
 CTypeID lj_ctype_getname(CTState* cts, CType** ctp, GCstr* name, uint32_t tmask)
 {
    CTypeID id = cts->hash[ct_hashname(name)];
@@ -237,7 +237,7 @@ CTypeID lj_ctype_getname(CTState* cts, CType** ctp, GCstr* name, uint32_t tmask)
    return 0;
 }
 
-/* Get a struct/union/enum/function field by name. */
+// Get a struct/union/enum/function field by name.
 CType* lj_ctype_getfieldq(CTState* cts, CType* ct, GCstr* name, CTSize* ofs,
    CTInfo* qual)
 {
@@ -265,9 +265,9 @@ CType* lj_ctype_getfieldq(CTState* cts, CType* ct, GCstr* name, CTSize* ofs,
    return NULL;  /* Not found. */
 }
 
-/* -- C type information -------------------------------------------------- */
+// -- C type information --------------------------------------------------
 
-/* Follow references and get raw type for a C type ID. */
+// Follow references and get raw type for a C type ID.
 CType* lj_ctype_rawref(CTState* cts, CTypeID id)
 {
    CType* ct = ctype_get(cts, id);
@@ -276,14 +276,14 @@ CType* lj_ctype_rawref(CTState* cts, CTypeID id)
    return ct;
 }
 
-/* Get size for a C type ID. Does NOT support VLA/VLS. */
+// Get size for a C type ID. Does NOT support VLA/VLS.
 CTSize lj_ctype_size(CTState* cts, CTypeID id)
 {
    CType* ct = ctype_raw(cts, id);
    return ctype_hassize(ct->info) ? ct->size : CTSIZE_INVALID;
 }
 
-/* Get size for a variable-length C type. Does NOT support other C types. */
+// Get size for a variable-length C type. Does NOT support other C types.
 CTSize lj_ctype_vlsize(CTState* cts, CType* ct, CTSize nelem)
 {
    uint64_t xsz = 0;
@@ -301,12 +301,12 @@ CTSize lj_ctype_vlsize(CTState* cts, CType* ct, CTSize nelem)
    lj_assertCTS(ctype_isvlarray(ct->info), "VLA expected");
    ct = ctype_rawchild(cts, ct);  /* Get array element. */
    lj_assertCTS(ctype_hassize(ct->info), "bad VLA without size");
-   /* Calculate actual size of VLA and check for overflow. */
+   // Calculate actual size of VLA and check for overflow.
    xsz += (uint64_t)ct->size * nelem;
    return xsz < 0x80000000u ? (CTSize)xsz : CTSIZE_INVALID;
 }
 
-/* Get type, qualifiers, size and alignment for a C type ID. */
+// Get type, qualifiers, size and alignment for a C type ID.
 CTInfo lj_ctype_info(CTState* cts, CTypeID id, CTSize* szp)
 {
    CTInfo qual = 0;
@@ -314,7 +314,7 @@ CTInfo lj_ctype_info(CTState* cts, CTypeID id, CTSize* szp)
    for (;;) {
       CTInfo info = ct->info;
       if (ctype_isenum(info)) {
-         /* Follow child. Need to look at its attributes, too. */
+         // Follow child. Need to look at its attributes, too.
       }
       else if (ctype_isattrib(info)) {
          if (ctype_isxattrib(info, CTA_QUAL))
@@ -335,7 +335,7 @@ CTInfo lj_ctype_info(CTState* cts, CTypeID id, CTSize* szp)
    return qual;
 }
 
-/* Get ctype metamethod. */
+// Get ctype metamethod.
 cTValue* lj_ctype_meta(CTState* cts, CTypeID id, MMS mm)
 {
    CType* ct = ctype_get(cts, id);
@@ -355,9 +355,9 @@ cTValue* lj_ctype_meta(CTState* cts, CTypeID id, MMS mm)
    return NULL;
 }
 
-/* -- C type representation ----------------------------------------------- */
+// -- C type representation -----------------------------------------------
 
-/* Fixed max. length of a C type representation. */
+// Fixed max. length of a C type representation.
 #define CTREPR_MAX      512
 
 typedef struct CTRepr {
@@ -369,7 +369,7 @@ typedef struct CTRepr {
    char buf[CTREPR_MAX];
 } CTRepr;
 
-/* Prepend string. */
+// Prepend string.
 static void ctype_prepstr(CTRepr* ctr, const char* str, MSize len)
 {
    char* p = ctr->pb;
@@ -383,14 +383,14 @@ static void ctype_prepstr(CTRepr* ctr, const char* str, MSize len)
 
 #define ctype_preplit(ctr, str)   ctype_prepstr((ctr), "" str, sizeof(str)-1)
 
-/* Prepend char. */
+// Prepend char.
 static void ctype_prepc(CTRepr* ctr, int c)
 {
    if (ctr->buf >= ctr->pb) { ctr->ok = 0; return; }
    *--ctr->pb = c;
 }
 
-/* Prepend number. */
+// Prepend number.
 static void ctype_prepnum(CTRepr* ctr, uint32_t n)
 {
    char* p = ctr->pb;
@@ -400,14 +400,14 @@ static void ctype_prepnum(CTRepr* ctr, uint32_t n)
    ctr->needsp = 0;
 }
 
-/* Append char. */
+// Append char.
 static void ctype_appc(CTRepr* ctr, int c)
 {
    if (ctr->pe >= ctr->buf + CTREPR_MAX) { ctr->ok = 0; return; }
    *ctr->pe++ = c;
 }
 
-/* Append number. */
+// Append number.
 static void ctype_appnum(CTRepr* ctr, uint32_t n)
 {
    char buf[10];
@@ -419,14 +419,14 @@ static void ctype_appnum(CTRepr* ctr, uint32_t n)
    ctr->pe = q;
 }
 
-/* Prepend qualifiers. */
+// Prepend qualifiers.
 static void ctype_prepqual(CTRepr* ctr, CTInfo info)
 {
    if ((info & CTF_VOLATILE)) ctype_preplit(ctr, "volatile");
    if ((info & CTF_CONST)) ctype_preplit(ctr, "const");
 }
 
-/* Prepend named type. */
+// Prepend named type.
 static void ctype_preptype(CTRepr* ctr, CType* ct, CTInfo qual, const char* t)
 {
    if (gcref(ct->name)) {
@@ -547,7 +547,7 @@ static void ctype_repr(CTRepr* ctr, CTypeID id)
    }
 }
 
-/* Return a printable representation of a C type. */
+// Return a printable representation of a C type.
 GCstr* lj_ctype_repr(lua_State* L, CTypeID id, GCstr* name)
 {
    global_State* g = G(L);
@@ -563,7 +563,7 @@ GCstr* lj_ctype_repr(lua_State* L, CTypeID id, GCstr* name)
    return lj_str_new(L, ctr.pb, ctr.pe - ctr.pb);
 }
 
-/* Convert int64_t/uint64_t to string with 'LL' or 'ULL' suffix. */
+// Convert int64_t/uint64_t to string with 'LL' or 'ULL' suffix.
 GCstr* lj_ctype_repr_int64(lua_State* L, uint64_t n, int isunsigned)
 {
    char buf[1 + 20 + 3];
@@ -582,7 +582,7 @@ GCstr* lj_ctype_repr_int64(lua_State* L, uint64_t n, int isunsigned)
    return lj_str_new(L, p, (size_t)(buf + sizeof(buf) - p));
 }
 
-/* Convert complex to string with 'i' or 'I' suffix. */
+// Convert complex to string with 'i' or 'I' suffix.
 GCstr* lj_ctype_repr_complex(lua_State* L, void* sp, CTSize size)
 {
    SBuf* sb = lj_buf_tmp_(L);
@@ -600,9 +600,9 @@ GCstr* lj_ctype_repr_complex(lua_State* L, void* sp, CTSize size)
    return lj_buf_str(L, sb);
 }
 
-/* -- C type state -------------------------------------------------------- */
+// -- C type state --------------------------------------------------------
 
-/* Initialize C type table and state. */
+// Initialize C type table and state.
 CTState* lj_ctype_init(lua_State* L)
 {
    CTState* cts = lj_mem_newt(L, sizeof(CTState), CTState);
@@ -637,7 +637,7 @@ CTState* lj_ctype_init(lua_State* L)
    return cts;
 }
 
-/* Free C type table and state. */
+// Free C type table and state.
 void lj_ctype_freestate(global_State* g)
 {
    CTState* cts = ctype_ctsG(g);

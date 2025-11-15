@@ -6,7 +6,7 @@
 ** Sponsored by Cisco Systems, Inc.
 */
 
-/* -- Constant encoding --------------------------------------------------- */
+// -- Constant encoding ---------------------------------------------------
 
 static uint64_t get_k64val(ASMState* as, IRRef ref)
 {
@@ -27,7 +27,7 @@ static uint64_t get_k64val(ASMState* as, IRRef ref)
    }
 }
 
-/* Encode constant in K12 format for data processing instructions. */
+// Encode constant in K12 format for data processing instructions.
 static uint32_t emit_isk12(int64_t n)
 {
    uint64_t k = (n < 0) ? -n : n;
@@ -44,7 +44,7 @@ static uint32_t emit_isk12(int64_t n)
 #define emit_clz64(n)   __builtin_clzll(n)
 #define emit_ctz64(n)   __builtin_ctzll(n)
 
-/* Encode constant in K13 format for logical data processing instructions. */
+// Encode constant in K13 format for logical data processing instructions.
 static uint32_t emit_isk13(uint64_t n, int is64)
 {
    int inv = 0, w = 128, lz, tz;
@@ -78,7 +78,7 @@ static uint32_t emit_isfpk64(uint64_t n)
    return ~0u;
 }
 
-/* -- Emit basic instructions --------------------------------------------- */
+// -- Emit basic instructions ---------------------------------------------
 
 static void emit_dnma(ASMState* as, A64Ins ai, Reg rd, Reg rn, Reg rm, Reg ra)
 {
@@ -130,7 +130,7 @@ static void emit_lso(ASMState* as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
 {
    int ot = emit_checkofs(ai, ofs), sc = (ai >> 30) & 3;
    lj_assertA(ot, "load/store offset %d out of range", ofs);
-   /* Combine LDR/STR pairs to LDP/STP. */
+   // Combine LDR/STR pairs to LDP/STP.
    if ((sc == 2 || sc == 3) &&
       (!(ai & 0x400000) || rd != rn) &&
       as->mcp != as->mcloop) {
@@ -162,12 +162,12 @@ nopair:
       *--as->mcp = (ai ^ A64I_LS_U) | A64F_D(rd) | A64F_N(rn) | A64F_S9(ofs & 0x1ff);
 }
 
-/* -- Emit loads/stores --------------------------------------------------- */
+// -- Emit loads/stores ---------------------------------------------------
 
-/* Prefer rematerialization of BASE/L from global_State over spills. */
+// Prefer rematerialization of BASE/L from global_State over spills.
 #define emit_canremat(ref)   ((ref) <= ASMREF_L)
 
-/* Try to find an N-step delta relative to other consts with N < lim. */
+// Try to find an N-step delta relative to other consts with N < lim.
 static int emit_kdelta(ASMState* as, Reg rd, uint64_t k, int lim)
 {
    RegSet work = (~as->freeset & RSET_GPR) | RID2RSET(RID_GL);
@@ -204,7 +204,7 @@ static void emit_loadk(ASMState* as, Reg rd, uint64_t u64, int is64)
 {
    int i, zeros = 0, ones = 0, neg;
    if (!is64) u64 = (int64_t)(int32_t)u64;  /* Sign-extend. */
-   /* Count homogeneous 16 bit fragments. */
+   // Count homogeneous 16 bit fragments.
    for (i = 0; i < 4; i++) {
       uint64_t frag = (u64 >> i * 16) & 0xffff;
       zeros += (frag == 0);
@@ -222,28 +222,28 @@ static void emit_loadk(ASMState* as, Reg rd, uint64_t u64, int is64)
       int shift = 0, lshift = 0;
       uint64_t n64 = neg ? ~u64 : u64;
       if (n64 != 0) {
-         /* Find first/last fragment to be filled. */
+         // Find first/last fragment to be filled.
          shift = (63 - emit_clz64(n64)) & ~15;
          lshift = emit_ctz64(n64) & ~15;
       }
-      /* MOVK requires the original value (u64). */
+      // MOVK requires the original value (u64).
       while (shift > lshift) {
          uint32_t u16 = (u64 >> shift) & 0xffff;
-         /* Skip fragments that are correctly filled by MOVN/MOVZ. */
+         // Skip fragments that are correctly filled by MOVN/MOVZ.
          if (u16 != (neg ? 0xffff : 0))
             emit_d(as, is64 | A64I_MOVKw | A64F_U16(u16) | A64F_LSL16(shift), rd);
          shift -= 16;
       }
-      /* But MOVN needs an inverted value (n64). */
+      // But MOVN needs an inverted value (n64).
       emit_d(as, (neg ? A64I_MOVNx : A64I_MOVZx) |
          A64F_U16((n64 >> lshift) & 0xffff) | A64F_LSL16(lshift), rd);
    }
 }
 
-/* Load a 32 bit constant into a GPR. */
+// Load a 32 bit constant into a GPR.
 #define emit_loadi(as, rd, i)   emit_loadk(as, rd, i, 0)
 
-/* Load a 64 bit constant into a GPR. */
+// Load a 64 bit constant into a GPR.
 #define emit_loadu64(as, rd, i)   emit_loadk(as, rd, i, A64I_X)
 
 #define emit_loada(as, r, addr)   emit_loadu64(as, (r), (uintptr_t)(addr))
@@ -257,10 +257,10 @@ static void emit_loadk(ASMState* as, Reg rd, uint64_t u64, int is64)
 
 static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow);
 
-/* Get/set from constant pointer. */
+// Get/set from constant pointer.
 static void emit_lsptr(ASMState* as, A64Ins ai, Reg r, void* p)
 {
-   /* First, check if ip + offset is in range. */
+   // First, check if ip + offset is in range.
    if ((ai & 0x00400000) && checkmcpofs(as, p)) {
       emit_d(as, A64I_LDRLx | A64F_S19(mcpofs(as, p) >> 2), r);
    }
@@ -276,7 +276,7 @@ static void emit_lsptr(ASMState* as, A64Ins ai, Reg r, void* p)
    }
 }
 
-/* Load 64 bit IR constant into register. */
+// Load 64 bit IR constant into register.
 static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
 {
    const uint64_t* k = &ir_k64(ir)->u64;
@@ -305,21 +305,21 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
    }
 }
 
-/* Get/set global_State fields. */
+// Get/set global_State fields.
 #define emit_getgl(as, r, field) \
   emit_lsptr(as, A64I_LDRx, (r), (void *)&J2G(as->J)->field)
 #define emit_setgl(as, r, field) \
   emit_lsptr(as, A64I_STRx, (r), (void *)&J2G(as->J)->field)
 
-/* Trace number is determined from pc of exit instruction. */
+// Trace number is determined from pc of exit instruction.
 #define emit_setvmstate(as, i)   UNUSED(i)
 
-/* -- Emit control-flow instructions -------------------------------------- */
+// -- Emit control-flow instructions --------------------------------------
 
-/* Label for internal jumps. */
+// Label for internal jumps.
 typedef MCode* MCLabel;
 
-/* Return label pointing to current PC. */
+// Return label pointing to current PC.
 #define emit_label(as)      ((as)->mcp)
 
 static void emit_cond_branch(ASMState* as, A64CC cond, MCode* target)
@@ -372,9 +372,9 @@ static void emit_call(ASMState* as, void* target)
    }
 }
 
-/* -- Emit generic operations --------------------------------------------- */
+// -- Emit generic operations ---------------------------------------------
 
-/* Generic move between two regs. */
+// Generic move between two regs.
 static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
 {
    if (dst >= RID_MAX_GPR) {
@@ -394,7 +394,7 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
    emit_dm(as, A64I_MOVx, dst, src);
 }
 
-/* Generic load of register with base and (small) offset address. */
+// Generic load of register with base and (small) offset address.
 static void emit_loadofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
 {
    if (r >= RID_MAX_GPR)
@@ -403,7 +403,7 @@ static void emit_loadofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
       emit_lso(as, irt_is64(ir->t) ? A64I_LDRx : A64I_LDRw, r, base, ofs);
 }
 
-/* Generic store of register with base and (small) offset address. */
+// Generic store of register with base and (small) offset address.
 static void emit_storeofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
 {
    if (r >= RID_MAX_GPR)
@@ -412,7 +412,7 @@ static void emit_storeofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
       emit_lso(as, irt_is64(ir->t) ? A64I_STRx : A64I_STRw, r, base, ofs);
 }
 
-/* Emit an arithmetic operation with a constant operand. */
+// Emit an arithmetic operation with a constant operand.
 static void emit_opk(ASMState* as, A64Ins ai, Reg dest, Reg src,
    int32_t i, RegSet allow)
 {
@@ -423,7 +423,7 @@ static void emit_opk(ASMState* as, A64Ins ai, Reg dest, Reg src,
       emit_dnm(as, ai, dest, src, ra_allock(as, i, allow));
 }
 
-/* Add offset to pointer. */
+// Add offset to pointer.
 static void emit_addptr(ASMState* as, Reg r, int32_t ofs)
 {
    if (ofs)

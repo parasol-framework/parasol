@@ -6,10 +6,10 @@
 #include "buildvm.h"
 #include "lj_bc.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #if LJ_TARGET_X86ORX64
-/* Emit bytes piecewise as assembler text. */
+// Emit bytes piecewise as assembler text.
 static void emit_asm_bytes(BuildCtx *ctx, uint8_t *p, int n)
 {
   int i;
@@ -23,7 +23,7 @@ static void emit_asm_bytes(BuildCtx *ctx, uint8_t *p, int n)
   if ((n & 15) != 0) putc('\n', ctx->fp);
 }
 
-/* Emit relocation */
+// Emit relocation
 static void emit_asm_reloc(BuildCtx *ctx, int type, const char *sym)
 {
   switch (ctx->mode) {
@@ -51,7 +51,7 @@ static const char *const jccnames[] = {
   "js", "jns", "jpe", "jpo", "jl", "jge", "jle", "jg"
 };
 
-/* Emit x86/x64 text relocations. */
+// Emit x86/x64 text relocations.
 static void emit_asm_reloc_text(BuildCtx *ctx, uint8_t *cp, int n,
 				const char *sym)
 {
@@ -72,7 +72,7 @@ err:
   }
   emit_asm_bytes(ctx, cp, n);
   if (strncmp(sym+(*sym == '_'), LABEL_PREFIX, sizeof(LABEL_PREFIX)-1)) {
-    /* Various fixups for external symbols outside of our binary. */
+    // Various fixups for external symbols outside of our binary.
     if (ctx->mode == BUILD_elfasm) {
       if (LJ_32)
 	fprintf(ctx->fp, "#if __PIC__\n\t%s lj_wrap_%s\n#else\n", opname, sym);
@@ -88,7 +88,7 @@ err:
   fprintf(ctx->fp, "\t%s %s\n", opname, sym);
 }
 #else
-/* Emit words piecewise as assembler text. */
+// Emit words piecewise as assembler text.
 static void emit_asm_words(BuildCtx *ctx, uint8_t *p, int n)
 {
   int i;
@@ -106,7 +106,7 @@ static void emit_asm_words(BuildCtx *ctx, uint8_t *p, int n)
   if ((n & 15) != 0) putc('\n', ctx->fp);
 }
 
-/* Emit relocation as part of an instruction. */
+// Emit relocation as part of an instruction.
 static void emit_asm_wordreloc(BuildCtx *ctx, uint8_t *p, int n,
 			       const char *sym)
 {
@@ -168,7 +168,7 @@ static void emit_asm_wordreloc(BuildCtx *ctx, uint8_t *p, int n,
 #define ELFASM_PX	"@"
 #endif
 
-/* Emit an assembler label. */
+// Emit an assembler label.
 static void emit_asm_label(BuildCtx *ctx, const char *name, int size, int isfunc)
 {
   switch (ctx->mode) {
@@ -218,7 +218,7 @@ static void emit_asm_label(BuildCtx *ctx, const char *name, int size, int isfunc
   }
 }
 
-/* Emit alignment. */
+// Emit alignment.
 static void emit_asm_align(BuildCtx *ctx, int bits)
 {
   switch (ctx->mode) {
@@ -234,9 +234,9 @@ static void emit_asm_align(BuildCtx *ctx, int bits)
   }
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* Emit assembler source code. */
+// Emit assembler source code.
 void emit_asm(BuildCtx *ctx)
 {
   int i, rel;
@@ -254,7 +254,7 @@ void emit_asm(BuildCtx *ctx)
     fprintf(ctx->fp, ".Lbegin:\n");
 
 #if LJ_TARGET_ARM && defined(__GNUC__) && !LJ_NO_UNWIND
-  /* This should really be moved into buildvm_arm.dasc. */
+  // This should really be moved into buildvm_arm.dasc.
 #if LJ_ARCH_HASFPU
   fprintf(ctx->fp,
 	  ".fnstart\n"
@@ -328,10 +328,10 @@ void emit_asm(BuildCtx *ctx)
     fprintf(ctx->fp, "\t.section .note.GNU-stack,\"\"," ELFASM_PX "progbits\n");
 #endif
 #if LJ_TARGET_PPC && !LJ_TARGET_PS3 && !LJ_ABI_SOFTFP
-    /* Hard-float ABI. */
+    // Hard-float ABI.
     fprintf(ctx->fp, "\t.gnu_attribute 4, 1\n");
 #endif
-    /* fallthrough */
+    // fallthrough
   case BUILD_coffasm:
     fprintf(ctx->fp, "\t.ident \"%s\"\n", ctx->dasm_ident);
     break;

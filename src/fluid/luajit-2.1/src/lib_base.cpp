@@ -37,7 +37,7 @@
 #include "lj_strfmt.h"
 #include "lj_lib.h"
 
-/* -- Base library: checks ------------------------------------------------ */
+// -- Base library: checks ------------------------------------------------
 
 #define LJLIB_MODULE_base
 
@@ -53,7 +53,7 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
    return FFH_UNREACHABLE;
 }
 
-/* ORDER LJ_T */
+// ORDER LJ_T
 LJLIB_PUSH("nil")
 LJLIB_PUSH("boolean")
 LJLIB_PUSH(top-1)  /* boolean */
@@ -69,11 +69,11 @@ LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  /* userdata */
 LJLIB_PUSH("number")
 LJLIB_ASM_(type)      LJLIB_REC(.)
-/* Recycle the lj_lib_checkany(L, 1) from assert. */
+// Recycle the lj_lib_checkany(L, 1) from assert.
 
-/* -- Base library: iterators --------------------------------------------- */
+// -- Base library: iterators ---------------------------------------------
 
-/* This solves a circular dependency problem -- change FF_next_N as needed. */
+// This solves a circular dependency problem -- change FF_next_N as needed.
 LJ_STATIC_ASSERT((int)FF_next == FF_next_N);
 
 LJLIB_ASM(next)         LJLIB_REC(.)
@@ -124,10 +124,10 @@ LJLIB_ASM(ipairs)      LJLIB_REC(xpairs 1)
    return ffh_pairs(L, MM_ipairs);
 }
 
-/* -- Base library: getters and setters ----------------------------------- */
+// -- Base library: getters and setters -----------------------------------
 
 LJLIB_ASM_(getmetatable)   LJLIB_REC(.)
-/* Recycle the lj_lib_checkany(L, 1) from assert. */
+// Recycle the lj_lib_checkany(L, 1) from assert.
 
 LJLIB_ASM(setmetatable)      LJLIB_REC(.)
 {
@@ -165,7 +165,7 @@ LJLIB_CF(setfenv)
    if (!(o < L->top && tvisfunc(o))) {
       int level = lj_lib_checkint(L, 1);
       if (level == 0) {
-         /* NOBARRIER: A thread (i.e. L) is never black. */
+         // NOBARRIER: A thread (i.e. L) is never black.
          setgcref(L->env, obj2gco(t));
          return 0;
       }
@@ -261,7 +261,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
    }
 }
 
-/* -- Base library: conversions ------------------------------------------- */
+// -- Base library: conversions -------------------------------------------
 
 LJLIB_ASM(tonumber)      LJLIB_REC(.)
 {
@@ -339,7 +339,7 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
    return FFH_RES(1);
 }
 
-/* -- Base library: throw and catch errors -------------------------------- */
+// -- Base library: throw and catch errors --------------------------------
 
 LJLIB_CF(error)
 {
@@ -361,7 +361,7 @@ LJLIB_ASM(pcall)      LJLIB_REC(.)
 }
 LJLIB_ASM_(xpcall)      LJLIB_REC(.)
 
-/* -- Base library: load Lua code ----------------------------------------- */
+// -- Base library: load Lua code -----------------------------------------
 
 static int load_aux(lua_State* L, int status, int envarg)
 {
@@ -461,7 +461,7 @@ LJLIB_CF(dofile)
    return (int)(L->top - L->base) - 1;
 }
 
-/* -- Base library: GC control -------------------------------------------- */
+// -- Base library: GC control --------------------------------------------
 
 LJLIB_CF(gcinfo)
 {
@@ -488,7 +488,7 @@ LJLIB_CF(collectgarbage)
    return 1;
 }
 
-/* -- Base library: miscellaneous functions ------------------------------- */
+// -- Base library: miscellaneous functions -------------------------------
 
 LJLIB_PUSH(top-2)  /* Upvalue holds weak table. */
 LJLIB_CF(newproxy)
@@ -566,7 +566,7 @@ LJLIB_SET(_VERSION)
 
 #include "lj_libdef.h"
 
-/* -- Coroutine library --------------------------------------------------- */
+// -- Coroutine library ---------------------------------------------------
 
 #define LJLIB_MODULE_coroutine
 
@@ -648,14 +648,14 @@ LJLIB_NOREG LJLIB_ASM(coroutine_wrap_aux)
    return ffh_resume(L, threadV(lj_lib_upvalue(L, 1)), 1);
 }
 
-/* Inline declarations. */
+// Inline declarations.
 LJ_ASMF void lj_ff_coroutine_wrap_aux(void);
 #if !(LJ_TARGET_MIPS && defined(ljamalg_c))
 LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L,
    lua_State* co);
 #endif
 
-/* Error handler, called from assembler VM. */
+// Error handler, called from assembler VM.
 void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
 {
    co->top--; copyTV(L, L->top, co->top); L->top++;
@@ -665,7 +665,7 @@ void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
       lj_err_run(L);
 }
 
-/* Forward declaration. */
+// Forward declaration.
 static void setpc_wrap_aux(lua_State* L, GCfunc* fn);
 
 LJLIB_CF(coroutine_wrap)
@@ -679,17 +679,17 @@ LJLIB_CF(coroutine_wrap)
 
 #include "lj_libdef.h"
 
-/* Fix the PC of wrap_aux. Really ugly workaround. */
+// Fix the PC of wrap_aux. Really ugly workaround.
 static void setpc_wrap_aux(lua_State* L, GCfunc* fn)
 {
    setmref(fn->c.pc, &L2GG(L)->bcff[lj_lib_init_coroutine[1] + 2]);
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 static void newproxy_weaktable(lua_State* L)
 {
-   /* NOBARRIER: The table is new (marked white). */
+   // NOBARRIER: The table is new (marked white).
    GCtab* t = lj_tab_new(L, 0, 1);
    settabV(L, L->top++, t);
    setgcref(t->metatable, obj2gco(t));
@@ -700,7 +700,7 @@ static void newproxy_weaktable(lua_State* L)
 
 LUALIB_API int luaopen_base(lua_State* L)
 {
-   /* NOBARRIER: Table and value are the same. */
+   // NOBARRIER: Table and value are the same.
    GCtab* env = tabref(L->env);
    settabV(L, lj_tab_setstr(L, env, lj_str_newlit(L, "_G")), env);
    lua_pushliteral(L, LUA_VERSION);  /* top-3. */

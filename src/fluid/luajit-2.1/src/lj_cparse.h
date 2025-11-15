@@ -11,13 +11,13 @@
 
 #if LJ_HASFFI
 
-/* C parser limits. */
+// C parser limits.
 #define CPARSE_MAX_BUF      32768   /* Max. token buffer size. */
 #define CPARSE_MAX_DECLSTACK   100   /* Max. declaration stack depth. */
 #define CPARSE_MAX_DECLDEPTH   20   /* Max. recursive declaration depth. */
 #define CPARSE_MAX_PACKSTACK   7   /* Max. pack pragma stack depth. */
 
-/* Flags for C parser mode. */
+// Flags for C parser mode.
 #define CPARSE_MODE_MULTI   1   /* Process multiple declarations. */
 #define CPARSE_MODE_ABSTRACT   2   /* Accept abstract declarators. */
 #define CPARSE_MODE_DIRECT   4   /* Accept direct declarators. */
@@ -28,7 +28,7 @@
 typedef int CPChar;   /* C parser character. Unsigned ext. from char. */
 typedef int CPToken;   /* C parser token. */
 
-/* C parser internal value representation. */
+// C parser internal value representation.
 typedef struct CPValue {
    union {
       int32_t i32;   /* Value for CTID_INT32. */
@@ -37,7 +37,7 @@ typedef struct CPValue {
    CTypeID id;      /* C Type ID of the value. */
 } CPValue;
 
-/* C parser state. */
+// C parser state.
 typedef struct CPState {
    CPChar c;      /* Current character. */
    CPToken tok;      /* Current token. */

@@ -34,13 +34,13 @@
 #define lj_assertCP(c, ...)   ((void)cp)
 #endif
 
-/* -- Miscellaneous ------------------------------------------------------- */
+// -- Miscellaneous -------------------------------------------------------
 
-/* Match string against a C literal. */
+// Match string against a C literal.
 #define cp_str_is(str, k) \
   ((str)->len == sizeof(k)-1 && !memcmp(strdata(str), k, sizeof(k)-1))
 
-/* Check string against a linear list of matches. */
+// Check string against a linear list of matches.
 int lj_cparse_case(GCstr* str, const char* match)
 {
    MSize len;
@@ -52,9 +52,9 @@ int lj_cparse_case(GCstr* str, const char* match)
    return -1;
 }
 
-/* -- C lexer ------------------------------------------------------------- */
+// -- C lexer -------------------------------------------------------------
 
-/* C lexer token names. */
+// C lexer token names.
 static const char* const ctoknames[] = {
 #define CTOKSTR(name, str)   str,
 CTOKDEF(CTOKSTR)
@@ -62,7 +62,7 @@ CTOKDEF(CTOKSTR)
   NULL
 };
 
-/* Forward declaration. */
+// Forward declaration.
 LJ_NORET static void cp_err(CPState* cp, ErrMsg em);
 
 static const char* cp_tok2str(CPState* cp, CPToken tok)
@@ -76,13 +76,13 @@ static const char* cp_tok2str(CPState* cp, CPToken tok)
       return lj_strfmt_pushf(cp->L, "char(%d)", tok);
 }
 
-/* End-of-line? */
+// End-of-line?
 static LJ_AINLINE int cp_iseol(CPChar c)
 {
    return (c == '\n' || c == '\r');
 }
 
-/* Peek next raw character. */
+// Peek next raw character.
 static LJ_AINLINE CPChar cp_rawpeek(CPState* cp)
 {
    return (CPChar)(uint8_t)(*cp->p);
@@ -90,7 +90,7 @@ static LJ_AINLINE CPChar cp_rawpeek(CPState* cp)
 
 static LJ_NOINLINE CPChar cp_get_bs(CPState* cp);
 
-/* Get next character. */
+// Get next character.
 static LJ_AINLINE CPChar cp_get(CPState* cp)
 {
    cp->c = (CPChar)(uint8_t)(*cp->p++);
@@ -98,7 +98,7 @@ static LJ_AINLINE CPChar cp_get(CPState* cp)
    return cp_get_bs(cp);
 }
 
-/* Transparently skip backslash-escaped line breaks. */
+// Transparently skip backslash-escaped line breaks.
 static LJ_NOINLINE CPChar cp_get_bs(CPState* cp)
 {
    CPChar c2, c = cp_rawpeek(cp);
@@ -110,13 +110,13 @@ static LJ_NOINLINE CPChar cp_get_bs(CPState* cp)
    return cp_get(cp);
 }
 
-/* Save character in buffer. */
+// Save character in buffer.
 static LJ_AINLINE void cp_save(CPState* cp, CPChar c)
 {
    lj_buf_putb(&cp->sb, c);
 }
 
-/* Skip line break. Handles "\n", "\r", "\r\n" or "\n\r". */
+// Skip line break. Handles "\n", "\r", "\r\n" or "\n\r".
 static void cp_newline(CPState* cp)
 {
    CPChar c = cp_rawpeek(cp);
@@ -168,9 +168,9 @@ LJ_NORET LJ_NOINLINE static void cp_err(CPState* cp, ErrMsg em)
    cp_errmsg(cp, 0, em);
 }
 
-/* -- Main lexical scanner ------------------------------------------------ */
+// -- Main lexical scanner ------------------------------------------------
 
-/* Parse number literal. Only handles int32_t/uint32_t right now. */
+// Parse number literal. Only handles int32_t/uint32_t right now.
 static CPToken cp_number(CPState* cp)
 {
    StrScanFmt fmt;
@@ -187,7 +187,7 @@ static CPToken cp_number(CPState* cp)
    return CTOK_INTEGER;
 }
 
-/* Parse identifier or keyword. */
+// Parse identifier or keyword.
 static CPToken cp_ident(CPState* cp)
 {
    do { cp_save(cp, cp->c); } while (lj_char_isident(cp_get(cp)));
@@ -198,7 +198,7 @@ static CPToken cp_ident(CPState* cp)
    return CTOK_IDENT;
 }
 
-/* Parse parameter. */
+// Parse parameter.
 static CPToken cp_param(CPState* cp)
 {
    CPChar c = cp_get(cp);
@@ -232,7 +232,7 @@ static CPToken cp_param(CPState* cp)
    }
 }
 
-/* Parse string or character constant. */
+// Parse string or character constant.
 static CPToken cp_string(CPState* cp)
 {
    CPChar delim = cp->c;
@@ -290,7 +290,7 @@ static CPToken cp_string(CPState* cp)
    }
 }
 
-/* Skip C comment. */
+// Skip C comment.
 static void cp_comment_c(CPState* cp)
 {
    do {
@@ -303,14 +303,14 @@ static void cp_comment_c(CPState* cp)
    } while (cp->c != '\0');
 }
 
-/* Skip C++ comment. */
+// Skip C++ comment.
 static void cp_comment_cpp(CPState* cp)
 {
    while (!cp_iseol(cp_get(cp)) && cp->c != '\0')
       ;
 }
 
-/* Lexical scanner for C. Only a minimal subset is implemented. */
+// Lexical scanner for C. Only a minimal subset is implemented.
 static CPToken cp_next_(CPState* cp)
 {
    lj_buf_reset(&cp->sb);
@@ -362,9 +362,9 @@ static LJ_NOINLINE CPToken cp_next(CPState* cp)
    return (cp->tok = cp_next_(cp));
 }
 
-/* -- C parser ------------------------------------------------------------ */
+// -- C parser ------------------------------------------------------------
 
-/* Namespaces for resolving identifiers. */
+// Namespaces for resolving identifiers.
 #define CPNS_DEFAULT \
   ((1u<<CT_KW)|(1u<<CT_TYPEDEF)|(1u<<CT_FUNC)|(1u<<CT_EXTERN)|(1u<<CT_CONSTVAL))
 #define CPNS_STRUCT   ((1u<<CT_KW)|(1u<<CT_STRUCT)|(1u<<CT_ENUM))
@@ -372,7 +372,7 @@ static LJ_NOINLINE CPToken cp_next(CPState* cp)
 typedef CTypeID CPDeclIdx;   /* Index into declaration stack. */
 typedef uint32_t CPscl;      /* Storage class flags. */
 
-/* Type declaration context. */
+// Type declaration context.
 typedef struct CPDecl {
    CPDeclIdx top;   /* Top of declaration stack. */
    CPDeclIdx pos;   /* Insertion position in declaration chain. */
@@ -390,12 +390,12 @@ typedef struct CPDecl {
    CType stack[CPARSE_MAX_DECLSTACK];  /* Type declaration stack. */
 } CPDecl;
 
-/* Forward declarations. */
+// Forward declarations.
 static CPscl cp_decl_spec(CPState* cp, CPDecl* decl, CPscl scl);
 static void cp_declarator(CPState* cp, CPDecl* decl);
 static CTypeID cp_decl_abstract(CPState* cp);
 
-/* Initialize C parser state. Caller must set up: L, p, srcname, mode. */
+// Initialize C parser state. Caller must set up: L, p, srcname, mode.
 static void cp_init(CPState* cp)
 {
    cp->linenumber = 1;
@@ -410,28 +410,28 @@ static void cp_init(CPState* cp)
    cp_next(cp);  /* Read-ahead first token. */
 }
 
-/* Cleanup C parser state. */
+// Cleanup C parser state.
 static void cp_cleanup(CPState* cp)
 {
    global_State* g = G(cp->L);
    lj_buf_free(g, &cp->sb);
 }
 
-/* Check and consume optional token. */
+// Check and consume optional token.
 static int cp_opt(CPState* cp, CPToken tok)
 {
    if (cp->tok == tok) { cp_next(cp); return 1; }
    return 0;
 }
 
-/* Check and consume token. */
+// Check and consume token.
 static void cp_check(CPState* cp, CPToken tok)
 {
    if (cp->tok != tok) cp_err_token(cp, tok);
    cp_next(cp);
 }
 
-/* Check if the next token may start a type declaration. */
+// Check if the next token may start a type declaration.
 static int cp_istypedecl(CPState* cp)
 {
    if (cp->tok >= CTOK_FIRSTDECL && cp->tok <= CTOK_LASTDECL) return 1;
@@ -440,9 +440,9 @@ static int cp_istypedecl(CPState* cp)
    return 0;
 }
 
-/* -- Constant expression evaluator --------------------------------------- */
+// -- Constant expression evaluator ---------------------------------------
 
-/* Forward declarations. */
+// Forward declarations.
 static void cp_expr_unary(CPState* cp, CPValue* k);
 static void cp_expr_sub(CPState* cp, CPValue* k, int pri);
 
@@ -453,13 +453,13 @@ static void cp_expr_sub(CPState* cp, CPValue* k, int pri);
 ** find in C header files. And again: this is NOT a validating C parser!
 */
 
-/* Parse comma separated expression and return last result. */
+// Parse comma separated expression and return last result.
 static void cp_expr_comma(CPState* cp, CPValue* k)
 {
    do { cp_expr_sub(cp, k, 0); } while (cp_opt(cp, ','));
 }
 
-/* Parse sizeof/alignof operator. */
+// Parse sizeof/alignof operator.
 static void cp_expr_sizeof(CPState* cp, CPValue* k, int wantsz)
 {
    CTSize sz;
@@ -487,7 +487,7 @@ static void cp_expr_sizeof(CPState* cp, CPValue* k, int wantsz)
    k->id = CTID_UINT32;  /* Really size_t. */
 }
 
-/* Parse prefix operators. */
+// Parse prefix operators.
 static void cp_expr_prefix(CPState* cp, CPValue* k)
 {
    if (cp->tok == CTOK_INTEGER) {
@@ -564,7 +564,7 @@ static void cp_expr_prefix(CPState* cp, CPValue* k)
    }
 }
 
-/* Parse postfix operators. */
+// Parse postfix operators.
 static void cp_expr_postfix(CPState* cp, CPValue* k)
 {
    for (;;) {
@@ -609,7 +609,7 @@ static void cp_expr_postfix(CPState* cp, CPValue* k)
    }
 }
 
-/* Parse infix operators. */
+// Parse infix operators.
 static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
 {
    CPValue k2;
@@ -626,34 +626,34 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
             k->id = k2.id > k3.id ? k2.id : k3.id;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 1:
          if (cp_opt(cp, CTOK_OROR)) {
             cp_expr_sub(cp, &k2, 2); k->i32 = k->u32 || k2.u32; k->id = CTID_INT32;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 2:
          if (cp_opt(cp, CTOK_ANDAND)) {
             cp_expr_sub(cp, &k2, 3); k->i32 = k->u32 && k2.u32; k->id = CTID_INT32;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 3:
          if (cp_opt(cp, '|')) {
             cp_expr_sub(cp, &k2, 4); k->u32 = k->u32 | k2.u32; goto arith_result;
          }
-         /* fallthrough */
+         // fallthrough
       case 4:
          if (cp_opt(cp, '^')) {
             cp_expr_sub(cp, &k2, 5); k->u32 = k->u32 ^ k2.u32; goto arith_result;
          }
-         /* fallthrough */
+         // fallthrough
       case 5:
          if (cp_opt(cp, '&')) {
             cp_expr_sub(cp, &k2, 6); k->u32 = k->u32 & k2.u32; goto arith_result;
          }
-         /* fallthrough */
+         // fallthrough
       case 6:
          if (cp_opt(cp, CTOK_EQ)) {
             cp_expr_sub(cp, &k2, 7); k->i32 = k->u32 == k2.u32; k->id = CTID_INT32;
@@ -663,7 +663,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
             cp_expr_sub(cp, &k2, 7); k->i32 = k->u32 != k2.u32; k->id = CTID_INT32;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 7:
          if (cp_opt(cp, '<')) {
             cp_expr_sub(cp, &k2, 8);
@@ -701,7 +701,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
             k->id = CTID_INT32;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 8:
          if (cp_opt(cp, CTOK_SHL)) {
             cp_expr_sub(cp, &k2, 9); k->u32 = k->u32 << k2.u32;
@@ -715,7 +715,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
                k->u32 = k->u32 >> k2.u32;
             continue;
          }
-         /* fallthrough */
+         // fallthrough
       case 9:
          if (cp_opt(cp, '+')) {
             cp_expr_sub(cp, &k2, 10); k->u32 = k->u32 + k2.u32;
@@ -726,7 +726,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
          else if (cp_opt(cp, '-')) {
             cp_expr_sub(cp, &k2, 10); k->u32 = k->u32 - k2.u32; goto arith_result;
          }
-         /* fallthrough */
+         // fallthrough
       case 10:
          if (cp_opt(cp, '*')) {
             cp_expr_unary(cp, &k2); k->u32 = k->u32 * k2.u32; goto arith_result;
@@ -761,7 +761,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
    }
 }
 
-/* Parse and evaluate unary expression. */
+// Parse and evaluate unary expression.
 static void cp_expr_unary(CPState* cp, CPValue* k)
 {
    if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, LJ_ERR_XLEVELS);
@@ -770,14 +770,14 @@ static void cp_expr_unary(CPState* cp, CPValue* k)
    cp->depth--;
 }
 
-/* Parse and evaluate sub-expression. */
+// Parse and evaluate sub-expression.
 static void cp_expr_sub(CPState* cp, CPValue* k, int pri)
 {
    cp_expr_unary(cp, k);
    cp_expr_infix(cp, k, pri);
 }
 
-/* Parse constant integer expression. */
+// Parse constant integer expression.
 static void cp_expr_kint(CPState* cp, CPValue* k)
 {
    CType* ct;
@@ -786,7 +786,7 @@ static void cp_expr_kint(CPState* cp, CPValue* k)
    if (!ctype_isinteger(ct->info)) cp_err(cp, LJ_ERR_BADVAL);
 }
 
-/* Parse (non-negative) size expression. */
+// Parse (non-negative) size expression.
 static CTSize cp_expr_ksize(CPState* cp)
 {
    CPValue k;
@@ -795,9 +795,9 @@ static CTSize cp_expr_ksize(CPState* cp)
    return k.u32;
 }
 
-/* -- Type declaration stack management ----------------------------------- */
+// -- Type declaration stack management -----------------------------------
 
-/* Add declaration element behind the insertion position. */
+// Add declaration element behind the insertion position.
 static CPDeclIdx cp_add(CPDecl* decl, CTInfo info, CTSize size)
 {
    CPDeclIdx top = decl->top;
@@ -812,13 +812,13 @@ static CPDeclIdx cp_add(CPDecl* decl, CTInfo info, CTSize size)
    return top;
 }
 
-/* Push declaration element before the insertion position. */
+// Push declaration element before the insertion position.
 static CPDeclIdx cp_push(CPDecl* decl, CTInfo info, CTSize size)
 {
    return (decl->pos = cp_add(decl, info, size));
 }
 
-/* Push or merge attributes. */
+// Push or merge attributes.
 static void cp_push_attributes(CPDecl* decl)
 {
    CType* ct = &decl->stack[decl->pos];
@@ -836,7 +836,7 @@ static void cp_push_attributes(CPDecl* decl)
    }
 }
 
-/* Push unrolled type to declaration stack and merge qualifiers. */
+// Push unrolled type to declaration stack and merge qualifiers.
 static void cp_push_type(CPDecl* decl, CTypeID id)
 {
    CType* ct = ctype_get(decl->cp->cts, id);
@@ -865,21 +865,21 @@ static void cp_push_type(CPDecl* decl, CTypeID id)
       cp_push_type(decl, ctype_cid(info));  /* Unroll. */
       cp_push(decl, info & ~CTMASK_CID, size);  /* Copy type. */
       decl->stack[decl->pos].sib = 1;  /* Mark as already checked and sized. */
-      /* Note: this is not copied to the ct->sib in the C type table. */
+      // Note: this is not copied to the ct->sib in the C type table.
       break;
    case CT_FUNC:
-      /* Copy type, link parameters (shared). */
+      // Copy type, link parameters (shared).
       decl->stack[cp_push(decl, info, size)].sib = ct->sib;
       break;
    default:
-      /* Copy type, merge common qualifiers. */
+      // Copy type, merge common qualifiers.
       cp_push(decl, info | (decl->attr & CTF_QUAL), size);
       decl->attr &= ~CTF_QUAL;
       break;
    }
 }
 
-/* Consume the declaration element chain and intern the C type. */
+// Consume the declaration element chain and intern the C type.
 static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
 {
    CTypeID id = 0;
@@ -890,12 +890,12 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
       CType* ct = &decl->stack[idx];
       CTInfo info = ct->info;
       CTInfo size = ct->size;
-      /* The cid is already part of info for copies of pointers/functions. */
+      // The cid is already part of info for copies of pointers/functions.
       idx = ct->next;
       if (ctype_istypedef(info)) {
          lj_assertCP(id == 0, "typedef not at toplevel");
          id = ctype_cid(info);
-         /* Always refetch info/size, since struct/enum may have been completed. */
+         // Always refetch info/size, since struct/enum may have been completed.
          cinfo = ctype_get(cp->cts, id)->info;
          csize = ctype_get(cp->cts, id)->size;
          lj_assertCP(ctype_isstruct(cinfo) || ctype_isenum(cinfo),
@@ -907,11 +907,11 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
          CTypeID sib;
          if (id) {
             CType* refct = ctype_raw(cp->cts, id);
-            /* Reject function or refarray return types. */
+            // Reject function or refarray return types.
             if (ctype_isfunc(refct->info) || ctype_isrefarray(refct->info))
                cp_err(cp, LJ_ERR_FFI_INVTYPE);
          }
-         /* No intervening attributes allowed, skip forward. */
+         // No intervening attributes allowed, skip forward.
          while (idx) {
             CType* ctn = &decl->stack[idx];
             if (!ctype_isattrib(ctn->info)) break;
@@ -931,7 +931,7 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
          else if (ctype_isxattrib(info, CTA_ALIGN))
             CTF_INSERT(cinfo, ALIGN, size);
          id = lj_ctype_intern(cp->cts, info + id, size);
-         /* Inherit csize/cinfo from original type. */
+         // Inherit csize/cinfo from original type.
       }
       else {
          if (ctype_isnum(info)) {  // Handle mode/vector-size attributes.
@@ -948,9 +948,9 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
                if (vsize) {  // Vector size set?
                   CTSize esize = lj_fls(size);
                   if (vsize >= esize) {
-                     /* Intern the element type first. */
+                     // Intern the element type first.
                      id = lj_ctype_intern(cp->cts, info, size);
-                     /* Then create a vector (array) with vsize alignment. */
+                     // Then create a vector (array) with vsize alignment.
                      size = (1u << vsize);
                      if (vsize > 4) vsize = 4;  /* Limit alignment. */
                      if (ctype_align(info) > vsize) vsize = ctype_align(info);
@@ -961,12 +961,12 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
             }
          }
          else if (ctype_isptr(info)) {
-            /* Reject pointer/ref to ref. */
+            // Reject pointer/ref to ref.
             if (id && ctype_isref(ctype_raw(cp->cts, id)->info))
                cp_err(cp, LJ_ERR_FFI_INVTYPE);
             if (ctype_isref(info)) {
                info &= ~CTF_VOLATILE;  /* Refs are always const, never volatile. */
-               /* No intervening attributes allowed, skip forward. */
+               // No intervening attributes allowed, skip forward.
                while (idx) {
                   CType* ctn = &decl->stack[idx];
                   if (!ctype_isattrib(ctn->info)) break;
@@ -978,10 +978,10 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
             if (ct->sib == 0) {  // Only check/size arrays not copied by unroll.
                if (ctype_isref(cinfo))  /* Reject arrays of refs. */
                   cp_err(cp, LJ_ERR_FFI_INVTYPE);
-               /* Reject VLS or unknown-sized types. */
+               // Reject VLS or unknown-sized types.
                if (ctype_isvltype(cinfo) || csize == CTSIZE_INVALID)
                   cp_err(cp, LJ_ERR_FFI_INVSIZE);
-               /* a[] and a[?] keep their invalid size. */
+               // a[] and a[?] keep their invalid size.
                if (size != CTSIZE_INVALID) {
                   uint64_t xsz = (uint64_t)size * csize;
                   if (xsz >= 0x80000000u) cp_err(cp, LJ_ERR_FFI_INVSIZE);
@@ -1003,9 +1003,9 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
    return id;
 }
 
-/* -- C declaration parser ------------------------------------------------ */
+// -- C declaration parser ------------------------------------------------
 
-/* Reset declaration state to declaration specifier. */
+// Reset declaration state to declaration specifier.
 static void cp_decl_reset(CPDecl* decl)
 {
    decl->pos = decl->specpos;
@@ -1017,8 +1017,8 @@ static void cp_decl_reset(CPDecl* decl)
    decl->redir = NULL;
 }
 
-/* Parse constant initializer. */
-/* NYI: FP constants and strings as initializers. */
+// Parse constant initializer.
+// NYI: FP constants and strings as initializers.
 static CTypeID cp_decl_constinit(CPState* cp, CType** ctp, CTypeID ctypeid)
 {
    CType* ctt = ctype_get(cp->cts, ctypeid);
@@ -1047,7 +1047,7 @@ static CTypeID cp_decl_constinit(CPState* cp, CType** ctp, CTypeID ctypeid)
    return constid;
 }
 
-/* Parse size in parentheses as part of attribute. */
+// Parse size in parentheses as part of attribute.
 static CTSize cp_decl_sizeattr(CPState* cp)
 {
    CTSize sz;
@@ -1060,7 +1060,7 @@ static CTSize cp_decl_sizeattr(CPState* cp)
    return sz;
 }
 
-/* Parse alignment attribute. */
+// Parse alignment attribute.
 static void cp_decl_align(CPState* cp, CPDecl* decl)
 {
    CTSize al = 4;  /* Unspecified alignment is 16 bytes. */
@@ -1072,7 +1072,7 @@ static void cp_decl_align(CPState* cp, CPDecl* decl)
    decl->attr |= CTFP_ALIGNED;
 }
 
-/* Parse GCC asm("name") redirect. */
+// Parse GCC asm("name") redirect.
 static void cp_decl_asm(CPState* cp, CPDecl* decl)
 {
    UNUSED(decl);
@@ -1090,7 +1090,7 @@ static void cp_decl_asm(CPState* cp, CPDecl* decl)
    cp_check(cp, ')');
 }
 
-/* Parse GCC __attribute__((mode(...))). */
+// Parse GCC __attribute__((mode(...))).
 static void cp_decl_mode(CPState* cp, CPDecl* decl)
 {
    cp_check(cp, '(');
@@ -1123,7 +1123,7 @@ static void cp_decl_mode(CPState* cp, CPDecl* decl)
    cp_check(cp, ')');
 }
 
-/* Parse GCC __attribute__((...)). */
+// Parse GCC __attribute__((...)).
 static void cp_decl_gccattribute(CPState* cp, CPDecl* decl)
 {
    cp_next(cp);
@@ -1209,7 +1209,7 @@ static void cp_decl_gccattribute(CPState* cp, CPDecl* decl)
    cp_check(cp, ')');
 }
 
-/* Parse MSVC __declspec(...). */
+// Parse MSVC __declspec(...).
 static void cp_decl_msvcattribute(CPState* cp, CPDecl* decl)
 {
    cp_next(cp);
@@ -1230,7 +1230,7 @@ static void cp_decl_msvcattribute(CPState* cp, CPDecl* decl)
    cp_check(cp, ')');
 }
 
-/* Parse declaration attributes (and common qualifiers). */
+// Parse declaration attributes (and common qualifiers).
 static void cp_decl_attributes(CPState* cp, CPDecl* decl)
 {
    for (;;) {
@@ -1259,7 +1259,7 @@ static void cp_decl_attributes(CPState* cp, CPDecl* decl)
    }
 }
 
-/* Parse struct/union/enum name. */
+// Parse struct/union/enum name.
 static CTypeID cp_struct_name(CPState* cp, CPDecl* sdecl, CTInfo info)
 {
    CTypeID sid;
@@ -1300,13 +1300,13 @@ static CTypeID cp_struct_name(CPState* cp, CPDecl* sdecl, CTInfo info)
    return sid;
 }
 
-/* Determine field alignment. */
+// Determine field alignment.
 static CTSize cp_field_align(CPState* cp, CType* ct, CTInfo info)
 {
    CTSize align = ctype_align(info);
    UNUSED(cp); UNUSED(ct);
 #if (LJ_TARGET_X86 && !LJ_ABI_WIN) || (LJ_TARGET_ARM && __APPLE__)
-   /* The SYSV i386 and iOS ABIs limit alignment of non-vector fields to 2^2. */
+   // The SYSV i386 and iOS ABIs limit alignment of non-vector fields to 2^2.
    if (align > 2 && !(info & CTFP_ALIGNED)) {
       if (ctype_isarray(info) && !(info & CTF_VECTOR)) {
          do {
@@ -1321,7 +1321,7 @@ static CTSize cp_field_align(CPState* cp, CType* ct, CTInfo info)
    return align;
 }
 
-/* Layout struct/union fields. */
+// Layout struct/union fields.
 static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
 {
    CTSize bofs = 0, bmaxofs = 0;  /* Bit offset and max. bit offset. */
@@ -1341,7 +1341,7 @@ static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
          CTSize bsz, csz = 8 * sz;  /* Field size and container size (in bits). */
          sinfo |= (info & (CTF_QUAL | CTF_VLA));  /* Merge pseudo-qualifiers. */
 
-         /* Check for size overflow and determine alignment. */
+         // Check for size overflow and determine alignment.
          if (sz >= 0x20000000u || bofs + csz < bofs || (info & CTF_VLA)) {
             if (!(sz == CTSIZE_INVALID && ctype_isarray(info) &&
                !(sinfo & CTF_UNION)))
@@ -1368,7 +1368,7 @@ static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
                (!((attr | sattr) & CTFP_PACKED) && (bofs & amask) + bsz > csz))
                bofs = (bofs + amask) & ~amask;  /* Start new aligned field. */
 
-            /* Prefer regular field over bitfield. */
+            // Prefer regular field over bitfield.
             if (bsz == csz && (bofs & amask) == 0) {
                ct->info = CTINFO(CT_FIELD, ctype_cid(ct->info));
                ct->size = (bofs >> 3);  /* Store field offset. */
@@ -1386,7 +1386,7 @@ static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
             }
          }
 
-         /* Determine next offset or max. offset. */
+         // Determine next offset or max. offset.
          if ((sinfo & CTF_UNION)) {
             if (bsz > bmaxofs) bmaxofs = bsz;
          }
@@ -1398,14 +1398,14 @@ static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
       fieldid = ct->sib;
    }
 
-   /* Complete struct/union. */
+   // Complete struct/union.
    sct->info = sinfo + CTALIGN(maxalign);
    bofs = (sinfo & CTF_UNION) ? bmaxofs : bofs;
    maxalign = (8u << maxalign) - 1;
    sct->size = (((bofs + maxalign) & ~maxalign) >> 3);
 }
 
-/* Parse struct/union declaration. */
+// Parse struct/union declaration.
 static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
 {
    CTypeID sid = cp_struct_name(cp, sdecl, sinfo);
@@ -1423,7 +1423,7 @@ static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
 
             if (lastdecl) cp_err_token(cp, '}');
 
-            /* Parse field declarator. */
+            // Parse field declarator.
             decl.bits = CTSIZE_INVALID;
             cp_declarator(cp, &decl);
             ctypeid = cp_decl_intern(cp, &decl);
@@ -1445,7 +1445,7 @@ static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
                   if (ctype_isarray(tct->info) && tct->size == CTSIZE_INVALID)
                      lastdecl = 1;  /* a[] or a[?] must be the last declared field. */
 
-                  /* Accept transparent struct/union/enum. */
+                  // Accept transparent struct/union/enum.
                   if (!decl.name) {
                      if (!((ctype_isstruct(tct->info) && !(tct->info & CTF_VLA)) ||
                         ctype_isenum(tct->info)))
@@ -1464,7 +1464,7 @@ static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
                      cp_errmsg(cp, ':', LJ_ERR_BADVAL);
                }
 
-               /* Create temporary field for layout phase. */
+               // Create temporary field for layout phase.
                ct->info = CTINFO(CT_FIELD, ctypeid + (bsz << CTSHIFT_BITCSZ));
                ct->size = decl.attr;
                if (decl.name) ctype_setname(ct, decl.name);
@@ -1486,7 +1486,7 @@ static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
    return sid;
 }
 
-/* Parse enum declaration. */
+// Parse enum declaration.
 static CTypeID cp_decl_enum(CPState* cp, CPDecl* sdecl)
 {
    CTypeID eid = cp_struct_name(cp, sdecl, CTINFO(CT_ENUM, CTID_VOID));
@@ -1520,7 +1520,7 @@ static CTypeID cp_decl_enum(CPState* cp, CPDecl* sdecl)
                if (k.i32 < 0) einfo = CTINFO(CT_ENUM, CTALIGN(2) + CTID_INT32);
             }
          }
-         /* Add named enum constant. */
+         // Add named enum constant.
          {
             CType* ct;
             CTypeID constid = lj_ctype_new(cp->cts, &ct);
@@ -1535,14 +1535,14 @@ static CTypeID cp_decl_enum(CPState* cp, CPDecl* sdecl)
          if (!cp_opt(cp, ',')) break;
       } while (cp->tok != '}');  /* Trailing ',' is ok. */
       cp_check(cp, '}');
-      /* Complete enum. */
+      // Complete enum.
       ctype_get(cp->cts, eid)->info = einfo;
       ctype_get(cp->cts, eid)->size = esize;
    }
    return eid;
 }
 
-/* Parse declaration specifiers. */
+// Parse declaration specifiers.
 static CPscl cp_decl_spec(CPState* cp, CPDecl* decl, CPscl scl)
 {
    uint32_t cds = 0, sz = 0;
@@ -1618,7 +1618,7 @@ end_decl:
       decl->attr &= ~CTF_QUAL;
    }
    else {
-      /* Determine type info and size. */
+      // Determine type info and size.
       CTInfo info = CTINFO(CT_NUM, (cds & CDF_UNSIGNED) ? CTF_UNSIGNED : 0);
       if ((cds & CDF_BOOL)) {
          if ((cds & ~(CDF_SCL | CDF_BOOL | CDF_INT | CDF_SIGNED | CDF_UNSIGNED)))
@@ -1664,7 +1664,7 @@ end_decl:
    return (cds & CDF_SCL);  /* Return storage class. */
 }
 
-/* Parse array declaration. */
+// Parse array declaration.
 static void cp_decl_array(CPState* cp, CPDecl* decl)
 {
    CTInfo info = CTINFO(CT_ARRAY, 0);
@@ -1678,7 +1678,7 @@ static void cp_decl_array(CPState* cp, CPDecl* decl)
    cp_add(decl, info, nelem);
 }
 
-/* Parse function declaration. */
+// Parse function declaration.
 static void cp_decl_func(CPState* cp, CPDecl* fdecl)
 {
    CTSize nargs = 0;
@@ -1708,7 +1708,7 @@ static void cp_decl_func(CPState* cp, CPDecl* fdecl)
          else if (ctype_isfunc(ct->info))
             ctypeid = lj_ctype_intern(cp->cts,
                CTINFO(CT_PTR, CTALIGN_PTR | ctypeid), CTSIZE_PTR);
-         /* Add new parameter. */
+         // Add new parameter.
          fieldid = lj_ctype_new(cp->cts, &ct);
          if (anchor)
             ctype_get(cp->cts, lastid)->sib = fieldid;
@@ -1738,7 +1738,7 @@ static void cp_decl_func(CPState* cp, CPDecl* fdecl)
    fdecl->stack[cp_add(fdecl, info, nargs)].sib = anchor;
 }
 
-/* Parse declarator. */
+// Parse declarator.
 static void cp_declarator(CPState* cp, CPDecl* decl)
 {
    if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, LJ_ERR_XLEVELS);
@@ -1772,7 +1772,7 @@ static void cp_declarator(CPState* cp, CPDecl* decl)
    if (cp_opt(cp, '(')) {  // Inner declarator.
       CPDeclIdx pos;
       cp_decl_attributes(cp, decl);
-      /* Resolve ambiguity between inner declarator and 1st function parameter. */
+      // Resolve ambiguity between inner declarator and 1st function parameter.
       if ((decl->mode & CPARSE_MODE_ABSTRACT) &&
          (cp->tok == ')' || cp_istypedecl(cp))) goto func_decl;
       pos = decl->pos;
@@ -1806,14 +1806,14 @@ static void cp_declarator(CPState* cp, CPDecl* decl)
    if ((decl->mode & CPARSE_MODE_FIELD) && cp_opt(cp, ':'))  /* Field width. */
       decl->bits = cp_expr_ksize(cp);
 
-   /* Process postfix attributes. */
+   // Process postfix attributes.
    cp_decl_attributes(cp, decl);
    cp_push_attributes(decl);
 
    cp->depth--;
 }
 
-/* Parse an abstract type declaration and return it's C type ID. */
+// Parse an abstract type declaration and return it's C type ID.
 static CTypeID cp_decl_abstract(CPState* cp)
 {
    CPDecl decl;
@@ -1823,7 +1823,7 @@ static CTypeID cp_decl_abstract(CPState* cp)
    return cp_decl_intern(cp, &decl);
 }
 
-/* Handle pragmas. */
+// Handle pragmas.
 static void cp_pragma(CPState* cp, BCLine pragmaline)
 {
    cp_next(cp);
@@ -1862,17 +1862,17 @@ static void cp_pragma(CPState* cp, BCLine pragmaline)
    }
 }
 
-/* Handle line number. */
+// Handle line number.
 static void cp_line(CPState* cp, BCLine hashline)
 {
    BCLine newline = cp->val.u32;
-   /* TODO: Handle file name and include it in error messages. */
+   // TODO: Handle file name and include it in error messages.
    while (cp->tok != CTOK_EOF && cp->linenumber == hashline)
       cp_next(cp);
    cp->linenumber = newline;
 }
 
-/* Parse multiple C declarations of types or extern identifiers. */
+// Parse multiple C declarations of types or extern identifiers.
 static void cp_decl_multi(CPState* cp)
 {
    int first = 1;
@@ -1923,9 +1923,9 @@ static void cp_decl_multi(CPState* cp)
                goto noredir;
             }
             else if (ctype_isfunc(ctype_get(cp->cts, ctypeid)->info)) {
-               /* Treat both static and extern function declarations as extern. */
+               // Treat both static and extern function declarations as extern.
                ct = ctype_get(cp->cts, ctypeid);
-               /* We always get new anonymous functions (typedefs are copied). */
+               // We always get new anonymous functions (typedefs are copied).
                lj_assertCP(gcref(ct->name) == NULL, "unexpected named function");
                id = ctypeid;  /* Just name it. */
             }
@@ -1960,7 +1960,7 @@ static void cp_decl_multi(CPState* cp)
    }
 }
 
-/* Parse a single C type declaration. */
+// Parse a single C type declaration.
 static void cp_decl_single(CPState* cp)
 {
    CPDecl decl;
@@ -1970,9 +1970,9 @@ static void cp_decl_single(CPState* cp)
    if (cp->tok != CTOK_EOF) cp_err_token(cp, CTOK_EOF);
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* Protected callback for C parser. */
+// Protected callback for C parser.
 static TValue* cpcparser(lua_State* L, lua_CFunction dummy, void* ud)
 {
    CPState* cp = (CPState*)ud;
@@ -1989,7 +1989,7 @@ static TValue* cpcparser(lua_State* L, lua_CFunction dummy, void* ud)
    return NULL;
 }
 
-/* C parser. */
+// C parser.
 int lj_cparse(CPState* cp)
 {
    LJ_CTYPE_SAVE(cp->cts);

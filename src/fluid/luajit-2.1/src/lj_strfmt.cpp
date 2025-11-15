@@ -21,7 +21,7 @@
 #endif
 #include "lj_lib.h"
 
-/* -- Format parser ------------------------------------------------------- */
+// -- Format parser -------------------------------------------------------
 
 static const uint8_t strfmt_map[('x' - 'A') + 1] = {
   STRFMT_A,0,0,0,STRFMT_E,STRFMT_F,STRFMT_G,0,0,0,0,0,0,
@@ -47,7 +47,7 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs)
             if (p != (const uint8_t*)fs->str)
                break;
             for (p++; (uint32_t)*p - ' ' <= (uint32_t)('0' - ' '); p++) {
-               /* Parse flags. */
+               // Parse flags.
                if (*p == '-') sf |= STRFMT_F_LEFT;
                else if (*p == '+') sf |= STRFMT_F_PLUS;
                else if (*p == '0') sf |= STRFMT_F_ZERO;
@@ -71,7 +71,7 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs)
                }
                sf |= ((prec + 1) << STRFMT_SH_PREC);
             }
-            /* Parse conversion. */
+            // Parse conversion.
             c = (uint32_t)*p - 'A';
             if (LJ_LIKELY(c <= (uint32_t)('x' - 'A'))) {
                uint32_t sx = strfmt_map[c];
@@ -80,7 +80,7 @@ SFormat LJ_FASTCALL lj_strfmt_parse(FormatState* fs)
                   return (sf | sx | ((c & 0x20) ? 0 : STRFMT_F_UPPER));
                }
             }
-            /* Return error location. */
+            // Return error location.
             if (*p >= 32) p++;
             fs->len = (MSize)(p - (const uint8_t*)fs->str);
             fs->p = fs->e;
@@ -94,12 +94,12 @@ retlit:
    return fs->len ? STRFMT_LIT : STRFMT_EOF;
 }
 
-/* -- Raw conversions ----------------------------------------------------- */
+// -- Raw conversions -----------------------------------------------------
 
 #define WINT_R(x, sh, sc) \
   { uint32_t d = (x*(((1<<sh)+sc-1)/sc))>>sh; x -= d*sc; *p++ = (char)('0'+d); }
 
-/* Write integer to buffer. */
+// Write integer to buffer.
 char* LJ_FASTCALL lj_strfmt_wint(char* p, int32_t k)
 {
    uint32_t u = (uint32_t)k;
@@ -134,7 +134,7 @@ char* LJ_FASTCALL lj_strfmt_wint(char* p, int32_t k)
 }
 #undef WINT_R
 
-/* Write pointer to buffer. */
+// Write pointer to buffer.
 char* LJ_FASTCALL lj_strfmt_wptr(char* p, const void* v)
 {
    ptrdiff_t x = (ptrdiff_t)v;
@@ -144,7 +144,7 @@ char* LJ_FASTCALL lj_strfmt_wptr(char* p, const void* v)
       return p;
    }
 #if LJ_64
-   /* Shorten output for 64 bit pointers. */
+   // Shorten output for 64 bit pointers.
    n = 2 + 2 * 4 + ((x >> 32) ? 2 + 2 * (lj_fls((uint32_t)(x >> 32)) >> 3) : 0);
 #endif
    p[0] = '0';
@@ -154,7 +154,7 @@ char* LJ_FASTCALL lj_strfmt_wptr(char* p, const void* v)
    return p + n;
 }
 
-/* Write ULEB128 to buffer. */
+// Write ULEB128 to buffer.
 char* LJ_FASTCALL lj_strfmt_wuleb128(char* p, uint32_t v)
 {
    for (; v >= 0x80; v >>= 7)
@@ -163,7 +163,7 @@ char* LJ_FASTCALL lj_strfmt_wuleb128(char* p, uint32_t v)
    return p;
 }
 
-/* Return string or write number to tmp buffer and return pointer to start. */
+// Return string or write number to tmp buffer and return pointer to start.
 const char* lj_strfmt_wstrnum(lua_State* L, cTValue* o, MSize* lenp)
 {
    SBuf* sb;
@@ -189,9 +189,9 @@ const char* lj_strfmt_wstrnum(lua_State* L, cTValue* o, MSize* lenp)
    return sb->b;
 }
 
-/* -- Unformatted conversions to buffer ----------------------------------- */
+// -- Unformatted conversions to buffer -----------------------------------
 
-/* Add integer to buffer. */
+// Add integer to buffer.
 SBuf* LJ_FASTCALL lj_strfmt_putint(SBuf* sb, int32_t k)
 {
    sb->w = lj_strfmt_wint(lj_buf_more(sb, STRFMT_MAXBUF_INT), k);
@@ -199,7 +199,7 @@ SBuf* LJ_FASTCALL lj_strfmt_putint(SBuf* sb, int32_t k)
 }
 
 #if LJ_HASJIT
-/* Add number to buffer. */
+// Add number to buffer.
 SBuf* LJ_FASTCALL lj_strfmt_putnum(SBuf* sb, cTValue* o)
 {
    return lj_strfmt_putfnum(sb, STRFMT_G14, o->n);
@@ -212,7 +212,7 @@ SBuf* LJ_FASTCALL lj_strfmt_putptr(SBuf* sb, const void* v)
    return sb;
 }
 
-/* Add quoted string to buffer. */
+// Add quoted string to buffer.
 static SBuf* strfmt_putquotedlen(SBuf* sb, const char* s, MSize len)
 {
    lj_buf_putb(sb, '"');
@@ -249,9 +249,9 @@ SBuf* LJ_FASTCALL lj_strfmt_putquoted(SBuf* sb, GCstr* str)
 }
 #endif
 
-/* -- Formatted conversions to buffer ------------------------------------- */
+// -- Formatted conversions to buffer -------------------------------------
 
-/* Add formatted char to buffer. */
+// Add formatted char to buffer.
 SBuf* lj_strfmt_putfchar(SBuf* sb, SFormat sf, int32_t c)
 {
    MSize width = STRFMT_WIDTH(sf);
@@ -263,7 +263,7 @@ SBuf* lj_strfmt_putfchar(SBuf* sb, SFormat sf, int32_t c)
    return sb;
 }
 
-/* Add formatted string to buffer. */
+// Add formatted string to buffer.
 static SBuf* strfmt_putfstrlen(SBuf* sb, SFormat sf, const char* s, MSize len)
 {
    MSize width = STRFMT_WIDTH(sf);
@@ -284,7 +284,7 @@ SBuf* lj_strfmt_putfstr(SBuf* sb, SFormat sf, GCstr* str)
 }
 #endif
 
-/* Add formatted signed/unsigned integer to buffer. */
+// Add formatted signed/unsigned integer to buffer.
 SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
 {
    char buf[STRFMT_MAXBUF_XINT], * q = buf + sizeof(buf), * w;
@@ -293,7 +293,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
 #endif
    MSize prefix = 0, len, prec, pprec, width, need;
 
-   /* Figure out signed prefixes. */
+   // Figure out signed prefixes.
    if (STRFMT_TYPE(sf) == STRFMT_INT) {
       if ((int64_t)k < 0) {
          k = (uint64_t)-(int64_t)k;
@@ -307,7 +307,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
       }
    }
 
-   /* Convert number and store to fixed-size buffer in reverse order. */
+   // Convert number and store to fixed-size buffer in reverse order.
    prec = STRFMT_PREC(sf);
    if ((int32_t)prec >= 0) sf &= ~STRFMT_F_ZERO;
    if (k == 0) {  // Special-case zero argument.
@@ -332,7 +332,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
       if ((sf & STRFMT_F_ALT)) *--q = '0';
    }
 
-   /* Calculate sizes. */
+   // Calculate sizes.
    len = (MSize)(buf + sizeof(buf) - q);
    if ((int32_t)len >= (int32_t)prec) prec = len;
    width = STRFMT_WIDTH(sf);
@@ -343,7 +343,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
    ws = w;
 #endif
 
-   /* Format number with leading/trailing whitespace and zeros. */
+   // Format number with leading/trailing whitespace and zeros.
    if ((sf & (STRFMT_F_LEFT | STRFMT_F_ZERO)) == 0)
       while (width-- > pprec) *w++ = ' ';
    if (prefix) {
@@ -362,7 +362,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
    return sb;
 }
 
-/* Add number formatted as signed integer to buffer. */
+// Add number formatted as signed integer to buffer.
 SBuf* lj_strfmt_putfnum_int(SBuf* sb, SFormat sf, lua_Number n)
 {
    int64_t k = (int64_t)n;
@@ -372,7 +372,7 @@ SBuf* lj_strfmt_putfnum_int(SBuf* sb, SFormat sf, lua_Number n)
       return lj_strfmt_putfxint(sb, sf, (uint64_t)k);
 }
 
-/* Add number formatted as unsigned integer to buffer. */
+// Add number formatted as unsigned integer to buffer.
 SBuf* lj_strfmt_putfnum_uint(SBuf* sb, SFormat sf, lua_Number n)
 {
    int64_t k;
@@ -383,7 +383,7 @@ SBuf* lj_strfmt_putfnum_uint(SBuf* sb, SFormat sf, lua_Number n)
    return lj_strfmt_putfxint(sb, sf, (uint64_t)k);
 }
 
-/* Format stack arguments to buffer. */
+// Format stack arguments to buffer.
 int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
 {
    int narg = (int)(L->top - L->base);
@@ -449,7 +449,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             cTValue* mo;
             if (LJ_UNLIKELY(!tvisstr(o) && !tvisbuf(o)) && retry >= 0 &&
                !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
-               /* Call __tostring metamethod once. */
+               // Call __tostring metamethod once.
                copyTV(L, L->top++, mo);
                copyTV(L, L->top++, o);
                lua_call(L, 1, 1);
@@ -498,9 +498,9 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
    return retry;
 }
 
-/* -- Conversions to strings ---------------------------------------------- */
+// -- Conversions to strings ----------------------------------------------
 
-/* Convert integer to string. */
+// Convert integer to string.
 GCstr* LJ_FASTCALL lj_strfmt_int(lua_State* L, int32_t k)
 {
    char buf[STRFMT_MAXBUF_INT];
@@ -508,14 +508,14 @@ GCstr* LJ_FASTCALL lj_strfmt_int(lua_State* L, int32_t k)
    return lj_str_new(L, buf, len);
 }
 
-/* Convert integer or number to string. */
+// Convert integer or number to string.
 GCstr* LJ_FASTCALL lj_strfmt_number(lua_State* L, cTValue* o)
 {
    return tvisint(o) ? lj_strfmt_int(L, intV(o)) : lj_strfmt_num(L, o);
 }
 
 #if LJ_HASJIT
-/* Convert char value to string. */
+// Convert char value to string.
 GCstr* LJ_FASTCALL lj_strfmt_char(lua_State* L, int c)
 {
    char buf[1];
@@ -524,7 +524,7 @@ GCstr* LJ_FASTCALL lj_strfmt_char(lua_State* L, int c)
 }
 #endif
 
-/* Raw conversion of object to string. */
+// Raw conversion of object to string.
 GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
 {
    if (tvisstr(o)) {
@@ -557,7 +557,7 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
    }
 }
 
-/* -- Internal string formatting ------------------------------------------ */
+// -- Internal string formatting ------------------------------------------
 
 /*
 ** These functions are only used for lua_pushfstring(), lua_pushvfstring()
@@ -570,7 +570,7 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
 ** - %s %c %p without formatting.
 */
 
-/* Push formatted message as a string object to Lua stack. va_list variant. */
+// Push formatted message as a string object to Lua stack. va_list variant.
 const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
 {
    SBuf* sb = lj_buf_tmp_(L);
@@ -617,7 +617,7 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
    return strdata(str);
 }
 
-/* Push formatted message as a string object to Lua stack. Vararg variant. */
+// Push formatted message as a string object to Lua stack. Vararg variant.
 const char* lj_strfmt_pushf(lua_State* L, const char* fmt, ...)
 {
    const char* msg;

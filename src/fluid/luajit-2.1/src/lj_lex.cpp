@@ -27,7 +27,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 
-/* Lua lexer token names. */
+// Lua lexer token names.
 static const char* const tokennames[] = {
 #define TKSTR1(name)      #name,
 #define TKSTR2(name, sym) #sym,
@@ -37,12 +37,12 @@ TKDEF(TKSTR1, TKSTR2)
   NULL
 };
 
-/* -- Buffer handling ----------------------------------------------------- */
+// -- Buffer handling -----------------------------------------------------
 
 #define LEX_EOF         (-1)
 #define lex_iseol(ls)      (ls->c == '\n' || ls->c == '\r')
 
-/* Get more input from reader. */
+// Get more input from reader.
 static LJ_NOINLINE LexChar lex_more(LexState* ls)
 {
    size_t sz;
@@ -59,26 +59,26 @@ static LJ_NOINLINE LexChar lex_more(LexState* ls)
    return (LexChar)(uint8_t)p[0];
 }
 
-/* Get next character. */
+// Get next character.
 static LJ_AINLINE LexChar lex_next(LexState* ls)
 {
    return (ls->c = ls->p < ls->pe ? (LexChar)(uint8_t)*ls->p++ : lex_more(ls));
 }
 
-/* Save character. */
+// Save character.
 static LJ_AINLINE void lex_save(LexState* ls, LexChar c)
 {
    lj_buf_putb(&ls->sb, c);
 }
 
-/* Save previous character and get next character. */
+// Save previous character and get next character.
 static LJ_AINLINE LexChar lex_savenext(LexState* ls)
 {
    lex_save(ls, ls->c);
    return lex_next(ls);
 }
 
-/* Skip line break. Handles "\n", "\r", "\r\n" or "\n\r". */
+// Skip line break. Handles "\n", "\r", "\r\n" or "\n\r".
 static void lex_newline(LexState* ls)
 {
    LexChar old = ls->c;
@@ -89,9 +89,9 @@ static void lex_newline(LexState* ls)
       lj_lex_error(ls, ls->tok, LJ_ERR_XLINES);
 }
 
-/* -- Scanner for terminals ----------------------------------------------- */
+// -- Scanner for terminals -----------------------------------------------
 
-/* Parse a number literal. */
+// Parse a number literal.
 static void lex_number(LexState* ls, TValue* tv)
 {
    StrScanFmt fmt;
@@ -110,7 +110,7 @@ static void lex_number(LexState* ls, TValue* tv)
       setitype(tv, LJ_TISNUM);
    }
    else if (fmt == STRSCAN_NUM) {
-      /* Already in correct format. */
+      // Already in correct format.
 #if LJ_HASFFI
    }
    else if (fmt != STRSCAN_ERROR) {
@@ -138,7 +138,7 @@ static void lex_number(LexState* ls, TValue* tv)
    }
 }
 
-/* Skip equal signs for "[=...=[" and "]=...=]" and return their count. */
+// Skip equal signs for "[=...=[" and "]=...=]" and return their count.
 static int lex_skipeq(LexState* ls)
 {
    int count = 0;
@@ -149,7 +149,7 @@ static int lex_skipeq(LexState* ls)
    return (ls->c == s) ? count : (-count) - 1;
 }
 
-/* Parse a long string or long comment (tv set to NULL). */
+// Parse a long string or long comment (tv set to NULL).
 static void lex_longstring(LexState* ls, TValue* tv, int sep)
 {
    lex_savenext(ls);  /* Skip second '['. */
@@ -184,7 +184,7 @@ static void lex_longstring(LexState* ls, TValue* tv, int sep)
    }
 }
 
-/* Parse a string. */
+// Parse a string.
 static void lex_string(LexState* ls, TValue* tv)
 {
    LexChar delim = ls->c;  /* Delimiter is '\'' or '"'. */
@@ -290,9 +290,9 @@ static void lex_string(LexState* ls, TValue* tv)
       lj_parse_keepstr(ls, ls->sb.b + 1, sbuflen(&ls->sb) - 2));
 }
 
-/* -- Main lexical scanner ------------------------------------------------ */
+// -- Main lexical scanner ------------------------------------------------
 
-/* Get next lexical token. */
+// Get next lexical token.
 static LexToken lex_scan(LexState* ls, TValue* tv)
 {
    lj_buf_reset(&ls->sb);
@@ -303,7 +303,7 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
             lex_number(ls, tv);
             return TK_number;
          }
-         /* Identifier or reserved word. */
+         // Identifier or reserved word.
          do {
             lex_savenext(ls);
          } while (lj_char_isident(ls->c));
@@ -341,7 +341,7 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
                continue;
             }
          }
-         /* Short comment "--.*\n". */
+         // Short comment "--.*\n".
          while (!lex_iseol(ls) && ls->c != LEX_EOF)
             lex_next(ls);
          continue;
@@ -442,9 +442,9 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
    }
 }
 
-/* -- Lexer API ----------------------------------------------------------- */
+// -- Lexer API -----------------------------------------------------------
 
-/* Setup lexer state. */
+// Setup lexer state.
 int lj_lex_setup(lua_State* L, LexState* ls)
 {
    int header = 0;
@@ -495,7 +495,7 @@ int lj_lex_setup(lua_State* L, LexState* ls)
    return 0;
 }
 
-/* Cleanup lexer state. */
+// Cleanup lexer state.
 void lj_lex_cleanup(lua_State* L, LexState* ls)
 {
    global_State* g = G(L);
@@ -504,7 +504,7 @@ void lj_lex_cleanup(lua_State* L, LexState* ls)
    lj_buf_free(g, &ls->sb);
 }
 
-/* Return next lexical token. */
+// Return next lexical token.
 void lj_lex_next(LexState* ls)
 {
    ls->lastline = ls->linenumber;
@@ -518,7 +518,7 @@ void lj_lex_next(LexState* ls)
    }
 }
 
-/* Look ahead for the next token. */
+// Look ahead for the next token.
 LexToken lj_lex_lookahead(LexState* ls)
 {
    lj_assertLS(ls->lookahead == TK_eof, "double lookahead");
@@ -526,7 +526,7 @@ LexToken lj_lex_lookahead(LexState* ls)
    return ls->lookahead;
 }
 
-/* Convert token to string. */
+// Convert token to string.
 const char* lj_lex_token2str(LexState* ls, LexToken tok)
 {
    if (tok > TK_OFS)
@@ -537,7 +537,7 @@ const char* lj_lex_token2str(LexState* ls, LexToken tok)
       return lj_strfmt_pushf(ls->L, "char(%d)", tok);
 }
 
-/* Lexer error. */
+// Lexer error.
 void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...)
 {
    const char* tokstr;
@@ -557,7 +557,7 @@ void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...)
    va_end(argp);
 }
 
-/* Initialize strings for reserved words. */
+// Initialize strings for reserved words.
 void lj_lex_init(lua_State* L)
 {
    uint32_t i;

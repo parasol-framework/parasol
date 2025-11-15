@@ -45,7 +45,7 @@ void lj_vmevent_call(lua_State* L, ptrdiff_t argbase)
    hook_vmevent(g);
    status = lj_vm_pcall(L, restorestack(L, argbase), 0 + 1, 0);
    if (LJ_UNLIKELY(status)) {
-      /* Really shouldn't use stderr here, but where else to complain? */
+      // Really shouldn't use stderr here, but where else to complain?
       L->top--;
       fputs("VM handler failed: ", stderr);
       fputs(tvisstr(L->top) ? strVdata(L->top) : "?", stderr);

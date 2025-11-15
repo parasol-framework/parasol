@@ -9,7 +9,7 @@
 #include "lj_obj.h"
 #include "lj_bc.h"
 
-/* -- Lua stack frame ----------------------------------------------------- */
+// -- Lua stack frame -----------------------------------------------------
 
 /* Frame type markers in LSB of PC (4-byte aligned) or delta (8-byte aligned:
 **
@@ -29,7 +29,7 @@ enum {
 #define FRAME_P         4
 #define FRAME_TYPEP      (FRAME_TYPE|FRAME_P)
 
-/* Macros to access and modify Lua frames. */
+// Macros to access and modify Lua frames.
 #if LJ_FR2
 /* Two-slot frame info, required for 64 bit PC/GCRef:
 **
@@ -108,9 +108,9 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  /* Special continuations. */
 #define frame_prevl(f)      ((f) - (1+LJ_FR2+bc_a(frame_pc(f)[-1])))
 #define frame_prevd(f)      ((TValue *)((char *)(f) - frame_sized(f)))
 #define frame_prev(f)      (frame_islua(f)?frame_prevl(f):frame_prevd(f))
-/* Note: this macro does not skip over FRAME_VARG. */
+// Note: this macro does not skip over FRAME_VARG.
 
-/* -- C stack frame ------------------------------------------------------- */
+// -- C stack frame -------------------------------------------------------
 
 /* Macros to access and modify the C stack frame chain.
 **
@@ -133,7 +133,7 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  /* Special continuations. */
 ** the C frame structure on each architecture.
 */
 
-/* These definitions must match with the arch-specific *.dasc files. */
+// These definitions must match with the arch-specific *.dasc files.
 #if LJ_TARGET_X86
 #if LJ_ABI_WIN
 #define CFRAME_OFS_ERRF      (19*4)

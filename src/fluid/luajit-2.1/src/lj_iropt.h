@@ -12,11 +12,11 @@
 #include "lj_jit.h"
 
 #if LJ_HASJIT
-/* IR emitter. */
+// IR emitter.
 LJ_FUNC void LJ_FASTCALL lj_ir_growtop(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_ir_emit(jit_State *J);
 
-/* Save current IR in J->fold.ins, but do not emit it (yet). */
+// Save current IR in J->fold.ins, but do not emit it (yet).
 static LJ_AINLINE void lj_ir_set_(jit_State *J, uint16_t ot, IRRef1 a, IRRef1 b)
 {
   J->fold.ins.ot = ot; J->fold.ins.op1 = a; J->fold.ins.op2 = b;
@@ -38,7 +38,7 @@ static LJ_AINLINE IRRef lj_ir_nextins(jit_State *J)
 
 LJ_FUNC TRef lj_ir_ggfload(jit_State *J, IRType t, uintptr_t ofs);
 
-/* Interning of constants. */
+// Interning of constants.
 LJ_FUNC TRef LJ_FASTCALL lj_ir_kint(jit_State *J, int32_t k);
 LJ_FUNC TRef lj_ir_k64(jit_State *J, IROp op, uint64_t u64);
 LJ_FUNC TRef lj_ir_knum_u64(jit_State *J, uint64_t u64);
@@ -69,34 +69,34 @@ static LJ_AINLINE TRef lj_ir_knum(jit_State *J, lua_Number n)
 #define lj_ir_kptr(J, ptr)   lj_ir_kptr_(J, IR_KPTR, (ptr))
 #define lj_ir_kkptr(J, ptr)   lj_ir_kptr_(J, IR_KKPTR, (ptr))
 
-/* Special FP constants. */
+// Special FP constants.
 #define lj_ir_knum_zero(J)   lj_ir_knum_u64(J, U64x(00000000,00000000))
 #define lj_ir_knum_one(J)   lj_ir_knum_u64(J, U64x(3ff00000,00000000))
 #define lj_ir_knum_tobit(J)   lj_ir_knum_u64(J, U64x(43380000,00000000))
 
-/* Special 128 bit SIMD constants. */
+// Special 128 bit SIMD constants.
 #define lj_ir_ksimd(J, idx) \
   lj_ir_ggfload(J, IRT_NUM, (uintptr_t)LJ_KSIMD(J, idx) - (uintptr_t)J2GG(J))
 
-/* Access to constants. */
+// Access to constants.
 LJ_FUNC void lj_ir_kvalue(lua_State *L, TValue *tv, const IRIns *ir);
 
-/* Convert IR operand types. */
+// Convert IR operand types.
 LJ_FUNC TRef LJ_FASTCALL lj_ir_tonumber(jit_State *J, TRef tr);
 LJ_FUNC TRef LJ_FASTCALL lj_ir_tonum(jit_State *J, TRef tr);
 LJ_FUNC TRef LJ_FASTCALL lj_ir_tostr(jit_State *J, TRef tr);
 
-/* Miscellaneous IR ops. */
+// Miscellaneous IR ops.
 LJ_FUNC int lj_ir_numcmp(lua_Number a, lua_Number b, IROp op);
 LJ_FUNC int lj_ir_strcmp(GCstr *a, GCstr *b, IROp op);
 LJ_FUNC void lj_ir_rollback(jit_State *J, IRRef ref);
 
-/* Emit IR instructions with on-the-fly optimizations. */
+// Emit IR instructions with on-the-fly optimizations.
 LJ_FUNC TRef LJ_FASTCALL lj_opt_fold(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_cse(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_cselim(jit_State *J, IRRef lim);
 
-/* Special return values for the fold functions. */
+// Special return values for the fold functions.
 enum {
   NEXTFOLD,      /* Couldn't fold, pass on. */
   RETRYFOLD,      /* Retry fold with modified fins. */
@@ -114,7 +114,7 @@ enum {
 #define CSEFOLD      (lj_opt_cse(J))
 #define EMITFOLD   (lj_ir_emit(J))
 
-/* Load/store forwarding. */
+// Load/store forwarding.
 LJ_FUNC TRef LJ_FASTCALL lj_opt_fwd_aload(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_fwd_hload(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_fwd_uload(jit_State *J);
@@ -127,13 +127,13 @@ LJ_FUNC int LJ_FASTCALL lj_opt_fwd_tptr(jit_State *J, IRRef lim);
 LJ_FUNC int LJ_FASTCALL lj_opt_fwd_sbuf(jit_State *J, IRRef lim);
 LJ_FUNC int lj_opt_fwd_wasnonnil(jit_State *J, IROpT loadop, IRRef xref);
 
-/* Dead-store elimination. */
+// Dead-store elimination.
 LJ_FUNC TRef LJ_FASTCALL lj_opt_dse_ahstore(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_dse_ustore(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_dse_fstore(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_dse_xstore(jit_State *J);
 
-/* Narrowing. */
+// Narrowing.
 LJ_FUNC TRef LJ_FASTCALL lj_opt_narrow_convert(jit_State *J);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_narrow_index(jit_State *J, TRef key);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_narrow_toint(jit_State *J, TRef tr);
@@ -148,7 +148,7 @@ LJ_FUNC TRef lj_opt_narrow_mod(jit_State *J, TRef rb, TRef rc, TValue *vb, TValu
 LJ_FUNC TRef lj_opt_narrow_pow(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc);
 LJ_FUNC IRType lj_opt_narrow_forl(jit_State *J, cTValue *forbase);
 
-/* Optimization passes. */
+// Optimization passes.
 LJ_FUNC void lj_opt_dce(jit_State *J);
 LJ_FUNC int lj_opt_loop(jit_State *J);
 #if LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI)

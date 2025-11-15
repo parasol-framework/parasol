@@ -33,9 +33,9 @@
 #include <io.h>
 #endif
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* DynASM glue definitions. */
+// DynASM glue definitions.
 #define Dst		ctx
 #define Dst_DECL	BuildCtx *ctx
 #define Dst_REF		(ctx->D)
@@ -43,18 +43,18 @@
 
 #include "../dynasm/dasm_proto.h"
 
-/* Glue macros for DynASM. */
+// Glue macros for DynASM.
 static int collect_reloc(BuildCtx *ctx, uint8_t *addr, int idx, int type);
 
 #define DASM_EXTERN(ctx, addr, idx, type) \
   collect_reloc(ctx, addr, idx, type)
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* Avoid trouble if cross-compiling for an x86 target. Speed doesn't matter. */
+// Avoid trouble if cross-compiling for an x86 target. Speed doesn't matter.
 #define DASM_ALIGNED_WRITES	1
 
-/* Embed architecture-specific DynASM encoder. */
+// Embed architecture-specific DynASM encoder.
 #if LJ_TARGET_X86ORX64
 #include "../dynasm/dasm_x86.h"
 #elif LJ_TARGET_ARM
@@ -69,10 +69,10 @@ static int collect_reloc(BuildCtx *ctx, uint8_t *addr, int idx, int type);
 #error "No support for this architecture (yet)"
 #endif
 
-/* Embed generated architecture-specific backend. */
+// Embed generated architecture-specific backend.
 #include "buildvm_arch.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 void owrite(BuildCtx *ctx, const void *ptr, size_t sz)
 {
@@ -83,15 +83,15 @@ void owrite(BuildCtx *ctx, const void *ptr, size_t sz)
   }
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* Emit code as raw bytes. Only used for DynASM debugging. */
+// Emit code as raw bytes. Only used for DynASM debugging.
 static void emit_raw(BuildCtx *ctx)
 {
   owrite(ctx, ctx->code, ctx->codesz);
 }
 
-/* -- Build machine code -------------------------------------------------- */
+// -- Build machine code --------------------------------------------------
 
 static const char *sym_decorate(BuildCtx *ctx,
 				const char *prefix, const char *suffix)
@@ -114,7 +114,7 @@ static const char *sym_decorate(BuildCtx *ctx,
     else
       *p = '\0';
 #elif LJ_TARGET_PPC && !LJ_TARGET_CONSOLE
-    /* Keep @plt etc. */
+    // Keep @plt etc.
 #else
     *p = '\0';
 #endif
@@ -128,7 +128,7 @@ static const char *sym_decorate(BuildCtx *ctx,
 
 static int relocmap[NRELOCSYM];
 
-/* Collect external relocations. */
+// Collect external relocations.
 static int collect_reloc(BuildCtx *ctx, uint8_t *addr, int idx, int type)
 {
   if (ctx->nreloc >= BUILD_MAX_RELOC) {
@@ -151,7 +151,7 @@ static int collect_reloc(BuildCtx *ctx, uint8_t *addr, int idx, int type)
 #endif
 }
 
-/* Naive insertion sort. Performance doesn't matter here. */
+// Naive insertion sort. Performance doesn't matter here.
 static void sym_insert(BuildCtx *ctx, int32_t ofs,
 		       const char *prefix, const char *suffix)
 {
@@ -166,13 +166,13 @@ static void sym_insert(BuildCtx *ctx, int32_t ofs,
   ctx->sym[i].name = sym_decorate(ctx, prefix, suffix);
 }
 
-/* Build the machine code. */
+// Build the machine code.
 static int build_code(BuildCtx *ctx)
 {
   int status;
   int i;
 
-  /* Initialize DynASM structures. */
+  // Initialize DynASM structures.
   ctx->nglob = GLOB__MAX;
   ctx->glob = (void **)malloc(ctx->nglob*sizeof(void *));
   memset(ctx->glob, 0, ctx->nglob*sizeof(void *));
@@ -191,22 +191,22 @@ static int build_code(BuildCtx *ctx)
   dasm_setupglobal(Dst, ctx->glob, ctx->nglob);
   dasm_setup(Dst, build_actionlist);
 
-  /* Call arch-specific backend to emit the code. */
+  // Call arch-specific backend to emit the code.
   ctx->npc = build_backend(ctx);
 
-  /* Finalize the code. */
+  // Finalize the code.
   (void)dasm_checkstep(Dst, -1);
   if ((status = dasm_link(Dst, &ctx->codesz))) return status;
   ctx->code = (uint8_t *)malloc(ctx->codesz);
   if ((status = dasm_encode(Dst, (void *)ctx->code))) return status;
 
-  /* Allocate symbol table and bytecode offsets. */
+  // Allocate symbol table and bytecode offsets.
   ctx->beginsym = sym_decorate(ctx, "", LABEL_PREFIX "vm_asm_begin");
   ctx->sym = (BuildSym *)malloc((ctx->npc+ctx->nglob+1)*sizeof(BuildSym));
   ctx->nsym = 0;
   ctx->bc_ofs = (int32_t *)malloc(ctx->npc*sizeof(int32_t));
 
-  /* Collect the opcodes (PC labels). */
+  // Collect the opcodes (PC labels).
   for (i = 0; i < ctx->npc; i++) {
     int32_t ofs = dasm_getpclabel(Dst, i);
     if (ofs < 0) return 0x22000000|i;
@@ -218,7 +218,7 @@ static int build_code(BuildCtx *ctx)
       sym_insert(ctx, ofs, LABEL_PREFIX_BC, bc_names[i]);
   }
 
-  /* Collect the globals (named labels). */
+  // Collect the globals (named labels).
   for (i = 0; i < ctx->nglob; i++) {
     const char *gl = globnames[i];
     int len = (int)strlen(gl);
@@ -226,13 +226,13 @@ static int build_code(BuildCtx *ctx)
       fprintf(stderr, "Error: undefined global %s\n", gl);
       exit(2);
     }
-    /* Skip the _Z symbols. */
+    // Skip the _Z symbols.
     if (!(len >= 2 && gl[len-2] == '_' && gl[len-1] == 'Z'))
       sym_insert(ctx, (int32_t)((uint8_t *)(ctx->glob[i]) - ctx->code),
 		 LABEL_PREFIX, globnames[i]);
   }
 
-  /* Close the address range. */
+  // Close the address range.
   sym_insert(ctx, (int32_t)ctx->codesz, "", "");
   ctx->nsym--;
 
@@ -241,7 +241,7 @@ static int build_code(BuildCtx *ctx)
   return 0;
 }
 
-/* -- Generate VM enums --------------------------------------------------- */
+// -- Generate VM enums ---------------------------------------------------
 
 const char *const bc_names[] = {
 #define BCNAME(name, ma, mb, mc, mt)       #name,
@@ -302,7 +302,7 @@ static const char *lower(char *buf, const char *s)
   return buf;
 }
 
-/* Emit C source code for bytecode-related definitions. */
+// Emit C source code for bytecode-related definitions.
 static void emit_bcdef(BuildCtx *ctx)
 {
   int i;
@@ -315,7 +315,7 @@ static void emit_bcdef(BuildCtx *ctx)
   }
 }
 
-/* Emit VM definitions as Lua code for debug modules. */
+// Emit VM definitions as Lua code for debug modules.
 static void emit_vmdef(BuildCtx *ctx)
 {
   char buf[80];
@@ -357,9 +357,9 @@ static void emit_vmdef(BuildCtx *ctx)
   fprintf(ctx->fp, "},\n\n");
 }
 
-/* -- Argument parsing ---------------------------------------------------- */
+// -- Argument parsing ----------------------------------------------------
 
-/* Build mode names. */
+// Build mode names.
 static const char *const modenames[] = {
 #define BUILDNAME(name)		#name,
 BUILDDEF(BUILDNAME)
@@ -367,7 +367,7 @@ BUILDDEF(BUILDNAME)
   NULL
 };
 
-/* Print usage information and exit. */
+// Print usage information and exit.
 static void usage(void)
 {
   int i;
@@ -381,7 +381,7 @@ static void usage(void)
   exit(1);
 }
 
-/* Parse the output mode name. */
+// Parse the output mode name.
 static BuildMode parsemode(const char *mode)
 {
   int i;
@@ -392,7 +392,7 @@ static BuildMode parsemode(const char *mode)
   return (BuildMode)-1;
 }
 
-/* Parse arguments. */
+// Parse arguments.
 static void parseargs(BuildCtx *ctx, char **argv)
 {
   const char *a;

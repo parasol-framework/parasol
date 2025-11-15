@@ -117,16 +117,16 @@ Stack level 0, frame at 0xffffd7c0:
 ** ------------------------------------------------------------------------
 */
 
-/* -- GDB JIT API --------------------------------------------------------- */
+// -- GDB JIT API ---------------------------------------------------------
 
-/* GDB JIT actions. */
+// GDB JIT actions.
 enum {
    GDBJIT_NOACTION = 0,
    GDBJIT_REGISTER,
    GDBJIT_UNREGISTER
 };
 
-/* GDB JIT entry. */
+// GDB JIT entry.
 typedef struct GDBJITentry {
    struct GDBJITentry* next_entry;
    struct GDBJITentry* prev_entry;
@@ -134,7 +134,7 @@ typedef struct GDBJITentry {
    uint64_t symfile_size;
 } GDBJITentry;
 
-/* GDB JIT descriptor. */
+// GDB JIT descriptor.
 typedef struct GDBJITdesc {
    uint32_t version;
    uint32_t action_flag;
@@ -146,15 +146,15 @@ GDBJITdesc __jit_debug_descriptor = {
   1, GDBJIT_NOACTION, NULL, NULL
 };
 
-/* GDB sets a breakpoint at this function. */
+// GDB sets a breakpoint at this function.
 void LJ_NOINLINE __jit_debug_register_code()
 {
    __asm__ __volatile__("");
 };
 
-/* -- In-memory ELF object definitions ------------------------------------ */
+// -- In-memory ELF object definitions ------------------------------------
 
-/* ELF definitions. */
+// ELF definitions.
 typedef struct ELFheader {
    uint8_t emagic[4];
    uint8_t eclass;
@@ -229,7 +229,7 @@ enum {
    ELFSYM_BIND_GLOBAL = 1 << 4,
 };
 
-/* DWARF definitions. */
+// DWARF definitions.
 #define DW_CIE_VERSION   1
 
 enum {
@@ -287,7 +287,7 @@ enum {
    DW_REG_SP, DW_REG_BP, DW_REG_SI, DW_REG_DI,
    DW_REG_RA,
 #elif LJ_TARGET_X64
-   /* Yes, the order is strange, but correct. */
+   // Yes, the order is strange, but correct.
    DW_REG_AX, DW_REG_DX, DW_REG_CX, DW_REG_BX,
    DW_REG_SI, DW_REG_DI, DW_REG_BP, DW_REG_SP,
    DW_REG_8, DW_REG_9, DW_REG_10, DW_REG_11,
@@ -311,7 +311,7 @@ enum {
 #endif
 };
 
-/* Minimal list of sections for the in-memory ELF object. */
+// Minimal list of sections for the in-memory ELF object.
 enum {
    GDBJIT_SECT_NULL,
    GDBJIT_SECT_text,
@@ -332,7 +332,7 @@ enum {
    GDBJIT_SYM__MAX
 };
 
-/* In-memory ELF object. */
+// In-memory ELF object.
 typedef struct GDBJITobj {
    ELFheader hdr;         /* ELF header. */
    ELFsectheader sect[GDBJIT_SECT__MAX];   /* ELF sections. */
@@ -340,14 +340,14 @@ typedef struct GDBJITobj {
    uint8_t space[4096];         /* Space for various section data. */
 } GDBJITobj;
 
-/* Combined structure for GDB JIT entry and ELF object. */
+// Combined structure for GDB JIT entry and ELF object.
 typedef struct GDBJITentryobj {
    GDBJITentry entry;
    size_t sz;
    GDBJITobj obj;
 } GDBJITentryobj;
 
-/* Template for in-memory ELF header. */
+// Template for in-memory ELF header.
 static const ELFheader elfhdr_template = {
   .emagic = { 0x7f, 'E', 'L', 'F' },
   .eclass = LJ_64 ? 2 : 1,
@@ -399,9 +399,9 @@ static const ELFheader elfhdr_template = {
   .shstridx = GDBJIT_SECT_shstrtab
 };
 
-/* -- In-memory ELF object generation ------------------------------------- */
+// -- In-memory ELF object generation -------------------------------------
 
-/* Context for generating the ELF object for the GDB JIT API. */
+// Context for generating the ELF object for the GDB JIT API.
 typedef struct GDBJITctx {
    uint8_t* p;      /* Pointer to next address in obj.space. */
    uint8_t* startp;   /* Pointer to start address in obj.space. */
@@ -416,7 +416,7 @@ typedef struct GDBJITctx {
    GDBJITobj obj;   /* In-memory ELF object. */
 } GDBJITctx;
 
-/* Add a zero-terminated string. */
+// Add a zero-terminated string.
 static uint32_t gdbjit_strz(GDBJITctx* ctx, const char* str)
 {
    uint8_t* p = ctx->p;
@@ -428,14 +428,14 @@ static uint32_t gdbjit_strz(GDBJITctx* ctx, const char* str)
    return ofs;
 }
 
-/* Append a decimal number. */
+// Append a decimal number.
 static void gdbjit_catnum(GDBJITctx* ctx, uint32_t n)
 {
    if (n >= 10) { uint32_t m = n / 10; n = n % 10; gdbjit_catnum(ctx, m); }
    *ctx->p++ = '0' + n;
 }
 
-/* Add a SLEB128 value. */
+// Add a SLEB128 value.
 static void gdbjit_sleb128(GDBJITctx* ctx, int32_t v)
 {
    uint8_t* p = ctx->p;
@@ -445,7 +445,7 @@ static void gdbjit_sleb128(GDBJITctx* ctx, int32_t v)
    ctx->p = p;
 }
 
-/* Shortcuts to generate DWARF structures. */
+// Shortcuts to generate DWARF structures.
 #define DB(x)      (*p++ = (x))
 #define DI8(x)      (*(int8_t *)p = (x), p++)
 #define DU16(x)      (*(uint16_t *)p = (x), p += 2)
@@ -459,7 +459,7 @@ static void gdbjit_sleb128(GDBJITctx* ctx, int32_t v)
   { uint32_t *szp_##name = (uint32_t *)p; p += 4; stmt \
     *szp_##name = (uint32_t)((p-(uint8_t *)szp_##name)-4); } \
 
-/* Initialize ELF section headers. */
+// Initialize ELF section headers.
 static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
 {
    ELFsectheader* sect;
@@ -498,7 +498,7 @@ static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
 #undef SECTDEF
 }
 
-/* Initialize symbol table. */
+// Initialize symbol table.
 static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
 {
    ELFsymbol* sym;
@@ -519,13 +519,13 @@ static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
    sym->info = ELFSYM_TYPE_FUNC | ELFSYM_BIND_GLOBAL;
 }
 
-/* Initialize .eh_frame section. */
+// Initialize .eh_frame section.
 static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
    uint8_t* framep = p;
 
-   /* Emit DWARF EH CIE. */
+   // Emit DWARF EH CIE.
    DSECT(CIE,
       DU32(0);         /* Offset to CIE itself. */
    DB(DW_CIE_VERSION);
@@ -543,13 +543,13 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
    DALIGNNOP(sizeof(uintptr_t));
       )
 
-      /* Emit DWARF EH FDE. */
+      // Emit DWARF EH FDE.
       DSECT(FDE,
          DU32((uint32_t)(p - framep));   /* Offset to CIE. */
    DU32(0);         /* Machine code offset relative to .text. */
    DU32(ctx->szmcode);      /* Machine code length. */
    DB(0);         /* Augmentation data. */
-   /* Registers saved in CFRAME. */
+   // Registers saved in CFRAME.
 #if LJ_TARGET_X86
    DB(DW_CFA_offset | DW_REG_BP); DUV(2);
    DB(DW_CFA_offset | DW_REG_DI); DUV(3);
@@ -560,7 +560,7 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
    DB(DW_CFA_offset | DW_REG_BX); DUV(3);
    DB(DW_CFA_offset | DW_REG_15); DUV(4);
    DB(DW_CFA_offset | DW_REG_14); DUV(5);
-   /* Extra registers saved for JIT-compiled code. */
+   // Extra registers saved for JIT-compiled code.
    DB(DW_CFA_offset | DW_REG_13); DUV(LJ_GC64 ? 10 : 9);
    DB(DW_CFA_offset | DW_REG_12); DUV(LJ_GC64 ? 11 : 10);
 #elif LJ_TARGET_ARM
@@ -605,7 +605,7 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
       ctx->p = p;
 }
 
-/* Initialize .debug_info section. */
+// Initialize .debug_info section.
 static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
@@ -625,12 +625,12 @@ static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
       ctx->p = p;
 }
 
-/* Initialize .debug_abbrev section. */
+// Initialize .debug_abbrev section.
 static void LJ_FASTCALL gdbjit_debugabbrev(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
-   /* Abbrev #1: DW_TAG_compile_unit. */
+   // Abbrev #1: DW_TAG_compile_unit.
    DUV(1); DUV(DW_TAG_compile_unit);
    DB(DW_children_no);
    DUV(DW_AT_name);   DUV(DW_FORM_string);
@@ -644,7 +644,7 @@ static void LJ_FASTCALL gdbjit_debugabbrev(GDBJITctx* ctx)
 
 #define DLNE(op, s)   (DB(DW_LNS_extended_op), DUV(1+(s)), DB((op)))
 
-/* Initialize .debug_line section. */
+// Initialize .debug_line section.
 static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
@@ -658,9 +658,9 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
    DB(2);         /* Line range for special opcodes. */
    DB(3 + 1);         /* Opcode base at DW_LNS_advance_line+1. */
    DB(0); DB(1); DB(1);   /* Standard opcode lengths. */
-   /* Directory table. */
+   // Directory table.
    DB(0);
-   /* File name table. */
+   // File name table.
    DSTR(ctx->filename); DUV(0); DUV(0); DUV(0);
    DB(0);
       )
@@ -679,7 +679,7 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 
 #undef DLNE
 
-/* Undef shortcuts. */
+// Undef shortcuts.
 #undef DB
 #undef DI8
 #undef DU16
@@ -691,10 +691,10 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 #undef DALIGNNOP
 #undef DSECT
 
-/* Type of a section initializer callback. */
+// Type of a section initializer callback.
 typedef void (LJ_FASTCALL* GDBJITinitf)(GDBJITctx* ctx);
 
-/* Call section initializer and set the section offset and size. */
+// Call section initializer and set the section offset and size.
 static void gdbjit_initsect(GDBJITctx* ctx, int sect, GDBJITinitf initf)
 {
    ctx->startp = ctx->p;
@@ -706,15 +706,15 @@ static void gdbjit_initsect(GDBJITctx* ctx, int sect, GDBJITinitf initf)
 #define SECTALIGN(p, a) \
   ((p) = (uint8_t *)(((uintptr_t)(p) + ((a)-1)) & ~(uintptr_t)((a)-1)))
 
-/* Build in-memory ELF object. */
+// Build in-memory ELF object.
 static void gdbjit_buildobj(GDBJITctx* ctx)
 {
    GDBJITobj* obj = &ctx->obj;
-   /* Fill in ELF header and clear structures. */
+   // Fill in ELF header and clear structures.
    memcpy(&obj->hdr, &elfhdr_template, sizeof(ELFheader));
    memset(&obj->sect, 0, sizeof(ELFsectheader) * GDBJIT_SECT__MAX);
    memset(&obj->sym, 0, sizeof(ELFsymbol) * GDBJIT_SYM__MAX);
-   /* Initialize sections. */
+   // Initialize sections.
    ctx->p = obj->space;
    gdbjit_initsect(ctx, GDBJIT_SECT_shstrtab, gdbjit_secthdr);
    gdbjit_initsect(ctx, GDBJIT_SECT_strtab, gdbjit_symtab);
@@ -729,14 +729,14 @@ static void gdbjit_buildobj(GDBJITctx* ctx)
 
 #undef SECTALIGN
 
-/* -- Interface to GDB JIT API -------------------------------------------- */
+// -- Interface to GDB JIT API --------------------------------------------
 
 static int gdbjit_lock;
 
 static void gdbjit_lock_acquire()
 {
    while (__sync_lock_test_and_set(&gdbjit_lock, 1)) {
-      /* Just spin; futexes or pthreads aren't worth the portability cost. */
+      // Just spin; futexes or pthreads aren't worth the portability cost.
    }
 }
 
@@ -745,16 +745,16 @@ static void gdbjit_lock_release()
    __sync_lock_release(&gdbjit_lock);
 }
 
-/* Add new entry to GDB JIT symbol chain. */
+// Add new entry to GDB JIT symbol chain.
 static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
 {
-   /* Allocate memory for GDB JIT entry and ELF object. */
+   // Allocate memory for GDB JIT entry and ELF object.
    MSize sz = (MSize)(sizeof(GDBJITentryobj) - sizeof(GDBJITobj) + ctx->objsize);
    GDBJITentryobj* eo = lj_mem_newt(L, sz, GDBJITentryobj);
    memcpy(&eo->obj, &ctx->obj, ctx->objsize);  /* Copy ELF object. */
    eo->sz = sz;
    ctx->T->gdbjit_entry = (void*)eo;
-   /* Link new entry to chain and register it. */
+   // Link new entry to chain and register it.
    eo->entry.prev_entry = NULL;
    gdbjit_lock_acquire();
    eo->entry.next_entry = __jit_debug_descriptor.first_entry;
@@ -769,7 +769,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
    gdbjit_lock_release();
 }
 
-/* Add debug info for newly compiled trace and notify GDB. */
+// Add debug info for newly compiled trace and notify GDB.
 void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
 {
    GDBJITctx ctx;
@@ -794,7 +794,7 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
    gdbjit_newentry(J->L, &ctx);
 }
 
-/* Delete debug info for trace and notify GDB. */
+// Delete debug info for trace and notify GDB.
 void lj_gdbjit_deltrace(jit_State* J, GCtrace* T)
 {
    GDBJITentryobj* eo = (GDBJITentryobj*)T->gdbjit_entry;

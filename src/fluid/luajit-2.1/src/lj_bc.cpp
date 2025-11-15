@@ -9,6 +9,6 @@
 #include "lj_obj.h"
 #include "lj_bc.h"
 
-/* Bytecode offsets and bytecode instruction modes. */
+// Bytecode offsets and bytecode instruction modes.
 #include "lj_bcdef.h"
 

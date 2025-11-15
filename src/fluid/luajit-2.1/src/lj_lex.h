@@ -11,7 +11,7 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 
-/* Lua lexer tokens. */
+// Lua lexer tokens.
 #define TKDEF(_, __) \
   _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
   _(for) _(function) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
@@ -38,13 +38,13 @@ enum {
 typedef int LexChar;   /* Lexical character. Unsigned ext. from char. */
 typedef int LexToken;   /* Lexical token. */
 
-/* Combined bytecode ins/line. Only used during bytecode generation. */
+// Combined bytecode ins/line. Only used during bytecode generation.
 typedef struct BCInsLine {
    BCIns ins;      /* Bytecode instruction. */
    BCLine line;      /* Line number for this bytecode. */
 } BCInsLine;
 
-/* Info for local variables. Only used during bytecode generation. */
+// Info for local variables. Only used during bytecode generation.
 typedef struct VarInfo {
    GCRef name;      /* Local variable name. */
    BCPos startpc;   /* First point where the local variable is active. */
@@ -53,7 +53,7 @@ typedef struct VarInfo {
    uint8_t info;      /* Variable info. */
 } VarInfo;
 
-/* Lua lexer state. */
+// Lua lexer state.
 typedef struct LexState {
    struct FuncState* fs;   /* Current FuncState. Defined in lj_parse.c. */
    struct lua_State* L;   /* Lua state. */

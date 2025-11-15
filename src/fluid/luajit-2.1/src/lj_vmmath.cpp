@@ -13,10 +13,10 @@
 #include "lj_ir.h"
 #include "lj_vm.h"
 
-/* -- Wrapper functions --------------------------------------------------- */
+// -- Wrapper functions ---------------------------------------------------
 
 #if LJ_TARGET_X86 && __ELF__ && __PIC__
-/* Wrapper functions to deal with the ELF/x86 PIC disaster. */
+// Wrapper functions to deal with the ELF/x86 PIC disaster.
 LJ_FUNCA double lj_wrap_log(double x) { return log(x); }
 LJ_FUNCA double lj_wrap_log10(double x) { return log10(x); }
 LJ_FUNCA double lj_wrap_exp(double x) { return exp(x); }
@@ -33,9 +33,9 @@ LJ_FUNCA double lj_wrap_atan2(double x, double y) { return atan2(x, y); }
 LJ_FUNCA double lj_wrap_fmod(double x, double y) { return fmod(x, y); }
 #endif
 
-/* -- Helper functions ---------------------------------------------------- */
+// -- Helper functions ----------------------------------------------------
 
-/* Unsigned x^k. */
+// Unsigned x^k.
 static double lj_vm_powui(double x, uint32_t k)
 {
    double y;
@@ -54,7 +54,7 @@ static double lj_vm_powui(double x, uint32_t k)
    return y;
 }
 
-/* Signed x^k. */
+// Signed x^k.
 double lj_vm_powi(double x, int32_t k)
 {
    if (k > 1)
@@ -96,13 +96,13 @@ double lj_vm_foldarith(double x, double y, int op)
    }
 }
 
-/* -- Helper functions for generated machine code ------------------------- */
+// -- Helper functions for generated machine code -------------------------
 
 #if (LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)) || LJ_TARGET_MIPS
 int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 {
    uint32_t y, ua, ub;
-   /* This must be checked before using this function. */
+   // This must be checked before using this function.
    lj_assertX(b != 0, "modulo with zero divisor");
    ua = a < 0 ? (uint32_t)-a : (uint32_t)a;
    ub = b < 0 ? (uint32_t)-b : (uint32_t)b;
@@ -122,7 +122,7 @@ double lj_vm_log2(double a)
 }
 #endif
 
-/* Computes fpm(x) for extended math functions. */
+// Computes fpm(x) for extended math functions.
 double lj_vm_foldfpm(double x, int fpm)
 {
    switch (fpm) {

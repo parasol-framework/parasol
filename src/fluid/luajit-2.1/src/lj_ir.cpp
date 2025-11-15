@@ -6,7 +6,7 @@
 #define lj_ir_c
 #define LUA_CORE
 
-/* For pointers to libc/libm functions. */
+// For pointers to libc/libm functions.
 #include <stdio.h>
 #include <math.h>
 
@@ -34,22 +34,22 @@
 #include "lj_strfmt.h"
 #include "lj_prng.h"
 
-/* Some local macros to save typing. Undef'd at the end. */
+// Some local macros to save typing. Undef'd at the end.
 #define IR(ref)         (&J->cur.ir[(ref)])
 #define fins         (&J->fold.ins)
 
-/* Pass IR on to next optimization in chain (FOLD). */
+// Pass IR on to next optimization in chain (FOLD).
 #define emitir(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
 
-/* -- IR tables ----------------------------------------------------------- */
+// -- IR tables -----------------------------------------------------------
 
-/* IR instruction modes. */
+// IR instruction modes.
 LJ_DATADEF const uint8_t lj_ir_mode[IR__MAX + 1] = {
 IRDEF(IRMODE)
   0
 };
 
-/* IR type sizes. */
+// IR type sizes.
 LJ_DATADEF const uint8_t lj_ir_type_size[IRT__MAX + 1] = {
 #define IRTSIZE(name, size)   size,
 IRTDEF(IRTSIZE)
@@ -57,7 +57,7 @@ IRTDEF(IRTSIZE)
   0
 };
 
-/* C call info for CALL* instructions. */
+// C call info for CALL* instructions.
 LJ_DATADEF const CCallInfo lj_ir_callinfo[] = {
 #define IRCALLCI(cond, name, nargs, kind, type, flags) \
   { (ASMFunction)IRCALLCOND_##cond(name), \
@@ -69,9 +69,9 @@ IRCALLDEF(IRCALLCI)
 }
 };
 
-/* -- IR emitter ---------------------------------------------------------- */
+// -- IR emitter ----------------------------------------------------------
 
-/* Grow IR buffer at the top. */
+// Grow IR buffer at the top.
 void LJ_FASTCALL lj_ir_growtop(jit_State* J)
 {
    IRIns* baseir = J->irbuf + J->irbotlim;
@@ -89,7 +89,7 @@ void LJ_FASTCALL lj_ir_growtop(jit_State* J)
    J->cur.ir = J->irbuf = baseir - J->irbotlim;
 }
 
-/* Grow IR buffer at the bottom or shift it up. */
+// Grow IR buffer at the bottom or shift it up.
 static void lj_ir_growbot(jit_State* J)
 {
    IRIns* baseir = J->irbuf + J->irbotlim;
@@ -98,7 +98,7 @@ static void lj_ir_growbot(jit_State* J)
    lj_assertJ(J->cur.nk == J->irbotlim || J->cur.nk - 1 == J->irbotlim,
       "unexpected IR growth");
    if (J->cur.nins + (szins >> 1) < J->irtoplim) {
-      /* More than half of the buffer is free on top: shift up by a quarter. */
+      // More than half of the buffer is free on top: shift up by a quarter.
       MSize ofs = szins >> 2;
       memmove(baseir + ofs, baseir, (J->cur.nins - J->irbotlim) * sizeof(IRIns));
       J->irbotlim -= ofs;
@@ -106,7 +106,7 @@ static void lj_ir_growbot(jit_State* J)
       J->cur.ir = J->irbuf = baseir - J->irbotlim;
    }
    else {
-      /* Double the buffer size, but split the growth amongst top/bottom. */
+      // Double the buffer size, but split the growth amongst top/bottom.
       IRIns* newbase = lj_mem_newt(J->L, 2 * szins * sizeof(IRIns), IRIns);
       MSize ofs = szins >= 256 ? 128 : (szins >> 1);  /* Limit bottom growth. */
       memcpy(newbase + ofs, baseir, (J->cur.nins - J->irbotlim) * sizeof(IRIns));
@@ -117,7 +117,7 @@ static void lj_ir_growbot(jit_State* J)
    }
 }
 
-/* Emit IR without any optimizations. */
+// Emit IR without any optimizations.
 TRef LJ_FASTCALL lj_ir_emit(jit_State* J)
 {
    IRRef ref = lj_ir_nextins(J);
@@ -132,7 +132,7 @@ TRef LJ_FASTCALL lj_ir_emit(jit_State* J)
    return TREF(ref, irt_t((ir->t = fins->t)));
 }
 
-/* Emit call to a C function. */
+// Emit call to a C function.
 TRef lj_ir_call(jit_State* J, IRCallID id, ...)
 {
    const CCallInfo* ci = &lj_ir_callinfo[id];
@@ -151,7 +151,7 @@ TRef lj_ir_call(jit_State* J, IRCallID id, ...)
    return emitir(CCI_OPTYPE(ci), tr, id);
 }
 
-/* Load field of type t from GG_State + offset. Must be 32 bit aligned. */
+// Load field of type t from GG_State + offset. Must be 32 bit aligned.
 TRef lj_ir_ggfload(jit_State* J, IRType t, uintptr_t ofs)
 {
    lj_assertJ((ofs & 3) == 0, "unaligned GG_State field offset");
@@ -162,7 +162,7 @@ TRef lj_ir_ggfload(jit_State* J, IRType t, uintptr_t ofs)
    return lj_opt_fold(J);
 }
 
-/* -- Interning of constants ---------------------------------------------- */
+// -- Interning of constants ----------------------------------------------
 
 /*
 ** IR instructions for constants are kept between J->cur.nk >= ref < REF_BIAS.
@@ -200,7 +200,7 @@ static LJ_AINLINE IRRef ir_nextk64(jit_State* J)
 #define ir_nextkgc ir_nextk
 #endif
 
-/* Intern int32_t constant. */
+// Intern int32_t constant.
 TRef LJ_FASTCALL lj_ir_kint(jit_State* J, int32_t k)
 {
    IRIns* ir, * cir = J->cur.ir;
@@ -219,7 +219,7 @@ found:
    return TREF(ref, IRT_INT);
 }
 
-/* Intern 64 bit constant, given by its 64 bit pattern. */
+// Intern 64 bit constant, given by its 64 bit pattern.
 TRef lj_ir_k64(jit_State* J, IROp op, uint64_t u64)
 {
    IRIns* ir, * cir = J->cur.ir;
@@ -240,19 +240,19 @@ found:
    return TREF(ref, t);
 }
 
-/* Intern FP constant, given by its 64 bit pattern. */
+// Intern FP constant, given by its 64 bit pattern.
 TRef lj_ir_knum_u64(jit_State* J, uint64_t u64)
 {
    return lj_ir_k64(J, IR_KNUM, u64);
 }
 
-/* Intern 64 bit integer constant. */
+// Intern 64 bit integer constant.
 TRef lj_ir_kint64(jit_State* J, uint64_t u64)
 {
    return lj_ir_k64(J, IR_KINT64, u64);
 }
 
-/* Check whether a number is int and return it. -0 is NOT considered an int. */
+// Check whether a number is int and return it. -0 is NOT considered an int.
 static int numistrueint(lua_Number n, int32_t* kp)
 {
    int32_t k = lj_num2int(n);
@@ -269,7 +269,7 @@ static int numistrueint(lua_Number n, int32_t* kp)
    return 0;
 }
 
-/* Intern number as int32_t constant if possible, otherwise as FP constant. */
+// Intern number as int32_t constant if possible, otherwise as FP constant.
 TRef lj_ir_knumint(jit_State* J, lua_Number n)
 {
    int32_t k;
@@ -279,7 +279,7 @@ TRef lj_ir_knumint(jit_State* J, lua_Number n)
       return lj_ir_knum(J, n);
 }
 
-/* Intern GC object "constant". */
+// Intern GC object "constant".
 TRef lj_ir_kgc(jit_State* J, GCobj* o, IRType t)
 {
    IRIns* ir, * cir = J->cur.ir;
@@ -290,7 +290,7 @@ TRef lj_ir_kgc(jit_State* J, GCobj* o, IRType t)
          goto found;
    ref = ir_nextkgc(J);
    ir = IR(ref);
-   /* NOBARRIER: Current trace is a GC root. */
+   // NOBARRIER: Current trace is a GC root.
    ir->op12 = 0;
    setgcref(ir[LJ_GC64].gcr, o);
    ir->t.irt = (uint8_t)t;
@@ -301,7 +301,7 @@ found:
    return TREF(ref, t);
 }
 
-/* Allocate GCtrace constant placeholder (no interning). */
+// Allocate GCtrace constant placeholder (no interning).
 TRef lj_ir_ktrace(jit_State* J)
 {
    IRRef ref = ir_nextkgc(J);
@@ -314,7 +314,7 @@ TRef lj_ir_ktrace(jit_State* J)
    return TREF(ref, IRT_P64);
 }
 
-/* Intern pointer constant. */
+// Intern pointer constant.
 TRef lj_ir_kptr_(jit_State* J, IROp op, void* ptr)
 {
    IRIns* ir, * cir = J->cur.ir;
@@ -341,7 +341,7 @@ found:
    return TREF(ref, IRT_PGC);
 }
 
-/* Intern typed NULL constant. */
+// Intern typed NULL constant.
 TRef lj_ir_knull(jit_State* J, IRType t)
 {
    IRIns* ir, * cir = J->cur.ir;
@@ -360,13 +360,13 @@ found:
    return TREF(ref, t);
 }
 
-/* Intern key slot. */
+// Intern key slot.
 TRef lj_ir_kslot(jit_State* J, TRef key, IRRef slot)
 {
    IRIns* ir, * cir = J->cur.ir;
    IRRef2 op12 = IRREF2((IRRef1)key, (IRRef1)slot);
    IRRef ref;
-   /* Const part is not touched by CSE/DCE, so 0-65535 is ok for IRMlit here. */
+   // Const part is not touched by CSE/DCE, so 0-65535 is ok for IRMlit here.
    lj_assertJ(tref_isk(key) && slot == (IRRef)(IRRef1)slot,
       "out-of-range key/slot");
    for (ref = J->chain[IR_KSLOT]; ref; ref = cir[ref].prev)
@@ -383,9 +383,9 @@ found:
    return TREF(ref, IRT_P32);
 }
 
-/* -- Access to IR constants ---------------------------------------------- */
+// -- Access to IR constants ----------------------------------------------
 
-/* Copy value of IR constant. */
+// Copy value of IR constant.
 void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
 {
    UNUSED(L);
@@ -411,9 +411,9 @@ void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
    }
 }
 
-/* -- Convert IR operand types -------------------------------------------- */
+// -- Convert IR operand types --------------------------------------------
 
-/* Convert from string to number. */
+// Convert from string to number.
 TRef LJ_FASTCALL lj_ir_tonumber(jit_State* J, TRef tr)
 {
    if (!tref_isnumber(tr)) {
@@ -425,7 +425,7 @@ TRef LJ_FASTCALL lj_ir_tonumber(jit_State* J, TRef tr)
    return tr;
 }
 
-/* Convert from integer or string to number. */
+// Convert from integer or string to number.
 TRef LJ_FASTCALL lj_ir_tonum(jit_State* J, TRef tr)
 {
    if (!tref_isnum(tr)) {
@@ -439,7 +439,7 @@ TRef LJ_FASTCALL lj_ir_tonum(jit_State* J, TRef tr)
    return tr;
 }
 
-/* Convert from integer or number to string. */
+// Convert from integer or number to string.
 TRef LJ_FASTCALL lj_ir_tostr(jit_State* J, TRef tr)
 {
    if (!tref_isstr(tr)) {
@@ -451,9 +451,9 @@ TRef LJ_FASTCALL lj_ir_tostr(jit_State* J, TRef tr)
    return tr;
 }
 
-/* -- Miscellaneous IR ops ------------------------------------------------ */
+// -- Miscellaneous IR ops ------------------------------------------------
 
-/* Evaluate numeric comparison. */
+// Evaluate numeric comparison.
 int lj_ir_numcmp(lua_Number a, lua_Number b, IROp op)
 {
    switch (op) {
@@ -471,7 +471,7 @@ int lj_ir_numcmp(lua_Number a, lua_Number b, IROp op)
    }
 }
 
-/* Evaluate string comparison. */
+// Evaluate string comparison.
 int lj_ir_strcmp(GCstr* a, GCstr* b, IROp op)
 {
    int res = lj_str_cmp(a, b);
@@ -484,7 +484,7 @@ int lj_ir_strcmp(GCstr* a, GCstr* b, IROp op)
    }
 }
 
-/* Rollback IR to previous state. */
+// Rollback IR to previous state.
 void lj_ir_rollback(jit_State* J, IRRef ref)
 {
    IRRef nins = J->cur.nins;

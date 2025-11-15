@@ -23,9 +23,9 @@
 #include "lj_strfmt.h"
 #include "lj_lib.h"
 
-/* -- Metamethod handling ------------------------------------------------- */
+// -- Metamethod handling -------------------------------------------------
 
-/* String interning of metamethod names for fast indexing. */
+// String interning of metamethod names for fast indexing.
 void lj_meta_init(lua_State* L)
 {
 #define MMNAME(name)   "__" #name
@@ -38,12 +38,12 @@ void lj_meta_init(lua_State* L)
       GCstr* s;
       for (q = p + 2; *q && *q != '_'; q++);
       s = lj_str_new(L, p, (size_t)(q - p));
-      /* NOBARRIER: g->gcroot[] is a GC root. */
+      // NOBARRIER: g->gcroot[] is a GC root.
       setgcref(g->gcroot[GCROOT_MMNAME + mm], obj2gco(s));
    }
 }
 
-/* Negative caching of a few fast metamethods. See the lj_meta_fast() macro. */
+// Negative caching of a few fast metamethods. See the lj_meta_fast() macro.
 cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
 {
    cTValue* mo = lj_tab_getstr(mt, name);
@@ -55,7 +55,7 @@ cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
    return mo;
 }
 
-/* Lookup metamethod for object. */
+// Lookup metamethod for object.
 cTValue* lj_meta_lookup(lua_State* L, cTValue* o, MMS mm)
 {
    GCtab* mt;
@@ -74,7 +74,7 @@ cTValue* lj_meta_lookup(lua_State* L, cTValue* o, MMS mm)
 }
 
 #if LJ_HASFFI
-/* Tailcall from C function. */
+// Tailcall from C function.
 int lj_meta_tailcall(lua_State* L, cTValue* tv)
 {
    TValue* base = L->base;
@@ -102,7 +102,7 @@ int lj_meta_tailcall(lua_State* L, cTValue* tv)
 }
 #endif
 
-/* Setup call to metamethod to be run by Assembler VM. */
+// Setup call to metamethod to be run by Assembler VM.
 static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo,
    cTValue* a, cTValue* b)
 {
@@ -129,9 +129,9 @@ static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo,
    return top;  /* Return new base. */
 }
 
-/* -- C helpers for some instructions, called from assembler VM ----------- */
+// -- C helpers for some instructions, called from assembler VM -----------
 
-/* Helper for TGET*. __index chain and metamethod. */
+// Helper for TGET*. __index chain and metamethod.
 cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
 {
    int loop;
@@ -158,7 +158,7 @@ cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
    return NULL;  /* unreachable */
 }
 
-/* Helper for TSET*. __newindex chain and metamethod. */
+// Helper for TSET*. __newindex chain and metamethod.
 TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
 {
    TValue tmp;
@@ -190,7 +190,7 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
       }
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_nop, mo, o, k);
-         /* L->top+2 = v filled in by caller. */
+         // L->top+2 = v filled in by caller.
          return NULL;  /* Trigger metamethod call. */
       }
       copyTV(L, &tmp, mo);
@@ -212,7 +212,7 @@ static cTValue* str2num(cTValue* o, TValue* n)
       return NULL;
 }
 
-/* Helper for arithmetic instructions. Coercion, metamethod. */
+// Helper for arithmetic instructions. Coercion, metamethod.
 TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
    BCReg op)
 {
@@ -238,7 +238,7 @@ TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
    }
 }
 
-/* Helper for CAT. Coercion, iterative concat, __concat metamethod. */
+// Helper for CAT. Coercion, iterative concat, __concat metamethod.
 TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
 {
    int fromc = 0;
@@ -319,7 +319,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
    return NULL;
 }
 
-/* Helper for LEN. __len metamethod. */
+// Helper for LEN. __len metamethod.
 TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
 {
    cTValue* mo = lj_meta_lookup(L, o, MM_len);
@@ -333,10 +333,10 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
    return mmcall(L, lj_cont_ra, mo, o, LJ_52 ? o : niltv(L));
 }
 
-/* Helper for equality comparisons. __eq metamethod. */
+// Helper for equality comparisons. __eq metamethod.
 TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
 {
-   /* Field metatable must be at same offset for GCtab and GCudata! */
+   // Field metatable must be at same offset for GCtab and GCudata!
    cTValue* mo = lj_meta_fast(L, tabref(o1->gch.metatable), MM_eq);
    if (mo) {
       TValue* top;
@@ -391,7 +391,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
 }
 #endif
 
-/* Helper for ordered comparisons. String compare, __lt/__le metamethods. */
+// Helper for ordered comparisons. String compare, __lt/__le metamethods.
 TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 {
    if (LJ_HASFFI && (tviscdata(o1) || tviscdata(o2))) {
@@ -402,7 +402,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
       return mmcall(L, cont, mo, o1, o2);
    }
    else if (LJ_52 || itype(o1) == itype(o2)) {
-      /* Never called with two numbers. */
+      // Never called with two numbers.
       if (tvisstr(o1) && tvisstr(o2)) {
          int32_t res = lj_str_cmp(strV(o1), strV(o2));
          return (TValue*)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
@@ -441,7 +441,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
    }
 }
 
-/* Helper for ISTYPE and ISNUM. Implicit coercion or error. */
+// Helper for ISTYPE and ISNUM. Implicit coercion or error.
 void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp)
 {
    L->top = curr_topL(L);
@@ -453,7 +453,7 @@ void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp)
    else lj_err_argtype(L, ra, lj_obj_itypename[tp]);
 }
 
-/* Helper for calls. __call metamethod. */
+// Helper for calls. __call metamethod.
 void lj_meta_call(lua_State* L, TValue* func, TValue* top)
 {
    cTValue* mo = lj_meta_lookup(L, func, MM_call);
@@ -465,14 +465,14 @@ void lj_meta_call(lua_State* L, TValue* func, TValue* top)
    copyTV(L, func, mo);
 }
 
-/* Helper for FORI. Coercion. */
+// Helper for FORI. Coercion.
 void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
 {
    if (!lj_strscan_numberobj(o)) lj_err_msg(L, LJ_ERR_FORINIT);
    if (!lj_strscan_numberobj(o + 1)) lj_err_msg(L, LJ_ERR_FORLIM);
    if (!lj_strscan_numberobj(o + 2)) lj_err_msg(L, LJ_ERR_FORSTEP);
    if (LJ_DUALNUM) {
-      /* Ensure all slots are integers or all slots are numbers. */
+      // Ensure all slots are integers or all slots are numbers.
       int32_t k[3];
       int nint = 0;
       ptrdiff_t i;

@@ -33,7 +33,7 @@ static intptr_t get_k64val(ASMState* as, IRRef ref)
 #define get_kval(as, ref)   (IR((ref))->i)
 #endif
 
-/* -- Emit basic instructions --------------------------------------------- */
+// -- Emit basic instructions ---------------------------------------------
 
 static void emit_dst(ASMState* as, MIPSIns mi, Reg rd, Reg rs, Reg rt)
 {
@@ -83,12 +83,12 @@ static void emit_tsml(ASMState* as, MIPSIns mi, Reg rt, Reg rs, uint32_t msb,
 }
 #endif
 
-/* -- Emit loads/stores --------------------------------------------------- */
+// -- Emit loads/stores ---------------------------------------------------
 
-/* Prefer rematerialization of BASE/L from global_State over spills. */
+// Prefer rematerialization of BASE/L from global_State over spills.
 #define emit_canremat(ref)   ((ref) <= REF_BASE)
 
-/* Try to find a one step delta relative to another constant. */
+// Try to find a one step delta relative to another constant.
 static int emit_kdelta1(ASMState* as, Reg rd, intptr_t i)
 {
    RegSet work = ~as->freeset & RSET_GPR;
@@ -109,7 +109,7 @@ static int emit_kdelta1(ASMState* as, Reg rd, intptr_t i)
    return 0;  /* Failed. */
 }
 
-/* Load a 32 bit constant into a GPR. */
+// Load a 32 bit constant into a GPR.
 static void emit_loadi(ASMState* as, Reg r, int32_t i)
 {
    if (checki16(i)) {
@@ -136,7 +136,7 @@ static void emit_loadi(ASMState* as, Reg r, int32_t i)
 }
 
 #if LJ_64
-/* Load a 64 bit constant into a GPR. */
+// Load a 64 bit constant into a GPR.
 static void emit_loadu64(ASMState* as, Reg r, uint64_t u64)
 {
    if (checki32((int64_t)u64)) {
@@ -151,7 +151,7 @@ static void emit_loadu64(ASMState* as, Reg r, uint64_t u64)
          return;
       }
       else {
-         /* TODO MIPSR6: Use DAHI & DATI. Caveat: sign-extension. */
+         // TODO MIPSR6: Use DAHI & DATI. Caveat: sign-extension.
          if ((u64 & 0xffff)) {
             emit_tsi(as, MIPSI_ORI, r, r, u64 & 0xffff);
          }
@@ -165,7 +165,7 @@ static void emit_loadu64(ASMState* as, Reg r, uint64_t u64)
          }
          emit_loadi(as, r, (int32_t)(u64 >> 32));
       }
-      /* TODO: There are probably more optimization opportunities. */
+      // TODO: There are probably more optimization opportunities.
    }
 }
 
@@ -177,7 +177,7 @@ static void emit_loadu64(ASMState* as, Reg r, uint64_t u64)
 static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow);
 static void ra_allockreg(ASMState* as, intptr_t k, Reg r);
 
-/* Get/set from constant pointer. */
+// Get/set from constant pointer.
 static void emit_lsptr(ASMState* as, MIPSIns mi, Reg r, void* p, RegSet allow)
 {
    intptr_t jgl = (intptr_t)(J2G(as->J));
@@ -212,7 +212,7 @@ static void emit_loadk64(ASMState* as, Reg r, IRIns* ir)
   emit_lsptr(as, MIPSI_LDC1, ((r) & 31), (void *)&ir_knum((ir))->u64, RSET_GPR)
 #endif
 
-/* Get/set global_State fields. */
+// Get/set global_State fields.
 static void emit_lsglptr(ASMState* as, MIPSIns mi, Reg r, int32_t ofs)
 {
    emit_tsi(as, mi, r, RID_JGL, ofs - 32768);
@@ -223,15 +223,15 @@ static void emit_lsglptr(ASMState* as, MIPSIns mi, Reg r, int32_t ofs)
 #define emit_setgl(as, r, field) \
   emit_lsglptr(as, MIPSI_AS, (r), (int32_t)offsetof(global_State, field))
 
-/* Trace number is determined from per-trace exit stubs. */
+// Trace number is determined from per-trace exit stubs.
 #define emit_setvmstate(as, i)      UNUSED(i)
 
-/* -- Emit control-flow instructions -------------------------------------- */
+// -- Emit control-flow instructions --------------------------------------
 
-/* Label for internal jumps. */
+// Label for internal jumps.
 typedef MCode* MCLabel;
 
-/* Return label pointing to current PC. */
+// Return label pointing to current PC.
 #define emit_label(as)      ((as)->mcp)
 
 static void emit_branch(ASMState* as, MIPSIns mi, Reg rs, Reg rt, MCode* target)
@@ -277,12 +277,12 @@ static void emit_call(ASMState* as, void* target, int needcfa)
    if (needcfa) ra_allockreg(as, (intptr_t)target, RID_CFUNCADDR);
 }
 
-/* -- Emit generic operations --------------------------------------------- */
+// -- Emit generic operations ---------------------------------------------
 
 #define emit_move(as, dst, src) \
   emit_ds(as, MIPSI_MOVE, (dst), (src))
 
-/* Generic move between two regs. */
+// Generic move between two regs.
 static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
 {
    if (dst < RID_MAX_GPR)
@@ -291,7 +291,7 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
       emit_fg(as, irt_isnum(ir->t) ? MIPSI_MOV_D : MIPSI_MOV_S, dst, src);
 }
 
-/* Generic load of register with base and (small) offset address. */
+// Generic load of register with base and (small) offset address.
 static void emit_loadofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
 {
    if (r < RID_MAX_GPR)
@@ -301,7 +301,7 @@ static void emit_loadofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
          (r & 31), base, ofs);
 }
 
-/* Generic store of register with base and (small) offset address. */
+// Generic store of register with base and (small) offset address.
 static void emit_storeofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
 {
    if (r < RID_MAX_GPR)
@@ -311,7 +311,7 @@ static void emit_storeofs(ASMState* as, IRIns* ir, Reg r, Reg base, int32_t ofs)
          (r & 31), base, ofs);
 }
 
-/* Add offset to pointer. */
+// Add offset to pointer.
 static void emit_addptr(ASMState* as, Reg r, int32_t ofs)
 {
    if (ofs) {

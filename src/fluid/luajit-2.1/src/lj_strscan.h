@@ -8,14 +8,14 @@
 
 #include "lj_obj.h"
 
-/* Options for accepted/returned formats. */
+// Options for accepted/returned formats.
 #define STRSCAN_OPT_TOINT   0x01  /* Convert to int32_t, if possible. */
 #define STRSCAN_OPT_TONUM   0x02  /* Always convert to double. */
 #define STRSCAN_OPT_IMAG   0x04
 #define STRSCAN_OPT_LL      0x08
 #define STRSCAN_OPT_C      0x10
 
-/* Returned format. */
+// Returned format.
 typedef enum {
   STRSCAN_ERROR,
   STRSCAN_NUM, STRSCAN_IMAG,
@@ -31,7 +31,7 @@ LJ_FUNC int LJ_FASTCALL lj_strscan_number(GCstr *str, TValue *o);
 #define lj_strscan_number(s, o)      lj_strscan_num((s), (o))
 #endif
 
-/* Check for number or convert string to number/int in-place (!). */
+// Check for number or convert string to number/int in-place (!).
 static LJ_AINLINE int lj_strscan_numberobj(TValue *o)
 {
   return tvisnumber(o) || (tvisstr(o) && lj_strscan_number(strV(o), o));

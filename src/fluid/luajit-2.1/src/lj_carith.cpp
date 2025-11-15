@@ -18,15 +18,15 @@
 #include "lj_carith.h"
 #include "lj_strscan.h"
 
-/* -- C data arithmetic --------------------------------------------------- */
+// -- C data arithmetic ---------------------------------------------------
 
-/* Binary operands of an operator converted to ctypes. */
+// Binary operands of an operator converted to ctypes.
 typedef struct CDArith {
    uint8_t* p[2];
    CType* ct[2];
 } CDArith;
 
-/* Check arguments for arithmetic metamethods. */
+// Check arguments for arithmetic metamethods.
 static int carith_checkarg(lua_State* L, CTState* cts, CDArith* ca)
 {
    TValue* o = L->base;
@@ -95,7 +95,7 @@ static int carith_checkarg(lua_State* L, CTState* cts, CDArith* ca)
    return ok;
 }
 
-/* Pointer arithmetic. */
+// Pointer arithmetic.
 static int carith_ptr(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
 {
    CType* ctp = ca->ct[0];
@@ -144,7 +144,7 @@ static int carith_ptr(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
    }
    else if (mm == MM_add && ctype_isnum(ctp->info) &&
       (ctype_isptr(ca->ct[1]->info) || ctype_isrefarray(ca->ct[1]->info))) {
-      /* Swap pointer and index. */
+      // Swap pointer and index.
       ctp = ca->ct[1]; pp = ca->p[1];
       lj_cconv_ct_ct(cts, ctype_get(cts, CTID_INT_PSZ), ca->ct[0],
          (uint8_t*)&idx, ca->p[0], 0);
@@ -165,7 +165,7 @@ static int carith_ptr(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
    return 1;
 }
 
-/* 64 bit integer arithmetic. */
+// 64 bit integer arithmetic.
 static int carith_int64(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
 {
    if (ctype_isnum(ca->ct[0]->info) && ca->ct[0]->size <= 8 &&
@@ -229,7 +229,7 @@ static int carith_int64(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
    return 0;
 }
 
-/* Handle ctype arithmetic metamethods. */
+// Handle ctype arithmetic metamethods.
 static int lj_carith_meta(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
 {
    cTValue* tv = NULL;
@@ -274,7 +274,7 @@ static int lj_carith_meta(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
    return lj_meta_tailcall(L, tv);
 }
 
-/* Arithmetic operators for cdata. */
+// Arithmetic operators for cdata.
 int lj_carith_op(lua_State* L, MMS mm)
 {
    CTState* cts = ctype_cts(L);
@@ -288,13 +288,13 @@ int lj_carith_op(lua_State* L, MMS mm)
    return lj_carith_meta(L, cts, &ca, mm);
 }
 
-/* -- 64 bit bit operations helpers --------------------------------------- */
+// -- 64 bit bit operations helpers ---------------------------------------
 
 #if LJ_64
 #define B64DEF(name) \
   static LJ_AINLINE uint64_t lj_carith_##name(uint64_t x, int32_t sh)
 #else
-/* Not inlined on 32 bit archs, since some of these are quite lengthy. */
+// Not inlined on 32 bit archs, since some of these are quite lengthy.
 #define B64DEF(name) \
   uint64_t LJ_NOINLINE lj_carith_##name(uint64_t x, int32_t sh)
 #endif
@@ -322,7 +322,7 @@ uint64_t lj_carith_shift64(uint64_t x, int32_t sh, int op)
    return x;
 }
 
-/* Equivalent to lj_lib_checkbit(), but handles cdata. */
+// Equivalent to lj_lib_checkbit(), but handles cdata.
 uint64_t lj_carith_check64(lua_State* L, int narg, CTypeID* id)
 {
    TValue* o = L->base + narg - 1;
@@ -331,7 +331,7 @@ uint64_t lj_carith_check64(lua_State* L, int narg, CTypeID* id)
       lj_err_argt(L, narg, LUA_TNUMBER);
    }
    else if (LJ_LIKELY(tvisnumber(o))) {
-      /* Handled below. */
+      // Handled below.
    }
    else if (tviscdata(o)) {
       CTState* cts = ctype_cts(L);
@@ -367,24 +367,24 @@ uint64_t lj_carith_check64(lua_State* L, int narg, CTypeID* id)
    }
 }
 
-/* -- 64 bit integer arithmetic helpers ----------------------------------- */
+// -- 64 bit integer arithmetic helpers -----------------------------------
 
 #if LJ_32 && LJ_HASJIT
-/* Signed/unsigned 64 bit multiplication. */
+// Signed/unsigned 64 bit multiplication.
 int64_t lj_carith_mul64(int64_t a, int64_t b)
 {
    return a * b;
 }
 #endif
 
-/* Unsigned 64 bit division. */
+// Unsigned 64 bit division.
 uint64_t lj_carith_divu64(uint64_t a, uint64_t b)
 {
    if (b == 0) return U64x(80000000, 00000000);
    return a / b;
 }
 
-/* Signed 64 bit division. */
+// Signed 64 bit division.
 int64_t lj_carith_divi64(int64_t a, int64_t b)
 {
    if (b == 0 || (a == (int64_t)U64x(80000000, 00000000) && b == -1))
@@ -392,14 +392,14 @@ int64_t lj_carith_divi64(int64_t a, int64_t b)
    return a / b;
 }
 
-/* Unsigned 64 bit modulo. */
+// Unsigned 64 bit modulo.
 uint64_t lj_carith_modu64(uint64_t a, uint64_t b)
 {
    if (b == 0) return U64x(80000000, 00000000);
    return a % b;
 }
 
-/* Signed 64 bit modulo. */
+// Signed 64 bit modulo.
 int64_t lj_carith_modi64(int64_t a, int64_t b)
 {
    if (b == 0) return U64x(80000000, 00000000);
@@ -407,7 +407,7 @@ int64_t lj_carith_modi64(int64_t a, int64_t b)
    return a % b;
 }
 
-/* Unsigned 64 bit x^k. */
+// Unsigned 64 bit x^k.
 uint64_t lj_carith_powu64(uint64_t x, uint64_t k)
 {
    uint64_t y;
@@ -427,7 +427,7 @@ uint64_t lj_carith_powu64(uint64_t x, uint64_t k)
    return y;
 }
 
-/* Signed 64 bit x^k. */
+// Signed 64 bit x^k.
 int64_t lj_carith_powi64(int64_t x, int64_t k)
 {
    if (k == 0)

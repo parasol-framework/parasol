@@ -14,10 +14,10 @@
 #include "lj_jit.h"
 #include "lj_iropt.h"
 
-/* Some local macros to save typing. Undef'd at the end. */
+// Some local macros to save typing. Undef'd at the end.
 #define IR(ref)      (&J->cur.ir[(ref)])
 
-/* Scan through all snapshots and mark all referenced instructions. */
+// Scan through all snapshots and mark all referenced instructions.
 static void dce_marksnap(jit_State* J)
 {
    SnapNo i, nsnap = J->cur.nsnap;
@@ -33,7 +33,7 @@ static void dce_marksnap(jit_State* J)
    }
 }
 
-/* Backwards propagate marks. Replace unused instructions with NOPs. */
+// Backwards propagate marks. Replace unused instructions with NOPs.
 static void dce_propagate(jit_State* J)
 {
    IRRef1* pchain[IR__MAX];

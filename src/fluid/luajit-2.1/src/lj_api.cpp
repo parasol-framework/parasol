@@ -26,7 +26,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 
-/* -- Common helper functions --------------------------------------------- */
+// -- Common helper functions ---------------------------------------------
 
 #define lj_checkapi_slot(idx) \
   lj_checkapi((idx) <= (L->top - L->base), "stack slot %d out of range", (idx))
@@ -99,7 +99,7 @@ static GCtab* getcurrenv(lua_State* L)
    return fn->c.gct == ~LJ_TFUNC ? tabref(fn->c.env) : tabref(L->env);
 }
 
-/* -- Miscellaneous API functions ----------------------------------------- */
+// -- Miscellaneous API functions -----------------------------------------
 
 LUA_API int lua_status(lua_State* L)
 {
@@ -143,7 +143,7 @@ LUA_API const lua_Number* lua_version(lua_State* L)
    return &version;
 }
 
-/* -- Stack manipulation -------------------------------------------------- */
+// -- Stack manipulation --------------------------------------------------
 
 LUA_API int lua_gettop(lua_State* L)
 {
@@ -187,7 +187,7 @@ static void copy_slot(lua_State* L, TValue* f, int idx)
 {
    if (idx == LUA_GLOBALSINDEX) {
       lj_checkapi(tvistab(f), "stack slot %d is not a table", idx);
-      /* NOBARRIER: A thread (i.e. L) is never black. */
+      // NOBARRIER: A thread (i.e. L) is never black.
       setgcref(L->env, obj2gco(tabV(f)));
    }
    else if (idx == LUA_ENVIRONINDEX) {
@@ -224,7 +224,7 @@ LUA_API void lua_pushvalue(lua_State* L, int idx)
    incr_top(L);
 }
 
-/* -- Stack getters ------------------------------------------------------- */
+// -- Stack getters -------------------------------------------------------
 
 LUA_API int lua_type(lua_State* L, int idx)
 {
@@ -673,7 +673,7 @@ LUA_API const void* lua_topointer(lua_State* L, int idx)
    return lj_obj_ptr(G(L), index2adr(L, idx));
 }
 
-/* -- Stack setters (object creation) ------------------------------------- */
+// -- Stack setters (object creation) -------------------------------------
 
 LUA_API void lua_pushnil(lua_State* L)
 {
@@ -841,10 +841,10 @@ LUA_API void lua_concat(lua_State* L, int n)
       setstrV(L, L->top, &G(L)->strempty);
       incr_top(L);
    }
-   /* else n == 1: nothing to do. */
+   // else n == 1: nothing to do.
 }
 
-/* -- Object getters ------------------------------------------------------ */
+// -- Object getters ------------------------------------------------------
 
 LUA_API void lua_gettable(lua_State* L, int idx)
 {
@@ -1015,7 +1015,7 @@ LUALIB_API void* luaL_checkudata(lua_State* L, int idx, const char* tname)
    return p;
 }
 
-/* -- Object setters ------------------------------------------------------ */
+// -- Object setters ------------------------------------------------------
 
 LUA_API void lua_settable(lua_State* L, int idx)
 {
@@ -1024,7 +1024,7 @@ LUA_API void lua_settable(lua_State* L, int idx)
    lj_checkapi_slot(2);
    o = lj_meta_tset(L, t, L->top - 2);
    if (o) {
-      /* NOBARRIER: lj_meta_tset ensures the table is not black. */
+      // NOBARRIER: lj_meta_tset ensures the table is not black.
       L->top -= 2;
       copyTV(L, o, L->top + 1);
    }
@@ -1046,7 +1046,7 @@ LUA_API void lua_setfield(lua_State* L, int idx, const char* k)
    setstrV(L, &key, lj_str_newz(L, k));
    o = lj_meta_tset(L, t, &key);
    if (o) {
-      /* NOBARRIER: lj_meta_tset ensures the table is not black. */
+      // NOBARRIER: lj_meta_tset ensures the table is not black.
       copyTV(L, o, --L->top);
    }
    else {
@@ -1107,16 +1107,16 @@ LUA_API int lua_setmetatable(lua_State* L, int idx)
          lj_gc_objbarrier(L, udataV(o), mt);
    }
    else {
-      /* Flush cache, since traces specialize to basemt. But not during __gc. */
+      // Flush cache, since traces specialize to basemt. But not during __gc.
       if (lj_trace_flushall(L))
          lj_err_caller(L, LJ_ERR_NOGCMM);
       if (tvisbool(o)) {
-         /* NOBARRIER: basemt is a GC root. */
+         // NOBARRIER: basemt is a GC root.
          setgcref(basemt_it(g, LJ_TTRUE), obj2gco(mt));
          setgcref(basemt_it(g, LJ_TFALSE), obj2gco(mt));
       }
       else {
-         /* NOBARRIER: basemt is a GC root. */
+         // NOBARRIER: basemt is a GC root.
          setgcref(basemt_obj(g, o), obj2gco(mt));
       }
    }
@@ -1171,7 +1171,7 @@ LUA_API const char* lua_setupvalue(lua_State* L, int idx, int n)
    return name;
 }
 
-/* -- Calls --------------------------------------------------------------- */
+// -- Calls ---------------------------------------------------------------
 
 #if LJ_FR2
 static TValue* api_call_base(lua_State* L, int nargs)
@@ -1256,7 +1256,7 @@ LUALIB_API int luaL_callmeta(lua_State* L, int idx, const char* field)
    return 0;
 }
 
-/* -- Coroutine yield and resume ------------------------------------------ */
+// -- Coroutine yield and resume ------------------------------------------
 
 LUA_API int lua_isyieldable(lua_State* L)
 {
@@ -1317,7 +1317,7 @@ LUA_API int lua_resume(lua_State* L, int nargs)
    return LUA_ERRRUN;
 }
 
-/* -- GC and memory management -------------------------------------------- */
+// -- GC and memory management --------------------------------------------
 
 LUA_API int lua_gc(lua_State* L, int what, int data)
 {

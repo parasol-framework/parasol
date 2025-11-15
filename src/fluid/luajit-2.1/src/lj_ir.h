@@ -8,9 +8,9 @@
 
 #include "lj_obj.h"
 
-/* -- IR instructions ----------------------------------------------------- */
+// -- IR instructions -----------------------------------------------------
 
-/* IR instruction definition. Order matters, see below. ORDER IR */
+// IR instruction definition. Order matters, see below. ORDER IR
 #define IRDEF(_) \
   /* Guarded assertions. */ \
   /* Must be properly aligned to flip opposites (^1) and (un)ordered (^4). */ \
@@ -147,9 +147,9 @@
   _(CALLXS,   S , ref, ref) \
   _(CARG,   N , ref, ref) \
   \
-  /* End of list. */
+  // End of list.
 
-/* IR opcodes (max. 256). */
+// IR opcodes (max. 256).
 typedef enum {
 #define IRENUM(name, m, m1, m2)   IR_##name,
    IRDEF(IRENUM)
@@ -157,7 +157,7 @@ typedef enum {
    IR__MAX
 } IROp;
 
-/* Stored opcode. */
+// Stored opcode.
 typedef uint8_t IROp1;
 
 LJ_STATIC_ASSERT(((int)IR_EQ ^ 1) == (int)IR_NE);
@@ -166,7 +166,7 @@ LJ_STATIC_ASSERT(((int)IR_LE ^ 1) == (int)IR_GT);
 LJ_STATIC_ASSERT(((int)IR_LT ^ 3) == (int)IR_GT);
 LJ_STATIC_ASSERT(((int)IR_LT ^ 4) == (int)IR_ULT);
 
-/* Delta between xLOAD and xSTORE. */
+// Delta between xLOAD and xSTORE.
 #define IRDELTA_L2S      ((int)IR_ASTORE - (int)IR_ALOAD)
 
 LJ_STATIC_ASSERT((int)IR_HLOAD + IRDELTA_L2S == (int)IR_HSTORE);
@@ -174,9 +174,9 @@ LJ_STATIC_ASSERT((int)IR_ULOAD + IRDELTA_L2S == (int)IR_USTORE);
 LJ_STATIC_ASSERT((int)IR_FLOAD + IRDELTA_L2S == (int)IR_FSTORE);
 LJ_STATIC_ASSERT((int)IR_XLOAD + IRDELTA_L2S == (int)IR_XSTORE);
 
-/* -- Named IR literals --------------------------------------------------- */
+// -- Named IR literals ---------------------------------------------------
 
-/* FPMATH sub-functions. ORDER FPM. */
+// FPMATH sub-functions. ORDER FPM.
 #define IRFPMDEF(_) \
   _(FLOOR) _(CEIL) _(TRUNC)  /* Must be first and in this order. */ \
   _(SQRT) _(LOG) _(LOG2) \
@@ -189,7 +189,7 @@ typedef enum {
    IRFPM__MAX
 } IRFPMathOp;
 
-/* FLOAD fields. */
+// FLOAD fields.
 #define IRFLDEF(_) \
   _(STR_LEN,   offsetof(GCstr, len)) \
   _(FUNC_ENV,   offsetof(GCfunc, l.env)) \
@@ -224,12 +224,12 @@ typedef enum {
    IRFL__MAX
 } IRFieldID;
 
-/* TMPREF mode bits, stored in op2. */
+// TMPREF mode bits, stored in op2.
 #define IRTMPREF_IN1      0x01   /* First input value. */
 #define IRTMPREF_OUT1      0x02   /* First output value. */
 #define IRTMPREF_OUT2      0x04   /* Second output value. */
 
-/* SLOAD mode bits, stored in op2. */
+// SLOAD mode bits, stored in op2.
 #define IRSLOAD_PARENT      0x01   /* Coalesce with parent trace. */
 #define IRSLOAD_FRAME      0x02   /* Load 32 bits of ftsz. */
 #define IRSLOAD_TYPECHECK   0x04   /* Needs type check. */
@@ -238,17 +238,17 @@ typedef enum {
 #define IRSLOAD_INHERIT      0x20   /* Inherited by exits/side traces. */
 #define IRSLOAD_KEYINDEX   0x40   /* Table traversal key index. */
 
-/* XLOAD mode bits, stored in op2. */
+// XLOAD mode bits, stored in op2.
 #define IRXLOAD_READONLY   0x01   /* Load from read-only data. */
 #define IRXLOAD_VOLATILE   0x02   /* Load from volatile data. */
 #define IRXLOAD_UNALIGNED   0x04   /* Unaligned load. */
 
-/* BUFHDR mode, stored in op2. */
+// BUFHDR mode, stored in op2.
 #define IRBUFHDR_RESET      0   /* Reset buffer. */
 #define IRBUFHDR_APPEND      1   /* Append to buffer. */
 #define IRBUFHDR_WRITE      2   /* Write to string buffer. */
 
-/* CONV mode, stored in op2. */
+// CONV mode, stored in op2.
 #define IRCONV_SRCMASK      0x001f   /* Source IRType. */
 #define IRCONV_DSTMASK      0x03e0   /* Dest. IRType (also in ir->t). */
 #define IRCONV_DSH      5
@@ -258,21 +258,21 @@ typedef enum {
 #define IRCONV_MODEMASK      0x0fff
 #define IRCONV_CONVMASK      0xf000
 #define IRCONV_CSH      12
-/* Number to integer conversion mode. Ordered by strength of the checks. */
+// Number to integer conversion mode. Ordered by strength of the checks.
 #define IRCONV_TOBIT  (0<<IRCONV_CSH)   /* None. Cache only: TOBIT conv. */
 #define IRCONV_ANY    (1<<IRCONV_CSH)   /* Any FP number is ok. */
 #define IRCONV_INDEX  (2<<IRCONV_CSH)   /* Check + special backprop rules. */
 #define IRCONV_CHECK  (3<<IRCONV_CSH)   /* Number checked for integerness. */
 #define IRCONV_NONE   IRCONV_ANY   /* INT|*64 no conv, but change type. */
 
-/* TOSTR mode, stored in op2. */
+// TOSTR mode, stored in op2.
 #define IRTOSTR_INT      0   /* Convert integer to string. */
 #define IRTOSTR_NUM      1   /* Convert number to string. */
 #define IRTOSTR_CHAR      2   /* Convert char value to string. */
 
-/* -- IR operands --------------------------------------------------------- */
+// -- IR operands ---------------------------------------------------------
 
-/* IR operand mode (2 bit). */
+// IR operand mode (2 bit).
 typedef enum {
    IRMref,      /* IR reference. */
    IRMlit,      /* 16 bit unsigned literal. */
@@ -281,7 +281,7 @@ typedef enum {
 } IRMode;
 #define IRM___      IRMnone
 
-/* Mode bits: Commutative, {Normal/Ref, Alloc, Load, Store}, Non-weak guard. */
+// Mode bits: Commutative, {Normal/Ref, Alloc, Load, Store}, Non-weak guard.
 #define IRM_C         0x10
 
 #define IRM_N         0x00
@@ -306,7 +306,7 @@ typedef enum {
 
 LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
 
-/* -- IR instruction types ------------------------------------------------ */
+// -- IR instruction types ------------------------------------------------
 
 #define IRTSIZE_PGC      (LJ_GC64 ? 8 : 4)
 
@@ -326,33 +326,33 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
   _(INT, 4) _(U32, 4) _(I64, 8) _(U64, 8) \
   _(SOFTFP, 4)  /* There is room for 8 more types. */
 
-/* IR result type and flags (8 bit). */
+// IR result type and flags (8 bit).
 typedef enum {
 #define IRTENUM(name, size)   IRT_##name,
    IRTDEF(IRTENUM)
 #undef IRTENUM
    IRT__MAX,
 
-   /* Native pointer type and the corresponding integer type. */
+   // Native pointer type and the corresponding integer type.
    IRT_PTR = LJ_64 ? IRT_P64 : IRT_P32,
    IRT_PGC = LJ_GC64 ? IRT_P64 : IRT_P32,
    IRT_IGC = LJ_GC64 ? IRT_I64 : IRT_INT,
    IRT_INTP = LJ_64 ? IRT_I64 : IRT_INT,
    IRT_UINTP = LJ_64 ? IRT_U64 : IRT_U32,
 
-   /* Additional flags. */
+   // Additional flags.
    IRT_MARK = 0x20,   /* Marker for misc. purposes. */
    IRT_ISPHI = 0x40,   /* Instruction is left or right PHI operand. */
    IRT_GUARD = 0x80,   /* Instruction is a guard. */
 
-   /* Masks. */
+   // Masks.
    IRT_TYPE = 0x1f,
    IRT_T = 0xff
 } IRType;
 
 #define irtype_ispri(irt)   ((uint32_t)(irt) <= IRT_TRUE)
 
-/* Stored IRType. */
+// Stored IRType.
 typedef struct IRType1 { uint8_t irt; } IRType1;
 
 #define IRT(o, t)      ((uint32_t)(((o)<<8) | (t)))
@@ -391,7 +391,7 @@ typedef struct IRType1 { uint8_t irt; } IRType1;
 #define irt_isint64(t)      (irt_typerange((t), IRT_I64, IRT_U64))
 
 #if LJ_GC64
-/* Include IRT_NIL, so IR(ASMREF_L) (aka REF_NIL) is considered 64 bit. */
+// Include IRT_NIL, so IR(ASMREF_L) (aka REF_NIL) is considered 64 bit.
 #define IRT_IS64 \
   ((1u<<IRT_NUM)|(1u<<IRT_I64)|(1u<<IRT_U64)|(1u<<IRT_P64)|\
    (1u<<IRT_LIGHTUD)|(1u<<IRT_STR)|(1u<<IRT_THREAD)|(1u<<IRT_PROTO)|\
@@ -449,17 +449,17 @@ static LJ_AINLINE uint32_t irt_toitype_(IRType t)
 #define irt_setphi(t)      ((t).irt |= IRT_ISPHI)
 #define irt_clearphi(t)      ((t).irt &= ~IRT_ISPHI)
 
-/* Stored combined IR opcode and type. */
+// Stored combined IR opcode and type.
 typedef uint16_t IROpT;
 
-/* -- IR references ------------------------------------------------------- */
+// -- IR references -------------------------------------------------------
 
-/* IR references. */
+// IR references.
 typedef uint16_t IRRef1;   /* One stored reference. */
 typedef uint32_t IRRef2;   /* Two stored references. */
 typedef uint32_t IRRef;      /* Used to pass around references. */
 
-/* Fixed references. */
+// Fixed references.
 enum {
    REF_BIAS = 0x8000,
    REF_TRUE = REF_BIAS - 3,
@@ -536,7 +536,7 @@ typedef uint32_t TRef;
 #define TREF_FALSE      (TREF_PRI(IRT_FALSE))
 #define TREF_TRUE      (TREF_PRI(IRT_TRUE))
 
-/* -- IR format ----------------------------------------------------------- */
+// -- IR format -----------------------------------------------------------
 
 /* IR instruction format (64 bit).
 **
@@ -596,7 +596,7 @@ typedef union IRIns {
   check_exp((ir)->o == IR_KPTR || (ir)->o == IR_KKPTR, \
     mref((ir)[LJ_GC64].ptr, void))
 
-/* A store or any other op with a non-weak guard has a side-effect. */
+// A store or any other op with a non-weak guard has a side-effect.
 static LJ_AINLINE int ir_sideeff(IRIns* ir)
 {
    return (((ir->t.irt | ~IRT_GUARD) & lj_ir_mode[ir->o]) >= IRM_S);
@@ -604,7 +604,7 @@ static LJ_AINLINE int ir_sideeff(IRIns* ir)
 
 LJ_STATIC_ASSERT((int)IRT_GUARD == (int)IRM_W);
 
-/* Replace IR instruction with NOP. */
+// Replace IR instruction with NOP.
 static LJ_AINLINE void lj_ir_nop(IRIns* ir)
 {
    ir->ot = IRT(IR_NOP, IRT_NIL);

@@ -8,12 +8,12 @@
 
 #include "lj_obj.h"
 
-/* Garbage collector states. Order matters. */
+// Garbage collector states. Order matters.
 enum {
    GCSpause, GCSpropagate, GCSatomic, GCSsweepstring, GCSsweep, GCSfinalize
 };
 
-/* Bitmasks for marked field of GCobj. */
+// Bitmasks for marked field of GCobj.
 #define LJ_GC_WHITE0   0x01
 #define LJ_GC_WHITE1   0x02
 #define LJ_GC_BLACK   0x04
@@ -28,7 +28,7 @@ enum {
 #define LJ_GC_COLORS   (LJ_GC_WHITES | LJ_GC_BLACK)
 #define LJ_GC_WEAK   (LJ_GC_WEAKKEY | LJ_GC_WEAKVAL)
 
-/* Macros to test and set GCobj colors. */
+// Macros to test and set GCobj colors.
 #define iswhite(x)   ((x)->gch.marked & LJ_GC_WHITES)
 #define isblack(x)   ((x)->gch.marked & LJ_GC_BLACK)
 #define isgray(x)   (!((x)->gch.marked & (LJ_GC_BLACK|LJ_GC_WHITES)))
@@ -45,7 +45,7 @@ enum {
 #define fixstring(s)   ((s)->marked |= LJ_GC_FIXED)
 #define markfinalized(x)   ((x)->gch.marked |= LJ_GC_FINALIZED)
 
-/* Collector. */
+// Collector.
 LJ_FUNC size_t lj_gc_separateudata(global_State* g, int all);
 LJ_FUNC void lj_gc_finalize_udata(lua_State* L);
 #if LJ_HASFFI
@@ -61,7 +61,7 @@ LJ_FUNC int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps);
 #endif
 LJ_FUNC void lj_gc_fullgc(lua_State* L);
 
-/* GC check: drive collector forward if the GC threshold has been reached. */
+// GC check: drive collector forward if the GC threshold has been reached.
 #define lj_gc_check(L) \
   { if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) \
       lj_gc_step(L); }
@@ -69,7 +69,7 @@ LJ_FUNC void lj_gc_fullgc(lua_State* L);
   { if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) \
       lj_gc_step_fixtop(L); }
 
-/* Write barriers. */
+// Write barriers.
 LJ_FUNC void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v);
 LJ_FUNCA void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv);
 LJ_FUNC void lj_gc_closeuv(global_State* g, GCupval* uv);
@@ -77,7 +77,7 @@ LJ_FUNC void lj_gc_closeuv(global_State* g, GCupval* uv);
 LJ_FUNC void lj_gc_barriertrace(global_State* g, uint32_t traceno);
 #endif
 
-/* Move the GC propagation frontier back for tables (make it gray again). */
+// Move the GC propagation frontier back for tables (make it gray again).
 static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 {
    GCobj* o = obj2gco(t);
@@ -90,7 +90,7 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
    setgcref(g->gc.grayagain, o);
 }
 
-/* Barrier for stores to table objects. TValue and GCobj variant. */
+// Barrier for stores to table objects. TValue and GCobj variant.
 #define lj_gc_anybarriert(L, t)  \
   { if (LJ_UNLIKELY(isblack(obj2gco(t)))) lj_gc_barrierback(G(L), (t)); }
 #define lj_gc_barriert(L, t, tv) \
@@ -100,7 +100,7 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
   { if (iswhite(obj2gco(o)) && isblack(obj2gco(t))) \
       lj_gc_barrierback(G(L), (t)); }
 
-/* Barrier for stores to any other object. TValue and GCobj variant. */
+// Barrier for stores to any other object. TValue and GCobj variant.
 #define lj_gc_barrier(L, p, tv) \
   { if (tviswhite(tv) && isblack(obj2gco(p))) \
       lj_gc_barrierf(G(L), obj2gco(p), gcV(tv)); }
@@ -108,7 +108,7 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
   { if (iswhite(obj2gco(o)) && isblack(obj2gco(p))) \
       lj_gc_barrierf(G(L), obj2gco(p), obj2gco(o)); }
 
-/* Allocator. */
+// Allocator.
 LJ_FUNC void* lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
 LJ_FUNC void* LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size);
 LJ_FUNC void* lj_mem_grow(lua_State* L, void* p,

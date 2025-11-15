@@ -32,9 +32,9 @@
 #include "lj_target.h"
 #include "lj_prng.h"
 
-/* -- Error handling ------------------------------------------------------ */
+// -- Error handling ------------------------------------------------------
 
-/* Synchronous abort with error message. */
+// Synchronous abort with error message.
 void lj_trace_err(jit_State* J, TraceError e)
 {
    setnilV(&J->errinfo);  /* No error info. */
@@ -42,14 +42,14 @@ void lj_trace_err(jit_State* J, TraceError e)
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
-/* Synchronous abort with error message and error info. */
+// Synchronous abort with error message and error info.
 void lj_trace_err_info(jit_State* J, TraceError e)
 {
    setintV(J->L->top++, (int32_t)e);
    lj_err_throw(J->L, LUA_ERRRUN);
 }
 
-/* -- Trace management ---------------------------------------------------- */
+// -- Trace management ----------------------------------------------------
 
 /* The current trace is first assembled in J->cur. The variable length
 ** arrays point to shared, growable buffers (J->irbuf etc.). When trace
@@ -57,7 +57,7 @@ void lj_trace_err_info(jit_State* J, TraceError e)
 ** are copied to a new (compact) GCtrace object.
 */
 
-/* Find a free trace number. */
+// Find a free trace number.
 static TraceNo trace_findfree(jit_State* J)
 {
    MSize osz, lim;
@@ -66,7 +66,7 @@ static TraceNo trace_findfree(jit_State* J)
    for (; J->freetrace < J->sizetrace; J->freetrace++)
       if (traceref(J, J->freetrace) == NULL)
          return J->freetrace++;
-   /* Need to grow trace array. */
+   // Need to grow trace array.
    lim = (MSize)J->param[JIT_P_maxtrace] + 1;
    if (lim < 2) lim = 2; else if (lim > 65535) lim = 65535;
    osz = J->sizetrace;
@@ -119,7 +119,7 @@ static void perftools_addtrace(GCtrace* T)
 }
 #endif
 
-/* Allocate space for copy of T. */
+// Allocate space for copy of T.
 GCtrace* LJ_FASTCALL lj_trace_alloc(lua_State* L, GCtrace* T)
 {
    size_t sztr = ((sizeof(GCtrace) + 7) & ~7);
@@ -141,7 +141,7 @@ GCtrace* LJ_FASTCALL lj_trace_alloc(lua_State* L, GCtrace* T)
    return T2;
 }
 
-/* Save current trace by copying and compacting it. */
+// Save current trace by copying and compacting it.
 static void trace_save(jit_State* J, GCtrace* T)
 {
    size_t sztr = ((sizeof(GCtrace) + 7) & ~7);
@@ -180,7 +180,7 @@ void LJ_FASTCALL lj_trace_free(global_State* g, GCtrace* T)
       T->nsnap * sizeof(SnapShot) + T->nsnapmap * sizeof(SnapEntry));
 }
 
-/* Re-enable compiling a prototype by unpatching any modified bytecode. */
+// Re-enable compiling a prototype by unpatching any modified bytecode.
 void lj_trace_reenableproto(GCproto* pt)
 {
    if ((pt->flags & PROTO_ILOOP)) {
@@ -197,7 +197,7 @@ void lj_trace_reenableproto(GCproto* pt)
    }
 }
 
-/* Unpatch the bytecode modified by a root trace. */
+// Unpatch the bytecode modified by a root trace.
 static void trace_unpatch(jit_State* J, GCtrace* T)
 {
    BCOp op = bc_op(T->startins);
@@ -236,15 +236,15 @@ static void trace_unpatch(jit_State* J, GCtrace* T)
    }
 }
 
-/* Flush a root trace. */
+// Flush a root trace.
 static void trace_flushroot(jit_State* J, GCtrace* T)
 {
    GCproto* pt = &gcref(T->startpt)->pt;
    lj_assertJ(T->root == 0, "not a root trace");
    lj_assertJ(pt != NULL, "trace has no prototype");
-   /* First unpatch any modified bytecode. */
+   // First unpatch any modified bytecode.
    trace_unpatch(J, T);
-   /* Unlink root trace from chain anchored in prototype. */
+   // Unlink root trace from chain anchored in prototype.
    if (pt->trace == T->traceno) {  // Trace is first in chain. Easy.
       pt->trace = T->nextroot;
    }
@@ -260,7 +260,7 @@ static void trace_flushroot(jit_State* J, GCtrace* T)
    }
 }
 
-/* Flush a trace. Only root traces are considered. */
+// Flush a trace. Only root traces are considered.
 void lj_trace_flush(jit_State* J, TraceNo traceno)
 {
    if (traceno > 0 && traceno < J->sizetrace) {
@@ -270,14 +270,14 @@ void lj_trace_flush(jit_State* J, TraceNo traceno)
    }
 }
 
-/* Flush all traces associated with a prototype. */
+// Flush all traces associated with a prototype.
 void lj_trace_flushproto(global_State* g, GCproto* pt)
 {
    while (pt->trace != 0)
       trace_flushroot(G2J(g), traceref(G2J(g), pt->trace));
 }
 
-/* Flush all traces. */
+// Flush all traces.
 int lj_trace_flushall(lua_State* L)
 {
    jit_State* J = L2J(L);
@@ -296,9 +296,9 @@ int lj_trace_flushall(lua_State* L)
    }
    J->cur.traceno = 0;
    J->freetrace = 0;
-   /* Clear penalty cache. */
+   // Clear penalty cache.
    memset(J->penalty, 0, sizeof(J->penalty));
-   /* Free the whole machine code and invalidate all exit stub groups. */
+   // Free the whole machine code and invalidate all exit stub groups.
    lj_mcode_free(J);
    memset(J->exitstubgroup, 0, sizeof(J->exitstubgroup));
    lj_vmevent_send(L, TRACE,
@@ -307,13 +307,13 @@ int lj_trace_flushall(lua_State* L)
    return 0;
 }
 
-/* Initialize JIT compiler state. */
+// Initialize JIT compiler state.
 void lj_trace_initstate(global_State* g)
 {
    jit_State* J = G2J(g);
    TValue* tv;
 
-   /* Initialize aligned SIMD constants. */
+   // Initialize aligned SIMD constants.
    tv = LJ_KSIMD(J, LJ_KSIMD_ABS);
    tv[0].u64 = U64x(7fffffff, ffffffff);
    tv[1].u64 = U64x(7fffffff, ffffffff);
@@ -321,7 +321,7 @@ void lj_trace_initstate(global_State* g)
    tv[0].u64 = U64x(80000000, 00000000);
    tv[1].u64 = U64x(80000000, 00000000);
 
-   /* Initialize 32/64 bit constants. */
+   // Initialize 32/64 bit constants.
 #if LJ_TARGET_X86ORX64
    J->k64[LJ_K64_TOBIT].u64 = U64x(43380000, 00000000);
 #if LJ_32
@@ -350,7 +350,7 @@ void lj_trace_initstate(global_State* g)
 #endif
 }
 
-/* Free everything associated with the JIT compiler state. */
+// Free everything associated with the JIT compiler state.
 void lj_trace_freestate(global_State* g)
 {
    jit_State* J = G2J(g);
@@ -369,9 +369,9 @@ void lj_trace_freestate(global_State* g)
    lj_mem_freevec(g, J->trace, J->sizetrace, GCRef);
 }
 
-/* -- Penalties and blacklisting ------------------------------------------ */
+// -- Penalties and blacklisting ------------------------------------------
 
-/* Blacklist a bytecode instruction. */
+// Blacklist a bytecode instruction.
 static void blacklist_pc(GCproto* pt, BCIns* pc)
 {
    if (bc_op(*pc) == BC_ITERN) {
@@ -384,13 +384,13 @@ static void blacklist_pc(GCproto* pt, BCIns* pc)
    }
 }
 
-/* Penalize a bytecode instruction. */
+// Penalize a bytecode instruction.
 static void penalty_pc(jit_State* J, GCproto* pt, BCIns* pc, TraceError e)
 {
    uint32_t i, val = PENALTY_MIN;
    for (i = 0; i < PENALTY_SLOTS; i++)
       if (mref(J->penalty[i].pc, const BCIns) == pc) {  // Cache slot found?
-         /* First try to bump its hotcount several times. */
+         // First try to bump its hotcount several times.
          val = ((uint32_t)J->penalty[i].val << 1) +
             (lj_prng_u64(&J2G(J)->prng) & ((1u << PENALTY_RNDBITS) - 1));
          if (val > PENALTY_MAX) {
@@ -399,7 +399,7 @@ static void penalty_pc(jit_State* J, GCproto* pt, BCIns* pc, TraceError e)
          }
          goto setpenalty;
       }
-   /* Assign a new penalty cache slot. */
+   // Assign a new penalty cache slot.
    i = J->penaltyslot;
    J->penaltyslot = (J->penaltyslot + 1) & (PENALTY_SLOTS - 1);
    setmref(J->penalty[i].pc, pc);
@@ -409,9 +409,9 @@ setpenalty:
    hotcount_set(J2GG(J), pc + 1, val);
 }
 
-/* -- Trace compiler state machine ---------------------------------------- */
+// -- Trace compiler state machine ----------------------------------------
 
-/* Start tracing. */
+// Start tracing.
 static void trace_start(jit_State* J)
 {
    lua_State* L;
@@ -419,7 +419,7 @@ static void trace_start(jit_State* J)
 
    if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto?
       if (J->parent == 0 && J->exitno == 0 && bc_op(*J->pc) != BC_ITERN) {
-         /* Lazy bytecode patching to disable hotcount events. */
+         // Lazy bytecode patching to disable hotcount events.
          lj_assertJ(bc_op(*J->pc) == BC_FORL || bc_op(*J->pc) == BC_ITERL ||
             bc_op(*J->pc) == BC_LOOP || bc_op(*J->pc) == BC_FUNCF,
             "bad hot bytecode %d", bc_op(*J->pc));
@@ -430,7 +430,7 @@ static void trace_start(jit_State* J)
       return;
    }
 
-   /* Get a new trace number. */
+   // Get a new trace number.
    traceno = trace_findfree(J);
    if (LJ_UNLIKELY(traceno == 0)) {  // No free trace?
       lj_assertJ((J2G(J)->hookmask & HOOK_GC) == 0,
@@ -441,7 +441,7 @@ static void trace_start(jit_State* J)
    }
    setgcrefp(J->trace[traceno], &J->cur);
 
-   /* Setup enough of the current trace to be able to send the vmevent. */
+   // Setup enough of the current trace to be able to send the vmevent.
    memset(&J->cur, 0, sizeof(GCtrace));
    J->cur.traceno = traceno;
    J->cur.nins = J->cur.nk = REF_BASE;
@@ -479,7 +479,7 @@ static void trace_start(jit_State* J)
    lj_record_setup(J);
 }
 
-/* Stop tracing. */
+// Stop tracing.
 static void trace_stop(jit_State* J)
 {
    BCIns* pc = mref(J->cur.startpc, BCIns);
@@ -492,15 +492,15 @@ static void trace_stop(jit_State* J)
    switch (op) {
    case BC_FORL:
       setbc_op(pc + bc_j(J->cur.startins), BC_JFORI);  /* Patch FORI, too. */
-      /* fallthrough */
+      // fallthrough
    case BC_LOOP:
    case BC_ITERL:
    case BC_FUNCF:
-      /* Patch bytecode of starting instruction in root trace. */
+      // Patch bytecode of starting instruction in root trace.
       setbc_op(pc, (int)op + (int)BC_JLOOP - (int)BC_LOOP);
       setbc_d(pc, traceno);
    addroot:
-      /* Add to root trace chain in prototype. */
+      // Add to root trace chain in prototype.
       J->cur.nextroot = pt->trace;
       pt->trace = (TraceNo1)traceno;
       break;
@@ -511,16 +511,16 @@ static void trace_stop(jit_State* J)
       *pc = BCINS_AD(BC_JLOOP, J->cur.snap[0].nslots, traceno);
       goto addroot;
    case BC_JMP:
-      /* Patch exit branch in parent to side trace entry. */
+      // Patch exit branch in parent to side trace entry.
       lj_assertJ(J->parent != 0 && J->cur.root != 0, "not a side trace");
       lj_asm_patchexit(J, traceref(J, J->parent), J->exitno, J->cur.mcode);
-      /* Avoid compiling a side trace twice (stack resizing uses parent exit). */
+      // Avoid compiling a side trace twice (stack resizing uses parent exit).
       {
          SnapShot* snap = &traceref(J, J->parent)->snap[J->exitno];
          snap->count = SNAPCOUNT_DONE;
          if (J->cur.topslot > snap->topslot) snap->topslot = J->cur.topslot;
       }
-      /* Add to side trace chain in root trace. */
+      // Add to side trace chain in root trace.
       {
          GCtrace* root = traceref(J, J->cur.root);
          root->nchild++;
@@ -531,7 +531,7 @@ static void trace_stop(jit_State* J)
    case BC_CALLM:
    case BC_CALL:
    case BC_ITERC:
-      /* Trace stitching: patch link of previous trace. */
+      // Trace stitching: patch link of previous trace.
       traceref(J, J->exitno)->link = traceno;
       break;
    default:
@@ -539,7 +539,7 @@ static void trace_stop(jit_State* J)
       break;
    }
 
-   /* Commit new mcode only after all patching is done. */
+   // Commit new mcode only after all patching is done.
    lj_mcode_commit(J, J->cur.mcode);
    J->postproc = LJ_POST_NONE;
    trace_save(J, T);
@@ -552,10 +552,10 @@ static void trace_stop(jit_State* J)
       );
 }
 
-/* Start a new root trace for down-recursion. */
+// Start a new root trace for down-recursion.
 static int trace_downrec(jit_State* J)
 {
-   /* Restart recording at the return instruction. */
+   // Restart recording at the return instruction.
    lj_assertJ(J->pt != NULL, "no active prototype");
    lj_assertJ(bc_isret(bc_op(*J->pc)), "not at a return bytecode");
    if (bc_op(*J->pc) == BC_RETM)
@@ -567,7 +567,7 @@ static int trace_downrec(jit_State* J)
    return 1;
 }
 
-/* Abort tracing. */
+// Abort tracing.
 static int trace_abort(jit_State* J)
 {
    lua_State* L = J->L;
@@ -587,7 +587,7 @@ static int trace_abort(jit_State* J)
       J->state = LJ_TRACE_ASM;
       return 1;  /* Retry ASM with new MCode area. */
    }
-   /* Penalize or blacklist starting bytecode instruction. */
+   // Penalize or blacklist starting bytecode instruction.
    if (J->parent == 0 && !bc_isret(bc_op(J->cur.startins))) {
       if (J->exitno == 0) {
          BCIns* startpc = mref(J->cur.startpc, BCIns);
@@ -601,7 +601,7 @@ static int trace_abort(jit_State* J)
       }
    }
 
-   /* Is there anything to abort? */
+   // Is there anything to abort?
    traceno = J->cur.traceno;
    if (traceno) {
       ptrdiff_t errobj = savestack(L, L->top - 1);  /* Stack may be resized. */
@@ -613,7 +613,7 @@ static int trace_abort(jit_State* J)
       GCfunc * fn;
       setstrV(L, L->top++, lj_str_newlit(L, "abort"));
       setintV(L->top++, traceno);
-      /* Find original Lua function call to generate a better error message. */
+      // Find original Lua function call to generate a better error message.
       frame = J->L->base - 1;
       pc = J->pc;
       while (!isluafunc(frame_func(frame))) {
@@ -626,7 +626,7 @@ static int trace_abort(jit_State* J)
       copyTV(L, L->top++, restorestack(L, errobj));
       copyTV(L, L->top++, &J->errinfo);
          );
-      /* Drop aborted trace after the vmevent (which may still access it). */
+      // Drop aborted trace after the vmevent (which may still access it).
       setgcrefnull(J->trace[traceno]);
       if (traceno < J->freetrace)
          J->freetrace = traceno;
@@ -640,7 +640,7 @@ static int trace_abort(jit_State* J)
    return 0;
 }
 
-/* Perform pending re-patch of a bytecode instruction. */
+// Perform pending re-patch of a bytecode instruction.
 static LJ_AINLINE void trace_pendpatch(jit_State* J, int force)
 {
    if (LJ_UNLIKELY(J->patchpc)) {
@@ -654,7 +654,7 @@ static LJ_AINLINE void trace_pendpatch(jit_State* J, int force)
    }
 }
 
-/* State machine for the trace compiler. Protected callback. */
+// State machine for the trace compiler. Protected callback.
 static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
 {
    jit_State* J = (jit_State*)ud;
@@ -668,16 +668,16 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          lj_dispatch_update(J2G(J));
          if (J->state != LJ_TRACE_RECORD_1ST)
             break;
-         /* fallthrough */
+         // fallthrough
 
       case LJ_TRACE_RECORD_1ST:
          J->state = LJ_TRACE_RECORD;
-         /* fallthrough */
+         // fallthrough
       case LJ_TRACE_RECORD:
          trace_pendpatch(J, 0);
          setvmstate(J2G(J), RECORD);
          lj_vmevent_send_(L, RECORD,
-            /* Save/restore state for trace recorder. */
+            // Save/restore state for trace recorder.
             TValue savetv = J2G(J)->tmptv;
          TValue savetv2 = J2G(J)->tmptv2;
          TraceNo parent = J->parent;
@@ -728,7 +728,7 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
 
       default:  /* Trace aborted asynchronously. */
          setintV(L->top++, (int32_t)LJ_TRERR_RECERR);
-         /* fallthrough */
+         // fallthrough
       case LJ_TRACE_ERR:
          trace_pendpatch(J, 1);
          if (trace_abort(J))
@@ -742,12 +742,12 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
    return NULL;
 }
 
-/* -- Event handling ------------------------------------------------------ */
+// -- Event handling ------------------------------------------------------
 
-/* A bytecode instruction is about to be executed. Record it. */
+// A bytecode instruction is about to be executed. Record it.
 void lj_trace_ins(jit_State* J, const BCIns* pc)
 {
-   /* Note: J->L must already be set. pc is the true bytecode PC here. */
+   // Note: J->L must already be set. pc is the true bytecode PC here.
    J->pc = pc;
    J->fn = curr_func(J->L);
    J->pt = isluafunc(J->fn) ? funcproto(J->fn) : NULL;
@@ -755,14 +755,14 @@ void lj_trace_ins(jit_State* J, const BCIns* pc)
       J->state = LJ_TRACE_ERR;
 }
 
-/* A hotcount triggered. Start recording a root trace. */
+// A hotcount triggered. Start recording a root trace.
 void LJ_FASTCALL lj_trace_hot(jit_State* J, const BCIns* pc)
 {
-   /* Note: pc is the interpreter bytecode PC here. It's offset by 1. */
+   // Note: pc is the interpreter bytecode PC here. It's offset by 1.
    ERRNO_SAVE
-      /* Reset hotcount. */
+      // Reset hotcount.
       hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
-   /* Only start a new trace if not recording or inside __gc call or vmevent. */
+   // Only start a new trace if not recording or inside __gc call or vmevent.
    if (J->state == LJ_TRACE_IDLE &&
       !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       J->parent = 0;  /* Root trace. */
@@ -773,7 +773,7 @@ void LJ_FASTCALL lj_trace_hot(jit_State* J, const BCIns* pc)
    ERRNO_RESTORE
 }
 
-/* Check for a hot side exit. If yes, start recording a side trace. */
+// Check for a hot side exit. If yes, start recording a side trace.
 static void trace_hotside(jit_State* J, const BCIns* pc)
 {
    SnapShot* snap = &traceref(J, J->parent)->snap[J->exitno];
@@ -782,38 +782,38 @@ static void trace_hotside(jit_State* J, const BCIns* pc)
       snap->count != SNAPCOUNT_DONE &&
       ++snap->count >= J->param[JIT_P_hotexit]) {
       lj_assertJ(J->state == LJ_TRACE_IDLE, "hot side exit while recording");
-      /* J->parent is non-zero for a side trace. */
+      // J->parent is non-zero for a side trace.
       J->state = LJ_TRACE_START;
       lj_trace_ins(J, pc);
    }
 }
 
-/* Stitch a new trace to the previous trace. */
+// Stitch a new trace to the previous trace.
 void LJ_FASTCALL lj_trace_stitch(jit_State* J, const BCIns* pc)
 {
-   /* Only start a new trace if not recording or inside __gc call or vmevent. */
+   // Only start a new trace if not recording or inside __gc call or vmevent.
    if (J->state == LJ_TRACE_IDLE &&
       !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       J->parent = 0;  /* Have to treat it like a root trace. */
-      /* J->exitno is set to the invoking trace. */
+      // J->exitno is set to the invoking trace.
       J->state = LJ_TRACE_START;
       lj_trace_ins(J, pc);
    }
 }
 
 
-/* Tiny struct to pass data to protected call. */
+// Tiny struct to pass data to protected call.
 typedef struct ExitDataCP {
    jit_State* J;
    void* exptr;      /* Pointer to exit state. */
    const BCIns* pc;   /* Restart interpreter at this PC. */
 } ExitDataCP;
 
-/* Need to protect lj_snap_restore because it may throw. */
+// Need to protect lj_snap_restore because it may throw.
 static TValue* trace_exit_cp(lua_State* L, lua_CFunction dummy, void* ud)
 {
    ExitDataCP* exd = (ExitDataCP*)ud;
-   /* Always catch error here and don't call error function. */
+   // Always catch error here and don't call error function.
    cframe_errfunc(L->cframe) = 0;
    cframe_nres(L->cframe) = -2 * LUAI_MAXSTACK * (int)sizeof(TValue);
    exd->pc = lj_snap_restore(exd->J, exd->exptr);
@@ -822,7 +822,7 @@ static TValue* trace_exit_cp(lua_State* L, lua_CFunction dummy, void* ud)
 }
 
 #ifndef LUAJIT_DISABLE_VMEVENT
-/* Push all registers from exit state. */
+// Push all registers from exit state.
 static void trace_exit_regs(lua_State* L, ExitState* ex)
 {
    int32_t i;
@@ -846,7 +846,7 @@ static void trace_exit_regs(lua_State* L, ExitState* ex)
 #endif
 
 #if defined(EXITSTATE_PCREG) || (LJ_UNWIND_JIT && !EXITTRACE_VMSTATE)
-/* Determine trace number from pc of exit instruction. */
+// Determine trace number from pc of exit instruction.
 static TraceNo trace_exit_find(jit_State* J, MCode* pc)
 {
    TraceNo traceno;
@@ -860,7 +860,7 @@ static TraceNo trace_exit_find(jit_State* J, MCode* pc)
 }
 #endif
 
-/* A trace exited. Restore interpreter state. */
+// A trace exited. Restore interpreter state.
 int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
 {
    ERRNO_SAVE
@@ -915,7 +915,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
       return -exitcode;
    }
    else if (LJ_HASPROFILE && (G(L)->hookmask & HOOK_PROFILE)) {
-      /* Just exit to interpreter. */
+      // Just exit to interpreter.
    }
    else if (G(L)->gc.state == GCSatomic || G(L)->gc.state == GCSfinalize) {
       if (!(G(L)->hookmask & HOOK_GC))
@@ -940,7 +940,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
          }
       }
    }
-   /* Return MULTRES or 0. */
+   // Return MULTRES or 0.
    ERRNO_RESTORE
       switch (bc_op(*pc)) {
       case BC_CALLM: case BC_CALLMT:
@@ -957,7 +957,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
 }
 
 #if LJ_UNWIND_JIT
-/* Given an mcode address determine trace exit address for unwinding. */
+// Given an mcode address determine trace exit address for unwinding.
 uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State* J, uintptr_t addr, ExitNo* ep)
 {
 #if EXITTRACE_VMSTATE
@@ -974,7 +974,7 @@ uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State* J, uintptr_t addr, ExitNo* ep)
       SnapShot* snap = T->snap;
       SnapNo lo = 0, exitno = T->nsnap;
       uintptr_t ofs = (uintptr_t)((MCode*)addr - T->mcode);  /* MCode units! */
-      /* Rightmost binary search for mcode offset to determine exit number. */
+      // Rightmost binary search for mcode offset to determine exit number.
       do {
          SnapNo mid = (lo + exitno) >> 1;
          if (ofs < snap[mid].mcofs) exitno = mid; else lo = mid + 1;
@@ -987,7 +987,7 @@ uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State* J, uintptr_t addr, ExitNo* ep)
       return (uintptr_t)exitstub_trace_addr(T, exitno);
 #endif
    }
-   /* Cannot correlate addr with trace/exit. This will be fatal. */
+   // Cannot correlate addr with trace/exit. This will be fatal.
    lj_assertJ(0, "bad exit pc");
    return 0;
 }

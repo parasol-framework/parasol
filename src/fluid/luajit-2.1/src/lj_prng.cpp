@@ -6,7 +6,7 @@
 #define lj_prng_c
 #define LUA_CORE
 
-/* To get the syscall prototype. */
+// To get the syscall prototype.
 #if defined(__linux__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
@@ -15,7 +15,7 @@
 #include "lj_arch.h"
 #include "lj_prng.h"
 
-/* -- PRNG step function -------------------------------------------------- */
+// -- PRNG step function --------------------------------------------------
 
 /* This implements a Tausworthe PRNG with period 2^223. Based on:
 **   Tables of maximally-equidistributed combined LFSR generators,
@@ -31,7 +31,7 @@
 ** the difficulty for various attacks on the VM.
 */
 
-/* Update generator i and compute a running xor of all states. */
+// Update generator i and compute a running xor of all states.
 #define TW223_GEN(rs, z, r, i, k, q, s) \
   z = rs->u[i]; \
   z = (((z<<q)^z) >> (k-s)) ^ ((z&((uint64_t)(int64_t)-1 << (64-k)))<<s); \
@@ -43,7 +43,7 @@
   TW223_GEN(rs, z, r, 2, 55, 24,  7) \
   TW223_GEN(rs, z, r, 3, 47, 21,  8)
 
-/* PRNG step function with uint64_t result. */
+// PRNG step function with uint64_t result.
 LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64(PRNGState* rs)
 {
    uint64_t z, r = 0;
@@ -51,16 +51,16 @@ LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64(PRNGState* rs)
       return r;
 }
 
-/* PRNG step function with double in uint64_t result. */
+// PRNG step function with double in uint64_t result.
 LJ_NOINLINE uint64_t LJ_FASTCALL lj_prng_u64d(PRNGState* rs)
 {
    uint64_t z, r = 0;
    TW223_STEP(rs, z, r)
-      /* Returns a double bit pattern in the range 1.0 <= d < 2.0. */
+      // Returns a double bit pattern in the range 1.0 <= d < 2.0.
       return (r & U64x(000fffff, ffffffff)) | U64x(3ff00000, 00000000);
 }
 
-/* Condition seed: ensure k[i] MSB of u[i] are non-zero. */
+// Condition seed: ensure k[i] MSB of u[i] are non-zero.
 static LJ_AINLINE void lj_prng_condition(PRNGState* rs)
 {
    if (rs->u[0] < (1u << 1)) rs->u[0] += (1u << 1);
@@ -69,11 +69,11 @@ static LJ_AINLINE void lj_prng_condition(PRNGState* rs)
    if (rs->u[3] < (1u << 17)) rs->u[3] += (1u << 17);
 }
 
-/* -- PRNG seeding from OS ------------------------------------------------ */
+// -- PRNG seeding from OS ------------------------------------------------
 
 #if LUAJIT_SECURITY_PRNG == 0
 
-/* Nothing to define. */
+// Nothing to define.
 
 #elif LJ_TARGET_XBOX360
 
@@ -93,11 +93,11 @@ extern int sceRandomGetRandomNumber(void* buf, size_t len);
 #include <windows.h>
 
 #if LJ_TARGET_UWP || LJ_TARGET_XBOXONE
-/* Must use BCryptGenRandom. */
+// Must use BCryptGenRandom.
 #include <bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
 #else
-/* If you wonder about this mess, then search online for RtlGenRandom. */
+// If you wonder about this mess, then search online for RtlGenRandom.
 typedef BOOLEAN(WINAPI* PRGR)(void* buf, ULONG len);
 static PRGR libfunc_rgr;
 #endif
@@ -105,7 +105,7 @@ static PRGR libfunc_rgr;
 #elif LJ_TARGET_POSIX
 
 #if LJ_TARGET_LINUX
-/* Avoid a dependency on glibc 2.25+ and use the getrandom syscall instead. */
+// Avoid a dependency on glibc 2.25+ and use the getrandom syscall instead.
 #include <sys/syscall.h>
 #else
 
@@ -135,7 +135,7 @@ __attribute__((weak))
 
 #endif
 
-/* For the /dev/urandom fallback. */
+// For the /dev/urandom fallback.
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -158,7 +158,7 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 
 #else
 
-/* Securely seed PRNG from system entropy. Returns 0 on failure. */
+// Securely seed PRNG from system entropy. Returns 0 on failure.
 int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 {
 #if LJ_TARGET_XBOX360
@@ -184,7 +184,7 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 
 #elif LJ_TARGET_WINDOWS
 
-   /* Keep the library loaded in case multiple VMs are started. */
+   // Keep the library loaded in case multiple VMs are started.
    if (!libfunc_rgr) {
       HMODULE lib = LJ_WIN_LOADLIBA("advapi32.dll");
       if (!lib) return 0;

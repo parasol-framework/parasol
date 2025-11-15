@@ -26,10 +26,10 @@ extern "C" {
 #define LUA_AUTHORS   "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
 
 
-/* mark for precompiled code (`<esc>Lua') */
+// mark for precompiled code (`<esc>Lua')
 #define   LUA_SIGNATURE   "\033Lua"
 
-/* option for multiple returns in `lua_pcall' and `lua_call' */
+// option for multiple returns in `lua_pcall' and `lua_call'
 #define LUA_MULTRET   (-1)
 
 
@@ -42,7 +42,7 @@ extern "C" {
 #define lua_upvalueindex(i)   (LUA_GLOBALSINDEX-(i))
 
 
-/* thread status */
+// thread status
 #define LUA_OK      0
 #define LUA_YIELD   1
 #define LUA_ERRRUN   2
@@ -87,7 +87,7 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 
 
 
-/* minimum Lua stack available to a C function */
+// minimum Lua stack available to a C function
 #define LUA_MINSTACK   20
 
 
@@ -99,11 +99,11 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 #endif
 
 
-/* type of numbers in Lua */
+// type of numbers in Lua
 typedef LUA_NUMBER lua_Number;
 
 
-/* type for integer functions */
+// type for integer functions
 typedef LUA_INTEGER lua_Integer;
 
 
@@ -299,7 +299,7 @@ LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);
 #define lua_Chunkwriter      lua_Writer
 
 
-/* hack */
+// hack
 LUA_API void lua_setlevel   (lua_State *from, lua_State *to);
 
 
@@ -331,7 +331,7 @@ LUA_API void lua_setlevel   (lua_State *from, lua_State *to);
 typedef struct lua_Debug lua_Debug;  /* activation record */
 
 
-/* Functions to be called by the debuger in specific events */
+// Functions to be called by the debuger in specific events
 typedef void (*lua_Hook) (lua_State *L, lua_Debug *ar);
 
 
@@ -346,7 +346,7 @@ LUA_API lua_Hook lua_gethook (lua_State *L);
 LUA_API int lua_gethookmask (lua_State *L);
 LUA_API int lua_gethookcount (lua_State *L);
 
-/* From Lua 5.2. */
+// From Lua 5.2.
 LUA_API void *lua_upvalueid (lua_State *L, int idx, int n);
 LUA_API void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
 LUA_API int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
@@ -356,7 +356,7 @@ LUA_API void lua_copy (lua_State *L, int fromidx, int toidx);
 LUA_API lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
 LUA_API lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
 
-/* From Lua 5.3. */
+// From Lua 5.3.
 LUA_API int lua_isyieldable (lua_State *L);
 
 
@@ -371,11 +371,11 @@ struct lua_Debug {
   int linedefined;   /* (S) */
   int lastlinedefined;   /* (S) */
   char short_src[LUA_IDSIZE]; /* (S) */
-  /* private part */
+  // private part
   int i_ci;  /* active function */
 };
 
-/* }====================================================================== */
+// }======================================================================
 
 #ifdef __cplusplus
 }

@@ -7,13 +7,13 @@
 #include "lj_obj.h"
 #include "lj_ir.h"
 
-/* Context for the folding hash table generator. */
+// Context for the folding hash table generator.
 static int lineno;
 static uint32_t funcidx;
 static uint32_t foldkeys[BUILD_MAX_FOLD];
 static uint32_t nkeys;
 
-/* Try to fill the hash table with keys using the hash parameters. */
+// Try to fill the hash table with keys using the hash parameters.
 static int tryhash(uint32_t *htab, uint32_t sz, uint32_t r, int dorol)
 {
   uint32_t i;
@@ -27,7 +27,7 @@ static int tryhash(uint32_t *htab, uint32_t sz, uint32_t r, int dorol)
 			  (((k << (r>>5)) - k) << (r&31))) % sz;
     if (htab[h] != 0xffffffff) {  /* Collision on primary slot. */
       if (htab[h+1] != 0xffffffff) {  /* Collision on secondary slot. */
-	/* Try to move the colliding key, if possible. */
+	// Try to move the colliding key, if possible.
 	if (h < sz-1 && htab[h+2] == 0xffffffff) {
 	  uint32_t k2 = htab[h+1] & 0xffffff;
 	  uint32_t h2 = (dorol ? lj_rol(lj_rol(k2, r>>5) - k2, r&31) :
@@ -46,7 +46,7 @@ static int tryhash(uint32_t *htab, uint32_t sz, uint32_t r, int dorol)
   return 1;  /* Success, all keys could be stored. */
 }
 
-/* Print the generated hash table. */
+// Print the generated hash table.
 static void printhash(BuildCtx *ctx, uint32_t *htab, uint32_t sz)
 {
   uint32_t i;
@@ -57,14 +57,14 @@ static void printhash(BuildCtx *ctx, uint32_t *htab, uint32_t sz)
   fprintf(ctx->fp, "\n};\n\n");
 }
 
-/* Exhaustive search for the shortest semi-perfect hash table. */
+// Exhaustive search for the shortest semi-perfect hash table.
 static void makehash(BuildCtx *ctx)
 {
   uint32_t htab[BUILD_MAX_FOLD*2+1];
   uint32_t sz, r;
-  /* Search for the smallest hash table with an odd size. */
+  // Search for the smallest hash table with an odd size.
   for (sz = (nkeys|1); sz < BUILD_MAX_FOLD*2; sz += 2) {
-    /* First try all shift hash combinations. */
+    // First try all shift hash combinations.
     for (r = 0; r < 32*32; r++) {
       if (tryhash(htab, sz, r, 0)) {
 	printhash(ctx, htab, sz);
@@ -74,7 +74,7 @@ static void makehash(BuildCtx *ctx)
 	return;
       }
     }
-    /* Then try all rotate hash combinations. */
+    // Then try all rotate hash combinations.
     for (r = 0; r < 32*32; r++) {
       if (tryhash(htab, sz, r, 1)) {
 	printhash(ctx, htab, sz);
@@ -89,7 +89,7 @@ static void makehash(BuildCtx *ctx)
   exit(1);
 }
 
-/* Parse one token of a fold rule. */
+// Parse one token of a fold rule.
 static uint32_t nexttoken(char **pp, int allowlit, int allowany)
 {
   char *p = *pp;
@@ -138,7 +138,7 @@ static uint32_t nexttoken(char **pp, int allowlit, int allowany)
   return 0;
 }
 
-/* Parse a fold rule. */
+// Parse a fold rule.
 static void foldrule(char *p)
 {
   uint32_t op = nexttoken(&p, 0, 0);
@@ -150,7 +150,7 @@ static void foldrule(char *p)
     fprintf(stderr, "Error: too many fold rules, increase BUILD_MAX_FOLD.\n");
     exit(1);
   }
-  /* Simple insertion sort to detect duplicates. */
+  // Simple insertion sort to detect duplicates.
   for (i = nkeys; i > 0; i--) {
     if ((foldkeys[i-1]&0xffffff) < (key & 0xffffff))
       break;
@@ -164,7 +164,7 @@ static void foldrule(char *p)
   nkeys++;
 }
 
-/* Emit C source code for IR folding hash table. */
+// Emit C source code for IR folding hash table.
 void emit_fold(BuildCtx *ctx)
 {
   char buf[256];  /* We don't care about analyzing lines longer than that. */
@@ -195,7 +195,7 @@ void emit_fold(BuildCtx *ctx)
   nkeys = 0;
   while (fgets(buf, sizeof(buf), fp) != NULL) {
     lineno++;
-    /* The prefix must be at the start of a line, otherwise it's ignored. */
+    // The prefix must be at the start of a line, otherwise it's ignored.
     if (!strncmp(buf, FOLDDEF_PREFIX, sizeof(FOLDDEF_PREFIX)-1)) {
       char *p = buf+sizeof(FOLDDEF_PREFIX)-1;
       char *q = strchr(p, ')');

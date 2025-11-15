@@ -36,7 +36,7 @@
 
 #include "luajit.h"
 
-/* -- jit.* functions ----------------------------------------------------- */
+// -- jit.* functions -----------------------------------------------------
 
 #define LJLIB_MODULE_jit
 
@@ -47,7 +47,7 @@ static int setjitmode(lua_State* L, int mode)
       mode |= LUAJIT_MODE_ENGINE;
    }
    else {
-      /* jit.on/off/flush(func|proto, nil|true|false) */
+      // jit.on/off/flush(func|proto, nil|true|false)
       if (tvisfunc(L->base) || tvisproto(L->base))
          idx = 1;
       else if (!tvistrue(L->base))  /* jit.on/off/flush(true, nil|true|false) */
@@ -89,7 +89,7 @@ LJLIB_CF(jit_flush)
 }
 
 #if LJ_HASJIT
-/* Push a string for every flag bit that is set. */
+// Push a string for every flag bit that is set.
 static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base,
    const char* str)
 {
@@ -157,13 +157,13 @@ LJLIB_PUSH(top-2) LJLIB_SET(version)
 
 #include "lj_libdef.h"
 
-/* -- jit.util.* functions ------------------------------------------------ */
+// -- jit.util.* functions ------------------------------------------------
 
 #define LJLIB_MODULE_jit_util
 
-/* -- Reflection API for Lua functions ------------------------------------ */
+// -- Reflection API for Lua functions ------------------------------------
 
-/* Return prototype of first argument (Lua function or prototype object) */
+// Return prototype of first argument (Lua function or prototype object)
 static GCproto* check_Lproto(lua_State* L, int nolua)
 {
    TValue* o = L->base;
@@ -187,7 +187,7 @@ static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
    setintV(lj_tab_setstr(L, t, lj_str_newz(L, name)), val);
 }
 
-/* local info = jit.util.funcinfo(func [,pc]) */
+// local info = jit.util.funcinfo(func [,pc])
 LJLIB_CF(jit_util_funcinfo)
 {
    GCproto* pt = check_Lproto(L, 1);
@@ -230,7 +230,7 @@ LJLIB_CF(jit_util_funcinfo)
    return 1;
 }
 
-/* local ins, m = jit.util.funcbc(func, pc) */
+// local ins, m = jit.util.funcbc(func, pc)
 LJLIB_CF(jit_util_funcbc)
 {
    GCproto* pt = check_Lproto(L, 0);
@@ -247,7 +247,7 @@ LJLIB_CF(jit_util_funcbc)
    return 0;
 }
 
-/* local k = jit.util.funck(func, idx) */
+// local k = jit.util.funck(func, idx)
 LJLIB_CF(jit_util_funck)
 {
    GCproto* pt = check_Lproto(L, 0);
@@ -268,7 +268,7 @@ LJLIB_CF(jit_util_funck)
    return 0;
 }
 
-/* local name = jit.util.funcuvname(func, idx) */
+// local name = jit.util.funcuvname(func, idx)
 LJLIB_CF(jit_util_funcuvname)
 {
    GCproto* pt = check_Lproto(L, 0);
@@ -280,11 +280,11 @@ LJLIB_CF(jit_util_funcuvname)
    return 0;
 }
 
-/* -- Reflection API for traces ------------------------------------------- */
+// -- Reflection API for traces -------------------------------------------
 
 #if LJ_HASJIT
 
-/* Check trace argument. Must not throw for non-existent trace numbers. */
+// Check trace argument. Must not throw for non-existent trace numbers.
 static GCtrace* jit_checktrace(lua_State* L)
 {
    TraceNo tr = (TraceNo)lj_lib_checkint(L, 1);
@@ -294,13 +294,13 @@ static GCtrace* jit_checktrace(lua_State* L)
    return NULL;
 }
 
-/* Names of link types. ORDER LJ_TRLINK */
+// Names of link types. ORDER LJ_TRLINK
 static const char* const jit_trlinkname[] = {
   "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion",
   "interpreter", "return", "stitch"
 };
 
-/* local info = jit.util.traceinfo(tr) */
+// local info = jit.util.traceinfo(tr)
 LJLIB_CF(jit_util_traceinfo)
 {
    GCtrace* T = jit_checktrace(L);
@@ -314,13 +314,13 @@ LJLIB_CF(jit_util_traceinfo)
       setintfield(L, t, "nexit", T->nsnap);
       setstrV(L, L->top++, lj_str_newz(L, jit_trlinkname[T->linktype]));
       lua_setfield(L, -2, "linktype");
-      /* There are many more fields. Add them only when needed. */
+      // There are many more fields. Add them only when needed.
       return 1;
    }
    return 0;
 }
 
-/* local m, ot, op1, op2, prev = jit.util.traceir(tr, idx) */
+// local m, ot, op1, op2, prev = jit.util.traceir(tr, idx)
 LJLIB_CF(jit_util_traceir)
 {
    GCtrace* T = jit_checktrace(L);
@@ -338,7 +338,7 @@ LJLIB_CF(jit_util_traceir)
    return 0;
 }
 
-/* local k, t [, slot] = jit.util.tracek(tr, idx) */
+// local k, t [, slot] = jit.util.tracek(tr, idx)
 LJLIB_CF(jit_util_tracek)
 {
    GCtrace* T = jit_checktrace(L);
@@ -363,7 +363,7 @@ LJLIB_CF(jit_util_tracek)
    return 0;
 }
 
-/* local snap = jit.util.tracesnap(tr, sn) */
+// local snap = jit.util.tracesnap(tr, sn)
 LJLIB_CF(jit_util_tracesnap)
 {
    GCtrace* T = jit_checktrace(L);
@@ -385,7 +385,7 @@ LJLIB_CF(jit_util_tracesnap)
    return 0;
 }
 
-/* local mcode, addr, loop = jit.util.tracemc(tr) */
+// local mcode, addr, loop = jit.util.tracemc(tr)
 LJLIB_CF(jit_util_tracemc)
 {
    GCtrace* T = jit_checktrace(L);
@@ -398,7 +398,7 @@ LJLIB_CF(jit_util_tracemc)
    return 0;
 }
 
-/* local addr = jit.util.traceexitstub([tr,] exitno) */
+// local addr = jit.util.traceexitstub([tr,] exitno)
 LJLIB_CF(jit_util_traceexitstub)
 {
 #ifdef EXITSTUBS_PER_GROUP
@@ -422,7 +422,7 @@ LJLIB_CF(jit_util_traceexitstub)
    return 0;
 }
 
-/* local addr = jit.util.ircalladdr(idx) */
+// local addr = jit.util.ircalladdr(idx)
 LJLIB_CF(jit_util_ircalladdr)
 {
    uint32_t idx = (uint32_t)lj_lib_checkint(L, 1);
@@ -443,13 +443,13 @@ static int luaopen_jit_util(lua_State* L)
    return 1;
 }
 
-/* -- jit.opt module ------------------------------------------------------ */
+// -- jit.opt module ------------------------------------------------------
 
 #if LJ_HASJIT
 
 #define LJLIB_MODULE_jit_opt
 
-/* Parse optimization level. */
+// Parse optimization level.
 static int jitopt_level(jit_State* J, const char* str)
 {
    if (str[0] >= '0' && str[0] <= '9' && str[1] == '\0') {
@@ -464,7 +464,7 @@ static int jitopt_level(jit_State* J, const char* str)
    return 0;  /* No match. */
 }
 
-/* Parse optimization flag. */
+// Parse optimization flag.
 static int jitopt_flag(jit_State* J, const char* str)
 {
    const char* lst = JIT_F_OPTSTRING;
@@ -494,7 +494,7 @@ static int jitopt_flag(jit_State* J, const char* str)
    return 0;  /* No match. */
 }
 
-/* Parse optimization parameter. */
+// Parse optimization parameter.
 static int jitopt_param(jit_State* J, const char* str)
 {
    const char* lst = JIT_P_STRING;
@@ -518,7 +518,7 @@ static int jitopt_param(jit_State* J, const char* str)
    return 0;  /* No match. */
 }
 
-/* jit.opt.start(flags...) */
+// jit.opt.start(flags...)
 LJLIB_CF(jit_opt_start)
 {
    jit_State* J = L2J(L);
@@ -543,13 +543,13 @@ LJLIB_CF(jit_opt_start)
 
 #endif
 
-/* -- jit.profile module -------------------------------------------------- */
+// -- jit.profile module --------------------------------------------------
 
 #if LJ_HASPROFILE
 
 #define LJLIB_MODULE_jit_profile
 
-/* Not loaded by default, use: local profile = require("jit.profile") */
+// Not loaded by default, use: local profile = require("jit.profile")
 
 #define KEY_PROFILE_THREAD   (U64x(80000000,00000000)|'t')
 #define KEY_PROFILE_FUNC   (U64x(80000000,00000000)|'f')
@@ -577,7 +577,7 @@ static void jit_profile_callback(lua_State* L2, lua_State* L, int samples,
    }
 }
 
-/* profile.start(mode, cb) */
+// profile.start(mode, cb)
 LJLIB_CF(jit_profile_start)
 {
    GCtab* registry = tabV(registry(L));
@@ -585,7 +585,7 @@ LJLIB_CF(jit_profile_start)
    GCfunc* func = lj_lib_checkfunc(L, 2);
    lua_State* L2 = lua_newthread(L);  /* Thread that runs profiler callback. */
    TValue key;
-   /* Anchor thread and function in registry. */
+   // Anchor thread and function in registry.
    key.u64 = KEY_PROFILE_THREAD;
    setthreadV(L, lj_tab_set(L, registry, &key), L2);
    key.u64 = KEY_PROFILE_FUNC;
@@ -596,7 +596,7 @@ LJLIB_CF(jit_profile_start)
    return 0;
 }
 
-/* profile.stop() */
+// profile.stop()
 LJLIB_CF(jit_profile_stop)
 {
    GCtab* registry;
@@ -611,7 +611,7 @@ LJLIB_CF(jit_profile_stop)
    return 0;
 }
 
-/* dump = profile.dumpstack([thread,] fmt, depth) */
+// dump = profile.dumpstack([thread,] fmt, depth)
 LJLIB_CF(jit_profile_dumpstack)
 {
    lua_State* L2 = L;
@@ -641,10 +641,10 @@ static int luaopen_jit_profile(lua_State* L)
 
 #endif
 
-/* -- JIT compiler initialization ----------------------------------------- */
+// -- JIT compiler initialization -----------------------------------------
 
 #if LJ_HASJIT
-/* Default values for JIT parameters. */
+// Default values for JIT parameters.
 static const int32_t jit_param_default[JIT_P__MAX + 1] = {
 #define JIT_PARAMINIT(len, name, value)   (value),
 JIT_PARAMDEF(JIT_PARAMINIT)
@@ -656,7 +656,7 @@ JIT_PARAMDEF(JIT_PARAMINIT)
 #include <sys/utsname.h>
 #endif
 
-/* Arch-dependent CPU feature detection. */
+// Arch-dependent CPU feature detection.
 static uint32_t jit_cpudetect(void)
 {
    uint32_t flags = 0;
@@ -673,7 +673,7 @@ static uint32_t jit_cpudetect(void)
          flags |= ((xfeatures[1] >> 8) & 1) * JIT_F_BMI2;
       }
    }
-   /* Don't bother checking for SSE2 -- the VM will crash before getting here. */
+   // Don't bother checking for SSE2 -- the VM will crash before getting here.
 
 #elif LJ_TARGET_ARM
 
@@ -696,7 +696,7 @@ static uint32_t jit_cpudetect(void)
 
 #elif LJ_TARGET_ARM64
 
-   /* No optional CPU features to detect (for now). */
+   // No optional CPU features to detect (for now).
 
 #elif LJ_TARGET_PPC
 
@@ -709,18 +709,18 @@ static uint32_t jit_cpudetect(void)
 
 #elif LJ_TARGET_MIPS
 
-   /* Compile-time MIPS CPU detection. */
+   // Compile-time MIPS CPU detection.
 #if LJ_ARCH_VERSION >= 20
    flags |= JIT_F_MIPSXXR2;
 #endif
-   /* Runtime MIPS CPU detection. */
+   // Runtime MIPS CPU detection.
 #if defined(__GNUC__)
    if (!(flags & JIT_F_MIPSXXR2)) {
       int x;
 #ifdef __mips16
       x = 0;  /* Runtime detection is difficult. Ensure optimal -march flags. */
 #else
-      /* On MIPS32R1 rotr is treated as srl. rotr r2,r2,1 -> srl r2,r2,1. */
+      // On MIPS32R1 rotr is treated as srl. rotr r2,r2,1 -> srl r2,r2,1.
       __asm__("li $2, 1\n\t.long 0x00221042\n\tmove %0, $2" : "=r"(x) : : "$2");
 #endif
       if (x) flags |= JIT_F_MIPSXXR2;  /* Either 0x80000000 (R2) or 0 (R1). */
@@ -733,7 +733,7 @@ static uint32_t jit_cpudetect(void)
    return flags;
 }
 
-/* Initialize JIT compiler. */
+// Initialize JIT compiler.
 static void jit_init(lua_State* L)
 {
    jit_State* J = L2J(L);

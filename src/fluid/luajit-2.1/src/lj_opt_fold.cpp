@@ -133,7 +133,7 @@
 ** Rule of thumb: the trace recorder expands the IR and FOLD shrinks it.
 */
 
-/* Some local macros to save typing. Undef'd at the end. */
+// Some local macros to save typing. Undef'd at the end.
 #define IR(ref)      (&J->cur.ir[(ref)])
 #define fins      (&J->fold.ins)
 #define fleft      (J->fold.left)
@@ -141,19 +141,19 @@
 #define knumleft   (ir_knum(fleft)->n)
 #define knumright   (ir_knum(fright)->n)
 
-/* Pass IR on to next optimization in chain (FOLD). */
+// Pass IR on to next optimization in chain (FOLD).
 #define emitir(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
 
-/* Fold function type. Fastcall on x86 significantly reduces their size. */
+// Fold function type. Fastcall on x86 significantly reduces their size.
 typedef IRRef(LJ_FASTCALL* FoldFunc)(jit_State* J);
 
-/* Macros for the fold specs, so buildvm can recognize them. */
+// Macros for the fold specs, so buildvm can recognize them.
 #define LJFOLD(x)
 #define LJFOLDX(x)
 #define LJFOLDF(name)   static TRef LJ_FASTCALL fold_##name(jit_State *J)
-/* Note: They must be at the start of a line or buildvm ignores them! */
+// Note: They must be at the start of a line or buildvm ignores them!
 
-/* Barrier to prevent using operands across PHIs. */
+// Barrier to prevent using operands across PHIs.
 #define PHIBARRIER(ir)   if (irt_isphi((ir)->t)) return NEXTFOLD
 
 /* Barrier to prevent folding across a GC step.
@@ -167,7 +167,7 @@ typedef IRRef(LJ_FASTCALL* FoldFunc)(jit_State* J);
     J->chain[IR_CNEW] || J->chain[IR_CNEWI] || \
     J->chain[IR_BUFSTR] || J->chain[IR_TOSTR] || J->chain[IR_CALLA]))
 
-/* -- Constant folding for FP numbers ------------------------------------- */
+// -- Constant folding for FP numbers -------------------------------------
 
 LJFOLD(ADD KNUM KNUM)
 LJFOLD(SUB KNUM KNUM)
@@ -246,7 +246,7 @@ LJFOLDF(kfold_numpow)
    return lj_ir_knum(J, y);
 }
 
-/* Must not use kfold_kref for numbers (could be NaN). */
+// Must not use kfold_kref for numbers (could be NaN).
 LJFOLD(EQ KNUM KNUM)
 LJFOLD(NE KNUM KNUM)
 LJFOLD(LT KNUM KNUM)
@@ -262,7 +262,7 @@ LJFOLDF(kfold_numcomp)
    return CONDFOLD(lj_ir_numcmp(knumleft, knumright, (IROp)fins->o));
 }
 
-/* -- Constant folding for 32 bit integers -------------------------------- */
+// -- Constant folding for 32 bit integers --------------------------------
 
 static int32_t kfold_intop(int32_t k1, int32_t k2, IROp op)
 {
@@ -366,7 +366,7 @@ LJFOLDF(kfold_intcomp0)
    return NEXTFOLD;
 }
 
-/* -- Constant folding for 64 bit integers -------------------------------- */
+// -- Constant folding for 64 bit integers --------------------------------
 
 static uint64_t kfold_int64arith(jit_State* J, uint64_t k1, uint64_t k2,
    IROp op)
@@ -505,7 +505,7 @@ LJFOLDF(kfold_int64comp0)
 #endif
 }
 
-/* -- Constant folding for strings ---------------------------------------- */
+// -- Constant folding for strings ----------------------------------------
 
 LJFOLD(SNEW KKPTR KINT)
 LJFOLDF(kfold_snew_kptr)
@@ -539,7 +539,7 @@ LJFOLDF(kfold_strref_snew)
       return fleft->op1;  /* strref(snew(ptr, len), 0) ==> ptr */
    }
    else {
-      /* Reassociate: strref(snew(strref(str, a), len), b) ==> strref(str, a+b) */
+      // Reassociate: strref(snew(strref(str, a), len), b) ==> strref(str, a+b)
       IRIns* ir = IR(fleft->op1);
       if (ir->o == IR_STRREF) {
          IRRef1 str = ir->op1;  /* IRIns * is not valid across emitir. */
@@ -564,7 +564,7 @@ LJFOLDF(kfold_strcmp)
    return NEXTFOLD;
 }
 
-/* -- Constant folding and forwarding for buffers ------------------------- */
+// -- Constant folding and forwarding for buffers -------------------------
 
 /*
 ** Buffer ops perform stores, but their effect is limited to the buffer
@@ -596,7 +596,7 @@ LJFOLDF(bufput_bufstr)
 {
    if ((J->flags & JIT_F_OPT_FWD)) {
       IRRef hdr = fright->op2;
-      /* New buffer, no other buffer op inbetween and same buffer? */
+      // New buffer, no other buffer op inbetween and same buffer?
       if (fleft->o == IR_BUFHDR && fleft->op2 == IRBUFHDR_RESET &&
          fleft->prev == hdr &&
          fleft->op1 == IR(hdr)->op1 &&
@@ -607,10 +607,10 @@ LJFOLDF(bufput_bufstr)
          IR(ref)->op1 = fright->op1;
          return ref;
       }
-      /* Replay puts to global temporary buffer. */
+      // Replay puts to global temporary buffer.
       if (IR(hdr)->op2 == IRBUFHDR_RESET && !irt_isphi(fright->t)) {
          IRIns* ir = IR(fright->op1);
-         /* For now only handle single string.reverse .lower .upper .rep. */
+         // For now only handle single string.reverse .lower .upper .rep.
          if (ir->o == IR_CALLL &&
             ir->op2 >= IRCALL_lj_buf_putstr_reverse &&
             ir->op2 <= IRCALL_lj_buf_putstr_rep) {
@@ -643,7 +643,7 @@ LJFOLDF(bufput_kgc)
             !irt_isphi(fleft->t)) {  // Join two constant string puts in a row.
             GCstr* s1 = ir_kstr(IR(fleft->op2));
             IRRef kref = lj_ir_kstr(J, lj_buf_cat2str(J->L, s1, s2));
-            /* lj_ir_kstr() may realloc the IR and invalidates any IRIns *. */
+            // lj_ir_kstr() may realloc the IR and invalidates any IRIns *.
             IR(fins->op1)->op2 = kref;  /* Modify previous BUFPUT. */
             return fins->op1;
          }
@@ -672,7 +672,7 @@ LJFOLDF(bufstr_kfold_cse)
             return fleft->op2;  /* Shortcut for a single put operation. */
       }
    }
-   /* Try to CSE the whole chain. */
+   // Try to CSE the whole chain.
    if (LJ_LIKELY(J->flags & JIT_F_OPT_CSE)) {
       IRRef ref = J->chain[IR_BUFSTR];
       while (ref) {
@@ -772,7 +772,7 @@ LJFOLDF(bufput_kfold_fmt)
    return EMITFOLD;  /* Always emit, CSE later. */
 }
 
-/* -- Constant folding of pointer arithmetic ------------------------------ */
+// -- Constant folding of pointer arithmetic ------------------------------
 
 LJFOLD(ADD KGC KINT)
 LJFOLD(ADD KGC KINT64)
@@ -823,7 +823,7 @@ LJFOLDF(kfold_add_kright)
    return NEXTFOLD;
 }
 
-/* -- Constant folding of conversions ------------------------------------- */
+// -- Constant folding of conversions -------------------------------------
 
 LJFOLD(TOBIT KNUM KNUM)
 LJFOLDF(kfold_tobit)
@@ -953,14 +953,14 @@ LJFOLDF(kfold_strto)
    return FAILFOLD;
 }
 
-/* -- Constant folding of equality checks --------------------------------- */
+// -- Constant folding of equality checks ---------------------------------
 
-/* Don't constant-fold away FLOAD checks against KNULL. */
+// Don't constant-fold away FLOAD checks against KNULL.
 LJFOLD(EQ FLOAD KNULL)
 LJFOLD(NE FLOAD KNULL)
 LJFOLDX(lj_opt_cse)
 
-/* But fold all other KNULL compares, since only KNULL is equal to KNULL. */
+// But fold all other KNULL compares, since only KNULL is equal to KNULL.
 LJFOLD(EQ any KNULL)
 LJFOLD(NE any KNULL)
 LJFOLD(EQ KNULL any)
@@ -976,7 +976,7 @@ LJFOLDF(kfold_kref)
    return CONDFOLD((fins->op1 == fins->op2) ^ (fins->o == IR_NE));
 }
 
-/* -- Algebraic shortcuts ------------------------------------------------- */
+// -- Algebraic shortcuts -------------------------------------------------
 
 LJFOLD(FPMATH FPMATH IRFPM_FLOOR)
 LJFOLD(FPMATH FPMATH IRFPM_CEIL)
@@ -1003,7 +1003,7 @@ LJFOLDF(shortcut_dropleft)
    return RETRYFOLD;
 }
 
-/* Note: no safe shortcuts with STRTO and TOSTR ("1e2" ==> +100 ==> "100"). */
+// Note: no safe shortcuts with STRTO and TOSTR ("1e2" ==> +100 ==> "100").
 LJFOLD(NEG NEG any)
 LJFOLD(BNOT BNOT)
 LJFOLD(BSWAP BSWAP)
@@ -1013,7 +1013,7 @@ LJFOLDF(shortcut_leftleft)
    return fleft->op1;  /* f(g(x)) ==> x */
 }
 
-/* -- FP algebraic simplifications ---------------------------------------- */
+// -- FP algebraic simplifications ----------------------------------------
 
 /* FP arithmetic is tricky -- there's not much to simplify.
 ** Please note the following common pitfalls before sending "improvements":
@@ -1136,7 +1136,7 @@ LJFOLDF(simplify_numpow_xkint)
       ref = emitir(IRTN(IR_DIV), lj_ir_knum_one(J), ref);
       k = -k;
    }
-   /* Unroll x^k for 1 <= k <= 65536. */
+   // Unroll x^k for 1 <= k <= 65536.
    for (; (k & 1) == 0; k >>= 1)  /* Handle leading zeros. */
       ref = emitir(IRTN(IR_MUL), ref, ref);
    if ((k >>= 1) != 0) {  // Handle trailing bits.
@@ -1151,13 +1151,13 @@ LJFOLDF(simplify_numpow_xkint)
    return ref;
 }
 
-/* -- Simplify conversions ------------------------------------------------ */
+// -- Simplify conversions ------------------------------------------------
 
 LJFOLD(CONV CONV IRCONV_NUM_INT)  /* _NUM */
 LJFOLDF(shortcut_conv_num_int)
 {
    PHIBARRIER(fleft);
-   /* Only safe with a guarded conversion to int. */
+   // Only safe with a guarded conversion to int.
    if ((fleft->op2 & IRCONV_SRCMASK) == IRT_NUM && irt_isguard(fleft->t))
       return fleft->op1;  /* f(g(x)) ==> x */
    return NEXTFOLD;
@@ -1167,7 +1167,7 @@ LJFOLD(CONV CONV IRCONV_INT_NUM)  /* _INT */
 LJFOLD(CONV CONV IRCONV_U32_NUM)  /* _U32*/
 LJFOLDF(simplify_conv_int_num)
 {
-   /* Fold even across PHI to avoid expensive num->int conversions in loop. */
+   // Fold even across PHI to avoid expensive num->int conversions in loop.
    if ((fleft->op2 & IRCONV_SRCMASK) ==
       ((fins->op2 & IRCONV_DSTMASK) >> IRCONV_DSH))
       return fleft->op1;
@@ -1180,7 +1180,7 @@ LJFOLDF(simplify_conv_i64_num)
 {
    PHIBARRIER(fleft);
    if ((fleft->op2 & IRCONV_SRCMASK) == IRT_INT) {
-      /* Reduce to a sign-extension. */
+      // Reduce to a sign-extension.
       fins->op1 = fleft->op1;
       fins->op2 = ((IRT_I64 << 5) | IRT_INT | IRCONV_SEXT);
       return RETRYFOLD;
@@ -1189,7 +1189,7 @@ LJFOLDF(simplify_conv_i64_num)
 #if LJ_TARGET_X64
       return fleft->op1;
 #else
-      /* Reduce to a zero-extension. */
+      // Reduce to a zero-extension.
       fins->op1 = fleft->op1;
       fins->op2 = (IRT_I64 << 5) | IRT_U32;
       return RETRYFOLD;
@@ -1229,11 +1229,11 @@ LJFOLDF(simplify_conv_flt_num)
    return NEXTFOLD;
 }
 
-/* Shortcut TOBIT + IRT_NUM <- IRT_INT/IRT_U32 conversion. */
+// Shortcut TOBIT + IRT_NUM <- IRT_INT/IRT_U32 conversion.
 LJFOLD(TOBIT CONV KNUM)
 LJFOLDF(simplify_tobit_conv)
 {
-   /* Fold even across PHI to avoid expensive num->int conversions in loop. */
+   // Fold even across PHI to avoid expensive num->int conversions in loop.
    if ((fleft->op2 & IRCONV_SRCMASK) == IRT_INT) {
       lj_assertJ(irt_isnum(fleft->t), "expected TOBIT number arg");
       return fleft->op1;
@@ -1248,7 +1248,7 @@ LJFOLDF(simplify_tobit_conv)
    return NEXTFOLD;
 }
 
-/* Shortcut floor/ceil/round + IRT_NUM <- IRT_INT/IRT_U32 conversion. */
+// Shortcut floor/ceil/round + IRT_NUM <- IRT_INT/IRT_U32 conversion.
 LJFOLD(FPMATH CONV IRFPM_FLOOR)
 LJFOLD(FPMATH CONV IRFPM_CEIL)
 LJFOLD(FPMATH CONV IRFPM_TRUNC)
@@ -1260,7 +1260,7 @@ LJFOLDF(simplify_floor_conv)
    return NEXTFOLD;
 }
 
-/* Strength reduction of widening. */
+// Strength reduction of widening.
 LJFOLD(CONV any IRCONV_I64_INT)
 LJFOLD(CONV any IRCONV_U64_INT)
 LJFOLDF(simplify_conv_sext)
@@ -1277,17 +1277,17 @@ LJFOLDF(simplify_conv_sext)
       ofs = (int64_t)IR(fleft->op2)->i;
       ref = fleft->op1;
    }
-   /* Use scalar evolution analysis results to strength-reduce sign-extension. */
+   // Use scalar evolution analysis results to strength-reduce sign-extension.
    if (ref == J->scev.idx) {
       lo = J->scev.dir ? J->scev.start : J->scev.stop;
       lj_assertJ(irt_isint(J->scev.t), "only int SCEV supported");
       if (lo and IR(lo)->o == IR_KINT and IR(lo)->i + ofs >= 0) {
       ok_reduce:
 #if LJ_TARGET_X64
-         /* Eliminate widening. All 32 bit ops do an implicit zero-extension. */
+         // Eliminate widening. All 32 bit ops do an implicit zero-extension.
          return LEFTFOLD;
 #else
-         /* Reduce to a (cheaper) zero-extension. */
+         // Reduce to a (cheaper) zero-extension.
          fins->op2 &= ~IRCONV_SEXT;
          return RETRYFOLD;
 #endif
@@ -1296,7 +1296,7 @@ LJFOLDF(simplify_conv_sext)
    return NEXTFOLD;
 }
 
-/* Strength reduction of narrowing. */
+// Strength reduction of narrowing.
 LJFOLD(CONV ADD IRCONV_INT_I64)
 LJFOLD(CONV SUB IRCONV_INT_I64)
 LJFOLD(CONV MUL IRCONV_INT_I64)
@@ -1328,7 +1328,7 @@ LJFOLDF(simplify_conv_narrow)
 #endif
 }
 
-/* Special CSE rule for CONV. */
+// Special CSE rule for CONV.
 LJFOLD(CONV any any)
 LJFOLDF(cse_conv)
 {
@@ -1338,7 +1338,7 @@ LJFOLDF(cse_conv)
       IRRef ref = J->chain[IR_CONV];
       while (ref > op1) {
          IRIns* ir = IR(ref);
-         /* Commoning with stronger checks is ok. */
+         // Commoning with stronger checks is ok.
          if (ir->op1 == op1 && (ir->op2 & IRCONV_MODEMASK) == op2 &&
             irt_isguard(ir->t) >= guard)
             return ref;
@@ -1348,7 +1348,7 @@ LJFOLDF(cse_conv)
    return EMITFOLD;  /* No fallthrough to regular CSE. */
 }
 
-/* FP conversion narrowing. */
+// FP conversion narrowing.
 LJFOLD(TOBIT ADD KNUM)
 LJFOLD(TOBIT SUB KNUM)
 LJFOLD(CONV ADD IRCONV_INT_NUM)
@@ -1358,7 +1358,7 @@ LJFOLD(CONV SUB IRCONV_I64_NUM)
 LJFOLDF(narrow_convert)
 {
    PHIBARRIER(fleft);
-   /* Narrowing ignores PHIs and repeating it inside the loop is not useful. */
+   // Narrowing ignores PHIs and repeating it inside the loop is not useful.
    if (J->chain[IR_LOOP])
       return NEXTFOLD;
    lj_assertJ(fins->o != IR_CONV || (fins->op2 & IRCONV_CONVMASK) != IRCONV_TOBIT,
@@ -1366,7 +1366,7 @@ LJFOLDF(narrow_convert)
    return lj_opt_narrow_convert(J);
 }
 
-/* -- Integer algebraic simplifications ----------------------------------- */
+// -- Integer algebraic simplifications -----------------------------------
 
 LJFOLD(ADD any KINT)
 LJFOLD(ADDOV any KINT)
@@ -1760,8 +1760,8 @@ LJFOLDF(simplify_andor_k)
    PHIBARRIER(fleft);
    if (irk->o == IR_KINT) {
       int32_t k = kfold_intop(irk->i, fright->i, (IROp)fins->o);
-      /* (i | k1) & k2 ==> i & k2, if (k1 & k2) == 0. */
-      /* (i & k1) | k2 ==> i | k2, if (k1 | k2) == -1. */
+      // (i | k1) & k2 ==> i & k2, if (k1 & k2) == 0.
+      // (i & k1) | k2 ==> i | k2, if (k1 | k2) == -1.
       if (k == (fins->o == IR_BAND ? 0 : -1)) {
          fins->op1 = fleft->op1;
          return RETRYFOLD;
@@ -1780,8 +1780,8 @@ LJFOLDF(simplify_andor_k64)
    if (irk->o == IR_KINT64) {
       uint64_t k = kfold_int64arith(J, ir_k64(irk)->u64, ir_k64(fright)->u64,
          (IROp)fins->o);
-      /* (i | k1) & k2 ==> i & k2, if (k1 & k2) == 0. */
-      /* (i & k1) | k2 ==> i | k2, if (k1 | k2) == -1. */
+      // (i | k1) & k2 ==> i & k2, if (k1 & k2) == 0.
+      // (i & k1) | k2 ==> i | k2, if (k1 | k2) == -1.
       if (k == (fins->o == IR_BAND ? (uint64_t)0 : ~(uint64_t)0)) {
          fins->op1 = fleft->op1;
          return RETRYFOLD;
@@ -1793,7 +1793,7 @@ LJFOLDF(simplify_andor_k64)
 #endif
 }
 
-/* -- Reassociation ------------------------------------------------------- */
+// -- Reassociation -------------------------------------------------------
 
 LJFOLD(ADD ADD KINT)
 LJFOLD(MUL MUL KINT)
@@ -1912,7 +1912,7 @@ LJFOLDF(reassoc_minmax_k)
    return NEXTFOLD;
 }
 
-/* -- Array bounds check elimination -------------------------------------- */
+// -- Array bounds check elimination --------------------------------------
 
 /* Eliminate ABC across PHIs to handle t[i-1] forwarding case.
 ** ABC(asize, (i+k)+(-k)) ==> ABC(asize, i), but only if it already exists.
@@ -1967,18 +1967,18 @@ LJFOLDF(abc_k)
    return NEXTFOLD;
 }
 
-/* Eliminate invariant ABC inside loop. */
+// Eliminate invariant ABC inside loop.
 LJFOLD(ABC any any)
 LJFOLDF(abc_invar)
 {
-   /* Invariant ABC marked as PTR. Drop if op1 is invariant, too. */
+   // Invariant ABC marked as PTR. Drop if op1 is invariant, too.
    if (!irt_isint(fins->t) && fins->op1 < J->chain[IR_LOOP] &&
       !irt_isphi(IR(fins->op1)->t))
       return DROPFOLD;
    return NEXTFOLD;
 }
 
-/* -- Commutativity ------------------------------------------------------- */
+// -- Commutativity -------------------------------------------------------
 
 /* The refs of commutative ops are canonicalized. Lower refs go to the right.
 ** Rationale behind this:
@@ -2007,7 +2007,7 @@ LJFOLD(EQ any any)
 LJFOLD(NE any any)
 LJFOLDF(comm_equal)
 {
-   /* For non-numbers only: x == x ==> drop; x ~= x ==> fail */
+   // For non-numbers only: x == x ==> drop; x ~= x ==> fail
    if (fins->op1 == fins->op2 && !irt_isnum(fins->t))
       return CONDFOLD(fins->o == IR_EQ);
    return fold_comm_swap(J);
@@ -2023,7 +2023,7 @@ LJFOLD(ULE any any)
 LJFOLD(UGT any any)
 LJFOLDF(comm_comp)
 {
-   /* For non-numbers only: x <=> x ==> drop; x <> x ==> fail */
+   // For non-numbers only: x <=> x ==> drop; x <> x ==> fail
    if (fins->op1 == fins->op2 && !irt_isnum(fins->t))
       return CONDFOLD((fins->o ^ (fins->o >> 1)) & 1);
    if (fins->op1 < fins->op2) {  // Move lower ref to the right.
@@ -2062,7 +2062,7 @@ LJFOLDF(comm_bxor)
    return fold_comm_swap(J);
 }
 
-/* -- Simplification of compound expressions ------------------------------ */
+// -- Simplification of compound expressions ------------------------------
 
 static TRef kfold_xload(jit_State* J, IRIns* ir, const void* p)
 {
@@ -2108,17 +2108,17 @@ LJFOLDF(merge_eqne_snew_kgc)
          return NEXTFOLD;
       if (op == IR_EQ) {
          emitir(IRTGI(IR_EQ), fleft->op2, lj_ir_kint(J, len));
-         /* Caveat: fins/fleft/fright is no longer valid after emitir. */
+         // Caveat: fins/fleft/fright is no longer valid after emitir.
       }
       else {
-         /* NE is not expanded since this would need an OR of two conds. */
+         // NE is not expanded since this would need an OR of two conds.
          if (!irref_isk(fleft->op2))  /* Only handle the constant length case. */
             return NEXTFOLD;
          if (IR(fleft->op2)->i != len)
             return DROPFOLD;
       }
       if (len > 0) {
-         /* A 4 byte load for length 3 is ok -- all strings have an extra NUL. */
+         // A 4 byte load for length 3 is ok -- all strings have an extra NUL.
          uint16_t ot = (uint16_t)(len == 1 ? IRT(IR_XLOAD, FOLD_SNEW_TYPE8) :
             len == 2 ? IRT(IR_XLOAD, IRT_U16) :
             IRTI(IR_XLOAD));
@@ -2140,7 +2140,7 @@ LJFOLDF(merge_eqne_snew_kgc)
    return NEXTFOLD;
 }
 
-/* -- Loads --------------------------------------------------------------- */
+// -- Loads ---------------------------------------------------------------
 
 /* Loads cannot be folded or passed on to CSE in general.
 ** Alias analysis is needed to check for forwarding opportunities.
@@ -2151,7 +2151,7 @@ LJFOLDF(merge_eqne_snew_kgc)
 LJFOLD(ALOAD any)
 LJFOLDX(lj_opt_fwd_aload)
 
-/* From HREF fwd (see below). Must eliminate, not supported by fwd/backend. */
+// From HREF fwd (see below). Must eliminate, not supported by fwd/backend.
 LJFOLD(HLOAD KKPTR)
 LJFOLDF(kfold_hload_kkptr)
 {
@@ -2273,7 +2273,7 @@ LJFOLDF(fload_tab_ah)
    return lj_opt_fwd_tptr(J, tref_ref(tr)) ? tr : EMITFOLD;
 }
 
-/* Strings are immutable, so we can safely FOLD/CSE the related FLOAD. */
+// Strings are immutable, so we can safely FOLD/CSE the related FLOAD.
 LJFOLD(FLOAD KGC IRFL_STR_LEN)
 LJFOLDF(fload_str_len_kgc)
 {
@@ -2312,7 +2312,7 @@ LJFOLDF(fload_sbuf)
    return lj_opt_fwd_sbuf(J, tref_ref(tr)) ? tr : EMITFOLD;
 }
 
-/* The fast function ID of function objects is immutable. */
+// The fast function ID of function objects is immutable.
 LJFOLD(FLOAD KGC IRFL_FUNC_FFID)
 LJFOLDF(fload_func_ffid_kgc)
 {
@@ -2321,7 +2321,7 @@ LJFOLDF(fload_func_ffid_kgc)
    return NEXTFOLD;
 }
 
-/* The C type ID of cdata objects is immutable. */
+// The C type ID of cdata objects is immutable.
 LJFOLD(FLOAD KGC IRFL_CDATA_CTYPEID)
 LJFOLDF(fload_cdata_typeid_kgc)
 {
@@ -2330,7 +2330,7 @@ LJFOLDF(fload_cdata_typeid_kgc)
    return NEXTFOLD;
 }
 
-/* Get the contents of immutable cdata objects. */
+// Get the contents of immutable cdata objects.
 LJFOLD(FLOAD KGC IRFL_CDATA_PTR)
 LJFOLD(FLOAD KGC IRFL_CDATA_INT)
 LJFOLD(FLOAD KGC IRFL_CDATA_INT64)
@@ -2355,7 +2355,7 @@ LJFOLDF(fload_cdata_typeid_cnew)
    return NEXTFOLD;
 }
 
-/* Pointer, int and int64 cdata objects are immutable. */
+// Pointer, int and int64 cdata objects are immutable.
 LJFOLD(FLOAD CNEWI IRFL_CDATA_PTR)
 LJFOLD(FLOAD CNEWI IRFL_CDATA_INT)
 LJFOLD(FLOAD CNEWI IRFL_CDATA_INT64)
@@ -2376,11 +2376,11 @@ LJFOLD(FLOAD any IRFL_CDATA_INT64)
 LJFOLD(VLOAD any any)  /* Vararg loads have no corresponding stores. */
 LJFOLDX(lj_opt_cse)
 
-/* All other field loads need alias analysis. */
+// All other field loads need alias analysis.
 LJFOLD(FLOAD any any)
 LJFOLDX(lj_opt_fwd_fload)
 
-/* This is for LOOP only. Recording handles SLOADs internally. */
+// This is for LOOP only. Recording handles SLOADs internally.
 LJFOLD(SLOAD any any)
 LJFOLDF(fwd_sload)
 {
@@ -2394,7 +2394,7 @@ LJFOLDF(fwd_sload)
    }
 }
 
-/* Only fold for KKPTR. The pointer _and_ the contents must be const. */
+// Only fold for KKPTR. The pointer _and_ the contents must be const.
 LJFOLD(XLOAD KKPTR any)
 LJFOLDF(xload_kptr)
 {
@@ -2405,9 +2405,9 @@ LJFOLDF(xload_kptr)
 LJFOLD(XLOAD any any)
 LJFOLDX(lj_opt_fwd_xload)
 
-/* -- Frame handling ------------------------------------------------------ */
+// -- Frame handling ------------------------------------------------------
 
-/* Prevent CSE of a REF_BASE operand across IR_RETF. */
+// Prevent CSE of a REF_BASE operand across IR_RETF.
 LJFOLD(SUB any BASE)
 LJFOLD(SUB BASE any)
 LJFOLD(EQ any BASE)
@@ -2416,7 +2416,7 @@ LJFOLDF(fold_base)
    return lj_opt_cselim(J, J->chain[IR_RETF]);
 }
 
-/* -- Write barriers ------------------------------------------------------ */
+// -- Write barriers ------------------------------------------------------
 
 /* Write barriers are amenable to CSE, but not across any incremental
 ** GC steps.
@@ -2440,13 +2440,13 @@ LJFOLD(TBAR TNEW)
 LJFOLD(TBAR TDUP)
 LJFOLDF(barrier_tnew_tdup)
 {
-   /* New tables are always white and never need a barrier. */
+   // New tables are always white and never need a barrier.
    if (fins->op1 < J->chain[IR_LOOP])  /* Except across a GC step. */
       return NEXTFOLD;
    return DROPFOLD;
 }
 
-/* -- Profiling ----------------------------------------------------------- */
+// -- Profiling -----------------------------------------------------------
 
 LJFOLD(PROF any any)
 LJFOLDF(prof)
@@ -2457,7 +2457,7 @@ LJFOLDF(prof)
    return EMITFOLD;
 }
 
-/* -- Stores and allocations ---------------------------------------------- */
+// -- Stores and allocations ----------------------------------------------
 
 /* Stores and allocations cannot be folded or passed on to CSE in general.
 ** But some stores can be eliminated with dead-store elimination (DSE).
@@ -2492,7 +2492,7 @@ LJFOLD(CNEW any any)
 LJFOLD(XSNEW any any)
 LJFOLDX(lj_ir_emit)
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 /* Every entry in the generated hash table is a 32 bit pattern:
 **
@@ -2506,9 +2506,9 @@ LJFOLDX(lj_ir_emit)
 
 #include "lj_folddef.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* Fold IR instruction. */
+// Fold IR instruction.
 TRef LJ_FASTCALL lj_opt_fold(jit_State* J)
 {
    uint32_t key, any;
@@ -2518,26 +2518,26 @@ TRef LJ_FASTCALL lj_opt_fold(jit_State* J)
       lj_assertJ(((JIT_F_OPT_FOLD | JIT_F_OPT_FWD | JIT_F_OPT_CSE | JIT_F_OPT_DSE) |
          JIT_F_OPT_DEFAULT) == JIT_F_OPT_DEFAULT,
          "bad JIT_F_OPT_DEFAULT");
-      /* Folding disabled? Chain to CSE, but not for loads/stores/allocs. */
+      // Folding disabled? Chain to CSE, but not for loads/stores/allocs.
       if (!(J->flags & JIT_F_OPT_FOLD) && irm_kind(lj_ir_mode[fins->o]) == IRM_N)
          return lj_opt_cse(J);
 
-      /* No FOLD, forwarding or CSE? Emit raw IR for loads, except for SLOAD. */
+      // No FOLD, forwarding or CSE? Emit raw IR for loads, except for SLOAD.
       if ((J->flags & (JIT_F_OPT_FOLD | JIT_F_OPT_FWD | JIT_F_OPT_CSE)) !=
          (JIT_F_OPT_FOLD | JIT_F_OPT_FWD | JIT_F_OPT_CSE) &&
          irm_kind(lj_ir_mode[fins->o]) == IRM_L && fins->o != IR_SLOAD)
          return lj_ir_emit(J);
 
-      /* No FOLD or DSE? Emit raw IR for stores. */
+      // No FOLD or DSE? Emit raw IR for stores.
       if ((J->flags & (JIT_F_OPT_FOLD | JIT_F_OPT_DSE)) !=
          (JIT_F_OPT_FOLD | JIT_F_OPT_DSE) &&
          irm_kind(lj_ir_mode[fins->o]) == IRM_S)
          return lj_ir_emit(J);
    }
 
-   /* Fold engine start/retry point. */
+   // Fold engine start/retry point.
 retry:
-   /* Construct key from opcode and operand opcodes (unless literal/none). */
+   // Construct key from opcode and operand opcodes (unless literal/none).
    key = ((uint32_t)fins->o << 17);
    if (fins->op1 >= J->cur.nk) {
       key += (uint32_t)IR(fins->op1)->o << 10;
@@ -2555,7 +2555,7 @@ retry:
       key += (fins->op2 & 0x3ffu);  /* Literal mask. Must include IRCONV_*MASK. */
    }
 
-   /* Check for a match in order from most specific to least specific. */
+   // Check for a match in order from most specific to least specific.
    any = 0;
    for (;;) {
       uint32_t k = key | (any & 0x1ffff);
@@ -2571,7 +2571,7 @@ retry:
       any = (any | (any >> 10)) ^ 0xffc00;
    }
 
-   /* Return value processing, ordered by frequency. */
+   // Return value processing, ordered by frequency.
    if (LJ_LIKELY(ref >= MAX_FOLD))
       return TREF(ref, irt_t(IR(ref)->t));
    if (ref == RETRYFOLD)
@@ -2584,16 +2584,16 @@ retry:
    return REF_DROP;
 }
 
-/* -- Common-Subexpression Elimination ------------------------------------ */
+// -- Common-Subexpression Elimination ------------------------------------
 
-/* CSE an IR instruction. This is very fast due to the skip-list chains. */
+// CSE an IR instruction. This is very fast due to the skip-list chains.
 TRef LJ_FASTCALL lj_opt_cse(jit_State* J)
 {
-   /* Avoid narrow to wide store-to-load forwarding stall */
+   // Avoid narrow to wide store-to-load forwarding stall
    IRRef2 op12 = (IRRef2)fins->op1 + ((IRRef2)fins->op2 << 16);
    IROp op = IROp(fins->o);
    if (LJ_LIKELY(J->flags & JIT_F_OPT_CSE)) {
-      /* Limited search for same operands in per-opcode chain. */
+      // Limited search for same operands in per-opcode chain.
       IRRef ref = J->chain[op];
       IRRef lim = fins->op1;
       if (fins->op2 > lim) lim = fins->op2;  /* Relies on lit < REF_BIAS. */
@@ -2603,7 +2603,7 @@ TRef LJ_FASTCALL lj_opt_cse(jit_State* J)
          ref = IR(ref)->prev;
       }
    }
-   /* Otherwise emit IR (inlined for speed). */
+   // Otherwise emit IR (inlined for speed).
    {
       IRRef ref = lj_ir_nextins(J);
       IRIns* ir = IR(ref);
@@ -2616,7 +2616,7 @@ TRef LJ_FASTCALL lj_opt_cse(jit_State* J)
    }
 }
 
-/* CSE with explicit search limit. */
+// CSE with explicit search limit.
 TRef LJ_FASTCALL lj_opt_cselim(jit_State* J, IRRef lim)
 {
    IRRef ref = J->chain[fins->o];
@@ -2629,7 +2629,7 @@ TRef LJ_FASTCALL lj_opt_cselim(jit_State* J, IRRef lim)
    return lj_ir_emit(J);
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #undef IR
 #undef fins

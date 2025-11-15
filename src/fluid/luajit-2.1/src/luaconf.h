@@ -12,7 +12,7 @@
 #include <limits.h>
 #include <stddef.h>
 
-/* Default path for loading Lua and C modules with require(). */
+// Default path for loading Lua and C modules with require().
 #if defined(_WIN32)
 /*
 ** In Windows, any exclamation mark ('!') in the path is replaced by the
@@ -62,12 +62,12 @@
 #define LUA_CPATH_DEFAULT   "./?.so" LUA_LCPATH1 LUA_RCPATH LUA_LCPATH2
 #endif
 
-/* Environment variable names for path overrides and initialization code. */
+// Environment variable names for path overrides and initialization code.
 #define LUA_PATH   "LUA_PATH"
 #define LUA_CPATH   "LUA_CPATH"
 #define LUA_INIT   "LUA_INIT"
 
-/* Special file system characters. */
+// Special file system characters.
 #if defined(_WIN32)
 #define LUA_DIRSEP   "\\"
 #else
@@ -81,18 +81,18 @@
   LUA_DIRSEP "\n" LUA_PATHSEP "\n" LUA_PATH_MARK "\n" \
   LUA_EXECDIR "\n" LUA_IGMARK "\n"
 
-/* Quoting in error messages. */
+// Quoting in error messages.
 #define LUA_QL(x)   "'" x "'"
 #define LUA_QS      LUA_QL("%s")
 
-/* Various tunables. */
+// Various tunables.
 #define LUAI_MAXSTACK   65500   /* Max. # of stack slots for a thread (<64K). */
 #define LUAI_MAXCSTACK   8000   /* Max. # of stack slots for a C func (<10K). */
 #define LUAI_GCPAUSE   200   /* Pause GC until memory is at 200%. */
 #define LUAI_GCMUL   200   /* Run GC at 200% of allocation speed. */
 #define LUA_MAXCAPTURES   32   /* Max. pattern captures. */
 
-/* Configuration for the frontend (the luajit executable). */
+// Configuration for the frontend (the luajit executable).
 #if defined(luajit_c)
 #define LUA_PROGNAME   "luajit"  /* Fallback frontend name. */
 #define LUA_PROMPT   "> "   /* Interactive prompt. */
@@ -100,7 +100,7 @@
 #define LUA_MAXINPUT   512   /* Max. input line length. */
 #endif
 
-/* Note: changing the following defines breaks the Lua 5.1 ABI. */
+// Note: changing the following defines breaks the Lua 5.1 ABI.
 #define LUA_INTEGER   ptrdiff_t
 #define LUA_IDSIZE   60   /* Size of lua_Debug.short_src. */
 /*
@@ -123,7 +123,7 @@
 #define LUA_INTFRMLEN      "l"
 #define LUA_INTFRM_T      long
 
-/* Linkage of public API functions. */
+// Linkage of public API functions.
 #ifdef __cplusplus
 #define LJ_EXTERN_C extern "C"
 #else
@@ -142,7 +142,7 @@
 
 #define LUALIB_API   LUA_API
 
-/* Compatibility support for assertions. */
+// Compatibility support for assertions.
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 #include <assert.h>
 #endif

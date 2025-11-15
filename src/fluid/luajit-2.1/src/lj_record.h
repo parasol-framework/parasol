@@ -10,7 +10,7 @@
 #include "lj_jit.h"
 
 #if LJ_HASJIT
-/* Context for recording an indexed load/store. */
+// Context for recording an indexed load/store.
 typedef struct RecordIndex {
    TValue tabv;      /* Runtime value of table (or indexed object). */
    TValue keyv;      /* Runtime value of key. */

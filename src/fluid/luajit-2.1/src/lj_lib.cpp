@@ -26,7 +26,7 @@
 #include "lj_bcdump.h"
 #include "lj_lib.h"
 
-/* -- Library initialization ---------------------------------------------- */
+// -- Library initialization ----------------------------------------------
 
 static GCtab* lib_create_table(lua_State* L, const char* libname, int hsize)
 {
@@ -67,7 +67,7 @@ static const uint8_t* lib_read_lfunc(lua_State* L, const uint8_t* p, GCtab* tab)
    pt = lj_bcread_proto(&ls);
    pt->firstline = ~(BCLine)0;
    fn = lj_func_newL_empty(L, pt, tabref(L->env));
-   /* NOBARRIER: See below for common barrier. */
+   // NOBARRIER: See below for common barrier.
    setfuncV(L, lj_tab_setstr(L, tab, name), fn);
    return (const uint8_t*)ls.p;
 }
@@ -82,7 +82,7 @@ void lj_lib_register(lua_State* L, const char* libname,
    GCtab* tab = lib_create_table(L, libname, *p++);
    ptrdiff_t tpos = L->top - L->base;
 
-   /* Avoid barriers further down. */
+   // Avoid barriers further down.
    lj_gc_anybarriert(L, tab);
    tab->nomm = 0;
 
@@ -110,7 +110,7 @@ void lj_lib_register(lua_State* L, const char* libname,
          else
             fn->c.f = *cf++;  /* Get cf or handler from C function table. */
          if (len) {
-            /* NOBARRIER: See above for common barrier. */
+            // NOBARRIER: See above for common barrier.
             setfuncV(L, lj_tab_setstr(L, tab, lj_str_new(L, name, len)), fn);
          }
          ofn = fn;
@@ -153,7 +153,7 @@ void lj_lib_register(lua_State* L, const char* libname,
    }
 }
 
-/* Push internal function on the stack. */
+// Push internal function on the stack.
 GCfunc* lj_lib_pushcc(lua_State* L, lua_CFunction f, int id, int n)
 {
    GCfunc* fn;
@@ -168,7 +168,7 @@ void lj_lib_prereg(lua_State* L, const char* name, lua_CFunction f, GCtab* env)
 {
    luaL_findtable(L, LUA_REGISTRYINDEX, "_PRELOAD", 4);
    lua_pushcfunction(L, f);
-   /* NOBARRIER: The function is new (marked white). */
+   // NOBARRIER: The function is new (marked white).
    setgcref(funcV(L->top - 1)->c.env, obj2gco(env));
    lua_setfield(L, -2, name);
    L->top--;
@@ -184,7 +184,7 @@ int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id, const char* name)
    return 1;
 }
 
-/* -- Type checks --------------------------------------------------------- */
+// -- Type checks ---------------------------------------------------------
 
 TValue* lj_lib_checkany(lua_State* L, int narg)
 {
@@ -309,7 +309,7 @@ int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
    return def;
 }
 
-/* -- Strict type checks -------------------------------------------------- */
+// -- Strict type checks --------------------------------------------------
 
 /* The following type checks do not coerce between strings and numbers.
 ** And they handle plain int64_t/uint64_t FFI numbers, too.

@@ -11,11 +11,11 @@
 
 #if LJ_HASFFI
 
-/* -- C type definitions -------------------------------------------------- */
+// -- C type definitions --------------------------------------------------
 
-/* C type numbers. Highest 4 bits of C type info. ORDER CT. */
+// C type numbers. Highest 4 bits of C type info. ORDER CT.
 enum {
-   /* Externally visible types. */
+   // Externally visible types.
    CT_NUM,      /* Integer or floating-point numbers. */
    CT_STRUCT,      /* Struct or union. */
    CT_PTR,      /* Pointer or reference. */
@@ -27,7 +27,7 @@ enum {
    CT_FUNC,      /* Function. */
    CT_TYPEDEF,      /* Typedef. */
    CT_ATTRIB,      /* Miscellaneous attributes. */
-   /* Internal element types. */
+   // Internal element types.
    CT_FIELD,      /* Struct/union field or function parameter. */
    CT_BITFIELD,      /* Struct/union bitfield. */
    CT_CONSTVAL,      /* Constant value. */
@@ -60,7 +60,7 @@ LJ_STATIC_ASSERT(((int)CT_STRUCT& (int)CT_ARRAY) == CT_STRUCT);
 **        ^^  ^^--- bits used for C type conversion dispatch
 */
 
-/* C type info flags.     TFFArrrr  */
+// C type info flags.     TFFArrrr
 #define CTF_BOOL   0x08000000u   /* Boolean: NUM, BITFIELD. */
 #define CTF_FP      0x04000000u   /* Floating-point: NUM. */
 #define CTF_CONST   0x02000000u   /* Const qualifier. */
@@ -79,13 +79,13 @@ LJ_STATIC_ASSERT(((int)CT_STRUCT& (int)CT_ARRAY) == CT_STRUCT);
 #define CTF_ALIGN   (CTMASK_ALIGN<<CTSHIFT_ALIGN)
 #define CTF_UCHAR   ((char)-1 > 0 ? CTF_UNSIGNED : 0)
 
-/* Flags used in parser.  .F.Ammvf   cp->attr  */
+// Flags used in parser.  .F.Ammvf   cp->attr
 #define CTFP_ALIGNED   0x00000001u   /* cp->attr + ALIGN */
 #define CTFP_PACKED   0x00000002u   /* cp->attr */
-/*                        ...C...f   cp->fattr */
+//                        ...C...f   cp->fattr
 #define CTFP_CCONV   0x00000001u   /* cp->fattr + CCONV/[SSE]REGPARM */
 
-/* C type info bitfields. */
+// C type info bitfields.
 #define CTMASK_CID   0x0000ffffu   /* Max. 65536 type IDs. */
 #define CTMASK_NUM   0xf0000000u   /* Max. 16 type numbers. */
 #define CTSHIFT_NUM   28
@@ -97,13 +97,13 @@ LJ_STATIC_ASSERT(((int)CT_STRUCT& (int)CT_ARRAY) == CT_STRUCT);
 #define CTSHIFT_CCONV   16
 #define CTMASK_REGPARM   3      /* Max. 0-3 regparms. */
 #define CTSHIFT_REGPARM   18
-/* Bitfields only used in parser. */
+// Bitfields only used in parser.
 #define CTMASK_VSIZEP   15      /* Max. vector size is 2^15. */
 #define CTSHIFT_VSIZEP   4
 #define CTMASK_MSIZEP   255      /* Max. type size (via mode) is 128. */
 #define CTSHIFT_MSIZEP   8
 
-/* Info bits for BITFIELD. Max. size of bitfield is 64 bits. */
+// Info bits for BITFIELD. Max. size of bitfield is 64 bits.
 #define CTBSZ_MAX   32      /* Max. size of bitfield is 32 bit. */
 #define CTBSZ_FIELD   127      /* Temp. marker for regular field. */
 #define CTMASK_BITPOS   127
@@ -117,10 +117,10 @@ LJ_STATIC_ASSERT(((int)CT_STRUCT& (int)CT_ARRAY) == CT_STRUCT);
   info = (info & ~(CTMASK_##field<<CTSHIFT_##field)) | \
      (((CTSize)(val) & CTMASK_##field) << CTSHIFT_##field)
 
-/* Calling conventions. ORDER CC */
+// Calling conventions. ORDER CC
 enum { CTCC_CDECL, CTCC_THISCALL, CTCC_FASTCALL, CTCC_STDCALL };
 
-/* Attribute numbers. */
+// Attribute numbers.
 enum {
    CTA_NONE,      /* Ignored attribute. Must be zero. */
    CTA_QUAL,      /* Unmerged qualifiers. */
@@ -131,7 +131,7 @@ enum {
    CTA__MAX
 };
 
-/* Special sizes. */
+// Special sizes.
 #define CTSIZE_INVALID   0xffffffffu
 
 typedef uint32_t CTInfo;   /* Type info. */
@@ -139,7 +139,7 @@ typedef uint32_t CTSize;   /* Type size. */
 typedef uint32_t CTypeID;   /* Type ID. */
 typedef uint16_t CTypeID1;   /* Minimum-sized type ID. */
 
-/* C type table element. */
+// C type table element.
 typedef struct CType {
    CTInfo info;      /* Type info. */
    CTSize size;      /* Type size or other info. */
@@ -151,13 +151,13 @@ typedef struct CType {
 #define CTHASH_SIZE   128   /* Number of hash anchors. */
 #define CTHASH_MASK   (CTHASH_SIZE-1)
 
-/* Simplify target-specific configuration. Checked in lj_ccall.h. */
+// Simplify target-specific configuration. Checked in lj_ccall.h.
 #define CCALL_MAX_GPR      8
 #define CCALL_MAX_FPR      8
 
 typedef LJ_ALIGN(8) union FPRCBArg { double d; float f[2]; } FPRCBArg;
 
-/* C callback state. Defined here, to avoid dragging in lj_ccall.h. */
+// C callback state. Defined here, to avoid dragging in lj_ccall.h.
 
 typedef LJ_ALIGN(8) struct CCallback {
    FPRCBArg fpr[CCALL_MAX_FPR];   /* Arguments/results in FPRs. */
@@ -170,7 +170,7 @@ typedef LJ_ALIGN(8) struct CCallback {
    MSize slot;         /* Current callback slot. */
 } CCallback;
 
-/* C type state. */
+// C type state.
 typedef struct CTState {
    CType* tab;      /* C type table. */
    CTypeID top;      /* Current top of C type table. */
@@ -198,7 +198,7 @@ typedef struct CTState {
 #define ctype_msizeP(info)   (((info) >> CTSHIFT_MSIZEP) & CTMASK_MSIZEP)
 #define ctype_cconv(info)   (((info) >> CTSHIFT_CCONV) & CTMASK_CCONV)
 
-/* Simple type checks. */
+// Simple type checks.
 #define ctype_isnum(info)   (ctype_type((info)) == CT_NUM)
 #define ctype_isvoid(info)   (ctype_type((info)) == CT_VOID)
 #define ctype_isptr(info)   (ctype_type((info)) == CT_PTR)
@@ -214,7 +214,7 @@ typedef struct CTState {
 #define ctype_isextern(info)   (ctype_type((info)) == CT_EXTERN)
 #define ctype_hassize(info)   (ctype_type((info)) <= CT_HASSIZE)
 
-/* Combined type and flag checks. */
+// Combined type and flag checks.
 #define ctype_isinteger(info) \
   (((info) & (CTMASK_NUM|CTF_BOOL|CTF_FP)) == CTINFO(CT_NUM, 0))
 #define ctype_isinteger_or_bool(info) \
@@ -246,7 +246,7 @@ typedef struct CTState {
   (((info) & (CTMASK_NUM|CTATTRIB(CTMASK_ATTRIB))) == \
    CTINFO(CT_ATTRIB, CTATTRIB(at)))
 
-/* Target-dependent sizes and alignments. */
+// Target-dependent sizes and alignments.
 #if LJ_64
 #define CTSIZE_PTR   8
 #define CTALIGN_PTR   CTALIGN(3)
@@ -266,9 +266,9 @@ typedef struct CTState {
 #define lj_assertCTS(c, ...)   ((void)cts)
 #endif
 
-/* -- Predefined types ---------------------------------------------------- */
+// -- Predefined types ----------------------------------------------------
 
-/* Target-dependent types. */
+// Target-dependent types.
 #if LJ_TARGET_PPC
 #define CTTYDEFP(_) \
   _(LINT32,      4,   CT_NUM, CTF_LONG|CTALIGN(2))
@@ -276,7 +276,7 @@ typedef struct CTState {
 #define CTTYDEFP(_)
 #endif
 
-/* Common types. */
+// Common types.
 #define CTTYDEF(_) \
   _(NONE,      0,   CT_ATTRIB, CTATTRIB(CTA_BAD)) \
   _(VOID,      -1,   CT_VOID, CTALIGN(0)) \
@@ -302,18 +302,18 @@ typedef struct CTState {
   _(A_CCHAR,      -1,   CT_ARRAY, CTF_CONST|CTALIGN(0)|CTID_CCHAR) \
   _(CTYPEID,      4,   CT_ENUM, CTALIGN(2)|CTID_INT32) \
   CTTYDEFP(_) \
-  /* End of type list. */
+  // End of type list.
 
-/* Public predefined type IDs. */
+// Public predefined type IDs.
 enum {
 #define CTTYIDDEF(id, sz, ct, info)   CTID_##id,
    CTTYDEF(CTTYIDDEF)
 #undef CTTYIDDEF
-   /* Predefined typedefs and keywords follow. */
+   // Predefined typedefs and keywords follow.
    CTID_MAX = 65536
 };
 
-/* Target-dependent type IDs. */
+// Target-dependent type IDs.
 #if LJ_64
 #define CTID_INT_PSZ   CTID_INT64
 #define CTID_UINT_PSZ   CTID_UINT64
@@ -330,30 +330,30 @@ enum {
 #define CTID_WCHAR   CTID_INT32
 #endif
 
-/* -- C tokens and keywords ----------------------------------------------- */
+// -- C tokens and keywords -----------------------------------------------
 
-/* C lexer keywords. */
+// C lexer keywords.
 #define CTOKDEF(_) \
   _(IDENT, "<identifier>") _(STRING, "<string>") \
   _(INTEGER, "<integer>") _(EOF, "<eof>") \
   _(OROR, "||") _(ANDAND, "&&") _(EQ, "==") _(NE, "!=") \
   _(LE, "<=") _(GE, ">=") _(SHL, "<<") _(SHR, ">>") _(DEREF, "->")
 
-/* Simple declaration specifiers. */
+// Simple declaration specifiers.
 #define CDSDEF(_) \
   _(VOID) _(BOOL) _(CHAR) _(INT) _(FP) \
   _(LONG) _(LONGLONG) _(SHORT) _(COMPLEX) _(SIGNED) _(UNSIGNED) \
   _(CONST) _(VOLATILE) _(RESTRICT) _(INLINE) \
   _(TYPEDEF) _(EXTERN) _(STATIC) _(AUTO) _(REGISTER)
 
-/* C keywords. */
+// C keywords.
 #define CKWDEF(_) \
   CDSDEF(_) _(EXTENSION) _(ASM) _(ATTRIBUTE) \
   _(DECLSPEC) _(CCDECL) _(PTRSZ) \
   _(STRUCT) _(UNION) _(ENUM) \
   _(SIZEOF) _(ALIGNOF)
 
-/* C token numbers. */
+// C token numbers.
 enum {
    CTOK_OFS = 255,
 #define CTOKNUM(name, sym)   CTOK_##name,
@@ -368,7 +368,7 @@ enum {
    CTOK_LASTDECL = CTOK_ENUM
 };
 
-/* Declaration specifier flags. */
+// Declaration specifier flags.
 enum {
 #define CDSFLAG(name)   CDF_##name = (1u << (CTOK_##name - CTOK_FIRSTDECL)),
    CDSDEF(CDSFLAG)
@@ -378,11 +378,11 @@ enum {
 
 #define CDF_SCL  (CDF_TYPEDEF|CDF_EXTERN|CDF_STATIC|CDF_AUTO|CDF_REGISTER)
 
-/* -- C type management --------------------------------------------------- */
+// -- C type management ---------------------------------------------------
 
 #define ctype_ctsG(g)      (mref((g)->ctype_state, CTState))
 
-/* Get C type state. */
+// Get C type state.
 static LJ_AINLINE CTState* ctype_cts(lua_State* L)
 {
    CTState* cts = ctype_ctsG(G(L));
@@ -390,7 +390,7 @@ static LJ_AINLINE CTState* ctype_cts(lua_State* L)
    return cts;
 }
 
-/* Load FFI library on-demand. */
+// Load FFI library on-demand.
 #define ctype_loadffi(L) \
   do { \
     if (!ctype_ctsG(G(L))) { \
@@ -400,13 +400,13 @@ static LJ_AINLINE CTState* ctype_cts(lua_State* L)
     } \
   } while (0)
 
-/* Save and restore state of C type table. */
+// Save and restore state of C type table.
 #define LJ_CTYPE_SAVE(cts)   CTState savects_ = *(cts)
 #define LJ_CTYPE_RESTORE(cts) \
   ((cts)->top = savects_.top, \
    memcpy((cts)->hash, savects_.hash, sizeof(savects_.hash)))
 
-/* Check C type ID for validity when assertions are enabled. */
+// Check C type ID for validity when assertions are enabled.
 static LJ_AINLINE CTypeID ctype_check(CTState* cts, CTypeID id)
 {
    UNUSED(cts);
@@ -414,16 +414,16 @@ static LJ_AINLINE CTypeID ctype_check(CTState* cts, CTypeID id)
    return id;
 }
 
-/* Get C type for C type ID. */
+// Get C type for C type ID.
 static LJ_AINLINE CType* ctype_get(CTState* cts, CTypeID id)
 {
    return &cts->tab[ctype_check(cts, id)];
 }
 
-/* Get C type ID for a C type. */
+// Get C type ID for a C type.
 #define ctype_typeid(cts, ct)   ((CTypeID)((ct) - (cts)->tab))
 
-/* Get child C type. */
+// Get child C type.
 static LJ_AINLINE CType* ctype_child(CTState* cts, CType* ct)
 {
    lj_assertCTS(!(ctype_isvoid(ct->info) || ctype_isstruct(ct->info) ||
@@ -432,7 +432,7 @@ static LJ_AINLINE CType* ctype_child(CTState* cts, CType* ct)
    return ctype_get(cts, ctype_cid(ct->info));
 }
 
-/* Get raw type for a C type ID. */
+// Get raw type for a C type ID.
 static LJ_AINLINE CType* ctype_raw(CTState* cts, CTypeID id)
 {
    CType* ct = ctype_get(cts, id);
@@ -440,17 +440,17 @@ static LJ_AINLINE CType* ctype_raw(CTState* cts, CTypeID id)
    return ct;
 }
 
-/* Get raw type of the child of a C type. */
+// Get raw type of the child of a C type.
 static LJ_AINLINE CType* ctype_rawchild(CTState* cts, CType* ct)
 {
    do { ct = ctype_child(cts, ct); } while (ctype_isattrib(ct->info));
    return ct;
 }
 
-/* Set the name of a C type table element. */
+// Set the name of a C type table element.
 static LJ_AINLINE void ctype_setname(CType* ct, GCstr* s)
 {
-   /* NOBARRIER: mark string as fixed -- the C type table is never collected. */
+   // NOBARRIER: mark string as fixed -- the C type table is never collected.
    fixstring(s);
    setgcref(ct->name, obj2gco(s));
 }

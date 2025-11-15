@@ -11,7 +11,7 @@
 
 #if LJ_HASFFI
 
-/* Really belongs to lj_vm.h. */
+// Really belongs to lj_vm.h.
 LJ_ASMF void lj_vm_ffi_callback(void);
 
 LJ_FUNC MSize lj_ccallback_ptr2slot(CTState *cts, void *p);

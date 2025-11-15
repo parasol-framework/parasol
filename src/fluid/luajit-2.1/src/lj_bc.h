@@ -21,7 +21,7 @@
 ** In-memory instructions are always stored in host byte order.
 */
 
-/* Operand ranges and related constants. */
+// Operand ranges and related constants.
 #define BCMAX_A      0xff
 #define BCMAX_B      0xff
 #define BCMAX_C      0xff
@@ -30,7 +30,7 @@
 #define NO_REG      BCMAX_A
 #define NO_JMP      (~(BCPos)0)
 
-/* Macros to get instruction fields. */
+// Macros to get instruction fields.
 #define bc_op(i)   ((BCOp)((i)&0xff))
 #define bc_a(i)      ((BCReg)(((i)>>8)&0xff))
 #define bc_b(i)      ((BCReg)((i)>>24))
@@ -38,7 +38,7 @@
 #define bc_d(i)      ((BCReg)((i)>>16))
 #define bc_j(i)      ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
-/* Macros to set instruction fields. */
+// Macros to set instruction fields.
 #define setbc_byte(p, x, ofs) \
   ((uint8_t *)(p))[LJ_ENDIAN_SELECT(ofs, 3-ofs)] = (uint8_t)(x)
 #define setbc_op(p, x)   setbc_byte(p, (x), 0)
@@ -49,7 +49,7 @@
   ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
 #define setbc_j(p, x)   setbc_d(p, (BCPos)((int32_t)(x)+BCBIAS_J))
 
-/* Macros to compose instructions. */
+// Macros to compose instructions.
 #define BCINS_ABC(o, a, b, c) \
   (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(b)<<24)|((BCIns)(c)<<16))
 #define BCINS_AD(o, a, d) \
@@ -196,7 +196,7 @@
   _(FUNCC,   rbase,   ___,   ___,   ___) \
   _(FUNCCW,   rbase,   ___,   ___,   ___)
 
-/* Bytecode opcode numbers. */
+// Bytecode opcode numbers.
 typedef enum {
 #define BCENUM(name, ma, mb, mc, mt)   BC_##name,
    BCDEF(BCENUM)
@@ -227,15 +227,15 @@ LJ_STATIC_ASSERT((int)BC_FUNCF + 2 == (int)BC_JFUNCF);
 LJ_STATIC_ASSERT((int)BC_FUNCV + 1 == (int)BC_IFUNCV);
 LJ_STATIC_ASSERT((int)BC_FUNCV + 2 == (int)BC_JFUNCV);
 
-/* This solves a circular dependency problem, change as needed. */
+// This solves a circular dependency problem, change as needed.
 #define FF_next_N   4
 
-/* Stack slots used by FORI/FORL, relative to operand A. */
+// Stack slots used by FORI/FORL, relative to operand A.
 enum {
    FORL_IDX, FORL_STOP, FORL_STEP, FORL_EXT
 };
 
-/* Bytecode operand modes. ORDER BCMode */
+// Bytecode operand modes. ORDER BCMode
 typedef enum {
    BCMnone, BCMdst, BCMbase, BCMvar, BCMrbase, BCMuv,  /* Mode A must be <= 7 */
    BCMlit, BCMlits, BCMpri, BCMnum, BCMstr, BCMtab, BCMfunc, BCMjump, BCMcdata,

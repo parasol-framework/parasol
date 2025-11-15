@@ -17,7 +17,7 @@
 #include "lj_vm.h"
 #include "lj_prng.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #define LJLIB_MODULE_math
 
@@ -113,7 +113,7 @@ LJLIB_CF(math_round)
 LJLIB_PUSH(3.14159265358979323846) LJLIB_SET(pi)
 LJLIB_PUSH(1e310) LJLIB_SET(huge)
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 /* This implements a Tausworthe PRNG with period 2^223. Based on:
 **   Tables of maximally-equidistributed combined LFSR generators,
@@ -121,10 +121,10 @@ LJLIB_PUSH(1e310) LJLIB_SET(huge)
 ** Full-period ME-CF generator with L=64, J=4, k=223, N1=49.
 */
 
-/* Union needed for bit-pattern conversion between uint64_t and double. */
+// Union needed for bit-pattern conversion between uint64_t and double.
 typedef union { uint64_t u64; double d; } U64double;
 
-/* PRNG seeding function. */
+// PRNG seeding function.
 static void random_seed(PRNGState* rs, double d)
 {
    uint32_t r = 0x11090601;  /* 64-k[i] as four 8 bit constants. */
@@ -141,7 +141,7 @@ static void random_seed(PRNGState* rs, double d)
       (void)lj_prng_u64(rs);
 }
 
-/* PRNG extract function. */
+// PRNG extract function.
 LJLIB_PUSH(top-2)  /* Upvalue holds userdata with PRNGState. */
 LJLIB_CF(math_random)      LJLIB_REC(.)
 {
@@ -196,7 +196,7 @@ LJLIB_CF(math_random)      LJLIB_REC(.)
    return 1;
 }
 
-/* PRNG seed function. */
+// PRNG seed function.
 LJLIB_PUSH(top-2)  /* Upvalue holds userdata with PRNGState. */
 LJLIB_CF(math_randomseed)
 {
@@ -205,7 +205,7 @@ LJLIB_CF(math_randomseed)
    return 0;
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #include "lj_libdef.h"
 

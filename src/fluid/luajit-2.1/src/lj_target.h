@@ -9,9 +9,9 @@
 #include "lj_def.h"
 #include "lj_arch.h"
 
-/* -- Registers and spill slots ------------------------------------------- */
+// -- Registers and spill slots -------------------------------------------
 
-/* Register type (uint8_t in ir->r). */
+// Register type (uint8_t in ir->r).
 typedef uint32_t Reg;
 
 /* The hi-bit is NOT set for an allocated register. This means the value
@@ -27,18 +27,18 @@ typedef uint32_t Reg;
 #define ra_noreg(r)      ((r) & RID_NONE)
 #define ra_hasreg(r)      (!((r) & RID_NONE))
 
-/* The ra_hashint() macro assumes a previous test for ra_noreg(). */
+// The ra_hashint() macro assumes a previous test for ra_noreg().
 #define ra_hashint(r)      ((r) < RID_SUNK)
 #define ra_gethint(r)      ((Reg)((r) & RID_MASK))
 #define ra_sethint(rr, r)   rr = (uint8_t)((r)|RID_NONE)
 #define ra_samehint(r1, r2)   (ra_gethint((r1)^(r2)) == 0)
 
-/* Spill slot 0 means no spill slot has been allocated. */
+// Spill slot 0 means no spill slot has been allocated.
 #define SPS_NONE      0
 
 #define ra_hasspill(s)      ((s) != SPS_NONE)
 
-/* Combined register and spill slot (uint16_t in ir->prev). */
+// Combined register and spill slot (uint16_t in ir->prev).
 typedef uint32_t RegSP;
 
 #define REGSP(r, s)      ((r) + ((s) << 8))
@@ -50,7 +50,7 @@ typedef uint32_t RegSP;
 #define regsp_used(rs) \
   (((rs) & ~REGSP(RID_MASK, 0)) != REGSP(RID_NONE, 0))
 
-/* -- Register sets ------------------------------------------------------- */
+// -- Register sets -------------------------------------------------------
 
 /* Bitset for registers. 32 registers suffice for most architectures.
 ** Note that one set holds bits for both GPRs and FPRs.
@@ -77,7 +77,7 @@ typedef uint32_t RegSet;
 #define rset_pickbot(rs)   ((Reg)lj_ffs(rs))
 #endif
 
-/* -- Register allocation cost -------------------------------------------- */
+// -- Register allocation cost --------------------------------------------
 
 /* The register allocation heuristic keeps track of the cost for allocating
 ** a specific register:
@@ -121,10 +121,10 @@ typedef uint32_t RegSet;
 */
 #define REGCOST_PHI_WEIGHT   64
 
-/* Cost for allocating a specific register. */
+// Cost for allocating a specific register.
 typedef uint32_t RegCost;
 
-/* Note: assumes 16 bit IRRef1. */
+// Note: assumes 16 bit IRRef1.
 #define REGCOST(cost, ref)   ((RegCost)(ref) + ((RegCost)(cost) << 16))
 #define regcost_ref(rc)      ((IRRef1)(rc))
 
@@ -132,7 +132,7 @@ typedef uint32_t RegCost;
   ((RegCost)((t)&IRT_ISPHI) * (((RegCost)(REGCOST_PHI_WEIGHT)<<16)/IRT_ISPHI))
 #define REGCOST_REF_T(ref, t)   (REGCOST((ref), (ref)) + REGCOST_T((t)))
 
-/* -- Target-specific definitions ----------------------------------------- */
+// -- Target-specific definitions -----------------------------------------
 
 #if LJ_TARGET_X86ORX64
 #include "lj_target_x86.h"
@@ -149,7 +149,7 @@ typedef uint32_t RegCost;
 #endif
 
 #ifdef EXITSTUBS_PER_GROUP
-/* Return the address of an exit stub. */
+// Return the address of an exit stub.
 static LJ_AINLINE char *exitstub_addr_(char **group, uint32_t exitno)
 {
   lj_assertX(group[exitno / EXITSTUBS_PER_GROUP] != NULL,
@@ -157,7 +157,7 @@ static LJ_AINLINE char *exitstub_addr_(char **group, uint32_t exitno)
   return (char *)group[exitno / EXITSTUBS_PER_GROUP] +
     EXITSTUB_SPACING*(exitno % EXITSTUBS_PER_GROUP);
 }
-/* Avoid dependence on lj_jit.h if only including lj_target.h. */
+// Avoid dependence on lj_jit.h if only including lj_target.h.
 #define exitstub_addr(J, exitno) \
   ((MCode *)exitstub_addr_((char **)((J)->exitstubgroup), (exitno)))
 #endif

@@ -21,7 +21,7 @@
 #include "lj_ff.h"
 #include "lj_lib.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #define LJLIB_MODULE_table
 
@@ -84,9 +84,9 @@ LJLIB_CF(table_insert)      LJLIB_REC(.)
    if (nargs != 2 * sizeof(TValue)) {
       if (nargs != 3 * sizeof(TValue))
          lj_err_caller(L, LJ_ERR_TABINS);
-      /* NOBARRIER: This just moves existing elements around. */
+      // NOBARRIER: This just moves existing elements around.
       for (n = lj_lib_checkint(L, 2); i > n; i--) {
-         /* The set may invalidate the get pointer, so need to do it first! */
+         // The set may invalidate the get pointer, so need to do it first!
          TValue* dst = lj_tab_setint(L, t, i);
          cTValue* src = lj_tab_getint(t, i - 1);
          if (src) {
@@ -170,7 +170,7 @@ LJLIB_CF(table_concat)      LJLIB_REC(.)
    return 1;
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 static void set2(lua_State* L, int i, int j)
 {
@@ -199,7 +199,7 @@ static void auxsort(lua_State* L, int l, int u)
 {
    while (l < u) {  // for tail recursion
       int i, j;
-      /* sort elements a[l], a[(l+u)/2] and a[u] */
+      // sort elements a[l], a[(l+u)/2] and a[u]
       lua_rawgeti(L, 1, l);
       lua_rawgeti(L, 1, u);
       if (sort_comp(L, -1, -2))  /* a[u] < a[l]? */
@@ -226,15 +226,15 @@ static void auxsort(lua_State* L, int l, int u)
       lua_pushvalue(L, -1);
       lua_rawgeti(L, 1, u - 1);
       set2(L, i, u - 1);
-      /* a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2 */
+      // a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2
       i = l; j = u - 1;
       for (;;) {  // invariant: a[l..i] <= P <= a[j..u]
-         /* repeat ++i until a[i] >= P */
+         // repeat ++i until a[i] >= P
          while (lua_rawgeti(L, 1, ++i), sort_comp(L, -1, -2)) {
             if (i >= u) lj_err_caller(L, LJ_ERR_TABSORT);
             lua_pop(L, 1);  /* remove a[i] */
          }
-         /* repeat --j until a[j] <= P */
+         // repeat --j until a[j] <= P
          while (lua_rawgeti(L, 1, --j), sort_comp(L, -3, -1)) {
             if (j <= l) lj_err_caller(L, LJ_ERR_TABSORT);
             lua_pop(L, 1);  /* remove a[j] */
@@ -248,8 +248,8 @@ static void auxsort(lua_State* L, int l, int u)
       lua_rawgeti(L, 1, u - 1);
       lua_rawgeti(L, 1, i);
       set2(L, u - 1, i);  /* swap pivot (a[u-1]) with a[i] */
-      /* a[l..i-1] <= a[i] == P <= a[i+1..u] */
-      /* adjust so that smaller half is in [j..i] and larger one in [l..u] */
+      // a[l..i-1] <= a[i] == P <= a[i+1..u]
+      // adjust so that smaller half is in [j..i] and larger one in [l..u]
       if (i - l < u - i) {
          j = l; i = i - 1; l = i + 2;
       }
@@ -278,7 +278,7 @@ LJLIB_CF(table_pack)
    TValue* array, * base = L->base;
    MSize i, n = (uint32_t)(L->top - base);
    GCtab* t = lj_tab_new(L, n ? n + 1 : 0, 1);
-   /* NOBARRIER: The table is new (marked white). */
+   // NOBARRIER: The table is new (marked white).
    setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
    for (array = tvref(t->array) + 1, i = 0; i < n; i++)
       copyTV(L, &array[i], &base[i]);
@@ -338,7 +338,7 @@ static int luaopen_table_new(lua_State* L)
    return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #include "lj_libdef.h"
 

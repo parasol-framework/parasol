@@ -27,7 +27,7 @@
 #include "lj_strfmt.h"
 #include "lj_lib.h"
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #define LJLIB_MODULE_string
 
@@ -158,12 +158,12 @@ LJLIB_CF(string_split)
    while (pos <= end) {
       const char* found = NULL;
 
-      /* Find next separator */
+      // Find next separator
       if (seplen == 1) {
          found = (const char*)memchr(pos, sepstr[0], end - pos);
       }
       else {
-         /* Multi-character separator or whitespace */
+         // Multi-character separator or whitespace
          for (const char* p = pos; p <= end - seplen; p++) {
             if (seplen == 4 && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
                found = p;
@@ -177,14 +177,14 @@ LJLIB_CF(string_split)
       }
 
       if (found) {
-         /* Add substring to table */
+         // Add substring to table
          GCstr* substr = lj_str_new(L, pos, found - pos);
          setstrV(L, lj_tab_setint(L, t, idx), substr);
          idx++;
          pos = found + (seplen == 4 ? 1 : seplen);  /* Skip separator */
       }
       else {
-         /* Add final substring */
+         // Add final substring
          GCstr* substr = lj_str_new(L, pos, end - pos);
          setstrV(L, lj_tab_setint(L, t, idx), substr);
          idx++;
@@ -214,21 +214,21 @@ LJLIB_CF(string_trim)
       return 1;
    }
 
-   /* Skip leading whitespace */
+   // Skip leading whitespace
    while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
       start++;
 
-   /* Skip trailing whitespace */
+   // Skip trailing whitespace
    while (end > start && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
       end--;
 
-   /* If all whitespace, return empty string */
+   // If all whitespace, return empty string
    if (start >= end) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
    }
 
-   /* Create trimmed string */
+   // Create trimmed string
    GCstr* result = lj_str_new(L, start, end - start);
    setstrV(L, L->top - 1, result);
    lj_gc_check(L);
@@ -252,11 +252,11 @@ LJLIB_CF(string_rtrim)
       return 1;
    }
 
-   /* Find end of non-whitespace */
+   // Find end of non-whitespace
    while (end > str && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
       end--;
 
-   /* Create right-trimmed string */
+   // Create right-trimmed string
    GCstr* result = lj_str_new(L, str, end - str);
    setstrV(L, L->top - 1, result);
    lj_gc_check(L);
@@ -272,19 +272,19 @@ LJLIB_CF(string_startsWith)
    MSize slen = s->len;
    MSize prefixlen = prefix->len;
 
-   /* Empty prefix always matches */
+   // Empty prefix always matches
    if (prefixlen == 0) {
       setboolV(L->top - 1, 1);
       return 1;
    }
 
-   /* Prefix longer than string cannot match */
+   // Prefix longer than string cannot match
    if (prefixlen > slen) {
       setboolV(L->top - 1, 0);
       return 1;
    }
 
-   /* Compare prefix with start of string */
+   // Compare prefix with start of string
    int matches = (memcmp(str, prefixstr, prefixlen) == 0);
    setboolV(L->top - 1, matches);
    return 1;
@@ -299,19 +299,19 @@ LJLIB_CF(string_endsWith)
    MSize slen = s->len;
    MSize suffixlen = suffix->len;
 
-   /* Empty suffix always matches */
+   // Empty suffix always matches
    if (suffixlen == 0) {
       setboolV(L->top - 1, 1);
       return 1;
    }
 
-   /* Suffix longer than string cannot match */
+   // Suffix longer than string cannot match
    if (suffixlen > slen) {
       setboolV(L->top - 1, 0);
       return 1;
    }
 
-   /* Compare suffix with end of string */
+   // Compare suffix with end of string
    int matches = (memcmp(str + slen - suffixlen, suffixstr, suffixlen) == 0);
    setboolV(L->top - 1, matches);
    return 1;
@@ -339,23 +339,23 @@ LJLIB_CF(string_join)
       if (tv && !tvisnil(tv)) {
          int isValidType = 0;
 
-         /* Check if we have a valid type to process */
+         // Check if we have a valid type to process
          if (tvisstr(tv) || tvisnum(tv)) {
             isValidType = 1;
          }
 
          if (isValidType) {
-            /* Add separator before non-first elements */
+            // Add separator before non-first elements
             if (sb->w > sb->b && seplen > 0) {
                lj_buf_putmem(sb, sepstr, seplen);
             }
 
             if (tvisstr(tv)) {
-               /* Add string content */
+               // Add string content
                lj_buf_putstr(sb, strV(tv));
             }
             else if (tvisnum(tv)) {
-               /* Convert number to string directly into buffer */
+               // Convert number to string directly into buffer
                sb = lj_strfmt_putnum(sb, tv);
             }
          }
@@ -378,18 +378,18 @@ LJLIB_CF(string_cap)
       return 1;
    }
 
-   /* Create new string with first character uppercased */
+   // Create new string with first character uppercased
    SBuf* sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
 
-   /* Convert first character to uppercase */
+   // Convert first character to uppercase
    char first = str[0];
    if (first >= 'a' && first <= 'z') {
       first = first - 32;  /* Convert to uppercase */
    }
    lj_buf_putb(sb, first);
 
-   /* Add remaining characters unchanged */
+   // Add remaining characters unchanged
    if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
 
    setstrV(L, L->top - 1, lj_buf_str(L, sb));
@@ -408,11 +408,11 @@ LJLIB_CF(string_decap)
       return 1;
    }
 
-   /* Create new string with first character lowercased */
+   // Create new string with first character lowercased
    SBuf* sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
 
-   /* Convert first character to lowercase */
+   // Convert first character to lowercase
    char first = str[0];
    if (first >= 'A' && first <= 'Z') {
       first = first + 32;  /* Convert to lowercase */
@@ -431,7 +431,7 @@ LJLIB_CF(string_hash)
    GCstr* s = lj_lib_checkstr(L, 1);
    int caseSensitive = 0;  /* Default: case insensitive */
 
-   /* Check for optional second parameter (boolean) */
+   // Check for optional second parameter (boolean)
    if (L->base + 1 < L->top && tvisbool(L->base + 1)) {
       caseSensitive = boolV(L->base + 1);
    }
@@ -461,7 +461,7 @@ LJLIB_CF(string_escXML)
 {
    GCstr* s = lj_lib_optstr(L, 1);
 
-   /* Handle nil input - return empty string */
+   // Handle nil input - return empty string
    if (!s) {
       setstrV(L, L->top - 1, &G(L)->strempty);
       return 1;
@@ -497,7 +497,7 @@ LJLIB_ASM(string_reverse)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_reverse)
 LJLIB_ASM_(string_lower)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_lower)
 LJLIB_ASM_(string_upper)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_upper)
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 static int writer_buf(lua_State* L, const void* p, size_t size, void* sb)
 {
@@ -519,9 +519,9 @@ LJLIB_CF(string_dump)
    return 1;
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
-/* macro to `unsign' a character */
+// macro to `unsign' a character
 #define uchar(c)   ((unsigned char)(c))
 
 #define CAP_UNFINISHED   (-1)
@@ -663,7 +663,7 @@ static const char* max_expand(MatchState* ms, const char* s,
    ptrdiff_t i = 0;  /* counts maximum expand for item */
    while ((s + i) < ms->src_end && singlematch(uchar(*(s + i)), p, ep))
       i++;
-   /* keeps trying to match with the maximum repetitions */
+   // keeps trying to match with the maximum repetitions
    while (i >= 0) {
       const char* res = match(ms, (s + i), ep + 1);
       if (res) return res;
@@ -772,7 +772,7 @@ init: /* using goto's to optimize tail recursion */
    case '\0':  /* end of pattern */
       break;  /* match succeeded */
    case '$':
-      /* is the `$' the last char in pattern? */
+      // is the `$' the last char in pattern?
       if (*(p + 1) != '\0') goto dflt;
       if (s != ms->src_end) s = NULL;  /* check end of string */
       break;
@@ -1035,7 +1035,7 @@ LJLIB_CF(string_gsub)
    return 2;
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 LJLIB_CF(string_format)      LJLIB_REC(.)
 {
@@ -1050,7 +1050,7 @@ LJLIB_CF(string_format)      LJLIB_REC(.)
    return 1;
 }
 
-/* ------------------------------------------------------------------------ */
+// ------------------------------------------------------------------------
 
 #include "lj_libdef.h"
 
@@ -1060,7 +1060,7 @@ LUALIB_API int luaopen_string(lua_State* L)
    global_State* g;
    LJ_LIB_REG(L, LUA_STRLIBNAME, string);
    mt = lj_tab_new(L, 0, 1);
-   /* NOBARRIER: basemt is a GC root. */
+   // NOBARRIER: basemt is a GC root.
    g = G(L);
    setgcref(basemt_it(g, LJ_TSTR), obj2gco(mt));
    settabV(L, lj_tab_setstr(L, mt, mmname_str(g, MM_index)), tabV(L->top - 1));

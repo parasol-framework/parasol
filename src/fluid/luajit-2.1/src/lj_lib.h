@@ -24,7 +24,7 @@
 ** This time the fallback must not be called again or it gets stuck in a loop.
 */
 
-/* Return values from fallback handler. */
+// Return values from fallback handler.
 #define FFH_RETRY   0
 #define FFH_UNREACHABLE   FFH_RETRY
 #define FFH_RES(n)   ((n)+1)
@@ -52,7 +52,7 @@ LJ_FUNC int32_t lj_lib_checkintrange(lua_State* L, int narg,
    int32_t a, int32_t b);
 #endif
 
-/* Avoid including lj_frame.h. */
+// Avoid including lj_frame.h.
 #if LJ_GC64
 #define lj_lib_upvalue(L, n) \
   (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
@@ -76,7 +76,7 @@ LJ_FUNC int32_t lj_lib_checkintrange(lua_State* L, int narg,
 LJ_FUNC GCfunc* lj_lib_pushcc(lua_State* L, lua_CFunction f, int id, int n);
 #define lj_lib_pushcf(L, fn, id)   (lj_lib_pushcc(L, (fn), (id), 0))
 
-/* Library function declarations. Scanned by buildvm. */
+// Library function declarations. Scanned by buildvm.
 #define LJLIB_CF(name)      static int lj_cf_##name(lua_State *L)
 #define LJLIB_ASM(name)      static int lj_ffh_##name(lua_State *L)
 #define LJLIB_ASM_(name)
@@ -97,7 +97,7 @@ LJ_FUNC void lj_lib_prereg(lua_State* L, const char* name, lua_CFunction f,
 LJ_FUNC int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id,
    const char* name);
 
-/* Library init data tags. */
+// Library init data tags.
 #define LIBINIT_LENMASK   0x3f
 #define LIBINIT_TAGMASK   0xc0
 #define LIBINIT_CF   0x00

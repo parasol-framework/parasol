@@ -13,9 +13,9 @@
 #include "lj_def.h"
 #include "lj_arch.h"
 
-/* -- Memory references --------------------------------------------------- */
+// -- Memory references ---------------------------------------------------
 
-/* Memory and GC object sizes. */
+// Memory and GC object sizes.
 typedef uint32_t MSize;
 #if LJ_GC64
 typedef uint64_t GCSize;
@@ -23,7 +23,7 @@ typedef uint64_t GCSize;
 typedef uint32_t GCSize;
 #endif
 
-/* Memory reference */
+// Memory reference
 typedef struct MRef {
 #if LJ_GC64
    uint64_t ptr64;   /* True 64 bit pointer. */
@@ -48,9 +48,9 @@ typedef struct MRef {
 #define setmrefr(r, v)   ((r).ptr32 = (v).ptr32)
 #endif
 
-/* -- GC object references ------------------------------------------------ */
+// -- GC object references ------------------------------------------------
 
-/* GCobj reference */
+// GCobj reference
 typedef struct GCRef {
 #if LJ_GC64
    uint64_t gcptr64;   /* True 64 bit pointer. */
@@ -59,9 +59,9 @@ typedef struct GCRef {
 #endif
 } GCRef;
 
-/* Common GC header for all collectable objects. */
+// Common GC header for all collectable objects.
 #define GCHeader   GCRef nextgc; uint8_t marked; uint8_t gct
-/* This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields. */
+// This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields.
 
 #if LJ_GC64
 #define gcref(r)   ((GCobj *)(r).gcptr64)
@@ -145,32 +145,32 @@ typedef struct GCRef {
 ** may invalidate the incremental GC invariant.
 */
 
-/* -- Common type definitions --------------------------------------------- */
+// -- Common type definitions ---------------------------------------------
 
-/* Types for handling bytecodes. Need this here, details in lj_bc.h. */
+// Types for handling bytecodes. Need this here, details in lj_bc.h.
 typedef uint32_t BCIns;  /* Bytecode instruction. */
 typedef uint32_t BCPos;  /* Bytecode position. */
 typedef uint32_t BCReg;  /* Bytecode register. */
 typedef int32_t BCLine;  /* Bytecode line number. */
 
-/* Internal assembler functions. Never call these directly from C. */
+// Internal assembler functions. Never call these directly from C.
 typedef void (*ASMFunction)(void);
 
-/* Resizable string buffer. Need this here, details in lj_buf.h. */
+// Resizable string buffer. Need this here, details in lj_buf.h.
 #define SBufHeader   char *w, *e, *b; MRef L
 typedef struct SBuf {
    SBufHeader;
 } SBuf;
 
-/* -- Tags and values ----------------------------------------------------- */
+// -- Tags and values -----------------------------------------------------
 
-/* Frame link. */
+// Frame link.
 typedef union {
    int32_t ftsz;      /* Frame type and size of previous frame. */
    MRef pcr;      /* Or PC for Lua frames. */
 } FrameLink;
 
-/* Tagged value. */
+// Tagged value.
 typedef LJ_ALIGN(8) union TValue {
    uint64_t u64;      /* 64 bit pattern overlaps number. */
    lua_Number n;      /* Number object overlaps split tag/value object. */
@@ -216,7 +216,7 @@ typedef const TValue cTValue;
 
 #define tvref(r)   (mref(r, TValue))
 
-/* More external and GCobj tags for internal objects. */
+// More external and GCobj tags for internal objects.
 #define LAST_TT      LUA_TTHREAD
 #define LUA_TPROTO   (LAST_TT+1)
 #define LUA_TCDATA   (LAST_TT+2)
@@ -270,10 +270,10 @@ typedef const TValue cTValue;
 #define LJ_TCDATA      (~10u)
 #define LJ_TTAB         (~11u)
 #define LJ_TUDATA      (~12u)
-/* This is just the canonical number type used in some places. */
+// This is just the canonical number type used in some places.
 #define LJ_TNUMX      (~13u)
 
-/* Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM */
+// Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM
 #if LJ_64 && !LJ_GC64
 #define LJ_TISNUM      0xfffeffffu
 #else
@@ -284,7 +284,7 @@ typedef const TValue cTValue;
 #define LJ_TISGCV      (LJ_TSTR+1)
 #define LJ_TISTABUD      LJ_TTAB
 
-/* Type marker for slot holding a traversal index. Must be lightuserdata. */
+// Type marker for slot holding a traversal index. Must be lightuserdata.
 #define LJ_KEYINDEX      0xfffe7fffu
 
 #if LJ_GC64
@@ -292,17 +292,17 @@ typedef const TValue cTValue;
 #endif
 
 #if LJ_64
-/* To stay within 47 bits, lightuserdata is segmented. */
+// To stay within 47 bits, lightuserdata is segmented.
 #define LJ_LIGHTUD_BITS_SEG   8
 #define LJ_LIGHTUD_BITS_LO   (47 - LJ_LIGHTUD_BITS_SEG)
 #endif
 
-/* -- String object ------------------------------------------------------- */
+// -- String object -------------------------------------------------------
 
 typedef uint32_t LuaStrHash;   /* String hash value. */
 typedef uint32_t StrID;      /* String ID. */
 
-/* String object header. String payload follows. */
+// String object header. String payload follows.
 typedef struct GCstr {
    GCHeader;
    uint8_t reserved;   /* Used by lexer for fast lookup of reserved words. */
@@ -317,9 +317,9 @@ typedef struct GCstr {
 #define strdatawr(s)   ((char *)((s)+1))
 #define strVdata(o)   strdata(strV(o))
 
-/* -- Userdata object ----------------------------------------------------- */
+// -- Userdata object -----------------------------------------------------
 
-/* Userdata object. Payload follows. */
+// Userdata object. Payload follows.
 typedef struct GCudata {
    GCHeader;
    uint8_t udtype;   /* Userdata type. */
@@ -330,7 +330,7 @@ typedef struct GCudata {
    uint32_t align1;   /* To force 8 byte alignment of the payload. */
 } GCudata;
 
-/* Userdata types. */
+// Userdata types.
 enum {
    UDTYPE_USERDATA,   /* Regular userdata. */
    UDTYPE_IO_FILE,   /* I/O library FILE. */
@@ -342,15 +342,15 @@ enum {
 #define uddata(u)   ((void *)((u)+1))
 #define sizeudata(u)   (sizeof(struct GCudata)+(u)->len)
 
-/* -- C data object ------------------------------------------------------- */
+// -- C data object -------------------------------------------------------
 
-/* C data object. Payload follows. */
+// C data object. Payload follows.
 typedef struct GCcdata {
    GCHeader;
    uint16_t ctypeid;   /* C type ID. */
 } GCcdata;
 
-/* Prepended to variable-sized or realigned C data objects. */
+// Prepended to variable-sized or realigned C data objects.
 typedef struct GCcdataVar {
    uint16_t offset;   /* Offset to allocated memory (relative to GCcdata). */
    uint16_t extra;   /* Extra space allocated (incl. GCcdata + GCcdatav). */
@@ -364,7 +364,7 @@ typedef struct GCcdataVar {
 #define sizecdatav(cd)   (cdatavlen(cd) + cdatav(cd)->extra)
 #define memcdatav(cd)   ((void *)((char *)(cd) - cdatav(cd)->offset))
 
-/* -- Prototype object ---------------------------------------------------- */
+// -- Prototype object ----------------------------------------------------
 
 #define SCALE_NUM_GCO   ((int32_t)sizeof(lua_Number)/sizeof(GCRef))
 #define round_nkgc(n)   (((n) + SCALE_NUM_GCO-1) & ~(SCALE_NUM_GCO-1))
@@ -386,7 +386,7 @@ typedef struct GCproto {
    uint8_t sizeuv;   /* Number of upvalues. */
    uint8_t flags;   /* Miscellaneous flags (see below). */
    uint16_t trace;   /* Anchor for chain of root traces. */
-   /* ------ The following fields are for debugging/tracebacks only ------ */
+   // ------ The following fields are for debugging/tracebacks only ------
    GCRef chunkname;   /* Name of the chunk this function was defined in. */
    BCLine firstline;   /* First line of the function definition. */
    BCLine numline;   /* Number of lines for the function definition. */
@@ -395,16 +395,16 @@ typedef struct GCproto {
    MRef varinfo;      /* Names and compressed extents of local variables. */
 } GCproto;
 
-/* Flags for prototype. */
+// Flags for prototype.
 #define PROTO_CHILD      0x01   /* Has child prototypes. */
 #define PROTO_VARARG      0x02   /* Vararg function. */
 #define PROTO_FFI      0x04   /* Uses BC_KCDATA for FFI datatypes. */
 #define PROTO_NOJIT      0x08   /* JIT disabled for this function. */
 #define PROTO_ILOOP      0x10   /* Patched bytecode with ILOOP etc. */
-/* Only used during parsing. */
+// Only used during parsing.
 #define PROTO_HAS_RETURN   0x20   /* Already emitted a return. */
 #define PROTO_FIXUP_RETURN   0x40   /* Need to fixup emitted returns. */
-/* Top bits used for counting created closures. */
+// Top bits used for counting created closures.
 #define PROTO_CLCOUNT      0x20   /* Base of saturating 3 bit counter. */
 #define PROTO_CLC_BITS      3
 #define PROTO_CLC_POLY      (3*PROTO_CLCOUNT)  /* Polymorphic threshold. */
@@ -427,7 +427,7 @@ typedef struct GCproto {
 #define proto_uvinfo(pt)   (mref((pt)->uvinfo, const uint8_t))
 #define proto_varinfo(pt)   (mref((pt)->varinfo, const uint8_t))
 
-/* -- Upvalue object ------------------------------------------------------ */
+// -- Upvalue object ------------------------------------------------------
 
 typedef struct GCupval {
    GCHeader;
@@ -448,9 +448,9 @@ typedef struct GCupval {
 #define uvnext(uv_)   (&gcref((uv_)->next)->uv)
 #define uvval(uv_)   (mref((uv_)->v, TValue))
 
-/* -- Function object (closures) ------------------------------------------ */
+// -- Function object (closures) ------------------------------------------
 
-/* Common header for functions. env should be at same offset in GCudata. */
+// Common header for functions. env should be at same offset in GCudata.
 #define GCfuncHeader \
   GCHeader; uint8_t ffid; uint8_t nupvalues; \
   GCRef env; GCRef gclist; MRef pc
@@ -481,9 +481,9 @@ typedef union GCfunc {
 #define sizeCfunc(n)   (sizeof(GCfuncC)-sizeof(TValue)+sizeof(TValue)*(n))
 #define sizeLfunc(n)   (sizeof(GCfuncL)-sizeof(GCRef)+sizeof(GCRef)*(n))
 
-/* -- Table object -------------------------------------------------------- */
+// -- Table object --------------------------------------------------------
 
-/* Hash node. */
+// Hash node.
 typedef struct Node {
    TValue val;      /* Value object. Must be first field. */
    TValue key;      /* Key object. */
@@ -522,9 +522,9 @@ typedef struct GCtab {
 #define setfreetop(t, n, v)   (setmref((n)->freetop, (v)))
 #endif
 
-/* -- State objects ------------------------------------------------------- */
+// -- State objects -------------------------------------------------------
 
-/* VM states. */
+// VM states.
 enum {
    LJ_VMST_INTERP,   /* Interpreter. */
    LJ_VMST_C,      /* C function. */
@@ -538,7 +538,7 @@ enum {
 
 #define setvmstate(g, st)   ((g)->vmstate = ~LJ_VMST_##st)
 
-/* Metamethods. ORDER MM */
+// Metamethods. ORDER MM
 #ifdef LJ_HASFFI
 #define MMDEF_FFI(_) _(new)
 #else
@@ -571,7 +571,7 @@ typedef enum {
    MM_FAST = MM_len
 } MMS;
 
-/* GC root IDs. */
+// GC root IDs.
 typedef enum {
    GCROOT_MMNAME,   /* Metamethod names. */
    GCROOT_MMNAME_LAST = GCROOT_MMNAME + MM__MAX - 1,
@@ -586,7 +586,7 @@ typedef enum {
 #define basemt_obj(g, o)   ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
 #define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+(mm)]))
 
-/* Garbage collector state. */
+// Garbage collector state.
 typedef struct GCState {
    GCSize total;      /* Memory currently allocated. */
    GCSize threshold;   /* Memory threshold. */
@@ -614,7 +614,7 @@ typedef struct GCState {
 #endif
 } GCState;
 
-/* String interning state. */
+// String interning state.
 typedef struct StrInternState {
    GCRef* tab;      /* String hash table anchors. */
    MSize mask;      /* String hash mask (size of hash table - 1). */
@@ -627,7 +627,7 @@ typedef struct StrInternState {
    LJ_ALIGN(8) uint64_t seed;   /* Random string seed. */
 } StrInternState;
 
-/* Global state, shared by all threads of a Lua universe. */
+// Global state, shared by all threads of a Lua universe.
 typedef struct global_State {
    lua_Alloc allocf;   /* Memory allocator. */
    void* allocd;      /* Memory allocator data. */
@@ -665,7 +665,7 @@ typedef struct global_State {
 #define niltvg(g) \
   check_exp(tvisnil(&(g)->nilnode.val), &(g)->nilnode.val)
 
-/* Hook management. Hook event masks are defined in lua.h. */
+// Hook management. Hook event masks are defined in lua.h.
 #define HOOK_EVENTMASK      0x0f
 #define HOOK_ACTIVE      0x10
 #define HOOK_ACTIVE_SHIFT   4
@@ -682,7 +682,7 @@ typedef struct global_State {
 #define hook_restore(g, h) \
   ((g)->hookmask = ((g)->hookmask & HOOK_EVENTMASK) | (h))
 
-/* Per-thread state object. */
+// Per-thread state object.
 struct lua_State {
    GCHeader;
    uint8_t dummy_ffid;   /* Fake FF_C for curr_funcisL() on dummy frames. */
@@ -708,7 +708,7 @@ struct lua_State {
 #define G(L)         (mref(L->glref, global_State))
 #define registry(L)      (&G(L)->registrytv)
 
-/* Macros to access the currently executing (Lua) function. */
+// Macros to access the currently executing (Lua) function.
 #if LJ_GC64
 #define curr_func(L)      (&gcval(L->base-2)->fn)
 #elif LJ_FR2
@@ -726,9 +726,9 @@ LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line,
    const char* func, const char* fmt, ...);
 #endif
 
-/* -- GC object definition and conversions -------------------------------- */
+// -- GC object definition and conversions --------------------------------
 
-/* GC header for generic access to common fields of GC objects. */
+// GC header for generic access to common fields of GC objects.
 typedef struct GChead {
    GCHeader;
    uint8_t unused1;
@@ -738,15 +738,15 @@ typedef struct GChead {
    GCRef metatable;
 } GChead;
 
-/* The env field SHOULD be at the same offset for all GC objects. */
+// The env field SHOULD be at the same offset for all GC objects.
 LJ_STATIC_ASSERT(offsetof(GChead, env) == offsetof(GCfuncL, env));
 LJ_STATIC_ASSERT(offsetof(GChead, env) == offsetof(GCudata, env));
 
-/* The metatable field MUST be at the same offset for all GC objects. */
+// The metatable field MUST be at the same offset for all GC objects.
 LJ_STATIC_ASSERT(offsetof(GChead, metatable) == offsetof(GCtab, metatable));
 LJ_STATIC_ASSERT(offsetof(GChead, metatable) == offsetof(GCudata, metatable));
 
-/* The gclist field MUST be at the same offset for all GC objects. */
+// The gclist field MUST be at the same offset for all GC objects.
 LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(lua_State, gclist));
 LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCproto, gclist));
 LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCfuncL, gclist));
@@ -764,7 +764,7 @@ typedef union GCobj {
    GCudata ud;
 } GCobj;
 
-/* Macros to convert a GCobj pointer into a specific value. */
+// Macros to convert a GCobj pointer into a specific value.
 #define gco2str(o)   check_exp((o)->gch.gct == ~LJ_TSTR, &(o)->str)
 #define gco2uv(o)   check_exp((o)->gch.gct == ~LJ_TUPVAL, &(o)->uv)
 #define gco2th(o)   check_exp((o)->gch.gct == ~LJ_TTHREAD, &(o)->th)
@@ -774,12 +774,12 @@ typedef union GCobj {
 #define gco2tab(o)   check_exp((o)->gch.gct == ~LJ_TTAB, &(o)->tab)
 #define gco2ud(o)   check_exp((o)->gch.gct == ~LJ_TUDATA, &(o)->ud)
 
-/* Macro to convert any collectable object into a GCobj pointer. */
+// Macro to convert any collectable object into a GCobj pointer.
 #define obj2gco(v)   ((GCobj *)(v))
 
-/* -- TValue getters/setters ---------------------------------------------- */
+// -- TValue getters/setters ----------------------------------------------
 
-/* Macros to test types. */
+// Macros to test types.
 #if LJ_GC64
 #define itype(o)   ((uint32_t)((o)->it64 >> 47))
 #define tvisnil(o)   ((o)->it64 == -1)
@@ -811,7 +811,7 @@ typedef union GCobj {
 #define tvistabud(o)   (itype(o) <= LJ_TISTABUD)  /* && !tvisnum() */
 #define tvisgcv(o)   ((itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV))
 
-/* Special macros to test numbers for NaN, +0, -0, +1 and raw equality. */
+// Special macros to test numbers for NaN, +0, -0, +1 and raw equality.
 #define tvisnan(o)   ((o)->n != (o)->n)
 #if LJ_64
 #define tviszero(o)   (((o)->u64 << 1) == 0)
@@ -823,7 +823,7 @@ typedef union GCobj {
 #define tvispone(o)   ((o)->u64 == U64x(3ff00000,00000000))
 #define rawnumequal(o1, o2)   ((o1)->u64 == (o2)->u64)
 
-/* Macros to convert type ids. */
+// Macros to convert type ids.
 #if LJ_64 && !LJ_GC64
 #define itypemap(o) \
   (tvisnumber(o) ? ~LJ_TNUMX : tvislightud(o) ? ~LJ_TLIGHTUD : ~itype(o))
@@ -831,7 +831,7 @@ typedef union GCobj {
 #define itypemap(o)   (tvisnumber(o) ? ~LJ_TNUMX : ~itype(o))
 #endif
 
-/* Macros to get tagged values. */
+// Macros to get tagged values.
 #if LJ_GC64
 #define gcval(o)   ((GCobj *)(gcrefu((o)->gcr) & LJ_GCVMASK))
 #else
@@ -868,7 +868,7 @@ static LJ_AINLINE void* lightudV(global_State* g, cTValue* o)
 #define numV(o)      check_exp(tvisnum(o), (o)->n)
 #define intV(o)      check_exp(tvisint(o), (int32_t)(o)->i)
 
-/* Macros to set tagged values. */
+// Macros to set tagged values.
 #if LJ_GC64
 #define setitype(o, i)      ((o)->it = ((i) << 15))
 #define setnilV(o)      ((o)->it64 = -1)
@@ -910,7 +910,7 @@ static LJ_AINLINE void checklivetv(lua_State* L, TValue* o, const char* msg)
       lj_assertL(~itype(o) == gcval(o)->gch.gct,
          "mismatch of TValue type %d vs GC type %d",
          ~itype(o), gcval(o)->gch.gct);
-      /* Copy of isdead check from lj_gc.h to avoid circular include. */
+      // Copy of isdead check from lj_gc.h to avoid circular include.
       lj_assertL(!(gcval(o)->gch.marked & (G(L)->gc.currentwhite ^ 3) & 3), msg);
    }
 #endif
@@ -972,14 +972,14 @@ static LJ_AINLINE void setint64V(TValue* o, int64_t i)
 #define setintptrV(o, i)   setintV((o), (i))
 #endif
 
-/* Copy tagged values. */
+// Copy tagged values.
 static LJ_AINLINE void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 {
    *o1 = *o2;
    checklivetv(L, o1, "copy of dead GC object");
 }
 
-/* -- Number to integer conversion ---------------------------------------- */
+// -- Number to integer conversion ----------------------------------------
 
 #if LJ_SOFTFP
 LJ_ASMF int32_t lj_vm_tobit(double x);
@@ -1035,15 +1035,15 @@ static LJ_AINLINE lua_Number numberVnum(cTValue* o)
       return numV(o);
 }
 
-/* -- Miscellaneous object handling --------------------------------------- */
+// -- Miscellaneous object handling ---------------------------------------
 
-/* Names and maps for internal and external object tags. */
+// Names and maps for internal and external object tags.
 LJ_DATA const char* const lj_obj_typename[1 + LUA_TCDATA + 1];
 LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 
 #define lj_typename(o)   (lj_obj_itypename[itypemap(o)])
 
-/* Compare two objects without calling metamethods. */
+// Compare two objects without calling metamethods.
 LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2);
 LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o);
 

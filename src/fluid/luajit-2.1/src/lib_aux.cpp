@@ -26,7 +26,7 @@
 #include <sys/wait.h>
 #endif
 
-/* -- I/O error handling -------------------------------------------------- */
+// -- I/O error handling --------------------------------------------------
 
 LUALIB_API int luaL_fileresult(lua_State* L, int stat, const char* fname)
 {
@@ -78,7 +78,7 @@ LUALIB_API int luaL_execresult(lua_State* L, int stat)
    return luaL_fileresult(L, 0, NULL);
 }
 
-/* -- Module registration ------------------------------------------------- */
+// -- Module registration -------------------------------------------------
 
 LUALIB_API const char* luaL_findtable(lua_State* L, int idx,
    const char* fname, int szhint)
@@ -178,7 +178,7 @@ LUALIB_API const char* luaL_gsub(lua_State* L, const char* s,
    return lua_tostring(L, -1);
 }
 
-/* -- Buffer handling ----------------------------------------------------- */
+// -- Buffer handling -----------------------------------------------------
 
 #define bufflen(B)   ((size_t)((B)->p - (B)->buffer))
 #define bufffree(B)   ((size_t)(LUAL_BUFFERSIZE - bufflen(B)))
@@ -270,11 +270,11 @@ LUALIB_API void luaL_buffinit(lua_State* L, luaL_Buffer* B)
    B->lvl = 0;
 }
 
-/* -- Reference management ------------------------------------------------ */
+// -- Reference management ------------------------------------------------
 
 #define FREELIST_REF   0
 
-/* Convert a stack index to an absolute index. */
+// Convert a stack index to an absolute index.
 #define abs_index(L, i) \
   ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 
@@ -312,7 +312,7 @@ LUALIB_API void luaL_unref(lua_State* L, int t, int ref)
    }
 }
 
-/* -- Default allocator and panic function -------------------------------- */
+// -- Default allocator and panic function --------------------------------
 
 static int panic(lua_State* L)
 {

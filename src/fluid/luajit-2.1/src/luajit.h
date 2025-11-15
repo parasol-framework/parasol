@@ -36,7 +36,7 @@
 #define LUAJIT_COPYRIGHT   "Copyright (C) 2005-2022 Mike Pall"
 #define LUAJIT_URL      "https://luajit.org/"
 
-/* Modes for luaJIT_setmode. */
+// Modes for luaJIT_setmode.
 #define LUAJIT_MODE_MASK   0x00ff
 
 enum {
@@ -54,17 +54,17 @@ enum {
    LUAJIT_MODE_MAX
 };
 
-/* Flags or'ed in to the mode. */
+// Flags or'ed in to the mode.
 #define LUAJIT_MODE_OFF      0x0000   /* Turn feature off. */
 #define LUAJIT_MODE_ON      0x0100   /* Turn feature on. */
 #define LUAJIT_MODE_FLUSH   0x0200   /* Flush JIT-compiled code. */
 
-/* LuaJIT public C API. */
+// LuaJIT public C API.
 
-/* Control the JIT engine. */
+// Control the JIT engine.
 LUA_API int luaJIT_setmode(lua_State* L, int idx, int mode);
 
-/* Low-overhead profiling API. */
+// Low-overhead profiling API.
 typedef void (*luaJIT_profile_callback)(void* data, lua_State* L,
    int samples, int vmstate);
 LUA_API void luaJIT_profile_start(lua_State* L, const char* mode,
@@ -73,7 +73,7 @@ LUA_API void luaJIT_profile_stop(lua_State* L);
 LUA_API const char* luaJIT_profile_dumpstack(lua_State* L, const char* fmt,
    int depth, size_t* len);
 
-/* Enforce (dynamic) linker error for version mismatches. Call from main. */
+// Enforce (dynamic) linker error for version mismatches. Call from main.
 LUA_API void LUAJIT_VERSION_SYM(void);
 
 #endif

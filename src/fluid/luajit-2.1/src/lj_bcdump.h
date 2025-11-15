@@ -9,7 +9,7 @@
 #include "lj_obj.h"
 #include "lj_lex.h"
 
-/* -- Bytecode dump format ------------------------------------------------ */
+// -- Bytecode dump format ------------------------------------------------
 
 /*
 ** dump   = header proto+ 0U
@@ -28,7 +28,7 @@
 ** B = 8 bit, H = 16 bit, W = 32 bit, U = ULEB128 of W, U0/U1 = ULEB128 of W+1
 */
 
-/* Bytecode dump header. */
+// Bytecode dump header.
 #define BCDUMP_HEAD1      0x1b
 #define BCDUMP_HEAD2      0x4c
 #define BCDUMP_HEAD3      0x4a
@@ -38,7 +38,7 @@
 */
 #define BCDUMP_VERSION      2
 
-/* Compatibility flags. */
+// Compatibility flags.
 #define BCDUMP_F_BE      0x01
 #define BCDUMP_F_STRIP      0x02
 #define BCDUMP_F_FFI      0x04
@@ -46,19 +46,19 @@
 
 #define BCDUMP_F_KNOWN      (BCDUMP_F_FR2*2-1)
 
-/* Type codes for the GC constants of a prototype. Plus length for strings. */
+// Type codes for the GC constants of a prototype. Plus length for strings.
 enum {
    BCDUMP_KGC_CHILD, BCDUMP_KGC_TAB, BCDUMP_KGC_I64, BCDUMP_KGC_U64,
    BCDUMP_KGC_COMPLEX, BCDUMP_KGC_STR
 };
 
-/* Type codes for the keys/values of a constant table. */
+// Type codes for the keys/values of a constant table.
 enum {
    BCDUMP_KTAB_NIL, BCDUMP_KTAB_FALSE, BCDUMP_KTAB_TRUE,
    BCDUMP_KTAB_INT, BCDUMP_KTAB_NUM, BCDUMP_KTAB_STR
 };
 
-/* -- Bytecode reader/writer ---------------------------------------------- */
+// -- Bytecode reader/writer ----------------------------------------------
 
 LJ_FUNC int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer,
    void* data, int strip);

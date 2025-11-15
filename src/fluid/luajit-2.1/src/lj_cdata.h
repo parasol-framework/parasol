@@ -12,7 +12,7 @@
 
 #if LJ_HASFFI
 
-/* Get C data pointer. */
+// Get C data pointer.
 static LJ_AINLINE void* cdata_getptr(void* p, CTSize sz)
 {
    if (LJ_64 && sz == 4) {  // Support 32 bit pointers on 64 bit targets.
@@ -24,7 +24,7 @@ static LJ_AINLINE void* cdata_getptr(void* p, CTSize sz)
    }
 }
 
-/* Set C data pointer. */
+// Set C data pointer.
 static LJ_AINLINE void cdata_setptr(void* p, CTSize sz, const void* v)
 {
    if (LJ_64 && sz == 4) {  // Support 32 bit pointers on 64 bit targets.
@@ -36,7 +36,7 @@ static LJ_AINLINE void cdata_setptr(void* p, CTSize sz, const void* v)
    }
 }
 
-/* Allocate fixed-size C data object. */
+// Allocate fixed-size C data object.
 static LJ_AINLINE GCcdata* lj_cdata_new(CTState* cts, CTypeID id, CTSize sz)
 {
    GCcdata* cd;
@@ -51,7 +51,7 @@ static LJ_AINLINE GCcdata* lj_cdata_new(CTState* cts, CTypeID id, CTSize sz)
    return cd;
 }
 
-/* Variant which works without a valid CTState. */
+// Variant which works without a valid CTState.
 static LJ_AINLINE GCcdata* lj_cdata_new_(lua_State* L, CTypeID id, CTSize sz)
 {
    GCcdata* cd = (GCcdata*)lj_mem_newgco(L, sizeof(GCcdata) + sz);

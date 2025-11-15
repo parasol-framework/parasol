@@ -5,7 +5,7 @@
 
 #include <math.h>
 
-/* C++ compatibility: provide unambiguous wrappers for overloaded math functions */
+// C++ compatibility: provide unambiguous wrappers for overloaded math functions
 extern "C" {
 
    double cmath_log10(double x) { return log10(x); }

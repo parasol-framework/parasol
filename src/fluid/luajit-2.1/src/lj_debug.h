@@ -9,7 +9,7 @@
 #include "lj_obj.h"
 
 typedef struct lj_Debug {
-   /* Common fields. Must be in the same order as in lua.h. */
+   // Common fields. Must be in the same order as in lua.h.
    int event;
    const char* name;
    const char* namewhat;
@@ -21,7 +21,7 @@ typedef struct lj_Debug {
    int lastlinedefined;
    char short_src[LUA_IDSIZE];
    int i_ci;
-   /* Extended fields. Only valid if lj_debug_getinfo() is called with ext = 1.*/
+   // Extended fields. Only valid if lj_debug_getinfo() is called with ext = 1.
    int nparams;
    int isvararg;
 } lj_Debug;
@@ -46,7 +46,7 @@ LJ_FUNC void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt,
    int depth);
 #endif
 
-/* Fixed internal variable names. */
+// Fixed internal variable names.
 #define VARNAMEDEF(_) \
   _(FOR_IDX, "(for index)") \
   _(FOR_STOP, "(for limit)") \

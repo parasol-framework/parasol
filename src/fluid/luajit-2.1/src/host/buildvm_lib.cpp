@@ -9,7 +9,7 @@
 #include "lj_lib.h"
 #include "buildvm_libbc.h"
 
-/* Context for library definitions. */
+// Context for library definitions.
 static uint8_t obuf[8192];
 static uint8_t *optr;
 static char modname[80];
@@ -344,7 +344,7 @@ static const LibDefHandler libdef_handlers[] = {
   { NULL,	NULL,		(LibDefFunc)0,		0 }
 };
 
-/* Emit C source code for library function definitions. */
+// Emit C source code for library function definitions.
 void emit_lib(BuildCtx *ctx)
 {
   const char *fname;
@@ -376,7 +376,7 @@ void emit_lib(BuildCtx *ctx)
     regfunc = REGFUNC_OK;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
       char *p;
-      /* Simplistic pre-processor. Only handles top-level #if/#endif. */
+      // Simplistic pre-processor. Only handles top-level #if/#endif.
       if (buf[0] == '#' && buf[1] == 'i' && buf[2] == 'f') {
 	int ok = 1;
 	if (!strcmp(buf, "#if LJ_52\n"))

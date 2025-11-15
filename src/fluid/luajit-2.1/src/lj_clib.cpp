@@ -18,7 +18,7 @@
 #include "lj_clib.h"
 #include "lj_strfmt.h"
 
-/* -- OS-specific functions ----------------------------------------------- */
+// -- OS-specific functions -----------------------------------------------
 
 #if LJ_TARGET_DLOPEN
 
@@ -79,7 +79,7 @@ static const char* clib_extname(lua_State* L, const char* name)
    return name;
 }
 
-/* Check for a recognized ld script line. */
+// Check for a recognized ld script line.
 static const char* clib_check_lds(lua_State* L, const char* buf)
 {
    char* p, * e;
@@ -92,7 +92,7 @@ static const char* clib_check_lds(lua_State* L, const char* buf)
    return NULL;
 }
 
-/* Quick and dirty solution to resolve shared library name from ld script. */
+// Quick and dirty solution to resolve shared library name from ld script.
 static const char* clib_resolve_lds(lua_State* L, const char* name)
 {
    FILE* fp = fopen(name, "r");
@@ -158,7 +158,7 @@ BOOL WINAPI GetModuleHandleExA(DWORD, LPCSTR, HMODULE*);
 
 #define CLIB_DEFHANDLE   ((void *)-1)
 
-/* Default libraries. */
+// Default libraries.
 enum {
    CLIB_HANDLE_EXE,
 #if !LJ_TARGET_UWP
@@ -312,10 +312,10 @@ static void* clib_getsym(CLibrary* cl, const char* name)
 
 #endif
 
-/* -- C library indexing -------------------------------------------------- */
+// -- C library indexing --------------------------------------------------
 
 #if LJ_TARGET_X86 && LJ_ABI_WIN
-/* Compute argument size for fastcall/stdcall functions. */
+// Compute argument size for fastcall/stdcall functions.
 static CTSize clib_func_argsize(CTState* cts, CType* ct)
 {
    CTSize n = 0;
@@ -331,7 +331,7 @@ static CTSize clib_func_argsize(CTState* cts, CType* ct)
 }
 #endif
 
-/* Get redirected or mangled external symbol. */
+// Get redirected or mangled external symbol.
 static const char* clib_extsym(CTState* cts, CType* ct, GCstr* name)
 {
    if (ct->sib) {
@@ -342,7 +342,7 @@ static const char* clib_extsym(CTState* cts, CType* ct, GCstr* name)
    return strdata(name);
 }
 
-/* Index a C library by name. */
+// Index a C library by name.
 TValue* lj_clib_index(lua_State* L, CLibrary* cl, GCstr* name)
 {
    TValue* tv = lj_tab_setstr(L, cl->cache, name);
@@ -371,7 +371,7 @@ TValue* lj_clib_index(lua_State* L, CLibrary* cl, GCstr* name)
          lj_assertCTS(ctype_isfunc(ct->info) || ctype_isextern(ct->info),
             "unexpected ctype %08x in clib", ct->info);
 #if LJ_TARGET_X86 && LJ_ABI_WIN
-         /* Retry with decorated name for fastcall/stdcall functions. */
+         // Retry with decorated name for fastcall/stdcall functions.
          if (!p && ctype_isfunc(ct->info)) {
             CTInfo cconv = ctype_cconv(ct->info);
             if (cconv == CTCC_FASTCALL || cconv == CTCC_STDCALL) {
@@ -398,9 +398,9 @@ TValue* lj_clib_index(lua_State* L, CLibrary* cl, GCstr* name)
    return tv;
 }
 
-/* -- C library management ------------------------------------------------ */
+// -- C library management ------------------------------------------------
 
-/* Create a new CLibrary object and push it on the stack. */
+// Create a new CLibrary object and push it on the stack.
 static CLibrary* clib_new(lua_State* L, GCtab* mt)
 {
    GCtab* t = lj_tab_new(L, 0, 0);
@@ -408,13 +408,13 @@ static CLibrary* clib_new(lua_State* L, GCtab* mt)
    CLibrary* cl = (CLibrary*)uddata(ud);
    cl->cache = t;
    ud->udtype = UDTYPE_FFI_CLIB;
-   /* NOBARRIER: The GCudata is new (marked white). */
+   // NOBARRIER: The GCudata is new (marked white).
    setgcref(ud->metatable, obj2gco(mt));
    setudataV(L, L->top++, ud);
    return cl;
 }
 
-/* Load a C library. */
+// Load a C library.
 void lj_clib_load(lua_State* L, GCtab* mt, GCstr* name, int global)
 {
    void* handle = clib_loadlib(L, strdata(name), global);
@@ -422,14 +422,14 @@ void lj_clib_load(lua_State* L, GCtab* mt, GCstr* name, int global)
    cl->handle = handle;
 }
 
-/* Unload a C library. */
+// Unload a C library.
 void lj_clib_unload(CLibrary* cl)
 {
    clib_unloadlib(cl);
    cl->handle = NULL;
 }
 
-/* Create the default C library object. */
+// Create the default C library object.
 void lj_clib_default(lua_State* L, GCtab* mt)
 {
    CLibrary* cl = clib_new(L, mt);

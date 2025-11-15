@@ -8,13 +8,13 @@
 
 #include "lua.h"
 
-/* -- Target definitions -------------------------------------------------- */
+// -- Target definitions --------------------------------------------------
 
-/* Target endianess. */
+// Target endianess.
 #define LUAJIT_LE   0
 #define LUAJIT_BE   1
 
-/* Target architectures. */
+// Target architectures.
 #define LUAJIT_ARCH_X86      1
 #define LUAJIT_ARCH_x86      1
 #define LUAJIT_ARCH_X64      2
@@ -32,7 +32,7 @@
 #define LUAJIT_ARCH_MIPS64   7
 #define LUAJIT_ARCH_mips64   7
 
-/* Target OS. */
+// Target OS.
 #define LUAJIT_OS_OTHER      0
 #define LUAJIT_OS_WINDOWS   1
 #define LUAJIT_OS_LINUX      2
@@ -40,15 +40,15 @@
 #define LUAJIT_OS_BSD      4
 #define LUAJIT_OS_POSIX      5
 
-/* Number mode. */
+// Number mode.
 #define LJ_NUMMODE_SINGLE   0   /* Single-number mode only. */
 #define LJ_NUMMODE_SINGLE_DUAL   1   /* Default to single-number mode. */
 #define LJ_NUMMODE_DUAL      2   /* Dual-number mode only. */
 #define LJ_NUMMODE_DUAL_SINGLE   3   /* Default to dual-number mode. */
 
-/* -- Target detection ---------------------------------------------------- */
+// -- Target detection ----------------------------------------------------
 
-/* Select native target if no target defined. */
+// Select native target if no target defined.
 #ifndef LUAJIT_TARGET
 
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86)
@@ -71,7 +71,7 @@
 
 #endif
 
-/* Select native OS if no target OS defined. */
+// Select native OS if no target OS defined.
 #ifndef LUAJIT_OS
 
 #if defined(_WIN32) && !defined(_XBOX_VER)
@@ -99,7 +99,7 @@
 
 #endif
 
-/* Set target OS properties. */
+// Set target OS properties.
 #if LUAJIT_OS == LUAJIT_OS_WINDOWS
 #define LJ_OS_NAME   "Windows"
 #elif LUAJIT_OS == LUAJIT_OS_LINUX
@@ -162,9 +162,9 @@
 #endif
 #endif
 
-/* -- Arch-specific settings ---------------------------------------------- */
+// -- Arch-specific settings ----------------------------------------------
 
-/* Set target architecture properties. */
+// Set target architecture properties.
 #if LUAJIT_TARGET == LUAJIT_ARCH_X86
 
 #define LJ_ARCH_NAME      "x86"
@@ -422,9 +422,9 @@
 #error "No target architecture defined"
 #endif
 
-/* -- Checks for requirements --------------------------------------------- */
+// -- Checks for requirements ---------------------------------------------
 
-/* Check for minimum required compiler versions. */
+// Check for minimum required compiler versions.
 #if defined(__GNUC__)
 #if LJ_TARGET_X86
 #if (__GNUC__ < 3) || ((__GNUC__ == 3) && __GNUC_MINOR__ < 4)
@@ -455,7 +455,7 @@
 #endif
 #endif
 
-/* Check target-specific constraints. */
+// Check target-specific constraints.
 #ifndef _BUILDVM_H
 #if LJ_TARGET_X64
 #if __USING_SJLJ_EXCEPTIONS__
@@ -487,20 +487,20 @@
 #error "Only o32 ABI supported for MIPS32"
 #endif
 #if LJ_TARGET_MIPSR6
-/* Not that useful, since most available r6 CPUs are 64 bit. */
+// Not that useful, since most available r6 CPUs are 64 bit.
 #error "No support for MIPS32R6"
 #endif
 #elif LJ_TARGET_MIPS64
 #if !((defined(_MIPS_SIM_ABI64) && _MIPS_SIM == _MIPS_SIM_ABI64) || (defined(_ABI64) && _MIPS_SIM == _ABI64))
-/* MIPS32ON64 aka n32 ABI support might be desirable, but difficult. */
+// MIPS32ON64 aka n32 ABI support might be desirable, but difficult.
 #error "Only n64 ABI supported for MIPS64"
 #endif
 #endif
 #endif
 
-/* -- Derived defines ----------------------------------------------------- */
+// -- Derived defines -----------------------------------------------------
 
-/* Enable or disable the dual-number mode for the VM. */
+// Enable or disable the dual-number mode for the VM.
 #if (LJ_ARCH_NUMMODE == LJ_NUMMODE_SINGLE && LUAJIT_NUMMODE == 2) || \
     (LJ_ARCH_NUMMODE == LJ_NUMMODE_DUAL && LUAJIT_NUMMODE == 1)
 #error "No support for this number mode on this architecture"
@@ -514,42 +514,42 @@
 #endif
 
 #if LJ_TARGET_IOS || LJ_TARGET_CONSOLE
-/* Runtime code generation is restricted on iOS. Complain to Apple, not me. */
-/* Ditto for the consoles. Complain to Sony or MS, not me. */
+// Runtime code generation is restricted on iOS. Complain to Apple, not me.
+// Ditto for the consoles. Complain to Sony or MS, not me.
 #ifndef LUAJIT_ENABLE_JIT
 #define LJ_OS_NOJIT      1
 #endif
 #endif
 
-/* 64 bit GC references. */
+// 64 bit GC references.
 #if LJ_TARGET_GC64
 #define LJ_GC64         1
 #else
 #define LJ_GC64         0
 #endif
 
-/* 2-slot frame info. */
+// 2-slot frame info.
 #if LJ_GC64
 #define LJ_FR2         1
 #else
 #define LJ_FR2         0
 #endif
 
-/* Disable or enable the JIT compiler. */
+// Disable or enable the JIT compiler.
 #if defined(LUAJIT_DISABLE_JIT) || defined(LJ_ARCH_NOJIT) || defined(LJ_OS_NOJIT)
 #define LJ_HASJIT      0
 #else
 #define LJ_HASJIT      1
 #endif
 
-/* Disable or enable the FFI extension. */
+// Disable or enable the FFI extension.
 #if defined(LUAJIT_DISABLE_FFI) || defined(LJ_ARCH_NOFFI)
 #define LJ_HASFFI      0
 #else
 #define LJ_HASFFI      1
 #endif
 
-/* Disable or enable the string buffer extension. */
+// Disable or enable the string buffer extension.
 #if defined(LUAJIT_DISABLE_BUFFER)
 #define LJ_HASBUFFER      0
 #else
@@ -608,7 +608,7 @@
 #define LJ_PAGESIZE      4096
 #endif
 
-/* Various workarounds for embedded operating systems or weak C runtimes. */
+// Various workarounds for embedded operating systems or weak C runtimes.
 #if defined(__ANDROID__) || defined(__symbian__) || LJ_TARGET_XBOX360 || LJ_TARGET_WINDOWS
 #define LUAJIT_NO_LOG2
 #endif
@@ -663,14 +663,14 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 #define LJ_UNWIND_JIT      0
 #endif
 
-/* Compatibility with Lua 5.1 vs. 5.2. */
+// Compatibility with Lua 5.1 vs. 5.2.
 #ifdef LUAJIT_ENABLE_LUA52COMPAT
 #define LJ_52         1
 #else
 #define LJ_52         0
 #endif
 
-/* -- VM security --------------------------------------------------------- */
+// -- VM security ---------------------------------------------------------
 
 /* Don't make any changes here. Instead build with:
 **   make "XCFLAGS=-DLUAJIT_SECURITY_flag=value"
@@ -681,24 +681,24 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 ** who may have specific needs wrt. security vs. performance.
 */
 
-/* Security defaults. */
+// Security defaults.
 #ifndef LUAJIT_SECURITY_PRNG
-/* PRNG init: 0 = fixed/insecure, 1 = secure from OS. */
+// PRNG init: 0 = fixed/insecure, 1 = secure from OS.
 #define LUAJIT_SECURITY_PRNG   1
 #endif
 
 #ifndef LUAJIT_SECURITY_STRHASH
-/* String hash: 0 = sparse only, 1 = sparse + dense. */
+// String hash: 0 = sparse only, 1 = sparse + dense.
 #define LUAJIT_SECURITY_STRHASH   1
 #endif
 
 #ifndef LUAJIT_SECURITY_STRID
-/* String IDs: 0 = linear, 1 = reseed < 255, 2 = reseed < 15, 3 = random. */
+// String IDs: 0 = linear, 1 = reseed < 255, 2 = reseed < 15, 3 = random.
 #define LUAJIT_SECURITY_STRID   1
 #endif
 
 #ifndef LUAJIT_SECURITY_MCODE
-/* Machine code page protection: 0 = insecure RWX, 1 = secure RW^X. */
+// Machine code page protection: 0 = insecure RWX, 1 = secure RW^X.
 #define LUAJIT_SECURITY_MCODE   1
 #endif
 

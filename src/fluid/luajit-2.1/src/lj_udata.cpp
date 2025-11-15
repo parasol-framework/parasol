@@ -19,10 +19,10 @@ GCudata* lj_udata_new(lua_State* L, MSize sz, GCtab* env)
    ud->gct = ~LJ_TUDATA;
    ud->udtype = UDTYPE_USERDATA;
    ud->len = sz;
-   /* NOBARRIER: The GCudata is new (marked white). */
+   // NOBARRIER: The GCudata is new (marked white).
    setgcrefnull(ud->metatable);
    setgcref(ud->env, obj2gco(env));
-   /* Chain to userdata list (after main thread). */
+   // Chain to userdata list (after main thread).
    setgcrefr(ud->nextgc, mainthread(g)->nextgc);
    setgcref(mainthread(g)->nextgc, obj2gco(ud));
    return ud;
@@ -47,7 +47,7 @@ void* lj_lightud_intern(lua_State* L, void* p)
          if (segmap[seg] == up)  /* Fast path. */
             return (void*)(((uint64_t)seg << LJ_LIGHTUD_BITS_LO) | lightudlo(u));
       segnum++;
-      /* Leave last segment unused to avoid clash with ITERN key. */
+      // Leave last segment unused to avoid clash with ITERN key.
       if (segnum >= (1 << LJ_LIGHTUD_BITS_SEG) - 1) lj_err_msg(L, LJ_ERR_BADLU);
    }
    if (!((segnum - 1) & segnum) && segnum != 1) {

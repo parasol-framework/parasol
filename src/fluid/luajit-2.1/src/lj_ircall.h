@@ -10,7 +10,7 @@
 #include "lj_ir.h"
 #include "lj_jit.h"
 
-/* C call info for CALL* instructions. */
+// C call info for CALL* instructions.
 typedef struct CCallInfo {
   ASMFunction func;      /* Function pointer. */
   uint32_t flags;      /* Number of arguments and flags. */
@@ -34,7 +34,7 @@ typedef struct CCallInfo {
 #define CCI_CALL_FL      (CCI_CALL_L|CCI_CC_FASTCALL)
 #define CCI_CALL_FS      (CCI_CALL_S|CCI_CC_FASTCALL)
 
-/* C call info flags. */
+// C call info flags.
 #define CCI_T         (IRT_GUARD << CCI_OTSHIFT)  /* May throw. */
 #define CCI_L         0x0100   /* Implicit L arg. */
 #define CCI_CASTU64      0x0200   /* Cast u64 result to number. */
@@ -43,13 +43,13 @@ typedef struct CCallInfo {
 
 #define CCI_CC_MASK      0x3000   /* Calling convention mask. */
 #define CCI_CC_SHIFT      12
-/* ORDER CC */
+// ORDER CC
 #define CCI_CC_CDECL      0x0000   /* Default cdecl calling convention. */
 #define CCI_CC_THISCALL      0x1000   /* Thiscall calling convention. */
 #define CCI_CC_FASTCALL      0x2000   /* Fastcall calling convention. */
 #define CCI_CC_STDCALL      0x3000   /* Stdcall calling convention. */
 
-/* Extra args for SOFTFP, SPLIT 64 bit. */
+// Extra args for SOFTFP, SPLIT 64 bit.
 #define CCI_XARGS_SHIFT      14
 #define CCI_XARGS(ci)      (((ci)->flags >> CCI_XARGS_SHIFT) & 3)
 #define CCI_XA         (1u << CCI_XARGS_SHIFT)
@@ -60,7 +60,7 @@ typedef struct CCallInfo {
 #define CCI_XNARGS(ci)      CCI_NARGS((ci))
 #endif
 
-/* Helpers for conditional function definitions. */
+// Helpers for conditional function definitions.
 #define IRCALLCOND_ANY(x)      x
 
 #if LJ_TARGET_X86ORX64
@@ -149,7 +149,7 @@ typedef struct CCallInfo {
 #define XA2_64      0
 #endif
 
-/* Function definitions for CALL* instructions. */
+// Function definitions for CALL* instructions.
 #define IRCALLDEF(_) \
   _(ANY,   lj_str_cmp,      2,  FN, INT, CCI_NOFPRCLOBBER) \
   _(ANY,   lj_str_find,      4,   N, PGC, 0) \
@@ -267,7 +267,7 @@ typedef struct CCallInfo {
   _(FFI32,   lj_carith_rol64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \
   _(FFI32,   lj_carith_ror64,   2,   N, U64, XA_64|CCI_NOFPRCLOBBER) \
   \
-  /* End of list. */
+  // End of list.
 
 typedef enum {
 #define IRCALLENUM(cond, name, nargs, kind, type, flags)   IRCALL_##name,
@@ -280,7 +280,7 @@ LJ_FUNC TRef lj_ir_call(jit_State *J, IRCallID id, ...);
 
 LJ_DATA const CCallInfo lj_ir_callinfo[IRCALL__MAX+1];
 
-/* Soft-float declarations. */
+// Soft-float declarations.
 #if LJ_SOFTFP
 #if LJ_TARGET_ARM
 #define softfp_add __aeabi_dadd

@@ -14,9 +14,9 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 
-/* -- Object hashing ------------------------------------------------------ */
+// -- Object hashing ------------------------------------------------------
 
-/* Hash an arbitrary key and return its anchor position in the hash table. */
+// Hash an arbitrary key and return its anchor position in the hash table.
 static Node* hashkey(const GCtab* t, cTValue* key)
 {
    lj_assertX(!tvisint(key), "attempt to hash integer");
@@ -28,12 +28,12 @@ static Node* hashkey(const GCtab* t, cTValue* key)
       return hashmask(t, boolV(key));
    else
       return hashgcref(t, key->gcr);
-   /* Only hash 32 bits of lightuserdata on a 64 bit CPU. Good enough? */
+   // Only hash 32 bits of lightuserdata on a 64 bit CPU. Good enough?
 }
 
-/* -- Table creation and destruction -------------------------------------- */
+// -- Table creation and destruction --------------------------------------
 
-/* Create new hash part for table. */
+// Create new hash part for table.
 static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
 {
    uint32_t hsize;
@@ -54,7 +54,7 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
 **    Even state-of-the-art C compilers won't produce good code without this.
 */
 
-/* Clear hash part of table. */
+// Clear hash part of table.
 static LJ_AINLINE void clearhpart(GCtab* t)
 {
    uint32_t i, hmask = t->hmask;
@@ -68,7 +68,7 @@ static LJ_AINLINE void clearhpart(GCtab* t)
    }
 }
 
-/* Clear array part of table. */
+// Clear array part of table.
 static LJ_AINLINE void clearapart(GCtab* t)
 {
    uint32_t i, asize = t->asize;
@@ -77,11 +77,11 @@ static LJ_AINLINE void clearapart(GCtab* t)
       setnilV(&array[i]);
 }
 
-/* Create a new table. Note: the slots are not initialized (yet). */
+// Create a new table. Note: the slots are not initialized (yet).
 static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 {
    GCtab* t;
-   /* First try to colocate the array part. */
+   // First try to colocate the array part.
    if (LJ_MAX_COLOSIZE != 0 && asize > 0 && asize <= LJ_MAX_COLOSIZE) {
       Node* nilnode;
       lj_assertL((sizeof(GCtab) & 7) == 0, "bad GCtab size");
@@ -145,7 +145,7 @@ GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
    return t;
 }
 
-/* The API of this function conforms to lua_createtable(). */
+// The API of this function conforms to lua_createtable().
 GCtab* lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
 {
    return lj_tab_new(L, (uint32_t)(a > 0 ? a + 1 : 0), hsize2hbits(h));
@@ -161,7 +161,7 @@ GCtab* LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
 }
 #endif
 
-/* Duplicate a table. */
+// Duplicate a table.
 GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
 {
    GCtab* t;
@@ -194,7 +194,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
          Node* kn = &knode[i];
          Node* n = &node[i];
          Node* next = nextnode(kn);
-         /* Don't use copyTV here, since it asserts on a copy of a dead key. */
+         // Don't use copyTV here, since it asserts on a copy of a dead key.
          n->val = kn->val; n->key = kn->key;
          setmref(n->next, next == NULL ? next : (Node*)((char*)next + d));
       }
@@ -202,7 +202,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
    return t;
 }
 
-/* Clear a table. */
+// Clear a table.
 void LJ_FASTCALL lj_tab_clear(GCtab* t)
 {
    clearapart(t);
@@ -213,7 +213,7 @@ void LJ_FASTCALL lj_tab_clear(GCtab* t)
    }
 }
 
-/* Free a table. */
+// Free a table.
 void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
 {
    if (t->hmask > 0)
@@ -226,9 +226,9 @@ void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
       lj_mem_freet(g, t);
 }
 
-/* -- Table resizing ------------------------------------------------------ */
+// -- Table resizing ------------------------------------------------------
 
-/* Resize a table to fit the new array/hash part sizes. */
+// Resize a table to fit the new array/hash part sizes.
 void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
 {
    Node* oldnode = noderef(t->node);
@@ -240,7 +240,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       if (asize > LJ_MAX_ASIZE)
          lj_err_msg(L, LJ_ERR_TABOV);
       if (LJ_MAX_COLOSIZE != 0 && t->colo > 0) {
-         /* A colocated array must be separated and copied. */
+         // A colocated array must be separated and copied.
          TValue* oarray = tvref(t->array);
          array = lj_mem_newvec(L, asize, TValue);
          t->colo = (int8_t)(t->colo | 0x80);  /* Mark as separated (colo < 0). */
@@ -256,7 +256,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       for (i = oldasize; i < asize; i++)  /* Clear newly allocated slots. */
          setnilV(&array[i]);
    }
-   /* Create new (empty) hash part. */
+   // Create new (empty) hash part.
    if (hbits) {
       newhpart(L, t, hbits);
       clearhpart(t);
@@ -276,7 +276,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       for (i = asize; i < oldasize; i++)  /* Reinsert old array values. */
          if (!tvisnil(&array[i]))
             copyTV(L, lj_tab_setinth(L, t, (int32_t)i), &array[i]);
-      /* Physically shrink only separated arrays. */
+      // Physically shrink only separated arrays.
       if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
          setmref(t->array, lj_mem_realloc(L, array,
             oldasize * sizeof(TValue), asize * sizeof(TValue)));
@@ -383,7 +383,7 @@ void lj_tab_reasize(lua_State* L, GCtab* t, uint32_t nasize)
    lj_tab_resize(L, t, nasize + 1, t->hmask > 0 ? lj_fls(t->hmask) + 1 : 0);
 }
 
-/* -- Table getters ------------------------------------------------------- */
+// -- Table getters -------------------------------------------------------
 
 cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
 {
@@ -444,9 +444,9 @@ cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
    return niltv(L);
 }
 
-/* -- Table setters ------------------------------------------------------- */
+// -- Table setters -------------------------------------------------------
 
-/* Insert new key. Use Brent's variation to optimize the chain length. */
+// Insert new key. Use Brent's variation to optimize the chain length.
 TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
 {
    Node* n = hashkey(t, key);
@@ -468,13 +468,13 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
          while (noderef(collide->next) != n)  /* Find predecessor. */
             collide = nextnode(collide);
          setmref(collide->next, freenode);  /* Relink chain. */
-         /* Copy colliding node into free node and free main node. */
+         // Copy colliding node into free node and free main node.
          freenode->val = n->val;
          freenode->key = n->key;
          freenode->next = n->next;
          setmref(n->next, NULL);
          setnilV(&n->val);
-         /* Rechain pseudo-resurrected string keys with colliding hashes. */
+         // Rechain pseudo-resurrected string keys with colliding hashes.
          while (nextnode(freenode)) {
             Node* nn = nextnode(freenode);
             if (!tvisnil(&nn->val) && hashkey(t, &nn->key) == n) {
@@ -568,7 +568,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
          return lj_tab_setint(L, t, k);
       if (tvisnan(key))
          lj_err_msg(L, LJ_ERR_NANIDX);
-      /* Else use the generic lookup. */
+      // Else use the generic lookup.
    }
    else if (tvisnil(key)) {
       lj_err_msg(L, LJ_ERR_NILIDX);
@@ -581,7 +581,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
    return lj_tab_newkey(L, t, key);
 }
 
-/* -- Table traversal ----------------------------------------------------- */
+// -- Table traversal -----------------------------------------------------
 
 /* Table traversal indexes:
 **
@@ -590,7 +590,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
 ** Invalid key:     ~0
 */
 
-/* Get the successor traversal index of a key. */
+// Get the successor traversal index of a key.
 uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
 {
    TValue tmp;
@@ -620,11 +620,11 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    return 0;  /* A nil key starts the traversal. */
 }
 
-/* Get the next key/value pair of a table traversal. */
+// Get the next key/value pair of a table traversal.
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 {
    uint32_t idx = lj_tab_keyindex(t, key);  /* Find successor index of key. */
-   /* First traverse the array part. */
+   // First traverse the array part.
    for (; idx < t->asize; idx++) {
       cTValue* a = arrayslot(t, idx);
       if (LJ_LIKELY(!tvisnil(a))) {
@@ -634,7 +634,7 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
       }
    }
    idx -= t->asize;
-   /* Then traverse the hash part. */
+   // Then traverse the hash part.
    for (; idx <= t->hmask; idx++) {
       Node* n = &noderef(t->node)[idx];
       if (!tvisnil(&n->val)) {
@@ -646,15 +646,15 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
    return (int32_t)idx < 0 ? -1 : 0;  /* Invalid key or end of traversal. */
 }
 
-/* -- Table length calculation -------------------------------------------- */
+// -- Table length calculation --------------------------------------------
 
-/* Compute table length. Slow path with mixed array/hash lookups. */
+// Compute table length. Slow path with mixed array/hash lookups.
 LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
 {
    cTValue* tv;
    size_t lo = hi;
    hi++;
-   /* Widening search for an upper bound. */
+   // Widening search for an upper bound.
    while ((tv = lj_tab_getint(t, (int32_t)hi)) && !tvisnil(tv)) {
       lo = hi;
       hi += hi;
@@ -664,7 +664,7 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
          return (MSize)(lo - 1);
       }
    }
-   /* Binary search to find a non-nil to nil transition. */
+   // Binary search to find a non-nil to nil transition.
    while (hi - lo > 1) {
       size_t mid = (lo + hi) >> 1;
       cTValue* tvb = lj_tab_getint(t, (int32_t)mid);
@@ -673,14 +673,14 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
    return (MSize)lo;
 }
 
-/* Compute table length. Fast path. */
+// Compute table length. Fast path.
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
    size_t hi = (size_t)t->asize;
    if (hi) hi--;
-   /* In a growing array the last array element is very likely nil. */
+   // In a growing array the last array element is very likely nil.
    if (hi > 0 && LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
-      /* Binary search to find a non-nil to nil transition in the array. */
+      // Binary search to find a non-nil to nil transition in the array.
       size_t lo = 0;
       while (hi - lo > 1) {
          size_t mid = (lo + hi) >> 1;
@@ -688,12 +688,12 @@ MSize LJ_FASTCALL lj_tab_len(GCtab* t)
       }
       return (MSize)lo;
    }
-   /* Without a hash part, there's an implicit nil after the last element. */
+   // Without a hash part, there's an implicit nil after the last element.
    return t->hmask ? tab_len_slow(t, hi) : (MSize)hi;
 }
 
 #if LJ_HASJIT
-/* Verify hinted table length or compute it. */
+// Verify hinted table length or compute it.
 MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
 {
    size_t asize = (size_t)t->asize;

@@ -92,10 +92,10 @@
 ** later fused into the mov operands by the assembler.
 */
 
-/* Some local macros to save typing. Undef'd at the end. */
+// Some local macros to save typing. Undef'd at the end.
 #define IR(ref)      (&J->cur.ir[(ref)])
 
-/* Directly emit the transformed IR without updating chains etc. */
+// Directly emit the transformed IR without updating chains etc.
 static IRRef split_emit(jit_State* J, uint16_t ot, IRRef1 op1, IRRef1 op2)
 {
    IRRef nref = lj_ir_nextins(J);
@@ -107,7 +107,7 @@ static IRRef split_emit(jit_State* J, uint16_t ot, IRRef1 op1, IRRef1 op2)
 }
 
 #if LJ_SOFTFP
-/* Emit a (checked) number to integer conversion. */
+// Emit a (checked) number to integer conversion.
 static IRRef split_num2int(jit_State* J, IRRef lo, IRRef hi, int check)
 {
    IRRef tmp, res;
@@ -126,7 +126,7 @@ static IRRef split_num2int(jit_State* J, IRRef lo, IRRef hi, int check)
    return res;
 }
 
-/* Emit a CALLN with one split 64 bit argument. */
+// Emit a CALLN with one split 64 bit argument.
 static IRRef split_call_l(jit_State* J, IRRef1* hisubst, IRIns* oir,
    IRIns* ir, IRCallID id)
 {
@@ -142,7 +142,7 @@ static IRRef split_call_l(jit_State* J, IRRef1* hisubst, IRIns* oir,
 }
 #endif
 
-/* Emit a CALLN with one split 64 bit argument and a 32 bit argument. */
+// Emit a CALLN with one split 64 bit argument and a 32 bit argument.
 static IRRef split_call_li(jit_State* J, IRRef1* hisubst, IRIns* oir,
    IRIns* ir, IRCallID id)
 {
@@ -158,7 +158,7 @@ static IRRef split_call_li(jit_State* J, IRRef1* hisubst, IRIns* oir,
    return split_emit(J, IRT(IR_HIOP, IRT_SOFTFP), tmp, tmp);
 }
 
-/* Emit a CALLN with two split 64 bit arguments. */
+// Emit a CALLN with two split 64 bit arguments.
 static IRRef split_call_ll(jit_State* J, IRRef1* hisubst, IRIns* oir,
    IRIns* ir, IRCallID id)
 {
@@ -179,7 +179,7 @@ static IRRef split_call_ll(jit_State* J, IRRef1* hisubst, IRIns* oir,
       tmp, tmp);
 }
 
-/* Get a pointer to the other 32 bit word (LE: hiword, BE: loword). */
+// Get a pointer to the other 32 bit word (LE: hiword, BE: loword).
 static IRRef split_ptr(jit_State* J, IRIns* oir, IRRef ref)
 {
    IRRef nref = oir[ref].prev;
@@ -188,7 +188,7 @@ static IRRef split_ptr(jit_State* J, IRIns* oir, IRRef ref)
    if (ir->o == IR_KPTR)
       return lj_ir_kptr(J, (char*)ir_kptr(ir) + ofs);
    if (ir->o == IR_ADD && irref_isk(ir->op2) && !irt_isphi(oir[ref].t)) {
-      /* Reassociate address. */
+      // Reassociate address.
       ofs += IR(ir->op2)->i;
       nref = ir->op1;
       if (ofs == 0) return nref;
@@ -319,7 +319,7 @@ static IRRef split_bitop(jit_State* J, IRRef1* hisubst,
 }
 #endif
 
-/* Substitute references of a snapshot. */
+// Substitute references of a snapshot.
 static void split_subst_snap(jit_State* J, SnapShot* snap, IRIns* oir)
 {
    SnapEntry* map = &J->cur.snapmap[snap->mapofs];
@@ -332,7 +332,7 @@ static void split_subst_snap(jit_State* J, SnapShot* snap, IRIns* oir)
    }
 }
 
-/* Transform the old IR to the new IR. */
+// Transform the old IR to the new IR.
 static void split_ir(jit_State* J)
 {
    IRRef nins = J->cur.nins, nk = J->cur.nk;
@@ -343,21 +343,21 @@ static void split_ir(jit_State* J)
    IRRef ref, snref;
    SnapShot* snap;
 
-   /* Copy old IR to buffer. */
+   // Copy old IR to buffer.
    memcpy(oir, IR(nk), irlen * sizeof(IRIns));
-   /* Bias hiword substitution table and old IR. Loword kept in field prev. */
+   // Bias hiword substitution table and old IR. Loword kept in field prev.
    hisubst = (IRRef1*)&oir[irlen] - nk;
    oir -= nk;
 
-   /* Remove all IR instructions, but retain IR constants. */
+   // Remove all IR instructions, but retain IR constants.
    J->cur.nins = REF_FIRST;
    J->loopref = 0;
 
-   /* Process constants and fixed references. */
+   // Process constants and fixed references.
    for (ref = nk; ref <= REF_BASE; ref++) {
       IRIns* ir = &oir[ref];
       if ((LJ_SOFTFP && ir->o == IR_KNUM) || ir->o == IR_KINT64) {
-         /* Split up 64 bit constant. */
+         // Split up 64 bit constant.
          TValue tv = *ir_k64(ir);
          ir->prev = lj_ir_kint(J, (int32_t)tv.u32.lo);
          hisubst[ref] = lj_ir_kint(J, (int32_t)tv.u32.hi);
@@ -370,7 +370,7 @@ static void split_ir(jit_State* J)
          ref++;
    }
 
-   /* Process old IR instructions. */
+   // Process old IR instructions.
    snap = J->cur.snap;
    snref = snap->ref;
    for (ref = REF_FIRST; ref < nins; ref++) {
@@ -385,7 +385,7 @@ static void split_ir(jit_State* J)
          snref = snap < &J->cur.snap[J->cur.nsnap] ? snap->ref : ~(IRRef)0;
       }
 
-      /* Copy-substitute old instruction to new instruction. */
+      // Copy-substitute old instruction to new instruction.
       nir->op1 = ir->op1 < nk ? ir->op1 : oir[ir->op1].prev;
       nir->op2 = ir->op2 < nk ? ir->op2 : oir[ir->op2].prev;
       ir->prev = nref;  /* Loword substitution. */
@@ -393,11 +393,11 @@ static void split_ir(jit_State* J)
       nir->t.irt = ir->t.irt & ~(IRT_MARK | IRT_ISPHI);
       hisubst[ref] = 0;
 
-      /* Split 64 bit instructions. */
+      // Split 64 bit instructions.
 #if LJ_SOFTFP
       if (irt_isnum(ir->t)) {
          nir->t.irt = IRT_INT | (nir->t.irt & IRT_GUARD);  /* Turn into INT op. */
-         /* Note: hi ref = lo ref + 1! Required for SNAP_SOFTFPNUM logic. */
+         // Note: hi ref = lo ref + 1! Required for SNAP_SOFTFPNUM logic.
          switch (ir->o) {
          case IR_ADD:
             hi = split_call_ll(J, hisubst, oir, ir, IRCALL_softfp_add);
@@ -435,7 +435,7 @@ static void split_ir(jit_State* J)
                hi = split_emit(J, IRT(IR_HIOP, IRT_SOFTFP), nref, nref);
                break;
             }
-            /* fallthrough */
+            // fallthrough
          case IR_ALOAD: case IR_HLOAD: case IR_ULOAD: case IR_VLOAD:
          case IR_STRTO:
             hi = split_emit(J, IRT(IR_HIOP, IRT_SOFTFP), nref, nref);
@@ -525,14 +525,14 @@ static void split_ir(jit_State* J)
             switch (ir->o) {
             case IR_ADD:
             case IR_SUB:
-               /* Use plain op for hiword if loword cannot produce a carry/borrow. */
+               // Use plain op for hiword if loword cannot produce a carry/borrow.
                if (irref_isk(nir->op2) && IR(nir->op2)->i == 0) {
                   ir->prev = nir->op1;  /* Pass through loword. */
                   nir->op1 = hiref; nir->op2 = hisubst[ir->op2];
                   hi = nref;
                   break;
                }
-               /* fallthrough */
+               // fallthrough
             case IR_NEG:
                hi = split_emit(J, IRTI(IR_HIOP), hiref, hisubst[ir->op2]);
                break;
@@ -601,7 +601,7 @@ static void split_ir(jit_State* J)
                }
 #endif
                else if (st == IRT_I64 || st == IRT_U64) {  // 64/64 bit cast.
-                  /* Drop cast, since assembler doesn't care. But fwd both parts. */
+                  // Drop cast, since assembler doesn't care. But fwd both parts.
                   hi = hiref;
                   goto fwdlo;
                }
@@ -697,7 +697,7 @@ static void split_ir(jit_State* J)
                      else {  // Truncate to lower 32 bits.
                      fwdlo:
                         ir->prev = nir->op1;  /* Forward loword. */
-                        /* Replace with NOP to avoid messing up the snapshot logic. */
+                        // Replace with NOP to avoid messing up the snapshot logic.
                         nir->ot = IRT(IR_NOP, IRT_NIL);
                         nir->op1 = nir->op2 = 0;
                      }
@@ -808,7 +808,7 @@ static void split_ir(jit_State* J)
       split_subst_snap(J, snap, oir);
    }
 
-   /* Add PHI marks. */
+   // Add PHI marks.
    for (ref = J->cur.nins - 1; ref >= REF_FIRST; ref--) {
       IRIns* ir = IR(ref);
       if (ir->o != IR_PHI) break;
@@ -817,7 +817,7 @@ static void split_ir(jit_State* J)
    }
 }
 
-/* Protected callback for split pass. */
+// Protected callback for split pass.
 static TValue* cpsplit(lua_State* L, lua_CFunction dummy, void* ud)
 {
    jit_State* J = (jit_State*)ud;
@@ -827,7 +827,7 @@ static TValue* cpsplit(lua_State* L, lua_CFunction dummy, void* ud)
 }
 
 #if defined(LUA_USE_ASSERT) || LJ_SOFTFP
-/* Slow, but sure way to check whether a SPLIT pass is needed. */
+// Slow, but sure way to check whether a SPLIT pass is needed.
 static int split_needsplit(jit_State* J)
 {
    IRIns* ir, * irend;
@@ -852,7 +852,7 @@ static int split_needsplit(jit_State* J)
 }
 #endif
 
-/* SPLIT pass. */
+// SPLIT pass.
 void lj_opt_split(jit_State* J)
 {
 #if LJ_SOFTFP
@@ -864,7 +864,7 @@ void lj_opt_split(jit_State* J)
    if (J->needsplit) {
       int errcode = lj_vm_cpcall(J->L, NULL, J, cpsplit);
       if (errcode) {
-         /* Completely reset the trace to avoid inconsistent dump on abort. */
+         // Completely reset the trace to avoid inconsistent dump on abort.
          J->cur.nins = J->cur.nk = REF_BASE;
          J->cur.nsnap = 0;
          lj_err_throw(J->L, errcode);  /* Propagate errors. */
