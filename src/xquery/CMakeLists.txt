@@ -32,6 +32,7 @@ add_library (xquery_lib OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_axis.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_prolog.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/functions/func_math.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_tokeniser.cpp")
 
@@ -104,6 +105,7 @@ flute_test (${MOD}_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
 flute_test (${MOD}_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.fluid")
 flute_test (${MOD}_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.fluid")
 flute_test (${MOD}_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.fluid")
+flute_test (${MOD}_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_math.fluid")
 flute_test (${MOD}_qt_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qt_math.fluid")
 
 if (ENABLE_UNIT_TESTS)

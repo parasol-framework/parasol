@@ -114,6 +114,22 @@ XPathFunctionLibrary::XPathFunctionLibrary()
    register_function("max", function_max); // XP2.0
    register_function("avg", function_avg); // XP2.0
 
+   // Math Namespace Functions
+   register_function("math:pi", function_math_pi); // XQ3.0
+   register_function("math:sin", function_math_sin); // XQ3.0
+   register_function("math:cos", function_math_cos); // XQ3.0
+   register_function("math:tan", function_math_tan); // XQ3.0
+   register_function("math:asin", function_math_asin); // XQ3.0
+   register_function("math:acos", function_math_acos); // XQ3.0
+   register_function("math:atan", function_math_atan); // XQ3.0
+   register_function("math:atan2", function_math_atan2); // XQ3.0
+   register_function("math:sqrt", function_math_sqrt); // XQ3.0
+   register_function("math:exp", function_math_exp); // XQ3.0
+   register_function("math:exp10", function_math_exp10); // XQ3.0
+   register_function("math:log", function_math_log); // XQ3.0
+   register_function("math:log10", function_math_log10); // XQ3.0
+   register_function("math:pow", function_math_pow); // XQ3.0
+
    // Date and Time Functions
    register_function("current-date", function_current_date); // XP2.0
    register_function("current-time", function_current_time); // XP2.0

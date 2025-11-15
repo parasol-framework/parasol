@@ -46,6 +46,14 @@ The following 16 functions from the `math:` namespace are **not yet implemented*
 13. `math:sqrt(xs:double?) → xs:double?` - Square root
 14. `math:pi() → xs:double` - Pi constant (π ≈ 3.14159...)
 
+## Progress Update
+
+- ✅ Phase 1 complete: created `func_math.cpp` and added it to the build.
+- ✅ Phase 2 complete: implemented the 14 math namespace functions with optional argument handling.
+- ✅ Phase 3 complete: registered the math namespace functions in the core library for runtime availability.
+- ✅ Phase 4 complete: added targeted Fluid tests for the math namespace and integrated them into the build.
+- ✅ Phase 5 complete: hardened IEEE 754 semantics by preserving signed zero results, aligning `math:pow` with NaN edge-case rules, and extending the Fluid suite with regression coverage.
+
 ## Implementation Strategy
 
 ### Phase 1: Code Structure Setup
@@ -246,6 +254,8 @@ The W3C specification requires IEEE 754 double-precision floating-point arithmet
 - Preserve signed zero (-0.0 vs +0.0)
 - Return NaN for domain errors (e.g., `asin(2)`)
 
+**Implementation notes:** Introduced a numeric helper that normalises zero-valued results with `std::copysign` so negative zero is preserved, and added regression tests to prove the behaviour across trigonometric, square-root, and two-argument arctangent calls.
+
 **5.2 Platform Portability**
 
 The C++ standard library math functions are portable, but verify:
@@ -263,49 +273,49 @@ Consider:
 ## Implementation Checklist
 
 ### Code Changes
-- [ ] Create `src/xquery/functions/func_math.cpp`
-- [ ] Add function declarations to `src/xquery/api/xquery_functions.h`
-- [ ] Implement all 14 math functions in `func_math.cpp`
-- [ ] Register functions in `function_library.cpp` constructor
-- [ ] Update `CMakeLists.txt` to include new source file
+- [x] Create `src/xquery/functions/func_math.cpp`
+- [x] Add function declarations to `src/xquery/api/xquery_functions.h`
+- [x] Implement all 14 math functions in `func_math.cpp`
+- [x] Register functions in `function_library.cpp` constructor
+- [x] Update `CMakeLists.txt` to include new source file
 
 ### Functions to Implement
 **Trigonometric:**
-- [ ] `math:pi()` - Pi constant
-- [ ] `math:sin()` - Sine
-- [ ] `math:cos()` - Cosine
-- [ ] `math:tan()` - Tangent
-- [ ] `math:asin()` - Arc sine
-- [ ] `math:acos()` - Arc cosine
-- [ ] `math:atan()` - Arc tangent
-- [ ] `math:atan2()` - Two-argument arc tangent
+- [x] `math:pi()` - Pi constant
+- [x] `math:sin()` - Sine
+- [x] `math:cos()` - Cosine
+- [x] `math:tan()` - Tangent
+- [x] `math:asin()` - Arc sine
+- [x] `math:acos()` - Arc cosine
+- [x] `math:atan()` - Arc tangent
+- [x] `math:atan2()` - Two-argument arc tangent
 
 **Exponential/Logarithmic:**
-- [ ] `math:exp()` - Natural exponential
-- [ ] `math:exp10()` - Base-10 exponential
-- [ ] `math:log()` - Natural logarithm
-- [ ] `math:log10()` - Base-10 logarithm
-- [ ] `math:pow()` - Power function
+- [x] `math:exp()` - Natural exponential
+- [x] `math:exp10()` - Base-10 exponential
+- [x] `math:log()` - Natural logarithm
+- [x] `math:log10()` - Base-10 logarithm
+- [x] `math:pow()` - Power function
 
 **Other:**
-- [ ] `math:sqrt()` - Square root
+- [x] `math:sqrt()` - Square root
 
 ### Testing
-- [ ] Create `src/xquery/tests/test_math.fluid`
-- [ ] Write unit tests for all 14 functions
-- [ ] Test empty sequence handling
-- [ ] Test NaN and infinity edge cases
-- [ ] Test domain errors (out-of-range inputs)
-- [ ] Register test in `CMakeLists.txt`
-- [ ] Verify W3C QT3 tests pass (if available)
+- [x] Create `src/xquery/tests/test_math.fluid`
+- [x] Write unit tests for all 14 functions
+- [x] Test empty sequence handling
+- [x] Test NaN and infinity edge cases
+- [x] Test domain errors (out-of-range inputs)
+- [x] Register test in `CMakeLists.txt`
+- [x] Verify W3C QT3 tests pass (if available)
 
 ### Validation
-- [ ] Build compiles successfully
-- [ ] All unit tests pass
-- [ ] W3C conformance tests pass
-- [ ] No trailing whitespace in code
-- [ ] Code follows project style (3-space indents, `and`/`or` keywords, `IS` macro)
-- [ ] Documentation comments added
+- [x] Build compiles successfully
+- [x] All unit tests pass
+- [x] W3C conformance tests pass
+- [x] No trailing whitespace in code
+- [x] Code follows project style (3-space indents, `and`/`or` keywords, `IS` macro)
+- [x] Documentation comments added
 - [ ] Cross-platform testing (Windows/Linux)
 
 ## References
