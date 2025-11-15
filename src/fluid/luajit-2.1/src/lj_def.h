@@ -64,7 +64,7 @@ constexpr int LJ_MAX_COLOSIZE = 16;      /* Max. elems for colocated array. */
 
 #define LJ_MAX_LINE   LJ_MAX_MEM32   /* Max. source code line number. */
 constexpr int LJ_MAX_XLEVEL = 200;      /* Max. syntactic nesting level. */
-constexpr uint32_t LJ_MAX_BCINS = (1 << 26);      /* Max. # of bytecode instructions. */
+constexpr uint32_t LJ_MAX_BCINS = (1u << 26);      /* Max. # of bytecode instructions. */
 constexpr int LJ_MAX_SLOTS = 250;      /* Max. # of slots in a Lua func. */
 constexpr int LJ_MAX_LOCVAR = 200;      /* Max. # of local variables. */
 constexpr int LJ_MAX_UPVAL = 60;      /* Max. # of upvalues. */
