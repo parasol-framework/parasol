@@ -578,7 +578,6 @@ union IRIns {
    MRef ptr;      /* Pointer constant (overlaps op12 or entire slot). */
    TValue tv;      /* TValue constant (overlaps entire slot). */
 };
-using IRIns = union IRIns;
 
 #define ir_isk64(ir) \
   ((ir)->o == IR_KNUM || (ir)->o == IR_KINT64 || \
