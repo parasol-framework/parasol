@@ -584,7 +584,7 @@ typedef enum {
 
 #define basemt_it(g, it)   ((g)->gcroot[GCROOT_BASEMT+~(it)])
 #define basemt_obj(g, o)   ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
-#define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+(mm)]))
+#define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+int(mm)]))
 
 // Garbage collector state.
 typedef struct GCState {

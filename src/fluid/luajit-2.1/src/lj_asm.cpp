@@ -875,7 +875,7 @@ static void ra_destpair(ASMState* as, IRIns* ir)
    if (destlo == RID_RETHI) {
       if (desthi == RID_RETLO) {
 #if LJ_TARGET_X86ORX64
-         * --as->mcp = REX_64IR(irx, XI_XCHGa + RID_RETHI);
+         * --as->mcp = REX_64IR(irx, uint8_t(XI_XCHGa) + RID_RETHI);
 #else
          emit_movrr(as, irx, RID_RETHI, RID_TMP);
          emit_movrr(as, irx, RID_RETLO, RID_RETHI);

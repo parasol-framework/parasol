@@ -607,7 +607,7 @@ static void asm_gencall(ASMState* as, const CCallInfo* ci, IRRef* args)
       }
 #else
       patchnfpr = --as->mcp;  /* Indicate number of used FPRs in register al. */
-      *--as->mcp = XI_MOVrib | RID_EAX;
+      *--as->mcp = uint8_t(XI_MOVrib) | RID_EAX;
 #endif
    }
 #endif
@@ -2111,7 +2111,7 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
       }
    }
    else {
-      asm_callid(as, ir, (IRCallID)(IRCALL_lj_vm_floor + fpm));
+      asm_callid(as, ir, IRCallID(uint32_t(IRCALL_lj_vm_floor) + fpm));
    }
 }
 

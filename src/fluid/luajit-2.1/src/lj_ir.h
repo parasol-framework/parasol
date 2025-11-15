@@ -501,7 +501,11 @@ constexpr uint32_t TREF_FRAME = 0x00010000;
 constexpr uint32_t TREF_CONT = 0x00020000;
 constexpr uint32_t TREF_KEYINDEX = 0x00100000;
 
-#define TREF(ref, t)      ((TRef)((ref) + ((t)<<24)))
+// C++20 constexpr function for TREF construction
+static constexpr TRef TREF(uint32_t ref, IRType t)
+{
+   return TRef((ref) + (uint32_t(t) << 24));
+}
 
 #define tref_ref(tr)      ((IRRef1)(tr))
 #define tref_t(tr)      ((IRType)((tr)>>24))
@@ -533,10 +537,16 @@ constexpr uint32_t TREF_KEYINDEX = 0x00100000;
 #define tref_isk(tr)      (irref_isk(tref_ref((tr))))
 #define tref_isk2(tr1, tr2)   (irref_isk(tref_ref((tr1) | (tr2))))
 
-#define TREF_PRI(t)      (TREF(REF_NIL-(t), (t)))
-#define TREF_NIL      (TREF_PRI(IRT_NIL))
-#define TREF_FALSE      (TREF_PRI(IRT_FALSE))
-#define TREF_TRUE      (TREF_PRI(IRT_TRUE))
+// C++20 constexpr function for TREF_PRI construction
+// Accepts uint32_t to support both compile-time IRType and runtime values
+static constexpr TRef TREF_PRI(uint32_t t)
+{
+   return TREF(REF_NIL - t, IRType(t));
+}
+
+constexpr TRef TREF_NIL = TREF_PRI(uint32_t(IRT_NIL));
+constexpr TRef TREF_FALSE = TREF_PRI(uint32_t(IRT_FALSE));
+constexpr TRef TREF_TRUE = TREF_PRI(uint32_t(IRT_TRUE));
 
 // -- IR format -----------------------------------------------------------
 

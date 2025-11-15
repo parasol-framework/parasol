@@ -116,7 +116,7 @@ set (BUILDVM_SOURCES
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
 set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR})
-set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall)
+set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
 if (WIN32)
