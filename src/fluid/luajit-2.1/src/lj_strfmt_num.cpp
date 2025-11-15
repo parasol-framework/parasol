@@ -1,8 +1,6 @@
-/*
-** String formatting for floating-point numbers.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-** Contributed by Peter Cawley.
-*/
+// String formatting for floating-point numbers.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+// Contributed by Peter Cawley.
 
 #include <stdio.h>
 
@@ -30,10 +28,9 @@ static const double rescale_n[] = { RESCALE_EXPONENTS(ONE_E_P, ONE_E_N) };
 #undef ONE_E_N
 #undef ONE_E_P
 
-/*
-** For p in range -70 through 57, this table encodes pairs (m, e) such that
-** 4*2^p <= (uint8_t)m*10^e, and is the smallest value for which this holds.
-*/
+// For p in range -70 through 57, this table encodes pairs (m, e) such that
+// 4*2^p <= (uint8_t)m*10^e, and is the smallest value for which this holds.
+
 static const int8_t four_ulp_m_e[] = {
   34, -21, 68, -21, 14, -20, 28, -20, 55, -20, 2, -19, 3, -19, 5, -19, 9, -19,
   -82, -18, 35, -18, 7, -17, -117, -17, 28, -17, 56, -17, 112, -16, -33, -16,
@@ -91,26 +88,24 @@ static char* lj_strfmt_wuint9(char* p, uint32_t u)
 
 // -- Extended precision arithmetic ---------------------------------------
 
-/*
-** The "nd" format is a fixed-precision decimal representation for numbers. It
-** consists of up to 64 uint32_t values, with each uint32_t storing a value
-** in the range [0, 1e9). A number in "nd" format consists of three variables:
-**
-**  uint32_t nd[64];
-**  uint32_t ndlo;
-**  uint32_t ndhi;
-**
-** The integral part of the number is stored in nd[0 ... ndhi], the value of
-** which is sum{i in [0, ndhi] | nd[i] * 10^(9*i)}. If the fractional part of
-** the number is zero, ndlo is zero. Otherwise, the fractional part is stored
-** in nd[ndlo ... 63], the value of which is taken to be
-** sum{i in [ndlo, 63] | nd[i] * 10^(9*(i-64))}.
-**
-** If the array part had 128 elements rather than 64, then every double would
-** have an exact representation in "nd" format. With 64 elements, all integral
-** doubles have an exact representation, and all non-integral doubles have
-** enough digits to make both %.99e and %.99f do the right thing.
-*/
+// The "nd" format is a fixed-precision decimal representation for numbers. It
+// consists of up to 64 uint32_t values, with each uint32_t storing a value
+// in the range [0, 1e9). A number in "nd" format consists of three variables:
+//
+//  uint32_t nd[64];
+//  uint32_t ndlo;
+//  uint32_t ndhi;
+//
+// The integral part of the number is stored in nd[0 ... ndhi], the value of
+// which is sum{i in [0, ndhi] | nd[i] * 10^(9*i)}. If the fractional part of
+// the number is zero, ndlo is zero. Otherwise, the fractional part is stored
+// in nd[ndlo ... 63], the value of which is taken to be
+// sum{i in [ndlo, 63] | nd[i] * 10^(9*(i-64))}.
+//
+// If the array part had 128 elements rather than 64, then every double would
+// have an exact representation in "nd" format. With 64 elements, all integral
+// doubles have an exact representation, and all non-integral doubles have
+// enough digits to make both %.99e and %.99f do the right thing.
 
 #if LJ_64
 #define ND_MUL2K_MAX_SHIFT   29
@@ -126,7 +121,7 @@ static uint32_t nd_mul2k(uint32_t* nd, uint32_t ndhi, uint32_t k,
 {
    uint32_t i, ndlo = 0, start = 1;
    // Performance hacks.
-   if (k > ND_MUL2K_MAX_SHIFT * 2 && STRFMT_FP(sf) != STRFMT_FP(STRFMT_T_FP_F)) {
+   if (k > ND_MUL2K_MAX_SHIFT * 2 and STRFMT_FP(sf) != STRFMT_FP(STRFMT_T_FP_F)) {
       start = ndhi - (STRFMT_PREC(sf) + 17) / 8;
    }
    // Real logic.
@@ -189,7 +184,7 @@ static uint32_t nd_div2k(uint32_t* nd, uint32_t ndhi, uint32_t k, SFormat sf)
          if (i == ndlo) break;
          i = (i - 1) & 0x3f;
       }
-      if (ndlo != stop1 && ndlo != stop2) {
+      if (ndlo != stop1 and ndlo != stop2) {
          if (carry) { ndlo = (ndlo - 1) & 0x3f; nd[ndlo] = carry; }
          if (!nd[ndhi]) { ndhi = (ndhi - 1) & 0x3f; stop2--; }
       }
@@ -266,7 +261,7 @@ static int nd_similar(uint32_t* nd, uint32_t ndhi, uint32_t* ref, MSize hilen,
    lj_assertX(prec < 9, "bad precision %d", prec);
    lj_strfmt_wuint9(nd9, nd[ndhi]);
    lj_strfmt_wuint9(ref9, *ref);
-   return !memcmp(nd9, ref9, prec) && (nd9[prec] < '5') == (ref9[prec] < '5');
+   return !memcmp(nd9, ref9, prec) and (nd9[prec] < '5') == (ref9[prec] < '5');
 }
 
 // -- Formatted conversions to buffer -------------------------------------
@@ -371,7 +366,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
          prec--;
          prec ^= (uint32_t)((int32_t)prec >> 31);
       }
-      if ((sf & STRFMT_T_FP_E) && prec < 14 && n != 0) {
+      if ((sf & STRFMT_T_FP_E) and prec < 14 and n != 0) {
          // Precision is sufficiently low that rescaling will probably work.
          if ((ndebias = rescale_e[e >> 6])) {
             t.n = n * rescale_n[e >> 6];
@@ -407,7 +402,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
       }
       else {
          ndlo = nd_div2k(nd, ndhi, (uint32_t)-e, sf);
-         if (ndhi && !nd[ndhi]) ndhi--;
+         if (ndhi and !nd[ndhi]) ndhi--;
       }
       // abs(n) == nd * 10^ndebias (for slightly loose interpretation of ==)
       if ((sf & STRFMT_T_FP_E)) {
@@ -415,7 +410,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
          char eprefix = '+';
          int32_t nde = -1;
          MSize hilen;
-         if (ndlo && !nd[ndhi]) {
+         if (ndlo and !nd[ndhi]) {
             ndhi = 64; do {} while (!nd[--ndhi]);
             nde -= 64 * 9;
          }
@@ -431,9 +426,9 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             ** most significant digits, convert the +2ulp case, and compare them.
             */
             int32_t eidx = e + 70 + (ND_MUL2K_MAX_SHIFT < 29)
-               + (t.u32.lo >= 0xfffffffe && !(~t.u32.hi << 12));
+               + (t.u32.lo >= 0xfffffffe and !(~t.u32.hi << 12));
             const int8_t* m_e = four_ulp_m_e + eidx * 2;
-            lj_assertG_(G(sbufL(sb)), 0 <= eidx && eidx < 128, "bad eidx %d", eidx);
+            lj_assertG_(G(sbufL(sb)), 0 <= eidx and eidx < 128, "bad eidx %d", eidx);
             nd[33] = nd[ndhi];
             nd[32] = nd[(ndhi - 1) & 0x3f];
             nd[31] = nd[(ndhi - 2) & 0x3f];
@@ -450,12 +445,12 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
          nde += ndebias;
          if ((sf & STRFMT_T_FP_F)) {
             // %g
-            if ((int32_t)prec >= nde && nde >= -4) {
+            if ((int32_t)prec >= nde and nde >= -4) {
                if (nde < 0) ndhi = 0;
                prec -= nde;
                goto g_format_like_f;
             }
-            else if (!(sf & STRFMT_F_ALT) && prec && width > 5) {
+            else if (!(sf & STRFMT_F_ALT) and prec and width > 5) {
                // Decrease precision in order to strip trailing zeroes.
                char tail[9];
                uint32_t maxprec = hilen - 1 + ((ndhi - ndlo) & 0x3f) * 9;
@@ -463,7 +458,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
                else ndlo = (ndhi - (((int32_t)(prec - hilen) + 9) / 9)) & 0x3f;
                i = prec - hilen - (((ndhi - ndlo) & 0x3f) * 9) + 10;
                lj_strfmt_wuint9(tail, nd[ndlo]);
-               while (prec && tail[--i] == '0') {
+               while (prec and tail[--i] == '0') {
                   prec--;
                   if (!i) {
                      if (ndlo == ndhi) { prec = 0; break; }
@@ -495,11 +490,11 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             p[1] = '.'; p += 2;
             prec -= (MSize)(q - p); p = q; //  Account for digits already emitted.
             // Then emit chunks of 9 digits (this may emit 8 digits too many).
-            for (i = ndhi; (int32_t)prec > 0 && i != ndlo; prec -= 9) {
+            for (i = ndhi; (int32_t)prec > 0 and i != ndlo; prec -= 9) {
                i = (i - 1) & 0x3f;
                p = lj_strfmt_wuint9(p, nd[i]);
             }
-            if ((sf & STRFMT_T_FP_F) && !(sf & STRFMT_F_ALT)) {
+            if ((sf & STRFMT_T_FP_F) and !(sf & STRFMT_F_ALT)) {
                // %g (and not %#g) - strip trailing zeroes.
                p += (int32_t)prec & ((int32_t)prec >> 31);
                while (p[-1] == '0') p--;
@@ -526,7 +521,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             ndhi = nd_add_m10e(nd, ndhi, 5, 0 - prec - 1);
          }
       g_format_like_f:
-         if ((sf & STRFMT_T_FP_E) && !(sf & STRFMT_F_ALT) && prec && width) {
+         if ((sf & STRFMT_T_FP_E) and !(sf & STRFMT_F_ALT) and prec and width) {
             // Decrease precision in order to strip trailing zeroes.
             if (ndlo) {
                // nd has a fractional part; we need to look at its digits.
@@ -536,7 +531,7 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
                else ndlo = 64 - (prec + 8) / 9;
                i = prec - ((63 - ndlo) * 9);
                lj_strfmt_wuint9(tail, nd[ndlo]);
-               while (prec && tail[--i] == '0') {
+               while (prec and tail[--i] == '0') {
                   prec--;
                   if (!i) {
                      if (ndlo == 63) { prec = 0; break; }
@@ -568,12 +563,12 @@ static char* lj_strfmt_wfnum(SBuf* sb, SFormat sf, lua_Number n, char* p)
             // Emit fractional part.
             *p++ = '.';
             // Emit chunks of 9 digits (this may emit 8 digits too many).
-            while ((int32_t)prec > 0 && i != ndlo) {
+            while ((int32_t)prec > 0 and i != ndlo) {
                i = (i - 1) & 0x3f;
                p = lj_strfmt_wuint9(p, nd[i]);
                prec -= 9;
             }
-            if ((sf & STRFMT_T_FP_E) && !(sf & STRFMT_F_ALT)) {
+            if ((sf & STRFMT_T_FP_E) and !(sf & STRFMT_F_ALT)) {
                // %g (and not %#g) - strip trailing zeroes.
                p += (int32_t)prec & ((int32_t)prec >> 31);
                while (p[-1] == '0') p--;

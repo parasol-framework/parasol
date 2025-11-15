@@ -32,7 +32,7 @@ enum {
 #define iswhite(x)   ((x)->gch.marked & LJ_GC_WHITES)
 #define isblack(x)   ((x)->gch.marked & LJ_GC_BLACK)
 #define isgray(x)   (!((x)->gch.marked & (LJ_GC_BLACK|LJ_GC_WHITES)))
-#define tviswhite(x)   (tvisgcv(x) && iswhite(gcV(x)))
+#define tviswhite(x)   (tvisgcv(x) and iswhite(gcV(x)))
 #define otherwhite(g)   (g->gc.currentwhite ^ LJ_GC_WHITES)
 #define isdead(g, v)   ((v)->gch.marked & otherwhite(g) & LJ_GC_WHITES)
 
@@ -81,9 +81,9 @@ LJ_FUNC void lj_gc_barriertrace(global_State* g, uint32_t traceno);
 static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 {
    GCobj* o = obj2gco(t);
-   lj_assertG(isblack(o) && !isdead(g, o),
+   lj_assertG(isblack(o) and !isdead(g, o),
       "bad object states for backward barrier");
-   lj_assertG(g->gc.state != GCSfinalize && g->gc.state != GCSpause,
+   lj_assertG(g->gc.state != GCSfinalize and g->gc.state != GCSpause,
       "bad GC state");
    black2gray(o);
    setgcrefr(t->gclist, g->gc.grayagain);
@@ -94,18 +94,18 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 #define lj_gc_anybarriert(L, t)  \
   { if (LJ_UNLIKELY(isblack(obj2gco(t)))) lj_gc_barrierback(G(L), (t)); }
 #define lj_gc_barriert(L, t, tv) \
-  { if (tviswhite(tv) && isblack(obj2gco(t))) \
+  { if (tviswhite(tv) and isblack(obj2gco(t))) \
       lj_gc_barrierback(G(L), (t)); }
 #define lj_gc_objbarriert(L, t, o)  \
-  { if (iswhite(obj2gco(o)) && isblack(obj2gco(t))) \
+  { if (iswhite(obj2gco(o)) and isblack(obj2gco(t))) \
       lj_gc_barrierback(G(L), (t)); }
 
 // Barrier for stores to any other object. TValue and GCobj variant.
 #define lj_gc_barrier(L, p, tv) \
-  { if (tviswhite(tv) && isblack(obj2gco(p))) \
+  { if (tviswhite(tv) and isblack(obj2gco(p))) \
       lj_gc_barrierf(G(L), obj2gco(p), gcV(tv)); }
 #define lj_gc_objbarrier(L, p, o) \
-  { if (iswhite(obj2gco(o)) && isblack(obj2gco(p))) \
+  { if (iswhite(obj2gco(o)) and isblack(obj2gco(p))) \
       lj_gc_barrierf(G(L), obj2gco(p), obj2gco(o)); }
 
 // Allocator.

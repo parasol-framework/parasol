@@ -82,7 +82,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 {
    GCtab* t;
    // First try to colocate the array part.
-   if (LJ_MAX_COLOSIZE != 0 && asize > 0 && asize <= LJ_MAX_COLOSIZE) {
+   if (LJ_MAX_COLOSIZE != 0 and asize > 0 and asize <= LJ_MAX_COLOSIZE) {
       Node* nilnode;
       lj_assertL((sizeof(GCtab) & 7) == 0, "bad GCtab size");
       t = (GCtab*)lj_mem_newgco(L, sizetabcolo(asize));
@@ -167,7 +167,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
    GCtab* t;
    uint32_t asize, hmask;
    t = newtab(L, kt->asize, kt->hmask > 0 ? lj_fls(kt->hmask) + 1 : 0);
-   lj_assertL(kt->asize == t->asize && kt->hmask == t->hmask,
+   lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask,
       "mismatched size of table and template");
    t->nomm = 0;  //  Keys with metamethod names may be present.
    asize = kt->asize;
@@ -218,9 +218,9 @@ void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
 {
    if (t->hmask > 0)
       lj_mem_freevec(g, noderef(t->node), t->hmask + 1, Node);
-   if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
+   if (t->asize > 0 and LJ_MAX_COLOSIZE != 0 and t->colo <= 0)
       lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
-   if (LJ_MAX_COLOSIZE != 0 && t->colo)
+   if (LJ_MAX_COLOSIZE != 0 and t->colo)
       lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
    else
       lj_mem_freet(g, t);
@@ -239,7 +239,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       uint32_t i;
       if (asize > LJ_MAX_ASIZE)
          lj_err_msg(L, LJ_ERR_TABOV);
-      if (LJ_MAX_COLOSIZE != 0 && t->colo > 0) {
+      if (LJ_MAX_COLOSIZE != 0 and t->colo > 0) {
          // A colocated array must be separated and copied.
          TValue* oarray = tvref(t->array);
          array = lj_mem_newvec(L, asize, TValue);
@@ -277,7 +277,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
          if (!tvisnil(&array[i]))
             copyTV(L, lj_tab_setinth(L, t, (int32_t)i), &array[i]);
       // Physically shrink only separated arrays.
-      if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
+      if (LJ_MAX_COLOSIZE != 0 and t->colo <= 0)
          setmref(t->array, lj_mem_realloc(L, array,
             oldasize * sizeof(TValue), asize * sizeof(TValue)));
    }
@@ -300,7 +300,7 @@ static uint32_t countint(cTValue* key, uint32_t* bins)
    if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k < LJ_MAX_ASIZE && nk == (lua_Number)k) {
+      if ((uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
          bins[(k > 2 ? lj_fls((uint32_t)(k - 1)) : 0)]++;
          return 1;
       }
@@ -348,8 +348,8 @@ static uint32_t counthash(const GCtab* t, uint32_t* bins, uint32_t* narray)
 static uint32_t bestasize(uint32_t bins[], uint32_t* narray)
 {
    uint32_t b, sum, na = 0, sz = 0, nn = *narray;
-   for (b = 0, sum = 0; 2 * nn > (1u << b) && sum != nn; b++)
-      if (bins[b] > 0 && 2 * (sum += bins[b]) > (1u << b)) {
+   for (b = 0, sum = 0; 2 * nn > (1u << b) and sum != nn; b++)
+      if (bins[b] > 0 and 2 * (sum += bins[b]) > (1u << b)) {
          sz = (2u << b) + 1;
          na = sum;
       }
@@ -392,7 +392,7 @@ cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
    k.n = (lua_Number)key;
    n = hashnum(t, &k);
    do {
-      if (tvisnum(&n->key) && n->key.n == k.n)
+      if (tvisnum(&n->key) and n->key.n == k.n)
          return &n->val;
    } while ((n = nextnode(n)));
    return NULL;
@@ -402,7 +402,7 @@ cTValue* lj_tab_getstr(GCtab* t, const GCstr* key)
 {
    Node* n = hashstr(t, key);
    do {
-      if (tvisstr(&n->key) && strV(&n->key) == key)
+      if (tvisstr(&n->key) and strV(&n->key) == key)
          return &n->val;
    } while ((n = nextnode(n)));
    return NULL;
@@ -453,7 +453,7 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
    if (!tvisnil(&n->val) || t->hmask == 0) {
       Node* nodebase = noderef(t->node);
       Node* collide, * freenode = getfreetop(t, nodebase);
-      lj_assertL(freenode >= nodebase && freenode <= nodebase + t->hmask + 1,
+      lj_assertL(freenode >= nodebase and freenode <= nodebase + t->hmask + 1,
          "bad freenode");
       do {
          if (freenode == nodebase) {  // No free node found?
@@ -477,7 +477,7 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
          // Rechain pseudo-resurrected string keys with colliding hashes.
          while (nextnode(freenode)) {
             Node* nn = nextnode(freenode);
-            if (!tvisnil(&nn->val) && hashkey(t, &nn->key) == n) {
+            if (!tvisnil(&nn->val) and hashkey(t, &nn->key) == n) {
                freenode->next = nn->next;
                nn->next = n->next;
                setmref(n->next, nn);
@@ -492,7 +492,7 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
                while ((nn = nextnode(freenode))) {
                   if (!tvisnil(&nn->val)) {
                      Node* mn = hashkey(t, &nn->key);
-                     if (mn != freenode && mn != nn) {
+                     if (mn != freenode and mn != nn) {
                         freenode->next = nn->next;
                         nn->next = mn->next;
                         setmref(mn->next, nn);
@@ -533,7 +533,7 @@ TValue* lj_tab_setinth(lua_State* L, GCtab* t, int32_t key)
    k.n = (lua_Number)key;
    n = hashnum(t, &k);
    do {
-      if (tvisnum(&n->key) && n->key.n == k.n)
+      if (tvisnum(&n->key) and n->key.n == k.n)
          return &n->val;
    } while ((n = nextnode(n)));
    return lj_tab_newkey(L, t, &k);
@@ -544,7 +544,7 @@ TValue* lj_tab_setstr(lua_State* L, GCtab* t, const GCstr* key)
    TValue k;
    Node* n = hashstr(t, key);
    do {
-      if (tvisstr(&n->key) && strV(&n->key) == key)
+      if (tvisstr(&n->key) and strV(&n->key) == key)
          return &n->val;
    } while ((n = nextnode(n)));
    setstrV(L, &k, key);
@@ -604,7 +604,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    else if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k < t->asize && nk == (lua_Number)k)
+      if ((uint32_t)k < t->asize and nk == (lua_Number)k)
          return (uint32_t)k + 1;
    }
    if (!tvisnil(key)) {
@@ -655,12 +655,12 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
    size_t lo = hi;
    hi++;
    // Widening search for an upper bound.
-   while ((tv = lj_tab_getint(t, (int32_t)hi)) && !tvisnil(tv)) {
+   while ((tv = lj_tab_getint(t, (int32_t)hi)) and !tvisnil(tv)) {
       lo = hi;
       hi += hi;
       if (hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
          lo = 1;
-         while ((tv = lj_tab_getint(t, (int32_t)lo)) && !tvisnil(tv)) lo++;
+         while ((tv = lj_tab_getint(t, (int32_t)lo)) and !tvisnil(tv)) lo++;
          return (MSize)(lo - 1);
       }
    }
@@ -668,7 +668,7 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
    while (hi - lo > 1) {
       size_t mid = (lo + hi) >> 1;
       cTValue* tvb = lj_tab_getint(t, (int32_t)mid);
-      if (tvb && !tvisnil(tvb)) lo = mid; else hi = mid;
+      if (tvb and !tvisnil(tvb)) lo = mid; else hi = mid;
    }
    return (MSize)lo;
 }
@@ -679,7 +679,7 @@ MSize LJ_FASTCALL lj_tab_len(GCtab* t)
    size_t hi = (size_t)t->asize;
    if (hi) hi--;
    // In a growing array the last array element is very likely nil.
-   if (hi > 0 && LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
+   if (hi > 0 and LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
       // Binary search to find a non-nil to nil transition in the array.
       size_t lo = 0;
       while (hi - lo > 1) {
@@ -699,9 +699,9 @@ MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
    size_t asize = (size_t)t->asize;
    cTValue* tv = arrayslot(t, hint);
    if (LJ_LIKELY(hint + 1 < asize)) {
-      if (LJ_LIKELY(!tvisnil(tv) && tvisnil(tv + 1))) return (MSize)hint;
+      if (LJ_LIKELY(!tvisnil(tv) and tvisnil(tv + 1))) return (MSize)hint;
    }
-   else if (hint + 1 <= asize && LJ_LIKELY(t->hmask == 0) && !tvisnil(tv)) {
+   else if (hint + 1 <= asize and LJ_LIKELY(t->hmask == 0) and !tvisnil(tv)) {
       return (MSize)hint;
    }
    return lj_tab_len(t);

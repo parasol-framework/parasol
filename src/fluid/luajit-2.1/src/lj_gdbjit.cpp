@@ -782,7 +782,7 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
    ctx.spadjp = CFRAME_SIZE_JIT +
       (MSize)(parent ? traceref(J, parent)->spadjust : 0);
    ctx.spadj = CFRAME_SIZE_JIT + T->spadjust;
-   lj_assertJ(startpc >= proto_bc(pt) && startpc < proto_bc(pt) + pt->sizebc,
+   lj_assertJ(startpc >= proto_bc(pt) and startpc < proto_bc(pt) + pt->sizebc,
       "start PC out of range");
    ctx.lineno = lj_debug_line(pt, proto_bcpos(pt, startpc));
    ctx.filename = proto_chunknamestr(pt);

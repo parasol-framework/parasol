@@ -88,7 +88,7 @@ static void l_message(const char* msg)
 
 static int report(lua_State* L, int status)
 {
-   if (status && !lua_isnil(L, -1)) {
+   if (status and !lua_isnil(L, -1)) {
       const char* msg = lua_tostring(L, -1);
       if (msg == NULL) msg = "(error object is not a string)";
       l_message(msg);
@@ -215,9 +215,9 @@ static int pushline(lua_State* L, int firstline)
    write_prompt(L, firstline);
    if (fgets(buf, LUA_MAXINPUT, stdin)) {
       size_t len = strlen(buf);
-      if (len > 0 && buf[len - 1] == '\n')
+      if (len > 0 and buf[len - 1] == '\n')
          buf[len - 1] = '\0';
-      if (firstline && buf[0] == '=')
+      if (firstline and buf[0] == '=')
          lua_pushfstring(L, "return %s", buf + 1);
       else
          lua_pushstring(L, buf);
@@ -253,7 +253,7 @@ static void dotty(lua_State* L)
    while ((status = loadline(L)) != -1) {
       if (status == LUA_OK) status = docall(L, 0, 0);
       report(L, status);
-      if (status == LUA_OK && lua_gettop(L) > 0) {  // any result to print?
+      if (status == LUA_OK and lua_gettop(L) > 0) {  // any result to print?
          lua_getglobal(L, "print");
          lua_insert(L, 1);
          if (lua_pcall(L, lua_gettop(L) - 1, 0, 0) != 0)
@@ -271,7 +271,7 @@ static int handle_script(lua_State* L, char** argx)
 {
    int status;
    const char* fname = argx[0];
-   if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)
+   if (strcmp(fname, "-") == 0 and strcmp(argx[-1], "--") != 0)
       fname = NULL;  //  stdin
    status = luaL_loadfile(L, fname);
    if (status == LUA_OK) {
@@ -304,7 +304,7 @@ static int loadjitmodule(lua_State* L)
    lua_concat(L, 2);
    if (lua_pcall(L, 1, 1, 0)) {
       const char* msg = lua_tostring(L, -1);
-      if (msg && !strncmp(msg, "module ", 7))
+      if (msg and !strncmp(msg, "module ", 7))
          goto nomodule;
       return report(L, 1);
    }
@@ -322,7 +322,7 @@ static int loadjitmodule(lua_State* L)
 static int runcmdopt(lua_State* L, const char* opt)
 {
    int narg = 0;
-   if (opt && *opt) {
+   if (opt and *opt) {
       for (;;) {  // Split arguments.
          const char* p = strchr(opt, ',');
          narg++;
@@ -557,7 +557,7 @@ static int pmain(lua_State* L)
       print_jit_status(L);
       dotty(L);
    }
-   else if (s->argc == argn && !(flags & (FLAGS_EXEC | FLAGS_VERSION))) {
+   else if (s->argc == argn and !(flags & (FLAGS_EXEC | FLAGS_VERSION))) {
       if (lua_stdin_is_tty()) {
          print_version();
          print_jit_status(L);

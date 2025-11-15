@@ -191,9 +191,9 @@ SBuf* LJ_FASTCALL lj_buf_putstr_lower(SBuf* sb, GCstr* s)
    for (; w < e; w++, q++) {
       uint32_t c = *(unsigned char*)q;
 #if LJ_TARGET_PPC
-      * w = c + ((c >= 'A' && c <= 'Z') << 5);
+      * w = c + ((c >= 'A' and c <= 'Z') << 5);
 #else
-      if (c >= 'A' && c <= 'Z') c += 0x20;
+      if (c >= 'A' and c <= 'Z') c += 0x20;
       *w = c;
 #endif
    }
@@ -209,9 +209,9 @@ SBuf* LJ_FASTCALL lj_buf_putstr_upper(SBuf* sb, GCstr* s)
    for (; w < e; w++, q++) {
       uint32_t c = *(unsigned char*)q;
 #if LJ_TARGET_PPC
-      * w = c - ((c >= 'a' && c <= 'z') << 5);
+      * w = c - ((c >= 'a' and c <= 'z') << 5);
 #else
-      if (c >= 'a' && c <= 'z') c -= 0x20;
+      if (c >= 'a' and c <= 'z') c -= 0x20;
       *w = c;
 #endif
    }
@@ -222,7 +222,7 @@ SBuf* LJ_FASTCALL lj_buf_putstr_upper(SBuf* sb, GCstr* s)
 SBuf* lj_buf_putstr_rep(SBuf* sb, GCstr* s, int32_t rep)
 {
    MSize len = s->len;
-   if (rep > 0 && len) {
+   if (rep > 0 and len) {
       uint64_t tlen = (uint64_t)rep * len;
       char* w;
       if (LJ_UNLIKELY(tlen > LJ_MAX_STR))

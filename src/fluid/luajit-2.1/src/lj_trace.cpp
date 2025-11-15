@@ -105,7 +105,7 @@ static void perftools_addtrace(GCtrace* T)
       name++;
    else
       name = "(string)";
-   lj_assertX(startpc >= proto_bc(pt) && startpc < proto_bc(pt) + pt->sizebc,
+   lj_assertX(startpc >= proto_bc(pt) and startpc < proto_bc(pt) + pt->sizebc,
       "trace PC out of range");
    lineno = lj_debug_line(pt, proto_bcpos(pt, startpc));
    if (!fp) {
@@ -263,9 +263,9 @@ static void trace_flushroot(jit_State* J, GCtrace* T)
 // Flush a trace. Only root traces are considered.
 void lj_trace_flush(jit_State* J, TraceNo traceno)
 {
-   if (traceno > 0 && traceno < J->sizetrace) {
+   if (traceno > 0 and traceno < J->sizetrace) {
       GCtrace* T = traceref(J, traceno);
-      if (T && T->root == 0)
+      if (T and T->root == 0)
          trace_flushroot(J, T);
    }
 }
@@ -418,7 +418,7 @@ static void trace_start(jit_State* J)
    TraceNo traceno;
 
    if ((J->pt->flags & PROTO_NOJIT)) {  // JIT disabled for this proto?
-      if (J->parent == 0 && J->exitno == 0 && bc_op(*J->pc) != BC_ITERN) {
+      if (J->parent == 0 and J->exitno == 0 and bc_op(*J->pc) != BC_ITERN) {
          // Lazy bytecode patching to disable hotcount events.
          lj_assertJ(bc_op(*J->pc) == BC_FORL || bc_op(*J->pc) == BC_ITERL ||
             bc_op(*J->pc) == BC_LOOP || bc_op(*J->pc) == BC_FUNCF,
@@ -512,7 +512,7 @@ static void trace_stop(jit_State* J)
       goto addroot;
    case BC_JMP:
       // Patch exit branch in parent to side trace entry.
-      lj_assertJ(J->parent != 0 && J->cur.root != 0, "not a side trace");
+      lj_assertJ(J->parent != 0 and J->cur.root != 0, "not a side trace");
       lj_asm_patchexit(J, traceref(J, J->parent), J->exitno, J->cur.mcode);
       // Avoid compiling a side trace twice (stack resizing uses parent exit).
       {
@@ -588,7 +588,7 @@ static int trace_abort(jit_State* J)
       return 1;  //  Retry ASM with new MCode area.
    }
    // Penalize or blacklist starting bytecode instruction.
-   if (J->parent == 0 && !bc_isret(bc_op(J->cur.startins))) {
+   if (J->parent == 0 and !bc_isret(bc_op(J->cur.startins))) {
       if (J->exitno == 0) {
          BCIns* startpc = mref(J->cur.startpc, BCIns);
          if (e == LJ_TRERR_RETRY)
@@ -699,7 +699,7 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          trace_pendpatch(J, 1);
          J->loopref = 0;
          if ((J->flags & JIT_F_OPT_LOOP) &&
-            J->cur.link == J->cur.traceno && J->framedepth + J->retdepth == 0) {
+            J->cur.link == J->cur.traceno and J->framedepth + J->retdepth == 0) {
             setvmstate(J2G(J), OPT);
             lj_opt_dce(J);
             if (lj_opt_loop(J)) {  // Loop optimization failed?
@@ -891,7 +891,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
       T = traceref(J, J->parent);
    }
 #endif
-   lj_assertJ(T != NULL && J->exitno < T->nsnap, "bad trace or exit number");
+   lj_assertJ(T != NULL and J->exitno < T->nsnap, "bad trace or exit number");
    exd.J = J;
    exd.exptr = exptr;
    errcode = lj_vm_cpcall(L, NULL, &exd, trace_exit_cp);
@@ -900,7 +900,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
 
    if (exitcode) copyTV(L, L->top++, &exiterr);  //  Anchor the error object.
 
-   if (!(LJ_HASPROFILE && (G(L)->hookmask & HOOK_PROFILE)))
+   if (!(LJ_HASPROFILE and (G(L)->hookmask & HOOK_PROFILE)))
       lj_vmevent_send(L, TEXIT,
          lj_state_checkstack(L, 4 + RID_NUM_GPR + RID_NUM_FPR + LUA_MINSTACK);
    setintV(L->top++, J->parent);
@@ -914,7 +914,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
    if (exitcode) {
       return -exitcode;
    }
-   else if (LJ_HASPROFILE && (G(L)->hookmask & HOOK_PROFILE)) {
+   else if (LJ_HASPROFILE and (G(L)->hookmask & HOOK_PROFILE)) {
       // Just exit to interpreter.
    }
    else if (G(L)->gc.state == GCSatomic || G(L)->gc.state == GCSfinalize) {

@@ -94,7 +94,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
                f = frame_prevl(f);
             }
             else {
-               if (frame_isc(f) || (frame_iscont(f) && frame_iscont_fficb(f)))
+               if (frame_isc(f) || (frame_iscont(f) and frame_iscont_fficb(f)))
                   cf = cframe_raw(cframe_prev(cf));
                f = frame_prevd(f);
             }
@@ -121,7 +121,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
 {
    const void* lineinfo = proto_lineinfo(pt);
-   if (pc <= pt->sizebc && lineinfo) {
+   if (pc <= pt->sizebc and lineinfo) {
       BCLine first = pt->firstline;
       if (pc == pt->sizebc) return first + pt->numline;
       if (pc-- == 0) return first;
@@ -169,7 +169,7 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
          lastpc = startpc = lastpc + lj_buf_ruleb128(&p);
          if (startpc > pc) break;
          endpc = startpc + lj_buf_ruleb128(&p);
-         if (pc < endpc && slot-- == 0) {
+         if (pc < endpc and slot-- == 0) {
             if (vn < VARNAME__MAX) {
 #define VARNAMESTR(name, str)   str "\0"
                name = VARNAMEDEF(VARNAMESTR);
@@ -214,7 +214,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    if (pc != NO_BCPOS &&
       (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != NULL)
       ;
-   else if (slot1 > 0 && frame + slot1 + LJ_FR2 < nextframe)
+   else if (slot1 > 0 and frame + slot1 + LJ_FR2 < nextframe)
       *name = "(*temporary)";
    return frame + slot1;
 }
@@ -267,10 +267,10 @@ restart:
       BCOp op = bc_op(ins);
       BCReg ra = bc_a(ins);
       if (bcmode_a(op) == BCMbase) {
-         if (slot >= ra && (op != BC_KNIL || slot <= bc_d(ins)))
+         if (slot >= ra and (op != BC_KNIL || slot <= bc_d(ins)))
             return NULL;
       }
-      else if (bcmode_a(op) == BCMdst && ra == slot) {
+      else if (bcmode_a(op) == BCMdst and ra == slot) {
          switch (bc_op(ins)) {
          case BC_MOV:
             if (ra == slot) { slot = bc_d(ins); goto restart; }
@@ -282,7 +282,7 @@ restart:
             *name = strdata(gco2str(proto_kgc(pt, ~(ptrdiff_t)bc_c(ins))));
             if (ip > proto_bc(pt)) {
                BCIns insp = ip[-1];
-               if (bc_op(insp) == BC_MOV && bc_a(insp) == ra + 1 + LJ_FR2 &&
+               if (bc_op(insp) == BC_MOV and bc_a(insp) == ra + 1 + LJ_FR2 &&
                   bc_d(insp) == bc_b(ins))
                   return "method";
             }
@@ -428,7 +428,7 @@ LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
          incr_top(L);
       }
    }
-   else if (tvisfunc(L->top - 1) && isluafunc(funcV(L->top - 1))) {
+   else if (tvisfunc(L->top - 1) and isluafunc(funcV(L->top - 1))) {
       name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCReg)n - 1);
    }
    return name;
@@ -633,8 +633,8 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                /* Only show function name if we're confident it's correct.
                 * Skip "local" because it returns the caller's variable name,
                 * which may not match the actual function being executed. */
-               if (what && strcmp(what, "local") != 0) {
-                  if (c == 'F' && isluafunc(fn)) {  //  Dump module:name for 'F'.
+               if (what and strcmp(what, "local") != 0) {
+                  if (c == 'F' and isluafunc(fn)) {  //  Dump module:name for 'F'.
                      GCproto* pt = funcproto(fn);
                      if (pt->firstline != ~(BCLine)0) {  //  Not a bytecode builtin.
                         debug_putchunkname(sb, pt, pathstrip);
@@ -718,7 +718,7 @@ LUALIB_API void luaL_traceback(lua_State* L, lua_State* L1, const char* msg,
       }
       lua_getinfo(L1, "Snlf", &ar);
       fn = funcV(L1->top - 1); L1->top--;
-      if (isffunc(fn) && !*ar.namewhat)
+      if (isffunc(fn) and !*ar.namewhat)
          lua_pushfstring(L, "\n\t[builtin#%d]:", fn->c.ffid);
       else
          lua_pushfstring(L, "\n\t%s:", ar.short_src);

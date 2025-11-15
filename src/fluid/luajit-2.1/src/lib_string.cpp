@@ -91,7 +91,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
    int32_t rep = lj_lib_checkint(L, 2);
    GCstr* sep = lj_lib_optstr(L, 3);
    SBuf* sb = lj_buf_tmp_(L);
-   if (sep && rep > 1) {
+   if (sep and rep > 1) {
       GCstr* s2 = lj_buf_cat2str(L, sep, s);
       lj_buf_reset(sb);
       lj_buf_putstr(sb, s);
@@ -165,7 +165,7 @@ LJLIB_CF(string_split)
       else {
          // Multi-character separator or whitespace
          for (const char* p = pos; p <= end - seplen; p++) {
-            if (seplen == 4 && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+            if (seplen == 4 and (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
                found = p;
                break;
             }
@@ -215,11 +215,11 @@ LJLIB_CF(string_trim)
    }
 
    // Skip leading whitespace
-   while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
+   while (start < end and (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
       start++;
 
    // Skip trailing whitespace
-   while (end > start && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+   while (end > start and (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
       end--;
 
    // If all whitespace, return empty string
@@ -253,7 +253,7 @@ LJLIB_CF(string_rtrim)
    }
 
    // Find end of non-whitespace
-   while (end > str && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+   while (end > str and (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
       end--;
 
    // Create right-trimmed string
@@ -336,7 +336,7 @@ LJLIB_CF(string_join)
 
    for (i = 1; i <= len; i++) {
       cTValue* tv = lj_tab_getint(t, i);
-      if (tv && !tvisnil(tv)) {
+      if (tv and !tvisnil(tv)) {
          int isValidType = 0;
 
          // Check if we have a valid type to process
@@ -346,7 +346,7 @@ LJLIB_CF(string_join)
 
          if (isValidType) {
             // Add separator before non-first elements
-            if (sb->w > sb->b && seplen > 0) {
+            if (sb->w > sb->b and seplen > 0) {
                lj_buf_putmem(sb, sepstr, seplen);
             }
 
@@ -384,7 +384,7 @@ LJLIB_CF(string_cap)
 
    // Convert first character to uppercase
    char first = str[0];
-   if (first >= 'a' && first <= 'z') {
+   if (first >= 'a' and first <= 'z') {
       first = first - 32;  //  Convert to uppercase
    }
    lj_buf_putb(sb, first);
@@ -414,7 +414,7 @@ LJLIB_CF(string_decap)
 
    // Convert first character to lowercase
    char first = str[0];
-   if (first >= 'A' && first <= 'Z') {
+   if (first >= 'A' and first <= 'Z') {
       first = first + 32;  //  Convert to lowercase
    }
    lj_buf_putb(sb, first);
@@ -432,7 +432,7 @@ LJLIB_CF(string_hash)
    int caseSensitive = 0;  //  Default: case insensitive
 
    // Check for optional second parameter (boolean)
-   if (L->base + 1 < L->top && tvisbool(L->base + 1)) {
+   if (L->base + 1 < L->top and tvisbool(L->base + 1)) {
       caseSensitive = boolV(L->base + 1);
    }
    const char* str = strdata(s);
@@ -448,7 +448,7 @@ LJLIB_CF(string_hash)
    else {
       for (i = 0; i < len; i++) {
          unsigned char c = (unsigned char)str[i];
-         if (c >= 0x41 && c <= 0x5A) c = c + 0x20;
+         if (c >= 0x41 and c <= 0x5A) c = c + 0x20;
          hash = ((hash << 5) + hash) + c;
       }
    }
@@ -509,7 +509,7 @@ static int writer_buf(lua_State* L, const void* p, size_t size, void* sb)
 LJLIB_CF(string_dump)
 {
    GCfunc* fn = lj_lib_checkfunc(L, 1);
-   int strip = L->base + 1 < L->top && tvistruecond(L->base + 1);
+   int strip = L->base + 1 < L->top and tvistruecond(L->base + 1);
    SBuf* sb = lj_buf_tmp_(L);  //  Assumes lj_bcwrite() doesn't use tmpbuf.
    L->top = L->base + 1;
    if (!isluafunc(fn) || lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip))
@@ -570,7 +570,7 @@ static const char* classend(MatchState* ms, const char* p)
       do {  // look for a `]'
          if (*p == '\0')
             lj_err_caller(ms->L, LJ_ERR_STRPATM);
-         if (*(p++) == L_ESC && *p != '\0')
+         if (*(p++) == L_ESC and *p != '\0')
             p++;  //  skip escapes (e.g. `%]')
       } while (*p != ']');
       return p + 1;
@@ -612,9 +612,9 @@ static int matchbracketclass(int c, const char* p, const char* ec)
          if (match_class(c, uchar(*p)))
             return sig;
       }
-      else if ((*(p + 1) == '-') && (p + 2 < ec)) {
+      else if ((*(p + 1) == '-') and (p + 2 < ec)) {
          p += 2;
-         if (uchar(*(p - 2)) <= c && c <= uchar(*p))
+         if (uchar(*(p - 2)) <= c and c <= uchar(*p))
             return sig;
       }
       else if (uchar(*p) == c) return sig;
@@ -661,7 +661,7 @@ static const char* max_expand(MatchState* ms, const char* s,
    const char* p, const char* ep)
 {
    ptrdiff_t i = 0;  //  counts maximum expand for item
-   while ((s + i) < ms->src_end && singlematch(uchar(*(s + i)), p, ep))
+   while ((s + i) < ms->src_end and singlematch(uchar(*(s + i)), p, ep))
       i++;
    // keeps trying to match with the maximum repetitions
    while (i >= 0) {
@@ -679,7 +679,7 @@ static const char* min_expand(MatchState* ms, const char* s,
       const char* res = match(ms, s, ep + 1);
       if (res != NULL)
          return res;
-      else if (s < ms->src_end && singlematch(uchar(*s), p, ep))
+      else if (s < ms->src_end and singlematch(uchar(*s), p, ep))
          s++;  //  try with one more repetition
       else
          return NULL;
@@ -778,11 +778,11 @@ init: //  using goto's to optimize tail recursion
       break;
    default: dflt: {  // it is a pattern item
       const char* ep = classend(ms, p);  //  points to what is next
-      int m = s < ms->src_end && singlematch(uchar(*s), p, ep);
+      int m = s < ms->src_end and singlematch(uchar(*s), p, ep);
       switch (*ep) {
       case '?': {  // optional
          const char* res;
-         if (m && ((res = match(ms, s + 1, ep + 1)) != NULL)) {
+         if (m and ((res = match(ms, s + 1, ep + 1)) != NULL)) {
             s = res;
             break;
          }
@@ -831,7 +831,7 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
 static int push_captures(MatchState* ms, const char* s, const char* e)
 {
    int i;
-   int nlevels = (ms->level == 0 && s) ? 1 : ms->level;
+   int nlevels = (ms->level == 0 and s) ? 1 : ms->level;
    luaL_checkstack(ms->L, nlevels, "too many captures");
    for (i = 0; i < nlevels; i++)
       push_onecapture(ms, i, s, e);
@@ -855,7 +855,7 @@ static int str_find_aux(lua_State* L, int find)
       st = s->len;
 #endif
    }
-   if (find && ((L->base + 3 < L->top && tvistruecond(L->base + 3)) ||
+   if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) ||
       !lj_str_haspattern(p))) {  // Search for fixed string.
       const char* q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
@@ -887,7 +887,7 @@ static int str_find_aux(lua_State* L, int find)
                return push_captures(&ms, sstr, q);
             }
          }
-      } while (sstr++ < ms.src_end && !anchor);
+      } while (sstr++ < ms.src_end and !anchor);
    }
    setnilV(L->top - 1);  //  Not found.
    return 1;
@@ -1020,7 +1020,7 @@ LJLIB_CF(string_gsub)
          n++;
          add_value(&ms, &b, src, e);
       }
-      if (e && e > src) //  non empty match?
+      if (e and e > src) //  non empty match?
          src = e;  //  skip it
       else if (src < ms.src_end)
          luaL_addchar(&b, *src++);

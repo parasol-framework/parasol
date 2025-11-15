@@ -83,7 +83,7 @@ static void resizestack(lua_State* L, MSize n)
 // Relimit stack after error, in case the limit was overdrawn.
 void lj_state_relimitstack(lua_State* L)
 {
-   if (L->stacksize > LJ_STACK_MAXEX && L->top - tvref(L->stack) < LJ_STACK_MAX - 1)
+   if (L->stacksize > LJ_STACK_MAXEX and L->top - tvref(L->stack) < LJ_STACK_MAX - 1)
       resizestack(L, LJ_STACK_MAX);
 }
 

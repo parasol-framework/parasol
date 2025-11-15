@@ -156,7 +156,7 @@ TRef lj_ir_ggfload(jit_State* J, IRType t, uintptr_t ofs)
 {
    lj_assertJ((ofs & 3) == 0, "unaligned GG_State field offset");
    ofs >>= 2;
-   lj_assertJ(ofs >= IRFL__MAX && ofs <= 0x3ff,
+   lj_assertJ(ofs >= IRFL__MAX and ofs <= 0x3ff,
       "GG_State field offset breaks 10 bit FOLD key limit");
    lj_ir_set(J, IRT(IR_FLOAD, t), REF_NIL, ofs);
    return lj_opt_fold(J);
@@ -367,7 +367,7 @@ TRef lj_ir_kslot(jit_State* J, TRef key, IRRef slot)
    IRRef2 op12 = IRREF2((IRRef1)key, (IRRef1)slot);
    IRRef ref;
    // Const part is not touched by CSE/DCE, so 0-65535 is ok for IRMlit here.
-   lj_assertJ(tref_isk(key) && slot == (IRRef)(IRRef1)slot,
+   lj_assertJ(tref_isk(key) and slot == (IRRef)(IRRef1)slot,
       "out-of-range key/slot");
    for (ref = J->chain[IR_KSLOT]; ref; ref = cir[ref].prev)
       if (cir[ref].op12 == op12)

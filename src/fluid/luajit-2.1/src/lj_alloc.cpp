@@ -239,7 +239,7 @@ static void* mmap_probe(PRNGState* rs, size_t size)
    for (retry = 0; retry < LJ_ALLOC_MMAP_PROBE_MAX; retry++) {
       void* p = mmap((void*)hint_addr, size, MMAP_PROT, MMAP_FLAGS_PROBE, -1, 0);
       uintptr_t addr = (uintptr_t)p;
-      if ((addr >> LJ_ALLOC_MBITS) == 0 && addr >= LJ_ALLOC_MMAP_PROBE_LOWER &&
+      if ((addr >> LJ_ALLOC_MBITS) == 0 and addr >= LJ_ALLOC_MMAP_PROBE_LOWER &&
          ((addr + size) >> LJ_ALLOC_MBITS) == 0) {
          // We got a suitable address. Bump the hint address.
          hint_addr = addr + size;
@@ -479,7 +479,7 @@ typedef unsigned int flag_t;           //  The type of various bit flag sets
   (clear_pinuse(n), set_size_and_pinuse_of_free_chunk(p, s))
 
 #define is_direct(p)\
-  (!((p)->head & PINUSE_BIT) && ((p)->prev_foot & IS_DIRECT_BIT))
+  (!((p)->head & PINUSE_BIT) and ((p)->prev_foot & IS_DIRECT_BIT))
 
 // Get the internal overhead associated with chunk p
 #define overhead_for(p)\
@@ -567,14 +567,14 @@ typedef struct malloc_state* mstate;
 
 //  True if segment S holds address A
 #define segment_holds(S, A)\
-  ((char *)(A) >= S->base && (char *)(A) < S->base + S->size)
+  ((char *)(A) >= S->base and (char *)(A) < S->base + S->size)
 
 // Return segment holding given address
 static msegmentptr segment_holding(mstate m, char* addr)
 {
    msegmentptr sp = &m->seg;
    for (;;) {
-      if (addr >= sp->base && addr < sp->base + sp->size)
+      if (addr >= sp->base and addr < sp->base + sp->size)
          return sp;
       if ((sp = sp->next) == 0)
          return 0;
@@ -586,7 +586,7 @@ static int has_segment_link(mstate m, msegmentptr ss)
 {
    msegmentptr sp = &m->seg;
    for (;;) {
-      if ((char*)sp >= ss->base && (char*)sp < ss->base + ss->size)
+      if ((char*)sp >= ss->base and (char*)sp < ss->base + ss->size)
          return 1;
       if ((sp = sp->next) == 0)
          return 0;
@@ -1012,15 +1012,15 @@ static void* alloc_sys(mstate m, size_t nb)
    if (tbase != CMFAIL) {
       msegmentptr sp = &m->seg;
       // Try to merge with an existing segment
-      while (sp != 0 && tbase != sp->base + sp->size)
+      while (sp != 0 and tbase != sp->base + sp->size)
          sp = sp->next;
-      if (sp != 0 && segment_holds(sp, m->top)) {  // append
+      if (sp != 0 and segment_holds(sp, m->top)) {  // append
          sp->size += tsize;
          init_top(m, m->top, m->topsize + tsize);
       }
       else {
          sp = &m->seg;
-         while (sp != 0 && sp->base != tbase + tsize)
+         while (sp != 0 and sp->base != tbase + tsize)
             sp = sp->next;
          if (sp != 0) {
             char* oldbase = sp->base;
@@ -1064,7 +1064,7 @@ static size_t release_unused_segments(mstate m)
          mchunkptr p = align_as_chunk(base);
          size_t psize = chunksize(p);
          // Can unmap if first chunk holds entire segment and not pinned
-         if (!cinuse(p) && (char*)p + psize >= base + size - TOP_FOOT_SIZE) {
+         if (!cinuse(p) and (char*)p + psize >= base + size - TOP_FOOT_SIZE) {
             tchunkptr tp = (tchunkptr)p;
             if (p == m->dv) {
                m->dv = 0;
@@ -1096,7 +1096,7 @@ static size_t release_unused_segments(mstate m)
 static int alloc_trim(mstate m, size_t pad)
 {
    size_t released = 0;
-   if (pad < MAX_REQUEST && is_initialized(m)) {
+   if (pad < MAX_REQUEST and is_initialized(m)) {
       pad += TOP_FOOT_SIZE; //  ensure enough room for segment overhead
 
       if (m->topsize > pad) {
@@ -1126,7 +1126,7 @@ static int alloc_trim(mstate m, size_t pad)
       released += release_unused_segments(m);
 
       // On failure, disable autotrim to avoid repeated failed future calls
-      if (released == 0 && m->topsize > m->trim_check)
+      if (released == 0 and m->topsize > m->trim_check)
          m->trim_check = MAX_SIZE_T;
    }
 
@@ -1158,7 +1158,7 @@ static void* tmalloc_large(mstate m, size_t nb)
          }
          rt = t->child[1];
          t = t->child[(sizebits >> (SIZE_T_BITSIZE - SIZE_T_ONE)) & 1];
-         if (rt != 0 && rt != t)
+         if (rt != 0 and rt != t)
             rst = rt;
          if (t == 0) {
             t = rst; //  set t to least subtree holding sizes > nb
@@ -1168,7 +1168,7 @@ static void* tmalloc_large(mstate m, size_t nb)
       }
    }
 
-   if (t == 0 && v == 0) {  // set t to root of next non-empty treebin
+   if (t == 0 and v == 0) {  // set t to root of next non-empty treebin
       binmap_t leftbits = left_bits(idx2bit(idx)) & m->treemap;
       if (leftbits != 0)
          t = *treebin_at(m, lj_ffs(leftbits));
@@ -1184,7 +1184,7 @@ static void* tmalloc_large(mstate m, size_t nb)
    }
 
    //  If dv is a better fit, return NULL so malloc will use it
-   if (v != 0 && rsize < (size_t)(m->dvsize - nb)) {
+   if (v != 0 and rsize < (size_t)(m->dvsize - nb)) {
       mchunkptr r = chunk_plus_offset(v, nb);
       unlink_large_chunk(m, v);
       if (rsize < MIN_CHUNK_SIZE) {
@@ -1310,7 +1310,7 @@ static LJ_NOINLINE void* lj_alloc_malloc(void* msp, size_t nsize)
             unlink_first_small_chunk(ms, b, p, i);
             rsize = small_index2size(i) - nb;
             // Fit here cannot be remainderless if 4byte sizes
-            if (SIZE_T_SIZE != 4 && rsize < MIN_CHUNK_SIZE) {
+            if (SIZE_T_SIZE != 4 and rsize < MIN_CHUNK_SIZE) {
                set_inuse_and_pinuse(ms, p, small_index2size(i));
             }
             else {
@@ -1322,7 +1322,7 @@ static LJ_NOINLINE void* lj_alloc_malloc(void* msp, size_t nsize)
             mem = chunk2mem(p);
             return mem;
          }
-         else if (ms->treemap != 0 && (mem = tmalloc_small(ms, nb)) != 0) {
+         else if (ms->treemap != 0 and (mem = tmalloc_small(ms, nb)) != 0) {
             return mem;
          }
       }
@@ -1332,7 +1332,7 @@ static LJ_NOINLINE void* lj_alloc_malloc(void* msp, size_t nsize)
    }
    else {
       nb = pad_request(nsize);
-      if (ms->treemap != 0 && (mem = tmalloc_large(ms, nb)) != 0) {
+      if (ms->treemap != 0 and (mem = tmalloc_large(ms, nb)) != 0) {
          return mem;
       }
    }
@@ -1471,7 +1471,7 @@ static LJ_NOINLINE void* lj_alloc_realloc(void* msp, void* ptr, size_t nsize)
             lj_alloc_free(m, chunk2mem(rem));
          }
       }
-      else if (next == m->top && oldsize + m->topsize > nb) {
+      else if (next == m->top and oldsize + m->topsize > nb) {
          // Expand into top
          size_t newsize = oldsize + m->topsize;
          size_t newtopsize = newsize - nb;

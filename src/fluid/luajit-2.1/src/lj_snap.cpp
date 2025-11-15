@@ -74,7 +74,7 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCReg nslots)
             map[n++] = SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL);
          continue;
       }
-      if ((tr & (TREF_FRAME | TREF_CONT)) && !ref) {
+      if ((tr & (TREF_FRAME | TREF_CONT)) and !ref) {
          cTValue* base = J->L->base - J->baseslot;
          tr = J->slot[s] = (tr & 0xff0000) | lj_ir_k64(J, IR_KNUM, base[s].u64);
          ref = tref_ref(tr);
@@ -84,7 +84,7 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCReg nslots)
          SnapEntry sn = SNAP_TR(s, tr);
          IRIns* ir = &J->cur.ir[ref];
          if ((LJ_FR2 || !(sn & (SNAP_CONT | SNAP_FRAME))) &&
-            ir->o == IR_SLOAD && ir->op1 == s && ref > retf) {
+            ir->o == IR_SLOAD and ir->op1 == s and ref > retf) {
             /*
             ** No need to snapshot unmodified non-inherited slots.
             ** But always snapshot the function below a frame in LJ_FR2 mode.
@@ -94,11 +94,11 @@ static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCReg nslots)
                   !(J->slot[s + 1] & (TREF_CONT | TREF_FRAME))))
                continue;
             // No need to restore readonly slots and unmodified non-parent slots.
-            if (!(LJ_DUALNUM && (ir->op2 & IRSLOAD_CONVERT)) &&
+            if (!(LJ_DUALNUM and (ir->op2 & IRSLOAD_CONVERT)) &&
                (ir->op2 & (IRSLOAD_READONLY | IRSLOAD_PARENT)) != IRSLOAD_PARENT)
                sn |= SNAP_NORESTORE;
          }
-         if (LJ_SOFTFP32 && irt_isnum(ir->t))
+         if (LJ_SOFTFP32 and irt_isnum(ir->t))
             sn |= SNAP_SOFTFPNUM;
          map[n++] = sn;
       }
@@ -115,7 +115,7 @@ static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
    cTValue* ftop = isluafunc(fn) ? (frame + funcproto(fn)->framesize) : J->L->top;
 #if LJ_FR2
    uint64_t pcbase = (u64ptr(J->pc) << 8) | (J->baseslot - 2);
-   lj_assertJ(2 <= J->baseslot && J->baseslot <= 257, "bad baseslot");
+   lj_assertJ(2 <= J->baseslot and J->baseslot <= 257, "bad baseslot");
    memcpy(map, &pcbase, sizeof(uint64_t));
 #else
    MSize f = 0;
@@ -185,8 +185,8 @@ void lj_snap_add(jit_State* J)
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
    // Merge if no ins. inbetween or if requested and no guard inbetween.
-   if ((nsnap > 0 && J->cur.snap[nsnap - 1].ref == J->cur.nins) ||
-      (J->mergesnap && !irt_isguard(J->guardemit))) {
+   if ((nsnap > 0 and J->cur.snap[nsnap - 1].ref == J->cur.nins) ||
+      (J->mergesnap and !irt_isguard(J->guardemit))) {
       if (nsnap == 1) {  // But preserve snap #0 PC.
          emitir_raw(IRT(IR_NOP, IRT_NIL), 0, 0);
          goto nomerge;
@@ -234,7 +234,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
 #define DEF_SLOT(s)      udf[(s)] *= 3
 
    // Scan through following bytecode and check for uses/defs.
-   lj_assertJ(pc >= proto_bc(J->pt) && pc < proto_bc(J->pt) + J->pt->sizebc,
+   lj_assertJ(pc >= proto_bc(J->pt) and pc < proto_bc(J->pt) + J->pt->sizebc,
       "snapshot PC out of range");
    for (;;) {
       BCIns ins = *pc++;
@@ -253,8 +253,8 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
       case BCMjump:
       handle_jump: {
          BCReg minslot = bc_a(ins);
-         if (op >= BC_FORI && op <= BC_JFORL) minslot += FORL_EXT;
-         else if (op >= BC_ITERL && op <= BC_JITERL) minslot += bc_b(pc[-2]) - 1;
+         if (op >= BC_FORI and op <= BC_JFORL) minslot += FORL_EXT;
+         else if (op >= BC_ITERL and op <= BC_JITERL) minslot += bc_b(pc[-2]) - 1;
          else if (op == BC_UCLO) {
             ptrdiff_t delta = bc_j(ins);
             if (delta < 0) return maxslot;  //  Prevent loop.
@@ -285,7 +285,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
          if (!(op == BC_ISTC || op == BC_ISFC)) DEF_SLOT(bc_a(ins));
          break;
       case BCMbase:
-         if (op >= BC_CALLM && op <= BC_ITERN) {
+         if (op >= BC_CALLM and op <= BC_ITERN) {
             BCReg top = (op == BC_CALLM || op == BC_CALLMT || bc_c(ins) == 0) ?
                maxslot : (bc_a(ins) + bc_c(ins) + LJ_FR2);
             if (LJ_FR2) DEF_SLOT(bc_a(ins) + 1);
@@ -309,7 +309,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
          break;
       default: break;
       }
-      lj_assertJ(pc >= proto_bc(J->pt) && pc < proto_bc(J->pt) + J->pt->sizebc,
+      lj_assertJ(pc >= proto_bc(J->pt) and pc < proto_bc(J->pt) + J->pt->sizebc,
          "use/def analysis PC out of range");
    }
 
@@ -349,7 +349,7 @@ void lj_snap_purge(jit_State* J)
 {
    uint8_t udf[SNAP_USEDEF_SLOTS];
    BCReg s, maxslot = J->maxslot;
-   if (bc_op(*J->pc) == BC_FUNCV && maxslot > J->pt->numparams)
+   if (bc_op(*J->pc) == BC_FUNCV and maxslot > J->pt->numparams)
       maxslot = J->pt->numparams;
    s = snap_usedef(J, udf, J->pc, maxslot);
    if (s < maxslot) {
@@ -376,7 +376,7 @@ void lj_snap_shrink(jit_State* J)
    snap->nslots = (uint8_t)maxslot;
    for (n = m = 0; n < nent; n++) {  // Remove unused slots from snapshot.
       BCReg s = snap_slot(map[n]);
-      if (s < minslot || (s < maxslot && udf[s - baseslot] == 0))
+      if (s < minslot || (s < maxslot and udf[s - baseslot] == 0))
          map[m++] = map[n];  //  Only copy used slots.
    }
    snap->nent = (uint8_t)m;
@@ -406,7 +406,7 @@ static RegSP snap_renameref(GCtrace* T, SnapNo lim, IRRef ref, RegSP rs)
 {
    IRIns* ir;
    for (ir = &T->ir[T->nins - 1]; ir->o == IR_RENAME; ir--)
-      if (ir->op1 == ref && ir->op2 <= lim)
+      if (ir->op1 == ref and ir->op2 <= lim)
          rs = ir->prev;
    return rs;
 }
@@ -432,7 +432,7 @@ IRIns* lj_snap_regspmap(jit_State* J, GCtrace* T, SnapNo snapno, IRIns* ir)
             }
          }
       }
-      else if (LJ_SOFTFP32 && ir->o == IR_HIOP) {
+      else if (LJ_SOFTFP32 and ir->o == IR_HIOP) {
          ref++;
       }
       else if (ir->o == IR_PVAL) {
@@ -530,12 +530,12 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
       IRIns* ir = &T->ir[ref];
       TRef tr;
       // The bloom filter avoids O(nent^2) overhead for de-duping slots.
-      if (bloomtest(seen, ref) && (tr = snap_dedup(J, map, n, ref)) != 0)
+      if (bloomtest(seen, ref) and (tr = snap_dedup(J, map, n, ref)) != 0)
          goto setslot;
       bloomset(seen, ref);
       if (irref_isk(ref)) {
          // See special treatment of LJ_FR2 slot 1 in snapshot_slots() above.
-         if (LJ_FR2 && (sn == SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL)))
+         if (LJ_FR2 and (sn == SNAP(1, SNAP_FRAME | SNAP_NORESTORE, REF_NIL)))
             tr = 0;
          else
             tr = snap_replay_const(J, ir);
@@ -548,7 +548,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
       else {
          IRType t = irt_type(ir->t);
          uint32_t mode = IRSLOAD_INHERIT | IRSLOAD_PARENT;
-         if (LJ_SOFTFP32 && (sn & SNAP_SOFTFPNUM)) t = IRT_NUM;
+         if (LJ_SOFTFP32 and (sn & SNAP_SOFTFPNUM)) t = IRT_NUM;
          if (ir->o == IR_SLOAD) mode |= (ir->op2 & IRSLOAD_READONLY);
          if ((sn & SNAP_KEYINDEX)) mode |= IRSLOAD_KEYINDEX;
          tr = emitir_raw(IRT(IR_SLOAD, t), s, mode);
@@ -556,7 +556,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
    setslot:
       // Same as TREF_* flags.
       J->slot[s] = tr | (sn & (SNAP_KEYINDEX | SNAP_CONT | SNAP_FRAME));
-      J->framedepth += ((sn & (SNAP_CONT | SNAP_FRAME)) && (s != LJ_FR2));
+      J->framedepth += ((sn & (SNAP_CONT | SNAP_FRAME)) and (s != LJ_FR2));
       if ((sn & SNAP_FRAME))
          J->baseslot = s + 1;
    }
@@ -576,30 +576,30 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
                "sunk parent IR %04d has bad op %d", refp - REF_BIAS, ir->o);
             if (ir->op1 >= T->nk) snap_pref(J, T, map, nent, seen, ir->op1);
             if (ir->op2 >= T->nk) snap_pref(J, T, map, nent, seen, ir->op2);
-            if (LJ_HASFFI && ir->o == IR_CNEWI) {
-               if (LJ_32 && refp + 1 < T->nins && (ir + 1)->o == IR_HIOP)
+            if (LJ_HASFFI and ir->o == IR_CNEWI) {
+               if (LJ_32 and refp + 1 < T->nins and (ir + 1)->o == IR_HIOP)
                   snap_pref(J, T, map, nent, seen, (ir + 1)->op2);
             }
             else {
                IRIns* irs;
                for (irs = ir + 1; irs < irlast; irs++)
-                  if (irs->r == RID_SINK && snap_sunk_store(T, ir, irs)) {
+                  if (irs->r == RID_SINK and snap_sunk_store(T, ir, irs)) {
                      if (snap_pref(J, T, map, nent, seen, irs->op2) == 0)
                         snap_pref(J, T, map, nent, seen, T->ir[irs->op2].op1);
-                     else if ((LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI)) &&
-                        irs + 1 < irlast && (irs + 1)->o == IR_HIOP)
+                     else if ((LJ_SOFTFP32 || (LJ_32 and LJ_HASFFI)) &&
+                        irs + 1 < irlast and (irs + 1)->o == IR_HIOP)
                         snap_pref(J, T, map, nent, seen, (irs + 1)->op2);
                   }
             }
          }
-         else if (!irref_isk(refp) && !regsp_used(ir->prev)) {
-            lj_assertJ(ir->o == IR_CONV && ir->op2 == IRCONV_NUM_INT,
+         else if (!irref_isk(refp) and !regsp_used(ir->prev)) {
+            lj_assertJ(ir->o == IR_CONV and ir->op2 == IRCONV_NUM_INT,
                "sunk parent IR %04d has bad op %d", refp - REF_BIAS, ir->o);
             J->slot[snap_slot(sn)] = snap_pref(J, T, map, nent, seen, ir->op1);
          }
       }
       // Replay sunk instructions.
-      for (n = 0; pass23 && n < nent; n++) {
+      for (n = 0; pass23 and n < nent; n++) {
          SnapEntry sn = map[n];
          IRRef refp = snap_ref(sn);
          IRIns* ir = &T->ir[refp];
@@ -613,8 +613,8 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
             if (op1 >= T->nk) op1 = snap_pref(J, T, map, nent, seen, op1);
             op2 = ir->op2;
             if (op2 >= T->nk) op2 = snap_pref(J, T, map, nent, seen, op2);
-            if (LJ_HASFFI && ir->o == IR_CNEWI) {
-               if (LJ_32 && refp + 1 < T->nins && (ir + 1)->o == IR_HIOP) {
+            if (LJ_HASFFI and ir->o == IR_CNEWI) {
+               if (LJ_32 and refp + 1 < T->nins and (ir + 1)->o == IR_HIOP) {
                   lj_needsplit(J);  //  Emit joining HIOP.
                   op2 = emitir_raw(IRT(IR_HIOP, IRT_I64), op2,
                      snap_pref(J, T, map, nent, seen, (ir + 1)->op2));
@@ -626,7 +626,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
                TRef tr = emitir(ir->ot, op1, op2);
                J->slot[snap_slot(sn)] = tr;
                for (irs = ir + 1; irs < irlast; irs++)
-                  if (irs->r == RID_SINK && snap_sunk_store(T, ir, irs)) {
+                  if (irs->r == RID_SINK and snap_sunk_store(T, ir, irs)) {
                      IRIns* irr = &T->ir[irs->op1];
                      TRef val, key = irr->op2, tmp = tr;
                      if (irr->o != IR_FREF) {
@@ -645,19 +645,19 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
                      val = snap_pref(J, T, map, nent, seen, irs->op2);
                      if (val == 0) {
                         IRIns* irc = &T->ir[irs->op2];
-                        lj_assertJ(irc->o == IR_CONV && irc->op2 == IRCONV_NUM_INT,
+                        lj_assertJ(irc->o == IR_CONV and irc->op2 == IRCONV_NUM_INT,
                            "sunk store for parent IR %04d with bad op %d",
                            refp - REF_BIAS, irc->o);
                         val = snap_pref(J, T, map, nent, seen, irc->op1);
                         val = emitir(IRTN(IR_CONV), val, IRCONV_NUM_INT);
                      }
-                     else if ((LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI)) &&
-                        irs + 1 < irlast && (irs + 1)->o == IR_HIOP) {
+                     else if ((LJ_SOFTFP32 || (LJ_32 and LJ_HASFFI)) &&
+                        irs + 1 < irlast and (irs + 1)->o == IR_HIOP) {
                         IRType t = IRT_I64;
-                        if (LJ_SOFTFP32 && irt_type((irs + 1)->t) == IRT_SOFTFP)
+                        if (LJ_SOFTFP32 and irt_type((irs + 1)->t) == IRT_SOFTFP)
                            t = IRT_NUM;
                         lj_needsplit(J);
-                        if (irref_isk(irs->op2) && irref_isk((irs + 1)->op2)) {
+                        if (irref_isk(irs->op2) and irref_isk((irs + 1)->op2)) {
                            uint64_t k = (uint32_t)T->ir[irs->op2].i +
                               ((uint64_t)T->ir[(irs + 1)->op2].i << 32);
                            val = lj_ir_k64(J, t == IRT_I64 ? IR_KINT64 : IR_KNUM, k);
@@ -671,7 +671,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
                      }
                      tmp = emitir(irs->ot, tmp, val);
                   }
-                  else if (LJ_HASFFI && irs->o == IR_XBAR && ir->o == IR_CNEW) {
+                  else if (LJ_HASFFI and irs->o == IR_XBAR and ir->o == IR_CNEW) {
                      emitir(IRT(IR_XBAR, IRT_NIL), 0, 0);
                   }
             }
@@ -737,7 +737,7 @@ static void snap_restoreval(jit_State* J, GCtrace* T, ExitState* ex,
    else {  // Restore from register.
       Reg r = regsp_reg(rs);
       if (ra_noreg(r)) {
-         lj_assertJ(ir->o == IR_CONV && ir->op2 == IRCONV_NUM_INT,
+         lj_assertJ(ir->o == IR_CONV and ir->op2 == IRCONV_NUM_INT,
             "restore from IR %04d has no reg", ref - REF_BIAS);
          snap_restoreval(J, T, ex, snapno, rfilt, ir->op1, o);
          if (LJ_DUALNUM) setnumV(o, (lua_Number)intV(o));
@@ -798,7 +798,7 @@ static void snap_restoredata(jit_State* J, GCtrace* T, ExitState* ex,
          rs = snap_renameref(T, snapno, ref, rs);
       if (ra_hasspill(regsp_spill(rs))) {
          src = &ex->spill[regsp_spill(rs)];
-         if (sz == 8 && !irt_is64(ir->t)) {
+         if (sz == 8 and !irt_is64(ir->t)) {
             tmp = (uint64_t)(uint32_t)*src;
             src = (int32_t*)&tmp;
          }
@@ -807,7 +807,7 @@ static void snap_restoredata(jit_State* J, GCtrace* T, ExitState* ex,
          Reg r = regsp_reg(rs);
          if (ra_noreg(r)) {
             // Note: this assumes CNEWI is never used for SOFTFP split numbers.
-            lj_assertJ(sz == 8 && ir->o == IR_CONV && ir->op2 == IRCONV_NUM_INT,
+            lj_assertJ(sz == 8 and ir->o == IR_CONV and ir->op2 == IRCONV_NUM_INT,
                "restore from IR %04d has no reg", ref - REF_BIAS);
             snap_restoredata(J, T, ex, snapno, rfilt, ir->op1, dst, 4);
             *(lua_Number*)dst = (lua_Number) * (int32_t*)dst;
@@ -823,12 +823,12 @@ static void snap_restoredata(jit_State* J, GCtrace* T, ExitState* ex,
                return;
             }
 #else
-            if (LJ_BE && sz == 4) src++;
+            if (LJ_BE and sz == 4) src++;
 #endif
          }
          else
 #endif
-            if (LJ_64 && LJ_BE && sz == 4) src++;
+            if (LJ_64 and LJ_BE and sz == 4) src++;
       }
    }
    lj_assertJ(sz == 1 || sz == 2 || sz == 4 || sz == 8,
@@ -859,7 +859,7 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
       if (ir->o == IR_CNEWI) {
          uint8_t* p = (uint8_t*)cdataptr(cd);
          lj_assertJ(sz == 4 || sz == 8, "sunk cdata with bad size %d", sz);
-         if (LJ_32 && sz == 8 && ir + 1 < T->ir + T->nins && (ir + 1)->o == IR_HIOP) {
+         if (LJ_32 and sz == 8 and ir + 1 < T->ir + T->nins and (ir + 1)->o == IR_HIOP) {
             snap_restoredata(J, T, ex, snapno, rfilt, (ir + 1)->op2,
                LJ_LE ? p + 4 : p, 4);
             if (LJ_BE) p += 4;
@@ -870,7 +870,7 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
       else {
          IRIns* irs, * irlast = &T->ir[T->snap[snapno].ref];
          for (irs = ir + 1; irs < irlast; irs++)
-            if (irs->r == RID_SINK && snap_sunk_store(T, ir, irs)) {
+            if (irs->r == RID_SINK and snap_sunk_store(T, ir, irs)) {
                IRIns* iro = &T->ir[T->ir[irs->op1].op2];
                uint8_t* p = (uint8_t*)cd;
                CTSize szs;
@@ -883,14 +883,14 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
                else if (irt_isi8(irs->t) || irt_isu8(irs->t)) szs = 1;
                else if (irt_isi16(irs->t) || irt_isu16(irs->t)) szs = 2;
                else szs = 4;
-               if (LJ_64 && iro->o == IR_KINT64)
+               if (LJ_64 and iro->o == IR_KINT64)
                   p += (int64_t)ir_k64(iro)->u64;
                else
                   p += iro->i;
                lj_assertJ(p >= (uint8_t*)cdataptr(cd) &&
                   p + szs <= (uint8_t*)cdataptr(cd) + sz,
                   "sunk store with offset out of range");
-               if (LJ_32 && irs + 1 < T->ir + T->nins && (irs + 1)->o == IR_HIOP) {
+               if (LJ_32 and irs + 1 < T->ir + T->nins and (irs + 1)->o == IR_HIOP) {
                   lj_assertJ(szs == 4, "sunk store with bad size %d", szs);
                   snap_restoredata(J, T, ex, snapno, rfilt, (irs + 1)->op2,
                      LJ_LE ? p + 4 : p, 4);
@@ -909,7 +909,7 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
       settabV(J->L, o, t);
       irlast = &T->ir[T->snap[snapno].ref];
       for (irs = ir + 1; irs < irlast; irs++)
-         if (irs->r == RID_SINK && snap_sunk_store(T, ir, irs)) {
+         if (irs->r == RID_SINK and snap_sunk_store(T, ir, irs)) {
             IRIns* irk = &T->ir[irs->op1];
             TValue tmp, * val;
             lj_assertJ(irs->o == IR_ASTORE || irs->o == IR_HSTORE ||
@@ -929,7 +929,7 @@ static void snap_unsink(jit_State* J, GCtrace* T, ExitState* ex,
                val = lj_tab_set(J->L, t, &tmp);
                // NOBARRIER: The table is new (marked white).
                snap_restoreval(J, T, ex, snapno, rfilt, irs->op2, val);
-               if (LJ_SOFTFP32 && irs + 1 < T->ir + T->nins && (irs + 1)->o == IR_HIOP) {
+               if (LJ_SOFTFP32 and irs + 1 < T->ir + T->nins and (irs + 1)->o == IR_HIOP) {
                   snap_restoreval(J, T, ex, snapno, rfilt, (irs + 1)->op2, &tmp);
                   val->u32.hi = tmp.u32.lo;
                }
@@ -990,7 +990,7 @@ const BCIns* lj_snap_restore(jit_State* J, void* exptr)
             continue;
          }
          snap_restoreval(J, T, ex, snapno, rfilt, ref, o);
-         if (LJ_SOFTFP32 && (sn & SNAP_SOFTFPNUM) && tvisint(o)) {
+         if (LJ_SOFTFP32 and (sn & SNAP_SOFTFPNUM) and tvisint(o)) {
             TValue tmp;
             snap_restoreval(J, T, ex, snapno, rfilt, ref + 1, &tmp);
             o->u32.hi = tmp.u32.lo;

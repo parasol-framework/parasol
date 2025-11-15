@@ -58,7 +58,7 @@ static void bcwrite_ktabk(BCWriteCtx* ctx, cTValue* o, int narrow)
       p = lj_strfmt_wuleb128(p, intV(o));
    }
    else if (tvisnum(o)) {
-      if (!LJ_DUALNUM && narrow) {  // Narrow number constants to integers.
+      if (!LJ_DUALNUM and narrow) {  // Narrow number constants to integers.
          lua_Number num = numV(o);
          int32_t k = lj_num2int(num);
          if (num == (lua_Number)k) {  // -0 is never a constant.

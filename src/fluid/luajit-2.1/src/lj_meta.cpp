@@ -36,7 +36,7 @@ void lj_meta_init(lua_State* L)
    uint32_t mm;
    for (mm = 0, p = metanames; *p; mm++, p = q) {
       GCstr* s;
-      for (q = p + 2; *q && *q != '_'; q++);
+      for (q = p + 2; *q and *q != '_'; q++);
       s = lj_str_new(L, p, (size_t)(q - p));
       // NOBARRIER: g->gcroot[] is a GC root.
       setgcref(g->gcroot[GCROOT_MMNAME + mm], obj2gco(s));
@@ -180,7 +180,7 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
                return (TValue*)tv;
             if (tvisnil(k)) lj_err_msg(L, LJ_ERR_NILIDX);
             else if (tvisint(k)) { setnumV(&tmp, (lua_Number)intV(k)); k = &tmp; }
-            else if (tvisnum(k) && tvisnan(k)) lj_err_msg(L, LJ_ERR_NANIDX);
+            else if (tvisnum(k) and tvisnan(k)) lj_err_msg(L, LJ_ERR_NANIDX);
             return lj_tab_newkey(L, t, k);
          }
       }
@@ -206,7 +206,7 @@ static cTValue* str2num(cTValue* o, TValue* n)
       return o;
    else if (tvisint(o))
       return (setnumV(n, (lua_Number)intV(o)), n);
-   else if (tvisstr(o) && lj_strscan_num(strV(o), n))
+   else if (tvisstr(o) and lj_strscan_num(strV(o), n))
       return n;
    else
       return NULL;
@@ -288,7 +288,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
          do {
             o--; tlen += tvisstr(o) ? strV(o)->len :
                tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
-         } while (--left > 0 && (tvisstr(o - 1) || tvisnumber(o - 1)));
+         } while (--left > 0 and (tvisstr(o - 1) || tvisnumber(o - 1)));
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, LJ_ERR_STROV);
          sb = lj_buf_tmp_(L);
          lj_buf_more(sb, (MSize)tlen);
@@ -324,7 +324,7 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
 {
    cTValue* mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
-      if (LJ_52 && tvistab(o))
+      if (LJ_52 and tvistab(o))
          tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
       else
          lj_err_optype(L, o, LJ_ERR_OPLEN);
@@ -394,7 +394,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
 // Helper for ordered comparisons. String compare, __lt/__le metamethods.
 TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 {
-   if (LJ_HASFFI && (tviscdata(o1) || tviscdata(o2))) {
+   if (LJ_HASFFI and (tviscdata(o1) || tviscdata(o2))) {
       ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
       MMS mm = (op & 2) ? MM_le : MM_lt;
       cTValue* mo = lj_meta_lookup(L, tviscdata(o1) ? o1 : o2, mm);
@@ -403,7 +403,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
    }
    else if (LJ_52 || itype(o1) == itype(o2)) {
       // Never called with two numbers.
-      if (tvisstr(o1) && tvisstr(o2)) {
+      if (tvisstr(o1) and tvisstr(o2)) {
          int32_t res = lj_str_cmp(strV(o1), strV(o2));
          return (TValue*)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
       }
@@ -414,7 +414,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
             MMS mm = (op & 2) ? MM_le : MM_lt;
             cTValue* mo = lj_meta_lookup(L, o1, mm);
 #if LJ_52
-            if (tvisnil(mo) && tvisnil((mo = lj_meta_lookup(L, o2, mm))))
+            if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm))))
 #else
             cTValue* mo2 = lj_meta_lookup(L, o2, mm);
             if (tvisnil(mo) || !lj_obj_equal(mo, mo2))
@@ -431,7 +431,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
          }
       }
    }
-   else if (tvisbool(o1) && tvisbool(o2)) {
+   else if (tvisbool(o1) and tvisbool(o2)) {
       goto trymt;
    }
    else {
@@ -447,7 +447,7 @@ void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp)
    L->top = curr_topL(L);
    ra++; tp--;
    lj_assertL(LJ_DUALNUM || tp != ~LJ_TNUMX, "bad type for ISTYPE");
-   if (LJ_DUALNUM && tp == ~LJ_TNUMX) lj_lib_checkint(L, ra);
+   if (LJ_DUALNUM and tp == ~LJ_TNUMX) lj_lib_checkint(L, ra);
    else if (tp == ~LJ_TNUMX + 1) lj_lib_checknum(L, ra);
    else if (tp == ~LJ_TSTR) lj_lib_checkstr(L, ra);
    else lj_err_argtype(L, ra, lj_obj_itypename[tp]);

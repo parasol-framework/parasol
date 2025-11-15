@@ -69,7 +69,7 @@ static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, DWORD prot)
 {
    void* p = LJ_WIN_VALLOC((void*)hint, sz,
       MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, prot);
-   if (!p && !hint)
+   if (!p and !hint)
       lj_trace_err(J, LJ_TRERR_MCODEAL);
    return p;
 }
@@ -196,7 +196,7 @@ static void mcode_protect(jit_State* J, int prot)
 #if LJ_64
 #define mcode_validptr(p)   (p)
 #else
-#define mcode_validptr(p)   ((p) && (uintptr_t)(p) < 0xffff0000)
+#define mcode_validptr(p)   ((p) and (uintptr_t)(p) < 0xffff0000)
 #endif
 
 #ifdef LJ_TARGET_JUMPRANGE
@@ -247,7 +247,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
 #if defined(__OpenBSD__) || defined(__NetBSD__) || LJ_TARGET_UWP
    // Allow better executable memory allocation for OpenBSD W^X mode.
    void* p = mcode_alloc_at(J, 0, sz, MCPROT_RUN);
-   if (p && mcode_setprot(p, sz, MCPROT_GEN)) {
+   if (p and mcode_setprot(p, sz, MCPROT_GEN)) {
       mcode_free(J, p, sz);
       return NULL;
    }
@@ -335,7 +335,7 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
    else {
       MCode* mc = J->mcarea;
       // Try current area first to use the protection cache.
-      if (ptr >= mc && ptr < (MCode*)((char*)mc + J->szmcarea)) {
+      if (ptr >= mc and ptr < (MCode*)((char*)mc + J->szmcarea)) {
 #if LUAJIT_SECURITY_MCODE
          mcode_protect(J, MCPROT_GEN);
 #endif
@@ -345,7 +345,7 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
       for (;;) {
          mc = ((MCLink*)mc)->next;
          lj_assertJ(mc != NULL, "broken MCode area chain");
-         if (ptr >= mc && ptr < (MCode*)((char*)mc + ((MCLink*)mc)->size)) {
+         if (ptr >= mc and ptr < (MCode*)((char*)mc + ((MCLink*)mc)->size)) {
 #if LUAJIT_SECURITY_MCODE
             if (LJ_UNLIKELY(mcode_setprot(mc, ((MCLink*)mc)->size, MCPROT_GEN)))
                mcode_protfail(J);

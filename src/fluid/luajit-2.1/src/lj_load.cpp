@@ -34,7 +34,7 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    UNUSED(dummy);
    cframe_errfunc(L->cframe) = -1;  //  Inherit error function.
    bc = lj_lex_setup(L, ls);
-   if (ls->mode && !strchr(ls->mode, bc ? 'b' : 't')) {
+   if (ls->mode and !strchr(ls->mode, bc ? 'b' : 't')) {
       setstrV(L, L->top++, lj_err_str(L, LJ_ERR_XMODE));
       lj_err_throw(L, LUA_ERRSYNTAX);
    }
@@ -161,7 +161,7 @@ LUA_API int lua_dump(lua_State* L, lua_Writer writer, void* data)
 {
    cTValue* o = L->top - 1;
    lj_checkapi(L->top > L->base, "top slot empty");
-   if (tvisfunc(o) && isluafunc(funcV(o)))
+   if (tvisfunc(o) and isluafunc(funcV(o)))
       return lj_bcwrite(L, funcproto(funcV(o)), writer, data, 0);
    else
       return 1;

@@ -42,7 +42,7 @@ const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o)
       return uddata(udataV(o));
    else if (tvislightud(o))
       return lightudV(g, o);
-   else if (LJ_HASFFI && tviscdata(o))
+   else if (LJ_HASFFI and tviscdata(o))
       return cdataptr(cdataV(o));
    else if (tvisgcv(o))
       return gcV(o);

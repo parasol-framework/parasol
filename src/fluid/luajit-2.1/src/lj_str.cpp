@@ -65,7 +65,7 @@ int lj_str_haspattern(GCstr* s)
    const char* p = strdata(s), * q = p + s->len;
    while (p < q) {
       int c = *(const uint8_t*)p++;
-      if (lj_char_ispunct(c) && strchr("^$*+?.([%-", c))
+      if (lj_char_ispunct(c) and strchr("^$*+?.([%-", c))
          return 1;  //  Found a pattern matching char.
    }
    return 0;  //  No pattern matching chars found.
@@ -335,7 +335,7 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
 #endif
       while (o != NULL) {
          GCstr* sx = gco2str(o);
-         if (sx->hash == hash && sx->len == len) {
+         if (sx->hash == hash and sx->len == len) {
             if (memcmp(str, strdata(sx), len) == 0) {
                if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
                return sx;  //  Return existing string.
@@ -347,7 +347,7 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
       }
 #if LUAJIT_SECURITY_STRHASH
       // Rehash chain if there are too many collisions.
-      if (LJ_UNLIKELY(coll > LJ_STR_MAXCOLL) && !hashalg) {
+      if (LJ_UNLIKELY(coll > LJ_STR_MAXCOLL) and !hashalg) {
          return lj_str_rehash_chain(L, hash, str, len);
       }
 #endif

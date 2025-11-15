@@ -366,7 +366,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
 SBuf* lj_strfmt_putfnum_int(SBuf* sb, SFormat sf, lua_Number n)
 {
    int64_t k = (int64_t)n;
-   if (checki32(k) && sf == STRFMT_INT)
+   if (checki32(k) and sf == STRFMT_INT)
       return lj_strfmt_putint(sb, (int32_t)k);  //  Shortcut for plain %d.
    else
       return lj_strfmt_putfxint(sb, sf, (uint64_t)k);
@@ -447,7 +447,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             MSize len;
             const char* s;
             cTValue* mo;
-            if (LJ_UNLIKELY(!tvisstr(o) && !tvisbuf(o)) && retry >= 0 &&
+            if (LJ_UNLIKELY(!tvisstr(o) and !tvisbuf(o)) and retry >= 0 &&
                !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
                // Call __tostring metamethod once.
                copyTV(L, L->top++, mo);
@@ -546,7 +546,7 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
       char buf[8 + 2 + 2 + 16], * p = buf;
       p = lj_buf_wmem(p, lj_typename(o), (MSize)strlen(lj_typename(o)));
       *p++ = ':'; *p++ = ' ';
-      if (tvisfunc(o) && isffunc(funcV(o))) {
+      if (tvisfunc(o) and isffunc(funcV(o))) {
          p = lj_buf_wmem(p, "builtin#", 8);
          p = lj_strfmt_wint(p, funcV(o)->c.ffid);
       }

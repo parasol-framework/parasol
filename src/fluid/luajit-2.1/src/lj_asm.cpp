@@ -119,7 +119,7 @@ typedef struct ASMState {
 #define FUSE_DISABLED      (~(IRRef)0)
 #define mayfuse(as, ref)   ((ref) > as->fuseref)
 #define neverfuse(as)      (as->fuseref == FUSE_DISABLED)
-#define canfuse(as, ir)      (!neverfuse(as) && !irt_isphi((ir)->t))
+#define canfuse(as, ir)      (!neverfuse(as) and !irt_isphi((ir)->t))
 #define opisfusableload(o) \
   ((o) == IR_ALOAD || (o) == IR_HLOAD || (o) == IR_ULOAD || \
    (o) == IR_FLOAD || (o) == IR_XLOAD || (o) == IR_SLOAD || (o) == IR_VLOAD)
@@ -249,7 +249,7 @@ static void ra_dprintf(ASMState* as, const char* fmt, ...)
          if (r <= RID_MAX) {
             const char* q;
             for (q = ra_regname[r]; *q; q++)
-               *p++ = *q >= 'A' && *q <= 'Z' ? *q + 0x20 : *q;
+               *p++ = *q >= 'A' and *q <= 'Z' ? *q + 0x20 : *q;
          }
          else {
             *p++ = '?';
@@ -359,11 +359,11 @@ static Reg ra_rematk(ASMState* as, IRRef ref)
    }
    else
 #endif
-      if (emit_canremat(REF_BASE) && ir->o == IR_BASE) {
+      if (emit_canremat(REF_BASE) and ir->o == IR_BASE) {
          ra_sethint(ir->r, RID_BASE);  //  Restore BASE register hint.
          emit_getgl(as, r, jit_base);
       }
-      else if (emit_canremat(ASMREF_L) && ir->o == IR_KPRI) {
+      else if (emit_canremat(ASMREF_L) and ir->o == IR_KPRI) {
          // REF_NIL stores ASMREF_L register.
          lj_assertA(irt_isnil(ir->t), "rematk of bad ASMREF_L");
          emit_getgl(as, r, cur_L);
@@ -461,8 +461,8 @@ static void ra_save(ASMState* as, IRIns* ir, Reg r)
 }
 
 #define MINCOST(name) \
-  if (rset_test(RSET_ALL, RID_##name) && \
-      LJ_LIKELY(allow&RID2RSET(RID_##name)) && as->cost[RID_##name] < cost) \
+  if (rset_test(RSET_ALL, RID_##name) and \
+      LJ_LIKELY(allow&RID2RSET(RID_##name)) and as->cost[RID_##name] < cost) \
     cost = as->cost[RID_##name];
 
 // Evict the register with the lowest cost, forcing a restore.
@@ -478,10 +478,10 @@ static Reg ra_evict(ASMState* as, RegSet allow)
       FPRDEF(MINCOST)
    }
    ref = regcost_ref(cost);
-   lj_assertA(ra_iskref(ref) || (ref >= as->T->nk && ref < as->T->nins),
+   lj_assertA(ra_iskref(ref) || (ref >= as->T->nk and ref < as->T->nins),
       "evict of out-of-range IR %04d", ref - REF_BIAS);
    // Preferably pick any weak ref instead of a non-weak, non-const ref.
-   if (!irref_isk(ref) && (as->weakset & allow)) {
+   if (!irref_isk(ref) and (as->weakset & allow)) {
       IRIns* ir = IR(ref);
       if (!rset_test(as->weakset, ir->r))
          ref = regcost_ref(as->cost[rset_pickbot((as->weakset & allow))]);
