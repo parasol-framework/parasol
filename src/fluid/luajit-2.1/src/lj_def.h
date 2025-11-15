@@ -56,7 +56,7 @@ constexpr uint64_t LJ_MAX_MEM64 = ((uint64_t)1 << 47);  /* Max. 64 bit memory al
 #define LJ_MAX_BUF   LJ_MAX_MEM32   /* Max. buffer length. */
 #define LJ_MAX_UDATA   LJ_MAX_MEM32   /* Max. userdata length. */
 
-constexpr uint32_t LJ_MAX_STRTAB = (1 << 26);      /* Max. string table size. */
+constexpr uint32_t LJ_MAX_STRTAB = (1u << 26);      /* Max. string table size. */
 constexpr int LJ_MAX_HBITS = 26;      /* Max. hash bits. */
 constexpr int LJ_MAX_ABITS = 28;      /* Max. bits of array key. */
 constexpr uint32_t LJ_MAX_ASIZE = ((1u << (LJ_MAX_ABITS - 1)) + 1);  /* Max. array part size. */
