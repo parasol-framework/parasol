@@ -53,15 +53,6 @@ before diving into changes.
 - When debugging parser issues, create minimal Fluid scripts to isolate the
   behaviour before running the full test suite.
 
-## Coding Conventions & Constraints
-- LuaJIT is an upstream C project; follow its existing style (tabs, K&R,
-  use of `&&`/`||`, traditional casts, etc.). Parasol’s stricter C++ rules
-  (e.g. mandatory `and`/`or`, `IS`, no exceptions) do **not** apply here.
-- When touching Parasol-owned C++ files that interact with LuaJIT, switch
-  back to the repository’s standard requirements.
-- Temporary logging is acceptable during investigations but remove or guard
-  it before committing. Windows builds collect logs under `build/agents/`.
-
 ## Troubleshooting Register Allocation
 - LuaJIT's parser (`lj_parse.cpp`) heavily relies on `freereg`, `nactvar`, and
   expression kinds (`ExpKind`). When changing emission logic:
