@@ -38,11 +38,11 @@ typedef struct SBufExt {
 #define sbufxlen(sbx)      ((MSize)((sbx)->w - (sbx)->r))
 #define sbufxslack(sbx)      ((MSize)((sbx)->r - (sbx)->b))
 
-#define SBUF_MASK_FLAG      (7)
+constexpr int SBUF_MASK_FLAG = 7;
 #define SBUF_MASK_L      (~(GCSize)SBUF_MASK_FLAG)
-#define SBUF_FLAG_EXT      1   /* Extended string buffer. */
-#define SBUF_FLAG_COW      2   /* Copy-on-write buffer. */
-#define SBUF_FLAG_BORROW   4   /* Borrowed string buffer. */
+constexpr int SBUF_FLAG_EXT = 1;      /* Extended string buffer. */
+constexpr int SBUF_FLAG_COW = 2;      /* Copy-on-write buffer. */
+constexpr int SBUF_FLAG_BORROW = 4;   /* Borrowed string buffer. */
 
 #define sbufL(sb) \
   ((lua_State *)(void *)(uintptr_t)(mrefu((sb)->L) & SBUF_MASK_L))
