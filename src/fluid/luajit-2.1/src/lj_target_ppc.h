@@ -107,7 +107,6 @@ struct ExitState {
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
 };
-using ExitState = struct ExitState;
 
 // Highest exit + 1 indicates stack check.
 constexpr int EXITSTATE_CHECKEXIT = 1;
