@@ -25,7 +25,6 @@ struct luaL_Reg {
   const char *name;
   lua_CFunction func;
 };
-using luaL_Reg = struct luaL_Reg;
 
 LUALIB_API void (luaL_openlib) (lua_State *L, const char *libname,
                                 const luaL_Reg *l, int nup);
