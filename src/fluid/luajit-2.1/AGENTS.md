@@ -63,7 +63,7 @@ before diving into changes.
   it before committing. Windows builds collect logs under `build/agents/`.
 
 ## Troubleshooting Register Allocation
-- LuaJIT's parser (`lj_parse.c`) heavily relies on `freereg`, `nactvar`, and
+- LuaJIT's parser (`lj_parse.cpp`) heavily relies on `freereg`, `nactvar`, and
   expression kinds (`ExpKind`). When changing emission logic:
   - Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
   - Ensure every path that creates a `VCALL` either converts it to
@@ -324,7 +324,7 @@ When adding single-character operators (like `?`):
    __(if_empty, ?)
    ```
 
-2. **Handle recognition in the lexer** (`lj_lex.c`) in the switch statement:
+2. **Handle recognition in the lexer** (`lj_lex.cpp`) in the switch statement:
    ```c
    case '?':
      lex_next(ls);
@@ -337,11 +337,11 @@ When adding operators that extend reserved words:
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro.
 
-2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word by checking the next character.
+2. **Handle recognition in the lexer** (`lj_lex.cpp`) after identifying a reserved word by checking the next character.
    **Important**: Check the next character (`ls->c`) **after** recognizing the reserved word,
    not in the character switch statement.
 
-3. **Map the token to an operator** in `token2binop()` in `lj_parse.c`
+3. **Map the token to an operator** in `token2binop()` in `lj_parse.cpp`
 
 ## Debugging Parser Issues
 
@@ -379,7 +379,7 @@ function sampleFunction(a, b)
    local total = a + scale
    return result
 end
-]] 
+]]
    })
 
    script.acActivate()
@@ -420,12 +420,12 @@ When implementing new operators:
 2. Test simple variables (`x`) - test basic runtime path
 3. Test field access (`t.field`) - test suffix loop integration
 4. Test parenthesized expressions (`(x + y)`) - test complex expressions
-5. Test function calls that return a single result and those that return multiple results 
+5. Test function calls that return a single result and those that return multiple results
    (`f(x)`) - test VCALL handling
 6. Test in various contexts (assignments, function arguments, conditionals)
-7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the 
+7. If issues arise, use DebugLog('disasm') as a source of truth rather than guessing the
    logic of emitted bytecode.
- 
+
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
   not collide with upstream naming; we will eventually rebase to newer
