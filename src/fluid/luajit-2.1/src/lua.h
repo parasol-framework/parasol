@@ -21,7 +21,7 @@ extern "C" {
 
 #define LUA_VERSION   "Lua 5.1"
 #define LUA_RELEASE   "Lua 5.1.4"
-#define LUA_VERSION_NUM   501
+constexpr int LUA_VERSION_NUM = 501;
 #define LUA_COPYRIGHT   "Copyright (C) 1994-2008 Lua.org, PUC-Rio"
 #define LUA_AUTHORS   "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
 
@@ -30,65 +30,65 @@ extern "C" {
 #define   LUA_SIGNATURE   "\033Lua"
 
 // option for multiple returns in `lua_pcall' and `lua_call'
-#define LUA_MULTRET   (-1)
+constexpr int LUA_MULTRET = -1;
 
 
 /*
 ** pseudo-indices
 */
-#define LUA_REGISTRYINDEX   (-10000)
-#define LUA_ENVIRONINDEX   (-10001)
-#define LUA_GLOBALSINDEX   (-10002)
+constexpr int LUA_REGISTRYINDEX = -10000;
+constexpr int LUA_ENVIRONINDEX = -10001;
+constexpr int LUA_GLOBALSINDEX = -10002;
 #define lua_upvalueindex(i)   (LUA_GLOBALSINDEX-(i))
 
 
 // thread status
-#define LUA_OK      0
-#define LUA_YIELD   1
-#define LUA_ERRRUN   2
-#define LUA_ERRSYNTAX   3
-#define LUA_ERRMEM   4
-#define LUA_ERRERR   5
+constexpr int LUA_OK = 0;
+constexpr int LUA_YIELD = 1;
+constexpr int LUA_ERRRUN = 2;
+constexpr int LUA_ERRSYNTAX = 3;
+constexpr int LUA_ERRMEM = 4;
+constexpr int LUA_ERRERR = 5;
 
 
 typedef struct lua_State lua_State;
 
-typedef int (*lua_CFunction) (lua_State *L);
+using lua_CFunction = int(*)(lua_State *L);
 
 
 /*
 ** functions that read/write blocks when loading/dumping Lua chunks
 */
-typedef const char * (*lua_Reader) (lua_State *L, void *ud, size_t *sz);
+using lua_Reader = const char*(*)(lua_State *L, void *ud, size_t *sz);
 
-typedef int (*lua_Writer) (lua_State *L, const void* p, size_t sz, void* ud);
+using lua_Writer = int(*)(lua_State *L, const void* p, size_t sz, void* ud);
 
 
 /*
 ** prototype for memory-allocation functions
 */
-typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
+using lua_Alloc = void*(*)(void *ud, void *ptr, size_t osize, size_t nsize);
 
 
 /*
 ** basic types
 */
-#define LUA_TNONE      (-1)
+constexpr int LUA_TNONE = -1;
 
-#define LUA_TNIL      0
-#define LUA_TBOOLEAN      1
-#define LUA_TLIGHTUSERDATA   2
-#define LUA_TNUMBER      3
-#define LUA_TSTRING      4
-#define LUA_TTABLE      5
-#define LUA_TFUNCTION      6
-#define LUA_TUSERDATA      7
-#define LUA_TTHREAD      8
+constexpr int LUA_TNIL = 0;
+constexpr int LUA_TBOOLEAN = 1;
+constexpr int LUA_TLIGHTUSERDATA = 2;
+constexpr int LUA_TNUMBER = 3;
+constexpr int LUA_TSTRING = 4;
+constexpr int LUA_TTABLE = 5;
+constexpr int LUA_TFUNCTION = 6;
+constexpr int LUA_TUSERDATA = 7;
+constexpr int LUA_TTHREAD = 8;
 
 
 
 // minimum Lua stack available to a C function
-#define LUA_MINSTACK   20
+constexpr int LUA_MINSTACK = 20;
 
 
 /*
@@ -100,11 +100,11 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 
 
 // type of numbers in Lua
-typedef LUA_NUMBER lua_Number;
+using lua_Number = LUA_NUMBER;
 
 
 // type for integer functions
-typedef LUA_INTEGER lua_Integer;
+using lua_Integer = LUA_INTEGER;
 
 
 
@@ -332,7 +332,7 @@ typedef struct lua_Debug lua_Debug;  /* activation record */
 
 
 // Functions to be called by the debuger in specific events
-typedef void (*lua_Hook) (lua_State *L, lua_Debug *ar);
+using lua_Hook = void(*)(lua_State *L, lua_Debug *ar);
 
 
 LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar);
