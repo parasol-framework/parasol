@@ -12,7 +12,7 @@
 // -- Registers and spill slots -------------------------------------------
 
 // Register type (uint8_t in ir->r).
-typedef uint32_t Reg;
+using Reg = uint32_t;
 
 /* The hi-bit is NOT set for an allocated register. This means the value
 ** can be directly used without masking. The hi-bit is set for a register
@@ -24,22 +24,22 @@ typedef uint32_t Reg;
 #define RID_SINK      (RID_INIT-1)
 #define RID_SUNK      (RID_INIT-2)
 
-#define ra_noreg(r)      ((r) & RID_NONE)
-#define ra_hasreg(r)      (!((r) & RID_NONE))
+constexpr inline bool ra_noreg(Reg r) { return r & RID_NONE; }
+constexpr inline bool ra_hasreg(Reg r) { return !(r & RID_NONE); }
 
-// The ra_hashint() macro assumes a previous test for ra_noreg().
-#define ra_hashint(r)      ((r) < RID_SUNK)
-#define ra_gethint(r)      ((Reg)((r) & RID_MASK))
+// The ra_hashint() function assumes a previous test for ra_noreg().
+constexpr inline bool ra_hashint(Reg r) { return r < RID_SUNK; }
+constexpr inline Reg ra_gethint(Reg r) { return (Reg)(r & RID_MASK); }
 #define ra_sethint(rr, r)   rr = (uint8_t)((r)|RID_NONE)
-#define ra_samehint(r1, r2)   (ra_gethint((r1)^(r2)) == 0)
+constexpr inline bool ra_samehint(Reg r1, Reg r2) { return ra_gethint(r1^r2) == 0; }
 
 // Spill slot 0 means no spill slot has been allocated.
-#define SPS_NONE      0
+constexpr uint8_t SPS_NONE = 0;
 
-#define ra_hasspill(s)      ((s) != SPS_NONE)
+constexpr inline bool ra_hasspill(uint8_t s) { return s != SPS_NONE; }
 
 // Combined register and spill slot (uint16_t in ir->prev).
-typedef uint32_t RegSP;
+using RegSP = uint32_t;
 
 #define REGSP(r, s)      ((r) + ((s) << 8))
 #define REGSP_HINT(r)      ((r)|RID_NONE)
@@ -56,19 +56,19 @@ typedef uint32_t RegSP;
 ** Note that one set holds bits for both GPRs and FPRs.
 */
 #if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
-typedef uint64_t RegSet;
+using RegSet = uint64_t;
 #else
-typedef uint32_t RegSet;
+using RegSet = uint32_t;
 #endif
 
 #define RID2RSET(r)      (((RegSet)1) << (r))
 #define RSET_EMPTY      ((RegSet)0)
 #define RSET_RANGE(lo, hi)   ((RID2RSET((hi)-(lo))-1) << (lo))
 
-#define rset_test(rs, r)   ((int)((rs) >> (r)) & 1)
+constexpr inline int rset_test(RegSet rs, Reg r) { return (int)((rs) >> (r)) & 1; }
 #define rset_set(rs, r)      (rs |= RID2RSET(r))
 #define rset_clear(rs, r)   (rs &= ~RID2RSET(r))
-#define rset_exclude(rs, r)   (rs & ~RID2RSET(r))
+constexpr inline RegSet rset_exclude(RegSet rs, Reg r) { return rs & ~RID2RSET(r); }
 #if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
 #define rset_picktop(rs)   ((Reg)(__builtin_clzll(rs)^63))
 #define rset_pickbot(rs)   ((Reg)__builtin_ctzll(rs))
@@ -119,10 +119,10 @@ typedef uint32_t RegSet;
 **   Good values for the PHI weight seem to be between 40 and 150.
 ** - Further study is required.
 */
-#define REGCOST_PHI_WEIGHT   64
+constexpr uint32_t REGCOST_PHI_WEIGHT = 64;
 
 // Cost for allocating a specific register.
-typedef uint32_t RegCost;
+using RegCost = uint32_t;
 
 // Note: assumes 16 bit IRRef1.
 #define REGCOST(cost, ref)   ((RegCost)(ref) + ((RegCost)(cost) << 16))
