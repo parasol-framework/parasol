@@ -87,14 +87,14 @@ enum {
 ** [sp+ 4] tmpw, LR of callee
 ** [sp+ 0] stack chain
 */
-#define SPS_FIXED   7
-#define SPS_FIRST   4
+constexpr int SPS_FIXED = 7;
+constexpr int SPS_FIRST = 4;
 
 // Stack offsets for temporary slots. Used for FP<->int conversions etc.
-#define SPOFS_TMPW   4
-#define SPOFS_TMP   8
-#define SPOFS_TMPHI   8
-#define SPOFS_TMPLO   12
+constexpr int SPOFS_TMPW = 4;
+constexpr int SPOFS_TMP = 8;
+constexpr int SPOFS_TMPHI = 8;
+constexpr int SPOFS_TMPLO = 12;
 
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 3) & ~3)
@@ -102,14 +102,15 @@ enum {
 // -- Exit state ----------------------------------------------------------
 
 // This definition must match with the *.dasc file(s).
-typedef struct {
+struct ExitState {
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
-} ExitState;
+};
+using ExitState = struct ExitState;
 
 // Highest exit + 1 indicates stack check.
-#define EXITSTATE_CHECKEXIT   1
+constexpr int EXITSTATE_CHECKEXIT = 1;
 
 // Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p, uint32_t exitno)

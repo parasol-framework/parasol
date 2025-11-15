@@ -146,7 +146,7 @@ enum {
 #define SPS_FIRST   2
 #endif
 
-#define SPOFS_TMP   0
+constexpr int SPOFS_TMP = 0;
 
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 3) & ~3)
@@ -154,17 +154,18 @@ enum {
 // -- Exit state ----------------------------------------------------------
 
 // This definition must match with the *.dasc file(s).
-typedef struct {
+struct ExitState {
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
-} ExitState;
+};
+using ExitState = struct ExitState;
 
 // Limited by the range of a short fwd jump (127): (2+2)*(32-1)-2 = 122.
-#define EXITSTUB_SPACING   (2+2)
+constexpr int EXITSTUB_SPACING = (2+2);
 #define EXITSTUBS_PER_GROUP   32
 
-#define EXITTRACE_VMSTATE   1   /* g->vmstate has traceno on exit. */
+constexpr int EXITTRACE_VMSTATE = 1;   /* g->vmstate has traceno on exit. */
 
 // -- x86 ModRM operand encoding ------------------------------------------
 
@@ -175,12 +176,13 @@ typedef enum {
 } x86Mode;
 
 // Structure to hold variable ModRM operand.
-typedef struct {
+struct x86ModRM {
    int32_t ofs;      /* Offset. */
    uint8_t base;      /* Base register or RID_NONE. */
    uint8_t idx;      /* Index register or RID_NONE. */
    uint8_t scale;   /* Index scale (XM_SCALE1 .. XM_SCALE8). */
-} x86ModRM;
+};
+using x86ModRM = struct x86ModRM;
 
 // -- Opcodes -------------------------------------------------------------
 
@@ -317,7 +319,7 @@ typedef enum {
 } x86Op;
 
 // x86 opcode groups.
-typedef uint32_t x86Group;
+using x86Group = uint32_t;
 
 #define XG_(i8, i, g)   ((x86Group)(((i8) << 16) + ((i) << 8) + (g)))
 #define XG_ARITHi(g)   XG_(XI_ARITHi8, XI_ARITHi, g)

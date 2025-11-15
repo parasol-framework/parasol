@@ -113,10 +113,10 @@ enum {
 **
 ** SPS_FIRST: First spill slot for general use. Reserve min. two 32 bit slots.
 */
-#define SPS_FIXED   2
-#define SPS_FIRST   2
+constexpr int SPS_FIXED = 2;
+constexpr int SPS_FIRST = 2;
 
-#define SPOFS_TMP   0
+constexpr int SPOFS_TMP = 0;
 
 #define sps_scale(slot)      (4 * (int32_t)(slot))
 #define sps_align(slot)      (((slot) - SPS_FIXED + 1) & ~1)
@@ -124,20 +124,21 @@ enum {
 // -- Exit state ----------------------------------------------------------
 
 // This definition must match with the *.dasc file(s).
-typedef struct {
+struct ExitState {
 #if !LJ_SOFTFP
    lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
 #endif
    int32_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
-} ExitState;
+};
+using ExitState = struct ExitState;
 
 // PC after instruction that caused an exit. Used to find the trace number.
-#define EXITSTATE_PCREG      RID_PC
+constexpr int EXITSTATE_PCREG = RID_PC;
 // Highest exit + 1 indicates stack check.
-#define EXITSTATE_CHECKEXIT   1
+constexpr int EXITSTATE_CHECKEXIT = 1;
 
-#define EXITSTUB_SPACING        4
+constexpr int EXITSTUB_SPACING = 4;
 #define EXITSTUBS_PER_GROUP     32
 
 // -- Instructions --------------------------------------------------------
