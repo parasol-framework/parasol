@@ -15,8 +15,8 @@ LJ_FUNC void lj_gdbjit_addtrace(jit_State *J, GCtrace *T);
 LJ_FUNC void lj_gdbjit_deltrace(jit_State *J, GCtrace *T);
 
 #else
-#define lj_gdbjit_addtrace(J, T)	UNUSED(T)
-#define lj_gdbjit_deltrace(J, T)	UNUSED(T)
+#define lj_gdbjit_addtrace(J, T)   UNUSED(T)
+#define lj_gdbjit_deltrace(J, T)   UNUSED(T)
 #endif
 
 #endif
