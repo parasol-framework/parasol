@@ -139,7 +139,7 @@ if (MSVC)
    # Platform-specific paths
    set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
    set (BUILDVM_TARGET "${LUAJIT_BUILD_DIR}/buildvm.exe")
-   set (BUILDVM_ARCH_H "${LUAJIT_HOST_DIR}/buildvm_arch.h")
+   set (BUILDVM_ARCH_H "${LUAJIT_BUILD_DIR}/buildvm_arch.h")
 
    # Detect target architecture (x64 vs x86)
    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -183,7 +183,7 @@ if (MSVC)
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
-         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR}
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR}
          ${BUILDVM_SOURCES}
       COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
          ${LUAJIT_BUILD_DIR}/buildvm.obj

@@ -1207,7 +1207,7 @@ LUA_API int lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
       ef = 0;
    }
    else {
-      cTValue* o = index2adr_stack(L, errfunc);
+      auto o = index2adr_stack(L, errfunc);
       ef = savestack(L, o);
    }
    status = lj_vm_pcall(L, api_call_base(L, nargs), nresults + 1, ef);
