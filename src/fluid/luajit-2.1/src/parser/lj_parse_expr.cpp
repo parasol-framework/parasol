@@ -249,7 +249,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
    BCReg nparams = 0;
    lex_check(ls, '(');
    if (needself)
-      var_new_lit(ls, nparams++, "self");
+      var_new_lit(ls, nparams++, "self", sizeof("self")-1);
    if (ls->tok != ')') {
       do {
          if (ls->tok == TK_name) {
@@ -625,7 +625,7 @@ static inline void synlevel_end(LexState* ls) {
    }
 }
 
-#define UNARY_PRIORITY		8  // Priority for unary operators.
+inline constexpr uint32_t UNARY_PRIORITY = 8;  // Priority for unary operators.
 
 // Forward declaration.
 static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);

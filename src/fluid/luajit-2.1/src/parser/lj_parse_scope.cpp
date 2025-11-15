@@ -2,11 +2,6 @@
 
 // Forward declarations for functions from lj_parse_regalloc.c
 static void bcreg_reserve(FuncState* fs, BCReg n);
-static BCPos bcemit_INS(FuncState* fs, BCIns ins);
-
-#define bcemit_ABC(fs, o, a, b, c)   bcemit_INS(fs, BCINS_ABC(o, a, b, c))
-#define bcemit_AD(fs, o, a, d)      bcemit_INS(fs, BCINS_AD(o, a, d))
-#define bcemit_AJ(fs, o, a, j)      bcemit_INS(fs, BCINS_AJ(o, a, j))
 
 // Check if a string is the blank identifier '_'.
 static int is_blank_identifier(GCstr* name)
@@ -32,11 +27,13 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
    ls->vtop = vtop + 1;
 }
 
-#define var_new_lit(ls, n, v) \
-  var_new(ls, (n), lj_parse_keepstr(ls, "" v, sizeof(v)-1))
+static inline void var_new_lit(LexState* ls, BCReg n, const char* v, size_t len) {
+   var_new(ls, n, lj_parse_keepstr(ls, v, len));
+}
 
-#define var_new_fixed(ls, n, vn) \
-  var_new(ls, (n), (GCstr*)uintptr_t(vn))
+static inline void var_new_fixed(LexState* ls, BCReg n, uintptr_t vn) {
+   var_new(ls, n, (GCstr*)vn);
+}
 
 // Add local variables.
 static void var_add(LexState* ls, BCReg nvars)
@@ -126,8 +123,9 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
 }
 
 // Lookup variable name.
-#define var_lookup(ls, e) \
-  var_lookup_((ls)->fs, lex_str(ls), (e), 1)
+static inline MSize var_lookup(LexState* ls, ExpDesc* e) {
+   return var_lookup_(ls->fs, lex_str(ls), e, 1);
+}
 
 // -- Jump and target handling ----------------------------------------------
 

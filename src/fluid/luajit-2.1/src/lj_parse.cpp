@@ -47,6 +47,7 @@ static const struct {
 
 // Include modular parser components
 #include "parser/lj_parse_types.h"
+#include "parser/lj_parse_internal.h"
 #include "parser/lj_parse_core.cpp"
 #include "parser/lj_parse_constants.cpp"
 #include "parser/lj_parse_scope.cpp"
