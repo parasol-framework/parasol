@@ -68,27 +68,28 @@ enum {
 
 // Type of hot counter. Must match the code in the assembler VM.
 // 16 bits are sufficient. Only 0.0015% overhead with maximum slot penalty.
-typedef uint16_t HotCount;
+using HotCount = uint16_t;
 
 // Number of hot counter hash table entries (must be a power of two).
-#define HOTCOUNT_SIZE      64
-#define HOTCOUNT_PCMASK      ((HOTCOUNT_SIZE-1)*sizeof(HotCount))
+constexpr int HOTCOUNT_SIZE = 64;
+constexpr int HOTCOUNT_PCMASK = ((HOTCOUNT_SIZE - 1) * sizeof(HotCount));
 
 // Hotcount decrements.
-#define HOTCOUNT_LOOP      2
-#define HOTCOUNT_CALL      1
+constexpr int HOTCOUNT_LOOP = 2;
+constexpr int HOTCOUNT_CALL = 1;
 
 // This solves a circular dependency problem -- bump as needed. Sigh.
-#define GG_NUM_ASMFF   57
+constexpr int GG_NUM_ASMFF = 57;
 
-#define GG_LEN_DDISP   (BC__MAX + GG_NUM_ASMFF)
-#define GG_LEN_SDISP   BC_FUNCF
-#define GG_LEN_DISP   (GG_LEN_DDISP + GG_LEN_SDISP)
+constexpr int GG_LEN_DDISP = (BC__MAX + GG_NUM_ASMFF);
+constexpr int GG_LEN_SDISP = BC_FUNCF;
+constexpr int GG_LEN_DISP = (GG_LEN_DDISP + GG_LEN_SDISP);
 
 // Global state, main thread and extra fields are allocated together.
-typedef struct GG_State {
-   lua_State L;            //  Main thread.
-   global_State g;         //  Global state.
+
+struct GG_State {
+   lua_State L;            /* Main thread. */
+   global_State g;         /* Global state. */
 #if LJ_TARGET_ARM
    // Make g reachable via K12 encoded DISPATCH-relative addressing.
    uint8_t align1[(16 - sizeof(global_State)) & 15];
@@ -104,9 +105,9 @@ typedef struct GG_State {
    uint8_t align2[(16 - sizeof(jit_State) - sizeof(HotCount) * HOTCOUNT_SIZE) & 15];
 #endif
 #endif
-   ASMFunction dispatch[GG_LEN_DISP];   //  Instruction dispatch tables.
-   BCIns bcff[GG_NUM_ASMFF];      //  Bytecode for ASM fast functions.
-} GG_State;
+   ASMFunction dispatch[GG_LEN_DISP];   /* Instruction dispatch tables. */
+   BCIns bcff[GG_NUM_ASMFF];      /* Bytecode for ASM fast functions. */
+};
 
 #define GG_OFS(field)   ((int)offsetof(GG_State, field))
 #define G2GG(gl)   ((GG_State *)((char *)(gl) - GG_OFS(g)))
@@ -115,12 +116,12 @@ typedef struct GG_State {
 #define J2G(J)      (&J2GG(J)->g)
 #define G2J(gl)      (&G2GG(gl)->J)
 #define L2J(L)      (&L2GG(L)->J)
-#define GG_G2J      (GG_OFS(J) - GG_OFS(g))
-#define GG_G2DISP   (GG_OFS(dispatch) - GG_OFS(g))
-#define GG_DISP2G   (GG_OFS(g) - GG_OFS(dispatch))
-#define GG_DISP2J   (GG_OFS(J) - GG_OFS(dispatch))
-#define GG_DISP2HOT   (GG_OFS(hotcount) - GG_OFS(dispatch))
-#define GG_DISP2STATIC   (GG_LEN_DDISP*(int)sizeof(ASMFunction))
+constexpr int GG_G2J = (offsetof(GG_State, J) - offsetof(GG_State, g));
+constexpr int GG_G2DISP = (offsetof(GG_State, dispatch) - offsetof(GG_State, g));
+constexpr int GG_DISP2G = (offsetof(GG_State, g) - offsetof(GG_State, dispatch));
+constexpr int GG_DISP2J = (offsetof(GG_State, J) - offsetof(GG_State, dispatch));
+constexpr int GG_DISP2HOT = (offsetof(GG_State, hotcount) - offsetof(GG_State, dispatch));
+constexpr int GG_DISP2STATIC = (GG_LEN_DDISP * (int)sizeof(ASMFunction));
 
 #define hotcount_get(gg, pc) \
   (gg)->hotcount[(u32ptr(pc)>>2) & (HOTCOUNT_SIZE-1)]

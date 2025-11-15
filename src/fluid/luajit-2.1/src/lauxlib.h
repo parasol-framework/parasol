@@ -19,12 +19,12 @@ extern "C" {
 #endif
 
 // extra error code for `luaL_load'
-#define LUA_ERRFILE     (LUA_ERRERR+1)
+constexpr int LUA_ERRFILE = (LUA_ERRERR+1);
 
-typedef struct luaL_Reg {
+struct luaL_Reg {
   const char *name;
   lua_CFunction func;
-} luaL_Reg;
+};
 
 LUALIB_API void (luaL_openlib) (lua_State *L, const char *libname,
                                 const luaL_Reg *l, int nup);
@@ -59,8 +59,8 @@ LUALIB_API int (luaL_checkoption) (lua_State *L, int narg, const char *def,
                                    const char *const lst[]);
 
 // pre-defined references
-#define LUA_NOREF       (-2)
-#define LUA_REFNIL      (-1)
+constexpr int LUA_NOREF = (-2);
+constexpr int LUA_REFNIL = (-1);
 
 LUALIB_API int (luaL_ref) (lua_State *L, int t);
 LUALIB_API void (luaL_unref) (lua_State *L, int t, int ref);
@@ -135,12 +135,12 @@ LUALIB_API void (luaL_setmetatable) (lua_State *L, const char *tname);
 
 
 
-typedef struct luaL_Buffer {
-  char *p;         //  current position in buffer
-  int lvl;  //  number of strings in the stack (level)
+struct luaL_Buffer {
+  char *p;         /* current position in buffer */
+  int lvl;  /* number of strings in the stack (level) */
   lua_State *L;
   char buffer[LUAL_BUFFERSIZE];
-} luaL_Buffer;
+};
 
 #define luaL_addchar(B,c) \
   ((void)((B)->p < ((B)->buffer+LUAL_BUFFERSIZE) || luaL_prepbuffer(B)), \
