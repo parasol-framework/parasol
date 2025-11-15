@@ -131,7 +131,6 @@ struct ExitState {
    int32_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
 };
-using ExitState = struct ExitState;
 
 // PC after instruction that caused an exit. Used to find the trace number.
 constexpr int EXITSTATE_PCREG = RID_PC;
