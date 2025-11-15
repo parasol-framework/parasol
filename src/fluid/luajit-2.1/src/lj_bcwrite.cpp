@@ -58,7 +58,7 @@ static void bcwrite_ktabk(BCWriteCtx* ctx, cTValue* o, int narrow)
       p = lj_strfmt_wuleb128(p, intV(o));
    }
    else if (tvisnum(o)) {
-      if (!LJ_DUALNUM && narrow) {  // Narrow number constants to integers.
+      if (!LJ_DUALNUM and narrow) {  // Narrow number constants to integers.
          lua_Number num = numV(o);
          int32_t k = lj_num2int(num);
          if (num == (lua_Number)k) {  // -0 is never a constant.
@@ -232,16 +232,16 @@ static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
    UNUSED(ctx);
 #if LJ_HASJIT
    // Unpatch modified bytecode containing ILOOP/JLOOP etc.
-   if ((pt->flags & PROTO_ILOOP) || pt->trace) {
+   if ((pt->flags & PROTO_ILOOP) or pt->trace) {
       jit_State* J = L2J(sbufL(&ctx->sb));
       MSize i;
       for (i = 0; i < nbc; i++, q += sizeof(BCIns)) {
          BCOp op = (BCOp)q[LJ_ENDIAN_SELECT(0, 3)];
-         if (op == BC_IFORL || op == BC_IITERL || op == BC_ILOOP ||
+         if (op == BC_IFORL or op == BC_IITERL or op == BC_ILOOP ||
             op == BC_JFORI) {
             q[LJ_ENDIAN_SELECT(0, 3)] = (uint8_t)(op - BC_IFORL + BC_FORL);
          }
-         else if (op == BC_JFORL || op == BC_JITERL || op == BC_JLOOP) {
+         else if (op == BC_JFORL or op == BC_JITERL or op == BC_JLOOP) {
             BCReg rd = q[LJ_ENDIAN_SELECT(2, 1)] + (q[LJ_ENDIAN_SELECT(3, 0)] << 8);
             memcpy(q, &traceref(J, rd)->startins, 4);
          }
@@ -359,7 +359,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
    bcwrite_header(ctx);
    bcwrite_proto(ctx, ctx->pt);
    bcwrite_footer(ctx);
-   return NULL;
+   return nullptr;
 }
 
 // Write bytecode for a prototype.
@@ -377,7 +377,7 @@ int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data,
    ctx.g = G(L);
 #endif
    lj_buf_init(L, &ctx.sb);
-   status = lj_vm_cpcall(L, NULL, &ctx, cpwriter);
+   status = lj_vm_cpcall(L, nullptr, &ctx, cpwriter);
    if (status == 0) status = ctx.status;
    lj_buf_free(G(sbufL(&ctx.sb)), &ctx.sb);
    return status;

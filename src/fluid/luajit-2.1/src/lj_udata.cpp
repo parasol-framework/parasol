@@ -50,7 +50,7 @@ void* lj_lightud_intern(lua_State* L, void* p)
       // Leave last segment unused to avoid clash with ITERN key.
       if (segnum >= (1 << LJ_LIGHTUD_BITS_SEG) - 1) lj_err_msg(L, LJ_ERR_BADLU);
    }
-   if (!((segnum - 1) & segnum) && segnum != 1) {
+   if (!((segnum - 1) & segnum) and segnum != 1) {
       lj_mem_reallocvec(L, segmap, segnum, segnum ? 2 * segnum : 2u, uint32_t);
       setmref(g->gc.lightudseg, segmap);
    }

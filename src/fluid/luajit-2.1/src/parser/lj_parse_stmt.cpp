@@ -36,20 +36,20 @@ static void assign_hazard(LexState* ls, LHSVarList* lh, const ExpDesc* v)
 static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
 {
    FuncState* fs = ls->fs;
-   int32_t extra = (int32_t)nvars - (int32_t)nexps;
+   int32_t extra = int32_t(nvars) - int32_t(nexps);
    if (e->k == VCALL) {
       extra++;  // Compensate for the VCALL itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
-      if (extra > 1) bcreg_reserve(fs, (BCReg)extra - 1);
+      if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
    }
    else {
       if (e->k != VVOID)
          expr_tonextreg(fs, e);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
-         bcreg_reserve(fs, (BCReg)extra);
-         bcemit_nil(fs, reg, (BCReg)extra);
+         bcreg_reserve(fs, BCReg(extra));
+         bcemit_nil(fs, reg, BCReg(extra));
       }
    }
    if (nexps > nvars)
@@ -82,9 +82,9 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
       bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
       bcreg_reserve(fs, 1);
 
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
-         bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+         bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          lh->v.u.s.info = new_base;
          lh->v.u.s.aux = new_idx;
@@ -137,9 +137,9 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    fs->freereg = freg_base;
    if (lhv.k == VINDEXED) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
-         bcreg_free(fs, (BCReg)orig_aux);
-      bcreg_free(fs, (BCReg)lhv.u.s.info);
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
+         bcreg_free(fs, BCReg(orig_aux));
+      bcreg_free(fs, BCReg(lhv.u.s.info));
    }
    return 1;
 }
@@ -186,9 +186,9 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
       bcreg_reserve(fs, 1);
 
       // If index is a register (0..BCMAX_C), duplicate it, too.
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
-         bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+         bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          // Discharge using the duplicates; keep lhv pointing to originals.
          lh->v.u.s.info = new_base;
@@ -202,7 +202,7 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    }
 
    // For concatenation, fix left operand placement before parsing RHS to
-   // maintain BC_CAT stack adjacency && LIFO freeing semantics.
+   // maintain BC_CAT stack adjacency and LIFO freeing semantics.
 
    if (op == OPR_CONCAT) {
       infix = lh->v;
@@ -212,7 +212,7 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
-      if (!(op == OPR_BAND || op == OPR_BOR || op == OPR_BXOR || op == OPR_SHL || op == OPR_SHR))
+      if (!(op == OPR_BAND or op == OPR_BOR or op == OPR_BXOR or op == OPR_SHL or op == OPR_SHR))
          expr_tonextreg(fs, &lh->v);
       nexps = expr_list(ls, &rh);
       checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
@@ -221,13 +221,13 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    }
    bcemit_binop(fs, op, &infix, &rh);
    bcemit_store(fs, &lhv, &infix);
-   // Drop any RHS temporaries && release original base/index in LIFO order.
+   // Drop any RHS temporaries and release original base/index in LIFO order.
    fs->freereg = freg_base;
    if (lhv.k == VINDEXED) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
-         bcreg_free(fs, (BCReg)orig_aux);
-      bcreg_free(fs, (BCReg)lhv.u.s.info);
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
+         bcreg_free(fs, BCReg(orig_aux));
+      bcreg_free(fs, BCReg(lhv.u.s.info));
    }
    return 1;
 }
@@ -236,8 +236,8 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
 static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
 {
    ExpDesc e;
-   checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
-   if (lex_opt(ls, ',')) {  // Collect LHS list && recurse upwards.
+   checkcond(ls, VLOCAL <= lh->v.k and lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
+   if (lex_opt(ls, ',')) {  // Collect LHS list and recurse upwards.
       LHSVarList vl;
       vl.prev = lh;
       expr_primary(ls, &vl.v);
@@ -266,33 +266,33 @@ static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
       }
       assign_adjust(ls, nvars, nexps, &e);
    }
-   // Assign RHS to LHS && recurse downwards.
+   // Assign RHS to LHS and recurse downwards.
    expr_init(&e, VNONRELOC, ls->fs->freereg - 1);
    bcemit_store(ls->fs, &lh->v, &e);
 }
 
-// Parse call statement || assignment.
+// Parse call statement or assignment.
 static void parse_call_assign(LexState* ls)
 {
    FuncState* fs = ls->fs;
    LHSVarList vl;
    expr_primary(ls, &vl.v);
-   if (vl.v.k == VNONRELOC && (vl.v.flags & POSTFIX_INC_STMT_FLAG))
+   if (vl.v.k == VNONRELOC and (vl.v.flags & POSTFIX_INC_STMT_FLAG))
       return;
    if (vl.v.k == VCALL) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.v), 1);  // No results.
    }
-   else if (ls->tok == TK_cadd || ls->tok == TK_csub || ls->tok == TK_cmul ||
-      ls->tok == TK_cdiv || ls->tok == TK_cmod || ls->tok == TK_cconcat ||
+   else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul ||
+      ls->tok == TK_cdiv or ls->tok == TK_cmod or ls->tok == TK_cconcat ||
       ls->tok == TK_cif_empty) {
-      vl.prev = NULL;
+      vl.prev = nullptr;
       assign_compound(ls, &vl, ls->tok);
    }
    else if (ls->tok == ';') {
       // Postfix increment (++) handled in expr_primary.
    }
    else {  // Start of an assignment.
-      vl.prev = NULL;
+      vl.prev = nullptr;
       parse_assignment(ls, &vl, 1);
    }
 }
@@ -452,10 +452,10 @@ static void parse_return(LexState* ls)
    FuncState* fs = ls->fs;
    lj_lex_next(ls);  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_isend(ls->tok) || ls->tok == ';') {  // Bare return.
+   if (parse_isend(ls->tok) or ls->tok == ';') {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
-   else {  // Return with one || more values.
+   else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
       BCReg nret = expr_list(ls, &e);
       if (nret == 1) {  // Return one result.
@@ -495,9 +495,9 @@ static void parse_continue(LexState* ls)
    FuncState* fs = ls->fs;
    FuncScope* loop = fs->bl;
 
-   while (loop && !(loop->flags & FSCOPE_LOOP))
+   while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != NULL, "continue outside loop");
+   lj_assertLS(loop != nullptr, "continue outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_CONTINUE;
@@ -510,16 +510,16 @@ static void parse_break(LexState* ls)
    FuncState* fs = ls->fs;
    FuncScope* loop = fs->bl;
 
-   while (loop && !(loop->flags & FSCOPE_LOOP))
+   while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != NULL, "break outside loop");
+   lj_assertLS(loop != nullptr, "break outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_BREAK;
    gola_new(ls, JUMP_BREAK, VSTACK_JUMP, bcemit_jmp(fs));
 }
 
-// -- Blocks, loops && conditional statements ----------------------------
+// -- Blocks, loops and conditional statements ----------------------------
 
 // Parse a block.
 static void parse_block(LexState* ls)
@@ -571,9 +571,9 @@ static void parse_repeat(LexState* ls, BCLine line)
       fscope_end(fs);
    }
    else {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
-      parse_break(ls);  // Break from loop && close upvalues.
+      parse_break(ls);  // Break from loop and close upvalues.
       jmp_tohere(fs, condexit);
-      fscope_end(fs);  // End inner scope && close upvalues.
+      fscope_end(fs);  // End inner scope and close upvalues.
       condexit = bcemit_jmp(fs);
    }
    jmp_patch(fs, condexit, loop);  // Jump backwards if !cond.
@@ -622,8 +622,8 @@ static void parse_for_num(LexState* ls, GCstr* varname, BCLine line)
    fscope_loop_continue(fs, loopend); // continue statements jump to loopend.
 }
 
-/* Try to predict whether the iterator is next() && specialize the bytecode.
-** Detecting next() && pairs() by name is simplistic, but quite effective.
+/* Try to predict whether the iterator is next() and specialize the bytecode.
+** Detecting next() and pairs() by name is simplistic, but quite effective.
 ** The interpreter backs off if the check for the closure fails at runtime.
 */
 static int predict_next(LexState* ls, FuncState* fs, BCPos pc)
@@ -641,17 +641,17 @@ static int predict_next(LexState* ls, FuncState* fs, BCPos pc)
    case BC_GGET:
       // There's no inverse index (yet), so lookup the strings.
       o = lj_tab_getstr(fs->kt, lj_str_newlit(ls->L, "pairs"));
-      if (o && tvhaskslot(o) && tvkslot(o) == bc_d(ins))
+      if (o and tvhaskslot(o) and tvkslot(o) == bc_d(ins))
          return 1;
       o = lj_tab_getstr(fs->kt, lj_str_newlit(ls->L, "next"));
-      if (o && tvhaskslot(o) && tvkslot(o) == bc_d(ins))
+      if (o and tvhaskslot(o) and tvkslot(o) == bc_d(ins))
          return 1;
       return 0;
    default:
       return 0;
    }
-   return (name->len == 5 && !strcmp(strdata(name), "pairs")) ||
-      (name->len == 4 && !strcmp(strdata(name), "next"));
+   return (name->len == 5 and !strcmp(strdata(name), "pairs")) ||
+      (name->len == 4 and !strcmp(strdata(name), "next"));
 }
 
 // Parse 'for' iterator.
@@ -680,7 +680,7 @@ static void parse_for_iter(LexState* ls, GCstr* indexname)
    assign_adjust(ls, 3, expr_list(ls, &e), &e);
    // The iterator needs another 3 [4] slots (func [pc] | state ctl).
    bcreg_bump(fs, 3 + LJ_FR2);
-   isnext = (nvars <= 5 && predict_next(ls, fs, exprpc));
+   isnext = (nvars <= 5 and predict_next(ls, fs, exprpc));
    var_add(ls, 3);  // Hidden control variables.
    lex_check(ls, TK_do);
    loop = bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP);
@@ -710,7 +710,7 @@ static void parse_for(LexState* ls, BCLine line)
    varname = lex_str(ls);  // Get first variable name.
    if (ls->tok == '=')
       parse_for_num(ls, varname, line);
-   else if (ls->tok == ',' || ls->tok == TK_in)
+   else if (ls->tok == ',' or ls->tok == TK_in)
       parse_for_iter(ls, varname);
    else
       err_syntax(ls, LJ_ERR_XFOR);
@@ -718,11 +718,11 @@ static void parse_for(LexState* ls, BCLine line)
    fscope_end(fs);  // Resolve break list.
 }
 
-// Parse condition && 'then' block.
+// Parse condition and 'then' block.
 static BCPos parse_then(LexState* ls)
 {
    BCPos condexit;
-   lj_lex_next(ls);  // Skip 'if' || 'elseif'.
+   lj_lex_next(ls);  // Skip 'if' or 'elseif'.
    condexit = expr_cond(ls);
    lex_check(ls, TK_then);
    parse_block(ls);

@@ -106,9 +106,9 @@ typedef struct FuncScope {
 #define FSCOPE_NOCLOSE      0x10   // Do not close upvalues.
 #define FSCOPE_CONTINUE   0x20   // Continue used in scope.
 
-#define NAME_BREAK      ((GCstr *)(uintptr_t)1)
-#define NAME_CONTINUE   ((GCstr *)(uintptr_t)2)
-#define NAME_BLANK      ((GCstr *)(uintptr_t)3)
+#define NAME_BREAK      ((GCstr*)uintptr_t(1))
+#define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
+#define NAME_BLANK      ((GCstr*)uintptr_t(3))
 
 // Index into variable stack.
 typedef uint16_t VarIndex;

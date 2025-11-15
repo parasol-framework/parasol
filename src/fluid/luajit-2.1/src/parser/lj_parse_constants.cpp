@@ -38,7 +38,7 @@ static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 // Add a string constant.
 static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
-   lj_assertFS(expr_isstrk(e) || e->k == VGLOBAL, "bad usage");
+   lj_assertFS(expr_isstrk(e) or e->k == VGLOBAL, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 
@@ -71,10 +71,10 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 static BCPos jmp_next(FuncState* fs, BCPos pc)
 {
    ptrdiff_t delta = bc_j(fs->bcbase[pc].ins);
-   if ((BCPos)delta == NO_JMP)
+   if (BCPos(delta) == NO_JMP)
       return NO_JMP;
    else
-      return (BCPos)(((ptrdiff_t)pc + 1) + delta);
+      return BCPos((ptrdiff_t(pc) + 1) + delta);
 }
 
 // Check if any of the instructions on the jump list produce no value.
@@ -82,7 +82,7 @@ static int jmp_novalue(FuncState* fs, BCPos list)
 {
    for (; list != NO_JMP; list = jmp_next(fs, list)) {
       BCIns p = fs->bcbase[list >= 1 ? list - 1 : list].ins;
-      if (!(bc_op(p) == BC_ISTC || bc_op(p) == BC_ISFC || bc_a(p) == NO_REG))
+      if (!(bc_op(p) == BC_ISTC or bc_op(p) == BC_ISFC or bc_a(p) == NO_REG))
          return 1;
    }
    return 0;
@@ -93,8 +93,8 @@ static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
 {
    BCInsLine* ilp = &fs->bcbase[pc >= 1 ? pc - 1 : pc];
    BCOp op = bc_op(ilp->ins);
-   if (op == BC_ISTC || op == BC_ISFC) {
-      if (reg != NO_REG && reg != bc_d(ilp->ins)) {
+   if (op == BC_ISTC or op == BC_ISFC) {
+      if (reg != NO_REG and reg != bc_d(ilp->ins)) {
          setbc_a(&ilp->ins, reg);
       }
       else {  // Nothing to store or already in the right register.

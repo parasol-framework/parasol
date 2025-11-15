@@ -39,7 +39,7 @@ static LJ_NOINLINE void bcread_error(LexState* ls, ErrMsg em)
    lua_State* L = ls->L;
    const char* name = ls->chunkarg;
    if (*name == BCDUMP_HEAD1) name = "(binary)";
-   else if (*name == '@' || *name == '=') name++;
+   else if (*name == '@' or *name == '=') name++;
    lj_strfmt_pushf(L, "%s: %s", name, err2msg(em));
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
@@ -48,7 +48,7 @@ static LJ_NOINLINE void bcread_error(LexState* ls, ErrMsg em)
 static LJ_NOINLINE void bcread_fill(LexState* ls, MSize len, int need)
 {
    lj_assertLS(len != 0, "empty refill");
-   if (len > LJ_MAX_BUF || ls->c < 0)
+   if (len > LJ_MAX_BUF or ls->c < 0)
       bcread_error(ls, LJ_ERR_BCBAD);
    do {
       const char* buf;
@@ -69,7 +69,7 @@ static LJ_NOINLINE void bcread_fill(LexState* ls, MSize len, int need)
       }
       ls->sb.w = p + n;
       buf = ls->rfunc(ls->L, ls->rdata, &sz);  //  Get more data from reader.
-      if (buf == NULL || sz == 0) {  // EOF?
+      if (buf == nullptr or sz == 0) {  // EOF?
          if (need) bcread_error(ls, LJ_ERR_BCBAD);
          ls->c = -1;  //  Only bad if we get called again.
          break;
@@ -159,7 +159,7 @@ static void bcread_dbg(LexState* ls, GCproto* pt, MSize sizedbg)
    void* lineinfo = (void*)proto_lineinfo(pt);
    bcread_block(ls, lineinfo, sizedbg);
    // Swap lineinfo if the endianess differs.
-   if (bcread_swap(ls) && pt->numline >= 256) {
+   if (bcread_swap(ls) and pt->numline >= 256) {
       MSize i, n = pt->sizebc - 1;
       if (pt->numline < 65536) {
          uint16_t* p = (uint16_t*)lineinfo;
@@ -177,7 +177,7 @@ static const void* bcread_varinfo(GCproto* pt)
 {
    const uint8_t* p = proto_uvinfo(pt);
    MSize n = pt->sizeuv;
-   if (n) while (*p++ || --n);
+   if (n) while (*p++ or --n);
    return p;
 }
 
@@ -389,9 +389,9 @@ GCproto* lj_bcread_proto(LexState* ls)
       setmref(pt->varinfo, bcread_varinfo(pt));
    }
    else {
-      setmref(pt->lineinfo, NULL);
-      setmref(pt->uvinfo, NULL);
-      setmref(pt->varinfo, NULL);
+      setmref(pt->lineinfo, nullptr);
+      setmref(pt->uvinfo, nullptr);
+      setmref(pt->varinfo, nullptr);
    }
    return pt;
 }
@@ -441,7 +441,7 @@ GCproto* lj_bcread(LexState* ls)
       MSize len;
       const char* startp;
       // Read length.
-      if (ls->p < ls->pe && ls->p[0] == 0) {  // Shortcut EOF.
+      if (ls->p < ls->pe and ls->p[0] == 0) {  // Shortcut EOF.
          ls->p++;
          break;
       }
@@ -456,7 +456,7 @@ GCproto* lj_bcread(LexState* ls)
       setprotoV(L, L->top, pt);
       incr_top(L);
    }
-   if ((ls->pe != ls->p && !ls->endmark) || L->top - 1 != bcread_oldtop(L, ls))
+   if ((ls->pe != ls->p and !ls->endmark) or L->top - 1 != bcread_oldtop(L, ls))
       bcread_error(ls, LJ_ERR_BCBAD);
    // Pop off last prototype.
    L->top--;

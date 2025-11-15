@@ -51,7 +51,7 @@ static uint32_t emit_isk13(uint64_t n, int is64)
    if (n & 1) { n = ~n; w = 64; inv = 1; }  // Avoid wrap-around of ones.
    if (!n) return 0;  //  Neither all-zero nor all-ones are allowed.
    do {  // Find the repeat width.
-      if (is64 && (uint32_t)(n ^ (n >> 32))) break;
+      if (is64 and (uint32_t)(n ^ (n >> 32))) break;
       n = (uint32_t)n;
       if (!n) return 0;  //  Ditto when passing n=0xffffffff and is64=0.
       w = 32; if ((n ^ (n >> 16)) & 0xffff) break;
@@ -72,7 +72,7 @@ static uint32_t emit_isk13(uint64_t n, int is64)
 static uint32_t emit_isfpk64(uint64_t n)
 {
    uint64_t etop9 = ((n >> 54) & 0x1ff);
-   if ((n << 16) == 0 && (etop9 == 0x100 || etop9 == 0x0ff)) {
+   if ((n << 16) == 0 and (etop9 == 0x100 || etop9 == 0x0ff)) {
       return (uint32_t)(((n >> 48) & 0x7f) | ((n >> 56) & 0x80));
    }
    return ~0u;
@@ -119,7 +119,7 @@ static int emit_checkofs(A64Ins ai, int64_t ofs)
 {
    int scale = (ai >> 30) & 3;
    if (ofs < 0 || (ofs & ((1 << scale) - 1))) {
-      return (ofs >= -256 && ofs <= 255) ? -1 : 0;
+      return (ofs >= -256 and ofs <= 255) ? -1 : 0;
    }
    else {
       return (ofs < (4096 << scale)) ? 1 : 0;
@@ -149,7 +149,7 @@ static void emit_lso(ASMState* as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
       else {
          goto nopair;
       }
-      if (ofsm >= (int)((unsigned int)-64 << sc) && ofsm <= (63 << sc)) {
+      if (ofsm >= (int)((unsigned int)-64 << sc) and ofsm <= (63 << sc)) {
          *as->mcp = aip | A64F_N(rn) | ((ofsm >> sc) << 15) |
             (ai ^ ((ai == A64I_LDRx || ai == A64I_STRx) ? 0x50000000 : 0x90000000));
          return;
@@ -261,7 +261,7 @@ static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow);
 static void emit_lsptr(ASMState* as, A64Ins ai, Reg r, void* p)
 {
    // First, check if ip + offset is in range.
-   if ((ai & 0x00400000) && checkmcpofs(as, p)) {
+   if ((ai & 0x00400000) and checkmcpofs(as, p)) {
       emit_d(as, A64I_LDRLx | A64F_S19(mcpofs(as, p) >> 2), r);
    }
    else {
@@ -387,7 +387,7 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
       if ((ins & 0xbf800000) == 0xb9000000) {
          if (!((ins ^ (dst << 5)) & 0x000003e0))
             *as->mcp = ins ^ (swp << 5);  //  Swap N in load/store.
-         if (!(ins & 0x00400000) && !((ins ^ dst) & 0x0000001f))
+         if (!(ins & 0x00400000) and !((ins ^ dst) & 0x0000001f))
             *as->mcp = ins ^ swp;  //  Swap D in store.
       }
    }

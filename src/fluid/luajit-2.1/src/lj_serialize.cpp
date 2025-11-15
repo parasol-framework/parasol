@@ -100,11 +100,11 @@ static LJ_NOINLINE char* serialize_ru124_(char* r, char* w, uint32_t* pv)
 {
    uint32_t v = *pv;
    if (v != 0xff) {
-      if (r >= w) return NULL;
+      if (r >= w) return nullptr;
       v = ((v & 0x1f) << 8) + *(uint8_t*)r + 0xe0; r++;
    }
    else {
-      if (r + 4 > w) return NULL;
+      if (r + 4 > w) return nullptr;
       v = lj_getu32(r); r += 4;
 #if LJ_BE
       v = lj_bswap(v);
@@ -124,7 +124,7 @@ static LJ_AINLINE char* serialize_ru124(char* r, char* w, uint32_t* pv)
       }
       return r;
    }
-   return NULL;
+   return nullptr;
 }
 
 // Prepare string dictionary for use (once).
@@ -134,7 +134,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
       MSize i, len = lj_tab_len(dict);
       if (!len) return;
       lj_tab_resize(L, dict, dict->asize, hsize2hbits(len));
-      for (i = 1; i <= len && i < dict->asize; i++) {
+      for (i = 1; i <= len and i < dict->asize; i++) {
          cTValue* o = arrayslot(dict, i);
          if (tvisstr(o)) {
             if (!lj_tab_getstr(dict, strV(o))) {  // Ignore dups.
@@ -155,7 +155,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
       MSize i, len = lj_tab_len(dict);
       if (!len) return;
       lj_tab_resize(L, dict, dict->asize, hsize2hbits(len));
-      for (i = 1; i <= len && i < dict->asize; i++) {
+      for (i = 1; i <= len and i < dict->asize; i++) {
          cTValue* o = arrayslot(dict, i);
          if (tvistab(o)) {
             if (tvisnil(lj_tab_get(L, dict, o))) {  // Ignore dups.
@@ -207,7 +207,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
             if (!tvisnil(&array[i]))
                break;
          narray = (uint32_t)(i + 1);
-         if (narray && tvisnil(&array[0])) one = 4;
+         if (narray and tvisnil(&array[0])) one = 4;
       }
       if (t->hmask > 0) {  // Count number of used hash slots.
          uint32_t i, hmask = t->hmask;
@@ -216,7 +216,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
             nhash += !tvisnil(&node[i].val);
       }
       // Write metatable index.
-      if (LJ_UNLIKELY(gcref(sbx->dict_mt)) && gcref(t->metatable)) {
+      if (LJ_UNLIKELY(gcref(sbx->dict_mt)) and gcref(t->metatable)) {
          TValue mto;
          Node* n;
          settabV(sbufL(sbx), &mto, tabref(t->metatable));
@@ -252,7 +252,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
                      const GCstr* str = strV(&node->key);
                      Node* n = hashstr(dict_str, str);
                      do {
-                        if (tvisstr(&n->key) && strV(&n->key) == str) {
+                        if (tvisstr(&n->key) and strV(&n->key) == str) {
                            uint32_t idx = n->val.u32.lo;
                            w = serialize_more(w, sbx, 1 + 5);
                            *w++ = SER_TAG_DICT_STR;
@@ -292,7 +292,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       CTState* cts = ctype_cts(sbufL(sbx));
       CType* s = ctype_raw(cts, cdataV(o)->ctypeid);
       uint8_t* sp = (uint8_t*)cdataptr(cdataV(o));
-      if (ctype_isinteger(s->info) && s->size == 8) {
+      if (ctype_isinteger(s->info) and s->size == 8) {
          w = serialize_more(w, sbx, 1 + 8);
          *w++ = (s->info & CTF_UNSIGNED) ? SER_TAG_UINT64 : SER_TAG_INT64;
 #if LJ_BE
@@ -302,7 +302,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
 #endif
          w += 8;
       }
-      else if (ctype_iscomplex(s->info) && s->size == 16) {
+      else if (ctype_iscomplex(s->info) and s->size == 16) {
          w = serialize_more(w, sbx, 1 + 16);
          *w++ = SER_TAG_COMPLEX;
 #if LJ_BE
@@ -326,7 +326,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       if (ud == 0) {
          *w++ = SER_TAG_NULL;
       }
-      else if (LJ_32 || checku32(ud)) {
+      else if (LJ_32 or checku32(ud)) {
 #if LJ_BE && LJ_64
          ud = lj_bswap64(ud);
 #elif LJ_BE
@@ -387,14 +387,14 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
       idx++;
       dict_str = tabref(sbx->dict_str);
-      if (dict_str && idx < dict_str->asize && tvisstr(arrayslot(dict_str, idx)))
+      if (dict_str and idx < dict_str->asize and tvisstr(arrayslot(dict_str, idx)))
          copyTV(sbufL(sbx), o, arrayslot(dict_str, idx));
       else
          lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADDICTX, idx);
    }
-   else if (tp >= SER_TAG_TAB && tp <= SER_TAG_DICT_MT) {
+   else if (tp >= SER_TAG_TAB and tp <= SER_TAG_DICT_MT) {
       uint32_t narray = 0, nhash = 0;
-      GCtab* t, * mt = NULL;
+      GCtab* t, * mt = nullptr;
       if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_DEPTH);
       sbx->depth--;
       if (tp == SER_TAG_DICT_MT) {
@@ -403,12 +403,12 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
          idx++;
          dict_mt = tabref(sbx->dict_mt);
-         if (dict_mt && idx < dict_mt->asize && tvistab(arrayslot(dict_mt, idx)))
+         if (dict_mt and idx < dict_mt->asize and tvistab(arrayslot(dict_mt, idx)))
             mt = tabV(arrayslot(dict_mt, idx));
          else
             lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADDICTX, idx);
          r = serialize_ru124(r, w, &tp); if (LJ_UNLIKELY(!r)) goto eob;
-         if (!(tp >= SER_TAG_TAB && tp < SER_TAG_DICT_MT)) goto badtag;
+         if (!(tp >= SER_TAG_TAB and tp < SER_TAG_DICT_MT)) goto badtag;
       }
       if (tp >= SER_TAG_TAB + 2) {
          r = serialize_ru124(r, w, &narray); if (LJ_UNLIKELY(!r)) goto eob;
@@ -438,7 +438,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       sbx->depth++;
 #if LJ_HASFFI
    }
-   else if (tp >= SER_TAG_INT64 && tp <= SER_TAG_COMPLEX) {
+   else if (tp >= SER_TAG_INT64 and tp <= SER_TAG_COMPLEX) {
       uint32_t sz = tp == SER_TAG_COMPLEX ? 16 : 8;
       GCcdata* cd;
       if (LJ_UNLIKELY(r + sz > w)) goto eob;
@@ -488,7 +488,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
    return r;
 eob:
    lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_EOB);
-   return NULL;
+   return nullptr;
 }
 
 // -- External serialization API ------------------------------------------

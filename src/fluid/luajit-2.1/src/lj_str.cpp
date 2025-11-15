@@ -56,7 +56,7 @@ const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Check whether a string has a pattern matching character.
@@ -65,7 +65,7 @@ int lj_str_haspattern(GCstr* s)
    const char* p = strdata(s), * q = p + s->len;
    while (p < q) {
       int c = *(const uint8_t*)p++;
-      if (lj_char_ispunct(c) && strchr("^$*+?.([%-", c))
+      if (lj_char_ispunct(c) and strchr("^$*+?.([%-", c))
          return 1;  //  Found a pattern matching char.
    }
    return 0;  //  No pattern matching chars found.
@@ -135,7 +135,7 @@ void lj_str_resize(lua_State* L, MSize newmask)
    MSize i;
 
    // No resizing during GC traversal or if already too big.
-   if (g->gc.state == GCSsweepstring || newmask >= LJ_MAX_STRTAB - 1)
+   if (g->gc.state == GCSsweepstring or newmask >= LJ_MAX_STRTAB - 1)
       return;
 
    newtab = lj_mem_newvec(L, newmask + 1, GCRef);
@@ -237,12 +237,12 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
       LuaStrHash hash;
       if (ow) {  // Must sweep while rechaining.
          if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // String alive?
-            lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
+            lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED),
                "sweep of undead string");
             makewhite(g, o);
          }
          else {  // Free dead string.
-            lj_assertG(isdead(g, o) || ow == LJ_GC_SFIXED,
+            lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED,
                "sweep of unlive string");
             lj_str_free(g, s);
             o = next;
@@ -333,9 +333,9 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
          o = (GCobj*)(gcrefu(g->str.tab[hash & g->str.mask]) & ~(uintptr_t)1);
       }
 #endif
-      while (o != NULL) {
+      while (o != nullptr) {
          GCstr* sx = gco2str(o);
-         if (sx->hash == hash && sx->len == len) {
+         if (sx->hash == hash and sx->len == len) {
             if (memcmp(str, strdata(sx), len) == 0) {
                if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
                return sx;  //  Return existing string.
@@ -347,7 +347,7 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
       }
 #if LUAJIT_SECURITY_STRHASH
       // Rehash chain if there are too many collisions.
-      if (LJ_UNLIKELY(coll > LJ_STR_MAXCOLL) && !hashalg) {
+      if (LJ_UNLIKELY(coll > LJ_STR_MAXCOLL) and !hashalg) {
          return lj_str_rehash_chain(L, hash, str, len);
       }
 #endif

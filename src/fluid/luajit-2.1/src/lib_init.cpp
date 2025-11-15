@@ -23,14 +23,14 @@ static const luaL_Reg lj_lib_load[] = {
   { LUA_DBLIBNAME,    luaopen_debug },
   { LUA_BITLIBNAME,   luaopen_bit },
   { LUA_JITLIBNAME,   luaopen_jit },
-  { NULL,      NULL }
+  { nullptr,      nullptr }
 };
 
 static const luaL_Reg lj_lib_preload[] = {
 #if LJ_HASFFI
   { LUA_FFILIBNAME,   luaopen_ffi },
 #endif
-  { NULL,      NULL }
+  { nullptr,      nullptr }
 };
 
 LUALIB_API void luaL_openlibs(lua_State* L)

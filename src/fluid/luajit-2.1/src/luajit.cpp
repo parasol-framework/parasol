@@ -37,15 +37,15 @@
 #include <signal.h>
 #endif
 
-static lua_State* globalL = NULL;
+static lua_State* globalL = nullptr;
 static const char* progname = LUA_PROGNAME;
-static char* empty_argv[2] = { NULL, NULL };
+static char* empty_argv[2] = { nullptr, nullptr };
 
 #if !LJ_TARGET_CONSOLE
 static void lstop(lua_State* L, lua_Debug* ar)
 {
    (void)ar;  //  unused arg.
-   lua_sethook(L, NULL, 0, 0);
+   lua_sethook(L, nullptr, 0, 0);
    // Avoid luaL_error -- a C hook doesn't add an extra frame.
    luaL_where(L, 0);
    lua_pushfstring(L, "%sinterrupted!", lua_tostring(L, -1));
@@ -88,9 +88,9 @@ static void l_message(const char* msg)
 
 static int report(lua_State* L, int status)
 {
-   if (status && !lua_isnil(L, -1)) {
+   if (status and !lua_isnil(L, -1)) {
       const char* msg = lua_tostring(L, -1);
-      if (msg == NULL) msg = "(error object is not a string)";
+      if (msg == nullptr) msg = "(error object is not a string)";
       l_message(msg);
       lua_pop(L, 1);
    }
@@ -167,13 +167,13 @@ static void createargtable(lua_State* L, char** argv, int argc, int argf)
 
 static int dofile(lua_State* L, const char* name)
 {
-   int status = luaL_loadfile(L, name) || docall(L, 0, 1);
+   int status = luaL_loadfile(L, name) or docall(L, 0, 1);
    return report(L, status);
 }
 
 static int dostring(lua_State* L, const char* s, const char* name)
 {
-   int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+   int status = luaL_loadbuffer(L, s, strlen(s), name) or docall(L, 0, 1);
    return report(L, status);
 }
 
@@ -189,7 +189,7 @@ static void write_prompt(lua_State* L, int firstline)
    const char* p;
    lua_getfield(L, LUA_GLOBALSINDEX, firstline ? "_PROMPT" : "_PROMPT2");
    p = lua_tostring(L, -1);
-   if (p == NULL) p = firstline ? LUA_PROMPT : LUA_PROMPT2;
+   if (p == nullptr) p = firstline ? LUA_PROMPT : LUA_PROMPT2;
    fputs(p, stdout);
    fflush(stdout);
    lua_pop(L, 1);  //  remove global
@@ -215,9 +215,9 @@ static int pushline(lua_State* L, int firstline)
    write_prompt(L, firstline);
    if (fgets(buf, LUA_MAXINPUT, stdin)) {
       size_t len = strlen(buf);
-      if (len > 0 && buf[len - 1] == '\n')
+      if (len > 0 and buf[len - 1] == '\n')
          buf[len - 1] = '\0';
-      if (firstline && buf[0] == '=')
+      if (firstline and buf[0] == '=')
          lua_pushfstring(L, "return %s", buf + 1);
       else
          lua_pushstring(L, buf);
@@ -249,11 +249,11 @@ static void dotty(lua_State* L)
 {
    int status;
    const char* oldprogname = progname;
-   progname = NULL;
+   progname = nullptr;
    while ((status = loadline(L)) != -1) {
       if (status == LUA_OK) status = docall(L, 0, 0);
       report(L, status);
-      if (status == LUA_OK && lua_gettop(L) > 0) {  // any result to print?
+      if (status == LUA_OK and lua_gettop(L) > 0) {  // any result to print?
          lua_getglobal(L, "print");
          lua_insert(L, 1);
          if (lua_pcall(L, lua_gettop(L) - 1, 0, 0) != 0)
@@ -271,8 +271,8 @@ static int handle_script(lua_State* L, char** argx)
 {
    int status;
    const char* fname = argx[0];
-   if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)
-      fname = NULL;  //  stdin
+   if (strcmp(fname, "-") == 0 and strcmp(argx[-1], "--") != 0)
+      fname = nullptr;  //  stdin
    status = luaL_loadfile(L, fname);
    if (status == LUA_OK) {
       // Fetch args from arg table. LUA_INIT or -e might have changed them.
@@ -304,7 +304,7 @@ static int loadjitmodule(lua_State* L)
    lua_concat(L, 2);
    if (lua_pcall(L, 1, 1, 0)) {
       const char* msg = lua_tostring(L, -1);
-      if (msg && !strncmp(msg, "module ", 7))
+      if (msg and !strncmp(msg, "module ", 7))
          goto nomodule;
       return report(L, 1);
    }
@@ -322,7 +322,7 @@ static int loadjitmodule(lua_State* L)
 static int runcmdopt(lua_State* L, const char* opt)
 {
    int narg = 0;
-   if (opt && *opt) {
+   if (opt and *opt) {
       for (;;) {  // Split arguments.
          const char* p = strchr(opt, ',');
          narg++;
@@ -386,7 +386,7 @@ static int dobytecode(lua_State* L, char** argv)
       argv[0][1] = '-';
       lua_pushstring(L, argv[0] + 1);
    }
-   for (argv++; *argv != NULL; narg++, argv++)
+   for (argv++; *argv != nullptr; narg++, argv++)
       lua_pushstring(L, *argv);
    report(L, lua_pcall(L, narg, 0, 0));
    return -1;
@@ -404,7 +404,7 @@ static int dobytecode(lua_State* L, char** argv)
 static int collectargs(char** argv, int* flags)
 {
    int i;
-   for (i = 1; argv[i] != NULL; i++) {
+   for (i = 1; argv[i] != nullptr; i++) {
       if (argv[i][0] != '-')  //  Not an option?
          return i;
       switch (argv[i][1]) {  // Check option.
@@ -429,7 +429,7 @@ static int collectargs(char** argv, int* flags)
          *flags |= FLAGS_OPTION;
          if (argv[i][2] == '\0') {
             i++;
-            if (argv[i] == NULL) return -1;
+            if (argv[i] == nullptr) return -1;
          }
          break;
       case 'O': break;  //  LuaJIT extension
@@ -450,13 +450,13 @@ static int runargs(lua_State* L, char** argv, int argn)
 {
    int i;
    for (i = 1; i < argn; i++) {
-      if (argv[i] == NULL) continue;
+      if (argv[i] == nullptr) continue;
       lua_assert(argv[i][0] == '-');
       switch (argv[i][1]) {
       case 'e': {
          const char* chunk = argv[i] + 2;
          if (*chunk == '\0') chunk = argv[++i];
-         lua_assert(chunk != NULL);
+         lua_assert(chunk != nullptr);
          if (dostring(L, chunk, "=(command line)") != 0)
             return 1;
          break;
@@ -464,7 +464,7 @@ static int runargs(lua_State* L, char** argv, int argn)
       case 'l': {
          const char* filename = argv[i] + 2;
          if (*filename == '\0') filename = argv[++i];
-         lua_assert(filename != NULL);
+         lua_assert(filename != nullptr);
          if (dolibrary(L, filename))
             return 1;
          break;
@@ -472,7 +472,7 @@ static int runargs(lua_State* L, char** argv, int argn)
       case 'j': {  // LuaJIT extension.
          const char* cmd = argv[i] + 2;
          if (*cmd == '\0') cmd = argv[++i];
-         lua_assert(cmd != NULL);
+         lua_assert(cmd != nullptr);
          if (dojitcmd(L, cmd))
             return 1;
          break;
@@ -492,11 +492,11 @@ static int runargs(lua_State* L, char** argv, int argn)
 static int handle_luainit(lua_State* L)
 {
 #if LJ_TARGET_CONSOLE
-   const char* init = NULL;
+   const char* init = nullptr;
 #else
    const char* init = getenv(LUA_INIT);
 #endif
-   if (init == NULL)
+   if (init == nullptr)
       return LUA_OK;
    else if (init[0] == '@')
       return dofile(L, init + 1);
@@ -557,14 +557,14 @@ static int pmain(lua_State* L)
       print_jit_status(L);
       dotty(L);
    }
-   else if (s->argc == argn && !(flags & (FLAGS_EXEC | FLAGS_VERSION))) {
+   else if (s->argc == argn and !(flags & (FLAGS_EXEC | FLAGS_VERSION))) {
       if (lua_stdin_is_tty()) {
          print_version();
          print_jit_status(L);
          dotty(L);
       }
       else {
-         dofile(L, NULL);  //  Executes stdin as a file.
+         dofile(L, nullptr);  //  Executes stdin as a file.
       }
    }
    return 0;
@@ -576,15 +576,15 @@ int main(int argc, char** argv)
    lua_State* L;
    if (!argv[0]) argv = empty_argv; else if (argv[0][0]) progname = argv[0];
    L = lua_open();
-   if (L == NULL) {
+   if (L == nullptr) {
       l_message("cannot create state: not enough memory");
       return EXIT_FAILURE;
    }
    smain.argc = argc;
    smain.argv = argv;
-   status = lua_cpcall(L, pmain, NULL);
+   status = lua_cpcall(L, pmain, nullptr);
    report(L, status);
    lua_close(L);
-   return (status || smain.status > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
+   return (status or smain.status > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

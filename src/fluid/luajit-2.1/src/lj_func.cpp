@@ -27,7 +27,7 @@ void LJ_FASTCALL lj_func_freeproto(global_State* g, GCproto* pt)
 static void unlinkuv(global_State* g, GCupval* uv)
 {
    UNUSED(g);
-   lj_assertG(uvprev(uvnext(uv)) == uv && uvnext(uvprev(uv)) == uv,
+   lj_assertG(uvprev(uvnext(uv)) == uv and uvnext(uvprev(uv)) == uv,
       "broken upvalue chain");
    setgcrefr(uvnext(uv)->prev, uv->prev);
    setgcrefr(uvprev(uv)->next, uv->next);
@@ -41,8 +41,8 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
    GCupval* p;
    GCupval* uv;
    // Search the sorted list of open upvalues.
-   while (gcref(*pp) != NULL && uvval((p = gco2uv(gcref(*pp)))) >= slot) {
-      lj_assertG(!p->closed && uvval(p) != &p->tv, "closed upvalue in chain");
+   while (gcref(*pp) != nullptr and uvval((p = gco2uv(gcref(*pp)))) >= slot) {
+      lj_assertG(!p->closed and uvval(p) != &p->tv, "closed upvalue in chain");
       if (uvval(p) == slot) {  // Found open upvalue pointing to same slot?
          if (isdead(g, obj2gco(p)))  //  Resurrect it, if it's dead.
             flipwhite(obj2gco(p));
@@ -63,7 +63,7 @@ static GCupval* func_finduv(lua_State* L, TValue* slot)
    setgcrefr(uv->next, g->uvhead.next);
    setgcref(uvnext(uv)->prev, obj2gco(uv));
    setgcref(g->uvhead.next, obj2gco(uv));
-   lj_assertG(uvprev(uvnext(uv)) == uv && uvnext(uvprev(uv)) == uv,
+   lj_assertG(uvprev(uvnext(uv)) == uv and uvnext(uvprev(uv)) == uv,
       "broken upvalue chain");
    return uv;
 }
@@ -84,11 +84,11 @@ void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
 {
    GCupval* uv;
    global_State* g = G(L);
-   while (gcref(L->openupval) != NULL &&
+   while (gcref(L->openupval) != nullptr &&
       uvval((uv = gco2uv(gcref(L->openupval)))) >= level) {
       GCobj* o = obj2gco(uv);
       lj_assertG(!isblack(o), "bad black upvalue");
-      lj_assertG(!uv->closed && uvval(uv) != &uv->tv, "closed upvalue in chain");
+      lj_assertG(!uv->closed and uvval(uv) != &uv->tv, "closed upvalue in chain");
       setgcrefr(L->openupval, uv->nextgc);  //  No longer in open list.
       if (isdead(g, o)) {
          lj_func_freeuv(g, uv);

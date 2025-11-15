@@ -70,7 +70,7 @@ double lj_vm_powi(double x, int32_t k)
 double lj_vm_pow(double x, double y)
 {
    int32_t k = lj_num2int(y);
-   if ((k >= -65536 && k <= 65536) && y == (double)k)
+   if ((k >= -65536 and k <= 65536) and y == (double)k)
       return lj_vm_powi(x, k);
    else
       return pow(x, y);
@@ -98,7 +98,7 @@ double lj_vm_foldarith(double x, double y, int op)
 
 // -- Helper functions for generated machine code -------------------------
 
-#if (LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)) || LJ_TARGET_MIPS
+#if (LJ_HASJIT && !(LJ_TARGET_ARM or LJ_TARGET_ARM64 or LJ_TARGET_PPC)) or LJ_TARGET_MIPS
 int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 {
    uint32_t y, ua, ub;
@@ -107,7 +107,7 @@ int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
    ua = a < 0 ? (uint32_t)-a : (uint32_t)a;
    ub = b < 0 ? (uint32_t)-b : (uint32_t)b;
    y = ua % ub;
-   if (y != 0 && (a ^ b) < 0) y = y - ub;
+   if (y != 0 and (a ^ b) < 0) y = y - ub;
    if (((int32_t)y ^ b) < 0) y = (uint32_t)-(int32_t)y;
    return (int32_t)y;
 }

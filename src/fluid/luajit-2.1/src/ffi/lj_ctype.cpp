@@ -262,7 +262,7 @@ CType* lj_ctype_getfieldq(CTState* cts, CType* ct, GCstr* name, CTSize* ofs,
          }
       }
    }
-   return NULL;  /* Not found. */
+   return nullptr;  /* Not found. */
 }
 
 // -- C type information --------------------------------------------------
@@ -352,7 +352,7 @@ cTValue* lj_ctype_meta(CTState* cts, CTypeID id, MMS mm)
    if (tv && tvistab(tv) &&
       (tv = lj_tab_getstr(tabV(tv), mmname_str(cts->g, mm))) && !tvisnil(tv))
       return tv;
-   return NULL;
+   return nullptr;
 }
 
 // -- C type representation -----------------------------------------------
@@ -613,7 +613,7 @@ CTState* lj_ctype_init(lua_State* L)
    cts->tab = ct;
    cts->sizetab = CTTYPETAB_MIN;
    cts->top = CTTYPEINFO_NUM;
-   cts->L = NULL;
+   cts->L = nullptr;
    cts->g = G(L);
    for (id = 0; id < CTTYPEINFO_NUM; id++, ct++) {
       CTInfo info = lj_ctype_typeinfo[id];

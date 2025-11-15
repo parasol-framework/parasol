@@ -1,8 +1,8 @@
 /*
-** Lua parser - Register allocation && bytecode emission.
+** Lua parser - Register allocation and bytecode emission.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 **
-** Major portions taken verbatim || adapted from the Lua interpreter.
+** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
@@ -15,7 +15,7 @@ static void bcreg_bump(FuncState* fs, BCReg n)
    if (sz > fs->framesize) {
       if (sz >= LJ_MAX_SLOTS)
          err_syntax(fs->ls, LJ_ERR_XSLOTS);
-      fs->framesize = (uint8_t)sz;
+      fs->framesize = uint8_t(sz);
    }
 }
 
@@ -55,7 +55,7 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
       ptrdiff_t base = fs->bcbase - ls->bcstack;
       checklimit(fs, ls->sizebcstack, LJ_MAX_BCINS, "bytecode instructions");
       lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS, BCInsLine);
-      fs->bclim = (BCPos)(ls->sizebcstack - base);
+      fs->bclim = BCPos(ls->sizebcstack - base);
       fs->bcbase = ls->bcstack + base;
    }
    fs->bcbase[pc].ins = ins;
@@ -92,7 +92,7 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
    }
    else if (e->k == VINDEXED) {
       BCReg rc = e->u.s.aux;
-      if ((int32_t)rc < 0) {
+      if (int32_t(rc) < 0) {
          ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
       }
       else if (rc > BCMAX_C) {
@@ -143,7 +143,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
          return;
       case BC_KNIL:
          pto = bc_d(*ip);
-         if (pfrom <= from && from <= pto + 1) {  // Can we connect both ranges?
+         if (pfrom <= from and from <= pto + 1) {  // Can we connect both ranges?
             if (from + n - 1 > pto)
                setbc_d(ip, from + n - 1);  // Patch previous instruction range.
             return;
@@ -153,7 +153,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
          break;
       }
    }
-   // Emit new instruction || replace old instruction.
+   // Emit new instruction or replace old instruction.
    bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, VKNIL) :
       BCINS_AD(BC_KNIL, from, from + n - 1));
 }
@@ -169,14 +169,14 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
    else if (e->k == VKNUM) {
 #if LJ_DUALNUM
       cTValue* tv = expr_numtv(e);
-      if (tvisint(tv) && checki16(intV(tv)))
-         ins = BCINS_AD(BC_KSHORT, reg, (BCReg)(uint16_t)intV(tv));
+      if (tvisint(tv) and checki16(intV(tv)))
+         ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(intV(tv))));
       else
 #else
       lua_Number n = expr_numberV(e);
       int32_t k = lj_num2int(n);
-      if (checki16(k) && n == (lua_Number)k)
-         ins = BCINS_AD(BC_KSHORT, reg, (BCReg)(uint16_t)k);
+      if (checki16(k) and n == lua_Number(k))
+         ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(k)));
       else
 #endif
          ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
@@ -205,7 +205,7 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k == VVOID || e->k == VJMP, "bad expr type %d", e->k);
+      lj_assertFS(e->k == VVOID or e->k == VJMP, "bad expr type %d", e->k);
       return;
    }
    bcemit_INS(fs, ins);
@@ -222,7 +222,7 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
       jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
-      if (jmp_novalue(fs, e->t) || jmp_novalue(fs, e->f)) {
+      if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
          BCPos jval = (e->k == VJMP) ? NO_JMP : bcemit_jmp(fs);
          jfalse = bcemit_AD(fs, BC_KPRI, reg, VKFALSE);
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
@@ -303,7 +303,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
       lj_assertFS(var->k == VINDEXED, "bad expr type %d", var->k);
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
-      if ((int32_t)rc < 0) {
+      if (int32_t(rc) < 0) {
          ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
       }
       else if (rc > BCMAX_C) {
@@ -313,7 +313,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().
-         if (e->k == VNONRELOC && ra >= fs->nactvar && rc >= ra)
+         if (e->k == VNONRELOC and ra >= fs->nactvar and rc >= ra)
             bcreg_free(fs, rc);
 #endif
          ins = BCINS_ABC(BC_TSETV, ra, var->u.s.info, rc);
@@ -355,7 +355,7 @@ static BCPos bcemit_jmp(FuncState* fs)
    BCPos j = fs->pc - 1;
    BCIns* ip = &fs->bcbase[j].ins;
    fs->jpc = NO_JMP;
-   if ((int32_t)j >= (int32_t)fs->lasttarget && bc_op(*ip) == BC_UCLO) {
+   if (int32_t(j) >= int32_t(fs->lasttarget) and bc_op(*ip) == BC_UCLO) {
       setbc_j(ip, NO_JMP);
       fs->lasttarget = j + 1;
    }
@@ -399,11 +399,11 @@ static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE)
+   if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE)
       pc = NO_JMP;  // Never jump.
    else if (e->k == VJMP)
       invertcond(fs, e), pc = e->u.s.info;
-   else if (e->k == VKFALSE || e->k == VKNIL)
+   else if (e->k == VKFALSE or e->k == VKNIL)
       expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else
       pc = bcemit_branch(fs, e, 0);
@@ -417,11 +417,11 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == VKNIL || e->k == VKFALSE)
+   if (e->k == VKNIL or e->k == VKFALSE)
       pc = NO_JMP;  // Never jump.
    else if (e->k == VJMP)
       pc = e->u.s.info;
-   else if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE)
+   else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE)
       expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else
       pc = bcemit_branch(fs, e, 1);

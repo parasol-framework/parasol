@@ -28,7 +28,7 @@ int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2)
       if (!tvisnum(o1))
          return gcrefeq(o1->gcr, o2->gcr);
    }
-   else if (!tvisnumber(o1) || !tvisnumber(o2)) {
+   else if (!tvisnumber(o1) or !tvisnumber(o2)) {
       return 0;
    }
    return numberVnum(o1) == numberVnum(o2);
@@ -42,11 +42,11 @@ const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o)
       return uddata(udataV(o));
    else if (tvislightud(o))
       return lightudV(g, o);
-   else if (LJ_HASFFI && tviscdata(o))
+   else if (LJ_HASFFI and tviscdata(o))
       return cdataptr(cdataV(o));
    else if (tvisgcv(o))
       return gcV(o);
    else
-      return NULL;
+      return nullptr;
 }
 

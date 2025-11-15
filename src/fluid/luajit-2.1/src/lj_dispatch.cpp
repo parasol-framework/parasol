@@ -209,7 +209,7 @@ void lj_dispatch_update(global_State* g)
 
 #if LJ_HASJIT
       // Reset hotcounts for JIT off to on transition.
-      if ((mode & DISPMODE_JIT) && !(oldmode & DISPMODE_JIT))
+      if ((mode & DISPMODE_JIT) and !(oldmode & DISPMODE_JIT))
          lj_dispatch_init_hotcount(g);
 #endif
    }
@@ -276,7 +276,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
       cTValue* tv = idx == 0 ? frame_prev(L->base - 1) - LJ_FR2 :
          idx > 0 ? L->base + (idx - 1) : L->top + idx;
       GCproto* pt;
-      if ((idx == 0 || tvisfunc(tv)) && isluafunc(&gcval(tv)->fn))
+      if ((idx == 0 or tvisfunc(tv)) and isluafunc(&gcval(tv)->fn))
          pt = funcproto(&gcval(tv)->fn);  //  Cannot use funcV() for frame slot.
       else if (tvisproto(tv))
          pt = protoV(tv);
@@ -339,7 +339,7 @@ LUA_API int lua_sethook(lua_State* L, lua_Hook func, int mask, int count)
 {
    global_State* g = G(L);
    mask &= HOOK_EVENTMASK;
-   if (func == NULL || mask == 0) { mask = 0; func = NULL; }  // Consistency.
+   if (func == nullptr or mask == 0) { mask = 0; func = nullptr; }  // Consistency.
    g->hookf = func;
    g->hookcount = g->hookcstart = (int32_t)count;
    g->hookmask = (uint8_t)((g->hookmask & ~HOOK_EVENTMASK) | mask);
@@ -368,12 +368,12 @@ static void callhook(lua_State* L, int event, BCLine line)
 {
    global_State* g = G(L);
    lua_Hook hookf = g->hookf;
-   if (hookf && !hook_active(g)) {
+   if (hookf and !hook_active(g)) {
       lua_Debug ar;
       lj_trace_abort(g);  //  Abort recording on any hook call.
       ar.event = event;
       ar.currentline = line;
-      // Top frame, nextframe = NULL.
+      // Top frame, nextframe = nullptr.
       ar.i_ci = (int)((L->base - 1) - tvref(L->stack));
       lj_state_checkstack(L, 1 + LUA_MINSTACK);
 #if LJ_HASPROFILE && !LJ_PROFILE_SIGPROF
@@ -435,7 +435,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       }
    }
 #endif
-   if ((g->hookmask & LUA_MASKCOUNT) && g->hookcount == 0) {
+   if ((g->hookmask & LUA_MASKCOUNT) and g->hookcount == 0) {
       g->hookcount = g->hookcstart;
       callhook(L, LUA_HOOKCOUNT, -1);
       L->top = L->base + slots;  //  Fix top again.
@@ -444,12 +444,12 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       BCPos npc = proto_bcpos(pt, pc) - 1;
       BCPos opc = proto_bcpos(pt, oldpc) - 1;
       BCLine line = lj_debug_line(pt, npc);
-      if (pc <= oldpc || opc >= pt->sizebc || line != lj_debug_line(pt, opc)) {
+      if (pc <= oldpc or opc >= pt->sizebc or line != lj_debug_line(pt, opc)) {
          callhook(L, LUA_HOOKLINE, line);
          L->top = L->base + slots;  //  Fix top again.
       }
    }
-   if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1])))
+   if ((g->hookmask & LUA_MASKRET) and bc_isret(bc_op(pc[-1])))
       callhook(L, LUA_HOOKRET, -1);
    ERRNO_RESTORE
 }
@@ -513,7 +513,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
          setnilV(L->top++);
       callhook(L, LUA_HOOKCALL, -1);
       // Preserve modifications of missing parameters by lua_setlocal().
-      while (missing-- > 0 && tvisnil(L->top - 1))
+      while (missing-- > 0 and tvisnil(L->top - 1))
          L->top--;
    }
 #if LJ_HASJIT
@@ -522,8 +522,8 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
    op = bc_op(pc[-1]);  //  Get FUNC* op.
 #if LJ_HASJIT
    // Use the non-hotcounting variants if JIT is off or while recording.
-   if ((!(J->flags & JIT_F_ON) || J->state != LJ_TRACE_IDLE) &&
-      (op == BC_FUNCF || op == BC_FUNCV))
+   if ((!(J->flags & JIT_F_ON) or J->state != LJ_TRACE_IDLE) &&
+      (op == BC_FUNCF or op == BC_FUNCV))
       op = (BCOp)((int)op + (int)BC_IFUNCF - (int)BC_FUNCF);
 #endif
    ERRNO_RESTORE

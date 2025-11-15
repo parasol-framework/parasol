@@ -34,20 +34,20 @@ static const char* const tokennames[] = {
 TKDEF(TKSTR1, TKSTR2)
 #undef TKSTR1
 #undef TKSTR2
-  NULL
+  nullptr
 };
 
 // -- Buffer handling -----------------------------------------------------
 
 #define LEX_EOF         (-1)
-#define lex_iseol(ls)      (ls->c == '\n' || ls->c == '\r')
+#define lex_iseol(ls)      (ls->c == '\n' or ls->c == '\r')
 
 // Get more input from reader.
 static LJ_NOINLINE LexChar lex_more(LexState* ls)
 {
    size_t sz;
    const char* p = ls->rfunc(ls->L, ls->rdata, &sz);
-   if (p == NULL || sz == 0) return LEX_EOF;
+   if (p == nullptr or sz == 0) return LEX_EOF;
    if (sz >= LJ_MAX_BUF) {
       if (sz != ~(size_t)0) lj_err_mem(ls->L);
       sz = ~(uintptr_t)0 - (uintptr_t)p;
@@ -84,8 +84,8 @@ static void lex_newline(LexState* ls)
    LexChar old = ls->c;
    lj_assertLS(lex_iseol(ls), "bad usage");
    lex_next(ls);  //  Skip "\n" or "\r".
-   if (lex_iseol(ls) && ls->c != old) lex_next(ls);  //  Skip "\n\r" or "\r\n".
-   if (++ls->linenumber >= LJ_MAX_LINE)
+   if (lex_iseol(ls) and ls->c != old) lex_next(ls);  //  Skip "\n\r" or "\r\n".
+   if (uint32_t(++ls->linenumber) >= LJ_MAX_LINE)
       lj_lex_error(ls, ls->tok, LJ_ERR_XLINES);
 }
 
@@ -97,8 +97,8 @@ static void lex_number(LexState* ls, TValue* tv)
    StrScanFmt fmt;
    LexChar c, xp = 'e';
    lj_assertLS(lj_char_isdigit(ls->c), "bad usage");
-   if ((c = ls->c) == '0' && (lex_savenext(ls) | 0x20) == 'x') xp = 'p';
-   while (lj_char_isident(ls->c) || ls->c == '.' || ((ls->c == '-' || ls->c == '+') && (c | 0x20) == xp)) {
+   if ((c = ls->c) == '0' and (lex_savenext(ls) | 0x20) == 'x') xp = 'p';
+   while (lj_char_isident(ls->c) or ls->c == '.' or ((ls->c == '-' or ls->c == '+') and (c | 0x20) == xp)) {
       c = ls->c;
       lex_savenext(ls);
    }
@@ -106,7 +106,7 @@ static void lex_number(LexState* ls, TValue* tv)
    fmt = lj_strscan_scan((const uint8_t*)ls->sb.b, sbuflen(&ls->sb) - 1, tv,
       (LJ_DUALNUM ? STRSCAN_OPT_TOINT : STRSCAN_OPT_TONUM) |
       (LJ_HASFFI ? (STRSCAN_OPT_LL | STRSCAN_OPT_IMAG) : 0));
-   if (LJ_DUALNUM && fmt == STRSCAN_INT) {
+   if (LJ_DUALNUM and fmt == STRSCAN_INT) {
       setitype(tv, LJ_TISNUM);
    }
    else if (fmt == STRSCAN_NUM) {
@@ -116,7 +116,7 @@ static void lex_number(LexState* ls, TValue* tv)
    else if (fmt != STRSCAN_ERROR) {
       lua_State* L = ls->L;
       GCcdata* cd;
-      lj_assertLS(fmt == STRSCAN_I64 || fmt == STRSCAN_U64 || fmt == STRSCAN_IMAG,
+      lj_assertLS(fmt == STRSCAN_I64 or fmt == STRSCAN_U64 or fmt == STRSCAN_IMAG,
          "unexpected number format %d", fmt);
       ctype_loadffi(L);
       if (fmt == STRSCAN_IMAG) {
@@ -143,13 +143,13 @@ static int lex_skipeq(LexState* ls)
 {
    int count = 0;
    LexChar s = ls->c;
-   lj_assertLS(s == '[' || s == ']', "bad usage");
-   while (lex_savenext(ls) == '=' && count < 0x20000000)
+   lj_assertLS(s == '[' or s == ']', "bad usage");
+   while (lex_savenext(ls) == '=' and count < 0x20000000)
       count++;
    return (ls->c == s) ? count : (-count) - 1;
 }
 
-// Parse a long string or long comment (tv set to NULL).
+// Parse a long string or long comment (tv set to nullptr).
 static void lex_longstring(LexState* ls, TValue* tv, int sep)
 {
    lex_savenext(ls);  //  Skip second '['.
@@ -243,7 +243,7 @@ static void lex_string(LexState* ls, TValue* tv)
                   lex_save(ls, 0x80 | ((c >> 12) & 0x3f));
                }
                else {
-                  if (c >= 0xd800 && c < 0xe000) goto err_xesc;  //  No surrogates.
+                  if (c >= 0xd800 and c < 0xe000) goto err_xesc;  //  No surrogates.
                   lex_save(ls, 0xe0 | (c >> 12));
                }
                lex_save(ls, 0x80 | ((c >> 6) & 0x3f));
@@ -336,13 +336,13 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
             int sep = lex_skipeq(ls);
             lj_buf_reset(&ls->sb);  //  `lex_skipeq' may dirty the buffer
             if (sep >= 0) {
-               lex_longstring(ls, NULL, sep);
+               lex_longstring(ls, nullptr, sep);
                lj_buf_reset(&ls->sb);
                continue;
             }
          }
          // Short comment "--.*\n".
-         while (!lex_iseol(ls) && ls->c != LEX_EOF)
+         while (!lex_iseol(ls) and ls->c != LEX_EOF)
             lex_next(ls);
          continue;
       case '[': {
@@ -372,7 +372,7 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
          lex_next(ls);
          if (ls->c == '=') { lex_next(ls); return TK_cdiv; }
          if (ls->c == '/') {
-            while (ls->c != '\n' && ls->c != LEX_EOF) lex_next(ls);
+            while (ls->c != '\n' and ls->c != LEX_EOF) lex_next(ls);
             continue;
          }
          else return '/';
@@ -449,12 +449,12 @@ int lj_lex_setup(lua_State* L, LexState* ls)
 {
    int header = 0;
    ls->L = L;
-   ls->fs = NULL;
-   ls->pe = ls->p = NULL;
-   ls->vstack = NULL;
+   ls->fs = nullptr;
+   ls->pe = ls->p = nullptr;
+   ls->vstack = nullptr;
    ls->sizevstack = 0;
    ls->vtop = 0;
-   ls->bcstack = NULL;
+   ls->bcstack = nullptr;
    ls->sizebcstack = 0;
    ls->tok = 0;
    ls->lookahead = TK_eof;  //  No look-ahead token.
@@ -465,7 +465,7 @@ int lj_lex_setup(lua_State* L, LexState* ls)
    ls->pending_if_empty_colon = 0;
    ls->endmark = 0;
    lex_next(ls);  //  Read-ahead first char.
-   if (ls->c == 0xef && ls->p + 2 <= ls->pe && (uint8_t)ls->p[0] == 0xbb &&
+   if (ls->c == 0xef and ls->p + 2 <= ls->pe and (uint8_t)ls->p[0] == 0xbb &&
       (uint8_t)ls->p[1] == 0xbf) {  // Skip UTF-8 BOM (if buffered).
       ls->p += 2;
       lex_next(ls);
@@ -543,9 +543,9 @@ void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...)
    const char* tokstr;
    va_list argp;
    if (tok == 0) {
-      tokstr = NULL;
+      tokstr = nullptr;
    }
-   else if (tok == TK_name || tok == TK_string || tok == TK_number) {
+   else if (tok == TK_name or tok == TK_string or tok == TK_number) {
       lex_save(ls, '\0');
       tokstr = ls->sb.b;
    }

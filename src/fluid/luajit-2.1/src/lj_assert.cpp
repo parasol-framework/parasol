@@ -6,7 +6,7 @@
 #define lj_assert_c
 #define LUA_CORE
 
-#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+#if defined(LUA_USE_ASSERT) or defined(LUA_USE_APICHECK)
 
 #include <stdio.h>
 
@@ -21,7 +21,7 @@ void lj_assert_fail(global_State* g, const char* file, int line,
    vfprintf(stderr, fmt, argp);
    fputc('\n', stderr);
    va_end(argp);
-   UNUSED(g);  //  May be NULL. TODO: optionally dump state.
+   UNUSED(g);  //  May be nullptr. TODO: optionally dump state.
    abort();
 }
 

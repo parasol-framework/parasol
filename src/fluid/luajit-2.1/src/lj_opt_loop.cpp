@@ -111,12 +111,12 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
    for (i = 0, j = 0; i < nphi; i++) {
       IRRef lref = phi[i];
       IRRef rref = subst[lref];
-      if (lref == rref || rref == REF_DROP) {  // Invariants are redundant.
+      if (lref == rref or rref == REF_DROP) {  // Invariants are redundant.
          irt_clearphi(IR(lref)->t);
       }
       else {
          phi[j++] = (IRRef1)lref;
-         if (!(IR(rref)->op1 == lref || IR(rref)->op2 == lref)) {
+         if (!(IR(rref)->op1 == lref or IR(rref)->op2 == lref)) {
             // Quick check for simple recurrences failed, need pass2.
             irt_setmark(IR(lref)->t);
             passx = 1;
@@ -133,7 +133,7 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
          if (!irref_isk(ir->op1)) {
             irt_clearmark(IR(ir->op1)->t);
             if (ir->op1 < invar &&
-               ir->o >= IR_CALLN && ir->o <= IR_CARG) {  // ORDER IR
+               ir->o >= IR_CALLN and ir->o <= IR_CARG) {  // ORDER IR
                ir = IR(ir->op1);
                while (ir->o == IR_CARG) {
                   if (!irref_isk(ir->op2)) irt_clearmark(IR(ir->op2)->t);
@@ -158,10 +158,10 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
    nslots = J->baseslot + J->maxslot;
    for (i = 1; i < nslots; i++) {
       IRRef ref = tref_ref(J->slot[i]);
-      while (!irref_isk(ref) && ref != subst[ref]) {
+      while (!irref_isk(ref) and ref != subst[ref]) {
          IRIns* ir = IR(ref);
          irt_clearmark(ir->t);  //  Unmark potential uses, too.
-         if (irt_isphi(ir->t) || irt_ispri(ir->t))
+         if (irt_isphi(ir->t) or irt_ispri(ir->t))
             break;
          irt_setphi(ir->t);
          if (nphi >= LJ_MAX_PHI)
@@ -326,7 +326,7 @@ static void loop_unroll(LoopState* lps)
       op2 = ir->op2;
       if (!irref_isk(op2)) op2 = subst[op2];
       if (irm_kind(lj_ir_mode[ir->o]) == IRM_N &&
-         op1 == ir->op1 && op2 == ir->op2) {  // Regular invariant ins?
+         op1 == ir->op1 and op2 == ir->op2) {  // Regular invariant ins?
          subst[ins] = (IRRef1)ins;  //  Shortcut.
       }
       else {
@@ -338,7 +338,7 @@ static void loop_unroll(LoopState* lps)
             IRIns* irr = IR(ref);
             if (ref < invar) {  // Loop-carried dependency?
                // Potential PHI?
-               if (!irref_isk(ref) && !irt_isphi(irr->t) && !irt_ispri(irr->t)) {
+               if (!irref_isk(ref) and !irt_isphi(irr->t) and !irt_ispri(irr->t)) {
                   irt_setphi(irr->t);
                   if (nphi >= LJ_MAX_PHI)
                      lj_trace_err(J, LJ_TRERR_PHIOV);
@@ -346,11 +346,11 @@ static void loop_unroll(LoopState* lps)
                }
                // Check all loop-carried dependencies for type instability.
                if (!irt_sametype(t, irr->t)) {
-                  if (irt_isinteger(t) && irt_isinteger(irr->t))
+                  if (irt_isinteger(t) and irt_isinteger(irr->t))
                      continue;
-                  else if (irt_isnum(t) && irt_isinteger(irr->t))  //  Fix int->num.
+                  else if (irt_isnum(t) and irt_isinteger(irr->t))  //  Fix int->num.
                      ref = tref_ref(emitir(IRTN(IR_CONV), ref, IRCONV_NUM_INT));
-                  else if (irt_isnum(irr->t) && irt_isinteger(t))  //  Fix num->int.
+                  else if (irt_isnum(irr->t) and irt_isinteger(t))  //  Fix num->int.
                      ref = tref_ref(emitir(IRTGI(IR_CONV), ref,
                         IRCONV_INT_NUM | IRCONV_CHECK));
                   else
@@ -360,15 +360,15 @@ static void loop_unroll(LoopState* lps)
                   goto phiconv;
                }
             }
-            else if (ref != REF_DROP && ref > invar &&
-               ((irr->o == IR_CONV && irr->op1 < invar) ||
-                  (irr->o == IR_ALEN && irr->op2 < invar &&
+            else if (ref != REF_DROP and ref > invar &&
+               ((irr->o == IR_CONV and irr->op1 < invar) ||
+                  (irr->o == IR_ALEN and irr->op2 < invar &&
                      irr->op2 != REF_NIL))) {
                // May need an extra PHI for a CONV or ALEN hint.
                ref = irr->o == IR_CONV ? irr->op1 : irr->op2;
                irr = IR(ref);
             phiconv:
-               if (ref < invar && !irref_isk(ref) && !irt_isphi(irr->t)) {
+               if (ref < invar and !irref_isk(ref) and !irt_isphi(irr->t)) {
                   irt_setphi(irr->t);
                   if (nphi >= LJ_MAX_PHI)
                      lj_trace_err(J, LJ_TRERR_PHIOV);
@@ -414,7 +414,7 @@ static TValue* cploop_opt(lua_State* L, lua_CFunction dummy, void* ud)
 {
    UNUSED(L); UNUSED(dummy);
    loop_unroll((LoopState*)ud);
-   return NULL;
+   return nullptr;
 }
 
 // Loop optimization.
@@ -426,13 +426,13 @@ int lj_opt_loop(jit_State* J)
    LoopState lps;
    int errcode;
    lps.J = J;
-   lps.subst = NULL;
+   lps.subst = nullptr;
    lps.sizesubst = 0;
-   errcode = lj_vm_cpcall(J->L, NULL, &lps, cploop_opt);
+   errcode = lj_vm_cpcall(J->L, nullptr, &lps, cploop_opt);
    lj_mem_freevec(J2G(J), lps.subst, lps.sizesubst, IRRef1);
    if (LJ_UNLIKELY(errcode)) {
       lua_State* L = J->L;
-      if (errcode == LUA_ERRRUN && tvisnumber(L->top - 1)) {  // Trace error?
+      if (errcode == LUA_ERRRUN and tvisnumber(L->top - 1)) {  // Trace error?
          int32_t e = numberVint(L->top - 1);
          switch ((TraceError)e) {
          case LJ_TRERR_TYPEINS:  //  Type instability.

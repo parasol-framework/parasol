@@ -44,7 +44,7 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
       }
    }
    *size = level;
-   return NULL;  //  Level not found.
+   return nullptr;  //  Level not found.
 }
 
 // Invalid bytecode position.
@@ -56,14 +56,14 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    const BCIns* ins;
    GCproto* pt;
    BCPos pos;
-   lj_assertL(fn->c.gct == ~LJ_TFUNC || fn->c.gct == ~LJ_TTHREAD,
+   lj_assertL(fn->c.gct == ~LJ_TFUNC or fn->c.gct == ~LJ_TTHREAD,
       "function or frame expected");
    if (!isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
-   else if (nextframe == NULL) {  //  Lua function on top.
+   else if (nextframe == nullptr) {  //  Lua function on top.
       void* cf = cframe_raw(L->cframe);
-      if (cf == NULL || (char*)cframe_pc(cf) == (char*)cframe_L(cf))
+      if (cf == nullptr or (char*)cframe_pc(cf) == (char*)cframe_L(cf))
          return NO_BCPOS;
       ins = cframe_pc(cf);  //  Only happens during error/hook handling.
    }
@@ -79,13 +79,13 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
          void* cf = cframe_raw(L->cframe);
          TValue* f = L->base - 1;
          for (;;) {
-            if (cf == NULL)
+            if (cf == nullptr)
                return NO_BCPOS;
             while (cframe_nres(cf) < 0) {
                if (f >= restorestack(L, -cframe_nres(cf)))
                   break;
                cf = cframe_raw(cframe_prev(cf));
-               if (cf == NULL)
+               if (cf == nullptr)
                   return NO_BCPOS;
             }
             if (f < nextframe)
@@ -94,7 +94,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
                f = frame_prevl(f);
             }
             else {
-               if (frame_isc(f) || (frame_iscont(f) && frame_iscont_fficb(f)))
+               if (frame_isc(f) or (frame_iscont(f) and frame_iscont_fficb(f)))
                   cf = cframe_raw(cframe_prev(cf));
                f = frame_prevd(f);
             }
@@ -121,7 +121,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
 BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
 {
    const void* lineinfo = proto_lineinfo(pt);
-   if (pc <= pt->sizebc && lineinfo) {
+   if (pc <= pt->sizebc and lineinfo) {
       BCLine first = pt->firstline;
       if (pc == pt->sizebc) return first + pt->numline;
       if (pc-- == 0) return first;
@@ -169,18 +169,18 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
          lastpc = startpc = lastpc + lj_buf_ruleb128(&p);
          if (startpc > pc) break;
          endpc = startpc + lj_buf_ruleb128(&p);
-         if (pc < endpc && slot-- == 0) {
+         if (pc < endpc and slot-- == 0) {
             if (vn < VARNAME__MAX) {
 #define VARNAMESTR(name, str)   str "\0"
                name = VARNAMEDEF(VARNAMESTR);
 #undef VARNAMESTR
-               if (--vn) while (*name++ || --vn);
+               if (--vn) while (*name++ or --vn);
             }
             return name;
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Get name of local variable from 1-based slot number and function/frame.
@@ -190,7 +190,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    uint32_t offset = (uint32_t)ar->i_ci & 0xffff;
    uint32_t size = (uint32_t)ar->i_ci >> 16;
    TValue* frame = tvref(L->stack) + offset;
-   TValue* nextframe = size ? frame + size : NULL;
+   TValue* nextframe = size ? frame + size : nullptr;
    GCfunc* fn = frame_func(frame);
    BCPos pc = debug_framepc(L, fn, nextframe);
    if (!nextframe) nextframe = L->top + LJ_FR2;
@@ -209,12 +209,12 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
             }
          }
       }
-      return NULL;
+      return nullptr;
    }
    if (pc != NO_BCPOS &&
-      (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != NULL)
+      (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != nullptr)
       ;
-   else if (slot1 > 0 && frame + slot1 + LJ_FR2 < nextframe)
+   else if (slot1 > 0 and frame + slot1 + LJ_FR2 < nextframe)
       *name = "(*temporary)";
    return frame + slot1;
 }
@@ -225,7 +225,7 @@ const char* lj_debug_uvname(GCproto* pt, uint32_t idx)
    const uint8_t* p = proto_uvinfo(pt);
    lj_assertX(idx < pt->sizeuv, "bad upvalue index");
    if (!p) return "";
-   if (idx) while (*p++ || --idx);
+   if (idx) while (*p++ or --idx);
    return (const char*)p;
 }
 
@@ -251,7 +251,7 @@ const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op)
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Deduce name of an object from slot number and PC.
@@ -261,16 +261,16 @@ const char* lj_debug_slotname(GCproto* pt, const BCIns* ip, BCReg slot,
    const char* lname;
 restart:
    lname = debug_varname(pt, proto_bcpos(pt, ip), slot);
-   if (lname != NULL) { *name = lname; return "local"; }
+   if (lname != nullptr) { *name = lname; return "local"; }
    while (--ip > proto_bc(pt)) {
       BCIns ins = *ip;
       BCOp op = bc_op(ins);
       BCReg ra = bc_a(ins);
       if (bcmode_a(op) == BCMbase) {
-         if (slot >= ra && (op != BC_KNIL || slot <= bc_d(ins)))
-            return NULL;
+         if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins)))
+            return nullptr;
       }
-      else if (bcmode_a(op) == BCMdst && ra == slot) {
+      else if (bcmode_a(op) == BCMdst and ra == slot) {
          switch (bc_op(ins)) {
          case BC_MOV:
             if (ra == slot) { slot = bc_d(ins); goto restart; }
@@ -282,7 +282,7 @@ restart:
             *name = strdata(gco2str(proto_kgc(pt, ~(ptrdiff_t)bc_c(ins))));
             if (ip > proto_bc(pt)) {
                BCIns insp = ip[-1];
-               if (bc_op(insp) == BC_MOV && bc_a(insp) == ra + 1 + LJ_FR2 &&
+               if (bc_op(insp) == BC_MOV and bc_a(insp) == ra + 1 + LJ_FR2 &&
                   bc_d(insp) == bc_b(ins))
                   return "method";
             }
@@ -291,11 +291,11 @@ restart:
             *name = lj_debug_uvname(pt, bc_d(ins));
             return "upvalue";
          default:
-            return NULL;
+            return nullptr;
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Deduce function name from caller of a frame.
@@ -305,7 +305,7 @@ const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
    GCfunc* fn;
    BCPos pc;
    if (frame <= tvref(L->stack) + LJ_FR2)
-      return NULL;
+      return nullptr;
    if (frame_isvarg(frame))
       frame = frame_prevd(frame);
    pframe = frame_prev(frame);
@@ -325,7 +325,7 @@ const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
          return "metamethod";
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // -- Source code locations -----------------------------------------------
@@ -397,7 +397,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
    else if (*s == '@') {
       s++; len--;
       for (i = len; i > 0; i--)
-         if (s[i] == '/' || s[i] == '\\') {
+         if (s[i] == '/' or s[i] == '\\') {
             s += i + 1;
             break;
          }
@@ -420,7 +420,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
 
 LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = NULL;
+   const char* name = nullptr;
    if (ar) {
       TValue* o = debug_localname(L, ar, &name, (BCReg)n);
       if (name) {
@@ -428,7 +428,7 @@ LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
          incr_top(L);
       }
    }
-   else if (tvisfunc(L->top - 1) && isluafunc(funcV(L->top - 1))) {
+   else if (tvisfunc(L->top - 1) and isluafunc(funcV(L->top - 1))) {
       name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCReg)n - 1);
    }
    return name;
@@ -436,7 +436,7 @@ LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 
 LUA_API const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = NULL;
+   const char* name = nullptr;
    TValue* o = debug_localname(L, ar, &name, (BCReg)n);
    if (name)
       copyTV(L, o, L->top - 1);
@@ -447,8 +447,8 @@ LUA_API const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
 {
    int opt_f = 0, opt_L = 0;
-   TValue* frame = NULL;
-   TValue* nextframe = NULL;
+   TValue* frame = nullptr;
+   TValue* nextframe = nullptr;
    GCfunc* fn;
    if (*what == '>') {
       TValue* func = L->top - 1;
@@ -464,7 +464,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
       frame = tvref(L->stack) + offset;
       if (size) nextframe = frame + size;
       lj_assertL(frame <= tvref(L->maxstack) &&
-         (!nextframe || nextframe <= tvref(L->maxstack)),
+         (!nextframe or nextframe <= tvref(L->maxstack)),
          "broken frame chain");
       fn = frame_func(frame);
       lj_assertL(fn->c.gct == ~LJ_TFUNC, "bad frame function");
@@ -479,7 +479,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
             lj_debug_shortname(ar->short_src, name, pt->firstline);
             ar->linedefined = (int)firstline;
             ar->lastlinedefined = (int)(firstline + pt->numline);
-            ar->what = (firstline || !pt->numline) ? "Lua" : "main";
+            ar->what = (firstline or !pt->numline) ? "Lua" : "main";
          }
          else {
             ar->source = "=[C]";
@@ -510,10 +510,10 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
          }
       }
       else if (*what == 'n') {
-         ar->namewhat = frame ? lj_debug_funcname(L, frame, &ar->name) : NULL;
-         if (ar->namewhat == NULL) {
+         ar->namewhat = frame ? lj_debug_funcname(L, frame, &ar->name) : nullptr;
+         if (ar->namewhat == nullptr) {
             ar->namewhat = "";
-            ar->name = NULL;
+            ar->name = nullptr;
          }
       }
       else if (*what == 'f') {
@@ -588,13 +588,13 @@ static int debug_putchunkname(SBuf* sb, GCproto* pt, int pathstrip)
       lj_buf_putb(sb, ']');
       return 0;
    }
-   if (*p == '=' || *p == '@') {
+   if (*p == '=' or *p == '@') {
       MSize len = name->len - 1;
       p++;
       if (pathstrip) {
          int i;
          for (i = len - 1; i >= 0; i--)
-            if (p[i] == '/' || p[i] == '\\') {
+            if (p[i] == '/' or p[i] == '\\') {
                len -= i + 1;
                p = p + i + 1;
                break;
@@ -618,7 +618,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
       int size;
       cTValue* frame = lj_debug_frame(L, level, &size);
       if (frame) {
-         cTValue* nextframe = size ? frame + size : NULL;
+         cTValue* nextframe = size ? frame + size : nullptr;
          GCfunc* fn = frame_func(frame);
          const uint8_t* p = (const uint8_t*)fmt;
          int c;
@@ -633,8 +633,8 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
                /* Only show function name if we're confident it's correct.
                 * Skip "local" because it returns the caller's variable name,
                 * which may not match the actual function being executed. */
-               if (what && strcmp(what, "local") != 0) {
-                  if (c == 'F' && isluafunc(fn)) {  //  Dump module:name for 'F'.
+               if (what and strcmp(what, "local") != 0) {
+                  if (c == 'F' and isluafunc(fn)) {  //  Dump module:name for 'F'.
                      GCproto* pt = funcproto(fn);
                      if (pt->firstline != ~(BCLine)0) {  //  Not a bytecode builtin.
                         debug_putchunkname(sb, pt, pathstrip);
@@ -718,7 +718,7 @@ LUALIB_API void luaL_traceback(lua_State* L, lua_State* L1, const char* msg,
       }
       lua_getinfo(L1, "Snlf", &ar);
       fn = funcV(L1->top - 1); L1->top--;
-      if (isffunc(fn) && !*ar.namewhat)
+      if (isffunc(fn) and !*ar.namewhat)
          lua_pushfstring(L, "\n\t[builtin#%d]:", fn->c.ffid);
       else
          lua_pushfstring(L, "\n\t%s:", ar.short_src);

@@ -183,7 +183,7 @@ const char* lj_strfmt_wstrnum(lua_State* L, cTValue* o, MSize* lenp)
       sb = lj_strfmt_putfnum(lj_buf_tmp_(L), STRFMT_G14, o->n);
    }
    else {
-      return NULL;
+      return nullptr;
    }
    *lenp = sbuflen(sb);
    return sb->b;
@@ -219,13 +219,13 @@ static SBuf* strfmt_putquotedlen(SBuf* sb, const char* s, MSize len)
    while (len--) {
       uint32_t c = (uint32_t)(uint8_t)*s++;
       char* w = lj_buf_more(sb, 4);
-      if (c == '"' || c == '\\' || c == '\n') {
+      if (c == '"' or c == '\\' or c == '\n') {
          *w++ = '\\';
       }
       else if (lj_char_iscntrl(c)) {  // This can only be 0-31 or 127.
          uint32_t d;
          *w++ = '\\';
-         if (c >= 100 || lj_char_isdigit((uint8_t)*s)) {
+         if (c >= 100 or lj_char_isdigit((uint8_t)*s)) {
             *w++ = (char)('0' + (c >= 100)); if (c >= 100) c -= 100;
             goto tens;
          }
@@ -366,7 +366,7 @@ SBuf* lj_strfmt_putfxint(SBuf* sb, SFormat sf, uint64_t k)
 SBuf* lj_strfmt_putfnum_int(SBuf* sb, SFormat sf, lua_Number n)
 {
    int64_t k = (int64_t)n;
-   if (checki32(k) && sf == STRFMT_INT)
+   if (checki32(k) and sf == STRFMT_INT)
       return lj_strfmt_putint(sb, (int32_t)k);  //  Shortcut for plain %d.
    else
       return lj_strfmt_putfxint(sb, sf, (uint64_t)k);
@@ -416,7 +416,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
 #if LJ_HASFFI
             if (tviscdata(o)) {
                GCcdata* cd = cdataV(o);
-               if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
+               if (cd->ctypeid == CTID_INT64 or cd->ctypeid == CTID_UINT64) {
                   lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
                   break;
                }
@@ -432,7 +432,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
 #if LJ_HASFFI
             if (tviscdata(o)) {
                GCcdata* cd = cdataV(o);
-               if (cd->ctypeid == CTID_INT64 || cd->ctypeid == CTID_UINT64) {
+               if (cd->ctypeid == CTID_INT64 or cd->ctypeid == CTID_UINT64) {
                   lj_strfmt_putfxint(sb, sf, *(uint64_t*)cdataptr(cd));
                   break;
                }
@@ -447,7 +447,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             MSize len;
             const char* s;
             cTValue* mo;
-            if (LJ_UNLIKELY(!tvisstr(o) && !tvisbuf(o)) && retry >= 0 &&
+            if (LJ_UNLIKELY(!tvisstr(o) and !tvisbuf(o)) and retry >= 0 &&
                !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
                // Call __tostring metamethod once.
                copyTV(L, L->top++, mo);
@@ -546,7 +546,7 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
       char buf[8 + 2 + 2 + 16], * p = buf;
       p = lj_buf_wmem(p, lj_typename(o), (MSize)strlen(lj_typename(o)));
       *p++ = ':'; *p++ = ' ';
-      if (tvisfunc(o) && isffunc(funcV(o))) {
+      if (tvisfunc(o) and isffunc(funcV(o))) {
          p = lj_buf_wmem(p, "builtin#", 8);
          p = lj_strfmt_wint(p, funcV(o)->c.ffid);
       }
@@ -594,7 +594,7 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
          break;
       case STRFMT_STR: {
          const char* s = va_arg(argp, char*);
-         if (s == NULL) s = "(null)";
+         if (s == nullptr) s = "(null)";
          lj_buf_putmem(sb, s, (MSize)strlen(s));
          break;
       }

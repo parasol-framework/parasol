@@ -63,7 +63,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
    if (sbufisext(sb)) {
       SBufExt* sbx = (SBufExt*)sb;
       MSize len = sbufxlen(sbx);
-      if (LJ_UNLIKELY(sz > LJ_MAX_BUF || len + sz > LJ_MAX_BUF))
+      if (LJ_UNLIKELY(sz > LJ_MAX_BUF or len + sz > LJ_MAX_BUF))
          lj_err_mem(sbufL(sbx));
       if (len + sz > sbufsz(sbx)) {  // Must grow.
          buf_grow((SBuf*)sbx, len + sz);
@@ -83,7 +83,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
    else {
       MSize len = sbuflen(sb);
       lj_assertG_(G(sbufL(sb)), sz > sbufleft(sb), "SBuf overflow");
-      if (LJ_UNLIKELY(sz > LJ_MAX_BUF || len + sz > LJ_MAX_BUF))
+      if (LJ_UNLIKELY(sz > LJ_MAX_BUF or len + sz > LJ_MAX_BUF))
          lj_err_mem(sbufL(sb));
       buf_grow(sb, len + sz);
    }
@@ -140,7 +140,7 @@ SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
    return sb;
 }
 
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 static LJ_NOINLINE SBuf* LJ_FASTCALL lj_buf_putchar2(SBuf* sb, int c)
 {
    char* w = lj_buf_more2(sb, 1);
@@ -191,9 +191,9 @@ SBuf* LJ_FASTCALL lj_buf_putstr_lower(SBuf* sb, GCstr* s)
    for (; w < e; w++, q++) {
       uint32_t c = *(unsigned char*)q;
 #if LJ_TARGET_PPC
-      * w = c + ((c >= 'A' && c <= 'Z') << 5);
+      * w = c + ((c >= 'A' and c <= 'Z') << 5);
 #else
-      if (c >= 'A' && c <= 'Z') c += 0x20;
+      if (c >= 'A' and c <= 'Z') c += 0x20;
       *w = c;
 #endif
    }
@@ -209,9 +209,9 @@ SBuf* LJ_FASTCALL lj_buf_putstr_upper(SBuf* sb, GCstr* s)
    for (; w < e; w++, q++) {
       uint32_t c = *(unsigned char*)q;
 #if LJ_TARGET_PPC
-      * w = c - ((c >= 'a' && c <= 'z') << 5);
+      * w = c - ((c >= 'a' and c <= 'z') << 5);
 #else
-      if (c >= 'a' && c <= 'z') c -= 0x20;
+      if (c >= 'a' and c <= 'z') c -= 0x20;
       *w = c;
 #endif
    }
@@ -222,7 +222,7 @@ SBuf* LJ_FASTCALL lj_buf_putstr_upper(SBuf* sb, GCstr* s)
 SBuf* lj_buf_putstr_rep(SBuf* sb, GCstr* s, int32_t rep)
 {
    MSize len = s->len;
-   if (rep > 0 && len) {
+   if (rep > 0 and len) {
       uint64_t tlen = (uint64_t)rep * len;
       char* w;
       if (LJ_UNLIKELY(tlen > LJ_MAX_STR))
@@ -254,7 +254,7 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
          if (!o) {
          badtype:  //  Error: bad element type.
             sb->w = (char*)(intptr_t)i;  //  Store failing index.
-            return NULL;
+            return nullptr;
          }
          else if (tvisstr(o)) {
             MSize len = strV(o)->len;

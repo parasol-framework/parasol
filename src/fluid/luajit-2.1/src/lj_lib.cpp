@@ -35,7 +35,7 @@ static GCtab* lib_create_table(lua_State* L, const char* libname, int hsize)
       lua_getfield(L, -1, libname);
       if (!tvistab(L->top - 1)) {
          L->top--;
-         if (luaL_findtable(L, LUA_GLOBALSINDEX, libname, hsize) != NULL)
+         if (luaL_findtable(L, LUA_GLOBALSINDEX, libname, hsize) != nullptr)
             lj_err_callerv(L, LJ_ERR_BADMODN, libname);
          settabV(L, L->top, tabV(L->top - 1));
          L->top++;
@@ -76,7 +76,7 @@ void lj_lib_register(lua_State* L, const char* libname,
    const uint8_t* p, const lua_CFunction* cf)
 {
    GCtab* env = tabref(L->env);
-   GCfunc* ofn = NULL;
+   GCfunc* ofn = nullptr;
    int ffid = *p++;
    BCIns* bcff = &L2GG(L)->bcff[*p++];
    GCtab* tab = lib_create_table(L, libname, *p++);
@@ -122,7 +122,7 @@ void lj_lib_register(lua_State* L, const char* libname,
             break;
          case LIBINIT_SET:
             L->top -= 2;
-            if (tvisstr(L->top + 1) && strV(L->top + 1)->len == 0)
+            if (tvisstr(L->top + 1) and strV(L->top + 1)->len == 0)
                env = tabV(L->top);
             else  //  NOBARRIER: See above for common barrier.
                copyTV(L, lj_tab_set(L, tab, L->top + 1), L->top);
@@ -208,20 +208,20 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
       }
    }
    lj_err_argt(L, narg, LUA_TSTRING);
-   return NULL;  //  unreachable
+   return nullptr;  //  unreachable
 }
 
 GCstr* lj_lib_optstr(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   return (o < L->top && !tvisnil(o)) ? lj_lib_checkstr(L, narg) : NULL;
+   return (o < L->top and !tvisnil(o)) ? lj_lib_checkstr(L, narg) : nullptr;
 }
 
 #if LJ_DUALNUM
 void lj_lib_checknumber(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top && lj_strscan_numberobj(o)))
+   if (!(o < L->top and lj_strscan_numberobj(o)))
       lj_err_argt(L, narg, LUA_TNUMBER);
 }
 #endif
@@ -230,7 +230,7 @@ lua_Number lj_lib_checknum(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
    if (!(o < L->top &&
-      (tvisnumber(o) || (tvisstr(o) && lj_strscan_num(strV(o), o)))))
+      (tvisnumber(o) or (tvisstr(o) and lj_strscan_num(strV(o), o)))))
       lj_err_argt(L, narg, LUA_TNUMBER);
    if (LJ_UNLIKELY(tvisint(o))) {
       lua_Number n = (lua_Number)intV(o);
@@ -245,7 +245,7 @@ lua_Number lj_lib_checknum(lua_State* L, int narg)
 int32_t lj_lib_checkint(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top && lj_strscan_numberobj(o)))
+   if (!(o < L->top and lj_strscan_numberobj(o)))
       lj_err_argt(L, narg, LUA_TNUMBER);
    if (LJ_LIKELY(tvisint(o))) {
       return intV(o);
@@ -260,13 +260,13 @@ int32_t lj_lib_checkint(lua_State* L, int narg)
 int32_t lj_lib_optint(lua_State* L, int narg, int32_t def)
 {
    TValue* o = L->base + narg - 1;
-   return (o < L->top && !tvisnil(o)) ? lj_lib_checkint(L, narg) : def;
+   return (o < L->top and !tvisnil(o)) ? lj_lib_checkint(L, narg) : def;
 }
 
 GCfunc* lj_lib_checkfunc(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top && tvisfunc(o)))
+   if (!(o < L->top and tvisfunc(o)))
       lj_err_argt(L, narg, LUA_TFUNCTION);
    return funcV(o);
 }
@@ -274,7 +274,7 @@ GCfunc* lj_lib_checkfunc(lua_State* L, int narg)
 GCtab* lj_lib_checktab(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top && tvistab(o)))
+   if (!(o < L->top and tvistab(o)))
       lj_err_argt(L, narg, LUA_TTABLE);
    return tabV(o);
 }
@@ -286,10 +286,10 @@ GCtab* lj_lib_checktabornil(lua_State* L, int narg)
       if (tvistab(o))
          return tabV(o);
       else if (tvisnil(o))
-         return NULL;
+         return nullptr;
    }
    lj_err_arg(L, narg, LJ_ERR_NOTABN);
-   return NULL;  //  unreachable
+   return nullptr;  //  unreachable
 }
 
 int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
@@ -300,7 +300,7 @@ int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
       MSize len = s->len;
       int i;
       for (i = 0; *(const uint8_t*)lst; i++) {
-         if (*(const uint8_t*)lst == len && memcmp(opt, lst + 1, len) == 0)
+         if (*(const uint8_t*)lst == len and memcmp(opt, lst + 1, len) == 0)
             return i;
          lst += 1 + *(const uint8_t*)lst;
       }
@@ -319,7 +319,7 @@ int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
 GCstr* lj_lib_checkstrx(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top && tvisstr(o))) lj_err_argt(L, narg, LUA_TSTRING);
+   if (!(o < L->top and tvisstr(o))) lj_err_argt(L, narg, LUA_TSTRING);
    return strV(o);
 }
 
@@ -330,7 +330,7 @@ int32_t lj_lib_checkintrange(lua_State* L, int narg, int32_t a, int32_t b)
    if (o < L->top) {
       if (LJ_LIKELY(tvisint(o))) {
          int32_t i = intV(o);
-         if (i >= a && i <= b) return i;
+         if (i >= a and i <= b) return i;
       }
       else if (LJ_LIKELY(tvisnum(o))) {
          /* For performance reasons, this doesn't check for integerness or
@@ -338,18 +338,18 @@ int32_t lj_lib_checkintrange(lua_State* L, int narg, int32_t a, int32_t b)
          ** return either MININT or MAXINT, which is then out of range.
          */
          int32_t i = (int32_t)numV(o);
-         if (i >= a && i <= b) return i;
+         if (i >= a and i <= b) return i;
 #if LJ_HASFFI
       }
       else if (tviscdata(o)) {
          GCcdata* cd = cdataV(o);
          if (cd->ctypeid == CTID_INT64) {
             int64_t i = *(int64_t*)cdataptr(cd);
-            if (i >= (int64_t)a && i <= (int64_t)b) return (int32_t)i;
+            if (i >= (int64_t)a and i <= (int64_t)b) return (int32_t)i;
          }
          else if (cd->ctypeid == CTID_UINT64) {
             uint64_t i = *(uint64_t*)cdataptr(cd);
-            if ((a < 0 || i >= (uint64_t)a) && i <= (uint64_t)b) return (int32_t)i;
+            if ((a < 0 or i >= (uint64_t)a) and i <= (uint64_t)b) return (int32_t)i;
          }
          else {
             goto badtype;

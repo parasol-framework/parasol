@@ -103,7 +103,7 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  //  Special continuations.
 #define frame_contf(f)      ((ASMFunction)gcrefp(((f)-1)->gcr, void))
 #endif
 #define frame_iscont_fficb(f) \
-  (LJ_HASFFI && frame_contv(f) == LJ_CONT_FFI_CALLBACK)
+  (LJ_HASFFI and frame_contv(f) == LJ_CONT_FFI_CALLBACK)
 
 #define frame_prevl(f)      ((f) - (1+LJ_FR2+bc_a(frame_pc(f)[-1])))
 #define frame_prevd(f)      ((TValue *)((char *)(f) - frame_sized(f)))

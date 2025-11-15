@@ -143,7 +143,7 @@ typedef struct GDBJITdesc {
 } GDBJITdesc;
 
 GDBJITdesc __jit_debug_descriptor = {
-  1, GDBJIT_NOACTION, NULL, NULL
+  1, GDBJIT_NOACTION, nullptr, nullptr
 };
 
 // GDB sets a breakpoint at this function.
@@ -755,7 +755,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
    eo->sz = sz;
    ctx->T->gdbjit_entry = (void*)eo;
    // Link new entry to chain and register it.
-   eo->entry.prev_entry = NULL;
+   eo->entry.prev_entry = nullptr;
    gdbjit_lock_acquire();
    eo->entry.next_entry = __jit_debug_descriptor.first_entry;
    if (eo->entry.next_entry)
@@ -782,11 +782,11 @@ void lj_gdbjit_addtrace(jit_State* J, GCtrace* T)
    ctx.spadjp = CFRAME_SIZE_JIT +
       (MSize)(parent ? traceref(J, parent)->spadjust : 0);
    ctx.spadj = CFRAME_SIZE_JIT + T->spadjust;
-   lj_assertJ(startpc >= proto_bc(pt) && startpc < proto_bc(pt) + pt->sizebc,
+   lj_assertJ(startpc >= proto_bc(pt) and startpc < proto_bc(pt) + pt->sizebc,
       "start PC out of range");
    ctx.lineno = lj_debug_line(pt, proto_bcpos(pt, startpc));
    ctx.filename = proto_chunknamestr(pt);
-   if (*ctx.filename == '@' || *ctx.filename == '=')
+   if (*ctx.filename == '@' or *ctx.filename == '=')
       ctx.filename++;
    else
       ctx.filename = "(string)";

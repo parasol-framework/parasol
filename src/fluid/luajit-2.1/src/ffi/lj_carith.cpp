@@ -68,7 +68,7 @@ static int carith_checkarg(lua_State* L, CTState* cts, CDArith* ca)
       else if (tvisstr(o)) {
          TValue* o2 = i == 0 ? o + 1 : o - 1;
          CType* ct = ctype_raw(cts, cdataV(o2)->ctypeid);
-         ca->ct[i] = NULL;
+         ca->ct[i] = nullptr;
          ca->p[i] = (uint8_t*)strVdata(o);
          ok = 0;
          if (ctype_isenum(ct->info)) {
@@ -81,13 +81,13 @@ static int carith_checkarg(lua_State* L, CTState* cts, CDArith* ca)
             }
             else {
                ca->ct[1 - i] = ct;  /* Use enum to improve error message. */
-               ca->p[1 - i] = NULL;
+               ca->p[1 - i] = nullptr;
                break;
             }
          }
       }
       else {
-         ca->ct[i] = NULL;
+         ca->ct[i] = nullptr;
          ca->p[i] = (uint8_t*)(intptr_t)1;  /* To make it unequal. */
          ok = 0;
       }
@@ -232,7 +232,7 @@ static int carith_int64(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
 // Handle ctype arithmetic metamethods.
 static int lj_carith_meta(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
 {
-   cTValue* tv = NULL;
+   cTValue* tv = nullptr;
    if (tviscdata(L->base)) {
       CTypeID id = cdataV(L->base)->ctypeid;
       CType* ct = ctype_raw(cts, id);
@@ -257,7 +257,7 @@ static int lj_carith_meta(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
       for (i = 0; i < 2; i++) {
          if (ca->ct[i] && tviscdata(L->base + i)) {
             if (ctype_isenum(ca->ct[i]->info)) isenum = i;
-            repr[i] = strdata(lj_ctype_repr(L, ctype_typeid(cts, ca->ct[i]), NULL));
+            repr[i] = strdata(lj_ctype_repr(L, ctype_typeid(cts, ca->ct[i]), nullptr));
          }
          else {
             if (tvisstr(&L->base[i])) isstr = i;

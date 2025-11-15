@@ -29,15 +29,15 @@ static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e)
       if (tvisint(expr_numtv(e))) {
          int32_t k = intV(expr_numtv(e));
          if (checku8(k)) {
-            t->u.s.aux = BCMAX_C + 1 + (uint32_t)k;  // 256..511: const byte key
+            t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
             return;
          }
       }
 #else
       lua_Number n = expr_numberV(e);
       int32_t k = lj_num2int(n);
-      if (checku8(k) && n == (lua_Number)k) {
-         t->u.s.aux = BCMAX_C + 1 + (uint32_t)k;  // 256..511: const byte key
+      if (checku8(k) and n == lua_Number(k)) {
+         t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
          return;
       }
 #endif
@@ -58,7 +58,7 @@ static void expr_field(LexState* ls, ExpDesc* v)
    FuncState* fs = ls->fs;
    ExpDesc key;
    expr_toanyreg(fs, v);
-   lj_lex_next(ls);  // Skip dot || colon.
+   lj_lex_next(ls);  // Skip dot or colon.
    expr_str(ls, &key);
    expr_index(fs, v, &key);
 }
@@ -75,7 +75,7 @@ static void expr_bracket(LexState* ls, ExpDesc* v)
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)
 {
    BCReg target = result_reg + 1;
-   if (target < fs->nactvar) target = (BCReg)fs->nactvar;
+   if (target < fs->nactvar) target = BCReg(fs->nactvar);
    if (fs->freereg > target) fs->freereg = target;
 }
 
@@ -117,7 +117,7 @@ static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
 {
    UNUSED(fs);
    if (e->k <= VKTRUE) {
-      setpriV(v, ~(uint32_t)e->k);
+      setpriV(v, ~uint32_t(e->k));
    }
    else if (e->k == VKSTR) {
       setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
@@ -133,7 +133,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
 {
    FuncState* fs = ls->fs;
    BCLine line = ls->linenumber;
-   GCtab* t = NULL;
+   GCtab* t = nullptr;
    int vcall = 0, needarr = 0, fixt = 0;
    uint32_t narr = 1;  // First array index.
    uint32_t nhash = 0;  // Number of hash entries.
@@ -149,10 +149,10 @@ static void expr_table(LexState* ls, ExpDesc* e)
       if (ls->tok == '[') {
          expr_bracket(ls, &key);  // Already calls expr_toval.
          if (!expr_isk(&key)) expr_index(fs, e, &key);
-         if (expr_isnumk(&key) && expr_numiszero(&key)) needarr = 1; else nhash++;
+         if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1; else nhash++;
          lex_check(ls, '=');
       }
-      else if (ls->tok == TK_name && lj_lex_lookahead(ls) == '=') {
+      else if (ls->tok == TK_name and lj_lex_lookahead(ls) == '=') {
          expr_str(ls, &key);
          lex_check(ls, '=');
          nhash++;
@@ -164,8 +164,8 @@ static void expr_table(LexState* ls, ExpDesc* e)
          needarr = vcall = 1;
       }
       expr(ls, &val);
-      if (expr_isk(&key) && key.k != VKNIL &&
-         (key.k == VKSTR || expr_isk_nojump(&val))) {
+      if (expr_isk(&key) and key.k != VKNIL &&
+         (key.k == VKSTR or expr_isk_nojump(&val))) {
          TValue k, * v;
          if (!t) {  // Create template table on demand.
             BCReg kidx;
@@ -193,7 +193,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
          bcemit_store(fs, e, &val);
       }
       fs->freereg = freg;
-      if (!lex_opt(ls, ',') && !lex_opt(ls, ';')) break;
+      if (!lex_opt(ls, ',') and !lex_opt(ls, ';')) break;
    }
    lex_match(ls, '}', '{', line);
    if (vcall) {
@@ -225,7 +225,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
       setbc_d(ip, narr | (hsize2hbits(nhash) << 11));
    }
    else {
-      if (needarr && t->asize < narr)
+      if (needarr and t->asize < narr)
          lj_tab_reasize(fs->L, t, narr - 1);
       if (fixt) {  // Fix value for dummy keys in template table.
          Node* node = noderef(t->node);
@@ -285,12 +285,12 @@ static void parse_body_impl(LexState* ls, ExpDesc* e, int needself,
    fs_init(ls, &fs);
    fscope_begin(&fs, &bl, 0);
    fs.linedefined = line;
-   if (optparams && ls->tok != '(') {
+   if (optparams and ls->tok != '(') {
       lj_assertLS(!needself, "optional parameters require explicit self");
       fs.numparams = 0;
    }
    else {
-      fs.numparams = (uint8_t)parse_params(ls, needself);
+      fs.numparams = uint8_t(parse_params(ls, needself));
    }
    fs.bcbase = pfs->bcbase + pfs->pc;
    fs.bclim = pfs->bclim - pfs->pc;
@@ -334,9 +334,9 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
 **
 ** Key Behavior:
 **   f(a, b, g())  where g() returns multiple values
-**   - Expressions 'a' && 'b' are discharged via expr_tonextreg() to place them in registers
-**   - Expression 'g()' is NOT discharged && remains as VCALL (k=13)
-**   - The caller (parse_args) can then detect args.k == VCALL && use BC_CALLM
+**   - Expressions 'a' and 'b' are discharged via expr_tonextreg() to place them in registers
+**   - Expression 'g()' is NOT discharged and remains as VCALL (k=13)
+**   - The caller (parse_args) can then detect args.k == VCALL and use BC_CALLM
 **
 ** This pattern allows the calling function to receive ALL return values from g(), not just
 ** the first one, by using BC_CALLM instead of BC_CALL.
@@ -355,7 +355,7 @@ static BCReg expr_list(LexState* ls, ExpDesc* v)
    return n;  // Last expression 'v' is NOT discharged
 }
 
-/* Parse function argument list && emit function call.
+/* Parse function argument list and emit function call.
 **
 ** BC_CALL vs BC_CALLM - Multi-Return Forwarding:
 **
@@ -406,7 +406,7 @@ static void parse_args(LexState* ls, ExpDesc* e)
       }
       else {
          expr_list(ls, &args);
-         if (args.k == VCALL)  // f(a, b, g()) || f(a, b, ...).
+         if (args.k == VCALL)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
       lex_match(ls, ')', '(', line);
@@ -480,12 +480,12 @@ static void expr_primary(LexState* ls, ExpDesc* v)
          lj_lex_next(ls);
          inc_dec_op(ls, OPR_ADD, v, 1);
       }
-      else if (ls->tok == TK_if_empty && should_emit_presence(ls)) {
+      else if (ls->tok == TK_if_empty and should_emit_presence(ls)) {
          // Postfix presence check operator: x??
          lj_lex_next(ls);  // Consume '??'
          bcemit_presence_check(fs, v);
       }
-      else if (ls->tok == '(' || ls->tok == TK_string || ls->tok == '{') {
+      else if (ls->tok == '(' or ls->tok == TK_string or ls->tok == '{') {
          expr_tonextreg(fs, v);
          if (LJ_FR2) bcreg_reserve(fs, 1);
          parse_args(ls, v);
@@ -538,7 +538,7 @@ static void expr_simple(LexState* ls, ExpDesc* v)
 {
    switch (ls->tok) {
    case TK_number:
-      expr_init(v, (LJ_HASFFI && tviscdata(&ls->tokval)) ? VKCDATA : VKNUM, 0);
+      expr_init(v, (LJ_HASFFI and tviscdata(&ls->tokval)) ? VKCDATA : VKNUM, 0);
       copyTV(ls->L, &v->u.nval, &ls->tokval);
       lj_lex_next(ls);
       break;
@@ -628,10 +628,10 @@ static BinOpr token2binop(LexToken tok)
 // Forward declaration.
 static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 
-/* Handle chained bitwise shift && bitwise logical operators with left-to-right associativity.
+/* Handle chained bitwise shift and bitwise logical operators with left-to-right associativity.
 **
 ** This function implements left-associative chaining for bitwise operators, allowing expressions
-** like `x << 2 << 3` || `x & 0xFF | 0x100` to be evaluated correctly. Without this special
+** like `x << 2 << 3` or `x & 0xFF | 0x100` to be evaluated correctly. Without this special
 ** handling, these operators would be right-associative due to their priority levels.
 **
 ** Left Associativity Examples:
@@ -642,7 +642,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 **   All operations in the chain use the same base register for intermediate results. This is
 **   more efficient than allocating new registers for each operation:
 **     x << 2      -> result stored at base_reg
-**     result << 3 -> reuses base_reg for both input && output
+**     result << 3 -> reuses base_reg for both input and output
 **
 ** Why expr_binop() is Used:
 **   The RHS of each operator is parsed using expr_binop() with the operator's right priority.
@@ -673,7 +673,7 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
    BinOpr nextop;
    BCReg base_reg;
 
-   /* Parse RHS operand. expr_binop() respects priority levels && will not consume
+   /* Parse RHS operand. expr_binop() respects priority levels and will not consume
    ** another shift/bitop at the same level due to left-associativity logic in expr_binop(). */
    nextop = expr_binop(ls, &rhs, priority[op].right);
 
@@ -685,16 +685,16 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
    **
    ** 1. If LHS is at the top (lhs->u.s.info + 1 == fs->freereg), reuse it.
    **    This happens when chaining across precedence levels: e.g., after "1 & 2"
-   **    completes in reg N && freereg becomes N+1, then "| 4" finds LHS at the top.
+   **    completes in reg N and freereg becomes N+1, then "| 4" finds LHS at the top.
    ** 2. Otherwise, if RHS is at the top, reuse it for compactness.
    ** 3. Otherwise, allocate a fresh register.
    */
-   if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
+   if (lhs->k == VNONRELOC and lhs->u.s.info >= fs->nactvar &&
       lhs->u.s.info + 1 == fs->freereg) {
       // LHS result from previous operation is at the top - reuse it to avoid orphaning
       base_reg = lhs->u.s.info;
    }
-   else if (rhs.k == VNONRELOC && rhs.u.s.info >= fs->nactvar &&
+   else if (rhs.k == VNONRELOC and rhs.u.s.info >= fs->nactvar &&
       rhs.u.s.info + 1 == fs->freereg) {
       // RHS is at the top - reuse it
       base_reg = rhs.u.s.info;
@@ -704,18 +704,18 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
       base_reg = fs->freereg;
    }
 
-   // Reserve space for: callee (1), frame link if x64 (LJ_FR2), && two arguments (2).
+   // Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2).
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);  // Reserve for frame link on x64
    bcreg_reserve(fs, 2);  // Reserve for arguments
 
    // Emit the first operation in the chain
-   bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
+   bcemit_shift_call_at_base(fs, priority[op].name, MSize(priority[op].name_len), lhs, &rhs, base_reg);
 
    /* Continue processing chained operators at the same precedence level.
    ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
    ** C-style precedence is enforced by checking that operators have matching precedence before chaining */
-   while (nextop == OPR_SHL || nextop == OPR_SHR || nextop == OPR_BAND || nextop == OPR_BXOR || nextop == OPR_BOR) {
+   while (nextop == OPR_SHL or nextop == OPR_SHR or nextop == OPR_BAND or nextop == OPR_BXOR or nextop == OPR_BOR) {
       BinOpr follow = nextop;
       // Only chain operators with matching left precedence (same precedence level)
       if (priority[follow].left != priority[op].left) break;
@@ -730,7 +730,7 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
       nextop = expr_binop(ls, &rhs, priority[follow].right);
 
       // Emit the next operation, reusing the same base register
-      bcemit_shift_call_at_base(fs, priority[follow].name, (MSize)priority[follow].name_len, lhs, &rhs, base_reg);
+      bcemit_shift_call_at_base(fs, priority[follow].name, MSize(priority[follow].name_len), lhs, &rhs, base_reg);
    }
 
    // Return any unconsumed operator for the caller to handle
@@ -760,7 +760,7 @@ static void expr_unop(LexState* ls, ExpDesc* v)
    else {
       expr_simple(ls, v);
       // Check for postfix presence check operator after simple expressions (constants)
-      if (ls->tok == TK_if_empty && should_emit_presence(ls)) {
+      if (ls->tok == TK_if_empty and should_emit_presence(ls)) {
          lj_lex_next(ls);
          bcemit_presence_check(ls->fs, v);
       }
@@ -786,8 +786,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       // allowing lower-precedence additions on the RHS to bind tighter.
 
       if (limit == priority[op].right &&
-         (op == OPR_SHL || op == OPR_SHR ||
-            op == OPR_BOR || op == OPR_BXOR || op == OPR_BAND))
+         (op == OPR_SHL or op == OPR_SHR ||
+            op == OPR_BOR or op == OPR_BXOR or op == OPR_BAND))
          lpri = 0;
 
       if (!(lpri > limit)) break;
@@ -856,7 +856,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
       bcemit_binop_left(ls->fs, op, v);
 
-      if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
+      if ((op == OPR_SHL) or (op == OPR_SHR) or (op == OPR_BAND) or (op == OPR_BXOR) or (op == OPR_BOR)) {
          op = expr_shift_chain(ls, v, op);
          continue;
       }
@@ -867,8 +867,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       BinOpr nextop;
       nextop = expr_binop(ls, &v2, priority[op].right);
 
-      if (op == OPR_IF_EMPTY && ls->ternary_depth == 0 &&
-         (ls->tok == TK_ternary_sep || ls->pending_if_empty_colon)) {
+      if (op == OPR_IF_EMPTY and ls->ternary_depth == 0 &&
+         (ls->tok == TK_ternary_sep or ls->pending_if_empty_colon)) {
          FuncState* fs = ls->fs;
 
          ls->pending_if_empty_colon = 0;
@@ -879,9 +879,9 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
          }
 
          if (v->flags & EXP_HAS_RHS_REG_FLAG) {
-            BCReg rhs_reg = (BCReg)v->u.s.aux;
+            BCReg rhs_reg = BCReg(v->u.s.aux);
             v->flags &= ~EXP_HAS_RHS_REG_FLAG;
-            if (rhs_reg >= fs->nactvar && rhs_reg < fs->freereg) {
+            if (rhs_reg >= fs->nactvar and rhs_reg < fs->freereg) {
                fs->freereg = rhs_reg;
             }
          }
@@ -936,7 +936,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
       op = nextop;
    }
    synlevel_end(ls);
-   if (ls->tok == TK_ternary_sep && ls->ternary_depth == 0) {
+   if (ls->tok == TK_ternary_sep and ls->ternary_depth == 0) {
       if (limit == priority[OPR_IF_EMPTY].right) {
          ls->pending_if_empty_colon = 1;
          return op;

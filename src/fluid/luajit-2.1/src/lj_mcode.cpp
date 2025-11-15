@@ -16,13 +16,13 @@
 #include "lj_dispatch.h"
 #include "lj_prng.h"
 #endif
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 #include "lj_vm.h"
 #endif
 
 // -- OS-specific functions -----------------------------------------------
 
-#if LJ_HASJIT || LJ_HASFFI
+#if LJ_HASJIT or LJ_HASFFI
 
 // Define this if you want to run LuaJIT with Valgrind.
 #ifdef LUAJIT_USE_VALGRIND
@@ -45,7 +45,7 @@ void lj_mcode_sync(void* start, void* end)
    sys_icache_invalidate(start, (char*)end - (char*)start);
 #elif LJ_TARGET_PPC
    lj_vm_cachesync(start, end);
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__) or defined(__clang__)
    __clear_cache(start, end);
 #else
 #error "Missing builtin to flush instruction cache"
@@ -69,7 +69,7 @@ static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, DWORD prot)
 {
    void* p = LJ_WIN_VALLOC((void*)hint, sz,
       MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, prot);
-   if (!p && !hint)
+   if (!p and !hint)
       lj_trace_err(J, LJ_TRERR_MCODEAL);
    return p;
 }
@@ -108,7 +108,7 @@ static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, int prot)
    void* p = mmap((void*)hint, sz, prot | MCPROT_CREATE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
    if (p == MAP_FAILED) {
       if (!hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
-      p = NULL;
+      p = nullptr;
    }
    return p;
 }
@@ -196,7 +196,7 @@ static void mcode_protect(jit_State* J, int prot)
 #if LJ_64
 #define mcode_validptr(p)   (p)
 #else
-#define mcode_validptr(p)   ((p) && (uintptr_t)(p) < 0xffff0000)
+#define mcode_validptr(p)   ((p) and (uintptr_t)(p) < 0xffff0000)
 #endif
 
 #ifdef LJ_TARGET_JUMPRANGE
@@ -225,7 +225,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
          void* p = mcode_alloc_at(J, hint, sz, MCPROT_GEN);
 
          if (mcode_validptr(p) &&
-            ((uintptr_t)p + sz - target < range || target - (uintptr_t)p < range))
+            ((uintptr_t)p + sz - target < range or target - (uintptr_t)p < range))
             return p;
          if (p) mcode_free(J, p, sz);  //  Free badly placed area.
       }
@@ -236,7 +236,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
       hint = target + hint - range;
    }
    lj_trace_err(J, LJ_TRERR_MCODEAL);  //  Give up. OS probably ignores hints?
-   return NULL;
+   return nullptr;
 }
 
 #else
@@ -244,12 +244,12 @@ static void* mcode_alloc(jit_State* J, size_t sz)
 // All memory addresses are reachable by relative jumps.
 static void* mcode_alloc(jit_State* J, size_t sz)
 {
-#if defined(__OpenBSD__) || defined(__NetBSD__) || LJ_TARGET_UWP
+#if defined(__OpenBSD__) or defined(__NetBSD__) or LJ_TARGET_UWP
    // Allow better executable memory allocation for OpenBSD W^X mode.
    void* p = mcode_alloc_at(J, 0, sz, MCPROT_RUN);
-   if (p && mcode_setprot(p, sz, MCPROT_GEN)) {
+   if (p and mcode_setprot(p, sz, MCPROT_GEN)) {
       mcode_free(J, p, sz);
-      return NULL;
+      return nullptr;
    }
    return p;
 #else
@@ -282,7 +282,7 @@ static void mcode_allocarea(jit_State* J)
 void lj_mcode_free(jit_State* J)
 {
    MCode* mc = J->mcarea;
-   J->mcarea = NULL;
+   J->mcarea = nullptr;
    J->szallmcarea = 0;
    while (mc) {
       MCode* next = ((MCLink*)mc)->next;
@@ -330,12 +330,12 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
       else if (LJ_UNLIKELY(mcode_setprot(ptr, ((MCLink*)ptr)->size, MCPROT_RUN)))
          mcode_protfail(J);
 #endif
-      return NULL;
+      return nullptr;
    }
    else {
       MCode* mc = J->mcarea;
       // Try current area first to use the protection cache.
-      if (ptr >= mc && ptr < (MCode*)((char*)mc + J->szmcarea)) {
+      if (ptr >= mc and ptr < (MCode*)((char*)mc + J->szmcarea)) {
 #if LUAJIT_SECURITY_MCODE
          mcode_protect(J, MCPROT_GEN);
 #endif
@@ -344,8 +344,8 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
       // Otherwise search through the list of MCode areas.
       for (;;) {
          mc = ((MCLink*)mc)->next;
-         lj_assertJ(mc != NULL, "broken MCode area chain");
-         if (ptr >= mc && ptr < (MCode*)((char*)mc + ((MCLink*)mc)->size)) {
+         lj_assertJ(mc != nullptr, "broken MCode area chain");
+         if (ptr >= mc and ptr < (MCode*)((char*)mc + ((MCLink*)mc)->size)) {
 #if LUAJIT_SECURITY_MCODE
             if (LJ_UNLIKELY(mcode_setprot(mc, ((MCLink*)mc)->size, MCPROT_GEN)))
                mcode_protfail(J);
