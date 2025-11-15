@@ -159,7 +159,6 @@ struct ExitState {
    intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
    int32_t spill[256];      /* Spill slots. */
 };
-using ExitState = struct ExitState;
 
 // Limited by the range of a short fwd jump (127): (2+2)*(32-1)-2 = 122.
 constexpr int EXITSTUB_SPACING = (2+2);
