@@ -32,9 +32,9 @@
 
 static const struct {
    uint8_t left;      // Left priority.
-   uint8_t right;   // Right priority.
-   const char* name;   // Name for bitlib function (if applicable).
-   uint8_t name_len;   // Cached name length for bitlib lookups.
+   uint8_t right;     // Right priority.
+   const char* name;  // Name for bitlib function (if applicable).
+   uint8_t name_len;  // Cached name length for bitlib lookups.
 } priority[] = {
   {6,6,nullptr,0}, {6,6,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0},   // ADD SUB MUL DIV MOD
   {10,9,nullptr,0}, {5,4,nullptr,0},                  // POW CONCAT (right associative)
@@ -45,7 +45,6 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
-// Include modular parser components
 #include "parser/lj_parse_types.h"
 #include "parser/lj_parse_internal.h"
 #include "parser/lj_parse_core.cpp"
@@ -56,9 +55,8 @@ static const struct {
 #include "parser/lj_parse_operators.cpp"
 #include "parser/lj_parse_stmt.cpp"
 
-// -- Parse statements ----------------------------------------------------
-
 // Parse a statement. Returns 1 if it must be the last one in a chunk.
+
 static int parse_stmt(LexState* ls)
 {
    BCLine line = ls->linenumber;
@@ -96,16 +94,14 @@ static int parse_stmt(LexState* ls)
    case TK_continue:
       lj_lex_next(ls);
       parse_continue(ls);
-      break;  // Must be last in Lua 5.1.
+      break;
    case TK_break:
       lj_lex_next(ls);
       parse_break(ls);
-      return !LJ_52;  // Must be last in Lua 5.1.
-#if LJ_52
+      break;
    case ';':
       lj_lex_next(ls);
       break;
-#endif
    default:
       parse_call_assign(ls);
       break;
@@ -114,22 +110,22 @@ static int parse_stmt(LexState* ls)
 }
 
 // A chunk is a list of statements optionally separated by semicolons.
+
 static void parse_chunk(LexState* ls)
 {
    int islast = 0;
    synlevel_begin(ls);
-   while (!islast and !parse_isend(ls->tok)) {
+   while (not islast and not parse_is_end(ls->tok)) {
       islast = parse_stmt(ls);
       lex_opt(ls, ';');
-      lj_assertLS(ls->fs->framesize >= ls->fs->freereg &&
-         ls->fs->freereg >= ls->fs->nactvar,
-         "bad regalloc");
+      lj_assertLS(ls->fs->framesize >= ls->fs->freereg and ls->fs->freereg >= ls->fs->nactvar, "bad regalloc");
       ls->fs->freereg = ls->fs->nactvar;  // Free registers after each stmt.
    }
    synlevel_end(ls);
 }
 
 // Entry point of bytecode parser.
+
 GCproto* lj_parse(LexState* ls)
 {
    FuncState fs;
@@ -154,8 +150,7 @@ GCproto* lj_parse(LexState* ls)
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
    lj_lex_next(ls);  // Read-ahead first token.
    parse_chunk(ls);
-   if (ls->tok != TK_eof)
-      err_token(ls, TK_eof);
+   if (ls->tok != TK_eof) err_token(ls, TK_eof);
    pt = fs_finish(ls, ls->linenumber);
    L->top--;  // Drop chunkname.
    lj_assertL(fs.prev == nullptr and ls->fs == nullptr, "mismatched frame nesting");

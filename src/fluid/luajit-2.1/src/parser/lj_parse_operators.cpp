@@ -1,14 +1,14 @@
-/*
-** Lua parser - Operator bytecode emission.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Lua parser - Operator bytecode emission.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-// -- Bytecode emitter for operators --------------------------------------
+//********************************************************************************************************************
+// Bytecode emitter for operators
 
 // Try constant-folding of arithmetic operators.
+
 [[nodiscard]] static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    TValue o;
@@ -28,13 +28,15 @@
    return 1;
 }
 
+//********************************************************************************************************************
 // Emit arithmetic operator.
+
 static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    BCReg rb, rc, t;
    uint32_t op;
-   if (foldarith(opr, e1, e2))
-      return;
+   if (foldarith(opr, e1, e2)) return;
+
    if (opr == OPR_POW) {
       op = BC_POW;
       rc = expr_toanyreg(fs, e2);
@@ -44,23 +46,23 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       op = opr - OPR_ADD + BC_ADDVV;
       // Must discharge 2nd operand first since VINDEXED might free regs.
       expr_toval(fs, e2);
-      if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C)
-         op -= BC_ADDVV - BC_ADDVN;
-      else
-         rc = expr_toanyreg(fs, e2);
+      if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
+      else rc = expr_toanyreg(fs, e2);
+
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
-      lj_assertFS(expr_isnumk(e1) or e1->k == VNONRELOC,
-         "bad expr type %d", e1->k);
+
+      lj_assertFS(expr_isnumk(e1) or e1->k == VNONRELOC, "bad expr type %d", e1->k);
       expr_toval(fs, e1);
+
       // Avoid two consts to satisfy bytecode constraints.
-      if (expr_isnumk(e1) and !expr_isnumk(e2) &&
+
+      if (expr_isnumk(e1) and !expr_isnumk(e2) and
          (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
-      else {
-         rb = expr_toanyreg(fs, e1);
-      }
+      else rb = expr_toanyreg(fs, e1);
    }
+
    // Using expr_free might cause asserts if the order is wrong.
    if (e1->k == VNONRELOC and e1->u.s.info >= fs->nactvar) fs->freereg--;
    if (e2->k == VNONRELOC and e2->u.s.info >= fs->nactvar) fs->freereg--;
@@ -68,7 +70,9 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    e1->k = VRELOCABLE;
 }
 
+//********************************************************************************************************************
 // Emit comparison operator.
+
 static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    ExpDesc* eret = e1;
@@ -119,7 +123,9 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    eret->k = VJMP;
 }
 
+//********************************************************************************************************************
 // Fixup left side of binary operator.
+
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
    if (op == OPR_AND) {
@@ -153,6 +159,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          // Ensure the value resides in a dedicated register so that RHS evaluation cannot
          // clobber it. Keep a copy of the original value even if the source lives in an
          // active local slot.
+
          if (!expr_isk_nojump(e)) {
             BCReg src_reg = expr_toanyreg(fs, e);
             BCReg rhs_reg = fs->freereg;
@@ -179,40 +186,41 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
    }
 }
 
-/* Emit a call to a bit library function (bit.lshift, bit.rshift, etc.) at a specific base register.
-**
-** This function is used to implement C-style bitwise shift operators (<<, >>) by translating them
-** into calls to LuaJIT's bit library functions. The base register is explicitly provided to allow
-** chaining of multiple shift operations while reusing the same register for intermediate results.
-**
-** Register Layout (x64 with LJ_FR2=1):
-**   base     - Function to call (bit.lshift, bit.rshift, etc.)
-**   base+1   - Frame link register (LJ_FR2, not an argument)
-**   base+2   - arg1: First operand (value to shift)
-**   base+3   - arg2: Second operand (shift count)
-**
-** BC_CALL Instruction Format:
-**   - A field: base register
-**   - B field: Call type (2 for regular calls, 0 for varargs)
-**   - C field: Argument count = freereg - base - LJ_FR2
-**
-** VCALL Handling (Multi-Return Functions):
-**   When RHS is a VCALL (function call with multiple return values), standard Lua binary operator
-**   semantics apply: only the first return value is used. The VCALL is discharged before being
-**   passed as an argument. This matches the behavior of expressions like `x + f()` in Lua.
-**
-**   Note: Unlike function argument lists (which use BC_CALLM to forward all return values),
-**   binary operators always restrict multi-return expressions to single values. This is a
-**   fundamental Lua language semantic, not a limitation of this implementation.
-**
-** Parameters:
-**   fs    - Function state for bytecode generation
-**   fname - Name of bit library function (e.g., "lshift", "rshift")
-**   fname_len - Length of fname string
-**   lhs   - Left-hand side expression (value to shift)
-**   rhs   - Right-hand side expression (shift count, may be VCALL)
-**   base  - Base register for the call (allows register reuse for chaining)
-*/
+//********************************************************************************************************************
+// Emit a call to a bit library function (bit.lshift, bit.rshift, etc.) at a specific base register.
+//
+// This function is used to implement C-style bitwise shift operators (<<, >>) by translating them
+// into calls to LuaJIT's bit library functions. The base register is explicitly provided to allow
+// chaining of multiple shift operations while reusing the same register for intermediate results.
+//
+// Register Layout (x64 with LJ_FR2=1):
+//   base     - Function to call (bit.lshift, bit.rshift, etc.)
+//   base+1   - Frame link register (LJ_FR2, not an argument)
+//   base+2   - arg1: First operand (value to shift)
+//   base+3   - arg2: Second operand (shift count)
+//
+// BC_CALL Instruction Format:
+//   - A field: base register
+//   - B field: Call type (2 for regular calls, 0 for varargs)
+//   - C field: Argument count = freereg - base - LJ_FR2
+//
+// VCALL Handling (Multi-Return Functions):
+//   When RHS is a VCALL (function call with multiple return values), standard Lua binary operator
+//   semantics apply: only the first return value is used. The VCALL is discharged before being
+//   passed as an argument. This matches the behavior of expressions like `x + f()` in Lua.
+//
+//   Note: Unlike function argument lists (which use BC_CALLM to forward all return values),
+//   binary operators always restrict multi-return expressions to single values. This is a
+//   fundamental Lua language semantic, not a limitation of this implementation.
+//
+// Parameters:
+//   fs    - Function state for bytecode generation
+//   fname - Name of bit library function (e.g., "lshift", "rshift")
+//   fname_len - Length of fname string
+//   lhs   - Left-hand side expression (value to shift)
+//   rhs   - Right-hand side expression (shift count, may be VCALL)
+//   base  - Base register for the call (allows register reuse for chaining)
+
 static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
 {
    ExpDesc callee, key;
@@ -246,6 +254,8 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
    lj_assertFS(lhs->k == VNONRELOC and lhs->u.s.info == base, "bitwise result not in base register");
 }
 
+//********************************************************************************************************************
+
 static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs)
 {
    // Allocate a base register for the call
@@ -257,7 +267,9 @@ static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, E
    bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
 }
 
+//********************************************************************************************************************
 // Emit unary bit library call (e.g., bit.bnot).
+
 static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg)
 {
    ExpDesc callee, key;
@@ -296,23 +308,22 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
    lj_assertFS(arg->k == VNONRELOC and arg->u.s.info == base, "bitwise result not in base register");
 }
 
-/* Emit bytecode for postfix presence check operator (x?).
-** Returns boolean: true if value is truthy (extended falsey semantics),
-** false if value is falsey (nil, false, 0, "").
-*/
+//********************************************************************************************************************
+// Emit bytecode for postfix presence check operator (x?).
+// Returns boolean: true if value is truthy (extended falsey semantics),
+// false if value is falsey (nil, false, 0, "").
+
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 {
    expr_discharge(fs, e);
 
    // Handle compile-time constants
-   if (e->k == VKNIL or e->k == VKFALSE) {
-      // Falsey constant - set to false
+   if (e->k == VKNIL or e->k == VKFALSE) { // Falsey constant - set to false
       expr_init(e, VKFALSE, 0);
       return;
    }
 
-   if (e->k == VKNUM and expr_numiszero(e)) {
-      // Zero is falsey - set to false
+   if (e->k == VKNUM and expr_numiszero(e)) { // Zero is falsey - set to false
       expr_init(e, VKFALSE, 0);
       return;
    }
@@ -323,7 +334,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
       return;
    }
 
-   if (e->k == VKTRUE or (e->k == VKNUM and !expr_numiszero(e)) ||
+   if (e->k == VKTRUE or (e->k == VKNUM and !expr_numiszero(e)) or
       (e->k == VKSTR and e->u.sval and e->u.sval->len > 0)) {
       // Truthy constant - set to true
       expr_init(e, VKTRUE, 0);
@@ -332,15 +343,15 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Runtime value - emit checks
    // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch
-   /*
-    * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
-    * Pattern: BC_ISEQP reg, VKNIL + JMP means:
-    *   - If reg == nil: skip JMP, continue to next check
-    *   - If reg != nil: execute JMP, jump to target (patched to false branch)
-    * By chaining multiple checks and patching all JMPs to the same false branch:
-    *   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
-    *   - Truthy values: all checks fail, first JMP executes, jumps to false branch
-    */
+   
+   // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
+   // Pattern: BC_ISEQP reg, VKNIL + JMP means:
+   //   - If reg == nil: skip JMP, continue to next check
+   //   - If reg != nil: execute JMP, jump to target (patched to false branch)
+   // By chaining multiple checks and patching all JMPs to the same false branch:
+   //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
+   //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
+   
    BCReg reg = expr_toanyreg(fs, e);
    ExpDesc nilv, falsev, zerov, emptyv;
    BCPos jmp_false_branch;
@@ -393,6 +404,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_init(e, VNONRELOC, dest);
 }
 
+//********************************************************************************************************************
 // Emit binary operator.
 
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
@@ -417,22 +429,22 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
+
       if (e1->t != NO_JMP) {
          // Patch jumps to skip RHS
          jmp_patch(fs, e1->t, fs->pc);
          e1->t = NO_JMP;
+
          // LHS is truthy - no need to evaluate RHS
          // bcemit_binop_left() already loaded truthy constants to a register
          // Just ensure expression is properly set up
+
          if (e1->k != VNONRELOC and e1->k != VRELOCABLE) {
-            if (expr_isk(e1)) {
-               // Constant - load to register
+            if (expr_isk(e1)) { // Constant - load to register
                bcreg_reserve(fs, 1);
                expr_toreg_nobranch(fs, e1, fs->freereg - 1);
             }
-            else {
-               expr_toanyreg(fs, e1);
-            }
+            else expr_toanyreg(fs, e1);
          }
       }
       else {
@@ -511,15 +523,15 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             expr_init(e1, VNONRELOC, reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
 
-            /*
-            ** Collapse any scratch register reserved for the RHS when it is no longer
-            ** needed. Returning the allocator to the original base mirrors the ternary
-            ** operator semantics and prevents the optional from leaking an extra
-            ** argument slot when used in function-call contexts.
-            */
+            // Collapse any scratch register reserved for the RHS when it is no longer
+            // needed. Returning the allocator to the original base mirrors the ternary
+            // operator semantics and prevents the optional from leaking an extra
+            // argument slot when used in function-call contexts.
+
             if (dest_reg != reg and dest_reg >= fs->nactvar and fs->freereg > dest_reg) {
                fs->freereg = dest_reg;
             }
+
             if (reg >= fs->nactvar and fs->freereg > reg + 1) {
                fs->freereg = reg + 1;
             }
@@ -551,13 +563,14 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       e1->k = VRELOCABLE;
    }
    else {
-      lj_assertFS(op == OPR_NE or op == OPR_EQ ||
+      lj_assertFS(op == OPR_NE or op == OPR_EQ or
          op == OPR_LT or op == OPR_GE or op == OPR_LE or op == OPR_GT,
          "bad binop %d", op);
       bcemit_comp(fs, op, e1, e2);
    }
 }
 
+//********************************************************************************************************************
 // Emit unary operator.
 
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
@@ -592,15 +605,13 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    }
    else {
       lj_assertFS(op == BC_UNM or op == BC_LEN, "bad unop %d", op);
-      if (op == BC_UNM and !expr_hasjump(e)) {  // Constant-fold negations.
+      if (op == BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k == VKCDATA) {  // Fold in-place since cdata is not interned.
             GCcdata* cd = cdataV(&e->u.nval);
             int64_t* p = (int64_t*)cdataptr(cd);
-            if (cd->ctypeid == CTID_COMPLEX_DOUBLE)
-               p[1] ^= (int64_t)U64x(80000000, 00000000);
-            else
-               *p = -*p;
+            if (cd->ctypeid == CTID_COMPLEX_DOUBLE) p[1] ^= (int64_t)U64x(80000000, 00000000);
+            else *p = -*p;
             return;
          }
          else
@@ -609,10 +620,8 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
                TValue* o = expr_numtv(e);
                if (tvisint(o)) {
                   int32_t k = intV(o);
-                  if (k == -k)
-                     setnumV(o, -lua_Number(k));
-                  else
-                     setintV(o, -k);
+                  if (k == -k) setnumV(o, -lua_Number(k));
+                  else setintV(o, -k);
                   return;
                }
                else {

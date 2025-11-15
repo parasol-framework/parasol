@@ -6,10 +6,7 @@
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
-#ifndef _LJ_PARSE_INTERNAL_H
-#define _LJ_PARSE_INTERNAL_H
-
-// -- Forward Declarations -------------------------------------------------
+#pragma once
 
 struct LHSVarList;  // Defined in lj_parse_stmt.cpp
 
@@ -217,7 +214,7 @@ static void parse_local(LexState* ls);
 static void snapshot_return_regs(FuncState* fs, BCIns* ins);
 static void parse_defer(LexState* ls);
 static void parse_func(LexState* ls, BCLine line);
-static int parse_isend(LexToken tok);
+static int parse_is_end(LexToken tok);
 static void parse_return(LexState* ls);
 static void parse_continue(LexState* ls);
 static void parse_break(LexState* ls);
@@ -232,5 +229,3 @@ static BCPos parse_then(LexState* ls);
 static void parse_if(LexState* ls, BCLine line);
 static int parse_stmt(LexState* ls);
 static void parse_chunk(LexState* ls);
-
-#endif
