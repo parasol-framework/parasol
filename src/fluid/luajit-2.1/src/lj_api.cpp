@@ -109,7 +109,7 @@ LUA_API int lua_status(lua_State* L)
 LUA_API int lua_checkstack(lua_State* L, int size)
 {
    if (size > LUAI_MAXCSTACK || (L->top - L->base + size) > LUAI_MAXCSTACK) {
-      return 0;  /* Stack overflow. */
+      return 0;  //  Stack overflow.
    }
    else if (size > 0) {
       lj_state_checkstack(L, (MSize)size);
@@ -165,7 +165,7 @@ LUA_API void lua_settop(lua_State* L, int idx)
    }
    else {
       lj_checkapi(-(idx + 1) <= (L->top - L->base), "bad stack slot %d", idx);
-      L->top += idx + 1;  /* Shrinks top (idx < 0). */
+      L->top += idx + 1;  //  Shrinks top (idx < 0).
    }
 }
 
@@ -201,7 +201,7 @@ static void copy_slot(lua_State* L, TValue* f, int idx)
    else {
       TValue* o = index2adr_check(L, idx);
       copyTV(L, o, f);
-      if (idx < LUA_GLOBALSINDEX)  /* Need a barrier for upvalues. */
+      if (idx < LUA_GLOBALSINDEX)  //  Need a barrier for upvalues.
          lj_gc_barrier(L, curr_func(L), f);
    }
 }
@@ -548,7 +548,7 @@ LUA_API const char* lua_tolstring(lua_State* L, int idx, size_t* len)
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  /* GC may move the stack. */
+      o = index2adr(L, idx);  //  GC may move the stack.
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
@@ -569,7 +569,7 @@ LUALIB_API const char* luaL_checklstring(lua_State* L, int idx, size_t* len)
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  /* GC may move the stack. */
+      o = index2adr(L, idx);  //  GC may move the stack.
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
@@ -594,7 +594,7 @@ LUALIB_API const char* luaL_optlstring(lua_State* L, int idx,
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  /* GC may move the stack. */
+      o = index2adr(L, idx);  //  GC may move the stack.
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
@@ -685,7 +685,7 @@ LUA_API void lua_pushnumber(lua_State* L, lua_Number n)
 {
    setnumV(L->top, n);
    if (LJ_UNLIKELY(tvisnan(L->top)))
-      setnanV(L->top);  /* Canonicalize injected NaNs. */
+      setnanV(L->top);  //  Canonicalize injected NaNs.
    incr_top(L);
 }
 
@@ -951,10 +951,10 @@ LUA_API int lua_next(lua_State* L, int idx)
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    more = lj_tab_next(tabV(t), L->top - 1, L->top - 1);
    if (more > 0) {
-      incr_top(L);  /* Return new key and value slot. */
+      incr_top(L);  //  Return new key and value slot.
    }
    else if (!more) {  // End of traversal.
-      L->top--;  /* Remove key slot. */
+      L->top--;  //  Remove key slot.
    }
    else {
       lj_err_msg(L, LJ_ERR_NEXTIDX);
@@ -1005,7 +1005,7 @@ LUALIB_API void* luaL_testudata(lua_State* L, int idx, const char* tname)
       if (tv && tvistab(tv) && tabV(tv) == tabref(ud->metatable))
          return uddata(ud);
    }
-   return NULL;  /* value is not a userdata with a metatable */
+   return NULL;  //  value is not a userdata with a metatable
 }
 
 LUALIB_API void* luaL_checkudata(lua_State* L, int idx, const char* tname)
@@ -1226,9 +1226,9 @@ static TValue* cpcall(lua_State* L, lua_CFunction func, void* ud)
    ud = lj_lightud_intern(L, ud);
 #endif
    setrawlightudV(top++, ud);
-   cframe_nres(L->cframe) = 1 + 0;  /* Zero results. */
+   cframe_nres(L->cframe) = 1 + 0;  //  Zero results.
    L->top = top;
-   return top - 1;  /* Now call the newly allocated C function. */
+   return top - 1;  //  Now call the newly allocated C function.
 }
 
 LUA_API int lua_cpcall(lua_State* L, lua_CFunction func, void* ud)
@@ -1302,7 +1302,7 @@ LUA_API int lua_yield(lua_State* L, int nresults)
       }
    }
    lj_err_msg(L, LJ_ERR_CYIELD);
-   return 0;  /* unreachable */
+   return 0;  //  unreachable
 }
 
 LUA_API int lua_resume(lua_State* L, int nargs)
@@ -1361,7 +1361,7 @@ LUA_API int lua_gc(lua_State* L, int what, int data)
       res = (g->gc.threshold != LJ_MAX_MEM);
       break;
    default:
-      res = -1;  /* Invalid option. */
+      res = -1;  //  Invalid option.
    }
    return res;
 }

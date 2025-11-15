@@ -95,12 +95,12 @@ void lj_dispatch_init_hotcount(global_State* g)
 #endif
 
 // Internal dispatch mode bits.
-#define DISPMODE_CALL   0x01   /* Override call dispatch. */
-#define DISPMODE_RET   0x02   /* Override return dispatch. */
-#define DISPMODE_INS   0x04   /* Override instruction dispatch. */
-#define DISPMODE_JIT   0x10   /* JIT compiler on. */
-#define DISPMODE_REC   0x20   /* Recording active. */
-#define DISPMODE_PROF   0x40   /* Profiling active. */
+#define DISPMODE_CALL   0x01   //  Override call dispatch.
+#define DISPMODE_RET   0x02   //  Override return dispatch.
+#define DISPMODE_INS   0x04   //  Override instruction dispatch.
+#define DISPMODE_JIT   0x10   //  JIT compiler on.
+#define DISPMODE_REC   0x20   //  Recording active.
+#define DISPMODE_PROF   0x40   //  Profiling active.
 
 // Update dispatch table depending on various flags.
 void lj_dispatch_update(global_State* g)
@@ -223,12 +223,12 @@ static void setptmode(global_State* g, GCproto* pt, int mode)
 {
    if ((mode & LUAJIT_MODE_ON)) {  // (Re-)enable JIT compilation.
       pt->flags &= ~PROTO_NOJIT;
-      lj_trace_reenableproto(pt);  /* Unpatch all ILOOP etc. bytecodes. */
+      lj_trace_reenableproto(pt);  //  Unpatch all ILOOP etc. bytecodes.
    }
    else {  // Flush and/or disable JIT compilation.
       if (!(mode & LUAJIT_MODE_FLUSH))
          pt->flags |= PROTO_NOJIT;
-      lj_trace_flushproto(g, pt);  /* Flush all traces of prototype. */
+      lj_trace_flushproto(g, pt);  //  Flush all traces of prototype.
    }
 }
 
@@ -252,7 +252,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
 {
    global_State* g = G(L);
    int mm = mode & LUAJIT_MODE_MASK;
-   lj_trace_abort(g);  /* Abort recording on any state change. */
+   lj_trace_abort(g);  //  Abort recording on any state change.
    // Avoid pulling the rug from under our own feet.
    if ((g->hookmask & HOOK_GC))
       lj_err_caller(L, LJ_ERR_NOGCMM);
@@ -277,11 +277,11 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
          idx > 0 ? L->base + (idx - 1) : L->top + idx;
       GCproto* pt;
       if ((idx == 0 || tvisfunc(tv)) && isluafunc(&gcval(tv)->fn))
-         pt = funcproto(&gcval(tv)->fn);  /* Cannot use funcV() for frame slot. */
+         pt = funcproto(&gcval(tv)->fn);  //  Cannot use funcV() for frame slot.
       else if (tvisproto(tv))
          pt = protoV(tv);
       else
-         return 0;  /* Failed. */
+         return 0;  //  Failed.
       if (mm != LUAJIT_MODE_ALLSUBFUNC)
          setptmode(g, pt, mode);
       if (mm != LUAJIT_MODE_FUNC)
@@ -290,7 +290,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    }
    case LUAJIT_MODE_TRACE:
       if (!(mode & LUAJIT_MODE_FLUSH))
-         return 0;  /* Failed. */
+         return 0;  //  Failed.
       lj_trace_flush(G2J(g), idx);
       break;
 #else
@@ -300,7 +300,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    case LUAJIT_MODE_ALLSUBFUNC:
       UNUSED(idx);
       if ((mode & LUAJIT_MODE_ON))
-         return 0;  /* Failed. */
+         return 0;  //  Failed.
       break;
 #endif
    case LUAJIT_MODE_WRAPCFUNC:
@@ -310,10 +310,10 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
             if (tvislightud(tv))
                g->wrapf = (lua_CFunction)lightudV(g, tv);
             else
-               return 0;  /* Failed. */
+               return 0;  //  Failed.
          }
          else {
-            return 0;  /* Failed. */
+            return 0;  //  Failed.
          }
          g->bc_cfunc_ext = BCINS_AD(BC_FUNCCW, 0, 0);
       }
@@ -322,9 +322,9 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
       }
       break;
    default:
-      return 0;  /* Failed. */
+      return 0;  //  Failed.
    }
-   return 1;  /* OK. */
+   return 1;  //  OK.
 }
 
 // Enforce (dynamic) linker error for version mismatches. See luajit.c.
@@ -343,7 +343,7 @@ LUA_API int lua_sethook(lua_State* L, lua_Hook func, int mask, int count)
    g->hookf = func;
    g->hookcount = g->hookcstart = (int32_t)count;
    g->hookmask = (uint8_t)((g->hookmask & ~HOOK_EVENTMASK) | mask);
-   lj_trace_abort(g);  /* Abort recording on any hook change. */
+   lj_trace_abort(g);  //  Abort recording on any hook change.
    lj_dispatch_update(g);
    return 1;
 }
@@ -370,7 +370,7 @@ static void callhook(lua_State* L, int event, BCLine line)
    lua_Hook hookf = g->hookf;
    if (hookf && !hook_active(g)) {
       lua_Debug ar;
-      lj_trace_abort(g);  /* Abort recording on any hook call. */
+      lj_trace_abort(g);  //  Abort recording on any hook call.
       ar.event = event;
       ar.currentline = line;
       // Top frame, nextframe = NULL.
@@ -420,7 +420,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
    BCReg slots;
    setcframe_pc(cf, pc);
    slots = cur_topslot(pt, pc, cframe_multres_n(cf));
-   L->top = L->base + slots;  /* Fix top. */
+   L->top = L->base + slots;  //  Fix top.
 #if LJ_HASJIT
    {
       jit_State* J = G2J(g);
@@ -429,7 +429,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
          ptrdiff_t delta = L->top - L->base;
 #endif
          J->L = L;
-         lj_trace_ins(J, pc - 1);  /* The interpreter bytecode PC is offset by 1. */
+         lj_trace_ins(J, pc - 1);  //  The interpreter bytecode PC is offset by 1.
          lj_assertG(L->top - L->base == delta,
             "unbalanced stack after tracing of instruction");
       }
@@ -438,7 +438,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
    if ((g->hookmask & LUA_MASKCOUNT) && g->hookcount == 0) {
       g->hookcount = g->hookcstart;
       callhook(L, LUA_HOOKCOUNT, -1);
-      L->top = L->base + slots;  /* Fix top again. */
+      L->top = L->base + slots;  //  Fix top again.
    }
    if ((g->hookmask & LUA_MASKLINE)) {
       BCPos npc = proto_bcpos(pt, pc) - 1;
@@ -446,7 +446,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       BCLine line = lj_debug_line(pt, npc);
       if (pc <= oldpc || opc >= pt->sizebc || line != lj_debug_line(pt, opc)) {
          callhook(L, LUA_HOOKLINE, line);
-         L->top = L->base + slots;  /* Fix top again. */
+         L->top = L->base + slots;  //  Fix top again.
       }
    }
    if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1])))
@@ -502,14 +502,14 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
       ptrdiff_t delta = L->top - L->base;
 #endif
       // Record the FUNC* bytecodes, too.
-      lj_trace_ins(J, pc - 1);  /* The interpreter bytecode PC is offset by 1. */
+      lj_trace_ins(J, pc - 1);  //  The interpreter bytecode PC is offset by 1.
       lj_assertG(L->top - L->base == delta,
          "unbalanced stack after hot instruction");
    }
 #endif
    if ((g->hookmask & LUA_MASKCALL)) {
       int i;
-      for (i = 0; i < missing; i++)  /* Add missing parameters. */
+      for (i = 0; i < missing; i++)  //  Add missing parameters.
          setnilV(L->top++);
       callhook(L, LUA_HOOKCALL, -1);
       // Preserve modifications of missing parameters by lua_setlocal().
@@ -519,7 +519,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
 #if LJ_HASJIT
    out :
 #endif
-   op = bc_op(pc[-1]);  /* Get FUNC* op. */
+   op = bc_op(pc[-1]);  //  Get FUNC* op.
 #if LJ_HASJIT
    // Use the non-hotcounting variants if JIT is off or while recording.
    if ((!(J->flags & JIT_F_ON) || J->state != LJ_TRACE_IDLE) &&
@@ -527,7 +527,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
       op = (BCOp)((int)op + (int)BC_IFUNCF - (int)BC_FUNCF);
 #endif
    ERRNO_RESTORE
-      return makeasmfunc(lj_bc_ofs[op]);  /* Return static dispatch target. */
+      return makeasmfunc(lj_bc_ofs[op]);  //  Return static dispatch target.
 }
 
 #if LJ_HASJIT
@@ -541,7 +541,7 @@ void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
    setcframe_pc(cf, pc);
    // Before dispatch, have to bias PC by 1.
    L->top = L->base + cur_topslot(curr_proto(L), pc + 1, cframe_multres_n(cf));
-   lj_trace_stitch(J, pc - 1);  /* Point to the CALL instruction. */
+   lj_trace_stitch(J, pc - 1);  //  Point to the CALL instruction.
    setcframe_pc(cf, oldpc);
    ERRNO_RESTORE
 }

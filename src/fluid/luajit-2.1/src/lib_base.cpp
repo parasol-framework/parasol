@@ -56,7 +56,7 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
 // ORDER LJ_T
 LJLIB_PUSH("nil")
 LJLIB_PUSH("boolean")
-LJLIB_PUSH(top-1)  /* boolean */
+LJLIB_PUSH(top-1)  //  boolean
 LJLIB_PUSH("userdata")
 LJLIB_PUSH("string")
 LJLIB_PUSH("upval")
@@ -66,7 +66,7 @@ LJLIB_PUSH("function")
 LJLIB_PUSH("trace")
 LJLIB_PUSH("cdata")
 LJLIB_PUSH("table")
-LJLIB_PUSH(top-9)  /* userdata */
+LJLIB_PUSH(top-9)  //  userdata
 LJLIB_PUSH("number")
 LJLIB_ASM_(type)      LJLIB_REC(.)
 // Recycle the lj_lib_checkany(L, 1) from assert.
@@ -89,8 +89,8 @@ static int ffh_pairs(lua_State* L, MMS mm)
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo = lj_meta_lookup(L, o, mm);
    if ((LJ_52 || tviscdata(o)) && !tvisnil(mo)) {
-      L->top = o + 1;  /* Only keep one argument. */
-      copyTV(L, L->base - 1 - LJ_FR2, mo);  /* Replace callable. */
+      L->top = o + 1;  //  Only keep one argument.
+      copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
       return FFH_TAILCALL;
    }
    else {
@@ -329,9 +329,9 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo;
-   L->top = o + 1;  /* Only keep one argument. */
+   L->top = o + 1;  //  Only keep one argument.
    if (!tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
-      copyTV(L, L->base - 1 - LJ_FR2, mo);  /* Replace callable. */
+      copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
       return FFH_TAILCALL;
    }
    lj_gc_check(L);
@@ -356,7 +356,7 @@ LJLIB_CF(error)
 LJLIB_ASM(pcall)      LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
-   lj_lib_checkfunc(L, 2);  /* For xpcall only. */
+   lj_lib_checkfunc(L, 2);  //  For xpcall only.
    return FFH_UNREACHABLE;
 }
 LJLIB_ASM_(xpcall)      LJLIB_REC(.)
@@ -385,7 +385,7 @@ LJLIB_CF(loadfile)
    GCstr* fname = lj_lib_optstr(L, 1);
    GCstr* mode = lj_lib_optstr(L, 2);
    int status;
-   lua_settop(L, 3);  /* Ensure env arg exists. */
+   lua_settop(L, 3);  //  Ensure env arg exists.
    status = luaL_loadfilex(L, fname ? strdata(fname) : NULL,
       mode ? strdata(mode) : NULL);
    return load_aux(L, status, 3);
@@ -396,14 +396,14 @@ static const char* reader_func(lua_State* L, void* ud, size_t* size)
    UNUSED(ud);
    luaL_checkstack(L, 2, "too many nested functions");
    copyTV(L, L->top++, L->base);
-   lua_call(L, 0, 1);  /* Call user-supplied function. */
+   lua_call(L, 0, 1);  //  Call user-supplied function.
    L->top--;
    if (tvisnil(L->top)) {
       *size = 0;
       return NULL;
    }
    else if (tvisstr(L->top) || tvisnumber(L->top)) {
-      copyTV(L, L->base + 4, L->top);  /* Anchor string in reserved stack slot. */
+      copyTV(L, L->base + 4, L->top);  //  Anchor string in reserved stack slot.
       return lua_tolstring(L, 5, size);
    }
    else {
@@ -425,20 +425,20 @@ LJLIB_CF(load)
          SBufExt* sbx = bufV(L->base);
          s = sbx->r;
          len = sbufxlen(sbx);
-         if (!name) name = &G(L)->strempty;  /* Buffers are not NUL-terminated. */
+         if (!name) name = &G(L)->strempty;  //  Buffers are not NUL-terminated.
       }
       else {
          GCstr* str = lj_lib_checkstr(L, 1);
          s = strdata(str);
          len = str->len;
       }
-      lua_settop(L, 4);  /* Ensure env arg exists. */
+      lua_settop(L, 4);  //  Ensure env arg exists.
       status = luaL_loadbufferx(L, s, len, name ? strdata(name) : s,
          mode ? strdata(mode) : NULL);
    }
    else {
       lj_lib_checkfunc(L, 1);
-      lua_settop(L, 5);  /* Reserve a slot for the string from the reader. */
+      lua_settop(L, 5);  //  Reserve a slot for the string from the reader.
       status = lua_loadx(L, reader_func, NULL, name ? strdata(name) : "=(load)",
          mode ? strdata(mode) : NULL);
    }
@@ -471,7 +471,7 @@ LJLIB_CF(gcinfo)
 
 LJLIB_CF(collectgarbage)
 {
-   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
+   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  //  ORDER LUA_GC*
       "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning");
    int32_t data = lj_lib_optint(L, 2, 0);
    if (opt == LUA_GCCOUNT) {
@@ -490,7 +490,7 @@ LJLIB_CF(collectgarbage)
 
 // -- Base library: miscellaneous functions -------------------------------
 
-LJLIB_PUSH(top-2)  /* Upvalue holds weak table. */
+LJLIB_PUSH(top-2)  //  Upvalue holds weak table.
 LJLIB_CF(newproxy)
 {
    lua_settop(L, 1);
@@ -502,7 +502,7 @@ LJLIB_CF(newproxy)
       lua_newtable(L);
       lua_pushvalue(L, -1);
       lua_pushboolean(L, 1);
-      lua_rawset(L, lua_upvalueindex(1));  /* Remember mt in weak table. */
+      lua_rawset(L, lua_upvalueindex(1));  //  Remember mt in weak table.
    }
    else {  // newproxy(proxy): inherit metatable.
       int validproxy = 0;
@@ -703,8 +703,8 @@ LUALIB_API int luaopen_base(lua_State* L)
    // NOBARRIER: Table and value are the same.
    GCtab* env = tabref(L->env);
    settabV(L, lj_tab_setstr(L, env, lj_str_newlit(L, "_G")), env);
-   lua_pushliteral(L, LUA_VERSION);  /* top-3. */
-   newproxy_weaktable(L);  /* top-2. */
+   lua_pushliteral(L, LUA_VERSION);  //  top-3.
+   newproxy_weaktable(L);  //  top-2.
    LJ_LIB_REG(L, "_G", base);
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
    return 2;

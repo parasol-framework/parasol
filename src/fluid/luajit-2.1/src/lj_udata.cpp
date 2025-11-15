@@ -15,7 +15,7 @@ GCudata* lj_udata_new(lua_State* L, MSize sz, GCtab* env)
 {
    GCudata* ud = lj_mem_newt(L, sizeof(GCudata) + sz, GCudata);
    global_State* g = G(L);
-   newwhite(g, ud);  /* Not finalized. */
+   newwhite(g, ud);  //  Not finalized.
    ud->gct = ~LJ_TUDATA;
    ud->udtype = UDTYPE_USERDATA;
    ud->len = sz;
@@ -44,7 +44,7 @@ void* lj_lightud_intern(lua_State* L, void* p)
    if (segmap) {
       MSize seg;
       for (seg = 0; seg <= segnum; seg++)
-         if (segmap[seg] == up)  /* Fast path. */
+         if (segmap[seg] == up)  //  Fast path.
             return (void*)(((uint64_t)seg << LJ_LIGHTUD_BITS_LO) | lightudlo(u));
       segnum++;
       // Leave last segment unused to avoid clash with ITERN key.

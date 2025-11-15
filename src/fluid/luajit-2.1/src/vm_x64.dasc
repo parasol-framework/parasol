@@ -379,8 +379,8 @@
 |
 |//-----------------------------------------------------------------------
 
-/* Generate subroutines used by opcodes and other parts of the VM. */
-/* The .code_sub section should be last to help static branch prediction. */
+//  Generate subroutines used by opcodes and other parts of the VM.
+//  The .code_sub section should be last to help static branch prediction.
 static void build_subroutines(BuildCtx *ctx)
 {
   |.code_sub
@@ -2796,7 +2796,7 @@ static void build_subroutines(BuildCtx *ctx)
   |//-----------------------------------------------------------------------
 }
 
-/* Generate the code for a single instruction. */
+//  Generate the code for a single instruction.
 static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 {
   int vk = 0;
@@ -2805,9 +2805,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   switch (op) {
 
-  /* -- Comparison ops ---------------------------------------------------- */
+  //  -- Comparison ops ----------------------------------------------------
 
-  /* Remember: all ops branch for a true comparison, fall through otherwise. */
+  //  Remember: all ops branch for a true comparison, fall through otherwise.
 
   |.macro jmp_comp, lt, ge, le, gt, target
   ||switch (op) {
@@ -2823,7 +2823,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   ||case BC_ISGT:
   |   gt target
   ||break;
-  ||default: break;  /* Shut up GCC. */
+  ||default: break;  //  Shut up GCC.
   ||}
   |.endmacro
 
@@ -3095,7 +3095,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     }
     break;
 
-  /* -- Unary test and copy ops ------------------------------------------- */
+  //  -- Unary test and copy ops -------------------------------------------
 
   case BC_ISTC: case BC_ISFC: case BC_IST: case BC_ISF:
     |  ins_AD	// RA = dst or unused, RD = src, JMP with RD = target
@@ -3134,7 +3134,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Unary ops --------------------------------------------------------- */
+  //  -- Unary ops ---------------------------------------------------------
 
   case BC_MOV:
     |  ins_AD	// RA = dst, RD = src
@@ -3227,7 +3227,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 #endif
     break;
 
-  /* -- Binary ops -------------------------------------------------------- */
+  //  -- Binary ops --------------------------------------------------------
 
     |.macro ins_arithpre, sseins, ssereg
     |  ins_ABC
@@ -3368,7 +3368,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Constant ops ------------------------------------------------------ */
+  //  -- Constant ops ------------------------------------------------------
 
   case BC_KSTR:
     |  ins_AND	// RA = dst, RD = str const (~)
@@ -3426,7 +3426,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Upvalue and function ops ------------------------------------------ */
+  //  -- Upvalue and function ops ------------------------------------------
 
   case BC_UGET:
     |  ins_AD	// RA = dst, RD = upvalue #
@@ -3560,7 +3560,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Table ops --------------------------------------------------------- */
+  //  -- Table ops ---------------------------------------------------------
 
   case BC_TNEW:
     |  ins_AD	// RA = dst, RD = hbits|asize
@@ -3983,7 +3983,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp <2
     break;
 
-  /* -- Calls and vararg handling ----------------------------------------- */
+  //  -- Calls and vararg handling -----------------------------------------
 
   case BC_CALL: case BC_CALLM:
     |  ins_A_C	// RA = base, (RB = nresults+1,) RC = nargs+1 | extra_nargs
@@ -4233,7 +4233,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp <6
     break;
 
-  /* -- Returns ----------------------------------------------------------- */
+  //  -- Returns -----------------------------------------------------------
 
   case BC_RETM:
     |  ins_AD	// RA = results, RD = extra_nresults
@@ -4273,7 +4273,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     case BC_RET1:
       |  mov RB, [BASE+RA]
       |  mov [BASE-16], RB
-      /* fallthrough */
+      //  fallthrough
     case BC_RET0:
       |5:
       |  cmp PC_RB, RDL			// More results expected?
@@ -4312,7 +4312,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp <1
     break;
 
-  /* -- Loops and branches ------------------------------------------------ */
+  //  -- Loops and branches ------------------------------------------------
 
   |.define FOR_IDX,  [RA]
   |.define FOR_STOP, [RA+8]
@@ -4554,7 +4554,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Function headers -------------------------------------------------- */
+  //  -- Function headers --------------------------------------------------
 
    /*
    ** Reminder: A function may be called with func/args above L->maxstack,
@@ -4567,7 +4567,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.if JIT
     |  hotcall RBd
     |.endif
-  case BC_FUNCV:  /* NYI: compiled vararg functions. */
+  case BC_FUNCV:  //  NYI: compiled vararg functions.
     | // Fall through. Assumes BC_IFUNCF/BC_IFUNCV follow and ins_AD is a no-op.
     break;
 
@@ -4606,7 +4606,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 #endif
     | int3  // NYI: compiled vararg functions
-    break;  /* NYI: compiled vararg functions. */
+    break;  //  NYI: compiled vararg functions.
 
   case BC_IFUNCV:
     |  ins_AD  // BASE = new base, RA = framesize, RD = nargs+1
@@ -4689,7 +4689,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp ->vm_returnc
     break;
 
-  /* ---------------------------------------------------------------------- */
+  //  ----------------------------------------------------------------------
 
   default:
     fprintf(stderr, "Error: undefined opcode BC_%s\n", bc_names[op]);
@@ -4709,7 +4709,7 @@ static int build_backend(BuildCtx *ctx)
   return BC__MAX;
 }
 
-/* Emit pseudo frame-info for all assembler functions. */
+//  Emit pseudo frame-info for all assembler functions.
 static void emit_asm_debug(BuildCtx *ctx)
 {
   int fcofs = (int)((uint8_t *)ctx->glob[GLOB_vm_ffi_call] - ctx->code);
@@ -4737,14 +4737,14 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.long .Lframe0\n"
 	"\t.quad .Lbegin\n"
 	"\t.quad %d\n"
-	"\t.byte 0xe\n\t.uleb128 %d\n"		/* def_cfa_offset */
-	"\t.byte 0x86\n\t.uleb128 0x2\n"	/* offset rbp */
-	"\t.byte 0x83\n\t.uleb128 0x3\n"	/* offset rbx */
-	"\t.byte 0x8f\n\t.uleb128 0x4\n"	/* offset r15 */
-	"\t.byte 0x8e\n\t.uleb128 0x5\n"	/* offset r14 */
+	"\t.byte 0xe\n\t.uleb128 %d\n"		//  def_cfa_offset
+	"\t.byte 0x86\n\t.uleb128 0x2\n"	//  offset rbp
+	"\t.byte 0x83\n\t.uleb128 0x3\n"	//  offset rbx
+	"\t.byte 0x8f\n\t.uleb128 0x4\n"	//  offset r15
+	"\t.byte 0x8e\n\t.uleb128 0x5\n"	//  offset r14
 #if LJ_NO_UNWIND
-	"\t.byte 0x8d\n\t.uleb128 0x6\n"	/* offset r13 */
-	"\t.byte 0x8c\n\t.uleb128 0x7\n"	/* offset r12 */
+	"\t.byte 0x8d\n\t.uleb128 0x6\n"	//  offset r13
+	"\t.byte 0x8c\n\t.uleb128 0x7\n"	//  offset r12
 #endif
 	"\t.align 8\n"
 	".LEFDE0:\n\n", fcofs, CFRAME_SIZE);
@@ -4756,10 +4756,10 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.long .Lframe0\n"
 	"\t.quad lj_vm_ffi_call\n"
 	"\t.quad %d\n"
-	"\t.byte 0xe\n\t.uleb128 16\n"		/* def_cfa_offset */
-	"\t.byte 0x86\n\t.uleb128 0x2\n"	/* offset rbp */
-	"\t.byte 0xd\n\t.uleb128 0x6\n"		/* def_cfa_register rbp */
-	"\t.byte 0x83\n\t.uleb128 0x3\n"	/* offset rbx */
+	"\t.byte 0xe\n\t.uleb128 16\n"		//  def_cfa_offset
+	"\t.byte 0x86\n\t.uleb128 0x2\n"	//  offset rbp
+	"\t.byte 0xd\n\t.uleb128 0x6\n"		//  def_cfa_register rbp
+	"\t.byte 0x83\n\t.uleb128 0x3\n"	//  offset rbx
 	"\t.align 8\n"
 	".LEFDE1:\n\n", (int)ctx->codesz - fcofs);
 #endif
@@ -4779,10 +4779,10 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.uleb128 0x1\n"
 	"\t.sleb128 -8\n"
 	"\t.byte 0x10\n"
-	"\t.uleb128 6\n"			/* augmentation length */
-	"\t.byte 0x1b\n"			/* pcrel|sdata4 */
+	"\t.uleb128 6\n"			//  augmentation length
+	"\t.byte 0x1b\n"			//  pcrel|sdata4
 	"\t.long lj_err_unwind_dwarf-.\n"
-	"\t.byte 0x1b\n"			/* pcrel|sdata4 */
+	"\t.byte 0x1b\n"			//  pcrel|sdata4
 	"\t.byte 0xc\n\t.uleb128 0x7\n\t.uleb128 8\n"
 	"\t.byte 0x80+0x10\n\t.uleb128 0x1\n"
 	"\t.align 8\n"
@@ -4794,12 +4794,12 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.long .LASFDE2-.Lframe1\n"
 	"\t.long .Lbegin-.\n"
 	"\t.long %d\n"
-	"\t.uleb128 0\n"			/* augmentation length */
-	"\t.byte 0xe\n\t.uleb128 %d\n"		/* def_cfa_offset */
-	"\t.byte 0x86\n\t.uleb128 0x2\n"	/* offset rbp */
-	"\t.byte 0x83\n\t.uleb128 0x3\n"	/* offset rbx */
-	"\t.byte 0x8f\n\t.uleb128 0x4\n"	/* offset r15 */
-	"\t.byte 0x8e\n\t.uleb128 0x5\n"	/* offset r14 */
+	"\t.uleb128 0\n"			//  augmentation length
+	"\t.byte 0xe\n\t.uleb128 %d\n"		//  def_cfa_offset
+	"\t.byte 0x86\n\t.uleb128 0x2\n"	//  offset rbp
+	"\t.byte 0x83\n\t.uleb128 0x3\n"	//  offset rbx
+	"\t.byte 0x8f\n\t.uleb128 0x4\n"	//  offset r15
+	"\t.byte 0x8e\n\t.uleb128 0x5\n"	//  offset r14
 	"\t.align 8\n"
 	".LEFDE2:\n\n", fcofs, CFRAME_SIZE);
 #if LJ_HASFFI
@@ -4813,8 +4813,8 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.uleb128 0x1\n"
 	"\t.sleb128 -8\n"
 	"\t.byte 0x10\n"
-	"\t.uleb128 1\n"			/* augmentation length */
-	"\t.byte 0x1b\n"			/* pcrel|sdata4 */
+	"\t.uleb128 1\n"			//  augmentation length
+	"\t.byte 0x1b\n"			//  pcrel|sdata4
 	"\t.byte 0xc\n\t.uleb128 0x7\n\t.uleb128 8\n"
 	"\t.byte 0x80+0x10\n\t.uleb128 0x1\n"
 	"\t.align 8\n"
@@ -4826,11 +4826,11 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.long .LASFDE3-.Lframe2\n"
 	"\t.long lj_vm_ffi_call-.\n"
 	"\t.long %d\n"
-	"\t.uleb128 0\n"			/* augmentation length */
-	"\t.byte 0xe\n\t.uleb128 16\n"		/* def_cfa_offset */
-	"\t.byte 0x86\n\t.uleb128 0x2\n"	/* offset rbp */
-	"\t.byte 0xd\n\t.uleb128 0x6\n"		/* def_cfa_register rbp */
-	"\t.byte 0x83\n\t.uleb128 0x3\n"	/* offset rbx */
+	"\t.uleb128 0\n"			//  augmentation length
+	"\t.byte 0xe\n\t.uleb128 16\n"		//  def_cfa_offset
+	"\t.byte 0x86\n\t.uleb128 0x2\n"	//  offset rbp
+	"\t.byte 0xd\n\t.uleb128 0x6\n"		//  def_cfa_register rbp
+	"\t.byte 0x83\n\t.uleb128 0x3\n"	//  offset rbx
 	"\t.align 8\n"
 	".LEFDE3:\n\n", (int)ctx->codesz - fcofs);
 #endif
@@ -4857,10 +4857,10 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.byte 0x1\n"
 	"\t.byte 128-8\n"
 	"\t.byte 0x10\n"
-	"\t.byte 6\n"				/* augmentation length */
-	"\t.byte 0x9b\n"			/* indirect|pcrel|sdata4 */
+	"\t.byte 6\n"				//  augmentation length
+	"\t.byte 0x9b\n"			//  indirect|pcrel|sdata4
 	"\t.long _lj_err_unwind_dwarf+4@GOTPCREL\n"
-	"\t.byte 0x1b\n"			/* pcrel|sdata4 */
+	"\t.byte 0x1b\n"			//  pcrel|sdata4
 	"\t.byte 0xc\n\t.byte 0x7\n\t.byte 8\n"
 	"\t.byte 0x80+0x10\n\t.byte 0x1\n"
 	"\t.align 3\n"
@@ -4881,12 +4881,12 @@ static void emit_asm_debug(BuildCtx *ctx)
 	  "\t.long LASFDE%d-EH_frame1\n"
 	  "\t.long %s-.\n"
 	  "\t.long %d\n"
-	  "\t.byte 0\n"				/* augmentation length */
-	  "\t.byte 0xe\n\t.byte %d\n"		/* def_cfa_offset */
-	  "\t.byte 0x86\n\t.byte 0x2\n"		/* offset rbp */
-	  "\t.byte 0x83\n\t.byte 0x3\n"		/* offset rbx */
-	  "\t.byte 0x8f\n\t.byte 0x4\n"		/* offset r15 */
-	  "\t.byte 0x8e\n\t.byte 0x5\n"		/* offset r14 */
+	  "\t.byte 0\n"				//  augmentation length
+	  "\t.byte 0xe\n\t.byte %d\n"		//  def_cfa_offset
+	  "\t.byte 0x86\n\t.byte 0x2\n"		//  offset rbp
+	  "\t.byte 0x83\n\t.byte 0x3\n"		//  offset rbx
+	  "\t.byte 0x8f\n\t.byte 0x4\n"		//  offset r15
+	  "\t.byte 0x8e\n\t.byte 0x5\n"		//  offset r14
 	  "\t.align 3\n"
 	  "LEFDE%d:\n\n",
 	  name, i, i, i, i, i, i, i, name, size, CFRAME_SIZE, i);
@@ -4904,8 +4904,8 @@ static void emit_asm_debug(BuildCtx *ctx)
 	  "\t.byte 0x1\n"
 	  "\t.byte 128-8\n"
 	  "\t.byte 0x10\n"
-	  "\t.byte 1\n"				/* augmentation length */
-	  "\t.byte 0x1b\n"			/* pcrel|sdata4 */
+	  "\t.byte 1\n"				//  augmentation length
+	  "\t.byte 0x1b\n"			//  pcrel|sdata4
 	  "\t.byte 0xc\n\t.byte 0x7\n\t.byte 8\n"
 	  "\t.byte 0x80+0x10\n\t.byte 0x1\n"
 	  "\t.align 3\n"
@@ -4919,11 +4919,11 @@ static void emit_asm_debug(BuildCtx *ctx)
 	  "\t.long LASFDEY-EH_frame2\n"
 	  "\t.long _lj_vm_ffi_call-.\n"
 	  "\t.long %d\n"
-	  "\t.byte 0\n"				/* augmentation length */
-	  "\t.byte 0xe\n\t.byte 16\n"		/* def_cfa_offset */
-	  "\t.byte 0x86\n\t.byte 0x2\n"		/* offset rbp */
-	  "\t.byte 0xd\n\t.byte 0x6\n"		/* def_cfa_register rbp */
-	  "\t.byte 0x83\n\t.byte 0x3\n"		/* offset rbx */
+	  "\t.byte 0\n"				//  augmentation length
+	  "\t.byte 0xe\n\t.byte 16\n"		//  def_cfa_offset
+	  "\t.byte 0x86\n\t.byte 0x2\n"		//  offset rbp
+	  "\t.byte 0xd\n\t.byte 0x6\n"		//  def_cfa_register rbp
+	  "\t.byte 0x83\n\t.byte 0x3\n"		//  offset rbx
 	  "\t.align 3\n"
 	  "LEFDEY:\n\n", fcsize);
     }
@@ -4932,7 +4932,7 @@ static void emit_asm_debug(BuildCtx *ctx)
     }
     break;
 #endif
-  default:  /* Difficult for other modes. */
+  default:  //  Difficult for other modes.
     break;
   }
 }

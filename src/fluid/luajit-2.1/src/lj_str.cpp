@@ -66,9 +66,9 @@ int lj_str_haspattern(GCstr* s)
    while (p < q) {
       int c = *(const uint8_t*)p++;
       if (lj_char_ispunct(c) && strchr("^$*+?.([%-", c))
-         return 1;  /* Found a pattern matching char. */
+         return 1;  //  Found a pattern matching char.
    }
-   return 0;  /* No pattern matching chars found. */
+   return 0;  //  No pattern matching chars found.
 }
 
 // -- String hashing ------------------------------------------------------
@@ -224,7 +224,7 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
    const char* str, MSize len)
 {
    global_State* g = G(L);
-   int ow = g->gc.state == GCSsweepstring ? otherwhite(g) : 0;  /* Sweeping? */
+   int ow = g->gc.state == GCSsweepstring ? otherwhite(g) : 0;  //  Sweeping?
    GCRef* strtab = g->str.tab;
    MSize strmask = g->str.mask;
    GCobj* o = gcref(strtab[hashc & strmask]);
@@ -310,9 +310,9 @@ static GCstr* lj_str_alloc(lua_State* L, const char* str, MSize len,
    setgcrefp(s->nextgc, (u & ~(uintptr_t)1));
    // NOBARRIER: The string table is a GC root.
    setgcrefp(g->str.tab[hash], ((uintptr_t)s | (u & 1)));
-   if (g->str.num++ > g->str.mask)  /* Allow a 100% load factor. */
-      lj_str_resize(L, (g->str.mask << 1) + 1);  /* Grow string table. */
-   return s;  /* Return newly interned string. */
+   if (g->str.num++ > g->str.mask)  //  Allow a 100% load factor.
+      lj_str_resize(L, (g->str.mask << 1) + 1);  //  Grow string table.
+   return s;  //  Return newly interned string.
 }
 
 // Intern a string and return string object.
@@ -337,8 +337,8 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
          GCstr* sx = gco2str(o);
          if (sx->hash == hash && sx->len == len) {
             if (memcmp(str, strdata(sx), len) == 0) {
-               if (isdead(g, o)) flipwhite(o);  /* Resurrect if dead. */
-               return sx;  /* Return existing string. */
+               if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
+               return sx;  //  Return existing string.
             }
             coll++;
          }

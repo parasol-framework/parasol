@@ -237,7 +237,7 @@ enum {
 
 // Bytecode operand modes. ORDER BCMode
 typedef enum {
-   BCMnone, BCMdst, BCMbase, BCMvar, BCMrbase, BCMuv,  /* Mode A must be <= 7 */
+   BCMnone, BCMdst, BCMbase, BCMvar, BCMrbase, BCMuv,  //  Mode A must be <= 7
    BCMlit, BCMlits, BCMpri, BCMnum, BCMstr, BCMtab, BCMfunc, BCMjump, BCMcdata,
    BCM_max
 } BCMode;

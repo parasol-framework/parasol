@@ -152,7 +152,7 @@ __attribute__((weak))
 */
 int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 {
-   lj_prng_seed_fixed(rs);  /* The fixed seed is already conditioned. */
+   lj_prng_seed_fixed(rs);  //  The fixed seed is already conditioned.
    return 1;
 }
 
@@ -238,12 +238,12 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 #error "Missing secure PRNG seed for this OS"
 
 #endif
-   return 0;  /* Fail. */
+   return 0;  //  Fail.
 
 ok:
    lj_prng_condition(rs);
    (void)lj_prng_u64(rs);
-   return 1;  /* Success. */
+   return 1;  //  Success.
 }
 
 #endif

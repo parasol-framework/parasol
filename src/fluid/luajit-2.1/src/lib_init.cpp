@@ -15,17 +15,12 @@
 
 #include "lj_arch.h"
 
-// PARASOL PATCHED IN
 static const luaL_Reg lj_lib_load[] = {
-  { "",         luaopen_base },
-  //{ LUA_LOADLIBNAME,   luaopen_package },
+  { "",               luaopen_base },
   { LUA_TABLIBNAME,   luaopen_table },
-  //{ LUA_IOLIBNAME,   luaopen_io },
-  //{ LUA_OSLIBNAME,   luaopen_os },
   { LUA_STRLIBNAME,   luaopen_string },
-  //{ LUA_BUFFERLIBNAME, luaopen_buffer },
-  { LUA_MATHLIBNAME,   luaopen_math },
-  { LUA_DBLIBNAME,   luaopen_debug },
+  { LUA_MATHLIBNAME,  luaopen_math },
+  { LUA_DBLIBNAME,    luaopen_debug },
   { LUA_BITLIBNAME,   luaopen_bit },
   { LUA_JITLIBNAME,   luaopen_jit },
   { NULL,      NULL }

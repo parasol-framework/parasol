@@ -23,12 +23,12 @@
 
 // Context for bytecode writer.
 typedef struct BCWriteCtx {
-   SBuf sb;         /* Output buffer. */
-   GCproto* pt;         /* Root prototype. */
-   lua_Writer wfunc;      /* Writer callback. */
-   void* wdata;         /* Writer callback data. */
-   int strip;         /* Strip debug info. */
-   int status;         /* Status from writer callback. */
+   SBuf sb;         //  Output buffer.
+   GCproto* pt;         //  Root prototype.
+   lua_Writer wfunc;      //  Writer callback.
+   void* wdata;         //  Writer callback data.
+   int strip;         //  Strip debug info.
+   int status;         //  Status from writer callback.
 #ifdef LUA_USE_ASSERT
    global_State* g;
 #endif
@@ -224,7 +224,7 @@ static void bcwrite_knum(BCWriteCtx* ctx, GCproto* pt)
 // Write bytecode instructions.
 static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
 {
-   MSize nbc = pt->sizebc - 1;  /* Omit the [JI]FUNC* header. */
+   MSize nbc = pt->sizebc - 1;  //  Omit the [JI]FUNC* header.
 #if LJ_HASJIT
    uint8_t* q = (uint8_t*)p;
 #endif
@@ -271,7 +271,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
    // Start writing the prototype info to a buffer.
    p = lj_buf_need(&ctx->sb,
       5 + 4 + 6 * 5 + (pt->sizebc - 1) * (MSize)sizeof(BCIns) + pt->sizeuv * 2);
-   p += 5;  /* Leave room for final size. */
+   p += 5;  //  Leave room for final size.
 
    // Write prototype header.
    *p++ = (pt->flags & (PROTO_CHILD | PROTO_VARARG | PROTO_FFI));
@@ -312,7 +312,7 @@ static void bcwrite_proto(BCWriteCtx* ctx, GCproto* pt)
       MSize n = sbuflen(&ctx->sb) - 5;
       MSize nn = (lj_fls(n) + 8) * 9 >> 6;
       char* q = ctx->sb.b + (5 - nn);
-      p = lj_strfmt_wuleb128(q, n);  /* Fill in final size. */
+      p = lj_strfmt_wuleb128(q, n);  //  Fill in final size.
       lj_assertBCW(p == ctx->sb.b + 5, "bad ULEB128 write");
       ctx->status = ctx->wfunc(sbufL(&ctx->sb), q, nn + n, ctx->wdata);
    }
@@ -355,7 +355,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
 {
    BCWriteCtx* ctx = (BCWriteCtx*)ud;
    UNUSED(L); UNUSED(dummy);
-   lj_buf_need(&ctx->sb, 1024);  /* Avoids resize for most prototypes. */
+   lj_buf_need(&ctx->sb, 1024);  //  Avoids resize for most prototypes.
    bcwrite_header(ctx);
    bcwrite_proto(ctx, ctx->pt);
    bcwrite_footer(ctx);

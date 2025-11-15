@@ -33,9 +33,9 @@
 // -- Stack handling ------------------------------------------------------
 
 // Stack sizes.
-#define LJ_STACK_MIN   LUA_MINSTACK   /* Min. stack size. */
-#define LJ_STACK_MAX   LUAI_MAXSTACK   /* Max. stack size. */
-#define LJ_STACK_START   (2*LJ_STACK_MIN)   /* Starting stack size. */
+#define LJ_STACK_MIN   LUA_MINSTACK   //  Min. stack size.
+#define LJ_STACK_MAX   LUAI_MAXSTACK   //  Max. stack size.
+#define LJ_STACK_START   (2*LJ_STACK_MIN)   //  Starting stack size.
 #define LJ_STACK_MAXEX   (LJ_STACK_MAX + 1 + LJ_STACK_EXTRA)
 
 /* Explanation of LJ_STACK_EXTRA:
@@ -69,7 +69,7 @@ static void resizestack(lua_State* L, MSize n)
    setmref(L->stack, st);
    delta = (char*)st - (char*)oldst;
    setmref(L->maxstack, st + n);
-   while (oldsize < realsize)  /* Clear new slots. */
+   while (oldsize < realsize)  //  Clear new slots.
       setnilV(st + oldsize++);
    L->stacksize = realsize;
    if ((size_t)(mref(G(L)->jit_base, char) - (char*)oldst) < oldsize)
@@ -91,7 +91,7 @@ void lj_state_relimitstack(lua_State* L)
 void lj_state_shrinkstack(lua_State* L, MSize used)
 {
    if (L->stacksize > LJ_STACK_MAXEX)
-      return;  /* Avoid stack shrinking while handling stack overflow. */
+      return;  //  Avoid stack shrinking while handling stack overflow.
    if (4 * used < L->stacksize &&
       2 * (LJ_STACK_START + LJ_STACK_EXTRA) < L->stacksize &&
       // Don't shrink stack of live trace.
@@ -103,7 +103,7 @@ void lj_state_shrinkstack(lua_State* L, MSize used)
 void LJ_FASTCALL lj_state_growstack(lua_State* L, MSize need)
 {
    MSize n;
-   if (L->stacksize > LJ_STACK_MAXEX)  /* Overflow while handling overflow? */
+   if (L->stacksize > LJ_STACK_MAXEX)  //  Overflow while handling overflow?
       lj_err_throw(L, LUA_ERRERR);
    n = L->stacksize + need;
    if (n > LJ_STACK_MAX) {
@@ -132,10 +132,10 @@ static void stack_init(lua_State* L1, lua_State* L)
    L1->stacksize = LJ_STACK_START + LJ_STACK_EXTRA;
    stend = st + L1->stacksize;
    setmref(L1->maxstack, stend - LJ_STACK_EXTRA - 1);
-   setthreadV(L1, st++, L1);  /* Needed for curr_funcisL() on empty stack. */
+   setthreadV(L1, st++, L1);  //  Needed for curr_funcisL() on empty stack.
    if (LJ_FR2) setnilV(st++);
    L1->base = L1->top = st;
-   while (st < stend)  /* Clear new slots. */
+   while (st < stend)  //  Clear new slots.
       setnilV(st++);
 }
 
@@ -154,7 +154,7 @@ static TValue* cpluaopen(lua_State* L, lua_CFunction dummy, void* ud)
    lj_str_init(L);
    lj_meta_init(L);
    lj_lex_init(L);
-   fixstring(lj_err_str(L, LJ_ERR_ERRMEM));  /* Preallocate memory error msg. */
+   fixstring(lj_err_str(L, LJ_ERR_ERRMEM));  //  Preallocate memory error msg.
    g->gc.threshold = 4 * g->gc.total;
    lj_trace_initstate(g);
    lj_err_verify();
@@ -222,7 +222,7 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    L = &GG->L;
    g = &GG->g;
    L->gct = ~LJ_TTHREAD;
-   L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  /* Prevent free. */
+   L->marked = LJ_GC_WHITE0 | LJ_GC_FIXED | LJ_GC_SFIXED;  //  Prevent free.
    L->dummy_ffid = FF_C;
    setmref(L->glref, g);
    g->gc.currentwhite = LJ_GC_WHITE0 | LJ_GC_FIXED;
@@ -254,7 +254,7 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    g->gc.pause = LUAI_GCPAUSE;
    g->gc.stepmul = LUAI_GCMUL;
    lj_dispatch_init((GG_State*)L);
-   L->status = LUA_ERRERR + 1;  /* Avoid touching the stack upon memory error. */
+   L->status = LUA_ERRERR + 1;  //  Avoid touching the stack upon memory error.
    if (lj_vm_cpcall(L, NULL, NULL, cpluaopen) != 0) {
       // Memory allocation error: free partial state.
       close_state(L);
@@ -278,13 +278,13 @@ LUA_API void lua_close(lua_State* L)
 {
    global_State* g = G(L);
    int i;
-   L = mainthread(g);  /* Only the main thread can be closed. */
+   L = mainthread(g);  //  Only the main thread can be closed.
 #if LJ_HASPROFILE
    luaJIT_profile_stop(L);
 #endif
    setgcrefnull(g->cur_L);
    lj_func_closeuv(L, tvref(L->stack));
-   lj_gc_separateudata(g, 1);  /* Separate udata which have GC metamethods. */
+   lj_gc_separateudata(g, 1);  //  Separate udata which have GC metamethods.
 #if LJ_HASJIT
    G2J(g)->flags &= ~JIT_F_ON;
    G2J(g)->state = LJ_TRACE_IDLE;
@@ -297,8 +297,8 @@ LUA_API void lua_close(lua_State* L)
       L->cframe = NULL;
       if (lj_vm_cpcall(L, NULL, NULL, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
-         lj_gc_separateudata(g, 1);  /* Separate udata again. */
-         if (gcref(g->gc.mmudata) == NULL)  /* Until nothing is left to do. */
+         lj_gc_separateudata(g, 1);  //  Separate udata again.
+         if (gcref(g->gc.mmudata) == NULL)  //  Until nothing is left to do.
             break;
       }
    }
@@ -318,7 +318,7 @@ lua_State* lj_state_new(lua_State* L)
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
    setgcrefr(L1->env, L->env);
-   stack_init(L1, L);  /* init stack */
+   stack_init(L1, L);  //  init stack
    lj_assertL(iswhite(obj2gco(L1)), "new thread object is not white");
    return L1;
 }

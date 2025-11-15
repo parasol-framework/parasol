@@ -227,7 +227,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
          if (mcode_validptr(p) &&
             ((uintptr_t)p + sz - target < range || target - (uintptr_t)p < range))
             return p;
-         if (p) mcode_free(J, p, sz);  /* Free badly placed area. */
+         if (p) mcode_free(J, p, sz);  //  Free badly placed area.
       }
       // Next try probing 64K-aligned pseudo-random addresses.
       do {
@@ -235,7 +235,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
       } while (!(hint + sz < range + range));
       hint = target + hint - range;
    }
-   lj_trace_err(J, LJ_TRERR_MCODEAL);  /* Give up. OS probably ignores hints? */
+   lj_trace_err(J, LJ_TRERR_MCODEAL);  //  Give up. OS probably ignores hints?
    return NULL;
 }
 
@@ -365,11 +365,11 @@ void lj_mcode_limiterr(jit_State* J, size_t need)
    sizemcode = (sizemcode + LJ_PAGESIZE - 1) & ~(size_t)(LJ_PAGESIZE - 1);
    maxmcode = (size_t)J->param[JIT_P_maxmcode] << 10;
    if ((size_t)need > sizemcode)
-      lj_trace_err(J, LJ_TRERR_MCODEOV);  /* Too long for any area. */
+      lj_trace_err(J, LJ_TRERR_MCODEOV);  //  Too long for any area.
    if (J->szallmcarea + sizemcode > maxmcode)
       lj_trace_err(J, LJ_TRERR_MCODEAL);
    mcode_allocarea(J);
-   lj_trace_err(J, LJ_TRERR_MCODELM);  /* Retry with new area. */
+   lj_trace_err(J, LJ_TRERR_MCODELM);  //  Retry with new area.
 }
 
 #endif

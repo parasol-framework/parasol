@@ -39,7 +39,7 @@ static GCtab* lib_create_table(lua_State* L, const char* libname, int hsize)
             lj_err_callerv(L, LJ_ERR_BADMODN, libname);
          settabV(L, L->top, tabV(L->top - 1));
          L->top++;
-         lua_setfield(L, -3, libname);  /* _LOADED[libname] = new table */
+         lua_setfield(L, -3, libname);  //  _LOADED[libname] = new table
       }
       L->top--;
       settabV(L, L->top - 1, tabV(L->top));
@@ -106,9 +106,9 @@ void lj_lib_register(lua_State* L, const char* libname,
          else
             setmref(fn->c.pc, bcff++);
          if (tag == LIBINIT_ASM_)
-            fn->c.f = ofn->c.f;  /* Copy handler from previous function. */
+            fn->c.f = ofn->c.f;  //  Copy handler from previous function.
          else
-            fn->c.f = *cf++;  /* Get cf or handler from C function table. */
+            fn->c.f = *cf++;  //  Get cf or handler from C function table.
          if (len) {
             // NOBARRIER: See above for common barrier.
             setfuncV(L, lj_tab_setstr(L, tab, lj_str_new(L, name, len)), fn);
@@ -124,7 +124,7 @@ void lj_lib_register(lua_State* L, const char* libname,
             L->top -= 2;
             if (tvisstr(L->top + 1) && strV(L->top + 1)->len == 0)
                env = tabV(L->top);
-            else  /* NOBARRIER: See above for common barrier. */
+            else  //  NOBARRIER: See above for common barrier.
                copyTV(L, lj_tab_set(L, tab, L->top + 1), L->top);
             break;
          case LIBINIT_NUMBER:
@@ -177,7 +177,7 @@ void lj_lib_prereg(lua_State* L, const char* name, lua_CFunction f, GCtab* env)
 int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id, const char* name)
 {
    GCfunc* fn = lj_lib_pushcf(L, cf, id);
-   GCtab* t = tabref(curr_func(L)->c.env);  /* Reference to parent table. */
+   GCtab* t = tabref(curr_func(L)->c.env);  //  Reference to parent table.
    setfuncV(L, lj_tab_setstr(L, t, lj_str_newz(L, name)), fn);
    lj_gc_anybarriert(L, t);
    setfuncV(L, L->top++, fn);
@@ -208,7 +208,7 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
       }
    }
    lj_err_argt(L, narg, LUA_TSTRING);
-   return NULL;  /* unreachable */
+   return NULL;  //  unreachable
 }
 
 GCstr* lj_lib_optstr(lua_State* L, int narg)
@@ -289,7 +289,7 @@ GCtab* lj_lib_checktabornil(lua_State* L, int narg)
          return NULL;
    }
    lj_err_arg(L, narg, LJ_ERR_NOTABN);
-   return NULL;  /* unreachable */
+   return NULL;  //  unreachable
 }
 
 int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
@@ -363,7 +363,7 @@ int32_t lj_lib_checkintrange(lua_State* L, int narg, int32_t a, int32_t b)
    }
 badtype:
    lj_err_argt(L, narg, LUA_TNUMBER);
-   return 0;  /* unreachable */
+   return 0;  //  unreachable
 }
 #endif
 

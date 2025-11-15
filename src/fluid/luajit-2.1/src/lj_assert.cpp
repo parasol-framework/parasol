@@ -21,7 +21,7 @@ void lj_assert_fail(global_State* g, const char* file, int line,
    vfprintf(stderr, fmt, argp);
    fputc('\n', stderr);
    va_end(argp);
-   UNUSED(g);  /* May be NULL. TODO: optionally dump state. */
+   UNUSED(g);  //  May be NULL. TODO: optionally dump state.
    abort();
 }
 

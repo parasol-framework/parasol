@@ -334,10 +334,10 @@ enum {
 
 // In-memory ELF object.
 typedef struct GDBJITobj {
-   ELFheader hdr;         /* ELF header. */
-   ELFsectheader sect[GDBJIT_SECT__MAX];   /* ELF sections. */
-   ELFsymbol sym[GDBJIT_SYM__MAX];   /* ELF symbol table. */
-   uint8_t space[4096];         /* Space for various section data. */
+   ELFheader hdr;         //  ELF header.
+   ELFsectheader sect[GDBJIT_SECT__MAX];   //  ELF sections.
+   ELFsymbol sym[GDBJIT_SYM__MAX];   //  ELF symbol table.
+   uint8_t space[4096];         //  Space for various section data.
 } GDBJITobj;
 
 // Combined structure for GDB JIT entry and ELF object.
@@ -354,7 +354,7 @@ static const ELFheader elfhdr_template = {
   .eendian = LJ_ENDIAN_SELECT(1, 2),
   .eversion = 1,
 #if LJ_TARGET_LINUX
-  .eosabi = 0,  /* Nope, it's not 3. */
+  .eosabi = 0,  //  Nope, it's not 3.
 #elif defined(__FreeBSD__)
   .eosabi = 9,
 #elif defined(__NetBSD__)
@@ -403,17 +403,17 @@ static const ELFheader elfhdr_template = {
 
 // Context for generating the ELF object for the GDB JIT API.
 typedef struct GDBJITctx {
-   uint8_t* p;      /* Pointer to next address in obj.space. */
-   uint8_t* startp;   /* Pointer to start address in obj.space. */
-   GCtrace* T;      /* Generate symbols for this trace. */
-   uintptr_t mcaddr;   /* Machine code address. */
-   MSize szmcode;   /* Size of machine code. */
-   MSize spadjp;      /* Stack adjustment for parent trace or interpreter. */
-   MSize spadj;      /* Stack adjustment for trace itself. */
-   BCLine lineno;   /* Starting line number. */
-   const char* filename;   /* Starting file name. */
-   size_t objsize;   /* Final size of ELF object. */
-   GDBJITobj obj;   /* In-memory ELF object. */
+   uint8_t* p;      //  Pointer to next address in obj.space.
+   uint8_t* startp;   //  Pointer to start address in obj.space.
+   GCtrace* T;      //  Generate symbols for this trace.
+   uintptr_t mcaddr;   //  Machine code address.
+   MSize szmcode;   //  Size of machine code.
+   MSize spadjp;      //  Stack adjustment for parent trace or interpreter.
+   MSize spadj;      //  Stack adjustment for trace itself.
+   BCLine lineno;   //  Starting line number.
+   const char* filename;   //  Starting file name.
+   size_t objsize;   //  Final size of ELF object.
+   GDBJITobj obj;   //  In-memory ELF object.
 } GDBJITctx;
 
 // Add a zero-terminated string.
@@ -464,7 +464,7 @@ static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
 {
    ELFsectheader* sect;
 
-   *ctx->p++ = '\0';  /* Empty string at start of string table. */
+   *ctx->p++ = '\0';  //  Empty string at start of string table.
 
 #define SECTDEF(id, tp, al) \
   sect = &ctx->obj.sect[GDBJIT_SECT_##id]; \
@@ -503,7 +503,7 @@ static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
 {
    ELFsymbol* sym;
 
-   *ctx->p++ = '\0';  /* Empty string at start of string table. */
+   *ctx->p++ = '\0';  //  Empty string at start of string table.
 
    sym = &ctx->obj.sym[GDBJIT_SYM_FILE];
    sym->name = gdbjit_strz(ctx, "JIT mcode");
@@ -527,13 +527,13 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 
    // Emit DWARF EH CIE.
    DSECT(CIE,
-      DU32(0);         /* Offset to CIE itself. */
+      DU32(0);         //  Offset to CIE itself.
    DB(DW_CIE_VERSION);
-   DSTR("zR");         /* Augmentation. */
-   DUV(1);         /* Code alignment factor. */
-   DSV(-(int32_t)sizeof(uintptr_t));  /* Data alignment factor. */
-   DB(DW_REG_RA);      /* Return address register. */
-   DB(1); DB(DW_EH_PE_textrel | DW_EH_PE_udata4);  /* Augmentation data. */
+   DSTR("zR");         //  Augmentation.
+   DUV(1);         //  Code alignment factor.
+   DSV(-(int32_t)sizeof(uintptr_t));  //  Data alignment factor.
+   DB(DW_REG_RA);      //  Return address register.
+   DB(1); DB(DW_EH_PE_textrel | DW_EH_PE_udata4);  //  Augmentation data.
    DB(DW_CFA_def_cfa); DUV(DW_REG_SP); DUV(sizeof(uintptr_t));
 #if LJ_TARGET_PPC
    DB(DW_CFA_offset_extended_sf); DB(DW_REG_RA); DSV(-1);
@@ -545,10 +545,10 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 
       // Emit DWARF EH FDE.
       DSECT(FDE,
-         DU32((uint32_t)(p - framep));   /* Offset to CIE. */
-   DU32(0);         /* Machine code offset relative to .text. */
-   DU32(ctx->szmcode);      /* Machine code length. */
-   DB(0);         /* Augmentation data. */
+         DU32((uint32_t)(p - framep));   //  Offset to CIE.
+   DU32(0);         //  Machine code offset relative to .text.
+   DU32(ctx->szmcode);      //  Machine code length.
+   DB(0);         //  Augmentation data.
    // Registers saved in CFRAME.
 #if LJ_TARGET_X86
    DB(DW_CFA_offset | DW_REG_BP); DUV(2);
@@ -596,9 +596,9 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 #endif
    if (ctx->spadjp != ctx->spadj) {  // Parent/interpreter stack frame size.
       DB(DW_CFA_def_cfa_offset); DUV(ctx->spadjp);
-      DB(DW_CFA_advance_loc | 1);  /* Only an approximation. */
+      DB(DW_CFA_advance_loc | 1);  //  Only an approximation.
    }
-   DB(DW_CFA_def_cfa_offset); DUV(ctx->spadj);  /* Trace stack frame size. */
+   DB(DW_CFA_def_cfa_offset); DUV(ctx->spadj);  //  Trace stack frame size.
    DALIGNNOP(sizeof(uintptr_t));
       )
 
@@ -611,15 +611,15 @@ static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
    uint8_t* p = ctx->p;
 
    DSECT(info,
-      DU16(2);         /* DWARF version. */
-   DU32(0);         /* Abbrev offset. */
-   DB(sizeof(uintptr_t));   /* Pointer size. */
+      DU16(2);         //  DWARF version.
+   DU32(0);         //  Abbrev offset.
+   DB(sizeof(uintptr_t));   //  Pointer size.
 
-   DUV(1);         /* Abbrev #1: DW_TAG_compile_unit. */
-   DSTR(ctx->filename);   /* DW_AT_name. */
-   DADDR(ctx->mcaddr);      /* DW_AT_low_pc. */
-   DADDR(ctx->mcaddr + ctx->szmcode);  /* DW_AT_high_pc. */
-   DU32(0);         /* DW_AT_stmt_list. */
+   DUV(1);         //  Abbrev #1: DW_TAG_compile_unit.
+   DSTR(ctx->filename);   //  DW_AT_name.
+   DADDR(ctx->mcaddr);      //  DW_AT_low_pc.
+   DADDR(ctx->mcaddr + ctx->szmcode);  //  DW_AT_high_pc.
+   DU32(0);         //  DW_AT_stmt_list.
       )
 
       ctx->p = p;
@@ -650,14 +650,14 @@ static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
    uint8_t* p = ctx->p;
 
    DSECT(line,
-      DU16(2);         /* DWARF version. */
+      DU16(2);         //  DWARF version.
    DSECT(header,
-      DB(1);         /* Minimum instruction length. */
-   DB(1);         /* is_stmt. */
-   DI8(0);         /* Line base for special opcodes. */
-   DB(2);         /* Line range for special opcodes. */
-   DB(3 + 1);         /* Opcode base at DW_LNS_advance_line+1. */
-   DB(0); DB(1); DB(1);   /* Standard opcode lengths. */
+      DB(1);         //  Minimum instruction length.
+   DB(1);         //  is_stmt.
+   DI8(0);         //  Line base for special opcodes.
+   DB(2);         //  Line range for special opcodes.
+   DB(3 + 1);         //  Opcode base at DW_LNS_advance_line+1.
+   DB(0); DB(1); DB(1);   //  Standard opcode lengths.
    // Directory table.
    DB(0);
    // File name table.
@@ -751,7 +751,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
    // Allocate memory for GDB JIT entry and ELF object.
    MSize sz = (MSize)(sizeof(GDBJITentryobj) - sizeof(GDBJITobj) + ctx->objsize);
    GDBJITentryobj* eo = lj_mem_newt(L, sz, GDBJITentryobj);
-   memcpy(&eo->obj, &ctx->obj, ctx->objsize);  /* Copy ELF object. */
+   memcpy(&eo->obj, &ctx->obj, ctx->objsize);  //  Copy ELF object.
    eo->sz = sz;
    ctx->T->gdbjit_entry = (void*)eo;
    // Link new entry to chain and register it.

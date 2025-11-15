@@ -361,8 +361,8 @@
 |
 |//-----------------------------------------------------------------------
 
-/* Generate subroutines used by opcodes and other parts of the VM. */
-/* The .code_sub section should be last to help static branch prediction. */
+//  Generate subroutines used by opcodes and other parts of the VM.
+//  The .code_sub section should be last to help static branch prediction.
 static void build_subroutines(BuildCtx *ctx)
 {
   |.code_sub
@@ -2980,7 +2980,7 @@ static void build_subroutines(BuildCtx *ctx)
   |//-----------------------------------------------------------------------
 }
 
-/* Generate the code for a single instruction. */
+//  Generate the code for a single instruction.
 static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 {
   int vk = 0;
@@ -2988,9 +2988,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
   switch (op) {
 
-  /* -- Comparison ops ---------------------------------------------------- */
+  //  -- Comparison ops ----------------------------------------------------
 
-  /* Remember: all ops branch for a true comparison, fall through otherwise. */
+  //  Remember: all ops branch for a true comparison, fall through otherwise.
 
   case BC_ISLT: case BC_ISGE: case BC_ISLE: case BC_ISGT:
     |  // RA = src1*8, RD = src2*8, JMP with RD = target
@@ -3334,7 +3334,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Unary test and copy ops ------------------------------------------- */
+  //  -- Unary test and copy ops -------------------------------------------
 
   case BC_ISTC: case BC_ISFC: case BC_IST: case BC_ISF:
     |  // RA = dst*8 or unused, RD = src*8, JMP with RD = target
@@ -3394,7 +3394,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.  ins_next2
     break;
 
-  /* -- Unary ops --------------------------------------------------------- */
+  //  -- Unary ops ---------------------------------------------------------
 
   case BC_MOV:
     |  // RA = dst*8, RD = src*8
@@ -3483,7 +3483,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 #endif
     break;
 
-  /* -- Binary ops -------------------------------------------------------- */
+  //  -- Binary ops --------------------------------------------------------
 
     |.macro fpmod, a, b, c
     |  bal ->vm_floor     // floor(b/c)
@@ -3742,7 +3742,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next2
     break;
 
-  /* -- Constant ops ------------------------------------------------------ */
+  //  -- Constant ops ------------------------------------------------------
 
   case BC_KSTR:
     |  // RA = dst*8, RD = str_const*8 (~)
@@ -3813,7 +3813,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next_
     break;
 
-  /* -- Upvalue and function ops ------------------------------------------ */
+  //  -- Upvalue and function ops ------------------------------------------
 
   case BC_UGET:
     |  // RA = dst*8, RD = uvnum*8
@@ -3964,7 +3964,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next2
     break;
 
-  /* -- Table ops --------------------------------------------------------- */
+  //  -- Table ops ---------------------------------------------------------
 
   case BC_TNEW:
   case BC_TDUP:
@@ -4481,7 +4481,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  barrierback TAB:CARG2, TMP3, TMP0, <4
     break;
 
-  /* -- Calls and vararg handling ----------------------------------------- */
+  //  -- Calls and vararg handling -----------------------------------------
 
   case BC_CALLM:
     |  // RA = base*8, (RB = (nresults+1)*8,) RC = extra_nargs*8
@@ -4777,7 +4777,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.  addiu TMP3, BASE, -8
     break;
 
-  /* -- Returns ----------------------------------------------------------- */
+  //  -- Returns -----------------------------------------------------------
 
   case BC_RETM:
     |  // RA = results*8, RD = extra_nresults*8
@@ -4886,7 +4886,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     }
     break;
 
-  /* -- Loops and branches ------------------------------------------------ */
+  //  -- Loops and branches ------------------------------------------------
 
   case BC_FORL:
     |.if JIT
@@ -5117,13 +5117,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     break;
 
-  /* -- Function headers -------------------------------------------------- */
+  //  -- Function headers --------------------------------------------------
 
   case BC_FUNCF:
     |.if JIT
     |  hotcall
     |.endif
-  case BC_FUNCV:  /* NYI: compiled vararg functions. */
+  case BC_FUNCV:  //  NYI: compiled vararg functions.
     |  // Fall through. Assumes BC_IFUNCF/BC_IFUNCV follow.
     break;
 
@@ -5165,7 +5165,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
 #endif
     |  NYI  // NYI: compiled vararg functions
-    break;  /* NYI: compiled vararg functions. */
+    break;  //  NYI: compiled vararg functions.
 
   case BC_IFUNCV:
     |  // BASE = new base, RA = BASE+framesize*8, RB = LFUNC, RC = nargs*8
@@ -5236,7 +5236,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.   st_vmstate
     break;
 
-  /* ---------------------------------------------------------------------- */
+  //  ----------------------------------------------------------------------
 
   default:
     fprintf(stderr, "Error: undefined opcode BC_%s\n", bc_names[op]);
@@ -5260,7 +5260,7 @@ static int build_backend(BuildCtx *ctx)
   return BC__MAX;
 }
 
-/* Emit pseudo frame-info for all assembler functions. */
+//  Emit pseudo frame-info for all assembler functions.
 static void emit_asm_debug(BuildCtx *ctx)
 {
   int fcofs = (int)((uint8_t *)ctx->glob[GLOB_vm_ffi_call] - ctx->code);
@@ -5328,7 +5328,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.uleb128 0x1\n"
 	"\t.sleb128 -4\n"
 	"\t.byte 31\n"
-	"\t.uleb128 6\n"			/* augmentation length */
+	"\t.uleb128 6\n"			//  augmentation length
 	"\t.byte 0\n"
 	"\t.4byte lj_err_unwind_dwarf\n"
 	"\t.byte 0\n"
@@ -5342,7 +5342,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.4byte .LASFDE2-.Lframe1\n"
 	"\t.4byte .Lbegin\n"
 	"\t.4byte %d\n"
-	"\t.uleb128 0\n"			/* augmentation length */
+	"\t.uleb128 0\n"			//  augmentation length
 	"\t.byte 0xe\n\t.uleb128 %d\n"
 	"\t.byte 0x9f\n\t.sleb128 1\n"
 	"\t.byte 0x9e\n\t.sleb128 2\n",
@@ -5367,7 +5367,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.uleb128 0x1\n"
 	"\t.sleb128 -4\n"
 	"\t.byte 31\n"
-	"\t.uleb128 1\n"			/* augmentation length */
+	"\t.uleb128 1\n"			//  augmentation length
 	"\t.byte 0\n"
 	"\t.byte 0xc\n\t.uleb128 29\n\t.uleb128 0\n"
 	"\t.align 2\n"
@@ -5379,7 +5379,7 @@ static void emit_asm_debug(BuildCtx *ctx)
 	"\t.4byte .LASFDE3-.Lframe2\n"
 	"\t.4byte lj_vm_ffi_call\n"
 	"\t.4byte %d\n"
-	"\t.uleb128 0\n"			/* augmentation length */
+	"\t.uleb128 0\n"			//  augmentation length
 	"\t.byte 0x9f\n\t.uleb128 1\n"
 	"\t.byte 0x90\n\t.uleb128 2\n"
 	"\t.byte 0xd\n\t.uleb128 0x10\n"

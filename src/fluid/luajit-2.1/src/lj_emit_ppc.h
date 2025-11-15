@@ -73,7 +73,7 @@ static int emit_kdelta1(ASMState* as, Reg rd, int32_t i)
       }
       rset_clear(work, r);
    }
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 // Load a 32 bit constant into a GPR.

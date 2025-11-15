@@ -27,11 +27,11 @@
 #define RIDENUM(name)   RID_##name,
 
 enum {
-   GPRDEF(RIDENUM)      /* General-purpose registers (GPRs). */
-   FPRDEF(RIDENUM)      /* Floating-point registers (FPRs). */
+   GPRDEF(RIDENUM)      //  General-purpose registers (GPRs).
+   FPRDEF(RIDENUM)      //  Floating-point registers (FPRs).
    RID_MAX,
-   RID_MRM = RID_MAX,      /* Pseudo-id for ModRM operand. */
-   RID_RIP = RID_MAX + 5,      /* Pseudo-id for RIP (x64 only), rm bits = 5. */
+   RID_MRM = RID_MAX,      //  Pseudo-id for ModRM operand.
+   RID_RIP = RID_MAX + 5,      //  Pseudo-id for RIP (x64 only), rm bits = 5.
 
    // Calling conventions.
    RID_SP = RID_ESP,
@@ -43,13 +43,13 @@ enum {
    RID_RETHI = RID_EDX,
 
    // These definitions must match with the *.dasc file(s):
-   RID_BASE = RID_EDX,      /* Interpreter BASE. */
+   RID_BASE = RID_EDX,      //  Interpreter BASE.
 #if LJ_64 && !LJ_ABI_WIN
-   RID_LPC = RID_EBX,      /* Interpreter PC. */
-   RID_DISPATCH = RID_R14D,   /* Interpreter DISPATCH table. */
+   RID_LPC = RID_EBX,      //  Interpreter PC.
+   RID_DISPATCH = RID_R14D,   //  Interpreter DISPATCH table.
 #else
-   RID_LPC = RID_ESI,      /* Interpreter PC. */
-   RID_DISPATCH = RID_EBX,   /* Interpreter DISPATCH table. */
+   RID_LPC = RID_ESI,      //  Interpreter PC.
+   RID_DISPATCH = RID_EBX,   //  Interpreter DISPATCH table.
 #endif
 
    // Register ranges [min, max) and number of registers.
@@ -108,8 +108,8 @@ enum {
 #else
 // Common x86 ABI.
 #define RSET_SCRATCH   (RSET_ACD|RSET_FPR)
-#define REGARG_GPRS   (RID_ECX|(RID_EDX<<5))  /* Fastcall only. */
-#define REGARG_NUMGPR   2  /* Fastcall only. */
+#define REGARG_GPRS   (RID_ECX|(RID_EDX<<5))  //  Fastcall only.
+#define REGARG_NUMGPR   2  //  Fastcall only.
 #define REGARG_NUMFPR   0
 #define STACKARG_OFS   0
 #endif
@@ -132,7 +132,7 @@ enum {
 #if LJ_64
 #if LJ_ABI_WIN
 #define SPS_FIXED   (4*2)
-#define SPS_FIRST   (4*2)   /* Don't use callee register save area. */
+#define SPS_FIRST   (4*2)   //  Don't use callee register save area.
 #else
 #if LJ_GC64
 #define SPS_FIXED   2
@@ -155,16 +155,16 @@ enum {
 
 // This definition must match with the *.dasc file(s).
 typedef struct {
-   lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
-   intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
-   int32_t spill[256];      /* Spill slots. */
+   lua_Number fpr[RID_NUM_FPR];   //  Floating-point registers.
+   intptr_t gpr[RID_NUM_GPR];   //  General-purpose registers.
+   int32_t spill[256];      //  Spill slots.
 } ExitState;
 
 // Limited by the range of a short fwd jump (127): (2+2)*(32-1)-2 = 122.
 #define EXITSTUB_SPACING   (2+2)
 #define EXITSTUBS_PER_GROUP   32
 
-#define EXITTRACE_VMSTATE   1   /* g->vmstate has traceno on exit. */
+#define EXITTRACE_VMSTATE   1   //  g->vmstate has traceno on exit.
 
 // -- x86 ModRM operand encoding ------------------------------------------
 
@@ -176,10 +176,10 @@ typedef enum {
 
 // Structure to hold variable ModRM operand.
 typedef struct {
-   int32_t ofs;      /* Offset. */
-   uint8_t base;      /* Base register or RID_NONE. */
-   uint8_t idx;      /* Index register or RID_NONE. */
-   uint8_t scale;   /* Index scale (XM_SCALE1 .. XM_SCALE8). */
+   int32_t ofs;      //  Offset.
+   uint8_t base;      //  Base register or RID_NONE.
+   uint8_t idx;      //  Index register or RID_NONE.
+   uint8_t scale;   //  Index scale (XM_SCALE1 .. XM_SCALE8).
 } x86ModRM;
 
 // -- Opcodes -------------------------------------------------------------
@@ -210,12 +210,12 @@ typedef enum {
    XI_CALL = 0xe8,
    XI_JMP = 0xe9,
    XI_JMPs = 0xeb,
-   XI_PUSH = 0x50, /* Really 50+r. */
-   XI_JCCs = 0x70, /* Really 7x. */
-   XI_JCCn = 0x80, /* Really 0f8x. */
+   XI_PUSH = 0x50, //  Really 50+r.
+   XI_JCCs = 0x70, //  Really 7x.
+   XI_JCCn = 0x80, //  Really 0f8x.
    XI_LEA = 0x8d,
-   XI_MOVrib = 0xb0, /* Really b0+r. */
-   XI_MOVri = 0xb8, /* Really b8+r. */
+   XI_MOVrib = 0xb0, //  Really b0+r.
+   XI_MOVri = 0xb8, //  Really b8+r.
    XI_ARITHib = 0x80,
    XI_ARITHi = 0x81,
    XI_ARITHi8 = 0x83,
@@ -229,9 +229,9 @@ typedef enum {
    // Note: little-endian byte-order!
    XI_FLDZ = 0xeed9,
    XI_FLD1 = 0xe8d9,
-   XI_FDUP = 0xc0d9,  /* Really fld st0. */
-   XI_FPOP = 0xd8dd,  /* Really fstp st0. */
-   XI_FPOP1 = 0xd9dd,  /* Really fstp st1. */
+   XI_FDUP = 0xc0d9,  //  Really fld st0.
+   XI_FPOP = 0xd8dd,  //  Really fstp st0.
+   XI_FPOP1 = 0xd9dd,  //  Really fstp st1.
    XI_FRNDINT = 0xfcd9,
    XI_FSCALE = 0xfdd9,
    XI_FYL2X = 0xf1d9,
@@ -291,7 +291,7 @@ typedef enum {
    XO_SQRTSD = XO_f20f(51),
    XO_MINSD = XO_f20f(5d),
    XO_MAXSD = XO_f20f(5f),
-   XO_ROUNDSD = 0x0b3a0ffc,  /* Really 66 0f 3a 0b. See asm_fpmath. */
+   XO_ROUNDSD = 0x0b3a0ffc,  //  Really 66 0f 3a 0b. See asm_fpmath.
    XO_UCOMISD = XO_660f(2e),
    XO_CVTSI2SD = XO_f20f(2a),
    XO_CVTTSD2SI = XO_f20f(2c),

@@ -2713,10 +2713,10 @@ static void asm_gc_check(ASMState* as)
    // Exit trace if in GCSatomic or GCSfinalize. Avoids syncing GC objects.
    // Assumes asm_snap_prep() already done.
    asm_guard(as, MIPSI_BNE, RID_RET, RID_ZERO);
-   args[0] = ASMREF_TMP1;  /* global_State *g */
-   args[1] = ASMREF_TMP2;  /* MSize steps     */
+   args[0] = ASMREF_TMP1;  //  global_State *g
+   args[1] = ASMREF_TMP2;  //  MSize steps    
    asm_gencall(as, ci, args);
-   l_end[-3] = MIPS_NOPATCH_GC_CHECK;  /* Replace the nop after the call. */
+   l_end[-3] = MIPS_NOPATCH_GC_CHECK;  //  Replace the nop after the call.
    emit_tsi(as, MIPSI_AADDIU, ra_releasetmp(as, ASMREF_TMP1), RID_JGL, -32768);
    tmp = ra_releasetmp(as, ASMREF_TMP2);
    emit_loadi(as, tmp, as->gcsteps);
@@ -2776,16 +2776,16 @@ static RegSet asm_head_side_base(ASMState* as, IRIns* irp, RegSet allow)
    if (ra_hasreg(r)) {
       ra_free(as, r);
       if (rset_test(as->modset, r) || irt_ismarked(ir->t))
-         ir->r = RID_INIT;  /* No inheritance for modified BASE register. */
+         ir->r = RID_INIT;  //  No inheritance for modified BASE register.
       if (irp->r == r) {
-         rset_clear(allow, r);  /* Mark same BASE register as coalesced. */
+         rset_clear(allow, r);  //  Mark same BASE register as coalesced.
       }
       else if (ra_hasreg(irp->r) && rset_test(as->freeset, irp->r)) {
          rset_clear(allow, irp->r);
-         emit_move(as, r, irp->r);  /* Move from coalesced parent reg. */
+         emit_move(as, r, irp->r);  //  Move from coalesced parent reg.
       }
       else {
-         emit_getgl(as, r, jit_base);  /* Otherwise reload BASE. */
+         emit_getgl(as, r, jit_base);  //  Otherwise reload BASE.
       }
    }
    return allow;
@@ -2806,7 +2806,7 @@ static void asm_tail_fixup(ASMState* as, TraceNo lnk)
 // Prepare tail of code.
 static void asm_tail_prep(ASMState* as)
 {
-   as->mcp = as->mctop - 2;  /* Leave room for branch plus nop or stack adj. */
+   as->mcp = as->mctop - 2;  //  Leave room for branch plus nop or stack adj.
    as->invmcp = as->loopref ? as->mcp : NULL;
 }
 
@@ -2843,7 +2843,7 @@ static Reg asm_setup_call_slots(ASMState* as, IRIns* ir, const CCallInfo* ci)
       if (ngpr > 0) ngpr--; else nslots += 2;
 #endif
    }
-   if (nslots > as->evenspill)  /* Leave room for args in stack slots. */
+   if (nslots > as->evenspill)  //  Leave room for args in stack slots.
       as->evenspill = nslots;
    return irt_isfp(ir->t) ? REGSP_HINT(RID_FPRET) : REGSP_HINT(RID_RET);
 }
@@ -2882,7 +2882,7 @@ void lj_asm_patchexit(jit_State* J, GCtrace* T, ExitNo exitno, MCode* target)
             if (((delta + 0x8000) >> 16) == 0) {  // Patch in-range branch.
             patchbranch:
                p[-1] = (p[-1] & 0xffff0000u) | (delta & 0xffffu);
-               *p = MIPSI_NOP;  /* Replace the load of the exit number. */
+               *p = MIPSI_NOP;  //  Replace the load of the exit number.
                cstop = p + 1;
                if (!cstart) cstart = p - 1;
             }

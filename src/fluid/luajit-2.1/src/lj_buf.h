@@ -23,13 +23,13 @@
 typedef struct SBufExt {
    SBufHeader;
    union {
-      GCRef cowref;   /* Copy-on-write object reference. */
-      MRef bsb;      /* Borrowed string buffer. */
+      GCRef cowref;   //  Copy-on-write object reference.
+      MRef bsb;      //  Borrowed string buffer.
    };
-   char* r;      /* Read pointer. */
-   GCRef dict_str;   /* Serialization string dictionary table. */
-   GCRef dict_mt;   /* Serialization metatable dictionary table. */
-   int depth;      /* Remaining recursion depth. */
+   char* r;      //  Read pointer.
+   GCRef dict_str;   //  Serialization string dictionary table.
+   GCRef dict_mt;   //  Serialization metatable dictionary table.
+   int depth;      //  Remaining recursion depth.
 } SBufExt;
 
 #define sbufsz(sb)      ((MSize)((sb)->e - (sb)->b))
@@ -40,9 +40,9 @@ typedef struct SBufExt {
 
 constexpr int SBUF_MASK_FLAG = 7;
 #define SBUF_MASK_L      (~(GCSize)SBUF_MASK_FLAG)
-constexpr int SBUF_FLAG_EXT = 1;      /* Extended string buffer. */
-constexpr int SBUF_FLAG_COW = 2;      /* Copy-on-write buffer. */
-constexpr int SBUF_FLAG_BORROW = 4;   /* Borrowed string buffer. */
+constexpr int SBUF_FLAG_EXT = 1;      //  Extended string buffer.
+constexpr int SBUF_FLAG_COW = 2;      //  Copy-on-write buffer.
+constexpr int SBUF_FLAG_BORROW = 4;   //  Borrowed string buffer.
 
 #define sbufL(sb) \
   ((lua_State *)(void *)(uintptr_t)(mrefu((sb)->L) & SBUF_MASK_L))

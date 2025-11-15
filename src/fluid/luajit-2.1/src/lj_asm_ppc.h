@@ -95,11 +95,11 @@ static int noconflict(ASMState* as, IRRef ref, IROp conflict)
    IRIns* ir = as->ir;
    IRRef i = as->curins;
    if (i > ref + CONFLICT_SEARCH_LIM)
-      return 0;  /* Give up, ref is too far away. */
+      return 0;  //  Give up, ref is too far away.
    while (--i > ref)
       if (ir[i].o == conflict)
-         return 0;  /* Conflict found. */
-   return 1;  /* Ok, no conflict. */
+         return 0;  //  Conflict found.
+   return 1;  //  Ok, no conflict.
 }
 
 // Fuse the array base of colocated arrays.

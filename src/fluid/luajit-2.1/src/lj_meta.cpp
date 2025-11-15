@@ -49,7 +49,7 @@ cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
    cTValue* mo = lj_tab_getstr(mt, name);
    lj_assertX(mm <= MM_FAST, "bad metamethod %d", mm);
    if (!mo || tvisnil(mo)) {  // No metamethod?
-      mt->nomm |= (uint8_t)(1u << mm);  /* Set negative cache flag. */
+      mt->nomm |= (uint8_t)(1u << mm);  //  Set negative cache flag.
       return NULL;
    }
    return mo;
@@ -79,14 +79,14 @@ int lj_meta_tailcall(lua_State* L, cTValue* tv)
 {
    TValue* base = L->base;
    TValue* top = L->top;
-   const BCIns* pc = frame_pc(base - 1);  /* Preserve old PC from frame. */
-   copyTV(L, base - 1 - LJ_FR2, tv);  /* Replace frame with new object. */
+   const BCIns* pc = frame_pc(base - 1);  //  Preserve old PC from frame.
+   copyTV(L, base - 1 - LJ_FR2, tv);  //  Replace frame with new object.
    if (LJ_FR2)
       (top++)->u64 = LJ_CONT_TAILCALL;
    else
       top->u32.lo = LJ_CONT_TAILCALL;
    setframe_pc(top++, pc);
-   setframe_gc(top, obj2gco(L), LJ_TTHREAD);  /* Dummy frame object. */
+   setframe_gc(top, obj2gco(L), LJ_TTHREAD);  //  Dummy frame object.
    if (LJ_FR2) top++;
    setframe_ftsz(top, ((char*)(top + 1) - (char*)base) + FRAME_CONT);
    L->base = L->top = top + 1;
@@ -120,13 +120,13 @@ static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo,
    */
    TValue* top = L->top;
    if (curr_funcisL(L)) top = curr_topL(L);
-   setcont(top++, cont);  /* Assembler VM stores PC in upper word or FR2. */
+   setcont(top++, cont);  //  Assembler VM stores PC in upper word or FR2.
    if (LJ_FR2) setnilV(top++);
-   copyTV(L, top++, mo);  /* Store metamethod and two arguments. */
+   copyTV(L, top++, mo);  //  Store metamethod and two arguments.
    if (LJ_FR2) setnilV(top++);
    copyTV(L, top, a);
    copyTV(L, top + 1, b);
-   return top;  /* Return new base. */
+   return top;  //  Return new base.
 }
 
 // -- C helpers for some instructions, called from assembler VM -----------
@@ -146,16 +146,16 @@ cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, LJ_ERR_OPINDEX);
-         return NULL;  /* unreachable */
+         return NULL;  //  unreachable
       }
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_ra, mo, o, k);
-         return NULL;  /* Trigger metamethod call. */
+         return NULL;  //  Trigger metamethod call.
       }
       o = mo;
    }
    lj_err_msg(L, LJ_ERR_GETLOOP);
-   return NULL;  /* unreachable */
+   return NULL;  //  unreachable
 }
 
 // Helper for TSET*. __newindex chain and metamethod.
@@ -169,12 +169,12 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
          GCtab* t = tabV(o);
          cTValue* tv = lj_tab_get(L, t, k);
          if (LJ_LIKELY(!tvisnil(tv))) {
-            t->nomm = 0;  /* Invalidate negative metamethod cache. */
+            t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             return (TValue*)tv;
          }
          else if (!(mo = lj_meta_fast(L, tabref(t->metatable), MM_newindex))) {
-            t->nomm = 0;  /* Invalidate negative metamethod cache. */
+            t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             if (tv != niltv(L))
                return (TValue*)tv;
@@ -186,18 +186,18 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_newindex))) {
          lj_err_optype(L, o, LJ_ERR_OPINDEX);
-         return NULL;  /* unreachable */
+         return NULL;  //  unreachable
       }
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_nop, mo, o, k);
          // L->top+2 = v filled in by caller.
-         return NULL;  /* Trigger metamethod call. */
+         return NULL;  //  Trigger metamethod call.
       }
       copyTV(L, &tmp, mo);
       o = &tmp;
    }
    lj_err_msg(L, LJ_ERR_SETLOOP);
-   return NULL;  /* unreachable */
+   return NULL;  //  unreachable
 }
 
 static cTValue* str2num(cTValue* o, TValue* n)
@@ -231,7 +231,7 @@ TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
          if (tvisnil(mo)) {
             if (str2num(rb, &tempb) == NULL) rc = rb;
             lj_err_optype(L, rc, LJ_ERR_OPARITH);
-            return NULL;  /* unreachable */
+            return NULL;  //  unreachable
          }
       }
       return mmcall(L, lj_cont_ra, mo, rb, rc);
@@ -252,7 +252,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
             if (tvisnil(mo)) {
                if (tvisstr(top - 1) || tvisnumber(top - 1)) top++;
                lj_err_optype(L, top - 1, LJ_ERR_OPCAT);
-               return NULL;  /* unreachable */
+               return NULL;  //  unreachable
             }
          }
          /* One of the top two elements is not a string, call __cat metamethod:
@@ -266,12 +266,12 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
          ** after mm:  [...][CAT stack ...] <--push-- [result]
          ** next step: [...][CAT stack .............]
          */
-         copyTV(L, top + 2 * LJ_FR2 + 2, top);  /* Carefully ordered stack copies! */
+         copyTV(L, top + 2 * LJ_FR2 + 2, top);  //  Carefully ordered stack copies!
          copyTV(L, top + 2 * LJ_FR2 + 1, top - 1);
          copyTV(L, top + LJ_FR2, mo);
          setcont(top - 1, lj_cont_cat);
          if (LJ_FR2) { setnilV(top); setnilV(top + 2); top += 2; }
-         return top + 1;  /* Trigger metamethod call. */
+         return top + 1;  //  Trigger metamethod call.
       }
       else {
          /* Pick as many strings as possible from the top and concatenate them:
@@ -354,7 +354,7 @@ TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
       it = ~(uint32_t)o1->gch.gct;
       setgcV(L, top, o1, it);
       setgcV(L, top + 1, o2, it);
-      return top;  /* Trigger metamethod call. */
+      return top;  //  Trigger metamethod call.
    }
    return (TValue*)(intptr_t)ne;
 }
@@ -421,8 +421,8 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 #endif
             {
                if (op & 2) {  // MM_le not found: retry with MM_lt.
-                  cTValue* ot = o1; o1 = o2; o2 = ot;  /* Swap operands. */
-                  op ^= 3;  /* Use LT and flip condition. */
+                  cTValue* ot = o1; o1 = o2; o2 = ot;  //  Swap operands.
+                  op ^= 3;  //  Use LT and flip condition.
                   continue;
                }
                goto err;

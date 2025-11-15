@@ -33,13 +33,13 @@ static uint32_t emit_isk12(ARMIns ai, int32_t n)
       if (m <= 255) return ARMI_K12 | m | i;
    // Otherwise try negation/complement with the inverse instruction.
    invai = emit_invai[((ai >> 21) & 15)];
-   if (!invai) return 0;  /* Failed. No inverse instruction. */
+   if (!invai) return 0;  //  Failed. No inverse instruction.
    m = ~(uint32_t)n;
    if (invai == ((ARMI_SUB ^ ARMI_ADD) >> 21) ||
       invai == (ARMI_CMP ^ ARMI_CMN) >> 21) m++;
    for (i = 0; i < 4096; i += 256, m = lj_rol(m, 2))
       if (m <= 255) return ARMI_K12 | (invai << 21) | m | i;
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 // -- Emit basic instructions ---------------------------------------------
@@ -141,7 +141,7 @@ static int emit_kdelta1(ASMState* as, Reg d, int32_t i)
       }
       rset_clear(work, r);
    }
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 // Try to find a two step delta relative to another constant.
@@ -170,7 +170,7 @@ static int emit_kdelta2(ASMState* as, Reg rd, int32_t i)
       }
       rset_clear(work, r);
    }
-   return 0;  /* Failed. */
+   return 0;  //  Failed.
 }
 
 // Load a 32 bit constant into a GPR.
@@ -311,9 +311,9 @@ static void emit_movrr(ASMState* as, IRIns* ir, Reg dst, Reg src)
       MCode ins = *as->mcp, swp = (src ^ dst);
       if ((ins & 0x0c000000) == 0x04000000 && (ins & 0x02000010) != 0x02000010) {
          if (!((ins ^ (dst << 16)) & 0x000f0000))
-            *as->mcp = ins ^ (swp << 16);  /* Swap N in load/store. */
+            *as->mcp = ins ^ (swp << 16);  //  Swap N in load/store.
          if (!(ins & 0x00100000) && !((ins ^ (dst << 12)) & 0x0000f000))
-            *as->mcp = ins ^ (swp << 12);  /* Swap D in store. */
+            *as->mcp = ins ^ (swp << 12);  //  Swap D in store.
       }
    }
    emit_dm(as, ARMI_MOV, dst, src);

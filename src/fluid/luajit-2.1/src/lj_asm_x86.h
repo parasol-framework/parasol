@@ -2057,7 +2057,7 @@ static void asm_x87load(ASMState* as, IRRef ref)
    IRIns* ir = IR(ref);
    if (ir->o == IR_KNUM) {
       cTValue* tv = ir_knum(ir);
-      if (tvispzero(tv))  /* Use fldz only for +0. */
+      if (tvispzero(tv))  //  Use fldz only for +0.
          emit_x87op(as, XI_FLDZ);
       else if (tvispone(tv))
          emit_x87op(as, XI_FLD1);
@@ -2094,15 +2094,15 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
          emit_i8(as, 0x09 + fpm);
          emit_mrm(as, XO_ROUNDSD, dest, left);
          if (LJ_64 && as->mcp[1] != (MCode)(XO_ROUNDSD >> 16)) {
-            as->mcp[0] = as->mcp[1]; as->mcp[1] = 0x0f;  /* Swap 0F and REX. */
+            as->mcp[0] = as->mcp[1]; as->mcp[1] = 0x0f;  //  Swap 0F and REX.
          }
-         *--as->mcp = 0x66;  /* 1st byte of ROUNDSD opcode. */
+         *--as->mcp = 0x66;  //  1st byte of ROUNDSD opcode.
       }
       else {  // Call helper functions for SSE2 variant.
          // The modified regs must match with the *.dasc implementation.
          RegSet drop = RSET_RANGE(RID_XMM0, RID_XMM3 + 1) | RID2RSET(RID_EAX);
          if (ra_hasreg(ir->r))
-            rset_clear(drop, ir->r);  /* Dest reg handled below. */
+            rset_clear(drop, ir->r);  //  Dest reg handled below.
          ra_evictset(as, drop);
          ra_destreg(as, ir, RID_XMM0);
          emit_call(as, fpm == IRFPM_FLOOR ? lj_vm_floor_sse :
@@ -2117,7 +2117,7 @@ static void asm_fpmath(ASMState* as, IRIns* ir)
 
 static void asm_ldexp(ASMState* as, IRIns* ir)
 {
-   int32_t ofs = sps_scale(ir->s);  /* Use spill slot or temp slots. */
+   int32_t ofs = sps_scale(ir->s);  //  Use spill slot or temp slots.
    Reg dest = ir->r;
    if (ra_hasreg(dest)) {
       ra_free(as, dest);
@@ -2137,22 +2137,22 @@ static int asm_swapops(ASMState* as, IRIns* ir)
    IRIns* irr = IR(ir->op2);
    lj_assertA(ra_noreg(irr->r), "bad usage");
    if (!irm_iscomm(lj_ir_mode[ir->o]))
-      return 0;  /* Can't swap non-commutative operations. */
+      return 0;  //  Can't swap non-commutative operations.
    if (irref_isk(ir->op2))
-      return 0;  /* Don't swap constants to the left. */
+      return 0;  //  Don't swap constants to the left.
    if (ra_hasreg(irl->r))
-      return 1;  /* Swap if left already has a register. */
+      return 1;  //  Swap if left already has a register.
    if (ra_samehint(ir->r, irr->r))
-      return 1;  /* Swap if dest and right have matching hints. */
+      return 1;  //  Swap if dest and right have matching hints.
    if (as->curins > as->loopref) {  // In variant part?
       if (ir->op2 < as->loopref && !irt_isphi(irr->t))
-         return 0;  /* Keep invariants on the right. */
+         return 0;  //  Keep invariants on the right.
       if (ir->op1 < as->loopref && !irt_isphi(irl->t))
-         return 1;  /* Swap invariants to the right. */
+         return 1;  //  Swap invariants to the right.
    }
    if (opisfusableload(irl->o))
-      return 1;  /* Swap fusable loads to the right. */
-   return 0;  /* Otherwise don't swap. */
+      return 1;  //  Swap fusable loads to the right.
+   return 0;  //  Otherwise don't swap.
 }
 
 static void asm_fparith(ASMState* as, IRIns* ir, x86Op xo)
@@ -2191,7 +2191,7 @@ static void asm_intarith(ASMState* as, IRIns* ir, x86Arith xa)
       MCode* p = as->mcp + ((LJ_64 && *as->mcp < XI_TESTb) ? 3 : 2);
       MCode* q = p[0] == 0x0f ? p + 1 : p;
       if ((*q & 15) < 14) {
-         if ((*q & 15) >= 12) *q -= 4;  /* L <->S, NL <-> NS */
+         if ((*q & 15) >= 12) *q -= 4;  //  L <->S, NL <-> NS
          as->flagmcp = NULL;
          as->mcp = p;
       }  // else: cannot transform LE/NLE to cc without use of OF.

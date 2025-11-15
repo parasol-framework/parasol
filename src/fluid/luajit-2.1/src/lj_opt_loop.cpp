@@ -160,7 +160,7 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
       IRRef ref = tref_ref(J->slot[i]);
       while (!irref_isk(ref) && ref != subst[ref]) {
          IRIns* ir = IR(ref);
-         irt_clearmark(ir->t);  /* Unmark potential uses, too. */
+         irt_clearmark(ir->t);  //  Unmark potential uses, too.
          if (irt_isphi(ir->t) || irt_ispri(ir->t))
             break;
          irt_setphi(ir->t);
@@ -181,8 +181,8 @@ static void loop_emit_phi(jit_State* J, IRRef1* subst, IRRef1* phi, IRRef nphi,
          if (!irt_ismarked(ir->t)) {  // Propagate only from unmarked PHIs.
             IRIns* irr = IR(subst[lref]);
             if (irt_ismarked(irr->t)) {  // Right ref points to other PHI?
-               irt_clearmark(irr->t);  /* Mark that PHI as non-redundant. */
-               passx = 1;  /* Retry. */
+               irt_clearmark(irr->t);  //  Mark that PHI as non-redundant.
+               passx = 1;  //  Retry.
             }
          }
       }
@@ -218,7 +218,7 @@ static void loop_subst_snap(jit_State* J, SnapShot* osnap,
    SnapShot* snap = &J->cur.snap[J->cur.nsnap];
    if (irt_isguard(J->guardemit)) {  // Guard inbetween?
       nmapofs = J->cur.nsnapmap;
-      J->cur.nsnap++;  /* Add new snapshot. */
+      J->cur.nsnap++;  //  Add new snapshot.
    }
    else {  // Otherwise overwrite previous snapshot.
       snap--;
@@ -242,19 +242,19 @@ static void loop_subst_snap(jit_State* J, SnapShot* osnap,
          ln++;
       }
       else {  // Copy substituted slot from snapshot map.
-         if (snap_slot(lsn) == snap_slot(osn)) ln++;  /* Shadowed loop slot. */
+         if (snap_slot(lsn) == snap_slot(osn)) ln++;  //  Shadowed loop slot.
          if (!irref_isk(snap_ref(osn)))
             osn = snap_setref(osn, subst[snap_ref(osn)]);
          nmap[nn++] = osn;
          on++;
       }
    }
-   while (snap_slot(loopmap[ln]) < nslots)  /* Copy remaining loop slots. */
+   while (snap_slot(loopmap[ln]) < nslots)  //  Copy remaining loop slots.
       nmap[nn++] = loopmap[ln++];
    snap->nent = (uint8_t)nn;
    omap += onent;
    nmap += nn;
-   while (omap < nextmap)  /* Copy PC + frame links. */
+   while (omap < nextmap)  //  Copy PC + frame links.
       *nmap++ = *omap++;
    J->cur.nsnapmap = (uint32_t)(nmap - J->cur.snapmap);
 }
@@ -306,7 +306,7 @@ static void loop_unroll(LoopState* lps)
    psentinel = &loopmap[loopsnap->nent];
    lj_assertJ(*psentinel == J->cur.snapmap[J->cur.snap[0].nent],
       "mismatched PC for loop snapshot");
-   *psentinel = SNAP(255, 0, 0);  /* Replace PC with temporary sentinel. */
+   *psentinel = SNAP(255, 0, 0);  //  Replace PC with temporary sentinel.
 
    // Start substitution with snapshot #1 (#0 is empty for root traces).
    osnap = &J->cur.snap[1];
@@ -316,8 +316,8 @@ static void loop_unroll(LoopState* lps)
       IRIns* ir;
       IRRef op1, op2;
 
-      if (ins >= osnap->ref)  /* Instruction belongs to next snapshot? */
-         loop_subst_snap(J, osnap++, loopmap, subst);  /* Copy-substitute it. */
+      if (ins >= osnap->ref)  //  Instruction belongs to next snapshot?
+         loop_subst_snap(J, osnap++, loopmap, subst);  //  Copy-substitute it.
 
       // Substitute instruction operands.
       ir = IR(ins);
@@ -327,11 +327,11 @@ static void loop_unroll(LoopState* lps)
       if (!irref_isk(op2)) op2 = subst[op2];
       if (irm_kind(lj_ir_mode[ir->o]) == IRM_N &&
          op1 == ir->op1 && op2 == ir->op2) {  // Regular invariant ins?
-         subst[ins] = (IRRef1)ins;  /* Shortcut. */
+         subst[ins] = (IRRef1)ins;  //  Shortcut.
       }
       else {
          // Re-emit substituted instruction to the FOLD/CSE/etc. pipeline.
-         IRType1 t = ir->t;  /* Get this first, since emitir may invalidate ir. */
+         IRType1 t = ir->t;  //  Get this first, since emitir may invalidate ir.
          IRRef ref = tref_ref(emitir(ir->ot & ~IRT_ISPHI, op1, op2));
          subst[ins] = (IRRef1)ref;
          if (ref != ins) {
@@ -348,9 +348,9 @@ static void loop_unroll(LoopState* lps)
                if (!irt_sametype(t, irr->t)) {
                   if (irt_isinteger(t) && irt_isinteger(irr->t))
                      continue;
-                  else if (irt_isnum(t) && irt_isinteger(irr->t))  /* Fix int->num. */
+                  else if (irt_isnum(t) && irt_isinteger(irr->t))  //  Fix int->num.
                      ref = tref_ref(emitir(IRTN(IR_CONV), ref, IRCONV_NUM_INT));
-                  else if (irt_isnum(irr->t) && irt_isinteger(t))  /* Fix num->int. */
+                  else if (irt_isnum(irr->t) && irt_isinteger(t))  //  Fix num->int.
                      ref = tref_ref(emitir(IRTGI(IR_CONV), ref,
                         IRCONV_INT_NUM | IRCONV_CHECK));
                   else
@@ -378,10 +378,10 @@ static void loop_unroll(LoopState* lps)
          }
       }
    }
-   if (!irt_isguard(J->guardemit))  /* Drop redundant snapshot. */
+   if (!irt_isguard(J->guardemit))  //  Drop redundant snapshot.
       J->cur.nsnapmap = (uint32_t)J->cur.snap[--J->cur.nsnap].mapofs;
    lj_assertJ(J->cur.nsnapmap <= J->sizesnapmap, "bad snapshot map index");
-   *psentinel = J->cur.snapmap[J->cur.snap[0].nent];  /* Restore PC. */
+   *psentinel = J->cur.snapmap[J->cur.snap[0].nent];  //  Restore PC.
 
    loop_emit_phi(J, subst, phi, nphi, onsnap);
 }
@@ -392,7 +392,7 @@ static void loop_undo(jit_State* J, IRRef ins, SnapNo nsnap, MSize nsnapmap)
    ptrdiff_t i;
    SnapShot* snap = &J->cur.snap[nsnap - 1];
    SnapEntry* map = J->cur.snapmap;
-   map[snap->mapofs + snap->nent] = map[J->cur.snap[0].nent];  /* Restore PC. */
+   map[snap->mapofs + snap->nent] = map[J->cur.snap[0].nent];  //  Restore PC.
    J->cur.nsnapmap = (uint32_t)nsnapmap;
    J->cur.nsnap = nsnap;
    J->guardemit.irt = 0;
@@ -435,21 +435,21 @@ int lj_opt_loop(jit_State* J)
       if (errcode == LUA_ERRRUN && tvisnumber(L->top - 1)) {  // Trace error?
          int32_t e = numberVint(L->top - 1);
          switch ((TraceError)e) {
-         case LJ_TRERR_TYPEINS:  /* Type instability. */
-         case LJ_TRERR_GFAIL:  /* Guard would always fail. */
+         case LJ_TRERR_TYPEINS:  //  Type instability.
+         case LJ_TRERR_GFAIL:  //  Guard would always fail.
             // Unrolling via recording fixes many cases, e.g. a flipped boolean.
-            if (--J->instunroll < 0)  /* But do not unroll forever. */
+            if (--J->instunroll < 0)  //  But do not unroll forever.
                break;
-            L->top--;  /* Remove error object. */
+            L->top--;  //  Remove error object.
             loop_undo(J, nins, nsnap, nsnapmap);
-            return 1;  /* Loop optimization failed, continue recording. */
+            return 1;  //  Loop optimization failed, continue recording.
          default:
             break;
          }
       }
-      lj_err_throw(L, errcode);  /* Propagate all other errors. */
+      lj_err_throw(L, errcode);  //  Propagate all other errors.
    }
-   return 0;  /* Loop optimization is ok. */
+   return 0;  //  Loop optimization is ok.
 }
 
 #undef IR

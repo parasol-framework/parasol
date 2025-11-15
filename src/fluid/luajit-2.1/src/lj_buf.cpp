@@ -35,7 +35,7 @@ static void buf_grow(SBuf* sb, MSize sz)
       b = (char*)lj_mem_realloc(sbufL(sb), sb->b, osz, nsz);
    }
    if ((flag & SBUF_FLAG_EXT)) {
-      sbufX(sb)->r = sbufX(sb)->r - sb->b + b;  /* Adjust read pointer, too. */
+      sbufX(sb)->r = sbufX(sb)->r - sb->b + b;  //  Adjust read pointer, too.
    }
    // Adjust buffer pointers.
    sb->b = b;
@@ -70,7 +70,7 @@ LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
       }
       else if (sbufxslack(sbx) < (sbufsz(sbx) >> 3)) {
          // Also grow to avoid excessive compactions, if slack < size/8.
-         buf_grow((SBuf*)sbx, sbuflen(sbx) + sz);  /* Not sbufxlen! */
+         buf_grow((SBuf*)sbx, sbuflen(sbx) + sz);  //  Not sbufxlen!
          return sbx->w;
       }
       if (sbx->r != sbx->b) {  // Compact by moving down.
@@ -252,8 +252,8 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
          cTValue* o = lj_tab_getint(t, i);
          char* w;
          if (!o) {
-         badtype:  /* Error: bad element type. */
-            sb->w = (char*)(intptr_t)i;  /* Store failing index. */
+         badtype:  //  Error: bad element type.
+            sb->w = (char*)(intptr_t)i;  //  Store failing index.
             return NULL;
          }
          else if (tvisstr(o)) {

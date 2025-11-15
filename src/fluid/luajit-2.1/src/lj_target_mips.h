@@ -27,8 +27,8 @@
 #define RIDENUM(name)   RID_##name,
 
 enum {
-   GPRDEF(RIDENUM)      /* General-purpose registers (GPRs). */
-   FPRDEF(RIDENUM)      /* Floating-point registers (FPRs). */
+   GPRDEF(RIDENUM)      //  General-purpose registers (GPRs).
+   FPRDEF(RIDENUM)      //  Floating-point registers (FPRs).
    RID_MAX,
    RID_ZERO = RID_R0,
    RID_TMP = RID_RA,
@@ -51,11 +51,11 @@ enum {
    RID_CFUNCADDR = RID_R25,
 
    // These definitions must match with the *.dasc file(s):
-   RID_BASE = RID_R16,      /* Interpreter BASE. */
-   RID_LPC = RID_R18,      /* Interpreter PC. */
-   RID_DISPATCH = RID_R19,   /* Interpreter DISPATCH table. */
-   RID_LREG = RID_R20,      /* Interpreter L. */
-   RID_JGL = RID_R30,      /* On-trace: global_State + 32768. */
+   RID_BASE = RID_R16,      //  Interpreter BASE.
+   RID_LPC = RID_R18,      //  Interpreter PC.
+   RID_DISPATCH = RID_R19,   //  Interpreter DISPATCH table.
+   RID_LREG = RID_R20,      //  Interpreter L.
+   RID_JGL = RID_R30,      //  On-trace: global_State + 32768.
 
    // Register ranges [min, max) and number of registers.
    RID_MIN_GPR = RID_R0,
@@ -67,7 +67,7 @@ enum {
    RID_MAX_FPR = RID_F31 + 1,
 #endif
    RID_NUM_GPR = RID_MAX_GPR - RID_MIN_GPR,
-   RID_NUM_FPR = RID_MAX_FPR - RID_MIN_FPR   /* Only even regs are used. */
+   RID_NUM_FPR = RID_MAX_FPR - RID_MIN_FPR   //  Only even regs are used.
 };
 
 #define RID_NUM_KREF      RID_NUM_GPR
@@ -161,10 +161,10 @@ enum {
 // This definition must match with the *.dasc file(s).
 typedef struct {
 #if !LJ_SOFTFP
-   lua_Number fpr[RID_NUM_FPR];   /* Floating-point registers. */
+   lua_Number fpr[RID_NUM_FPR];   //  Floating-point registers.
 #endif
-   intptr_t gpr[RID_NUM_GPR];   /* General-purpose registers. */
-   int32_t spill[256];      /* Spill slots. */
+   intptr_t gpr[RID_NUM_GPR];   //  General-purpose registers.
+   int32_t spill[256];      //  Spill slots.
 } ExitState;
 
 // Highest exit + 1 indicates stack check.
@@ -173,7 +173,7 @@ typedef struct {
 // Return the address of a per-trace exit stub.
 static LJ_AINLINE uint32_t* exitstub_trace_addr_(uint32_t* p)
 {
-   while (*p == 0x00000000) p++;  /* Skip MIPSI_NOP. */
+   while (*p == 0x00000000) p++;  //  Skip MIPSI_NOP.
    return p;
 }
 // Avoid dependence on lj_jit.h if only including lj_target.h.
@@ -247,20 +247,20 @@ typedef enum MIPSIns {
    MIPSI_SLL = 0x00000000,
    MIPSI_SRL = 0x00000002,
    MIPSI_SRA = 0x00000003,
-   MIPSI_ROTR = 0x00200002,   /* MIPSXXR2 */
+   MIPSI_ROTR = 0x00200002,   //  MIPSXXR2
    MIPSI_DROTR = 0x0020003a,
    MIPSI_DROTR32 = 0x0020003e,
    MIPSI_SLLV = 0x00000004,
    MIPSI_SRLV = 0x00000006,
    MIPSI_SRAV = 0x00000007,
-   MIPSI_ROTRV = 0x00000046,   /* MIPSXXR2 */
+   MIPSI_ROTRV = 0x00000046,   //  MIPSXXR2
    MIPSI_DROTRV = 0x00000056,
 
-   MIPSI_INS = 0x7c000004,   /* MIPSXXR2 */
+   MIPSI_INS = 0x7c000004,   //  MIPSXXR2
 
-   MIPSI_SEB = 0x7c000420,   /* MIPSXXR2 */
-   MIPSI_SEH = 0x7c000620,   /* MIPSXXR2 */
-   MIPSI_WSBH = 0x7c0000a0,   /* MIPSXXR2 */
+   MIPSI_SEB = 0x7c000420,   //  MIPSXXR2
+   MIPSI_SEH = 0x7c000620,   //  MIPSXXR2
+   MIPSI_WSBH = 0x7c0000a0,   //  MIPSXXR2
    MIPSI_DSBH = 0x7c0000a4,
 
    MIPSI_B = 0x10000000,

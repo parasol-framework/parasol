@@ -68,10 +68,10 @@ static LJ_NOINLINE void bcread_fill(LexState* ls, MSize len, int need)
          ls->pe = p + n;
       }
       ls->sb.w = p + n;
-      buf = ls->rfunc(ls->L, ls->rdata, &sz);  /* Get more data from reader. */
+      buf = ls->rfunc(ls->L, ls->rdata, &sz);  //  Get more data from reader.
       if (buf == NULL || sz == 0) {  // EOF?
          if (need) bcread_error(ls, LJ_ERR_BCBAD);
-         ls->c = -1;  /* Only bad if we get called again. */
+         ls->c = -1;  //  Only bad if we get called again.
          break;
       }
       if (sz >= LJ_MAX_BUF - n) lj_err_mem(ls->L);
@@ -261,7 +261,7 @@ static void bcread_kgc(LexState* ls, GCproto* pt, MSize sizekgc)
       else {
          lua_State* L = ls->L;
          lj_assertLS(tp == BCDUMP_KGC_CHILD, "bad constant type %d", tp);
-         if (L->top <= bcread_oldtop(L, ls))  /* Stack underflow? */
+         if (L->top <= bcread_oldtop(L, ls))  //  Stack underflow?
             bcread_error(ls, LJ_ERR_BCBAD);
          L->top--;
          setgcref(*kr, obj2gco(protoV(L->top)));
@@ -358,7 +358,7 @@ GCproto* lj_bcread_proto(LexState* ls)
    pt->sizebc = sizebc;
    setmref(pt->k, (char*)pt + ofsk);
    setmref(pt->uv, (char*)pt + ofsuv);
-   pt->sizekgc = 0;  /* Set to zero until fully initialized. */
+   pt->sizekgc = 0;  //  Set to zero until fully initialized.
    pt->sizekn = sizekn;
    pt->sizept = sizept;
    pt->sizeuv = (uint8_t)sizeuv;
@@ -423,7 +423,7 @@ static int bcread_header(LexState* ls)
       bcread_need(ls, len);
       ls->chunkname = lj_str_new(ls->L, (const char*)bcread_mem(ls, len), len);
    }
-   return 1;  /* Ok. */
+   return 1;  //  Ok.
 }
 
 // Read a bytecode dump.
@@ -447,7 +447,7 @@ GCproto* lj_bcread(LexState* ls)
       }
       bcread_want(ls, 5);
       len = bcread_uleb128(ls);
-      if (!len) break;  /* EOF */
+      if (!len) break;  //  EOF
       bcread_need(ls, len);
       startp = ls->p;
       pt = lj_bcread_proto(ls);

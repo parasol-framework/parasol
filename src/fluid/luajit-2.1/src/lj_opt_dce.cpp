@@ -47,7 +47,7 @@ static void dce_propagate(jit_State* J)
          pchain[ir->o] = &ir->prev;
       }
       else if (!ir_sideeff(ir)) {
-         *pchain[ir->o] = ir->prev;  /* Reroute original instruction chain. */
+         *pchain[ir->o] = ir->prev;  //  Reroute original instruction chain.
          lj_ir_nop(ir);
          continue;
       }
@@ -67,7 +67,7 @@ void lj_opt_dce(jit_State* J)
    if ((J->flags & JIT_F_OPT_DCE)) {
       dce_marksnap(J);
       dce_propagate(J);
-      memset(J->bpropcache, 0, sizeof(J->bpropcache));  /* Invalidate cache. */
+      memset(J->bpropcache, 0, sizeof(J->bpropcache));  //  Invalidate cache.
    }
 }
 

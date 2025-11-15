@@ -136,8 +136,8 @@ LUALIB_API void (luaL_setmetatable) (lua_State *L, const char *tname);
 
 
 typedef struct luaL_Buffer {
-  char *p;         /* current position in buffer */
-  int lvl;  /* number of strings in the stack (level) */
+  char *p;         //  current position in buffer
+  int lvl;  //  number of strings in the stack (level)
   lua_State *L;
   char buffer[LUAL_BUFFERSIZE];
 } luaL_Buffer;

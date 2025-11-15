@@ -26,7 +26,7 @@
 
 // Tags for internal serialization format.
 enum {
-   SER_TAG_NIL,      /* 0x00 */
+   SER_TAG_NIL,      //  0x00
    SER_TAG_FALSE,
    SER_TAG_TRUE,
    SER_TAG_NULL,
@@ -34,10 +34,10 @@ enum {
    SER_TAG_LIGHTUD64,
    SER_TAG_INT,
    SER_TAG_NUM,
-   SER_TAG_TAB,      /* 0x08 */
+   SER_TAG_TAB,      //  0x08
    SER_TAG_DICT_MT = SER_TAG_TAB + 6,
    SER_TAG_DICT_STR,
-   SER_TAG_INT64,   /* 0x10 */
+   SER_TAG_INT64,   //  0x10
    SER_TAG_UINT64,
    SER_TAG_COMPLEX,
    SER_TAG_0x13,
@@ -45,7 +45,7 @@ enum {
    SER_TAG_0x15,
    SER_TAG_0x16,
    SER_TAG_0x17,
-   SER_TAG_0x18,      /* 0x18 */
+   SER_TAG_0x18,      //  0x18
    SER_TAG_0x19,
    SER_TAG_0x1a,
    SER_TAG_0x1b,
@@ -53,7 +53,7 @@ enum {
    SER_TAG_0x1d,
    SER_TAG_0x1e,
    SER_TAG_0x1f,
-   SER_TAG_STR,      /* 0x20 + str->len */
+   SER_TAG_STR,      //  0x20 + str->len
 };
 LJ_STATIC_ASSERT((SER_TAG_TAB & 7) == 0);
 
@@ -316,7 +316,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
          w += 16;
       }
       else {
-         goto badenc;  /* NYI other cdata */
+         goto badenc;  //  NYI other cdata
       }
 #endif
    }
@@ -376,7 +376,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
 #if LJ_BE
       o->u64 = lj_bswap64(o->u64);
 #endif
-      if (!tvisnum(o)) setnanV(o);  /* Fix non-canonical NaNs. */
+      if (!tvisnum(o)) setnanV(o);  //  Fix non-canonical NaNs.
    }
    else if (tp <= SER_TAG_TRUE) {
       setpriV(o, ~tp);
@@ -559,7 +559,7 @@ LJ_FUNC MSize LJ_FASTCALL lj_serialize_peektype(SBufExt* sbx)
          return IRT_STR;
       }
    }
-   return IRT_NIL;  /* Will fail on actual decode. */
+   return IRT_NIL;  //  Will fail on actual decode.
 }
 #endif
 

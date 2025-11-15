@@ -108,7 +108,7 @@ static void lj_ir_growbot(jit_State* J)
    else {
       // Double the buffer size, but split the growth amongst top/bottom.
       IRIns* newbase = lj_mem_newt(J->L, 2 * szins * sizeof(IRIns), IRIns);
-      MSize ofs = szins >= 256 ? 128 : (szins >> 1);  /* Limit bottom growth. */
+      MSize ofs = szins >= 256 ? 128 : (szins >> 1);  //  Limit bottom growth.
       memcpy(newbase + ofs, baseir, (J->cur.nins - J->irbotlim) * sizeof(IRIns));
       lj_mem_free(G(J->L), baseir, szins * sizeof(IRIns));
       J->irbotlim -= ofs;
@@ -147,7 +147,7 @@ TRef lj_ir_call(jit_State* J, IRCallID id, ...)
       tr = emitir(IRT(IR_CARG, IRT_NIL), tr, va_arg(argp, IRRef));
    va_end(argp);
    if (CCI_OP(ci) == IR_CALLS)
-      J->needsnap = 1;  /* Need snapshot after call with side effect. */
+      J->needsnap = 1;  //  Need snapshot after call with side effect.
    return emitir(CCI_OPTYPE(ci), tr, id);
 }
 
@@ -308,7 +308,7 @@ TRef lj_ir_ktrace(jit_State* J)
    IRIns* ir = IR(ref);
    lj_assertJ(irt_toitype_(IRT_P64) == LJ_TTRACE, "mismatched type mapping");
    ir->t.irt = IRT_P64;
-   ir->o = LJ_GC64 ? IR_KNUM : IR_KNULL;  /* Not IR_KGC yet, but same size. */
+   ir->o = LJ_GC64 ? IR_KNUM : IR_KNULL;  //  Not IR_KGC yet, but same size.
    ir->op12 = 0;
    ir->prev = 0;
    return TREF(ref, IRT_P64);
@@ -389,7 +389,7 @@ found:
 void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
 {
    UNUSED(L);
-   lj_assertL(ir->o != IR_KSLOT, "unexpected KSLOT");  /* Common mistake. */
+   lj_assertL(ir->o != IR_KSLOT, "unexpected KSLOT");  //  Common mistake.
    switch (ir->o) {
    case IR_KPRI: setpriV(tv, irt_toitype(ir->t)); break;
    case IR_KINT: setintV(tv, ir->i); break;
