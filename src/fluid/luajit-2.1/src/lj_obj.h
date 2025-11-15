@@ -16,11 +16,11 @@
 // -- Memory references ---------------------------------------------------
 
 // Memory and GC object sizes.
-typedef uint32_t MSize;
+using MSize = uint32_t;
 #if LJ_GC64
-typedef uint64_t GCSize;
+using GCSize = uint64_t;
 #else
-typedef uint32_t GCSize;
+using GCSize = uint32_t;
 #endif
 
 // Memory reference
@@ -148,13 +148,13 @@ typedef struct GCRef {
 // -- Common type definitions ---------------------------------------------
 
 // Types for handling bytecodes. Need this here, details in lj_bc.h.
-typedef uint32_t BCIns;  /* Bytecode instruction. */
-typedef uint32_t BCPos;  /* Bytecode position. */
-typedef uint32_t BCReg;  /* Bytecode register. */
-typedef int32_t BCLine;  /* Bytecode line number. */
+using BCIns = uint32_t;  /* Bytecode instruction. */
+using BCPos = uint32_t;  /* Bytecode position. */
+using BCReg = uint32_t;  /* Bytecode register. */
+using BCLine = int32_t;  /* Bytecode line number. */
 
 // Internal assembler functions. Never call these directly from C.
-typedef void (*ASMFunction)(void);
+using ASMFunction = void(*)(void);
 
 // Resizable string buffer. Need this here, details in lj_buf.h.
 #define SBufHeader   char *w, *e, *b; MRef L
@@ -212,7 +212,7 @@ typedef LJ_ALIGN(8) union TValue {
    } u32;
 } TValue;
 
-typedef const TValue cTValue;
+using cTValue = const TValue;
 
 #define tvref(r)   (mref(r, TValue))
 

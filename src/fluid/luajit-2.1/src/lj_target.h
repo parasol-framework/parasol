@@ -12,7 +12,7 @@
 // -- Registers and spill slots -------------------------------------------
 
 // Register type (uint8_t in ir->r).
-typedef uint32_t Reg;
+using Reg = uint32_t;
 
 /* The hi-bit is NOT set for an allocated register. This means the value
 ** can be directly used without masking. The hi-bit is set for a register
@@ -34,12 +34,12 @@ typedef uint32_t Reg;
 #define ra_samehint(r1, r2)   (ra_gethint((r1)^(r2)) == 0)
 
 // Spill slot 0 means no spill slot has been allocated.
-#define SPS_NONE      0
+constexpr uint8_t SPS_NONE = 0;
 
 #define ra_hasspill(s)      ((s) != SPS_NONE)
 
 // Combined register and spill slot (uint16_t in ir->prev).
-typedef uint32_t RegSP;
+using RegSP = uint32_t;
 
 #define REGSP(r, s)      ((r) + ((s) << 8))
 #define REGSP_HINT(r)      ((r)|RID_NONE)
@@ -56,9 +56,9 @@ typedef uint32_t RegSP;
 ** Note that one set holds bits for both GPRs and FPRs.
 */
 #if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
-typedef uint64_t RegSet;
+using RegSet = uint64_t;
 #else
-typedef uint32_t RegSet;
+using RegSet = uint32_t;
 #endif
 
 #define RID2RSET(r)      (((RegSet)1) << (r))
@@ -119,10 +119,10 @@ typedef uint32_t RegSet;
 **   Good values for the PHI weight seem to be between 40 and 150.
 ** - Further study is required.
 */
-#define REGCOST_PHI_WEIGHT   64
+constexpr uint32_t REGCOST_PHI_WEIGHT = 64;
 
 // Cost for allocating a specific register.
-typedef uint32_t RegCost;
+using RegCost = uint32_t;
 
 // Note: assumes 16 bit IRRef1.
 #define REGCOST(cost, ref)   ((RegCost)(ref) + ((RegCost)(cost) << 16))
