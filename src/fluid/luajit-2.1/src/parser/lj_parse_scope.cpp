@@ -20,7 +20,7 @@ static void var_new(LexState* ls, BCReg n, GCstr* name)
    FuncState* fs = ls->fs;
    MSize vtop = ls->vtop;
    checklimit(fs, fs->nactvar + n, LJ_MAX_LOCVAR, "local variables");
-   if (LJ_UNLIKELY(vtop >= ls->sizevstack)) {
+   if (vtop >= ls->sizevstack) [[unlikely]] {
       if (ls->sizevstack >= LJ_MAX_VSTACK)
          lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
@@ -66,9 +66,9 @@ static BCReg var_lookup_local(FuncState* fs, GCstr* n)
    int i;
    for (i = fs->nactvar - 1; i >= 0; i--) {
       GCstr* varname = strref(var_get(fs->ls, fs, i).name);
-      if (varname == NAME_BLANK)
+      if (varname == NAME_BLANK) [[unlikely]]
          continue;  // Skip blank identifiers.
-      if (n == varname)
+      if (n == varname) [[likely]]
          return BCReg(i);
    }
    return BCReg(-1);  // Not found.
@@ -77,10 +77,14 @@ static BCReg var_lookup_local(FuncState* fs, GCstr* n)
 // Lookup or add upvalue index.
 static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
 {
-   MSize i, n = fs->nuv;
-   for (i = 0; i < n; i++)
-      if (fs->uvmap[i] == vidx)
+   MSize n = fs->nuv;
+   // Check if upvalue already exists using range-based iteration.
+   auto uvmap_view = std::span(fs->uvmap.data(), n);
+   for (MSize i = 0; auto uv_idx : uvmap_view) {
+      if (uv_idx == vidx)
          return i;  // Already exists.
+      i++;
+   }
    // Otherwise create a new one.
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
    lj_assertFS(e->k == VLOCAL or e->k == VUPVAL, "bad expr type %d", e->k);
@@ -136,7 +140,7 @@ static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc)
 {
    FuncState* fs = ls->fs;
    MSize vtop = ls->vtop;
-   if (LJ_UNLIKELY(vtop >= ls->sizevstack)) {
+   if (vtop >= ls->sizevstack) [[unlikely]] {
       if (ls->sizevstack >= LJ_MAX_VSTACK)
          lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
@@ -151,9 +155,18 @@ static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc)
    return vtop;
 }
 
-#define gola_is_jump(v)		((v)->info & VSTACK_JUMP)
-#define gola_is_jump_target(v) ((v)->info & VSTACK_JUMP_TARGET)
-#define gola_is_jump_or_target(v)	((v)->info & (VSTACK_JUMP|VSTACK_JUMP_TARGET))
+// Constexpr helper functions for goto/label flag checking.
+[[nodiscard]] static constexpr bool gola_is_jump(const VarInfo* v) {
+   return v->info & VSTACK_JUMP;
+}
+
+[[nodiscard]] static constexpr bool gola_is_jump_target(const VarInfo* v) {
+   return v->info & VSTACK_JUMP_TARGET;
+}
+
+[[nodiscard]] static constexpr bool gola_is_jump_or_target(const VarInfo* v) {
+   return v->info & (VSTACK_JUMP | VSTACK_JUMP_TARGET);
+}
 
 // Patch goto to jump to target.
 static void gola_patch(LexState* ls, VarInfo* vg, VarInfo* vl)
@@ -429,7 +442,7 @@ static void fs_fixup_uv1(FuncState* fs, GCproto* pt, uint16_t* uv)
 {
    setmref(pt->uv, uv);
    pt->sizeuv = fs->nuv;
-   memcpy(uv, fs->uvtmp, fs->nuv * sizeof(VarIndex));
+   memcpy(uv, fs->uvtmp.data(), fs->nuv * sizeof(VarIndex));
 }
 
 #ifndef LUAJIT_DISABLE_DEBUGINFO
@@ -479,12 +492,12 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
 static size_t fs_prep_var(LexState* ls, FuncState* fs, size_t* ofsvar)
 {
    VarInfo* vs = ls->vstack, * ve;
-   MSize i, n;
    BCPos lastpc;
    lj_buf_reset(&ls->sb);  // Copy to temp. string buffer.
-   // Store upvalue names.
-   for (i = 0, n = fs->nuv; i < n; i++) {
-      GCstr* s = strref(vs[fs->uvmap[i]].name);
+   // Store upvalue names using range-based iteration.
+   auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
+   for (auto uv_idx : uvmap_range) {
+      GCstr* s = strref(vs[uv_idx].name);
       MSize len = s->len + 1;
       char* p = lj_buf_more(&ls->sb, len);
       p = lj_buf_wmem(p, strdata(s), len);

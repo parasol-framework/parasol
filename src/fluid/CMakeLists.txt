@@ -116,7 +116,7 @@ set (BUILDVM_SOURCES
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
 set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR})
-set (LUAJIT_COMMON_CFLAGS -fPIC -O2 -fomit-frame-pointer -Wall)
+set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
 if (WIN32)
@@ -486,19 +486,20 @@ else ()
          DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
       )
    endif ()
+   
+   file(GLOB LUAJIT_AMALG_SOURCES
+      "${LUAJIT_SRC}/lj_*.cpp"
+      "${LUAJIT_SRC}/lib_*.cpp"
+   )
 
    if (WIN32)
       # MinGW: Compile amalgamated source with explicit flags to ensure consistent configuration
       # with Unix builds and avoid inheriting global CMAKE_C_FLAGS
-      file(GLOB LUAJIT_AMALG_SOURCES
-         "${LUAJIT_SRC}/lj_*.cpp"
-         "${LUAJIT_SRC}/lib_*.cpp"
-      )
 
       set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
       add_custom_command(
          OUTPUT ${LUAJIT_AMALG_O}
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
@@ -520,7 +521,7 @@ else ()
       # Compile VM assembly file
       add_custom_command(
          OUTPUT ${LUAJIT_VM_O}
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS}
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
@@ -530,18 +531,10 @@ else ()
          VERBATIM
       )
 
-      # Compile amalgamated source with explicit flags
-      # We use a custom command (rather than add_library with the source file) to prevent
-      # inheriting global CMAKE_C_FLAGS which may contain incompatible flags like -fno-var-tracking
-      file(GLOB LUAJIT_AMALG_SOURCES
-         "${LUAJIT_SRC}/lj_*.cpp"
-         "${LUAJIT_SRC}/lib_*.cpp"
-      )
-
       set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
       add_custom_command(
          OUTPUT ${LUAJIT_AMALG_O}
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_COMMON_CFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}

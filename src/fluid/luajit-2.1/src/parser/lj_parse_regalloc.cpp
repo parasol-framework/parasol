@@ -51,7 +51,7 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
    LexState* ls = fs->ls;
    jmp_patchval(fs, fs->jpc, pc, NO_REG, pc);
    fs->jpc = NO_JMP;
-   if (LJ_UNLIKELY(pc >= fs->bclim)) {
+   if (pc >= fs->bclim) [[unlikely]] {
       ptrdiff_t base = fs->bcbase - ls->bcstack;
       checklimit(fs, ls->sizebcstack, LJ_MAX_BCINS, "bytecode instructions");
       lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS, BCInsLine);
@@ -64,16 +64,20 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
    return pc;
 }
 
+// Bytecode emission helper macros.
 #define bcemit_ABC(fs, o, a, b, c)   bcemit_INS(fs, BCINS_ABC(o, a, b, c))
 #define bcemit_AD(fs, o, a, d)      bcemit_INS(fs, BCINS_AD(o, a, d))
 #define bcemit_AJ(fs, o, a, j)      bcemit_INS(fs, BCINS_AJ(o, a, j))
 
-#define bcptr(fs, e)         (&(fs)->bcbase[(e)->u.s.info].ins)
+// Get pointer to bytecode instruction for expression.
+[[nodiscard]] static inline BCIns* bcptr(FuncState* fs, const ExpDesc* e) {
+   return &fs->bcbase[e->u.s.info].ins;
+}
 
 // -- Bytecode emitter for expressions ------------------------------------
 
 // Forward declarations
-static BCPos bcemit_jmp(FuncState* fs);
+[[nodiscard]] static BCPos bcemit_jmp(FuncState* fs);
 
 // Discharge non-constant expression to any register.
 static void expr_discharge(FuncState* fs, ExpDesc* e)
@@ -252,8 +256,8 @@ static void expr_tonextreg(FuncState* fs, ExpDesc* e)
 static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
 {
    expr_discharge(fs, e);
-   if (e->k == VNONRELOC) {
-      if (!expr_hasjump(e)) return e->u.s.info;  // Already in a register.
+   if (e->k == VNONRELOC) [[likely]] {
+      if (!expr_hasjump(e)) [[likely]] return e->u.s.info;  // Already in a register.
       if (e->u.s.info >= fs->nactvar) {
          expr_toreg(fs, e, e->u.s.info);  // Discharge to temp. register.
          return e->u.s.info;
@@ -266,9 +270,9 @@ static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
 // Partially discharge expression to a value.
 static void expr_toval(FuncState* fs, ExpDesc* e)
 {
-   if (expr_hasjump(e))
+   if (expr_hasjump(e)) [[unlikely]]
       expr_toanyreg(fs, e);
-   else
+   else [[likely]]
       expr_discharge(fs, e);
 }
 
@@ -349,7 +353,7 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
 // -- Bytecode emitter for branches ---------------------------------------
 
 // Emit unconditional branch.
-static BCPos bcemit_jmp(FuncState* fs)
+[[nodiscard]] static BCPos bcemit_jmp(FuncState* fs)
 {
    BCPos jpc = fs->jpc;
    BCPos j = fs->pc - 1;
@@ -374,7 +378,7 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 }
 
 // Emit conditional branch.
-static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
+[[nodiscard]] static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
 {
    BCPos pc;
    if (e->k == VRELOCABLE) {

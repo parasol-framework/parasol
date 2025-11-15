@@ -43,21 +43,33 @@ static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 
 // -- Expression flag lifecycle management ------------------------------------
 
-// Helper macros for managing expression flags with explicit lifecycle semantics.
+// Helper functions for managing expression flags with explicit lifecycle semantics.
 // These make flag ownership and consumption more explicit and easier to audit.
 
 // Consume a flag from an expression, clearing it and returning whether it was set.
 // Use this when an operator takes ownership of a flagged value.
-#define expr_consume_flag(e, flag) ((e)->flags & (flag) ? ((e)->flags &= ~(flag), 1) : 0)
+[[nodiscard]] static inline bool expr_consume_flag(ExpDesc* e, uint8_t flag) {
+   if (e->flags & flag) {
+      e->flags &= ~flag;
+      return true;
+   }
+   return false;
+}
 
 // Check if an expression has a flag without consuming it.
-#define expr_has_flag(e, flag) (((e)->flags & (flag)) != 0)
+[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* e, uint8_t flag) {
+   return (e->flags & flag) != 0;
+}
 
 // Set a flag on an expression.
-#define expr_set_flag(e, flag) ((e)->flags |= (flag))
+static inline void expr_set_flag(ExpDesc* e, uint8_t flag) {
+   e->flags |= flag;
+}
 
 // Clear a flag on an expression.
-#define expr_clear_flag(e, flag) ((e)->flags &= ~(flag))
+static inline void expr_clear_flag(ExpDesc* e, uint8_t flag) {
+   e->flags &= ~flag;
+}
 
 // -- Register allocation (lj_parse_regalloc.c) ----------------------------
 
@@ -122,6 +134,14 @@ static void fscope_loop_continue(FuncState* fs, BCPos pos);
 static void execute_defers(FuncState* fs, BCReg limit);
 static void fscope_end(FuncState* fs);
 static void fscope_uvmark(FuncState* fs, BCReg level);
+
+// -- RAII Helper Classes --------------------------------------------------
+
+#include "lj_parse_raii.h"
+
+// -- C++20 Concepts -------------------------------------------------------
+
+#include "lj_parse_concepts.h"
 
 // -- Function state (lj_parse_scope.c) ------------------------------------
 

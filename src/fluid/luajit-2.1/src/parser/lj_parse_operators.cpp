@@ -9,14 +9,14 @@
 // -- Bytecode emitter for operators --------------------------------------
 
 // Try constant-folding of arithmetic operators.
-static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+[[nodiscard]] static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    TValue o;
    lua_Number n;
-   if (!expr_isnumk_nojump(e1) or !expr_isnumk_nojump(e2)) return 0;
-   n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), (int)opr - OPR_ADD);
+   if (!expr_isnumk_nojump(e1) or !expr_isnumk_nojump(e2)) [[likely]] return 0;
+   n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), int(opr) - OPR_ADD);
    setnumV(&o, n);
-   if (tvisnan(&o) or tvismzero(&o)) return 0;  // Avoid NaN and -0 as consts.
+   if (tvisnan(&o) or tvismzero(&o)) [[unlikely]] return 0;  // Avoid NaN and -0 as consts.
    if (LJ_DUALNUM) {
       int32_t k = lj_num2int(n);
       if (lua_Number(k) == n) {

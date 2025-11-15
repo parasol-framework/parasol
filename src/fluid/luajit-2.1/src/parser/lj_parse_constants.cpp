@@ -9,7 +9,7 @@
 // -- Management of constants ---------------------------------------------
 
 // Add a number constant.
-static BCReg const_num(FuncState* fs, ExpDesc* e)
+[[nodiscard]] static BCReg const_num(FuncState* fs, ExpDesc* e)
 {
    lua_State* L = fs->L;
    TValue* o;
@@ -22,7 +22,7 @@ static BCReg const_num(FuncState* fs, ExpDesc* e)
 }
 
 // Add a GC object constant.
-static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
+[[nodiscard]] static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 {
    lua_State* L = fs->L;
    TValue key, * o;
@@ -36,7 +36,7 @@ static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 }
 
 // Add a string constant.
-static BCReg const_str(FuncState* fs, ExpDesc* e)
+[[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
    lj_assertFS(expr_isstrk(e) or e->k == VGLOBAL, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
@@ -68,7 +68,7 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 // -- Jump list handling --------------------------------------------------
 
 // Get next element in jump list.
-static BCPos jmp_next(FuncState* fs, BCPos pc)
+[[nodiscard]] static BCPos jmp_next(FuncState* fs, BCPos pc)
 {
    ptrdiff_t delta = bc_j(fs->bcbase[pc].ins);
    if (BCPos(delta) == NO_JMP)
@@ -78,7 +78,7 @@ static BCPos jmp_next(FuncState* fs, BCPos pc)
 }
 
 // Check if any of the instructions on the jump list produce no value.
-static int jmp_novalue(FuncState* fs, BCPos list)
+[[nodiscard]] static int jmp_novalue(FuncState* fs, BCPos list)
 {
    for (; list != NO_JMP; list = jmp_next(fs, list)) {
       BCIns p = fs->bcbase[list >= 1 ? list - 1 : list].ins;
@@ -89,7 +89,7 @@ static int jmp_novalue(FuncState* fs, BCPos list)
 }
 
 // Patch register of test instructions.
-static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
+[[nodiscard]] static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
 {
    BCInsLine* ilp = &fs->bcbase[pc >= 1 ? pc - 1 : pc];
    BCOp op = bc_op(ilp->ins);
@@ -122,7 +122,7 @@ static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
 static void jmp_dropval(FuncState* fs, BCPos list)
 {
    for (; list != NO_JMP; list = jmp_next(fs, list))
-      jmp_patchtestreg(fs, list, NO_REG);
+      (void)jmp_patchtestreg(fs, list, NO_REG);
 }
 
 // Patch jump instruction to target.

@@ -9,7 +9,10 @@
 #ifndef _LJ_PARSE_TYPES_H
 #define _LJ_PARSE_TYPES_H
 
-#define vkisvar(k)   (VLOCAL <= (k) && (k) <= VINDEXED)
+#include <array>
+#include <span>
+#include <string_view>
+#include <concepts>
 
 // -- Parser structures and definitions -----------------------------------
 
@@ -34,6 +37,11 @@ typedef enum {
    VCALL,   // info = instruction PC, aux = base
    VVOID
 } ExpKind;
+
+// Expression kind helper function.
+[[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
+   return VLOCAL <= k and k <= VINDEXED;
+}
 
 // Expression descriptor.
 typedef struct ExpDesc {
@@ -64,17 +72,61 @@ typedef struct ExpDesc {
 ** masking.
 */
 
-// Macros for expressions.
-#define expr_hasjump(e)      ((e)->t != (e)->f)
+// -- C++20 Concepts for Expression Type Safety -------------------------------
 
-#define expr_isk(e)      ((e)->k <= VKLAST)
-#define expr_isk_nojump(e)   (expr_isk(e) && !expr_hasjump(e))
-#define expr_isnumk(e)      ((e)->k == VKNUM)
-#define expr_isnumk_nojump(e)   (expr_isnumk(e) && !expr_hasjump(e))
-#define expr_isstrk(e)      ((e)->k == VKSTR)
+/*
+** ConstExpressionDescriptor: Concept for const expression descriptor types
+**
+** Ensures a type has the required members for expression handling.
+** Provides compile-time validation and clearer error messages.
+*/
+template<typename T>
+concept ConstExpressionDescriptor = requires(const T* e) {
+   { e->k } -> std::convertible_to<ExpKind>;
+   { e->t } -> std::convertible_to<BCPos>;
+   { e->f } -> std::convertible_to<BCPos>;
+   requires sizeof(e->u) > 0;  // Has union member
+};
 
-#define expr_numtv(e)      check_exp(expr_isnumk((e)), &(e)->u.nval)
-#define expr_numberV(e)      numberVnum(expr_numtv((e)))
+// Expression query functions with C++20 concept constraints.
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_hasjump(const E* e) {
+   return e->t != e->f;
+}
+
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_isk(const E* e) {
+   return e->k <= VKLAST;
+}
+
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_isk_nojump(const E* e) {
+   return expr_isk(e) and not expr_hasjump(e);
+}
+
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_isnumk(const E* e) {
+   return e->k == VKNUM;
+}
+
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_isnumk_nojump(const E* e) {
+   return expr_isnumk(e) and not expr_hasjump(e);
+}
+
+template<ConstExpressionDescriptor E>
+[[nodiscard]] static constexpr bool expr_isstrk(const E* e) {
+   return e->k == VKSTR;
+}
+
+[[nodiscard]] static inline TValue* expr_numtv(ExpDesc* e) {
+   lj_assertX(expr_isnumk(e), "expr must be number constant");
+   return &e->u.nval;
+}
+
+[[nodiscard]] static inline lua_Number expr_numberV(ExpDesc* e) {
+   return numberVnum(expr_numtv(e));
+}
 
 // Initialize expression.
 static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
@@ -142,13 +194,15 @@ typedef struct FuncState {
    uint8_t numparams;      // Number of parameters.
    uint8_t framesize;      // Fixed frame size.
    uint8_t nuv;         // Number of upvalues
-   VarIndex varmap[LJ_MAX_LOCVAR];  // Map from register to variable idx.
-   VarIndex uvmap[LJ_MAX_UPVAL];   // Map from upvalue to variable idx.
-   VarIndex uvtmp[LJ_MAX_UPVAL];   // Temporary upvalue map.
+   std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
+   std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
+   std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
 } FuncState;
 
 // Variable access macro.
-#define var_get(ls, fs, i)   ((ls)->vstack[(fs)->varmap[(i)]])
+[[nodiscard]] static inline VarInfo& var_get(LexState* ls, FuncState* fs, int32_t i) {
+   return ls->vstack[fs->varmap[i]];
+}
 
 // Binary and unary operators. ORDER OPR
 typedef enum BinOpr {
@@ -176,13 +230,21 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 #define lj_assertFS(c, ...)   ((void)fs)
 #endif
 
-// -- Constant and utility macros -----------------------------------------
+// -- Constant and utility functions --------------------------------------
 
 // Return bytecode encoding for primitive constant.
-#define const_pri(e)      check_exp((e)->k <= VKTRUE, (e)->k)
+[[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
+   lj_assertX(e->k <= VKTRUE, "bad constant primitive");
+   return e->k;
+}
 
-#define tvhaskslot(o)   ((o)->u32.hi == 0)
-#define tvkslot(o)   ((o)->u32.lo)
+[[nodiscard]] static inline bool tvhaskslot(const TValue* o) {
+   return o->u32.hi == 0;
+}
+
+[[nodiscard]] static inline uint32_t tvkslot(const TValue* o) {
+   return o->u32.lo;
+}
 
 // Error checking macros.
 #define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)

@@ -159,7 +159,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
       }
       else {
          expr_init(&key, VKNUM, 0);
-         setintV(&key.u.nval, (int)narr);
+         setintV(&key.u.nval, int(narr));
          narr++;
          needarr = vcall = 1;
       }
@@ -243,7 +243,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
 }
 
 // Parse function parameters.
-static BCReg parse_params(LexState* ls, int needself)
+[[nodiscard]] static BCReg parse_params(LexState* ls, int needself)
 {
    FuncState* fs = ls->fs;
    BCReg nparams = 0;
@@ -299,7 +299,7 @@ static void parse_body_impl(LexState* ls, ExpDesc* e, int needself,
    if (ls->tok != TK_end) lex_match(ls, TK_end, TK_function, line);
    pt = fs_finish(ls, (ls->lastline = ls->linenumber));
    pfs->bcbase = ls->bcstack + oldbase;  // May have been reallocated.
-   pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+   pfs->bclim = BCPos(ls->sizebcstack - oldbase);
    // Store new prototype in the constant array of the parent.
    expr_init(e, VRELOCABLE,
       bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
@@ -343,7 +343,7 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
 **
 ** Returns: Number of expressions in the list
 */
-static BCReg expr_list(LexState* ls, ExpDesc* v)
+[[nodiscard]] static BCReg expr_list(LexState* ls, ExpDesc* v)
 {
    BCReg n = 1;
    expr(ls, v);
@@ -405,7 +405,7 @@ static void parse_args(LexState* ls, ExpDesc* e)
          args.k = VVOID;
       }
       else {
-         expr_list(ls, &args);
+         (void)expr_list(ls, &args);
          if (args.k == VCALL)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
@@ -590,10 +590,12 @@ static void synlevel_begin(LexState* ls)
       lj_lex_error(ls, 0, LJ_ERR_XLEVELS);
 }
 
-#define synlevel_end(ls)	((ls)->level--)
+static inline void synlevel_end(LexState* ls) {
+   ls->level--;
+}
 
 // Convert token to binary operator.
-static BinOpr token2binop(LexToken tok)
+[[nodiscard]] static BinOpr token2binop(LexToken tok)
 {
    switch (tok) {
    case '+':	return OPR_ADD;
@@ -961,7 +963,7 @@ static void expr_next(LexState* ls)
 }
 
 // Parse conditional expression.
-static BCPos expr_cond(LexState* ls)
+[[nodiscard]] static BCPos expr_cond(LexState* ls)
 {
    ExpDesc v;
    expr(ls, &v);
