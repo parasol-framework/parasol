@@ -359,7 +359,7 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
    bcwrite_header(ctx);
    bcwrite_proto(ctx, ctx->pt);
    bcwrite_footer(ctx);
-   return NULL;
+   return nullptr;
 }
 
 // Write bytecode for a prototype.
@@ -377,7 +377,7 @@ int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data,
    ctx.g = G(L);
 #endif
    lj_buf_init(L, &ctx.sb);
-   status = lj_vm_cpcall(L, NULL, &ctx, cpwriter);
+   status = lj_vm_cpcall(L, nullptr, &ctx, cpwriter);
    if (status == 0) status = ctx.status;
    lj_buf_free(G(sbufL(&ctx.sb)), &ctx.sb);
    return status;

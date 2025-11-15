@@ -170,7 +170,7 @@ LJLIB_CF(debug_getlocal)
    int slot = lj_lib_checkint(L, arg + 2);
    if (tvisfunc(L->base + arg)) {
       L->top = L->base + arg + 1;
-      lua_pushstring(L, lua_getlocal(L, NULL, slot));
+      lua_pushstring(L, lua_getlocal(L, nullptr, slot));
       return 1;
    }
    if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar))
@@ -331,7 +331,7 @@ LJLIB_CF(debug_sethook)
    (void)getthread(L, &arg);
    if (lua_isnoneornil(L, arg + 1)) {
       lua_settop(L, arg + 1);
-      func = NULL; mask = 0; count = 0;  //  turn off hooks
+      func = nullptr; mask = 0; count = 0;  //  turn off hooks
    }
    else {
       const char* smask = luaL_checkstring(L, arg + 2);
@@ -351,7 +351,7 @@ LJLIB_CF(debug_gethook)
    char buff[5];
    int mask = lua_gethookmask(L);
    lua_Hook hook = lua_gethook(L);
-   if (hook != NULL and hook != hookf) {  // external hook?
+   if (hook != nullptr and hook != hookf) {  // external hook?
       lua_pushliteral(L, "external hook");
    }
    else {
@@ -393,7 +393,7 @@ LJLIB_CF(debug_traceback)
    int arg;
    lua_State* L1 = getthread(L, &arg);
    const char* msg = lua_tostring(L, arg + 1);
-   if (msg == NULL and L->top > L->base + arg)
+   if (msg == nullptr and L->top > L->base + arg)
       L->top = L->base + arg + 1;
    else
       luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));

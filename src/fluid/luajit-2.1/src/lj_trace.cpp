@@ -64,7 +64,7 @@ static TraceNo trace_findfree(jit_State* J)
    if (J->freetrace == 0)
       J->freetrace = 1;
    for (; J->freetrace < J->sizetrace; J->freetrace++)
-      if (traceref(J, J->freetrace) == NULL)
+      if (traceref(J, J->freetrace) == nullptr)
          return J->freetrace++;
    // Need to grow trace array.
    lim = (MSize)J->param[JIT_P_maxtrace] + 1;
@@ -157,7 +157,7 @@ static void trace_save(jit_State* J, GCtrace* T)
    TRACE_APPENDVEC(snap, nsnap, SnapShot)
       TRACE_APPENDVEC(snapmap, nsnapmap, SnapEntry)
       J->cur.traceno = 0;
-   J->curfinal = NULL;
+   J->curfinal = nullptr;
    setgcrefp(J->trace[T->traceno], T);
    lj_gc_barriertrace(J2G(J), T->traceno);
    lj_gdbjit_addtrace(J, T);
@@ -241,7 +241,7 @@ static void trace_flushroot(jit_State* J, GCtrace* T)
 {
    GCproto* pt = &gcref(T->startpt)->pt;
    lj_assertJ(T->root == 0, "not a root trace");
-   lj_assertJ(pt != NULL, "trace has no prototype");
+   lj_assertJ(pt != nullptr, "trace has no prototype");
    // First unpatch any modified bytecode.
    trace_unpatch(J, T);
    // Unlink root trace from chain anchored in prototype.
@@ -358,7 +358,7 @@ void lj_trace_freestate(global_State* g)
    {  // This assumes all traces have already been freed.
       ptrdiff_t i;
       for (i = 1; i < (ptrdiff_t)J->sizetrace; i++)
-         lj_assertG(i == (ptrdiff_t)J->cur.traceno or traceref(J, i) == NULL,
+         lj_assertG(i == (ptrdiff_t)J->cur.traceno or traceref(J, i) == nullptr,
             "trace still allocated");
    }
 #endif
@@ -556,7 +556,7 @@ static void trace_stop(jit_State* J)
 static int trace_downrec(jit_State* J)
 {
    // Restart recording at the return instruction.
-   lj_assertJ(J->pt != NULL, "no active prototype");
+   lj_assertJ(J->pt != nullptr, "no active prototype");
    lj_assertJ(bc_isret(bc_op(*J->pc)), "not at a return bytecode");
    if (bc_op(*J->pc) == BC_RETM)
       return 0;  //  NYI: down-recursion with RETM.
@@ -578,7 +578,7 @@ static int trace_abort(jit_State* J)
    lj_mcode_abort(J);
    if (J->curfinal) {
       lj_trace_free(J2G(J), J->curfinal);
-      J->curfinal = NULL;
+      J->curfinal = nullptr;
    }
    if (tvisnumber(L->top - 1))
       e = (TraceError)numberVint(L->top - 1);
@@ -646,7 +646,7 @@ static LJ_AINLINE void trace_pendpatch(jit_State* J, int force)
    if (LJ_UNLIKELY(J->patchpc)) {
       if (force or J->bcskip == 0) {
          *J->patchpc = J->patchins;
-         J->patchpc = NULL;
+         J->patchpc = nullptr;
       }
       else {
          J->bcskip = 0;
@@ -724,7 +724,7 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          setvmstate(J2G(J), INTERP);
          J->state = LJ_TRACE_IDLE;
          lj_dispatch_update(J2G(J));
-         return NULL;
+         return nullptr;
 
       default:  //  Trace aborted asynchronously.
          setintV(L->top++, (int32_t)LJ_TRERR_RECERR);
@@ -736,10 +736,10 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          setvmstate(J2G(J), INTERP);
          J->state = LJ_TRACE_IDLE;
          lj_dispatch_update(J2G(J));
-         return NULL;
+         return nullptr;
       }
    } while (J->state > LJ_TRACE_RECORD);
-   return NULL;
+   return nullptr;
 }
 
 // -- Event handling ------------------------------------------------------
@@ -750,8 +750,8 @@ void lj_trace_ins(jit_State* J, const BCIns* pc)
    // Note: J->L must already be set. pc is the true bytecode PC here.
    J->pc = pc;
    J->fn = curr_func(J->L);
-   J->pt = isluafunc(J->fn) ? funcproto(J->fn) : NULL;
-   while (lj_vm_cpcall(J->L, NULL, (void*)J, trace_state) != 0)
+   J->pt = isluafunc(J->fn) ? funcproto(J->fn) : nullptr;
+   while (lj_vm_cpcall(J->L, nullptr, (void*)J, trace_state) != 0)
       J->state = LJ_TRACE_ERR;
 }
 
@@ -818,7 +818,7 @@ static TValue* trace_exit_cp(lua_State* L, lua_CFunction dummy, void* ud)
    cframe_nres(L->cframe) = -2 * LUAI_MAXSTACK * (int)sizeof(TValue);
    exd->pc = lj_snap_restore(exd->J, exd->exptr);
    UNUSED(dummy);
-   return NULL;
+   return nullptr;
 }
 
 #ifndef LUAJIT_DISABLE_VMEVENT
@@ -891,10 +891,10 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
       T = traceref(J, J->parent);
    }
 #endif
-   lj_assertJ(T != NULL and J->exitno < T->nsnap, "bad trace or exit number");
+   lj_assertJ(T != nullptr and J->exitno < T->nsnap, "bad trace or exit number");
    exd.J = J;
    exd.exptr = exptr;
-   errcode = lj_vm_cpcall(L, NULL, &exd, trace_exit_cp);
+   errcode = lj_vm_cpcall(L, nullptr, &exd, trace_exit_cp);
    if (errcode)
       return -errcode;  //  Return negated error code.
 

@@ -58,7 +58,7 @@ static void rec_check_ir(jit_State* J)
       uint32_t mode = lj_ir_mode[ir->o];
       IRRef op1 = ir->op1;
       IRRef op2 = ir->op2;
-      const char* err = NULL;
+      const char* err = nullptr;
       switch (irm_op1(mode)) {
       case IRMnone:
          if (op1 != 0) err = "IRMnone op1 used";
@@ -115,7 +115,7 @@ static void rec_check_slots(jit_State* J)
       if (tr) {
          cTValue* tv = &base[s];
          IRRef ref = tref_ref(tr);
-         IRIns* ir = NULL;  //  Silence compiler.
+         IRIns* ir = nullptr;  //  Silence compiler.
          if (!LJ_FR2 or ref or !(tr & (TREF_FRAME | TREF_CONT))) {
             lj_assertJ(ref >= J->cur.nk && ref < J->cur.nins,
                "slot %d ref %04d out of range", s, ref - REF_BIAS);
@@ -780,7 +780,7 @@ static void rec_profile_ret(jit_State* J)
 {
    if (J->prof_mode == 'f') {
       emitir(IRTG(IR_PROF, IRT_NIL), 0, 0);
-      J->prev_pt = NULL;
+      J->prev_pt = nullptr;
       lj_snap_add(J);
    }
 }
@@ -1088,7 +1088,7 @@ int lj_record_mm_lookup(jit_State* J, RecordIndex* ix, MMS mm)
    RecordIndex mix;
    GCtab* mt;
    int udtype = 0;  //  Declare before goto
-   cTValue* mo = NULL;  //  Declare before goto
+   cTValue* mo = nullptr;  //  Declare before goto
    if (tref_istab(ix->tab)) {
       mt = tabref(tabV(&ix->tabv)->metatable);
       mix.tab = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);
@@ -1125,7 +1125,7 @@ int lj_record_mm_lookup(jit_State* J, RecordIndex* ix, MMS mm)
    else {
       // Specialize to base metatable. Must flush mcode in lua_setmetatable().
       mt = tabref(basemt_obj(J2G(J), &ix->tabv));
-      if (mt == NULL) {
+      if (mt == nullptr) {
          ix->mt = TREF_NIL;
          return 0;  //  No metamethod.
       }
@@ -1660,7 +1660,7 @@ TRef lj_record_idx(jit_State* J, RecordIndex* ix)
          if (xrefop == IR_HREF)  //  Guard against store to niltv.
             emitir(IRTG(IR_NE, IRT_PGC), xref, lj_ir_kkptr(J, niltvg(J2G(J))));
          if (ix->idxchain) {  // Metamethod lookup required?
-            // A check for NULL metatable is cheaper (hoistable) than a load.
+            // A check for nullptr metatable is cheaper (hoistable) than a load.
             if (!mt) {
                TRef mtref = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);
                emitir(IRTG(IR_EQ, IRT_TAB), mtref, lj_ir_knull(J, IRT_TAB));
@@ -2802,7 +2802,7 @@ void lj_record_setup(jit_State* J)
 #endif
    memset(J->bpropcache, 0, sizeof(J->bpropcache));
    J->scev.idx = REF_NIL;
-   setmref(J->scev.pc, NULL);
+   setmref(J->scev.pc, nullptr);
 
    J->baseslot = 1 + LJ_FR2;  //  Invoking function is at base[-1-LJ_FR2].
    J->base = J->slot + J->baseslot;
@@ -2815,7 +2815,7 @@ void lj_record_setup(jit_State* J)
    J->tailcalled = 0;
    J->loopref = 0;
 
-   J->bc_min = NULL;  //  Means no limit.
+   J->bc_min = nullptr;  //  Means no limit.
    J->bc_extent = ~(MSize)0;
 
    // Emit instructions for fixed references. Also triggers initial IR alloc.
@@ -2847,7 +2847,7 @@ void lj_record_setup(jit_State* J)
          }
       }
       else {
-         J->startpc = NULL;  //  Prevent forming an extra loop.
+         J->startpc = nullptr;  //  Prevent forming an extra loop.
       }
       lj_snap_replay(J, T);
    sidecheck:
@@ -2874,12 +2874,12 @@ void lj_record_setup(jit_State* J)
       if (bc_op(J->cur.startins) == BC_FORL)
          rec_for_loop(J, J->pc - 1, &J->scev, 1);
       else if (bc_op(J->cur.startins) == BC_ITERC)
-         J->startpc = NULL;
+         J->startpc = nullptr;
       if (1 + J->pt->framesize >= LJ_MAX_JSLOTS)
          lj_trace_err(J, LJ_TRERR_STACKOV);
    }
 #if LJ_HASPROFILE
-   J->prev_pt = NULL;
+   J->prev_pt = nullptr;
    J->prev_line = -1;
 #endif
 #ifdef LUAJIT_ENABLE_CHECKHOOK

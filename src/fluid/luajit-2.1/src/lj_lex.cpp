@@ -34,7 +34,7 @@ static const char* const tokennames[] = {
 TKDEF(TKSTR1, TKSTR2)
 #undef TKSTR1
 #undef TKSTR2
-  NULL
+  nullptr
 };
 
 // -- Buffer handling -----------------------------------------------------
@@ -47,7 +47,7 @@ static LJ_NOINLINE LexChar lex_more(LexState* ls)
 {
    size_t sz;
    const char* p = ls->rfunc(ls->L, ls->rdata, &sz);
-   if (p == NULL or sz == 0) return LEX_EOF;
+   if (p == nullptr or sz == 0) return LEX_EOF;
    if (sz >= LJ_MAX_BUF) {
       if (sz != ~(size_t)0) lj_err_mem(ls->L);
       sz = ~(uintptr_t)0 - (uintptr_t)p;
@@ -85,7 +85,7 @@ static void lex_newline(LexState* ls)
    lj_assertLS(lex_iseol(ls), "bad usage");
    lex_next(ls);  //  Skip "\n" or "\r".
    if (lex_iseol(ls) and ls->c != old) lex_next(ls);  //  Skip "\n\r" or "\r\n".
-   if (++ls->linenumber >= LJ_MAX_LINE)
+   if (uint32_t(++ls->linenumber) >= LJ_MAX_LINE)
       lj_lex_error(ls, ls->tok, LJ_ERR_XLINES);
 }
 
@@ -149,7 +149,7 @@ static int lex_skipeq(LexState* ls)
    return (ls->c == s) ? count : (-count) - 1;
 }
 
-// Parse a long string or long comment (tv set to NULL).
+// Parse a long string or long comment (tv set to nullptr).
 static void lex_longstring(LexState* ls, TValue* tv, int sep)
 {
    lex_savenext(ls);  //  Skip second '['.
@@ -336,7 +336,7 @@ static LexToken lex_scan(LexState* ls, TValue* tv)
             int sep = lex_skipeq(ls);
             lj_buf_reset(&ls->sb);  //  `lex_skipeq' may dirty the buffer
             if (sep >= 0) {
-               lex_longstring(ls, NULL, sep);
+               lex_longstring(ls, nullptr, sep);
                lj_buf_reset(&ls->sb);
                continue;
             }
@@ -449,12 +449,12 @@ int lj_lex_setup(lua_State* L, LexState* ls)
 {
    int header = 0;
    ls->L = L;
-   ls->fs = NULL;
-   ls->pe = ls->p = NULL;
-   ls->vstack = NULL;
+   ls->fs = nullptr;
+   ls->pe = ls->p = nullptr;
+   ls->vstack = nullptr;
    ls->sizevstack = 0;
    ls->vtop = 0;
-   ls->bcstack = NULL;
+   ls->bcstack = nullptr;
    ls->sizebcstack = 0;
    ls->tok = 0;
    ls->lookahead = TK_eof;  //  No look-ahead token.
@@ -543,7 +543,7 @@ void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...)
    const char* tokstr;
    va_list argp;
    if (tok == 0) {
-      tokstr = NULL;
+      tokstr = nullptr;
    }
    else if (tok == TK_name or tok == TK_string or tok == TK_number) {
       lex_save(ls, '\0');

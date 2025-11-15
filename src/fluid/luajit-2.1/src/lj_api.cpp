@@ -553,10 +553,10 @@ LUA_API const char* lua_tolstring(lua_State* L, int idx, size_t* len)
       setstrV(L, o, s);
    }
    else {
-      if (len != NULL) *len = 0;
-      return NULL;
+      if (len != nullptr) *len = 0;
+      return nullptr;
    }
-   if (len != NULL) *len = s->len;
+   if (len != nullptr) *len = s->len;
    return strdata(s);
 }
 
@@ -576,7 +576,7 @@ LUALIB_API const char* luaL_checklstring(lua_State* L, int idx, size_t* len)
    else {
       lj_err_argt(L, idx, LUA_TSTRING);
    }
-   if (len != NULL) *len = s->len;
+   if (len != nullptr) *len = s->len;
    return strdata(s);
 }
 
@@ -589,7 +589,7 @@ LUALIB_API const char* luaL_optlstring(lua_State* L, int idx,
       s = strV(o);
    }
    else if (tvisnil(o)) {
-      if (len != NULL) *len = def ? strlen(def) : 0;
+      if (len != nullptr) *len = def ? strlen(def) : 0;
       return def;
    }
    else if (tvisnumber(o)) {
@@ -601,7 +601,7 @@ LUALIB_API const char* luaL_optlstring(lua_State* L, int idx,
    else {
       lj_err_argt(L, idx, LUA_TSTRING);
    }
-   if (len != NULL) *len = s->len;
+   if (len != nullptr) *len = s->len;
    return strdata(s);
 }
 
@@ -609,8 +609,8 @@ LUALIB_API int luaL_checkoption(lua_State* L, int idx, const char* def,
    const char* const lst[])
 {
    ptrdiff_t i;
-   const char* s = lua_tolstring(L, idx, NULL);
-   if (s == NULL and (s = def) == NULL)
+   const char* s = lua_tolstring(L, idx, nullptr);
+   if (s == nullptr and (s = def) == nullptr)
       lj_err_argt(L, idx, LUA_TSTRING);
    for (i = 0; lst[i]; i++)
       if (strcmp(lst[i], s) == 0)
@@ -648,7 +648,7 @@ LUA_API lua_CFunction lua_tocfunction(lua_State* L, int idx)
       if (op == BC_FUNCC or op == BC_FUNCCW)
          return funcV(o)->c.f;
    }
-   return NULL;
+   return nullptr;
 }
 
 LUA_API void* lua_touserdata(lua_State* L, int idx)
@@ -659,13 +659,13 @@ LUA_API void* lua_touserdata(lua_State* L, int idx)
    else if (tvislightud(o))
       return lightudV(G(L), o);
    else
-      return NULL;
+      return nullptr;
 }
 
 LUA_API lua_State* lua_tothread(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
-   return (!tvisthread(o)) ? NULL : threadV(o);
+   return (!tvisthread(o)) ? nullptr : threadV(o);
 }
 
 LUA_API const void* lua_topointer(lua_State* L, int idx)
@@ -706,7 +706,7 @@ LUA_API void lua_pushlstring(lua_State* L, const char* str, size_t len)
 
 LUA_API void lua_pushstring(lua_State* L, const char* str)
 {
-   if (str == NULL) {
+   if (str == nullptr) {
       setnilV(L->top);
    }
    else {
@@ -826,7 +826,7 @@ LUA_API void lua_concat(lua_State* L, int n)
       n--;
       do {
          TValue* top = lj_meta_cat(L, L->top - 1, -n);
-         if (top == NULL) {
+         if (top == nullptr) {
             L->top -= n;
             break;
          }
@@ -850,7 +850,7 @@ LUA_API void lua_gettable(lua_State* L, int idx)
 {
    cTValue* t = index2adr_check(L, idx);
    cTValue* v = lj_meta_tget(L, t, L->top - 1);
-   if (v == NULL) {
+   if (v == nullptr) {
       L->top += 2;
       lj_vm_call(L, L->top - 2, 1 + 1);
       L->top -= 2 + LJ_FR2;
@@ -865,7 +865,7 @@ LUA_API void lua_getfield(lua_State* L, int idx, const char* k)
    TValue key;
    setstrV(L, &key, lj_str_newz(L, k));
    v = lj_meta_tget(L, t, &key);
-   if (v == NULL) {
+   if (v == nullptr) {
       L->top += 2;
       lj_vm_call(L, L->top - 2, 1 + 1);
       L->top -= 2 + LJ_FR2;
@@ -899,14 +899,14 @@ LUA_API void lua_rawgeti(lua_State* L, int idx, int n)
 LUA_API int lua_getmetatable(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
-   GCtab* mt = NULL;
+   GCtab* mt = nullptr;
    if (tvistab(o))
       mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o))
       mt = tabref(udataV(o)->metatable);
    else
       mt = tabref(basemt_obj(G(L), o));
-   if (mt == NULL)
+   if (mt == nullptr)
       return 0;
    settabV(L, L->top, mt);
    incr_top(L);
@@ -1005,7 +1005,7 @@ LUALIB_API void* luaL_testudata(lua_State* L, int idx, const char* tname)
       if (tv and tvistab(tv) and tabV(tv) == tabref(ud->metatable))
          return uddata(ud);
    }
-   return NULL;  //  value is not a userdata with a metatable
+   return nullptr;  //  value is not a userdata with a metatable
 }
 
 LUALIB_API void* luaL_checkudata(lua_State* L, int idx, const char* tname)
@@ -1089,7 +1089,7 @@ LUA_API int lua_setmetatable(lua_State* L, int idx)
    cTValue* o = index2adr_check(L, idx);
    lj_checkapi_slot(1);
    if (tvisnil(L->top - 1)) {
-      mt = NULL;
+      mt = nullptr;
    }
    else {
       lj_checkapi(tvistab(L->top - 1), "top stack slot is not a table");
@@ -1276,7 +1276,7 @@ LUA_API int lua_yield(lua_State* L, int nresults)
             while (--nresults >= 0) copyTV(L, t++, f++);
             L->top = t;
          }
-         L->cframe = NULL;
+         L->cframe = nullptr;
          L->status = LUA_YIELD;
          return -1;
       }
@@ -1295,7 +1295,7 @@ LUA_API int lua_yield(lua_State* L, int nresults)
 #if ((defined(__GNUC__) or defined(__clang__)) && (LJ_TARGET_X64 or defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) or LJ_TARGET_WINDOWS
          lj_err_throw(L, LUA_YIELD);
 #else
-         L->cframe = NULL;
+         L->cframe = nullptr;
          L->status = LUA_YIELD;
          lj_vm_unwind_c(cf, LUA_YIELD);
 #endif
@@ -1307,7 +1307,7 @@ LUA_API int lua_yield(lua_State* L, int nresults)
 
 LUA_API int lua_resume(lua_State* L, int nargs)
 {
-   if (L->cframe == NULL and L->status <= LUA_YIELD)
+   if (L->cframe == nullptr and L->status <= LUA_YIELD)
       return lj_vm_resume(L,
          L->status == LUA_OK ? api_call_base(L, nargs) : L->top - nargs,
          0, 0);

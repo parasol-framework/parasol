@@ -44,7 +44,7 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
       }
    }
    *size = level;
-   return NULL;  //  Level not found.
+   return nullptr;  //  Level not found.
 }
 
 // Invalid bytecode position.
@@ -61,9 +61,9 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    if (!isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
-   else if (nextframe == NULL) {  //  Lua function on top.
+   else if (nextframe == nullptr) {  //  Lua function on top.
       void* cf = cframe_raw(L->cframe);
-      if (cf == NULL or (char*)cframe_pc(cf) == (char*)cframe_L(cf))
+      if (cf == nullptr or (char*)cframe_pc(cf) == (char*)cframe_L(cf))
          return NO_BCPOS;
       ins = cframe_pc(cf);  //  Only happens during error/hook handling.
    }
@@ -79,13 +79,13 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
          void* cf = cframe_raw(L->cframe);
          TValue* f = L->base - 1;
          for (;;) {
-            if (cf == NULL)
+            if (cf == nullptr)
                return NO_BCPOS;
             while (cframe_nres(cf) < 0) {
                if (f >= restorestack(L, -cframe_nres(cf)))
                   break;
                cf = cframe_raw(cframe_prev(cf));
-               if (cf == NULL)
+               if (cf == nullptr)
                   return NO_BCPOS;
             }
             if (f < nextframe)
@@ -180,7 +180,7 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Get name of local variable from 1-based slot number and function/frame.
@@ -190,7 +190,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    uint32_t offset = (uint32_t)ar->i_ci & 0xffff;
    uint32_t size = (uint32_t)ar->i_ci >> 16;
    TValue* frame = tvref(L->stack) + offset;
-   TValue* nextframe = size ? frame + size : NULL;
+   TValue* nextframe = size ? frame + size : nullptr;
    GCfunc* fn = frame_func(frame);
    BCPos pc = debug_framepc(L, fn, nextframe);
    if (!nextframe) nextframe = L->top + LJ_FR2;
@@ -209,10 +209,10 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
             }
          }
       }
-      return NULL;
+      return nullptr;
    }
    if (pc != NO_BCPOS &&
-      (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != NULL)
+      (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != nullptr)
       ;
    else if (slot1 > 0 and frame + slot1 + LJ_FR2 < nextframe)
       *name = "(*temporary)";
@@ -251,7 +251,7 @@ const char* lj_debug_uvnamev(cTValue* o, uint32_t idx, TValue** tvp, GCobj** op)
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Deduce name of an object from slot number and PC.
@@ -261,14 +261,14 @@ const char* lj_debug_slotname(GCproto* pt, const BCIns* ip, BCReg slot,
    const char* lname;
 restart:
    lname = debug_varname(pt, proto_bcpos(pt, ip), slot);
-   if (lname != NULL) { *name = lname; return "local"; }
+   if (lname != nullptr) { *name = lname; return "local"; }
    while (--ip > proto_bc(pt)) {
       BCIns ins = *ip;
       BCOp op = bc_op(ins);
       BCReg ra = bc_a(ins);
       if (bcmode_a(op) == BCMbase) {
          if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins)))
-            return NULL;
+            return nullptr;
       }
       else if (bcmode_a(op) == BCMdst and ra == slot) {
          switch (bc_op(ins)) {
@@ -291,11 +291,11 @@ restart:
             *name = lj_debug_uvname(pt, bc_d(ins));
             return "upvalue";
          default:
-            return NULL;
+            return nullptr;
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Deduce function name from caller of a frame.
@@ -305,7 +305,7 @@ const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
    GCfunc* fn;
    BCPos pc;
    if (frame <= tvref(L->stack) + LJ_FR2)
-      return NULL;
+      return nullptr;
    if (frame_isvarg(frame))
       frame = frame_prevd(frame);
    pframe = frame_prev(frame);
@@ -325,7 +325,7 @@ const char* lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
          return "metamethod";
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // -- Source code locations -----------------------------------------------
@@ -420,7 +420,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
 
 LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = NULL;
+   const char* name = nullptr;
    if (ar) {
       TValue* o = debug_localname(L, ar, &name, (BCReg)n);
       if (name) {
@@ -436,7 +436,7 @@ LUA_API const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 
 LUA_API const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
-   const char* name = NULL;
+   const char* name = nullptr;
    TValue* o = debug_localname(L, ar, &name, (BCReg)n);
    if (name)
       copyTV(L, o, L->top - 1);
@@ -447,8 +447,8 @@ LUA_API const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
 {
    int opt_f = 0, opt_L = 0;
-   TValue* frame = NULL;
-   TValue* nextframe = NULL;
+   TValue* frame = nullptr;
+   TValue* nextframe = nullptr;
    GCfunc* fn;
    if (*what == '>') {
       TValue* func = L->top - 1;
@@ -510,10 +510,10 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
          }
       }
       else if (*what == 'n') {
-         ar->namewhat = frame ? lj_debug_funcname(L, frame, &ar->name) : NULL;
-         if (ar->namewhat == NULL) {
+         ar->namewhat = frame ? lj_debug_funcname(L, frame, &ar->name) : nullptr;
+         if (ar->namewhat == nullptr) {
             ar->namewhat = "";
-            ar->name = NULL;
+            ar->name = nullptr;
          }
       }
       else if (*what == 'f') {
@@ -618,7 +618,7 @@ void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
       int size;
       cTValue* frame = lj_debug_frame(L, level, &size);
       if (frame) {
-         cTValue* nextframe = size ? frame + size : NULL;
+         cTValue* nextframe = size ? frame + size : nullptr;
          GCfunc* fn = frame_func(frame);
          const uint8_t* p = (const uint8_t*)fmt;
          int c;

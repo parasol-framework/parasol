@@ -285,14 +285,14 @@ static void parse_call_assign(LexState* ls)
    else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul ||
       ls->tok == TK_cdiv or ls->tok == TK_cmod or ls->tok == TK_cconcat ||
       ls->tok == TK_cif_empty) {
-      vl.prev = NULL;
+      vl.prev = nullptr;
       assign_compound(ls, &vl, ls->tok);
    }
    else if (ls->tok == ';') {
       // Postfix increment (++) handled in expr_primary.
    }
    else {  // Start of an assignment.
-      vl.prev = NULL;
+      vl.prev = nullptr;
       parse_assignment(ls, &vl, 1);
    }
 }
@@ -497,7 +497,7 @@ static void parse_continue(LexState* ls)
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != NULL, "continue outside loop");
+   lj_assertLS(loop != nullptr, "continue outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_CONTINUE;
@@ -512,7 +512,7 @@ static void parse_break(LexState* ls)
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != NULL, "break outside loop");
+   lj_assertLS(loop != nullptr, "break outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_BREAK;

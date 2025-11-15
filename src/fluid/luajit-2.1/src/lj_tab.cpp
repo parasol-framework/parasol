@@ -62,7 +62,7 @@ static LJ_AINLINE void clearhpart(GCtab* t)
    lj_assertX(t->hmask != 0, "empty hash part");
    for (i = 0; i <= hmask; i++) {
       Node* n = &node[i];
-      setmref(n->next, NULL);
+      setmref(n->next, nullptr);
       setnilV(&n->key);
       setnilV(&n->val);
    }
@@ -105,7 +105,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
       t->gct = ~LJ_TTAB;
       t->nomm = (uint8_t)~0;
       t->colo = 0;
-      setmref(t->array, NULL);
+      setmref(t->array, nullptr);
       setgcrefnull(t->metatable);
       t->asize = 0;  //  In case the array allocation fails.
       t->hmask = 0;
@@ -196,7 +196,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
          Node* next = nextnode(kn);
          // Don't use copyTV here, since it asserts on a copy of a dead key.
          n->val = kn->val; n->key = kn->key;
-         setmref(n->next, next == NULL ? next : (Node*)((char*)next + d));
+         setmref(n->next, next == nullptr ? next : (Node*)((char*)next + d));
       }
    }
    return t;
@@ -395,7 +395,7 @@ cTValue* LJ_FASTCALL lj_tab_getinth(GCtab* t, int32_t key)
       if (tvisnum(&n->key) and n->key.n == k.n)
          return &n->val;
    } while ((n = nextnode(n)));
-   return NULL;
+   return nullptr;
 }
 
 cTValue* lj_tab_getstr(GCtab* t, const GCstr* key)
@@ -405,7 +405,7 @@ cTValue* lj_tab_getstr(GCtab* t, const GCstr* key)
       if (tvisstr(&n->key) and strV(&n->key) == key)
          return &n->val;
    } while ((n = nextnode(n)));
-   return NULL;
+   return nullptr;
 }
 
 cTValue* lj_tab_get(lua_State* L, GCtab* t, cTValue* key)
@@ -472,7 +472,7 @@ TValue* lj_tab_newkey(lua_State* L, GCtab* t, cTValue* key)
          freenode->val = n->val;
          freenode->key = n->key;
          freenode->next = n->next;
-         setmref(n->next, NULL);
+         setmref(n->next, nullptr);
          setnilV(&n->val);
          // Rechain pseudo-resurrected string keys with colliding hashes.
          while (nextnode(freenode)) {

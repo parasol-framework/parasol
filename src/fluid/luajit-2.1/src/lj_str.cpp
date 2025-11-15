@@ -56,7 +56,7 @@ const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
          }
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 // Check whether a string has a pattern matching character.
@@ -333,7 +333,7 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
          o = (GCobj*)(gcrefu(g->str.tab[hash & g->str.mask]) & ~(uintptr_t)1);
       }
 #endif
-      while (o != NULL) {
+      while (o != nullptr) {
          GCstr* sx = gco2str(o);
          if (sx->hash == hash and sx->len == len) {
             if (memcmp(str, strdata(sx), len) == 0) {

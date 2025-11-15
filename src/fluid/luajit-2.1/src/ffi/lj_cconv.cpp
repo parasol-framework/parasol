@@ -21,13 +21,13 @@
 LJ_NORET static void cconv_err_conv(CTState* cts, CType* d, CType* s,
    CTInfo flags)
 {
-   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), NULL));
+   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), nullptr));
    const char* src;
    if ((flags & CCF_FROMTV))
       src = lj_obj_typename[1 + (ctype_isnum(s->info) ? LUA_TNUMBER :
          ctype_isarray(s->info) ? LUA_TSTRING : LUA_TNIL)];
    else
-      src = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, s), NULL));
+      src = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, s), nullptr));
    if (CCF_GETARG(flags))
       lj_err_argv(cts->L, CCF_GETARG(flags), LJ_ERR_FFI_BADCONV, src, dst);
    else
@@ -38,7 +38,7 @@ LJ_NORET static void cconv_err_conv(CTState* cts, CType* d, CType* s,
 LJ_NORET static void cconv_err_convtv(CTState* cts, CType* d, TValue* o,
    CTInfo flags)
 {
-   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), NULL));
+   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), nullptr));
    const char* src = lj_typename(o);
    if (CCF_GETARG(flags))
       lj_err_argv(cts->L, CCF_GETARG(flags), LJ_ERR_FFI_BADCONV, src, dst);
@@ -49,7 +49,7 @@ LJ_NORET static void cconv_err_convtv(CTState* cts, CType* d, TValue* o,
 // Initializer overflow.
 LJ_NORET static void cconv_err_initov(CTState* cts, CType* d)
 {
-   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), NULL));
+   const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), nullptr));
    lj_err_callerv(cts->L, LJ_ERR_FFI_INITOV, dst);
 }
 

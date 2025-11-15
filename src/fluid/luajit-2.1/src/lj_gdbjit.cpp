@@ -143,7 +143,7 @@ typedef struct GDBJITdesc {
 } GDBJITdesc;
 
 GDBJITdesc __jit_debug_descriptor = {
-  1, GDBJIT_NOACTION, NULL, NULL
+  1, GDBJIT_NOACTION, nullptr, nullptr
 };
 
 // GDB sets a breakpoint at this function.
@@ -755,7 +755,7 @@ static void gdbjit_newentry(lua_State* L, GDBJITctx* ctx)
    eo->sz = sz;
    ctx->T->gdbjit_entry = (void*)eo;
    // Link new entry to chain and register it.
-   eo->entry.prev_entry = NULL;
+   eo->entry.prev_entry = nullptr;
    gdbjit_lock_acquire();
    eo->entry.next_entry = __jit_debug_descriptor.first_entry;
    if (eo->entry.next_entry)

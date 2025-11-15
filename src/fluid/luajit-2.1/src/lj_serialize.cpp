@@ -100,11 +100,11 @@ static LJ_NOINLINE char* serialize_ru124_(char* r, char* w, uint32_t* pv)
 {
    uint32_t v = *pv;
    if (v != 0xff) {
-      if (r >= w) return NULL;
+      if (r >= w) return nullptr;
       v = ((v & 0x1f) << 8) + *(uint8_t*)r + 0xe0; r++;
    }
    else {
-      if (r + 4 > w) return NULL;
+      if (r + 4 > w) return nullptr;
       v = lj_getu32(r); r += 4;
 #if LJ_BE
       v = lj_bswap(v);
@@ -124,7 +124,7 @@ static LJ_AINLINE char* serialize_ru124(char* r, char* w, uint32_t* pv)
       }
       return r;
    }
-   return NULL;
+   return nullptr;
 }
 
 // Prepare string dictionary for use (once).
@@ -394,7 +394,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
    }
    else if (tp >= SER_TAG_TAB and tp <= SER_TAG_DICT_MT) {
       uint32_t narray = 0, nhash = 0;
-      GCtab* t, * mt = NULL;
+      GCtab* t, * mt = nullptr;
       if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_DEPTH);
       sbx->depth--;
       if (tp == SER_TAG_DICT_MT) {
@@ -488,7 +488,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
    return r;
 eob:
    lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_EOB);
-   return NULL;
+   return nullptr;
 }
 
 // -- External serialization API ------------------------------------------

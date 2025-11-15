@@ -823,7 +823,7 @@ static TValue* cpsplit(lua_State* L, lua_CFunction dummy, void* ud)
    jit_State* J = (jit_State*)ud;
    split_ir(J);
    UNUSED(L); UNUSED(dummy);
-   return NULL;
+   return nullptr;
 }
 
 #if defined(LUA_USE_ASSERT) or LJ_SOFTFP
@@ -862,7 +862,7 @@ void lj_opt_split(jit_State* J)
    lj_assertJ(J->needsplit >= split_needsplit(J), "bad SPLIT state");
 #endif
    if (J->needsplit) {
-      int errcode = lj_vm_cpcall(J->L, NULL, J, cpsplit);
+      int errcode = lj_vm_cpcall(J->L, nullptr, J, cpsplit);
       if (errcode) {
          // Completely reset the trace to avoid inconsistent dump on abort.
          J->cur.nins = J->cur.nk = REF_BASE;

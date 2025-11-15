@@ -410,7 +410,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
       StrScanFmt fmt = STRSCAN_INT;
       int cmask = LJ_CHAR_DIGIT;
       int base = (opt & STRSCAN_OPT_C) and *p == '0' ? 0 : 10;
-      const uint8_t* sp, * dp = NULL;
+      const uint8_t* sp, * dp = nullptr;
       uint32_t dig = 0, hasdig = 0, x = 0;
       int32_t ex = 0;
 

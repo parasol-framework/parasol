@@ -35,7 +35,7 @@ static GCtab* lib_create_table(lua_State* L, const char* libname, int hsize)
       lua_getfield(L, -1, libname);
       if (!tvistab(L->top - 1)) {
          L->top--;
-         if (luaL_findtable(L, LUA_GLOBALSINDEX, libname, hsize) != NULL)
+         if (luaL_findtable(L, LUA_GLOBALSINDEX, libname, hsize) != nullptr)
             lj_err_callerv(L, LJ_ERR_BADMODN, libname);
          settabV(L, L->top, tabV(L->top - 1));
          L->top++;
@@ -76,7 +76,7 @@ void lj_lib_register(lua_State* L, const char* libname,
    const uint8_t* p, const lua_CFunction* cf)
 {
    GCtab* env = tabref(L->env);
-   GCfunc* ofn = NULL;
+   GCfunc* ofn = nullptr;
    int ffid = *p++;
    BCIns* bcff = &L2GG(L)->bcff[*p++];
    GCtab* tab = lib_create_table(L, libname, *p++);
@@ -208,13 +208,13 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
       }
    }
    lj_err_argt(L, narg, LUA_TSTRING);
-   return NULL;  //  unreachable
+   return nullptr;  //  unreachable
 }
 
 GCstr* lj_lib_optstr(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   return (o < L->top and !tvisnil(o)) ? lj_lib_checkstr(L, narg) : NULL;
+   return (o < L->top and !tvisnil(o)) ? lj_lib_checkstr(L, narg) : nullptr;
 }
 
 #if LJ_DUALNUM
@@ -286,10 +286,10 @@ GCtab* lj_lib_checktabornil(lua_State* L, int narg)
       if (tvistab(o))
          return tabV(o);
       else if (tvisnil(o))
-         return NULL;
+         return nullptr;
    }
    lj_err_arg(L, narg, LJ_ERR_NOTABN);
-   return NULL;  //  unreachable
+   return nullptr;  //  unreachable
 }
 
 int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)

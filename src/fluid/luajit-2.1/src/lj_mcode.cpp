@@ -108,7 +108,7 @@ static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, int prot)
    void* p = mmap((void*)hint, sz, prot | MCPROT_CREATE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
    if (p == MAP_FAILED) {
       if (!hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
-      p = NULL;
+      p = nullptr;
    }
    return p;
 }
@@ -236,7 +236,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
       hint = target + hint - range;
    }
    lj_trace_err(J, LJ_TRERR_MCODEAL);  //  Give up. OS probably ignores hints?
-   return NULL;
+   return nullptr;
 }
 
 #else
@@ -249,7 +249,7 @@ static void* mcode_alloc(jit_State* J, size_t sz)
    void* p = mcode_alloc_at(J, 0, sz, MCPROT_RUN);
    if (p and mcode_setprot(p, sz, MCPROT_GEN)) {
       mcode_free(J, p, sz);
-      return NULL;
+      return nullptr;
    }
    return p;
 #else
@@ -282,7 +282,7 @@ static void mcode_allocarea(jit_State* J)
 void lj_mcode_free(jit_State* J)
 {
    MCode* mc = J->mcarea;
-   J->mcarea = NULL;
+   J->mcarea = nullptr;
    J->szallmcarea = 0;
    while (mc) {
       MCode* next = ((MCLink*)mc)->next;
@@ -330,7 +330,7 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
       else if (LJ_UNLIKELY(mcode_setprot(ptr, ((MCLink*)ptr)->size, MCPROT_RUN)))
          mcode_protfail(J);
 #endif
-      return NULL;
+      return nullptr;
    }
    else {
       MCode* mc = J->mcarea;
@@ -344,7 +344,7 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
       // Otherwise search through the list of MCode areas.
       for (;;) {
          mc = ((MCLink*)mc)->next;
-         lj_assertJ(mc != NULL, "broken MCode area chain");
+         lj_assertJ(mc != nullptr, "broken MCode area chain");
          if (ptr >= mc and ptr < (MCode*)((char*)mc + ((MCLink*)mc)->size)) {
 #if LUAJIT_SECURITY_MCODE
             if (LJ_UNLIKELY(mcode_setprot(mc, ((MCLink*)mc)->size, MCPROT_GEN)))

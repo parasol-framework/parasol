@@ -414,7 +414,7 @@ static TValue* cploop_opt(lua_State* L, lua_CFunction dummy, void* ud)
 {
    UNUSED(L); UNUSED(dummy);
    loop_unroll((LoopState*)ud);
-   return NULL;
+   return nullptr;
 }
 
 // Loop optimization.
@@ -426,9 +426,9 @@ int lj_opt_loop(jit_State* J)
    LoopState lps;
    int errcode;
    lps.J = J;
-   lps.subst = NULL;
+   lps.subst = nullptr;
    lps.sizesubst = 0;
-   errcode = lj_vm_cpcall(J->L, NULL, &lps, cploop_opt);
+   errcode = lj_vm_cpcall(J->L, nullptr, &lps, cploop_opt);
    lj_mem_freevec(J2G(J), lps.subst, lps.sizesubst, IRRef1);
    if (LJ_UNLIKELY(errcode)) {
       lua_State* L = J->L;

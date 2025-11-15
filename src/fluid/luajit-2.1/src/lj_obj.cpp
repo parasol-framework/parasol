@@ -47,6 +47,6 @@ const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o)
    else if (tvisgcv(o))
       return gcV(o);
    else
-      return NULL;
+      return nullptr;
 }
 

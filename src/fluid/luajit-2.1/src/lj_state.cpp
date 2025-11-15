@@ -76,7 +76,7 @@ static void resizestack(lua_State* L, MSize n)
       setmref(G(L)->jit_base, mref(G(L)->jit_base, char) + delta);
    L->base = (TValue*)((char*)L->base + delta);
    L->top = (TValue*)((char*)L->top + delta);
-   for (up = gcref(L->openupval); up != NULL; up = gcnext(up))
+   for (up = gcref(L->openupval); up != nullptr; up = gcnext(up))
       setmref(gco2uv(up)->v, (TValue*)((char*)uvval(gco2uv(up)) + delta));
 }
 
@@ -95,7 +95,7 @@ void lj_state_shrinkstack(lua_State* L, MSize used)
    if (4 * used < L->stacksize &&
       2 * (LJ_STACK_START + LJ_STACK_EXTRA) < L->stacksize &&
       // Don't shrink stack of live trace.
-      (tvref(G(L)->jit_base) == NULL or obj2gco(L) != gcref(G(L)->cur_L)))
+      (tvref(G(L)->jit_base) == nullptr or obj2gco(L) != gcref(G(L)->cur_L)))
       resizestack(L, L->stacksize >> 1);
 }
 
@@ -158,7 +158,7 @@ static TValue* cpluaopen(lua_State* L, lua_CFunction dummy, void* ud)
    g->gc.threshold = 4 * g->gc.total;
    lj_trace_initstate(g);
    lj_err_verify();
-   return NULL;
+   return nullptr;
 }
 
 static void close_state(lua_State* L)
@@ -206,18 +206,18 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    // We need the PRNG for the memory allocator, so initialize this first.
    if (!lj_prng_seed_secure(&prng)) {
       lj_assertX(0, "secure PRNG seeding failed");
-      // Can only return NULL here, so this errors with "not enough memory".
-      return NULL;
+      // Can only return nullptr here, so this errors with "not enough memory".
+      return nullptr;
    }
 #ifndef LUAJIT_USE_SYSMALLOC
    if (allocf == LJ_ALLOCF_INTERNAL) {
       allocd = lj_alloc_create(&prng);
-      if (!allocd) return NULL;
+      if (!allocd) return nullptr;
       allocf = lj_alloc_f;
    }
 #endif
-   GG = (GG_State*)allocf(allocd, NULL, 0, sizeof(GG_State));
-   if (GG == NULL or !checkptrGC(GG)) return NULL;
+   GG = (GG_State*)allocf(allocd, nullptr, 0, sizeof(GG_State));
+   if (GG == nullptr or !checkptrGC(GG)) return nullptr;
    memset(GG, 0, sizeof(GG_State));
    L = &GG->L;
    g = &GG->g;
@@ -246,7 +246,7 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
 #if !LJ_GC64
    setmref(g->nilnode.freetop, &g->nilnode);
 #endif
-   lj_buf_init(NULL, &g->tmpbuf);
+   lj_buf_init(nullptr, &g->tmpbuf);
    g->gc.state = GCSpause;
    setgcref(g->gc.root, obj2gco(L));
    setmref(g->gc.sweep, &g->gc.root);
@@ -255,10 +255,10 @@ LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    g->gc.stepmul = LUAI_GCMUL;
    lj_dispatch_init((GG_State*)L);
    L->status = LUA_ERRERR + 1;  //  Avoid touching the stack upon memory error.
-   if (lj_vm_cpcall(L, NULL, NULL, cpluaopen) != 0) {
+   if (lj_vm_cpcall(L, nullptr, nullptr, cpluaopen) != 0) {
       // Memory allocation error: free partial state.
       close_state(L);
-      return NULL;
+      return nullptr;
    }
    L->status = LUA_OK;
    return L;
@@ -271,7 +271,7 @@ static TValue* cpfinalize(lua_State* L, lua_CFunction dummy, void* ud)
    lj_gc_finalize_cdata(L);
    lj_gc_finalize_udata(L);
    // Frame pop omitted.
-   return NULL;
+   return nullptr;
 }
 
 LUA_API void lua_close(lua_State* L)
@@ -294,11 +294,11 @@ LUA_API void lua_close(lua_State* L)
       hook_enter(g);
       L->status = LUA_OK;
       L->base = L->top = tvref(L->stack) + 1 + LJ_FR2;
-      L->cframe = NULL;
-      if (lj_vm_cpcall(L, NULL, NULL, cpfinalize) == LUA_OK) {
+      L->cframe = nullptr;
+      if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
          lj_gc_separateudata(g, 1);  //  Separate udata again.
-         if (gcref(g->gc.mmudata) == NULL)  //  Until nothing is left to do.
+         if (gcref(g->gc.mmudata) == nullptr)  //  Until nothing is left to do.
             break;
       }
    }
@@ -312,8 +312,8 @@ lua_State* lj_state_new(lua_State* L)
    L1->dummy_ffid = FF_C;
    L1->status = LUA_OK;
    L1->stacksize = 0;
-   setmref(L1->stack, NULL);
-   L1->cframe = NULL;
+   setmref(L1->stack, nullptr);
+   L1->cframe = nullptr;
    // NOBARRIER: The lua_State is new (marked white).
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
@@ -329,7 +329,7 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L)
    if (obj2gco(L) == gcref(g->cur_L))
       setgcrefnull(g->cur_L);
    lj_func_closeuv(L, tvref(L->stack));
-   lj_assertG(gcref(L->openupval) == NULL, "stale open upvalues");
+   lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
    lj_mem_freet(g, L);
 }

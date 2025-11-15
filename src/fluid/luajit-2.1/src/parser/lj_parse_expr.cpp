@@ -133,7 +133,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
 {
    FuncState* fs = ls->fs;
    BCLine line = ls->linenumber;
-   GCtab* t = NULL;
+   GCtab* t = nullptr;
    int vcall = 0, needarr = 0, fixt = 0;
    uint32_t narr = 1;  // First array index.
    uint32_t nhash = 0;  // Number of hash entries.

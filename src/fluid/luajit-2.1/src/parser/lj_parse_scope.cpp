@@ -11,7 +11,7 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins);
 // Check if a string is the blank identifier '_'.
 static int is_blank_identifier(GCstr* name)
 {
-   return (name != NULL and name->len == 1 and *(strdata(name)) == '_');
+   return (name != nullptr and name->len == 1 and *(strdata(name)) == '_');
 }
 
 // Define a new local variable.
@@ -201,7 +201,7 @@ static void gola_fixup(LexState* ls, FuncScope* bl)
    VarInfo* ve = ls->vstack + ls->vtop;
    for (; v < ve; v++) {
       GCstr* name = strref(v->name);
-      if (name != NULL) {  // Only consider remaining valid gotos/targets.
+      if (name != nullptr) {  // Only consider remaining valid gotos/targets.
          if (gola_is_jump_target(v)) {
             VarInfo* vg;
             setgcrefnull(v->name);  // Invalidate target that goes out of scope.
@@ -530,10 +530,10 @@ static void fs_fixup_var(LexState* ls, GCproto* pt, uint8_t* p, size_t ofsvar)
 // Initialize with empty debug info, if disabled.
 #define fs_prep_line(fs, numline)		(UNUSED(numline), 0)
 #define fs_fixup_line(fs, pt, li, numline) \
-  pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, NULL)
+  pt->firstline = pt->numline = 0, setmref((pt)->lineinfo, nullptr)
 #define fs_prep_var(ls, fs, ofsvar)		(UNUSED(ofsvar), 0)
 #define fs_fixup_var(ls, pt, p, ofsvar) \
-  setmref((pt)->uvinfo, NULL), setmref((pt)->varinfo, NULL)
+  setmref((pt)->uvinfo, nullptr), setmref((pt)->varinfo, nullptr)
 
 #endif
 
@@ -561,7 +561,7 @@ static void fs_fixup_ret(FuncState* fs)
    }
    fs->bl->flags |= FSCOPE_NOCLOSE;  // Handled above.
    fscope_end(fs);
-   lj_assertFS(fs->bl == NULL, "bad scope nesting");
+   lj_assertFS(fs->bl == nullptr, "bad scope nesting");
    // May need to fixup returns encoded before first function was created.
    if (fs->flags & PROTO_FIXUP_RETURN) {
       BCPos pc;
@@ -633,7 +633,7 @@ static GCproto* fs_finish(LexState* ls, BCLine line)
    L->top--;  // Pop table of constants.
    ls->vtop = fs->vbase;  // Reset variable stack.
    ls->fs = fs->prev;
-   lj_assertL(ls->fs != NULL or ls->tok == TK_eof, "bad parser state");
+   lj_assertL(ls->fs != nullptr or ls->tok == TK_eof, "bad parser state");
    return pt;
 }
 
@@ -653,7 +653,7 @@ static void fs_init(LexState* ls, FuncState* fs)
    fs->nkn = 0;
    fs->nactvar = 0;
    fs->nuv = 0;
-   fs->bl = NULL;
+   fs->bl = nullptr;
    fs->flags = 0;
    fs->framesize = 1;  // Minimum frame size.
    fs->kt = lj_tab_new(L, 0, 0);

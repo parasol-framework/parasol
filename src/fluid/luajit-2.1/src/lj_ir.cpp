@@ -65,7 +65,7 @@ LJ_DATADEF const CCallInfo lj_ir_callinfo[] = {
 IRCALLDEF(IRCALLCI)
 #undef IRCALLCI
   {
- NULL, 0
+ nullptr, 0
 }
 };
 
@@ -82,7 +82,7 @@ void LJ_FASTCALL lj_ir_growtop(jit_State* J)
       J->irtoplim = J->irbotlim + 2 * szins;
    }
    else {
-      baseir = (IRIns*)lj_mem_realloc(J->L, NULL, 0, LJ_MIN_IRSZ * sizeof(IRIns));
+      baseir = (IRIns*)lj_mem_realloc(J->L, nullptr, 0, LJ_MIN_IRSZ * sizeof(IRIns));
       J->irbotlim = REF_BASE - LJ_MIN_IRSZ / 4;
       J->irtoplim = J->irbotlim + LJ_MIN_IRSZ;
    }
@@ -341,7 +341,7 @@ found:
    return TREF(ref, IRT_PGC);
 }
 
-// Intern typed NULL constant.
+// Intern typed nullptr constant.
 TRef lj_ir_knull(jit_State* J, IRType t)
 {
    IRIns* ir, * cir = J->cur.ir;

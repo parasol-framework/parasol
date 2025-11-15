@@ -254,7 +254,7 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
          if (!o) {
          badtype:  //  Error: bad element type.
             sb->w = (char*)(intptr_t)i;  //  Store failing index.
-            return NULL;
+            return nullptr;
          }
          else if (tvisstr(o)) {
             MSize len = strV(o)->len;

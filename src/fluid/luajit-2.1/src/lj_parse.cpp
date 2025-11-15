@@ -146,7 +146,7 @@ GCproto* lj_parse(LexState* ls)
    fs_init(ls, &fs);
    fs.linedefined = 0;
    fs.numparams = 0;
-   fs.bcbase = NULL;
+   fs.bcbase = nullptr;
    fs.bclim = 0;
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, 0);
@@ -157,7 +157,7 @@ GCproto* lj_parse(LexState* ls)
       err_token(ls, TK_eof);
    pt = fs_finish(ls, ls->linenumber);
    L->top--;  // Drop chunkname.
-   lj_assertL(fs.prev == NULL and ls->fs == NULL, "mismatched frame nesting");
+   lj_assertL(fs.prev == nullptr and ls->fs == nullptr, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
    return pt;
 }

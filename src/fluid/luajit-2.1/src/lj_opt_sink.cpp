@@ -23,15 +23,15 @@ static IRIns* sink_checkalloc(jit_State* J, IRIns* irs)
 {
    IRIns* ir = IR(irs->op1);
    if (!irref_isk(ir->op2))
-      return NULL;  //  Non-constant key.
+      return nullptr;  //  Non-constant key.
    if (ir->o == IR_HREFK or ir->o == IR_AREF)
       ir = IR(ir->op1);
    else if (!(ir->o == IR_HREF or ir->o == IR_NEWREF ||
       ir->o == IR_FREF or ir->o == IR_ADD))
-      return NULL;  //  Unhandled reference type (for XSTORE).
+      return nullptr;  //  Unhandled reference type (for XSTORE).
    ir = IR(ir->op1);
    if (!(ir->o == IR_TNEW or ir->o == IR_TDUP or ir->o == IR_CNEW))
-      return NULL;  //  Not an allocation.
+      return nullptr;  //  Not an allocation.
    return ir;  //  Return allocation.
 }
 

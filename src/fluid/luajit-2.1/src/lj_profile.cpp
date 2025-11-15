@@ -184,7 +184,7 @@ static void profile_timer_start(ProfileState *ps)
   struct sigaction sa;
   tm.it_value.tv_sec = tm.it_interval.tv_sec = interval / 1000;
   tm.it_value.tv_usec = tm.it_interval.tv_usec = (interval % 1000) * 1000;
-  setitimer(ITIMER_PROF, &tm, NULL);
+  setitimer(ITIMER_PROF, &tm, nullptr);
   sa.sa_flags = SA_RESTART;
   sa.sa_handler = profile_signal;
   sigemptyset(&sa.sa_mask);
@@ -197,8 +197,8 @@ static void profile_timer_stop(ProfileState *ps)
   struct itimerval tm;
   tm.it_value.tv_sec = tm.it_interval.tv_sec = 0;
   tm.it_value.tv_usec = tm.it_interval.tv_usec = 0;
-  setitimer(ITIMER_PROF, &tm, NULL);
-  sigaction(SIGPROF, &ps->oldsa, NULL);
+  setitimer(ITIMER_PROF, &tm, nullptr);
+  sigaction(SIGPROF, &ps->oldsa, nullptr);
 }
 
 #elif LJ_PROFILE_PTHREAD
@@ -216,12 +216,12 @@ static void *profile_thread(ProfileState *ps)
 #if LJ_TARGET_PS3
     sys_timer_usleep(interval * 1000);
 #else
-    nanosleep(&ts, NULL);
+    nanosleep(&ts, nullptr);
 #endif
     if (ps->abort) break;
     profile_trigger(ps);
   }
-  return NULL;
+  return nullptr;
 }
 
 // Start profiling timer thread.
@@ -229,14 +229,14 @@ static void profile_timer_start(ProfileState *ps)
 {
   pthread_mutex_init(&ps->lock, 0);
   ps->abort = 0;
-  pthread_create(&ps->thread, NULL, (void *(*)(void *))profile_thread, ps);
+  pthread_create(&ps->thread, nullptr, (void *(*)(void *))profile_thread, ps);
 }
 
 // Stop profiling timer thread.
 static void profile_timer_stop(ProfileState *ps)
 {
   ps->abort = 1;
-  pthread_join(ps->thread, NULL);
+  pthread_join(ps->thread, nullptr);
   pthread_mutex_destroy(&ps->lock);
 }
 
@@ -271,7 +271,7 @@ static void profile_timer_start(ProfileState *ps)
       ps->wmm_tbp = (WMM_TPFUNC)GetProcAddress(ps->wmm, "timeBeginPeriod");
       ps->wmm_tep = (WMM_TPFUNC)GetProcAddress(ps->wmm, "timeEndPeriod");
       if (!ps->wmm_tbp or !ps->wmm_tep) {
-   ps->wmm = NULL;
+   ps->wmm = nullptr;
    return;
       }
     }
@@ -279,7 +279,7 @@ static void profile_timer_start(ProfileState *ps)
 #endif
   InitializeCriticalSection(&ps->lock);
   ps->abort = 0;
-  ps->thread = CreateThread(NULL, 0, profile_thread, ps, 0, NULL);
+  ps->thread = CreateThread(nullptr, 0, profile_thread, ps, 0, nullptr);
 }
 
 // Stop profiling timer thread.
@@ -346,8 +346,8 @@ LUA_API void luaJIT_profile_stop(lua_State *L)
     lj_trace_flushall(L);
 #endif
     lj_buf_free(g, &ps->sb);
-    ps->sb.w = ps->sb.e = NULL;
-    ps->g = NULL;
+    ps->sb.w = ps->sb.e = nullptr;
+    ps->g = nullptr;
   }
 }
 

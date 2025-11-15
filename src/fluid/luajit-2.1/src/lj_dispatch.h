@@ -118,9 +118,9 @@ struct GG_State {
 #define L2J(L)      (&L2GG(L)->J)
 constexpr int GG_G2J = (offsetof(GG_State, J) - offsetof(GG_State, g));
 constexpr int GG_G2DISP = (offsetof(GG_State, dispatch) - offsetof(GG_State, g));
-constexpr int GG_DISP2G = (offsetof(GG_State, g) - offsetof(GG_State, dispatch));
-constexpr int GG_DISP2J = (offsetof(GG_State, J) - offsetof(GG_State, dispatch));
-constexpr int GG_DISP2HOT = (offsetof(GG_State, hotcount) - offsetof(GG_State, dispatch));
+constexpr int GG_DISP2G = int(offsetof(GG_State, g)) - int(offsetof(GG_State, dispatch));
+constexpr int GG_DISP2J = int(offsetof(GG_State, J)) - int(offsetof(GG_State, dispatch));
+constexpr int GG_DISP2HOT = int(offsetof(GG_State, hotcount)) - int(offsetof(GG_State, dispatch));
 constexpr int GG_DISP2STATIC = (GG_LEN_DDISP * (int)sizeof(ASMFunction));
 
 #define hotcount_get(gg, pc) \

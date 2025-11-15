@@ -253,7 +253,7 @@ static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, E
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  // Reserve for arguments
-   lj_assertFS(fname != NULL, "bitlib name missing for bitwise operator");
+   lj_assertFS(fname != nullptr, "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
 }
 

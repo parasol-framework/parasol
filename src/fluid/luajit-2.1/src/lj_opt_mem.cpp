@@ -686,10 +686,10 @@ static IRIns* aa_findcnew(jit_State* J, IRIns* ir)
          IRIns* ir1 = aa_findcnew(J, IR(ir->op1));  //  Left-recursion.
          if (ir1) return ir1;
       }
-      if (irref_isk(ir->op2)) return NULL;
+      if (irref_isk(ir->op2)) return nullptr;
       ir = IR(ir->op2);  //  Flatten right-recursion.
    }
-   return ir->o == IR_CNEW ? ir : NULL;
+   return ir->o == IR_CNEW ? ir : nullptr;
 }
 
 // Alias analysis for two cdata allocations.

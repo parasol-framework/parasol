@@ -273,11 +273,11 @@ static void callback_mcode_new(CTState* cts)
    if (CALLBACK_MAX_SLOT == 0)
       lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
 #if LJ_TARGET_WINDOWS
-   p = LJ_WIN_VALLOC(NULL, sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+   p = LJ_WIN_VALLOC(nullptr, sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
    if (!p)
       lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
 #elif LJ_TARGET_POSIX
-   p = mmap(NULL, sz, (PROT_READ | PROT_WRITE | CCPROT_CREATE), MAP_PRIVATE | MAP_ANONYMOUS,
+   p = mmap(nullptr, sz, (PROT_READ | PROT_WRITE | CCPROT_CREATE), MAP_PRIVATE | MAP_ANONYMOUS,
       -1, 0);
    if (p == MAP_FAILED)
       lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
@@ -306,7 +306,7 @@ void lj_ccallback_mcode_free(CTState* cts)
 {
    size_t sz = (size_t)CALLBACK_MCODE_SIZE;
    void* p = cts->cb.mcode;
-   if (p == NULL) return;
+   if (p == nullptr) return;
 #if LJ_TARGET_WINDOWS
    VirtualFree(p, 0, MEM_RELEASE);
    UNUSED(sz);
@@ -547,7 +547,7 @@ static void callback_conv_args(CTState* cts, lua_State* L)
       fntp = LJ_TFUNC;
    }
    else {  // Must set up frame first, before throwing the error.
-      ct = NULL;
+      ct = nullptr;
       rid = 0;
       fn = (GCfunc*)L;
       fntp = LJ_TTHREAD;
@@ -683,7 +683,7 @@ lua_State* LJ_FASTCALL lj_ccallback_enter(CTState* cts, void* cf)
 {
    lua_State* L = cts->L;
    global_State* g = cts->g;
-   lj_assertG(L != NULL, "uninitialized cts->L in callback");
+   lj_assertG(L != nullptr, "uninitialized cts->L in callback");
    if (tvref(g->jit_base)) {
       setstrV(L, L->top++, lj_err_str(L, LJ_ERR_FFI_BADCBACK));
       if (g->panic) g->panic(L);
@@ -754,16 +754,16 @@ static CType* callback_checkfunc(CTState* cts, CType* ct)
 {
    int narg = 0;
    if (!ctype_isptr(ct->info) || (LJ_64 && ct->size != CTSIZE_PTR))
-      return NULL;
+      return nullptr;
    ct = ctype_rawchild(cts, ct);
    if (ctype_isfunc(ct->info)) {
       CType* ctr = ctype_rawchild(cts, ct);
       CTypeID fid = ct->sib;
       if (!(ctype_isvoid(ctr->info) || ctype_isenum(ctr->info) ||
          ctype_isptr(ctr->info) || (ctype_isnum(ctr->info) && ctr->size <= 8)))
-         return NULL;
+         return nullptr;
       if ((ct->info & CTF_VARARG))
-         return NULL;
+         return nullptr;
       while (fid) {
          CType* ctf = ctype_get(cts, fid);
          if (!ctype_isattrib(ctf->info)) {
@@ -773,13 +773,13 @@ static CType* callback_checkfunc(CTState* cts, CType* ct)
             if (!(ctype_isenum(cta->info) || ctype_isptr(cta->info) ||
                (ctype_isnum(cta->info) && cta->size <= 8)) ||
                ++narg >= LUA_MINSTACK - 3)
-               return NULL;
+               return nullptr;
          }
          fid = ctf->sib;
       }
       return ct;
    }
-   return NULL;
+   return nullptr;
 }
 
 // Create a new callback and return the callback function pointer.
@@ -793,7 +793,7 @@ void* lj_ccallback_new(CTState* cts, CType* ct, GCfunc* fn)
       lj_gc_anybarriert(cts->L, t);
       return callback_slot2ptr(cts, slot);
    }
-   return NULL;  /* Bad conversion. */
+   return nullptr;  /* Bad conversion. */
 }
 
 #endif

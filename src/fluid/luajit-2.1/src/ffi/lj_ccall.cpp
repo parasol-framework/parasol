@@ -1028,7 +1028,7 @@ static int ccall_set_args(lua_State* L, CTState* cts, CType* ct,
       void* rp;
       isfp = 0;
       isva = 0;
-      rp = NULL;
+      rp = nullptr;
 
       if (fid) {  // Get argument type from field.
          CType* ctf = ctype_get(cts, fid);

@@ -388,7 +388,7 @@ static TValue* recff_metacall_cp(lua_State* L, lua_CFunction dummy, void* ud)
    jit_State* J = (jit_State*)ud;
    lj_record_tailcall(J, 0, 1);
    UNUSED(L); UNUSED(dummy);
-   return NULL;
+   return nullptr;
 }
 
 static int recff_metacall(jit_State* J, RecordFFData* rd, MMS mm)
@@ -406,7 +406,7 @@ static int recff_metacall(jit_State* J, RecordFFData* rd, MMS mm)
       copyTV(J->L, &rd->argv[1 + LJ_FR2], &rd->argv[0]);
       copyTV(J->L, &rd->argv[0], &ix.mobjv);
       // Need to protect lj_record_tailcall because it may throw.
-      errcode = lj_vm_cpcall(J->L, NULL, J, recff_metacall_cp);
+      errcode = lj_vm_cpcall(J->L, nullptr, J, recff_metacall_cp);
       // Always undo Lua stack changes to avoid confusing the interpreter.
       copyTV(J->L, &rd->argv[0], &argv0);
       if (errcode)
@@ -488,7 +488,7 @@ static TValue* recff_xpcall_cp(lua_State* L, lua_CFunction dummy, void* ud)
    jit_State* J = (jit_State*)ud;
    lj_record_call(J, 1, J->maxslot - 2);
    UNUSED(L); UNUSED(dummy);
-   return NULL;
+   return nullptr;
 }
 
 static void LJ_FASTCALL recff_xpcall(jit_State* J, RecordFFData* rd)
@@ -508,7 +508,7 @@ static void LJ_FASTCALL recff_xpcall(jit_State* J, RecordFFData* rd)
       memmove(J->base + 2, J->base + 1, sizeof(TRef) * (J->maxslot - 1));
 #endif
       // Need to protect lj_record_call because it may throw.
-      errcode = lj_vm_cpcall(J->L, NULL, J, recff_xpcall_cp);
+      errcode = lj_vm_cpcall(J->L, nullptr, J, recff_xpcall_cp);
       // Always undo Lua stack swap to avoid confusing the interpreter.
       copyTV(J->L, &rd->argv[0], &argv0);
       copyTV(J->L, &rd->argv[1], &argv1);
@@ -992,7 +992,7 @@ static void LJ_FASTCALL recff_string_find(jit_State* J, RecordFFData* rd)
       TRef trslen = emitir(IRTI(IR_SUB), trlen, trstart);
       TRef trplen = emitir(IRTI(IR_FLOAD), trpat, IRFL_STR_LEN);
       TRef tr = lj_ir_call(J, IRCALL_lj_str_find, trsptr, trpptr, trslen, trplen);
-      TRef trp0 = lj_ir_kkptr(J, NULL);
+      TRef trp0 = lj_ir_kkptr(J, nullptr);
       if (lj_str_find(strdata(str) + (MSize)start, strdata(pat),
          str->len - (MSize)start, pat->len)) {
          TRef pos;
@@ -1476,7 +1476,7 @@ static void LJ_FASTCALL recff_table_concat(jit_State* J, RecordFFData* rd)
          emitir(IRTI(IR_ALEN), tab, TREF_NIL);
       TRef hdr = recff_bufhdr(J);
       TRef tr = lj_ir_call(J, IRCALL_lj_buf_puttab, hdr, tab, sep, tri, tre);
-      emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, NULL));
+      emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, nullptr));
       J->base[0] = emitir(IRTG(IR_BUFSTR, IRT_STR), tr, hdr);
    }  // else: Interpreter will throw.
    UNUSED(rd);

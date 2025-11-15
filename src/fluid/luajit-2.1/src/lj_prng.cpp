@@ -178,7 +178,7 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 
 #elif LJ_TARGET_UWP or LJ_TARGET_XBOXONE
 
-   if (BCryptGenRandom(NULL, (PUCHAR)(rs->u), (ULONG)sizeof(rs->u),
+   if (BCryptGenRandom(nullptr, (PUCHAR)(rs->u), (ULONG)sizeof(rs->u),
       BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0)
       goto ok;
 
