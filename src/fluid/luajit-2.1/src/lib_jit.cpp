@@ -150,10 +150,10 @@ LJLIB_CF(jit_attach)
    return 0;
 }
 
-LJLIB_PUSH(top - 5) LJLIB_SET(os)
-LJLIB_PUSH(top - 4) LJLIB_SET(arch)
-LJLIB_PUSH(top - 3) LJLIB_SET(version_num)
-LJLIB_PUSH(top - 2) LJLIB_SET(version)
+LJLIB_PUSH(top-5) LJLIB_SET(os)
+LJLIB_PUSH(top-4) LJLIB_SET(arch)
+LJLIB_PUSH(top-3) LJLIB_SET(version_num)
+LJLIB_PUSH(top-2) LJLIB_SET(version)
 
 #include "lj_libdef.h"
 
