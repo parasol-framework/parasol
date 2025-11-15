@@ -51,9 +51,9 @@ LJ_FUNC TRef lj_ir_kslot(jit_State *J, TRef key, IRRef slot);
 LJ_FUNC TRef lj_ir_ktrace(jit_State *J);
 
 #if LJ_64
-#define lj_ir_kintp(J, k)	lj_ir_kint64(J, (uint64_t)(k))
+#define lj_ir_kintp(J, k)   lj_ir_kint64(J, (uint64_t)(k))
 #else
-#define lj_ir_kintp(J, k)	lj_ir_kint(J, (int32_t)(k))
+#define lj_ir_kintp(J, k)   lj_ir_kint(J, (int32_t)(k))
 #endif
 
 static LJ_AINLINE TRef lj_ir_knum(jit_State *J, lua_Number n)
@@ -63,16 +63,16 @@ static LJ_AINLINE TRef lj_ir_knum(jit_State *J, lua_Number n)
   return lj_ir_knum_u64(J, tv.u64);
 }
 
-#define lj_ir_kstr(J, str)	lj_ir_kgc(J, obj2gco((str)), IRT_STR)
-#define lj_ir_ktab(J, tab)	lj_ir_kgc(J, obj2gco((tab)), IRT_TAB)
-#define lj_ir_kfunc(J, func)	lj_ir_kgc(J, obj2gco((func)), IRT_FUNC)
-#define lj_ir_kptr(J, ptr)	lj_ir_kptr_(J, IR_KPTR, (ptr))
-#define lj_ir_kkptr(J, ptr)	lj_ir_kptr_(J, IR_KKPTR, (ptr))
+#define lj_ir_kstr(J, str)   lj_ir_kgc(J, obj2gco((str)), IRT_STR)
+#define lj_ir_ktab(J, tab)   lj_ir_kgc(J, obj2gco((tab)), IRT_TAB)
+#define lj_ir_kfunc(J, func)   lj_ir_kgc(J, obj2gco((func)), IRT_FUNC)
+#define lj_ir_kptr(J, ptr)   lj_ir_kptr_(J, IR_KPTR, (ptr))
+#define lj_ir_kkptr(J, ptr)   lj_ir_kptr_(J, IR_KKPTR, (ptr))
 
 /* Special FP constants. */
-#define lj_ir_knum_zero(J)	lj_ir_knum_u64(J, U64x(00000000,00000000))
-#define lj_ir_knum_one(J)	lj_ir_knum_u64(J, U64x(3ff00000,00000000))
-#define lj_ir_knum_tobit(J)	lj_ir_knum_u64(J, U64x(43380000,00000000))
+#define lj_ir_knum_zero(J)   lj_ir_knum_u64(J, U64x(00000000,00000000))
+#define lj_ir_knum_one(J)   lj_ir_knum_u64(J, U64x(3ff00000,00000000))
+#define lj_ir_knum_tobit(J)   lj_ir_knum_u64(J, U64x(43380000,00000000))
 
 /* Special 128 bit SIMD constants. */
 #define lj_ir_ksimd(J, idx) \
@@ -98,21 +98,21 @@ LJ_FUNC TRef LJ_FASTCALL lj_opt_cselim(jit_State *J, IRRef lim);
 
 /* Special return values for the fold functions. */
 enum {
-  NEXTFOLD,		/* Couldn't fold, pass on. */
-  RETRYFOLD,		/* Retry fold with modified fins. */
-  KINTFOLD,		/* Return ref for int constant in fins->i. */
-  FAILFOLD,		/* Guard would always fail. */
-  DROPFOLD,		/* Guard eliminated. */
+  NEXTFOLD,      /* Couldn't fold, pass on. */
+  RETRYFOLD,      /* Retry fold with modified fins. */
+  KINTFOLD,      /* Return ref for int constant in fins->i. */
+  FAILFOLD,      /* Guard would always fail. */
+  DROPFOLD,      /* Guard eliminated. */
   MAX_FOLD
 };
 
-#define INTFOLD(k)	((J->fold.ins.i = (k)), (TRef)KINTFOLD)
-#define INT64FOLD(k)	(lj_ir_kint64(J, (k)))
-#define CONDFOLD(cond)	((TRef)FAILFOLD + (TRef)(cond))
-#define LEFTFOLD	(J->fold.ins.op1)
-#define RIGHTFOLD	(J->fold.ins.op2)
-#define CSEFOLD		(lj_opt_cse(J))
-#define EMITFOLD	(lj_ir_emit(J))
+#define INTFOLD(k)   ((J->fold.ins.i = (k)), (TRef)KINTFOLD)
+#define INT64FOLD(k)   (lj_ir_kint64(J, (k)))
+#define CONDFOLD(cond)   ((TRef)FAILFOLD + (TRef)(cond))
+#define LEFTFOLD   (J->fold.ins.op1)
+#define RIGHTFOLD   (J->fold.ins.op2)
+#define CSEFOLD      (lj_opt_cse(J))
+#define EMITFOLD   (lj_ir_emit(J))
 
 /* Load/store forwarding. */
 LJ_FUNC TRef LJ_FASTCALL lj_opt_fwd_aload(jit_State *J);
@@ -142,7 +142,7 @@ LJ_FUNC TRef LJ_FASTCALL lj_opt_narrow_tobit(jit_State *J, TRef tr);
 LJ_FUNC TRef LJ_FASTCALL lj_opt_narrow_cindex(jit_State *J, TRef key);
 #endif
 LJ_FUNC TRef lj_opt_narrow_arith(jit_State *J, TRef rb, TRef rc,
-				 TValue *vb, TValue *vc, IROp op);
+             TValue *vb, TValue *vc, IROp op);
 LJ_FUNC TRef lj_opt_narrow_unm(jit_State *J, TRef rc, TValue *vc);
 LJ_FUNC TRef lj_opt_narrow_mod(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc);
 LJ_FUNC TRef lj_opt_narrow_pow(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc);
@@ -154,7 +154,7 @@ LJ_FUNC int lj_opt_loop(jit_State *J);
 #if LJ_SOFTFP32 || (LJ_32 && LJ_HASFFI)
 LJ_FUNC void lj_opt_split(jit_State *J);
 #else
-#define lj_opt_split(J)		UNUSED(J)
+#define lj_opt_split(J)      UNUSED(J)
 #endif
 LJ_FUNC void lj_opt_sink(jit_State *J);
 

@@ -10,8 +10,7 @@
 
 #if LJ_HASJIT
 LJ_FUNC void lj_asm_trace(jit_State *J, GCtrace *T);
-LJ_FUNC void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno,
-			      MCode *target);
+LJ_FUNC void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target);
 #endif
 
 #endif

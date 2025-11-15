@@ -11,7 +11,7 @@
 
 #if LJ_HASBUFFER
 
-#define LJ_SERIALIZE_DEPTH	100	/* Default depth. */
+#define LJ_SERIALIZE_DEPTH   100   /* Default depth. */
 
 LJ_FUNC void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State *L, GCtab *dict);
 LJ_FUNC void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State *L, GCtab *dict);
