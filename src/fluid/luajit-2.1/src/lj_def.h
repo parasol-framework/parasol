@@ -46,58 +46,64 @@ typedef unsigned int uintptr_t;
 #include <stdlib.h>
 
 // Various VM limits.
-#define LJ_MAX_MEM32   0x7fffff00   /* Max. 32 bit memory allocation. */
-#define LJ_MAX_MEM64   ((uint64_t)1<<47)  /* Max. 64 bit memory allocation. */
+constexpr uint32_t LJ_MAX_MEM32 = 0x7fffff00u;   /* Max. 32 bit memory allocation. */
+constexpr uint64_t LJ_MAX_MEM64 = ((uint64_t)1 << 47);  /* Max. 64 bit memory allocation. */
 // Max. total memory allocation.
+// Note: LJ_MAX_MEM and LJ_MAX_ALLOC require runtime conditional, kept as macros below
 #define LJ_MAX_MEM   (LJ_GC64 ? LJ_MAX_MEM64 : LJ_MAX_MEM32)
 #define LJ_MAX_ALLOC   LJ_MAX_MEM   /* Max. individual allocation length. */
 #define LJ_MAX_STR   LJ_MAX_MEM32   /* Max. string length. */
 #define LJ_MAX_BUF   LJ_MAX_MEM32   /* Max. buffer length. */
 #define LJ_MAX_UDATA   LJ_MAX_MEM32   /* Max. userdata length. */
 
-#define LJ_MAX_STRTAB   (1<<26)      /* Max. string table size. */
-#define LJ_MAX_HBITS   26      /* Max. hash bits. */
-#define LJ_MAX_ABITS   28      /* Max. bits of array key. */
-#define LJ_MAX_ASIZE   ((1<<(LJ_MAX_ABITS-1))+1)  /* Max. array part size. */
-#define LJ_MAX_COLOSIZE   16      /* Max. elems for colocated array. */
+constexpr uint32_t LJ_MAX_STRTAB = (1u << 26);      /* Max. string table size. */
+constexpr int LJ_MAX_HBITS = 26;      /* Max. hash bits. */
+constexpr int LJ_MAX_ABITS = 28;      /* Max. bits of array key. */
+constexpr uint32_t LJ_MAX_ASIZE = ((1u << (LJ_MAX_ABITS - 1)) + 1);  /* Max. array part size. */
+constexpr int LJ_MAX_COLOSIZE = 16;      /* Max. elems for colocated array. */
 
 #define LJ_MAX_LINE   LJ_MAX_MEM32   /* Max. source code line number. */
-#define LJ_MAX_XLEVEL   200      /* Max. syntactic nesting level. */
-#define LJ_MAX_BCINS   (1<<26)      /* Max. # of bytecode instructions. */
-#define LJ_MAX_SLOTS   250      /* Max. # of slots in a Lua func. */
-#define LJ_MAX_LOCVAR   200      /* Max. # of local variables. */
-#define LJ_MAX_UPVAL   60      /* Max. # of upvalues. */
+constexpr int LJ_MAX_XLEVEL = 200;      /* Max. syntactic nesting level. */
+constexpr uint32_t LJ_MAX_BCINS = (1u << 26);      /* Max. # of bytecode instructions. */
+constexpr int LJ_MAX_SLOTS = 250;      /* Max. # of slots in a Lua func. */
+constexpr int LJ_MAX_LOCVAR = 200;      /* Max. # of local variables. */
+constexpr int LJ_MAX_UPVAL = 60;      /* Max. # of upvalues. */
 
-#define LJ_MAX_IDXCHAIN   100      /* __index/__newindex chain limit. */
+constexpr int LJ_MAX_IDXCHAIN = 100;      /* __index/__newindex chain limit. */
 #define LJ_STACK_EXTRA   (5+2*LJ_FR2)   /* Extra stack space (metamethods). */
 
-#define LJ_NUM_CBPAGE   1      /* Number of FFI callback pages. */
+constexpr int LJ_NUM_CBPAGE = 1;      /* Number of FFI callback pages. */
 
 // Minimum table/buffer sizes.
-#define LJ_MIN_GLOBAL   6      /* Min. global table size (hbits). */
-#define LJ_MIN_REGISTRY   2      /* Min. registry size (hbits). */
-#define LJ_MIN_STRTAB   256      /* Min. string table size (pow2). */
-#define LJ_MIN_SBUF   32      /* Min. string buffer length. */
-#define LJ_MIN_VECSZ   8      /* Min. size for growable vectors. */
-#define LJ_MIN_IRSZ   32      /* Min. size for growable IR. */
+constexpr int LJ_MIN_GLOBAL = 6;      /* Min. global table size (hbits). */
+constexpr int LJ_MIN_REGISTRY = 2;      /* Min. registry size (hbits). */
+constexpr int LJ_MIN_STRTAB = 256;      /* Min. string table size (pow2). */
+constexpr int LJ_MIN_SBUF = 32;      /* Min. string buffer length. */
+constexpr int LJ_MIN_VECSZ = 8;      /* Min. size for growable vectors. */
+constexpr int LJ_MIN_IRSZ = 32;      /* Min. size for growable IR. */
 
 // JIT compiler limits.
-#define LJ_MAX_JSLOTS   250      /* Max. # of stack slots for a trace. */
-#define LJ_MAX_PHI   64      /* Max. # of PHIs for a loop. */
-#define LJ_MAX_EXITSTUBGR   16   /* Max. # of exit stub groups. */
+constexpr int LJ_MAX_JSLOTS = 250;      /* Max. # of stack slots for a trace. */
+constexpr int LJ_MAX_PHI = 64;      /* Max. # of PHIs for a loop. */
+constexpr int LJ_MAX_EXITSTUBGR = 16;   /* Max. # of exit stub groups. */
 
 // Various macros.
 #ifndef UNUSED
 #define UNUSED(x)   ((void)(x))   /* to avoid warnings */
 #endif
 
+// Utility macro for constructing 64-bit constants from hex values.
 #define U64x(hi, lo)   (((uint64_t)0x##hi << 32) + (uint64_t)0x##lo)
+
+// Pointer cast functions.
 #define i32ptr(p)   ((int32_t)(intptr_t)(void *)(p))
 #define u32ptr(p)   ((uint32_t)(intptr_t)(void *)(p))
 #define i64ptr(p)   ((int64_t)(intptr_t)(void *)(p))
 #define u64ptr(p)   ((uint64_t)(intptr_t)(void *)(p))
+
 #define igcptr(p)   (LJ_GC64 ? i64ptr(p) : i32ptr(p))
 
+// Type check functions - kept as macros for compile-time usage.
 #define checki8(x)   ((x) == (int32_t)(int8_t)(x))
 #define checku8(x)   ((x) == (int32_t)(uint8_t)(x))
 #define checki16(x)   ((x) == (int32_t)(int16_t)(x))
@@ -107,7 +113,8 @@ typedef unsigned int uintptr_t;
 #define checkptr31(x)   (((uint64_t)(uintptr_t)(x) >> 31) == 0)
 #define checkptr32(x)   ((uintptr_t)(x) == (uint32_t)(uintptr_t)(x))
 #define checkptr47(x)   (((uint64_t)(uintptr_t)(x) >> 47) == 0)
-#define checkptrGC(x)   (LJ_GC64 ? checkptr47((x)) : LJ_64 ? checkptr31((x)) :1)
+
+#define checkptrGC(x)   (LJ_GC64 ? checkptr47((x)) : LJ_64 ? checkptr31((x)) : 1)
 
 // Every half-decent C compiler transforms this into a rotate instruction.
 #define lj_rol(x, n)   (((x)<<(n)) | ((x)>>(-(int)(n)&(8*sizeof(x)-1))))
@@ -253,7 +260,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* p)
 
 #define LJ_NORET   __declspec(noreturn)
 #define LJ_ALIGN(n)   __declspec(align(n))
-#define LJ_INLINE   __inline
+#define LJ_INLINE   inline
 #define LJ_AINLINE   __forceinline
 #define LJ_NOINLINE   __declspec(noinline)
 #define LJ_UNUSED

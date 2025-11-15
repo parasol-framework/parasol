@@ -29,22 +29,22 @@
 */
 
 // Bytecode dump header.
-#define BCDUMP_HEAD1      0x1b
-#define BCDUMP_HEAD2      0x4c
-#define BCDUMP_HEAD3      0x4a
+constexpr uint8_t BCDUMP_HEAD1 = 0x1b;
+constexpr uint8_t BCDUMP_HEAD2 = 0x4c;
+constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 
 /* If you perform *any* kind of private modifications to the bytecode itself
 ** or to the dump format, you *must* set BCDUMP_VERSION to 0x80 or higher.
 */
-#define BCDUMP_VERSION      2
+constexpr int BCDUMP_VERSION = 2;
 
 // Compatibility flags.
-#define BCDUMP_F_BE      0x01
-#define BCDUMP_F_STRIP      0x02
-#define BCDUMP_F_FFI      0x04
-#define BCDUMP_F_FR2      0x08
+constexpr uint8_t BCDUMP_F_BE = 0x01;
+constexpr uint8_t BCDUMP_F_STRIP = 0x02;
+constexpr uint8_t BCDUMP_F_FFI = 0x04;
+constexpr uint8_t BCDUMP_F_FR2 = 0x08;
 
-#define BCDUMP_F_KNOWN      (BCDUMP_F_FR2*2-1)
+constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_FR2*2-1);
 
 // Type codes for the GC constants of a prototype. Plus length for strings.
 enum {
