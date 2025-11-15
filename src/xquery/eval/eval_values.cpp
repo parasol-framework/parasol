@@ -2289,8 +2289,14 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
 
    if (builtin_has_expanded) {
       static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
+      static const std::string math_namespace_uri("http://www.w3.org/2005/xpath-functions/math");
       if (builtin_namespace IS builtin_namespace_uri) {
          builtin_lookup_name = builtin_local;
+      }
+      else if (builtin_namespace IS math_namespace_uri) {
+         std::string prefixed_name = std::string("math:") + builtin_local;
+         if (library.has_function(prefixed_name)) builtin_lookup_name = std::move(prefixed_name);
+         else if (library.has_function(function_name)) builtin_lookup_name = function_name;
       }
       else {
          if (library.has_function(function_name)) builtin_lookup_name = function_name;
