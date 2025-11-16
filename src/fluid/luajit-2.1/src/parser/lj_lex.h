@@ -4,6 +4,7 @@
 #pragma once
 
 #include <stdarg.h>
+#include <string_view>
 
 #include "lj_obj.h"
 #include "lj_err.h"
