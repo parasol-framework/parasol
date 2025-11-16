@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_TRACE_H
-#define _LJ_TRACE_H
+#pragma once
 
 #include "lj_obj.h"
 
@@ -52,7 +51,5 @@ LJ_FUNC uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State* J, uintptr_t addr, Exit
 #define lj_trace_freestate(g)   UNUSED(g)
 #define lj_trace_abort(g)   UNUSED(g)
 #define lj_trace_end(J)      UNUSED(J)
-
-#endif
 
 #endif

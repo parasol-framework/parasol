@@ -88,9 +88,9 @@
 // Various tunables.
 constexpr int LUAI_MAXSTACK = 65500;   //  Max. # of stack slots for a thread (<64K).
 constexpr int LUAI_MAXCSTACK = 8000;   //  Max. # of stack slots for a C func (<10K).
-constexpr int LUAI_GCPAUSE = 200;   //  Pause GC until memory is at 200%.
-constexpr int LUAI_GCMUL = 200;   //  Run GC at 200% of allocation speed.
-constexpr int LUA_MAXCAPTURES = 32;   //  Max. pattern captures.
+constexpr int LUAI_GCPAUSE = 200;      //  Pause GC until memory is at 200%.
+constexpr int LUAI_GCMUL = 200;        //  Run GC at 200% of allocation speed.
+constexpr int LUA_MAXCAPTURES = 32;    //  Max. pattern captures.
 
 // Configuration for the frontend (the luajit executable).
 #if defined(luajit_c)
@@ -123,24 +123,8 @@ constexpr int LUAI_MAXNUMBER2STR = 32;
 #define LUA_INTFRMLEN      "l"
 #define LUA_INTFRM_T      long
 
-// Linkage of public API functions.
-#ifdef __cplusplus
-#define LJ_EXTERN_C extern "C"
-#else
-#define LJ_EXTERN_C
-#endif
-
-#if defined(LUA_BUILD_AS_DLL)
-#if defined(LUA_CORE) || defined(LUA_LIB)
-#define LUA_API      LJ_EXTERN_C __declspec(dllexport)
-#else
-#define LUA_API      LJ_EXTERN_C __declspec(dllimport)
-#endif
-#else
-#define LUA_API      LJ_EXTERN_C
-#endif
-
-#define LUALIB_API   LUA_API
+#define LUA_API      extern "C"
+#define LUALIB_API   extern "C"
 
 // Compatibility support for assertions.
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)

@@ -1,10 +1,8 @@
-/*
-** Public Lua/C API.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Public Lua/C API.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lj_api_c
 #define LUA_CORE
@@ -26,7 +24,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 
-// -- Common helper functions ---------------------------------------------
+// Common helper functions
 
 #define lj_checkapi_slot(idx) \
   lj_checkapi((idx) <= (L->top - L->base), "stack slot %d out of range", (idx))
@@ -99,7 +97,7 @@ static GCtab* getcurrenv(lua_State* L)
    return fn->c.gct == ~LJ_TFUNC ? tabref(fn->c.env) : tabref(L->env);
 }
 
-// -- Miscellaneous API functions -----------------------------------------
+// Miscellaneous API functions
 
 LUA_API int lua_status(lua_State* L)
 {
@@ -143,7 +141,7 @@ LUA_API const lua_Number* lua_version(lua_State* L)
    return &version;
 }
 
-// -- Stack manipulation --------------------------------------------------
+// Stack manipulation
 
 LUA_API int lua_gettop(lua_State* L)
 {
@@ -224,7 +222,7 @@ LUA_API void lua_pushvalue(lua_State* L, int idx)
    incr_top(L);
 }
 
-// -- Stack getters -------------------------------------------------------
+// Stack getters
 
 LUA_API int lua_type(lua_State* L, int idx)
 {
@@ -673,7 +671,7 @@ LUA_API const void* lua_topointer(lua_State* L, int idx)
    return lj_obj_ptr(G(L), index2adr(L, idx));
 }
 
-// -- Stack setters (object creation) -------------------------------------
+// Stack setters (object creation)
 
 LUA_API void lua_pushnil(lua_State* L)
 {
@@ -844,7 +842,7 @@ LUA_API void lua_concat(lua_State* L, int n)
    // else n == 1: nothing to do.
 }
 
-// -- Object getters ------------------------------------------------------
+// Object getters
 
 LUA_API void lua_gettable(lua_State* L, int idx)
 {
@@ -1015,7 +1013,7 @@ LUALIB_API void* luaL_checkudata(lua_State* L, int idx, const char* tname)
    return p;
 }
 
-// -- Object setters ------------------------------------------------------
+// Object setters
 
 LUA_API void lua_settable(lua_State* L, int idx)
 {
@@ -1171,7 +1169,7 @@ LUA_API const char* lua_setupvalue(lua_State* L, int idx, int n)
    return name;
 }
 
-// -- Calls ---------------------------------------------------------------
+// Calls
 
 #if LJ_FR2
 static TValue* api_call_base(lua_State* L, int nargs)
@@ -1256,7 +1254,7 @@ LUALIB_API int luaL_callmeta(lua_State* L, int idx, const char* field)
    return 0;
 }
 
-// -- Coroutine yield and resume ------------------------------------------
+// Coroutine yield and resume
 
 LUA_API int lua_isyieldable(lua_State* L)
 {
@@ -1317,7 +1315,7 @@ LUA_API int lua_resume(lua_State* L, int nargs)
    return LUA_ERRRUN;
 }
 
-// -- GC and memory management --------------------------------------------
+// GC and memory management
 
 LUA_API int lua_gc(lua_State* L, int what, int data)
 {
