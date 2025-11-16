@@ -54,10 +54,10 @@ LJ_FUNC void lj_gc_finalize_cdata(lua_State* L);
 #define lj_gc_finalize_cdata(L)      UNUSED(L)
 #endif
 LJ_FUNC void lj_gc_freeall(global_State* g);
-LJ_FUNCA int LJ_FASTCALL lj_gc_step(lua_State* L);
-LJ_FUNCA void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);
+LJ_FUNCA int  lj_gc_step(lua_State* L);
+LJ_FUNCA void  lj_gc_step_fixtop(lua_State* L);
 #if LJ_HASJIT
-LJ_FUNC int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps);
+LJ_FUNC int  lj_gc_step_jit(global_State* g, MSize steps);
 #endif
 LJ_FUNC void lj_gc_fullgc(lua_State* L);
 
@@ -71,7 +71,7 @@ LJ_FUNC void lj_gc_fullgc(lua_State* L);
 
 // Write barriers.
 LJ_FUNC void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v);
-LJ_FUNCA void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv);
+LJ_FUNCA void  lj_gc_barrieruv(global_State* g, TValue* tv);
 LJ_FUNC void lj_gc_closeuv(global_State* g, GCupval* uv);
 #if LJ_HASJIT
 LJ_FUNC void lj_gc_barriertrace(global_State* g, uint32_t traceno);
@@ -110,7 +110,7 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 
 // Allocator.
 LJ_FUNC void* lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
-LJ_FUNC void* LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size);
+LJ_FUNC void*  lj_mem_newgco(lua_State* L, GCSize size);
 LJ_FUNC void* lj_mem_grow(lua_State* L, void* p,
    MSize* szp, MSize lim, MSize esz);
 

@@ -40,7 +40,7 @@ LJ_STATIC_ASSERT(GG_NUM_ASMFF == FF_NUM_ASMFUNC);
 
 #if LJ_TARGET_MIPS
 #include <math.h>
-LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L,
+LJ_FUNCA_NORET void  lj_ffh_coroutine_wrap_err(lua_State* L,
    lua_State* co);
 #if !LJ_HASJIT
 #define lj_dispatch_stitch   lj_dispatch_ins
@@ -409,7 +409,7 @@ static BCReg cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
 }
 
 // Instruction dispatch. Used by instr/line/return hooks or when recording.
-void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
+void  lj_dispatch_ins(lua_State* L, const BCIns* pc)
 {
    ERRNO_SAVE
       GCfunc* fn = curr_func(L);
@@ -474,7 +474,7 @@ static int call_init(lua_State* L, GCfunc* fn)
 }
 
 // Call dispatch. Used by call hooks, hot calls or when recording.
-ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
+ASMFunction  lj_dispatch_call(lua_State* L, const BCIns* pc)
 {
    ERRNO_SAVE
       GCfunc* fn = curr_func(L);
@@ -532,7 +532,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
 
 #if LJ_HASJIT
 // Stitch a new trace.
-void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
+void  lj_dispatch_stitch(jit_State* J, const BCIns* pc)
 {
    ERRNO_SAVE
       lua_State* L = J->L;
@@ -549,7 +549,7 @@ void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
 
 #if LJ_HASPROFILE
 // Profile dispatch.
-void LJ_FASTCALL lj_dispatch_profile(lua_State* L, const BCIns* pc)
+void  lj_dispatch_profile(lua_State* L, const BCIns* pc)
 {
    ERRNO_SAVE
       GCfunc* fn = curr_func(L);

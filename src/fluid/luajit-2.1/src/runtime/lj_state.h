@@ -20,8 +20,8 @@ inline TValue* restorestack(lua_State* L, ptrdiff_t n) {
 
 LJ_FUNC void lj_state_relimitstack(lua_State* L);
 LJ_FUNC void lj_state_shrinkstack(lua_State* L, MSize used);
-LJ_FUNCA void LJ_FASTCALL lj_state_growstack(lua_State* L, MSize need);
-LJ_FUNC void LJ_FASTCALL lj_state_growstack1(lua_State* L);
+LJ_FUNCA void  lj_state_growstack(lua_State* L, MSize need);
+LJ_FUNC void  lj_state_growstack1(lua_State* L);
 
 static LJ_AINLINE void lj_state_checkstack(lua_State* L, MSize need)
 {
@@ -31,7 +31,7 @@ static LJ_AINLINE void lj_state_checkstack(lua_State* L, MSize need)
 }
 
 LJ_FUNC lua_State* lj_state_new(lua_State* L);
-LJ_FUNC void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L);
+LJ_FUNC void  lj_state_free(global_State* g, lua_State* L);
 #if LJ_64 && !LJ_GC64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
 LJ_FUNC lua_State* lj_state_newstate(lua_Alloc f, void* ud);
 #endif
