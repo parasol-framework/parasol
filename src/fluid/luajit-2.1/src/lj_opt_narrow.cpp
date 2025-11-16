@@ -411,7 +411,7 @@ static IRRef narrow_conv_emit(jit_State* J, NarrowConv* nc)
 }
 
 // Narrow a type conversion of an arithmetic operation.
-TRef  lj_opt_narrow_convert(jit_State* J)
+TRef LJ_FASTCALL lj_opt_narrow_convert(jit_State* J)
 {
    if ((J->flags & JIT_F_OPT_NARROW)) {
       NarrowConv nc;
@@ -460,7 +460,7 @@ static TRef narrow_stripov(jit_State* J, TRef tr, int lastop, IRRef mode)
 }
 
 // Narrow array index.
-TRef  lj_opt_narrow_index(jit_State* J, TRef tr)
+TRef LJ_FASTCALL lj_opt_narrow_index(jit_State* J, TRef tr)
 {
    IRIns* ir;
    lj_assertJ(tref_isnumber(tr), "expected number type");
@@ -475,7 +475,7 @@ TRef  lj_opt_narrow_index(jit_State* J, TRef tr)
 }
 
 // Narrow conversion to integer operand (overflow undefined).
-TRef  lj_opt_narrow_toint(jit_State* J, TRef tr)
+TRef LJ_FASTCALL lj_opt_narrow_toint(jit_State* J, TRef tr)
 {
    if (tref_isstr(tr))
       tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
@@ -491,7 +491,7 @@ TRef  lj_opt_narrow_toint(jit_State* J, TRef tr)
 }
 
 // Narrow conversion to bitop operand (overflow wrapped).
-TRef  lj_opt_narrow_tobit(jit_State* J, TRef tr)
+TRef LJ_FASTCALL lj_opt_narrow_tobit(jit_State* J, TRef tr)
 {
    if (tref_isstr(tr))
       tr = emitir(IRTG(IR_STRTO, IRT_NUM), tr, 0);
@@ -508,7 +508,7 @@ TRef  lj_opt_narrow_tobit(jit_State* J, TRef tr)
 
 #if LJ_HASFFI
 // Narrow C array index (overflow undefined).
-TRef  lj_opt_narrow_cindex(jit_State* J, TRef tr)
+TRef LJ_FASTCALL lj_opt_narrow_cindex(jit_State* J, TRef tr)
 {
    lj_assertJ(tref_isnumber(tr), "expected number type");
    if (tref_isnum(tr))

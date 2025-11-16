@@ -679,7 +679,7 @@ static void callback_conv_result(CTState* cts, lua_State* L, TValue* o)
 }
 
 // Enter callback.
-lua_State*  lj_ccallback_enter(CTState* cts, void* cf)
+lua_State* LJ_FASTCALL lj_ccallback_enter(CTState* cts, void* cf)
 {
    lua_State* L = cts->L;
    global_State* g = cts->g;
@@ -701,7 +701,7 @@ lua_State*  lj_ccallback_enter(CTState* cts, void* cf)
 }
 
 // Leave callback.
-void  lj_ccallback_leave(CTState* cts, TValue* o)
+void LJ_FASTCALL lj_ccallback_leave(CTState* cts, TValue* o)
 {
    lua_State* L = cts->L;
    GCfunc* fn;

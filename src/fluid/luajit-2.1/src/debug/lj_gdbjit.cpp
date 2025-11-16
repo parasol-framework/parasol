@@ -460,7 +460,7 @@ static void gdbjit_sleb128(GDBJITctx* ctx, int32_t v)
     *szp_##name = (uint32_t)((p-(uint8_t *)szp_##name)-4); } \
 
 // Initialize ELF section headers.
-static void  gdbjit_secthdr(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_secthdr(GDBJITctx* ctx)
 {
    ELFsectheader* sect;
 
@@ -499,7 +499,7 @@ static void  gdbjit_secthdr(GDBJITctx* ctx)
 }
 
 // Initialize symbol table.
-static void  gdbjit_symtab(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_symtab(GDBJITctx* ctx)
 {
    ELFsymbol* sym;
 
@@ -520,7 +520,7 @@ static void  gdbjit_symtab(GDBJITctx* ctx)
 }
 
 // Initialize .eh_frame section.
-static void  gdbjit_ehframe(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
    uint8_t* framep = p;
@@ -606,7 +606,7 @@ static void  gdbjit_ehframe(GDBJITctx* ctx)
 }
 
 // Initialize .debug_info section.
-static void  gdbjit_debuginfo(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_debuginfo(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -626,7 +626,7 @@ static void  gdbjit_debuginfo(GDBJITctx* ctx)
 }
 
 // Initialize .debug_abbrev section.
-static void  gdbjit_debugabbrev(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_debugabbrev(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -645,7 +645,7 @@ static void  gdbjit_debugabbrev(GDBJITctx* ctx)
 #define DLNE(op, s)   (DB(DW_LNS_extended_op), DUV(1+(s)), DB((op)))
 
 // Initialize .debug_line section.
-static void  gdbjit_debugline(GDBJITctx* ctx)
+static void LJ_FASTCALL gdbjit_debugline(GDBJITctx* ctx)
 {
    uint8_t* p = ctx->p;
 
@@ -692,7 +692,7 @@ static void  gdbjit_debugline(GDBJITctx* ctx)
 #undef DSECT
 
 // Type of a section initializer callback.
-typedef void (* GDBJITinitf)(GDBJITctx* ctx);
+typedef void (LJ_FASTCALL* GDBJITinitf)(GDBJITctx* ctx);
 
 // Call section initializer and set the section offset and size.
 static void gdbjit_initsect(GDBJITctx* ctx, int sect, GDBJITinitf initf)

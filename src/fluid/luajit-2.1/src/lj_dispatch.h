@@ -16,7 +16,7 @@
 // Need our own global offset table for the dreaded MIPS calling conventions.
 
 #ifndef _LJ_VM_H
-LJ_ASMF int32_t  lj_vm_modi(int32_t a, int32_t b);
+LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b);
 #endif
 
 #if LJ_SOFTFP
@@ -136,13 +136,13 @@ LJ_FUNC void lj_dispatch_init_hotcount(global_State* g);
 LJ_FUNC void lj_dispatch_update(global_State* g);
 
 // Instruction dispatch callback for hooks or when recording.
-LJ_FUNCA void  lj_dispatch_ins(lua_State* L, const BCIns* pc);
-LJ_FUNCA ASMFunction  lj_dispatch_call(lua_State* L, const BCIns* pc);
+LJ_FUNCA void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc);
+LJ_FUNCA ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc);
 #if LJ_HASJIT
-LJ_FUNCA void  lj_dispatch_stitch(jit_State* J, const BCIns* pc);
+LJ_FUNCA void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc);
 #endif
 #if LJ_HASPROFILE
-LJ_FUNCA void  lj_dispatch_profile(lua_State* L, const BCIns* pc);
+LJ_FUNCA void LJ_FASTCALL lj_dispatch_profile(lua_State* L, const BCIns* pc);
 #endif
 
 #if LJ_HASFFI && !defined(_BUILDVM_H)

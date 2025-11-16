@@ -49,7 +49,7 @@ static void buf_grow(SBuf* sb, MSize sz)
    }
 }
 
-LJ_NOINLINE char*  lj_buf_need2(SBuf* sb, MSize sz)
+LJ_NOINLINE char* LJ_FASTCALL lj_buf_need2(SBuf* sb, MSize sz)
 {
    lj_assertG_(G(sbufL(sb)), sz > sbufsz(sb), "SBuf overflow");
    if (LJ_UNLIKELY(sz > LJ_MAX_BUF))
@@ -58,7 +58,7 @@ LJ_NOINLINE char*  lj_buf_need2(SBuf* sb, MSize sz)
    return sb->b;
 }
 
-LJ_NOINLINE char*  lj_buf_more2(SBuf* sb, MSize sz)
+LJ_NOINLINE char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz)
 {
    if (sbufisext(sb)) {
       SBufExt* sbx = (SBufExt*)sb;
@@ -90,7 +90,7 @@ LJ_NOINLINE char*  lj_buf_more2(SBuf* sb, MSize sz)
    return sb->w;
 }
 
-void  lj_buf_shrink(lua_State* L, SBuf* sb)
+void LJ_FASTCALL lj_buf_shrink(lua_State* L, SBuf* sb)
 {
    char* b = sb->b;
    MSize osz = (MSize)(sb->e - b);
@@ -104,7 +104,7 @@ void  lj_buf_shrink(lua_State* L, SBuf* sb)
    lj_assertG_(G(sbufL(sb)), !sbufisext(sb), "YAGNI shrink SBufExt");
 }
 
-char*  lj_buf_tmp(lua_State* L, MSize sz)
+char* LJ_FASTCALL lj_buf_tmp(lua_State* L, MSize sz)
 {
    SBuf* sb = &G(L)->tmpbuf;
    setsbufL(sb, L);
@@ -122,7 +122,7 @@ void lj_bufx_set(SBufExt* sbx, const char* p, MSize len, GCobj* ref)
 }
 
 #if LJ_HASFFI
-MSize  lj_bufx_more(SBufExt* sbx, MSize sz)
+MSize LJ_FASTCALL lj_bufx_more(SBufExt* sbx, MSize sz)
 {
    lj_buf_more((SBuf*)sbx, sz);
    return sbufleft(sbx);
@@ -141,7 +141,7 @@ SBuf* lj_buf_putmem(SBuf* sb, const void* q, MSize len)
 }
 
 #if LJ_HASJIT or LJ_HASFFI
-static LJ_NOINLINE SBuf*  lj_buf_putchar2(SBuf* sb, int c)
+static LJ_NOINLINE SBuf* LJ_FASTCALL lj_buf_putchar2(SBuf* sb, int c)
 {
    char* w = lj_buf_more2(sb, 1);
    *w++ = (char)c;
@@ -149,7 +149,7 @@ static LJ_NOINLINE SBuf*  lj_buf_putchar2(SBuf* sb, int c)
    return sb;
 }
 
-SBuf*  lj_buf_putchar(SBuf* sb, int c)
+SBuf* LJ_FASTCALL lj_buf_putchar(SBuf* sb, int c)
 {
    char* w = sb->w;
    if (LJ_LIKELY(w < sb->e)) {
@@ -161,7 +161,7 @@ SBuf*  lj_buf_putchar(SBuf* sb, int c)
 }
 #endif
 
-SBuf*  lj_buf_putstr(SBuf* sb, GCstr* s)
+SBuf* LJ_FASTCALL lj_buf_putstr(SBuf* sb, GCstr* s)
 {
    MSize len = s->len;
    char* w = lj_buf_more(sb, len);
@@ -172,7 +172,7 @@ SBuf*  lj_buf_putstr(SBuf* sb, GCstr* s)
 
 // -- High-level buffer put operations ------------------------------------
 
-SBuf*  lj_buf_putstr_reverse(SBuf* sb, GCstr* s)
+SBuf* LJ_FASTCALL lj_buf_putstr_reverse(SBuf* sb, GCstr* s)
 {
    MSize len = s->len;
    char* w = lj_buf_more(sb, len), * e = w + len;
@@ -183,7 +183,7 @@ SBuf*  lj_buf_putstr_reverse(SBuf* sb, GCstr* s)
    return sb;
 }
 
-SBuf*  lj_buf_putstr_lower(SBuf* sb, GCstr* s)
+SBuf* LJ_FASTCALL lj_buf_putstr_lower(SBuf* sb, GCstr* s)
 {
    MSize len = s->len;
    char* w = lj_buf_more(sb, len), * e = w + len;
@@ -201,7 +201,7 @@ SBuf*  lj_buf_putstr_lower(SBuf* sb, GCstr* s)
    return sb;
 }
 
-SBuf*  lj_buf_putstr_upper(SBuf* sb, GCstr* s)
+SBuf* LJ_FASTCALL lj_buf_putstr_upper(SBuf* sb, GCstr* s)
 {
    MSize len = s->len;
    char* w = lj_buf_more(sb, len), * e = w + len;
@@ -282,7 +282,7 @@ SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
 
 // -- Miscellaneous buffer operations -------------------------------------
 
-GCstr*  lj_buf_tostr(SBuf* sb)
+GCstr* LJ_FASTCALL lj_buf_tostr(SBuf* sb)
 {
    return lj_str_new(sbufL(sb), sb->b, sbuflen(sb));
 }
@@ -298,7 +298,7 @@ GCstr* lj_buf_cat2str(lua_State* L, GCstr* s1, GCstr* s2)
 }
 
 // Read ULEB128 from buffer.
-uint32_t  lj_buf_ruleb128(const char** pp)
+uint32_t LJ_FASTCALL lj_buf_ruleb128(const char** pp)
 {
    const uint8_t* w = (const uint8_t*)*pp;
    uint32_t v = *w++;

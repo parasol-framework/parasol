@@ -95,7 +95,7 @@ static ProfileState profile_state;
 // -- Profiler/hook interaction -------------------------------------------
 
 #if !LJ_PROFILE_SIGPROF
-void  lj_profile_hook_enter(global_State *g)
+void LJ_FASTCALL lj_profile_hook_enter(global_State *g)
 {
   ProfileState *ps = &profile_state;
   if (ps->g) {
@@ -107,7 +107,7 @@ void  lj_profile_hook_enter(global_State *g)
   }
 }
 
-void  lj_profile_hook_leave(global_State *g)
+void LJ_FASTCALL lj_profile_hook_leave(global_State *g)
 {
   ProfileState *ps = &profile_state;
   if (ps->g) {
@@ -123,7 +123,7 @@ void  lj_profile_hook_leave(global_State *g)
 // -- Profile callbacks ---------------------------------------------------
 
 // Callback from profile hook (HOOK_PROFILE already cleared).
-void  lj_profile_interpreter(lua_State *L)
+void LJ_FASTCALL lj_profile_interpreter(lua_State *L)
 {
   ProfileState *ps = &profile_state;
   global_State *g = G(L);

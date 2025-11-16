@@ -17,7 +17,7 @@
 
 // -- Prototypes ----------------------------------------------------------
 
-void  lj_func_freeproto(global_State* g, GCproto* pt)
+void LJ_FASTCALL lj_func_freeproto(global_State* g, GCproto* pt)
 {
    lj_mem_free(g, pt, pt->sizept);
 }
@@ -80,7 +80,7 @@ static GCupval* func_emptyuv(lua_State* L)
 }
 
 // Close all open upvalues pointing to some stack level or above.
-void  lj_func_closeuv(lua_State* L, TValue* level)
+void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
 {
    GCupval* uv;
    global_State* g = G(L);
@@ -100,7 +100,7 @@ void  lj_func_closeuv(lua_State* L, TValue* level)
    }
 }
 
-void  lj_func_freeuv(global_State* g, GCupval* uv)
+void LJ_FASTCALL lj_func_freeuv(global_State* g, GCupval* uv)
 {
    if (!uv->closed)
       unlinkuv(g, uv);
@@ -184,7 +184,7 @@ GCfunc* lj_func_newL_gc(lua_State* L, GCproto* pt, GCfuncL* parent)
    return fn;
 }
 
-void  lj_func_free(global_State* g, GCfunc* fn)
+void LJ_FASTCALL lj_func_free(global_State* g, GCfunc* fn)
 {
    MSize size = isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) :
       sizeCfunc((MSize)fn->c.nupvalues);

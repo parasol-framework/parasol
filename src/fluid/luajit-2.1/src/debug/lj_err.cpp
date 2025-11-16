@@ -732,7 +732,7 @@ static void err_raise_ext(global_State* g, int errcode)
 // Error handling
 
 // Throw error. Find catch frame, unwind stack and continue.
-LJ_NOINLINE void  lj_err_throw(lua_State* L, int errcode)
+LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State* L, int errcode)
 {
    global_State* g = G(L);
    lj_trace_abort(g);
@@ -831,7 +831,7 @@ static ptrdiff_t finderrfunc(lua_State* L)
 }
 
 // Runtime error.
-LJ_NOINLINE void  lj_err_run(lua_State* L)
+LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
 {
    ptrdiff_t ef = (LJ_HASJIT and tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
    if (ef) {
@@ -853,7 +853,7 @@ LJ_NOINLINE void  lj_err_run(lua_State* L)
 }
 
 #if LJ_HASJIT
-LJ_NOINLINE void  lj_err_trace(lua_State* L, int errcode)
+LJ_NOINLINE void LJ_FASTCALL lj_err_trace(lua_State* L, int errcode)
 {
    if (errcode == LUA_ERRRUN)
       lj_err_run(L);

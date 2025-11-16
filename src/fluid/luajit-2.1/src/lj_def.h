@@ -363,6 +363,10 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #error "missing defines for your compiler"
 #endif
 
+// Optional defines.
+#ifndef LJ_FASTCALL
+#define LJ_FASTCALL
+#endif
 #ifndef LJ_NORET
 #define LJ_NORET
 #endif

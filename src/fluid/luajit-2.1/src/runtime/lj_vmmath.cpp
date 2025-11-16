@@ -99,7 +99,7 @@ double lj_vm_foldarith(double x, double y, int op)
 // -- Helper functions for generated machine code -------------------------
 
 #if (LJ_HASJIT && !(LJ_TARGET_ARM or LJ_TARGET_ARM64 or LJ_TARGET_PPC)) or LJ_TARGET_MIPS
-int32_t  lj_vm_modi(int32_t a, int32_t b)
+int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 {
    uint32_t y, ua, ub;
    // This must be checked before using this function.

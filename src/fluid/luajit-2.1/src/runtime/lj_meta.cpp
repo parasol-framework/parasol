@@ -320,7 +320,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
 }
 
 // Helper for LEN. __len metamethod.
-TValue*  lj_meta_len(lua_State* L, cTValue* o)
+TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
 {
    cTValue* mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
@@ -360,7 +360,7 @@ TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
 }
 
 #if LJ_HASFFI
-TValue*  lj_meta_equal_cd(lua_State* L, BCIns ins)
+TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
 {
    ASMFunction cont = (bc_op(ins) & 1) ? lj_cont_condf : lj_cont_condt;
    int op = (int)bc_op(ins) & ~1;
@@ -466,7 +466,7 @@ void lj_meta_call(lua_State* L, TValue* func, TValue* top)
 }
 
 // Helper for FORI. Coercion.
-void  lj_meta_for(lua_State* L, TValue* o)
+void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
 {
    if (!lj_strscan_numberobj(o)) lj_err_msg(L, LJ_ERR_FORINIT);
    if (!lj_strscan_numberobj(o + 1)) lj_err_msg(L, LJ_ERR_FORLIM);
