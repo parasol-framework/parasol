@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_FUNC_H
-#define _LJ_FUNC_H
+#pragma once
 
 #include "lj_obj.h"
 
@@ -21,4 +20,3 @@ LJ_FUNC GCfunc *lj_func_newL_empty(lua_State *L, GCproto *pt, GCtab *env);
 LJ_FUNCA GCfunc *lj_func_newL_gc(lua_State *L, GCproto *pt, GCfuncL *parent);
 LJ_FUNC void LJ_FASTCALL lj_func_free(global_State *g, GCfunc *c);
 
-#endif

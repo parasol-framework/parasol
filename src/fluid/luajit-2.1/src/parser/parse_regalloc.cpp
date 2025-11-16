@@ -385,7 +385,7 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 [[nodiscard]] static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
 {
    BCPos pc;
-   
+
    if (e->k == ExpKind::Relocable) {
       BCIns* ip = bcptr(fs, e);
       if (bc_op(*ip) == BC_NOT) {
@@ -428,12 +428,12 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   
+
    if (e->k == ExpKind::Nil or e->k == ExpKind::False) pc = NO_JMP;  // Never jump.
    else if (e->k == ExpKind::Jmp) pc = e->u.s.info;
    else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
-   
+
    jmp_append(fs, &e->t, pc);
    jmp_tohere(fs, e->f);
    e->f = NO_JMP;

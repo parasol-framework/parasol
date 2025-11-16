@@ -392,7 +392,7 @@ static void* CALL_MREMAP_(void* ptr, size_t osz, size_t nsz, int flags)
 // -----------------------  Chunk representations ------------------------
 
 struct malloc_chunk {
-   size_t               prev_foot;  //  Size of previous chunk (if free). 
+   size_t               prev_foot;  //  Size of previous chunk (if free).
    size_t               head;       //  Size and inuse bits.
    struct malloc_chunk* fd;         //  double links -- used only if free.
    struct malloc_chunk* bk;

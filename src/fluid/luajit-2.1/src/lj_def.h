@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_DEF_H
-#define _LJ_DEF_H
+#pragma once
 
 #include "lua.h"
 
@@ -394,5 +393,3 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 typedef struct PRNGState {
    uint64_t u[4];
 } PRNGState;
-
-#endif

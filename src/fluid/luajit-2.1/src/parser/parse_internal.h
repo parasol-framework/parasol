@@ -10,26 +10,26 @@
 
 struct LHSVarList;  // Defined in lj_parse_stmt.cpp
 
-// -- Error handling (lj_parse_core.c) -------------------------------------
+// Error handling (lj_parse_core.c)
 
 LJ_NORET LJ_NOINLINE static void err_syntax(LexState* ls, ErrMsg em);
 LJ_NORET LJ_NOINLINE static void err_token(LexState* ls, LexToken tok);
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what);
 
-// -- Lexer helpers (lj_parse_core.c) ---------------------------------------
+// Lexer helpers (lj_parse_core.c)
 
 static int lex_opt(LexState* ls, LexToken tok);
 static void lex_check(LexState* ls, LexToken tok);
 static void lex_match(LexState* ls, LexToken what, LexToken who, BCLine line);
 static GCstr* lex_str(LexState* ls);
 
-// -- Constants (lj_parse_constants.c) --------------------------------------
+// Constants (lj_parse_constants.c)
 
 static BCReg const_num(FuncState* fs, ExpDesc* e);
 static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype);
 static BCReg const_str(FuncState* fs, ExpDesc* e);
 
-// -- Jump list handling (lj_parse_constants.c) ----------------------------
+// Jump list handling (lj_parse_constants.c)
 
 static BCPos jmp_next(FuncState* fs, BCPos pc);
 static int jmp_novalue(FuncState* fs, BCPos list);
@@ -37,19 +37,20 @@ static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg);
 static void jmp_dropval(FuncState* fs, BCPos list);
 static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest);
 static void jmp_append(FuncState* fs, BCPos* l1, BCPos l2);
-static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget,
-   BCReg reg, BCPos dtarget);
+static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget, BCReg reg, BCPos dtarget);
 static void jmp_tohere(FuncState* fs, BCPos list);
 static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 
-// -- Expression flag lifecycle management ------------------------------------
+// Expression flag lifecycle management
 
 // Helper functions for managing expression flags with explicit lifecycle semantics.
 // These make flag ownership and consumption more explicit and easier to audit.
 
 // Consume a flag from an expression, clearing it and returning whether it was set.
 // Use this when an operator takes ownership of a flagged value.
-[[nodiscard]] static inline bool expr_consume_flag(ExpDesc* e, uint8_t flag) {
+
+[[nodiscard]] static inline bool expr_consume_flag(ExpDesc* e, uint8_t flag)
+{
    if (e->flags & flag) {
       e->flags &= ~flag;
       return true;
@@ -58,32 +59,39 @@ static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 }
 
 // Check if an expression has a flag without consuming it.
-[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* e, uint8_t flag) {
+
+[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* e, uint8_t flag)
+{
    return (e->flags & flag) != 0;
 }
 
 // Set a flag on an expression.
-static inline void expr_set_flag(ExpDesc* e, uint8_t flag) {
+
+static inline void expr_set_flag(ExpDesc* e, uint8_t flag)
+{
    e->flags |= flag;
 }
 
 // Clear a flag on an expression.
-static inline void expr_clear_flag(ExpDesc* e, uint8_t flag) {
+
+static inline void expr_clear_flag(ExpDesc* e, uint8_t flag)
+{
    e->flags &= ~flag;
 }
 
-// -- Register allocation (lj_parse_regalloc.c) ----------------------------
+// Register allocation (lj_parse_regalloc.c)
 
 static void bcreg_bump(FuncState* fs, BCReg n);
 static void bcreg_reserve(FuncState* fs, BCReg n);
 static void bcreg_free(FuncState* fs, BCReg reg);
 static void expr_free(FuncState* fs, ExpDesc* e);
 
-// -- Bytecode emission (lj_parse_regalloc.c) ------------------------------
+// Bytecode emission (lj_parse_regalloc.c)
 
 static BCPos bcemit_INS(FuncState* fs, BCIns ins);
 
 // Bytecode emission helper functions.
+
 template<typename Op>
 static inline BCPos bcemit_ABC(FuncState* fs, Op o, BCReg a, BCReg b, BCReg c) {
    return bcemit_INS(fs, BCINS_ABC(o, a, b, c));
@@ -98,6 +106,7 @@ template<typename Op>
 static inline BCPos bcemit_AJ(FuncState* fs, Op o, BCReg a, BCPos j) {
    return bcemit_INS(fs, BCINS_AJ(o, a, j));
 }
+
 static void expr_discharge(FuncState* fs, ExpDesc* e);
 static void bcemit_nil(FuncState* fs, BCReg from, BCReg n);
 static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg);
@@ -113,7 +122,7 @@ static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond);
 static void bcemit_branch_t(FuncState* fs, ExpDesc* e);
 static void bcemit_branch_f(FuncState* fs, ExpDesc* e);
 
-// -- Operators (lj_parse_operators.c) -------------------------------------
+// Operators (lj_parse_operators.c)
 
 static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
@@ -126,7 +135,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);
 
-// -- Variables and scope (lj_parse_scope.c) -------------------------------
+// Variables and scope (lj_parse_scope.c)
 
 static int is_blank_identifier(GCstr* name);
 static void var_new(LexState* ls, BCReg n, GCstr* name);
@@ -136,7 +145,7 @@ static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n);
 static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e);
 static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first);
 
-// -- Goto and labels (lj_parse_scope.c) -----------------------------------
+// Goto and labels (lj_parse_scope.c)
 
 static MSize gola_new(LexState* ls, int jump_type, uint8_t info, BCPos pc);
 static void gola_patch(LexState* ls, VarInfo* vg, VarInfo* vl);
@@ -144,7 +153,7 @@ static void gola_close(LexState* ls, VarInfo* vg);
 static void gola_resolve(LexState* ls, FuncScope* bl, MSize idx);
 static void gola_fixup(LexState* ls, FuncScope* bl);
 
-// -- Function scope (lj_parse_scope.c) ------------------------------------
+// Function scope (lj_parse_scope.c)
 
 static void fscope_begin(FuncState* fs, FuncScope* bl, int flags);
 static void fscope_loop_continue(FuncState* fs, BCPos pos);
@@ -152,15 +161,11 @@ static void execute_defers(FuncState* fs, BCReg limit);
 static void fscope_end(FuncState* fs);
 static void fscope_uvmark(FuncState* fs, BCReg level);
 
-// -- RAII Helper Classes --------------------------------------------------
+#include "parse_raii.h"
 
-#include "lj_parse_raii.h"
+#include "parse_concepts.h"
 
-// -- C++20 Concepts -------------------------------------------------------
-
-#include "lj_parse_concepts.h"
-
-// -- Function state (lj_parse_scope.c) ------------------------------------
+// Function state (lj_parse_scope.c)
 
 static void fs_fixup_bc(FuncState* fs, GCproto* pt, BCIns* bc, MSize n);
 static void fs_fixup_uv2(FuncState* fs, GCproto* pt);
@@ -176,7 +181,7 @@ static void fs_fixup_ret(FuncState* fs);
 static GCproto* fs_finish(LexState* ls, BCLine line);
 static void fs_init(LexState* ls, FuncState* fs);
 
-// -- Expressions (lj_parse_expr.c) ----------------------------------------
+// Expressions (lj_parse_expr.c)
 
 static void expr(LexState* ls, ExpDesc* v);
 static void expr_str(LexState* ls, ExpDesc* e);
@@ -186,8 +191,7 @@ static void expr_bracket(LexState* ls, ExpDesc* v);
 static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e);
 static void expr_table(LexState* ls, ExpDesc* e);
 static BCReg parse_params(LexState* ls, int needself);
-static void parse_body_impl(LexState* ls, ExpDesc* e, int needself,
-   BCLine line);
+static void parse_body_impl(LexState* ls, ExpDesc* e, int needself, BCLine line);
 static void parse_body(LexState* ls, ExpDesc* e, int needself, BCLine line);
 static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line);
 static BCReg expr_list(LexState* ls, ExpDesc* v);
@@ -203,7 +207,7 @@ static void expr_unop(LexState* ls, ExpDesc* v);
 static void expr_next(LexState* ls);
 static BCPos expr_cond(LexState* ls);
 
-// -- Statements (lj_parse_stmt.c) -----------------------------------------
+// Statements (lj_parse_stmt.c)
 
 static void assign_hazard(LexState* ls, LHSVarList* lh, const ExpDesc* v);
 static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e);

@@ -94,14 +94,15 @@ set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
 set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
 
 # Library source files needed for buildvm header generation (used in both build paths)
+
 set (LJLIB_C
-   "${LUAJIT_SRC}/lib_base.cpp"
-   "${LUAJIT_SRC}/lib_math.cpp"
-   "${LUAJIT_SRC}/lib_bit.cpp"
-   "${LUAJIT_SRC}/lib_string.cpp"
-   "${LUAJIT_SRC}/lib_table.cpp"
-   "${LUAJIT_SRC}/lib_debug.cpp"
-   "${LUAJIT_SRC}/lib_jit.cpp"
+   "${LUAJIT_SRC}/lib/lib_base.cpp"
+   "${LUAJIT_SRC}/lib/lib_math.cpp"
+   "${LUAJIT_SRC}/lib/lib_bit.cpp"
+   "${LUAJIT_SRC}/lib/lib_string.cpp"
+   "${LUAJIT_SRC}/lib/lib_table.cpp"
+   "${LUAJIT_SRC}/lib/lib_debug.cpp"
+   "${LUAJIT_SRC}/lib/lib_jit.cpp"
 )
 
 # Buildvm source files (used in both build paths)
@@ -115,7 +116,7 @@ set (BUILDVM_SOURCES
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
-set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR})
+set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib -I${LUAJIT_SRC}/parser -I${LUAJIT_SRC}/runtime)
 set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
@@ -132,9 +133,24 @@ if (MSVC)
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
-   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.cpp")
-   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.cpp")
-   file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
+
+   file(GLOB LUAJIT_CORE_SOURCES
+      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
+      "${LUAJIT_SRC}/debug/lj_*.cpp"
+      "${LUAJIT_SRC}/lib/lj_*.cpp"
+      "${LUAJIT_SRC}/parser/lj_*.cpp"
+      "${LUAJIT_SRC}/runtime/lj_*.cpp"
+      "${LUAJIT_SRC}/lj_*.cpp")
+
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
+
+   file(GLOB LUAJIT_DEP_LJ_H
+      "${LUAJIT_SRC}/bytecode/lj_*.h"
+      "${LUAJIT_SRC}/debug/lj_*.h"
+      "${LUAJIT_SRC}/lib/lj_*.h"
+      "${LUAJIT_SRC}/parser/lj_*.h"
+      "${LUAJIT_SRC}/runtime/lj_*.h"
+      "${LUAJIT_SRC}/lj_*.h")
 
    # Platform-specific paths
    set (MINILUA_TARGET "${LUAJIT_BUILD_DIR}/minilua.exe")
@@ -143,11 +159,11 @@ if (MSVC)
 
    # Detect target architecture (x64 vs x86)
    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x64.dasc")
+      set (LUAJIT_DASC "${LUAJIT_SRC}/jit/vm_x64.dasc")
       set (LUAJIT_DASMFLAGS -D WIN -D JIT -D P64)
       set (LUAJIT_ARCH "x64")
    else()
-      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x86.dasc")
+      set (LUAJIT_DASC "${LUAJIT_SRC}/jit/vm_x86.dasc")
       set (LUAJIT_DASMFLAGS -D WIN -D JIT)
       set (LUAJIT_ARCH "x86")
    endif()
@@ -183,7 +199,7 @@ if (MSVC)
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
-         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR}
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
          ${BUILDVM_SOURCES}
       COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
          ${LUAJIT_BUILD_DIR}/buildvm.obj
@@ -215,7 +231,6 @@ if (MSVC)
 
    add_custom_target(luajit_codegen DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ})
 
-
    # Create LuaJIT static library
    add_library(luajit_lib STATIC ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES} ${LUAJIT_VM_OBJ})
 
@@ -229,6 +244,11 @@ if (MSVC)
 
    target_include_directories(luajit_lib PRIVATE
       "${LUAJIT_SRC}"
+      "${LUAJIT_SRC}/bytecode"
+      "${LUAJIT_SRC}/debug"
+      "${LUAJIT_SRC}/lib"
+      "${LUAJIT_SRC}/parser"
+      "${LUAJIT_SRC}/runtime"
       "${LUAJIT_BUILD_DIR}"  # Include generated headers from build dir
    )
 
@@ -345,7 +365,7 @@ else ()
    file(WRITE ${DYNASM_SCRIPT}
          "# Use architecture determined by CMake\n"
          "set(ARCH \"${LUAJIT_TARGET_ARCH}\")\n"
-         "set(DASM_DASC \"${LUAJIT_SRC}/vm_\${ARCH}.dasc\")\n"
+         "set(DASM_DASC \"${LUAJIT_SRC}/jit/vm_\${ARCH}.dasc\")\n"
          "if(NOT EXISTS \"\${DASM_DASC}\")\n"
          "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
          "endif()\n"
@@ -422,9 +442,9 @@ else ()
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
       DEPENDS ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
-         "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
-         "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
-         "${LUAJIT_SRC}/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
+         "${LUAJIT_SRC}/jit/vm_x64.dasc" "${LUAJIT_SRC}/jit/vm_x86.dasc" "${LUAJIT_SRC}/jit/vm_arm.dasc"
+         "${LUAJIT_SRC}/jit/vm_arm64.dasc" "${LUAJIT_SRC}/jit/vm_ppc.dasc" "${LUAJIT_SRC}/jit/vm_mips.dasc"
+         "${LUAJIT_SRC}/jit/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )
@@ -486,10 +506,15 @@ else ()
          DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_S} ${LUAJIT_VMDEF_LUA}
       )
    endif ()
-   
+
    file(GLOB LUAJIT_AMALG_SOURCES
       "${LUAJIT_SRC}/lj_*.cpp"
       "${LUAJIT_SRC}/lib_*.cpp"
+      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
+      "${LUAJIT_SRC}/debug/lj_*.cpp"
+      "${LUAJIT_SRC}/lib/lj_*.cpp"
+      "${LUAJIT_SRC}/parser/lj_*.cpp"
+      "${LUAJIT_SRC}/runtime/lj_*.cpp"
    )
 
    if (WIN32)
@@ -592,6 +617,11 @@ endif ()
 target_sources (${MOD} PRIVATE ${FLUID_SOURCES})
 
 target_include_directories (${MOD} PRIVATE
+   "${LUAJIT_SRC}/bytecode"
+   "${LUAJIT_SRC}/debug"
+   "${LUAJIT_SRC}/lib"
+   "${LUAJIT_SRC}/parser"
+   "${LUAJIT_SRC}/runtime"
    "${CMAKE_BINARY_DIR}/libffi-3.3/include")
 
 target_link_libraries (${MOD} PRIVATE
