@@ -196,7 +196,7 @@ static void close_state(lua_State* L)
 #if LJ_64 && !LJ_GC64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
 lua_State* lj_state_newstate(lua_Alloc allocf, void* allocd)
 #else
-LUA_API lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
+extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
 #endif
 {
    PRNGState prng;
@@ -274,7 +274,7 @@ static TValue* cpfinalize(lua_State* L, lua_CFunction dummy, void* ud)
    return nullptr;
 }
 
-LUA_API void lua_close(lua_State* L)
+extern void lua_close(lua_State* L)
 {
    global_State* g = G(L);
    int i;

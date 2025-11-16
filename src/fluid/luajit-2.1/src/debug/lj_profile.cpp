@@ -295,7 +295,7 @@ static void profile_timer_stop(ProfileState *ps)
 // -- Public profiling API ------------------------------------------------
 
 // Start profiling.
-LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
+extern void luaJIT_profile_start(lua_State *L, const char *mode,
               luaJIT_profile_callback cb, void *data)
 {
   ProfileState *ps = &profile_state;
@@ -333,7 +333,7 @@ LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
 }
 
 // Stop profiling.
-LUA_API void luaJIT_profile_stop(lua_State *L)
+extern void luaJIT_profile_stop(lua_State *L)
 {
   ProfileState *ps = &profile_state;
   global_State *g = ps->g;
@@ -352,7 +352,7 @@ LUA_API void luaJIT_profile_stop(lua_State *L)
 }
 
 // Return a compact stack dump.
-LUA_API const char *luaJIT_profile_dumpstack(lua_State *L, const char *fmt,
+extern const char *luaJIT_profile_dumpstack(lua_State *L, const char *fmt,
                     int depth, size_t *len)
 {
   ProfileState *ps = &profile_state;

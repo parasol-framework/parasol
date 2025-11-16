@@ -11,6 +11,9 @@
 #endif
 #include <limits.h>
 #include <stddef.h>
+#include <cstdio>
+
+#define IS ==
 
 // Default path for loading Lua and C modules with require().
 #if defined(_WIN32)
@@ -118,7 +121,11 @@ constexpr int LUA_IDSIZE = 60;   //  Size of lua_Debug.short_src.
 #define LUAI_UACNUMBER      double
 #define LUA_NUMBER_SCAN      "%lf"
 #define LUA_NUMBER_FMT      "%.14g"
-#define lua_number2str(s, n)   sprintf((s), LUA_NUMBER_FMT, (n))
+
+inline int lua_number2str(char *S, double N) {
+   return sprintf(S, LUA_NUMBER_FMT, N);
+}
+
 constexpr int LUAI_MAXNUMBER2STR = 32;
 #define LUA_INTFRMLEN      "l"
 #define LUA_INTFRM_T      long
@@ -128,15 +135,17 @@ constexpr int LUAI_MAXNUMBER2STR = 32;
 
 // Compatibility support for assertions.
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
-#include <assert.h>
+#include <cassert>
 #endif
+
 #ifdef LUA_USE_ASSERT
 #define lua_assert(x)      assert(x)
 #endif
+
 #ifdef LUA_USE_APICHECK
-#define luai_apicheck(L, o)   { (void)L; assert(o); }
+#define luai_apicheck(L, o)   do { (void)(L); assert(o); } while(0)
 #else
-#define luai_apicheck(L, o)   { (void)L; }
+#define luai_apicheck(L, o)   do { (void)(L); (void)(o); } while(0)
 #endif
 
 #endif

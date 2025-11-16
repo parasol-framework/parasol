@@ -1053,7 +1053,7 @@ LJ_NOINLINE void lj_err_argt(lua_State* L, int narg, int tt)
 
 // Public error handling API
 
-LUA_API lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
+extern lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
 {
    lua_CFunction old = G(L)->panic;
    G(L)->panic = panicf;
@@ -1061,7 +1061,7 @@ LUA_API lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
 }
 
 // Forwarders for the public API (C calling convention and no LJ_NORET).
-LUA_API int lua_error(lua_State* L)
+extern int lua_error(lua_State* L)
 {
    lj_err_run(L);
    return 0;  //  unreachable

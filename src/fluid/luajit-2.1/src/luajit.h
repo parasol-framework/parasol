@@ -62,18 +62,18 @@ enum {
 // LuaJIT public C API.
 
 // Control the JIT engine.
-LUA_API int luaJIT_setmode(lua_State* L, int idx, int mode);
+extern int luaJIT_setmode(lua_State* L, int idx, int mode);
 
 // Low-overhead profiling API.
 typedef void (*luaJIT_profile_callback)(void* data, lua_State* L,
    int samples, int vmstate);
-LUA_API void luaJIT_profile_start(lua_State* L, const char* mode,
+extern void luaJIT_profile_start(lua_State* L, const char* mode,
    luaJIT_profile_callback cb, void* data);
-LUA_API void luaJIT_profile_stop(lua_State* L);
-LUA_API const char* luaJIT_profile_dumpstack(lua_State* L, const char* fmt,
+extern void luaJIT_profile_stop(lua_State* L);
+extern const char* luaJIT_profile_dumpstack(lua_State* L, const char* fmt,
    int depth, size_t* len);
 
 // Enforce (dynamic) linker error for version mismatches. Call from main.
-LUA_API void LUAJIT_VERSION_SYM(void);
+extern void LUAJIT_VERSION_SYM(void);
 
 #endif
