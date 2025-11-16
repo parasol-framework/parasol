@@ -25,8 +25,7 @@
 ** [ MIT license: https://www.opensource.org/licenses/mit-license.php ]
 */
 
-#ifndef _LUAJIT_H
-#define _LUAJIT_H
+#pragma once
 
 #include "lua.h"
 
@@ -40,22 +39,18 @@
 #define LUAJIT_MODE_MASK   0x00ff
 
 enum {
-   LUAJIT_MODE_ENGINE,      //  Set mode for whole JIT engine.
-   LUAJIT_MODE_DEBUG,      //  Set debug mode (idx = level).
-
-   LUAJIT_MODE_FUNC,      //  Change mode for a function.
+   LUAJIT_MODE_ENGINE,       //  Set mode for whole JIT engine.
+   LUAJIT_MODE_DEBUG,        //  Set debug mode (idx = level).
+   LUAJIT_MODE_FUNC,         //  Change mode for a function.
    LUAJIT_MODE_ALLFUNC,      //  Recurse into subroutine protos.
    LUAJIT_MODE_ALLSUBFUNC,   //  Change only the subroutines.
-
-   LUAJIT_MODE_TRACE,      //  Flush a compiled trace.
-
+   LUAJIT_MODE_TRACE,        //  Flush a compiled trace.
    LUAJIT_MODE_WRAPCFUNC = 0x10,   //  Set wrapper mode for C function calls.
-
    LUAJIT_MODE_MAX
 };
 
 // Flags or'ed in to the mode.
-#define LUAJIT_MODE_OFF      0x0000   //  Turn feature off.
+#define LUAJIT_MODE_OFF     0x0000   //  Turn feature off.
 #define LUAJIT_MODE_ON      0x0100   //  Turn feature on.
 #define LUAJIT_MODE_FLUSH   0x0200   //  Flush JIT-compiled code.
 
@@ -65,15 +60,10 @@ enum {
 extern int luaJIT_setmode(lua_State* L, int idx, int mode);
 
 // Low-overhead profiling API.
-typedef void (*luaJIT_profile_callback)(void* data, lua_State* L,
-   int samples, int vmstate);
-extern void luaJIT_profile_start(lua_State* L, const char* mode,
-   luaJIT_profile_callback cb, void* data);
+typedef void (*luaJIT_profile_callback)(void* data, lua_State* L, int samples, int vmstate);
+extern void luaJIT_profile_start(lua_State* L, const char* mode, luaJIT_profile_callback cb, void* data);
 extern void luaJIT_profile_stop(lua_State* L);
-extern const char* luaJIT_profile_dumpstack(lua_State* L, const char* fmt,
-   int depth, size_t* len);
+extern const char* luaJIT_profile_dumpstack(lua_State* L, const char* fmt, int depth, size_t* len);
 
 // Enforce (dynamic) linker error for version mismatches. Call from main.
 extern void LUAJIT_VERSION_SYM(void);
-
-#endif

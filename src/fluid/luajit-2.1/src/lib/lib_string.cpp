@@ -1054,7 +1054,7 @@ LJLIB_CF(string_format)      LJLIB_REC(.)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_string(lua_State* L)
+extern int luaopen_string(lua_State* L)
 {
    GCtab* mt;
    global_State* g;

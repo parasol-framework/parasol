@@ -23,9 +23,10 @@
 #include "lj_bcdump.h"
 #include "../parser/lj_parse.h"
 
-// -- Load Lua source code and bytecode
+//********************************************************************************************************************
+// Load Lua source code and bytecode
 
-static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
+static TValue* cpparser(lua_State *L, lua_CFunction dummy, void* ud)
 {
    LexState* ls = (LexState*)ud;
    GCproto* pt;
@@ -45,10 +46,12 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    return nullptr;
 }
 
-extern int lua_loadx(lua_State* L, lua_Reader reader, void* data,
-   const char* chunkname, const char* mode)
+//********************************************************************************************************************
+
+extern int lua_loadx(lua_State* L, lua_Reader reader, void* data, const char* chunkname, const char* mode)
 {
-   LexState ls(L, reader, data, chunkname ? chunkname : "?", mode);
+   LexState ls(L, reader, data, chunkname ? chunkname : "?",
+      mode ? std::optional<std::string_view>(mode) : std::nullopt);
    int status;
    status = lj_vm_cpcall(L, nullptr, &ls, cpparser);
    // Destructor will be called automatically when ls goes out of scope
@@ -74,6 +77,9 @@ static const char* reader_file(lua_State* L, void* ud, size_t* size)
    *size = fread(ctx->buf, 1, sizeof(ctx->buf), ctx->fp);
    return *size > 0 ? ctx->buf : nullptr;
 }
+
+//********************************************************************************************************************
+// Load a file as a Lua chunk.
 
 extern int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
 {
@@ -108,10 +114,14 @@ extern int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
    return status;
 }
 
+//********************************************************************************************************************
+
 extern int luaL_loadfile(lua_State* L, const char* filename)
 {
    return luaL_loadfilex(L, filename, nullptr);
 }
+
+//********************************************************************************************************************
 
 typedef struct StringReaderCtx {
    const char* str;
@@ -147,15 +157,14 @@ extern int luaL_loadstring(lua_State* L, const char* s)
    return luaL_loadbuffer(L, s, strlen(s), s);
 }
 
-// -- Dump bytecode
+//********************************************************************************************************************
+// Dump bytecode
 
 extern int lua_dump(lua_State* L, lua_Writer writer, void* data)
 {
    cTValue* o = L->top - 1;
    lj_checkapi(L->top > L->base, "top slot empty");
-   if (tvisfunc(o) and isluafunc(funcV(o)))
-      return lj_bcwrite(L, funcproto(funcV(o)), writer, data, 0);
-   else
-      return 1;
+   if (tvisfunc(o) and isluafunc(funcV(o))) return lj_bcwrite(L, funcproto(funcV(o)), writer, data, 0);
+   else return 1;
 }
 

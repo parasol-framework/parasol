@@ -2,17 +2,17 @@
 
 // List of LHS variables.
 
-typedef struct LHSVarList {
+struct LHSVarList {
    ExpDesc var;			// LHS variable.
-   struct LHSVarList *prev;	// Link to previous LHS variable.
-} LHSVarList;
+   LHSVarList* prev;	   // Link to previous LHS variable.
+};
 
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
 
-static void assign_hazard(LexState *State, LHSVarList *Left, const ExpDesc *Var)
+void LexState::assign_hazard(LHSVarList* Left, const ExpDesc* Var)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCReg reg = Var->u.s.info;  // Check against this variable.
    BCReg tmp = fs->freereg;  // Rename to this temp. register (if needed).
    int hazard = 0;
@@ -39,9 +39,9 @@ static void assign_hazard(LexState *State, LHSVarList *Left, const ExpDesc *Var)
 //********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 
-static void assign_adjust(LexState *State, BCReg nvars, BCReg nexps, ExpDesc* e)
+void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc* e)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    int32_t extra = int32_t(nvars) - int32_t(nexps);
    if (e->k IS ExpKind::Call) {
       extra++;  // Compensate for the ExpKind::Call itself.
@@ -58,14 +58,14 @@ static void assign_adjust(LexState *State, BCReg nvars, BCReg nexps, ExpDesc* e)
       }
    }
 
-   if (nexps > nvars) State->fs->freereg -= nexps - nvars;  // Drop leftover regs.
+   if (nexps > nvars) fs->freereg -= nexps - nvars;  // Drop leftover regs.
 }
 
 //********************************************************************************************************************
 
-static int assign_if_empty(LexState *State, LHSVarList* lh)
+int LexState::assign_if_empty(LHSVarList* lh)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc lhv, lhs_eval, rh;
    ExpDesc nilv, falsev, zerov, emptyv;
    BCReg freg_base, lhs_reg;
@@ -75,9 +75,9 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
 
    lhv = lh->var;
 
-   checkcond(State, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
 
-   State->next();
+   this->next();
 
    freg_base = fs->freereg;
 
@@ -117,7 +117,7 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
    check_zero = bcemit_jmp(fs);
 
    expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = lj_parse_keepstr(State, "", 0);
+   emptyv.u.sval = this->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -125,8 +125,8 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
 
    assign_pos = fs->pc;
 
-   nexps = expr_list(State, &rh);
-   checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+   nexps = this->expr_list(&rh);
+   checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
 
    expr_discharge(fs, &rh);
    expr_toreg(fs, &rh, lhs_reg);
@@ -151,11 +151,11 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
 
 //********************************************************************************************************************
 
-static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
+int LexState::assign_compound(LHSVarList* lh, LexToken opType)
 {
-   if (opType IS TK_cif_empty) return assign_if_empty(State, lh);
+   if (opType IS TK_cif_empty) return this->assign_if_empty(lh);
 
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc lhv, infix, rh;
    int32_t nexps;
    BinOpr op;
@@ -163,7 +163,7 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
 
    lhv = lh->var;
 
-   checkcond(State, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
 
    switch (opType) {
    case TK_cadd: op = OPR_ADD; break;
@@ -173,10 +173,10 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
    case TK_cmod: op = OPR_MOD; break;
    case TK_cconcat: op = OPR_CONCAT; break;
    default:
-      State->assert_condition(0, "unknown compound operator");
+      this->assert_condition(0, "unknown compound operator");
       return 0;
    }
-   State->next();
+   this->next();
 
    // Preserve table base/index across RHS evaluation by duplicating them
    // to the top of the stack and discharging using the duplicates. This retains
@@ -214,16 +214,16 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
    if (op IS OPR_CONCAT) {
       infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
-      nexps = expr_list(State, &rh);
-      checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+      nexps = this->expr_list(&rh);
+      checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
 
       if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR))
          expr_tonextreg(fs, &lh->var);
-      nexps = expr_list(State, &rh);
-      checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+      nexps = this->expr_list(&rh);
+      checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
       infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
    }
@@ -244,27 +244,27 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
 //********************************************************************************************************************
 // Recursively parse assignment statement.
 
-static void parse_assignment(LexState *State, LHSVarList* lh, BCReg nvars)
+void LexState::parse_assignment(LHSVarList* lh, BCReg nvars)
 {
    ExpDesc e;
-   checkcond(State, ExpKind::Local <= lh->var.k and lh->var.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
-   if (lex_opt(State, ',')) {  // Collect LHS list and recurse upwards.
+   checkcond(this, ExpKind::Local <= lh->var.k and lh->var.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
+   if (this->lex_opt(',')) {  // Collect LHS list and recurse upwards.
       LHSVarList vl;
       vl.prev = lh;
-      expr_primary(State, &vl.var);
+      this->expr_primary(&vl.var);
       if (vl.var.k IS ExpKind::Local)
-         assign_hazard(State, lh, &vl.var);
-      checklimit(State->fs, State->level + nvars, LJ_MAX_XLEVEL, "variable names");
-      parse_assignment(State, &vl, nvars + 1);
+         this->assign_hazard(lh, &vl.var);
+      checklimit(this->fs, this->level + nvars, LJ_MAX_XLEVEL, "variable names");
+      this->parse_assignment(&vl, nvars + 1);
    }
    else {  // Parse RHS.
       BCReg nexps;
-      lex_check(State, '=');
-      nexps = expr_list(State, &e);
+      this->lex_check('=');
+      nexps = this->expr_list(&e);
       if (nexps IS nvars) {
          if (e.k IS ExpKind::Call) {
-            if (bc_op(*bcptr(State->fs, &e)) IS BC_VARG) {  // Vararg assignment.
-               State->fs->freereg--;
+            if (bc_op(*bcptr(this->fs, &e)) IS BC_VARG) {  // Vararg assignment.
+               this->fs->freereg--;
                e.k = ExpKind::Relocable;
             }
             else {  // Multiple call results.
@@ -272,82 +272,84 @@ static void parse_assignment(LexState *State, LHSVarList* lh, BCReg nvars)
                e.k = ExpKind::NonReloc;
             }
          }
-         bcemit_store(State->fs, &lh->var, &e);
+         bcemit_store(this->fs, &lh->var, &e);
          return;
       }
-      assign_adjust(State, nvars, nexps, &e);
+      this->assign_adjust(nvars, nexps, &e);
    }
 
    // Assign RHS to LHS and recurse downwards.
-   expr_init(&e, ExpKind::NonReloc, State->fs->freereg - 1);
-   bcemit_store(State->fs, &lh->var, &e);
+   expr_init(&e, ExpKind::NonReloc, this->fs->freereg - 1);
+   bcemit_store(this->fs, &lh->var, &e);
 }
 
 //********************************************************************************************************************
 // Parse call statement or assignment.
 
-static void parse_call_assign(LexState *State)
+void LexState::parse_call_assign()
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    LHSVarList vl;
-   expr_primary(State, &vl.var);
+   this->expr_primary(&vl.var);
    if (vl.var.k IS ExpKind::NonReloc and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
       return;
    if (vl.var.k IS ExpKind::Call) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.var), 1);  // No results.
    }
-   else if (State->tok IS TK_cadd or State->tok IS TK_csub or State->tok IS TK_cmul or
-      State->tok IS TK_cdiv or State->tok IS TK_cmod or State->tok IS TK_cconcat or
-      State->tok IS TK_cif_empty) {
+   else if (this->tok IS TK_cadd or this->tok IS TK_csub or this->tok IS TK_cmul or
+      this->tok IS TK_cdiv or this->tok IS TK_cmod or this->tok IS TK_cconcat or
+      this->tok IS TK_cif_empty) {
       vl.prev = nullptr;
-      assign_compound(State, &vl, State->tok);
+      this->assign_compound(&vl, this->tok);
    }
-   else if (State->tok IS ';') {
+   else if (this->tok IS ';') {
       // Postfix increment (++) handled in expr_primary.
    }
    else {  // Start of an assignment.
       vl.prev = nullptr;
-      parse_assignment(State, &vl, 1);
+      this->parse_assignment(&vl, 1);
    }
 }
 
 //********************************************************************************************************************
 // Parse 'local' statement.
 
-static void parse_local(LexState *State)
+void LexState::parse_local()
 {
-   if (lex_opt(State, TK_function)) {  // Local function declaration.
+   this->next();  // Skip 'local'.
+
+   if (this->lex_opt(TK_function)) {  // Local function declaration.
       ExpDesc v, b;
-      FuncState* fs = State->fs;
-      var_new(State, 0, lex_str(State));
+      FuncState* fs = this->fs;
+      this->var_new(0, this->lex_str());
       expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
       bcreg_reserve(fs, 1);
-      var_add(State, 1);
-      parse_body(State, &b, 0, State->linenumber);
+      this->var_add(1);
+      this->parse_body(&b, 0, this->linenumber);
       // bcemit_store(fs, &v, &b) without setting VSTACK_VAR_RW.
       expr_free(fs, &b);
       expr_toreg(fs, &b, v.u.s.info);
       // The upvalue is in scope, but the local is only valid after the store.
-      var_get(State, fs, fs->nactvar - 1).startpc = fs->pc;
+      var_get(this, fs, fs->nactvar - 1).startpc = fs->pc;
    }
    else {  // Local variable declaration.
       ExpDesc e;
       BCReg nexps, nvars = 0;
       do {  // Collect LHS.
-         GCstr* name = lex_str(State);
+         GCstr* name = this->lex_str();
          // Use NAME_BLANK marker for blank identifiers.
-         var_new(State, nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
-      } while (lex_opt(State, ','));
-      if (lex_opt(State, '=')) {  // Optional RHS.
-         nexps = expr_list(State, &e);
+         this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
+      } while (this->lex_opt(','));
+      if (this->lex_opt('=')) {  // Optional RHS.
+         nexps = this->expr_list(&e);
       }
       else {  // Or implicitly set to nil.
          e.k = ExpKind::Void;
          nexps = 0;
       }
-      assign_adjust(State, nvars, nexps, &e);
-      var_add(State, nvars);
+      this->assign_adjust(nvars, nexps, &e);
+      this->var_add(nvars);
    }
 }
 
@@ -385,44 +387,44 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 
 //********************************************************************************************************************
 
-static void parse_defer(LexState *State)
+void LexState::parse_defer()
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc func, arg;
-   BCLine line = State->linenumber;
+   BCLine line = this->linenumber;
    BCReg reg = fs->freereg;
    BCReg nargs = 0;
    VarInfo* vi;
 
-   State->next();  // Skip 'defer'.
-   var_new(State, 0, NAME_BLANK);
+   this->next();  // Skip 'defer'.
+   this->var_new(0, NAME_BLANK);
    bcreg_reserve(fs, 1);
-   var_add(State, 1);
-   vi = &var_get(State, fs, fs->nactvar - 1);
+   this->var_add(1);
+   vi = &var_get(this, fs, fs->nactvar - 1);
    vi->info |= VSTACK_DEFER;
 
-   parse_body_defer(State, &func, line);
+   this->parse_body_defer(&func, line);
    expr_toreg(fs, &func, reg);
 
-   if (State->tok IS '(') {
-      BCLine argline = State->linenumber;
-      State->next();
-      if (State->tok != ')') {
+   if (this->tok IS '(') {
+      BCLine argline = this->linenumber;
+      this->next();
+      if (this->tok != ')') {
          do {
-            expr(State, &arg);
+            this->expr(&arg);
             expr_tonextreg(fs, &arg);
             nargs++;
-         } while (lex_opt(State, ','));
+         } while (this->lex_opt(','));
       }
 
-      lex_match(State, ')', '(', argline);
+      this->lex_match(')', '(', argline);
 
       if (nargs) {
          BCReg i;
-         for (i = 0; i < nargs; i++) var_new(State, i, NAME_BLANK);
-         var_add(State, nargs);
+         for (i = 0; i < nargs; i++) this->var_new(i, NAME_BLANK);
+         this->var_add(nargs);
          for (i = 0; i < nargs; i++) {
-            VarInfo* argi = &var_get(State, fs, fs->nactvar - nargs + i);
+            VarInfo* argi = &var_get(this, fs, fs->nactvar - nargs + i);
             argi->info |= VSTACK_DEFERARG;
          }
       }
@@ -434,22 +436,22 @@ static void parse_defer(LexState *State)
 //********************************************************************************************************************
 // Parse 'function' statement.
 
-static void parse_func(LexState *State, BCLine line)
+void LexState::parse_func(BCLine line)
 {
    FuncState* fs;
    ExpDesc v, b;
    int needself = 0;
-   State->next();  // Skip 'function'.
+   this->next();  // Skip 'function'.
    // Parse function name.
-   var_lookup(State, &v);
-   while (State->tok IS '.')  // Multiple dot-separated fields.
-      expr_field(State, &v);
-   if (State->tok IS ':') {  // Optional colon to signify method call.
+   this->var_lookup(&v);
+   while (this->tok IS '.')  // Multiple dot-separated fields.
+      this->expr_field(&v);
+   if (this->tok IS ':') {  // Optional colon to signify method call.
       needself = 1;
-      expr_field(State, &v);
+      this->expr_field(&v);
    }
-   parse_body(State, &b, needself, line);
-   fs = State->fs;
+   this->parse_body(&b, needself, line);
+   fs = this->fs;
    bcemit_store(fs, &v, &b);
    fs->bcbase[fs->pc - 1].line = line;  // Set line for the store.
 }
@@ -470,18 +472,18 @@ static int parse_is_end(LexToken tok)
 //********************************************************************************************************************
 // Parse 'return' statement.
 
-static void parse_return(LexState *State)
+void LexState::parse_return()
 {
    BCIns ins;
-   FuncState* fs = State->fs;
-   State->next();  // Skip 'return'.
+   FuncState* fs = this->fs;
+   this->next();  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_is_end(State->tok) or State->tok IS ';') {  // Bare return.
+   if (parse_is_end(this->tok) or this->tok IS ';') {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
-      BCReg nret = expr_list(State, &e);
+      BCReg nret = this->expr_list(&e);
       if (nret IS 1) {  // Return one result.
          if (e.k IS ExpKind::Call) {  // Check for tail call.
             BCIns* ip = bcptr(fs, &e);
@@ -516,33 +518,37 @@ static void parse_return(LexState *State)
 //********************************************************************************************************************
 // Parse 'continue' statement.
 
-static void parse_continue(LexState *State)
+void LexState::parse_continue()
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    FuncScope* loop = fs->bl;
+
+   this->next();  // Skip 'continue'.
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   State->assert_condition(loop != nullptr, "continue outside loop");
+   this->assert_condition(loop != nullptr, "continue outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_CONTINUE;
-   gola_new(State, JUMP_CONTINUE, VSTACK_JUMP, bcemit_jmp(fs));
+   this->gola_new(JUMP_CONTINUE, VSTACK_JUMP, bcemit_jmp(fs));
 }
 
 // Parse 'break' statement.
-static void parse_break(LexState *State)
+void LexState::parse_break()
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    FuncScope* loop = fs->bl;
+
+   this->next();  // Skip 'break'.
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   State->assert_condition(loop != nullptr, "break outside loop");
+   this->assert_condition(loop != nullptr, "break outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_BREAK;
-   gola_new(State, JUMP_BREAK, VSTACK_JUMP, bcemit_jmp(fs));
+   this->gola_new(JUMP_BREAK, VSTACK_JUMP, bcemit_jmp(fs));
 }
 
 //********************************************************************************************************************
@@ -550,32 +556,32 @@ static void parse_break(LexState *State)
 
 // Parse a block.
 
-static void parse_block(LexState *State)
+void LexState::parse_block()
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    FuncScope bl;
    fscope_begin(fs, &bl, 0);
-   parse_chunk(State);
+   this->parse_chunk();
    fscope_end(fs);
 }
 
 //********************************************************************************************************************
 // Parse 'while' statement.
 
-static void parse_while(LexState *State, BCLine line)
+void LexState::parse_while(BCLine line)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCPos start, loop, condexit;
    FuncScope bl;
-   State->next();  // Skip 'while'.
+   this->next();  // Skip 'while'.
    start = fs->lasttarget = fs->pc;
-   condexit = expr_cond(State);
+   condexit = this->expr_cond();
    fscope_begin(fs, &bl, FSCOPE_LOOP);
-   lex_check(State, TK_do);
+   this->lex_check(TK_do);
    loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-   parse_block(State);
+   this->parse_block();
    jmp_patch(fs, bcemit_jmp(fs), start);
-   lex_match(State, TK_end, TK_while, line);
+   this->lex_match(TK_end, TK_while, line);
    fscope_loop_continue(fs, start);
    fscope_end(fs);
    jmp_tohere(fs, condexit);
@@ -585,25 +591,25 @@ static void parse_while(LexState *State, BCLine line)
 //********************************************************************************************************************
 // Parse 'repeat' statement.
 
-static void parse_repeat(LexState *State, BCLine line)
+void LexState::parse_repeat(BCLine line)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCPos loop = fs->lasttarget = fs->pc;
    BCPos condexit, iter;
    FuncScope bl1, bl2;
    fscope_begin(fs, &bl1, FSCOPE_LOOP);  // Breakable loop scope.
    fscope_begin(fs, &bl2, 0);  // Inner scope.
-   State->next();  // Skip 'repeat'.
+   this->next();  // Skip 'repeat'.
    bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-   parse_chunk(State);
-   lex_match(State, TK_until, TK_repeat, line);
+   this->parse_chunk();
+   this->lex_match(TK_until, TK_repeat, line);
    iter = fs->pc;
-   condexit = expr_cond(State);  // Parse condition (still inside inner scope).
+   condexit = this->expr_cond();  // Parse condition (still inside inner scope).
    if (!(bl2.flags & FSCOPE_UPVAL)) {  // No upvalues? Just end inner scope.
       fscope_end(fs);
    }
    else {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
-      parse_break(State);  // Break from loop and close upvalues.
+      this->parse_break();  // Break from loop and close upvalues.
       jmp_tohere(fs, condexit);
       fscope_end(fs);  // End inner scope and close upvalues.
       condexit = bcemit_jmp(fs);
@@ -617,36 +623,36 @@ static void parse_repeat(LexState *State, BCLine line)
 //********************************************************************************************************************
 // Parse numeric 'for'.
 
-static void parse_for_num(LexState *State, GCstr* varname, BCLine line)
+void LexState::parse_for_num(GCstr* varname, BCLine line)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCReg base = fs->freereg;
    FuncScope bl;
    BCPos loop, loopend;
    // Hidden control variables.
-   var_new_fixed(State, FORL_IDX, VARNAME_FOR_IDX);
-   var_new_fixed(State, FORL_STOP, VARNAME_FOR_STOP);
-   var_new_fixed(State, FORL_STEP, VARNAME_FOR_STEP);
+   this->var_new_fixed(FORL_IDX, VARNAME_FOR_IDX);
+   this->var_new_fixed(FORL_STOP, VARNAME_FOR_STOP);
+   this->var_new_fixed(FORL_STEP, VARNAME_FOR_STEP);
    // Visible copy of index variable.
-   var_new(State, FORL_EXT, varname);
-   lex_check(State, '=');
-   expr_next(State);
-   lex_check(State, ',');
-   expr_next(State);
-   if (lex_opt(State, ',')) {
-      expr_next(State);
+   this->var_new(FORL_EXT, varname);
+   this->lex_check('=');
+   this->expr_next();
+   this->lex_check(',');
+   this->expr_next();
+   if (this->lex_opt(',')) {
+      this->expr_next();
    }
    else {
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);  // Default step is 1.
       bcreg_reserve(fs, 1);
    }
-   var_add(State, 3);  // Hidden control variables.
-   lex_check(State, TK_do);
+   this->var_add(3);  // Hidden control variables.
+   this->lex_check(TK_do);
    loop = bcemit_AJ(fs, BC_FORI, base, NO_JMP);
    fscope_begin(fs, &bl, 0);  // Scope for visible variables.
-   var_add(State, 1);
+   this->var_add(1);
    bcreg_reserve(fs, 1);
-   parse_block(State);
+   this->parse_block();
    fscope_end(fs);
    // Perform loop inversion. Loop control instructions are at the end.
    loopend = bcemit_AJ(fs, BC_FORL, base, NO_JMP);
@@ -692,9 +698,9 @@ static int predict_next(LexState *State, FuncState* fs, BCPos pc)
 //********************************************************************************************************************
 // Parse 'for' iterator.
 
-static void parse_for_iter(LexState *State, GCstr* indexname)
+void LexState::parse_for_iter(GCstr* indexname)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc e;
    BCReg nvars = 0;
    BCLine line;
@@ -703,28 +709,28 @@ static void parse_for_iter(LexState *State, GCstr* indexname)
    FuncScope bl;
    int isnext;
    // Hidden control variables.
-   var_new_fixed(State, nvars++, VARNAME_FOR_GEN);
-   var_new_fixed(State, nvars++, VARNAME_FOR_STATE);
-   var_new_fixed(State, nvars++, VARNAME_FOR_CTL);
+   this->var_new_fixed(nvars++, VARNAME_FOR_GEN);
+   this->var_new_fixed(nvars++, VARNAME_FOR_STATE);
+   this->var_new_fixed(nvars++, VARNAME_FOR_CTL);
    // Visible variables returned from iterator.
-   var_new(State, nvars++, is_blank_identifier(indexname) ? NAME_BLANK : indexname);
-   while (lex_opt(State, ',')) {
-      GCstr* name = lex_str(State);
-      var_new(State, nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
+   this->var_new(nvars++, is_blank_identifier(indexname) ? NAME_BLANK : indexname);
+   while (this->lex_opt(',')) {
+      GCstr* name = this->lex_str();
+      this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
    }
-   lex_check(State, TK_in);
-   line = State->linenumber;
-   assign_adjust(State, 3, expr_list(State, &e), &e);
+   this->lex_check(TK_in);
+   line = this->linenumber;
+   this->assign_adjust(3, this->expr_list(&e), &e);
    // The iterator needs another 3 [4] slots (func [pc] | state ctl).
    bcreg_bump(fs, 3 + LJ_FR2);
-   isnext = (nvars <= 5 and predict_next(State, fs, exprpc));
-   var_add(State, 3);  // Hidden control variables.
-   lex_check(State, TK_do);
+   isnext = (nvars <= 5 and predict_next(this, fs, exprpc));
+   this->var_add(3);  // Hidden control variables.
+   this->lex_check(TK_do);
    loop = bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP);
    fscope_begin(fs, &bl, 0);  // Scope for visible variables.
-   var_add(State, nvars - 3);
+   this->var_add(nvars - 3);
    bcreg_reserve(fs, nvars - 3);
-   parse_block(State);
+   this->parse_block();
    fscope_end(fs);
    // Perform loop inversion. Loop control instructions are at the end.
    jmp_patchins(fs, loop, fs->pc);
@@ -739,57 +745,126 @@ static void parse_for_iter(LexState *State, GCstr* indexname)
 //********************************************************************************************************************
 // Parse 'for' statement.
 
-static void parse_for(LexState *State, BCLine line)
+void LexState::parse_for(BCLine line)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    GCstr* varname;
    FuncScope bl;
    fscope_begin(fs, &bl, FSCOPE_LOOP);
-   State->next();  // Skip 'for'.
-   varname = lex_str(State);  // Get first variable name.
-   if (State->tok IS '=') parse_for_num(State, varname, line);
-   else if (State->tok IS ',' or State->tok IS TK_in) parse_for_iter(State, varname);
-   else err_syntax(State, LJ_ERR_XFOR);
-   lex_match(State, TK_end, TK_for, line);
+   this->next();  // Skip 'for'.
+   varname = this->lex_str();  // Get first variable name.
+   if (this->tok IS '=') this->parse_for_num(varname, line);
+   else if (this->tok IS ',' or this->tok IS TK_in) this->parse_for_iter(varname);
+   else this->err_syntax(LJ_ERR_XFOR);
+   this->lex_match(TK_end, TK_for, line);
    fscope_end(fs);  // Resolve break list.
 }
 
 //********************************************************************************************************************
 // Parse condition and 'then' block.
 
-static BCPos parse_then(LexState *State)
+BCPos LexState::parse_then()
 {
    BCPos condexit;
-   State->next();  // Skip 'if' or 'elseif'.
-   condexit = expr_cond(State);
-   lex_check(State, TK_then);
-   parse_block(State);
+   this->next();  // Skip 'if' or 'elseif'.
+   condexit = this->expr_cond();
+   this->lex_check(TK_then);
+   this->parse_block();
    return condexit;
 }
 
 //********************************************************************************************************************
 // Parse 'if' statement.
 
-static void parse_if(LexState *State, BCLine line)
+void LexState::parse_if(BCLine line)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCPos flist;
    BCPos escapelist = NO_JMP;
-   flist = parse_then(State);
-   while (State->tok IS TK_elseif) {  // Parse multiple 'elseif' blocks.
+   flist = this->parse_then();
+   while (this->tok IS TK_elseif) {  // Parse multiple 'elseif' blocks.
       jmp_append(fs, &escapelist, bcemit_jmp(fs));
       jmp_tohere(fs, flist);
-      flist = parse_then(State);
+      flist = this->parse_then();
    }
 
-   if (State->tok IS TK_else) {  // Parse optional 'else' block.
+   if (this->tok IS TK_else) {  // Parse optional 'else' block.
       jmp_append(fs, &escapelist, bcemit_jmp(fs));
       jmp_tohere(fs, flist);
-      State->next();  // Skip 'else'.
-      parse_block(State);
+      this->next();  // Skip 'else'.
+      this->parse_block();
    }
    else jmp_append(fs, &escapelist, flist);
 
    jmp_tohere(fs, escapelist);
-   lex_match(State, TK_end, TK_if, line);
+   this->lex_match(TK_end, TK_if, line);
+}
+
+//********************************************************************************************************************
+// Parse a single statement. Returns 1 if it must be the last one in a chunk.
+
+int LexState::parse_stmt()
+{
+   BCLine line = this->linenumber;
+   switch (this->tok) {
+   case TK_if:
+      this->parse_if(line);
+      break;
+   case TK_while:
+      this->parse_while(line);
+      break;
+   case TK_do:
+      this->next();
+      this->parse_block();
+      this->lex_match(TK_end, TK_do, line);
+      break;
+   case TK_for:
+      this->parse_for(line);
+      break;
+   case TK_repeat:
+      this->parse_repeat(line);
+      break;
+   case TK_function:
+      this->parse_func(line);
+      break;
+   case TK_defer:
+      this->parse_defer();
+      break;
+   case TK_local:
+      this->parse_local();
+      break;
+   case TK_return:
+      this->parse_return();
+      return 1;  // Must be last.
+   case TK_continue:
+      this->parse_continue();
+      break;
+   case TK_break:
+      this->parse_break();
+      break;
+   case ';':
+      this->next();
+      break;
+   default:
+      this->parse_call_assign();
+      break;
+   }
+   return 0;
+}
+
+//********************************************************************************************************************
+// Parse a chunk (list of statements).
+
+void LexState::parse_chunk()
+{
+   int is_last = 0;
+   this->synlevel_begin();
+   while (!is_last and !parse_is_end(this->tok)) {
+      is_last = this->parse_stmt();
+      this->lex_opt(';');
+      this->assert_condition(this->fs->framesize >= this->fs->freereg and
+         this->fs->freereg >= this->fs->nactvar, "bad regalloc");
+      this->fs->freereg = this->fs->nactvar;  // Free registers after each stmt.
+   }
+   this->synlevel_end();
 }

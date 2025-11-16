@@ -698,7 +698,7 @@ static void newproxy_weaktable(lua_State* L)
    t->nomm = (uint8_t)(~(1u << MM_mode));
 }
 
-LUALIB_API int luaopen_base(lua_State* L)
+extern int luaopen_base(lua_State* L)
 {
    // NOBARRIER: Table and value are the same.
    GCtab* env = tabref(L->env);

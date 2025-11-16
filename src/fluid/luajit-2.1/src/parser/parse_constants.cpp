@@ -43,12 +43,12 @@
 
 // Anchor string constant to avoid GC.
 
-GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
+GCstr* LexState::keepstr(std::string_view str)
 {
    // NOBARRIER: the key is new or kept alive.
-   lua_State* L = ls->L;
-   GCstr* s = lj_str_new(L, str, len);
-   TValue* tv = lj_tab_setstr(L, ls->fs->kt, s);
+   lua_State* L = this->L;
+   GCstr* s = lj_str_new(L, str.data(), str.size());
+   TValue* tv = lj_tab_setstr(L, this->fs->kt, s);
    if (tvisnil(tv)) setboolV(tv, 1);
    lj_gc_check(L);
    return s;
@@ -56,12 +56,24 @@ GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
 
 #if LJ_HASFFI
 // Anchor cdata to avoid GC.
-void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
+void LexState::keepcdata(TValue* tv, GCcdata* cd)
 {
    // NOBARRIER: the key is new or kept alive.
-   lua_State* L = ls->L;
+   lua_State* L = this->L;
    setcdataV(L, tv, cd);
-   setboolV(lj_tab_set(L, ls->fs->kt, tv), 1);
+   setboolV(lj_tab_set(L, this->fs->kt, tv), 1);
+}
+#endif
+
+LJ_USED LJ_FUNC GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
+{
+   return ls->keepstr(std::string_view(str, len));
+}
+
+#if LJ_HASFFI
+LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
+{
+   ls->keepcdata(tv, cd);
 }
 #endif
 
@@ -133,7 +145,7 @@ static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest)
    BCPos offset = dest - (pc + 1) + BCBIAS_J;
    lj_assertFS(dest != NO_JMP, "uninitialized jump target");
    if (offset > BCMAX_D)
-      err_syntax(fs->ls, LJ_ERR_XJUMP);
+      fs->ls->err_syntax(LJ_ERR_XJUMP);
    setbc_d(jmp, offset);
 }
 

@@ -19,7 +19,7 @@
    if (tvisnan(&o) or tvismzero(&o)) [[unlikely]] return 0;  // Avoid NaN and -0 as consts.
    if (LJ_DUALNUM) {
       int32_t k = lj_num2int(n);
-      if (lua_Number(k) == n) {
+      if (lua_Number(k) IS n) {
          setintV(&e1->u.nval, k);
          return 1;
       }
@@ -37,7 +37,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    uint32_t op;
    if (foldarith(opr, e1, e2)) return;
 
-   if (opr == OPR_POW) {
+   if (opr IS OPR_POW) {
       op = BC_POW;
       rc = expr_toanyreg(fs, e2);
       rb = expr_toanyreg(fs, e1);
@@ -51,7 +51,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      lj_assertFS(expr_isnumk(e1) or e1->k == ExpKind::NonReloc, "bad expr type %d", e1->k);
+      lj_assertFS(expr_isnumk(e1) or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
       expr_toval(fs, e1);
 
       // Avoid two consts to satisfy bytecode constraints.
@@ -64,8 +64,8 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    }
 
    // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k == ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k == ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -78,8 +78,8 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    ExpDesc* eret = e1;
    BCIns ins;
    expr_toval(fs, e1);
-   if (opr == OPR_EQ or opr == OPR_NE) {
-      BCOp op = opr == OPR_EQ ? BC_ISEQV : BC_ISNEV;
+   if (opr IS OPR_EQ or opr IS OPR_NE) {
+      BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ra = expr_toanyreg(fs, e1);  // First arg must be in a reg.
@@ -116,8 +116,8 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ins = BCINS_AD(op, ra, rd);
    }
    // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k == ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k == ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
@@ -128,27 +128,27 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
-   if (op == OPR_AND) {
+   if (op IS OPR_AND) {
       bcemit_branch_t(fs, e);
    }
-   else if (op == OPR_OR) {
+   else if (op IS OPR_OR) {
       bcemit_branch_f(fs, e);
    }
-   else if (op == OPR_IF_EMPTY) {
+   else if (op IS OPR_IF_EMPTY) {
       // For ?, handle extended falsey checks - only set up jumps for compile-time constants
       BCPos pc;
 
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
-      if (e->k == ExpKind::Nil or e->k == ExpKind::False)
+      if (e->k IS ExpKind::Nil or e->k IS ExpKind::False)
          pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k == ExpKind::Num and expr_numiszero(e))
+      else if (e->k IS ExpKind::Num and expr_numiszero(e))
          pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k == ExpKind::Str and e->u.sval and e->u.sval->len == 0)
+      else if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0)
          pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k == ExpKind::Jmp)
+      else if (e->k IS ExpKind::Jmp)
          pc = e->u.s.info;
-      else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) {
+      else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) {
          // Truthy constant - load to register and emit jump to skip RHS
          bcreg_reserve(fs, 1);
          expr_toreg_nobranch(fs, e, fs->freereg - 1);
@@ -175,10 +175,10 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       jmp_tohere(fs, e->f);
       e->f = NO_JMP;
    }
-   else if (op == OPR_CONCAT) {
+   else if (op IS OPR_CONCAT) {
       expr_tonextreg(fs, e);
    }
-   else if (op == OPR_EQ or op == OPR_NE) {
+   else if (op IS OPR_EQ or op IS OPR_NE) {
       if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
    }
    else {
@@ -221,7 +221,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 //   rhs   - Right-hand side expression (shift count, may be ExpKind::Call)
 //   base  - Base register for the call (allows register reuse for chaining)
 
-static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
+static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
 {
    ExpDesc callee, key;
    BCReg arg1 = base + 1 + LJ_FR2;  // First argument register (after frame link if present)
@@ -235,10 +235,10 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 
    // Now load bit.[lshift|rshift|...] into the base register
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit");
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -251,26 +251,26 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
    fs->freereg = base + 1;
 
    expr_discharge(fs, lhs);
-   lj_assertFS(lhs->k == ExpKind::NonReloc and lhs->u.s.info == base, "bitwise result not in base register");
+   lj_assertFS(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
 
-static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs)
+static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
 {
    // Allocate a base register for the call
    BCReg base = fs->freereg;
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  // Reserve for arguments
-   lj_assertFS(fname != nullptr, "bitlib name missing for bitwise operator");
-   bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
+   lj_assertFS(!fname.empty(), "bitlib name missing for bitwise operator");
+   bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
 
 //********************************************************************************************************************
 // Emit unary bit library call (e.g., bit.bnot).
 
-static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg)
+static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    ExpDesc callee, key;
    BCReg base = fs->freereg;
@@ -288,10 +288,10 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 
    // Load bit.fname into base register.
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit");
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -305,7 +305,7 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 
    // Discharge result to register.
    expr_discharge(fs, arg);
-   lj_assertFS(arg->k == ExpKind::NonReloc and arg->u.s.info == base, "bitwise result not in base register");
+   lj_assertFS(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -318,24 +318,24 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_discharge(fs, e);
 
    // Handle compile-time constants
-   if (e->k == ExpKind::Nil or e->k == ExpKind::False) { // Falsey constant - set to false
+   if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) { // Falsey constant - set to false
       expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == ExpKind::Num and expr_numiszero(e)) { // Zero is falsey - set to false
+   if (e->k IS ExpKind::Num and expr_numiszero(e)) { // Zero is falsey - set to false
       expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == ExpKind::Str and e->u.sval and e->u.sval->len == 0) {
+   if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0) {
       // Empty string is falsey - set to false
       expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == ExpKind::True or (e->k == ExpKind::Num and !expr_numiszero(e)) or
-      (e->k == ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
+   if (e->k IS ExpKind::True or (e->k IS ExpKind::Num and !expr_numiszero(e)) or
+      (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
       // Truthy constant - set to true
       expr_init(e, ExpKind::True, 0);
       return;
@@ -346,7 +346,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
    // Pattern: BC_ISEQP reg, ExpKind::Nil + JMP means:
-   //   - If reg == nil: skip JMP, continue to next check
+   //   - If reg IS nil: skip JMP, continue to next check
    //   - If reg != nil: execute JMP, jump to target (patched to false branch)
    // By chaining multiple checks and patching all JMPs to the same false branch:
    //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
@@ -375,7 +375,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Check for empty string
    expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   emptyv.u.sval = fs->ls->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -412,20 +412,20 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    if (op <= OPR_POW) {
       bcemit_arith(fs, op, e1, e2);
    }
-   else if (op == OPR_AND) {
-      lj_assertFS(e1->t == NO_JMP, "jump list not closed");
+   else if (op IS OPR_AND) {
+      lj_assertFS(e1->t IS NO_JMP, "jump list not closed");
       expr_discharge(fs, e2);
       jmp_append(fs, &e2->f, e1->f);
       *e1 = *e2;
    }
-   else if (op == OPR_OR) {
-      lj_assertFS(e1->f == NO_JMP, "jump list not closed");
+   else if (op IS OPR_OR) {
+      lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
       expr_discharge(fs, e2);
       jmp_append(fs, &e2->t, e1->t);
       *e1 = *e2;
    }
-   else if (op == OPR_IF_EMPTY) {
-      lj_assertFS(e1->f == NO_JMP, "jump list not closed");
+   else if (op IS OPR_IF_EMPTY) {
+      lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
 
       // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
       // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
@@ -457,7 +457,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
          expr_discharge(fs, e1);
 
-         if (e1->k == ExpKind::NonReloc or e1->k == ExpKind::Relocable) {
+         if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
             ExpDesc nilv, falsev, zerov, emptyv;
@@ -483,11 +483,11 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Check for empty string
             expr_init(&emptyv, ExpKind::Str, 0);
-            emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+            emptyv.u.sval = fs->ls->keepstr("");
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
-            if (rhs_reg == NO_REG) {
+            if (rhs_reg IS NO_REG) {
                dest_reg = fs->freereg;
                bcreg_reserve(fs, 1);
             }
@@ -542,14 +542,13 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          }
       }
    }
-   else if ((op == OPR_SHL) or (op == OPR_SHR) or (op == OPR_BAND) or (op == OPR_BOR) or (op == OPR_BXOR)) {
-      bcemit_bit_call(fs, priority[op].name, MSize(priority[op].name_len), e1, e2);
+   else if ((op IS OPR_SHL) or (op IS OPR_SHR) or (op IS OPR_BAND) or (op IS OPR_BOR) or (op IS OPR_BXOR)) {
+      bcemit_bit_call(fs, std::string_view(priority[op].name, priority[op].name_len), e1, e2);
    }
-   else if (op == OPR_CONCAT) {
+   else if (op IS OPR_CONCAT) {
       expr_toval(fs, e2);
-      if (e2->k == ExpKind::Relocable and bc_op(*bcptr(fs, e2)) == BC_CAT) {
-         lj_assertFS(e1->u.s.info == bc_b(*bcptr(fs, e2)) - 1,
-            "bad CAT stack layout");
+      if (e2->k IS ExpKind::Relocable and bc_op(*bcptr(fs, e2)) IS BC_CAT) {
+         lj_assertFS(e1->u.s.info IS bc_b(*bcptr(fs, e2)) - 1, "bad CAT stack layout");
          expr_free(fs, e1);
          setbc_b(bcptr(fs, e2), e1->u.s.info);
          e1->u.s.info = e2->u.s.info;
@@ -563,9 +562,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       e1->k = ExpKind::Relocable;
    }
    else {
-      lj_assertFS(op == OPR_NE or op == OPR_EQ or
-         op == OPR_LT or op == OPR_GE or op == OPR_LE or op == OPR_GT,
-         "bad binop %d", op);
+      lj_assertFS(op IS OPR_NE or op IS OPR_EQ or op IS OPR_LT or op IS OPR_GE or op IS OPR_LE or op IS OPR_GT, "bad binop %d", op);
       bcemit_comp(fs, op, e1, e2);
    }
 }
@@ -575,42 +572,40 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
 {
-   if (op == BC_NOT) {
+   if (op IS BC_NOT) {
       // Swap true and false lists.
       { BCPos temp = e->f; e->f = e->t; e->t = temp; }
       jmp_dropval(fs, e->f);
       jmp_dropval(fs, e->t);
       expr_discharge(fs, e);
-      if (e->k == ExpKind::Nil or e->k == ExpKind::False) {
+      if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) {
          e->k = ExpKind::True;
          return;
       }
-      else if (expr_isk(e) or (LJ_HASFFI and e->k == ExpKind::CData)) {
+      else if (expr_isk(e) or (LJ_HASFFI and e->k IS ExpKind::CData)) {
          e->k = ExpKind::False;
          return;
       }
-      else if (e->k == ExpKind::Jmp) {
+      else if (e->k IS ExpKind::Jmp) {
          invertcond(fs, e);
          return;
       }
-      else if (e->k == ExpKind::Relocable) {
+      else if (e->k IS ExpKind::Relocable) {
          bcreg_reserve(fs, 1);
          setbc_a(bcptr(fs, e), fs->freereg - 1);
          e->u.s.info = fs->freereg - 1;
          e->k = ExpKind::NonReloc;
       }
-      else {
-         lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", static_cast<int>(e->k));
-      }
+      else lj_assertFS(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
    }
    else {
-      lj_assertFS(op == BC_UNM or op == BC_LEN, "bad unop %d", op);
-      if (op == BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
+      lj_assertFS(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
+      if (op IS BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
 #if LJ_HASFFI
-         if (e->k == ExpKind::CData) {  // Fold in-place since cdata is not interned.
+         if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.
             GCcdata* cd = cdataV(&e->u.nval);
             int64_t* p = (int64_t*)cdataptr(cd);
-            if (cd->ctypeid == CTID_COMPLEX_DOUBLE) p[1] ^= (int64_t)U64x(80000000, 00000000);
+            if (cd->ctypeid IS CTID_COMPLEX_DOUBLE) p[1] ^= (int64_t)U64x(80000000, 00000000);
             else *p = -*p;
             return;
          }
@@ -620,7 +615,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
                TValue* o = expr_numtv(e);
                if (tvisint(o)) {
                   int32_t k = intV(o);
-                  if (k == -k) setnumV(o, -lua_Number(k));
+                  if (k IS -k) setnumV(o, -lua_Number(k));
                   else setintV(o, -k);
                   return;
                }

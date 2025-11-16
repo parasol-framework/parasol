@@ -4,32 +4,28 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-LJ_NORET LJ_NOINLINE static void err_syntax(LexState *State, ErrMsg em)
+LJ_NORET LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
-   lj_lex_error(State, State->tok, em);
+   lj_lex_error(this, this->tok, Message);
 }
 
-LJ_NORET LJ_NOINLINE static void err_token(LexState *State, LexToken tok)
+LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
 {
-   lj_lex_error(State, State->tok, LJ_ERR_XTOKEN, State->token2str(tok));
+   lj_lex_error(this, this->tok, LJ_ERR_XTOKEN, this->token2str(Token));
 }
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 {
-   if (fs->linedefined == 0)
-      lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
-   else
-      lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
+   if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
+   else lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
 }
-
-// Lexer support
 
 // Check and consume optional token.
 
-static int lex_opt(LexState *State, LexToken tok)
+int LexState::lex_opt(LexToken Token)
 {
-   if (State->tok == tok) {
-      State->next();
+   if (this->tok == Token) {
+      this->next();
       return 1;
    }
    return 0;
@@ -37,35 +33,35 @@ static int lex_opt(LexState *State, LexToken tok)
 
 // Check and consume token.
 
-static void lex_check(LexState *State, LexToken tok)
+void LexState::lex_check(LexToken Token)
 {
-   if (State->tok != tok) err_token(State, tok);
-   State->next();
+   if (this->tok != Token) this->err_token(Token);
+   this->next();
 }
 
 // Check for matching token.
 
-static void lex_match(LexState *State, LexToken what, LexToken who, BCLine line)
+void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 {
-   if (!lex_opt(State, what)) {
-      if (line == State->linenumber) {
-         err_token(State, what);
+   if (!this->lex_opt(What)) {
+      if (Line == this->linenumber) {
+         this->err_token(What);
       }
       else {
-         auto swhat = State->token2str(what);
-         auto swho = State->token2str(who);
-         lj_lex_error(State, State->tok, LJ_ERR_XMATCH, swhat, swho, line);
+         auto swhat = this->token2str(What);
+         auto swho = this->token2str(Who);
+         lj_lex_error(this, this->tok, LJ_ERR_XMATCH, swhat, swho, Line);
       }
    }
 }
 
 // Check for string token.
 
-static GCstr* lex_str(LexState *State)
+GCstr* LexState::lex_str()
 {
    GCstr* s;
-   if (State->tok != TK_name) err_token(State, TK_name);
-   s = strV(&State->tokval);
-   State->next();
+   if (this->tok != TK_name) this->err_token(TK_name);
+   s = strV(&this->tokval);
+   this->next();
    return s;
 }

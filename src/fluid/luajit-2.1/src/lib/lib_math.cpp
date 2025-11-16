@@ -209,7 +209,7 @@ LJLIB_CF(math_randomseed)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_math(lua_State* L)
+extern int luaopen_math(lua_State* L)
 {
    PRNGState* rs = (PRNGState*)lua_newuserdata(L, sizeof(PRNGState));
    lj_prng_seed_fixed(rs);

@@ -5,13 +5,10 @@
 ** See Copyright Notice at the end of this file
 */
 
-
-#ifndef lua_h
-#define lua_h
+#pragma once
 
 #include <stdarg.h>
 #include <stddef.h>
-
 
 #include "luaconf.h"
 
@@ -21,17 +18,14 @@ constexpr int LUA_VERSION_NUM = 501;
 #define LUA_COPYRIGHT   "Copyright (C) 1994-2008 Lua.org, PUC-Rio"
 #define LUA_AUTHORS   "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
 
-
 // mark for precompiled code (`<esc>Lua')
 #define   LUA_SIGNATURE   "\033Lua"
 
 // option for multiple returns in `lua_pcall' and `lua_call'
 constexpr int LUA_MULTRET = -1;
 
+// pseudo-indices
 
-/*
-** pseudo-indices
-*/
 constexpr int LUA_REGISTRYINDEX = -10000;
 constexpr int LUA_ENVIRONINDEX = -10001;
 constexpr int LUA_GLOBALSINDEX = -10002;
@@ -40,8 +34,8 @@ constexpr int lua_upvalueindex(int I) {
    return LUA_GLOBALSINDEX - I;
 }
 
-
 // thread status
+
 constexpr int LUA_OK = 0;
 constexpr int LUA_YIELD = 1;
 constexpr int LUA_ERRRUN = 2;
@@ -54,26 +48,20 @@ typedef struct lua_State lua_State;
 
 using lua_CFunction = int(*)(lua_State *L);
 
+// functions that read/write blocks when loading/dumping Lua chunks
 
-/*
-** functions that read/write blocks when loading/dumping Lua chunks
-*/
 using lua_Reader = const char*(*)(lua_State *L, void *ud, size_t *sz);
 
 using lua_Writer = int(*)(lua_State *L, const void* p, size_t sz, void* ud);
 
 
-/*
-** prototype for memory-allocation functions
-*/
+// prototype for memory-allocation functions
+
 using lua_Alloc = void*(*)(void *ud, void *ptr, size_t osize, size_t nsize);
 
+// basic types
 
-/*
-** basic types
-*/
 constexpr int LUA_TNONE = -1;
-
 constexpr int LUA_TNIL = 0;
 constexpr int LUA_TBOOLEAN = 1;
 constexpr int LUA_TLIGHTUSERDATA = 2;
@@ -84,23 +72,17 @@ constexpr int LUA_TFUNCTION = 6;
 constexpr int LUA_TUSERDATA = 7;
 constexpr int LUA_TTHREAD = 8;
 
-
-
 // minimum Lua stack available to a C function
 constexpr int LUA_MINSTACK = 20;
 
+// generic extra include file
 
-/*
-** generic extra include file
-*/
 #if defined(LUA_USER_H)
 #include LUA_USER_H
 #endif
 
-
 // type of numbers in Lua
 using lua_Number = LUA_NUMBER;
-
 
 // type for integer functions
 using lua_Integer = LUA_INTEGER;
@@ -116,10 +98,8 @@ extern lua_State *(lua_newthread) (lua_State *L);
 
 extern lua_CFunction (lua_atpanic) (lua_State *L, lua_CFunction panicf);
 
+// basic stack manipulation
 
-/*
-** basic stack manipulation
-*/
 extern int   (lua_gettop) (lua_State *L);
 extern void  (lua_settop) (lua_State *L, int idx);
 extern void  (lua_pushvalue) (lua_State *L, int idx);
@@ -127,24 +107,20 @@ extern void  (lua_remove) (lua_State *L, int idx);
 extern void  (lua_insert) (lua_State *L, int idx);
 extern void  (lua_replace) (lua_State *L, int idx);
 extern int   (lua_checkstack) (lua_State *L, int sz);
-
 extern void  (lua_xmove) (lua_State *from, lua_State *to, int n);
 
+// access functions (stack -> C)
 
-/*
-** access functions (stack -> C)
-*/
+extern int (lua_isnumber) (lua_State *L, int idx);
+extern int (lua_isstring) (lua_State *L, int idx);
+extern int (lua_iscfunction) (lua_State *L, int idx);
+extern int (lua_isuserdata) (lua_State *L, int idx);
+extern int (lua_type) (lua_State *L, int idx);
+extern const char *(lua_typename) (lua_State *L, int tp);
 
-extern int             (lua_isnumber) (lua_State *L, int idx);
-extern int             (lua_isstring) (lua_State *L, int idx);
-extern int             (lua_iscfunction) (lua_State *L, int idx);
-extern int             (lua_isuserdata) (lua_State *L, int idx);
-extern int             (lua_type) (lua_State *L, int idx);
-extern const char     *(lua_typename) (lua_State *L, int tp);
-
-extern int            (lua_equal) (lua_State *L, int idx1, int idx2);
-extern int            (lua_rawequal) (lua_State *L, int idx1, int idx2);
-extern int            (lua_lessthan) (lua_State *L, int idx1, int idx2);
+extern int (lua_equal) (lua_State *L, int idx1, int idx2);
+extern int (lua_rawequal) (lua_State *L, int idx1, int idx2);
+extern int (lua_lessthan) (lua_State *L, int idx1, int idx2);
 
 extern lua_Number      (lua_tonumber) (lua_State *L, int idx);
 extern lua_Integer     (lua_tointeger) (lua_State *L, int idx);
@@ -156,17 +132,14 @@ extern void          *(lua_touserdata) (lua_State *L, int idx);
 extern lua_State      *(lua_tothread) (lua_State *L, int idx);
 extern const void     *(lua_topointer) (lua_State *L, int idx);
 
+// push functions (C -> stack)
 
-/*
-** push functions (C -> stack)
-*/
 extern void  (lua_pushnil) (lua_State *L);
 extern void  (lua_pushnumber) (lua_State *L, lua_Number n);
 extern void  (lua_pushinteger) (lua_State *L, lua_Integer n);
 extern void  (lua_pushlstring) (lua_State *L, const char *s, size_t l);
 extern void  (lua_pushstring) (lua_State *L, const char *s);
-extern const char *(lua_pushvfstring) (lua_State *L, const char *fmt,
-                                                      va_list argp);
+extern const char *(lua_pushvfstring) (lua_State *L, const char *fmt, va_list argp);
 extern const char *(lua_pushfstring) (lua_State *L, const char *fmt, ...);
 extern void  (lua_pushcclosure) (lua_State *L, lua_CFunction fn, int n);
 extern void  (lua_pushboolean) (lua_State *L, int b);
@@ -197,18 +170,14 @@ extern void  (lua_rawseti) (lua_State *L, int idx, int n);
 extern int   (lua_setmetatable) (lua_State *L, int objindex);
 extern int   (lua_setfenv) (lua_State *L, int idx);
 
-
 /*
 ** `load' and `call' functions (load and run Lua code)
 */
 extern void  (lua_call) (lua_State *L, int nargs, int nresults);
 extern int   (lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
 extern int   (lua_cpcall) (lua_State *L, lua_CFunction func, void *ud);
-extern int   (lua_load) (lua_State *L, lua_Reader reader, void *dt,
-                                        const char *chunkname);
-
+extern int   (lua_load) (lua_State *L, lua_Reader reader, void *dt, const char *chunkname);
 extern int (lua_dump) (lua_State *L, lua_Writer writer, void *data);
-
 
 /*
 ** coroutine functions
@@ -233,7 +202,6 @@ extern int  (lua_status) (lua_State *L);
 
 extern int (lua_gc) (lua_State *L, int what, int data);
 
-
 /*
 ** miscellaneous functions
 */
@@ -246,14 +214,6 @@ extern void  (lua_concat) (lua_State *L, int n);
 
 extern lua_Alloc (lua_getallocf) (lua_State *L, void **ud);
 extern void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);
-
-
-
-/*
-** ===============================================================
-** some useful inline functions (upgraded from macros to C++20)
-** ===============================================================
-*/
 
 inline void lua_pop(lua_State *L, int N) {
    lua_settop(L, -(N)-1);
@@ -325,11 +285,7 @@ inline const char *lua_tostring(lua_State *L, int I) {
    return lua_tolstring(L, I, nullptr);
 }
 
-
-
-/*
-** compatibility macros and inline functions
-*/
+// compatibility macros and inline functions
 
 #define lua_open()   luaL_newstate()
 
@@ -344,10 +300,8 @@ inline int lua_getgccount(lua_State *L) {
 #define lua_Chunkreader      lua_Reader
 #define lua_Chunkwriter      lua_Writer
 
-
 // hack
 extern void lua_setlevel   (lua_State *from, lua_State *to);
-
 
 /*
 ** {======================================================================
@@ -365,7 +319,6 @@ extern void lua_setlevel   (lua_State *from, lua_State *to);
 #define LUA_HOOKCOUNT   3
 #define LUA_HOOKTAILRET 4
 
-
 /*
 ** Event masks
 */
@@ -376,10 +329,8 @@ extern void lua_setlevel   (lua_State *from, lua_State *to);
 
 typedef struct lua_Debug lua_Debug;  //  activation record
 
-
 // Functions to be called by the debuger in specific events
 using lua_Hook = void(*)(lua_State *L, lua_Debug *ar);
-
 
 extern int lua_getstack (lua_State *L, int level, lua_Debug *ar);
 extern int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar);
@@ -395,8 +346,7 @@ extern int lua_gethookcount (lua_State *L);
 // From Lua 5.2.
 extern void *lua_upvalueid (lua_State *L, int idx, int n);
 extern void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
-extern int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
-             const char *chunkname, const char *mode);
+extern int lua_loadx (lua_State *L, lua_Reader reader, void *dt, const char *chunkname, const char *mode);
 extern const lua_Number *lua_version (lua_State *L);
 extern void lua_copy (lua_State *L, int fromidx, int toidx);
 extern lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
@@ -421,8 +371,6 @@ struct lua_Debug {
   int i_ci;  //  active function
 };
 
-// }======================================================================
-
 /******************************************************************************
 * Copyright (C) 1994-2008 Lua.org, PUC-Rio.  All rights reserved.
 *
@@ -445,6 +393,3 @@ struct lua_Debug {
 * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************/
-
-
-#endif

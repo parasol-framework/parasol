@@ -179,7 +179,7 @@ typedef struct FuncState {
 }
 
 // Binary and unary operators. ORDER OPR
-typedef enum BinOpr {
+enum BinOpr : int {
    OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  // ORDER ARITH
    OPR_CONCAT,
    OPR_NE, OPR_EQ,
@@ -188,7 +188,7 @@ typedef enum BinOpr {
    OPR_AND, OPR_OR, OPR_IF_EMPTY,
    OPR_TERNARY,
    OPR_NOBINOPR
-} BinOpr;
+};
 
 LJ_STATIC_ASSERT((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT);
 LJ_STATIC_ASSERT((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT);
@@ -222,4 +222,4 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 // Error checking macros.
 #define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)
 #define checklimitgt(fs, v, l, m)   if ((v) > (l)) err_limit(fs, l, m)
-#define checkcond(ls, c, em)      { if (not (c)) err_syntax(ls, em); }
+#define checkcond(ls, c, em)      { if (not (c)) (ls)->err_syntax(em); }
