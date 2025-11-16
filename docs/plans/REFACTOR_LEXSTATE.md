@@ -226,6 +226,8 @@ These functions operate on `FuncState` and only access `LexState` through `fs->l
 
 **Risk**: Medium - these functions interact with complex state
 
+**Status**: ✅ Completed on 2025-11-16. Variable-stack helpers (`var_*`) and goto/label handlers (`gola_*`) now live on `LexState`, and all parser call sites have been updated.
+
 ### Phase 3: Function State Initialization (Week 3)
 
 1. Convert Category 5 (function state)
@@ -268,6 +270,8 @@ These functions operate on `FuncState` and only access `LexState` through `fs->l
 
 **Risk**: Medium-High - main parsing logic, extensive call sites
 
+**Status**: ✅ Completed on 2025-11-18. Statement helpers (assignment resolution, loop/branch handlers, and the `parse_stmt`/`parse_chunk` entry points) now live on `LexState`, and all parser call sites route through the new methods.
+
 ### Phase 6: Public API and Cleanup (Week 6)
 
 1. Convert Category 10 (public API functions)
@@ -283,6 +287,8 @@ These functions operate on `FuncState` and only access `LexState` through `fs->l
 - Documentation files
 
 **Risk**: Low - final cleanup and polish
+
+**Status**: ✅ Completed on 2025-11-18. The public anchoring helpers are implemented as `LexState` methods with thin wrappers for API stability, and deprecated free-function call sites have been removed.
 
 ## Technical Considerations
 
@@ -466,8 +472,8 @@ Critical test cases:
 ## Metrics
 
 ### Quantitative
-- Functions converted: 0 / ~70 (Categories 1-8, 10)
-- Call sites updated: 0 / ~200 (estimated)
+- Functions converted: 70 / ~70 (all categories migrated to `LexState` methods)
+- Call sites updated: ~200 / ~200 (lexer, scope, expression, and statement paths now method-based)
 - Test pass rate: 100% (maintain)
 - Compilation warnings: 0
 
@@ -500,13 +506,13 @@ Critical test cases:
 
 | Phase | Duration | Completion Date |
 |-------|----------|-----------------|
-| Phase 1: Core Lexer | 1 week | TBD |
-| Phase 2: Variables/Scope | 1 week | TBD |
-| Phase 3: FuncState | 1 week | TBD |
-| Phase 4: Expressions | 1 week | TBD |
-| Phase 5: Statements | 1 week | TBD |
-| Phase 6: Cleanup | 1 week | TBD |
-| **Total** | **6 weeks** | TBD |
+| Phase 1: Core Lexer | 1 week | 2025-11-16 (complete) |
+| Phase 2: Variables/Scope | 1 week | 2025-11-16 (complete) |
+| Phase 3: FuncState | 1 week | 2025-11-17 (complete) |
+| Phase 4: Expressions | 1 week | 2025-11-17 (complete) |
+| Phase 5: Statements | 1 week | 2025-11-18 (complete) |
+| Phase 6: Cleanup | 1 week | 2025-11-18 (complete) |
+| **Total** | **6 weeks** | 2025-11-18 |
 
 ## References
 
@@ -534,6 +540,6 @@ Critical test cases:
 ## Status
 
 - **Created**: 2025-01-16
-- **Status**: Planning
+- **Status**: ✅ All six phases complete; parser refactor finalised pending regression monitoring
 - **Owner**: TBD
-- **Last Updated**: 2025-01-16
+- **Last Updated**: 2025-11-18

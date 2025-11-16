@@ -52,6 +52,13 @@ typedef struct VarInfo {
    uint8_t info;      //  Variable info.
 } VarInfo;
 
+// Forward declarations for parser scope helpers.
+
+struct FuncScope;
+struct ExpDesc;
+struct LHSVarList;
+enum BinOpr : int;
+
 // Lua lexer state.
 
 class LexState {
@@ -93,6 +100,87 @@ public:
    LexToken lookahead_token();
    const char* token2str(LexToken Tok);
    [[noreturn]] void error(LexToken Tok, ErrMsg Em, ...);
+   LJ_NORET LJ_NOINLINE void err_syntax(ErrMsg Message);
+   LJ_NORET LJ_NOINLINE void err_token(LexToken Token);
+   int lex_opt(LexToken Token);
+   void lex_check(LexToken Token);
+   void lex_match(LexToken What, LexToken Who, BCLine Line);
+   GCstr* lex_str();
+
+   // Variable management
+   void var_new(BCReg Reg, GCstr* Name);
+   void var_new_lit(BCReg Reg, const char* Value, size_t Length);
+   void var_new_fixed(BCReg Reg, uintptr_t Name);
+   void var_add(BCReg VariableCount);
+   void var_remove(BCReg TargetLevel);
+   MSize var_lookup(ExpDesc* Expression);
+
+   // Goto and label management
+   MSize gola_new(int JumpType, uint8_t Info, BCPos Position);
+   void gola_patch(VarInfo* GotoInfo, VarInfo* LabelInfo);
+   void gola_close(VarInfo* GotoInfo);
+   void gola_resolve(FuncScope* Scope, MSize Index);
+   void gola_fixup(FuncScope* Scope);
+
+   // Function state lifecycle
+   size_t fs_prep_var(FuncState* FunctionState, size_t* OffsetVar);
+   void fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVar);
+   GCproto* fs_finish(BCLine Line);
+   void fs_init(FuncState* FunctionState);
+
+   // Expression parsing
+   void expr(ExpDesc* Expression);
+   void expr_str(ExpDesc* Expression);
+   void expr_field(ExpDesc* Expression);
+   void expr_bracket(ExpDesc* Expression);
+   void expr_table(ExpDesc* Expression);
+   BCReg parse_params(int NeedSelf);
+   void parse_body_impl(ExpDesc* Expression, int NeedSelf, BCLine Line, int OptionalParams);
+   void parse_body(ExpDesc* Expression, int NeedSelf, BCLine Line);
+   void parse_body_defer(ExpDesc* Expression, BCLine Line);
+   BCReg expr_list(ExpDesc* Expression);
+   void parse_args(ExpDesc* Expression);
+   void inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost);
+   void expr_primary(ExpDesc* Expression);
+   void expr_simple(ExpDesc* Expression);
+   void synlevel_begin();
+   void synlevel_end();
+   BinOpr expr_binop(ExpDesc* Expression, uint32_t Limit);
+   BinOpr expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator);
+   void expr_unop(ExpDesc* Expression);
+   void expr_next();
+   BCPos expr_cond();
+   bool should_emit_presence();
+
+   // Statement parsing
+   void assign_hazard(LHSVarList* Left, const ExpDesc* Var);
+   void assign_adjust(BCReg VariableCount, BCReg ExpressionCount, ExpDesc* Expression);
+   int assign_if_empty(LHSVarList* Variables);
+   int assign_compound(LHSVarList* Variables, LexToken OperatorType);
+   void parse_assignment(LHSVarList* Variables, BCReg VariableCount);
+   void parse_call_assign();
+   void parse_local();
+   void parse_defer();
+   void parse_func(BCLine Line);
+   void parse_return();
+   void parse_continue();
+   void parse_break();
+   void parse_block();
+   void parse_while(BCLine Line);
+   void parse_repeat(BCLine Line);
+   void parse_for_num(GCstr* VariableName, BCLine Line);
+   void parse_for_iter(GCstr* IndexName);
+   void parse_for(BCLine Line);
+   BCPos parse_then();
+   void parse_if(BCLine Line);
+   int parse_stmt();
+   void parse_chunk();
+
+   // Public parser helpers
+   GCstr* keepstr(const char* Value, size_t Length);
+#if LJ_HASFFI
+   void keepcdata(TValue* Value, GCcdata* Cdata);
+#endif
 
 #ifdef LUA_USE_ASSERT
    template<typename... Args>

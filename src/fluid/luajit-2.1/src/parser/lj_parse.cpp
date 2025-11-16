@@ -53,44 +53,6 @@ static const struct {
 #include "parser/parse_operators.cpp"
 #include "parser/parse_stmt.cpp"
 
-// Parse a statement. Returns 1 if it must be the last one in a chunk.
-
-static int parse_stmt(LexState *State)
-{
-   BCLine line = State->linenumber;
-   switch (State->tok) {
-      case TK_if:       parse_if(State, line); break;
-      case TK_while:    parse_while(State, line); break;
-      case TK_do:       State->next(); parse_block(State); lex_match(State, TK_end, TK_do, line); break;
-      case TK_for:      parse_for(State, line); break;
-      case TK_repeat:   parse_repeat(State, line); break;
-      case TK_function: parse_func(State, line); break;
-      case TK_defer:    parse_defer(State); break;
-      case TK_local:    State->next(); parse_local(State); break;
-      case TK_return:   parse_return(State); return 1;  // Must be last.
-      case TK_continue: State->next(); parse_continue(State); break;
-      case TK_break:    State->next(); parse_break(State); break;
-      case ';':         State->next(); break;
-      default:          parse_call_assign(State); break;
-   }
-   return 0;
-}
-
-// A chunk is a list of statements optionally separated by semicolons.
-
-static void parse_chunk(LexState *State)
-{
-   int is_last = 0;
-   synlevel_begin(State);
-   while (not is_last and not parse_is_end(State->tok)) {
-      is_last = parse_stmt(State);
-      lex_opt(State, ';');
-      State->assert_condition(State->fs->framesize >= State->fs->freereg and State->fs->freereg >= State->fs->nactvar, "bad regalloc");
-      State->fs->freereg = State->fs->nactvar;  // Free registers after each stmt.
-   }
-   synlevel_end(State);
-}
-
 // Entry point of bytecode parser.
 
 GCproto * lj_parse(LexState *State)
@@ -107,7 +69,7 @@ GCproto * lj_parse(LexState *State)
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;
-   fs_init(State, &fs);
+   State->fs_init(&fs);
    fs.linedefined = 0;
    fs.numparams = 0;
    fs.bcbase = nullptr;
@@ -116,9 +78,9 @@ GCproto * lj_parse(LexState *State)
    fscope_begin(&fs, &bl, 0);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
    State->next();  // Read-ahead first token.
-   parse_chunk(State);
-   if (State->tok != TK_eof) err_token(State, TK_eof);
-   pt = fs_finish(State, State->linenumber);
+   State->parse_chunk();
+   if (State->tok != TK_eof) State->err_token(TK_eof);
+   pt = State->fs_finish(State->linenumber);
    L->top--;  // Drop chunkname.
    lj_assertL(fs.prev == nullptr and State->fs == nullptr, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
