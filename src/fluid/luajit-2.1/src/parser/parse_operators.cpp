@@ -163,16 +163,16 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          if (!expr_isk_nojump(e)) {
             BCReg src_reg = expr_toanyreg(fs, e);
             BCReg rhs_reg = fs->freereg;
-            uint8_t flags = e->flags;
+            ExprFlag saved_flags = e->flags;
             bcreg_reserve(fs, 1);
             expr_init(e, ExpKind::NonReloc, src_reg);
             e->u.s.aux = rhs_reg;
-            e->flags = flags | EXP_HAS_RHS_REG_FLAG;
+            e->flags = saved_flags | ExprFlag::HasRhsReg;
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
-      jmp_append(fs, &e->t, pc);
-      jmp_tohere(fs, e->f);
+      e->t = JumpListView(fs, e->t).append(pc);
+      JumpListView(fs, e->f).patch_to_here();
       e->f = NO_JMP;
    }
    else if (op IS OPR_CONCAT) {
@@ -353,29 +353,26 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
 
    BCReg reg = expr_toanyreg(fs, e);
-   ExpDesc nilv, falsev, zerov, emptyv;
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
    BCPos jmp_false_branch;
    BCPos check_nil, check_false, check_zero, check_empty;
 
    // Check for nil
-   expr_init(&nilv, ExpKind::Nil, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
    // Check for false
-   expr_init(&falsev, ExpKind::False, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
    // Check for zero
-   expr_init(&zerov, ExpKind::Num, 0);
-   setnumV(&zerov.u.nval, 0.0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
    // Check for empty string
-   expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = fs->ls->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -392,14 +389,14 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // False branch: patch all falsey jumps here and load false
    BCPos false_pos = fs->pc;
-   jmp_patch(fs, check_nil, false_pos);
-   jmp_patch(fs, check_false, false_pos);
-   jmp_patch(fs, check_zero, false_pos);
-   jmp_patch(fs, check_empty, false_pos);
+   JumpListView(fs, check_nil).patch_to(false_pos);
+   JumpListView(fs, check_false).patch_to(false_pos);
+   JumpListView(fs, check_zero).patch_to(false_pos);
+   JumpListView(fs, check_empty).patch_to(false_pos);
    bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
 
    // Patch skip jump to after false load
-   jmp_patch(fs, jmp_false_branch, fs->pc);
+   JumpListView(fs, jmp_false_branch).patch_to(fs->pc);
 
    expr_init(e, ExpKind::NonReloc, dest);
 }
@@ -415,13 +412,13 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    else if (op IS OPR_AND) {
       lj_assertFS(e1->t IS NO_JMP, "jump list not closed");
       expr_discharge(fs, e2);
-      jmp_append(fs, &e2->f, e1->f);
+      e2->f = JumpListView(fs, e2->f).append(e1->f);
       *e1 = *e2;
    }
    else if (op IS OPR_OR) {
       lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
       expr_discharge(fs, e2);
-      jmp_append(fs, &e2->t, e1->t);
+      e2->t = JumpListView(fs, e2->t).append(e1->t);
       *e1 = *e2;
    }
    else if (op IS OPR_IF_EMPTY) {
@@ -432,7 +429,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
       if (e1->t != NO_JMP) {
          // Patch jumps to skip RHS
-         jmp_patch(fs, e1->t, fs->pc);
+         JumpListView(fs, e1->t).patch_to(fs->pc);
          e1->t = NO_JMP;
 
          // LHS is truthy - no need to evaluate RHS
@@ -450,9 +447,8 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       else {
          // LHS is falsey (no jumps) OR runtime value - need to check
          BCReg rhs_reg = NO_REG;
-         if (e1->flags & EXP_HAS_RHS_REG_FLAG) {
+         if (expr_consume_flag(e1, ExprFlag::HasRhsReg)) {
             rhs_reg = BCReg(e1->u.s.aux);
-            e1->flags &= ~EXP_HAS_RHS_REG_FLAG;
          }
 
          expr_discharge(fs, e1);
@@ -460,30 +456,27 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
-            ExpDesc nilv, falsev, zerov, emptyv;
+            ExpDesc nilv = make_nil_expr();
+            ExpDesc falsev = make_bool_expr(false);
+            ExpDesc zerov = make_num_expr(0.0);
+            ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
             BCPos skip;
             BCPos check_nil, check_false, check_zero, check_empty;
             BCReg dest_reg;
 
             // Check for nil
-            expr_init(&nilv, ExpKind::Nil, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
 
             // Check for false
-            expr_init(&falsev, ExpKind::False, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
 
             // Check for zero
-            expr_init(&zerov, ExpKind::Num, 0);
-            setnumV(&zerov.u.nval, 0.0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
 
             // Check for empty string
-            expr_init(&emptyv, ExpKind::Str, 0);
-            emptyv.u.sval = fs->ls->keepstr("");
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
@@ -503,10 +496,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             skip = bcemit_jmp(fs);
 
             // Patch falsey checks to jump to RHS evaluation
-            jmp_patch(fs, check_nil, fs->pc);
-            jmp_patch(fs, check_false, fs->pc);
-            jmp_patch(fs, check_zero, fs->pc);
-            jmp_patch(fs, check_empty, fs->pc);
+            JumpListView(fs, check_nil).patch_to(fs->pc);
+            JumpListView(fs, check_false).patch_to(fs->pc);
+            JumpListView(fs, check_zero).patch_to(fs->pc);
+            JumpListView(fs, check_empty).patch_to(fs->pc);
 
             // Evaluate RHS
             expr_toreg(fs, e2, dest_reg);
@@ -517,8 +510,8 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
                // which always delivers its result in the condition register.
                bcemit_AD(fs, BC_MOV, reg, dest_reg);
             }
-            jmp_patch(fs, skip, fs->pc);
-            uint8_t saved_flags = e1->flags;  // Save flags before expr_init
+            JumpListView(fs, skip).patch_to(fs->pc);
+            ExprFlag saved_flags = e1->flags;  // Save flags before expr_init
 
             expr_init(e1, ExpKind::NonReloc, reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
@@ -575,8 +568,8 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    if (op IS BC_NOT) {
       // Swap true and false lists.
       { BCPos temp = e->f; e->f = e->t; e->t = temp; }
-      jmp_dropval(fs, e->f);
-      jmp_dropval(fs, e->t);
+      JumpListView(fs, e->f).drop_values();
+      JumpListView(fs, e->t).drop_values();
       expr_discharge(fs, e);
       if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) {
          e->k = ExpKind::True;

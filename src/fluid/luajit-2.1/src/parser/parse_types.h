@@ -11,6 +11,7 @@
 #include <span>
 #include <string_view>
 #include <concepts>
+#include <type_traits>
 
 // Expression kinds.
 
@@ -40,6 +41,86 @@ enum class ExpKind : uint8_t {
    return ExpKind::Local <= k and k <= ExpKind::Indexed;
 }
 
+enum class ExprFlag : uint8_t {
+   None = 0x00u,
+   PostfixIncStmt = 0x01u,
+   HasRhsReg = 0x02u
+};
+
+enum class FuncScopeFlag : uint8_t {
+   None = 0x00u,
+   Loop = 0x01u,
+   Break = 0x02u,
+   Upvalue = 0x08u,
+   NoClose = 0x10u,
+   Continue = 0x20u
+};
+
+enum class VarInfoFlag : uint8_t {
+   None = 0x00u,
+   VarReadWrite = 0x01u,
+   Jump = 0x02u,
+   JumpTarget = 0x04u,
+   Defer = 0x08u,
+   DeferArg = 0x10u
+};
+
+template<typename Flag>
+struct FlagOpsEnabled : std::false_type {};
+
+template<>
+struct FlagOpsEnabled<ExprFlag> : std::true_type {};
+
+template<>
+struct FlagOpsEnabled<FuncScopeFlag> : std::true_type {};
+
+template<>
+struct FlagOpsEnabled<VarInfoFlag> : std::true_type {};
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+[[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right)
+{
+   return Flag((uint8_t)Left | (uint8_t)Right);
+}
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+[[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right)
+{
+   return Flag((uint8_t)Left & (uint8_t)Right);
+}
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+[[nodiscard]] static constexpr Flag operator~(Flag Value)
+{
+   return Flag(~(uint8_t)Value);
+}
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+static inline Flag& operator|=(Flag& Left, Flag Right)
+{
+   Left = Left | Right;
+   return Left;
+}
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+static inline Flag& operator&=(Flag& Left, Flag Right)
+{
+   Left = Left & Right;
+   return Left;
+}
+
+template<typename Flag>
+requires FlagOpsEnabled<Flag>::value
+[[nodiscard]] static inline bool has_flag(Flag Flags, Flag Mask)
+{
+   return (Flags & Mask) != Flag::None;
+}
+
 // Expression descriptor.
 typedef struct ExpDesc {
    union {
@@ -51,16 +132,10 @@ typedef struct ExpDesc {
       GCstr* sval;   // String value.
    } u;
    ExpKind k;
-   uint8_t flags;      // Expression flags.
+   ExprFlag flags;      // Expression flags.
    BCPos t;      // True condition jump list.
    BCPos f;      // False condition jump list.
 } ExpDesc;
-
-// Flag carried in ExpDesc.flags to signal that a postfix increment formed a statement.
-inline constexpr uint8_t POSTFIX_INC_STMT_FLAG = 0x01u;
-
-// Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
-inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 
 // Expression helpers that previously relied on flag bits within ExpDesc.aux now
 // store their metadata in ExpDesc.flags. The aux field can therefore be used
@@ -106,8 +181,44 @@ static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
 {
    e->k = k;
    e->u.s.info = info;
-   e->flags = 0;
+   e->flags = ExprFlag::None;
    e->f = e->t = NO_JMP;
+}
+
+[[nodiscard]] static constexpr ExpDesc make_const_expr(ExpKind Kind, uint32_t Info = 0)
+{
+   ExpDesc expression{};
+   expression.u.s.info = Info;
+   expression.u.s.aux = 0;
+   expression.k = Kind;
+   expression.flags = ExprFlag::None;
+   expression.t = NO_JMP;
+   expression.f = NO_JMP;
+   return expression;
+}
+
+[[nodiscard]] static constexpr ExpDesc make_nil_expr()
+{
+   return make_const_expr(ExpKind::Nil);
+}
+
+[[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
+{
+   return make_const_expr(Value ? ExpKind::True : ExpKind::False);
+}
+
+[[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
+{
+   ExpDesc expression = make_const_expr(ExpKind::Num);
+   setnumV(&expression.u.nval, Value);
+   return expression;
+}
+
+[[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
+{
+   ExpDesc expression = make_const_expr(ExpKind::Str);
+   expression.u.sval = Value;
+   return expression;
 }
 
 // Check number constant for +-0.
@@ -123,14 +234,8 @@ typedef struct FuncScope {
    struct FuncScope* prev; // Link to outer scope.
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
-   uint8_t flags;          // Scope flags.
+   FuncScopeFlag flags;    // Scope flags.
 } FuncScope;
-
-inline constexpr uint8_t FSCOPE_LOOP = 0x01;      // Scope is a (breakable) loop.
-inline constexpr uint8_t FSCOPE_BREAK = 0x02;     // Break used in scope.
-inline constexpr uint8_t FSCOPE_UPVAL = 0x08;     // Upvalue in scope.
-inline constexpr uint8_t FSCOPE_NOCLOSE = 0x10;   // Do not close upvalues.
-inline constexpr uint8_t FSCOPE_CONTINUE = 0x20;  // Continue used in scope.
 
 #define NAME_BREAK      ((GCstr*)uintptr_t(1))
 #define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
@@ -140,12 +245,7 @@ inline constexpr uint8_t FSCOPE_CONTINUE = 0x20;  // Continue used in scope.
 typedef uint16_t VarIndex;
 inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 
-// Variable info.
-inline constexpr uint8_t VSTACK_VAR_RW = 0x01;       // R/W variable.
-inline constexpr uint8_t VSTACK_JUMP = 0x02;         // Pending goto (used by break/continue).
-inline constexpr uint8_t VSTACK_JUMP_TARGET = 0x04;  // Jump to (used by break/continue).
-inline constexpr uint8_t VSTACK_DEFER = 0x08;        // Deferred handler.
-inline constexpr uint8_t VSTACK_DEFERARG = 0x10;     // Deferred handler argument.
+// Variable info flags are defined in VarInfoFlag.
 
 // Per-function state.
 typedef struct FuncState {

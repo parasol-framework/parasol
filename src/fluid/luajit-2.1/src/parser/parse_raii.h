@@ -21,7 +21,7 @@ class ScopeGuard {
    FuncState* fs_;
 
 public:
-   ScopeGuard(FuncState* fs, FuncScope* bl, int flags) : fs_(fs) {
+   ScopeGuard(FuncState* fs, FuncScope* bl, FuncScopeFlag flags) : fs_(fs) {
       fscope_begin(fs, bl, flags);
    }
 

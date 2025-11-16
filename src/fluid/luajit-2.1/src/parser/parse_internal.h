@@ -8,9 +8,8 @@
 
 #pragma once
 
+#include <iterator>
 #include <string_view>
-
-struct LHSVarList;  // Defined in lj_parse_stmt.cpp
 
 // Error handling (lj_parse_core.c)
 
@@ -24,15 +23,47 @@ static BCReg const_str(FuncState* fs, ExpDesc* e);
 
 // Jump list handling (lj_parse_constants.c)
 
-static BCPos jmp_next(FuncState* fs, BCPos pc);
-static int jmp_novalue(FuncState* fs, BCPos list);
-static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg);
-static void jmp_dropval(FuncState* fs, BCPos list);
-static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest);
-static void jmp_append(FuncState* fs, BCPos* l1, BCPos l2);
-static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget, BCReg reg, BCPos dtarget);
-static void jmp_tohere(FuncState* fs, BCPos list);
-static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
+class JumpListView {
+public:
+   class Iterator {
+   public:
+      using iterator_category = std::forward_iterator_tag;
+      using difference_type = ptrdiff_t;
+      using value_type = BCPos;
+      Iterator(FuncState* State, BCPos Position);
+      [[nodiscard]] BCPos operator*() const;
+      Iterator& operator++();
+      [[nodiscard]] bool operator==(const Iterator& Other) const;
+      [[nodiscard]] bool operator!=(const Iterator& Other) const;
+
+   private:
+      FuncState* func_state;
+      BCPos position;
+   };
+
+   JumpListView(FuncState* State, BCPos Head);
+
+   [[nodiscard]] Iterator begin() const;
+   [[nodiscard]] Iterator end() const;
+   [[nodiscard]] bool empty() const;
+   [[nodiscard]] BCPos head() const;
+   [[nodiscard]] BCPos next(BCPos Position) const;
+   [[nodiscard]] static BCPos next(FuncState* State, BCPos Position);
+   [[nodiscard]] bool produces_values() const;
+   [[nodiscard]] bool patch_test_register(BCPos Position, BCReg Register) const;
+   void drop_values() const;
+   [[nodiscard]] BCPos append(BCPos Other) const;
+   void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
+   void patch_to_here() const;
+   void patch_to(BCPos Target) const;
+   void patch_head(BCPos Destination) const;
+
+private:
+   void patch_instruction(BCPos Position, BCPos Destination) const;
+
+   FuncState* func_state;
+   BCPos list_head;
+};
 
 // Expression flag lifecycle management
 
@@ -42,34 +73,34 @@ static void jmp_patch(FuncState* fs, BCPos list, BCPos target);
 // Consume a flag from an expression, clearing it and returning whether it was set.
 // Use this when an operator takes ownership of a flagged value.
 
-[[nodiscard]] static inline bool expr_consume_flag(ExpDesc* e, uint8_t flag)
+// Clear a flag on an expression.
+
+static inline void expr_clear_flag(ExpDesc* Expression, ExprFlag Flag)
 {
-   if (e->flags & flag) {
-      e->flags &= ~flag;
-      return true;
-   }
-   return false;
+   Expression->flags &= ~Flag;
 }
 
 // Check if an expression has a flag without consuming it.
 
-[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* e, uint8_t flag)
+[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* Expression, ExprFlag Flag)
 {
-   return (e->flags & flag) != 0;
+   return has_flag(Expression->flags, Flag);
 }
 
 // Set a flag on an expression.
 
-static inline void expr_set_flag(ExpDesc* e, uint8_t flag)
+static inline void expr_set_flag(ExpDesc* Expression, ExprFlag Flag)
 {
-   e->flags |= flag;
+   Expression->flags |= Flag;
 }
 
-// Clear a flag on an expression.
-
-static inline void expr_clear_flag(ExpDesc* e, uint8_t flag)
+[[nodiscard]] static inline bool expr_consume_flag(ExpDesc* Expression, ExprFlag Flag)
 {
-   e->flags &= ~flag;
+   if (has_flag(Expression->flags, Flag)) {
+      expr_clear_flag(Expression, Flag);
+      return true;
+   }
+   return false;
 }
 
 // Register allocation (lj_parse_regalloc.c)
@@ -137,7 +168,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first);
 
 // Function scope (lj_parse_scope.c)
 
-static void fscope_begin(FuncState* fs, FuncScope* bl, int flags);
+static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags);
 static void fscope_loop_continue(FuncState* fs, BCPos pos);
 static void execute_defers(FuncState* fs, BCReg limit);
 static void fscope_end(FuncState* fs);

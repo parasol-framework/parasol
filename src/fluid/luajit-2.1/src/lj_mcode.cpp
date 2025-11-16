@@ -168,7 +168,7 @@ static void mcode_protect(jit_State* J, int prot)
 #define MCPROT_RUN   MCPROT_RX
 
 // Protection twiddling failed. Probably due to kernel security.
-static LJ_NORET LJ_NOINLINE void mcode_protfail(jit_State* J)
+[[noreturn]] static LJ_NOINLINE void mcode_protfail(jit_State* J)
 {
    lua_CFunction panic = J2G(J)->panic;
    if (panic) {

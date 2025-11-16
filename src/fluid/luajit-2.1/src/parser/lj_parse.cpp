@@ -75,7 +75,7 @@ GCproto * lj_parse(LexState *State)
    fs.bcbase = nullptr;
    fs.bclim = 0;
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
-   fscope_begin(&fs, &bl, 0);
+   fscope_begin(&fs, &bl, FuncScopeFlag::None);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
    State->next();  // Read-ahead first token.
    State->parse_chunk();
