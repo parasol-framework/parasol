@@ -91,7 +91,7 @@ set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_
 # Common host tool sources (used by both MSVC and non-MSVC builds)
 set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
 set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
-set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.cpp")
 
 # Library source files needed for buildvm header generation (used in both build paths)
 
