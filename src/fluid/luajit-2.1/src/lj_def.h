@@ -299,7 +299,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* p)
 
 #elif defined(_MSC_VER)
 
-#define LJ_NORET   __declspec(noreturn)
+#define LJ_NORET   [[noreturn]]
 #define LJ_ALIGN(n)   __declspec(align(n))
 #define LJ_INLINE   inline
 #define LJ_AINLINE   __forceinline
@@ -317,19 +317,19 @@ static LJ_AINLINE uint32_t lj_fls(uint32_t x)
    return _CountLeadingZeros(x) ^ 31;
 }
 #else
-unsigned char _BitScanForward(unsigned long*, unsigned long);
-unsigned char _BitScanReverse(unsigned long*, unsigned long);
+unsigned char _BitScanForward(uint32_t *, uint32_t);
+unsigned char _BitScanReverse(uint32_t *, uint32_t);
 #pragma intrinsic(_BitScanForward)
 #pragma intrinsic(_BitScanReverse)
 
-static LJ_AINLINE uint32_t lj_ffs(uint32_t x)
+inline uint32_t lj_ffs(uint32_t x)
 {
-   unsigned long r; _BitScanForward(&r, x); return (uint32_t)r;
+   uint32_t r; _BitScanForward(&r, x); return r;
 }
 
-static LJ_AINLINE uint32_t lj_fls(uint32_t x)
+inline uint32_t lj_fls(uint32_t x)
 {
-   unsigned long r; _BitScanReverse(&r, x); return (uint32_t)r;
+   uint32_t r; _BitScanReverse(&r, x); return r;
 }
 #endif
 

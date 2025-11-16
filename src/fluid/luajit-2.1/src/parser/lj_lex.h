@@ -61,6 +61,8 @@ struct ExpDesc;
 struct LHSVarList;
 enum BinOpr : int;
 
+void lj_reserve_words(lua_State *);
+
 // Lua lexer state.
 
 class LexState {
@@ -101,7 +103,6 @@ public:
    void next();
    LexToken lookahead_token();
    const char* token2str(LexToken Tok);
-   [[noreturn]] void error(LexToken Tok, ErrMsg Em, ...);
    LJ_NORET LJ_NOINLINE void err_syntax(ErrMsg Message);
    LJ_NORET LJ_NOINLINE void err_token(LexToken Token);
    int lex_opt(LexToken Token);
@@ -180,6 +181,7 @@ public:
 
    // Public parser helpers
    GCstr* keepstr(std::string_view Value);
+
 #if LJ_HASFFI
    void keepcdata(TValue* Value, GCcdata* Cdata);
 #endif
@@ -197,7 +199,4 @@ public:
 #endif
 };
 
-// Deprecated standalone functions - kept for compatibility during transition
-
-LJ_FUNC_NORET void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...);  // Deprecated: use ls->error()
-LJ_FUNC void lj_lex_init(lua_State* L);
+LJ_FUNC_NORET void lj_lex_error(LexState *, LexToken, ErrMsg, ...);

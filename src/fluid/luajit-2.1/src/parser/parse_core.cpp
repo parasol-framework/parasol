@@ -16,13 +16,9 @@ LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 {
-   if (fs->linedefined == 0)
-      lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
-   else
-      lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
+   if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
+   else lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
 }
-
-// Lexer support
 
 // Check and consume optional token.
 
