@@ -18,12 +18,12 @@ static void assign_hazard(LexState *State, LHSVarList *Left, const ExpDesc *Var)
    int hazard = 0;
 
    for (; Left; Left = Left->prev) {
-      if (Left->var.k == ExpKind::Indexed) {
-         if (Left->var.u.s.info == reg) {  // t[i], t = 1, 2
+      if (Left->var.k IS ExpKind::Indexed) {
+         if (Left->var.u.s.info IS reg) {  // t[i], t = 1, 2
             hazard = 1;
             Left->var.u.s.info = tmp;
          }
-         if (Left->var.u.s.aux == reg) {  // t[i], i = 1, 2
+         if (Left->var.u.s.aux IS reg) {  // t[i], i = 1, 2
             hazard = 1;
             Left->var.u.s.aux = tmp;
          }
@@ -43,7 +43,7 @@ static void assign_adjust(LexState *State, BCReg nvars, BCReg nexps, ExpDesc* e)
 {
    FuncState* fs = State->fs;
    int32_t extra = int32_t(nvars) - int32_t(nexps);
-   if (e->k == ExpKind::Call) {
+   if (e->k IS ExpKind::Call) {
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
@@ -77,11 +77,11 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
 
    checkcond(State, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
 
-   lj_lex_next(State);
+   State->next();
 
    freg_base = fs->freereg;
 
-   if (lh->var.k == ExpKind::Indexed) {
+   if (lh->var.k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;
 
@@ -126,7 +126,7 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
    assign_pos = fs->pc;
 
    nexps = expr_list(State, &rh);
-   checkcond(State, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+   checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
 
    expr_discharge(fs, &rh);
    expr_toreg(fs, &rh, lhs_reg);
@@ -140,7 +140,7 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
    jmp_patch(fs, skip_assign, fs->pc);
 
    fs->freereg = freg_base;
-   if (lhv.k == ExpKind::Indexed) {
+   if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
          bcreg_free(fs, BCReg(orig_aux));
@@ -153,7 +153,7 @@ static int assign_if_empty(LexState *State, LHSVarList* lh)
 
 static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
 {
-   if (opType == TK_cif_empty) return assign_if_empty(State, lh);
+   if (opType IS TK_cif_empty) return assign_if_empty(State, lh);
 
    FuncState* fs = State->fs;
    ExpDesc lhv, infix, rh;
@@ -173,17 +173,17 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
    case TK_cmod: op = OPR_MOD; break;
    case TK_cconcat: op = OPR_CONCAT; break;
    default:
-      lj_assertLS(0, "unknown compound operator");
+      State->assert_condition(0, "unknown compound operator");
       return 0;
    }
-   lj_lex_next(State);
+   State->next();
 
    // Preserve table base/index across RHS evaluation by duplicating them
    // to the top of the stack and discharging using the duplicates. This retains
    // the original registers for the final store and maintains LIFO free order.
 
    freg_base = fs->freereg;
-   if (lh->var.k == ExpKind::Indexed) {
+   if (lh->var.k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;  // Keep originals for the store.
 
@@ -211,19 +211,19 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
    // For concatenation, fix left operand placement before parsing RHS to
    // maintain BC_CAT stack adjacency and LIFO freeing semantics.
 
-   if (op == OPR_CONCAT) {
+   if (op IS OPR_CONCAT) {
       infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
       nexps = expr_list(State, &rh);
-      checkcond(State, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+      checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
 
-      if (!(op == OPR_BAND or op == OPR_BOR or op == OPR_BXOR or op == OPR_SHL or op == OPR_SHR))
+      if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR))
          expr_tonextreg(fs, &lh->var);
       nexps = expr_list(State, &rh);
-      checkcond(State, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+      checkcond(State, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
       infix = lh->var;
       bcemit_binop_left(fs, op, &infix);
    }
@@ -233,7 +233,7 @@ static int assign_compound(LexState *State, LHSVarList* lh, LexToken opType)
    // Drop any RHS temporaries and release original base/index in LIFO order.
 
    fs->freereg = freg_base;
-   if (lhv.k == ExpKind::Indexed) {
+   if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) bcreg_free(fs, BCReg(orig_aux));
       bcreg_free(fs, BCReg(lhv.u.s.info));
@@ -252,7 +252,7 @@ static void parse_assignment(LexState *State, LHSVarList* lh, BCReg nvars)
       LHSVarList vl;
       vl.prev = lh;
       expr_primary(State, &vl.var);
-      if (vl.var.k == ExpKind::Local)
+      if (vl.var.k IS ExpKind::Local)
          assign_hazard(State, lh, &vl.var);
       checklimit(State->fs, State->level + nvars, LJ_MAX_XLEVEL, "variable names");
       parse_assignment(State, &vl, nvars + 1);
@@ -261,9 +261,9 @@ static void parse_assignment(LexState *State, LHSVarList* lh, BCReg nvars)
       BCReg nexps;
       lex_check(State, '=');
       nexps = expr_list(State, &e);
-      if (nexps == nvars) {
-         if (e.k == ExpKind::Call) {
-            if (bc_op(*bcptr(State->fs, &e)) == BC_VARG) {  // Vararg assignment.
+      if (nexps IS nvars) {
+         if (e.k IS ExpKind::Call) {
+            if (bc_op(*bcptr(State->fs, &e)) IS BC_VARG) {  // Vararg assignment.
                State->fs->freereg--;
                e.k = ExpKind::Relocable;
             }
@@ -291,18 +291,18 @@ static void parse_call_assign(LexState *State)
    FuncState* fs = State->fs;
    LHSVarList vl;
    expr_primary(State, &vl.var);
-   if (vl.var.k == ExpKind::NonReloc and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
+   if (vl.var.k IS ExpKind::NonReloc and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
       return;
-   if (vl.var.k == ExpKind::Call) {  // Function call statement.
+   if (vl.var.k IS ExpKind::Call) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.var), 1);  // No results.
    }
-   else if (State->tok == TK_cadd or State->tok == TK_csub or State->tok == TK_cmul or
-      State->tok == TK_cdiv or State->tok == TK_cmod or State->tok == TK_cconcat or
-      State->tok == TK_cif_empty) {
+   else if (State->tok IS TK_cadd or State->tok IS TK_csub or State->tok IS TK_cmul or
+      State->tok IS TK_cdiv or State->tok IS TK_cmod or State->tok IS TK_cconcat or
+      State->tok IS TK_cif_empty) {
       vl.prev = nullptr;
       assign_compound(State, &vl, State->tok);
    }
-   else if (State->tok == ';') {
+   else if (State->tok IS ';') {
       // Postfix increment (++) handled in expr_primary.
    }
    else {  // Start of an assignment.
@@ -357,7 +357,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 {
    BCOp op = bc_op(*ins);
 
-   if (op == BC_RET1) {
+   if (op IS BC_RET1) {
       BCReg src = bc_a(*ins);
       if (src < fs->nactvar) {
          BCReg dst = fs->freereg;
@@ -366,7 +366,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
          setbc_a(ins, dst);
       }
    }
-   else if (op == BC_RET) {
+   else if (op IS BC_RET) {
       BCReg base = bc_a(*ins);
       BCReg nres = bc_d(*ins);
 
@@ -394,7 +394,7 @@ static void parse_defer(LexState *State)
    BCReg nargs = 0;
    VarInfo* vi;
 
-   lj_lex_next(State);  // Skip 'defer'.
+   State->next();  // Skip 'defer'.
    var_new(State, 0, NAME_BLANK);
    bcreg_reserve(fs, 1);
    var_add(State, 1);
@@ -404,9 +404,9 @@ static void parse_defer(LexState *State)
    parse_body_defer(State, &func, line);
    expr_toreg(fs, &func, reg);
 
-   if (State->tok == '(') {
+   if (State->tok IS '(') {
       BCLine argline = State->linenumber;
-      lj_lex_next(State);
+      State->next();
       if (State->tok != ')') {
          do {
             expr(State, &arg);
@@ -439,12 +439,12 @@ static void parse_func(LexState *State, BCLine line)
    FuncState* fs;
    ExpDesc v, b;
    int needself = 0;
-   lj_lex_next(State);  // Skip 'function'.
+   State->next();  // Skip 'function'.
    // Parse function name.
    var_lookup(State, &v);
-   while (State->tok == '.')  // Multiple dot-separated fields.
+   while (State->tok IS '.')  // Multiple dot-separated fields.
       expr_field(State, &v);
-   if (State->tok == ':') {  // Optional colon to signify method call.
+   if (State->tok IS ':') {  // Optional colon to signify method call.
       needself = 1;
       expr_field(State, &v);
    }
@@ -474,19 +474,19 @@ static void parse_return(LexState *State)
 {
    BCIns ins;
    FuncState* fs = State->fs;
-   lj_lex_next(State);  // Skip 'return'.
+   State->next();  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_is_end(State->tok) or State->tok == ';') {  // Bare return.
+   if (parse_is_end(State->tok) or State->tok IS ';') {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
       BCReg nret = expr_list(State, &e);
-      if (nret == 1) {  // Return one result.
-         if (e.k == ExpKind::Call) {  // Check for tail call.
+      if (nret IS 1) {  // Return one result.
+         if (e.k IS ExpKind::Call) {  // Check for tail call.
             BCIns* ip = bcptr(fs, &e);
             // It doesn't pay off to add BC_VARGT just for 'return ...'.
-            if (bc_op(*ip) == BC_VARG) goto notailcall;
+            if (bc_op(*ip) IS BC_VARG) goto notailcall;
             fs->pc--;
             ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
          }
@@ -495,7 +495,7 @@ static void parse_return(LexState *State)
          }
       }
       else {
-         if (e.k == ExpKind::Call) {  // Append all results from a call.
+         if (e.k IS ExpKind::Call) {  // Append all results from a call.
          notailcall:
             setbc_b(bcptr(fs, &e), 0);
             ins = BCINS_AD(BC_RETM, fs->nactvar, e.u.s.aux - fs->nactvar);
@@ -523,7 +523,7 @@ static void parse_continue(LexState *State)
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != nullptr, "continue outside loop");
+   State->assert_condition(loop != nullptr, "continue outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_CONTINUE;
@@ -538,7 +538,7 @@ static void parse_break(LexState *State)
 
    while (loop and !(loop->flags & FSCOPE_LOOP))
       loop = loop->prev;
-   lj_assertLS(loop != nullptr, "break outside loop");
+   State->assert_condition(loop != nullptr, "break outside loop");
 
    execute_defers(fs, loop->nactvar);
    fs->bl->flags |= FSCOPE_BREAK;
@@ -567,7 +567,7 @@ static void parse_while(LexState *State, BCLine line)
    FuncState* fs = State->fs;
    BCPos start, loop, condexit;
    FuncScope bl;
-   lj_lex_next(State);  // Skip 'while'.
+   State->next();  // Skip 'while'.
    start = fs->lasttarget = fs->pc;
    condexit = expr_cond(State);
    fscope_begin(fs, &bl, FSCOPE_LOOP);
@@ -593,7 +593,7 @@ static void parse_repeat(LexState *State, BCLine line)
    FuncScope bl1, bl2;
    fscope_begin(fs, &bl1, FSCOPE_LOOP);  // Breakable loop scope.
    fscope_begin(fs, &bl2, 0);  // Inner scope.
-   lj_lex_next(State);  // Skip 'repeat'.
+   State->next();  // Skip 'repeat'.
    bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
    parse_chunk(State);
    lex_match(State, TK_until, TK_repeat, line);
@@ -676,17 +676,17 @@ static int predict_next(LexState *State, FuncState* fs, BCPos pc)
    case BC_GGET:
       // There's no inverse index (yet), so lookup the strings.
       o = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "pairs"));
-      if (o and tvhaskslot(o) and tvkslot(o) == bc_d(ins))
+      if (o and tvhaskslot(o) and tvkslot(o) IS bc_d(ins))
          return 1;
       o = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "next"));
-      if (o and tvhaskslot(o) and tvkslot(o) == bc_d(ins))
+      if (o and tvhaskslot(o) and tvkslot(o) IS bc_d(ins))
          return 1;
       return 0;
    default:
       return 0;
    }
-   return (name->len == 5 and !strcmp(strdata(name), "pairs")) or
-      (name->len == 4 and !strcmp(strdata(name), "next"));
+   return (name->len IS 5 and !strcmp(strdata(name), "pairs")) or
+      (name->len IS 4 and !strcmp(strdata(name), "next"));
 }
 
 //********************************************************************************************************************
@@ -745,10 +745,10 @@ static void parse_for(LexState *State, BCLine line)
    GCstr* varname;
    FuncScope bl;
    fscope_begin(fs, &bl, FSCOPE_LOOP);
-   lj_lex_next(State);  // Skip 'for'.
+   State->next();  // Skip 'for'.
    varname = lex_str(State);  // Get first variable name.
-   if (State->tok == '=') parse_for_num(State, varname, line);
-   else if (State->tok == ',' or State->tok == TK_in) parse_for_iter(State, varname);
+   if (State->tok IS '=') parse_for_num(State, varname, line);
+   else if (State->tok IS ',' or State->tok IS TK_in) parse_for_iter(State, varname);
    else err_syntax(State, LJ_ERR_XFOR);
    lex_match(State, TK_end, TK_for, line);
    fscope_end(fs);  // Resolve break list.
@@ -760,7 +760,7 @@ static void parse_for(LexState *State, BCLine line)
 static BCPos parse_then(LexState *State)
 {
    BCPos condexit;
-   lj_lex_next(State);  // Skip 'if' or 'elseif'.
+   State->next();  // Skip 'if' or 'elseif'.
    condexit = expr_cond(State);
    lex_check(State, TK_then);
    parse_block(State);
@@ -776,16 +776,16 @@ static void parse_if(LexState *State, BCLine line)
    BCPos flist;
    BCPos escapelist = NO_JMP;
    flist = parse_then(State);
-   while (State->tok == TK_elseif) {  // Parse multiple 'elseif' blocks.
+   while (State->tok IS TK_elseif) {  // Parse multiple 'elseif' blocks.
       jmp_append(fs, &escapelist, bcemit_jmp(fs));
       jmp_tohere(fs, flist);
       flist = parse_then(State);
    }
 
-   if (State->tok == TK_else) {  // Parse optional 'else' block.
+   if (State->tok IS TK_else) {  // Parse optional 'else' block.
       jmp_append(fs, &escapelist, bcemit_jmp(fs));
       jmp_tohere(fs, flist);
-      lj_lex_next(State);  // Skip 'else'.
+      State->next();  // Skip 'else'.
       parse_block(State);
    }
    else jmp_append(fs, &escapelist, flist);

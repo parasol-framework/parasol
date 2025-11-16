@@ -61,16 +61,16 @@ static int parse_stmt(LexState *State)
    switch (State->tok) {
       case TK_if:       parse_if(State, line); break;
       case TK_while:    parse_while(State, line); break;
-      case TK_do:       lj_lex_next(State); parse_block(State); lex_match(State, TK_end, TK_do, line); break;
+      case TK_do:       State->next(); parse_block(State); lex_match(State, TK_end, TK_do, line); break;
       case TK_for:      parse_for(State, line); break;
       case TK_repeat:   parse_repeat(State, line); break;
       case TK_function: parse_func(State, line); break;
       case TK_defer:    parse_defer(State); break;
-      case TK_local:    lj_lex_next(State); parse_local(State); break;
+      case TK_local:    State->next(); parse_local(State); break;
       case TK_return:   parse_return(State); return 1;  // Must be last.
-      case TK_continue: lj_lex_next(State); parse_continue(State); break;
-      case TK_break:    lj_lex_next(State); parse_break(State); break;
-      case ';':         lj_lex_next(State); break;
+      case TK_continue: State->next(); parse_continue(State); break;
+      case TK_break:    State->next(); parse_break(State); break;
+      case ';':         State->next(); break;
       default:          parse_call_assign(State); break;
    }
    return 0;
@@ -85,7 +85,7 @@ static void parse_chunk(LexState *State)
    while (not is_last and not parse_is_end(State->tok)) {
       is_last = parse_stmt(State);
       lex_opt(State, ';');
-      lj_assertLS(State->fs->framesize >= State->fs->freereg and State->fs->freereg >= State->fs->nactvar, "bad regalloc");
+      State->assert_condition(State->fs->framesize >= State->fs->freereg and State->fs->freereg >= State->fs->nactvar, "bad regalloc");
       State->fs->freereg = State->fs->nactvar;  // Free registers after each stmt.
    }
    synlevel_end(State);
@@ -115,7 +115,7 @@ GCproto * lj_parse(LexState *State)
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, 0);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
-   lj_lex_next(State);  // Read-ahead first token.
+   State->next();  // Read-ahead first token.
    parse_chunk(State);
    if (State->tok != TK_eof) err_token(State, TK_eof);
    pt = fs_finish(State, State->linenumber);

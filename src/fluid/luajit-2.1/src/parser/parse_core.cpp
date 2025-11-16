@@ -4,14 +4,14 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-LJ_NORET LJ_NOINLINE static void err_syntax(LexState* ls, ErrMsg em)
+LJ_NORET LJ_NOINLINE static void err_syntax(LexState *State, ErrMsg em)
 {
-   lj_lex_error(ls, ls->tok, em);
+   lj_lex_error(State, State->tok, em);
 }
 
-LJ_NORET LJ_NOINLINE static void err_token(LexState* ls, LexToken tok)
+LJ_NORET LJ_NOINLINE static void err_token(LexState *State, LexToken tok)
 {
-   lj_lex_error(ls, ls->tok, LJ_ERR_XTOKEN, lj_lex_token2str(ls, tok));
+   lj_lex_error(State, State->tok, LJ_ERR_XTOKEN, State->token2str(tok));
 }
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
@@ -26,10 +26,10 @@ LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 
 // Check and consume optional token.
 
-static int lex_opt(LexState* ls, LexToken tok)
+static int lex_opt(LexState *State, LexToken tok)
 {
-   if (ls->tok == tok) {
-      lj_lex_next(ls);
+   if (State->tok == tok) {
+      State->next();
       return 1;
    }
    return 0;
@@ -37,36 +37,35 @@ static int lex_opt(LexState* ls, LexToken tok)
 
 // Check and consume token.
 
-static void lex_check(LexState* ls, LexToken tok)
+static void lex_check(LexState *State, LexToken tok)
 {
-   if (ls->tok != tok)
-      err_token(ls, tok);
-   lj_lex_next(ls);
+   if (State->tok != tok) err_token(State, tok);
+   State->next();
 }
 
 // Check for matching token.
 
-static void lex_match(LexState* ls, LexToken what, LexToken who, BCLine line)
+static void lex_match(LexState *State, LexToken what, LexToken who, BCLine line)
 {
-   if (!lex_opt(ls, what)) {
-      if (line == ls->linenumber) {
-         err_token(ls, what);
+   if (!lex_opt(State, what)) {
+      if (line == State->linenumber) {
+         err_token(State, what);
       }
       else {
-         const char* swhat = lj_lex_token2str(ls, what);
-         const char* swho = lj_lex_token2str(ls, who);
-         lj_lex_error(ls, ls->tok, LJ_ERR_XMATCH, swhat, swho, line);
+         auto swhat = State->token2str(what);
+         auto swho = State->token2str(who);
+         lj_lex_error(State, State->tok, LJ_ERR_XMATCH, swhat, swho, line);
       }
    }
 }
 
 // Check for string token.
 
-static GCstr* lex_str(LexState* ls)
+static GCstr* lex_str(LexState *State)
 {
    GCstr* s;
-   if (ls->tok != TK_name) err_token(ls, TK_name);
-   s = strV(&ls->tokval);
-   lj_lex_next(ls);
+   if (State->tok != TK_name) err_token(State, TK_name);
+   s = strV(&State->tokval);
+   State->next();
    return s;
 }

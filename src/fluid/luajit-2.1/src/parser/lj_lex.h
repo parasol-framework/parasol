@@ -36,12 +36,14 @@ typedef int LexChar;   //  Lexical character. Unsigned ext. from char.
 typedef int LexToken;   //  Lexical token.
 
 // Combined bytecode ins/line. Only used during bytecode generation.
+
 typedef struct BCInsLine {
    BCIns ins;        //  Bytecode instruction.
    BCLine line;      //  Line number for this bytecode.
 } BCInsLine;
 
 // Info for local variables. Only used during bytecode generation.
+
 typedef struct VarInfo {
    GCRef name;        //  Local variable name.
    BCPos startpc;     //  First point where the local variable is active.
@@ -51,7 +53,9 @@ typedef struct VarInfo {
 } VarInfo;
 
 // Lua lexer state.
-typedef struct LexState {
+
+class LexState {
+public:
    struct FuncState* fs; // Current FuncState. Defined in lj_parse.c.
    struct lua_State* L;  // Lua state.
    TValue tokval;        // Current token value.
@@ -78,18 +82,32 @@ typedef struct LexState {
    uint32_t ternary_depth; // Number of pending ternary operators.
    uint8_t pending_if_empty_colon; // Tracks ?: misuse after ??.
    int endmark;          // Trust bytecode end marker, even if not at EOF.
-} LexState;
+   int is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
 
-LJ_FUNC int lj_lex_setup(lua_State* L, LexState* ls);
-LJ_FUNC void lj_lex_cleanup(lua_State* L, LexState* ls);
-LJ_FUNC void lj_lex_next(LexState* ls);
-LJ_FUNC LexToken lj_lex_lookahead(LexState* ls);
-LJ_FUNC const char* lj_lex_token2str(LexState* ls, LexToken tok);
-LJ_FUNC_NORET void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...);
-LJ_FUNC void lj_lex_init(lua_State* L);
+   LexState() = default;  // Default constructor for bytecode reader usage
+   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, const char* Chunkarg, const char* Mode);
+   LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Constructor for direct bytecode reading
+   ~LexState();
+
+   void next();
+   LexToken lookahead_token();
+   const char* token2str(LexToken Tok);
+   [[noreturn]] void error(LexToken Tok, ErrMsg Em, ...);
 
 #ifdef LUA_USE_ASSERT
-#define lj_assertLS(c, ...)   (lj_assertG_(G(ls->L), (c), __VA_ARGS__))
+   template<typename... Args>
+   void assert_condition(bool Condition, const char* Format, Args... Arguments) {
+      lj_assertG_(G(this->L), Condition, Format, Arguments...);
+   }
 #else
-#define lj_assertLS(c, ...)   ((void)State)
+   template<typename... Args>
+   void assert_condition(bool Condition, const char* Format, Args... Arguments) {
+      (void)this; (void)Condition; (void)Format;
+   }
 #endif
+};
+
+// Deprecated standalone functions - kept for compatibility during transition
+
+LJ_FUNC_NORET void lj_lex_error(LexState* ls, LexToken tok, ErrMsg em, ...);  // Deprecated: use ls->error()
+LJ_FUNC void lj_lex_init(lua_State* L);

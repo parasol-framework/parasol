@@ -33,7 +33,7 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    int bc;
    UNUSED(dummy);
    cframe_errfunc(L->cframe) = -1;  //  Inherit error function.
-   bc = lj_lex_setup(L, ls);
+   bc = ls->is_bytecode;
    if (ls->mode and !strchr(ls->mode, bc ? 'b' : 't')) {
       setstrV(L, L->top++, lj_err_str(L, LJ_ERR_XMODE));
       lj_err_throw(L, LUA_ERRSYNTAX);
@@ -48,15 +48,10 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 extern int lua_loadx(lua_State* L, lua_Reader reader, void* data,
    const char* chunkname, const char* mode)
 {
-   LexState ls;
+   LexState ls(L, reader, data, chunkname ? chunkname : "?", mode);
    int status;
-   ls.rfunc = reader;
-   ls.rdata = data;
-   ls.chunkarg = chunkname ? chunkname : "?";
-   ls.mode = mode;
-   lj_buf_init(L, &ls.sb);
    status = lj_vm_cpcall(L, nullptr, &ls, cpparser);
-   lj_lex_cleanup(L, &ls);
+   // Destructor will be called automatically when ls goes out of scope
    lj_gc_check(L);
    return status;
 }
