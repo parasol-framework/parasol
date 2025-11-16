@@ -13,6 +13,7 @@ The XQuery module provides comprehensive XPath 2.0 and XQuery language support f
 - Expression compilation and optimisation
 - Thread-safe compiled expressions
 - Schema-aware type system integration
+- Schema-aware XML Schema type constructors (`xs:double`, `xs:date`, `xs:duration`, `xs:QName`, etc.)
 - Type expressions (cast, castable, treat-as, instance-of, typeswitch)
 - XQuery module system with import/composition support
 - Namespace-aware query processing
@@ -33,7 +34,7 @@ src/xquery/
 ├── xquery_class.cpp           # XQuery class implementation
 ├── xquery_class_def.cpp       # Auto-generated XQuery class definitions
 ├── unit_tests.cpp             # C++ unit tests for internal components
-├── CMakeLists.txt             # Build configuration with 25 registered tests
+├── CMakeLists.txt             # Build configuration with 23 registered tests
 ├── AGENTS.md                  # AI agent guide for this module
 ├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
 ├── QT3_1_0/                   # W3C XQuery Test Suite (optional, extracted from zip)
@@ -56,6 +57,7 @@ src/xquery/
 │   ├── eval_navigation.cpp        # Node navigation
 │   ├── eval_predicates.cpp        # Predicate evaluation
 │   ├── eval_values.cpp            # Value operations
+│   ├── date_time_utils.cpp/h      # Shared date/time canonicalisation helpers
 │   └── checked_arith.h            # Arithmetic overflow checking utilities
 ├── functions/                 # Function implementations by category
 │   ├── function_library.cpp       # Function library initialization
@@ -77,14 +79,13 @@ src/xquery/
     ├── test_axes.fluid                # XQuery axes tests
     ├── test_constructors.fluid        # Node constructor tests
     ├── test_core.fluid                # Core XQuery functionality tests
-    ├── test_datetime.fluid            # DateTime function tests
+    ├── test_datetime.fluid            # Date/time function tests
     ├── test_documents.fluid           # Document function tests
-    ├── test_duration.fluid            # Duration type tests
+    ├── test_duration.fluid            # Schema duration parsing and validation tests
     ├── test_edge_cases.fluid          # Edge case and regression tests
     ├── test_flwor.fluid               # FLWOR expression tests
     ├── test_func_ext.fluid            # Extended function library tests
     ├── test_module_loading.fluid      # XQuery module import/loading tests
-    ├── test_numbers.fluid             # Numeric function tests
     ├── test_predicates.fluid          # Predicate evaluation tests
     ├── test_prolog.fluid              # XQuery prolog tests
     ├── test_qname.fluid               # QName operation tests
@@ -93,8 +94,9 @@ src/xquery/
     ├── test_sequence_cardinality.fluid # Sequence cardinality regression tests
     ├── test_sequences.fluid           # Sequence operation tests
     ├── test_string_uri.fluid          # String and URI function tests
+    ├── test_type_constructors.fluid   # Schema type constructor regression tests
     ├── test_type_expr.fluid           # Type expression tests (cast, castable, etc.)
-    ├── test_unit_tests.fluid          # Runs the module's internal unit tests
+    ├── test_unit_tests.fluid          # Runs the module's internal unit tests (requires ENABLE_UNIT_TESTS)
     └── modules/                       # XQuery module files for testing
         ├── bad_namespace.xq               # Error case: bad namespace declaration
         ├── circular_a.xq                  # Error case: circular module dependencies
@@ -110,7 +112,7 @@ src/xquery/
 
 **Important:** Parser and AST structures are consolidated in `xquery.h` rather than split across separate header files. This design choice improves compilation speed and maintains tight integration between parsing and evaluation components.
 
-The module uses precompiled headers and unity builds for optimised compilation performance. Build configuration enables 23 registered Flute tests covering all aspects of XPath and XQuery functionality.
+The module uses precompiled headers and unity builds for optimised compilation performance. Build configuration enables 23 registered Flute tests (label `xquery`) covering all aspects of XPath and XQuery functionality, including schema type constructors.
 
 ### Dependencies
 
@@ -644,6 +646,21 @@ xml->loadSchema("schema.xsd");
 xp::Compile(xml, "//book[@price cast as xs:decimal > 10.0]", &query);
 ```
 
+### Schema Type Constructors
+
+Type constructors (`xs:double("INF")`, `xs:date(fn:current-dateTime())`, etc.) are handled directly in the evaluator via
+`evaluate_type_constructor()` so operands are atomised, validated, and canonicalised according to the W3C XQuery 3.0 rules.
+Constructor EQNames are resolved through the namespace-aware schema registry (including user-defined simple types) and return
+precise static errors:
+
+- `XPST0081` when the constructor prefix is unbound
+- `XPST0051` when the referenced type is unknown
+- `FORG0001`/`FODT0001`/`FONS0004` when the lexical form is invalid for the requested type
+
+Helper routines in `eval_values.cpp` and `date_time_utils.cpp` share IEEE 754 parsing, timezone canonicalisation, duration
+normalisation, and QName namespace binding logic with the public XPath API, guaranteeing consistent results between constructors
+and subsequent `cast as`/`treat as` expressions. Regression coverage lives in `src/xquery/tests/test_type_constructors.fluid`.
+
 ## Namespace Support
 
 The XQuery module is fully namespace-aware and integrates with the XML module's namespace system.
@@ -706,29 +723,30 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 XQuery tests are located in the XQuery module's test directory and exercise XQuery functionality through the XML class interface:
 
 **XQuery Integration Tests (`src/xquery/tests/`):**
-- `test_core.fluid` - Core XQuery expressions and operators
-- `test_predicates.fluid` - Predicate evaluation (comprehensive)
-- `test_axes.fluid` - All 13 XQuery axes
+- `test_accessor.fluid` - Accessor functions
 - `test_advanced.fluid` - Complex XQuery queries
 - `test_advanced_paths.fluid` - Advanced path expressions
+- `test_axes.fluid` - All 13 XQuery axes
+- `test_constructors.fluid` - Node constructors
+- `test_core.fluid` - Core XQuery expressions and operators
+- `test_datetime.fluid` - Date/time functions
+- `test_documents.fluid` - Document functions
+- `test_duration.fluid` - Schema duration parsing and validation
+- `test_edge_cases.fluid` - Edge case handling and regressions
 - `test_flwor.fluid` - FLWOR expressions (for, let, where, order, group, count clauses)
 - `test_func_ext.fluid` - Extended function library
+- `test_module_loading.fluid` - Module import regression tests
+- `test_predicates.fluid` - Predicate evaluation (comprehensive)
+- `test_prolog.fluid` - XQuery prolog functionality
+- `test_qname.fluid` - QName operations
+- `test_qt_math.fluid` - W3C QT3 math function compliance tests
+- `test_reserved_words.fluid` - Reserved word handling
+- `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
 - `test_sequences.fluid` - Sequence operations
 - `test_string_uri.fluid` - String and URI functions
-- `test_numbers.fluid` - Numeric function tests
-- `test_duration.fluid` - Duration type operations
-- `test_datetime.fluid` - DateTime functions
-- `test_qname.fluid` - QName operations
-- `test_accessor.fluid` - Accessor functions
-- `test_constructors.fluid` - Node constructors
-- `test_documents.fluid` - Document functions
-- `test_prolog.fluid` - XQuery prolog functionality (comprehensive)
-- `test_reserved_words.fluid` - Reserved word handling
-- `test_module_loading.fluid` - XQuery module import/loading tests
+- `test_type_constructors.fluid` - Schema type constructors (xs:double, xs:dateTime, xs:duration, xs:QName, etc.)
 - `test_type_expr.fluid` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
-- `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
-- `test_edge_cases.fluid` - Edge case handling and regression tests
-- `test_qt_math.fluid` - W3C QT3 math function compliance tests
+- *(Optional)* `test_unit_tests.fluid` - Runs compiled-in internal unit tests when `-DENABLE_UNIT_TESTS=ON`
 
 **Test Modules (`src/xquery/tests/modules/`):**
 The `modules/` subdirectory contains XQuery library modules used for testing module loading functionality:
@@ -749,7 +767,7 @@ cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/
 
 **All XQuery Tests via CMake:**
 ```bash
-ctest --build-config [BuildType] --test-dir build/agents -R xquery
+ctest --build-config [BuildType] --test-dir build/agents -L xquery --output-on-failure
 ```
 
 ### C++ Unit Testing for Internal Components
@@ -1015,4 +1033,4 @@ For developers modifying or extending the XQuery evaluator, see `src/xquery/eval
 
 This guide provides the essential information needed for AI agents to work effectively with the Parasol XQuery module, covering architecture, language support, function library, and integration patterns.
 
-Last Updated: 2025-11-03
+Last Updated: 2025-11-16
