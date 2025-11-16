@@ -600,7 +600,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->k = ExpKind::NonReloc;
       }
       else {
-         lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", e->k);
+         lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", static_cast<int>(e->k));
       }
    }
    else {
