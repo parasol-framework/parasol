@@ -864,7 +864,7 @@ static void asm_strto(ASMState* as, IRIns* ir)
 #endif
    asm_guard(as, MIPSI_BEQ, RID_RET, RID_ZERO);  //  Test return status.
    args[0] = ir->op1;      //  GCstr *str
-   args[1] = ASMREF_TMP1;  //  TValue *n 
+   args[1] = ASMREF_TMP1;  //  TValue *n
    asm_gencall(as, ci, args);
    // Store the result to the spill slot or temp slots.
    emit_tsi(as, MIPSI_AADDIU, ra_releasetmp(as, ASMREF_TMP1),
@@ -1754,8 +1754,8 @@ static void asm_cnew(ASMState* as, IRIns* ir)
    else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata.
       ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
       args[0] = ASMREF_L;     //  lua_State *L
-      args[1] = ir->op1;      //  CTypeID id  
-      args[2] = ir->op2;      //  CTSize sz   
+      args[1] = ir->op1;      //  CTypeID id
+      args[2] = ir->op2;      //  CTSize sz
       args[3] = ASMREF_TMP1;  //  CTSize align
       asm_gencall(as, ci, args);
       emit_loadi(as, ra_releasetmp(as, ASMREF_TMP1), (int32_t)ctype_align(info));
@@ -1768,7 +1768,7 @@ static void asm_cnew(ASMState* as, IRIns* ir)
    emit_ti(as, MIPSI_LI, RID_RET + 1, ~LJ_TCDATA);
    emit_ti(as, MIPSI_LI, RID_TMP, id); //  Lower 16 bit used. Sign-ext ok.
    args[0] = ASMREF_L;     //  lua_State *L
-   args[1] = ASMREF_TMP1;  //  MSize size  
+   args[1] = ASMREF_TMP1;  //  MSize size
    asm_gencall(as, ci, args);
    ra_allockreg(as, (int32_t)(sz + sizeof(GCcdata)),
       ra_releasetmp(as, ASMREF_TMP1));
@@ -1804,7 +1804,7 @@ static void asm_obar(ASMState* as, IRIns* ir)
    ra_evictset(as, RSET_SCRATCH);
    l_end = emit_label(as);
    args[0] = ASMREF_TMP1;  //  global_State *g
-   args[1] = ir->op1;      //  TValue *tv     
+   args[1] = ir->op1;      //  TValue *tv
    asm_gencall(as, ci, args);
    emit_tsi(as, MIPSI_AADDIU, ra_releasetmp(as, ASMREF_TMP1), RID_JGL, -32768);
    obj = IR(ir->op1)->r;
@@ -2714,7 +2714,7 @@ static void asm_gc_check(ASMState* as)
    // Assumes asm_snap_prep() already done.
    asm_guard(as, MIPSI_BNE, RID_RET, RID_ZERO);
    args[0] = ASMREF_TMP1;  //  global_State *g
-   args[1] = ASMREF_TMP2;  //  MSize steps    
+   args[1] = ASMREF_TMP2;  //  MSize steps
    asm_gencall(as, ci, args);
    l_end[-3] = MIPS_NOPATCH_GC_CHECK;  //  Replace the nop after the call.
    emit_tsi(as, MIPSI_AADDIU, ra_releasetmp(as, ASMREF_TMP1), RID_JGL, -32768);

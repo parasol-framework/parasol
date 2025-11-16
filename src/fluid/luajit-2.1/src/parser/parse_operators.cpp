@@ -343,7 +343,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Runtime value - emit checks
    // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch
-   
+
    // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
    // Pattern: BC_ISEQP reg, ExpKind::Nil + JMP means:
    //   - If reg == nil: skip JMP, continue to next check
@@ -351,7 +351,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    // By chaining multiple checks and patching all JMPs to the same false branch:
    //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
    //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
-   
+
    BCReg reg = expr_toanyreg(fs, e);
    ExpDesc nilv, falsev, zerov, emptyv;
    BCPos jmp_false_branch;

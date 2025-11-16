@@ -43,15 +43,15 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
-#include "parser/lj_parse_types.h"
-#include "parser/lj_parse_internal.h"
-#include "parser/lj_parse_core.cpp"
-#include "parser/lj_parse_constants.cpp"
-#include "parser/lj_parse_scope.cpp"
-#include "parser/lj_parse_regalloc.cpp"
-#include "parser/lj_parse_expr.cpp"
-#include "parser/lj_parse_operators.cpp"
-#include "parser/lj_parse_stmt.cpp"
+#include "parser/parse_types.h"
+#include "parser/parse_internal.h"
+#include "parser/parse_core.cpp"
+#include "parser/parse_constants.cpp"
+#include "parser/parse_scope.cpp"
+#include "parser/parse_regalloc.cpp"
+#include "parser/parse_expr.cpp"
+#include "parser/parse_operators.cpp"
+#include "parser/parse_stmt.cpp"
 
 // Parse a statement. Returns 1 if it must be the last one in a chunk.
 

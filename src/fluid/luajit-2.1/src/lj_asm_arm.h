@@ -719,7 +719,7 @@ static void asm_strto(ASMState* as, IRIns* ir)
 #endif
    emit_n(as, ARMI_CMP | ARMI_K12 | 0, RID_RET);  //  Test return status.
    args[0] = ir->op1;      //  GCstr *str
-   args[1] = ASMREF_TMP1;  //  TValue *n 
+   args[1] = ASMREF_TMP1;  //  TValue *n
    asm_gencall(as, ci, args);
    tmp = ra_releasetmp(as, ASMREF_TMP1);
    if (ofs == 0)
@@ -1379,8 +1379,8 @@ static void asm_cnew(ASMState* as, IRIns* ir)
    else if (ir->op2 != REF_NIL) {  // Create VLA/VLS/aligned cdata.
       ci = &lj_ir_callinfo[IRCALL_lj_cdata_newv];
       args[0] = ASMREF_L;     //  lua_State *L
-      args[1] = ir->op1;      //  CTypeID id  
-      args[2] = ir->op2;      //  CTSize sz   
+      args[1] = ir->op1;      //  CTypeID id
+      args[2] = ir->op2;      //  CTSize sz
       args[3] = ASMREF_TMP1;  //  CTSize align
       asm_gencall(as, ci, args);
       emit_loadi(as, ra_releasetmp(as, ASMREF_TMP1), (int32_t)ctype_align(info));
@@ -1397,7 +1397,7 @@ static void asm_cnew(ASMState* as, IRIns* ir)
       if (k) emit_d(as, ARMI_MOV ^ k, RID_R1);
    }
    args[0] = ASMREF_L;     //  lua_State *L
-   args[1] = ASMREF_TMP1;  //  MSize size  
+   args[1] = ASMREF_TMP1;  //  MSize size
    asm_gencall(as, ci, args);
    ra_allockreg(as, (int32_t)(sz + sizeof(GCcdata)),
       ra_releasetmp(as, ASMREF_TMP1));
@@ -1437,7 +1437,7 @@ static void asm_obar(ASMState* as, IRIns* ir)
    ra_evictset(as, RSET_SCRATCH);
    l_end = emit_label(as);
    args[0] = ASMREF_TMP1;  //  global_State *g
-   args[1] = ir->op1;      //  TValue *tv     
+   args[1] = ir->op1;      //  TValue *tv
    asm_gencall(as, ci, args);
    if ((l_end[-1] >> 28) == CC_AL)
       l_end[-1] = ARMF_CC(l_end[-1], CC_NE);
@@ -2184,7 +2184,7 @@ static void asm_gc_check(ASMState* as)
    *--as->mcp = ARM_NOPATCH_GC_CHECK;
    emit_n(as, ARMI_CMP | ARMI_K12 | 0, RID_RET);
    args[0] = ASMREF_TMP1;  //  global_State *g
-   args[1] = ASMREF_TMP2;  //  MSize steps    
+   args[1] = ASMREF_TMP2;  //  MSize steps
    asm_gencall(as, ci, args);
    tmp1 = ra_releasetmp(as, ASMREF_TMP1);
    tmp2 = ra_releasetmp(as, ASMREF_TMP2);

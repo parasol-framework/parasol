@@ -18,7 +18,7 @@
 #include "lj_cdata.h"
 #include "lualib.h"
 #endif
-#include "lj_lex.h"
+#include "../parser/lj_lex.h"
 #include "lj_bcdump.h"
 #include "lj_state.h"
 #include "lj_strfmt.h"

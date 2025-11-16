@@ -295,7 +295,7 @@ static void fscope_loop_continue(FuncState* fs, BCPos pos)
    ls->vtop = idx;
    gola_resolve(ls, bl, idx);
 }
-  
+
 static void execute_defers(FuncState* fs, BCReg limit)
 {
    LexState* ls = fs->ls;

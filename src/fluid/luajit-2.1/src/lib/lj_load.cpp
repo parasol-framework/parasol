@@ -19,9 +19,9 @@
 #include "lj_func.h"
 #include "lj_frame.h"
 #include "lj_vm.h"
-#include "lj_lex.h"
+#include "../parser/lj_lex.h"
 #include "lj_bcdump.h"
-#include "lj_parse.h"
+#include "../parser/lj_parse.h"
 
 // -- Load Lua source code and bytecode -----------------------------------
 

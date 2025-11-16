@@ -1131,9 +1131,9 @@ static void asm_snew(ASMState* as, IRIns* ir)
    const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_str_new];
    IRRef args[3];
    asm_snap_prep(as);
-   args[0] = ASMREF_L;  //  lua_State *L   
+   args[0] = ASMREF_L;  //  lua_State *L
    args[1] = ir->op1;   //  const char *str
-   args[2] = ir->op2;   //  size_t len     
+   args[2] = ir->op2;   //  size_t len
    as->gcsteps++;
    asm_setupresult(as, ir, ci);  //  GCstr *
    asm_gencall(as, ci, args);
@@ -1144,7 +1144,7 @@ static void asm_tnew(ASMState* as, IRIns* ir)
    const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_tab_new1];
    IRRef args[2];
    asm_snap_prep(as);
-   args[0] = ASMREF_L;     //  lua_State *L   
+   args[0] = ASMREF_L;     //  lua_State *L
    args[1] = ASMREF_TMP1;  //  uint32_t ahsize
    as->gcsteps++;
    asm_setupresult(as, ir, ci);  //  GCtab *
@@ -1157,7 +1157,7 @@ static void asm_tdup(ASMState* as, IRIns* ir)
    const CCallInfo* ci = &lj_ir_callinfo[IRCALL_lj_tab_dup];
    IRRef args[2];
    asm_snap_prep(as);
-   args[0] = ASMREF_L;  //  lua_State *L   
+   args[0] = ASMREF_L;  //  lua_State *L
    args[1] = ir->op1;   //  const GCtab *kt
    as->gcsteps++;
    asm_setupresult(as, ir, ci);  //  GCtab *
@@ -1356,7 +1356,7 @@ static void asm_newref(ASMState* as, IRIns* ir)
       return;
    asm_snap_prep(as);
    args[0] = ASMREF_L;     //  lua_State *L
-   args[1] = ir->op1;      //  GCtab *t    
+   args[1] = ir->op1;      //  GCtab *t
    args[2] = ASMREF_TMP1;  //  cTValue *key
    asm_setupresult(as, ir, ci);  //  TValue *
    asm_gencall(as, ci, args);

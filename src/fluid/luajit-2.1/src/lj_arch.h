@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_ARCH_H
-#define _LJ_ARCH_H
+#pragma once
 
 #include "lua.h"
 
@@ -711,5 +710,3 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
   )
 #define LJ_SECURITY_MODESTRING \
   "\004prng\007strhash\005strid\005mcode"
-
-#endif
