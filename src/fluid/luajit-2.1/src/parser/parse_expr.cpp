@@ -269,7 +269,7 @@ void LexState::expr_table(ExpDesc* Expression)
    BCReg nparams = 0;
    this->lex_check('(');
    if (NeedSelf)
-      this->var_new_lit(nparams++, "self", sizeof("self") - 1);
+      this->var_new_lit(nparams++, "self");
    if (this->tok != ')') {
       do {
          if (this->tok IS TK_name) {
@@ -753,7 +753,7 @@ BinOpr LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
    bcreg_reserve(fs, 2);  // Reserve for arguments
 
    // Emit the first operation in the chain
-   bcemit_shift_call_at_base(fs, priority[op].name, MSize(priority[op].name_len), lhs, &rhs, base_reg);
+   bcemit_shift_call_at_base(fs, std::string_view(priority[op].name, priority[op].name_len), lhs, &rhs, base_reg);
 
    // Continue processing chained operators at the same precedence level.
    // Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
@@ -774,7 +774,7 @@ BinOpr LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
       nextop = this->expr_binop(&rhs, priority[follow].right);
 
       // Emit the next operation, reusing the same base register
-      bcemit_shift_call_at_base(fs, priority[follow].name, MSize(priority[follow].name_len), lhs, &rhs, base_reg);
+      bcemit_shift_call_at_base(fs, std::string_view(priority[follow].name, priority[follow].name_len), lhs, &rhs, base_reg);
    }
 
    // Return any unconsumed operator for the caller to handle
@@ -798,7 +798,7 @@ void LexState::expr_unop(ExpDesc* Expression)
       // Unary bitwise not: desugar to bit.bnot(x).
       this->next();
       this->expr_binop(v, UNARY_PRIORITY);
-      bcemit_unary_bit_call(this->fs, "bnot", 4, v);
+      bcemit_unary_bit_call(this->fs, "bnot", v);
       return;
    }
    else if (this->tok IS '#') {
@@ -869,7 +869,7 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
          check_zero = bcemit_jmp(fs);
          expr_init(&emptyv, ExpKind::Str, 0);
-         emptyv.u.sval = this->keepstr("", 0);
+         emptyv.u.sval = this->keepstr("");
          bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
          check_empty = bcemit_jmp(fs);
 
@@ -951,14 +951,14 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          {
             ExpDesc callee;
             expr_init(&callee, ExpKind::Str, 0);
-            callee.u.sval = this->keepstr("error", 5);
+            callee.u.sval = this->keepstr("error");
             bcemit_INS(fs, BCINS_AD(BC_GGET, base, const_str(fs, &callee)));
          }
 
          {
             ExpDesc message;
             expr_init(&message, ExpKind::Str, 0);
-            message.u.sval = this->keepstr("Invalid ternary mix: use '?' with ':>'", 39);
+            message.u.sval = this->keepstr("Invalid ternary mix: use '?' with ':>'");
             bcemit_INS(fs, BCINS_AD(BC_KSTR, arg_reg, const_str(fs, &message)));
          }
 

@@ -190,8 +190,8 @@ static void lex_longstring(LexState *State, TValue* tv, int sep)
       }
    } endloop:
    if (tv) {
-      GCstr* str = State->keepstr(State->sb.b + (2 + (MSize)sep),
-         sbuflen(&State->sb) - 2 * (2 + (MSize)sep));
+      GCstr* str = State->keepstr(std::string_view(State->sb.b + (2 + (MSize)sep),
+         sbuflen(&State->sb) - 2 * (2 + (MSize)sep)));
       setstrV(State->L, tv, str);
    }
 }
@@ -301,7 +301,7 @@ static void lex_string(LexState *State, TValue* tv)
    }
    lex_savenext(State);  //  Skip trailing delimiter.
    setstrV(State->L, tv,
-      State->keepstr(State->sb.b + 1, sbuflen(&State->sb) - 2));
+      State->keepstr(std::string_view(State->sb.b + 1, sbuflen(&State->sb) - 2)));
 }
 
 //********************************************************************************************************************
@@ -323,7 +323,7 @@ static LexToken lex_scan(LexState *State, TValue* tv)
          do {
             lex_savenext(State);
          } while (lj_char_isident(State->c));
-         s = State->keepstr(State->sb.b, sbuflen(&State->sb));
+         s = State->keepstr(std::string_view(State->sb.b, sbuflen(&State->sb)));
          setstrV(State->L, tv, s);
          if (s->reserved > 0) {  // Reserved word?
             LexToken tok = TK_OFS + s->reserved;
@@ -461,7 +461,7 @@ static LexToken lex_scan(LexState *State, TValue* tv)
 //********************************************************************************************************************
 // LexState constructor
 
-LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, const char* Chunkarg, const char* Mode)
+LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::string_view Mode)
 {
    int header = 0;
    this->L = L;
@@ -483,8 +483,8 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, const char* Chun
    this->is_bytecode = 0;
    this->rfunc = Rfunc;
    this->rdata = Rdata;
-   this->chunkarg = Chunkarg;
-   this->mode = Mode;
+   this->chunkarg = Chunkarg.data();
+   this->mode = Mode.data();
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);
