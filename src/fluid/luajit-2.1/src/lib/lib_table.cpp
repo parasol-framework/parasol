@@ -1,10 +1,8 @@
-/*
-** Table library.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Table library.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lib_table_c
 #define LUA_LIB
@@ -20,8 +18,6 @@
 #include "lj_tab.h"
 #include "lj_ff.h"
 #include "lj_lib.h"
-
-// ------------------------------------------------------------------------
 
 #define LJLIB_MODULE_table
 
@@ -61,17 +57,20 @@ LJLIB_CF(table_maxn)
    Node* node;
    lua_Number m = 0;
    ptrdiff_t i;
+
    for (i = (ptrdiff_t)t->asize - 1; i >= 0; i--)
       if (!tvisnil(&array[i])) {
          m = (lua_Number)(int32_t)i;
          break;
       }
+
    node = noderef(t->node);
    for (i = (ptrdiff_t)t->hmask; i >= 0; i--)
       if (!tvisnil(&node[i].val) and tvisnumber(&node[i].key)) {
          lua_Number n = numberVnum(&node[i].key);
          if (n > m) m = n;
       }
+
    setnumV(L->top - 1, m);
    return 1;
 }
@@ -89,20 +88,15 @@ LJLIB_CF(table_insert)      LJLIB_REC(.)
          // The set may invalidate the get pointer, so need to do it first!
          TValue* dst = lj_tab_setint(L, t, i);
          cTValue* src = lj_tab_getint(t, i - 1);
-         if (src) {
-            copyTV(L, dst, src);
-         }
-         else {
-            setnilV(dst);
-         }
+         if (src) copyTV(L, dst, src);
+         else setnilV(dst);
       }
       i = n;
    }
-   {
-      TValue* dst = lj_tab_setint(L, t, i);
-      copyTV(L, dst, L->top - 1);  //  Set new value.
-      lj_gc_barriert(L, t, dst);
-   }
+
+   TValue* dst = lj_tab_setint(L, t, i);
+   copyTV(L, dst, L->top - 1);  //  Set new value.
+   lj_gc_barriert(L, t, dst);
    return 0;
 }
 
@@ -150,20 +144,18 @@ LJLIB_LUA(table_move) /*
   end
 */
 
-LJLIB_CF(table_concat)      LJLIB_REC(.)
+LJLIB_CF(table_concat) LJLIB_REC(.)
 {
    GCtab* t = lj_lib_checktab(L, 1);
    GCstr* sep = lj_lib_optstr(L, 2);
    int32_t i = lj_lib_optint(L, 3, 1);
-   int32_t e = (L->base + 3 < L->top and !tvisnil(L->base + 3)) ?
-      lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
+   int32_t e = (L->base + 3 < L->top and !tvisnil(L->base + 3)) ? lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
    SBuf* sb = lj_buf_tmp_(L);
    SBuf* sbx = lj_buf_puttab(sb, t, sep, i, e);
    if (LJ_UNLIKELY(!sbx)) {  // Error: bad element type.
       int32_t idx = (int32_t)(intptr_t)sb->w;
       cTValue* o = lj_tab_getint(t, idx);
-      lj_err_callerv(L, LJ_ERR_TABCAT,
-         lj_obj_itypename[o ? itypemap(o) : ~LJ_TNIL], idx);
+      lj_err_callerv(L, LJ_ERR_TABCAT, lj_obj_itypename[o ? itypemap(o) : ~LJ_TNIL], idx);
    }
    setstrV(L, L->top - 1, lj_buf_str(L, sbx));
    lj_gc_check(L);
@@ -204,8 +196,7 @@ static void auxsort(lua_State* L, int l, int u)
       lua_rawgeti(L, 1, u);
       if (sort_comp(L, -1, -2))  //  a[u] < a[l]?
          set2(L, l, u);  //  swap a[l] - a[u]
-      else
-         lua_pop(L, 2);
+      else lua_pop(L, 2);
       if (u - l == 1) break;  //  only 2 elements
       i = (l + u) / 2;
       lua_rawgeti(L, 1, i);
@@ -218,8 +209,7 @@ static void auxsort(lua_State* L, int l, int u)
          lua_rawgeti(L, 1, u);
          if (sort_comp(L, -1, -2))  //  a[u]<a[i]?
             set2(L, i, u);
-         else
-            lua_pop(L, 2);
+         else lua_pop(L, 2);
       }
       if (u - l == 2) break;  //  only 3 elements
       lua_rawgeti(L, 1, i);  //  Pivot
@@ -271,7 +261,6 @@ LJLIB_CF(table_sort)
    return 0;
 }
 
-#if LJ_52
 LJLIB_PUSH("n")
 LJLIB_CF(table_pack)
 {
@@ -280,14 +269,12 @@ LJLIB_CF(table_pack)
    GCtab* t = lj_tab_new(L, n ? n + 1 : 0, 1);
    // NOBARRIER: The table is new (marked white).
    setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
-   for (array = tvref(t->array) + 1, i = 0; i < n; i++)
-      copyTV(L, &array[i], &base[i]);
+   for (array = tvref(t->array) + 1, i = 0; i < n; i++) copyTV(L, &array[i], &base[i]);
    settabV(L, base, t);
    L->top = base + 1;
    lj_gc_check(L);
    return 1;
 }
-#endif
 
 LJLIB_NOREG LJLIB_CF(table_new)      LJLIB_REC(.)
 {
@@ -296,8 +283,6 @@ LJLIB_NOREG LJLIB_CF(table_new)      LJLIB_REC(.)
    lua_createtable(L, a, h);
    return 1;
 }
-
-// PARASOL PATCHED IN
 
 // table.empty(t)
 // Returns true if the given table is empty. If the argument is nil, it is treated as empty and returns true. This
@@ -342,13 +327,11 @@ static int luaopen_table_new(lua_State* L)
 
 #include "lj_libdef.h"
 
-LUALIB_API int luaopen_table(lua_State* L)
+extern int luaopen_table(lua_State* L)
 {
-   LJ_LIB_REG(L, LUA_TABLIBNAME, table);
-#if LJ_52
+   LJ_LIB_REG(L, "table", table);
    lua_getglobal(L, "unpack");
    lua_setfield(L, -2, "unpack");
-#endif
-   lj_lib_prereg(L, LUA_TABLIBNAME ".new", luaopen_table_new, tabV(L->top - 1));
+   lj_lib_prereg(L, "table.new", luaopen_table_new, tabV(L->top - 1));
    return 1;
 }

@@ -1,7 +1,5 @@
-/*
-** JIT library.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// JIT library.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lib_jit_c
 #define LUA_LIB
@@ -36,7 +34,7 @@
 
 #include "luajit.h"
 
-// -- jit.* functions -----------------------------------------------------
+// jit.* functions
 
 #define LJLIB_MODULE_jit
 
@@ -48,15 +46,13 @@ static int setjitmode(lua_State* L, int mode)
    }
    else {
       // jit.on/off/flush(func|proto, nil|true|false)
-      if (tvisfunc(L->base) or tvisproto(L->base))
-         idx = 1;
+      if (tvisfunc(L->base) or tvisproto(L->base)) idx = 1;
       else if (!tvistrue(L->base))  //  jit.on/off/flush(true, nil|true|false)
          goto err;
-      if (L->base + 1 < L->top and tvisbool(L->base + 1))
-         mode |= boolV(L->base + 1) ? LUAJIT_MODE_ALLFUNC : LUAJIT_MODE_ALLSUBFUNC;
-      else
-         mode |= LUAJIT_MODE_FUNC;
+      if (L->base + 1 < L->top and tvisbool(L->base + 1)) mode |= boolV(L->base + 1) ? LUAJIT_MODE_ALLFUNC : LUAJIT_MODE_ALLSUBFUNC;
+      else mode |= LUAJIT_MODE_FUNC;
    }
+
    if (luaJIT_setmode(L, idx, mode) != 1) {
       if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE)
          lj_err_caller(L, LJ_ERR_NOJIT);
@@ -90,8 +86,7 @@ LJLIB_CF(jit_flush)
 
 #if LJ_HASJIT
 // Push a string for every flag bit that is set.
-static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base,
-   const char* str)
+static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base, const char* str)
 {
    for (; *str; base <<= 1, str += 1 + *str)
       if (flags & base)
@@ -157,11 +152,11 @@ LJLIB_PUSH(top-2) LJLIB_SET(version)
 
 #include "lj_libdef.h"
 
-// -- jit.util.* functions ------------------------------------------------
+// jit.util.* functions
 
 #define LJLIB_MODULE_jit_util
 
-// -- Reflection API for Lua functions ------------------------------------
+// Reflection API for Lua functions
 
 // Return prototype of first argument (Lua function or prototype object)
 static GCproto* check_Lproto(lua_State* L, int nolua)
@@ -204,8 +199,7 @@ LJLIB_CF(jit_util_funcinfo)
       setintfield(L, t, "gcconsts", (int32_t)pt->sizekgc);
       setintfield(L, t, "nconsts", (int32_t)pt->sizekn);
       setintfield(L, t, "upvalues", (int32_t)pt->sizeuv);
-      if (pc < pt->sizebc)
-         setintfield(L, t, "currentline", lj_debug_line(pt, pc));
+      if (pc < pt->sizebc) setintfield(L, t, "currentline", lj_debug_line(pt, pc));
       lua_pushboolean(L, (pt->flags & PROTO_VARARG));
       lua_setfield(L, -2, "isvararg");
       lua_pushboolean(L, (pt->flags & PROTO_CHILD));
@@ -221,10 +215,8 @@ LJLIB_CF(jit_util_funcinfo)
       GCtab* t;
       lua_createtable(L, 0, 4);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
-      if (!iscfunc(fn))
-         setintfield(L, t, "ffid", fn->c.ffid);
-      setintptrV(lj_tab_setstr(L, t, lj_str_newlit(L, "addr")),
-         (intptr_t)(void*)fn->c.f);
+      if (!iscfunc(fn)) setintfield(L, t, "ffid", fn->c.ffid);
+      setintptrV(lj_tab_setstr(L, t, lj_str_newlit(L, "addr")), (intptr_t)(void*)fn->c.f);
       setintfield(L, t, "upvalues", fn->c.nupvalues);
    }
    return 1;
@@ -248,6 +240,7 @@ LJLIB_CF(jit_util_funcbc)
 }
 
 // local k = jit.util.funck(func, idx)
+
 LJLIB_CF(jit_util_funck)
 {
    GCproto* pt = check_Lproto(L, 0);
@@ -269,6 +262,7 @@ LJLIB_CF(jit_util_funck)
 }
 
 // local name = jit.util.funcuvname(func, idx)
+
 LJLIB_CF(jit_util_funcuvname)
 {
    GCproto* pt = check_Lproto(L, 0);
@@ -280,11 +274,12 @@ LJLIB_CF(jit_util_funcuvname)
    return 0;
 }
 
-// -- Reflection API for traces -------------------------------------------
+// Reflection API for traces
 
 #if LJ_HASJIT
 
 // Check trace argument. Must not throw for non-existent trace numbers.
+
 static GCtrace* jit_checktrace(lua_State* L)
 {
    TraceNo tr = (TraceNo)lj_lib_checkint(L, 1);
@@ -295,6 +290,7 @@ static GCtrace* jit_checktrace(lua_State* L)
 }
 
 // Names of link types. ORDER LJ_TRLINK
+
 static const char* const jit_trlinkname[] = {
   "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion",
   "interpreter", "return", "stitch"
@@ -321,6 +317,7 @@ LJLIB_CF(jit_util_traceinfo)
 }
 
 // local m, ot, op1, op2, prev = jit.util.traceir(tr, idx)
+
 LJLIB_CF(jit_util_traceir)
 {
    GCtrace* T = jit_checktrace(L);
@@ -339,6 +336,7 @@ LJLIB_CF(jit_util_traceir)
 }
 
 // local k, t [, slot] = jit.util.tracek(tr, idx)
+
 LJLIB_CF(jit_util_tracek)
 {
    GCtrace* T = jit_checktrace(L);
@@ -364,6 +362,7 @@ LJLIB_CF(jit_util_tracek)
 }
 
 // local snap = jit.util.tracesnap(tr, sn)
+
 LJLIB_CF(jit_util_tracesnap)
 {
    GCtrace* T = jit_checktrace(L);
@@ -386,6 +385,7 @@ LJLIB_CF(jit_util_tracesnap)
 }
 
 // local mcode, addr, loop = jit.util.tracemc(tr)
+
 LJLIB_CF(jit_util_tracemc)
 {
    GCtrace* T = jit_checktrace(L);
@@ -399,6 +399,7 @@ LJLIB_CF(jit_util_tracemc)
 }
 
 // local addr = jit.util.traceexitstub([tr,] exitno)
+
 LJLIB_CF(jit_util_traceexitstub)
 {
 #ifdef EXITSTUBS_PER_GROUP
@@ -423,6 +424,7 @@ LJLIB_CF(jit_util_traceexitstub)
 }
 
 // local addr = jit.util.ircalladdr(idx)
+
 LJLIB_CF(jit_util_ircalladdr)
 {
    uint32_t idx = (uint32_t)lj_lib_checkint(L, 1);
@@ -443,7 +445,7 @@ static int luaopen_jit_util(lua_State* L)
    return 1;
 }
 
-// -- jit.opt module ------------------------------------------------------
+// jit.opt module
 
 #if LJ_HASJIT
 
@@ -519,6 +521,7 @@ static int jitopt_param(jit_State* J, const char* str)
 }
 
 // jit.opt.start(flags...)
+
 LJLIB_CF(jit_opt_start)
 {
    jit_State* J = L2J(L);
@@ -543,7 +546,7 @@ LJLIB_CF(jit_opt_start)
 
 #endif
 
-// -- jit.profile module --------------------------------------------------
+// jit.profile module
 
 #if LJ_HASPROFILE
 
@@ -554,8 +557,7 @@ LJLIB_CF(jit_opt_start)
 #define KEY_PROFILE_THREAD   (U64x(80000000,00000000)|'t')
 #define KEY_PROFILE_FUNC   (U64x(80000000,00000000)|'f')
 
-static void jit_profile_callback(lua_State* L2, lua_State* L, int samples,
-   int vmstate)
+static void jit_profile_callback(lua_State* L2, lua_State* L, int samples, int vmstate)
 {
    TValue key;
    cTValue* tv;
@@ -597,6 +599,7 @@ LJLIB_CF(jit_profile_start)
 }
 
 // profile.stop()
+
 LJLIB_CF(jit_profile_stop)
 {
    GCtab* registry;
@@ -641,7 +644,7 @@ static int luaopen_jit_profile(lua_State* L)
 
 #endif
 
-// -- JIT compiler initialization -----------------------------------------
+// JIT compiler initialization
 
 #if LJ_HASJIT
 // Default values for JIT parameters.
@@ -743,7 +746,7 @@ static void jit_init(lua_State* L)
 }
 #endif
 
-LUALIB_API int luaopen_jit(lua_State* L)
+extern int luaopen_jit(lua_State* L)
 {
 #if LJ_HASJIT
    jit_init(L);
@@ -752,13 +755,12 @@ LUALIB_API int luaopen_jit(lua_State* L)
    lua_pushliteral(L, LJ_ARCH_NAME);
    lua_pushinteger(L, LUAJIT_VERSION_NUM);
    lua_pushliteral(L, LUAJIT_VERSION);
-   LJ_LIB_REG(L, LUA_JITLIBNAME, jit);
+   LJ_LIB_REG(L, "jit", jit);
 #if LJ_HASPROFILE
-   lj_lib_prereg(L, LUA_JITLIBNAME ".profile", luaopen_jit_profile,
-      tabref(L->env));
+   lj_lib_prereg(L, "jit.profile", luaopen_jit_profile, tabref(L->env));
 #endif
 #ifndef LUAJIT_DISABLE_JITUTIL
-   lj_lib_prereg(L, LUA_JITLIBNAME ".util", luaopen_jit_util, tabref(L->env));
+   lj_lib_prereg(L, "jit.util", luaopen_jit_util, tabref(L->env));
 #endif
 #if LJ_HASJIT
    LJ_LIB_REG(L, "jit.opt", jit_opt);
@@ -766,4 +768,3 @@ LUALIB_API int luaopen_jit(lua_State* L)
    L->top -= 2;
    return 1;
 }
-
