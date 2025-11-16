@@ -1,6 +1,3 @@
-
-static void expr(LexState *State, ExpDesc* v);
-static void parse_args(LexState *State, ExpDesc* e);
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);
@@ -13,10 +10,10 @@ static void expr_collapse_freereg(FuncState* fs, BCReg result_reg);
 //********************************************************************************************************************
 // Return string expression.
 
-static void expr_str(LexState *State, ExpDesc* e)
+void LexState::expr_str(ExpDesc* Expression)
 {
-   expr_init(e, ExpKind::Str, 0);
-   e->u.sval = lex_str(State);
+   expr_init(Expression, ExpKind::Str, 0);
+   Expression->u.sval = this->lex_str();
 }
 
 //********************************************************************************************************************
@@ -56,25 +53,25 @@ static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e)
 
 // Parse index expression with named field.
 
-static void expr_field(LexState *State, ExpDesc* v)
+void LexState::expr_field(ExpDesc* Expression)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc key;
-   expr_toanyreg(fs, v);
-   State->next();  // Skip dot or colon.
-   expr_str(State, &key);
-   expr_index(fs, v, &key);
+   expr_toanyreg(fs, Expression);
+   this->next();  // Skip dot or colon.
+   this->expr_str(&key);
+   expr_index(fs, Expression, &key);
 }
 
 //********************************************************************************************************************
 // Parse index expression with brackets.
 
-static void expr_bracket(LexState *State, ExpDesc* v)
+void LexState::expr_bracket(ExpDesc* Expression)
 {
-   State->next();  // Skip '['.
-   expr(State, v);
-   expr_toval(State->fs, v);
-   lex_check(State, ']');
+   this->next();  // Skip '['.
+   this->expr(Expression);
+   expr_toval(this->fs, Expression);
+   this->lex_check(']');
 }
 
 //********************************************************************************************************************
@@ -114,12 +111,12 @@ static int token_starts_expression(LexToken tok)
 
 //********************************************************************************************************************
 
-static int should_emit_presence(LexState *State)
+bool LexState::should_emit_presence()
 {
-   BCLine token_line = State->lastline;
-   BCLine operator_line = State->linenumber;
-   LexToken lookahead = (State->lookahead != TK_eof) ? State->lookahead : State->lookahead_token();
-   if (operator_line > token_line) return 1;
+   BCLine token_line = this->lastline;
+   BCLine operator_line = this->linenumber;
+   LexToken lookahead = (this->lookahead != TK_eof) ? this->lookahead : this->lookahead_token();
+   if (operator_line > token_line) return true;
    return !token_starts_expression(lookahead);
 }
 
@@ -144,32 +141,32 @@ static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
 //********************************************************************************************************************
 // Parse table constructor expression.
 
-static void expr_table(LexState *State, ExpDesc* e)
+void LexState::expr_table(ExpDesc* Expression)
 {
-   FuncState* fs = State->fs;
-   BCLine line = State->linenumber;
+   FuncState* fs = this->fs;
+   BCLine line = this->linenumber;
    GCtab* t = nullptr;
    int vcall = 0, needarr = 0, fixt = 0;
    uint32_t narr = 1;  // First array index.
    uint32_t nhash = 0;  // Number of hash entries.
    BCReg freg = fs->freereg;
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
-   expr_init(e, ExpKind::NonReloc, freg);
+   expr_init(Expression, ExpKind::NonReloc, freg);
    bcreg_reserve(fs, 1);
    freg++;
-   lex_check(State, '{');
-   while (State->tok != '}') {
+   this->lex_check('{');
+   while (this->tok != '}') {
       ExpDesc key, val;
       vcall = 0;
-      if (State->tok IS '[') {
-         expr_bracket(State, &key);  // Already calls expr_toval.
-         if (!expr_isk(&key)) expr_index(fs, e, &key);
+      if (this->tok IS '[') {
+         this->expr_bracket(&key);  // Already calls expr_toval.
+         if (!expr_isk(&key)) expr_index(fs, Expression, &key);
          if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1; else nhash++;
-         lex_check(State, '=');
+         this->lex_check('=');
       }
-      else if (State->tok IS TK_name and State->lookahead_token() IS '=') {
-         expr_str(State, &key);
-         lex_check(State, '=');
+      else if (this->tok IS TK_name and this->lookahead_token() IS '=') {
+         this->expr_str(&key);
+         this->lex_check('=');
          nhash++;
       }
       else {
@@ -179,9 +176,9 @@ static void expr_table(LexState *State, ExpDesc* e)
          needarr = vcall = 1;
       }
 
-      expr(State, &val);
+      this->expr(&val);
 
-      if (expr_isk(&key) and key.k != ExpKind::Nil &&
+      if (expr_isk(&key) and key.k != ExpKind::Nil and
          (key.k IS ExpKind::Str or expr_isk_nojump(&val))) {
          TValue k, * v;
          if (!t) {  // Create template table on demand.
@@ -206,19 +203,19 @@ static void expr_table(LexState *State, ExpDesc* e)
       else {
       nonconst:
          if (val.k != ExpKind::Call) { expr_toanyreg(fs, &val); vcall = 0; }
-         if (expr_isk(&key)) expr_index(fs, e, &key);
-         bcemit_store(fs, e, &val);
+         if (expr_isk(&key)) expr_index(fs, Expression, &key);
+         bcemit_store(fs, Expression, &val);
       }
       fs->freereg = freg;
-      if (!lex_opt(State, ',') and !lex_opt(State, ';')) break;
+      if (!this->lex_opt(',') and !this->lex_opt(';')) break;
    }
 
-   lex_match(State, '}', '{', line);
+   this->lex_match('}', '{', line);
 
    if (vcall) {
       BCInsLine* ilp = &fs->bcbase[fs->pc - 1];
       ExpDesc en;
-      lj_assertFS(bc_a(ilp->ins) IS freg &&
+      lj_assertFS(bc_a(ilp->ins) IS freg and
          bc_op(ilp->ins) IS (narr > 256 ? BC_TSETV : BC_TSETB),
          "bad CALL code generation");
       expr_init(&en, ExpKind::Num, 0);
@@ -230,12 +227,12 @@ static void expr_table(LexState *State, ExpDesc* e)
    }
 
    if (pc IS fs->pc - 1) {  // Make expr relocable if possible.
-      e->u.s.info = pc;
+      Expression->u.s.info = pc;
       fs->freereg--;
-      e->k = ExpKind::Relocable;
+      Expression->k = ExpKind::Relocable;
    }
    else {
-      e->k = ExpKind::NonReloc;  // May have been changed by expr_index.
+      Expression->k = ExpKind::NonReloc;  // May have been changed by expr_index.
    }
 
    if (!t) {  // Construct TNEW RD: hhhhhaaaaaaaaaaa.
@@ -266,93 +263,92 @@ static void expr_table(LexState *State, ExpDesc* e)
 //********************************************************************************************************************
 // Parse function parameters.
 
-[[nodiscard]] static BCReg parse_params(LexState *State, int needself)
+[[nodiscard]] BCReg LexState::parse_params(int NeedSelf)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    BCReg nparams = 0;
-   lex_check(State, '(');
-   if (needself)
-      var_new_lit(State, nparams++, "self", sizeof("self")-1);
-   if (State->tok != ')') {
+   this->lex_check('(');
+   if (NeedSelf)
+      this->var_new_lit(nparams++, "self", sizeof("self") - 1);
+   if (this->tok != ')') {
       do {
-         if (State->tok IS TK_name) {
-            var_new(State, nparams++, lex_str(State));
+         if (this->tok IS TK_name) {
+            this->var_new(nparams++, this->lex_str());
          }
-         else if (State->tok IS TK_dots) {
-            State->next();
+         else if (this->tok IS TK_dots) {
+            this->next();
             fs->flags |= PROTO_VARARG;
             break;
          }
          else {
-            err_syntax(State, LJ_ERR_XPARAM);
+            this->err_syntax(LJ_ERR_XPARAM);
          }
-      } while (lex_opt(State, ','));
+      } while (this->lex_opt(','));
    }
-   var_add(State, nparams);
+   this->var_add(nparams);
    lj_assertFS(fs->nactvar IS nparams, "bad regalloc");
    bcreg_reserve(fs, nparams);
-   lex_check(State, ')');
+   this->lex_check(')');
    return nparams;
 }
 
 //********************************************************************************************************************
 
-static void parse_chunk(LexState* ls);
-
-static void parse_body_impl(LexState *State, ExpDesc* e, int needself,
-   BCLine line, int optparams)
+[[maybe_unused]] void LexState::parse_body_impl(ExpDesc* Expression, int NeedSelf,
+   BCLine Line, int OptionalParams)
 {
-   FuncState fs, * pfs = State->fs;
+   FuncState fs, * parent_state = this->fs;
    FuncScope bl;
    GCproto* pt;
-   ptrdiff_t oldbase = pfs->bcbase - State->bcstack;
-   fs_init(State, &fs);
+   ptrdiff_t oldbase = parent_state->bcbase - this->bcstack;
+   this->fs_init(&fs);
    fscope_begin(&fs, &bl, 0);
-   fs.linedefined = line;
-   if (optparams and State->tok != '(') {
-      State->assert_condition(!needself, "optional parameters require explicit self");
+   fs.linedefined = Line;
+   if (OptionalParams and this->tok != '(') {
+      this->assert_condition(!NeedSelf, "optional parameters require explicit self");
       fs.numparams = 0;
    }
    else {
-      fs.numparams = uint8_t(parse_params(State, needself));
+      fs.numparams = uint8_t(this->parse_params(NeedSelf));
    }
-   fs.bcbase = pfs->bcbase + pfs->pc;
-   fs.bclim = pfs->bclim - pfs->pc;
+   fs.bcbase = parent_state->bcbase + parent_state->pc;
+   fs.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&fs, BC_FUNCF, 0, 0);  // Placeholder.
-   parse_chunk(State);
-   if (State->tok != TK_end) lex_match(State, TK_end, TK_function, line);
-   pt = fs_finish(State, (State->lastline = State->linenumber));
-   pfs->bcbase = State->bcstack + oldbase;  // May have been reallocated.
-   pfs->bclim = BCPos(State->sizebcstack - oldbase);
+   this->parse_chunk();
+   if (this->tok != TK_end) this->lex_match(TK_end, TK_function, Line);
+   pt = this->fs_finish((this->lastline = this->linenumber));
+   parent_state->bcbase = this->bcstack + oldbase;  // May have been reallocated.
+   parent_state->bclim = BCPos(this->sizebcstack - oldbase);
    // Store new prototype in the constant array of the parent.
-   expr_init(e, ExpKind::Relocable, bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+   expr_init(Expression, ExpKind::Relocable,
+      bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
 #if LJ_HASFFI
-   pfs->flags |= (fs.flags & PROTO_FFI);
+   parent_state->flags |= (fs.flags & PROTO_FFI);
 #endif
 
-   if (!(pfs->flags & PROTO_CHILD)) {
-      if (pfs->flags & PROTO_HAS_RETURN)
-         pfs->flags |= PROTO_FIXUP_RETURN;
-      pfs->flags |= PROTO_CHILD;
+   if (!(parent_state->flags & PROTO_CHILD)) {
+      if (parent_state->flags & PROTO_HAS_RETURN)
+         parent_state->flags |= PROTO_FIXUP_RETURN;
+      parent_state->flags |= PROTO_CHILD;
    }
-   State->next();
+   this->next();
 }
 
 //********************************************************************************************************************
 // Parse body of a function.
 
-static void parse_body(LexState *State, ExpDesc* e, int needself, BCLine line)
+void LexState::parse_body(ExpDesc* Expression, int NeedSelf, BCLine Line)
 {
-   parse_body_impl(State, e, needself, line, 0);
+   this->parse_body_impl(Expression, NeedSelf, Line, 0);
 }
 
 //********************************************************************************************************************
 // Parse body of a defer handler where parameter list is optional.
 
-static void parse_body_defer(LexState *State, ExpDesc* e, BCLine line)
+void LexState::parse_body_defer(ExpDesc* Expression, BCLine Line)
 {
-   parse_body_impl(State, e, 0, line, 1);
+   this->parse_body_impl(Expression, 0, Line, 1);
 }
 
 //********************************************************************************************************************
@@ -373,16 +369,16 @@ static void parse_body_defer(LexState *State, ExpDesc* e, BCLine line)
 //
 // Returns: Number of expressions in the list
 
-[[nodiscard]] static BCReg expr_list(LexState *State, ExpDesc* v)
+[[nodiscard]] BCReg LexState::expr_list(ExpDesc* Expression)
 {
    BCReg n = 1;
-   expr(State, v);
-   while (lex_opt(State, ',')) {
-      expr_tonextreg(State->fs, v);  // Discharge previous expressions to registers
-      expr(State, v);                // Parse next expression (may be ExpKind::Call)
+   this->expr(Expression);
+   while (this->lex_opt(',')) {
+      expr_tonextreg(this->fs, Expression);  // Discharge previous expressions to registers
+      this->expr(Expression);                // Parse next expression (may be ExpKind::Call)
       n++;
    }
-   return n;  // Last expression 'v' is NOT discharged
+   return n;  // Last expression 'Expression' is NOT discharged
 }
 
 //********************************************************************************************************************
@@ -419,43 +415,43 @@ static void parse_body_defer(LexState *State, ExpDesc* e, BCLine line)
 //     Function calls preserve multi-return:
 //       f(g())   passes all return values of g() to f()
 
-static void parse_args(LexState *State, ExpDesc* e)
+void LexState::parse_args(ExpDesc* Expression)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
    ExpDesc args;
    BCIns ins;
    BCReg base;
-   BCLine line = State->linenumber;
-   if (State->tok IS '(') {
+   BCLine line = this->linenumber;
+   if (this->tok IS '(') {
 #if !LJ_52
-      if (line != State->lastline)
-         err_syntax(State, LJ_ERR_XAMBIG);
+      if (line != this->lastline)
+         this->err_syntax(LJ_ERR_XAMBIG);
 #endif
-      State->next();
-      if (State->tok IS ')') {  // f().
+      this->next();
+      if (this->tok IS ')') {  // f().
          args.k = ExpKind::Void;
       }
       else {
-         (void)expr_list(State, &args);
+         (void)this->expr_list(&args);
          if (args.k IS ExpKind::Call)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
-      lex_match(State, ')', '(', line);
+      this->lex_match(')', '(', line);
    }
-   else if (State->tok IS '{') {
-      expr_table(State, &args);
+   else if (this->tok IS '{') {
+      this->expr_table(&args);
    }
-   else if (State->tok IS TK_string) {
+   else if (this->tok IS TK_string) {
       expr_init(&args, ExpKind::Str, 0);
-      args.u.sval = strV(&State->tokval);
-      State->next();
+      args.u.sval = strV(&this->tokval);
+      this->next();
    }
    else {
-      err_syntax(State, LJ_ERR_XFUNARG);
+      this->err_syntax(LJ_ERR_XFUNARG);
       return;  // Silence compiler.
    }
-   lj_assertFS(e->k IS ExpKind::NonReloc, "bad expr type %d", static_cast<int>(e->k));
-   base = e->u.s.info;  // Base register for call.
+   lj_assertFS(Expression->k IS ExpKind::NonReloc, "bad expr type %d", int(Expression->k));
+   base = Expression->u.s.info;  // Base register for call.
    if (args.k IS ExpKind::Call) {
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
    }
@@ -464,64 +460,63 @@ static void parse_args(LexState *State, ExpDesc* e)
          expr_tonextreg(fs, &args);
       ins = BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2);
    }
-   expr_init(e, ExpKind::Call, bcemit_INS(fs, ins));
-   e->u.s.aux = base;
+   expr_init(Expression, ExpKind::Call, bcemit_INS(fs, ins));
+   Expression->u.s.aux = base;
    fs->bcbase[fs->pc - 1].line = line;
    fs->freereg = base + 1;  // Leave one result by default.
 }
 
-static void inc_dec_op(LexState *State, BinOpr op, ExpDesc* v, int isPost);
-
 //********************************************************************************************************************
 // Parse primary expression.
 
-static void expr_primary(LexState *State, ExpDesc* v)
+void LexState::expr_primary(ExpDesc* Expression)
 {
-   FuncState* fs = State->fs;
+   FuncState* fs = this->fs;
+   ExpDesc* v = Expression;
    // Parse prefix expression.
-   if (State->tok IS '(') {
-      BCLine line = State->linenumber;
-      State->next();
-      expr(State, v);
-      lex_match(State, ')', '(', line);
-      expr_discharge(State->fs, v);
+   if (this->tok IS '(') {
+      BCLine line = this->linenumber;
+      this->next();
+      this->expr(v);
+      this->lex_match(')', '(', line);
+      expr_discharge(this->fs, v);
    }
-   else if (State->tok IS TK_name) {
-      var_lookup(State, v);
+   else if (this->tok IS TK_name) {
+      this->var_lookup(v);
    }
    else {
-      err_syntax(State, LJ_ERR_XSYMBOL);
+      this->err_syntax(LJ_ERR_XSYMBOL);
    }
    for (;;) {  // Parse multiple expression suffixes.
-      if (State->tok IS '.') {
-         expr_field(State, v);
+      if (this->tok IS '.') {
+         this->expr_field(v);
       }
-      else if (State->tok IS '[') {
+      else if (this->tok IS '[') {
          ExpDesc key;
          expr_toanyreg(fs, v);
-         expr_bracket(State, &key);
+         this->expr_bracket(&key);
          expr_index(fs, v, &key);
       }
-      else if (State->tok IS ':') {
+      else if (this->tok IS ':') {
          ExpDesc key;
-         State->next();
-         expr_str(State, &key);
+         this->next();
+         this->expr_str(&key);
          bcemit_method(fs, v, &key);
-         parse_args(State, v);
+         this->parse_args(v);
       }
-      else if (State->tok IS TK_plusplus) {
-         State->next();
-         inc_dec_op(State, OPR_ADD, v, 1);
+      else if (this->tok IS TK_plusplus) {
+         this->next();
+         this->inc_dec_op(OPR_ADD, v, 1);
       }
-      else if (State->tok IS TK_if_empty and should_emit_presence(State)) {
+      else if (this->tok IS TK_if_empty and this->should_emit_presence()) {
          // Postfix presence check operator: x??
-         State->next();  // Consume '??'
+         this->next();  // Consume '??'
          bcemit_presence_check(fs, v);
       }
-      else if (State->tok IS '(' or State->tok IS TK_string or State->tok IS '{') {
+      else if (this->tok IS '(' or this->tok IS TK_string or this->tok IS '{') {
          expr_tonextreg(fs, v);
          if (LJ_FR2) bcreg_reserve(fs, 1);
-         parse_args(State, v);
+         this->parse_args(v);
       }
       else {
          break;
@@ -531,9 +526,12 @@ static void expr_primary(LexState *State, ExpDesc* v)
 
 //********************************************************************************************************************
 
-static void inc_dec_op(LexState *State, BinOpr op, ExpDesc* v, int isPost)
+void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
 {
-   FuncState* fs = State->fs;
+   BinOpr op = Operator;
+   ExpDesc* v = Expression;
+   int isPost = IsPost;
+   FuncState* fs = this->fs;
    ExpDesc lv, e1, e2;
    BCReg indices;
 
@@ -543,7 +541,7 @@ static void inc_dec_op(LexState *State, BinOpr op, ExpDesc* v, int isPost)
    expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
    if (isPost) {
-      checkcond(State, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+      checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
       if (v->k IS ExpKind::Indexed)
@@ -557,8 +555,8 @@ static void inc_dec_op(LexState *State, BinOpr op, ExpDesc* v, int isPost)
       fs->freereg--;
       return;
    }
-   expr_primary(State, v);
-   checkcond(State, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+   this->expr_primary(v);
+   checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
    e1 = *v;
    if (v->k IS ExpKind::Indexed)
       bcreg_reserve(fs, fs->freereg - indices);
@@ -571,51 +569,52 @@ static void inc_dec_op(LexState *State, BinOpr op, ExpDesc* v, int isPost)
 //********************************************************************************************************************
 // Parse simple expression.
 
-static void expr_simple(LexState *State, ExpDesc* v)
+void LexState::expr_simple(ExpDesc* Expression)
 {
-   switch (State->tok) {
+   ExpDesc* v = Expression;
+   switch (this->tok) {
    case TK_number:
-      expr_init(v, (LJ_HASFFI and tviscdata(&State->tokval)) ? ExpKind::CData : ExpKind::Num, 0);
-      copyTV(State->L, &v->u.nval, &State->tokval);
-      State->next();
+      expr_init(v, (LJ_HASFFI and tviscdata(&this->tokval)) ? ExpKind::CData : ExpKind::Num, 0);
+      copyTV(this->L, &v->u.nval, &this->tokval);
+      this->next();
       break;
    case TK_string:
       expr_init(v, ExpKind::Str, 0);
-      v->u.sval = strV(&State->tokval);
-      State->next();
+      v->u.sval = strV(&this->tokval);
+      this->next();
       break;
    case TK_nil:
       expr_init(v, ExpKind::Nil, 0);
-      State->next();
+      this->next();
       break;
    case TK_true:
       expr_init(v, ExpKind::True, 0);
-      State->next();
+      this->next();
       break;
    case TK_false:
       expr_init(v, ExpKind::False, 0);
-      State->next();
+      this->next();
       break;
    case TK_dots: {  // Vararg.
-      FuncState* fs = State->fs;
+      FuncState* fs = this->fs;
       BCReg base;
-      checkcond(State, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
+      checkcond(this, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
       bcreg_reserve(fs, 1);
       base = fs->freereg - 1;
       expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
       v->u.s.aux = base;
-      State->next();
+      this->next();
       break;
    }
    case '{':  // Table constructor.
-      expr_table(State, v);
+      this->expr_table(v);
       return;
    case TK_function:
-      State->next();
-      parse_body(State, v, 0, State->linenumber);
+      this->next();
+      this->parse_body(v, 0, this->linenumber);
       return;
    default:
-      expr_primary(State, v);
+      this->expr_primary(v);
       return;
    }
 }
@@ -623,14 +622,15 @@ static void expr_simple(LexState *State, ExpDesc* v)
 //********************************************************************************************************************
 // Manage syntactic levels to avoid blowing up the stack.
 
-static void synlevel_begin(LexState *State)
+void LexState::synlevel_begin()
 {
-   if (++State->level >= LJ_MAX_XLEVEL)
-      lj_lex_error(State, 0, LJ_ERR_XLEVELS);
+   if (++this->level >= LJ_MAX_XLEVEL)
+      lj_lex_error(this, 0, LJ_ERR_XLEVELS);
 }
 
-static inline void synlevel_end(LexState *State) {
-   State->level--;
+void LexState::synlevel_end()
+{
+   this->level--;
 }
 
 //********************************************************************************************************************
@@ -667,9 +667,6 @@ static inline void synlevel_end(LexState *State) {
 }
 
 inline constexpr uint32_t UNARY_PRIORITY = 8;  // Priority for unary operators.
-
-// Forward declaration.
-static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit);
 
 //********************************************************************************************************************
 // Handle chained bitwise shift and bitwise logical operators with left-to-right associativity.
@@ -710,9 +707,11 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit);
 // Returns:
 //   The next binary operator token (if any) that was not consumed by this chain
 
-static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
+BinOpr LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
 {
-   FuncState* fs = State->fs;
+   ExpDesc* lhs = LeftHandSide;
+   BinOpr op = Operator;
+   FuncState* fs = this->fs;
    ExpDesc rhs;
    BinOpr nextop;
    BCReg base_reg;
@@ -720,7 +719,7 @@ static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
    // Parse RHS operand. expr_binop() respects priority levels and will not consume
    // another shift/bitop at the same level due to left-associativity logic in expr_binop().
 
-   nextop = expr_binop(State, &rhs, priority[op].right);
+   nextop = this->expr_binop(&rhs, priority[op].right);
 
    // Choose the base register for the bit operation call.
    //
@@ -733,12 +732,12 @@ static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
    // 2. Otherwise, if RHS is at the top, reuse it for compactness.
    // 3. Otherwise, allocate a fresh register.
 
-   if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar &&
+   if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar and
       lhs->u.s.info + 1 IS fs->freereg) {
       // LHS result from previous operation is at the top - reuse it to avoid orphaning
       base_reg = lhs->u.s.info;
    }
-   else if (rhs.k IS ExpKind::NonReloc and rhs.u.s.info >= fs->nactvar &&
+   else if (rhs.k IS ExpKind::NonReloc and rhs.u.s.info >= fs->nactvar and
       rhs.u.s.info + 1 IS fs->freereg) {
       // RHS is at the top - reuse it
       base_reg = rhs.u.s.info;
@@ -764,7 +763,7 @@ static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
       BinOpr follow = nextop;
       // Only chain operators with matching left precedence (same precedence level)
       if (priority[follow].left != priority[op].left) break;
-      State->next();  // Consume the operator token
+      this->next();  // Consume the operator token
 
       /* Update lhs to point to base_reg where the previous result is stored.
       ** This makes the previous result the input for the next operation. */
@@ -772,7 +771,7 @@ static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
       lhs->u.s.info = base_reg;
 
       // Parse the next RHS operand
-      nextop = expr_binop(State, &rhs, priority[follow].right);
+      nextop = this->expr_binop(&rhs, priority[follow].right);
 
       // Emit the next operation, reusing the same base register
       bcemit_shift_call_at_base(fs, priority[follow].name, MSize(priority[follow].name_len), lhs, &rhs, base_reg);
@@ -785,48 +784,51 @@ static BinOpr expr_shift_chain(LexState *State, ExpDesc* lhs, BinOpr op)
 //********************************************************************************************************************
 // Parse unary expression.
 
-static void expr_unop(LexState *State, ExpDesc* v)
+void LexState::expr_unop(ExpDesc* Expression)
 {
+   ExpDesc* v = Expression;
    BCOp op;
-   if (State->tok IS TK_not) {
+   if (this->tok IS TK_not) {
       op = BC_NOT;
    }
-   else if (State->tok IS '-') {
+   else if (this->tok IS '-') {
       op = BC_UNM;
    }
-   else if (State->tok IS '~') {
+   else if (this->tok IS '~') {
       // Unary bitwise not: desugar to bit.bnot(x).
-      State->next();
-      expr_binop(State, v, UNARY_PRIORITY);
-      bcemit_unary_bit_call(State->fs, "bnot", 4, v);
+      this->next();
+      this->expr_binop(v, UNARY_PRIORITY);
+      bcemit_unary_bit_call(this->fs, "bnot", 4, v);
       return;
    }
-   else if (State->tok IS '#') {
+   else if (this->tok IS '#') {
       op = BC_LEN;
    }
    else {
-      expr_simple(State, v);
+      this->expr_simple(v);
       // Check for postfix presence check operator after simple expressions (constants)
-      if (State->tok IS TK_if_empty and should_emit_presence(State)) {
-         State->next();
-         bcemit_presence_check(State->fs, v);
+      if (this->tok IS TK_if_empty and this->should_emit_presence()) {
+         this->next();
+         bcemit_presence_check(this->fs, v);
       }
       return;
    }
-   State->next();
-   expr_binop(State, v, UNARY_PRIORITY);
-   bcemit_unop(State->fs, op, v);
+   this->next();
+   this->expr_binop(v, UNARY_PRIORITY);
+   bcemit_unop(this->fs, op, v);
 }
 
 //********************************************************************************************************************
 // Parse binary expressions with priority higher than the limit.
 
-static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
+BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 {
+   ExpDesc* v = Expression;
+   uint32_t limit = Limit;
    BinOpr op;
-   synlevel_begin(State);
-   expr_unop(State, v);
-   op = token2binop(State->tok);
+   this->synlevel_begin();
+   this->expr_unop(v);
+   op = token2binop(this->tok);
    while (op != OPR_NOBINOPR) {
       uint8_t lpri = priority[op].left;
       // Special-case: when parsing the RHS of a shift (limit set to
@@ -834,17 +836,17 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
       // This enforces left-associativity for chained shifts while still
       // allowing lower-precedence additions on the RHS to bind tighter.
 
-      if (limit IS priority[op].right &&
-         (op IS OPR_SHL or op IS OPR_SHR ||
+      if (limit IS priority[op].right and
+         (op IS OPR_SHL or op IS OPR_SHR or
             op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_BAND))
          lpri = 0;
 
       if (!(lpri > limit)) break;
 
-      State->next();
+      this->next();
 
       if (op IS OPR_TERNARY) {
-         FuncState* fs = State->fs;
+         FuncState* fs = this->fs;
          ExpDesc nilv, falsev, zerov, emptyv;
          BCReg cond_reg, result_reg;
          BCPos check_nil, check_false, check_zero, check_empty;
@@ -854,7 +856,7 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          cond_reg = expr_toanyreg(fs, v);
          result_reg = cond_reg;
 
-         State->ternary_depth++;
+         this->ternary_depth++;
 
          expr_init(&nilv, ExpKind::Nil, 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
@@ -867,13 +869,13 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
          check_zero = bcemit_jmp(fs);
          expr_init(&emptyv, ExpKind::Str, 0);
-         emptyv.u.sval = lj_parse_keepstr(State, "", 0);
+         emptyv.u.sval = this->keepstr("", 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
          check_empty = bcemit_jmp(fs);
 
          {
             ExpDesc v2;
-            expr_binop(State, &v2, priority[OPR_IF_EMPTY].right);
+            this->expr_binop(&v2, priority[OPR_IF_EMPTY].right);
             expr_discharge(fs, &v2);
             expr_toreg(fs, &v2, result_reg);
             expr_collapse_freereg(fs, result_reg);
@@ -881,9 +883,9 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
 
          skip_false = bcemit_jmp(fs);
 
-         lex_check(State, TK_ternary_sep);
-         State->assert_condition(State->ternary_depth > 0, "ternary depth underflow");
-         State->ternary_depth--;
+         this->lex_check(TK_ternary_sep);
+         this->assert_condition(this->ternary_depth > 0, "ternary depth underflow");
+         this->ternary_depth--;
 
          {
             BCPos false_start = fs->pc;
@@ -894,7 +896,7 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          }
 
          {
-            ExpDesc fexp; BinOpr nextop3 = expr_binop(State, &fexp, priority[OPR_IF_EMPTY].right);
+            ExpDesc fexp; BinOpr nextop3 = this->expr_binop(&fexp, priority[OPR_IF_EMPTY].right);
             expr_discharge(fs, &fexp);
             expr_toreg(fs, &fexp, result_reg);
             expr_collapse_freereg(fs, result_reg);
@@ -903,10 +905,10 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          }
       }
 
-      bcemit_binop_left(State->fs, op, v);
+      bcemit_binop_left(this->fs, op, v);
 
       if ((op IS OPR_SHL) or (op IS OPR_SHR) or (op IS OPR_BAND) or (op IS OPR_BXOR) or (op IS OPR_BOR)) {
-         op = expr_shift_chain(State, v, op);
+         op = this->expr_shift_chain(v, op);
          continue;
       }
 
@@ -914,13 +916,13 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
 
       ExpDesc v2;
       BinOpr nextop;
-      nextop = expr_binop(State, &v2, priority[op].right);
+      nextop = this->expr_binop(&v2, priority[op].right);
 
-      if (op IS OPR_IF_EMPTY and State->ternary_depth IS 0 &&
-         (State->tok IS TK_ternary_sep or State->pending_if_empty_colon)) {
-         FuncState* fs = State->fs;
+      if (op IS OPR_IF_EMPTY and this->ternary_depth IS 0 and
+         (this->tok IS TK_ternary_sep or this->pending_if_empty_colon)) {
+         FuncState* fs = this->fs;
 
-         State->pending_if_empty_colon = 0;
+         this->pending_if_empty_colon = 0;
 
          if (v->t != NO_JMP) {
             jmp_patch(fs, v->t, fs->pc);
@@ -949,14 +951,14 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          {
             ExpDesc callee;
             expr_init(&callee, ExpKind::Str, 0);
-            callee.u.sval = lj_parse_keepstr(State, "error", 5);
+            callee.u.sval = this->keepstr("error", 5);
             bcemit_INS(fs, BCINS_AD(BC_GGET, base, const_str(fs, &callee)));
          }
 
          {
             ExpDesc message;
             expr_init(&message, ExpKind::Str, 0);
-            message.u.sval = lj_parse_keepstr(State, "Invalid ternary mix: use '?' with ':>'", 39);
+            message.u.sval = this->keepstr("Invalid ternary mix: use '?' with ':>'", 39);
             bcemit_INS(fs, BCINS_AD(BC_KSTR, arg_reg, const_str(fs, &message)));
          }
 
@@ -968,11 +970,11 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          fs->freereg = base + 1;
          expr_discharge(fs, v);
 
-         State->next();
+         this->next();
 
          {
             ExpDesc dummy;
-            BinOpr after = expr_binop(State, &dummy, priority[OPR_IF_EMPTY].right);
+            BinOpr after = this->expr_binop(&dummy, priority[OPR_IF_EMPTY].right);
             expr_discharge(fs, &dummy);
             expr_free(fs, &dummy);
             op = after;
@@ -981,16 +983,16 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
          continue;
       }
 
-      bcemit_binop(State->fs, op, v, &v2);
+      bcemit_binop(this->fs, op, v, &v2);
       op = nextop;
    }
-   synlevel_end(State);
-   if (State->tok IS TK_ternary_sep and State->ternary_depth IS 0) {
+   this->synlevel_end();
+   if (this->tok IS TK_ternary_sep and this->ternary_depth IS 0) {
       if (limit IS priority[OPR_IF_EMPTY].right) {
-         State->pending_if_empty_colon = 1;
+         this->pending_if_empty_colon = 1;
          return op;
       }
-      err_syntax(State, LJ_ERR_XSYMBOL);
+      this->err_syntax(LJ_ERR_XSYMBOL);
    }
    return op;  // Return unconsumed binary operator (if any).
 }
@@ -998,29 +1000,29 @@ static BinOpr expr_binop(LexState *State, ExpDesc* v, uint32_t limit)
 //********************************************************************************************************************
 // Parse expression.
 
-static void expr(LexState *State, ExpDesc* v)
+void LexState::expr(ExpDesc* Expression)
 {
-   expr_binop(State, v, 0);  // Priority 0: parse whole expression.
+   this->expr_binop(Expression, 0);  // Priority 0: parse whole expression.
 }
 
 //********************************************************************************************************************
 // Assign expression to the next register.
 
-static void expr_next(LexState *State)
+void LexState::expr_next()
 {
-   ExpDesc e;
-   expr(State, &e);
-   expr_tonextreg(State->fs, &e);
+   ExpDesc expression;
+   this->expr(&expression);
+   expr_tonextreg(this->fs, &expression);
 }
 
 //********************************************************************************************************************
 // Parse conditional expression.
 
-[[nodiscard]] static BCPos expr_cond(LexState *State)
+[[nodiscard]] BCPos LexState::expr_cond()
 {
-   ExpDesc v;
-   expr(State, &v);
-   if (v.k IS ExpKind::Nil) v.k = ExpKind::False;
-   bcemit_branch_t(State->fs, &v);
-   return v.f;
+   ExpDesc condition;
+   this->expr(&condition);
+   if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
+   bcemit_branch_t(this->fs, &condition);
+   return condition.f;
 }

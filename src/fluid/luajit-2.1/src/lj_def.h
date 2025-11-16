@@ -394,6 +394,11 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #else
 #define LJ_FUNC      LJ_NOAPI
 #endif
+#if defined(__GNUC__) || defined(__clang__)
+#define LJ_USED   __attribute__((used))
+#else
+#define LJ_USED
+#endif
 #define LJ_FUNC_NORET   LJ_FUNC LJ_NORET
 #define LJ_FUNCA_NORET   LJ_FUNCA LJ_NORET
 #define LJ_ASMF_NORET   LJ_ASMF LJ_NORET

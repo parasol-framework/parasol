@@ -235,10 +235,10 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 
    // Now load bit.[lshift|rshift|...] into the base register
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit", 3);
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -288,10 +288,10 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 
    // Load bit.fname into base register.
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit", 3);
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -375,7 +375,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Check for empty string
    expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   emptyv.u.sval = fs->ls->keepstr("", 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -483,7 +483,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Check for empty string
             expr_init(&emptyv, ExpKind::Str, 0);
-            emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+            emptyv.u.sval = fs->ls->keepstr("", 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
