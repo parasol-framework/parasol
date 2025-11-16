@@ -134,6 +134,9 @@ int LexState::assign_if_empty(ExpDesc* lh)
    JumpListView(fs, check_empty).patch_to(assign_pos);
    JumpListView(fs, skip_assign).patch_to(fs->pc);
 
+   // Release temporary duplicates before freeing the original table slots.
+   register_guard.release_to(register_guard.saved());
+
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
@@ -224,6 +227,8 @@ int LexState::assign_compound(ExpDesc* lh, LexToken opType)
    bcemit_store(fs, &lhv, &infix);
 
    // Drop any RHS temporaries and release original base/index in LIFO order.
+
+   register_guard.release_to(register_guard.saved());
 
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
