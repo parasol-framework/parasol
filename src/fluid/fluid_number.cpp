@@ -14,10 +14,7 @@ The num interface provides support for processing a range of numeric types other
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 
-extern "C" {
- #include "lauxlib.h"
-}
-
+#include "lauxlib.h"
 #include "hashes.h"
 #include "defs.h"
 

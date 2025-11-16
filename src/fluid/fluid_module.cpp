@@ -7,12 +7,10 @@
 #include <parasol/strings.hpp>
 #include <inttypes.h>
 
-extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
 
 #include "hashes.h"
 #include "defs.h"

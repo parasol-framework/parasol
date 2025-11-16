@@ -15,10 +15,6 @@
 
 #include "luaconf.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define LUA_VERSION   "Lua 5.1"
 #define LUA_RELEASE   "Lua 5.1.4"
 constexpr int LUA_VERSION_NUM = 501;
@@ -376,10 +372,6 @@ struct lua_Debug {
 };
 
 // }======================================================================
-
-#ifdef __cplusplus
-}
-#endif
 
 /******************************************************************************
 * Copyright (C) 1994-2008 Lua.org, PUC-Rio.  All rights reserved.

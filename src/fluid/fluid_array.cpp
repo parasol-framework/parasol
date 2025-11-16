@@ -34,10 +34,8 @@ To convert the C array values to a Lua table:
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 
-extern "C" {
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
+#include "lauxlib.h"
+#include "lj_obj.h"
 
 #include "hashes.h"
 #include "defs.h"

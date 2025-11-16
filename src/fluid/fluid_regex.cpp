@@ -19,11 +19,8 @@ Examples:
 #include <string_view>
 #include <cctype>
 
-extern "C" {
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
-
+#include "lauxlib.h"
+#include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
 

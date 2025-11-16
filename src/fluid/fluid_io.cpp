@@ -9,11 +9,8 @@
 #include <parasol/strings.hpp>
 #include <inttypes.h>
 
-extern "C" {
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
-
+#include "lauxlib.h"
+#include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
 

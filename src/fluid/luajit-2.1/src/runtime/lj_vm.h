@@ -1,16 +1,9 @@
-/*
-** Assembler VM interface definitions.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Assembler VM interface definitions.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#ifndef _LJ_VM_H
-#define _LJ_VM_H
+#pragma once
 
 #include "lj_obj.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // Entry points for ASM parts of VM.
 LJ_ASMF void lj_vm_call(lua_State *L, TValue *base, int nres1);
@@ -136,9 +129,3 @@ LJ_ASMF char lj_vm_asm_begin[];
 
 // Bytecode offsets are relative to lj_vm_asm_begin.
 #define makeasmfunc(ofs)   ((ASMFunction)(lj_vm_asm_begin + (ofs)))
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
