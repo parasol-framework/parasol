@@ -185,6 +185,42 @@ static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
    e->f = e->t = NO_JMP;
 }
 
+[[nodiscard]] static constexpr ExpDesc make_const_expr(ExpKind Kind, uint32_t Info = 0)
+{
+   ExpDesc expression{};
+   expression.u.s.info = Info;
+   expression.u.s.aux = 0;
+   expression.k = Kind;
+   expression.flags = ExprFlag::None;
+   expression.t = NO_JMP;
+   expression.f = NO_JMP;
+   return expression;
+}
+
+[[nodiscard]] static constexpr ExpDesc make_nil_expr()
+{
+   return make_const_expr(ExpKind::Nil);
+}
+
+[[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
+{
+   return make_const_expr(Value ? ExpKind::True : ExpKind::False);
+}
+
+[[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
+{
+   ExpDesc expression = make_const_expr(ExpKind::Num);
+   setnumV(&expression.u.nval, Value);
+   return expression;
+}
+
+[[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
+{
+   ExpDesc expression = make_const_expr(ExpKind::Str);
+   expression.u.sval = Value;
+   return expression;
+}
+
 // Check number constant for +-0.
 static LJ_AINLINE int expr_numiszero(ExpDesc* e)
 {

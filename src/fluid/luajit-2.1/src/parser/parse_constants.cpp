@@ -54,6 +54,13 @@ GCstr* LexState::keepstr(std::string_view str)
    return s;
 }
 
+GCstr* LexState::intern_empty_string()
+{
+   if (!this->empty_string_constant)
+      this->empty_string_constant = this->keepstr(std::string_view());
+   return this->empty_string_constant;
+}
+
 #if LJ_HASFFI
 // Anchor cdata to avoid GC.
 void LexState::keepcdata(TValue* tv, GCcdata* cd)

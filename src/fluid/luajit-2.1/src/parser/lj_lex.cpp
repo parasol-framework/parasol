@@ -515,6 +515,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    this->rdata = Rdata;
    this->chunkarg = Chunkarg.data();
    this->mode = Mode.has_value() ? Mode->data() : nullptr;
+   this->empty_string_constant = nullptr;
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);
@@ -580,6 +581,7 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    this->mode = nullptr;
    this->rfunc = nullptr;
    this->rdata = nullptr;
+   this->empty_string_constant = nullptr;
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);

@@ -65,7 +65,10 @@ int LexState::assign_if_empty(ExpDesc* lh)
 {
    FuncState* fs = this->fs;
    ExpDesc lhv, lhs_eval, rh;
-   ExpDesc nilv, falsev, zerov, emptyv;
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(this->intern_empty_string());
    BCReg lhs_reg;
    BCPos check_nil, check_false, check_zero, check_empty;
    BCPos skip_assign, assign_pos;
@@ -101,21 +104,15 @@ int LexState::assign_if_empty(ExpDesc* lh)
    expr_discharge(fs, &lhs_eval);
    lhs_reg = expr_toanyreg(fs, &lhs_eval);
 
-   expr_init(&nilv, ExpKind::Nil, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
-   expr_init(&falsev, ExpKind::False, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
-   expr_init(&zerov, ExpKind::Num, 0);
-   setnumV(&zerov.u.nval, 0.0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, lhs_reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
-   expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = this->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
