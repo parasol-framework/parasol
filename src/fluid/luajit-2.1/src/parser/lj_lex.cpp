@@ -461,7 +461,7 @@ static LexToken lex_scan(LexState *State, TValue* tv)
 //********************************************************************************************************************
 // LexState constructor
 
-LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::string_view Mode)
+LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode)
 {
    int header = 0;
    this->L = L;
@@ -484,7 +484,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    this->rfunc = Rfunc;
    this->rdata = Rdata;
    this->chunkarg = Chunkarg.data();
-   this->mode = Mode.data();
+   this->mode = Mode.has_value() ? Mode->data() : nullptr;
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);

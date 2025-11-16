@@ -5,6 +5,7 @@
 
 #include <stdarg.h>
 #include <string_view>
+#include <optional>
 
 #include "lj_obj.h"
 #include "lj_err.h"
@@ -93,7 +94,7 @@ public:
    int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
 
    LexState() = default;  // Default constructor for bytecode reader usage
-   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::string_view Mode);
+   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);
    LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Constructor for direct bytecode reading
    ~LexState();
 

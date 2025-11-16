@@ -50,7 +50,8 @@ static TValue* cpparser(lua_State *L, lua_CFunction dummy, void* ud)
 
 extern int lua_loadx(lua_State* L, lua_Reader reader, void* data, const char* chunkname, const char* mode)
 {
-   LexState ls(L, reader, data, chunkname ? chunkname : "?", mode);
+   LexState ls(L, reader, data, chunkname ? chunkname : "?",
+      mode ? std::optional<std::string_view>(mode) : std::nullopt);
    int status;
    status = lj_vm_cpcall(L, nullptr, &ls, cpparser);
    // Destructor will be called automatically when ls goes out of scope
