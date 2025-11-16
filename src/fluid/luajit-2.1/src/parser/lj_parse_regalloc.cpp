@@ -40,7 +40,7 @@ static void bcreg_free(FuncState* fs, BCReg reg)
 
 static void expr_free(FuncState* fs, ExpDesc* e)
 {
-   if (e->k == VNONRELOC) bcreg_free(fs, e->u.s.info);
+   if (e->k == ExpKind::NonReloc) bcreg_free(fs, e->u.s.info);
 }
 
 //********************************************************************************************************************
@@ -82,10 +82,10 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
 static void expr_discharge(FuncState* fs, ExpDesc* e)
 {
    BCIns ins;
-   if (e->k == VUPVAL) {
+   if (e->k == ExpKind::Upval) {
       ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
    }
-   else if (e->k == VGLOBAL) {
+   else if (e->k == ExpKind::Global) {
       // Check if trying to read blank identifier.
       if (is_blank_identifier(e->u.sval)) {
          lj_lex_error(fs->ls, fs->ls->tok, LJ_ERR_XNEAR,
@@ -93,7 +93,7 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
       }
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
    }
-   else if (e->k == VINDEXED) {
+   else if (e->k == ExpKind::Indexed) {
       BCReg rc = e->u.s.aux;
       if (int32_t(rc) < 0) {
          ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
@@ -107,19 +107,19 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
       }
       bcreg_free(fs, e->u.s.info);
    }
-   else if (e->k == VCALL) {
+   else if (e->k == ExpKind::Call) {
       e->u.s.info = e->u.s.aux;
-      e->k = VNONRELOC;
+      e->k = ExpKind::NonReloc;
       return;
    }
-   else if (e->k == VLOCAL) {
-      e->k = VNONRELOC;
+   else if (e->k == ExpKind::Local) {
+      e->k = ExpKind::NonReloc;
       return;
    }
    else return;
 
    e->u.s.info = bcemit_INS(fs, ins);
-   e->k = VRELOCABLE;
+   e->k = ExpKind::Relocable;
 }
 
 //********************************************************************************************************************
@@ -156,7 +156,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
    }
 
    // Emit new instruction or replace old instruction.
-   bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, VKNIL) :
+   bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, ExpKind::Nil) :
       BCINS_AD(BC_KNIL, from, from + n - 1));
 }
 
@@ -167,10 +167,10 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    BCIns ins;
    expr_discharge(fs, e);
-   if (e->k == VKSTR) {
+   if (e->k == ExpKind::Str) {
       ins = BCINS_AD(BC_KSTR, reg, const_str(fs, e));
    }
-   else if (e->k == VKNUM) {
+   else if (e->k == ExpKind::Num) {
 #if LJ_DUALNUM
       cTValue* tv = expr_numtv(e);
       if (tvisint(tv) and checki16(intV(tv)))
@@ -186,35 +186,35 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
          ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
 #if LJ_HASFFI
    }
-   else if (e->k == VKCDATA) {
+   else if (e->k == ExpKind::CData) {
       fs->flags |= PROTO_FFI;
       ins = BCINS_AD(BC_KCDATA, reg,
          const_gc(fs, obj2gco(cdataV(&e->u.nval)), LJ_TCDATA));
 #endif
    }
-   else if (e->k == VRELOCABLE) {
+   else if (e->k == ExpKind::Relocable) {
       setbc_a(bcptr(fs, e), reg);
       goto noins;
    }
-   else if (e->k == VNONRELOC) {
+   else if (e->k == ExpKind::NonReloc) {
       if (reg == e->u.s.info) goto noins;
       ins = BCINS_AD(BC_MOV, reg, e->u.s.info);
    }
-   else if (e->k == VKNIL) {
+   else if (e->k == ExpKind::Nil) {
       bcemit_nil(fs, reg, 1);
       goto noins;
    }
-   else if (e->k <= VKTRUE) {
+   else if (e->k <= ExpKind::True) {
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k == VVOID or e->k == VJMP, "bad expr type %d", e->k);
+      lj_assertFS(e->k == ExpKind::Void or e->k == ExpKind::Jmp, "bad expr type %d", static_cast<int>(e->k));
       return;
    }
    bcemit_INS(fs, ins);
 noins:
    e->u.s.info = reg;
-   e->k = VNONRELOC;
+   e->k = ExpKind::NonReloc;
 }
 
 //********************************************************************************************************************
@@ -223,14 +223,14 @@ noins:
 static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    expr_toreg_nobranch(fs, e, reg);
-   if (e->k == VJMP) jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
+   if (e->k == ExpKind::Jmp) jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
       if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
-         BCPos jval = (e->k == VJMP) ? NO_JMP : bcemit_jmp(fs);
-         jfalse = bcemit_AD(fs, BC_KPRI, reg, VKFALSE);
+         BCPos jval = (e->k == ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
+         jfalse = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
-         jtrue = bcemit_AD(fs, BC_KPRI, reg, VKTRUE);
+         jtrue = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::True));
          jmp_tohere(fs, jval);
       }
       jend = fs->pc;
@@ -240,7 +240,7 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
    }
    e->f = e->t = NO_JMP;
    e->u.s.info = reg;
-   e->k = VNONRELOC;
+   e->k = ExpKind::NonReloc;
 }
 
 //********************************************************************************************************************
@@ -260,7 +260,7 @@ static void expr_tonextreg(FuncState* fs, ExpDesc* e)
 static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
 {
    expr_discharge(fs, e);
-   if (e->k == VNONRELOC) [[likely]] {
+   if (e->k == ExpKind::NonReloc) [[likely]] {
       if (!expr_hasjump(e)) [[likely]] return e->u.s.info;  // Already in a register.
       if (e->u.s.info >= fs->nactvar) {
          expr_toreg(fs, e, e->u.s.info);  // Discharge to temp. register.
@@ -288,27 +288,27 @@ static void expr_toval(FuncState* fs, ExpDesc* e)
 static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 {
    BCIns ins;
-   if (var->k == VLOCAL) {
+   if (var->k == ExpKind::Local) {
       fs->ls->vstack[var->u.s.aux].info |= VSTACK_VAR_RW;
       expr_free(fs, e);
       expr_toreg(fs, e, var->u.s.info);
       return;
    }
-   else if (var->k == VUPVAL) {
+   else if (var->k == ExpKind::Upval) {
       fs->ls->vstack[var->u.s.aux].info |= VSTACK_VAR_RW;
       expr_toval(fs, e);
-      if (e->k <= VKTRUE) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
-      else if (e->k == VKSTR) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
-      else if (e->k == VKNUM) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
+      if (e->k <= ExpKind::True) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
+      else if (e->k == ExpKind::Str) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
+      else if (e->k == ExpKind::Num) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
       else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
    }
-   else if (var->k == VGLOBAL) {
+   else if (var->k == ExpKind::Global) {
       BCReg ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
    else {
       BCReg ra, rc;
-      lj_assertFS(var->k == VINDEXED, "bad expr type %d", var->k);
+      lj_assertFS(var->k == ExpKind::Indexed, "bad expr type %d", static_cast<int>(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
@@ -317,7 +317,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().
-         if (e->k == VNONRELOC and ra >= fs->nactvar and rc >= ra)
+         if (e->k == ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
             bcreg_free(fs, rc);
 #endif
          ins = BCINS_ABC(BC_TSETV, ra, var->u.s.info, rc);
@@ -349,7 +349,7 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
       fs->freereg--;
    }
    e->u.s.info = func;
-   e->k = VNONRELOC;
+   e->k = ExpKind::NonReloc;
 }
 
 //********************************************************************************************************************
@@ -386,7 +386,7 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    
-   if (e->k == VRELOCABLE) {
+   if (e->k == ExpKind::Relocable) {
       BCIns* ip = bcptr(fs, e);
       if (bc_op(*ip) == BC_NOT) {
          *ip = BCINS_AD(cond ? BC_ISF : BC_IST, 0, bc_d(*ip));
@@ -394,7 +394,7 @@ static void invertcond(FuncState* fs, ExpDesc* e)
       }
    }
 
-   if (e->k != VNONRELOC) {
+   if (e->k != ExpKind::NonReloc) {
       bcreg_reserve(fs, 1);
       expr_toreg_nobranch(fs, e, fs->freereg - 1);
    }
@@ -412,9 +412,9 @@ static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) pc = NO_JMP;  // Never jump.
-   else if (e->k == VJMP) invertcond(fs, e), pc = e->u.s.info;
-   else if (e->k == VKFALSE or e->k == VKNIL) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) pc = NO_JMP;  // Never jump.
+   else if (e->k == ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
+   else if (e->k == ExpKind::False or e->k == ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 0);
    jmp_append(fs, &e->f, pc);
    jmp_tohere(fs, e->t);
@@ -429,9 +429,9 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
    BCPos pc;
    expr_discharge(fs, e);
    
-   if (e->k == VKNIL or e->k == VKFALSE) pc = NO_JMP;  // Never jump.
-   else if (e->k == VJMP) pc = e->u.s.info;
-   else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   if (e->k == ExpKind::Nil or e->k == ExpKind::False) pc = NO_JMP;  // Never jump.
+   else if (e->k == ExpKind::Jmp) pc = e->u.s.info;
+   else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
    
    jmp_append(fs, &e->t, pc);

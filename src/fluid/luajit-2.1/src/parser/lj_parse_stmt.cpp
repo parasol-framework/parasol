@@ -18,7 +18,7 @@ static void assign_hazard(LexState *State, LHSVarList *Left, const ExpDesc *Var)
    int hazard = 0;
 
    for (; Left; Left = Left->prev) {
-      if (Left->var.k == VINDEXED) {
+      if (Left->var.k == ExpKind::Indexed) {
          if (Left->var.u.s.info == reg) {  // t[i], t = 1, 2
             hazard = 1;
             Left->var.u.s.info = tmp;
@@ -43,14 +43,14 @@ static void assign_adjust(LexState* ls, BCReg nvars, BCReg nexps, ExpDesc* e)
 {
    FuncState* fs = ls->fs;
    int32_t extra = int32_t(nvars) - int32_t(nexps);
-   if (e->k == VCALL) {
-      extra++;  // Compensate for the VCALL itself.
+   if (e->k == ExpKind::Call) {
+      extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
       if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
    }
    else {
-      if (e->k != VVOID) expr_tonextreg(fs, e);  // Close last expression.
+      if (e->k != ExpKind::Void) expr_tonextreg(fs, e);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
          bcreg_reserve(fs, BCReg(extra));
@@ -81,7 +81,7 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
 
    freg_base = fs->freereg;
 
-   if (lh->var.k == VINDEXED) {
+   if (lh->var.k == ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;
 
@@ -103,20 +103,20 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    expr_discharge(fs, &lhs_eval);
    lhs_reg = expr_toanyreg(fs, &lhs_eval);
 
-   expr_init(&nilv, VKNIL, 0);
+   expr_init(&nilv, ExpKind::Nil, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
-   expr_init(&falsev, VKFALSE, 0);
+   expr_init(&falsev, ExpKind::False, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
-   expr_init(&zerov, VKNUM, 0);
+   expr_init(&zerov, ExpKind::Num, 0);
    setnumV(&zerov.u.nval, 0.0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, lhs_reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
-   expr_init(&emptyv, VKSTR, 0);
+   expr_init(&emptyv, ExpKind::Str, 0);
    emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
@@ -140,7 +140,7 @@ static int assign_if_empty(LexState* ls, LHSVarList* lh)
    jmp_patch(fs, skip_assign, fs->pc);
 
    fs->freereg = freg_base;
-   if (lhv.k == VINDEXED) {
+   if (lhv.k == ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
          bcreg_free(fs, BCReg(orig_aux));
@@ -183,7 +183,7 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    // the original registers for the final store and maintains LIFO free order.
 
    freg_base = fs->freereg;
-   if (lh->var.k == VINDEXED) {
+   if (lh->var.k == ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;  // Keep originals for the store.
 
@@ -233,7 +233,7 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
    // Drop any RHS temporaries and release original base/index in LIFO order.
 
    fs->freereg = freg_base;
-   if (lhv.k == VINDEXED) {
+   if (lhv.k == ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) bcreg_free(fs, BCReg(orig_aux));
       bcreg_free(fs, BCReg(lhv.u.s.info));
@@ -247,12 +247,12 @@ static int assign_compound(LexState* ls, LHSVarList* lh, LexToken opType)
 static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
 {
    ExpDesc e;
-   checkcond(ls, VLOCAL <= lh->var.k and lh->var.k <= VINDEXED, LJ_ERR_XSYNTAX);
+   checkcond(ls, ExpKind::Local <= lh->var.k and lh->var.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
    if (lex_opt(ls, ',')) {  // Collect LHS list and recurse upwards.
       LHSVarList vl;
       vl.prev = lh;
       expr_primary(ls, &vl.var);
-      if (vl.var.k == VLOCAL)
+      if (vl.var.k == ExpKind::Local)
          assign_hazard(ls, lh, &vl.var);
       checklimit(ls->fs, ls->level + nvars, LJ_MAX_XLEVEL, "variable names");
       parse_assignment(ls, &vl, nvars + 1);
@@ -262,14 +262,14 @@ static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
       lex_check(ls, '=');
       nexps = expr_list(ls, &e);
       if (nexps == nvars) {
-         if (e.k == VCALL) {
+         if (e.k == ExpKind::Call) {
             if (bc_op(*bcptr(ls->fs, &e)) == BC_VARG) {  // Vararg assignment.
                ls->fs->freereg--;
-               e.k = VRELOCABLE;
+               e.k = ExpKind::Relocable;
             }
             else {  // Multiple call results.
                e.u.s.info = e.u.s.aux;  // Base of call is not relocatable.
-               e.k = VNONRELOC;
+               e.k = ExpKind::NonReloc;
             }
          }
          bcemit_store(ls->fs, &lh->var, &e);
@@ -279,7 +279,7 @@ static void parse_assignment(LexState* ls, LHSVarList* lh, BCReg nvars)
    }
 
    // Assign RHS to LHS and recurse downwards.
-   expr_init(&e, VNONRELOC, ls->fs->freereg - 1);
+   expr_init(&e, ExpKind::NonReloc, ls->fs->freereg - 1);
    bcemit_store(ls->fs, &lh->var, &e);
 }
 
@@ -291,9 +291,9 @@ static void parse_call_assign(LexState* ls)
    FuncState* fs = ls->fs;
    LHSVarList vl;
    expr_primary(ls, &vl.var);
-   if (vl.var.k == VNONRELOC and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
+   if (vl.var.k == ExpKind::NonReloc and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
       return;
-   if (vl.var.k == VCALL) {  // Function call statement.
+   if (vl.var.k == ExpKind::Call) {  // Function call statement.
       setbc_b(bcptr(fs, &vl.var), 1);  // No results.
    }
    else if (ls->tok == TK_cadd or ls->tok == TK_csub or ls->tok == TK_cmul or
@@ -320,7 +320,7 @@ static void parse_local(LexState* ls)
       ExpDesc v, b;
       FuncState* fs = ls->fs;
       var_new(ls, 0, lex_str(ls));
-      expr_init(&v, VLOCAL, fs->freereg);
+      expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
       bcreg_reserve(fs, 1);
       var_add(ls, 1);
@@ -343,7 +343,7 @@ static void parse_local(LexState* ls)
          nexps = expr_list(ls, &e);
       }
       else {  // Or implicitly set to nil.
-         e.k = VVOID;
+         e.k = ExpKind::Void;
          nexps = 0;
       }
       assign_adjust(ls, nvars, nexps, &e);
@@ -483,7 +483,7 @@ static void parse_return(LexState* ls)
       ExpDesc e;  // Receives the _last_ expression in the list.
       BCReg nret = expr_list(ls, &e);
       if (nret == 1) {  // Return one result.
-         if (e.k == VCALL) {  // Check for tail call.
+         if (e.k == ExpKind::Call) {  // Check for tail call.
             BCIns* ip = bcptr(fs, &e);
             // It doesn't pay off to add BC_VARGT just for 'return ...'.
             if (bc_op(*ip) == BC_VARG) goto notailcall;
@@ -495,7 +495,7 @@ static void parse_return(LexState* ls)
          }
       }
       else {
-         if (e.k == VCALL) {  // Append all results from a call.
+         if (e.k == ExpKind::Call) {  // Append all results from a call.
          notailcall:
             setbc_b(bcptr(fs, &e), 0);
             ins = BCINS_AD(BC_RETM, fs->nactvar, e.u.s.aux - fs->nactvar);
