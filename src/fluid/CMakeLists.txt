@@ -116,7 +116,7 @@ set (BUILDVM_SOURCES
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
-set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib)
+set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib -I${LUAJIT_SRC}/runtime)
 set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
@@ -138,6 +138,7 @@ if (MSVC)
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/lib/lj_*.cpp"
+      "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
@@ -146,6 +147,7 @@ if (MSVC)
       "${LUAJIT_SRC}/bytecode/lj_*.h"
       "${LUAJIT_SRC}/debug/lj_*.h"
       "${LUAJIT_SRC}/lib/lj_*.h"
+      "${LUAJIT_SRC}/runtime/lj_*.h"
       "${LUAJIT_SRC}/lj_*.h")
 
    # Platform-specific paths
@@ -195,7 +197,7 @@ if (MSVC)
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
-         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/runtime
          ${BUILDVM_SOURCES}
       COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
          ${LUAJIT_BUILD_DIR}/buildvm.obj
@@ -243,6 +245,7 @@ if (MSVC)
       "${LUAJIT_SRC}/bytecode"
       "${LUAJIT_SRC}/debug"
       "${LUAJIT_SRC}/lib"
+      "${LUAJIT_SRC}/runtime"
       "${LUAJIT_BUILD_DIR}"  # Include generated headers from build dir
    )
 
@@ -507,6 +510,7 @@ else ()
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/lib/lj_*.cpp"
+      "${LUAJIT_SRC}/runtime/lj_*.cpp"
    )
 
    if (WIN32)
@@ -612,6 +616,7 @@ target_include_directories (${MOD} PRIVATE
    "${LUAJIT_SRC}/bytecode"
    "${LUAJIT_SRC}/debug"
    "${LUAJIT_SRC}/lib"
+   "${LUAJIT_SRC}/runtime"
    "${CMAKE_BINARY_DIR}/libffi-3.3/include")
 
 target_link_libraries (${MOD} PRIVATE
