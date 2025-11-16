@@ -1,7 +1,11 @@
 
 #include <cassert>
+#include <charconv>
+#include <cmath>
+#include <limits>
 
 #include "eval_detail.h"
+#include "date_time_utils.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
 #include "checked_arith.h"
@@ -154,172 +158,47 @@ static bool is_constructed_scalar_text(const XTag *Node)
 }
 
 //********************************************************************************************************************
-// Validates the format and range of an XML Schema timezone component (empty, 'Z', or ±HH:MM format).
+// Parses IEEE 754 lexical representations including INF/-INF/NaN tokens into double precision values.
 
-static bool is_valid_timezone(std::string_view Value)
+static std::optional<double> parse_ieee_lexical_double(std::string_view Value)
 {
-   if (Value.empty()) return true;
-   if ((Value.size() IS 1) and (Value[0] IS 'Z')) return true;
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::nullopt;
 
-   if ((Value.size() IS 6) and ((Value[0] IS '+') or (Value[0] IS '-')))
-   {
-      if ((Value[3] != ':') or (Value[4] < '0') or (Value[4] > '9') or (Value[5] < '0') or (Value[5] > '9')) return false;
-      if ((Value[1] < '0') or (Value[1] > '9') or (Value[2] < '0') or (Value[2] > '9')) return false;
-
-      int hour = (Value[1] - '0') * 10 + (Value[2] - '0');
-      int minute = (Value[4] - '0') * 10 + (Value[5] - '0');
-
-      if (hour > 14) return false;
-      if (minute >= 60) return false;
-      if ((hour IS 14) and (minute != 0)) return false;
-
-      return true;
+   if ((trimmed IS std::string_view("INF")) or (trimmed IS std::string_view("+INF"))) {
+      return std::numeric_limits<double>::infinity();
    }
 
-   return false;
-}
-
-//********************************************************************************************************************
-// Parses and validates the date components (year, month, day) from an XML Schema date string.
-
-static bool parse_xs_date_components(std::string_view Value, long long &Year, int &Month, int &Day, size_t &NextIndex)
-{
-   if (Value.empty()) return false;
-
-   size_t index = 0;
-   bool negative = false;
-
-   if ((Value[index] IS '+') or (Value[index] IS '-'))
-   {
-      negative = Value[index] IS '-';
-      index++;
-      if (index >= Value.size()) return false;
+   if (trimmed IS std::string_view("-INF")) {
+      return -std::numeric_limits<double>::infinity();
    }
 
-   size_t year_start = index;
-   while ((index < Value.size()) and (Value[index] >= '0') and (Value[index] <= '9')) index++;
-   size_t year_digits = index - year_start;
-   if (year_digits < 4) return false;
-
-   long long year_value = 0;
-   auto result = std::from_chars(Value.data() + year_start, Value.data() + index, year_value);
-   if (result.ec != std::errc()) return false;
-   if (negative) year_value = -year_value;
-
-   if ((index >= Value.size()) or (Value[index] != '-')) return false;
-   index++;
-   if (index + 2 > Value.size()) return false;
-
-   int month_value = (Value[index] - '0') * 10 + (Value[index + 1] - '0');
-   if ((month_value < 1) or (month_value > 12)) return false;
-   index += 2;
-
-   if ((index >= Value.size()) or (Value[index] != '-')) return false;
-   index++;
-   if (index + 2 > Value.size()) return false;
-
-   int day_value = (Value[index] - '0') * 10 + (Value[index + 1] - '0');
-   if ((day_value < 1) or (day_value > 31)) return false;
-   index += 2;
-
-   int max_day = 31;
-   if ((month_value IS 4) or (month_value IS 6) or (month_value IS 9) or (month_value IS 11)) max_day = 30;
-   else if (month_value IS 2)
-   {
-      bool leap = false;
-      if ((year_value % 4) IS 0)
-      {
-         leap = ((year_value % 100) != 0) or ((year_value % 400) IS 0);
-      }
-      max_day = leap ? 29 : 28;
+   if (trimmed IS std::string_view("NaN")) {
+      return std::numeric_limits<double>::quiet_NaN();
    }
 
-   if (day_value > max_day) return false;
-
-   Year = year_value;
-   Month = month_value;
-   Day = day_value;
-   NextIndex = index;
-   return true;
+   std::string lexical(trimmed);
+   char *end_ptr = nullptr;
+   double result = std::strtod(lexical.c_str(), &end_ptr);
+   if ((!end_ptr) or (*end_ptr != '\0')) return std::nullopt;
+   return result;
 }
 
 //********************************************************************************************************************
-// Validates that a string conforms to the xs:date format (with optional timezone).
+// Parses an integer lexical string within the supplied inclusive range.
 
-static bool is_valid_xs_date(std::string_view Value)
+static std::optional<long long> parse_integer_lexical(std::string_view Value, long long Minimum, long long Maximum)
 {
-   long long year = 0;
-   int month = 0;
-   int day = 0;
-   size_t next_index = 0;
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::nullopt;
 
-   if (not parse_xs_date_components(Value, year, month, day, next_index)) return false;
-   std::string_view timezone = Value.substr(next_index);
-   return is_valid_timezone(timezone);
-}
+   long long parsed_value = 0;
+   auto result = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), parsed_value);
+   if ((result.ec != std::errc()) or (result.ptr != trimmed.data() + trimmed.size())) return std::nullopt;
 
-//********************************************************************************************************************
-// Validates that a string conforms to the xs:date format without a timezone component.
-
-static bool is_valid_xs_date_no_timezone(std::string_view Value)
-{
-   long long year = 0;
-   int month = 0;
-   int day = 0;
-   size_t next_index = 0;
-
-   if (not parse_xs_date_components(Value, year, month, day, next_index)) return false;
-   return next_index IS Value.size();
-}
-
-//********************************************************************************************************************
-// Validates that a string conforms to the xs:time format with optional fractional seconds and timezone.
-
-static bool is_valid_xs_time(std::string_view Value)
-{
-   if (Value.size() < 8) return false;
-
-   if ((Value[0] < '0') or (Value[0] > '9') or (Value[1] < '0') or (Value[1] > '9')) return false;
-   int hour = (Value[0] - '0') * 10 + (Value[1] - '0');
-   if (hour > 23) return false;
-
-   if (Value[2] != ':') return false;
-   if ((Value[3] < '0') or (Value[3] > '9') or (Value[4] < '0') or (Value[4] > '9')) return false;
-   int minute = (Value[3] - '0') * 10 + (Value[4] - '0');
-   if (minute >= 60) return false;
-
-   if (Value[5] != ':') return false;
-   if ((Value[6] < '0') or (Value[6] > '9') or (Value[7] < '0') or (Value[7] > '9')) return false;
-   int second = (Value[6] - '0') * 10 + (Value[7] - '0');
-   if (second >= 60) return false;
-
-   size_t index = 8;
-   if ((index < Value.size()) and (Value[index] IS '.'))
-   {
-      index++;
-      size_t fraction_start = index;
-      while ((index < Value.size()) and (Value[index] >= '0') and (Value[index] <= '9')) index++;
-      if (index IS fraction_start) return false;
-   }
-
-   std::string_view timezone = Value.substr(index);
-   return is_valid_timezone(timezone);
-}
-
-//********************************************************************************************************************
-// Validates that a string conforms to the xs:dateTime format (date part with 'T' separator and time part).
-
-static bool is_valid_xs_datetime(std::string_view Value)
-{
-   size_t position = Value.find('T');
-   if (position IS std::string_view::npos) return false;
-
-   std::string_view date_part = Value.substr(0, position);
-   std::string_view time_part = Value.substr(position + 1);
-   if (time_part.empty()) return false;
-
-   if (not is_valid_xs_date_no_timezone(date_part)) return false;
-   return is_valid_xs_time(time_part);
+   if (parsed_value < Minimum) return std::nullopt;
+   if (parsed_value > Maximum) return std::nullopt;
+   return parsed_value;
 }
 
 static thread_local std::unordered_map<std::string, std::weak_ptr<xml::schema::SchemaTypeDescriptor>> cast_target_cache;
@@ -1185,6 +1064,235 @@ XPathVal XPathEvaluator::handle_literal(const XPathNode *Node, uint32_t CurrentP
 {
    (void)CurrentPrefix;
    return XPathVal(std::string(Node->get_value_view()));
+}
+
+//********************************************************************************************************************
+// Evaluates an XML Schema constructor function call once it has been resolved to a schema type descriptor.
+
+XPathVal XPathEvaluator::evaluate_type_constructor(
+   const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &TargetDescriptor,
+   const std::vector<XPathVal> &Args, const XPathNode *CallSite)
+{
+   if (!TargetDescriptor) {
+      record_error("XPST0081: Constructor target type is not defined.", CallSite, true);
+      return XPathVal();
+   }
+
+   if (Args.size() != 1) {
+      auto message = std::format("XPTY0004: Constructor '{}' requires exactly one argument.", TargetDescriptor->type_name);
+      record_error(message, CallSite, true);
+      return XPathVal();
+   }
+
+   const XPathVal &operand = Args[0];
+   size_t item_count = sequence_item_count(operand);
+
+   if (item_count IS 0) {
+      pf::vector<XTag *> empty_nodes;
+      return XPathVal(empty_nodes);
+   }
+
+   if (item_count > 1) {
+      auto message = std::format("XPTY0004: Constructor '{}' accepts a single item, but received {}.",
+         TargetDescriptor->type_name, item_count);
+      record_error(message, CallSite, true);
+      return XPathVal();
+   }
+
+   XPathVal atomised = operand;
+   if (operand.Type IS XPVT::NodeSet) {
+      std::string lexical = nodeset_item_string(operand, 0);
+      atomised = XPathVal(lexical);
+   }
+
+   auto invalid_lexical = [&](std::string_view Lexical) {
+      auto message = std::format("FORG0001: Value '{}' is not valid for constructor '{}'.",
+         Lexical, TargetDescriptor->type_name);
+      record_error(message, CallSite, true);
+      return XPathVal();
+   };
+
+   auto assign_schema = [&](XPathVal Value) {
+      Value.set_schema_type(TargetDescriptor);
+      return Value;
+   };
+
+   std::string lexical_string = atomised.to_string();
+   std::string_view lexical_view = trim_view(lexical_string);
+   auto target_type = TargetDescriptor->schema_type;
+
+   auto integer_with_range = [&](long long Minimum, long long Maximum) -> XPathVal {
+      auto parsed = parse_integer_lexical(lexical_view, Minimum, Maximum);
+      if (not parsed.has_value()) return invalid_lexical(lexical_view);
+      return assign_schema(XPathVal(static_cast<double>(*parsed)));
+   };
+
+   switch (target_type) {
+      case xml::schema::SchemaType::XPathString:
+      case xml::schema::SchemaType::XSString:
+         return assign_schema(XPathVal(lexical_string));
+
+      case xml::schema::SchemaType::XPathBoolean:
+      case xml::schema::SchemaType::XSBoolean: {
+         auto parsed = parse_schema_boolean(lexical_view);
+         if (not parsed.has_value()) return invalid_lexical(lexical_view);
+         return assign_schema(XPathVal(*parsed));
+      }
+
+      case xml::schema::SchemaType::XPathNumber:
+      case xml::schema::SchemaType::XSDecimal:
+      case xml::schema::SchemaType::XSFloat:
+      case xml::schema::SchemaType::XSDouble: {
+         auto parsed = parse_ieee_lexical_double(lexical_view);
+         if (not parsed.has_value()) return invalid_lexical(lexical_view);
+         return assign_schema(XPathVal(*parsed));
+      }
+
+      case xml::schema::SchemaType::XSInteger:
+         return integer_with_range(std::numeric_limits<long long>::min(), std::numeric_limits<long long>::max());
+
+      case xml::schema::SchemaType::XSLong:
+         return integer_with_range(std::numeric_limits<long long>::min(), std::numeric_limits<long long>::max());
+
+      case xml::schema::SchemaType::XSInt:
+         return integer_with_range(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+
+      case xml::schema::SchemaType::XSShort:
+         return integer_with_range(std::numeric_limits<short>::min(), std::numeric_limits<short>::max());
+
+      case xml::schema::SchemaType::XSByte:
+         return integer_with_range(std::numeric_limits<signed char>::min(), std::numeric_limits<signed char>::max());
+
+      case xml::schema::SchemaType::XSDate: {
+         auto canonical_date_value = [&](std::string_view Lexical) -> std::optional<XPathVal> {
+            auto canonical = canonicalise_xs_date(Lexical);
+            if (not canonical.has_value()) return std::nullopt;
+            return XPathVal(XPVT::Date, *canonical);
+         };
+
+         auto date_from_datetime = [&](std::string_view Lexical) -> std::optional<XPathVal> {
+            auto extracted = extract_date_from_datetime(Lexical);
+            if (not extracted.has_value()) return std::nullopt;
+            return canonical_date_value(*extracted);
+         };
+
+         if (atomised.Type IS XPVT::Date) {
+            auto value = canonical_date_value(atomised.StringValue);
+            if (not value.has_value()) return invalid_lexical(atomised.StringValue);
+            return assign_schema(*value);
+         }
+
+         if (atomised.Type IS XPVT::DateTime) {
+            std::string_view source = lexical_view;
+            if (!atomised.StringValue.empty()) source = atomised.StringValue;
+            auto value = date_from_datetime(source);
+            if (not value.has_value()) return invalid_lexical(source);
+            return assign_schema(*value);
+         }
+
+         auto value = canonical_date_value(lexical_view);
+         if (not value.has_value()) return invalid_lexical(lexical_view);
+         return assign_schema(*value);
+      }
+
+      case xml::schema::SchemaType::XSDateTime: {
+         auto canonical_datetime_value = [&](std::string_view Lexical) -> std::optional<XPathVal> {
+            auto canonical = canonicalise_xs_datetime(Lexical);
+            if (not canonical.has_value()) return std::nullopt;
+            return XPathVal(XPVT::DateTime, *canonical);
+         };
+
+         std::string_view source = lexical_view;
+         if ((atomised.Type IS XPVT::DateTime) and (!atomised.StringValue.empty())) source = atomised.StringValue;
+
+         auto value = canonical_datetime_value(source);
+         if (not value.has_value()) return invalid_lexical(source);
+         return assign_schema(*value);
+      }
+
+      case xml::schema::SchemaType::XSTime: {
+         auto canonical_time_value = [&](std::string_view Lexical) -> std::optional<XPathVal> {
+            auto canonical = canonicalise_xs_time(Lexical);
+            if (not canonical.has_value()) return std::nullopt;
+            return XPathVal(XPVT::Time, *canonical);
+         };
+
+         auto time_from_datetime = [&](std::string_view Lexical) -> std::optional<XPathVal> {
+            auto extracted = extract_time_from_datetime(Lexical);
+            if (not extracted.has_value()) return std::nullopt;
+            return canonical_time_value(*extracted);
+         };
+
+         if (atomised.Type IS XPVT::Time) {
+            auto value = canonical_time_value(atomised.StringValue);
+            if (not value.has_value()) return invalid_lexical(atomised.StringValue);
+            return assign_schema(*value);
+         }
+
+         if (atomised.Type IS XPVT::DateTime) {
+            std::string_view source = lexical_view;
+            if (!atomised.StringValue.empty()) source = atomised.StringValue;
+            auto value = time_from_datetime(source);
+            if (not value.has_value()) return invalid_lexical(source);
+            return assign_schema(*value);
+         }
+
+         auto value = canonical_time_value(lexical_view);
+         if (not value.has_value()) return invalid_lexical(lexical_view);
+         return assign_schema(*value);
+      }
+
+      case xml::schema::SchemaType::XSDuration: {
+         if (atomised.has_schema_info() and (atomised.get_schema_type() IS xml::schema::SchemaType::XSDuration)) {
+            XPathVal typed_value = atomised;
+            typed_value.set_schema_type(TargetDescriptor);
+            return typed_value;
+         }
+
+         DurationComponents components;
+         if (!parse_xs_duration(lexical_view, components)) return invalid_lexical(lexical_view);
+         return assign_schema(XPathVal(std::string(lexical_view)));
+      }
+
+      case xml::schema::SchemaType::XSQName: {
+         if (atomised.has_schema_info() and (atomised.get_schema_type() IS xml::schema::SchemaType::XSQName)) {
+            XPathVal typed_value = atomised;
+            typed_value.set_schema_type(TargetDescriptor);
+            return typed_value;
+         }
+
+         std::string prefix;
+         std::string local;
+         if (!parse_qname_lexical_value(lexical_view, prefix, local)) return invalid_lexical(lexical_view);
+
+         std::string namespace_uri;
+         if (prefix.empty()) {
+            auto default_ns = resolve_default_element_namespace(context);
+            if (default_ns.has_value()) namespace_uri = *default_ns;
+         }
+         else {
+            auto resolved = resolve_namespace_uri(context, prefix);
+            if (!resolved.has_value()) {
+               auto message = std::format(
+                  "FONS0004: QName prefix '{}' is not in scope for constructor '{}'.",
+                  prefix, TargetDescriptor->type_name);
+               record_error(message, CallSite, true);
+               return XPathVal();
+            }
+            namespace_uri = *resolved;
+         }
+
+         auto canonical = canonicalise_qname_value(namespace_uri, prefix, local);
+         return assign_schema(XPathVal(std::move(canonical)));
+      }
+
+      default:
+         break;
+   }
+
+   auto message = std::format("XPST0051: Constructor for type '{}' is not supported yet.", TargetDescriptor->type_name);
+   record_error(message, CallSite, true);
+   return XPathVal();
 }
 
 //********************************************************************************************************************

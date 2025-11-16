@@ -79,6 +79,22 @@ namespace xml::schema
       auto effective = resolve_effective_descriptor(Descriptor);
       auto target_type = effective->schema_type;
 
+      if (Value.has_schema_info())
+      {
+         auto annotated_type = Value.get_schema_type();
+         auto &registry_ref = registry();
+         auto annotated_descriptor = registry_ref.find_descriptor(annotated_type);
+
+         if (annotated_descriptor)
+         {
+            if ((annotated_type IS target_type) or annotated_descriptor->is_derived_from(target_type) or
+                effective->is_derived_from(annotated_type))
+            {
+               return true;
+            }
+         }
+      }
+
       if (is_numeric(target_type)) {
          auto coerced = effective->coerce_value(Value, target_type);
          if (!std::isnan(coerced.to_number())) return true;

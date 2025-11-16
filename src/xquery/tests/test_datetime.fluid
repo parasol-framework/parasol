@@ -73,11 +73,51 @@ function testDateTimeAdjustment()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Validate constructor canonicalisation for date/time values and IEEE lexical tokens
+
+function testConstructorTimezoneNormalisation()
+   local xml = obj.new("xml", { statement = '<root />' })
+
+   local err, canonicalDate = xml.mtEvaluate("xs:date('2024-01-02+00:00')")
+   assert(err == ERR_Okay, 'xs:date should accept +00:00 offsets: ' .. mSys.GetErrorMsg(err))
+   assert(canonicalDate == '2024-01-02Z', 'xs:date should emit Z for zero offset, got: ' .. nz(canonicalDate, 'NIL'))
+
+   local err, canonicalTime = xml.mtEvaluate("xs:time('12:30:00-00:00')")
+   assert(err == ERR_Okay, 'xs:time should accept -00:00 offsets: ' .. mSys.GetErrorMsg(err))
+   assert(canonicalTime == '12:30:00Z', 'xs:time should normalise zero offset to Z, got: ' .. nz(canonicalTime, 'NIL'))
+
+   local err, canonicalDateTime = xml.mtEvaluate("xs:dateTime('2024-01-02T12:30:45+00:00')")
+   assert(err == ERR_Okay, 'xs:dateTime should accept +00:00 offsets: ' .. mSys.GetErrorMsg(err))
+   assert(canonicalDateTime == '2024-01-02T12:30:45Z', 'xs:dateTime should normalise zero offset to Z, got: ' .. nz(canonicalDateTime, 'NIL'))
+
+   local err, projectedDate = xml.mtEvaluate("xs:date(xs:dateTime('2024-05-01T06:30:00+00:00'))")
+   assert(err == ERR_Okay, 'xs:date should accept xs:dateTime operands: ' .. mSys.GetErrorMsg(err))
+   assert(projectedDate == '2024-05-01Z', 'xs:date from dateTime should preserve timezone, got: ' .. nz(projectedDate, 'NIL'))
+
+   local err, projectedTime = xml.mtEvaluate("xs:time(xs:dateTime('2024-05-01T06:30:00+00:00'))")
+   assert(err == ERR_Okay, 'xs:time should accept xs:dateTime operands: ' .. mSys.GetErrorMsg(err))
+   assert(projectedTime == '06:30:00Z', 'xs:time from dateTime should preserve timezone, got: ' .. nz(projectedTime, 'NIL'))
+
+   local err, infValue = xml.mtEvaluate("xs:double('INF')")
+   assert(err == ERR_Okay, 'xs:double should accept INF token: ' .. mSys.GetErrorMsg(err))
+   assert(infValue == 'Infinity', 'xs:double("INF") should return Infinity, got: ' .. nz(infValue, 'NIL'))
+
+   local err, negInfValue = xml.mtEvaluate("xs:double('-INF')")
+   assert(err == ERR_Okay, 'xs:double should accept -INF token: ' .. mSys.GetErrorMsg(err))
+   assert(negInfValue == '-Infinity', 'xs:double("-INF") should return -Infinity, got: ' .. nz(negInfValue, 'NIL'))
+
+   local err, nanValue = xml.mtEvaluate("xs:double('NaN')")
+   assert(err == ERR_Okay, 'xs:double should accept NaN token: ' .. mSys.GetErrorMsg(err))
+   assert(nanValue == 'NaN', 'xs:double("NaN") should return NaN, got: ' .. nz(nanValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testDateTimeExtraction',
-      'testDateTimeAdjustment'
+      'testDateTimeAdjustment',
+      'testConstructorTimezoneNormalisation'
    },
    init = function(ScriptFolder)
    end,
