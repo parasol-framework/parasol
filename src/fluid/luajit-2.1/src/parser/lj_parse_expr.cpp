@@ -423,7 +423,7 @@ static void parse_args(LexState* ls, ExpDesc* e)
       err_syntax(ls, LJ_ERR_XFUNARG);
       return;  // Silence compiler.
    }
-   lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", e->k);
+   lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", static_cast<int>(e->k));
    base = e->u.s.info;  // Base register for call.
    if (args.k == ExpKind::Call) {
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
