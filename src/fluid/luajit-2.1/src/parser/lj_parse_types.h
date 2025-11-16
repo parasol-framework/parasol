@@ -14,30 +14,30 @@
 
 // Expression kinds.
 
-typedef enum {
+enum class ExpKind : uint8_t {
    // Constant expressions must be first and in this order:
-   VKNIL,
-   VKFALSE,
-   VKTRUE,
-   VKSTR,      // sval = string value
-   VKNUM,      // nval = number value
-   VKLAST = VKNUM,
-   VKCDATA,    // nval = cdata value, not treated as a constant expression
+   Nil,
+   False,
+   True,
+   Str,        // sval = string value
+   Num,        // nval = number value
+   Last = Num,
+   CData,      // nval = cdata value, not treated as a constant expression
    // Non-constant expressions follow:
-   VLOCAL,     // info = local register, aux = vstack index
-   VUPVAL,     // info = upvalue index, aux = vstack index
-   VGLOBAL,    // sval = string value
-   VINDEXED,   // info = table register, aux = index reg/byte/string const
-   VJMP,       // info = instruction PC
-   VRELOCABLE, // info = instruction PC
-   VNONRELOC,  // info = result register
-   VCALL,      // info = instruction PC, aux = base
-   VVOID
-} ExpKind;
+   Local,      // info = local register, aux = vstack index
+   Upval,      // info = upvalue index, aux = vstack index
+   Global,     // sval = string value
+   Indexed,    // info = table register, aux = index reg/byte/string const
+   Jmp,        // info = instruction PC
+   Relocable,  // info = instruction PC
+   NonReloc,   // info = result register
+   Call,       // info = instruction PC, aux = base
+   Void
+};
 
 // Expression kind helper function.
 [[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
-   return VLOCAL <= k and k <= VINDEXED;
+   return ExpKind::Local <= k and k <= ExpKind::Indexed;
 }
 
 // Expression descriptor.
@@ -73,7 +73,7 @@ inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 }
 
 [[nodiscard]] static inline bool expr_isk(const ExpDesc* e) {
-   return e->k <= VKLAST;
+   return e->k <= ExpKind::Last;
 }
 
 [[nodiscard]] static inline bool expr_isk_nojump(const ExpDesc* e) {
@@ -81,7 +81,7 @@ inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 }
 
 [[nodiscard]] static inline bool expr_isnumk(const ExpDesc* e) {
-   return e->k == VKNUM;
+   return e->k == ExpKind::Num;
 }
 
 [[nodiscard]] static inline bool expr_isnumk_nojump(const ExpDesc* e) {
@@ -89,7 +89,7 @@ inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 }
 
 [[nodiscard]] static inline bool expr_isstrk(const ExpDesc* e) {
-   return e->k == VKSTR;
+   return e->k == ExpKind::Str;
 }
 
 [[nodiscard]] static inline TValue* expr_numtv(ExpDesc* e) {
@@ -207,7 +207,7 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 // Return bytecode encoding for primitive constant.
 
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
-   lj_assertX(e->k <= VKTRUE, "bad constant primitive");
+   lj_assertX(e->k <= ExpKind::True, "bad constant primitive");
    return e->k;
 }
 

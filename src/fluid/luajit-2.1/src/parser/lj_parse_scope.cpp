@@ -102,9 +102,9 @@ static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
    }
    // Otherwise create a new one.
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
-   lj_assertFS(e->k == VLOCAL or e->k == VUPVAL, "bad expr type %d", e->k);
+   lj_assertFS(e->k == ExpKind::Local or e->k == ExpKind::Upval, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
-   fs->uvtmp[n] = uint16_t(e->k == VLOCAL ? vidx : LJ_MAX_VSTACK + e->u.s.info);
+   fs->uvtmp[n] = uint16_t(e->k == ExpKind::Local ? vidx : LJ_MAX_VSTACK + e->u.s.info);
    fs->nuv = n + 1;
    return n;
 }
@@ -117,7 +117,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
    if (fs) {
       auto reg = var_lookup_local(fs, name);
       if (reg.has_value()) {  // Local in this function?
-         expr_init(e, VLOCAL, reg.value());
+         expr_init(e, ExpKind::Local, reg.value());
          if (!first)
             fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
          return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
@@ -126,13 +126,13 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
          MSize vidx = var_lookup_(fs->prev, name, e, 0);  // Var in outer func?
          if (int32_t(vidx) >= 0) {  // Yes, make it an upvalue here.
             e->u.s.info = uint8_t(var_lookup_uv(fs, vidx, e));
-            e->k = VUPVAL;
+            e->k = ExpKind::Upval;
             return vidx;
          }
       }
    }
    else {  // Not found in any function, must be a global.
-      expr_init(e, VGLOBAL, 0);
+      expr_init(e, ExpKind::Global, 0);
       e->u.sval = name;
    }
    return MSize(-1);  // Global.

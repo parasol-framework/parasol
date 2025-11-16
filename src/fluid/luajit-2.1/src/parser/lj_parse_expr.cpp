@@ -15,7 +15,7 @@ static void expr_collapse_freereg(FuncState* fs, BCReg result_reg);
 // Return string expression.
 static void expr_str(LexState* ls, ExpDesc* e)
 {
-   expr_init(e, VKSTR, 0);
+   expr_init(e, ExpKind::Str, 0);
    e->u.sval = lex_str(ls);
 }
 
@@ -23,7 +23,7 @@ static void expr_str(LexState* ls, ExpDesc* e)
 static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e)
 {
    // Already called: expr_toval(fs, e).
-   t->k = VINDEXED;
+   t->k = ExpKind::Indexed;
    if (expr_isnumk(e)) {
 #if LJ_DUALNUM
       if (tvisint(expr_numtv(e))) {
@@ -116,10 +116,10 @@ static int should_emit_presence(LexState* ls)
 static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
 {
    UNUSED(fs);
-   if (e->k <= VKTRUE) {
+   if (e->k <= ExpKind::True) {
       setpriV(v, ~uint32_t(e->k));
    }
-   else if (e->k == VKSTR) {
+   else if (e->k == ExpKind::Str) {
       setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    }
    else {
@@ -139,7 +139,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
    uint32_t nhash = 0;  // Number of hash entries.
    BCReg freg = fs->freereg;
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
-   expr_init(e, VNONRELOC, freg);
+   expr_init(e, ExpKind::NonReloc, freg);
    bcreg_reserve(fs, 1);
    freg++;
    lex_check(ls, '{');
@@ -158,14 +158,14 @@ static void expr_table(LexState* ls, ExpDesc* e)
          nhash++;
       }
       else {
-         expr_init(&key, VKNUM, 0);
+         expr_init(&key, ExpKind::Num, 0);
          setintV(&key.u.nval, int(narr));
          narr++;
          needarr = vcall = 1;
       }
       expr(ls, &val);
-      if (expr_isk(&key) and key.k != VKNIL &&
-         (key.k == VKSTR or expr_isk_nojump(&val))) {
+      if (expr_isk(&key) and key.k != ExpKind::Nil &&
+         (key.k == ExpKind::Str or expr_isk_nojump(&val))) {
          TValue k, * v;
          if (!t) {  // Create template table on demand.
             BCReg kidx;
@@ -188,7 +188,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
       }
       else {
       nonconst:
-         if (val.k != VCALL) { expr_toanyreg(fs, &val); vcall = 0; }
+         if (val.k != ExpKind::Call) { expr_toanyreg(fs, &val); vcall = 0; }
          if (expr_isk(&key)) expr_index(fs, e, &key);
          bcemit_store(fs, e, &val);
       }
@@ -202,7 +202,7 @@ static void expr_table(LexState* ls, ExpDesc* e)
       lj_assertFS(bc_a(ilp->ins) == freg &&
          bc_op(ilp->ins) == (narr > 256 ? BC_TSETV : BC_TSETB),
          "bad CALL code generation");
-      expr_init(&en, VKNUM, 0);
+      expr_init(&en, ExpKind::Num, 0);
       en.u.nval.u32.lo = narr - 1;
       en.u.nval.u32.hi = 0x43300000;  // Biased integer to avoid denormals.
       if (narr > 256) { fs->pc--; ilp--; }
@@ -212,10 +212,10 @@ static void expr_table(LexState* ls, ExpDesc* e)
    if (pc == fs->pc - 1) {  // Make expr relocable if possible.
       e->u.s.info = pc;
       fs->freereg--;
-      e->k = VRELOCABLE;
+      e->k = ExpKind::Relocable;
    }
    else {
-      e->k = VNONRELOC;  // May have been changed by expr_index.
+      e->k = ExpKind::NonReloc;  // May have been changed by expr_index.
    }
    if (!t) {  // Construct TNEW RD: hhhhhaaaaaaaaaaa.
       BCIns* ip = &fs->bcbase[pc].ins;
@@ -301,7 +301,7 @@ static void parse_body_impl(LexState* ls, ExpDesc* e, int needself,
    pfs->bcbase = ls->bcstack + oldbase;  // May have been reallocated.
    pfs->bclim = BCPos(ls->sizebcstack - oldbase);
    // Store new prototype in the constant array of the parent.
-   expr_init(e, VRELOCABLE,
+   expr_init(e, ExpKind::Relocable,
       bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
 #if LJ_HASFFI
    pfs->flags |= (fs.flags & PROTO_FFI);
@@ -335,8 +335,8 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
 ** Key Behavior:
 **   f(a, b, g())  where g() returns multiple values
 **   - Expressions 'a' and 'b' are discharged via expr_tonextreg() to place them in registers
-**   - Expression 'g()' is NOT discharged and remains as VCALL (k=13)
-**   - The caller (parse_args) can then detect args.k == VCALL and use BC_CALLM
+**   - Expression 'g()' is NOT discharged and remains as ExpKind::Call (k=13)
+**   - The caller (parse_args) can then detect args.k == ExpKind::Call and use BC_CALLM
 **
 ** This pattern allows the calling function to receive ALL return values from g(), not just
 ** the first one, by using BC_CALLM instead of BC_CALL.
@@ -349,7 +349,7 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
    expr(ls, v);
    while (lex_opt(ls, ',')) {
       expr_tonextreg(ls->fs, v);  // Discharge previous expressions to registers
-      expr(ls, v);                // Parse next expression (may be VCALL)
+      expr(ls, v);                // Parse next expression (may be ExpKind::Call)
       n++;
    }
    return n;  // Last expression 'v' is NOT discharged
@@ -374,13 +374,13 @@ static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line)
 **     f(10, g())  -- f receives (10, 1, 2, 3), uses first 3: prints "10 1 2"
 **
 **   Detection:
-**     expr_list() leaves the last argument undischarged. If args.k == VCALL after expr_list(),
+**     expr_list() leaves the last argument undischarged. If args.k == ExpKind::Call after expr_list(),
 **     we know the last argument can return multiple values, so we:
-**     1. Patch the VCALL's B field to 0 (return all results)
+**     1. Patch the ExpKind::Call's B field to 0 (return all results)
 **     2. Use BC_CALLM instead of BC_CALL
 **
 **   Contrast with Binary Operators:
-**     Binary operators (including our bitwise shifts) use expr_binop() which discharges VCALL
+**     Binary operators (including our bitwise shifts) use expr_binop() which discharges ExpKind::Call
 **     to a single value BEFORE the operator executes. This matches standard Lua semantics:
 **       x + g()  uses only the first return value of g()
 **       x << g() uses only the first return value of g()
@@ -402,11 +402,11 @@ static void parse_args(LexState* ls, ExpDesc* e)
 #endif
       lj_lex_next(ls);
       if (ls->tok == ')') {  // f().
-         args.k = VVOID;
+         args.k = ExpKind::Void;
       }
       else {
          (void)expr_list(ls, &args);
-         if (args.k == VCALL)  // f(a, b, g()) or f(a, b, ...).
+         if (args.k == ExpKind::Call)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
       lex_match(ls, ')', '(', line);
@@ -415,7 +415,7 @@ static void parse_args(LexState* ls, ExpDesc* e)
       expr_table(ls, &args);
    }
    else if (ls->tok == TK_string) {
-      expr_init(&args, VKSTR, 0);
+      expr_init(&args, ExpKind::Str, 0);
       args.u.sval = strV(&ls->tokval);
       lj_lex_next(ls);
    }
@@ -423,17 +423,17 @@ static void parse_args(LexState* ls, ExpDesc* e)
       err_syntax(ls, LJ_ERR_XFUNARG);
       return;  // Silence compiler.
    }
-   lj_assertFS(e->k == VNONRELOC, "bad expr type %d", e->k);
+   lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", e->k);
    base = e->u.s.info;  // Base register for call.
-   if (args.k == VCALL) {
+   if (args.k == ExpKind::Call) {
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
    }
    else {
-      if (args.k != VVOID)
+      if (args.k != ExpKind::Void)
          expr_tonextreg(fs, &args);
       ins = BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2);
    }
-   expr_init(e, VCALL, bcemit_INS(fs, ins));
+   expr_init(e, ExpKind::Call, bcemit_INS(fs, ins));
    e->u.s.aux = base;
    fs->bcbase[fs->pc - 1].line = line;
    fs->freereg = base + 1;  // Leave one result by default.
@@ -505,13 +505,13 @@ static void inc_dec_op(LexState* ls, BinOpr op, ExpDesc* v, int isPost)
    if (!v)
       v = &lv;
    indices = fs->freereg;
-   expr_init(&e2, VKNUM, 0);
+   expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
    if (isPost) {
       checkcond(ls, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
-      if (v->k == VINDEXED)
+      if (v->k == ExpKind::Indexed)
          bcreg_reserve(fs, 1);
       expr_tonextreg(fs, v);
       // Remember that this expression was consumed as a standalone postfix increment.
@@ -525,7 +525,7 @@ static void inc_dec_op(LexState* ls, BinOpr op, ExpDesc* v, int isPost)
    expr_primary(ls, v);
    checkcond(ls, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
    e1 = *v;
-   if (v->k == VINDEXED)
+   if (v->k == ExpKind::Indexed)
       bcreg_reserve(fs, fs->freereg - indices);
    bcemit_arith(fs, op, &e1, &e2);
    bcemit_store(fs, v, &e1);
@@ -538,25 +538,25 @@ static void expr_simple(LexState* ls, ExpDesc* v)
 {
    switch (ls->tok) {
    case TK_number:
-      expr_init(v, (LJ_HASFFI and tviscdata(&ls->tokval)) ? VKCDATA : VKNUM, 0);
+      expr_init(v, (LJ_HASFFI and tviscdata(&ls->tokval)) ? ExpKind::CData : ExpKind::Num, 0);
       copyTV(ls->L, &v->u.nval, &ls->tokval);
       lj_lex_next(ls);
       break;
    case TK_string:
-      expr_init(v, VKSTR, 0);
+      expr_init(v, ExpKind::Str, 0);
       v->u.sval = strV(&ls->tokval);
       lj_lex_next(ls);
       break;
    case TK_nil:
-      expr_init(v, VKNIL, 0);
+      expr_init(v, ExpKind::Nil, 0);
       lj_lex_next(ls);
       break;
    case TK_true:
-      expr_init(v, VKTRUE, 0);
+      expr_init(v, ExpKind::True, 0);
       lj_lex_next(ls);
       break;
    case TK_false:
-      expr_init(v, VKFALSE, 0);
+      expr_init(v, ExpKind::False, 0);
       lj_lex_next(ls);
       break;
    case TK_dots: {  // Vararg.
@@ -565,7 +565,7 @@ static void expr_simple(LexState* ls, ExpDesc* v)
       checkcond(ls, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
       bcreg_reserve(fs, 1);
       base = fs->freereg - 1;
-      expr_init(v, VCALL, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
+      expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
       v->u.s.aux = base;
       lj_lex_next(ls);
       break;
@@ -653,8 +653,8 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit);
 **   - The special left-associativity logic in expr_binop() prevents consuming subsequent
 **     shifts/bitops at the same level, forcing left-to-right evaluation
 **
-** VCALL Handling:
-**   If the RHS is a VCALL (multi-return function), expr_binop() returns it as k=VCALL.
+** ExpKind::Call Handling:
+**   If the RHS is a ExpKind::Call (multi-return function), expr_binop() returns it as k=ExpKind::Call.
 **   The function is then passed to bcemit_shift_call_at_base() which attempts to handle
 **   multi-return semantics, though standard Lua binary operator rules apply (first value only).
 **
@@ -691,12 +691,12 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
    ** 2. Otherwise, if RHS is at the top, reuse it for compactness.
    ** 3. Otherwise, allocate a fresh register.
    */
-   if (lhs->k == VNONRELOC and lhs->u.s.info >= fs->nactvar &&
+   if (lhs->k == ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar &&
       lhs->u.s.info + 1 == fs->freereg) {
       // LHS result from previous operation is at the top - reuse it to avoid orphaning
       base_reg = lhs->u.s.info;
    }
-   else if (rhs.k == VNONRELOC and rhs.u.s.info >= fs->nactvar &&
+   else if (rhs.k == ExpKind::NonReloc and rhs.u.s.info >= fs->nactvar &&
       rhs.u.s.info + 1 == fs->freereg) {
       // RHS is at the top - reuse it
       base_reg = rhs.u.s.info;
@@ -725,7 +725,7 @@ static BinOpr expr_shift_chain(LexState* ls, ExpDesc* lhs, BinOpr op)
 
       /* Update lhs to point to base_reg where the previous result is stored.
       ** This makes the previous result the input for the next operation. */
-      lhs->k = VNONRELOC;
+      lhs->k = ExpKind::NonReloc;
       lhs->u.s.info = base_reg;
 
       // Parse the next RHS operand
@@ -809,17 +809,17 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
          ls->ternary_depth++;
 
-         expr_init(&nilv, VKNIL, 0);
+         expr_init(&nilv, ExpKind::Nil, 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
          check_nil = bcemit_jmp(fs);
-         expr_init(&falsev, VKFALSE, 0);
+         expr_init(&falsev, ExpKind::False, 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
          check_false = bcemit_jmp(fs);
-         expr_init(&zerov, VKNUM, 0);
+         expr_init(&zerov, ExpKind::Num, 0);
          setnumV(&zerov.u.nval, 0.0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
          check_zero = bcemit_jmp(fs);
-         expr_init(&emptyv, VKSTR, 0);
+         expr_init(&emptyv, ExpKind::Str, 0);
          emptyv.u.sval = lj_parse_keepstr(ls, "", 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
          check_empty = bcemit_jmp(fs);
@@ -852,7 +852,7 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
             expr_toreg(fs, &fexp, result_reg);
             expr_collapse_freereg(fs, result_reg);
             jmp_patch(fs, skip_false, fs->pc);
-            v->u.s.info = result_reg; v->k = VNONRELOC; op = nextop3; continue;
+            v->u.s.info = result_reg; v->k = ExpKind::NonReloc; op = nextop3; continue;
          }
       }
 
@@ -901,21 +901,21 @@ static BinOpr expr_binop(LexState* ls, ExpDesc* v, uint32_t limit)
 
          {
             ExpDesc callee;
-            expr_init(&callee, VKSTR, 0);
+            expr_init(&callee, ExpKind::Str, 0);
             callee.u.sval = lj_parse_keepstr(ls, "error", 5);
             bcemit_INS(fs, BCINS_AD(BC_GGET, base, const_str(fs, &callee)));
          }
 
          {
             ExpDesc message;
-            expr_init(&message, VKSTR, 0);
+            expr_init(&message, ExpKind::Str, 0);
             message.u.sval = lj_parse_keepstr(ls, "Invalid ternary mix: use '?' with ':>'", 39);
             bcemit_INS(fs, BCINS_AD(BC_KSTR, arg_reg, const_str(fs, &message)));
          }
 
          if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
 
-         v->k = VCALL;
+         v->k = ExpKind::Call;
          v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
          v->u.s.aux = base;
          fs->freereg = base + 1;
@@ -967,7 +967,7 @@ static void expr_next(LexState* ls)
 {
    ExpDesc v;
    expr(ls, &v);
-   if (v.k == VKNIL) v.k = VKFALSE;
+   if (v.k == ExpKind::Nil) v.k = ExpKind::False;
    bcemit_branch_t(ls->fs, &v);
    return v.f;
 }

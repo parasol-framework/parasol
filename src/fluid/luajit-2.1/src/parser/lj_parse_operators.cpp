@@ -44,14 +44,14 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    }
    else {
       op = opr - OPR_ADD + BC_ADDVV;
-      // Must discharge 2nd operand first since VINDEXED might free regs.
+      // Must discharge 2nd operand first since ExpKind::Indexed might free regs.
       expr_toval(fs, e2);
       if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
       else rc = expr_toanyreg(fs, e2);
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      lj_assertFS(expr_isnumk(e1) or e1->k == VNONRELOC, "bad expr type %d", e1->k);
+      lj_assertFS(expr_isnumk(e1) or e1->k == ExpKind::NonReloc, "bad expr type %d", e1->k);
       expr_toval(fs, e1);
 
       // Avoid two consts to satisfy bytecode constraints.
@@ -64,10 +64,10 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    }
 
    // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k == VNONRELOC and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k == VNONRELOC and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e1->k == ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k == ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
-   e1->k = VRELOCABLE;
+   e1->k = ExpKind::Relocable;
 }
 
 //********************************************************************************************************************
@@ -85,13 +85,13 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ra = expr_toanyreg(fs, e1);  // First arg must be in a reg.
       expr_toval(fs, e2);
       switch (e2->k) {
-      case VKNIL: case VKFALSE: case VKTRUE:
+      case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
          ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
          break;
-      case VKSTR:
+      case ExpKind::Str:
          ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
          break;
-      case VKNUM:
+      case ExpKind::Num:
          ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
          break;
       default:
@@ -116,11 +116,11 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ins = BCINS_AD(op, ra, rd);
    }
    // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k == VNONRELOC and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k == VNONRELOC and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e1->k == ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k == ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
-   eret->k = VJMP;
+   eret->k = ExpKind::Jmp;
 }
 
 //********************************************************************************************************************
@@ -140,15 +140,15 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 
       expr_discharge(fs, e);
       // Extended falsey: nil, false, 0, ""
-      if (e->k == VKNIL or e->k == VKFALSE)
+      if (e->k == ExpKind::Nil or e->k == ExpKind::False)
          pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k == VKNUM and expr_numiszero(e))
+      else if (e->k == ExpKind::Num and expr_numiszero(e))
          pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k == VKSTR and e->u.sval and e->u.sval->len == 0)
+      else if (e->k == ExpKind::Str and e->u.sval and e->u.sval->len == 0)
          pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k == VJMP)
+      else if (e->k == ExpKind::Jmp)
          pc = e->u.s.info;
-      else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) {
+      else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) {
          // Truthy constant - load to register and emit jump to skip RHS
          bcreg_reserve(fs, 1);
          expr_toreg_nobranch(fs, e, fs->freereg - 1);
@@ -165,7 +165,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
             BCReg rhs_reg = fs->freereg;
             uint8_t flags = e->flags;
             bcreg_reserve(fs, 1);
-            expr_init(e, VNONRELOC, src_reg);
+            expr_init(e, ExpKind::NonReloc, src_reg);
             e->u.s.aux = rhs_reg;
             e->flags = flags | EXP_HAS_RHS_REG_FLAG;
          }
@@ -204,9 +204,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 //   - B field: Call type (2 for regular calls, 0 for varargs)
 //   - C field: Argument count = freereg - base - LJ_FR2
 //
-// VCALL Handling (Multi-Return Functions):
-//   When RHS is a VCALL (function call with multiple return values), standard Lua binary operator
-//   semantics apply: only the first return value is used. The VCALL is discharged before being
+// ExpKind::Call Handling (Multi-Return Functions):
+//   When RHS is a ExpKind::Call (function call with multiple return values), standard Lua binary operator
+//   semantics apply: only the first return value is used. The ExpKind::Call is discharged before being
 //   passed as an argument. This matches the behavior of expressions like `x + f()` in Lua.
 //
 //   Note: Unlike function argument lists (which use BC_CALLM to forward all return values),
@@ -218,7 +218,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 //   fname - Name of bit library function (e.g., "lshift", "rshift")
 //   fname_len - Length of fname string
 //   lhs   - Left-hand side expression (value to shift)
-//   rhs   - Right-hand side expression (shift count, may be VCALL)
+//   rhs   - Right-hand side expression (shift count, may be ExpKind::Call)
 //   base  - Base register for the call (allows register reuse for chaining)
 
 static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
@@ -234,10 +234,10 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
    expr_toreg(fs, rhs, arg2);
 
    // Now load bit.[lshift|rshift|...] into the base register
-   expr_init(&callee, VGLOBAL, 0);
+   expr_init(&callee, ExpKind::Global, 0);
    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
    expr_toanyreg(fs, &callee);
-   expr_init(&key, VKSTR, 0);
+   expr_init(&key, ExpKind::Str, 0);
    key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
@@ -245,13 +245,13 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 
    // Emit CALL instruction
    fs->freereg = arg2 + 1;  // Ensure freereg covers all arguments
-   lhs->k = VCALL;
+   lhs->k = ExpKind::Call;
    lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
    lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
    expr_discharge(fs, lhs);
-   lj_assertFS(lhs->k == VNONRELOC and lhs->u.s.info == base, "bitwise result not in base register");
+   lj_assertFS(lhs->k == ExpKind::NonReloc and lhs->u.s.info == base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -287,10 +287,10 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
    if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
 
    // Load bit.fname into base register.
-   expr_init(&callee, VGLOBAL, 0);
+   expr_init(&callee, ExpKind::Global, 0);
    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
    expr_toanyreg(fs, &callee);
-   expr_init(&key, VKSTR, 0);
+   expr_init(&key, ExpKind::Str, 0);
    key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
@@ -298,14 +298,14 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 
    // Emit CALL instruction.
    fs->freereg = arg_reg + 1;
-   arg->k = VCALL;
+   arg->k = ExpKind::Call;
    arg->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
    arg->u.s.aux = base;
    fs->freereg = base + 1;
 
    // Discharge result to register.
    expr_discharge(fs, arg);
-   lj_assertFS(arg->k == VNONRELOC and arg->u.s.info == base, "bitwise result not in base register");
+   lj_assertFS(arg->k == ExpKind::NonReloc and arg->u.s.info == base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -318,26 +318,26 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_discharge(fs, e);
 
    // Handle compile-time constants
-   if (e->k == VKNIL or e->k == VKFALSE) { // Falsey constant - set to false
-      expr_init(e, VKFALSE, 0);
+   if (e->k == ExpKind::Nil or e->k == ExpKind::False) { // Falsey constant - set to false
+      expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == VKNUM and expr_numiszero(e)) { // Zero is falsey - set to false
-      expr_init(e, VKFALSE, 0);
+   if (e->k == ExpKind::Num and expr_numiszero(e)) { // Zero is falsey - set to false
+      expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == VKSTR and e->u.sval and e->u.sval->len == 0) {
+   if (e->k == ExpKind::Str and e->u.sval and e->u.sval->len == 0) {
       // Empty string is falsey - set to false
-      expr_init(e, VKFALSE, 0);
+      expr_init(e, ExpKind::False, 0);
       return;
    }
 
-   if (e->k == VKTRUE or (e->k == VKNUM and !expr_numiszero(e)) or
-      (e->k == VKSTR and e->u.sval and e->u.sval->len > 0)) {
+   if (e->k == ExpKind::True or (e->k == ExpKind::Num and !expr_numiszero(e)) or
+      (e->k == ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
       // Truthy constant - set to true
-      expr_init(e, VKTRUE, 0);
+      expr_init(e, ExpKind::True, 0);
       return;
    }
 
@@ -345,7 +345,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch
    
    // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
-   // Pattern: BC_ISEQP reg, VKNIL + JMP means:
+   // Pattern: BC_ISEQP reg, ExpKind::Nil + JMP means:
    //   - If reg == nil: skip JMP, continue to next check
    //   - If reg != nil: execute JMP, jump to target (patched to false branch)
    // By chaining multiple checks and patching all JMPs to the same false branch:
@@ -358,23 +358,23 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    BCPos check_nil, check_false, check_zero, check_empty;
 
    // Check for nil
-   expr_init(&nilv, VKNIL, 0);
+   expr_init(&nilv, ExpKind::Nil, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
    // Check for false
-   expr_init(&falsev, VKFALSE, 0);
+   expr_init(&falsev, ExpKind::False, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
    // Check for zero
-   expr_init(&zerov, VKNUM, 0);
+   expr_init(&zerov, ExpKind::Num, 0);
    setnumV(&zerov.u.nval, 0.0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
    // Check for empty string
-   expr_init(&emptyv, VKSTR, 0);
+   expr_init(&emptyv, ExpKind::Str, 0);
    emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
@@ -387,7 +387,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_free(fs, e);
 
    // If all checks pass (value is truthy), load true
-   bcemit_AD(fs, BC_KPRI, dest, VKTRUE);
+   bcemit_AD(fs, BC_KPRI, dest, ExpKind::True);
    jmp_false_branch = bcemit_jmp(fs);
 
    // False branch: patch all falsey jumps here and load false
@@ -396,12 +396,12 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    jmp_patch(fs, check_false, false_pos);
    jmp_patch(fs, check_zero, false_pos);
    jmp_patch(fs, check_empty, false_pos);
-   bcemit_AD(fs, BC_KPRI, dest, VKFALSE);
+   bcemit_AD(fs, BC_KPRI, dest, ExpKind::False);
 
    // Patch skip jump to after false load
    jmp_patch(fs, jmp_false_branch, fs->pc);
 
-   expr_init(e, VNONRELOC, dest);
+   expr_init(e, ExpKind::NonReloc, dest);
 }
 
 //********************************************************************************************************************
@@ -439,7 +439,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          // bcemit_binop_left() already loaded truthy constants to a register
          // Just ensure expression is properly set up
 
-         if (e1->k != VNONRELOC and e1->k != VRELOCABLE) {
+         if (e1->k != ExpKind::NonReloc and e1->k != ExpKind::Relocable) {
             if (expr_isk(e1)) { // Constant - load to register
                bcreg_reserve(fs, 1);
                expr_toreg_nobranch(fs, e1, fs->freereg - 1);
@@ -457,7 +457,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
          expr_discharge(fs, e1);
 
-         if (e1->k == VNONRELOC or e1->k == VRELOCABLE) {
+         if (e1->k == ExpKind::NonReloc or e1->k == ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
             ExpDesc nilv, falsev, zerov, emptyv;
@@ -466,23 +466,23 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             BCReg dest_reg;
 
             // Check for nil
-            expr_init(&nilv, VKNIL, 0);
+            expr_init(&nilv, ExpKind::Nil, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
 
             // Check for false
-            expr_init(&falsev, VKFALSE, 0);
+            expr_init(&falsev, ExpKind::False, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
 
             // Check for zero
-            expr_init(&zerov, VKNUM, 0);
+            expr_init(&zerov, ExpKind::Num, 0);
             setnumV(&zerov.u.nval, 0.0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
 
             // Check for empty string
-            expr_init(&emptyv, VKSTR, 0);
+            expr_init(&emptyv, ExpKind::Str, 0);
             emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
@@ -520,7 +520,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             jmp_patch(fs, skip, fs->pc);
             uint8_t saved_flags = e1->flags;  // Save flags before expr_init
 
-            expr_init(e1, VNONRELOC, reg);
+            expr_init(e1, ExpKind::NonReloc, reg);
             e1->flags = saved_flags;  // Restore flags after expr_init
 
             // Collapse any scratch register reserved for the RHS when it is no longer
@@ -547,7 +547,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    }
    else if (op == OPR_CONCAT) {
       expr_toval(fs, e2);
-      if (e2->k == VRELOCABLE and bc_op(*bcptr(fs, e2)) == BC_CAT) {
+      if (e2->k == ExpKind::Relocable and bc_op(*bcptr(fs, e2)) == BC_CAT) {
          lj_assertFS(e1->u.s.info == bc_b(*bcptr(fs, e2)) - 1,
             "bad CAT stack layout");
          expr_free(fs, e1);
@@ -560,7 +560,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          expr_free(fs, e1);
          e1->u.s.info = bcemit_ABC(fs, BC_CAT, 0, e1->u.s.info, e2->u.s.info);
       }
-      e1->k = VRELOCABLE;
+      e1->k = ExpKind::Relocable;
    }
    else {
       lj_assertFS(op == OPR_NE or op == OPR_EQ or
@@ -581,33 +581,33 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
       jmp_dropval(fs, e->f);
       jmp_dropval(fs, e->t);
       expr_discharge(fs, e);
-      if (e->k == VKNIL or e->k == VKFALSE) {
-         e->k = VKTRUE;
+      if (e->k == ExpKind::Nil or e->k == ExpKind::False) {
+         e->k = ExpKind::True;
          return;
       }
-      else if (expr_isk(e) or (LJ_HASFFI and e->k == VKCDATA)) {
-         e->k = VKFALSE;
+      else if (expr_isk(e) or (LJ_HASFFI and e->k == ExpKind::CData)) {
+         e->k = ExpKind::False;
          return;
       }
-      else if (e->k == VJMP) {
+      else if (e->k == ExpKind::Jmp) {
          invertcond(fs, e);
          return;
       }
-      else if (e->k == VRELOCABLE) {
+      else if (e->k == ExpKind::Relocable) {
          bcreg_reserve(fs, 1);
          setbc_a(bcptr(fs, e), fs->freereg - 1);
          e->u.s.info = fs->freereg - 1;
-         e->k = VNONRELOC;
+         e->k = ExpKind::NonReloc;
       }
       else {
-         lj_assertFS(e->k == VNONRELOC, "bad expr type %d", e->k);
+         lj_assertFS(e->k == ExpKind::NonReloc, "bad expr type %d", e->k);
       }
    }
    else {
       lj_assertFS(op == BC_UNM or op == BC_LEN, "bad unop %d", op);
       if (op == BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
 #if LJ_HASFFI
-         if (e->k == VKCDATA) {  // Fold in-place since cdata is not interned.
+         if (e->k == ExpKind::CData) {  // Fold in-place since cdata is not interned.
             GCcdata* cd = cdataV(&e->u.nval);
             int64_t* p = (int64_t*)cdataptr(cd);
             if (cd->ctypeid == CTID_COMPLEX_DOUBLE) p[1] ^= (int64_t)U64x(80000000, 00000000);
@@ -634,5 +634,5 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    }
    expr_free(fs, e);
    e->u.s.info = bcemit_AD(fs, op, 0, e->u.s.info);
-   e->k = VRELOCABLE;
+   e->k = ExpKind::Relocable;
 }
