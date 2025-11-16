@@ -37,47 +37,47 @@ typedef int LexToken;   //  Lexical token.
 
 // Combined bytecode ins/line. Only used during bytecode generation.
 typedef struct BCInsLine {
-   BCIns ins;      //  Bytecode instruction.
+   BCIns ins;        //  Bytecode instruction.
    BCLine line;      //  Line number for this bytecode.
 } BCInsLine;
 
 // Info for local variables. Only used during bytecode generation.
 typedef struct VarInfo {
-   GCRef name;      //  Local variable name.
-   BCPos startpc;   //  First point where the local variable is active.
-   BCPos endpc;      //  First point where the local variable is dead.
+   GCRef name;        //  Local variable name.
+   BCPos startpc;     //  First point where the local variable is active.
+   BCPos endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
    uint8_t info;      //  Variable info.
 } VarInfo;
 
 // Lua lexer state.
 typedef struct LexState {
-   struct FuncState* fs;   //  Current FuncState. Defined in lj_parse.c.
-   struct lua_State* L;   //  Lua state.
-   TValue tokval;   //  Current token value.
-   TValue lookaheadval;   //  Lookahead token value.
-   const char* p;   //  Current position in input buffer.
-   const char* pe;   //  End of input buffer.
-   LexChar c;      //  Current character.
-   LexToken tok;      //  Current token.
-   LexToken lookahead;   //  Lookahead token.
-   SBuf sb;      //  String buffer for tokens.
-   lua_Reader rfunc;   //  Reader callback.
-   void* rdata;      //  Reader callback data.
-   BCLine linenumber;   //  Input line counter.
-   BCLine lastline;   //  Line of last token.
-   GCstr* chunkname;   //  Current chunk name (interned string).
-   const char* chunkarg;   //  Chunk name argument.
-   const char* mode;   //  Allow loading bytecode (b) and/or source text (t).
-   VarInfo* vstack;   //  Stack for names and extents of local variables.
-   MSize sizevstack;   //  Size of variable stack.
-   MSize vtop;      //  Top of variable stack.
-   BCInsLine* bcstack;   //  Stack for bytecode instructions/line numbers.
-   MSize sizebcstack;   //  Size of bytecode stack.
-   uint32_t level;   //  Syntactical nesting level.
-   uint32_t ternary_depth;   //  Number of pending ternary operators.
-   uint8_t pending_if_empty_colon;   //  Tracks ?: misuse after ??.
-   int endmark;      //  Trust bytecode end marker, even if not at EOF.
+   struct FuncState* fs; // Current FuncState. Defined in lj_parse.c.
+   struct lua_State* L;  // Lua state.
+   TValue tokval;        // Current token value.
+   TValue lookaheadval;  // Lookahead token value.
+   const char* p;        // Current position in input buffer.
+   const char* pe;       // End of input buffer.
+   LexChar c;            // Current character.
+   LexToken tok;         // Current token.
+   LexToken lookahead;   // Lookahead token.
+   SBuf sb;              // String buffer for tokens.
+   lua_Reader rfunc;     // Reader callback.
+   void* rdata;          // Reader callback data.
+   BCLine linenumber;    // Input line counter.
+   BCLine lastline;      // Line of last token.
+   GCstr* chunkname;     // Current chunk name (interned string).
+   const char* chunkarg; // Chunk name argument.
+   const char* mode;     // Allow loading bytecode (b) and/or source text (t).
+   VarInfo* vstack;      // Stack for names and extents of local variables.
+   MSize sizevstack;     // Size of variable stack.
+   MSize vtop;           // Top of variable stack.
+   BCInsLine* bcstack;   // Stack for bytecode instructions/line numbers.
+   MSize sizebcstack;    // Size of bytecode stack.
+   uint32_t level;       // Syntactical nesting level.
+   uint32_t ternary_depth; // Number of pending ternary operators.
+   uint8_t pending_if_empty_colon; // Tracks ?: misuse after ??.
+   int endmark;          // Trust bytecode end marker, even if not at EOF.
 } LexState;
 
 LJ_FUNC int lj_lex_setup(lua_State* L, LexState* ls);
@@ -91,5 +91,5 @@ LJ_FUNC void lj_lex_init(lua_State* L);
 #ifdef LUA_USE_ASSERT
 #define lj_assertLS(c, ...)   (lj_assertG_(G(ls->L), (c), __VA_ARGS__))
 #else
-#define lj_assertLS(c, ...)   ((void)ls)
+#define lj_assertLS(c, ...)   ((void)State)
 #endif

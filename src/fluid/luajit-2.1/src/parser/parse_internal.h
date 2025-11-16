@@ -191,7 +191,7 @@ static void expr_bracket(LexState* ls, ExpDesc* v);
 static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e);
 static void expr_table(LexState* ls, ExpDesc* e);
 static BCReg parse_params(LexState* ls, int needself);
-static void parse_body_impl(LexState* ls, ExpDesc* e, int needself, BCLine line);
+[[maybe_unused]] static void parse_body_impl(LexState* ls, ExpDesc* e, int needself, BCLine line);
 static void parse_body(LexState* ls, ExpDesc* e, int needself, BCLine line);
 static void parse_body_defer(LexState* ls, ExpDesc* e, BCLine line);
 static BCReg expr_list(LexState* ls, ExpDesc* v);

@@ -55,59 +55,59 @@ static const struct {
 
 // Parse a statement. Returns 1 if it must be the last one in a chunk.
 
-static int parse_stmt(LexState* ls)
+static int parse_stmt(LexState *State)
 {
-   BCLine line = ls->linenumber;
-   switch (ls->tok) {
-      case TK_if: parse_if(ls, line); break;
-      case TK_while: parse_while(ls, line); break;
-      case TK_do: lj_lex_next(ls); parse_block(ls); lex_match(ls, TK_end, TK_do, line); break;
-      case TK_for: parse_for(ls, line); break;
-      case TK_repeat: parse_repeat(ls, line); break;
-      case TK_function: parse_func(ls, line); break;
-      case TK_defer: parse_defer(ls); break;
-      case TK_local: lj_lex_next(ls); parse_local(ls); break;
-      case TK_return: parse_return(ls); return 1;  // Must be last.
-      case TK_continue: lj_lex_next(ls); parse_continue(ls); break;
-      case TK_break: lj_lex_next(ls); parse_break(ls); break;
-      case ';': lj_lex_next(ls); break;
-      default: parse_call_assign(ls); break;
+   BCLine line = State->linenumber;
+   switch (State->tok) {
+      case TK_if:       parse_if(State, line); break;
+      case TK_while:    parse_while(State, line); break;
+      case TK_do:       lj_lex_next(State); parse_block(State); lex_match(State, TK_end, TK_do, line); break;
+      case TK_for:      parse_for(State, line); break;
+      case TK_repeat:   parse_repeat(State, line); break;
+      case TK_function: parse_func(State, line); break;
+      case TK_defer:    parse_defer(State); break;
+      case TK_local:    lj_lex_next(State); parse_local(State); break;
+      case TK_return:   parse_return(State); return 1;  // Must be last.
+      case TK_continue: lj_lex_next(State); parse_continue(State); break;
+      case TK_break:    lj_lex_next(State); parse_break(State); break;
+      case ';':         lj_lex_next(State); break;
+      default:          parse_call_assign(State); break;
    }
    return 0;
 }
 
 // A chunk is a list of statements optionally separated by semicolons.
 
-static void parse_chunk(LexState* ls)
+static void parse_chunk(LexState *State)
 {
-   int islast = 0;
-   synlevel_begin(ls);
-   while (not islast and not parse_is_end(ls->tok)) {
-      islast = parse_stmt(ls);
-      lex_opt(ls, ';');
-      lj_assertLS(ls->fs->framesize >= ls->fs->freereg and ls->fs->freereg >= ls->fs->nactvar, "bad regalloc");
-      ls->fs->freereg = ls->fs->nactvar;  // Free registers after each stmt.
+   int is_last = 0;
+   synlevel_begin(State);
+   while (not is_last and not parse_is_end(State->tok)) {
+      is_last = parse_stmt(State);
+      lex_opt(State, ';');
+      lj_assertLS(State->fs->framesize >= State->fs->freereg and State->fs->freereg >= State->fs->nactvar, "bad regalloc");
+      State->fs->freereg = State->fs->nactvar;  // Free registers after each stmt.
    }
-   synlevel_end(ls);
+   synlevel_end(State);
 }
 
 // Entry point of bytecode parser.
 
-GCproto* lj_parse(LexState* ls)
+GCproto * lj_parse(LexState *State)
 {
    FuncState fs;
    FuncScope bl;
    GCproto* pt;
-   lua_State* L = ls->L;
+   lua_State* L = State->L;
 #ifdef LUAJIT_DISABLE_DEBUGINFO
-   ls->chunkname = lj_str_newlit(L, "=");
+   State->chunkname = lj_str_newlit(L, "=");
 #else
-   ls->chunkname = lj_str_newz(L, ls->chunkarg);
+   State->chunkname = lj_str_newz(L, State->chunkarg);
 #endif
-   setstrV(L, L->top, ls->chunkname);  // Anchor chunkname string.
+   setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
-   ls->level = 0;
-   fs_init(ls, &fs);
+   State->level = 0;
+   fs_init(State, &fs);
    fs.linedefined = 0;
    fs.numparams = 0;
    fs.bcbase = nullptr;
@@ -115,12 +115,12 @@ GCproto* lj_parse(LexState* ls)
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, 0);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
-   lj_lex_next(ls);  // Read-ahead first token.
-   parse_chunk(ls);
-   if (ls->tok != TK_eof) err_token(ls, TK_eof);
-   pt = fs_finish(ls, ls->linenumber);
+   lj_lex_next(State);  // Read-ahead first token.
+   parse_chunk(State);
+   if (State->tok != TK_eof) err_token(State, TK_eof);
+   pt = fs_finish(State, State->linenumber);
    L->top--;  // Drop chunkname.
-   lj_assertL(fs.prev == nullptr and ls->fs == nullptr, "mismatched frame nesting");
+   lj_assertL(fs.prev == nullptr and State->fs == nullptr, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
    return pt;
 }

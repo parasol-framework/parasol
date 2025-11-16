@@ -6,22 +6,21 @@
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 */
 
-// -- Management of constants ---------------------------------------------
-
 // Add a number constant.
+
 [[nodiscard]] static BCReg const_num(FuncState* fs, ExpDesc* e)
 {
    lua_State* L = fs->L;
    TValue* o;
    lj_assertFS(expr_isnumk(e), "bad usage");
    o = lj_tab_set(L, fs->kt, &e->u.nval);
-   if (tvhaskslot(o))
-      return tvkslot(o);
+   if (tvhaskslot(o)) return tvkslot(o);
    o->u64 = fs->nkn;
    return fs->nkn++;
 }
 
 // Add a GC object constant.
+
 [[nodiscard]] static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 {
    lua_State* L = fs->L;
@@ -29,13 +28,13 @@
    setgcV(L, &key, gc, itype);
    // NOBARRIER: the key is new or kept alive.
    o = lj_tab_set(L, fs->kt, &key);
-   if (tvhaskslot(o))
-      return tvkslot(o);
+   if (tvhaskslot(o)) return tvkslot(o);
    o->u64 = fs->nkgc;
    return fs->nkgc++;
 }
 
 // Add a string constant.
+
 [[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
    lj_assertFS(expr_isstrk(e) or e->k == ExpKind::Global, "bad usage");
@@ -43,6 +42,7 @@
 }
 
 // Anchor string constant to avoid GC.
+
 GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
 {
    // NOBARRIER: the key is new or kept alive.
@@ -65,19 +65,19 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 }
 #endif
 
-// -- Jump list handling --------------------------------------------------
+// -- Jump list handling
 
 // Get next element in jump list.
+
 [[nodiscard]] static BCPos jmp_next(FuncState* fs, BCPos pc)
 {
    ptrdiff_t delta = bc_j(fs->bcbase[pc].ins);
-   if (BCPos(delta) == NO_JMP)
-      return NO_JMP;
-   else
-      return BCPos((ptrdiff_t(pc) + 1) + delta);
+   if (BCPos(delta) == NO_JMP) return NO_JMP;
+   else return BCPos((ptrdiff_t(pc) + 1) + delta);
 }
 
 // Check if any of the instructions on the jump list produce no value.
+
 [[nodiscard]] static int jmp_novalue(FuncState* fs, BCPos list)
 {
    for (; list != NO_JMP; list = jmp_next(fs, list)) {
@@ -89,6 +89,7 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 }
 
 // Patch register of test instructions.
+
 [[nodiscard]] static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
 {
    BCInsLine* ilp = &fs->bcbase[pc >= 1 ? pc - 1 : pc];
@@ -112,13 +113,12 @@ void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
             setbc_a(&ilp[1].ins, reg + 1);
       }
    }
-   else {
-      return 0;  // Cannot patch other instructions.
-   }
+   else return 0;  // Cannot patch other instructions.
    return 1;
 }
 
 // Drop values for all instructions on jump list.
+
 static void jmp_dropval(FuncState* fs, BCPos list)
 {
    for (; list != NO_JMP; list = jmp_next(fs, list))
@@ -126,6 +126,7 @@ static void jmp_dropval(FuncState* fs, BCPos list)
 }
 
 // Patch jump instruction to target.
+
 static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest)
 {
    BCIns* jmp = &fs->bcbase[pc].ins;
@@ -137,14 +138,11 @@ static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest)
 }
 
 // Append to jump list.
+
 static void jmp_append(FuncState* fs, BCPos* l1, BCPos l2)
 {
-   if (l2 == NO_JMP) {
-      return;
-   }
-   else if (*l1 == NO_JMP) {
-      *l1 = l2;
-   }
+   if (l2 == NO_JMP) return;
+   else if (*l1 == NO_JMP) *l1 = l2;
    else {
       BCPos list = *l1;
       BCPos next;
@@ -155,20 +153,20 @@ static void jmp_append(FuncState* fs, BCPos* l1, BCPos l2)
 }
 
 // Patch jump list and preserve produced values.
+
 static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget,
    BCReg reg, BCPos dtarget)
 {
    while (list != NO_JMP) {
       BCPos next = jmp_next(fs, list);
-      if (jmp_patchtestreg(fs, list, reg))
-         jmp_patchins(fs, list, vtarget);  // Jump to target with value.
-      else
-         jmp_patchins(fs, list, dtarget);  // Jump to default target.
+      if (jmp_patchtestreg(fs, list, reg)) jmp_patchins(fs, list, vtarget);  // Jump to target with value.
+      else jmp_patchins(fs, list, dtarget);  // Jump to default target.
       list = next;
    }
 }
 
 // Jump to following instruction. Append to list of pending jumps.
+
 static void jmp_tohere(FuncState* fs, BCPos list)
 {
    fs->lasttarget = fs->pc;
@@ -176,6 +174,7 @@ static void jmp_tohere(FuncState* fs, BCPos list)
 }
 
 // Patch jump list to target.
+
 static void jmp_patch(FuncState* fs, BCPos list, BCPos target)
 {
    if (target == fs->pc) {

@@ -1,12 +1,8 @@
-/*
-** Lua parser - Core utilities and error handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
-
-// -- Error handling ------------------------------------------------------
+// Lua parser - Core utilities and error handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 LJ_NORET LJ_NOINLINE static void err_syntax(LexState* ls, ErrMsg em)
 {
@@ -26,9 +22,10 @@ LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
       lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
 }
 
-// -- Lexer support -------------------------------------------------------
+// Lexer support
 
 // Check and consume optional token.
+
 static int lex_opt(LexState* ls, LexToken tok)
 {
    if (ls->tok == tok) {
@@ -39,6 +36,7 @@ static int lex_opt(LexState* ls, LexToken tok)
 }
 
 // Check and consume token.
+
 static void lex_check(LexState* ls, LexToken tok)
 {
    if (ls->tok != tok)
@@ -47,6 +45,7 @@ static void lex_check(LexState* ls, LexToken tok)
 }
 
 // Check for matching token.
+
 static void lex_match(LexState* ls, LexToken what, LexToken who, BCLine line)
 {
    if (!lex_opt(ls, what)) {
@@ -62,11 +61,11 @@ static void lex_match(LexState* ls, LexToken what, LexToken who, BCLine line)
 }
 
 // Check for string token.
+
 static GCstr* lex_str(LexState* ls)
 {
    GCstr* s;
-   if (ls->tok != TK_name)
-      err_token(ls, TK_name);
+   if (ls->tok != TK_name) err_token(ls, TK_name);
    s = strV(&ls->tokval);
    lj_lex_next(ls);
    return s;
