@@ -28,6 +28,7 @@ add_library (xquery_lib OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_values.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_expression.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_flwor.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/eval/date_time_utils.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_axis.cpp"
@@ -103,6 +104,7 @@ flute_test (${MOD}_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanc
 flute_test (${MOD}_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
 flute_test (${MOD}_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.fluid")
 flute_test (${MOD}_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.fluid")
+flute_test (${MOD}_type_constructors "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_constructors.fluid")
 flute_test (${MOD}_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.fluid")
 flute_test (${MOD}_qt_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qt_math.fluid")
 

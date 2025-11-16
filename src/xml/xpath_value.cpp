@@ -137,11 +137,25 @@ bool XPathVal::to_boolean() const
 }
 
 double XPathVal::string_to_number(const std::string &Value) {
-   if (Value.empty()) return std::numeric_limits<double>::quiet_NaN();
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::numeric_limits<double>::quiet_NaN();
 
+   if ((trimmed IS std::string_view("INF")) or (trimmed IS std::string_view("+INF"))) {
+      return std::numeric_limits<double>::infinity();
+   }
+
+   if (trimmed IS std::string_view("-INF")) {
+      return -std::numeric_limits<double>::infinity();
+   }
+
+   if (trimmed IS std::string_view("NaN")) {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
+   std::string lexical(trimmed);
    char *end_ptr = nullptr;
-   double result = std::strtod(Value.c_str(), &end_ptr);
-   if ((end_ptr IS Value.c_str()) or (*end_ptr != '\0')) {
+   double result = std::strtod(lexical.c_str(), &end_ptr);
+   if ((end_ptr IS lexical.c_str()) or (*end_ptr != '\0')) {
       return std::numeric_limits<double>::quiet_NaN();
    }
 

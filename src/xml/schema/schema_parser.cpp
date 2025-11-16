@@ -245,7 +245,8 @@ namespace xml::schema
          ? declared_name
          : make_qualified_name(Document.target_namespace_prefix, declared_name);
 
-      auto Descriptor = std::make_shared<SchemaTypeDescriptor>(SchemaType::UserDefined, qualified_name, BaseDescriptor, false);
+      auto Descriptor = std::make_shared<SchemaTypeDescriptor>(SchemaType::UserDefined, qualified_name,
+         Document.target_namespace, declared_name, BaseDescriptor, false);
       Document.declared_types.push_back(Descriptor);
 
       auto &types = Document.context->types;

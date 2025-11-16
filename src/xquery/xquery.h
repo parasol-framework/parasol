@@ -1009,6 +1009,7 @@ struct XQueryProlog {
 
 namespace xml::schema {
    class SchemaTypeRegistry;
+   class SchemaTypeDescriptor;
    SchemaTypeRegistry & registry();
 }
 
@@ -1460,6 +1461,8 @@ class XPathEvaluator : public XPathErrorReporter {
 
    XPathVal evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
    XPathVal evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_type_constructor(const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &TargetDescriptor,
+      const std::vector<XPathVal> &Args, const XPathNode *CallSite);
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);

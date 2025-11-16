@@ -13,6 +13,7 @@
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
 #include "../api/xquery_functions.h"
+#include "../../xml/schema/schema_types.h"
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
@@ -133,6 +134,122 @@ static ConstructorQName parse_constructor_qname_string(std::string_view Value)
    result.valid = true;
    return result;
 }
+
+namespace {
+
+static constexpr std::string_view xml_schema_namespace_uri("http://www.w3.org/2001/XMLSchema");
+
+enum class ConstructorLookupStatus
+{
+   NotConstructor,
+   Resolved,
+   UnknownNamespace,
+   UnknownType
+};
+
+struct ConstructorLookupResult
+{
+   ConstructorLookupStatus status = ConstructorLookupStatus::NotConstructor;
+   std::shared_ptr<xml::schema::SchemaTypeDescriptor> descriptor;
+   std::string display_name;
+};
+
+[[nodiscard]] static bool descriptor_supports_constructor(const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &Descriptor)
+{
+   if (!Descriptor) return false;
+
+   switch (Descriptor->schema_type) {
+      case xml::schema::SchemaType::XPathNodeSet:
+      case xml::schema::SchemaType::XSAnyType:
+         return false;
+      default:
+         break;
+   }
+
+   if (Descriptor->type_name.rfind("xpath:", 0) IS 0) return false;
+   return true;
+}
+
+[[nodiscard]] static std::optional<std::string> resolve_namespace_uri(const XPathContext &Context, std::string_view Prefix)
+{
+   if (Prefix.empty()) return std::nullopt;
+
+   if (auto prolog = Context.prolog) {
+      auto iter = prolog->declared_namespace_uris.find(std::string(Prefix));
+      if (iter != prolog->declared_namespace_uris.end()) return iter->second;
+   }
+
+   if (Prefix IS std::string_view("xs")) return std::string(xml_schema_namespace_uri);
+   return std::nullopt;
+}
+
+[[nodiscard]] static ConstructorLookupResult resolve_constructor_descriptor(
+   std::string_view FunctionName, const XPathContext &Context)
+{
+   ConstructorLookupResult result;
+   result.display_name.assign(FunctionName);
+
+   auto *registry = Context.schema_registry ? Context.schema_registry : &xml::schema::registry();
+   if (!registry) return result;
+
+   auto descriptor = registry->find_descriptor(FunctionName);
+   if (descriptor_supports_constructor(descriptor)) {
+      result.status = ConstructorLookupStatus::Resolved;
+      result.descriptor = descriptor;
+      return result;
+   }
+
+   auto parsed = parse_constructor_qname_string(FunctionName);
+   if ((not parsed.valid) or parsed.local.empty()) return result;
+
+   bool prefix_unresolved = false;
+   std::string namespace_uri = parsed.namespace_uri;
+
+   if (namespace_uri.empty() and (not parsed.prefix.empty())) {
+      auto resolved = resolve_namespace_uri(Context, parsed.prefix);
+      if (resolved.has_value()) namespace_uri = *resolved;
+      else prefix_unresolved = true;
+   }
+
+   bool namespace_is_schema = (!namespace_uri.empty()) and (namespace_uri IS std::string(xml_schema_namespace_uri));
+   bool namespace_supports_types = namespace_is_schema;
+
+   if ((!namespace_supports_types) and (!namespace_uri.empty())) {
+      namespace_supports_types = registry->namespace_contains_types(namespace_uri);
+   }
+
+   if (!namespace_uri.empty()) {
+      descriptor = registry->find_descriptor(namespace_uri, parsed.local);
+      if (descriptor_supports_constructor(descriptor)) {
+         result.status = ConstructorLookupStatus::Resolved;
+         result.descriptor = descriptor;
+         return result;
+      }
+   }
+
+   if (!parsed.prefix.empty()) {
+      auto lexical_name = std::format("{}:{}", parsed.prefix, parsed.local);
+      descriptor = registry->find_descriptor(lexical_name);
+      if (descriptor_supports_constructor(descriptor)) {
+         result.status = ConstructorLookupStatus::Resolved;
+         result.descriptor = descriptor;
+         return result;
+      }
+   }
+
+   if (prefix_unresolved) {
+      result.status = ConstructorLookupStatus::UnknownNamespace;
+      return result;
+   }
+
+   if (namespace_is_schema or namespace_supports_types) {
+      result.status = ConstructorLookupStatus::UnknownType;
+   }
+
+   return result;
+}
+
+} // namespace
 
 //********************************************************************************************************************
 
@@ -2279,6 +2396,26 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       }
 
       return XPathVal(text_nodes, first_value);
+   }
+
+   auto constructor_lookup = resolve_constructor_descriptor(function_name, context);
+
+   if (constructor_lookup.status IS ConstructorLookupStatus::Resolved) {
+      return evaluate_type_constructor(constructor_lookup.descriptor, args, FuncNode);
+   }
+
+   if (constructor_lookup.status IS ConstructorLookupStatus::UnknownNamespace) {
+      auto message = std::format("XPST0081: QName '{}' references a namespace prefix that is not in scope.",
+         constructor_lookup.display_name);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (constructor_lookup.status IS ConstructorLookupStatus::UnknownType) {
+      auto message = std::format("XPST0051: Constructor type '{}' is not defined in the in-scope schema types.",
+         constructor_lookup.display_name);
+      record_error(message, FuncNode, true);
+      return XPathVal();
    }
 
    if (auto user_result = resolve_user_defined_function(function_name, args, CurrentPrefix, FuncNode)) {
