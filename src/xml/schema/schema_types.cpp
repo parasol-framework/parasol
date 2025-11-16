@@ -260,6 +260,8 @@ namespace xml::schema
       auto ShortType = register_descriptor(SchemaType::XSShort, "xs:short", std::string(xml_schema_namespace_uri), "short",
          IntType, true);
       register_descriptor(SchemaType::XSByte, "xs:byte", std::string(xml_schema_namespace_uri), "byte", ShortType, true);
+      register_descriptor(SchemaType::XSQName, "xs:QName", std::string(xml_schema_namespace_uri), "QName", AnyType, true,
+         1u, true);
    }
 
    SchemaTypeRegistry & registry()
@@ -298,6 +300,8 @@ namespace xml::schema
    bool is_namespace_sensitive(SchemaType Type) noexcept
    {
       switch (Type) {
+         case SchemaType::XSQName:
+            return true;
          default:
             break;
       }

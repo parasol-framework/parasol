@@ -38,6 +38,7 @@ namespace xml::schema
       XSInt,
       XSShort,
       XSByte,
+      XSQName,
       UserDefined
    };
 

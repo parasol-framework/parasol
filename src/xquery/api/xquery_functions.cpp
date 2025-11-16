@@ -19,6 +19,7 @@
 #include "xquery_functions.h"
 #include "../../xml/schema/type_checker.h"
 #include "../../xml/uri_utils.h"
+#include "../eval/date_time_utils.h"
 
 #include <chrono>
 #include <ctime>
@@ -290,218 +291,7 @@ static bool parse_fixed_number(std::string_view Text, int &Output)
    return true;
 }
 
-//********************************************************************************************************************
-// Represents the parsed components of an XML duration value with optional year, month, day, hour, minute, and
-// second components. The negative flag records whether the duration is prefixed with '-'.
-
-struct DurationComponents
-{
-   bool negative = false;
-   bool has_year = false;
-   bool has_month = false;
-   bool has_day = false;
-   bool has_hour = false;
-   bool has_minute = false;
-   bool has_second = false;
-   std::chrono::years years{0};
-   std::chrono::months months{0};
-   std::chrono::days days{0};
-   std::chrono::hours hours{0};
-   std::chrono::minutes minutes{0};
-   std::chrono::duration<double> seconds{0.0};
-};
-
 enum class DurationParseStatus { Empty, Error, Value };
-
-//********************************************************************************************************************
-// Normalises duration components by consolidating months into years and distributing time components into their
-// canonical ranges (60 seconds into minutes, 60 minutes into hours, etc.).
-
-static void normalise_duration_components(DurationComponents &Components)
-{
-   int64_t total_months = (int64_t)Components.years.count() * 12ll + (int64_t)Components.months.count();
-   int64_t normalised_years = total_months / 12ll;
-   int64_t normalised_months = total_months % 12ll;
-
-   Components.years = std::chrono::years(normalised_years);
-   Components.months = std::chrono::months(normalised_months);
-   Components.has_year = (normalised_years != 0);
-   Components.has_month = (normalised_months != 0);
-
-   std::chrono::duration<double> total_seconds = Components.seconds;
-   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.minutes);
-   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.hours);
-   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.days);
-
-   auto whole_seconds = std::chrono::duration_cast<std::chrono::seconds>(total_seconds);
-   auto fractional_seconds = total_seconds - std::chrono::duration_cast<std::chrono::duration<double>>(whole_seconds);
-
-   auto total_minutes = std::chrono::duration_cast<std::chrono::minutes>(whole_seconds);
-   auto seconds_remainder = whole_seconds - std::chrono::duration_cast<std::chrono::seconds>(total_minutes);
-
-   auto total_hours = std::chrono::duration_cast<std::chrono::hours>(total_minutes);
-   auto minutes_remainder = total_minutes - std::chrono::duration_cast<std::chrono::minutes>(total_hours);
-
-   auto total_days = std::chrono::duration_cast<std::chrono::days>(total_hours);
-   auto hours_remainder = total_hours - std::chrono::duration_cast<std::chrono::hours>(total_days);
-
-   Components.days = total_days;
-   Components.hours = hours_remainder;
-   Components.minutes = minutes_remainder;
-   Components.seconds = fractional_seconds + std::chrono::duration_cast<std::chrono::duration<double>>(seconds_remainder);
-
-   Components.has_day = (Components.days.count() != 0);
-   Components.has_hour = (Components.hours.count() != 0);
-   Components.has_minute = (Components.minutes.count() != 0);
-   Components.has_second = (Components.seconds.count() != 0.0);
-}
-
-//********************************************************************************************************************
-// Parses a floating-point seconds value. This function requires the entire string to be consumed (no trailing
-// content) and rejects non-finite values (infinity and NaN).
-
-static bool parse_seconds_value(std::string_view Text, double &Output)
-{
-   if (Text.empty()) return false;
-
-   double value = 0.0;
-   auto result = std::from_chars(Text.data(), Text.data() + Text.length(), value);
-   if (result.ec != std::errc()) return false;
-   if (result.ptr != Text.data() + Text.length()) return false;
-   if (!std::isfinite(value)) return false;
-
-   Output = value;
-   return true;
-}
-
-//********************************************************************************************************************
-// Parses an XML Schema duration (ISO 8601 format) into individual date and time components. Durations follow the
-// pattern: [-]P[n]Y[n]M[n]DT[n]H[n]M[n]S. The parser validates that designators appear in the correct order and
-// enforces that fractions only occur in the seconds component. Returns false for malformed input.
-
-static bool parse_duration_components(std::string_view Text, DurationComponents &Components)
-{
-   Components = DurationComponents();
-   if (Text.empty()) return false;
-
-   size_t index = 0u;
-   if (Text[index] IS '-') {
-      Components.negative = true;
-      ++index;
-      if (index >= Text.length()) return false;
-   }
-
-   if (Text[index] != 'P') return false;
-   ++index;
-   if (index >= Text.length()) return false;
-
-   bool in_time = false;
-   bool found_component = false;
-
-   while (index < Text.length()) {
-      if (Text[index] IS 'T') {
-         if (in_time) return false;
-         in_time = true;
-         ++index;
-         if (index >= Text.length()) return false;
-         continue;
-      }
-
-      size_t start = index;
-      while ((index < Text.length()) and std::isdigit((unsigned char)Text[index])) ++index;
-      size_t integer_end = index;
-
-      bool has_fraction = false;
-      bool fraction_digits = false;
-      if (index < Text.length() and Text[index] IS '.') {
-         if (!in_time) return false;
-         has_fraction = true;
-         ++index;
-         while ((index < Text.length()) and std::isdigit((unsigned char)Text[index])) {
-            fraction_digits = true;
-            ++index;
-         }
-         if (!fraction_digits) return false;
-      }
-
-      if (start IS index) return false;
-      if (index >= Text.length()) return false;
-
-      size_t designator_pos = index;
-      char designator = Text[designator_pos];
-      ++index;
-
-      size_t number_end = designator_pos;
-      std::string_view integer_view(Text.data() + start, integer_end - start);
-      std::string_view number_view(Text.data() + start, number_end - start);
-
-      if (has_fraction and not (in_time and designator IS 'S')) return false;
-
-      if (designator IS 'Y' and !in_time) {
-         if (Components.has_year) return false;
-         int value = 0;
-         if (!parse_fixed_number(integer_view, value)) return false;
-         Components.years = std::chrono::years(value);
-         Components.has_year = true;
-         found_component = true;
-         continue;
-      }
-
-      if (designator IS 'M' and !in_time) {
-         if (Components.has_month) return false;
-         int value = 0;
-         if (!parse_fixed_number(integer_view, value)) return false;
-         Components.months = std::chrono::months(value);
-         Components.has_month = true;
-         found_component = true;
-         continue;
-      }
-
-      if (designator IS 'D' and !in_time) {
-         if (Components.has_day) return false;
-         int value = 0;
-         if (!parse_fixed_number(integer_view, value)) return false;
-         Components.days = std::chrono::days(value);
-         Components.has_day = true;
-         found_component = true;
-         continue;
-      }
-
-      if (designator IS 'H' and in_time) {
-         if (Components.has_hour) return false;
-         int value = 0;
-         if (!parse_fixed_number(integer_view, value)) return false;
-         Components.hours = std::chrono::hours(value);
-         Components.has_hour = true;
-         found_component = true;
-         continue;
-      }
-
-      if (designator IS 'M' and in_time) {
-         if (Components.has_minute) return false;
-         int value = 0;
-         if (!parse_fixed_number(integer_view, value)) return false;
-         Components.minutes = std::chrono::minutes(value);
-         Components.has_minute = true;
-         found_component = true;
-         continue;
-      }
-
-      if (designator IS 'S' and in_time) {
-         if (Components.has_second) return false;
-         double value = 0.0;
-         if (!parse_seconds_value(number_view, value)) return false;
-         Components.seconds = std::chrono::duration<double>(value);
-         Components.has_second = true;
-         found_component = true;
-         continue;
-      }
-
-      return false;
-   }
-
-   return found_component;
-}
 
 //********************************************************************************************************************
 // Validates and prepares duration components from XPath function arguments. Enforces constraints for year-month
@@ -516,7 +306,7 @@ static DurationParseStatus prepare_duration_components(const std::vector<XPathVa
    if (Args[0].is_empty()) return DurationParseStatus::Empty;
 
    std::string value = Args[0].to_string();
-   if (!parse_duration_components(value, Components)) return DurationParseStatus::Error;
+   if (!parse_xs_duration(value, Components)) return DurationParseStatus::Error;
 
    if (RequireYearMonthOnly) {
       if (Components.has_day or Components.has_hour or Components.has_minute or Components.has_second) {
@@ -926,7 +716,7 @@ static bool combine_date_and_time(const std::string &DateValue, const std::strin
 static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
 {
    DurationComponents components;
-   if (!parse_duration_components(Text, components)) return false;
+   if (!parse_xs_duration(Text, components)) return false;
 
    normalise_duration_components(components);
 

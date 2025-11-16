@@ -138,6 +138,10 @@ static ConstructorQName parse_constructor_qname_string(std::string_view Value)
 namespace {
 
 static constexpr std::string_view xml_schema_namespace_uri("http://www.w3.org/2001/XMLSchema");
+static constexpr std::string_view xpath_functions_namespace_uri("http://www.w3.org/2005/xpath-functions");
+static constexpr std::string_view xquery_local_namespace_uri("http://www.w3.org/2005/xquery-local-functions");
+static constexpr std::string_view xml_namespace_uri("http://www.w3.org/XML/1998/namespace");
+static constexpr std::string_view xmlns_namespace_uri("http://www.w3.org/2000/xmlns/");
 
 enum class ConstructorLookupStatus
 {
@@ -180,6 +184,10 @@ struct ConstructorLookupResult
    }
 
    if (Prefix IS std::string_view("xs")) return std::string(xml_schema_namespace_uri);
+   if (Prefix IS std::string_view("fn")) return std::string(xpath_functions_namespace_uri);
+   if (Prefix IS std::string_view("local")) return std::string(xquery_local_namespace_uri);
+   if (Prefix IS std::string_view("xml")) return std::string(xml_namespace_uri);
+   if (Prefix IS std::string_view("xmlns")) return std::string(xmlns_namespace_uri);
    return std::nullopt;
 }
 
@@ -212,9 +220,14 @@ struct ConstructorLookupResult
    }
 
    bool namespace_is_schema = (!namespace_uri.empty()) and (namespace_uri IS std::string(xml_schema_namespace_uri));
+   bool namespace_is_reserved = (!namespace_uri.empty()) and
+      ((namespace_uri IS std::string(xpath_functions_namespace_uri)) or
+       (namespace_uri IS std::string(xquery_local_namespace_uri)) or
+       (namespace_uri IS std::string(xml_namespace_uri)) or
+       (namespace_uri IS std::string(xmlns_namespace_uri)));
    bool namespace_supports_types = namespace_is_schema;
 
-   if ((!namespace_supports_types) and (!namespace_uri.empty())) {
+   if ((!namespace_supports_types) and (!namespace_is_reserved) and (!namespace_uri.empty())) {
       namespace_supports_types = registry->namespace_contains_types(namespace_uri);
    }
 
@@ -247,6 +260,55 @@ struct ConstructorLookupResult
    }
 
    return result;
+}
+
+static bool parse_qname_lexical_value(std::string_view Value, std::string &Prefix, std::string &Local)
+{
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return false;
+
+   size_t colon = trimmed.find(':');
+   if (colon IS std::string_view::npos)
+   {
+      if (not is_valid_ncname(trimmed)) return false;
+      Prefix.clear();
+      Local.assign(trimmed);
+      return true;
+   }
+
+   std::string_view prefix_view = trimmed.substr(0, colon);
+   std::string_view local_view = trimmed.substr(colon + 1);
+   if (prefix_view.empty() or local_view.empty()) return false;
+   if (not is_valid_ncname(prefix_view) or not is_valid_ncname(local_view)) return false;
+   if (prefix_view IS std::string_view("xmlns")) return false;
+
+   Prefix.assign(prefix_view);
+   Local.assign(local_view);
+   return true;
+}
+
+static std::string canonicalise_qname_value(std::string_view NamespaceURI, std::string_view Prefix,
+   std::string_view Local)
+{
+   std::string result("Q{");
+   result.append(NamespaceURI);
+   result.push_back('}');
+   if (!Prefix.empty())
+   {
+      result.append(Prefix);
+      result.push_back(':');
+   }
+   result.append(Local);
+   return result;
+}
+
+static std::optional<std::string> resolve_default_element_namespace(const XPathContext &Context)
+{
+   if (auto prolog = Context.prolog)
+   {
+      if (prolog->default_element_namespace_uri.has_value()) return prolog->default_element_namespace_uri;
+   }
+   return std::nullopt;
 }
 
 } // namespace

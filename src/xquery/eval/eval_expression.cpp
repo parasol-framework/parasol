@@ -1242,6 +1242,50 @@ XPathVal XPathEvaluator::evaluate_type_constructor(
          return assign_schema(*value);
       }
 
+      case xml::schema::SchemaType::XSDuration: {
+         if (atomised.has_schema_info() and (atomised.get_schema_type() IS xml::schema::SchemaType::XSDuration)) {
+            XPathVal typed_value = atomised;
+            typed_value.set_schema_type(TargetDescriptor);
+            return typed_value;
+         }
+
+         DurationComponents components;
+         if (!parse_xs_duration(lexical_view, components)) return invalid_lexical(lexical_view);
+         return assign_schema(XPathVal(std::string(lexical_view)));
+      }
+
+      case xml::schema::SchemaType::XSQName: {
+         if (atomised.has_schema_info() and (atomised.get_schema_type() IS xml::schema::SchemaType::XSQName)) {
+            XPathVal typed_value = atomised;
+            typed_value.set_schema_type(TargetDescriptor);
+            return typed_value;
+         }
+
+         std::string prefix;
+         std::string local;
+         if (!parse_qname_lexical_value(lexical_view, prefix, local)) return invalid_lexical(lexical_view);
+
+         std::string namespace_uri;
+         if (prefix.empty()) {
+            auto default_ns = resolve_default_element_namespace(context);
+            if (default_ns.has_value()) namespace_uri = *default_ns;
+         }
+         else {
+            auto resolved = resolve_namespace_uri(context, prefix);
+            if (!resolved.has_value()) {
+               auto message = std::format(
+                  "FONS0004: QName prefix '{}' is not in scope for constructor '{}'.",
+                  prefix, TargetDescriptor->type_name);
+               record_error(message, CallSite, true);
+               return XPathVal();
+            }
+            namespace_uri = *resolved;
+         }
+
+         auto canonical = canonicalise_qname_value(namespace_uri, prefix, local);
+         return assign_schema(XPathVal(std::move(canonical)));
+      }
+
       default:
          break;
    }
