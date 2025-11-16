@@ -852,7 +852,10 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
       if (op IS OPR_TERNARY) {
          FuncState* fs = this->fs;
-         ExpDesc nilv, falsev, zerov, emptyv;
+         ExpDesc nilv = make_nil_expr();
+         ExpDesc falsev = make_bool_expr(false);
+         ExpDesc zerov = make_num_expr(0.0);
+         ExpDesc emptyv = make_interned_string_expr(this->intern_empty_string());
          BCReg cond_reg, result_reg;
          BCPos check_nil, check_false, check_zero, check_empty;
          BCPos skip_false;
@@ -863,18 +866,12 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
          this->ternary_depth++;
 
-         expr_init(&nilv, ExpKind::Nil, 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
          check_nil = bcemit_jmp(fs);
-         expr_init(&falsev, ExpKind::False, 0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
          check_false = bcemit_jmp(fs);
-         expr_init(&zerov, ExpKind::Num, 0);
-         setnumV(&zerov.u.nval, 0.0);
          bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
          check_zero = bcemit_jmp(fs);
-         expr_init(&emptyv, ExpKind::Str, 0);
-         emptyv.u.sval = this->keepstr("");
          bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
          check_empty = bcemit_jmp(fs);
 

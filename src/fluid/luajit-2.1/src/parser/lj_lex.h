@@ -86,6 +86,7 @@ public:
    GCstr *    chunkname;  // Current chunk name (interned string).
    const char *chunkarg; // Chunk name argument.
    const char *mode;     // Allow loading bytecode (b) and/or source text (t).
+   GCstr *    empty_string_constant; // Cached empty string reference.
    VarInfo * vstack;     // Stack for names and extents of local variables.
    MSize     sizevstack;  // Size of variable stack.
    MSize     vtop;        // Top of variable stack.
@@ -183,6 +184,7 @@ public:
 
    // Public parser helpers
    GCstr* keepstr(std::string_view Value);
+   [[nodiscard]] GCstr* intern_empty_string();
 
 #if LJ_HASFFI
    void keepcdata(TValue* Value, GCcdata* Cdata);

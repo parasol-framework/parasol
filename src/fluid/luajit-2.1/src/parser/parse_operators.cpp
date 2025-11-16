@@ -353,29 +353,26 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
 
    BCReg reg = expr_toanyreg(fs, e);
-   ExpDesc nilv, falsev, zerov, emptyv;
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
    BCPos jmp_false_branch;
    BCPos check_nil, check_false, check_zero, check_empty;
 
    // Check for nil
-   expr_init(&nilv, ExpKind::Nil, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
    // Check for false
-   expr_init(&falsev, ExpKind::False, 0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
    // Check for zero
-   expr_init(&zerov, ExpKind::Num, 0);
-   setnumV(&zerov.u.nval, 0.0);
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
    // Check for empty string
-   expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = fs->ls->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -459,30 +456,27 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
             BCReg reg = expr_toanyreg(fs, e1);
-            ExpDesc nilv, falsev, zerov, emptyv;
+            ExpDesc nilv = make_nil_expr();
+            ExpDesc falsev = make_bool_expr(false);
+            ExpDesc zerov = make_num_expr(0.0);
+            ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
             BCPos skip;
             BCPos check_nil, check_false, check_zero, check_empty;
             BCReg dest_reg;
 
             // Check for nil
-            expr_init(&nilv, ExpKind::Nil, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
 
             // Check for false
-            expr_init(&falsev, ExpKind::False, 0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
 
             // Check for zero
-            expr_init(&zerov, ExpKind::Num, 0);
-            setnumV(&zerov.u.nval, 0.0);
             bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
 
             // Check for empty string
-            expr_init(&emptyv, ExpKind::Str, 0);
-            emptyv.u.sval = fs->ls->keepstr("");
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
