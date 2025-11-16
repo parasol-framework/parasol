@@ -208,7 +208,7 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k == ExpKind::Void or e->k == ExpKind::Jmp, "bad expr type %d", e->k);
+      lj_assertFS(e->k == ExpKind::Void or e->k == ExpKind::Jmp, "bad expr type %d", static_cast<int>(e->k));
       return;
    }
    bcemit_INS(fs, ins);
