@@ -324,12 +324,12 @@ unsigned char _BitScanReverse(unsigned long*, unsigned long);
 
 inline uint32_t lj_ffs(uint32_t x)
 {
-   uint32_t r; _BitScanForward(&r, x); return r;
+   unsigned long r; _BitScanForward(&r, x); return (uint32_t)r;
 }
 
 inline uint32_t lj_fls(uint32_t x)
 {
-   uint32_t r; _BitScanReverse(&r, x); return r;
+   unsigned long r; _BitScanReverse(&r, x); return (uint32_t)r;
 }
 #endif
 
