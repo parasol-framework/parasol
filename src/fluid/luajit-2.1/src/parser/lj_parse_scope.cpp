@@ -74,7 +74,7 @@ static void var_remove(LexState* ls, BCReg tolevel)
 //********************************************************************************************************************
 // Lookup local variable name.
 
-static BCReg var_lookup_local(FuncState* fs, GCstr* n)
+static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n)
 {
    int i;
    for (i = fs->nactvar - 1; i >= 0; i--) {
@@ -84,7 +84,7 @@ static BCReg var_lookup_local(FuncState* fs, GCstr* n)
       if (n == varname) [[likely]]
          return BCReg(i);
    }
-   return BCReg(-1);  // Not found.
+   return std::nullopt;  // Not found.
 }
 
 //********************************************************************************************************************
@@ -115,12 +115,12 @@ static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
 static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
 {
    if (fs) {
-      BCReg reg = var_lookup_local(fs, name);
-      if (int32_t(reg) >= 0) {  // Local in this function?
-         expr_init(e, VLOCAL, reg);
+      auto reg = var_lookup_local(fs, name);
+      if (reg.has_value()) {  // Local in this function?
+         expr_init(e, VLOCAL, reg.value());
          if (!first)
-            fscope_uvmark(fs, reg);  // Scope now has an upvalue.
-         return MSize(e->u.s.aux = uint32_t(fs->varmap[reg]));
+            fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
+         return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
       }
       else {
          MSize vidx = var_lookup_(fs->prev, name, e, 0);  // Var in outer func?

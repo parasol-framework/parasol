@@ -7,6 +7,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <concepts>

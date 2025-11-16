@@ -132,7 +132,7 @@ static int is_blank_identifier(GCstr* name);
 static void var_new(LexState* ls, BCReg n, GCstr* name);
 static void var_add(LexState* ls, BCReg nvars);
 static void var_remove(LexState* ls, BCReg tolevel);
-static BCReg var_lookup_local(FuncState* fs, GCstr* n);
+static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n);
 static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e);
 static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first);
 
