@@ -387,7 +387,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    expr_free(fs, e);
 
    // If all checks pass (value is truthy), load true
-   bcemit_AD(fs, BC_KPRI, dest, ExpKind::True);
+   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));
    jmp_false_branch = bcemit_jmp(fs);
 
    // False branch: patch all falsey jumps here and load false
@@ -396,7 +396,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    jmp_patch(fs, check_false, false_pos);
    jmp_patch(fs, check_zero, false_pos);
    jmp_patch(fs, check_empty, false_pos);
-   bcemit_AD(fs, BC_KPRI, dest, ExpKind::False);
+   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
 
    // Patch skip jump to after false load
    jmp_patch(fs, jmp_false_branch, fs->pc);

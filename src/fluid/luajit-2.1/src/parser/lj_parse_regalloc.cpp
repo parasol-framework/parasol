@@ -228,9 +228,9 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
       if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
          BCPos jval = (e->k == ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
-         jfalse = bcemit_AD(fs, BC_KPRI, reg, ExpKind::False);
+         jfalse = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
-         jtrue = bcemit_AD(fs, BC_KPRI, reg, ExpKind::True);
+         jtrue = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::True));
          jmp_tohere(fs, jval);
       }
       jend = fs->pc;

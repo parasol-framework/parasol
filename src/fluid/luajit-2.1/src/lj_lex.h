@@ -1,10 +1,7 @@
-/*
-** Lexical analyzer.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Lexical analyzer.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#ifndef _LJ_LEX_H
-#define _LJ_LEX_H
+#pragma once
 
 #include <stdarg.h>
 
@@ -95,6 +92,4 @@ LJ_FUNC void lj_lex_init(lua_State* L);
 #define lj_assertLS(c, ...)   (lj_assertG_(G(ls->L), (c), __VA_ARGS__))
 #else
 #define lj_assertLS(c, ...)   ((void)ls)
-#endif
-
 #endif
