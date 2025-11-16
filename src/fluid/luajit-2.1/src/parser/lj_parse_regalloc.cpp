@@ -1,10 +1,8 @@
-/*
-** Lua parser - Register allocation and bytecode emission.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Lua parser - Register allocation and bytecode emission.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 // Bump frame size.
 
@@ -12,8 +10,7 @@ static void bcreg_bump(FuncState* fs, BCReg n)
 {
    BCReg sz = fs->freereg + n;
    if (sz > fs->framesize) {
-      if (sz >= LJ_MAX_SLOTS)
-         err_syntax(fs->ls, LJ_ERR_XSLOTS);
+      if (sz >= LJ_MAX_SLOTS) err_syntax(fs->ls, LJ_ERR_XSLOTS);
       fs->framesize = uint8_t(sz);
    }
 }
@@ -157,6 +154,7 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
          break;
       }
    }
+
    // Emit new instruction or replace old instruction.
    bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, VKNIL) :
       BCINS_AD(BC_KNIL, from, from + n - 1));
@@ -199,8 +197,7 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
       goto noins;
    }
    else if (e->k == VNONRELOC) {
-      if (reg == e->u.s.info)
-         goto noins;
+      if (reg == e->u.s.info) goto noins;
       ins = BCINS_AD(BC_MOV, reg, e->u.s.info);
    }
    else if (e->k == VKNIL) {
@@ -388,6 +385,7 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 [[nodiscard]] static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
 {
    BCPos pc;
+   
    if (e->k == VRELOCABLE) {
       BCIns* ip = bcptr(fs, e);
       if (bc_op(*ip) == BC_NOT) {
@@ -395,10 +393,12 @@ static void invertcond(FuncState* fs, ExpDesc* e)
          return bcemit_jmp(fs);
       }
    }
+
    if (e->k != VNONRELOC) {
       bcreg_reserve(fs, 1);
       expr_toreg_nobranch(fs, e, fs->freereg - 1);
    }
+
    bcemit_AD(fs, cond ? BC_ISTC : BC_ISFC, NO_REG, e->u.s.info);
    pc = bcemit_jmp(fs);
    expr_free(fs, e);
@@ -428,10 +428,12 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
 {
    BCPos pc;
    expr_discharge(fs, e);
+   
    if (e->k == VKNIL or e->k == VKFALSE) pc = NO_JMP;  // Never jump.
    else if (e->k == VJMP) pc = e->u.s.info;
    else if (e->k == VKSTR or e->k == VKNUM or e->k == VKTRUE) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
+   
    jmp_append(fs, &e->t, pc);
    jmp_tohere(fs, e->f);
    e->f = NO_JMP;

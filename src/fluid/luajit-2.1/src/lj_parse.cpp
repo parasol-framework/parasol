@@ -1,10 +1,8 @@
-/*
-** Lua parser (source code -> bytecode).
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Lua parser (source code -> bytecode).
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lj_parse_c
 #define LUA_CORE
@@ -61,50 +59,19 @@ static int parse_stmt(LexState* ls)
 {
    BCLine line = ls->linenumber;
    switch (ls->tok) {
-   case TK_if:
-      parse_if(ls, line);
-      break;
-   case TK_while:
-      parse_while(ls, line);
-      break;
-   case TK_do:
-      lj_lex_next(ls);
-      parse_block(ls);
-      lex_match(ls, TK_end, TK_do, line);
-      break;
-   case TK_for:
-      parse_for(ls, line);
-      break;
-   case TK_repeat:
-      parse_repeat(ls, line);
-      break;
-   case TK_function:
-      parse_func(ls, line);
-      break;
-   case TK_defer:
-      parse_defer(ls);
-      break;
-   case TK_local:
-      lj_lex_next(ls);
-      parse_local(ls);
-      break;
-   case TK_return:
-      parse_return(ls);
-      return 1;  // Must be last.
-   case TK_continue:
-      lj_lex_next(ls);
-      parse_continue(ls);
-      break;
-   case TK_break:
-      lj_lex_next(ls);
-      parse_break(ls);
-      break;
-   case ';':
-      lj_lex_next(ls);
-      break;
-   default:
-      parse_call_assign(ls);
-      break;
+      case TK_if: parse_if(ls, line); break;
+      case TK_while: parse_while(ls, line); break;
+      case TK_do: lj_lex_next(ls); parse_block(ls); lex_match(ls, TK_end, TK_do, line); break;
+      case TK_for: parse_for(ls, line); break;
+      case TK_repeat: parse_repeat(ls, line); break;
+      case TK_function: parse_func(ls, line); break;
+      case TK_defer: parse_defer(ls); break;
+      case TK_local: lj_lex_next(ls); parse_local(ls); break;
+      case TK_return: parse_return(ls); return 1;  // Must be last.
+      case TK_continue: lj_lex_next(ls); parse_continue(ls); break;
+      case TK_break: lj_lex_next(ls); parse_break(ls); break;
+      case ';': lj_lex_next(ls); break;
+      default: parse_call_assign(ls); break;
    }
    return 0;
 }

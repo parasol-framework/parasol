@@ -1,40 +1,36 @@
-/*
-** Lua parser - Type definitions and structures.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Lua parser - Type definitions and structures.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-#ifndef _LJ_PARSE_TYPES_H
-#define _LJ_PARSE_TYPES_H
+#pragma once
 
 #include <array>
 #include <span>
 #include <string_view>
 #include <concepts>
 
-// -- Parser structures and definitions -----------------------------------
-
 // Expression kinds.
+
 typedef enum {
    // Constant expressions must be first and in this order:
    VKNIL,
    VKFALSE,
    VKTRUE,
-   VKSTR,   // sval = string value
-   VKNUM,   // nval = number value
+   VKSTR,      // sval = string value
+   VKNUM,      // nval = number value
    VKLAST = VKNUM,
-   VKCDATA,   // nval = cdata value, not treated as a constant expression
+   VKCDATA,    // nval = cdata value, not treated as a constant expression
    // Non-constant expressions follow:
-   VLOCAL,   // info = local register, aux = vstack index
-   VUPVAL,   // info = upvalue index, aux = vstack index
-   VGLOBAL,   // sval = string value
+   VLOCAL,     // info = local register, aux = vstack index
+   VUPVAL,     // info = upvalue index, aux = vstack index
+   VGLOBAL,    // sval = string value
    VINDEXED,   // info = table register, aux = index reg/byte/string const
-   VJMP,      // info = instruction PC
-   VRELOCABLE,   // info = instruction PC
-   VNONRELOC,   // info = result register
-   VCALL,   // info = instruction PC, aux = base
+   VJMP,       // info = instruction PC
+   VRELOCABLE, // info = instruction PC
+   VNONRELOC,  // info = result register
+   VCALL,      // info = instruction PC, aux = base
    VVOID
 } ExpKind;
 
@@ -65,14 +61,10 @@ inline constexpr uint8_t POSTFIX_INC_STMT_FLAG = 0x01u;
 // Internal flag indicating that ExpDesc.aux stores a RHS register for OPR_IF_EMPTY.
 inline constexpr uint8_t EXP_HAS_RHS_REG_FLAG = 0x02u;
 
-/*
-** Expression helpers that previously relied on flag bits within ExpDesc.aux now
-** store their metadata in ExpDesc.flags. The aux field can therefore be used
-** directly for temporary payloads (e.g., register numbers) without additional
-** masking.
-*/
-
-// -- Expression Query Functions -----------------------------------------------
+// Expression helpers that previously relied on flag bits within ExpDesc.aux now
+// store their metadata in ExpDesc.flags. The aux field can therefore be used
+// directly for temporary payloads (e.g., register numbers) without additional
+// masking.
 
 // Expression query functions.
 [[nodiscard]] static inline bool expr_hasjump(const ExpDesc* e) {
@@ -125,11 +117,12 @@ static LJ_AINLINE int expr_numiszero(ExpDesc* e)
 }
 
 // Per-function linked list of scope blocks.
+
 typedef struct FuncScope {
-   struct FuncScope* prev;   // Link to outer scope.
-   MSize vstart;         // Start of block-local variables.
-   uint8_t nactvar;      // Number of active vars outside the scope.
-   uint8_t flags;      // Scope flags.
+   struct FuncScope* prev; // Link to outer scope.
+   MSize vstart;           // Start of block-local variables.
+   uint8_t nactvar;        // Number of active vars outside the scope.
+   uint8_t flags;          // Scope flags.
 } FuncScope;
 
 inline constexpr uint8_t FSCOPE_LOOP = 0x01;      // Scope is a (breakable) loop.
@@ -155,25 +148,25 @@ inline constexpr uint8_t VSTACK_DEFERARG = 0x10;     // Deferred handler argumen
 
 // Per-function state.
 typedef struct FuncState {
-   GCtab* kt;         // Hash table for constants.
-   LexState* ls;         // Lexer state.
-   lua_State* L;         // Lua state.
+   GCtab* kt;          // Hash table for constants.
+   LexState* ls;       // Lexer state.
+   lua_State* L;       // Lua state.
    FuncScope* bl;      // Current scope.
-   struct FuncState* prev;   // Enclosing function.
-   BCPos pc;         // Next bytecode position.
-   BCPos lasttarget;      // Bytecode position of last jump target.
-   BCPos jpc;         // Pending jump list to next bytecode.
+   struct FuncState* prev; // Enclosing function.
+   BCPos pc;           // Next bytecode position.
+   BCPos lasttarget;   // Bytecode position of last jump target.
+   BCPos jpc;          // Pending jump list to next bytecode.
    BCReg freereg;      // First free register.
    BCReg nactvar;      // Number of active local variables.
-   BCReg nkn, nkgc;      // Number of lua_Number/GCobj constants
-   BCLine linedefined;      // First line of the function definition.
-   BCInsLine* bcbase;      // Base of bytecode stack.
-   BCPos bclim;         // Limit of bytecode stack.
-   MSize vbase;         // Base of variable stack for this function.
+   BCReg nkn, nkgc;    // Number of lua_Number/GCobj constants
+   BCLine linedefined; // First line of the function definition.
+   BCInsLine* bcbase;  // Base of bytecode stack.
+   BCPos bclim;        // Limit of bytecode stack.
+   MSize vbase;        // Base of variable stack for this function.
    uint8_t flags;      // Prototype flags.
-   uint8_t numparams;      // Number of parameters.
-   uint8_t framesize;      // Fixed frame size.
-   uint8_t nuv;         // Number of upvalues
+   uint8_t numparams;  // Number of parameters.
+   uint8_t framesize;  // Fixed frame size.
+   uint8_t nuv;        // Number of upvalues
    std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
@@ -210,9 +203,8 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 #define lj_assertFS(c, ...)   ((void)fs)
 #endif
 
-// -- Constant and utility functions --------------------------------------
-
 // Return bytecode encoding for primitive constant.
+
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
    lj_assertX(e->k <= VKTRUE, "bad constant primitive");
    return e->k;
@@ -230,5 +222,3 @@ LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
 #define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)
 #define checklimitgt(fs, v, l, m)   if ((v) > (l)) err_limit(fs, l, m)
 #define checkcond(ls, c, em)      { if (not (c)) err_syntax(ls, em); }
-
-#endif
