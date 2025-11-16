@@ -317,8 +317,8 @@ static LJ_AINLINE uint32_t lj_fls(uint32_t x)
    return _CountLeadingZeros(x) ^ 31;
 }
 #else
-unsigned char _BitScanForward(uint32_t *, uint32_t);
-unsigned char _BitScanReverse(uint32_t *, uint32_t);
+unsigned char _BitScanForward(unsigned long*, unsigned long);
+unsigned char _BitScanReverse(unsigned long*, unsigned long);
 #pragma intrinsic(_BitScanForward)
 #pragma intrinsic(_BitScanReverse)
 
