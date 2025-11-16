@@ -2,30 +2,28 @@
 
 // List of LHS variables.
 
-struct LHSVarList {
-   ExpDesc var;			// LHS variable.
-   LHSVarList* prev;	   // Link to previous LHS variable.
-};
+#include <span>
+#include <vector>
 
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
 
-void LexState::assign_hazard(LHSVarList* Left, const ExpDesc* Var)
+void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
 {
    FuncState* fs = this->fs;
-   BCReg reg = Var->u.s.info;  // Check against this variable.
+   BCReg reg = Var.u.s.info;  // Check against this variable.
    BCReg tmp = fs->freereg;  // Rename to this temp. register (if needed).
    int hazard = 0;
 
-   for (; Left; Left = Left->prev) {
-      if (Left->var.k IS ExpKind::Indexed) {
-         if (Left->var.u.s.info IS reg) {  // t[i], t = 1, 2
+   for (auto& entry : Left) {
+      if (entry.k IS ExpKind::Indexed) {
+         if (entry.u.s.info IS reg) {  // t[i], t = 1, 2
             hazard = 1;
-            Left->var.u.s.info = tmp;
+            entry.u.s.info = tmp;
          }
-         if (Left->var.u.s.aux IS reg) {  // t[i], i = 1, 2
+         if (entry.u.s.aux IS reg) {  // t[i], i = 1, 2
             hazard = 1;
-            Left->var.u.s.aux = tmp;
+            entry.u.s.aux = tmp;
          }
       }
    }
@@ -63,25 +61,25 @@ void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc* e)
 
 //********************************************************************************************************************
 
-int LexState::assign_if_empty(LHSVarList* lh)
+int LexState::assign_if_empty(ExpDesc* lh)
 {
    FuncState* fs = this->fs;
    ExpDesc lhv, lhs_eval, rh;
    ExpDesc nilv, falsev, zerov, emptyv;
-   BCReg freg_base, lhs_reg;
+   BCReg lhs_reg;
    BCPos check_nil, check_false, check_zero, check_empty;
    BCPos skip_assign, assign_pos;
    BCReg nexps;
 
-   lhv = lh->var;
+   lhv = *lh;
 
-   checkcond(this, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
 
    this->next();
 
-   freg_base = fs->freereg;
+   RegisterGuard register_guard(fs);
 
-   if (lh->var.k IS ExpKind::Indexed) {
+   if (lh->k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;
 
@@ -93,13 +91,13 @@ int LexState::assign_if_empty(LHSVarList* lh)
          new_idx = fs->freereg;
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
-         lh->var.u.s.info = new_base;
-         lh->var.u.s.aux = new_idx;
+         lh->u.s.info = new_base;
+         lh->u.s.aux = new_idx;
       }
-      else lh->var.u.s.info = new_base;
+      else lh->u.s.info = new_base;
    }
 
-   lhs_eval = lh->var;
+   lhs_eval = *lh;
    expr_discharge(fs, &lhs_eval);
    lhs_reg = expr_toanyreg(fs, &lhs_eval);
 
@@ -133,13 +131,12 @@ int LexState::assign_if_empty(LHSVarList* lh)
 
    bcemit_store(fs, &lhv, &rh);
 
-   jmp_patch(fs, check_nil, assign_pos);
-   jmp_patch(fs, check_false, assign_pos);
-   jmp_patch(fs, check_zero, assign_pos);
-   jmp_patch(fs, check_empty, assign_pos);
-   jmp_patch(fs, skip_assign, fs->pc);
+   JumpListView(fs, check_nil).patch_to(assign_pos);
+   JumpListView(fs, check_false).patch_to(assign_pos);
+   JumpListView(fs, check_zero).patch_to(assign_pos);
+   JumpListView(fs, check_empty).patch_to(assign_pos);
+   JumpListView(fs, skip_assign).patch_to(fs->pc);
 
-   fs->freereg = freg_base;
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
@@ -151,7 +148,7 @@ int LexState::assign_if_empty(LHSVarList* lh)
 
 //********************************************************************************************************************
 
-int LexState::assign_compound(LHSVarList* lh, LexToken opType)
+int LexState::assign_compound(ExpDesc* lh, LexToken opType)
 {
    if (opType IS TK_cif_empty) return this->assign_if_empty(lh);
 
@@ -159,11 +156,10 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
    ExpDesc lhv, infix, rh;
    int32_t nexps;
    BinOpr op;
-   BCReg freg_base;
 
-   lhv = lh->var;
+   lhv = *lh;
 
-   checkcond(this, vkisvar(lh->var.k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
 
    switch (opType) {
    case TK_cadd: op = OPR_ADD; break;
@@ -182,8 +178,8 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
    // to the top of the stack and discharging using the duplicates. This retains
    // the original registers for the final store and maintains LIFO free order.
 
-   freg_base = fs->freereg;
-   if (lh->var.k IS ExpKind::Indexed) {
+   RegisterGuard register_guard(fs);
+   if (lh->k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;  // Keep originals for the store.
 
@@ -198,12 +194,12 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
          bcreg_reserve(fs, 1);
          // Discharge using the duplicates; keep lhv pointing to originals.
-         lh->var.u.s.info = new_base;
-         lh->var.u.s.aux = new_idx;
+         lh->u.s.info = new_base;
+         lh->u.s.aux = new_idx;
       }
       else {
          // For string/byte keys, only the base needs duplicating.
-         lh->var.u.s.info = new_base;
+         lh->u.s.info = new_base;
          // aux remains an encoded constant.
       }
    }
@@ -212,7 +208,7 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
    // maintain BC_CAT stack adjacency and LIFO freeing semantics.
 
    if (op IS OPR_CONCAT) {
-      infix = lh->var;
+      infix = *lh;
       bcemit_binop_left(fs, op, &infix);
       nexps = this->expr_list(&rh);
       checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
@@ -221,10 +217,10 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
 
       if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR))
-         expr_tonextreg(fs, &lh->var);
+         expr_tonextreg(fs, lh);
       nexps = this->expr_list(&rh);
       checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
-      infix = lh->var;
+      infix = *lh;
       bcemit_binop_left(fs, op, &infix);
    }
    bcemit_binop(fs, op, &infix, &rh);
@@ -232,7 +228,6 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
 
    // Drop any RHS temporaries and release original base/index in LIFO order.
 
-   fs->freereg = freg_base;
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) bcreg_free(fs, BCReg(orig_aux));
@@ -244,43 +239,65 @@ int LexState::assign_compound(LHSVarList* lh, LexToken opType)
 //********************************************************************************************************************
 // Recursively parse assignment statement.
 
-void LexState::parse_assignment(LHSVarList* lh, BCReg nvars)
+void LexState::parse_assignment(ExpDesc* first)
 {
-   ExpDesc e;
-   checkcond(this, ExpKind::Local <= lh->var.k and lh->var.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
-   if (this->lex_opt(',')) {  // Collect LHS list and recurse upwards.
-      LHSVarList vl;
-      vl.prev = lh;
-      this->expr_primary(&vl.var);
-      if (vl.var.k IS ExpKind::Local)
-         this->assign_hazard(lh, &vl.var);
-      checklimit(this->fs, this->level + nvars, LJ_MAX_XLEVEL, "variable names");
-      this->parse_assignment(&vl, nvars + 1);
-   }
-   else {  // Parse RHS.
-      BCReg nexps;
-      this->lex_check('=');
-      nexps = this->expr_list(&e);
-      if (nexps IS nvars) {
-         if (e.k IS ExpKind::Call) {
-            if (bc_op(*bcptr(this->fs, &e)) IS BC_VARG) {  // Vararg assignment.
-               this->fs->freereg--;
-               e.k = ExpKind::Relocable;
-            }
-            else {  // Multiple call results.
-               e.u.s.info = e.u.s.aux;  // Base of call is not relocatable.
-               e.k = ExpKind::NonReloc;
-            }
-         }
-         bcemit_store(this->fs, &lh->var, &e);
-         return;
+   std::vector<ExpDesc> lhs_vars;
+   lhs_vars.reserve(4);
+   lhs_vars.push_back(*first);
+   BCReg nvars = 1;
+
+   checkcond(this, ExpKind::Local <= first->k and first->k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
+
+   while (this->lex_opt(',')) {
+      ExpDesc next;
+      this->expr_primary(&next);
+      checkcond(this, ExpKind::Local <= next.k and next.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
+      if (next.k IS ExpKind::Local) {
+         auto existing = std::span(lhs_vars.data(), lhs_vars.size());
+         this->assign_hazard(existing, next);
       }
-      this->assign_adjust(nvars, nexps, &e);
+      lhs_vars.push_back(next);
+      nvars++;
+      checklimit(this->fs, this->level + nvars - 1, LJ_MAX_XLEVEL, "variable names");
    }
 
-   // Assign RHS to LHS and recurse downwards.
-   expr_init(&e, ExpKind::NonReloc, this->fs->freereg - 1);
-   bcemit_store(this->fs, &lh->var, &e);
+   this->lex_check('=');
+
+   ExpDesc e;
+   BCReg nexps = this->expr_list(&e);
+
+   auto assign_from_stack = [&](std::vector<ExpDesc>::reverse_iterator first_it,
+      std::vector<ExpDesc>::reverse_iterator last_it)
+   {
+      for (; first_it != last_it; ++first_it) {
+         ExpDesc stack_value;
+         expr_init(&stack_value, ExpKind::NonReloc, this->fs->freereg - 1);
+         bcemit_store(this->fs, &(*first_it), &stack_value);
+      }
+   };
+
+   if (nexps IS nvars) {
+      if (e.k IS ExpKind::Call) {
+         if (bc_op(*bcptr(this->fs, &e)) IS BC_VARG) {
+            this->fs->freereg--;
+            e.k = ExpKind::Relocable;
+         }
+         else {
+            e.u.s.info = e.u.s.aux;
+            e.k = ExpKind::NonReloc;
+         }
+      }
+      bcemit_store(this->fs, &lhs_vars.back(), &e);
+      if (lhs_vars.size() > 1) {
+         auto begin = lhs_vars.rbegin();
+         ++begin;
+         assign_from_stack(begin, lhs_vars.rend());
+      }
+      return;
+   }
+
+   this->assign_adjust(nvars, nexps, &e);
+   assign_from_stack(lhs_vars.rbegin(), lhs_vars.rend());
 }
 
 //********************************************************************************************************************
@@ -289,25 +306,23 @@ void LexState::parse_assignment(LHSVarList* lh, BCReg nvars)
 void LexState::parse_call_assign()
 {
    FuncState* fs = this->fs;
-   LHSVarList vl;
-   this->expr_primary(&vl.var);
-   if (vl.var.k IS ExpKind::NonReloc and (vl.var.flags & POSTFIX_INC_STMT_FLAG))
+   ExpDesc lhs;
+   this->expr_primary(&lhs);
+   if (lhs.k IS ExpKind::NonReloc and expr_has_flag(&lhs, ExprFlag::PostfixIncStmt))
       return;
-   if (vl.var.k IS ExpKind::Call) {  // Function call statement.
-      setbc_b(bcptr(fs, &vl.var), 1);  // No results.
+   if (lhs.k IS ExpKind::Call) {  // Function call statement.
+      setbc_b(bcptr(fs, &lhs), 1);  // No results.
    }
    else if (this->tok IS TK_cadd or this->tok IS TK_csub or this->tok IS TK_cmul or
       this->tok IS TK_cdiv or this->tok IS TK_cmod or this->tok IS TK_cconcat or
       this->tok IS TK_cif_empty) {
-      vl.prev = nullptr;
-      this->assign_compound(&vl, this->tok);
+      this->assign_compound(&lhs, this->tok);
    }
    else if (this->tok IS ';') {
       // Postfix increment (++) handled in expr_primary.
    }
    else {  // Start of an assignment.
-      vl.prev = nullptr;
-      this->parse_assignment(&vl, 1);
+      this->parse_assignment(&lhs);
    }
 }
 
@@ -327,7 +342,7 @@ void LexState::parse_local()
       bcreg_reserve(fs, 1);
       this->var_add(1);
       this->parse_body(&b, 0, this->linenumber);
-      // bcemit_store(fs, &v, &b) without setting VSTACK_VAR_RW.
+      // bcemit_store(fs, &v, &b) without setting VarInfoFlag::VarReadWrite.
       expr_free(fs, &b);
       expr_toreg(fs, &b, v.u.s.info);
       // The upvalue is in scope, but the local is only valid after the store.
@@ -401,7 +416,7 @@ void LexState::parse_defer()
    bcreg_reserve(fs, 1);
    this->var_add(1);
    vi = &var_get(this, fs, fs->nactvar - 1);
-   vi->info |= VSTACK_DEFER;
+   vi->info |= VarInfoFlag::Defer;
 
    this->parse_body_defer(&func, line);
    expr_toreg(fs, &func, reg);
@@ -425,7 +440,7 @@ void LexState::parse_defer()
          this->var_add(nargs);
          for (i = 0; i < nargs; i++) {
             VarInfo* argi = &var_get(this, fs, fs->nactvar - nargs + i);
-            argi->info |= VSTACK_DEFERARG;
+            argi->info |= VarInfoFlag::DeferArg;
          }
       }
    }
@@ -525,13 +540,13 @@ void LexState::parse_continue()
 
    this->next();  // Skip 'continue'.
 
-   while (loop and !(loop->flags & FSCOPE_LOOP))
+   while (loop and !has_flag(loop->flags, FuncScopeFlag::Loop))
       loop = loop->prev;
    this->assert_condition(loop != nullptr, "continue outside loop");
 
    execute_defers(fs, loop->nactvar);
-   fs->bl->flags |= FSCOPE_CONTINUE;
-   this->gola_new(JUMP_CONTINUE, VSTACK_JUMP, bcemit_jmp(fs));
+   fs->bl->flags |= FuncScopeFlag::Continue;
+   this->gola_new(JUMP_CONTINUE, VarInfoFlag::Jump, bcemit_jmp(fs));
 }
 
 // Parse 'break' statement.
@@ -542,13 +557,13 @@ void LexState::parse_break()
 
    this->next();  // Skip 'break'.
 
-   while (loop and !(loop->flags & FSCOPE_LOOP))
+   while (loop and !has_flag(loop->flags, FuncScopeFlag::Loop))
       loop = loop->prev;
    this->assert_condition(loop != nullptr, "break outside loop");
 
    execute_defers(fs, loop->nactvar);
-   fs->bl->flags |= FSCOPE_BREAK;
-   this->gola_new(JUMP_BREAK, VSTACK_JUMP, bcemit_jmp(fs));
+   fs->bl->flags |= FuncScopeFlag::Break;
+   this->gola_new(JUMP_BREAK, VarInfoFlag::Jump, bcemit_jmp(fs));
 }
 
 //********************************************************************************************************************
@@ -560,9 +575,8 @@ void LexState::parse_block()
 {
    FuncState* fs = this->fs;
    FuncScope bl;
-   fscope_begin(fs, &bl, 0);
+   ScopeGuard scope_guard(fs, &bl, FuncScopeFlag::None);
    this->parse_chunk();
-   fscope_end(fs);
 }
 
 //********************************************************************************************************************
@@ -572,20 +586,21 @@ void LexState::parse_while(BCLine line)
 {
    FuncState* fs = this->fs;
    BCPos start, loop, condexit;
-   FuncScope bl;
    this->next();  // Skip 'while'.
    start = fs->lasttarget = fs->pc;
    condexit = this->expr_cond();
-   fscope_begin(fs, &bl, FSCOPE_LOOP);
-   this->lex_check(TK_do);
-   loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-   this->parse_block();
-   jmp_patch(fs, bcemit_jmp(fs), start);
-   this->lex_match(TK_end, TK_while, line);
-   fscope_loop_continue(fs, start);
-   fscope_end(fs);
-   jmp_tohere(fs, condexit);
-   jmp_patchins(fs, loop, fs->pc);
+   FuncScope bl;
+   {
+      ScopeGuard loop_scope(fs, &bl, FuncScopeFlag::Loop);
+      this->lex_check(TK_do);
+      loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+      this->parse_block();
+      JumpListView(fs, bcemit_jmp(fs)).patch_to(start);
+      this->lex_match(TK_end, TK_while, line);
+      fscope_loop_continue(fs, start);
+   }
+   JumpListView(fs, condexit).patch_to_here();
+   JumpListView(fs, loop).patch_head(fs->pc);
 }
 
 //********************************************************************************************************************
@@ -597,27 +612,26 @@ void LexState::parse_repeat(BCLine line)
    BCPos loop = fs->lasttarget = fs->pc;
    BCPos condexit, iter;
    FuncScope bl1, bl2;
-   fscope_begin(fs, &bl1, FSCOPE_LOOP);  // Breakable loop scope.
-   fscope_begin(fs, &bl2, 0);  // Inner scope.
-   this->next();  // Skip 'repeat'.
-   bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-   this->parse_chunk();
-   this->lex_match(TK_until, TK_repeat, line);
-   iter = fs->pc;
-   condexit = this->expr_cond();  // Parse condition (still inside inner scope).
-   if (!(bl2.flags & FSCOPE_UPVAL)) {  // No upvalues? Just end inner scope.
-      fscope_end(fs);
+   ScopeGuard loop_scope(fs, &bl1, FuncScopeFlag::Loop);  // Breakable loop scope.
+   bool inner_has_upvals = false;
+   {
+      ScopeGuard inner_scope(fs, &bl2, FuncScopeFlag::None);  // Inner scope.
+      this->next();  // Skip 'repeat'.
+      bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+      this->parse_chunk();
+      this->lex_match(TK_until, TK_repeat, line);
+      iter = fs->pc;
+      condexit = this->expr_cond();  // Parse condition (still inside inner scope).
+      inner_has_upvals = has_flag(bl2.flags, FuncScopeFlag::Upvalue);
+      if (inner_has_upvals) {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
+         this->parse_break();  // Break from loop and close upvalues.
+         JumpListView(fs, condexit).patch_to_here();
+      }
    }
-   else {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
-      this->parse_break();  // Break from loop and close upvalues.
-      jmp_tohere(fs, condexit);
-      fscope_end(fs);  // End inner scope and close upvalues.
-      condexit = bcemit_jmp(fs);
-   }
-   jmp_patch(fs, condexit, loop);  // Jump backwards if !cond.
-   jmp_patchins(fs, loop, fs->pc);
+   if (inner_has_upvals) condexit = bcemit_jmp(fs);
+   JumpListView(fs, condexit).patch_to(loop);  // Jump backwards if !cond.
+   JumpListView(fs, loop).patch_head(fs->pc);
    fscope_loop_continue(fs, iter); // continue statements jump to condexit.
-   fscope_end(fs);  // End loop scope.
 }
 
 //********************************************************************************************************************
@@ -649,16 +663,17 @@ void LexState::parse_for_num(GCstr* varname, BCLine line)
    this->var_add(3);  // Hidden control variables.
    this->lex_check(TK_do);
    loop = bcemit_AJ(fs, BC_FORI, base, NO_JMP);
-   fscope_begin(fs, &bl, 0);  // Scope for visible variables.
-   this->var_add(1);
-   bcreg_reserve(fs, 1);
-   this->parse_block();
-   fscope_end(fs);
+   {
+      ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
+      this->var_add(1);
+      bcreg_reserve(fs, 1);
+      this->parse_block();
+   }
    // Perform loop inversion. Loop control instructions are at the end.
    loopend = bcemit_AJ(fs, BC_FORL, base, NO_JMP);
    fs->bcbase[loopend].line = line;  // Fix line for control ins.
-   jmp_patchins(fs, loopend, loop + 1);
-   jmp_patchins(fs, loop, fs->pc);
+   JumpListView(fs, loopend).patch_head(loop + 1);
+   JumpListView(fs, loop).patch_head(fs->pc);
    fscope_loop_continue(fs, loopend); // continue statements jump to loopend.
 }
 
@@ -727,18 +742,19 @@ void LexState::parse_for_iter(GCstr* indexname)
    this->var_add(3);  // Hidden control variables.
    this->lex_check(TK_do);
    loop = bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP);
-   fscope_begin(fs, &bl, 0);  // Scope for visible variables.
-   this->var_add(nvars - 3);
-   bcreg_reserve(fs, nvars - 3);
-   this->parse_block();
-   fscope_end(fs);
+   {
+      ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
+      this->var_add(nvars - 3);
+      bcreg_reserve(fs, nvars - 3);
+      this->parse_block();
+   }
    // Perform loop inversion. Loop control instructions are at the end.
-   jmp_patchins(fs, loop, fs->pc);
+   JumpListView(fs, loop).patch_head(fs->pc);
    iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 2 + 1);
    loopend = bcemit_AJ(fs, BC_ITERL, base, NO_JMP);
    fs->bcbase[loopend - 1].line = line;  // Fix line for control ins.
    fs->bcbase[loopend].line = line;
-   jmp_patchins(fs, loopend, loop + 1);
+   JumpListView(fs, loopend).patch_head(loop + 1);
    fscope_loop_continue(fs, iter); // continue statements jump to iter.
 }
 
@@ -750,14 +766,13 @@ void LexState::parse_for(BCLine line)
    FuncState* fs = this->fs;
    GCstr* varname;
    FuncScope bl;
-   fscope_begin(fs, &bl, FSCOPE_LOOP);
+   ScopeGuard loop_scope(fs, &bl, FuncScopeFlag::Loop);
    this->next();  // Skip 'for'.
    varname = this->lex_str();  // Get first variable name.
    if (this->tok IS '=') this->parse_for_num(varname, line);
    else if (this->tok IS ',' or this->tok IS TK_in) this->parse_for_iter(varname);
    else this->err_syntax(LJ_ERR_XFOR);
    this->lex_match(TK_end, TK_for, line);
-   fscope_end(fs);  // Resolve break list.
 }
 
 //********************************************************************************************************************
@@ -783,20 +798,20 @@ void LexState::parse_if(BCLine line)
    BCPos escapelist = NO_JMP;
    flist = this->parse_then();
    while (this->tok IS TK_elseif) {  // Parse multiple 'elseif' blocks.
-      jmp_append(fs, &escapelist, bcemit_jmp(fs));
-      jmp_tohere(fs, flist);
+      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
+      JumpListView(fs, flist).patch_to_here();
       flist = this->parse_then();
    }
 
    if (this->tok IS TK_else) {  // Parse optional 'else' block.
-      jmp_append(fs, &escapelist, bcemit_jmp(fs));
-      jmp_tohere(fs, flist);
+      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
+      JumpListView(fs, flist).patch_to_here();
       this->next();  // Skip 'else'.
       this->parse_block();
    }
-   else jmp_append(fs, &escapelist, flist);
+   else escapelist = JumpListView(fs, escapelist).append(flist);
 
-   jmp_tohere(fs, escapelist);
+   JumpListView(fs, escapelist).patch_to_here();
    this->lex_match(TK_end, TK_if, line);
 }
 

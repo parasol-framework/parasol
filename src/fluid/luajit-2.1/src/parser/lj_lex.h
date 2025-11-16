@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <string_view>
 #include <optional>
+#include <span>
 
 #include "lj_obj.h"
 #include "lj_err.h"
@@ -46,19 +47,20 @@ typedef struct BCInsLine {
 
 // Info for local variables. Only used during bytecode generation.
 
+enum class VarInfoFlag : uint8_t;
+
 typedef struct VarInfo {
    GCRef name;        //  Local variable name.
    BCPos startpc;     //  First point where the local variable is active.
    BCPos endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
-   uint8_t info;      //  Variable info.
+   VarInfoFlag info;  //  Variable info flags.
 } VarInfo;
 
 // Forward declarations for parser scope helpers.
 
 struct FuncScope;
 struct ExpDesc;
-struct LHSVarList;
 enum BinOpr : int;
 
 void lj_reserve_words(lua_State *);
@@ -119,7 +121,7 @@ public:
    MSize var_lookup(ExpDesc* Expression);
 
    // Goto and label management
-   MSize gola_new(int JumpType, uint8_t Info, BCPos Position);
+   MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
    void gola_patch(VarInfo* GotoInfo, VarInfo* LabelInfo);
    void gola_close(VarInfo* GotoInfo);
    void gola_resolve(FuncScope* Scope, MSize Index);
@@ -156,11 +158,11 @@ public:
    bool should_emit_presence();
 
    // Statement parsing
-   void assign_hazard(LHSVarList* Left, const ExpDesc* Var);
+   void assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var);
    void assign_adjust(BCReg VariableCount, BCReg ExpressionCount, ExpDesc* Expression);
-   int assign_if_empty(LHSVarList* Variables);
-   int assign_compound(LHSVarList* Variables, LexToken OperatorType);
-   void parse_assignment(LHSVarList* Variables, BCReg VariableCount);
+   int assign_if_empty(ExpDesc* Variables);
+   int assign_compound(ExpDesc* Variables, LexToken OperatorType);
+   void parse_assignment(ExpDesc* FirstVariable);
    void parse_call_assign();
    void parse_local();
    void parse_defer();

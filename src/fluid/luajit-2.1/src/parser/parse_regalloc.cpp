@@ -50,7 +50,7 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
 {
    BCPos pc = fs->pc;
    LexState* ls = fs->ls;
-   jmp_patchval(fs, fs->jpc, pc, NO_REG, pc);
+   JumpListView(fs, fs->jpc).patch_with_value(pc, NO_REG, pc);
    fs->jpc = NO_JMP;
    if (pc >= fs->bclim) [[unlikely]] {
       ptrdiff_t base = fs->bcbase - ls->bcstack;
@@ -223,20 +223,20 @@ noins:
 static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    expr_toreg_nobranch(fs, e, reg);
-   if (e->k == ExpKind::Jmp) jmp_append(fs, &e->t, e->u.s.info);  // Add it to the true jump list.
+   if (e->k IS ExpKind::Jmp) e->t = JumpListView(fs, e->t).append(e->u.s.info);  // Add it to the true jump list.
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
-      if (jmp_novalue(fs, e->t) or jmp_novalue(fs, e->f)) {
-         BCPos jval = (e->k == ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
+      if (JumpListView(fs, e->t).produces_values() or JumpListView(fs, e->f).produces_values()) {
+         BCPos jval = (e->k IS ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
          jfalse = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
          jtrue = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::True));
-         jmp_tohere(fs, jval);
+         JumpListView(fs, jval).patch_to_here();
       }
       jend = fs->pc;
       fs->lasttarget = jend;
-      jmp_patchval(fs, e->f, jend, reg, jfalse);
-      jmp_patchval(fs, e->t, jend, reg, jtrue);
+      JumpListView(fs, e->f).patch_with_value(jend, reg, jfalse);
+      JumpListView(fs, e->t).patch_with_value(jend, reg, jtrue);
    }
    e->f = e->t = NO_JMP;
    e->u.s.info = reg;
@@ -289,13 +289,13 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 {
    BCIns ins;
    if (var->k == ExpKind::Local) {
-      fs->ls->vstack[var->u.s.aux].info |= VSTACK_VAR_RW;
+      fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
       expr_free(fs, e);
       expr_toreg(fs, e, var->u.s.info);
       return;
    }
    else if (var->k == ExpKind::Upval) {
-      fs->ls->vstack[var->u.s.aux].info |= VSTACK_VAR_RW;
+      fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
       expr_toval(fs, e);
       if (e->k <= ExpKind::True) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
       else if (e->k == ExpKind::Str) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
@@ -366,7 +366,7 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
       fs->lasttarget = j + 1;
    }
    else j = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-   jmp_append(fs, &j, jpc);
+   j = JumpListView(fs, j).append(jpc);
    return j;
 }
 
@@ -416,8 +416,8 @@ static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
    else if (e->k == ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
    else if (e->k == ExpKind::False or e->k == ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 0);
-   jmp_append(fs, &e->f, pc);
-   jmp_tohere(fs, e->t);
+   e->f = JumpListView(fs, e->f).append(pc);
+   JumpListView(fs, e->t).patch_to_here();
    e->t = NO_JMP;
 }
 
@@ -434,7 +434,7 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
    else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
 
-   jmp_append(fs, &e->t, pc);
-   jmp_tohere(fs, e->f);
+   e->t = JumpListView(fs, e->t).append(pc);
+   JumpListView(fs, e->f).patch_to_here();
    e->f = NO_JMP;
 }

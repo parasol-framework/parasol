@@ -127,7 +127,7 @@ typedef struct ASMState {
 // Sparse limit checks using a red zone before the actual limit.
 #define MCLIM_REDZONE   64
 
-static LJ_NORET LJ_NOINLINE void asm_mclimit(ASMState* as)
+[[noreturn]] static LJ_NOINLINE void asm_mclimit(ASMState* as)
 {
    lj_mcode_limiterr(as->J, (size_t)(as->mctop - as->mcp + 4 * MCLIM_REDZONE));
 }

@@ -58,7 +58,7 @@ void LexState::var_add(BCReg nvars)
       VarInfo* v = &var_get(this, fs, nactvar);
       v->startpc = fs->pc;
       v->slot = nactvar++;
-      v->info = 0;
+      v->info = VarInfoFlag::None;
    }
    fs->nactvar = nactvar;
 }
@@ -151,7 +151,7 @@ MSize LexState::var_lookup(ExpDesc* e)
 
 // Add a new jump or target
 
-MSize LexState::gola_new(int jump_type, uint8_t info, BCPos pc)
+MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
 {
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
@@ -172,16 +172,16 @@ MSize LexState::gola_new(int jump_type, uint8_t info, BCPos pc)
 //********************************************************************************************************************
 // Constexpr helper functions for goto/label flag checking.
 
-[[nodiscard]] static constexpr bool gola_is_jump(const VarInfo* v) {
-   return v->info & VSTACK_JUMP;
+[[nodiscard]] static inline bool gola_is_jump(const VarInfo* v) {
+   return has_flag(v->info, VarInfoFlag::Jump);
 }
 
-[[nodiscard]] static constexpr bool gola_is_jump_target(const VarInfo* v) {
-   return v->info & VSTACK_JUMP_TARGET;
+[[nodiscard]] static inline bool gola_is_jump_target(const VarInfo* v) {
+   return has_flag(v->info, VarInfoFlag::JumpTarget);
 }
 
-[[nodiscard]] static constexpr bool gola_is_jump_or_target(const VarInfo* v) {
-   return v->info & (VSTACK_JUMP | VSTACK_JUMP_TARGET);
+[[nodiscard]] static inline bool gola_is_jump_or_target(const VarInfo* v) {
+   return has_flag(v->info, VarInfoFlag::Jump) or has_flag(v->info, VarInfoFlag::JumpTarget);
 }
 
 //********************************************************************************************************************
@@ -193,7 +193,7 @@ void LexState::gola_patch(VarInfo* vg, VarInfo* vl)
    BCPos pc = vg->startpc;
    setgcrefnull(vg->name);  // Invalidate pending goto.
    setbc_a(&fs->bcbase[pc].ins, vl->slot);
-   jmp_patch(fs, pc, vl->startpc);
+   JumpListView(fs, pc).patch_to(vl->startpc);
 }
 
 //********************************************************************************************************************
@@ -205,11 +205,11 @@ void LexState::gola_close(VarInfo* vg)
    BCPos pc = vg->startpc;
    BCIns* ip = &fs->bcbase[pc].ins;
    lj_assertFS(gola_is_jump(vg), "expected goto");
-   lj_assertFS(bc_op(*ip) == BC_JMP or bc_op(*ip) == BC_UCLO, "bad bytecode op %d", bc_op(*ip));
+   lj_assertFS(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
-   if (bc_op(*ip) == BC_JMP) {
-      BCPos next = jmp_next(fs, pc);
-      if (next != NO_JMP) jmp_patch(fs, next, pc);  // Jump to UCLO.
+   if (bc_op(*ip) IS BC_JMP) {
+      BCPos next = JumpListView::next(fs, pc);
+      if (next != NO_JMP) JumpListView(fs, next).patch_to(pc);  // Jump to UCLO.
       setbc_op(ip, BC_UCLO);  // Turn into UCLO.
       setbc_j(ip, NO_JMP);
    }
@@ -244,17 +244,17 @@ void LexState::gola_fixup(FuncScope* bl)
             setgcrefnull(v->name);  // Invalidate target that goes out of scope.
             for (vg = v + 1; vg < ve; vg++)  // Resolve pending backward gotos.
                if (strref(vg->name) == name and gola_is_jump(vg)) {
-                  if ((bl->flags & FSCOPE_UPVAL) and vg->slot > v->slot)
+                  if (has_flag(bl->flags, FuncScopeFlag::Upvalue) and vg->slot > v->slot)
                      this->gola_close(vg);
                   this->gola_patch(vg, v);
                }
          }
          else if (gola_is_jump(v)) {
             if (bl->prev) {  // Propagate break/continue to outer scope.
-               if (name == NAME_BREAK) bl->prev->flags |= FSCOPE_BREAK;
-               else if (name == NAME_CONTINUE) bl->prev->flags |= FSCOPE_CONTINUE;
+               if (name == NAME_BREAK) bl->prev->flags |= FuncScopeFlag::Break;
+               else if (name == NAME_CONTINUE) bl->prev->flags |= FuncScopeFlag::Continue;
                v->slot = bl->nactvar;
-               if ((bl->flags & FSCOPE_UPVAL)) this->gola_close(v);
+               if (has_flag(bl->flags, FuncScopeFlag::Upvalue)) this->gola_close(v);
             }
             else {  // No outer scope: no loop for break/continue.
                this->linenumber = this->fs->bcbase[v->startpc].line;
@@ -271,7 +271,7 @@ void LexState::gola_fixup(FuncScope* bl)
 
 // Begin a scope.
 
-static void fscope_begin(FuncState* fs, FuncScope* bl, int flags)
+static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
 {
    bl->nactvar = uint8_t(fs->nactvar);
    bl->flags = flags;
@@ -288,14 +288,14 @@ static void fscope_loop_continue(FuncState* fs, BCPos pos)
    FuncScope* bl = fs->bl;
    LexState* ls = fs->ls;
 
-   lj_assertFS((bl->flags & FSCOPE_LOOP), "continue outside loop scope");
+   lj_assertFS(has_flag(bl->flags, FuncScopeFlag::Loop), "continue outside loop scope");
 
-   if (!(bl->flags & FSCOPE_CONTINUE)) return;
+   if (!has_flag(bl->flags, FuncScopeFlag::Continue)) return;
 
-   bl->flags &= uint8_t(~FSCOPE_CONTINUE);
+   bl->flags &= ~FuncScopeFlag::Continue;
 
-   MSize idx = ls->gola_new(JUMP_CONTINUE, VSTACK_JUMP_TARGET, pos);
-   ls->vtop = idx;
+   VStackGuard vstack_guard(ls);
+   MSize idx = ls->gola_new(JUMP_CONTINUE, VarInfoFlag::JumpTarget, pos);
    ls->gola_resolve(bl, idx);
 }
 
@@ -312,13 +312,13 @@ static void execute_defers(FuncState* fs, BCReg limit)
 
    while (i > limit) {
       VarInfo* v = &var_get(ls, fs, --i);
-      if (v->info & VSTACK_DEFERARG) {
+      if (has_flag(v->info, VarInfoFlag::DeferArg)) {
          lj_assertFS(argc < LJ_MAX_SLOTS, "too many defer args");
          argslots[argc++] = v->slot;
          continue;
       }
 
-      if (v->info & VSTACK_DEFER) {
+      if (has_flag(v->info, VarInfoFlag::Defer)) {
          BCReg callbase = fs->freereg;
          BCReg j;
          bcreg_reserve(fs, argc + 1 + LJ_FR2);
@@ -350,11 +350,11 @@ static void fscope_end(FuncState* fs)
    ls->var_remove(bl->nactvar);
    fs->freereg = fs->nactvar;
    lj_assertFS(bl->nactvar == fs->nactvar, "bad regalloc");
-   if ((bl->flags & (FSCOPE_UPVAL | FSCOPE_NOCLOSE)) == FSCOPE_UPVAL) bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
-   if ((bl->flags & FSCOPE_BREAK)) {
-      if ((bl->flags & FSCOPE_LOOP)) {
-         MSize idx = ls->gola_new(JUMP_BREAK, VSTACK_JUMP_TARGET, fs->pc);
-         ls->vtop = idx;  // Drop break target immediately.
+   if ((bl->flags & (FuncScopeFlag::Upvalue | FuncScopeFlag::NoClose)) IS FuncScopeFlag::Upvalue) bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
+   if (has_flag(bl->flags, FuncScopeFlag::Break)) {
+      if (has_flag(bl->flags, FuncScopeFlag::Loop)) {
+         VStackGuard vstack_guard(ls);
+         MSize idx = ls->gola_new(JUMP_BREAK, VarInfoFlag::JumpTarget, fs->pc);
          ls->gola_resolve(bl, idx);
       }
       else {  // Need the fixup step to propagate the breaks.
@@ -362,7 +362,7 @@ static void fscope_end(FuncState* fs)
          return;
       }
    }
-   if ((bl->flags & FSCOPE_CONTINUE)) {
+   if (has_flag(bl->flags, FuncScopeFlag::Continue)) {
       ls->gola_fixup(bl);
    }
 }
@@ -374,7 +374,7 @@ static void fscope_uvmark(FuncState* fs, BCReg level)
 {
    FuncScope* bl;
    for (bl = fs->bl; bl and bl->nactvar > level; bl = bl->prev);
-   if (bl) bl->flags |= FSCOPE_UPVAL;
+   if (bl) bl->flags |= FuncScopeFlag::Upvalue;
 }
 
 //********************************************************************************************************************
@@ -400,7 +400,7 @@ static void fs_fixup_uv2(FuncState* fs, GCproto* pt)
    for (i = 0; i < n; i++) {
       VarIndex vidx = uv[i];
       if (vidx >= LJ_MAX_VSTACK) uv[i] = vidx - LJ_MAX_VSTACK;
-      else if ((vstack[vidx].info & VSTACK_VAR_RW)) uv[i] = vstack[vidx].slot | PROTO_UV_LOCAL;
+      else if (has_flag(vstack[vidx].info, VarInfoFlag::VarReadWrite)) uv[i] = vstack[vidx].slot | PROTO_UV_LOCAL;
       else uv[i] = vstack[vidx].slot | PROTO_UV_LOCAL | PROTO_UV_IMMUTABLE;
    }
 }
@@ -617,11 +617,11 @@ static void fs_fixup_ret(FuncState* fs)
    BCPos lastpc = fs->pc;
    if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
       execute_defers(fs, 0);
-      if ((fs->bl->flags & FSCOPE_UPVAL)) bcemit_AJ(fs, BC_UCLO, 0, 0);
+      if (has_flag(fs->bl->flags, FuncScopeFlag::Upvalue)) bcemit_AJ(fs, BC_UCLO, 0, 0);
       bcemit_AD(fs, BC_RET0, 0, 1);  // Need final return.
    }
 
-   fs->bl->flags |= FSCOPE_NOCLOSE;  // Handled above.
+   fs->bl->flags |= FuncScopeFlag::NoClose;  // Handled above.
    fscope_end(fs);
    lj_assertFS(fs->bl == nullptr, "bad scope nesting");
 

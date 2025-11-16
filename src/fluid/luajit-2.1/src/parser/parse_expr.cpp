@@ -156,58 +156,63 @@ void LexState::expr_table(ExpDesc* Expression)
    freg++;
    this->lex_check('{');
    while (this->tok != '}') {
-      ExpDesc key, val;
-      vcall = 0;
-      if (this->tok IS '[') {
-         this->expr_bracket(&key);  // Already calls expr_toval.
-         if (!expr_isk(&key)) expr_index(fs, Expression, &key);
-         if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1; else nhash++;
-         this->lex_check('=');
-      }
-      else if (this->tok IS TK_name and this->lookahead_token() IS '=') {
-         this->expr_str(&key);
-         this->lex_check('=');
-         nhash++;
-      }
-      else {
-         expr_init(&key, ExpKind::Num, 0);
-         setintV(&key.u.nval, int(narr));
-         narr++;
-         needarr = vcall = 1;
-      }
-
-      this->expr(&val);
-
-      if (expr_isk(&key) and key.k != ExpKind::Nil and
-         (key.k IS ExpKind::Str or expr_isk_nojump(&val))) {
-         TValue k, * v;
-         if (!t) {  // Create template table on demand.
-            BCReg kidx;
-            t = lj_tab_new(fs->L, needarr ? narr : 0, hsize2hbits(nhash));
-            kidx = const_gc(fs, obj2gco(t), LJ_TTAB);
-            fs->bcbase[pc].ins = BCINS_AD(BC_TDUP, freg - 1, kidx);
-         }
+      bool has_more = false;
+      {
+         RegisterGuard entry_guard(fs);
+         ExpDesc key, val;
          vcall = 0;
-         expr_kvalue(fs, &k, &key);
-         v = lj_tab_set(fs->L, t, &k);
-         lj_gc_anybarriert(fs->L, t);
-         if (expr_isk_nojump(&val)) {  // Add const key/value to template table.
-            expr_kvalue(fs, v, &val);
+         if (this->tok IS '[') {
+            this->expr_bracket(&key);  // Already calls expr_toval.
+            if (!expr_isk(&key)) expr_index(fs, Expression, &key);
+            if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1; else nhash++;
+            this->lex_check('=');
          }
-         else {  // Otherwise create dummy string key (avoids lj_tab_newkey).
-            settabV(fs->L, v, t);  // Preserve key with table itself as value.
-            fixt = 1;   // Fix this later, after all resizes.
-            goto nonconst;
+         else if (this->tok IS TK_name and this->lookahead_token() IS '=') {
+            this->expr_str(&key);
+            this->lex_check('=');
+            nhash++;
+         }
+         else {
+            expr_init(&key, ExpKind::Num, 0);
+            setintV(&key.u.nval, int(narr));
+            narr++;
+            needarr = vcall = 1;
+         }
+
+         this->expr(&val);
+
+         if (expr_isk(&key) and key.k != ExpKind::Nil and
+            (key.k IS ExpKind::Str or expr_isk_nojump(&val))) {
+            TValue k, * v;
+            if (!t) {  // Create template table on demand.
+               BCReg kidx;
+               t = lj_tab_new(fs->L, needarr ? narr : 0, hsize2hbits(nhash));
+               kidx = const_gc(fs, obj2gco(t), LJ_TTAB);
+               fs->bcbase[pc].ins = BCINS_AD(BC_TDUP, freg - 1, kidx);
+            }
+            vcall = 0;
+            expr_kvalue(fs, &k, &key);
+            v = lj_tab_set(fs->L, t, &k);
+            lj_gc_anybarriert(fs->L, t);
+            if (expr_isk_nojump(&val)) {  // Add const key/value to template table.
+               expr_kvalue(fs, v, &val);
+            }
+            else {  // Otherwise create dummy string key (avoids lj_tab_newkey).
+               settabV(fs->L, v, t);  // Preserve key with table itself as value.
+               fixt = 1;   // Fix this later, after all resizes.
+               goto nonconst;
+            }
+         }
+         else {
+         nonconst:
+            if (val.k != ExpKind::Call) { expr_toanyreg(fs, &val); vcall = 0; }
+            if (expr_isk(&key)) expr_index(fs, Expression, &key);
+            bcemit_store(fs, Expression, &val);
          }
       }
-      else {
-      nonconst:
-         if (val.k != ExpKind::Call) { expr_toanyreg(fs, &val); vcall = 0; }
-         if (expr_isk(&key)) expr_index(fs, Expression, &key);
-         bcemit_store(fs, Expression, &val);
-      }
-      fs->freereg = freg;
-      if (!this->lex_opt(',') and !this->lex_opt(';')) break;
+      has_more = this->lex_opt(',');
+      if (!has_more) has_more = this->lex_opt(';');
+      if (!has_more) break;
    }
 
    this->lex_match('}', '{', line);
@@ -302,7 +307,7 @@ void LexState::expr_table(ExpDesc* Expression)
    GCproto* pt;
    ptrdiff_t oldbase = parent_state->bcbase - this->bcstack;
    this->fs_init(&fs);
-   fscope_begin(&fs, &bl, 0);
+   fscope_begin(&fs, &bl, FuncScopeFlag::None);
    fs.linedefined = Line;
    if (OptionalParams and this->tok != '(') {
       this->assert_condition(!NeedSelf, "optional parameters require explicit self");
@@ -548,7 +553,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
          bcreg_reserve(fs, 1);
       expr_tonextreg(fs, v);
       // Remember that this expression was consumed as a standalone postfix increment.
-      v->flags |= POSTFIX_INC_STMT_FLAG;
+      expr_set_flag(v, ExprFlag::PostfixIncStmt);
       bcreg_reserve(fs, 1);
       bcemit_arith(fs, op, &e1, &e2);
       bcemit_store(fs, &lv, &e1);
@@ -889,10 +894,10 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
          {
             BCPos false_start = fs->pc;
-            jmp_patch(fs, check_nil, false_start);
-            jmp_patch(fs, check_false, false_start);
-            jmp_patch(fs, check_zero, false_start);
-            jmp_patch(fs, check_empty, false_start);
+            JumpListView(fs, check_nil).patch_to(false_start);
+            JumpListView(fs, check_false).patch_to(false_start);
+            JumpListView(fs, check_zero).patch_to(false_start);
+            JumpListView(fs, check_empty).patch_to(false_start);
          }
 
          {
@@ -900,7 +905,7 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
             expr_discharge(fs, &fexp);
             expr_toreg(fs, &fexp, result_reg);
             expr_collapse_freereg(fs, result_reg);
-            jmp_patch(fs, skip_false, fs->pc);
+            JumpListView(fs, skip_false).patch_to(fs->pc);
             v->u.s.info = result_reg; v->k = ExpKind::NonReloc; op = nextop3; continue;
          }
       }
@@ -925,13 +930,12 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          this->pending_if_empty_colon = 0;
 
          if (v->t != NO_JMP) {
-            jmp_patch(fs, v->t, fs->pc);
+            JumpListView(fs, v->t).patch_to(fs->pc);
             v->t = NO_JMP;
          }
 
-         if (v->flags & EXP_HAS_RHS_REG_FLAG) {
+         if (expr_consume_flag(v, ExprFlag::HasRhsReg)) {
             BCReg rhs_reg = BCReg(v->u.s.aux);
-            v->flags &= ~EXP_HAS_RHS_REG_FLAG;
             if (rhs_reg >= fs->nactvar and rhs_reg < fs->freereg) {
                fs->freereg = rhs_reg;
             }

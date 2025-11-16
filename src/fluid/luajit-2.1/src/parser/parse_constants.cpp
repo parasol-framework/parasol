@@ -79,121 +79,170 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 
 // -- Jump list handling
 
-// Get next element in jump list.
-
-[[nodiscard]] static BCPos jmp_next(FuncState* fs, BCPos pc)
+JumpListView::Iterator::Iterator(FuncState* State, BCPos Position)
+   : func_state(State), position(Position)
 {
-   ptrdiff_t delta = bc_j(fs->bcbase[pc].ins);
-   if (BCPos(delta) == NO_JMP) return NO_JMP;
-   else return BCPos((ptrdiff_t(pc) + 1) + delta);
 }
 
-// Check if any of the instructions on the jump list produce no value.
-
-[[nodiscard]] static int jmp_novalue(FuncState* fs, BCPos list)
+[[nodiscard]] BCPos JumpListView::Iterator::operator*() const
 {
-   for (; list != NO_JMP; list = jmp_next(fs, list)) {
-      BCIns p = fs->bcbase[list >= 1 ? list - 1 : list].ins;
-      if (!(bc_op(p) == BC_ISTC or bc_op(p) == BC_ISFC or bc_a(p) == NO_REG))
-         return 1;
-   }
-   return 0;
+   return position;
 }
 
-// Patch register of test instructions.
-
-[[nodiscard]] static int jmp_patchtestreg(FuncState* fs, BCPos pc, BCReg reg)
+JumpListView::Iterator& JumpListView::Iterator::operator++()
 {
-   BCInsLine* ilp = &fs->bcbase[pc >= 1 ? pc - 1 : pc];
-   BCOp op = bc_op(ilp->ins);
-   if (op == BC_ISTC or op == BC_ISFC) {
-      if (reg != NO_REG and reg != bc_d(ilp->ins)) {
-         setbc_a(&ilp->ins, reg);
-      }
-      else {  // Nothing to store or already in the right register.
-         setbc_op(&ilp->ins, op + (BC_IST - BC_ISTC));
-         setbc_a(&ilp->ins, 0);
-      }
+   position = JumpListView::next(func_state, position);
+   return *this;
+}
+
+[[nodiscard]] bool JumpListView::Iterator::operator==(const Iterator& Other) const
+{
+   return position IS Other.position;
+}
+
+[[nodiscard]] bool JumpListView::Iterator::operator!=(const Iterator& Other) const
+{
+   return not(position IS Other.position);
+}
+
+JumpListView::JumpListView(FuncState* State, BCPos Head)
+   : func_state(State), list_head(Head)
+{
+}
+
+[[nodiscard]] JumpListView::Iterator JumpListView::begin() const
+{
+   return Iterator(func_state, list_head);
+}
+
+[[nodiscard]] JumpListView::Iterator JumpListView::end() const
+{
+   return Iterator(func_state, NO_JMP);
+}
+
+[[nodiscard]] bool JumpListView::empty() const
+{
+   return list_head IS NO_JMP;
+}
+
+[[nodiscard]] BCPos JumpListView::head() const
+{
+   return list_head;
+}
+
+[[nodiscard]] BCPos JumpListView::next(FuncState* State, BCPos Position)
+{
+   ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
+   if (BCPos(delta) IS NO_JMP) return NO_JMP;
+   return BCPos((ptrdiff_t(Position) + 1) + delta);
+}
+
+[[nodiscard]] BCPos JumpListView::next(BCPos Position) const
+{
+   return next(func_state, Position);
+}
+
+[[nodiscard]] bool JumpListView::produces_values() const
+{
+   for (BCPos list = list_head; not(list IS NO_JMP); list = next(func_state, list)) {
+      BCIns prior = func_state->bcbase[list >= 1 ? list - 1 : list].ins;
+      if (!(bc_op(prior) IS BC_ISTC or bc_op(prior) IS BC_ISFC or bc_a(prior) IS NO_REG))
+         return true;
    }
-   else if (bc_a(ilp->ins) == NO_REG) {
-      if (reg == NO_REG) {
-         ilp->ins = BCINS_AJ(BC_JMP, bc_a(fs->bcbase[pc].ins), 0);
+   return false;
+}
+
+[[nodiscard]] bool JumpListView::patch_test_register(BCPos Position, BCReg Register) const
+{
+   BCInsLine* line = &func_state->bcbase[Position >= 1 ? Position - 1 : Position];
+   BCOp op = bc_op(line->ins);
+   if (op IS BC_ISTC or op IS BC_ISFC) {
+      if (Register != NO_REG and Register != bc_d(line->ins)) {
+         setbc_a(&line->ins, Register);
       }
       else {
-         setbc_a(&ilp->ins, reg);
-         if (reg >= bc_a(ilp[1].ins))
-            setbc_a(&ilp[1].ins, reg + 1);
+         setbc_op(&line->ins, op + (BC_IST - BC_ISTC));
+         setbc_a(&line->ins, 0);
       }
    }
-   else return 0;  // Cannot patch other instructions.
-   return 1;
+   else if (bc_a(line->ins) IS NO_REG) {
+      if (Register IS NO_REG) {
+         line->ins = BCINS_AJ(BC_JMP, bc_a(func_state->bcbase[Position].ins), 0);
+      }
+      else {
+         setbc_a(&line->ins, Register);
+         if (Register >= bc_a(line[1].ins))
+            setbc_a(&line[1].ins, Register + 1);
+      }
+   }
+   else return false;
+   return true;
 }
 
-// Drop values for all instructions on jump list.
-
-static void jmp_dropval(FuncState* fs, BCPos list)
+void JumpListView::drop_values() const
 {
-   for (; list != NO_JMP; list = jmp_next(fs, list))
-      (void)jmp_patchtestreg(fs, list, NO_REG);
+   for (BCPos list = list_head; not(list IS NO_JMP); list = next(func_state, list))
+      (void)patch_test_register(list, NO_REG);
 }
 
-// Patch jump instruction to target.
-
-static void jmp_patchins(FuncState* fs, BCPos pc, BCPos dest)
+void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
 {
-   BCIns* jmp = &fs->bcbase[pc].ins;
-   BCPos offset = dest - (pc + 1) + BCBIAS_J;
-   lj_assertFS(dest != NO_JMP, "uninitialized jump target");
+   FuncState* fs = func_state;
+   BCIns* instruction = &func_state->bcbase[Position].ins;
+   BCPos offset = Destination - (Position + 1) + BCBIAS_J;
+   lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D)
-      fs->ls->err_syntax(LJ_ERR_XJUMP);
-   setbc_d(jmp, offset);
+      func_state->ls->err_syntax(LJ_ERR_XJUMP);
+   setbc_d(instruction, offset);
 }
 
-// Append to jump list.
-
-static void jmp_append(FuncState* fs, BCPos* l1, BCPos l2)
+[[nodiscard]] BCPos JumpListView::append(BCPos Other) const
 {
-   if (l2 == NO_JMP) return;
-   else if (*l1 == NO_JMP) *l1 = l2;
-   else {
-      BCPos list = *l1;
-      BCPos next;
-      while ((next = jmp_next(fs, list)) != NO_JMP)  // Find last element.
-         list = next;
-      jmp_patchins(fs, list, l2);
+   if (Other IS NO_JMP) return list_head;
+   if (list_head IS NO_JMP) return Other;
+   BCPos list = list_head;
+   BCPos next_pc;
+   while (true) {
+      next_pc = next(func_state, list);
+      if (next_pc IS NO_JMP) break;
+      list = next_pc;
+   }
+   patch_instruction(list, Other);
+   return list_head;
+}
+
+void JumpListView::patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const
+{
+   BCPos list = list_head;
+   while (not(list IS NO_JMP)) {
+      BCPos next_pc = next(func_state, list);
+      if (patch_test_register(list, Register)) patch_instruction(list, ValueTarget);
+      else patch_instruction(list, DefaultTarget);
+      list = next_pc;
    }
 }
 
-// Patch jump list and preserve produced values.
-
-static void jmp_patchval(FuncState* fs, BCPos list, BCPos vtarget,
-   BCReg reg, BCPos dtarget)
+void JumpListView::patch_to_here() const
 {
-   while (list != NO_JMP) {
-      BCPos next = jmp_next(fs, list);
-      if (jmp_patchtestreg(fs, list, reg)) jmp_patchins(fs, list, vtarget);  // Jump to target with value.
-      else jmp_patchins(fs, list, dtarget);  // Jump to default target.
-      list = next;
-   }
+   func_state->lasttarget = func_state->pc;
+   JumpListView pending(func_state, func_state->jpc);
+   func_state->jpc = pending.append(list_head);
 }
 
-// Jump to following instruction. Append to list of pending jumps.
-
-static void jmp_tohere(FuncState* fs, BCPos list)
+void JumpListView::patch_to(BCPos Target) const
 {
-   fs->lasttarget = fs->pc;
-   jmp_append(fs, &fs->jpc, list);
-}
-
-// Patch jump list to target.
-
-static void jmp_patch(FuncState* fs, BCPos list, BCPos target)
-{
-   if (target == fs->pc) {
-      jmp_tohere(fs, list);
+   if (Target IS func_state->pc) {
+      patch_to_here();
    }
    else {
-      lj_assertFS(target < fs->pc, "bad jump target");
-      jmp_patchval(fs, list, target, NO_REG, target);
+      FuncState* fs = func_state;
+      lj_assertFS(Target < func_state->pc, "bad jump target");
+      patch_with_value(Target, NO_REG, Target);
    }
+}
+
+void JumpListView::patch_head(BCPos Destination) const
+{
+   if (list_head IS NO_JMP) return;
+   patch_instruction(list_head, Destination);
 }
