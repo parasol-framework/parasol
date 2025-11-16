@@ -22,15 +22,15 @@
 */
 
 // Operand ranges and related constants.
-#define BCMAX_A      0xff
-#define BCMAX_B      0xff
-#define BCMAX_C      0xff
-#define BCMAX_D      0xffff
-#define BCBIAS_J   0x8000
-#define NO_REG      BCMAX_A
+constexpr uint8_t BCMAX_A = 0xff;
+constexpr uint8_t BCMAX_B = 0xff;
+constexpr uint8_t BCMAX_C = 0xff;
+constexpr uint16_t BCMAX_D = 0xffff;
+constexpr uint16_t BCBIAS_J = 0x8000;
+constexpr uint8_t NO_REG = BCMAX_A;
 #define NO_JMP      (~(BCPos)0)
 
-// Macros to get instruction fields.
+// Inline functions to get instruction fields (defined after BCOp enum).
 #define bc_op(i)   ((BCOp)((i)&0xff))
 #define bc_a(i)      ((BCReg)(((i)>>8)&0xff))
 #define bc_b(i)      ((BCReg)((i)>>24))

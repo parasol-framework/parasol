@@ -298,10 +298,10 @@ constexpr int IRM_CW = (IRM_C | IRM_W);
 constexpr int IRM_AW = (IRM_A | IRM_W);
 constexpr int IRM_LW = (IRM_L | IRM_W);
 
-#define irm_op1(m)      ((IRMode)((m)&3))
-#define irm_op2(m)      ((IRMode)(((m)>>2)&3))
-#define irm_iscomm(m)      ((m) & IRM_C)
-#define irm_kind(m)      ((m) & IRM_S)
+inline constexpr IRMode irm_op1(uint8_t m) { return (IRMode)(m & 3); }
+inline constexpr IRMode irm_op2(uint8_t m) { return (IRMode)((m >> 2) & 3); }
+inline constexpr bool irm_iscomm(uint8_t m) { return (m & IRM_C) != 0; }
+inline constexpr uint8_t irm_kind(uint8_t m) { return m & IRM_S; }
 
 #define IRMODE(name, m, m1, m2)   (((IRM##m1)|((IRM##m2)<<2)|(IRM_##m))^IRM_W),
 
@@ -351,7 +351,7 @@ typedef enum {
    IRT_T = 0xff
 } IRType;
 
-#define irtype_ispri(irt)   ((uint32_t)(irt) <= IRT_TRUE)
+inline constexpr bool irtype_ispri(IRType irt) { return (uint32_t)(irt) <= IRT_TRUE; }
 
 // Stored IRType.
 struct IRType1 { uint8_t irt; };

@@ -94,37 +94,79 @@ constexpr int LJ_MAX_EXITSTUBGR = 16;   //  Max. # of exit stub groups.
 // Utility macro for constructing 64-bit constants from hex values.
 #define U64x(hi, lo)   (((uint64_t)0x##hi << 32) + (uint64_t)0x##lo)
 
-// Pointer cast functions.
-#define i32ptr(p)   ((int32_t)(intptr_t)(void *)(p))
-#define u32ptr(p)   ((uint32_t)(intptr_t)(void *)(p))
-#define i64ptr(p)   ((int64_t)(intptr_t)(void *)(p))
-#define u64ptr(p)   ((uint64_t)(intptr_t)(void *)(p))
+// Pointer cast inline functions.
+template<typename T>
+inline constexpr int32_t i32ptr(T p) { return (int32_t)(intptr_t)(void *)(p); }
 
+template<typename T>
+inline constexpr uint32_t u32ptr(T p) { return (uint32_t)(intptr_t)(void *)(p); }
+
+template<typename T>
+inline constexpr int64_t i64ptr(T p) { return (int64_t)(intptr_t)(void *)(p); }
+
+template<typename T>
+inline constexpr uint64_t u64ptr(T p) { return (uint64_t)(intptr_t)(void *)(p); }
+
+// Note: Must use macro for igcptr as LJ_GC64 is a compile-time macro
 #define igcptr(p)   (LJ_GC64 ? i64ptr(p) : i32ptr(p))
 
-// Type check functions - kept as macros for compile-time usage.
-#define checki8(x)   ((x) == (int32_t)(int8_t)(x))
-#define checku8(x)   ((x) == (int32_t)(uint8_t)(x))
-#define checki16(x)   ((x) == (int32_t)(int16_t)(x))
-#define checku16(x)   ((x) == (int32_t)(uint16_t)(x))
-#define checki32(x)   ((x) == (int32_t)(x))
-#define checku32(x)   ((x) == (uint32_t)(x))
-#define checkptr31(x)   (((uint64_t)(uintptr_t)(x) >> 31) == 0)
-#define checkptr32(x)   ((uintptr_t)(x) == (uint32_t)(uintptr_t)(x))
-#define checkptr47(x)   (((uint64_t)(uintptr_t)(x) >> 47) == 0)
+// Type check inline functions.
+template<typename T>
+inline constexpr bool checki8(T x) { return x IS (int32_t)(int8_t)(x); }
 
+template<typename T>
+inline constexpr bool checku8(T x) { return x IS (int32_t)(uint8_t)(x); }
+
+template<typename T>
+inline constexpr bool checki16(T x) { return x IS (int32_t)(int16_t)(x); }
+
+template<typename T>
+inline constexpr bool checku16(T x) { return x IS (int32_t)(uint16_t)(x); }
+
+template<typename T>
+inline constexpr bool checki32(T x) { return x IS (int32_t)(x); }
+
+template<typename T>
+inline constexpr bool checku32(T x) { return x IS (uint32_t)(x); }
+
+template<typename T>
+inline constexpr bool checkptr31(T x) { return ((uint64_t)(uintptr_t)(x) >> 31) IS 0; }
+
+template<typename T>
+inline constexpr bool checkptr32(T x) { return (uintptr_t)(x) IS (uint32_t)(uintptr_t)(x); }
+
+template<typename T>
+inline constexpr bool checkptr47(T x) { return ((uint64_t)(uintptr_t)(x) >> 47) IS 0; }
+
+// Note: Must use macro for checkptrGC as LJ_GC64/LJ_64 are compile-time macros
 #define checkptrGC(x)   (LJ_GC64 ? checkptr47((x)) : LJ_64 ? checkptr31((x)) : 1)
 
-// Every half-decent C compiler transforms this into a rotate instruction.
-#define lj_rol(x, n)   (((x)<<(n)) | ((x)>>(-(int)(n)&(8*sizeof(x)-1))))
-#define lj_ror(x, n)   (((x)<<(-(int)(n)&(8*sizeof(x)-1))) | ((x)>>(n)))
+// Rotate inline functions - compilers transform this into rotate instructions.
+template<typename T>
+inline constexpr T lj_rol(T x, int n) {
+   return (x << n) | (x >> (-(int)(n) & (8 * sizeof(x) - 1)));
+}
+
+template<typename T>
+inline constexpr T lj_ror(T x, int n) {
+   return (x << (-(int)(n) & (8 * sizeof(x) - 1))) | (x >> n);
+}
 
 // A really naive Bloom filter. But sufficient for our needs.
 typedef uintptr_t BloomFilter;
-#define BLOOM_MASK   (8*sizeof(BloomFilter) - 1)
-#define bloombit(x)   ((uintptr_t)1 << ((x) & BLOOM_MASK))
-#define bloomset(b, x)   ((b) |= bloombit((x)))
-#define bloomtest(b, x)   ((b) & bloombit((x)))
+constexpr size_t BLOOM_MASK = (8 * sizeof(BloomFilter) - 1);
+
+inline constexpr uintptr_t bloombit(uintptr_t x) {
+   return (uintptr_t)1 << (x & BLOOM_MASK);
+}
+
+inline void bloomset(BloomFilter& b, uintptr_t x) {
+   b |= bloombit(x);
+}
+
+inline constexpr uintptr_t bloomtest(BloomFilter b, uintptr_t x) {
+   return b & bloombit(x);
+}
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__psp2__)
 
