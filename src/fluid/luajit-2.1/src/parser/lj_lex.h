@@ -63,36 +63,36 @@ enum BinOpr : int;
 
 class LexState {
 public:
-   struct FuncState* fs; // Current FuncState. Defined in lj_parse.c.
-   struct lua_State* L;  // Lua state.
-   TValue tokval;        // Current token value.
-   TValue lookaheadval;  // Lookahead token value.
-   const char* p;        // Current position in input buffer.
-   const char* pe;       // End of input buffer.
-   LexChar c;            // Current character.
-   LexToken tok;         // Current token.
-   LexToken lookahead;   // Lookahead token.
-   SBuf sb;              // String buffer for tokens.
-   lua_Reader rfunc;     // Reader callback.
-   void* rdata;          // Reader callback data.
-   BCLine linenumber;    // Input line counter.
-   BCLine lastline;      // Line of last token.
-   GCstr* chunkname;     // Current chunk name (interned string).
-   const char* chunkarg; // Chunk name argument.
-   const char* mode;     // Allow loading bytecode (b) and/or source text (t).
-   VarInfo* vstack;      // Stack for names and extents of local variables.
-   MSize sizevstack;     // Size of variable stack.
-   MSize vtop;           // Top of variable stack.
+   struct FuncState *fs;    // Current FuncState. Defined in lj_parse.c.
+   lua_State *L;            // Lua state.
+   TValue     tokval;       // Current token value.
+   TValue     lookaheadval; // Lookahead token value.
+   const char *p;           // Current position in input buffer.
+   const char *pe;          // End of input buffer.
+   LexChar    c;            // Current character.
+   LexToken   tok;          // Current token.
+   LexToken   lookahead;    // Lookahead token.
+   SBuf       sb;           // String buffer for tokens.
+   lua_Reader rfunc;        // Reader callback.
+   void *     rdata;        // Reader callback data.
+   BCLine     linenumber;   // Input line counter.
+   BCLine     lastline;    // Line of last token.
+   GCstr *    chunkname;  // Current chunk name (interned string).
+   const char *chunkarg; // Chunk name argument.
+   const char *mode;     // Allow loading bytecode (b) and/or source text (t).
+   VarInfo * vstack;     // Stack for names and extents of local variables.
+   MSize     sizevstack;  // Size of variable stack.
+   MSize     vtop;        // Top of variable stack.
    BCInsLine* bcstack;   // Stack for bytecode instructions/line numbers.
-   MSize sizebcstack;    // Size of bytecode stack.
+   MSize    sizebcstack; // Size of bytecode stack.
    uint32_t level;       // Syntactical nesting level.
    uint32_t ternary_depth; // Number of pending ternary operators.
-   uint8_t pending_if_empty_colon; // Tracks ?: misuse after ??.
-   int endmark;          // Trust bytecode end marker, even if not at EOF.
-   int is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
+   uint8_t  pending_if_empty_colon; // Tracks ?: misuse after ??.
+   int      endmark;          // Trust bytecode end marker, even if not at EOF.
+   int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
 
    LexState() = default;  // Default constructor for bytecode reader usage
-   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, const char* Chunkarg, const char* Mode);
+   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::string_view Mode);
    LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Constructor for direct bytecode reading
    ~LexState();
 
@@ -109,7 +109,7 @@ public:
 
    // Variable management
    void var_new(BCReg Reg, GCstr* Name);
-   void var_new_lit(BCReg Reg, const char* Value, size_t Length);
+   void var_new_lit(BCReg Reg, std::string_view Value);
    void var_new_fixed(BCReg Reg, uintptr_t Name);
    void var_add(BCReg VariableCount);
    void var_remove(BCReg TargetLevel);
@@ -177,7 +177,7 @@ public:
    void parse_chunk();
 
    // Public parser helpers
-   GCstr* keepstr(const char* Value, size_t Length);
+   GCstr* keepstr(std::string_view Value);
 #if LJ_HASFFI
    void keepcdata(TValue* Value, GCcdata* Cdata);
 #endif

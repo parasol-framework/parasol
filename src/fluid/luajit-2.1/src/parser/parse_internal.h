@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <string_view>
+
 struct LHSVarList;  // Defined in lj_parse_stmt.cpp
 
 // Error handling (lj_parse_core.c)
@@ -119,9 +121,9 @@ static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e);
-static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
-static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs);
-static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg);
+static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
+static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
+static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg);
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);

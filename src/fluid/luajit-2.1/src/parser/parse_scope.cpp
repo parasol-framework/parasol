@@ -37,9 +37,9 @@ void LexState::var_new(BCReg n, GCstr* name)
 
 //********************************************************************************************************************
 
-void LexState::var_new_lit(BCReg n, const char* value, size_t length)
+void LexState::var_new_lit(BCReg n, std::string_view value)
 {
-   this->var_new(n, this->keepstr(value, length));
+   this->var_new(n, this->keepstr(value));
 }
 
 void LexState::var_new_fixed(BCReg n, uintptr_t name)

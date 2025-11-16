@@ -221,7 +221,7 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 //   rhs   - Right-hand side expression (shift count, may be ExpKind::Call)
 //   base  - Base register for the call (allows register reuse for chaining)
 
-static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
+static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
 {
    ExpDesc callee, key;
    BCReg arg1 = base + 1 + LJ_FR2;  // First argument register (after frame link if present)
@@ -235,10 +235,10 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 
    // Now load bit.[lshift|rshift|...] into the base register
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = fs->ls->keepstr("bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit");
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = fs->ls->keepstr(fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -256,21 +256,21 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 
 //********************************************************************************************************************
 
-static void bcemit_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* lhs, ExpDesc* rhs)
+static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
 {
    // Allocate a base register for the call
    BCReg base = fs->freereg;
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  // Reserve for arguments
-   lj_assertFS(fname != nullptr, "bitlib name missing for bitwise operator");
-   bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
+   lj_assertFS(!fname.empty(), "bitlib name missing for bitwise operator");
+   bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
 
 //********************************************************************************************************************
 // Emit unary bit library call (e.g., bit.bnot).
 
-static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg)
+static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    ExpDesc callee, key;
    BCReg base = fs->freereg;
@@ -288,10 +288,10 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 
    // Load bit.fname into base register.
    expr_init(&callee, ExpKind::Global, 0);
-   callee.u.sval = fs->ls->keepstr("bit", 3);
+   callee.u.sval = fs->ls->keepstr("bit");
    expr_toanyreg(fs, &callee);
    expr_init(&key, ExpKind::Str, 0);
-   key.u.sval = fs->ls->keepstr(fname, fname_len);
+   key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -375,7 +375,7 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // Check for empty string
    expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = fs->ls->keepstr("", 0);
+   emptyv.u.sval = fs->ls->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
@@ -483,7 +483,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
             // Check for empty string
             expr_init(&emptyv, ExpKind::Str, 0);
-            emptyv.u.sval = fs->ls->keepstr("", 0);
+            emptyv.u.sval = fs->ls->keepstr("");
             bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
@@ -543,7 +543,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       }
    }
    else if ((op == OPR_SHL) or (op == OPR_SHR) or (op == OPR_BAND) or (op == OPR_BOR) or (op == OPR_BXOR)) {
-      bcemit_bit_call(fs, priority[op].name, MSize(priority[op].name_len), e1, e2);
+      bcemit_bit_call(fs, std::string_view(priority[op].name, priority[op].name_len), e1, e2);
    }
    else if (op == OPR_CONCAT) {
       expr_toval(fs, e2);

@@ -43,11 +43,11 @@
 
 // Anchor string constant to avoid GC.
 
-GCstr* LexState::keepstr(const char* str, size_t len)
+GCstr* LexState::keepstr(std::string_view str)
 {
    // NOBARRIER: the key is new or kept alive.
    lua_State* L = this->L;
-   GCstr* s = lj_str_new(L, str, len);
+   GCstr* s = lj_str_new(L, str.data(), str.size());
    TValue* tv = lj_tab_setstr(L, this->fs->kt, s);
    if (tvisnil(tv)) setboolV(tv, 1);
    lj_gc_check(L);
@@ -67,7 +67,7 @@ void LexState::keepcdata(TValue* tv, GCcdata* cd)
 
 LJ_USED LJ_FUNC GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
 {
-   return ls->keepstr(str, len);
+   return ls->keepstr(std::string_view(str, len));
 }
 
 #if LJ_HASFFI

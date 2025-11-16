@@ -117,7 +117,7 @@ int LexState::assign_if_empty(LHSVarList* lh)
    check_zero = bcemit_jmp(fs);
 
    expr_init(&emptyv, ExpKind::Str, 0);
-   emptyv.u.sval = this->keepstr("", 0);
+   emptyv.u.sval = this->keepstr("");
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
