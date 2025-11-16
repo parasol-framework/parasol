@@ -116,7 +116,7 @@ set (BUILDVM_SOURCES
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
-set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib)
+set (LUAJIT_INCLUDE_DIRS -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib)
 set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
@@ -135,13 +135,15 @@ if (MSVC)
    # Expand glob patterns for dependencies (only source headers, not generated ones)
 
    file(GLOB LUAJIT_CORE_SOURCES
+      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/lib/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
 
-   file(GLOB LUAJIT_DEP_LJ_H 
+   file(GLOB LUAJIT_DEP_LJ_H
+      "${LUAJIT_SRC}/bytecode/lj_*.h"
       "${LUAJIT_SRC}/debug/lj_*.h"
       "${LUAJIT_SRC}/lib/lj_*.h"
       "${LUAJIT_SRC}/lj_*.h")
@@ -193,7 +195,7 @@ if (MSVC)
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
-         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib
+         /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib
          ${BUILDVM_SOURCES}
       COMMAND ${CMAKE_LINKER} /nologo /out:${BUILDVM_TARGET}
          ${LUAJIT_BUILD_DIR}/buildvm.obj
@@ -238,6 +240,7 @@ if (MSVC)
 
    target_include_directories(luajit_lib PRIVATE
       "${LUAJIT_SRC}"
+      "${LUAJIT_SRC}/bytecode"
       "${LUAJIT_SRC}/debug"
       "${LUAJIT_SRC}/lib"
       "${LUAJIT_BUILD_DIR}"  # Include generated headers from build dir
@@ -501,6 +504,7 @@ else ()
    file(GLOB LUAJIT_AMALG_SOURCES
       "${LUAJIT_SRC}/lj_*.cpp"
       "${LUAJIT_SRC}/lib_*.cpp"
+      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/lib/lj_*.cpp"
    )
@@ -605,6 +609,7 @@ endif ()
 target_sources (${MOD} PRIVATE ${FLUID_SOURCES})
 
 target_include_directories (${MOD} PRIVATE
+   "${LUAJIT_SRC}/bytecode"
    "${LUAJIT_SRC}/debug"
    "${LUAJIT_SRC}/lib"
    "${CMAKE_BINARY_DIR}/libffi-3.3/include")
