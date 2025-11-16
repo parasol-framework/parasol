@@ -308,7 +308,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
    }
    else {
       BCReg ra, rc;
-      lj_assertFS(var->k == ExpKind::Indexed, "bad expr type %d", var->k);
+      lj_assertFS(var->k == ExpKind::Indexed, "bad expr type %d", static_cast<int>(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
