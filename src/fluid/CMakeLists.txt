@@ -155,11 +155,11 @@ if (MSVC)
 
    # Detect target architecture (x64 vs x86)
    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x64.dasc")
+      set (LUAJIT_DASC "${LUAJIT_SRC}/jit/vm_x64.dasc")
       set (LUAJIT_DASMFLAGS -D WIN -D JIT -D P64)
       set (LUAJIT_ARCH "x64")
    else()
-      set (LUAJIT_DASC "${LUAJIT_SRC}/vm_x86.dasc")
+      set (LUAJIT_DASC "${LUAJIT_SRC}/jit/vm_x86.dasc")
       set (LUAJIT_DASMFLAGS -D WIN -D JIT)
       set (LUAJIT_ARCH "x86")
    endif()
@@ -359,7 +359,7 @@ else ()
    file(WRITE ${DYNASM_SCRIPT}
          "# Use architecture determined by CMake\n"
          "set(ARCH \"${LUAJIT_TARGET_ARCH}\")\n"
-         "set(DASM_DASC \"${LUAJIT_SRC}/vm_\${ARCH}.dasc\")\n"
+         "set(DASM_DASC \"${LUAJIT_SRC}/jit/vm_\${ARCH}.dasc\")\n"
          "if(NOT EXISTS \"\${DASM_DASC}\")\n"
          "   message(FATAL_ERROR \"Architecture file \${DASM_DASC} not found\")\n"
          "endif()\n"
@@ -436,9 +436,9 @@ else ()
       COMMAND ${CMAKE_COMMAND} -E env TARGET_GENDIR=${LUAJIT_BUILD_DIR} ${CMAKE_COMMAND} -P ${DYNASM_SCRIPT}
       DEPENDS ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
-         "${LUAJIT_SRC}/vm_x64.dasc" "${LUAJIT_SRC}/vm_x86.dasc" "${LUAJIT_SRC}/vm_arm.dasc"
-         "${LUAJIT_SRC}/vm_arm64.dasc" "${LUAJIT_SRC}/vm_ppc.dasc" "${LUAJIT_SRC}/vm_mips.dasc"
-         "${LUAJIT_SRC}/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
+         "${LUAJIT_SRC}/jit/vm_x64.dasc" "${LUAJIT_SRC}/jit/vm_x86.dasc" "${LUAJIT_SRC}/jit/vm_arm.dasc"
+         "${LUAJIT_SRC}/jit/vm_arm64.dasc" "${LUAJIT_SRC}/jit/vm_ppc.dasc" "${LUAJIT_SRC}/jit/vm_mips.dasc"
+         "${LUAJIT_SRC}/jit/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )
