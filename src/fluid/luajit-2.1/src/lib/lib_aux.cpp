@@ -26,11 +26,9 @@
 #include <sys/wait.h>
 #endif
 
+// -- Module registration
 
-// -- Module registration -------------------------------------------------
-
-LUALIB_API const char* luaL_findtable(lua_State* L, int idx,
-   const char* fname, int szhint)
+extern const char* luaL_findtable(lua_State* L, int idx, const char* fname, int szhint)
 {
    const char* e;
    lua_pushvalue(L, idx);
@@ -63,7 +61,7 @@ static int libsize(const luaL_Reg* l)
    return size;
 }
 
-LUALIB_API void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
+extern void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
 {
    luaL_findtable(L, LUA_REGISTRYINDEX, "_LOADED", 16);
    lua_getfield(L, -1, modname);
@@ -77,27 +75,24 @@ LUALIB_API void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
    lua_remove(L, -2);  //  Remove _LOADED table.
 }
 
-LUALIB_API void luaL_openlib(lua_State* L, const char* libname,
-   const luaL_Reg* l, int nup)
+extern void luaL_openlib(lua_State* L, const char* libname, const luaL_Reg* l, int nup)
 {
    lj_lib_checkfpu(L);
    if (libname) {
       luaL_pushmodule(L, libname, libsize(l));
       lua_insert(L, -(nup + 1));  //  Move module table below upvalues.
    }
-   if (l)
-      luaL_setfuncs(L, l, nup);
-   else
-      lua_pop(L, nup);  //  Remove upvalues.
+
+   if (l) luaL_setfuncs(L, l, nup);
+   else lua_pop(L, nup);  //  Remove upvalues.
 }
 
-LUALIB_API void luaL_register(lua_State* L, const char* libname,
-   const luaL_Reg* l)
+extern void luaL_register(lua_State* L, const char* libname, const luaL_Reg* l)
 {
    luaL_openlib(L, libname, l, 0);
 }
 
-LUALIB_API void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
+extern void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
 {
    luaL_checkstack(L, nup, "too many upvalues");
    for (; l->name; l++) {
@@ -110,8 +105,7 @@ LUALIB_API void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
    lua_pop(L, nup);  //  Remove upvalues.
 }
 
-LUALIB_API const char* luaL_gsub(lua_State* L, const char* s,
-   const char* p, const char* r)
+extern const char* luaL_gsub(lua_State* L, const char* s, const char* p, const char* r)
 {
    const char* wild;
    size_t l = strlen(p);
@@ -127,7 +121,7 @@ LUALIB_API const char* luaL_gsub(lua_State* L, const char* s,
    return lua_tostring(L, -1);
 }
 
-// -- Buffer handling -----------------------------------------------------
+// -- Buffer handling
 
 #define bufflen(B)   ((size_t)((B)->p - (B)->buffer))
 #define bufffree(B)   ((size_t)(LUAL_BUFFERSIZE - bufflen(B)))
@@ -161,14 +155,13 @@ static void adjuststack(luaL_Buffer* B)
    }
 }
 
-LUALIB_API char* luaL_prepbuffer(luaL_Buffer* B)
+extern char* luaL_prepbuffer(luaL_Buffer* B)
 {
-   if (emptybuffer(B))
-      adjuststack(B);
+   if (emptybuffer(B)) adjuststack(B);
    return B->buffer;
 }
 
-LUALIB_API void luaL_addlstring(luaL_Buffer* B, const char* s, size_t l)
+extern void luaL_addlstring(luaL_Buffer* B, const char* s, size_t l)
 {
    if (l <= bufffree(B)) {
       memcpy(B->p, s, l);
@@ -182,19 +175,19 @@ LUALIB_API void luaL_addlstring(luaL_Buffer* B, const char* s, size_t l)
    }
 }
 
-LUALIB_API void luaL_addstring(luaL_Buffer* B, const char* s)
+extern void luaL_addstring(luaL_Buffer* B, const char* s)
 {
    luaL_addlstring(B, s, strlen(s));
 }
 
-LUALIB_API void luaL_pushresult(luaL_Buffer* B)
+extern void luaL_pushresult(luaL_Buffer* B)
 {
    emptybuffer(B);
    lua_concat(B->L, B->lvl);
    B->lvl = 1;
 }
 
-LUALIB_API void luaL_addvalue(luaL_Buffer* B)
+extern void luaL_addvalue(luaL_Buffer* B)
 {
    lua_State* L = B->L;
    size_t vl;
@@ -205,21 +198,20 @@ LUALIB_API void luaL_addvalue(luaL_Buffer* B)
       lua_pop(L, 1);  //  remove from stack
    }
    else {
-      if (emptybuffer(B))
-         lua_insert(L, -2);  //  put buffer before new value
+      if (emptybuffer(B)) lua_insert(L, -2);  //  put buffer before new value
       B->lvl++;  //  add new value into B stack
       adjuststack(B);
    }
 }
 
-LUALIB_API void luaL_buffinit(lua_State* L, luaL_Buffer* B)
+extern void luaL_buffinit(lua_State* L, luaL_Buffer* B)
 {
    B->L = L;
    B->p = B->buffer;
    B->lvl = 0;
 }
 
-// -- Reference management ------------------------------------------------
+// -- Reference management
 
 #define FREELIST_REF   0
 
@@ -227,7 +219,7 @@ LUALIB_API void luaL_buffinit(lua_State* L, luaL_Buffer* B)
 #define abs_index(L, i) \
   ((i) > 0 or (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 
-LUALIB_API int luaL_ref(lua_State* L, int t)
+extern int luaL_ref(lua_State* L, int t)
 {
    int ref;
    t = abs_index(L, t);
@@ -250,7 +242,7 @@ LUALIB_API int luaL_ref(lua_State* L, int t)
    return ref;
 }
 
-LUALIB_API void luaL_unref(lua_State* L, int t, int ref)
+extern void luaL_unref(lua_State* L, int t, int ref)
 {
    if (ref >= 0) {
       t = abs_index(L, t);
@@ -261,7 +253,7 @@ LUALIB_API void luaL_unref(lua_State* L, int t, int ref)
    }
 }
 
-// -- Default allocator and panic function --------------------------------
+// -- Default allocator and panic function
 
 static int panic(lua_State* L)
 {
@@ -292,7 +284,7 @@ static void* mem_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
    }
 }
 
-LUALIB_API lua_State* luaL_newstate(void)
+extern lua_State* luaL_newstate(void)
 {
    lua_State* L = lua_newstate(mem_alloc, nullptr);
    if (L) G(L)->panic = panic;
@@ -301,7 +293,7 @@ LUALIB_API lua_State* luaL_newstate(void)
 
 #else
 
-LUALIB_API lua_State* luaL_newstate(void)
+extern lua_State* luaL_newstate(void)
 {
    lua_State* L;
 #if LJ_64 && !LJ_GC64
@@ -314,7 +306,7 @@ LUALIB_API lua_State* luaL_newstate(void)
 }
 
 #if LJ_64 && !LJ_GC64
-LUA_API lua_State* lua_newstate(lua_Alloc f, void* ud)
+extern lua_State* lua_newstate(lua_Alloc f, void* ud)
 {
    UNUSED(f); UNUSED(ud);
    fputs("Must use luaL_newstate() for 64 bit target\n", stderr);

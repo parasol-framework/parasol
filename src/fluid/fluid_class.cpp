@@ -18,10 +18,8 @@
 
 #include "lua.hpp"
 
-extern "C" {
- #include "lj_obj.h"
- #include "lj_bc.h"
-}
+#include "lj_obj.h"
+#include "lj_bc.h"
 
 #include "hashes.h"
 #include "defs.h"

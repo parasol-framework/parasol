@@ -26,6 +26,7 @@
 #include "lj_char.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
+#include "../bytecode/lj_bcdump.h"
 
 // Lua lexer token names.
 static const char* const token_names[] = {
@@ -87,7 +88,7 @@ static LJ_AINLINE LexChar lex_savenext(LexState *State)
 static void lex_newline(LexState *State)
 {
    LexChar old = State->c;
-   lj_assertLS(lex_iseol(State), "bad usage");
+   State->assert_condition(lex_iseol(State), "bad usage");
    lex_next(State);  //  Skip "\n" or "\r".
    if (lex_iseol(State) and State->c != old) lex_next(State);  //  Skip "\n\r" or "\r\n".
    if (uint32_t(++State->linenumber) >= LJ_MAX_LINE)
@@ -103,7 +104,7 @@ static void lex_number(LexState *State, TValue* tv)
 {
    StrScanFmt fmt;
    LexChar c, xp = 'e';
-   lj_assertLS(lj_char_isdigit(State->c), "bad usage");
+   State->assert_condition(lj_char_isdigit(State->c), "bad usage");
    if ((c = State->c) == '0' and (lex_savenext(State) | 0x20) == 'x') xp = 'p';
    while (lj_char_isident(State->c) or State->c == '.' or ((State->c == '-' or State->c == '+') and (c | 0x20) == xp)) {
       c = State->c;
@@ -123,7 +124,7 @@ static void lex_number(LexState *State, TValue* tv)
    else if (fmt != STRSCAN_ERROR) {
       lua_State* L = State->L;
       GCcdata* cd;
-      lj_assertLS(fmt == STRSCAN_I64 or fmt == STRSCAN_U64 or fmt == STRSCAN_IMAG,
+      State->assert_condition(fmt == STRSCAN_I64 or fmt == STRSCAN_U64 or fmt == STRSCAN_IMAG,
          "unexpected number format %d", fmt);
       ctype_loadffi(L);
       if (fmt == STRSCAN_IMAG) {
@@ -139,7 +140,7 @@ static void lex_number(LexState *State, TValue* tv)
 #endif
    }
    else {
-      lj_assertLS(fmt == STRSCAN_ERROR,
+      State->assert_condition(fmt == STRSCAN_ERROR,
          "unexpected number format %d", fmt);
       lj_lex_error(State, TK_number, LJ_ERR_XNUMBER);
    }
@@ -152,7 +153,7 @@ static int lex_skipeq(LexState *State)
 {
    int count = 0;
    LexChar s = State->c;
-   lj_assertLS(s == '[' or s == ']', "bad usage");
+   State->assert_condition(s == '[' or s == ']', "bad usage");
    while (lex_savenext(State) == '=' and count < 0x20000000)
       count++;
    return (State->c == s) ? count : (-count) - 1;
@@ -458,9 +459,203 @@ static LexToken lex_scan(LexState *State, TValue* tv)
 }
 
 //********************************************************************************************************************
-// Lexer API
+// LexState constructor
 
-// Setup lexer state.
+LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, const char* Chunkarg, const char* Mode)
+{
+   int header = 0;
+   this->L = L;
+   this->fs = nullptr;
+   this->pe = this->p = nullptr;
+   this->vstack = nullptr;
+   this->sizevstack = 0;
+   this->vtop = 0;
+   this->bcstack = nullptr;
+   this->sizebcstack = 0;
+   this->tok = 0;
+   this->lookahead = TK_eof;  //  No look-ahead token.
+   this->linenumber = 1;
+   this->lastline = 1;
+   this->level = 0;
+   this->ternary_depth = 0;
+   this->pending_if_empty_colon = 0;
+   this->endmark = 0;
+   this->is_bytecode = 0;
+   this->rfunc = Rfunc;
+   this->rdata = Rdata;
+   this->chunkarg = Chunkarg;
+   this->mode = Mode;
+
+   // Initialize string buffer
+   lj_buf_init(L, &this->sb);
+
+   lex_next(this);  //  Read-ahead first char.
+   if (this->c == 0xef and this->p + 2 <= this->pe and (uint8_t)this->p[0] == 0xbb and
+      (uint8_t)this->p[1] == 0xbf) {  // Skip UTF-8 BOM (if buffered).
+      this->p += 2;
+      lex_next(this);
+      header = 1;
+   }
+
+   if (this->c == '#') {  // Skip POSIX #! header line.
+      do {
+         lex_next(this);
+         if (this->c == LEX_EOF) return;
+      } while (!lex_iseol(this));
+      lex_newline(this);
+      header = 1;
+   }
+
+   if (this->c == LUA_SIGNATURE[0]) {  // Bytecode dump.
+      if (header) {
+
+         // Loading bytecode with an extra header is disabled for security
+         // reasons. This may circumvent the usual check for bytecode vs.
+         // Lua code by looking at the first char. Since this is a potential
+         // security violation no attempt is made to echo the chunkname either.
+
+         setstrV(L, L->top++, lj_err_str(L, LJ_ERR_BCBAD));
+         lj_err_throw(L, LUA_ERRSYNTAX);
+      }
+      this->is_bytecode = 1;
+   }
+}
+
+//********************************************************************************************************************
+// LexState constructor for direct bytecode reading (used by library initialization)
+
+LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
+{
+   this->L = L;
+   this->fs = nullptr;
+   this->p = BytecodePtr;
+   this->pe = (const char*)~(uintptr_t)0;
+   this->vstack = nullptr;
+   this->sizevstack = 0;
+   this->vtop = 0;
+   this->bcstack = nullptr;
+   this->sizebcstack = 0;
+   this->tok = 0;
+   this->lookahead = TK_eof;
+   this->linenumber = 1;
+   this->lastline = 1;
+   this->level = (BCDUMP_F_STRIP | (LJ_BE * BCDUMP_F_BE));
+   this->ternary_depth = 0;
+   this->pending_if_empty_colon = 0;
+   this->endmark = 0;
+   this->is_bytecode = 1;
+   this->c = -1;
+   this->chunkname = ChunkName;
+   this->chunkarg = nullptr;
+   this->mode = nullptr;
+   this->rfunc = nullptr;
+   this->rdata = nullptr;
+
+   // Initialize string buffer
+   lj_buf_init(L, &this->sb);
+}
+
+//********************************************************************************************************************
+// LexState destructor - merges logic from lj_lex_cleanup
+
+LexState::~LexState()
+{
+   // Only cleanup if L is set (indicates proper initialization)
+   if (this->L) {
+      global_State* g = G(this->L);
+      if (this->bcstack) lj_mem_freevec(g, this->bcstack, this->sizebcstack, BCInsLine);
+      if (this->vstack) lj_mem_freevec(g, this->vstack, this->sizevstack, VarInfo);
+      lj_buf_free(g, &this->sb);
+   }
+}
+
+//********************************************************************************************************************
+// Return next lexical token.
+
+void LexState::next()
+{
+   this->lastline = this->linenumber;
+   if (LJ_LIKELY(this->lookahead == TK_eof)) {  // No lookahead token?
+      this->tok = lex_scan(this, &this->tokval);  //  Get next token.
+   }
+   else {  // Otherwise return lookahead token.
+      this->tok = this->lookahead;
+      this->lookahead = TK_eof;
+      this->tokval = this->lookaheadval;
+   }
+}
+
+//********************************************************************************************************************
+// Look ahead for the next token.
+
+LexToken LexState::lookahead_token()
+{
+   this->assert_condition(this->lookahead == TK_eof, "double lookahead");
+   this->lookahead = lex_scan(this, &this->lookaheadval);
+   return this->lookahead;
+}
+
+//********************************************************************************************************************
+// Convert token to string.
+
+const char* LexState::token2str(LexToken Tok)
+{
+   if (Tok > TK_OFS)
+      return token_names[Tok - TK_OFS - 1];
+   else if (!lj_char_iscntrl(Tok))
+      return lj_strfmt_pushf(this->L, "%c", Tok);
+   else
+      return lj_strfmt_pushf(this->L, "char(%d)", Tok);
+}
+
+//********************************************************************************************************************
+// Lexer error.
+
+void LexState::error(LexToken Tok, ErrMsg Em, ...)
+{
+   const char* tokstr;
+   va_list argp;
+   if (Tok == 0) {
+      tokstr = nullptr;
+   }
+   else if (Tok == TK_name or Tok == TK_string or Tok == TK_number) {
+      lex_save(this, '\0');
+      tokstr = this->sb.b;
+   }
+   else {
+      tokstr = this->token2str(Tok);
+   }
+   va_start(argp, Em);
+   lj_err_lex(this->L, this->chunkname, tokstr, this->linenumber, Em, argp);
+   va_end(argp);
+}
+
+//********************************************************************************************************************
+// Lexer error. Wrapper for LexState::error()
+
+void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
+{
+   va_list argp;
+   va_start(argp, em);
+   const char* tokstr;
+   if (tok == 0) {
+      tokstr = nullptr;
+   }
+   else if (tok == TK_name or tok == TK_string or tok == TK_number) {
+      lex_save(State, '\0');
+      tokstr = State->sb.b;
+   }
+   else {
+      tokstr = State->token2str(tok);
+   }
+   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, argp);
+   va_end(argp);
+}
+
+//********************************************************************************************************************
+// Deprecated standalone functions - kept for compatibility during transition
+
+// Setup lexer state. DEPRECATED: Use LexState constructor instead.
 
 int lj_lex_setup(lua_State* L, LexState *State)
 {
@@ -523,65 +718,6 @@ void lj_lex_cleanup(lua_State* L, LexState *State)
    lj_mem_freevec(g, State->bcstack, State->sizebcstack, BCInsLine);
    lj_mem_freevec(g, State->vstack, State->sizevstack, VarInfo);
    lj_buf_free(g, &State->sb);
-}
-
-//********************************************************************************************************************
-// Return next lexical token.
-
-void lj_lex_next(LexState *State)
-{
-   State->lastline = State->linenumber;
-   if (LJ_LIKELY(State->lookahead == TK_eof)) {  // No lookahead token?
-      State->tok = lex_scan(State, &State->tokval);  //  Get next token.
-   }
-   else {  // Otherwise return lookahead token.
-      State->tok = State->lookahead;
-      State->lookahead = TK_eof;
-      State->tokval = State->lookaheadval;
-   }
-}
-
-//********************************************************************************************************************
-// Look ahead for the next token.
-
-LexToken lj_lex_lookahead(LexState *State)
-{
-   lj_assertLS(State->lookahead == TK_eof, "double lookahead");
-   State->lookahead = lex_scan(State, &State->lookaheadval);
-   return State->lookahead;
-}
-
-//********************************************************************************************************************
-// Convert token to string.
-
-const char* lj_lex_token2str(LexState *State, LexToken tok)
-{
-   if (tok > TK_OFS)
-      return token_names[tok - TK_OFS - 1];
-   else if (!lj_char_iscntrl(tok))
-      return lj_strfmt_pushf(State->L, "%c", tok);
-   else
-      return lj_strfmt_pushf(State->L, "char(%d)", tok);
-}
-
-// Lexer error.
-void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
-{
-   const char* tokstr;
-   va_list argp;
-   if (tok == 0) {
-      tokstr = nullptr;
-   }
-   else if (tok == TK_name or tok == TK_string or tok == TK_number) {
-      lex_save(State, '\0');
-      tokstr = State->sb.b;
-   }
-   else {
-      tokstr = lj_lex_token2str(State, tok);
-   }
-   va_start(argp, em);
-   lj_err_lex(State->L, State->chunkname, tokstr, State->linenumber, em, argp);
-   va_end(argp);
 }
 
 //********************************************************************************************************************

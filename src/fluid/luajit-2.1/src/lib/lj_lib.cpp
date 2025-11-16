@@ -22,6 +22,7 @@
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
+#include "lj_buf.h"
 #include "../parser/lj_lex.h"
 #include "lj_bcdump.h"
 #include "lj_lib.h"
@@ -54,22 +55,24 @@ static const uint8_t* lib_read_lfunc(lua_State* L, const uint8_t* p, GCtab* tab)
 {
    int len = *p++;
    GCstr* name = lj_str_new(L, (const char*)p, len);
-   LexState ls;
    GCproto* pt;
    GCfunc* fn;
-   memset(&ls, 0, sizeof(ls));
-   ls.L = L;
-   ls.p = (const char*)(p + len);
-   ls.pe = (const char*)~(uintptr_t)0;
-   ls.c = -1;
-   ls.level = (BCDUMP_F_STRIP | (LJ_BE * BCDUMP_F_BE));
-   ls.chunkname = name;
+   const uint8_t* result;
+
+   // Use specialized constructor for bytecode reading
+   LexState ls(L, (const char*)(p + len), name);
+
    pt = lj_bcread_proto(&ls);
    pt->firstline = ~(BCLine)0;
    fn = lj_func_newL_empty(L, pt, tabref(L->env));
    // NOBARRIER: See below for common barrier.
    setfuncV(L, lj_tab_setstr(L, tab, name), fn);
-   return (const uint8_t*)ls.p;
+
+   result = (const uint8_t*)ls.p;
+
+   // Destructor will automatically clean up
+
+   return result;
 }
 
 void lj_lib_register(lua_State* L, const char* libname,

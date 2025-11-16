@@ -36,12 +36,10 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 #include <inttypes.h>
 
-extern "C" {
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
-}
 
 #include "hashes.h"
 

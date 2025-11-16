@@ -84,15 +84,13 @@
 ** embedded platforms do not consistently mandate unwind tables.
 */
 
-// -- Error messages ------------------------------------------------------
-
 // Error message strings.
 LJ_DATADEF const char* lj_err_allmsg =
 #define ERRDEF(name, msg)	msg "\0"
 #include "lj_errmsg.h"
 ;
 
-// -- Internal frame unwinding --------------------------------------------
+// Internal frame unwinding
 
 // Unwind Lua stack and move error message to new top.
 LJ_NOINLINE static void unwindstack(lua_State* L, TValue* top)
@@ -200,7 +198,7 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
    return L;  //  Anything non-nullptr will do.
 }
 
-// -- External frame unwinding --------------------------------------------
+// External frame unwinding
 
 #if LJ_ABI_WIN
 
@@ -731,7 +729,7 @@ static void err_raise_ext(global_State* g, int errcode)
 
 #endif
 
-// -- Error handling ------------------------------------------------------
+// Error handling
 
 // Throw error. Find catch frame, unwind stack and continue.
 LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State* L, int errcode)
@@ -1053,9 +1051,9 @@ LJ_NOINLINE void lj_err_argt(lua_State* L, int narg, int tt)
    lj_err_argtype(L, narg, lj_obj_typename[tt + 1]);
 }
 
-// -- Public error handling API -------------------------------------------
+// Public error handling API
 
-LUA_API lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
+extern lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
 {
    lua_CFunction old = G(L)->panic;
    G(L)->panic = panicf;
@@ -1063,32 +1061,32 @@ LUA_API lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
 }
 
 // Forwarders for the public API (C calling convention and no LJ_NORET).
-LUA_API int lua_error(lua_State* L)
+extern int lua_error(lua_State* L)
 {
    lj_err_run(L);
    return 0;  //  unreachable
 }
 
-LUALIB_API int luaL_argerror(lua_State* L, int narg, const char* msg)
+extern int luaL_argerror(lua_State* L, int narg, const char* msg)
 {
    err_argmsg(L, narg, msg);
    return 0;  //  unreachable
 }
 
-LUALIB_API int luaL_typerror(lua_State* L, int narg, const char* xname)
+extern int luaL_typerror(lua_State* L, int narg, const char* xname)
 {
    lj_err_argtype(L, narg, xname);
    return 0;  //  unreachable
 }
 
-LUALIB_API void luaL_where(lua_State* L, int level)
+extern void luaL_where(lua_State* L, int level)
 {
    int size;
    cTValue* frame = lj_debug_frame(L, level, &size);
    lj_debug_addloc(L, "", frame, size ? frame + size : nullptr);
 }
 
-LUALIB_API int luaL_error(lua_State* L, const char* fmt, ...)
+extern int luaL_error(lua_State* L, const char* fmt, ...)
 {
    const char* msg;
    va_list argp;

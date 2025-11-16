@@ -40,11 +40,9 @@ static int bit_result64(lua_State* L, CTypeID id, uint64_t x)
 static int32_t bit_checkbit(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top and lj_strscan_numberobj(o)))
-      lj_err_argt(L, narg, LUA_TNUMBER);
-   if (LJ_LIKELY(tvisint(o))) {
-      return intV(o);
-   }
+   if (!(o < L->top and lj_strscan_numberobj(o))) lj_err_argt(L, narg, LUA_TNUMBER);
+
+   if (LJ_LIKELY(tvisint(o))) return intV(o);
    else {
       int32_t i = lj_num2bit(numV(o));
       if (LJ_DUALNUM) setintV(o, i);

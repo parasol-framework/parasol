@@ -21,11 +21,8 @@ variables with its creator, except via existing conventional means such as a Key
 #include <parasol/strings.hpp>
 #include <thread>
 
-extern "C" {
 #include "lauxlib.h"
 #include "lj_obj.h"
-}
-
 #include "hashes.h"
 #include "defs.h"
 

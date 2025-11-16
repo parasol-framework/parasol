@@ -8,21 +8,19 @@
 
 #include "lj_obj.h"
 
-/*
-** A fallback handler is called by the assembler VM if the fast path fails:
-**
-** - too few arguments:   unrecoverable.
-** - wrong argument type:   recoverable, if coercion succeeds.
-** - bad argument value:  unrecoverable.
-** - stack overflow:        recoverable, if stack reallocation succeeds.
-** - extra handling:        recoverable.
-**
-** The unrecoverable cases throw an error with lj_err_arg(), lj_err_argtype(),
-** lj_err_caller() or lj_err_callermsg().
-** The recoverable cases return 0 or the number of results + 1.
-** The assembler VM retries the fast path only if 0 is returned.
-** This time the fallback must not be called again or it gets stuck in a loop.
-*/
+// A fallback handler is called by the assembler VM if the fast path fails:
+//
+// - too few arguments:   unrecoverable.
+// - wrong argument type:   recoverable, if coercion succeeds.
+// - bad argument value:  unrecoverable.
+// - stack overflow:        recoverable, if stack reallocation succeeds.
+// - extra handling:        recoverable.
+//
+// The unrecoverable cases throw an error with lj_err_arg(), lj_err_argtype(),
+// lj_err_caller() or lj_err_callermsg().
+// The recoverable cases return 0 or the number of results + 1.
+// The assembler VM retries the fast path only if 0 is returned.
+// This time the fallback must not be called again or it gets stuck in a loop.
 
 // Return values from fallback handler.
 constexpr int FFH_RETRY = 0;

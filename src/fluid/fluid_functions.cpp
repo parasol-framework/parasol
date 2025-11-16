@@ -8,12 +8,10 @@
 #include <inttypes.h>
 #include <mutex>
 
-extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
 
 #include "hashes.h"
 #include "defs.h"

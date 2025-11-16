@@ -23,7 +23,7 @@
 #include "lj_bcdump.h"
 #include "../parser/lj_parse.h"
 
-// -- Load Lua source code and bytecode -----------------------------------
+// -- Load Lua source code and bytecode
 
 static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 {
@@ -33,7 +33,7 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    int bc;
    UNUSED(dummy);
    cframe_errfunc(L->cframe) = -1;  //  Inherit error function.
-   bc = lj_lex_setup(L, ls);
+   bc = ls->is_bytecode;
    if (ls->mode and !strchr(ls->mode, bc ? 'b' : 't')) {
       setstrV(L, L->top++, lj_err_str(L, LJ_ERR_XMODE));
       lj_err_throw(L, LUA_ERRSYNTAX);
@@ -45,24 +45,18 @@ static TValue* cpparser(lua_State* L, lua_CFunction dummy, void* ud)
    return nullptr;
 }
 
-LUA_API int lua_loadx(lua_State* L, lua_Reader reader, void* data,
+extern int lua_loadx(lua_State* L, lua_Reader reader, void* data,
    const char* chunkname, const char* mode)
 {
-   LexState ls;
+   LexState ls(L, reader, data, chunkname ? chunkname : "?", mode);
    int status;
-   ls.rfunc = reader;
-   ls.rdata = data;
-   ls.chunkarg = chunkname ? chunkname : "?";
-   ls.mode = mode;
-   lj_buf_init(L, &ls.sb);
    status = lj_vm_cpcall(L, nullptr, &ls, cpparser);
-   lj_lex_cleanup(L, &ls);
+   // Destructor will be called automatically when ls goes out of scope
    lj_gc_check(L);
    return status;
 }
 
-LUA_API int lua_load(lua_State* L, lua_Reader reader, void* data,
-   const char* chunkname)
+extern int lua_load(lua_State* L, lua_Reader reader, void* data, const char* chunkname)
 {
    return lua_loadx(L, reader, data, chunkname, nullptr);
 }
@@ -81,8 +75,7 @@ static const char* reader_file(lua_State* L, void* ud, size_t* size)
    return *size > 0 ? ctx->buf : nullptr;
 }
 
-LUALIB_API int luaL_loadfilex(lua_State* L, const char* filename,
-   const char* mode)
+extern int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
 {
    FileReaderCtx ctx;
    int status;
@@ -115,7 +108,7 @@ LUALIB_API int luaL_loadfilex(lua_State* L, const char* filename,
    return status;
 }
 
-LUALIB_API int luaL_loadfile(lua_State* L, const char* filename)
+extern int luaL_loadfile(lua_State* L, const char* filename)
 {
    return luaL_loadfilex(L, filename, nullptr);
 }
@@ -135,7 +128,7 @@ static const char* reader_string(lua_State* L, void* ud, size_t* size)
    return ctx->str;
 }
 
-LUALIB_API int luaL_loadbufferx(lua_State* L, const char* buf, size_t size,
+extern int luaL_loadbufferx(lua_State* L, const char* buf, size_t size,
    const char* name, const char* mode)
 {
    StringReaderCtx ctx;
@@ -144,20 +137,19 @@ LUALIB_API int luaL_loadbufferx(lua_State* L, const char* buf, size_t size,
    return lua_loadx(L, reader_string, &ctx, name, mode);
 }
 
-LUALIB_API int luaL_loadbuffer(lua_State* L, const char* buf, size_t size,
-   const char* name)
+extern int luaL_loadbuffer(lua_State* L, const char* buf, size_t size, const char* name)
 {
    return luaL_loadbufferx(L, buf, size, name, nullptr);
 }
 
-LUALIB_API int luaL_loadstring(lua_State* L, const char* s)
+extern int luaL_loadstring(lua_State* L, const char* s)
 {
    return luaL_loadbuffer(L, s, strlen(s), s);
 }
 
-// -- Dump bytecode -------------------------------------------------------
+// -- Dump bytecode
 
-LUA_API int lua_dump(lua_State* L, lua_Writer writer, void* data)
+extern int lua_dump(lua_State* L, lua_Writer writer, void* data)
 {
    cTValue* o = L->top - 1;
    lj_checkapi(L->top > L->base, "top slot empty");

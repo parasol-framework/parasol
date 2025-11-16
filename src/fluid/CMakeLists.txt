@@ -91,7 +91,7 @@ set (LUAJIT_NON_MSVC_DEFS -DLUAJIT_DISABLE_FFI -DLUAJIT_DISABLE_BUFFER -DLUAJIT_
 # Common host tool sources (used by both MSVC and non-MSVC builds)
 set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
 set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
-set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.c")
+set (MINILUA_SRC "${LUAJIT_HOST_DIR}/minilua.cpp")
 
 # Library source files needed for buildvm header generation (used in both build paths)
 
@@ -171,7 +171,7 @@ if (MSVC)
    # Build minilua host tool
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE
+      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE
          /Fo${LUAJIT_BUILD_DIR}/minilua.obj
          ${MINILUA_SRC}
       COMMAND ${CMAKE_LINKER} /nologo /out:${MINILUA_TARGET}
@@ -197,7 +197,7 @@ if (MSVC)
    # Build buildvm host tool
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /O2 /W3
+      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /O2 /W3
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
          /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
          ${BUILDVM_SOURCES}
@@ -296,7 +296,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${LUAJIT_MATH_LIB}
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_HOST_CFLAGS} -o ${MINILUA_TARGET} ${MINILUA_SRC} ${LUAJIT_MATH_LIB}
       DEPENDS ${MINILUA_SRC}
       COMMENT "Building minilua host tool"
       VERBATIM
@@ -334,7 +334,7 @@ else ()
 
       # Preprocess to detect LJ_FR2
       execute_process(
-         COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -P "${LUAJIT_BUILD_DIR}/detect_fr2.c"
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -P "${LUAJIT_BUILD_DIR}/detect_fr2.c"
          OUTPUT_VARIABLE LUAJIT_FR2_RESULT
          OUTPUT_STRIP_TRAILING_WHITESPACE
          ERROR_QUIET
@@ -371,7 +371,7 @@ else ()
          "endif()\n"
          "# Detect architecture flags by preprocessing lj_arch.h\n"
          "execute_process(\n"
-         "   COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -dM ${LUAJIT_BUILD_DIR}/test_arch.c\n"
+         "   COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_NON_MSVC_DEFS} -I${LUAJIT_SRC} -E -dM ${LUAJIT_BUILD_DIR}/test_arch.c\n"
          "   WORKING_DIRECTORY ${LUAJIT_SRC}\n"
          "   OUTPUT_VARIABLE ARCH_DEFS\n"
          "   OUTPUT_STRIP_TRAILING_WHITESPACE\n"
@@ -453,7 +453,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_C_COMPILER} ${LUAJIT_HOST_CFLAGS}
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_HOST_CFLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${LUAJIT_MATH_LIB}

@@ -41,13 +41,10 @@ terminated arrays, use [0].
 #include <inttypes.h>
 #include <sstream>
 
-extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
- #include "lj_obj.h"
-}
-
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
 #include "hashes.h"
 #include "defs.h"
 

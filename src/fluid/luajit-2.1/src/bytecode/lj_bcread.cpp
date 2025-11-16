@@ -48,7 +48,7 @@ static LJ_NOINLINE void bcread_error(LexState *State, ErrMsg em)
 
 static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
 {
-   lj_assertLS(len != 0, "empty refill");
+   State->assert_condition(len != 0, "empty refill");
    if (len > LJ_MAX_BUF or State->c < 0)
       bcread_error(State, LJ_ERR_BCBAD);
    do {
@@ -58,7 +58,7 @@ static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
       MSize n = (MSize)(State->pe - State->p);
       if (n) {  // Copy remainder to buffer.
          if (sbuflen(&State->sb)) {  // Move down in buffer.
-            lj_assertLS(State->pe == State->sb.w, "bad buffer pointer");
+            State->assert_condition(State->pe == State->sb.w, "bad buffer pointer");
             if (State->p != p) memmove(p, State->p, n);
          }
          else {  // Copy from buffer provided by reader.
@@ -113,7 +113,7 @@ static LJ_AINLINE uint8_t* bcread_mem(LexState *State, MSize len)
 {
    uint8_t* p = (uint8_t*)State->p;
    State->p += len;
-   lj_assertLS(State->p <= State->pe, "buffer read overflow");
+   State->assert_condition(State->p <= State->pe, "buffer read overflow");
    return p;
 }
 
@@ -128,7 +128,7 @@ static void bcread_block(LexState *State, void* q, MSize len)
 
 static LJ_AINLINE uint32_t bcread_byte(LexState *State)
 {
-   lj_assertLS(State->p < State->pe, "buffer read overflow");
+   State->assert_condition(State->p < State->pe, "buffer read overflow");
    return (uint32_t)(uint8_t)*State->p++;
 }
 
@@ -137,7 +137,7 @@ static LJ_AINLINE uint32_t bcread_byte(LexState *State)
 static LJ_AINLINE uint32_t bcread_uleb128(LexState *State)
 {
    uint32_t v = lj_buf_ruleb128(&State->p);
-   lj_assertLS(State->p <= State->pe, "buffer read overflow");
+   State->assert_condition(State->p <= State->pe, "buffer read overflow");
    return v;
 }
 
@@ -155,7 +155,7 @@ static uint32_t bcread_uleb128_33(LexState *State)
       } while (*p++ >= 0x80);
    }
    State->p = (char*)p;
-   lj_assertLS(State->p <= State->pe, "buffer read overflow");
+   State->assert_condition(State->p <= State->pe, "buffer read overflow");
    return v;
 }
 
@@ -207,7 +207,7 @@ static void bcread_ktabk(LexState *State, TValue* o)
       o->u32.hi = bcread_uleb128(State);
    }
    else {
-      lj_assertLS(tp <= BCDUMP_KTAB_TRUE, "bad constant type %d", tp);
+      State->assert_condition(tp <= BCDUMP_KTAB_TRUE, "bad constant type %d", tp);
       setpriV(o, ~tp);
    }
 }
@@ -230,7 +230,7 @@ static GCtab* bcread_ktab(LexState *State)
       for (i = 0; i < nhash; i++) {
          TValue key;
          bcread_ktabk(State, &key);
-         lj_assertLS(!tvisnil(&key), "nil key");
+         State->assert_condition(!tvisnil(&key), "nil key");
          bcread_ktabk(State, lj_tab_set(State->L, t, &key));
       }
    }
@@ -271,7 +271,7 @@ static void bcread_kgc(LexState *State, GCproto* pt, MSize sizekgc)
       }
       else {
          lua_State* L = State->L;
-         lj_assertLS(tp == BCDUMP_KGC_CHILD, "bad constant type %d", tp);
+         State->assert_condition(tp == BCDUMP_KGC_CHILD, "bad constant type %d", tp);
          if (L->top <= bcread_oldtop(L, ls))  //  Stack underflow?
             bcread_error(State, LJ_ERR_BCBAD);
          L->top--;
@@ -445,7 +445,7 @@ static int bcread_header(LexState *State)
 GCproto* lj_bcread(LexState *State)
 {
    lua_State* L = State->L;
-   lj_assertLS(State->c == BCDUMP_HEAD1, "bad bytecode header");
+   State->assert_condition(State->c == BCDUMP_HEAD1, "bad bytecode header");
    bcread_savetop(L, ls, L->top);
    lj_buf_reset(&State->sb);
 
