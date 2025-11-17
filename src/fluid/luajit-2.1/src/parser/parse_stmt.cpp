@@ -9,7 +9,7 @@
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
 
-void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
+void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc &Var)
 {
    FuncState* fs = this->fs;
    BCReg reg = Var.u.s.info;  // Check against this variable.
@@ -39,18 +39,18 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
 //********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 
-void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc* e)
+void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
 {
    FuncState* fs = this->fs;
    int32_t extra = int32_t(nvars) - int32_t(nexps);
-   if (e->k IS ExpKind::Call) {
+   if (Expr->k IS ExpKind::Call) {
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
-      setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
+      setbc_b(bcptr(fs, Expr), extra + 1);  // Fixup call results.
       if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
    }
    else {
-      if (e->k != ExpKind::Void) expr_tonextreg(fs, e);  // Close last expression.
+      if (Expr->k != ExpKind::Void) expr_tonextreg(fs, Expr);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
          bcreg_reserve(fs, BCReg(extra));
@@ -577,15 +577,14 @@ void LexState::parse_return(ParserContext &Context)
    else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
       auto returns = this->expr_list(&e);
-      if (!returns.ok()) {
-         return;
-      }
+      if (!returns.ok()) return;
+
       BCReg nret = returns.value_ref();
       if (nret IS 1) {  // Return one result.
          if (e.k IS ExpKind::Call) {  // Check for tail call.
             BCIns* ip = bcptr(fs, &e);
             // It doesn't pay off to add BC_VARGT just for 'return ...'.
-            if (bc_op(*ip) IS BC_VARG) goto notailcall;
+            if (bc_op(*ip) IS BC_VARG) goto no_tail_call;
             fs->pc--;
             ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
          }
@@ -595,7 +594,7 @@ void LexState::parse_return(ParserContext &Context)
       }
       else {
          if (e.k IS ExpKind::Call) {  // Append all results from a call.
-         notailcall:
+         no_tail_call:
             setbc_b(bcptr(fs, &e), 0);
             ins = BCINS_AD(BC_RETM, fs->nactvar, e.u.s.aux - fs->nactvar);
          }
@@ -935,61 +934,32 @@ void LexState::parse_if(ParserContext &Context, BCLine line)
 }
 
 //********************************************************************************************************************
-// Parse a single statement. Returns 1 if it must be the last one in a chunk.
+// Parse a single statement. Returns true if it must be the last one in a chunk.
 
-int LexState::parse_stmt(ParserContext &Context)
+bool LexState::parse_stmt(ParserContext &Context)
 {
-   BCLine line = this->linenumber;
-   Token current = Context.tokens().current();
-   TokenKind kind = current.kind();
-   switch (kind) {
-   case TokenKind::If:
-      this->parse_if(Context, line);
-      break;
-   case TokenKind::WhileToken:
-      this->parse_while(Context, line);
-      break;
-   case TokenKind::For:
-      this->parse_for(Context, line);
-      break;
-   case TokenKind::Repeat:
-      this->parse_repeat(Context, line);
-      break;
-   case TokenKind::Function:
-      this->parse_func(line);
-      break;
-   case TokenKind::DeferToken:
-      this->parse_defer();
-      break;
-   case TokenKind::Local:
-      if (!this->parse_local(Context).ok()) return 0;
-      break;
-   case TokenKind::ReturnToken:
-      this->parse_return(Context);
-      return 1;  // Must be last.
-   case TokenKind::ContinueToken:
-      this->parse_continue();
-      break;
-   case TokenKind::BreakToken:
-      this->parse_break();
-      break;
-   case TokenKind::Semicolon:
-      Context.tokens().advance();
-      break;
-   default:
-      switch (current.raw()) {
-      case TK_do:
-         Context.tokens().advance();
-         this->parse_block(Context);
-         this->lex_match(TK_end, TK_do, line);
+   auto line = this->linenumber;
+
+   switch (Context.tokens().current().kind()) {
+      case TokenKind::If: this->parse_if(Context, line); break;
+      case TokenKind::WhileToken: this->parse_while(Context, line); break;
+      case TokenKind::For: this->parse_for(Context, line); break;
+      case TokenKind::Repeat: this->parse_repeat(Context, line); break;
+      case TokenKind::Function: this->parse_func(line); break;
+      case TokenKind::DeferToken: this->parse_defer(); break;
+      case TokenKind::Local: if (!this->parse_local(Context).ok()) return 0; break;
+      case TokenKind::ReturnToken: this->parse_return(Context); return true;  // Must be last.
+      case TokenKind::ContinueToken: this->parse_continue(); break;
+      case TokenKind::BreakToken: this->parse_break(); break;
+      case TokenKind::Semicolon: Context.tokens().advance(); break;
+      case TokenKind::DoToken: 
+         Context.tokens().advance(); 
+         this->parse_block(Context); 
+         this->lex_match(TK_end, TK_do, line); 
          break;
-      default:
-         this->parse_call_assign(Context);
-         break;
-      }
-      break;
+      default: this->parse_call_assign(Context); break;
    }
-   return 0;
+   return false;
 }
 
 //********************************************************************************************************************
@@ -998,14 +968,14 @@ int LexState::parse_stmt(ParserContext &Context)
 static void raise_accumulated_diagnostics(ParserContext &Context)
 {
    auto entries = Context.diagnostics().entries();
-   if (entries.empty()) {
-      return;
-   }
+   if (entries.empty()) return;
+
    std::string summary;
    summary.reserve(entries.size() * 64);
    summary.append("parser reported ");
    summary.append(std::to_string(entries.size()));
    summary.append(entries.size() == 1 ? " error:\n" : " errors:\n");
+
    for (const auto& diagnostic : entries) {
       SourceSpan span = diagnostic.token.span();
       summary.append("   line ");
@@ -1017,8 +987,9 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
       else summary.append("unexpected token");
       summary.push_back('\n');
    }
-   lua_State* L = &Context.lua();
-   GCstr* message = lj_str_new(L, summary.data(), summary.size());
+
+   lua_State *L = &Context.lua();
+   GCstr *message = lj_str_new(L, summary.data(), summary.size());
    setstrV(L, L->top++, message);
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
@@ -1028,16 +999,16 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
 
 void LexState::parse_chunk(ParserContext &Context)
 {
-   int is_last = 0;
+   bool is_last = false;
    this->synlevel_begin();
-   while (!is_last and !parse_is_end(Context.tokens().current().kind())) {
+   while ((not is_last) and (not parse_is_end(Context.tokens().current().kind()))) {
       is_last = this->parse_stmt(Context);
       this->lex_opt(';');
-      this->assert_condition(this->fs->framesize >= this->fs->freereg and
-         this->fs->freereg >= this->fs->nactvar, "bad regalloc");
+      this->assert_condition(this->fs->framesize >= this->fs->freereg and this->fs->freereg >= this->fs->nactvar, "bad regalloc");
       this->fs->freereg = this->fs->nactvar;  // Free registers after each stmt.
    }
    this->synlevel_end();
+
    if (!Context.config().abort_on_error and Context.diagnostics().has_errors()) {
       raise_accumulated_diagnostics(Context);
    }

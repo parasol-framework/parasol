@@ -225,7 +225,7 @@ public:
    void parse_for(ParserContext& Context, BCLine Line);
    BCPos parse_then(ParserContext& Context);
    void parse_if(ParserContext& Context, BCLine Line);
-   int parse_stmt(ParserContext& Context);
+   bool parse_stmt(ParserContext& Context);
    void parse_chunk(ParserContext& Context);
 
    // Public parser helpers
