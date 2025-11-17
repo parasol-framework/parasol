@@ -1,0 +1,18 @@
+-- Phase 1 parser smoke test covering local declarations and primary expressions.
+local function phase1_sum(a, b)
+   local total = a + b
+   return total
+end
+
+local function phase1_local_bindings(value)
+   local function offset(delta)
+      return delta + value
+   end
+
+   local lhs, rhs = value, offset(2)
+   return lhs + rhs
+end
+
+local result = phase1_sum(4, 3)
+local locals = phase1_local_bindings(6)
+print('parser.phase1', result, locals)

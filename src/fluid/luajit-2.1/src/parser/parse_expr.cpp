@@ -1,3 +1,7 @@
+#include <string>
+
+#include "parser/parser_context.h"
+
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);
@@ -6,6 +10,15 @@ static void bcemit_shift_call_at_base(FuncState* fs, const char* fname, MSize fn
 static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_len, ExpDesc* arg);
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e);
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg);
+
+static ParserError make_expr_error(ParserErrorCode code, const Token& token, std::string_view message)
+{
+   ParserError error;
+   error.code = code;
+   error.token = token;
+   error.message.assign(message.begin(), message.end());
+   return error;
+}
 
 //********************************************************************************************************************
 // Return string expression.
@@ -472,60 +485,76 @@ void LexState::parse_args(ExpDesc* Expression)
 }
 
 //********************************************************************************************************************
-// Parse primary expression.
-
-void LexState::expr_primary(ExpDesc* Expression)
+static ParserResult<ExpDesc> expr_primary_with_context(ParserContext& context, ExpDesc* expression)
 {
-   FuncState* fs = this->fs;
-   ExpDesc* v = Expression;
-   // Parse prefix expression.
-   if (this->tok IS '(') {
-      BCLine line = this->linenumber;
-      this->next();
-      this->expr(v);
-      this->lex_match(')', '(', line);
-      expr_discharge(this->fs, v);
+   FuncState* fs = &context.func();
+   ExpDesc* v = expression;
+   Token current = context.tokens().current();
+
+   if (current.is(TokenKind::LeftParen)) {
+      BCLine line = context.lex().linenumber;
+      context.tokens().advance();
+      context.lex().expr(v);
+      context.lex().lex_match(')', '(', line);
+      expr_discharge(fs, v);
    }
-   else if (this->tok IS TK_name) {
-      this->var_lookup(v);
+   else if (current.is_identifier()) {
+      context.lex().var_lookup(v);
    }
    else {
-      this->err_syntax(LJ_ERR_XSYMBOL);
+      ParserError error = make_expr_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
+      context.emit_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
+      return ParserResult<ExpDesc>::failure(error);
    }
-   for (;;) {  // Parse multiple expression suffixes.
-      if (this->tok IS '.') {
-         this->expr_field(v);
+
+   for (;;) {
+      current = context.tokens().current();
+      if (current.is(TokenKind::Dot)) {
+         context.lex().expr_field(v);
       }
-      else if (this->tok IS '[') {
+      else if (current.is(TokenKind::LeftBracket)) {
          ExpDesc key;
          expr_toanyreg(fs, v);
-         this->expr_bracket(&key);
+         context.lex().expr_bracket(&key);
          expr_index(fs, v, &key);
       }
-      else if (this->tok IS ':') {
+      else if (current.is(TokenKind::Colon)) {
          ExpDesc key;
-         this->next();
-         this->expr_str(&key);
+         context.tokens().advance();
+         context.lex().expr_str(&key);
          bcemit_method(fs, v, &key);
-         this->parse_args(v);
+         context.lex().parse_args(v);
       }
-      else if (this->tok IS TK_plusplus) {
-         this->next();
-         this->inc_dec_op(OPR_ADD, v, 1);
+      else if (current.is(TokenKind::PlusPlus)) {
+         context.tokens().advance();
+         context.lex().inc_dec_op(OPR_ADD, v, 1);
       }
-      else if (this->tok IS TK_if_empty and this->should_emit_presence()) {
-         // Postfix presence check operator: x??
-         this->next();  // Consume '??'
+      else if (current.is(TokenKind::Presence) and context.lex().should_emit_presence()) {
+         context.tokens().advance();
          bcemit_presence_check(fs, v);
       }
-      else if (this->tok IS '(' or this->tok IS TK_string or this->tok IS '{') {
+      else if (current.is(TokenKind::LeftParen) or current.is(TokenKind::String) or current.is(TokenKind::LeftBrace)) {
          expr_tonextreg(fs, v);
          if (LJ_FR2) bcreg_reserve(fs, 1);
-         this->parse_args(v);
+         context.lex().parse_args(v);
       }
       else {
          break;
       }
+   }
+
+   return ParserResult<ExpDesc>::success(*v);
+}
+
+// Parse primary expression.
+
+void LexState::expr_primary(ExpDesc* Expression)
+{
+   ParserAllocator allocator = ParserAllocator::from(this->L);
+   ParserContext context = ParserContext::from(*this, *this->fs, allocator);
+   auto result = expr_primary_with_context(context, Expression);
+   if (!result.ok()) {
+      this->err_syntax(LJ_ERR_XSYMBOL);
    }
 }
 
