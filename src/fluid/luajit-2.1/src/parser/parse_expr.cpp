@@ -510,7 +510,7 @@ void LexState::expr_primary(ExpDesc* Expression)
             IrEmitter emitter(*context);
             auto emitted = emitter.emit_primary_expression(ast.get());
             if (emitted) {
-               *v = emitted.get();
+               *v = emitted.get().release();
                parsed_prefix = true;
             }
          }

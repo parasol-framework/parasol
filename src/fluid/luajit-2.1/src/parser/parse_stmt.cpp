@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "parser/parser_ast.h"
+#include "parser/register_allocator.h"
+#include "parser/control_flow_graph.h"
 
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
@@ -16,6 +18,7 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
    BCReg reg = Var.u.s.info;  // Check against this variable.
    BCReg tmp = fs->freereg;  // Rename to this temp. register (if needed).
    int hazard = 0;
+   RegisterAllocator allocator(*fs);
 
    for (auto& entry : Left) {
       if (entry.k IS ExpKind::Indexed) {
@@ -32,7 +35,7 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
 
    if (hazard) {
       bcemit_AD(fs, BC_MOV, tmp, reg);  // Rename conflicting variable.
-      bcreg_reserve(fs, 1);
+      allocator.reserve_raw(1);
    }
 }
 
@@ -42,18 +45,19 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var)
 void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc* e)
 {
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(*fs);
    int32_t extra = int32_t(nvars) - int32_t(nexps);
    if (e->k IS ExpKind::Call) {
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, e), extra + 1);  // Fixup call results.
-      if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
+      if (extra > 1) allocator.reserve_raw(BCReg(extra) - 1);
    }
    else {
       if (e->k != ExpKind::Void) expr_tonextreg(fs, e);  // Close last expression.
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
-         bcreg_reserve(fs, BCReg(extra));
+         allocator.reserve_raw(BCReg(extra));
          bcemit_nil(fs, reg, BCReg(extra));
       }
    }
@@ -75,6 +79,8 @@ int LexState::assign_if_empty(ExpDesc* lh)
    BCPos check_nil, check_false, check_zero, check_empty;
    BCPos skip_assign, assign_pos;
    BCReg nexps;
+   RegisterAllocator allocator(*fs);
+   ControlFlowGraph flow(*fs);
 
    lhv = *lh;
 
@@ -90,12 +96,12 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
       new_base = fs->freereg;
       bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
-      bcreg_reserve(fs, 1);
+      allocator.reserve_raw(1);
 
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
-         bcreg_reserve(fs, 1);
+         allocator.reserve_raw(1);
          lh->u.s.info = new_base;
          lh->u.s.aux = new_idx;
       }
@@ -108,17 +114,22 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
+   ControlFlowEdgeHandle nil_edge = flow.add_edge(check_nil, ControlFlowEdgeKind::TrueBranch);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
+   ControlFlowEdgeHandle false_edge = flow.add_edge(check_false, ControlFlowEdgeKind::FalseBranch);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, lhs_reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
+   ControlFlowEdgeHandle zero_edge = flow.add_edge(check_zero, ControlFlowEdgeKind::FalseBranch);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
+   ControlFlowEdgeHandle empty_edge = flow.add_edge(check_empty, ControlFlowEdgeKind::FalseBranch);
 
    skip_assign = bcemit_jmp(fs);
+   ControlFlowEdgeHandle skip_edge = flow.add_edge(skip_assign, ControlFlowEdgeKind::Unconditional);
 
    assign_pos = fs->pc;
 
@@ -130,11 +141,11 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
    bcemit_store(fs, &lhv, &rh);
 
-   JumpListView(fs, check_nil).patch_to(assign_pos);
-   JumpListView(fs, check_false).patch_to(assign_pos);
-   JumpListView(fs, check_zero).patch_to(assign_pos);
-   JumpListView(fs, check_empty).patch_to(assign_pos);
-   JumpListView(fs, skip_assign).patch_to(fs->pc);
+   flow.patch_edge(nil_edge, assign_pos);
+   flow.patch_edge(false_edge, assign_pos);
+   flow.patch_edge(zero_edge, assign_pos);
+   flow.patch_edge(empty_edge, assign_pos);
+   flow.patch_edge_to_current(skip_edge);
 
    // Release temporary duplicates before freeing the original table slots.
    register_guard.release_to(register_guard.saved());
@@ -142,8 +153,8 @@ int LexState::assign_if_empty(ExpDesc* lh)
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
-         bcreg_free(fs, BCReg(orig_aux));
-      bcreg_free(fs, BCReg(lhv.u.s.info));
+         allocator.release(BCReg(orig_aux));
+      allocator.release(BCReg(lhv.u.s.info));
    }
    return 1;
 }

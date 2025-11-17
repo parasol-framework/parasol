@@ -96,3 +96,9 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Added an `IrEmitter` shim that lowers these AST nodes back into `ExpDesc` values, giving us a home for future emission logic while keeping the existing bytecode machinery untouched.
 * Updated `expr_primary` and the non-function branch of `parse_local` to prefer the AST/IR path when a `ParserContext` is attached, falling back to the legacy parser for complex expressions or `local function` declarations until more AST coverage is implemented.
 * Wired the new sources into `lj_parse.cpp` so subsequent phases can continue extending the AST and emitter without disturbing the amalgamated build layout.
+
+## Phase 3 Kickoff – June 2025
+* Introduced a `RegisterAllocator` (and RAII wrappers) that centralises frame growth, span reservations, and register release accounting. The allocator now backs the compound-assignment helpers (`assign_hazard`, `assign_adjust`, and `assign_if_empty`), replacing direct `bcreg_reserve`/`bcreg_free` calls with context-aware operations that track stack depth.
+* Added an `ExpressionValue` wrapper that encapsulates `ExpDesc` lifetimes for the AST/IR path, enabling the emitter to traffic in higher-level objects before handing descriptors back to legacy code.
+* Implemented a lightweight `ControlFlowGraph` helper that records pending jump lists and patches them as structured edges. The new graph powers the postfix `??` assignment flow so that conditional jumps no longer manipulate `JumpListView` directly.
+* Updated `lj_parse.cpp` to compile the new parser sources and captured the incremental work here so later phases can continue migrating expression and statement forms onto the allocator/CFG abstractions.

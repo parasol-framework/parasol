@@ -1,11 +1,13 @@
 #include "parser/ir_emitter.h"
 
+#include <utility>
+
 IrEmitter::IrEmitter(ParserContext& Context)
    : context(&Context)
 {
 }
 
-ParserResult<ExpDesc> IrEmitter::emit_primary_expression(const AstPrimaryExpression& Expression)
+ParserResult<ExpressionValue> IrEmitter::emit_primary_expression(const AstPrimaryExpression& Expression)
 {
    lj_assertX(this->context != nullptr, "IR emitter requires a parser context");
    ExpDesc result{};
@@ -24,9 +26,10 @@ ParserResult<ExpDesc> IrEmitter::emit_primary_expression(const AstPrimaryExpress
       error.message = "unsupported primary expression";
       error.token = prefix.token;
       this->context->emit_error(error.code, error.message, prefix.token);
-      return ParserResult<ExpDesc>::failure(error);
+      return ParserResult<ExpressionValue>::failure(error);
    }
    }
-   return ParserResult<ExpDesc>::success(result);
+   ExpressionValue value(*this->context, result);
+   return ParserResult<ExpressionValue>::success(std::move(value));
 }
 

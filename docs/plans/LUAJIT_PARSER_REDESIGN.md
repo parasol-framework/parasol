@@ -64,3 +64,4 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 1. Extend the newly added AST/IR scaffolding to cover additional expression forms (calls, indexing, literals) so parsing can remain independent from `FuncState` mutations.
 2. Flesh out the emitter responsibilities (optimisation hooks, register allocation hand-off) so subsequent phases can focus on building the AST without revisiting bytecode details.
 3. Schedule incremental conversions (expressions, statements, control-flow) that migrate from direct bytecode emission to the AST + emitter pipeline while keeping legacy fallbacks available for unmigrated surfaces.
+4. Expand the `RegisterAllocator`/`ControlFlowGraph` coverage beyond the assignment helpers so register pressure, jump patching, and `ExpDesc` lifetimes are consistently mediated through the new abstractions before moving into the operator re-write.
