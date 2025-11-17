@@ -349,7 +349,7 @@ void LexState::parse_local()
       if (name_token.ok()) {
          func_name = name_token.value_ref().identifier();
       }
-      this->var_new(0, func_name ? func_name : NAME_BLANK);
+      this->var_new(0, func_name);
       expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
       bcreg_reserve(fs, 1);
