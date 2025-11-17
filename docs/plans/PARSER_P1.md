@@ -84,3 +84,7 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Parser helpers compile against `ParserContext` without direct access to global parser structs for the migrated pilot areas.
 * Typed tokens, diagnostics, and context utilities are covered by tests and used in at least one expression + statement path.
 * Legacy behaviour (single-error abort, direct bytecode emission) remains intact, ensuring later phases can focus on AST/IR work with confidence in the new scaffolding.
+
+## Phase 1 Status (Implemented)
+* Introduced `ParserContext`, diagnostics, and typed token stream scaffolding. `expr_primary` and `parse_local` use the new helpers while retaining legacy fallbacks.
+* Added a lightweight Fluid regression script `src/fluid/tests/parser_phase1.fluid`. Run it with `parasol --log-warning src/fluid/tests/parser_phase1.fluid` after building to verify the migrated surfaces parse and execute normally.
