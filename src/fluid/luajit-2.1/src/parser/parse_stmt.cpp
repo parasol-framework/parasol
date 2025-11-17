@@ -5,6 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "parser/parser_context.h"
+
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
 
@@ -335,10 +337,19 @@ void LexState::parse_local()
 {
    this->next();  // Skip 'local'.
 
-   if (this->lex_opt(TK_function)) {  // Local function declaration.
+   ParserAllocator allocator = ParserAllocator::from(this->L);
+   ParserContext context = ParserContext::from(*this, *this->fs, allocator);
+
+   if (context.check(TokenKind::Function)) {  // Local function declaration.
+      context.consume(TokenKind::Function, ParserErrorCode::ExpectedToken);
       ExpDesc v, b;
       FuncState* fs = this->fs;
-      this->var_new(0, this->lex_str());
+      auto name_token = context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      GCstr* func_name = NAME_BLANK;
+      if (name_token.ok()) {
+         func_name = name_token.value_ref().identifier();
+      }
+      this->var_new(0, func_name ? func_name : NAME_BLANK);
       expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
       bcreg_reserve(fs, 1);
@@ -354,11 +365,13 @@ void LexState::parse_local()
       ExpDesc e;
       BCReg nexps, nvars = 0;
       do {  // Collect LHS.
-         GCstr* name = this->lex_str();
+         auto identifier = context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         GCstr* name = NAME_BLANK;
+         if (identifier.ok()) name = identifier.value_ref().identifier();
          // Use NAME_BLANK marker for blank identifiers.
          this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
-      } while (this->lex_opt(','));
-      if (this->lex_opt('=')) {  // Optional RHS.
+      } while (context.match(TokenKind::Comma).ok());
+      if (context.match(TokenKind::Equals).ok()) {  // Optional RHS.
          nexps = this->expr_list(&e);
       }
       else {  // Or implicitly set to nil.

@@ -43,6 +43,11 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
+#include "parser/token_types.h"
+#include "parser/token_types.cpp"
+#include "parser/token_stream.cpp"
+#include "parser/parser_diagnostics.cpp"
+#include "parser/parser_context.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"
