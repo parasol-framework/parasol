@@ -22,6 +22,8 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 4. Define lightweight views/iterators for node collections (block statements, function parameters) so later passes can traverse without leaking internal storage details.
 5. Document the schema inside the new header, including ownership semantics and extension guidelines (e.g., how to add a new operator node).
 
+   ✅ Implemented in `src/fluid/luajit-2.1/src/parser/ast_nodes.h` and `ast_nodes.cpp`, which now host the node definitions, helper factories, and collection views described above.
+
 ### 2. Thread AST construction through the parser
 1. Update `ParserContext` (Phase 1 deliverable) with factories or allocators for AST nodes if pooled allocation becomes necessary, otherwise rely on standard containers but document lifetime expectations.
 2. Modify expression parsing functions (`expr_primary`, `expr_prefix`, `expr_binop`, etc.) to build and return AST nodes:

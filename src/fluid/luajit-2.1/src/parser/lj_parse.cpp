@@ -48,6 +48,7 @@ static const struct {
 #include "parser/token_stream.cpp"
 #include "parser/parser_diagnostics.cpp"
 #include "parser/parser_context.cpp"
+#include "parser/ast_nodes.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"

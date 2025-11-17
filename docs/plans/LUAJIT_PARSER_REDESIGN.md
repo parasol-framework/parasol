@@ -43,6 +43,8 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 3. Implement an `IrEmitter` pass that walks the AST and emits LuaJIT bytecode, retaining optimised patterns (folding, table templates) but isolating them from syntax parsing. This emitter becomes the sole owner of `FuncState` and register allocation.
 4. Provide hooks for future passes (e.g., AST transforms for new Fluid features) by designing the node structures and traversal APIs with extensibility in mind.
 
+**Status:** `parser/ast_nodes.h` and `parser/ast_nodes.cpp` now codify the node schema outlined above, providing builder helpers, ownership semantics, and lightweight statement/parameter views. Subsequent work on expression/statement parsing should target these factories instead of manipulating `FuncState` directly.
+
 ### Phase 3 – Rebuild register, jump, and expression management
 1. Replace the global register helpers with a `RegisterAllocator` class that enforces lifetimes via RAII objects (e.g., `AllocatedRegister`, `RegisterSpan`). This allocator should expose explicit methods for duplicating table bases/indexes so compound operations no longer need to hand-roll copies.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L151-L199】
 2. Encapsulate `ExpDesc` behaviour inside a class hierarchy or tagged union that knows how to discharge itself into the allocator, removing the need for external functions such as `expr_discharge`. Persist convenient constructors (nil/number/string) but hide raw flag manipulation behind methods.
