@@ -1,0 +1,44 @@
+-- Phase 1 parser smoke test covering local declarations and primary expressions.
+-- Build the Fluid module before running this script:
+--    cmake --build build/agents --config Release --target fluid -- -j4
+-- Execute with:
+--    parasol --log-warning src/fluid/tests/parser_phase1.fluid
+local function phase1_sum(a, b)
+   local total = a + b
+   return total
+end
+
+local function phase1_local_bindings(value)
+   local function offset(delta)
+      return delta + value
+   end
+
+   local lhs, rhs = value, offset(2)
+   return lhs + rhs
+end
+
+local result = phase1_sum(4, 3)
+local locals = phase1_local_bindings(6)
+print('parser.phase1', result, locals)
+
+local function expect_parse_error(label, source)
+   local chunk, err = load(source, 'phase1:' .. label)
+   local ok = chunk != nil
+   print('parser.phase1.diag', label, ok, err != nil)
+end
+
+expect_parse_error('missing_local_name', [[
+local function ()
+   return 1
+end
+]])
+
+expect_parse_error('broken_expression', [[
+return (1 + )
+]])
+
+expect_parse_error('if_missing_then', [[
+if value do
+   return value
+end
+]])

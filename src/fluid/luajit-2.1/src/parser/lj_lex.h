@@ -3,13 +3,22 @@
 
 #pragma once
 
-#include <stdarg.h>
-#include <string_view>
+#include <cstddef>
+#include <deque>
 #include <optional>
 #include <span>
+#include <stdarg.h>
+#include <string_view>
+#include <cstdint>
 
 #include "lj_obj.h"
 #include "lj_err.h"
+
+struct SourceSpan {
+   BCLine line = 0;
+   BCLine column = 0;
+   size_t offset = 0;
+};
 
 // Lua lexer tokens.
 #define TKDEF(_, __) \
@@ -65,10 +74,28 @@ enum BinOpr : int;
 
 void lj_reserve_words(lua_State *);
 
+class ParserContext;
+template<typename T>
+class ParserResult;
+enum class TokenKind : uint16_t;
+
+struct LocalDeclResult {
+   BCReg declared = 0;
+   BCReg initialised = 0;
+};
+
 // Lua lexer state.
 
 class LexState {
 public:
+   struct BufferedToken {
+      LexToken token = 0;
+      TValue value;
+      BCLine line = 0;
+      BCLine column = 0;
+      size_t offset = 0;
+   };
+
    struct FuncState *fs;    // Current FuncState. Defined in lj_parse.c.
    lua_State *L;            // Lua state.
    TValue     tokval;       // Current token value.
@@ -97,6 +124,25 @@ public:
    uint8_t  pending_if_empty_colon; // Tracks ?: misuse after ??.
    int      endmark;          // Trust bytecode end marker, even if not at EOF.
    int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
+
+   size_t   current_offset = 0;
+   size_t   next_offset = 0;
+   size_t   line_start_offset = 0;
+
+   BCLine   current_token_line = 1;
+   BCLine   current_token_column = 1;
+   size_t   current_token_offset = 0;
+
+   BCLine   lookahead_line = 1;
+   BCLine   lookahead_column = 1;
+   size_t   lookahead_offset = 0;
+
+   BCLine   pending_token_line = 1;
+   BCLine   pending_token_column = 1;
+   size_t   pending_token_offset = 0;
+
+   ParserContext* active_context = nullptr;
+   std::deque<BufferedToken> buffered_tokens;
 
    LexState() = default;  // Default constructor for bytecode reader usage
    LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);
@@ -135,7 +181,7 @@ public:
    void fs_init(FuncState* FunctionState);
 
    // Expression parsing
-   void expr(ExpDesc* Expression);
+   ParserResult<ExpDesc> expr(ExpDesc* Expression);
    void expr_str(ExpDesc* Expression);
    void expr_field(ExpDesc* Expression);
    void expr_bracket(ExpDesc* Expression);
@@ -144,47 +190,55 @@ public:
    void parse_body_impl(ExpDesc* Expression, int NeedSelf, BCLine Line, int OptionalParams);
    void parse_body(ExpDesc* Expression, int NeedSelf, BCLine Line);
    void parse_body_defer(ExpDesc* Expression, BCLine Line);
-   BCReg expr_list(ExpDesc* Expression);
+   ParserResult<BCReg> expr_list(ExpDesc* Expression);
    void parse_args(ExpDesc* Expression);
    void inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost);
-   void expr_primary(ExpDesc* Expression);
-   void expr_simple(ExpDesc* Expression);
+   ParserResult<ExpDesc> expr_primary(ExpDesc* Expression);
+   ParserResult<ExpDesc> expr_simple(ExpDesc* Expression);
    void synlevel_begin();
    void synlevel_end();
-   BinOpr expr_binop(ExpDesc* Expression, uint32_t Limit);
-   BinOpr expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator);
-   void expr_unop(ExpDesc* Expression);
-   void expr_next();
-   BCPos expr_cond();
+   ParserResult<BinOpr> expr_binop(ExpDesc* Expression, uint32_t Limit);
+   ParserResult<BinOpr> expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator);
+   ParserResult<ExpDesc> expr_unop(ExpDesc* Expression);
+   ParserResult<ExpDesc> expr_next();
+   ParserResult<BCPos> expr_cond();
    bool should_emit_presence();
 
    // Statement parsing
    void assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var);
    void assign_adjust(BCReg VariableCount, BCReg ExpressionCount, ExpDesc* Expression);
-   int assign_if_empty(ExpDesc* Variables);
-   int assign_compound(ExpDesc* Variables, LexToken OperatorType);
-   void parse_assignment(ExpDesc* FirstVariable);
-   void parse_call_assign();
-   void parse_local();
+   int assign_if_empty(ParserContext& Context, ExpDesc* Variables);
+   int assign_compound(ParserContext& Context, ExpDesc* Variables, TokenKind OperatorType);
+   void parse_assignment(ParserContext& Context, ExpDesc* FirstVariable);
+   void parse_call_assign(ParserContext& Context);
+   ParserResult<LocalDeclResult> parse_local(ParserContext& Context);
    void parse_defer();
    void parse_func(BCLine Line);
-   void parse_return();
+   void parse_return(ParserContext& Context);
    void parse_continue();
    void parse_break();
-   void parse_block();
-   void parse_while(BCLine Line);
-   void parse_repeat(BCLine Line);
-   void parse_for_num(GCstr* VariableName, BCLine Line);
-   void parse_for_iter(GCstr* IndexName);
-   void parse_for(BCLine Line);
-   BCPos parse_then();
-   void parse_if(BCLine Line);
-   int parse_stmt();
-   void parse_chunk();
+   void parse_block(ParserContext& Context);
+   void parse_while(ParserContext& Context, BCLine Line);
+   void parse_repeat(ParserContext& Context, BCLine Line);
+   void parse_for_num(ParserContext& Context, GCstr* VariableName, BCLine Line);
+   void parse_for_iter(ParserContext& Context, GCstr* IndexName);
+   void parse_for(ParserContext& Context, BCLine Line);
+   BCPos parse_then(ParserContext& Context);
+   void parse_if(ParserContext& Context, BCLine Line);
+   bool parse_stmt(ParserContext& Context);
+   void parse_chunk(ParserContext& Context);
 
    // Public parser helpers
    GCstr* keepstr(std::string_view Value);
    [[nodiscard]] GCstr* intern_empty_string();
+   void ensure_lookahead(size_t count);
+   [[nodiscard]] size_t available_lookahead() const;
+   [[nodiscard]] const BufferedToken* buffered_token(size_t index) const;
+   [[nodiscard]] SourceSpan current_token_span() const;
+   [[nodiscard]] SourceSpan lookahead_token_span() const;
+   void mark_token_start();
+   void apply_buffered_token(const BufferedToken& token);
+   BufferedToken scan_buffered_token();
 
 #if LJ_HASFFI
    void keepcdata(TValue* Value, GCcdata* Cdata);
