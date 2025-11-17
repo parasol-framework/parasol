@@ -5,6 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "parser/parser_ast.h"
+
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
 
@@ -334,6 +336,40 @@ void LexState::parse_call_assign()
 void LexState::parse_local()
 {
    ParserContext* context = this->parser_context;
+   if (context) {
+      Token current = context->tokens().current();
+      if (current.is(TokenKind::ReservedLocal)) {
+         Token lookahead = context->tokens().peek(1);
+         if (lookahead.kind != TokenKind::ReservedFunction) {
+            AstBuilder builder(*context);
+            auto ast_statement = builder.parse_local_statement();
+            if (ast_statement) {
+               auto& statement = ast_statement.get();
+               BCReg nvars = 0;
+               ExpDesc e;
+               BCReg nexps = 0;
+               for (const auto& binding : statement.bindings) {
+                  GCstr* name = binding.name.identifier();
+                  if (!name) name = NAME_BLANK;
+                  this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
+               }
+               if (statement.has_initializer) {
+                  nexps = this->expr_list(&e);
+               }
+               else {
+                  e.k = ExpKind::Void;
+                  nexps = 0;
+               }
+               this->assign_adjust(nvars, nexps, &e);
+               this->var_add(nvars);
+               return;
+            }
+            this->err_token(TK_name);
+            return;
+         }
+      }
+   }
+
    if (context) {
       if (!context->consume(TokenKind::ReservedLocal, ParserErrorCode::UnexpectedToken))
          this->next();

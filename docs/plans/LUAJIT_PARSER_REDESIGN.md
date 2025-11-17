@@ -61,6 +61,6 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 4. Document migration guidelines so future contributors know how to extend the parser using the new abstractions (e.g., “add a new AST node, extend the emitter visitor, add unit tests”).
 
 ## Next Steps
-1. Leverage the new `ParserContext`/typed token infrastructure to design the AST/IR schema, agreeing on ownership boundaries between parsing, analysis, and emission.
-2. Define the responsibilities of the forthcoming emitter (optimisation hooks, register allocation hand-off) so subsequent phases can focus on building the AST without revisiting bytecode details.
+1. Extend the newly added AST/IR scaffolding to cover additional expression forms (calls, indexing, literals) so parsing can remain independent from `FuncState` mutations.
+2. Flesh out the emitter responsibilities (optimisation hooks, register allocation hand-off) so subsequent phases can focus on building the AST without revisiting bytecode details.
 3. Schedule incremental conversions (expressions, statements, control-flow) that migrate from direct bytecode emission to the AST + emitter pipeline while keeping legacy fallbacks available for unmigrated surfaces.

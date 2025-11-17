@@ -90,3 +90,9 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Introduced `TokenKind`, `TokenPayload`, `TokenStreamAdapter`, and associated helpers in `src/fluid/luajit-2.1/src/parser/token_*.{h,cpp}`. These adapters translate the legacy lexer stream into strongly-typed tokens (with payload variants, source spans, and lookahead support) that can be consumed by the context utilities.
 * Retrofitted `LexState::err_syntax`, `err_token`, and other error paths to report diagnostics before deferring to the legacy single-error abort. Representative parser surfaces (`expr_primary` and `parse_local`) now depend on `ParserContext`, demonstrating the new control flow while keeping legacy fallbacks for unmigrated call sites.
 * Built the LuaJIT target after the changes via `cmake --build build/agents --config Release --target luajit` to verify that the new infrastructure integrates with the existing amalgamated build; future tests should continue to use this command until dedicated parser unit tests are available.
+
+## Phase 2 Kickoff – May 2025
+* Landed the first AST node definitions in `parser_ast.h/.cpp` together with an `AstBuilder` that converts typed tokens into structured representations for local variable declarations and identifier-based primary expressions without mutating `FuncState`.
+* Added an `IrEmitter` shim that lowers these AST nodes back into `ExpDesc` values, giving us a home for future emission logic while keeping the existing bytecode machinery untouched.
+* Updated `expr_primary` and the non-function branch of `parse_local` to prefer the AST/IR path when a `ParserContext` is attached, falling back to the legacy parser for complex expressions or `local function` declarations until more AST coverage is implemented.
+* Wired the new sources into `lj_parse.cpp` so subsequent phases can continue extending the AST and emitter without disturbing the amalgamated build layout.

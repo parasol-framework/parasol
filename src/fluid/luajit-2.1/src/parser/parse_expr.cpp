@@ -1,3 +1,6 @@
+#include "parser/parser_ast.h"
+#include "parser/ir_emitter.h"
+
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);
@@ -81,6 +84,23 @@ static void expr_collapse_freereg(FuncState* fs, BCReg result_reg)
    BCReg target = result_reg + 1;
    if (target < fs->nactvar) target = BCReg(fs->nactvar);
    if (fs->freereg > target) fs->freereg = target;
+}
+
+static bool token_kind_starts_primary_suffix(TokenKind Kind)
+{
+   switch (Kind) {
+   case TokenKind::Dot:
+   case TokenKind::LeftBracket:
+   case TokenKind::Colon:
+   case TokenKind::LeftParen:
+   case TokenKind::LeftBrace:
+   case TokenKind::String:
+   case TokenKind::IfEmpty:
+   case TokenKind::PlusPlus:
+      return true;
+   default:
+      return false;
+   }
 }
 
 //********************************************************************************************************************
@@ -480,8 +500,24 @@ void LexState::expr_primary(ExpDesc* Expression)
    ExpDesc* v = Expression;
    ParserContext* context = this->parser_context;
    bool parsed_prefix = false;
-
    if (context) {
+      Token current = context->tokens().current();
+      Token next = context->tokens().peek(1);
+      if (current.is_identifier() and !token_kind_starts_primary_suffix(next.kind)) {
+         AstBuilder builder(*context);
+         auto ast = builder.parse_primary_expression();
+         if (ast) {
+            IrEmitter emitter(*context);
+            auto emitted = emitter.emit_primary_expression(ast.get());
+            if (emitted) {
+               *v = emitted.get();
+               parsed_prefix = true;
+            }
+         }
+      }
+   }
+
+   if (context and !parsed_prefix) {
       Token current = context->tokens().current();
       if (current.is(TokenKind::LeftParen)) {
          BCLine line = this->linenumber;
