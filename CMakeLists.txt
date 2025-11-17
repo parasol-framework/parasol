@@ -151,7 +151,7 @@ endif ()
 
 include_directories("${PROJECT_SOURCE_DIR}/include"
    "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
-   "${CMAKE_CURRENT_BINARY_DIR}")
+   "${CMAKE_CURRENT_BINARY_DIR}") # For config.h
 
 	CHECK_CXX_SOURCE_COMPILES ("
 #include <stdio.h>
