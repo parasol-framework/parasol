@@ -103,6 +103,17 @@ static bool token_kind_starts_primary_suffix(TokenKind Kind)
    }
 }
 
+static bool token_kind_supported_by_ast_primary_suffix(TokenKind Kind)
+{
+   switch (Kind) {
+   case TokenKind::Dot:
+   case TokenKind::IfEmpty:
+      return true;
+   default:
+      return false;
+   }
+}
+
 //********************************************************************************************************************
 
 static int token_starts_expression(LexToken tok)
@@ -503,7 +514,9 @@ void LexState::expr_primary(ExpDesc* Expression)
    if (context) {
       Token current = context->tokens().current();
       Token next = context->tokens().peek(1);
-      if (current.is_identifier() and !token_kind_starts_primary_suffix(next.kind)) {
+      bool next_is_suffix = token_kind_starts_primary_suffix(next.kind);
+      bool next_is_supported_suffix = token_kind_supported_by_ast_primary_suffix(next.kind);
+      if (current.is_identifier() and (!next_is_suffix or next_is_supported_suffix)) {
          AstBuilder builder(*context);
          auto ast = builder.parse_primary_expression();
          if (ast) {

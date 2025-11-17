@@ -102,3 +102,8 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Added an `ExpressionValue` wrapper that encapsulates `ExpDesc` lifetimes for the AST/IR path, enabling the emitter to traffic in higher-level objects before handing descriptors back to legacy code.
 * Implemented a lightweight `ControlFlowGraph` helper that records pending jump lists and patches them as structured edges. The new graph powers the postfix `??` assignment flow so that conditional jumps no longer manipulate `JumpListView` directly.
 * Updated `lj_parse.cpp` to compile the new parser sources and captured the incremental work here so later phases can continue migrating expression and statement forms onto the allocator/CFG abstractions.
+
+## Phase 4 Kickoff – July 2025
+* Extended the AST builder so identifier-based primary expressions now capture `.` field lookups and postfix `??` operators directly from the typed token stream, preserving structured error reporting for both prefixes and the supported suffixes.
+* Updated the IR emitter to lower the new suffix nodes through `expr_index`/`bcemit_presence_check`, keeping the conversions inside the AST path and ensuring the emitted `ExpDesc` mirrors the legacy bytecode without revisiting the suffix loop.
+* Relaxed the `expr_primary` gate so the parser selects the AST/IR fast path whenever the next token is either not a suffix or one of the newly supported suffix kinds, letting the modern pipeline handle `foo.bar`/`foo??` constructs before falling back for method calls, brackets, or function invocation.

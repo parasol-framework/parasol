@@ -17,6 +17,43 @@ ParserResult<AstPrimaryExpression> AstBuilder::parse_primary_expression()
    AstPrimaryExpression expression;
    expression.prefix.kind = AstPrimaryPrefixKind::Identifier;
    expression.prefix.token = identifier.get();
+
+   for (;;) {
+      Token suffix = this->context->tokens().current();
+      if (suffix.is(TokenKind::Dot)) {
+         auto dot_token = this->context->consume(TokenKind::Dot, ParserErrorCode::UnexpectedToken);
+         if (!dot_token) {
+            ParserError error = dot_token.get_error();
+            return ParserResult<AstPrimaryExpression>::failure(error);
+         }
+         auto field = this->context->expect_identifier(ParserErrorCode::IdentifierExpected);
+         if (!field) {
+            ParserError error = field.get_error();
+            return ParserResult<AstPrimaryExpression>::failure(error);
+         }
+         AstPrimarySuffix suffix_node;
+         suffix_node.kind = AstPrimarySuffixKind::Field;
+         suffix_node.token = field.get();
+         expression.suffixes.push_back(suffix_node);
+         continue;
+      }
+
+      if (suffix.is(TokenKind::IfEmpty)) {
+         if (!this->context->lex().should_emit_presence())
+            break;
+         auto presence = this->context->consume(TokenKind::IfEmpty, ParserErrorCode::UnexpectedToken);
+         if (!presence) {
+            ParserError error = presence.get_error();
+            return ParserResult<AstPrimaryExpression>::failure(error);
+         }
+         AstPrimarySuffix suffix_node;
+         suffix_node.kind = AstPrimarySuffixKind::PresenceCheck;
+         suffix_node.token = presence.get();
+         expression.suffixes.push_back(suffix_node);
+         continue;
+      }
+      break;
+   }
    return ParserResult<AstPrimaryExpression>::success(expression);
 }
 
