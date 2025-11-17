@@ -1,8 +1,6 @@
-// Lua parser (source code -> bytecode).
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-//
-// Major portions taken verbatim or adapted from the Lua interpreter.
-// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
+// Lua parser
+// 
+// Copyright (C) 2025 Paul Manias
 
 #define lj_parse_c
 #define LUA_CORE
@@ -79,13 +77,15 @@ GCproto * lj_parse(LexState *State)
 {
    FuncState fs;
    FuncScope bl;
-   GCproto* pt;
-   lua_State* L = State->L;
+   GCproto *pt;
+   lua_State *L = State->L;
+
 #ifdef LUAJIT_DISABLE_DEBUGINFO
    State->chunkname = lj_str_newlit(L, "=");
 #else
    State->chunkname = lj_str_newz(L, State->chunkarg);
 #endif
+
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;

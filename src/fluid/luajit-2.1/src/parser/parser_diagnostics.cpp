@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #include "parser/parser_diagnostics.h"
 
 ParserDiagnostics::ParserDiagnostics()

@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #pragma once
 
 #include <span>

@@ -14,17 +14,17 @@
 
 enum class TokenKind : uint16_t;
 
-// Error handling (lj_parse_core.c)
+// Error handling (lj_parse_core.cpp)
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what);
 
-// Constants (lj_parse_constants.c)
+// Constants (lj_parse_constants.cpp)
 
 static BCReg const_num(FuncState* fs, ExpDesc* e);
 static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype);
 static BCReg const_str(FuncState* fs, ExpDesc* e);
 
-// Jump list handling (lj_parse_constants.c)
+// Jump list handling (lj_parse_constants.cpp)
 
 class JumpListView {
 public:
@@ -106,14 +106,14 @@ static inline void expr_set_flag(ExpDesc* Expression, ExprFlag Flag)
    return false;
 }
 
-// Register allocation (lj_parse_regalloc.c)
+// Register allocation (lj_parse_regalloc.cpp)
 
 static void bcreg_bump(FuncState* fs, BCReg n);
 static void bcreg_reserve(FuncState* fs, BCReg n);
 static void bcreg_free(FuncState* fs, BCReg reg);
 static void expr_free(FuncState* fs, ExpDesc* e);
 
-// Bytecode emission (lj_parse_regalloc.c)
+// Bytecode emission (lj_parse_regalloc.cpp)
 
 static BCPos bcemit_INS(FuncState* fs, BCIns ins);
 
@@ -149,7 +149,7 @@ static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond);
 static void bcemit_branch_t(FuncState* fs, ExpDesc* e);
 static void bcemit_branch_f(FuncState* fs, ExpDesc* e);
 
-// Operators (lj_parse_operators.c)
+// Operators (lj_parse_operators.cpp)
 
 static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
@@ -162,14 +162,14 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e);
 static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e);
 
-// Variables and scope (lj_parse_scope.c)
+// Variables and scope (lj_parse_scope.cpp)
 
 static int is_blank_identifier(GCstr* name);
 static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n);
 static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e);
 static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first);
 
-// Function scope (lj_parse_scope.c)
+// Function scope (lj_parse_scope.cpp)
 
 static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags);
 static void fscope_loop_continue(FuncState* fs, BCPos pos);
@@ -181,25 +181,24 @@ static void fscope_uvmark(FuncState* fs, BCReg level);
 
 #include "parse_concepts.h"
 
-// Function state (lj_parse_scope.c)
+// Function state (lj_parse_scope.cpp)
 
 static void fs_fixup_bc(FuncState* fs, GCproto* pt, BCIns* bc, MSize n);
 static void fs_fixup_uv2(FuncState* fs, GCproto* pt);
 static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr);
 static void fs_fixup_uv1(FuncState* fs, GCproto* pt, uint16_t* uv);
 static size_t fs_prep_line(FuncState* fs, BCLine numline);
-static void fs_fixup_line(FuncState* fs, GCproto* pt,
-   void* lineinfo, BCLine numline);
+static void fs_fixup_line(FuncState* fs, GCproto* pt, void* lineinfo, BCLine numline);
 static int bcopisret(BCOp op);
 static void fs_fixup_ret(FuncState* fs);
 
-// Expressions (lj_parse_expr.c)
+// Expressions (lj_parse_expr.cpp)
 
 static void expr_index(FuncState* fs, ExpDesc* t, ExpDesc* e);
 static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e);
 static BinOpr token2binop(LexToken tok);
 
-// Statements (lj_parse_stmt.c)
+// Statements (lj_parse_stmt.cpp)
 
 static void snapshot_return_regs(FuncState* fs, BCIns* ins);
 static bool parse_is_end(TokenKind kind);
