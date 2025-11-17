@@ -34,6 +34,14 @@
 
 #include "luajit.h"
 
+#include <string>
+#include <string_view>
+
+#include "../parser/parser_self_test.h"
+
+static std::string_view gcstr_to_view(GCstr* String);
+static void push_trace_summary(lua_State* L, const ParserTraceSummary& Summary);
+
 // jit.* functions
 
 #define LJLIB_MODULE_jit
@@ -109,6 +117,76 @@ LJLIB_CF(jit_status)
 #endif
 }
 
+LJLIB_CF(jit_parser_trace)
+{
+   GCstr* source = lj_lib_checkstr(L, 1);
+   ParserConfig config;
+   config.enable_tracing = true;
+   config.pipeline_mode = ParserPipelineMode::AstPreferred;
+   config.max_trace_events = 64;
+   config.max_diagnostics = 8;
+
+   if (L->base + 1 < L->top and tvistab(L->base + 1)) {
+      GCtab* options = tabV(L->base + 1);
+      cTValue* mode_value = lj_tab_getstr(options, lj_str_newlit(L, "mode"));
+      if (mode_value and tvisstr(mode_value)) {
+         std::string_view mode_text = gcstr_to_view(strV(mode_value));
+         if (mode_text.compare("legacy") IS 0 or mode_text.compare("legacy-only") IS 0 or mode_text.compare("legacy_only") IS 0)
+            config.pipeline_mode = ParserPipelineMode::LegacyOnly;
+         else if (mode_text.compare("legacyonly") IS 0)
+            config.pipeline_mode = ParserPipelineMode::LegacyOnly;
+         else if (mode_text.compare("ast") IS 0)
+            config.pipeline_mode = ParserPipelineMode::AstPreferred;
+      }
+      cTValue* limit_value = lj_tab_getstr(options, lj_str_newlit(L, "limit"));
+      if (limit_value) {
+         int32_t limit = 0;
+         if (tvisint(limit_value))
+            limit = intV(limit_value);
+         else if (tvisnum(limit_value))
+            limit = lj_num2int(numV(limit_value));
+         if (limit > 0)
+            config.max_trace_events = (std::size_t)limit;
+      }
+   }
+
+   ParserTraceSummary summary = parser_trace_probe(L, gcstr_to_view(source), config);
+   push_trace_summary(L, summary);
+   return 1;
+}
+
+LJLIB_CF(jit_parser_selftest)
+{
+   ParserSelfTestReport report = parser_run_default_self_tests(L);
+   lua_createtable(L, 0, 2);
+   lua_pushboolean(L, report.passed ? 1 : 0);
+   lua_setfield(L, -2, "passed");
+   lua_createtable(L, (int)report.cases.size(), 0);
+   for (std::size_t i = 0; i < report.cases.size(); ++i) {
+      const ParserSelfTestCaseResult& case_result = report.cases[i];
+      lua_createtable(L, 0, 5);
+      lua_pushlstring(L, case_result.name.data(), case_result.name.size());
+      lua_setfield(L, -2, "name");
+      lua_pushboolean(L, case_result.passed ? 1 : 0);
+      lua_setfield(L, -2, "passed");
+      push_trace_summary(L, case_result.expected);
+      lua_setfield(L, -2, "expected");
+      push_trace_summary(L, case_result.actual);
+      lua_setfield(L, -2, "actual");
+      std::string summary_text = format_trace_summary(case_result.actual);
+      lua_pushlstring(L, summary_text.data(), summary_text.size());
+      lua_setfield(L, -2, "summary");
+      if (!case_result.passed) {
+         std::string expected_text = format_trace_summary(case_result.expected);
+         lua_pushlstring(L, expected_text.data(), expected_text.size());
+         lua_setfield(L, -2, "expected_summary");
+      }
+      lua_rawseti(L, -2, (int)(i + 1));
+   }
+   lua_setfield(L, -2, "cases");
+   return 1;
+}
+
 LJLIB_CF(jit_security)
 {
    int idx = lj_lib_checkopt(L, 1, -1, LJ_SECURITY_MODESTRING);
@@ -180,6 +258,27 @@ static GCproto* check_Lproto(lua_State* L, int nolua)
 static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
 {
    setintV(lj_tab_setstr(L, t, lj_str_newz(L, name)), val);
+}
+
+static std::string_view gcstr_to_view(GCstr* String)
+{
+   if (!String)
+      return std::string_view();
+   return std::string_view(strdata(String), String->len);
+}
+
+static void push_trace_summary(lua_State* L, const ParserTraceSummary& Summary)
+{
+   lua_createtable(L, 0, 8);
+   GCtab* table = tabV(L->top - 1);
+   setintfield(L, table, "ast_primary_attempts", (int32_t)Summary.ast_primary_attempts);
+   setintfield(L, table, "ast_primary_successes", (int32_t)Summary.ast_primary_successes);
+   setintfield(L, table, "ast_primary_failures", (int32_t)Summary.ast_primary_failures);
+   setintfield(L, table, "ast_primary_fallbacks", (int32_t)Summary.ast_primary_fallbacks);
+   setintfield(L, table, "local_statement_attempts", (int32_t)Summary.local_statement_attempts);
+   setintfield(L, table, "local_statement_successes", (int32_t)Summary.local_statement_successes);
+   setintfield(L, table, "local_statement_failures", (int32_t)Summary.local_statement_failures);
+   setintfield(L, table, "local_statement_fallbacks", (int32_t)Summary.local_statement_fallbacks);
 }
 
 // local info = jit.util.funcinfo(func [,pc])
@@ -756,6 +855,10 @@ extern int luaopen_jit(lua_State* L)
    lua_pushinteger(L, LUAJIT_VERSION_NUM);
    lua_pushliteral(L, LUAJIT_VERSION);
    LJ_LIB_REG(L, "jit", jit);
+   lua_pushcfunction(L, lj_cf_jit_parser_trace);
+   lua_setfield(L, -2, "parser_trace");
+   lua_pushcfunction(L, lj_cf_jit_parser_selftest);
+   lua_setfield(L, -2, "parser_selftest");
 #if LJ_HASPROFILE
    lj_lib_prereg(L, "jit.profile", luaopen_jit_profile, tabref(L->env));
 #endif

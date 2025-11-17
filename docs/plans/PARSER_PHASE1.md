@@ -113,3 +113,9 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Updated `ParserContext` to own the trace sink, expose `trace_event()` helpers, and reconfigure diagnostics/trace capacity whenever a `ParserSession` overrides the active configuration, ensuring tracing follows the same lifetime rules as the typed token stream.
 * Instrumented `expr_primary` and `parse_local` so AST attempts, successes, failures, and legacy fallbacks emit structured trace entries, providing immediate breadcrumbs when running the parser with tracing enabled while leaving runtime behaviour unchanged when tracing is disabled.
 * Documented the new instrumentation knobs here to close out Phase 1 with visibility tooling for the migrated surfaces while paving the way for future AST coverage and eventual dual-pipeline verification.
+
+## Phase 6 Kickoff – September 2025
+* Introduced `ParserTraceSummary` helpers so trace clients can aggregate event counts (attempts, successes, failures, fallbacks) without re-implementing bookkeeping logic, plus added formatted summary strings for human-readable logs.
+* Added `parser_self_test.{h,cpp}` which exposes `parser_trace_probe`, `parser_run_self_tests`, and a default test suite that spins up a standalone `LexState`, forces tracing on, and verifies the AST fast path across representative `local` and identifier-based expressions.
+* Exposed the new harness through `jit.parser_trace(code [, opts])` and `jit.parser_selftest()` so developers can run trace probes or the bundled self-tests from any Fluid/Lua shell; both commands return structured tables with raw counters and formatted summaries to simplify automation.
+* Documented the new commands here to close the loop on the Phase 5 instrumentation work—`jit.parser_trace("local foo = bar")` now reports AST engagement for ad-hoc snippets, and `jit.parser_selftest()` provides a quick regression gate before future AST or pipeline migrations.

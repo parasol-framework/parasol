@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -32,6 +33,21 @@ struct ParserTraceEvent {
    Token token;
 };
 
+struct ParserTraceSummary {
+   std::size_t ast_primary_attempts = 0;
+   std::size_t ast_primary_successes = 0;
+   std::size_t ast_primary_failures = 0;
+   std::size_t ast_primary_fallbacks = 0;
+   std::size_t local_statement_attempts = 0;
+   std::size_t local_statement_successes = 0;
+   std::size_t local_statement_failures = 0;
+   std::size_t local_statement_fallbacks = 0;
+
+   void record(ParserTraceEventKind Kind);
+   void merge(const ParserTraceSummary& Other);
+   [[nodiscard]] bool matches(const ParserTraceSummary& Other) const;
+};
+
 class ParserTraceSink {
 public:
    ParserTraceSink();
@@ -48,4 +64,8 @@ private:
    std::size_t limit = 0;
    std::vector<ParserTraceEvent> events;
 };
+
+ParserTraceSummary summarize_trace(std::span<const ParserTraceEvent> Events);
+std::string format_trace_summary(const ParserTraceSummary& Summary);
+
 
