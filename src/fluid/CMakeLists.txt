@@ -514,41 +514,46 @@ else ()
       )
    endif ()
 
-   file(GLOB LUAJIT_AMALG_SOURCES
-      "${LUAJIT_SRC}/lj_*.cpp"
-      "${LUAJIT_SRC}/lib_*.cpp"
+   # Expand glob patterns for source files (mirrors MSVC approach)
+   file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/lib/lj_*.cpp"
       "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
-   )
+      "${LUAJIT_SRC}/lj_*.cpp")
 
-   if (WIN32)
-      # MinGW: Compile amalgamated source with explicit flags to ensure consistent configuration
-      # with Unix builds and avoid inheriting global CMAKE_C_FLAGS
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
 
-      set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
+   # Generate list of object files from source files
+   set(LUAJIT_OBJECT_FILES "")
+   foreach(SOURCE_FILE ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES})
+      get_filename_component(FILENAME ${SOURCE_FILE} NAME_WE)
+      set(OBJECT_FILE "${LUAJIT_BUILD_DIR}/${FILENAME}.o")
+      list(APPEND LUAJIT_OBJECT_FILES ${OBJECT_FILE})
+
+      # Create custom command to compile each source file with explicit flags
       add_custom_command(
-         OUTPUT ${LUAJIT_AMALG_O}
+         OUTPUT ${OBJECT_FILE}
          COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
             -Wno-trigraphs
-            -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
-         DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
-         COMMENT "Compiling LuaJIT amalgamated source"
+            -c ${SOURCE_FILE} -o ${OBJECT_FILE}
+         DEPENDS ${SOURCE_FILE} ${LUAJIT_GENERATED_HEADERS}
+         COMMENT "Compiling ${FILENAME}.cpp"
          VERBATIM
       )
+   endforeach()
 
-      # Create library from pre-compiled objects
+   if (WIN32)
+      # MinGW: Create library from individual object files
       add_library(luajit_lib STATIC)
-      target_sources(luajit_lib PRIVATE ${LUAJIT_AMALG_O} ${LUAJIT_VM_OBJ})
+      target_sources(luajit_lib PRIVATE ${LUAJIT_OBJECT_FILES} ${LUAJIT_VM_OBJ})
       set_target_properties(luajit_lib PROPERTIES LINKER_LANGUAGE C)
    else ()
-      # Unix: Compile VM assembly and amalgamated source with explicit flags to avoid
-      # inheriting problematic global flags (e.g. -fno-var-tracking from FastBuild)
+      # Unix: Compile VM assembly with explicit flags, then create library
 
       # Compile VM assembly file
       add_custom_command(
@@ -563,23 +568,9 @@ else ()
          VERBATIM
       )
 
-      set (LUAJIT_AMALG_O "${LUAJIT_BUILD_DIR}/ljamalg.o")
-      add_custom_command(
-         OUTPUT ${LUAJIT_AMALG_O}
-         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
-            ${LUAJIT_NON_MSVC_DEFS}
-            -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
-            ${LUAJIT_INCLUDE_DIRS}
-            -Wno-trigraphs
-            -c "${LUAJIT_SRC}/ljamalg.cpp" -o ${LUAJIT_AMALG_O}
-         DEPENDS "${LUAJIT_SRC}/ljamalg.cpp" ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_AMALG_SOURCES}
-         COMMENT "Compiling LuaJIT amalgamated source"
-         VERBATIM
-      )
-
-      # Create library from pre-compiled objects
+      # Create library from individual object files
       add_library(luajit_lib STATIC)
-      target_sources(luajit_lib PRIVATE ${LUAJIT_AMALG_O} ${LUAJIT_VM_O})
+      target_sources(luajit_lib PRIVATE ${LUAJIT_OBJECT_FILES} ${LUAJIT_VM_O})
       set_target_properties(luajit_lib PROPERTIES LINKER_LANGUAGE C)
    endif ()
 
@@ -599,6 +590,17 @@ else ()
    target_compile_definitions(luajit_interface INTERFACE ${LUAJIT_COMMON_DEFS})
 
    add_custom_target(luajit DEPENDS luajit_lib)  # Create an alias for backward compatibility
+
+   # List all source files for dependency tracking (mirrors MSVC LUAJIT_AMALG_SOURCES)
+   file(GLOB LUAJIT_AMALG_SOURCES
+      "${LUAJIT_SRC}/lj_*.cpp"
+      "${LUAJIT_SRC}/lib_*.cpp"
+      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
+      "${LUAJIT_SRC}/debug/lj_*.cpp"
+      "${LUAJIT_SRC}/lib/lj_*.cpp"
+      "${LUAJIT_SRC}/parser/lj_*.cpp"
+      "${LUAJIT_SRC}/runtime/lj_*.cpp"
+   )
 endif ()
 
 # Fluid library build
