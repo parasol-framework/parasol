@@ -49,7 +49,7 @@ private:
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
-   ParserResult<ExprNodePtr> parse_function_literal();
+   ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token);
    ParserResult<ExprNodePtr> parse_table_literal();
    ParserResult<ExprNodeList> parse_expression_list();
 

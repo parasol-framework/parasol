@@ -71,13 +71,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
 {
    BCIns ins;
    if (payload.values.empty()) {
-      // No return values; use the span of the entire return statement for error reporting if needed.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {
-      // Use the span of the first return value for precise error location.
       const ExprNodePtr& first = payload.values.front();
-      SourceSpan span = first ? first->span : payload.span;
+      SourceSpan span = first ? first->span : SourceSpan{};
       return this->unsupported_stmt(AstNodeKind::ReturnStmt, span);
    }
    snapshot_return_regs(&this->func_state, &ins);

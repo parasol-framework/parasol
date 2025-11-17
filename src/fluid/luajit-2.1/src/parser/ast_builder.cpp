@@ -114,12 +114,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    Token local_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    if (this->ctx.check(TokenKind::Function)) {
+      Token function_token = this->ctx.tokens().current();
       this->ctx.tokens().advance();
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) {
          return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
       }
-      auto fn = this->parse_function_literal();
+      auto fn = this->parse_function_literal(function_token);
       if (not fn.ok()) {
          return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       }
@@ -185,7 +186,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       path.method = make_identifier(seg.value_ref());
    }
 
-   auto fn = this->parse_function_literal();
+   auto fn = this->parse_function_literal(func_token);
    if (not fn.ok()) {
       return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    }
@@ -194,7 +195,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    if (method and path.method.has_value()) {
       auto* payload = function_payload_from(*function_expr);
       FunctionParameter self_param;
-      self_param.name.symbol = "self";
+      self_param.name = make_identifier("self");
       self_param.is_self = true;
       if (payload) {
          payload->parameters.insert(payload->parameters.begin(), self_param);
@@ -708,7 +709,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       this->ctx.tokens().advance();
       break;
    case TokenKind::Function: {
-      auto fn = this->parse_function_literal();
+      Token function_token = this->ctx.tokens().current();
+      this->ctx.tokens().advance();
+      auto fn = this->parse_function_literal(function_token);
       if (not fn.ok()) {
          return fn;
       }
@@ -812,10 +815,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
    return ParserResult<ExprNodePtr>::success(std::move(base));
 }
 
-ParserResult<ExprNodePtr> AstBuilder::parse_function_literal()
+ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& function_token)
 {
-   Token token = this->ctx.tokens().current();
-   this->ctx.tokens().advance();
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) {
       return ParserResult<ExprNodePtr>::failure(params.error_ref());
@@ -826,7 +827,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal()
       return ParserResult<ExprNodePtr>::failure(body.error_ref());
    }
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
-   ExprNodePtr node = make_function_expr(token.span(), std::move(params.value_ref().parameters),
+   ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
       params.value_ref().is_vararg, std::move(body.value_ref()));
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
