@@ -64,7 +64,19 @@ static LJ_NOINLINE LexChar lex_more(LexState *State)
 
 static LJ_AINLINE LexChar lex_next(LexState *State)
 {
-   return (State->c = State->p < State->pe ? (LexChar)(uint8_t)*State->p++ : lex_more(State));
+   LexChar ch;
+   if (State->p < State->pe) {
+      ch = (LexChar)(uint8_t)*State->p++;
+   }
+   else {
+      ch = lex_more(State);
+   }
+   State->c = ch;
+   if (ch != LEX_EOF) {
+      State->current_offset = State->next_offset;
+      State->next_offset++;
+   }
+   return ch;
 }
 
 // Save character.
@@ -93,6 +105,7 @@ static void lex_newline(LexState *State)
    if (lex_iseol(State) and State->c != old) lex_next(State);  //  Skip "\n\r" or "\r\n".
    if (uint32_t(++State->linenumber) >= LJ_MAX_LINE)
       lj_lex_error(State, State->tok, LJ_ERR_XLINES);
+   State->line_start_offset = State->current_offset;
 }
 
 //********************************************************************************************************************
@@ -324,6 +337,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 
    while (true) {
       if (lj_char_isident(State->c)) {
+         State->mark_token_start();
          GCstr *s;
          if (lj_char_isdigit(State->c)) {  // Numeric literal.
             lex_number(State, tv);
@@ -358,6 +372,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          continue;
 
       case '-':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_csub; }
          if (State->c != '-') return '-';
@@ -378,6 +393,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          continue;
 
       case '[': {
+         State->mark_token_start();
          int sep = lex_skipeq(State);
          if (sep >= 0) {
             lex_longstring(State, tv, sep);
@@ -392,17 +408,20 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          }
       }
       case '+':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_cadd; }
          if (State->c IS '+') { lex_next(State); return TK_plusplus; }
          return '+';
 
       case '*':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_cmul; }
          return '*';
 
       case '/':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_cdiv; }
          if (State->c IS '/') {
@@ -412,42 +431,50 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          else return '/';
 
       case '%':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_cmod; }
          return '%';
 
       case '!': { // Support for !=
+         State->mark_token_start();
          lex_next(State);
          if (State->c != '=') return '!';
          else { lex_next(State); return TK_ne; }
       }
 
       case '=':
+         State->mark_token_start();
          lex_next(State);
          if (State->c != '=') return '='; else { lex_next(State); return TK_eq; }
 
       case '<':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_le; }
          else if (State->c IS '<') { lex_next(State); return TK_shl; }  // PARASOL PATCHED IN: Support for '<<' operator
          else return '<';
 
       case '>':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_ge; }
          else if (State->c IS '>') { lex_next(State); return TK_shr; }  // PARASOL PATCHED IN: Support for '>>' operator
          else return '>';
 
       case '~': // To be deprecated: ~=
+         State->mark_token_start();
          lex_next(State);
          if (State->c != '=') return '~'; else { lex_next(State); return TK_ne; }
 
       case ':': // Support for ':>' ternary operator
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '>') { lex_next(State); return TK_ternary_sep; }
          else return ':';
 
       case '?':
+         State->mark_token_start();
          lex_next(State);
          if (State->c IS '=') { lex_next(State); return TK_cif_empty; }
          if (State->c IS '?') { lex_next(State); return TK_if_empty; }
@@ -455,10 +482,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 
       case '"':
       case '\'':
+         State->mark_token_start();
          lex_string(State, tv);
          return TK_string;
 
       case '.':
+         State->mark_token_start();
          if (lex_savenext(State) IS '.') {
             lex_next(State);
             if (State->c IS '.') {
@@ -477,9 +506,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          }
 
       case LEX_EOF:
+         State->mark_token_start();
          return TK_eof;
 
       default: {
+         State->mark_token_start();
          LexChar c = State->c;
          lex_next(State);
          return c;  //  Single-char tokens (+ - / ...).
@@ -516,6 +547,18 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    this->chunkarg = Chunkarg.data();
    this->mode = Mode.has_value() ? Mode->data() : nullptr;
    this->empty_string_constant = nullptr;
+   this->current_offset = 0;
+   this->next_offset = 0;
+   this->line_start_offset = 0;
+   this->current_token_line = 1;
+   this->current_token_column = 1;
+   this->current_token_offset = 0;
+   this->lookahead_line = 1;
+   this->lookahead_column = 1;
+   this->lookahead_offset = 0;
+   this->pending_token_line = 1;
+   this->pending_token_column = 1;
+   this->pending_token_offset = 0;
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);
@@ -582,6 +625,18 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    this->rfunc = nullptr;
    this->rdata = nullptr;
    this->empty_string_constant = nullptr;
+   this->current_offset = 0;
+   this->next_offset = 0;
+   this->line_start_offset = 0;
+   this->current_token_line = 1;
+   this->current_token_column = 1;
+   this->current_token_offset = 0;
+   this->lookahead_line = 1;
+   this->lookahead_column = 1;
+   this->lookahead_offset = 0;
+   this->pending_token_line = 1;
+   this->pending_token_column = 1;
+   this->pending_token_offset = 0;
 
    // Initialize string buffer
    lj_buf_init(L, &this->sb);
@@ -606,15 +661,29 @@ LexState::~LexState()
 
 void LexState::next()
 {
-   this->lastline = this->linenumber;
-   if (LJ_LIKELY(this->lookahead IS TK_eof)) {  // No lookahead token?
-      this->tok = lex_scan(this, &this->tokval);  //  Get next token.
-   }
-   else {  // Otherwise return lookahead token.
+   if (this->lookahead != TK_eof) {
       this->tok = this->lookahead;
+      copyTV(this->L, &this->tokval, &this->lookaheadval);
+      this->current_token_line = this->lookahead_line;
+      this->current_token_column = this->lookahead_column;
+      this->current_token_offset = this->lookahead_offset;
+      this->lastline = this->current_token_line;
       this->lookahead = TK_eof;
-      this->tokval = this->lookaheadval;
+      return;
    }
+
+   if (!this->buffered_tokens.empty()) {
+      BufferedToken buffered = this->buffered_tokens.front();
+      this->buffered_tokens.pop_front();
+      this->apply_buffered_token(buffered);
+      return;
+   }
+
+   this->tok = lex_scan(this, &this->tokval);  //  Get next token.
+   this->current_token_line = this->pending_token_line;
+   this->current_token_column = this->pending_token_column;
+   this->current_token_offset = this->pending_token_offset;
+   this->lastline = this->current_token_line;
 }
 
 //********************************************************************************************************************
@@ -623,7 +692,20 @@ void LexState::next()
 LexToken LexState::lookahead_token()
 {
    this->assert_condition(this->lookahead IS TK_eof, "double lookahead");
+   if (!this->buffered_tokens.empty()) {
+      BufferedToken buffered = this->buffered_tokens.front();
+      this->buffered_tokens.pop_front();
+      this->lookahead = buffered.token;
+      copyTV(this->L, &this->lookaheadval, &buffered.value);
+      this->lookahead_line = buffered.line;
+      this->lookahead_column = buffered.column;
+      this->lookahead_offset = buffered.offset;
+      return this->lookahead;
+   }
    this->lookahead = lex_scan(this, &this->lookaheadval);
+   this->lookahead_line = this->pending_token_line;
+   this->lookahead_column = this->pending_token_column;
+   this->lookahead_offset = this->pending_token_offset;
    return this->lookahead;
 }
 
@@ -638,6 +720,83 @@ const char* LexState::token2str(LexToken Tok)
       return lj_strfmt_pushf(this->L, "%c", Tok);
    else
       return lj_strfmt_pushf(this->L, "char(%d)", Tok);
+}
+
+void LexState::mark_token_start()
+{
+   size_t token_offset = (this->c IS LEX_EOF) ? this->next_offset : this->current_offset;
+   this->pending_token_line = this->linenumber;
+   if (token_offset >= this->line_start_offset) {
+      this->pending_token_column = BCLine((token_offset - this->line_start_offset) + 1);
+   }
+   else {
+      this->pending_token_column = 1;
+   }
+   this->pending_token_offset = token_offset;
+}
+
+void LexState::apply_buffered_token(const BufferedToken& token)
+{
+   this->tok = token.token;
+   copyTV(this->L, &this->tokval, &token.value);
+   this->current_token_line = token.line;
+   this->current_token_column = token.column;
+   this->current_token_offset = token.offset;
+   this->lastline = this->current_token_line;
+}
+
+LexState::BufferedToken LexState::scan_buffered_token()
+{
+   BufferedToken buffered;
+   setnilV(&buffered.value);
+   buffered.token = lex_scan(this, &buffered.value);
+   buffered.line = this->pending_token_line;
+   buffered.column = this->pending_token_column;
+   buffered.offset = this->pending_token_offset;
+   return buffered;
+}
+
+void LexState::ensure_lookahead(size_t count)
+{
+   while (this->available_lookahead() < count) {
+      BufferedToken buffered = this->scan_buffered_token();
+      this->buffered_tokens.push_back(buffered);
+   }
+}
+
+size_t LexState::available_lookahead() const
+{
+   size_t available = this->buffered_tokens.size();
+   if (this->lookahead != TK_eof) {
+      available++;
+   }
+   return available;
+}
+
+const LexState::BufferedToken* LexState::buffered_token(size_t index) const
+{
+   if (index >= this->buffered_tokens.size()) {
+      return nullptr;
+   }
+   return &this->buffered_tokens[index];
+}
+
+SourceSpan LexState::current_token_span() const
+{
+   SourceSpan span;
+   span.line = this->current_token_line;
+   span.column = this->current_token_column;
+   span.offset = this->current_token_offset;
+   return span;
+}
+
+SourceSpan LexState::lookahead_token_span() const
+{
+   SourceSpan span;
+   span.line = this->lookahead_line;
+   span.column = this->lookahead_column;
+   span.offset = this->lookahead_offset;
+   return span;
 }
 
 //********************************************************************************************************************

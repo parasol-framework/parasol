@@ -16,8 +16,26 @@ Token TokenStreamAdapter::current() const
 Token TokenStreamAdapter::peek(size_t lookahead) const
 {
    if (lookahead IS 0) return this->current();
-   if (lookahead IS 1) return Token::from_lookahead(*this->lex_state);
-   return this->current();
+   this->lex_state->ensure_lookahead(lookahead);
+   bool has_direct_lookahead = (this->lex_state->lookahead != TK_eof);
+   if (has_direct_lookahead) {
+      if (lookahead IS 1) {
+         return Token::from_lookahead(*this->lex_state);
+      }
+      size_t buffer_index = lookahead - 2;
+      const auto* buffered = this->lex_state->buffered_token(buffer_index);
+      if (buffered) {
+         return Token::from_buffered(*this->lex_state, *buffered);
+      }
+      return Token::from_lookahead(*this->lex_state);
+   }
+
+   size_t buffer_index = lookahead - 1;
+   const auto* buffered = this->lex_state->buffered_token(buffer_index);
+   if (buffered) {
+      return Token::from_buffered(*this->lex_state, *buffered);
+   }
+   return Token::from_lookahead(*this->lex_state);
 }
 
 Token TokenStreamAdapter::advance()

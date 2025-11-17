@@ -1,17 +1,10 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
 
 #include "lj_lex.h"
-
-struct SourceSpan {
-   BCLine line = 0;
-   BCLine column = 0;
-   size_t offset = 0;
-};
 
 // Strongly typed representation of lexer tokens.
 enum class TokenKind : uint16_t {
@@ -108,6 +101,7 @@ public:
 
    [[nodiscard]] static Token from_current(LexState& state);
    [[nodiscard]] static Token from_lookahead(LexState& state);
+   [[nodiscard]] static Token from_buffered(LexState& state, const LexState::BufferedToken& buffered);
 
    [[nodiscard]] TokenKind kind() const { return this->token_kind; }
    [[nodiscard]] LexToken raw() const { return this->raw_token; }

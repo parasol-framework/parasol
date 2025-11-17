@@ -36,9 +36,7 @@ Token Token::from_current(LexState& state)
    Token token;
    token.token_kind = to_token_kind(state.tok);
    token.raw_token = state.tok;
-   token.source.line = state.linenumber;
-   token.source.column = 0;
-   token.source.offset = 0;
+   token.source = state.current_token_span();
    token.data.assign(state.L, state.tokval);
    return token;
 }
@@ -49,10 +47,20 @@ Token Token::from_lookahead(LexState& state)
    LexToken lookahead = (state.lookahead != TK_eof) ? state.lookahead : state.lookahead_token();
    token.token_kind = to_token_kind(lookahead);
    token.raw_token = lookahead;
-   token.source.line = state.linenumber;
-   token.source.column = 0;
-   token.source.offset = 0;
+   token.source = state.lookahead_token_span();
    token.data.assign(state.L, state.lookaheadval);
+   return token;
+}
+
+Token Token::from_buffered(LexState& state, const LexState::BufferedToken& buffered)
+{
+   Token token;
+   token.token_kind = to_token_kind(buffered.token);
+   token.raw_token = buffered.token;
+   token.source.line = buffered.line;
+   token.source.column = buffered.column;
+   token.source.offset = buffered.offset;
+   token.data.assign(state.L, buffered.value);
    return token;
 }
 

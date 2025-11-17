@@ -3,14 +3,22 @@
 
 #pragma once
 
-#include <stdarg.h>
-#include <string_view>
+#include <cstddef>
+#include <deque>
 #include <optional>
 #include <span>
+#include <stdarg.h>
+#include <string_view>
 #include <cstdint>
 
 #include "lj_obj.h"
 #include "lj_err.h"
+
+struct SourceSpan {
+   BCLine line = 0;
+   BCLine column = 0;
+   size_t offset = 0;
+};
 
 // Lua lexer tokens.
 #define TKDEF(_, __) \
@@ -80,6 +88,14 @@ struct LocalDeclResult {
 
 class LexState {
 public:
+   struct BufferedToken {
+      LexToken token = 0;
+      TValue value;
+      BCLine line = 0;
+      BCLine column = 0;
+      size_t offset = 0;
+   };
+
    struct FuncState *fs;    // Current FuncState. Defined in lj_parse.c.
    lua_State *L;            // Lua state.
    TValue     tokval;       // Current token value.
@@ -109,7 +125,24 @@ public:
    int      endmark;          // Trust bytecode end marker, even if not at EOF.
    int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
 
+   size_t   current_offset = 0;
+   size_t   next_offset = 0;
+   size_t   line_start_offset = 0;
+
+   BCLine   current_token_line = 1;
+   BCLine   current_token_column = 1;
+   size_t   current_token_offset = 0;
+
+   BCLine   lookahead_line = 1;
+   BCLine   lookahead_column = 1;
+   size_t   lookahead_offset = 0;
+
+   BCLine   pending_token_line = 1;
+   BCLine   pending_token_column = 1;
+   size_t   pending_token_offset = 0;
+
    ParserContext* active_context = nullptr;
+   std::deque<BufferedToken> buffered_tokens;
 
    LexState() = default;  // Default constructor for bytecode reader usage
    LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);
@@ -198,6 +231,14 @@ public:
    // Public parser helpers
    GCstr* keepstr(std::string_view Value);
    [[nodiscard]] GCstr* intern_empty_string();
+   void ensure_lookahead(size_t count);
+   [[nodiscard]] size_t available_lookahead() const;
+   [[nodiscard]] const BufferedToken* buffered_token(size_t index) const;
+   [[nodiscard]] SourceSpan current_token_span() const;
+   [[nodiscard]] SourceSpan lookahead_token_span() const;
+   void mark_token_start();
+   void apply_buffered_token(const BufferedToken& token);
+   BufferedToken scan_buffered_token();
 
 #if LJ_HASFFI
    void keepcdata(TValue* Value, GCcdata* Cdata);
