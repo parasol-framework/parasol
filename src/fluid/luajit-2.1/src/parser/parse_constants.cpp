@@ -84,7 +84,7 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 }
 #endif
 
-// -- Jump list handling
+// Jump list handling
 
 JumpListView::Iterator::Iterator(FuncState* State, BCPos Position)
    : func_state(State), position(Position)

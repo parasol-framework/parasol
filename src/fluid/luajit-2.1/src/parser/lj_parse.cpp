@@ -1,8 +1,6 @@
-// Lua parser (source code -> bytecode).
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-//
-// Major portions taken verbatim or adapted from the Lua interpreter.
-// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
+// Lua parser
+// 
+// Copyright (C) 2025 Paul Manias
 
 #define lj_parse_c
 #define LUA_CORE
@@ -43,6 +41,11 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
+#include "parser/token_types.h"
+#include "parser/token_types.cpp"
+#include "parser/token_stream.cpp"
+#include "parser/parser_diagnostics.cpp"
+#include "parser/parser_context.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"
@@ -53,19 +56,36 @@ static const struct {
 #include "parser/parse_operators.cpp"
 #include "parser/parse_stmt.cpp"
 
+static ParserConfig make_parser_config(lua_State& state)
+{
+   (void)state;
+   ParserConfig config;
+#if defined(PARASOL_PARSER_COLLECT_DIAGNOSTICS)
+   config.abort_on_error = false;
+   config.max_diagnostics = 32;
+#endif
+#if defined(PARASOL_PARSER_TRACE)
+   config.trace_tokens = true;
+   config.trace_expectations = true;
+#endif
+   return config;
+}
+
 // Entry point of bytecode parser.
 
 GCproto * lj_parse(LexState *State)
 {
    FuncState fs;
    FuncScope bl;
-   GCproto* pt;
-   lua_State* L = State->L;
+   GCproto *pt;
+   lua_State *L = State->L;
+
 #ifdef LUAJIT_DISABLE_DEBUGINFO
    State->chunkname = lj_str_newlit(L, "=");
 #else
    State->chunkname = lj_str_newz(L, State->chunkarg);
 #endif
+
    setstrV(L, L->top, State->chunkname);  // Anchor chunkname string.
    incr_top(L);
    State->level = 0;
@@ -77,8 +97,11 @@ GCproto * lj_parse(LexState *State)
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, FuncScopeFlag::None);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
+   ParserAllocator allocator = ParserAllocator::from(L);
+   ParserContext root_context = ParserContext::from(*State, fs, allocator);
+   ParserSession root_session(root_context, make_parser_config(*L));
    State->next();  // Read-ahead first token.
-   State->parse_chunk();
+   State->parse_chunk(root_context);
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);
    L->top--;  // Drop chunkname.
