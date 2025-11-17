@@ -51,6 +51,7 @@ public:
    [[nodiscard]] const T& value_ref() const { return this->value; }
    [[nodiscard]] T& value_ref() { return this->value; }
    [[nodiscard]] const ParserError& error_ref() const { return this->error; }
+   [[nodiscard]] ParserError& error_ref() { return this->error; }
 
 private:
    bool has_value = false;
