@@ -11,14 +11,6 @@ static void bcemit_unary_bit_call(FuncState* fs, const char* fname, MSize fname_
 static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e);
 static void expr_collapse_freereg(FuncState* fs, BCReg result_reg);
 
-static ParserError make_expr_error(ParserErrorCode code, const Token& token, std::string_view message)
-{
-   ParserError error;
-   error.code = code;
-   error.token = token;
-   error.message.assign(message.begin(), message.end());
-   return error;
-}
 
 //********************************************************************************************************************
 // Return string expression.
