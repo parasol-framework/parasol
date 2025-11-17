@@ -947,7 +947,7 @@ bool LexState::parse_stmt(ParserContext &Context)
       case TokenKind::Repeat: this->parse_repeat(Context, line); break;
       case TokenKind::Function: this->parse_func(line); break;
       case TokenKind::DeferToken: this->parse_defer(); break;
-      case TokenKind::Local: if (!this->parse_local(Context).ok()) return 0; break;
+      case TokenKind::Local: this->parse_local(Context); break;
       case TokenKind::ReturnToken: this->parse_return(Context); return true;  // Must be last.
       case TokenKind::ContinueToken: this->parse_continue(); break;
       case TokenKind::BreakToken: this->parse_break(); break;
