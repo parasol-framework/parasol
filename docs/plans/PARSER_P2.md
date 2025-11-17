@@ -22,6 +22,10 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 4. Define lightweight views/iterators for node collections (block statements, function parameters) so later passes can traverse without leaking internal storage details.
 5. Document the schema inside the new header, including ownership semantics and extension guidelines (e.g., how to add a new operator node).
 
+#### Status
+
+* Added `parser/ast_nodes.h` and `parser/ast_nodes.cpp` to capture all expression/statement node shapes, common metadata wrappers, collection views, and builder helpers referenced above (2025-02-15).
+
 ### 2. Thread AST construction through the parser
 1. Update `ParserContext` (Phase 1 deliverable) with factories or allocators for AST nodes if pooled allocation becomes necessary, otherwise rely on standard containers but document lifetime expectations.
 2. Modify expression parsing functions (`expr_primary`, `expr_prefix`, `expr_binop`, etc.) to build and return AST nodes:
@@ -31,6 +35,10 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 4. Introduce transitional adapters where immediate emission is still required (e.g., complex table constructors) so the rest of the parser can migrate incrementally without regressing behaviour. These adapters should convert AST nodes back into the legacy `ExpDesc` path only when unavoidable and be annotated for removal.
 5. Extend diagnostics to report at node boundaries (e.g., “invalid break outside loop” attaches to the `BreakStmt` node) using the span metadata stored on nodes.
 
+#### Status
+
+* Introduced `parser/ast_builder.h/.cpp`, a standalone `AstBuilder` that consumes the typed token stream via `ParserContext`, constructs the Phase 2 AST for every expression and statement form (literals, table constructors, calls, locals, control-flow, defers, etc.), and leaves `FuncState` untouched. The builder exposes chunk/block/statement entry points returning `ParserResult` so later phases can feed the AST into the forthcoming emitter (2025-02-16).
+
 ### 3. Implement the IR emission pass
 1. Create `ir_emitter.h/.cpp` that exposes an `IrEmitter` class responsible for walking AST nodes and invoking legacy bytecode helpers. The emitter owns `FuncState`, register allocation, jump management, and any pending constant folding.
 2. Define visitor entry points (`emit_block(const BlockNode&)`, `emit_expr(const ExprNode&)`, `emit_stmt(const StmtNode&)`) that translate nodes into bytecode while respecting existing optimisations (e.g., tail calls, constant folding, loop invariants).
@@ -38,11 +46,19 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 4. Ensure control-flow constructs use structured patching APIs inside the emitter (e.g., helper methods to create jump lists for `if`/`loop` nodes) rather than manipulating `BCPos` manually in parser code.
 5. Add hooks so later phases can swap the emitter implementation or insert transformation passes between parsing and emission (e.g., AST rewrites for new language features).
 
+#### Status
+
+* Added `parser/ir_emitter.h/.cpp`, introducing an `IrEmitter` visitor that owns `FuncState`/`LexState` references, RAII scope guards, and expression lowering helpers for literals, identifiers, varargs, and bare `return`/expression statements. Unsupported node kinds currently surface structured `ParserResult` failures so later phases can extend the visitor incrementally while keeping diagnostics wired through `ParserContext` (2025-02-17).
+
 ### 4. Integrate parsing and emission boundaries
 1. Decide on a top-level parse contract: e.g., `ParserContext::parse_chunk()` returns `ParserResult<BlockNode>` which, on success, is passed to `IrEmitter::emit(BlockNode&)`. Document this handshake in both headers.
 2. Update callers (`lj_parse`, module loaders) to instantiate the emitter and feed it the AST after a successful parse. Maintain a feature flag that can re-enable the legacy direct emission path for debugging during the migration.
 3. Provide conversion helpers or logging utilities to diff AST-driven bytecode against the legacy output for representative Fluid scripts, easing validation.
 4. Record instrumentation (trace logs or debug dumps) at the parse/emission boundary to help Phase 5 introduce deeper testing. These dumps should include node kinds, child counts, and token spans for reproducibility.
+
+#### Status
+
+* Introduced a feature-gated AST pipeline inside `lj_parse` that builds a chunk with `AstBuilder`, feeds it to `IrEmitter`, and logs AST/bytecode summaries for diffing when the new parser config flags are enabled. This establishes the parse/emission boundary described in Step 4 while retaining the legacy path for debugging (2025-02-18).
 
 ### 5. Testing, validation, and performance safeguards
 1. Add parser-level unit tests (or scripted Fluid snippets) that assert the produced AST shape for canonical inputs (literal expressions, nested tables, loops, function literals). Consider serialising nodes to a debug JSON/text format purely for tests.
