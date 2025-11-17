@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "parser/parser_diagnostics.h"
 #include "parser/token_stream.h"
@@ -18,6 +19,9 @@ struct ParserConfig {
    bool abort_on_error = true;
    bool trace_tokens = false;
    bool trace_expectations = false;
+   bool enable_ast_pipeline = false;
+   bool trace_ast_boundaries = false;
+   bool dump_ast_bytecode = false;
 };
 
 struct ParserError {
@@ -31,11 +35,11 @@ class ParserResult {
 public:
    ParserResult() = default;
 
-   static ParserResult<T> success(const T& value)
+   static ParserResult<T> success(T value)
    {
       ParserResult<T> result;
       result.has_value = true;
-      result.value = value;
+      result.value = std::move(value);
       return result;
    }
 

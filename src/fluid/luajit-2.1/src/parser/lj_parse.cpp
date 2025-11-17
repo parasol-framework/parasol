@@ -23,6 +23,7 @@
 #include "lj_parse.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
+#include <parasol/main.h>
 
 // Priorities for each binary operator. ORDER OPR.
 
@@ -46,6 +47,9 @@ static const struct {
 #include "parser/token_stream.cpp"
 #include "parser/parser_diagnostics.cpp"
 #include "parser/parser_context.cpp"
+#include "parser/ast_nodes.cpp"
+#include "parser/ast_builder.cpp"
+#include "parser/ir_emitter.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"
@@ -55,6 +59,106 @@ static const struct {
 #include "parser/parse_expr.cpp"
 #include "parser/parse_operators.cpp"
 #include "parser/parse_stmt.cpp"
+
+namespace {
+
+static constexpr size_t kMaxLoggedStatements = 12;
+
+static void report_pipeline_error(ParserContext& context, const ParserError& error)
+{
+   context.emit_error(error.code, error.token, error.message);
+}
+
+static void flush_non_fatal_errors(ParserContext& context)
+{
+   if (context.config().abort_on_error) {
+      return;
+   }
+   if (context.diagnostics().has_errors()) {
+      raise_accumulated_diagnostics(context);
+   }
+}
+
+static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, const char* stage)
+{
+   if (not context.config().trace_ast_boundaries) {
+      return;
+   }
+   pf::Log log("Fluid-Parser");
+   StatementListView statements = chunk.view();
+   SourceSpan span = chunk.span;
+   log.detail("ast-boundary[%s]: statements=%zu span=%d:%d offset=%zu\n", stage,
+      statements.size(), int(span.line), int(span.column), span.offset);
+
+   size_t index = 0;
+   for (const StmtNode& stmt : statements) {
+      if (index >= kMaxLoggedStatements) {
+         log.detail("   ... truncated after %zu statements ...\n", index);
+         break;
+      }
+
+      size_t children = ast_statement_child_count(stmt);
+      SourceSpan stmt_span = stmt.span;
+      log.detail("   stmt[%zu] kind=%d children=%zu span=%d:%d offset=%zu\n", index,
+         int(stmt.kind), children, int(stmt_span.line), int(stmt_span.column), stmt_span.offset);
+
+      if (stmt.kind IS AstNodeKind::ExpressionStmt) {
+         const auto* payload = std::get_if<ExpressionStmtPayload>(&stmt.data);
+         if (payload and payload->expression) {
+            const ExprNode& expr = *payload->expression;
+            size_t expr_children = ast_expression_child_count(expr);
+            SourceSpan expr_span = expr.span;
+            log.detail("      expr kind=%d children=%zu span=%d:%d offset=%zu\n",
+               int(expr.kind), expr_children, int(expr_span.line), int(expr_span.column), expr_span.offset);
+         }
+      }
+
+      ++index;
+   }
+}
+
+static void trace_bytecode_snapshot(ParserContext& context, const char* label)
+{
+   if (not context.config().dump_ast_bytecode) {
+      return;
+   }
+   pf::Log log("Fluid-Parser");
+   FuncState& fs = context.func();
+   log.detail("bytecode-%s: count=%u\n", label, (unsigned)fs.pc);
+   for (BCPos pc = 0; pc < fs.pc; ++pc) {
+      const BCInsLine& line = fs.bcbase[pc];
+      log.detail("   [%04d] op=%03d A=%03d B=%03d C=%03d D=%05d line=%d\n",
+         (int)pc, (int)bc_op(line.ins), (int)bc_a(line.ins), (int)bc_b(line.ins),
+         (int)bc_c(line.ins), (int)bc_d(line.ins), (int)line.line);
+   }
+}
+
+static void run_ast_pipeline(ParserContext& context)
+{
+   AstBuilder builder(context);
+   auto chunk_result = builder.parse_chunk();
+   if (not chunk_result.ok()) {
+      report_pipeline_error(context, chunk_result.error_ref());
+      flush_non_fatal_errors(context);
+      return;
+   }
+
+   std::unique_ptr<BlockStmt> chunk = std::move(chunk_result.value_ref());
+   trace_ast_boundary(context, *chunk, "parse");
+
+   IrEmitter emitter(context);
+   auto emit_result = emitter.emit_chunk(*chunk);
+   if (not emit_result.ok()) {
+      report_pipeline_error(context, emit_result.error_ref());
+      flush_non_fatal_errors(context);
+      return;
+   }
+
+   trace_bytecode_snapshot(context, "ast");
+   flush_non_fatal_errors(context);
+}
+
+}  // namespace
 
 static ParserConfig make_parser_config(lua_State& state)
 {
@@ -67,6 +171,15 @@ static ParserConfig make_parser_config(lua_State& state)
 #if defined(PARASOL_PARSER_TRACE)
    config.trace_tokens = true;
    config.trace_expectations = true;
+#endif
+#if defined(PARASOL_PARSER_ENABLE_AST_PIPELINE)
+   config.enable_ast_pipeline = true;
+#endif
+#if defined(PARASOL_PARSER_TRACE_AST_BOUNDARY)
+   config.trace_ast_boundaries = true;
+#endif
+#if defined(PARASOL_PARSER_TRACE_BYTECODE)
+   config.dump_ast_bytecode = true;
 #endif
    return config;
 }
@@ -99,9 +212,15 @@ GCproto * lj_parse(LexState *State)
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
    ParserAllocator allocator = ParserAllocator::from(L);
    ParserContext root_context = ParserContext::from(*State, fs, allocator);
-   ParserSession root_session(root_context, make_parser_config(*L));
+   ParserConfig session_config = make_parser_config(*L);
+   ParserSession root_session(root_context, session_config);
    State->next();  // Read-ahead first token.
-   State->parse_chunk(root_context);
+   if (session_config.enable_ast_pipeline) {
+      run_ast_pipeline(root_context);
+   }
+   else {
+      State->parse_chunk(root_context);
+   }
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);
    L->top--;  // Drop chunkname.
