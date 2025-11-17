@@ -82,7 +82,10 @@ void LexState::expr_field(ExpDesc* Expression)
 void LexState::expr_bracket(ExpDesc* Expression)
 {
    this->next();  // Skip '['.
-   this->expr(Expression);
+   auto bracket_expr = this->expr(Expression);
+   if (!bracket_expr.ok()) {
+      return;
+   }
    expr_toval(this->fs, Expression);
    this->lex_check(']');
 }
@@ -192,7 +195,10 @@ void LexState::expr_table(ExpDesc* Expression)
             needarr = vcall = 1;
          }
 
-         this->expr(&val);
+         auto value_expr = this->expr(&val);
+         if (!value_expr.ok()) {
+            return;
+         }
 
          if (expr_isk(&key) and key.k != ExpKind::Nil and
             (key.k IS ExpKind::Str or expr_isk_nojump(&val))) {
@@ -316,6 +322,10 @@ void LexState::expr_table(ExpDesc* Expression)
    BCLine Line, int OptionalParams)
 {
    FuncState fs, * parent_state = this->fs;
+   ParserAllocator allocator = ParserAllocator::from(this->L);
+   ParserConfig inherited = this->active_context ? this->active_context->config() : ParserConfig{};
+   ParserContext context = ParserContext::from(*this, fs, allocator);
+   ParserSession session(context, inherited);
    FuncScope bl;
    GCproto* pt;
    ptrdiff_t oldbase = parent_state->bcbase - this->bcstack;
@@ -332,7 +342,7 @@ void LexState::expr_table(ExpDesc* Expression)
    fs.bcbase = parent_state->bcbase + parent_state->pc;
    fs.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&fs, BC_FUNCF, 0, 0);  // Placeholder.
-   this->parse_chunk();
+   this->parse_chunk(context);
    if (this->tok != TK_end) this->lex_match(TK_end, TK_function, Line);
    pt = this->fs_finish((this->lastline = this->linenumber));
    parent_state->bcbase = this->bcstack + oldbase;  // May have been reallocated.
@@ -387,16 +397,22 @@ void LexState::parse_body_defer(ExpDesc* Expression, BCLine Line)
 //
 // Returns: Number of expressions in the list
 
-[[nodiscard]] BCReg LexState::expr_list(ExpDesc* Expression)
+ParserResult<BCReg> LexState::expr_list(ExpDesc* Expression)
 {
    BCReg n = 1;
-   this->expr(Expression);
+   auto first = this->expr(Expression);
+   if (!first.ok()) {
+      return ParserResult<BCReg>::failure(first.error_ref());
+   }
    while (this->lex_opt(',')) {
       expr_tonextreg(this->fs, Expression);  // Discharge previous expressions to registers
-      this->expr(Expression);                // Parse next expression (may be ExpKind::Call)
+      auto next = this->expr(Expression);                // Parse next expression (may be ExpKind::Call)
+      if (!next.ok()) {
+         return ParserResult<BCReg>::failure(next.error_ref());
+      }
       n++;
    }
-   return n;  // Last expression 'Expression' is NOT discharged
+   return ParserResult<BCReg>::success(n);  // Last expression 'Expression' is NOT discharged
 }
 
 //********************************************************************************************************************
@@ -450,7 +466,10 @@ void LexState::parse_args(ExpDesc* Expression)
          args.k = ExpKind::Void;
       }
       else {
-         (void)this->expr_list(&args);
+         auto list = this->expr_list(&args);
+         if (!list.ok()) {
+            return;
+         }
          if (args.k IS ExpKind::Call)  // f(a, b, g()) or f(a, b, ...).
             setbc_b(bcptr(fs, &args), 0);  // Pass on multiple results.
       }
@@ -494,8 +513,11 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext& context, E
    if (current.is(TokenKind::LeftParen)) {
       BCLine line = context.lex().linenumber;
       context.tokens().advance();
-      context.lex().expr(v);
-      context.lex().lex_match(')', '(', line);
+      auto inner = context.lex().expr(v);
+      if (!inner.ok()) {
+         return inner;
+      }
+      context.lex_match(')', '(', line);
       expr_discharge(fs, v);
    }
    else if (current.is_identifier()) {
@@ -548,14 +570,73 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext& context, E
 
 // Parse primary expression.
 
-void LexState::expr_primary(ExpDesc* Expression)
+ParserResult<ExpDesc> LexState::expr_primary(ExpDesc* Expression)
 {
+   if (this->active_context) {
+      return expr_primary_with_context(*this->active_context, Expression);
+   }
    ParserAllocator allocator = ParserAllocator::from(this->L);
    ParserContext context = ParserContext::from(*this, *this->fs, allocator);
-   auto result = expr_primary_with_context(context, Expression);
-   if (!result.ok()) {
-      this->err_syntax(LJ_ERR_XSYMBOL);
+   return expr_primary_with_context(context, Expression);
+}
+
+static ParserResult<ExpDesc> expr_simple_with_context(ParserContext& context, ExpDesc* expression)
+{
+   LexState& lex = context.lex();
+   FuncState* fs = lex.fs;
+   ExpDesc* v = expression;
+   Token current = context.tokens().current();
+
+   switch (current.kind()) {
+   case TokenKind::Number:
+      expr_init(v, (LJ_HASFFI and tviscdata(&lex.tokval)) ? ExpKind::CData : ExpKind::Num, 0);
+      copyTV(lex.L, &v->u.nval, &lex.tokval);
+      context.tokens().advance();
+      break;
+   case TokenKind::String:
+      expr_init(v, ExpKind::Str, 0);
+      v->u.sval = strV(&lex.tokval);
+      context.tokens().advance();
+      break;
+   case TokenKind::Nil:
+      expr_init(v, ExpKind::Nil, 0);
+      context.tokens().advance();
+      break;
+   case TokenKind::TrueToken:
+      expr_init(v, ExpKind::True, 0);
+      context.tokens().advance();
+      break;
+   case TokenKind::FalseToken:
+      expr_init(v, ExpKind::False, 0);
+      context.tokens().advance();
+      break;
+   case TokenKind::Dots: {
+      BCReg base;
+      checkcond(&lex, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
+      bcreg_reserve(fs, 1);
+      base = fs->freereg - 1;
+      expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
+      v->u.s.aux = base;
+      context.tokens().advance();
+      break;
    }
+   case TokenKind::LeftBrace:
+      lex.expr_table(v);
+      return ParserResult<ExpDesc>::success(*v);
+   case TokenKind::Function:
+      context.tokens().advance();
+      lex.parse_body(v, 0, lex.linenumber);
+      return ParserResult<ExpDesc>::success(*v);
+   default: {
+      auto primary = lex.expr_primary(v);
+      if (!primary.ok()) {
+         return primary;
+      }
+      return ParserResult<ExpDesc>::success(*v);
+   }
+   }
+
+   return ParserResult<ExpDesc>::success(*v);
 }
 
 //********************************************************************************************************************
@@ -589,7 +670,10 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
       fs->freereg--;
       return;
    }
-   this->expr_primary(v);
+   auto primary = this->expr_primary(v);
+   if (!primary.ok()) {
+      return;
+   }
    checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
    e1 = *v;
    if (v->k IS ExpKind::Indexed)
@@ -603,54 +687,14 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
 //********************************************************************************************************************
 // Parse simple expression.
 
-void LexState::expr_simple(ExpDesc* Expression)
+ParserResult<ExpDesc> LexState::expr_simple(ExpDesc* Expression)
 {
-   ExpDesc* v = Expression;
-   switch (this->tok) {
-   case TK_number:
-      expr_init(v, (LJ_HASFFI and tviscdata(&this->tokval)) ? ExpKind::CData : ExpKind::Num, 0);
-      copyTV(this->L, &v->u.nval, &this->tokval);
-      this->next();
-      break;
-   case TK_string:
-      expr_init(v, ExpKind::Str, 0);
-      v->u.sval = strV(&this->tokval);
-      this->next();
-      break;
-   case TK_nil:
-      expr_init(v, ExpKind::Nil, 0);
-      this->next();
-      break;
-   case TK_true:
-      expr_init(v, ExpKind::True, 0);
-      this->next();
-      break;
-   case TK_false:
-      expr_init(v, ExpKind::False, 0);
-      this->next();
-      break;
-   case TK_dots: {  // Vararg.
-      FuncState* fs = this->fs;
-      BCReg base;
-      checkcond(this, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
-      bcreg_reserve(fs, 1);
-      base = fs->freereg - 1;
-      expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
-      v->u.s.aux = base;
-      this->next();
-      break;
+   if (this->active_context) {
+      return expr_simple_with_context(*this->active_context, Expression);
    }
-   case '{':  // Table constructor.
-      this->expr_table(v);
-      return;
-   case TK_function:
-      this->next();
-      this->parse_body(v, 0, this->linenumber);
-      return;
-   default:
-      this->expr_primary(v);
-      return;
-   }
+   ParserAllocator allocator = ParserAllocator::from(this->L);
+   ParserContext context = ParserContext::from(*this, *this->fs, allocator);
+   return expr_simple_with_context(context, Expression);
 }
 
 //********************************************************************************************************************
@@ -741,19 +785,22 @@ inline constexpr uint32_t UNARY_PRIORITY = 8;  // Priority for unary operators.
 // Returns:
 //   The next binary operator token (if any) that was not consumed by this chain
 
-BinOpr LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
+ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
 {
    ExpDesc* lhs = LeftHandSide;
    BinOpr op = Operator;
    FuncState* fs = this->fs;
    ExpDesc rhs;
-   BinOpr nextop;
    BCReg base_reg;
 
    // Parse RHS operand. expr_binop() respects priority levels and will not consume
    // another shift/bitop at the same level due to left-associativity logic in expr_binop().
 
-   nextop = this->expr_binop(&rhs, priority[op].right);
+   auto nextop_result = this->expr_binop(&rhs, priority[op].right);
+   if (!nextop_result.ok()) {
+      return nextop_result;
+   }
+   BinOpr nextop = nextop_result.value_ref();
 
    // Choose the base register for the bit operation call.
    //
@@ -805,20 +852,24 @@ BinOpr LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator)
       lhs->u.s.info = base_reg;
 
       // Parse the next RHS operand
-      nextop = this->expr_binop(&rhs, priority[follow].right);
+      auto chained = this->expr_binop(&rhs, priority[follow].right);
+      if (!chained.ok()) {
+         return chained;
+      }
+      nextop = chained.value_ref();
 
       // Emit the next operation, reusing the same base register
       bcemit_shift_call_at_base(fs, std::string_view(priority[follow].name, priority[follow].name_len), lhs, &rhs, base_reg);
    }
 
    // Return any unconsumed operator for the caller to handle
-   return nextop;
+   return ParserResult<BinOpr>::success(nextop);
 }
 
 //********************************************************************************************************************
 // Parse unary expression.
 
-void LexState::expr_unop(ExpDesc* Expression)
+ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
 {
    ExpDesc* v = Expression;
    BCOp op;
@@ -831,45 +882,54 @@ void LexState::expr_unop(ExpDesc* Expression)
    else if (this->tok IS '~') {
       // Unary bitwise not: desugar to bit.bnot(x).
       this->next();
-      this->expr_binop(v, UNARY_PRIORITY);
+      auto bit_result = this->expr_binop(v, UNARY_PRIORITY);
+      if (!bit_result.ok()) {
+         return ParserResult<ExpDesc>::failure(bit_result.error_ref());
+      }
       bcemit_unary_bit_call(this->fs, "bnot", v);
-      return;
+      return ParserResult<ExpDesc>::success(*v);
    }
    else if (this->tok IS '#') {
       op = BC_LEN;
    }
    else {
-      this->expr_simple(v);
+      auto simple = this->expr_simple(v);
+      if (!simple.ok()) {
+        return simple;
+      }
       // Check for postfix presence check operator after simple expressions (constants)
       if (this->tok IS TK_if_empty and this->should_emit_presence()) {
          this->next();
          bcemit_presence_check(this->fs, v);
       }
-      return;
+      return ParserResult<ExpDesc>::success(*v);
    }
    this->next();
-   this->expr_binop(v, UNARY_PRIORITY);
+   auto unary = this->expr_binop(v, UNARY_PRIORITY);
+   if (!unary.ok()) {
+      return ParserResult<ExpDesc>::failure(unary.error_ref());
+   }
    bcemit_unop(this->fs, op, v);
+   return ParserResult<ExpDesc>::success(*v);
 }
 
 //********************************************************************************************************************
 // Parse binary expressions with priority higher than the limit.
 
-BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
+ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 {
    ExpDesc* v = Expression;
    uint32_t limit = Limit;
    BinOpr op;
    this->synlevel_begin();
-   this->expr_unop(v);
+   auto unary = this->expr_unop(v);
+   if (!unary.ok()) {
+      this->synlevel_end();
+      return ParserResult<BinOpr>::failure(unary.error_ref());
+   }
    op = token2binop(this->tok);
    while (op != OPR_NOBINOPR) {
       uint8_t lpri = priority[op].left;
-      // Special-case: when parsing the RHS of a shift (limit set to
-      // the shift right-priority), do not consume another shift here.
-      // This enforces left-associativity for chained shifts while still
-      // allowing lower-precedence additions on the RHS to bind tighter.
-
       if (limit IS priority[op].right and
          (op IS OPR_SHL or op IS OPR_SHR or
             op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_BAND))
@@ -906,7 +966,11 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
          {
             ExpDesc v2;
-            this->expr_binop(&v2, priority[OPR_IF_EMPTY].right);
+            auto branch = this->expr_binop(&v2, priority[OPR_IF_EMPTY].right);
+            if (!branch.ok()) {
+               this->synlevel_end();
+               return ParserResult<BinOpr>::failure(branch.error_ref());
+            }
             expr_discharge(fs, &v2);
             expr_toreg(fs, &v2, result_reg);
             expr_collapse_freereg(fs, result_reg);
@@ -927,27 +991,43 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          }
 
          {
-            ExpDesc fexp; BinOpr nextop3 = this->expr_binop(&fexp, priority[OPR_IF_EMPTY].right);
+            ExpDesc fexp;
+            auto false_branch = this->expr_binop(&fexp, priority[OPR_IF_EMPTY].right);
+            if (!false_branch.ok()) {
+               this->synlevel_end();
+               return ParserResult<BinOpr>::failure(false_branch.error_ref());
+            }
+            BinOpr nextop3 = false_branch.value_ref();
             expr_discharge(fs, &fexp);
             expr_toreg(fs, &fexp, result_reg);
             expr_collapse_freereg(fs, result_reg);
             JumpListView(fs, skip_false).patch_to(fs->pc);
-            v->u.s.info = result_reg; v->k = ExpKind::NonReloc; op = nextop3; continue;
+            v->u.s.info = result_reg;
+            v->k = ExpKind::NonReloc;
+            op = nextop3;
+            continue;
          }
       }
 
       bcemit_binop_left(this->fs, op, v);
 
       if ((op IS OPR_SHL) or (op IS OPR_SHR) or (op IS OPR_BAND) or (op IS OPR_BXOR) or (op IS OPR_BOR)) {
-         op = this->expr_shift_chain(v, op);
+         auto shift = this->expr_shift_chain(v, op);
+         if (!shift.ok()) {
+            this->synlevel_end();
+            return ParserResult<BinOpr>::failure(shift.error_ref());
+         }
+         op = shift.value_ref();
          continue;
       }
 
-      // Parse binary expression with higher priority.
-
       ExpDesc v2;
-      BinOpr nextop;
-      nextop = this->expr_binop(&v2, priority[op].right);
+      auto nextop_result = this->expr_binop(&v2, priority[op].right);
+      if (!nextop_result.ok()) {
+         this->synlevel_end();
+         return ParserResult<BinOpr>::failure(nextop_result.error_ref());
+      }
+      BinOpr nextop = nextop_result.value_ref();
 
       if (op IS OPR_IF_EMPTY and this->ternary_depth IS 0 and
          (this->tok IS TK_ternary_sep or this->pending_if_empty_colon)) {
@@ -970,7 +1050,6 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          expr_discharge(fs, &v2);
          expr_free(fs, &v2);
 
-         // Emit a runtime error: error('Invalid ternary mix: use '?' with ':>').
          BCReg base = fs->freereg;
          BCReg arg_reg = base + 1 + LJ_FR2;
 
@@ -1004,10 +1083,14 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
          {
             ExpDesc dummy;
-            BinOpr after = this->expr_binop(&dummy, priority[OPR_IF_EMPTY].right);
+            auto after = this->expr_binop(&dummy, priority[OPR_IF_EMPTY].right);
+            if (!after.ok()) {
+               this->synlevel_end();
+               return ParserResult<BinOpr>::failure(after.error_ref());
+            }
             expr_discharge(fs, &dummy);
             expr_free(fs, &dummy);
-            op = after;
+            op = after.value_ref();
          }
 
          continue;
@@ -1016,43 +1099,56 @@ BinOpr LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
       bcemit_binop(this->fs, op, v, &v2);
       op = nextop;
    }
-   this->synlevel_end();
    if (this->tok IS TK_ternary_sep and this->ternary_depth IS 0) {
       if (limit IS priority[OPR_IF_EMPTY].right) {
          this->pending_if_empty_colon = 1;
-         return op;
+         this->synlevel_end();
+         return ParserResult<BinOpr>::success(op);
       }
+      this->synlevel_end();
       this->err_syntax(LJ_ERR_XSYMBOL);
    }
-   return op;  // Return unconsumed binary operator (if any).
+   this->synlevel_end();
+   return ParserResult<BinOpr>::success(op);
 }
 
 //********************************************************************************************************************
 // Parse expression.
 
-void LexState::expr(ExpDesc* Expression)
+ParserResult<ExpDesc> LexState::expr(ExpDesc* Expression)
 {
-   this->expr_binop(Expression, 0);  // Priority 0: parse whole expression.
+   auto result = this->expr_binop(Expression, 0);  // Priority 0: parse whole expression.
+   if (!result.ok()) {
+      return ParserResult<ExpDesc>::failure(result.error_ref());
+   }
+   return ParserResult<ExpDesc>::success(*Expression);
 }
 
 //********************************************************************************************************************
 // Assign expression to the next register.
 
-void LexState::expr_next()
+ParserResult<ExpDesc> LexState::expr_next()
 {
    ExpDesc expression;
-   this->expr(&expression);
+   auto result = this->expr(&expression);
+   if (!result.ok()) {
+      return result;
+   }
    expr_tonextreg(this->fs, &expression);
+    return ParserResult<ExpDesc>::success(expression);
 }
 
 //********************************************************************************************************************
 // Parse conditional expression.
 
-[[nodiscard]] BCPos LexState::expr_cond()
+ParserResult<BCPos> LexState::expr_cond()
 {
    ExpDesc condition;
-   this->expr(&condition);
+   auto result = this->expr(&condition);
+   if (!result.ok()) {
+      return ParserResult<BCPos>::failure(result.error_ref());
+   }
    if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
    bcemit_branch_t(this->fs, &condition);
-   return condition.f;
+   return ParserResult<BCPos>::success(condition.f);
 }

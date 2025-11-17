@@ -65,6 +65,11 @@ public:
 
    ParserContext(LexState& lex_state, FuncState& func_state, lua_State& lua_state,
       ParserAllocator allocator, ParserConfig config);
+   ParserContext(const ParserContext&) = delete;
+   ParserContext& operator=(const ParserContext&) = delete;
+   ParserContext(ParserContext&& other) noexcept;
+   ParserContext& operator=(ParserContext&& other) noexcept;
+   ~ParserContext();
 
    LexState& lex() const;
    FuncState& func() const;
@@ -80,16 +85,32 @@ public:
    void override_config(const ParserConfig& config);
    void restore_config(const ParserConfig& config);
 
+   void trace_token_advance(const Token& previous, const Token& current) const;
+
    ParserResult<Token> match(TokenKind kind);
    ParserResult<Token> consume(TokenKind kind, ParserErrorCode code);
    bool check(TokenKind kind) const;
    ParserResult<Token> expect_identifier(ParserErrorCode code);
 
+   int lex_opt(LexToken token);
+   void lex_check(LexToken token);
+   void lex_match(LexToken what, LexToken who, BCLine line);
+   GCstr* lex_str();
+
+   void err_syntax(ErrMsg message);
+   void err_token(LexToken token);
+   void report_limit_error(FuncState& func_state, uint32_t limit, const char* what);
+
    void emit_error(ParserErrorCode code, const Token& token, std::string_view message);
 
 private:
+   void attach_to_lex();
+   void detach_from_lex();
+   std::string format_lex_error(LexToken token) const;
    std::string format_expected_message(TokenKind kind) const;
    ParserError make_error(ParserErrorCode code, const Token& token, std::string_view message);
+   std::string describe_token(const Token& token) const;
+   void log_trace(const char* channel, const Token& token, std::string_view note) const;
 
    LexState* lex_state;
    FuncState* func_state;
@@ -98,6 +119,7 @@ private:
    ParserConfig current_config;
    ParserDiagnostics diag;
    TokenStreamAdapter token_stream;
+   ParserContext* previous_context = nullptr;
 };
 
 class ParserSession {

@@ -1,5 +1,6 @@
 #include "parser/token_stream.h"
 
+#include "parser/parser_context.h"
 #include "lj_lex.h"
 
 TokenStreamAdapter::TokenStreamAdapter(LexState& state)
@@ -21,8 +22,13 @@ Token TokenStreamAdapter::peek(size_t lookahead) const
 
 Token TokenStreamAdapter::advance()
 {
+   Token previous = this->current();
    this->lex_state->next();
-   return this->current();
+   Token current = this->current();
+   if (this->lex_state->active_context) {
+      this->lex_state->active_context->trace_token_advance(previous, current);
+   }
+   return current;
 }
 
 void TokenStreamAdapter::sync_from_lex(LexState& state)

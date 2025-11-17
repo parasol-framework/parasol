@@ -10,6 +10,9 @@
 
 #include <iterator>
 #include <string_view>
+#include <cstdint>
+
+enum class TokenKind : uint16_t;
 
 // Error handling (lj_parse_core.c)
 
@@ -199,5 +202,5 @@ static BinOpr token2binop(LexToken tok);
 // Statements (lj_parse_stmt.c)
 
 static void snapshot_return_regs(FuncState* fs, BCIns* ins);
-static int parse_is_end(LexToken tok);
+static bool parse_is_end(TokenKind kind);
 static int predict_next(LexState* ls, FuncState* fs, BCPos pc);

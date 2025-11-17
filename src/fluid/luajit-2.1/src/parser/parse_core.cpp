@@ -4,18 +4,29 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
+#include "parser/parser_context.h"
+
 LJ_NORET LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
+   if (this->active_context) {
+      this->active_context->err_syntax(Message);
+   }
    lj_lex_error(this, this->tok, Message);
 }
 
 LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
 {
+   if (this->active_context) {
+      this->active_context->err_token(Token);
+   }
    lj_lex_error(this, this->tok, LJ_ERR_XTOKEN, this->token2str(Token));
 }
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 {
+   if (fs->ls->active_context) {
+      fs->ls->active_context->report_limit_error(*fs, limit, what);
+   }
    if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
    else lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
 }
@@ -24,6 +35,9 @@ LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 
 int LexState::lex_opt(LexToken Token)
 {
+   if (this->active_context) {
+      return this->active_context->lex_opt(Token);
+   }
    if (this->tok == Token) {
       this->next();
       return 1;
@@ -35,6 +49,10 @@ int LexState::lex_opt(LexToken Token)
 
 void LexState::lex_check(LexToken Token)
 {
+   if (this->active_context) {
+      this->active_context->lex_check(Token);
+      return;
+   }
    if (this->tok != Token) this->err_token(Token);
    this->next();
 }
@@ -43,6 +61,10 @@ void LexState::lex_check(LexToken Token)
 
 void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 {
+   if (this->active_context) {
+      this->active_context->lex_match(What, Who, Line);
+      return;
+   }
    if (!this->lex_opt(What)) {
       if (Line == this->linenumber) {
          this->err_token(What);
@@ -59,6 +81,9 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 
 GCstr* LexState::lex_str()
 {
+   if (this->active_context) {
+      return this->active_context->lex_str();
+   }
    GCstr* s;
    if (this->tok != TK_name) this->err_token(TK_name);
    s = strV(&this->tokval);

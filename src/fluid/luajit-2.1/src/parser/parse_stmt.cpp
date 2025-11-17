@@ -3,6 +3,7 @@
 // List of LHS variables.
 
 #include <span>
+#include <string>
 #include <vector>
 
 #include "parser/parser_context.h"
@@ -63,7 +64,7 @@ void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc* e)
 
 //********************************************************************************************************************
 
-int LexState::assign_if_empty(ExpDesc* lh)
+int LexState::assign_if_empty(ParserContext& context, ExpDesc* lh)
 {
    FuncState* fs = this->fs;
    ExpDesc lhv, lhs_eval, rh;
@@ -80,7 +81,7 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
    checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
 
-   this->next();
+   context.tokens().advance();
 
    RegisterGuard register_guard(fs);
 
@@ -122,7 +123,11 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
    assign_pos = fs->pc;
 
-   nexps = this->expr_list(&rh);
+   auto rhs_list = this->expr_list(&rh);
+   if (!rhs_list.ok()) {
+      return 0;
+   }
+   nexps = rhs_list.value_ref();
    checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
 
    expr_discharge(fs, &rh);
@@ -150,9 +155,9 @@ int LexState::assign_if_empty(ExpDesc* lh)
 
 //********************************************************************************************************************
 
-int LexState::assign_compound(ExpDesc* lh, LexToken opType)
+int LexState::assign_compound(ParserContext& context, ExpDesc* lh, TokenKind opType)
 {
-   if (opType IS TK_cif_empty) return this->assign_if_empty(lh);
+   if (opType IS TokenKind::CompoundIfEmpty) return this->assign_if_empty(context, lh);
 
    FuncState* fs = this->fs;
    ExpDesc lhv, infix, rh;
@@ -164,17 +169,17 @@ int LexState::assign_compound(ExpDesc* lh, LexToken opType)
    checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
 
    switch (opType) {
-   case TK_cadd: op = OPR_ADD; break;
-   case TK_csub: op = OPR_SUB; break;
-   case TK_cmul: op = OPR_MUL; break;
-   case TK_cdiv: op = OPR_DIV; break;
-   case TK_cmod: op = OPR_MOD; break;
-   case TK_cconcat: op = OPR_CONCAT; break;
+   case TokenKind::CompoundAdd: op = OPR_ADD; break;
+   case TokenKind::CompoundSub: op = OPR_SUB; break;
+   case TokenKind::CompoundMul: op = OPR_MUL; break;
+   case TokenKind::CompoundDiv: op = OPR_DIV; break;
+   case TokenKind::CompoundMod: op = OPR_MOD; break;
+   case TokenKind::CompoundConcat: op = OPR_CONCAT; break;
    default:
       this->assert_condition(0, "unknown compound operator");
       return 0;
    }
-   this->next();
+   context.tokens().advance();
 
    // Preserve table base/index across RHS evaluation by duplicating them
    // to the top of the stack and discharging using the duplicates. This retains
@@ -212,7 +217,11 @@ int LexState::assign_compound(ExpDesc* lh, LexToken opType)
    if (op IS OPR_CONCAT) {
       infix = *lh;
       bcemit_binop_left(fs, op, &infix);
-      nexps = this->expr_list(&rh);
+      auto rhs_values = this->expr_list(&rh);
+      if (!rhs_values.ok()) {
+         return 0;
+      }
+      nexps = rhs_values.value_ref();
       checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
    }
    else {
@@ -220,7 +229,11 @@ int LexState::assign_compound(ExpDesc* lh, LexToken opType)
 
       if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR))
          expr_tonextreg(fs, lh);
-      nexps = this->expr_list(&rh);
+      auto rhs_values = this->expr_list(&rh);
+      if (!rhs_values.ok()) {
+         return 0;
+      }
+      nexps = rhs_values.value_ref();
       checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
       infix = *lh;
       bcemit_binop_left(fs, op, &infix);
@@ -243,7 +256,7 @@ int LexState::assign_compound(ExpDesc* lh, LexToken opType)
 //********************************************************************************************************************
 // Recursively parse assignment statement.
 
-void LexState::parse_assignment(ExpDesc* first)
+void LexState::parse_assignment(ParserContext& context, ExpDesc* first)
 {
    std::vector<ExpDesc> lhs_vars;
    lhs_vars.reserve(4);
@@ -252,9 +265,14 @@ void LexState::parse_assignment(ExpDesc* first)
 
    checkcond(this, ExpKind::Local <= first->k and first->k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
 
-   while (this->lex_opt(',')) {
+   while (true) {
+      auto comma = context.match(TokenKind::Comma);
+      if (!comma.ok()) break;
       ExpDesc next;
-      this->expr_primary(&next);
+      auto next_result = this->expr_primary(&next);
+      if (!next_result.ok()) {
+         return;
+      }
       checkcond(this, ExpKind::Local <= next.k and next.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
       if (next.k IS ExpKind::Local) {
          auto existing = std::span(lhs_vars.data(), lhs_vars.size());
@@ -265,10 +283,14 @@ void LexState::parse_assignment(ExpDesc* first)
       checklimit(this->fs, this->level + nvars - 1, LJ_MAX_XLEVEL, "variable names");
    }
 
-   this->lex_check('=');
+   context.consume(TokenKind::Equals, ParserErrorCode::ExpectedToken);
 
    ExpDesc e;
-   BCReg nexps = this->expr_list(&e);
+   auto expr_values = this->expr_list(&e);
+   if (!expr_values.ok()) {
+      return;
+   }
+   BCReg nexps = expr_values.value_ref();
 
    auto assign_from_stack = [&](std::vector<ExpDesc>::reverse_iterator first_it,
       std::vector<ExpDesc>::reverse_iterator last_it)
@@ -304,83 +326,117 @@ void LexState::parse_assignment(ExpDesc* first)
    assign_from_stack(lhs_vars.rbegin(), lhs_vars.rend());
 }
 
+static bool is_compound_assignment_token(TokenKind kind)
+{
+   switch (kind) {
+   case TokenKind::CompoundAdd:
+   case TokenKind::CompoundSub:
+   case TokenKind::CompoundMul:
+   case TokenKind::CompoundDiv:
+   case TokenKind::CompoundMod:
+   case TokenKind::CompoundConcat:
+   case TokenKind::CompoundIfEmpty:
+      return true;
+   default:
+      return false;
+   }
+}
+
 //********************************************************************************************************************
 // Parse call statement or assignment.
 
-void LexState::parse_call_assign()
+void LexState::parse_call_assign(ParserContext& context)
 {
    FuncState* fs = this->fs;
    ExpDesc lhs;
-   this->expr_primary(&lhs);
+   auto lhs_result = this->expr_primary(&lhs);
+   if (!lhs_result.ok()) {
+      return;
+   }
    if (lhs.k IS ExpKind::NonReloc and expr_has_flag(&lhs, ExprFlag::PostfixIncStmt))
       return;
    if (lhs.k IS ExpKind::Call) {  // Function call statement.
       setbc_b(bcptr(fs, &lhs), 1);  // No results.
+      return;
    }
-   else if (this->tok IS TK_cadd or this->tok IS TK_csub or this->tok IS TK_cmul or
-      this->tok IS TK_cdiv or this->tok IS TK_cmod or this->tok IS TK_cconcat or
-      this->tok IS TK_cif_empty) {
-      this->assign_compound(&lhs, this->tok);
+
+   Token current = context.tokens().current();
+   TokenKind kind = current.kind();
+
+   if (is_compound_assignment_token(kind)) {
+      this->assign_compound(context, &lhs, kind);
    }
-   else if (this->tok IS ';') {
+   else if (kind IS TokenKind::Semicolon) {
       // Postfix increment (++) handled in expr_primary.
+      context.tokens().advance();
    }
    else {  // Start of an assignment.
-      this->parse_assignment(&lhs);
+      this->parse_assignment(context, &lhs);
    }
 }
 
 //********************************************************************************************************************
 // Parse 'local' statement.
 
-void LexState::parse_local()
+ParserResult<LocalDeclResult> LexState::parse_local(ParserContext& context)
 {
-   this->next();  // Skip 'local'.
-
-   ParserAllocator allocator = ParserAllocator::from(this->L);
-   ParserContext context = ParserContext::from(*this, *this->fs, allocator);
+   LocalDeclResult summary;
+   context.tokens().advance();  // Skip 'local'.
 
    if (context.check(TokenKind::Function)) {  // Local function declaration.
-      context.consume(TokenKind::Function, ParserErrorCode::ExpectedToken);
+      auto fn = context.consume(TokenKind::Function, ParserErrorCode::ExpectedToken);
+      if (!fn.ok()) {
+         return ParserResult<LocalDeclResult>::failure(fn.error_ref());
+      }
       ExpDesc v, b;
       FuncState* fs = this->fs;
       auto name_token = context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      GCstr* func_name = NAME_BLANK;
-      if (name_token.ok()) {
-         func_name = name_token.value_ref().identifier();
+      if (!name_token.ok()) {
+         return ParserResult<LocalDeclResult>::failure(name_token.error_ref());
       }
+      GCstr* func_name = name_token.value_ref().identifier();
       this->var_new(0, func_name ? func_name : NAME_BLANK);
       expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
       bcreg_reserve(fs, 1);
       this->var_add(1);
       this->parse_body(&b, 0, this->linenumber);
-      // bcemit_store(fs, &v, &b) without setting VarInfoFlag::VarReadWrite.
       expr_free(fs, &b);
       expr_toreg(fs, &b, v.u.s.info);
-      // The upvalue is in scope, but the local is only valid after the store.
       var_get(this, fs, fs->nactvar - 1).startpc = fs->pc;
+      summary.declared = 1;
+      summary.initialised = 1;
+      return ParserResult<LocalDeclResult>::success(summary);
    }
-   else {  // Local variable declaration.
-      ExpDesc e;
-      BCReg nexps, nvars = 0;
-      do {  // Collect LHS.
-         auto identifier = context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         GCstr* name = NAME_BLANK;
-         if (identifier.ok()) name = identifier.value_ref().identifier();
-         // Use NAME_BLANK marker for blank identifiers.
-         this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
-      } while (context.match(TokenKind::Comma).ok());
-      if (context.match(TokenKind::Equals).ok()) {  // Optional RHS.
-         nexps = this->expr_list(&e);
+
+   ExpDesc e;
+   BCReg nvars = 0;
+   BCReg nexps = 0;
+   do {  // Collect LHS.
+      auto identifier = context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (!identifier.ok()) {
+         return ParserResult<LocalDeclResult>::failure(identifier.error_ref());
       }
-      else {  // Or implicitly set to nil.
-         e.k = ExpKind::Void;
-         nexps = 0;
+      GCstr* name = identifier.value_ref().identifier();
+      this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
+   } while (context.match(TokenKind::Comma).ok());
+
+   if (context.match(TokenKind::Equals).ok()) {  // Optional RHS.
+      auto rhs_list = this->expr_list(&e);
+      if (!rhs_list.ok()) {
+         return ParserResult<LocalDeclResult>::failure(rhs_list.error_ref());
       }
-      this->assign_adjust(nvars, nexps, &e);
-      this->var_add(nvars);
+      nexps = rhs_list.value_ref();
    }
+   else {  // Or implicitly set to nil.
+      e.k = ExpKind::Void;
+      nexps = 0;
+   }
+   this->assign_adjust(nvars, nexps, &e);
+   this->var_add(nvars);
+   summary.declared = nvars;
+   summary.initialised = nexps;
+   return ParserResult<LocalDeclResult>::success(summary);
 }
 
 //********************************************************************************************************************
@@ -441,7 +497,10 @@ void LexState::parse_defer()
       this->next();
       if (this->tok != ')') {
          do {
-            this->expr(&arg);
+            auto arg_expr = this->expr(&arg);
+            if (!arg_expr.ok()) {
+               return;
+            }
             expr_tonextreg(fs, &arg);
             nargs++;
          } while (this->lex_opt(','));
@@ -489,31 +548,40 @@ void LexState::parse_func(BCLine line)
 //********************************************************************************************************************
 // Check for end of block.
 
-static int parse_is_end(LexToken tok)
+static bool parse_is_end(TokenKind kind)
 {
-   switch (tok) {
-   case TK_else: case TK_elseif: case TK_end: case TK_until: case TK_eof:
-      return 1;
+   switch (kind) {
+   case TokenKind::Else:
+   case TokenKind::ElseIf:
+   case TokenKind::EndToken:
+   case TokenKind::Until:
+   case TokenKind::EndOfFile:
+      return true;
    default:
-      return 0;
+      return false;
    }
 }
 
 //********************************************************************************************************************
 // Parse 'return' statement.
 
-void LexState::parse_return()
+void LexState::parse_return(ParserContext& context)
 {
    BCIns ins;
    FuncState* fs = this->fs;
-   this->next();  // Skip 'return'.
+   context.tokens().advance();  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
-   if (parse_is_end(this->tok) or this->tok IS ';') {  // Bare return.
+   TokenKind next_kind = context.tokens().current().kind();
+   if (parse_is_end(next_kind) or next_kind IS TokenKind::Semicolon) {  // Bare return.
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
-      BCReg nret = this->expr_list(&e);
+      auto returns = this->expr_list(&e);
+      if (!returns.ok()) {
+         return;
+      }
+      BCReg nret = returns.value_ref();
       if (nret IS 1) {  // Return one result.
          if (e.k IS ExpKind::Call) {  // Check for tail call.
             BCIns* ip = bcptr(fs, &e);
@@ -586,30 +654,34 @@ void LexState::parse_break()
 
 // Parse a block.
 
-void LexState::parse_block()
+void LexState::parse_block(ParserContext& context)
 {
    FuncState* fs = this->fs;
    FuncScope bl;
    ScopeGuard scope_guard(fs, &bl, FuncScopeFlag::None);
-   this->parse_chunk();
+   this->parse_chunk(context);
 }
 
 //********************************************************************************************************************
 // Parse 'while' statement.
 
-void LexState::parse_while(BCLine line)
+void LexState::parse_while(ParserContext& context, BCLine line)
 {
    FuncState* fs = this->fs;
    BCPos start, loop, condexit;
-   this->next();  // Skip 'while'.
+   context.tokens().advance();  // Skip 'while'.
    start = fs->lasttarget = fs->pc;
-   condexit = this->expr_cond();
+   auto while_cond = this->expr_cond();
+   if (!while_cond.ok()) {
+      return;
+   }
+   condexit = while_cond.value_ref();
    FuncScope bl;
    {
       ScopeGuard loop_scope(fs, &bl, FuncScopeFlag::Loop);
-      this->lex_check(TK_do);
+      context.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
       loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-      this->parse_block();
+      this->parse_block(context);
       JumpListView(fs, bcemit_jmp(fs)).patch_to(start);
       this->lex_match(TK_end, TK_while, line);
       fscope_loop_continue(fs, start);
@@ -621,7 +693,7 @@ void LexState::parse_while(BCLine line)
 //********************************************************************************************************************
 // Parse 'repeat' statement.
 
-void LexState::parse_repeat(BCLine line)
+void LexState::parse_repeat(ParserContext& context, BCLine line)
 {
    FuncState* fs = this->fs;
    BCPos loop = fs->lasttarget = fs->pc;
@@ -631,12 +703,16 @@ void LexState::parse_repeat(BCLine line)
    bool inner_has_upvals = false;
    {
       ScopeGuard inner_scope(fs, &bl2, FuncScopeFlag::None);  // Inner scope.
-      this->next();  // Skip 'repeat'.
+      context.tokens().advance();  // Skip 'repeat'.
       bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-      this->parse_chunk();
+      this->parse_chunk(context);
       this->lex_match(TK_until, TK_repeat, line);
       iter = fs->pc;
-      condexit = this->expr_cond();  // Parse condition (still inside inner scope).
+      auto repeat_cond = this->expr_cond();  // Parse condition (still inside inner scope).
+      if (!repeat_cond.ok()) {
+         return;
+      }
+      condexit = repeat_cond.value_ref();
       inner_has_upvals = has_flag(bl2.flags, FuncScopeFlag::Upvalue);
       if (inner_has_upvals) {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
          this->parse_break();  // Break from loop and close upvalues.
@@ -652,7 +728,7 @@ void LexState::parse_repeat(BCLine line)
 //********************************************************************************************************************
 // Parse numeric 'for'.
 
-void LexState::parse_for_num(GCstr* varname, BCLine line)
+void LexState::parse_for_num(ParserContext& context, GCstr* varname, BCLine line)
 {
    FuncState* fs = this->fs;
    BCReg base = fs->freereg;
@@ -664,25 +740,31 @@ void LexState::parse_for_num(GCstr* varname, BCLine line)
    this->var_new_fixed(FORL_STEP, VARNAME_FOR_STEP);
    // Visible copy of index variable.
    this->var_new(FORL_EXT, varname);
-   this->lex_check('=');
-   this->expr_next();
-   this->lex_check(',');
-   this->expr_next();
-   if (this->lex_opt(',')) {
-      this->expr_next();
+   context.consume(TokenKind::Equals, ParserErrorCode::ExpectedToken);
+   if (!this->expr_next().ok()) {
+      return;
+   }
+   context.consume(TokenKind::Comma, ParserErrorCode::ExpectedToken);
+   if (!this->expr_next().ok()) {
+      return;
+   }
+   if (context.match(TokenKind::Comma).ok()) {
+      if (!this->expr_next().ok()) {
+         return;
+      }
    }
    else {
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);  // Default step is 1.
       bcreg_reserve(fs, 1);
    }
    this->var_add(3);  // Hidden control variables.
-   this->lex_check(TK_do);
+   context.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    loop = bcemit_AJ(fs, BC_FORI, base, NO_JMP);
    {
       ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
       this->var_add(1);
       bcreg_reserve(fs, 1);
-      this->parse_block();
+      this->parse_block(context);
    }
    // Perform loop inversion. Loop control instructions are at the end.
    loopend = bcemit_AJ(fs, BC_FORL, base, NO_JMP);
@@ -728,7 +810,7 @@ static int predict_next(LexState *State, FuncState* fs, BCPos pc)
 //********************************************************************************************************************
 // Parse 'for' iterator.
 
-void LexState::parse_for_iter(GCstr* indexname)
+void LexState::parse_for_iter(ParserContext& context, GCstr* indexname)
 {
    FuncState* fs = this->fs;
    ExpDesc e;
@@ -744,24 +826,28 @@ void LexState::parse_for_iter(GCstr* indexname)
    this->var_new_fixed(nvars++, VARNAME_FOR_CTL);
    // Visible variables returned from iterator.
    this->var_new(nvars++, is_blank_identifier(indexname) ? NAME_BLANK : indexname);
-   while (this->lex_opt(',')) {
-      GCstr* name = this->lex_str();
+   while (context.match(TokenKind::Comma).ok()) {
+      GCstr* name = context.lex_str();
       this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
    }
-   this->lex_check(TK_in);
+   context.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
    line = this->linenumber;
-   this->assign_adjust(3, this->expr_list(&e), &e);
+   auto iter_values = this->expr_list(&e);
+   if (!iter_values.ok()) {
+      return;
+   }
+   this->assign_adjust(3, iter_values.value_ref(), &e);
    // The iterator needs another 3 [4] slots (func [pc] | state ctl).
    bcreg_bump(fs, 3 + LJ_FR2);
    isnext = (nvars <= 5 and predict_next(this, fs, exprpc));
    this->var_add(3);  // Hidden control variables.
-   this->lex_check(TK_do);
+   context.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    loop = bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP);
    {
       ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
       this->var_add(nvars - 3);
       bcreg_reserve(fs, nvars - 3);
-      this->parse_block();
+      this->parse_block(context);
    }
    // Perform loop inversion. Loop control instructions are at the end.
    JumpListView(fs, loop).patch_head(fs->pc);
@@ -776,16 +862,17 @@ void LexState::parse_for_iter(GCstr* indexname)
 //********************************************************************************************************************
 // Parse 'for' statement.
 
-void LexState::parse_for(BCLine line)
+void LexState::parse_for(ParserContext& context, BCLine line)
 {
    FuncState* fs = this->fs;
    GCstr* varname;
    FuncScope bl;
    ScopeGuard loop_scope(fs, &bl, FuncScopeFlag::Loop);
-   this->next();  // Skip 'for'.
-   varname = this->lex_str();  // Get first variable name.
-   if (this->tok IS '=') this->parse_for_num(varname, line);
-   else if (this->tok IS ',' or this->tok IS TK_in) this->parse_for_iter(varname);
+   context.tokens().advance();  // Skip 'for'.
+   varname = context.lex_str();  // Get first variable name.
+   TokenKind next_kind = context.tokens().current().kind();
+   if (next_kind IS TokenKind::Equals) this->parse_for_num(context, varname, line);
+   else if (next_kind IS TokenKind::Comma or next_kind IS TokenKind::InToken) this->parse_for_iter(context, varname);
    else this->err_syntax(LJ_ERR_XFOR);
    this->lex_match(TK_end, TK_for, line);
 }
@@ -793,36 +880,40 @@ void LexState::parse_for(BCLine line)
 //********************************************************************************************************************
 // Parse condition and 'then' block.
 
-BCPos LexState::parse_then()
+BCPos LexState::parse_then(ParserContext& context)
 {
    BCPos condexit;
-   this->next();  // Skip 'if' or 'elseif'.
-   condexit = this->expr_cond();
-   this->lex_check(TK_then);
-   this->parse_block();
+   context.tokens().advance();  // Skip 'if' or 'elseif'.
+   auto if_cond = this->expr_cond();
+   if (!if_cond.ok()) {
+      return NO_JMP;
+   }
+   condexit = if_cond.value_ref();
+   context.consume(TokenKind::ThenToken, ParserErrorCode::ExpectedToken);
+   this->parse_block(context);
    return condexit;
 }
 
 //********************************************************************************************************************
 // Parse 'if' statement.
 
-void LexState::parse_if(BCLine line)
+void LexState::parse_if(ParserContext& context, BCLine line)
 {
    FuncState* fs = this->fs;
    BCPos flist;
    BCPos escapelist = NO_JMP;
-   flist = this->parse_then();
-   while (this->tok IS TK_elseif) {  // Parse multiple 'elseif' blocks.
+   flist = this->parse_then(context);
+   while (context.tokens().current().is(TokenKind::ElseIf)) {  // Parse multiple 'elseif' blocks.
       escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
       JumpListView(fs, flist).patch_to_here();
-      flist = this->parse_then();
+      flist = this->parse_then(context);
    }
 
-   if (this->tok IS TK_else) {  // Parse optional 'else' block.
+   if (context.tokens().current().is(TokenKind::Else)) {  // Parse optional 'else' block.
       escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
       JumpListView(fs, flist).patch_to_here();
-      this->next();  // Skip 'else'.
-      this->parse_block();
+      context.tokens().advance();  // Skip 'else'.
+      this->parse_block(context);
    }
    else escapelist = JumpListView(fs, escapelist).append(flist);
 
@@ -833,68 +924,114 @@ void LexState::parse_if(BCLine line)
 //********************************************************************************************************************
 // Parse a single statement. Returns 1 if it must be the last one in a chunk.
 
-int LexState::parse_stmt()
+int LexState::parse_stmt(ParserContext& context)
 {
    BCLine line = this->linenumber;
-   switch (this->tok) {
-   case TK_if:
-      this->parse_if(line);
+   Token current = context.tokens().current();
+   TokenKind kind = current.kind();
+   switch (kind) {
+   case TokenKind::If:
+      this->parse_if(context, line);
       break;
-   case TK_while:
-      this->parse_while(line);
+   case TokenKind::WhileToken:
+      this->parse_while(context, line);
       break;
-   case TK_do:
-      this->next();
-      this->parse_block();
-      this->lex_match(TK_end, TK_do, line);
+   case TokenKind::For:
+      this->parse_for(context, line);
       break;
-   case TK_for:
-      this->parse_for(line);
+   case TokenKind::Repeat:
+      this->parse_repeat(context, line);
       break;
-   case TK_repeat:
-      this->parse_repeat(line);
-      break;
-   case TK_function:
+   case TokenKind::Function:
       this->parse_func(line);
       break;
-   case TK_defer:
+   case TokenKind::DeferToken:
       this->parse_defer();
       break;
-   case TK_local:
-      this->parse_local();
+   case TokenKind::Local:
+      if (!this->parse_local(context).ok()) {
+         return 0;
+      }
       break;
-   case TK_return:
-      this->parse_return();
+   case TokenKind::ReturnToken:
+      this->parse_return(context);
       return 1;  // Must be last.
-   case TK_continue:
+   case TokenKind::ContinueToken:
       this->parse_continue();
       break;
-   case TK_break:
+   case TokenKind::BreakToken:
       this->parse_break();
       break;
-   case ';':
-      this->next();
+   case TokenKind::Semicolon:
+      context.tokens().advance();
       break;
    default:
-      this->parse_call_assign();
+      switch (current.raw()) {
+      case TK_do:
+         context.tokens().advance();
+         this->parse_block(context);
+         this->lex_match(TK_end, TK_do, line);
+         break;
+      default:
+         this->parse_call_assign(context);
+         break;
+      }
       break;
    }
    return 0;
 }
 
 //********************************************************************************************************************
+// Summarise accumulated diagnostics when abort_on_error is disabled.
+
+static void raise_accumulated_diagnostics(ParserContext& context)
+{
+   auto entries = context.diagnostics().entries();
+   if (entries.empty()) {
+      return;
+   }
+   std::string summary;
+   summary.reserve(entries.size() * 64);
+   summary.append("parser reported ");
+   summary.append(std::to_string(entries.size()));
+   summary.append(entries.size() == 1 ? " error:\n" : " errors:\n");
+   for (const auto& diagnostic : entries) {
+      SourceSpan span = diagnostic.token.span();
+      summary.append("   line ");
+      summary.append(std::to_string(span.line));
+      summary.append(":");
+      summary.append(std::to_string(span.column));
+      summary.append(" - ");
+      if (!diagnostic.message.empty()) {
+         summary.append(diagnostic.message);
+      }
+      else {
+         summary.append("unexpected token");
+      }
+      summary.push_back('\n');
+   }
+   lua_State* L = &context.lua();
+   GCstr* message = lj_str_new(L, summary.data(), summary.size());
+   setstrV(L, L->top++, message);
+   lj_err_throw(L, LUA_ERRSYNTAX);
+}
+
+//********************************************************************************************************************
 // Parse a chunk (list of statements).
 
-void LexState::parse_chunk()
+void LexState::parse_chunk(ParserContext& context)
 {
    int is_last = 0;
    this->synlevel_begin();
-   while (!is_last and !parse_is_end(this->tok)) {
-      is_last = this->parse_stmt();
+   while (!is_last and !parse_is_end(context.tokens().current().kind())) {
+      is_last = this->parse_stmt(context);
       this->lex_opt(';');
       this->assert_condition(this->fs->framesize >= this->fs->freereg and
          this->fs->freereg >= this->fs->nactvar, "bad regalloc");
       this->fs->freereg = this->fs->nactvar;  // Free registers after each stmt.
    }
    this->synlevel_end();
+   if (!context.config().abort_on_error and context.diagnostics().has_errors()) {
+      raise_accumulated_diagnostics(context);
+   }
 }

@@ -1,31 +1,18 @@
-# Plan: Remediate Outstanding Phase 1 Requirements
+# Phase 1 Verification – Outstanding Work
 
-The following items capture the gaps identified while auditing Phase 1 of the LuaJIT parser redesign. Each section summarises the outstanding work and lists concrete steps to resolve it so the next session can drive Phase 1 to completion.
+A fresh audit of `docs/plans/PARSER_P1.md` against the current LuaJIT parser shows that several Phase 1 deliverables were only partially completed. This plan groups the gaps by theme and lists concrete remediation steps so that the foundational work (ParserContext, typed tokens, ParserResult, diagnostics, and tracing) actually underpins the parser.
 
-## 1. Adopt `ParserContext` Across Parser Helpers
-- Only `expr_primary_with_context` and `parse_local` currently use `ParserContext`; every other helper still manipulates `LexState*` and `FuncState*` directly.
-- **Actions:**
-  1. Inventory the shared helpers under `src/fluid/luajit-2.1/src/parser/` (especially `parse_core.cpp` utilities) and refactor them to accept `ParserContext&` instead of naked state pointers.
-  2. Update their callers to thread the context object, ensuring diagnostics and allocator access go through the new API.
-  3. Remove any remaining direct access to `ParserSession::lex`/`func` internals to guarantee consistent state ownership.
+## 1. Finish adopting ParserContext across parser helpers
+* ✅ **Completed:** `parse_stmt` now switches on the typed `TokenKind` emitted by `ParserContext::tokens()` and threads the active context through every statement helper that previously consumed `LexState::tok` directly (`parse_call_assign`, `parse_assignment`, `parse_if`, `parse_for`, `parse_while`, `parse_repeat`, and `parse_return`). Compound assignment utilities now accept `ParserContext&`, the typed token helpers (`match`, `consume`, `tokens().advance()`) gate operator checks instead of `this->next()`, and new `TokenKind` entries (`DoToken`, `ThenToken`, `InToken`) cover the keywords exercised by the loop helpers. With these changes the statement layer finally executes inside a single context instance, guaranteeing that diagnostics, typed tokens, and future configuration overrides remain available throughout each helper invocation.
+* ➡️ **Follow-up note:** Expression helpers already see the `ParserContext` via `LexState::active_context`, so no additional wiring is required until we start migrating them to return `ParserResult` during the next milestone.
 
-## 2. Complete the Pilot Migration to `ParserResult`
-- Phase 1 required both the `expr_primary`/`expr_prefix` pair and a statement entry point to return `ParserResult`. Today only `expr_primary` wraps legacy logic, and `parse_local` still returns `void` while mutating legacy structs.
-- **Actions:**
-  1. Rewrite `expr_prefix` and at least one statement parser (e.g., `parse_local` or another small statement) to return `ParserResult` objects that encapsulate success/failure and produced AST/descriptor data.
-  2. Propagate those results through their callers, eliminating direct mutation of `ExpDesc`/`FuncState` where the plan called for result passing.
-  3. Extend unit/regression tests (or add temporary asserts) to ensure callers respect the new result-based control flow.
+## 2. Complete the ParserResult + typed token pilot
+* ✅ **Completed:** The expression pipeline (`expr_primary`, `expr_simple`, `expr_unop`, `expr_binop`, `expr_list`, `expr_next`, and `expr_cond`) now returns `ParserResult` and consumes typed tokens via the shared `ParserContext`. Statement-side coverage landed with `parse_local` returning `ParserResult<LocalDeclResult>` so `parse_stmt` can stop once diagnostics fire, and the RHS parsing logic now uses typed helpers for identifiers and `=` detection. `parse_call_assign`, compound assignments, and the numeric/iterator `for` helpers were updated to branch on success/failure when invoking the new pilots. The regression script `src/fluid/tests/parser_phase1.fluid` gained negative cases that invoke `load()` with invalid snippets (missing local function names, incomplete expressions) to assert that the parser emits diagnostics instead of crashing.
 
-## 3. Integrate `ParserDiagnostics` With Error Paths
-- The plan mandated funnelling `lj_lex_error`, `lj_parse_error`, etc. through `ParserDiagnostics` so multiple diagnostics can accumulate, but only `expr_primary_with_context` uses it today.
-- **Actions:**
-  1. Replace direct calls to `lj_lex_error`, `lj_parse_error`, and similar fatal helpers with `ParserDiagnostics::emit_error` (or equivalent) throughout the Phase 1 scope.
-  2. Ensure each parser entry point checks the diagnostics object before returning so callers can react appropriately.
-  3. Add regression coverage (or logging hooks) to confirm multiple diagnostics can be recorded before the parser aborts.
+## 3. Activate the ParserSession guard and diagnostics surface
+* ✅ **Completed:** `lj_parse` now allocates a single `ParserContext` for the main chunk, wraps it in a `ParserSession` built from `make_parser_config()`, and threads that context through `parse_chunk` so every statement shares the same diagnostics stream. Nested function bodies create their own contexts but immediately enter sessions that inherit the parent configuration, ensuring `abort_on_error`, trace flags, and future toggles propagate consistently. `parse_chunk` reuses the shared token stream, and when `abort_on_error` is disabled it summarises the collected diagnostics via `raise_accumulated_diagnostics()` so multiple errors are surfaced before a single syntax throw. The updated `docs/plans/PARSER_P1.md` status section documents this behaviour for future contributors.
 
-## 4. Consume the `ParserSession` RAII Guard
-- `ParserSession` exists but has zero call sites, so configuration overrides never apply.
-- **Actions:**
-  1. Identify the parser entry points (likely in `lj_parse.cpp`) where sessions should be established and wrap parsing invocations in `ParserSession` instances.
-  2. Thread the resulting session/context into downstream helpers so scoped options (e.g., diagnostic modes, allocator settings) take effect.
-  3. Document the intended usage in `docs/plans/PARSER_P1.md` once the guard is active, clarifying how sessions should be managed for future migrations.
+## 4. Provide parser tracing toggles and document regression coverage
+* ✅ **Completed:** Added a `PARASOL_PARSER_TRACE` CMake option that propagates to both the amalgamated LuaJIT build and the MSVC static library so `ParserConfig::trace_tokens` / `trace_expectations` default to `true` whenever the flag is set. `TokenStreamAdapter::advance`, `ParserContext::match`, and `ParserContext::emit_error` now emit trace lines describing token transitions, unmet expectations, and raised diagnostics, giving developers a portable signal without editing the parser. The option, build commands, and invocation examples are recorded in `docs/plans/PARSER_P1.md` plus the newly revived `docs/wiki/Unit-Testing.md`, and `src/fluid/tests/parser_phase1.fluid` documents its build/run commands while adding an `if`/`then` failure snippet so regression coverage can be repeated verbatim.
+
+Implementing the items above will close the remaining Phase 1 gaps and provide the robust scaffolding (context ownership, typed tokens, result-based control flow, diagnostics, and tracing) that later phases assume.
