@@ -1,3 +1,4 @@
+// Copyright (C) 2025 Paul Manias
 
 static void bcreg_reserve(FuncState* fs, BCReg n);
 static void fscope_uvmark(FuncState* fs, BCReg level);
@@ -477,7 +478,9 @@ static size_t fs_prep_line(FuncState* fs, BCLine numline)
    return (fs->pc - 1) << (numline < 256 ? 0 : numline < 65536 ? 1 : 2);
 }
 
+//********************************************************************************************************************
 // Fixup lineinfo for prototype.
+
 static void fs_fixup_line(FuncState* fs, GCproto* pt,
    void* lineinfo, BCLine numline)
 {

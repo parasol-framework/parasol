@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #include "parser/token_stream.h"
 
 #include "parser/parser_context.h"
