@@ -567,7 +567,11 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    lex_next(this);  //  Read-ahead first char.
    if (this->c IS 0xef and this->p + 2 <= this->pe and (uint8_t)this->p[0] IS 0xbb and
       (uint8_t)this->p[1] IS 0xbf) {  // Skip UTF-8 BOM (if buffered).
-      this->p += 2;
+      constexpr size_t skipped_bom_bytes = 2;
+      this->p += skipped_bom_bytes;
+      this->current_offset += skipped_bom_bytes;
+      this->next_offset += skipped_bom_bytes;
+      this->line_start_offset += skipped_bom_bytes;
       lex_next(this);
       header = 1;
    }
