@@ -107,3 +107,9 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Extended the AST builder so identifier-based primary expressions now capture `.` field lookups and postfix `??` operators directly from the typed token stream, preserving structured error reporting for both prefixes and the supported suffixes.
 * Updated the IR emitter to lower the new suffix nodes through `expr_index`/`bcemit_presence_check`, keeping the conversions inside the AST path and ensuring the emitted `ExpDesc` mirrors the legacy bytecode without revisiting the suffix loop.
 * Relaxed the `expr_primary` gate so the parser selects the AST/IR fast path whenever the next token is either not a suffix or one of the newly supported suffix kinds, letting the modern pipeline handle `foo.bar`/`foo??` constructs before falling back for method calls, brackets, or function invocation.
+
+## Phase 5 Kickoff – August 2025
+* Added `parser_trace.{h,cpp}` with a bounded `ParserTraceSink`, strongly typed `ParserTraceEventKind`, and a `ParserPipelineMode` toggle surface on `ParserConfig` so callers can enable tracing, cap trace volume, and explicitly opt in or out of the AST fast path.
+* Updated `ParserContext` to own the trace sink, expose `trace_event()` helpers, and reconfigure diagnostics/trace capacity whenever a `ParserSession` overrides the active configuration, ensuring tracing follows the same lifetime rules as the typed token stream.
+* Instrumented `expr_primary` and `parse_local` so AST attempts, successes, failures, and legacy fallbacks emit structured trace entries, providing immediate breadcrumbs when running the parser with tracing enabled while leaving runtime behaviour unchanged when tracing is disabled.
+* Documented the new instrumentation knobs here to close out Phase 1 with visibility tooling for the migrated surfaces while paving the way for future AST coverage and eventual dual-pipeline verification.

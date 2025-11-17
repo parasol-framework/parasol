@@ -10,10 +10,13 @@
 #include <vector>
 
 #include "parser/token_stream.h"
+#include "parser/parser_trace.h"
 
 struct ParserConfig {
    std::size_t max_diagnostics = 8;
+   std::size_t max_trace_events = 32;
    bool enable_tracing = false;
+   ParserPipelineMode pipeline_mode = ParserPipelineMode::AstPreferred;
 };
 
 enum class ParserSeverity : uint8_t {
@@ -104,11 +107,15 @@ public:
    LexState& lex();
    FuncState& func();
    lua_State& state();
-   ParserConfig& config();
    const ParserConfig& config() const;
+   void set_config(const ParserConfig& Config);
    TokenStreamAdapter& tokens();
    ParserDiagnostics& diagnostics();
    const ParserDiagnostics& diagnostics() const;
+   ParserTraceSink& trace();
+   const ParserTraceSink& trace() const;
+   void trace_event(ParserTraceEventKind Kind, std::string_view Message, const Token& TokenInfo);
+   bool tracing_enabled() const;
 
    void emit_error(ParserErrorCode Code, std::string_view Message, const Token& TokenInfo);
    void emit_legacy_error(ErrMsg MessageId, const Token& TokenInfo);
@@ -126,6 +133,9 @@ private:
    lua_State* lua_state = nullptr;
    ParserAllocatorView allocator;
    TokenStreamAdapter token_stream;
+   ParserTraceSink trace_data;
+
+   void refresh_configuration();
 };
 
 class ParserSession {

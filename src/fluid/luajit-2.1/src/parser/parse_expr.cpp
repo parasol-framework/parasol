@@ -114,6 +114,13 @@ static bool token_kind_supported_by_ast_primary_suffix(TokenKind Kind)
    }
 }
 
+static bool parser_should_use_ast_primary(ParserContext* Context)
+{
+   if (!Context)
+      return false;
+   return Context->config().pipeline_mode != ParserPipelineMode::LegacyOnly;
+}
+
 //********************************************************************************************************************
 
 static int token_starts_expression(LexToken tok)
@@ -511,12 +518,18 @@ void LexState::expr_primary(ExpDesc* Expression)
    ExpDesc* v = Expression;
    ParserContext* context = this->parser_context;
    bool parsed_prefix = false;
-   if (context) {
+   bool ast_enabled = parser_should_use_ast_primary(context);
+   bool attempted_ast = false;
+   Token ast_entry_token;
+   if (ast_enabled) {
       Token current = context->tokens().current();
       Token next = context->tokens().peek(1);
       bool next_is_suffix = token_kind_starts_primary_suffix(next.kind);
       bool next_is_supported_suffix = token_kind_supported_by_ast_primary_suffix(next.kind);
       if (current.is_identifier() and (!next_is_suffix or next_is_supported_suffix)) {
+         attempted_ast = true;
+         ast_entry_token = current;
+         context->trace_event(ParserTraceEventKind::AstPrimaryAttempt, "ast primary", current);
          AstBuilder builder(*context);
          auto ast = builder.parse_primary_expression();
          if (ast) {
@@ -525,12 +538,23 @@ void LexState::expr_primary(ExpDesc* Expression)
             if (emitted) {
                *v = emitted.get().release();
                parsed_prefix = true;
+               context->trace_event(ParserTraceEventKind::AstPrimarySuccess, "ast primary", ast_entry_token);
             }
+            else {
+               ParserError error = emitted.get_error();
+               context->trace_event(ParserTraceEventKind::AstPrimaryFailure, error.message, ast_entry_token);
+            }
+         }
+         else {
+            ParserError error = ast.get_error();
+            context->trace_event(ParserTraceEventKind::AstPrimaryFailure, error.message, ast_entry_token);
          }
       }
    }
 
    if (context and !parsed_prefix) {
+      if (attempted_ast)
+         context->trace_event(ParserTraceEventKind::AstPrimaryFallback, "legacy primary fallback", ast_entry_token);
       Token current = context->tokens().current();
       if (current.is(TokenKind::LeftParen)) {
          BCLine line = this->linenumber;

@@ -341,17 +341,30 @@ void LexState::parse_call_assign()
    }
 }
 
+static bool parser_should_use_ast_locals(ParserContext* Context)
+{
+   if (!Context)
+      return false;
+   return Context->config().pipeline_mode != ParserPipelineMode::LegacyOnly;
+}
+
 //********************************************************************************************************************
 // Parse 'local' statement.
 
 void LexState::parse_local()
 {
    ParserContext* context = this->parser_context;
-   if (context) {
+   bool ast_enabled = parser_should_use_ast_locals(context);
+   bool attempted_ast = false;
+   Token ast_token;
+   if (context and ast_enabled) {
       Token current = context->tokens().current();
       if (current.is(TokenKind::ReservedLocal)) {
          Token lookahead = context->tokens().peek(1);
          if (lookahead.kind != TokenKind::ReservedFunction) {
+            attempted_ast = true;
+            ast_token = current;
+            context->trace_event(ParserTraceEventKind::LocalStatementAttempt, "ast local", current);
             AstBuilder builder(*context);
             auto ast_statement = builder.parse_local_statement();
             if (ast_statement) {
@@ -373,7 +386,12 @@ void LexState::parse_local()
                }
                this->assign_adjust(nvars, nexps, &e);
                this->var_add(nvars);
+               context->trace_event(ParserTraceEventKind::LocalStatementSuccess, "ast local", ast_token);
                return;
+            }
+            else {
+               ParserError error = ast_statement.get_error();
+               context->trace_event(ParserTraceEventKind::LocalStatementFailure, error.message, ast_token);
             }
             this->err_token(TK_name);
             return;
@@ -382,6 +400,8 @@ void LexState::parse_local()
    }
 
    if (context) {
+      if (attempted_ast)
+         context->trace_event(ParserTraceEventKind::LocalStatementFallback, "legacy local fallback", ast_token);
       if (!context->consume(TokenKind::ReservedLocal, ParserErrorCode::UnexpectedToken))
          this->next();
    }
@@ -959,3 +979,4 @@ void LexState::parse_chunk()
    }
    this->synlevel_end();
 }
+

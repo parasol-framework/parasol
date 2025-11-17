@@ -53,12 +53,20 @@ ParserContext ParserContext::from(LexState& Lex, FuncState& Func, lua_State& Sta
 ParserContext::ParserContext(LexState& Lex, FuncState& Func, lua_State& State, ParserConfig Config)
    : config_data(Config),
      diagnostics_data(make_diagnostics(Config)),
-     lex_state(&Lex),
-     func_state(&Func),
-     lua_state(&State),
-     allocator{&State},
-     token_stream(&Lex)
+      lex_state(&Lex),
+      func_state(&Func),
+      lua_state(&State),
+      allocator{&State},
+      token_stream(&Lex)
 {
+   this->refresh_configuration();
+}
+
+void ParserContext::refresh_configuration()
+{
+   this->diagnostics_data.configure(this->config_data.max_diagnostics);
+   this->trace_data.configure(this->config_data.max_trace_events);
+   this->trace_data.set_enabled(this->config_data.enable_tracing);
 }
 
 LexState& ParserContext::lex()
@@ -76,14 +84,15 @@ lua_State& ParserContext::state()
    return *this->lua_state;
 }
 
-ParserConfig& ParserContext::config()
+const ParserConfig& ParserContext::config() const
 {
    return this->config_data;
 }
 
-const ParserConfig& ParserContext::config() const
+void ParserContext::set_config(const ParserConfig& Config)
 {
-   return this->config_data;
+   this->config_data = Config;
+   this->refresh_configuration();
 }
 
 TokenStreamAdapter& ParserContext::tokens()
@@ -99,6 +108,26 @@ ParserDiagnostics& ParserContext::diagnostics()
 const ParserDiagnostics& ParserContext::diagnostics() const
 {
    return this->diagnostics_data;
+}
+
+ParserTraceSink& ParserContext::trace()
+{
+   return this->trace_data;
+}
+
+const ParserTraceSink& ParserContext::trace() const
+{
+   return this->trace_data;
+}
+
+void ParserContext::trace_event(ParserTraceEventKind Kind, std::string_view Message, const Token& TokenInfo)
+{
+   this->trace_data.record(Kind, Message, TokenInfo);
+}
+
+bool ParserContext::tracing_enabled() const
+{
+   return this->trace_data.enabled();
 }
 
 void ParserContext::emit_error(ParserErrorCode Code, std::string_view Message, const Token& TokenInfo)
@@ -165,13 +194,13 @@ ParserResult<Token> ParserContext::expect_identifier(ParserErrorCode Code)
 ParserSession::ParserSession(ParserContext& Context, ParserConfig Override)
    : context(&Context), previous(Context.config())
 {
-   Context.config() = Override;
+   Context.set_config(Override);
 }
 
 ParserSession::~ParserSession()
 {
    if (this->context)
-      this->context->config() = this->previous;
+      this->context->set_config(this->previous);
 }
 
 std::string format_unexpected_token_message(TokenKind Expected, TokenKind Actual)
