@@ -146,6 +146,12 @@ MSize LexState::var_lookup(ExpDesc* e)
    return var_lookup_(this->fs, this->lex_str(), e, 1);
 }
 
+// Lookup variable by explicit name (caller already consumed token).
+MSize LexState::var_lookup_named(GCstr* name, ExpDesc* e)
+{
+   return var_lookup_(this->fs, name, e, 1);
+}
+
 //********************************************************************************************************************
 // Jump and target handling
 

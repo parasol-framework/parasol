@@ -11,6 +11,8 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 
+class ParserContext;
+
 // Lua lexer tokens.
 #define TKDEF(_, __) \
   _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
@@ -98,6 +100,8 @@ public:
    int      endmark;          // Trust bytecode end marker, even if not at EOF.
    int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
 
+   ParserContext* parser_context = nullptr;   // Active parser context (optional).
+
    LexState() = default;  // Default constructor for bytecode reader usage
    LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);
    LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Constructor for direct bytecode reading
@@ -120,6 +124,7 @@ public:
    void var_add(BCReg VariableCount);
    void var_remove(BCReg TargetLevel);
    MSize var_lookup(ExpDesc* Expression);
+   MSize var_lookup_named(GCstr* Name, ExpDesc* Expression);
 
    // Goto and label management
    MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
@@ -157,6 +162,9 @@ public:
    void expr_next();
    BCPos expr_cond();
    bool should_emit_presence();
+
+   void attach_context(ParserContext* Context) { this->parser_context = Context; }
+   ParserContext* context() const { return this->parser_context; }
 
    // Statement parsing
    void assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var);

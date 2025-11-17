@@ -333,7 +333,14 @@ void LexState::parse_call_assign()
 
 void LexState::parse_local()
 {
-   this->next();  // Skip 'local'.
+   ParserContext* context = this->parser_context;
+   if (context) {
+      if (!context->consume(TokenKind::ReservedLocal, ParserErrorCode::UnexpectedToken))
+         this->next();
+   }
+   else {
+      this->next();  // Skip 'local'.
+   }
 
    if (this->lex_opt(TK_function)) {  // Local function declaration.
       ExpDesc v, b;
@@ -353,12 +360,32 @@ void LexState::parse_local()
    else {  // Local variable declaration.
       ExpDesc e;
       BCReg nexps, nvars = 0;
+      auto consume_comma = [this, context]() -> bool {
+         if (context)
+            return context->match(TokenKind::Comma);
+         return this->lex_opt(',') != 0;
+      };
+
       do {  // Collect LHS.
-         GCstr* name = this->lex_str();
+         GCstr* name = nullptr;
+         if (context) {
+            auto identifier = context->expect_identifier(ParserErrorCode::IdentifierExpected);
+            if (identifier) {
+               name = identifier.get().identifier();
+            }
+            else {
+               this->err_token(TK_name);
+            }
+         }
+         else {
+            name = this->lex_str();
+         }
+         if (!name) name = NAME_BLANK;
          // Use NAME_BLANK marker for blank identifiers.
          this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
-      } while (this->lex_opt(','));
-      if (this->lex_opt('=')) {  // Optional RHS.
+      } while (consume_comma());
+      bool has_rhs = context ? context->match(TokenKind::Equal) : this->lex_opt('=');
+      if (has_rhs) {  // Optional RHS.
          nexps = this->expr_list(&e);
       }
       else {  // Or implicitly set to nil.

@@ -43,8 +43,14 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
+#include "parser/token_types.h"
+#include "parser/token_stream.h"
+#include "parser/parser_context.h"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
+#include "parser/token_types.cpp"
+#include "parser/token_stream.cpp"
+#include "parser/parser_context.cpp"
 #include "parser/parse_core.cpp"
 #include "parser/parse_constants.cpp"
 #include "parser/parse_scope.cpp"
@@ -70,6 +76,10 @@ GCproto * lj_parse(LexState *State)
    incr_top(L);
    State->level = 0;
    State->fs_init(&fs);
+   ParserConfig parser_config{};
+   ParserContext parser_context = ParserContext::from(*State, fs, *L, parser_config);
+   ParserSession root_session(parser_context, parser_config);
+   State->attach_context(&parser_context);
    fs.linedefined = 0;
    fs.numparams = 0;
    fs.bcbase = nullptr;
@@ -84,5 +94,6 @@ GCproto * lj_parse(LexState *State)
    L->top--;  // Drop chunkname.
    lj_assertL(fs.prev == nullptr and State->fs == nullptr, "mismatched frame nesting");
    lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
+   State->attach_context(nullptr);
    return pt;
 }

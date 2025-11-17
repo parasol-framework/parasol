@@ -84,3 +84,9 @@ Phase 1 establishes the foundational infrastructure required for the later parse
 * Parser helpers compile against `ParserContext` without direct access to global parser structs for the migrated pilot areas.
 * Typed tokens, diagnostics, and context utilities are covered by tests and used in at least one expression + statement path.
 * Legacy behaviour (single-error abort, direct bytecode emission) remains intact, ensuring later phases can focus on AST/IR work with confidence in the new scaffolding.
+
+## Phase 1 Status – April 2025
+* Added `ParserContext`, `ParserDiagnostics`, and `ParserSession` in `src/fluid/luajit-2.1/src/parser/parser_context.{h,cpp}`. `LexState` now attaches the context during `lj_parse`, allowing helper functions (`match`, `consume`, `expect_identifier`) to operate on typed tokens and emit structured diagnostics without disrupting existing bytecode emission.
+* Introduced `TokenKind`, `TokenPayload`, `TokenStreamAdapter`, and associated helpers in `src/fluid/luajit-2.1/src/parser/token_*.{h,cpp}`. These adapters translate the legacy lexer stream into strongly-typed tokens (with payload variants, source spans, and lookahead support) that can be consumed by the context utilities.
+* Retrofitted `LexState::err_syntax`, `err_token`, and other error paths to report diagnostics before deferring to the legacy single-error abort. Representative parser surfaces (`expr_primary` and `parse_local`) now depend on `ParserContext`, demonstrating the new control flow while keeping legacy fallbacks for unmigrated call sites.
+* Built the LuaJIT target after the changes via `cmake --build build/agents --config Release --target luajit` to verify that the new infrastructure integrates with the existing amalgamated build; future tests should continue to use this command until dedicated parser unit tests are available.

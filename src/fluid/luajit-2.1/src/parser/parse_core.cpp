@@ -6,16 +6,24 @@
 
 LJ_NORET LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
+   if (this->parser_context)
+      this->parser_context->emit_legacy_error(Message, this->parser_context->tokens().current());
    lj_lex_error(this, this->tok, Message);
 }
 
 LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
 {
+   if (this->parser_context)
+      this->parser_context->emit_legacy_error(LJ_ERR_XTOKEN, this->parser_context->tokens().current());
    lj_lex_error(this, this->tok, LJ_ERR_XTOKEN, this->token2str(Token));
 }
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 {
+   if (fs->ls and fs->ls->parser_context) {
+      auto& Context = *fs->ls->parser_context;
+      Context.emit_error(ParserErrorCode::InternalError, what, Context.tokens().current());
+   }
    if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
    else lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
 }

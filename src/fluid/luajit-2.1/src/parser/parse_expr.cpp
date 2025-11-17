@@ -478,19 +478,48 @@ void LexState::expr_primary(ExpDesc* Expression)
 {
    FuncState* fs = this->fs;
    ExpDesc* v = Expression;
-   // Parse prefix expression.
-   if (this->tok IS '(') {
-      BCLine line = this->linenumber;
-      this->next();
-      this->expr(v);
-      this->lex_match(')', '(', line);
-      expr_discharge(this->fs, v);
+   ParserContext* context = this->parser_context;
+   bool parsed_prefix = false;
+
+   if (context) {
+      Token current = context->tokens().current();
+      if (current.is(TokenKind::LeftParen)) {
+         BCLine line = this->linenumber;
+         auto consumed = context->consume(TokenKind::LeftParen, ParserErrorCode::UnexpectedToken);
+         if (!consumed) this->err_token('(');
+         this->expr(v);
+         this->lex_match(')', '(', line);
+         expr_discharge(this->fs, v);
+         parsed_prefix = true;
+      }
+      else if (current.is_identifier()) {
+         auto identifier = context->expect_identifier(ParserErrorCode::IdentifierExpected);
+         if (identifier) {
+            GCstr* name = identifier.get().identifier();
+            if (!name) name = NAME_BLANK;
+            this->var_lookup_named(name, v);
+            parsed_prefix = true;
+         }
+      }
+      else {
+         context->emit_error(ParserErrorCode::UnexpectedToken, "prefix expression expected", current);
+      }
    }
-   else if (this->tok IS TK_name) {
-      this->var_lookup(v);
-   }
-   else {
-      this->err_syntax(LJ_ERR_XSYMBOL);
+
+   if (!parsed_prefix) {
+      if (this->tok IS '(') {
+         BCLine line = this->linenumber;
+         this->next();
+         this->expr(v);
+         this->lex_match(')', '(', line);
+         expr_discharge(this->fs, v);
+      }
+      else if (this->tok IS TK_name) {
+         this->var_lookup(v);
+      }
+      else {
+         this->err_syntax(LJ_ERR_XSYMBOL);
+      }
    }
    for (;;) {  // Parse multiple expression suffixes.
       if (this->tok IS '.') {
