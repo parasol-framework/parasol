@@ -1,7 +1,7 @@
 # LuaJIT Parser Redesign – Phase 1 Implementation Plan
 
 ## Objectives
-Phase 1 establishes the foundational infrastructure required for the later parser refactors described in `docs/plans/LUAJIT_PARSER_REDESIGN.md`. The focus is isolating parser state, clarifying token handling, and providing structured error reporting while continuing to emit bytecode directly. This plan enumerates the concrete steps needed to deliver those capabilities with minimal disruption to current functionality.
+Phase 1 establishes the foundational infrastructure required for the later parser refactors. The focus is isolating parser state, clarifying token handling, and providing structured error reporting while continuing to emit bytecode directly. This plan enumerates the concrete steps needed to deliver those capabilities with minimal disruption to current functionality.
 
 ## Deliverables
 1. `ParserContext` (and supporting data types) that own parser-wide resources, expose lifecycle helpers, and offer status reporting.
@@ -54,7 +54,7 @@ Phase 1 establishes the foundational infrastructure required for the later parse
    * `std::span<const ParserDiagnostic> entries() const`
 3. Extend `ParserContext` to expose `diagnostics()` for read-only access and `emit_error(...)` helpers that format messages from tokens plus extra context.
 4. Retrofit existing fatal error pathways (`lj_lex_error`, `lj_parse_error`) to delegate to `ParserDiagnostics` while still triggering the old behaviour (e.g., abort on first error) until a later phase relaxes it. This ensures instrumentation is live even before multi-error support ships.
-5. Document new diagnostic codes/messages in-line (and optionally within `docs/wiki/System-Error-Codes.md` once semantics stabilise).
+5. Document new diagnostic codes/messages in-line.
 
 ### 5. Validate via pilot migrations
 1. Select representative parser entry points:
@@ -66,14 +66,14 @@ Phase 1 establishes the foundational infrastructure required for the later parse
    * Return `ParserResult<ExpDesc>` (or equivalent) to surface parsing failures upstream.
 3. Update callers and surrounding helpers to propagate `ParserResult` without altering bytecode emission.
 4. Add targeted unit/integration tests that parse contrived snippets covering identifiers, literals, and failure cases to demonstrate diagnostics accumulation.
-5. Write migration notes (inline comments + updates to `docs/plans/LUAJIT_PARSER_REDESIGN.md` if necessary) capturing patterns discovered during the pilot, informing later phases on anticipated complexities.
+5. Write migration notes (inline comments + to this document if necessary) capturing patterns discovered during the pilot, informing later phases on anticipated complexities.
 
 ### 6. Integration and hardening tasks
 1. Add build-time toggles (e.g., `PARASOL_PARSER_TRACE`) to gate verbose tracing via `ParserContext` for debugging.
 2. Ensure new headers are included in `CMakeLists.txt` and `pkg` exports so downstream modules can reference them when the parser becomes reusable.
 3. Run the existing parser regression suites (Fluid scripts, if available) to confirm the Phase 1 changes are non-breaking. Capture invocation commands in commit messages for traceability.
 4. Perform code-style and rule compliance checks (British English spelling, macro usage, `and`/`or`, `IS` macros) before landing.
-5. Update `docs/plans/LUAJIT_PARSER_REDESIGN.md` “Next Steps” once Phase 1 completes to reflect the availability of the new infrastructure.
+5. Update this document “Next Steps” once Phase 1 completes to reflect the availability of the new infrastructure.
 
 ## Dependencies and Risks
 * **Incremental adoption:** Maintain compatibility layers (inline wrappers, fallback error paths) so we can migrate subsystems gradually without touching every parser file at once.
