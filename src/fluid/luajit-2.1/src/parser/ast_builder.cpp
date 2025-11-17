@@ -195,7 +195,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    if (method and path.method.has_value()) {
       auto* payload = function_payload_from(*function_expr);
       FunctionParameter self_param;
-      self_param.name = path.method.value();
+      self_param.name = make_identifier("self");
       self_param.is_self = true;
       if (payload) {
          payload->parameters.insert(payload->parameters.begin(), self_param);
