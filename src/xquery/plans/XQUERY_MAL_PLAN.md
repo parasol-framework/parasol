@@ -77,6 +77,13 @@
    - Permit chained lookups (e.g., `$m?foo?bar`). Parser should emit a left-associative tree or encode as repeated nodes.
    - Update error recovery to fallback gracefully when `?` appears in type declarations (occurrence indicators) by checking context.
 
+**Phase 3 status – completed**
+
+- Extended the shared IDL constants so `XQueryNodeType` now advertises `MAP_CONSTRUCTOR`, `ARRAY_CONSTRUCTOR`, and `LOOKUP_EXPRESSION`, then regenerated the public header/definition pairs so downstream code compiles against the richer AST surface.
+- Enlarged `XPathNode` with dedicated map-entry, array-member, and lookup-specifier containers (plus helper methods) so the parser can persist constructor pairs and lookup chains without abusing the generic child vector.
+- Taught `parse_primary_expr()`/`parse_filter_expr()` to recognise literal `map {}` / `array {}` constructors and to treat lookup `?` sequences as first-class postfix operators, including new helper routines that capture NCName, wildcard, numeric, or expression keys.
+- Added parser unit tests that assert the presence of the new AST nodes and stored metadata for simple map, array, and chained lookup expressions.
+
 ### Phase 4 – Evaluator integration
 9. **Implement map constructor handler**
    - In `XPathEvaluator` add `handle_map_constructor()` and register it in `NODE_HANDLERS`.

@@ -30,6 +30,14 @@ static void test_assert(bool Condition, CSTRING TestName, CSTRING Message) {
    }
 }
 
+static const XPathNode * expression_body(const std::unique_ptr<XPathNode> &node)
+{
+   const XPathNode *current = node.get();
+   if (not current) return nullptr;
+   if (current->type IS XQueryNodeType::EXPRESSION) return current->get_child_safe(0);
+   return current;
+}
+
 //********************************************************************************************************************
 // XQueryProlog API Tests
 
@@ -344,6 +352,71 @@ static void test_parser_operator_cache_population()
    test_assert(flags.unary_negate_cached, "Unary operator '-' cache", "Parser should cache negation operator kind");
 }
 
+static void test_parser_map_array_lookup_nodes()
+{
+   pf::Log log("ParserMapArrayNodes");
+
+   {
+      XPathTokeniser tokeniser;
+      auto block = tokeniser.tokenize("map { \"k\" : 1 }");
+      XPathParser parser;
+      auto compiled = parser.parse(std::move(block));
+
+      bool has_expression = compiled.expression not_eq nullptr;
+      test_assert(has_expression, "Map constructor parse", "Parser should accept map constructors");
+      if (not has_expression) return;
+
+      const XPathNode *map_node = expression_body(compiled.expression);
+      bool correct_type = map_node and (map_node->type IS XQueryNodeType::MAP_CONSTRUCTOR);
+      test_assert(correct_type, "Map constructor node type", "Parser should emit MAP_CONSTRUCTOR nodes");
+      if (correct_type) {
+         test_assert(map_node->map_entry_count() IS 1, "Map constructor entry count", "Map constructor should store entries");
+      }
+   }
+
+   {
+      XPathTokeniser tokeniser;
+      auto block = tokeniser.tokenize("array { 1, 2 }");
+      XPathParser parser;
+      auto compiled = parser.parse(std::move(block));
+
+      bool has_expression = compiled.expression not_eq nullptr;
+      test_assert(has_expression, "Array constructor parse", "Parser should accept array constructors");
+      if (not has_expression) return;
+
+      const XPathNode *array_node = expression_body(compiled.expression);
+      bool correct_type = array_node and (array_node->type IS XQueryNodeType::ARRAY_CONSTRUCTOR);
+      test_assert(correct_type, "Array constructor node type", "Parser should emit ARRAY_CONSTRUCTOR nodes");
+      if (correct_type) {
+         test_assert(array_node->array_member_count() IS 2, "Array constructor member count", "Array constructor should store members");
+      }
+   }
+
+   {
+      XPathTokeniser tokeniser;
+      auto block = tokeniser.tokenize("$m?foo?1");
+      XPathParser parser;
+      auto compiled = parser.parse(std::move(block));
+
+      bool has_expression = compiled.expression not_eq nullptr;
+      test_assert(has_expression, "Lookup expression parse", "Parser should accept lookup expressions");
+      if (not has_expression) return;
+
+      const XPathNode *lookup_node = expression_body(compiled.expression);
+      bool correct_type = lookup_node and (lookup_node->type IS XQueryNodeType::LOOKUP_EXPRESSION);
+      test_assert(correct_type, "Lookup expression node type", "Parser should emit LOOKUP_EXPRESSION nodes");
+      if (correct_type) {
+         test_assert(lookup_node->lookup_specifier_count() IS 2, "Lookup specifier count", "Lookup expressions should retain chained specifiers");
+         auto first = lookup_node->get_lookup_specifier(0);
+         bool first_kind = first and (first->kind IS XPathLookupSpecifierKind::NCName);
+         test_assert(first_kind, "Lookup NCName specifier", "First lookup should treat NCName keys as literals");
+         auto second = lookup_node->get_lookup_specifier(1);
+         bool second_kind = second and (second->kind IS XPathLookupSpecifierKind::IntegerLiteral);
+         test_assert(second_kind, "Lookup integer specifier", "Second lookup should capture integer literals");
+      }
+   }
+}
+
 static void test_prolog_in_xpath()
 {
    pf::Log log("PrologInXPath");
@@ -408,6 +481,7 @@ static void run_unit_tests(int &Passed, int &Total)
    test_tokeniser_prolog_keywords();
    test_tokeniser_map_array_lookup();
    test_parser_operator_cache_population();
+   test_parser_map_array_lookup_nodes();
    test_prolog_api();
    test_prolog_in_xpath();
 
