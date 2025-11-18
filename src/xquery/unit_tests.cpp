@@ -369,7 +369,7 @@ static void run_unit_tests(int &Passed, int &Total)
    test_prolog_api();
    test_prolog_in_xpath();
 
-   log.msg("Test Summary: %d of %d tests passed.", Passed, Total);
    Passed = pass_count;
    Total = test_count;
+   log.msg("Test Summary: %d of %d tests passed.", Passed, Total);
 }

@@ -541,7 +541,8 @@ else ()
       # Create custom command to compile each source file with explicit flags
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
-         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} 
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
