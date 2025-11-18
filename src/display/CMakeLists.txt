@@ -55,8 +55,6 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
    add_dependencies (build_headers display_defs)
 endif ()
 
-link_directories(X11_INCLUDE_DIR)
-
    CHECK_C_SOURCE_COMPILES ("
 #include <X11/Xlib.h>
 #include <X11/extensions/Xxf86dga.h>
