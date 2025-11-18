@@ -116,5 +116,5 @@
 
 ## Expected follow-ups
 - After switch expression support, revisit the evaluator to share logic with `typeswitch` to avoid duplicate comparison utilities.
-- Consider future enhancements for XQuery 3.1 `switch` expression features (e.g., `case typeswitch` style pattern matching) and note them in `docs/plans/XQUERY_30_REQUIREMENTS.md` if still outstanding.
+- Consider future enhancements for XQuery 3.1 `switch` expression features (e.g., `case typeswitch` style pattern matching) and note them in `XQUERY_30_REQUIREMENTS.md` if still outstanding.
 - Monitor performance regressions in queries heavy on conditional branching; profile if necessary and optimise comparison caching.

@@ -104,11 +104,8 @@
 
 ### Phase 6 – Documentation and follow-up
 15. **Update planning documents**
-    - Amend `docs/plans/XQUERY_30_REQUIREMENTS.md` to mark the windowing gap as targeted once this implementation begins.
+    - Amend `XQUERY_30_REQUIREMENTS.md` to mark the windowing gap as targeted once this implementation begins.
     - Cross-reference this plan from future higher-level XQuery roadmap documents.
-
-16. **User documentation**
-    - Once implemented, update any public-facing XQuery module documentation (wiki or API) describing FLWOR syntax with windowing examples and caveats.
 
 17. **Future considerations**
     - Evaluate whether higher-order windowing (interaction with `group by`, `count`, or streaming) requires additional optimisations.

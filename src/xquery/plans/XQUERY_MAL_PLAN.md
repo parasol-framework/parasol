@@ -1,7 +1,7 @@
 # Plan: Maps, Arrays, and Lookup Operator for the XQuery Module
 
 ## Objectives
-1. Represent XQuery 3.0 map and array values in the runtime data model so they can be stored in `XPathVal`, passed through function calls, serialised back to users, and freed correctly.
+1. Represent XQuery 3.0 map and array values in the runtime data model so they can be stored in `XPathValue`, passed through function calls, serialised back to users, and freed correctly.
 2. Parse and evaluate the XQuery 3.0 constructors (`map {}` and `array {}`) and the lookup operator (`?`) so expressions such as `map {"a":1}("a")` and `$seq?price` execute per spec.
 3. Provide the W3C-defined `map:*` and `array:*` function libraries so user code can create and manipulate maps/arrays without literal constructors.
 4. Preserve backwards compatibility with existing XPath 2.0 semantics, error codes, and performance characteristics.
@@ -20,18 +20,18 @@
 
 ### Phase 1 – Data model groundwork
 1. **Audit existing value representation**
-   - Inspect `struct XPathVal` and related helpers in `src/xquery/xquery.h` and `src/xquery/eval/eval_values.cpp` to confirm how node sets, strings, and numerics are stored and reference-counted.
+   - Inspect `XPathValue`, `XPathVal` and related helpers in `src/xquery/xquery.h`, `include/parasol/modules/xml.h` and `src/xquery/eval/eval_values.cpp` to confirm how node sets, strings, and numerics are stored and reference-counted.
    - Document current memory ownership expectations (arena allocations, `pf::vector`, etc.) to ensure new map/array containers integrate cleanly.
 
-2. **Extend `XPathVal` to support composite data**
+2. **Extend `XPathValue` to support composite data**
    - Add enum entries for `Map` and `Array`. If `XPVT` is shared with XML, coordinate the change in `include/parasol/modules/xml.h` (or the shared header) and regenerate bindings if FDL-driven.
    - Introduce lightweight structures for map and array storage:
-     - Map: ordered insertion is not mandated, so use `ankerl::unordered_dense::map<XPathVal, XPathVal>` or (preferably) a string-keyed map per spec (keys must be atomic). Store keys as canonicalised `XPathVal` plus value.
-     - Array: `pf::vector<XPathVal>` referencing the evaluator arena for child values.
-   - Embed these containers inside a `std::shared_ptr<XQueryMap>` / `XQueryArray` or custom ref-counted structs so copies of `XPathVal` remain cheap.
+     - Map: ordered insertion is not mandated, so use `ankerl::unordered_dense::map<XPathValue, XPathValue>` or (preferably) a string-keyed map per spec (keys must be atomic). Store keys as canonicalised `XPathValue` plus value.
+     - Array: `pf::vector<XPathValue>` referencing the evaluator arena for child values.
+   - Embed these containers inside a `std::shared_ptr<XQueryMap>` / `XQueryArray` or custom ref-counted structs so copies of `XPathValue` remain cheap.
 
 3. **Wire allocation and destruction paths**
-   - Ensure `XPathVal::reset()` (or equivalent) releases map/array storage.
+   - Ensure `XPathValue::reset()` (or equivalent) releases map/array storage.
    - Update stringification routines (e.g., `xquery_class.cpp` conversions) so map/array results can be surfaced through API endpoints, even if displayed with placeholder text initially.
 
 ### Phase 2 – Lexical support
@@ -76,7 +76,7 @@
 
 10. **Implement array constructor handler**
     - Evaluate each member expression; arrays preserve sequence items (flattening is not automatic).
-    - Store each result as a `pf::vector<XPathVal>` entry; consider referencing existing helper for materialising sequences.
+    - Store each result as a `pf::vector<XPathValue>` entry; consider referencing existing helper for materialising sequences.
     - Ensure lazy evaluation flags remain consistent (if referencing existing `XPathSequence` class, integrate accordingly).
 
 11. **Implement lookup handler**
@@ -88,7 +88,7 @@
     - Update evaluator helper methods (possibly in `eval_values.cpp`) to test type and cardinality, returning appropriate error codes.
 
 12. **Value coercion and comparison rules**
-    - Extend `XPathVal` comparison/hash utilities so map keys can reuse existing equality semantics.
+    - Extend `XPathValue` comparison/hash utilities so map keys can reuse existing equality semantics.
     - Implement `atomize_singleton()` helper if needed to ensure lookup keys are typed correctly.
     - Provide conversions for `map(*)` and `array(*)` when interacting with `treat as`, `instance of`, and sequence type annotations.
 
@@ -128,12 +128,8 @@
     - Benchmark representative queries (if harness exists) to ensure no significant slowdown from new token/AST logic.
 
 ### Phase 8 – Documentation and rollout
-20. **User-facing documentation**
-    - Update `docs/wiki/Fluid-Reference-Manual.md` or `docs/wiki/Parasol-In-Depth.md` (if relevant) with a summary of map/array support and examples.
-    - Mention new sequence types and functions in `docs/wiki/Fluid-Common-API.md` or specialised XQuery docs.
-
 21. **Developer notes**
-    - Amend `docs/plans/XQUERY_30_REQUIREMENTS.md` to mark the map/array gap as addressed once implementation lands.
+    - Amend `XQUERY_30_REQUIREMENTS.md` to mark the map/array gap as addressed once implementation lands.
     - Consider adding an AGENT note under `src/xquery/functions/` outlining where map/array helpers reside for future contributors.
 
 22. **Rollout checklist**
@@ -144,5 +140,5 @@
 
 ## Expected Follow-ups
 - Arrow and simple map operators share infrastructure with lookup; plan to extend parser/evaluator once `?` support is stable.
-- Higher-order functions (`function(*)` values) rely on similar `XPathVal` infrastructure; confirm compatibility when implementing `map:for-each`/`array:for-each`.
+- Higher-order functions (`function(*)` values) rely on similar `XPathValue` and `XPathVal` infrastructure; confirm compatibility when implementing `map:for-each`/`array:for-each`.
 - Map/array serialisation for Fluid scripts may need additional helper APIs beyond the core implementation.

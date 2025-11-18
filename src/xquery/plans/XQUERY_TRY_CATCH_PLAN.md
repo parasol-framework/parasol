@@ -115,10 +115,7 @@
 
 ### Phase 7 – Documentation and follow-up tasks
 19. **Update plan and requirement files**
-    - Once implementation completes, amend `docs/plans/XQUERY_30_REQUIREMENTS.md` to mark try/catch as addressed and add references to new tests.
-
-20. **User-facing documentation**
-    - Add a section to relevant wiki pages (e.g., an XQuery overview page) describing try/catch usage, supported error variables, and limitations.
+    - Once implementation completes, amend `XQUERY_30_REQUIREMENTS.md` to mark try/catch as addressed and add references to new tests.
 
 21. **Future enhancements**
     - Track follow-up work for:
