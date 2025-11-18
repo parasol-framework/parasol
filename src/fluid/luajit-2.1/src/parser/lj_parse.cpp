@@ -73,7 +73,7 @@ static ParserConfig make_parser_config(lua_State& state)
 
 // Entry point of bytecode parser.
 
-GCproto * lj_parse(LexState *State)
+extern GCproto * lj_parse(LexState *State)
 {
    FuncState fs;
    FuncScope bl;

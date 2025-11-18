@@ -32,6 +32,4 @@ using XQueryFunction = ERR (*)(objXQuery *Query, std::string_view FunctionName, 
 } // namespace xq
   ]])
 
-  functionNames('xq',
-     'UnitTest')
 end)

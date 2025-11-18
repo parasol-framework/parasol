@@ -216,5 +216,5 @@ static STRUCTS glStructures = {
    { "AudioLoop", sizeof(AudioLoop) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

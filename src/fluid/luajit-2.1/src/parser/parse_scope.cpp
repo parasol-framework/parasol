@@ -162,7 +162,7 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
    }
    GCstr* name = (jump_type == JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
-   setgcref(this->vstack[vtop].name, obj2gco(name));
+   setgcrefp(this->vstack[vtop].name, obj2gco(name));
    this->vstack[vtop].startpc = pc;
    this->vstack[vtop].slot = uint8_t(fs->nactvar);
    this->vstack[vtop].info = info;

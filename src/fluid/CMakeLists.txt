@@ -4,6 +4,8 @@
 # SPECIAL FEATURES:
 #  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
 #  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
+#  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to run test_unit_tests.fluid with
+#    the --log-api option to view any output.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -36,11 +38,15 @@
 #    - buildvm generates VM assembly or object code
 #
 # 4. Library Compilation:
-#    - Compiles ljamalg.cpp (amalgamated LuaJIT source)
 #    - Links with generated VM code to create static library
 
 set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
+
+# Enable unit tests for deep testing of non-release builds only.
+if (NOT DEFINED ENABLE_UNIT_TESTS)
+   set (ENABLE_UNIT_TESTS ON)
+endif ()
 
 # IDL processing for headers and documentation
 
@@ -93,6 +99,11 @@ option(PARASOL_PARSER_TRACE "Emit parser token and expectation traces" OFF)
 if (PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_COMMON_DEFS PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_NON_MSVC_DEFS -DPARASOL_PARSER_TRACE)
+endif ()
+
+if (ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_COMMON_DEFS ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_NON_MSVC_DEFS -DENABLE_UNIT_TESTS)
 endif ()
 
 # Common host tool sources (used by both MSVC and non-MSVC builds)
@@ -535,7 +546,8 @@ else ()
       # Create custom command to compile each source file with explicit flags
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
-         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
@@ -638,6 +650,10 @@ target_link_libraries (${MOD} PRIVATE
    ${FFI_LINK}
    ${LUAJIT_LINK}
    ${MATH_LINK}) # The link order matters, math must come last
+   
+if (ENABLE_UNIT_TESTS)
+   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+endif ()
 
 if (DISABLE_DISPLAY)
    target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)
@@ -647,7 +663,7 @@ endif ()
 
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
-   bitshift bitwise if_empty presence blank ternary table complex stress
+   bitshift bitwise if_empty presence blank ternary table complex stress unit_tests
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

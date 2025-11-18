@@ -757,8 +757,8 @@ oid Surface: Refers to the surface object used for calling LockCursor().
 -ERRORS-
 Okay:
 NullArgs:
-AccessObject: Failed to access the pointer object.
-NotLocked: A lock is not present, or the lock belongs to another surface.
+AccessObject:
+ResourceNotLocked: The pointer is not anchored to the given Surface.
 -END-
 
 *********************************************************************************************************************/
@@ -780,10 +780,7 @@ ERR UnlockCursor(OBJECTID SurfaceID)
          return ERR::ResourceNotLocked;
       }
    }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR::AccessObject;
-   }
+   else return log.warning(ERR::AccessObject);
 }
 
 } // namespace

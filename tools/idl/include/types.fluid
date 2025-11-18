@@ -542,7 +542,7 @@ function cType(Field, Origin)
          if Field.cpp then
             Field.type = 'pf::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
          else
-            Field.type = Field.type .. ' *'
+            Field.type ..= ' *'
          end
          Field.fullType = { fd='FD_ARRAY|' .. Field.fullType.fd, c_type=Field.fullType.c_type, doc_type=Field.fullType.doc_type }
          return Field
@@ -561,14 +561,14 @@ function cType(Field, Origin)
          -- Process function parameters
 
          if #arglist < 2 then
-            Field.type = Field.type .. '(void)'
+            Field.type ..= '(void)'
          else
             local params = ''
             for i=2, #arglist do
-               if params?? then params = params .. ', ' end
-               params = params .. cType({ type=arglist[i], name='' }, Origin).type
+               if params?? then params ..= ', ' end
+               params ..=  cType({ type=arglist[i], name='' }, Origin).type
             end
-            Field.type = Field.type .. '(' .. params .. ')'
+            Field.type ..= '(' .. params .. ')'
          end
 
          Field.isFunctionPtr = true
@@ -583,9 +583,9 @@ function cType(Field, Origin)
 
    Field.fullType = glTypes[Field.type]
    if Field.cpp then
-      Field.type = (glTypes[Field.type].cpp_type ?? Field.type)
+      Field.type = glTypes[Field.type].cpp_type ?? Field.type
    else
-      Field.type = (glTypes[Field.type].c_type ?? Field.type)
+      Field.type = glTypes[Field.type].c_type ?? Field.type
    end
 
    return Field

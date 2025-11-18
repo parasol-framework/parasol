@@ -40,6 +40,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_parse.h"
 
 #include "hashes.h"
 
@@ -312,6 +313,17 @@ static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
    return ERR::Okay;
+}
+
+static void MODTest(CSTRING Options, int *Passed, int *Total)
+{
+   pf::Log log("FluidTests");
+#ifdef ENABLE_UNIT_TESTS
+   log.branch("Running Fluid unit tests...");
+   parser_unit_tests(*Passed, *Total);
+#else
+   log.warning("Unit tests are disabled in this build.");
+#endif
 }
 
 /*********************************************************************************************************************
@@ -841,5 +853,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, nullptr)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

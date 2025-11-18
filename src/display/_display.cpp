@@ -277,4 +277,4 @@ static ERROR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, nullptr)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, nullptr)
