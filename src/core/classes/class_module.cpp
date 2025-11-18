@@ -746,7 +746,12 @@ static void free_module(MODHANDLE handle)
 //********************************************************************************************************************
 
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { nullptr, 0 } };
-static const FunctionField argsTest[] = { { "Options", FD_STR }, { nullptr, 0 } };
+static const FunctionField argsTest[] = {
+   { "Options", FD_STR },
+   { "Passed", FD_INT|FD_RESULT },
+   { "Total", FD_INT|FD_RESULT },
+   { nullptr, 0 }
+};
 
 static const MethodEntry glModuleMethods[] = {
    { mod::ResolveSymbol::id, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
