@@ -159,6 +159,7 @@ if (MSVC)
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
+   list(APPEND LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lj_lib.cpp")
 
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
@@ -529,6 +530,7 @@ else ()
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
+   list(APPEND LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lj_lib.cpp")
 
    # Generate list of object files from source files
    set(LUAJIT_OBJECT_FILES "")

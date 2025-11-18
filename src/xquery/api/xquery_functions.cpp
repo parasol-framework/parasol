@@ -1419,5 +1419,7 @@ static bool language_matches(const std::string &Candidate, const std::string &Re
 #include "../functions/func_diagnostics.cpp"
 #include "../functions/func_booleans.cpp"
 #include "../functions/func_sequences.cpp"
+#include "../functions/func_maps.cpp"
+#include "../functions/func_arrays.cpp"
 #include "../functions/func_numbers.cpp"
 #include "../functions/func_datetimes.cpp"

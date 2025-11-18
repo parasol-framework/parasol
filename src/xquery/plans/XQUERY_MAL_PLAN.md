@@ -131,6 +131,13 @@
       - Reuse constructors and lookup logic for consistency.
       - Return `ERR::NoSupport` for advanced optional functions if not immediately implemented, but plan should prefer covering the core F&O subset required by lookup semantics (at least `map:put`, `map:get`, `map:contains`, `map:size`, `array:size`, `array:get`).
 
+**Phase 5 status – completed**
+
+- Added shared helper utilities plus dedicated `func_maps.cpp` / `func_arrays.cpp` sources so the function library can convert between runtime `XPathVal` instances and the stored `XPathValueSequence` payload used by map and array entries.
+- Registered the `map:*` and `array:*` namespaces in `function_library.cpp` and implemented the core XQuery 3.1 helpers (`map:entry`, `map:put`, `map:get`, `map:contains`, `map:size`, `map:keys`, `map:merge`, `array:size`, `array:get`, `array:append`, `array:insert-before`, `array:remove`, `array:join`, `array:flatten`).
+- Exercised the new APIs through a dedicated `test_maps_arrays.fluid` suite that covers size/counting behaviour, overwriting semantics, multi-map merges, and end-to-end array mutations to guard against regressions.
+- Expanded the sequence materialisation path so comma expressions preserve map/array payloads via composite metadata, ensuring `map:merge((...))` and `array:join((...))` accept spec-compliant sequence arguments instead of only discrete parameters.
+
 ### Phase 6 – Static typing and sequence types
 15. **Extend type system**
     - Update parser support for sequence types `map(*)`, `map(K, V)`, `array(*)`, and `function(item()*)` in type declarations (if needed for lookup). This may require grammar tweaks in `parse_sequence_type()`.

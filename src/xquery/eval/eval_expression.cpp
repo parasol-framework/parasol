@@ -114,7 +114,16 @@ static bool value_is_empty_sequence(const XPathVal &Value)
    bool has_attributes = !Value.node_set_attributes.empty();
    bool has_strings = !Value.node_set_string_values.empty();
    bool has_override = Value.node_set_string_override.has_value();
-   return (!has_nodes) and (!has_attributes) and (!has_strings) and (!has_override);
+   bool has_composites = false;
+   if (!Value.node_set_composite_values.empty()) {
+      for (const auto &stored : Value.node_set_composite_values) {
+         if (stored) {
+            has_composites = true;
+            break;
+         }
+      }
+   }
+   return (!has_nodes) and (!has_attributes) and (!has_strings) and (!has_override) and (!has_composites);
 }
 
 //********************************************************************************************************************
@@ -130,6 +139,7 @@ static XPathVal clone_xpath_value(const XPathValue &Source)
    clone.node_set_string_override = Source.node_set_string_override;
    clone.node_set_string_values = Source.node_set_string_values;
    clone.node_set_attributes = Source.node_set_attributes;
+    clone.node_set_composite_values = Source.node_set_composite_values;
    clone.preserve_node_order = Source.preserve_node_order;
    clone.map_storage = Source.map_storage;
    clone.array_storage = Source.array_storage;
@@ -427,7 +437,14 @@ static void append_value_to_sequence(const XPathVal &Value, std::vector<Sequence
          else if (attribute) item_string = attribute->Value;
          else item_string = XPathVal::node_string_value(node);
 
-         Entries.push_back({ node, attribute, std::move(item_string) });
+         SequenceEntry entry;
+         entry.node = node;
+         entry.attribute = attribute;
+         entry.string_value = std::move(item_string);
+         if (index < Value.node_set_composite_values.size()) {
+            entry.composite_value = Value.node_set_composite_values[index];
+         }
+         Entries.push_back(std::move(entry));
       }
       return;
    }
@@ -443,7 +460,14 @@ static void append_value_to_sequence(const XPathVal &Value, std::vector<Sequence
    XTag *root = stored.get();
    ConstructedNodes.push_back(std::move(stored));
 
-   Entries.push_back({ root, nullptr, std::move(text) });
+   SequenceEntry entry;
+   entry.node = root;
+   entry.attribute = nullptr;
+   entry.string_value = std::move(text);
+   if ((Value.Type IS XPVT::Map) or (Value.Type IS XPVT::Array)) {
+      entry.composite_value = std::make_shared<XPathValue>(Value);
+   }
+   Entries.push_back(std::move(entry));
 }
 
 //********************************************************************************************************************
@@ -3104,14 +3128,18 @@ XPathVal XPathEvaluator::nodeset_from_sequence_entries(const std::vector<Sequenc
    combined_attributes.reserve(Entries.size());
    std::vector<std::string> combined_strings;
    combined_strings.reserve(Entries.size());
+   std::vector<std::shared_ptr<XPathValue>> combined_composites;
+   combined_composites.reserve(Entries.size());
 
    for (const auto &entry : Entries) {
       combined_nodes.push_back(entry.node);
       combined_attributes.push_back(entry.attribute);
       combined_strings.push_back(entry.string_value);
+      combined_composites.push_back(entry.composite_value);
    }
 
    auto result = XPathVal(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+   result.node_set_composite_values = std::move(combined_composites);
    result.preserve_node_order = false;
    return result;
 }

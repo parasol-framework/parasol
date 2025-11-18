@@ -1554,6 +1554,7 @@ struct SequenceEntry {
    XTag * node = nullptr;
    const XMLAttrib * attribute = nullptr;
    std::string string_value;
+   std::shared_ptr<XPathValue> composite_value;
 };
 
 struct ForBindingDefinition {

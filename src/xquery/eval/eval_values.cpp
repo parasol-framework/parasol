@@ -2489,6 +2489,8 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    if (builtin_has_expanded) {
       static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
       static const std::string math_namespace_uri("http://www.w3.org/2005/xpath-functions/math");
+      static const std::string map_namespace_uri("http://www.w3.org/2005/xpath-functions/map");
+      static const std::string array_namespace_uri("http://www.w3.org/2005/xpath-functions/array");
       if (builtin_namespace IS builtin_namespace_uri) {
          builtin_lookup_name = builtin_local;
       }
@@ -2496,6 +2498,12 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
          std::string prefixed_name = std::string("math:") + builtin_local;
          if (library.has_function(prefixed_name)) builtin_lookup_name = std::move(prefixed_name);
          else if (library.has_function(function_name)) builtin_lookup_name = function_name;
+      }
+      else if (builtin_namespace IS map_namespace_uri) {
+         builtin_lookup_name = std::string("map:") + builtin_local;
+      }
+      else if (builtin_namespace IS array_namespace_uri) {
+         builtin_lookup_name = std::string("array:") + builtin_local;
       }
       else {
          if (library.has_function(function_name)) builtin_lookup_name = function_name;

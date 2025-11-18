@@ -453,6 +453,7 @@ typedef struct XPathValue {
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   std::vector<std::shared_ptr<XPathValue>> node_set_composite_values; // Stores composite items for general sequences
    bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
    std::shared_ptr<XPathMapStorage> map_storage; // Defined if the type is Map
    std::shared_ptr<XPathArrayStorage> array_storage; // Defined if the type is Array
@@ -555,6 +556,7 @@ inline void XPathValue::reset()
    node_set_string_override.reset();
    node_set_string_values.clear();
    node_set_attributes.clear();
+   node_set_composite_values.clear();
    preserve_node_order = false;
    if (map_storage) map_storage->reset();
    map_storage.reset();
