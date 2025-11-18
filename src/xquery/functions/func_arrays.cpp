@@ -1,4 +1,5 @@
 #include "func_map_array_common.h"
+#include "../api/xquery_errors.h"
 
 namespace
 {
@@ -96,7 +97,8 @@ XPathVal XPathFunctionLibrary::function_array_get(const std::vector<XPathVal> &A
    if (state IS ArrayIndexState::Invalid) return XPathVal(pf::vector<XTag *>{});
    if (state IS ArrayIndexState::OutOfRange) {
       if (Context.eval) {
-         auto message = std::format("FOAY0001: Array index {} is outside the available range.", sequence_item_string(Args[1], 0));
+         auto detail = std::format("Array index {} is outside the available range.", sequence_item_string(Args[1], 0));
+         auto message = xquery::errors::array_index_out_of_bounds(detail);
          Context.eval->record_error(message, true);
       }
       flag_xpath_unsupported(Context);
