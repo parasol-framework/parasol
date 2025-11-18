@@ -649,7 +649,7 @@ static ERR FLUID_Init(objScript *Self)
 
                // Unicode BOM handler - in case the file starts with a BOM header.
                auto content = check_bom(std::string_view(Self->String, len));
-               if (content.size() < size_t(len)) {
+               if (content.data() != Self->String) {
                   copymem(content.data(), Self->String, content.size() + 1);
                   len = content.size();
                }
