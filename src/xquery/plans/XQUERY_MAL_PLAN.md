@@ -46,6 +46,12 @@
    - Add recognition for `=>` and `!` only if necessary for lookup chaining (arrow operator interacts with lookup). For this task, ensure `?` followed by NCName, `*`, `(`, or integer literal triggers `LOOKUP` token.
    - Update unit tests in `src/xquery/tests/test_reserved_words.fluid` (or create a new lexical test) to confirm tokens.
 
+**Phase 2 status – completed**
+
+- Extended the token type enumeration with `MAP`, `ARRAY`, and `LOOKUP`, and updated the keyword table so `map`/`array` only switch to constructor tokens when the next non-whitespace character is `{`, leaving prefixed names untouched.
+- Enhanced the operator scanner so `?` followed by NCName characters, integers, wildcards, or parenthesised expressions now emits `LOOKUP`, while other contexts continue to produce the existing `QUESTION_MARK` occurrence indicator.
+- Added a dedicated tokeniser unit test covering the new keywords plus both lookup and occurrence-indicator heuristics to prevent regressions before parser support lands.
+
 ### Phase 3 – Parser and AST additions
 5. **Define AST node kinds**
    - Extend the `XQueryNodeType` enum in `src/xquery/xquery.h` with `MAP_CONSTRUCTOR`, `ARRAY_CONSTRUCTOR`, and `LOOKUP_EXPRESSION`.

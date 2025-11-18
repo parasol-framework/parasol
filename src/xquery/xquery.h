@@ -142,6 +142,8 @@ enum class XPathTokenType {
    INSTANCE,          // instance keyword
    OF,                // of keyword
    TO,                // to keyword
+   MAP,               // map keyword (constructor)
+   ARRAY,             // array keyword (constructor)
 
    // Arithmetic operators
    PLUS,              // +
@@ -171,6 +173,7 @@ enum class XPathTokenType {
    // Special tokens
    TEXT_CONTENT,      // literal content inside direct constructors
    QUESTION_MARK,     // ? occurrence indicator
+   LOOKUP,            // ? lookup operator
    END_OF_INPUT,
    UNKNOWN
 };

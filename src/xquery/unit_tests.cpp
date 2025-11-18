@@ -133,6 +133,10 @@ static const char *token_type_name(XPathTokenType Type)
       case XPathTokenType::DEFAULT: return "DEFAULT";
       case XPathTokenType::COLON: return "COLON";
       case XPathTokenType::ASSIGN: return "ASSIGN";
+      case XPathTokenType::MAP: return "MAP";
+      case XPathTokenType::ARRAY: return "ARRAY";
+      case XPathTokenType::LOOKUP: return "LOOKUP";
+      case XPathTokenType::QUESTION_MARK: return "QUESTION_MARK";
       default: return "(unclassified)";
    }
 }
@@ -241,6 +245,43 @@ static void test_tokeniser_prolog_keywords()
       test_assert(external_keyword, "Prolog keyword: external",
          external_message.c_str());
    }
+}
+
+static void test_tokeniser_map_array_lookup()
+{
+   pf::Log log("TokeniserMapArray");
+
+   XPathTokeniser tokeniser;
+
+   auto map_block = tokeniser.tokenize("map { \"k\" : 1 }");
+   bool map_keyword = !map_block.tokens.empty() and (map_block.tokens[0].type IS XPathTokenType::MAP);
+   std::string map_message = "Tokeniser reports 'map' as " +
+      std::string(token_type_name(map_block.tokens.empty() ? XPathTokenType::UNKNOWN : map_block.tokens[0].type));
+   test_assert(map_keyword, "Map constructor keyword", map_message.c_str());
+
+   auto array_block = tokeniser.tokenize("array { 1, 2 }");
+   bool array_keyword = !array_block.tokens.empty() and (array_block.tokens[0].type IS XPathTokenType::ARRAY);
+   std::string array_message = "Tokeniser reports 'array' as " +
+      std::string(token_type_name(array_block.tokens.empty() ? XPathTokenType::UNKNOWN : array_block.tokens[0].type));
+   test_assert(array_keyword, "Array constructor keyword", array_message.c_str());
+
+   auto lookup_block = tokeniser.tokenize("$m?foo?1");
+   size_t lookup_tokens = 0;
+   for (const auto &token : lookup_block.tokens)
+   {
+      if (token.type IS XPathTokenType::LOOKUP) lookup_tokens++;
+   }
+   test_assert(lookup_tokens >= 2, "Lookup operator token",
+      "Tokeniser should classify '?foo' and '?1' as LOOKUP tokens");
+
+   auto occurrence_block = tokeniser.tokenize("declare variable $s as xs:string? external");
+   bool saw_occurrence = false;
+   for (const auto &token : occurrence_block.tokens)
+   {
+      if (token.type IS XPathTokenType::QUESTION_MARK) saw_occurrence = true;
+   }
+   test_assert(saw_occurrence, "Occurrence indicator token",
+      "Tokeniser should still emit QUESTION_MARK for type occurrence indicators");
 }
 
 //********************************************************************************************************************
@@ -365,6 +406,7 @@ static void run_unit_tests(int &Passed, int &Total)
    fail_count = 0;
 
    test_tokeniser_prolog_keywords();
+   test_tokeniser_map_array_lookup();
    test_parser_operator_cache_population();
    test_prolog_api();
    test_prolog_in_xpath();
