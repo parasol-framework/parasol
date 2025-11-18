@@ -39,7 +39,9 @@ terminated arrays, use [0].
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include <sstream>
+#include <format>
+#include <optional>
+#include <ranges>
 
 #include "lua.h"
 #include "lualib.h"
@@ -48,7 +50,14 @@ terminated arrays, use [0].
 #include "hashes.h"
 #include "defs.h"
 
-static const int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100 - 400 bytes.
+static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100 - 400 bytes.
+
+// Character constants for case conversion
+static constexpr char UPPER_A = 'A';
+static constexpr char UPPER_Z = 'Z';
+static constexpr char LOWER_A = 'a';
+static constexpr char LOWER_Z = 'z';
+static constexpr int CASE_OFFSET = LOWER_A - UPPER_A;
 
 //********************************************************************************************************************
 // Create a standard Lua table and copy the struct values to that table.  Pushes nil if there was a conversion issue.
@@ -56,7 +65,7 @@ static const int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100 
 //
 // NOTE: In the event of an error code being returned, no value is pushed to the stack.
 
-ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Address)
+[[nodiscard]] ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
@@ -80,7 +89,7 @@ ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Addr
 
 //********************************************************************************************************************
 
-ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
+[[nodiscard]] ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
 {
    if (!Map) { lua_pushnil(Lua); return ERR::Okay; }
 
@@ -100,7 +109,7 @@ ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
 // Types that would require an allocation are not supported - our goal is to support primitive structs and anything
 // more complex than that should really be managed as an object.
 
-ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
+[[nodiscard]] ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -167,7 +176,7 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
 
 //********************************************************************************************************************
 
-ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
+[[nodiscard]] ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {
    pf::Log log(__FUNCTION__);
 
@@ -336,27 +345,28 @@ int MAKESTRUCT(lua_State *Lua)
 
 static void make_camel_case(std::string &String)
 {
-   if ((String[0] >= 'A') and (String[0] <= 'Z')) String[0] = String[0] - 'A' + 'a';
+   auto is_upper = [](char c) { return (c >= UPPER_A) and (c <= UPPER_Z); };
+   auto is_lower = [](char c) { return (c >= LOWER_A) and (c <= LOWER_Z); };
+   auto to_lower = [](char c) { return c + CASE_OFFSET; };
 
-   if ((String[1] >= 'A') and (String[1] <= 'Z')) {
-      int f;
-      for (f=2; String[f]; f++) {
-         if ((String[f] >= 'a') and (String[f] <= 'z')) break;
-      }
+   if (String.empty()) return;
 
-      if (!String[f]) { // Field is all upper-case
-         for (int f=0; String[f]; f++) {
-            if ((String[f] >= 'A') and (String[f] <= 'Z')) String[f] = String[f] - 'A' + 'a';
-         }
+   if (is_upper(String[0])) String[0] = to_lower(String[0]);
+
+   if (String.size() > 1 and is_upper(String[1])) {
+      // Find first lowercase letter after position 2
+      auto first_lower = std::ranges::find_if(String | std::views::drop(2), is_lower);
+
+      if (first_lower == String.end()) {
+         // Field is all upper-case - convert entire string to lowercase
+         std::ranges::transform(String, String.begin(), to_lower);
       }
       else {
+         // Mixed case - handle acronyms (e.g., "IPAddress" -> "ipAddress")
          bool lcase = false;
-         for (f=1; String[f]; f++) {
-            if ((String[f] >= 'A') and (String[f] <= 'Z')) {
-               if (lcase) String[f-1] = String[f-1] - 'A' + 'a';
-               lcase = true;
-            }
-            else break;
+         for (size_t f = 1; f < String.size() and is_upper(String[f]); f++) {
+            if (lcase) String[f-1] = to_lower(String[f-1]);
+            lcase = true;
          }
       }
    }
@@ -365,7 +375,7 @@ static void make_camel_case(std::string &String)
 //********************************************************************************************************************
 // The TypeName is optional and usually refers to the name of a struct.  The list is sorted by name for fast lookups.
 
-static ERR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
+[[nodiscard]] static ERR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
    struct_record &Record, int *StructSize)
 {
    pf::Log log(__FUNCTION__);
@@ -429,7 +439,12 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
          }
 
          case 'm': // MAXINT
-            type |= (sizeof(MAXINT) IS 4) ? FD_INT : FD_INT64;
+            if constexpr (sizeof(MAXINT) == 4) {
+               type |= FD_INT;
+            }
+            else {
+               type |= FD_INT64;
+            }
             field_size = sizeof(MAXINT);
             break;
 
@@ -479,9 +494,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
 
       if ((field_size >= 8) and (type != FD_STRUCT)) {
          if (offset & 7) {
-            std::ostringstream msg;
-            msg << "Warning: " << StructName << "." << field.Name << " (" << field_size << " bytes) is mis-aligned.";
-            log.msg("%s", msg.str().c_str());
+            log.msg("%s", std::format("Warning: {}.{} ({} bytes) is mis-aligned.", StructName, field.Name, field_size).c_str());
          }
          offset = ALIGN64(offset); // 64-bit alignment
       }
@@ -511,7 +524,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
 //********************************************************************************************************************
 // Parse a struct definition and permanently store it in the Structs dictionary.
 
-ERR make_struct(lua_State *Lua, std::string_view StructName, CSTRING Sequence)
+[[nodiscard]] ERR make_struct(lua_State *Lua, std::string_view StructName, CSTRING Sequence)
 {
    if (!Sequence) {
       luaL_error(Lua, "Missing struct name and/or definition.");
@@ -546,16 +559,17 @@ ERR make_struct(lua_State *Lua, std::string_view StructName, CSTRING Sequence)
 
 //********************************************************************************************************************
 
-static struct_field * find_field(struct fstruct *Struct, CSTRING FieldName)
+[[nodiscard]] static std::optional<std::reference_wrapper<struct_field>>
+find_field(struct fstruct *Struct, CSTRING FieldName)
 {
    if (auto def = Struct->Def) {
       auto field_hash = strihash(FieldName);
       for (auto &field : def->Fields) {
-         if (field.nameHash() IS field_hash) return &field;
+         if (field.nameHash() IS field_hash) return std::ref(field);
       }
    }
 
-   return nullptr;
+   return std::nullopt;
 }
 
 //********************************************************************************************************************
@@ -616,20 +630,21 @@ static int struct_new(lua_State *Lua)
             lua_pushnil(Lua);  // Access first key for lua_next()
             while (lua_next(Lua, 2) != 0) {
                if (auto field_name = luaL_checkstring(Lua, -2)) {
-                  if (auto field = find_field(fs, field_name)) {
-                     log.trace("struct.set() Offset %d, $%.8x", field->Offset, field->Type);
-                     APTR address = (int8_t *)fs->Data + field->Offset;
-                     if (field->Type & FD_STRING) {
+                  if (auto field_opt = find_field(fs, field_name)) {
+                     auto &field = field_opt->get();
+                     log.trace("struct.set() Offset %d, $%.8x", field.Offset, field.Type);
+                     APTR address = (int8_t *)fs->Data + field.Offset;
+                     if (field.Type & FD_STRING) {
                         log.trace("Strings not supported yet.");
                         // In order to set strings, we'd need make a copy of the string received from
                         // Lua and free it when the field changes or the structure is destroyed.
                      }
-                     else if (field->Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
-                     else if (field->Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, 3);
-                     else if (field->Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, 3);
-                     else if (field->Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, 3);
-                     else if (field->Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, 3);
-                     else if (field->Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, 3);
+                     else if (field.Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
+                     else if (field.Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, 3);
+                     else if (field.Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, 3);
+                     else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, 3);
+                     else if (field.Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, 3);
+                     else if (field.Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, 3);
                      else log.warning("Cannot set unsupported field type for %s", field_name);
                   }
                   else field_error = ERR::UnsupportedField;
@@ -703,81 +718,80 @@ static int struct_get(lua_State *Lua)
             return 0;
          }
 
-         if (auto field = find_field(fs, fieldname)) {
-            APTR address = (int8_t *)fs->Data + field->Offset;
-            int array_size = (!field->ArraySize) ? -1 : field->ArraySize;
+         if (auto field_opt = find_field(fs, fieldname)) {
+            auto &field = field_opt->get();
+            APTR address = (int8_t *)fs->Data + field.Offset;
+            int array_size = (!field.ArraySize) ? -1 : field.ArraySize;
 
-            if ((field->Type & FD_STRUCT) and (field->Type & FD_PTR) and (!field->StructRef.empty())) { // Pointer to structure
+            if ((field.Type & FD_STRUCT) and (field.Type & FD_PTR) and (!field.StructRef.empty())) { // Pointer to structure
                if (((APTR *)address)[0]) {
-                  if (field->Type & FD_ARRAY) { // Array of pointers to structures.
-                     if (field->Type & FD_CPP) {
+                  if (field.Type & FD_ARRAY) { // Array of pointers to structures.
+                     if (field.Type & FD_CPP) {
                         auto vector = (pf::vector<int> *)(address);
-                        make_array(Lua, field->Type, field->StructRef.c_str(), (APTR *)vector->data(), vector->size(), false);
+                        make_array(Lua, field.Type, field.StructRef.c_str(), (APTR *)vector->data(), vector->size(), false);
                      }
-                     else make_array(Lua, field->Type, field->StructRef.c_str(), (APTR *)address, array_size, false);
+                     else make_array(Lua, field.Type, field.StructRef.c_str(), (APTR *)address, array_size, false);
                   }
-                  else push_struct(Lua->Script, ((APTR *)address)[0], field->StructRef, false, false);
+                  else push_struct(Lua->Script, ((APTR *)address)[0], field.StructRef, false, false);
                }
                else lua_pushnil(Lua);
             }
-            else if (field->Type & FD_STRUCT) { // Embedded structure
-               push_struct(Lua->Script, address, field->StructRef, false, false);
+            else if (field.Type & FD_STRUCT) { // Embedded structure
+               push_struct(Lua->Script, address, field.StructRef, false, false);
             }
-            else if (field->Type & FD_STRING) {
-               if (field->Type & FD_ARRAY) {
-                  if (field->Type & FD_CPP) {
+            else if (field.Type & FD_STRING) {
+               if (field.Type & FD_ARRAY) {
+                  if (field.Type & FD_CPP) {
                      auto vector = (pf::vector<std::string> *)(address);
                      make_array(Lua, FD_CPP|FD_STRING, nullptr, (APTR *)vector->data(), vector->size(), false);
                   }
                   else make_array(Lua, FD_STRING, nullptr, (APTR *)address, array_size, false);
                }
-               else if (field->Type & FD_CPP) {
+               else if (field.Type & FD_CPP) {
                   lua_pushstring(Lua, ((std::string *)address)->c_str());
                }
                else lua_pushstring(Lua, ((STRING *)address)[0]);
             }
-            else if (field->Type & FD_OBJECT) {
+            else if (field.Type & FD_OBJECT) {
                push_object(Lua, ((OBJECTPTR *)address)[0]);
             }
-            else if (field->Type & FD_POINTER) {
+            else if (field.Type & FD_POINTER) {
                if (((APTR *)address)[0]) lua_pushlightuserdata(Lua, ((APTR *)address)[0]);
                else lua_pushnil(Lua);
             }
-            else if (field->Type & FD_FUNCTION) {
+            else if (field.Type & FD_FUNCTION) {
                lua_pushnil(Lua);
             }
-            else if (field->Type & FD_FLOAT)   {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_FLOAT, nullptr, (APTR *)address, array_size, false);
+            else if (field.Type & FD_FLOAT)   {
+               if (field.Type & FD_ARRAY) make_array(Lua, FD_FLOAT, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((float *)address)[0]);
             }
-            else if (field->Type & FD_DOUBLE) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, nullptr, (APTR *)address, array_size, false);
+            else if (field.Type & FD_DOUBLE) {
+               if (field.Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((double *)address)[0]);
             }
-            else if (field->Type & FD_INT64) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT64, nullptr, (APTR *)address, array_size, false);
+            else if (field.Type & FD_INT64) {
+               if (field.Type & FD_ARRAY) make_array(Lua, FD_INT64, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((int64_t *)address)[0]);
             }
-            else if (field->Type & FD_INT) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT, nullptr, (APTR *)address, array_size, false);
+            else if (field.Type & FD_INT) {
+               if (field.Type & FD_ARRAY) make_array(Lua, FD_INT, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((int *)address)[0]);
             }
-            else if (field->Type & FD_WORD) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_WORD, nullptr, (APTR *)address, array_size, false);
+            else if (field.Type & FD_WORD) {
+               if (field.Type & FD_ARRAY) make_array(Lua, FD_WORD, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((int16_t *)address)[0]);
             }
-            else if (field->Type & FD_BYTE) {
-               if ((field->Type & FD_CUSTOM) and (field->Type & FD_ARRAY)) {
+            else if (field.Type & FD_BYTE) {
+               if ((field.Type & FD_CUSTOM) and (field.Type & FD_ARRAY)) {
                   // Character arrays are interpreted as strings.  Use 'b' instead of 'c' if this behaviour is undesirable
                   lua_pushstring(Lua, (CSTRING)address);
                }
-               else if (field->Type & FD_ARRAY) make_array(Lua, FD_BYTE, nullptr, (APTR *)address, array_size, false);
+               else if (field.Type & FD_ARRAY) make_array(Lua, FD_BYTE, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((uint8_t *)address)[0]);
             }
             else {
-               std::ostringstream buf;
-               buf << "Field '" << fieldname << "' does not use a supported type of " << std::hex << field->Type;
-               luaL_error(Lua, buf.str().c_str());
+               luaL_error(Lua, "%s", std::format("Field '{}' does not use a supported type of {:x}", fieldname, field.Type).c_str());
                return 0;
             }
             return 1;
@@ -804,26 +818,27 @@ static int struct_set(lua_State *Lua)
             return 0;
          }
 
-         if (auto field = find_field(fs, ref)) {
+         if (auto field_opt = find_field(fs, ref)) {
+            auto &field = field_opt->get();
             pf::Log log;
-            log.trace("struct.set() %s, Offset %d, $%.8x", ref, field->Offset, field->Type);
+            log.trace("struct.set() %s, Offset %d, $%.8x", ref, field.Offset, field.Type);
 
-            APTR address = (int8_t *)fs->Data + field->Offset;
+            APTR address = (int8_t *)fs->Data + field.Offset;
 
-            if (field->Type & FD_STRING) {
+            if (field.Type & FD_STRING) {
                log.trace("Strings not supported yet.");
                // In order to set strings, we'd need make a copy of the string received from
                // Lua and free it when the field changes or the structure is destroyed.
 
             }
-            else if (field->Type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
-            else if (field->Type & FD_POINTER) ((APTR *)address)[0] = lua_touserdata(Lua, 3);
-            else if (field->Type & FD_FUNCTION);
-            else if (field->Type & FD_INT)    ((int *)address)[0]     = lua_tointeger(Lua, 3);
-            else if (field->Type & FD_WORD)   ((int16_t *)address)[0] = lua_tointeger(Lua, 3);
-            else if (field->Type & FD_BYTE)   ((int8_t *)address)[0]  = lua_tointeger(Lua, 3);
-            else if (field->Type & FD_DOUBLE) ((double *)address)[0]  = lua_tonumber(Lua, 3);
-            else if (field->Type & FD_FLOAT)  ((float *)address)[0]   = lua_tonumber(Lua, 3);
+            else if (field.Type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
+            else if (field.Type & FD_POINTER) ((APTR *)address)[0] = lua_touserdata(Lua, 3);
+            else if (field.Type & FD_FUNCTION);
+            else if (field.Type & FD_INT)    ((int *)address)[0]     = lua_tointeger(Lua, 3);
+            else if (field.Type & FD_WORD)   ((int16_t *)address)[0] = lua_tointeger(Lua, 3);
+            else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]  = lua_tointeger(Lua, 3);
+            else if (field.Type & FD_DOUBLE) ((double *)address)[0]  = lua_tonumber(Lua, 3);
+            else if (field.Type & FD_FLOAT)  ((float *)address)[0]   = lua_tonumber(Lua, 3);
          }
          else luaL_error(Lua, "Invalid field reference '%s'", ref);
       }
