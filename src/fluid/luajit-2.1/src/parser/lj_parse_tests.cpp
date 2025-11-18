@@ -25,12 +25,13 @@
 #include "parser/parse_types.h"
 #include "parser/token_stream.h"
 #include "parser/token_types.h"
+#include "parser/parser_entry_points.h"
 #include "lj_parse.h"
 #include "../../../defs.h"
 
 namespace {
 
-static void log_diagnostics(const std::vector<ParserDiagnostic>& diagnostics, pf::Log& log)
+static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::Log& log)
 {
    if (diagnostics.empty()) {
       return;
