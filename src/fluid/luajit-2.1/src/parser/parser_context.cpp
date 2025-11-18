@@ -306,7 +306,7 @@ void ParserContext::emit_error(ParserErrorCode code, const Token& token, std::st
    diagnostic.message.assign(message.begin(), message.end());
    diagnostic.token = token;
    this->diag.report(diagnostic);
-   
+
    if (this->current_config.trace_expectations) {
       this->log_trace("error", token, message);
    }
@@ -366,12 +366,12 @@ void ParserContext::log_trace(const char* channel, const Token& token, std::stri
    std::string name = this->describe_token(token);
    BCLine line = token.span().line;
    BCLine column = token.span().column;
-   
+
    if (note.empty()) {
       log.detail("%s: %s (line %d, column %d)\n", channel, name.c_str(), (int)line, (int)column);
       return;
    }
-   
+
    log.detail("%s: %s (line %d, column %d) - %.*s\n", channel, name.c_str(), (int)line, (int)column,
       (int)note.size(), note.data());
 }

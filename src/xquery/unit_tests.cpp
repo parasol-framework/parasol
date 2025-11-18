@@ -303,7 +303,7 @@ static void test_parser_operator_cache_population()
    test_assert(flags.unary_negate_cached, "Unary operator '-' cache", "Parser should cache negation operator kind");
 }
 
-static void test_prolog_in_xpath() 
+static void test_prolog_in_xpath()
 {
    pf::Log log("PrologInXPath");
 

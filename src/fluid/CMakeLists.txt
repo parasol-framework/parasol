@@ -621,10 +621,10 @@ endif ()
 
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
-   "fluid_io.cpp" "fluid_class.cpp" 
+   "fluid_io.cpp" "fluid_class.cpp"
    "${LUAJIT_SRC}/lib/lj_lib.cpp"
    "${LUAJIT_SRC}/lib/lj_load.cpp"
-   "${LUAJIT_SRC}/parser/lj_parse.cpp" 
+   "${LUAJIT_SRC}/parser/lj_parse.cpp"
    "${LUAJIT_SRC}/parser/lj_lex.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
 
@@ -647,9 +647,14 @@ target_link_libraries (${MOD} PRIVATE
    ${FFI_LINK}
    ${LUAJIT_LINK}
    ${MATH_LINK}) # The link order matters, math must come last
-   
+
+target_compile_definitions(${MOD} PRIVATE
+   LUAJIT_DISABLE_FFI
+   LUAJIT_DISABLE_BUFFER
+   LUAJIT_ENABLE_LUA52COMPAT)
+
 if (ENABLE_UNIT_TESTS)
-   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+   target_compile_definitions(${MOD} PRIVATE ENABLE_UNIT_TESTS)
 endif ()
 
 if (DISABLE_DISPLAY)
