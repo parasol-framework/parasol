@@ -1521,9 +1521,9 @@ __export struct ModHeader ModHeader;
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
+#define PARASOL_MOD(init,close,open,expunge,test,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, test, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1584,13 +1584,14 @@ inline int F2I(double val) {
 
 constexpr int F2T(double val) noexcept // For numbers no larger than 16 bit, standard (int) is faster than F2T().
 {
-   if ((val > 32767.0) or (val < -32767.0)) return((int)val);
+   if ((val > 32767.0) or (val < -32767.0)) return(int(val));
    else {
       val = val + (68719476736.0 * 1.5);
+      auto bits = std::bit_cast<std::array<int, 2>>(val);
       if constexpr (std::endian::native == std::endian::little) {
-         return ((int *)(APTR)&val)[0]>>16;
+         return bits[0] >> 16;
       }
-      else return ((int *)&val)[1]>>16;
+      else return bits[1] >> 16;
    }
 }
 
@@ -1669,6 +1670,11 @@ struct Function {
    const struct FunctionField * Args;    // A list of parameters accepted by the function
 };
 
+using ModClose   = void (*)(OBJECTPTR);
+using ModInit    = ERR (*)(OBJECTPTR, struct CoreBase*);
+using ModOpen    = ERR (*)(OBJECTPTR);
+using ModExpunge = ERR (*)(void);
+using ModTest    = void (*)(CSTRING, int *, int *);
 struct ModHeader {
    MHF     Flags;                                 // Special flags, type of function table wanted from the Core
    CSTRING Definitions;                           // Module definition string, usable by run-time languages such as Fluid
@@ -1676,18 +1682,14 @@ struct ModHeader {
    void (*Close)(OBJECTPTR);                      // A function that will be called each time the module is closed.
    ERR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
    ERR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
+   void (*Test)(CSTRING, int *, int *);           // A function that can run embedded unit tests in development builds.
    CSTRING Name;                                  // Name of the module
    CSTRING Namespace;                             // A reserved system-wide namespace for function names.
    STRUCTS *StructDefs;
    class RootModule *Root;
-   ModHeader(ERR (*pInit)(OBJECTPTR, struct CoreBase *),
-      void  (*pClose)(OBJECTPTR),
-      ERR (*pOpen)(OBJECTPTR),
-      ERR (*pExpunge)(void),
-      CSTRING pDef,
-      STRUCTS *pStructs,
-      CSTRING pName,
-      CSTRING pNamespace) {
+
+   ModHeader(ModInit pInit, ModClose pClose, ModOpen pOpen, ModExpunge pExpunge, ModTest pTest,
+      CSTRING pDef, STRUCTS *pStructs, CSTRING pName, CSTRING pNamespace) {
       Flags         = MHF::DEFAULT;
       Definitions   = pDef;
       StructDefs    = pStructs;
@@ -1695,6 +1697,7 @@ struct ModHeader {
       Close         = pClose;
       Open          = pOpen;
       Expunge       = pExpunge;
+      Test          = pTest;
       Name          = pName;
       Namespace     = pNamespace;
       Root          = nullptr;
@@ -3309,6 +3312,7 @@ class objThread : public Object {
 
 namespace mod {
 struct ResolveSymbol { CSTRING Name; APTR Address; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Test { CSTRING Options; int Passed; int Total; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3351,6 +3355,13 @@ class objModule : public Object {
       struct mod::ResolveSymbol args = { Name, (APTR)0 };
       ERR error = Action(AC(-1), this, &args);
       if (Address) *Address = args.Address;
+      return(error);
+   }
+   inline ERR test(CSTRING Options, int * Passed, int * Total) noexcept {
+      struct mod::Test args = { Options, (int)0, (int)0 };
+      ERR error = Action(AC(-2), this, &args);
+      if (Passed) *Passed = args.Passed;
+      if (Total) *Total = args.Total;
       return(error);
    }
 

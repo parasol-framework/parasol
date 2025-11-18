@@ -1,12 +1,13 @@
--- Call integrated unit tests in the XPath module
+-- Call integrated unit tests in the XQuery module
 
-   include 'xml'
    xq = mod.load('xquery')
 
 -----------------------------------------------------------------------------------------------------------------------
 
 function testUnitTests()
-   assert(xq.UnitTest() == ERR_Okay, "One or more XPath unit tests failed")
+   local passed, total = mod.test(xq)
+   assert(passed is total, "Passed " .. passed .. " of " .. total .. " XQuery unit tests.  Use --log-api for details.")
+   print('Passed ' .. total .. ' embedded unit tests.')
 end
 
 return {

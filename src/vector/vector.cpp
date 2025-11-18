@@ -196,5 +196,5 @@ static STRUCTS glStructures = {
    { "VectorPoint",  sizeof(VectorPoint) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_vector_module() { return &ModHeader; }

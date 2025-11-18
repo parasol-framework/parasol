@@ -1002,10 +1002,11 @@ class RootModule : public Object {
    MHF    Flags;
    bool   NoUnload;
    bool   DLL;                 // TRUE if the module is a Windows DLL
-   ERR    (*Init)(OBJECTPTR, struct CoreBase *);
-   void   (*Close)(OBJECTPTR);
-   ERR    (*Open)(OBJECTPTR);
-   ERR    (*Expunge)(void);
+   ModInit Init;
+   ModClose Close;
+   ModOpen Open;
+   ModExpunge Expunge;
+   ModTest Test;
    struct ActionEntry prvActions[int(AC::END)]; // Action routines to be intercepted by the program
    std::string LibraryName; // Name of the library loaded from disk
 

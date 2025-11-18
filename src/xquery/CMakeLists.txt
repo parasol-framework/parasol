@@ -1,7 +1,9 @@
 # XQuery Module
 
 # Enable unit tests for deep testing of non-release builds only.
-#set (ENABLE_UNIT_TESTS ON)
+if (NOT DEFINED ENABLE_UNIT_TESTS)
+#   set (ENABLE_UNIT_TESTS ON)
+endif ()
 
 set (MOD xquery)
 set (INC_MOD_XQUERY TRUE PARENT_SCOPE)
@@ -80,7 +82,7 @@ target_sources (${MOD} PRIVATE
    $<TARGET_OBJECTS:xml_schema>)
 
 if (ENABLE_UNIT_TESTS)
-   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+   target_compile_definitions(${MOD}_lib PRIVATE "ENABLE_UNIT_TESTS")
 endif ()
 
 # Tests

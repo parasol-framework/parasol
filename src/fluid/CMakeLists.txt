@@ -4,6 +4,7 @@
 # SPECIAL FEATURES:
 #  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
 #  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
+#  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to use --log-api to view any output.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -36,11 +37,15 @@
 #    - buildvm generates VM assembly or object code
 #
 # 4. Library Compilation:
-#    - Compiles ljamalg.cpp (amalgamated LuaJIT source)
 #    - Links with generated VM code to create static library
 
 set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
+
+# Enable unit tests for deep testing of non-release builds only.
+if (NOT DEFINED ENABLE_UNIT_TESTS)
+   set (ENABLE_UNIT_TESTS ON)
+endif ()
 
 # IDL processing for headers and documentation
 
@@ -638,6 +643,11 @@ target_link_libraries (${MOD} PRIVATE
    ${FFI_LINK}
    ${LUAJIT_LINK}
    ${MATH_LINK}) # The link order matters, math must come last
+   
+if (ENABLE_UNIT_TESTS)
+   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+   target_compile_definitions(luajit_lib PRIVATE "ENABLE_UNIT_TESTS")
+endif ()
 
 if (DISABLE_DISPLAY)
    target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)

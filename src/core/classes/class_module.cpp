@@ -86,7 +86,7 @@ static STRUCTS glStructures = {
 #include "../idl.h"
 
 static RootModule glCoreRoot;
-struct ModHeader glCoreHeader(nullptr, nullptr, nullptr, nullptr, glIDL, &glStructures, "core", "Sys");
+struct ModHeader glCoreHeader(nullptr, nullptr, nullptr, nullptr, nullptr, glIDL, &glStructures, "core", "Sys");
 
 static RootModule * check_resident(extModule *, std::string_view);
 static void free_module(MODHANDLE handle);
@@ -386,13 +386,14 @@ static ERR MODULE_Init(extModule *Self)
          if (!table->Init) { log.warning(ERR::ModuleMissingInit); goto exit; }
          if (!table->Name) { log.warning(ERR::ModuleMissingName); goto exit; }
 
-         master->Header     = table;
-         master->Table      = table;
-         master->Name       = table->Name;
-         master->Init       = table->Init;
-         master->Open       = table->Open;
-         master->Expunge    = table->Expunge;
-         master->Flags      = table->Flags;
+         master->Header  = table;
+         master->Table   = table;
+         master->Name    = table->Name;
+         master->Init    = table->Init;
+         master->Open    = table->Open;
+         master->Expunge = table->Expunge;
+         master->Test    = table->Test;
+         master->Flags   = table->Flags;
       }
 
       // INIT
@@ -546,6 +547,36 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
    #warning Platform not supported.
    return ERR::NoSupport;
 #endif
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+Test: Run unit tests for the module, if present.
+
+If a module is compiled with unit tests, calling the Test() method will execute them.  There is no explicit contract
+for what the unit tests should do, but it is typically expected that test results will be printed to the log.
+
+Unit tests should never be compiled into production releases of the code.
+
+-INPUT-
+cstr Options: Optional CSV list of testing options.
+&int Passed: The number of tests that passed will be returned in this parameter.
+&int Total: The total number of tests that were executed will be returned in this parameter.
+
+-ERRORS-
+Okay
+NoSupport: Unit tests are not defined for the module.
+
+**********************************************************************************************************************/
+
+static ERR MODULE_Test(extModule *Self, struct mod::Test *Args)
+{
+   if (Self->Root->Test) {
+      Self->Root->Test(Args->Options, &Args->Passed, &Args->Total);
+      return ERR::Okay;
+   }
+   else return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -715,9 +746,11 @@ static void free_module(MODHANDLE handle)
 //********************************************************************************************************************
 
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { nullptr, 0 } };
+static const FunctionField argsTest[] = { { "Options", FD_STR }, { nullptr, 0 } };
 
 static const MethodEntry glModuleMethods[] = {
    { mod::ResolveSymbol::id, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
+   { mod::Test::id, (APTR)MODULE_Test, "Test", argsTest, sizeof(mod::Test) },
    { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
