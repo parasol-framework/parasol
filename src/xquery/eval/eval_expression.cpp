@@ -166,8 +166,8 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
 
       info.kind = SequenceItemKind::Array;
       if (inner IS "*") {
-          info.array_allows_any = true;
-          return info;
+       info.array_allows_any = true;
+       return info;
       }
 
       auto member_info = parse_sequence_type_literal(inner);
