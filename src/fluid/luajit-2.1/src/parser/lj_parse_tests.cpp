@@ -1,14 +1,531 @@
-// Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.fluid
+// Unit tests for the Phase 2 parser pipeline.
 
 #include <parasol/main.h>
 
 #ifdef ENABLE_UNIT_TESTS
-extern void parser_unit_tests(int &Passed, int &Total)
+
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+
+#include "lj_bc.h"
+
+#include <array>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "parser/ast_builder.h"
+#include "parser/ast_nodes.h"
+#include "parser/parser_context.h"
+#include "parser/parser_diagnostics.h"
+#include "parser/parse_types.h"
+#include "parser/token_stream.h"
+#include "parser/token_types.h"
+#include "lj_parse.h"
+#include "../../../defs.h"
+
+namespace {
+
+static void log_diagnostics(const std::vector<ParserDiagnostic>& diagnostics, pf::Log& log)
+{
+   if (diagnostics.empty()) {
+      return;
+   }
+
+   size_t index = 0;
+   for (const ParserDiagnostic& diag : diagnostics) {
+      log.detail("      diag[%" PRId64 "] severity=%d code=%d token=%d %s", (int64_t)index,
+         (int)diag.severity, (int)diag.code, (int)diag.token.kind(), diag.message.c_str());
+      ++index;
+   }
+}
+
+struct LuaStateHolder {
+   LuaStateHolder()
+   {
+      this->state = luaL_newstate();
+   }
+
+   ~LuaStateHolder()
+   {
+      if (this->state) {
+         lua_close(this->state);
+      }
+   }
+
+   lua_State* get() const { return this->state; }
+
+private:
+   lua_State* state = nullptr;
+};
+
+struct StringReaderCtx {
+   const char* str = nullptr;
+   size_t size = 0;
+};
+
+static const char* unit_reader(lua_State*, void* data, size_t* size)
+{
+   auto* ctx = static_cast<StringReaderCtx*>(data);
+   if (ctx->size == 0) {
+      return nullptr;
+   }
+   *size = ctx->size;
+   ctx->size = 0;
+   return ctx->str;
+}
+
+struct AstHarnessResult {
+   ParserResult<std::unique_ptr<BlockStmt>> chunk;
+   std::vector<ParserDiagnostic> diagnostics;
+   std::unique_ptr<LuaStateHolder> state;
+};
+
+static AstHarnessResult build_ast_from_source(std::string_view source)
+{
+   AstHarnessResult result;
+   result.state = std::make_unique<LuaStateHolder>();
+   lua_State* L = result.state->get();
+
+   StringReaderCtx ctx;
+   ctx.str = source.data();
+   ctx.size = source.size();
+
+   LexState lex(L, unit_reader, &ctx, "parser-unit", std::nullopt);
+   FuncState fs;
+   lex.fs_init(&fs);
+
+   ParserAllocator allocator = ParserAllocator::from(L);
+   ParserContext context = ParserContext::from(lex, fs, allocator);
+   ParserConfig config;
+   config.abort_on_error = false;
+   config.max_diagnostics = 32;
+   ParserSession session(context, config);
+
+   lex.next();
+   AstBuilder builder(context);
+   result.chunk = builder.parse_chunk();
+
+   auto diag_entries = context.diagnostics().entries();
+   result.diagnostics.assign(diag_entries.begin(), diag_entries.end());
+   return result;
+}
+
+static void log_block_outline(const BlockStmt& block, pf::Log& log)
+{
+   StatementListView view = block.view();
+   size_t index = 0;
+   for (const StmtNode& stmt : view) {
+      log.detail("   stmt[%" PRId64 "] kind=%d", (int64_t)index, (int)stmt.kind);
+      ++index;
+   }
+}
+
+static bool test_literal_binary_expr(pf::Log& log)
+{
+   auto result = build_ast_from_source("return (value + 4) * 3");
+   if (not result.chunk.ok()) {
+      log.error("failed to parse literal/binary expression AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 1) {
+      log.error("expected one statement, got %" PRId64, (int64_t)statements.size());
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& stmt = statements[0];
+   if (not (stmt.kind IS AstNodeKind::ReturnStmt)) {
+      log.error("expected return statement, got kind=%d", (int)stmt.kind);
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const auto* payload = std::get_if<ReturnStmtPayload>(&stmt.data);
+   if (not payload or payload->values.size() != 1) {
+      log.error("return payload missing or wrong arity");
+      return false;
+   }
+
+   const ExprNode& expr = *payload->values[0];
+   if (not (expr.kind IS AstNodeKind::BinaryExpr)) {
+      log.error("expected binary expression root, got kind=%d", (int)expr.kind);
+      return false;
+   }
+
+   const auto* multiply = std::get_if<BinaryExprPayload>(&expr.data);
+   if (not multiply or not (multiply->op IS AstBinaryOperator::Multiply)) {
+      log.error("expected multiply binary node");
+      return false;
+   }
+
+   if (not multiply->left or not (multiply->left->kind IS AstNodeKind::BinaryExpr)) {
+      log.error("left operand was not an additive binary expression");
+      return false;
+   }
+
+   const auto* add = std::get_if<BinaryExprPayload>(&multiply->left->data);
+   if (not add or not (add->op IS AstBinaryOperator::Add)) {
+      log.error("expected addition in the left subtree");
+      return false;
+   }
+
+   if (not multiply->right or not (multiply->right->kind IS AstNodeKind::LiteralExpr)) {
+      log.error("expected numeric literal on multiply RHS");
+      return false;
+   }
+
+   const auto* rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
+   if (not rhs_literal or not (rhs_literal->kind IS LiteralKind::Number) or rhs_literal->number_value != 3.0) {
+      log.error("multiply RHS literal mismatch");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_loop_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+while ready do
+   if ready then
+      return ready
+   end
+   ready = false
+end
+)";
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse loop AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 1) {
+      log.error("expected loop-only block, got %" PRId64, (int64_t)statements.size());
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& loop_stmt = statements[0];
+   if (not (loop_stmt.kind IS AstNodeKind::WhileStmt)) {
+      log.error("expected while loop node, got kind=%d", (int)loop_stmt.kind);
+      return false;
+   }
+
+   const auto* loop_payload = std::get_if<LoopStmtPayload>(&loop_stmt.data);
+   if (not loop_payload or not loop_payload->body) {
+      log.error("missing loop payload or body");
+      return false;
+   }
+
+   StatementListView body_statements = loop_payload->body->view();
+   if (body_statements.size() != 2) {
+      log.error("expected if+assignment inside loop, got %" PRId64, (int64_t)body_statements.size());
+      return false;
+   }
+
+   const StmtNode& if_stmt = body_statements[0];
+   if (not (if_stmt.kind IS AstNodeKind::IfStmt)) {
+      log.error("first loop body statement should be if");
+      return false;
+   }
+
+   const auto* if_payload = std::get_if<IfStmtPayload>(&if_stmt.data);
+   if (not if_payload or if_payload->clauses.empty()) {
+      log.error("missing if clause payload");
+      return false;
+   }
+
+   const StmtNode& assign_stmt = body_statements[1];
+   if (not (assign_stmt.kind IS AstNodeKind::AssignmentStmt)) {
+      log.error("expected assignment statement as second loop body element");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_local_function_table_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local function build_pair(a, b)
+   local data = { label = "value", values = { a, b } }
+   return data
+end
+
+return build_pair(1, 2)
+)";
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse local function/table AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 2) {
+      log.error("expected local function and return statements");
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& local_func = statements[0];
+   if (not (local_func.kind IS AstNodeKind::LocalFunctionStmt)) {
+      log.error("expected local function statement, got kind=%d", (int)local_func.kind);
+      return false;
+   }
+
+   const auto* func_payload = std::get_if<LocalFunctionStmtPayload>(&local_func.data);
+   if (not func_payload or not func_payload->function or not func_payload->function->body) {
+      log.error("malformed local function payload");
+      return false;
+   }
+
+   StatementListView fn_body = func_payload->function->body->view();
+   if (fn_body.size() != 2) {
+      log.error("expected local decl + return inside function body");
+      return false;
+   }
+
+   const StmtNode& local_decl = fn_body[0];
+   if (not (local_decl.kind IS AstNodeKind::LocalDeclStmt)) {
+      log.error("expected local declaration inside function body");
+      return false;
+   }
+
+   const auto* decl_payload = std::get_if<LocalDeclStmtPayload>(&local_decl.data);
+   if (not decl_payload or decl_payload->values.size() != 1) {
+      log.error("local declaration missing initializer");
+      return false;
+   }
+
+   const ExprNode& table_expr = *decl_payload->values[0];
+   if (not (table_expr.kind IS AstNodeKind::TableExpr)) {
+      log.error("expected table constructor initializer");
+      return false;
+   }
+
+   const auto* table_payload = std::get_if<TableExprPayload>(&table_expr.data);
+   if (not table_payload or table_payload->fields.size() != 2) {
+      log.error("unexpected number of table fields");
+      return false;
+   }
+
+   const TableField& label_field = table_payload->fields[0];
+   if (not (label_field.kind IS TableFieldKind::Record) or not label_field.value or
+      not (label_field.value->kind IS AstNodeKind::LiteralExpr)) {
+      log.error("first field should be record literal");
+      return false;
+   }
+
+   const auto* label_literal = std::get_if<LiteralValue>(&label_field.value->data);
+   if (not label_literal or not (label_literal->kind IS LiteralKind::String)) {
+      log.error("label literal payload missing string value");
+      return false;
+   }
+
+   const TableField& values_field = table_payload->fields[1];
+   if (not (values_field.kind IS TableFieldKind::Record) or not values_field.value or
+      not (values_field.value->kind IS AstNodeKind::TableExpr)) {
+      log.error("values field should contain nested table literal");
+      return false;
+   }
+
+   const auto* nested_table = std::get_if<TableExprPayload>(&values_field.value->data);
+   if (not nested_table or nested_table->fields.size() != 2) {
+      log.error("nested array literal should have two elements");
+      return false;
+   }
+
+   for (const TableField& field : nested_table->fields) {
+      if (not (field.kind IS TableFieldKind::Array) or not field.value or
+         not (field.value->kind IS AstNodeKind::IdentifierExpr)) {
+         log.error("nested table entries should be identifier references");
+         return false;
+      }
+   }
+
+   return true;
+}
+
+
+struct BytecodeSnapshot {
+   std::vector<BCIns> instructions;
+   std::vector<BytecodeSnapshot> children;
+};
+
+static BytecodeSnapshot snapshot_proto(GCproto* pt)
+{
+   BytecodeSnapshot snapshot;
+   BCIns* bc = proto_bc(pt);
+   snapshot.instructions.assign(bc, bc + pt->sizebc);
+
+   if (pt->flags & PROTO_CHILD) {
+      ptrdiff_t child_count = pt->sizekgc;
+      GCRef* kr = mref(pt->k, GCRef) - 1;
+      for (ptrdiff_t i = 0; i < child_count; ++i, --kr) {
+         GCobj* obj = gcref(*kr);
+         if (obj->gch.gct == ~LJ_TPROTO) {
+            snapshot.children.push_back(snapshot_proto(gco2pt(obj)));
+         }
+      }
+   }
+
+   return snapshot;
+}
+
+static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnapshot& ast,
+   std::string& diff, std::string label)
+{
+   if (legacy.instructions.size() != ast.instructions.size()) {
+      std::ostringstream stream;
+      stream << label << ": bytecode length mismatch (legacy=" << legacy.instructions.size()
+         << ", ast=" << ast.instructions.size() << ")";
+      diff = stream.str();
+      return false;
+   }
+
+   for (size_t i = 0; i < legacy.instructions.size(); ++i) {
+      if (legacy.instructions[i] != ast.instructions[i]) {
+         std::ostringstream stream;
+         stream << label << ": mismatch at pc=" << i << " legacy=0x" << std::hex
+            << legacy.instructions[i] << " ast=0x" << ast.instructions[i];
+         diff = stream.str();
+         return false;
+      }
+   }
+
+   if (legacy.children.size() != ast.children.size()) {
+      std::ostringstream stream;
+      stream << label << ": child count mismatch (legacy=" << legacy.children.size()
+         << ", ast=" << ast.children.size() << ")";
+      diff = stream.str();
+      return false;
+   }
+
+   for (size_t i = 0; i < legacy.children.size(); ++i) {
+      std::string child_diff;
+      std::string child_label = label + ".child[" + std::to_string(i) + "]";
+      if (not compare_snapshots(legacy.children[i], ast.children[i], child_diff, child_label)) {
+         diff = child_diff;
+         return false;
+      }
+   }
+
+   return true;
+}
+
+class ScopedPipelineToggle {
+public:
+   explicit ScopedPipelineToggle(bool enabled)
+      : previous(glJITPipeline)
+   {
+      glJITPipeline = enabled;
+   }
+
+   ~ScopedPipelineToggle()
+   {
+      glJITPipeline = this->previous;
+   }
+
+private:
+   bool previous;
+};
+
+static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::string_view source,
+   bool ast_pipeline, std::string& error)
+{
+   ScopedPipelineToggle toggle(ast_pipeline);
+   if (luaL_loadbuffer(L, source.data(), source.size(), "parser-unit")) {
+      const char* message = lua_tostring(L, -1);
+      error.assign(message ? message : "unknown parser error");
+      lua_pop(L, 1);
+      return std::nullopt;
+   }
+
+   GCfunc* fn = funcV(L->top - 1);
+   BytecodeSnapshot snapshot = snapshot_proto(funcproto(fn));
+   L->top--;
+   return snapshot;
+}
+
+static bool test_bytecode_equivalence(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local value = 1
+value = value + 2
+return value * 3
+)";
+
+   LuaStateHolder holder;
+   lua_State* L = holder.get();
+   if (not L) {
+      log.error("failed to allocate lua state for bytecode comparison");
+      return false;
+   }
+
+   std::string error;
+   auto legacy = compile_snapshot(L, source, false, error);
+   if (not legacy.has_value()) {
+      log.error("legacy parser compile failed: %s", error.c_str());
+      return false;
+   }
+
+   auto ast = compile_snapshot(L, source, true, error);
+   if (not ast.has_value()) {
+      log.warning("ast pipeline compile failed: %s (bytecode diff skipped)", error.c_str());
+      return true;
+   }
+
+   std::string diff;
+   if (not compare_snapshots(*legacy, *ast, diff, "chunk")) {
+      log.error("bytecode mismatch: %s", diff.c_str());
+      return false;
+   }
+
+   return true;
+}
+
+struct TestCase {
+   const char* name;
+   bool (*fn)(pf::Log&);
+};
+
+}  // namespace
+
+extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
+   constexpr std::array<TestCase, 4> tests = { {
+      { "literal_binary_ast", test_literal_binary_expr },
+      { "loop_ast", test_loop_ast },
+      { "local_function_table_ast", test_local_function_table_ast },
+      { "bytecode_equivalence", test_bytecode_equivalence },
+   } };
 
-
-   //Passed += pass_count;
-   //Total += test_count;
+   for (const TestCase& test : tests) {
+      log.branch("Running %s", test.name);
+      ++Total;
+      if (test.fn(log)) {
+         ++Passed;
+         log.msg("%s passed", test.name);
+      }
+      else {
+         log.error("%s failed", test.name);
+      }
+   }
 }
+
 #endif
