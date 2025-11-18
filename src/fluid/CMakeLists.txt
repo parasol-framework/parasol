@@ -101,6 +101,11 @@ if (PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_NON_MSVC_DEFS -DPARASOL_PARSER_TRACE)
 endif ()
 
+if (ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_COMMON_DEFS ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_NON_MSVC_DEFS -DENABLE_UNIT_TESTS)
+endif ()
+
 # Common host tool sources (used by both MSVC and non-MSVC builds)
 set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
 set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
@@ -541,7 +546,7 @@ else ()
       # Create custom command to compile each source file with explicit flags
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
-         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} 
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
@@ -648,7 +653,6 @@ target_link_libraries (${MOD} PRIVATE
    
 if (ENABLE_UNIT_TESTS)
    target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
-   target_compile_definitions(luajit_lib PRIVATE "ENABLE_UNIT_TESTS")
 endif ()
 
 if (DISABLE_DISPLAY)
