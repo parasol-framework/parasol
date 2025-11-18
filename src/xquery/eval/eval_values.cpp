@@ -2398,6 +2398,8 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
+      case XPVT::Map:
+      case XPVT::Array:
          return ERR::Okay;
    }
 

@@ -1070,6 +1070,11 @@ static void append_numbers_from_value(const XPathVal &Value, std::vector<double>
       case XPVT::NodeSet:
          append_numbers_from_nodeset(Value, Numbers);
          break;
+      case XPVT::Map:
+      case XPVT::Array:
+         // Function items cannot be coerced into numeric values. They are intentionally ignored
+         // so that mixed sequences can still contribute their numeric members.
+         break;
    }
 }
 

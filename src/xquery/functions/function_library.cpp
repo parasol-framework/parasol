@@ -281,6 +281,12 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &A
             else if (not arg.node_set_string_values.empty()) total += arg.node_set_string_values[0].length();
             else total += 64; // Conservative estimate for node content
             break;
+         case XPVT::Map:
+         case XPVT::Array: {
+            std::string summary = arg.to_string();
+            total += summary.length();
+            break;
+         }
       }
    }
    return total;
