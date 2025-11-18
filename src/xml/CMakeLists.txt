@@ -19,7 +19,6 @@ set_module_defaults (${MOD} "Xml")
 add_library (xml_unescape OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/unescape.cpp")
 target_include_directories (xml_unescape PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_unescape PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_dependencies (xml_unescape build_headers)
 
 # Schema Support Library
 
@@ -31,7 +30,10 @@ add_library (xml_schema OBJECT
 
 target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+
 add_dependencies (xml build_headers)
+add_dependencies (xml_schema build_headers)
+add_dependencies (xml_unescape build_headers)
 
 target_compile_definitions (${MOD} PRIVATE "PRV_XML_MODULE" "PRV_XML")
 target_compile_definitions (xml_schema PRIVATE "PRV_XML_MODULE" "PRV_XML")
