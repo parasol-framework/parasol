@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 #include "eval_detail.h"
 #include "date_time_utils.h"
@@ -104,6 +105,70 @@ static size_t sequence_item_count(const XPathVal &Value)
 }
 
 //********************************************************************************************************************
+// Determines whether a value represents the literal empty sequence (()) rather than an atomic with empty content.
+
+static bool value_is_empty_sequence(const XPathVal &Value)
+{
+   if (Value.Type != XPVT::NodeSet) return false;
+   bool has_nodes = !Value.node_set.empty();
+   bool has_attributes = !Value.node_set_attributes.empty();
+   bool has_strings = !Value.node_set_string_values.empty();
+   bool has_override = Value.node_set_string_override.has_value();
+   return (!has_nodes) and (!has_attributes) and (!has_strings) and (!has_override);
+}
+
+//********************************************************************************************************************
+// Copies the storage payload from a public XPathValue into a runtime XPathVal instance.
+
+static XPathVal clone_xpath_value(const XPathValue &Source)
+{
+   XPathVal clone;
+   clone.Type = Source.Type;
+   clone.NumberValue = Source.NumberValue;
+   clone.StringValue = Source.StringValue;
+   clone.node_set = Source.node_set;
+   clone.node_set_string_override = Source.node_set_string_override;
+   clone.node_set_string_values = Source.node_set_string_values;
+   clone.node_set_attributes = Source.node_set_attributes;
+   clone.preserve_node_order = Source.preserve_node_order;
+   clone.map_storage = Source.map_storage;
+   clone.array_storage = Source.array_storage;
+   return clone;
+}
+
+//********************************************************************************************************************
+// Stores a runtime value into a sequence container, preserving empty-sequence semantics.
+
+static void store_value_in_sequence(const XPathVal &Value, XPathValueSequence &Sequence)
+{
+   Sequence.reset();
+   if (value_is_empty_sequence(Value)) return;
+   Sequence.items.push_back(Value);
+}
+
+//********************************************************************************************************************
+// Renders a human-readable description of a runtime value type for diagnostics.
+
+static std::string describe_value_type(const XPathVal &Value)
+{
+   switch (Value.Type) {
+      case XPVT::Boolean: return std::string("boolean");
+      case XPVT::Number: return std::string("numeric");
+      case XPVT::String: return std::string("string");
+      case XPVT::Date: return std::string("date");
+      case XPVT::Time: return std::string("time");
+      case XPVT::DateTime: return std::string("dateTime");
+      case XPVT::NodeSet: return std::string("node sequence");
+      case XPVT::Map: return std::string("map");
+      case XPVT::Array: return std::string("array");
+   }
+   return std::string("value");
+}
+
+//********************************************************************************************************************
+// Atomises a runtime value and enforces single-item cardinality for lookup keys.
+
+//********************************************************************************************************************
 // Extracts the string value of a node-set item at the specified index, with fallback to node string conversion.
 
 static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
@@ -122,6 +187,44 @@ static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
    }
 
    return std::string();
+}
+
+//********************************************************************************************************************
+// Atomises a runtime value and enforces single-item cardinality for lookup keys.
+
+static std::optional<XPathVal> atomize_singleton(XPathEvaluator &Evaluator, const XPathVal &Value,
+   const XPathNode *ContextNode, std::string_view Description)
+{
+   size_t item_count = sequence_item_count(Value);
+
+   if (item_count IS 0) {
+      auto message = std::format("XPTY0004: {} requires a single item, but the operand was empty.", Description);
+      Evaluator.record_error(message, ContextNode, true);
+      Evaluator.expression_unsupported = true;
+      return std::nullopt;
+   }
+
+   if (item_count > 1) {
+      auto message = std::format("XPTY0004: {} requires a single item, but the operand had {} items.", Description, item_count);
+      Evaluator.record_error(message, ContextNode, true);
+      Evaluator.expression_unsupported = true;
+      return std::nullopt;
+   }
+
+   if (Value.Type IS XPVT::NodeSet) {
+      std::string lexical = nodeset_item_string(Value, 0);
+      return XPathVal(std::string(lexical));
+   }
+
+   if ((Value.Type IS XPVT::Map) or (Value.Type IS XPVT::Array)) {
+      auto message = std::format("XPTY0004: {} requires an atomic value, but encountered a {}.",
+         Description, describe_value_type(Value));
+      Evaluator.record_error(message, ContextNode, true);
+      Evaluator.expression_unsupported = true;
+      return std::nullopt;
+   }
+
+   return Value;
 }
 
 //********************************************************************************************************************
@@ -199,6 +302,21 @@ static std::optional<long long> parse_integer_lexical(std::string_view Value, lo
    if (parsed_value < Minimum) return std::nullopt;
    if (parsed_value > Maximum) return std::nullopt;
    return parsed_value;
+}
+
+//********************************************************************************************************************
+// Parses a lookup index from lexical form, enforcing the array index constraints.
+
+static std::optional<long long> resolve_lookup_integer(std::string_view Lexical, XPathEvaluator &Evaluator,
+   const XPathNode *ContextNode, std::string_view Description)
+{
+   auto parsed = parse_integer_lexical(Lexical, 1, std::numeric_limits<long long>::max());
+   if (parsed.has_value()) return parsed;
+
+   auto message = std::format("FOAY0001: {} must be a positive integer.", Description);
+   Evaluator.record_error(message, ContextNode, true);
+   Evaluator.expression_unsupported = true;
+   return std::nullopt;
 }
 
 static thread_local std::unordered_map<std::string, std::weak_ptr<xml::schema::SchemaTypeDescriptor>> cast_target_cache;
@@ -1064,6 +1182,98 @@ XPathVal XPathEvaluator::handle_literal(const XPathNode *Node, uint32_t CurrentP
 {
    (void)CurrentPrefix;
    return XPathVal(std::string(Node->get_value_view()));
+}
+
+//********************************************************************************************************************
+// Evaluates a map constructor node by materialising each key/value pair into runtime storage.
+
+XPathVal XPathEvaluator::handle_map_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) {
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   auto storage = std::make_shared<XPathMapStorage>();
+   storage->entries.reserve(Node->map_entry_count());
+
+   for (size_t index = 0; index < Node->map_entry_count(); ++index) {
+      const auto *entry = Node->get_map_entry(index);
+      if (!entry or !entry->key_expression or !entry->value_expression) {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+
+      auto key_value = evaluate_expression(entry->key_expression.get(), CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      auto atomised_key = atomize_singleton(*this, key_value, entry->key_expression.get(), "Map constructor key");
+      if (!atomised_key.has_value()) return XPathVal();
+
+      std::string canonical_key = atomised_key->to_string();
+
+      auto value_result = evaluate_expression(entry->value_expression.get(), CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      auto update_entry = [&](XPathMapEntry &Target) {
+         store_value_in_sequence(value_result, Target.value);
+      };
+
+      bool replaced = false;
+      for (auto &existing : storage->entries) {
+         if (existing.key IS canonical_key) {
+            update_entry(existing);
+            replaced = true;
+            break;
+         }
+      }
+
+      if (!replaced) {
+         XPathMapEntry stored;
+         stored.key = std::move(canonical_key);
+         update_entry(stored);
+         storage->entries.push_back(std::move(stored));
+      }
+   }
+
+   XPathVal result;
+   result.Type = XPVT::Map;
+   result.map_storage = std::move(storage);
+   return result;
+}
+
+//********************************************************************************************************************
+// Evaluates an array constructor node and materialises each member expression.
+
+XPathVal XPathEvaluator::handle_array_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) {
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   auto storage = std::make_shared<XPathArrayStorage>();
+   storage->members.reserve(Node->array_member_count());
+
+   for (size_t index = 0; index < Node->array_member_count(); ++index) {
+      auto *member = Node->get_array_member(index);
+      if (!member) {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+
+      auto member_value = evaluate_expression(member, CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      XPathValueSequence stored;
+      store_value_in_sequence(member_value, stored);
+      storage->members.push_back(std::move(stored));
+   }
+
+   XPathVal result;
+   result.Type = XPVT::Array;
+   result.array_storage = std::move(storage);
+   return result;
 }
 
 //********************************************************************************************************************
@@ -2763,25 +2973,7 @@ XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPa
       append_value_to_sequence(left_value, entries, next_constructed_node_id, constructed_nodes);
       append_value_to_sequence(right_value, entries, next_constructed_node_id, constructed_nodes);
 
-      if (entries.empty()) {
-         NODES empty_nodes;
-         return XPathVal(empty_nodes);
-      }
-
-      NODES combined_nodes;
-      combined_nodes.reserve(entries.size());
-      std::vector<const XMLAttrib *> combined_attributes;
-      combined_attributes.reserve(entries.size());
-      std::vector<std::string> combined_strings;
-      combined_strings.reserve(entries.size());
-
-      for (auto &entry : entries) {
-         combined_nodes.push_back(entry.node);
-         combined_attributes.push_back(entry.attribute);
-         combined_strings.push_back(std::move(entry.string_value));
-      }
-
-      XPathVal result(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+      XPathVal result = nodeset_from_sequence_entries(entries);
       if (not prolog_ordering_is_ordered()) result.preserve_node_order = true;
       return result;
    }
@@ -2896,6 +3088,305 @@ XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPa
    range_result.node_set_string_override.reset();
    return range_result;
 }
+
+//********************************************************************************************************************
+// Materialises a vector of sequence entries into a runtime node-set value.
+
+XPathVal XPathEvaluator::nodeset_from_sequence_entries(const std::vector<SequenceEntry> &Entries)
+{
+   if (Entries.empty()) {
+      return XPathVal(pf::vector<XTag *>{});
+   }
+
+   NODES combined_nodes;
+   combined_nodes.reserve(Entries.size());
+   std::vector<const XMLAttrib *> combined_attributes;
+   combined_attributes.reserve(Entries.size());
+   std::vector<std::string> combined_strings;
+   combined_strings.reserve(Entries.size());
+
+   for (const auto &entry : Entries) {
+      combined_nodes.push_back(entry.node);
+      combined_attributes.push_back(entry.attribute);
+      combined_strings.push_back(entry.string_value);
+   }
+
+   auto result = XPathVal(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+   result.preserve_node_order = false;
+   return result;
+}
+
+//********************************************************************************************************************
+// Converts a stored XPathValueSequence back into a runtime value, preserving sequence semantics.
+
+XPathVal XPathEvaluator::materialise_sequence_value(const XPathValueSequence &Sequence)
+{
+   if (Sequence.items.empty()) {
+      return XPathVal(pf::vector<XTag *>{});
+   }
+
+   if (Sequence.items.size() IS 1) {
+      return clone_xpath_value(Sequence.items.front());
+   }
+
+   std::vector<SequenceEntry> entries;
+   entries.reserve(Sequence.items.size());
+   for (const auto &stored : Sequence.items) {
+      XPathVal restored = clone_xpath_value(stored);
+      append_value_to_sequence(restored, entries, next_constructed_node_id, constructed_nodes);
+   }
+
+   return nodeset_from_sequence_entries(entries);
+}
+
+//********************************************************************************************************************
+// Concatenates multiple XPath values into a single sequence, used for lookup wildcards.
+
+XPathVal XPathEvaluator::concatenate_sequence_values(const std::vector<XPathVal> &Values)
+{
+   if (Values.empty()) {
+      return XPathVal(pf::vector<XTag *>{});
+   }
+
+   if (Values.size() IS 1) {
+      return Values.front();
+   }
+
+   std::vector<SequenceEntry> entries;
+   for (const auto &value : Values) {
+      append_value_to_sequence(value, entries, next_constructed_node_id, constructed_nodes);
+   }
+
+   return nodeset_from_sequence_entries(entries);
+}
+
+//********************************************************************************************************************
+// Evaluates chained lookup operators against the supplied base expression.
+
+XPathVal XPathEvaluator::handle_lookup_expression(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) {
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   auto *base = Node->get_child_safe(0);
+   if (!base) {
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   auto current_value = evaluate_expression(base, CurrentPrefix);
+   if (expression_unsupported) return XPathVal();
+
+   for (size_t index = 0; index < Node->lookup_specifier_count(); ++index) {
+      const auto *specifier = Node->get_lookup_specifier(index);
+      if (!specifier) {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+
+      current_value = apply_lookup_to_value(current_value, *specifier, CurrentPrefix, Node);
+      if (expression_unsupported) return XPathVal();
+   }
+
+   return current_value;
+}
+
+//********************************************************************************************************************
+// Applies a single lookup specifier to the provided value, dispatching by runtime type.
+
+XPathVal XPathEvaluator::apply_lookup_to_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+   uint32_t CurrentPrefix, const XPathNode *ContextNode)
+{
+   switch (BaseValue.Type) {
+      case XPVT::Map:
+         return lookup_map_value(BaseValue, Specifier, CurrentPrefix, ContextNode);
+
+      case XPVT::Array:
+         return lookup_array_value(BaseValue, Specifier, CurrentPrefix, ContextNode);
+
+      case XPVT::NodeSet:
+         return lookup_nodeset_value(BaseValue, Specifier, ContextNode);
+
+      default: {
+         auto message = std::format("XPTY0004: Lookup operator cannot be applied to {} values.",
+            describe_value_type(BaseValue));
+         record_error(message, ContextNode, true);
+         expression_unsupported = true;
+         return XPathVal();
+      }
+   }
+}
+
+//********************************************************************************************************************
+// Performs lookup semantics for map values, supporting literal, expression, and wildcard keys.
+
+XPathVal XPathEvaluator::lookup_map_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+   uint32_t CurrentPrefix, const XPathNode *ContextNode)
+{
+   auto storage = BaseValue.map_storage;
+   if (!storage) return XPathVal(pf::vector<XTag *>{});
+
+   if (Specifier.kind IS XPathLookupSpecifierKind::Wildcard) {
+      std::vector<XPathVal> concatenated;
+      concatenated.reserve(storage->entries.size());
+      for (const auto &entry : storage->entries) {
+         concatenated.push_back(materialise_sequence_value(entry.value));
+      }
+      return concatenate_sequence_values(concatenated);
+   }
+
+   std::string lookup_key;
+   if ((Specifier.kind IS XPathLookupSpecifierKind::NCName) or (Specifier.kind IS XPathLookupSpecifierKind::IntegerLiteral)) {
+      lookup_key = Specifier.literal_value;
+   }
+   else if (Specifier.kind IS XPathLookupSpecifierKind::Expression) {
+      if (!Specifier.expression) {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+
+      auto key_value = evaluate_expression(Specifier.expression.get(), CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      auto atomised_key = atomize_singleton(*this, key_value, Specifier.expression.get(), "Lookup expression");
+      if (!atomised_key.has_value()) return XPathVal();
+      lookup_key = atomised_key->to_string();
+   }
+   else {
+      record_error("XPTY0004: Map lookup requires an NCName, integer, or expression key.", ContextNode, true);
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   for (const auto &entry : storage->entries) {
+      if (entry.key IS lookup_key) {
+         return materialise_sequence_value(entry.value);
+      }
+   }
+
+   return XPathVal(pf::vector<XTag *>{});
+}
+
+//********************************************************************************************************************
+// Performs lookup semantics for array values including wildcard expansion.
+
+XPathVal XPathEvaluator::lookup_array_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+   uint32_t CurrentPrefix, const XPathNode *ContextNode)
+{
+   auto storage = BaseValue.array_storage;
+   if (!storage) return XPathVal(pf::vector<XTag *>{});
+
+   if (Specifier.kind IS XPathLookupSpecifierKind::Wildcard) {
+      std::vector<XPathVal> concatenated;
+      concatenated.reserve(storage->members.size());
+      for (const auto &member : storage->members) {
+         concatenated.push_back(materialise_sequence_value(member));
+      }
+      return concatenate_sequence_values(concatenated);
+   }
+
+   std::optional<long long> resolved_index;
+   if (Specifier.kind IS XPathLookupSpecifierKind::IntegerLiteral) {
+      resolved_index = resolve_lookup_integer(Specifier.literal_value, *this, ContextNode, "Array lookup index");
+   }
+   else if (Specifier.kind IS XPathLookupSpecifierKind::Expression) {
+      if (!Specifier.expression) {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+
+      auto key_value = evaluate_expression(Specifier.expression.get(), CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      auto atomised = atomize_singleton(*this, key_value, Specifier.expression.get(), "Array lookup index");
+      if (!atomised.has_value()) return XPathVal();
+      resolved_index = resolve_lookup_integer(atomised->to_string(), *this, Specifier.expression.get(), "Array lookup index");
+   }
+   else {
+      record_error("XPTY0004: Array lookup requires an integer key or '*'.", ContextNode, true);
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   if (!resolved_index.has_value()) return XPathVal();
+
+   long long index_one_based = *resolved_index;
+   if ((index_one_based < 1) or ((size_t)index_one_based > storage->members.size())) {
+      auto message = std::format("FOAY0001: Array index {} is out of range.", index_one_based);
+      record_error(message, ContextNode, true);
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   size_t zero_based = (size_t)(index_one_based - 1);
+   return materialise_sequence_value(storage->members[zero_based]);
+}
+
+//********************************************************************************************************************
+// Performs lookup semantics for node sequences by selecting matching attributes or child elements.
+
+XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+   const XPathNode *ContextNode)
+{
+   if ((Specifier.kind != XPathLookupSpecifierKind::NCName) and (Specifier.kind != XPathLookupSpecifierKind::Wildcard)) {
+      record_error("XPTY0004: Node lookup supports only NCName or '*' keys.", ContextNode, true);
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
+   bool wildcard = (Specifier.kind IS XPathLookupSpecifierKind::Wildcard);
+   std::string target = wildcard ? std::string() : Specifier.literal_value;
+
+   pf::vector<XTag *> matched_nodes;
+   matched_nodes.reserve(BaseValue.node_set.size());
+   std::vector<const XMLAttrib *> matched_attributes;
+   matched_attributes.reserve(BaseValue.node_set.size());
+   std::vector<std::string> matched_strings;
+   matched_strings.reserve(BaseValue.node_set.size());
+
+   size_t item_count = sequence_item_count(BaseValue);
+   for (size_t index = 0; index < item_count; ++index) {
+      const XMLAttrib *attribute = (index < BaseValue.node_set_attributes.size()) ?
+         BaseValue.node_set_attributes[index] : nullptr;
+      XTag *node = (index < BaseValue.node_set.size()) ? BaseValue.node_set[index] : nullptr;
+      if (attribute) continue; // Attribute nodes do not support lookup on their own
+      if (!node) continue;
+
+      auto collect_attribute = [&](XMLAttrib &Attrib) {
+         matched_nodes.push_back(node);
+         matched_attributes.push_back(&Attrib);
+         matched_strings.push_back(Attrib.Value);
+      };
+
+      auto collect_child = [&](XTag &Child) {
+         matched_nodes.push_back(&Child);
+         matched_attributes.push_back(nullptr);
+         matched_strings.push_back(XPathVal::node_string_value(&Child));
+      };
+
+      for (size_t attr_index = 1; attr_index < node->Attribs.size(); ++attr_index) {
+         auto &attrib = node->Attribs[attr_index];
+         if (!wildcard and (attrib.Name != target)) continue;
+         collect_attribute(attrib);
+      }
+
+      for (auto &child : node->Children) {
+         if (!child.isTag()) continue;
+         if (!wildcard) {
+            if (child.Attribs.empty()) continue;
+            if (child.Attribs[0].Name != target) continue;
+         }
+         collect_child(child);
+      }
+   }
+
+   if (matched_nodes.empty()) return XPathVal(pf::vector<XTag *>{});
+
+   return XPathVal(matched_nodes, std::nullopt, matched_strings, matched_attributes);
+}
+
 
 //********************************************************************************************************************
 // Evaluates arithmetic binary operators and returns the computed value.
@@ -3266,6 +3757,9 @@ static const ankerl::unordered_dense::map<XQueryNodeType, XPathEvaluator::NodeEv
    {XQueryNodeType::NUMBER, &XPathEvaluator::handle_number},
    {XQueryNodeType::LITERAL, &XPathEvaluator::handle_literal},
    {XQueryNodeType::STRING, &XPathEvaluator::handle_literal},
+   {XQueryNodeType::MAP_CONSTRUCTOR, &XPathEvaluator::handle_map_constructor},
+   {XQueryNodeType::ARRAY_CONSTRUCTOR, &XPathEvaluator::handle_array_constructor},
+   {XQueryNodeType::LOOKUP_EXPRESSION, &XPathEvaluator::handle_lookup_expression},
    {XQueryNodeType::CAST_EXPRESSION, &XPathEvaluator::handle_cast_expression},
    {XQueryNodeType::TREAT_AS_EXPRESSION, &XPathEvaluator::handle_treat_as_expression},
    {XQueryNodeType::INSTANCE_OF_EXPRESSION, &XPathEvaluator::handle_instance_of_expression},

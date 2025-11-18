@@ -126,11 +126,45 @@ function testConstructorAttributeSequences()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Map, array, and lookup constructors should evaluate and chain correctly
+
+function testMapArrayLookup()
+   local xml = obj.new('xml', { statement = '<root/>' })
+
+   local err, lookup_result = xml.mtEvaluate('string((map { "price": 10 })?price)')
+   assert(err == ERR_Okay, 'Map lookup failed to evaluate.')
+   assert(lookup_result == '10', 'Map lookup should return the stored value, got ' .. tostring(lookup_result))
+
+   err, lookup_result = xml.mtEvaluate('string((map { "nested": map { "inner": 5 } })?nested?inner)')
+   assert(err == ERR_Okay, 'Chained lookup evaluation failed.')
+   assert(lookup_result == '5', 'Chained lookup should reach inner map value, got ' .. tostring(lookup_result))
+
+   err, lookup_result = xml.mtEvaluate('string((array { "first", "second", "third" })?2)')
+   assert(err == ERR_Okay, 'Array lookup failed to evaluate.')
+   assert(lookup_result == 'second', 'Array lookup should select the second member, got ' .. tostring(lookup_result))
+
+   err, lookup_result = xml.mtEvaluate('string-join(map { "a": 1, "b": 2 }?*, ",")')
+   assert(err == ERR_Okay, 'Map wildcard lookup failed to evaluate.')
+   assert(lookup_result == '1,2', 'Map wildcard should concatenate entry values, got ' .. tostring(lookup_result))
+
+   err, lookup_result = xml.mtEvaluate('string-join(array { "x", "y" }?*, "|")')
+   assert(err == ERR_Okay, 'Array wildcard lookup failed to evaluate.')
+   assert(lookup_result == 'x|y', 'Array wildcard should flatten member sequences, got ' .. tostring(lookup_result))
+
+   err, lookup_result = xml.mtEvaluate('let $i := 2 return string((array { "red", "blue", "green" })?($i))')
+   assert(err == ERR_Okay, 'Dynamic array lookup failed to evaluate.')
+   assert(lookup_result == 'blue', 'Dynamic array lookup should honour the computed index, got ' .. tostring(lookup_result))
+
+   err = select(1, xml.mtEvaluate('array { 1 }?5'))
+   assert(err != ERR_Okay, 'Out-of-range array lookup should raise FOAY0001')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testDirectConstructorEvaluation', 'testDirectConstructorWhitespace', 'testComputedConstructors',
       'testNonElementConstructors', 'testDocumentConstructor',
-      'testConstructorAttributeSequences'
+      'testConstructorAttributeSequences', 'testMapArrayLookup'
    }
 }

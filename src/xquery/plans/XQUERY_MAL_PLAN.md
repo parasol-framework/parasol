@@ -111,6 +111,12 @@
     - Implement `atomize_singleton()` helper if needed to ensure lookup keys are typed correctly.
     - Provide conversions for `map(*)` and `array(*)` when interacting with `treat as`, `instance of`, and sequence type annotations.
 
+**Phase 4 status – completed**
+
+- Added evaluator handlers for map and array constructors so each key/member expression is materialised into the shared `XPathMapStorage`/`XPathArrayStorage`, overwriting duplicate map keys per spec and storing empty sequences without leaking resources.
+- Implemented lookup evaluation for `LOOKUP_EXPRESSION` nodes, covering literal, wildcard, and expression keys for maps and arrays (with FOAY0001 error reporting for invalid indexes) plus basic child/attribute selection when the base value is a node sequence.
+- Introduced reusable helpers that atomise dynamic keys, copy stored `XPathValueSequence` data back into runtime values, and concatenate lookup results so wildcard queries return the concatenated sequences expected by XQuery 3.0.
+
 ### Phase 5 – Function library support
 13. **Register namespaces and function signatures**
     - In `function_library.cpp`, register the `http://www.w3.org/2005/xpath-functions/map` and `/array` namespaces, binding built-in implementations for:

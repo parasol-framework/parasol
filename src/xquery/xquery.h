@@ -216,6 +216,7 @@ enum class SequenceItemKind {
 //********************************************************************************************************************
 
 struct XPathNode;
+struct SequenceEntry;
 
 class XPathErrorReporter {
    public:
@@ -1437,11 +1438,25 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal nodeset_from_sequence_entries(const std::vector<SequenceEntry> &Entries);
+   XPathVal materialise_sequence_value(const XPathValueSequence &Sequence);
+   XPathVal concatenate_sequence_values(const std::vector<XPathVal> &Values);
+   XPathVal apply_lookup_to_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_map_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_array_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_nodeset_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      const XPathNode *ContextNode);
 
    // Expression node type handlers
    XPathVal handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_number(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_literal(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_map_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_array_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_lookup_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix);
