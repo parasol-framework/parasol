@@ -33,6 +33,7 @@ For drag and drop operations, data can be requested from a source as follows:
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 #include <inttypes.h>
+#include <string_view>
 
 #include "lauxlib.h"
 #include "lj_obj.h"
@@ -48,7 +49,7 @@ static void key_event(evKey *, int, struct finput *);
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *Events, int Handle)
+[[nodiscard]] static ERR consume_input_events(const InputEvent *Events, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -94,18 +95,19 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
 //********************************************************************************************************************
 // Any Read accesses to the object will pass through here.
 
-static int input_index(lua_State *Lua)
+[[nodiscard]] static int input_index(lua_State *Lua)
 {
    pf::Log log;
    auto input = (struct finput *)luaL_checkudata(Lua, 1, "Fluid.input");
 
    if (input) {
-      CSTRING field;
-      if (!(field = luaL_checkstring(Lua, 2))) return 0;
+      auto field_str = luaL_checkstring(Lua, 2);
+      if (!field_str) return 0;
+      std::string_view field { field_str };
 
-      log.trace("input.index(#%d, %s)", input->SurfaceID, field);
+      log.trace("input.index(#%d, %s)", input->SurfaceID, field.data());
 
-      switch (strihash(field)) {
+      switch (strihash(field.data())) {
          case HASH_UNSUBSCRIBE:
             lua_pushvalue(Lua, 1); // Duplicate the interface reference
             lua_pushcclosure(Lua, input_unsubscribe, 1);
@@ -121,7 +123,7 @@ static int input_index(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: input = input.keyboard(SurfaceID, Function)
 
-static int input_keyboard(lua_State *Lua)
+[[nodiscard]] static int input_keyboard(lua_State *Lua)
 {
    pf::Log log("input.keyboard");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -197,7 +199,7 @@ static int input_keyboard(lua_State *Lua)
 //
 // Request an item of data from an existing object that can provision data.  Used to support drag and drop operations.
 
-static int input_request_item(lua_State *Lua)
+[[nodiscard]] static int input_request_item(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
@@ -219,7 +221,7 @@ static int input_request_item(lua_State *Lua)
 
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
-      CSTRING dt = lua_tostring(Lua, 3);
+      std::string_view dt { lua_tostring(Lua, 3) };
       if (pf::iequals("text", dt))              datatype = DATA::TEXT;
       else if (pf::iequals("raw", dt))          datatype = DATA::RAW;
       else if (pf::iequals("device_input", dt)) datatype = DATA::DEVICE_INPUT;
@@ -260,10 +262,10 @@ static int input_request_item(lua_State *Lua)
       log.branch();
       pf::ScopedObjectLock src(source_id);
       if (src.granted()) {
-         struct dcRequest dcr;
-         dcr.Item          = item;
-         dcr.Preference[0] = uint8_t(datatype);
-         dcr.Preference[1] = 0;
+         struct dcRequest dcr {
+            .Item = item,
+            .Preference = { char(datatype), 0 }
+         };
 
          auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));
          if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
@@ -278,7 +280,7 @@ static int input_request_item(lua_State *Lua)
 //
 // This functionality is a wrapper for the gfx::SubscribeInput() function.
 
-static int input_subscribe(lua_State *Lua)
+[[nodiscard]] static int input_subscribe(lua_State *Lua)
 {
    pf::Log log("input.subscribe");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -350,7 +352,7 @@ failed:
 //********************************************************************************************************************
 // Usage: error = input.unsubscribe()
 
-static int input_unsubscribe(lua_State *Lua)
+[[nodiscard]] static int input_unsubscribe(lua_State *Lua)
 {
    auto input = (struct finput *)get_meta(Lua, lua_upvalueindex(1), "Fluid.input");
    if (!input) {
@@ -374,7 +376,7 @@ static int input_unsubscribe(lua_State *Lua)
 //********************************************************************************************************************
 // Input garbage collecter.
 
-static int input_destruct(lua_State *Lua)
+[[nodiscard]] static int input_destruct(lua_State *Lua)
 {
    pf::Log log("input.destroy");
 
@@ -490,7 +492,7 @@ static void focus_event(evFocus *Event, int Size, lua_State *Lua)
 
 //********************************************************************************************************************
 
-static int input_tostring(lua_State *Lua)
+[[nodiscard]] static int input_tostring(lua_State *Lua)
 {
    auto input = (struct finput *)lua_touserdata(Lua, 1);
    if (input) lua_pushfstring(Lua, "Input handler for surface #%d", input->SurfaceID);
@@ -502,14 +504,14 @@ static int input_tostring(lua_State *Lua)
 
 void register_input_class(lua_State *Lua)
 {
-   static const struct luaL_Reg inputlib_functions[] = {
+   static constexpr struct luaL_Reg inputlib_functions[] = {
       { "subscribe",   input_subscribe },
       { "keyboard",    input_keyboard },
       { "requestItem", input_request_item },
       { nullptr, nullptr }
    };
 
-   static const struct luaL_Reg inputlib_methods[] = {
+   static constexpr struct luaL_Reg inputlib_methods[] = {
       { "__gc",       input_destruct },
       { "__tostring", input_tostring },
       { "__index",    input_index },
