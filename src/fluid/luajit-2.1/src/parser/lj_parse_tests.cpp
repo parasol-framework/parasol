@@ -25,7 +25,6 @@
 #include "parser/parse_types.h"
 #include "parser/token_stream.h"
 #include "parser/token_types.h"
-#include "parser/parser_entry_points.h"
 #include "lj_parse.h"
 #include "../../../defs.h"
 
@@ -242,7 +241,10 @@ static bool test_expression_entry_point(pf::Log& log)
    ParserContext& context = *harness->context;
    FuncState& fs = harness->fs;
    BCReg before = fs.freereg;
-   auto expression = parse_expression_ast(context);
+
+   AstBuilder builder(context);
+   auto expression = builder.parse_expression_entry(0);
+
    if (not expression.ok()) {
       log.error("expression entry parser reported failure");
       auto diagnostics = context.diagnostics().entries();
@@ -264,7 +266,7 @@ static bool test_expression_entry_point(pf::Log& log)
    return true;
 }
 
-static bool test_expression_list_entry_point(pf::Log& log)
+static bool test_expression_list_entry_point(pf::Log &log)
 {
    auto harness = make_expression_harness("value, call(arg), 99");
    if (not harness.has_value()) {
@@ -275,7 +277,8 @@ static bool test_expression_list_entry_point(pf::Log& log)
    ParserContext& context = *harness->context;
    FuncState& fs = harness->fs;
    BCReg before = fs.freereg;
-   auto list = parse_expression_list_ast(context);
+   AstBuilder builder(context);
+   auto list = builder.parse_expression_list_entry();
    if (not list.ok()) {
       log.error("expression list entry parser reported failure");
       auto diagnostics = context.diagnostics().entries();
@@ -613,6 +616,7 @@ struct TestCase {
 extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
+
    constexpr std::array<TestCase, 6> tests = { {
       { "literal_binary_ast", test_literal_binary_expr },
       { "expression_entry_point", test_expression_entry_point },
