@@ -457,7 +457,7 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
 
    GCfunc* fn = funcV(L->top - 1);
    BytecodeSnapshot snapshot = snapshot_proto(funcproto(fn));
-   L->top--;
+   lua_pop(L, 1);
    return snapshot;
 }
 
