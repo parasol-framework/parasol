@@ -40,6 +40,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+#include "lj_parse.h"
 
 #include "hashes.h"
 
@@ -54,6 +55,8 @@ OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
 OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
+bool glJITTrace = false;
+bool glJITDiagnose = false;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
@@ -296,6 +299,22 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    call.Routine = (APTR)msg_thread_script_callback;
    AddMsgHandler(MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
 
+   pf::vector<std::string> *pargs;
+   auto task = CurrentTask();
+   if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
+      pf::vector<std::string> &args = *pargs;
+      for (unsigned i=0; i < args.size(); i++) {
+         if (pf::iequals(args[i], "--jit:trace")) {
+            // Enable JIT tracing of compiled functions.
+            glJITTrace = true;
+         }
+         else if (pf::iequals(args[i], "--jit:diagnose")) {
+            // Collect diagnostics on JIT compilation issues.
+            glJITDiagnose = true;
+         }
+      }
+   }
+
    return create_fluid();
 }
 
@@ -312,6 +331,17 @@ static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
    return ERR::Okay;
+}
+
+static void MODTest(CSTRING Options, int *Passed, int *Total)
+{
+   pf::Log log("FluidTests");
+#ifdef ENABLE_UNIT_TESTS
+   log.branch("Running Fluid unit tests...");
+   parser_unit_tests(*Passed, *Total);
+#else
+   log.warning("Unit tests are disabled in this build.");
+#endif
 }
 
 /*********************************************************************************************************************
@@ -841,5 +871,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, nullptr)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

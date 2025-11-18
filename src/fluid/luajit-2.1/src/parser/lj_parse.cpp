@@ -1,5 +1,5 @@
 // Lua parser
-// 
+//
 // Copyright (C) 2025 Paul Manias
 
 #define lj_parse_c
@@ -59,6 +59,7 @@ static const struct {
 #include "parser/parse_expr.cpp"
 #include "parser/parse_operators.cpp"
 #include "parser/parse_stmt.cpp"
+#include "../../../defs.h"
 
 namespace {
 
@@ -160,33 +161,41 @@ static void run_ast_pipeline(ParserContext& context)
 
 }  // namespace
 
-static ParserConfig make_parser_config(lua_State& state)
+static ParserConfig make_parser_config(lua_State &State)
 {
-   (void)state;
+   pf::Log log("FluidParser");
    ParserConfig config;
-#if defined(PARASOL_PARSER_COLLECT_DIAGNOSTICS)
-   config.abort_on_error = false;
-   config.max_diagnostics = 32;
-#endif
-#if defined(PARASOL_PARSER_TRACE)
-   config.trace_tokens = true;
-   config.trace_expectations = true;
-#endif
+
 #if defined(PARASOL_PARSER_ENABLE_AST_PIPELINE)
    config.enable_ast_pipeline = true;
 #endif
+
 #if defined(PARASOL_PARSER_TRACE_AST_BOUNDARY)
    config.trace_ast_boundaries = true;
 #endif
+
 #if defined(PARASOL_PARSER_TRACE_BYTECODE)
    config.dump_ast_bytecode = true;
 #endif
+
+   if (glJITDiagnose) {
+      log.msg("JIT diagnostic mode enabled.");
+      config.abort_on_error = false;
+      config.max_diagnostics = 32;
+   }
+
+   if (glJITTrace) {
+      log.msg("JIT trace mode enabled.");
+      config.trace_tokens = true;
+      config.trace_expectations = true;
+   }
+
    return config;
 }
 
 // Entry point of bytecode parser.
 
-GCproto * lj_parse(LexState *State)
+extern GCproto * lj_parse(LexState *State)
 {
    FuncState fs;
    FuncScope bl;

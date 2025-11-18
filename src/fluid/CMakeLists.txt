@@ -4,6 +4,8 @@
 # SPECIAL FEATURES:
 #  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
 #  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
+#  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to run test_unit_tests.fluid with
+#    the --log-api option to view any output.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -36,11 +38,15 @@
 #    - buildvm generates VM assembly or object code
 #
 # 4. Library Compilation:
-#    - Compiles ljamalg.cpp (amalgamated LuaJIT source)
 #    - Links with generated VM code to create static library
 
 set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
+
+# Enable unit tests for deep testing of non-release builds only.
+if (NOT DEFINED ENABLE_UNIT_TESTS)
+   set (ENABLE_UNIT_TESTS ON)
+endif ()
 
 # IDL processing for headers and documentation
 
@@ -95,6 +101,11 @@ if (PARASOL_PARSER_TRACE)
    list(APPEND LUAJIT_NON_MSVC_DEFS -DPARASOL_PARSER_TRACE)
 endif ()
 
+if (ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_COMMON_DEFS ENABLE_UNIT_TESTS)
+   list(APPEND LUAJIT_NON_MSVC_DEFS -DENABLE_UNIT_TESTS)
+endif ()
+
 # Common host tool sources (used by both MSVC and non-MSVC builds)
 set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
 set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
@@ -144,8 +155,6 @@ if (MSVC)
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
@@ -154,8 +163,6 @@ if (MSVC)
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
       "${LUAJIT_SRC}/debug/lj_*.h"
-      "${LUAJIT_SRC}/lib/lj_*.h"
-      "${LUAJIT_SRC}/parser/lj_*.h"
       "${LUAJIT_SRC}/runtime/lj_*.h"
       "${LUAJIT_SRC}/lj_*.h")
 
@@ -518,8 +525,6 @@ else ()
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
@@ -535,7 +540,8 @@ else ()
       # Create custom command to compile each source file with explicit flags
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
-         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS} -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
+         COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
+            -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
@@ -597,8 +603,6 @@ else ()
       "${LUAJIT_SRC}/lib_*.cpp"
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
    )
 endif ()
@@ -617,7 +621,12 @@ endif ()
 
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
-   "fluid_io.cpp" "fluid_class.cpp")
+   "fluid_io.cpp" "fluid_class.cpp"
+   "${LUAJIT_SRC}/lib/lj_lib.cpp"
+   "${LUAJIT_SRC}/lib/lj_load.cpp"
+   "${LUAJIT_SRC}/parser/lj_parse.cpp"
+   "${LUAJIT_SRC}/parser/lj_lex.cpp"
+   "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
 
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")
@@ -639,6 +648,15 @@ target_link_libraries (${MOD} PRIVATE
    ${LUAJIT_LINK}
    ${MATH_LINK}) # The link order matters, math must come last
 
+target_compile_definitions(${MOD} PRIVATE
+   LUAJIT_DISABLE_FFI
+   LUAJIT_DISABLE_BUFFER
+   LUAJIT_ENABLE_LUA52COMPAT)
+
+if (ENABLE_UNIT_TESTS)
+   target_compile_definitions(${MOD} PRIVATE ENABLE_UNIT_TESTS)
+endif ()
+
 if (DISABLE_DISPLAY)
    target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)
 endif ()
@@ -647,7 +665,7 @@ endif ()
 
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
-   bitshift bitwise if_empty presence blank ternary table complex stress
+   bitshift bitwise if_empty presence blank ternary table complex stress unit_tests
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

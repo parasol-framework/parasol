@@ -72,7 +72,7 @@ void LexState::keepcdata(TValue* tv, GCcdata* cd)
 }
 #endif
 
-LJ_USED LJ_FUNC GCstr* lj_parse_keepstr(LexState* ls, const char* str, size_t len)
+extern GCstr * lj_parse_keepstr(LexState* ls, const char* str, size_t len)
 {
    return ls->keepstr(std::string_view(str, len));
 }

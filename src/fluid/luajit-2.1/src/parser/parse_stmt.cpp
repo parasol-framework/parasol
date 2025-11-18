@@ -952,10 +952,10 @@ bool LexState::parse_stmt(ParserContext &Context)
       case TokenKind::ContinueToken: this->parse_continue(); break;
       case TokenKind::BreakToken: this->parse_break(); break;
       case TokenKind::Semicolon: Context.tokens().advance(); break;
-      case TokenKind::DoToken: 
-         Context.tokens().advance(); 
-         this->parse_block(Context); 
-         this->lex_match(TK_end, TK_do, line); 
+      case TokenKind::DoToken:
+         Context.tokens().advance();
+         this->parse_block(Context);
+         this->lex_match(TK_end, TK_do, line);
          break;
       default: this->parse_call_assign(Context); break;
    }

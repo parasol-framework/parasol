@@ -1,7 +1,9 @@
 # XQuery Module
 
 # Enable unit tests for deep testing of non-release builds only.
-#set (ENABLE_UNIT_TESTS ON)
+if (NOT DEFINED ENABLE_UNIT_TESTS)
+#   set (ENABLE_UNIT_TESTS ON)
+endif ()
 
 set (MOD xquery)
 set (INC_MOD_XQUERY TRUE PARENT_SCOPE)
@@ -19,7 +21,7 @@ set_module_defaults (${MOD} "Xq")
 
 # XQuery Support Library
 
-add_library (xquery_lib OBJECT
+add_library (${MOD}_lib OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_common.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_navigation.cpp"
@@ -37,15 +39,15 @@ add_library (xquery_lib OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_tokeniser.cpp")
 
-target_include_directories (xquery_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
-set_target_properties (xquery_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_compile_definitions("PRV_XML" "PRV_XQUERY_MODULE")
-add_dependencies (xquery build_headers xml)
+target_include_directories (${MOD}_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
+set_target_properties (${MOD}_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions (${MOD}_lib PRIVATE "PRV_XML" "PRV_XQUERY_MODULE")
+add_dependencies (${MOD} build_headers xml)
 
 # Enable precompiled headers for the xquery functions object library
 # This must be done before the module target to avoid circular dependencies
 
-target_precompile_headers(xquery_lib PRIVATE
+target_precompile_headers(${MOD}_lib PRIVATE
    # Heavy STL headers used across most files
    <string>
    <string_view>
@@ -70,17 +72,17 @@ target_precompile_headers(xquery_lib PRIVATE
 
 # Enable unity builds to speed up compilation of the xquery functions library
 
-set_target_properties(xquery_lib PROPERTIES UNITY_BUILD ON)
-set_target_properties(xquery_lib PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
+set_target_properties(${MOD}_lib PROPERTIES UNITY_BUILD ON)
+set_target_properties(${MOD}_lib PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
 
 # Module Code
 
 target_sources (${MOD} PRIVATE
-   $<TARGET_OBJECTS:xquery_lib>
+   $<TARGET_OBJECTS:${MOD}_lib>
    $<TARGET_OBJECTS:xml_schema>)
 
 if (ENABLE_UNIT_TESTS)
-   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+   target_compile_definitions(${MOD}_lib PRIVATE "ENABLE_UNIT_TESTS")
 endif ()
 
 # Tests

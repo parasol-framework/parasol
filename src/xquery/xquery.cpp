@@ -63,7 +63,6 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 
 static ERR MODOpen(OBJECTPTR Module)
 {
-   Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
 
@@ -74,45 +73,22 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
-namespace xq {
-
-/*********************************************************************************************************************
-
--FUNCTION-
-UnitTest: Private function for internal unit testing of the XQuery module.
-
-Private function for internal unit testing of the XQuery module.
-
--INPUT-
-ptr Meta: Optional pointer meaningful to the test functions.
-
--ERRORS-
-Okay: All tests passed.
-Failed: One or more tests failed.
-
--END-
-
-*********************************************************************************************************************/
-
-ERR UnitTest(APTR Meta)
+static void MODTest(CSTRING Options, int *Passed, int *Total)
 {
 #ifdef ENABLE_UNIT_TESTS
-   return run_unit_tests(Meta);
+   run_unit_tests(*Passed, *Total);
 #else
-   return ERR::Okay;
+   pf::Log log(__FUNCTION__);
+   log.warning("Unit tests are disabled in this build.");
 #endif
 }
 
-} // namespace
+//********************************************************************************************************************
 
 #include "xquery_class.cpp"
-
-//********************************************************************************************************************
 
 static STRUCTS glStructures = {
 };
 
-//********************************************************************************************************************
-
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MODTest, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xquery_module() { return &ModHeader; }

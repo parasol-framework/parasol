@@ -895,5 +895,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

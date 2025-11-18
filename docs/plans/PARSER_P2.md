@@ -66,6 +66,12 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 3. Implement bytecode comparison harnesses that run both the legacy and AST-driven emitters (guarded by a build flag) and assert bytecode equivalence for curated samples. Failures should produce actionable diffs.
 4. Profile parsing/emission time on representative workloads to ensure the extra AST allocation overhead stays within acceptable limits; document mitigation strategies (arena allocators, node pooling) if necessary.
 
+NOTE:
+- Unit tests can be added to lj_parse_tests.cpp and are executed by running the Flute script `src/fluid/tests/test_unit_tests.fluid` directly.  Use printf or cout for sending output.
+- The `--jit:trace` commandline option enables the associated diagnosis options in make_parser_config()
+- The `--jit:diagnose` commandline option enables the associated tracing options in make_parser_config()
+- Additional commandline options can be added to fluid.cpp in the MODInit() function if necessary.
+
 ### 6. Documentation and developer enablement
 1. Update `docs/plans/LUAJIT_PARSER_REDESIGN.md` Phase 2 section summary (once implementation begins) with progress notes, caveats, and links to the new files.
 2. Create contributor notes (either inline in headers or a short guide under `docs/plans/`) describing how to add new AST nodes, how the emitter visitor should be extended, and how diagnostics tie into spans.

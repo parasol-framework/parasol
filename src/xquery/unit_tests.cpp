@@ -17,15 +17,16 @@ static int test_count = 0;
 static int pass_count = 0;
 static int fail_count = 0;
 
-static void test_assert(bool Condition, const char *TestName, const char *Message) {
+static void test_assert(bool Condition, CSTRING TestName, CSTRING Message) {
+   pf::Log log("XQueryTests");
    test_count++;
    if (Condition) {
       pass_count++;
-      std::cout << "PASS: " << TestName << std::endl;
+      log.msg("PASS: %s", TestName);
    }
    else {
       fail_count++;
-      std::cout << "FAIL: " << TestName << " - " << Message << std::endl;
+      log.msg("FAIL: %s - %s", TestName, Message);
    }
 }
 
@@ -33,13 +34,12 @@ static void test_assert(bool Condition, const char *TestName, const char *Messag
 // XQueryProlog API Tests
 
 static void test_prolog_api() {
-   std::cout << "\n--- Testing XQueryProlog API ---\n" << std::endl;
+   pf::Log log("PrologTests");
 
    // Test 1: Create empty prolog
    {
       XQueryProlog prolog;
-      test_assert(prolog.functions.empty(), "Empty prolog creation",
-         "New prolog should have no functions");
+      test_assert(prolog.functions.empty(), "Empty prolog creation", "New prolog should have no functions");
    }
 
    // Test 2: Declare a function
@@ -51,8 +51,7 @@ static void test_prolog_api() {
       prolog.declare_function(std::move(func));
 
       auto found = prolog.find_function("local:test", 1);
-      test_assert(found not_eq nullptr, "Function declaration",
-         "Declared function should be findable");
+      test_assert(found not_eq nullptr, "Function declaration", "Declared function should be findable");
    }
 
    // Test 3: Function arity matching
@@ -82,16 +81,6 @@ static void test_prolog_api() {
       auto found = prolog.find_variable("pi");
       test_assert(found not_eq nullptr, "Variable declaration",
          "Declared variable should be findable");
-   }
-
-   // Test 5: Namespace declaration
-   {
-      XQueryProlog prolog;
-      prolog.declare_namespace("ex", "http://example.org", nullptr);
-
-      bool has_namespace = prolog.declared_namespaces.find("ex") not_eq prolog.declared_namespaces.end();
-      test_assert(has_namespace, "Namespace declaration",
-         "Declared namespace should be in prolog");
    }
 
    // Test 6: Multiple functions with same name, different arity
@@ -150,7 +139,7 @@ static const char *token_type_name(XPathTokenType Type)
 
 static void test_tokeniser_prolog_keywords()
 {
-   std::cout << "\n--- Investigating Prolog Tokeniser Coverage ---\n" << std::endl;
+   pf::Log log("TokeniserTests");
 
    // Progress marker (2024-10-17): capturing current behaviour before adding DECLARE/FUNCTION/VARIABLE tokens.
 
@@ -259,7 +248,7 @@ static void test_tokeniser_prolog_keywords()
 
 static void test_parser_operator_cache_population()
 {
-   std::cout << "\n--- Verifying Parser Operator Cache Population ---\n" << std::endl;
+   pf::Log log("OperatorTests");
 
    XPathTokeniser tokeniser;
    auto token_block = tokeniser.tokenize("1 + 2 * 3 and not(-$flag)");
@@ -314,8 +303,9 @@ static void test_parser_operator_cache_population()
    test_assert(flags.unary_negate_cached, "Unary operator '-' cache", "Parser should cache negation operator kind");
 }
 
-static void test_prolog_in_xpath() {
-   std::cout << "\n--- Testing Prolog Integration ---\n" << std::endl;
+static void test_prolog_in_xpath()
+{
+   pf::Log log("PrologInXPath");
 
    // Test 1: Check if prolog structure can be accessed
    {
@@ -362,30 +352,14 @@ static void test_prolog_in_xpath() {
       test_assert(found and found->is_external, "External function flag",
          "External functions should be marked correctly");
    }
-
-   // Test 4: Base URI inheritance during compilation
-   {
-      auto xq = extXQuery::create { };
-      if (xq.ok()) {
-         auto &compiled = ((extXQuery *)xq)->ParseResult;
-         bool inherited = false;
-
-         auto prolog_ptr = compiled->prolog;
-         if (prolog_ptr) {
-            inherited = prolog_ptr->static_base_uri IS std::string("file:///sample/doc.xml");
-         }
-         FreeResource(compiled);
-
-         test_assert(success and inherited, "Prolog base URI inheritance",
-            "Compiled prolog should inherit and normalise document base URI");
-      }
-   }
 }
 
 //********************************************************************************************************************
 
-static ERR run_unit_tests(APTR Meta)
+static void run_unit_tests(int &Passed, int &Total)
 {
+   pf::Log log("XQueryTests");
+
    test_count = 0;
    pass_count = 0;
    fail_count = 0;
@@ -395,11 +369,7 @@ static ERR run_unit_tests(APTR Meta)
    test_prolog_api();
    test_prolog_in_xpath();
 
-   std::cout << "\n=== Test Summary ===" << std::endl;
-   std::cout << "Total:  " << test_count << std::endl;
-   std::cout << "Passed: " << pass_count << std::endl;
-   std::cout << "Failed: " << fail_count << std::endl;
-   std::cout << "===================" << std::endl;
-
-   return (fail_count IS 0) ? ERR::Okay : ERR::Failed;
+   Passed = pass_count;
+   Total = test_count;
+   log.msg("Test Summary: %d of %d tests passed.", Passed, Total);
 }

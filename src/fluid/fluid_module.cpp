@@ -51,6 +51,25 @@ void new_module(lua_State *Lua, objModule *Module)
 }
 
 //********************************************************************************************************************
+// Usage: passed, total, = mod.test(module, Options)
+
+static int module_test(lua_State *Lua)
+{
+   if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
+      CSTRING options = lua_tostring(Lua, 2);
+      int passed = 0, total = 0;
+      ((objModule *)mod->Module)->test(options, &passed, &total);
+      lua_pushinteger(Lua, passed);
+      lua_pushinteger(Lua, total);
+      return 2;
+   }
+   else {
+      luaL_argerror(Lua, 1, "Expected module.");
+      return 0;
+   }
+}
+
+//********************************************************************************************************************
 // Usage: module = mod.load('core')
 
 static int module_load(lua_State *Lua)
@@ -870,6 +889,7 @@ void register_module_class(lua_State *Lua)
    static const struct luaL_Reg modlib_functions[] = {
       { "new",  module_load },
       { "load", module_load },
+      { "test", module_test },
       { nullptr, nullptr}
    };
 

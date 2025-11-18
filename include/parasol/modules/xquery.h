@@ -194,26 +194,3 @@ namespace xq {
 using XQueryFunction = ERR (*)(objXQuery *Query, std::string_view FunctionName, const std::vector<XPathValue> &Input, XPathValue &Result, APTR Meta);
 
 } // namespace xq
-#ifdef PARASOL_STATIC
-#define JUMPTABLE_XQUERY [[maybe_unused]] static struct XQueryBase *XQueryBase = nullptr;
-#else
-#define JUMPTABLE_XQUERY struct XQueryBase *XQueryBase = nullptr;
-#endif
-
-struct XQueryBase {
-#ifndef PARASOL_STATIC
-   ERR (*_UnitTest)(APTR Meta);
-#endif // PARASOL_STATIC
-};
-
-#if !defined(PARASOL_STATIC) and !defined(PRV_XQUERY_MODULE)
-extern struct XQueryBase *XQueryBase;
-namespace xq {
-inline ERR UnitTest(APTR Meta) { return XQueryBase->_UnitTest(Meta); }
-} // namespace
-#else
-namespace xq {
-extern ERR UnitTest(APTR Meta);
-} // namespace
-#endif // PARASOL_STATIC
-

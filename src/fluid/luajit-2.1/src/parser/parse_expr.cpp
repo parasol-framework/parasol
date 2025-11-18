@@ -2,13 +2,6 @@
 
 #include "parser/parser_context.h"
 
-static void bcemit_presence_check(FuncState *, ExpDesc *);
-static void bcemit_binop(FuncState *, BinOpr, ExpDesc *, ExpDesc *);
-static void bcemit_unop(FuncState *, BCOp, ExpDesc *);
-static void bcemit_arith(FuncState *, BinOpr, ExpDesc *, ExpDesc *);
-static void bcemit_shift_call_at_base(FuncState *, const char *, MSize, ExpDesc *, ExpDesc *, BCReg);
-static void bcemit_unary_bit_call(FuncState *, const char *, MSize, ExpDesc *);
-static void bcemit_binop_left(FuncState *, BinOpr, ExpDesc *);
 static void expr_collapse_freereg(FuncState *, BCReg);
 
 static ParserError make_expr_error(ParserErrorCode Code, const Token &Token, std::string_view Message)
