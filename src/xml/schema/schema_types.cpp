@@ -319,6 +319,9 @@ namespace xml::schema
          case XPVT::Date:
          case XPVT::Time:
          case XPVT::DateTime: return SchemaType::XSDateTime;
+         case XPVT::Map:
+         case XPVT::Array:
+            return SchemaType::XPathString;
       }
 
       return SchemaType::XPathString;

@@ -34,6 +34,12 @@
    - Ensure `XPathValue::reset()` (or equivalent) releases map/array storage.
    - Update stringification routines (e.g., `xquery_class.cpp` conversions) so map/array results can be surfaced through API endpoints, even if displayed with placeholder text initially.
 
+**Phase 1 status – completed**
+
+- Audited the existing `XPathValue`/`XPathVal` storage rules, documenting that node sequences, attribute mirrors, and schema metadata live directly on the runtime struct and are cleared via a shared `reset()` routine. This informed how map/array containers needed to plug into the same lifecycle.
+- Extended the XML FDL definitions so `XPVT` now advertises `Map` and `Array`, the generated header exposes `XPathValueSequence`, `XPathMapStorage`, and `XPathArrayStorage`, and new shared-pointer fields live on `XPathValue`. A dedicated `XPathValue::reset()` implementation now clears all arenas, vectors, and composite containers to avoid leaks when values are recycled by the evaluator.
+- Updated the runtime helpers (`XPathVal::to_boolean()`, `to_number()`, `to_string()`, `is_empty()`, `size()`, schema-type mapping, and `XValueToString`) so map/array instances have sensible placeholder serialisation and obey the existing ownership model. With these pieces in place, the runtime can freely allocate, copy, and stringify composite values ahead of the parser/evaluator work.
+
 ### Phase 2 – Lexical support
 4. **Tokenise `map`, `array`, and lookup operator lexemes**
    - In `xquery_tokeniser.cpp`, add entries for `map`, `array`, and ensure `?` can be emitted both as occurrence indicator (existing) and as an infix lookup operator token when it appears between a primary expression and a name/test.

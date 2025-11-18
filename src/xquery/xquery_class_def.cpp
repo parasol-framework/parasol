@@ -24,6 +24,8 @@ static const struct FieldDef clXQueryXPVT[] = {
    { "Date", 0x00000004 },
    { "Time", 0x00000005 },
    { "Datetime", 0x00000006 },
+   { "Map", 0x00000007 },
+   { "Array", 0x00000008 },
    { nullptr, 0 }
 };
 

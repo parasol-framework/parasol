@@ -49,4 +49,6 @@ enum('XPVT', { type='int', start=0, comment='Type descriptors for XPathValue' },
    'String',
    'Date',
    'Time',
-   'DateTime')
+   'DateTime',
+   'Map',
+   'Array')
