@@ -1,0 +1,52 @@
+-- Phase 2 parser regression harness.
+--
+-- Execute via Flute so the tests are enumerated consistently:
+--    parasol tools/flute.fluid --log-warning file=src/fluid/tests/parser_phase2.fluid
+-- and append `--jit-options ast-pipeline` after the script path once the AST
+-- pipeline can compile Flute itself.
+
+local function compile_chunk(label, source)
+   local chunk, err = load(source, 'parser.phase2:' .. label)
+   assert(chunk, string.format('compile failed (%s): %s', label, tostring(err)))
+   local ok, runtime_err = pcall(chunk)
+   assert(ok, string.format('runtime failure (%s): %s', label, tostring(runtime_err)))
+   print('parser.phase2.ok', label)
+end
+
+function testPhase2Pipeline()
+   compile_chunk('function_literal', [[
+local function sample(a, b)
+   local total = (a or 0) + (b or 0)
+   return total * 2
+end
+
+return sample(3, 4)
+]])
+
+   compile_chunk('loop_and_defer', [[
+local total = 0
+for i = 1, 3 do
+   defer
+      total = total + 1
+   end
+   if i % 2 == 0 then
+      total += i
+   end
+end
+return total
+]])
+
+   compile_chunk('presence_expr', [[
+local data = { key = 'value' }
+local choice = data.key or 'fallback'
+return choice
+]])
+
+   print('parser.phase2.done')
+end
+
+return {
+   tests = {
+      'testPhase2Pipeline',
+   }
+}
