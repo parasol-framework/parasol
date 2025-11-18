@@ -17,7 +17,7 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_debug.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // ------------------------------------------------------------------------
 

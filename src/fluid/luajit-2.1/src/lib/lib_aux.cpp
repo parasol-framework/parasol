@@ -20,7 +20,7 @@
 #include "lj_err.h"
 #include "lj_state.h"
 #include "lj_trace.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 #if LJ_TARGET_POSIX
 #include <sys/wait.h>

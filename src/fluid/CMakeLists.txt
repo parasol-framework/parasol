@@ -159,7 +159,6 @@ if (MSVC)
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
-   list(APPEND LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lj_lib.cpp")
 
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
@@ -530,7 +529,6 @@ else ()
       "${LUAJIT_SRC}/lj_*.cpp")
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
-   list(APPEND LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lj_lib.cpp")
 
    # Generate list of object files from source files
    set(LUAJIT_OBJECT_FILES "")
@@ -624,8 +622,8 @@ endif ()
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
    "fluid_io.cpp" "fluid_class.cpp"
-   "${LUAJIT_SRC}/lib/lj_lib.cpp"
-   "${LUAJIT_SRC}/lib/lj_load.cpp"
+   "${LUAJIT_SRC}/lib/lib.cpp"
+   "${LUAJIT_SRC}/lib/load.cpp"
    "${LUAJIT_SRC}/parser/lj_parse.cpp"
    "${LUAJIT_SRC}/parser/lj_lex.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")

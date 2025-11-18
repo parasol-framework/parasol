@@ -30,7 +30,7 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 #include "luajit.h"
 

@@ -6,7 +6,7 @@
 #include "buildvm.h"
 #include "lj_obj.h"
 #include "lj_bc.h"
-#include "lj_lib.h"
+#include "lib.h"
 #include "buildvm_libbc.h"
 
 // Context for library definitions.

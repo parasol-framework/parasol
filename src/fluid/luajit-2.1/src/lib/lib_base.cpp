@@ -35,7 +35,7 @@
 #include "lj_char.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // -- Base library: checks ------------------------------------------------
 

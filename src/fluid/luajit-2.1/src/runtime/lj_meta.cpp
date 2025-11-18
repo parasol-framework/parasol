@@ -21,7 +21,7 @@
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // -- Metamethod handling -------------------------------------------------
 

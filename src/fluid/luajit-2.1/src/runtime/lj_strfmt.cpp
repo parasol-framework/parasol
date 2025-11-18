@@ -19,7 +19,7 @@
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #endif
-#include "lj_lib.h"
+#include "lib.h"
 
 // -- Format parser -------------------------------------------------------
 

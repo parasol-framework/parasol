@@ -25,7 +25,7 @@
 #include "lj_bcdump.h"
 #include "lj_char.h"
 #include "lj_strfmt.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // ------------------------------------------------------------------------
 
