@@ -155,8 +155,6 @@ if (MSVC)
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
@@ -165,8 +163,6 @@ if (MSVC)
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
       "${LUAJIT_SRC}/debug/lj_*.h"
-      "${LUAJIT_SRC}/lib/lj_*.h"
-      "${LUAJIT_SRC}/parser/lj_*.h"
       "${LUAJIT_SRC}/runtime/lj_*.h"
       "${LUAJIT_SRC}/lj_*.h")
 
@@ -529,8 +525,6 @@ else ()
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
 
@@ -609,8 +603,6 @@ else ()
       "${LUAJIT_SRC}/lib_*.cpp"
       "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/lib/lj_*.cpp"
-      "${LUAJIT_SRC}/parser/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
    )
 endif ()
@@ -629,7 +621,12 @@ endif ()
 
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
-   "fluid_io.cpp" "fluid_class.cpp")
+   "fluid_io.cpp" "fluid_class.cpp" 
+   "${LUAJIT_SRC}/lib/lj_lib.cpp"
+   "${LUAJIT_SRC}/lib/lj_load.cpp"
+   "${LUAJIT_SRC}/parser/lj_parse.cpp" 
+   "${LUAJIT_SRC}/parser/lj_lex.cpp"
+   "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
 
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")
