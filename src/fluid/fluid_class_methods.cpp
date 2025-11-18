@@ -683,7 +683,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       bool compact = false;
    } opts;
 
-   constexpr auto has_option = [](std::string_view haystack, std::string_view needle) constexpr {
+   constexpr auto has_option = [](std::string_view haystack, std::string_view needle) {
       return haystack.find(needle) != std::string_view::npos;
    };
 
