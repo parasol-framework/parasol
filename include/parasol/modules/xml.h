@@ -10,6 +10,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <memory>
 #include <sstream>
 #ifndef STRINGS_HPP
 #include <parasol/strings.hpp>
@@ -100,6 +101,8 @@ enum class XPVT : int {
    Date = 4,
    Time = 5,
    DateTime = 6,
+   Map = 7,
+   Array = 8,
 };
 
 typedef struct XMLAttrib {
@@ -438,6 +441,10 @@ class objXML : public Object {
 
 };
 
+struct XPathValueSequence;
+struct XPathMapEntry;
+struct XPathMapStorage;
+struct XPathArrayStorage;
 typedef struct XPathValue {
    XPVT   Type;                // Identifies the type of value stored
    double NumberValue;         // Defined if the type is Number or Boolean
@@ -446,7 +453,10 @@ typedef struct XPathValue {
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   std::vector<std::shared_ptr<XPathValue>> node_set_composite_values; // Stores composite items for general sequences
    bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
+   std::shared_ptr<XPathMapStorage> map_storage; // Defined if the type is Map
+   std::shared_ptr<XPathArrayStorage> array_storage; // Defined if the type is Array
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
@@ -460,7 +470,68 @@ typedef struct XPathValue {
         node_set_string_values(std::move(NodeSetStrings)),
         node_set_attributes(std::move(NodeSetAttributes)),
         preserve_node_order(false) {}
+
+   void reset();
 } XPATHVALUE;
+
+struct XPathValueSequence
+{
+   std::vector<XPathValue> items;
+
+   inline void reset() { items.clear(); }
+   inline bool empty() const noexcept { return items.empty(); }
+   inline size_t size() const noexcept { return items.size(); }
+};
+
+struct XPathMapEntry
+{
+   std::string key;
+   XPathValueSequence value;
+
+   inline void reset() { value.reset(); }
+};
+
+struct XPathMapStorage
+{
+   std::vector<XPathMapEntry> entries;
+
+   inline void reset() {
+      for (auto &entry : entries) entry.reset();
+      entries.clear();
+   }
+
+   inline bool empty() const noexcept { return entries.empty(); }
+   inline size_t size() const noexcept { return entries.size(); }
+};
+
+struct XPathArrayStorage
+{
+   std::vector<XPathValueSequence> members;
+
+   void reset() {
+      for (auto &member : members) member.reset();
+      members.clear();
+   }
+
+   inline bool empty() const noexcept { return members.empty(); }
+   inline size_t size() const noexcept { return members.size(); }
+};
+
+inline void XPathValue::reset() {
+   Type = XPVT::Boolean;
+   NumberValue = 0.0;
+   StringValue.clear();
+   node_set.clear();
+   node_set_string_override.reset();
+   node_set_string_values.clear();
+   node_set_attributes.clear();
+   node_set_composite_values.clear();
+   preserve_node_order = false;
+   if (map_storage) map_storage->reset();
+   map_storage.reset();
+   if (array_storage) array_storage->reset();
+   array_storage.reset();
+}
 
 //********************************************************************************************************************
 

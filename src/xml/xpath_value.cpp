@@ -132,6 +132,8 @@ bool XPathVal::to_boolean() const
       case XPVT::DateTime:
          return !StringValue.empty();
       case XPVT::NodeSet: return !node_set.empty();
+      case XPVT::Map: return map_storage and !map_storage->empty();
+      case XPVT::Array: return array_storage and !array_storage->empty();
    }
    return false;
 }
@@ -201,6 +203,9 @@ double XPathVal::to_number() const
          if (not node_set_string_values.empty()) return string_to_number(node_set_string_values[0]);
          return string_to_number(node_string_value(node_set[0]));
       }
+      case XPVT::Map:
+      case XPVT::Array:
+         return std::numeric_limits<double>::quiet_NaN();
    }
    return 0.0;
 }
@@ -208,7 +213,8 @@ double XPathVal::to_number() const
 std::string XPathVal::to_string() const
 {
    auto schema_type = get_schema_type();
-   if (xml::schema::is_numeric(schema_type) and (Type != XPVT::NodeSet)) {
+   if (xml::schema::is_numeric(schema_type) and (Type != XPVT::NodeSet)
+      and (Type != XPVT::Map) and (Type != XPVT::Array)) {
       double numeric_value = to_number();
       if (!std::isnan(numeric_value)) return format_xpath_number(numeric_value);
    }
@@ -252,6 +258,20 @@ std::string XPathVal::to_string() const
          if (node_set.empty()) return std::string();
          return node_string_value(node_set[0]);
       }
+      case XPVT::Map: {
+         size_t entry_count = (map_storage) ? map_storage->size() : 0u;
+         std::string summary("[map entries=");
+         summary += std::to_string(entry_count);
+         summary.push_back(']');
+         return summary;
+      }
+      case XPVT::Array: {
+         size_t member_count = (array_storage) ? array_storage->size() : 0u;
+         std::string summary("[array members=");
+         summary += std::to_string(member_count);
+         summary.push_back(']');
+         return summary;
+      }
    }
    return "";
 }
@@ -273,6 +293,8 @@ bool XPathVal::is_empty() const
       case XPVT::DateTime:
          return StringValue.empty();
       case XPVT::NodeSet: return node_set.empty();
+      case XPVT::Map: return (!map_storage) or map_storage->empty();
+      case XPVT::Array: return (!array_storage) or array_storage->empty();
    }
    return true;
 }
@@ -282,6 +304,8 @@ size_t XPathVal::size() const
    switch (Type)
    {
       case XPVT::NodeSet: return node_set.size();
+      case XPVT::Map: return (map_storage) ? map_storage->size() : 0;
+      case XPVT::Array: return (array_storage) ? array_storage->size() : 0;
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:

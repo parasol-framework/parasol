@@ -142,6 +142,8 @@ enum class XPathTokenType {
    INSTANCE,          // instance keyword
    OF,                // of keyword
    TO,                // to keyword
+   MAP,               // map keyword (constructor)
+   ARRAY,             // array keyword (constructor)
 
    // Arithmetic operators
    PLUS,              // +
@@ -171,6 +173,7 @@ enum class XPathTokenType {
    // Special tokens
    TEXT_CONTENT,      // literal content inside direct constructors
    QUESTION_MARK,     // ? occurrence indicator
+   LOOKUP,            // ? lookup operator
    END_OF_INPUT,
    UNKNOWN
 };
@@ -207,12 +210,16 @@ enum class SequenceItemKind {
    Text,
    Node,
    Item,
+   Map,
+   Array,
+   Function,
    EmptySequence
 };
 
 //********************************************************************************************************************
 
 struct XPathNode;
+struct SequenceEntry;
 
 class XPathErrorReporter {
    public:
@@ -317,6 +324,13 @@ enum class TokenTextKind {
    ArenaOwned
 };
 
+enum class XPathLookupSpecifierKind {
+   NCName,
+   Wildcard,
+   IntegerLiteral,
+   Expression
+};
+
 struct TokenBuffer;
 
 struct XPathAttributeValuePart {
@@ -358,6 +372,17 @@ struct XPathConstructorInfo {
    std::vector<XPathConstructorAttribute> attributes;
 };
 
+struct XPathMapConstructorEntry {
+   std::unique_ptr<XPathNode> key_expression;
+   std::unique_ptr<XPathNode> value_expression;
+};
+
+struct XPathLookupSpecifier {
+   XPathLookupSpecifierKind kind = XPathLookupSpecifierKind::NCName;
+   std::string literal_value;
+   std::unique_ptr<XPathNode> expression;
+};
+
 struct XPathOrderSpecOptions {
    bool is_descending = false;
    bool has_empty_mode = false;
@@ -396,6 +421,9 @@ struct XPathNode {
    // Cached operator metadata populated by the parser to avoid repeated string comparisons.
    std::optional<BinaryOperationKind> cached_binary_kind;
    std::optional<UnaryOperationKind> cached_unary_kind;
+   std::vector<XPathMapConstructorEntry> map_constructor_entries;
+   std::vector<std::unique_ptr<XPathNode>> array_constructor_members;
+   std::vector<XPathLookupSpecifier> lookup_specifiers;
 
    XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -428,6 +456,32 @@ struct XPathNode {
    inline void clear_cached_unary_kind() { cached_unary_kind.reset(); }
    [[nodiscard]] inline bool has_cached_unary_kind() const { return cached_unary_kind.has_value(); }
    [[nodiscard]] inline std::optional<UnaryOperationKind> get_cached_unary_kind() const { return cached_unary_kind; }
+
+   inline void add_map_entry(XPathMapConstructorEntry Entry) { map_constructor_entries.push_back(std::move(Entry)); }
+   [[nodiscard]] inline size_t map_entry_count() const { return map_constructor_entries.size(); }
+   [[nodiscard]] inline const XPathMapConstructorEntry * get_map_entry(size_t Index) const {
+      return Index < map_constructor_entries.size() ? &map_constructor_entries[Index] : nullptr;
+   }
+
+   inline void add_array_member(std::unique_ptr<XPathNode> Member) {
+      array_constructor_members.push_back(std::move(Member));
+   }
+
+   [[nodiscard]] inline size_t array_member_count() const { return array_constructor_members.size(); }
+
+   [[nodiscard]] inline XPathNode * get_array_member(size_t Index) const {
+      return Index < array_constructor_members.size() ? array_constructor_members[Index].get() : nullptr;
+   }
+
+   inline void add_lookup_specifier(XPathLookupSpecifier Specifier) {
+      lookup_specifiers.push_back(std::move(Specifier));
+   }
+
+   [[nodiscard]] inline size_t lookup_specifier_count() const { return lookup_specifiers.size(); }
+
+   [[nodiscard]] inline const XPathLookupSpecifier * get_lookup_specifier(size_t Index) const {
+      return Index < lookup_specifiers.size() ? &lookup_specifiers[Index] : nullptr;
+   }
 
    void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;
@@ -749,6 +803,9 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_computed_comment_constructor();
    std::unique_ptr<XPathNode> parse_computed_pi_constructor();
    std::unique_ptr<XPathNode> parse_computed_document_constructor();
+   std::unique_ptr<XPathNode> parse_map_constructor();
+   std::unique_ptr<XPathNode> parse_array_constructor();
+   std::unique_ptr<XPathNode> parse_lookup_expression(std::unique_ptr<XPathNode> Base);
    std::unique_ptr<XPathNode> parse_enclosed_expr();
    std::unique_ptr<XPathNode> parse_embedded_expr(std::string_view Source);
 
@@ -840,6 +897,7 @@ class XPathParser {
 
    std::optional<ConstructorName> parse_constructor_qname();
    bool consume_token(XPathTokenType, std::string_view);
+   std::optional<XPathLookupSpecifier> parse_lookup_specifier();
 
    [[nodiscard]] inline const XPathToken & peek() const {
       return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
@@ -1383,11 +1441,25 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal nodeset_from_sequence_entries(const std::vector<SequenceEntry> &Entries);
+   XPathVal materialise_sequence_value(const XPathValueSequence &Sequence);
+   XPathVal concatenate_sequence_values(const std::vector<XPathVal> &Values);
+   XPathVal apply_lookup_to_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_map_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_array_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
+   XPathVal lookup_nodeset_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
 
    // Expression node type handlers
    XPathVal handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_number(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_literal(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_map_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_array_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_lookup_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix);
@@ -1485,6 +1557,7 @@ struct SequenceEntry {
    XTag * node = nullptr;
    const XMLAttrib * attribute = nullptr;
    std::string string_value;
+   std::shared_ptr<XPathValue> composite_value;
 };
 
 struct ForBindingDefinition {
@@ -1506,6 +1579,11 @@ struct SequenceTypeInfo {
    SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
    SequenceItemKind kind = SequenceItemKind::Atomic;
    std::string type_name;
+   bool map_allows_any = false;
+   std::string map_key_type;
+   std::shared_ptr<SequenceTypeInfo> map_value_type;
+   bool array_allows_any = false;
+   std::shared_ptr<SequenceTypeInfo> array_member_type;
 
    [[nodiscard]] inline bool allows_empty() const {
       return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);

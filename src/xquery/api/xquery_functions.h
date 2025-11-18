@@ -193,4 +193,18 @@ class XPathFunctionLibrary {
    static XPathVal function_matches(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_replace(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_tokenize(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_entry(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_put(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_get(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_contains(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_size(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_keys(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_map_merge(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_size(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_get(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_append(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_insert_before(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_remove(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_join(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_array_flatten(const std::vector<XPathVal> &Args, const XPathContext &Context);
 };

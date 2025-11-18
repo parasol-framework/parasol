@@ -193,6 +193,13 @@ static size_t hash_xpath_group_value(const XPathVal &Value)
 
          return combined;
       }
+
+      case XPVT::Map:
+      case XPVT::Array: {
+         std::string summary = Value.to_string();
+         size_t hashed = std::hash<std::string>{}(summary);
+         return combine_group_hash(seed, hashed);
+      }
    }
 
    return seed;
