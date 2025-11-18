@@ -71,6 +71,19 @@ NOTE:
 - The `--jit-options` commandline option supports a csv list of options including `trace`, `diagnose`, `ast-pipeline`, `trace-boundary`, `trace-bytecode` to enable the associated diagnosis options in make_parser_config()
 - Because diagnosis messages are logged at the `detail` level, logging needs to be enabled with `--log-detail`
 
+#### Status
+
+* Added a `parser_unit_tests.cpp` harness that creates ASTs for canonical expressions/loops, logs structural summaries, and includes a bytecode diff helper that toggles the AST pipeline to ensure parity with the legacy emitter when `ENABLE_UNIT_TESTS` is set (2025-02-19).
+* Introduced `src/fluid/tests/parser_phase2.fluid`, a regression script that compiles representative snippets and asserts failure cases to exercise the AST path; comments describe running it with `--jit-options ast-pipeline` so the new pipeline is covered (2025-02-19).
+* Implemented a `--jit-options profile` flag that toggles parser/emitter timing logs inside `lj_parse.cpp`, warning when AST stages exceed the configured budget so perf regressions are visible while validating Phase 2 (2025-02-19).
+* Expanded `parser_unit_tests.cpp` with diagnostic logging, table/function AST fixtures, and a bytecode diff helper that now
+  emits warnings (and skips the comparison) when the AST pipeline cannot yet compile the fixture; run it via `parasol
+  tools/flute.fluid --log-warning file=src/fluid/tests/test_unit_tests.fluid` to exercise the harness without tripping the
+  legacy pipeline (2025-02-20).
+* Updated `src/fluid/tests/parser_phase2.fluid` to export a Flute-visible test, use the real `defer ... end` syntax, and focus
+  on the canonical success snippets while documenting how to run it via Flute so the harness no longer crashes with `SetField`
+  errors; it remains ready for `--jit-options ast-pipeline` once Flute is compatible (2025-02-20).
+
 ### 6. Documentation and developer enablement
 1. Update `docs/plans/LUAJIT_PARSER_REDESIGN.md` Phase 2 section summary (once implementation begins) with progress notes, caveats, and links to the new files.
 2. Create contributor notes (either inline in headers or a short guide under `docs/plans/`) describing how to add new AST nodes, how the emitter visitor should be extended, and how diagnostics tie into spans.
