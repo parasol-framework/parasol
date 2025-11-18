@@ -306,11 +306,25 @@ function testSetOperatorKeywordNameTests()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Lookup operator chains should navigate nested maps, arrays, and sequences
+
+function testLookupOperatorChains()
+   local xml = obj.new('xml', { statement = '<root/>' })
+
+   local err, first_price = xml.mtEvaluate('let $order := map { "items": array { map { "sku": "A1", "price": 29 }, map { "sku": "B2", "price": 35 } }, "customer": map { "name": "Ada" } } return string($order?items?1?price)')
+   assert(err == ERR_Okay, 'Lookup operator should evaluate chained map/array access: ' .. mSys.GetErrorMsg(err))
+   assert(first_price == '29', 'Lookup chain should expose first price value, got ' .. tostring(first_price))
+
+   local failure_err = select(1, xml.mtEvaluate('let $order := map { "items": array { map { "sku": "X1" } } } return $order?items?5'))
+   assert(failure_err != ERR_Okay, 'Out-of-range lookup should raise FOAY0001')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
       'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testFlworForLetCombination', 'testFlworLetForCombination', 'testSequenceSetOperators',
-      'testSetOperatorKeywordNameTests', 'testSimpleDeep'
+      'testSetOperatorKeywordNameTests', 'testLookupOperatorChains', 'testSimpleDeep'
    }
 }

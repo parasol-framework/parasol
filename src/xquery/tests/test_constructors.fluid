@@ -160,11 +160,34 @@ function testMapArrayLookup()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Literal map/array constructors should preserve overwrites, nesting, and sequence members
+
+function testMapArrayConstructorSemantics()
+   local xml = obj.new('xml', { statement = '<root/>' })
+
+   local err, overwritten = xml.mtEvaluate('string((map { "dup": 1, "dup": 42 })?dup)')
+   assert(err == ERR_Okay, 'Duplicate map key evaluation failed.')
+   assert(overwritten == '42', 'Later duplicate keys should win, got ' .. tostring(overwritten))
+
+   err, nested_value = xml.mtEvaluate('string((map { "details": array { map { "price": 19 }, map { "price": 25 } } })?details?2?price)')
+   assert(err == ERR_Okay, 'Nested map/array lookup failed.')
+   assert(nested_value == '25', 'Chained lookup should reach the nested map value, got ' .. tostring(nested_value))
+
+   err, tuple_members = xml.mtEvaluate('string-join(array { (1, 2), 3 }?1, ",")')
+   assert(err == ERR_Okay, 'Array sequence member lookup failed.')
+   assert(tuple_members == '1,2', 'Array members should retain embedded sequences, got ' .. tostring(tuple_members))
+
+   err, second_sku = xml.mtEvaluate('string((array { map { "sku": "A1" }, map { "sku": "B2" } })?2?sku)')
+   assert(err == ERR_Okay, 'Nested array/map lookup failed.')
+   assert(second_sku == 'B2', 'Array lookup should expose the second nested map value, got ' .. tostring(second_sku))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testDirectConstructorEvaluation', 'testDirectConstructorWhitespace', 'testComputedConstructors',
       'testNonElementConstructors', 'testDocumentConstructor',
-      'testConstructorAttributeSequences', 'testMapArrayLookup'
+      'testConstructorAttributeSequences', 'testMapArrayLookup', 'testMapArrayConstructorSemantics'
    }
 }

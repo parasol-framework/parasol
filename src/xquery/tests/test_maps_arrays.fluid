@@ -68,8 +68,22 @@ function testArrayFunctions()
    assert(xq.resultString == '1,2,3,4', 'array:flatten should remove nested arrays, got ' .. tostring(xq.resultString))
 end
 
+function testMapArrayFunctionErrors()
+   local xq = obj.new('xquery')
+
+   xq.statement = MAP_ARRAY_DECLARE .. 'map:get(map { "a": 1 }, map { "bad": 2 })'
+   local err = xq.acActivate()
+   assert(err != ERR_Okay, 'map:get should reject non-atomic keys')
+   assert(xq.errorMsg and xq.errorMsg != '', 'map:get should report an error message for invalid keys')
+
+   xq.statement = MAP_ARRAY_DECLARE .. 'array:get(array { 1, 2 }, 0)'
+   err = xq.acActivate()
+   assert(err != ERR_Okay, 'array:get should reject zero indexes')
+   assert(xq.errorMsg and xq.errorMsg != '', 'array:get should report an error message for invalid indexes')
+end
+
 return {
    tests = {
-      'testMapFunctions', 'testArrayFunctions'
+      'testMapFunctions', 'testArrayFunctions', 'testMapArrayFunctionErrors'
    }
 }

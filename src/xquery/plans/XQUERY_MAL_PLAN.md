@@ -146,6 +146,12 @@
 16. **Error reporting**
     - Map/array operations introduce new error codes (`FOJS0004`, `FOAY0001`, etc.). Add them to `xquery_errors.h` and use via `record_error()` so users receive spec-aligned diagnostics.
 
+**Phase 6 status – completed**
+
+- Added parser handling and `SequenceTypeInfo` metadata for `map(*)`, `map(K, V)`, `array(*)`, and generic `function(...)` sequence types so the evaluator can reason about composite values.
+- Implemented recursive map/array/type checking helpers wired into `instance of`, `treat as`, and `typeswitch` evaluation so runtime values honour key/member constraints, while `function(item()*)` now recognises map/array function items.
+- Introduced shared error helpers for `FOAY0001`/`FOJS0004` in `xquery_errors.h` and updated lookup/array diagnostics to emit the spec codes consistently.
+
 ### Phase 7 – Testing and validation
 17. **Unit tests**
     - Extend `src/xquery/tests/test_constructors.fluid` with cases covering literal map/array construction, duplicate keys, nested maps, and `array { (1,2), 3 }` semantics.
@@ -158,6 +164,12 @@
 19. **Performance/regression checks**
     - Run `ctest -L xquery` after building to ensure no regressions.
     - Benchmark representative queries (if harness exists) to ensure no significant slowdown from new token/AST logic.
+
+**Phase 7 status – completed**
+
+- Extended `test_constructors.fluid`, `test_maps_arrays.fluid`, and `test_advanced.fluid` with map/array lookup cases covering duplicate-key overwrites, nested map/array chains, wildcard extraction, and explicit FOAY0001 error paths so literal constructors, lookups, and library routines all exercise the semantics introduced in earlier phases.
+- Added a QT3-inspired regression harness (`test_qt_maps_arrays.fluid`) that loads the curated subset stored in `tests/modules/qt3_map_array_subset.xml`, registers each `<test-case>` as an individual Flute test, and reports skipped execution whenever the optional QT3 package is not installed, documenting the pared-down subset that currently ships with the repository.
+- Rebuilt the module and ran `ctest --build-config Release --test-dir build/agents -L xquery` to verify that the expanded suite passes in the Release configuration and that no regressions were introduced by the added coverage.
 
 ### Phase 8 – Documentation and rollout
 21. **Developer notes**
