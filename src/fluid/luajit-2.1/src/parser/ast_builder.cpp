@@ -45,12 +45,22 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
    return this->parse_block(terms);
 }
 
+/*
+
+TODO: Consider deprecating?
+
+The parse_expression_entry and parse_expression_list_entry methods are redundant wrappers. They call parse_expression 
+and parse_expression_list which already return ParserResult<ExprNodePtr> and ParserResult<ExprNodeList> respectively, 
+then unnecessarily unwrap and rewrap the results. Consider removing these entry methods and having the free functions 
+in parser_entry_points.cpp call the internal methods directly, or better yet, make the internal methods public if 
+they need to be exposed. 
+
+*/
+
 ParserResult<ExprNodePtr> AstBuilder::parse_expression_entry(uint8_t precedence)
 {
    auto expression = this->parse_expression(precedence);
-   if (not expression.ok()) {
-      return ParserResult<ExprNodePtr>::failure(expression.error_ref());
-   }
+   if (not expression.ok()) return ParserResult<ExprNodePtr>::failure(expression.error_ref());
    ExprNodePtr node = std::move(expression.value_ref());
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
@@ -58,26 +68,19 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression_entry(uint8_t precedence)
 ParserResult<ExprNodeList> AstBuilder::parse_expression_list_entry()
 {
    auto list = this->parse_expression_list();
-   if (not list.ok()) {
-      return ParserResult<ExprNodeList>::failure(list.error_ref());
-   }
+   if (not list.ok()) return ParserResult<ExprNodeList>::failure(list.error_ref());
    ExprNodeList nodes = std::move(list.value_ref());
    return ParserResult<ExprNodeList>::success(std::move(nodes));
 }
 
-ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(
-   std::span<const TokenKind> terminators)
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
    std::unique_ptr<BlockStmt> block = std::make_unique<BlockStmt>();
    Token start = this->ctx.tokens().current();
    while (not this->at_end_of_block(terminators)) {
       auto stmt = this->parse_statement();
-      if (not stmt.ok()) {
-         return ParserResult<std::unique_ptr<BlockStmt>>::failure(stmt.error_ref());
-      }
-      if (stmt.value_ref()) {
-         block->statements.push_back(std::move(stmt.value_ref()));
-      }
+      if (not stmt.ok()) return ParserResult<std::unique_ptr<BlockStmt>>::failure(stmt.error_ref());
+      if (stmt.value_ref()) block->statements.push_back(std::move(stmt.value_ref()));
    }
    Token end = this->ctx.tokens().current();
    block->span = this->span_from(start, end);
@@ -88,45 +91,40 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
    Token current = this->ctx.tokens().current();
    switch (current.kind()) {
-   case TokenKind::Local:
-      return this->parse_local();
-   case TokenKind::Function:
-      return this->parse_function_stmt();
-   case TokenKind::If:
-      return this->parse_if();
-   case TokenKind::WhileToken:
-      return this->parse_while();
-   case TokenKind::Repeat:
-      return this->parse_repeat();
-   case TokenKind::For:
-      return this->parse_for();
-   case TokenKind::DoToken:
-      return this->parse_do();
-   case TokenKind::DeferToken:
-      return this->parse_defer();
-   case TokenKind::ReturnToken:
-      return this->parse_return();
-   case TokenKind::BreakToken: {
-      StmtNodePtr node = std::make_unique<StmtNode>();
-      node->kind = AstNodeKind::BreakStmt;
-      node->span = current.span();
-      node->data.emplace<BreakStmtPayload>();
-      this->ctx.tokens().advance();
-      return ParserResult<StmtNodePtr>::success(std::move(node));
-   }
-   case TokenKind::ContinueToken: {
-      StmtNodePtr node = std::make_unique<StmtNode>();
-      node->kind = AstNodeKind::ContinueStmt;
-      node->span = current.span();
-      node->data.emplace<ContinueStmtPayload>();
-      this->ctx.tokens().advance();
-      return ParserResult<StmtNodePtr>::success(std::move(node));
-   }
-   case TokenKind::Semicolon:
-      this->ctx.tokens().advance();
-      return ParserResult<StmtNodePtr>::success(nullptr);
-   default:
-      return this->parse_expression_stmt();
+      case TokenKind::Local:       return this->parse_local();
+      case TokenKind::Function:    return this->parse_function_stmt();
+      case TokenKind::If:          return this->parse_if();
+      case TokenKind::WhileToken:  return this->parse_while();
+      case TokenKind::Repeat:      return this->parse_repeat();
+      case TokenKind::For:         return this->parse_for();
+      case TokenKind::DoToken:     return this->parse_do();
+      case TokenKind::DeferToken:  return this->parse_defer();
+      case TokenKind::ReturnToken: return this->parse_return();
+
+      case TokenKind::BreakToken: {
+         StmtNodePtr node = std::make_unique<StmtNode>();
+         node->kind = AstNodeKind::BreakStmt;
+         node->span = current.span();
+         node->data.emplace<BreakStmtPayload>();
+         this->ctx.tokens().advance();
+         return ParserResult<StmtNodePtr>::success(std::move(node));
+      }
+
+      case TokenKind::ContinueToken: {
+         StmtNodePtr node = std::make_unique<StmtNode>();
+         node->kind = AstNodeKind::ContinueStmt;
+         node->span = current.span();
+         node->data.emplace<ContinueStmtPayload>();
+         this->ctx.tokens().advance();
+         return ParserResult<StmtNodePtr>::success(std::move(node));
+      }
+
+      case TokenKind::Semicolon:
+         this->ctx.tokens().advance();
+         return ParserResult<StmtNodePtr>::success(nullptr);
+
+      default:
+         return this->parse_expression_stmt();
    }
 }
 
@@ -138,13 +136,9 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
       Token function_token = this->ctx.tokens().current();
       this->ctx.tokens().advance();
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not name_token.ok()) {
-         return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-      }
+      if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
       auto fn = this->parse_function_literal(function_token);
-      if (not fn.ok()) {
-         return ParserResult<StmtNodePtr>::failure(fn.error_ref());
-      }
+      if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::LocalFunctionStmt;
@@ -157,16 +151,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    }
 
    auto names = this->parse_name_list();
-   if (not names.ok()) {
-      return ParserResult<StmtNodePtr>::failure(names.error_ref());
-   }
+   if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
 
    ExprNodeList values;
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto rhs = this->parse_expression_list();
-      if (not rhs.ok()) {
-         return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
-      }
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
       values = std::move(rhs.value_ref());
    }
 
@@ -186,18 +176,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    this->ctx.tokens().advance();
    FunctionNamePath path;
    auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-   if (not name_token.ok()) {
-      return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-   }
+   if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
    path.segments.push_back(make_identifier(name_token.value_ref()));
+
    bool method = false;
    while (this->ctx.match(TokenKind::Dot).ok()) {
       auto seg = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not seg.ok()) {
-         return ParserResult<StmtNodePtr>::failure(seg.error_ref());
-      }
+      if (not seg.ok()) return ParserResult<StmtNodePtr>::failure(seg.error_ref());
       path.segments.push_back(make_identifier(seg.value_ref()));
    }
+
    if (this->ctx.match(TokenKind::Colon).ok()) {
       method = true;
       auto seg = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
@@ -208,9 +196,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    }
 
    auto fn = this->parse_function_literal(func_token);
-   if (not fn.ok()) {
-      return ParserResult<StmtNodePtr>::failure(fn.error_ref());
-   }
+   if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    ExprNodePtr function_expr = std::move(fn.value_ref());
 
    if (method and path.method.has_value()) {
@@ -220,9 +206,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       self_param.name.symbol = lj_str_newlit(&this->ctx.lua(), "self");
       self_param.name.is_blank = false;
       self_param.is_self = true;
-      if (payload) {
-         payload->parameters.insert(payload->parameters.begin(), self_param);
-      }
+      if (payload) payload->parameters.insert(payload->parameters.begin(), self_param);
    }
 
    StmtNodePtr stmt = std::make_unique<StmtNode>();
