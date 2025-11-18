@@ -63,6 +63,11 @@ XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, co
          case XPVT::Number:
             if (not std::isnan(Value.NumberValue)) add_tokens(Value.to_string());
             break;
+
+         case XPVT::Map:
+         case XPVT::Array:
+            // Maps and arrays cannot contribute ID tokens.
+            break;
       }
    };
 
