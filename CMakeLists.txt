@@ -132,8 +132,20 @@ if (NOT DISABLE_SSL)
    if (WIN32)
       # Win32 SSL support is supported natively
    else ()
-      set (OPENSSL_USE_STATIC_LIBS TRUE)
-      include (FindOpenSSL)
+      # Prefer shared OpenSSL libraries so typical Linux installations
+      # (which only provide shared builds) are accepted.  Static builds
+      # still attempt a static OpenSSL fallback afterwards.
+      set (OPENSSL_USE_STATIC_LIBS FALSE)
+      find_package (OpenSSL QUIET)
+      if (NOT OpenSSL_FOUND AND PARASOL_STATIC)
+         foreach (_openssl_var IN ITEMS OpenSSL_DIR OPENSSL_CRYPTO_LIBRARY OPENSSL_SSL_LIBRARY OPENSSL_LIBRARIES OPENSSL_INCLUDE_DIR)
+            if (DEFINED ${_openssl_var})
+               unset (${_openssl_var} CACHE)
+            endif ()
+         endforeach ()
+         set (OPENSSL_USE_STATIC_LIBS TRUE)
+         find_package (OpenSSL QUIET)
+      endif ()
       if (NOT OpenSSL_FOUND)
          set (DISABLE_SSL TRUE)
       endif ()
