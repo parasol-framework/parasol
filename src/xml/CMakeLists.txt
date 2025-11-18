@@ -13,7 +13,7 @@ idl_gen ("${MOD}.fdl"
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD} "Xml")
-add_compile_definitions("PRV_XML_MODULE" "PRV_XML")
+target_compile_definitions (${MOD} PRIVATE "PRV_XML_MODULE" "PRV_XML")
 
 # Unescape Library
 

@@ -66,13 +66,13 @@ set (LEXERS
    "scintilla/lexers/LexSQL.cxx"
    "scintilla/lexers/LexVB.cxx")
 
+add_library (scintilla)
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-   add_compile_options ("-Wno-char-subscripts")
+   target_compile_options (scintilla PRIVATE "-Wno-char-subscripts")
 endif ()
 
-add_compile_definitions ("SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
-
-add_library (scintilla)
+target_compile_definitions (scintilla PRIVATE "SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
 target_link_libraries (${MOD} PUBLIC unicode)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

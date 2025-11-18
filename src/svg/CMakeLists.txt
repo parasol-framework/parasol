@@ -15,7 +15,7 @@ set_module_defaults (${MOD} "Svg")
 
 if (MSVC)
    # For Katana
-   add_compile_definitions ("YY_NO_UNISTD_H")
+   target_compile_definitions (${MOD} PRIVATE "YY_NO_UNISTD_H")
 endif ()
 
 target_sources (${MOD} PRIVATE

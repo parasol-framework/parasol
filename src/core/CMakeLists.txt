@@ -89,23 +89,23 @@ endif ()
 # DBG_DIAGNOSTICS: Print enhanced diagnostic messages on crash - e.g. semaphore and memory locks.
 # DBG_SLEEP: Debug any area of the system that puts the process to sleep.
 
-add_compile_definitions ("__system__" "DBG_DIAGNOSTICS")
+add_library (core)
+
+target_compile_definitions (core PRIVATE "__system__" "DBG_DIAGNOSTICS")
 
 if (MSVC)
-   add_compile_definitions ("_CRT_NONSTDC_NO_DEPRECATE")
+   target_compile_definitions (core PRIVATE "_CRT_NONSTDC_NO_DEPRECATE")
 endif ()
 
 # These definitions tell the Core where the system files are installed.
 
 if (RUN_ANYWHERE)
-   add_compile_definitions("_ROOT_PATH=" "_SYSTEM_PATH=" "_MODULE_PATH=\"parasol:lib/\"")
+   target_compile_definitions (core PRIVATE "_ROOT_PATH=" "_SYSTEM_PATH=" "_MODULE_PATH=\"parasol:lib/\"")
 else ()
-   add_compile_definitions ("_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+   target_compile_definitions (core PRIVATE "_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
       "_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
       "_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
 endif ()
-
-add_library (core)
 
 set_module_defaults (core "Sys")
 

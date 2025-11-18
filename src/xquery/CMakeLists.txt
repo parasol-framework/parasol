@@ -39,7 +39,7 @@ add_library (xquery_lib OBJECT
 
 target_include_directories (xquery_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xquery_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_compile_definitions("PRV_XML" "PRV_XQUERY_MODULE")
+target_compile_definitions (xquery_lib PRIVATE "PRV_XML" "PRV_XQUERY_MODULE")
 add_dependencies (xquery build_headers xml)
 
 # Enable precompiled headers for the xquery functions object library

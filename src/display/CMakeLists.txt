@@ -65,20 +65,20 @@ int main() {
 }"
    XDGA_INSTALLED)
 
+add_library (${MOD})
+
 if (X11_FOUND)
-   add_definitions ("-DX11_ENABLED")
+   target_compile_definitions (${MOD} PRIVATE "X11_ENABLED")
    if (X11_Xrandr_FOUND)
-      add_definitions ("-DXRANDR_ENABLED")
+      target_compile_definitions (${MOD} PRIVATE "XRANDR_ENABLED")
    else ()
       message (STATUS "XRandR headers unavailable; building without XRandR support")
    endif ()
 
    if (XDGA_INSTALLED)
-      add_definitions ("-DXDGA_ENABLED")
+      target_compile_definitions (${MOD} PRIVATE "XDGA_ENABLED")
    endif ()
 endif ()
-
-add_library (${MOD})
 
 set_module_defaults (${MOD} "Gfx")
 
@@ -91,12 +91,12 @@ target_link_libraries (${MOD} PUBLIC linear_rgb)
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid xinput ${MATH_LINK})
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
-   add_compile_definitions ("WIN_DRAGDROP")
+   target_compile_definitions (${MOD} PRIVATE "WIN_DRAGDROP")
 elseif (ANDROID)
    # Android uses OpenGL.  A separate driver library is compiled for this purpose.
    add_library (display-gles1 SHARED)
    target_sources (display-gles1 PRIVATE ${FUNCTIONS} "android/android.cpp" ${CLASSES})
-   add_compile_definitions ("_GLES_" "_GLES1_")
+   target_compile_definitions (display-gles1 PRIVATE "_GLES_" "_GLES1_")
    target_link_libraries (display-gles1 PRIVATE ${MATH_LINK} android EGL GLESv1_CM)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
@@ -117,6 +117,6 @@ else ()
       endif ()
       target_link_libraries (${MOD} PRIVATE ${DISPLAY_PRIVATE_LIBS}) # x11/libXxf86dga.a
 
-      add_compile_definitions ("__X11DGA__" "__xwindows__")
+      target_compile_definitions (${MOD} PRIVATE "__X11DGA__" "__xwindows__")
    endif ()
 endif ()
