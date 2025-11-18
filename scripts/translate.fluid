@@ -11,7 +11,7 @@ string.translateRefresh = function()
       -- TODO: Get the user's preferred language from the host system
       --err, language = mSys.StrReadLocale("language")
    end)
-   if (not language) or (language == 'eng') then return end
+   if (not language) or (language is 'eng') then return end
 
    local content = file.readAll('config:translations/' .. language:lower() .. '.cfg')
 

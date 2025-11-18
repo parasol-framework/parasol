@@ -161,7 +161,7 @@ do
          pos++
          while true do
             val, pos = json.decode(str, pos, ']')
-            if val == nil then return arr, pos end -- NB: Distinction between false and nil is essential
+            if not val then return arr, pos end -- NB: Distinction between false and nil is essential
             if not delim_found then error('Comma missing between array items.') end
             arr[#arr + 1] = val
             pos, delim_found = skip_delim(str, pos, ',')

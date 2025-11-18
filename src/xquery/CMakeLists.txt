@@ -39,9 +39,9 @@ add_library (${MOD}_lib OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xquery_tokeniser.cpp")
 
-target_include_directories (${MOD}_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
-set_target_properties (${MOD}_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_compile_definitions("PRV_XML" "PRV_XQUERY_MODULE")
+target_include_directories (xquery_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
+set_target_properties (xquery_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions (xquery_lib PRIVATE "PRV_XML" "PRV_XQUERY_MODULE")
 add_dependencies (xquery build_headers xml)
 
 # Enable precompiled headers for the xquery functions object library
