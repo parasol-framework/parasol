@@ -3,13 +3,69 @@
 #include <charconv>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <utility>
 
 #include "eval_detail.h"
 #include "date_time_utils.h"
+#include "../api/xquery_errors.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
 #include "checked_arith.h"
+
+//********************************************************************************************************************
+// Helpers for parsing sequence type literals that include nested parentheses and comma-separated arguments.
+
+static bool starts_with_keyword(std::string_view Text, std::string_view Keyword)
+{
+   if (Text.size() < Keyword.size()) return false;
+   if (Text.substr(0, Keyword.size()) != Keyword) return false;
+
+   if (Text.size() IS Keyword.size()) return true;
+   char next = Text[Keyword.size()];
+   if (next IS '(') return true;
+   return is_space_character(next);
+}
+
+static std::optional<std::pair<std::string_view, size_t>> extract_parenthesized_segment(
+   std::string_view Text, size_t StartIndex)
+{
+   size_t index = StartIndex;
+   while ((index < Text.size()) and is_space_character(Text[index])) index++;
+   if ((index >= Text.size()) or (Text[index] != '(')) return std::nullopt;
+
+   size_t begin = index + 1;
+   int depth = 1;
+   for (size_t cursor = begin; cursor < Text.size(); ++cursor) {
+      char ch = Text[cursor];
+      if (ch IS '(') depth++;
+      else if (ch IS ')') {
+         depth--;
+         if (depth IS 0) {
+            std::string_view inner = Text.substr(begin, cursor - begin);
+            return std::make_pair(inner, cursor + 1);
+         }
+      }
+   }
+
+   return std::nullopt;
+}
+
+static std::optional<size_t> find_top_level_comma(std::string_view Text)
+{
+   int depth = 0;
+   for (size_t index = 0; index < Text.size(); ++index) {
+      char ch = Text[index];
+      if (ch IS '(') depth++;
+      else if (ch IS ')') {
+         if (depth > 0) depth--;
+      }
+      else if ((ch IS ',') and (depth IS 0)) {
+         return index;
+      }
+   }
+   return std::nullopt;
+}
 
 //********************************************************************************************************************
 // Parses a cast target type specification, extracting the type name and optional empty sequence indicator.
@@ -73,6 +129,68 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
    std::string core_compact;
    core_compact.reserve(core.size());
    for (char ch : core) { if ((ch != ' ') and (ch != '\t') and (ch != '\r') and (ch != '\n')) core_compact.push_back(ch); }
+
+   if (starts_with_keyword(core, "map")) {
+      auto segment = extract_parenthesized_segment(core, 3);
+      if (!segment.has_value()) return std::nullopt;
+      auto inner = trim_view(segment->first);
+      auto remainder = trim_view(core.substr(segment->second));
+      if (!remainder.empty()) return std::nullopt;
+
+      info.kind = SequenceItemKind::Map;
+      if (inner IS "*") {
+         info.map_allows_any = true;
+         return info;
+      }
+
+      auto comma_position = find_top_level_comma(inner);
+      if (!comma_position.has_value()) return std::nullopt;
+
+      auto key_literal = trim_view(inner.substr(0, *comma_position));
+      auto value_literal = trim_view(inner.substr(*comma_position + 1));
+      if (key_literal.empty() or value_literal.empty()) return std::nullopt;
+
+      info.map_key_type.assign(key_literal);
+      auto value_info = parse_sequence_type_literal(value_literal);
+      if (!value_info.has_value()) return std::nullopt;
+      info.map_value_type = std::make_shared<SequenceTypeInfo>(*value_info);
+      return info;
+   }
+
+   if (starts_with_keyword(core, "array")) {
+      auto segment = extract_parenthesized_segment(core, 5);
+      if (!segment.has_value()) return std::nullopt;
+      auto inner = trim_view(segment->first);
+      auto remainder = trim_view(core.substr(segment->second));
+      if (!remainder.empty()) return std::nullopt;
+
+      info.kind = SequenceItemKind::Array;
+      if (inner IS "*") {
+       info.array_allows_any = true;
+       return info;
+      }
+
+      auto member_info = parse_sequence_type_literal(inner);
+      if (!member_info.has_value()) return std::nullopt;
+      info.array_member_type = std::make_shared<SequenceTypeInfo>(*member_info);
+      return info;
+   }
+
+   if (starts_with_keyword(core, "function")) {
+      auto segment = extract_parenthesized_segment(core, 8);
+      if (!segment.has_value()) return std::nullopt;
+      auto remainder = trim_view(core.substr(segment->second));
+      if (!remainder.empty()) {
+         if (!starts_with_keyword(remainder, "as")) return std::nullopt;
+         auto return_literal = trim_view(remainder.substr(2));
+         if (return_literal.empty()) return std::nullopt;
+         auto return_info = parse_sequence_type_literal(return_literal);
+         if (!return_info.has_value()) return std::nullopt;
+      }
+
+      info.kind = SequenceItemKind::Function;
+      return info;
+   }
 
    if (core_compact IS "item()") info.kind = SequenceItemKind::Item;
    else if (core_compact IS "node()") info.kind = SequenceItemKind::Node;
@@ -173,6 +291,132 @@ static std::string describe_value_type(const XPathVal &Value)
       case XPVT::Array: return std::string("array");
    }
    return std::string("value");
+}
+
+//********************************************************************************************************************
+// Gathers composite items of a given type from a runtime value, supporting node-set backed sequences.
+
+static bool gather_items_of_type(const XPathVal &Value, XPVT ExpectedType, std::vector<XPathVal> &Items)
+{
+   if (Value.Type IS ExpectedType) {
+      Items.push_back(Value);
+      return true;
+   }
+
+   if (Value.Type IS XPVT::NodeSet) {
+      if (Value.node_set_composite_values.empty()) return false;
+      bool saw_any = false;
+      for (const auto &stored : Value.node_set_composite_values) {
+         if (!stored) return false;
+         XPathVal clone = clone_xpath_value(*stored);
+         if (clone.Type != ExpectedType) return false;
+         Items.push_back(std::move(clone));
+         saw_any = true;
+      }
+      return saw_any;
+   }
+
+   return false;
+}
+
+static bool gather_function_items(const XPathVal &Value, std::vector<XPathVal> &Items)
+{
+   if ((Value.Type IS XPVT::Map) or (Value.Type IS XPVT::Array)) {
+      Items.push_back(Value);
+      return true;
+   }
+
+   if (Value.Type IS XPVT::NodeSet) {
+      if (Value.node_set_composite_values.empty()) return false;
+      bool saw_any = false;
+      for (const auto &stored : Value.node_set_composite_values) {
+         if (!stored) return false;
+         XPathVal clone = clone_xpath_value(*stored);
+         if ((clone.Type != XPVT::Map) and (clone.Type != XPVT::Array)) return false;
+         Items.push_back(std::move(clone));
+         saw_any = true;
+      }
+      return saw_any;
+   }
+
+   return false;
+}
+
+static std::optional<bool> map_sequence_matches_type(const XPathVal &Value, const SequenceTypeInfo &SequenceInfo,
+   XPathEvaluator &Evaluator, const XPathNode *ContextNode)
+{
+   std::vector<XPathVal> maps;
+   if (!gather_items_of_type(Value, XPVT::Map, maps)) return false;
+   if (maps.empty()) return false;
+
+   bool check_keys = !SequenceInfo.map_key_type.empty();
+   bool check_values = SequenceInfo.map_value_type != nullptr;
+
+   if (SequenceInfo.map_allows_any and (!check_keys) and (!check_values)) return true;
+
+   SequenceTypeInfo key_requirements;
+   if (check_keys) {
+      key_requirements.kind = SequenceItemKind::Atomic;
+      key_requirements.type_name = SequenceInfo.map_key_type;
+      key_requirements.occurrence = SequenceCardinality::ExactlyOne;
+   }
+
+   for (const auto &map_value : maps) {
+      const XPathMapStorage *storage = (map_value.Type IS XPVT::Map) ? map_value.map_storage.get() : nullptr;
+      if (!storage) continue;
+
+      if (check_keys) {
+         for (const auto &entry : storage->entries) {
+            XPathVal key_candidate;
+            key_candidate.Type = XPVT::String;
+            key_candidate.StringValue = entry.key;
+            auto key_match = Evaluator.matches_sequence_type(key_candidate, key_requirements, ContextNode);
+            if (!key_match.has_value()) return std::nullopt;
+            if (!key_match.value()) return false;
+         }
+      }
+
+      if (check_values and SequenceInfo.map_value_type) {
+         for (const auto &entry : storage->entries) {
+            XPathVal entry_value = Evaluator.materialise_sequence_value(entry.value);
+            auto value_match = Evaluator.matches_sequence_type(entry_value, *SequenceInfo.map_value_type, ContextNode);
+            if (!value_match.has_value()) return std::nullopt;
+            if (!value_match.value()) return false;
+         }
+      }
+   }
+
+   return true;
+}
+
+static std::optional<bool> array_sequence_matches_type(const XPathVal &Value, const SequenceTypeInfo &SequenceInfo,
+   XPathEvaluator &Evaluator, const XPathNode *ContextNode)
+{
+   std::vector<XPathVal> arrays;
+   if (!gather_items_of_type(Value, XPVT::Array, arrays)) return false;
+   if (arrays.empty()) return false;
+
+   if (SequenceInfo.array_allows_any or (!SequenceInfo.array_member_type)) return true;
+
+   for (const auto &array_value : arrays) {
+      const XPathArrayStorage *storage = (array_value.Type IS XPVT::Array) ? array_value.array_storage.get() : nullptr;
+      if (!storage) continue;
+      for (const auto &member : storage->members) {
+         XPathVal member_value = Evaluator.materialise_sequence_value(member);
+         auto member_match = Evaluator.matches_sequence_type(member_value, *SequenceInfo.array_member_type, ContextNode);
+         if (!member_match.has_value()) return std::nullopt;
+         if (!member_match.value()) return false;
+      }
+   }
+
+   return true;
+}
+
+static bool function_sequence_matches_type(const XPathVal &Value)
+{
+   std::vector<XPathVal> functions;
+   if (!gather_function_items(Value, functions)) return false;
+   return !functions.empty();
 }
 
 //********************************************************************************************************************
@@ -323,7 +567,8 @@ static std::optional<long long> resolve_lookup_integer(std::string_view Lexical,
    auto parsed = parse_integer_lexical(Lexical, 1, std::numeric_limits<long long>::max());
    if (parsed.has_value()) return parsed;
 
-   auto message = std::format("FOAY0001: {} must be a positive integer.", Description);
+   auto detail = std::format("{} must be a positive integer.", Description);
+   auto message = xquery::errors::array_index_out_of_bounds(detail);
    Evaluator.record_error(message, ContextNode, true);
    Evaluator.expression_unsupported = true;
    return std::nullopt;
@@ -996,6 +1241,22 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
    if (item_count IS 0) return true;
 
    if (SequenceInfo.kind IS SequenceItemKind::Item) return true;
+
+   if (SequenceInfo.kind IS SequenceItemKind::Map) {
+      auto map_match = map_sequence_matches_type(Value, SequenceInfo, *this, ContextNode);
+      if (!map_match.has_value()) return std::nullopt;
+      return *map_match;
+   }
+
+   if (SequenceInfo.kind IS SequenceItemKind::Array) {
+      auto array_match = array_sequence_matches_type(Value, SequenceInfo, *this, ContextNode);
+      if (!array_match.has_value()) return std::nullopt;
+      return *array_match;
+   }
+
+   if (SequenceInfo.kind IS SequenceItemKind::Function) {
+      return function_sequence_matches_type(Value);
+   }
 
    if (SequenceInfo.kind IS SequenceItemKind::Node) {
       if (Value.Type IS XPVT::NodeSet) {
@@ -1872,6 +2133,39 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
 
       auto message = std::format("XPTY0004: Treat as expression for 'text()' requires text nodes, but received '{}'.",
          operand_value.to_string());
+      record_error(message, Node, true);
+      return XPathVal();
+   }
+
+   if (sequence_info->kind IS SequenceItemKind::Map) {
+      auto match_result = matches_sequence_type(operand_value, *sequence_info, Node);
+      if (!match_result.has_value()) return XPathVal();
+      if (*match_result) return operand_value;
+
+      auto message = std::format("XPTY0004: Treat as expression for '{}' requires map values, but received '{}'.",
+         node_value, describe_value_type(operand_value));
+      record_error(message, Node, true);
+      return XPathVal();
+   }
+
+   if (sequence_info->kind IS SequenceItemKind::Array) {
+      auto match_result = matches_sequence_type(operand_value, *sequence_info, Node);
+      if (!match_result.has_value()) return XPathVal();
+      if (*match_result) return operand_value;
+
+      auto message = std::format("XPTY0004: Treat as expression for '{}' requires array values, but received '{}'.",
+         node_value, describe_value_type(operand_value));
+      record_error(message, Node, true);
+      return XPathVal();
+   }
+
+   if (sequence_info->kind IS SequenceItemKind::Function) {
+      auto match_result = matches_sequence_type(operand_value, *sequence_info, Node);
+      if (!match_result.has_value()) return XPathVal();
+      if (*match_result) return operand_value;
+
+      auto message = std::format("XPTY0004: Treat as expression for '{}' requires function items, but received '{}'.",
+         node_value, describe_value_type(operand_value));
       record_error(message, Node, true);
       return XPathVal();
    }
@@ -3238,8 +3532,9 @@ XPathVal XPathEvaluator::apply_lookup_to_value(const XPathVal &BaseValue, const 
          return lookup_nodeset_value(BaseValue, Specifier, ContextNode);
 
       default: {
-         auto message = std::format("XPTY0004: Lookup operator cannot be applied to {} values.",
+         auto detail = std::format("Lookup operator cannot be applied to {} values.",
             describe_value_type(BaseValue));
+         auto message = xquery::errors::json_not_schema_aware(detail);
          record_error(message, ContextNode, true);
          expression_unsupported = true;
          return XPathVal();
@@ -3342,7 +3637,8 @@ XPathVal XPathEvaluator::lookup_array_value(const XPathVal &BaseValue, const XPa
 
    long long index_one_based = *resolved_index;
    if ((index_one_based < 1) or ((size_t)index_one_based > storage->members.size())) {
-      auto message = std::format("FOAY0001: Array index {} is out of range.", index_one_based);
+      auto detail = std::format("Array index {} is out of range.", index_one_based);
+      auto message = xquery::errors::array_index_out_of_bounds(detail);
       record_error(message, ContextNode, true);
       expression_unsupported = true;
       return XPathVal();

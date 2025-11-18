@@ -210,6 +210,9 @@ enum class SequenceItemKind {
    Text,
    Node,
    Item,
+   Map,
+   Array,
+   Function,
    EmptySequence
 };
 
@@ -1576,6 +1579,11 @@ struct SequenceTypeInfo {
    SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
    SequenceItemKind kind = SequenceItemKind::Atomic;
    std::string type_name;
+   bool map_allows_any = false;
+   std::string map_key_type;
+   std::shared_ptr<SequenceTypeInfo> map_value_type;
+   bool array_allows_any = false;
+   std::shared_ptr<SequenceTypeInfo> array_member_type;
 
    [[nodiscard]] inline bool allows_empty() const {
       return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);
