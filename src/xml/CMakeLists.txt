@@ -13,7 +13,6 @@ idl_gen ("${MOD}.fdl"
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD} "Xml")
-target_compile_definitions (${MOD} PRIVATE "PRV_XML_MODULE" "PRV_XML")
 
 # Unescape Library
 
@@ -33,6 +32,10 @@ add_library (xml_schema OBJECT
 target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
 add_dependencies (xml build_headers)
+
+target_compile_definitions (${MOD} PRIVATE "PRV_XML_MODULE" "PRV_XML")
+target_compile_definitions (xml_schema PRIVATE "PRV_XML_MODULE" "PRV_XML")
+target_compile_definitions (xml_unescape PRIVATE "PRV_XML_MODULE" "PRV_XML")
 
 # Module Code
 
