@@ -33,6 +33,13 @@ Log levels are:
 
 #include <stdarg.h>
 #include <fcntl.h>
+#include <array>
+#include <format>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <source_location>
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -48,14 +55,188 @@ static const int COLUMN1 = 40;
 static const int COLUMN1 = 30;
 #endif
 
-//#if !defined(_WIN32)
-   #define ESC_OUTPUT 1
-//#endif
-
 enum { MS_NONE, MS_FUNCTION, MS_MSG };
 enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
 static thread_local int tlBaseLine = 0;
+
+namespace {
+
+struct PreparedLogLine {
+   std::array<char, COLUMN1+1> Header{};
+   std::string Context;
+   std::string Message;
+   int Level = 0;
+   VLF Flags = VLF::NIL;
+   bool Highlight = false;
+   bool PrintThread = false;
+   int ThreadId = 0;
+};
+
+#ifndef __ANDROID__
+struct TerminalSink {
+   TerminalSink();
+   void operator()(const PreparedLogLine &Line) const;
+
+   bool SupportsColour;
+};
+#else
+struct TerminalSink {
+   void operator()(const PreparedLogLine &Line) const;
+};
+#endif
+
+using SinkType = TerminalSink;
+static std::array<SinkType, 1> glLogSinks { SinkType{} };
+
+static constexpr std::array<VLF, 10> LOG_LEVELS = {
+   VLF::CRITICAL,
+   VLF::ERROR|VLF::CRITICAL,
+   VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+   VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
+};
+
+static void dispatch_to_sinks(const PreparedLogLine &Line)
+{
+   auto sinks = std::span<const SinkType>(glLogSinks);
+   for (const auto &sink : sinks) sink(Line);
+}
+
+#ifndef __ANDROID__
+TerminalSink::TerminalSink()
+{
+#ifdef _WIN32
+   SupportsColour = false;
+#else
+   SupportsColour = true;
+#endif
+}
+
+void TerminalSink::operator()(const PreparedLogLine &Line) const
+{
+   if (Line.PrintThread) fprintf(stderr, "%.4d ", Line.ThreadId);
+
+   if (Line.Highlight) {
+      if (SupportsColour) fprintf(stderr, "\033[1m");
+      else fputc('!', stderr);
+   }
+
+   fprintf(stderr, "%s", Line.Header.data());
+
+   if (!Line.Context.empty()) fprintf(stderr, "%s", Line.Context.c_str());
+
+   fprintf(stderr, "%s", Line.Message.c_str());
+
+   if (Line.Highlight and SupportsColour) fprintf(stderr, "\033[0m");
+
+   fprintf(stderr, "\n");
+}
+#else
+void TerminalSink::operator()(const PreparedLogLine &Line) const
+{
+   auto tag = Line.Header[0] ? Line.Header.data() : "Parasol";
+   auto priority = (Line.Level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO;
+   __android_log_print(priority, tag, "%s%s", Line.Context.c_str(), Line.Message.c_str());
+}
+#endif
+
+static std::string format_legacy_message(CSTRING Message, va_list Args)
+{
+   if (!Message) return std::string();
+
+   va_list copy;
+   va_copy(copy, Args);
+   int required = vsnprintf(nullptr, 0, Message, copy);
+   va_end(copy);
+
+   if (required <= 0) return std::string();
+
+   std::string buffer;
+   buffer.resize(required);
+   va_copy(copy, Args);
+   vsnprintf(buffer.data(), buffer.size()+1, Message, copy);
+   va_end(copy);
+
+   return buffer;
+}
+
+static PreparedLogLine prepare_line(pf::LogRecord &Record, int Level, int16_t LogSetting)
+{
+   PreparedLogLine line;
+   line.Flags = Record.Flags;
+   line.Level = Level;
+   line.Message = std::move(Record.Message);
+   line.PrintThread = glLogThreads;
+   if (line.PrintThread) line.ThreadId = int(get_thread_id());
+
+   bool highlight = (LogSetting > 2) and ((Record.Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL);
+   if ((Record.Flags & VLF::CRITICAL) != VLF::NIL) highlight = true;
+   line.Highlight = highlight;
+
+   auto &ctx = tlContext.back();
+   auto obj = ctx.obj;
+
+   CSTRING action;
+   if (ctx.action > AC::NIL) action = ActionTable[int(ctx.action)].Name;
+   else if (ctx.action < AC::NIL) {
+      if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
+      else action = "Method";
+   }
+   else action = "App";
+
+   auto header = Record.Header;
+   if ((header) and (!*header)) header = nullptr;
+   if (!header) {
+      header = action;
+      action = nullptr;
+   }
+   if (!header) header = "";
+
+   auto msgstate = ((Record.Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) ? MS_FUNCTION : MS_MSG;
+
+#ifndef __ANDROID__
+   if (LogSetting > 2) {
+      int8_t adjust = 0;
+      #ifdef _WIN32
+         if (line.Highlight) adjust = 1;
+      #endif
+      fmsg(header, line.Header.data(), msgstate, adjust);
+   }
+   else {
+      size_t len;
+      for (len=0; (header[len]) and (len < line.Header.size()-2); len++) line.Header[len] = header[len];
+      line.Header[len++] = ' ';
+      line.Header[len] = 0;
+   }
+#else
+   fmsg(header, line.Header.data(), msgstate, 0);
+#endif
+
+   if (obj->Class) {
+      CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
+      if (LogSetting > 5) {
+         CSTRING action_label = action ? action : (CSTRING)"";
+         CSTRING action_sep = action ? ":" : "";
+         if (ctx.field) line.Context = std::format("[{}{}{}:{}:{}] ", action_label, action_sep, name, obj->UID, ctx.field->Name);
+         else line.Context = std::format("[{}{}{}:{}] ", action_label, action_sep, name, obj->UID);
+      }
+      else {
+         if (ctx.field) line.Context = std::format("[{}:{}:{}] ", name, obj->UID, ctx.field->Name);
+         else line.Context = std::format("[{}:{}] ", name, obj->UID);
+      }
+   }
+   else line.Context.clear();
+
+   return line;
+}
+
+} // namespace
 
 /*********************************************************************************************************************
 
@@ -84,7 +265,7 @@ int: Returns the absolute base-line value that was active prior to calling this 
 
 int AdjustLogLevel(int Delta)
 {
-   if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
+   if (glLogLevel.load(std::memory_order_relaxed) >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    int old_level = tlBaseLine;
    if ((Delta >= -6) and (Delta <= 6)) tlBaseLine += Delta;
    return old_level;
@@ -124,180 +305,16 @@ va_list Args: A `va_list` corresponding to the arguments referenced in `Message`
 
 void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
-   if (tlLogStatus <= 0) { if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++; return; }
+   if (pf::detail::ShouldSkipLog(Flags)) return;
 
-   static const VLF log_levels[10] = {
-      VLF::CRITICAL,
-      VLF::ERROR|VLF::CRITICAL,
-      VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
-   };
+   pf::LogRecord record;
+   record.Flags = Flags;
+   record.Header = Header;
+   record.Template = Message ? std::string_view(Message) : std::string_view();
+   record.Message = format_legacy_message(Message ? Message : "", Args);
+   record.Origin = std::source_location::current();
 
-   if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
-      #ifdef __ANDROID__
-         __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
-      #else
-         #ifdef ESC_OUTPUT
-            if (!Header) Header = "";
-            #ifdef _WIN32
-               fprintf(stderr, "!%s ", Header);
-            #else
-               fprintf(stderr, "\033[1m%s ", Header);
-            #endif
-         #else
-            if (Header) fprintf(stderr, "%s ", Header);
-         #endif
-
-         vfprintf(stderr, Message, Args);
-
-         #ifdef ESC_OUTPUT
-            #ifndef _WIN32
-               fprintf(stderr, "\033[0m");
-            #endif
-         #endif
-
-         fprintf(stderr, "\n");
-      #endif
-
-      if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
-      return;
-   }
-
-   int level = glLogLevel - tlBaseLine;
-   if (level > 9) level = 9;
-   else if (level < 0) level = 0;
-
-   if (((log_levels[level] & Flags) != VLF::NIL) or
-       ((glLogLevel > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
-      CSTRING name, action;
-      int8_t msgstate;
-      int8_t adjust = 0;
-
-      std::lock_guard lock(glmPrint);
-
-      if ((Header) and (!*Header)) Header = nullptr;
-
-      if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
-      else msgstate = MS_MSG;
-
-      if (glLogThreads) fprintf(stderr, "%.4d ", int(get_thread_id()));
-
-      #if defined(__unix__) and !defined(__ANDROID__)
-         bool flushdbg;
-         if (glLogLevel >= 3) {
-            flushdbg = true;
-            if (tlPublicLockCount) flushdbg = false;
-            if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
-         }
-         else flushdbg = false;
-      #endif
-
-      #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
-            #ifdef _WIN32
-               fprintf(stderr, "!");
-               adjust = 1;
-            #else
-               fprintf(stderr, "\033[1m");
-            #endif
-         }
-      #endif
-
-      // If no header is provided, make one to match the current context
-
-      auto &ctx = tlContext.back();
-      auto obj = ctx.obj;
-      if (ctx.action > AC::NIL) action = ActionTable[int(ctx.action)].Name;
-      else if (ctx.action < AC::NIL) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
-         else action = "Method";
-      }
-      else action = "App";
-
-      if (!Header) {
-         Header = action;
-         action = nullptr;
-      }
-
-      #ifdef __ANDROID__
-         char msgheader[COLUMN1+1];
-
-         fmsg(Header, msgheader, msgstate, 0);
-
-         if (obj->Class) {
-            char msg[180];
-
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->Name;
-
-            if (glLogLevel > 5) {
-               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, Message);
-            }
-            else {
-               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, obj->UID, ctx->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, obj->UID, Message);
-            }
-
-            __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
-         }
-         else {
-            __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, Args);
-         }
-
-      #else
-         char msgheader[COLUMN1+1];
-         if (glLogLevel > 2) {
-            fmsg(Header, msgheader, msgstate, adjust); // Print header with indenting
-         }
-         else {
-            size_t len;
-            for (len=0; (Header[len]) and (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
-            msgheader[len++] = ' ';
-            msgheader[len] = 0;
-         }
-
-         if (obj->Class) {
-            name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
-
-            if (glLogLevel > 5) {
-               if (ctx.field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
-               }
-               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
-            }
-            else if (ctx.field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx.field->Name);
-            }
-            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
-         }
-         else fprintf(stderr, "%s", msgheader);
-
-         vfprintf(stderr, Message, Args);
-
-         #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(stderr, "\033[0m");
-         #endif
-
-         fprintf(stderr, "\n");
-
-         #if defined(__unix__) and !defined(__ANDROID__)
-            if (flushdbg) {
-               fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
-               if (glSync) fsync(STDERR_FILENO);
-               fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags);
-            }
-         #endif
-      #endif
-   }
-
-   if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
+   pf::detail::SubmitLogRecord(std::move(record));
 }
 
 /*********************************************************************************************************************
@@ -325,7 +342,7 @@ error: Returns the same code that was specified in the `Error` parameter.
 ERR FuncError(CSTRING Header, ERR Code)
 {
    if (tlLogStatus <= 0) return Code;
-   if (glLogLevel < 2) return Code;
+   if (glLogLevel.load(std::memory_order_relaxed) < 2) return Code;
    if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) return Code;
 
    auto &ctx = tlContext.back();
@@ -343,8 +360,8 @@ ERR FuncError(CSTRING Header, ERR Code)
       if (obj->Class) {
          STRING name = obj->Name[0] ? obj->Name : obj->Class->Name;
 
-         if (ctx->Field) {
-             __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, obj->UID, ctx->Field->Name, glMessages[Code]);
+         if (ctx.field) {
+             __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, obj->UID, ctx.field->Name, glMessages[Code]);
          }
          else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, obj->UID, glMessages[Code]);
       }
@@ -353,16 +370,14 @@ ERR FuncError(CSTRING Header, ERR Code)
       char msgheader[COLUMN1+1];
       CSTRING histart = "", hiend = "";
 
-      #ifdef ESC_OUTPUT
-         if (glLogLevel > 2) {
-            #ifdef _WIN32
-               histart = "!";
-            #else
-               histart = "\033[1m";
-               hiend = "\033[0m";
-            #endif
-         }
-      #endif
+      if (glLogLevel.load(std::memory_order_relaxed) > 2) {
+         #ifdef _WIN32
+            histart = "!";
+         #else
+            histart = "\033[1m";
+            hiend = "\033[0m";
+         #endif
+      }
 
       fmsg(Header, msgheader, MS_MSG, 2);
 
@@ -403,6 +418,67 @@ void LogReturn(void)
    if ((--tlDepth) < 0) tlDepth = 0;
 }
 
+namespace pf::detail {
+
+bool ShouldSkipLog(VLF Flags)
+{
+   if (tlLogStatus <= 0) {
+      if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
+      return true;
+   }
+   return false;
+}
+
+void SubmitLogRecord(LogRecord &&Record)
+{
+   auto log_setting = glLogLevel.load(std::memory_order_relaxed);
+   auto flags = Record.Flags;
+
+   auto dispatch_record = [&](int level) {
+      std::lock_guard lock(glmPrint);
+      auto prepared = prepare_line(Record, level, log_setting);
+      dispatch_to_sinks(prepared);
+   };
+
+   if ((flags & VLF::CRITICAL) != VLF::NIL) {
+      dispatch_record(0);
+      if ((flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
+      return;
+   }
+
+   int level = log_setting - tlBaseLine;
+   if (level > 9) level = 9;
+   else if (level < 0) level = 0;
+
+   bool should_log = ((LOG_LEVELS[level] & flags) != VLF::NIL);
+   if ((!should_log) and (log_setting > 1) and ((flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)) should_log = true;
+
+   if (should_log) {
+      #if defined(__unix__) and !defined(__ANDROID__)
+         bool flushdbg = false;
+         if (log_setting >= 3) {
+            flushdbg = true;
+            if (tlPublicLockCount) flushdbg = false;
+            if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
+         }
+      #endif
+
+      dispatch_record(level);
+
+      #if defined(__unix__) and !defined(__ANDROID__)
+         if (flushdbg) {
+            fflush(0);
+            if (glSync) fsync(STDERR_FILENO);
+            fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags);
+         }
+      #endif
+   }
+
+   if ((flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
+}
+
+} // namespace pf::detail
+
 //********************************************************************************************************************
 
 static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buffer must be COLUMN1+1 in size
@@ -413,7 +489,7 @@ static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buf
    int16_t depth;
    int16_t col = COLUMN1;
 
-   if (glLogLevel < 3) depth = 0;
+   if (glLogLevel.load(std::memory_order_relaxed) < 3) depth = 0;
    else if (tlDepth > col) depth = col;
    else {
       depth = tlDepth;
@@ -430,7 +506,7 @@ static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buf
       pos += snprintf(Buffer+pos, col, "%09.5f ", time/1000000.0);
    }
 
-   if (glLogLevel >= 3) {
+   if (glLogLevel.load(std::memory_order_relaxed) >= 3) {
       while ((depth > 0) and (pos < col)) {
          #ifdef __ANDROID__
             Buffer[pos++] = '_';
@@ -459,7 +535,7 @@ static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buf
             Buffer[pos++] = ')';
          }
       }
-      if (glLogLevel >= 3) while (pos < col) Buffer[pos++] = ' '; // Add any extra spaces
+      if (glLogLevel.load(std::memory_order_relaxed) >= 3) while (pos < col) Buffer[pos++] = ' '; // Add any extra spaces
    }
 
    Buffer[pos] = 0; // NB: Buffer is col + 1, so there is always room for the null byte.

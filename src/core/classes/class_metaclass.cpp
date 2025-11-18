@@ -862,7 +862,7 @@ static void field_setup(extMetaClass *Class)
             if (!found) add_field(Class, subFields, Class->SubFields[i], offset);
          }
 
-         if (glLogLevel >= 2) register_fields(subFields);
+        if (glLogLevel.load(std::memory_order_relaxed) >= 2) register_fields(subFields);
 
          sort_class_fields(Class, subFields);
 
@@ -939,7 +939,7 @@ static void field_setup(extMetaClass *Class)
          .Flags      = FDF_INT|FDF_UNSIGNED|FDF_R|FDF_SYSTEM
       });
 
-      if (glLogLevel >= 2) register_fields(Class->FieldLookup);
+      if (glLogLevel.load(std::memory_order_relaxed) >= 2) register_fields(Class->FieldLookup);
 
       // Build a list of local objects before we do the sort
 

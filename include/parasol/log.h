@@ -1,8 +1,44 @@
 #pragma once
 
+#include <format>
+#include <source_location>
+#include <string>
+#include <string_view>
+#include <utility>
+
 // For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
 namespace pf {
+
+struct LogRecord {
+   VLF Flags = VLF::NIL;
+   CSTRING Header = nullptr;
+   std::string_view Template;
+   std::string Message;
+   std::source_location Origin = std::source_location::current();
+
+   template<typename... Args>
+   static LogRecord Format(
+      VLF Flags,
+      CSTRING Header,
+      std::format_string<Args...> Template,
+      Args&&... Parameters,
+      std::source_location Origin = std::source_location::current())
+   {
+      LogRecord record;
+      record.Flags = Flags;
+      record.Header = Header;
+      record.Template = std::string_view(Template.get());
+      record.Message = std::format(Template, std::forward<Args>(Parameters)...);
+      record.Origin = Origin;
+      return record;
+   }
+};
+
+namespace detail {
+   bool ShouldSkipLog(VLF Flags);
+   void SubmitLogRecord(LogRecord&& Record);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
@@ -135,6 +171,25 @@ class Log { // C++ wrapper for Parasol's log functionality
             FuncError(header, Code);
          #endif
          return Code;
+      }
+
+      template<typename... Args>
+      void fmt(std::format_string<Args...> Message, Args&&... Parameters) {
+         fmt(VLF::API, Message, std::forward<Args>(Parameters)...);
+      }
+
+      template<typename... Args>
+      void fmt(VLF Flags, std::format_string<Args...> Message, Args&&... Parameters) {
+         bool is_branch = ((Flags & VLF::BRANCH) != VLF::NIL);
+         if (detail::ShouldSkipLog(Flags)) {
+            if (is_branch) branches++;
+            return;
+         }
+
+         auto record = LogRecord::Format(Flags, header, Message, std::forward<Args>(Parameters)...);
+         detail::SubmitLogRecord(std::move(record));
+
+         if (is_branch) branches++;
       }
 };
 

@@ -282,7 +282,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    // Debug processing
 
-   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel = (int16_t)Info->Detail;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel.store(int16_t(Info->Detail), std::memory_order_relaxed);
    if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL)   glMaxDepth = (int16_t)Info->MaxDepth;
    if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = true;
 
@@ -331,16 +331,16 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if (iequals(arg, "no-crash-handler")) glEnableCrashHandler = false;
          else if (iequals(arg, "sync"))        glSync = true;
          else if (iequals(arg, "log-threads")) glLogThreads = true;
-         else if (iequals(arg, "log-none"))    glLogLevel = 0;
-         else if (iequals(arg, "log-error"))   glLogLevel = 1;
-         else if (iequals(arg, "log-warn"))    glLogLevel = 2;
-         else if (iequals(arg, "log-warning")) glLogLevel = 2;
-         else if (iequals(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
-         else if (iequals(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (iequals(arg, "log-extapi"))  glLogLevel = 6;
-         else if (iequals(arg, "log-debug"))   glLogLevel = 7;
-         else if (iequals(arg, "log-trace"))   glLogLevel = 9;
-         else if (iequals(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (iequals(arg, "log-none"))    glLogLevel.store(0, std::memory_order_relaxed);
+         else if (iequals(arg, "log-error"))   glLogLevel.store(1, std::memory_order_relaxed);
+         else if (iequals(arg, "log-warn"))    glLogLevel.store(2, std::memory_order_relaxed);
+         else if (iequals(arg, "log-warning")) glLogLevel.store(2, std::memory_order_relaxed);
+         else if (iequals(arg, "log-info"))    glLogLevel.store(4, std::memory_order_relaxed); // Levels 3/4 are for applications (no internal detail)
+         else if (iequals(arg, "log-api"))     glLogLevel.store(5, std::memory_order_relaxed); // Default level for API messages
+         else if (iequals(arg, "log-extapi"))  glLogLevel.store(6, std::memory_order_relaxed);
+         else if (iequals(arg, "log-debug"))   glLogLevel.store(7, std::memory_order_relaxed);
+         else if (iequals(arg, "log-trace"))   glLogLevel.store(9, std::memory_order_relaxed);
+         else if (iequals(arg, "log-all"))     glLogLevel.store(9, std::memory_order_relaxed); // 9 is the absolute maximum
          else if (iequals(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (iequals(arg, "holdpriority")) hold_priority = true;
@@ -349,7 +349,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else newargs.push_back(Info->Args[i]);
       }
 
-      if (glLogLevel > 2) {
+      if (glLogLevel.load(std::memory_order_relaxed) > 2) {
          std::ostringstream cmdline;
          for (int i=0; i < Info->ArgCount; i++) {
             if (i > 0) cmdline << ' ';
@@ -423,7 +423,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    AdjustLogLevel(1); // Temporarily limit log output when opening the Core because it's not that interesting
 
 #ifdef _WIN32
-   activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
+   activate_console(glLogLevel.load(std::memory_order_relaxed) > 0); // This works for the MinGW runtime libraries but not MSYS2
 
    // An exception handler deals with crashes unless the program is being debugged.
 
@@ -703,7 +703,7 @@ void print_diagnosis(int Signal)
    char filename[64];
 #endif
 
-   //if (glLogLevel <= 1) return;
+   //if (glLogLevel.load(std::memory_order_relaxed) <= 1) return;
 
    fd = stderr;
    fprintf(fd, "Diagnostic Information:\n\n");
@@ -804,7 +804,7 @@ void print_diagnosis(int Signal)
 #ifdef __unix__
 static void DiagnosisHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
-   if (glLogLevel < 2) return;
+   if (glLogLevel.load(std::memory_order_relaxed) < 2) return;
    print_diagnosis(0);
    fflush(nullptr);
 }
@@ -838,7 +838,7 @@ static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
          return;
       }
 
-      if (glLogLevel >= 5) {
+      if (glLogLevel.load(std::memory_order_relaxed) >= 5) {
          log.msg("Process terminated.\n");
       }
       else if ((SignalNumber > 0) and (SignalNumber < std::ssize(signals))) {
@@ -956,7 +956,7 @@ static int CrashHandler(int Code, APTR Address, int Continuable, int *Info)
 
    if (Code < EXP_END) {
       if (glCrashStatus IS 0) {
-         if (glLogLevel >= 5) {
+         if (glLogLevel.load(std::memory_order_relaxed) >= 5) {
             log.warning("CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
          }
          else fprintf(stderr, "\n\nCRASH!");
@@ -1025,7 +1025,7 @@ static void BreakHandler(void)
 
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
-   if (glLogLevel >= 5) {
+   if (glLogLevel.load(std::memory_order_relaxed) >= 5) {
       log.warning("USER BREAK"); // Using log is helpful for branched output to indicate where the crash occurred
    }
    else fprintf(stderr, "\nUSER BREAK");

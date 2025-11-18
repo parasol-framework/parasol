@@ -545,7 +545,7 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
 {
    pf::Log log(__FUNCTION__);
 
-   if (glLogLevel >= 9) {
+   if (glLogLevel.load(std::memory_order_relaxed) >= 9) {
       if (Type IS MSGID::ACTION) {
          auto action = (ActionMessage *)Data;
          if (action->ActionID > AC::NIL) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[int(action->ActionID)].Name, action->ObjectID, Size);

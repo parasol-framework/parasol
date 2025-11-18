@@ -170,9 +170,9 @@ int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
 int16_t glSystemState   = -1; // Initialisation state is -1
 #ifdef _DEBUG
-   int16_t glLogLevel = 8; // Thread global
+   std::atomic<int16_t> glLogLevel = int16_t(8); // Thread global
 #else
-   int16_t glLogLevel  = 0;
+   std::atomic<int16_t> glLogLevel = int16_t(0);
 #endif
 int16_t glMaxDepth     = 20; // Thread global
 bool glShowIO       = false;

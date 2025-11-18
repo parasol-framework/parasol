@@ -283,7 +283,7 @@ int64_t GetResource(RES Resource)
 
    switch(Resource) {
       case RES::PRIVILEGED:      return glPrivileged;
-      case RES::LOG_LEVEL:       return glLogLevel;
+      case RES::LOG_LEVEL:       return glLogLevel.load(std::memory_order_relaxed);
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);
       case RES::LOG_DEPTH:       return tlDepth;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
@@ -656,7 +656,7 @@ int64_t SetResource(RES Resource, int64_t Value)
          break;
 
       case RES::LOG_LEVEL:
-         if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
+         if ((Value >= 0) and (Value <= 9)) glLogLevel.store(int16_t(Value), std::memory_order_relaxed);
          break;
 
       case RES::LOG_DEPTH: tlDepth = Value; break;

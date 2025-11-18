@@ -312,7 +312,7 @@ static void free_children(OBJECTPTR Object)
 
             if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Address)) continue;
 
-            if (glLogLevel >= 3) {
+            if (glLogLevel.load(std::memory_order_relaxed) >= 3) {
                if ((mem.Flags & MEM::STRING) != MEM::NIL) {
                   log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
                }

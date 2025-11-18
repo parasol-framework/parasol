@@ -700,7 +700,8 @@ extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;
-extern int16_t glLogLevel, glMaxDepth;
+extern std::atomic<int16_t> glLogLevel;
+extern int16_t glMaxDepth;
 extern TSTATE glTaskState;
 extern int64_t glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.

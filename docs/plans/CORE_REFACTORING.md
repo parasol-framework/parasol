@@ -53,4 +53,5 @@ Async actions are tracked in a global `std::set<std::shared_ptr<std::jthread>>`,
 3. Finish by reworking logging/global state, as those changes ripple across the entire engine and benefit from the stability gained by earlier work.
 
 ## Status Update
+- ✅ Opportunity 4 delivered: logging now routes through type-safe `std::format` helpers, a `LogRecord` pipeline, atomic log level controls, and a terminal sink policy so critical output no longer depends on raw `va_list` formatting or `ESC_OUTPUT` macros.
 - ✅ Opportunity 5 delivered: global path seeds and ID counters now reset via dedicated `CorePathConfig`/`CoreIdConfig` helpers so tests or embedders can snapshot and restore deterministic startup state directly from `data.cpp`.
