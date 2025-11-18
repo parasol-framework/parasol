@@ -337,7 +337,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if (iequals(arg, "log-warning")) glLogLevel = 2;
          else if (iequals(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
          else if (iequals(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (iequals(arg, "log-extapi"))  glLogLevel = 6;
+         else if (iequals(arg, "log-xapi"))    glLogLevel = 6; // Extended API messages (detail() level).
          else if (iequals(arg, "log-debug"))   glLogLevel = 7;
          else if (iequals(arg, "log-trace"))   glLogLevel = 9;
          else if (iequals(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum

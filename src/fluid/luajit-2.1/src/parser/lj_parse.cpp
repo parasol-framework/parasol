@@ -88,19 +88,19 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
    pf::Log log("Fluid-Parser");
    StatementListView statements = chunk.view();
    SourceSpan span = chunk.span;
-   log.detail("ast-boundary[%s]: statements=%zu span=%d:%d offset=%zu\n", stage,
-      statements.size(), int(span.line), int(span.column), span.offset);
+   log.detail("ast-boundary[%s]: statements=%" PRId64 " span=%d:%d offset=" PRId64, 
+      stage, statements.size(), int(span.line), int(span.column), span.offset);
 
    size_t index = 0;
    for (const StmtNode& stmt : statements) {
       if (index >= kMaxLoggedStatements) {
-         log.detail("   ... truncated after %zu statements ...\n", index);
+         log.detail("   ... truncated after %" PRId64 " statements ...", index);
          break;
       }
 
       size_t children = ast_statement_child_count(stmt);
       SourceSpan stmt_span = stmt.span;
-      log.detail("   stmt[%zu] kind=%d children=%zu span=%d:%d offset=%zu\n", index,
+      log.detail("   stmt[%" PRId64 "] kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64, index,
          int(stmt.kind), children, int(stmt_span.line), int(stmt_span.column), stmt_span.offset);
 
       if (stmt.kind IS AstNodeKind::ExpressionStmt) {
@@ -109,7 +109,7 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
             const ExprNode& expr = *payload->expression;
             size_t expr_children = ast_expression_child_count(expr);
             SourceSpan expr_span = expr.span;
-            log.detail("      expr kind=%d children=%zu span=%d:%d offset=%zu\n",
+            log.detail("      expr kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64,
                int(expr.kind), expr_children, int(expr_span.line), int(expr_span.column), expr_span.offset);
          }
       }
@@ -125,10 +125,10 @@ static void trace_bytecode_snapshot(ParserContext& context, const char* label)
    }
    pf::Log log("Fluid-Parser");
    FuncState& fs = context.func();
-   log.detail("bytecode-%s: count=%u\n", label, (unsigned)fs.pc);
+   log.detail("bytecode-%s: count=%u", label, (unsigned)fs.pc);
    for (BCPos pc = 0; pc < fs.pc; ++pc) {
       const BCInsLine& line = fs.bcbase[pc];
-      log.detail("   [%04d] op=%03d A=%03d B=%03d C=%03d D=%05d line=%d\n",
+      log.detail("   [%04d] op=%03d A=%03d B=%03d C=%03d D=%05d line=%d",
          (int)pc, (int)bc_op(line.ins), (int)bc_a(line.ins), (int)bc_b(line.ins),
          (int)bc_c(line.ins), (int)bc_d(line.ins), (int)line.line);
    }
@@ -165,18 +165,12 @@ static ParserConfig make_parser_config(lua_State &State)
 {
    pf::Log log("FluidParser");
    ParserConfig config;
+   
+   if (glJITPipeline) config.enable_ast_pipeline = true;
 
-#if defined(PARASOL_PARSER_ENABLE_AST_PIPELINE)
-   config.enable_ast_pipeline = true;
-#endif
+   if (glJITTraceBoundary) config.trace_ast_boundaries = true;
 
-#if defined(PARASOL_PARSER_TRACE_AST_BOUNDARY)
-   config.trace_ast_boundaries = true;
-#endif
-
-#if defined(PARASOL_PARSER_TRACE_BYTECODE)
-   config.dump_ast_bytecode = true;
-#endif
+   if (glJITTraceByteCode) config.dump_ast_bytecode = true;
 
    if (glJITDiagnose) {
       log.msg("JIT diagnostic mode enabled.");

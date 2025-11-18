@@ -68,9 +68,8 @@ Phase 2 severs the direct coupling between syntax parsing and bytecode emission 
 
 NOTE:
 - Unit tests can be added to lj_parse_tests.cpp and are executed by running the Flute script `src/fluid/tests/test_unit_tests.fluid` directly.  Use printf or cout for sending output.
-- The `--jit:trace` commandline option enables the associated diagnosis options in make_parser_config()
-- The `--jit:diagnose` commandline option enables the associated tracing options in make_parser_config()
-- Additional commandline options can be added to fluid.cpp in the MODInit() function if necessary.
+- The `--jit-options` commandline option supports a csv list of options including `trace`, `diagnose`, `ast-pipeline`, `trace-boundary`, `trace-bytecode` to enable the associated diagnosis options in make_parser_config()
+- Because diagnosis messages are logged at the `detail` level, logging needs to be enabled with `--log-detail`
 
 ### 6. Documentation and developer enablement
 1. Update `docs/plans/LUAJIT_PARSER_REDESIGN.md` Phase 2 section summary (once implementation begins) with progress notes, caveats, and links to the new files.

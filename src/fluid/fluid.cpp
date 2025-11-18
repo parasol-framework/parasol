@@ -33,8 +33,11 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/modules/regex.h>
+#include <parasol/strings.hpp>
 
 #include <inttypes.h>
+#include <vector>
+#include <iterator>
 
 #include "lua.h"
 #include "lualib.h"
@@ -57,6 +60,9 @@ OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
 bool glJITTrace = false;
 bool glJITDiagnose = false;
+bool glJITPipeline = false;
+bool glJITTraceBoundary = false;
+bool glJITTraceByteCode = false;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
@@ -304,13 +310,45 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
       pf::vector<std::string> &args = *pargs;
       for (unsigned i=0; i < args.size(); i++) {
-         if (pf::iequals(args[i], "--jit:trace")) {
-            // Enable JIT tracing of compiled functions.
-            glJITTrace = true;
-         }
-         else if (pf::iequals(args[i], "--jit:diagnose")) {
-            // Collect diagnostics on JIT compilation issues.
-            glJITDiagnose = true;
+         if (pf::startswith(args[i], "--jit-options")) {
+            // Parse --jit-options parameter (supports both --jit-options=value and --jit-options value formats)
+            // Use in conjunction with --log-xapi to see the log messages.
+            std::string value;
+            auto eq_pos = args[i].find('=');
+            if (eq_pos != std::string::npos) {
+               value = args[i].substr(eq_pos + 1);
+            }
+            else if (i + 1 < args.size()) {
+               value = args[i + 1];
+               i++; // Skip the next argument as it's the value
+            }
+
+            if (not value.empty()) {
+               // Split the CSV string and set appropriate global variables
+               std::vector<std::string> options;
+               pf::split(value, std::back_inserter(options), ',');
+
+               for (const auto &option : options) {
+                  std::string trimmed = option;
+                  pf::trim(trimmed);
+
+                  if (pf::iequals(trimmed, "trace")) {
+                     glJITTrace = true;
+                  }
+                  else if (pf::iequals(trimmed, "diagnose")) {
+                     glJITDiagnose = true;
+                  }
+                  else if (pf::iequals(trimmed, "ast-pipeline")) {
+                     glJITPipeline = true;
+                  }
+                  else if (pf::iequals(trimmed, "trace-boundary")) {
+                     glJITTraceBoundary = true;
+                  }
+                  else if (pf::iequals(trimmed, "trace-bytecode")) {
+                     glJITTraceByteCode = true;
+                  }
+               }
+            }
          }
       }
    }

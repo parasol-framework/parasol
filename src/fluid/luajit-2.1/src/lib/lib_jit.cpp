@@ -16,9 +16,11 @@
 #include "lj_tab.h"
 #include "lj_state.h"
 #include "lj_bc.h"
+
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #endif
+
 #if LJ_HASJIT
 #include "lj_ir.h"
 #include "lj_jit.h"
@@ -26,6 +28,7 @@
 #include "lj_iropt.h"
 #include "lj_target.h"
 #endif
+
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -759,9 +762,7 @@ extern int luaopen_jit(lua_State* L)
 #if LJ_HASPROFILE
    lj_lib_prereg(L, "jit.profile", luaopen_jit_profile, tabref(L->env));
 #endif
-#ifndef LUAJIT_DISABLE_JITUTIL
    lj_lib_prereg(L, "jit.util", luaopen_jit_util, tabref(L->env));
-#endif
 #if LJ_HASJIT
    LJ_LIB_REG(L, "jit.opt", jit_opt);
 #endif

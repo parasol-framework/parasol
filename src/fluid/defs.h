@@ -54,6 +54,9 @@ extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
 extern bool glJITTrace;
 extern bool glJITDiagnose;
+extern bool glJITPipeline;
+extern bool glJITTraceBoundary;
+extern bool glJITTraceByteCode;
 extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
