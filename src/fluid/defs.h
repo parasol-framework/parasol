@@ -11,6 +11,8 @@ constexpr int SIZE_READ = 1024;
 #include <parasol/modules/regex.h>
 #include <thread>
 #include <string_view>
+#include <span>
+#include <concepts>
 
 #include "lauxlib.h"
 
