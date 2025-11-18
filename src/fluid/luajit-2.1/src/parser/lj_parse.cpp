@@ -49,6 +49,7 @@ static const struct {
 #include "parser/parser_context.cpp"
 #include "parser/ast_nodes.cpp"
 #include "parser/ast_builder.cpp"
+#include "parser/parser_entry_points.cpp"
 #include "parser/ir_emitter.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"

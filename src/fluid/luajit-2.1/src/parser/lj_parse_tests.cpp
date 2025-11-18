@@ -25,12 +25,13 @@
 #include "parser/parse_types.h"
 #include "parser/token_stream.h"
 #include "parser/token_types.h"
+#include "parser/parser_entry_points.h"
 #include "lj_parse.h"
 #include "../../../defs.h"
 
 namespace {
 
-static void log_diagnostics(const std::vector<ParserDiagnostic>& diagnostics, pf::Log& log)
+static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::Log& log)
 {
    if (diagnostics.empty()) {
       return;
@@ -115,6 +116,44 @@ static AstHarnessResult build_ast_from_source(std::string_view source)
    return result;
 }
 
+struct ExpressionParseHarness {
+   std::unique_ptr<LuaStateHolder> holder;
+   std::unique_ptr<StringReaderCtx> reader;
+   std::unique_ptr<LexState> lex;
+   FuncState fs;
+   std::unique_ptr<ParserContext> context;
+   std::unique_ptr<ParserSession> session;
+};
+
+static std::optional<ExpressionParseHarness> make_expression_harness(std::string_view source)
+{
+   ExpressionParseHarness harness;
+   harness.holder = std::make_unique<LuaStateHolder>();
+   lua_State* L = harness.holder->get();
+   if (not L) {
+      return std::nullopt;
+   }
+
+   harness.reader = std::make_unique<StringReaderCtx>();
+   harness.reader->str = source.data();
+   harness.reader->size = source.size();
+
+   harness.lex = std::make_unique<LexState>(L, unit_reader, harness.reader.get(), "expr-entry", std::nullopt);
+   harness.lex->fs_init(&harness.fs);
+
+   ParserAllocator allocator = ParserAllocator::from(L);
+   ParserContext context = ParserContext::from(*harness.lex, harness.fs, allocator);
+   harness.context = std::make_unique<ParserContext>(std::move(context));
+
+   ParserConfig config;
+   config.abort_on_error = false;
+   config.max_diagnostics = 32;
+   harness.session = std::make_unique<ParserSession>(*harness.context, config);
+
+   harness.lex->next();
+   return harness;
+}
+
 static void log_block_outline(const BlockStmt& block, pf::Log& log)
 {
    StatementListView view = block.view();
@@ -186,6 +225,72 @@ static bool test_literal_binary_expr(pf::Log& log)
    const auto* rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
    if (not rhs_literal or not (rhs_literal->kind IS LiteralKind::Number) or rhs_literal->number_value != 3.0) {
       log.error("multiply RHS literal mismatch");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_expression_entry_point(pf::Log& log)
+{
+   auto harness = make_expression_harness("value + 42");
+   if (not harness.has_value()) {
+      log.error("failed to initialise expression harness");
+      return false;
+   }
+
+   ParserContext& context = *harness->context;
+   FuncState& fs = harness->fs;
+   BCReg before = fs.freereg;
+   auto expression = parse_expression_ast(context);
+   if (not expression.ok()) {
+      log.error("expression entry parser reported failure");
+      auto diagnostics = context.diagnostics().entries();
+      log_diagnostics(diagnostics, log);
+      return false;
+   }
+
+   if (fs.freereg != before) {
+      log.error("FuncState::freereg changed from %d to %d during AST parse", (int)before, (int)fs.freereg);
+      return false;
+   }
+
+   const ExprNode& node = *expression.value_ref();
+   if (not (node.kind IS AstNodeKind::BinaryExpr)) {
+      log.error("expected binary node from expression entry point");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_expression_list_entry_point(pf::Log& log)
+{
+   auto harness = make_expression_harness("value, call(arg), 99");
+   if (not harness.has_value()) {
+      log.error("failed to initialise expression list harness");
+      return false;
+   }
+
+   ParserContext& context = *harness->context;
+   FuncState& fs = harness->fs;
+   BCReg before = fs.freereg;
+   auto list = parse_expression_list_ast(context);
+   if (not list.ok()) {
+      log.error("expression list entry parser reported failure");
+      auto diagnostics = context.diagnostics().entries();
+      log_diagnostics(diagnostics, log);
+      return false;
+   }
+
+   if (fs.freereg != before) {
+      log.error("FuncState::freereg changed from %d to %d during AST list parse", (int)before, (int)fs.freereg);
+      return false;
+   }
+
+   if (list.value_ref().size() != 3) {
+      log.error("expected three expressions from list entry point, got %" PRId64,
+         (int64_t)list.value_ref().size());
       return false;
    }
 
@@ -508,8 +613,10 @@ struct TestCase {
 extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
-   constexpr std::array<TestCase, 4> tests = { {
+   constexpr std::array<TestCase, 6> tests = { {
       { "literal_binary_ast", test_literal_binary_expr },
+      { "expression_entry_point", test_expression_entry_point },
+      { "expression_list_entry_point", test_expression_list_entry_point },
       { "loop_ast", test_loop_ast },
       { "local_function_table_ast", test_local_function_table_ast },
       { "bytecode_equivalence", test_bytecode_equivalence },
