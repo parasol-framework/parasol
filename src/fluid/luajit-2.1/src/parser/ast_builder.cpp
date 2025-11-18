@@ -45,6 +45,26 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
    return this->parse_block(terms);
 }
 
+ParserResult<ExprNodePtr> AstBuilder::parse_expression_entry(uint8_t precedence)
+{
+   auto expression = this->parse_expression(precedence);
+   if (not expression.ok()) {
+      return ParserResult<ExprNodePtr>::failure(expression.error_ref());
+   }
+   ExprNodePtr node = std::move(expression.value_ref());
+   return ParserResult<ExprNodePtr>::success(std::move(node));
+}
+
+ParserResult<ExprNodeList> AstBuilder::parse_expression_list_entry()
+{
+   auto list = this->parse_expression_list();
+   if (not list.ok()) {
+      return ParserResult<ExprNodeList>::failure(list.error_ref());
+   }
+   ExprNodeList nodes = std::move(list.value_ref());
+   return ParserResult<ExprNodeList>::success(std::move(nodes));
+}
+
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(
    std::span<const TokenKind> terminators)
 {

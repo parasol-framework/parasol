@@ -5,6 +5,8 @@ This document captures the outstanding requirements discovered while auditing th
 ## 1. Parser entry points still mutate `FuncState`
 * `parse_expr.cpp` continues to implement `LexState::expr_*` helpers that immediately manipulate `ExpDesc` and interact with `FuncState` (e.g., `expr_field`, `expr_bracket`, `expr_table`). These functions emit bytecode, reserve registers, and consume `FuncState::freereg`, which contradicts Step 2's requirement for expression/statement helpers to return AST nodes while leaving `FuncState` untouched during parsing.【F:src/fluid/luajit-2.1/src/parser/parse_expr.cpp†L19-L199】
 
+   *2025-11-18 update:* Added `parser/parser_entry_points.{h,cpp}` plus unit tests that expose AST-only expression and expression list entry points via `parse_expression_ast` / `parse_expression_list_ast`. These wrappers build ASTs through `AstBuilder` without touching `FuncState`, and the tests assert `FuncState::freereg` remains unchanged so the AST pipeline has clean entry points even while the legacy helpers still exist.【F:src/fluid/luajit-2.1/src/parser/parser_entry_points.h†L1-L8】【F:src/fluid/luajit-2.1/src/parser/parser_entry_points.cpp†L1-L21】【F:src/fluid/luajit-2.1/src/parser/lj_parse_tests.cpp†L1-L210】
+
 ## 2. `IrEmitter` lacks comprehensive lowering support
 * The `IrEmitter` visitor only recognises expression statements, bare `return` statements, and three expression kinds (literal, identifier, vararg). Every other AST node routes through `unsupported_stmt`/`unsupported_expr`, so the emitter neither owns register allocation for most constructs nor handles control-flow patching as mandated by Step 3.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L39-L172】
 

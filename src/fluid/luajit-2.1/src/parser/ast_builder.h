@@ -21,6 +21,8 @@ public:
    explicit AstBuilder(ParserContext& context);
 
    ParserResult<std::unique_ptr<BlockStmt>> parse_chunk();
+   ParserResult<ExprNodePtr> parse_expression_entry(uint8_t precedence = 0);
+   ParserResult<ExprNodeList> parse_expression_list_entry();
 
 private:
    ParserContext& ctx;
