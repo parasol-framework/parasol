@@ -478,20 +478,9 @@ struct XPathValueSequence
 {
    std::vector<XPathValue> items;
 
-   void reset()
-   {
-      items.clear();
-   }
-
-   bool empty() const noexcept
-   {
-      return items.empty();
-   }
-
-   size_t size() const noexcept
-   {
-      return items.size();
-   }
+   inline void reset() { items.clear(); }
+   inline bool empty() const noexcept { return items.empty(); }
+   inline size_t size() const noexcept { return items.size(); }
 };
 
 struct XPathMapEntry
@@ -499,56 +488,36 @@ struct XPathMapEntry
    std::string key;
    XPathValueSequence value;
 
-   void reset()
-   {
-      value.reset();
-   }
+   inline void reset() { value.reset(); }
 };
 
 struct XPathMapStorage
 {
    std::vector<XPathMapEntry> entries;
 
-   void reset()
-   {
+   inline void reset() {
       for (auto &entry : entries) entry.reset();
       entries.clear();
    }
 
-   bool empty() const noexcept
-   {
-      return entries.empty();
-   }
-
-   size_t size() const noexcept
-   {
-      return entries.size();
-   }
+   inline bool empty() const noexcept { return entries.empty(); }
+   inline size_t size() const noexcept { return entries.size(); }
 };
 
 struct XPathArrayStorage
 {
    std::vector<XPathValueSequence> members;
 
-   void reset()
-   {
+   void reset() {
       for (auto &member : members) member.reset();
       members.clear();
    }
 
-   bool empty() const noexcept
-   {
-      return members.empty();
-   }
-
-   size_t size() const noexcept
-   {
-      return members.size();
-   }
+   inline bool empty() const noexcept { return members.empty(); }
+   inline size_t size() const noexcept { return members.size(); }
 };
 
-inline void XPathValue::reset()
-{
+inline void XPathValue::reset() {
    Type = XPVT::Boolean;
    NumberValue = 0.0;
    StringValue.clear();
