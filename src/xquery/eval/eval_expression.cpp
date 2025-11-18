@@ -3529,7 +3529,7 @@ XPathVal XPathEvaluator::apply_lookup_to_value(const XPathVal &BaseValue, const 
          return lookup_array_value(BaseValue, Specifier, CurrentPrefix, ContextNode);
 
       case XPVT::NodeSet:
-         return lookup_nodeset_value(BaseValue, Specifier, ContextNode);
+         return lookup_nodeset_value(BaseValue, Specifier, CurrentPrefix, ContextNode);
 
       default: {
          auto detail = std::format("Lookup operator cannot be applied to {} values.",
@@ -3652,7 +3652,7 @@ XPathVal XPathEvaluator::lookup_array_value(const XPathVal &BaseValue, const XPa
 // Performs lookup semantics for node sequences by selecting matching attributes or child elements.
 
 XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
-   const XPathNode *ContextNode)
+   uint32_t CurrentPrefix, const XPathNode *ContextNode)
 {
    if ((Specifier.kind != XPathLookupSpecifierKind::NCName) and (Specifier.kind != XPathLookupSpecifierKind::Wildcard)) {
       record_error("XPTY0004: Node lookup supports only NCName or '*' keys.", ContextNode, true);
@@ -3663,15 +3663,34 @@ XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const X
    bool wildcard = (Specifier.kind IS XPathLookupSpecifierKind::Wildcard);
    std::string target = wildcard ? std::string() : Specifier.literal_value;
 
-   pf::vector<XTag *> matched_nodes;
-   matched_nodes.reserve(BaseValue.node_set.size());
-   std::vector<const XMLAttrib *> matched_attributes;
-   matched_attributes.reserve(BaseValue.node_set.size());
-   std::vector<std::string> matched_strings;
-   matched_strings.reserve(BaseValue.node_set.size());
+   std::vector<SequenceEntry> matched_entries;
+   matched_entries.reserve(BaseValue.node_set.size());
 
    size_t item_count = sequence_item_count(BaseValue);
    for (size_t index = 0; index < item_count; ++index) {
+      std::shared_ptr<XPathValue> composite;
+      if (index < BaseValue.node_set_composite_values.size()) {
+         composite = BaseValue.node_set_composite_values[index];
+      }
+
+      if (composite) {
+         XPathVal composite_value = clone_xpath_value(*composite);
+         XPathVal composite_result;
+         if (composite_value.Type IS XPVT::Map) {
+            composite_result = lookup_map_value(composite_value, Specifier, CurrentPrefix, ContextNode);
+         }
+         else if (composite_value.Type IS XPVT::Array) {
+            composite_result = lookup_array_value(composite_value, Specifier, CurrentPrefix, ContextNode);
+         }
+         else {
+            continue;
+         }
+
+         if (expression_unsupported) return XPathVal();
+         append_value_to_sequence(composite_result, matched_entries, next_constructed_node_id, constructed_nodes);
+         continue;
+      }
+
       const XMLAttrib *attribute = (index < BaseValue.node_set_attributes.size()) ?
          BaseValue.node_set_attributes[index] : nullptr;
       XTag *node = (index < BaseValue.node_set.size()) ? BaseValue.node_set[index] : nullptr;
@@ -3679,15 +3698,19 @@ XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const X
       if (!node) continue;
 
       auto collect_attribute = [&](XMLAttrib &Attrib) {
-         matched_nodes.push_back(node);
-         matched_attributes.push_back(&Attrib);
-         matched_strings.push_back(Attrib.Value);
+         SequenceEntry entry;
+         entry.node = node;
+         entry.attribute = &Attrib;
+         entry.string_value = Attrib.Value;
+         matched_entries.push_back(std::move(entry));
       };
 
       auto collect_child = [&](XTag &Child) {
-         matched_nodes.push_back(&Child);
-         matched_attributes.push_back(nullptr);
-         matched_strings.push_back(XPathVal::node_string_value(&Child));
+         SequenceEntry entry;
+         entry.node = &Child;
+         entry.attribute = nullptr;
+         entry.string_value = XPathVal::node_string_value(&Child);
+         matched_entries.push_back(std::move(entry));
       };
 
       for (size_t attr_index = 1; attr_index < node->Attribs.size(); ++attr_index) {
@@ -3706,9 +3729,9 @@ XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const X
       }
    }
 
-   if (matched_nodes.empty()) return XPathVal(pf::vector<XTag *>{});
+   if (matched_entries.empty()) return XPathVal(pf::vector<XTag *>{});
 
-   return XPathVal(matched_nodes, std::nullopt, matched_strings, matched_attributes);
+   return nodeset_from_sequence_entries(matched_entries);
 }
 
 

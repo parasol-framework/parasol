@@ -1451,7 +1451,7 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal lookup_array_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
       uint32_t CurrentPrefix, const XPathNode *ContextNode);
    XPathVal lookup_nodeset_value(const XPathVal &BaseValue, const XPathLookupSpecifier &Specifier,
-      const XPathNode *ContextNode);
+      uint32_t CurrentPrefix, const XPathNode *ContextNode);
 
    // Expression node type handlers
    XPathVal handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix);
