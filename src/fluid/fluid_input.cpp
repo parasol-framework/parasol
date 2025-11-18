@@ -264,7 +264,7 @@ static void key_event(evKey *, int, struct finput *);
       if (src.granted()) {
          struct dcRequest dcr {
             .Item = item,
-            .Preference = { char(datatype), 0 }
+            .Preference = { uint8_t(datatype), 0 }
          };
 
          auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));
