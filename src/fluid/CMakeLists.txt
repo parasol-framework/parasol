@@ -4,7 +4,8 @@
 # SPECIAL FEATURES:
 #  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
 #  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
-#  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to use --log-api to view any output.
+#  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to run test_unit_tests.fluid with
+#    the --log-api option to view any output.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -657,7 +658,7 @@ endif ()
 
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
-   bitshift bitwise if_empty presence blank ternary table complex stress
+   bitshift bitwise if_empty presence blank ternary table complex stress unit_tests
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

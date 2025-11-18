@@ -317,10 +317,11 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static void MODTest(CSTRING Options, int *Passed, int *Total)
 {
+   pf::Log log("FluidTests");
 #ifdef ENABLE_UNIT_TESTS
+   log.branch("Running Fluid unit tests...");
    parser_unit_tests(*Passed, *Total);
 #else
-   pf::Log log(__FUNCTION__);
    log.warning("Unit tests are disabled in this build.");
 #endif
 }

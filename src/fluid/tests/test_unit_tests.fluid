@@ -1,0 +1,17 @@
+-- Call integrated unit tests in the Fluid module
+
+   local fluid = mod.load('fluid')
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testUnitTests()
+   local passed, total = mod.test(fluid)
+   assert(passed is total, "Passed " .. passed .. " of " .. total .. " Fluid unit tests.  Use --log-api for details.")
+   print('Passed ' .. total .. ' embedded unit tests.')
+end
+
+return {
+   tests = {
+      'testUnitTests',
+   }
+}
