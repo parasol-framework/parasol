@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Function Library and Value System Implementation
 //
 // XPath expressions depend on a rich set of standard functions and a loosely typed value model.  This
@@ -306,7 +305,7 @@ static DurationParseStatus prepare_duration_components(const std::vector<XPathVa
    if (Args[0].is_empty()) return DurationParseStatus::Empty;
 
    std::string value = Args[0].to_string();
-   if (!parse_xs_duration(value, Components)) return DurationParseStatus::Error;
+   if (not parse_xs_duration(value, Components)) return DurationParseStatus::Error;
 
    if (RequireYearMonthOnly) {
       if (Components.has_day or Components.has_hour or Components.has_minute or Components.has_second) {
@@ -345,18 +344,18 @@ static bool parse_timezone(std::string_view Text, DateTimeComponents &Components
 
    std::string_view hours_view = Text.substr(1u, 2u);
    int hours = 0;
-   if (!parse_fixed_number(hours_view, hours)) return false;
+   if (not parse_fixed_number(hours_view, hours)) return false;
 
    size_t pos = 3u;
    int minutes = 0;
    if ((Text.length() >= 6u) and (Text[3] IS ':')) {
       std::string_view minutes_view = Text.substr(4u, 2u);
-      if (!parse_fixed_number(minutes_view, minutes)) return false;
+      if (not parse_fixed_number(minutes_view, minutes)) return false;
       pos = 6u;
    }
    else if (Text.length() >= 5u) {
       std::string_view minutes_view = Text.substr(3u, 2u);
-      if (!parse_fixed_number(minutes_view, minutes)) return false;
+      if (not parse_fixed_number(minutes_view, minutes)) return false;
       pos = 5u;
    }
 
@@ -402,9 +401,9 @@ static bool parse_time_value(std::string_view Text, DateTimeComponents &Componen
    int minute = 0;
    int second = 0;
 
-   if (!parse_fixed_number(time_section.substr(0u, 2u), hour)) return false;
-   if (!parse_fixed_number(time_section.substr(3u, 2u), minute)) return false;
-   if (!parse_fixed_number(time_section.substr(6u, 2u), second)) return false;
+   if (not parse_fixed_number(time_section.substr(0u, 2u), hour)) return false;
+   if (not parse_fixed_number(time_section.substr(3u, 2u), minute)) return false;
+   if (not parse_fixed_number(time_section.substr(6u, 2u), second)) return false;
 
    Components.hour = hour;
    Components.minute = minute;
@@ -415,13 +414,13 @@ static bool parse_time_value(std::string_view Text, DateTimeComponents &Componen
    if (fractional_pos != std::string::npos) {
       std::string_view fraction = time_section.substr(fractional_pos + 1u);
       int fraction_value = 0;
-      if (!fraction.empty() and parse_fixed_number(fraction, fraction_value)) {
+      if (not fraction.empty() and parse_fixed_number(fraction, fraction_value)) {
          double scale = std::pow(10.0, (double)fraction.length());
          Components.second += (double)fraction_value / scale;
       }
    }
 
-   if (!tz_section.empty()) return parse_timezone(tz_section, Components);
+   if (not tz_section.empty()) return parse_timezone(tz_section, Components);
    return true;
 }
 
@@ -438,9 +437,9 @@ static bool parse_date_value(std::string_view Text, DateTimeComponents &Componen
    int month = 0;
    int day = 0;
 
-   if (!parse_fixed_number(Text.substr(0u, 4u), year)) return false;
-   if (!parse_fixed_number(Text.substr(5u, 2u), month)) return false;
-   if (!parse_fixed_number(Text.substr(8u, 2u), day)) return false;
+   if (not parse_fixed_number(Text.substr(0u, 4u), year)) return false;
+   if (not parse_fixed_number(Text.substr(5u, 2u), month)) return false;
+   if (not parse_fixed_number(Text.substr(8u, 2u), day)) return false;
 
    Components.year = year;
    Components.month = month;
@@ -495,7 +494,7 @@ static std::string format_integer_component(int64_t Value, int Width, bool ZeroP
 
 static std::string format_timezone(const DateTimeComponents &Components)
 {
-   if (!Components.has_timezone) return std::string();
+   if (not Components.has_timezone) return std::string();
    if (Components.timezone_is_utc or (Components.timezone_offset_minutes IS 0)) return std::string("Z");
 
    int offset = Components.timezone_offset_minutes;
@@ -607,8 +606,8 @@ static std::string format_seconds_field(double Value)
    if (fractional_microseconds > 0ll) {
       std::string fractional_digits = std::to_string(fractional_microseconds);
       while (fractional_digits.length() < 6u) fractional_digits.insert(0u, 1u, '0');
-      while ((!fractional_digits.empty()) and (fractional_digits.back() IS '0')) fractional_digits.pop_back();
-      if (!fractional_digits.empty()) {
+      while ((not fractional_digits.empty()) and (fractional_digits.back() IS '0')) fractional_digits.pop_back();
+      if (not fractional_digits.empty()) {
          seconds.push_back('.');
          seconds.append(fractional_digits);
       }
@@ -669,10 +668,10 @@ static bool combine_date_and_time(const std::string &DateValue, const std::strin
    DateTimeComponents &Combined)
 {
    DateTimeComponents date_components;
-   if (!parse_date_value(DateValue, date_components)) return false;
+   if (not parse_date_value(DateValue, date_components)) return false;
 
    DateTimeComponents time_components;
-   if (!parse_time_value(TimeValue, time_components)) return false;
+   if (not parse_time_value(TimeValue, time_components)) return false;
 
    Combined = date_components;
    Combined.hour = time_components.hour;
@@ -716,7 +715,7 @@ static bool combine_date_and_time(const std::string &DateValue, const std::strin
 static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
 {
    DurationComponents components;
-   if (!parse_xs_duration(Text, components)) return false;
+   if (not parse_xs_duration(Text, components)) return false;
 
    normalise_duration_components(components);
 
@@ -786,7 +785,7 @@ static bool components_to_utc_time(const DateTimeComponents &Components, int Imp
    if (!y.ok() or !m.ok() or !d.ok()) return false;
 
    year_month_day ymd(y, m, d);
-   if (!ymd.ok()) return false;
+   if (not ymd.ok()) return false;
 
    sys_days day_point(ymd);
 
@@ -797,8 +796,8 @@ static bool components_to_utc_time(const DateTimeComponents &Components, int Imp
    double integral_part = 0.0;
    double fractional_part = std::modf(seconds_value, &integral_part);
 
-   int64_t integral_seconds = (int64_t)integral_part;
-   int64_t microseconds_value = (int64_t)std::llround(fractional_part * 1000000.0);
+   auto integral_seconds = (int64_t)integral_part;
+   auto microseconds_value = (int64_t)std::llround(fractional_part * 1000000.0);
 
    if (microseconds_value >= 1000000ll) {
       microseconds_value -= 1000000ll;
@@ -917,6 +916,12 @@ static std::string describe_xpath_value(const XPathVal &Value)
       case XPVT::Number:
          return Value.to_string();
 
+      case XPVT::Map:
+         return std::format("map[{}]", Value.map_storage ? Value.map_storage->size() : 0);
+
+      case XPVT::Array:
+         return std::format("array[{}]", Value.array_storage ? Value.array_storage->size() : 0);
+
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
@@ -946,14 +951,14 @@ static std::string describe_xpath_value(const XPathVal &Value)
          }
 
          size_t total_count = entries.size();
-         if ((total_count IS 0) and not Value.node_set.empty()) total_count = Value.node_set.size();
-         if ((total_count IS 0) and not Value.node_set_attributes.empty()) total_count = Value.node_set_attributes.size();
-         if ((total_count IS 0) and not Value.node_set_string_values.empty()) {
+         if ((not total_count) and not Value.node_set.empty()) total_count = Value.node_set.size();
+         if ((not total_count) and not Value.node_set_attributes.empty()) total_count = Value.node_set_attributes.size();
+         if ((not total_count) and not Value.node_set_string_values.empty()) {
             total_count = Value.node_set_string_values.size();
          }
 
          if (entries.empty()) {
-            if (total_count IS 0) return std::string("()");
+            if (not total_count) return std::string("()");
          }
 
          size_t summary_limit = entries.size();
@@ -968,12 +973,8 @@ static std::string describe_xpath_value(const XPathVal &Value)
          if (entries.size() > summary_limit) summary.append(", ...");
 
          if (total_count > 1) {
-            if (not summary.empty()) {
-               return std::format("node-set[{}]: {}", total_count, summary);
-            }
-            else {
-               return std::format("node-set[{}]", total_count);
-            }
+            if (not summary.empty()) return std::format("node-set[{}]: {}", total_count, summary);
+            else return std::format("node-set[{}]", total_count);
          }
 
          if (not summary.empty()) return summary;
@@ -1105,7 +1106,7 @@ static size_t sequence_length(const XPathVal &Value)
       size_t length = Value.node_set.size();
       if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
       if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
-      if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
+      if ((not length) and Value.node_set_string_override.has_value()) length = 1;
       return length;
    }
 
@@ -1232,7 +1233,7 @@ static XPathVal extract_sequence_item(const XPathVal &Value, size_t Index)
       return result;
    }
 
-   if (Index IS 0) return Value;
+   if (not Index) return Value;
    return XPathVal();
 }
 
