@@ -716,7 +716,7 @@ using ModExpunge = ERR (*)(void);
 using ModTest    = void (*)(CSTRING, int *, int *);
 
   ]])
-  
+
   struct("ModHeader", { comment="Module file header", restrict="c" }, [[
     int(MHF) Flags                 # Special flags, type of function table wanted from the Core
     cstr Definitions               # Module definition string, usable by run-time languages such as Fluid

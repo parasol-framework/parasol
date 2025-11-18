@@ -55,6 +55,8 @@ OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
 OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
+bool glJITTrace = false;
+bool glJITDiagnose = false;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
@@ -296,6 +298,22 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    FUNCTION call(CALL::STD_C);
    call.Routine = (APTR)msg_thread_script_callback;
    AddMsgHandler(MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
+
+   pf::vector<std::string> *pargs;
+   auto task = CurrentTask();
+   if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
+      pf::vector<std::string> &args = *pargs;
+      for (unsigned i=0; i < args.size(); i++) {
+         if (pf::iequals(args[i], "--jit:trace")) {
+            // Enable JIT tracing of compiled functions.
+            glJITTrace = true;
+         }
+         else if (pf::iequals(args[i], "--jit:diagnose")) {
+            // Collect diagnostics on JIT compilation issues.
+            glJITDiagnose = true;
+         }
+      }
+   }
 
    return create_fluid();
 }

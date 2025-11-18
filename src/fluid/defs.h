@@ -1,3 +1,4 @@
+#pragma once
 
 #define LUA_COMPILED "-- $FLUID:compiled"
 constexpr int SIZE_READ = 1024;
@@ -10,6 +11,12 @@ constexpr int SIZE_READ = 1024;
 #include <parasol/modules/regex.h>
 #include <thread>
 #include <string_view>
+
+#include "lauxlib.h"
+
+#if !defined(LUAJIT_DISABLE_FFI) or !defined(LUAJIT_DISABLE_BUFFER) or !defined(LUAJIT_ENABLE_LUA52COMPAT)
+#error "Expected LUAJIT flags are not defined."
+#endif
 
 using namespace pf;
 
@@ -45,6 +52,8 @@ extern OBJECTPTR modFluid;
 extern OBJECTPTR modRegex;
 extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
+extern bool glJITTrace;
+extern bool glJITDiagnose;
 extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
