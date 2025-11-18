@@ -665,6 +665,32 @@ struct MemoryMessage {
 //********************************************************************************************************************
 // Global data variables.
 
+struct CorePathConfig {
+   std::string RootPath;
+   std::string SystemPath;
+   std::string ModulePath;
+};
+
+struct CoreIdConfig {
+   int PrivateIDCounter;
+   int MessageIDCount;
+   int GlobalIDCount;
+   int UniqueMsgID;
+};
+
+struct CoreStateSnapshot {
+   CorePathConfig Paths;
+   CoreIdConfig Ids;
+};
+
+CorePathConfig GetDefaultCorePaths();
+CoreIdConfig GetDefaultCoreIds();
+CoreStateSnapshot GetDefaultCoreState();
+CoreStateSnapshot GetCoreStateSnapshot();
+void ResetCorePaths(const CorePathConfig &Config);
+void ResetCoreIds(const CoreIdConfig &Config);
+void ResetCoreState(const CoreStateSnapshot &Snapshot);
+
 extern extMetaClass glMetaClass;
 extern int glEUID, glEGID, glUID, glGID;
 extern std::string glSystemPath;
