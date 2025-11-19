@@ -14,8 +14,15 @@ void ParserDiagnostics::set_limit(uint32_t new_limit)
 
 void ParserDiagnostics::report(const ParserDiagnostic& diagnostic)
 {
-   if (this->storage.size() >= this->limit) return;
+   bool counts_against_limit = diagnostic.severity IS ParserDiagnosticSeverity::Error
+      or diagnostic.severity IS ParserDiagnosticSeverity::Warning;
+
+   if (counts_against_limit and this->counted_entries >= this->limit) return;
+
    this->storage.push_back(diagnostic);
+   if (counts_against_limit) {
+      this->counted_entries += 1;
+   }
 }
 
 bool ParserDiagnostics::has_errors() const
@@ -34,5 +41,6 @@ std::span<const ParserDiagnostic> ParserDiagnostics::entries() const
 void ParserDiagnostics::clear()
 {
    this->storage.clear();
+   this->counted_entries = 0;
 }
 

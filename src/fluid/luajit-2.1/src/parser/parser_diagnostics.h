@@ -42,6 +42,7 @@ public:
 
 private:
    uint32_t limit;
+   uint32_t counted_entries = 0;
    std::vector<ParserDiagnostic> storage;
 };
 
