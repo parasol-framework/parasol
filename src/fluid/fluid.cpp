@@ -49,6 +49,10 @@ JUMPTABLE_REGEX
 
 #include "defs.h"
 
+// C++20 Constants
+constexpr size_t MAX_MODULE_NAME_LENGTH = 32;
+constexpr size_t MAX_STRING_PREFIX_LENGTH = 200;
+
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
 OBJECTPTR modRegex = nullptr;
@@ -62,9 +66,15 @@ ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
-static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
-static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
-static ERR flSetVariable(objScript *, CSTRING, int, ...);
+[[nodiscard]] static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
+
+// C++20 templated variable setter (replaces C-style variadic version)
+template<typename T>
+[[nodiscard]] static ERR flSetVariable(objScript *Script, CSTRING Name, T&& Value);
+
+// Legacy C-style variadic version for compatibility with function table
+[[nodiscard]] static ERR flSetVariable(objScript *, CSTRING, int, ...);
 
 //********************************************************************************************************************
 
@@ -91,7 +101,7 @@ FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "Str
 #endif
 
 static const struct Function JumpTableV1[] = {
-   { (APTR)flSetVariable, "SetVariable", argsSetVariable },
+   { (APTR)(ERR (*)(objScript *, CSTRING, int, ...))flSetVariable, "SetVariable", argsSetVariable },
    #ifdef _DEBUG
    { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
    { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
@@ -160,7 +170,7 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 
 //********************************************************************************************************************
 
-CSTRING next_line(CSTRING String)
+[[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
 {
    if (!String) return nullptr;
 
@@ -279,7 +289,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 //********************************************************************************************************************
 
-static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+[[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -302,13 +312,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::vector<std::string> *pargs;
    auto task = CurrentTask();
    if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
-      pf::vector<std::string> &args = *pargs;
-      for (unsigned i=0; i < args.size(); i++) {
-         if (pf::iequals(args[i], "--jit:trace")) {
+      for (const auto& arg : *pargs) {
+         if (pf::iequals(arg, "--jit:trace")) {
             // Enable JIT tracing of compiled functions.
             glJITTrace = true;
          }
-         else if (pf::iequals(args[i], "--jit:diagnose")) {
+         else if (pf::iequals(arg, "--jit:diagnose")) {
             // Collect diagnostics on JIT compilation issues.
             glJITDiagnose = true;
          }
@@ -318,7 +327,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return create_fluid();
 }
 
-static ERR MODExpunge(void)
+[[nodiscard]] static ERR MODExpunge(void)
 {
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
    if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
@@ -327,7 +336,7 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
-static ERR MODOpen(OBJECTPTR Module)
+[[nodiscard]] static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
    return ERR::Okay;
@@ -367,7 +376,7 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 *********************************************************************************************************************/
 
-static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
+[[nodiscard]] static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
@@ -394,6 +403,47 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
    lua_setglobal(prv->Lua, Name);
 
    va_end(list);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// C++20 templated version of flSetVariable - provides type-safe variable setting
+// Uses if constexpr for compile-time type dispatch
+
+template<typename T>
+[[nodiscard]] static ERR flSetVariable(objScript *Script, CSTRING Name, T&& Value)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Script) or (Script->classID() != CLASSID::FLUID) or (!Name) or (!*Name)) return log.warning(ERR::Args);
+
+   log.branch("Script: %d, Name: %s", Script->UID, Name);
+
+   auto prv = (prvFluid *)Script->ChildPrivate;
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
+
+   using DecayedT = std::decay_t<T>;
+
+   if constexpr (std::is_same_v<DecayedT, CSTRING> or std::is_same_v<DecayedT, STRING> or std::is_same_v<DecayedT, const char *> or std::is_same_v<DecayedT, char *>) {
+      lua_pushstring(prv->Lua, std::forward<T>(Value));
+   }
+   else if constexpr (std::is_pointer_v<DecayedT> and not std::is_same_v<DecayedT, CSTRING> and not std::is_same_v<DecayedT, STRING>) {
+      lua_pushlightuserdata(prv->Lua, std::forward<T>(Value));
+   }
+   else if constexpr (std::is_integral_v<DecayedT> and sizeof(DecayedT) <= 4) {
+      lua_pushinteger(prv->Lua, static_cast<int>(std::forward<T>(Value)));
+   }
+   else if constexpr (std::is_same_v<DecayedT, int64_t>) {
+      lua_pushnumber(prv->Lua, static_cast<lua_Number>(std::forward<T>(Value)));
+   }
+   else if constexpr (std::is_floating_point_v<DecayedT>) {
+      lua_pushnumber(prv->Lua, static_cast<lua_Number>(std::forward<T>(Value)));
+   }
+   else {
+      return log.warning(ERR::FieldTypeMismatch);
+   }
+
+   lua_setglobal(prv->Lua, Name);
    return ERR::Okay;
 }
 
@@ -602,7 +652,7 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 
 //********************************************************************************************************************
 
-ERR load_include(objScript *Script, CSTRING IncName)
+[[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
 {
    pf::Log log(__FUNCTION__);
 
@@ -612,7 +662,7 @@ ERR load_include(objScript *Script, CSTRING IncName)
 
    // For security purposes, check the validity of the include name.
 
-   int i;
+   size_t i;
    for (i=0; IncName[i]; i++) {
       if ((IncName[i] >= 'a') and (IncName[i] <= 'z')) continue;
       if ((IncName[i] >= 'A') and (IncName[i] <= 'Z')) continue;
@@ -620,8 +670,8 @@ ERR load_include(objScript *Script, CSTRING IncName)
       break;
    }
 
-   if ((IncName[i]) or (i >= 32)) {
-      log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
+   if ((IncName[i]) or (i >= MAX_MODULE_NAME_LENGTH)) {
+      log.msg("Invalid module name; only alpha-numeric names are permitted with max %zu chars.", MAX_MODULE_NAME_LENGTH);
       return ERR::Syntax;
    }
 
@@ -701,7 +751,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
-static int8_t datatype(std::string_view String)
+[[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
 {
    size_t i = 0;
    while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
@@ -741,7 +791,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    }
 
    std::string prefix(Line, i);
-   prefix.reserve(200);
+   prefix.reserve(MAX_STRING_PREFIX_LENGTH);
 
    Line += i + 1;
 
