@@ -650,7 +650,8 @@ static ERR FLUID_Init(objScript *Self)
                auto content = check_bom(std::string_view(Self->String, len));
                if (content.data() != Self->String) {
                   // Use memmove for overlapping memory regions (content.data() points into Self->String)
-                  std::memmove(Self->String, content.data(), content.size() + 1);
+                  std::memmove(Self->String, content.data(), content.size());
+                  Self->String[content.size()] = '\0';
                   len = content.size();
                }
 
