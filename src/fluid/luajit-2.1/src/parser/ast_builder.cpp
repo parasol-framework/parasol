@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #include "parser/ast_builder.h"
 
 #include <utility>
@@ -761,40 +763,39 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
       if (token.kind() IS TokenKind::Dot) {
          this->ctx.tokens().advance();
          auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         if (not name_token.ok()) {
-            return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
-         }
+         if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
+
          base = make_member_expr(span_from(token, name_token.value_ref()), std::move(base),
             make_identifier(name_token.value_ref()), false);
          continue;
       }
+
       if (token.kind() IS TokenKind::LeftBracket) {
          this->ctx.tokens().advance();
          auto index = this->parse_expression();
-         if (not index.ok()) {
-            return index;
-         }
+         if (not index.ok()) return index;
+
          this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
          SourceSpan span = combine_spans(base->span, index.value_ref()->span);
          base = make_index_expr(span, std::move(base), std::move(index.value_ref()));
          continue;
       }
+
       if (token.kind() IS TokenKind::Colon) {
          this->ctx.tokens().advance();
          auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         if (not name_token.ok()) {
-            return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
-         }
+         if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
+
          bool forwards = false;
          auto args = this->parse_call_arguments(&forwards);
-         if (not args.ok()) {
-            return ParserResult<ExprNodePtr>::failure(args.error_ref());
-         }
+         if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
+
          SourceSpan span = combine_spans(base->span, name_token.value_ref().span());
          base = make_method_call_expr(span, std::move(base),
             make_identifier(name_token.value_ref()), std::move(args.value_ref()), forwards);
          continue;
       }
+
       if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::LeftBrace or
          token.kind() IS TokenKind::String) {
          bool forwards = false;
@@ -803,15 +804,16 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
             return ParserResult<ExprNodePtr>::failure(args.error_ref());
          }
          SourceSpan span = combine_spans(base->span, token.span());
-         base = make_call_expr(span, std::move(base),
-            std::move(args.value_ref()), forwards);
+         base = make_call_expr(span, std::move(base), std::move(args.value_ref()), forwards);
          continue;
       }
+
       if (token.kind() IS TokenKind::PlusPlus) {
          this->ctx.tokens().advance();
          base = make_update_expr(token.span(), AstUpdateOperator::Increment, true, std::move(base));
          continue;
       }
+
       if (token.kind() IS TokenKind::Presence and this->ctx.lex().should_emit_presence()) {
          this->ctx.tokens().advance();
          base = make_presence_expr(token.span(), std::move(base));
@@ -825,14 +827,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& function_token)
 {
    auto params = this->parse_parameter_list(false);
-   if (not params.ok()) {
-      return ParserResult<ExprNodePtr>::failure(params.error_ref());
-   }
+   if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
+
    const TokenKind terms[] = { TokenKind::EndToken };
    auto body = this->parse_block(terms);
-   if (not body.ok()) {
-      return ParserResult<ExprNodePtr>::failure(body.error_ref());
-   }
+   if (not body.ok()) return ParserResult<ExprNodePtr>::failure(body.error_ref());
+
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
       params.value_ref().is_vararg, std::move(body.value_ref()));
@@ -845,9 +845,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
    this->ctx.tokens().advance();
    bool has_array = false;
    auto fields = this->parse_table_fields(&has_array);
-   if (not fields.ok()) {
-      return ParserResult<ExprNodePtr>::failure(fields.error_ref());
-   }
+   if (not fields.ok()) return ParserResult<ExprNodePtr>::failure(fields.error_ref());
+
    this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_table_expr(token.span(), std::move(fields.value_ref()), has_array);
    return ParserResult<ExprNodePtr>::success(std::move(node));
@@ -857,15 +856,12 @@ ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
 {
    ExprNodeList nodes;
    auto first = this->parse_expression();
-   if (not first.ok()) {
-      return ParserResult<ExprNodeList>::failure(first.error_ref());
-   }
+   if (not first.ok()) return ParserResult<ExprNodeList>::failure(first.error_ref());
+
    nodes.push_back(std::move(first.value_ref()));
    while (this->ctx.match(TokenKind::Comma).ok()) {
       auto next = this->parse_expression();
-      if (not next.ok()) {
-         return ParserResult<ExprNodeList>::failure(next.error_ref());
-      }
+      if (not next.ok()) return ParserResult<ExprNodeList>::failure(next.error_ref());
       nodes.push_back(std::move(next.value_ref()));
    }
    return ParserResult<ExprNodeList>::success(std::move(nodes));
@@ -875,15 +871,12 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 {
    std::vector<Identifier> names;
    auto first = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-   if (not first.ok()) {
-      return ParserResult<std::vector<Identifier>>::failure(first.error_ref());
-   }
+   if (not first.ok()) return ParserResult<std::vector<Identifier>>::failure(first.error_ref());
+
    names.push_back(make_identifier(first.value_ref()));
    while (this->ctx.match(TokenKind::Comma).ok()) {
       auto name = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not name.ok()) {
-         return ParserResult<std::vector<Identifier>>::failure(name.error_ref());
-      }
+      if (not name.ok()) return ParserResult<std::vector<Identifier>>::failure(name.error_ref());
       names.push_back(make_identifier(name.value_ref()));
    }
    return ParserResult<std::vector<Identifier>>::success(std::move(names));
@@ -904,9 +897,8 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
             break;
          }
          auto name = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-         if (not name.ok()) {
-            return ParserResult<ParameterListResult>::failure(name.error_ref());
-         }
+         if (not name.ok()) return ParserResult<ParameterListResult>::failure(name.error_ref());
+
          FunctionParameter param;
          param.name = make_identifier(name.value_ref());
          result.parameters.push_back(param);
@@ -932,9 +924,8 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
          this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
          this->ctx.consume(TokenKind::Equals, ParserErrorCode::ExpectedToken);
          auto value = this->parse_expression();
-         if (not value.ok()) {
-            return ParserResult<std::vector<TableField>>::failure(value.error_ref());
-         }
+         if (not value.ok()) return ParserResult<std::vector<TableField>>::failure(value.error_ref());
+
          field.kind = TableFieldKind::Computed;
          field.key = std::move(key.value_ref());
          field.value = std::move(value.value_ref());
@@ -943,18 +934,16 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
          this->ctx.tokens().advance();
          this->ctx.tokens().advance();
          auto value = this->parse_expression();
-         if (not value.ok()) {
-            return ParserResult<std::vector<TableField>>::failure(value.error_ref());
-         }
+         if (not value.ok()) return ParserResult<std::vector<TableField>>::failure(value.error_ref());
+
          field.kind = TableFieldKind::Record;
          field.name = make_identifier(current);
          field.value = std::move(value.value_ref());
       }
       else {
          auto value = this->parse_expression();
-         if (not value.ok()) {
-            return ParserResult<std::vector<TableField>>::failure(value.error_ref());
-         }
+         if (not value.ok()) return ParserResult<std::vector<TableField>>::failure(value.error_ref());
+
          field.kind = TableFieldKind::Array;
          field.value = std::move(value.value_ref());
          array = true;
@@ -976,9 +965,8 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
       this->ctx.tokens().advance();
       if (not this->ctx.check(TokenKind::RightParen)) {
          auto parsed = this->parse_expression_list();
-         if (not parsed.ok()) {
-            return ParserResult<ExprNodeList>::failure(parsed.error_ref());
-         }
+         if (not parsed.ok()) return ParserResult<ExprNodeList>::failure(parsed.error_ref());
+
          args = std::move(parsed.value_ref());
          if (not args.empty()) {
             const ExprNodePtr& tail = args.back();
@@ -990,20 +978,22 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
       this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
       return ParserResult<ExprNodeList>::success(std::move(args));
    }
+
    if (this->ctx.check(TokenKind::LeftBrace)) {
       auto table = this->parse_table_literal();
-      if (not table.ok()) {
-         return ParserResult<ExprNodeList>::failure(table.error_ref());
-      }
+      if (not table.ok()) return ParserResult<ExprNodeList>::failure(table.error_ref());
+
       args.push_back(std::move(table.value_ref()));
       return ParserResult<ExprNodeList>::success(std::move(args));
    }
+
    if (this->ctx.check(TokenKind::String)) {
       Token literal = this->ctx.tokens().current();
       args.push_back(make_literal_expr(literal.span(), make_literal(literal)));
       this->ctx.tokens().advance();
       return ParserResult<ExprNodeList>::success(std::move(args));
    }
+
    Token bad = this->ctx.tokens().current();
    this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "invalid call arguments");
    ParserError error;
@@ -1165,10 +1155,14 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       info.right = 1;
       return info;
    case TokenKind::Presence:
-      info.op = AstBinaryOperator::IfEmpty;
-      info.left = 1;
-      info.right = 1;
-      return info;
+      // Only treat ?? as binary if-empty when lookahead indicates binary usage
+      if (not this->ctx.lex().should_emit_presence()) {
+         info.op = AstBinaryOperator::IfEmpty;
+         info.left = 1;
+         info.right = 1;
+         return info;
+      }
+      break;  // Not a binary operator, will be handled as postfix
    case TokenKind::ShiftLeft:
       info.op = AstBinaryOperator::ShiftLeft;
       info.left = 7;
