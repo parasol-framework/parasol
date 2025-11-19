@@ -54,7 +54,7 @@ enum class TokenKind : uint16_t {
    CompoundMod = TK_cmod,
    CompoundConcat = TK_cconcat,
    CompoundIfEmpty = TK_cif_empty,
-   Presence = TK_if_empty,
+   Presence = TK_if_empty, // NOTE: This single token covers use of both `if present?? then` (postfix) and `(variable ?? default_value)` (if empty).
    PlusPlus = TK_plusplus,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM

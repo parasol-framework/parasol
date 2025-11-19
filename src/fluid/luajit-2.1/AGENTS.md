@@ -109,6 +109,14 @@ static GCstr* keepstr(std::string_view str);
 - When debugging parser issues, create minimal Fluid scripts to isolate the behaviour before running the full test suite.
 - Unit tests are managed by `MODTests()` in `src/fluid/fluid.cpp`.
 - To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-xapi` option to view the output from stderr.
+- Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list.  Available options are:
+  - `trace` Enable tracing JIT
+  - `diagnose` Enable diagnostic mode
+  - `ast-pipeline` Use the new AST-based parser (default)
+  - `ast-legacy` Use the legacy parser
+  - `trace-boundary` Trace boundary crossings between interpreted and JIT code
+  - `trace-bytecode` Trace bytecode execution
+  - `profile` Use timers to profile JIT execution
 
 ## Troubleshooting Register Allocation
 - LuaJIT's parser (`lj_parse.cpp`) heavily relies on `freereg`, `nactvar`, and

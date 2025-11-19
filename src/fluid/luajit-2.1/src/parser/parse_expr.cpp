@@ -127,21 +127,22 @@ bool LexState::should_emit_presence()
    BCLine token_line = this->lastline;
    BCLine operator_line = this->linenumber;
    LexToken lookahead = (this->lookahead != TK_eof) ? this->lookahead : this->lookahead_token();
+   BCLine lookahead_line = this->lookahead_line;
+   // If the operator is on a different line than the token, it's definitely postfix
    if (operator_line > token_line) return true;
+   // If the lookahead is on a different line than the operator, it's postfix
+   if (lookahead_line > operator_line) return true;
+   // Otherwise, check if the lookahead starts an expression
    return !token_starts_expression(lookahead);
 }
 
 //********************************************************************************************************************
 // Get value of constant expression.
 
-static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
+static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {
-   if (e->k <= ExpKind::True) {
-      setpriV(v, ~uint32_t(e->k));
-   }
-   else if (e->k IS ExpKind::Str) {
-      setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
-   }
+   if (e->k <= ExpKind::True) setpriV(v, ~uint32_t(e->k));
+   else if (e->k IS ExpKind::Str) setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    else {
       lj_assertFS(tvisnumber(expr_numtv(e)), "bad number constant");
       *v = *expr_numtv(e);
