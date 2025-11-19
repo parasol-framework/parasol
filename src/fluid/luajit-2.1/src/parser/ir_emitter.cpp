@@ -448,9 +448,20 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
 
 ParserResult<IrEmitUnit> IrEmitter::emit_block(const BlockStmt& block, FuncScopeFlag flags)
 {
+   return this->emit_block_with_bindings(block, flags, std::span<const BlockBinding>());
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
+   const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings)
+{
    FuncScope scope;
    ScopeGuard guard(&this->func_state, &scope, flags);
    LocalBindingScope binding_scope(this->binding_table);
+   for (const BlockBinding& binding : bindings) {
+      if (binding.symbol) {
+         this->update_local_binding(binding.symbol, binding.slot);
+      }
+   }
    for (const StmtNode& stmt : block.view()) {
       auto status = this->emit_statement(stmt);
       if (not status.ok()) {
@@ -874,12 +885,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       this->lex_state.var_add(1);
       bcreg_reserve(fs, 1);
-      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      std::array<BlockBinding, 1> loop_bindings{};
+      std::span<const BlockBinding> binding_span;
+      if (payload.control.symbol and not payload.control.is_blank) {
+         loop_bindings[0].symbol = payload.control.symbol;
+         loop_bindings[0].slot = base + FORL_EXT;
+         binding_span = std::span<const BlockBinding>(loop_bindings.data(), 1);
+      }
+      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
       if (not block_result.ok()) {
          return block_result;
-      }
-      if (payload.control.symbol and not payload.control.is_blank) {
-         this->update_local_binding(payload.control.symbol, base + FORL_EXT);
       }
    }
 
@@ -934,13 +949,19 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       BCReg visible = nvars - 3;
       this->lex_state.var_add(visible);
       bcreg_reserve(fs, visible);
+      std::vector<BlockBinding> loop_bindings;
+      loop_bindings.reserve(visible);
       for (BCReg i = 0; i < visible; ++i) {
          const Identifier& identifier = payload.names[i];
          if (identifier.symbol and not identifier.is_blank) {
-            this->update_local_binding(identifier.symbol, base + i);
+            BlockBinding binding;
+            binding.symbol = identifier.symbol;
+            binding.slot = base + i;
+            loop_bindings.push_back(binding);
          }
       }
-      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      std::span<const BlockBinding> binding_span(loop_bindings.data(), loop_bindings.size());
+      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
       if (not block_result.ok()) {
          return block_result;
       }

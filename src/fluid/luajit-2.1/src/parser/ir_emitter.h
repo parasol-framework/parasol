@@ -6,6 +6,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -18,6 +19,11 @@ struct LocalBindingEntry {
    GCstr* symbol = nullptr;
    BCReg slot = 0;
    uint32_t depth = 0;
+};
+
+struct BlockBinding {
+   GCstr* symbol = nullptr;
+   BCReg slot = 0;
 };
 
 class LocalBindingTable {
@@ -83,6 +89,8 @@ private:
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
+   ParserResult<IrEmitUnit> emit_block_with_bindings(const BlockStmt& block, FuncScopeFlag flags,
+      std::span<const BlockBinding> bindings);
    ParserResult<IrEmitUnit> emit_statement(const StmtNode& stmt);
    ParserResult<IrEmitUnit> emit_expression_stmt(const ExpressionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_return_stmt(const ReturnStmtPayload& payload);
