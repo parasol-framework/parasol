@@ -76,23 +76,7 @@ lhs.values[1], lhs.values[2], rhs.seed = lhs.values[2], lhs.values[1], lhs.value
 lhs.values[1] += rhs.seed or 0
 local fallback = rhs.value ?? 5
 return lhs.values[1] + fallback
-]] },
-      { 'goto_ladder', [[
-local acc = 0
-local index = 0
-::loop::
-index += 1
-if index > 5 then
-   goto done
-end
-if index % 2 == 0 then
-   goto loop
-end
-acc += index
-goto loop
-::done::
-return acc
-]] },
+]] }
    }
 
    for _, entry in ipairs(snippets) do

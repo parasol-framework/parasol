@@ -167,7 +167,7 @@ public:
    void var_remove(BCReg TargetLevel);
    MSize var_lookup(ExpDesc* Expression);
 
-   // Goto and label management
+   // Break and continue management
    MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
    void gola_patch(VarInfo* GotoInfo, VarInfo* LabelInfo);
    void gola_close(VarInfo* GotoInfo);

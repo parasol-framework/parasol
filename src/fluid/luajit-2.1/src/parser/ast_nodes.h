@@ -11,7 +11,7 @@
 //     selections and postfix increment), function literals and suffix operations
 //     (field access, indexing, method calls, presence checks).
 //  *  Statements cover assignments, declarations, control-flow (if/while/repeat,
-//     numeric & generic for loops, break/continue/goto/labels), defer blocks,
+//     numeric & generic for loops, break/continue), defer blocks,
 //     returns, chunk/local blocks and bare expression statements.
 //  *  Dedicated structs capture reusable metadata (Identifier, NameRef,
 //     FunctionParameter, TableField, BlockStmt) so later phases can extend the

@@ -1179,23 +1179,7 @@ data.values[1], data.values[2], data.meta.edge = data.values[2], data.values[1],
 local fallback = data.unknown ?? 9
 data.values[1] += data.meta.edge
 return data.values[1] + fallback
-)" },
-      { "goto_label_flow", R"(
-local acc = 0
-local idx = 0
-::loop::
-idx += 1
-if idx > 5 then
-   goto done
-end
-if idx % 2 == 0 then
-   goto loop
-end
-acc += idx
-goto loop
-::done::
-return acc
-)" },
+)" }
    } };
 
    LuaStateHolder holder;
@@ -1238,9 +1222,7 @@ struct TestCase {
 
 extern void parser_unit_tests(int& Passed, int& Total)
 {
-   pf::Log log("LuaJITParseTests");
-
-   constexpr std::array<TestCase, 15> tests = { {
+   constexpr std::array<TestCase, 16> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
@@ -1256,10 +1238,11 @@ extern void parser_unit_tests(int& Passed, int& Total)
       { "ternary_presence_expr_ast", test_ternary_presence_expr_ast },
       { "return_lowering", test_return_lowering },
       { "ast_call_lowering", test_ast_call_lowering },
-      { "bytecode_equivalence", test_bytecode_equivalence },
+      { "bytecode_equivalence", test_bytecode_equivalence }
    } };
 
    for (const TestCase& test : tests) {
+      pf::Log log("ParserTests");
       log.branch("Running %s", test.name);
       ++Total;
       if (test.fn(log)) {

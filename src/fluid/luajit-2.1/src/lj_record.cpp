@@ -1087,8 +1087,8 @@ int lj_record_mm_lookup(jit_State* J, RecordIndex* ix, MMS mm)
 {
    RecordIndex mix;
    GCtab* mt;
-   int udtype = 0;  //  Declare before goto
-   cTValue* mo = nullptr;  //  Declare before goto
+   int udtype = 0;  //  Declare before break/continue
+   cTValue* mo = nullptr;  //  Declare before break/continue
    if (tref_istab(ix->tab)) {
       mt = tabref(tabV(&ix->tabv)->metatable);
       mix.tab = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);
