@@ -24,8 +24,6 @@
 #include "lj_ff.h"
 #include "lib.h"
 
-// ------------------------------------------------------------------------
-
 #define LJLIB_MODULE_bit
 
 #if LJ_HASFFI
@@ -139,8 +137,6 @@ LJLIB_ASM(bit_band)      LJLIB_REC(bit_nary IR_BAND)
 LJLIB_ASM_(bit_bor)      LJLIB_REC(bit_nary IR_BOR)
 LJLIB_ASM_(bit_bxor)      LJLIB_REC(bit_nary IR_BXOR)
 
-// ------------------------------------------------------------------------
-
 LJLIB_CF(bit_tohex)      LJLIB_REC(.)
 {
 #if LJ_HASFFI
@@ -166,8 +162,6 @@ LJLIB_CF(bit_tohex)      LJLIB_REC(.)
    lj_gc_check(L);
    return 1;
 }
-
-// ------------------------------------------------------------------------
 
 #include "lj_libdef.h"
 

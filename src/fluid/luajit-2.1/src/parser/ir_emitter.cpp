@@ -602,6 +602,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
       bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    }
    bcemit_INS(&this->func_state, ins);
+   this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -978,6 +979,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    this->lex_state.var_add(1);
    VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
+   if (fs->bl) {
+      fs->bl->flags |= FuncScopeFlag::Upvalue;
+   }
 
    auto function_value = this->emit_function_expr(*payload.callable);
    if (not function_value.ok()) {
@@ -1829,7 +1833,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    }
 
    FuncScope scope;
-   ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+
+   // TODO: Should use ScopeGuard, but currently crashes when its destructor calls fscope_end() during stack unwinding.
+   //ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+   fscope_begin(&child_state, &scope, FuncScopeFlag::None);
 
    BCReg param_count = BCReg(payload.parameters.size());
    for (BCReg i = 0; i < param_count; ++i) {
@@ -1847,14 +1854,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    BCReg base = child_state.nactvar - param_count;
    for (BCReg i = 0; i < param_count; ++i) {
       const FunctionParameter& param = payload.parameters[i];
-      if (param.name.is_blank or param.name.symbol IS nullptr) {
-         continue;
-      }
+      if (param.name.is_blank or param.name.symbol IS nullptr) continue;
       child_emitter.update_local_binding(param.name.symbol, base + i);
    }
 
    auto body_result = child_emitter.emit_block(*payload.body, FuncScopeFlag::None);
    if (not body_result.ok()) {
+      //fscope_end(&child_state); // Crashes in some cases
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
@@ -1876,6 +1882,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
       parent_state->flags |= PROTO_CHILD;
    }
 
+   //fscope_end(&child_state); // Crashes in some cases
    return ParserResult<ExpDesc>::success(expr);
 }
 
@@ -1998,15 +2005,15 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
       if (not node) {
          return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
       }
+      if (not first) {
+         this->materialise_to_next_reg(last, "expression list baton");
+      }
       auto value = this->emit_expression(*node);
       if (not value.ok()) {
          return value;
       }
       ExpDesc expr = value.value_ref();
       ++count;
-      if (not first) {
-         this->materialise_to_next_reg(last, "expression list baton");
-      }
       last = expr;
       first = false;
    }
