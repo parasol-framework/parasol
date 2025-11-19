@@ -225,24 +225,31 @@ extern GCproto * lj_parse(LexState *State)
    fs.flags |= PROTO_VARARG;  // Main chunk is always a vararg func.
    fscope_begin(&fs, &bl, FuncScopeFlag::None);
    bcemit_AD(&fs, BC_FUNCV, 0, 0);  // Placeholder.
-   ParserAllocator allocator = ParserAllocator::from(L);
-   ParserContext root_context = ParserContext::from(*State, fs, allocator);
-   ParserConfig session_config = make_parser_config(*L);
-   ParserSession root_session(root_context, session_config);
-   ParserProfiler profiler(root_context.config().profile_stages, &root_context.profiling_result());
-   State->next();  // Read-ahead first token.
+
+   ParserAllocator allocator      = ParserAllocator::from(L);
+   ParserContext   root_context   = ParserContext::from(*State, fs, allocator);
+   ParserConfig    session_config = make_parser_config(*L);
+
+   ParserSession   root_session(root_context, session_config);
+   ParserProfiler  profiler(root_context.config().profile_stages, &root_context.profiling_result());
+
+   State->next(); // Read-ahead first token.
+
    if (session_config.enable_ast_pipeline) {
       run_ast_pipeline(root_context, profiler);
    }
    else {
+      pf::Log().warning("Using legacy Lua parser; AST pipeline is disabled.");
       ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
       State->parse_chunk(root_context);
       legacy_timer.stop();
    }
+
    if (profiler.enabled()) {
       pf::Log profile_log("Fluid-Parser");
       profiler.log_results(profile_log);
    }
+
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);
    L->top--;  // Drop chunkname.

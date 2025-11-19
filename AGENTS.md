@@ -28,7 +28,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 
 **Verify:**
 - If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.
-- You can inspect the version and git commit hash of the build by running `parasol` with `--version`.
+- You can inspect the version, git commit hash and build type of the build by running `parasol` with `--version`.
 
 ### CMake Configuration Options
 

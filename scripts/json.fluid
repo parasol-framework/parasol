@@ -2,7 +2,7 @@
 --
 -- The main functions are: json.encode, json.decode.
 --
--- ## json.encode:
+-- ## json.encode(Object, [ErrorCallback])
 --
 -- This expects the following to be true of any tables being encoded:
 --  * They only have string or number keys. Number keys must be represented as strings in json; this is part of the json
@@ -141,7 +141,7 @@ do
          return 'function'
       else
          local msg = 'Unsupported type: ' .. kind .. '.'
-         if err_callback then err_callback(msg) else error(msg) end
+         if err_callback then return err_callback(msg) else error(msg) end
          return ''
       end
       return table.concat(s)
