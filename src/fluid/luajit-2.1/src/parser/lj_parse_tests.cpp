@@ -937,6 +937,22 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
    return snapshot;
 }
 
+static void log_snapshot(const BytecodeSnapshot& snapshot, const std::string& label)
+{
+   pf::Log log("Fluid-Parser");
+   log.detail("%s: %zu instructions", label.c_str(), snapshot.instructions.size());
+   for (size_t i = 0; i < snapshot.instructions.size(); ++i) {
+      std::string desc = describe_instruction(snapshot.instructions[i]);
+      log.detail("  [%zu] %s", i, desc.c_str());
+   }
+   if (not snapshot.children.empty()) {
+      log.detail("%s: %zu children", label.c_str(), snapshot.children.size());
+      for (size_t i = 0; i < snapshot.children.size(); ++i) {
+         log_snapshot(snapshot.children[i], label + ".child[" + std::to_string(i) + "]");
+      }
+   }
+}
+
 static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnapshot& ast,
    std::string& diff, std::string label)
 {
@@ -944,6 +960,8 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
       std::ostringstream stream;
       stream << label << ": bytecode length mismatch (legacy=" << legacy.instructions.size()
          << ", ast=" << ast.instructions.size() << ")";
+      log_snapshot(legacy, "legacy " + label);
+      log_snapshot(ast, "ast " + label);
       diff = stream.str();
       return false;
    }

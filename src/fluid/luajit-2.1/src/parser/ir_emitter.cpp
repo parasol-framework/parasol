@@ -979,6 +979,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    this->lex_state.var_add(1);
    VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
+   if (fs->bl) {
+      fs->bl->flags |= FuncScopeFlag::Upvalue;
+   }
 
    auto function_value = this->emit_function_expr(*payload.callable);
    if (not function_value.ok()) {
@@ -1999,15 +2002,15 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
       if (not node) {
          return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
       }
+      if (not first) {
+         this->materialise_to_next_reg(last, "expression list baton");
+      }
       auto value = this->emit_expression(*node);
       if (not value.ok()) {
          return value;
       }
       ExpDesc expr = value.value_ref();
       ++count;
-      if (not first) {
-         this->materialise_to_next_reg(last, "expression list baton");
-      }
       last = expr;
       first = false;
    }
