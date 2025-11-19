@@ -7,6 +7,9 @@
 #include <parasol/strings.hpp>
 #include <inttypes.h>
 #include <mutex>
+#include <algorithm>
+#include <string_view>
+#include <vector>
 
 #include "lua.h"
 #include "lualib.h"
@@ -134,7 +137,7 @@ int fcmd_catch(lua_State *Lua)
          }
 
          if (type IS LUA_TFUNCTION) {
-            int8_t caught_by_filter = FALSE;
+            bool caught_by_filter = false;
             prv->Catch++; // Flag to convert ERR results to exceptions.
             prv->CaughtError = ERR::Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
@@ -157,14 +160,14 @@ int fcmd_catch(lua_State *Lua)
                   while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
                      if (lua_tointeger(Lua, -1) IS int(filter_error)) {
-                        caught_by_filter = TRUE;
+                        caught_by_filter = true;
                         lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
                      }
                      lua_pop(Lua, 1); // Removes 'value'; keeps 'key' for next iteration
                   }
                   lua_pop(Lua, 1); // Pop the catch_filter
                }
-               else caught_by_filter = TRUE;
+               else caught_by_filter = true;
 
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
 
@@ -323,13 +326,15 @@ int fcmd_unsubscribe_event(lua_State *Lua)
       pf::Log log("unsubscribe_event");
       if ((Lua->Script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
 
-      for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
-         if (it->EventHandle IS handle) {
-            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, it->Function);
-            prv->EventList.erase(it);
-            return 0;
+      auto erased = std::erase_if(prv->EventList, [&](const auto& event) {
+         if (event.EventHandle IS handle) {
+            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, event.Function);
+            return true;
          }
-      }
+         return false;
+      });
+
+      if (erased > 0) return 0;
 
       log.warning("Failed to link an event to handle %p.", handle);
    }
@@ -358,29 +363,29 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    // Generate the event ID
 
-   char group[60];
+   constexpr size_t GROUP_BUFFER_SIZE = 60;
    uint32_t group_hash = 0, subgroup_hash = 0;
-   for (int i=0; event[i]; i++) {
-      if (event[i] IS '.') {
-         int j;
-         if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
-         for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
-         group[j] = 0;
-         group_hash = strihash(group);
-         event += i + 1;
+   std::string_view event_view(event);
+   std::string group_str, subgroup_str;
 
-         for (int i=0; event[i]; i++) {
-            if (event[i] IS '.') {
-               int j;
-               if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
-               for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
-               group[j] = 0;
-               subgroup_hash = strihash(group);
-               event += i + 1;
-               break;
-            }
-         }
-         break;
+   auto first_dot = event_view.find('.');
+   if (first_dot != std::string_view::npos) {
+      auto group_part = event_view.substr(0, first_dot);
+      if (group_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, "Buffer overflow.");
+
+      group_str = std::string(group_part);
+      group_hash = strihash(group_str.c_str());
+      event_view.remove_prefix(first_dot + 1);
+
+      auto second_dot = event_view.find('.');
+      if (second_dot != std::string_view::npos) {
+         auto subgroup_part = event_view.substr(0, second_dot);
+         if (subgroup_part.size() >= GROUP_BUFFER_SIZE) luaL_error(Lua, "Buffer overflow.");
+
+         subgroup_str = std::string(subgroup_part);
+         subgroup_hash = strihash(subgroup_str.c_str());
+         event_view.remove_prefix(second_dot + 1);
+         event = event_view.data();
       }
    }
 
@@ -407,7 +412,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       return 0;
    }
 
-   EVENTID event_id = GetEventID(group_id, group, event);
+   EVENTID event_id = GetEventID(group_id, subgroup_str.c_str(), event);
 
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
@@ -525,7 +530,7 @@ int fcmd_require(lua_State *Lua)
 
    CSTRING error_msg = nullptr;
    ERR error = ERR::Okay;
-   auto module = luaL_checkstringview(Lua, 1);
+   auto module = lua_checkstringview(Lua, 1);
 
    // For security purposes, check the validity of the module name.
 
@@ -575,8 +580,8 @@ int fcmd_require(lua_State *Lua)
    objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
 
    if (file.ok()) {
-      std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
-      struct code_reader_handle handle = { *file, buffer.get() };
+      std::vector<char> buffer(SIZE_READ);
+      struct code_reader_handle handle = { *file, buffer.data() };
       if (!lua_load(Lua, &code_reader, &handle, module.data())) {
          prv->RequireCounter++; // Used by getExecutionState()
          auto result_top = lua_gettop(Lua);
@@ -629,7 +634,7 @@ int fcmd_get_execution_state(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    lua_newtable(Lua);
    lua_pushstring(Lua, "inRequire");
-   lua_pushboolean(Lua, prv->RequireCounter ? TRUE : FALSE);
+   lua_pushboolean(Lua, prv->RequireCounter ? true : false);
    lua_settable(Lua, -3);
    return 1;
 }
@@ -691,9 +696,9 @@ int fcmd_loadfile(lua_State *Lua)
 
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
-         APTR buffer;
-         if (AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-            struct code_reader_handle handle = { *file, buffer };
+         std::vector<char> buffer(SIZE_READ);
+         {
+            struct code_reader_handle handle = { *file, buffer.data() };
 
             // Check for the presence of a compiled header and skip it if present
 
@@ -752,10 +757,7 @@ int fcmd_loadfile(lua_State *Lua)
                else error_msg = lua_tostring(Lua, -1);
             }
             else error_msg = lua_tostring(Lua, -1);
-
-            FreeResource(buffer);
          }
-         else error = ERR::AllocMemory;
       }
       else error = ERR::DoesNotExist;
 
@@ -839,8 +841,7 @@ int fcmd_arg(lua_State *Lua)
    int args = lua_gettop(Lua);
 
    auto key = lua_tostring(Lua, 1);
-   auto it = Self->Vars.find(key);
-   if (it != Self->Vars.end()) {
+   if (auto it = Self->Vars.find(key); it != Self->Vars.end()) {
       lua_pushstring(Lua, it->second.c_str());
       return 1;
    }
@@ -863,37 +864,37 @@ int fcmd_nz(lua_State *Lua)
       return 0;
    }
 
-   int8_t isnull = FALSE;
+   bool isnull = false;
    int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      if (lua_tonumber(Lua, 1)) isnull = FALSE;
-      else isnull = TRUE;
+      if (lua_tonumber(Lua, 1)) isnull = false;
+      else isnull = true;
    }
    else if (type IS LUA_TSTRING) {
       CSTRING str;
       if ((str = lua_tostring(Lua, 1))) {
-         if (str[0]) isnull = FALSE;
-         else isnull = TRUE;
+         if (str[0]) isnull = false;
+         else isnull = true;
       }
-      else isnull = TRUE;
+      else isnull = true;
    }
    else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
-      isnull = TRUE;
+      isnull = true;
    }
    else if ((type IS LUA_TLIGHTUSERDATA) or (type IS LUA_TUSERDATA)) {
-      if (lua_touserdata(Lua, 1)) isnull = FALSE;
-      else isnull = TRUE;
+      if (lua_touserdata(Lua, 1)) isnull = false;
+      else isnull = true;
    }
    else if (type IS LUA_TTABLE) {
       if (lua_objlen(Lua, 1) == 0) {
          lua_pushnil(Lua);
          if (lua_next(Lua, 1)) {
-            isnull = FALSE;
+            isnull = false;
             lua_pop(Lua, 2); // Remove discovered value and next key
          }
-         else isnull = TRUE;
+         else isnull = true;
       }
-      else isnull = FALSE;
+      else isnull = false;
    }
 
    if (args IS 2) {

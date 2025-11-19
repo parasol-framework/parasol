@@ -52,6 +52,9 @@ JUMPTABLE_REGEX
 
 #include "defs.h"
 
+constexpr size_t MAX_MODULE_NAME_LENGTH = 32;
+constexpr size_t MAX_STRING_PREFIX_LENGTH = 200;
+
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
 OBJECTPTR modRegex = nullptr;
@@ -64,8 +67,8 @@ bool glJITPipeline = true;
 bool glJITTraceBoundary = false;
 bool glJITTraceByteCode = false;
 bool glJITProfile = false;
-ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
-ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
+ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 extern "C" void pf_set_ast_pipeline(int enable)
 {
@@ -74,9 +77,9 @@ extern "C" void pf_set_ast_pipeline(int enable)
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
-static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
-static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 static ERR flSetVariable(objScript *, CSTRING, int, ...);
+[[nodiscard]] static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
+[[nodiscard]] static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 
 //********************************************************************************************************************
 
@@ -172,7 +175,7 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 
 //********************************************************************************************************************
 
-CSTRING next_line(CSTRING String)
+[[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
 {
    if (!String) return nullptr;
 
@@ -291,7 +294,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 //********************************************************************************************************************
 
-static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+[[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -653,7 +656,7 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 
 //********************************************************************************************************************
 
-ERR load_include(objScript *Script, CSTRING IncName)
+[[nodiscard]] ERR load_include(objScript *Script, CSTRING IncName)
 {
    pf::Log log(__FUNCTION__);
 
@@ -752,7 +755,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
-static int8_t datatype(std::string_view String)
+[[nodiscard]] static constexpr int8_t datatype(std::string_view String) noexcept
 {
    size_t i = 0;
    while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
@@ -792,7 +795,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    }
 
    std::string prefix(Line, i);
-   prefix.reserve(200);
+   prefix.reserve(MAX_STRING_PREFIX_LENGTH);
 
    Line += i + 1;
 
