@@ -147,6 +147,16 @@ MSize LexState::var_lookup(ExpDesc* e)
    return var_lookup_(this->fs, this->lex_str(), e, 1);
 }
 
+MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
+{
+   if (name == nullptr or name == NAME_BLANK) {
+      expr_init(e, ExpKind::Global, 0);
+      e->u.sval = name ? name : NAME_BLANK;
+      return MSize(-1);
+   }
+   return var_lookup_(this->fs, name, e, 1);
+}
+
 //********************************************************************************************************************
 // Jump and target handling
 
