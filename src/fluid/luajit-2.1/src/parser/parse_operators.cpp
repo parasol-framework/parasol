@@ -342,15 +342,15 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    }
 
    // Runtime value - emit checks
-   // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch
+   // Follow `?` pattern: use BC_ISNEP/BC_ISNEN/BC_ISNES, patch jumps to false branch
 
-   // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
-   // Pattern: BC_ISEQP reg, ExpKind::Nil + JMP means:
-   //   - If reg IS nil: skip JMP, continue to next check
-   //   - If reg != nil: execute JMP, jump to target (patched to false branch)
+   // Bytecode semantics: BC_ISNEP/BC_ISNEN/BC_ISNES skip the next instruction when values are NOT equal.
+   // Pattern: BC_ISNEP reg, ExpKind::Nil + JMP means:
+   //   - If reg IS nil: execute JMP and jump to the patched false branch
+   //   - If reg != nil: skip JMP, continue to next check
    // By chaining multiple checks and patching all JMPs to the same false branch:
-   //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
-   //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
+   //   - Falsey values: matching check executes its JMP, branching to the false path
+   //   - Truthy values: all checks skip their JMPs, execution reaches the true path
 
    BCReg reg = expr_toanyreg(fs, e);
    ExpDesc nilv = make_nil_expr();
@@ -361,19 +361,19 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    BCPos check_nil, check_false, check_zero, check_empty;
 
    // Check for nil
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
    // Check for false
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
    // Check for zero
-   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEN, reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
    // Check for empty string
-   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNES, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
    // Reserve a register for the result
@@ -465,19 +465,19 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             BCReg dest_reg;
 
             // Check for nil
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&nilv)));
             check_nil = bcemit_jmp(fs);
 
             // Check for false
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, reg, const_pri(&falsev)));
             check_false = bcemit_jmp(fs);
 
             // Check for zero
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNEN, reg, const_num(fs, &zerov)));
             check_zero = bcemit_jmp(fs);
 
             // Check for empty string
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+            bcemit_INS(fs, BCINS_AD(BC_ISNES, reg, const_str(fs, &emptyv)));
             check_empty = bcemit_jmp(fs);
 
             if (rhs_reg IS NO_REG) {

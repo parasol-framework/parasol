@@ -34,6 +34,9 @@
 ### Required follow-up
 - Use the correct branch pattern: emit `BC_ISNEP/BC_ISNEN/BC_ISNES` (skip when unequal) or invert the patching so equality drives the false branch. After fixing the branching, rerun the presence, ternary and compound assignment suites to verify that truthy inputs stop tripping the “false” path and that RHS expressions short-circuit again.
 
+### Update (current session)
+- Updated the ternary emitter, parser fast-paths, postfix presence operator and `?=` implementation to use the `BC_ISNE*` opcodes so falsey matches jump into their RHS while truthy values now fall through to the true branch. The `fluid_presence`, `fluid_if_empty`, and `fluid_ternary` suites pass in Release after rebuilding/installing, confirming the inversion is resolved.
+
 ## 3. Bitwise/shift precedence and chaining regressions (medium)
 *Tests: fluid_bitshift, fluid_bitwise*
 

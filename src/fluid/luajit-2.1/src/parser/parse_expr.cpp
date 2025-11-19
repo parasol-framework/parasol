@@ -953,13 +953,13 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
 
          this->ternary_depth++;
 
-         bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+         bcemit_INS(fs, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&nilv)));
          check_nil = bcemit_jmp(fs);
-         bcemit_INS(fs, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+         bcemit_INS(fs, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&falsev)));
          check_false = bcemit_jmp(fs);
-         bcemit_INS(fs, BCINS_AD(BC_ISEQN, cond_reg, const_num(fs, &zerov)));
+         bcemit_INS(fs, BCINS_AD(BC_ISNEN, cond_reg, const_num(fs, &zerov)));
          check_zero = bcemit_jmp(fs);
-         bcemit_INS(fs, BCINS_AD(BC_ISEQS, cond_reg, const_str(fs, &emptyv)));
+         bcemit_INS(fs, BCINS_AD(BC_ISNES, cond_reg, const_str(fs, &emptyv)));
          check_empty = bcemit_jmp(fs);
 
          {

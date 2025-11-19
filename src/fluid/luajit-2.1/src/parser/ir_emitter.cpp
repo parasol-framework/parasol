@@ -1210,16 +1210,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    ExpDesc zerov = make_num_expr(0.0);
    ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
 
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEP, lhs_reg, const_pri(&nilv)));
    JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
 
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEP, lhs_reg, const_pri(&falsev)));
    JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
 
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEN, lhs_reg, const_num(&this->func_state, &zerov)));
    JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
 
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNES, lhs_reg, const_str(&this->func_state, &emptyv)));
    JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
 
    JumpHandle skip_assign(&this->func_state, bcemit_jmp(&this->func_state));
@@ -1456,13 +1456,13 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    ExpDesc zerov = make_num_expr(0.0);
    ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
 
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&nilv)));
    JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEP, cond_reg, const_pri(&falsev)));
    JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNEN, cond_reg, const_num(&this->func_state, &zerov)));
    JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISNES, cond_reg, const_str(&this->func_state, &emptyv)));
    JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
 
    auto true_result = this->emit_expression(*payload.if_true);

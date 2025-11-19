@@ -106,16 +106,16 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    expr_discharge(fs, &lhs_eval);
    lhs_reg = expr_toanyreg(fs, &lhs_eval);
 
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, lhs_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
 
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEP, lhs_reg, const_pri(&falsev)));
    check_false = bcemit_jmp(fs);
 
-   bcemit_INS(fs, BCINS_AD(BC_ISEQN, lhs_reg, const_num(fs, &zerov)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNEN, lhs_reg, const_num(fs, &zerov)));
    check_zero = bcemit_jmp(fs);
 
-   bcemit_INS(fs, BCINS_AD(BC_ISEQS, lhs_reg, const_str(fs, &emptyv)));
+   bcemit_INS(fs, BCINS_AD(BC_ISNES, lhs_reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
    skip_assign = bcemit_jmp(fs);
