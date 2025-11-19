@@ -319,7 +319,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          if (pf::startswith(args[i], "--jit-options")) {
             // Parse --jit-options parameter (supports both --jit-options=value and --jit-options value formats)
             // Use in conjunction with --log-xapi to see the log messages. Available switches:
-            // trace, diagnose, ast-pipeline, trace-boundary, trace-bytecode, profile.
+            // trace, diagnose, ast-pipeline, trace-boundary, trace-bytecode, profile, ast-legacy.
             std::string value;
             auto eq_pos = args[i].find('=');
             if (eq_pos != std::string::npos) {
@@ -345,8 +345,11 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
                   else if (pf::iequals(trimmed, "diagnose")) {
                      glJITDiagnose = true;
                   }
-                  else if (pf::iequals(trimmed, "ast-pipeline")) {
+                  else if (pf::iequals(trimmed, "ast-pipeline")) { // Use the new AST-based parser
                      glJITPipeline = true;
+                  }
+                  else if (pf::iequals(trimmed, "ast-legacy")) { // Use the legacy parser
+                     glJITPipeline = false;
                   }
                   else if (pf::iequals(trimmed, "trace-boundary")) {
                      glJITTraceBoundary = true;
@@ -354,7 +357,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
                   else if (pf::iequals(trimmed, "trace-bytecode")) {
                      glJITTraceByteCode = true;
                   }
-                  else if (pf::iequals(trimmed, "profile")) {
+                  else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
                      glJITProfile = true;
                   }
                }

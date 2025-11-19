@@ -47,7 +47,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 
 /*
 
-TODO: Consider deprecating?
+TODO: Consider deprecating?  Only the unit tests use this.
 
 The parse_expression_entry and parse_expression_list_entry methods are redundant wrappers. They call parse_expression 
 and parse_expression_list which already return ParserResult<ExprNodePtr> and ParserResult<ExprNodeList> respectively, 

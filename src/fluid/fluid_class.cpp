@@ -324,8 +324,14 @@ static ERR FLUID_Activate(objScript *Self)
    if (reload) {
       log.trace("The Lua script will be initialised from scratch.");
 
-      prv->Lua->Script = Self;
-      prv->Lua->ProtectedGlobals = false;
+      prv->Lua->Script             = Self;
+      prv->Lua->ProtectedGlobals   = false;
+      prv->Lua->jit_trace          = glJITTrace;
+      prv->Lua->jit_diagnose       = glJITDiagnose;
+      prv->Lua->jit_pipeline       = glJITPipeline;
+      prv->Lua->jit_trace_boundary = glJITTraceBoundary;
+      prv->Lua->jit_trace_bytecode = glJITTraceByteCode;
+      prv->Lua->jit_profile        = glJITProfile;
 
       // Change the __newindex and __index methods of the global table so that all access passes
       // through a proxy table that we control.

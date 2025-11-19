@@ -50,7 +50,6 @@ static const struct {
 #include "parser/parser_context.cpp"
 #include "parser/ast_nodes.cpp"
 #include "parser/ast_builder.cpp"
-#include "parser/parser_entry_points.cpp"
 #include "parser/ir_emitter.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
@@ -74,19 +73,14 @@ static void report_pipeline_error(ParserContext& context, const ParserError& err
 
 static void flush_non_fatal_errors(ParserContext& context)
 {
-   if (context.config().abort_on_error) {
-      return;
-   }
-   if (context.diagnostics().has_errors()) {
-      raise_accumulated_diagnostics(context);
-   }
+   if (context.config().abort_on_error) return;
+   if (context.diagnostics().has_errors()) raise_accumulated_diagnostics(context);
 }
 
 static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, const char* stage)
 {
-   if (not context.config().trace_ast_boundaries) {
-      return;
-   }
+   if (not context.config().trace_ast_boundaries) return;
+
    pf::Log log("Fluid-Parser");
    StatementListView statements = chunk.view();
    SourceSpan span = chunk.span;
@@ -122,10 +116,10 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
 
 static void trace_bytecode_snapshot(ParserContext& context, const char* label)
 {
-   if (not context.config().dump_ast_bytecode) {
-      return;
-   }
    pf::Log log("Fluid-Parser");
+
+   if (not context.config().dump_ast_bytecode) return;
+
    FuncState& fs = context.func();
    log.detail("bytecode-%s: count=%u", label, (unsigned)fs.pc);
    for (BCPos pc = 0; pc < fs.pc; ++pc) {
@@ -173,24 +167,24 @@ static ParserConfig make_parser_config(lua_State &State)
    pf::Log log("FluidParser");
    ParserConfig config;
 
-   if (glJITPipeline) config.enable_ast_pipeline = true;
+   if (State.jit_pipeline) config.enable_ast_pipeline = true;
 
-   if (glJITTraceBoundary) config.trace_ast_boundaries = true;
+   if (State.jit_trace_boundary) config.trace_ast_boundaries = true;
 
-   if (glJITTraceByteCode) config.dump_ast_bytecode = true;
+   if (State.jit_trace_bytecode) config.dump_ast_bytecode = true;
 
-   if (glJITProfile) {
+   if (State.jit_profile) {
       log.msg("JIT parser profiling enabled.");
       config.profile_stages = true;
    }
 
-   if (glJITDiagnose) {
+   if (State.jit_diagnose) {
       log.msg("JIT diagnostic mode enabled.");
       config.abort_on_error = false;
       config.max_diagnostics = 32;
    }
 
-   if (glJITTrace) {
+   if (State.jit_trace) {
       log.msg("JIT trace mode enabled.");
       config.trace_tokens = true;
       config.trace_expectations = true;
