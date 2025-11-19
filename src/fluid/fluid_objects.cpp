@@ -299,8 +299,7 @@ inline void build_read_table(object *Def)
 
       build_read_table(def);
       auto hash_key = obj_read(simple_hash(keyname));
-      if (def->ReadTable->contains(hash_key)) {
-         auto func = def->ReadTable->find(hash_key);
+      if (auto func = def->ReadTable->find(hash_key); func != def->ReadTable->end()) {
          return func->Call(Lua, *func, def);
       }
       else {
