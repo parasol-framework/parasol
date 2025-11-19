@@ -319,7 +319,7 @@ static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, si
 
 //********************************************************************************************************************
 
-static void append_hex_dump(std::span<const uint8_t> Data, std::ostringstream &Buf, bool Compact)
+static void append_hex_dump(std::span<uint8_t> Data, std::ostringstream &Buf, bool Compact)
 {
    if (Data.empty()) {
       Buf << "(empty)\n";

@@ -144,7 +144,7 @@ static int module_index(lua_State *Lua)
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (mod->Functions) {
-            auto hash = strihash(function); // Case sensitive (lower camel case expected)
+            auto hash = strihash(function); // Case insensitive function calls
             if (mod->FunctionMap.contains(hash)) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                lua_pushinteger(Lua, mod->FunctionMap[hash]); // Arg2: Index of the function that is being called
