@@ -47,6 +47,23 @@ static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::L
    }
 }
 
+#define BCNAME(name, ma, mb, mc, mt) #name,
+static const char* glBcNames[] = {
+   BCDEF(BCNAME)
+   "BC__MAX"
+};
+#undef BCNAME
+
+static std::string describe_instruction(BCIns instruction)
+{
+   BCOp op = bc_op(instruction);
+   const char* name = (op < BC__MAX) ? glBcNames[op] : "BC_UNKNOWN";
+   char buffer[128];
+   std::snprintf(buffer, sizeof(buffer), "%s op=%d a=%d b=%d c=%d d=%d", name, (int)op,
+      (int)bc_a(instruction), (int)bc_b(instruction), (int)bc_c(instruction), (int)bc_d(instruction));
+   return std::string(buffer);
+}
+
 struct LuaStateHolder {
    LuaStateHolder()
    {
@@ -122,7 +139,7 @@ struct ExpressionParseHarness {
    std::unique_ptr<LuaStateHolder> holder;
    std::unique_ptr<StringReaderCtx> reader;
    std::unique_ptr<LexState> lex;
-   FuncState fs;
+   std::unique_ptr<FuncState> func_state;
    std::unique_ptr<ParserContext> context;
    std::unique_ptr<ParserSession> session;
 };
@@ -141,10 +158,11 @@ static std::optional<ExpressionParseHarness> make_expression_harness(std::string
    harness.reader->size = source.size();
 
    harness.lex = std::make_unique<LexState>(L, unit_reader, harness.reader.get(), "expr-entry", std::nullopt);
-   harness.lex->fs_init(&harness.fs);
+   harness.func_state = std::make_unique<FuncState>();
+   harness.lex->fs_init(harness.func_state.get());
 
    ParserAllocator allocator = ParserAllocator::from(L);
-   ParserContext context = ParserContext::from(*harness.lex, harness.fs, allocator);
+   ParserContext context = ParserContext::from(*harness.lex, *harness.func_state, allocator);
    harness.context = std::make_unique<ParserContext>(std::move(context));
 
    ParserConfig config;
@@ -289,7 +307,7 @@ static bool test_expression_entry_point(pf::Log& log)
    }
 
    ParserContext& context = *harness->context;
-   FuncState& fs = harness->fs;
+   FuncState& fs = *harness->func_state;
    BCReg before = fs.freereg;
 
    AstBuilder builder(context);
@@ -325,7 +343,7 @@ static bool test_expression_list_entry_point(pf::Log &log)
    }
 
    ParserContext& context = *harness->context;
-   FuncState& fs = harness->fs;
+   FuncState& fs = *harness->func_state;
    BCReg before = fs.freereg;
    AstBuilder builder(context);
    auto list = builder.parse_expression_list_entry();
@@ -932,6 +950,11 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
 
    for (size_t i = 0; i < legacy.instructions.size(); ++i) {
       if (legacy.instructions[i] != ast.instructions[i]) {
+         pf::Log log("Fluid-Parser");
+         std::string legacy_desc = describe_instruction(legacy.instructions[i]);
+         std::string ast_desc = describe_instruction(ast.instructions[i]);
+         log.detail("legacy[%s:%zu] %s", label.c_str(), i, legacy_desc.c_str());
+         log.detail("   ast[%s:%zu] %s", label.c_str(), i, ast_desc.c_str());
          std::ostringstream stream;
          stream << label << ": mismatch at pc=" << i << " legacy=0x" << std::hex
             << legacy.instructions[i] << " ast=0x" << ast.instructions[i];

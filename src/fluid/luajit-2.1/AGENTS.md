@@ -97,20 +97,18 @@ static GCstr* keepstr(std::string_view str);
 - The `LJ_NO_UNWIND` flag results in broken code that corrupts memory if used in GCC builds.
 
 ## Testing
-- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run
-  subsets, or omit `-R` for the full suite. Fluid regression tests are under
+- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run subsets, or omit `-R` for the full suite. Fluid regression tests are under
   `src/fluid/tests/` and catch most parser/VM regressions.
-- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from
-  `build/agents-install/bin/` with `--no-crash-handler --log-warning`
+- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning`
   so failures bubble out as exit codes.
-- **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module
-  and `parasol_cmd`, then reinstall:
+- **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module and `parasol_cmd`, then reinstall:
   ```bash
   cmake --build build/agents --config <BuildType> --parallel
   cmake --install build/agents --config <BuildType>
   ```
-- When debugging parser issues, create minimal Fluid scripts to isolate the
-  behaviour before running the full test suite.
+- When debugging parser issues, create minimal Fluid scripts to isolate the behaviour before running the full test suite.
+- Unit tests are managed by `MODTests()` in `src/fluid/fluid.cpp`.
+- To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-xapi` option to view the output from stderr.
 
 ## Troubleshooting Register Allocation
 - LuaJIT's parser (`lj_parse.cpp`) heavily relies on `freereg`, `nactvar`, and

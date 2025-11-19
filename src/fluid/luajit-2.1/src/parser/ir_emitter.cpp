@@ -602,6 +602,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
       bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    }
    bcemit_INS(&this->func_state, ins);
+   this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1829,7 +1830,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    }
 
    FuncScope scope;
-   ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+   fscope_begin(&child_state, &scope, FuncScopeFlag::None);
 
    BCReg param_count = BCReg(payload.parameters.size());
    for (BCReg i = 0; i < param_count; ++i) {
