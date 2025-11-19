@@ -606,6 +606,93 @@ return value * 3
    return true;
 }
 
+static bool test_ast_call_lowering(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local context = { base = 5 }
+
+function context:compute(delta)
+   return self.base + math.abs(-delta)
+end
+
+return context:compute(-3)
+)";
+
+   LuaStateHolder holder;
+   lua_State* L = holder.get();
+   if (not L) {
+      log.error("failed to allocate lua state for call lowering test");
+      return false;
+   }
+
+   std::string error;
+   auto legacy = compile_snapshot(L, source, false, error);
+   if (not legacy.has_value()) {
+      log.error("legacy parser compile failed: %s", error.c_str());
+      return false;
+   }
+
+   auto ast = compile_snapshot(L, source, true, error);
+   if (not ast.has_value()) {
+      log.error("ast pipeline compile failed: %s", error.c_str());
+      return false;
+   }
+
+   std::string diff;
+   if (not compare_snapshots(*legacy, *ast, diff, "chunk")) {
+      log.error("call lowering mismatch: %s", diff.c_str());
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_return_lowering(pf::Log& log)
+{
+   constexpr const char* source =
+      "local function retmix(flag, ...)\n"
+      "   if flag then\n"
+      "      return ...\n"
+      "   end\n"
+      "\n"
+      "   if flag ~= 0 then\n"
+      "      return math.abs(flag)\n"
+      "   end\n"
+      "\n"
+      "   return math.min(flag, 5), flag, ...\n"
+      "end\n"
+      "\n"
+      "return retmix(...)\n";
+
+   LuaStateHolder holder;
+   lua_State* L = holder.get();
+   if (not L) {
+      log.error("failed to allocate lua state for return lowering test");
+      return false;
+   }
+
+   std::string error;
+   auto legacy = compile_snapshot(L, source, false, error);
+   if (not legacy.has_value()) {
+      log.error("legacy parser compile failed: %s", error.c_str());
+      return false;
+   }
+
+   auto ast = compile_snapshot(L, source, true, error);
+   if (not ast.has_value()) {
+      log.error("ast pipeline compile failed: %s", error.c_str());
+      return false;
+   }
+
+   std::string diff;
+   if (not compare_snapshots(*legacy, *ast, diff, "chunk")) {
+      log.error("return lowering mismatch: %s", diff.c_str());
+      return false;
+   }
+
+   return true;
+}
+
 struct TestCase {
    const char* name;
    bool (*fn)(pf::Log&);
@@ -617,12 +704,14 @@ extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
 
-   constexpr std::array<TestCase, 6> tests = { {
+   constexpr std::array<TestCase, 8> tests = { {
       { "literal_binary_ast", test_literal_binary_expr },
       { "expression_entry_point", test_expression_entry_point },
       { "expression_list_entry_point", test_expression_list_entry_point },
       { "loop_ast", test_loop_ast },
       { "local_function_table_ast", test_local_function_table_ast },
+      { "return_lowering", test_return_lowering },
+      { "ast_call_lowering", test_ast_call_lowering },
       { "bytecode_equivalence", test_bytecode_equivalence },
    } };
 

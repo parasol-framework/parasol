@@ -10,6 +10,10 @@ This document captures the outstanding requirements discovered while auditing th
 ## 2. `IrEmitter` lacks comprehensive lowering support
 * The `IrEmitter` visitor only recognises expression statements, bare `return` statements, and three expression kinds (literal, identifier, vararg). Every other AST node routes through `unsupported_stmt`/`unsupported_expr`, so the emitter neither owns register allocation for most constructs nor handles control-flow patching as mandated by Step 3.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L39-L172】
 
+   *2025-11-19 update:* `IrEmitter` now lowers unary expressions, table member/index accesses, call expressions (including method dispatch and multi-return forwarding), and multi-value returns. The parser unit tests gained `ast_call_lowering` to assert the AST pipeline matches the legacy bytecode for a call expression, preventing regressions as coverage expands.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L1-L370】【F:src/fluid/luajit-2.1/src/parser/lj_parse_tests.cpp†L594-L651】
+
+   *2025-11-19 follow-up:* Return lowering now sets `PROTO_HAS_RETURN` and is covered by `return_lowering`, ensuring bare returns, tail-call forwarding, and `BC_RETM` emission stay aligned with the legacy parser.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L166-L210】【F:src/fluid/luajit-2.1/src/parser/lj_parse_tests.cpp†L602-L690】
+
 ## 3. Bytecode equivalence harness skips parity checks
 * The "bytecode equivalence" unit test in `lj_parse_tests.cpp` warns and exits early whenever the AST pipeline fails to compile the snippet, meaning no bytecode diff is performed even though Step 5 requires enforcing equivalence to catch regressions. This undermines the safeguard because AST failures silently skip comparison instead of failing the test.【F:src/fluid/luajit-2.1/src/parser/lj_parse_tests.cpp†L464-L499】
 
