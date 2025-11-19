@@ -1833,6 +1833,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    }
 
    FuncScope scope;
+
+   // TODO: Should use ScopeGuard, but currently crashes when its destructor calls fscope_end() during stack unwinding.
+   //ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
    fscope_begin(&child_state, &scope, FuncScopeFlag::None);
 
    BCReg param_count = BCReg(payload.parameters.size());
@@ -1851,14 +1854,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    BCReg base = child_state.nactvar - param_count;
    for (BCReg i = 0; i < param_count; ++i) {
       const FunctionParameter& param = payload.parameters[i];
-      if (param.name.is_blank or param.name.symbol IS nullptr) {
-         continue;
-      }
+      if (param.name.is_blank or param.name.symbol IS nullptr) continue;
       child_emitter.update_local_binding(param.name.symbol, base + i);
    }
 
    auto body_result = child_emitter.emit_block(*payload.body, FuncScopeFlag::None);
    if (not body_result.ok()) {
+      //fscope_end(&child_state); // Crashes in some cases
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
@@ -1880,6 +1882,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
       parent_state->flags |= PROTO_CHILD;
    }
 
+   //fscope_end(&child_state); // Crashes in some cases
    return ParserResult<ExpDesc>::success(expr);
 }
 

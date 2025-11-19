@@ -344,6 +344,8 @@ static void execute_defers(FuncState* fs, BCReg limit)
 
 static void fscope_end(FuncState* fs)
 {
+   if (not fs) return;
+
    FuncScope* bl = fs->bl;
    LexState* ls = fs->ls;
    fs->bl = bl->prev;

@@ -26,7 +26,7 @@ public:
    }
 
    ~ScopeGuard() {
-      fscope_end(fs_);
+      if (fs_) fscope_end(fs_);
    }
 
    // Prevent copying

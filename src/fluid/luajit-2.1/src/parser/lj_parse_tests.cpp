@@ -1,4 +1,4 @@
-// Unit tests for the Phase 2 parser pipeline.
+// Unit tests for the parser pipeline.
 
 #include <parasol/main.h>
 
@@ -20,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdio>
 
 #include "parser/ast_builder.h"
 #include "parser/ast_nodes.h"
@@ -1296,4 +1297,4 @@ extern void parser_unit_tests(int& Passed, int& Total)
    }
 }
 
-#endif
+#endif // ENABLE_UNIT_TESTS
