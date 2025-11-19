@@ -1,30 +1,171 @@
 #include "parser/ir_emitter.h"
 
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <span>
 #include <string>
 #include <utility>
+
+#include <parasol/main.h>
+
+#include "lj_debug.h"
+#include "lj_tab.h"
 
 #include "parser/parse_internal.h"
 #include "parser/token_types.h"
 
+LocalBindingTable::LocalBindingTable() = default;
+
+void LocalBindingTable::push_scope()
+{
+   this->scope_marks.push_back(this->bindings.size());
+   this->depth++;
+}
+
+void LocalBindingTable::pop_scope()
+{
+   if (this->scope_marks.empty()) {
+      this->bindings.clear();
+      this->depth = 0;
+      return;
+   }
+   size_t restore = this->scope_marks.back();
+   this->scope_marks.pop_back();
+   this->bindings.resize(restore);
+   if (this->depth > 0) {
+      this->depth--;
+   }
+}
+
+void LocalBindingTable::add(GCstr* symbol, BCReg slot)
+{
+   if (not symbol) {
+      return;
+   }
+   LocalBindingEntry entry;
+   entry.symbol = symbol;
+   entry.slot = slot;
+   entry.depth = this->depth;
+   this->bindings.push_back(entry);
+}
+
+std::optional<BCReg> LocalBindingTable::resolve(GCstr* symbol) const
+{
+   if (not symbol) {
+      return std::nullopt;
+   }
+   for (auto it = this->bindings.rbegin(); it != this->bindings.rend(); ++it) {
+      if (it->symbol IS symbol) {
+         return it->slot;
+      }
+   }
+   return std::nullopt;
+}
+
+LocalBindingScope::LocalBindingScope(LocalBindingTable& table)
+   : table(table)
+{
+   this->table.push_scope();
+}
+
+LocalBindingScope::~LocalBindingScope()
+{
+   this->table.pop_scope();
+}
+
+JumpHandle::JumpHandle()
+   : func_state(nullptr), list_head(NO_JMP)
+{
+}
+
+JumpHandle::JumpHandle(FuncState* state)
+   : func_state(state), list_head(NO_JMP)
+{
+}
+
+JumpHandle::JumpHandle(FuncState* state, BCPos head)
+   : func_state(state), list_head(head)
+{
+}
+
+bool JumpHandle::empty() const
+{
+   return this->list_head IS NO_JMP;
+}
+
+void JumpHandle::append(BCPos other)
+{
+   if (not this->func_state) {
+      return;
+   }
+   this->list_head = JumpListView(this->func_state, this->list_head).append(other);
+}
+
+void JumpHandle::append(const JumpHandle& other)
+{
+   this->append(other.list_head);
+}
+
+void JumpHandle::patch_here() const
+{
+   if (this->func_state) {
+      this->patch_to(this->func_state->pc);
+   }
+}
+
+void JumpHandle::patch_to(BCPos target) const
+{
+   if (this->func_state and not this->empty()) {
+      JumpListView(this->func_state, this->list_head).patch_to(target);
+   }
+}
+
+void JumpHandle::patch_head(BCPos destination) const
+{
+   if (this->func_state and not this->empty()) {
+      JumpListView(this->func_state, this->list_head).patch_head(destination);
+   }
+}
+
+BCPos JumpHandle::head() const
+{
+   return this->list_head;
+}
+
+FuncState* JumpHandle::state() const
+{
+   return this->func_state;
+}
+
 namespace {
 
-class LocalBindingScope {
-public:
-   explicit LocalBindingScope(std::vector<std::pair<GCstr*, BCReg>>& bindings)
-      : bindings_(bindings)
-      , mark_(bindings.size())
-   {
-   }
+constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;
+constexpr int kJumpBreak = 0;
+constexpr int kJumpContinue = 1;
 
-   ~LocalBindingScope()
+class UnsupportedNodeRecorder {
+public:
+   void record(AstNodeKind kind, const SourceSpan& span, const char* stage)
    {
-      bindings_.resize(mark_);
+      size_t index = size_t(kind);
+      if (index >= this->counts.size()) {
+         return;
+      }
+      uint32_t total = ++this->counts[index];
+      if ((total <= 8) or (total % 32 IS 0)) {
+         pf::Log log("Fluid-Parser");
+         log.detail("ast-pipeline unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
+            stage, unsigned(kind), unsigned(total), int(span.line), int(span.column),
+            static_cast<long long>(span.offset));
+      }
    }
 
 private:
-   std::vector<std::pair<GCstr*, BCReg>>& bindings_;
-   size_t mark_;
+   std::array<uint32_t, kAstNodeKindCount> counts{};
 };
+
+UnsupportedNodeRecorder glUnsupportedNodes;
 
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
@@ -81,6 +222,205 @@ private:
    }
 }
 
+[[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
+{
+   switch (op) {
+   case AssignmentOperator::Add:
+      return BinOpr::OPR_ADD;
+   case AssignmentOperator::Subtract:
+      return BinOpr::OPR_SUB;
+   case AssignmentOperator::Multiply:
+      return BinOpr::OPR_MUL;
+   case AssignmentOperator::Divide:
+      return BinOpr::OPR_DIV;
+   case AssignmentOperator::Modulo:
+      return BinOpr::OPR_MOD;
+   case AssignmentOperator::Concat:
+      return BinOpr::OPR_CONCAT;
+   default:
+      return std::nullopt;
+   }
+}
+
+[[nodiscard]] static ExpDesc make_local_expr(FuncState& func_state, BCReg slot)
+{
+   ExpDesc expr;
+   expr_init(&expr, ExpKind::Local, slot);
+   expr.u.s.aux = func_state.varmap[slot];
+   return expr;
+}
+
+[[nodiscard]] static bool is_register_key(uint32_t aux)
+{
+   return (int32_t(aux) >= 0) and (aux <= BCMAX_C);
+}
+
+[[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
+{
+   switch (kind) {
+   case AstNodeKind::LiteralExpr:
+      return "LiteralExpr";
+   case AstNodeKind::IdentifierExpr:
+      return "IdentifierExpr";
+   case AstNodeKind::VarArgExpr:
+      return "VarArgExpr";
+   case AstNodeKind::UnaryExpr:
+      return "UnaryExpr";
+   case AstNodeKind::BinaryExpr:
+      return "BinaryExpr";
+   case AstNodeKind::UpdateExpr:
+      return "UpdateExpr";
+   case AstNodeKind::TernaryExpr:
+      return "TernaryExpr";
+   case AstNodeKind::PresenceExpr:
+      return "PresenceExpr";
+   case AstNodeKind::CallExpr:
+      return "CallExpr";
+   case AstNodeKind::MemberExpr:
+      return "MemberExpr";
+   case AstNodeKind::IndexExpr:
+      return "IndexExpr";
+   case AstNodeKind::TableExpr:
+      return "TableExpr";
+   case AstNodeKind::FunctionExpr:
+      return "FunctionExpr";
+   case AstNodeKind::BlockStmt:
+      return "BlockStmt";
+   case AstNodeKind::AssignmentStmt:
+      return "AssignmentStmt";
+   case AstNodeKind::LocalDeclStmt:
+      return "LocalDeclStmt";
+   case AstNodeKind::LocalFunctionStmt:
+      return "LocalFunctionStmt";
+   case AstNodeKind::FunctionStmt:
+      return "FunctionStmt";
+   case AstNodeKind::IfStmt:
+      return "IfStmt";
+   case AstNodeKind::WhileStmt:
+      return "WhileStmt";
+   case AstNodeKind::RepeatStmt:
+      return "RepeatStmt";
+   case AstNodeKind::NumericForStmt:
+      return "NumericForStmt";
+   case AstNodeKind::GenericForStmt:
+      return "GenericForStmt";
+   case AstNodeKind::BreakStmt:
+      return "BreakStmt";
+   case AstNodeKind::ContinueStmt:
+      return "ContinueStmt";
+   case AstNodeKind::ReturnStmt:
+      return "ReturnStmt";
+   case AstNodeKind::GotoStmt:
+      return "GotoStmt";
+   case AstNodeKind::LabelStmt:
+      return "LabelStmt";
+   case AstNodeKind::DeferStmt:
+      return "DeferStmt";
+   case AstNodeKind::DoStmt:
+      return "DoStmt";
+   case AstNodeKind::ExpressionStmt:
+      return "ExpressionStmt";
+   default:
+      return "Unknown";
+   }
+}
+
+[[nodiscard]] static FuncScope* find_loop_scope(FuncState& func_state)
+{
+   FuncScope* loop = func_state.bl;
+   while (loop and not has_flag(loop->flags, FuncScopeFlag::Loop)) {
+      loop = loop->prev;
+   }
+   return loop;
+}
+
+[[nodiscard]] static NameRef make_name_ref(const Identifier& identifier)
+{
+   NameRef ref;
+   ref.identifier = identifier;
+   ref.resolution = NameResolution::Unresolved;
+   ref.slot = 0;
+   return ref;
+}
+
+[[nodiscard]] static int predict_next(LexState& lex_state, FuncState& func_state, BCPos pc)
+{
+   BCIns ins = func_state.bcbase[pc].ins;
+   GCstr* name = nullptr;
+   cTValue* table_entry = nullptr;
+
+   switch (bc_op(ins)) {
+   case BC_MOV:
+      name = gco2str(gcref(var_get(&lex_state, &func_state, bc_d(ins)).name));
+      break;
+   case BC_UGET:
+      name = gco2str(gcref(lex_state.vstack[func_state.uvmap[bc_d(ins)]].name));
+      break;
+   case BC_GGET:
+      table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "pairs"));
+      if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
+         return 1;
+      }
+      table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "next"));
+      if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
+         return 1;
+      }
+      return 0;
+   default:
+      return 0;
+   }
+
+   if (not name) {
+      return 0;
+   }
+   if (name->len IS 5 and !strcmp(strdata(name), "pairs")) {
+      return 1;
+   }
+   if (name->len IS 4 and !strcmp(strdata(name), "next")) {
+      return 1;
+   }
+   return 0;
+}
+
+static void duplicate_index_base(FuncState& func_state, ExpDesc& working, const ExpDesc& original)
+{
+   if (working.k IS ExpKind::Indexed) {
+      BCReg new_base = func_state.freereg;
+      bcemit_AD(&func_state, BC_MOV, new_base, BCReg(original.u.s.info));
+      bcreg_reserve(&func_state, 1);
+      working.u.s.info = new_base;
+      uint32_t orig_aux = original.u.s.aux;
+      if (is_register_key(orig_aux)) {
+         BCReg new_idx = func_state.freereg;
+         bcemit_AD(&func_state, BC_MOV, new_idx, BCReg(orig_aux));
+         bcreg_reserve(&func_state, 1);
+         working.u.s.aux = new_idx;
+      }
+   }
+}
+
+static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
+{
+   BCReg target = result_reg + 1;
+   if (target < func_state->nactvar) {
+      target = BCReg(func_state->nactvar);
+   }
+   if (func_state->freereg > target) {
+      func_state->freereg = target;
+   }
+}
+
+static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
+{
+   if (original.k IS ExpKind::Indexed) {
+      uint32_t orig_aux = original.u.s.aux;
+      if (is_register_key(orig_aux)) {
+         bcreg_free(&func_state, BCReg(orig_aux));
+      }
+      bcreg_free(&func_state, BCReg(original.u.s.info));
+   }
+}
+
 [[nodiscard]] static BCIns* ir_bcptr(FuncState* func_state, const ExpDesc* expression)
 {
    return &func_state->bcbase[expression->u.s.info].ins;
@@ -108,14 +448,26 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
 
 ParserResult<IrEmitUnit> IrEmitter::emit_block(const BlockStmt& block, FuncScopeFlag flags)
 {
+   return this->emit_block_with_bindings(block, flags, std::span<const BlockBinding>());
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
+   const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings)
+{
    FuncScope scope;
    ScopeGuard guard(&this->func_state, &scope, flags);
-   LocalBindingScope binding_scope(this->local_bindings);
+   LocalBindingScope binding_scope(this->binding_table);
+   for (const BlockBinding& binding : bindings) {
+      if (binding.symbol) {
+         this->update_local_binding(binding.symbol, binding.slot);
+      }
+   }
    for (const StmtNode& stmt : block.view()) {
       auto status = this->emit_statement(stmt);
       if (not status.ok()) {
          return status;
       }
+      this->ensure_register_balance(describe_node_kind(stmt.kind));
    }
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -135,9 +487,57 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
       const auto& payload = std::get<LocalDeclStmtPayload>(stmt.data);
       return this->emit_local_decl_stmt(payload);
    }
+   case AstNodeKind::LocalFunctionStmt: {
+      const auto& payload = std::get<LocalFunctionStmtPayload>(stmt.data);
+      return this->emit_local_function_stmt(payload);
+   }
+   case AstNodeKind::FunctionStmt: {
+      const auto& payload = std::get<FunctionStmtPayload>(stmt.data);
+      return this->emit_function_stmt(payload);
+   }
    case AstNodeKind::AssignmentStmt: {
       const auto& payload = std::get<AssignmentStmtPayload>(stmt.data);
       return this->emit_assignment_stmt(payload);
+   }
+   case AstNodeKind::IfStmt: {
+      const auto& payload = std::get<IfStmtPayload>(stmt.data);
+      return this->emit_if_stmt(payload);
+   }
+   case AstNodeKind::WhileStmt: {
+      const auto& payload = std::get<LoopStmtPayload>(stmt.data);
+      return this->emit_while_stmt(payload);
+   }
+   case AstNodeKind::RepeatStmt: {
+      const auto& payload = std::get<LoopStmtPayload>(stmt.data);
+      return this->emit_repeat_stmt(payload);
+   }
+   case AstNodeKind::NumericForStmt: {
+      const auto& payload = std::get<NumericForStmtPayload>(stmt.data);
+      return this->emit_numeric_for_stmt(payload);
+   }
+   case AstNodeKind::GenericForStmt: {
+      const auto& payload = std::get<GenericForStmtPayload>(stmt.data);
+      return this->emit_generic_for_stmt(payload);
+   }
+   case AstNodeKind::DeferStmt: {
+      const auto& payload = std::get<DeferStmtPayload>(stmt.data);
+      return this->emit_defer_stmt(payload);
+   }
+   case AstNodeKind::BreakStmt: {
+      const auto& payload = std::get<BreakStmtPayload>(stmt.data);
+      return this->emit_break_stmt(payload);
+   }
+   case AstNodeKind::ContinueStmt: {
+      const auto& payload = std::get<ContinueStmtPayload>(stmt.data);
+      return this->emit_continue_stmt(payload);
+   }
+   case AstNodeKind::GotoStmt: {
+      const auto& payload = std::get<GotoStmtPayload>(stmt.data);
+      return this->emit_goto_stmt(payload);
+   }
+   case AstNodeKind::LabelStmt: {
+      const auto& payload = std::get<LabelStmtPayload>(stmt.data);
+      return this->emit_label_stmt(payload);
    }
    case AstNodeKind::DoStmt: {
       const auto& payload = std::get<DoStmtPayload>(stmt.data);
@@ -162,7 +562,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    }
    ExpDesc value = expression.value_ref();
    expr_toval(&this->func_state, &value);
-   expr_free(&this->func_state, &value);
+   this->release_expression(value, "expression statement result");
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -203,7 +603,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
             ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
          }
          else {
-            expr_tonextreg(&this->func_state, &last);
+            this->materialise_to_next_reg(last, "return tail value");
             ins = BCINS_AD(BC_RET, this->func_state.nactvar, count + 1);
          }
       }
@@ -220,7 +620,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
 ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
 {
    BCReg nvars = BCReg(payload.names.size());
-   if (nvars == 0) {
+   if (nvars IS 0) {
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
@@ -251,41 +651,647 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       if (is_blank_symbol(identifier)) {
          continue;
       }
-      this->local_bindings.emplace_back(identifier.symbol, base + i);
+      this->update_local_binding(identifier.symbol, base + i);
    }
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload& payload)
+{
+   if (not payload.function) {
+      return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
+   }
+
+   GCstr* symbol = payload.name.symbol ? payload.name.symbol : NAME_BLANK;
+   BCReg slot = this->func_state.freereg;
+   this->lex_state.var_new(0, symbol);
+   ExpDesc variable;
+   expr_init(&variable, ExpKind::Local, slot);
+   variable.u.s.aux = this->func_state.varmap[slot];
+   bcreg_reserve(&this->func_state, 1);
+   this->lex_state.var_add(1);
+
+   auto function_value = this->emit_function_expr(*payload.function);
+   if (not function_value.ok()) {
+      return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
+   }
+   ExpDesc fn = function_value.value_ref();
+   this->materialise_to_reg(fn, slot, "local function literal");
+   var_get(&this->lex_state, &this->func_state, this->func_state.nactvar - 1).startpc = this->func_state.pc;
+   if (payload.name.symbol and not payload.name.is_blank) {
+      this->update_local_binding(payload.name.symbol, slot);
+   }
+   this->func_state.freereg = this->func_state.nactvar;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload& payload)
+{
+   if (not payload.function) {
+      return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
+   }
+
+   auto target_result = this->emit_function_lvalue(payload.name);
+   if (not target_result.ok()) {
+      return ParserResult<IrEmitUnit>::failure(target_result.error_ref());
+   }
+   auto function_value = this->emit_function_expr(*payload.function);
+   if (not function_value.ok()) {
+      return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
+   }
+
+   ExpDesc target = target_result.value_ref();
+   ExpDesc value = function_value.value_ref();
+   bcemit_store(&this->func_state, &target, &value);
+   this->release_expression(value, "function statement value");
+   this->func_state.freereg = this->func_state.nactvar;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
+{
+   if (payload.clauses.empty()) {
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   JumpHandle escapelist(&this->func_state);
+   for (size_t i = 0; i < payload.clauses.size(); ++i) {
+      const IfClause& clause = payload.clauses[i];
+      bool has_next = (i + 1) < payload.clauses.size();
+      if (clause.condition) {
+         auto condexit_result = this->emit_condition_jump(*clause.condition);
+         if (not condexit_result.ok()) {
+            return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
+         }
+         JumpHandle condexit = condexit_result.value_ref();
+         if (clause.block) {
+            auto block_result = this->emit_block(*clause.block, FuncScopeFlag::None);
+            if (not block_result.ok()) {
+               return block_result;
+            }
+         }
+         if (has_next) {
+            escapelist.append(bcemit_jmp(&this->func_state));
+            condexit.patch_here();
+         }
+         else {
+            escapelist.append(condexit);
+         }
+      }
+      else if (clause.block) {
+         auto block_result = this->emit_block(*clause.block, FuncScopeFlag::None);
+         if (not block_result.ok()) {
+            return block_result;
+         }
+      }
+   }
+
+   escapelist.patch_here();
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& payload)
+{
+   if (payload.style != LoopStyle::WhileLoop or not payload.condition or not payload.body) {
+      return this->unsupported_stmt(AstNodeKind::WhileStmt, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   BCPos start = fs->lasttarget = fs->pc;
+   auto condexit_result = this->emit_condition_jump(*payload.condition);
+   if (not condexit_result.ok()) {
+      return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
+   }
+   JumpHandle condexit = condexit_result.value_ref();
+
+   JumpHandle loop(fs);
+   {
+      FuncScope loop_scope;
+      ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
+      loop = JumpHandle(fs, bcemit_AD(fs, BC_LOOP, fs->nactvar, 0));
+      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      if (not block_result.ok()) {
+         return block_result;
+      }
+      JumpHandle body_jump(fs, bcemit_jmp(fs));
+      body_jump.patch_to(start);
+      fscope_loop_continue(fs, start);
+   }
+
+   condexit.patch_here();
+   loop.patch_head(fs->pc);
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payload)
+{
+   if (payload.style != LoopStyle::RepeatUntil or not payload.condition or not payload.body) {
+      return this->unsupported_stmt(AstNodeKind::RepeatStmt, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   BCPos loop = fs->lasttarget = fs->pc;
+   BCPos iter = NO_JMP;
+   JumpHandle condexit(fs);
+   bool inner_has_upvals = false;
+
+   FuncScope outer_scope;
+   ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
+   {
+      FuncScope inner_scope;
+      ScopeGuard inner_guard(fs, &inner_scope, FuncScopeFlag::None);
+      bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      if (not block_result.ok()) {
+         return block_result;
+      }
+      iter = fs->pc;
+      auto cond_result = this->emit_condition_jump(*payload.condition);
+      if (not cond_result.ok()) {
+         return ParserResult<IrEmitUnit>::failure(cond_result.error_ref());
+      }
+      condexit = cond_result.value_ref();
+      inner_has_upvals = has_flag(inner_scope.flags, FuncScopeFlag::Upvalue);
+      if (inner_has_upvals) {
+         auto break_result = this->emit_break_stmt(BreakStmtPayload{});
+         if (not break_result.ok()) {
+            return break_result;
+         }
+         condexit.patch_here();
+      }
+   }
+   if (inner_has_upvals) {
+      condexit = JumpHandle(fs, bcemit_jmp(fs));
+   }
+   condexit.patch_to(loop);
+   JumpHandle loop_head(fs, loop);
+   loop_head.patch_head(fs->pc);
+   fscope_loop_continue(fs, iter);
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPayload& payload)
+{
+   if (not payload.start or not payload.stop or not payload.body) {
+      return this->unsupported_stmt(AstNodeKind::NumericForStmt, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   BCReg base = fs->freereg;
+   GCstr* control_symbol = payload.control.symbol ? payload.control.symbol : NAME_BLANK;
+
+   FuncScope outer_scope;
+   ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
+
+   this->lex_state.var_new_fixed(FORL_IDX, VARNAME_FOR_IDX);
+   this->lex_state.var_new_fixed(FORL_STOP, VARNAME_FOR_STOP);
+   this->lex_state.var_new_fixed(FORL_STEP, VARNAME_FOR_STEP);
+   this->lex_state.var_new(FORL_EXT, control_symbol);
+
+   auto start_expr = this->emit_expression(*payload.start);
+   if (not start_expr.ok()) {
+      return ParserResult<IrEmitUnit>::failure(start_expr.error_ref());
+   }
+   ExpDesc start_value = start_expr.value_ref();
+   this->materialise_to_next_reg(start_value, "numeric for start");
+
+   auto stop_expr = this->emit_expression(*payload.stop);
+   if (not stop_expr.ok()) {
+      return ParserResult<IrEmitUnit>::failure(stop_expr.error_ref());
+   }
+   ExpDesc stop_value = stop_expr.value_ref();
+   this->materialise_to_next_reg(stop_value, "numeric for stop");
+
+   if (payload.step) {
+      auto step_expr = this->emit_expression(*payload.step);
+      if (not step_expr.ok()) {
+         return ParserResult<IrEmitUnit>::failure(step_expr.error_ref());
+      }
+      ExpDesc step_value = step_expr.value_ref();
+      this->materialise_to_next_reg(step_value, "numeric for step");
+   }
+   else {
+      bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);
+      bcreg_reserve(fs, 1);
+   }
+
+   this->lex_state.var_add(3);
+
+   JumpHandle loop(fs, bcemit_AJ(fs, BC_FORI, base, NO_JMP));
+
+   {
+      FuncScope visible_scope;
+      ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
+      this->lex_state.var_add(1);
+      bcreg_reserve(fs, 1);
+      std::array<BlockBinding, 1> loop_bindings{};
+      std::span<const BlockBinding> binding_span;
+      if (payload.control.symbol and not payload.control.is_blank) {
+         loop_bindings[0].symbol = payload.control.symbol;
+         loop_bindings[0].slot = base + FORL_EXT;
+         binding_span = std::span<const BlockBinding>(loop_bindings.data(), 1);
+      }
+      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
+      if (not block_result.ok()) {
+         return block_result;
+      }
+   }
+
+   JumpHandle loopend(fs, bcemit_AJ(fs, BC_FORL, base, NO_JMP));
+   fs->bcbase[loopend.head()].line = payload.body->span.line;
+   loopend.patch_head(loop.head() + 1);
+   loop.patch_head(fs->pc);
+   fscope_loop_continue(fs, loopend.head());
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPayload& payload)
+{
+   if (payload.names.empty() or payload.iterators.empty() or not payload.body) {
+      return this->unsupported_stmt(AstNodeKind::GenericForStmt, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   BCReg base = fs->freereg + 3;
+   BCReg nvars = 0;
+
+   FuncScope outer_scope;
+   ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
+
+   this->lex_state.var_new_fixed(nvars++, VARNAME_FOR_GEN);
+   this->lex_state.var_new_fixed(nvars++, VARNAME_FOR_STATE);
+   this->lex_state.var_new_fixed(nvars++, VARNAME_FOR_CTL);
+
+   for (const Identifier& identifier : payload.names) {
+      GCstr* symbol = identifier.symbol ? identifier.symbol : NAME_BLANK;
+      this->lex_state.var_new(nvars++, symbol);
+   }
+
+   BCPos exprpc = fs->pc;
+   BCReg iterator_count = 0;
+   auto iter_values = this->emit_expression_list(payload.iterators, iterator_count);
+   if (not iter_values.ok()) {
+      return ParserResult<IrEmitUnit>::failure(iter_values.error_ref());
+   }
+   ExpDesc tail = iter_values.value_ref();
+   this->lex_state.assign_adjust(3, iterator_count, &tail);
+
+   bcreg_bump(fs, 3 + LJ_FR2);
+   int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
+   this->lex_state.var_add(3);
+
+   JumpHandle loop(fs, bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP));
+
+   {
+      FuncScope visible_scope;
+      ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
+      BCReg visible = nvars - 3;
+      this->lex_state.var_add(visible);
+      bcreg_reserve(fs, visible);
+      std::vector<BlockBinding> loop_bindings;
+      loop_bindings.reserve(visible);
+      for (BCReg i = 0; i < visible; ++i) {
+         const Identifier& identifier = payload.names[i];
+         if (identifier.symbol and not identifier.is_blank) {
+            BlockBinding binding;
+            binding.symbol = identifier.symbol;
+            binding.slot = base + i;
+            loop_bindings.push_back(binding);
+         }
+      }
+      std::span<const BlockBinding> binding_span(loop_bindings.data(), loop_bindings.size());
+      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
+      if (not block_result.ok()) {
+         return block_result;
+      }
+   }
+
+   loop.patch_head(fs->pc);
+   BCPos iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 3);
+   JumpHandle loopend(fs, bcemit_AJ(fs, BC_ITERL, base, NO_JMP));
+   fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
+   fs->bcbase[loopend.head()].line = payload.body->span.line;
+   loopend.patch_head(loop.head() + 1);
+   fscope_loop_continue(fs, iter);
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payload)
+{
+   if (not payload.callable) {
+      return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   BCReg reg = fs->freereg;
+   this->lex_state.var_new(0, NAME_BLANK);
+   bcreg_reserve(fs, 1);
+   this->lex_state.var_add(1);
+   VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
+   info->info |= VarInfoFlag::Defer;
+
+   auto function_value = this->emit_function_expr(*payload.callable);
+   if (not function_value.ok()) {
+      return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
+   }
+   ExpDesc fn = function_value.value_ref();
+   this->materialise_to_reg(fn, reg, "defer callable");
+
+   BCReg nargs = 0;
+   for (const ExprNodePtr& argument : payload.arguments) {
+      if (not argument) {
+         continue;
+      }
+      auto arg_expr = this->emit_expression(*argument);
+      if (not arg_expr.ok()) {
+         return ParserResult<IrEmitUnit>::failure(arg_expr.error_ref());
+      }
+      ExpDesc arg = arg_expr.value_ref();
+      this->materialise_to_next_reg(arg, "defer argument");
+      nargs++;
+   }
+
+   if (nargs > 0) {
+      for (BCReg i = 0; i < nargs; ++i) {
+         this->lex_state.var_new(i, NAME_BLANK);
+      }
+      this->lex_state.var_add(nargs);
+      for (BCReg i = 0; i < nargs; ++i) {
+         VarInfo* arg_info = &var_get(&this->lex_state, fs, fs->nactvar - nargs + i);
+         arg_info->info |= VarInfoFlag::DeferArg;
+      }
+   }
+
+   fs->freereg = fs->nactvar;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
+{
+   FuncScope* loop = find_loop_scope(this->func_state);
+   if (not loop) {
+     return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "break outside loop"));
+   }
+
+   execute_defers(&this->func_state, loop->nactvar);
+   this->func_state.bl->flags |= FuncScopeFlag::Break;
+   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
+   (void)idx;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload&)
+{
+   FuncScope* loop = find_loop_scope(this->func_state);
+   if (not loop) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "continue outside loop"));
+   }
+
+   execute_defers(&this->func_state, loop->nactvar);
+   this->func_state.bl->flags |= FuncScopeFlag::Continue;
+   MSize idx = this->lex_state.gola_new(kJumpContinue, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
+   (void)idx;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_goto_stmt(const GotoStmtPayload& payload)
+{
+   if (not payload.label.symbol) {
+      return this->unsupported_stmt(AstNodeKind::GotoStmt, SourceSpan{});
+   }
+
+   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
+   setgcrefp(this->lex_state.vstack[idx].name, obj2gco(payload.label.symbol));
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_label_stmt(const LabelStmtPayload& payload)
+{
+   if (not payload.label.symbol) {
+      return this->unsupported_stmt(AstNodeKind::LabelStmt, SourceSpan{});
+   }
+
+   FuncScope* scope = this->func_state.bl;
+   if (not scope) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "label outside scope"));
+   }
+
+   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::JumpTarget, this->func_state.pc);
+   setgcrefp(this->lex_state.vstack[idx].name, obj2gco(payload.label.symbol));
+   this->lex_state.gola_resolve(scope, idx);
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
 ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPayload& payload)
 {
-   if (payload.op != AssignmentOperator::Plain or payload.targets.size() != 1 or payload.values.size() != 1) {
-      const ExprNodePtr* target_ptr = payload.targets.empty() ? nullptr : &payload.targets.front();
-      SourceSpan span = (target_ptr and (*target_ptr)) ? (*target_ptr)->span : SourceSpan{};
+   if (payload.targets.empty()) {
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   }
+
+   auto targets_result = this->prepare_assignment_targets(payload.targets);
+   if (not targets_result.ok()) {
+      return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
+   }
+
+   std::vector<ExpDesc> targets = std::move(targets_result.value_ref());
+
+   if (payload.op IS AssignmentOperator::Plain) {
+      return this->emit_plain_assignment(std::move(targets), payload.values);
+   }
+
+   if (targets.size() != 1) {
+      const ExprNodePtr& node = payload.targets.front();
+      const ExprNode* raw = node ? node.get() : nullptr;
+      SourceSpan span = raw ? raw->span : SourceSpan{};
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
    }
 
-   const ExprNodePtr& target = payload.targets.front();
-   if (not target or not (target->kind IS AstNodeKind::IdentifierExpr)) {
-      SourceSpan span = target ? target->span : SourceSpan{};
+   ExpDesc target = targets.front();
+   if (payload.op IS AssignmentOperator::IfEmpty) {
+      return this->emit_if_empty_assignment(target, payload.values);
+   }
+
+   return this->emit_compound_assignment(payload.op, target, payload.values);
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> targets,
+   const ExprNodeList& values)
+{
+   BCReg nvars = BCReg(targets.size());
+   if (nvars IS 0) {
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   ExpDesc tail = make_const_expr(ExpKind::Void);
+   BCReg nexps = 0;
+   if (not values.empty()) {
+      auto list = this->emit_expression_list(values, nexps);
+      if (not list.ok()) {
+         return ParserResult<IrEmitUnit>::failure(list.error_ref());
+      }
+      tail = list.value_ref();
+   }
+
+   auto assign_from_stack = [&](std::vector<ExpDesc>::reverse_iterator first,
+      std::vector<ExpDesc>::reverse_iterator last)
+   {
+      for (; first != last; ++first) {
+         ExpDesc stack_value;
+         expr_init(&stack_value, ExpKind::NonReloc, this->func_state.freereg - 1);
+         bcemit_store(&this->func_state, &(*first), &stack_value);
+      }
+   };
+
+   if (nexps IS nvars) {
+      if (tail.k IS ExpKind::Call) {
+         if (bc_op(*ir_bcptr(&this->func_state, &tail)) IS BC_VARG) {
+            this->func_state.freereg--;
+            tail.k = ExpKind::Relocable;
+         }
+         else {
+            tail.u.s.info = tail.u.s.aux;
+            tail.k = ExpKind::NonReloc;
+         }
+      }
+      bcemit_store(&this->func_state, &targets.back(), &tail);
+      if (targets.size() > 1) {
+         auto begin = targets.rbegin();
+         ++begin;
+         assign_from_stack(begin, targets.rend());
+      }
+      this->func_state.freereg = this->func_state.nactvar;
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   this->lex_state.assign_adjust(nvars, nexps, &tail);
+   assign_from_stack(targets.rbegin(), targets.rend());
+   this->func_state.freereg = this->func_state.nactvar;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op,
+   ExpDesc target, const ExprNodeList& values)
+{
+   auto mapped = map_assignment_operator(op);
+   if (not mapped.has_value()) {
+      const ExprNode* raw = nullptr;
+      if (not values.empty()) {
+         const ExprNodePtr& first = values.front();
+         raw = first ? first.get() : nullptr;
+      }
+      SourceSpan span = raw ? raw->span : SourceSpan{};
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+   }
+   if (values.empty()) {
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   }
+
+   BCReg count = 0;
+   RegisterGuard register_guard(&this->func_state);
+   ExpDesc working = target;
+   duplicate_index_base(this->func_state, working, target);
+
+   ExpDesc rhs;
+   if (mapped.value() IS BinOpr::OPR_CONCAT) {
+      ExpDesc infix = working;
+      bcemit_binop_left(&this->func_state, mapped.value(), &infix);
+      auto list = this->emit_expression_list(values, count);
+      if (not list.ok()) {
+         return ParserResult<IrEmitUnit>::failure(list.error_ref());
+      }
+      if (count != 1) {
+         const ExprNodePtr& node = values.front();
+         SourceSpan span = node ? node->span : SourceSpan{};
+         return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+      }
+      rhs = list.value_ref();
+      bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+      bcemit_store(&this->func_state, &target, &infix);
+   }
+   else {
+      this->materialise_to_next_reg(working, "compound assignment base");
+      auto list = this->emit_expression_list(values, count);
+      if (not list.ok()) {
+         return ParserResult<IrEmitUnit>::failure(list.error_ref());
+      }
+      if (count != 1) {
+         const ExprNodePtr& node = values.front();
+         SourceSpan span = node ? node->span : SourceSpan{};
+         return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+      }
+      rhs = list.value_ref();
+      ExpDesc infix = working;
+      bcemit_binop_left(&this->func_state, mapped.value(), &infix);
+      bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+      bcemit_store(&this->func_state, &target, &infix);
+   }
+
+   register_guard.release_to(register_guard.saved());
+   release_indexed_original(this->func_state, target);
+   this->func_state.freereg = this->func_state.nactvar;
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
+   const ExprNodeList& values)
+{
+   if (values.empty() or not vkisvar(target.k)) {
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   }
+
+   BCReg count = 0;
+   RegisterGuard register_guard(&this->func_state);
+   ExpDesc working = target;
+   duplicate_index_base(this->func_state, working, target);
+
+   ExpDesc lhs_eval = working;
+   expr_discharge(&this->func_state, &lhs_eval);
+   BCReg lhs_reg = expr_toanyreg(&this->func_state, &lhs_eval);
+
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+   JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
+   JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
+   JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
+
+   JumpHandle skip_assign(&this->func_state, bcemit_jmp(&this->func_state));
+   BCPos assign_pos = this->func_state.pc;
+
+   auto list = this->emit_expression_list(values, count);
+   if (not list.ok()) {
+      return ParserResult<IrEmitUnit>::failure(list.error_ref());
+   }
+   if (count != 1) {
+      const ExprNodePtr& node = values.front();
+      SourceSpan span = node ? node->span : SourceSpan{};
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
    }
 
-   const NameRef& name = std::get<NameRef>(target->data);
-   auto slot = this->resolve_local(name.identifier.symbol);
-   if (not slot.has_value()) {
-      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, target->span);
-   }
+   ExpDesc rhs = list.value_ref();
+   expr_discharge(&this->func_state, &rhs);
+   this->materialise_to_reg(rhs, lhs_reg, "assignment RHS");
+   bcemit_store(&this->func_state, &target, &rhs);
 
-   auto value_result = this->emit_expression(*payload.values.front());
-   if (not value_result.ok()) {
-      return ParserResult<IrEmitUnit>::failure(value_result.error_ref());
-   }
+   check_nil.patch_to(assign_pos);
+   check_false.patch_to(assign_pos);
+   check_zero.patch_to(assign_pos);
+   check_empty.patch_to(assign_pos);
+   skip_assign.patch_to(this->func_state.pc);
 
-   ExpDesc value = value_result.value_ref();
-   expr_toval(&this->func_state, &value);
-   expr_toreg(&this->func_state, &value, slot.value());
-   expr_free(&this->func_state, &value);
+   register_guard.release_to(register_guard.saved());
+   release_indexed_original(this->func_state, target);
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -301,8 +1307,12 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       return this->emit_vararg_expr();
    case AstNodeKind::UnaryExpr:
       return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
+   case AstNodeKind::UpdateExpr:
+      return this->emit_update_expr(std::get<UpdateExprPayload>(expr.data));
    case AstNodeKind::BinaryExpr:
       return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
+   case AstNodeKind::TernaryExpr:
+      return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
    case AstNodeKind::PresenceExpr:
       return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
    case AstNodeKind::MemberExpr:
@@ -311,9 +1321,27 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
    case AstNodeKind::CallExpr:
       return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
+   case AstNodeKind::TableExpr:
+      return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
+   case AstNodeKind::FunctionExpr:
+      return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
    default:
       return this->unsupported_expr(expr.kind, expr.span);
    }
+}
+
+ParserResult<JumpHandle> IrEmitter::emit_condition_jump(const ExprNode& expr)
+{
+   auto condition = this->emit_expression(expr);
+   if (not condition.ok()) {
+      return ParserResult<JumpHandle>::failure(condition.error_ref());
+   }
+   ExpDesc result = condition.value_ref();
+   if (result.k IS ExpKind::Nil) {
+      result.k = ExpKind::False;
+   }
+   bcemit_branch_t(&this->func_state, &result);
+   return ParserResult<JumpHandle>::success(JumpHandle(&this->func_state, result.f));
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
@@ -345,8 +1373,7 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
    if (reference.identifier.symbol) {
       auto slot = this->resolve_local(reference.identifier.symbol);
       if (slot.has_value()) {
-         ExpDesc expr;
-         expr_init(&expr, ExpKind::Local, slot.value());
+         ExpDesc expr = make_local_expr(this->func_state, slot.value());
          return ParserResult<ExpDesc>::success(expr);
       }
    }
@@ -354,7 +1381,7 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
    ExpDesc expr;
    switch (reference.resolution) {
    case NameResolution::Local:
-      expr_init(&expr, ExpKind::Local, reference.slot);
+      expr = make_local_expr(this->func_state, reference.slot);
       break;
    case NameResolution::Upvalue:
       expr_init(&expr, ExpKind::Upval, reference.slot);
@@ -408,6 +1435,51 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
    return ParserResult<ExpDesc>::success(operand);
 }
 
+ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& payload)
+{
+   if (not payload.target) {
+      return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
+   }
+
+   auto target_result = this->emit_lvalue_expr(*payload.target);
+   if (not target_result.ok()) {
+      return target_result;
+   }
+
+   ExpDesc target = target_result.value_ref();
+   ExpDesc working = target;
+   duplicate_index_base(this->func_state, working, target);
+
+   BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
+   ExpDesc operand = working;
+   expr_discharge(&this->func_state, &operand);
+   BCReg operand_reg = expr_toanyreg(&this->func_state, &operand);
+
+   BCReg saved_reg = operand_reg;
+   if (payload.is_postfix) {
+      saved_reg = this->func_state.freereg;
+      bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
+      bcreg_reserve(&this->func_state, 1);
+   }
+
+   ExpDesc delta = make_num_expr(1.0);
+   ExpDesc infix = operand;
+   bcemit_binop_left(&this->func_state, op, &infix);
+   bcemit_binop(&this->func_state, op, &infix, &delta);
+
+   bcemit_store(&this->func_state, &target, &infix);
+   release_indexed_original(this->func_state, target);
+
+   if (payload.is_postfix) {
+      ir_collapse_freereg(&this->func_state, saved_reg);
+      ExpDesc result;
+      expr_init(&result, ExpKind::NonReloc, saved_reg);
+      return ParserResult<ExpDesc>::success(result);
+   }
+
+   return ParserResult<ExpDesc>::success(infix);
+}
+
 ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& payload)
 {
    auto lhs_result = this->emit_expression(*payload.left);
@@ -428,6 +1500,68 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    ExpDesc rhs = rhs_result.value_ref();
    bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
    return ParserResult<ExpDesc>::success(lhs);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& payload)
+{
+   if (not payload.condition or not payload.if_true or not payload.if_false) {
+      return this->unsupported_expr(AstNodeKind::TernaryExpr, SourceSpan{});
+   }
+
+   auto condition_result = this->emit_expression(*payload.condition);
+   if (not condition_result.ok()) {
+      return condition_result;
+   }
+
+   ExpDesc condition = condition_result.value_ref();
+   expr_discharge(&this->func_state, &condition);
+   BCReg cond_reg = expr_toanyreg(&this->func_state, &condition);
+
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+   JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+   JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
+   JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
+   JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
+
+   auto true_result = this->emit_expression(*payload.if_true);
+   if (not true_result.ok()) {
+      return true_result;
+   }
+   ExpDesc true_expr = true_result.value_ref();
+   expr_discharge(&this->func_state, &true_expr);
+   this->materialise_to_reg(true_expr, cond_reg, "ternary true branch");
+   ir_collapse_freereg(&this->func_state, cond_reg);
+
+   JumpHandle skip_false(&this->func_state, bcemit_jmp(&this->func_state));
+
+   BCPos false_start = this->func_state.pc;
+   check_nil.patch_to(false_start);
+   check_false.patch_to(false_start);
+   check_zero.patch_to(false_start);
+   check_empty.patch_to(false_start);
+
+   auto false_result = this->emit_expression(*payload.if_false);
+   if (not false_result.ok()) {
+      return false_result;
+   }
+   ExpDesc false_expr = false_result.value_ref();
+   expr_discharge(&this->func_state, &false_expr);
+   this->materialise_to_reg(false_expr, cond_reg, "ternary false branch");
+   ir_collapse_freereg(&this->func_state, cond_reg);
+
+   skip_false.patch_to(this->func_state.pc);
+
+   ExpDesc result;
+   expr_init(&result, ExpKind::NonReloc, cond_reg);
+   return ParserResult<ExpDesc>::success(result);
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& payload)
@@ -495,7 +1629,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
          return callee_result;
       }
       callee = callee_result.value_ref();
-      expr_tonextreg(&this->func_state, &callee);
+      this->materialise_to_next_reg(callee, "call callee");
 #if LJ_FR2
       bcreg_reserve(&this->func_state, 1);
 #endif
@@ -529,13 +1663,14 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
    }
 
    BCIns ins;
-   if (args.k IS ExpKind::Call) {
+   bool forward_tail = payload.forwards_multret and (args.k IS ExpKind::Call);
+   if (forward_tail) {
       setbc_b(ir_bcptr(&this->func_state, &args), 0);
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
    }
    else {
       if (not (args.k IS ExpKind::Void)) {
-         expr_tonextreg(&this->func_state, &args);
+         this->materialise_to_next_reg(args, "call arguments");
       }
       ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base - LJ_FR2);
    }
@@ -545,6 +1680,349 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
    result.u.s.aux = base;
    this->func_state.freereg = base + 1;
    return ParserResult<ExpDesc>::success(result);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload)
+{
+   FuncState* fs = &this->func_state;
+   GCtab* template_table = nullptr;
+   int vcall = 0;
+   int needarr = 0;
+   int fixt = 0;
+   uint32_t narr = 1;
+   uint32_t nhash = 0;
+   BCReg freg = fs->freereg;
+   BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+   ExpDesc table;
+   expr_init(&table, ExpKind::NonReloc, freg);
+   bcreg_reserve(fs, 1);
+   freg++;
+
+   for (const TableField& field : payload.fields) {
+      if (not field.value) {
+         return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+      }
+      RegisterGuard entry_guard(fs);
+      ExpDesc key;
+      vcall = 0;
+
+      switch (field.kind) {
+      case TableFieldKind::Computed: {
+         if (not field.key) {
+            return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+         }
+         auto key_result = this->emit_expression(*field.key);
+         if (not key_result.ok()) {
+            return key_result;
+         }
+         key = key_result.value_ref();
+         expr_toval(fs, &key);
+         if (not expr_isk(&key)) {
+            expr_index(fs, &table, &key);
+         }
+         if (expr_isnumk(&key) and expr_numiszero(&key)) {
+            needarr = 1;
+         }
+         else {
+            nhash++;
+         }
+         break;
+      }
+      case TableFieldKind::Record: {
+         if (not field.name.has_value() or field.name->symbol IS nullptr) {
+            return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+         }
+         key = make_interned_string_expr(field.name->symbol);
+         nhash++;
+         break;
+      }
+      case TableFieldKind::Array:
+      default: {
+         expr_init(&key, ExpKind::Num, 0);
+         setintV(&key.u.nval, int(narr));
+         narr++;
+         needarr = vcall = 1;
+         break;
+      }
+      }
+
+      auto value_result = this->emit_expression(*field.value);
+      if (not value_result.ok()) {
+         return value_result;
+      }
+      ExpDesc val = value_result.value_ref();
+
+      bool emit_constant = expr_isk(&key) and key.k != ExpKind::Nil and
+         (key.k IS ExpKind::Str or expr_isk_nojump(&val));
+
+      if (emit_constant) {
+         TValue k;
+         TValue* slot;
+         if (not template_table) {
+            BCReg kidx;
+            template_table = lj_tab_new(fs->L, needarr ? narr : 0, hsize2hbits(nhash));
+            kidx = const_gc(fs, obj2gco(template_table), LJ_TTAB);
+            fs->bcbase[pc].ins = BCINS_AD(BC_TDUP, freg - 1, kidx);
+         }
+         vcall = 0;
+         expr_kvalue(fs, &k, &key);
+         slot = lj_tab_set(fs->L, template_table, &k);
+         lj_gc_anybarriert(fs->L, template_table);
+         if (expr_isk_nojump(&val)) {
+            expr_kvalue(fs, slot, &val);
+            continue;
+         }
+         settabV(fs->L, slot, template_table);
+         fixt = 1;
+         emit_constant = false;
+      }
+
+      if (not emit_constant) {
+         if (val.k != ExpKind::Call) {
+            expr_toanyreg(fs, &val);
+            vcall = 0;
+         }
+         if (expr_isk(&key)) {
+            expr_index(fs, &table, &key);
+         }
+         bcemit_store(fs, &table, &val);
+      }
+   }
+
+   if (vcall) {
+      BCInsLine* ilp = &fs->bcbase[fs->pc - 1];
+      ExpDesc en = make_const_expr(ExpKind::Num);
+      en.u.nval.u32.lo = narr - 1;
+      en.u.nval.u32.hi = 0x43300000;
+      if (narr > 256) {
+         fs->pc--;
+         ilp--;
+      }
+      ilp->ins = BCINS_AD(BC_TSETM, freg, const_num(fs, &en));
+      setbc_b(&ilp[-1].ins, 0);
+   }
+
+   if (pc IS fs->pc - 1) {
+      table.u.s.info = pc;
+      fs->freereg--;
+      table.k = ExpKind::Relocable;
+   }
+   else {
+      table.k = ExpKind::NonReloc;
+   }
+
+   if (not template_table) {
+      BCIns* ip = &fs->bcbase[pc].ins;
+      if (not needarr) {
+         narr = 0;
+      }
+      else if (narr < 3) {
+         narr = 3;
+      }
+      else if (narr > 0x7ff) {
+         narr = 0x7ff;
+      }
+      setbc_d(ip, narr | (hsize2hbits(nhash) << 11));
+   }
+   else {
+      if (needarr and template_table->asize < narr) {
+         lj_tab_reasize(fs->L, template_table, narr - 1);
+      }
+      if (fixt) {
+         Node* node = noderef(template_table->node);
+         uint32_t hmask = template_table->hmask;
+         for (uint32_t i = 0; i <= hmask; ++i) {
+            Node* n = &node[i];
+            if (tvistab(&n->val)) {
+               setnilV(&n->val);
+            }
+         }
+      }
+      lj_gc_check(fs->L);
+   }
+
+   return ParserResult<ExpDesc>::success(table);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& payload)
+{
+   if (not payload.body) {
+      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+   }
+
+   FuncState child_state;
+   ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
+   ParserConfig inherited = this->ctx.config();
+   ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, allocator, inherited);
+   ParserSession session(child_ctx, inherited);
+
+   FuncState* parent_state = &this->func_state;
+   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
+
+   this->lex_state.fs_init(&child_state);
+   child_state.linedefined = payload.body->span.line;
+   child_state.bcbase = parent_state->bcbase + parent_state->pc;
+   child_state.bclim = parent_state->bclim - parent_state->pc;
+   bcemit_AD(&child_state, BC_FUNCF, 0, 0);
+   if (payload.is_vararg) {
+      child_state.flags |= PROTO_VARARG;
+   }
+
+   FuncScope scope;
+   ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+
+   BCReg param_count = BCReg(payload.parameters.size());
+   for (BCReg i = 0; i < param_count; ++i) {
+      const FunctionParameter& param = payload.parameters[i];
+      GCstr* symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
+      this->lex_state.var_new(i, symbol);
+   }
+   child_state.numparams = uint8_t(param_count);
+   this->lex_state.var_add(param_count);
+   if (child_state.nactvar > 0) {
+      bcreg_reserve(&child_state, child_state.nactvar);
+   }
+
+   IrEmitter child_emitter(child_ctx);
+   BCReg base = child_state.nactvar - param_count;
+   for (BCReg i = 0; i < param_count; ++i) {
+      const FunctionParameter& param = payload.parameters[i];
+      if (param.name.is_blank or param.name.symbol IS nullptr) {
+         continue;
+      }
+      child_emitter.update_local_binding(param.name.symbol, base + i);
+   }
+
+   auto body_result = child_emitter.emit_block(*payload.body, FuncScopeFlag::None);
+   if (not body_result.ok()) {
+      return ParserResult<ExpDesc>::failure(body_result.error_ref());
+   }
+
+   GCproto* pt = this->lex_state.fs_finish(payload.body->span.line);
+   parent_state->bcbase = this->lex_state.bcstack + oldbase;
+   parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase);
+
+   ExpDesc expr;
+   expr_init(&expr, ExpKind::Relocable,
+      bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
+
+#if LJ_HASFFI
+   parent_state->flags |= (child_state.flags & PROTO_FFI);
+#endif
+   if (not (parent_state->flags & PROTO_CHILD)) {
+      if (parent_state->flags & PROTO_HAS_RETURN) {
+         parent_state->flags |= PROTO_FIXUP_RETURN;
+      }
+      parent_state->flags |= PROTO_CHILD;
+   }
+
+   return ParserResult<ExpDesc>::success(expr);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& path)
+{
+   if (path.segments.empty()) {
+      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+   }
+
+   NameRef base_ref = make_name_ref(path.segments.front());
+   auto base_expr = this->emit_identifier_expr(base_ref);
+   if (not base_expr.ok()) {
+      return base_expr;
+   }
+   ExpDesc target = base_expr.value_ref();
+
+   size_t traverse_limit = path.method.has_value() ? path.segments.size() : (path.segments.size() > 0 ? path.segments.size() - 1 : 0);
+   for (size_t i = 1; i < traverse_limit; ++i) {
+      const Identifier& segment = path.segments[i];
+      if (not segment.symbol) {
+         return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+      }
+      ExpDesc key = make_interned_string_expr(segment.symbol);
+      expr_toval(&this->func_state, &target);
+      expr_toanyreg(&this->func_state, &target);
+      expr_index(&this->func_state, &target, &key);
+   }
+
+   const Identifier* final_name = nullptr;
+   if (path.method.has_value()) {
+      final_name = &path.method.value();
+   }
+   else if (path.segments.size() > 1) {
+      final_name = &path.segments.back();
+   }
+
+   if (not final_name) {
+      return ParserResult<ExpDesc>::success(target);
+   }
+   if (not final_name->symbol) {
+      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+   }
+
+   ExpDesc key = make_interned_string_expr(final_name->symbol);
+   expr_toval(&this->func_state, &target);
+   expr_toanyreg(&this->func_state, &target);
+   expr_index(&this->func_state, &target, &key);
+   return ParserResult<ExpDesc>::success(target);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
+{
+   switch (expr.kind) {
+   case AstNodeKind::IdentifierExpr: {
+      auto result = this->emit_identifier_expr(std::get<NameRef>(expr.data));
+      if (not result.ok()) {
+         return result;
+      }
+      ExpDesc value = result.value_ref();
+      if (value.k IS ExpKind::Local) {
+         value.u.s.aux = this->func_state.varmap[value.u.s.info];
+      }
+      if (not vkisvar(value.k)) {
+         return this->unsupported_expr(expr.kind, expr.span);
+      }
+      return ParserResult<ExpDesc>::success(value);
+   }
+   case AstNodeKind::MemberExpr: {
+      const auto& payload = std::get<MemberExprPayload>(expr.data);
+      if (not payload.table or not payload.member.symbol) {
+         return this->unsupported_expr(expr.kind, expr.span);
+      }
+      auto table_result = this->emit_expression(*payload.table);
+      if (not table_result.ok()) {
+         return table_result;
+      }
+      ExpDesc table = table_result.value_ref();
+      expr_toval(&this->func_state, &table);
+      expr_toanyreg(&this->func_state, &table);
+      ExpDesc key = make_interned_string_expr(payload.member.symbol);
+      expr_index(&this->func_state, &table, &key);
+      return ParserResult<ExpDesc>::success(table);
+   }
+   case AstNodeKind::IndexExpr: {
+      const auto& payload = std::get<IndexExprPayload>(expr.data);
+      if (not payload.table or not payload.index) {
+         return this->unsupported_expr(expr.kind, expr.span);
+      }
+      auto table_result = this->emit_expression(*payload.table);
+      if (not table_result.ok()) {
+         return table_result;
+      }
+      auto key_result = this->emit_expression(*payload.index);
+      if (not key_result.ok()) {
+         return key_result;
+      }
+      ExpDesc table = table_result.value_ref();
+      ExpDesc key = key_result.value_ref();
+      expr_toval(&this->func_state, &table);
+      expr_toanyreg(&this->func_state, &table);
+      expr_toval(&this->func_state, &key);
+      expr_index(&this->func_state, &table, &key);
+      return ParserResult<ExpDesc>::success(table);
+   }
+   default:
+      return this->unsupported_expr(expr.kind, expr.span);
+   }
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expressions, BCReg& count)
@@ -567,7 +2045,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
       ExpDesc expr = value.value_ref();
       ++count;
       if (not first) {
-         expr_tonextreg(&this->func_state, &last);
+         this->materialise_to_next_reg(last, "expression list baton");
       }
       last = expr;
       first = false;
@@ -575,29 +2053,89 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
    return ParserResult<ExpDesc>::success(last);
 }
 
+ParserResult<std::vector<ExpDesc>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
+{
+   std::vector<ExpDesc> lhs;
+   lhs.reserve(targets.size());
+   for (const ExprNodePtr& node : targets) {
+      if (not node) {
+         return ParserResult<std::vector<ExpDesc>>::failure(this->make_error(
+            ParserErrorCode::InternalInvariant, "assignment target missing"));
+      }
+      auto lvalue = this->emit_lvalue_expr(*node);
+      if (not lvalue.ok()) {
+         return ParserResult<std::vector<ExpDesc>>::failure(lvalue.error_ref());
+      }
+      ExpDesc slot = lvalue.value_ref();
+      if (slot.k IS ExpKind::Local) {
+         std::span<ExpDesc> hazards(lhs.data(), lhs.size());
+         this->lex_state.assign_hazard(hazards, slot);
+      }
+      lhs.push_back(slot);
+   }
+   return ParserResult<std::vector<ExpDesc>>::success(std::move(lhs));
+}
+
 std::optional<BCReg> IrEmitter::resolve_local(GCstr* symbol) const
 {
-   if (not symbol) {
-      return std::nullopt;
+   return this->binding_table.resolve(symbol);
+}
+
+void IrEmitter::update_local_binding(GCstr* symbol, BCReg slot)
+{
+   this->binding_table.add(symbol, slot);
+}
+
+void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view usage)
+{
+   expr_tonextreg(&this->func_state, &expression);
+   this->ensure_register_floor(usage);
+}
+
+void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage)
+{
+   expr_toreg(&this->func_state, &expression, slot);
+   this->ensure_register_floor(usage);
+}
+
+void IrEmitter::release_expression(ExpDesc& expression, std::string_view usage)
+{
+   expr_free(&this->func_state, &expression);
+   this->ensure_register_floor(usage);
+}
+
+void IrEmitter::ensure_register_floor(std::string_view usage)
+{
+   if (this->func_state.freereg < this->func_state.nactvar) {
+      pf::Log log("Fluid-Parser");
+      log.warning("ast-pipeline register underrun during %.*s (free=%u active=%u)",
+         int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
+      this->func_state.freereg = this->func_state.nactvar;
    }
-   for (auto it = this->local_bindings.rbegin(); it != this->local_bindings.rend(); ++it) {
-      if (it->first == symbol) {
-         return it->second;
-      }
+}
+
+void IrEmitter::ensure_register_balance(std::string_view usage)
+{
+   this->ensure_register_floor(usage);
+   if (this->func_state.freereg > this->func_state.nactvar) {
+      pf::Log log("Fluid-Parser");
+      log.warning("ast-pipeline leaked %u registers after %.*s (free=%u active=%u)",
+         unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
+         unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
+      this->func_state.freereg = this->func_state.nactvar;
    }
-   return std::nullopt;
 }
 
 ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const SourceSpan& span)
 {
-   (void)span;
+   glUnsupportedNodes.record(kind, span, "stmt");
    std::string message = "IR emitter does not yet support statement kind " + std::to_string(int(kind));
    return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, message));
 }
 
 ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const SourceSpan& span)
 {
-   (void)span;
+   glUnsupportedNodes.record(kind, span, "expr");
    std::string message = "IR emitter does not yet support expression kind " + std::to_string(int(kind));
    return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant, message));
 }
