@@ -1442,59 +1442,60 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
       return this->unsupported_expr(AstNodeKind::TernaryExpr, SourceSpan{});
    }
 
+   // Emit the condition expression
    auto condition_result = this->emit_expression(*payload.condition);
    if (not condition_result.ok()) {
       return condition_result;
    }
 
    ExpDesc condition = condition_result.value_ref();
-   expr_discharge(&this->func_state, &condition);
-   BCReg cond_reg = expr_toanyreg(&this->func_state, &condition);
-
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
-   JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
-   JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
-   JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
-   JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
-
-   auto true_result = this->emit_expression(*payload.if_true);
-   if (not true_result.ok()) {
-      return true_result;
+   if (condition.k IS ExpKind::Nil) {
+      condition.k = ExpKind::False;
    }
-   ExpDesc true_expr = true_result.value_ref();
-   expr_discharge(&this->func_state, &true_expr);
-   this->materialise_to_reg(true_expr, cond_reg, "ternary true branch");
-   ir_collapse_freereg(&this->func_state, cond_reg);
 
-   JumpHandle skip_false(&this->func_state, bcemit_jmp(&this->func_state));
+   // Use bcemit_branch_f to properly test truthiness/falsiness
+   // This handles comparisons, boolean values, nil checks, etc. correctly
+   // bcemit_branch_f patches the FALSE list to current location (fall through)
+   // and sets up jumps in TRUE list (condition.t) to be patched later
+   bcemit_branch_f(&this->func_state, &condition);
 
-   BCPos false_start = this->func_state.pc;
-   check_nil.patch_to(false_start);
-   check_false.patch_to(false_start);
-   check_zero.patch_to(false_start);
-   check_empty.patch_to(false_start);
+   // Allocate a register for the result
+   bcreg_reserve(&this->func_state, 1);
+   BCReg result_reg = this->func_state.freereg - 1;
 
+   // FALSE falls through here - emit the false branch first
    auto false_result = this->emit_expression(*payload.if_false);
    if (not false_result.ok()) {
       return false_result;
    }
    ExpDesc false_expr = false_result.value_ref();
-   expr_discharge(&this->func_state, &false_expr);
-   this->materialise_to_reg(false_expr, cond_reg, "ternary false branch");
-   ir_collapse_freereg(&this->func_state, cond_reg);
+   this->materialise_to_reg(false_expr, result_reg, "ternary false branch");
 
-   skip_false.patch_to(this->func_state.pc);
+   // Jump over the true branch
+   BCPos skip_true = bcemit_jmp(&this->func_state);
 
+   // Patch the "true" jump list to here (condition was true, so we jumped here)
+   JumpListView(&this->func_state, condition.t).patch_to_here();
+
+   // Emit the true branch
+   auto true_result = this->emit_expression(*payload.if_true);
+   if (not true_result.ok()) {
+      return true_result;
+   }
+   ExpDesc true_expr = true_result.value_ref();
+   this->materialise_to_reg(true_expr, result_reg, "ternary true branch");
+
+   // Patch the skip jump to here
+   JumpListView(&this->func_state, skip_true).patch_to_here();
+
+   // Collapse the register back to nactvar if it's a temporary
+   if (result_reg >= this->func_state.nactvar and this->func_state.freereg > result_reg + 1) {
+      this->func_state.freereg = result_reg + 1;
+   }
+
+   // Return the result as a non-relocatable expression in the result register
    ExpDesc result;
-   expr_init(&result, ExpKind::NonReloc, cond_reg);
+   expr_init(&result, ExpKind::NonReloc, result_reg);
    return ParserResult<ExpDesc>::success(result);
 }
 
