@@ -11,6 +11,8 @@ constexpr int SIZE_READ = 1024;
 #include <parasol/modules/regex.h>
 #include <thread>
 #include <string_view>
+#include <span>
+#include <concepts>
 
 #include "lauxlib.h"
 
@@ -45,7 +47,23 @@ struct CaseInsensitiveEqual {
    }
 };
 
-extern ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
+struct CaseInsensitiveHashView {
+   std::size_t operator()(std::string_view s) const noexcept {
+      std::size_t hash = 5381;
+      for (char c : s) {
+         hash = ((hash << 5) + hash) + std::tolower(static_cast<unsigned char>(c));
+      }
+      return hash;
+   }
+};
+
+struct CaseInsensitiveEqualView {
+   bool operator()(std::string_view lhs, std::string_view rhs) const noexcept {
+      return iequals(lhs, rhs);
+   }
+};
+
+extern ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
@@ -54,18 +72,25 @@ extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
 extern bool glJITTrace;
 extern bool glJITDiagnose;
-extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+extern ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
 
-static inline std::string_view luaL_checkstringview(lua_State *L, int idx) noexcept
+static inline std::string_view lua_checkstringview(lua_State *L, int idx)
 {
    size_t len = 0;
-   if (const char *s = luaL_checklstring(L, idx, &len)) {
-      return std::string_view{s, len};
-   }
+   if (auto s = luaL_checklstring(L, idx, &len)) return std::string_view{s, len};
+   else return std::string_view{};
+}
+
+// This version doesn't raise an error if the argument is not a string.
+
+static inline std::string_view lua_tostringview(lua_State *L, int idx)
+{
+   size_t len = 0;
+   if (auto s = lua_tolstring(L, idx, &len)) return std::string_view{s, len};
    else return std::string_view{};
 }
 

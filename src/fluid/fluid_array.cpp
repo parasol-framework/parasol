@@ -409,7 +409,7 @@ static int array_get(lua_State *Lua)
 
          return 1;
       }
-      else if (auto field = luaL_checkstringview(Lua, 2); !field.empty()) {
+      else if (auto field = lua_checkstringview(Lua, 2); !field.empty()) {
          log.trace("Field: %s", field);
 
          if (std::string_view("table") == field) { // Convert the array to a standard Lua table.

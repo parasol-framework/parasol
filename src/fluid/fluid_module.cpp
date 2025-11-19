@@ -18,12 +18,16 @@
 #include <ffi.h>
 #include <unordered_map>
 #include <algorithm>
+#include <memory>
+#include <span>
 
 template<class... Args> void RMSG(Args...) {
    //log.msg(Args)
 }
 
 constexpr int MAX_MODULE_ARGS = 16;
+constexpr size_t BUFFER_ELEMENT_SIZE = 16;
+constexpr size_t BUFFER_SIZE = MAX_MODULE_ARGS * BUFFER_ELEMENT_SIZE;
 
 static int module_call(lua_State *);
 static int process_results(prvFluid *, APTR, const FunctionField *);
@@ -140,8 +144,8 @@ static int module_index(lua_State *Lua)
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (mod->Functions) {
-            auto it = mod->FunctionMap.find(strihash(function)); // Case sensitive (lower camel case expected)
-            if (it != mod->FunctionMap.end()) {
+            auto hash = strihash(function); // Case insensitive function calls
+            if (auto it = mod->FunctionMap.find(hash); it != mod->FunctionMap.end()) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                lua_pushinteger(Lua, it->second); // Arg2: Index of the function that is being called
                lua_pushcclosure(Lua, module_call, 2);
@@ -173,7 +177,7 @@ static int module_call(lua_State *Lua)
    std::vector<std::string_view*> allocated_string_views;
    std::vector<APTR> allocated_structs;
 
-   // Cleanup lambda for early exits
+   // Cleanup lambda for early exits.  Note that we can't rely on RAII because luaL_error() breaks out of the function.
    auto cleanup = [&]() {
       for (auto ptr : allocated_strings) delete ptr;
       for (auto ptr : allocated_string_views) delete ptr;
