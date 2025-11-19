@@ -470,7 +470,7 @@ void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, int, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, int, CPTR);
-CSTRING next_line(CSTRING String);
+[[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept;
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);
