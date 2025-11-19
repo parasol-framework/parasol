@@ -326,7 +326,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
       return ParserResult<ExpDesc>::success(make_const_expr(ExpKind::Void));
    }
 
-   ExpDesc last;
+   ExpDesc last = make_const_expr(ExpKind::Void);
    bool first = true;
    for (const ExprNodePtr& node : expressions) {
       if (not node) {
