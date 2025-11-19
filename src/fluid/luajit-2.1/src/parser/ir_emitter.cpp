@@ -688,6 +688,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    ExpDesc target = target_result.value_ref();
    ExpDesc value = function_value.value_ref();
    bcemit_store(&this->func_state, &target, &value);
+   release_indexed_original(this->func_state, target);
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
