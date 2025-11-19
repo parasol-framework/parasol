@@ -980,6 +980,12 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
             return ParserResult<ExprNodeList>::failure(parsed.error_ref());
          }
          args = std::move(parsed.value_ref());
+         if (not args.empty()) {
+            const ExprNodePtr& tail = args.back();
+            if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr)) {
+               *forwards_multret = true;
+            }
+         }
       }
       this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
       return ParserResult<ExprNodeList>::success(std::move(args));

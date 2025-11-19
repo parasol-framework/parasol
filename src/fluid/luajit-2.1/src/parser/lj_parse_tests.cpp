@@ -753,7 +753,7 @@ extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
 
-   constexpr std::array<TestCase, 8> tests = { {
+   constexpr std::array<TestCase, 10> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
