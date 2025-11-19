@@ -121,6 +121,7 @@ inline ParserProfiler::StageTimer& ParserProfiler::StageTimer::operator=(StageTi
       return *this;
    }
 
+   this->stop();
    this->profiler = other.profiler;
    this->stage_name = std::move(other.stage_name);
    this->start_time = other.start_time;
