@@ -27,7 +27,7 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
-   std::vector<std::pair<GCstr*, BCReg>> local_bindings;
+   std::vector<std::pair<GCstr*, BCReg>> local_bindings; // TODO: Could this be an unordered map?
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
    ParserResult<IrEmitUnit> emit_statement(const StmtNode& stmt);

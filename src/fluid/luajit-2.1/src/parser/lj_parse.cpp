@@ -89,7 +89,7 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
    pf::Log log("Fluid-Parser");
    StatementListView statements = chunk.view();
    SourceSpan span = chunk.span;
-   log.detail("ast-boundary[%s]: statements=%" PRId64 " span=%d:%d offset=" PRId64, 
+   log.detail("ast-boundary[%s]: statements=%" PRId64 " span=%d:%d offset=%" PRId64,
       stage, statements.size(), int(span.line), int(span.column), span.offset);
 
    size_t index = 0;
@@ -166,7 +166,7 @@ static ParserConfig make_parser_config(lua_State &State)
 {
    pf::Log log("FluidParser");
    ParserConfig config;
-   
+
    if (glJITPipeline) config.enable_ast_pipeline = true;
 
    if (glJITTraceBoundary) config.trace_ast_boundaries = true;
