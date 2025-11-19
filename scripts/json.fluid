@@ -140,7 +140,7 @@ do
       elseif kind is 'function' then
          return 'function'
       else
-         local msg ='Unsupported type: ' .. kind .. '.'
+         local msg = 'Unsupported type: ' .. kind .. '.'
          if err_callback then err_callback(msg) else error(msg) end
          return ''
       end
