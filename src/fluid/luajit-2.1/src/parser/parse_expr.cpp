@@ -795,7 +795,7 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
    // Parse RHS operand. expr_binop() respects priority levels and will not consume
    // another shift/bitop at the same level due to left-associativity logic in expr_binop().
 
-   auto nextop_result = this->expr_binop(&rhs, priority[op].right);
+   auto nextop_result = this->expr_binop(&rhs, priority[op].right, priority[op].left);
    if (not nextop_result.ok()) {
       return nextop_result;
    }
@@ -827,6 +827,13 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
       base_reg = fs->freereg;
    }
 
+   // Ensure the base register really is at the top of the stack before reserving
+   // the call frame. Otherwise we may clobber live temporaries when chaining.
+   if (fs->freereg != base_reg + 1) {
+      this->assert_condition(base_reg <= fs->freereg, "bitwise base register past freereg");
+      fs->freereg = base_reg + 1;
+   }
+
    // Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2).
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);  // Reserve for frame link on x64
@@ -851,7 +858,7 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
       lhs->u.s.info = base_reg;
 
       // Parse the next RHS operand
-      auto chained = this->expr_binop(&rhs, priority[follow].right);
+      auto chained = this->expr_binop(&rhs, priority[follow].right, priority[follow].left);
       if (not chained.ok()) {
          return chained;
       }
@@ -915,10 +922,11 @@ ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
 //********************************************************************************************************************
 // Parse binary expressions with priority higher than the limit.
 
-ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
+ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, int ChainLeftPriority)
 {
    ExpDesc* v = Expression;
    uint32_t limit = Limit;
+   int chain_left = ChainLeftPriority;
    BinOpr op;
    this->synlevel_begin();
    auto unary = this->expr_unop(v);
@@ -929,10 +937,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
    op = token2binop(this->tok);
    while (op != OPR_NOBINOPR) {
       uint8_t lpri = priority[op].left;
-      if (limit IS priority[op].right and
-         (op IS OPR_SHL or op IS OPR_SHR or
-            op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_BAND))
-         lpri = 0;
+      if (chain_left >= 0 and priority[op].left IS chain_left and limit IS priority[op].right) {
+         lpri = limit;
+      }
 
       if (not (lpri > limit)) break;
 

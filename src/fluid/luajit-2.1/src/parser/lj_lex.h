@@ -198,7 +198,7 @@ public:
    ParserResult<ExpDesc> expr_simple(ExpDesc* Expression);
    void synlevel_begin();
    void synlevel_end();
-   ParserResult<BinOpr> expr_binop(ExpDesc* Expression, uint32_t Limit);
+   ParserResult<BinOpr> expr_binop(ExpDesc* Expression, uint32_t Limit, int ChainLeftPriority = -1);
    ParserResult<BinOpr> expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator);
    ParserResult<ExpDesc> expr_unop(ExpDesc* Expression);
    ParserResult<ExpDesc> expr_next();

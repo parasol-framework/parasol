@@ -371,7 +371,7 @@ std::string ParserContext::describe_token(const Token& token) const
 
 void ParserContext::log_trace(const char* channel, const Token& token, std::string_view note) const
 {
-   pf::Log log("Fluid-Parser");
+   pf::Log log("Parser");
 
    std::string name = this->describe_token(token);
    BCLine line = token.span().line;

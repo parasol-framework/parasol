@@ -31,7 +31,7 @@
 
 [[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
-   lj_assertFS(expr_isstrk(e) or e->k == ExpKind::Global, "bad usage");
+   lj_assertFS(expr_isstrk(e) or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 

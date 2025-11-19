@@ -48,3 +48,4 @@
 ### Required follow-up
 - Honour the precedence table by removing the unconditional `lpri = 0` hack and instead limit chaining to operators that truly share the same left priority. This will let `&` bind tighter than `|` and restore the documented C-style rules.
 - Revisit `expr_shift_chain`’s register-allocation strategy so that the base register chosen for chaining is guaranteed to be at the current top of stack before reserving the callee/argument slots; otherwise chained shifts will continue to reuse stale arguments, which is what the bitshift test detects.
+- ✅ Addressed in this pass: `expr_binop` now only suppresses left-precedence comparisons when a caller explicitly requests bitwise chaining, and `expr_shift_chain` collapses the stack to its base register before reserving call slots so chained shifts keep fresh operands.
