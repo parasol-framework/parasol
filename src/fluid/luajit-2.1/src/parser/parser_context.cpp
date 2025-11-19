@@ -118,9 +118,19 @@ const TokenStreamAdapter& ParserContext::tokens() const
    return this->token_stream;
 }
 
-ParserConfig ParserContext::config() const
+const ParserConfig& ParserContext::config() const
 {
    return this->current_config;
+}
+
+ParserProfilingResult& ParserContext::profiling_result()
+{
+   return this->current_config.profiling_result;
+}
+
+const ParserProfilingResult& ParserContext::profiling_result() const
+{
+   return this->current_config.profiling_result;
 }
 
 void ParserContext::override_config(const ParserConfig& config)

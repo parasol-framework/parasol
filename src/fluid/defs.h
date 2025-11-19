@@ -57,6 +57,7 @@ extern bool glJITDiagnose;
 extern bool glJITPipeline;
 extern bool glJITTraceBoundary;
 extern bool glJITTraceByteCode;
+extern bool glJITProfile;
 extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
 //********************************************************************************************************************

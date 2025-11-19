@@ -63,6 +63,7 @@ bool glJITDiagnose = false;
 bool glJITPipeline = false;
 bool glJITTraceBoundary = false;
 bool glJITTraceByteCode = false;
+bool glJITProfile = false;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
@@ -312,7 +313,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       for (unsigned i=0; i < args.size(); i++) {
          if (pf::startswith(args[i], "--jit-options")) {
             // Parse --jit-options parameter (supports both --jit-options=value and --jit-options value formats)
-            // Use in conjunction with --log-xapi to see the log messages.
+            // Use in conjunction with --log-xapi to see the log messages. Available switches:
+            // trace, diagnose, ast-pipeline, trace-boundary, trace-bytecode, profile.
             std::string value;
             auto eq_pos = args[i].find('=');
             if (eq_pos != std::string::npos) {
@@ -346,6 +348,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
                   }
                   else if (pf::iequals(trimmed, "trace-bytecode")) {
                      glJITTraceByteCode = true;
+                  }
+                  else if (pf::iequals(trimmed, "profile")) {
+                     glJITProfile = true;
                   }
                }
             }

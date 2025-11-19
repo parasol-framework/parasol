@@ -11,6 +11,8 @@
 #include "lj_bc.h"
 
 #include <array>
+#include <chrono>
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -161,6 +163,53 @@ static void log_block_outline(const BlockStmt& block, pf::Log& log)
       log.detail("   stmt[%" PRId64 "] kind=%d", (int64_t)index, (int)stmt.kind);
       ++index;
    }
+}
+
+static bool test_parser_profiler_captures_stages(pf::Log& log)
+{
+   ParserProfilingResult result;
+   ParserProfiler profiler(true, &result);
+
+   profiler.record_stage("parse", std::chrono::milliseconds(5));
+   profiler.record_stage("emit", std::chrono::milliseconds(2));
+
+   const auto& stages = result.stages();
+   if (stages.size() != 2) {
+      log.error("expected two profiler stages, got %" PRId64, (int64_t)stages.size());
+      return false;
+   }
+
+   if (stages[0].name != "parse" or stages[1].name != "emit") {
+      log.error("stage names were not recorded as expected");
+      return false;
+   }
+
+   double parse_error = std::abs(stages[0].milliseconds - 5.0);
+   double emit_error = std::abs(stages[1].milliseconds - 2.0);
+   if ((parse_error > 0.001) or (emit_error > 0.001)) {
+      log.error("stage timing mismatch parse=%.3f emit=%.3f", stages[0].milliseconds, stages[1].milliseconds);
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_parser_profiler_disabled_noop(pf::Log& log)
+{
+   ParserProfilingResult result;
+   ParserProfiler profiler(false, &result);
+   {
+      auto stage = profiler.stage("parse");
+      stage.stop();
+   }
+   profiler.record_stage("emit", std::chrono::milliseconds(3));
+
+   if (not result.stages().empty()) {
+      log.error("disabled profiler should not record any stages");
+      return false;
+   }
+
+   return true;
 }
 
 static bool test_literal_binary_expr(pf::Log& log)
@@ -617,7 +666,9 @@ extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
 
-   constexpr std::array<TestCase, 6> tests = { {
+   constexpr std::array<TestCase, 8> tests = { {
+      { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
+      { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
       { "expression_entry_point", test_expression_entry_point },
       { "expression_list_entry_point", test_expression_list_entry_point },

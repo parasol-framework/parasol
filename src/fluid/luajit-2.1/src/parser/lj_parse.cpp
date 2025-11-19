@@ -46,6 +46,7 @@ static const struct {
 #include "parser/token_types.cpp"
 #include "parser/token_stream.cpp"
 #include "parser/parser_diagnostics.cpp"
+#include "parser/parser_profiler.h"
 #include "parser/parser_context.cpp"
 #include "parser/ast_nodes.cpp"
 #include "parser/ast_builder.cpp"
@@ -135,8 +136,9 @@ static void trace_bytecode_snapshot(ParserContext& context, const char* label)
    }
 }
 
-static void run_ast_pipeline(ParserContext& context)
+static void run_ast_pipeline(ParserContext& context, ParserProfiler& profiler)
 {
+   ParserProfiler::StageTimer parse_timer = profiler.stage("parse");
    AstBuilder builder(context);
    auto chunk_result = builder.parse_chunk();
    if (not chunk_result.ok()) {
@@ -146,8 +148,10 @@ static void run_ast_pipeline(ParserContext& context)
    }
 
    std::unique_ptr<BlockStmt> chunk = std::move(chunk_result.value_ref());
+   parse_timer.stop();
    trace_ast_boundary(context, *chunk, "parse");
 
+   ParserProfiler::StageTimer emit_timer = profiler.stage("emit");
    IrEmitter emitter(context);
    auto emit_result = emitter.emit_chunk(*chunk);
    if (not emit_result.ok()) {
@@ -155,6 +159,8 @@ static void run_ast_pipeline(ParserContext& context)
       flush_non_fatal_errors(context);
       return;
    }
+
+   emit_timer.stop();
 
    trace_bytecode_snapshot(context, "ast");
    flush_non_fatal_errors(context);
@@ -172,6 +178,11 @@ static ParserConfig make_parser_config(lua_State &State)
    if (glJITTraceBoundary) config.trace_ast_boundaries = true;
 
    if (glJITTraceByteCode) config.dump_ast_bytecode = true;
+
+   if (glJITProfile) {
+      log.msg("JIT parser profiling enabled.");
+      config.profile_stages = true;
+   }
 
    if (glJITDiagnose) {
       log.msg("JIT diagnostic mode enabled.");
@@ -218,12 +229,19 @@ extern GCproto * lj_parse(LexState *State)
    ParserContext root_context = ParserContext::from(*State, fs, allocator);
    ParserConfig session_config = make_parser_config(*L);
    ParserSession root_session(root_context, session_config);
+   ParserProfiler profiler(root_context.config().profile_stages, &root_context.profiling_result());
    State->next();  // Read-ahead first token.
    if (session_config.enable_ast_pipeline) {
-      run_ast_pipeline(root_context);
+      run_ast_pipeline(root_context, profiler);
    }
    else {
+      ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
       State->parse_chunk(root_context);
+      legacy_timer.stop();
+   }
+   if (profiler.enabled()) {
+      pf::Log profile_log("Fluid-Parser");
+      profiler.log_results(profile_log);
    }
    if (State->tok != TK_eof) State->err_token(TK_eof);
    pt = State->fs_finish(State->linenumber);

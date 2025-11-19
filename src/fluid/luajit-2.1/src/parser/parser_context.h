@@ -7,6 +7,7 @@
 
 #include "parser/parser_diagnostics.h"
 #include "parser/token_stream.h"
+#include "parser/parser_profiler.h"
 
 struct ParserAllocator {
    void* userdata = nullptr;
@@ -22,6 +23,8 @@ struct ParserConfig {
    bool enable_ast_pipeline = false;
    bool trace_ast_boundaries = false;
    bool dump_ast_bytecode = false;
+   bool profile_stages = false;
+   ParserProfilingResult profiling_result;
 };
 
 struct ParserError {
@@ -85,7 +88,9 @@ public:
    TokenStreamAdapter& tokens();
    const TokenStreamAdapter& tokens() const;
 
-   ParserConfig config() const;
+   const ParserConfig& config() const;
+   ParserProfilingResult& profiling_result();
+   const ParserProfilingResult& profiling_result() const;
    void override_config(const ParserConfig& config);
    void restore_config(const ParserConfig& config);
 
