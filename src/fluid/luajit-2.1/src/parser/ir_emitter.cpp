@@ -1326,16 +1326,9 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 {
-   if (reference.identifier.symbol) {
-      ExpDesc resolved;
-      this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
-      return ParserResult<ExpDesc>::success(resolved);
-   }
-
-   ExpDesc expr;
-   expr_init(&expr, ExpKind::Global, 0);
-   expr.u.sval = reference.identifier.symbol;
-   return ParserResult<ExpDesc>::success(expr);
+   ExpDesc resolved;
+   this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
+   return ParserResult<ExpDesc>::success(resolved);
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
