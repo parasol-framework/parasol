@@ -60,6 +60,10 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 3. Plan a staged rollout: gate the new pipeline behind a build flag, run both parsers in parallel (old vs. new) in debug builds, and diff bytecode output to gain confidence before removing the legacy path.
 4. Document migration guidelines so future contributors know how to extend the parser using the new abstractions (e.g., “add a new AST node, extend the emitter visitor, add unit tests”).
 
+### Recent Progress
+- Expanded `src/fluid/luajit-2.1/src/parser/lj_parse_tests.cpp` with AST unit tests covering chained conditionals, numeric/generic for loops, repeat/defer scopes, and Fluid ternary/presence expressions so the redesigned parser has broader regression coverage before emitter changes land.
+
+
 ## Next Steps
 1. Prototype the `ParserContext`/typed token APIs and convert a small subset of expressions to ensure the new scaffolding covers real scenarios.
 2. Agree on the AST/IR schema and emitter responsibilities, including how much optimisation should happen per phase.

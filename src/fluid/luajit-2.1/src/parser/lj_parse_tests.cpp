@@ -413,6 +413,108 @@ end
    return true;
 }
 
+static bool test_if_stmt_with_elseif_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local output = 0
+local fallback = 5
+if level > 10 then
+   output = level
+elseif level ?? fallback then
+   output = level ? level :> fallback
+else
+   output = fallback
+end
+return output
+)";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse chained if AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 4) {
+      log.error("expected two locals, if, return; got %" PRId64, (int64_t)statements.size());
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& if_stmt = statements[2];
+   if (not (if_stmt.kind IS AstNodeKind::IfStmt)) {
+      log.error("third statement should be if, got kind=%d", (int)if_stmt.kind);
+      return false;
+   }
+
+   const auto* payload = std::get_if<IfStmtPayload>(&if_stmt.data);
+   if (not payload or payload->clauses.size() != 3) {
+      log.error("expected three if clauses (if/elseif/else)");
+      return false;
+   }
+
+   const IfClause& first_clause = payload->clauses[0];
+   if (not first_clause.condition or not (first_clause.condition->kind IS AstNodeKind::BinaryExpr)) {
+      log.error("first clause should include binary condition");
+      return false;
+   }
+
+   const auto* gt_payload = std::get_if<BinaryExprPayload>(&first_clause.condition->data);
+   if (not gt_payload or not (gt_payload->op IS AstBinaryOperator::GreaterThan)) {
+      log.error("first clause binary operator mismatch");
+      return false;
+   }
+
+   const IfClause& second_clause = payload->clauses[1];
+   if (not second_clause.condition or not (second_clause.condition->kind IS AstNodeKind::BinaryExpr)) {
+      log.error("elseif clause should include binary expression");
+      return false;
+   }
+
+   const auto* if_empty = std::get_if<BinaryExprPayload>(&second_clause.condition->data);
+   if (not if_empty or not (if_empty->op IS AstBinaryOperator::IfEmpty)) {
+      log.error("elseif clause expected IfEmpty operator");
+      return false;
+   }
+
+   if (not second_clause.block) {
+      log.error("elseif clause missing body block");
+      return false;
+   }
+
+   StatementListView elseif_body = second_clause.block->view();
+   if (elseif_body.size() != 1) {
+      log.error("elseif block should contain assignment only");
+      return false;
+   }
+
+   const StmtNode& elseif_assignment = elseif_body[0];
+   const auto* assign_payload = std::get_if<AssignmentStmtPayload>(&elseif_assignment.data);
+   if (not assign_payload or assign_payload->values.size() != 1) {
+      log.error("elseif assignment payload missing");
+      return false;
+   }
+
+   if (not assign_payload->values[0] or not (assign_payload->values[0]->kind IS AstNodeKind::TernaryExpr)) {
+      log.error("elseif assignment should assign ternary expression");
+      return false;
+   }
+
+   const IfClause& else_clause = payload->clauses[2];
+   if (else_clause.condition) {
+      log.error("else clause should not have a condition");
+      return false;
+   }
+   if (not else_clause.block) {
+      log.error("else clause missing block");
+      return false;
+   }
+
+   return true;
+}
+
 static bool test_local_function_table_ast(pf::Log& log)
 {
    constexpr const char* source = R"(
@@ -512,6 +614,274 @@ return build_pair(1, 2)
          log.error("nested table entries should be identifier references");
          return false;
       }
+   }
+
+   return true;
+}
+
+static bool test_numeric_for_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local limit = 5
+local sum = 0
+for index = 1, limit, 2 do
+   sum += index
+end
+return sum
+)";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse numeric for AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 4) {
+      log.error("expected two locals, loop, return; got %" PRId64, (int64_t)statements.size());
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& for_stmt = statements[2];
+   if (not (for_stmt.kind IS AstNodeKind::NumericForStmt)) {
+      log.error("expected numeric for statement");
+      return false;
+   }
+
+   const auto* payload = std::get_if<NumericForStmtPayload>(&for_stmt.data);
+   if (not payload or not payload->body) {
+      log.error("numeric for payload missing body");
+      return false;
+   }
+
+   if (not payload->start or not payload->stop or not payload->step) {
+      log.error("numeric for payload missing bounds expressions");
+      return false;
+   }
+
+   StatementListView loop_body = payload->body->view();
+   if (loop_body.size() != 1) {
+      log.error("numeric for body should include single assignment");
+      return false;
+   }
+
+   const StmtNode& assignment = loop_body[0];
+   if (not (assignment.kind IS AstNodeKind::AssignmentStmt)) {
+      log.error("numeric for body should assign to accumulator");
+      return false;
+   }
+
+   const auto* add_payload = std::get_if<AssignmentStmtPayload>(&assignment.data);
+   if (not add_payload or not (add_payload->op IS AssignmentOperator::Add)) {
+      log.error("expected compound add assignment inside loop");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_generic_for_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local total = 0
+for key, value in pairs(records) do
+   if value then
+      total = total + value
+   end
+end
+return total
+)";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse generic for AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 3) {
+      log.error("expected local, loop, return statements");
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& for_stmt = statements[1];
+   if (not (for_stmt.kind IS AstNodeKind::GenericForStmt)) {
+      log.error("second statement should be generic for loop");
+      return false;
+   }
+
+   const auto* payload = std::get_if<GenericForStmtPayload>(&for_stmt.data);
+   if (not payload or not payload->body) {
+      log.error("generic for payload missing body");
+      return false;
+   }
+
+   if (payload->names.size() != 2) {
+      log.error("generic for should declare key and value, got %" PRId64, (int64_t)payload->names.size());
+      return false;
+   }
+   if (payload->iterators.size() != 1 or not payload->iterators[0]) {
+      log.error("generic for should include one iterator expression");
+      return false;
+   }
+   if (not (payload->iterators[0]->kind IS AstNodeKind::CallExpr)) {
+      log.error("generic for iterator should be call expression");
+      return false;
+   }
+
+   StatementListView loop_body = payload->body->view();
+   if (loop_body.size() != 1) {
+      log.error("generic for body should contain if statement");
+      return false;
+   }
+
+   const StmtNode& inner_if = loop_body[0];
+   if (not (inner_if.kind IS AstNodeKind::IfStmt)) {
+      log.error("generic for body expected if statement");
+      return false;
+   }
+
+   const auto* if_payload = std::get_if<IfStmtPayload>(&inner_if.data);
+   if (not if_payload or if_payload->clauses.size() != 1) {
+      log.error("inner if should contain single clause");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_repeat_defer_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local total = 0
+local step = 1
+repeat
+   defer
+      total = total + step
+   end
+   total = total + step
+until total > 5
+return total
+)";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse repeat/defer AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 4) {
+      log.error("expected two locals, repeat, return; got %" PRId64, (int64_t)statements.size());
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& repeat_stmt = statements[2];
+   if (not (repeat_stmt.kind IS AstNodeKind::RepeatStmt)) {
+      log.error("third statement should be repeat loop");
+      return false;
+   }
+
+   const auto* payload = std::get_if<LoopStmtPayload>(&repeat_stmt.data);
+   if (not payload or not payload->body) {
+      log.error("repeat payload missing body");
+      return false;
+   }
+
+   if (not (payload->style IS LoopStyle::RepeatUntil)) {
+      log.error("repeat loop should record RepeatUntil style");
+      return false;
+   }
+   if (not payload->condition or not (payload->condition->kind IS AstNodeKind::BinaryExpr)) {
+      log.error("repeat loop missing terminating condition");
+      return false;
+   }
+
+   StatementListView loop_body = payload->body->view();
+   if (loop_body.size() != 2) {
+      log.error("repeat loop should contain defer and assignment");
+      return false;
+   }
+
+   const StmtNode& defer_stmt = loop_body[0];
+   if (not (defer_stmt.kind IS AstNodeKind::DeferStmt)) {
+      log.error("first repeat body statement should be defer");
+      return false;
+   }
+   const auto* defer_payload = std::get_if<DeferStmtPayload>(&defer_stmt.data);
+   if (not defer_payload or not defer_payload->callable) {
+      log.error("defer payload missing callable");
+      return false;
+   }
+   if (not defer_payload->arguments.empty()) {
+      log.error("defer test should not forward arguments");
+      return false;
+   }
+
+   const StmtNode& accumulator = loop_body[1];
+   if (not (accumulator.kind IS AstNodeKind::AssignmentStmt)) {
+      log.error("repeat loop second statement should be assignment");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_ternary_presence_expr_ast(pf::Log& log)
+{
+   constexpr const char* source = R"(
+local value = nil
+local fallback = 10
+return (value ?? fallback) ? value :> fallback, value??, (value ?? fallback)??
+)";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      log.error("failed to parse ternary/presence AST");
+      log_diagnostics(result.diagnostics, log);
+      return false;
+   }
+
+   const BlockStmt& block = *result.chunk.value_ref();
+   StatementListView statements = block.view();
+   if (statements.size() != 3) {
+      log.error("expected two locals and return for ternary test");
+      log_block_outline(block, log);
+      return false;
+   }
+
+   const StmtNode& return_stmt = statements[2];
+   if (not (return_stmt.kind IS AstNodeKind::ReturnStmt)) {
+      log.error("third statement should be return");
+      return false;
+   }
+
+   const auto* payload = std::get_if<ReturnStmtPayload>(&return_stmt.data);
+   if (not payload or payload->values.size() != 3) {
+      log.error("return should provide three expressions");
+      return false;
+   }
+
+   if (not payload->values[0] or not (payload->values[0]->kind IS AstNodeKind::TernaryExpr)) {
+      log.error("first return expression should be ternary");
+      return false;
+   }
+   if (not payload->values[1] or not (payload->values[1]->kind IS AstNodeKind::PresenceExpr)) {
+      log.error("second return expression should be presence check");
+      return false;
+   }
+   if (not payload->values[2] or not (payload->values[2]->kind IS AstNodeKind::PresenceExpr)) {
+      log.error("third return expression should be nested presence check");
+      return false;
    }
 
    return true;
@@ -753,14 +1123,19 @@ extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
 
-   constexpr std::array<TestCase, 8> tests = { {
+   constexpr std::array<TestCase, 15> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
       { "expression_entry_point", test_expression_entry_point },
       { "expression_list_entry_point", test_expression_list_entry_point },
       { "loop_ast", test_loop_ast },
+      { "if_stmt_with_elseif_ast", test_if_stmt_with_elseif_ast },
       { "local_function_table_ast", test_local_function_table_ast },
+      { "numeric_for_ast", test_numeric_for_ast },
+      { "generic_for_ast", test_generic_for_ast },
+      { "repeat_defer_ast", test_repeat_defer_ast },
+      { "ternary_presence_expr_ast", test_ternary_presence_expr_ast },
       { "return_lowering", test_return_lowering },
       { "ast_call_lowering", test_ast_call_lowering },
       { "bytecode_equivalence", test_bytecode_equivalence },
