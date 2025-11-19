@@ -841,8 +841,8 @@ int fcmd_arg(lua_State *Lua)
    int args = lua_gettop(Lua);
 
    auto key = lua_tostring(Lua, 1);
-   if (Self->Vars.contains(key)) {
-      lua_pushstring(Lua, Self->Vars[key].c_str());
+   if (auto it = Self->Vars.find(key); it != Self->Vars.end()) {
+      lua_pushstring(Lua, it->second.c_str());
       return 1;
    }
 
