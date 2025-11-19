@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include <optional>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "parser/ast_nodes.h"
 #include "parser/parser_context.h"
@@ -24,16 +27,22 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
+   std::vector<std::pair<GCstr*, BCReg>> local_bindings; // TODO: Could this be an unordered map?
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
    ParserResult<IrEmitUnit> emit_statement(const StmtNode& stmt);
    ParserResult<IrEmitUnit> emit_expression_stmt(const ExpressionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_return_stmt(const ReturnStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_local_decl_stmt(const LocalDeclStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
 
    ParserResult<ExpDesc> emit_expression(const ExprNode& expr);
    ParserResult<ExpDesc> emit_literal_expr(const LiteralValue& literal);
    ParserResult<ExpDesc> emit_identifier_expr(const NameRef& reference);
    ParserResult<ExpDesc> emit_vararg_expr();
+   ParserResult<ExpDesc> emit_binary_expr(const BinaryExprPayload& payload);
+   ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
+   std::optional<BCReg> resolve_local(GCstr* symbol) const;
 
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
