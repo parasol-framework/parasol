@@ -159,8 +159,8 @@ static void key_event(evKey *, int, struct finput *);
    }
    else sub_keyevent = true; // Global subscription independent of any surface.
 
-   auto input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput));
-   if (input) {
+  
+   if (auto input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput))) {
       luaL_getmetatable(Lua, "Fluid.input");
       lua_setmetatable(Lua, -2);
 
@@ -263,7 +263,7 @@ static void key_event(evKey *, int, struct finput *);
       if (src.granted()) {
          struct dcRequest dcr {
             .Item = item,
-            .Preference = { uint8_t(datatype), 0 }
+            .Preference = { char(datatype), 0 }
          };
 
          auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));

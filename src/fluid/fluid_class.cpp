@@ -8,9 +8,11 @@
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <format>
 #include <iomanip>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -28,11 +30,14 @@ static ERR run_script(objScript *);
 static ERR stack_args(lua_State *, OBJECTID, const FunctionField *, int8_t *);
 static ERR save_binary(objScript *, OBJECTPTR);
 
-[[maybe_unused]] inline CSTRING check_bom(CSTRING Value)
+[[maybe_unused]] constexpr std::string_view check_bom(std::string_view Value)
 {
-   if (((char)Value[0] IS 0xef) and ((char)Value[1] IS 0xbb) and ((char)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if (((char)Value[0] IS 0xfe) and ((char)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if (((char)Value[0] IS 0xff) and ((char)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   if ((Value.size() >= 3) and (Value[0] IS '\xef') and (Value[1] IS '\xbb') and (Value[2] IS '\xbf'))
+      return Value.substr(3); // UTF-8 BOM
+   if ((Value.size() >= 2) and (Value[0] IS '\xfe') and (Value[1] IS '\xff'))
+      return Value.substr(2); // UTF-16 BOM big endian
+   if ((Value.size() >= 2) and (Value[0] IS '\xff') and (Value[1] IS '\xfe'))
+      return Value.substr(2); // UTF-16 BOM little endian
    return Value;
 }
 
@@ -169,18 +174,16 @@ void process_error(objScript *Self, CSTRING Procedure)
 static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, int8_t *Buffer)
 {
    pf::Log log(__FUNCTION__);
-   int j;
 
    if (not args) return ERR::Okay;
 
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
    for (int i=0; args[i].Name; i++) {
-      auto name = std::make_unique<char[]>(strlen(args[i].Name)+1);
-      for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
-      name[j] = 0;
+      std::string name(args[i].Name);
+      std::ranges::transform(name, name.begin(), [](unsigned char c) { return std::tolower(c); });
 
-      lua_pushlstring(Lua, name.get(), j);
+      lua_pushlstring(Lua, name.c_str(), name.size());
 
       // Note: If the object is public and the call was messaged from a foreign process, all strings/pointers are
       // invalid because the message handlers cannot do deep pointer resolution of the structure we receive from
@@ -306,7 +309,6 @@ static ERR FLUID_Activate(objScript *Self)
    bool reload = false;
    if (not Self->ActivationCount) reload = true;
 
-   int i, j;
    if ((Self->ActivationCount) and (not Self->Procedure) and (not Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
@@ -404,28 +406,28 @@ static ERR FLUID_Activate(objScript *Self)
       if (result) { // Error reported from parser
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
+            int i;
             if ((i = strsearch("\"]:", errorstr)) != -1) {
                i += 3;
                int line = strtol(errorstr + i, nullptr, 0);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
 
-               std::ostringstream buf;
-               buf << "Line " << line+Self->LineOffset << ": " << errorstr + i << '\n';
+               std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
                CSTRING str = Self->String;
 
-               for (j=1; j <= line+1; j++) {
+               for (int j=1; j <= line+1; j++) {
                   if (j >= line-1) {
-                     buf << (j + Self->LineOffset) << ": ";
                      int col;
                      for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
-                     buf.write(str, col);
-                     if (col IS 120) buf << "...";
-                     buf << '\n';
+                     error_msg += std::format("{}: {}{}\n",
+                        j + Self->LineOffset,
+                        std::string_view(str, col),
+                        col IS 120 ? "..." : "");
                   }
                   if (not (str = next_line(str))) break;
                }
-               Self->setErrorString(buf.str().c_str());
+               Self->setErrorString(error_msg.c_str());
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
@@ -597,7 +599,6 @@ static ERR FLUID_Init(objScript *Self)
       return ERR::NoSupport;
    }
 
-   STRING str;
    ERR error;
    bool compile = false;
    int loaded_size = 0;
@@ -646,8 +647,12 @@ static ERR FLUID_Init(objScript *Self)
                Self->String[len] = 0;
 
                // Unicode BOM handler - in case the file starts with a BOM header.
-               CSTRING bomptr = check_bom(Self->String);
-               if (bomptr != Self->String) copymem(bomptr, Self->String, (len + 1) - (bomptr - Self->String));
+               auto content = check_bom(std::string_view(Self->String, len));
+               if (content.data() != Self->String) {
+                  // Use memmove for overlapping memory regions (content.data() points into Self->String)
+                  std::memmove(Self->String, content.data(), content.size() + 1);
+                  len = content.size();
+               }
 
                loaded_size = len;
 
@@ -697,6 +702,7 @@ static ERR FLUID_Init(objScript *Self)
       return ERR::Failed;
    }
 
+   STRING str;
    if (not (str = Self->String)) {
       log.trace("No statement specified at this stage.");
       if (src_file) FreeResource(src_file);
@@ -824,10 +830,10 @@ static ERR run_script(objScript *Self)
    log.traceBranch("Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
    prv->CaughtError = ERR::Okay;
-   struct object * release_list[8];
-   int r = 0;
+   std::array<object*, 8> release_list;
+   size_t r = 0;
    int top;
-   int pcall_failed = false;
+   bool pcall_failed = false;
    if ((Self->Procedure) or (Self->ProcedureID)) {
       if (Self->Procedure) lua_getglobal(prv->Lua, Self->Procedure);
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
@@ -897,7 +903,7 @@ static ERR run_script(objScript *Self)
 
                      if (args->Address) {
                         struct object *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
-                        if ((r < std::ssize(release_list)) and (access_object(obj))) {
+                        if ((r < release_list.size()) and (access_object(obj))) {
                            release_list[r++] = obj;
                         }
                      }
@@ -931,11 +937,10 @@ static ERR run_script(objScript *Self)
          while (r > 0) release_object(release_list[--r]);
       }
       else {
-         std::ostringstream ss;
-         ss << "Procedure '" << (Self->Procedure ? Self->Procedure : "NULL") << "' / #" << Self->ProcedureID << " does not exist in the script.";
-         auto str = ss.str().c_str();
-         Self->setErrorString(str);
-         log.warning("%s", str);
+         auto str = std::format("Procedure '{}' / #{} does not exist in the script.",
+            Self->Procedure ? Self->Procedure : "NULL", Self->ProcedureID);
+         Self->setErrorString(str.c_str());
+         log.warning("%s", str.c_str());
 
          #ifdef _DEBUG
             pf::vector<std::string> *list;

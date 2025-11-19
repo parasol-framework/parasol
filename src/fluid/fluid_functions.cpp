@@ -525,7 +525,7 @@ int fcmd_require(lua_State *Lua)
 
    CSTRING error_msg = nullptr;
    ERR error = ERR::Okay;
-   auto module = luaL_checkstringview(Lua, 1);
+   auto module = lua_checkstringview(Lua, 1);
 
    // For security purposes, check the validity of the module name.
 
