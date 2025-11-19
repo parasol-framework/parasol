@@ -462,6 +462,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
 
 ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 {
+   // Update lexer's last line so bytecode emission uses correct line numbers
+   this->lex_state.lastline = stmt.span.line;
+
    switch (stmt.kind) {
    case AstNodeKind::ExpressionStmt: {
       const auto& payload = std::get<ExpressionStmtPayload>(stmt.data);
@@ -1254,6 +1257,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
 
 ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
 {
+   // Update lexer's last line so bytecode emission uses correct line numbers.
+   // Complex expressions (like calls) may save/restore this to ensure their
+   // final instruction gets the correct line.
+   this->lex_state.lastline = expr.span.line;
+
    switch (expr.kind) {
    case AstNodeKind::LiteralExpr:
       return this->emit_literal_expr(std::get<LiteralValue>(expr.data));
@@ -1553,6 +1561,9 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
 {
+   // We save lastline here before it gets overwritten by processing sub-expressions.
+   BCLine call_line = this->lex_state.lastline;
+
    ExpDesc callee;
    BCReg base = 0;
    if (const auto* direct = std::get_if<DirectCallTarget>(&payload.target)) {
@@ -1609,6 +1620,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
       }
       ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base - LJ_FR2);
    }
+
+   // Restore the saved line number so the CALL instruction gets the correct line
+   this->lex_state.lastline = call_line;
 
    ExpDesc result;
    expr_init(&result, ExpKind::Call, bcemit_INS(&this->func_state, ins));
@@ -1795,7 +1809,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
 
    this->lex_state.fs_init(&child_state);
-   child_state.linedefined = payload.body->span.line;
+   // Use lastline which was set to the function expression's line by emit_expression()
+   child_state.linedefined = this->lex_state.lastline;
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
    child_state.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&child_state, BC_FUNCF, 0, 0);
