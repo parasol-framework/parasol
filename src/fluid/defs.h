@@ -60,12 +60,19 @@ extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
 
-static inline std::string_view luaL_checkstringview(lua_State *L, int idx) noexcept
+static inline std::string_view lua_checkstringview(lua_State *L, int idx) noexcept
 {
    size_t len = 0;
-   if (const char *s = luaL_checklstring(L, idx, &len)) {
-      return std::string_view{s, len};
-   }
+   if (auto s = luaL_checklstring(L, idx, &len)) return std::string_view{s, len};
+   else return std::string_view{};
+}
+
+// This version doesn't raise an error if the argument is not a string.
+
+static inline std::string_view lua_tostringview(lua_State *L, int idx) noexcept
+{
+   size_t len = 0;
+   if (auto s = lua_tolstring(L, idx, &len)) return std::string_view{s, len};
    else return std::string_view{};
 }
 
