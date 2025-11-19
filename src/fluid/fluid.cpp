@@ -67,6 +67,11 @@ bool glJITProfile = false;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
+extern "C" void pf_set_ast_pipeline(int enable)
+{
+   glJITPipeline = enable != 0;
+}
+
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);

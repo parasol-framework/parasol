@@ -15,6 +15,7 @@
 #include <cmath>
 #include <memory>
 #include <optional>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -523,6 +524,11 @@ struct BytecodeSnapshot {
    std::vector<BytecodeSnapshot> children;
 };
 
+struct PipelineSnippet {
+   const char* label;
+   const char* source;
+};
+
 static BytecodeSnapshot snapshot_proto(GCproto* pt)
 {
    BytecodeSnapshot snapshot;
@@ -742,6 +748,117 @@ static bool test_return_lowering(pf::Log& log)
    return true;
 }
 
+static bool test_ast_statement_matrix(pf::Log& log)
+{
+   constexpr std::array<PipelineSnippet, 5> snippets = { {
+      { "control_flow_ladder", R"(
+local total = 0
+for i = 1, 4 do
+   if i % 2 == 0 then
+      total += i
+   elseif i > 3 then
+      break
+   else
+      total = total + 1
+   end
+
+   if i == 3 then
+      continue
+   end
+
+   total = total + i
+end
+return total
+)" },
+      { "generic_for_defer", R"(
+local sum = 0
+local map = { alpha = 1, beta = 2, gamma = 3 }
+for key, value in pairs(map) do
+   defer
+      sum = sum + value
+   end
+   if key == 'beta' then
+      sum += value
+   else
+      sum = sum + value
+   end
+end
+return sum
+)" },
+      { "function_stmt_closure", R"(
+local function outer(flag)
+   local function helper(value)
+      return value * 2
+   end
+
+   if flag then
+      return helper(flag)
+   end
+
+   return function(a, b)
+      return helper(a + b)
+   end
+end
+
+local fn = outer(false)
+return fn(3, 4)
+)" },
+      { "table_assignment_matrix", R"(
+local data = { values = { 1, 2 }, meta = { edge = 3 } }
+data.values[1], data.values[2], data.meta.edge = data.values[2], data.values[1], data.meta.edge + 1
+local fallback = data.unknown ?? 9
+data.values[1] += data.meta.edge
+return data.values[1] + fallback
+)" },
+      { "goto_label_flow", R"(
+local acc = 0
+local idx = 0
+::loop::
+idx += 1
+if idx > 5 then
+   goto done
+end
+if idx % 2 == 0 then
+   goto loop
+end
+acc += idx
+goto loop
+::done::
+return acc
+)" },
+   } };
+
+   LuaStateHolder holder;
+   lua_State* L = holder.get();
+   if (not L) {
+      log.error("failed to allocate lua state for statement matrix test");
+      return false;
+   }
+
+   for (const PipelineSnippet& snippet : snippets) {
+      std::string error;
+      auto legacy = compile_snapshot(L, snippet.source, false, error);
+      if (not legacy.has_value()) {
+         log.error("legacy parser compile failed (%s): %s", snippet.label, error.c_str());
+         return false;
+      }
+
+      auto ast = compile_snapshot(L, snippet.source, true, error);
+      if (not ast.has_value()) {
+         log.error("ast pipeline compile failed (%s): %s", snippet.label, error.c_str());
+         return false;
+      }
+
+      std::string diff;
+      if (not compare_snapshots(*legacy, *ast, diff, snippet.label)) {
+         log.error("bytecode mismatch (%s): %s", snippet.label, diff.c_str());
+         return false;
+      }
+   }
+
+   return true;
+}
+
 struct TestCase {
    const char* name;
    bool (*fn)(pf::Log&);
@@ -753,7 +870,7 @@ extern void parser_unit_tests(int& Passed, int& Total)
 {
    pf::Log log("LuaJITParseTests");
 
-   constexpr std::array<TestCase, 10> tests = { {
+   constexpr std::array<TestCase, 11> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
@@ -761,6 +878,7 @@ extern void parser_unit_tests(int& Passed, int& Total)
       { "expression_list_entry_point", test_expression_list_entry_point },
       { "loop_ast", test_loop_ast },
       { "local_function_table_ast", test_local_function_table_ast },
+      { "ast_statement_matrix", test_ast_statement_matrix },
       { "return_lowering", test_return_lowering },
       { "ast_call_lowering", test_ast_call_lowering },
       { "bytecode_equivalence", test_bytecode_equivalence },
