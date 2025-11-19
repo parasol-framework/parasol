@@ -161,8 +161,6 @@ struct StatementChildCounter {
       return payload.values.size();
    }
 
-   [[nodiscard]] size_t operator()(const GotoStmtPayload&) const { return 0; }
-   [[nodiscard]] size_t operator()(const LabelStmtPayload&) const { return 0; }
    [[nodiscard]] size_t operator()(const BreakStmtPayload&) const { return 0; }
    [[nodiscard]] size_t operator()(const ContinueStmtPayload&) const { return 0; }
 

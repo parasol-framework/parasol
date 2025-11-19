@@ -105,8 +105,6 @@ private:
    ParserResult<IrEmitUnit> emit_defer_stmt(const DeferStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_break_stmt(const BreakStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_continue_stmt(const ContinueStmtPayload& payload);
-   ParserResult<IrEmitUnit> emit_goto_stmt(const GotoStmtPayload& payload);
-   ParserResult<IrEmitUnit> emit_label_stmt(const LabelStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<ExpDesc> targets,
       const ExprNodeList& values);

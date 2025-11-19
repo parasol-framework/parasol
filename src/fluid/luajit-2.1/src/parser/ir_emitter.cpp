@@ -310,10 +310,6 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       return "ContinueStmt";
    case AstNodeKind::ReturnStmt:
       return "ReturnStmt";
-   case AstNodeKind::GotoStmt:
-      return "GotoStmt";
-   case AstNodeKind::LabelStmt:
-      return "LabelStmt";
    case AstNodeKind::DeferStmt:
       return "DeferStmt";
    case AstNodeKind::DoStmt:
@@ -530,14 +526,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    case AstNodeKind::ContinueStmt: {
       const auto& payload = std::get<ContinueStmtPayload>(stmt.data);
       return this->emit_continue_stmt(payload);
-   }
-   case AstNodeKind::GotoStmt: {
-      const auto& payload = std::get<GotoStmtPayload>(stmt.data);
-      return this->emit_goto_stmt(payload);
-   }
-   case AstNodeKind::LabelStmt: {
-      const auto& payload = std::get<LabelStmtPayload>(stmt.data);
-      return this->emit_label_stmt(payload);
    }
    case AstNodeKind::DoStmt: {
       const auto& payload = std::get<DoStmtPayload>(stmt.data);
@@ -1052,34 +1040,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    this->func_state.bl->flags |= FuncScopeFlag::Continue;
    MSize idx = this->lex_state.gola_new(kJumpContinue, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
    (void)idx;
-   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
-}
-
-ParserResult<IrEmitUnit> IrEmitter::emit_goto_stmt(const GotoStmtPayload& payload)
-{
-   if (not payload.label.symbol) {
-      return this->unsupported_stmt(AstNodeKind::GotoStmt, SourceSpan{});
-   }
-
-   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
-   setgcrefp(this->lex_state.vstack[idx].name, obj2gco(payload.label.symbol));
-   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
-}
-
-ParserResult<IrEmitUnit> IrEmitter::emit_label_stmt(const LabelStmtPayload& payload)
-{
-   if (not payload.label.symbol) {
-      return this->unsupported_stmt(AstNodeKind::LabelStmt, SourceSpan{});
-   }
-
-   FuncScope* scope = this->func_state.bl;
-   if (not scope) {
-      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "label outside scope"));
-   }
-
-   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::JumpTarget, this->func_state.pc);
-   setgcrefp(this->lex_state.vstack[idx].name, obj2gco(payload.label.symbol));
-   this->lex_state.gola_resolve(scope, idx);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 

@@ -78,8 +78,6 @@ enum class AstNodeKind : uint16_t {
    BreakStmt,
    ContinueStmt,
    ReturnStmt,
-   GotoStmt,
-   LabelStmt,
    DeferStmt,
    DoStmt,
    ExpressionStmt
@@ -473,14 +471,6 @@ struct ReturnStmtPayload {
    ~ReturnStmtPayload();
 };
 
-struct GotoStmtPayload {
-   Identifier label;
-};
-
-struct LabelStmtPayload {
-   Identifier label;
-};
-
 struct BreakStmtPayload {};
 
 struct ContinueStmtPayload {};
@@ -522,8 +512,7 @@ struct StmtNode {
    std::variant<AssignmentStmtPayload, LocalDeclStmtPayload,
       LocalFunctionStmtPayload, FunctionStmtPayload, IfStmtPayload,
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
-      ReturnStmtPayload, GotoStmtPayload, LabelStmtPayload,
-      BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
+      ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
       DoStmtPayload, ExpressionStmtPayload>
       data;
 };
