@@ -242,14 +242,6 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    }
 }
 
-[[nodiscard]] static ExpDesc make_local_expr(FuncState& func_state, BCReg slot)
-{
-   ExpDesc expr;
-   expr_init(&expr, ExpKind::Local, slot);
-   expr.u.s.aux = func_state.varmap[slot];
-   return expr;
-}
-
 [[nodiscard]] static bool is_register_key(uint32_t aux)
 {
    return (int32_t(aux) >= 0) and (aux <= BCMAX_C);
@@ -1335,29 +1327,14 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 {
    if (reference.identifier.symbol) {
-      auto slot = this->resolve_local(reference.identifier.symbol);
-      if (slot.has_value()) {
-         ExpDesc expr = make_local_expr(this->func_state, slot.value());
-         return ParserResult<ExpDesc>::success(expr);
-      }
+      ExpDesc resolved;
+      this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
+      return ParserResult<ExpDesc>::success(resolved);
    }
 
    ExpDesc expr;
-   switch (reference.resolution) {
-   case NameResolution::Local:
-      expr = make_local_expr(this->func_state, reference.slot);
-      break;
-   case NameResolution::Upvalue:
-      expr_init(&expr, ExpKind::Upval, reference.slot);
-      break;
-   case NameResolution::Global:
-   case NameResolution::Environment:
-   case NameResolution::Unresolved:
-   default:
-      expr_init(&expr, ExpKind::Global, 0);
-      expr.u.sval = reference.identifier.symbol;
-      break;
-   }
+   expr_init(&expr, ExpKind::Global, 0);
+   expr.u.sval = reference.identifier.symbol;
    return ParserResult<ExpDesc>::success(expr);
 }
 

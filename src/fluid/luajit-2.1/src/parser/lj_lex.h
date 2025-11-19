@@ -166,6 +166,7 @@ public:
    void var_add(BCReg VariableCount);
    void var_remove(BCReg TargetLevel);
    MSize var_lookup(ExpDesc* Expression);
+   MSize var_lookup_symbol(GCstr* Name, ExpDesc* Expression);
 
    // Break and continue management
    MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
