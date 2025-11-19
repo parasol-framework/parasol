@@ -149,8 +149,8 @@ inline void build_read_table(object *Def)
 {
    if (Def->ReadTable) return;
 
-   if (glClassReadTable.contains(Def->Class)) {
-      Def->ReadTable = &glClassReadTable[Def->Class];
+   if (auto it = glClassReadTable.find(Def->Class); it != glClassReadTable.end()) {
+      Def->ReadTable = &it->second;
       return;
    }
 
