@@ -414,16 +414,17 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    if (not lhs_result.ok()) {
       return lhs_result;
    }
-   auto rhs_result = this->emit_expression(*payload.right);
-   if (not rhs_result.ok()) {
-      return rhs_result;
-   }
    auto mapped = map_binary_operator(payload.op);
    if (not mapped.has_value()) {
       SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
       return this->unsupported_expr(AstNodeKind::BinaryExpr, span);
    }
    ExpDesc lhs = lhs_result.value_ref();
+   bcemit_binop_left(&this->func_state, mapped.value(), &lhs);
+   auto rhs_result = this->emit_expression(*payload.right);
+   if (not rhs_result.ok()) {
+      return rhs_result;
+   }
    ExpDesc rhs = rhs_result.value_ref();
    bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
    return ParserResult<ExpDesc>::success(lhs);
