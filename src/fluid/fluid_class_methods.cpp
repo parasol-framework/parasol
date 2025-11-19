@@ -61,7 +61,7 @@ static std::string format_string_constant(std::string_view Data)
 
 //********************************************************************************************************************
 
-template<typename T>
+template<std::integral T>
 static BCLine get_line_from_info(const void *LineInfo, BCPos Offset, BCLine FirstLine) {
    return FirstLine + (BCLine)((const T *)LineInfo)[Offset];
 }
@@ -129,9 +129,9 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index, [[maybe
 
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
 
-#if LJ_HASFFI
-   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
-#endif
+   if constexpr (LJ_HASFFI) {
+      if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
+   }
 
    return "K<gc>";
 }
@@ -312,14 +312,14 @@ static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, si
    if ((not bytes) or (not Chunk)) return 1;
    if (not Size) return 0; // End of dump signaled.
 
-   const auto data = (const uint8_t *)Chunk;
-   bytes->insert(bytes->end(), data, data + Size);
+   std::span<const uint8_t> data_span(static_cast<const uint8_t *>(Chunk), Size);
+   bytes->insert(bytes->end(), data_span.begin(), data_span.end());
    return 0;
 }
 
 //********************************************************************************************************************
 
-static void append_hex_dump(const std::vector<uint8_t> &Data, std::ostringstream &Buf, bool Compact)
+static void append_hex_dump(std::span<const uint8_t> Data, std::ostringstream &Buf, bool Compact)
 {
    if (Data.empty()) {
       Buf << "(empty)\n";
@@ -363,6 +363,269 @@ static void append_hex_dump(const std::vector<uint8_t> &Data, std::ostringstream
       Buf << "\n";
    }
 }
+
+static void emit_stack_trace(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   if (not Compact) Buf << "=== CALL STACK ===\n";
+
+   if constexpr (LJ_HASPROFILE) {
+      size_t dump_len = 0;
+      // Format codes: F=function name, l=source:line, p=preserve full path
+      auto dump = luaJIT_profile_dumpstack(Prv->Lua, Compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
+      if (dump and dump_len) {
+         // Skip the first line (level 0) which is the C function mtDebugLog itself
+         auto first_newline = (const char *)memchr(dump, '\n', dump_len);
+         if (first_newline and size_t(first_newline - dump + 1) < dump_len) {
+            const char *start = first_newline + 1;
+            size_t len = dump_len - (start - dump);
+            Buf << std::string_view(start, len);
+         }
+      }
+   }
+   else {
+      lua_Debug ar;
+      int level = 1; // Start at 1 to skip the C function (mtDebugLog) itself
+
+      while (lua_getstack(Prv->Lua, level, &ar)) {
+         lua_getinfo(Prv->Lua, "nSl", &ar);
+
+         if (Compact) {
+            Buf << "[" << level << "] ";
+            if (ar.name) Buf << ar.name;
+            else Buf << "?";
+            if (ar.source and ar.source[0]) Buf << " (" << ar.short_src << ":" << ar.currentline << ")";
+            Buf << "\n";
+         }
+         else {
+            Buf << "[" << level << "] ";
+            if (ar.name) Buf << ar.name;
+            else Buf << "<anonymous>";
+
+            if (ar.source and ar.source[0]) {
+               Buf << " (" << ar.short_src << ":" << ar.currentline << ")";
+            }
+
+            Buf << " - ";
+            if (ar.what) {
+               if (strcmp(ar.what, "Lua") IS 0) Buf << "Lua function";
+               else if (strcmp(ar.what, "C") IS 0) Buf << "C function";
+               else if (strcmp(ar.what, "main") IS 0) Buf << "main chunk";
+               else Buf << ar.what;
+            }
+            Buf << "\n";
+         }
+         level++;
+      }
+   }
+
+   if (not Compact) Buf <<"\n";
+}
+
+//********************************************************************************************************************
+
+static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   lua_Debug ar;
+   if (not lua_getstack(Prv->Lua, 1, &ar)) return; // Level 1 = caller's frame
+
+   if (not Compact) Buf <<"=== LOCALS ===\n";
+
+   int idx = 1;
+   const char *name;
+   while ((name = lua_getlocal(Prv->Lua, &ar, idx))) {
+      int type = lua_type(Prv->Lua, -1);
+      Buf << name << " = ";
+
+      switch (type) {
+         case LUA_TNIL: Buf << "nil"; break;
+         case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
+         case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
+         case LUA_TSTRING: {
+            size_t len;
+            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            std::string_view sv(str, len);
+            if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
+            else Buf << "\"" << sv << "\"";
+            break;
+         }
+         case LUA_TTABLE: Buf << "{ ... }"; break;
+         case LUA_TFUNCTION: Buf << "<function>"; break;
+         case LUA_TUSERDATA: Buf << "<userdata>"; break;
+         case LUA_TTHREAD: Buf << "<thread>"; break;
+         default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
+      }
+
+      if (not Compact) Buf <<" (" << lua_typename(Prv->Lua, type) << ")";
+      Buf << "\n";
+
+      lua_pop(Prv->Lua, 1);
+      idx++;
+   }
+
+   if (not Compact) Buf <<"\n";
+}
+
+//********************************************************************************************************************
+
+static void emit_upvalues_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   lua_Debug ar;
+   if (not lua_getstack(Prv->Lua, 1, &ar)) return; // Level 1 = caller's frame
+
+   lua_getinfo(Prv->Lua, "f", &ar);
+
+   if (not Compact) Buf <<"=== UPVALUES ===\n";
+
+   int idx = 1;
+   const char *name;
+   while ((name = lua_getupvalue(Prv->Lua, -1, idx))) {
+      int type = lua_type(Prv->Lua, -1);
+
+      Buf << name << " = ";
+
+      switch (type) {
+         case LUA_TNIL: Buf << "nil"; break;
+         case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
+         case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
+         case LUA_TSTRING: {
+            size_t len;
+            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            std::string_view sv(str, len);
+            if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
+            else Buf << "\"" << sv << "\"";
+            break;
+         }
+         case LUA_TTABLE: Buf << "{ ... }"; break;
+         case LUA_TFUNCTION: Buf << "<function>"; break;
+         default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
+      }
+
+      if (not Compact) Buf <<" (" << lua_typename(Prv->Lua, type) << ")";
+      Buf << "\n";
+      lua_pop(Prv->Lua, 1);
+      idx++;
+   }
+
+   lua_pop(Prv->Lua, 1); // Pop the function
+   if (not Compact) Buf <<"\n";
+}
+
+//********************************************************************************************************************
+
+static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   if (not Compact) Buf << "=== GLOBALS ===\n";
+
+   // Access the storage table where user-defined globals are stored.
+   // The storage table is stored as an upvalue in the __index closure of the global metatable.
+
+   lua_pushvalue(Prv->Lua, LUA_GLOBALSINDEX); // Push global environment
+   if (not lua_getmetatable(Prv->Lua, -1)) {
+      lua_pop(Prv->Lua, 1);
+      return;
+   }
+
+   lua_pushstring(Prv->Lua, "__index");
+   lua_rawget(Prv->Lua, -2); // Get the __index closure
+
+   if (not lua_isfunction(Prv->Lua, -1)) {
+      lua_pop(Prv->Lua, 2);
+      return;
+   }
+
+   // The storage table is the first upvalue of the __index closure
+   auto upvalue_name = lua_getupvalue(Prv->Lua, -1, 1);
+   if (not upvalue_name or not lua_istable(Prv->Lua, -1)) {
+      lua_pop(Prv->Lua, 3);
+      return;
+   }
+
+   int count = 0;
+   lua_pushnil(Prv->Lua);
+   while (lua_next(Prv->Lua, -2)) {
+      const char *key = lua_tostring(Prv->Lua, -2);
+      Buf << key << " = ";
+
+      int type = lua_type(Prv->Lua, -1);
+      switch (type) {
+         case LUA_TNIL: Buf << "nil"; break;
+         case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
+         case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
+         case LUA_TSTRING: {
+            size_t len;
+            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            std::string_view sv(str, len);
+            if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
+            else Buf << "\"" << sv << "\"";
+            break;
+         }
+         case LUA_TTABLE: Buf << "{ ... }"; break;
+         case LUA_TFUNCTION: Buf << "<function>"; break;
+         default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
+      }
+
+      if (not Compact) Buf <<" (" << lua_typename(Prv->Lua, type) << ")";
+      Buf << "\n";
+      count++;
+
+      lua_pop(Prv->Lua, 1);
+   }
+
+   if (count IS 0) Buf << "(none)\n";
+   lua_pop(Prv->Lua, 1); // Pop storage table
+   lua_pop(Prv->Lua, 1); // Pop __index closure
+   lua_pop(Prv->Lua, 1); // Pop metatable
+   lua_pop(Prv->Lua, 1); // Pop global environment
+
+   if (not Compact) Buf << "\n";
+}
+
+//********************************************************************************************************************
+
+static void emit_memory_stats(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   if (not Compact) Buf << "=== MEMORY STATISTICS ===\n";
+
+   const int kb = lua_gc(Prv->Lua, LUA_GCCOUNT, 0);
+   const int bytes = lua_gc(Prv->Lua, LUA_GCCOUNTB, 0);
+   const double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
+
+   Buf << (Compact
+      ? std::format("Lua heap: {} MB\n", mb)
+      : std::format("Lua heap usage: {} MB ({} KB + {} bytes)\n", mb, kb, bytes));
+
+   if (not Compact) Buf << "\n";
+}
+
+//********************************************************************************************************************
+
+static void emit_state_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact)
+{
+   if (not Compact) Buf << "=== STATE ===\n";
+
+   Buf << std::format("Stack top: {}\n", lua_gettop(Prv->Lua));
+   Buf << std::format("Protected globals: {}\n", Prv->Lua->ProtectedGlobals ? "true" : "false");
+
+   if (auto hook_mask = lua_gethookmask(Prv->Lua)) {
+      std::vector<std::string_view> flags;
+      if (hook_mask & LUA_MASKCALL) flags.emplace_back("CALL");
+      if (hook_mask & LUA_MASKRET) flags.emplace_back("RET");
+      if (hook_mask & LUA_MASKLINE) flags.emplace_back("LINE");
+      if (hook_mask & LUA_MASKCOUNT) flags.emplace_back("COUNT");
+
+      Buf << "Hook mask: ";
+      for (size_t i = 0; i < flags.size(); ++i) {
+         if (i > 0) Buf << "|";
+         Buf << flags[i];
+      }
+      Buf << "\n";
+   }
+   else Buf << "Hook mask: none\n";
+
+   if (not Compact) Buf << "\n";
+}
+
+//********************************************************************************************************************
 
 /*********************************************************************************************************************
 
@@ -420,7 +683,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       bool compact = false;
    } opts;
 
-   auto has_option = [](std::string_view haystack, std::string_view needle) {
+   constexpr auto has_option = [](std::string_view haystack, std::string_view needle) {
       return haystack.find(needle) != std::string_view::npos;
    };
 
@@ -454,143 +717,11 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       // If Recurse is defined then we know what we're being called from within the script itself.
       // Here we can process options that are exclusive to internal calls.
 
-      if (opts.show_stack) { // Stack trace
-         if (not opts.compact) buf << "=== CALL STACK ===\n";
+      if (opts.show_stack) emit_stack_trace(prv, buf, opts.compact);
 
-#if LJ_HASPROFILE
-         size_t dump_len = 0;
-         // Format codes: F=function name, l=source:line, p=preserve full path
-         auto dump = luaJIT_profile_dumpstack(prv->Lua, opts.compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
-         if (dump and dump_len) {
-            // Skip the first line (level 0) which is the C function mtDebugLog itself
-            auto first_newline = (const char *)memchr(dump, '\n', dump_len);
-            if (first_newline and size_t(first_newline - dump + 1) < dump_len) {
-               const char *start = first_newline + 1;
-               size_t len = dump_len - (start - dump);
-               buf << std::string_view(start, len);
-            }
-         }
-#else
-         lua_Debug ar;
-         int level = 1; // Start at 1 to skip the C function (mtDebugLog) itself
+      if (opts.show_locals) emit_locals_info(prv, buf, opts.compact);
 
-         while (lua_getstack(prv->Lua, level, &ar)) {
-            lua_getinfo(prv->Lua, "nSl", &ar);
-
-            if (opts.compact) {
-               buf << "[" << level << "] ";
-               if (ar.name) buf << ar.name;
-               else buf << "?";
-               if (ar.source and ar.source[0]) buf << " (" << ar.short_src << ":" << ar.currentline << ")";
-               buf << "\n";
-            }
-            else {
-               buf << "[" << level << "] ";
-               if (ar.name) buf << ar.name;
-               else buf << "<anonymous>";
-
-               if (ar.source and ar.source[0]) {
-                  buf << " (" << ar.short_src << ":" << ar.currentline << ")";
-               }
-
-               buf << " - ";
-               if (ar.what) {
-                  if (strcmp(ar.what, "Lua") IS 0) buf << "Lua function";
-                  else if (strcmp(ar.what, "C") IS 0) buf << "C function";
-                  else if (strcmp(ar.what, "main") IS 0) buf << "main chunk";
-                  else buf << ar.what;
-               }
-               buf << "\n";
-            }
-            level++;
-         }
-#endif
-
-         if (not opts.compact) buf <<"\n";
-      }
-
-      if (opts.show_locals) { // Local variables
-         lua_Debug ar;
-         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
-            if (not opts.compact) buf <<"=== LOCALS ===\n";
-
-            int idx = 1;
-            const char *name;
-            while ((name = lua_getlocal(prv->Lua, &ar, idx))) {
-               int type = lua_type(prv->Lua, -1);
-               buf << name << " = ";
-
-               switch (type) {
-                  case LUA_TNIL: buf << "nil"; break;
-                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
-                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
-                  case LUA_TSTRING: {
-                     size_t len;
-                     const char *str = lua_tolstring(prv->Lua, -1, &len);
-                     std::string_view sv(str, len);
-                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
-                     else buf << "\"" << sv << "\"";
-                     break;
-                  }
-                  case LUA_TTABLE: buf << "{ ... }"; break;
-                  case LUA_TFUNCTION: buf << "<function>"; break;
-                  case LUA_TUSERDATA: buf << "<userdata>"; break;
-                  case LUA_TTHREAD: buf << "<thread>"; break;
-                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
-               }
-
-               if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
-               buf << "\n";
-
-               lua_pop(prv->Lua, 1);
-               idx++;
-            }
-
-            if (not opts.compact) buf <<"\n";
-         }
-      }
-
-      if (opts.show_upvalues) { // Upvalues
-         lua_Debug ar;
-         if (lua_getstack(prv->Lua, 1, &ar)) { // Level 1 = caller's frame
-            lua_getinfo(prv->Lua, "f", &ar);
-
-            if (not opts.compact) buf <<"=== UPVALUES ===\n";
-
-            int idx = 1;
-            const char *name;
-            while ((name = lua_getupvalue(prv->Lua, -1, idx))) {
-               int type = lua_type(prv->Lua, -1);
-
-               buf << name << " = ";
-
-               switch (type) {
-                  case LUA_TNIL: buf << "nil"; break;
-                  case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
-                  case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
-                  case LUA_TSTRING: {
-                     size_t len;
-                     const char *str = lua_tolstring(prv->Lua, -1, &len);
-                     std::string_view sv(str, len);
-                     if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
-                     else buf << "\"" << sv << "\"";
-                     break;
-                  }
-                  case LUA_TTABLE: buf << "{ ... }"; break;
-                  case LUA_TFUNCTION: buf << "<function>"; break;
-                  default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
-               }
-
-               if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
-               buf << "\n";
-               lua_pop(prv->Lua, 1);
-               idx++;
-            }
-
-            lua_pop(prv->Lua, 1); // Pop the function
-            if (not opts.compact) buf <<"\n";
-         }
-      }
+      if (opts.show_upvalues) emit_upvalues_info(prv, buf, opts.compact);
    }
 
    // Here we can process options that are meaningful post-execution.
@@ -799,102 +930,11 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
       }
    }
 
-   if (opts.show_globals) { // Global variables
-      if (not opts.compact) buf << "=== GLOBALS ===\n";
+   if (opts.show_globals) emit_globals_info(prv, buf, opts.compact);
 
-      // Access the storage table where user-defined globals are stored.
-      // The storage table is stored as an upvalue in the __index closure of the global metatable.
+   if (opts.show_memory) emit_memory_stats(prv, buf, opts.compact);
 
-      lua_pushvalue(prv->Lua, LUA_GLOBALSINDEX); // Push global environment
-      if (lua_getmetatable(prv->Lua, -1)) {
-         lua_pushstring(prv->Lua, "__index");
-         lua_rawget(prv->Lua, -2); // Get the __index closure
-
-         if (lua_isfunction(prv->Lua, -1)) {
-            // The storage table is the first upvalue of the __index closure
-            auto upvalue_name = lua_getupvalue(prv->Lua, -1, 1);
-            if (upvalue_name and lua_istable(prv->Lua, -1)) {
-               int count = 0;
-               lua_pushnil(prv->Lua);
-               while (lua_next(prv->Lua, -2)) {
-                  const char *key = lua_tostring(prv->Lua, -2);
-                  buf << key << " = ";
-
-                  int type = lua_type(prv->Lua, -1);
-                  switch (type) {
-                     case LUA_TNIL: buf << "nil"; break;
-                     case LUA_TBOOLEAN: buf << (lua_toboolean(prv->Lua, -1) ? "true" : "false"); break;
-                     case LUA_TNUMBER: buf << lua_tonumber(prv->Lua, -1); break;
-                     case LUA_TSTRING: {
-                        size_t len;
-                        const char *str = lua_tolstring(prv->Lua, -1, &len);
-                        std::string_view sv(str, len);
-                        if (len > 40) buf << "\"" << sv.substr(0, 40) << "...\"";
-                        else buf << "\"" << sv << "\"";
-                        break;
-                     }
-                     case LUA_TTABLE: buf << "{ ... }"; break;
-                     case LUA_TFUNCTION: buf << "<function>"; break;
-                     default: buf << "<" << lua_typename(prv->Lua, type) << ">"; break;
-                  }
-
-                  if (not opts.compact) buf <<" (" << lua_typename(prv->Lua, type) << ")";
-                  buf << "\n";
-                  count++;
-
-                  lua_pop(prv->Lua, 1);
-               }
-
-               if (count IS 0) buf << "(none)\n";
-               lua_pop(prv->Lua, 1); // Pop storage table
-            }
-         }
-         lua_pop(prv->Lua, 1); // Pop __index closure
-         lua_pop(prv->Lua, 1); // Pop metatable
-      }
-      lua_pop(prv->Lua, 1); // Pop global environment
-
-      if (not opts.compact) buf << "\n";
-   }
-
-   if (opts.show_memory) { // Memory statistics
-      if (not opts.compact) buf << "=== MEMORY STATISTICS ===\n";
-
-      const int kb = lua_gc(prv->Lua, LUA_GCCOUNT, 0);
-      const int bytes = lua_gc(prv->Lua, LUA_GCCOUNTB, 0);
-      const double mb = kb / 1024.0 + bytes / (1024.0 * 1024.0);
-
-      buf << (opts.compact
-         ? std::format("Lua heap: {} MB\n", mb)
-         : std::format("Lua heap usage: {} MB ({} KB + {} bytes)\n", mb, kb, bytes));
-
-      if (not opts.compact) buf << "\n";
-   }
-
-   if (opts.show_state) { // State information
-      if (not opts.compact) buf << "=== STATE ===\n";
-
-      buf << std::format("Stack top: {}\n", lua_gettop(prv->Lua));
-      buf << std::format("Protected globals: {}\n", prv->Lua->ProtectedGlobals ? "true" : "false");
-
-      if (auto hook_mask = lua_gethookmask(prv->Lua)) {
-         std::vector<std::string_view> flags;
-         if (hook_mask & LUA_MASKCALL) flags.emplace_back("CALL");
-         if (hook_mask & LUA_MASKRET) flags.emplace_back("RET");
-         if (hook_mask & LUA_MASKLINE) flags.emplace_back("LINE");
-         if (hook_mask & LUA_MASKCOUNT) flags.emplace_back("COUNT");
-
-         buf << "Hook mask: ";
-         for (size_t i = 0; i < flags.size(); ++i) {
-            if (i > 0) buf << "|";
-            buf << flags[i];
-         }
-         buf << "\n";
-      }
-      else buf << "Hook mask: none\n";
-
-      if (not opts.compact) buf << "\n";
-   }
+   if (opts.show_state) emit_state_info(prv, buf, opts.compact);
 
    const std::string result = buf.str();
    if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) {
