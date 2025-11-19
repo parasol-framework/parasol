@@ -233,8 +233,8 @@ inline void build_read_table(object *Def)
 [[nodiscard]] inline WRITE_TABLE * get_write_table(object *Def)
 {
    if (!Def->WriteTable) {
-      if (glClassWriteTable.contains(Def->Class)) {
-         Def->WriteTable = &glClassWriteTable[Def->Class];
+      if (auto it = glClassWriteTable.find(Def->Class); it != glClassWriteTable.end()) {
+         Def->WriteTable = &it->second;
       }
       else {
          WRITE_TABLE jmp;
