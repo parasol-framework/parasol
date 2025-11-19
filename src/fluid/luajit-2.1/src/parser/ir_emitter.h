@@ -40,7 +40,12 @@ private:
    ParserResult<ExpDesc> emit_literal_expr(const LiteralValue& literal);
    ParserResult<ExpDesc> emit_identifier_expr(const NameRef& reference);
    ParserResult<ExpDesc> emit_vararg_expr();
+   ParserResult<ExpDesc> emit_unary_expr(const UnaryExprPayload& payload);
    ParserResult<ExpDesc> emit_binary_expr(const BinaryExprPayload& payload);
+   ParserResult<ExpDesc> emit_presence_expr(const PresenceExprPayload& payload);
+   ParserResult<ExpDesc> emit_member_expr(const MemberExprPayload& payload);
+   ParserResult<ExpDesc> emit_index_expr(const IndexExprPayload& payload);
+   ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    std::optional<BCReg> resolve_local(GCstr* symbol) const;
 

@@ -28,7 +28,62 @@ private:
 
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
-   return identifier.is_blank or identifier.symbol == nullptr;
+   return identifier.is_blank or identifier.symbol IS nullptr;
+}
+
+[[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
+{
+   switch (op) {
+   case AstBinaryOperator::Add:
+      return BinOpr::OPR_ADD;
+   case AstBinaryOperator::Subtract:
+      return BinOpr::OPR_SUB;
+   case AstBinaryOperator::Multiply:
+      return BinOpr::OPR_MUL;
+   case AstBinaryOperator::Divide:
+      return BinOpr::OPR_DIV;
+   case AstBinaryOperator::Modulo:
+      return BinOpr::OPR_MOD;
+   case AstBinaryOperator::Power:
+      return BinOpr::OPR_POW;
+   case AstBinaryOperator::Concat:
+      return BinOpr::OPR_CONCAT;
+   case AstBinaryOperator::NotEqual:
+      return BinOpr::OPR_NE;
+   case AstBinaryOperator::Equal:
+      return BinOpr::OPR_EQ;
+   case AstBinaryOperator::LessThan:
+      return BinOpr::OPR_LT;
+   case AstBinaryOperator::GreaterEqual:
+      return BinOpr::OPR_GE;
+   case AstBinaryOperator::LessEqual:
+      return BinOpr::OPR_LE;
+   case AstBinaryOperator::GreaterThan:
+      return BinOpr::OPR_GT;
+   case AstBinaryOperator::BitAnd:
+      return BinOpr::OPR_BAND;
+   case AstBinaryOperator::BitOr:
+      return BinOpr::OPR_BOR;
+   case AstBinaryOperator::BitXor:
+      return BinOpr::OPR_BXOR;
+   case AstBinaryOperator::ShiftLeft:
+      return BinOpr::OPR_SHL;
+   case AstBinaryOperator::ShiftRight:
+      return BinOpr::OPR_SHR;
+   case AstBinaryOperator::LogicalAnd:
+      return BinOpr::OPR_AND;
+   case AstBinaryOperator::LogicalOr:
+      return BinOpr::OPR_OR;
+   case AstBinaryOperator::IfEmpty:
+      return BinOpr::OPR_IF_EMPTY;
+   default:
+      return std::nullopt;
+   }
+}
+
+[[nodiscard]] static BCIns* ir_bcptr(FuncState* func_state, const ExpDesc* expression)
+{
+   return &func_state->bcbase[expression->u.s.info].ins;
 }
 
 }  // namespace
@@ -84,6 +139,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
       const auto& payload = std::get<AssignmentStmtPayload>(stmt.data);
       return this->emit_assignment_stmt(payload);
    }
+   case AstNodeKind::DoStmt: {
+      const auto& payload = std::get<DoStmtPayload>(stmt.data);
+      if (payload.block) {
+         return this->emit_block(*payload.block, FuncScopeFlag::None);
+      }
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
    }
@@ -107,6 +169,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& payload)
 {
    BCIns ins;
+   this->func_state.flags |= PROTO_HAS_RETURN;
    if (payload.values.empty()) {
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
@@ -117,14 +180,32 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
          return ParserResult<IrEmitUnit>::failure(list.error_ref());
       }
       ExpDesc last = list.value_ref();
-      if (count == 1 and not (last.k IS ExpKind::Call)) {
-         BCReg reg = expr_toanyreg(&this->func_state, &last);
-         ins = BCINS_AD(BC_RET1, reg, 2);
+      if (count IS 1) {
+         if (last.k IS ExpKind::Call) {
+            BCIns* ip = ir_bcptr(&this->func_state, &last);
+            if (bc_op(*ip) IS BC_VARG) {
+               setbc_b(ir_bcptr(&this->func_state, &last), 0);
+               ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+            }
+            else {
+               this->func_state.pc--;
+               ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
+            }
+         }
+         else {
+            BCReg reg = expr_toanyreg(&this->func_state, &last);
+            ins = BCINS_AD(BC_RET1, reg, 2);
+         }
       }
       else {
-         const ExprNodePtr& first = payload.values.front();
-         SourceSpan span = first ? first->span : SourceSpan{};
-         return this->unsupported_stmt(AstNodeKind::ReturnStmt, span);
+         if (last.k IS ExpKind::Call) {
+            setbc_b(ir_bcptr(&this->func_state, &last), 0);
+            ins = BCINS_AD(BC_RETM, this->func_state.nactvar, last.u.s.aux - this->func_state.nactvar);
+         }
+         else {
+            expr_tonextreg(&this->func_state, &last);
+            ins = BCINS_AD(BC_RET, this->func_state.nactvar, count + 1);
+         }
       }
    }
    snapshot_return_regs(&this->func_state, &ins);
@@ -218,8 +299,18 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       return this->emit_identifier_expr(std::get<NameRef>(expr.data));
    case AstNodeKind::VarArgExpr:
       return this->emit_vararg_expr();
+   case AstNodeKind::UnaryExpr:
+      return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
    case AstNodeKind::BinaryExpr:
       return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
+   case AstNodeKind::PresenceExpr:
+      return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
+   case AstNodeKind::MemberExpr:
+      return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
+   case AstNodeKind::IndexExpr:
+      return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
+   case AstNodeKind::CallExpr:
+      return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
    default:
       return this->unsupported_expr(expr.kind, expr.span);
    }
@@ -290,33 +381,170 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
    return ParserResult<ExpDesc>::success(expr);
 }
 
+ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload)
+{
+   if (not payload.operand) {
+      return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
+   }
+   auto operand_result = this->emit_expression(*payload.operand);
+   if (not operand_result.ok()) {
+      return operand_result;
+   }
+   ExpDesc operand = operand_result.value_ref();
+   switch (payload.op) {
+   case AstUnaryOperator::Negate:
+      bcemit_unop(&this->func_state, BC_UNM, &operand);
+      break;
+   case AstUnaryOperator::Not:
+      bcemit_unop(&this->func_state, BC_NOT, &operand);
+      break;
+   case AstUnaryOperator::Length:
+      bcemit_unop(&this->func_state, BC_LEN, &operand);
+      break;
+   case AstUnaryOperator::BitNot:
+      bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
+      break;
+   }
+   return ParserResult<ExpDesc>::success(operand);
+}
+
 ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& payload)
 {
    auto lhs_result = this->emit_expression(*payload.left);
    if (not lhs_result.ok()) {
       return lhs_result;
    }
+   auto mapped = map_binary_operator(payload.op);
+   if (not mapped.has_value()) {
+      SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
+      return this->unsupported_expr(AstNodeKind::BinaryExpr, span);
+   }
+   ExpDesc lhs = lhs_result.value_ref();
+   bcemit_binop_left(&this->func_state, mapped.value(), &lhs);
    auto rhs_result = this->emit_expression(*payload.right);
    if (not rhs_result.ok()) {
       return rhs_result;
    }
+   ExpDesc rhs = rhs_result.value_ref();
+   bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
+   return ParserResult<ExpDesc>::success(lhs);
+}
 
-   BinOpr op;
-   switch (payload.op) {
-   case AstBinaryOperator::Add:
-      op = BinOpr::OPR_ADD;
-      break;
-   case AstBinaryOperator::Multiply:
-      op = BinOpr::OPR_MUL;
-      break;
-   default:
-      return this->unsupported_expr(AstNodeKind::BinaryExpr, payload.left ? payload.left->span : SourceSpan{});
+ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& payload)
+{
+   SourceSpan span = payload.value ? payload.value->span : SourceSpan{};
+   if (not payload.value) {
+      return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
+   }
+   auto value_result = this->emit_expression(*payload.value);
+   if (not value_result.ok()) {
+      return value_result;
+   }
+   ExpDesc value = value_result.value_ref();
+   bcemit_presence_check(&this->func_state, &value);
+   return ParserResult<ExpDesc>::success(value);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& payload)
+{
+   if (not payload.table or payload.member.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::MemberExpr, payload.member.span);
+   }
+   auto table_result = this->emit_expression(*payload.table);
+   if (not table_result.ok()) {
+      return table_result;
+   }
+   ExpDesc table = table_result.value_ref();
+   expr_toanyreg(&this->func_state, &table);
+   ExpDesc key = make_interned_string_expr(payload.member.symbol);
+   expr_index(&this->func_state, &table, &key);
+   return ParserResult<ExpDesc>::success(table);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload)
+{
+   if (not payload.table or not payload.index) {
+      return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
+   }
+   auto table_result = this->emit_expression(*payload.table);
+   if (not table_result.ok()) {
+      return table_result;
+   }
+   auto key_result = this->emit_expression(*payload.index);
+   if (not key_result.ok()) {
+      return key_result;
+   }
+   ExpDesc table = table_result.value_ref();
+   ExpDesc key = key_result.value_ref();
+   expr_toanyreg(&this->func_state, &table);
+   expr_toval(&this->func_state, &key);
+   expr_index(&this->func_state, &table, &key);
+   return ParserResult<ExpDesc>::success(table);
+}
+
+ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
+{
+   ExpDesc callee;
+   BCReg base = 0;
+   if (const auto* direct = std::get_if<DirectCallTarget>(&payload.target)) {
+      if (not direct->callable) {
+         return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
+      }
+      auto callee_result = this->emit_expression(*direct->callable);
+      if (not callee_result.ok()) {
+         return callee_result;
+      }
+      callee = callee_result.value_ref();
+      expr_tonextreg(&this->func_state, &callee);
+#if LJ_FR2
+      bcreg_reserve(&this->func_state, 1);
+#endif
+      base = callee.u.s.info;
+   }
+   else if (const auto* method = std::get_if<MethodCallTarget>(&payload.target)) {
+      if (not method->receiver or method->method.symbol IS nullptr) {
+         return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
+      }
+      auto receiver_result = this->emit_expression(*method->receiver);
+      if (not receiver_result.ok()) {
+         return receiver_result;
+      }
+      callee = receiver_result.value_ref();
+      ExpDesc key = make_interned_string_expr(method->method.symbol);
+      bcemit_method(&this->func_state, &callee, &key);
+      base = callee.u.s.info;
+   }
+   else {
+      return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
    }
 
-   ExpDesc lhs = lhs_result.value_ref();
-   ExpDesc rhs = rhs_result.value_ref();
-   bcemit_arith(&this->func_state, op, &lhs, &rhs);
-   return ParserResult<ExpDesc>::success(lhs);
+   BCReg arg_count = 0;
+   ExpDesc args = make_const_expr(ExpKind::Void);
+   if (not payload.arguments.empty()) {
+      auto args_result = this->emit_expression_list(payload.arguments, arg_count);
+      if (not args_result.ok()) {
+         return ParserResult<ExpDesc>::failure(args_result.error_ref());
+      }
+      args = args_result.value_ref();
+   }
+
+   BCIns ins;
+   if (args.k IS ExpKind::Call) {
+      setbc_b(ir_bcptr(&this->func_state, &args), 0);
+      ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
+   }
+   else {
+      if (not (args.k IS ExpKind::Void)) {
+         expr_tonextreg(&this->func_state, &args);
+      }
+      ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base - LJ_FR2);
+   }
+
+   ExpDesc result;
+   expr_init(&result, ExpKind::Call, bcemit_INS(&this->func_state, ins));
+   result.u.s.aux = base;
+   this->func_state.freereg = base + 1;
+   return ParserResult<ExpDesc>::success(result);
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expressions, BCReg& count)
