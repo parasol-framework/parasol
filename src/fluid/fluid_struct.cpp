@@ -538,8 +538,10 @@ static void make_camel_case(std::string &String)
       return error;
    }
 
-   if (glStructSizes.contains(StructName)) prv->Structs[StructName].Size = glStructSizes[StructName];
-   else prv->Structs[StructName].Size = computed_size;
+   if (auto it = glStructSizes.find(StructName); it != glStructSizes.end())
+       prv->Structs[StructName].Size = it->second;
+   else
+       prv->Structs[StructName].Size = computed_size;
 
    return ERR::Okay;
 }
