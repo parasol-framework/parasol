@@ -323,8 +323,7 @@ inline void build_read_table(object *Def)
       action += 2;
    }
    else {
-      if (glActionLookup.contains(action)) {
-         auto it = glActionLookup.find(action);
+      if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
          *Args = glActions[int(it->second)].Args;
          return it->second;
       }
