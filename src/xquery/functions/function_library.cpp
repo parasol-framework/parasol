@@ -102,6 +102,24 @@ XPathFunctionLibrary::XPathFunctionLibrary()
    register_function("one-or-more", function_one_or_more); // XP2.0
    register_function("exactly-one", function_exactly_one); // XP2.0
 
+   // Map Functions
+   register_function("map:entry", function_map_entry); // XQ3.1
+   register_function("map:put", function_map_put); // XQ3.1
+   register_function("map:get", function_map_get); // XQ3.1
+   register_function("map:contains", function_map_contains); // XQ3.1
+   register_function("map:size", function_map_size); // XQ3.1
+   register_function("map:keys", function_map_keys); // XQ3.1
+   register_function("map:merge", function_map_merge); // XQ3.1
+
+   // Array Functions
+   register_function("array:size", function_array_size); // XQ3.1
+   register_function("array:get", function_array_get); // XQ3.1
+   register_function("array:append", function_array_append); // XQ3.1
+   register_function("array:insert-before", function_array_insert_before); // XQ3.1
+   register_function("array:remove", function_array_remove); // XQ3.1
+   register_function("array:join", function_array_join); // XQ3.1
+   register_function("array:flatten", function_array_flatten); // XQ3.1
+
    // Number Functions
    register_function("number", function_number); // XP1.0
    register_function("sum", function_sum); // XP1.0
@@ -210,6 +228,9 @@ XPathVal XPathFunctionLibrary::call_function(std::string_view Name, const std::v
       if (not Context.xml->ErrorMsg.empty()) Context.xml->ErrorMsg.append("\n");
       Context.xml->ErrorMsg.append("Unsupported XPath function: ").append(Name);
    }
+   else if (Context.eval) {
+      Context.eval->record_error(std::string("Unsupported XPath function: ").append(Name), true);
+   }
 
    return XPathVal();
 }
@@ -260,6 +281,12 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &A
             else if (not arg.node_set_string_values.empty()) total += arg.node_set_string_values[0].length();
             else total += 64; // Conservative estimate for node content
             break;
+         case XPVT::Map:
+         case XPVT::Array: {
+            std::string summary = arg.to_string();
+            total += summary.length();
+            break;
+         }
       }
    }
    return total;

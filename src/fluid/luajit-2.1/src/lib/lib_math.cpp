@@ -13,7 +13,7 @@
 #include "lualib.h"
 
 #include "lj_obj.h"
-#include "lj_lib.h"
+#include "lib.h"
 #include "lj_vm.h"
 #include "lj_prng.h"
 

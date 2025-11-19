@@ -17,7 +17,7 @@
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_ff.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 #define LJLIB_MODULE_table
 

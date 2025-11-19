@@ -8,6 +8,7 @@ module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025', versi
     loadFile('../xml/constants.fdl')
   end)
 
+  -- Shared enumerations for parser and evaluator state, including map/array node kinds.
   loadFile('constants.fdl')
 
   methods('xquery', 'XQ', {

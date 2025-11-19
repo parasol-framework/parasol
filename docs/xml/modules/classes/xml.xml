@@ -761,9 +761,11 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </constants>
 
     <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Array"/>
       <const name="Boolean"/>
       <const name="Date"/>
       <const name="DateTime"/>
+      <const name="Map"/>
       <const name="NodeSet"/>
       <const name="Number"/>
       <const name="String"/>

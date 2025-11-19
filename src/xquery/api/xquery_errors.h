@@ -38,6 +38,12 @@ constexpr std::string_view XQST0059 = "XQST0059";
 // context components, for example because of a cycle in variable declarations.
 constexpr std::string_view XQDY0054 = "XQDY0054";
 
+// FOAY0001: Array index out of bounds.
+constexpr std::string_view FOAY0001 = "FOAY0001";
+
+// FOJS0004: JSON: not schema-aware. Reused for JSON-related map/array diagnostics.
+constexpr std::string_view FOJS0004 = "FOJS0004";
+
 //********************************************************************************************************************
 // Error Message Formatters
 //********************************************************************************************************************
@@ -107,6 +113,14 @@ inline std::string namespace_mismatch(std::string_view expected, std::string_vie
    message.append(actual);
    message.append("'.  The module's declared namespace must match the import declaration.");
    return format_error(XQST0059, message);
+}
+
+inline std::string array_index_out_of_bounds(std::string_view detail) {
+   return format_error(FOAY0001, detail);
+}
+
+inline std::string json_not_schema_aware(std::string_view detail) {
+   return format_error(FOJS0004, detail);
 }
 
 } // namespace errors

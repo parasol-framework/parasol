@@ -79,6 +79,8 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "every", XPathTokenType::EVERY },
    KeywordMapping{ "satisfies", XPathTokenType::SATISFIES },
    KeywordMapping{ "to", XPathTokenType::TO },
+   KeywordMapping{ "map", XPathTokenType::MAP },
+   KeywordMapping{ "array", XPathTokenType::ARRAY },
    KeywordMapping{ "cast", XPathTokenType::CAST },
    KeywordMapping{ "castable", XPathTokenType::CASTABLE },
    KeywordMapping{ "treat", XPathTokenType::TREAT },
@@ -587,6 +589,12 @@ XPathToken XPathTokeniser::scan_identifier()
 
    XPathTokenType type = XPathTokenType::IDENTIFIER;
 
+   auto peek_non_whitespace_char = [&]() -> char {
+      size_t lookahead = position;
+      while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
+      return lookahead < length ? input[lookahead] : '\0';
+   };
+
    if (match != keyword_mappings.end()) {
       bool treat_as_keyword = true;
 
@@ -597,6 +605,10 @@ XPathToken XPathTokeniser::scan_identifier()
             break;
          case XPathTokenType::VARIABLE:
             treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);
+            break;
+         case XPathTokenType::MAP:
+         case XPathTokenType::ARRAY:
+            treat_as_keyword = (peek_non_whitespace_char() IS '{');
             break;
          case XPathTokenType::NAMESPACE:
             treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
@@ -890,7 +902,16 @@ XPathToken XPathTokeniser::scan_operator()
       case '-': position++; return XPathToken(XPathTokenType::MINUS, single_char, start, 1);
       case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
       case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
-      case '?': position++; return XPathToken(XPathTokenType::QUESTION_MARK, single_char, start, 1);
+      case '?': {
+         size_t lookahead = position + 1;
+         while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
+         char next = lookahead < length ? input[lookahead] : '\0';
+         bool lookup_context = false;
+         if (next IS '(' or next IS '*' or is_digit(next) or is_name_start_char(next)) lookup_context = true;
+         XPathTokenType type = lookup_context ? XPathTokenType::LOOKUP : XPathTokenType::QUESTION_MARK;
+         position++;
+         return XPathToken(type, single_char, start, 1);
+      }
    }
 
    return XPathToken(XPathTokenType::UNKNOWN, std::string_view(""), start, 0);

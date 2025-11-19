@@ -489,6 +489,11 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
          case XPVT::Number:
             if (not std::isnan(arg.NumberValue)) add_tokens(arg.to_string());
             break;
+
+         case XPVT::Map:
+         case XPVT::Array:
+            // Maps and arrays cannot contribute IDREF tokens.
+            break;
       }
    }
 

@@ -22,7 +22,7 @@
 #include "lj_carith.h"
 #endif
 #include "lj_ff.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // ------------------------------------------------------------------------
 

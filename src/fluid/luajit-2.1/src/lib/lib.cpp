@@ -25,7 +25,7 @@
 #include "lj_buf.h"
 #include "../parser/lj_lex.h"
 #include "lj_bcdump.h"
-#include "lj_lib.h"
+#include "lib.h"
 
 // -- Library initialization ----------------------------------------------
 

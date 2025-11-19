@@ -160,6 +160,10 @@ if (MSVC)
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
 
+   # Exclude library and parser files that are compiled into the Fluid module instead
+   list(FILTER LUAJIT_LIB_SOURCES EXCLUDE REGEX "lib_.*\\.cpp$")
+   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|lj_parse_tests\\.cpp$")
+
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
       "${LUAJIT_SRC}/debug/lj_*.h"
@@ -530,6 +534,10 @@ else ()
 
    file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib/lib_*.cpp")
 
+   # Exclude library and parser files that are compiled into the Fluid module instead
+   list(FILTER LUAJIT_LIB_SOURCES EXCLUDE REGEX "lib_.*\\.cpp$")
+   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|lj_parse_tests\\.cpp$")
+
    # Generate list of object files from source files
    set(LUAJIT_OBJECT_FILES "")
    foreach(SOURCE_FILE ${LUAJIT_CORE_SOURCES} ${LUAJIT_LIB_SOURCES})
@@ -613,7 +621,7 @@ add_library (${MOD})
 
 set_module_defaults (${MOD} "Fl")
 
-add_dependencies (${MOD} libffi-3.3 luajit)
+add_dependencies (${MOD} libffi-3.3 luajit luajit_codegen)
 
 if (BUILD_DEFS)
    add_dependencies (${MOD} ${MOD}_hashes)
@@ -622,8 +630,17 @@ endif ()
 set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp"
    "fluid_io.cpp" "fluid_class.cpp"
-   "${LUAJIT_SRC}/lib/lj_lib.cpp"
-   "${LUAJIT_SRC}/lib/lj_load.cpp"
+   "${LUAJIT_SRC}/lib/lib.cpp"
+   "${LUAJIT_SRC}/lib/load.cpp"
+   "${LUAJIT_SRC}/lib/lib_aux.cpp"
+   "${LUAJIT_SRC}/lib/lib_base.cpp"
+   "${LUAJIT_SRC}/lib/lib_bit.cpp"
+   "${LUAJIT_SRC}/lib/lib_debug.cpp"
+   "${LUAJIT_SRC}/lib/lib_init.cpp"
+   "${LUAJIT_SRC}/lib/lib_jit.cpp"
+   "${LUAJIT_SRC}/lib/lib_math.cpp"
+   "${LUAJIT_SRC}/lib/lib_string.cpp"
+   "${LUAJIT_SRC}/lib/lib_table.cpp"
    "${LUAJIT_SRC}/parser/lj_parse.cpp"
    "${LUAJIT_SRC}/parser/lj_lex.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
@@ -640,6 +657,7 @@ target_include_directories (${MOD} PRIVATE
    "${LUAJIT_SRC}/lib"
    "${LUAJIT_SRC}/parser"
    "${LUAJIT_SRC}/runtime"
+   "${LUAJIT_BUILD_DIR}"
    "${CMAKE_BINARY_DIR}/libffi-3.3/include")
 
 target_link_libraries (${MOD} PRIVATE

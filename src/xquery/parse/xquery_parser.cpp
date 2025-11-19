@@ -2352,18 +2352,34 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
    std::unique_ptr<XPathNode> current = std::move(primary);
 
    bool has_predicate = false;
-   while (check(XPathTokenType::LBRACKET)) {
-      auto predicate = parse_predicate();
-      if (not predicate) return nullptr;
+   XPathNode *predicate_node = nullptr;
+   while (true) {
+      if (check(XPathTokenType::LBRACKET)) {
+         auto predicate = parse_predicate();
+         if (not predicate) return nullptr;
 
-      if (not has_predicate) {
-         auto filter = std::make_unique<XPathNode>(XQueryNodeType::FILTER);
-         filter->add_child(std::move(current));
-         current = std::move(filter);
-         has_predicate = true;
+         if (not has_predicate) {
+            auto filter = std::make_unique<XPathNode>(XQueryNodeType::FILTER);
+            filter->add_child(std::move(current));
+            predicate_node = filter.get();
+            current = std::move(filter);
+            has_predicate = true;
+         }
+
+         predicate_node->add_child(std::move(predicate));
+         continue;
       }
 
-      current->add_child(std::move(predicate));
+      if (check(XPathTokenType::LOOKUP)) {
+         auto lookup_expr = parse_lookup_expression(std::move(current));
+         if (not lookup_expr) return nullptr;
+         current = std::move(lookup_expr);
+         has_predicate = false;
+         predicate_node = nullptr;
+         continue;
+      }
+
+      break;
    }
 
    while (true) {
@@ -2397,6 +2413,85 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
    }
 
    return current;
+}
+
+//********************************************************************************************************************
+// Parses chained lookup operators applied to a base expression, accumulating lookup specifiers on the node.
+
+std::unique_ptr<XPathNode> XPathParser::parse_lookup_expression(std::unique_ptr<XPathNode> Base)
+{
+   if (not Base) return nullptr;
+
+   auto lookup_node = std::make_unique<XPathNode>(XQueryNodeType::LOOKUP_EXPRESSION);
+   lookup_node->add_child(std::move(Base));
+
+   bool consumed = false;
+   while (match(XPathTokenType::LOOKUP)) {
+      auto specifier = parse_lookup_specifier();
+      if (not specifier) return nullptr;
+      lookup_node->add_lookup_specifier(std::move(*specifier));
+      consumed = true;
+   }
+
+   if (not consumed) {
+      report_error("XPST0003: Lookup operator requires a key");
+      return nullptr;
+   }
+
+   return lookup_node;
+}
+
+//********************************************************************************************************************
+// Parses the lookup key specifier which may be an NCName, wildcard, integer literal, or a parenthesised expression.
+
+std::optional<XPathLookupSpecifier> XPathParser::parse_lookup_specifier()
+{
+   XPathLookupSpecifier specifier;
+
+   if (match(XPathTokenType::LPAREN)) {
+      auto expr = parse_expr();
+      if (not expr) return std::nullopt;
+
+      if (not match(XPathTokenType::RPAREN)) {
+         report_error("XPST0003: Expected ')' after lookup expression");
+         return std::nullopt;
+      }
+
+      specifier.kind = XPathLookupSpecifierKind::Expression;
+      specifier.expression = std::move(expr);
+      return specifier;
+   }
+
+   if (check(XPathTokenType::WILDCARD)) {
+      specifier.kind = XPathLookupSpecifierKind::Wildcard;
+      specifier.literal_value = "*";
+      advance();
+      return specifier;
+   }
+
+   if (check(XPathTokenType::NUMBER)) {
+      specifier.kind = XPathLookupSpecifierKind::IntegerLiteral;
+      specifier.literal_value = std::string(peek().text);
+      advance();
+      return specifier;
+   }
+
+   if (is_identifier_token(peek())) {
+      auto name = parse_ncname();
+      if (not name) return std::nullopt;
+
+      if (check(XPathTokenType::COLON)) {
+         report_error("XPST0003: Lookup NCName must not include ':'");
+         return std::nullopt;
+      }
+
+      specifier.kind = XPathLookupSpecifierKind::NCName;
+      specifier.literal_value = std::move(*name);
+      return specifier;
+   }
+
+   report_error("XPST0003: Invalid lookup specifier");
+   return std::nullopt;
 }
 
 //********************************************************************************************************************
@@ -2631,6 +2726,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 
    if (check(XPathTokenType::TAG_OPEN)) {
       return parse_direct_constructor();
+   }
+
+   if (check(XPathTokenType::MAP)) {
+      return parse_map_constructor();
+   }
+
+   if (check(XPathTokenType::ARRAY)) {
+      return parse_array_constructor();
    }
 
    if (is_constructor_keyword(peek())) {
@@ -3201,5 +3304,92 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_document_constructor()
    auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
+   return node;
+}
+
+//********************************************************************************************************************
+// Parses XQuery 3.0 map constructors of the form map { ExprSingle : ExprSingle, ... }.
+
+std::unique_ptr<XPathNode> XPathParser::parse_map_constructor()
+{
+   if (not match(XPathTokenType::MAP)) return nullptr;
+
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::MAP_CONSTRUCTOR);
+
+   if (not consume_token(XPathTokenType::LBRACE, "XPST0003: Expected '{' after 'map'")) {
+      return nullptr;
+   }
+
+   if (match(XPathTokenType::RBRACE)) return node;
+
+   while (true) {
+      auto key_expr = parse_expr_single();
+      if (not key_expr) return nullptr;
+
+      if (not match(XPathTokenType::COLON)) {
+         report_error("XPST0003: Map constructor requires ':' between key and value");
+         return nullptr;
+      }
+
+      auto value_expr = parse_expr_single();
+      if (not value_expr) return nullptr;
+
+      XPathMapConstructorEntry entry;
+      entry.key_expression = std::move(key_expr);
+      entry.value_expression = std::move(value_expr);
+      node->add_map_entry(std::move(entry));
+
+      if (match(XPathTokenType::COMMA)) {
+         if (check(XPathTokenType::RBRACE)) {
+            report_error("XPST0003: Map constructor cannot end with a trailing comma");
+            return nullptr;
+         }
+         continue;
+      }
+
+      break;
+   }
+
+   if (not match(XPathTokenType::RBRACE)) {
+      report_error("XPST0003: Expected '}' to close map constructor");
+      return nullptr;
+   }
+
+   return node;
+}
+
+//********************************************************************************************************************
+// Parses XQuery 3.0 array constructors of the form array { ExprSingle, ... }.
+
+std::unique_ptr<XPathNode> XPathParser::parse_array_constructor()
+{
+   if (not match(XPathTokenType::ARRAY)) return nullptr;
+
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::ARRAY_CONSTRUCTOR);
+
+   if (not consume_token(XPathTokenType::LBRACE, "XPST0003: Expected '{' after 'array'")) {
+      return nullptr;
+   }
+
+   if (match(XPathTokenType::RBRACE)) return node;
+
+   while (true) {
+      auto member_expr = parse_expr_single();
+      if (not member_expr) return nullptr;
+      node->add_array_member(std::move(member_expr));
+
+      if (not match(XPathTokenType::COMMA)) break;
+
+      if (check(XPathTokenType::RBRACE)) {
+         report_error("XPST0003: Array constructor cannot end with a trailing comma");
+         return nullptr;
+      }
+   }
+
+   if (not match(XPathTokenType::RBRACE)) {
+      report_error("XPST0003: Expected '}' to close array constructor");
+      return nullptr;
+   }
+
    return node;
 }
