@@ -104,7 +104,7 @@ do
       local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
       if kind is 'array' then
          if as_key then
-            local msg ='Can\'t encode array as key.'
+            local msg = 'Can\'t encode array as key.'
             if err_callback then err_callback(msg) else error(msg) end
          else
             s[#s + 1] = '['
