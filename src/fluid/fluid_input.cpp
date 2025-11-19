@@ -98,9 +98,8 @@ static void key_event(evKey *, int, struct finput *);
 [[nodiscard]] static int input_index(lua_State *Lua)
 {
    pf::Log log;
-   auto input = (struct finput *)luaL_checkudata(Lua, 1, "Fluid.input");
 
-   if (input) {
+   if (auto input = (struct finput *)luaL_checkudata(Lua, 1, "Fluid.input")) {
       auto field = lua_checkstringview(Lua, 2);
       if (field.empty()) return 0;
 

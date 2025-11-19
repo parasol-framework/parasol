@@ -45,7 +45,23 @@ struct CaseInsensitiveEqual {
    }
 };
 
-extern ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
+struct CaseInsensitiveHashView {
+   std::size_t operator()(std::string_view s) const noexcept {
+      std::size_t hash = 5381;
+      for (char c : s) {
+         hash = ((hash << 5) + hash) + std::tolower(static_cast<unsigned char>(c));
+      }
+      return hash;
+   }
+};
+
+struct CaseInsensitiveEqualView {
+   bool operator()(std::string_view lhs, std::string_view rhs) const noexcept {
+      return iequals(lhs, rhs);
+   }
+};
+
+extern ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
@@ -54,7 +70,7 @@ extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
 extern bool glJITTrace;
 extern bool glJITDiagnose;
-extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+extern ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.

@@ -538,7 +538,7 @@ ERR make_struct(lua_State *Lua, std::string_view StructName, CSTRING Sequence)
       return error;
    }
 
-   if (glStructSizes.contains(std::string(StructName))) prv->Structs[StructName].Size = glStructSizes[std::string(StructName)];
+   if (glStructSizes.contains(StructName)) prv->Structs[StructName].Size = glStructSizes[StructName];
    else prv->Structs[StructName].Size = computed_size;
 
    return ERR::Okay;

@@ -57,8 +57,8 @@ OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
 bool glJITTrace = false;
 bool glJITDiagnose = false;
-ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
-ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
+ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
