@@ -829,7 +829,7 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
    // Ensure the base register really is at the top of the stack before reserving
    // the call frame. Otherwise we may clobber live temporaries when chaining.
    if (fs->freereg != base_reg + 1) {
-      this->assert_condition(base_reg + 1 <= fs->freereg, "bitwise base register past freereg");
+      this->assert_condition(base_reg <= fs->freereg, "bitwise base register past freereg");
       fs->freereg = base_reg + 1;
    }
 
