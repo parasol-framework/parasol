@@ -14,6 +14,59 @@
 #include "parser/parser_context.h"
 #include "parser/parse_types.h"
 
+struct LocalBindingEntry {
+   GCstr* symbol = nullptr;
+   BCReg slot = 0;
+   uint32_t depth = 0;
+};
+
+class LocalBindingTable {
+public:
+   LocalBindingTable();
+
+   void push_scope();
+   void pop_scope();
+   void add(GCstr* symbol, BCReg slot);
+   [[nodiscard]] std::optional<BCReg> resolve(GCstr* symbol) const;
+
+private:
+   std::vector<LocalBindingEntry> bindings;
+   std::vector<size_t> scope_marks;
+   uint32_t depth = 0;
+};
+
+class LocalBindingScope {
+public:
+   explicit LocalBindingScope(LocalBindingTable& table);
+   ~LocalBindingScope();
+
+   LocalBindingScope(const LocalBindingScope&) = delete;
+   LocalBindingScope& operator=(const LocalBindingScope&) = delete;
+
+private:
+   LocalBindingTable& table;
+};
+
+class JumpHandle {
+public:
+   JumpHandle();
+   explicit JumpHandle(FuncState* state);
+   JumpHandle(FuncState* state, BCPos head);
+
+   [[nodiscard]] bool empty() const;
+   void append(BCPos other);
+   void append(const JumpHandle& other);
+   void patch_here() const;
+   void patch_to(BCPos target) const;
+   void patch_head(BCPos destination) const;
+   [[nodiscard]] BCPos head() const;
+   [[nodiscard]] FuncState* state() const;
+
+private:
+   FuncState* func_state;
+   BCPos list_head;
+};
+
 struct IrEmitUnit {
 };
 
@@ -27,7 +80,7 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
-   std::vector<std::pair<GCstr*, BCReg>> local_bindings; // TODO: Could this be an unordered map?
+   LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
    ParserResult<IrEmitUnit> emit_statement(const StmtNode& stmt);
@@ -70,11 +123,16 @@ private:
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
-   ParserResult<BCPos> emit_condition_jump(const ExprNode& expr);
+   ParserResult<JumpHandle> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
    ParserResult<std::vector<ExpDesc>> prepare_assignment_targets(const ExprNodeList& targets);
    void update_local_binding(GCstr* symbol, BCReg slot);
    std::optional<BCReg> resolve_local(GCstr* symbol) const;
+   void materialise_to_next_reg(ExpDesc& expression, std::string_view usage);
+   void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
+   void release_expression(ExpDesc& expression, std::string_view usage);
+   void ensure_register_floor(std::string_view usage);
+   void ensure_register_balance(std::string_view usage);
 
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
