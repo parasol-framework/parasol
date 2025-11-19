@@ -479,8 +479,7 @@ static int object_state(lua_State *Lua)
    // collection cycles.
 
    pf::Log log(__FUNCTION__);
-   if (prv->StateMap.contains(def->UID)) {
-      auto it = prv->StateMap.find(def->UID);
+   if (auto it = prv->StateMap.find(def->UID); it != prv->StateMap.end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
       return 1;
    }
