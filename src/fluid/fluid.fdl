@@ -13,6 +13,15 @@ function()
     loadFile(glPath .. 'common.fdl')
   end)
 
+  flags("JOF", { comment="JIT behaviour options" },
+     "DIAGNOSE:       Cancels aborting on error and enables deeper log tracing.",
+     "LEGACY:         Use the legacy parser.",
+     "TRACE_TOKENS:   Trace the emission of tokens.",
+     "TRACE_EXPECT:   Enable trace expectation messages during parsing.",
+     "TRACE_BOUNDARY: Enable log messages for AST boundary crossing.",
+     "DUMP_BYTECODE:  Print a disassembly of bytecode instructions after parsing.",
+     "PROFILE:        Use timers to profile JIT execution.")
+
 --[[
   class('Fluid', {
     src={ 'fluid_class.cpp' }

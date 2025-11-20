@@ -44,6 +44,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lauxlib.h"
 #include "lj_obj.h"
 #include "lj_parse.h"
+#include "lj_bc.h"
 
 #include "hashes.h"
 
@@ -61,138 +62,22 @@ OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
 OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
-bool glJITTrace = false;
-bool glJITDiagnose = false;
-bool glJITPipeline = true;
-bool glJITTraceBoundary = false;
-bool glJITTraceByteCode = false;
-bool glJITProfile = false;
+JOF glJitOptions = JOF::NIL;
 ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
-extern "C" void pf_set_ast_pipeline(int enable)
-{
-   glJITPipeline = enable != 0;
-}
-
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
-static ERR flSetVariable(objScript *, CSTRING, int, ...);
 [[nodiscard]] static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 [[nodiscard]] static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 
-//********************************************************************************************************************
-
-FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { "Name", FD_STR }, { "Type", FD_INT }, { "Variable", FD_TAGS }, { 0, 0 } };
-
-// These test calls are used to check that the dynamic assembler function calls are working as expected.
-
-#ifdef _DEBUG
-static void flTestCall1(void);
-static int flTestCall2(void);
-static CSTRING flTestCall3(void);
-static void flTestCall4(int, int64_t);
-static int flTestCall5(int, int, int, int, int, int64_t);
-static int64_t flTestCall6(int, int64_t, int64_t, int, int64_t, double);
-static void flTestCall7(STRING a, STRING b, STRING c);
-
-FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
-FDEF argsTestCall2[]   = { { "Result", FD_INT }, { 0, 0 } };
-FDEF argsTestCall3[]   = { { "Result", FD_STR }, { 0, 0 } };
-FDEF argsTestCall4[]   = { { "Void", FD_VOID }, { "Long", FD_INT }, { "Large", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall5[]   = { { "Result", FD_INT }, { "LA", FD_INT }, { "LB", FD_INT }, { "LC", FD_INT }, { "LD", FD_INT }, { "LE", FD_INT }, { "LF", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall6[]   = { { "Result", FD_INT64 }, { "LA", FD_INT }, { "LLA", FD_INT64 }, { "LLB", FD_INT64 }, { "LB", FD_INT }, { "LLC", FD_INT64 }, { "DA", FD_DOUBLE }, { "LB", FD_INT64 }, { 0, 0 } };
-FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "StringB", FD_STRING }, { "StringC", FD_STRING }, { 0, 0 } };
-#endif
-
-static const struct Function JumpTableV1[] = {
-   { (APTR)flSetVariable, "SetVariable", argsSetVariable },
-   #ifdef _DEBUG
-   { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
-   { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
-   { (APTR)flTestCall3,   "TestCall3", argsTestCall3 },
-   { (APTR)flTestCall4,   "TestCall4", argsTestCall4 },
-   { (APTR)flTestCall5,   "TestCall5", argsTestCall5 },
-   { (APTR)flTestCall6,   "TestCall6", argsTestCall6 },
-   { (APTR)flTestCall7,   "TestCall7", argsTestCall7 },
-   #endif
-   { nullptr, nullptr, nullptr }
-};
-
-#ifdef _DEBUG
-
-static void flTestCall1(void)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("No parameters.");
-}
-
-static int flTestCall2(void)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Returning 0xdedbeef / %d", 0xdedbeef);
-   return 0xdedbeef;
-}
-
-static CSTRING flTestCall3(void)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Returning 'hello world'");
-   return "hello world";
-}
-
-static void flTestCall4(int Long, int64_t Large)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received long %d / $%.8x", Long, Long);
-   log.msg("Received large %" PRId64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
-}
-
-static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LargeF)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received ints: %d, %d, %d, %d, %d, %" PRId64, LongA, LongB, LongC, LongD, LongE, LargeF);
-   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LargeF);
-   return LargeF;
-}
-
-static int64_t flTestCall6(int long1, int64_t large1, int64_t large2, int long2, int64_t large3, double float1)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received %d, %" PRId64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
-   log.msg("Received double %f", float1);
-   log.msg("Returning %" PRId64, large2);
-   return large2;
-}
-
-static void flTestCall7(STRING a, STRING b, STRING c)
-{
-   pf::Log log(__FUNCTION__);
-   log.msg("Received string pointers %p, %p, %p", a, b, c);
-   log.msg("As '%s', '%s', '%s'", a, b, c);
-}
-#endif
-
-//********************************************************************************************************************
-
-[[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
-{
-   if (!String) return nullptr;
-
-   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
-   while (*String IS '\r') String++;
-   if (*String IS '\n') String++;
-   while (*String IS '\r') String++;
-   if (*String) return String;
-   else return nullptr;
-}
+#include "module_def.cpp"
 
 //********************************************************************************************************************
 
 APTR get_meta(lua_State *Lua, int Arg, CSTRING MetaTable)
 {
-   APTR address;
-   if ((address = (struct object *)lua_touserdata(Lua, Arg))) {
+   if (auto address = (struct object *)lua_touserdata(Lua, Arg)) {
       if (lua_getmetatable(Lua, Arg)) {  // does it have a metatable?
          lua_getfield(Lua, LUA_REGISTRYINDEX, MetaTable);  // get correct metatable
          if (lua_rawequal(Lua, -1, -2)) {  // does it have the correct mt?
@@ -296,6 +181,8 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 [[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   pf::Log log;
+
    CoreBase = argCoreBase;
 
    glFluidContext = CurrentContext();
@@ -318,11 +205,11 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    auto task = CurrentTask();
    if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
       pf::vector<std::string> &args = *pargs;
-      for (unsigned i=0; i < args.size(); i++) {
+      for (int i=0; i < std::ssize(args); i++) {
          if (pf::startswith(args[i], "--jit-options")) {
             // Parse --jit-options parameter (supports both --jit-options=value and --jit-options value formats)
-            // Use in conjunction with --log-xapi to see the log messages. Available switches:
-            // trace, diagnose, ast-pipeline, trace-boundary, trace-bytecode, profile, ast-legacy.
+            // Use in conjunction with --log-api to see the log messages.
+            // These options are system-wide, alternatively you can set JitOptions in the Script object.
             std::string value;
             auto eq_pos = args[i].find('=');
             if (eq_pos != std::string::npos) {
@@ -338,33 +225,39 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                std::vector<std::string> options;
                pf::split(value, std::back_inserter(options), ',');
 
+               glJitOptions = JOF::NIL;
                for (const auto &option : options) {
                   std::string trimmed = option;
                   pf::trim(trimmed);
 
-                  if (pf::iequals(trimmed, "trace")) {
-                     glJITTrace = true;
+                  if (pf::iequals(trimmed, "trace-tokens")) {
+                     glJitOptions |= JOF::TRACE_TOKENS;
+                  }
+                  else if (pf::iequals(trimmed, "trace-expect")) {
+                     glJitOptions |= JOF::TRACE_EXPECT;
                   }
                   else if (pf::iequals(trimmed, "diagnose")) {
-                     glJITDiagnose = true;
+                     glJitOptions |= JOF::DIAGNOSE;
                   }
                   else if (pf::iequals(trimmed, "ast-pipeline")) { // Use the new AST-based parser
-                     glJITPipeline = true;
+                     glJitOptions &= ~JOF::LEGACY;
                   }
                   else if (pf::iequals(trimmed, "ast-legacy")) { // Use the legacy parser
-                     glJITPipeline = false;
+                     glJitOptions |= JOF::LEGACY;
                   }
                   else if (pf::iequals(trimmed, "trace-boundary")) {
-                     glJITTraceBoundary = true;
+                     glJitOptions |= JOF::TRACE_BOUNDARY;
                   }
-                  else if (pf::iequals(trimmed, "trace-bytecode")) {
-                     glJITTraceByteCode = true;
+                  else if (pf::iequals(trimmed, "dump-bytecode")) {
+                     glJitOptions |= JOF::DUMP_BYTECODE;
                   }
                   else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
-                     glJITProfile = true;
+                     glJitOptions |= JOF::PROFILE;
                   }
                }
+               log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
             }
+            else log.warning("No value for --jit-options");
          }
       }
    }
@@ -383,7 +276,7 @@ static ERR MODExpunge(void)
 
 static ERR MODOpen(OBJECTPTR Module)
 {
-   Module->set(FID_FunctionList, JumpTableV1);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
 
@@ -398,6 +291,15 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
 #endif
 }
 
+//********************************************************************************************************************
+// Bytecode names for debugging purposes
+
+CSTRING const glBytecodeNames[] = {
+#define BCNAME(name, ma, mb, mc, mt) #name,
+   BCDEF(BCNAME)
+#undef BCNAME
+};
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -407,7 +309,7 @@ The SetVariable() function provides a method for setting global variables in a F
 script.  If the script is cached, the variable settings will be available on the next activation.
 
 -INPUT-
-obj Script: Pointer to a Fluid script.
+obj(Script) Script: Pointer to a Fluid script.
 cstr Name: The name of the variable to set.
 int Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_INT`, `FD_DOUBLE`, `FD_INT64`.
 tags Variable: A variable that matches the indicated `Type`.
@@ -420,8 +322,8 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 -END-
 
 *********************************************************************************************************************/
-
-static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
+namespace fl {
+ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
@@ -450,7 +352,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
    va_end(list);
    return ERR::Okay;
 }
-
+}
 //********************************************************************************************************************
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)

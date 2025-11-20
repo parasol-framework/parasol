@@ -1,0 +1,78 @@
+-- Test the various JIT options.  This requires that the script is created explicitly as a `fluid' object so that we
+-- can set jitOptions.  Success for these tests is determined by reviewing the log.
+
+   include 'fluid' -- Required for JOF flags.
+
+   glSelf = obj.find('self')
+
+   glTestScript = [[
+function basic_test()
+   local hello = 'world'
+   local index = 0xdeadbeef
+   local math = 111 * 444 + 999
+   local time = mSys.preciseTime()
+   print(hello, ' ', index, ' ', math, ' ', time)
+end
+   basic_test()
+]]
+
+   glBadScript = [[
+function basic_test()
+   local hello = 'world'
+   local time = mSys.preciseTime()
+   syntax = error ! here @
+   print(hello, ' ', index, ' ', math, ' ', time)
+end
+   basic_test()
+]]
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testTraceTokens()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_TOKENS })
+   script.acActivate()
+end
+
+function testTraceDiagnose()
+   msg('--- Testing bad script without DIAGNOSE ---')
+   local script = obj.new('fluid', { statement = glBadScript })
+   script.acActivate()
+   
+   msg('--- Testing bad script with DIAGNOSE ---')
+   local script = obj.new('fluid', { statement = glBadScript, jitOptions = JOF_DIAGNOSE })
+   script.acActivate()
+end
+
+function testDumpBytecode()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_DUMP_BYTECODE })
+   script.acActivate()
+end
+
+function testTraceExpect()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_EXPECT })
+   script.acActivate()
+end
+
+function testLegacy()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_LEGACY|JOF_DIAGNOSE })
+   script.acActivate()
+end
+
+function testTraceBoundary()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_BOUNDARY })
+   script.acActivate()
+end
+
+function testProfile()
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_PROFILE })
+   script.acActivate()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 
+      'testTraceTokens', 'testProfile', 'testLegacy', 'testTraceExpect', 
+      'testDumpBytecode', 'testTraceDiagnose' 
+      }
+   }

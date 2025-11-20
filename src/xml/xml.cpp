@@ -161,6 +161,12 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
+static ERR MODOpen(OBJECTPTR Module)
+{
+   Module->set(FID_FunctionList, glFunctions);
+   return ERR::Okay;
+}
+
 namespace xml {
 
 /*********************************************************************************************************************
@@ -325,5 +331,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, &glStructures);
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures);
 extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

@@ -62,41 +62,303 @@ static const struct {
 #include "parser/parse_stmt.cpp"
 #include "../../../defs.h"
 
-namespace {
-
 static constexpr size_t kMaxLoggedStatements = 12;
 
-static void report_pipeline_error(ParserContext& context, const ParserError& error)
+//********************************************************************************************************************
+
+static std::string format_string_constant(std::string_view Data)
 {
-   context.emit_error(error.code, error.token, error.message);
+   static constexpr size_t max_length = 40;
+   static constexpr std::string_view hex_digits = "0123456789ABCDEF";
+
+   std::string text;
+   const auto limit = std::min(Data.size(), max_length);
+   const bool truncated = Data.size() > max_length;
+
+   text.reserve(limit * 2 + (truncated ? 6 : 2));
+
+   for (size_t i = 0; i < limit; i++) {
+      const unsigned char ch = Data[i];
+
+      switch (ch) {
+         case '\n': text += "\\n"; break;
+         case '\r': text += "\\r"; break;
+         case '\t': text += "\\t"; break;
+         case '\\': text += "\\\\"; break;
+         case '"':  text += "\\\""; break;
+         default:
+            if (ch < 32) {
+               text += "\\x";
+               text += hex_digits[(ch >> 4) & 15];
+               text += hex_digits[ch & 15];
+            }
+            else text += char(ch);
+            break;
+      }
+   }
+
+   if (truncated) text += "...";
+
+   return std::format("\"{}\"", text);
 }
 
-static void flush_non_fatal_errors(ParserContext& context)
+//********************************************************************************************************************
+
+static std::string describe_num_constant(const TValue *Value)
 {
-   if (context.config().abort_on_error) return;
-   if (context.diagnostics().has_errors()) raise_accumulated_diagnostics(context);
+   if (tvisint(Value)) return std::format("{}", intV(Value));
+   if (tvisnum(Value)) return std::format("{}", numV(Value));
+   return "<number>";
 }
 
-static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, const char* stage)
-{
-   if (not context.config().trace_ast_boundaries) return;
+//********************************************************************************************************************
 
-   pf::Log log("Fluid-Parser");
-   StatementListView statements = chunk.view();
-   SourceSpan span = chunk.span;
-   log.detail("ast-boundary[%s]: statements=%" PRId64 " span=%d:%d offset=%" PRId64,
-      stage, statements.size(), int(span.line), int(span.column), span.offset);
+static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
+{
+   GCobj *gc_obj = proto_kgc(Proto, Index);
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
+      GCstr *str_obj = gco2str(gc_obj);
+      return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
+   }
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
+      GCproto *child = gco2pt(gc_obj);
+      return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
+   }
+
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TTAB) return "K<table>";
+
+#if LJ_HASFFI
+   if (gc_obj->gch.gct IS (uint8_t)~LJ_TCDATA) return "K<cdata>";
+#endif
+
+   return "K<gc>";
+}
+
+//********************************************************************************************************************
+
+static std::string describe_primitive(int Value)
+{
+   switch (Value) {
+      case 0: return "nil";
+      case 1: return "false";
+      case 2: return "true";
+      default: return std::format("pri({})", Value);
+   }
+}
+
+//********************************************************************************************************************
+
+static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
+{
+   const uint8_t *info = proto_uvinfo(Proto);
+   if (not info or Index >= Proto->sizeuv) return {};
+
+   const uint8_t *ptr = info;
+
+   for (uint32_t i = 0; i < Index; ++i) {
+      while (*ptr) ++ptr;
+      ++ptr;
+   }
+
+   if (not *ptr) return {};
+   return std::string_view(reinterpret_cast<const char *>(ptr));
+}
+
+//********************************************************************************************************************
+
+static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc)
+{
+   switch (Mode) {
+      case BCMdst:
+      case BCMbase:
+      case BCMvar:
+      case BCMrbase:
+         return std::format("R{}", Value);
+
+      case BCMuv: {
+         auto name = get_proto_uvname(Proto, (uint32_t)Value);
+         return name.empty() ? std::format("U{}", Value) : std::format("U{}({})", Value, name);
+      }
+
+      case BCMlit:
+         return std::format("#{}", Value);
+
+      case BCMlits:
+         return std::format("#{}", (int16_t)Value);
+
+      case BCMpri:
+         return describe_primitive(Value);
+
+      case BCMnum:
+         return std::format("#{}", describe_num_constant(proto_knumtv(Proto, Value)));
+
+      case BCMstr:
+      case BCMfunc:
+      case BCMtab:
+      case BCMcdata:
+         return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1);
+
+      case BCMjump: {
+         if ((BCPos)Value IS NO_JMP) return "->(no)";
+
+         const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
+         const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
+
+         if (dest < 0) return "->(neg)";
+         if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
+
+         return std::format("->{}{}",
+            dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
+      }
+
+      default:
+         return std::format("?{}", Value);
+   }
+}
+
+//********************************************************************************************************************
+
+static void append_operand(std::string &Operands, std::string_view Label, std::string_view Value)
+{
+   if (not Operands.empty()) Operands += ' ';
+   Operands += std::format("{}={}", Label, Value);
+}
+
+//********************************************************************************************************************
+// Describe operand value during parsing (from FuncState context)
+
+static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Value, BCPos Pc)
+{
+   switch (Mode) {
+      case BCMdst:
+      case BCMbase:
+      case BCMvar:
+      case BCMrbase:
+         return std::format("R{}", Value);
+
+      case BCMuv:
+         return std::format("U{}", Value);
+
+      case BCMlit:
+         return std::format("#{}", Value);
+
+      case BCMlits:
+         return std::format("#{}", (int16_t)Value);
+
+      case BCMpri:
+         return describe_primitive(Value);
+
+      case BCMnum: {
+         // Look up number constant in the constant table
+         GCtab *kt = fs->kt;
+         Node *node = noderef(kt->node);
+
+         for (uint32_t i = 0; i <= kt->hmask; ++i) {
+            TValue *val = &node[i].val;
+            if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
+               TValue *key_tv = &node[i].key;
+               if (tvisnum(key_tv) or tvisint(key_tv)) {
+                  return std::format("#{}", describe_num_constant(key_tv));
+               }
+               break;
+            }
+         }
+         return std::format("#<num{}>", Value);
+      }
+
+      case BCMstr:
+      case BCMfunc:
+      case BCMtab:
+      case BCMcdata: {
+         // Look up GC constant in the constant table
+         GCtab *kt = fs->kt;
+         Node *node = noderef(kt->node);
+
+         for (uint32_t i = 0; i <= kt->hmask; ++i) {
+            TValue *val = &node[i].val;
+            if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)Value) {
+               TValue *key_tv = &node[i].key;
+
+               if (tvisstr(key_tv)) {
+                  GCstr *str_obj = strV(key_tv);
+                  return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
+               }
+
+               if (tvisproto(key_tv)) {
+                  GCproto *child = protoV(key_tv);
+                  return std::format("K<func {}-{}>", child->firstline, child->firstline + child->numline);
+               }
+
+               if (tvistab(key_tv)) return "K<table>";
+
+#if LJ_HASFFI
+               if (tviscdata(key_tv)) return "K<cdata>";
+#endif
+               break;
+            }
+         }
+         return std::format("K<gc{}>", Value);
+      }
+
+      case BCMjump: {
+         if ((BCPos)Value IS NO_JMP) return "->(no)";
+
+         const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
+         const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
+
+         if (dest < 0) return "->(neg)";
+         if (dest >= (ptrdiff_t)fs->pc) return "->(out)";
+
+         return std::format("->{}{}",
+            dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
+      }
+
+      default:
+         return std::format("?{}", Value);
+   }
+}
+
+//********************************************************************************************************************
+
+static void report_pipeline_error(ParserContext &Context, const ParserError &Error)
+{
+   Context.emit_error(Error.code, Error.token, Error.message);
+}
+
+//********************************************************************************************************************
+
+static void flush_non_fatal_errors(ParserContext &Context)
+{
+   if (Context.config().abort_on_error) return;
+   if (Context.diagnostics().has_errors()) raise_accumulated_diagnostics(Context);
+}
+
+//********************************************************************************************************************
+
+static void trace_ast_boundary(ParserContext &Context, const BlockStmt &Chunk, CSTRING Stage)
+{
+   pf::Log log("AST-Boundary");
+
+   auto prv = (prvFluid *)Context.lua().Script->ChildPrivate;
+   if ((prv->JitOptions & JOF::TRACE_BOUNDARY) IS JOF::NIL) return;
+
+   StatementListView statements = Chunk.view();
+   SourceSpan span = Chunk.span;
+   log.branch("[%s]: statements=%" PRId64 " span=%d:%d offset=%" PRId64,
+      Stage, statements.size(), int(span.line), int(span.column), span.offset);
 
    size_t index = 0;
    for (const StmtNode& stmt : statements) {
       if (index >= kMaxLoggedStatements) {
-         log.detail("   ... truncated after %" PRId64 " statements ...", index);
+         log.msg("... truncated after %" PRId64 " statements ...", index);
          break;
       }
 
       size_t children = ast_statement_child_count(stmt);
       SourceSpan stmt_span = stmt.span;
-      log.detail("   stmt[%" PRId64 "] kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64, index,
+      log.msg("stmt[%" PRId64 "] kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64, index,
          int(stmt.kind), children, int(stmt_span.line), int(stmt_span.column), stmt_span.offset);
 
       if (stmt.kind IS AstNodeKind::ExpressionStmt) {
@@ -105,7 +367,7 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
             const ExprNode& expr = *payload->expression;
             size_t expr_children = ast_expression_child_count(expr);
             SourceSpan expr_span = expr.span;
-            log.detail("      expr kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64,
+            log.msg("      expr kind=%d children=%" PRId64 " span=%d:%d offset=%" PRId64,
                int(expr.kind), expr_children, int(expr_span.line), int(expr_span.column), expr_span.offset);
          }
       }
@@ -114,93 +376,201 @@ static void trace_ast_boundary(ParserContext& context, const BlockStmt& chunk, c
    }
 }
 
-static void trace_bytecode_snapshot(ParserContext& context, const char* label)
+//********************************************************************************************************************
+// Extract bytecode info and build operands string - common helper
+
+struct BytecodeInfo {
+   BCOp op;
+   CSTRING op_name;
+   BCMode mode_a, mode_b, mode_c, mode_d;
+   int value_a, value_b, value_c, value_d;
+};
+
+static BytecodeInfo extract_instruction_info(BCIns Ins)
 {
-   pf::Log log("Fluid-Parser");
+   BytecodeInfo info;
+   info.op = bc_op(Ins);
+   info.op_name = (info.op < BC__MAX) ? glBytecodeNames[info.op] : "???";
+   info.mode_a = bcmode_a(info.op);
+   info.mode_b = bcmode_b(info.op);
+   info.mode_c = bcmode_c(info.op);
+   info.mode_d = bcmode_d(info.op);
+   info.value_a = bc_a(Ins);
+   info.value_b = bc_b(Ins);
+   info.value_c = bc_c(Ins);
+   info.value_d = bc_d(Ins);
+   return info;
+}
 
-   if (not context.config().dump_ast_bytecode) return;
+//********************************************************************************************************************
+// Recursively print bytecode for a finalized prototype.
 
-   FuncState& fs = context.func();
-   log.detail("bytecode-%s: count=%u", label, (unsigned)fs.pc);
-   for (BCPos pc = 0; pc < fs.pc; ++pc) {
-      const BCInsLine& line = fs.bcbase[pc];
-      log.detail("   [%04d] op=%03d A=%03d B=%03d C=%03d D=%05d line=%d",
-         (int)pc, (int)bc_op(line.ins), (int)bc_a(line.ins), (int)bc_b(line.ins),
-         (int)bc_c(line.ins), (int)bc_d(line.ins), (int)line.line);
+static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
+{
+   pf::Log log("ByteCode");
+   if (not Proto) return;
+
+   const BCIns *bc_stream = proto_bc(Proto);
+   std::string indent_str(Indent * 2, ' ');
+
+   if (Indent > 0) {
+      log.branch("%s--- Nested function: lines %d-%d, %d bytecodes ---",
+         indent_str.c_str(), int(Proto->firstline),
+         int(Proto->firstline + Proto->numline), int(Proto->sizebc));
+   }
+
+   for (BCPos pc = 0; pc < Proto->sizebc; ++pc) {
+      BCIns instruction = bc_stream[pc];
+      auto info = extract_instruction_info(instruction);
+
+      std::string operands;
+
+      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_value(Proto, info.mode_a, info.value_a, pc));
+
+      if (bcmode_hasd(info.op)) {
+         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_value(Proto, info.mode_d, info.value_d, pc));
+      }
+      else {
+         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_value(Proto, info.mode_b, info.value_b, pc));
+         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, info.mode_c, info.value_c, pc));
+      }
+
+      log.msg("%s[%04d] %-10s %s",
+         indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
+
+      // If this is a FNEW instruction, recursively disassemble the child prototype
+      if (info.op IS BC_FNEW) {
+         const ptrdiff_t index = -(ptrdiff_t)info.value_d - 1;
+         const bool valid = ((uintptr_t)(intptr_t)index >= (uintptr_t)-(intptr_t)Proto->sizekgc);
+
+         if (valid) {
+            GCobj *gc_obj = proto_kgc(Proto, index);
+            if (gc_obj->gch.gct IS (uint8_t)~LJ_TPROTO) {
+               GCproto *child = gco2pt(gc_obj);
+               trace_proto_bytecode(child, Indent + 1);
+            }
+         }
+      }
    }
 }
 
-static void run_ast_pipeline(ParserContext& context, ParserProfiler& profiler)
+//********************************************************************************************************************
+// Print a complete disassembly of bytecode instructions.
+
+static void dump_bytecode(ParserContext &Context)
 {
-   ParserProfiler::StageTimer parse_timer = profiler.stage("parse");
-   AstBuilder builder(context);
+   pf::Log log("ByteCode");
+
+   auto prv = (prvFluid *)Context.lua().Script->ChildPrivate;
+   if ((prv->JitOptions & JOF::DUMP_BYTECODE) IS JOF::NIL) return;
+
+   FuncState &fs = Context.func();
+   log.branch("Instruction Count: %u", (unsigned)fs.pc);
+   for (BCPos pc = 0; pc < fs.pc; ++pc) {
+      const BCInsLine& line = fs.bcbase[pc];
+      auto info = extract_instruction_info(line.ins);
+
+      std::string operands;
+
+      if (info.mode_a != BCMnone) append_operand(operands, "A", describe_operand_from_fs(&fs, info.mode_a, info.value_a, pc));
+
+      if (bcmode_hasd(info.op)) {
+         if (info.mode_d != BCMnone) append_operand(operands, "D", describe_operand_from_fs(&fs, info.mode_d, info.value_d, pc));
+      }
+      else {
+         if (info.mode_b != BCMnone) append_operand(operands, "B", describe_operand_from_fs(&fs, info.mode_b, info.value_b, pc));
+         if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_from_fs(&fs, info.mode_c, info.value_c, pc));
+      }
+
+      log.msg("[%04d] %-10s %s",
+         (int)pc, info.op_name, operands.c_str());
+
+      // If this is a FNEW instruction, look up and print the child prototype
+      if (info.op IS BC_FNEW) {
+         // FNEW uses D operand which stores the constant slot index
+         // Search the hash table to find the proto with this slot number
+         GCtab *kt = fs.kt;
+         Node *node = noderef(kt->node);
+
+         for (uint32_t i = 0; i <= kt->hmask; ++i) {
+            TValue *val = &node[i].val;
+            if (tvhaskslot(val) and tvkslot(val) IS (uint32_t)info.value_d) {
+               TValue *key_tv = &node[i].key;
+               if (tvisproto(key_tv)) {
+                  GCproto *child = protoV(key_tv);
+                  trace_proto_bytecode(child, 1);
+               }
+               break;
+            }
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+// Run the AST-based parsing pipeline.
+
+static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
+{
+   ParserProfiler::StageTimer parse_timer = Profiler.stage("parse");
+   AstBuilder builder(Context);
    auto chunk_result = builder.parse_chunk();
    if (not chunk_result.ok()) {
-      report_pipeline_error(context, chunk_result.error_ref());
-      flush_non_fatal_errors(context);
+      report_pipeline_error(Context, chunk_result.error_ref());
+      flush_non_fatal_errors(Context);
       return;
    }
 
    std::unique_ptr<BlockStmt> chunk = std::move(chunk_result.value_ref());
    parse_timer.stop();
-   trace_ast_boundary(context, *chunk, "parse");
+   trace_ast_boundary(Context, *chunk, "parse");
 
-   ParserProfiler::StageTimer emit_timer = profiler.stage("emit");
-   IrEmitter emitter(context);
+   ParserProfiler::StageTimer emit_timer = Profiler.stage("emit");
+   IrEmitter emitter(Context);
    auto emit_result = emitter.emit_chunk(*chunk);
    if (not emit_result.ok()) {
-      report_pipeline_error(context, emit_result.error_ref());
-      flush_non_fatal_errors(context);
+      report_pipeline_error(Context, emit_result.error_ref());
+      flush_non_fatal_errors(Context);
       return;
    }
 
    emit_timer.stop();
 
-   trace_bytecode_snapshot(context, "ast");
-   flush_non_fatal_errors(context);
+   // Print a complete disassembly of bytecode instructions after AST emission.
+   dump_bytecode(Context);
+
+   flush_non_fatal_errors(Context);
 }
 
-}  // namespace
+//********************************************************************************************************************
 
 static ParserConfig make_parser_config(lua_State &State)
 {
-   pf::Log log("FluidParser");
    ParserConfig config;
 
-   if (State.jit_pipeline) config.enable_ast_pipeline = true;
+   auto prv = (prvFluid *)State.Script->ChildPrivate;
 
-   if (State.jit_trace_boundary) config.trace_ast_boundaries = true;
-
-   if (State.jit_trace_bytecode) config.dump_ast_bytecode = true;
-
-   if (State.jit_profile) {
-      log.msg("JIT parser profiling enabled.");
-      config.profile_stages = true;
-   }
-
-   if (State.jit_diagnose) {
-      log.msg("JIT diagnostic mode enabled.");
+   if ((prv->JitOptions & JOF::DIAGNOSE) != JOF::NIL) {
+      // Cancel aborting on error and enable deeper log tracing.
       config.abort_on_error = false;
       config.max_diagnostics = 32;
-   }
-
-   if (State.jit_trace) {
-      log.msg("JIT trace mode enabled.");
-      config.trace_tokens = true;
-      config.trace_expectations = true;
    }
 
    return config;
 }
 
+//********************************************************************************************************************
 // Entry point of bytecode parser.
 
 extern GCproto * lj_parse(LexState *State)
 {
+   pf::Log log("Parser");
    FuncState fs;
    FuncScope bl;
    GCproto *pt;
    lua_State *L = State->L;
+
+   auto prv = (prvFluid *)L->Script->ChildPrivate;
 
 #ifdef LUAJIT_DISABLE_DEBUGINFO
    State->chunkname = lj_str_newlit(L, "=");
@@ -225,23 +595,22 @@ extern GCproto * lj_parse(LexState *State)
    ParserConfig    session_config = make_parser_config(*L);
 
    ParserSession   root_session(root_context, session_config);
-   ParserProfiler  profiler(root_context.config().profile_stages, &root_context.profiling_result());
+   ParserProfiler  profiler((prv->JitOptions & JOF::PROFILE) != JOF::NIL, &root_context.profiling_result());
 
    State->next(); // Read-ahead first token.
 
-   if (session_config.enable_ast_pipeline) {
+   if ((prv->JitOptions & JOF::LEGACY) IS JOF::NIL) {
       run_ast_pipeline(root_context, profiler);
    }
    else {
-      pf::Log().warning("Using legacy Lua parser; AST pipeline is disabled.");
+      log.msg("Using legacy Lua parser.");
       ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
       State->parse_chunk(root_context);
       legacy_timer.stop();
    }
 
    if (profiler.enabled()) {
-      pf::Log profile_log("Fluid-Parser");
-      profiler.log_results(profile_log);
+      profiler.log_results(log);
    }
 
    if (State->tok != TK_eof) State->err_token(TK_eof);

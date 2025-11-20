@@ -293,7 +293,7 @@ extern lua_State* luaL_newstate(void)
 
 #else
 
-extern lua_State* luaL_newstate(void)
+extern lua_State* luaL_newstate(class objScript *Script)
 {
    lua_State* L;
 #if LJ_64 && !LJ_GC64
@@ -301,6 +301,7 @@ extern lua_State* luaL_newstate(void)
 #else
    L = lua_newstate(LJ_ALLOCF_INTERNAL, nullptr);
 #endif
+   L->Script = Script;
    if (L) G(L)->panic = panic;
    return L;
 }

@@ -1374,6 +1374,10 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 
       // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
       // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
+      //
+      // Note: Hooking into NewObject gives sub-classes an opportunity to detect that they have been targeted by the client
+      // on creation, as opposed to during initialisation.  This can allow ChildPrivate to be configured early on in the 
+      // process, making it possible to set custom fields that would depend on it.
 
       pf::SwitchContext context(head);
 

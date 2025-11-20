@@ -1,8 +1,11 @@
 
 //********************************************************************************************************************
-// Usage: object.field = newvalue
+// Usage: object.fieldName = newvalue
 //
 // Custom key-values can be referenced by using _ as a prefix.
+// The fieldName is case sensitive and the first character is always lower case.
+// Using all caps abbreviations is discouraged when designing class fields, e.g. JITOptions won't work out, but
+// JitOptions is fine.
 
 static int object_newindex(lua_State *Lua)
 {
@@ -13,7 +16,8 @@ static int object_newindex(lua_State *Lua)
             if (keyname[0] IS '_') error = acSetKey(obj, keyname+1, lua_tostring(Lua, 3));
             else {
                auto jt = get_write_table(def);
-               if (auto func = jt->find(obj_write(simple_hash(keyname))); func != jt->end()) {
+               auto hash = simple_hash(keyname); // Case sensitive
+               if (auto func = jt->find(obj_write(hash)); func != jt->end()) {
                   error = func->Call(Lua, obj, func->Field, 3);
                }
                else error = ERR::NoSupport;

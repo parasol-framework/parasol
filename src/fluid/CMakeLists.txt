@@ -5,7 +5,7 @@
 #  Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
 #  Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
 #  Enable ENABLE_UNIT_TESTS to include unit tests for non-release builds.  You will need to run test_unit_tests.fluid with
-#    the --log-xapi option to view any output.
+#    the --log-api option to view any output.
 #
 # GENERATED HEADERS OVERVIEW:
 #
@@ -51,7 +51,12 @@ endif ()
 # IDL processing for headers and documentation
 
 idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
+
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs 
+   OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
+   APPEND_IDL "module_def.cpp"
+   ARGS "output-defs=module_def.cpp"
+   FILES "${MOD}.cpp")
 
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 
@@ -153,7 +158,6 @@ if (MSVC)
    # Expand glob patterns for dependencies (only source headers, not generated ones)
 
    file(GLOB LUAJIT_CORE_SOURCES
-      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
@@ -471,7 +475,7 @@ else ()
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_HOST_CFLAGS}
+      COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${LUAJIT_MATH_LIB}
@@ -527,7 +531,6 @@ else ()
 
    # Expand glob patterns for source files (mirrors MSVC approach)
    file(GLOB LUAJIT_CORE_SOURCES
-      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
       "${LUAJIT_SRC}/lj_*.cpp")
@@ -604,15 +607,6 @@ else ()
    target_compile_definitions(luajit_interface INTERFACE ${LUAJIT_COMMON_DEFS})
 
    add_custom_target(luajit DEPENDS luajit_lib)  # Create an alias for backward compatibility
-
-   # List all source files for dependency tracking (mirrors MSVC LUAJIT_AMALG_SOURCES)
-   file(GLOB LUAJIT_AMALG_SOURCES
-      "${LUAJIT_SRC}/lj_*.cpp"
-      "${LUAJIT_SRC}/lib_*.cpp"
-      "${LUAJIT_SRC}/bytecode/lj_*.cpp"
-      "${LUAJIT_SRC}/debug/lj_*.cpp"
-      "${LUAJIT_SRC}/runtime/lj_*.cpp"
-   )
 endif ()
 
 # Fluid library build
@@ -641,6 +635,10 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/lib/lib_math.cpp"
    "${LUAJIT_SRC}/lib/lib_string.cpp"
    "${LUAJIT_SRC}/lib/lib_table.cpp"
+   "${LUAJIT_SRC}/bytecode/lj_bc.cpp"
+   "${LUAJIT_SRC}/bytecode/lj_bcread.cpp"
+   "${LUAJIT_SRC}/bytecode/lj_bcwrite.cpp"
+   "${LUAJIT_SRC}/parser/lj_debug.cpp"
    "${LUAJIT_SRC}/parser/lj_parse.cpp"
    "${LUAJIT_SRC}/parser/lj_lex.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
@@ -683,7 +681,7 @@ endif ()
 
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
-   bitshift bitwise if_empty presence blank ternary table complex stress unit_tests
+   bitshift bitwise if_empty presence blank ternary table complex stress unit_tests jitoptions
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})
