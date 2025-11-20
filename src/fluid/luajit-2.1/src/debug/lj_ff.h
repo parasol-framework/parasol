@@ -4,9 +4,10 @@
 #pragma once
 
 // Fast function ID.
+
 enum class FastFunc : unsigned int {
-   LUA_ = FF_LUA,   //  Lua function (must be 0).
-   C_ = FF_C,      //  Regular C function (must be 1).
+   LUA_ = FF_LUA,   //  Lua function (must be 0) - see lj_obj.h
+   C_ = FF_C,       //  Regular C function (must be 1) - see lj_obj.h
 #define FFDEF(name)   name,
 #include "lj_ffdef.h"
    _MAX

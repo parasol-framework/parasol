@@ -548,9 +548,9 @@ extern int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
 }
 
 // This function fills parts of a lua_Debug structure with an identification of the activation record of the function
-// executing at a given level. Level 0 is the current running function, whereas level n+1 is the function that has 
-// called level n (except for tail calls, which do not count on the stack). When there are no errors, lua_getstack 
-// returns 1; when called with a level greater than the stack depth, it returns 0. 
+// executing at a given level. Level 0 is the current running function, whereas level n+1 is the function that has
+// called level n (except for tail calls, which do not count on the stack). When there are no errors, lua_getstack
+// returns 1; when called with a level greater than the stack depth, it returns 0.
 
 extern int lua_getstack(lua_State* L, int level, lua_Debug* ar)
 {
