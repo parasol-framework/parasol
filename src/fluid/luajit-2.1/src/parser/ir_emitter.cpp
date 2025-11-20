@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #include "parser/ir_emitter.h"
 
 #include <array>
@@ -334,39 +336,33 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static int predict_next(LexState& lex_state, FuncState& func_state, BCPos pc)
 {
    BCIns ins = func_state.bcbase[pc].ins;
-   GCstr* name = nullptr;
-   cTValue* table_entry = nullptr;
+   GCstr *name = nullptr;
+   cTValue *table_entry = nullptr;
 
    switch (bc_op(ins)) {
-   case BC_MOV:
-      name = gco2str(gcref(var_get(&lex_state, &func_state, bc_d(ins)).name));
-      break;
-   case BC_UGET:
-      name = gco2str(gcref(lex_state.vstack[func_state.uvmap[bc_d(ins)]].name));
-      break;
-   case BC_GGET:
-      table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "pairs"));
-      if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
-         return 1;
-      }
-      table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "next"));
-      if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
-         return 1;
-      }
-      return 0;
-   default:
-      return 0;
+      case BC_MOV:
+         name = gco2str(gcref(var_get(&lex_state, &func_state, bc_d(ins)).name));
+         break;
+      case BC_UGET:
+         name = gco2str(gcref(lex_state.vstack[func_state.uvmap[bc_d(ins)]].name));
+         break;
+      case BC_GGET:
+         table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "pairs"));
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
+            return 1;
+         }
+         table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "next"));
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
+            return 1;
+         }
+         return 0;
+      default:
+         return 0;
    }
 
-   if (not name) {
-      return 0;
-   }
-   if (name->len IS 5 and !strcmp(strdata(name), "pairs")) {
-      return 1;
-   }
-   if (name->len IS 4 and !strcmp(strdata(name), "next")) {
-      return 1;
-   }
+   if (not name) return 0;
+   if (name->len IS 5 and !strcmp(strdata(name), "pairs")) return 1;
+   if (name->len IS 4 and !strcmp(strdata(name), "next")) return 1;
    return 0;
 }
 
@@ -390,21 +386,15 @@ static void duplicate_index_base(FuncState& func_state, ExpDesc& working, const 
 static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 {
    BCReg target = result_reg + 1;
-   if (target < func_state->nactvar) {
-      target = BCReg(func_state->nactvar);
-   }
-   if (func_state->freereg > target) {
-      func_state->freereg = target;
-   }
+   if (target < func_state->nactvar) target = BCReg(func_state->nactvar);
+   if (func_state->freereg > target) func_state->freereg = target;
 }
 
 static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
 {
    if (original.k IS ExpKind::Indexed) {
       uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) {
-         bcreg_free(&func_state, BCReg(orig_aux));
-      }
+      if (is_register_key(orig_aux)) bcreg_free(&func_state, BCReg(orig_aux));
       bcreg_free(&func_state, BCReg(original.u.s.info));
    }
 }
@@ -446,15 +436,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
    ScopeGuard guard(&this->func_state, &scope, flags);
    LocalBindingScope binding_scope(this->binding_table);
    for (const BlockBinding& binding : bindings) {
-      if (binding.symbol) {
-         this->update_local_binding(binding.symbol, binding.slot);
-      }
+      if (binding.symbol) this->update_local_binding(binding.symbol, binding.slot);
    }
    for (const StmtNode& stmt : block.view()) {
       auto status = this->emit_statement(stmt);
-      if (not status.ok()) {
-         return status;
-      }
+      if (not status.ok()) return status;
       this->ensure_register_balance(describe_node_kind(stmt.kind));
    }
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -524,9 +510,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    }
    case AstNodeKind::DoStmt: {
       const auto& payload = std::get<DoStmtPayload>(stmt.data);
-      if (payload.block) {
-         return this->emit_block(*payload.block, FuncScopeFlag::None);
-      }
+      if (payload.block) return this->emit_block(*payload.block, FuncScopeFlag::None);
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
    default:
@@ -536,17 +520,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 
 ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPayload& payload)
 {
-   if (not payload.expression) {
-      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
-   }
+   if (not payload.expression) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+
    auto expression = this->emit_expression(*payload.expression);
-   if (not expression.ok()) {
-      return ParserResult<IrEmitUnit>::failure(expression.error_ref());
-   }
+   if (not expression.ok()) return ParserResult<IrEmitUnit>::failure(expression.error_ref());
+
    ExpDesc value = expression.value_ref();
    expr_toval(&this->func_state, &value);
    release_indexed_original(this->func_state, value);
-    this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -560,9 +542,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
    else {
       BCReg count = 0;
       auto list = this->emit_expression_list(payload.values, count);
-      if (not list.ok()) {
-         return ParserResult<IrEmitUnit>::failure(list.error_ref());
-      }
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
       ExpDesc last = list.value_ref();
       if (count IS 1) {
          if (last.k IS ExpKind::Call) {
@@ -594,9 +575,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
    }
    snapshot_return_regs(&this->func_state, &ins);
    execute_defers(&this->func_state, 0);
-   if (this->func_state.flags & PROTO_CHILD) {
-      bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
-   }
+   if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -605,9 +584,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
 ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
 {
    BCReg nvars = BCReg(payload.names.size());
-   if (nvars IS 0) {
-      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
-   }
+   if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    for (BCReg i = 0; i < nvars; ++i) {
       const Identifier& identifier = payload.names[i];
@@ -617,9 +594,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
    ExpDesc tail;
    BCReg nexps = 0;
-   if (payload.values.empty()) {
-      tail = make_const_expr(ExpKind::Void);
-   }
+   if (payload.values.empty()) tail = make_const_expr(ExpKind::Void);
    else {
       auto list = this->emit_expression_list(payload.values, nexps);
       if (not list.ok()) {
@@ -633,9 +608,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    BCReg base = this->func_state.nactvar - nvars;
    for (BCReg i = 0; i < nvars; ++i) {
       const Identifier& identifier = payload.names[i];
-      if (is_blank_symbol(identifier)) {
-         continue;
-      }
+      if (is_blank_symbol(identifier)) continue;
       this->update_local_binding(identifier.symbol, base + i);
    }
    this->func_state.freereg = this->func_state.nactvar;

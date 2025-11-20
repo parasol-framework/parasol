@@ -234,6 +234,17 @@ function testLoopMultipleDefers()
 
    subject()
    assert(join(order) is 'inner-body-1,inner-1,loop-body-1,outer-1,inner-body-2,inner-2,loop-body-2,outer-2', "Unexpected nested loop defer order: '" .. join(order) .. "'")
+
+   local total = 0
+   local step = 1
+   repeat
+      defer
+         total = total + step
+      end
+      total = total + step
+   until total > 5
+
+   assert(total is 6, "Expected total to be 6 after loop")
 end
 
 function testHandlerError()
