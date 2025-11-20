@@ -215,7 +215,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
             if (eq_pos != std::string::npos) {
                value = args[i].substr(eq_pos + 1);
             }
-            else if (i + 1 < args.size()) {
+            else if (i + 1 < std::ssize(args)) {
                value = args[i + 1];
                i++; // Skip the next argument as it's the value
             }

@@ -1038,7 +1038,7 @@ static int ccall_set_args(lua_State* L, CTState* cts, CType* ct,
       }
       else {
          if (!(ct->info & CTF_VARARG))
-            lj_err_caller(L, LJ_ERR_FFI_NUMARG);  /* Too many arguments. */
+            lj_err_caller(L, ErrMsg::FFI_NUMARG);  /* Too many arguments. */
          did = lj_ccall_ctid_vararg(cts, o);  /* Infer vararg type. */
          isva = 1;
       }
@@ -1078,7 +1078,7 @@ static int ccall_set_args(lua_State* L, CTState* cts, CType* ct,
          }
       if (nsp + n > CCALL_MAXSTACK) {  // Too many arguments.
       err_nyi:
-         lj_err_caller(L, LJ_ERR_FFI_NYICALL);
+         lj_err_caller(L, ErrMsg::FFI_NYICALL);
       }
       dp = &cc->stack[nsp];
       nsp += n;
@@ -1138,7 +1138,7 @@ static int ccall_set_args(lua_State* L, CTState* cts, CType* ct,
       UNUSED(isfp);
 #endif
    }
-   if (fid) lj_err_caller(L, LJ_ERR_FFI_NUMARG);  /* Too few arguments. */
+   if (fid) lj_err_caller(L, ErrMsg::FFI_NUMARG);  /* Too few arguments. */
 
 #if LJ_TARGET_X64 || (LJ_TARGET_PPC && !LJ_ABI_SOFTFP)
    cc->nfpr = nfpr;  /* Required for vararg functions. */

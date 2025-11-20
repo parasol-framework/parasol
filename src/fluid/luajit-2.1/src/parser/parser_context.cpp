@@ -210,7 +210,7 @@ void ParserContext::lex_match(LexToken what, LexToken who, BCLine line)
 
    auto swhat = this->lex_state->token2str(what);
    auto swho = this->lex_state->token2str(who);
-   lj_lex_error(this->lex_state, this->lex_state->tok, LJ_ERR_XMATCH, swhat, swho, line);
+   lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XMATCH, swhat, swho, line);
 }
 
 GCstr* ParserContext::lex_str()
@@ -248,7 +248,7 @@ void ParserContext::err_token(LexToken token)
    diagnostic.message = this->format_lex_error(token);
    diagnostic.token = current;
    this->diag.report(diagnostic);
-   lj_lex_error(this->lex_state, this->lex_state->tok, LJ_ERR_XTOKEN, this->lex_state->token2str(token));
+   lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token));
 }
 
 void ParserContext::report_limit_error(FuncState& func_state, uint32_t limit, const char* what)
@@ -260,10 +260,10 @@ void ParserContext::report_limit_error(FuncState& func_state, uint32_t limit, co
    diagnostic.token = this->tokens().current();
    this->diag.report(diagnostic);
    if (func_state.linedefined IS 0) {
-      lj_lex_error(func_state.ls, 0, LJ_ERR_XLIMM, limit, what);
+      lj_lex_error(func_state.ls, 0, ErrMsg::XLIMM, limit, what);
       return;
    }
-   lj_lex_error(func_state.ls, 0, LJ_ERR_XLIMF, func_state.linedefined, limit, what);
+   lj_lex_error(func_state.ls, 0, ErrMsg::XLIMF, func_state.linedefined, limit, what);
 }
 
 std::string ParserContext::format_expected_message(TokenKind kind) const
@@ -311,7 +311,7 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
    }
 
    if (this->current_config.abort_on_error) {
-      lj_lex_error(this->lex_state, this->lex_state->tok, LJ_ERR_XTOKEN, this->lex_state->token2str(token.raw()));
+      lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token.raw()));
    }
 }
 

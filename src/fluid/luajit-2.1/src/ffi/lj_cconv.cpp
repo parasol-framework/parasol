@@ -29,9 +29,9 @@ LJ_NORET static void cconv_err_conv(CTState* cts, CType* d, CType* s,
    else
       src = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, s), nullptr));
    if (CCF_GETARG(flags))
-      lj_err_argv(cts->L, CCF_GETARG(flags), LJ_ERR_FFI_BADCONV, src, dst);
+      lj_err_argv(cts->L, CCF_GETARG(flags), ErrMsg::FFI_BADCONV, src, dst);
    else
-      lj_err_callerv(cts->L, LJ_ERR_FFI_BADCONV, src, dst);
+      lj_err_callerv(cts->L, ErrMsg::FFI_BADCONV, src, dst);
 }
 
 // Bad conversion from TValue.
@@ -41,16 +41,16 @@ LJ_NORET static void cconv_err_convtv(CTState* cts, CType* d, TValue* o,
    const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), nullptr));
    const char* src = lj_typename(o);
    if (CCF_GETARG(flags))
-      lj_err_argv(cts->L, CCF_GETARG(flags), LJ_ERR_FFI_BADCONV, src, dst);
+      lj_err_argv(cts->L, CCF_GETARG(flags), ErrMsg::FFI_BADCONV, src, dst);
    else
-      lj_err_callerv(cts->L, LJ_ERR_FFI_BADCONV, src, dst);
+      lj_err_callerv(cts->L, ErrMsg::FFI_BADCONV, src, dst);
 }
 
 // Initializer overflow.
 LJ_NORET static void cconv_err_initov(CTState* cts, CType* d)
 {
    const char* dst = strdata(lj_ctype_repr(cts->L, ctype_typeid(cts, d), nullptr));
-   lj_err_callerv(cts->L, LJ_ERR_FFI_INITOV, dst);
+   lj_err_callerv(cts->L, ErrMsg::FFI_INITOV, dst);
 }
 
 // -- C type compatibility checks -----------------------------------------
@@ -463,7 +463,7 @@ int lj_cconv_tv_bf(CTState* cts, CType* s, TValue* o, uint8_t* sp)
    lj_assertCTS(pos < 8 * ctype_bitcsz(info), "bad bitfield position");
    lj_assertCTS(bsz > 0 && bsz <= 8 * ctype_bitcsz(info), "bad bitfield size");
    if (pos + bsz > 8 * ctype_bitcsz(info))
-      lj_err_caller(cts->L, LJ_ERR_FFI_NYIPACKBIT);
+      lj_err_caller(cts->L, ErrMsg::FFI_NYIPACKBIT);
    if (!(info & CTF_BOOL)) {
       CTSize shift = 32 - bsz;
       if (!(info & CTF_UNSIGNED)) {
@@ -704,7 +704,7 @@ void lj_cconv_bf_tv(CTState* cts, CType* d, uint8_t* dp, TValue* o)
    lj_assertCTS(bsz > 0 && bsz <= 8 * ctype_bitcsz(info), "bad bitfield size");
    // Check if a packed bitfield crosses a container boundary.
    if (pos + bsz > 8 * ctype_bitcsz(info))
-      lj_err_caller(cts->L, LJ_ERR_FFI_NYIPACKBIT);
+      lj_err_caller(cts->L, ErrMsg::FFI_NYIPACKBIT);
    mask = ((1u << bsz) - 1u) << pos;
    val = (val << pos) & mask;
    // NYI: packed bitfields may cause misaligned reads/writes.

@@ -146,7 +146,7 @@ LJ_NORET static void cp_errmsg(CPState* cp, CPToken tok, ErrMsg em, ...)
    msg = lj_strfmt_pushvf(L, err2msg(em), argp);
    va_end(argp);
    if (tokstr)
-      msg = lj_strfmt_pushf(L, err2msg(LJ_ERR_XNEAR), msg, tokstr);
+      msg = lj_strfmt_pushf(L, err2msg(ErrMsg::XNEAR), msg, tokstr);
    if (cp->linenumber > 1)
       msg = lj_strfmt_pushf(L, "%s at line %d", msg, cp->linenumber);
    lj_err_callermsg(L, msg);
@@ -154,13 +154,13 @@ LJ_NORET static void cp_errmsg(CPState* cp, CPToken tok, ErrMsg em, ...)
 
 LJ_NORET LJ_NOINLINE static void cp_err_token(CPState* cp, CPToken tok)
 {
-   cp_errmsg(cp, cp->tok, LJ_ERR_XTOKEN, cp_tok2str(cp, tok));
+   cp_errmsg(cp, cp->tok, ErrMsg::XTOKEN, cp_tok2str(cp, tok));
 }
 
 LJ_NORET LJ_NOINLINE static void cp_err_badidx(CPState* cp, CType* ct)
 {
    GCstr* s = lj_ctype_repr(cp->cts->L, ctype_typeid(cp->cts, ct), nullptr);
-   cp_errmsg(cp, 0, LJ_ERR_FFI_BADIDX, strdata(s));
+   cp_errmsg(cp, 0, ErrMsg::FFI_BADIDX, strdata(s));
 }
 
 LJ_NORET LJ_NOINLINE static void cp_err(CPState* cp, ErrMsg em)
@@ -182,7 +182,7 @@ static CPToken cp_number(CPState* cp)
    if (fmt == STRSCAN_INT) cp->val.id = CTID_INT32;
    else if (fmt == STRSCAN_U32) cp->val.id = CTID_UINT32;
    else if (!(cp->mode & CPARSE_MODE_SKIP))
-      cp_errmsg(cp, CTOK_INTEGER, LJ_ERR_XNUMBER);
+      cp_errmsg(cp, CTOK_INTEGER, ErrMsg::XNUMBER);
    cp->val.u32 = (uint32_t)o.i;
    return CTOK_INTEGER;
 }
@@ -204,9 +204,9 @@ static CPToken cp_param(CPState* cp)
    CPChar c = cp_get(cp);
    TValue* o = cp->param;
    if (lj_char_isident(c) || c == '$')  /* Reserve $xyz for future extensions. */
-      cp_errmsg(cp, c, LJ_ERR_XSYNTAX);
+      cp_errmsg(cp, c, ErrMsg::XSYNTAX);
    if (!o || o >= cp->L->top)
-      cp_err(cp, LJ_ERR_FFI_NUMPARAM);
+      cp_err(cp, ErrMsg::FFI_NUMPARAM);
    cp->param = o + 1;
    if (tvisstr(o)) {
       cp->str = strV(o);
@@ -239,11 +239,11 @@ static CPToken cp_string(CPState* cp)
    cp_get(cp);
    while (cp->c != delim) {
       CPChar c = cp->c;
-      if (c == '\0') cp_errmsg(cp, CTOK_EOF, LJ_ERR_XSTR);
+      if (c == '\0') cp_errmsg(cp, CTOK_EOF, ErrMsg::XSTR);
       if (c == '\\') {
          c = cp_get(cp);
          switch (c) {
-         case '\0': cp_errmsg(cp, CTOK_EOF, LJ_ERR_XSTR); break;
+         case '\0': cp_errmsg(cp, CTOK_EOF, ErrMsg::XSTR); break;
          case 'a': c = '\a'; break;
          case 'b': c = '\b'; break;
          case 'f': c = '\f'; break;
@@ -479,7 +479,7 @@ static void cp_expr_sizeof(CPState* cp, CPValue* k, int wantsz)
       if (sz != CTSIZE_INVALID)
          k->u32 = sz;
       else if (k->id != CTID_A_CCHAR)  /* Special case for sizeof("string"). */
-         cp_err(cp, LJ_ERR_FFI_INVSIZE);
+         cp_err(cp, ErrMsg::FFI_INVSIZE);
    }
    else {
       k->u32 = 1u << ctype_align(info);
@@ -560,7 +560,7 @@ static void cp_expr_prefix(CPState* cp, CPValue* k)
    }
    else {
    err_expr:
-      cp_errmsg(cp, cp->tok, LJ_ERR_XSYMBOL);
+      cp_errmsg(cp, cp->tok, ErrMsg::XSYMBOL);
    }
 }
 
@@ -596,7 +596,7 @@ static void cp_expr_postfix(CPState* cp, CPValue* k)
             !(fct = lj_ctype_getfield(cp->cts, ct, cp->str, &ofs)) ||
             ctype_isbitfield(fct->info)) {
             GCstr* s = lj_ctype_repr(cp->cts->L, ctype_typeid(cp->cts, ct), nullptr);
-            cp_errmsg(cp, 0, LJ_ERR_FFI_BADMEMBER, strdata(s), strdata(cp->str));
+            cp_errmsg(cp, 0, ErrMsg::FFI_BADMEMBER, strdata(s), strdata(cp->str));
          }
          ct = fct;
          k->u32 = ctype_isconstval(ct->info) ? ct->size : 0;
@@ -736,7 +736,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
             if (k2.id > k->id) k->id = k2.id;  /* Trivial promotion to unsigned. */
             if (k2.u32 == 0 ||
                (k->id == CTID_INT32 && k->u32 == 0x80000000u && k2.i32 == -1))
-               cp_err(cp, LJ_ERR_BADVAL);
+               cp_err(cp, ErrMsg::BADVAL);
             if (k->id == CTID_INT32)
                k->i32 = k->i32 / k2.i32;
             else
@@ -748,7 +748,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
             if (k2.id > k->id) k->id = k2.id;  /* Trivial promotion to unsigned. */
             if (k2.u32 == 0 ||
                (k->id == CTID_INT32 && k->u32 == 0x80000000u && k2.i32 == -1))
-               cp_err(cp, LJ_ERR_BADVAL);
+               cp_err(cp, ErrMsg::BADVAL);
             if (k->id == CTID_INT32)
                k->i32 = k->i32 % k2.i32;
             else
@@ -764,7 +764,7 @@ static void cp_expr_infix(CPState* cp, CPValue* k, int pri)
 // Parse and evaluate unary expression.
 static void cp_expr_unary(CPState* cp, CPValue* k)
 {
-   if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, LJ_ERR_XLEVELS);
+   if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, ErrMsg::XLEVELS);
    cp_expr_prefix(cp, k);
    cp_expr_postfix(cp, k);
    cp->depth--;
@@ -783,7 +783,7 @@ static void cp_expr_kint(CPState* cp, CPValue* k)
    CType* ct;
    cp_expr_sub(cp, k, 0);
    ct = ctype_raw(cp->cts, k->id);
-   if (!ctype_isinteger(ct->info)) cp_err(cp, LJ_ERR_BADVAL);
+   if (!ctype_isinteger(ct->info)) cp_err(cp, ErrMsg::BADVAL);
 }
 
 // Parse (non-negative) size expression.
@@ -791,7 +791,7 @@ static CTSize cp_expr_ksize(CPState* cp)
 {
    CPValue k;
    cp_expr_kint(cp, &k);
-   if (k.u32 >= 0x80000000u) cp_err(cp, LJ_ERR_FFI_INVSIZE);
+   if (k.u32 >= 0x80000000u) cp_err(cp, ErrMsg::FFI_INVSIZE);
    return k.u32;
 }
 
@@ -801,7 +801,7 @@ static CTSize cp_expr_ksize(CPState* cp)
 static CPDeclIdx cp_add(CPDecl* decl, CTInfo info, CTSize size)
 {
    CPDeclIdx top = decl->top;
-   if (top >= CPARSE_MAX_DECLSTACK) cp_err(decl->cp, LJ_ERR_XLEVELS);
+   if (top >= CPARSE_MAX_DECLSTACK) cp_err(decl->cp, ErrMsg::XLEVELS);
    decl->stack[top].info = info;
    decl->stack[top].size = size;
    decl->stack[top].sib = 0;
@@ -909,7 +909,7 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
             CType* refct = ctype_raw(cp->cts, id);
             // Reject function or refarray return types.
             if (ctype_isfunc(refct->info) || ctype_isrefarray(refct->info))
-               cp_err(cp, LJ_ERR_FFI_INVTYPE);
+               cp_err(cp, ErrMsg::FFI_INVTYPE);
          }
          // No intervening attributes allowed, skip forward.
          while (idx) {
@@ -963,7 +963,7 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
          else if (ctype_isptr(info)) {
             // Reject pointer/ref to ref.
             if (id && ctype_isref(ctype_raw(cp->cts, id)->info))
-               cp_err(cp, LJ_ERR_FFI_INVTYPE);
+               cp_err(cp, ErrMsg::FFI_INVTYPE);
             if (ctype_isref(info)) {
                info &= ~CTF_VOLATILE;  /* Refs are always const, never volatile. */
                // No intervening attributes allowed, skip forward.
@@ -977,14 +977,14 @@ static CTypeID cp_decl_intern(CPState* cp, CPDecl* decl)
          else if (ctype_isarray(info)) {  // Check for valid array size etc.
             if (ct->sib == 0) {  // Only check/size arrays not copied by unroll.
                if (ctype_isref(cinfo))  /* Reject arrays of refs. */
-                  cp_err(cp, LJ_ERR_FFI_INVTYPE);
+                  cp_err(cp, ErrMsg::FFI_INVTYPE);
                // Reject VLS or unknown-sized types.
                if (ctype_isvltype(cinfo) || csize == CTSIZE_INVALID)
-                  cp_err(cp, LJ_ERR_FFI_INVSIZE);
+                  cp_err(cp, ErrMsg::FFI_INVSIZE);
                // a[] and a[?] keep their invalid size.
                if (size != CTSIZE_INVALID) {
                   uint64_t xsz = (uint64_t)size * csize;
-                  if (xsz >= 0x80000000u) cp_err(cp, LJ_ERR_FFI_INVSIZE);
+                  if (xsz >= 0x80000000u) cp_err(cp, ErrMsg::FFI_INVSIZE);
                   size = (CTSize)xsz;
                }
             }
@@ -1033,7 +1033,7 @@ static CTypeID cp_decl_constinit(CPState* cp, CType** ctp, CTypeID ctypeid)
    info = ctt->info;
    size = ctt->size;
    if (!ctype_isinteger(info) || !(info & CTF_CONST) || size > 4)
-      cp_err(cp, LJ_ERR_FFI_INVTYPE);
+      cp_err(cp, ErrMsg::FFI_INVTYPE);
    cp_check(cp, '=');
    cp_expr_sub(cp, &k, 0);
    constid = lj_ctype_new(cp->cts, ctp);
@@ -1274,11 +1274,11 @@ static CTypeID cp_struct_name(CPState* cp, CPDecl* sdecl, CTInfo info)
          sid = cp->val.id;
          ct = cp->ct;
          if ((ct->info ^ info) & (CTMASK_NUM | CTF_UNION))  /* Wrong type. */
-            cp_errmsg(cp, 0, LJ_ERR_FFI_REDEF, strdata(gco2str(gcref(ct->name))));
+            cp_errmsg(cp, 0, ErrMsg::FFI_REDEF, strdata(gco2str(gcref(ct->name))));
       }
       else {  // Create named, incomplete struct/union/enum.
          if ((cp->mode & CPARSE_MODE_NOIMPLICIT))
-            cp_errmsg(cp, 0, LJ_ERR_FFI_BADTAG, strdata(cp->str));
+            cp_errmsg(cp, 0, ErrMsg::FFI_BADTAG, strdata(cp->str));
          sid = lj_ctype_new(cp->cts, &ct);
          ct->info = info;
          ct->size = CTSIZE_INVALID;
@@ -1294,7 +1294,7 @@ static CTypeID cp_struct_name(CPState* cp, CPDecl* sdecl, CTInfo info)
    }
    if (cp->tok == '{') {
       if (ct->size != CTSIZE_INVALID || ct->sib)
-         cp_errmsg(cp, 0, LJ_ERR_FFI_REDEF, strdata(gco2str(gcref(ct->name))));
+         cp_errmsg(cp, 0, ErrMsg::FFI_REDEF, strdata(gco2str(gcref(ct->name))));
       ct->sib = 1;  /* Indicate the type is currently being defined. */
    }
    return sid;
@@ -1345,7 +1345,7 @@ static void cp_struct_layout(CPState* cp, CTypeID sid, CTInfo sattr)
          if (sz >= 0x20000000u || bofs + csz < bofs || (info & CTF_VLA)) {
             if (!(sz == CTSIZE_INVALID && ctype_isarray(info) &&
                !(sinfo & CTF_UNION)))
-               cp_err(cp, LJ_ERR_FFI_INVSIZE);
+               cp_err(cp, ErrMsg::FFI_INVSIZE);
             csz = sz = 0;  /* Treat a[] and a[?] as zero-sized. */
          }
          align = cp_field_align(cp, ct, info);
@@ -1461,7 +1461,7 @@ static CTypeID cp_decl_struct(CPState* cp, CPDecl* sdecl, CTInfo sinfo)
                   if (!ctype_isinteger_or_bool(tct->info) ||
                      (bsz == 0 && decl.name) || 8 * tct->size > CTBSZ_MAX ||
                      bsz > ((tct->info & CTF_BOOL) ? 1 : 8 * tct->size))
-                     cp_errmsg(cp, ':', LJ_ERR_BADVAL);
+                     cp_errmsg(cp, ':', ErrMsg::BADVAL);
                }
 
                // Create temporary field for layout phase.
@@ -1500,7 +1500,7 @@ static CTypeID cp_decl_enum(CPState* cp, CPDecl* sdecl)
       do {
          GCstr* name = cp->str;
          if (cp->tok != CTOK_IDENT) cp_err_token(cp, CTOK_IDENT);
-         if (cp->val.id) cp_errmsg(cp, 0, LJ_ERR_FFI_REDEF, strdata(name));
+         if (cp->val.id) cp_errmsg(cp, 0, ErrMsg::FFI_REDEF, strdata(name));
          cp_next(cp);
          if (cp_opt(cp, '=')) {
             cp_expr_kint(cp, &k);
@@ -1568,7 +1568,7 @@ static CPscl cp_decl_spec(CPState* cp, CPDecl* decl, CPscl scl)
          cbit = (1u << (cp->tok - CTOK_FIRSTDECL));
          cds = cds | cbit | ((cbit & cds & CDF_LONG) << 1);
          if (cp->tok >= CTOK_FIRSTSCL) {
-            if (!(scl & cbit)) cp_errmsg(cp, cp->tok, LJ_ERR_FFI_BADSCL);
+            if (!(scl & cbit)) cp_errmsg(cp, cp->tok, ErrMsg::FFI_BADSCL);
          }
          else if (tdef) {
             goto end_decl;
@@ -1622,7 +1622,7 @@ end_decl:
       CTInfo info = CTINFO(CT_NUM, (cds & CDF_UNSIGNED) ? CTF_UNSIGNED : 0);
       if ((cds & CDF_BOOL)) {
          if ((cds & ~(CDF_SCL | CDF_BOOL | CDF_INT | CDF_SIGNED | CDF_UNSIGNED)))
-            cp_errmsg(cp, 0, LJ_ERR_FFI_INVTYPE);
+            cp_errmsg(cp, 0, ErrMsg::FFI_INVTYPE);
          info |= CTF_BOOL;
          if (!(cds & CDF_SIGNED)) info |= CTF_UNSIGNED;
          if (!sz) {
@@ -1649,7 +1649,7 @@ end_decl:
       }
       else if (!sz) {
          if (!(cds & (CDF_SIGNED | CDF_UNSIGNED)))
-            cp_errmsg(cp, cp->tok, LJ_ERR_FFI_DECLSPEC);
+            cp_errmsg(cp, cp->tok, ErrMsg::FFI_DECLSPEC);
          sz = sizeof(int);
       }
       lj_assertCP(sz != 0, "basic ctype with zero size");
@@ -1741,7 +1741,7 @@ static void cp_decl_func(CPState* cp, CPDecl* fdecl)
 // Parse declarator.
 static void cp_declarator(CPState* cp, CPDecl* decl)
 {
-   if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, LJ_ERR_XLEVELS);
+   if (++cp->depth > CPARSE_MAX_DECLDEPTH) cp_err(cp, ErrMsg::XLEVELS);
 
    for (;;) {  // Head of declarator.
       if (cp_opt(cp, '*')) {  // Pointer.
@@ -1841,7 +1841,7 @@ static void cp_pragma(CPState* cp, BCLine pragmaline)
             if (cp->curpack > 0) cp->curpack--;
          }
          else {
-            cp_errmsg(cp, cp->tok, LJ_ERR_XSYMBOL);
+            cp_errmsg(cp, cp->tok, ErrMsg::XSYMBOL);
          }
          cp_next(cp);
          if (!cp_opt(cp, ',')) goto end_pack;
@@ -1900,7 +1900,7 @@ static void cp_decl_multi(CPState* cp)
             continue;
          }
          else {
-            cp_errmsg(cp, cp->tok, LJ_ERR_XSYMBOL);
+            cp_errmsg(cp, cp->tok, ErrMsg::XSYMBOL);
          }
       }
       scl = cp_decl_spec(cp, &decl, CDF_TYPEDEF | CDF_EXTERN | CDF_STATIC);
@@ -1984,7 +1984,7 @@ static TValue* cpcparser(lua_State* L, lua_CFunction dummy, void* ud)
    else
       cp_decl_single(cp);
    if (cp->param && cp->param != cp->L->top)
-      cp_err(cp, LJ_ERR_FFI_NUMPARAM);
+      cp_err(cp, ErrMsg::FFI_NUMPARAM);
    lj_assertCP(cp->depth == 0, "unbalanced cparser declaration depth");
    return nullptr;
 }

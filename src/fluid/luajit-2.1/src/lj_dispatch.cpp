@@ -106,7 +106,7 @@ void lj_dispatch_update(global_State* g)
    uint8_t mode = 0;
 #if LJ_HASJIT
    mode |= (G2J(g)->flags & JIT_F_ON) ? DISPMODE_JIT : 0;
-   mode |= G2J(g)->state != LJ_TRACE_IDLE ?
+   mode |= G2J(g)->state != TraceState::IDLE ?
       (DISPMODE_REC | DISPMODE_INS | DISPMODE_CALL) : 0;
 #endif
 #if LJ_HASPROFILE
@@ -252,7 +252,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    lj_trace_abort(g);  //  Abort recording on any state change.
    // Avoid pulling the rug from under our own feet.
    if ((g->hookmask & HOOK_GC))
-      lj_err_caller(L, LJ_ERR_NOGCMM);
+      lj_err_caller(L, ErrMsg::NOGCMM);
    switch (mm) {
 #if LJ_HASJIT
    case LUAJIT_MODE_ENGINE:
@@ -413,7 +413,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
 #if LJ_HASJIT
    {
       jit_State* J = G2J(g);
-      if (J->state != LJ_TRACE_IDLE) {
+      if (J->state != TraceState::IDLE) {
 #ifdef LUA_USE_ASSERT
          ptrdiff_t delta = L->top - L->base;
 #endif
@@ -485,7 +485,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
          "unbalanced stack after hot call");
       goto out;
    }
-   else if (J->state != LJ_TRACE_IDLE &&
+   else if (J->state != TraceState::IDLE &&
       !(g->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
 #ifdef LUA_USE_ASSERT
       ptrdiff_t delta = L->top - L->base;
@@ -511,7 +511,7 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
    op = bc_op(pc[-1]);  //  Get FUNC* op.
 #if LJ_HASJIT
    // Use the non-hotcounting variants if JIT is off or while recording.
-   if ((!(J->flags & JIT_F_ON) or J->state != LJ_TRACE_IDLE) &&
+   if ((!(J->flags & JIT_F_ON) or J->state != TraceState::IDLE) &&
       (op == BC_FUNCF or op == BC_FUNCV))
       op = (BCOp)((int)op + (int)BC_IFUNCF - (int)BC_FUNCF);
 #endif

@@ -173,7 +173,7 @@ static void mcode_protect(jit_State* J, int prot)
    lua_CFunction panic = J2G(J)->panic;
    if (panic) {
       lua_State* L = J->L;
-      setstrV(L, L->top++, lj_err_str(L, LJ_ERR_JITPROT));
+      setstrV(L, L->top++, lj_err_str(L, ErrMsg::JITPROT));
       panic(L);
    }
    exit(EXIT_FAILURE);

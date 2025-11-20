@@ -10,7 +10,7 @@ static void bcreg_bump(FuncState* fs, BCReg n)
 {
    BCReg sz = fs->freereg + n;
    if (sz > fs->framesize) {
-      if (sz >= LJ_MAX_SLOTS) fs->ls->err_syntax(LJ_ERR_XSLOTS);
+      if (sz >= LJ_MAX_SLOTS) fs->ls->err_syntax(ErrMsg::XSLOTS);
       fs->framesize = uint8_t(sz);
    }
 }
@@ -88,7 +88,7 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
    else if (e->k == ExpKind::Global) {
       // Check if trying to read blank identifier.
       if (is_blank_identifier(e->u.sval)) {
-         lj_lex_error(fs->ls, fs->ls->tok, LJ_ERR_XNEAR,
+         lj_lex_error(fs->ls, fs->ls->tok, ErrMsg::XNEAR,
             "cannot read blank identifier");
       }
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));

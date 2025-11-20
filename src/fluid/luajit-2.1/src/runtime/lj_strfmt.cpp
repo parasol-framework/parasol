@@ -396,13 +396,13 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
          lj_buf_putmem(sb, fs.str, fs.len);
       }
       else if (sf == STRFMT_ERR) {
-         lj_err_callerv(L, LJ_ERR_STRFMT,
+         lj_err_callerv(L, ErrMsg::STRFMT,
             strdata(lj_str_new(L, fs.str, fs.len)));
       }
       else {
          TValue* o = &L->base[arg++];
          if (arg > narg)
-            lj_err_arg(L, arg, LJ_ERR_NOVAL);
+            lj_err_arg(L, arg, ErrMsg::NOVAL);
          switch (STRFMT_TYPE(sf)) {
          case STRFMT_INT:
             if (tvisint(o)) {
@@ -467,7 +467,7 @@ int lj_strfmt_putarg(lua_State* L, SBuf* sb, int arg, int retry)
             }
             else if (tvisbuf(o)) {
                SBufExt* sbx = bufV(o);
-               if (sbx == (SBufExt*)sb) lj_err_arg(L, arg + 1, LJ_ERR_BUFFER_SELF);
+               if (sbx == (SBufExt*)sb) lj_err_arg(L, arg + 1, ErrMsg::BUFFER_SELF);
                len = sbufxlen(sbx);
                s = sbx->r;
 #endif

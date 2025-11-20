@@ -149,7 +149,7 @@ collect_attrib:
       if (ctype_ispointer(ct->info)) {
          CTSize sz = lj_ctype_size(cts, ctype_cid(ct->info));  /* Element size. */
          if (sz == CTSIZE_INVALID)
-            lj_err_caller(cts->L, LJ_ERR_FFI_INVSIZE);
+            lj_err_caller(cts->L, ErrMsg::FFI_INVSIZE);
          if (ctype_isptr(ct->info)) {
             p = (uint8_t*)cdata_getptr(p, ct->size);
          }
@@ -310,7 +310,7 @@ void lj_cdata_set(CTState* cts, CType* d, uint8_t* dp, TValue* o, CTInfo qual)
 
    if (((d->info | qual) & CTF_CONST)) {
    err_const:
-      lj_err_caller(cts->L, LJ_ERR_FFI_WRCONST);
+      lj_err_caller(cts->L, ErrMsg::FFI_WRCONST);
    }
 
    lj_cconv_ct_tv(cts, d, dp, o, 0);

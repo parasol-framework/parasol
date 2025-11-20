@@ -265,10 +265,10 @@ static int lj_carith_meta(lua_State* L, CTState* cts, CDArith* ca, MMS mm)
          }
       }
       if ((isenum ^ isstr) == 1)
-         lj_err_callerv(L, LJ_ERR_FFI_BADCONV, repr[isstr], repr[isenum]);
-      lj_err_callerv(L, mm == MM_len ? LJ_ERR_FFI_BADLEN :
-         mm == MM_concat ? LJ_ERR_FFI_BADCONCAT :
-         mm < MM_add ? LJ_ERR_FFI_BADCOMP : LJ_ERR_FFI_BADARITH,
+         lj_err_callerv(L, ErrMsg::FFI_BADCONV, repr[isstr], repr[isenum]);
+      lj_err_callerv(L, mm == MM_len ? ErrMsg::FFI_BADLEN :
+         mm == MM_concat ? ErrMsg::FFI_BADCONCAT :
+         mm < MM_add ? ErrMsg::FFI_BADCOMP : ErrMsg::FFI_BADARITH,
          repr[0], repr[1]);
    }
    return lj_meta_tailcall(L, tv);

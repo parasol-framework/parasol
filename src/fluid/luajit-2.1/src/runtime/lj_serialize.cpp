@@ -142,7 +142,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
             }
          }
          else if (!tvisfalse(o)) {
-            lj_err_caller(L, LJ_ERR_BUFFER_BADOPT);
+            lj_err_caller(L, ErrMsg::BUFFER_BADOPT);
          }
       }
    }
@@ -163,7 +163,7 @@ void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
             }
          }
          else if (!tvisfalse(o)) {
-            lj_err_caller(L, LJ_ERR_BUFFER_BADOPT);
+            lj_err_caller(L, ErrMsg::BUFFER_BADOPT);
          }
       }
    }
@@ -198,7 +198,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
    else if (tvistab(o)) {
       const GCtab* t = tabV(o);
       uint32_t narray = 0, nhash = 0, one = 2;
-      if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_DEPTH);
+      if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DEPTH);
       sbx->depth--;
       if (t->asize > 0) {  // Determine max. length of array part.
          ptrdiff_t i;
@@ -348,7 +348,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
 #if LJ_HASFFI
       badenc :
 #endif
-      lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADENC, lj_typename(o));
+      lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADENC, lj_typename(o));
    }
    return w;
 }
@@ -390,12 +390,12 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       if (dict_str and idx < dict_str->asize and tvisstr(arrayslot(dict_str, idx)))
          copyTV(sbufL(sbx), o, arrayslot(dict_str, idx));
       else
-         lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADDICTX, idx);
+         lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
    }
    else if (tp >= SER_TAG_TAB and tp <= SER_TAG_DICT_MT) {
       uint32_t narray = 0, nhash = 0;
       GCtab* t, * mt = nullptr;
-      if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_DEPTH);
+      if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DEPTH);
       sbx->depth--;
       if (tp == SER_TAG_DICT_MT) {
          GCtab* dict_mt;
@@ -406,7 +406,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          if (dict_mt and idx < dict_mt->asize and tvistab(arrayslot(dict_mt, idx)))
             mt = tabV(arrayslot(dict_mt, idx));
          else
-            lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADDICTX, idx);
+            lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
          r = serialize_ru124(r, w, &tp); if (LJ_UNLIKELY(!r)) goto eob;
          if (!(tp >= SER_TAG_TAB and tp < SER_TAG_DICT_MT)) goto badtag;
       }
@@ -431,7 +431,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
             r = serialize_get(r, sbx, &k);
             v = lj_tab_set(sbufL(sbx), t, &k);
             if (LJ_UNLIKELY(!tvisnil(v)))
-               lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_DUPKEY);
+               lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DUPKEY);
             r = serialize_get(r, sbx, v);
          } while (--nhash);
       }
@@ -483,11 +483,11 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
    }
    else {
    badtag:
-      lj_err_callerv(sbufL(sbx), LJ_ERR_BUFFER_BADDEC, tp);
+      lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDEC, tp);
    }
    return r;
 eob:
-   lj_err_caller(sbufL(sbx), LJ_ERR_BUFFER_EOB);
+   lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_EOB);
    return nullptr;
 }
 
@@ -530,7 +530,7 @@ void lj_serialize_decode(lua_State* L, TValue* o, GCstr* str)
    // No need to set sbx.cowref here.
    sbx.depth = LJ_SERIALIZE_DEPTH;
    r = serialize_get(sbx.r, &sbx, o);
-   if (r != sbx.w) lj_err_caller(L, LJ_ERR_BUFFER_LEFTOV);
+   if (r != sbx.w) lj_err_caller(L, ErrMsg::BUFFER_LEFTOV);
 }
 
 #if LJ_HASJIT

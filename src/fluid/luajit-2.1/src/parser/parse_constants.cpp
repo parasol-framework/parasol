@@ -193,7 +193,7 @@ void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
    BCPos offset = Destination - (Position + 1) + BCBIAS_J;
    lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D)
-      func_state->ls->err_syntax(LJ_ERR_XJUMP);
+      func_state->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
 

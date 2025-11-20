@@ -306,7 +306,7 @@ void lj_record_stop(jit_State* J, TraceLink linktype, TraceNo lnk)
       lj_trace_err(J, LJ_TRERR_RETRY);
 #endif
    lj_trace_end(J);
-   J->cur.linktype = (uint8_t)linktype;
+   J->cur.linktype = linktype;
    J->cur.link = (uint16_t)lnk;
    // Looping back at the same stack level?
    if (lnk == J->cur.traceno && J->framedepth + J->retdepth == 0) {
@@ -630,7 +630,7 @@ static void rec_loop_interp(jit_State* J, const BCIns* pc, LoopEvent ev)
          // Same loop?
          if (ev == LOOPEV_LEAVE)  //  Must loop back to form a root trace.
             lj_trace_err(J, LJ_TRERR_LLEAVE);
-         lj_record_stop(J, LJ_TRLINK_LOOP, J->cur.traceno);  //  Looping trace.
+         lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);  //  Looping trace.
       }
       else if (ev != LOOPEV_LEAVE) {  // Entering inner loop?
          /* It's usually better to abort here and wait until the inner loop
@@ -664,9 +664,9 @@ static void rec_loop_jit(jit_State* J, TraceNo lnk, LoopEvent ev)
    else if (ev != LOOPEV_LEAVE) {  // Side trace enters a compiled loop.
       J->instunroll = 0;  //  Cannot continue across a compiled loop op.
       if (J->pc == J->startpc && J->framedepth + J->retdepth == 0)
-         lj_record_stop(J, LJ_TRLINK_LOOP, J->cur.traceno);  //  Form extra loop.
+         lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);  //  Form extra loop.
       else
-         lj_record_stop(J, LJ_TRLINK_ROOT, lnk);  //  Link to the loop.
+         lj_record_stop(J, TraceLink::ROOT, lnk);  //  Link to the loop.
    }  // Side trace continues across a loop that's left or not entered.
 }
 
@@ -688,7 +688,7 @@ static LoopEvent rec_itern(jit_State* J, BCReg ra, BCReg rb)
          (J->cur.nins == REF_FIRST + 1 && J->cur.ir[REF_FIRST].o != IR_PROF)) &&
       J->framedepth + J->retdepth == 0 && J->parent == 0 && J->exitno == 0) {
       J->instunroll = 0;  //  Cannot continue unrolling across an ITERN.
-      lj_record_stop(J, LJ_TRLINK_LOOP, J->cur.traceno);  //  Looping trace.
+      lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);  //  Looping trace.
       return LOOPEV_ENTER;
    }
    J->maxslot = ra;
@@ -897,7 +897,7 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
       for (i = 0; i < (ptrdiff_t)rbase; i++)
          J->base[i] = 0;  //  Purge dead slots.
       J->maxslot = rbase + (BCReg)gotresults;
-      lj_record_stop(J, LJ_TRLINK_RETURN, 0);  //  Return to interpreter.
+      lj_record_stop(J, TraceLink::RETURN, 0);  //  Return to interpreter.
       return;
    }
    if (frame_isvarg(frame)) {
@@ -921,7 +921,7 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
          if (check_downrec_unroll(J, pt)) {
             J->maxslot = (BCReg)(rbase + gotresults);
             lj_snap_purge(J);
-            lj_record_stop(J, LJ_TRLINK_DOWNREC, J->cur.traceno);  //  Down-rec.
+            lj_record_stop(J, TraceLink::DOWNREC, J->cur.traceno);  //  Down-rec.
             return;
          }
          lj_snap_add(J);
@@ -1831,9 +1831,9 @@ static void check_call_unroll(jit_State* J, TraceNo lnk)
       if (count + J->tailcalled > J->param[JIT_P_recunroll]) {
          J->pc++;
          if (J->framedepth + J->retdepth == 0)
-            lj_record_stop(J, LJ_TRLINK_TAILREC, J->cur.traceno);  //  Tail-rec.
+            lj_record_stop(J, TraceLink::TAILREC, J->cur.traceno);  //  Tail-rec.
          else
-            lj_record_stop(J, LJ_TRLINK_UPREC, J->cur.traceno);  //  Up-recursion.
+            lj_record_stop(J, TraceLink::UPREC, J->cur.traceno);  //  Up-recursion.
       }
    }
    else {
@@ -1901,7 +1901,7 @@ static void rec_func_jit(jit_State* J, TraceNo lnk)
    GCtrace* T;
    rec_func_setup(J);
    T = traceref(J, lnk);
-   if (T->linktype == LJ_TRLINK_RETURN) {  // Trace returns to interpreter?
+   if (T->linktype == TraceLink::RETURN) {  // Trace returns to interpreter?
       check_call_unroll(J, lnk);
       // Temporarily unpatch JFUNC* to continue recording across function.
       J->patchins = *J->pc;
@@ -1911,9 +1911,9 @@ static void rec_func_jit(jit_State* J, TraceNo lnk)
    }
    J->instunroll = 0;  //  Cannot continue across a compiled function.
    if (J->pc == J->startpc && J->framedepth + J->retdepth == 0)
-      lj_record_stop(J, LJ_TRLINK_TAILREC, J->cur.traceno);  //  Extra tail-rec.
+      lj_record_stop(J, TraceLink::TAILREC, J->cur.traceno);  //  Extra tail-rec.
    else
-      lj_record_stop(J, LJ_TRLINK_ROOT, lnk);  //  Link to the function.
+      lj_record_stop(J, TraceLink::ROOT, lnk);  //  Link to the function.
 }
 
 // -- Vararg handling -----------------------------------------------------
@@ -2564,7 +2564,7 @@ void lj_record_ins(jit_State* J)
       lj_assertJ(bc_op(pc[(ptrdiff_t)rc - BCBIAS_J]) == BC_JFORL,
          "JFORI does not point to JFORL");
       if (rec_for(J, pc, 0) != LOOPEV_LEAVE)  //  Link to existing loop.
-         lj_record_stop(J, LJ_TRLINK_ROOT, bc_d(pc[(ptrdiff_t)rc - BCBIAS_J]));
+         lj_record_stop(J, TraceLink::ROOT, bc_d(pc[(ptrdiff_t)rc - BCBIAS_J]));
       // Continue tracing if the loop is not entered.
       break;
 
@@ -2695,7 +2695,7 @@ static const BCIns* rec_setup_root(jit_State* J)
       J->maxslot = ra;
       J->bc_extent = (MSize)(-bc_j(pc[1])) * sizeof(BCIns);
       J->bc_min = pc + 2 + bc_j(pc[1]);
-      J->state = LJ_TRACE_RECORD_1ST;  //  Record the first ITERN, too.
+      J->state = TraceState::RECORD_1ST;  //  Record the first ITERN, too.
       break;
    case BC_LOOP:
       // Only check BC range for real loops, but not for "repeat until true".
@@ -2802,7 +2802,7 @@ void lj_record_setup(jit_State* J)
             if (bc_op(startins) == BC_ITERN)
                rec_itern(J, bc_a(startins), bc_b(startins));
          }
-         lj_record_stop(J, LJ_TRLINK_INTERP, 0);
+         lj_record_stop(J, TraceLink::INTERP, 0);
       }
    }
    else {  // Root trace.

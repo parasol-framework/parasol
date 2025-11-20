@@ -54,7 +54,7 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    start--;
    n = stop - start;
    if ((uint32_t)n > LUAI_MAXCSTACK)
-      lj_err_caller(L, LJ_ERR_STRSLC);
+      lj_err_caller(L, ErrMsg::STRSLC);
    lj_state_checkstack(L, (MSize)n);
    p = (const unsigned char*)strdata(s) + start;
    for (i = 0; i < n; i++)
@@ -69,7 +69,7 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
    for (i = 1; i <= nargs; i++) {
       int32_t k = lj_lib_checkint(L, i);
       if (!checku8(k))
-         lj_err_arg(L, i, LJ_ERR_BADVAL);
+         lj_err_arg(L, i, ErrMsg::BADVAL);
       buf[i - 1] = (char)k;
    }
    setstrV(L, L->base - 1 - LJ_FR2, lj_str_new(L, buf, (size_t)nargs));
@@ -116,7 +116,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
 LJLIB_CF(string_alloc)
 {
    int32_t size = lj_lib_checkint(L, 1);
-   if (size < 0) lj_err_arg(L, 1, LJ_ERR_NUMRNG);
+   if (size < 0) lj_err_arg(L, 1, ErrMsg::NUMRNG);
    SBuf* sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
    lj_buf_need(sb, (MSize)size);
@@ -513,7 +513,7 @@ LJLIB_CF(string_dump)
    SBuf* sb = lj_buf_tmp_(L);  //  Assumes lj_bcwrite() doesn't use tmpbuf.
    L->top = L->base + 1;
    if (!isluafunc(fn) or lj_bcwrite(L, funcproto(fn), writer_buf, sb, strip))
-      lj_err_caller(L, LJ_ERR_STRDUMP);
+      lj_err_caller(L, ErrMsg::STRDUMP);
    setstrV(L, L->top - 1, lj_buf_str(L, sb));
    lj_gc_check(L);
    return 1;
@@ -545,7 +545,7 @@ static int check_capture(MatchState* ms, int l)
 {
    l -= '1';
    if (l < 0 or l >= ms->level or ms->capture[l].len == CAP_UNFINISHED)
-      lj_err_caller(ms->L, LJ_ERR_STRCAPI);
+      lj_err_caller(ms->L, ErrMsg::STRCAPI);
    return l;
 }
 
@@ -554,7 +554,7 @@ static int capture_to_close(MatchState* ms)
    int level = ms->level;
    for (level--; level >= 0; level--)
       if (ms->capture[level].len == CAP_UNFINISHED) return level;
-   lj_err_caller(ms->L, LJ_ERR_STRPATC);
+   lj_err_caller(ms->L, ErrMsg::STRPATC);
    return 0;  //  unreachable
 }
 
@@ -563,13 +563,13 @@ static const char* classend(MatchState* ms, const char* p)
    switch (*p++) {
    case L_ESC:
       if (*p == '\0')
-         lj_err_caller(ms->L, LJ_ERR_STRPATE);
+         lj_err_caller(ms->L, ErrMsg::STRPATE);
       return p + 1;
    case '[':
       if (*p == '^') p++;
       do {  // look for a `]'
          if (*p == '\0')
-            lj_err_caller(ms->L, LJ_ERR_STRPATM);
+            lj_err_caller(ms->L, ErrMsg::STRPATM);
          if (*(p++) == L_ESC and *p != '\0')
             p++;  //  skip escapes (e.g. `%]')
       } while (*p != ']');
@@ -637,7 +637,7 @@ static const char* match(MatchState* ms, const char* s, const char* p);
 static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 {
    if (*p == 0 or *(p + 1) == 0)
-      lj_err_caller(ms->L, LJ_ERR_STRPATU);
+      lj_err_caller(ms->L, ErrMsg::STRPATU);
    if (*s != *p) {
       return nullptr;
    }
@@ -691,7 +691,7 @@ static const char* start_capture(MatchState* ms, const char* s,
 {
    const char* res;
    int level = ms->level;
-   if (level >= LUA_MAXCAPTURES) lj_err_caller(ms->L, LJ_ERR_STRCAPN);
+   if (level >= LUA_MAXCAPTURES) lj_err_caller(ms->L, ErrMsg::STRCAPN);
    ms->capture[level].init = s;
    ms->capture[level].len = what;
    ms->level = level + 1;
@@ -726,7 +726,7 @@ static const char* match_capture(MatchState* ms, const char* s, int l)
 static const char* match(MatchState* ms, const char* s, const char* p)
 {
    if (++ms->depth > LJ_MAX_XLEVEL)
-      lj_err_caller(ms->L, LJ_ERR_STRPATX);
+      lj_err_caller(ms->L, ErrMsg::STRPATX);
 init: //  using goto's to optimize tail recursion
    switch (*p) {
    case '(':  //  start capture
@@ -749,7 +749,7 @@ init: //  using goto's to optimize tail recursion
          const char* ep; char previous;
          p += 2;
          if (*p != '[')
-            lj_err_caller(ms->L, LJ_ERR_STRPATB);
+            lj_err_caller(ms->L, ErrMsg::STRPATB);
          ep = classend(ms, p);  //  points to what is next
          previous = (s == ms->src_init) ? '\0' : *(s - 1);
          if (matchbracketclass(uchar(previous), p, ep - 1) ||
@@ -816,11 +816,11 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
       if (i == 0)  //  ms->level == 0, too
          lua_pushlstring(ms->L, s, (size_t)(e - s));  //  add whole match
       else
-         lj_err_caller(ms->L, LJ_ERR_STRCAPI);
+         lj_err_caller(ms->L, ErrMsg::STRCAPI);
    }
    else {
       ptrdiff_t l = ms->capture[i].len;
-      if (l == CAP_UNFINISHED) lj_err_caller(ms->L, LJ_ERR_STRCAPU);
+      if (l == CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
       if (l == CAP_POSITION)
          lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init + 1);
       else
@@ -989,7 +989,7 @@ static void add_value(MatchState* ms, luaL_Buffer* b,
       lua_pushlstring(L, s, (size_t)(e - s));  //  keep original text
    }
    else if (!lua_isstring(L, -1)) {
-      lj_err_callerv(L, LJ_ERR_STRGSRV, luaL_typename(L, -1));
+      lj_err_callerv(L, ErrMsg::STRGSRV, luaL_typename(L, -1));
    }
    luaL_addvalue(b);  //  add result to accumulator
 }
@@ -1007,7 +1007,7 @@ LJLIB_CF(string_gsub)
    luaL_Buffer b;
    if (!(tr == LUA_TNUMBER or tr == LUA_TSTRING ||
       tr == LUA_TFUNCTION or tr == LUA_TTABLE))
-      lj_err_arg(L, 3, LJ_ERR_NOSFT);
+      lj_err_arg(L, 3, ErrMsg::NOSFT);
    luaL_buffinit(L, &b);
    ms.L = L;
    ms.src_init = src;

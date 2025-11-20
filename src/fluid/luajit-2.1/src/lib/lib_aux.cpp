@@ -68,7 +68,7 @@ extern void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
    if (!lua_istable(L, -1)) {
       lua_pop(L, 1);
       if (luaL_findtable(L, LUA_GLOBALSINDEX, modname, sizehint) != nullptr)
-         lj_err_callerv(L, LJ_ERR_BADMODN, modname);
+         lj_err_callerv(L, ErrMsg::BADMODN, modname);
       lua_pushvalue(L, -1);
       lua_setfield(L, -3, modname);  //  _LOADED[modname] = new table.
    }

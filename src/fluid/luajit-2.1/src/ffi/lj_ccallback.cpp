@@ -271,16 +271,16 @@ static void callback_mcode_new(CTState* cts)
    size_t sz = (size_t)CALLBACK_MCODE_SIZE;
    void* p, * pe;
    if (CALLBACK_MAX_SLOT == 0)
-      lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
+      lj_err_caller(cts->L, ErrMsg::FFI_CBACKOV);
 #if LJ_TARGET_WINDOWS
    p = LJ_WIN_VALLOC(nullptr, sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
    if (!p)
-      lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
+      lj_err_caller(cts->L, ErrMsg::FFI_CBACKOV);
 #elif LJ_TARGET_POSIX
    p = mmap(nullptr, sz, (PROT_READ | PROT_WRITE | CCPROT_CREATE), MAP_PRIVATE | MAP_ANONYMOUS,
       -1, 0);
    if (p == MAP_FAILED)
-      lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
+      lj_err_caller(cts->L, ErrMsg::FFI_CBACKOV);
 #else
    // Fallback allocator. Fails if memory is not executable by default.
    p = lj_mem_new(cts->L, sz);
@@ -567,7 +567,7 @@ static void callback_conv_args(CTState* cts, lua_State* L)
    setframe_ftsz(o, ((char*)(o + 1) - (char*)L->base) + FRAME_CONT);
    L->top = L->base = ++o;
    if (!ct)
-      lj_err_caller(cts->L, LJ_ERR_FFI_BADCBACK);
+      lj_err_caller(cts->L, ErrMsg::FFI_BADCBACK);
    if (isluafunc(fn))
       setcframe_pc(L->cframe, proto_bc(funcproto(fn)) + 1);
    lj_state_checkstack(L, LUA_MINSTACK);  /* May throw. */
@@ -685,7 +685,7 @@ lua_State* LJ_FASTCALL lj_ccallback_enter(CTState* cts, void* cf)
    global_State* g = cts->g;
    lj_assertG(L != nullptr, "uninitialized cts->L in callback");
    if (tvref(g->jit_base)) {
-      setstrV(L, L->top++, lj_err_str(L, LJ_ERR_FFI_BADCBACK));
+      setstrV(L, L->top++, lj_err_str(L, ErrMsg::FFI_BADCBACK));
       if (g->panic) g->panic(L);
       exit(EXIT_FAILURE);
    }
@@ -737,7 +737,7 @@ static MSize callback_slot_new(CTState* cts, CType* ct)
 #if CALLBACK_MAX_SLOT
    if (top >= CALLBACK_MAX_SLOT)
 #endif
-      lj_err_caller(cts->L, LJ_ERR_FFI_CBACKOV);
+      lj_err_caller(cts->L, ErrMsg::FFI_CBACKOV);
    if (!cts->cb.mcode)
       callback_mcode_new(cts);
    lj_mem_growvec(cts->L, cbid, cts->cb.sizeid, CALLBACK_MAX_SLOT, CTypeID1);

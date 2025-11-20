@@ -300,7 +300,7 @@ void LexState::expr_table(ExpDesc* Expression)
             break;
          }
          else {
-            this->err_syntax(LJ_ERR_XPARAM);
+            this->err_syntax(ErrMsg::XPARAM);
          }
       } while (this->lex_opt(','));
    }
@@ -454,7 +454,7 @@ void LexState::parse_args(ExpDesc* Expression)
    if (this->tok IS '(') {
 #if !LJ_52
       if (line != this->lastline)
-         this->err_syntax(LJ_ERR_XAMBIG);
+         this->err_syntax(ErrMsg::XAMBIG);
 #endif
       this->next();
       if (this->tok IS ')') {  // f().
@@ -479,7 +479,7 @@ void LexState::parse_args(ExpDesc* Expression)
       this->next();
    }
    else {
-      this->err_syntax(LJ_ERR_XFUNARG);
+      this->err_syntax(ErrMsg::XFUNARG);
       return;  // Silence compiler.
    }
    lj_assertFS(Expression->k IS ExpKind::NonReloc, "bad expr type %d", int(Expression->k));
@@ -611,7 +611,7 @@ static ParserResult<ExpDesc> expr_simple_with_context(ParserContext &Context, Ex
       break;
    case TokenKind::Dots: {
       BCReg base;
-      checkcond(&lex, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
+      checkcond(&lex, fs->flags & PROTO_VARARG, ErrMsg::XDOTS);
       bcreg_reserve(fs, 1);
       base = fs->freereg - 1;
       expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
@@ -655,7 +655,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
    if (isPost) {
-      checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+      checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
       if (v->k IS ExpKind::Indexed)
@@ -673,7 +673,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    if (not primary.ok()) {
       return;
    }
-   checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+   checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
    e1 = *v;
    if (v->k IS ExpKind::Indexed)
       bcreg_reserve(fs, fs->freereg - indices);
@@ -702,7 +702,7 @@ ParserResult<ExpDesc> LexState::expr_simple(ExpDesc* Expression)
 void LexState::synlevel_begin()
 {
    if (++this->level >= LJ_MAX_XLEVEL)
-      lj_lex_error(this, 0, LJ_ERR_XLEVELS);
+      lj_lex_error(this, 0, ErrMsg::XLEVELS);
 }
 
 void LexState::synlevel_end()
@@ -1112,7 +1112,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
          return ParserResult<BinOpr>::success(op);
       }
       this->synlevel_end();
-      this->err_syntax(LJ_ERR_XSYMBOL);
+      this->err_syntax(ErrMsg::XSYMBOL);
    }
    this->synlevel_end();
    return ParserResult<BinOpr>::success(op);

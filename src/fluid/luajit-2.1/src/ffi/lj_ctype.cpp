@@ -155,7 +155,7 @@ CTypeID lj_ctype_new(CTState* cts, CType** ctp)
    CType* ct;
    lj_assertCTS(cts->L, "uninitialized cts->L");
    if (LJ_UNLIKELY(id >= cts->sizetab)) {
-      if (id >= CTID_MAX) lj_err_msg(cts->L, LJ_ERR_TABOV);
+      if (id >= CTID_MAX) lj_err_msg(cts->L, ErrMsg::TABOV);
 #ifdef LUAJIT_CTYPE_CHECK_ANCHOR
       ct = lj_mem_newvec(cts->L, id + 1, CType);
       memcpy(ct, cts->tab, id * sizeof(CType));
@@ -191,7 +191,7 @@ CTypeID lj_ctype_intern(CTState* cts, CTInfo info, CTSize size)
    }
    id = cts->top;
    if (LJ_UNLIKELY(id >= cts->sizetab)) {
-      if (id >= CTID_MAX) lj_err_msg(cts->L, LJ_ERR_TABOV);
+      if (id >= CTID_MAX) lj_err_msg(cts->L, ErrMsg::TABOV);
       lj_mem_growvec(cts->L, cts->tab, cts->sizetab, CTID_MAX, CType);
    }
    cts->top = id + 1;

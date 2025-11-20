@@ -78,7 +78,7 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
 
    lhv = *lh;
 
-   checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->k), ErrMsg::XLEFTCOMPOUND);
 
    Context.tokens().advance();
 
@@ -127,7 +127,7 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
       return 0;
    }
    nexps = rhs_list.value_ref();
-   checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+   checkcond(this, nexps IS 1, ErrMsg::XRIGHTCOMPOUND);
 
    expr_discharge(fs, &rh);
    expr_toreg(fs, &rh, lhs_reg);
@@ -165,7 +165,7 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
 
    lhv = *lh;
 
-   checkcond(this, vkisvar(lh->k), LJ_ERR_XLEFTCOMPOUND);
+   checkcond(this, vkisvar(lh->k), ErrMsg::XLEFTCOMPOUND);
 
    switch (OpType) {
       case TokenKind::CompoundAdd: op = OPR_ADD; break;
@@ -221,7 +221,7 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
          return 0;
       }
       nexps = rhs_values.value_ref();
-      checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+      checkcond(this, nexps IS 1, ErrMsg::XRIGHTCOMPOUND);
    }
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
@@ -233,7 +233,7 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
          return 0;
       }
       nexps = rhs_values.value_ref();
-      checkcond(this, nexps IS 1, LJ_ERR_XRIGHTCOMPOUND);
+      checkcond(this, nexps IS 1, ErrMsg::XRIGHTCOMPOUND);
       infix = *lh;
       bcemit_binop_left(fs, op, &infix);
    }
@@ -262,7 +262,7 @@ void LexState::parse_assignment(ParserContext &Context, ExpDesc *First)
    lhs_vars.push_back(*First);
    BCReg nvars = 1;
 
-   checkcond(this, ExpKind::Local <= First->k and First->k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
+   checkcond(this, ExpKind::Local <= First->k and First->k <= ExpKind::Indexed, ErrMsg::XSYNTAX);
 
    while (true) {
       auto comma = Context.match(TokenKind::Comma);
@@ -272,7 +272,7 @@ void LexState::parse_assignment(ParserContext &Context, ExpDesc *First)
       if (!next_result.ok()) {
          return;
       }
-      checkcond(this, ExpKind::Local <= next.k and next.k <= ExpKind::Indexed, LJ_ERR_XSYNTAX);
+      checkcond(this, ExpKind::Local <= next.k and next.k <= ExpKind::Indexed, ErrMsg::XSYNTAX);
       if (next.k IS ExpKind::Local) {
          auto existing = std::span(lhs_vars.data(), lhs_vars.size());
          this->assign_hazard(existing, next);
@@ -887,7 +887,7 @@ void LexState::parse_for(ParserContext &Context, BCLine line)
    TokenKind next_kind = Context.tokens().current().kind();
    if (next_kind IS TokenKind::Equals) this->parse_for_num(Context, varname, line);
    else if (next_kind IS TokenKind::Comma or next_kind IS TokenKind::InToken) this->parse_for_iter(Context, varname);
-   else this->err_syntax(LJ_ERR_XFOR);
+   else this->err_syntax(ErrMsg::XFOR);
    this->lex_match(TK_end, TK_for, line);
 }
 

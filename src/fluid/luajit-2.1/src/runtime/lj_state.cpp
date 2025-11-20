@@ -122,7 +122,7 @@ void LJ_FASTCALL lj_state_growstack(lua_State* L, MSize need)
    }
    resizestack(L, n);
    if (L->stacksize > LJ_STACK_MAXEX)
-      lj_err_msg(L, LJ_ERR_STKOV);
+      lj_err_msg(L, ErrMsg::STKOV);
 }
 
 //********************************************************************************************************************
@@ -166,7 +166,7 @@ static TValue * cpluaopen(lua_State *Lua, lua_CFunction dummy, void* ud)
    lj_str_init(Lua);
    lj_meta_init(Lua);
    lj_reserve_words(Lua);
-   fixstring(lj_err_str(Lua, LJ_ERR_ERRMEM));  //  Preallocate memory error msg.
+   fixstring(lj_err_str(Lua, ErrMsg::ERRMEM));  //  Preallocate memory error msg.
    g->gc.threshold = 4 * g->gc.total;
    lj_trace_initstate(g);
    lj_err_verify();
@@ -308,7 +308,7 @@ extern void lua_close(lua_State* L)
    lj_gc_separateudata(g, 1);  //  Separate udata which have GC metamethods.
 #if LJ_HASJIT
    G2J(g)->flags &= ~JIT_F_ON;
-   G2J(g)->state = LJ_TRACE_IDLE;
+   G2J(g)->state = TraceState::IDLE;
    lj_dispatch_update(g);
 #endif
    for (i = 0;;) {
@@ -319,8 +319,7 @@ extern void lua_close(lua_State* L)
       if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
          lj_gc_separateudata(g, 1);  //  Separate udata again.
-         if (gcref(g->gc.mmudata) == nullptr)  //  Until nothing is left to do.
-            break;
+         if (gcref(g->gc.mmudata) == nullptr) break;  //  Until nothing is left to do.
       }
    }
    close_state(L);

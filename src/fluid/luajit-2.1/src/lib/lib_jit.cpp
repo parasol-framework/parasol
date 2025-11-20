@@ -58,7 +58,7 @@ static int setjitmode(lua_State* L, int mode)
 
    if (luaJIT_setmode(L, idx, mode) != 1) {
       if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE)
-         lj_err_caller(L, LJ_ERR_NOJIT);
+         lj_err_caller(L, ErrMsg::NOJIT);
    err:
       lj_err_argt(L, 1, LUA_TFUNCTION);
    }
@@ -300,18 +300,19 @@ static const char* const jit_trlinkname[] = {
 };
 
 // local info = jit.util.traceinfo(tr)
+
 LJLIB_CF(jit_util_traceinfo)
 {
-   GCtrace* T = jit_checktrace(L);
+   GCtrace *T = jit_checktrace(L);
    if (T) {
-      GCtab* t;
+      GCtab *t;
       lua_createtable(L, 0, 8);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       setintfield(L, t, "nins", (int32_t)T->nins - REF_BIAS - 1);
       setintfield(L, t, "nk", REF_BIAS - (int32_t)T->nk);
       setintfield(L, t, "link", T->link);
       setintfield(L, t, "nexit", T->nsnap);
-      setstrV(L, L->top++, lj_str_newz(L, jit_trlinkname[T->linktype]));
+      setstrV(L, L->top++, lj_str_newz(L, jit_trlinkname[uint32_t(T->linktype)]));
       lua_setfield(L, -2, "linktype");
       // There are many more fields. Add them only when needed.
       return 1;
@@ -539,7 +540,7 @@ LJLIB_CF(jit_opt_start)
          if (!jitopt_level(J, str) &&
             !jitopt_flag(J, str) &&
             !jitopt_param(J, str))
-            lj_err_callerv(L, LJ_ERR_JITOPT, str);
+            lj_err_callerv(L, ErrMsg::JITOPT, str);
       }
    }
    return 0;

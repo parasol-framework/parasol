@@ -351,7 +351,7 @@ TValue* lj_clib_index(lua_State* L, CLibrary* cl, GCstr* name)
       CType* ct;
       CTypeID id = lj_ctype_getname(cts, &ct, name, CLNS_INDEX);
       if (!id)
-         lj_err_callerv(L, LJ_ERR_FFI_NODECL, strdata(name));
+         lj_err_callerv(L, ErrMsg::FFI_NODECL, strdata(name));
       if (ctype_isconstval(ct->info)) {
          CType* ctt = ctype_child(cts, ct);
          lj_assertCTS(ctype_isinteger(ctt->info) && ctt->size <= 4,

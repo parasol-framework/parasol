@@ -16,7 +16,7 @@ LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
    if (this->active_context) {
       this->active_context->err_token(Token);
    }
-   lj_lex_error(this, this->tok, LJ_ERR_XTOKEN, this->token2str(Token));
+   lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
 }
 
 LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
@@ -24,8 +24,8 @@ LJ_NORET static void err_limit(FuncState* fs, uint32_t limit, const char* what)
    if (fs->ls->active_context) {
       fs->ls->active_context->report_limit_error(*fs, limit, what);
    }
-   if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, LJ_ERR_XLIMM, limit, what);
-   else lj_lex_error(fs->ls, 0, LJ_ERR_XLIMF, fs->linedefined, limit, what);
+   if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
+   else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
 }
 
 // Check and consume optional token.
@@ -69,7 +69,7 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
       else {
          auto swhat = this->token2str(What);
          auto swho = this->token2str(Who);
-         lj_lex_error(this, this->tok, LJ_ERR_XMATCH, swhat, swho, Line);
+         lj_lex_error(this, this->tok, ErrMsg::XMATCH, swhat, swho, Line);
       }
    }
 }

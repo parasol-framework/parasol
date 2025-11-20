@@ -105,7 +105,7 @@ static void lex_newline(LexState *State)
    lex_next(State);  //  Skip "\n" or "\r".
    if (lex_iseol(State) and State->c != old) lex_next(State);  //  Skip "\n\r" or "\r\n".
    if (uint32_t(++State->linenumber) >= LJ_MAX_LINE)
-      lj_lex_error(State, State->tok, LJ_ERR_XLINES);
+      lj_lex_error(State, State->tok, ErrMsg::XLINES);
    State->line_start_offset = State->current_offset;
 }
 
@@ -158,7 +158,7 @@ static void lex_number(LexState *State, TValue* tv)
    else {
       State->assert_condition(fmt IS STRSCAN_ERROR,
          "unexpected number format %d", fmt);
-      lj_lex_error(State, TK_number, LJ_ERR_XNUMBER);
+      lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
    }
 }
 
@@ -185,7 +185,7 @@ static void lex_longstring(LexState *State, TValue* tv, int sep)
    for (;;) {
       switch (State->c) {
       case LEX_EOF:
-         lj_lex_error(State, TK_eof, tv ? LJ_ERR_XLSTR : LJ_ERR_XLCOM);
+         lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
          break;
       case ']':
          if (lex_skipeq(State) IS sep) {
@@ -222,12 +222,12 @@ static void lex_string(LexState *State, TValue* tv)
       switch (State->c) {
 
       case LEX_EOF:
-         lj_lex_error(State, TK_eof, LJ_ERR_XSTR);
+         lj_lex_error(State, TK_eof, ErrMsg::XSTR);
          continue;
 
       case '\n':
       case '\r':
-         lj_lex_error(State, TK_string, LJ_ERR_XSTR);
+         lj_lex_error(State, TK_string, ErrMsg::XSTR);
          continue;
 
       case '\\': {
@@ -306,7 +306,7 @@ static void lex_string(LexState *State, TValue* tv)
                   c = c * 10 + (State->c - '0');
                   if (c > 255) {
                   err_xesc:
-                     lj_lex_error(State, TK_string, LJ_ERR_XESC);
+                     lj_lex_error(State, TK_string, ErrMsg::XESC);
                   }
                   lex_next(State);
                }
@@ -404,7 +404,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             return '[';
          }
          else {
-            lj_lex_error(State, TK_string, LJ_ERR_XLDELIM);
+            lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
             continue;
          }
       }
@@ -593,7 +593,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
          // Lua code by looking at the first char. Since this is a potential
          // security violation no attempt is made to echo the chunkname either.
 
-         setstrV(L, L->top++, lj_err_str(L, LJ_ERR_BCBAD));
+         setstrV(L, L->top++, lj_err_str(L, ErrMsg::BCBAD));
          lj_err_throw(L, LUA_ERRSYNTAX);
       }
       this->is_bytecode = 1;
