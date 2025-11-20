@@ -20,13 +20,11 @@ static void assert_node(bool condition, const char* message)
 }
 
 struct CallTargetChildCounter {
-   [[nodiscard]] size_t operator()(const DirectCallTarget& target) const
-   {
+   [[nodiscard]] size_t operator()(const DirectCallTarget& target) const {
       return target.callable ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const MethodCallTarget& target) const
-   {
+   [[nodiscard]] size_t operator()(const MethodCallTarget& target) const {
       return target.receiver ? 1 : 0;
    }
 };
@@ -407,8 +405,7 @@ ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr 
    return node;
 }
 
-ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition,
-   ExprNodePtr if_true, ExprNodePtr if_false)
+ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePtr if_true, ExprNodePtr if_false)
 {
    assert_node(ensure_operand(condition) and ensure_operand(if_true) and ensure_operand(if_false),
       "ternary expression requires three operands");
@@ -435,8 +432,7 @@ ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value)
    return node;
 }
 
-ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee,
-   ExprNodeList arguments, bool forwards_multret)
+ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret)
 {
    assert_node(ensure_operand(callee), "call expression requires callee");
    CallExprPayload payload;
@@ -452,8 +448,8 @@ ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee,
    return node;
 }
 
-ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver,
-   Identifier method, ExprNodeList arguments, bool forwards_multret)
+ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments, 
+   bool forwards_multret)
 {
    assert_node(ensure_operand(receiver), "method call requires receiver");
    CallExprPayload payload;
@@ -498,8 +494,7 @@ ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr inde
    return node;
 }
 
-ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields,
-   bool has_array_part)
+ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part)
 {
    TableExprPayload payload;
    payload.fields = std::move(fields);

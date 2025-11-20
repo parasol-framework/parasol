@@ -2,8 +2,7 @@
 
 #include "parser/parser_diagnostics.h"
 
-ParserDiagnostics::ParserDiagnostics()
-   : limit(8)
+ParserDiagnostics::ParserDiagnostics() : limit(8)
 {
 }
 
@@ -18,11 +17,8 @@ void ParserDiagnostics::report(const ParserDiagnostic& diagnostic)
       or diagnostic.severity IS ParserDiagnosticSeverity::Warning;
 
    if (counts_against_limit and this->counted_entries >= this->limit) return;
-
    this->storage.push_back(diagnostic);
-   if (counts_against_limit) {
-      this->counted_entries += 1;
-   }
+   if (counts_against_limit) this->counted_entries += 1;
 }
 
 bool ParserDiagnostics::has_errors() const

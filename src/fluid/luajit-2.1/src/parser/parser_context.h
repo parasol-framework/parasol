@@ -16,14 +16,8 @@ struct ParserAllocator {
 };
 
 struct ParserConfig {
-   uint32_t max_diagnostics = 8;
+   uint32_t max_diagnostics = 8; // Defines the 'limit' value in ParserDiagnostics
    bool abort_on_error = true;
-   bool trace_tokens = false;
-   bool trace_expectations = false;
-   bool enable_ast_pipeline = false;
-   bool trace_ast_boundaries = false;
-   bool dump_ast_bytecode = false;
-   bool profile_stages = false;
    ParserProfilingResult profiling_result;
 };
 

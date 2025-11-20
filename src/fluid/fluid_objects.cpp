@@ -551,7 +551,7 @@ static int object_newchild(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       lua_pushinteger(Lua, parent->UID); // ID of the would-be parent.
-      
+
       if (set_object_field(Lua, obj, "owner", lua_gettop(Lua)) != ERR::Okay) {
          FreeResource(obj);
          luaL_error(Lua, "Failed to set object owner.");

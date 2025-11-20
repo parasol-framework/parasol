@@ -33,6 +33,8 @@
 #include "lj_parse.h"
 #include "../../../defs.h"
 
+static objScript *glTestScript = nullptr;
+
 namespace {
 
 static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::Log& log)
@@ -67,9 +69,8 @@ static std::string describe_instruction(BCIns instruction)
 }
 
 struct LuaStateHolder {
-   LuaStateHolder()
-   {
-      this->state = luaL_newstate();
+   LuaStateHolder() {
+      this->state = luaL_newstate(glTestScript);
    }
 
    ~LuaStateHolder()
@@ -942,13 +943,13 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
 static void log_snapshot(const BytecodeSnapshot& snapshot, const std::string& label)
 {
    pf::Log log("Fluid-Parser");
-   log.detail("%s: %zu instructions", label.c_str(), snapshot.instructions.size());
+   log.detail("%s: %" PRId64 " instructions", label.c_str(), snapshot.instructions.size());
    for (size_t i = 0; i < snapshot.instructions.size(); ++i) {
       std::string desc = describe_instruction(snapshot.instructions[i]);
-      log.detail("  [%zu] %s", i, desc.c_str());
+      log.detail("  [%" PRId64 "] %s", i, desc.c_str());
    }
    if (not snapshot.children.empty()) {
-      log.detail("%s: %zu children", label.c_str(), snapshot.children.size());
+      log.detail("%s: %" PRId64 " children", label.c_str(), snapshot.children.size());
       for (size_t i = 0; i < snapshot.children.size(); ++i) {
          log_snapshot(snapshot.children[i], label + ".child[" + std::to_string(i) + "]");
       }
@@ -991,8 +992,8 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
          pf::Log log("Fluid-Parser");
          std::string legacy_desc = describe_instruction(legacy_body[i]);
          std::string ast_desc = describe_instruction(ast_body[i]);
-         log.detail("legacy[%s:%zu] %s", label.c_str(), i, legacy_desc.c_str());
-         log.detail("   ast[%s:%zu] %s", label.c_str(), i, ast_desc.c_str());
+         log.detail("legacy[%s:%" PRId64 "] %s", label.c_str(), i, legacy_desc.c_str());
+         log.detail("   ast[%s:%" PRId64 "] %s", label.c_str(), i, ast_desc.c_str());
          std::ostringstream stream;
          stream << label << ": mismatch at pc=" << i << " legacy=0x" << std::hex
             << legacy_body[i] << " ast=0x" << ast_body[i];
@@ -1021,28 +1022,24 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
    return true;
 }
 
-class ScopedPipelineToggle {
-public:
-   explicit ScopedPipelineToggle(bool enabled)
-      : previous(glJITPipeline)
-   {
-      glJITPipeline = enabled;
-   }
+inline void enable_legacy(lua_State *Lua)
+{
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   prv->JitOptions |= JOF::LEGACY;
+}
 
-   ~ScopedPipelineToggle()
-   {
-      glJITPipeline = this->previous;
-   }
-
-private:
-   bool previous;
-};
+inline void enable_ast(lua_State *Lua)
+{
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   prv->JitOptions &= ~JOF::LEGACY;
+}
 
 static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::string_view source,
    bool ast_pipeline, std::string& error)
 {
-   ScopedPipelineToggle toggle(ast_pipeline);
-   L->jit_pipeline = glJITPipeline;
+   if (ast_pipeline) enable_ast(L);
+   else enable_legacy(L);
+
    if (luaL_loadbuffer(L, source.data(), source.size(), "parser-unit")) {
       const char* message = lua_tostring(L, -1);
       error.assign(message ? message : "unknown parser error");
@@ -1313,6 +1310,11 @@ extern void parser_unit_tests(int& Passed, int& Total)
       { "ast_call_lowering", test_ast_call_lowering },
       { "bytecode_equivalence", test_bytecode_equivalence }
    } };
+
+   // A dummy object is required to manage state.
+   if (NewObject(CLASSID::FLUID, &glTestScript) != ERR::Okay) return;
+   glTestScript->setStatement("");
+   if (Action(AC::Init, glTestScript, nullptr) != ERR::Okay) return;
 
    for (const TestCase& test : tests) {
       pf::Log log("ParserTests");

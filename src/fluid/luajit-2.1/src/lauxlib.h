@@ -46,7 +46,7 @@ extern void (luaL_unref) (lua_State *L, int t, int ref);
 extern int (luaL_loadfile) (lua_State *L, const char *filename);
 extern int (luaL_loadbuffer) (lua_State *L, const char *buff, size_t sz, const char *name);
 extern int (luaL_loadstring) (lua_State *L, const char *s);
-extern lua_State *(luaL_newstate) (void);
+extern lua_State *(luaL_newstate) (class objScript *);
 extern const char *(luaL_gsub) (lua_State *L, const char *s, const char *p, const char *r);
 extern const char *(luaL_findtable) (lua_State *L, int idx, const char *fname, int szhint);
 // From Lua 5.2.

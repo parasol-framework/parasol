@@ -33,10 +33,8 @@ The parser has been modernized to C++20 and refactored into focused modules:
 - `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernizations
 - `src/parser/`: C++20 refactored parser (see structure above)
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT runtime
-- CMake drops generated headers, the VM object/assembly, and host helpers
-  under `build/agents/src/fluid/luajit-generated/`. The final static
-  library ends up in `build/agents/luajit-2.1/lib/`. None of these artefacts
-  should be committed.
+- CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static
+  library ends up in `build/agents/luajit-2.1/lib/`.
 
 ## Key Implementation Patterns
 
@@ -108,18 +106,30 @@ static GCstr* keepstr(std::string_view str);
   ```
 - When debugging parser issues, create minimal Fluid scripts to isolate the behaviour before running the full test suite.
 - Unit tests are managed by `MODTests()` in `src/fluid/fluid.cpp`.
-- To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-xapi` option to view the output from stderr.
+- To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-api` option to view the output from stderr.
 - Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list.  Available options are:
-  - `trace` Enable tracing JIT
-  - `diagnose` Enable diagnostic mode
   - `ast-pipeline` Use the new AST-based parser (default)
   - `ast-legacy` Use the legacy parser
+  - `trace-expect` Trace expectations
   - `trace-boundary` Trace boundary crossings between interpreted and JIT code
-  - `trace-bytecode` Trace bytecode execution
+  - `dump-bytecode` Dump disassembled bytecode at the end of parsing
+  - `diagnose` Use in conjunction with other options for deeper log messages
   - `profile` Use timers to profile JIT execution
+- More precise debugging with the JIT engine is possible by setting the `jitOptions` field on `fluid` objects.  Example:
+
+```lua
+  local script = obj.new('fluid', { statement = [[
+  function test()
+     return 42
+  end
+  ]],
+  jitOptions = 'dump-bytecode,diagnose'
+  })
+  script.acActivate()
+```
 
 ## Troubleshooting Register Allocation
-- LuaJIT's parser (`lj_parse.cpp`) heavily relies on `freereg`, `nactvar`, and
+- LuaJIT's legacy parser in `lj_parse.cpp` heavily relies on `freereg`, `nactvar`, and
   expression kinds (`ExpKind`). When changing emission logic:
   - Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
   - Ensure every path that creates a `VCALL` either converts it to

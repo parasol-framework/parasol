@@ -16,8 +16,8 @@ struct ParserProfilingStage {
 struct ParserProfilingResult {
    void clear();
    void record_stage(std::string_view name, double milliseconds);
-   const std::vector<ParserProfilingStage>& stages() const;
-   std::vector<ParserProfilingStage>& stages();
+   const std::vector<ParserProfilingStage> & stages() const;
+   std::vector<ParserProfilingStage> & stages();
    bool empty() const;
    void log_results(pf::Log& log) const;
 
@@ -47,18 +47,18 @@ public:
       bool running = false;
    };
 
-   ParserProfiler(bool enabled, ParserProfilingResult* result);
+   ParserProfiler(bool, ParserProfilingResult *);
 
-   StageTimer stage(std::string_view name);
-   void record_stage(std::string_view name, std::chrono::steady_clock::duration duration);
-   void log_results(pf::Log& log) const;
+   StageTimer stage(std::string_view);
+   void record_stage(std::string_view, std::chrono::steady_clock::duration);
+   void log_results(pf::Log &) const;
    bool enabled() const;
 
 private:
    void store(std::string_view name, double milliseconds);
 
    bool is_enabled = false;
-   ParserProfilingResult* payload = nullptr;
+   ParserProfilingResult *payload = nullptr;
 };
 
 inline void ParserProfilingResult::clear()
@@ -89,11 +89,9 @@ inline bool ParserProfilingResult::empty() const
    return this->entries.empty();
 }
 
-inline void ParserProfilingResult::log_results(pf::Log& log) const
+inline void ParserProfilingResult::log_results(pf::Log &log) const
 {
-   if (this->entries.empty()) {
-      return;
-   }
+   if (this->entries.empty()) return;
 
    for (const ParserProfilingStage& stage : this->entries) {
       log.detail("profile-stage[%s]=%.3fms", stage.name.c_str(), stage.milliseconds);
@@ -117,9 +115,7 @@ inline ParserProfiler::StageTimer::StageTimer(StageTimer&& other) noexcept
 
 inline ParserProfiler::StageTimer& ParserProfiler::StageTimer::operator=(StageTimer&& other) noexcept
 {
-   if (this IS &other) {
-      return *this;
-   }
+   if (this IS &other) return *this;
 
    this->stop();
    this->profiler = other.profiler;
@@ -138,9 +134,7 @@ inline ParserProfiler::StageTimer::~StageTimer()
 
 inline void ParserProfiler::StageTimer::stop()
 {
-   if ((not this->running) or (not this->profiler)) {
-      return;
-   }
+   if ((not this->running) or (not this->profiler)) return;
 
    auto end_time = std::chrono::steady_clock::now();
    auto duration = end_time - this->start_time;
@@ -155,7 +149,7 @@ inline void ParserProfiler::StageTimer::reset()
    this->stage_name.clear();
 }
 
-inline ParserProfiler::ParserProfiler(bool enabled, ParserProfilingResult* result)
+inline ParserProfiler::ParserProfiler(bool enabled, ParserProfilingResult *result)
 {
    if ((enabled) and (result)) {
       this->is_enabled = true;
@@ -166,29 +160,20 @@ inline ParserProfiler::ParserProfiler(bool enabled, ParserProfilingResult* resul
 
 inline ParserProfiler::StageTimer ParserProfiler::stage(std::string_view name)
 {
-   if (not this->is_enabled) {
-      return StageTimer(nullptr, std::string_view{});
-   }
-
+   if (not this->is_enabled) return StageTimer(nullptr, std::string_view{});
    return StageTimer(this, name);
 }
 
 inline void ParserProfiler::record_stage(std::string_view name, std::chrono::steady_clock::duration duration)
 {
-   if (not this->is_enabled) {
-      return;
-   }
-
+   if (not this->is_enabled) return;
    auto millis = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(duration);
    this->store(name, millis.count());
 }
 
 inline void ParserProfiler::log_results(pf::Log& log) const
 {
-   if ((not this->is_enabled) or (not this->payload)) {
-      return;
-   }
-
+   if ((not this->is_enabled) or (not this->payload)) return;
    this->payload->log_results(log);
 }
 
@@ -199,10 +184,7 @@ inline bool ParserProfiler::enabled() const
 
 inline void ParserProfiler::store(std::string_view name, double milliseconds)
 {
-   if ((not this->payload) or (not this->is_enabled)) {
-      return;
-   }
-
+   if ((not this->payload) or (not this->is_enabled)) return;
    this->payload->record_stage(name, milliseconds);
 }
 

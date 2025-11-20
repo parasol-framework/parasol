@@ -698,12 +698,16 @@ struct lua_State {
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
-   uint8_t jit_diagnose:1;
-   uint8_t jit_trace:1;
-   uint8_t jit_pipeline:1;
-   uint8_t jit_trace_boundary:1;
-   uint8_t jit_trace_bytecode:1;
-   uint8_t jit_profile:1;
+
+   // Constructor/destructor not actually used as yet.
+/*
+   lua_State(class objScript* pScript) : Script(pScript), ProtectedGlobals(false) {
+
+   }
+
+   ~lua_State() {
+   }
+*/
 };
 
 #define G(L)        (mref(L->glref, global_State))

@@ -35,16 +35,12 @@ void LocalBindingTable::pop_scope()
    size_t restore = this->scope_marks.back();
    this->scope_marks.pop_back();
    this->bindings.resize(restore);
-   if (this->depth > 0) {
-      this->depth--;
-   }
+   if (this->depth > 0) this->depth--;
 }
 
 void LocalBindingTable::add(GCstr* symbol, BCReg slot)
 {
-   if (not symbol) {
-      return;
-   }
+   if (not symbol) return;
    LocalBindingEntry entry;
    entry.symbol = symbol;
    entry.slot = slot;
@@ -54,19 +50,14 @@ void LocalBindingTable::add(GCstr* symbol, BCReg slot)
 
 std::optional<BCReg> LocalBindingTable::resolve(GCstr* symbol) const
 {
-   if (not symbol) {
-      return std::nullopt;
-   }
+   if (not symbol) return std::nullopt;
    for (auto it = this->bindings.rbegin(); it != this->bindings.rend(); ++it) {
-      if (it->symbol IS symbol) {
-         return it->slot;
-      }
+      if (it->symbol IS symbol) return it->slot;
    }
    return std::nullopt;
 }
 
-LocalBindingScope::LocalBindingScope(LocalBindingTable& table)
-   : table(table)
+LocalBindingScope::LocalBindingScope(LocalBindingTable& table) : table(table)
 {
    this->table.push_scope();
 }
@@ -76,8 +67,7 @@ LocalBindingScope::~LocalBindingScope()
    this->table.pop_scope();
 }
 
-JumpHandle::JumpHandle()
-   : func_state(nullptr), list_head(NO_JMP)
+JumpHandle::JumpHandle() : func_state(nullptr), list_head(NO_JMP)
 {
 }
 
@@ -86,8 +76,7 @@ JumpHandle::JumpHandle(FuncState* state)
 {
 }
 
-JumpHandle::JumpHandle(FuncState* state, BCPos head)
-   : func_state(state), list_head(head)
+JumpHandle::JumpHandle(FuncState* state, BCPos head) : func_state(state), list_head(head)
 {
 }
 
@@ -98,9 +87,7 @@ bool JumpHandle::empty() const
 
 void JumpHandle::append(BCPos other)
 {
-   if (not this->func_state) {
-      return;
-   }
+   if (not this->func_state) return;
    this->list_head = JumpListView(this->func_state, this->list_head).append(other);
 }
 
@@ -111,9 +98,7 @@ void JumpHandle::append(const JumpHandle& other)
 
 void JumpHandle::patch_here() const
 {
-   if (this->func_state) {
-      this->patch_to(this->func_state->pc);
-   }
+   if (this->func_state) this->patch_to(this->func_state->pc);
 }
 
 void JumpHandle::patch_to(BCPos target) const
@@ -135,7 +120,7 @@ BCPos JumpHandle::head() const
    return this->list_head;
 }
 
-FuncState* JumpHandle::state() const
+FuncState * JumpHandle::state() const
 {
    return this->func_state;
 }
@@ -148,15 +133,12 @@ constexpr int kJumpContinue = 1;
 
 class UnsupportedNodeRecorder {
 public:
-   void record(AstNodeKind kind, const SourceSpan& span, const char* stage)
-   {
+   void record(AstNodeKind kind, const SourceSpan& span, const char* stage) {
       size_t index = size_t(kind);
-      if (index >= this->counts.size()) {
-         return;
-      }
+      if (index >= this->counts.size()) return;
       uint32_t total = ++this->counts[index];
       if ((total <= 8) or (total % 32 IS 0)) {
-         pf::Log log("Fluid-Parser");
+         pf::Log log("Parser");
          log.detail("ast-pipeline unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
             stage, unsigned(kind), unsigned(total), int(span.line), int(span.column),
             static_cast<long long>(span.offset));
@@ -177,70 +159,41 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
    switch (op) {
-   case AstBinaryOperator::Add:
-      return BinOpr::OPR_ADD;
-   case AstBinaryOperator::Subtract:
-      return BinOpr::OPR_SUB;
-   case AstBinaryOperator::Multiply:
-      return BinOpr::OPR_MUL;
-   case AstBinaryOperator::Divide:
-      return BinOpr::OPR_DIV;
-   case AstBinaryOperator::Modulo:
-      return BinOpr::OPR_MOD;
-   case AstBinaryOperator::Power:
-      return BinOpr::OPR_POW;
-   case AstBinaryOperator::Concat:
-      return BinOpr::OPR_CONCAT;
-   case AstBinaryOperator::NotEqual:
-      return BinOpr::OPR_NE;
-   case AstBinaryOperator::Equal:
-      return BinOpr::OPR_EQ;
-   case AstBinaryOperator::LessThan:
-      return BinOpr::OPR_LT;
-   case AstBinaryOperator::GreaterEqual:
-      return BinOpr::OPR_GE;
-   case AstBinaryOperator::LessEqual:
-      return BinOpr::OPR_LE;
-   case AstBinaryOperator::GreaterThan:
-      return BinOpr::OPR_GT;
-   case AstBinaryOperator::BitAnd:
-      return BinOpr::OPR_BAND;
-   case AstBinaryOperator::BitOr:
-      return BinOpr::OPR_BOR;
-   case AstBinaryOperator::BitXor:
-      return BinOpr::OPR_BXOR;
-   case AstBinaryOperator::ShiftLeft:
-      return BinOpr::OPR_SHL;
-   case AstBinaryOperator::ShiftRight:
-      return BinOpr::OPR_SHR;
-   case AstBinaryOperator::LogicalAnd:
-      return BinOpr::OPR_AND;
-   case AstBinaryOperator::LogicalOr:
-      return BinOpr::OPR_OR;
-   case AstBinaryOperator::IfEmpty:
-      return BinOpr::OPR_IF_EMPTY;
-   default:
-      return std::nullopt;
+      case AstBinaryOperator::Add: return BinOpr::OPR_ADD;
+      case AstBinaryOperator::Subtract: return BinOpr::OPR_SUB;
+      case AstBinaryOperator::Multiply: return BinOpr::OPR_MUL;
+      case AstBinaryOperator::Divide: return BinOpr::OPR_DIV;
+      case AstBinaryOperator::Modulo: return BinOpr::OPR_MOD;
+      case AstBinaryOperator::Power: return BinOpr::OPR_POW;
+      case AstBinaryOperator::Concat: return BinOpr::OPR_CONCAT;
+      case AstBinaryOperator::NotEqual: return BinOpr::OPR_NE;
+      case AstBinaryOperator::Equal: return BinOpr::OPR_EQ;
+      case AstBinaryOperator::LessThan: return BinOpr::OPR_LT;
+      case AstBinaryOperator::GreaterEqual: return BinOpr::OPR_GE;
+      case AstBinaryOperator::LessEqual: return BinOpr::OPR_LE;
+      case AstBinaryOperator::GreaterThan: return BinOpr::OPR_GT;
+      case AstBinaryOperator::BitAnd: return BinOpr::OPR_BAND;
+      case AstBinaryOperator::BitOr: return BinOpr::OPR_BOR;
+      case AstBinaryOperator::BitXor: return BinOpr::OPR_BXOR;
+      case AstBinaryOperator::ShiftLeft: return BinOpr::OPR_SHL;
+      case AstBinaryOperator::ShiftRight: return BinOpr::OPR_SHR;
+      case AstBinaryOperator::LogicalAnd: return BinOpr::OPR_AND;
+      case AstBinaryOperator::LogicalOr: return BinOpr::OPR_OR;
+      case AstBinaryOperator::IfEmpty: return BinOpr::OPR_IF_EMPTY;
+      default: return std::nullopt;
    }
 }
 
 [[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
 {
    switch (op) {
-   case AssignmentOperator::Add:
-      return BinOpr::OPR_ADD;
-   case AssignmentOperator::Subtract:
-      return BinOpr::OPR_SUB;
-   case AssignmentOperator::Multiply:
-      return BinOpr::OPR_MUL;
-   case AssignmentOperator::Divide:
-      return BinOpr::OPR_DIV;
-   case AssignmentOperator::Modulo:
-      return BinOpr::OPR_MOD;
-   case AssignmentOperator::Concat:
-      return BinOpr::OPR_CONCAT;
-   default:
-      return std::nullopt;
+      case AssignmentOperator::Add: return BinOpr::OPR_ADD;
+      case AssignmentOperator::Subtract: return BinOpr::OPR_SUB;
+      case AssignmentOperator::Multiply: return BinOpr::OPR_MUL;
+      case AssignmentOperator::Divide: return BinOpr::OPR_DIV;
+      case AssignmentOperator::Modulo: return BinOpr::OPR_MOD;
+      case AssignmentOperator::Concat: return BinOpr::OPR_CONCAT;
+      default: return std::nullopt;
    }
 }
 
@@ -406,10 +359,7 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
 
 }  // namespace
 
-IrEmitter::IrEmitter(ParserContext& context)
-   : ctx(context),
-     func_state(context.func()),
-     lex_state(context.lex())
+IrEmitter::IrEmitter(ParserContext& context) : ctx(context), func_state(context.func()), lex_state(context.lex())
 {
 }
 
@@ -418,9 +368,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    FuncScope chunk_scope;
    ScopeGuard guard(&this->func_state, &chunk_scope, FuncScopeFlag::None);
    auto result = this->emit_block(chunk, FuncScopeFlag::None);
-   if (not result.ok()) {
-      return result;
-   }
+   if (not result.ok()) return result;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -597,9 +545,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    if (payload.values.empty()) tail = make_const_expr(ExpKind::Void);
    else {
       auto list = this->emit_expression_list(payload.values, nexps);
-      if (not list.ok()) {
-         return ParserResult<IrEmitUnit>::failure(list.error_ref());
-      }
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
       tail = list.value_ref();
    }
 
@@ -617,9 +563,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
 ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload& payload)
 {
-   if (not payload.function) {
-      return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
-   }
+   if (not payload.function) return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
 
    GCstr* symbol = payload.name.symbol ? payload.name.symbol : NAME_BLANK;
    BCReg slot = this->func_state.freereg;
@@ -646,18 +590,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
 ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload& payload)
 {
-   if (not payload.function) {
-      return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
-   }
+   if (not payload.function) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
 
    auto target_result = this->emit_function_lvalue(payload.name);
-   if (not target_result.ok()) {
-      return ParserResult<IrEmitUnit>::failure(target_result.error_ref());
-   }
+   if (not target_result.ok()) return ParserResult<IrEmitUnit>::failure(target_result.error_ref());
    auto function_value = this->emit_function_expr(*payload.function);
-   if (not function_value.ok()) {
-      return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
-   }
+   if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc target = target_result.value_ref();
    ExpDesc value = function_value.value_ref();
@@ -669,9 +607,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 
 ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 {
-   if (payload.clauses.empty()) {
-      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
-   }
+   if (payload.clauses.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    JumpHandle escapelist(&this->func_state);
    for (size_t i = 0; i < payload.clauses.size(); ++i) {
@@ -1409,9 +1345,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    ExpDesc lhs = lhs_result.value_ref();
    bcemit_binop_left(&this->func_state, mapped.value(), &lhs);
    auto rhs_result = this->emit_expression(*payload.right);
-   if (not rhs_result.ok()) {
-      return rhs_result;
-   }
+   if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
    bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
    return ParserResult<ExpDesc>::success(lhs);
@@ -1424,9 +1358,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    }
 
    auto condition_result = this->emit_expression(*payload.condition);
-   if (not condition_result.ok()) {
-      return condition_result;
-   }
+   if (not condition_result.ok()) return condition_result;
 
    ExpDesc condition = condition_result.value_ref();
    expr_discharge(&this->func_state, &condition);
@@ -1464,9 +1396,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    check_empty.patch_to(false_start);
 
    auto false_result = this->emit_expression(*payload.if_false);
-   if (not false_result.ok()) {
-      return false_result;
-   }
+   if (not false_result.ok()) return false_result;
    ExpDesc false_expr = false_result.value_ref();
    expr_discharge(&this->func_state, &false_expr);
    this->materialise_to_reg(false_expr, cond_reg, "ternary false branch");
@@ -1482,13 +1412,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
 ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& payload)
 {
    SourceSpan span = payload.value ? payload.value->span : SourceSpan{};
-   if (not payload.value) {
-      return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
-   }
+   if (not payload.value) return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
    auto value_result = this->emit_expression(*payload.value);
-   if (not value_result.ok()) {
-      return value_result;
-   }
+   if (not value_result.ok()) return value_result;
    ExpDesc value = value_result.value_ref();
    bcemit_presence_check(&this->func_state, &value);
    return ParserResult<ExpDesc>::success(value);
@@ -1516,13 +1442,9 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
       return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
    }
    auto table_result = this->emit_expression(*payload.table);
-   if (not table_result.ok()) {
-      return table_result;
-   }
+   if (not table_result.ok()) return table_result;
    auto key_result = this->emit_expression(*payload.index);
-   if (not key_result.ok()) {
-      return key_result;
-   }
+   if (not key_result.ok()) return key_result;
    ExpDesc table = table_result.value_ref();
    ExpDesc key = key_result.value_ref();
    expr_toanyreg(&this->func_state, &table);
@@ -1539,13 +1461,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
    ExpDesc callee;
    BCReg base = 0;
    if (const auto* direct = std::get_if<DirectCallTarget>(&payload.target)) {
-      if (not direct->callable) {
-         return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
-      }
+      if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       auto callee_result = this->emit_expression(*direct->callable);
-      if (not callee_result.ok()) {
-         return callee_result;
-      }
+      if (not callee_result.ok()) return callee_result;
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "call callee");
 #if LJ_FR2
@@ -1558,25 +1476,19 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
          return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       }
       auto receiver_result = this->emit_expression(*method->receiver);
-      if (not receiver_result.ok()) {
-         return receiver_result;
-      }
+      if (not receiver_result.ok()) return receiver_result;
       callee = receiver_result.value_ref();
       ExpDesc key = make_interned_string_expr(method->method.symbol);
       bcemit_method(&this->func_state, &callee, &key);
       base = callee.u.s.info;
    }
-   else {
-      return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
-   }
+   else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
    BCReg arg_count = 0;
    ExpDesc args = make_const_expr(ExpKind::Void);
    if (not payload.arguments.empty()) {
       auto args_result = this->emit_expression_list(payload.arguments, arg_count);
-      if (not args_result.ok()) {
-         return ParserResult<ExpDesc>::failure(args_result.error_ref());
-      }
+      if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
       args = args_result.value_ref();
    }
 
@@ -1587,9 +1499,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
    }
    else {
-      if (not (args.k IS ExpKind::Void)) {
-         this->materialise_to_next_reg(args, "call arguments");
-      }
+      if (not (args.k IS ExpKind::Void)) this->materialise_to_next_reg(args, "call arguments");
       ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base - LJ_FR2);
    }
 
@@ -1620,33 +1530,21 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
    freg++;
 
    for (const TableField& field : payload.fields) {
-      if (not field.value) {
-         return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
-      }
+      if (not field.value) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
       RegisterGuard entry_guard(fs);
       ExpDesc key;
       vcall = 0;
 
       switch (field.kind) {
       case TableFieldKind::Computed: {
-         if (not field.key) {
-            return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
-         }
+         if (not field.key) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
          auto key_result = this->emit_expression(*field.key);
-         if (not key_result.ok()) {
-            return key_result;
-         }
+         if (not key_result.ok()) return key_result;
          key = key_result.value_ref();
          expr_toval(fs, &key);
-         if (not expr_isk(&key)) {
-            expr_index(fs, &table, &key);
-         }
-         if (expr_isnumk(&key) and expr_numiszero(&key)) {
-            needarr = 1;
-         }
-         else {
-            nhash++;
-         }
+         if (not expr_isk(&key)) expr_index(fs, &table, &key);
+         if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
+         else nhash++;
          break;
       }
       case TableFieldKind::Record: {
@@ -1728,21 +1626,13 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
       fs->freereg--;
       table.k = ExpKind::Relocable;
    }
-   else {
-      table.k = ExpKind::NonReloc;
-   }
+   else table.k = ExpKind::NonReloc;
 
    if (not template_table) {
       BCIns* ip = &fs->bcbase[pc].ins;
-      if (not needarr) {
-         narr = 0;
-      }
-      else if (narr < 3) {
-         narr = 3;
-      }
-      else if (narr > 0x7ff) {
-         narr = 0x7ff;
-      }
+      if (not needarr) narr = 0;
+      else if (narr < 3) narr = 3;
+      else if (narr > 0x7ff) narr = 0x7ff;
       setbc_d(ip, narr | (hsize2hbits(nhash) << 11));
    }
    else {
@@ -1786,9 +1676,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
    child_state.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&child_state, BC_FUNCF, 0, 0);
-   if (payload.is_vararg) {
-      child_state.flags |= PROTO_VARARG;
-   }
+   if (payload.is_vararg) child_state.flags |= PROTO_VARARG;
 
    FuncScope scope;
 
@@ -1870,19 +1758,12 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
    }
 
    const Identifier* final_name = nullptr;
-   if (path.method.has_value()) {
-      final_name = &path.method.value();
-   }
-   else if (path.segments.size() > 1) {
-      final_name = &path.segments.back();
-   }
+   if (path.method.has_value()) final_name = &path.method.value();
+   else if (path.segments.size() > 1) final_name = &path.segments.back();
 
-   if (not final_name) {
-      return ParserResult<ExpDesc>::success(target);
-   }
-   if (not final_name->symbol) {
-      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
-   }
+   if (not final_name) return ParserResult<ExpDesc>::success(target);
+
+   if (not final_name->symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    ExpDesc key = make_interned_string_expr(final_name->symbol);
    expr_toval(&this->func_state, &target);
@@ -1896,16 +1777,10 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
    switch (expr.kind) {
    case AstNodeKind::IdentifierExpr: {
       auto result = this->emit_identifier_expr(std::get<NameRef>(expr.data));
-      if (not result.ok()) {
-         return result;
-      }
+      if (not result.ok()) return result;
       ExpDesc value = result.value_ref();
-      if (value.k IS ExpKind::Local) {
-         value.u.s.aux = this->func_state.varmap[value.u.s.info];
-      }
-      if (not vkisvar(value.k)) {
-         return this->unsupported_expr(expr.kind, expr.span);
-      }
+      if (value.k IS ExpKind::Local) value.u.s.aux = this->func_state.varmap[value.u.s.info];
+      if (not vkisvar(value.k)) return this->unsupported_expr(expr.kind, expr.span);
       return ParserResult<ExpDesc>::success(value);
    }
    case AstNodeKind::MemberExpr: {
@@ -1914,9 +1789,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
          return this->unsupported_expr(expr.kind, expr.span);
       }
       auto table_result = this->emit_expression(*payload.table);
-      if (not table_result.ok()) {
-         return table_result;
-      }
+      if (not table_result.ok()) return table_result;
       ExpDesc table = table_result.value_ref();
       expr_toval(&this->func_state, &table);
       expr_toanyreg(&this->func_state, &table);
@@ -1960,16 +1833,10 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
    ExpDesc last = make_const_expr(ExpKind::Void);
    bool first = true;
    for (const ExprNodePtr& node : expressions) {
-      if (not node) {
-         return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
-      }
-      if (not first) {
-         this->materialise_to_next_reg(last, "expression list baton");
-      }
+      if (not node) return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
+      if (not first) this->materialise_to_next_reg(last, "expression list baton");
       auto value = this->emit_expression(*node);
-      if (not value.ok()) {
-         return value;
-      }
+      if (not value.ok()) return value;
       ExpDesc expr = value.value_ref();
       ++count;
       last = expr;
@@ -2032,7 +1899,7 @@ void IrEmitter::release_expression(ExpDesc& expression, std::string_view usage)
 void IrEmitter::ensure_register_floor(std::string_view usage)
 {
    if (this->func_state.freereg < this->func_state.nactvar) {
-      pf::Log log("Fluid-Parser");
+      pf::Log log("Parser");
       log.warning("ast-pipeline register underrun during %.*s (free=%u active=%u)",
          int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
       this->func_state.freereg = this->func_state.nactvar;
@@ -2043,7 +1910,7 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
 {
    this->ensure_register_floor(usage);
    if (this->func_state.freereg > this->func_state.nactvar) {
-      pf::Log log("Fluid-Parser");
+      pf::Log log("Parser");
       int line = this->lex_state.lastline;
       log.warning("ast-pipeline leaked %u registers after %.*s at line %d (free=%u active=%u)",
          unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
