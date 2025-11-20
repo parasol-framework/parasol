@@ -8,6 +8,8 @@
 #define lj_lex_c
 #define LUA_CORE
 
+#include <ctype.h>
+
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -118,7 +120,7 @@ static void lex_number(LexState *State, TValue* tv)
 {
    StrScanFmt fmt;
    LexChar c, xp = 'e';
-   State->assert_condition(lj_char_isdigit(State->c), "bad usage");
+   State->assert_condition(isdigit(State->c), "bad usage");
    if ((c = State->c) IS '0' and (lex_savenext(State) | 0x20) IS 'x') xp = 'p';
    while (lj_char_isident(State->c) or State->c IS '.' or ((State->c IS '-' or State->c IS '+') and (c | 0x20) IS xp)) {
       c = State->c;
@@ -243,13 +245,13 @@ static void lex_string(LexState *State, TValue* tv)
 
          case 'x':  //  Hexadecimal escape '\xXX'.
             c = (lex_next(State) & 15u) << 4;
-            if (!lj_char_isdigit(State->c)) {
-               if (!lj_char_isxdigit(State->c)) goto err_xesc;
+            if (!isdigit(State->c)) {
+               if (!isxdigit(State->c)) goto err_xesc;
                c += 9 << 4;
             }
             c += (lex_next(State) & 15u);
-            if (!lj_char_isdigit(State->c)) {
-               if (!lj_char_isxdigit(State->c)) goto err_xesc;
+            if (!isdigit(State->c)) {
+               if (!isxdigit(State->c)) goto err_xesc;
                c += 9;
             }
             break;
@@ -260,8 +262,8 @@ static void lex_string(LexState *State, TValue* tv)
             c = 0;
             do {
                c = (c << 4) | (State->c & 15u);
-               if (!lj_char_isdigit(State->c)) {
-                  if (!lj_char_isxdigit(State->c)) goto err_xesc;
+               if (!isdigit(State->c)) {
+                  if (!isxdigit(State->c)) goto err_xesc;
                   c += 9;
                }
                if (c >= 0x110000) goto err_xesc;  //  Out of Unicode range.
@@ -287,7 +289,7 @@ static void lex_string(LexState *State, TValue* tv)
 
          case 'z':  //  Skip whitespace.
             lex_next(State);
-            while (lj_char_isspace(State->c))
+            while (isspace(State->c))
                if (lex_iseol(State)) lex_newline(State); else lex_next(State);
             continue;
 
@@ -298,11 +300,11 @@ static void lex_string(LexState *State, TValue* tv)
          case LEX_EOF: continue;
 
          default:
-            if (!lj_char_isdigit(c)) goto err_xesc;
+            if (!isdigit(c)) goto err_xesc;
             c -= '0';  //  Decimal escape '\ddd'.
-            if (lj_char_isdigit(lex_next(State))) {
+            if (isdigit(lex_next(State))) {
                c = c * 10 + (State->c - '0');
-               if (lj_char_isdigit(lex_next(State))) {
+               if (isdigit(lex_next(State))) {
                   c = c * 10 + (State->c - '0');
                   if (c > 255) {
                   err_xesc:
@@ -340,7 +342,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
       if (lj_char_isident(State->c)) {
          State->mark_token_start();
          GCstr *s;
-         if (lj_char_isdigit(State->c)) {  // Numeric literal.
+         if (isdigit(State->c)) {  // Numeric literal.
             lex_number(State, tv);
             return TK_number;
          }
@@ -498,7 +500,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') { lex_next(State); return TK_cconcat; }
             return TK_concat;   //  ..
          }
-         else if (!lj_char_isdigit(State->c)) {
+         else if (!isdigit(State->c)) {
             return '.';
          }
          else {
@@ -721,7 +723,7 @@ const char* LexState::token2str(LexToken Tok)
 {
    if (Tok > TK_OFS)
       return token_names[Tok - TK_OFS - 1];
-   else if (!lj_char_iscntrl(Tok))
+   else if (!iscntrl(Tok))
       return lj_strfmt_pushf(this->L, "%c", Tok);
    else
       return lj_strfmt_pushf(this->L, "char(%d)", Tok);

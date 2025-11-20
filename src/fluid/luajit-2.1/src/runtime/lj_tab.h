@@ -3,19 +3,18 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_TAB_H
-#define _LJ_TAB_H
+#pragma once
 
 #include "lj_obj.h"
 
 // Hash constants. Tuned using a brute force search.
-constexpr int32_t HASH_BIAS = (-0x04c11db7);
-constexpr int HASH_ROT1 = 14;
-constexpr int HASH_ROT2 = 5;
-constexpr int HASH_ROT3 = 13;
+inline constexpr int32_t HASH_BIAS = (-0x04c11db7);
+inline constexpr int HASH_ROT1 = 14;
+inline constexpr int HASH_ROT2 = 5;
+inline constexpr int HASH_ROT3 = 13;
 
 // Scramble the bits of numbers and pointers.
-static LJ_AINLINE uint32_t hashrot(uint32_t lo, uint32_t hi)
+[[nodiscard]] inline constexpr uint32_t hashrot(uint32_t lo, uint32_t hi) noexcept
 {
 #if LJ_TARGET_X86ORX64
    // Prefer variant that compiles well for a 2-operand CPU.
@@ -32,7 +31,7 @@ static LJ_AINLINE uint32_t hashrot(uint32_t lo, uint32_t hi)
 }
 
 // Hash values are masked with the table hash mask and used as an index.
-static LJ_AINLINE Node* hashmask(const GCtab* t, uint32_t hash)
+[[nodiscard]] inline constexpr Node* hashmask(const GCtab* t, uint32_t hash) noexcept
 {
    Node* n = noderef(t->node);
    return &n[hash & t->hmask];
@@ -91,6 +90,4 @@ LJ_FUNCA int lj_tab_next(GCtab* t, cTValue* key, TValue* o);
 LJ_FUNCA MSize LJ_FASTCALL lj_tab_len(GCtab* t);
 #if LJ_HASJIT
 LJ_FUNC MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint);
-#endif
-
 #endif

@@ -9,6 +9,8 @@
 #define lib_string_c
 #define LUA_LIB
 
+#include <ctype.h>
+
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
@@ -614,8 +616,7 @@ static int matchbracketclass(int c, const char* p, const char* ec)
       }
       else if ((*(p + 1) == '-') and (p + 2 < ec)) {
          p += 2;
-         if (uchar(*(p - 2)) <= c and c <= uchar(*p))
-            return sig;
+         if (uchar(*(p - 2)) <= c and c <= uchar(*p)) return sig;
       }
       else if (uchar(*p) == c) return sig;
    }
@@ -760,7 +761,7 @@ init: //  using goto's to optimize tail recursion
          goto init;  //  else s = match(ms, s, ep);
       }
       default:
-         if (lj_char_isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
+         if (isdigit(uchar(*(p + 1)))) {  // capture results (%0-%9)?
             s = match_capture(ms, s, uchar(*(p + 1)));
             if (s == nullptr) break;
             p += 2;
@@ -942,17 +943,11 @@ static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
    size_t l, i;
    const char* news = lua_tolstring(ms->L, 3, &l);
    for (i = 0; i < l; i++) {
-      if (news[i] != L_ESC) {
-         luaL_addchar(b, news[i]);
-      }
+      if (news[i] != L_ESC) luaL_addchar(b, news[i]);
       else {
          i++;  //  skip ESC
-         if (!lj_char_isdigit(uchar(news[i]))) {
-            luaL_addchar(b, news[i]);
-         }
-         else if (news[i] == '0') {
-            luaL_addlstring(b, s, (size_t)(e - s));
-         }
+         if (not isdigit(uchar(news[i]))) luaL_addchar(b, news[i]);
+         else if (news[i] == '0') luaL_addlstring(b, s, (size_t)(e - s));
          else {
             push_onecapture(ms, news[i] - '1', s, e);
             luaL_addvalue(b);  //  add capture to accumulated result
@@ -966,24 +961,25 @@ static void add_value(MatchState* ms, luaL_Buffer* b,
 {
    lua_State* L = ms->L;
    switch (lua_type(L, 3)) {
-   case LUA_TNUMBER:
-   case LUA_TSTRING: {
-      add_s(ms, b, s, e);
-      return;
+      case LUA_TNUMBER:
+      case LUA_TSTRING:
+         add_s(ms, b, s, e);
+         return;
+
+      case LUA_TFUNCTION: {
+         int n;
+         lua_pushvalue(L, 3);
+         n = push_captures(ms, s, e);
+         lua_call(L, n, 1);
+         break;
+      }
+
+      case LUA_TTABLE:
+         push_onecapture(ms, 0, s, e);
+         lua_gettable(L, 3);
+         break;
    }
-   case LUA_TFUNCTION: {
-      int n;
-      lua_pushvalue(L, 3);
-      n = push_captures(ms, s, e);
-      lua_call(L, n, 1);
-      break;
-   }
-   case LUA_TTABLE: {
-      push_onecapture(ms, 0, s, e);
-      lua_gettable(L, 3);
-      break;
-   }
-   }
+
    if (!lua_toboolean(L, -1)) {  // nil or false?
       lua_pop(L, 1);
       lua_pushlstring(L, s, (size_t)(e - s));  //  keep original text

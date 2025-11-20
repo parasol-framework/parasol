@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_META_H
-#define _LJ_META_H
+#pragma once
 
 #include "lj_obj.h"
 
@@ -34,5 +33,3 @@ LJ_FUNCA TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
 LJ_FUNCA void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp);
 LJ_FUNCA void lj_meta_call(lua_State* L, TValue* func, TValue* top);
 LJ_FUNCA void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
-
-#endif

@@ -255,15 +255,15 @@ static CPToken cp_string(CPState* cp)
          case 'x':
             c = 0;
             while (lj_char_isxdigit(cp_get(cp)))
-               c = (c << 4) + (lj_char_isdigit(cp->c) ? cp->c - '0' : (cp->c & 15) + 9);
+               c = (c << 4) + (isdigit(cp->c) ? cp->c - '0' : (cp->c & 15) + 9);
             cp_save(cp, (c & 0xff));
             continue;
          default:
-            if (lj_char_isdigit(c)) {
+            if (isdigit(c)) {
                c -= '0';
-               if (lj_char_isdigit(cp_get(cp))) {
+               if (isdigit(cp_get(cp))) {
                   c = c * 8 + (cp->c - '0');
-                  if (lj_char_isdigit(cp_get(cp))) {
+                  if (isdigit(cp_get(cp))) {
                      c = c * 8 + (cp->c - '0');
                      cp_get(cp);
                   }
@@ -316,7 +316,7 @@ static CPToken cp_next_(CPState* cp)
    lj_buf_reset(&cp->sb);
    for (;;) {
       if (lj_char_isident(cp->c))
-         return lj_char_isdigit(cp->c) ? cp_number(cp) : cp_ident(cp);
+         return isdigit(cp->c) ? cp_number(cp) : cp_ident(cp);
       switch (cp->c) {
       case '\n': case '\r': cp_newline(cp);  /* fallthrough. */
       case ' ': case '\t': case '\v': case '\f': cp_get(cp); break;

@@ -3,19 +3,27 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_VMEVENT_H
-#define _LJ_VMEVENT_H
+#pragma once
 
 #include "lj_obj.h"
 
 // Registry key for VM event handler table.
 #define LJ_VMEVENTS_REGKEY   "_VMEVENTS"
-#define LJ_VMEVENTS_HSIZE   4
+inline constexpr int LJ_VMEVENTS_HSIZE = 4;
 
-#define VMEVENT_MASK(ev)   ((uint8_t)1 << ((int)(ev) & 7))
-#define VMEVENT_HASH(ev)   ((int)(ev) & ~7)
-#define VMEVENT_HASHIDX(h)   ((int)(h) << 3)
-#define VMEVENT_NOCACHE      255
+inline constexpr uint8_t VMEVENT_MASK(int ev) noexcept {
+   return uint8_t(1) << (int(ev) & 7);
+}
+
+inline constexpr int VMEVENT_HASH(int ev) noexcept {
+   return int(ev) & ~7;
+}
+
+inline constexpr int VMEVENT_HASHIDX(int h) noexcept {
+   return int(h) << 3;
+}
+
+inline constexpr int VMEVENT_NOCACHE = 255;
 
 #define VMEVENT_DEF(name, hash) \
   LJ_VMEVENT_##name##_, \
@@ -54,6 +62,4 @@ typedef enum {
 
 LJ_FUNC ptrdiff_t lj_vmevent_prepare(lua_State* L, VMEvent ev);
 LJ_FUNC void lj_vmevent_call(lua_State* L, ptrdiff_t argbase);
-#endif
-
 #endif

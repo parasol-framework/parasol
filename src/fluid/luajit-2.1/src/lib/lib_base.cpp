@@ -7,6 +7,7 @@
 */
 
 #include <stdio.h>
+#include <ctype.h> 
 
 #define lib_base_c
 #define LUA_LIB
@@ -297,15 +298,14 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       char* ep;
       unsigned int neg = 0;
       unsigned long ul;
-      if (base < 2 or base > 36)
-         lj_err_arg(L, 2, ErrMsg::BASERNG);
-      while (lj_char_isspace((unsigned char)(*p))) p++;
+      if (base < 2 or base > 36) lj_err_arg(L, 2, ErrMsg::BASERNG);
+      while (isspace((unsigned char)(*p))) p++;
       if (*p == '-') { p++; neg = 1; }
       else if (*p == '+') { p++; }
-      if (lj_char_isalnum((unsigned char)(*p))) {
+      if (isalnum((unsigned char)(*p))) {
          ul = strtoul(p, &ep, base);
          if (p != ep) {
-            while (lj_char_isspace((unsigned char)(*ep))) ep++;
+            while (isspace((unsigned char)(*ep))) ep++;
             if (*ep == '\0') {
                if (LJ_DUALNUM and LJ_LIKELY(ul < 0x80000000u + neg)) {
                   if (neg) ul = (unsigned long)-(long)ul;

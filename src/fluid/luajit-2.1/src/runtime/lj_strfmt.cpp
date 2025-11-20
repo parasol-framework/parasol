@@ -1,9 +1,8 @@
-/*
-** String formatting.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// String formatting.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #include <stdio.h>
+#include <ctype.h>
 
 #define lj_strfmt_c
 #define LUA_CORE
@@ -20,8 +19,6 @@
 #include "lj_ctype.h"
 #endif
 #include "lib.h"
-
-// -- Format parser -------------------------------------------------------
 
 static const uint8_t strfmt_map[('x' - 'A') + 1] = {
   STRFMT_A,0,0,0,STRFMT_E,STRFMT_F,STRFMT_G,0,0,0,0,0,0,
@@ -222,10 +219,10 @@ static SBuf* strfmt_putquotedlen(SBuf* sb, const char* s, MSize len)
       if (c == '"' or c == '\\' or c == '\n') {
          *w++ = '\\';
       }
-      else if (lj_char_iscntrl(c)) {  // This can only be 0-31 or 127.
+      else if (iscntrl(c)) {  // This can only be 0-31 or 127.
          uint32_t d;
          *w++ = '\\';
-         if (c >= 100 or lj_char_isdigit((uint8_t)*s)) {
+         if (c >= 100 or isdigit((uint8_t)*s)) {
             *w++ = (char)('0' + (c >= 100)); if (c >= 100) c -= 100;
             goto tens;
          }
@@ -527,21 +524,11 @@ GCstr* LJ_FASTCALL lj_strfmt_char(lua_State* L, int c)
 // Raw conversion of object to string.
 GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
 {
-   if (tvisstr(o)) {
-      return strV(o);
-   }
-   else if (tvisnumber(o)) {
-      return lj_strfmt_number(L, o);
-   }
-   else if (tvisnil(o)) {
-      return lj_str_newlit(L, "nil");
-   }
-   else if (tvisfalse(o)) {
-      return lj_str_newlit(L, "false");
-   }
-   else if (tvistrue(o)) {
-      return lj_str_newlit(L, "true");
-   }
+   if (tvisstr(o)) return strV(o);
+   else if (tvisnumber(o)) return lj_strfmt_number(L, o);
+   else if (tvisnil(o)) return lj_str_newlit(L, "nil");
+   else if (tvisfalse(o)) return lj_str_newlit(L, "false");
+   else if (tvistrue(o)) return lj_str_newlit(L, "true");
    else {
       char buf[8 + 2 + 2 + 16], * p = buf;
       p = lj_buf_wmem(p, lj_typename(o), (MSize)strlen(lj_typename(o)));
@@ -550,14 +537,10 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
          p = lj_buf_wmem(p, "builtin#", 8);
          p = lj_strfmt_wint(p, funcV(o)->c.ffid);
       }
-      else {
-         p = lj_strfmt_wptr(p, lj_obj_ptr(G(L), o));
-      }
+      else p = lj_strfmt_wptr(p, lj_obj_ptr(G(L), o));
       return lj_str_new(L, buf, (size_t)(p - buf));
    }
 }
-
-// -- Internal string formatting ------------------------------------------
 
 /*
 ** These functions are only used for lua_pushfstring(), lua_pushvfstring()
@@ -571,6 +554,7 @@ GCstr* LJ_FASTCALL lj_strfmt_obj(lua_State* L, cTValue* o)
 */
 
 // Push formatted message as a string object to Lua stack. va_list variant.
+
 const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
 {
    SBuf* sb = lj_buf_tmp_(L);
