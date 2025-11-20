@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_FRAME_H
-#define _LJ_FRAME_H
+#pragma once
 
 #include "lj_obj.h"
 #include "lj_bc.h"
@@ -25,9 +24,9 @@ enum {
    FRAME_LUA, FRAME_C, FRAME_CONT, FRAME_VARG,
    FRAME_LUAP, FRAME_CP, FRAME_PCALL, FRAME_PCALLH
 };
-#define FRAME_TYPE      3
-#define FRAME_P         4
-#define FRAME_TYPEP      (FRAME_TYPE|FRAME_P)
+inline constexpr int FRAME_TYPE = 3;
+inline constexpr int FRAME_P = 4;
+inline constexpr int FRAME_TYPEP = (FRAME_TYPE|FRAME_P);
 
 // Macros to access and modify Lua frames.
 #if LJ_FR2
@@ -310,9 +309,9 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  //  Special continuations.
 #define CFRAME_SIZE_JIT      CFRAME_SIZE
 #endif
 
-#define CFRAME_RESUME      1
-#define CFRAME_UNWIND_FF   2  //  Only used in unwinder.
-#define CFRAME_RAWMASK      (~(intptr_t)(CFRAME_RESUME|CFRAME_UNWIND_FF))
+inline constexpr int CFRAME_RESUME = 1;
+inline constexpr int CFRAME_UNWIND_FF = 2;  //  Only used in unwinder.
+inline constexpr intptr_t CFRAME_RAWMASK = (~intptr_t(CFRAME_RESUME|CFRAME_UNWIND_FF));
 
 #define cframe_errfunc(cf)   (*(int32_t *)(((char *)(cf))+CFRAME_OFS_ERRF))
 #define cframe_nres(cf)      (*(int32_t *)(((char *)(cf))+CFRAME_OFS_NRES))
@@ -331,5 +330,3 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  //  Special continuations.
 #define cframe_unwind_ff(cf)   ((intptr_t)(cf) & CFRAME_UNWIND_FF)
 #define cframe_raw(cf)      ((void *)((intptr_t)(cf) & CFRAME_RAWMASK))
 #define cframe_Lpc(L)      cframe_pc(cframe_raw(L->cframe))
-
-#endif

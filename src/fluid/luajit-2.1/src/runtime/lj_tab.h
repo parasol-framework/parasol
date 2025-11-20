@@ -3,19 +3,18 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_TAB_H
-#define _LJ_TAB_H
+#pragma once
 
 #include "lj_obj.h"
 
 // Hash constants. Tuned using a brute force search.
-constexpr int32_t HASH_BIAS = (-0x04c11db7);
-constexpr int HASH_ROT1 = 14;
-constexpr int HASH_ROT2 = 5;
-constexpr int HASH_ROT3 = 13;
+inline constexpr int32_t HASH_BIAS = (-0x04c11db7);
+inline constexpr int HASH_ROT1 = 14;
+inline constexpr int HASH_ROT2 = 5;
+inline constexpr int HASH_ROT3 = 13;
 
 // Scramble the bits of numbers and pointers.
-static LJ_AINLINE uint32_t hashrot(uint32_t lo, uint32_t hi)
+[[nodiscard]] inline constexpr uint32_t hashrot(uint32_t lo, uint32_t hi) noexcept
 {
 #if LJ_TARGET_X86ORX64
    // Prefer variant that compiles well for a 2-operand CPU.
@@ -32,25 +31,38 @@ static LJ_AINLINE uint32_t hashrot(uint32_t lo, uint32_t hi)
 }
 
 // Hash values are masked with the table hash mask and used as an index.
-static LJ_AINLINE Node* hashmask(const GCtab* t, uint32_t hash)
+[[nodiscard]] inline constexpr Node* hashmask(const GCtab* t, uint32_t hash) noexcept
 {
    Node* n = noderef(t->node);
    return &n[hash & t->hmask];
 }
 
 // String IDs are generated when a string is interned.
-#define hashstr(t, s)      hashmask(t, (s)->sid)
+[[nodiscard]] inline constexpr Node* hashstr(const GCtab* t, const GCstr* s) noexcept {
+   return hashmask(t, s->sid);
+}
 
-#define hashlohi(t, lo, hi)   hashmask((t), hashrot((lo), (hi)))
-#define hashnum(t, o)      hashlohi((t), (o)->u32.lo, ((o)->u32.hi << 1))
+[[nodiscard]] inline constexpr Node* hashlohi(const GCtab* t, uint32_t lo, uint32_t hi) noexcept {
+   return hashmask(t, hashrot(lo, hi));
+}
+
+[[nodiscard]] inline constexpr Node* hashnum(const GCtab* t, const TValue* o) noexcept {
+   return hashlohi(t, o->u32.lo, (o->u32.hi << 1));
+}
+
 #if LJ_GC64
-#define hashgcref(t, r) \
-  hashlohi((t), (uint32_t)gcrefu(r), (uint32_t)(gcrefu(r) >> 32))
+[[nodiscard]] inline constexpr Node* hashgcref(const GCtab* t, GCRef r) noexcept {
+   return hashlohi(t, uint32_t(gcrefu(r)), uint32_t(gcrefu(r) >> 32));
+}
 #else
-#define hashgcref(t, r)      hashlohi((t), gcrefu(r), gcrefu(r) + HASH_BIAS)
+[[nodiscard]] inline constexpr Node* hashgcref(const GCtab* t, GCRef r) noexcept {
+   return hashlohi(t, gcrefu(r), gcrefu(r) + HASH_BIAS);
+}
 #endif
 
-#define hsize2hbits(s)   ((s) ? ((s)==1 ? 1 : 1+lj_fls((uint32_t)((s)-1))) : 0)
+[[nodiscard]] inline constexpr uint32_t hsize2hbits(MSize s) noexcept {
+   return (s) ? ((s)==1 ? 1 : 1+lj_fls(uint32_t((s)-1))) : 0;
+}
 
 LJ_FUNCA GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits);
 LJ_FUNC GCtab* lj_tab_new_ah(lua_State* L, int32_t a, int32_t h);
@@ -79,18 +91,25 @@ LJ_FUNCA TValue* lj_tab_setinth(lua_State* L, GCtab* t, int32_t key);
 LJ_FUNC TValue* lj_tab_setstr(lua_State* L, GCtab* t, const GCstr* key);
 LJ_FUNC TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key);
 
-#define inarray(t, key)      ((MSize)(key) < (MSize)(t)->asize)
-#define arrayslot(t, i)      (&tvref((t)->array)[(i)])
-#define lj_tab_getint(t, key) \
-  (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_getinth((t), (key)))
-#define lj_tab_setint(L, t, key) \
-  (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_setinth(L, (t), (key)))
+[[nodiscard]] inline constexpr bool inarray(const GCtab* t, MSize key) noexcept {
+   return MSize(key) < MSize(t->asize);
+}
+
+[[nodiscard]] inline constexpr TValue* arrayslot(const GCtab* t, MSize i) noexcept {
+   return &tvref(t->array)[i];
+}
+
+[[nodiscard]] inline cTValue* lj_tab_getint(GCtab* t, int32_t key) noexcept {
+   return inarray(t, key) ? arrayslot(t, key) : lj_tab_getinth(t, key);
+}
+
+[[nodiscard]] inline TValue* lj_tab_setint(lua_State* L, GCtab* t, int32_t key) noexcept {
+   return inarray(t, key) ? arrayslot(t, key) : lj_tab_setinth(L, t, key);
+}
 
 LJ_FUNC uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key);
 LJ_FUNCA int lj_tab_next(GCtab* t, cTValue* key, TValue* o);
 LJ_FUNCA MSize LJ_FASTCALL lj_tab_len(GCtab* t);
 #if LJ_HASJIT
 LJ_FUNC MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint);
-#endif
-
 #endif
