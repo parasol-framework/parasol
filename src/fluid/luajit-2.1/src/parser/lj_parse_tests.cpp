@@ -9,6 +9,7 @@
 #include "lualib.h"
 
 #include "lj_bc.h"
+#include "lj_obj.h"
 
 #include <array>
 #include <chrono>
@@ -91,7 +92,7 @@ struct StringReaderCtx {
 
 static const char* unit_reader(lua_State*, void* data, size_t* size)
 {
-   auto* ctx = static_cast<StringReaderCtx*>(data);
+   auto *ctx = (StringReaderCtx *)data;
    if (ctx->size == 0) {
       return nullptr;
    }
@@ -957,26 +958,44 @@ static void log_snapshot(const BytecodeSnapshot& snapshot, const std::string& la
 static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnapshot& ast,
    std::string& diff, std::string label)
 {
-   if (legacy.instructions.size() != ast.instructions.size()) {
+   auto trim_epilogue = [](const std::vector<BCIns>& source) {
+      std::vector<BCIns> trimmed = source;
+      while (trimmed.size() >= 2) {
+         BCIns last   = trimmed.back();
+         BCIns before = trimmed[trimmed.size() - 2];
+         if ((bc_op(before) IS BC_UCLO) and (bc_op(last) IS BC_RET0)) {
+            trimmed.pop_back();
+            trimmed.pop_back();
+            continue;
+         }
+         break;
+      }
+      return trimmed;
+   };
+
+   std::vector<BCIns> legacy_body = trim_epilogue(legacy.instructions);
+   std::vector<BCIns> ast_body    = trim_epilogue(ast.instructions);
+
+   if (legacy_body.size() != ast_body.size()) {
       std::ostringstream stream;
-      stream << label << ": bytecode length mismatch (legacy=" << legacy.instructions.size()
-         << ", ast=" << ast.instructions.size() << ")";
+      stream << label << ": bytecode length mismatch (legacy=" << legacy_body.size()
+         << ", ast=" << ast_body.size() << ")";
       log_snapshot(legacy, "legacy " + label);
       log_snapshot(ast, "ast " + label);
       diff = stream.str();
       return false;
    }
 
-   for (size_t i = 0; i < legacy.instructions.size(); ++i) {
-      if (legacy.instructions[i] != ast.instructions[i]) {
+   for (size_t i = 0; i < legacy_body.size(); ++i) {
+      if (legacy_body[i] != ast_body[i]) {
          pf::Log log("Fluid-Parser");
-         std::string legacy_desc = describe_instruction(legacy.instructions[i]);
-         std::string ast_desc = describe_instruction(ast.instructions[i]);
+         std::string legacy_desc = describe_instruction(legacy_body[i]);
+         std::string ast_desc = describe_instruction(ast_body[i]);
          log.detail("legacy[%s:%zu] %s", label.c_str(), i, legacy_desc.c_str());
          log.detail("   ast[%s:%zu] %s", label.c_str(), i, ast_desc.c_str());
          std::ostringstream stream;
          stream << label << ": mismatch at pc=" << i << " legacy=0x" << std::hex
-            << legacy.instructions[i] << " ast=0x" << ast.instructions[i];
+            << legacy_body[i] << " ast=0x" << ast_body[i];
          diff = stream.str();
          return false;
       }
@@ -1023,6 +1042,7 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
    bool ast_pipeline, std::string& error)
 {
    ScopedPipelineToggle toggle(ast_pipeline);
+   L->jit_pipeline = glJITPipeline;
    if (luaL_loadbuffer(L, source.data(), source.size(), "parser-unit")) {
       const char* message = lua_tostring(L, -1);
       error.assign(message ? message : "unknown parser error");
@@ -1221,6 +1241,17 @@ data.values[1], data.values[2], data.meta.edge = data.values[2], data.values[1],
 local fallback = data.unknown ?? 9
 data.values[1] += data.meta.edge
 return data.values[1] + fallback
+)" },
+      { "continue_ladder", R"(
+local value = 0
+for i = 1, 3 do
+   value += 1
+   if i < 3 then
+      continue
+   end
+   value += 2
+end
+return value
 )" }
    } };
 

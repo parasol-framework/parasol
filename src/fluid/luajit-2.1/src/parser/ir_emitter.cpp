@@ -545,7 +545,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    }
    ExpDesc value = expression.value_ref();
    expr_toval(&this->func_state, &value);
-   this->release_expression(value, "expression statement result");
+   release_indexed_original(this->func_state, value);
+    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -974,9 +975,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    this->lex_state.var_add(1);
    VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
-   if (fs->bl) {
-      fs->bl->flags |= FuncScopeFlag::Upvalue;
-   }
 
    auto function_value = this->emit_function_expr(*payload.callable);
    if (not function_value.ok()) {
@@ -1189,6 +1187,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    register_guard.release_to(register_guard.saved());
    release_indexed_original(this->func_state, target);
    this->func_state.freereg = this->func_state.nactvar;
+   register_guard.adopt_saved(this->func_state.freereg);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1252,6 +1251,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    register_guard.release_to(register_guard.saved());
    release_indexed_original(this->func_state, target);
    this->func_state.freereg = this->func_state.nactvar;
+   register_guard.adopt_saved(this->func_state.freereg);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -2071,9 +2071,10 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
    this->ensure_register_floor(usage);
    if (this->func_state.freereg > this->func_state.nactvar) {
       pf::Log log("Fluid-Parser");
-      log.warning("ast-pipeline leaked %u registers after %.*s (free=%u active=%u)",
+      int line = this->lex_state.lastline;
+      log.warning("ast-pipeline leaked %u registers after %.*s at line %d (free=%u active=%u)",
          unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
-         unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
+         line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
       this->func_state.freereg = this->func_state.nactvar;
    }
 }
@@ -2100,4 +2101,3 @@ ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message
    error.token = Token::from_current(this->lex_state);
    return error;
 }
-

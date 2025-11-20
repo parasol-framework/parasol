@@ -80,6 +80,14 @@ public:
       fs_->freereg = reg;
    }
 
+   void adopt_saved(BCReg reg) {
+      saved_freereg_ = reg;
+   }
+
+   void disarm() {
+      fs_ = nullptr;
+   }
+
    // Get saved register level
    [[nodiscard]] BCReg saved() const { return saved_freereg_; }
 
