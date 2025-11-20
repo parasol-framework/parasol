@@ -8,7 +8,7 @@
 
 #include "lj_obj.h"
 
-typedef struct lj_Debug {
+struct lj_Debug {
    // Common fields. Must be in the same order as in lua.h.
    int event;
    const char* name;
@@ -24,7 +24,7 @@ typedef struct lj_Debug {
    // Extended fields. Only valid if lj_debug_getinfo() is called with ext = 1.
    int nparams;
    int isvararg;
-} lj_Debug;
+};
 
 LJ_FUNC cTValue* lj_debug_frame(lua_State* L, int level, int* size);
 LJ_FUNC BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc);
@@ -55,12 +55,19 @@ LJ_FUNC void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt,
   _(FOR_STATE, "(for state)") \
   _(FOR_CTL, "(for control)")
 
-enum {
-   VARNAME_END,
-#define VARNAMEENUM(name, str)   VARNAME_##name,
+enum class VarName : unsigned int {
+   END,
+#define VARNAMEENUM(name, str)   name,
    VARNAMEDEF(VARNAMEENUM)
 #undef VARNAMEENUM
-   VARNAME__MAX
+   _MAX
 };
+
+// Backward compatibility aliases for VarName
+inline constexpr unsigned int VARNAME_END = unsigned(VarName::END);
+#define VARNAMEENUM(name, str)   inline constexpr unsigned int VARNAME_##name = unsigned(VarName::name);
+VARNAMEDEF(VARNAMEENUM)
+#undef VARNAMEENUM
+inline constexpr unsigned int VARNAME__MAX = unsigned(VarName::_MAX);
 
 #endif

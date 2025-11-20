@@ -10,15 +10,24 @@
 
 #include "lj_obj.h"
 
-typedef enum {
+enum class ErrMsg : unsigned int {
 #define ERRDEF(name, msg) \
-  LJ_ERR_##name, LJ_ERR_##name##_ = LJ_ERR_##name + sizeof(msg)-1,
+  name, name##_ = name + sizeof(msg)-1,
 #include "lj_errmsg.h"
-  LJ_ERR__MAX
-} ErrMsg;
+  _MAX
+};
+
+// Backward compatibility aliases
+#define ERRDEF(name, msg) \
+  inline constexpr ErrMsg LJ_ERR_##name = ErrMsg::name;
+#include "lj_errmsg.h"
+inline constexpr ErrMsg LJ_ERR__MAX = ErrMsg::_MAX;
 
 LJ_DATA const char *lj_err_allmsg;
-#define err2msg(em)   (lj_err_allmsg+(int)(em))
+
+[[nodiscard]] inline const char* err2msg(ErrMsg em) noexcept {
+   return lj_err_allmsg + int(em);
+}
 
 LJ_FUNC GCstr *lj_err_str(lua_State *L, ErrMsg em);
 LJ_FUNCA_NORET void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode);
@@ -41,18 +50,24 @@ LJ_FUNC_NORET void lj_err_argv(lua_State *L, int narg, ErrMsg em, ...);
 LJ_FUNC_NORET void lj_err_argtype(lua_State *L, int narg, const char *xname);
 LJ_FUNC_NORET void lj_err_argt(lua_State *L, int narg, int tt);
 
-#if LJ_UNWIND_JIT && !LJ_ABI_WIN
+#if LJ_UNWIND_JIT and not LJ_ABI_WIN
 LJ_FUNC uint8_t *lj_err_register_mcode(void *base, size_t sz, uint8_t *info);
 LJ_FUNC void lj_err_deregister_mcode(void *base, size_t sz, uint8_t *info);
 #else
-#define lj_err_register_mcode(base, sz, info)   (info)
-#define lj_err_deregister_mcode(base, sz, info)   UNUSED(base)
+[[nodiscard]] inline uint8_t *lj_err_register_mcode([[maybe_unused]] void *base,
+                                                     [[maybe_unused]] size_t sz,
+                                                     uint8_t *info) noexcept {
+   return info;
+}
+inline void lj_err_deregister_mcode([[maybe_unused]] void *base,
+                                     [[maybe_unused]] size_t sz,
+                                     [[maybe_unused]] uint8_t *info) noexcept {}
 #endif
 
 #if LJ_UNWIND_EXT && !LJ_ABI_WIN && defined(LUA_USE_ASSERT)
-LJ_FUNC void lj_err_verify(void);
+LJ_FUNC void lj_err_verify();
 #else
-#define lj_err_verify()      ((void)0)
+inline void lj_err_verify() noexcept {}
 #endif
 
 #endif
