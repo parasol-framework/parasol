@@ -7,26 +7,7 @@
 
 class FuncState;
 
-class JumpHandle {
-public:
-   JumpHandle();
-   explicit JumpHandle(FuncState* State);
-   JumpHandle(FuncState* State, BCPos Head);
-
-   [[nodiscard]] bool empty() const;
-   void append(BCPos Other);
-   void append(const JumpHandle& Other);
-   void patch_here() const;
-   void patch_to(BCPos Target) const;
-   void patch_head(BCPos Destination) const;
-   [[nodiscard]] BCPos head() const;
-   [[nodiscard]] FuncState* state() const;
-
-private:
-   FuncState* func_state;
-   BCPos list_head;
-};
-
+// JumpHandle is defined in ir_emitter.h; do not duplicate here.
 class ControlFlowGraph {
 public:
    ControlFlowGraph();
