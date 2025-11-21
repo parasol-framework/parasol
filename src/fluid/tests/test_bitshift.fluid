@@ -22,8 +22,8 @@ function testChainedBitshifts()
    assert(progressive is expected, 'progressive check failed, got ' .. string.format('0x%.2x, expected 0x%.2x', progressive, expected))
 
    local single_value, second = a << b << c
-   assert(single_value is expected, 'single << should match nested bit.lshift calls, got ' .. string.format('0x%.2x, expected 0x%.2x', single_value, expected))
    assert(second is nil, 'chained << should yield a single result; got second=' .. tostring(second))
+   assert(single_value is expected, 'single << should match nested bit.lshift calls, got ' .. string.format('0x%.2x, expected 0x%.2x', single_value, expected))
 
    -- Mixed with right shift: (x >> y) >> z
    local x, y, z = 64, 2, 3

@@ -30,7 +30,7 @@
 static const struct {
    uint8_t left;      // Left priority.
    uint8_t right;     // Right priority.
-   const char* name;  // Name for bitlib function (if applicable).
+   CSTRING name;  // Name for bitlib function (if applicable).
    uint8_t name_len;  // Cached name length for bitlib lookups.
 } priority[] = {
   {6,6,nullptr,0}, {6,6,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0},   // ADD SUB MUL DIV MOD
