@@ -125,6 +125,9 @@ static ERR process_args(void)
                i++;
             }
          }
+         else if (pf::startswith(args[i], "--")) {
+            // Unrecognised argument beginning with '--', ignore it.
+         }
          else { // If argument not recognised, assume this arg is the target file.
             if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
                printf("Unable to find file '%s'\n", args[i].c_str());
