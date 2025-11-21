@@ -103,7 +103,7 @@ gui.toolbar = function(Options)
       local item = self._first
       while (item) do
          if (X >= item.x) and (X < item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
-            if item.type == TI_ICON then return item end
+            if item.type is TI_ICON then return item end
          end
          item = item.next
       end
@@ -112,7 +112,7 @@ gui.toolbar = function(Options)
    -- Highlight selected item (for keyboard item selection)
 
    local function highlightItem(Item)
-      if self.kbIcon.x == Item.x then return end
+      if self.kbIcon.x is Item.x then return end
 
       self._current = Item
       self.kbIcon.x = Item.x
@@ -173,7 +173,7 @@ gui.toolbar = function(Options)
       local spanCount = 0
       while item do
          -- Note that groups are converted to breaks when in flush mode.
-         if item.type == TI_BREAK then
+         if item.type is TI_BREAK then
             item.x      = x
             item.y      = y
             item.width  = 6
@@ -185,23 +185,23 @@ gui.toolbar = function(Options)
             })
 
             if self._horizontal then
-               x = x + item.width
+               x += item.width
             else
-               y = y + item.height
+               y += item.height
             end
-         elseif item.type == TI_GROUP then
+         elseif item.type is TI_GROUP then
             if not Options.flush then
                if self._horizontal then
                   if not item.prev then
-                     x = x + groupOffset
+                     x += groupOffset
                   else
-                     x = x + (self._iconSize * 0.25)
+                     x += (self._iconSize * 0.25)
                   end
                else
                   if not item.prev then
-                     y = y + groupOffset
+                     y += groupOffset
                   else
-                     y = y + (self._iconSize * 0.25)
+                     y += (self._iconSize * 0.25)
                   end
                end
 
@@ -233,7 +233,7 @@ gui.toolbar = function(Options)
                   })
                end
             end
-         elseif item.type == TI_ICON then
+         elseif item.type is TI_ICON then
             item.x      = x
             item.y      = y
             item.width  = self._iconSize + (self._cellMargin * 2)
@@ -314,7 +314,7 @@ gui.toolbar = function(Options)
                   currentGroup.clip.height = currentGroup.height
                end
 
-               if spanCount == currentGroup.span then
+               if spanCount is currentGroup.span then
                   if self._horizontal then
                      x = x + groupOffset -- Gap between groups
                   else
@@ -446,7 +446,7 @@ gui.toolbar = function(Options)
       end
 
       if Content then
-         if type(Content) == 'number' then
+         if type(Content) is 'number' then
             if Content > 9 then
                local size = math.floor(self._iconSize * 0.33)
                gui.createIcon(self.viewport.scene, 'items/add', size, 'pearl', 'sticker_plus')
@@ -459,7 +459,7 @@ gui.toolbar = function(Options)
             end
          end
 
-         if type(Content) == 'string' then
+         if type(Content) is 'string' then
             if Content:len() > 1 then Content = Content:sub(1,1) end
          end
 
@@ -490,8 +490,8 @@ gui.toolbar = function(Options)
       local found  = false
       local item   = firstIcon()
       while item do
-         if item.type == TI_ICON then
-            if item.id == ID then
+         if item.type is TI_ICON then
+            if item.id is ID then
                if not item.selected then
                   item.selected = true
                   redraw = true
@@ -511,7 +511,7 @@ gui.toolbar = function(Options)
    end
 
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
-      if (self._current == Item) and (StateChanged != true) then return end
+      if (self._current is Item) and (StateChanged != true) then return end
 
       if self._current then
          if self._current.icon then
@@ -562,9 +562,9 @@ gui.toolbar = function(Options)
    local function inputFeedback(Viewport, Events) -- Internal input handler
       local ev = Events
       while ev do
-         if ev.type == JET_CROSSED_IN then
+         if ev.type is JET_CROSSED_IN then
 
-         elseif ev.type == JET_CROSSED_OUT then
+         elseif ev.type is JET_CROSSED_OUT then
             cancelTipTimer()
             if self._current then
                hoverUpdate(nil)
@@ -589,14 +589,14 @@ gui.toolbar = function(Options)
                if self._current then
                   if self._current.disabled then return end
 
-                  if ev.type == JET_BUTTON_1 then
+                  if ev.type is JET_BUTTON_1 then
                      self._clicked = self._current
                      lClickX  = ev.x
                      lClickY  = ev.y
                      hoverUpdate(self._current, true)
                   end
                end
-            elseif ev.type == JET_BUTTON_1 then
+            elseif ev.type is JET_BUTTON_1 then
                if self._clicked then
                   self._clicked = nil
 
@@ -664,7 +664,7 @@ gui.toolbar = function(Options)
    end)
 
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-      if Event == FM_LOST_FOCUS then
+      if Event is FM_LOST_FOCUS then
          self._hasFocus = false
          if self._current then
             self.kbIcon.visibility = 'hidden'
@@ -679,9 +679,9 @@ gui.toolbar = function(Options)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) != 0 then
-         if (Code == KEY_ENTER) or (Code == KEY_NP_ENTER) or (Code == KEY_SPACE) then
+         if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             sendFeedback()
-         elseif (Code == KEY_UP) or (Code == KEY_LEFT) then
+         elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
             if self._current then
                local scan = self._current.prev
                while scan and (scan.type != TI_ICON) do
@@ -692,7 +692,7 @@ gui.toolbar = function(Options)
             else
                highlightItem(firstIcon())
             end
-         elseif (Code == KEY_DOWN) or (Code == KEY_RIGHT) then
+         elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) then
             if self._current then
                local scan = self._current.next
                while scan and (scan.type != TI_ICON) do
