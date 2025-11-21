@@ -178,6 +178,7 @@ static void fscope_end(FuncState* fs);
 static void fscope_uvmark(FuncState* fs, BCReg level);
 
 #include "parse_raii.h"
+#include "parse_regalloc.h"
 
 #include "parse_concepts.h"
 
