@@ -259,7 +259,22 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
 {
    // Allocate a base register for the call
-   BCReg base = fs->freereg;
+   // Check if either operand is already at the top of the stack to avoid orphaning registers
+   // when chaining operations (e.g., 1 | 2 | 4 produces AST: 1 | (2 | 4), so RHS is the previous result)
+   BCReg base;
+   if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and
+       rhs->u.s.info + 1 IS fs->freereg) {
+      // RHS is at the top - reuse its register to avoid orphaning
+      base = rhs->u.s.info;
+   }
+   else if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar and
+            lhs->u.s.info + 1 IS fs->freereg) {
+      // LHS is at the top - reuse its register to avoid orphaning
+      base = lhs->u.s.info;
+   }
+   else {
+      base = fs->freereg;
+   }
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  // Reserve for arguments
