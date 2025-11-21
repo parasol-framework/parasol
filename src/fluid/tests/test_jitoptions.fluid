@@ -1,0 +1,81 @@
+-- Test the various JIT options.  This requires that the script is created explicitly as a `fluid' object so that we
+-- can set jitOptions.  Success for these tests is determined by reviewing the log.
+
+   include 'fluid' -- Required for JOF flags.
+
+   glSelf = obj.find('self')
+
+   glTestScript = [[
+function basic_test()
+   local hello = 'world'
+   local index = 0xdeadbeef
+   local math = 111 * 444 + 999
+   local time = mSys.preciseTime()
+   msg('Test finished.')
+end
+   basic_test()
+]]
+
+   glBadScript = [[
+function basic_test()
+   local hello = 'world'
+   local time = mSys.preciseTime()
+   syntax = error ! here @
+   msg('Test finished.')
+   >>another_error<<
+end
+   basic_test()
+]]
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testTraceTokens()
+   -- Should print parse tokens to the log
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_TOKENS })
+   script.acActivate()
+end
+
+-- When using diagnose, all syntax errors should be reported.
+
+function testTraceDiagnose()
+   msg('--- Testing bad script without DIAGNOSE: Should print 1 error')
+   local script = obj.new('fluid', { statement = glBadScript })
+   script.acActivate()
+   
+   msg('--- Testing bad script with DIAGNOSE: Should print 2+ errors')
+   local script = obj.new('fluid', { statement = glBadScript, jitOptions = JOF_DIAGNOSE })
+   script.acActivate()
+end
+
+function testDumpBytecode()
+   -- Will dump debug output to the log
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_DUMP_BYTECODE })
+   script.acActivate()
+end
+
+function testTraceExpect()
+   -- Will print traced expectations to the log
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_EXPECT })
+   script.acActivate()
+end
+
+function testTraceBoundary()
+   -- Will print AST boundary crossing to the log
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_TRACE_BOUNDARY })
+   script.acActivate()
+end
+
+function testProfile()
+   -- Should print out timing information
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_PROFILE })
+   script.acActivate()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 
+      'testTraceTokens', 'testTraceExpect', 
+      'testDumpBytecode', 'testTraceDiagnose', 'testTraceBoundary', 'testProfile'
+      }
+   }
