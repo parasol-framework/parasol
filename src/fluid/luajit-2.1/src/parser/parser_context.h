@@ -3,9 +3,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "parser/parser_diagnostics.h"
 #include "parser/token_stream.h"
+#include "parser/parser_profiler.h"
 
 struct ParserAllocator {
    void* userdata = nullptr;
@@ -14,10 +16,9 @@ struct ParserAllocator {
 };
 
 struct ParserConfig {
-   uint32_t max_diagnostics = 8;
+   uint32_t max_diagnostics = 8; // Defines the 'limit' value in ParserDiagnostics
    bool abort_on_error = true;
-   bool trace_tokens = false;
-   bool trace_expectations = false;
+   ParserProfilingResult profiling_result;
 };
 
 struct ParserError {
@@ -31,16 +32,14 @@ class ParserResult {
 public:
    ParserResult() = default;
 
-   static ParserResult<T> success(const T& value)
-   {
+   static ParserResult<T> success(T value) {
       ParserResult<T> result;
       result.has_value = true;
-      result.value = value;
+      result.value = std::move(value);
       return result;
    }
 
-   static ParserResult<T> failure(const ParserError& error)
-   {
+   static ParserResult<T> failure(const ParserError& error) {
       ParserResult<T> result;
       result.has_value = false;
       result.error = error;
@@ -81,7 +80,9 @@ public:
    TokenStreamAdapter& tokens();
    const TokenStreamAdapter& tokens() const;
 
-   ParserConfig config() const;
+   const ParserConfig& config() const;
+   ParserProfilingResult& profiling_result();
+   const ParserProfilingResult& profiling_result() const;
    void override_config(const ParserConfig& config);
    void restore_config(const ParserConfig& config);
 

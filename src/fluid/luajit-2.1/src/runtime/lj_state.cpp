@@ -27,6 +27,7 @@
 #include "lj_vm.h"
 #include "lj_prng.h"
 #include "../parser/lj_lex.h"
+#include "../parser/parser_diagnostics.h"
 #include "lj_alloc.h"
 #include "luajit.h"
 
@@ -122,7 +123,7 @@ void LJ_FASTCALL lj_state_growstack(lua_State* L, MSize need)
    }
    resizestack(L, n);
    if (L->stacksize > LJ_STACK_MAXEX)
-      lj_err_msg(L, LJ_ERR_STKOV);
+      lj_err_msg(L, ErrMsg::STKOV);
 }
 
 //********************************************************************************************************************
@@ -166,7 +167,7 @@ static TValue * cpluaopen(lua_State *Lua, lua_CFunction dummy, void* ud)
    lj_str_init(Lua);
    lj_meta_init(Lua);
    lj_reserve_words(Lua);
-   fixstring(lj_err_str(Lua, LJ_ERR_ERRMEM));  //  Preallocate memory error msg.
+   fixstring(lj_err_str(Lua, ErrMsg::ERRMEM));  //  Preallocate memory error msg.
    g->gc.threshold = 4 * g->gc.total;
    lj_trace_initstate(g);
    lj_err_verify();
@@ -178,6 +179,10 @@ static TValue * cpluaopen(lua_State *Lua, lua_CFunction dummy, void* ud)
 static void close_state(lua_State* L)
 {
    global_State* g = G(L);
+   if (L->parser_diagnostics) {
+      delete (ParserDiagnostics*)L->parser_diagnostics;
+      L->parser_diagnostics = nullptr;
+   }
    lj_func_closeuv(L, tvref(L->stack));
    lj_gc_freeall(g);
    lj_assertG(gcref(g->gc.root) == obj2gco(L),
@@ -303,15 +308,12 @@ extern void lua_close(lua_State* L)
    global_State* g = G(L);
    int i;
    L = mainthread(g);  //  Only the main thread can be closed.
-#if LJ_HASPROFILE
-   luaJIT_profile_stop(L);
-#endif
    setgcrefnull(g->cur_L);
    lj_func_closeuv(L, tvref(L->stack));
    lj_gc_separateudata(g, 1);  //  Separate udata which have GC metamethods.
 #if LJ_HASJIT
    G2J(g)->flags &= ~JIT_F_ON;
-   G2J(g)->state = LJ_TRACE_IDLE;
+   G2J(g)->state = TraceState::IDLE;
    lj_dispatch_update(g);
 #endif
    for (i = 0;;) {
@@ -322,8 +324,7 @@ extern void lua_close(lua_State* L)
       if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
          lj_gc_separateudata(g, 1);  //  Separate udata again.
-         if (gcref(g->gc.mmudata) == nullptr)  //  Until nothing is left to do.
-            break;
+         if (gcref(g->gc.mmudata) == nullptr) break;  //  Until nothing is left to do.
       }
    }
    close_state(L);
@@ -340,6 +341,7 @@ lua_State* lj_state_new(lua_State* L)
    L1->stacksize = 0;
    setmref(L1->stack, nullptr);
    L1->cframe = nullptr;
+   L1->parser_diagnostics = nullptr;
    // NOBARRIER: The lua_State is new (marked white).
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
@@ -355,6 +357,10 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
+   if (L->parser_diagnostics) {
+      delete (ParserDiagnostics*)L->parser_diagnostics;
+      L->parser_diagnostics = nullptr;
+   }
    lj_func_closeuv(L, tvref(L->stack));
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);

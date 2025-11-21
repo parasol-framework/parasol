@@ -26,7 +26,7 @@ void LexState::var_new(BCReg n, GCstr* name)
    checklimit(fs, fs->nactvar + n, LJ_MAX_LOCVAR, "local variables");
    if (vtop >= this->sizevstack) [[unlikely]] {
       if (this->sizevstack >= LJ_MAX_VSTACK)
-         lj_lex_error(this, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
+         lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
    lj_assertFS(name == NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
@@ -147,6 +147,16 @@ MSize LexState::var_lookup(ExpDesc* e)
    return var_lookup_(this->fs, this->lex_str(), e, 1);
 }
 
+MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
+{
+   if (name == nullptr or name == NAME_BLANK) {
+      expr_init(e, ExpKind::Global, 0);
+      e->u.sval = name ? name : NAME_BLANK;
+      return MSize(-1);
+   }
+   return var_lookup_(this->fs, name, e, 1);
+}
+
 //********************************************************************************************************************
 // Jump and target handling
 
@@ -157,7 +167,7 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
    if (vtop >= this->sizevstack) [[unlikely]] {
-      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
+      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
    GCstr* name = (jump_type == JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
@@ -259,8 +269,8 @@ void LexState::gola_fixup(FuncScope* bl)
             }
             else {  // No outer scope: no loop for break/continue.
                this->linenumber = this->fs->bcbase[v->startpc].line;
-               if (name == NAME_BREAK) lj_lex_error(this, 0, LJ_ERR_XBREAK);
-               else if (name == NAME_CONTINUE) lj_lex_error(this, 0, LJ_ERR_XCONTINUE);
+               if (name == NAME_BREAK) lj_lex_error(this, 0, ErrMsg::XBREAK);
+               else if (name == NAME_CONTINUE) lj_lex_error(this, 0, ErrMsg::XCONTINUE);
             }
          }
       }
@@ -344,6 +354,8 @@ static void execute_defers(FuncState* fs, BCReg limit)
 
 static void fscope_end(FuncState* fs)
 {
+   if (not fs) return;
+
    FuncScope* bl = fs->bl;
    LexState* ls = fs->ls;
    fs->bl = bl->prev;
@@ -641,7 +653,7 @@ static void fs_fixup_ret(FuncState* fs)
             offset = bcemit_INS(fs, ins);  // Copy original instruction.
             fs->bcbase[offset].line = fs->bcbase[pc].line;
             offset = offset - (pc + 1) + BCBIAS_J;
-            if (offset > BCMAX_D) fs->ls->err_syntax(LJ_ERR_XFIXUP);
+            if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XFIXUP);
             // Replace with UCLO plus branch.
             fs->bcbase[pc].ins = BCINS_AD(BC_UCLO, 0, offset);
             break;

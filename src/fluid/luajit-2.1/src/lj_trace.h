@@ -41,8 +41,8 @@ LJ_FUNC uintptr_t LJ_FASTCALL lj_trace_unwind(jit_State* J, uintptr_t addr, Exit
 #endif
 
 // Signal asynchronous abort of trace or end of trace.
-#define lj_trace_abort(g)   (G2J(g)->state = (TraceState)(G2J(g)->state & ~LJ_TRACE_ACTIVE))
-#define lj_trace_end(J)      (J->state = LJ_TRACE_END)
+#define lj_trace_abort(g)   (G2J(g)->state = (TraceState)(uint32_t(G2J(g)->state) & ~((uint32_t)TraceState::ACTIVE)))
+#define lj_trace_end(J)      (J->state = TraceState::END)
 
 #else
 

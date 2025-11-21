@@ -118,7 +118,7 @@ extern int lua_checkstack(lua_State* L, int size)
 extern void luaL_checkstack(lua_State* L, int size, const char* msg)
 {
    if (!lua_checkstack(L, size))
-      lj_err_callerv(L, LJ_ERR_STKOVM, msg);
+      lj_err_callerv(L, ErrMsg::STKOVM, msg);
 }
 
 extern void lua_xmove(lua_State* L, lua_State* to, int n)
@@ -191,7 +191,7 @@ static void copy_slot(lua_State* L, TValue* f, int idx)
    else if (idx == LUA_ENVIRONINDEX) {
       GCfunc* fn = curr_func(L);
       if (fn->c.gct != ~LJ_TFUNC)
-         lj_err_msg(L, LJ_ERR_NOENV);
+         lj_err_msg(L, ErrMsg::NOENV);
       lj_checkapi(tvistab(f), "stack slot %d is not a table", idx);
       setgcref(fn->c.env, obj2gco(tabV(f)));
       lj_gc_barrier(L, fn, f);
@@ -259,7 +259,7 @@ extern void luaL_checktype(lua_State* L, int idx, int tt)
 extern void luaL_checkany(lua_State* L, int idx)
 {
    if (index2adr(L, idx) == niltv(L))
-      lj_err_arg(L, idx, LJ_ERR_NOVAL);
+      lj_err_arg(L, idx, ErrMsg::NOVAL);
 }
 
 extern const char* lua_typename(lua_State* L, int t)
@@ -613,7 +613,7 @@ extern int luaL_checkoption(lua_State* L, int idx, const char* def,
    for (i = 0; lst[i]; i++)
       if (strcmp(lst[i], s) == 0)
          return (int)i;
-   lj_err_argv(L, idx, LJ_ERR_INVOPTM, s);
+   lj_err_argv(L, idx, ErrMsg::INVOPTM, s);
 }
 
 extern size_t lua_objlen(lua_State* L, int idx)
@@ -810,7 +810,7 @@ extern void* lua_newuserdata(lua_State* L, size_t size)
    GCudata* ud;
    lj_gc_check(L);
    if (size > LJ_MAX_UDATA)
-      lj_err_msg(L, LJ_ERR_UDATAOV);
+      lj_err_msg(L, ErrMsg::UDATAOV);
    ud = lj_udata_new(L, (MSize)size, getcurrenv(L));
    setudataV(L, L->top, ud);
    incr_top(L);
@@ -955,7 +955,7 @@ extern int lua_next(lua_State* L, int idx)
       L->top--;  //  Remove key slot.
    }
    else {
-      lj_err_msg(L, LJ_ERR_NEXTIDX);
+      lj_err_msg(L, ErrMsg::NEXTIDX);
    }
    return more;
 }
@@ -1107,7 +1107,7 @@ extern int lua_setmetatable(lua_State* L, int idx)
    else {
       // Flush cache, since traces specialize to basemt. But not during __gc.
       if (lj_trace_flushall(L))
-         lj_err_caller(L, LJ_ERR_NOGCMM);
+         lj_err_caller(L, ErrMsg::NOGCMM);
       if (tvisbool(o)) {
          // NOBARRIER: basemt is a GC root.
          setgcref(basemt_it(g, LJ_TTRUE), obj2gco(mt));
@@ -1299,7 +1299,7 @@ extern int lua_yield(lua_State* L, int nresults)
 #endif
       }
    }
-   lj_err_msg(L, LJ_ERR_CYIELD);
+   lj_err_msg(L, ErrMsg::CYIELD);
    return 0;  //  unreachable
 }
 
@@ -1310,7 +1310,7 @@ extern int lua_resume(lua_State* L, int nargs)
          L->status == LUA_OK ? api_call_base(L, nargs) : L->top - nargs,
          0, 0);
    L->top = L->base;
-   setstrV(L, L->top, lj_err_str(L, LJ_ERR_COSUSP));
+   setstrV(L, L->top, lj_err_str(L, ErrMsg::COSUSP));
    incr_top(L);
    return LUA_ERRRUN;
 }

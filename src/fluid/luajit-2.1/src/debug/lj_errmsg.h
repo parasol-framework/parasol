@@ -200,5 +200,5 @@ ERRDEF(BUFFER_LEFTOV,   "left-over data in buffer")
 #undef ERRDEF
 
 /* Detecting unused error messages:
-   awk -F, '/^ERRDEF/ { gsub(/ERRDEF./, ""); printf "grep -q LJ_ERR_%s *.[ch] || echo %s\n", $1, $1}' lj_errmsg.h | sh
+   awk -F, '/^ERRDEF/ { gsub(/ERRDEF./, ""); printf "grep -q ErrMsg::%s *.[ch] || echo %s\n", $1, $1}' lj_errmsg.h | sh
 */

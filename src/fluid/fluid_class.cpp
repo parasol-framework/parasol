@@ -22,6 +22,7 @@
 
 #include "lj_obj.h"
 #include "lj_bc.h"
+#include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -332,7 +333,7 @@ static ERR FLUID_Activate(objScript *Self)
       free_all(Self);
       new (prv) prvFluid;
 
-      if (not (prv->Lua = luaL_newstate())) {
+      if (not (prv->Lua = luaL_newstate(Self))) {
          log.warning("Failed to open a Lua instance.");
          goto failure;
       }
@@ -420,34 +421,54 @@ static ERR FLUID_Activate(objScript *Self)
       }
 
       if (result) { // Error reported from parser
+         Self->Error = ERR::Syntax;
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
-            // Format: [string "..."]:Line:Error
-            int i;
-            if ((i = strsearch("\"]:", errorstr)) != -1) {
-               i += 3;
-               int line = strtol(errorstr + i, nullptr, 0);
-               while ((errorstr[i]) and (errorstr[i] != ':')) i++;
-               if (errorstr[i] IS ':') i++;
-
-               std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
-               CSTRING str = Self->String;
-
-               for (int j=1; j <= line+1; j++) {
-                  if (j >= line-1) {
-                     int col;
-                     for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
-                     error_msg += std::format("{}: {}{}\n",
-                        j + Self->LineOffset,
-                        std::string_view(str, col),
-                        col IS 120 ? "..." : "");
+            if (prv->Lua->parser_diagnostics) {
+               if (prv->Lua->parser_diagnostics->has_errors()) {
+                  std::string error_msg;
+                  for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
+                     if (not error_msg.empty()) error_msg += "\n";
+                     error_msg += entry.to_string(Self->LineOffset);
                   }
-                  if (not (str = next_line(str))) break;
+                  Self->setErrorString(error_msg);
                }
-               Self->setErrorString(error_msg.c_str());
+               else Self->setErrorString(errorstr);
 
-               log.warning("Parser Failed: %s", Self->ErrorString);
+               log.warning("%s", Self->ErrorString);
             }
-            else log.warning("Parser Failed: %s", errorstr);
+            else {
+               // TODO: Legacy support - remove when parser_diagnostics is always available
+               // Format: [string "..."]:Line:Error
+               int i;
+               if ((i = strsearch("\"]:", errorstr)) != -1) {
+                  i += 3;
+                  int line = strtol(errorstr + i, nullptr, 0);
+                  while ((errorstr[i]) and (errorstr[i] != ':')) i++;
+                  if (errorstr[i] IS ':') i++;
+
+                  std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
+                  CSTRING str = Self->String;
+
+                  for (int j=1; j <= line+1; j++) {
+                     if (j >= line-1) {
+                        int col;
+                        for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
+                        error_msg += std::format("{}: {}{}\n",
+                           j + Self->LineOffset,
+                           std::string_view(str, col),
+                           col IS 120 ? "..." : "");
+                     }
+                     if (not (str = next_line(str))) break;
+                  }
+                  Self->setErrorString(error_msg.c_str());
+
+                  log.warning("Parser Failed: %s", Self->ErrorString);
+               }
+               else {
+                  log.warning("Parser Failed: %s", errorstr);
+                  Self->setErrorString(errorstr);
+               }
+            }
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
@@ -714,7 +735,7 @@ static ERR FLUID_Init(objScript *Self)
 
    log.trace("Opening a Lua instance.");
 
-   if (not (prv->Lua = luaL_newstate())) {
+   if (not (prv->Lua = luaL_newstate(Self))) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = nullptr;

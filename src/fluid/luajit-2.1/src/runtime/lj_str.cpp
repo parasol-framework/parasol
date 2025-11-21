@@ -356,7 +356,7 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
    }
    else {
       if (lenx)
-         lj_err_msg(L, LJ_ERR_STROV);
+         lj_err_msg(L, ErrMsg::STROV);
       return &g->strempty;
    }
 }

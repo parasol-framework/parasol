@@ -61,7 +61,7 @@ LJLIB_CF(debug_setfenv)
    lj_lib_checktab(L, 2);
    L->top = L->base + 2;
    if (!lua_setfenv(L, 1))
-      lj_err_caller(L, LJ_ERR_SETFENV);
+      lj_err_caller(L, ErrMsg::SETFENV);
    return 1;
 }
 
@@ -125,10 +125,10 @@ LJLIB_CF(debug_getinfo)
       setfuncV(L1, L1->top++, funcV(L->base + arg));
    }
    else {
-      lj_err_arg(L, arg + 1, LJ_ERR_NOFUNCL);
+      lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
    }
    if (!lj_debug_getinfo(L1, options, &ar, 1))
-      lj_err_arg(L, arg + 2, LJ_ERR_INVOPT);
+      lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
    lua_createtable(L, 0, 16);  //  Create result table.
    for (; *options; options++) {
       switch (*options) {
@@ -174,7 +174,7 @@ LJLIB_CF(debug_getlocal)
       return 1;
    }
    if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar))
-      lj_err_arg(L, arg + 1, LJ_ERR_LVLRNG);
+      lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
    name = lua_getlocal(L1, &ar, slot);
    if (name) {
       lua_xmove(L1, L, 1);
@@ -195,7 +195,7 @@ LJLIB_CF(debug_setlocal)
    lua_Debug ar;
    TValue* tv;
    if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar))
-      lj_err_arg(L, arg + 1, LJ_ERR_LVLRNG);
+      lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
    tv = lj_lib_checkany(L, arg + 3);
    copyTV(L1, L1->top++, tv);
    lua_pushstring(L, lua_setlocal(L1, &ar, lj_lib_checkint(L, arg + 2)));
@@ -234,7 +234,7 @@ LJLIB_CF(debug_upvalueid)
    GCfunc* fn = lj_lib_checkfunc(L, 1);
    int32_t n = lj_lib_checkint(L, 2) - 1;
    if ((uint32_t)n >= fn->l.nupvalues)
-      lj_err_arg(L, 2, LJ_ERR_IDXRNG);
+      lj_err_arg(L, 2, ErrMsg::IDXRNG);
    lua_pushlightuserdata(L, isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) :
       (void*)&fn->c.upvalue[n]);
    return 1;
@@ -249,10 +249,10 @@ LJLIB_CF(debug_upvaluejoin)
       int32_t n;
       fn[i] = lj_lib_checkfunc(L, 2 * i + 1);
       if (!isluafunc(fn[i]))
-         lj_err_arg(L, 2 * i + 1, LJ_ERR_NOLFUNC);
+         lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
       n = lj_lib_checkint(L, 2 * i + 2) - 1;
       if ((uint32_t)n >= fn[i]->l.nupvalues)
-         lj_err_arg(L, 2 * i + 2, LJ_ERR_IDXRNG);
+         lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
       p[i] = &fn[i]->l.uvptr[n];
    }
    setgcrefr(*p[0], *p[1]);

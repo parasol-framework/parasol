@@ -50,7 +50,7 @@ static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
 {
    State->assert_condition(len != 0, "empty refill");
    if (len > LJ_MAX_BUF or State->c < 0)
-      bcread_error(State, LJ_ERR_BCBAD);
+      bcread_error(State, ErrMsg::BCBAD);
    do {
       const char* buf;
       size_t sz;
@@ -71,7 +71,7 @@ static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
       State->sb.w = p + n;
       buf = State->rfunc(State->L, State->rdata, &sz);  //  Get more data from reader.
       if (buf == nullptr or sz == 0) {  // EOF?
-         if (need) bcread_error(State, LJ_ERR_BCBAD);
+         if (need) bcread_error(State, ErrMsg::BCBAD);
          State->c = -1;  //  Only bad if we get called again.
          break;
       }
@@ -208,7 +208,7 @@ static void bcread_ktabk(LexState *State, TValue* o)
    }
    else {
       State->assert_condition(tp <= BCDUMP_KTAB_TRUE, "bad constant type %d", tp);
-      setpriV(o, ~tp);
+      setpriV(o, ~uint64_t(tp));
    }
 }
 
@@ -273,7 +273,7 @@ static void bcread_kgc(LexState *State, GCproto* pt, MSize sizekgc)
          lua_State* L = State->L;
          State->assert_condition(tp == BCDUMP_KGC_CHILD, "bad constant type %d", tp);
          if (L->top <= bcread_oldtop(L, ls))  //  Stack underflow?
-            bcread_error(State, LJ_ERR_BCBAD);
+            bcread_error(State, ErrMsg::BCBAD);
          L->top--;
          setgcref(*kr, obj2gco(protoV(L->top)));
       }
@@ -450,7 +450,7 @@ GCproto* lj_bcread(LexState *State)
    lj_buf_reset(&State->sb);
 
    // Check for a valid bytecode dump header.
-   if (!bcread_header(State)) bcread_error(State, LJ_ERR_BCFMT);
+   if (!bcread_header(State)) bcread_error(State, ErrMsg::BCFMT);
 
    for (;;) {  // Process all prototypes in the bytecode dump.
       GCproto* pt;
@@ -468,13 +468,13 @@ GCproto* lj_bcread(LexState *State)
       startp = State->p;
       pt = lj_bcread_proto(State);
       if (State->p != startp + len)
-         bcread_error(State, LJ_ERR_BCBAD);
+         bcread_error(State, ErrMsg::BCBAD);
       setprotoV(L, L->top, pt);
       incr_top(L);
    }
 
    if ((State->pe != State->p and !State->endmark) or L->top - 1 != bcread_oldtop(L, ls))
-      bcread_error(State, LJ_ERR_BCBAD);
+      bcread_error(State, ErrMsg::BCBAD);
 
    // Pop off last prototype.
    L->top--;

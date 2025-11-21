@@ -40,7 +40,7 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
    Node* node;
    lj_assertL(hbits != 0, "zero hash size");
    if (hbits > LJ_MAX_HBITS)
-      lj_err_msg(L, LJ_ERR_TABOV);
+      lj_err_msg(L, ErrMsg::TABOV);
    hsize = 1u << hbits;
    node = lj_mem_newvec(L, hsize, Node);
    setmref(t->node, node);
@@ -116,7 +116,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 #endif
       if (asize > 0) {
          if (asize > LJ_MAX_ASIZE)
-            lj_err_msg(L, LJ_ERR_TABOV);
+            lj_err_msg(L, ErrMsg::TABOV);
          setmref(t->array, lj_mem_newvec(L, asize, TValue));
          t->asize = asize;
       }
@@ -238,7 +238,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
       TValue* array;
       uint32_t i;
       if (asize > LJ_MAX_ASIZE)
-         lj_err_msg(L, LJ_ERR_TABOV);
+         lj_err_msg(L, ErrMsg::TABOV);
       if (LJ_MAX_COLOSIZE != 0 and t->colo > 0) {
          // A colocated array must be separated and copied.
          TValue* oarray = tvref(t->array);
@@ -567,11 +567,11 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
       if (nk == (lua_Number)k)
          return lj_tab_setint(L, t, k);
       if (tvisnan(key))
-         lj_err_msg(L, LJ_ERR_NANIDX);
+         lj_err_msg(L, ErrMsg::NANIDX);
       // Else use the generic lookup.
    }
    else if (tvisnil(key)) {
-      lj_err_msg(L, LJ_ERR_NILIDX);
+      lj_err_msg(L, ErrMsg::NILIDX);
    }
    n = hashkey(t, key);
    do {
