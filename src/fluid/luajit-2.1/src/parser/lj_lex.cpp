@@ -8,7 +8,7 @@
 #define lj_lex_c
 #define LUA_CORE
 
-#include <ctype.h>
+#include <cctype>
 
 #include "lj_obj.h"
 #include "lj_gc.h"

@@ -9,7 +9,7 @@
 #define lib_string_c
 #define LUA_LIB
 
-#include <ctype.h>
+#include <cctype>
 
 #include "lua.h"
 #include "lauxlib.h"
