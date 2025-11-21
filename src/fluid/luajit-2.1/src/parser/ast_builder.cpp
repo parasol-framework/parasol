@@ -1205,7 +1205,7 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
       info.left = 3;
-      info.right = 3;  // Left-associative, same as comparison operators
+      info.right = 2;  // Comparisons (left=3) bind tighter than | per C precedence
       return info;
    }
    if (token.raw() IS '~') {
