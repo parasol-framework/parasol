@@ -40,4 +40,6 @@ Phase 3 replaces the remaining C-style register helpers, jump patching, and raw 
 - [x] Stage 1: Added the `RegisterAllocator` interface with `AllocatedRegister` and `RegisterSpan` RAII handles that enforce
    LIFO release semantics, porting the old bump/reserve/free helpers and expression freeing into class methods. Introduced a
    table operand duplication helper to centralise the indexed duplication pattern needed by compound assignments.
+- [ ] Stage 2: Added placeholder `ExpressionValue` and `ControlFlowGraph` wrappers to centralise expression payloads and jump
+   ownership, ready for integration into emitter and control-flow handling.
 
