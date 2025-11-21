@@ -9,6 +9,7 @@ constexpr int SIZE_READ = 1024;
 #include <array>
 #include <parasol/strings.hpp>
 #include <parasol/modules/regex.h>
+#include <parasol/modules/fluid.h>
 #include <thread>
 #include <string_view>
 #include <span>
@@ -24,6 +25,8 @@ using namespace pf;
 
 template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
 template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
+
+extern CSTRING const glBytecodeNames[];
 
 //********************************************************************************************************************
 
@@ -410,6 +413,20 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 
 //********************************************************************************************************************
 
+[[maybe_unused]] [[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept
+{
+   if (!String) return nullptr;
+
+   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
+   while (*String IS '\r') String++;
+   if (*String IS '\n') String++;
+   while (*String IS '\r') String++;
+   if (*String) return String;
+   else return nullptr;
+}
+
+//********************************************************************************************************************
+
 struct obj_write {
    typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, int);
 
@@ -470,7 +487,6 @@ void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, int, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, int, CPTR);
-[[nodiscard]] constexpr CSTRING next_line(CSTRING String) noexcept;
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);

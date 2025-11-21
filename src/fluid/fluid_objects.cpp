@@ -551,7 +551,13 @@ static int object_newchild(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       lua_pushinteger(Lua, parent->UID); // ID of the would-be parent.
-      set_object_field(Lua, obj, "owner", lua_gettop(Lua));
+
+      if (set_object_field(Lua, obj, "owner", lua_gettop(Lua)) != ERR::Okay) {
+         FreeResource(obj);
+         luaL_error(Lua, "Failed to set object owner.");
+         return 0;
+      }
+
       lua_pop(Lua, 1);
 
       if (lua_istable(Lua, 2)) {
@@ -607,7 +613,7 @@ static int object_newchild(lua_State *Lua)
 //********************************************************************************************************************
 // Throws exceptions.  Used for returning objects to the user.
 
-[[nodiscard]] object * push_object(lua_State *Lua, OBJECTPTR Object)
+object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
       clearmem(newobject, sizeof(object));
@@ -630,7 +636,7 @@ static int object_newchild(lua_State *Lua)
 //********************************************************************************************************************
 // Guaranteed to not throw exceptions.
 
-[[nodiscard]] ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
+ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 {
    if (!ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
 

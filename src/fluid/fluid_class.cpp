@@ -43,6 +43,7 @@ static ERR save_binary(objScript *, OBJECTPTR);
 
 [[maybe_unused]] static ERR register_interfaces(objScript *);
 
+//********************************************************************************************************************
 // Dump the variables of any global table
 
 [[maybe_unused]] static void dump_global_table(objScript *Self, STRING Global)
@@ -959,9 +960,7 @@ static ERR run_script(objScript *Self)
       int depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
-         if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
-            pcall_failed = true;
-         }
+         if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) pcall_failed = true;
 
       SetResource(RES::LOG_DEPTH, depth);
    }
