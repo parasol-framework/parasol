@@ -1167,13 +1167,13 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       break;  // Not a binary operator, will be handled as postfix
    case TokenKind::ShiftLeft:
       info.op = AstBinaryOperator::ShiftLeft;
-      info.left = 7;
-      info.right = 5;
+      info.left = 5;   // C precedence: shifts bind looser than +/- (6)
+      info.right = 5;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
       return info;
    case TokenKind::ShiftRight:
       info.op = AstBinaryOperator::ShiftRight;
-      info.left = 7;
-      info.right = 5;
+      info.left = 5;   // C precedence: shifts bind looser than +/- (6)
+      info.right = 5;  // Left-associative
       return info;
    default:
       break;
@@ -1205,7 +1205,7 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
       info.left = 3;
-      info.right = 2;
+      info.right = 3;  // Left-associative, same as comparison operators
       return info;
    }
    if (token.raw() IS '~') {
