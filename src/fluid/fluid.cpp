@@ -102,7 +102,8 @@ OBJECTPTR access_object(struct object *Object)
       return Object->ObjectPtr;
    }
    else if (!Object->UID) return nullptr; // Object reference is dead
-   else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
+   else if ((!Object->ObjectPtr) or (Object->Detached)) { 
+      // Detached objects are always accessed via UID, even if we have a pointer reference.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;
       }
