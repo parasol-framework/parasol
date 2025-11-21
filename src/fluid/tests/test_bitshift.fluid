@@ -1,4 +1,5 @@
 -- Comprehensive tests for bitshift operators
+-- C style precedence must be observed
 
 function testBinaryBitwiseBasics()
    assert((1 << 3) is bit.lshift(1, 3), '<< should map to bit.lshift')
@@ -7,9 +8,9 @@ function testBinaryBitwiseBasics()
 end
 
 function testBitwisePrecedenceAndGrouping()
-   -- Ensure shifts bind tighter than addition
-   assert(1 + 1 << 3 is (1 + (1 << 3)), '<< should bind tighter than +')
-   assert(10 - 2 >> 1 is (10 - (2 >> 1)), '>> should bind tighter than -')
+   -- In C, addition/subtraction bind tighter than shifts
+   assert(1 + 1 << 3 is ((1 + 1) << 3), '+ should bind tighter than <<')
+   assert(10 - 2 >> 1 is ((10 - 2) >> 1), '- should bind tighter than >>')
 end
 
 function testChainedBitshifts()
@@ -41,12 +42,39 @@ function testLargeShiftCounts()
    assert((1 >> 40) is bit.rshift(1, 40), '>> follows bit.rshift for large counts')
 end
 
-function testBitshiftTighterThanAddition()
+function testAdditionTighterThanBitshift()
+   -- C precedence: + and - bind tighter than << and >>
    local value = 1 + 1 << 3
-   assert(value is 1 + (1 << 3), '<< should bind tighter than addition (expect 9)')
+   assert(value is (1 + 1) << 3, '+ should bind tighter than << (expect 16)')
    local valueRight = 8 >> 1 + 1
    local expect = bit.rshift(8, 1 + 1)
-   assert(valueRight is expect, '>> should bind tighter than addition on the right-hand side, got ' .. string.format('0x%.2x expected 0x%.2x',valueRight, expect))
+   assert(valueRight is expect, '>> RHS addition should group: 8 >> (1+1), got ' .. string.format('0x%.2x expected 0x%.2x', valueRight, expect))
+end
+
+function testShiftTighterThanBitwiseOps()
+   -- C precedence: << and >> bind tighter than &, |, ^
+   -- 1 << 4 = 16 (0x10), 16 & 0xFF = 16
+   assert((1 << 4 & 0xFF) is ((1 << 4) & 0xFF), '<< should bind tighter than &')
+   -- 0xFF | 1 << 4 = 0xFF | 16 = 0xFF (255)
+   assert((0xFF | 1 << 4) is (0xFF | (1 << 4)), '<< should bind tighter than |')
+   -- 32 >> 2 = 8, 8 ^ 0x0F = 7
+   assert((32 >> 2 ~ 0x0F) is ((32 >> 2) ~ 0x0F), '>> should bind tighter than ~')
+end
+
+function testShiftTighterThanComparison()
+   -- C precedence: << and >> bind tighter than <, >, <=, >=
+   -- 1 << 3 = 8, 8 < 10 = true
+   assert((1 << 3 < 10) is ((1 << 3) < 10), '<< should bind tighter than <')
+   -- 16 >> 2 = 4, 4 > 3 = true
+   assert((16 >> 2 > 3) is ((16 >> 2) > 3), '>> should bind tighter than >')
+end
+
+function testMultiplicationTighterThanShift()
+   -- C precedence: * and / bind tighter than << and >>
+   -- 2 * 3 = 6, 6 << 1 = 12
+   assert(2 * 3 << 1 is (2 * 3) << 1, '* should bind tighter than <<')
+   -- 8 / 2 = 4, 4 >> 1 = 2
+   assert(8 / 2 >> 1 is (8 / 2) >> 1, '/ should bind tighter than >>')
 end
 
 local function returns6_3()
@@ -77,6 +105,9 @@ return {
       'testBitwisePrecedenceAndGrouping',
       'testChainedBitshifts',
       'testLargeShiftCounts',
-      'testBitshiftTighterThanAddition'
+      'testAdditionTighterThanBitshift',
+      'testShiftTighterThanBitwiseOps',
+      'testShiftTighterThanComparison',
+      'testMultiplicationTighterThanShift'
    }
 }
