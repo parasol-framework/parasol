@@ -7,7 +7,7 @@
 */
 
 #include <stdio.h>
-#include <ctype.h> 
+#include <cctype>
 
 #define lib_base_c
 #define LUA_LIB
