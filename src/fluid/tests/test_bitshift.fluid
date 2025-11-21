@@ -57,7 +57,7 @@ function testShiftTighterThanBitwiseOps()
    assert(1 << 4 & 0xFF is (1 << 4) & 0xFF, '<< should bind tighter than &')
    -- 0xFF | 1 << 4 = 0xFF | 16 = 0xFF (255)
    assert(0xFF | 1 << 4 is 0xFF | (1 << 4), '<< should bind tighter than |')
-   -- 32 >> 2 = 8, 8 ^ 0x0F = 7
+   -- 32 >> 2 = 8, 8 ~ 0x0F = 7
    assert(32 >> 2 ~ 0x0F is (32 >> 2) ~ 0x0F, '>> should bind tighter than ~')
 end
 
