@@ -603,6 +603,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
    while (true) {
       Token next = this->ctx.tokens().current();
       if (next.kind() IS TokenKind::Question) {
+         // Ternary operator has priority 1 (lowest). Only process if current
+         // precedence level allows it, otherwise let higher-priority operators
+         // complete first (e.g., x > 0 ? ... should parse as (x > 0) ? ...)
+         if (1 <= precedence) break;
          this->ctx.tokens().advance();
          auto true_branch = this->parse_expression();
          if (not true_branch.ok()) {
