@@ -310,7 +310,7 @@ gui.window = function(Options)
 
       self.visible = true
       self.surface.acShow()
-      if (self.surface.flags & RNF_HAS_FOCUS) != 0 then
+      if (self.surface.flags & RNF_HAS_FOCUS)?? then
          self.surface.acFocus()
       end
 
@@ -458,7 +458,7 @@ gui.window = function(Options)
 
       local info = struct.new('SurfaceInfo')
       if (mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay) then
-         if (info.flags & RNF_STICK_TO_FRONT) != 0 then
+         if (info.flags & RNF_STICK_TO_FRONT)?? then
             self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
          end
       end
@@ -468,8 +468,7 @@ gui.window = function(Options)
       if (Event is FM_LOST_FOCUS) then
          if self.events and self.events.lostFocus then self.events.lostFocus(self) end
       else
-         if self.disabled then
-         else
+         if not self.disabled then
             if self.events and self.events.focus then self.events.focus(self) end
          end
       end
