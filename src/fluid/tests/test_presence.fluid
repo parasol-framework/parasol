@@ -297,6 +297,16 @@ function testBytecodeSemanticsAllFalseyValues()
    end
 end
 
+function testFlags()
+   local trigger = 0
+   local perm = PERMIT_READ|PERMIT_WRITE
+   if (perm & PERMIT_READ)??  then trigger++ end
+   if (perm & PERMIT_WRITE)?? then trigger++ end
+   if (perm & PERMIT_READ|PERMIT_WRITE)??  then trigger++ end
+   if (perm & PERMIT_EXEC)??  then trigger++ end
+   assert(trigger is 3, "Expected 3 bit-flags to pass, got " .. trigger)
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -310,6 +320,7 @@ return {
       'testBytecodeSemanticsFalseyString', 'testBytecodeSemanticsFalseyNumber',
       'testBytecodeSemanticsTypeMismatchStringToNumber', 'testBytecodeSemanticsTypeMismatchNumberToString',
       'testBytecodeSemanticsNil', 'testBytecodeSemanticsFalse',
-      'testBytecodeSemanticsAllTruthyValues', 'testBytecodeSemanticsAllFalseyValues'
+      'testBytecodeSemanticsAllTruthyValues', 'testBytecodeSemanticsAllFalseyValues',
+      'testFlags'
    }
 }

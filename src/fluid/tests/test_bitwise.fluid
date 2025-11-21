@@ -137,6 +137,24 @@ function testByteStringKeysWithBitwise()
    assert(o[5] is 2, 'byte/numeric key & should work')
 end
 
+function testBitwiseInParameters()
+   -- Intentionally global variables
+   P1 = 0x1
+   P2 = 0x2
+   P4 = 0x4
+
+   local call = function(A, Func)
+      assert(A is 7, 'Bitwise OR in parameter failed, got ' .. tostring(A))
+      assert(type(Func) is 'function', 'Function parameter not passed correctly, got ' .. type(Func))
+   end
+
+   -- Test direct literals
+   call(0x1 | 0x2 | 0x4, function() print('A') end)
+
+   -- Test variables
+   call(P1 | P2 | P4, function() print('B') end)
+end
+
 return {
    tests = {
       'testUnaryBnot',
@@ -149,6 +167,7 @@ return {
       'testShiftBitwiseBinding',
       'testRHSFunctionCallsAndRegisterPreservation',
       --'testMultipleReturnRHS',
-      'testByteStringKeysWithBitwise'
+      'testByteStringKeysWithBitwise',
+      'testBitwiseInParameters'
    }
 }

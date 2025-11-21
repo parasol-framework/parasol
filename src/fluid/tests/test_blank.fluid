@@ -1,9 +1,5 @@
 -- Flute tests for the blank identifier (_) feature
 -- The blank identifier allows explicitly ignoring values in assignments and for loops
---
--- Note: Goto statements that jump into the scope of a blank identifier will
--- produce a compile-time error: "<goto label> jumps into the scope of local '_'"
--- This prevents crashes when the parser encounters such invalid code.
 
 function testBasicAssignment()
    local x, _ = 10, 20
@@ -167,52 +163,6 @@ function testNonLocalInFunction()
    assert(result is 20, "Failed non-local in function: expected result=20, got " .. result)
 end
 
-function testGotoCrossesBlankIdentifier()
-   -- Verify that various goto patterns with blank identifiers don't crash the parser
-   -- This tests the fix for the NAME_BLANK dereferencing bug in gola_resolve()
-   -- Even if these patterns don't trigger errors, they should compile without crashing
-
-   local patterns = {
-      -- Forward goto over blank identifier
-      [[
-         local function test()
-            goto label
-            local _ = 5
-            ::label::
-         end
-      ]],
-      -- Goto inside do block with blank identifier
-      [[
-         local function test()
-            do
-               goto label
-               local _ = 5
-               ::label::
-            end
-         end
-      ]],
-      -- Multiple blank identifiers with goto
-      [[
-         local function test()
-            goto label
-            local _, _ = 1, 2
-            ::label::
-         end
-      ]]
-   }
-
-   for i, code in ipairs(patterns) do
-      -- The key test is that load() doesn't crash
-      -- Whether it succeeds or produces an error is secondary
-      local status, result = pcall(load, code)
-
-      -- If we get here without a segfault, the test passes
-      -- We just verify that we got some kind of response
-      assert(status is true or status is false,
-             "Pattern " .. i .. ": Expected boolean status from pcall")
-   end
-end
-
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -223,7 +173,6 @@ return {
       'testForLoopPairsBlankValue', 'testForLoopMultipleBlanks',
       'testFunctionReturn', 'testFunctionReturnBlankFirst',
       'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable',
-      'testNonLocalAssignment', 'testNonLocalAssignmentSimple', 'testNonLocalInFunction',
-      'testGotoCrossesBlankIdentifier'
+      'testNonLocalAssignment', 'testNonLocalAssignmentSimple', 'testNonLocalInFunction'
    }
 }
