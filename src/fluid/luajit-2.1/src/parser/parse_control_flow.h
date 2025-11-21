@@ -4,10 +4,10 @@
 #pragma once
 
 #include "parser/parse_types.h"
+#include "ir_emitter.h" // For JumpHandle
 
 class FuncState;
 
-// JumpHandle is defined in ir_emitter.h; do not duplicate here.
 class ControlFlowGraph {
 public:
    ControlFlowGraph();

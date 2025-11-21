@@ -2,10 +2,8 @@
 // Copyright (C) 2025 Paul Manias
 
 #include "parser/parse_control_flow.h"
-
 #include "parser/parse_internal.h"
 
-// [REMOVED] All JumpHandle method implementations have been deleted from this file.
 ControlFlowGraph::ControlFlowGraph() : func_state(nullptr)
 {
 }
