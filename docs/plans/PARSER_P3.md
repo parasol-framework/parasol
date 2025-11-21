@@ -42,4 +42,6 @@ Phase 3 replaces the remaining C-style register helpers, jump patching, and raw 
    table operand duplication helper to centralise the indexed duplication pattern needed by compound assignments.
 - [ ] Stage 2: Added placeholder `ExpressionValue` and `ControlFlowGraph` wrappers to centralise expression payloads and jump
    ownership, ready for integration into emitter and control-flow handling.
+- [x] Stage 3: Implemented the `ControlFlowGraph` edge tracker with `ControlFlowEdge` handles, replaced `JumpHandle` usage
+   in the AST emitter with CFG-managed jumps, and added finalisation checks to flag unresolved control-flow edges.
 
