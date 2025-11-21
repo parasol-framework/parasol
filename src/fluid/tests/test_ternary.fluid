@@ -442,7 +442,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function testInvalidTernary()
-   local script = obj.new('script', {
+   local script = obj.new('fluid', {
       statement = [[
          local Options = { scale = false }
          local self = Options.scale is false ?? nil :> true

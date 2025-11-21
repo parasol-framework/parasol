@@ -439,7 +439,7 @@ end
 
 function compiled_disassembly()
    -- Create an independent script object with sample code
-   local script = obj.new('script', { statement = [[
+   local script = obj.new('fluid', { statement = [[
 function sampleFunction(a, b)
    local scale = b * 2
    local total = a + scale
