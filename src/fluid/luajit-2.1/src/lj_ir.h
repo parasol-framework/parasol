@@ -3,8 +3,7 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_IR_H
-#define _LJ_IR_H
+#pragma once
 
 #include "lj_obj.h"
 
@@ -327,8 +326,8 @@ LJ_DATA const uint8_t lj_ir_mode[IR__MAX + 1];
   _(INT, 4) _(U32, 4) _(I64, 8) _(U64, 8) \
   _(SOFTFP, 4)  //  There is room for 8 more types.
 
-// IR result type and flags (8 bit).
-typedef enum {
+// IR result type and flags.
+typedef enum : uint32_t {
 #define IRTENUM(name, size)   IRT_##name,
    IRTDEF(IRTENUM)
 #undef IRTENUM
@@ -537,7 +536,6 @@ static constexpr TRef TREF(uint32_t ref, IRType t)
 #define tref_isk(tr)      (irref_isk(tref_ref((tr))))
 #define tref_isk2(tr1, tr2)   (irref_isk(tref_ref((tr1) | (tr2))))
 
-// C++20 constexpr function for TREF_PRI construction
 // Accepts uint32_t to support both compile-time IRType and runtime values
 static constexpr TRef TREF_PRI(uint32_t t)
 {
@@ -623,5 +621,3 @@ static LJ_AINLINE void lj_ir_nop(IRIns* ir)
    ir->op1 = ir->op2 = 0;
    ir->prev = 0;
 }
-
-#endif

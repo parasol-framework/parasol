@@ -8,6 +8,8 @@
 #define lj_lex_c
 #define LUA_CORE
 
+#include <cctype>
+
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
@@ -105,7 +107,7 @@ static void lex_newline(LexState *State)
    lex_next(State);  //  Skip "\n" or "\r".
    if (lex_iseol(State) and State->c != old) lex_next(State);  //  Skip "\n\r" or "\r\n".
    if (uint32_t(++State->linenumber) >= LJ_MAX_LINE)
-      lj_lex_error(State, State->tok, LJ_ERR_XLINES);
+      lj_lex_error(State, State->tok, ErrMsg::XLINES);
    State->line_start_offset = State->current_offset;
 }
 
@@ -118,7 +120,7 @@ static void lex_number(LexState *State, TValue* tv)
 {
    StrScanFmt fmt;
    LexChar c, xp = 'e';
-   State->assert_condition(lj_char_isdigit(State->c), "bad usage");
+   State->assert_condition(isdigit(State->c), "bad usage");
    if ((c = State->c) IS '0' and (lex_savenext(State) | 0x20) IS 'x') xp = 'p';
    while (lj_char_isident(State->c) or State->c IS '.' or ((State->c IS '-' or State->c IS '+') and (c | 0x20) IS xp)) {
       c = State->c;
@@ -158,7 +160,7 @@ static void lex_number(LexState *State, TValue* tv)
    else {
       State->assert_condition(fmt IS STRSCAN_ERROR,
          "unexpected number format %d", fmt);
-      lj_lex_error(State, TK_number, LJ_ERR_XNUMBER);
+      lj_lex_error(State, TK_number, ErrMsg::XNUMBER);
    }
 }
 
@@ -185,7 +187,7 @@ static void lex_longstring(LexState *State, TValue* tv, int sep)
    for (;;) {
       switch (State->c) {
       case LEX_EOF:
-         lj_lex_error(State, TK_eof, tv ? LJ_ERR_XLSTR : LJ_ERR_XLCOM);
+         lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
          break;
       case ']':
          if (lex_skipeq(State) IS sep) {
@@ -222,12 +224,12 @@ static void lex_string(LexState *State, TValue* tv)
       switch (State->c) {
 
       case LEX_EOF:
-         lj_lex_error(State, TK_eof, LJ_ERR_XSTR);
+         lj_lex_error(State, TK_eof, ErrMsg::XSTR);
          continue;
 
       case '\n':
       case '\r':
-         lj_lex_error(State, TK_string, LJ_ERR_XSTR);
+         lj_lex_error(State, TK_string, ErrMsg::XSTR);
          continue;
 
       case '\\': {
@@ -243,13 +245,13 @@ static void lex_string(LexState *State, TValue* tv)
 
          case 'x':  //  Hexadecimal escape '\xXX'.
             c = (lex_next(State) & 15u) << 4;
-            if (!lj_char_isdigit(State->c)) {
-               if (!lj_char_isxdigit(State->c)) goto err_xesc;
+            if (!isdigit(State->c)) {
+               if (!isxdigit(State->c)) goto err_xesc;
                c += 9 << 4;
             }
             c += (lex_next(State) & 15u);
-            if (!lj_char_isdigit(State->c)) {
-               if (!lj_char_isxdigit(State->c)) goto err_xesc;
+            if (!isdigit(State->c)) {
+               if (!isxdigit(State->c)) goto err_xesc;
                c += 9;
             }
             break;
@@ -260,8 +262,8 @@ static void lex_string(LexState *State, TValue* tv)
             c = 0;
             do {
                c = (c << 4) | (State->c & 15u);
-               if (!lj_char_isdigit(State->c)) {
-                  if (!lj_char_isxdigit(State->c)) goto err_xesc;
+               if (!isdigit(State->c)) {
+                  if (!isxdigit(State->c)) goto err_xesc;
                   c += 9;
                }
                if (c >= 0x110000) goto err_xesc;  //  Out of Unicode range.
@@ -287,7 +289,7 @@ static void lex_string(LexState *State, TValue* tv)
 
          case 'z':  //  Skip whitespace.
             lex_next(State);
-            while (lj_char_isspace(State->c))
+            while (isspace(State->c))
                if (lex_iseol(State)) lex_newline(State); else lex_next(State);
             continue;
 
@@ -298,15 +300,15 @@ static void lex_string(LexState *State, TValue* tv)
          case LEX_EOF: continue;
 
          default:
-            if (!lj_char_isdigit(c)) goto err_xesc;
+            if (!isdigit(c)) goto err_xesc;
             c -= '0';  //  Decimal escape '\ddd'.
-            if (lj_char_isdigit(lex_next(State))) {
+            if (isdigit(lex_next(State))) {
                c = c * 10 + (State->c - '0');
-               if (lj_char_isdigit(lex_next(State))) {
+               if (isdigit(lex_next(State))) {
                   c = c * 10 + (State->c - '0');
                   if (c > 255) {
                   err_xesc:
-                     lj_lex_error(State, TK_string, LJ_ERR_XESC);
+                     lj_lex_error(State, TK_string, ErrMsg::XESC);
                   }
                   lex_next(State);
                }
@@ -340,7 +342,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
       if (lj_char_isident(State->c)) {
          State->mark_token_start();
          GCstr *s;
-         if (lj_char_isdigit(State->c)) {  // Numeric literal.
+         if (isdigit(State->c)) {  // Numeric literal.
             lex_number(State, tv);
             return TK_number;
          }
@@ -404,7 +406,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             return '[';
          }
          else {
-            lj_lex_error(State, TK_string, LJ_ERR_XLDELIM);
+            lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
             continue;
          }
       }
@@ -498,7 +500,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '=') { lex_next(State); return TK_cconcat; }
             return TK_concat;   //  ..
          }
-         else if (!lj_char_isdigit(State->c)) {
+         else if (!isdigit(State->c)) {
             return '.';
          }
          else {
@@ -593,7 +595,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
          // Lua code by looking at the first char. Since this is a potential
          // security violation no attempt is made to echo the chunkname either.
 
-         setstrV(L, L->top++, lj_err_str(L, LJ_ERR_BCBAD));
+         setstrV(L, L->top++, lj_err_str(L, ErrMsg::BCBAD));
          lj_err_throw(L, LUA_ERRSYNTAX);
       }
       this->is_bytecode = 1;
@@ -721,7 +723,7 @@ const char* LexState::token2str(LexToken Tok)
 {
    if (Tok > TK_OFS)
       return token_names[Tok - TK_OFS - 1];
-   else if (!lj_char_iscntrl(Tok))
+   else if (!iscntrl(Tok))
       return lj_strfmt_pushf(this->L, "%c", Tok);
    else
       return lj_strfmt_pushf(this->L, "char(%d)", Tok);

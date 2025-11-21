@@ -3,6 +3,9 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
+// TODO: Deprecate in favour of the std library functions
+
+#include <ctype.h>
 #include <math.h>
 
 #define lj_strscan_c
@@ -11,8 +14,6 @@
 #include "lj_obj.h"
 #include "lj_char.h"
 #include "lj_strscan.h"
-
-// -- Scanning numbers ----------------------------------------------------
 
 /*
 ** Rationale for the builtin string to number conversion library:
@@ -383,8 +384,8 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
    const uint8_t* pe = p + len;
 
    // Remove leading space, parse sign and non-numbers.
-   if (LJ_UNLIKELY(!lj_char_isdigit(*p))) {
-      while (lj_char_isspace(*p)) p++;
+   if (LJ_UNLIKELY(!isdigit(*p))) {
+      while (isspace(*p)) p++;
       if (*p == '+' or *p == '-') neg = (*p++ == '-');
       if (LJ_UNLIKELY(*p >= 'A')) {  // Parse "inf", "infinity" or "nan".
          TValue tmp;
@@ -392,13 +393,13 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
          if (casecmp(p[0], 'i') and casecmp(p[1], 'n') and casecmp(p[2], 'f')) {
             if (neg) setminfV(&tmp); else setpinfV(&tmp);
             p += 3;
-            if (casecmp(p[0], 'i') and casecmp(p[1], 'n') and casecmp(p[2], 'i') &&
+            if (casecmp(p[0], 'i') and casecmp(p[1], 'n') and casecmp(p[2], 'i') and
                casecmp(p[3], 't') and casecmp(p[4], 'y')) p += 5;
          }
          else if (casecmp(p[0], 'n') and casecmp(p[1], 'a') and casecmp(p[2], 'n')) {
             p += 3;
          }
-         while (lj_char_isspace(*p)) p++;
+         while (isspace(*p)) p++;
          if (*p or p < pe) return STRSCAN_ERROR;
          o->u64 = tmp.u64;
          return STRSCAN_NUM;
@@ -470,9 +471,9 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
          int negx = 0;
          fmt = STRSCAN_NUM; p++;
          if (*p == '+' or *p == '-') negx = (*p++ == '-');
-         if (!lj_char_isdigit(*p)) return STRSCAN_ERROR;
+         if (!isdigit(*p)) return STRSCAN_ERROR;
          xx = (*p++ & 15);
-         while (lj_char_isdigit(*p)) {
+         while (isdigit(*p)) {
             xx = xx * 10 + (*p & 15);
             if (xx >= STRSCAN_MAXEXP) return STRSCAN_ERROR;
             p++;
@@ -502,7 +503,7 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o,
                (fmt >= STRSCAN_I64 and !(opt & STRSCAN_OPT_LL)))
                return STRSCAN_ERROR;
          }
-         while (lj_char_isspace(*p)) p++;
+         while (isspace(*p)) p++;
          if (*p) return STRSCAN_ERROR;
       }
       if (p < pe) return STRSCAN_ERROR;

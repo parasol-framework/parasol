@@ -22,6 +22,7 @@
 
 #include "lj_obj.h"
 #include "lj_bc.h"
+#include "parser/parser_diagnostics.h"
 
 #include "hashes.h"
 #include "defs.h"
@@ -43,6 +44,7 @@ static ERR save_binary(objScript *, OBJECTPTR);
 
 [[maybe_unused]] static ERR register_interfaces(objScript *);
 
+//********************************************************************************************************************
 // Dump the variables of any global table
 
 [[maybe_unused]] static void dump_global_table(objScript *Self, STRING Global)
@@ -62,9 +64,23 @@ static ERR save_binary(objScript *, OBJECTPTR);
 
 //********************************************************************************************************************
 
+static const FieldDef clJitOptions[] = {
+   { "TraceTokens",   JOF::TRACE_TOKENS },
+   { "Diagnose",      JOF::DIAGNOSE },
+   { "Legacy",        JOF::LEGACY },
+   { "TraceBoundary", JOF::TRACE_BOUNDARY },
+   { "TraceExpect",   JOF::TRACE_EXPECT },
+   { "DumpBytecode",  JOF::DUMP_BYTECODE },
+   { "Profile",       JOF::PROFILE },
+   { nullptr, 0 }
+};
+
+static ERR GET_JitOptions(objScript *, JOF *);
+static ERR SET_JitOptions(objScript *, JOF);
 static ERR GET_Procedures(objScript *, pf::vector<std::string> **, int *);
 
 static const FieldArray clFields[] = {
+   { "JitOptions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, GET_JitOptions, SET_JitOptions, &clJitOptions },
    { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
    END_FIELD
 };
@@ -76,6 +92,7 @@ static ERR FLUID_DataFeed(objScript *, struct acDataFeed *);
 static ERR FLUID_Free(objScript *);
 static ERR FLUID_Init(objScript *);
 static ERR FLUID_NewChild(objScript *, struct acNewChild &);
+static ERR FLUID_NewObject(objScript *);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
@@ -84,6 +101,7 @@ static const ActionArray clActions[] = {
    { AC::Free,         FLUID_Free },
    { AC::Init,         FLUID_Init },
    { AC::NewChild,     FLUID_NewChild },
+   { AC::NewObject,    FLUID_NewObject },
    { AC::SaveToObject, FLUID_SaveToObject },
    { AC::NIL, nullptr }
 };
@@ -315,7 +333,7 @@ static ERR FLUID_Activate(objScript *Self)
       free_all(Self);
       new (prv) prvFluid;
 
-      if (not (prv->Lua = luaL_newstate())) {
+      if (not (prv->Lua = luaL_newstate(Self))) {
          log.warning("Failed to open a Lua instance.");
          goto failure;
       }
@@ -326,8 +344,8 @@ static ERR FLUID_Activate(objScript *Self)
    if (reload) {
       log.trace("The Lua script will be initialised from scratch.");
 
-      prv->Lua->Script = Self;
-      prv->Lua->ProtectedGlobals = false;
+      prv->Lua->Script             = Self;
+      prv->Lua->ProtectedGlobals   = false;
 
       // Change the __newindex and __index methods of the global table so that all access passes
       // through a proxy table that we control.
@@ -386,10 +404,9 @@ static ERR FLUID_Activate(objScript *Self)
       // Determine chunk name for better debug output.
       // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.
       // This ensures debug output shows the actual filename instead of "[string]".
+
       std::string chunk_name;
-      if (Self->Path) {
-         chunk_name = std::string("@") + Self->Path;
-      }
+      if (Self->Path) chunk_name = std::string("@") + Self->Path;
       else chunk_name = "=script";
 
       int result;
@@ -404,34 +421,54 @@ static ERR FLUID_Activate(objScript *Self)
       }
 
       if (result) { // Error reported from parser
+         Self->Error = ERR::Syntax;
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
-            // Format: [string "..."]:Line:Error
-            int i;
-            if ((i = strsearch("\"]:", errorstr)) != -1) {
-               i += 3;
-               int line = strtol(errorstr + i, nullptr, 0);
-               while ((errorstr[i]) and (errorstr[i] != ':')) i++;
-               if (errorstr[i] IS ':') i++;
-
-               std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
-               CSTRING str = Self->String;
-
-               for (int j=1; j <= line+1; j++) {
-                  if (j >= line-1) {
-                     int col;
-                     for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
-                     error_msg += std::format("{}: {}{}\n",
-                        j + Self->LineOffset,
-                        std::string_view(str, col),
-                        col IS 120 ? "..." : "");
+            if (prv->Lua->parser_diagnostics) {
+               if (prv->Lua->parser_diagnostics->has_errors()) {
+                  std::string error_msg;
+                  for (const auto &entry : prv->Lua->parser_diagnostics->entries()) {
+                     if (not error_msg.empty()) error_msg += "\n";
+                     error_msg += entry.to_string(Self->LineOffset);
                   }
-                  if (not (str = next_line(str))) break;
+                  Self->setErrorString(error_msg);
                }
-               Self->setErrorString(error_msg.c_str());
+               else Self->setErrorString(errorstr);
 
-               log.warning("Parser Failed: %s", Self->ErrorString);
+               log.warning("%s", Self->ErrorString);
             }
-            else log.warning("Parser Failed: %s", errorstr);
+            else {
+               // TODO: Legacy support - remove when parser_diagnostics is always available
+               // Format: [string "..."]:Line:Error
+               int i;
+               if ((i = strsearch("\"]:", errorstr)) != -1) {
+                  i += 3;
+                  int line = strtol(errorstr + i, nullptr, 0);
+                  while ((errorstr[i]) and (errorstr[i] != ':')) i++;
+                  if (errorstr[i] IS ':') i++;
+
+                  std::string error_msg = std::format("Line {}: {}\n", line + Self->LineOffset, errorstr + i);
+                  CSTRING str = Self->String;
+
+                  for (int j=1; j <= line+1; j++) {
+                     if (j >= line-1) {
+                        int col;
+                        for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
+                        error_msg += std::format("{}: {}{}\n",
+                           j + Self->LineOffset,
+                           std::string_view(str, col),
+                           col IS 120 ? "..." : "");
+                     }
+                     if (not (str = next_line(str))) break;
+                  }
+                  Self->setErrorString(error_msg.c_str());
+
+                  log.warning("Parser Failed: %s", Self->ErrorString);
+               }
+               else {
+                  log.warning("Parser Failed: %s", errorstr);
+                  Self->setErrorString(errorstr);
+               }
+            }
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
@@ -671,21 +708,22 @@ static ERR FLUID_Init(objScript *Self)
    }
    else error = ERR::Okay;
 
-   // Allocate private structure
+   // Allocate private structure if not done by NewObject().
 
-   prvFluid *prv;
-   if (error IS ERR::Okay) {
+   prvFluid *prv = (prvFluid *)Self->ChildPrivate;
+   if ((error IS ERR::Okay) and (not prv)) {
       if (AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate) IS ERR::Okay) {
          prv = (prvFluid *)Self->ChildPrivate;
          new (prv) prvFluid;
-         if ((prv->SaveCompiled = compile)) {
-            DateTime *dt;
-            if (src_file->get(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
-            src_file->get(FID_Permissions, (int &)prv->CachePermissions);
-            prv->LoadedSize = loaded_size;
-         }
       }
       else error = ERR::AllocMemory;
+   }
+
+   if ((error IS ERR::Okay) and (prv->SaveCompiled = compile)) {
+      DateTime *dt;
+      if (src_file->get(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
+      src_file->get(FID_Permissions, (int &)prv->CachePermissions);
+      prv->LoadedSize = loaded_size;
    }
 
    if (error != ERR::Okay) {
@@ -693,9 +731,11 @@ static ERR FLUID_Init(objScript *Self)
       return log.warning(error);
    }
 
+   prv->JitOptions |= glJitOptions;
+
    log.trace("Opening a Lua instance.");
 
-   if (not (prv->Lua = luaL_newstate())) {
+   if (not (prv->Lua = luaL_newstate(Self))) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = nullptr;
@@ -740,6 +780,20 @@ static ERR FLUID_NewChild(objScript *Self, struct acNewChild &Args)
    else return ERR::Okay;
 }
 
+//********************************************************************************************************************
+// The client has specifically asked for a Fluid script to be created - this allows us to configure ChildPrivate
+// early.  Otherwise, it is created during Init().
+
+static ERR FLUID_NewObject(objScript *Self)
+{
+   if (AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate) IS ERR::Okay) {
+      auto prv = (prvFluid *)Self->ChildPrivate;
+      new (prv) prvFluid;
+      return ERR::Okay;
+   }
+   else return ERR::AllocMemory;
+}
+
 /*********************************************************************************************************************
 
 -ACTION-
@@ -778,6 +832,39 @@ static ERR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
       log.warning("Compile Failure: %s", str);
       return ERR::InvalidData;
    }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+JitOptions: Defines JIT debugging options.
+
+This field allows the client to configure debugging options related to the Just-In-Time (JIT) compilation process.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR GET_JitOptions(objScript *Self, JOF *Value)
+{
+   if (auto prv = (prvFluid *)Self->ChildPrivate) {
+      *Value = prv->JitOptions;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidState; // Either requires initialisation or to be created as a Fluid script from NewObject()
+}
+
+static ERR SET_JitOptions(objScript *Self, JOF Value)
+{
+   if (auto prv = (prvFluid *)Self->ChildPrivate) {
+      if (prv->Recurse) {
+         pf::Log().warning("Changing JIT options after parsing is ineffective.");
+         return ERR::InvalidState;
+      }
+      prv->JitOptions = Value;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidState; // Either requires initialisation or to be created as a Fluid script from NewObject()
 }
 
 /*********************************************************************************************************************
@@ -959,9 +1046,7 @@ static ERR run_script(objScript *Self)
       int depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
-         if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
-            pcall_failed = true;
-         }
+         if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) pcall_failed = true;
 
       SetResource(RES::LOG_DEPTH, depth);
    }

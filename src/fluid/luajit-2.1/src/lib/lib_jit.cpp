@@ -16,9 +16,11 @@
 #include "lj_tab.h"
 #include "lj_state.h"
 #include "lj_bc.h"
+
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #endif
+
 #if LJ_HASJIT
 #include "lj_ir.h"
 #include "lj_jit.h"
@@ -26,6 +28,7 @@
 #include "lj_iropt.h"
 #include "lj_target.h"
 #endif
+
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
@@ -55,7 +58,7 @@ static int setjitmode(lua_State* L, int mode)
 
    if (luaJIT_setmode(L, idx, mode) != 1) {
       if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE)
-         lj_err_caller(L, LJ_ERR_NOJIT);
+         lj_err_caller(L, ErrMsg::NOJIT);
    err:
       lj_err_argt(L, 1, LUA_TFUNCTION);
    }
@@ -297,18 +300,19 @@ static const char* const jit_trlinkname[] = {
 };
 
 // local info = jit.util.traceinfo(tr)
+
 LJLIB_CF(jit_util_traceinfo)
 {
-   GCtrace* T = jit_checktrace(L);
+   GCtrace *T = jit_checktrace(L);
    if (T) {
-      GCtab* t;
+      GCtab *t;
       lua_createtable(L, 0, 8);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       setintfield(L, t, "nins", (int32_t)T->nins - REF_BIAS - 1);
       setintfield(L, t, "nk", REF_BIAS - (int32_t)T->nk);
       setintfield(L, t, "link", T->link);
       setintfield(L, t, "nexit", T->nsnap);
-      setstrV(L, L->top++, lj_str_newz(L, jit_trlinkname[T->linktype]));
+      setstrV(L, L->top++, lj_str_newz(L, jit_trlinkname[uint32_t(T->linktype)]));
       lua_setfield(L, -2, "linktype");
       // There are many more fields. Add them only when needed.
       return 1;
@@ -536,111 +540,13 @@ LJLIB_CF(jit_opt_start)
          if (!jitopt_level(J, str) &&
             !jitopt_flag(J, str) &&
             !jitopt_param(J, str))
-            lj_err_callerv(L, LJ_ERR_JITOPT, str);
+            lj_err_callerv(L, ErrMsg::JITOPT, str);
       }
    }
    return 0;
 }
 
 #include "lj_libdef.h"
-
-#endif
-
-// jit.profile module
-
-#if LJ_HASPROFILE
-
-#define LJLIB_MODULE_jit_profile
-
-// Not loaded by default, use: local profile = require("jit.profile")
-
-#define KEY_PROFILE_THREAD   (U64x(80000000,00000000)|'t')
-#define KEY_PROFILE_FUNC   (U64x(80000000,00000000)|'f')
-
-static void jit_profile_callback(lua_State* L2, lua_State* L, int samples, int vmstate)
-{
-   TValue key;
-   cTValue* tv;
-   key.u64 = KEY_PROFILE_FUNC;
-   tv = lj_tab_get(L, tabV(registry(L)), &key);
-   if (tvisfunc(tv)) {
-      char vmst = (char)vmstate;
-      int status;
-      setfuncV(L2, L2->top++, funcV(tv));
-      setthreadV(L2, L2->top++, L);
-      setintV(L2->top++, samples);
-      setstrV(L2, L2->top++, lj_str_new(L2, &vmst, 1));
-      status = lua_pcall(L2, 3, 0, 0);  //  callback(thread, samples, vmstate)
-      if (status) {
-         if (G(L2)->panic) G(L2)->panic(L2);
-         exit(EXIT_FAILURE);
-      }
-      lj_trace_abort(G(L2));
-   }
-}
-
-// profile.start(mode, cb)
-LJLIB_CF(jit_profile_start)
-{
-   GCtab* registry = tabV(registry(L));
-   GCstr* mode = lj_lib_optstr(L, 1);
-   GCfunc* func = lj_lib_checkfunc(L, 2);
-   lua_State* L2 = lua_newthread(L);  //  Thread that runs profiler callback.
-   TValue key;
-   // Anchor thread and function in registry.
-   key.u64 = KEY_PROFILE_THREAD;
-   setthreadV(L, lj_tab_set(L, registry, &key), L2);
-   key.u64 = KEY_PROFILE_FUNC;
-   setfuncV(L, lj_tab_set(L, registry, &key), func);
-   lj_gc_anybarriert(L, registry);
-   luaJIT_profile_start(L, mode ? strdata(mode) : "",
-      (luaJIT_profile_callback)jit_profile_callback, L2);
-   return 0;
-}
-
-// profile.stop()
-
-LJLIB_CF(jit_profile_stop)
-{
-   GCtab* registry;
-   TValue key;
-   luaJIT_profile_stop(L);
-   registry = tabV(registry(L));
-   key.u64 = KEY_PROFILE_THREAD;
-   setnilV(lj_tab_set(L, registry, &key));
-   key.u64 = KEY_PROFILE_FUNC;
-   setnilV(lj_tab_set(L, registry, &key));
-   lj_gc_anybarriert(L, registry);
-   return 0;
-}
-
-// dump = profile.dumpstack([thread,] fmt, depth)
-LJLIB_CF(jit_profile_dumpstack)
-{
-   lua_State* L2 = L;
-   int arg = 0;
-   size_t len;
-   int depth;
-   GCstr* fmt;
-   const char* p;
-   if (L->top > L->base and tvisthread(L->base)) {
-      L2 = threadV(L->base);
-      arg = 1;
-   }
-   fmt = lj_lib_checkstr(L, arg + 1);
-   depth = lj_lib_checkint(L, arg + 2);
-   p = luaJIT_profile_dumpstack(L2, strdata(fmt), depth, &len);
-   lua_pushlstring(L, p, len);
-   return 1;
-}
-
-#include "lj_libdef.h"
-
-static int luaopen_jit_profile(lua_State* L)
-{
-   LJ_LIB_REG(L, NULL, jit_profile);
-   return 1;
-}
 
 #endif
 
@@ -756,12 +662,7 @@ extern int luaopen_jit(lua_State* L)
    lua_pushinteger(L, LUAJIT_VERSION_NUM);
    lua_pushliteral(L, LUAJIT_VERSION);
    LJ_LIB_REG(L, "jit", jit);
-#if LJ_HASPROFILE
-   lj_lib_prereg(L, "jit.profile", luaopen_jit_profile, tabref(L->env));
-#endif
-#ifndef LUAJIT_DISABLE_JITUTIL
    lj_lib_prereg(L, "jit.util", luaopen_jit_util, tabref(L->env));
-#endif
 #if LJ_HASJIT
    LJ_LIB_REG(L, "jit.opt", jit_opt);
 #endif

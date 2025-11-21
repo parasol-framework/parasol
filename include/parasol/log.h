@@ -67,7 +67,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
-      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message
+      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message, '--log-xapi' to view
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF::DETAIL, header, Message, arg);

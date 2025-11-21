@@ -1,10 +1,4 @@
-/*
-** Lua parser - Constant management and jump list handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Copyright (C) 2025 Paul Manias
 
 // Add a number constant.
 
@@ -37,7 +31,7 @@
 
 [[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
-   lj_assertFS(expr_isstrk(e) or e->k == ExpKind::Global, "bad usage");
+   lj_assertFS(expr_isstrk(e) or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 
@@ -199,7 +193,7 @@ void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
    BCPos offset = Destination - (Position + 1) + BCBIAS_J;
    lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D)
-      func_state->ls->err_syntax(LJ_ERR_XJUMP);
+      func_state->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
 

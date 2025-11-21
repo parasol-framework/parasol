@@ -547,130 +547,23 @@ extern int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
    return lj_debug_getinfo(L, what, (lj_Debug*)ar, 0);
 }
 
+// This function fills parts of a lua_Debug structure with an identification of the activation record of the function
+// executing at a given level. Level 0 is the current running function, whereas level n+1 is the function that has
+// called level n (except for tail calls, which do not count on the stack). When there are no errors, lua_getstack
+// returns 1; when called with a level greater than the stack depth, it returns 0.
+
 extern int lua_getstack(lua_State* L, int level, lua_Debug* ar)
 {
    int size;
-   cTValue* frame = lj_debug_frame(L, level, &size);
-   if (frame) {
+   if (cTValue *frame = lj_debug_frame(L, level, &size)) {
       ar->i_ci = (size << 16) + (int)(frame - tvref(L->stack));
       return 1;
    }
    else {
       ar->i_ci = level - size;
-      return 0;
+      return 0; // No frame found.
    }
 }
-
-#if LJ_HASPROFILE
-// Put the chunkname into a buffer.
-static int debug_putchunkname(SBuf* sb, GCproto* pt, int pathstrip)
-{
-   GCstr* name = proto_chunkname(pt);
-   const char* p = strdata(name);
-   if (pt->firstline == ~(BCLine)0) {
-      lj_buf_putmem(sb, "[builtin:", 9);
-      lj_buf_putstr(sb, name);
-      lj_buf_putb(sb, ']');
-      return 0;
-   }
-   if (*p == '=' or *p == '@') {
-      MSize len = name->len - 1;
-      p++;
-      if (pathstrip) {
-         int i;
-         for (i = len - 1; i >= 0; i--)
-            if (p[i] == '/' or p[i] == '\\') {
-               len -= i + 1;
-               p = p + i + 1;
-               break;
-            }
-      }
-      lj_buf_putmem(sb, p, len);
-   }
-   else {
-      lj_buf_putmem(sb, "[string]", 8);
-   }
-   return 1;
-}
-
-// Put a compact stack dump into a buffer.
-void lj_debug_dumpstack(lua_State* L, SBuf* sb, const char* fmt, int depth)
-{
-   int level = 0, dir = 1, pathstrip = 1;
-   MSize lastlen = 0;
-   if (depth < 0) { level = ~depth; depth = dir = -1; }  //  Reverse frames.
-   while (level != depth) {  //  Loop through all frame.
-      int size;
-      cTValue* frame = lj_debug_frame(L, level, &size);
-      if (frame) {
-         cTValue* nextframe = size ? frame + size : nullptr;
-         GCfunc* fn = frame_func(frame);
-         const uint8_t* p = (const uint8_t*)fmt;
-         int c;
-         while ((c = *p++)) {
-            switch (c) {
-            case 'p':  //  Preserve full path.
-               pathstrip = 0;
-               break;
-            case 'F': case 'f': {  //  Dump function name.
-               const char* name;
-               const char* what = lj_debug_funcname(L, frame, &name);
-               // Only show function name if we're confident it's correct.
-               // Skip "local" because it returns the caller's variable name,
-               // which may not match the actual function being executed.
-               if (what and strcmp(what, "local") != 0) {
-                  if (c == 'F' and isluafunc(fn)) {  //  Dump module:name for 'F'.
-                     GCproto* pt = funcproto(fn);
-                     if (pt->firstline != ~(BCLine)0) {  //  Not a bytecode builtin.
-                        debug_putchunkname(sb, pt, pathstrip);
-                        lj_buf_putb(sb, ':');
-                     }
-                  }
-                  lj_buf_putmem(sb, name, (MSize)strlen(name));
-               }
-               // Don't output anything if function name is unreliable
-               break;
-            }
-
-            case 'l':  //  Dump module:line.
-               if (isluafunc(fn)) {
-                  GCproto* pt = funcproto(fn);
-                  if (debug_putchunkname(sb, pt, pathstrip)) {
-                     // Regular Lua function.
-                     BCLine line = c == 'l' ? debug_frameline(L, fn, nextframe) :
-                        pt->firstline;
-                     lj_buf_putb(sb, ':');
-                     lj_strfmt_putint(sb, line >= 0 ? line : pt->firstline);
-                  }
-               }
-               else if (isffunc(fn)) {  //  Dump numbered builtins.
-                  lj_buf_putmem(sb, "[builtin#", 9);
-                  lj_strfmt_putint(sb, fn->c.ffid);
-                  lj_buf_putb(sb, ']');
-               }
-               else {  //  Dump C function address.
-                  lj_buf_putb(sb, '@');
-                  lj_strfmt_putptr(sb, (const void*)fn->c.f);
-               }
-               break;
-            case 'Z':  //  Zap trailing separator.
-               lastlen = sbuflen(sb);
-               break;
-            default:
-               lj_buf_putb(sb, c);
-               break;
-            }
-         }
-      }
-      else if (dir == 1) break;
-      else level -= size;  //  Reverse frame order: quickly skip missing level.
-
-      level += dir;
-   }
-
-   if (lastlen) sb->w = sb->b + lastlen;  //  Zap trailing separator.
-}
-#endif
 
 // Number of frames for the leading and trailing part of a traceback.
 #define TRACEBACK_LEVELS1   12
@@ -686,9 +579,7 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
    while (lua_getstack(L1, level++, &ar)) {
       GCfunc* fn;
       if (level > lim) {
-         if (!lua_getstack(L1, level + TRACEBACK_LEVELS2, &ar)) {
-            level--;
-         }
+         if (!lua_getstack(L1, level + TRACEBACK_LEVELS2, &ar)) level--;
          else {
             lua_pushliteral(L, "\n\t...");
             lua_getstack(L1, -10, &ar);

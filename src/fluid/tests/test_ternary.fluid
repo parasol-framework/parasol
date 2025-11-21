@@ -442,7 +442,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function testInvalidTernary()
-   local script = obj.new('script', {
+   local script = obj.new('fluid', {
       statement = [[
          local Options = { scale = false }
          local self = Options.scale is false ?? nil :> true
@@ -452,7 +452,7 @@ function testInvalidTernary()
 
    script.acActivate()
    assert(script.error != ERR_Okay, "Script should have thrown an error code")
-   assert(string.find(script.errorString, 'Invalid ternary') != nil, "Expected invalid ternary error, got: " .. tostring(script.errorString))
+   assert(string.find(script.errorString, 'Unexpected Token') != nil, "Expected invalid token error, got: " .. tostring(script.errorString))
 end
 
 ----------------------------------------------------------------------------------------------------------------------

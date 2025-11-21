@@ -15,9 +15,9 @@
   <function>
     <name>SetVariable</name>
     <comment>Sets any variable in a loaded Fluid script.</comment>
-    <prototype>ERR fl::SetVariable(OBJECTPTR Script, CSTRING Name, INT Type, ...)</prototype>
+    <prototype>ERR fl::SetVariable(objScript * Script, CSTRING Name, INT Type, ...)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
+      <param type="objScript *" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>
       <param type="INT" name="Type">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_INT</code>, <code>FD_DOUBLE</code>, <code>FD_INT64</code>.</param>
       <param type="..." name="Variable">A variable that matches the indicated <code>Type</code>.</param>
@@ -33,6 +33,18 @@
     </result>
   </function>
 
+  <types>
+    <constants lookup="JOF" comment="JIT behaviour options">
+      <const name="DIAGNOSE">Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</const>
+      <const name="DUMP_BYTECODE">Print a disassembly of bytecode instructions after parsing.</const>
+      <const name="LEGACY">Use the legacy parser.</const>
+      <const name="PROFILE">Use timers to profile JIT parsing.  Required to configure run-time profiling.</const>
+      <const name="TRACE_BOUNDARY">Enable log messages for AST boundary crossing.</const>
+      <const name="TRACE_EXPECT">Enable trace expectation messages during parsing.</const>
+      <const name="TRACE_TOKENS">Trace the emission of tokens.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

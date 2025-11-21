@@ -426,7 +426,7 @@ static void trace_start(jit_State* J)
          setbc_op(J->pc, (int)bc_op(*J->pc) + (int)BC_ILOOP - (int)BC_LOOP);
          J->pt->flags |= PROTO_ILOOP;
       }
-      J->state = LJ_TRACE_IDLE;  //  Silently ignored.
+      J->state = TraceState::IDLE;  //  Silently ignored.
       return;
    }
 
@@ -436,7 +436,7 @@ static void trace_start(jit_State* J)
       lj_assertJ((J2G(J)->hookmask & HOOK_GC) == 0,
          "recorder called from GC hook");
       lj_trace_flushall(J->L);
-      J->state = LJ_TRACE_IDLE;  //  Silently ignored.
+      J->state = TraceState::IDLE;  //  Silently ignored.
       return;
    }
    setgcrefp(J->trace[traceno], &J->cur);
@@ -562,7 +562,7 @@ static int trace_downrec(jit_State* J)
       return 0;  //  NYI: down-recursion with RETM.
    J->parent = 0;
    J->exitno = 0;
-   J->state = LJ_TRACE_RECORD;
+   J->state = TraceState::RECORD;
    trace_start(J);
    return 1;
 }
@@ -584,7 +584,7 @@ static int trace_abort(jit_State* J)
       e = (TraceError)numberVint(L->top - 1);
    if (e == LJ_TRERR_MCODELM) {
       L->top--;  //  Remove error object
-      J->state = LJ_TRACE_ASM;
+      J->state = TraceState::ASM;
       return 1;  //  Retry ASM with new MCode area.
    }
    // Penalize or blacklist starting bytecode instruction.
@@ -606,7 +606,7 @@ static int trace_abort(jit_State* J)
    if (traceno) {
       ptrdiff_t errobj = savestack(L, L->top - 1);  //  Stack may be resized.
       J->cur.link = 0;
-      J->cur.linktype = LJ_TRLINK_NONE;
+      J->cur.linktype = TraceLink::NONE;
       lj_vmevent_send(L, TRACE,
          TValue * frame;
       const BCIns * pc;
@@ -662,18 +662,18 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
    do {
    retry:
       switch (J->state) {
-      case LJ_TRACE_START:
-         J->state = LJ_TRACE_RECORD;  //  trace_start() may change state.
+      case TraceState::START:
+         J->state = TraceState::RECORD;  //  trace_start() may change state.
          trace_start(J);
          lj_dispatch_update(J2G(J));
-         if (J->state != LJ_TRACE_RECORD_1ST)
+         if (J->state != TraceState::RECORD_1ST)
             break;
          // fallthrough
 
-      case LJ_TRACE_RECORD_1ST:
-         J->state = LJ_TRACE_RECORD;
+      case TraceState::RECORD_1ST:
+         J->state = TraceState::RECORD;
          // fallthrough
-      case LJ_TRACE_RECORD:
+      case TraceState::RECORD:
          trace_pendpatch(J, 0);
          setvmstate(J2G(J), RECORD);
          lj_vmevent_send_(L, RECORD,
@@ -695,7 +695,7 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          lj_record_ins(J);
          break;
 
-      case LJ_TRACE_END:
+      case TraceState::END:
          trace_pendpatch(J, 1);
          J->loopref = 0;
          if ((J->flags & JIT_F_OPT_LOOP) &&
@@ -704,9 +704,9 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
             lj_opt_dce(J);
             if (lj_opt_loop(J)) {  // Loop optimization failed?
                J->cur.link = 0;
-               J->cur.linktype = LJ_TRLINK_NONE;
+               J->cur.linktype = TraceLink::NONE;
                J->loopref = J->cur.nins;
-               J->state = LJ_TRACE_RECORD;  //  Try to continue recording.
+               J->state = TraceState::RECORD;  //  Try to continue recording.
                break;
             }
             J->loopref = J->chain[IR_LOOP];  //  Needed by assembler.
@@ -714,31 +714,31 @@ static TValue* trace_state(lua_State* L, lua_CFunction dummy, void* ud)
          lj_opt_split(J);
          lj_opt_sink(J);
          if (!J->loopref) J->cur.snap[J->cur.nsnap - 1].count = SNAPCOUNT_DONE;
-         J->state = LJ_TRACE_ASM;
+         J->state = TraceState::ASM;
          break;
 
-      case LJ_TRACE_ASM:
+      case TraceState::ASM:
          setvmstate(J2G(J), ASM);
          lj_asm_trace(J, &J->cur);
          trace_stop(J);
          setvmstate(J2G(J), INTERP);
-         J->state = LJ_TRACE_IDLE;
+         J->state = TraceState::IDLE;
          lj_dispatch_update(J2G(J));
          return nullptr;
 
       default:  //  Trace aborted asynchronously.
          setintV(L->top++, (int32_t)LJ_TRERR_RECERR);
          // fallthrough
-      case LJ_TRACE_ERR:
+      case TraceState::ERR:
          trace_pendpatch(J, 1);
          if (trace_abort(J))
             goto retry;
          setvmstate(J2G(J), INTERP);
-         J->state = LJ_TRACE_IDLE;
+         J->state = TraceState::IDLE;
          lj_dispatch_update(J2G(J));
          return nullptr;
       }
-   } while (J->state > LJ_TRACE_RECORD);
+   } while (J->state > TraceState::RECORD);
    return nullptr;
 }
 
@@ -752,7 +752,7 @@ void lj_trace_ins(jit_State* J, const BCIns* pc)
    J->fn = curr_func(J->L);
    J->pt = isluafunc(J->fn) ? funcproto(J->fn) : nullptr;
    while (lj_vm_cpcall(J->L, nullptr, (void*)J, trace_state) != 0)
-      J->state = LJ_TRACE_ERR;
+      J->state = TraceState::ERR;
 }
 
 // A hotcount triggered. Start recording a root trace.
@@ -763,11 +763,11 @@ void LJ_FASTCALL lj_trace_hot(jit_State* J, const BCIns* pc)
       // Reset hotcount.
       hotcount_set(J2GG(J), pc, J->param[JIT_P_hotloop] * HOTCOUNT_LOOP);
    // Only start a new trace if not recording or inside __gc call or vmevent.
-   if (J->state == LJ_TRACE_IDLE &&
+   if (J->state == TraceState::IDLE &&
       !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       J->parent = 0;  //  Root trace.
       J->exitno = 0;
-      J->state = LJ_TRACE_START;
+      J->state = TraceState::START;
       lj_trace_ins(J, pc - 1);
    }
    ERRNO_RESTORE
@@ -781,9 +781,9 @@ static void trace_hotside(jit_State* J, const BCIns* pc)
       isluafunc(curr_func(J->L)) &&
       snap->count != SNAPCOUNT_DONE &&
       ++snap->count >= J->param[JIT_P_hotexit]) {
-      lj_assertJ(J->state == LJ_TRACE_IDLE, "hot side exit while recording");
+      lj_assertJ(J->state == TraceState::IDLE, "hot side exit while recording");
       // J->parent is non-zero for a side trace.
-      J->state = LJ_TRACE_START;
+      J->state = TraceState::START;
       lj_trace_ins(J, pc);
    }
 }
@@ -792,11 +792,11 @@ static void trace_hotside(jit_State* J, const BCIns* pc)
 void LJ_FASTCALL lj_trace_stitch(jit_State* J, const BCIns* pc)
 {
    // Only start a new trace if not recording or inside __gc call or vmevent.
-   if (J->state == LJ_TRACE_IDLE &&
+   if (J->state == TraceState::IDLE &&
       !(J2G(J)->hookmask & (HOOK_GC | HOOK_VMEVENT))) {
       J->parent = 0;  //  Have to treat it like a root trace.
       // J->exitno is set to the invoking trace.
-      J->state = LJ_TRACE_START;
+      J->state = TraceState::START;
       lj_trace_ins(J, pc);
    }
 }
@@ -928,7 +928,7 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
       BCIns* retpc = &traceref(J, bc_d(*pc))->startins;
       int isret = bc_isret(bc_op(*retpc));
       if (isret or bc_op(*retpc) == BC_ITERN) {
-         if (J->state == LJ_TRACE_RECORD) {
+         if (J->state == TraceState::RECORD) {
             J->patchins = *pc;
             J->patchpc = (BCIns*)pc;
             *J->patchpc = *retpc;

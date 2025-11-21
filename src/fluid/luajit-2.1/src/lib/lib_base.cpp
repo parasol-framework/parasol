@@ -7,6 +7,7 @@
 */
 
 #include <stdio.h>
+#include <cctype>
 
 #define lib_base_c
 #define LUA_LIB
@@ -45,7 +46,7 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
    if (L->top == L->base + 1)
-      lj_err_caller(L, LJ_ERR_ASSERT);
+      lj_err_caller(L, ErrMsg::ASSERT);
    else if (tvisstr(L->base + 1) or tvisnumber(L->base + 1))
       lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
    else
@@ -79,7 +80,7 @@ LJ_STATIC_ASSERT((int)FF_next == FF_next_N);
 LJLIB_ASM(next)         LJLIB_REC(.)
 {
    lj_lib_checktab(L, 1);
-   lj_err_msg(L, LJ_ERR_NEXTIDX);
+   lj_err_msg(L, ErrMsg::NEXTIDX);
    return FFH_UNREACHABLE;
 }
 
@@ -134,7 +135,7 @@ LJLIB_ASM(setmetatable)      LJLIB_REC(.)
    GCtab* t = lj_lib_checktab(L, 1);
    GCtab* mt = lj_lib_checktabornil(L, 2);
    if (!tvisnil(lj_meta_lookup(L, L->base, MM_metatable)))
-      lj_err_caller(L, LJ_ERR_PROTMT);
+      lj_err_caller(L, ErrMsg::PROTMT);
    setgcref(t->metatable, obj2gco(mt));
    if (mt) { lj_gc_objbarriert(L, t, mt); }
    settabV(L, L->base - 1 - LJ_FR2, t);
@@ -149,7 +150,7 @@ LJLIB_CF(getfenv)      LJLIB_REC(.)
       int level = lj_lib_optint(L, 1, 1);
       o = lj_debug_frame(L, level, &level);
       if (o == nullptr)
-         lj_err_arg(L, 1, LJ_ERR_INVLVL);
+         lj_err_arg(L, 1, ErrMsg::INVLVL);
       if (LJ_FR2) o--;
    }
    fn = &gcval(o)->fn;
@@ -171,12 +172,12 @@ LJLIB_CF(setfenv)
       }
       o = lj_debug_frame(L, level, &level);
       if (o == nullptr)
-         lj_err_arg(L, 1, LJ_ERR_INVLVL);
+         lj_err_arg(L, 1, ErrMsg::INVLVL);
       if (LJ_FR2) o--;
    }
    fn = &gcval(o)->fn;
    if (!isluafunc(fn))
-      lj_err_caller(L, LJ_ERR_SETFENV);
+      lj_err_caller(L, ErrMsg::SETFENV);
    setgcref(fn->l.env, obj2gco(t));
    lj_gc_objbarrier(L, obj2gco(fn), t);
    setfuncV(L, L->top++, fn);
@@ -232,7 +233,7 @@ LJLIB_CF(unpack)
    nu = (uint32_t)e - (uint32_t)i;
    n = (int32_t)(nu + 1);
    if (nu >= LUAI_MAXCSTACK or !lua_checkstack(L, n))
-      lj_err_caller(L, LJ_ERR_UNPACK);
+      lj_err_caller(L, ErrMsg::UNPACK);
    do {
       cTValue* tv = lj_tab_getint(t, i);
       if (tv) {
@@ -256,7 +257,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
       int32_t i = lj_lib_checkint(L, 1);
       if (i < 0) i = n + i; else if (i > n) i = n;
       if (i < 1)
-         lj_err_arg(L, 1, LJ_ERR_IDXRNG);
+         lj_err_arg(L, 1, ErrMsg::IDXRNG);
       return n - i;
    }
 }
@@ -297,15 +298,14 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       char* ep;
       unsigned int neg = 0;
       unsigned long ul;
-      if (base < 2 or base > 36)
-         lj_err_arg(L, 2, LJ_ERR_BASERNG);
-      while (lj_char_isspace((unsigned char)(*p))) p++;
+      if (base < 2 or base > 36) lj_err_arg(L, 2, ErrMsg::BASERNG);
+      while (isspace((unsigned char)(*p))) p++;
       if (*p == '-') { p++; neg = 1; }
       else if (*p == '+') { p++; }
-      if (lj_char_isalnum((unsigned char)(*p))) {
+      if (isalnum((unsigned char)(*p))) {
          ul = strtoul(p, &ep, base);
          if (p != ep) {
-            while (lj_char_isspace((unsigned char)(*ep))) ep++;
+            while (isspace((unsigned char)(*ep))) ep++;
             if (*ep == '\0') {
                if (LJ_DUALNUM and LJ_LIKELY(ul < 0x80000000u + neg)) {
                   if (neg) ul = (unsigned long)-(long)ul;
@@ -407,7 +407,7 @@ static const char* reader_func(lua_State* L, void* ud, size_t* size)
       return lua_tolstring(L, 5, size);
    }
    else {
-      lj_err_caller(L, LJ_ERR_RDRSTR);
+      lj_err_caller(L, ErrMsg::RDRSTR);
       return nullptr;
    }
 }
@@ -512,7 +512,7 @@ LJLIB_CF(newproxy)
          lua_pop(L, 1);
       }
       if (!validproxy)
-         lj_err_arg(L, 1, LJ_ERR_NOPROXY);
+         lj_err_arg(L, 1, ErrMsg::NOPROXY);
       lua_getmetatable(L, 1);
    }
    lua_setmetatable(L, 2);
@@ -550,7 +550,7 @@ LJLIB_CF(print)
          lua_call(L, 1, 1);
          str = lua_tolstring(L, -1, &size);
          if (!str)
-            lj_err_caller(L, LJ_ERR_PRTOSTR);
+            lj_err_caller(L, ErrMsg::PRTOSTR);
          L->top--;
       }
       if (i)
@@ -575,7 +575,7 @@ LJLIB_CF(coroutine_status)
    const char* s;
    lua_State* co;
    if (!(L->top > L->base and tvisthread(L->base)))
-      lj_err_arg(L, 1, LJ_ERR_NOCORO);
+      lj_err_arg(L, 1, ErrMsg::NOCORO);
    co = threadV(L->base);
    if (co == L) s = "running";
    else if (co->status == LUA_YIELD) s = "suspended";
@@ -618,7 +618,7 @@ LJLIB_CF(coroutine_create)
 
 LJLIB_ASM(coroutine_yield)
 {
-   lj_err_caller(L, LJ_ERR_CYIELD);
+   lj_err_caller(L, ErrMsg::CYIELD);
    return FFH_UNREACHABLE;
 }
 
@@ -626,7 +626,7 @@ static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 {
    if (co->cframe != nullptr or co->status > LUA_YIELD ||
       (co->status == LUA_OK and co->top == co->base)) {
-      ErrMsg em = co->cframe ? LJ_ERR_CORUN : LJ_ERR_CODEAD;
+      ErrMsg em = co->cframe ? ErrMsg::CORUN : ErrMsg::CODEAD;
       if (wrap) lj_err_caller(L, em);
       setboolV(L->base - 1 - LJ_FR2, 0);
       setstrV(L, L->base - LJ_FR2, lj_err_str(L, em));
@@ -639,7 +639,7 @@ static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 LJLIB_ASM(coroutine_resume)
 {
    if (!(L->top > L->base and tvisthread(L->base)))
-      lj_err_arg(L, 1, LJ_ERR_NOCORO);
+      lj_err_arg(L, 1, ErrMsg::NOCORO);
    return ffh_resume(L, threadV(L->base), 0);
 }
 

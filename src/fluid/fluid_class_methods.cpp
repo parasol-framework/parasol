@@ -15,14 +15,6 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
-static const char *const glBytecodeNames[] = {
-#define BCNAME(name, ma, mb, mc, mt) #name,
-   BCDEF(BCNAME)
-#undef BCNAME
-};
-
-//********************************************************************************************************************
-
 static std::string format_string_constant(std::string_view Data)
 {
    static constexpr size_t max_length = 40;
@@ -99,7 +91,7 @@ static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
       ++ptr;
    }
 
-   return (const char *)ptr;
+   return (CSTRING )ptr;
 }
 
 //********************************************************************************************************************
@@ -374,9 +366,9 @@ static void emit_stack_trace(prvFluid *Prv, std::ostringstream &Buf, bool Compac
       auto dump = luaJIT_profile_dumpstack(Prv->Lua, Compact ? "pF (l)\n" : "l f\n", 50, &dump_len);
       if (dump and dump_len) {
          // Skip the first line (level 0) which is the C function mtDebugLog itself
-         auto first_newline = (const char *)memchr(dump, '\n', dump_len);
+         auto first_newline = (CSTRING )memchr(dump, '\n', dump_len);
          if (first_newline and size_t(first_newline - dump + 1) < dump_len) {
-            const char *start = first_newline + 1;
+            CSTRING start = first_newline + 1;
             size_t len = dump_len - (start - dump);
             Buf << std::string_view(start, len);
          }
@@ -431,7 +423,7 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
    if (not Compact) Buf <<"=== LOCALS ===\n";
 
    int idx = 1;
-   const char *name;
+   CSTRING name;
    while ((name = lua_getlocal(Prv->Lua, &ar, idx))) {
       int type = lua_type(Prv->Lua, -1);
       Buf << name << " = ";
@@ -442,7 +434,7 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
          case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
          case LUA_TSTRING: {
             size_t len;
-            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
             std::string_view sv(str, len);
             if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
             else Buf << "\"" << sv << "\"";
@@ -477,7 +469,7 @@ static void emit_upvalues_info(prvFluid *Prv, std::ostringstream &Buf, bool Comp
    if (not Compact) Buf <<"=== UPVALUES ===\n";
 
    int idx = 1;
-   const char *name;
+   CSTRING name;
    while ((name = lua_getupvalue(Prv->Lua, -1, idx))) {
       int type = lua_type(Prv->Lua, -1);
 
@@ -489,7 +481,7 @@ static void emit_upvalues_info(prvFluid *Prv, std::ostringstream &Buf, bool Comp
          case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
          case LUA_TSTRING: {
             size_t len;
-            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
             std::string_view sv(str, len);
             if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
             else Buf << "\"" << sv << "\"";
@@ -543,7 +535,7 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
    int count = 0;
    lua_pushnil(Prv->Lua);
    while (lua_next(Prv->Lua, -2)) {
-      const char *key = lua_tostring(Prv->Lua, -2);
+      CSTRING key = lua_tostring(Prv->Lua, -2);
       Buf << key << " = ";
 
       int type = lua_type(Prv->Lua, -1);
@@ -553,7 +545,7 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
          case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
          case LUA_TSTRING: {
             size_t len;
-            const char *str = lua_tolstring(Prv->Lua, -1, &len);
+            CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
             std::string_view sv(str, len);
             if (len > 40) Buf << "\"" << sv.substr(0, 40) << "...\"";
             else Buf << "\"" << sv << "\"";
@@ -740,7 +732,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
                continue;
             }
 
-            const char *func_name = ar.name ? ar.name : "<anonymous>";
+            CSTRING func_name = ar.name ? ar.name : "<anonymous>";
             bool is_lua_func = false;
             int param_count = 0;
             bool is_vararg = false;
@@ -817,7 +809,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
             GCfunc *fn = funcV(prv->Lua->top - 1);
             if (isluafunc(fn)) {
                GCproto *proto = funcproto(fn);
-               const char *func_name = ar.name ? ar.name : "<anonymous>";
+               CSTRING func_name = ar.name ? ar.name : "<anonymous>";
 
                if (not opts.compact) {
                   buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
@@ -880,7 +872,7 @@ static ERR FLUID_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
                if (lua_dump(prv->Lua, append_dump_chunk, &binary) IS 0) {
                   if (not opts.compact) {
-                     const char *func_name = ar.name ? ar.name : "<anonymous>";
+                     CSTRING func_name = ar.name ? ar.name : "<anonymous>";
                      buf << "Function: " << func_name << " (" << ar.short_src << ":" << ar.linedefined
                          << "-" << ar.lastlinedefined << ")\n";
                      buf << "Bytes: " << binary.size() << "\n";

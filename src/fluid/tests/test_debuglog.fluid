@@ -285,7 +285,7 @@ function testDisassembly()
 
    -- Test disassembly of a compiled script
 
-   local script = obj.new('script', { statement = [[
+   local script = obj.new('fluid', { statement = [[
 local function sampleFunction(a, b) -- Local function
    local scale = b * 2
    local total = a + scale

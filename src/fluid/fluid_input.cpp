@@ -158,7 +158,7 @@ static void key_event(evKey *, int, struct finput *);
    }
    else sub_keyevent = true; // Global subscription independent of any surface.
 
-  
+
    if (auto input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput))) {
       luaL_getmetatable(Lua, "Fluid.input");
       lua_setmetatable(Lua, -2);

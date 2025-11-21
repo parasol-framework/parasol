@@ -37,7 +37,7 @@ static GCtab* lib_create_table(lua_State* L, const char* libname, int hsize)
       if (!tvistab(L->top - 1)) {
          L->top--;
          if (luaL_findtable(L, LUA_GLOBALSINDEX, libname, hsize) != nullptr)
-            lj_err_callerv(L, LJ_ERR_BADMODN, libname);
+            lj_err_callerv(L, ErrMsg::BADMODN, libname);
          settabV(L, L->top, tabV(L->top - 1));
          L->top++;
          lua_setfield(L, -3, libname);  //  _LOADED[libname] = new table
@@ -193,7 +193,7 @@ TValue* lj_lib_checkany(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
    if (o >= L->top)
-      lj_err_arg(L, narg, LJ_ERR_NOVAL);
+      lj_err_arg(L, narg, ErrMsg::NOVAL);
    return o;
 }
 
@@ -291,7 +291,7 @@ GCtab* lj_lib_checktabornil(lua_State* L, int narg)
       else if (tvisnil(o))
          return nullptr;
    }
-   lj_err_arg(L, narg, LJ_ERR_NOTABN);
+   lj_err_arg(L, narg, ErrMsg::NOTABN);
    return nullptr;  //  unreachable
 }
 
@@ -307,7 +307,7 @@ int lj_lib_checkopt(lua_State* L, int narg, int def, const char* lst)
             return i;
          lst += 1 + *(const uint8_t*)lst;
       }
-      lj_err_argv(L, narg, LJ_ERR_INVOPTM, opt);
+      lj_err_argv(L, narg, ErrMsg::INVOPTM, opt);
    }
    return def;
 }
@@ -362,7 +362,7 @@ int32_t lj_lib_checkintrange(lua_State* L, int narg, int32_t a, int32_t b)
       else {
          goto badtype;
       }
-      lj_err_arg(L, narg, LJ_ERR_NUMRNG);
+      lj_err_arg(L, narg, ErrMsg::NUMRNG);
    }
 badtype:
    lj_err_argt(L, narg, LUA_TNUMBER);

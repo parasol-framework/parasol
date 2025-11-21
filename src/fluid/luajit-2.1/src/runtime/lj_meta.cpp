@@ -145,7 +145,7 @@ cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
             return tv;
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
-         lj_err_optype(L, o, LJ_ERR_OPINDEX);
+         lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
       }
       if (tvisfunc(mo)) {
@@ -154,7 +154,7 @@ cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
       }
       o = mo;
    }
-   lj_err_msg(L, LJ_ERR_GETLOOP);
+   lj_err_msg(L, ErrMsg::GETLOOP);
    return nullptr;  //  unreachable
 }
 
@@ -178,14 +178,14 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
             lj_gc_anybarriert(L, t);
             if (tv != niltv(L))
                return (TValue*)tv;
-            if (tvisnil(k)) lj_err_msg(L, LJ_ERR_NILIDX);
+            if (tvisnil(k)) lj_err_msg(L, ErrMsg::NILIDX);
             else if (tvisint(k)) { setnumV(&tmp, (lua_Number)intV(k)); k = &tmp; }
-            else if (tvisnum(k) and tvisnan(k)) lj_err_msg(L, LJ_ERR_NANIDX);
+            else if (tvisnum(k) and tvisnan(k)) lj_err_msg(L, ErrMsg::NANIDX);
             return lj_tab_newkey(L, t, k);
          }
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_newindex))) {
-         lj_err_optype(L, o, LJ_ERR_OPINDEX);
+         lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
       }
       if (tvisfunc(mo)) {
@@ -196,7 +196,7 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
       copyTV(L, &tmp, mo);
       o = &tmp;
    }
-   lj_err_msg(L, LJ_ERR_SETLOOP);
+   lj_err_msg(L, ErrMsg::SETLOOP);
    return nullptr;  //  unreachable
 }
 
@@ -230,7 +230,7 @@ TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
          mo = lj_meta_lookup(L, rc, mm);
          if (tvisnil(mo)) {
             if (str2num(rb, &tempb) == nullptr) rc = rb;
-            lj_err_optype(L, rc, LJ_ERR_OPARITH);
+            lj_err_optype(L, rc, ErrMsg::OPARITH);
             return nullptr;  //  unreachable
          }
       }
@@ -251,7 +251,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
             mo = lj_meta_lookup(L, top, MM_concat);
             if (tvisnil(mo)) {
                if (tvisstr(top - 1) or tvisnumber(top - 1)) top++;
-               lj_err_optype(L, top - 1, LJ_ERR_OPCAT);
+               lj_err_optype(L, top - 1, ErrMsg::OPCAT);
                return nullptr;  //  unreachable
             }
          }
@@ -289,7 +289,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
             o--; tlen += tvisstr(o) ? strV(o)->len :
                tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
-         if (tlen >= LJ_MAX_STR) lj_err_msg(L, LJ_ERR_STROV);
+         if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);
          lj_buf_more(sb, (MSize)tlen);
          for (e = top, top = o; o <= e; o++) {
@@ -327,7 +327,7 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
       if (LJ_52 and tvistab(o))
          tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
       else
-         lj_err_optype(L, o, LJ_ERR_OPLEN);
+         lj_err_optype(L, o, ErrMsg::OPLEN);
       return nullptr;
    }
    return mmcall(L, lj_cont_ra, mo, o, LJ_52 ? o : niltv(L));
@@ -468,9 +468,9 @@ void lj_meta_call(lua_State* L, TValue* func, TValue* top)
 // Helper for FORI. Coercion.
 void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
 {
-   if (!lj_strscan_numberobj(o)) lj_err_msg(L, LJ_ERR_FORINIT);
-   if (!lj_strscan_numberobj(o + 1)) lj_err_msg(L, LJ_ERR_FORLIM);
-   if (!lj_strscan_numberobj(o + 2)) lj_err_msg(L, LJ_ERR_FORSTEP);
+   if (!lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
+   if (!lj_strscan_numberobj(o + 1)) lj_err_msg(L, ErrMsg::FORLIM);
+   if (!lj_strscan_numberobj(o + 2)) lj_err_msg(L, ErrMsg::FORSTEP);
    if (LJ_DUALNUM) {
       // Ensure all slots are integers or all slots are numbers.
       int32_t k[3];

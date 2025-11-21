@@ -1,3 +1,4 @@
+#include <format>
 #include <string>
 
 #include "parser/parser_context.h"
@@ -127,21 +128,22 @@ bool LexState::should_emit_presence()
    BCLine token_line = this->lastline;
    BCLine operator_line = this->linenumber;
    LexToken lookahead = (this->lookahead != TK_eof) ? this->lookahead : this->lookahead_token();
+   BCLine lookahead_line = this->lookahead_line;
+   // If the operator is on a different line than the token, it's definitely postfix
    if (operator_line > token_line) return true;
+   // If the lookahead is on a different line than the operator, it's postfix
+   if (lookahead_line > operator_line) return true;
+   // Otherwise, check if the lookahead starts an expression
    return !token_starts_expression(lookahead);
 }
 
 //********************************************************************************************************************
 // Get value of constant expression.
 
-static void expr_kvalue(FuncState* fs, TValue* v, ExpDesc* e)
+static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {
-   if (e->k <= ExpKind::True) {
-      setpriV(v, ~uint32_t(e->k));
-   }
-   else if (e->k IS ExpKind::Str) {
-      setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
-   }
+   if (e->k <= ExpKind::True) setpriV(v, ~uint64_t(e->k));
+   else if (e->k IS ExpKind::Str) setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    else {
       lj_assertFS(tvisnumber(expr_numtv(e)), "bad number constant");
       *v = *expr_numtv(e);
@@ -299,7 +301,7 @@ void LexState::expr_table(ExpDesc* Expression)
             break;
          }
          else {
-            this->err_syntax(LJ_ERR_XPARAM);
+            this->err_syntax(ErrMsg::XPARAM);
          }
       } while (this->lex_opt(','));
    }
@@ -453,7 +455,7 @@ void LexState::parse_args(ExpDesc* Expression)
    if (this->tok IS '(') {
 #if !LJ_52
       if (line != this->lastline)
-         this->err_syntax(LJ_ERR_XAMBIG);
+         this->err_syntax(ErrMsg::XAMBIG);
 #endif
       this->next();
       if (this->tok IS ')') {  // f().
@@ -478,7 +480,7 @@ void LexState::parse_args(ExpDesc* Expression)
       this->next();
    }
    else {
-      this->err_syntax(LJ_ERR_XFUNARG);
+      this->err_syntax(ErrMsg::XFUNARG);
       return;  // Silence compiler.
    }
    lj_assertFS(Expression->k IS ExpKind::NonReloc, "bad expr type %d", int(Expression->k));
@@ -519,8 +521,9 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
       Context.lex().var_lookup(v);
    }
    else {
-      ParserError error = make_expr_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
-      Context.emit_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
+      auto msg = std::format("Expected expression, got '{}'", Context.lex().token2str(current.raw()));
+      ParserError error = make_expr_error(ParserErrorCode::UnexpectedToken, current, msg);
+      Context.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
       return ParserResult<ExpDesc>::failure(error);
    }
 
@@ -610,7 +613,7 @@ static ParserResult<ExpDesc> expr_simple_with_context(ParserContext &Context, Ex
       break;
    case TokenKind::Dots: {
       BCReg base;
-      checkcond(&lex, fs->flags & PROTO_VARARG, LJ_ERR_XDOTS);
+      checkcond(&lex, fs->flags & PROTO_VARARG, ErrMsg::XDOTS);
       bcreg_reserve(fs, 1);
       base = fs->freereg - 1;
       expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
@@ -654,7 +657,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
    if (isPost) {
-      checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+      checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
       if (v->k IS ExpKind::Indexed)
@@ -672,7 +675,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    if (not primary.ok()) {
       return;
    }
-   checkcond(this, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+   checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
    e1 = *v;
    if (v->k IS ExpKind::Indexed)
       bcreg_reserve(fs, fs->freereg - indices);
@@ -701,7 +704,7 @@ ParserResult<ExpDesc> LexState::expr_simple(ExpDesc* Expression)
 void LexState::synlevel_begin()
 {
    if (++this->level >= LJ_MAX_XLEVEL)
-      lj_lex_error(this, 0, LJ_ERR_XLEVELS);
+      lj_lex_error(this, 0, ErrMsg::XLEVELS);
 }
 
 void LexState::synlevel_end()
@@ -794,7 +797,7 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
    // Parse RHS operand. expr_binop() respects priority levels and will not consume
    // another shift/bitop at the same level due to left-associativity logic in expr_binop().
 
-   auto nextop_result = this->expr_binop(&rhs, priority[op].right);
+   auto nextop_result = this->expr_binop(&rhs, priority[op].right, priority[op].left);
    if (not nextop_result.ok()) {
       return nextop_result;
    }
@@ -826,6 +829,13 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
       base_reg = fs->freereg;
    }
 
+   // Ensure the base register really is at the top of the stack before reserving
+   // the call frame. Otherwise we may clobber live temporaries when chaining.
+   if (fs->freereg != base_reg + 1) {
+      this->assert_condition(base_reg <= fs->freereg, "bitwise base register past freereg");
+      fs->freereg = base_reg + 1;
+   }
+
    // Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2).
    bcreg_reserve(fs, 1);  // Reserve for callee
    if (LJ_FR2) bcreg_reserve(fs, 1);  // Reserve for frame link on x64
@@ -850,7 +860,7 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
       lhs->u.s.info = base_reg;
 
       // Parse the next RHS operand
-      auto chained = this->expr_binop(&rhs, priority[follow].right);
+      auto chained = this->expr_binop(&rhs, priority[follow].right, priority[follow].left);
       if (not chained.ok()) {
          return chained;
       }
@@ -914,10 +924,11 @@ ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
 //********************************************************************************************************************
 // Parse binary expressions with priority higher than the limit.
 
-ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
+ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, int ChainLeftPriority)
 {
    ExpDesc* v = Expression;
    uint32_t limit = Limit;
+   int chain_left = ChainLeftPriority;
    BinOpr op;
    this->synlevel_begin();
    auto unary = this->expr_unop(v);
@@ -928,10 +939,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
    op = token2binop(this->tok);
    while (op != OPR_NOBINOPR) {
       uint8_t lpri = priority[op].left;
-      if (limit IS priority[op].right and
-         (op IS OPR_SHL or op IS OPR_SHR or
-            op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_BAND))
-         lpri = 0;
+      if (chain_left >= 0 and priority[op].left IS chain_left and limit IS priority[op].right) {
+         lpri = limit;
+      }
 
       if (not (lpri > limit)) break;
 
@@ -1104,7 +1114,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit)
          return ParserResult<BinOpr>::success(op);
       }
       this->synlevel_end();
-      this->err_syntax(LJ_ERR_XSYMBOL);
+      this->err_syntax(ErrMsg::XSYMBOL);
    }
    this->synlevel_end();
    return ParserResult<BinOpr>::success(op);

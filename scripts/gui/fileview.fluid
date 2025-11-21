@@ -139,18 +139,18 @@ end
 
 local function convertPermissions(Permissions)
    local out = ''
-   if (Permissions & PERMIT_READ) != 0  then out ..= 'r' else out ..= '-' end
-   if (Permissions & PERMIT_WRITE) != 0 then out ..= 'w' else out ..= '-' end
-   if (Permissions & PERMIT_EXEC) != 0  then out ..= 'x' else out ..= '-' end
+   if (Permissions & PERMIT_READ)??  then out ..= 'r' else out ..= '-' end
+   if (Permissions & PERMIT_WRITE)?? then out ..= 'w' else out ..= '-' end
+   if (Permissions & PERMIT_EXEC)??  then out ..= 'x' else out ..= '-' end
 
    out = out .. ' '
 
-   if (Permissions & PERMIT_GROUP_READ) != 0  then out ..= 'r' else out = out .. '-' end
-   if (Permissions & PERMIT_GROUP_WRITE) != 0 then out ..= 'w' else out = out .. '-' end
+   if (Permissions & PERMIT_GROUP_READ)??  then out ..= 'r' else out = out .. '-' end
+   if (Permissions & PERMIT_GROUP_WRITE)?? then out ..= 'w' else out = out .. '-' end
 
-   if (Permissions & PERMIT_GROUPID) != 0 then
+   if (Permissions & PERMIT_GROUPID)?? then
       out ..= 'g'
-   elseif (Permissions & PERMIT_GROUP_EXEC) != 0 then
+   elseif (Permissions & PERMIT_GROUP_EXEC)?? then
       out ..= 'x'
    else
       out ..= '-'
@@ -158,11 +158,11 @@ local function convertPermissions(Permissions)
 
    out ..= ' '
 
-   if (Permissions & PERMIT_OTHERS_READ) != 0  then out = out .. 'r' else out = out .. '-' end
-   if (Permissions & PERMIT_OTHERS_WRITE) != 0 then out = out .. 'w' else out = out .. '-' end
-   if (Permissions & PERMIT_OTHERS_EXEC) != 0  then out = out .. 'x' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_READ)??  then out = out .. 'r' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_WRITE)?? then out = out .. 'w' else out = out .. '-' end
+   if (Permissions & PERMIT_OTHERS_EXEC)??  then out = out .. 'x' else out = out .. '-' end
 
-   if (Permissions & PERMIT_USERID) != 0 then out = out .. ' s' end
+   if (Permissions & PERMIT_USERID)?? then out = out .. ' s' end
 
    return out
 end
@@ -314,7 +314,7 @@ local function displayFilters(self)
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
             local ev = Events
             while ev do
-               if (ev.flags & JTYPE_BUTTON) != 0 then
+               if (ev.flags & JTYPE_BUTTON)?? then
                   if ev.type is JET_BUTTON_1 and ev.value is 1 then
                      if item.selected then
                         item.highlight.visibility = VIS_HIDDEN
@@ -442,13 +442,13 @@ end
 
 local function createFileItem(self, Info)
    if not self.showHidden then
-      if bit.band(Info.flags, RDF_HIDDEN) != 0 then return end
+      if (Info.flags & RDF_HIDDEN)?? then return end
    end
 
    msg('createFileItem() ' .. Info.name .. string.format(', $%.8x', Info.flags))
 
    local new_item
-   if (Info.flags & RDF_VOLUME) != 0 then -- Get the icon to use for displaying the volume
+   if (Info.flags & RDF_VOLUME)?? then -- Get the icon to use for displaying the volume
       local icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
       if not icon then icon = 'folders/folder_shortcut' end
@@ -456,9 +456,9 @@ local function createFileItem(self, Info)
       local total_size = nil
       local free_space = nil
       local device = obj.new('storagedevice', { volume = Info.name .. ':' } )
-      if bit.band(device.deviceFlags, DEVICE_BOOKMARK) != 0 then -- User shortcut
+      if (device.deviceFlags & DEVICE_BOOKMARK)?? then -- User shortcut
          colour = 'carbon'
-      elseif bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
+      elseif (device.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC))?? then
          colour = 'green'
          if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
@@ -481,7 +481,7 @@ local function createFileItem(self, Info)
          totalsize   = total_size,
          freespace   = free_space
       }
-   elseif bit.band(Info.flags, RDF_FOLDER) != 0 then
+   elseif (Info.flags & RDF_FOLDER)?? then
       local display_name
       if self.view.noIcons then
          display_name = Info.name
@@ -508,10 +508,10 @@ local function createFileItem(self, Info)
          size        = { sort = sortNum(0), value = nil } -- Dummy required for sorting
       }
 
-      if Info.modified.year != 0 then
+      if Info.modified.year?? then
          new_item.date = { sort = 'D' .. sortNum(Info.timestamp), value = printableTime(Info.modified) }
       end
-   elseif bit.band(Info.Flags, RDF_FILE) != 0 then
+   elseif (Info.Flags & RDF_FILE)?? then
       if lNoFiles then return end
 
       if not lFilter or (string.find(Info.name, lFilter) != nil) then
@@ -663,7 +663,7 @@ gui.fileview = function(Options)
 
          local info = dirinfo.info
 
-         if (info.Flags & RDF_VOLUME) != 0 and (info.Flags & RDF_HIDDEN) != 0 then
+         if (info.Flags & RDF_VOLUME)?? and (info.Flags & RDF_HIDDEN)?? then
             -- Ignore hidden volumes
          elseif #self.view.items is 0 then -- Empty view, this is the first file.
             addFileItem(self, info)
@@ -756,7 +756,7 @@ gui.fileview = function(Options)
       end
 
       if not Path then -- If no file is given, the monitored folder was affected by something.
-         if ((Flags & MFF_DELETE) != 0 and (Flags & MFF_SELF) != 0) or (Flags & MFF_UNMOUNT) != 0 then
+         if ((Flags & MFF_DELETE)?? and (Flags & MFF_SELF)??) or (Flags & MFF_UNMOUNT)?? then
             if self.path:sub(1,2) is 'cd' then
             elseif self.path:sub(1,4) is 'disk' then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
@@ -772,7 +772,7 @@ gui.fileview = function(Options)
       if (Flags & MFF_DELETE) is 0 then
          info_err, info = mSys.GetFileInfo(self.path .. (Path ?? ''))
          if info_err is ERR_Okay then
-            if lNoFiles and (info.Flags & RDF_FILE) != 0 then return end
+            if lNoFiles and (info.Flags & RDF_FILE)?? then return end
             -- Use the true file name with the trailing slash if it is a folder (important
             -- for symbolically linked directories).
             Path = info.name
@@ -781,14 +781,14 @@ gui.fileview = function(Options)
          info_err = ERR_Failed
       end
 
-      if (Flags & MFF_CREATE) != 0 then
+      if (Flags & MFF_CREATE)?? then
          if info_err is ERR_Okay then
             addFileItem(self, info)
             self.view.sort()
          end
-      elseif (Flags & MFF_DELETE) != 0 then
+      elseif (Flags & MFF_DELETE)?? then
          deleteItem(Path)
-      elseif (Flags & MFF_MOVED) != 0 then -- Determine if the file has been moved in or moved out
+      elseif (Flags & MFF_MOVED)?? then -- Determine if the file has been moved in or moved out
          if info_err is ERR_Okay then
             -- It is possible that the moved file is replacing an already existing file in
             -- the view (i.e. rename operation), so do a tag-check first.
@@ -799,7 +799,7 @@ gui.fileview = function(Options)
          else
             deleteItem(Path)
          end
-      elseif (Flags & (MFF_ATTRIB|MFF_CLOSED)) != 0 and File then
+      elseif (Flags & (MFF_ATTRIB|MFF_CLOSED))?? and File then
          if info_err is ERR_Okay then
             local item = findItem(Path)
             if item then
@@ -1313,7 +1313,7 @@ gui.fileview = function(Options)
 
       local err
       if self.deviceInfo and not self.watch and self.path then
-         if (self.deviceInfo.deviceFlags & DEVICE_REMOVABLE) != 0 then
+         if (self.deviceInfo.deviceFlags & DEVICE_REMOVABLE)?? then
             if (self.deviceInfo.deviceFlags & DEVICE_WRITE) is 0 then
                -- Read only device, do not refresh
             elseif (self.deviceInfo.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_USB)) then
@@ -1332,7 +1332,7 @@ gui.fileview = function(Options)
          if (Qualifiers & KQ_PRESSED) is 0 then return end
          if self.hasFocus != true then return end
 
-         if self.enableSysKeys and (Qualifiers & KQ_CTRL) != 0 then
+         if self.enableSysKeys and (Qualifiers & KQ_CTRL)?? then
             -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
             -- application.
 
@@ -1730,7 +1730,7 @@ gui.fileview = function(Options)
                         flags = flags|CEF_DELETE
                      end
 
-                     if (flags & CEF_DELETE) != 0 then
+                     if (flags & CEF_DELETE)?? then
                         msg('Move "' .. item.path .. '" to "' .. dest .. '"')
                      else
                         msg('Copy "' .. item.path .. '" to "' .. dest .. '"')

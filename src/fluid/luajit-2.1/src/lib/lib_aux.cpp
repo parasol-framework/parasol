@@ -68,7 +68,7 @@ extern void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
    if (!lua_istable(L, -1)) {
       lua_pop(L, 1);
       if (luaL_findtable(L, LUA_GLOBALSINDEX, modname, sizehint) != nullptr)
-         lj_err_callerv(L, LJ_ERR_BADMODN, modname);
+         lj_err_callerv(L, ErrMsg::BADMODN, modname);
       lua_pushvalue(L, -1);
       lua_setfield(L, -3, modname);  //  _LOADED[modname] = new table.
    }
@@ -293,7 +293,7 @@ extern lua_State* luaL_newstate(void)
 
 #else
 
-extern lua_State* luaL_newstate(void)
+extern lua_State* luaL_newstate(class objScript *Script)
 {
    lua_State* L;
 #if LJ_64 && !LJ_GC64
@@ -301,6 +301,7 @@ extern lua_State* luaL_newstate(void)
 #else
    L = lua_newstate(LJ_ALLOCF_INTERNAL, nullptr);
 #endif
+   L->Script = Script;
    if (L) G(L)->panic = panic;
    return L;
 }

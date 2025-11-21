@@ -45,6 +45,24 @@ function test_clear_and_mutation()
    assert(table.empty(t) is false, "Re-populated table should not be empty")
 end
 
+function test_lookup_with_field()
+   local cfg = { }
+   table.insert(cfg, { apple = "banana", orange = "lemon" })
+   local lookup = { value = "apple" }
+   assert(cfg[1][lookup.value] is "banana", "Lookup with field should return correct value")
+
+   local m = {}
+   local clients = { }
+   for i = 1, 2 do
+      m[i] = {}
+      table.insert(m[i], 'CLIENT_' .. i)
+   end
+   clients[1] = { }
+   clients[1].messageIndex = 1
+   local result = m[1][clients[1].messageIndex]
+   assert(result is 'CLIENT_1', 'Expected CLIENT_1, got ' .. tostring(result))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
@@ -52,6 +70,7 @@ end
          'test_nil_and_empty',
          'test_array_and_hash',
          'test_sparse_and_holes',
-         'test_clear_and_mutation'
+         'test_clear_and_mutation',
+         'test_lookup_with_field'
       }
    }

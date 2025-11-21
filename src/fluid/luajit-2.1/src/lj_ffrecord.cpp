@@ -136,7 +136,7 @@ static void recff_stitch(jit_State* J)
    J->baseslot += 2 + LJ_FR2;
    J->framedepth++;
 
-   lj_record_stop(J, LJ_TRLINK_STITCH, 0);
+   lj_record_stop(J, TraceLink::STITCH, 0);
 
    // Undo Lua stack changes.
    memmove(&base[-1 - LJ_FR2], &base[1], sizeof(TValue) * nslot);
@@ -171,7 +171,7 @@ static void LJ_FASTCALL recff_nyi(jit_State* J, RecordFFData* rd)
          }
       }
       // Otherwise stop trace and return to interpreter.
-      lj_record_stop(J, LJ_TRLINK_RETURN, 0);
+      lj_record_stop(J, TraceLink::RETURN, 0);
       rd->nres = -1;
    }
 }

@@ -26,7 +26,7 @@ public:
    }
 
    ~ScopeGuard() {
-      fscope_end(fs_);
+      if (fs_) fscope_end(fs_);
    }
 
    // Prevent copying
@@ -78,6 +78,14 @@ public:
    // Manually release to a specific register level
    void release_to(BCReg reg) {
       fs_->freereg = reg;
+   }
+
+   void adopt_saved(BCReg reg) {
+      saved_freereg_ = reg;
+   }
+
+   void disarm() {
+      fs_ = nullptr;
    }
 
    // Get saved register level
