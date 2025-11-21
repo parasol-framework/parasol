@@ -8,6 +8,21 @@
 
 #define MODVERSION_FLUID (1)
 
+// JIT behaviour options
+
+enum class JOF : uint32_t {
+   NIL = 0,
+   DIAGNOSE = 0x00000001,
+   LEGACY = 0x00000002,
+   TRACE_TOKENS = 0x00000004,
+   TRACE_EXPECT = 0x00000008,
+   TRACE_BOUNDARY = 0x00000010,
+   DUMP_BYTECODE = 0x00000020,
+   PROFILE = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(JOF)
+
 #ifdef PARASOL_STATIC
 #define JUMPTABLE_FLUID [[maybe_unused]] static struct FluidBase *FluidBase = nullptr;
 #else

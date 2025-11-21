@@ -73,8 +73,7 @@ extern OBJECTPTR modFluid;
 extern OBJECTPTR modRegex;
 extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
-extern bool glJITTrace;
-extern bool glJITDiagnose;
+extern JOF glJitOptions;
 extern ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
@@ -276,6 +275,7 @@ struct prvFluid {
    DateTime CacheDate;
    ERR      CaughtError;               // Set to -1 to enable catching of ERR results.
    PERMIT   CachePermissions;
+   JOF      JitOptions;
    int      LoadedSize;
    int      MainChunkRef;              // Registry reference to the main chunk for post-execution analysis
    uint8_t  Recurse;

@@ -33,14 +33,18 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/modules/regex.h>
+#include <parasol/strings.hpp>
 
 #include <inttypes.h>
+#include <vector>
+#include <iterator>
 
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
 #include "lj_parse.h"
+#include "lj_bc.h"
 
 #include "hashes.h"
 
@@ -58,8 +62,7 @@ OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
 OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
-bool glJITTrace = false;
-bool glJITDiagnose = false;
+JOF glJitOptions = JOF::NIL;
 ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
 
@@ -178,6 +181,8 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 [[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   pf::Log log;
+
    CoreBase = argCoreBase;
 
    glFluidContext = CurrentContext();
@@ -200,14 +205,56 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    auto task = CurrentTask();
    if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
       pf::vector<std::string> &args = *pargs;
-      for (unsigned i=0; i < args.size(); i++) {
-         if (pf::iequals(args[i], "--jit:trace")) {
-            // Enable JIT tracing of compiled functions.
-            glJITTrace = true;
-         }
-         else if (pf::iequals(args[i], "--jit:diagnose")) {
-            // Collect diagnostics on JIT compilation issues.
-            glJITDiagnose = true;
+      for (int i=0; i < std::ssize(args); i++) {
+         if (pf::startswith(args[i], "--jit-options")) {
+            // Parse --jit-options [csv] parameter
+            // Use in conjunction with --log-api to see the log messages.
+            // These options are system-wide, alternatively you can set JitOptions in the Script object.
+            std::string value;
+
+            if (i + 1 < std::ssize(args)) {
+               value = args[i + 1];
+               i++;
+            }
+
+            if (not value.empty()) {
+               // Split the CSV string and set appropriate global variables
+               std::vector<std::string> options;
+               pf::split(value, std::back_inserter(options), ',');
+
+               glJitOptions = JOF::NIL;
+               for (const auto &option : options) {
+                  std::string trimmed = option;
+                  pf::trim(trimmed);
+
+                  if (pf::iequals(trimmed, "trace-tokens")) {
+                     glJitOptions |= JOF::TRACE_TOKENS;
+                  }
+                  else if (pf::iequals(trimmed, "trace-expect")) {
+                     glJitOptions |= JOF::TRACE_EXPECT;
+                  }
+                  else if (pf::iequals(trimmed, "diagnose")) {
+                     glJitOptions |= JOF::DIAGNOSE;
+                  }
+                  else if (pf::iequals(trimmed, "ast-pipeline")) { // Use the new AST-based parser
+                     glJitOptions &= ~JOF::LEGACY;
+                  }
+                  else if (pf::iequals(trimmed, "ast-legacy")) { // Use the legacy parser
+                     glJitOptions |= JOF::LEGACY;
+                  }
+                  else if (pf::iequals(trimmed, "trace-boundary")) {
+                     glJitOptions |= JOF::TRACE_BOUNDARY;
+                  }
+                  else if (pf::iequals(trimmed, "dump-bytecode")) {
+                     glJitOptions |= JOF::DUMP_BYTECODE;
+                  }
+                  else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
+                     glJitOptions |= JOF::PROFILE;
+                  }
+               }
+               log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
+            }
+            else log.warning("No value for --jit-options");
          }
       }
    }
