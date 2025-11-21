@@ -6,24 +6,24 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 ## Current Weak Points
 
 ### 1. Parsing and bytecode emission are fused together
-* Functions such as `LexState::expr_table` both parse tokens and emit instructions, making it impossible to unit-test parsing independently from bytecode layout and forcing every feature change to reason about registers mid-parse.【F:src/fluid/luajit-2.1/src/parser/parse_expr.cpp†L144-L205】
-* Compound assignment helpers (`assign_if_empty`, `assign_compound`) replicate this pattern, weaving control-flow and register juggling directly into the parser instead of emitting from a well-defined IR.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L64-L199】
+* Functions such as `LexState::expr_table` both parse tokens and emit instructions, making it impossible to unit-test parsing independently from bytecode layout and forcing every feature change to reason about registers mid-parse.【F:src/fluid/luajit-2.1/src/parser/parse_expr.cpp†L156-L220】
+* Compound assignment helpers (`assign_if_empty`, `assign_compound`) replicate this pattern, weaving control-flow and register juggling directly into the parser instead of emitting from a well-defined IR.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L67-L220】
 * Because expression parsing mutates `FuncState` on the fly, we cannot cleanly stage optimisations, speculative parsing, or backtracking.
 
 ### 2. Parser state is still C-style, global, and difficult to reason about
-* Error handling is still driven by free functions on `LexState`/`FuncState`, so callers manually thread raw pointers everywhere instead of working with richer parser context objects.【F:src/fluid/luajit-2.1/src/parser/parse_core.cpp†L7-L67】【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L14-L198】
+* Error handling is still driven by free functions on `LexState`/`FuncState`, so callers manually thread raw pointers everywhere instead of working with richer parser context objects.【F:src/fluid/luajit-2.1/src/parser/parse_core.cpp†L6-L75】【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L17-L107】
 * `LexState` and `FuncState` expose their internals directly, which encourages accidental invariants (e.g., manually toggling `fs->freereg`) and prevents us from isolating passes such as syntax validation, semantic analysis, and emission.
 * There is no structured tracing or recovery; we cannot, for example, construct an AST to report multiple syntax errors in one pass.
 
 ### 3. Expression descriptors and flags remain low-level
-* `ExpDesc` still uses a C `struct` with manually managed unions and bitfields, plus helper functions that operate on raw flags rather than encapsulated behaviour.【F:src/fluid/luajit-2.1/src/parser/parse_types.h†L17-L120】
+* `ExpDesc` still uses a C `struct` with manually managed unions and bitfields, plus helper functions that operate on raw flags rather than encapsulated behaviour.【F:src/fluid/luajit-2.1/src/parser/parse_types.h†L17-L108】
 * Concepts were introduced but we are not leveraging them to enforce invariants (e.g., no dedicated type for “resolved register expression”). This keeps downstream code dependent on `ExpDesc`’s layout and limits the benefits of C++20.
 * Expression flags continue to be cleared manually through global helpers, which is error-prone and makes ownership of temporary registers unclear.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L68-L105】
 
 ### 4. Register and jump management is brittle
-* Register handling still lives in plain C functions (`bcreg_reserve`, `expr_discharge`, etc.) that take raw `FuncState*` arguments, so nothing stops callers from skipping required book-keeping or freeing registers out of order.【F:src/fluid/luajit-2.1/src/parser/parse_regalloc.cpp†L7-L200】
-* Higher-level code is forced to duplicate table bases and indexes by hand before evaluating RHS expressions, which is both verbose and easy to get wrong when adding new operators.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L151-L199】
-* Jump lists rely on callers understanding how to patch BC instructions manually via `JumpListView`, keeping implicit coupling between parse-time control-flow and bytecode layout.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L24-L66】
+* Register handling still lives in plain C functions (`bcreg_reserve`, `expr_discharge`, etc.) that take raw `FuncState*` arguments, so nothing stops callers from skipping required book-keeping or freeing registers out of order.【F:src/fluid/luajit-2.1/src/parser/parse_regalloc.cpp†L9-L124】
+* Higher-level code is forced to duplicate table bases and indexes by hand before evaluating RHS expressions, which is both verbose and easy to get wrong when adding new operators.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L184-L212】
+* Jump lists rely on callers understanding how to patch BC instructions manually via `JumpListView`, keeping implicit coupling between parse-time control-flow and bytecode layout.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L29-L69】
 
 ### 5. Limited testability and instrumentation
 * Because parsing, semantic analysis, and emission are intertwined, we cannot unit-test many helpers without spinning up an entire `FuncState`. Debugging currently depends on bytecode dumps rather than structured diagnostics or trace logs.
@@ -44,13 +44,13 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 4. Provide hooks for future passes (e.g., AST transforms for new Fluid features) by designing the node structures and traversal APIs with extensibility in mind.
 
 ### Phase 3 – Rebuild register, jump, and expression management
-1. Replace the global register helpers with a `RegisterAllocator` class that enforces lifetimes via RAII objects (e.g., `AllocatedRegister`, `RegisterSpan`). This allocator should expose explicit methods for duplicating table bases/indexes so compound operations no longer need to hand-roll copies.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L151-L199】
+1. Replace the global register helpers with a `RegisterAllocator` class that enforces lifetimes via RAII objects (e.g., `AllocatedRegister`, `RegisterSpan`). This allocator should expose explicit methods for duplicating table bases/indexes so compound operations no longer need to hand-roll copies.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L184-L212】
 2. Encapsulate `ExpDesc` behaviour inside a class hierarchy or tagged union that knows how to discharge itself into the allocator, removing the need for external functions such as `expr_discharge`. Persist convenient constructors (nil/number/string) but hide raw flag manipulation behind methods.
-3. Turn `JumpListView` into a higher-level `ControlFlowGraph` helper that models pending jumps as structured nodes instead of patching BC instructions inline. The emitter can then translate CFG edges into BC when finalising a block, greatly reducing manual patching sites.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L24-L66】
+3. Turn `JumpListView` into a higher-level `ControlFlowGraph` helper that models pending jumps as structured nodes instead of patching BC instructions inline. The emitter can then translate CFG edges into BC when finalising a block, greatly reducing manual patching sites.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L29-L69】
 4. Add debug-only verification hooks on the allocator/CFG to assert invariants (slot depth, unresolved jumps) at phase boundaries instead of scattering assertions across the parser.
 
 ### Phase 4 – Modernise operator and statement implementations
-1. Rewrite operator handling (`parse_operators.cpp`, `expr_table`, compound assignments, ternaries, etc.) to operate on the AST + allocator abstractions. Many of the handwritten register juggling steps should disappear once operators work with value categories and temporaries managed by the allocator.【F:src/fluid/luajit-2.1/src/parser/parse_expr.cpp†L144-L205】【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L64-L199】
+1. Rewrite operator handling (`parse_operators.cpp`, `expr_table`, compound assignments, ternaries, etc.) to operate on the AST + allocator abstractions. Many of the handwritten register juggling steps should disappear once operators work with value categories and temporaries managed by the allocator.【F:src/fluid/luajit-2.1/src/parser/parse_expr.cpp†L156-L220】【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L67-L220】
 2. Model statement forms (loops, defers, continue/break) as dedicated node types so new Fluid constructs can be slotted in without rewriting large switch statements.
 3. Where we still need immediate emission for performance (e.g., constant folding), keep that logic inside the emitter but guard it with clear contracts (inputs/outputs) and unit tests.
 
