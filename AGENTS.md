@@ -9,8 +9,8 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
-- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/debug-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
+- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON -DENABLE_UNIT_TESTS=ON`
+- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/debug-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DENABLE_UNIT_TESTS=ON`
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
@@ -28,7 +28,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 
 **Verify:**
 - If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.
-- You can inspect the version and git commit hash of the build by running `parasol` with `--version`.
+- You can inspect the version, git commit hash and build type of the build by running `parasol` with `--version`.
 
 ### CMake Configuration Options
 
