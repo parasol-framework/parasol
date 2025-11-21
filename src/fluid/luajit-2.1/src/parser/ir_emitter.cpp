@@ -1443,11 +1443,13 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    }
    auto table_result = this->emit_expression(*payload.table);
    if (not table_result.ok()) return table_result;
+   ExpDesc table = table_result.value_ref();
+   // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
+   // the correct order (table first, then key)
+   expr_toanyreg(&this->func_state, &table);
    auto key_result = this->emit_expression(*payload.index);
    if (not key_result.ok()) return key_result;
-   ExpDesc table = table_result.value_ref();
    ExpDesc key = key_result.value_ref();
-   expr_toanyreg(&this->func_state, &table);
    expr_toval(&this->func_state, &key);
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
@@ -1806,14 +1808,16 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       if (not table_result.ok()) {
          return table_result;
       }
+      ExpDesc table = table_result.value_ref();
+      // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
+      // the correct order (table first, then key)
+      expr_toval(&this->func_state, &table);
+      expr_toanyreg(&this->func_state, &table);
       auto key_result = this->emit_expression(*payload.index);
       if (not key_result.ok()) {
          return key_result;
       }
-      ExpDesc table = table_result.value_ref();
       ExpDesc key = key_result.value_ref();
-      expr_toval(&this->func_state, &table);
-      expr_toanyreg(&this->func_state, &table);
       expr_toval(&this->func_state, &key);
       expr_index(&this->func_state, &table, &key);
       return ParserResult<ExpDesc>::success(table);
