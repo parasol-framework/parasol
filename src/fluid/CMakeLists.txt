@@ -193,7 +193,7 @@ if (MSVC)
    # Build minilua host tool
    add_custom_command(
       OUTPUT ${MINILUA_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /std:c++20
+      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /W3 /D_CRT_SECURE_NO_DEPRECATE /std:c++20
          /Fo${LUAJIT_BUILD_DIR}/minilua.obj
          ${MINILUA_SRC}
       COMMAND ${CMAKE_LINKER} /nologo /out:${MINILUA_TARGET}
@@ -219,7 +219,7 @@ if (MSVC)
    # Build buildvm host tool
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
-      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /O2 /W3 /std:c++20
+      COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /W3 /std:c++20
          /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_DISABLE_FFI
          /I${LUAJIT_SRC} /I${LUAJIT_DYNASM_DIR} /I${LUAJIT_BUILD_DIR} /I${LUAJIT_SRC}/bytecode /I${LUAJIT_SRC}/debug /I${LUAJIT_SRC}/lib /I${LUAJIT_SRC}/parser /I${LUAJIT_SRC}/runtime
          ${BUILDVM_SOURCES}
@@ -274,8 +274,8 @@ if (MSVC)
       "${LUAJIT_BUILD_DIR}"  # Include generated headers from build dir
    )
 
-   # Disable specific warnings from LuaJIT
-   target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
+   # Disable specific warnings from LuaJIT and disable GS security checks for performance
+   target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287 /GS-)
 
    # Use generator expression for configuration-specific paths in MSVC multi-config builds
    # Check if using a multi-config generator (Visual Studio) vs single-config (Ninja)

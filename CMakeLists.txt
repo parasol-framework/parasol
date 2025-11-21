@@ -148,6 +148,17 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif ()
 
+# MSVC-specific optimization flags for Release builds
+if (MSVC)
+   # Replace default /O2 with /Ox for maximum optimization
+   # /GL enables whole program optimization at compile time
+   # /LTCG enables link-time code generation for cross-module optimization
+   string(REPLACE "/O2" "/Ox /GL" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+   string(REPLACE "/O2" "/Ox /GL" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+   set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG")
+   set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS_RELEASE} /LTCG")
+endif ()
+
 include_directories("${PROJECT_SOURCE_DIR}/include"
    "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
    "${CMAKE_CURRENT_BINARY_DIR}") # For config.h

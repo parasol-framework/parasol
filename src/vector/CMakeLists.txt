@@ -14,7 +14,7 @@ add_library (${MOD})
 set_module_defaults (${MOD} "Vec")
 
 if (MSVC)
-
+   target_compile_options (${MOD} PRIVATE /GS-)
 else ()
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
