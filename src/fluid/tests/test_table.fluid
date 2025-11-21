@@ -45,6 +45,13 @@ function test_clear_and_mutation()
    assert(table.empty(t) is false, "Re-populated table should not be empty")
 end
 
+function test_lookup_with_field()
+   local cfg = { }
+   table.insert(cfg, { apple = "banana", orange = "lemon" })
+   local lookup = { value = "apple" }
+   assert(cfg[1][lookup.value] is "banana", "Lookup with field should return correct value")
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
@@ -52,6 +59,7 @@ end
          'test_nil_and_empty',
          'test_array_and_hash',
          'test_sparse_and_holes',
-         'test_clear_and_mutation'
+         'test_clear_and_mutation',
+         'test_lookup_with_field'
       }
    }

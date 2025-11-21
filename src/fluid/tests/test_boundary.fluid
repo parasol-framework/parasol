@@ -1,0 +1,36 @@
+
+function testFunctionBoundary()
+   local clientMessages = {}
+   local clients = { }
+   
+   for i = 1, 4 do
+      clientMessages[i] = {}
+      for j = 1, 8 do
+         table.insert(clientMessages[i], 'ISOLATED_CLIENT_' .. i .. '_MESSAGE_' .. j)
+      end
+   end
+
+   for i = 1, 4 do
+      clients[i] = { }
+      clients[i].socket = {
+         incoming = function(A, B)
+            print('messageIndex: ', clients[i].messageIndex)
+            print(clientMessages[i][1])
+            print(clientMessages[i][clients[i].messageIndex])
+         end
+      }
+
+      clients[i].messageIndex = 1
+   end
+
+   
+   for i = 1, 4 do
+      clients[i].socket.incoming(1, 2)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 'testFunctionBoundary' }
+   }

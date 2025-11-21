@@ -54,7 +54,7 @@ function testTraceExpect()
 end
 
 function testLegacy()
-   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_LEGACY|JOF_DIAGNOSE })
+   local script = obj.new('fluid', { statement = glTestScript, jitOptions = JOF_LEGACY })
    script.acActivate()
 end
 
