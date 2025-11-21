@@ -35,3 +35,9 @@ Phase 3 replaces the remaining C-style register helpers, jump patching, and raw 
    - Add lightweight tracing callbacks in `ParserContext` or `IrEmitter` to log allocation and patching decisions, aiding regression debugging without scattering `printf` calls.【F:src/fluid/luajit-2.1/src/parser/parser_context.cpp†L1-L200】
    - Document new invariants and usage patterns in the parser plan and consider adding targeted unit tests alongside the AST pipeline to lock in behaviour.
 
+## Progress
+
+- [x] Stage 1: Added the `RegisterAllocator` interface with `AllocatedRegister` and `RegisterSpan` RAII handles that enforce
+   LIFO release semantics, porting the old bump/reserve/free helpers and expression freeing into class methods. Introduced a
+   table operand duplication helper to centralise the indexed duplication pattern needed by compound assignments.
+

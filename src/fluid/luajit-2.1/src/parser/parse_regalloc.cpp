@@ -4,15 +4,140 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
+#include "parser/parse_regalloc.h"
+
+static bool is_register_key(int32_t Aux)
+{
+   return Aux >= 0 and Aux <= BCMAX_C;
+}
+
+void RegisterAllocator::bump(BCReg Count)
+{
+   BCReg target = this->func_state->freereg + Count;
+   if (target > this->func_state->framesize) {
+      if (target >= LJ_MAX_SLOTS) this->func_state->ls->err_syntax(ErrMsg::XSLOTS);
+      this->func_state->framesize = uint8_t(target);
+   }
+}
+
+BCReg RegisterAllocator::reserve_slots(BCReg Count)
+{
+   if (Count IS 0) return this->func_state->freereg;
+
+   BCReg start = this->func_state->freereg;
+   this->bump(Count);
+   this->func_state->freereg += Count;
+   return start;
+}
+
+void RegisterAllocator::reserve(BCReg Count)
+{
+   this->reserve_slots(Count);
+}
+
+AllocatedRegister RegisterAllocator::acquire()
+{
+   BCReg start = this->reserve_slots(1);
+   return AllocatedRegister(this, start, start + 1);
+}
+
+RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
+{
+   if (Count IS 0) return RegisterSpan();
+
+   BCReg start = this->reserve_slots(Count);
+   return RegisterSpan(this, start, Count, start + Count);
+}
+
+void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
+{
+   if (Count IS 0) return;
+
+   if (Start >= this->func_state->nactvar) {
+#if LJ_DEBUG
+      lj_assertFS(ExpectedTop IS this->func_state->freereg, "register depth mismatch");
+      lj_assertFS(Start + Count IS ExpectedTop, "span size mismatch");
+#endif
+      this->func_state->freereg = ExpectedTop - Count;
+#if LJ_DEBUG
+      lj_assertFS(this->func_state->freereg IS Start, "bad regfree");
+#endif
+   }
+}
+
+void RegisterAllocator::release(RegisterSpan& Span)
+{
+   if (Span.allocator_) {
+      this->release_span_internal(Span.start_, Span.count_, Span.expected_top_);
+      Span.allocator_ = nullptr;
+   }
+}
+
+void RegisterAllocator::release(AllocatedRegister& Handle)
+{
+   if (Handle.allocator_) {
+      this->release_span_internal(Handle.index_, 1, Handle.expected_top_);
+      Handle.allocator_ = nullptr;
+   }
+}
+
+void RegisterAllocator::release_register(BCReg Register)
+{
+   this->release_span_internal(Register, 1, this->func_state->freereg);
+}
+
+void RegisterAllocator::release_expression(ExpDesc* Expression)
+{
+   if (Expression->k IS ExpKind::NonReloc) {
+      BCReg expected_top = Expression->u.s.info + 1;
+      this->release_span_internal(Expression->u.s.info, 1, expected_top);
+   }
+}
+
+TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc& Expression)
+{
+   TableOperandCopies copies{};
+   copies.duplicated = Expression;
+
+   if (Expression.k IS ExpKind::Indexed) {
+      uint32_t original_aux = Expression.u.s.aux;
+      BCReg duplicate_count = 1;
+      bool has_register_index = is_register_key(int32_t(original_aux));
+
+      if (has_register_index) duplicate_count++;
+
+      copies.reserved = this->reserve_span(duplicate_count);
+
+      BCReg base_reg = copies.reserved.start();
+      bcemit_AD(this->func_state, BC_MOV, base_reg, Expression.u.s.info);
+      copies.duplicated.u.s.info = base_reg;
+
+      if (has_register_index) {
+         BCReg index_reg = BCReg(base_reg + 1);
+         bcemit_AD(this->func_state, BC_MOV, index_reg, BCReg(original_aux));
+         copies.duplicated.u.s.aux = index_reg;
+      }
+   }
+
+   return copies;
+}
+
+void RegisterSpan::release()
+{
+   if (allocator_) allocator_->release(*this);
+}
+
+void AllocatedRegister::release()
+{
+   if (allocator_) allocator_->release(*this);
+}
+
 // Bump frame size.
 
 static void bcreg_bump(FuncState* fs, BCReg n)
 {
-   BCReg sz = fs->freereg + n;
-   if (sz > fs->framesize) {
-      if (sz >= LJ_MAX_SLOTS) fs->ls->err_syntax(ErrMsg::XSLOTS);
-      fs->framesize = uint8_t(sz);
-   }
+   RegisterAllocator allocator(fs);
+   allocator.bump(n);
 }
 
 //********************************************************************************************************************
@@ -20,8 +145,8 @@ static void bcreg_bump(FuncState* fs, BCReg n)
 
 static void bcreg_reserve(FuncState* fs, BCReg n)
 {
-   bcreg_bump(fs, n);
-   fs->freereg += n;
+   RegisterAllocator allocator(fs);
+   allocator.reserve(n);
 }
 
 //********************************************************************************************************************
@@ -29,10 +154,8 @@ static void bcreg_reserve(FuncState* fs, BCReg n)
 
 static void bcreg_free(FuncState* fs, BCReg reg)
 {
-   if (reg >= fs->nactvar) {
-      fs->freereg--;
-      lj_assertFS(reg == fs->freereg, "bad regfree");
-   }
+   RegisterAllocator allocator(fs);
+   allocator.release_register(reg);
 }
 
 //********************************************************************************************************************
@@ -40,7 +163,8 @@ static void bcreg_free(FuncState* fs, BCReg reg)
 
 static void expr_free(FuncState* fs, ExpDesc* e)
 {
-   if (e->k == ExpKind::NonReloc) bcreg_free(fs, e->u.s.info);
+   RegisterAllocator allocator(fs);
+   allocator.release_expression(e);
 }
 
 //********************************************************************************************************************
