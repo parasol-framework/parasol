@@ -1,5 +1,6 @@
 // Copyright (C) 2025 Paul Manias
 
+#include <format>
 #include <span>
 #include <string>
 #include <vector>
@@ -970,25 +971,19 @@ static void raise_accumulated_diagnostics(ParserContext &Context)
    auto entries = Context.diagnostics().entries();
    if (entries.empty()) return;
 
-   std::string summary;
-   summary.reserve(entries.size() * 64);
-   summary.append("parser reported ");
-   summary.append(std::to_string(entries.size()));
-   summary.append(entries.size() == 1 ? " error:\n" : " errors:\n");
+   auto summary = std::format("parser reported {} {}:\n", entries.size(), entries.size() == 1 ? "error" : "errors");
 
    for (const auto& diagnostic : entries) {
       SourceSpan span = diagnostic.token.span();
-      summary.append("   line ");
-      summary.append(std::to_string(span.line));
-      summary.append(":");
-      summary.append(std::to_string(span.column));
-      summary.append(" - ");
-      if (!diagnostic.message.empty()) summary.append(diagnostic.message);
-      else summary.append("unexpected token");
-      summary.push_back('\n');
+      std::string_view message = diagnostic.message.empty() ? "unexpected token" : diagnostic.message;
+      summary += std::format("   line {}:{} - {}\n", span.line, span.column, message);
    }
 
    lua_State *L = &Context.lua();
+
+   // Store diagnostic information in lua_State before throwing
+   L->parser_diagnostics = new ParserDiagnostics(Context.diagnostics());
+
    GCstr *message = lj_str_new(L, summary.data(), summary.size());
    setstrV(L, L->top++, message);
    lj_err_throw(L, LUA_ERRSYNTAX);

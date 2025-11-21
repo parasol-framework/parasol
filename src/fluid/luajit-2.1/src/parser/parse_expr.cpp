@@ -1,3 +1,4 @@
+#include <format>
 #include <string>
 
 #include "parser/parser_context.h"
@@ -141,7 +142,7 @@ bool LexState::should_emit_presence()
 
 static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {
-   if (e->k <= ExpKind::True) setpriV(v, ~uint32_t(e->k));
+   if (e->k <= ExpKind::True) setpriV(v, ~uint64_t(e->k));
    else if (e->k IS ExpKind::Str) setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    else {
       lj_assertFS(tvisnumber(expr_numtv(e)), "bad number constant");
@@ -520,8 +521,9 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
       Context.lex().var_lookup(v);
    }
    else {
-      ParserError error = make_expr_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
-      Context.emit_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
+      auto msg = std::format("Expected expression, got '{}'", Context.lex().token2str(current.raw()));
+      ParserError error = make_expr_error(ParserErrorCode::UnexpectedToken, current, msg);
+      Context.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
       return ParserResult<ExpDesc>::failure(error);
    }
 

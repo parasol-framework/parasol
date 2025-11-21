@@ -6,7 +6,7 @@ before diving into changes.
 
 ## Parser File Structure (src/parser/)
 
-The parser has been modernized to C++20 and refactored into focused modules:
+The parser has been modernised to C++20 and refactored into focused modules:
 
 **Core Infrastructure:**
 - `parse_types.h` - Type definitions, enums, and constexpr helper functions for expressions and scopes
@@ -15,7 +15,7 @@ The parser has been modernized to C++20 and refactored into focused modules:
 - `parse_internal.h` - Internal function declarations and template helpers for bytecode emission
 
 **Lexer:**
-- `lj_lex.h` / `lj_lex.cpp` - Tokenization and lexical analysis
+- `lj_lex.h` / `lj_lex.cpp` - Tokenisation and lexical analysis
 
 **Parser Core:**
 - `lj_parse.h` / `lj_parse.cpp` - Main parser entry point and binary operator precedence handling
@@ -30,7 +30,7 @@ The parser has been modernized to C++20 and refactored into focused modules:
 - `parse_stmt.cpp` - Statement parsing (assignments, control flow, declarations)
 
 ## Repository Layout Highlights
-- `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernizations
+- `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernisations
 - `src/parser/`: C++20 refactored parser (see structure above)
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT runtime
 - CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static
@@ -107,14 +107,15 @@ static GCstr* keepstr(std::string_view str);
 - When debugging parser issues, create minimal Fluid scripts to isolate the behaviour before running the full test suite.
 - Unit tests are managed by `MODTests()` in `src/fluid/fluid.cpp`.
 - To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-api` option to view the output from stderr.
-- Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list.  Available options are:
+- Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list, e.g. `--jit-options dump-bytecode,trace-boundary`.  Available options are:
   - `ast-pipeline` Use the new AST-based parser (default)
   - `ast-legacy` Use the legacy parser
+  - `trace-tokens` Trace tokenisation
   - `trace-expect` Trace expectations
   - `trace-boundary` Trace boundary crossings between interpreted and JIT code
   - `dump-bytecode` Dump disassembled bytecode at the end of parsing
-  - `diagnose` Use in conjunction with other options for deeper log messages
-  - `profile` Use timers to profile JIT execution
+  - `diagnose` Disables abort-on-error so that the full script is parsed.  Use in conjunction with other options for deeper log messages
+  - `profile` Use timers to profile JIT parsing, also required for run-time profiling.
 - More precise debugging with the JIT engine is possible by setting the `jitOptions` field on `fluid` objects.  Example:
 
 ```lua
@@ -350,7 +351,7 @@ in addition to `nil` and `false`):
    ```
 
 2. **For runtime values**, emit a chain of comparison instructions:
-   ```c
+   ```cpp
    // Check for nil
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
@@ -377,7 +378,7 @@ in addition to `nil` and `false`):
    - If the value is truthy, ALL checks skip their jumps, and execution continues (returning the truthy value)
 
 3. **Use `lj_parse_keepstr()` for string constants** to ensure they're anchored and not GC'd:
-   ```c
+   ```cpp
    emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
    ```
 
@@ -386,12 +387,12 @@ in addition to `nil` and `false`):
 When adding single-character operators (like `?`):
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
-   ```c
+   ```cpp
    __(if_empty, ?)
    ```
 
 2. **Handle recognition in the lexer** (`lj_lex.cpp`) in the switch statement:
-   ```c
+   ```cpp
    case '?':
      lex_next(ls);
      return TK_if_empty;
@@ -404,7 +405,7 @@ When adding operators that extend reserved words:
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro.
 
 2. **Handle recognition in the lexer** (`lj_lex.cpp`) after identifying a reserved word by checking the next character.
-   **Important**: Check the next character (`ls->c`) **after** recognizing the reserved word,
+   **Important**: Check the next character (`ls->c`) **after** recognising the reserved word,
    not in the character switch statement.
 
 3. **Map the token to an operator** in `token2binop()` in `lj_parse.cpp`
@@ -415,7 +416,7 @@ When adding new operators or modifying expression parsing, use these strategies:
 
 ### Printf Debugging for Token Flow
 Add temporary printf statements to trace token values through parsing:
-```c
+```cpp
 // In expr_primary() suffix loop or similar:
 printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok,
        (ls->tok >= 32 && ls->tok < 127) ? ls->tok : '?');
@@ -472,7 +473,7 @@ If an operator returns multiple values instead of one:
 - **Symptom**: Expressions like `(x + y)?` produce two values in varargs contexts
 - **Common cause**: Allocating a new register without calling `expr_free()` first
 - **Fix pattern**:
-  ```c
+  ```cpp
   BCReg src_reg = expr_toanyreg(fs, e);
   expr_free(fs, e);           // Free the source register
   BCReg dest_reg = fs->freereg;
@@ -485,7 +486,7 @@ When implementing new operators:
 1. Start with compile-time constants (`5`, `nil`) - test constant folding path
 2. Test simple variables (`x`) - test basic runtime path
 3. Test field access (`t.field`) - test suffix loop integration
-4. Test parenthesized expressions (`(x + y)`) - test complex expressions
+4. Test parenthesised expressions (`(x + y)`) - test complex expressions
 5. Test function calls that return a single result and those that return multiple results
    (`f(x)`) - test VCALL handling
 6. Test in various contexts (assignments, function arguments, conditionals)
@@ -508,7 +509,7 @@ When implementing new operators:
 **File Locations:**
 - Parser source: `src/fluid/luajit-2.1/src/parser/`
 - Fluid tests: `src/fluid/tests/`
-- Modernization plan: `docs/plans/parser-cpp20-modernisation.md`
+- Modernisation plan: `docs/plans/parser-cpp20-modernisation.md`
 
 **Common Tasks:**
 - Adding an operator: See "Implementing Binary Logical Operators" and "Single-Character Token Recognition" sections

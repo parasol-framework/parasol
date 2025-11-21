@@ -1,8 +1,7 @@
-/*
-** Load and dump code.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Load and dump code.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
+#include <parasol/main.h>
 #include <errno.h>
 #include <stdio.h>
 
@@ -26,7 +25,7 @@
 //********************************************************************************************************************
 // Load Lua source code and bytecode
 
-static TValue* cpparser(lua_State *L, lua_CFunction dummy, void* ud)
+static TValue* cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 {
    LexState* ls = (LexState*)ud;
    GCproto* pt;
@@ -48,7 +47,7 @@ static TValue* cpparser(lua_State *L, lua_CFunction dummy, void* ud)
 
 //********************************************************************************************************************
 
-extern int lua_loadx(lua_State* L, lua_Reader reader, void* data, const char* chunkname, const char* mode)
+extern int lua_loadx(lua_State* L, lua_Reader reader, APTR data, CSTRING chunkname, CSTRING mode)
 {
    LexState ls(L, reader, data, chunkname ? chunkname : "?",
       mode ? std::optional<std::string_view>(mode) : std::nullopt);
@@ -59,7 +58,7 @@ extern int lua_loadx(lua_State* L, lua_Reader reader, void* data, const char* ch
    return status;
 }
 
-extern int lua_load(lua_State* L, lua_Reader reader, void* data, const char* chunkname)
+extern int lua_load(lua_State* L, lua_Reader reader, APTR data, CSTRING chunkname)
 {
    return lua_loadx(L, reader, data, chunkname, nullptr);
 }
@@ -69,7 +68,7 @@ typedef struct FileReaderCtx {
    char buf[LUAL_BUFFERSIZE];
 } FileReaderCtx;
 
-static const char* reader_file(lua_State* L, void* ud, size_t* size)
+static CSTRING reader_file(lua_State* L, APTR ud, size_t* size)
 {
    FileReaderCtx* ctx = (FileReaderCtx*)ud;
    UNUSED(L);
@@ -81,11 +80,11 @@ static const char* reader_file(lua_State* L, void* ud, size_t* size)
 //********************************************************************************************************************
 // Load a file as a Lua chunk.
 
-extern int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
+extern int luaL_loadfilex(lua_State* L, CSTRING filename, CSTRING mode)
 {
    FileReaderCtx ctx;
    int status;
-   const char* chunkname;
+   CSTRING chunkname;
    if (filename) {
       ctx.fp = fopen(filename, "rb");
       if (ctx.fp == nullptr) {
@@ -116,7 +115,7 @@ extern int luaL_loadfilex(lua_State* L, const char* filename, const char* mode)
 
 //********************************************************************************************************************
 
-extern int luaL_loadfile(lua_State* L, const char* filename)
+extern int luaL_loadfile(lua_State* L, CSTRING filename)
 {
    return luaL_loadfilex(L, filename, nullptr);
 }
@@ -124,11 +123,11 @@ extern int luaL_loadfile(lua_State* L, const char* filename)
 //********************************************************************************************************************
 
 typedef struct StringReaderCtx {
-   const char* str;
+   CSTRING str;
    size_t size;
 } StringReaderCtx;
 
-static const char* reader_string(lua_State* L, void* ud, size_t* size)
+static CSTRING reader_string(lua_State* L, APTR ud, size_t* size)
 {
    StringReaderCtx* ctx = (StringReaderCtx*)ud;
    UNUSED(L);
@@ -138,8 +137,7 @@ static const char* reader_string(lua_State* L, void* ud, size_t* size)
    return ctx->str;
 }
 
-extern int luaL_loadbufferx(lua_State* L, const char* buf, size_t size,
-   const char* name, const char* mode)
+extern int luaL_loadbufferx(lua_State* L, CSTRING buf, size_t size, CSTRING name, CSTRING mode)
 {
    StringReaderCtx ctx;
    ctx.str = buf;
@@ -147,20 +145,15 @@ extern int luaL_loadbufferx(lua_State* L, const char* buf, size_t size,
    return lua_loadx(L, reader_string, &ctx, name, mode);
 }
 
-extern int luaL_loadbuffer(lua_State* L, const char* buf, size_t size, const char* name)
+extern int luaL_loadbuffer(lua_State* L, CSTRING buf, size_t size, CSTRING name)
 {
    return luaL_loadbufferx(L, buf, size, name, nullptr);
-}
-
-extern int luaL_loadstring(lua_State* L, const char* s)
-{
-   return luaL_loadbuffer(L, s, strlen(s), s);
 }
 
 //********************************************************************************************************************
 // Dump bytecode
 
-extern int lua_dump(lua_State* L, lua_Writer writer, void* data)
+extern int lua_dump(lua_State* L, lua_Writer writer, APTR data)
 {
    cTValue* o = L->top - 1;
    lj_checkapi(L->top > L->base, "top slot empty");

@@ -207,17 +207,14 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
       pf::vector<std::string> &args = *pargs;
       for (int i=0; i < std::ssize(args); i++) {
          if (pf::startswith(args[i], "--jit-options")) {
-            // Parse --jit-options parameter (supports both --jit-options=value and --jit-options value formats)
+            // Parse --jit-options [csv] parameter
             // Use in conjunction with --log-api to see the log messages.
             // These options are system-wide, alternatively you can set JitOptions in the Script object.
             std::string value;
-            auto eq_pos = args[i].find('=');
-            if (eq_pos != std::string::npos) {
-               value = args[i].substr(eq_pos + 1);
-            }
-            else if (i + 1 < std::ssize(args)) {
+
+            if (i + 1 < std::ssize(args)) {
                value = args[i + 1];
-               i++; // Skip the next argument as it's the value
+               i++;
             }
 
             if (not value.empty()) {

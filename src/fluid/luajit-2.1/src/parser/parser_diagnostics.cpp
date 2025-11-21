@@ -1,6 +1,46 @@
 // Copyright (C) 2025 Paul Manias
 
 #include "parser/parser_diagnostics.h"
+#include <format>
+
+//********************************************************************************************************************
+
+static const char* severity_name(ParserDiagnosticSeverity Severity)
+{
+   switch (Severity) {
+      case ParserDiagnosticSeverity::Info:    return "Info";
+      case ParserDiagnosticSeverity::Warning: return "Warning";
+      case ParserDiagnosticSeverity::Error:   return "Error";
+      default: return "unknown";
+   }
+}
+
+//********************************************************************************************************************
+
+static const char* error_code_name(ParserErrorCode Code)
+{
+   switch (Code) {
+      case ParserErrorCode::None:                return "None";
+      case ParserErrorCode::UnexpectedToken:     return "Unexpected Token";
+      case ParserErrorCode::ExpectedToken:       return "Expected Token";
+      case ParserErrorCode::ExpectedIdentifier:  return "Expected Identifier";
+      case ParserErrorCode::UnexpectedEndOfFile: return "Unexpected EOF";
+      case ParserErrorCode::InternalInvariant:   return "Internal invariant";
+      default: return "Unknown";
+   }
+}
+
+//********************************************************************************************************************
+
+std::string ParserDiagnostic::to_string(int LineOffset) const
+{
+   SourceSpan span = this->token.span();
+   return std::format("[{}:{}] {}: {}: {}",
+      span.line + LineOffset, span.column,
+      severity_name(this->severity),
+      error_code_name(this->code),
+      this->message.empty() ? "No message" : this->message);
+}
 
 ParserDiagnostics::ParserDiagnostics() : limit(8)
 {

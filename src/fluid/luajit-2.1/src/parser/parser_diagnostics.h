@@ -28,6 +28,8 @@ struct ParserDiagnostic {
    ParserErrorCode code = ParserErrorCode::UnexpectedToken;
    std::string message;
    Token token;
+
+   [[nodiscard]] std::string to_string(int LineOffset = 0) const;
 };
 
 class ParserDiagnostics {

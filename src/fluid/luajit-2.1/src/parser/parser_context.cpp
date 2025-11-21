@@ -295,6 +295,9 @@ void ParserContext::trace_token_advance(const Token &previous, const Token &curr
    }
 }
 
+//********************************************************************************************************************
+// Note: This function does not return if abort_on_error is true
+
 void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::string_view message)
 {
    ParserDiagnostic diagnostic;
@@ -311,6 +314,9 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
    }
 
    if (this->current_config.abort_on_error) {
+      // Save the diagnostics for client analysis
+      this->lua().parser_diagnostics = new ParserDiagnostics(this->diagnostics());
+
       lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token.raw()));
    }
 }

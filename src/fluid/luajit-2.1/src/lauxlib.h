@@ -45,7 +45,6 @@ extern int (luaL_ref) (lua_State *L, int t);
 extern void (luaL_unref) (lua_State *L, int t, int ref);
 extern int (luaL_loadfile) (lua_State *L, const char *filename);
 extern int (luaL_loadbuffer) (lua_State *L, const char *buff, size_t sz, const char *name);
-extern int (luaL_loadstring) (lua_State *L, const char *s);
 extern lua_State *(luaL_newstate) (class objScript *);
 extern const char *(luaL_gsub) (lua_State *L, const char *s, const char *p, const char *r);
 extern const char *(luaL_findtable) (lua_State *L, int idx, const char *fname, int szhint);
@@ -92,10 +91,6 @@ inline const char *luaL_typename(lua_State *L, int I) {
 
 inline int luaL_dofile(lua_State *L, const char *Fn) {
    return luaL_loadfile(L, Fn) or lua_pcall(L, 0, LUA_MULTRET, 0);
-}
-
-inline int luaL_dostring(lua_State *L, const char *S) {
-   return luaL_loadstring(L, S) or lua_pcall(L, 0, LUA_MULTRET, 0);
 }
 
 inline void luaL_getmetatable(lua_State *L, const char *N) {

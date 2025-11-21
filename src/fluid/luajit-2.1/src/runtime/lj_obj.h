@@ -1,19 +1,15 @@
-/*
-** LuaJIT VM tags, values and objects.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// LuaJIT VM tags, values and objects.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
-#ifndef _LJ_OBJ_H
-#define _LJ_OBJ_H
+#pragma once
 
 #include "lua.h"
 #include "lj_def.h"
 #include "lj_arch.h"
-
-// -- Memory references ---------------------------------------------------
+//#include "parser/parser_diagnostics.h"
 
 // Memory and GC object sizes.
 using MSize = uint32_t;
@@ -257,19 +253,20 @@ using cTValue = const TValue;
 ** GC objects are at the end, table/userdata must be lowest.
 ** Also check lj_ir.h for similar ordering constraints.
 */
-#define LJ_TNIL         (~0u)
-#define LJ_TFALSE      (~1u)
+
+#define LJ_TNIL       (~0u)
+#define LJ_TFALSE     (~1u)
 #define LJ_TTRUE      (~2u)
-#define LJ_TLIGHTUD      (~3u)
-#define LJ_TSTR         (~4u)
-#define LJ_TUPVAL      (~5u)
-#define LJ_TTHREAD      (~6u)
-#define LJ_TPROTO      (~7u)
+#define LJ_TLIGHTUD   (~3u)
+#define LJ_TSTR       (~4u)
+#define LJ_TUPVAL     (~5u)
+#define LJ_TTHREAD    (~6u)
+#define LJ_TPROTO     (~7u)
 #define LJ_TFUNC      (~8u)
-#define LJ_TTRACE      (~9u)
-#define LJ_TCDATA      (~10u)
-#define LJ_TTAB         (~11u)
-#define LJ_TUDATA      (~12u)
+#define LJ_TTRACE     (~9u)
+#define LJ_TCDATA     (~10u)
+#define LJ_TTAB       (~11u)
+#define LJ_TUDATA     (~12u)
 // This is just the canonical number type used in some places.
 #define LJ_TNUMX      (~13u)
 
@@ -682,6 +679,8 @@ typedef struct global_State {
 
 // Per-thread state object.
 
+class ParserDiagnostics; // Forward declaration
+
 struct lua_State {
    GCHeader;
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
@@ -698,6 +697,7 @@ struct lua_State {
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
+   ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
 
    // Constructor/destructor not actually used as yet.
 /*
@@ -1034,5 +1034,3 @@ LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 // Compare two objects without calling metamethods.
 LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2);
 LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o);
-
-#endif

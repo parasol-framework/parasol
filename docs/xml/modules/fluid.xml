@@ -35,10 +35,10 @@
 
   <types>
     <constants lookup="JOF" comment="JIT behaviour options">
-      <const name="DIAGNOSE">Cancels aborting on error and enables deeper log tracing.</const>
+      <const name="DIAGNOSE">Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</const>
       <const name="DUMP_BYTECODE">Print a disassembly of bytecode instructions after parsing.</const>
       <const name="LEGACY">Use the legacy parser.</const>
-      <const name="PROFILE">Use timers to profile JIT execution.</const>
+      <const name="PROFILE">Use timers to profile JIT parsing.  Required to configure run-time profiling.</const>
       <const name="TRACE_BOUNDARY">Enable log messages for AST boundary crossing.</const>
       <const name="TRACE_EXPECT">Enable trace expectation messages during parsing.</const>
       <const name="TRACE_TOKENS">Trace the emission of tokens.</const>

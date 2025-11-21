@@ -2,6 +2,7 @@
 
 #include "parser/ast_builder.h"
 
+#include <format>
 #include <utility>
 
 #include "parser/token_types.h"
@@ -507,16 +508,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 {
    auto first = this->parse_expression();
-   if (not first.ok()) {
-      return ParserResult<StmtNodePtr>::failure(first.error_ref());
-   }
+   if (not first.ok()) return ParserResult<StmtNodePtr>::failure(first.error_ref());
+
    ExprNodeList targets;
    targets.push_back(std::move(first.value_ref()));
    while (this->ctx.match(TokenKind::Comma).ok()) {
       auto extra = this->parse_expression();
-      if (not extra.ok()) {
-         return ParserResult<StmtNodePtr>::failure(extra.error_ref());
-      }
+      if (not extra.ok()) return ParserResult<StmtNodePtr>::failure(extra.error_ref());
       targets.push_back(std::move(extra.value_ref()));
    }
 
@@ -524,48 +522,46 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    AssignmentOperator assignment = AssignmentOperator::Plain;
    bool has_assignment = false;
    switch (op.kind()) {
-   case TokenKind::Equals:
-      has_assignment = true;
-      assignment = AssignmentOperator::Plain;
-      break;
-   case TokenKind::CompoundAdd:
-      has_assignment = true;
-      assignment = AssignmentOperator::Add;
-      break;
-   case TokenKind::CompoundSub:
-      has_assignment = true;
-      assignment = AssignmentOperator::Subtract;
-      break;
-   case TokenKind::CompoundMul:
-      has_assignment = true;
-      assignment = AssignmentOperator::Multiply;
-      break;
-   case TokenKind::CompoundDiv:
-      has_assignment = true;
-      assignment = AssignmentOperator::Divide;
-      break;
-   case TokenKind::CompoundMod:
-      has_assignment = true;
-      assignment = AssignmentOperator::Modulo;
-      break;
-   case TokenKind::CompoundConcat:
-      has_assignment = true;
-      assignment = AssignmentOperator::Concat;
-      break;
-   case TokenKind::CompoundIfEmpty:
-      has_assignment = true;
-      assignment = AssignmentOperator::IfEmpty;
-      break;
-   default:
-      break;
+      case TokenKind::Equals:
+         has_assignment = true;
+         assignment = AssignmentOperator::Plain;
+         break;
+      case TokenKind::CompoundAdd:
+         has_assignment = true;
+         assignment = AssignmentOperator::Add;
+         break;
+      case TokenKind::CompoundSub:
+         has_assignment = true;
+         assignment = AssignmentOperator::Subtract;
+         break;
+      case TokenKind::CompoundMul:
+         has_assignment = true;
+         assignment = AssignmentOperator::Multiply;
+         break;
+      case TokenKind::CompoundDiv:
+         has_assignment = true;
+         assignment = AssignmentOperator::Divide;
+         break;
+      case TokenKind::CompoundMod:
+         has_assignment = true;
+         assignment = AssignmentOperator::Modulo;
+         break;
+      case TokenKind::CompoundConcat:
+         has_assignment = true;
+         assignment = AssignmentOperator::Concat;
+         break;
+      case TokenKind::CompoundIfEmpty:
+         has_assignment = true;
+         assignment = AssignmentOperator::IfEmpty;
+         break;
+      default:
+         break;
    }
 
    if (has_assignment) {
       this->ctx.tokens().advance();
       auto values = this->parse_expression_list();
-      if (not values.ok()) {
-         return ParserResult<StmtNodePtr>::failure(values.error_ref());
-      }
+      if (not values.ok()) return ParserResult<StmtNodePtr>::failure(values.error_ref());
       StmtNodePtr stmt = std::make_unique<StmtNode>();
       stmt->kind = AstNodeKind::AssignmentStmt;
       stmt->span = op.span();
@@ -745,13 +741,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       node = std::move(expr.value_ref());
       break;
    }
-   default:
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "expected expression");
+   default: {
+      auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
       ParserError error;
       error.code = ParserErrorCode::UnexpectedToken;
       error.token = current;
-      error.message = "expected expression";
+      error.message = msg;
       return ParserResult<ExprNodePtr>::failure(error);
+   }
    }
    return this->parse_suffixed(std::move(node));
 }

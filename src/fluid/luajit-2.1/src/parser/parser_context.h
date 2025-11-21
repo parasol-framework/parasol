@@ -32,16 +32,14 @@ class ParserResult {
 public:
    ParserResult() = default;
 
-   static ParserResult<T> success(T value)
-   {
+   static ParserResult<T> success(T value) {
       ParserResult<T> result;
       result.has_value = true;
       result.value = std::move(value);
       return result;
    }
 
-   static ParserResult<T> failure(const ParserError& error)
-   {
+   static ParserResult<T> failure(const ParserError& error) {
       ParserResult<T> result;
       result.has_value = false;
       result.error = error;

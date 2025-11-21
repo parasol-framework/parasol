@@ -208,7 +208,7 @@ static void bcread_ktabk(LexState *State, TValue* o)
    }
    else {
       State->assert_condition(tp <= BCDUMP_KTAB_TRUE, "bad constant type %d", tp);
-      setpriV(o, ~tp);
+      setpriV(o, ~uint64_t(tp));
    }
 }
 

@@ -27,6 +27,7 @@
 #include "lj_vm.h"
 #include "lj_prng.h"
 #include "../parser/lj_lex.h"
+#include "../parser/parser_diagnostics.h"
 #include "lj_alloc.h"
 #include "luajit.h"
 
@@ -178,6 +179,10 @@ static TValue * cpluaopen(lua_State *Lua, lua_CFunction dummy, void* ud)
 static void close_state(lua_State* L)
 {
    global_State* g = G(L);
+   if (L->parser_diagnostics) {
+      delete (ParserDiagnostics*)L->parser_diagnostics;
+      L->parser_diagnostics = nullptr;
+   }
    lj_func_closeuv(L, tvref(L->stack));
    lj_gc_freeall(g);
    lj_assertG(gcref(g->gc.root) == obj2gco(L),
@@ -336,6 +341,7 @@ lua_State* lj_state_new(lua_State* L)
    L1->stacksize = 0;
    setmref(L1->stack, nullptr);
    L1->cframe = nullptr;
+   L1->parser_diagnostics = nullptr;
    // NOBARRIER: The lua_State is new (marked white).
    setgcrefnull(L1->openupval);
    setmrefr(L1->glref, L->glref);
@@ -351,6 +357,10 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L)
 {
    lj_assertG(L != mainthread(g), "free of main thread");
    if (obj2gco(L) == gcref(g->cur_L)) setgcrefnull(g->cur_L);
+   if (L->parser_diagnostics) {
+      delete (ParserDiagnostics*)L->parser_diagnostics;
+      L->parser_diagnostics = nullptr;
+   }
    lj_func_closeuv(L, tvref(L->stack));
    lj_assertG(gcref(L->openupval) == nullptr, "stale open upvalues");
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
