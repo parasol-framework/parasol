@@ -260,7 +260,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
 {
    // Allocate a base register for the call
    // Check if either operand is already at the top of the stack to avoid orphaning registers
-   // when chaining operations (e.g., 1 | 2 | 4 produces AST: 1 | (2 | 4), so RHS is the previous result)
+   // when chaining operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result)
    BCReg base;
    if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and
        rhs->u.s.info + 1 IS fs->freereg) {

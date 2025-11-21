@@ -1198,20 +1198,20 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    }
    if (token.raw() IS '&') {
       info.op = AstBinaryOperator::BitAnd;
-      info.left = 5;
-      info.right = 4;
+      info.left = 4;  // Lower than shifts (5) per C precedence
+      info.right = 4;  // Left-associative: a & b & c = (a & b) & c
       return info;
    }
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
-      info.left = 3;
-      info.right = 2;  // Comparisons (left=3) bind tighter than | per C precedence
+      info.left = 2;  // Lower than XOR (3) per C precedence: AND > XOR > OR
+      info.right = 2;  // Left-associative: a | b | c = (a | b) | c
       return info;
    }
    if (token.raw() IS '~') {
       info.op = AstBinaryOperator::BitXor;
-      info.left = 4;
-      info.right = 3;
+      info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
+      info.right = 3;  // Left-associative: a ~ b ~ c = (a ~ b) ~ c
       return info;
    }
    return std::nullopt;
