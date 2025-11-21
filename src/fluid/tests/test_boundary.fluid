@@ -1,33 +1,28 @@
 
+   glSelf = obj.find('self')
+
 function testFunctionBoundary()
-   local clientMessages = {}
+   local m = {}
    local clients = { }
    
-   for i = 1, 4 do
-      clientMessages[i] = {}
+   for i = 1, 2 do
+      m[i] = {}
       for j = 1, 8 do
-         table.insert(clientMessages[i], 'ISOLATED_CLIENT_' .. i .. '_MESSAGE_' .. j)
+         table.insert(m[i], 'ISOLATED_CLIENT_' .. i .. '_MESSAGE_' .. j)
       end
    end
 
-   for i = 1, 4 do
-      clients[i] = { }
-      clients[i].socket = {
-         incoming = function(A, B)
-            print('messageIndex: ', clients[i].messageIndex)
-            print(clientMessages[i][1])
-            print(clientMessages[i][clients[i].messageIndex])
-         end
-      }
-
-      clients[i].messageIndex = 1
-   end
-
-   
-   for i = 1, 4 do
-      clients[i].socket.incoming(1, 2)
-   end
+   local i = 1
+   clients[1] = { }
+   clients[1].messageIndex = 1
+   print('messageIndex: ', clients[1].messageIndex)
+   print(m[1][1])
+   print(m[1][i])
+   print(m[1][clients[1].messageIndex])
 end
+
+   local err, bc = glSelf.mtDebugLog('disasm')
+   print(bc)
 
 ----------------------------------------------------------------------------------------------------------------------
 
