@@ -10,7 +10,7 @@ enum class TokenKind : uint16_t;
 
 // Error handling (lj_parse_core.cpp)
 
-LJ_NORET static void err_limit(FuncState *, uint32_t limit, const char* what);
+LJ_NORET void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
