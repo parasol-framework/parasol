@@ -11,6 +11,16 @@ static bool is_register_key(int32_t Aux)
    return Aux >= 0 and Aux <= BCMAX_C;
 }
 
+//********************************************************************************************************************
+// Constructor - Initialize debug tracking if enabled.
+
+RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State)
+{
+#if LJ_DEBUG
+   initial_freereg = State->freereg;
+#endif
+}
+
 void RegisterAllocator::bump(BCReg Count)
 {
    BCReg target = this->func_state->freereg + Count;
@@ -582,3 +592,51 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
    false_edge.patch_here();
    e->f = NO_JMP;
 }
+
+//********************************************************************************************************************
+// Debug verification and tracing methods (Phase 3 Stage 5)
+
+#if LJ_DEBUG
+
+void RegisterAllocator::verify_balance(const char* Context) const
+{
+   if (this->func_state->freereg != this->initial_freereg) {
+      lj_assertFS(false, "register imbalance at %s: expected %d, got %d",
+         Context, int(this->initial_freereg), int(this->func_state->freereg));
+   }
+}
+
+void RegisterAllocator::verify_no_leaks(const char* Context) const
+{
+   BCReg nactvar = this->func_state->nactvar;
+   BCReg freereg = this->func_state->freereg;
+
+   if (freereg > nactvar) {
+      lj_assertFS(false, "register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
+         Context, int(freereg - nactvar), int(nactvar), int(freereg));
+   }
+}
+
+void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* Context) const
+{
+   // Lightweight allocation tracing - can be enabled with LJ_TRACE_REGALLOC
+#if defined(LJ_TRACE_REGALLOC)
+   fprintf(stderr, "[REGALLOC] alloc reg %d..%d (%d slots) at %s\n",
+      int(Start), int(Start + Count - 1), int(Count), Context);
+#else
+   (void)Start; (void)Count; (void)Context;
+#endif
+}
+
+void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Context) const
+{
+   // Lightweight release tracing - can be enabled with LJ_TRACE_REGALLOC
+#if defined(LJ_TRACE_REGALLOC)
+   fprintf(stderr, "[REGALLOC] release reg %d..%d (%d slots) at %s\n",
+      int(Start), int(Start + Count - 1), int(Count), Context);
+#else
+   (void)Start; (void)Count; (void)Context;
+#endif
+}
+
+#endif

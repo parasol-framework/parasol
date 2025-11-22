@@ -65,6 +65,13 @@ public:
 
    void finalize() const;
 
+#if LJ_DEBUG
+   // Debug tracing methods (Phase 3 Stage 5)
+   void trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head, size_t Index) const;
+   void trace_edge_patch(size_t Index, BCPos Target) const;
+   void trace_edge_append(size_t Index, BCPos Head) const;
+#endif
+
 private:
    friend class ControlFlowEdge;
 
