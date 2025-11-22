@@ -91,24 +91,24 @@ bool ExpressionValue::consume_flag(ExprFlag Flag)
    return expr_consume_flag(&this->descriptor, Flag);
 }
 
-JumpHandle ExpressionValue::true_jumps() const
+ControlFlowEdge ExpressionValue::true_jumps(ControlFlowGraph& Graph) const
 {
-   return JumpHandle(this->func_state, this->descriptor.t);
+   return Graph.make_true_edge(this->descriptor.t);
 }
 
-JumpHandle ExpressionValue::false_jumps() const
+ControlFlowEdge ExpressionValue::false_jumps(ControlFlowGraph& Graph) const
 {
-   return JumpHandle(this->func_state, this->descriptor.f);
+   return Graph.make_false_edge(this->descriptor.f);
 }
 
-void ExpressionValue::set_true_jumps(const JumpHandle& Handle)
+void ExpressionValue::set_true_jumps(const ControlFlowEdge& Edge)
 {
-   this->descriptor.t = Handle.head();
+   this->descriptor.t = Edge.head();
 }
 
-void ExpressionValue::set_false_jumps(const JumpHandle& Handle)
+void ExpressionValue::set_false_jumps(const ControlFlowEdge& Edge)
 {
-   this->descriptor.f = Handle.head();
+   this->descriptor.f = Edge.head();
 }
 
 void ExpressionValue::set_jump_heads(BCPos TrueHead, BCPos FalseHead)

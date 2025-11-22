@@ -7,7 +7,7 @@
 
 class RegisterAllocator;
 class ControlFlowGraph;
-class JumpHandle;
+class ControlFlowEdge;
 
 class ExpressionValue {
 public:
@@ -37,10 +37,10 @@ public:
    void clear_flag(ExprFlag Flag);
    [[nodiscard]] bool consume_flag(ExprFlag Flag);
 
-   [[nodiscard]] JumpHandle true_jumps() const;
-   [[nodiscard]] JumpHandle false_jumps() const;
-   void set_true_jumps(const JumpHandle& Handle);
-   void set_false_jumps(const JumpHandle& Handle);
+   [[nodiscard]] ControlFlowEdge true_jumps(ControlFlowGraph& Graph) const;
+   [[nodiscard]] ControlFlowEdge false_jumps(ControlFlowGraph& Graph) const;
+   void set_true_jumps(const ControlFlowEdge& Edge);
+   void set_false_jumps(const ControlFlowEdge& Edge);
    void set_jump_heads(BCPos TrueHead, BCPos FalseHead);
 
    [[nodiscard]] BCReg to_reg(RegisterAllocator& Allocator, BCReg Slot);
