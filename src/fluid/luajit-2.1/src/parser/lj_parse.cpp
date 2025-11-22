@@ -122,6 +122,12 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
 {
    GCobj *gc_obj = proto_kgc(Proto, Index);
 
+   if (not gc_obj) {
+      // Most likely an invalid index - could indicate an invalid bytecode stream has been generated.
+      pf::Log("ByteCode").warning("describe_gc_constant: null GC object at index %" PRId64, uint64_t(Index));
+      return "K<null>";
+   }
+
    if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
       GCstr *str_obj = gco2str(gc_obj);
       return std::format("K{}", format_string_constant({strdata(str_obj), str_obj->len}));
@@ -463,9 +469,6 @@ static void dump_bytecode(ParserContext &Context)
 {
    pf::Log log("ByteCode");
 
-   auto prv = (prvFluid *)Context.lua().Script->ChildPrivate;
-   if ((prv->JitOptions & JOF::DUMP_BYTECODE) IS JOF::NIL) return;
-
    FuncState &fs = Context.func();
    log.branch("Instruction Count: %u", (unsigned)fs.pc);
    for (BCPos pc = 0; pc < fs.pc; ++pc) {
@@ -536,11 +539,6 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
    }
 
    emit_timer.stop();
-
-   // Print a complete disassembly of bytecode instructions after AST emission.
-   dump_bytecode(Context);
-
-   flush_non_fatal_errors(Context);
 }
 
 //********************************************************************************************************************
@@ -602,12 +600,18 @@ extern GCproto * lj_parse(LexState *State)
 
    if ((prv->JitOptions & JOF::LEGACY) IS JOF::NIL) {
       run_ast_pipeline(root_context, profiler);
+
+      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
+
+      flush_non_fatal_errors(root_context);
    }
    else {
       log.msg("Using legacy Lua parser.");
       ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
       State->parse_chunk(root_context);
       legacy_timer.stop();
+
+      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
    }
 
    if (profiler.enabled()) {
