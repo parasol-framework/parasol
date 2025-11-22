@@ -15,6 +15,7 @@
 #include "lj_tab.h"
 
 #include "parser/parse_internal.h"
+#include "parser/parse_value.h"
 #include "parser/token_types.h"
 
 LocalBindingTable::LocalBindingTable() = default;
@@ -65,6 +66,28 @@ LocalBindingScope::LocalBindingScope(LocalBindingTable& table) : table(table)
 LocalBindingScope::~LocalBindingScope()
 {
    this->table.pop_scope();
+}
+
+// Phase 1.2: IR emission context implementation
+
+IrEmissionContext::IrEmissionContext(FuncState* State)
+   : func_state(State), register_allocator(State), control_flow_graph(State)
+{
+}
+
+RegisterAllocator& IrEmissionContext::allocator()
+{
+   return this->register_allocator;
+}
+
+ControlFlowGraph& IrEmissionContext::cfg()
+{
+   return this->control_flow_graph;
+}
+
+FuncState* IrEmissionContext::state() const
+{
+   return this->func_state;
 }
 
 namespace {
@@ -261,22 +284,8 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    return 0;
 }
 
-static void duplicate_index_base(FuncState& func_state, ExpDesc& working, const ExpDesc& original)
-{
-   if (working.k IS ExpKind::Indexed) {
-      BCReg new_base = func_state.freereg;
-      bcemit_AD(&func_state, BC_MOV, new_base, BCReg(original.u.s.info));
-      bcreg_reserve(&func_state, 1);
-      working.u.s.info = new_base;
-      uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) {
-         BCReg new_idx = func_state.freereg;
-         bcemit_AD(&func_state, BC_MOV, new_idx, BCReg(orig_aux));
-         bcreg_reserve(&func_state, 1);
-         working.u.s.aux = new_idx;
-      }
-   }
-}
+// Phase 2.2: Replaced with RegisterAllocator::duplicate_table_operands()
+// This function is now deprecated - use the allocator method instead
 
 static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 {
@@ -288,9 +297,10 @@ static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
 {
    if (original.k IS ExpKind::Indexed) {
+      RegisterAllocator allocator(&func_state);
       uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) bcreg_free(&func_state, BCReg(orig_aux));
-      bcreg_free(&func_state, BCReg(original.u.s.info));
+      if (is_register_key(orig_aux)) allocator.release_register(BCReg(orig_aux));
+      allocator.release_register(BCReg(original.u.s.info));
    }
 }
 
@@ -419,7 +429,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    if (not expression.ok()) return ParserResult<IrEmitUnit>::failure(expression.error_ref());
 
    ExpDesc value = expression.value_ref();
-   expr_toval(&this->func_state, &value);
+   ExpressionValue value_toval(&this->func_state, value);
+   value_toval.to_val();
+   value = value_toval.legacy();
    release_indexed_original(this->func_state, value);
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -451,7 +463,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
             }
          }
          else {
-            BCReg reg = expr_toanyreg(&this->func_state, &last);
+            RegisterAllocator allocator(&this->func_state);
+            ExpressionValue value(&this->func_state, last);
+            BCReg reg = value.discharge_to_any_reg(allocator);
             ins = BCINS_AD(BC_RET1, reg, 2);
          }
       }
@@ -516,7 +530,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    ExpDesc variable;
    expr_init(&variable, ExpKind::Local, slot);
    variable.u.s.aux = this->func_state.varmap[slot];
-   bcreg_reserve(&this->func_state, 1);
+   RegisterAllocator allocator(&this->func_state);
+   allocator.reserve(1);
    this->lex_state.var_add(1);
 
    auto function_value = this->emit_function_expr(*payload.function);
@@ -711,8 +726,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       this->materialise_to_next_reg(step_value, "numeric for step");
    }
    else {
+      RegisterAllocator allocator(fs);
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
    }
 
    this->lex_state.var_add(3);
@@ -723,7 +739,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       FuncScope visible_scope;
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       this->lex_state.var_add(1);
-      bcreg_reserve(fs, 1);
+      RegisterAllocator allocator(fs);
+      allocator.reserve(1);
       std::array<BlockBinding, 1> loop_bindings{};
       std::span<const BlockBinding> binding_span;
       if (payload.control.symbol and not payload.control.is_blank) {
@@ -787,7 +804,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       BCReg visible = nvars - 3;
       this->lex_state.var_add(visible);
-      bcreg_reserve(fs, visible);
+      RegisterAllocator allocator(fs);
+      allocator.reserve(visible);
       std::vector<BlockBinding> loop_bindings;
       loop_bindings.reserve(visible);
       for (BCReg i = 0; i < visible; ++i) {
@@ -825,7 +843,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    FuncState* fs = &this->func_state;
    BCReg reg = fs->freereg;
    this->lex_state.var_new(0, NAME_BLANK);
-   bcreg_reserve(fs, 1);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);
    this->lex_state.var_add(1);
    VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
@@ -1000,8 +1019,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
+
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
 
    ExpDesc rhs;
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
@@ -1054,12 +1076,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
 
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
 
-   ExpDesc lhs_eval = working;
-   expr_discharge(&this->func_state, &lhs_eval);
-   BCReg lhs_reg = expr_toanyreg(&this->func_state, &lhs_eval);
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
+
+   // Phase 3: Use ExpressionValue for discharge operations
+   ExpressionValue lhs_value(&this->func_state, working);
+   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv = make_nil_expr();
    ExpDesc falsev = make_bool_expr(false);
@@ -1092,8 +1117,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    }
 
    ExpDesc rhs = list.value_ref();
-   expr_discharge(&this->func_state, &rhs);
-   this->materialise_to_reg(rhs, lhs_reg, "assignment RHS");
+   ExpressionValue rhs_value(&this->func_state, rhs);
+   rhs_value.discharge();
+   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
    bcemit_store(&this->func_state, &target, &rhs);
 
    check_nil.patch_to(assign_pos);
@@ -1196,7 +1222,8 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 {
    ExpDesc expr;
-   bcreg_reserve(&this->func_state, 1);
+   RegisterAllocator allocator(&this->func_state);
+   allocator.reserve(1);
    BCReg base = this->func_state.freereg - 1;
    expr_init(&expr, ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
    expr.u.s.aux = base;
@@ -1243,20 +1270,26 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    }
 
    ExpDesc target = target_result.value_ref();
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
+
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
 
    BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
-   ExpDesc operand = working;
-   expr_discharge(&this->func_state, &operand);
-   BCReg operand_reg = expr_toanyreg(&this->func_state, &operand);
+
+   // Phase 3: Use ExpressionValue for discharge operations
+   ExpressionValue operand_value(&this->func_state, working);
+   BCReg operand_reg = operand_value.discharge_to_any_reg(allocator);
 
    BCReg saved_reg = operand_reg;
    if (payload.is_postfix) {
       saved_reg = this->func_state.freereg;
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
-      bcreg_reserve(&this->func_state, 1);
+      allocator.reserve(1);
    }
+
+   ExpDesc operand = operand_value.legacy();  // Get ExpDesc for subsequent operations
 
    ExpDesc delta = make_num_expr(1.0);
    ExpDesc infix = operand;
@@ -1305,9 +1338,10 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    auto condition_result = this->emit_expression(*payload.condition);
    if (not condition_result.ok()) return condition_result;
 
-   ExpDesc condition = condition_result.value_ref();
-   expr_discharge(&this->func_state, &condition);
-   BCReg cond_reg = expr_toanyreg(&this->func_state, &condition);
+   // Phase 3: Use ExpressionValue and RegisterAllocator
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
+   BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv = make_nil_expr();
    ExpDesc falsev = make_bool_expr(false);
@@ -1327,9 +1361,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    if (not true_result.ok()) {
       return true_result;
    }
-   ExpDesc true_expr = true_result.value_ref();
-   expr_discharge(&this->func_state, &true_expr);
-   this->materialise_to_reg(true_expr, cond_reg, "ternary true branch");
+   ExpressionValue true_value(&this->func_state, true_result.value_ref());
+   true_value.discharge();
+   this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
    ir_collapse_freereg(&this->func_state, cond_reg);
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
@@ -1342,9 +1376,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
 
    auto false_result = this->emit_expression(*payload.if_false);
    if (not false_result.ok()) return false_result;
-   ExpDesc false_expr = false_result.value_ref();
-   expr_discharge(&this->func_state, &false_expr);
-   this->materialise_to_reg(false_expr, cond_reg, "ternary false branch");
+   ExpressionValue false_value(&this->func_state, false_result.value_ref());
+   false_value.discharge();
+   this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
    ir_collapse_freereg(&this->func_state, cond_reg);
 
    skip_false.patch_to(this->func_state.pc);
@@ -1375,7 +1409,10 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& paylo
       return table_result;
    }
    ExpDesc table = table_result.value_ref();
-   expr_toanyreg(&this->func_state, &table);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue table_value(&this->func_state, table);
+   table_value.discharge_to_any_reg(allocator);
+   table = table_value.legacy();
    ExpDesc key = make_interned_string_expr(payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
@@ -1391,11 +1428,16 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    ExpDesc table = table_result.value_ref();
    // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
    // the correct order (table first, then key)
-   expr_toanyreg(&this->func_state, &table);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue table_value(&this->func_state, table);
+   table_value.discharge_to_any_reg(allocator);
+   table = table_value.legacy();
    auto key_result = this->emit_expression(*payload.index);
    if (not key_result.ok()) return key_result;
    ExpDesc key = key_result.value_ref();
-   expr_toval(&this->func_state, &key);
+   ExpressionValue key_toval(&this->func_state, key);
+   key_toval.to_val();
+   key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
 }
@@ -1414,7 +1456,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "call callee");
 #if LJ_FR2
-      bcreg_reserve(&this->func_state, 1);
+      RegisterAllocator allocator(&this->func_state);
+      allocator.reserve(1);
 #endif
       base = callee.u.s.info;
    }
@@ -1473,7 +1516,8 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    ExpDesc table;
    expr_init(&table, ExpKind::NonReloc, freg);
-   bcreg_reserve(fs, 1);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);
    freg++;
 
    for (const TableField& field : payload.fields) {
@@ -1488,7 +1532,9 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
          auto key_result = this->emit_expression(*field.key);
          if (not key_result.ok()) return key_result;
          key = key_result.value_ref();
-         expr_toval(fs, &key);
+         ExpressionValue key_toval(fs, key);
+         key_toval.to_val();
+         key = key_toval.legacy();
          if (not expr_isk(&key)) expr_index(fs, &table, &key);
          if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
          else nhash++;
@@ -1545,7 +1591,10 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
 
       if (not emit_constant) {
          if (val.k != ExpKind::Call) {
-            expr_toanyreg(fs, &val);
+            RegisterAllocator val_allocator(fs);
+            ExpressionValue val_value(fs, val);
+            val_value.discharge_to_any_reg(val_allocator);
+            val = val_value.legacy();
             vcall = 0;
          }
          if (expr_isk(&key)) {
@@ -1640,7 +1689,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    child_state.numparams = uint8_t(param_count);
    this->lex_state.var_add(param_count);
    if (child_state.nactvar > 0) {
-      bcreg_reserve(&child_state, child_state.nactvar);
+      RegisterAllocator child_allocator(&child_state);
+      child_allocator.reserve(child_state.nactvar);
    }
 
    IrEmitter child_emitter(child_ctx);
@@ -1699,8 +1749,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
          return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
       }
       ExpDesc key = make_interned_string_expr(segment.symbol);
-      expr_toval(&this->func_state, &target);
-      expr_toanyreg(&this->func_state, &target);
+      ExpressionValue target_toval(&this->func_state, target);
+      target_toval.to_val();
+      target = target_toval.legacy();
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue target_value(&this->func_state, target);
+      target_value.discharge_to_any_reg(allocator);
+      target = target_value.legacy();
       expr_index(&this->func_state, &target, &key);
    }
 
@@ -1713,8 +1768,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
    if (not final_name->symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    ExpDesc key = make_interned_string_expr(final_name->symbol);
-   expr_toval(&this->func_state, &target);
-   expr_toanyreg(&this->func_state, &target);
+   ExpressionValue target_toval_final(&this->func_state, target);
+   target_toval_final.to_val();
+   target = target_toval_final.legacy();
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue target_value(&this->func_state, target);
+   target_value.discharge_to_any_reg(allocator);
+   target = target_value.legacy();
    expr_index(&this->func_state, &target, &key);
    return ParserResult<ExpDesc>::success(target);
 }
@@ -1738,8 +1798,13 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       auto table_result = this->emit_expression(*payload.table);
       if (not table_result.ok()) return table_result;
       ExpDesc table = table_result.value_ref();
-      expr_toval(&this->func_state, &table);
-      expr_toanyreg(&this->func_state, &table);
+      ExpressionValue table_toval(&this->func_state, table);
+      table_toval.to_val();
+      table = table_toval.legacy();
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue table_value(&this->func_state, table);
+      table_value.discharge_to_any_reg(allocator);
+      table = table_value.legacy();
       ExpDesc key = make_interned_string_expr(payload.member.symbol);
       expr_index(&this->func_state, &table, &key);
       return ParserResult<ExpDesc>::success(table);
@@ -1756,14 +1821,21 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       ExpDesc table = table_result.value_ref();
       // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
       // the correct order (table first, then key)
-      expr_toval(&this->func_state, &table);
-      expr_toanyreg(&this->func_state, &table);
+      ExpressionValue table_toval_idx(&this->func_state, table);
+      table_toval_idx.to_val();
+      table = table_toval_idx.legacy();
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue table_value(&this->func_state, table);
+      table_value.discharge_to_any_reg(allocator);
+      table = table_value.legacy();
       auto key_result = this->emit_expression(*payload.index);
       if (not key_result.ok()) {
          return key_result;
       }
       ExpDesc key = key_result.value_ref();
-      expr_toval(&this->func_state, &key);
+      ExpressionValue key_toval_idx(&this->func_state, key);
+      key_toval_idx.to_val();
+      key = key_toval_idx.legacy();
       expr_index(&this->func_state, &table, &key);
       return ParserResult<ExpDesc>::success(table);
    }
@@ -1829,13 +1901,19 @@ void IrEmitter::update_local_binding(GCstr* symbol, BCReg slot)
 
 void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view usage)
 {
-   expr_tonextreg(&this->func_state, &expression);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue value(&this->func_state, expression);
+   value.to_next_reg(allocator);
+   expression = value.legacy();
    this->ensure_register_floor(usage);
 }
 
 void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage)
 {
-   expr_toreg(&this->func_state, &expression, slot);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue value(&this->func_state, expression);
+   value.to_reg(allocator, slot);
+   expression = value.legacy();
    this->ensure_register_floor(usage);
 }
 

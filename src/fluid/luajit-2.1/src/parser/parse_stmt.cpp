@@ -6,6 +6,9 @@
 #include <vector>
 
 #include "parser/parser_context.h"
+#include "parser/parse_value.h"
+#include "parser/parse_regalloc.h"
+#include "parser/parse_control_flow.h"
 
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
@@ -32,8 +35,9 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc &Var)
    }
 
    if (hazard) {
+      RegisterAllocator allocator(fs);
       bcemit_AD(fs, BC_MOV, tmp, reg);  // Rename conflicting variable.
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
    }
 }
 
@@ -43,18 +47,23 @@ void LexState::assign_hazard(std::span<ExpDesc> Left, const ExpDesc &Var)
 void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
 {
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
    int32_t extra = int32_t(nvars) - int32_t(nexps);
    if (Expr->k IS ExpKind::Call) {
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, Expr), extra + 1);  // Fixup call results.
-      if (extra > 1) bcreg_reserve(fs, BCReg(extra) - 1);
+      if (extra > 1) allocator.reserve(BCReg(extra) - 1);
    }
    else {
-      if (Expr->k != ExpKind::Void) expr_tonextreg(fs, Expr);  // Close last expression.
+      if (Expr->k != ExpKind::Void) {
+         ExpressionValue value(fs, *Expr);
+         value.to_next_reg(allocator);
+         *Expr = value.legacy();
+      }
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCReg reg = fs->freereg;
-         bcreg_reserve(fs, BCReg(extra));
+         allocator.reserve(BCReg(extra));
          bcemit_nil(fs, reg, BCReg(extra));
       }
    }
@@ -84,6 +93,7 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    Context.tokens().advance();
 
    RegisterGuard register_guard(fs);
+   RegisterAllocator allocator(fs);
 
    if (lh->k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
@@ -91,12 +101,12 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
 
       new_base = fs->freereg;
       bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
 
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
-         bcreg_reserve(fs, 1);
+         allocator.reserve(1);
          lh->u.s.info = new_base;
          lh->u.s.aux = new_idx;
       }
@@ -104,8 +114,9 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    }
 
    lhs_eval = *lh;
-   expr_discharge(fs, &lhs_eval);
-   lhs_reg = expr_toanyreg(fs, &lhs_eval);
+   ExpressionValue lhs_value(fs, lhs_eval);
+   lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+   lhs_eval = lhs_value.legacy();
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
    check_nil = bcemit_jmp(fs);
@@ -130,16 +141,23 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    nexps = rhs_list.value_ref();
    checkcond(this, nexps IS 1, ErrMsg::XRIGHTCOMPOUND);
 
-   expr_discharge(fs, &rh);
-   expr_toreg(fs, &rh, lhs_reg);
+   ExpressionValue rh_value(fs, rh);
+   rh_value.to_reg(allocator, lhs_reg);
+   rh = rh_value.legacy();
 
    bcemit_store(fs, &lhv, &rh);
 
-   JumpListView(fs, check_nil).patch_to(assign_pos);
-   JumpListView(fs, check_false).patch_to(assign_pos);
-   JumpListView(fs, check_zero).patch_to(assign_pos);
-   JumpListView(fs, check_empty).patch_to(assign_pos);
-   JumpListView(fs, skip_assign).patch_to(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_nil = cfg.make_unconditional(check_nil);
+   edge_nil.patch_to(assign_pos);
+   ControlFlowEdge edge_false = cfg.make_unconditional(check_false);
+   edge_false.patch_to(assign_pos);
+   ControlFlowEdge edge_zero = cfg.make_unconditional(check_zero);
+   edge_zero.patch_to(assign_pos);
+   ControlFlowEdge edge_empty = cfg.make_unconditional(check_empty);
+   edge_empty.patch_to(assign_pos);
+   ControlFlowEdge edge_skip = cfg.make_unconditional(skip_assign);
+   edge_skip.patch_to(fs->pc);
 
    // Release temporary duplicates before freeing the original table slots.
    register_guard.release_to(register_guard.saved());
@@ -147,8 +165,8 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C)
-         bcreg_free(fs, BCReg(orig_aux));
-      bcreg_free(fs, BCReg(lhv.u.s.info));
+         allocator.release_register(BCReg(orig_aux));
+      allocator.release_register(BCReg(lhv.u.s.info));
    }
    return 1;
 }
@@ -186,6 +204,7 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
    // the original registers for the final store and maintains LIFO free order.
 
    RegisterGuard register_guard(fs);
+   RegisterAllocator allocator(fs);
    if (lh->k IS ExpKind::Indexed) {
       BCReg new_base, new_idx;
       uint32_t orig_aux = lhv.u.s.aux;  // Keep originals for the store.
@@ -193,13 +212,13 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
       // Duplicate base to a fresh register.
       new_base = fs->freereg;
       bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
 
       // If index is a register (0..BCMAX_C), duplicate it, too.
       if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) {
          new_idx = fs->freereg;
          bcemit_AD(fs, BC_MOV, new_idx, BCReg(orig_aux));
-         bcreg_reserve(fs, 1);
+         allocator.reserve(1);
          // Discharge using the duplicates; keep lhv pointing to originals.
          lh->u.s.info = new_base;
          lh->u.s.aux = new_idx;
@@ -227,8 +246,11 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
 
-      if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR))
-         expr_tonextreg(fs, lh);
+      if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR)) {
+         ExpressionValue lh_value(fs, *lh);
+         lh_value.to_next_reg(allocator);
+         *lh = lh_value.legacy();
+      }
       auto rhs_values = this->expr_list(&rh);
       if (!rhs_values.ok()) {
          return 0;
@@ -247,8 +269,8 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
 
    if (lhv.k IS ExpKind::Indexed) {
       uint32_t orig_aux = lhv.u.s.aux;
-      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) bcreg_free(fs, BCReg(orig_aux));
-      bcreg_free(fs, BCReg(lhv.u.s.info));
+      if (int32_t(orig_aux) >= 0 and orig_aux <= BCMAX_C) allocator.release_register(BCReg(orig_aux));
+      allocator.release_register(BCReg(lhv.u.s.info));
    }
    return 1;
 }
@@ -390,6 +412,7 @@ ParserResult<LocalDeclResult> LexState::parse_local(ParserContext &Context)
       }
       ExpDesc v, b;
       FuncState* fs = this->fs;
+      RegisterAllocator allocator(fs);
       auto name_token = Context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (!name_token.ok()) {
          return ParserResult<LocalDeclResult>::failure(name_token.error_ref());
@@ -398,11 +421,13 @@ ParserResult<LocalDeclResult> LexState::parse_local(ParserContext &Context)
       this->var_new(0, func_name ? func_name : NAME_BLANK);
       expr_init(&v, ExpKind::Local, fs->freereg);
       v.u.s.aux = fs->varmap[fs->freereg];
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
       this->var_add(1);
       this->parse_body(&b, 0, this->linenumber);
       expr_free(fs, &b);
-      expr_toreg(fs, &b, v.u.s.info);
+      ExpressionValue b_value(fs, b);
+      b_value.to_reg(allocator, v.u.s.info);
+      b = b_value.legacy();
       var_get(this, fs, fs->nactvar - 1).startpc = fs->pc;
       summary.declared = 1;
       summary.initialised = 1;
@@ -443,13 +468,14 @@ ParserResult<LocalDeclResult> LexState::parse_local(ParserContext &Context)
 
 static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 {
+   RegisterAllocator allocator(fs);
    BCOp op = bc_op(*ins);
 
    if (op IS BC_RET1) {
       BCReg src = bc_a(*ins);
       if (src < fs->nactvar) {
          BCReg dst = fs->freereg;
-         bcreg_reserve(fs, 1);
+         allocator.reserve(1);
          bcemit_AD(fs, BC_MOV, dst, src);
          setbc_a(ins, dst);
       }
@@ -463,7 +489,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
          BCReg dst = fs->freereg;
          BCReg i;
 
-         bcreg_reserve(fs, count);
+         allocator.reserve(count);
          for (i = 0; i < count; i++)
             bcemit_AD(fs, BC_MOV, dst + i, base + i);
          setbc_a(ins, dst);
@@ -476,6 +502,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
 void LexState::parse_defer()
 {
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
    ExpDesc func, arg;
    BCLine line = this->linenumber;
    BCReg reg = fs->freereg;
@@ -484,13 +511,15 @@ void LexState::parse_defer()
 
    this->next();  // Skip 'defer'.
    this->var_new(0, NAME_BLANK);
-   bcreg_reserve(fs, 1);
+   allocator.reserve(1);
    this->var_add(1);
    vi = &var_get(this, fs, fs->nactvar - 1);
    vi->info |= VarInfoFlag::Defer;
 
    this->parse_body_defer(&func, line);
-   expr_toreg(fs, &func, reg);
+   ExpressionValue func_value(fs, func);
+   func_value.to_reg(allocator, reg);
+   func = func_value.legacy();
 
    if (this->tok IS '(') {
       BCLine argline = this->linenumber;
@@ -501,7 +530,9 @@ void LexState::parse_defer()
             if (!arg_expr.ok()) {
                return;
             }
-            expr_tonextreg(fs, &arg);
+            ExpressionValue arg_value(fs, arg);
+            arg_value.to_next_reg(allocator);
+            arg = arg_value.legacy();
             nargs++;
          } while (this->lex_opt(','));
       }
@@ -569,6 +600,7 @@ void LexState::parse_return(ParserContext &Context)
 {
    BCIns ins;
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
    Context.tokens().advance();  // Skip 'return'.
    fs->flags |= PROTO_HAS_RETURN;
    TokenKind next_kind = Context.tokens().current().kind();
@@ -590,7 +622,10 @@ void LexState::parse_return(ParserContext &Context)
             ins = BCINS_AD(bc_op(*ip) - BC_CALL + BC_CALLT, bc_a(*ip), bc_c(*ip));
          }
          else {  // Can return the result from any register.
-            ins = BCINS_AD(BC_RET1, expr_toanyreg(fs, &e), 2);
+            ExpressionValue e_value(fs, e);
+            BCReg reg = e_value.to_any_reg(allocator);
+            e = e_value.legacy();
+            ins = BCINS_AD(BC_RET1, reg, 2);
          }
       }
       else {
@@ -600,7 +635,9 @@ void LexState::parse_return(ParserContext &Context)
             ins = BCINS_AD(BC_RETM, fs->nactvar, e.u.s.aux - fs->nactvar);
          }
          else {
-            expr_tonextreg(fs, &e);  // Force contiguous registers.
+            ExpressionValue e_value(fs, e);
+            e_value.to_next_reg(allocator);
+            e = e_value.legacy();
             ins = BCINS_AD(BC_RET, fs->nactvar, nret + 1);
          }
       }
@@ -683,13 +720,18 @@ void LexState::parse_while(ParserContext &Context, BCLine line)
       Context.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
       loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
       this->parse_block(Context);
-      JumpListView(fs, bcemit_jmp(fs)).patch_to(start);
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge = cfg.make_unconditional(bcemit_jmp(fs));
+      edge.patch_to(start);
       this->lex_match(TK_end, TK_while, line);
       fscope_loop_continue(fs, start);
    }
 
-   JumpListView(fs, condexit).patch_to_here();
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_exit = cfg.make_unconditional(condexit);
+   edge_exit.patch_here();
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
 }
 
 //********************************************************************************************************************
@@ -718,12 +760,17 @@ void LexState::parse_repeat(ParserContext &Context, BCLine line)
       inner_has_upvals = has_flag(bl2.flags, FuncScopeFlag::Upvalue);
       if (inner_has_upvals) {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
          this->parse_break();  // Break from loop and close upvalues.
-         JumpListView(fs, condexit).patch_to_here();
+         ControlFlowGraph cfg(fs);
+         ControlFlowEdge edge = cfg.make_unconditional(condexit);
+         edge.patch_here();
       }
    }
    if (inner_has_upvals) condexit = bcemit_jmp(fs);
-   JumpListView(fs, condexit).patch_to(loop);  // Jump backwards if !cond.
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_exit = cfg.make_unconditional(condexit);
+   edge_exit.patch_to(loop);  // Jump backwards if !cond.
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    fscope_loop_continue(fs, iter); // continue statements jump to condexit.
 }
 
@@ -733,6 +780,7 @@ void LexState::parse_repeat(ParserContext &Context, BCLine line)
 void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line)
 {
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
    BCReg base = fs->freereg;
    FuncScope bl;
    BCPos loop, loopend;
@@ -756,7 +804,7 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
    }
    else {
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);  // Default step is 1.
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
    }
 
    this->var_add(3);  // Hidden control variables.
@@ -766,7 +814,7 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
    {
       ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
       this->var_add(1);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
       this->parse_block(Context);
    }
 
@@ -774,8 +822,11 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
 
    loopend = bcemit_AJ(fs, BC_FORL, base, NO_JMP);
    fs->bcbase[loopend].line = line;  // Fix line for control ins.
-   JumpListView(fs, loopend).patch_head(loop + 1);
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_end = cfg.make_unconditional(loopend);
+   edge_end.patch_head(loop + 1);
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    fscope_loop_continue(fs, loopend); // continue statements jump to loopend.
 }
 
@@ -820,6 +871,7 @@ static int predict_next(LexState *State, FuncState *fs, BCPos pc)
 void LexState::parse_for_iter(ParserContext &Context, GCstr* indexname)
 {
    FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
    ExpDesc e;
    BCReg nvars = 0;
    BCLine line;
@@ -859,18 +911,21 @@ void LexState::parse_for_iter(ParserContext &Context, GCstr* indexname)
    {
       ScopeGuard visible_scope(fs, &bl, FuncScopeFlag::None);  // Scope for visible variables.
       this->var_add(nvars - 3);
-      bcreg_reserve(fs, nvars - 3);
+      allocator.reserve(nvars - 3);
       this->parse_block(Context);
    }
 
    // Perform loop inversion. Loop control instructions are at the end.
 
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 2 + 1);
    loopend = bcemit_AJ(fs, BC_ITERL, base, NO_JMP);
    fs->bcbase[loopend - 1].line = line;  // Fix line for control ins.
    fs->bcbase[loopend].line = line;
-   JumpListView(fs, loopend).patch_head(loop + 1);
+   ControlFlowEdge edge_end = cfg.make_unconditional(loopend);
+   edge_end.patch_head(loop + 1);
    fscope_loop_continue(fs, iter); // continue statements jump to iter.
 }
 
@@ -917,20 +972,35 @@ void LexState::parse_if(ParserContext &Context, BCLine line)
    BCPos escapelist = NO_JMP;
    flist = this->parse_then(Context);
    while (Context.tokens().current().is(TokenKind::ElseIf)) {  // Parse multiple 'elseif' blocks.
-      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
-      JumpListView(fs, flist).patch_to_here();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(bcemit_jmp(fs));
+      escapelist = edge_escape.head();
+      ControlFlowEdge edge_flist = cfg.make_unconditional(flist);
+      edge_flist.patch_here();
       flist = this->parse_then(Context);
    }
 
    if (Context.tokens().current().is(TokenKind::Else)) {  // Parse optional 'else' block.
-      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
-      JumpListView(fs, flist).patch_to_here();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(bcemit_jmp(fs));
+      escapelist = edge_escape.head();
+      ControlFlowEdge edge_flist = cfg.make_unconditional(flist);
+      edge_flist.patch_here();
       Context.tokens().advance();  // Skip 'else'.
       this->parse_block(Context);
    }
-   else escapelist = JumpListView(fs, escapelist).append(flist);
+   else {
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(flist);
+      escapelist = edge_escape.head();
+   }
 
-   JumpListView(fs, escapelist).patch_to_here();
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge = cfg.make_unconditional(escapelist);
+   edge.patch_here();
    this->lex_match(TK_end, TK_if, line);
 }
 

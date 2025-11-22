@@ -50,6 +50,12 @@ public:
    void discharge(ControlFlowGraph& Graph);
    void release(RegisterAllocator& Allocator);
 
+   // Phase 1.1 helper methods for gradual migration
+   void to_val();                                           // Like expr_toval - partially discharge to value
+   void discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg);  // Like expr_toreg_nobranch
+   void store_to(RegisterAllocator& Allocator, ExpressionValue& Target);  // Like bcemit_store
+   [[nodiscard]] BCReg discharge_to_any_reg(RegisterAllocator& Allocator);  // Combined discharge + to_any_reg
+
    [[nodiscard]] ExpDesc& legacy();
    [[nodiscard]] const ExpDesc& legacy() const;
    [[nodiscard]] FuncState* state() const;

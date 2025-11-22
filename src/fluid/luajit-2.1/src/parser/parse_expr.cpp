@@ -2,6 +2,9 @@
 #include <string>
 
 #include "parser/parser_context.h"
+#include "parser/parse_value.h"
+#include "parser/parse_regalloc.h"
+#include "parser/parse_control_flow.h"
 
 static void expr_collapse_freereg(FuncState *, BCReg);
 
@@ -56,7 +59,9 @@ static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
       }
    }
 
-   t->u.s.aux = expr_toanyreg(State, e);  // 0..255: register
+   RegisterAllocator allocator(State);
+   ExpressionValue value(State, *e);
+   t->u.s.aux = value.discharge_to_any_reg(allocator);  // 0..255: register
 }
 
 //********************************************************************************************************************
@@ -66,7 +71,10 @@ void LexState::expr_field(ExpDesc* Expression)
 {
    FuncState* fs = this->fs;
    ExpDesc key;
-   expr_toanyreg(fs, Expression);
+   RegisterAllocator allocator(fs);
+   ExpressionValue value(fs, *Expression);
+   value.discharge_to_any_reg(allocator);
+   *Expression = value.legacy();
    this->next();  // Skip dot or colon.
    this->expr_str(&key);
    expr_index(fs, Expression, &key);
@@ -82,7 +90,9 @@ void LexState::expr_bracket(ExpDesc* Expression)
    if (not bracket_expr.ok()) {
       return;
    }
-   expr_toval(this->fs, Expression);
+   ExpressionValue value(this->fs, *Expression);
+   value.to_val();
+   *Expression = value.legacy();
    this->lex_check(']');
 }
 
@@ -164,7 +174,8 @@ void LexState::expr_table(ExpDesc* Expression)
    BCReg freg = fs->freereg;
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    expr_init(Expression, ExpKind::NonReloc, freg);
-   bcreg_reserve(fs, 1);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);
    freg++;
    this->lex_check('{');
    while (this->tok != '}') {
@@ -220,7 +231,12 @@ void LexState::expr_table(ExpDesc* Expression)
          }
          else {
          nonconst:
-            if (val.k != ExpKind::Call) { expr_toanyreg(fs, &val); vcall = 0; }
+            if (val.k != ExpKind::Call) {
+               ExpressionValue value(fs, val);
+               value.discharge_to_any_reg(allocator);
+               val = value.legacy();
+               vcall = 0;
+            }
             if (expr_isk(&key)) expr_index(fs, Expression, &key);
             bcemit_store(fs, Expression, &val);
          }
@@ -307,7 +323,8 @@ void LexState::expr_table(ExpDesc* Expression)
    }
    this->var_add(nparams);
    lj_assertFS(fs->nactvar IS nparams, "bad regalloc");
-   bcreg_reserve(fs, nparams);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(nparams);
    this->lex_check(')');
    return nparams;
 }
@@ -400,8 +417,11 @@ ParserResult<BCReg> LexState::expr_list(ExpDesc* Expression)
    if (not first.ok()) {
       return ParserResult<BCReg>::failure(first.error_ref());
    }
+   RegisterAllocator allocator(this->fs);
    while (this->lex_opt(',')) {
-      expr_tonextreg(this->fs, Expression);  // Discharge previous expressions to registers
+      ExpressionValue value(this->fs, *Expression);
+      value.to_next_reg(allocator);
+      *Expression = value.legacy();
       auto next = this->expr(Expression);                // Parse next expression (may be ExpKind::Call)
       if (not next.ok()) {
          return ParserResult<BCReg>::failure(next.error_ref());
@@ -489,8 +509,12 @@ void LexState::parse_args(ExpDesc* Expression)
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
    }
    else {
-      if (args.k != ExpKind::Void)
-         expr_tonextreg(fs, &args);
+      if (args.k != ExpKind::Void) {
+         RegisterAllocator allocator(fs);
+         ExpressionValue value(fs, args);
+         value.to_next_reg(allocator);
+         args = value.legacy();
+      }
       ins = BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2);
    }
    expr_init(Expression, ExpKind::Call, bcemit_INS(fs, ins));
@@ -515,7 +539,9 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
          return inner;
       }
       Context.lex_match(')', '(', line);
-      expr_discharge(fs, v);
+      ExpressionValue value(fs, *v);
+      value.discharge();
+      *v = value.legacy();
    }
    else if (current.is_identifier()) {
       Context.lex().var_lookup(v);
@@ -527,6 +553,7 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
       return ParserResult<ExpDesc>::failure(error);
    }
 
+   RegisterAllocator allocator(fs);
    while (true) {
       current = Context.tokens().current();
       if (current.is(TokenKind::Dot)) {
@@ -534,7 +561,9 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
       }
       else if (current.is(TokenKind::LeftBracket)) {
          ExpDesc key;
-         expr_toanyreg(fs, v);
+         ExpressionValue value(fs, *v);
+         value.discharge_to_any_reg(allocator);
+         *v = value.legacy();
          Context.lex().expr_bracket(&key);
          expr_index(fs, v, &key);
       }
@@ -554,8 +583,10 @@ static ParserResult<ExpDesc> expr_primary_with_context(ParserContext &Context, E
          bcemit_presence_check(fs, v);
       }
       else if (current.is(TokenKind::LeftParen) or current.is(TokenKind::String) or current.is(TokenKind::LeftBrace)) {
-         expr_tonextreg(fs, v);
-         if (LJ_FR2) bcreg_reserve(fs, 1);
+         ExpressionValue value(fs, *v);
+         value.to_next_reg(allocator);
+         *v = value.legacy();
+         if (LJ_FR2) allocator.reserve(1);
          Context.lex().parse_args(v);
       }
       else {
@@ -614,7 +645,8 @@ static ParserResult<ExpDesc> expr_simple_with_context(ParserContext &Context, Ex
    case TokenKind::Dots: {
       BCReg base;
       checkcond(&lex, fs->flags & PROTO_VARARG, ErrMsg::XDOTS);
-      bcreg_reserve(fs, 1);
+      RegisterAllocator allocator(fs);
+      allocator.reserve(1);
       base = fs->freereg - 1;
       expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
       v->u.s.aux = base;
@@ -656,16 +688,19 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    indices = fs->freereg;
    expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
+   RegisterAllocator allocator(fs);
    if (isPost) {
       checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
       if (v->k IS ExpKind::Indexed)
-         bcreg_reserve(fs, 1);
-      expr_tonextreg(fs, v);
+         allocator.reserve(1);
+      ExpressionValue value(fs, *v);
+      value.to_next_reg(allocator);
+      *v = value.legacy();
       // Remember that this expression was consumed as a standalone postfix increment.
       expr_set_flag(v, ExprFlag::PostfixIncStmt);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
       bcemit_arith(fs, op, &e1, &e2);
       bcemit_store(fs, &lv, &e1);
       fs->freereg--;
@@ -678,11 +713,14 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
    e1 = *v;
    if (v->k IS ExpKind::Indexed)
-      bcreg_reserve(fs, fs->freereg - indices);
+      allocator.reserve(fs->freereg - indices);
    bcemit_arith(fs, op, &e1, &e2);
    bcemit_store(fs, v, &e1);
-   if (v != &lv)
-      expr_tonextreg(fs, v);
+   if (v != &lv) {
+      ExpressionValue value(fs, *v);
+      value.to_next_reg(allocator);
+      *v = value.legacy();
+   }
 }
 
 //********************************************************************************************************************
@@ -837,9 +875,10 @@ ParserResult<BinOpr> LexState::expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Op
    }
 
    // Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2).
-   bcreg_reserve(fs, 1);  // Reserve for callee
-   if (LJ_FR2) bcreg_reserve(fs, 1);  // Reserve for frame link on x64
-   bcreg_reserve(fs, 2);  // Reserve for arguments
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);  // Reserve for callee
+   if (LJ_FR2) allocator.reserve(1);  // Reserve for frame link on x64
+   allocator.reserve(2);  // Reserve for arguments
 
    // Emit the first operation in the chain
    bcemit_shift_call_at_base(fs, std::string_view(priority[op].name, priority[op].name_len), lhs, &rhs, base_reg);
@@ -957,8 +996,11 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
          BCPos check_nil, check_false, check_zero, check_empty;
          BCPos skip_false;
 
-         expr_discharge(fs, v);
-         cond_reg = expr_toanyreg(fs, v);
+         RegisterAllocator allocator(fs);
+         ExpressionValue cond_value(fs, *v);
+         cond_value.discharge();
+         cond_reg = cond_value.discharge_to_any_reg(allocator);
+         *v = cond_value.legacy();
          result_reg = cond_reg;
 
          this->ternary_depth++;
@@ -979,8 +1021,10 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
                this->synlevel_end();
                return ParserResult<BinOpr>::failure(branch.error_ref());
             }
-            expr_discharge(fs, &v2);
-            expr_toreg(fs, &v2, result_reg);
+            ExpressionValue value(fs, v2);
+            value.discharge();
+            value.to_reg(allocator, result_reg);
+            v2 = value.legacy();
             expr_collapse_freereg(fs, result_reg);
          }
 
@@ -992,10 +1036,15 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
 
          {
             BCPos false_start = fs->pc;
-            JumpListView(fs, check_nil).patch_to(false_start);
-            JumpListView(fs, check_false).patch_to(false_start);
-            JumpListView(fs, check_zero).patch_to(false_start);
-            JumpListView(fs, check_empty).patch_to(false_start);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge_nil = cfg.make_unconditional(check_nil);
+            edge_nil.patch_to(false_start);
+            ControlFlowEdge edge_false = cfg.make_unconditional(check_false);
+            edge_false.patch_to(false_start);
+            ControlFlowEdge edge_zero = cfg.make_unconditional(check_zero);
+            edge_zero.patch_to(false_start);
+            ControlFlowEdge edge_empty = cfg.make_unconditional(check_empty);
+            edge_empty.patch_to(false_start);
          }
 
          {
@@ -1006,10 +1055,14 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
                return ParserResult<BinOpr>::failure(false_branch.error_ref());
             }
             BinOpr nextop3 = false_branch.value_ref();
-            expr_discharge(fs, &fexp);
-            expr_toreg(fs, &fexp, result_reg);
+            ExpressionValue false_value(fs, fexp);
+            false_value.discharge();
+            false_value.to_reg(allocator, result_reg);
+            fexp = false_value.legacy();
             expr_collapse_freereg(fs, result_reg);
-            JumpListView(fs, skip_false).patch_to(fs->pc);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge_skip = cfg.make_unconditional(skip_false);
+            edge_skip.patch_to(fs->pc);
             v->u.s.info = result_reg;
             v->k = ExpKind::NonReloc;
             op = nextop3;
@@ -1044,7 +1097,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
          this->pending_if_empty_colon = 0;
 
          if (v->t != NO_JMP) {
-            JumpListView(fs, v->t).patch_to(fs->pc);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge = cfg.make_true_edge(v->t);
+            edge.patch_to(fs->pc);
             v->t = NO_JMP;
          }
 
@@ -1055,15 +1110,17 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
             }
          }
 
-         expr_discharge(fs, &v2);
+         ExpressionValue v2_value(fs, v2);
+         v2_value.discharge();
          expr_free(fs, &v2);
 
          BCReg base = fs->freereg;
          BCReg arg_reg = base + 1 + LJ_FR2;
 
-         bcreg_reserve(fs, 1);
-         if (LJ_FR2) bcreg_reserve(fs, 1);
-         bcreg_reserve(fs, 1);
+         RegisterAllocator allocator(fs);
+         allocator.reserve(1);
+         if (LJ_FR2) allocator.reserve(1);
+         allocator.reserve(1);
 
          {
             ExpDesc callee;
@@ -1085,7 +1142,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
          v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
          v->u.s.aux = base;
          fs->freereg = base + 1;
-         expr_discharge(fs, v);
+         ExpressionValue v_value(fs, *v);
+         v_value.discharge();
+         *v = v_value.legacy();
 
          this->next();
 
@@ -1096,7 +1155,8 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
                this->synlevel_end();
                return ParserResult<BinOpr>::failure(after.error_ref());
             }
-            expr_discharge(fs, &dummy);
+            ExpressionValue dummy_value(fs, dummy);
+            dummy_value.discharge();
             expr_free(fs, &dummy);
             op = after.value_ref();
          }
@@ -1142,8 +1202,11 @@ ParserResult<ExpDesc> LexState::expr_next()
    if (not result.ok()) {
       return result;
    }
-   expr_tonextreg(this->fs, &expression);
-    return ParserResult<ExpDesc>::success(expression);
+   RegisterAllocator allocator(this->fs);
+   ExpressionValue value(this->fs, expression);
+   value.to_next_reg(allocator);
+   expression = value.legacy();
+   return ParserResult<ExpDesc>::success(expression);
 }
 
 //********************************************************************************************************************

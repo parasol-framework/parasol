@@ -64,6 +64,21 @@ void ControlFlowEdge::patch_head(BCPos Destination) const
    if (this->graph) this->graph->patch_edge_head(this->index, Destination);
 }
 
+void ControlFlowEdge::patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const
+{
+   if (this->graph) this->graph->patch_edge_with_value(this->index, ValueTarget, Register, DefaultTarget);
+}
+
+bool ControlFlowEdge::produces_values() const
+{
+   return this->graph ? this->graph->edge_produces_values(this->index) : false;
+}
+
+void ControlFlowEdge::drop_values() const
+{
+   if (this->graph) this->graph->drop_edge_values(this->index);
+}
+
 ControlFlowGraph::ControlFlowGraph() : func_state(nullptr)
 {
 }
@@ -192,6 +207,106 @@ void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
    if (entry.head IS NO_JMP) return;
    JumpListView(this->func_state, entry.head).patch_head(Destination);
    this->mark_resolved(Index);
+}
+
+void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)
+{
+   if (Index >= this->edges.size()) return;
+   EdgeEntry& entry = this->edges[Index];
+   if (entry.head IS NO_JMP) {
+      this->mark_resolved(Index);
+      return;
+   }
+
+   BCPos list = entry.head;
+   while (not(list IS NO_JMP)) {
+      BCPos next_pc = next_in_chain(this->func_state, list);
+      if (this->patch_test_register(list, Register)) {
+         this->patch_instruction(list, ValueTarget);
+      }
+      else {
+         this->patch_instruction(list, DefaultTarget);
+      }
+      list = next_pc;
+   }
+   this->mark_resolved(Index);
+}
+
+bool ControlFlowGraph::edge_produces_values(size_t Index) const
+{
+   if (Index >= this->edges.size()) return false;
+   const EdgeEntry& entry = this->edges[Index];
+   if (entry.head IS NO_JMP) return false;
+
+   for (BCPos list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
+      BCIns prior = this->func_state->bcbase[list >= 1 ? list - 1 : list].ins;
+      if (not(bc_op(prior) IS BC_ISTC or bc_op(prior) IS BC_ISFC or bc_a(prior) IS NO_REG)) {
+         return true;
+      }
+   }
+   return false;
+}
+
+void ControlFlowGraph::drop_edge_values(size_t Index)
+{
+   if (Index >= this->edges.size()) return;
+   EdgeEntry& entry = this->edges[Index];
+   if (entry.head IS NO_JMP) return;
+
+   for (BCPos list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
+      (void)this->patch_test_register(list, NO_REG);
+   }
+}
+
+BCPos ControlFlowGraph::next_in_chain(FuncState* State, BCPos Position)
+{
+   ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
+   if (BCPos(delta) IS NO_JMP) return NO_JMP;
+   return BCPos((ptrdiff_t(Position) + 1) + delta);
+}
+
+bool ControlFlowGraph::patch_test_register(BCPos Position, BCReg Register) const
+{
+   FuncState* fs = this->func_state;
+   BCInsLine* line = &fs->bcbase[Position >= 1 ? Position - 1 : Position];
+   BCOp op = bc_op(line->ins);
+
+   if (op IS BC_ISTC or op IS BC_ISFC) {
+      if (Register != NO_REG and Register != bc_d(line->ins)) {
+         setbc_a(&line->ins, Register);
+      }
+      else {
+         setbc_op(&line->ins, op + (BC_IST - BC_ISTC));
+         setbc_a(&line->ins, 0);
+      }
+   }
+   else if (bc_a(line->ins) IS NO_REG) {
+      if (Register IS NO_REG) {
+         line->ins = BCINS_AJ(BC_JMP, bc_a(fs->bcbase[Position].ins), 0);
+      }
+      else {
+         setbc_a(&line->ins, Register);
+         if (Register >= bc_a(line[1].ins)) {
+            setbc_a(&line[1].ins, Register + 1);
+         }
+      }
+   }
+   else {
+      return false;
+   }
+   return true;
+}
+
+void ControlFlowGraph::patch_instruction(BCPos Position, BCPos Destination) const
+{
+   FuncState* fs = this->func_state;
+   BCIns* instruction = &fs->bcbase[Position].ins;
+   BCPos offset = Destination - (Position + 1) + BCBIAS_J;
+   lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
+   if (offset > BCMAX_D) {
+      fs->ls->err_syntax(ErrMsg::XJUMP);
+   }
+   setbc_d(instruction, offset);
 }
 
 void ControlFlowGraph::finalize() const
