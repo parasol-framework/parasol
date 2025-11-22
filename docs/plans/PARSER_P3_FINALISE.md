@@ -1,6 +1,6 @@
 # Parser Phase 3 Finalization Plan
 
-**Status**: In Progress (Steps 1-3 Complete, Step 4 Batch 2a Complete)
+**Status**: In Progress (Steps 1-4 Complete - Batch 2 Fully Migrated)
 **Created**: 2025-11-22
 **Last Updated**: 2025-11-22
 **Dependencies**: PARSER_P3.md, PARSER_P3B.md (completed)
@@ -217,13 +217,46 @@ Searched for files with simple ControlFlowEdge API usage. **Finding**: No simple
 
 **Status**: ✅ Complete - 11 of 27 blocked sites migrated
 
+**Batch 2b: parse_operators.cpp (COMPLETE - 2025-11-22)**
+**Commit**: 89590265
+
+**Migration Complete**: All 17 JumpListView uses migrated to ControlFlowEdge
+
+**Functions Migrated**:
+1. `bcemit_binop_left()` - append(), patch_here() for OPR_IF_EMPTY
+2. `bcemit_presence_check()` - patch_to() for extended falsey checks (5 jumps total)
+3. `bcemit_binop()` - append() for OPR_AND/OR, patch_to() for OPR_IF_EMPTY (8 jumps total)
+4. `bcemit_unop()` - drop_values() for BC_NOT (2 jump lists)
+
+**Testing**:
+- All 65 Fluid parser tests passing (14 + 34 + 17)
+- Build successful, zero warnings
+- Zero JumpListView references remaining in file
+
+**Files Modified**:
+- `src/fluid/luajit-2.1/src/parser/parse_operators.cpp` - 17 uses eliminated
+
+**Status**: ✅ Complete - All 27 blocked sites migrated (11 + 16 = 27)
+
+## ✅ Completed Steps
+
+#### Step 4: Batch 2 Migration - Files Blocked by Missing API (COMPLETE - 2025-11-22)
+
+All 27 sites previously blocked by missing API methods have been successfully migrated:
+- Batch 2a: parse_regalloc.cpp - 11 uses (commit 57386366)
+- Batch 2b: parse_operators.cpp - 16 uses (commit 89590265)
+
+**Achievement**: With the new ControlFlowEdge methods (patch_with_value, produces_values, drop_values) implemented and tested, all files that were blocked by missing API functionality are now fully migrated to the modern ControlFlowEdge abstraction.
+
 ### 🔄 In Progress
 
-**Batch 2b: parse_operators.cpp**
+**Next Phase**: Evaluate remaining JumpListView usage sites
 
-**Remaining Work**: 16 additional blocked sites in parse_operators.cpp require migration
+According to PARSER_P3_FINALISE.md analysis, remaining sites fall into two categories:
+1. **Infrastructure files** (6 sites): parse_control_flow.cpp (3), parse_scope.cpp (3) - defer indefinitely
+2. **Raw BCPos manipulation** (30+ sites): parse_expr.cpp, parse_stmt.cpp - require design changes
 
-**Next Action**: Migrate parse_operators.cpp comparison/logical operators
+**Next Action**: Review and update migration strategy for remaining files
 
 ## Implementation Strategy
 
