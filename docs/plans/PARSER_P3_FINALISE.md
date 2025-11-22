@@ -1,6 +1,6 @@
 # Parser Phase 3 Finalization Plan
 
-**Status**: In Progress (Steps 1-2 Complete)
+**Status**: In Progress (Steps 1-3 Complete - Revised Batch 1)
 **Created**: 2025-11-22
 **Last Updated**: 2025-11-22
 **Dependencies**: PARSER_P3.md, PARSER_P3B.md (completed)
@@ -124,9 +124,8 @@ void ExpressionValue::set_flag(ExprFlag Flag) {
 
 **Status**: ✅ Complete analysis, ready for Batch 1 migration (easy files)
 
-### 🔄 In Progress
-
-#### Step 3: Batch 1 Migration - REVISED APPROACH
+#### Step 3: Batch 1 Migration - REVISED APPROACH (COMPLETE - 2025-11-22)
+**Commit**: 015a6fb9
 
 **Original Plan**: Migrate parse_control_flow.cpp (3 uses), parse_scope.cpp (3 uses)
 
@@ -164,16 +163,42 @@ Searched for files with simple ControlFlowEdge API usage. **Finding**: No simple
 
 **Conclusion**: No "easy Batch 1" exists. Must implement missing ControlFlowEdge methods first.
 
-**REVISED PLAN - New Batch 1**:
-- **Batch 1 = Implement Missing ControlFlowEdge Methods** (Phase 1: Infrastructure)
-  1. `patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)`
-  2. `produces_values() const`
-  3. `drop_values()`
-  4. Iterator support (optional but helpful)
+**REVISED PLAN - Batch 1 = Implement Missing ControlFlowEdge Methods**:
 
-- **Then Batch 2** = Migrate files blocked by missing methods (parse_regalloc.cpp, parse_operators.cpp)
+**Implementation Complete**:
+1. ✅ `patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)` - Conditionally patch jumps based on register test
+2. ✅ `produces_values() const` - Check if jump chain produces boolean values
+3. ✅ `drop_values()` - Remove value-producing flags from jump chain
 
-**Current Status**: Awaiting decision to proceed with revised Batch 1 (implement methods)
+**Helper Methods Added to ControlFlowGraph**:
+- `next_in_chain(FuncState*, BCPos)` - Iterate jump chain
+- `patch_test_register(BCPos, BCReg)` - Modify test/jump instructions
+- `patch_instruction(BCPos, BCPos)` - Patch single jump destination
+
+**Testing**:
+- All 65 Fluid parser test cases passing:
+  - test_compound: 14 tests passed
+  - test_if_empty: 34 tests passed
+  - test_catch: 17 tests passed
+- Build successful, zero warnings
+
+**Files Modified**:
+- `src/fluid/luajit-2.1/src/parser/parse_control_flow.h` - Added method declarations
+- `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` - Implemented methods (125 lines added)
+
+**Status**: ✅ Batch 1 complete - ControlFlowEdge API now feature-complete for migration
+
+### 🔄 In Progress
+
+#### Step 4: Batch 2 Migration - Files Blocked by Missing API
+
+**Now Ready**: With patch_with_value(), produces_values(), and drop_values() implemented, 27 previously blocked sites can now migrate.
+
+**Target Files**:
+- parse_regalloc.cpp (11 uses) - Register allocation jump interaction
+- parse_operators.cpp (17 uses, subset requiring new methods) - Comparison/logical operators
+
+**Next Action**: Migrate parse_regalloc.cpp as first Batch 2 target
 
 ## Implementation Strategy
 
