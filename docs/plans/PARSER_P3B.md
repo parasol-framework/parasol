@@ -235,9 +235,9 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 ## Implementation Order
 
 ### Week 1: Foundation
-- [ ] Day 1: Implement Phase 1.1 (ExpressionValue helpers)
-- [ ] Day 2: Implement Phase 1.2 (IrEmissionContext)
-- [ ] Day 3: Test foundation with simple example migration
+- [x] Day 1: Implement Phase 1.1 (ExpressionValue helpers)
+- [x] Day 2: Implement Phase 1.2 (IrEmissionContext)
+- [x] Day 3: Test foundation with simple example migration
 
 ### Week 2: Entry Points
 - [ ] Day 1: Phase 2.1 - IrEmitter threading (structure only)
@@ -296,3 +296,57 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
   - Foundation for future AST-only pipeline
 - Migration can be done incrementally without breaking existing code
 - Each phase provides value independently
+
+## Progress Tracking
+
+### Phase 1: Foundation - ✅ COMPLETE (2025-11-22)
+
+**Phase 1.1 - ExpressionValue Helper Methods:**
+- ✅ Implemented `to_val()` - Partial discharge (mirrors `expr_toval`)
+- ✅ Implemented `discharge_nobranch()` - Discharge without jumps (mirrors `expr_toreg_nobranch`)
+- ✅ Implemented `store_to()` - Store value to target (mirrors `bcemit_store`)
+- ✅ Implemented `discharge_to_any_reg()` - Combined discharge + register allocation
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/parse_value.h` - Added 4 helper method declarations
+- `src/fluid/luajit-2.1/src/parser/parse_value.cpp` - Implemented 4 helper methods
+
+**Phase 1.2 - IrEmissionContext Class:**
+- ✅ Created `IrEmissionContext` class bundling RegisterAllocator, ControlFlowGraph, and FuncState
+- ✅ Implemented `allocator()`, `cfg()`, and `state()` accessors
+- ✅ Added include for `parse_regalloc.h` in ir_emitter.h
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added IrEmissionContext class declaration
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Implemented IrEmissionContext methods
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ No regressions detected
+- ✅ Debug build compiles cleanly
+
+**Commit:** `0aff1243` - "Implement Phase 1: Foundation for stage 4 integration"
+
+### Phase 2: Entry Point Threading - ✅ COMPLETE (2025-11-22)
+
+**Phase 2.2 - Migrate Compound Assignment:**
+- ✅ Removed `duplicate_index_base()` helper function
+- ✅ Updated `emit_compound_assignment()` to use `RegisterAllocator::duplicate_table_operands()`
+- ✅ Updated `emit_if_empty_assignment()` to use `RegisterAllocator::duplicate_table_operands()`
+- ✅ Updated `emit_update_expr()` to use `RegisterAllocator::duplicate_table_operands()`
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Replaced 3 usages of manual table duplication
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ Specifically tested compound assignments (fluid_compound test)
+- ✅ Update expressions (++/--) work correctly
+- ✅ If-empty assignments (?=) work correctly
+- ✅ No regressions detected
+
+**Notes:**
+- Phase 2.1 (threading IrEmissionContext) was deferred as IrEmitter already has ControlFlowGraph member
+- Can be added incrementally later when needed for more complex migrations
+- RegisterAllocator::duplicate_table_operands() successfully replaces all manual duplication logic
+- RAII TableOperandCopies::reserved auto-releases, simplifying register management

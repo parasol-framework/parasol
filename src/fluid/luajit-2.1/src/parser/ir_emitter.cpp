@@ -283,22 +283,8 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    return 0;
 }
 
-static void duplicate_index_base(FuncState& func_state, ExpDesc& working, const ExpDesc& original)
-{
-   if (working.k IS ExpKind::Indexed) {
-      BCReg new_base = func_state.freereg;
-      bcemit_AD(&func_state, BC_MOV, new_base, BCReg(original.u.s.info));
-      bcreg_reserve(&func_state, 1);
-      working.u.s.info = new_base;
-      uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) {
-         BCReg new_idx = func_state.freereg;
-         bcemit_AD(&func_state, BC_MOV, new_idx, BCReg(orig_aux));
-         bcreg_reserve(&func_state, 1);
-         working.u.s.aux = new_idx;
-      }
-   }
-}
+// Phase 2.2: Replaced with RegisterAllocator::duplicate_table_operands()
+// This function is now deprecated - use the allocator method instead
 
 static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 {
@@ -1022,8 +1008,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
+
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
 
    ExpDesc rhs;
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
@@ -1076,8 +1065,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
 
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
+
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
 
    ExpDesc lhs_eval = working;
    expr_discharge(&this->func_state, &lhs_eval);
@@ -1265,8 +1257,11 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    }
 
    ExpDesc target = target_result.value_ref();
-   ExpDesc working = target;
-   duplicate_index_base(this->func_state, working, target);
+
+   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   ExpDesc working = copies.duplicated;
 
    BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
    ExpDesc operand = working;
