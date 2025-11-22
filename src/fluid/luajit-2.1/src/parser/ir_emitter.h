@@ -14,6 +14,7 @@
 #include "parser/ast_nodes.h"
 #include "parser/parser_context.h"
 #include "parser/parse_control_flow.h"
+#include "parser/parse_regalloc.h"
 #include "parser/parse_types.h"
 
 struct LocalBindingEntry {
@@ -55,6 +56,21 @@ private:
 };
 
 struct IrEmitUnit {
+};
+
+// Phase 1.2: IR emission context that bundles allocator, CFG, and FuncState
+class IrEmissionContext {
+public:
+   explicit IrEmissionContext(FuncState* State);
+
+   [[nodiscard]] RegisterAllocator& allocator();
+   [[nodiscard]] ControlFlowGraph& cfg();
+   [[nodiscard]] FuncState* state() const;
+
+private:
+   FuncState* func_state;
+   RegisterAllocator register_allocator;
+   ControlFlowGraph control_flow_graph;
 };
 
 class IrEmitter {

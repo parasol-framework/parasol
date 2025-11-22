@@ -67,6 +67,28 @@ LocalBindingScope::~LocalBindingScope()
    this->table.pop_scope();
 }
 
+// Phase 1.2: IR emission context implementation
+
+IrEmissionContext::IrEmissionContext(FuncState* State)
+   : func_state(State), register_allocator(State), control_flow_graph(State)
+{
+}
+
+RegisterAllocator& IrEmissionContext::allocator()
+{
+   return this->register_allocator;
+}
+
+ControlFlowGraph& IrEmissionContext::cfg()
+{
+   return this->control_flow_graph;
+}
+
+FuncState* IrEmissionContext::state() const
+{
+   return this->func_state;
+}
+
 namespace {
 
 constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;

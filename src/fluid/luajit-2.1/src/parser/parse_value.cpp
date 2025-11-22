@@ -174,3 +174,26 @@ ExpressionValue::operator const ExpDesc&() const
    return this->descriptor;
 }
 
+// Phase 1.1 helper methods for gradual migration
+
+void ExpressionValue::to_val()
+{
+   expr_toval(this->func_state, &this->descriptor);
+}
+
+void ExpressionValue::discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg)
+{
+   expr_toreg_nobranch(Allocator.state(), &this->descriptor, Reg);
+}
+
+void ExpressionValue::store_to(RegisterAllocator& Allocator, ExpressionValue& Target)
+{
+   bcemit_store(Allocator.state(), &Target.descriptor, &this->descriptor);
+}
+
+BCReg ExpressionValue::discharge_to_any_reg(RegisterAllocator& Allocator)
+{
+   this->discharge();
+   return this->to_any_reg(Allocator);
+}
+
