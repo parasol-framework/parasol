@@ -2,7 +2,7 @@
 
 // Add a number constant.
 
-[[nodiscard]] BCReg const_num(FuncState* fs, ExpDesc* e)
+[[nodiscard]] static BCReg const_num(FuncState* fs, ExpDesc* e)
 {
    lua_State* L = fs->L;
    TValue* o;
@@ -15,7 +15,7 @@
 
 // Add a GC object constant.
 
-[[nodiscard]] BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
+[[nodiscard]] static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 {
    lua_State* L = fs->L;
    TValue key, * o;
@@ -29,7 +29,7 @@
 
 // Add a string constant.
 
-[[nodiscard]] BCReg const_str(FuncState* fs, ExpDesc* e)
+[[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
 {
    lj_assertFS(expr_isstrk(e) or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);

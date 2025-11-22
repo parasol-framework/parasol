@@ -2,7 +2,6 @@
 //
 // Copyright (C) 2025 Paul Manias
 
-#define lj_parse_c
 #define LUA_CORE
 
 #include "lj_obj.h"
@@ -43,17 +42,19 @@ static const struct {
 };
 
 #include "parser/token_types.h"
+#include "parser/parse_types.h"
+#include "parser/parse_internal.h"
+#include "parser/parser_profiler.h"
+#include "../../../defs.h"
+
 #include "parser/token_types.cpp"
 #include "parser/token_stream.cpp"
 #include "parser/parser_diagnostics.cpp"
-#include "parser/parser_profiler.h"
 #include "parser/parser_context.cpp"
 #include "parser/ast_nodes.cpp"
 #include "parser/ast_builder.cpp"
 #include "parser/parse_control_flow.cpp"
 #include "parser/ir_emitter.cpp"
-#include "parser/parse_types.h"
-#include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"
 #include "parser/parse_constants.cpp"
 #include "parser/parse_scope.cpp"
@@ -61,7 +62,6 @@ static const struct {
 #include "parser/parse_expr.cpp"
 #include "parser/parse_operators.cpp"
 #include "parser/parse_stmt.cpp"
-#include "../../../defs.h"
 
 static constexpr size_t kMaxLoggedStatements = 12;
 
