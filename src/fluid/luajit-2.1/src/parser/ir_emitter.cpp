@@ -18,6 +18,9 @@
 #include "parser/parse_value.h"
 #include "parser/token_types.h"
 
+//********************************************************************************************************************
+// TODO: Move small LocalBindingTable functions to the header for inlining.
+
 LocalBindingTable::LocalBindingTable() = default;
 
 void LocalBindingTable::push_scope()
@@ -68,7 +71,7 @@ LocalBindingScope::~LocalBindingScope()
    this->table.pop_scope();
 }
 
-// Phase 1.2: IR emission context implementation
+// IR emission context implementation
 
 IrEmissionContext::IrEmissionContext(FuncState* State)
    : func_state(State), register_allocator(State), control_flow_graph(State)
@@ -116,10 +119,14 @@ private:
 
 UnsupportedNodeRecorder glUnsupportedNodes;
 
+//********************************************************************************************************************
+
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
    return identifier.is_blank or identifier.symbol IS nullptr;
 }
+
+//********************************************************************************************************************
 
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
@@ -149,6 +156,8 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    }
 }
 
+//********************************************************************************************************************
+
 [[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
 {
    switch (op) {
@@ -162,10 +171,14 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    }
 }
 
+//********************************************************************************************************************
+
 [[nodiscard]] static bool is_register_key(uint32_t aux)
 {
    return (int32_t(aux) >= 0) and (aux <= BCMAX_C);
 }
+
+//********************************************************************************************************************
 
 [[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
 {
@@ -251,6 +264,8 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    return ref;
 }
 
+//********************************************************************************************************************
+
 [[nodiscard]] static int predict_next(LexState& lex_state, FuncState& func_state, BCPos pc)
 {
    BCIns ins = func_state.bcbase[pc].ins;
@@ -284,8 +299,8 @@ UnsupportedNodeRecorder glUnsupportedNodes;
    return 0;
 }
 
-// Phase 2.2: Replaced with RegisterAllocator::duplicate_table_operands()
-// This function is now deprecated - use the allocator method instead
+//********************************************************************************************************************
+// TODO: This function is now deprecated - use the allocator method instead
 
 static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 {
@@ -293,6 +308,8 @@ static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
    if (target < func_state->nactvar) target = BCReg(func_state->nactvar);
    if (func_state->freereg > target) func_state->freereg = target;
 }
+
+//********************************************************************************************************************
 
 static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
 {
@@ -316,6 +333,8 @@ IrEmitter::IrEmitter(ParserContext& context)
 {
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
 {
    this->control_flow.reset(&this->func_state);
@@ -326,7 +345,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    this->control_flow.finalize();
 
 #if LJ_DEBUG
-   // Phase 3 Stage 5: Verify no register leaks at function exit
+   // Verify no register leaks at function exit
    RegisterAllocator verifier(&this->func_state);
    verifier.verify_no_leaks("function exit");
 #endif
@@ -338,6 +357,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_block(const BlockStmt& block, FuncScope
 {
    return this->emit_block_with_bindings(block, flags, std::span<const BlockBinding>());
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
    const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings)
@@ -355,6 +376,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
    }
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 {
@@ -428,6 +451,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    }
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPayload& payload)
 {
    if (not payload.expression) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -443,6 +468,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& payload)
 {
@@ -495,6 +522,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
 {
    BCReg nvars = BCReg(payload.names.size());
@@ -526,6 +555,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload& payload)
 {
@@ -644,7 +675,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    loop.patch_head(fs->pc);
 
 #if LJ_DEBUG
-   // Phase 3 Stage 5: Verify no register leaks at loop exit
+   // Verify no register leaks at loop exit
    RegisterAllocator verifier(fs);
    verifier.verify_no_leaks("while loop exit");
 #endif
@@ -698,7 +729,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    fscope_loop_continue(fs, iter);
 
 #if LJ_DEBUG
-   // Phase 3 Stage 5: Verify no register leaks at loop exit
+   // Verify no register leaks at loop exit
    RegisterAllocator verifier(fs);
    verifier.verify_no_leaks("repeat loop exit");
 #endif
@@ -920,6 +951,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload&)
 {
    FuncScope* loop = find_loop_scope(this->func_state);
@@ -933,6 +966,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    (void)idx;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPayload& payload)
 {
@@ -966,8 +1001,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
    return this->emit_compound_assignment(payload.op, target, payload.values);
 }
 
-ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> targets,
-   const ExprNodeList& values)
+//********************************************************************************************************************
+
+ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> targets, const ExprNodeList& values)
 {
    BCReg nvars = BCReg(targets.size());
    if (nvars IS 0) {
@@ -1021,8 +1057,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
-ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op,
-   ExpDesc target, const ExprNodeList& values)
+//********************************************************************************************************************
+
+ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, ExpDesc target, const ExprNodeList& values)
 {
    auto mapped = map_assignment_operator(op);
    if (not mapped.has_value()) {
@@ -1041,7 +1078,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
 
-   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
@@ -1088,8 +1125,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
-ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
-   const ExprNodeList& values)
+//********************************************************************************************************************
+
+ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target, const ExprNodeList& values)
 {
    if (values.empty() or not vkisvar(target.k)) {
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
@@ -1098,12 +1136,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
 
-   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
-   // Phase 3: Use ExpressionValue for discharge operations
+   // Use ExpressionValue for discharge operations
    ExpressionValue lhs_value(&this->func_state, working);
    BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
@@ -1156,6 +1194,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
 {
    // Update lexer's last line so bytecode emission uses correct line numbers.
@@ -1195,43 +1235,45 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
    }
 }
 
+//********************************************************************************************************************
+
 ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& expr)
 {
    auto condition = this->emit_expression(expr);
-   if (not condition.ok()) {
-      return ParserResult<ControlFlowEdge>::failure(condition.error_ref());
-   }
+   if (not condition.ok()) return ParserResult<ControlFlowEdge>::failure(condition.error_ref());
    ExpDesc result = condition.value_ref();
-   if (result.k IS ExpKind::Nil) {
-      result.k = ExpKind::False;
-   }
+   if (result.k IS ExpKind::Nil) result.k = ExpKind::False;
    bcemit_branch_t(&this->func_state, &result);
    return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(result.f));
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 {
    ExpDesc expr;
    switch (literal.kind) {
-   case LiteralKind::Nil:
-      expr = make_nil_expr();
-      break;
-   case LiteralKind::Boolean:
-      expr = make_bool_expr(literal.bool_value);
-      break;
-   case LiteralKind::Number:
-      expr = make_num_expr(literal.number_value);
-      break;
-   case LiteralKind::String:
-      expr = make_interned_string_expr(literal.string_value);
-      break;
-   case LiteralKind::CData:
-      expr_init(&expr, ExpKind::CData, 0);
-      expr.u.nval = literal.cdata_value;
-      break;
+      case LiteralKind::Nil:
+         expr = make_nil_expr();
+         break;
+      case LiteralKind::Boolean:
+         expr = make_bool_expr(literal.bool_value);
+         break;
+      case LiteralKind::Number:
+         expr = make_num_expr(literal.number_value);
+         break;
+      case LiteralKind::String:
+         expr = make_interned_string_expr(literal.string_value);
+         break;
+      case LiteralKind::CData:
+         expr_init(&expr, ExpKind::CData, 0);
+         expr.u.nval = literal.cdata_value;
+         break;
    }
    return ParserResult<ExpDesc>::success(expr);
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 {
@@ -1239,6 +1281,8 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
    this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
    return ParserResult<ExpDesc>::success(resolved);
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 {
@@ -1252,54 +1296,50 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
    return ParserResult<ExpDesc>::success(expr);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload)
 {
-   if (not payload.operand) {
-      return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
-   }
+   if (not payload.operand) return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
    auto operand_result = this->emit_expression(*payload.operand);
-   if (not operand_result.ok()) {
-      return operand_result;
-   }
+   if (not operand_result.ok()) return operand_result;
    ExpDesc operand = operand_result.value_ref();
    switch (payload.op) {
-   case AstUnaryOperator::Negate:
-      bcemit_unop(&this->func_state, BC_UNM, &operand);
-      break;
-   case AstUnaryOperator::Not:
-      bcemit_unop(&this->func_state, BC_NOT, &operand);
-      break;
-   case AstUnaryOperator::Length:
-      bcemit_unop(&this->func_state, BC_LEN, &operand);
-      break;
-   case AstUnaryOperator::BitNot:
-      bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
-      break;
+      case AstUnaryOperator::Negate:
+         bcemit_unop(&this->func_state, BC_UNM, &operand);
+         break;
+      case AstUnaryOperator::Not:
+         bcemit_unop(&this->func_state, BC_NOT, &operand);
+         break;
+      case AstUnaryOperator::Length:
+         bcemit_unop(&this->func_state, BC_LEN, &operand);
+         break;
+      case AstUnaryOperator::BitNot:
+         bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
+         break;
    }
    return ParserResult<ExpDesc>::success(operand);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& payload)
 {
-   if (not payload.target) {
-      return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
-   }
+   if (not payload.target) return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
 
    auto target_result = this->emit_lvalue_expr(*payload.target);
-   if (not target_result.ok()) {
-      return target_result;
-   }
+   if (not target_result.ok()) return target_result;
 
    ExpDesc target = target_result.value_ref();
 
-   // Phase 2.2: Use RegisterAllocator::duplicate_table_operands()
+   // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
    BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
 
-   // Phase 3: Use ExpressionValue for discharge operations
+   // Use ExpressionValue for discharge operations
    ExpressionValue operand_value(&this->func_state, working);
    BCReg operand_reg = operand_value.discharge_to_any_reg(allocator);
 
@@ -1350,6 +1390,8 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    return ParserResult<ExpDesc>::success(lhs);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& payload)
 {
    if (not payload.condition or not payload.if_true or not payload.if_false) {
@@ -1359,7 +1401,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    auto condition_result = this->emit_expression(*payload.condition);
    if (not condition_result.ok()) return condition_result;
 
-   // Phase 3: Use ExpressionValue and RegisterAllocator
+   // Use ExpressionValue and RegisterAllocator
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
    BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
@@ -1409,6 +1451,8 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    return ParserResult<ExpDesc>::success(result);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& payload)
 {
    SourceSpan span = payload.value ? payload.value->span : SourceSpan{};
@@ -1419,6 +1463,8 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& p
    bcemit_presence_check(&this->func_state, &value);
    return ParserResult<ExpDesc>::success(value);
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& payload)
 {
@@ -1439,11 +1485,12 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& paylo
    return ParserResult<ExpDesc>::success(table);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload)
 {
-   if (not payload.table or not payload.index) {
-      return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
-   }
+   if (not payload.table or not payload.index) return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
+
    auto table_result = this->emit_expression(*payload.table);
    if (not table_result.ok()) return table_result;
    ExpDesc table = table_result.value_ref();
@@ -1462,6 +1509,8 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
 {
@@ -1524,7 +1573,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
    return ParserResult<ExpDesc>::success(result);
 }
 
-ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload)
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &payload)
 {
    FuncState* fs = &this->func_state;
    GCtab* template_table = nullptr;
@@ -1548,35 +1599,37 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
       vcall = 0;
 
       switch (field.kind) {
-      case TableFieldKind::Computed: {
-         if (not field.key) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
-         auto key_result = this->emit_expression(*field.key);
-         if (not key_result.ok()) return key_result;
-         key = key_result.value_ref();
-         ExpressionValue key_toval(fs, key);
-         key_toval.to_val();
-         key = key_toval.legacy();
-         if (not expr_isk(&key)) expr_index(fs, &table, &key);
-         if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
-         else nhash++;
-         break;
-      }
-      case TableFieldKind::Record: {
-         if (not field.name.has_value() or field.name->symbol IS nullptr) {
-            return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+         case TableFieldKind::Computed: {
+            if (not field.key) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+            auto key_result = this->emit_expression(*field.key);
+            if (not key_result.ok()) return key_result;
+            key = key_result.value_ref();
+            ExpressionValue key_toval(fs, key);
+            key_toval.to_val();
+            key = key_toval.legacy();
+            if (not expr_isk(&key)) expr_index(fs, &table, &key);
+            if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
+            else nhash++;
+            break;
          }
-         key = make_interned_string_expr(field.name->symbol);
-         nhash++;
-         break;
-      }
-      case TableFieldKind::Array:
-      default: {
-         expr_init(&key, ExpKind::Num, 0);
-         setintV(&key.u.nval, int(narr));
-         narr++;
-         needarr = vcall = 1;
-         break;
-      }
+
+         case TableFieldKind::Record: {
+            if (not field.name.has_value() or field.name->symbol IS nullptr) {
+               return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
+            }
+            key = make_interned_string_expr(field.name->symbol);
+            nhash++;
+            break;
+         }
+
+         case TableFieldKind::Array:
+         default: {
+            expr_init(&key, ExpKind::Num, 0);
+            setintV(&key.u.nval, int(narr));
+            narr++;
+            needarr = vcall = 1;
+            break;
+         }
       }
 
       auto value_result = this->emit_expression(*field.value);
@@ -1597,6 +1650,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
             kidx = const_gc(fs, obj2gco(template_table), LJ_TTAB);
             fs->bcbase[pc].ins = BCINS_AD(BC_TDUP, freg - 1, kidx);
          }
+
          vcall = 0;
          expr_kvalue(fs, &k, &key);
          slot = lj_tab_set(fs->L, template_table, &k);
@@ -1618,9 +1672,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
             val = val_value.legacy();
             vcall = 0;
          }
-         if (expr_isk(&key)) {
-            expr_index(fs, &table, &key);
-         }
+         if (expr_isk(&key)) expr_index(fs, &table, &key);
          bcemit_store(fs, &table, &val);
       }
    }
@@ -1672,11 +1724,11 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
    return ParserResult<ExpDesc>::success(table);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& payload)
 {
-   if (not payload.body) {
-      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
-   }
+   if (not payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    FuncState child_state;
    ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
@@ -1750,11 +1802,11 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    return ParserResult<ExpDesc>::success(expr);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& path)
 {
-   if (path.segments.empty()) {
-      return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
-   }
+   if (path.segments.empty()) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    NameRef base_ref = make_name_ref(path.segments.front());
    auto base_expr = this->emit_identifier_expr(base_ref);
@@ -1799,6 +1851,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
    expr_index(&this->func_state, &target, &key);
    return ParserResult<ExpDesc>::success(target);
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 {
@@ -1865,12 +1919,12 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
    }
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expressions, BCReg& count)
 {
    count = 0;
-   if (expressions.empty()) {
-      return ParserResult<ExpDesc>::success(make_const_expr(ExpKind::Void));
-   }
+   if (expressions.empty()) return ParserResult<ExpDesc>::success(make_const_expr(ExpKind::Void));
 
    ExpDesc last = make_const_expr(ExpKind::Void);
    bool first = true;
@@ -1886,6 +1940,8 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
    }
    return ParserResult<ExpDesc>::success(last);
 }
+
+//********************************************************************************************************************
 
 ParserResult<std::vector<ExpDesc>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
 {
@@ -1909,6 +1965,8 @@ ParserResult<std::vector<ExpDesc>> IrEmitter::prepare_assignment_targets(const E
    }
    return ParserResult<std::vector<ExpDesc>>::success(std::move(lhs));
 }
+
+//********************************************************************************************************************
 
 std::optional<BCReg> IrEmitter::resolve_local(GCstr* symbol) const
 {

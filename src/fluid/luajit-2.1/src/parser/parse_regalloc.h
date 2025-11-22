@@ -8,6 +8,8 @@ struct FuncState;
 
 class RegisterAllocator;
 
+//********************************************************************************************************************
+
 class RegisterSpan {
 public:
    RegisterSpan() : allocator_(nullptr), start_(0), count_(0), expected_top_(0) {}
@@ -49,6 +51,8 @@ private:
    BCReg expected_top_;
 };
 
+//********************************************************************************************************************
+
 class AllocatedRegister {
 public:
    AllocatedRegister() : allocator_(nullptr), index_(NO_REG), expected_top_(0) {}
@@ -87,10 +91,14 @@ private:
    BCReg expected_top_;
 };
 
+//********************************************************************************************************************
+
 struct TableOperandCopies {
    ExpDesc duplicated;
    RegisterSpan reserved;
 };
+
+//********************************************************************************************************************
 
 class RegisterAllocator {
 public:

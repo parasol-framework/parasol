@@ -31,19 +31,19 @@ The LuaJIT parser living in `src/fluid/luajit-2.1/src/parser` was mechanically c
 
 ## Proposed Redesign (Phased)
 
-### Phase 1 – Build a modern parser context and typed token stream
+### Phase 1 – Build a modern parser context and typed token stream [DONE]
 1. Introduce a `ParserContext` object that owns `LexState`, `FuncState`, allocator references, and an error collector. Provide lightweight `ParserResult`/`ParserStatus` structs (or `std::expected` equivalents) so helpers can return status without throwing.
 2. Replace ad-hoc token helpers with a `TokenView`/`Lookahead` class that exposes typed tokens (`enum class TokenKind` + payload variant) so expression/statement parsers can work with strongly-typed data instead of re-reading `LexState` globals.
 3. Wrap common operations (`match`, `consume`, `expect`) in context-aware methods that record errors instead of immediately aborting, laying the groundwork for better diagnostics.
 4. Update existing modules to consume the new interfaces while still emitting bytecode directly; this phase focuses on isolating state and clarifying APIs so subsequent phases can swap implementations underneath.
 
-### Phase 2 – Introduce an intermediate AST/IR layer
+### Phase 2 – Introduce an intermediate AST/IR layer [DONE]
 1. Define lightweight AST/IR node types (e.g., `ExprNode`, `StmtNode`) that capture the semantic structure of Fluid code without binding to registers. Use `std::variant`, `std::vector`, and `std::unique_ptr` to express recursive shapes.
 2. Rework `expr_*` and `stmt_*` functions to build AST nodes using the new typed tokens, leaving `FuncState` untouched during parsing. Error recovery can now operate on AST boundaries.
 3. Implement an `IrEmitter` pass that walks the AST and emits LuaJIT bytecode, retaining optimised patterns (folding, table templates) but isolating them from syntax parsing. This emitter becomes the sole owner of `FuncState` and register allocation.
 4. Provide hooks for future passes (e.g., AST transforms for new Fluid features) by designing the node structures and traversal APIs with extensibility in mind.
 
-### Phase 3 – Rebuild register, jump, and expression management
+### Phase 3 – Rebuild register, jump, and expression management [DONE]
 1. Replace the global register helpers with a `RegisterAllocator` class that enforces lifetimes via RAII objects (e.g., `AllocatedRegister`, `RegisterSpan`). This allocator should expose explicit methods for duplicating table bases/indexes so compound operations no longer need to hand-roll copies.【F:src/fluid/luajit-2.1/src/parser/parse_stmt.cpp†L184-L212】
 2. Encapsulate `ExpDesc` behaviour inside a class hierarchy or tagged union that knows how to discharge itself into the allocator, removing the need for external functions such as `expr_discharge`. Persist convenient constructors (nil/number/string) but hide raw flag manipulation behind methods.
 3. Turn `JumpListView` into a higher-level `ControlFlowGraph` helper that models pending jumps as structured nodes instead of patching BC instructions inline. The emitter can then translate CFG edges into BC when finalising a block, greatly reducing manual patching sites.【F:src/fluid/luajit-2.1/src/parser/parse_internal.h†L29-L69】

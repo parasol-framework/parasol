@@ -1,7 +1,6 @@
+// Copyright (C) 2025 Paul Manias
+//
 // IR emission pass that lowers AST nodes to LuaJIT bytecode.
-// Part of Phase 2 Step 3 documented in docs/plans/PARSER_P2.md. This visitor
-// consumes the BlockStmt returned by AstBuilder::parse_chunk(), providing the
-// parse/emission handshake described in docs/plans/PARSER_P2.md Step 4.
 
 #pragma once
 
@@ -18,13 +17,13 @@
 #include "parser/parse_types.h"
 
 struct LocalBindingEntry {
-   GCstr* symbol = nullptr;
+   GCstr *symbol = nullptr;
    BCReg slot = 0;
    uint32_t depth = 0;
 };
 
 struct BlockBinding {
-   GCstr* symbol = nullptr;
+   GCstr *symbol = nullptr;
    BCReg slot = 0;
 };
 
@@ -35,7 +34,7 @@ public:
    void push_scope();
    void pop_scope();
    void add(GCstr* symbol, BCReg slot);
-   [[nodiscard]] std::optional<BCReg> resolve(GCstr* symbol) const;
+   [[nodiscard]] std::optional<BCReg> resolve(GCstr *) const;
 
 private:
    std::vector<LocalBindingEntry> bindings;
@@ -45,11 +44,11 @@ private:
 
 class LocalBindingScope {
 public:
-   explicit LocalBindingScope(LocalBindingTable& table);
+   explicit LocalBindingScope(LocalBindingTable &table);
    ~LocalBindingScope();
 
-   LocalBindingScope(const LocalBindingScope&) = delete;
-   LocalBindingScope& operator=(const LocalBindingScope&) = delete;
+   LocalBindingScope(const LocalBindingScope &) = delete;
+   LocalBindingScope& operator=(const LocalBindingScope &) = delete;
 
 private:
    LocalBindingTable& table;
@@ -58,14 +57,15 @@ private:
 struct IrEmitUnit {
 };
 
-// Phase 1.2: IR emission context that bundles allocator, CFG, and FuncState
+// IR emission context that bundles allocator, CFG, and FuncState
+
 class IrEmissionContext {
 public:
    explicit IrEmissionContext(FuncState* State);
 
-   [[nodiscard]] RegisterAllocator& allocator();
-   [[nodiscard]] ControlFlowGraph& cfg();
-   [[nodiscard]] FuncState* state() const;
+   [[nodiscard]] RegisterAllocator & allocator();
+   [[nodiscard]] ControlFlowGraph & cfg();
+   [[nodiscard]] FuncState * state() const;
 
 private:
    FuncState* func_state;
@@ -87,8 +87,7 @@ private:
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
-   ParserResult<IrEmitUnit> emit_block_with_bindings(const BlockStmt& block, FuncScopeFlag flags,
-      std::span<const BlockBinding> bindings);
+   ParserResult<IrEmitUnit> emit_block_with_bindings(const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings);
    ParserResult<IrEmitUnit> emit_statement(const StmtNode& stmt);
    ParserResult<IrEmitUnit> emit_expression_stmt(const ExpressionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_return_stmt(const ReturnStmtPayload& payload);
@@ -104,12 +103,9 @@ private:
    ParserResult<IrEmitUnit> emit_break_stmt(const BreakStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_continue_stmt(const ContinueStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
-   ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<ExpDesc> targets,
-      const ExprNodeList& values);
-   ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op,
-      ExpDesc target, const ExprNodeList& values);
-   ParserResult<IrEmitUnit> emit_if_empty_assignment(ExpDesc target,
-      const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<ExpDesc> targets, const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, ExpDesc target, const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_if_empty_assignment(ExpDesc target, const ExprNodeList& values);
 
    ParserResult<ExpDesc> emit_expression(const ExprNode& expr);
    ParserResult<ExpDesc> emit_literal_expr(const LiteralValue& literal);

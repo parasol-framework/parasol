@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Paul Manias
+
 #include <format>
 #include <string>
 
@@ -110,24 +112,24 @@ static void expr_collapse_freereg(FuncState *State, BCReg result_reg)
 static int token_starts_expression(LexToken tok)
 {
    switch (tok) {
-   case TK_number:
-   case TK_string:
-   case TK_nil:
-   case TK_true:
-   case TK_false:
-   case TK_dots:
-   case TK_function:
-   case TK_name:
-   case '{':
-   case '(':
-   case TK_not:
-   case TK_plusplus:
-   case '-':
-   case '~':
-   case '#':
-      return 1;
-   default:
-      return 0;
+      case TK_number:
+      case TK_string:
+      case TK_nil:
+      case TK_true:
+      case TK_false:
+      case TK_dots:
+      case TK_function:
+      case TK_name:
+      case '{':
+      case '(':
+      case TK_not:
+      case TK_plusplus:
+      case '-':
+      case '~':
+      case '#':
+         return 1;
+      default:
+         return 0;
    }
 }
 
@@ -165,13 +167,14 @@ static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 
 void LexState::expr_table(ExpDesc* Expression)
 {
-   FuncState* fs = this->fs;
+   FuncState *fs = this->fs;
    BCLine line = this->linenumber;
-   GCtab* t = nullptr;
+   GCtab *t = nullptr;
    int vcall = 0, needarr = 0, fixt = 0;
    uint32_t narr = 1;  // First array index.
    uint32_t nhash = 0;  // Number of hash entries.
    BCReg freg = fs->freereg;
+
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    expr_init(Expression, ExpKind::NonReloc, freg);
    RegisterAllocator allocator(fs);
@@ -267,9 +270,7 @@ void LexState::expr_table(ExpDesc* Expression)
       fs->freereg--;
       Expression->k = ExpKind::Relocable;
    }
-   else {
-      Expression->k = ExpKind::NonReloc;  // May have been changed by expr_index.
-   }
+   else Expression->k = ExpKind::NonReloc;  // May have been changed by expr_index.
 
    if (not t) {  // Construct TNEW RD:
       BCIns *ip = &fs->bcbase[pc].ins;
@@ -279,8 +280,7 @@ void LexState::expr_table(ExpDesc* Expression)
       setbc_d(ip, narr | (hsize2hbits(nhash) << 11));
    }
    else {
-      if (needarr and t->asize < narr)
-         lj_tab_reasize(fs->L, t, narr - 1);
+      if (needarr and t->asize < narr) lj_tab_reasize(fs->L, t, narr - 1);
       if (fixt) {  // Fix value for dummy keys in template table.
          Node *node = noderef(t->node);
          uint32_t i, hmask = t->hmask;
@@ -303,24 +303,23 @@ void LexState::expr_table(ExpDesc* Expression)
 {
    FuncState* fs = this->fs;
    BCReg nparams = 0;
+
    this->lex_check('(');
-   if (NeedSelf)
-      this->var_new_lit(nparams++, "self");
+   
+   if (NeedSelf) this->var_new_lit(nparams++, "self");
+   
    if (this->tok != ')') {
       do {
-         if (this->tok IS TK_name) {
-            this->var_new(nparams++, this->lex_str());
-         }
+         if (this->tok IS TK_name) this->var_new(nparams++, this->lex_str());
          else if (this->tok IS TK_dots) {
             this->next();
             fs->flags |= PROTO_VARARG;
             break;
          }
-         else {
-            this->err_syntax(ErrMsg::XPARAM);
-         }
+         else this->err_syntax(ErrMsg::XPARAM);
       } while (this->lex_opt(','));
    }
+
    this->var_add(nparams);
    lj_assertFS(fs->nactvar IS nparams, "bad regalloc");
    RegisterAllocator allocator(fs);
@@ -331,8 +330,7 @@ void LexState::expr_table(ExpDesc* Expression)
 
 //********************************************************************************************************************
 
-[[maybe_unused]] void LexState::parse_body_impl(ExpDesc* Expression, int NeedSelf,
-   BCLine Line, int OptionalParams)
+[[maybe_unused]] void LexState::parse_body_impl(ExpDesc* Expression, int NeedSelf, BCLine Line, int OptionalParams)
 {
    FuncState fs, * parent_state = this->fs;
    ParserAllocator allocator = ParserAllocator::from(this->L);
@@ -345,13 +343,13 @@ void LexState::expr_table(ExpDesc* Expression)
    this->fs_init(&fs);
    fscope_begin(&fs, &bl, FuncScopeFlag::None);
    fs.linedefined = Line;
+
    if (OptionalParams and this->tok != '(') {
       this->assert_condition(not NeedSelf, "optional parameters require explicit self");
       fs.numparams = 0;
    }
-   else {
-      fs.numparams = uint8_t(this->parse_params(NeedSelf));
-   }
+   else fs.numparams = uint8_t(this->parse_params(NeedSelf));
+
    fs.bcbase = parent_state->bcbase + parent_state->pc;
    fs.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&fs, BC_FUNCF, 0, 0);  // Placeholder.
@@ -361,16 +359,14 @@ void LexState::expr_table(ExpDesc* Expression)
    parent_state->bcbase = this->bcstack + oldbase;  // May have been reallocated.
    parent_state->bclim = BCPos(this->sizebcstack - oldbase);
    // Store new prototype in the constant array of the parent.
-   expr_init(Expression, ExpKind::Relocable,
-      bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
+   expr_init(Expression, ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
 #if LJ_HASFFI
    parent_state->flags |= (fs.flags & PROTO_FFI);
 #endif
 
    if (not (parent_state->flags & PROTO_CHILD)) {
-      if (parent_state->flags & PROTO_HAS_RETURN)
-         parent_state->flags |= PROTO_FIXUP_RETURN;
+      if (parent_state->flags & PROTO_HAS_RETURN) parent_state->flags |= PROTO_FIXUP_RETURN;
       parent_state->flags |= PROTO_CHILD;
    }
    this->next();
@@ -414,9 +410,8 @@ ParserResult<BCReg> LexState::expr_list(ExpDesc* Expression)
 {
    BCReg n = 1;
    auto first = this->expr(Expression);
-   if (not first.ok()) {
-      return ParserResult<BCReg>::failure(first.error_ref());
-   }
+   if (not first.ok()) return ParserResult<BCReg>::failure(first.error_ref());
+
    RegisterAllocator allocator(this->fs);
    while (this->lex_opt(',')) {
       ExpressionValue value(this->fs, *Expression);
@@ -620,53 +615,59 @@ static ParserResult<ExpDesc> expr_simple_with_context(ParserContext &Context, Ex
    Token current = Context.tokens().current();
 
    switch (current.kind()) {
-   case TokenKind::Number:
-      expr_init(v, (LJ_HASFFI and tviscdata(&lex.tokval)) ? ExpKind::CData : ExpKind::Num, 0);
-      copyTV(lex.L, &v->u.nval, &lex.tokval);
-      Context.tokens().advance();
-      break;
-   case TokenKind::String:
-      expr_init(v, ExpKind::Str, 0);
-      v->u.sval = strV(&lex.tokval);
-      Context.tokens().advance();
-      break;
-   case TokenKind::Nil:
-      expr_init(v, ExpKind::Nil, 0);
-      Context.tokens().advance();
-      break;
-   case TokenKind::TrueToken:
-      expr_init(v, ExpKind::True, 0);
-      Context.tokens().advance();
-      break;
-   case TokenKind::FalseToken:
-      expr_init(v, ExpKind::False, 0);
-      Context.tokens().advance();
-      break;
-   case TokenKind::Dots: {
-      BCReg base;
-      checkcond(&lex, fs->flags & PROTO_VARARG, ErrMsg::XDOTS);
-      RegisterAllocator allocator(fs);
-      allocator.reserve(1);
-      base = fs->freereg - 1;
-      expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
-      v->u.s.aux = base;
-      Context.tokens().advance();
-      break;
-   }
-   case TokenKind::LeftBrace:
-      lex.expr_table(v);
-      return ParserResult<ExpDesc>::success(*v);
-   case TokenKind::Function:
-      Context.tokens().advance();
-      lex.parse_body(v, 0, lex.linenumber);
-      return ParserResult<ExpDesc>::success(*v);
-   default: {
-      auto primary = lex.expr_primary(v);
-      if (not primary.ok()) {
-         return primary;
+      case TokenKind::Number:
+         expr_init(v, (LJ_HASFFI and tviscdata(&lex.tokval)) ? ExpKind::CData : ExpKind::Num, 0);
+         copyTV(lex.L, &v->u.nval, &lex.tokval);
+         Context.tokens().advance();
+         break;
+
+      case TokenKind::String:
+         expr_init(v, ExpKind::Str, 0);
+         v->u.sval = strV(&lex.tokval);
+         Context.tokens().advance();
+         break;
+
+      case TokenKind::Nil:
+         expr_init(v, ExpKind::Nil, 0);
+         Context.tokens().advance();
+         break;
+
+      case TokenKind::TrueToken:
+         expr_init(v, ExpKind::True, 0);
+         Context.tokens().advance();
+         break;
+
+      case TokenKind::FalseToken:
+         expr_init(v, ExpKind::False, 0);
+         Context.tokens().advance();
+         break;
+
+      case TokenKind::Dots: {
+         BCReg base;
+         checkcond(&lex, fs->flags & PROTO_VARARG, ErrMsg::XDOTS);
+         RegisterAllocator allocator(fs);
+         allocator.reserve(1);
+         base = fs->freereg - 1;
+         expr_init(v, ExpKind::Call, bcemit_ABC(fs, BC_VARG, base, 2, fs->numparams));
+         v->u.s.aux = base;
+         Context.tokens().advance();
+         break;
       }
-      return ParserResult<ExpDesc>::success(*v);
-   }
+
+      case TokenKind::LeftBrace:
+         lex.expr_table(v);
+         return ParserResult<ExpDesc>::success(*v);
+
+      case TokenKind::Function:
+         Context.tokens().advance();
+         lex.parse_body(v, 0, lex.linenumber);
+         return ParserResult<ExpDesc>::success(*v);
+
+      default: {
+         auto primary = lex.expr_primary(v);
+         if (not primary.ok()) return primary;
+         return ParserResult<ExpDesc>::success(*v);
+      }
    }
 
    return ParserResult<ExpDesc>::success(*v);
@@ -683,8 +684,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
    ExpDesc lv, e1, e2;
    BCReg indices;
 
-   if (not v)
-      v = &lv;
+   if (not v) v = &lv;
    indices = fs->freereg;
    expr_init(&e2, ExpKind::Num, 0);
    setintV(&e2.u.nval, 1);
@@ -693,8 +693,7 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
       checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
       lv = *v;
       e1 = *v;
-      if (v->k IS ExpKind::Indexed)
-         allocator.reserve(1);
+      if (v->k IS ExpKind::Indexed) allocator.reserve(1);
       ExpressionValue value(fs, *v);
       value.to_next_reg(allocator);
       *v = value.legacy();
@@ -706,16 +705,16 @@ void LexState::inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost)
       fs->freereg--;
       return;
    }
+
    auto primary = this->expr_primary(v);
-   if (not primary.ok()) {
-      return;
-   }
+   if (not primary.ok()) return;
+
    checkcond(this, vkisvar(v->k), ErrMsg::XNOTASSIGNABLE);
    e1 = *v;
-   if (v->k IS ExpKind::Indexed)
-      allocator.reserve(fs->freereg - indices);
+   if (v->k IS ExpKind::Indexed) allocator.reserve(fs->freereg - indices);
    bcemit_arith(fs, op, &e1, &e2);
    bcemit_store(fs, v, &e1);
+
    if (v != &lv) {
       ExpressionValue value(fs, *v);
       value.to_next_reg(allocator);
@@ -741,8 +740,7 @@ ParserResult<ExpDesc> LexState::expr_simple(ExpDesc* Expression)
 
 void LexState::synlevel_begin()
 {
-   if (++this->level >= LJ_MAX_XLEVEL)
-      lj_lex_error(this, 0, ErrMsg::XLEVELS);
+   if (++this->level >= LJ_MAX_XLEVEL) lj_lex_error(this, 0, ErrMsg::XLEVELS);
 }
 
 void LexState::synlevel_end()
@@ -920,12 +918,8 @@ ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
 {
    ExpDesc* v = Expression;
    BCOp op;
-   if (this->tok IS TK_not) {
-      op = BC_NOT;
-   }
-   else if (this->tok IS '-') {
-      op = BC_UNM;
-   }
+   if (this->tok IS TK_not) op = BC_NOT;
+   else if (this->tok IS '-') op = BC_UNM;
    else if (this->tok IS '~') {
       // Unary bitwise not: desugar to bit.bnot(x).
       this->next();
@@ -936,14 +930,11 @@ ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
       bcemit_unary_bit_call(this->fs, "bnot", v);
       return ParserResult<ExpDesc>::success(*v);
    }
-   else if (this->tok IS '#') {
-      op = BC_LEN;
-   }
+   else if (this->tok IS '#') op = BC_LEN;
    else {
       auto simple = this->expr_simple(v);
-      if (not simple.ok()) {
-        return simple;
-      }
+      if (not simple.ok()) return simple;
+
       // Check for postfix presence check operator after simple expressions (constants)
       if (this->tok IS TK_if_empty and this->should_emit_presence()) {
          this->next();
@@ -953,9 +944,7 @@ ParserResult<ExpDesc> LexState::expr_unop(ExpDesc* Expression)
    }
    this->next();
    auto unary = this->expr_binop(v, UNARY_PRIORITY);
-   if (not unary.ok()) {
-      return ParserResult<ExpDesc>::failure(unary.error_ref());
-   }
+   if (not unary.ok()) return ParserResult<ExpDesc>::failure(unary.error_ref());
    bcemit_unop(this->fs, op, v);
    return ParserResult<ExpDesc>::success(*v);
 }
@@ -969,12 +958,14 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
    uint32_t limit = Limit;
    int chain_left = ChainLeftPriority;
    BinOpr op;
+
    this->synlevel_begin();
    auto unary = this->expr_unop(v);
    if (not unary.ok()) {
       this->synlevel_end();
       return ParserResult<BinOpr>::failure(unary.error_ref());
    }
+
    op = token2binop(this->tok);
    while (op != OPR_NOBINOPR) {
       uint8_t lpri = priority[op].left;
@@ -1167,6 +1158,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
       bcemit_binop(this->fs, op, v, &v2);
       op = nextop;
    }
+   
    if (this->tok IS TK_ternary_sep and this->ternary_depth IS 0) {
       if (limit IS priority[OPR_IF_EMPTY].right) {
          this->pending_if_empty_colon = 1;
@@ -1176,6 +1168,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
       this->synlevel_end();
       this->err_syntax(ErrMsg::XSYMBOL);
    }
+
    this->synlevel_end();
    return ParserResult<BinOpr>::success(op);
 }
@@ -1186,9 +1179,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
 ParserResult<ExpDesc> LexState::expr(ExpDesc* Expression)
 {
    auto result = this->expr_binop(Expression, 0);  // Priority 0: parse whole expression.
-   if (not result.ok()) {
-      return ParserResult<ExpDesc>::failure(result.error_ref());
-   }
+   if (not result.ok()) return ParserResult<ExpDesc>::failure(result.error_ref());
    return ParserResult<ExpDesc>::success(*Expression);
 }
 
@@ -1216,9 +1207,7 @@ ParserResult<BCPos> LexState::expr_cond()
 {
    ExpDesc condition;
    auto result = this->expr(&condition);
-   if (not result.ok()) {
-      return ParserResult<BCPos>::failure(result.error_ref());
-   }
+   if (not result.ok()) return ParserResult<BCPos>::failure(result.error_ref());
    if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
    bcemit_branch_t(this->fs, &condition);
    return ParserResult<BCPos>::success(condition.f);

@@ -153,6 +153,7 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
       ins = BCINS_AD(op, ra, rd);
    }
+
    // Using expr_free might cause asserts if the order is wrong.
    if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
    if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;

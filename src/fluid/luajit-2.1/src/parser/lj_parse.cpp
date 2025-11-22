@@ -53,7 +53,6 @@ static const struct {
 #include "parser/parse_control_flow.cpp"
 #include "parser/ir_emitter.cpp"
 #include "parser/parse_types.h"
-#include "parser/parse_value.cpp"
 #include "parser/parse_internal.h"
 #include "parser/parse_core.cpp"
 #include "parser/parse_constants.cpp"
@@ -312,8 +311,7 @@ static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Valu
          if (dest < 0) return "->(neg)";
          if (dest >= (ptrdiff_t)fs->pc) return "->(out)";
 
-         return std::format("->{}{}",
-            dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
+         return std::format("->{}{}", dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
       }
 
       default:
@@ -436,8 +434,7 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
          if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, info.mode_c, info.value_c, pc));
       }
 
-      log.msg("%s[%04d] %-10s %s",
-         indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
+      log.msg("%s[%04d] %-10s %s", indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
       if (info.op IS BC_FNEW) {

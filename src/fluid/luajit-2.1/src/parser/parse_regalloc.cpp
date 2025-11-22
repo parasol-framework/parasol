@@ -63,7 +63,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
    }
 }
 
-void RegisterAllocator::release(RegisterSpan& Span)
+void RegisterAllocator::release(RegisterSpan &Span)
 {
    if (Span.allocator_) {
       this->release_span_internal(Span.start_, Span.count_, Span.expected_top_);
@@ -71,7 +71,7 @@ void RegisterAllocator::release(RegisterSpan& Span)
    }
 }
 
-void RegisterAllocator::release(AllocatedRegister& Handle)
+void RegisterAllocator::release(AllocatedRegister &Handle)
 {
    if (Handle.allocator_) {
       this->release_span_internal(Handle.index_, 1, Handle.expected_top_);
@@ -84,7 +84,7 @@ void RegisterAllocator::release_register(BCReg Register)
    this->release_span_internal(Register, 1, this->func_state->freereg);
 }
 
-void RegisterAllocator::release_expression(ExpDesc* Expression)
+void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
       BCReg expected_top = Expression->u.s.info + 1;
@@ -92,7 +92,7 @@ void RegisterAllocator::release_expression(ExpDesc* Expression)
    }
 }
 
-TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc& Expression)
+TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Expression)
 {
    TableOperandCopies copies{};
    copies.duplicated = Expression;
@@ -125,7 +125,7 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc& Ex
 
 // Bump frame size.
 
-static void bcreg_bump(FuncState* fs, BCReg n)
+static void bcreg_bump(FuncState *fs, BCReg n)
 {
    RegisterAllocator allocator(fs);
    allocator.bump(n);
@@ -134,7 +134,7 @@ static void bcreg_bump(FuncState* fs, BCReg n)
 //********************************************************************************************************************
 // Reserve registers.
 
-static void bcreg_reserve(FuncState* fs, BCReg n)
+static void bcreg_reserve(FuncState *fs, BCReg n)
 {
    RegisterAllocator allocator(fs);
    allocator.reserve(n);
@@ -143,7 +143,7 @@ static void bcreg_reserve(FuncState* fs, BCReg n)
 //********************************************************************************************************************
 // Free register.
 
-static void bcreg_free(FuncState* fs, BCReg reg)
+static void bcreg_free(FuncState *fs, BCReg reg)
 {
    RegisterAllocator allocator(fs);
    allocator.release_register(reg);
@@ -152,7 +152,7 @@ static void bcreg_free(FuncState* fs, BCReg reg)
 //********************************************************************************************************************
 // Free register for expression.
 
-static void expr_free(FuncState* fs, ExpDesc* e)
+static void expr_free(FuncState *fs, ExpDesc *e)
 {
    RegisterAllocator allocator(fs);
    allocator.release_expression(e);
@@ -161,7 +161,7 @@ static void expr_free(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit bytecode instruction.
 
-static BCPos bcemit_INS(FuncState* fs, BCIns ins)
+static BCPos bcemit_INS(FuncState *fs, BCIns ins)
 {
    BCPos pc = fs->pc;
    LexState* ls = fs->ls;
@@ -185,24 +185,24 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
 //********************************************************************************************************************
 // Get pointer to bytecode instruction for expression.
 
-[[nodiscard]] static inline BCIns* bcptr(FuncState* fs, const ExpDesc* e) {
+[[nodiscard]] static inline BCIns* bcptr(FuncState *fs, const ExpDesc *e) {
    return &fs->bcbase[e->u.s.info].ins;
 }
 
 //********************************************************************************************************************
 // Bytecode emitter for expressions
 
-[[nodiscard]] static BCPos bcemit_jmp(FuncState* fs);
+[[nodiscard]] static BCPos bcemit_jmp(FuncState *fs);
 
 // Discharge non-constant expression to any register.
 
-static void expr_discharge(FuncState* fs, ExpDesc* e)
+static void expr_discharge(FuncState *fs, ExpDesc *e)
 {
    BCIns ins;
-   if (e->k == ExpKind::Upval) {
+   if (e->k IS ExpKind::Upval) {
       ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
    }
-   else if (e->k == ExpKind::Global) {
+   else if (e->k IS ExpKind::Global) {
       // Check if trying to read blank identifier.
       if (is_blank_identifier(e->u.sval)) {
          lj_lex_error(fs->ls, fs->ls->tok, ErrMsg::XNEAR,
@@ -210,7 +210,7 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
       }
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
    }
-   else if (e->k == ExpKind::Indexed) {
+   else if (e->k IS ExpKind::Indexed) {
       BCReg rc = e->u.s.aux;
       if (int32_t(rc) < 0) {
          ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
@@ -224,12 +224,12 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
       }
       bcreg_free(fs, e->u.s.info);
    }
-   else if (e->k == ExpKind::Call) {
+   else if (e->k IS ExpKind::Call) {
       e->u.s.info = e->u.s.aux;
       e->k = ExpKind::NonReloc;
       return;
    }
-   else if (e->k == ExpKind::Local) {
+   else if (e->k IS ExpKind::Local) {
       e->k = ExpKind::NonReloc;
       return;
    }
@@ -242,7 +242,7 @@ static void expr_discharge(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit bytecode to set a range of registers to nil.
 
-static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
+static void bcemit_nil(FuncState *fs, BCReg from, BCReg n)
 {
    if (fs->pc > fs->lasttarget) {  // No jumps to current position?
       BCIns* ip = &fs->bcbase[fs->pc - 1].ins;
@@ -250,10 +250,10 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
       switch (bc_op(*ip)) {  // Try to merge with the previous instruction.
       case BC_KPRI:
          if (bc_d(*ip) != ~LJ_TNIL) break;
-         if (from == pfrom) {
-            if (n == 1) return;
+         if (from IS pfrom) {
+            if (n IS 1) return;
          }
-         else if (from == pfrom + 1) {
+         else if (from IS pfrom + 1) {
             from = pfrom;
             n++;
          }
@@ -273,21 +273,21 @@ static void bcemit_nil(FuncState* fs, BCReg from, BCReg n)
    }
 
    // Emit new instruction or replace old instruction.
-   bcemit_INS(fs, n == 1 ? BCINS_AD(BC_KPRI, from, ExpKind::Nil) :
+   bcemit_INS(fs, n IS 1 ? BCINS_AD(BC_KPRI, from, ExpKind::Nil) :
       BCINS_AD(BC_KNIL, from, from + n - 1));
 }
 
 //********************************************************************************************************************
 // Discharge an expression to a specific register. Ignore branches.
 
-static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
+static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
 {
    BCIns ins;
    expr_discharge(fs, e);
-   if (e->k == ExpKind::Str) {
+   if (e->k IS ExpKind::Str) {
       ins = BCINS_AD(BC_KSTR, reg, const_str(fs, e));
    }
-   else if (e->k == ExpKind::Num) {
+   else if (e->k IS ExpKind::Num) {
 #if LJ_DUALNUM
       cTValue* tv = expr_numtv(e);
       if (tvisint(tv) and checki16(intV(tv)))
@@ -296,28 +296,28 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
 #else
       lua_Number n = expr_numberV(e);
       int32_t k = lj_num2int(n);
-      if (checki16(k) and n == lua_Number(k))
+      if (checki16(k) and n IS lua_Number(k))
          ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(k)));
       else
 #endif
          ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
 #if LJ_HASFFI
    }
-   else if (e->k == ExpKind::CData) {
+   else if (e->k IS ExpKind::CData) {
       fs->flags |= PROTO_FFI;
       ins = BCINS_AD(BC_KCDATA, reg,
          const_gc(fs, obj2gco(cdataV(&e->u.nval)), LJ_TCDATA));
 #endif
    }
-   else if (e->k == ExpKind::Relocable) {
+   else if (e->k IS ExpKind::Relocable) {
       setbc_a(bcptr(fs, e), reg);
       goto noins;
    }
-   else if (e->k == ExpKind::NonReloc) {
-      if (reg == e->u.s.info) goto noins;
+   else if (e->k IS ExpKind::NonReloc) {
+      if (reg IS e->u.s.info) goto noins;
       ins = BCINS_AD(BC_MOV, reg, e->u.s.info);
    }
-   else if (e->k == ExpKind::Nil) {
+   else if (e->k IS ExpKind::Nil) {
       bcemit_nil(fs, reg, 1);
       goto noins;
    }
@@ -325,7 +325,7 @@ static void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k == ExpKind::Void or e->k == ExpKind::Jmp, "bad expr type %d", static_cast<int>(e->k));
+      lj_assertFS(e->k IS ExpKind::Void or e->k IS ExpKind::Jmp, "bad expr type %d", static_cast<int>(e->k));
       return;
    }
    bcemit_INS(fs, ins);
@@ -337,7 +337,7 @@ noins:
 //********************************************************************************************************************
 // Discharge an expression to a specific register.
 
-static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
+static void expr_toreg(FuncState *fs, ExpDesc *e, BCReg reg)
 {
    expr_toreg_nobranch(fs, e, reg);
    ControlFlowGraph cfg(fs);
@@ -371,7 +371,7 @@ static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
 //********************************************************************************************************************
 // Discharge an expression to the next free register.
 
-static void expr_tonextreg(FuncState* fs, ExpDesc* e)
+static void expr_tonextreg(FuncState *fs, ExpDesc *e)
 {
    expr_discharge(fs, e);
    expr_free(fs, e);
@@ -382,10 +382,10 @@ static void expr_tonextreg(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Discharge an expression to any register.
 
-static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
+static BCReg expr_toanyreg(FuncState *fs, ExpDesc *e)
 {
    expr_discharge(fs, e);
-   if (e->k == ExpKind::NonReloc) [[likely]] {
+   if (e->k IS ExpKind::NonReloc) [[likely]] {
       if (!expr_hasjump(e)) [[likely]] return e->u.s.info;  // Already in a register.
       if (e->u.s.info >= fs->nactvar) {
          expr_toreg(fs, e, e->u.s.info);  // Discharge to temp. register.
@@ -399,7 +399,7 @@ static BCReg expr_toanyreg(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Partially discharge expression to a value.
 
-static void expr_toval(FuncState* fs, ExpDesc* e)
+static void expr_toval(FuncState *fs, ExpDesc *e)
 {
    if (expr_hasjump(e)) [[unlikely]]
       expr_toanyreg(fs, e);
@@ -410,30 +410,30 @@ static void expr_toval(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit store for LHS expression.
 
-static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
+static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
 {
    BCIns ins;
-   if (var->k == ExpKind::Local) {
+   if (var->k IS ExpKind::Local) {
       fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
       expr_free(fs, e);
       expr_toreg(fs, e, var->u.s.info);
       return;
    }
-   else if (var->k == ExpKind::Upval) {
+   else if (var->k IS ExpKind::Upval) {
       fs->ls->vstack[var->u.s.aux].info |= VarInfoFlag::VarReadWrite;
       expr_toval(fs, e);
       if (e->k <= ExpKind::True) ins = BCINS_AD(BC_USETP, var->u.s.info, const_pri(e));
-      else if (e->k == ExpKind::Str) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
-      else if (e->k == ExpKind::Num) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
+      else if (e->k IS ExpKind::Str) ins = BCINS_AD(BC_USETS, var->u.s.info, const_str(fs, e));
+      else if (e->k IS ExpKind::Num) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
       else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
    }
-   else if (var->k == ExpKind::Global) {
+   else if (var->k IS ExpKind::Global) {
       BCReg ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
    else {
       BCReg ra, rc;
-      lj_assertFS(var->k == ExpKind::Indexed, "bad expr type %d", static_cast<int>(var->k));
+      lj_assertFS(var->k IS ExpKind::Indexed, "bad expr type %d", static_cast<int>(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
@@ -442,7 +442,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 #ifdef LUA_USE_ASSERT
          // Free late alloced key reg to avoid assert on free of value reg.
          // This can only happen when called from expr_table().
-         if (e->k == ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
+         if (e->k IS ExpKind::NonReloc and ra >= fs->nactvar and rc >= ra)
             bcreg_free(fs, rc);
 #endif
          ins = BCINS_ABC(BC_TSETV, ra, var->u.s.info, rc);
@@ -455,7 +455,7 @@ static void bcemit_store(FuncState* fs, ExpDesc* var, ExpDesc* e)
 //********************************************************************************************************************
 // Emit method lookup expression.
 
-static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
+static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 {
    BCReg idx, func, obj = expr_toanyreg(fs, e);
    expr_free(fs, e);
@@ -480,13 +480,13 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
 //********************************************************************************************************************
 // Emit unconditional branch.
 
-[[nodiscard]] static BCPos bcemit_jmp(FuncState* fs)
+[[nodiscard]] static BCPos bcemit_jmp(FuncState *fs)
 {
    BCPos jpc = fs->jpc;
    BCPos j = fs->pc - 1;
    BCIns* ip = &fs->bcbase[j].ins;
    fs->jpc = NO_JMP;
-   if (int32_t(j) >= int32_t(fs->lasttarget) and bc_op(*ip) == BC_UCLO) {
+   if (int32_t(j) >= int32_t(fs->lasttarget) and bc_op(*ip) IS BC_UCLO) {
       setbc_j(ip, NO_JMP);
       fs->lasttarget = j + 1;
    }
@@ -500,7 +500,7 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
 //********************************************************************************************************************
 // Invert branch condition of bytecode instruction.
 
-static void invertcond(FuncState* fs, ExpDesc* e)
+static void invertcond(FuncState *fs, ExpDesc *e)
 {
    BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
    setbc_op(ip, bc_op(*ip) ^ 1);
@@ -509,13 +509,13 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit conditional branch.
 
-[[nodiscard]] static BCPos bcemit_branch(FuncState* fs, ExpDesc* e, int cond)
+[[nodiscard]] static BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 {
    BCPos pc;
 
-   if (e->k == ExpKind::Relocable) {
+   if (e->k IS ExpKind::Relocable) {
       BCIns* ip = bcptr(fs, e);
-      if (bc_op(*ip) == BC_NOT) {
+      if (bc_op(*ip) IS BC_NOT) {
          *ip = BCINS_AD(cond ? BC_ISF : BC_IST, 0, bc_d(*ip));
          return bcemit_jmp(fs);
       }
@@ -535,13 +535,13 @@ static void invertcond(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit branch on true condition.
 
-static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
+static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 {
    BCPos pc;
    expr_discharge(fs, e);
-   if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) pc = NO_JMP;  // Never jump.
-   else if (e->k == ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
-   else if (e->k == ExpKind::False or e->k == ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) pc = NO_JMP;  // Never jump.
+   else if (e->k IS ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
+   else if (e->k IS ExpKind::False or e->k IS ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 0);
    ControlFlowGraph cfg(fs);
    ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
@@ -555,14 +555,14 @@ static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
 //********************************************************************************************************************
 // Emit branch on false condition.
 
-static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
+static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
 {
    BCPos pc;
    expr_discharge(fs, e);
 
-   if (e->k == ExpKind::Nil or e->k == ExpKind::False) pc = NO_JMP;  // Never jump.
-   else if (e->k == ExpKind::Jmp) pc = e->u.s.info;
-   else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
+   if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) pc = NO_JMP;  // Never jump.
+   else if (e->k IS ExpKind::Jmp) pc = e->u.s.info;
+   else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
 
    ControlFlowGraph cfg(fs);

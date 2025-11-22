@@ -4,6 +4,10 @@
 #pragma once
 
 #include "parser/parse_types.h"
+#include "parser/parse_value.h"
+#include "parser/parse_control_flow.h"
+#include "parser/parse_internal.h"
+#include "parser/parse_regalloc.h"
 
 class RegisterAllocator;
 class ControlFlowGraph;
@@ -11,60 +15,205 @@ class ControlFlowEdge;
 
 class ExpressionValue {
 public:
-   ExpressionValue();
-   ExpressionValue(const ExpDesc& Descriptor);
-   ExpressionValue(FuncState* State, const ExpDesc& Descriptor);
-
    ExpressionValue(const ExpressionValue&) = default;
    ExpressionValue& operator=(const ExpressionValue&) = default;
    ExpressionValue(ExpressionValue&&) noexcept = default;
    ExpressionValue& operator=(ExpressionValue&&) noexcept = default;
 
-   static ExpressionValue make_nil(FuncState* State);
-   static ExpressionValue make_bool(FuncState* State, bool Value);
-   static ExpressionValue make_number(FuncState* State, lua_Number Value);
-   static ExpressionValue make_string(FuncState* State, GCstr* Value);
+   inline ExpressionValue() : func_state(nullptr), descriptor(make_nil_expr())
+   {
+   }
 
-   [[nodiscard]] bool has_jump() const;
-   [[nodiscard]] bool is_constant() const;
-   [[nodiscard]] bool is_constant_nojump() const;
-   [[nodiscard]] bool is_number_constant() const;
-   [[nodiscard]] bool is_number_constant_nojump() const;
-   [[nodiscard]] bool is_string_constant() const;
+   inline ExpressionValue(const ExpDesc& Descriptor)
+      : func_state(nullptr), descriptor(Descriptor)
+   {
+   }
 
-   [[nodiscard]] bool has_flag(ExprFlag Flag) const;
-   void set_flag(ExprFlag Flag);
-   void clear_flag(ExprFlag Flag);
-   [[nodiscard]] bool consume_flag(ExprFlag Flag);
+   inline ExpressionValue(FuncState* State, const ExpDesc& Descriptor)
+      : func_state(State), descriptor(Descriptor)
+   {
+   }
 
-   [[nodiscard]] ControlFlowEdge true_jumps(ControlFlowGraph& Graph) const;
-   [[nodiscard]] ControlFlowEdge false_jumps(ControlFlowGraph& Graph) const;
-   void set_true_jumps(const ControlFlowEdge& Edge);
-   void set_false_jumps(const ControlFlowEdge& Edge);
-   void set_jump_heads(BCPos TrueHead, BCPos FalseHead);
+   inline ExpressionValue make_nil(FuncState* State)
+   {
+      return ExpressionValue(State, make_nil_expr());
+   }
 
-   [[nodiscard]] BCReg to_reg(RegisterAllocator& Allocator, BCReg Slot);
-   [[nodiscard]] BCReg to_any_reg(RegisterAllocator& Allocator);
-   [[nodiscard]] BCReg to_next_reg(RegisterAllocator& Allocator);
-   void discharge();
-   void discharge(ControlFlowGraph& Graph);
-   void release(RegisterAllocator& Allocator);
+   inline ExpressionValue make_bool(FuncState* State, bool Value)
+   {
+      return ExpressionValue(State, make_bool_expr(Value));
+   }
 
-   // Phase 1.1 helper methods for gradual migration
-   void to_val();                                           // Like expr_toval - partially discharge to value
-   void discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg);  // Like expr_toreg_nobranch
-   void store_to(RegisterAllocator& Allocator, ExpressionValue& Target);  // Like bcemit_store
-   [[nodiscard]] BCReg discharge_to_any_reg(RegisterAllocator& Allocator);  // Combined discharge + to_any_reg
+   inline ExpressionValue make_number(FuncState* State, lua_Number Value)
+   {
+      return ExpressionValue(State, make_num_expr(Value));
+   }
 
-   [[nodiscard]] ExpDesc& legacy();
-   [[nodiscard]] const ExpDesc& legacy() const;
-   [[nodiscard]] FuncState* state() const;
+   inline ExpressionValue make_string(FuncState* State, GCstr* Value)
+   {
+      return ExpressionValue(State, make_interned_string_expr(Value));
+   }
 
-   operator ExpDesc&();
-   operator const ExpDesc&() const;
+   inline bool has_jump() const
+   {
+      return this->descriptor.t != this->descriptor.f;
+   }
+
+   inline bool is_constant() const
+   {
+      return expr_isk(&this->descriptor);
+   }
+
+   inline bool is_constant_nojump() const
+   {
+      return expr_isk_nojump(&this->descriptor);
+   }
+
+   inline bool is_number_constant() const
+   {
+      return expr_isnumk(&this->descriptor);
+   }
+
+   inline bool is_number_constant_nojump() const
+   {
+      return expr_isnumk_nojump(&this->descriptor);
+   }
+
+   inline bool is_string_constant() const
+   {
+      return expr_isstrk(&this->descriptor);
+   }
+
+   inline bool has_flag(ExprFlag Flag) const
+   {
+      return (this->descriptor.flags & Flag) != ExprFlag::None;
+   }
+
+   inline void set_flag(ExprFlag Flag)
+   {
+      this->descriptor.flags |= Flag;
+   }
+
+   inline void clear_flag(ExprFlag Flag)
+   {
+      this->descriptor.flags &= ~Flag;
+   }
+
+   inline bool consume_flag(ExprFlag Flag)
+   {
+      if ((this->descriptor.flags & Flag) != ExprFlag::None) {
+         this->descriptor.flags &= ~Flag;
+         return true;
+      }
+      return false;
+   }
+
+   inline ControlFlowEdge true_jumps(ControlFlowGraph& Graph) const
+   {
+      return Graph.make_true_edge(this->descriptor.t);
+   }
+
+   inline ControlFlowEdge false_jumps(ControlFlowGraph& Graph) const
+   {
+      return Graph.make_false_edge(this->descriptor.f);
+   }
+
+   inline void set_true_jumps(const ControlFlowEdge& Edge)
+   {
+      this->descriptor.t = Edge.head();
+   }
+
+   inline void set_false_jumps(const ControlFlowEdge& Edge)
+   {
+      this->descriptor.f = Edge.head();
+   }
+
+   inline void set_jump_heads(BCPos TrueHead, BCPos FalseHead)
+   {
+      this->descriptor.t = TrueHead;
+      this->descriptor.f = FalseHead;
+   }
+
+   inline BCReg to_reg(RegisterAllocator& Allocator, BCReg Slot)
+   {
+      expr_toreg(Allocator.state(), &this->descriptor, Slot);
+      return this->descriptor.u.s.info;
+   }
+
+   inline BCReg to_any_reg(RegisterAllocator& Allocator)
+   {
+      return expr_toanyreg(Allocator.state(), &this->descriptor);
+   }
+
+   inline BCReg to_next_reg(RegisterAllocator& Allocator)
+   {
+      expr_tonextreg(Allocator.state(), &this->descriptor);
+      return this->descriptor.u.s.info;
+   }
+
+   inline void discharge()
+   {
+      expr_discharge(this->func_state, &this->descriptor);
+   }
+
+   inline void discharge(ControlFlowGraph& Graph)
+   {
+      expr_discharge(Graph.state(), &this->descriptor);
+   }
+
+   inline void release(RegisterAllocator& Allocator)
+   {
+      Allocator.release_expression(&this->descriptor);
+   }
+
+   inline ExpDesc& legacy()
+   {
+      return this->descriptor;
+   }
+
+   inline const ExpDesc& legacy() const
+   {
+      return this->descriptor;
+   }
+
+   inline FuncState* state() const
+   {
+      return this->func_state;
+   }
+
+   inline operator ExpDesc&()
+   {
+      return this->descriptor;
+   }
+
+   inline operator const ExpDesc&() const
+   {
+      return this->descriptor;
+   }
+
+   inline void to_val()
+   {
+      expr_toval(this->func_state, &this->descriptor);
+   }
+
+   inline void discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg)
+   {
+      expr_toreg_nobranch(Allocator.state(), &this->descriptor, Reg);
+   }
+
+   inline void store_to(RegisterAllocator& Allocator, ExpressionValue& Target)
+   {
+      bcemit_store(Allocator.state(), &Target.descriptor, &this->descriptor);
+   }
+
+   inline BCReg discharge_to_any_reg(RegisterAllocator& Allocator)
+   {
+      this->discharge();
+      return this->to_any_reg(Allocator);
+   }
+
 
 private:
    FuncState* func_state;
    ExpDesc descriptor;
 };
-
