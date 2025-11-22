@@ -143,6 +143,8 @@ typedef struct ExpDesc {
 // masking.
 
 // Expression query functions.
+// DEPRECATED: Use ExpressionValue::has_jump() when possible. This function is retained
+// for legitimate raw ExpDesc* usage where ExpressionValue wrapper is not available.
 [[nodiscard]] static inline bool expr_hasjump(const ExpDesc* e) {
    return e->t != e->f;
 }

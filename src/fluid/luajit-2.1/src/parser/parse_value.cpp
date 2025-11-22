@@ -43,7 +43,7 @@ ExpressionValue ExpressionValue::make_string(FuncState* State, GCstr* Value)
 
 bool ExpressionValue::has_jump() const
 {
-   return expr_hasjump(&this->descriptor);
+   return this->descriptor.t != this->descriptor.f;
 }
 
 bool ExpressionValue::is_constant() const
