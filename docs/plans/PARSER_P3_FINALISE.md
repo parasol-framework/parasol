@@ -126,10 +126,54 @@ void ExpressionValue::set_flag(ExprFlag Flag) {
 
 ### 🔄 In Progress
 
-#### Step 3: Batch 1 Migration (Easy Files) - IN PROGRESS
-**Target**: parse_control_flow.cpp (3 uses), parse_scope.cpp (3 uses)
-**Expected duration**: Current session
-**Blockers**: None - existing ControlFlowEdge API sufficient
+#### Step 3: Batch 1 Migration - REVISED APPROACH
+
+**Original Plan**: Migrate parse_control_flow.cpp (3 uses), parse_scope.cpp (3 uses)
+
+**Attempt Results**:
+- ❌ Both files proved to be **infrastructure/implementation** files, not usage files
+- ❌ Inlining jump list manipulation logic caused:
+  - Infinite loops (hanging tests)
+  - Segfaults (memory access violations)
+  - All 25 tests failing
+- ❌ Jump chain management (especially `patch_to_here()` with `fs->jpc`) is highly complex
+
+**Key Learning**:
+- parse_control_flow.cpp is ControlFlowGraph's **internal implementation** - can legitimately use JumpListView
+- parse_scope.cpp contains low-level goto/label infrastructure - complex jump chain logic
+- "Easy" classification was incorrect - these are infrastructure, not API usage sites
+
+**Revised Strategy - Investigation Results**:
+
+Searched for files with simple ControlFlowEdge API usage. **Finding**: No simple targets exist.
+
+**All 63 JumpListView usage sites fall into 3 categories**:
+1. **Infrastructure** (6 sites): parse_control_flow.cpp (3), parse_scope.cpp (3)
+   - Implement ControlFlowGraph internals or low-level goto/label logic
+   - Should legitimately use JumpListView as utility
+   - **Recommendation**: DEFER - keep JumpListView usage
+
+2. **Raw BCPos manipulation** (30 sites): parse_expr.cpp (6), parse_operators.cpp (some), parse_stmt.cpp (some)
+   - Operate on raw BCPos values (check_nil, check_false, skip_jumps, etc.)
+   - Would require code restructuring to use ControlFlowEdge objects
+   - Not "simple" migrations - need design changes
+
+3. **Missing API methods** (27 sites): parse_regalloc.cpp (11), parse_operators.cpp (some)
+   - Require patch_with_value() (3 sites), produces_values() (2 sites), drop_values() (2 sites)
+   - **Blocked** until methods implemented
+
+**Conclusion**: No "easy Batch 1" exists. Must implement missing ControlFlowEdge methods first.
+
+**REVISED PLAN - New Batch 1**:
+- **Batch 1 = Implement Missing ControlFlowEdge Methods** (Phase 1: Infrastructure)
+  1. `patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)`
+  2. `produces_values() const`
+  3. `drop_values()`
+  4. Iterator support (optional but helpful)
+
+- **Then Batch 2** = Migrate files blocked by missing methods (parse_regalloc.cpp, parse_operators.cpp)
+
+**Current Status**: Awaiting decision to proceed with revised Batch 1 (implement methods)
 
 ## Implementation Strategy
 
