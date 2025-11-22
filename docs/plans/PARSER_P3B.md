@@ -350,3 +350,23 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - Can be added incrementally later when needed for more complex migrations
 - RegisterAllocator::duplicate_table_operands() successfully replaces all manual duplication logic
 - RAII TableOperandCopies::reserved auto-releases, simplifying register management
+
+### Phase 3: Expression Lowering Migration - 🔄 IN PROGRESS
+
+**Phase 3 Batch 1 - Initial IR Emitter Migration:**
+- ✅ Added `#include "parser/parse_value.h"` to ir_emitter.cpp
+- ✅ Migrated `emit_if_empty_assignment()` - 1 discharge+toanyreg → discharge_to_any_reg()
+- ✅ Migrated `emit_update_expr()` - 1 discharge+toanyreg → discharge_to_any_reg() + 1 bcreg_reserve → allocator.reserve()
+- ✅ Migrated `emit_ternary_expr()` - 1 discharge+toanyreg → discharge_to_any_reg() + 2 expr_discharge → discharge()
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - 3 functions, 5 discharge patterns, 1 reserve call
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ Specifically tested if-empty (?=) assignments (fluid_if_empty test)
+- ✅ Specifically tested ternary expressions (fluid_ternary test)
+- ✅ Update expressions (++/--) validated
+- ✅ No regressions detected
+
+**Progress:** 6 of ~40 legacy calls migrated in ir_emitter.cpp (15%)

@@ -15,6 +15,7 @@
 #include "lj_tab.h"
 
 #include "parser/parse_internal.h"
+#include "parser/parse_value.h"
 #include "parser/token_types.h"
 
 LocalBindingTable::LocalBindingTable() = default;
@@ -1071,9 +1072,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
-   ExpDesc lhs_eval = working;
-   expr_discharge(&this->func_state, &lhs_eval);
-   BCReg lhs_reg = expr_toanyreg(&this->func_state, &lhs_eval);
+   // Phase 3: Use ExpressionValue for discharge operations
+   ExpressionValue lhs_value(&this->func_state, working);
+   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv = make_nil_expr();
    ExpDesc falsev = make_bool_expr(false);
@@ -1264,16 +1265,19 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    ExpDesc working = copies.duplicated;
 
    BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
-   ExpDesc operand = working;
-   expr_discharge(&this->func_state, &operand);
-   BCReg operand_reg = expr_toanyreg(&this->func_state, &operand);
+
+   // Phase 3: Use ExpressionValue for discharge operations
+   ExpressionValue operand_value(&this->func_state, working);
+   BCReg operand_reg = operand_value.discharge_to_any_reg(allocator);
 
    BCReg saved_reg = operand_reg;
    if (payload.is_postfix) {
       saved_reg = this->func_state.freereg;
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
-      bcreg_reserve(&this->func_state, 1);
+      allocator.reserve(1);
    }
+
+   ExpDesc operand = operand_value.legacy();  // Get ExpDesc for subsequent operations
 
    ExpDesc delta = make_num_expr(1.0);
    ExpDesc infix = operand;
@@ -1322,9 +1326,10 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    auto condition_result = this->emit_expression(*payload.condition);
    if (not condition_result.ok()) return condition_result;
 
-   ExpDesc condition = condition_result.value_ref();
-   expr_discharge(&this->func_state, &condition);
-   BCReg cond_reg = expr_toanyreg(&this->func_state, &condition);
+   // Phase 3: Use ExpressionValue and RegisterAllocator
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
+   BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv = make_nil_expr();
    ExpDesc falsev = make_bool_expr(false);
@@ -1344,9 +1349,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    if (not true_result.ok()) {
       return true_result;
    }
-   ExpDesc true_expr = true_result.value_ref();
-   expr_discharge(&this->func_state, &true_expr);
-   this->materialise_to_reg(true_expr, cond_reg, "ternary true branch");
+   ExpressionValue true_value(&this->func_state, true_result.value_ref());
+   true_value.discharge();
+   this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
    ir_collapse_freereg(&this->func_state, cond_reg);
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
@@ -1359,9 +1364,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
 
    auto false_result = this->emit_expression(*payload.if_false);
    if (not false_result.ok()) return false_result;
-   ExpDesc false_expr = false_result.value_ref();
-   expr_discharge(&this->func_state, &false_expr);
-   this->materialise_to_reg(false_expr, cond_reg, "ternary false branch");
+   ExpressionValue false_value(&this->func_state, false_result.value_ref());
+   false_value.discharge();
+   this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
    ir_collapse_freereg(&this->func_state, cond_reg);
 
    skip_false.patch_to(this->func_state.pc);
