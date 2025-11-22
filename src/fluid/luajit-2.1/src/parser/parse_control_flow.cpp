@@ -3,6 +3,8 @@
 
 #include "parser/parse_control_flow.h"
 
+#include <parasol/main.h>
+
 #include "parser/parse_internal.h"
 
 ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
@@ -109,7 +111,11 @@ ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPos Head
    entry.head = Head;
    entry.kind = Kind;
    this->edges.push_back(entry);
-   return ControlFlowEdge(this, this->edges.size() - 1);
+   size_t index = this->edges.size() - 1;
+#if LJ_DEBUG
+   this->trace_edge_creation(Kind, Head, index);
+#endif
+   return ControlFlowEdge(this, index);
 }
 
 ControlFlowEdge ControlFlowGraph::make_unconditional(BCPos Head)
@@ -175,10 +181,16 @@ void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
    EdgeEntry& entry = this->edges[Index];
    if (entry.head IS NO_JMP) {
       entry.head = Head;
+#if LJ_DEBUG
+      this->trace_edge_append(Index, Head);
+#endif
       return;
    }
 
    entry.head = JumpListView(this->func_state, entry.head).append(Head);
+#if LJ_DEBUG
+   this->trace_edge_append(Index, Head);
+#endif
 }
 
 void ControlFlowGraph::append_edge(size_t Index, const ControlFlowEdge& Other)
@@ -196,6 +208,9 @@ void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
       this->mark_resolved(Index);
       return;
    }
+#if LJ_DEBUG
+   this->trace_edge_patch(Index, Target);
+#endif
    JumpListView(this->func_state, entry.head).patch_to(Target);
    this->mark_resolved(Index);
 }
@@ -320,4 +335,49 @@ void ControlFlowGraph::finalize() const
    }
 #endif
 }
+
+//********************************************************************************************************************
+// Debug tracing methods (Phase 3 Stage 5)
+
+#if LJ_DEBUG
+
+void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head, size_t Index) const
+{
+#if defined(LJ_TRACE_CFG)
+   const char* kind_name = "unknown";
+   switch (Kind) {
+      case ControlFlowEdgeKind::Unconditional: kind_name = "unconditional"; break;
+      case ControlFlowEdgeKind::True: kind_name = "true"; break;
+      case ControlFlowEdgeKind::False: kind_name = "false"; break;
+      case ControlFlowEdgeKind::Break: kind_name = "break"; break;
+      case ControlFlowEdgeKind::Continue: kind_name = "continue"; break;
+   }
+   pf::Log log("Parser");
+   log.trace("[CFG] create edge #%zu kind=%s head=%d", Index, kind_name, int(Head));
+#else
+   (void)Kind; (void)Head; (void)Index;
+#endif
+}
+
+void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
+{
+#if defined(LJ_TRACE_CFG)
+   pf::Log log("Parser");
+   log.trace("[CFG] patch edge #%zu to target=%d", Index, int(Target));
+#else
+   (void)Index; (void)Target;
+#endif
+}
+
+void ControlFlowGraph::trace_edge_append(size_t Index, BCPos Head) const
+{
+#if defined(LJ_TRACE_CFG)
+   pf::Log log("Parser");
+   log.trace("[CFG] append to edge #%zu head=%d", Index, int(Head));
+#else
+   (void)Index; (void)Head;
+#endif
+}
+
+#endif
 

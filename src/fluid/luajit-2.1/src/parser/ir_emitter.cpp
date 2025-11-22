@@ -324,6 +324,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    auto result = this->emit_block(chunk, FuncScopeFlag::None);
    if (not result.ok()) return result;
    this->control_flow.finalize();
+
+#if LJ_DEBUG
+   // Phase 3 Stage 5: Verify no register leaks at function exit
+   RegisterAllocator verifier(&this->func_state);
+   verifier.verify_no_leaks("function exit");
+#endif
+
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -635,6 +642,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
 
    condexit.patch_here();
    loop.patch_head(fs->pc);
+
+#if LJ_DEBUG
+   // Phase 3 Stage 5: Verify no register leaks at loop exit
+   RegisterAllocator verifier(fs);
+   verifier.verify_no_leaks("while loop exit");
+#endif
+
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -682,6 +696,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    ControlFlowEdge loop_head = this->control_flow.make_unconditional(loop);
    loop_head.patch_head(fs->pc);
    fscope_loop_continue(fs, iter);
+
+#if LJ_DEBUG
+   // Phase 3 Stage 5: Verify no register leaks at loop exit
+   RegisterAllocator verifier(fs);
+   verifier.verify_no_leaks("repeat loop exit");
+#endif
+
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 

@@ -50,6 +50,13 @@ Phase 3 replaces the remaining C-style register helpers, jump patching, and raw 
 - [x] Finalization: Completed architectural cleanup - internalized all ExpressionValue flag/jump methods, migrated 55 of 63
    JumpListView usage sites (100% of application code), marked legacy helpers as deprecated. Infrastructure files (8 sites)
    appropriately retain JumpListView as internal utility. See PARSER_P3_FINALISE.md for details.
+- [x] Stage 5: Added comprehensive debug verification and tracing infrastructure. RegisterAllocator provides
+   `verify_no_leaks()` for debug builds, with integrated `trace_allocation()` and `trace_release()` called from
+   reserve_slots() and release_span_internal(). ControlFlowGraph enhanced with edge creation, patching, and append
+   tracing integrated into make_edge(), patch_edge(), and append_edge(). Lightweight tracing hooks use compile-time
+   flags (LJ_TRACE_REGALLOC, LJ_TRACE_CFG) for optional stderr output. Verification points added at function exit,
+   loop boundaries (while/repeat), with existing statement-level `ensure_register_balance()` providing comprehensive
+   coverage.
 
-**Status**: ✅ COMPLETE - All phases finished, modern abstractions fully integrated, clean architecture achieved.
+**Status**: ✅ COMPLETE - All phases finished, modern abstractions fully integrated, clean architecture achieved, debug verification in place.
 
