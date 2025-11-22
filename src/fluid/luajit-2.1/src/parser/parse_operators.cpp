@@ -50,7 +50,9 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    else {
       op = opr - OPR_ADD + BC_ADDVV;
       // Must discharge 2nd operand first since ExpKind::Indexed might free regs.
-      expr_toval(fs, e2);
+      ExpressionValue e2_toval(fs, *e2);
+      e2_toval.to_val();
+      *e2 = e2_toval.legacy();
       if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
       else {
          ExpressionValue e2_value(fs, *e2);
@@ -61,7 +63,9 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
       lj_assertFS(expr_isnumk(e1) or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
-      expr_toval(fs, e1);
+      ExpressionValue e1_toval(fs, *e1);
+      e1_toval.to_val();
+      *e1 = e1_toval.legacy();
 
       // Avoid two consts to satisfy bytecode constraints.
 
@@ -91,7 +95,9 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    RegisterAllocator allocator(fs);
    ExpDesc* eret = e1;
    BCIns ins;
-   expr_toval(fs, e1);
+   ExpressionValue e1_toval_pre(fs, *e1);
+   e1_toval_pre.to_val();
+   *e1 = e1_toval_pre.legacy();
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
@@ -99,7 +105,9 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
-      expr_toval(fs, e2);
+      ExpressionValue e2_toval(fs, *e2);
+      e2_toval.to_val();
+      *e2 = e2_toval.legacy();
       switch (e2->k) {
       case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
          ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
@@ -125,7 +133,9 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       if ((op - BC_ISLT) & 1) {  // GT -> LT, GE -> LE
          e1 = e2; e2 = eret;  // Swap operands.
          op = ((op - BC_ISLT) ^ 3) + BC_ISLT;
-         expr_toval(fs, e1);
+         ExpressionValue e1_toval_swap(fs, *e1);
+         e1_toval_swap.to_val();
+         *e1 = e1_toval_swap.legacy();
          ExpressionValue e1_value(fs, *e1);
          ra = e1_value.discharge_to_any_reg(allocator);
          *e1 = e1_value.legacy();
@@ -273,8 +283,12 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    BCReg arg2 = arg1 + 1;            // Second argument register
 
    // Normalise both operands into registers before loading the callee.
-   expr_toval(fs, lhs);
-   expr_toval(fs, rhs);
+   ExpressionValue lhs_toval(fs, *lhs);
+   lhs_toval.to_val();
+   *lhs = lhs_toval.legacy();
+   ExpressionValue rhs_toval(fs, *rhs);
+   rhs_toval.to_val();
+   *rhs = rhs_toval.legacy();
    ExpressionValue lhs_value(fs, *lhs);
    lhs_value.to_reg(allocator, arg1);
    *lhs = lhs_value.legacy();
@@ -291,7 +305,9 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    expr_init(&key, ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
-   expr_toval(fs, &callee);
+   ExpressionValue callee_toval(fs, callee);
+   callee_toval.to_val();
+   callee = callee_toval.legacy();
    ExpressionValue callee_value2(fs, callee);
    callee_value2.to_reg(allocator, base);
    callee = callee_value2.legacy();
@@ -352,7 +368,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    if (LJ_FR2) allocator.reserve(1);  // Reserve for frame link on x64
 
    // Place argument in register.
-   expr_toval(fs, arg);
+   ExpressionValue arg_toval(fs, *arg);
+   arg_toval.to_val();
+   *arg = arg_toval.legacy();
    ExpressionValue arg_value(fs, *arg);
    arg_value.to_reg(allocator, arg_reg);
    *arg = arg_value.legacy();
@@ -369,7 +387,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    expr_init(&key, ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
-   expr_toval(fs, &callee);
+   ExpressionValue callee_toval2(fs, callee);
+   callee_toval2.to_val();
+   callee = callee_toval2.legacy();
    ExpressionValue callee_value2(fs, callee);
    callee_value2.to_reg(allocator, base);
    callee = callee_value2.legacy();
@@ -641,7 +661,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       bcemit_bit_call(fs, std::string_view(priority[op].name, priority[op].name_len), e1, e2);
    }
    else if (op IS OPR_CONCAT) {
-      expr_toval(fs, e2);
+      ExpressionValue e2_toval_concat(fs, *e2);
+      e2_toval_concat.to_val();
+      *e2 = e2_toval_concat.legacy();
       if (e2->k IS ExpKind::Relocable and bc_op(*bcptr(fs, e2)) IS BC_CAT) {
          lj_assertFS(e1->u.s.info IS bc_b(*bcptr(fs, e2)) - 1, "bad CAT stack layout");
          expr_free(fs, e1);

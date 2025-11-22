@@ -297,9 +297,10 @@ static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
 static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
 {
    if (original.k IS ExpKind::Indexed) {
+      RegisterAllocator allocator(&func_state);
       uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) bcreg_free(&func_state, BCReg(orig_aux));
-      bcreg_free(&func_state, BCReg(original.u.s.info));
+      if (is_register_key(orig_aux)) allocator.release_register(BCReg(orig_aux));
+      allocator.release_register(BCReg(original.u.s.info));
    }
 }
 
@@ -428,7 +429,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    if (not expression.ok()) return ParserResult<IrEmitUnit>::failure(expression.error_ref());
 
    ExpDesc value = expression.value_ref();
-   expr_toval(&this->func_state, &value);
+   ExpressionValue value_toval(&this->func_state, value);
+   value_toval.to_val();
+   value = value_toval.legacy();
    release_indexed_original(this->func_state, value);
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -1432,7 +1435,9 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    auto key_result = this->emit_expression(*payload.index);
    if (not key_result.ok()) return key_result;
    ExpDesc key = key_result.value_ref();
-   expr_toval(&this->func_state, &key);
+   ExpressionValue key_toval(&this->func_state, key);
+   key_toval.to_val();
+   key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
 }
@@ -1527,7 +1532,9 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
          auto key_result = this->emit_expression(*field.key);
          if (not key_result.ok()) return key_result;
          key = key_result.value_ref();
-         expr_toval(fs, &key);
+         ExpressionValue key_toval(fs, key);
+         key_toval.to_val();
+         key = key_toval.legacy();
          if (not expr_isk(&key)) expr_index(fs, &table, &key);
          if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
          else nhash++;
@@ -1742,7 +1749,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
          return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
       }
       ExpDesc key = make_interned_string_expr(segment.symbol);
-      expr_toval(&this->func_state, &target);
+      ExpressionValue target_toval(&this->func_state, target);
+      target_toval.to_val();
+      target = target_toval.legacy();
       RegisterAllocator allocator(&this->func_state);
       ExpressionValue target_value(&this->func_state, target);
       target_value.discharge_to_any_reg(allocator);
@@ -1759,7 +1768,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
    if (not final_name->symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    ExpDesc key = make_interned_string_expr(final_name->symbol);
-   expr_toval(&this->func_state, &target);
+   ExpressionValue target_toval_final(&this->func_state, target);
+   target_toval_final.to_val();
+   target = target_toval_final.legacy();
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue target_value(&this->func_state, target);
    target_value.discharge_to_any_reg(allocator);
@@ -1787,7 +1798,9 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       auto table_result = this->emit_expression(*payload.table);
       if (not table_result.ok()) return table_result;
       ExpDesc table = table_result.value_ref();
-      expr_toval(&this->func_state, &table);
+      ExpressionValue table_toval(&this->func_state, table);
+      table_toval.to_val();
+      table = table_toval.legacy();
       RegisterAllocator allocator(&this->func_state);
       ExpressionValue table_value(&this->func_state, table);
       table_value.discharge_to_any_reg(allocator);
@@ -1808,7 +1821,9 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       ExpDesc table = table_result.value_ref();
       // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
       // the correct order (table first, then key)
-      expr_toval(&this->func_state, &table);
+      ExpressionValue table_toval_idx(&this->func_state, table);
+      table_toval_idx.to_val();
+      table = table_toval_idx.legacy();
       RegisterAllocator allocator(&this->func_state);
       ExpressionValue table_value(&this->func_state, table);
       table_value.discharge_to_any_reg(allocator);
@@ -1818,7 +1833,9 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
          return key_result;
       }
       ExpDesc key = key_result.value_ref();
-      expr_toval(&this->func_state, &key);
+      ExpressionValue key_toval_idx(&this->func_state, key);
+      key_toval_idx.to_val();
+      key = key_toval_idx.legacy();
       expr_index(&this->func_state, &table, &key);
       return ParserResult<ExpDesc>::success(table);
    }

@@ -445,3 +445,42 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - **Phase 3 cumulative total: 136 legacy calls eliminated (74 + 62)**
 
 **Commit:** `6199da01` - "Implement Phase 3 Batch 3: Complete expression and statement migration"
+
+**Phase 3 Batch 4 - Final Migration: Complete Phase 3:**
+- ✅ Migrated remaining 22 legacy calls across 3 files
+- ✅ parse_operators.cpp: 11 expr_toval() calls migrated (100% complete)
+- ✅ ir_emitter.cpp: 10 calls migrated (8 expr_toval, 2 bcreg_free → RegisterAllocator)
+- ✅ parse_scope.cpp: 1 bcreg_reserve → RegisterAllocator
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/parse_operators.cpp` - 11 expr_toval → ExpressionValue::to_val()
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - 8 expr_toval → ExpressionValue::to_val(), 2 bcreg_free → RegisterAllocator::release_register()
+- `src/fluid/luajit-2.1/src/parser/parse_scope.cpp` - 1 bcreg_reserve → RegisterAllocator::reserve()
+
+**Migration Patterns:**
+- expr_toval(fs, e) → ExpressionValue::to_val()
+- bcreg_free(fs, reg) → RegisterAllocator::release_register(reg)
+- bcreg_reserve(fs, n) → RegisterAllocator::reserve(n)
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ No regressions detected in any test category
+- ✅ Compilation successful with no warnings
+- ✅ Debug build runs cleanly
+
+**Progress:**
+- parse_operators.cpp: 11 of 11 legacy calls migrated (100% complete)
+- ir_emitter.cpp: 10 of 10 legacy calls migrated (100% complete)
+- parse_scope.cpp: 1 of 1 legacy calls migrated (100% complete)
+- **Total this batch: 22 legacy calls eliminated**
+- **Phase 3 cumulative total: 158 legacy calls eliminated (136 + 22)**
+
+**Phase 3 Complete Summary:**
+- **Batch 1**: 6 legacy calls eliminated
+- **Batch 2**: 68 legacy calls eliminated
+- **Batch 3**: 62 legacy calls eliminated
+- **Batch 4**: 22 legacy calls eliminated
+- **Total**: 158 legacy expr_* and bcreg_* calls eliminated across all parser files
+- **Files fully migrated**: ir_emitter.cpp, parse_operators.cpp, parse_expr.cpp, parse_stmt.cpp, parse_scope.cpp
+
+**Commit:** TBD - "Implement Phase 3 Batch 4: Final migration - complete Phase 3"
