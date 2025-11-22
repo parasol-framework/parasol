@@ -250,13 +250,72 @@ All 27 sites previously blocked by missing API methods have been successfully mi
 
 ### 🔄 In Progress
 
-**Next Phase**: Evaluate remaining JumpListView usage sites
+#### Step 5: Remaining Files Analysis and Strategy
 
-According to PARSER_P3_FINALISE.md analysis, remaining sites fall into two categories:
-1. **Infrastructure files** (6 sites): parse_control_flow.cpp (3), parse_scope.cpp (3) - defer indefinitely
-2. **Raw BCPos manipulation** (30+ sites): parse_expr.cpp, parse_stmt.cpp - require design changes
+**Current State**: 28 of 63 JumpListView usage sites migrated (parse_regalloc.cpp + parse_operators.cpp)
 
-**Next Action**: Review and update migration strategy for remaining files
+**Remaining Files Analysis**:
+
+**1. parse_expr.cpp (6 uses) - MIGRATABLE**
+- All uses follow established pattern (temporary JumpListView with patch_to calls)
+- Methods used: `patch_to()`
+- Complexity: LOW (same pattern as Batch 2)
+- Recommendation: Migrate using established pattern
+- Estimated effort: 30 minutes
+
+**2. parse_stmt.cpp (21 uses) - MIGRATABLE**
+- All uses follow established pattern (temporary JumpListView objects)
+- Methods used: `patch_to()`, `patch_here()` (was `patch_to_here()`), `patch_head()`, `append()`
+- Complexity: MEDIUM (more uses but same patterns)
+- Recommendation: Migrate using established pattern
+- Estimated effort: 1-2 hours
+
+**3. parse_constants.cpp (23 uses) - DEFER INDEFINITELY**
+- This file contains the **JumpListView class implementation**
+- NOT usage sites - these are method definitions
+- Status: Infrastructure/utility class
+- Recommendation: KEEP - JumpListView serves as internal utility for ControlFlowGraph
+- Rationale: JumpListView is legitimately used by infrastructure files
+
+**4. parse_control_flow.cpp (3 uses) - DEFER INDEFINITELY**
+- Internal implementation of ControlFlowGraph
+- Legitimately uses JumpListView as utility for jump chain manipulation
+- Attempted migration in Batch 1 caused infinite loops and segfaults
+- Recommendation: KEEP - this is infrastructure, not application code
+
+**5. parse_scope.cpp (3 uses) - DEFER INDEFINITELY**
+- Low-level goto/label infrastructure
+- Complex jump chain management with fs->jpc interaction
+- Attempted migration in Batch 1 caused failures
+- Recommendation: KEEP - this is infrastructure, not application code
+
+**Summary Statistics**:
+- **Migratable**: 27 sites (6 + 21)
+- **Infrastructure/Deferred**: 29 sites (23 + 3 + 3)
+- **Already Migrated**: 28 sites (11 + 17)
+- **Total**: 84 sites (counting implementation lines)
+
+**Revised Migration Strategy**:
+
+**Option A: Complete Migration (Recommended)**
+- Migrate parse_expr.cpp (Batch 3a)
+- Migrate parse_stmt.cpp (Batch 3b)
+- Keep JumpListView class and infrastructure usage
+- Result: All application-level usage migrated, infrastructure uses retained
+- Effort: ~2-3 hours total
+- Benefit: Clean separation between application code (uses ControlFlowEdge) and infrastructure (uses JumpListView)
+
+**Option B: Declare Victory (Conservative)**
+- Stop after Batch 2 (current state)
+- Document that remaining files use "raw BCPos manipulation"
+- Keep hybrid state indefinitely
+- Result: 28/63 application sites migrated
+- Effort: 0 hours
+- Benefit: No risk of breaking working code
+
+**Recommendation**: **Option A** - The analysis shows parse_expr.cpp and parse_stmt.cpp CAN be migrated with the established pattern. The infrastructure files SHOULD remain as-is since they implement the utility layer.
+
+**Next Action**: Proceed with Batch 3a (parse_expr.cpp migration)
 
 ## Implementation Strategy
 
@@ -670,78 +729,92 @@ This timeline is for planning purposes and assumes sequential implementation:
 
 ## Migration Checklist
 
-### Step 1: Flag Internalization
-- [ ] Update ExpressionValue::has_flag() implementation
-- [ ] Update ExpressionValue::set_flag() implementation
-- [ ] Update ExpressionValue::clear_flag() implementation
-- [ ] Update ExpressionValue::consume_flag() implementation
-- [ ] Search for direct expr_has_flag calls, migrate if needed
-- [ ] Search for direct expr_set_flag calls, migrate if needed
-- [ ] Mark legacy functions deprecated
-- [ ] Build successfully
-- [ ] All 25 tests pass
-- [ ] Commit changes
+### Step 1: Flag Internalization ✅ COMPLETE
+- [x] Update ExpressionValue::has_flag() implementation
+- [x] Update ExpressionValue::set_flag() implementation
+- [x] Update ExpressionValue::clear_flag() implementation
+- [x] Update ExpressionValue::consume_flag() implementation
+- [x] Search for direct expr_has_flag calls, migrate if needed
+- [x] Search for direct expr_set_flag calls, migrate if needed
+- [x] Mark legacy functions deprecated
+- [x] Build successfully
+- [x] All 25 tests pass
+- [x] Commit changes (ed3b36c3)
 
-### Step 2: Jump Migration Analysis
-- [ ] Create detailed inventory of 86 JumpListView/JumpHandle uses
-- [ ] Categorize by pattern type
-- [ ] Map to ControlFlowGraph equivalents
-- [ ] Assign difficulty rating to each file
-- [ ] Create file-by-file migration plan
-- [ ] Document findings
+### Step 2: Jump Migration Analysis ✅ COMPLETE
+- [x] Create detailed inventory of 86 JumpListView/JumpHandle uses
+- [x] Categorize by pattern type
+- [x] Map to ControlFlowGraph equivalents
+- [x] Assign difficulty rating to each file
+- [x] Create file-by-file migration plan
+- [x] Document findings (PARSER_P3_JUMP_ANALYSIS.md - commit 80fa576e)
 
-### Step 3: Batch 1 Migration (Easy)
-- [ ] Migrate parse_scope.cpp (3 uses)
-- [ ] Build and test
-- [ ] Migrate parse_control_flow.cpp (3 uses)
-- [ ] Build and test
-- [ ] Migrate parse_internal.h (2 uses)
-- [ ] Build and test
-- [ ] Verify zero JumpListView uses in migrated files
-- [ ] All 25 tests pass
-- [ ] Commit changes
+### Step 3: Batch 1 - API Implementation ✅ COMPLETE (Revised from original plan)
+**Original Plan**: Migrate parse_scope.cpp, parse_control_flow.cpp (deferred - infrastructure files)
+**Revised Plan**: Implement missing ControlFlowEdge methods
+- [x] Implement patch_with_value() method
+- [x] Implement produces_values() method
+- [x] Implement drop_values() method
+- [x] Add helper methods to ControlFlowGraph
+- [x] Build successfully
+- [x] All 65 tests pass
+- [x] Commit changes (015a6fb9)
 
-### Step 4: Batch 2 Migration (Medium)
-- [ ] Migrate parse_expr.cpp (6 uses)
-- [ ] Build and test
-- [ ] Migrate parse_regalloc.cpp (11 uses)
-- [ ] Build and test
-- [ ] Verify zero JumpListView uses in migrated files
-- [ ] All 25 tests pass
-- [ ] Commit changes
+### Step 4: Batch 2 Migration - Blocked Files ✅ COMPLETE
+**Batch 2a: parse_regalloc.cpp (11 uses)**
+- [x] Migrate bcemit_INS() (1 use)
+- [x] Migrate expr_toreg() (5 uses)
+- [x] Migrate bcemit_jmp() (1 use)
+- [x] Migrate bcemit_branch_t() (2 uses)
+- [x] Migrate bcemit_branch_f() (2 uses)
+- [x] Build and test
+- [x] Verify zero JumpListView uses in file
+- [x] All 65 tests pass
+- [x] Commit changes (57386366)
 
-### Step 5: Batch 3 Migration (Hard)
-- [ ] Migrate parse_operators.cpp (17 uses)
-- [ ] Build and test
-- [ ] Commit changes
-- [ ] Migrate parse_stmt.cpp (21 uses)
-- [ ] Build and test
-- [ ] Commit changes
-- [ ] Migrate parse_constants.cpp (23 uses)
-- [ ] Build and test
-- [ ] Commit changes
-- [ ] Verify zero JumpListView uses in all parser files
-- [ ] All 25 tests pass
+**Batch 2b: parse_operators.cpp (17 uses)**
+- [x] Migrate bcemit_binop_left() (2 uses)
+- [x] Migrate bcemit_presence_check() (5 uses)
+- [x] Migrate bcemit_binop() (8 uses)
+- [x] Migrate bcemit_unop() (2 uses)
+- [x] Build and test
+- [x] Verify zero JumpListView uses in file
+- [x] All 65 tests pass
+- [x] Commit changes (89590265)
 
-### Step 6: Remove Legacy Jump Helpers
+### Step 5: Batch 3 Migration (Remaining Files) - TO BE REVISED
+**Status**: Original plan needs revision based on findings
+
+**Deferred - Infrastructure Files** (keep JumpListView usage):
+- [ ] ~~parse_control_flow.cpp (3 uses)~~ - Internal ControlFlowGraph implementation
+- [ ] ~~parse_scope.cpp (3 uses)~~ - Low-level goto/label infrastructure
+
+**Remaining - Require Analysis**:
+- [ ] parse_expr.cpp (6 uses) - Raw BCPos manipulation
+- [ ] parse_stmt.cpp (21 uses) - Raw BCPos manipulation
+- [ ] parse_constants.cpp (23 uses) - JumpListView class implementation
+
+**Action Required**: Analyze remaining files and determine migration approach
+
+### Step 6: Remove Legacy Jump Helpers - PENDING
 - [ ] Search for expr_hasjump uses, migrate to ExpressionValue::has_jump()
 - [ ] Search for expr_goiftrue uses, migrate to ControlFlowGraph
 - [ ] Search for expr_goiffalse uses, migrate to ControlFlowGraph
 - [ ] Remove function definitions from headers
 - [ ] Build successfully
-- [ ] All 25 tests pass
+- [ ] All 65 tests pass
 - [ ] Commit changes
 
-### Step 7: Cleanup and Documentation
-- [ ] Remove JumpListView class definition
-- [ ] Remove JumpHandle class definition
-- [ ] Remove deprecated flag helper functions
+### Step 7: Cleanup and Documentation - PENDING
+- [ ] Remove JumpListView class definition (if all uses eliminated)
+- [ ] Remove JumpHandle class definition (if all uses eliminated)
+- [ ] Remove deprecated flag helper functions (if safe)
 - [ ] Clean up unnecessary includes
 - [ ] Update PARSER_P3.md status
 - [ ] Update PARSER_P3B.md with summary
 - [ ] Update this document status
 - [ ] Full clean rebuild
-- [ ] All 25 tests pass
+- [ ] All 65 tests pass
 - [ ] Zero compiler warnings
 - [ ] Commit final cleanup
 
