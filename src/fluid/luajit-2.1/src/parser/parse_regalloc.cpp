@@ -12,13 +12,10 @@ static bool is_register_key(int32_t Aux)
 }
 
 //********************************************************************************************************************
-// Constructor - Initialize debug tracking if enabled.
+// Constructor
 
 RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State)
 {
-#if LJ_DEBUG
-   initial_freereg = State->freereg;
-#endif
 }
 
 void RegisterAllocator::bump(BCReg Count)
@@ -597,14 +594,6 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
 // Debug verification and tracing methods (Phase 3 Stage 5)
 
 #if LJ_DEBUG
-
-void RegisterAllocator::verify_balance(const char* Context) const
-{
-   if (this->func_state->freereg != this->initial_freereg) {
-      lj_assertFS(false, "register imbalance at %s: expected %d, got %d",
-         Context, int(this->initial_freereg), int(this->func_state->freereg));
-   }
-}
 
 void RegisterAllocator::verify_no_leaks(const char* Context) const
 {

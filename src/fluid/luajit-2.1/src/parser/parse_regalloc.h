@@ -113,7 +113,6 @@ public:
 
 #if LJ_DEBUG
    // Debug verification methods (Phase 3 Stage 5)
-   void verify_balance(const char* Context) const;
    void verify_no_leaks(const char* Context) const;
    void trace_allocation(BCReg Start, BCReg Count, const char* Context) const;
    void trace_release(BCReg Start, BCReg Count, const char* Context) const;
@@ -124,9 +123,5 @@ private:
    void release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop);
 
    FuncState* func_state;
-
-#if LJ_DEBUG
-   BCReg initial_freereg;
-#endif
 };
 
