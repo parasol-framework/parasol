@@ -35,6 +35,9 @@ public:
    void patch_here() const;
    void patch_to(BCPos Target) const;
    void patch_head(BCPos Destination) const;
+   void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
+   [[nodiscard]] bool produces_values() const;
+   void drop_values() const;
 
 private:
    friend class ControlFlowGraph;
@@ -80,6 +83,13 @@ private:
    void append_edge(size_t Index, const ControlFlowEdge& Other);
    void patch_edge(size_t Index, BCPos Target);
    void patch_edge_head(size_t Index, BCPos Destination);
+   void patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget);
+   [[nodiscard]] bool edge_produces_values(size_t Index) const;
+   void drop_edge_values(size_t Index);
+
+   [[nodiscard]] static BCPos next_in_chain(FuncState* State, BCPos Position);
+   [[nodiscard]] bool patch_test_register(BCPos Position, BCReg Register) const;
+   void patch_instruction(BCPos Position, BCPos Destination) const;
 
    FuncState* func_state;
    std::vector<EdgeEntry> edges;
