@@ -402,3 +402,46 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - **Total this batch: 68 legacy calls eliminated**
 
 **Commit:** `6b9cc952` - "Implement Phase 3 Batch 2: Parallel agent migration of legacy calls"
+
+**Phase 3 Batch 3 - Complete Expression/Statement Migration:**
+- ✅ Launched 2 parallel agents to complete Phase 3 migration
+- ✅ Agent 3: Migrated all 33 legacy calls in parse_expr.cpp (14 functions)
+  - expr_index, expr_field, expr_bracket
+  - expr_table (2 calls), parse_params
+  - expr_list, parse_args, expr_primary_with_context (4 calls)
+  - expr_simple_with_context, inc_dec_op (6 calls)
+  - expr_shift_chain (3 calls), expr_binop (10 calls for ternary and IF_EMPTY)
+  - expr_next
+- ✅ Agent 4: Migrated all 29 legacy calls in parse_stmt.cpp (10 functions)
+  - assign_hazard, assign_adjust (3 calls)
+  - assign_if_empty (10 calls), assign_compound (5 calls)
+  - parse_local (2 calls), snapshot_return_regs (2 calls)
+  - parse_defer (3 calls), parse_return (2 calls)
+  - parse_for_num (2 calls), parse_for_iter
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/parse_expr.cpp` - 14 functions, 33 legacy calls
+- `src/fluid/luajit-2.1/src/parser/parse_stmt.cpp` - 10 functions, 29 legacy calls
+
+**Migration Patterns:**
+- expr_discharge + expr_toanyreg → discharge_to_any_reg()
+- expr_toanyreg → discharge_to_any_reg()
+- expr_tonextreg → to_next_reg()
+- expr_toreg → to_reg()
+- expr_toval → to_val()
+- bcreg_reserve → allocator.reserve()
+- bcreg_free → allocator.release_register()
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ No regressions detected in any test category
+- ✅ Compilation successful with no warnings
+- ✅ Fixed compilation errors (allocator.free → allocator.release_register)
+
+**Progress:**
+- parse_expr.cpp: 33 of 33 legacy calls migrated (100% complete)
+- parse_stmt.cpp: 29 of 29 legacy calls migrated (100% complete)
+- **Total this batch: 62 legacy calls eliminated**
+- **Phase 3 cumulative total: 136 legacy calls eliminated (74 + 62)**
+
+**Commit:** Pending
