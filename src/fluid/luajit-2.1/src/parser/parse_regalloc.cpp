@@ -14,11 +14,7 @@ static bool is_register_key(int32_t Aux)
 }
 
 //********************************************************************************************************************
-// Constructor
-
-RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State)
-{
-}
+// Register allocation methods
 
 void RegisterAllocator::bump(BCReg Count)
 {
@@ -40,17 +36,6 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
    this->trace_allocation(start, Count, "reserve_slots");
 #endif
    return start;
-}
-
-void RegisterAllocator::reserve(BCReg Count)
-{
-   this->reserve_slots(Count);
-}
-
-AllocatedRegister RegisterAllocator::acquire()
-{
-   BCReg start = this->reserve_slots(1);
-   return AllocatedRegister(this, start, start + 1);
 }
 
 RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
@@ -135,15 +120,8 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc& Ex
    return copies;
 }
 
-void RegisterSpan::release()
-{
-   if (allocator_) allocator_->release(*this);
-}
-
-void AllocatedRegister::release()
-{
-   if (allocator_) allocator_->release(*this);
-}
+//********************************************************************************************************************
+// Static helper functions for legacy API
 
 // Bump frame size.
 
