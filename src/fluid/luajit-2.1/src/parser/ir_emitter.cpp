@@ -1494,8 +1494,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    ExpDesc rhs = rhs_result.value_ref();
 
    // Route through OperatorEmitter facade based on operator type
-   if (opr >= OPR_EQ and opr <= OPR_GT) {
-      // Comparison operators (EQ, NE, LT, LE, GT, GE)
+   if (opr >= OPR_NE and opr <= OPR_GT) {
       this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
    }
    else {
