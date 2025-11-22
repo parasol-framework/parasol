@@ -117,11 +117,28 @@
   - Successfully compiled and integrated into build system
 
 **Remaining Work:**
-* Integrate value categories into OperatorEmitter API
-* Migrate logical short-circuit operators to use CFG-based approach
-* Migrate concat compound assignment (..=) special handling
-* Migrate BitNot unary operator
-* Remove remaining legacy helper calls from operator emission
+* **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
+* **Migrate logical short-circuit operators (AND, OR, IF_EMPTY)** - Complex work requiring full CFG integration:
+  - AND uses `bcemit_branch_t` to skip RHS if left is false
+  - OR uses `bcemit_branch_f` to skip RHS if left is true
+  - IF_EMPTY (??) has extended falsey semantics (nil, false, 0, "") with complex constant optimization
+  - IF_EMPTY already partially uses ControlFlowGraph but needs full modernization
+  - Requires structured true/false edge handling instead of manual jump patching
+* **Migrate concat compound assignment (..=)** - Special left-to-right evaluation handling
+* **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
+* **Remove remaining legacy helper calls** from operator emission once all operators migrated
+
+**Analysis of Remaining Items:**
+1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
+   - Edge types: Unconditional, True, False, Break, Continue
+   - Edge operations: append, patch_here, patch_to, patch_with_value
+   - Already used in some places (IF_EMPTY partially)
+
+2. **Complexity Assessment**:
+   - Logical operators (AND/OR/??) = High complexity (control flow, short-circuit, constant optimization)
+   - BitNot = High complexity (function call generation to bit library)
+   - Concat compound (..=) = Medium complexity (special evaluation order)
+   - Value category API integration = Low complexity (wrapper updates, can be gradual)
 
 **Files Created:**
 * `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
@@ -132,7 +149,10 @@
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
 * `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
-**Next:** Integrate value categories into OperatorEmitter and continue Step 3
+**Next Steps (Options):**
+* **Option A**: Migrate logical short-circuit operators (AND, OR, IF_EMPTY) to full CFG-based implementation (substantial work, completes major Step 3 goal)
+* **Option B**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
+* **Option C**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
 
 ---
 
