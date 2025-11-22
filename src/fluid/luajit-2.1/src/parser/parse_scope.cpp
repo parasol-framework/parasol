@@ -332,7 +332,8 @@ static void execute_defers(FuncState* fs, BCReg limit)
       if (has_flag(v->info, VarInfoFlag::Defer)) {
          BCReg callbase = fs->freereg;
          BCReg j;
-         bcreg_reserve(fs, argc + 1 + LJ_FR2);
+         RegisterAllocator allocator(fs);
+         allocator.reserve(argc + 1 + LJ_FR2);
          bcemit_AD(fs, BC_MOV, callbase, v->slot);
          for (j = 0; j < argc; j++) {
             BCReg src = argslots[argc - 1 - j];

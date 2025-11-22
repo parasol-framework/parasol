@@ -1,0 +1,181 @@
+// Control flow helpers for parser expression management.
+// Copyright (C) 2025 Paul Manias
+
+#pragma once
+
+#include <vector>
+
+#include "parser/parse_types.h"
+
+class FuncState;
+
+enum class ControlFlowEdgeKind {
+   Unconditional,
+   True,
+   False,
+   Break,
+   Continue,
+};
+
+class ControlFlowGraph;
+
+class ControlFlowEdge {
+public:
+   inline ControlFlowEdge();
+   inline ControlFlowEdge(ControlFlowGraph* Graph, size_t Index);
+
+   [[nodiscard]] inline bool empty() const;
+   [[nodiscard]] inline bool valid() const;
+   [[nodiscard]] inline ControlFlowEdgeKind kind() const;
+   [[nodiscard]] inline BCPos head() const;
+   [[nodiscard]] inline FuncState* state() const;
+
+   inline void append(BCPos Other) const;
+   inline void append(const ControlFlowEdge& Other) const;
+   inline void patch_here() const;
+   inline void patch_to(BCPos Target) const;
+   inline void patch_head(BCPos Destination) const;
+   inline void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
+   [[nodiscard]] inline bool produces_values() const;
+   inline void drop_values() const;
+
+private:
+   friend class ControlFlowGraph;
+
+   ControlFlowGraph* graph;
+   size_t index;
+};
+
+class ControlFlowGraph {
+public:
+   ControlFlowGraph();
+   explicit ControlFlowGraph(FuncState* State);
+
+   void reset(FuncState* State);
+
+   [[nodiscard]] bool valid() const;
+   [[nodiscard]] FuncState* state() const;
+
+   [[nodiscard]] ControlFlowEdge make_edge(ControlFlowEdgeKind Kind, BCPos Head = NO_JMP);
+   [[nodiscard]] ControlFlowEdge make_unconditional(BCPos Head = NO_JMP);
+   [[nodiscard]] ControlFlowEdge make_true_edge(BCPos Head = NO_JMP);
+   [[nodiscard]] ControlFlowEdge make_false_edge(BCPos Head = NO_JMP);
+   [[nodiscard]] ControlFlowEdge make_break_edge(BCPos Head = NO_JMP);
+   [[nodiscard]] ControlFlowEdge make_continue_edge(BCPos Head = NO_JMP);
+
+   void finalize() const;
+
+#if LJ_DEBUG
+   // Debug tracing methods
+   void trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head, size_t Index) const;
+   void trace_edge_patch(size_t Index, BCPos Target) const;
+   void trace_edge_append(size_t Index, BCPos Head) const;
+#endif
+
+private:
+   friend class ControlFlowEdge;
+
+   struct EdgeEntry {
+      BCPos head = NO_JMP;
+      ControlFlowEdgeKind kind = ControlFlowEdgeKind::Unconditional;
+      bool resolved = false;
+   };
+
+   [[nodiscard]] BCPos edge_head(size_t Index) const;
+   [[nodiscard]] ControlFlowEdgeKind edge_kind(size_t Index) const;
+   [[nodiscard]] bool edge_resolved(size_t Index) const;
+   void set_edge_head(size_t Index, BCPos Head);
+   void mark_resolved(size_t Index);
+   void append_edge(size_t Index, BCPos Head);
+   void append_edge(size_t Index, const ControlFlowEdge& Other);
+   void patch_edge(size_t Index, BCPos Target);
+   void patch_edge_head(size_t Index, BCPos Destination);
+   void patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget);
+   [[nodiscard]] bool edge_produces_values(size_t Index) const;
+   void drop_edge_values(size_t Index);
+
+   [[nodiscard]] static BCPos next_in_chain(FuncState* State, BCPos Position);
+   [[nodiscard]] bool patch_test_register(BCPos Position, BCReg Register) const;
+   void patch_instruction(BCPos Position, BCPos Destination) const;
+
+   FuncState* func_state;
+   std::vector<EdgeEntry> edges;
+};
+
+//********************************************************************************************************************
+// ControlFlowEdge inline implementations
+
+inline ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
+{
+}
+
+inline ControlFlowEdge::ControlFlowEdge(ControlFlowGraph* Graph, size_t Index) : graph(Graph), index(Index)
+{
+}
+
+inline bool ControlFlowEdge::empty() const
+{
+   if (not this->graph) return true;
+   return this->graph->edge_head(this->index) IS NO_JMP;
+}
+
+inline bool ControlFlowEdge::valid() const
+{
+   return this->graph != nullptr;
+}
+
+inline ControlFlowEdgeKind ControlFlowEdge::kind() const
+{
+   return this->graph ? this->graph->edge_kind(this->index) : ControlFlowEdgeKind::Unconditional;
+}
+
+inline BCPos ControlFlowEdge::head() const
+{
+   return this->graph ? this->graph->edge_head(this->index) : NO_JMP;
+}
+
+inline FuncState* ControlFlowEdge::state() const
+{
+   return this->graph ? this->graph->state() : nullptr;
+}
+
+inline void ControlFlowEdge::append(BCPos Other) const
+{
+   if (this->graph) this->graph->append_edge(this->index, Other);
+}
+
+inline void ControlFlowEdge::append(const ControlFlowEdge& Other) const
+{
+   if (this->graph) this->graph->append_edge(this->index, Other);
+}
+
+inline void ControlFlowEdge::patch_here() const
+{
+   if (this->graph) this->graph->patch_edge(this->index, this->graph->state()->pc);
+}
+
+inline void ControlFlowEdge::patch_to(BCPos Target) const
+{
+   if (this->graph) this->graph->patch_edge(this->index, Target);
+}
+
+inline void ControlFlowEdge::patch_head(BCPos Destination) const
+{
+   if (this->graph) this->graph->patch_edge_head(this->index, Destination);
+}
+
+inline void ControlFlowEdge::patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const
+{
+   if (this->graph) this->graph->patch_edge_with_value(this->index, ValueTarget, Register, DefaultTarget);
+}
+
+inline bool ControlFlowEdge::produces_values() const
+{
+   return this->graph ? this->graph->edge_produces_values(this->index) : false;
+}
+
+inline void ControlFlowEdge::drop_values() const
+{
+   if (this->graph) this->graph->drop_edge_values(this->index);
+}
+

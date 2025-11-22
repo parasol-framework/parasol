@@ -30,7 +30,7 @@
 static const struct {
    uint8_t left;      // Left priority.
    uint8_t right;     // Right priority.
-   CSTRING name;  // Name for bitlib function (if applicable).
+   CSTRING name;      // Name for bitlib function (if applicable).
    uint8_t name_len;  // Cached name length for bitlib lookups.
 } priority[] = {
   {6,6,nullptr,0}, {6,6,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0}, {7,7,nullptr,0},   // ADD SUB MUL DIV MOD
@@ -50,6 +50,7 @@ static const struct {
 #include "parser/parser_context.cpp"
 #include "parser/ast_nodes.cpp"
 #include "parser/ast_builder.cpp"
+#include "parser/parse_control_flow.cpp"
 #include "parser/ir_emitter.cpp"
 #include "parser/parse_types.h"
 #include "parser/parse_internal.h"
@@ -209,8 +210,7 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          if (dest < 0) return "->(neg)";
          if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
 
-         return std::format("->{}{}",
-            dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
+         return std::format("->{}{}", dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
       }
 
       default:
@@ -311,8 +311,7 @@ static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Valu
          if (dest < 0) return "->(neg)";
          if (dest >= (ptrdiff_t)fs->pc) return "->(out)";
 
-         return std::format("->{}{}",
-            dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
+         return std::format("->{}{}", dest, offset >= 0 ? std::format("(+{})", offset) : std::format("({})", offset));
       }
 
       default:
@@ -391,10 +390,10 @@ static BytecodeInfo extract_instruction_info(BCIns Ins)
    BytecodeInfo info;
    info.op = bc_op(Ins);
    info.op_name = (info.op < BC__MAX) ? glBytecodeNames[info.op] : "???";
-   info.mode_a = bcmode_a(info.op);
-   info.mode_b = bcmode_b(info.op);
-   info.mode_c = bcmode_c(info.op);
-   info.mode_d = bcmode_d(info.op);
+   info.mode_a  = bcmode_a(info.op);
+   info.mode_b  = bcmode_b(info.op);
+   info.mode_c  = bcmode_c(info.op);
+   info.mode_d  = bcmode_d(info.op);
    info.value_a = bc_a(Ins);
    info.value_b = bc_b(Ins);
    info.value_c = bc_c(Ins);
@@ -435,8 +434,7 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
          if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_value(Proto, info.mode_c, info.value_c, pc));
       }
 
-      log.msg("%s[%04d] %-10s %s",
-         indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
+      log.msg("%s[%04d] %-10s %s", indent_str.c_str(), (int)pc, info.op_name, operands.c_str());
 
       // If this is a FNEW instruction, recursively disassemble the child prototype
       if (info.op IS BC_FNEW) {
@@ -482,8 +480,7 @@ static void dump_bytecode(ParserContext &Context)
          if (info.mode_c != BCMnone) append_operand(operands, "C", describe_operand_from_fs(&fs, info.mode_c, info.value_c, pc));
       }
 
-      log.msg("[%04d] %-10s %s",
-         (int)pc, info.op_name, operands.c_str());
+      log.msg("[%04d] %-10s %s", (int)pc, info.op_name, operands.c_str());
 
       // If this is a FNEW instruction, look up and print the child prototype
       if (info.op IS BC_FNEW) {
