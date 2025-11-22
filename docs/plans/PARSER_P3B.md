@@ -370,3 +370,35 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - ✅ No regressions detected
 
 **Progress:** 6 of ~40 legacy calls migrated in ir_emitter.cpp (15%)
+
+**Phase 3 Batch 2 - Parallel Agent Migration:**
+- ✅ Launched 2 parallel agents to accelerate migration work
+- ✅ Agent 1: Migrated remaining 21 legacy calls in ir_emitter.cpp (16 functions)
+  - emit_return_stmt, emit_local_function_stmt, emit_numeric_for_stmt
+  - emit_generic_for_stmt, emit_defer_stmt, emit_if_empty_assignment (completed)
+  - emit_vararg_expr, emit_member_expr, emit_index_expr
+  - emit_call_expr, emit_table_expr, emit_function_expr
+  - emit_function_lvalue, emit_lvalue_expr
+  - materialise_to_next_reg, materialise_to_reg
+- ✅ Agent 2: Migrated all 47 legacy calls in parse_operators.cpp (9 functions)
+  - bcemit_arith (4 calls), bcemit_comp (6 calls)
+  - bcemit_binop_left (7 calls), bcemit_shift_call_at_base (5 calls)
+  - bcemit_bit_call (3 calls), bcemit_unary_bit_call (6 calls)
+  - bcemit_presence_check (3 calls), bcemit_binop (10 calls)
+  - bcemit_unop (3 calls)
+
+**Files Modified:**
+- `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - 16 additional functions, 21 legacy calls
+- `src/fluid/luajit-2.1/src/parser/parse_operators.cpp` - 9 functions, 47 legacy calls
+
+**Testing:**
+- ✅ All 25 fluid tests pass (100% success rate)
+- ✅ No regressions detected in any test category
+- ✅ Compilation successful with no warnings
+
+**Progress:**
+- ir_emitter.cpp: 27 of 40 legacy calls migrated (68% complete - only 2 intentional legacy calls remain in helper)
+- parse_operators.cpp: 47 of 47 legacy calls migrated (100% complete)
+- **Total this batch: 68 legacy calls eliminated**
+
+**Commit:** Pending

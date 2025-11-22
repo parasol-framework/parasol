@@ -460,7 +460,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& pa
             }
          }
          else {
-            BCReg reg = expr_toanyreg(&this->func_state, &last);
+            RegisterAllocator allocator(&this->func_state);
+            ExpressionValue value(&this->func_state, last);
+            BCReg reg = value.discharge_to_any_reg(allocator);
             ins = BCINS_AD(BC_RET1, reg, 2);
          }
       }
@@ -525,7 +527,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    ExpDesc variable;
    expr_init(&variable, ExpKind::Local, slot);
    variable.u.s.aux = this->func_state.varmap[slot];
-   bcreg_reserve(&this->func_state, 1);
+   RegisterAllocator allocator(&this->func_state);
+   allocator.reserve(1);
    this->lex_state.var_add(1);
 
    auto function_value = this->emit_function_expr(*payload.function);
@@ -720,8 +723,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       this->materialise_to_next_reg(step_value, "numeric for step");
    }
    else {
+      RegisterAllocator allocator(fs);
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);
-      bcreg_reserve(fs, 1);
+      allocator.reserve(1);
    }
 
    this->lex_state.var_add(3);
@@ -732,7 +736,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       FuncScope visible_scope;
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       this->lex_state.var_add(1);
-      bcreg_reserve(fs, 1);
+      RegisterAllocator allocator(fs);
+      allocator.reserve(1);
       std::array<BlockBinding, 1> loop_bindings{};
       std::span<const BlockBinding> binding_span;
       if (payload.control.symbol and not payload.control.is_blank) {
@@ -796,7 +801,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       BCReg visible = nvars - 3;
       this->lex_state.var_add(visible);
-      bcreg_reserve(fs, visible);
+      RegisterAllocator allocator(fs);
+      allocator.reserve(visible);
       std::vector<BlockBinding> loop_bindings;
       loop_bindings.reserve(visible);
       for (BCReg i = 0; i < visible; ++i) {
@@ -834,7 +840,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    FuncState* fs = &this->func_state;
    BCReg reg = fs->freereg;
    this->lex_state.var_new(0, NAME_BLANK);
-   bcreg_reserve(fs, 1);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);
    this->lex_state.var_add(1);
    VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
@@ -1107,8 +1114,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    }
 
    ExpDesc rhs = list.value_ref();
-   expr_discharge(&this->func_state, &rhs);
-   this->materialise_to_reg(rhs, lhs_reg, "assignment RHS");
+   ExpressionValue rhs_value(&this->func_state, rhs);
+   rhs_value.discharge();
+   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
    bcemit_store(&this->func_state, &target, &rhs);
 
    check_nil.patch_to(assign_pos);
@@ -1211,7 +1219,8 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 {
    ExpDesc expr;
-   bcreg_reserve(&this->func_state, 1);
+   RegisterAllocator allocator(&this->func_state);
+   allocator.reserve(1);
    BCReg base = this->func_state.freereg - 1;
    expr_init(&expr, ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
    expr.u.s.aux = base;
@@ -1397,7 +1406,10 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& paylo
       return table_result;
    }
    ExpDesc table = table_result.value_ref();
-   expr_toanyreg(&this->func_state, &table);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue table_value(&this->func_state, table);
+   table_value.discharge_to_any_reg(allocator);
+   table = table_value.legacy();
    ExpDesc key = make_interned_string_expr(payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
@@ -1413,7 +1425,10 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    ExpDesc table = table_result.value_ref();
    // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
    // the correct order (table first, then key)
-   expr_toanyreg(&this->func_state, &table);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue table_value(&this->func_state, table);
+   table_value.discharge_to_any_reg(allocator);
+   table = table_value.legacy();
    auto key_result = this->emit_expression(*payload.index);
    if (not key_result.ok()) return key_result;
    ExpDesc key = key_result.value_ref();
@@ -1436,7 +1451,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "call callee");
 #if LJ_FR2
-      bcreg_reserve(&this->func_state, 1);
+      RegisterAllocator allocator(&this->func_state);
+      allocator.reserve(1);
 #endif
       base = callee.u.s.info;
    }
@@ -1495,7 +1511,8 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    ExpDesc table;
    expr_init(&table, ExpKind::NonReloc, freg);
-   bcreg_reserve(fs, 1);
+   RegisterAllocator allocator(fs);
+   allocator.reserve(1);
    freg++;
 
    for (const TableField& field : payload.fields) {
@@ -1567,7 +1584,10 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload& payload
 
       if (not emit_constant) {
          if (val.k != ExpKind::Call) {
-            expr_toanyreg(fs, &val);
+            RegisterAllocator val_allocator(fs);
+            ExpressionValue val_value(fs, val);
+            val_value.discharge_to_any_reg(val_allocator);
+            val = val_value.legacy();
             vcall = 0;
          }
          if (expr_isk(&key)) {
@@ -1662,7 +1682,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    child_state.numparams = uint8_t(param_count);
    this->lex_state.var_add(param_count);
    if (child_state.nactvar > 0) {
-      bcreg_reserve(&child_state, child_state.nactvar);
+      RegisterAllocator child_allocator(&child_state);
+      child_allocator.reserve(child_state.nactvar);
    }
 
    IrEmitter child_emitter(child_ctx);
@@ -1722,7 +1743,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
       }
       ExpDesc key = make_interned_string_expr(segment.symbol);
       expr_toval(&this->func_state, &target);
-      expr_toanyreg(&this->func_state, &target);
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue target_value(&this->func_state, target);
+      target_value.discharge_to_any_reg(allocator);
+      target = target_value.legacy();
       expr_index(&this->func_state, &target, &key);
    }
 
@@ -1736,7 +1760,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
 
    ExpDesc key = make_interned_string_expr(final_name->symbol);
    expr_toval(&this->func_state, &target);
-   expr_toanyreg(&this->func_state, &target);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue target_value(&this->func_state, target);
+   target_value.discharge_to_any_reg(allocator);
+   target = target_value.legacy();
    expr_index(&this->func_state, &target, &key);
    return ParserResult<ExpDesc>::success(target);
 }
@@ -1761,7 +1788,10 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       if (not table_result.ok()) return table_result;
       ExpDesc table = table_result.value_ref();
       expr_toval(&this->func_state, &table);
-      expr_toanyreg(&this->func_state, &table);
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue table_value(&this->func_state, table);
+      table_value.discharge_to_any_reg(allocator);
+      table = table_value.legacy();
       ExpDesc key = make_interned_string_expr(payload.member.symbol);
       expr_index(&this->func_state, &table, &key);
       return ParserResult<ExpDesc>::success(table);
@@ -1779,7 +1809,10 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
       // the correct order (table first, then key)
       expr_toval(&this->func_state, &table);
-      expr_toanyreg(&this->func_state, &table);
+      RegisterAllocator allocator(&this->func_state);
+      ExpressionValue table_value(&this->func_state, table);
+      table_value.discharge_to_any_reg(allocator);
+      table = table_value.legacy();
       auto key_result = this->emit_expression(*payload.index);
       if (not key_result.ok()) {
          return key_result;
@@ -1851,13 +1884,19 @@ void IrEmitter::update_local_binding(GCstr* symbol, BCReg slot)
 
 void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view usage)
 {
-   expr_tonextreg(&this->func_state, &expression);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue value(&this->func_state, expression);
+   value.to_next_reg(allocator);
+   expression = value.legacy();
    this->ensure_register_floor(usage);
 }
 
 void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage)
 {
-   expr_toreg(&this->func_state, &expression, slot);
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue value(&this->func_state, expression);
+   value.to_reg(allocator, slot);
+   expression = value.legacy();
    this->ensure_register_floor(usage);
 }
 
