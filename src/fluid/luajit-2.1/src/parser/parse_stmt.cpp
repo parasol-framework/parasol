@@ -147,11 +147,17 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
 
    bcemit_store(fs, &lhv, &rh);
 
-   JumpListView(fs, check_nil).patch_to(assign_pos);
-   JumpListView(fs, check_false).patch_to(assign_pos);
-   JumpListView(fs, check_zero).patch_to(assign_pos);
-   JumpListView(fs, check_empty).patch_to(assign_pos);
-   JumpListView(fs, skip_assign).patch_to(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_nil = cfg.make_unconditional(check_nil);
+   edge_nil.patch_to(assign_pos);
+   ControlFlowEdge edge_false = cfg.make_unconditional(check_false);
+   edge_false.patch_to(assign_pos);
+   ControlFlowEdge edge_zero = cfg.make_unconditional(check_zero);
+   edge_zero.patch_to(assign_pos);
+   ControlFlowEdge edge_empty = cfg.make_unconditional(check_empty);
+   edge_empty.patch_to(assign_pos);
+   ControlFlowEdge edge_skip = cfg.make_unconditional(skip_assign);
+   edge_skip.patch_to(fs->pc);
 
    // Release temporary duplicates before freeing the original table slots.
    register_guard.release_to(register_guard.saved());
@@ -714,13 +720,18 @@ void LexState::parse_while(ParserContext &Context, BCLine line)
       Context.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
       loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
       this->parse_block(Context);
-      JumpListView(fs, bcemit_jmp(fs)).patch_to(start);
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge = cfg.make_unconditional(bcemit_jmp(fs));
+      edge.patch_to(start);
       this->lex_match(TK_end, TK_while, line);
       fscope_loop_continue(fs, start);
    }
 
-   JumpListView(fs, condexit).patch_to_here();
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_exit = cfg.make_unconditional(condexit);
+   edge_exit.patch_here();
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
 }
 
 //********************************************************************************************************************
@@ -749,12 +760,17 @@ void LexState::parse_repeat(ParserContext &Context, BCLine line)
       inner_has_upvals = has_flag(bl2.flags, FuncScopeFlag::Upvalue);
       if (inner_has_upvals) {  // Otherwise generate: cond: UCLO+JMP out, !cond: UCLO+JMP loop.
          this->parse_break();  // Break from loop and close upvalues.
-         JumpListView(fs, condexit).patch_to_here();
+         ControlFlowGraph cfg(fs);
+         ControlFlowEdge edge = cfg.make_unconditional(condexit);
+         edge.patch_here();
       }
    }
    if (inner_has_upvals) condexit = bcemit_jmp(fs);
-   JumpListView(fs, condexit).patch_to(loop);  // Jump backwards if !cond.
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_exit = cfg.make_unconditional(condexit);
+   edge_exit.patch_to(loop);  // Jump backwards if !cond.
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    fscope_loop_continue(fs, iter); // continue statements jump to condexit.
 }
 
@@ -806,8 +822,11 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
 
    loopend = bcemit_AJ(fs, BC_FORL, base, NO_JMP);
    fs->bcbase[loopend].line = line;  // Fix line for control ins.
-   JumpListView(fs, loopend).patch_head(loop + 1);
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_end = cfg.make_unconditional(loopend);
+   edge_end.patch_head(loop + 1);
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    fscope_loop_continue(fs, loopend); // continue statements jump to loopend.
 }
 
@@ -898,12 +917,15 @@ void LexState::parse_for_iter(ParserContext &Context, GCstr* indexname)
 
    // Perform loop inversion. Loop control instructions are at the end.
 
-   JumpListView(fs, loop).patch_head(fs->pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge_loop = cfg.make_unconditional(loop);
+   edge_loop.patch_head(fs->pc);
    iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 2 + 1);
    loopend = bcemit_AJ(fs, BC_ITERL, base, NO_JMP);
    fs->bcbase[loopend - 1].line = line;  // Fix line for control ins.
    fs->bcbase[loopend].line = line;
-   JumpListView(fs, loopend).patch_head(loop + 1);
+   ControlFlowEdge edge_end = cfg.make_unconditional(loopend);
+   edge_end.patch_head(loop + 1);
    fscope_loop_continue(fs, iter); // continue statements jump to iter.
 }
 
@@ -950,20 +972,35 @@ void LexState::parse_if(ParserContext &Context, BCLine line)
    BCPos escapelist = NO_JMP;
    flist = this->parse_then(Context);
    while (Context.tokens().current().is(TokenKind::ElseIf)) {  // Parse multiple 'elseif' blocks.
-      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
-      JumpListView(fs, flist).patch_to_here();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(bcemit_jmp(fs));
+      escapelist = edge_escape.head();
+      ControlFlowEdge edge_flist = cfg.make_unconditional(flist);
+      edge_flist.patch_here();
       flist = this->parse_then(Context);
    }
 
    if (Context.tokens().current().is(TokenKind::Else)) {  // Parse optional 'else' block.
-      escapelist = JumpListView(fs, escapelist).append(bcemit_jmp(fs));
-      JumpListView(fs, flist).patch_to_here();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(bcemit_jmp(fs));
+      escapelist = edge_escape.head();
+      ControlFlowEdge edge_flist = cfg.make_unconditional(flist);
+      edge_flist.patch_here();
       Context.tokens().advance();  // Skip 'else'.
       this->parse_block(Context);
    }
-   else escapelist = JumpListView(fs, escapelist).append(flist);
+   else {
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge edge_escape = cfg.make_unconditional(escapelist);
+      edge_escape.append(flist);
+      escapelist = edge_escape.head();
+   }
 
-   JumpListView(fs, escapelist).patch_to_here();
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge = cfg.make_unconditional(escapelist);
+   edge.patch_here();
    this->lex_match(TK_end, TK_if, line);
 }
 
