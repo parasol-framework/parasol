@@ -1,7 +1,8 @@
 # Parser Phase 3 Finalization Plan
 
-**Status**: Draft
+**Status**: In Progress (Steps 1-2 Complete)
 **Created**: 2025-11-22
+**Last Updated**: 2025-11-22
 **Dependencies**: PARSER_P3.md, PARSER_P3B.md (completed)
 
 ## Overview
@@ -77,6 +78,58 @@ void ExpressionValue::set_flag(ExprFlag Flag) {
 1. Simplify parse_internal.h by removing legacy helpers
 2. Reduce cognitive load by having single clear API for jumps
 3. Achieve architectural consistency across parser codebase
+
+## Progress Update
+
+### ✅ Completed Steps
+
+#### Step 1: Flag Internalization (COMPLETE - 2025-11-22)
+**Commit**: ed3b36c3
+**Changes**:
+- Internalized all flag bit manipulation into ExpressionValue methods
+- `has_flag()`, `set_flag()`, `clear_flag()`, `consume_flag()` now directly manipulate `descriptor.flags`
+- Legacy `expr_*_flag()` functions in parse_internal.h marked as DEPRECATED
+- 5 legitimate callers identified where raw ExpDesc is used without ExpressionValue wrappers
+- All 25 Fluid parser tests passing
+
+**Files Modified**:
+- `src/fluid/luajit-2.1/src/parser/parse_value.cpp` - Internalized flag methods
+- `src/fluid/luajit-2.1/src/parser/parse_internal.h` - Marked legacy functions deprecated
+
+**Status**: ✅ Flag encapsulation complete, legacy functions retained for valid raw ExpDesc usage
+
+#### Step 2: Jump Migration Analysis (COMPLETE - 2025-11-22)
+**Commit**: 80fa576e
+**Deliverable**: `docs/plans/PARSER_P3_JUMP_ANALYSIS.md`
+
+**Key Findings**:
+- **63 actual usage sites** identified (86 grep hits - 23 class implementation lines)
+- **10 distinct usage patterns** mapped to ControlFlowGraph equivalents
+- **File categorization**: 2 easy, 3 medium, 2 hard, 1 special (class impl)
+- **API gaps identified**: 3 new ControlFlowEdge methods required
+  - `patch_with_value()` - HIGH priority (blocks 3 sites)
+  - `produces_values()` - HIGH priority (blocks 2 sites)
+  - `drop_values()` - MEDIUM priority (blocks 2 sites)
+
+**Usage Breakdown**:
+- parse_control_flow.cpp: 3 uses (EASY)
+- parse_scope.cpp: 3 uses (EASY)
+- parse_expr.cpp: 6 uses (MEDIUM)
+- parse_operators.cpp: 17 uses (MEDIUM)
+- parse_regalloc.cpp: 11 uses (MEDIUM) - **blocked by missing API**
+- parse_stmt.cpp: 21 uses (HARD)
+- parse_constants.cpp: 23 uses (SPECIAL - class implementation)
+
+**Migration Plan**: 5-phase approach documented with detailed checklists
+
+**Status**: ✅ Complete analysis, ready for Batch 1 migration (easy files)
+
+### 🔄 In Progress
+
+#### Step 3: Batch 1 Migration (Easy Files) - IN PROGRESS
+**Target**: parse_control_flow.cpp (3 uses), parse_scope.cpp (3 uses)
+**Expected duration**: Current session
+**Blockers**: None - existing ControlFlowEdge API sufficient
 
 ## Implementation Strategy
 
