@@ -86,7 +86,9 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
+   RegisterAllocator register_allocator;
    ControlFlowGraph control_flow;
+   OperatorEmitter operator_emitter;
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);

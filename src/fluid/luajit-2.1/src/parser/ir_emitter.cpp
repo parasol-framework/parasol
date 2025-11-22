@@ -397,7 +397,12 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
 }  // namespace
 
 IrEmitter::IrEmitter(ParserContext& context)
-   : ctx(context), func_state(context.func()), lex_state(context.lex()), control_flow(&this->func_state)
+   : ctx(context),
+     func_state(context.func()),
+     lex_state(context.lex()),
+     register_allocator(&this->func_state),
+     control_flow(&this->func_state),
+     operator_emitter(&this->func_state, &this->register_allocator, &this->control_flow)
 {
 }
 
@@ -1381,18 +1386,21 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
    auto operand_result = this->emit_expression(*payload.operand);
    if (not operand_result.ok()) return operand_result;
    ExpDesc operand = operand_result.value_ref();
-   glLegacyHelperCalls.record(LegacyHelperKind::Unop, "emit_unary_expr");
+
+   // Use OperatorEmitter facade for unary operators
    switch (payload.op) {
       case AstUnaryOperator::Negate:
-         bcemit_unop(&this->func_state, BC_UNM, &operand);
+         this->operator_emitter.emit_unary(BC_UNM, &operand);
          break;
       case AstUnaryOperator::Not:
-         bcemit_unop(&this->func_state, BC_NOT, &operand);
+         this->operator_emitter.emit_unary(BC_NOT, &operand);
          break;
       case AstUnaryOperator::Length:
-         bcemit_unop(&this->func_state, BC_LEN, &operand);
+         this->operator_emitter.emit_unary(BC_LEN, &operand);
          break;
       case AstUnaryOperator::BitNot:
+         // BitNot still uses legacy helper as it's not in OperatorEmitter yet
+         glLegacyHelperCalls.record(LegacyHelperKind::Unop, "emit_unary_expr/bitnot");
          bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
          break;
    }
@@ -1462,14 +1470,38 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
       SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
       return this->unsupported_expr(AstNodeKind::BinaryExpr, span);
    }
+
+   BinOpr opr = mapped.value();
    ExpDesc lhs = lhs_result.value_ref();
-   glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr");
-   bcemit_binop_left(&this->func_state, mapped.value(), &lhs);
+
+   // Logical operators (AND, OR, IF_EMPTY) need special short-circuit handling
+   // Keep using legacy bcemit_binop_left for now as they require CFG integration
+   if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
+      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical");
+      bcemit_binop_left(&this->func_state, opr, &lhs);
+      auto rhs_result = this->emit_expression(*payload.right);
+      if (not rhs_result.ok()) return rhs_result;
+      ExpDesc rhs = rhs_result.value_ref();
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical");
+      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+      return ParserResult<ExpDesc>::success(lhs);
+   }
+
+   // Evaluate right operand first for non-short-circuit operators
    auto rhs_result = this->emit_expression(*payload.right);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
-   glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr");
-   bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
+
+   // Route through OperatorEmitter facade based on operator type
+   if (opr >= OPR_EQ and opr <= OPR_GT) {
+      // Comparison operators (EQ, NE, LT, LE, GT, GE)
+      this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
+   }
+   else {
+      // Arithmetic and bitwise operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT, BAND, BOR, BXOR, SHL, SHR)
+      this->operator_emitter.emit_binary_arith(opr, &lhs, &rhs);
+   }
+
    return ParserResult<ExpDesc>::success(lhs);
 }
 

@@ -66,7 +66,39 @@
 * `src/fluid/luajit-2.1/src/parser/parse_internal.h` - Changed declarations to extern for exported functions
 * `src/fluid/CMakeLists.txt` - Added operator_emitter.cpp to build
 
-**Next:** Adapt emit_unary_expr() and emit_binary_expr() in IrEmitter to use OperatorEmitter facade (Step 3)
+**Next:** Complete Step 3 by defining ValueUse/ValueSlot abstractions
+
+---
+
+### 🟡 Step 3: Rework binary/unary emission to use OperatorEmitter (IN PROGRESS)
+**Status:** OperatorEmitter integrated into expression emitters
+
+**Achievements:**
+* Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
+* Adapted `emit_unary_expr()` to route through `OperatorEmitter::emit_unary()`
+  - Negate, Not, Length operators now use facade
+  - BitNot still uses legacy helper (to be migrated later)
+* Adapted `emit_binary_expr()` to route through `OperatorEmitter` facade
+  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT) → `emit_binary_arith()`
+  - Comparison operators (EQ, NE, LT, LE, GT, GE) → `emit_comparison()`
+  - Bitwise operators (BAND, BOR, BXOR, SHL, SHR) → `emit_binary_arith()`
+  - Logical operators (AND, OR, IF_EMPTY) still use legacy helpers (require CFG integration)
+* Verified functionality with comprehensive test script covering:
+  - All unary operators
+  - All arithmetic operators
+  - All comparison operators
+  - All bitwise operators
+
+**Remaining Work:**
+* Define ValueUse/ValueSlot/LValue abstractions (Step 3 continuation)
+* Migrate logical short-circuit operators to use CFG-based approach
+* Remove remaining legacy helper calls from operator emission
+
+**Files Modified:**
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added RegisterAllocator and OperatorEmitter members
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr and emit_binary_expr
+
+**Next:** Define ValueUse/ValueSlot abstractions and complete Step 3
 
 ---
 
