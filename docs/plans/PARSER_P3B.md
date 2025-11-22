@@ -444,4 +444,4 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - **Total this batch: 62 legacy calls eliminated**
 - **Phase 3 cumulative total: 136 legacy calls eliminated (74 + 62)**
 
-**Commit:** Pending
+**Commit:** `6199da01` - "Implement Phase 3 Batch 3: Complete expression and statement migration"
