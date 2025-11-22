@@ -8,6 +8,7 @@
 #include "parser/parser_context.h"
 #include "parser/parse_value.h"
 #include "parser/parse_regalloc.h"
+#include "parser/parse_control_flow.h"
 
 //********************************************************************************************************************
 // Eliminate write-after-read hazards for local variable assignment.
