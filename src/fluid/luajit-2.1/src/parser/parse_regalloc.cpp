@@ -174,7 +174,9 @@ static BCPos bcemit_INS(FuncState* fs, BCIns ins)
 {
    BCPos pc = fs->pc;
    LexState* ls = fs->ls;
-   JumpListView(fs, fs->jpc).patch_with_value(pc, NO_REG, pc);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge pending = cfg.make_unconditional(fs->jpc);
+   pending.patch_with_value(pc, NO_REG, pc);
    fs->jpc = NO_JMP;
    if (pc >= fs->bclim) [[unlikely]] {
       ptrdiff_t base = fs->bcbase - ls->bcstack;
@@ -347,20 +349,28 @@ noins:
 static void expr_toreg(FuncState* fs, ExpDesc* e, BCReg reg)
 {
    expr_toreg_nobranch(fs, e, reg);
-   if (e->k IS ExpKind::Jmp) e->t = JumpListView(fs, e->t).append(e->u.s.info);  // Add it to the true jump list.
+   ControlFlowGraph cfg(fs);
+   if (e->k IS ExpKind::Jmp) {
+      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+      true_edge.append(e->u.s.info);
+      e->t = true_edge.head();
+   }
    if (expr_hasjump(e)) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
-      if (JumpListView(fs, e->t).produces_values() or JumpListView(fs, e->f).produces_values()) {
+      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+      if (true_edge.produces_values() or false_edge.produces_values()) {
          BCPos jval = (e->k IS ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
          jfalse = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
          jtrue = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::True));
-         JumpListView(fs, jval).patch_to_here();
+         ControlFlowEdge jval_edge = cfg.make_unconditional(jval);
+         jval_edge.patch_here();
       }
       jend = fs->pc;
       fs->lasttarget = jend;
-      JumpListView(fs, e->f).patch_with_value(jend, reg, jfalse);
-      JumpListView(fs, e->t).patch_with_value(jend, reg, jtrue);
+      false_edge.patch_with_value(jend, reg, jfalse);
+      true_edge.patch_with_value(jend, reg, jtrue);
    }
    e->f = e->t = NO_JMP;
    e->u.s.info = reg;
@@ -490,8 +500,10 @@ static void bcemit_method(FuncState* fs, ExpDesc* e, ExpDesc* key)
       fs->lasttarget = j + 1;
    }
    else j = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-   j = JumpListView(fs, j).append(jpc);
-   return j;
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge edge = cfg.make_unconditional(j);
+   edge.append(jpc);
+   return edge.head();
 }
 
 //********************************************************************************************************************
@@ -540,8 +552,12 @@ static void bcemit_branch_t(FuncState* fs, ExpDesc* e)
    else if (e->k == ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
    else if (e->k == ExpKind::False or e->k == ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 0);
-   e->f = JumpListView(fs, e->f).append(pc);
-   JumpListView(fs, e->t).patch_to_here();
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+   false_edge.append(pc);
+   e->f = false_edge.head();
+   ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+   true_edge.patch_here();
    e->t = NO_JMP;
 }
 
@@ -558,7 +574,11 @@ static void bcemit_branch_f(FuncState* fs, ExpDesc* e)
    else if (e->k == ExpKind::Str or e->k == ExpKind::Num or e->k == ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 1);
 
-   e->t = JumpListView(fs, e->t).append(pc);
-   JumpListView(fs, e->f).patch_to_here();
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+   true_edge.append(pc);
+   e->t = true_edge.head();
+   ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+   false_edge.patch_here();
    e->f = NO_JMP;
 }
