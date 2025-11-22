@@ -1162,6 +1162,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    ExpDesc rhs;
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
       ExpDesc infix = working;
+      // Concat uses special left-to-right evaluation via bcemit_binop_left
+      // Keep using legacy for now as it has special handling
       glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_compound_assignment/concat");
       bcemit_binop_left(&this->func_state, mapped.value(), &infix);
       auto list = this->emit_expression_list(values, count);
@@ -1192,10 +1194,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
       rhs = list.value_ref();
       ExpDesc infix = working;
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_compound_assignment/arith");
-      bcemit_binop_left(&this->func_state, mapped.value(), &infix);
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_compound_assignment/arith");
-      bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+
+      // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
+      this->operator_emitter.emit_binary_arith(mapped.value(), &infix, &rhs);
+
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
       bcemit_store(&this->func_state, &target, &infix);
    }
@@ -1440,10 +1442,9 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 
    ExpDesc delta = make_num_expr(1.0);
    ExpDesc infix = operand;
-   glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_update_expr");
-   bcemit_binop_left(&this->func_state, op, &infix);
-   glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_update_expr");
-   bcemit_binop(&this->func_state, op, &infix, &delta);
+
+   // Use OperatorEmitter for arithmetic operation (operand +/- 1)
+   this->operator_emitter.emit_binary_arith(op, &infix, &delta);
 
    glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_update_expr");
    bcemit_store(&this->func_state, &target, &infix);

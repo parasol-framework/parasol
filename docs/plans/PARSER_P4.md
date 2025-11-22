@@ -71,7 +71,7 @@
 ---
 
 ### 🟡 Step 3: Rework binary/unary emission to use OperatorEmitter (IN PROGRESS)
-**Status:** OperatorEmitter integrated into expression emitters
+**Status:** OperatorEmitter integrated into expression emitters, update/compound operators migrated
 
 **Achievements:**
 * Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
@@ -83,20 +83,39 @@
   - Comparison operators (EQ, NE, LT, LE, GT, GE) → `emit_comparison()`
   - Bitwise operators (BAND, BOR, BXOR, SHL, SHR) → `emit_binary_arith()`
   - Logical operators (AND, OR, IF_EMPTY) still use legacy helpers (require CFG integration)
-* Verified functionality with comprehensive test script covering:
+* Adapted `emit_update_expr()` to use `OperatorEmitter::emit_binary_arith()`
+  - Postfix/prefix increment (++x, x++) and decrement (--x, x--) now route through facade
+  - Eliminated direct calls to `bcemit_binop_left`/`bcemit_binop` for update operators
+* Adapted `emit_compound_assignment()` to use `OperatorEmitter::emit_binary_arith()`
+  - Arithmetic compound assignments (+=, -=, *=, /=, %=) now route through facade
+  - Concat compound assignment (..=) still uses legacy helpers due to special left-to-right evaluation
+* Verified functionality with comprehensive test scripts covering:
   - All unary operators
   - All arithmetic operators
   - All comparison operators
   - All bitwise operators
+  - All update operators (++/--, postfix/prefix)
+  - All compound assignments (including table member assignments)
+
+**Summary of OperatorEmitter Coverage:**
+* ✅ Arithmetic operators: ADD, SUB, MUL, DIV, MOD, POW fully migrated
+* ✅ Comparison operators: EQ, NE, LT, LE, GT, GE fully migrated
+* ✅ Bitwise operators: BAND, BOR, BXOR, SHL, SHR fully migrated
+* ✅ Unary operators: Negate, Not, Length fully migrated
+* ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
+* ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
+* ⏳ Still using legacy: AND, OR, IF_EMPTY (logical short-circuit), CONCAT in compound assignments, BitNot
 
 **Remaining Work:**
 * Define ValueUse/ValueSlot/LValue abstractions (Step 3 continuation)
 * Migrate logical short-circuit operators to use CFG-based approach
+* Migrate concat compound assignment (..=) special handling
+* Migrate BitNot unary operator
 * Remove remaining legacy helper calls from operator emission
 
 **Files Modified:**
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added RegisterAllocator and OperatorEmitter members
-* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr and emit_binary_expr
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
 
 **Next:** Define ValueUse/ValueSlot abstractions and complete Step 3
 
