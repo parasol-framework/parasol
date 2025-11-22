@@ -9,7 +9,7 @@
 
 // Try constant-folding of arithmetic operators.
 
-[[nodiscard]] static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+[[nodiscard]] int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    TValue o;
    lua_Number n;
@@ -31,7 +31,7 @@
 //********************************************************************************************************************
 // Emit arithmetic operator.
 
-static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
    BCReg rb, rc, t;
@@ -90,7 +90,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit comparison operator.
 
-static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
    ExpDesc* eret = e1;
@@ -715,7 +715,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit unary operator.
 
-static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
+void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
 

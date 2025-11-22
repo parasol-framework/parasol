@@ -641,7 +641,8 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/parser/lj_debug.cpp"
    "${LUAJIT_SRC}/parser/lj_parse.cpp"
    "${LUAJIT_SRC}/parser/lj_lex.cpp"
-   "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
+   "${LUAJIT_SRC}/parser/lj_parse_tests.cpp"
+   "${LUAJIT_SRC}/parser/operator_emitter.cpp")
 
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")

@@ -74,7 +74,10 @@ LocalBindingScope::~LocalBindingScope()
 // IR emission context implementation
 
 IrEmissionContext::IrEmissionContext(FuncState* State)
-   : func_state(State), register_allocator(State), control_flow_graph(State)
+   : func_state(State),
+     register_allocator(State),
+     control_flow_graph(State),
+     operator_emitter(State, &this->register_allocator, &this->control_flow_graph)
 {
 }
 
@@ -86,6 +89,11 @@ RegisterAllocator& IrEmissionContext::allocator()
 ControlFlowGraph& IrEmissionContext::cfg()
 {
    return this->control_flow_graph;
+}
+
+OperatorEmitter& IrEmissionContext::operators()
+{
+   return this->operator_emitter;
 }
 
 FuncState* IrEmissionContext::state() const
