@@ -113,29 +113,36 @@ For each file, identify and categorize all expr_* usage:
 
 **parse_regalloc.cpp** (33 occurrences):
 - [x] Already uses RegisterAllocator internally
-- [ ] Wrap ExpDesc in ExpressionValue at function boundaries
+- [x] Wrap ExpDesc in ExpressionValue at function boundaries (legacy functions remain as implementation)
 
 **ir_emitter.cpp** (33 occurrences):
-- [ ] emit_binary_expr: 8 calls to expr_discharge/expr_toanyreg
-- [ ] emit_assignment: 4 calls + manual table duplication
-- [ ] emit_conditional: 12 calls for branch generation
-- [ ] emit_table_constructor: 5 calls for field emission
+- [x] emit_binary_expr: 8 calls to expr_discharge/expr_toanyreg
+- [x] emit_assignment: 4 calls + manual table duplication
+- [x] emit_conditional: 12 calls for branch generation
+- [x] emit_table_constructor: 5 calls for field emission
+- [x] All remaining expr_toval and bcreg_free calls
 
 **parse_stmt.cpp** (29 occurrences):
-- [ ] assign_compound: Replace manual table duplication (priority)
-- [ ] parse_return_stmt: 6 calls to expr_tonextreg
-- [ ] parse_local_declaration: 4 calls to expr_toreg
+- [x] assign_compound: Replace manual table duplication (priority)
+- [x] parse_return_stmt: 6 calls to expr_tonextreg
+- [x] parse_local_declaration: 4 calls to expr_toreg
+- [x] All remaining legacy calls migrated
 
 **parse_operators.cpp** (49 occurrences):
-- [ ] bcemit_arith: 12 calls - fold constant optimization
-- [ ] bcemit_comp: 8 calls - comparison emission
-- [ ] bcemit_binop: 15 calls - general binary operations
-- [ ] bcemit_unop: 6 calls - unary operations
+- [x] bcemit_arith: 12 calls - fold constant optimization
+- [x] bcemit_comp: 8 calls - comparison emission
+- [x] bcemit_binop: 15 calls - general binary operations
+- [x] bcemit_unop: 6 calls - unary operations
+- [x] All remaining expr_toval calls migrated
 
 **parse_expr.cpp** (34 occurrences):
-- [ ] expr_primary: 8 calls for literal/identifier handling
-- [ ] expr_table_constructor: 10 calls for field values
-- [ ] expr_function_call: 6 calls for argument passing
+- [x] expr_primary: 8 calls for literal/identifier handling
+- [x] expr_table_constructor: 10 calls for field values
+- [x] expr_function_call: 6 calls for argument passing
+- [x] All remaining legacy calls migrated
+
+**parse_scope.cpp** (1 occurrence):
+- [x] bcreg_reserve call migrated to RegisterAllocator
 
 #### 3.2 Migration Pattern Template
 **Standard transformation**:
@@ -483,4 +490,4 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - **Total**: 158 legacy expr_* and bcreg_* calls eliminated across all parser files
 - **Files fully migrated**: ir_emitter.cpp, parse_operators.cpp, parse_expr.cpp, parse_stmt.cpp, parse_scope.cpp
 
-**Commit:** TBD - "Implement Phase 3 Batch 4: Final migration - complete Phase 3"
+**Commit:** `bce9b636` - "Implement Phase 3 Batch 4: Final migration - complete Phase 3"
