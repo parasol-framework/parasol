@@ -151,6 +151,9 @@
 
 **Next Steps (Options):**
 * **Option A**: Migrate logical short-circuit operators (AND, OR, IF_EMPTY) to full CFG-based implementation (substantial work, completes major Step 3 goal)
+  - **Detailed plan available:** `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
+  - 5 stages with clear testing milestones
+  - Estimated 9-12 hours of development
 * **Option B**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
 * **Option C**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
 
