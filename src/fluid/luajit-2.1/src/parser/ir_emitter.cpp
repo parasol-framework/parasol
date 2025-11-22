@@ -67,64 +67,6 @@ LocalBindingScope::~LocalBindingScope()
    this->table.pop_scope();
 }
 
-JumpHandle::JumpHandle() : func_state(nullptr), list_head(NO_JMP)
-{
-}
-
-JumpHandle::JumpHandle(FuncState* state)
-   : func_state(state), list_head(NO_JMP)
-{
-}
-
-JumpHandle::JumpHandle(FuncState* state, BCPos head) : func_state(state), list_head(head)
-{
-}
-
-bool JumpHandle::empty() const
-{
-   return this->list_head IS NO_JMP;
-}
-
-void JumpHandle::append(BCPos other)
-{
-   if (not this->func_state) return;
-   this->list_head = JumpListView(this->func_state, this->list_head).append(other);
-}
-
-void JumpHandle::append(const JumpHandle& other)
-{
-   this->append(other.list_head);
-}
-
-void JumpHandle::patch_here() const
-{
-   if (this->func_state) this->patch_to(this->func_state->pc);
-}
-
-void JumpHandle::patch_to(BCPos target) const
-{
-   if (this->func_state and not this->empty()) {
-      JumpListView(this->func_state, this->list_head).patch_to(target);
-   }
-}
-
-void JumpHandle::patch_head(BCPos destination) const
-{
-   if (this->func_state and not this->empty()) {
-      JumpListView(this->func_state, this->list_head).patch_head(destination);
-   }
-}
-
-BCPos JumpHandle::head() const
-{
-   return this->list_head;
-}
-
-FuncState * JumpHandle::state() const
-{
-   return this->func_state;
-}
-
 namespace {
 
 constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;
@@ -359,16 +301,19 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
 
 }  // namespace
 
-IrEmitter::IrEmitter(ParserContext& context) : ctx(context), func_state(context.func()), lex_state(context.lex())
+IrEmitter::IrEmitter(ParserContext& context)
+   : ctx(context), func_state(context.func()), lex_state(context.lex()), control_flow(&this->func_state)
 {
 }
 
 ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
 {
+   this->control_flow.reset(&this->func_state);
    FuncScope chunk_scope;
    ScopeGuard guard(&this->func_state, &chunk_scope, FuncScopeFlag::None);
    auto result = this->emit_block(chunk, FuncScopeFlag::None);
    if (not result.ok()) return result;
+   this->control_flow.finalize();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -609,7 +554,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 {
    if (payload.clauses.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
-   JumpHandle escapelist(&this->func_state);
+   ControlFlowEdge escapelist = this->control_flow.make_unconditional();
    for (size_t i = 0; i < payload.clauses.size(); ++i) {
       const IfClause& clause = payload.clauses[i];
       bool has_next = (i + 1) < payload.clauses.size();
@@ -618,7 +563,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
          if (not condexit_result.ok()) {
             return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
          }
-         JumpHandle condexit = condexit_result.value_ref();
+         ControlFlowEdge condexit = condexit_result.value_ref();
          if (clause.block) {
             auto block_result = this->emit_block(*clause.block, FuncScopeFlag::None);
             if (not block_result.ok()) {
@@ -657,18 +602,18 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    if (not condexit_result.ok()) {
       return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
    }
-   JumpHandle condexit = condexit_result.value_ref();
+   ControlFlowEdge condexit = condexit_result.value_ref();
 
-   JumpHandle loop(fs);
+   ControlFlowEdge loop;
    {
       FuncScope loop_scope;
       ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
-      loop = JumpHandle(fs, bcemit_AD(fs, BC_LOOP, fs->nactvar, 0));
+      loop = this->control_flow.make_unconditional(bcemit_AD(fs, BC_LOOP, fs->nactvar, 0));
       auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) {
          return block_result;
       }
-      JumpHandle body_jump(fs, bcemit_jmp(fs));
+      ControlFlowEdge body_jump = this->control_flow.make_unconditional(bcemit_jmp(fs));
       body_jump.patch_to(start);
       fscope_loop_continue(fs, start);
    }
@@ -687,7 +632,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    FuncState* fs = &this->func_state;
    BCPos loop = fs->lasttarget = fs->pc;
    BCPos iter = NO_JMP;
-   JumpHandle condexit(fs);
+   ControlFlowEdge condexit;
    bool inner_has_upvals = false;
 
    FuncScope outer_scope;
@@ -716,10 +661,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
       }
    }
    if (inner_has_upvals) {
-      condexit = JumpHandle(fs, bcemit_jmp(fs));
+      condexit = this->control_flow.make_unconditional(bcemit_jmp(fs));
    }
    condexit.patch_to(loop);
-   JumpHandle loop_head(fs, loop);
+   ControlFlowEdge loop_head = this->control_flow.make_unconditional(loop);
    loop_head.patch_head(fs->pc);
    fscope_loop_continue(fs, iter);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -772,7 +717,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
 
    this->lex_state.var_add(3);
 
-   JumpHandle loop(fs, bcemit_AJ(fs, BC_FORI, base, NO_JMP));
+   ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORI, base, NO_JMP));
 
    {
       FuncScope visible_scope;
@@ -792,7 +737,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       }
    }
 
-   JumpHandle loopend(fs, bcemit_AJ(fs, BC_FORL, base, NO_JMP));
+   ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORL, base, NO_JMP));
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
    loop.patch_head(fs->pc);
@@ -835,7 +780,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
    this->lex_state.var_add(3);
 
-   JumpHandle loop(fs, bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP));
+   ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP));
 
    {
       FuncScope visible_scope;
@@ -863,7 +808,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
 
    loop.patch_head(fs->pc);
    BCPos iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 3);
-   JumpHandle loopend(fs, bcemit_AJ(fs, BC_ITERL, base, NO_JMP));
+   ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_ITERL, base, NO_JMP));
    fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
@@ -1122,18 +1067,18 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target,
    ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-   JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-   JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-   JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
-   JumpHandle skip_assign(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge skip_assign = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
    BCPos assign_pos = this->func_state.pc;
 
    auto list = this->emit_expression_list(values, count);
@@ -1203,18 +1148,18 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
    }
 }
 
-ParserResult<JumpHandle> IrEmitter::emit_condition_jump(const ExprNode& expr)
+ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& expr)
 {
    auto condition = this->emit_expression(expr);
    if (not condition.ok()) {
-      return ParserResult<JumpHandle>::failure(condition.error_ref());
+      return ParserResult<ControlFlowEdge>::failure(condition.error_ref());
    }
    ExpDesc result = condition.value_ref();
    if (result.k IS ExpKind::Nil) {
       result.k = ExpKind::False;
    }
    bcemit_branch_t(&this->func_state, &result);
-   return ParserResult<JumpHandle>::success(JumpHandle(&this->func_state, result.f));
+   return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(result.f));
 }
 
 ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
@@ -1370,13 +1315,13 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
-   JumpHandle check_nil(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
-   JumpHandle check_false(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
-   JumpHandle check_zero(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
-   JumpHandle check_empty(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    auto true_result = this->emit_expression(*payload.if_true);
    if (not true_result.ok()) {
@@ -1387,7 +1332,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    this->materialise_to_reg(true_expr, cond_reg, "ternary true branch");
    ir_collapse_freereg(&this->func_state, cond_reg);
 
-   JumpHandle skip_false(&this->func_state, bcemit_jmp(&this->func_state));
+   ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    BCPos false_start = this->func_state.pc;
    check_nil.patch_to(false_start);

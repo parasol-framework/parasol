@@ -391,12 +391,11 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
+   expr_free(fs, e); // Free the expression register immediately after we're done using it
+
    // Reserve a register for the result
    BCReg dest = fs->freereg;
    bcreg_reserve(fs, 1);
-
-   // Free the old expression register after reserving new one
-   expr_free(fs, e);
 
    // If all checks pass (value is truthy), load true
    bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));

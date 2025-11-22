@@ -391,7 +391,7 @@ void lj_ir_kvalue(lua_State* L, TValue* tv, const IRIns* ir)
    UNUSED(L);
    lj_assertL(ir->o != IR_KSLOT, "unexpected KSLOT");  //  Common mistake.
    switch (ir->o) {
-   case IR_KPRI: setpriV(tv, irt_toitype(ir->t)); break;
+   case IR_KPRI: setpriV(tv, uint64_t(irt_toitype(ir->t))); break;
    case IR_KINT: setintV(tv, ir->i); break;
    case IR_KGC: setgcV(L, tv, ir_kgc(ir), irt_toitype(ir->t)); break;
    case IR_KPTR: case IR_KKPTR:

@@ -762,7 +762,7 @@ static void snap_restoreval(jit_State* J, GCtrace* T, ExitState* ex,
 #endif
       }
       else if (irt_ispri(t)) {
-         setpriV(o, irt_toitype(t));
+         setpriV(o, uint64_t(irt_toitype(t)));
       }
       else {
          setgcV(J->L, o, (GCobj*)ex->gpr[r - RID_MIN_GPR], irt_toitype(t));

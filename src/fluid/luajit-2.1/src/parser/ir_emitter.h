@@ -13,6 +13,7 @@
 
 #include "parser/ast_nodes.h"
 #include "parser/parser_context.h"
+#include "parser/parse_control_flow.h"
 #include "parser/parse_types.h"
 
 struct LocalBindingEntry {
@@ -53,26 +54,6 @@ private:
    LocalBindingTable& table;
 };
 
-class JumpHandle {
-public:
-   JumpHandle();
-   explicit JumpHandle(FuncState* state);
-   JumpHandle(FuncState* state, BCPos head);
-
-   [[nodiscard]] bool empty() const;
-   void append(BCPos other);
-   void append(const JumpHandle& other);
-   void patch_here() const;
-   void patch_to(BCPos target) const;
-   void patch_head(BCPos destination) const;
-   [[nodiscard]] BCPos head() const;
-   [[nodiscard]] FuncState* state() const;
-
-private:
-   FuncState* func_state;
-   BCPos list_head;
-};
-
 struct IrEmitUnit {
 };
 
@@ -86,6 +67,7 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
+   ControlFlowGraph control_flow;
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
@@ -129,7 +111,7 @@ private:
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
-   ParserResult<JumpHandle> emit_condition_jump(const ExprNode& expr);
+   ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
    ParserResult<std::vector<ExpDesc>> prepare_assignment_targets(const ExprNodeList& targets);
    void update_local_binding(GCstr* symbol, BCReg slot);
