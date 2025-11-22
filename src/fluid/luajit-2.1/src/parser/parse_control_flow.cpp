@@ -3,6 +3,8 @@
 
 #include "parser/parse_control_flow.h"
 
+#include <parasol/main.h>
+
 #include "parser/parse_internal.h"
 
 ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
@@ -350,7 +352,8 @@ void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head,
       case ControlFlowEdgeKind::Break: kind_name = "break"; break;
       case ControlFlowEdgeKind::Continue: kind_name = "continue"; break;
    }
-   fprintf(stderr, "[CFG] create edge #%zu kind=%s head=%d\n", Index, kind_name, int(Head));
+   pf::Log log("Parser");
+   log.trace("[CFG] create edge #%zu kind=%s head=%d", Index, kind_name, int(Head));
 #else
    (void)Kind; (void)Head; (void)Index;
 #endif
@@ -359,7 +362,8 @@ void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head,
 void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
 {
 #if defined(LJ_TRACE_CFG)
-   fprintf(stderr, "[CFG] patch edge #%zu to target=%d\n", Index, int(Target));
+   pf::Log log("Parser");
+   log.trace("[CFG] patch edge #%zu to target=%d", Index, int(Target));
 #else
    (void)Index; (void)Target;
 #endif
@@ -368,7 +372,8 @@ void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
 void ControlFlowGraph::trace_edge_append(size_t Index, BCPos Head) const
 {
 #if defined(LJ_TRACE_CFG)
-   fprintf(stderr, "[CFG] append to edge #%zu head=%d\n", Index, int(Head));
+   pf::Log log("Parser");
+   log.trace("[CFG] append to edge #%zu head=%d", Index, int(Head));
 #else
    (void)Index; (void)Head;
 #endif

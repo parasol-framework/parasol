@@ -6,6 +6,8 @@
 
 #include "parser/parse_regalloc.h"
 
+#include <parasol/main.h>
+
 static bool is_register_key(int32_t Aux)
 {
    return Aux >= 0 and Aux <= BCMAX_C;
@@ -614,7 +616,8 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
 {
    // Lightweight allocation tracing - can be enabled with LJ_TRACE_REGALLOC
 #if defined(LJ_TRACE_REGALLOC)
-   fprintf(stderr, "[REGALLOC] alloc reg %d..%d (%d slots) at %s\n",
+   pf::Log log("Parser");
+   log.trace("[REGALLOC] alloc reg %d..%d (%d slots) at %s",
       int(Start), int(Start + Count - 1), int(Count), Context);
 #else
    (void)Start; (void)Count; (void)Context;
@@ -625,7 +628,8 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
 {
    // Lightweight release tracing - can be enabled with LJ_TRACE_REGALLOC
 #if defined(LJ_TRACE_REGALLOC)
-   fprintf(stderr, "[REGALLOC] release reg %d..%d (%d slots) at %s\n",
+   pf::Log log("Parser");
+   log.trace("[REGALLOC] release reg %d..%d (%d slots) at %s",
       int(Start), int(Start + Count - 1), int(Count), Context);
 #else
    (void)Start; (void)Count; (void)Context;
