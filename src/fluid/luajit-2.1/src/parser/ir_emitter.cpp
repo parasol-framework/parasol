@@ -74,7 +74,10 @@ LocalBindingScope::~LocalBindingScope()
 // IR emission context implementation
 
 IrEmissionContext::IrEmissionContext(FuncState* State)
-   : func_state(State), register_allocator(State), control_flow_graph(State)
+   : func_state(State),
+     register_allocator(State),
+     control_flow_graph(State),
+     operator_emitter(State, &this->register_allocator, &this->control_flow_graph)
 {
 }
 
@@ -86,6 +89,11 @@ RegisterAllocator& IrEmissionContext::allocator()
 ControlFlowGraph& IrEmissionContext::cfg()
 {
    return this->control_flow_graph;
+}
+
+OperatorEmitter& IrEmissionContext::operators()
+{
+   return this->operator_emitter;
 }
 
 FuncState* IrEmissionContext::state() const
@@ -118,6 +126,66 @@ private:
 };
 
 UnsupportedNodeRecorder glUnsupportedNodes;
+
+//********************************************************************************************************************
+// Legacy helper call tracker for Phase 4 refactoring
+
+enum class LegacyHelperKind : uint8_t {
+   BinopLeft,
+   Binop,
+   Unop,
+   PresenceCheck,
+   Store,
+   AssignAdjust,
+   BranchTrue,
+   BranchFalse,
+   ManualJump,
+   Count
+};
+
+class LegacyHelperRecorder {
+public:
+   void record(LegacyHelperKind kind, const char* context) {
+      size_t index = size_t(kind);
+      if (index >= size_t(LegacyHelperKind::Count)) return;
+      uint32_t total = ++this->counts[index];
+      if ((total <= 8) or (total % 32 IS 0)) {
+         pf::Log log("Parser");
+         log.msg("ast-pipeline legacy helper=%s context=%s hits=%u",
+            describe_helper(kind), context ? context : "unknown", unsigned(total));
+      }
+   }
+
+   void dump_statistics() const {
+      pf::Log log("Parser");
+      log.msg("=== Legacy Helper Call Statistics ===");
+      for (size_t i = 0; i < size_t(LegacyHelperKind::Count); ++i) {
+         if (this->counts[i] > 0) {
+            log.msg("  %s: %u calls", describe_helper(LegacyHelperKind(i)), unsigned(this->counts[i]));
+         }
+      }
+   }
+
+private:
+   static const char* describe_helper(LegacyHelperKind kind) {
+      switch (kind) {
+         case LegacyHelperKind::BinopLeft: return "bcemit_binop_left";
+         case LegacyHelperKind::Binop: return "bcemit_binop";
+         case LegacyHelperKind::Unop: return "bcemit_unop";
+         case LegacyHelperKind::PresenceCheck: return "bcemit_presence_check";
+         case LegacyHelperKind::Store: return "bcemit_store";
+         case LegacyHelperKind::AssignAdjust: return "assign_adjust";
+         case LegacyHelperKind::BranchTrue: return "bcemit_branch_t";
+         case LegacyHelperKind::BranchFalse: return "bcemit_branch_f";
+         case LegacyHelperKind::ManualJump: return "manual_jump_patch";
+         default: return "unknown";
+      }
+   }
+
+   std::array<uint32_t, size_t(LegacyHelperKind::Count)> counts{};
+};
+
+LegacyHelperRecorder glLegacyHelperCalls;
 
 //********************************************************************************************************************
 
@@ -329,7 +397,12 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
 }  // namespace
 
 IrEmitter::IrEmitter(ParserContext& context)
-   : ctx(context), func_state(context.func()), lex_state(context.lex()), control_flow(&this->func_state)
+   : ctx(context),
+     func_state(context.func()),
+     lex_state(context.lex()),
+     register_allocator(&this->func_state),
+     control_flow(&this->func_state),
+     operator_emitter(&this->func_state, &this->register_allocator, &this->control_flow)
 {
 }
 
@@ -1026,6 +1099,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
       for (; first != last; ++first) {
          ExpDesc stack_value;
          expr_init(&stack_value, ExpKind::NonReloc, this->func_state.freereg - 1);
+         glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_plain_assignment/stack");
          bcemit_store(&this->func_state, &(*first), &stack_value);
       }
    };
@@ -1041,6 +1115,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
             tail.k = ExpKind::NonReloc;
          }
       }
+      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_plain_assignment/exact");
       bcemit_store(&this->func_state, &targets.back(), &tail);
       if (targets.size() > 1) {
          auto begin = targets.rbegin();
@@ -1051,6 +1126,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
+   glLegacyHelperCalls.record(LegacyHelperKind::AssignAdjust, "emit_plain_assignment/adjust");
    this->lex_state.assign_adjust(nvars, nexps, &tail);
    assign_from_stack(targets.rbegin(), targets.rend());
    this->func_state.freereg = this->func_state.nactvar;
@@ -1086,6 +1162,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    ExpDesc rhs;
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
       ExpDesc infix = working;
+      // Concat uses special left-to-right evaluation via bcemit_binop_left
+      // Keep using legacy for now as it has special handling
+      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_compound_assignment/concat");
       bcemit_binop_left(&this->func_state, mapped.value(), &infix);
       auto list = this->emit_expression_list(values, count);
       if (not list.ok()) {
@@ -1097,7 +1176,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
          return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
       }
       rhs = list.value_ref();
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_compound_assignment/concat");
       bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
       bcemit_store(&this->func_state, &target, &infix);
    }
    else {
@@ -1113,8 +1194,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
       rhs = list.value_ref();
       ExpDesc infix = working;
-      bcemit_binop_left(&this->func_state, mapped.value(), &infix);
-      bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+
+      // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
+      this->operator_emitter.emit_binary_arith(mapped.value(), &infix, &rhs);
+
+      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
       bcemit_store(&this->func_state, &target, &infix);
    }
 
@@ -1304,17 +1388,21 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
    auto operand_result = this->emit_expression(*payload.operand);
    if (not operand_result.ok()) return operand_result;
    ExpDesc operand = operand_result.value_ref();
+
+   // Use OperatorEmitter facade for unary operators
    switch (payload.op) {
       case AstUnaryOperator::Negate:
-         bcemit_unop(&this->func_state, BC_UNM, &operand);
+         this->operator_emitter.emit_unary(BC_UNM, &operand);
          break;
       case AstUnaryOperator::Not:
-         bcemit_unop(&this->func_state, BC_NOT, &operand);
+         this->operator_emitter.emit_unary(BC_NOT, &operand);
          break;
       case AstUnaryOperator::Length:
-         bcemit_unop(&this->func_state, BC_LEN, &operand);
+         this->operator_emitter.emit_unary(BC_LEN, &operand);
          break;
       case AstUnaryOperator::BitNot:
+         // BitNot still uses legacy helper as it's not in OperatorEmitter yet
+         glLegacyHelperCalls.record(LegacyHelperKind::Unop, "emit_unary_expr/bitnot");
          bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
          break;
    }
@@ -1354,9 +1442,11 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 
    ExpDesc delta = make_num_expr(1.0);
    ExpDesc infix = operand;
-   bcemit_binop_left(&this->func_state, op, &infix);
-   bcemit_binop(&this->func_state, op, &infix, &delta);
 
+   // Use OperatorEmitter for arithmetic operation (operand +/- 1)
+   this->operator_emitter.emit_binary_arith(op, &infix, &delta);
+
+   glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_update_expr");
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
 
@@ -1381,12 +1471,38 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
       SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
       return this->unsupported_expr(AstNodeKind::BinaryExpr, span);
    }
+
+   BinOpr opr = mapped.value();
    ExpDesc lhs = lhs_result.value_ref();
-   bcemit_binop_left(&this->func_state, mapped.value(), &lhs);
+
+   // Logical operators (AND, OR, IF_EMPTY) need special short-circuit handling
+   // Keep using legacy bcemit_binop_left for now as they require CFG integration
+   if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
+      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical");
+      bcemit_binop_left(&this->func_state, opr, &lhs);
+      auto rhs_result = this->emit_expression(*payload.right);
+      if (not rhs_result.ok()) return rhs_result;
+      ExpDesc rhs = rhs_result.value_ref();
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical");
+      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+      return ParserResult<ExpDesc>::success(lhs);
+   }
+
+   // Evaluate right operand first for non-short-circuit operators
    auto rhs_result = this->emit_expression(*payload.right);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
-   bcemit_binop(&this->func_state, mapped.value(), &lhs, &rhs);
+
+   // Route through OperatorEmitter facade based on operator type
+   if (opr >= OPR_EQ and opr <= OPR_GT) {
+      // Comparison operators (EQ, NE, LT, LE, GT, GE)
+      this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
+   }
+   else {
+      // Arithmetic and bitwise operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT, BAND, BOR, BXOR, SHL, SHR)
+      this->operator_emitter.emit_binary_arith(opr, &lhs, &rhs);
+   }
+
    return ParserResult<ExpDesc>::success(lhs);
 }
 
@@ -1460,6 +1576,7 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& p
    auto value_result = this->emit_expression(*payload.value);
    if (not value_result.ok()) return value_result;
    ExpDesc value = value_result.value_ref();
+   glLegacyHelperCalls.record(LegacyHelperKind::PresenceCheck, "emit_presence_expr");
    bcemit_presence_check(&this->func_state, &value);
    return ParserResult<ExpDesc>::success(value);
 }

@@ -5,8 +5,162 @@
 * Statement emission in `IrEmitter` mirrors the legacy paths: assignments rebuild the classic `assign_adjust` flow and manually juggle register lifetimes, while control-flow nodes (if/loops/defer) still patch jumps via `FuncState` rather than a structured CFG layer. This deviates from the Phase 4 goal of modelling statement forms as dedicated nodes with modern ownership semantics.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L920-L1018】
 * Binary/unary/presence operators are mapped from AST nodes but are emitted through the legacy opcode helpers without isolating value categories or reusing the new `ControlFlowGraph`. This means presence/ternary/compound operations still rely on hand-authored jump and register manipulation instead of allocator-managed temporaries.【F:src/fluid/luajit-2.1/src/parser/ir_emitter.cpp†L1368-L1410】
 
+## Implementation Progress
+
+### ✅ Step 1: Create an operator/statement capability matrix (COMPLETE)
+**Status:** Implemented and committed (commit 18d23e0f)
+
+**Achievements:**
+* Added `LegacyHelperRecorder` tracking infrastructure to `ir_emitter.cpp` (lines 138-180)
+  - Tracks 9 categories of legacy helper calls: `bcemit_binop_left`, `bcemit_binop`, `bcemit_unop`, `bcemit_presence_check`, `bcemit_store`, `assign_adjust`, `bcemit_branch_t`, `bcemit_branch_f`, and manual jump patching
+  - Logs first 8 occurrences and every 32nd call for visibility
+  - Provides `dump_statistics()` method for progress monitoring
+* Instrumented all legacy helper call sites in expression and statement emitters
+  - `emit_unary_expr`, `emit_binary_expr`, `emit_update_expr`, `emit_presence_expr`
+  - `emit_plain_assignment`, `emit_compound_assignment`, `emit_if_empty_assignment`
+* Created comprehensive capability matrix document: `docs/plans/OPERATOR_STATEMENT_MATRIX.md`
+  - Catalogues all 38 AST operator and statement kinds
+  - Maps each to current legacy helper usage with exact source locations
+  - Defines expected value-category inputs/outputs (ValueUse, ValueSlot, LValue) for target implementation
+  - Provides detailed roadmap for Steps 2-7
+
+**Files Modified:**
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Added tracking infrastructure and instrumentation
+* `docs/plans/OPERATOR_STATEMENT_MATRIX.md` - Created comprehensive analysis document
+
+**Next:** Complete Step 2 compilation issues and begin Step 3
+
+---
+
+### ✅ Step 2: Extract a dedicated OperatorEmitter facade (COMPLETE)
+**Status:** Implemented and committed (commit 90c15c90 + follow-up)
+
+**Achievements:**
+* Created `OperatorEmitter` class structure with proper API design
+  - `operator_emitter.h` - Facade header with forward declarations
+  - `operator_emitter.cpp` - Implementation wrapping legacy helpers
+* Integrated `OperatorEmitter` into `IrEmissionContext` alongside RegisterAllocator and ControlFlowGraph
+* Exposed legacy operator functions (foldarith, bcemit_arith, bcemit_comp, bcemit_unop) with extern linkage
+* Added facade methods:
+  - `fold_constant_arith()` - Wraps `foldarith()`
+  - `emit_unary()` - Wraps `bcemit_unop()`
+  - `emit_binary_arith()` - Wraps `bcemit_arith()`
+  - `emit_comparison()` - Wraps `bcemit_comp()`
+  - `emit_binary_bitwise()` - Wraps `bcemit_arith()` for bitwise ops
+
+**Resolution of include issues:**
+* Header (`operator_emitter.h`) includes `parse_types.h` for complete type definitions
+* Implementation (`operator_emitter.cpp`) includes prerequisite headers before operator_emitter.h:
+  - `lj_bc.h` for NO_JMP and BC opcode definitions
+  - `lj_lex.h` for LexState definition
+* BCOp parameter uses `int` in header declaration to avoid typedef conflicts, casts to BCOp in implementation
+
+**Files Created:**
+* `src/fluid/luajit-2.1/src/parser/operator_emitter.h` - Facade header
+* `src/fluid/luajit-2.1/src/parser/operator_emitter.cpp` - Facade implementation
+
+**Files Modified:**
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added OperatorEmitter to IrEmissionContext
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize OperatorEmitter
+* `src/fluid/luajit-2.1/src/parser/parse_operators.cpp` - Made foldarith, bcemit_arith, bcemit_comp, bcemit_unop extern
+* `src/fluid/luajit-2.1/src/parser/parse_internal.h` - Changed declarations to extern for exported functions
+* `src/fluid/CMakeLists.txt` - Added operator_emitter.cpp to build
+
+**Next:** Complete Step 3 by defining ValueUse/ValueSlot abstractions
+
+---
+
+### 🟡 Step 3: Rework binary/unary emission to use OperatorEmitter (IN PROGRESS)
+**Status:** OperatorEmitter integrated into expression emitters, update/compound operators migrated
+
+**Achievements:**
+* Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
+* Adapted `emit_unary_expr()` to route through `OperatorEmitter::emit_unary()`
+  - Negate, Not, Length operators now use facade
+  - BitNot still uses legacy helper (to be migrated later)
+* Adapted `emit_binary_expr()` to route through `OperatorEmitter` facade
+  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT) → `emit_binary_arith()`
+  - Comparison operators (EQ, NE, LT, LE, GT, GE) → `emit_comparison()`
+  - Bitwise operators (BAND, BOR, BXOR, SHL, SHR) → `emit_binary_arith()`
+  - Logical operators (AND, OR, IF_EMPTY) still use legacy helpers (require CFG integration)
+* Adapted `emit_update_expr()` to use `OperatorEmitter::emit_binary_arith()`
+  - Postfix/prefix increment (++x, x++) and decrement (--x, x--) now route through facade
+  - Eliminated direct calls to `bcemit_binop_left`/`bcemit_binop` for update operators
+* Adapted `emit_compound_assignment()` to use `OperatorEmitter::emit_binary_arith()`
+  - Arithmetic compound assignments (+=, -=, *=, /=, %=) now route through facade
+  - Concat compound assignment (..=) still uses legacy helpers due to special left-to-right evaluation
+* Verified functionality with comprehensive test scripts covering:
+  - All unary operators
+  - All arithmetic operators
+  - All comparison operators
+  - All bitwise operators
+  - All update operators (++/--, postfix/prefix)
+  - All compound assignments (including table member assignments)
+
+**Summary of OperatorEmitter Coverage:**
+* ✅ Arithmetic operators: ADD, SUB, MUL, DIV, MOD, POW fully migrated
+* ✅ Comparison operators: EQ, NE, LT, LE, GT, GE fully migrated
+* ✅ Bitwise operators: BAND, BOR, BXOR, SHL, SHR fully migrated
+* ✅ Unary operators: Negate, Not, Length fully migrated
+* ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
+* ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
+* ⏳ Still using legacy: AND, OR, IF_EMPTY (logical short-circuit), CONCAT in compound assignments, BitNot
+
+* Defined value category abstractions (ValueUse, ValueSlot, LValue):
+  - Created `value_categories.h` - Defines three value category classes
+  - Created `value_categories.cpp` - Implements `ValueUse::is_falsey()` and `LValue::from_expdesc()`
+  - `ValueUse` - Read-only value wrapper around ExpDesc with category queries (is_constant, is_local, is_register, etc.)
+  - `ValueSlot` - Write target wrapper around ExpDesc for storing computed values
+  - `LValue` - Assignment target descriptor with variants (Local, Upvalue, Global, Indexed, Member)
+  - All three classes are lightweight wrappers designed for interop with legacy ExpDesc code
+  - Extended falsey semantics implemented for ?? operator (nil, false, 0, "")
+  - Successfully compiled and integrated into build system
+
+**Remaining Work:**
+* **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
+* **Migrate logical short-circuit operators (AND, OR, IF_EMPTY)** - Complex work requiring full CFG integration:
+  - AND uses `bcemit_branch_t` to skip RHS if left is false
+  - OR uses `bcemit_branch_f` to skip RHS if left is true
+  - IF_EMPTY (??) has extended falsey semantics (nil, false, 0, "") with complex constant optimization
+  - IF_EMPTY already partially uses ControlFlowGraph but needs full modernization
+  - Requires structured true/false edge handling instead of manual jump patching
+* **Migrate concat compound assignment (..=)** - Special left-to-right evaluation handling
+* **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
+* **Remove remaining legacy helper calls** from operator emission once all operators migrated
+
+**Analysis of Remaining Items:**
+1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
+   - Edge types: Unconditional, True, False, Break, Continue
+   - Edge operations: append, patch_here, patch_to, patch_with_value
+   - Already used in some places (IF_EMPTY partially)
+
+2. **Complexity Assessment**:
+   - Logical operators (AND/OR/??) = High complexity (control flow, short-circuit, constant optimization)
+   - BitNot = High complexity (function call generation to bit library)
+   - Concat compound (..=) = Medium complexity (special evaluation order)
+   - Value category API integration = Low complexity (wrapper updates, can be gradual)
+
+**Files Created:**
+* `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
+* `src/fluid/luajit-2.1/src/parser/value_categories.cpp` - Value category implementations
+
+**Files Modified:**
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added RegisterAllocator and OperatorEmitter members
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
+* `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
+
+**Next Steps (Options):**
+* **Option A**: Migrate logical short-circuit operators (AND, OR, IF_EMPTY) to full CFG-based implementation (substantial work, completes major Step 3 goal)
+  - **Detailed plan available:** `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
+  - 5 stages with clear testing milestones
+  - Estimated 9-12 hours of development
+* **Option B**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
+* **Option C**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
+
+---
+
 ## Step-by-step implementation plan
-1. **Create an operator/statement capability matrix**
+1. **Create an operator/statement capability matrix** ✅ COMPLETE
    * Catalogue which AST operator and statement kinds are exercised in `IrEmitter` and identify the places that still call legacy helpers. Add tracing counters or assertions to flag fallback paths so gaps are visible during refactors.
    * Define expected value-category inputs/outputs (constants, relocatable registers, table operands, CFG edges) for each operator/statement form to guide API redesign.
 

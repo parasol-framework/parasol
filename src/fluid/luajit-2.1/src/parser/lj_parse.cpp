@@ -2,7 +2,6 @@
 //
 // Copyright (C) 2025 Paul Manias
 
-#define lj_parse_c
 #define LUA_CORE
 
 #include "lj_obj.h"
@@ -23,6 +22,7 @@
 #include "lj_parse.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
+
 #include <parasol/main.h>
 
 // Priorities for each binary operator. ORDER OPR.
@@ -42,26 +42,30 @@ static const struct {
   {1,1,nullptr,0}                     // TERNARY
 };
 
-#include "parser/token_types.h"
-#include "parser/token_types.cpp"
-#include "parser/token_stream.cpp"
-#include "parser/parser_diagnostics.cpp"
-#include "parser/parser_profiler.h"
-#include "parser/parser_context.cpp"
-#include "parser/ast_nodes.cpp"
-#include "parser/ast_builder.cpp"
-#include "parser/parse_control_flow.cpp"
-#include "parser/ir_emitter.cpp"
-#include "parser/parse_types.h"
-#include "parser/parse_internal.h"
-#include "parser/parse_core.cpp"
-#include "parser/parse_constants.cpp"
-#include "parser/parse_scope.cpp"
-#include "parser/parse_regalloc.cpp"
-#include "parser/parse_expr.cpp"
-#include "parser/parse_operators.cpp"
-#include "parser/parse_stmt.cpp"
+#include "token_types.h"
+#include "parse_types.h"
+#include "parse_internal.h"
+#include "parser_profiler.h"
+#include "value_categories.h"
 #include "../../../defs.h"
+
+#include "token_types.cpp"
+#include "token_stream.cpp"
+#include "parser_diagnostics.cpp"
+#include "parser_context.cpp"
+#include "ast_nodes.cpp"
+#include "ast_builder.cpp"
+#include "parse_control_flow.cpp"
+#include "ir_emitter.cpp"
+#include "parse_core.cpp"
+#include "parse_constants.cpp"
+#include "parse_scope.cpp"
+#include "parse_regalloc.cpp"
+#include "parse_expr.cpp"
+#include "parse_operators.cpp"
+#include "parse_stmt.cpp"
+#include "operator_emitter.cpp"
+#include "value_categories.cpp"
 
 static constexpr size_t kMaxLoggedStatements = 12;
 

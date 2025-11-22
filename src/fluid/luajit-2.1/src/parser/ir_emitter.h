@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "parser/ast_nodes.h"
+#include "parser/operator_emitter.h"
 #include "parser/parser_context.h"
 #include "parser/parse_control_flow.h"
 #include "parser/parse_regalloc.h"
@@ -57,7 +58,7 @@ private:
 struct IrEmitUnit {
 };
 
-// IR emission context that bundles allocator, CFG, and FuncState
+// IR emission context that bundles allocator, CFG, operator emitter, and FuncState
 
 class IrEmissionContext {
 public:
@@ -65,12 +66,14 @@ public:
 
    [[nodiscard]] RegisterAllocator & allocator();
    [[nodiscard]] ControlFlowGraph & cfg();
+   [[nodiscard]] OperatorEmitter & operators();
    [[nodiscard]] FuncState * state() const;
 
 private:
    FuncState* func_state;
    RegisterAllocator register_allocator;
    ControlFlowGraph control_flow_graph;
+   OperatorEmitter operator_emitter;
 };
 
 class IrEmitter {
@@ -83,7 +86,9 @@ private:
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
+   RegisterAllocator register_allocator;
    ControlFlowGraph control_flow;
+   OperatorEmitter operator_emitter;
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);

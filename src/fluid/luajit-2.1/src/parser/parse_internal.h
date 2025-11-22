@@ -10,7 +10,7 @@ enum class TokenKind : uint16_t;
 
 // Error handling (lj_parse_core.cpp)
 
-LJ_NORET static void err_limit(FuncState *, uint32_t limit, const char* what);
+LJ_NORET void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
@@ -150,16 +150,19 @@ static void bcemit_branch_f(FuncState *, ExpDesc* e);
 
 // Operators (lj_parse_operators.cpp)
 
-static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
-static void bcemit_arith(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
-static void bcemit_comp(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
+// These are now exported (non-static) for use by OperatorEmitter facade
+extern int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
+extern void bcemit_arith(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
+extern void bcemit_comp(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
+extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
+
+// These remain static (legacy parser only)
 static void bcemit_binop_left(FuncState *, BinOpr op, ExpDesc* e);
 static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
 static void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
 static void bcemit_presence_check(FuncState *, ExpDesc* e);
 static void bcemit_binop(FuncState *, BinOpr op, ExpDesc* e1, ExpDesc* e2);
-static void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
 
 // Variables and scope (lj_parse_scope.cpp)
 
