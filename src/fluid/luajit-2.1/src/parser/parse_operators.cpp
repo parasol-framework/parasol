@@ -40,15 +40,23 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
    if (opr IS OPR_POW) {
       op = BC_POW;
-      rc = ExpressionValue(fs, *e2).discharge_to_any_reg(allocator);
-      rb = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
+      ExpressionValue e2_value(fs, *e2);
+      rc = e2_value.discharge_to_any_reg(allocator);
+      *e2 = e2_value.legacy();
+      ExpressionValue e1_value(fs, *e1);
+      rb = e1_value.discharge_to_any_reg(allocator);
+      *e1 = e1_value.legacy();
    }
    else {
       op = opr - OPR_ADD + BC_ADDVV;
       // Must discharge 2nd operand first since ExpKind::Indexed might free regs.
       expr_toval(fs, e2);
       if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
-      else rc = ExpressionValue(fs, *e2).discharge_to_any_reg(allocator);
+      else {
+         ExpressionValue e2_value(fs, *e2);
+         rc = e2_value.discharge_to_any_reg(allocator);
+         *e2 = e2_value.legacy();
+      }
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
@@ -61,7 +69,11 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
          (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
-      else rb = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
+      else {
+         ExpressionValue e1_value(fs, *e1);
+         rb = e1_value.discharge_to_any_reg(allocator);
+         *e1 = e1_value.legacy();
+      }
    }
 
    // Using expr_free might cause asserts if the order is wrong.
@@ -84,7 +96,9 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
-      ra = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);  // First arg must be in a reg.
+      ExpressionValue e1_value(fs, *e1);
+      ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
+      *e1 = e1_value.legacy();
       expr_toval(fs, e2);
       switch (e2->k) {
       case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
@@ -96,9 +110,13 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       case ExpKind::Num:
          ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
          break;
-      default:
-         ins = BCINS_AD(op, ra, ExpressionValue(fs, *e2).discharge_to_any_reg(allocator));
+      default: {
+         ExpressionValue e2_value(fs, *e2);
+         BCReg rb = e2_value.discharge_to_any_reg(allocator);
+         *e2 = e2_value.legacy();
+         ins = BCINS_AD(op, ra, rb);
          break;
+      }
       }
    }
    else {
@@ -108,12 +126,20 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
          e1 = e2; e2 = eret;  // Swap operands.
          op = ((op - BC_ISLT) ^ 3) + BC_ISLT;
          expr_toval(fs, e1);
-         ra = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
-         rd = ExpressionValue(fs, *e2).discharge_to_any_reg(allocator);
+         ExpressionValue e1_value(fs, *e1);
+         ra = e1_value.discharge_to_any_reg(allocator);
+         *e1 = e1_value.legacy();
+         ExpressionValue e2_value(fs, *e2);
+         rd = e2_value.discharge_to_any_reg(allocator);
+         *e2 = e2_value.legacy();
       }
       else {
-         rd = ExpressionValue(fs, *e2).discharge_to_any_reg(allocator);
-         ra = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
+         ExpressionValue e2_value(fs, *e2);
+         rd = e2_value.discharge_to_any_reg(allocator);
+         *e2 = e2_value.legacy();
+         ExpressionValue e1_value(fs, *e1);
+         ra = e1_value.discharge_to_any_reg(allocator);
+         *e1 = e1_value.legacy();
       }
       ins = BCINS_AD(op, ra, rd);
    }
@@ -167,7 +193,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          // active local slot.
 
          if (!expr_isk_nojump(e)) {
-            BCReg src_reg = ExpressionValue(fs, *e).discharge_to_any_reg(allocator);
+            ExpressionValue e_value_inner(fs, *e);
+            BCReg src_reg = e_value_inner.discharge_to_any_reg(allocator);
+            *e = e_value_inner.legacy();
             BCReg rhs_reg = fs->freereg;
             ExprFlag saved_flags = e->flags;
             allocator.reserve(1);
@@ -182,13 +210,23 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       e->f = NO_JMP;
    }
    else if (op IS OPR_CONCAT) {
-      ExpressionValue(fs, *e).to_next_reg(allocator);
+      ExpressionValue e_value(fs, *e);
+      e_value.to_next_reg(allocator);
+      *e = e_value.legacy();
    }
    else if (op IS OPR_EQ or op IS OPR_NE) {
-      if (!expr_isk_nojump(e)) ExpressionValue(fs, *e).discharge_to_any_reg(allocator);
+      if (!expr_isk_nojump(e)) {
+         ExpressionValue e_value(fs, *e);
+         e_value.discharge_to_any_reg(allocator);
+         *e = e_value.legacy();
+      }
    }
    else {
-      if (!expr_isnumk_nojump(e)) ExpressionValue(fs, *e).discharge_to_any_reg(allocator);
+      if (!expr_isnumk_nojump(e)) {
+         ExpressionValue e_value(fs, *e);
+         e_value.discharge_to_any_reg(allocator);
+         *e = e_value.legacy();
+      }
    }
 }
 
@@ -237,18 +275,26 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    // Normalise both operands into registers before loading the callee.
    expr_toval(fs, lhs);
    expr_toval(fs, rhs);
-   ExpressionValue(fs, *lhs).to_reg(allocator, arg1);
-   ExpressionValue(fs, *rhs).to_reg(allocator, arg2);
+   ExpressionValue lhs_value(fs, *lhs);
+   lhs_value.to_reg(allocator, arg1);
+   *lhs = lhs_value.legacy();
+   ExpressionValue rhs_value(fs, *rhs);
+   rhs_value.to_reg(allocator, arg2);
+   *rhs = rhs_value.legacy();
 
    // Now load bit.[lshift|rshift|...] into the base register
    expr_init(&callee, ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
-   ExpressionValue(fs, callee).discharge_to_any_reg(allocator);
+   ExpressionValue callee_value(fs, callee);
+   callee_value.discharge_to_any_reg(allocator);
+   callee = callee_value.legacy();
    expr_init(&key, ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
-   ExpressionValue(fs, callee).to_reg(allocator, base);
+   ExpressionValue callee_value2(fs, callee);
+   callee_value2.to_reg(allocator, base);
+   callee = callee_value2.legacy();
 
    // Emit CALL instruction
    fs->freereg = arg2 + 1;  // Ensure freereg covers all arguments
@@ -257,9 +303,9 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
-   ExpressionValue lhs_value(fs, *lhs);
-   lhs_value.discharge();
-   *lhs = lhs_value.legacy();
+   ExpressionValue lhs_value_discharge(fs, *lhs);
+   lhs_value_discharge.discharge();
+   *lhs = lhs_value_discharge.legacy();
    lj_assertFS(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
@@ -307,7 +353,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 
    // Place argument in register.
    expr_toval(fs, arg);
-   ExpressionValue(fs, *arg).to_reg(allocator, arg_reg);
+   ExpressionValue arg_value(fs, *arg);
+   arg_value.to_reg(allocator, arg_reg);
+   *arg = arg_value.legacy();
 
    // Ensure freereg accounts for argument register so it's not clobbered.
    if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
@@ -315,12 +363,16 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    // Load bit.fname into base register.
    expr_init(&callee, ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
-   ExpressionValue(fs, callee).discharge_to_any_reg(allocator);
+   ExpressionValue callee_value(fs, callee);
+   callee_value.discharge_to_any_reg(allocator);
+   callee = callee_value.legacy();
    expr_init(&key, ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
-   ExpressionValue(fs, callee).to_reg(allocator, base);
+   ExpressionValue callee_value2(fs, callee);
+   callee_value2.to_reg(allocator, base);
+   callee = callee_value2.legacy();
 
    // Emit CALL instruction.
    fs->freereg = arg_reg + 1;
@@ -330,9 +382,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    fs->freereg = base + 1;
 
    // Discharge result to register.
-   ExpressionValue arg_value(fs, *arg);
-   arg_value.discharge();
-   *arg = arg_value.legacy();
+   ExpressionValue arg_value_discharge(fs, *arg);
+   arg_value_discharge.discharge();
+   *arg = arg_value_discharge.legacy();
    lj_assertFS(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
@@ -383,7 +435,9 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
    //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
    //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
 
-   BCReg reg = ExpressionValue(fs, *e).discharge_to_any_reg(allocator);
+   ExpressionValue e_value_runtime(fs, *e);
+   BCReg reg = e_value_runtime.discharge_to_any_reg(allocator);
+   *e = e_value_runtime.legacy();
    ExpDesc nilv = make_nil_expr();
    ExpDesc falsev = make_bool_expr(false);
    ExpDesc zerov = make_num_expr(0.0);
@@ -477,7 +531,11 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
                allocator.reserve(1);
                expr_toreg_nobranch(fs, e1, fs->freereg - 1);
             }
-            else ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
+            else {
+               ExpressionValue e1_value_alt(fs, *e1);
+               e1_value_alt.discharge_to_any_reg(allocator);
+               *e1 = e1_value_alt.legacy();
+            }
          }
       }
       else {
@@ -493,7 +551,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
          if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
-            BCReg reg = ExpressionValue(fs, *e1).discharge_to_any_reg(allocator);
+            ExpressionValue e1_runtime(fs, *e1);
+            BCReg reg = e1_runtime.discharge_to_any_reg(allocator);
+            *e1 = e1_runtime.legacy();
             ExpDesc nilv = make_nil_expr();
             ExpDesc falsev = make_bool_expr(false);
             ExpDesc zerov = make_num_expr(0.0);
@@ -540,7 +600,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             JumpListView(fs, check_empty).patch_to(fs->pc);
 
             // Evaluate RHS
-            ExpressionValue(fs, *e2).to_reg(allocator, dest_reg);
+            ExpressionValue e2_value(fs, *e2);
+            e2_value.to_reg(allocator, dest_reg);
+            *e2 = e2_value.legacy();
             if (dest_reg != reg) {
                // Copy the fallback result back into the original slot so callers
                // (assignments, returns) continue to observe the same register
@@ -587,7 +649,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
          e1->u.s.info = e2->u.s.info;
       }
       else {
-         ExpressionValue(fs, *e2).to_next_reg(allocator);
+         ExpressionValue e2_value(fs, *e2);
+         e2_value.to_next_reg(allocator);
+         *e2 = e2_value.legacy();
          expr_free(fs, e2);
          expr_free(fs, e1);
          e1->u.s.info = bcemit_ABC(fs, BC_CAT, 0, e1->u.s.info, e2->u.s.info);
@@ -662,7 +726,9 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
                }
             }
       }
-      ExpressionValue(fs, *e).discharge_to_any_reg(allocator);
+      ExpressionValue e_value(fs, *e);
+      e_value.discharge_to_any_reg(allocator);
+      *e = e_value.legacy();
    }
    expr_free(fs, e);
    e->u.s.info = bcemit_AD(fs, op, 0, e->u.s.info);
