@@ -142,7 +142,9 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
       // For ?, handle extended falsey checks - only set up jumps for compile-time constants
       BCPos pc;
 
-      ExpressionValue(fs, *e).discharge();
+      ExpressionValue e_value(fs, *e);
+      e_value.discharge();
+      *e = e_value.legacy();
       // Extended falsey: nil, false, 0, ""
       if (e->k IS ExpKind::Nil or e->k IS ExpKind::False)
          pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
@@ -255,7 +257,9 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
-   ExpressionValue(fs, *lhs).discharge();
+   ExpressionValue lhs_value(fs, *lhs);
+   lhs_value.discharge();
+   *lhs = lhs_value.legacy();
    lj_assertFS(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
@@ -326,7 +330,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    fs->freereg = base + 1;
 
    // Discharge result to register.
-   ExpressionValue(fs, *arg).discharge();
+   ExpressionValue arg_value(fs, *arg);
+   arg_value.discharge();
+   *arg = arg_value.legacy();
    lj_assertFS(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
@@ -338,7 +344,9 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
-   ExpressionValue(fs, *e).discharge();
+   ExpressionValue e_value(fs, *e);
+   e_value.discharge();
+   *e = e_value.legacy();
 
    // Handle compile-time constants
    if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) { // Falsey constant - set to false
@@ -435,13 +443,17 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
    }
    else if (op IS OPR_AND) {
       lj_assertFS(e1->t IS NO_JMP, "jump list not closed");
-      ExpressionValue(fs, *e2).discharge();
+      ExpressionValue e2_value(fs, *e2);
+      e2_value.discharge();
+      *e2 = e2_value.legacy();
       e2->f = JumpListView(fs, e2->f).append(e1->f);
       *e1 = *e2;
    }
    else if (op IS OPR_OR) {
       lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
-      ExpressionValue(fs, *e2).discharge();
+      ExpressionValue e2_value(fs, *e2);
+      e2_value.discharge();
+      *e2 = e2_value.legacy();
       e2->t = JumpListView(fs, e2->t).append(e1->t);
       *e1 = *e2;
    }
@@ -475,7 +487,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             rhs_reg = BCReg(e1->u.s.aux);
          }
 
-         ExpressionValue(fs, *e1).discharge();
+         ExpressionValue e1_value(fs, *e1);
+         e1_value.discharge();
+         *e1 = e1_value.legacy();
 
          if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
             // Runtime value - emit extended falsey checks
@@ -554,7 +568,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             }
          }
          else { // Constant falsey value - evaluate RHS directly
-            ExpressionValue(fs, *e2).discharge();
+            ExpressionValue e2_value(fs, *e2);
+            e2_value.discharge();
+            *e2 = e2_value.legacy();
             *e1 = *e2;
          }
       }
@@ -596,7 +612,9 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
       { BCPos temp = e->f; e->f = e->t; e->t = temp; }
       JumpListView(fs, e->f).drop_values();
       JumpListView(fs, e->t).drop_values();
-      ExpressionValue(fs, *e).discharge();
+      ExpressionValue e_value(fs, *e);
+      e_value.discharge();
+      *e = e_value.legacy();
       if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) {
          e->k = ExpKind::True;
          return;
