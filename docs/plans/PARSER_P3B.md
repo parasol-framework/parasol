@@ -401,4 +401,4 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 - parse_operators.cpp: 47 of 47 legacy calls migrated (100% complete)
 - **Total this batch: 68 legacy calls eliminated**
 
-**Commit:** Pending
+**Commit:** `6b9cc952` - "Implement Phase 3 Batch 2: Parallel agent migration of legacy calls"
