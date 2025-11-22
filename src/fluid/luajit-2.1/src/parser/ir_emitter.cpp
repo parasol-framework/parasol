@@ -604,7 +604,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    }
    ControlFlowEdge condexit = condexit_result.value_ref();
 
-   ControlFlowEdge loop = this->control_flow.make_unconditional();
+   ControlFlowEdge loop;
    {
       FuncScope loop_scope;
       ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
@@ -632,7 +632,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    FuncState* fs = &this->func_state;
    BCPos loop = fs->lasttarget = fs->pc;
    BCPos iter = NO_JMP;
-   ControlFlowEdge condexit = this->control_flow.make_false_edge();
+   ControlFlowEdge condexit;
    bool inner_has_upvals = false;
 
    FuncScope outer_scope;
