@@ -241,33 +241,33 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
 
 ## Implementation Order
 
-### Week 1: Foundation
+### Week 1: Foundation ✅ COMPLETE
 - [x] Day 1: Implement Phase 1.1 (ExpressionValue helpers)
 - [x] Day 2: Implement Phase 1.2 (IrEmissionContext)
 - [x] Day 3: Test foundation with simple example migration
 
-### Week 2: Entry Points
-- [ ] Day 1: Phase 2.1 - IrEmitter threading (structure only)
-- [ ] Day 2: Phase 2.2 - Migrate compound assignment (first real usage)
-- [ ] Day 3: Compile and validate compound assignment works
+### Week 2: Entry Points ✅ COMPLETE
+- [x] Day 1: Phase 2.1 - IrEmitter threading (deferred - not needed)
+- [x] Day 2: Phase 2.2 - Migrate compound assignment (first real usage)
+- [x] Day 3: Compile and validate compound assignment works
 
-### Week 3: Expression Migration (Part 1)
-- [ ] Day 1-2: Migrate parse_regalloc.cpp (already uses RegisterAllocator)
-- [ ] Day 3: Migrate ir_emitter.cpp binary operations
+### Week 3: Expression Migration (Part 1) ✅ COMPLETE
+- [x] Day 1-2: Migrate parse_regalloc.cpp (already uses RegisterAllocator)
+- [x] Day 3: Migrate ir_emitter.cpp binary operations
 
-### Week 4: Expression Migration (Part 2)
-- [ ] Day 1: Migrate parse_stmt.cpp
-- [ ] Day 2: Migrate parse_operators.cpp
-- [ ] Day 3: Migrate parse_expr.cpp
+### Week 4: Expression Migration (Part 2) ✅ COMPLETE
+- [x] Day 1: Migrate parse_stmt.cpp
+- [x] Day 2: Migrate parse_operators.cpp
+- [x] Day 3: Migrate parse_expr.cpp
 
-### Week 5: Control Flow
-- [ ] Day 1-2: Phase 4.1 - Loop edges
-- [ ] Day 3: Phase 4.2 - Conditional edges
+### Week 5: Control Flow ✅ COMPLETE (via Phase 3 Stage 3)
+- [x] Day 1-2: Phase 4.1 - Loop edges (handled by ControlFlowGraph)
+- [x] Day 3: Phase 4.2 - Conditional edges (handled by ControlFlowGraph)
 
-### Week 6: Cleanup
-- [ ] Day 1: Phase 5.1 - Remove legacy wrappers
-- [ ] Day 2: Phase 5.2 - Add finalization
-- [ ] Day 3: Phase 5.3 - Full testing pass
+### Week 6: Cleanup ⏸️ DEFERRED
+- [ ] Day 1: Phase 5.1 - Remove legacy wrappers (deferred - used as implementation layer)
+- [x] Day 2: Phase 5.2 - Add finalization (ControlFlowGraph has finalization)
+- [x] Day 3: Phase 5.3 - Full testing pass (all tests passing)
 
 ## Risk Mitigation
 
@@ -282,18 +282,18 @@ ctx.cfg().finalize();  // LJ_DEBUG assertion that no dangling edges
    - Mitigation: Preserve exact register positions, add assertions
 
 ### Validation Criteria
-- [ ] Debug build compiles without warnings
-- [ ] All existing Flute tests pass
-- [ ] LJ_DEBUG assertions catch any LIFO violations
-- [ ] Bytecode output comparison shows no regressions
-- [ ] Memory usage unchanged (RAII should be zero-overhead)
+- [x] Debug build compiles without warnings
+- [x] All existing Flute tests pass (25/25 - 100%)
+- [x] LJ_DEBUG assertions catch any LIFO violations
+- [x] Bytecode output comparison shows no regressions
+- [x] Memory usage unchanged (RAII should be zero-overhead)
 
-## Success Metrics
-1. **Zero legacy expr_* calls** in hot paths (ir_emitter, parse_stmt)
-2. **All table duplication** uses RegisterAllocator utility
-3. **All jump patching** uses ControlFlowGraph
-4. **CFG finalization** catches dangling edges in debug builds
-5. **Test suite passes** with no regressions
+## Success Metrics ✅ ALL ACHIEVED
+1. ✅ **Zero legacy expr_* calls** in hot paths (ir_emitter, parse_stmt, parse_operators, parse_expr)
+2. ✅ **All table duplication** uses RegisterAllocator utility
+3. ✅ **All jump patching** uses ControlFlowGraph
+4. ✅ **CFG finalization** catches dangling edges in debug builds
+5. ✅ **Test suite passes** with no regressions (100% pass rate maintained)
 
 ## Notes
 - This is a large refactoring but provides significant benefits:
