@@ -150,7 +150,6 @@ void ControlFlowGraph::mark_resolved(size_t Index)
 {
    if (Index >= this->edges.size()) return;
    this->edges[Index].resolved = true;
-   this->edges[Index].head = NO_JMP;
 }
 
 void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
