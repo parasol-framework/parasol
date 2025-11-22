@@ -263,7 +263,7 @@ void ControlFlowGraph::finalize() const
 }
 
 //********************************************************************************************************************
-// Debug tracing methods (Phase 3 Stage 5)
+// Debug tracing methods
 
 #if LJ_DEBUG
 

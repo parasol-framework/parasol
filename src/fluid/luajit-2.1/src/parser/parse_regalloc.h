@@ -120,7 +120,7 @@ public:
    [[nodiscard]] FuncState* state() const { return func_state; }
 
 #if LJ_DEBUG
-   // Debug verification methods (Phase 3 Stage 5)
+   // Debug verification methods
    void verify_no_leaks(const char* Context) const;
    void trace_allocation(BCReg Start, BCReg Count, const char* Context) const;
    void trace_release(BCReg Start, BCReg Count, const char* Context) const;

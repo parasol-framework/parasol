@@ -575,7 +575,7 @@ static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
 }
 
 //********************************************************************************************************************
-// Debug verification and tracing methods (Phase 3 Stage 5)
+// Debug verification and tracing methods
 
 #if LJ_DEBUG
 

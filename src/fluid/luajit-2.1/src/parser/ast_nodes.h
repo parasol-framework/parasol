@@ -1,4 +1,4 @@
-// Lua parser - AST/IR node schema for the Phase 2 redesign.
+// Lua parser - AST/IR node schema
 // Copyright (C) 2025 Paul Manias
 //
 // This header defines the abstract syntax / intermediate representation (AST/IR)
@@ -14,7 +14,7 @@
 //     numeric & generic for loops, break/continue), defer blocks,
 //     returns, chunk/local blocks and bare expression statements.
 //  *  Dedicated structs capture reusable metadata (Identifier, NameRef,
-//     FunctionParameter, TableField, BlockStmt) so later phases can extend the
+//     FunctionParameter, TableField, BlockStmt) so later work can extend the
 //     IR without mutating parser internals.
 //
 // Nodes own their children through std::unique_ptr / std::vector so lifetime is
