@@ -73,22 +73,26 @@ bool ExpressionValue::is_string_constant() const
 
 bool ExpressionValue::has_flag(ExprFlag Flag) const
 {
-   return expr_has_flag(&this->descriptor, Flag);
+   return (this->descriptor.flags & Flag) != ExprFlag::None;
 }
 
 void ExpressionValue::set_flag(ExprFlag Flag)
 {
-   expr_set_flag(&this->descriptor, Flag);
+   this->descriptor.flags |= Flag;
 }
 
 void ExpressionValue::clear_flag(ExprFlag Flag)
 {
-   expr_clear_flag(&this->descriptor, Flag);
+   this->descriptor.flags &= ~Flag;
 }
 
 bool ExpressionValue::consume_flag(ExprFlag Flag)
 {
-   return expr_consume_flag(&this->descriptor, Flag);
+   if ((this->descriptor.flags & Flag) != ExprFlag::None) {
+      this->descriptor.flags &= ~Flag;
+      return true;
+   }
+   return false;
 }
 
 ControlFlowEdge ExpressionValue::true_jumps(ControlFlowGraph& Graph) const
