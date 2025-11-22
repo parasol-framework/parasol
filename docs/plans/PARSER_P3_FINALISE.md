@@ -1,6 +1,6 @@
 # Parser Phase 3 Finalization Plan
 
-**Status**: In Progress (Steps 1-3 Complete - Revised Batch 1)
+**Status**: In Progress (Steps 1-3 Complete, Step 4 Batch 2a Complete)
 **Created**: 2025-11-22
 **Last Updated**: 2025-11-22
 **Dependencies**: PARSER_P3.md, PARSER_P3B.md (completed)
@@ -188,17 +188,42 @@ Searched for files with simple ControlFlowEdge API usage. **Finding**: No simple
 
 **Status**: ✅ Batch 1 complete - ControlFlowEdge API now feature-complete for migration
 
-### 🔄 In Progress
-
 #### Step 4: Batch 2 Migration - Files Blocked by Missing API
 
-**Now Ready**: With patch_with_value(), produces_values(), and drop_values() implemented, 27 previously blocked sites can now migrate.
+**Batch 2a: parse_regalloc.cpp (COMPLETE - 2025-11-22)**
+**Commit**: 57386366
 
-**Target Files**:
-- parse_regalloc.cpp (11 uses) - Register allocation jump interaction
-- parse_operators.cpp (17 uses, subset requiring new methods) - Comparison/logical operators
+**Migration Complete**: All 11 JumpListView uses migrated to ControlFlowEdge
 
-**Next Action**: Migrate parse_regalloc.cpp as first Batch 2 target
+**Functions Migrated**:
+1. `bcemit_INS()` - patch_with_value() for pending jump resolution
+2. `expr_toreg()` - append(), produces_values(), patch_with_value(), patch_here()
+3. `bcemit_jmp()` - append() for jump chain management
+4. `bcemit_branch_t()` - append() and patch_here() for true branches
+5. `bcemit_branch_f()` - append() and patch_here() for false branches
+
+**Migration Pattern**:
+- Create temporary ControlFlowGraph and ControlFlowEdge objects
+- Perform operations on jump chains (modifies bcbase array directly)
+- Extract updated head positions for append operations
+
+**Testing**:
+- All 65 Fluid parser tests passing (14 + 34 + 17)
+- Build successful, zero warnings
+- Zero JumpListView references remaining in file
+
+**Files Modified**:
+- `src/fluid/luajit-2.1/src/parser/parse_regalloc.cpp` - 11 uses eliminated
+
+**Status**: ✅ Complete - 11 of 27 blocked sites migrated
+
+### 🔄 In Progress
+
+**Batch 2b: parse_operators.cpp**
+
+**Remaining Work**: 16 additional blocked sites in parse_operators.cpp require migration
+
+**Next Action**: Migrate parse_operators.cpp comparison/logical operators
 
 ## Implementation Strategy
 
