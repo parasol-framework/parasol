@@ -32,8 +32,8 @@
 
 ---
 
-### 🟡 Step 2: Extract a dedicated OperatorEmitter facade (IN PROGRESS)
-**Status:** Facade structure created, compilation blocked by include dependency issues
+### ✅ Step 2: Extract a dedicated OperatorEmitter facade (COMPLETE)
+**Status:** Implemented and committed (commit 90c15c90 + follow-up)
 
 **Achievements:**
 * Created `OperatorEmitter` class structure with proper API design
@@ -48,13 +48,12 @@
   - `emit_comparison()` - Wraps `bcemit_comp()`
   - `emit_binary_bitwise()` - Wraps `bcemit_arith()` for bitwise ops
 
-**Remaining Work:**
-* Fix include dependency issues preventing compilation
-  - `parse_internal.h` expects types to be defined before inclusion
-  - operator_emitter needs proper include order similar to parse_operators.cpp
-  - BCOp typedef conflicts with forward declaration
-* Test facade integration with existing AST pipeline
-* Verify no bytecode regressions
+**Resolution of include issues:**
+* Header (`operator_emitter.h`) includes `parse_types.h` for complete type definitions
+* Implementation (`operator_emitter.cpp`) includes prerequisite headers before operator_emitter.h:
+  - `lj_bc.h` for NO_JMP and BC opcode definitions
+  - `lj_lex.h` for LexState definition
+* BCOp parameter uses `int` in header declaration to avoid typedef conflicts, casts to BCOp in implementation
 
 **Files Created:**
 * `src/fluid/luajit-2.1/src/parser/operator_emitter.h` - Facade header
@@ -67,7 +66,7 @@
 * `src/fluid/luajit-2.1/src/parser/parse_internal.h` - Changed declarations to extern for exported functions
 * `src/fluid/CMakeLists.txt` - Added operator_emitter.cpp to build
 
-**Next:** Resolve compilation issues, then adapt emit_unary_expr() and emit_binary_expr() to use OperatorEmitter
+**Next:** Adapt emit_unary_expr() and emit_binary_expr() in IrEmitter to use OperatorEmitter facade (Step 3)
 
 ---
 

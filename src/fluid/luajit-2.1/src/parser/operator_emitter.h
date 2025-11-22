@@ -11,14 +11,12 @@
 #pragma once
 
 #include <optional>
-#include <cstdint>
 
-// Forward declarations - types will be fully defined when this header is included
-struct FuncState;
-struct ExpDesc;
+#include "parser/parse_types.h"
+
+// Forward declarations for modern abstractions
 class RegisterAllocator;
 class ControlFlowGraph;
-enum BinOpr : int;
 
 class OperatorEmitter {
 public:
