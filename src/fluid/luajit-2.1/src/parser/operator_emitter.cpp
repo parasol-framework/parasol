@@ -37,6 +37,16 @@ void OperatorEmitter::emit_unary(int op, ExpDesc* operand)
 }
 
 //********************************************************************************************************************
+// Prepare left operand for binary operation
+// Facade wrapper over legacy bcemit_binop_left() function
+// MUST be called before evaluating right operand to prevent register clobbering
+
+void OperatorEmitter::emit_binop_left(BinOpr opr, ExpDesc* left)
+{
+   bcemit_binop_left(this->func_state, opr, left);
+}
+
+//********************************************************************************************************************
 // Emit arithmetic binary operator
 // Facade wrapper over legacy bcemit_arith() function
 

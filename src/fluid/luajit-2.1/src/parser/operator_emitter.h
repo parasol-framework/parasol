@@ -29,6 +29,11 @@ public:
    // Emit unary operator (negate, not, length, bitnot)
    // Accepts operand as ExpDesc, emits bytecode, modifies operand in-place
    void emit_unary(int op, ExpDesc* operand);
+   
+   // Prepare left operand for binary operation
+   // Must be called BEFORE evaluating right operand
+   // Discharges LHS to appropriate form (register for comparisons, numeric constant or register for arithmetic)
+   void emit_binop_left(BinOpr opr, ExpDesc* left);
 
    // Emit arithmetic binary operator (add, sub, mul, div, mod, pow, concat)
    // Accepts left/right operands, emits bytecode, stores result in left

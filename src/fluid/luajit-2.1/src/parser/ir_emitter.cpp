@@ -1475,26 +1475,31 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    BinOpr opr = mapped.value();
    ExpDesc lhs = lhs_result.value_ref();
 
-   // Logical operators (AND, OR, IF_EMPTY) need special short-circuit handling
-   // Keep using legacy bcemit_binop_left for now as they require CFG integration
+   // CRITICAL: ALL binary operators need binop_left preparation before RHS evaluation
+   // This discharges LHS to appropriate form to prevent register clobbering
    if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
+      // Logical operators use legacy helpers (require CFG integration for modernization)
       glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical");
       bcemit_binop_left(&this->func_state, opr, &lhs);
-      auto rhs_result = this->emit_expression(*payload.right);
-      if (not rhs_result.ok()) return rhs_result;
-      ExpDesc rhs = rhs_result.value_ref();
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical");
-      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
-      return ParserResult<ExpDesc>::success(lhs);
+   }
+   else {
+      // All other operators use OperatorEmitter facade
+      this->operator_emitter.emit_binop_left(opr, &lhs);
    }
 
-   // Evaluate right operand first for non-short-circuit operators
+   // Now evaluate RHS (safe because binop_left prepared LHS)
    auto rhs_result = this->emit_expression(*payload.right);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
 
-   // Route through OperatorEmitter facade based on operator type
-   if (opr >= OPR_NE and opr <= OPR_GT) {
+   // Emit the actual operation based on operator type
+   if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
+      // Logical operators: binop_left already set up short-circuit jumps
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical");
+      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+   }
+   else if (opr >= OPR_NE and opr <= OPR_GT) {
+      // Comparison operators (NE, EQ, LT, GE, LE, GT)
       this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
    }
    else {
