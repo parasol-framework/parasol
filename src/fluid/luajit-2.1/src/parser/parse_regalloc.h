@@ -30,7 +30,7 @@ public:
    }
    ~RegisterSpan() { this->release(); }
 
-   void release();
+   inline void release();
 
    [[nodiscard]] bool empty() const { return count_ IS 0; }
    [[nodiscard]] BCReg start() const { return start_; }
@@ -70,7 +70,7 @@ public:
    }
    ~AllocatedRegister() { this->release(); }
 
-   void release();
+   inline void release();
 
    [[nodiscard]] bool valid() const { return allocator_ != nullptr; }
    [[nodiscard]] BCReg index() const { return index_; }
@@ -94,12 +94,12 @@ struct TableOperandCopies {
 
 class RegisterAllocator {
 public:
-   explicit RegisterAllocator(FuncState* State);
+   inline explicit RegisterAllocator(FuncState* State);
 
    void bump(BCReg Count);
-   void reserve(BCReg Count);
+   inline void reserve(BCReg Count);
 
-   [[nodiscard]] AllocatedRegister acquire();
+   [[nodiscard]] inline AllocatedRegister acquire();
    [[nodiscard]] RegisterSpan reserve_span(BCReg Count);
 
    void release(AllocatedRegister& Handle);
@@ -124,4 +124,35 @@ private:
 
    FuncState* func_state;
 };
+
+//********************************************************************************************************************
+// RegisterAllocator inline implementations
+
+inline RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State)
+{
+}
+
+inline void RegisterAllocator::reserve(BCReg Count)
+{
+   this->reserve_slots(Count);
+}
+
+inline AllocatedRegister RegisterAllocator::acquire()
+{
+   BCReg start = this->reserve_slots(1);
+   return AllocatedRegister(this, start, start + 1);
+}
+
+//********************************************************************************************************************
+// RegisterSpan and AllocatedRegister inline implementations
+
+inline void RegisterSpan::release()
+{
+   if (allocator_) allocator_->release(*this);
+}
+
+inline void AllocatedRegister::release()
+{
+   if (allocator_) allocator_->release(*this);
+}
 

@@ -21,23 +21,23 @@ class ControlFlowGraph;
 
 class ControlFlowEdge {
 public:
-   ControlFlowEdge();
-   ControlFlowEdge(ControlFlowGraph* Graph, size_t Index);
+   inline ControlFlowEdge();
+   inline ControlFlowEdge(ControlFlowGraph* Graph, size_t Index);
 
-   [[nodiscard]] bool empty() const;
-   [[nodiscard]] bool valid() const;
-   [[nodiscard]] ControlFlowEdgeKind kind() const;
-   [[nodiscard]] BCPos head() const;
-   [[nodiscard]] FuncState* state() const;
+   [[nodiscard]] inline bool empty() const;
+   [[nodiscard]] inline bool valid() const;
+   [[nodiscard]] inline ControlFlowEdgeKind kind() const;
+   [[nodiscard]] inline BCPos head() const;
+   [[nodiscard]] inline FuncState* state() const;
 
-   void append(BCPos Other) const;
-   void append(const ControlFlowEdge& Other) const;
-   void patch_here() const;
-   void patch_to(BCPos Target) const;
-   void patch_head(BCPos Destination) const;
-   void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
-   [[nodiscard]] bool produces_values() const;
-   void drop_values() const;
+   inline void append(BCPos Other) const;
+   inline void append(const ControlFlowEdge& Other) const;
+   inline void patch_here() const;
+   inline void patch_to(BCPos Target) const;
+   inline void patch_head(BCPos Destination) const;
+   inline void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
+   [[nodiscard]] inline bool produces_values() const;
+   inline void drop_values() const;
 
 private:
    friend class ControlFlowGraph;
@@ -101,4 +101,81 @@ private:
    FuncState* func_state;
    std::vector<EdgeEntry> edges;
 };
+
+//********************************************************************************************************************
+// ControlFlowEdge inline implementations
+
+inline ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
+{
+}
+
+inline ControlFlowEdge::ControlFlowEdge(ControlFlowGraph* Graph, size_t Index) : graph(Graph), index(Index)
+{
+}
+
+inline bool ControlFlowEdge::empty() const
+{
+   if (not this->graph) return true;
+   return this->graph->edge_head(this->index) IS NO_JMP;
+}
+
+inline bool ControlFlowEdge::valid() const
+{
+   return this->graph != nullptr;
+}
+
+inline ControlFlowEdgeKind ControlFlowEdge::kind() const
+{
+   return this->graph ? this->graph->edge_kind(this->index) : ControlFlowEdgeKind::Unconditional;
+}
+
+inline BCPos ControlFlowEdge::head() const
+{
+   return this->graph ? this->graph->edge_head(this->index) : NO_JMP;
+}
+
+inline FuncState* ControlFlowEdge::state() const
+{
+   return this->graph ? this->graph->state() : nullptr;
+}
+
+inline void ControlFlowEdge::append(BCPos Other) const
+{
+   if (this->graph) this->graph->append_edge(this->index, Other);
+}
+
+inline void ControlFlowEdge::append(const ControlFlowEdge& Other) const
+{
+   if (this->graph) this->graph->append_edge(this->index, Other);
+}
+
+inline void ControlFlowEdge::patch_here() const
+{
+   if (this->graph) this->graph->patch_edge(this->index, this->graph->state()->pc);
+}
+
+inline void ControlFlowEdge::patch_to(BCPos Target) const
+{
+   if (this->graph) this->graph->patch_edge(this->index, Target);
+}
+
+inline void ControlFlowEdge::patch_head(BCPos Destination) const
+{
+   if (this->graph) this->graph->patch_edge_head(this->index, Destination);
+}
+
+inline void ControlFlowEdge::patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const
+{
+   if (this->graph) this->graph->patch_edge_with_value(this->index, ValueTarget, Register, DefaultTarget);
+}
+
+inline bool ControlFlowEdge::produces_values() const
+{
+   return this->graph ? this->graph->edge_produces_values(this->index) : false;
+}
+
+inline void ControlFlowEdge::drop_values() const
+{
+   if (this->graph) this->graph->drop_edge_values(this->index);
+}
 
