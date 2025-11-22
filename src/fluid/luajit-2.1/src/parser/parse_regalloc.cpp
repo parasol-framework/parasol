@@ -34,6 +34,9 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
    BCReg start = this->func_state->freereg;
    this->bump(Count);
    this->func_state->freereg += Count;
+#if LJ_DEBUG
+   this->trace_allocation(start, Count, "reserve_slots");
+#endif
    return start;
 }
 
@@ -68,6 +71,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
       this->func_state->freereg = ExpectedTop - Count;
 #if LJ_DEBUG
       lj_assertFS(this->func_state->freereg IS Start, "bad regfree");
+      this->trace_release(Start, Count, "release_span_internal");
 #endif
    }
 }
