@@ -106,18 +106,33 @@
 * ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
 * ⏳ Still using legacy: AND, OR, IF_EMPTY (logical short-circuit), CONCAT in compound assignments, BitNot
 
+* Defined value category abstractions (ValueUse, ValueSlot, LValue):
+  - Created `value_categories.h` - Defines three value category classes
+  - Created `value_categories.cpp` - Implements `ValueUse::is_falsey()` and `LValue::from_expdesc()`
+  - `ValueUse` - Read-only value wrapper around ExpDesc with category queries (is_constant, is_local, is_register, etc.)
+  - `ValueSlot` - Write target wrapper around ExpDesc for storing computed values
+  - `LValue` - Assignment target descriptor with variants (Local, Upvalue, Global, Indexed, Member)
+  - All three classes are lightweight wrappers designed for interop with legacy ExpDesc code
+  - Extended falsey semantics implemented for ?? operator (nil, false, 0, "")
+  - Successfully compiled and integrated into build system
+
 **Remaining Work:**
-* Define ValueUse/ValueSlot/LValue abstractions (Step 3 continuation)
+* Integrate value categories into OperatorEmitter API
 * Migrate logical short-circuit operators to use CFG-based approach
 * Migrate concat compound assignment (..=) special handling
 * Migrate BitNot unary operator
 * Remove remaining legacy helper calls from operator emission
 
+**Files Created:**
+* `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
+* `src/fluid/luajit-2.1/src/parser/value_categories.cpp` - Value category implementations
+
 **Files Modified:**
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added RegisterAllocator and OperatorEmitter members
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
+* `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
-**Next:** Define ValueUse/ValueSlot abstractions and complete Step 3
+**Next:** Integrate value categories into OperatorEmitter and continue Step 3
 
 ---
 
