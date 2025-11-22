@@ -215,8 +215,12 @@ static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
          }
          pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
       }
-      e->t = JumpListView(fs, e->t).append(pc);
-      JumpListView(fs, e->f).patch_to_here();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+      true_edge.append(pc);
+      e->t = true_edge.head();
+      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+      false_edge.patch_here();
       e->f = NO_JMP;
    }
    else if (op IS OPR_CONCAT) {
@@ -493,14 +497,20 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
    // False branch: patch all falsey jumps here and load false
    BCPos false_pos = fs->pc;
-   JumpListView(fs, check_nil).patch_to(false_pos);
-   JumpListView(fs, check_false).patch_to(false_pos);
-   JumpListView(fs, check_zero).patch_to(false_pos);
-   JumpListView(fs, check_empty).patch_to(false_pos);
+   ControlFlowGraph cfg(fs);
+   ControlFlowEdge nil_edge = cfg.make_unconditional(check_nil);
+   nil_edge.patch_to(false_pos);
+   ControlFlowEdge false_edge_check = cfg.make_unconditional(check_false);
+   false_edge_check.patch_to(false_pos);
+   ControlFlowEdge zero_edge = cfg.make_unconditional(check_zero);
+   zero_edge.patch_to(false_pos);
+   ControlFlowEdge empty_edge = cfg.make_unconditional(check_empty);
+   empty_edge.patch_to(false_pos);
    bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
 
    // Patch skip jump to after false load
-   JumpListView(fs, jmp_false_branch).patch_to(fs->pc);
+   ControlFlowEdge skip_edge = cfg.make_unconditional(jmp_false_branch);
+   skip_edge.patch_to(fs->pc);
 
    expr_init(e, ExpKind::NonReloc, dest);
 }
@@ -520,7 +530,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e2_value(fs, *e2);
       e2_value.discharge();
       *e2 = e2_value.legacy();
-      e2->f = JumpListView(fs, e2->f).append(e1->f);
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge false_edge = cfg.make_false_edge(e2->f);
+      false_edge.append(e1->f);
+      e2->f = false_edge.head();
       *e1 = *e2;
    }
    else if (op IS OPR_OR) {
@@ -528,7 +541,10 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e2_value(fs, *e2);
       e2_value.discharge();
       *e2 = e2_value.legacy();
-      e2->t = JumpListView(fs, e2->t).append(e1->t);
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge true_edge = cfg.make_true_edge(e2->t);
+      true_edge.append(e1->t);
+      e2->t = true_edge.head();
       *e1 = *e2;
    }
    else if (op IS OPR_IF_EMPTY) {
@@ -539,7 +555,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 
       if (e1->t != NO_JMP) {
          // Patch jumps to skip RHS
-         JumpListView(fs, e1->t).patch_to(fs->pc);
+         ControlFlowGraph cfg(fs);
+         ControlFlowEdge true_edge = cfg.make_true_edge(e1->t);
+         true_edge.patch_to(fs->pc);
          e1->t = NO_JMP;
 
          // LHS is truthy - no need to evaluate RHS
@@ -614,10 +632,15 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
             skip = bcemit_jmp(fs);
 
             // Patch falsey checks to jump to RHS evaluation
-            JumpListView(fs, check_nil).patch_to(fs->pc);
-            JumpListView(fs, check_false).patch_to(fs->pc);
-            JumpListView(fs, check_zero).patch_to(fs->pc);
-            JumpListView(fs, check_empty).patch_to(fs->pc);
+            ControlFlowGraph cfg_checks(fs);
+            ControlFlowEdge nil_edge = cfg_checks.make_unconditional(check_nil);
+            nil_edge.patch_to(fs->pc);
+            ControlFlowEdge false_edge_check = cfg_checks.make_unconditional(check_false);
+            false_edge_check.patch_to(fs->pc);
+            ControlFlowEdge zero_edge = cfg_checks.make_unconditional(check_zero);
+            zero_edge.patch_to(fs->pc);
+            ControlFlowEdge empty_edge = cfg_checks.make_unconditional(check_empty);
+            empty_edge.patch_to(fs->pc);
 
             // Evaluate RHS
             ExpressionValue e2_value(fs, *e2);
@@ -630,7 +653,9 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
                // which always delivers its result in the condition register.
                bcemit_AD(fs, BC_MOV, reg, dest_reg);
             }
-            JumpListView(fs, skip).patch_to(fs->pc);
+            ControlFlowGraph cfg_skip(fs);
+            ControlFlowEdge skip_edge = cfg_skip.make_unconditional(skip);
+            skip_edge.patch_to(fs->pc);
             ExprFlag saved_flags = e1->flags;  // Save flags before expr_init
 
             expr_init(e1, ExpKind::NonReloc, reg);
@@ -696,8 +721,11 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    if (op IS BC_NOT) {
       // Swap true and false lists.
       { BCPos temp = e->f; e->f = e->t; e->t = temp; }
-      JumpListView(fs, e->f).drop_values();
-      JumpListView(fs, e->t).drop_values();
+      ControlFlowGraph cfg(fs);
+      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+      false_edge.drop_values();
+      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+      true_edge.drop_values();
       ExpressionValue e_value(fs, *e);
       e_value.discharge();
       *e = e_value.legacy();
