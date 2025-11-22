@@ -1,16 +1,7 @@
-/*
-** Value category abstractions - implementation.
-** Copyright (C) 2025 Parasol Project.
-*/
+// Value category abstractions - implementation.
+// Copyright (C) 2025 Paul Manias
 
-#include "../runtime/lj_obj.h"
-#include "../bytecode/lj_bc.h"
-#include "lj_lex.h"
-#include "value_categories.h"
-
-//********************************************************************************************************************
 // ValueUse implementation
-//********************************************************************************************************************
 
 bool ValueUse::is_falsey() const
 {
@@ -32,17 +23,14 @@ bool ValueUse::is_falsey() const
       case ExpKind::Num: {
          // Check if number is exactly zero
          TValue* nval = &this->desc->u.nval;
-         if (tvisint(nval)) {
-            return intV(nval) IS 0;
-         } else if (tvisnum(nval)) {
-            return numV(nval) IS 0.0;
-         }
+         if (tvisint(nval)) return intV(nval) IS 0;
+         else if (tvisnum(nval)) return numV(nval) IS 0.0;
          return false;
       }
 
       case ExpKind::Str: {
          // Check if string is empty
-         GCstr* str = this->desc->u.sval;
+         GCstr *str = this->desc->u.sval;
          return str->len IS 0;
       }
 
@@ -55,7 +43,6 @@ bool ValueUse::is_falsey() const
 
 //********************************************************************************************************************
 // LValue implementation
-//********************************************************************************************************************
 
 LValue LValue::from_expdesc(const ExpDesc* Desc)
 {
@@ -85,4 +72,3 @@ LValue LValue::from_expdesc(const ExpDesc* Desc)
          return LValue::make_local(0);
    }
 }
-

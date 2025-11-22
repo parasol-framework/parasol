@@ -1,15 +1,7 @@
-/*
-** Value category abstractions for Phase 4 parser modernisation.
-** Copyright (C) 2025 Parasol Project.
-*/
+// Value category abstractions for Phase 4 parser modernisation.
+// Copyright (C) 2025 Paul Manias
 
-#ifndef VALUE_CATEGORIES_H
-#define VALUE_CATEGORIES_H
-
-#include "parse_types.h"
-
-struct FuncState;
-class RegisterAllocator;
+#pragma once
 
 //********************************************************************************************************************
 // ValueUse - Read-only value wrapper
@@ -24,7 +16,6 @@ class RegisterAllocator;
 // - GlobalValue: Global variable requiring name constant
 //
 // This class does NOT own the underlying ExpDesc and assumes the caller manages its lifetime.
-//********************************************************************************************************************
 
 class ValueUse {
 public:
@@ -57,7 +48,7 @@ public:
    [[nodiscard]] ExpKind kind() const { return this->desc->k; }
 
 private:
-   ExpDesc* desc;
+   ExpDesc *desc;
 };
 
 //********************************************************************************************************************
@@ -74,7 +65,6 @@ private:
 // - GlobalSlot: Global variable name constant
 //
 // This class does NOT own the underlying ExpDesc and assumes the caller manages its lifetime.
-//********************************************************************************************************************
 
 class ValueSlot {
 public:
@@ -116,7 +106,6 @@ private:
 //
 // LValue is designed for statement emission (assignments, compound assignments) where we need to both read current
 // values and write new values to the same location.
-//********************************************************************************************************************
 
 enum class LValueKind : uint8_t {
    Local,      // Local variable
@@ -210,5 +199,3 @@ private:
       } member;
    };
 };
-
-#endif
