@@ -4,6 +4,7 @@
 #include "parser/parser_context.h"
 #include "parser/parse_value.h"
 #include "parser/parse_regalloc.h"
+#include "parser/parse_control_flow.h"
 
 static void expr_collapse_freereg(FuncState *, BCReg);
 
@@ -1035,10 +1036,15 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
 
          {
             BCPos false_start = fs->pc;
-            JumpListView(fs, check_nil).patch_to(false_start);
-            JumpListView(fs, check_false).patch_to(false_start);
-            JumpListView(fs, check_zero).patch_to(false_start);
-            JumpListView(fs, check_empty).patch_to(false_start);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge_nil = cfg.make_unconditional(check_nil);
+            edge_nil.patch_to(false_start);
+            ControlFlowEdge edge_false = cfg.make_unconditional(check_false);
+            edge_false.patch_to(false_start);
+            ControlFlowEdge edge_zero = cfg.make_unconditional(check_zero);
+            edge_zero.patch_to(false_start);
+            ControlFlowEdge edge_empty = cfg.make_unconditional(check_empty);
+            edge_empty.patch_to(false_start);
          }
 
          {
@@ -1054,7 +1060,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
             false_value.to_reg(allocator, result_reg);
             fexp = false_value.legacy();
             expr_collapse_freereg(fs, result_reg);
-            JumpListView(fs, skip_false).patch_to(fs->pc);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge_skip = cfg.make_unconditional(skip_false);
+            edge_skip.patch_to(fs->pc);
             v->u.s.info = result_reg;
             v->k = ExpKind::NonReloc;
             op = nextop3;
@@ -1089,7 +1097,9 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
          this->pending_if_empty_colon = 0;
 
          if (v->t != NO_JMP) {
-            JumpListView(fs, v->t).patch_to(fs->pc);
+            ControlFlowGraph cfg(fs);
+            ControlFlowEdge edge = cfg.make_true_edge(v->t);
+            edge.patch_to(fs->pc);
             v->t = NO_JMP;
          }
 
