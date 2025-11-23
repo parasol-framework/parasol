@@ -31,8 +31,14 @@ function runTests()
    end
 
    local body = loadFile(glFile)
+
    if not body then
       print("The Flute test file did not return a configuration table.  It is either not a Flute script or is misconfigured.")
+      return
+   elseif not body.tests then
+      -- This is considered legitimate - a test file may choose to have no tests.
+      print("The Flute test file did not return any tests to execute.")
+      glSelf.errorString = nil
       return
    end
 

@@ -83,9 +83,9 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Release operand registers through allocator
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) allocator.release_register(e1->u.s.info);
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) allocator.release_register(e2->u.s.info);
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -157,9 +157,9 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ins = BCINS_AD(op, ra, rd);
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Release operand registers through allocator
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) allocator.release_register(e1->u.s.info);
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) allocator.release_register(e2->u.s.info);
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
