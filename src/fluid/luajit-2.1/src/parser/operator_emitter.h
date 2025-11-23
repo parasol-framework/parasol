@@ -22,9 +22,13 @@ public:
    // Returns true if folding succeeded and result is in e1
    [[nodiscard]] bool fold_constant_arith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 
-   // Emit unary operator (negate, not, length, bitnot)
+   // Emit unary operator (negate, not, length)
    // Accepts operand as ExpDesc, emits bytecode, modifies operand in-place
    void emit_unary(int op, ExpDesc* operand);
+
+   // Emit bitwise NOT operator (~)
+   // Calls bit.bnot library function, modifies operand in-place
+   void emit_bitnot(ExpDesc* operand);
 
    // Prepare left operand for binary operation
    // Must be called BEFORE evaluating right operand

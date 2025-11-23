@@ -168,7 +168,7 @@ extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
 static void bcemit_binop_left(FuncState *, BinOpr op, ExpDesc* e);
 static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
-static void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
+extern void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
 static void bcemit_presence_check(FuncState *, ExpDesc* e);
 static void bcemit_binop(FuncState *, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 

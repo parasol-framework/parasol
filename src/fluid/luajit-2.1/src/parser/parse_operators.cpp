@@ -361,8 +361,9 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
 
 //********************************************************************************************************************
 // Emit unary bit library call (e.g., bit.bnot).
+// Exported for use by OperatorEmitter facade
 
-static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
+void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;

@@ -37,6 +37,15 @@ void OperatorEmitter::emit_unary(int op, ExpDesc* operand)
 }
 
 //********************************************************************************************************************
+// Emit bitwise NOT operator (~)
+// Calls bit.bnot library function
+
+void OperatorEmitter::emit_bitnot(ExpDesc* operand)
+{
+   bcemit_unary_bit_call(this->func_state, "bnot", operand);
+}
+
+//********************************************************************************************************************
 // Prepare left operand for binary operation
 // Facade wrapper over legacy bcemit_binop_left() function
 // MUST be called before evaluating right operand to prevent register clobbering

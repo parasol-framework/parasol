@@ -1398,9 +1398,8 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
          this->operator_emitter.emit_unary(BC_LEN, &operand);
          break;
       case AstUnaryOperator::BitNot:
-         // BitNot still uses legacy helper as it's not in OperatorEmitter yet
-         glLegacyHelperCalls.record(LegacyHelperKind::Unop, "emit_unary_expr/bitnot");
-         bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
+         // BitNot calls bit.bnot library function
+         this->operator_emitter.emit_bitnot(&operand);
          break;
    }
    return ParserResult<ExpDesc>::success(operand);
