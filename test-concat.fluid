@@ -1,0 +1,15 @@
+
+   print("Goodbye" .. " " .. "World")
+   print(1 << 2 << 3)
+
+local glTestFolder = 'nothing'
+
+function createTestFile(name)
+   print('Concat path')
+   gl_path = glTestFolder .. name
+   local path = glTestFolder .. name
+   print('Done')
+end
+
+   createTestFile('test_read.txt')
+   print('finished')
