@@ -75,27 +75,30 @@
 
 **Achievements:**
 * Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
-* Adapted `emit_unary_expr()` to route through `OperatorEmitter::emit_unary()`
-  - Negate, Not, Length operators now use facade
-  - BitNot still uses legacy helper (to be migrated later)
-* Adapted `emit_binary_expr()` to route through `OperatorEmitter` facade
-  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT) → `emit_binary_arith()`
+* Adapted `emit_unary_expr()` to route through OperatorEmitter
+  - Negate, Not, Length operators → `emit_unary()`
+  - BitNot operator → `emit_bitnot()` (calls bit.bnot library)
+* Adapted `emit_binary_expr()` to route through OperatorEmitter facade
+  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW) → `emit_binary_arith()`
   - Comparison operators (EQ, NE, LT, LE, GT, GE) → `emit_comparison()`
   - Bitwise operators (BAND, BOR, BXOR, SHL, SHR) → `emit_binary_arith()`
-  - Logical operators (AND, OR, IF_EMPTY) still use legacy helpers (require CFG integration)
+  - Logical operators (AND, OR, IF_EMPTY) → `prepare_logical_*/complete_logical_*()` (CFG-based)
+  - CONCAT operator → `prepare_concat()/complete_concat()` (BC_CAT chaining)
 * Adapted `emit_update_expr()` to use `OperatorEmitter::emit_binary_arith()`
   - Postfix/prefix increment (++x, x++) and decrement (--x, x--) now route through facade
   - Eliminated direct calls to `bcemit_binop_left`/`bcemit_binop` for update operators
-* Adapted `emit_compound_assignment()` to use `OperatorEmitter::emit_binary_arith()`
-  - Arithmetic compound assignments (+=, -=, *=, /=, %=) now route through facade
-  - Concat compound assignment (..=) still uses legacy helpers due to special left-to-right evaluation
+* Adapted `emit_compound_assignment()` to use OperatorEmitter methods
+  - Arithmetic compound assignments (+=, -=, *=, /=, %=) → `emit_binary_arith()`
+  - CONCAT compound assignment (..=) → `prepare_concat()/complete_concat()`
 * Verified functionality with comprehensive test scripts covering:
-  - All unary operators
+  - All unary operators (including BitNot)
   - All arithmetic operators
   - All comparison operators
   - All bitwise operators
+  - All logical operators (AND, OR, IF_EMPTY)
   - All update operators (++/--, postfix/prefix)
-  - All compound assignments (including table member assignments)
+  - All compound assignments (including ..=)
+  - CONCAT operator with BC_CAT chaining
 
 **Summary of OperatorEmitter Coverage:**
 * ✅ Arithmetic operators: ADD, SUB, MUL, DIV, MOD, POW fully migrated
