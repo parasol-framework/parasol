@@ -14,7 +14,7 @@
 
    if ex then
       print('Display module is disabled in this build, skipping test')
-      return
+      return { }
    end
 
 -----------------------------------------------------------------------------------------------------------------------

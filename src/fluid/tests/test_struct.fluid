@@ -9,7 +9,7 @@ Flute tests for the struct interface.
 
    if ex then
       print("Font module is disabled in this build, skipping test")
-      return
+      return { }
    end
 
 -----------------------------------------------------------------------------------------------------------------------
