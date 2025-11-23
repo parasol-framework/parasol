@@ -1026,6 +1026,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
+   RegisterGuard register_guard(&this->func_state);
+
    ExpDesc tail = make_const_expr(ExpKind::Void);
    BCReg nexps = 0;
    if (not values.empty()) {
@@ -1068,7 +1070,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       for (PreparedAssignment& prepared : targets) {
          allocator.release(prepared.reserved);
       }
-      this->func_state.freereg = this->func_state.nactvar;
+      register_guard.release_to(this->func_state.nactvar);
+      register_guard.adopt_saved(this->func_state.freereg);
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
@@ -1077,7 +1080,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    for (PreparedAssignment& prepared : targets) {
       allocator.release(prepared.reserved);
    }
-   this->func_state.freereg = this->func_state.nactvar;
+   register_guard.release_to(this->func_state.nactvar);
+   register_guard.adopt_saved(this->func_state.freereg);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
