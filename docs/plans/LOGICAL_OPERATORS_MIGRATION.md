@@ -1,24 +1,27 @@
 # Logical Operators Migration Plan
 ## Migrate AND/OR/IF_EMPTY to CFG-Based Implementation
 
+**Status: STAGES 1-3 COMPLETE** ✅
+
 **Goal:** Replace legacy jump-based short-circuit operators with modern ControlFlowGraph-based implementation
 
 **Operators to Migrate:**
-- `and` (OPR_AND) - Skip RHS evaluation if left is false
-- `or` (OPR_OR) - Skip RHS evaluation if left is true
-- `??` (OPR_IF_EMPTY) - Skip RHS evaluation if left is truthy (extended falsey: nil, false, 0, "")
+- ✅ `and` (OPR_AND) - Skip RHS evaluation if left is false - **COMPLETE (Stage 2)**
+- ✅ `or` (OPR_OR) - Skip RHS evaluation if left is true - **COMPLETE (Stage 3)**
+- ⏳ `??` (OPR_IF_EMPTY) - Skip RHS evaluation if left is truthy (extended falsey: nil, false, 0, "") - **IN PROGRESS (Stage 4)**
 
-**Current Implementation:** `ir_emitter.cpp:1480-1488` calls `bcemit_binop_left()` → `bcemit_binop()`
+**Original Implementation:** `ir_emitter.cpp:1480-1488` calls `bcemit_binop_left()` → `bcemit_binop()`
 
-**Target Implementation:** OperatorEmitter methods returning structured ControlFlowEdges
+**Current Implementation:** OperatorEmitter facade methods using ControlFlowGraph for AND/OR, legacy for IF_EMPTY
 
 ---
 
-## Stage 1: Add OperatorEmitter Facade Methods
+## Stage 1: Add OperatorEmitter Facade Methods ✅ COMPLETE
 
 **Duration:** ~1 hour
 **Complexity:** Low
 **Risk:** Minimal (no behavior change)
+**Status:** COMPLETED - All tests passing (23/25 baseline maintained)
 
 ### Work Items
 
@@ -73,11 +76,12 @@ print("Stage 1: All legacy behavior preserved ✓")
 
 ---
 
-## Stage 2: Implement CFG-Based AND Operator
+## Stage 2: Implement CFG-Based AND Operator ✅ COMPLETE
 
 **Duration:** ~2-3 hours
 **Complexity:** Medium
 **Risk:** Medium (behavior change, control flow)
+**Status:** COMPLETED - CFG-based implementation working, all tests passing
 
 ### Work Items
 
@@ -162,11 +166,12 @@ print("Stage 2: AND operator CFG implementation ✓")
 
 ---
 
-## Stage 3: Implement CFG-Based OR Operator
+## Stage 3: Implement CFG-Based OR Operator ✅ COMPLETE
 
 **Duration:** ~2 hours
 **Complexity:** Medium
 **Risk:** Medium
+**Status:** COMPLETED - CFG-based implementation working, all tests passing
 
 ### Work Items
 
@@ -230,11 +235,12 @@ print("Stage 3: OR operator CFG implementation ✓")
 
 ---
 
-## Stage 4: Implement CFG-Based IF_EMPTY Operator
+## Stage 4: Implement CFG-Based IF_EMPTY Operator ⏳ IN PROGRESS
 
 **Duration:** ~3-4 hours
 **Complexity:** High
 **Risk:** High (complex falsey semantics)
+**Status:** NOT STARTED - Requires extended falsey checks (nil, false, 0, "") and table operand handling
 
 ### Work Items
 
