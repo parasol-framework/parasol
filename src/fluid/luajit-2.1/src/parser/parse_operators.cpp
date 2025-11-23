@@ -80,10 +80,9 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
    }
 
-   ExpressionValue e1_release(fs, *e1);
-   ExpressionValue e2_release(fs, *e2);
-   e1_release.release(allocator);
-   e2_release.release(allocator);
+   // Using expr_free might cause asserts if the order is wrong.
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -155,10 +154,9 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ins = BCINS_AD(op, ra, rd);
    }
 
-   ExpressionValue e1_release(fs, *e1);
-   ExpressionValue e2_release(fs, *e2);
-   e1_release.release(allocator);
-   e2_release.release(allocator);
+   // Using expr_free might cause asserts if the order is wrong.
+   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
+   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;

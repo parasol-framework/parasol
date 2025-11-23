@@ -88,7 +88,10 @@ void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
       BCReg expected_top = Expression->u.s.info + 1;
-      this->release_span_internal(Expression->u.s.info, 1, expected_top);
+      if (Expression->u.s.info >= this->func_state->nactvar and
+         expected_top IS this->func_state->freereg) {
+         this->release_span_internal(Expression->u.s.info, 1, expected_top);
+      }
    }
 }
 
