@@ -2160,15 +2160,14 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
 
       if (prepared.target.is_local()) {
          for (PreparedAssignment& existing : lhs) {
-            if (existing.target.is_indexed() and existing.target.get_table_reg() IS prepared.target.get_local_reg()) {
-               TableOperandCopies refreshed = allocator.duplicate_table_operands(existing.storage);
-               existing.storage = refreshed.duplicated;
-               existing.reserved = std::move(refreshed.reserved);
-               existing.target = LValue::from_expdesc(&existing.storage);
-            }
-            else if (existing.target.is_indexed() and is_register_key(existing.storage.u.s.aux)
-               and existing.target.get_key_reg() IS prepared.target.get_local_reg())
-            {
+            bool refresh_table = existing.target.is_indexed()
+               and existing.target.get_table_reg() IS prepared.target.get_local_reg();
+            bool refresh_key = existing.target.is_indexed() and is_register_key(existing.storage.u.s.aux)
+               and existing.target.get_key_reg() IS prepared.target.get_local_reg();
+            bool refresh_member = existing.target.is_member()
+               and existing.target.get_table_reg() IS prepared.target.get_local_reg();
+
+            if (refresh_table or refresh_key or refresh_member) {
                TableOperandCopies refreshed = allocator.duplicate_table_operands(existing.storage);
                existing.storage = refreshed.duplicated;
                existing.reserved = std::move(refreshed.reserved);
