@@ -70,8 +70,8 @@
 
 ---
 
-### 🟡 Step 3: Rework binary/unary emission to use OperatorEmitter (IN PROGRESS)
-**Status:** OperatorEmitter integrated into expression emitters, update/compound operators migrated
+### ✅ Step 3: Rework binary/unary emission to use OperatorEmitter (COMPLETE)
+**Status:** All operators migrated to OperatorEmitter facade, no operators use legacy helpers directly
 
 **Achievements:**
 * Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
@@ -101,12 +101,12 @@
 * ✅ Arithmetic operators: ADD, SUB, MUL, DIV, MOD, POW fully migrated
 * ✅ Comparison operators: EQ, NE, LT, LE, GT, GE fully migrated
 * ✅ Bitwise operators: BAND, BOR, BXOR, SHL, SHR fully migrated
-* ✅ Unary operators: Negate, Not, Length fully migrated
+* ✅ Unary operators: Negate, Not, Length, BitNot fully migrated
 * ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
 * ✅ Compound assignments: +=, -=, *=, /=, %=, ..= fully migrated
 * ✅ Logical operators: AND, OR, IF_EMPTY (CFG-based short-circuit implementation) fully migrated
 * ✅ CONCAT operator: BC_CAT chaining implementation fully migrated
-* ⏳ Still using legacy: BitNot
+* ✅ ALL OPERATORS MIGRATED - No operators use legacy helpers directly from AST pipeline
 
 * Defined value category abstractions (ValueUse, ValueSlot, LValue):
   - Created `value_categories.h` - Defines three value category classes
@@ -120,10 +120,15 @@
 
 **Remaining Work:**
 * **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
-* **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
-* **Remove remaining legacy helper calls** from operator emission once all operators migrated
 
 **Completed:**
+* ✅ **BitNot operator (~)** - Function call generation to bit.bnot library:
+  - Added emit_bitnot() method to OperatorEmitter
+  - Exported bcemit_unary_bit_call for facade use
+  - Generates function call to bit.bnot with proper register management
+  - All unary operators now route through OperatorEmitter
+
+
 * ✅ **Logical short-circuit operators (AND, OR, IF_EMPTY)** - Full CFG-based implementation completed:
   - AND implemented with CFG-based short-circuit (skip RHS if left is false)
   - OR implemented with CFG-based short-circuit (skip RHS if left is true)
@@ -141,15 +146,22 @@
   - Eliminated legacy bcemit_binop calls for CONCAT
   - Comprehensive test coverage for concatenation and chaining
 
-**Analysis of Remaining Items:**
-1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
-   - Edge types: Unconditional, True, False, Break, Continue
-   - Edge operations: append, patch_here, patch_to, patch_with_value
-   - Successfully used for logical operators (AND, OR, IF_EMPTY) and CONCAT
+**Step 3 Completion Summary:**
+All operators have been successfully migrated to the OperatorEmitter facade. The AST pipeline no longer calls legacy operator helpers (bcemit_binop, bcemit_unop, etc.) directly. All operator emission now routes through OperatorEmitter methods, which provide:
+- Modern register management via RegisterAllocator
+- Structured control flow via ControlFlowGraph
+- Consistent API for all operator types
+- Elimination of direct freereg manipulation
 
-2. **Complexity Assessment**:
-   - BitNot = High complexity (function call generation to bit library)
-   - Value category API integration = Low complexity (wrapper updates, can be gradual)
+**ControlFlowGraph Infrastructure:**
+Successfully used for logical operators (AND, OR, IF_EMPTY) and provides:
+- Edge types: Unconditional, True, False, Break, Continue
+- Edge operations: append, patch_here, patch_to, patch_with_value
+- Structured control flow instead of manual jump patching
+
+**Next Step Options:**
+1. **Value category API integration** - Low complexity, can be done incrementally
+2. **Step 4: Statement emission modernization** - Assignments with LValue descriptors
 
 **Files Created:**
 * `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
@@ -160,10 +172,9 @@
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
 * `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
-**Next Steps (Options):**
+**Next Steps:**
 * **Option A**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
 * **Option B**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
-* **Option C**: Migrate remaining operator (BitNot - requires function call generation to bit library)
 
 ---
 
