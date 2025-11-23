@@ -103,9 +103,10 @@
 * ✅ Bitwise operators: BAND, BOR, BXOR, SHL, SHR fully migrated
 * ✅ Unary operators: Negate, Not, Length fully migrated
 * ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
-* ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
+* ✅ Compound assignments: +=, -=, *=, /=, %=, ..= fully migrated
 * ✅ Logical operators: AND, OR, IF_EMPTY (CFG-based short-circuit implementation) fully migrated
-* ⏳ Still using legacy: CONCAT in compound assignments, BitNot
+* ✅ CONCAT operator: BC_CAT chaining implementation fully migrated
+* ⏳ Still using legacy: BitNot
 
 * Defined value category abstractions (ValueUse, ValueSlot, LValue):
   - Created `value_categories.h` - Defines three value category classes
@@ -119,7 +120,6 @@
 
 **Remaining Work:**
 * **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
-* **Migrate concat compound assignment (..=)** - Special left-to-right evaluation handling
 * **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
 * **Remove remaining legacy helper calls** from operator emission once all operators migrated
 
@@ -133,15 +133,22 @@
   - Comprehensive test coverage for all operators
   - Migration plan documented in `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
 
+* ✅ **CONCAT operator (..) and compound assignment (..=)** - Full BC_CAT implementation completed:
+  - prepare_concat() discharges left operand to consecutive register
+  - complete_concat() emits BC_CAT instruction with chaining optimization
+  - BC_CAT chaining: "a".."b".."c" extends existing CAT instruction instead of creating new ones
+  - Compound assignment (..=) uses OperatorEmitter for consistency
+  - Eliminated legacy bcemit_binop calls for CONCAT
+  - Comprehensive test coverage for concatenation and chaining
+
 **Analysis of Remaining Items:**
 1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
    - Edge types: Unconditional, True, False, Break, Continue
    - Edge operations: append, patch_here, patch_to, patch_with_value
-   - Successfully used for logical operators (AND, OR, IF_EMPTY)
+   - Successfully used for logical operators (AND, OR, IF_EMPTY) and CONCAT
 
 2. **Complexity Assessment**:
    - BitNot = High complexity (function call generation to bit library)
-   - Concat compound (..=) = Medium complexity (special evaluation order)
    - Value category API integration = Low complexity (wrapper updates, can be gradual)
 
 **Files Created:**
@@ -156,7 +163,7 @@
 **Next Steps (Options):**
 * **Option A**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
 * **Option B**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
-* **Option C**: Migrate remaining operators (CONCAT compound assignments, BitNot)
+* **Option C**: Migrate remaining operator (BitNot - requires function call generation to bit library)
 
 ---
 
