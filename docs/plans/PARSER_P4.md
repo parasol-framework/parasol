@@ -121,10 +121,16 @@
   - Extended falsey semantics implemented for ?? operator (nil, false, 0, "")
   - Successfully compiled and integrated into build system
 
-**Remaining Work:**
-* **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
-
 **Completed:**
+* ✅ **Value category integration into OperatorEmitter API** - Complete integration of ValueUse/ValueSlot:
+  - Updated all OperatorEmitter method signatures to use ValueUse/ValueSlot instead of raw ExpDesc*
+  - ValueSlot used for result parameters and in-place modified operands
+  - ValueUse used for read-only input operands
+  - Updated all IrEmitter call sites (19 locations) to wrap ExpDesc* with appropriate value categories
+  - Establishes clear semantic contracts: ValueUse = read-only, ValueSlot = read-write
+  - Maintains backward compatibility via raw() method for legacy code interop
+  - All tests pass (BitNot, CONCAT, logical operators)
+
 * ✅ **BitNot operator (~)** - Function call generation to bit.bnot library:
   - Added emit_bitnot() method to OperatorEmitter
   - Exported bcemit_unary_bit_call for facade use
@@ -162,9 +168,8 @@ Successfully used for logical operators (AND, OR, IF_EMPTY) and provides:
 - Edge operations: append, patch_here, patch_to, patch_with_value
 - Structured control flow instead of manual jump patching
 
-**Next Step Options:**
-1. **Value category API integration** - Low complexity, can be done incrementally
-2. **Step 4: Statement emission modernization** - Assignments with LValue descriptors
+**Next Step:**
+1. **Step 4: Statement emission modernization** - Assignments with LValue descriptors
 
 **Files Created:**
 * `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
@@ -172,12 +177,13 @@ Successfully used for logical operators (AND, OR, IF_EMPTY) and provides:
 
 **Files Modified:**
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.h` - Added RegisterAllocator and OperatorEmitter members
-* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
+* `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment, wrap all OperatorEmitter calls with ValueUse/ValueSlot
+* `src/fluid/luajit-2.1/src/parser/operator_emitter.h` - Updated all method signatures to use ValueUse/ValueSlot
+* `src/fluid/luajit-2.1/src/parser/operator_emitter.cpp` - Extract raw() pointers for legacy code interop
 * `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
-**Next Steps:**
-* **Option A**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
-* **Option B**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
+**Ready for Next Step:**
+Step 4: Statement emission modernization with LValue descriptors is now ready to begin.
 
 ---
 
