@@ -1163,7 +1163,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
       ExpDesc infix = working;
       // CONCAT compound assignment: use OperatorEmitter for BC_CAT chaining
-      this->operator_emitter.prepare_concat(&infix);
+      this->operator_emitter.prepare_concat(ValueSlot(&infix));
       auto list = this->emit_expression_list(values, count);
       if (not list.ok()) {
          return ParserResult<IrEmitUnit>::failure(list.error_ref());
@@ -1174,7 +1174,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
          return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
       }
       rhs = list.value_ref();
-      this->operator_emitter.complete_concat(&infix, &rhs);
+      this->operator_emitter.complete_concat(ValueSlot(&infix), ValueUse(&rhs));
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
       bcemit_store(&this->func_state, &target, &infix);
    }
@@ -1193,7 +1193,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       ExpDesc infix = working;
 
       // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
-      this->operator_emitter.emit_binary_arith(mapped.value(), &infix, &rhs);
+      this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), ValueUse(&rhs));
 
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
       bcemit_store(&this->func_state, &target, &infix);
@@ -1389,17 +1389,17 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
    // Use OperatorEmitter facade for unary operators
    switch (payload.op) {
       case AstUnaryOperator::Negate:
-         this->operator_emitter.emit_unary(BC_UNM, &operand);
+         this->operator_emitter.emit_unary(BC_UNM, ValueSlot(&operand));
          break;
       case AstUnaryOperator::Not:
-         this->operator_emitter.emit_unary(BC_NOT, &operand);
+         this->operator_emitter.emit_unary(BC_NOT, ValueSlot(&operand));
          break;
       case AstUnaryOperator::Length:
-         this->operator_emitter.emit_unary(BC_LEN, &operand);
+         this->operator_emitter.emit_unary(BC_LEN, ValueSlot(&operand));
          break;
       case AstUnaryOperator::BitNot:
          // BitNot calls bit.bnot library function
-         this->operator_emitter.emit_bitnot(&operand);
+         this->operator_emitter.emit_bitnot(ValueSlot(&operand));
          break;
    }
    return ParserResult<ExpDesc>::success(operand);
@@ -1440,7 +1440,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    ExpDesc infix = operand;
 
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
-   this->operator_emitter.emit_binary_arith(op, &infix, &delta);
+   this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), ValueUse(&delta));
 
    glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_update_expr");
    bcemit_store(&this->func_state, &target, &infix);
@@ -1475,23 +1475,23 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // This discharges LHS to appropriate form to prevent register clobbering
    if (opr IS OPR_AND) {
       // Logical AND: CFG-based short-circuit implementation
-      this->operator_emitter.prepare_logical_and(&lhs);
+      this->operator_emitter.prepare_logical_and(ValueSlot(&lhs));
    }
    else if (opr IS OPR_OR) {
       // Logical OR: CFG-based short-circuit implementation
-      this->operator_emitter.prepare_logical_or(&lhs);
+      this->operator_emitter.prepare_logical_or(ValueSlot(&lhs));
    }
    else if (opr IS OPR_IF_EMPTY) {
       // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
-      this->operator_emitter.prepare_if_empty(&lhs);
+      this->operator_emitter.prepare_if_empty(ValueSlot(&lhs));
    }
    else if (opr IS OPR_CONCAT) {
       // CONCAT operator: discharge to consecutive register for BC_CAT chaining
-      this->operator_emitter.prepare_concat(&lhs);
+      this->operator_emitter.prepare_concat(ValueSlot(&lhs));
    }
    else {
       // All other operators use OperatorEmitter facade
-      this->operator_emitter.emit_binop_left(opr, &lhs);
+      this->operator_emitter.emit_binop_left(opr, ValueSlot(&lhs));
    }
 
    // Now evaluate RHS (safe because binop_left prepared LHS)
@@ -1502,23 +1502,23 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // Emit the actual operation based on operator type
    if (opr IS OPR_AND) {
       // Logical AND: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_and(&lhs, &rhs);
+      this->operator_emitter.complete_logical_and(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_OR) {
       // Logical OR: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_or(&lhs, &rhs);
+      this->operator_emitter.complete_logical_or(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_IF_EMPTY) {
       // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
-      this->operator_emitter.complete_if_empty(&lhs, &rhs);
+      this->operator_emitter.complete_if_empty(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr >= OPR_NE and opr <= OPR_GT) {
       // Comparison operators (NE, EQ, LT, GE, LE, GT)
-      this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
+      this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_CONCAT) {
       // CONCAT operator: CFG-based implementation with BC_CAT chaining
-      this->operator_emitter.complete_concat(&lhs, &rhs);
+      this->operator_emitter.complete_concat(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
       // Bitwise operators need special legacy handling (emit bit.* library calls)
@@ -1528,7 +1528,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    }
    else {
       // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
-      this->operator_emitter.emit_binary_arith(opr, &lhs, &rhs);
+      this->operator_emitter.emit_binary_arith(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
 
    return ParserResult<ExpDesc>::success(lhs);
