@@ -185,6 +185,17 @@ Successfully used for logical operators (AND, OR, IF_EMPTY) and provides:
 **Ready for Next Step:**
 Step 4: Statement emission modernization with LValue descriptors is now ready to begin.
 
+### ✅ Step 4: Modernise statement emission around AST nodes (COMPLETE)
+**Status:** LValue-driven assignments and CFG-managed loop exits implemented
+
+**Achievements:**
+* Introduced `PreparedAssignment` wrappers that pair `LValue` descriptors with duplicated table operands, replacing manual hazard renaming with `RegisterAllocator::duplicate_table_operands()` while keeping allocator state balanced.
+* Plain, compound, and `??` assignments now operate on prepared targets, releasing reserved spans after emission to avoid `freereg` leaks and centralise value storage logic.
+* Loop control statements (while, repeat, numeric for, generic for) now push structured loop contexts so `break`/`continue` emit through `ControlFlowGraph` edges instead of raw `gola_new`/`bcemit_jmp` patches.
+* Added scoped loop guards to guarantee loop-stack cleanup on success and failure paths, aligning statement emission with the modern CFG abstractions.
+
+**Next:** Proceed to Step 5 to isolate or retire the remaining legacy helpers.
+
 ---
 
 ## Step-by-step implementation plan

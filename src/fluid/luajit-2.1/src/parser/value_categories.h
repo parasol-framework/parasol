@@ -117,6 +117,8 @@ enum class LValueKind : uint8_t {
 
 class LValue {
 public:
+   LValue() = default;
+
    // Construct local l-value
    static LValue make_local(BCReg Register) {
       LValue lval;
@@ -181,8 +183,6 @@ public:
    [[nodiscard]] uint32_t get_key_const() const { return this->member.key_const; }
 
 private:
-   LValue() = default;
-
    LValueKind kind;
 
    union {

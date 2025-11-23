@@ -1,6 +1,10 @@
 // Value category abstractions - implementation.
 // Copyright (C) 2025 Paul Manias
 
+#include "parser/value_categories.h"
+
+#include "lj_bc.h"
+
 // ValueUse implementation
 
 bool ValueUse::is_falsey() const
@@ -57,12 +61,11 @@ LValue LValue::from_expdesc(const ExpDesc* Desc)
          return LValue::make_global(Desc->u.sval);
 
       case ExpKind::Indexed: {
-         // ExpDesc indexed format:
-         // - info = table register
-         // - aux = index register/byte/string constant (varies by indexed type)
-         // For now, assume aux is a register (simplest case)
-         // TODO: Handle VKINDEX variants (byte key, string constant key)
-         return LValue::make_indexed(BCReg(Desc->u.s.info), BCReg(Desc->u.s.aux));
+         bool key_is_register = (int32_t(Desc->u.s.aux) >= 0) and (Desc->u.s.aux <= BCMAX_C);
+         if (key_is_register) {
+            return LValue::make_indexed(BCReg(Desc->u.s.info), BCReg(Desc->u.s.aux));
+         }
+         return LValue::make_member(BCReg(Desc->u.s.info), Desc->u.s.aux);
       }
 
       default:
