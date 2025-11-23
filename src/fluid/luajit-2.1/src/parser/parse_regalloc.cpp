@@ -160,8 +160,9 @@ static void expr_free(FuncState *fs, ExpDesc *e)
 
 //********************************************************************************************************************
 // Emit bytecode instruction.
+// Exported for use by OperatorEmitter facade
 
-static BCPos bcemit_INS(FuncState *fs, BCIns ins)
+BCPos bcemit_INS(FuncState *fs, BCIns ins)
 {
    BCPos pc = fs->pc;
    LexState* ls = fs->ls;

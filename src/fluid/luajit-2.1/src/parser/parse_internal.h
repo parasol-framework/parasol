@@ -14,9 +14,11 @@ LJ_NORET void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
-static BCReg const_num(FuncState *, ExpDesc* e);
+// Exported for use by OperatorEmitter facade
+extern BCReg const_num(FuncState *, ExpDesc* e);
+extern BCReg const_str(FuncState *, ExpDesc* e);
+
 static BCReg const_gc(FuncState *, GCobj* gc, uint32_t itype);
-static BCReg const_str(FuncState *, ExpDesc* e);
 
 // Jump list handling (lj_parse_constants.cpp)
 
@@ -114,7 +116,8 @@ static void expr_free(FuncState *, ExpDesc* e);
 
 // Bytecode emission (lj_parse_regalloc.cpp)
 
-static BCPos bcemit_INS(FuncState *, BCIns ins);
+// Exported for use by OperatorEmitter facade
+extern BCPos bcemit_INS(FuncState *, BCIns ins);
 
 // Bytecode emission helper functions.
 

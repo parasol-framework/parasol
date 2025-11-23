@@ -223,20 +223,185 @@ void OperatorEmitter::complete_logical_or(ExpDesc* left, ExpDesc* right)
 
 //********************************************************************************************************************
 // Prepare IF_EMPTY (??) operator (called BEFORE RHS evaluation)
-// TODO: Replace with CFG-based implementation (Stage 4)
+// Stage 4: CFG-based implementation with extended falsey semantics
 
 void OperatorEmitter::prepare_if_empty(ExpDesc* left)
 {
-   // Stage 1: Legacy wrapper - preserve existing behavior
-   bcemit_binop_left(this->func_state, OPR_IF_EMPTY, left);
+   // IF_EMPTY short-circuit: if left is truthy, skip RHS and return left
+   // Extended falsey: nil, false, 0, "" (all trigger RHS evaluation)
+
+   // Discharge left operand
+   ExpressionValue left_val(this->func_state, *left);
+   left_val.discharge();
+   *left = left_val.legacy();
+
+   BCPos pc;
+
+   // Handle constant folding for known falsey values
+   if (left->k IS ExpKind::Nil or left->k IS ExpKind::False)
+      pc = NO_JMP;  // Falsey constant - will evaluate RHS
+   else if (left->k IS ExpKind::Num and expr_numiszero(left))
+      pc = NO_JMP;  // Zero is falsey - will evaluate RHS
+   else if (left->k IS ExpKind::Str and left->u.sval and left->u.sval->len IS 0)
+      pc = NO_JMP;  // Empty string is falsey - will evaluate RHS
+   else if (left->k IS ExpKind::Jmp)
+      pc = left->u.s.info;
+   else if (left->k IS ExpKind::Str or left->k IS ExpKind::Num or left->k IS ExpKind::True) {
+      // Truthy constant - load to register and skip RHS
+      RegisterAllocator allocator(this->func_state);
+      allocator.reserve(1);
+      expr_toreg_nobranch(this->func_state, left, this->func_state->freereg - 1);
+      pc = bcemit_jmp(this->func_state);
+   }
+   else {
+      // Runtime value - need extended falsey checks in complete phase
+      // Reserve register for RHS and mark with HasRhsReg flag
+      if (!expr_isk_nojump(left)) {
+         ExpressionValue left_inner(this->func_state, *left);
+         RegisterAllocator allocator(this->func_state);
+         BCReg src_reg = left_inner.discharge_to_any_reg(allocator);
+         *left = left_inner.legacy();
+         BCReg rhs_reg = this->func_state->freereg;
+         ExprFlag saved_flags = left->flags;
+         allocator.reserve(1);
+         expr_init(left, ExpKind::NonReloc, src_reg);
+         left->u.s.aux = rhs_reg;
+         left->flags = saved_flags | ExprFlag::HasRhsReg;
+      }
+      pc = NO_JMP;  // No jump yet - extended checks happen in complete phase
+   }
+
+   // Set up CFG edges
+   ControlFlowEdge true_edge = this->cfg->make_true_edge(left->t);
+   true_edge.append(pc);
+   left->t = true_edge.head();
+
+   ControlFlowEdge false_edge = this->cfg->make_false_edge(left->f);
+   false_edge.patch_here();
+   left->f = NO_JMP;
 }
 
 //********************************************************************************************************************
 // Complete IF_EMPTY (??) operator (called AFTER RHS evaluation)
-// TODO: Replace with CFG-based implementation (Stage 4)
+// Stage 4: CFG-based implementation with extended falsey checks
 
 void OperatorEmitter::complete_if_empty(ExpDesc* left, ExpDesc* right)
 {
-   // Stage 1: Legacy wrapper - preserve existing behavior
-   bcemit_binop(this->func_state, OPR_IF_EMPTY, left, right);
+   FuncState* fs = this->func_state;  // For macros and brevity
+   lj_assertFS(left->f IS NO_JMP, "jump list not closed");
+
+   // If left->t has jumps, LHS is truthy - patch and return LHS
+   if (left->t != NO_JMP) {
+      ControlFlowEdge true_edge = this->cfg->make_true_edge(left->t);
+      true_edge.patch_to(fs->pc);
+      left->t = NO_JMP;
+
+      // Ensure LHS is in a register for the result
+      if (left->k != ExpKind::NonReloc and left->k != ExpKind::Relocable) {
+         if (expr_isk(left)) {
+            RegisterAllocator allocator(fs);
+            allocator.reserve(1);
+            expr_toreg_nobranch(fs, left, fs->freereg - 1);
+         }
+         else {
+            ExpressionValue left_alt(fs, *left);
+            RegisterAllocator allocator(fs);
+            left_alt.discharge_to_any_reg(allocator);
+            *left = left_alt.legacy();
+         }
+      }
+      return;
+   }
+
+   // LHS is falsey OR needs runtime checks
+   BCReg rhs_reg = NO_REG;
+   if (expr_consume_flag(left, ExprFlag::HasRhsReg)) {
+      rhs_reg = BCReg(left->u.s.aux);
+   }
+
+   ExpressionValue left_discharge(fs, *left);
+   left_discharge.discharge();
+   *left = left_discharge.legacy();
+
+   if (left->k IS ExpKind::NonReloc or left->k IS ExpKind::Relocable) {
+      // Runtime value - emit extended falsey checks (nil, false, 0, "")
+      ExpressionValue left_runtime(fs, *left);
+      RegisterAllocator allocator(fs);
+      BCReg reg = left_runtime.discharge_to_any_reg(allocator);
+      *left = left_runtime.legacy();
+
+      // Create test expressions
+      ExpDesc nilv = make_nil_expr();
+      ExpDesc falsev = make_bool_expr(false);
+      ExpDesc zerov = make_num_expr(0.0);
+      ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
+
+      // Emit 4 equality checks, each jumps if value matches (is falsey)
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+      BCPos check_nil = bcemit_jmp(fs);
+
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+      BCPos check_false = bcemit_jmp(fs);
+
+      bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+      BCPos check_zero = bcemit_jmp(fs);
+
+      bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+      BCPos check_empty = bcemit_jmp(fs);
+
+      // Determine destination register
+      BCReg dest_reg;
+      if (rhs_reg IS NO_REG) {
+         dest_reg = fs->freereg;
+         allocator.reserve(1);
+      }
+      else {
+         dest_reg = rhs_reg;
+         if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
+      }
+
+      // Preserve LHS value for truthy path
+      bcemit_AD(fs, BC_MOV, dest_reg, reg);
+
+      // If all checks fail (truthy), skip RHS evaluation
+      BCPos skip = bcemit_jmp(fs);
+
+      // Patch falsey checks to jump here (RHS evaluation)
+      ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
+      nil_edge.patch_to(fs->pc);
+      ControlFlowEdge false_edge = this->cfg->make_unconditional(check_false);
+      false_edge.patch_to(fs->pc);
+      ControlFlowEdge zero_edge = this->cfg->make_unconditional(check_zero);
+      zero_edge.patch_to(fs->pc);
+      ControlFlowEdge empty_edge = this->cfg->make_unconditional(check_empty);
+      empty_edge.patch_to(fs->pc);
+
+      // Evaluate RHS into dest_reg
+      ExpressionValue right_val(fs, *right);
+      right_val.to_reg(allocator, dest_reg);
+      *right = right_val.legacy();
+
+      // Copy result back to original register if needed
+      if (dest_reg != reg) {
+         bcemit_AD(fs, BC_MOV, reg, dest_reg);
+      }
+
+      // Patch skip jump to here (end of operation)
+      ControlFlowEdge skip_edge = this->cfg->make_unconditional(skip);
+      skip_edge.patch_to(fs->pc);
+
+      // Set result to LHS register
+      ExprFlag saved_flags = left->flags;
+      expr_init(left, ExpKind::NonReloc, reg);
+      left->flags = saved_flags;
+
+      // Clean up scratch register if used
+      if (dest_reg != reg and dest_reg >= fs->nactvar and fs->freereg > dest_reg) {
+         fs->freereg = dest_reg;
+      }
+   }
+   else {
+      // LHS is compile-time falsey - just use RHS
+      *left = *right;
+   }
 }

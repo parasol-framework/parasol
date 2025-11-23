@@ -1,18 +1,18 @@
 # Logical Operators Migration Plan
 ## Migrate AND/OR/IF_EMPTY to CFG-Based Implementation
 
-**Status: STAGES 1-3 COMPLETE** ✅
+**Status: ALL STAGES COMPLETE** ✅ (Stages 1-4)
 
 **Goal:** Replace legacy jump-based short-circuit operators with modern ControlFlowGraph-based implementation
 
 **Operators to Migrate:**
 - ✅ `and` (OPR_AND) - Skip RHS evaluation if left is false - **COMPLETE (Stage 2)**
 - ✅ `or` (OPR_OR) - Skip RHS evaluation if left is true - **COMPLETE (Stage 3)**
-- ⏳ `??` (OPR_IF_EMPTY) - Skip RHS evaluation if left is truthy (extended falsey: nil, false, 0, "") - **IN PROGRESS (Stage 4)**
+- ✅ `??` (OPR_IF_EMPTY) - Skip RHS evaluation if left is truthy (extended falsey: nil, false, 0, "") - **COMPLETE (Stage 4)**
 
 **Original Implementation:** `ir_emitter.cpp:1480-1488` calls `bcemit_binop_left()` → `bcemit_binop()`
 
-**Current Implementation:** OperatorEmitter facade methods using ControlFlowGraph for AND/OR, legacy for IF_EMPTY
+**Current Implementation:** All logical operators (AND, OR, IF_EMPTY) use CFG-based OperatorEmitter methods
 
 ---
 
@@ -235,12 +235,12 @@ print("Stage 3: OR operator CFG implementation ✓")
 
 ---
 
-## Stage 4: Implement CFG-Based IF_EMPTY Operator ⏳ IN PROGRESS
+## Stage 4: Implement CFG-Based IF_EMPTY Operator ✅ COMPLETE
 
 **Duration:** ~3-4 hours
 **Complexity:** High
 **Risk:** High (complex falsey semantics)
-**Status:** NOT STARTED - Requires extended falsey checks (nil, false, 0, "") and table operand handling
+**Status:** COMPLETED - CFG-based implementation with extended falsey checks working perfectly
 
 ### Work Items
 
