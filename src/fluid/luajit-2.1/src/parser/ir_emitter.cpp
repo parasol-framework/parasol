@@ -128,66 +128,6 @@ private:
 UnsupportedNodeRecorder glUnsupportedNodes;
 
 //********************************************************************************************************************
-// Legacy helper call tracker for Phase 4 refactoring
-
-enum class LegacyHelperKind : uint8_t {
-   BinopLeft,
-   Binop,
-   Unop,
-   PresenceCheck,
-   Store,
-   AssignAdjust,
-   BranchTrue,
-   BranchFalse,
-   ManualJump,
-   Count
-};
-
-class LegacyHelperRecorder {
-public:
-   void record(LegacyHelperKind kind, const char* context) {
-      size_t index = size_t(kind);
-      if (index >= size_t(LegacyHelperKind::Count)) return;
-      uint32_t total = ++this->counts[index];
-      if ((total <= 8) or (total % 32 IS 0)) {
-         pf::Log log("Parser");
-         log.msg("ast-pipeline legacy helper=%s context=%s hits=%u",
-            describe_helper(kind), context ? context : "unknown", unsigned(total));
-      }
-   }
-
-   void dump_statistics() const {
-      pf::Log log("Parser");
-      log.msg("=== Legacy Helper Call Statistics ===");
-      for (size_t i = 0; i < size_t(LegacyHelperKind::Count); ++i) {
-         if (this->counts[i] > 0) {
-            log.msg("  %s: %u calls", describe_helper(LegacyHelperKind(i)), unsigned(this->counts[i]));
-         }
-      }
-   }
-
-private:
-   static const char* describe_helper(LegacyHelperKind kind) {
-      switch (kind) {
-         case LegacyHelperKind::BinopLeft: return "bcemit_binop_left";
-         case LegacyHelperKind::Binop: return "bcemit_binop";
-         case LegacyHelperKind::Unop: return "bcemit_unop";
-         case LegacyHelperKind::PresenceCheck: return "bcemit_presence_check";
-         case LegacyHelperKind::Store: return "bcemit_store";
-         case LegacyHelperKind::AssignAdjust: return "assign_adjust";
-         case LegacyHelperKind::BranchTrue: return "bcemit_branch_t";
-         case LegacyHelperKind::BranchFalse: return "bcemit_branch_f";
-         case LegacyHelperKind::ManualJump: return "manual_jump_patch";
-         default: return "unknown";
-      }
-   }
-
-   std::array<uint32_t, size_t(LegacyHelperKind::Count)> counts{};
-};
-
-LegacyHelperRecorder glLegacyHelperCalls;
-
-//********************************************************************************************************************
 
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
@@ -251,66 +191,36 @@ LegacyHelperRecorder glLegacyHelperCalls;
 [[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
 {
    switch (kind) {
-   case AstNodeKind::LiteralExpr:
-      return "LiteralExpr";
-   case AstNodeKind::IdentifierExpr:
-      return "IdentifierExpr";
-   case AstNodeKind::VarArgExpr:
-      return "VarArgExpr";
-   case AstNodeKind::UnaryExpr:
-      return "UnaryExpr";
-   case AstNodeKind::BinaryExpr:
-      return "BinaryExpr";
-   case AstNodeKind::UpdateExpr:
-      return "UpdateExpr";
-   case AstNodeKind::TernaryExpr:
-      return "TernaryExpr";
-   case AstNodeKind::PresenceExpr:
-      return "PresenceExpr";
-   case AstNodeKind::CallExpr:
-      return "CallExpr";
-   case AstNodeKind::MemberExpr:
-      return "MemberExpr";
-   case AstNodeKind::IndexExpr:
-      return "IndexExpr";
-   case AstNodeKind::TableExpr:
-      return "TableExpr";
-   case AstNodeKind::FunctionExpr:
-      return "FunctionExpr";
-   case AstNodeKind::BlockStmt:
-      return "BlockStmt";
-   case AstNodeKind::AssignmentStmt:
-      return "AssignmentStmt";
-   case AstNodeKind::LocalDeclStmt:
-      return "LocalDeclStmt";
-   case AstNodeKind::LocalFunctionStmt:
-      return "LocalFunctionStmt";
-   case AstNodeKind::FunctionStmt:
-      return "FunctionStmt";
-   case AstNodeKind::IfStmt:
-      return "IfStmt";
-   case AstNodeKind::WhileStmt:
-      return "WhileStmt";
-   case AstNodeKind::RepeatStmt:
-      return "RepeatStmt";
-   case AstNodeKind::NumericForStmt:
-      return "NumericForStmt";
-   case AstNodeKind::GenericForStmt:
-      return "GenericForStmt";
-   case AstNodeKind::BreakStmt:
-      return "BreakStmt";
-   case AstNodeKind::ContinueStmt:
-      return "ContinueStmt";
-   case AstNodeKind::ReturnStmt:
-      return "ReturnStmt";
-   case AstNodeKind::DeferStmt:
-      return "DeferStmt";
-   case AstNodeKind::DoStmt:
-      return "DoStmt";
-   case AstNodeKind::ExpressionStmt:
-      return "ExpressionStmt";
-   default:
-      return "Unknown";
+      case AstNodeKind::LiteralExpr: return "LiteralExpr";
+      case AstNodeKind::IdentifierExpr: return "IdentifierExpr";
+      case AstNodeKind::VarArgExpr: return "VarArgExpr";
+      case AstNodeKind::UnaryExpr: return "UnaryExpr";
+      case AstNodeKind::BinaryExpr: return "BinaryExpr";
+      case AstNodeKind::UpdateExpr: return "UpdateExpr";
+      case AstNodeKind::TernaryExpr: return "TernaryExpr";
+      case AstNodeKind::PresenceExpr: return "PresenceExpr";
+      case AstNodeKind::CallExpr: return "CallExpr";
+      case AstNodeKind::MemberExpr: return "MemberExpr";
+      case AstNodeKind::IndexExpr: return "IndexExpr";
+      case AstNodeKind::TableExpr: return "TableExpr";
+      case AstNodeKind::FunctionExpr: return "FunctionExpr";
+      case AstNodeKind::BlockStmt: return "BlockStmt";
+      case AstNodeKind::AssignmentStmt: return "AssignmentStmt";
+      case AstNodeKind::LocalDeclStmt: return "LocalDeclStmt";
+      case AstNodeKind::LocalFunctionStmt: return "LocalFunctionStmt";
+      case AstNodeKind::FunctionStmt: return "FunctionStmt";
+      case AstNodeKind::IfStmt: return "IfStmt";
+      case AstNodeKind::WhileStmt: return "WhileStmt";
+      case AstNodeKind::RepeatStmt: return "RepeatStmt";
+      case AstNodeKind::NumericForStmt: return "NumericForStmt";
+      case AstNodeKind::GenericForStmt: return "GenericForStmt";
+      case AstNodeKind::BreakStmt: return "BreakStmt";
+      case AstNodeKind::ContinueStmt: return "ContinueStmt";
+      case AstNodeKind::ReturnStmt: return "ReturnStmt";
+      case AstNodeKind::DeferStmt: return "DeferStmt";
+      case AstNodeKind::DoStmt: return "DoStmt";
+      case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
+      default: return "Unknown";
    }
 }
 
@@ -1213,7 +1123,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
       rhs = list.value_ref();
       this->operator_emitter.complete_concat(ValueSlot(&infix), ValueUse(&rhs));
-      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
    else {
@@ -1233,7 +1142,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
       this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), ValueUse(&rhs));
 
-      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
 
@@ -1484,7 +1392,6 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
    this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), ValueUse(&delta));
 
-   glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_update_expr");
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
 
@@ -1498,12 +1405,13 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    return ParserResult<ExpDesc>::success(infix);
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& payload)
 {
    auto lhs_result = this->emit_expression(*payload.left);
-   if (not lhs_result.ok()) {
-      return lhs_result;
-   }
+   if (not lhs_result.ok()) return lhs_result;
+
    auto mapped = map_binary_operator(payload.op);
    if (not mapped.has_value()) {
       SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
@@ -1513,63 +1421,52 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    BinOpr opr = mapped.value();
    ExpDesc lhs = lhs_result.value_ref();
 
-   // CRITICAL: ALL binary operators need binop_left preparation before RHS evaluation
+   // IF_EMPTY requires special handling - it must emit RHS conditionally like ternary
+   // Cannot use the standard prepare/emit RHS/complete pattern
+
+   if (opr IS OPR_IF_EMPTY) return this->emit_if_empty_expr(lhs, *payload.right);
+   
+   // ALL binary operators need binop_left preparation before RHS evaluation
+ 
    // This discharges LHS to appropriate form to prevent register clobbering
-   if (opr IS OPR_AND) {
-      // Logical AND: CFG-based short-circuit implementation
+
+   if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_and(ValueSlot(&lhs));
    }
-   else if (opr IS OPR_OR) {
-      // Logical OR: CFG-based short-circuit implementation
+   else if (opr IS OPR_OR) { // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_or(ValueSlot(&lhs));
    }
-   else if (opr IS OPR_IF_EMPTY) {
-      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
-      this->operator_emitter.prepare_if_empty(ValueSlot(&lhs));
-   }
-   else if (opr IS OPR_CONCAT) {
-      // CONCAT operator: discharge to consecutive register for BC_CAT chaining
+   else if (opr IS OPR_CONCAT) { // CONCAT: Discharge to consecutive register for BC_CAT chaining
       this->operator_emitter.prepare_concat(ValueSlot(&lhs));
    }
-   else {
-      // All other operators use OperatorEmitter facade
+   else { // All other operators use OperatorEmitter facade
       this->operator_emitter.emit_binop_left(opr, ValueSlot(&lhs));
    }
 
    // Now evaluate RHS (safe because binop_left prepared LHS)
+
    auto rhs_result = this->emit_expression(*payload.right);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
 
    // Emit the actual operation based on operator type
-   if (opr IS OPR_AND) {
-      // Logical AND: CFG-based short-circuit implementation
+   if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_and(ValueSlot(&lhs), ValueUse(&rhs));
    }
-   else if (opr IS OPR_OR) {
-      // Logical OR: CFG-based short-circuit implementation
+   else if (opr IS OPR_OR) { // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_or(ValueSlot(&lhs), ValueUse(&rhs));
    }
-   else if (opr IS OPR_IF_EMPTY) {
-      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
-      this->operator_emitter.complete_if_empty(ValueSlot(&lhs), ValueUse(&rhs));
-   }
-   else if (opr >= OPR_NE and opr <= OPR_GT) {
-      // Comparison operators (NE, EQ, LT, GE, LE, GT)
+   else if (opr >= OPR_NE and opr <= OPR_GT) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
       this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
-   else if (opr IS OPR_CONCAT) {
-      // CONCAT operator: CFG-based implementation with BC_CAT chaining
+   else if (opr IS OPR_CONCAT) { // CONCAT: CFG-based implementation with BC_CAT chaining
       this->operator_emitter.complete_concat(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
-      // Bitwise operators need special legacy handling (emit bit.* library calls)
-      // Keep using bcemit_binop until these are migrated to OperatorEmitter
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/bitwise");
-      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+      // Bitwise operators: Route through OperatorEmitter (emits bit.* library calls)
+      this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
-   else {
-      // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
+   else { // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
       this->operator_emitter.emit_binary_arith(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
 
@@ -1577,15 +1474,86 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 }
 
 //********************************************************************************************************************
+// IF_EMPTY (lhs ?? rhs) with conditional RHS emission for proper short-circuit semantics
+// Similar to ternary but with extended falsey checks (nil, false, 0, "")
 
-ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode& rhs_ast)
 {
-   if (not payload.condition or not payload.if_true or not payload.if_false) {
+   // Save freereg to ensure we don't interfere with caller's register allocation
+
+   BCReg saved_freereg = this->func_state.freereg;
+
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue lhs_value(&this->func_state, lhs);
+   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+
+   // Extended falsey checks - jumps skip to RHS when value is falsey
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   // LHS is truthy - it's already in lhs_reg, just skip RHS
+   ControlFlowEdge skip_rhs = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   // Patch falsey checks to jump here (RHS evaluation)
+
+   BCPos rhs_start = this->func_state.pc;
+   check_nil.patch_to(rhs_start);
+   check_false.patch_to(rhs_start);
+   check_zero.patch_to(rhs_start);
+   check_empty.patch_to(rhs_start);
+
+   // Emit RHS - only executed when LHS is falsey
+
+   auto rhs_result = this->emit_expression(rhs_ast);
+   if (not rhs_result.ok()) return rhs_result;
+   ExpressionValue rhs_value(&this->func_state, rhs_result.value_ref());
+   rhs_value.discharge();
+   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "if_empty rhs");
+
+   // Clean up any RHS temporaries, but preserve the result register
+
+   ir_collapse_freereg(&this->func_state, lhs_reg);
+
+   // Patch skip jump to here (after RHS)
+
+   skip_rhs.patch_to(this->func_state.pc);
+
+   // Restore freereg to not interfere with caller's register allocation
+   // This ensures registers above lhs_reg that were in use before are still available
+
+   if (saved_freereg > lhs_reg + 1) this->func_state.freereg = saved_freereg;
+
+   // Result is in lhs_reg
+
+   ExpDesc result;
+   expr_init(&result, ExpKind::NonReloc, lhs_reg);
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Payload)
+{
+   if (not Payload.condition or not Payload.if_true or not Payload.if_false) {
       return this->unsupported_expr(AstNodeKind::TernaryExpr, SourceSpan{});
    }
 
-   auto condition_result = this->emit_expression(*payload.condition);
+   auto condition_result = this->emit_expression(*Payload.condition);
    if (not condition_result.ok()) return condition_result;
+
+   // Save freereg to ensure we don't interfere with caller's register allocation
+   BCReg saved_freereg = this->func_state.freereg;
 
    // Use ExpressionValue and RegisterAllocator
    RegisterAllocator allocator(&this->func_state);
@@ -1606,7 +1574,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
-   auto true_result = this->emit_expression(*payload.if_true);
+   auto true_result = this->emit_expression(*Payload.if_true);
    if (not true_result.ok()) {
       return true_result;
    }
@@ -1623,7 +1591,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
    check_zero.patch_to(false_start);
    check_empty.patch_to(false_start);
 
-   auto false_result = this->emit_expression(*payload.if_false);
+   auto false_result = this->emit_expression(*Payload.if_false);
    if (not false_result.ok()) return false_result;
    ExpressionValue false_value(&this->func_state, false_result.value_ref());
    false_value.discharge();
@@ -1632,6 +1600,12 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
 
    skip_false.patch_to(this->func_state.pc);
 
+   // Restore freereg to not interfere with caller's register allocation
+   // This ensures registers above cond_reg that were in use before are still available
+   if (saved_freereg > cond_reg + 1) {
+      this->func_state.freereg = saved_freereg;
+   }
+
    ExpDesc result;
    expr_init(&result, ExpKind::NonReloc, cond_reg);
    return ParserResult<ExpDesc>::success(result);
@@ -1639,26 +1613,25 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload& pay
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& Payload)
 {
-   SourceSpan span = payload.value ? payload.value->span : SourceSpan{};
-   if (not payload.value) return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
-   auto value_result = this->emit_expression(*payload.value);
+   SourceSpan span = Payload.value ? Payload.value->span : SourceSpan{};
+   if (not Payload.value) return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
+   auto value_result = this->emit_expression(*Payload.value);
    if (not value_result.ok()) return value_result;
    ExpDesc value = value_result.value_ref();
-   glLegacyHelperCalls.record(LegacyHelperKind::PresenceCheck, "emit_presence_expr");
-   bcemit_presence_check(&this->func_state, &value);
+   this->operator_emitter.emit_presence_check(ValueSlot(&value));
    return ParserResult<ExpDesc>::success(value);
 }
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& Payload)
 {
-   if (not payload.table or payload.member.symbol IS nullptr) {
-      return this->unsupported_expr(AstNodeKind::MemberExpr, payload.member.span);
+   if (not Payload.table or Payload.member.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::MemberExpr, Payload.member.span);
    }
-   auto table_result = this->emit_expression(*payload.table);
+   auto table_result = this->emit_expression(*Payload.table);
    if (not table_result.ok()) {
       return table_result;
    }
@@ -1667,18 +1640,18 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& paylo
    ExpressionValue table_value(&this->func_state, table);
    table_value.discharge_to_any_reg(allocator);
    table = table_value.legacy();
-   ExpDesc key = make_interned_string_expr(payload.member.symbol);
+   ExpDesc key = make_interned_string_expr(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
 }
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload)
 {
-   if (not payload.table or not payload.index) return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
+   if (not Payload.table or not Payload.index) return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
 
-   auto table_result = this->emit_expression(*payload.table);
+   auto table_result = this->emit_expression(*Payload.table);
    if (not table_result.ok()) return table_result;
    ExpDesc table = table_result.value_ref();
    // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
@@ -1687,7 +1660,7 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
    ExpressionValue table_value(&this->func_state, table);
    table_value.discharge_to_any_reg(allocator);
    table = table_value.legacy();
-   auto key_result = this->emit_expression(*payload.index);
+   auto key_result = this->emit_expression(*Payload.index);
    if (not key_result.ok()) return key_result;
    ExpDesc key = key_result.value_ref();
    ExpressionValue key_toval(&this->func_state, key);
@@ -1699,14 +1672,14 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& payload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& Payload)
 {
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
 
    ExpDesc callee;
    BCReg base = 0;
-   if (const auto* direct = std::get_if<DirectCallTarget>(&payload.target)) {
+   if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       auto callee_result = this->emit_expression(*direct->callable);
       if (not callee_result.ok()) return callee_result;
@@ -1718,7 +1691,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
 #endif
       base = callee.u.s.info;
    }
-   else if (const auto* method = std::get_if<MethodCallTarget>(&payload.target)) {
+   else if (const auto* method = std::get_if<MethodCallTarget>(&Payload.target)) {
       if (not method->receiver or method->method.symbol IS nullptr) {
          return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       }
@@ -1733,14 +1706,14 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
 
    BCReg arg_count = 0;
    ExpDesc args = make_const_expr(ExpKind::Void);
-   if (not payload.arguments.empty()) {
-      auto args_result = this->emit_expression_list(payload.arguments, arg_count);
+   if (not Payload.arguments.empty()) {
+      auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
       if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
       args = args_result.value_ref();
    }
 
    BCIns ins;
-   bool forward_tail = payload.forwards_multret and (args.k IS ExpKind::Call);
+   bool forward_tail = Payload.forwards_multret and (args.k IS ExpKind::Call);
    if (forward_tail) {
       setbc_b(ir_bcptr(&this->func_state, &args), 0);
       ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
@@ -1762,7 +1735,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& payload)
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &payload)
+ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload)
 {
    FuncState* fs = &this->func_state;
    GCtab* template_table = nullptr;
@@ -1779,7 +1752,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &payload
    allocator.reserve(1);
    freg++;
 
-   for (const TableField& field : payload.fields) {
+   for (const TableField& field : Payload.fields) {
       if (not field.value) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
       RegisterGuard entry_guard(fs);
       ExpDesc key;
@@ -1913,9 +1886,9 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &payload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& Payload)
 {
-   if (not payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+   if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    FuncState child_state;
    ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
@@ -1932,7 +1905,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
    child_state.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&child_state, BC_FUNCF, 0, 0);
-   if (payload.is_vararg) child_state.flags |= PROTO_VARARG;
+   if (Payload.is_vararg) child_state.flags |= PROTO_VARARG;
 
    FuncScope scope;
 
@@ -1940,9 +1913,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    //ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
    fscope_begin(&child_state, &scope, FuncScopeFlag::None);
 
-   BCReg param_count = BCReg(payload.parameters.size());
+   BCReg param_count = BCReg(Payload.parameters.size());
    for (BCReg i = 0; i < param_count; ++i) {
-      const FunctionParameter& param = payload.parameters[i];
+      const FunctionParameter& param = Payload.parameters[i];
       GCstr* symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
       this->lex_state.var_new(i, symbol);
    }
@@ -1956,18 +1929,18 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& p
    IrEmitter child_emitter(child_ctx);
    BCReg base = child_state.nactvar - param_count;
    for (BCReg i = 0; i < param_count; ++i) {
-      const FunctionParameter& param = payload.parameters[i];
+      const FunctionParameter& param = Payload.parameters[i];
       if (param.name.is_blank or param.name.symbol IS nullptr) continue;
       child_emitter.update_local_binding(param.name.symbol, base + i);
    }
 
-   auto body_result = child_emitter.emit_block(*payload.body, FuncScopeFlag::None);
+   auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
    if (not body_result.ok()) {
       //fscope_end(&child_state); // Crashes in some cases
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
-   GCproto* pt = this->lex_state.fs_finish(payload.body->span.line);
+   GCproto* pt = this->lex_state.fs_finish(Payload.body->span.line);
    parent_state->bcbase = this->lex_state.bcstack + oldbase;
    parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase);
 

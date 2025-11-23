@@ -71,6 +71,11 @@ public:
    // Called AFTER evaluating RHS to emit BC_CAT instruction with chaining support
    void complete_concat(ValueSlot left, ValueUse right);
 
+   // Presence check operator (x?)
+   // Emits bytecode to check if value is truthy (extended falsey semantics)
+   // Returns boolean: true if truthy, false if falsey (nil, false, 0, "")
+   void emit_presence_check(ValueSlot operand);
+
 private:
    FuncState* func_state;
    RegisterAllocator* allocator;

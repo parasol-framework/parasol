@@ -307,6 +307,26 @@ function testFlags()
    assert(trigger is 3, "Expected 3 bit-flags to pass, got " .. trigger)
 end
 
+function testShortCircuit()
+   local function sideEffect()
+      error("This function should not be called due to short-circuiting")
+   end
+   local a = false
+   local b = true
+
+   -- Short-circuit AND
+   if (a?? and sideEffect()??) then
+      error("Should not enter this block due to short-circuiting")
+   end
+
+   -- Short-circuit OR
+   if (b?? or sideEffect()??) then
+      -- Expected path, sideEffect should not be called
+   else
+      error("Should enter this block since b is truthy")
+   end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -321,6 +341,6 @@ return {
       'testBytecodeSemanticsTypeMismatchStringToNumber', 'testBytecodeSemanticsTypeMismatchNumberToString',
       'testBytecodeSemanticsNil', 'testBytecodeSemanticsFalse',
       'testBytecodeSemanticsAllTruthyValues', 'testBytecodeSemanticsAllFalseyValues',
-      'testFlags'
+      'testFlags', 'testShortCircuit'
    }
 }

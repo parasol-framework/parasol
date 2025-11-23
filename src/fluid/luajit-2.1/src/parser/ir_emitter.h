@@ -134,6 +134,7 @@ private:
    ParserResult<ExpDesc> emit_update_expr(const UpdateExprPayload& payload);
    ParserResult<ExpDesc> emit_binary_expr(const BinaryExprPayload& payload);
    ParserResult<ExpDesc> emit_ternary_expr(const TernaryExprPayload& payload);
+   ParserResult<ExpDesc> emit_if_empty_expr(ExpDesc lhs, const ExprNode& rhs_ast);
    ParserResult<ExpDesc> emit_presence_expr(const PresenceExprPayload& payload);
    ParserResult<ExpDesc> emit_member_expr(const MemberExprPayload& payload);
    ParserResult<ExpDesc> emit_index_expr(const IndexExprPayload& payload);
