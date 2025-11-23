@@ -1502,8 +1502,15 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
       // Comparison operators (NE, EQ, LT, GE, LE, GT)
       this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
    }
+   else if (opr IS OPR_CONCAT or opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
+      // CONCAT and bitwise operators need special legacy handling
+      // CONCAT uses special CAT bytecode chaining, bitwise ops emit bit.* library calls
+      // Keep using bcemit_binop until these are migrated to OperatorEmitter
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/concat_or_bitwise");
+      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+   }
    else {
-      // Arithmetic and bitwise operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT, BAND, BOR, BXOR, SHL, SHR)
+      // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
       this->operator_emitter.emit_binary_arith(opr, &lhs, &rhs);
    }
 
