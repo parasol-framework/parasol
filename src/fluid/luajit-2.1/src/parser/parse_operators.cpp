@@ -4,6 +4,9 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
+#include "parser/operator_emitter.h"
+#include "parser/parse_control_flow.h"
+
 //********************************************************************************************************************
 // Bytecode emitter for operators
 
@@ -176,80 +179,24 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 [[deprecated]] static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
+   ControlFlowGraph cfg(fs);
+   OperatorEmitter emitter(fs, &allocator, &cfg);
+   ValueSlot left(e);
 
    if (op IS OPR_AND) {
-      bcemit_branch_t(fs, e);
+      emitter.prepare_logical_and(left);
    }
    else if (op IS OPR_OR) {
-      bcemit_branch_f(fs, e);
+      emitter.prepare_logical_or(left);
    }
    else if (op IS OPR_IF_EMPTY) {
-      // For ?, handle extended falsey checks - only set up jumps for compile-time constants
-      BCPos pc;
-
-      ExpressionValue e_value(fs, *e);
-      e_value.discharge();
-      *e = e_value.legacy();
-      // Extended falsey: nil, false, 0, ""
-      if (e->k IS ExpKind::Nil or e->k IS ExpKind::False)
-         pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k IS ExpKind::Num and expr_numiszero(e))
-         pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0)
-         pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Jmp)
-         pc = e->u.s.info;
-      else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) {
-         // Truthy constant - load to register and emit jump to skip RHS
-         allocator.reserve(1);
-         expr_toreg_nobranch(fs, e, fs->freereg - 1);
-         pc = bcemit_jmp(fs);
-      }
-      else {
-         // Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness
-         // Ensure the value resides in a dedicated register so that RHS evaluation cannot
-         // clobber it. Keep a copy of the original value even if the source lives in an
-         // active local slot.
-
-         if (!expr_isk_nojump(e)) {
-            ExpressionValue e_value_inner(fs, *e);
-            BCReg src_reg = e_value_inner.discharge_to_any_reg(allocator);
-            *e = e_value_inner.legacy();
-            BCReg rhs_reg = fs->freereg;
-            ExprFlag saved_flags = e->flags;
-            allocator.reserve(1);
-            expr_init(e, ExpKind::NonReloc, src_reg);
-            e->u.s.aux = rhs_reg;
-            e->flags = saved_flags | ExprFlag::HasRhsReg;
-         }
-         pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
-      }
-      ControlFlowGraph cfg(fs);
-      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-      true_edge.append(pc);
-      e->t = true_edge.head();
-      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
-      false_edge.patch_here();
-      e->f = NO_JMP;
+      emitter.prepare_if_empty(left);
    }
    else if (op IS OPR_CONCAT) {
-      ExpressionValue e_value(fs, *e);
-      e_value.to_next_reg(allocator);
-      *e = e_value.legacy();
-   }
-   else if (op IS OPR_EQ or op IS OPR_NE) {
-      if (!expr_isk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.prepare_concat(left);
    }
    else {
-      if (!expr_isnumk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.emit_binop_left(op, left);
    }
 }
 
