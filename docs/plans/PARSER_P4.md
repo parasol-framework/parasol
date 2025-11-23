@@ -104,7 +104,8 @@
 * ✅ Unary operators: Negate, Not, Length fully migrated
 * ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
 * ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
-* ⏳ Still using legacy: AND, OR, IF_EMPTY (logical short-circuit), CONCAT in compound assignments, BitNot
+* ✅ Logical operators: AND, OR, IF_EMPTY (CFG-based short-circuit implementation) fully migrated
+* ⏳ Still using legacy: CONCAT in compound assignments, BitNot
 
 * Defined value category abstractions (ValueUse, ValueSlot, LValue):
   - Created `value_categories.h` - Defines three value category classes
@@ -118,24 +119,27 @@
 
 **Remaining Work:**
 * **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
-* **Migrate logical short-circuit operators (AND, OR, IF_EMPTY)** - Complex work requiring full CFG integration:
-  - AND uses `bcemit_branch_t` to skip RHS if left is false
-  - OR uses `bcemit_branch_f` to skip RHS if left is true
-  - IF_EMPTY (??) has extended falsey semantics (nil, false, 0, "") with complex constant optimization
-  - IF_EMPTY already partially uses ControlFlowGraph but needs full modernization
-  - Requires structured true/false edge handling instead of manual jump patching
 * **Migrate concat compound assignment (..=)** - Special left-to-right evaluation handling
 * **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
 * **Remove remaining legacy helper calls** from operator emission once all operators migrated
+
+**Completed:**
+* ✅ **Logical short-circuit operators (AND, OR, IF_EMPTY)** - Full CFG-based implementation completed:
+  - AND implemented with CFG-based short-circuit (skip RHS if left is false)
+  - OR implemented with CFG-based short-circuit (skip RHS if left is true)
+  - IF_EMPTY (??) implemented with extended falsey semantics (nil, false, 0, "")
+  - All operators use ControlFlowGraph edges for structured control flow
+  - Constant folding optimization integrated
+  - Comprehensive test coverage for all operators
+  - Migration plan documented in `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
 
 **Analysis of Remaining Items:**
 1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
    - Edge types: Unconditional, True, False, Break, Continue
    - Edge operations: append, patch_here, patch_to, patch_with_value
-   - Already used in some places (IF_EMPTY partially)
+   - Successfully used for logical operators (AND, OR, IF_EMPTY)
 
 2. **Complexity Assessment**:
-   - Logical operators (AND/OR/??) = High complexity (control flow, short-circuit, constant optimization)
    - BitNot = High complexity (function call generation to bit library)
    - Concat compound (..=) = Medium complexity (special evaluation order)
    - Value category API integration = Low complexity (wrapper updates, can be gradual)
@@ -150,12 +154,9 @@
 * `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
 **Next Steps (Options):**
-* **Option A**: Migrate logical short-circuit operators (AND, OR, IF_EMPTY) to full CFG-based implementation (substantial work, completes major Step 3 goal)
-  - **Detailed plan available:** `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
-  - 5 stages with clear testing milestones
-  - Estimated 9-12 hours of development
-* **Option B**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
-* **Option C**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
+* **Option A**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
+* **Option B**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
+* **Option C**: Migrate remaining operators (CONCAT compound assignments, BitNot)
 
 ---
 

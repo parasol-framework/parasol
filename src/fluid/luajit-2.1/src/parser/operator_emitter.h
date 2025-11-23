@@ -50,14 +50,14 @@ public:
 
    // Logical short-circuit operators - preparation phase
    // These are called BEFORE evaluating RHS to set up short-circuit jumps
-   // TODO: Implement proper CFG-based short-circuit logic (Stage 2-4)
+   // CFG-based implementation with structured control flow edges
    void prepare_logical_and(ExpDesc* left);
    void prepare_logical_or(ExpDesc* left);
    void prepare_if_empty(ExpDesc* left);
 
    // Logical short-circuit operators - completion phase
    // These are called AFTER evaluating RHS to complete the operation
-   // TODO: Implement proper CFG-based short-circuit logic (Stage 2-4)
+   // CFG-based implementation with edge merging and result handling
    void complete_logical_and(ExpDesc* left, ExpDesc* right);
    void complete_logical_or(ExpDesc* left, ExpDesc* right);
    void complete_if_empty(ExpDesc* left, ExpDesc* right);

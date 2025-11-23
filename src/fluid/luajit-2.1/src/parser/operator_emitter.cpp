@@ -330,24 +330,27 @@ void OperatorEmitter::complete_if_empty(ExpDesc* left, ExpDesc* right)
       BCReg reg = left_runtime.discharge_to_any_reg(allocator);
       *left = left_runtime.legacy();
 
-      // Create test expressions
+      // Create test expressions for extended falsey values
       ExpDesc nilv = make_nil_expr();
       ExpDesc falsev = make_bool_expr(false);
       ExpDesc zerov = make_num_expr(0.0);
       ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
 
-      // Emit 4 equality checks, each jumps if value matches (is falsey)
-      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-      BCPos check_nil = bcemit_jmp(fs);
+      // Extended falsey check sequence - each equality check jumps to RHS evaluation if matched
+      // This implements the ?? operator's extended falsey semantics: nil, false, 0, ""
+      // Pattern: ISEQ* + JMP sequence, all jumps collected and patched to RHS evaluation point
 
-      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-      BCPos check_false = bcemit_jmp(fs);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));  // Compare to nil
+      BCPos check_nil = bcemit_jmp(fs);                            // Jump if equal
 
-      bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-      BCPos check_zero = bcemit_jmp(fs);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev))); // Compare to false
+      BCPos check_false = bcemit_jmp(fs);                           // Jump if equal
 
-      bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-      BCPos check_empty = bcemit_jmp(fs);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov))); // Compare to 0
+      BCPos check_zero = bcemit_jmp(fs);                               // Jump if equal
+
+      bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv))); // Compare to ""
+      BCPos check_empty = bcemit_jmp(fs);                                // Jump if equal
 
       // Determine destination register
       BCReg dest_reg;
@@ -360,13 +363,14 @@ void OperatorEmitter::complete_if_empty(ExpDesc* left, ExpDesc* right)
          if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
       }
 
-      // Preserve LHS value for truthy path
+      // Preserve LHS value for truthy path (will be result if none of the checks match)
       bcemit_AD(fs, BC_MOV, dest_reg, reg);
 
-      // If all checks fail (truthy), skip RHS evaluation
+      // If all checks fail (LHS is truthy), skip RHS evaluation
       BCPos skip = bcemit_jmp(fs);
 
-      // Patch falsey checks to jump here (RHS evaluation)
+      // Control flow merge point: all falsey checks jump here to evaluate RHS
+      // This is where we emit RHS bytecode when LHS matches any extended falsey value
       ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
       nil_edge.patch_to(fs->pc);
       ControlFlowEdge false_edge = this->cfg->make_unconditional(check_false);

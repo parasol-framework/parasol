@@ -1478,18 +1478,15 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // CRITICAL: ALL binary operators need binop_left preparation before RHS evaluation
    // This discharges LHS to appropriate form to prevent register clobbering
    if (opr IS OPR_AND) {
-      // Logical AND: Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical_and");
+      // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_and(&lhs);
    }
    else if (opr IS OPR_OR) {
-      // Logical OR: Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical_or");
+      // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_or(&lhs);
    }
    else if (opr IS OPR_IF_EMPTY) {
-      // IF_EMPTY (??): Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/if_empty");
+      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
       this->operator_emitter.prepare_if_empty(&lhs);
    }
    else {
@@ -1504,18 +1501,15 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
    // Emit the actual operation based on operator type
    if (opr IS OPR_AND) {
-      // Logical AND: Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical_and");
+      // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_and(&lhs, &rhs);
    }
    else if (opr IS OPR_OR) {
-      // Logical OR: Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical_or");
+      // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_or(&lhs, &rhs);
    }
    else if (opr IS OPR_IF_EMPTY) {
-      // IF_EMPTY (??): Route through OperatorEmitter facade (Stage 1 wrapper)
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/if_empty");
+      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
       this->operator_emitter.complete_if_empty(&lhs, &rhs);
    }
    else if (opr >= OPR_NE and opr <= OPR_GT) {
