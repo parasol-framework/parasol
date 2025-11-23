@@ -39,9 +39,15 @@
       <const name="DUMP_BYTECODE">Print a disassembly of bytecode instructions after parsing.</const>
       <const name="LEGACY">Use the legacy parser.</const>
       <const name="PROFILE">Use timers to profile JIT parsing.  Required to configure run-time profiling.</const>
+      <const name="TRACE">Synonym for <code>TRACE_TOKENS | TRACE_EXPECT | TRACE_BOUNDARY | TRACE_OPERATORS | TRACE_REGISTERS | TRACE_CFG | TRACE_ASSIGNMENTS | TRACE_VALUE_CATEGORY</code></const>
+      <const name="TRACE_ASSIGNMENTS">Trace PreparedAssignment lifecycle and hazard handling.</const>
       <const name="TRACE_BOUNDARY">Enable log messages for AST boundary crossing.</const>
+      <const name="TRACE_CFG">Trace ControlFlowGraph edge creation and patching.</const>
       <const name="TRACE_EXPECT">Enable trace expectation messages during parsing.</const>
+      <const name="TRACE_OPERATORS">Trace OperatorEmitter method calls and decisions.</const>
+      <const name="TRACE_REGISTERS">Trace RegisterAllocator reservations and releases.</const>
       <const name="TRACE_TOKENS">Trace the emission of tokens.</const>
+      <const name="TRACE_VALUE_CATEGORY">Trace ValueUse/ValueSlot/LValue operations.</const>
     </constants>
 
   </types>
