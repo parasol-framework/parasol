@@ -62,6 +62,14 @@ public:
    void complete_logical_or(ExpDesc* left, ExpDesc* right);
    void complete_if_empty(ExpDesc* left, ExpDesc* right);
 
+   // CONCAT operator - preparation phase
+   // Called BEFORE evaluating RHS to discharge left to consecutive register
+   void prepare_concat(ExpDesc* left);
+
+   // CONCAT operator - completion phase
+   // Called AFTER evaluating RHS to emit BC_CAT instruction with chaining support
+   void complete_concat(ExpDesc* left, ExpDesc* right);
+
 private:
    FuncState* func_state;
    RegisterAllocator* allocator;

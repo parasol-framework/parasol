@@ -409,3 +409,61 @@ void OperatorEmitter::complete_if_empty(ExpDesc* left, ExpDesc* right)
       *left = *right;
    }
 }
+
+//********************************************************************************************************************
+// CONCAT operator - preparation phase
+// Discharges left operand to next consecutive register for BC_CAT chaining
+
+void OperatorEmitter::prepare_concat(ExpDesc* left)
+{
+   FuncState* fs = this->func_state;
+
+   // CONCAT requires operands in consecutive registers for BC_CAT instruction
+   // The BC_CAT instruction format is: BC_CAT dest, start_reg, end_reg
+   // It concatenates all values from start_reg to end_reg
+
+   RegisterAllocator allocator(fs);
+   ExpressionValue left_val(fs, *left);
+   left_val.to_next_reg(allocator);
+   *left = left_val.legacy();
+}
+
+//********************************************************************************************************************
+// CONCAT operator - completion phase
+// Emits BC_CAT instruction with support for chaining multiple concatenations
+
+void OperatorEmitter::complete_concat(ExpDesc* left, ExpDesc* right)
+{
+   FuncState* fs = this->func_state;
+   RegisterAllocator allocator(fs);
+
+   // First, convert right operand to val form
+   ExpressionValue right_toval(fs, *right);
+   right_toval.to_val();
+   *right = right_toval.legacy();
+
+   // Check if right operand is already a BC_CAT instruction (for chaining)
+   // If so, extend it; otherwise create new BC_CAT
+   if (right->k IS ExpKind::Relocable and bc_op(*bcptr(fs, right)) IS BC_CAT) {
+      // Chaining case: "a".."b".."c"
+      // The previous BC_CAT starts at e1->u.s.info and we extend it
+      lj_assertFS(left->u.s.info IS bc_b(*bcptr(fs, right)) - 1, "bad CAT stack layout");
+      expr_free(fs, left);
+      setbc_b(bcptr(fs, right), left->u.s.info);
+      left->u.s.info = right->u.s.info;
+   }
+   else {
+      // New concatenation: emit BC_CAT instruction
+      ExpressionValue right_val(fs, *right);
+      right_val.to_next_reg(allocator);
+      *right = right_val.legacy();
+
+      expr_free(fs, right);
+      expr_free(fs, left);
+
+      // Emit BC_CAT: concatenate registers from left->u.s.info to right->u.s.info
+      left->u.s.info = bcemit_ABC(fs, BC_CAT, 0, left->u.s.info, right->u.s.info);
+   }
+
+   left->k = ExpKind::Relocable;
+}
