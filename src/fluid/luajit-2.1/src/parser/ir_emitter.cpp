@@ -429,7 +429,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPayload &payload)
 {
    if (not payload.expression) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
@@ -447,7 +447,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &payload)
 {
    BCIns ins;
    this->func_state.flags |= PROTO_HAS_RETURN;
@@ -1479,9 +1479,8 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
 ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode& rhs_ast)
 {
-   // Save freereg to ensure we don't interfere with caller's register allocation
-
-   BCReg saved_freereg = this->func_state.freereg;
+   // Use RegisterGuard for automatic register cleanup on all exit paths (RAII)
+   RegisterGuard register_guard(&this->func_state);
 
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue lhs_value(&this->func_state, lhs);
@@ -1529,10 +1528,11 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    skip_rhs.patch_to(this->func_state.pc);
 
-   // Restore freereg to not interfere with caller's register allocation
-   // This ensures registers above lhs_reg that were in use before are still available
+   // Preserve result register by adjusting what RegisterGuard will restore to
+   // Only restore to saved_freereg if it's beyond the result register
 
-   if (saved_freereg > lhs_reg + 1) this->func_state.freereg = saved_freereg;
+   if (register_guard.saved() > lhs_reg + 1) register_guard.adopt_saved(register_guard.saved());
+   else register_guard.disarm();  // Keep current freereg (lhs_reg + 1)
 
    // Result is in lhs_reg
 
@@ -1552,10 +1552,9 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    auto condition_result = this->emit_expression(*Payload.condition);
    if (not condition_result.ok()) return condition_result;
 
-   // Save freereg to ensure we don't interfere with caller's register allocation
-   BCReg saved_freereg = this->func_state.freereg;
+   // Use RegisterGuard for automatic register cleanup on all exit paths (RAII)
 
-   // Use ExpressionValue and RegisterAllocator
+   RegisterGuard register_guard(&this->func_state);
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
    BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
@@ -1600,11 +1599,11 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
 
    skip_false.patch_to(this->func_state.pc);
 
-   // Restore freereg to not interfere with caller's register allocation
-   // This ensures registers above cond_reg that were in use before are still available
-   if (saved_freereg > cond_reg + 1) {
-      this->func_state.freereg = saved_freereg;
-   }
+   // Preserve result register by adjusting what RegisterGuard will restore to
+   // Only restore to saved_freereg if it's beyond the result register
+
+   if (register_guard.saved() > cond_reg + 1) register_guard.adopt_saved(register_guard.saved());
+   else register_guard.disarm();  // Keep current freereg (cond_reg + 1)
 
    ExpDesc result;
    expr_init(&result, ExpKind::NonReloc, cond_reg);
@@ -1631,10 +1630,10 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& Paylo
    if (not Payload.table or Payload.member.symbol IS nullptr) {
       return this->unsupported_expr(AstNodeKind::MemberExpr, Payload.member.span);
    }
+
    auto table_result = this->emit_expression(*Payload.table);
-   if (not table_result.ok()) {
-      return table_result;
-   }
+   if (not table_result.ok()) return table_result;
+
    ExpDesc table = table_result.value_ref();
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue table_value(&this->func_state, table);
@@ -1793,13 +1792,11 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
       }
 
       auto value_result = this->emit_expression(*field.value);
-      if (not value_result.ok()) {
-         return value_result;
-      }
+      if (not value_result.ok()) return value_result;
+
       ExpDesc val = value_result.value_ref();
 
-      bool emit_constant = expr_isk(&key) and key.k != ExpKind::Nil and
-         (key.k IS ExpKind::Str or expr_isk_nojump(&val));
+      bool emit_constant = expr_isk(&key) and key.k != ExpKind::Nil and (key.k IS ExpKind::Str or expr_isk_nojump(&val));
 
       if (emit_constant) {
          TValue k;
@@ -1868,6 +1865,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
       if (needarr and template_table->asize < narr) {
          lj_tab_reasize(fs->L, template_table, narr - 1);
       }
+
       if (fixt) {
          Node* node = noderef(template_table->node);
          uint32_t hmask = template_table->hmask;
@@ -1951,10 +1949,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& P
 #if LJ_HASFFI
    parent_state->flags |= (child_state.flags & PROTO_FFI);
 #endif
+
    if (not (parent_state->flags & PROTO_CHILD)) {
-      if (parent_state->flags & PROTO_HAS_RETURN) {
-         parent_state->flags |= PROTO_FIXUP_RETURN;
-      }
+      if (parent_state->flags & PROTO_HAS_RETURN) parent_state->flags |= PROTO_FIXUP_RETURN;
       parent_state->flags |= PROTO_CHILD;
    }
 
@@ -2017,78 +2014,83 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
 ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 {
    switch (expr.kind) {
-   case AstNodeKind::IdentifierExpr: {
-      auto result = this->emit_identifier_expr(std::get<NameRef>(expr.data));
-      if (not result.ok()) return result;
-      ExpDesc value = result.value_ref();
-      if (value.k IS ExpKind::Local) value.u.s.aux = this->func_state.varmap[value.u.s.info];
-      if (not vkisvar(value.k)) return this->unsupported_expr(expr.kind, expr.span);
-      return ParserResult<ExpDesc>::success(value);
-   }
-   case AstNodeKind::MemberExpr: {
-      const auto& payload = std::get<MemberExprPayload>(expr.data);
-      if (not payload.table or not payload.member.symbol) {
+      case AstNodeKind::IdentifierExpr: {
+         auto result = this->emit_identifier_expr(std::get<NameRef>(expr.data));
+         if (not result.ok()) return result;
+         ExpDesc value = result.value_ref();
+         if (value.k IS ExpKind::Local) value.u.s.aux = this->func_state.varmap[value.u.s.info];
+         if (not vkisvar(value.k)) return this->unsupported_expr(expr.kind, expr.span);
+         return ParserResult<ExpDesc>::success(value);
+      }
+
+      case AstNodeKind::MemberExpr: {
+         const auto& payload = std::get<MemberExprPayload>(expr.data);
+         if (not payload.table or not payload.member.symbol) {
+            return this->unsupported_expr(expr.kind, expr.span);
+         }
+
+         auto table_result = this->emit_expression(*payload.table);
+         if (not table_result.ok()) return table_result;
+         ExpDesc table = table_result.value_ref();
+         ExpressionValue table_toval(&this->func_state, table);
+         table_toval.to_val();
+         table = table_toval.legacy();
+         RegisterAllocator allocator(&this->func_state);
+         ExpressionValue table_value(&this->func_state, table);
+         table_value.discharge_to_any_reg(allocator);
+         table = table_value.legacy();
+         ExpDesc key = make_interned_string_expr(payload.member.symbol);
+         expr_index(&this->func_state, &table, &key);
+         return ParserResult<ExpDesc>::success(table);
+      }
+
+      case AstNodeKind::IndexExpr: {
+         const auto& payload = std::get<IndexExprPayload>(expr.data);
+         if (not payload.table or not payload.index) {
+            return this->unsupported_expr(expr.kind, expr.span);
+         }
+
+         auto table_result = this->emit_expression(*payload.table);
+         if (not table_result.ok()) return table_result;
+
+         ExpDesc table = table_result.value_ref();
+
+         // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
+         // the correct order (table first, then key)
+
+         ExpressionValue table_toval_idx(&this->func_state, table);
+         table_toval_idx.to_val();
+         table = table_toval_idx.legacy();
+         RegisterAllocator allocator(&this->func_state);
+         ExpressionValue table_value(&this->func_state, table);
+         table_value.discharge_to_any_reg(allocator);
+         table = table_value.legacy();
+         auto key_result = this->emit_expression(*payload.index);
+         if (not key_result.ok()) return key_result;
+
+         ExpDesc key = key_result.value_ref();
+         ExpressionValue key_toval_idx(&this->func_state, key);
+         key_toval_idx.to_val();
+         key = key_toval_idx.legacy();
+         expr_index(&this->func_state, &table, &key);
+         return ParserResult<ExpDesc>::success(table);
+      }
+
+      default:
          return this->unsupported_expr(expr.kind, expr.span);
-      }
-      auto table_result = this->emit_expression(*payload.table);
-      if (not table_result.ok()) return table_result;
-      ExpDesc table = table_result.value_ref();
-      ExpressionValue table_toval(&this->func_state, table);
-      table_toval.to_val();
-      table = table_toval.legacy();
-      RegisterAllocator allocator(&this->func_state);
-      ExpressionValue table_value(&this->func_state, table);
-      table_value.discharge_to_any_reg(allocator);
-      table = table_value.legacy();
-      ExpDesc key = make_interned_string_expr(payload.member.symbol);
-      expr_index(&this->func_state, &table, &key);
-      return ParserResult<ExpDesc>::success(table);
-   }
-   case AstNodeKind::IndexExpr: {
-      const auto& payload = std::get<IndexExprPayload>(expr.data);
-      if (not payload.table or not payload.index) {
-         return this->unsupported_expr(expr.kind, expr.span);
-      }
-      auto table_result = this->emit_expression(*payload.table);
-      if (not table_result.ok()) {
-         return table_result;
-      }
-      ExpDesc table = table_result.value_ref();
-      // Materialize table BEFORE evaluating key, so nested index expressions emit bytecode in
-      // the correct order (table first, then key)
-      ExpressionValue table_toval_idx(&this->func_state, table);
-      table_toval_idx.to_val();
-      table = table_toval_idx.legacy();
-      RegisterAllocator allocator(&this->func_state);
-      ExpressionValue table_value(&this->func_state, table);
-      table_value.discharge_to_any_reg(allocator);
-      table = table_value.legacy();
-      auto key_result = this->emit_expression(*payload.index);
-      if (not key_result.ok()) {
-         return key_result;
-      }
-      ExpDesc key = key_result.value_ref();
-      ExpressionValue key_toval_idx(&this->func_state, key);
-      key_toval_idx.to_val();
-      key = key_toval_idx.legacy();
-      expr_index(&this->func_state, &table, &key);
-      return ParserResult<ExpDesc>::success(table);
-   }
-   default:
-      return this->unsupported_expr(expr.kind, expr.span);
    }
 }
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expressions, BCReg& count)
+ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expressions, BCReg &count)
 {
    count = 0;
    if (expressions.empty()) return ParserResult<ExpDesc>::success(make_const_expr(ExpKind::Void));
 
    ExpDesc last = make_const_expr(ExpKind::Void);
    bool first = true;
-   for (const ExprNodePtr& node : expressions) {
+   for (const ExprNodePtr &node : expressions) {
       if (not node) return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
       if (not first) this->materialise_to_next_reg(last, "expression list baton");
       auto value = this->emit_expression(*node);
@@ -2098,6 +2100,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
       last = expr;
       first = false;
    }
+
    return ParserResult<ExpDesc>::success(last);
 }
 

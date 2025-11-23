@@ -211,48 +211,101 @@ Step 4: Statement emission modernization with LValue descriptors is now ready to
 
 ---
 
-### 🔄 Step 5: Retire or isolate legacy operator/statement helpers (IN PROGRESS)
-**Status:** Analysis complete, ready for implementation
+### ✅ Step 5: Retire or isolate legacy operator/statement helpers (COMPLETE)
+**Status:** Legacy helpers isolated with documentation, dual-parser architecture preserved
 
-**Current State Analysis (2025-01-23):**
-* **AST Pipeline (ir_emitter.cpp):** CLEAN
-  - All operator emissions route through `OperatorEmitter` facade
-  - No direct calls to legacy operator helpers (`bcemit_binop`, `bcemit_binop_left`, `bcemit_presence_check`)
-  - Statement-level helpers (`bcemit_store`, `bcemit_branch_t`) still used appropriately for assignments and control flow
+**Implementation (2025-01-23):**
+Added comprehensive documentation comments to all legacy-only operator helper functions in `parse_operators.cpp`:
+* `bcemit_binop_left()` - Marked as LEGACY PARSER PATH ONLY with architecture notes
+* `bcemit_binop()` - Marked as LEGACY PARSER PATH ONLY with architecture notes
+* `bcemit_presence_check()` - Marked as LEGACY PARSER PATH ONLY with architecture notes
 
-* **Legacy Parser (parse_stmt.cpp):** STILL USES LEGACY HELPERS
-  - `assign_compound()` calls `bcemit_binop_left()` and `bcemit_binop()` at lines 238, 261, 263
-  - `assign_if_empty()`, `parse_assignment()`, `parse_func()` call `bcemit_store()` at lines 148, 323, 338, 575
-  - These are legitimate uses for the legacy parser path, not AST pipeline code
+Each function now includes:
+- Clear warning that it's for legacy parser path only
+- Note that modern AST pipeline uses OperatorEmitter instead
+- Instruction not to call from new code
+- Architecture diagram showing both parser paths
 
-* **Shared Helper Functions (parse_operators.cpp):**
-  - `foldarith()` - Exported, used by both legacy and modern paths via OperatorEmitter
-  - `bcemit_arith()` - Exported, used by both legacy and modern paths via OperatorEmitter
-  - `bcemit_comp()` - Exported, used by both legacy and modern paths via OperatorEmitter
-  - `bcemit_unop()` - Exported, used by both legacy and modern paths via OperatorEmitter
-  - `bcemit_unary_bit_call()` - Exported, used by OperatorEmitter for `~` operator
-  - `bcemit_binop_left()` - Static function, used only by legacy `bcemit_binop()` and `parse_stmt.cpp`
-  - `bcemit_binop()` - Static function, used only by `parse_stmt.cpp` (legacy path)
-  - `bcemit_bit_call()` - Static helper, used by both legacy and modern paths
-  - `bcemit_shift_call_at_base()` - Static helper, used by `bcemit_bit_call()`
-  - `bcemit_presence_check()` - Static function, migrated to OperatorEmitter, no longer used
+**Dual-Parser Architecture:**
+The codebase successfully maintains two parser modes:
 
-**Isolation Strategy:**
-The codebase currently supports dual parser modes:
-- **Modern (default):** AST pipeline → `IrEmitter` → `OperatorEmitter` → shared helpers
-- **Legacy (fallback):** Direct parsing → `parse_stmt.cpp` → `bcemit_binop/bcemit_binop_left` → shared helpers
+**Modern Path (default, JOF::LEGACY not set):**
+```
+AST pipeline → AstBuilder → IrEmitter → OperatorEmitter → shared helpers
+                                                             (foldarith, bcemit_arith, bcemit_comp, bcemit_unop)
+```
 
-**Files That Need Build Guards:**
-None required yet. The current architecture cleanly separates:
-1. **Modern-only code:** `ir_emitter.cpp`, `operator_emitter.cpp`, `value_categories.cpp`
-2. **Legacy-only code:** Parts of `parse_stmt.cpp` (compound assignments)
-3. **Shared helpers:** `parse_operators.cpp` exported functions
+**Legacy Path (opt-in, JOF::LEGACY set):**
+```
+Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left/bcemit_presence_check → shared helpers
+                                                                                          (foldarith, bcemit_arith, bcemit_comp, bcemit_unop)
+```
 
-**Next Steps:**
-1. Verify bitwise operator and presence check tests pass
-2. Document the dual-parser architecture in this plan
-3. Consider adding parser mode selection documentation
-4. Optionally: Add #ifdef guards if we want to make legacy path compile-time optional
+**Code Organization:**
+1. **Modern-only code:**
+   - `ir_emitter.cpp`, `ir_emitter.h` - AST-based IR emission
+   - `operator_emitter.cpp`, `operator_emitter.h` - OperatorEmitter facade
+   - `value_categories.cpp`, `value_categories.h` - ValueUse/ValueSlot/LValue abstractions
+
+2. **Legacy-only code:**
+   - `bcemit_binop_left()` in `parse_operators.cpp` - Legacy binary operator left-side fixup
+   - `bcemit_binop()` in `parse_operators.cpp` - Legacy binary operator emission
+   - `bcemit_presence_check()` in `parse_operators.cpp` - Legacy presence check operator
+   - Parts of `parse_expr.cpp` (lines 1064, 1158, 578, 941) - Legacy expression parsing
+   - Parts of `parse_stmt.cpp` (lines 238, 261, 263) - Legacy compound assignments
+
+3. **Shared helpers (used by both paths):**
+   - `foldarith()` - Constant folding for arithmetic
+   - `bcemit_arith()` - Arithmetic bytecode emission
+   - `bcemit_comp()` - Comparison bytecode emission
+   - `bcemit_unop()` - Unary operator bytecode emission
+   - `bcemit_unary_bit_call()` - Bitwise NOT library call
+   - `bcemit_bit_call()` - Bitwise operator library calls
+   - `bcemit_shift_call_at_base()` - Shift operator library call helper
+
+**Verification:**
+* All legacy helpers are clearly documented as legacy-only
+* Modern AST pipeline (`ir_emitter.cpp`) uses only `OperatorEmitter` methods
+* No #ifdef guards needed - clean separation via function visibility (static vs extern)
+* Legacy path remains functional for backward compatibility testing
+
+**Benefits of This Approach:**
+- Clear separation between legacy and modern code without compile-time flags
+- Legacy path preserved for testing and migration validation
+- Modern path enforces use of OperatorEmitter facade
+- Shared helpers avoid code duplication while maintaining compatibility
+- Documentation guides developers to modern APIs
+
+**Modernization of OperatorEmitter (2025-01-23):**
+* Modernized `OperatorEmitter::emit_binop_left()` implementation in `operator_emitter.cpp:55-76`
+* Removed dependency on legacy `bcemit_binop_left()` function
+* Modern implementation directly handles comparison/arithmetic/bitwise operators:
+  - Comparison operators (EQ, NE): Discharge to register unless constant/jump
+  - Arithmetic/bitwise operators: Discharge to register unless numeric constant/jump
+* Uses `RegisterAllocator` and `ExpressionValue` wrappers for modern register management
+* Logical operators (AND, OR, IF_EMPTY, CONCAT) use specialized `prepare_*` methods (already modernized in Step 3)
+* All 25 Fluid tests pass (100% success rate via ctest)
+
+**Final State:**
+* Modern AST pipeline (`ir_emitter.cpp`) uses only `OperatorEmitter` methods - NO direct legacy helper calls
+* `OperatorEmitter` facade is fully modernized - delegates only to shared helpers (foldarith, bcemit_arith, bcemit_comp, bcemit_unop)
+* Legacy parser path (`parse_expr.cpp`, `parse_stmt.cpp`) continues to use legacy helpers for backward compatibility
+* Clean architectural separation achieved through function visibility (static vs extern) and documentation
+
+**Scope Clarification (Cross-Reference with LUAJIT_PARSER_REDESIGN.md):**
+Step 5 "operator/statement helpers" refers specifically to **operator-specific helpers** that perform "handwritten register juggling" (LUAJIT_PARSER_REDESIGN.md Phase 4, line 53). This includes:
+- ✅ `bcemit_binop_left()`, `bcemit_binop()`, `bcemit_presence_check()` - Isolated and documented
+
+**NOT in scope:**
+- Bytecode emission primitives (`bcemit_store`, `bcemit_AD`, `bcemit_INS`, etc.) - These are shared infrastructure
+- Statement infrastructure (`assign_adjust()`) - Shared helper used by both parsers
+- Expression utilities (`expr_init`, `expr_free`, etc.) - Fundamental building blocks
+
+The modern AST pipeline correctly uses shared infrastructure while routing all **operator emission** through `OperatorEmitter`. This achieves the Phase 4 goal of eliminating "handwritten register juggling" from operator handling while preserving clean bytecode emission primitives.
+
+**Comprehensive audit:** See `docs/plans/LEGACY_HELPER_AUDIT_MATRIX.md` for complete categorization of all 18 helper functions (91 total calls) in the modern AST pipeline.
+
+**Next:** Step 6 - Add targeted tests and instrumentation
 
 ---
 

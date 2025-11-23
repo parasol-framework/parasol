@@ -164,8 +164,16 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
 //********************************************************************************************************************
 // Fixup left side of binary operator.
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
+// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
 
-static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
+[[deprecated]] static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
 
@@ -418,8 +426,16 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 // Emit bytecode for postfix presence check operator (x?).
 // Returns boolean: true if value is truthy (extended falsey semantics),
 // false if value is falsey (nil, false, 0, "").
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter::emit_presence_check() instead.
+// Do not call this function from new code - use OperatorEmitter methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_presence_check → shared helpers
 
-static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
+[[deprecated]] static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
    ExpressionValue e_value(fs, *e);
@@ -519,8 +535,16 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
 //********************************************************************************************************************
 // Emit binary operator.
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
+// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
 
-static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
+[[deprecated]] static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
 

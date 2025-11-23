@@ -47,12 +47,32 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 
 //********************************************************************************************************************
 // Prepare left operand for binary operation
-// Facade wrapper over legacy bcemit_binop_left() function
 // MUST be called before evaluating right operand to prevent register clobbering
+//
+// Modern implementation for comparison/arithmetic/bitwise operators.
+// Logical operators (AND, OR, IF_EMPTY, CONCAT) use specialized prepare_* methods instead.
 
 void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 {
-   bcemit_binop_left(this->func_state, opr, left.raw());
+   RegisterAllocator allocator(this->func_state);
+   ExpDesc* e = left.raw();
+
+   if (opr IS OPR_EQ or opr IS OPR_NE) {
+      // Comparison operators (EQ, NE): discharge to register unless it's a constant/jump
+      if (not expr_isk_nojump(e)) {
+         ExpressionValue e_value(this->func_state, *e);
+         e_value.discharge_to_any_reg(allocator);
+         *e = e_value.legacy();
+      }
+   }
+   else {
+      // Arithmetic and bitwise operators: discharge to register unless it's a numeric constant/jump
+      if (not expr_isnumk_nojump(e)) {
+         ExpressionValue e_value(this->func_state, *e);
+         e_value.discharge_to_any_reg(allocator);
+         *e = e_value.legacy();
+      }
+   }
 }
 
 //********************************************************************************************************************
