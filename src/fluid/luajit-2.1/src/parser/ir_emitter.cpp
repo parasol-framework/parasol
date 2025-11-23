@@ -1140,6 +1140,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       }
    };
 
+   RegisterAllocator allocator(&this->func_state);
+
    if (nexps IS nvars) {
       if (tail.k IS ExpKind::Call) {
          if (bc_op(*ir_bcptr(&this->func_state, &tail)) IS BC_VARG) {
@@ -1157,13 +1159,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
          ++begin;
          assign_from_stack(begin, targets.rend());
       }
+      for (PreparedAssignment& prepared : targets) {
+         allocator.release(prepared.reserved);
+      }
       this->func_state.freereg = this->func_state.nactvar;
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
    this->lex_state.assign_adjust(nvars, nexps, &tail);
    assign_from_stack(targets.rbegin(), targets.rend());
-   RegisterAllocator allocator(&this->func_state);
    for (PreparedAssignment& prepared : targets) {
       allocator.release(prepared.reserved);
    }
