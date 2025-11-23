@@ -13,6 +13,76 @@
 
 // Legacy helpers are declared as extern in parse_internal.h
 
+//********************************************************************************************************************
+// Helper: Check if operator tracing is enabled
+
+inline bool should_trace_operators(FuncState* fs)
+{
+   auto prv = (prvFluid *)fs->L->Script->ChildPrivate;
+   return (prv->JitOptions & JOF::TRACE_OPERATORS) != JOF::NIL;
+}
+
+//********************************************************************************************************************
+// Helper: Get operator name for logging
+
+static CSTRING get_binop_name(BinOpr opr)
+{
+   switch (opr) {
+      case OPR_ADD: return "+";
+      case OPR_SUB: return "-";
+      case OPR_MUL: return "*";
+      case OPR_DIV: return "/";
+      case OPR_MOD: return "%";
+      case OPR_POW: return "^";
+      case OPR_CONCAT: return "..";
+      case OPR_EQ: return "is";
+      case OPR_NE: return "!=";
+      case OPR_LT: return "<";
+      case OPR_LE: return "<=";
+      case OPR_GT: return ">";
+      case OPR_GE: return ">=";
+      case OPR_AND: return "and";
+      case OPR_OR: return "or";
+      default: return "?";
+   }
+}
+
+static CSTRING get_unop_name(BCOp op)
+{
+   switch (op) {
+      case BC_UNM: return "unary -";
+      case BC_NOT: return "not";
+      case BC_LEN: return "#";
+      default: return "?";
+   }
+}
+
+//********************************************************************************************************************
+
+static CSTRING get_expkind_name(ExpKind k)
+{
+   switch (k) {
+      case ExpKind::Void: return "void";
+      case ExpKind::Nil: return "nil";
+      case ExpKind::True: return "true";
+      case ExpKind::False: return "false";
+      case ExpKind::Num: return "num";
+      case ExpKind::Str: return "str";
+      case ExpKind::CData: return "cdata";
+      case ExpKind::Local: return "local";
+      case ExpKind::Upval: return "upval";
+      case ExpKind::Global: return "global";
+      case ExpKind::Indexed: return "indexed";
+      case ExpKind::Call: return "call";
+      case ExpKind::NonReloc: return "nonreloc";
+      case ExpKind::Relocable: return "relocable";
+      case ExpKind::Jmp: return "jmp";
+   }
+   return "?";
+}
+
+//********************************************************************************************************************
+
 OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator, ControlFlowGraph* Cfg)
    : func_state(State), allocator(Allocator), cfg(Cfg)
 {
@@ -24,7 +94,15 @@ OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator,
 
 bool OperatorEmitter::fold_constant_arith(BinOpr opr, ValueSlot e1, ValueUse e2)
 {
-   return foldarith(opr, e1.raw(), e2.raw()) != 0;
+   bool folded = foldarith(opr, e1.raw(), e2.raw()) != 0;
+
+   if (should_trace_operators(this->func_state)) {
+      if (folded) {
+         pf::Log("Parser").msg("[%d] operator %s: constant folded", this->func_state->ls->linenumber, get_binop_name(opr));
+      }
+   }
+
+   return folded;
 }
 
 //********************************************************************************************************************
@@ -33,6 +111,11 @@ bool OperatorEmitter::fold_constant_arith(BinOpr opr, ValueSlot e1, ValueUse e2)
 
 void OperatorEmitter::emit_unary(int op, ValueSlot operand)
 {
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber, 
+         get_unop_name(BCOp(op)), get_expkind_name(operand.raw()->k));
+   }
+
    bcemit_unop(this->func_state, BCOp(op), operand.raw());
 }
 
@@ -42,6 +125,11 @@ void OperatorEmitter::emit_unary(int op, ValueSlot operand)
 
 void OperatorEmitter::emit_bitnot(ValueSlot operand)
 {
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator ~: calling bit.bnot, operand kind=%s", this->func_state->ls->linenumber,
+         get_expkind_name(operand.raw()->k));
+   }
+
    bcemit_unary_bit_call(this->func_state, "bnot", operand.raw());
 }
 
@@ -49,7 +137,6 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 // Prepare left operand for binary operation
 // MUST be called before evaluating right operand to prevent register clobbering
 //
-// Modern implementation for comparison/arithmetic/bitwise operators.
 // Logical operators (AND, OR, IF_EMPTY, CONCAT) use specialized prepare_* methods instead.
 
 void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
@@ -81,6 +168,11 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 
 void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ValueUse right)
 {
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
+         get_binop_name(opr), get_expkind_name(left.raw()->k), get_expkind_name(right.raw()->k));
+   }
+
    bcemit_arith(this->func_state, opr, left.raw(), right.raw());
 }
 
@@ -90,6 +182,11 @@ void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ValueUse rig
 
 void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ValueUse right)
 {
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
+         get_binop_name(opr), get_expkind_name(left.raw()->k), get_expkind_name(right.raw()->k));
+   }
+
    bcemit_comp(this->func_state, opr, left.raw(), right.raw());
 }
 
@@ -99,16 +196,20 @@ void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ValueUse right
 
 void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ValueUse right)
 {
-   // Bitwise operators are implemented as calls to bit.* library functions
-   // Get the operator name from the priority table
-   const char* op_name = priority[opr].name;
+   CSTRING op_name = priority[opr].name;
    size_t op_name_len = priority[opr].name_len;
+
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator %s: calling bit.%.*s, left kind=%s, right kind=%s",
+         this->func_state->ls->linenumber, get_binop_name(opr), int(op_name_len), op_name, get_expkind_name(left.raw()->k),
+         get_expkind_name(right.raw()->k));
+   }
+
    bcemit_bit_call(this->func_state, std::string_view(op_name, op_name_len), left.raw(), right.raw());
 }
 
 //********************************************************************************************************************
 // Prepare logical AND operator (called BEFORE RHS evaluation)
-// Stage 2: CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::prepare_logical_and(ValueSlot left)
 {
@@ -123,6 +224,7 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
    *left_desc = left_val.legacy();
 
    BCPos pc;
+   bool will_skip_rhs = false;
 
    // Handle constant folding
    if (left_desc->k IS ExpKind::Str or left_desc->k IS ExpKind::Num or left_desc->k IS ExpKind::True) {
@@ -138,10 +240,16 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
       // Left is falsey constant - load to register and jump to skip RHS
       expr_toreg_nobranch(this->func_state, left_desc, NO_REG);
       pc = bcemit_jmp(this->func_state);
+      will_skip_rhs = true;
    }
    else {
       // Runtime value - emit conditional branch (jump if false)
       pc = bcemit_branch(this->func_state, left_desc, 0);
+   }
+
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator and: prepare left kind=%s, %s", this->func_state->ls->linenumber, get_expkind_name(left_desc->k),
+         will_skip_rhs ? "will skip RHS (constant false)" : "will evaluate RHS");
    }
 
    // Set up CFG edges for short-circuit behavior
@@ -156,25 +264,29 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
 
 //********************************************************************************************************************
 // Complete logical AND operator (called AFTER RHS evaluation)
-// Stage 2: CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::complete_logical_and(ValueSlot left, ValueUse right)
 {
-   ExpDesc* left_desc = left.raw();
-   ExpDesc* right_desc = right.raw();
+   ExpDesc *left_desc = left.raw();
+   ExpDesc *right_desc = right.raw();
 
    // At this point:
    // - left->f contains jumps for "left is false" path
    // - right has been evaluated
    // - We need to merge the false paths and return right's result
 
-   FuncState* fs = this->func_state;  // For lj_assertFS macro
+   FuncState *fs = this->func_state;  // For lj_assertFS macro
    lj_assertFS(left_desc->t IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
    right_val.discharge();
    *right_desc = right_val.legacy();
+
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator and: complete right kind=%s, merging false paths", this->func_state->ls->linenumber,
+         get_expkind_name(right_desc->k));
+   }
 
    // Merge false paths: both "left is false" and "right is false" go to same target
    ControlFlowEdge false_edge = this->cfg->make_false_edge(right_desc->f);
@@ -187,7 +299,7 @@ void OperatorEmitter::complete_logical_and(ValueSlot left, ValueUse right)
 
 //********************************************************************************************************************
 // Prepare logical OR operator (called BEFORE RHS evaluation)
-// Stage 3: CFG-based implementation using ControlFlowGraph
+// CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::prepare_logical_or(ValueSlot left)
 {
@@ -202,6 +314,7 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
    *left_desc = left_val.legacy();
 
    BCPos pc;
+   bool will_skip_rhs = false;
 
    // Handle constant folding
    if (left_desc->k IS ExpKind::Nil or left_desc->k IS ExpKind::False) {
@@ -216,10 +329,15 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
       // Left is truthy constant - load to register and jump to skip RHS
       expr_toreg_nobranch(this->func_state, left_desc, NO_REG);
       pc = bcemit_jmp(this->func_state);
+      will_skip_rhs = true;
    }
-   else {
-      // Runtime value - emit conditional branch (jump if true)
+   else { // Runtime value - emit conditional branch (jump if true)
       pc = bcemit_branch(this->func_state, left_desc, 1);
+   }
+
+   if (should_trace_operators(this->func_state)) {
+      pf::Log("Parser").msg("[%d] operator or: prepare left kind=%s, %s", this->func_state->ls->linenumber,
+         get_expkind_name(left_desc->k), will_skip_rhs ? "will skip RHS (constant true)" : "will evaluate RHS");
    }
 
    // Set up CFG edges for short-circuit behavior
@@ -234,19 +352,19 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
 
 //********************************************************************************************************************
 // Complete logical OR operator (called AFTER RHS evaluation)
-// Stage 3: CFG-based implementation using ControlFlowGraph
+// CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::complete_logical_or(ValueSlot left, ValueUse right)
 {
-   ExpDesc* left_desc = left.raw();
-   ExpDesc* right_desc = right.raw();
+   ExpDesc *left_desc = left.raw();
+   ExpDesc *right_desc = right.raw();
 
    // At this point:
    // - left->t contains jumps for "left is true" path
    // - right has been evaluated
    // - We need to merge the true paths and return right's result
 
-   FuncState* fs = this->func_state;  // For lj_assertFS macro
+   FuncState *fs = this->func_state;  // For lj_assertFS macro
    lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
@@ -265,7 +383,7 @@ void OperatorEmitter::complete_logical_or(ValueSlot left, ValueUse right)
 
 //********************************************************************************************************************
 // Prepare IF_EMPTY (??) operator (called BEFORE RHS evaluation)
-// Stage 4: CFG-based implementation with extended falsey semantics
+// CFG-based implementation with extended falsey semantics
 
 void OperatorEmitter::prepare_if_empty(ValueSlot left)
 {

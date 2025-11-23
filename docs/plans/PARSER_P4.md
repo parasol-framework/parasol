@@ -331,9 +331,4 @@ The modern AST pipeline correctly uses shared infrastructure while routing all *
    * Update `IrEmitter` to consume the new operator/statement APIs exclusively and remove redundant `ExpDesc` plumbing where AST ownership makes it unnecessary.
 
 6. **Add targeted tests and instrumentation**
-   * Expand parser unit tests to cover operator precedence, presence/ternary edge cases, and compound assignments using the AST pipeline only. Include bytecode pattern checks for short-circuit behaviour and table updates.
    * Add optional debug tracing (guarded by `ParserConfig`/profiler toggles) that records allocator reservations and CFG edge resolution per operator/statement to catch regressions during the refactor.
-
-7. **Migration and validation steps**
-   * Refactor incrementally: land operator facade changes first, then update expression emitters, followed by statement emitters. After each stage, run Fluid regression tests and compare bytecode dumps between legacy and modern paths using the existing dual-parser flags.
-   * Document the new extension points in `docs/plans/LUAJIT_PARSER_REDESIGN.md` once modernised emission is stable, noting how to add operators/statements using the allocator/CFG abstractions.

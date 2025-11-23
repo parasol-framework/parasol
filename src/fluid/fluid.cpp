@@ -252,6 +252,25 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
                      glJitOptions |= JOF::PROFILE;
                   }
+                  else if (pf::iequals(trimmed, "trace-operators")) {
+                     glJitOptions |= JOF::TRACE_OPERATORS;
+                  }
+                  else if (pf::iequals(trimmed, "trace-registers")) {
+                     glJitOptions |= JOF::TRACE_REGISTERS;
+                  }
+                  else if (pf::iequals(trimmed, "trace-cfg")) {
+                     glJitOptions |= JOF::TRACE_CFG;
+                  }
+                  else if (pf::iequals(trimmed, "trace-assignments")) {
+                     glJitOptions |= JOF::TRACE_ASSIGNMENTS;
+                  }
+                  else if (pf::iequals(trimmed, "trace-value-category")) {
+                     glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
+                  }
+                  else if (pf::iequals(trimmed, "trace")) { // Shortcut for tracing everything
+                     glJitOptions |= JOF::TRACE;
+                  }
+                  else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
                log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
             }

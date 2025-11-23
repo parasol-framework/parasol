@@ -14,13 +14,20 @@ function()
   end)
 
   flags("JOF", { comment="JIT behaviour options" },
-     "DIAGNOSE:       Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.",
-     "LEGACY:         Use the legacy parser.",
-     "TRACE_TOKENS:   Trace the emission of tokens.",
-     "TRACE_EXPECT:   Enable trace expectation messages during parsing.",
-     "TRACE_BOUNDARY: Enable log messages for AST boundary crossing.",
-     "DUMP_BYTECODE:  Print a disassembly of bytecode instructions after parsing.",
-     "PROFILE:        Use timers to profile JIT parsing.  Required to configure run-time profiling.")
+     "DIAGNOSE:        Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.",
+     "LEGACY:          Use the legacy parser.",
+     "DUMP_BYTECODE:   Print a disassembly of bytecode instructions after parsing.",
+     "PROFILE:         Use timers to profile JIT parsing.  Required to configure run-time profiling.",
+     "TRACE_TOKENS:    Trace the emission of tokens.",
+     "TRACE_EXPECT:    Enable trace expectation messages during parsing.",
+     "TRACE_BOUNDARY:  Enable log messages for AST boundary crossing.",
+     "TRACE_OPERATORS: Trace OperatorEmitter method calls and decisions.",
+     "TRACE_REGISTERS: Trace RegisterAllocator reservations and releases.",
+     "TRACE_CFG:       Trace ControlFlowGraph edge creation and patching.",
+     "TRACE_ASSIGNMENTS: Trace PreparedAssignment lifecycle and hazard handling.",
+     "TRACE_VALUE_CATEGORY: Trace ValueUse/ValueSlot/LValue operations.",
+     { TRACE = "TRACE_TOKENS|TRACE_EXPECT|TRACE_BOUNDARY|TRACE_OPERATORS|TRACE_REGISTERS|TRACE_CFG|TRACE_ASSIGNMENTS|TRACE_VALUE_CATEGORY" }
+  )
 
 --[[
   class('Fluid', {

@@ -374,12 +374,11 @@ void ParserContext::log_trace(const char* channel, const Token &token, std::stri
    BCLine column = token.span().column;
 
    if (note.empty()) {
-      log.msg("%s: %s (line %d, column %d)", channel, name.c_str(), (int)line, (int)column);
+      log.msg("[%d:%d] %s: %s", (int)line, (int)column, channel, name.c_str());
       return;
    }
 
-   log.msg("%s: %s (line %d, column %d) - %.*s", channel, name.c_str(), (int)line, (int)column,
-      (int)note.size(), note.data());
+   log.msg("[%d:%d] %s: %s - %.*s", (int)line, (int)column,channel, name.c_str(), (int)note.size(), note.data());
 }
 
 ParserSession::ParserSession(ParserContext& context, ParserConfig config)
