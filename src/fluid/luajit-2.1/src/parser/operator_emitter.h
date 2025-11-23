@@ -48,6 +48,20 @@ public:
    // Treated as arithmetic operators with integer coercion
    void emit_binary_bitwise(BinOpr opr, ExpDesc* left, ExpDesc* right);
 
+   // Logical short-circuit operators - preparation phase
+   // These are called BEFORE evaluating RHS to set up short-circuit jumps
+   // TODO: Implement proper CFG-based short-circuit logic (Stage 2-4)
+   void prepare_logical_and(ExpDesc* left);
+   void prepare_logical_or(ExpDesc* left);
+   void prepare_if_empty(ExpDesc* left);
+
+   // Logical short-circuit operators - completion phase
+   // These are called AFTER evaluating RHS to complete the operation
+   // TODO: Implement proper CFG-based short-circuit logic (Stage 2-4)
+   void complete_logical_and(ExpDesc* left, ExpDesc* right);
+   void complete_logical_or(ExpDesc* left, ExpDesc* right);
+   void complete_if_empty(ExpDesc* left, ExpDesc* right);
+
 private:
    FuncState* func_state;
    RegisterAllocator* allocator;

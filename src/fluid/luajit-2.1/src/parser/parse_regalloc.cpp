@@ -192,7 +192,8 @@ static BCPos bcemit_INS(FuncState *fs, BCIns ins)
 //********************************************************************************************************************
 // Bytecode emitter for expressions
 
-[[nodiscard]] static BCPos bcemit_jmp(FuncState *fs);
+// Exported for use by OperatorEmitter facade
+[[nodiscard]] BCPos bcemit_jmp(FuncState *fs);
 
 // Discharge non-constant expression to any register.
 
@@ -480,7 +481,8 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Emit unconditional branch.
 
-[[nodiscard]] static BCPos bcemit_jmp(FuncState *fs)
+// Exported for use by OperatorEmitter facade
+[[nodiscard]] BCPos bcemit_jmp(FuncState *fs)
 {
    BCPos jpc = fs->jpc;
    BCPos j = fs->pc - 1;
@@ -500,7 +502,8 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Invert branch condition of bytecode instruction.
 
-static void invertcond(FuncState *fs, ExpDesc *e)
+// Exported for use by OperatorEmitter facade
+void invertcond(FuncState *fs, ExpDesc *e)
 {
    BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
    setbc_op(ip, bc_op(*ip) ^ 1);
@@ -509,7 +512,8 @@ static void invertcond(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit conditional branch.
 
-[[nodiscard]] static BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
+// Exported for use by OperatorEmitter facade
+[[nodiscard]] BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 {
    BCPos pc;
 

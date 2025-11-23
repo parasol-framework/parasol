@@ -142,9 +142,12 @@ static BCReg expr_toanyreg(FuncState *, ExpDesc* e);
 static void expr_toval(FuncState *, ExpDesc* e);
 static void bcemit_store(FuncState *, ExpDesc* var, ExpDesc* e);
 static void bcemit_method(FuncState *, ExpDesc* e, ExpDesc* key);
-static BCPos bcemit_jmp(FuncState *);
-static void invertcond(FuncState *, ExpDesc* e);
-static BCPos bcemit_branch(FuncState *, ExpDesc* e, int cond);
+// These are now exported (non-static) for use by OperatorEmitter facade
+extern BCPos bcemit_jmp(FuncState *);
+extern void invertcond(FuncState *, ExpDesc* e);
+extern BCPos bcemit_branch(FuncState *, ExpDesc* e, int cond);
+
+// These remain static (legacy parser only)
 static void bcemit_branch_t(FuncState *, ExpDesc* e);
 static void bcemit_branch_f(FuncState *, ExpDesc* e);
 
