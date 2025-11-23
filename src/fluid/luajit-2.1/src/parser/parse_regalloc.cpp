@@ -597,26 +597,20 @@ void RegisterAllocator::verify_no_leaks(const char* Context) const
 
 void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* Context) const
 {
-   // Lightweight allocation tracing - can be enabled with LJ_TRACE_REGALLOC
-#if defined(LJ_TRACE_REGALLOC)
-   pf::Log log("Parser");
-   log.trace("[REGALLOC] alloc reg %d..%d (%d slots) at %s",
-      int(Start), int(Start + Count - 1), int(Count), Context);
-#else
-   (void)Start; (void)Count; (void)Context;
-#endif
+   auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
+   if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
+      pf::Log("Parser").msg("[%d] regalloc: reserve R%d..R%d (%d slots) at %s",
+         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+   }
 }
 
 void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Context) const
 {
-   // Lightweight release tracing - can be enabled with LJ_TRACE_REGALLOC
-#if defined(LJ_TRACE_REGALLOC)
-   pf::Log log("Parser");
-   log.trace("[REGALLOC] release reg %d..%d (%d slots) at %s",
-      int(Start), int(Start + Count - 1), int(Count), Context);
-#else
-   (void)Start; (void)Count; (void)Context;
-#endif
+   auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
+   if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
+      pf::Log("Parser").msg("[%d] regalloc: release R%d..R%d (%d slots) at %s",
+         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+   }
 }
 
 #endif

@@ -2112,6 +2112,9 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
    lhs.reserve(targets.size());
    RegisterAllocator allocator(&this->func_state);
 
+   auto prv = (prvFluid *)this->func_state.ls->L->Script->ChildPrivate;
+   bool trace_assignments = (prv->JitOptions & JOF::TRACE_ASSIGNMENTS) != JOF::NIL;
+
    for (const ExprNodePtr& node : targets) {
       if (not node) {
          return ParserResult<std::vector<PreparedAssignment>>::failure(this->make_error(
@@ -2129,6 +2132,14 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
       prepared.storage = copies.duplicated;
       prepared.reserved = std::move(copies.reserved);
       prepared.target = LValue::from_expdesc(&prepared.storage);
+
+      if (trace_assignments and prepared.reserved.count() > 0) {
+         const char* target_kind = prepared.target.is_indexed() ? "indexed" : "member";
+         pf::Log("Parser").msg("[%d] assignment: prepared %s target, duplicated %d registers (R%d..R%d)",
+            this->func_state.ls->linenumber, target_kind,
+            prepared.reserved.count(), prepared.reserved.start(),
+            prepared.reserved.start() + prepared.reserved.count() - 1);
+      }
 
       if (prepared.target.is_local()) {
          for (PreparedAssignment& existing : lhs) {
