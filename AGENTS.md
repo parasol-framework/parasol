@@ -81,7 +81,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 ### Scripting Integration
 
 **Fluid** is the integrated Lua-based scripting language:
-- Built on LuaJIT 2.1 for performance
+- Originally built on LuaJIT 2.1 for performance, now extensively modified for C++ and utilises C++20 capabilities.
 - Provides high-level access to all framework APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
 - Test scripts use `.fluid` extension

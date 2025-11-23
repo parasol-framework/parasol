@@ -72,8 +72,7 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // Avoid two consts to satisfy bytecode constraints.
 
-      if (expr_isnumk(e1) and !expr_isnumk(e2) and
-         (t = const_num(fs, e1)) <= BCMAX_B) {
+      if (expr_isnumk(e1) and (not expr_isnumk(e2)) and (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
       else {
@@ -84,8 +83,8 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    }
 
    // Release operand registers through allocator
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) allocator.release_register(e1->u.s.info);
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) allocator.release_register(e2->u.s.info);
+   allocator.release_expression(e2);
+   allocator.release_expression(e1);
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -93,41 +92,49 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit comparison operator.
 
-void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
    RegisterAllocator allocator(fs);
-   ExpDesc* eret = e1;
+   ExpDesc *eret = e1;
    BCIns ins;
+   BCReg cmp_reg_a = NO_REG, cmp_reg_b = NO_REG;  // Track registers used by comparison
    ExpressionValue e1_toval_pre(fs, *e1);
+
    e1_toval_pre.to_val();
    *e1 = e1_toval_pre.legacy();
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
+
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
+      cmp_reg_a = ra;
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
+
       switch (e2->k) {
-      case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
-         ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
-         break;
-      case ExpKind::Str:
-         ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
-         break;
-      case ExpKind::Num:
-         ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
-         break;
-      default: {
-         ExpressionValue e2_value(fs, *e2);
-         BCReg rb = e2_value.discharge_to_any_reg(allocator);
-         *e2 = e2_value.legacy();
-         ins = BCINS_AD(op, ra, rb);
-         break;
-      }
+         case ExpKind::Nil:
+         case ExpKind::False:
+         case ExpKind::True:
+            ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
+            break;
+         case ExpKind::Str:
+            ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
+            break;
+         case ExpKind::Num:
+            ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
+            break;
+         default: {
+            ExpressionValue e2_value(fs, *e2);
+            BCReg rb = e2_value.discharge_to_any_reg(allocator);
+            *e2 = e2_value.legacy();
+            cmp_reg_b = rb;
+            ins = BCINS_AD(op, ra, rb);
+            break;
+         }
       }
    }
    else {
@@ -154,12 +161,32 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
          ra = e1_value.discharge_to_any_reg(allocator);
          *e1 = e1_value.legacy();
       }
+      cmp_reg_a = ra;
+      cmp_reg_b = rd;
       ins = BCINS_AD(op, ra, rd);
    }
 
+   // Tag e1 and e2 with ComparisonOperand flag and store the register they were discharged to
+   expr_set_flag(e1, ExprFlag::ComparisonOperand);
+   e1->u.s.info = cmp_reg_a;
+   e1->k = ExpKind::NonReloc;
+   if (cmp_reg_b != NO_REG) {
+      expr_set_flag(e2, ExprFlag::ComparisonOperand);
+      e2->u.s.info = cmp_reg_b;
+      e2->k = ExpKind::NonReloc;
+   }
+
    // Release operand registers through allocator
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) allocator.release_register(e1->u.s.info);
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) allocator.release_register(e2->u.s.info);
+   // The ComparisonOperand flag tells release_expression() to treat these specially
+   // Release in LIFO order (highest register first)
+   if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
+      allocator.release_expression(e2);
+      allocator.release_expression(e1);
+   }
+   else {
+      allocator.release_expression(e1);
+      if (cmp_reg_b != NO_REG) allocator.release_expression(e2);
+   }
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;

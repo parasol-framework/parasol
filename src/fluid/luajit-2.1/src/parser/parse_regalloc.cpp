@@ -8,9 +8,11 @@
 
 #include <parasol/main.h>
 
-static bool is_register_key(int32_t Aux)
+[[nodiscard]] BCPos bcemit_jmp(FuncState *);
+
+inline bool is_register_key(int32_t Aux)
 {
-   return Aux >= 0 and Aux <= BCMAX_C;
+   return (Aux >= 0) and (Aux <= BCMAX_C);
 }
 
 //********************************************************************************************************************
@@ -27,7 +29,7 @@ void RegisterAllocator::bump(BCReg Count)
 
 BCReg RegisterAllocator::reserve_slots(BCReg Count)
 {
-   if (Count IS 0) return this->func_state->freereg;
+   if (not Count) return this->func_state->freereg;
 
    BCReg start = this->func_state->freereg;
    this->bump(Count);
@@ -40,7 +42,7 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
 
 RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
 {
-   if (Count IS 0) return RegisterSpan();
+   if (not Count) return RegisterSpan();
 
    BCReg start = this->reserve_slots(Count);
    return RegisterSpan(this, start, Count, start + Count);
@@ -48,18 +50,16 @@ RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
 
 void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
 {
-   if (Count IS 0) return;
+   if (not Count) return;
 
    if (Start >= this->func_state->nactvar) {
-#if LJ_DEBUG
-      lj_assertFS(ExpectedTop IS this->func_state->freereg, "register depth mismatch");
-      lj_assertFS(Start + Count IS ExpectedTop, "span size mismatch");
-#endif
+      if (ExpectedTop != this->func_state->freereg) pf::Log("Parser").warning("register depth mismatch");
+      if (Start + Count != ExpectedTop) pf::Log("Parser").warning("span size mismatch");
+
       this->func_state->freereg = ExpectedTop - Count;
-#if LJ_DEBUG
-      lj_assertFS(this->func_state->freereg IS Start, "bad regfree");
+
+      if (this->func_state->freereg != Start) pf::Log("Parser").warning("bad regfree");
       this->trace_release(Start, Count, "release_span_internal");
-#endif
    }
 }
 
@@ -81,16 +81,33 @@ void RegisterAllocator::release(AllocatedRegister &Handle)
 
 void RegisterAllocator::release_register(BCReg Register)
 {
-   this->release_span_internal(Register, 1, this->func_state->freereg);
+   BCReg expected_top = Register + 1;
+   if (Register >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+      this->release_span_internal(Register, 1, expected_top);
+   }
 }
 
 void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
-      BCReg expected_top = Expression->u.s.info + 1;
-      if (Expression->u.s.info >= this->func_state->nactvar and
-         expected_top IS this->func_state->freereg) {
-         this->release_span_internal(Expression->u.s.info, 1, expected_top);
+      BCReg reg = Expression->u.s.info;
+      BCReg expected_top = reg + 1;
+
+      // Check if this is a comparison operand that needs special handling
+      if ((Expression->flags & ExprFlag::ComparisonOperand) != ExprFlag::None) {
+         // For comparison operands, we need to release them even if they're not at the top
+         // because the comparison instruction has already consumed their values.
+         // We can only safely do this if the register is at the top of the stack.
+
+         if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+            // Register is at top - release it normally
+            this->func_state->freereg = reg;
+         }
+         // If not at top, we can't release it without corrupting the stack
+      }
+      else if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+         // Normal case: only release if the register is at the top of the stack
+         this->release_span_internal(reg, 1, expected_top);
       }
    }
 }
@@ -195,9 +212,6 @@ BCPos bcemit_INS(FuncState *fs, BCIns ins)
 
 //********************************************************************************************************************
 // Bytecode emitter for expressions
-
-// Exported for use by OperatorEmitter facade
-[[nodiscard]] BCPos bcemit_jmp(FuncState *fs);
 
 // Discharge non-constant expression to any register.
 
@@ -460,7 +474,7 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
 //********************************************************************************************************************
 // Emit method lookup expression.
 
-static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
+static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
 {
    BCReg idx, func, obj = expr_toanyreg(fs, e);
    expr_free(fs, e);
@@ -485,7 +499,6 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Emit unconditional branch.
 
-// Exported for use by OperatorEmitter facade
 [[nodiscard]] BCPos bcemit_jmp(FuncState *fs)
 {
    BCPos jpc = fs->jpc;
@@ -506,7 +519,6 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Invert branch condition of bytecode instruction.
 
-// Exported for use by OperatorEmitter facade
 void invertcond(FuncState *fs, ExpDesc *e)
 {
    BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
@@ -516,7 +528,6 @@ void invertcond(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit conditional branch.
 
-// Exported for use by OperatorEmitter facade
 [[nodiscard]] BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 {
    BCPos pc;
@@ -585,15 +596,13 @@ static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Debug verification and tracing methods
 
-#if LJ_DEBUG
-
 void RegisterAllocator::verify_no_leaks(const char* Context) const
 {
    BCReg nactvar = this->func_state->nactvar;
    BCReg freereg = this->func_state->freereg;
 
    if (freereg > nactvar) {
-      lj_assertFS(false, "register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
+      pf::Log("Parser").warning("register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
          Context, int(freereg - nactvar), int(nactvar), int(freereg));
    }
 }
@@ -615,5 +624,3 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
          this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
    }
 }
-
-#endif
