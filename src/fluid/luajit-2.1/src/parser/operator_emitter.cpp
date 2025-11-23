@@ -150,22 +150,75 @@ void OperatorEmitter::complete_logical_and(ExpDesc* left, ExpDesc* right)
 
 //********************************************************************************************************************
 // Prepare logical OR operator (called BEFORE RHS evaluation)
-// TODO: Replace with CFG-based implementation (Stage 3)
+// Stage 3: CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::prepare_logical_or(ExpDesc* left)
 {
-   // Stage 1: Legacy wrapper - preserve existing behavior
-   bcemit_binop_left(this->func_state, OPR_OR, left);
+   // OR short-circuit logic: if left is true, skip RHS and return left (true)
+   // If left is false, evaluate RHS and return RHS result
+
+   // Discharge left operand to appropriate form
+   ExpressionValue left_val(this->func_state, *left);
+   left_val.discharge();
+   *left = left_val.legacy();
+
+   BCPos pc;
+
+   // Handle constant folding
+   if (left->k IS ExpKind::Nil or left->k IS ExpKind::False) {
+      // Left is falsey constant - no jump needed, will evaluate RHS
+      pc = NO_JMP;
+   }
+   else if (left->k IS ExpKind::Jmp) {
+      // Left is already a jump expression - use as-is
+      pc = left->u.s.info;
+   }
+   else if (left->k IS ExpKind::Str or left->k IS ExpKind::Num or left->k IS ExpKind::True) {
+      // Left is truthy constant - load to register and jump to skip RHS
+      expr_toreg_nobranch(this->func_state, left, NO_REG);
+      pc = bcemit_jmp(this->func_state);
+   }
+   else {
+      // Runtime value - emit conditional branch (jump if true)
+      pc = bcemit_branch(this->func_state, left, 1);
+   }
+
+   // Set up CFG edges for short-circuit behavior
+   ControlFlowEdge true_edge = this->cfg->make_true_edge(left->t);
+   true_edge.append(pc);
+   left->t = true_edge.head();
+
+   ControlFlowEdge false_edge = this->cfg->make_false_edge(left->f);
+   false_edge.patch_here();
+   left->f = NO_JMP;
 }
 
 //********************************************************************************************************************
 // Complete logical OR operator (called AFTER RHS evaluation)
-// TODO: Replace with CFG-based implementation (Stage 3)
+// Stage 3: CFG-based implementation using ControlFlowGraph
 
 void OperatorEmitter::complete_logical_or(ExpDesc* left, ExpDesc* right)
 {
-   // Stage 1: Legacy wrapper - preserve existing behavior
-   bcemit_binop(this->func_state, OPR_OR, left, right);
+   // At this point:
+   // - left->t contains jumps for "left is true" path
+   // - right has been evaluated
+   // - We need to merge the true paths and return right's result
+
+   FuncState* fs = this->func_state;  // For lj_assertFS macro
+   lj_assertFS(left->f IS NO_JMP, "jump list not closed");
+
+   // Discharge right operand
+   ExpressionValue right_val(this->func_state, *right);
+   right_val.discharge();
+   *right = right_val.legacy();
+
+   // Merge true paths: both "left is true" and "right is true" go to same target
+   ControlFlowEdge true_edge = this->cfg->make_true_edge(right->t);
+   true_edge.append(left->t);
+   right->t = true_edge.head();
+
+   // Result is right's value
+   *left = *right;
 }
 
 //********************************************************************************************************************
