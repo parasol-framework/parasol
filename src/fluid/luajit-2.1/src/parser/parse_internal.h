@@ -1,4 +1,6 @@
 // Copyright (C) 2025 Paul Manias
+//
+// NOT TO BE INCLUDED OUTSIDE THE PARSER.
 
 #pragma once
 
@@ -10,7 +12,7 @@ enum class TokenKind : uint16_t;
 
 // Error handling (lj_parse_core.cpp)
 
-static LJ_NORET void err_limit(FuncState *, uint32_t limit, const char* what);
+[[noreturn]] static void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
@@ -187,7 +189,6 @@ static void fscope_uvmark(FuncState *, BCReg level);
 
 #include "parse_raii.h"
 #include "parse_regalloc.h"
-
 #include "parse_concepts.h"
 
 // Function state (lj_parse_scope.cpp)

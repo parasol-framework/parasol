@@ -1,12 +1,9 @@
 // Copyright (C) 2025 Paul Manias
 //
-// Operator emission facade that translates AST operator payloads into
-// allocator/CFG-aware bytecode emission.
+// Operator emission facade that translates AST operator payloads into allocator/CFG-aware bytecode emission.
 //
-// This class is part of Phase 4 parser modernisation, providing a higher-level
-// abstraction over legacy operator helpers (bcemit_arith, bcemit_comp, bcemit_unop).
-// It manages register allocation via RegisterAllocator and control flow via
-// ControlFlowGraph, eliminating direct freereg manipulation.
+// This class manages register allocation via RegisterAllocator and control flow via ControlFlowGraph, eliminating
+// direct freereg manipulation.
 
 #pragma once
 
@@ -14,7 +11,6 @@
 
 #include "parser/parse_types.h"
 
-// Forward declarations for modern abstractions
 class RegisterAllocator;
 class ControlFlowGraph;
 
@@ -29,7 +25,7 @@ public:
    // Emit unary operator (negate, not, length, bitnot)
    // Accepts operand as ExpDesc, emits bytecode, modifies operand in-place
    void emit_unary(int op, ExpDesc* operand);
-   
+
    // Prepare left operand for binary operation
    // Must be called BEFORE evaluating right operand
    // Discharges LHS to appropriate form (register for comparisons, numeric constant or register for arithmetic)
