@@ -741,7 +741,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
       }
       ControlFlowEdge body_jump = this->control_flow.make_unconditional(bcemit_jmp(fs));
       body_jump.patch_to(start);
-      fscope_loop_continue(fs, start);
    }
 
    condexit.patch_here();
@@ -811,7 +810,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    condexit.patch_to(loop);
    ControlFlowEdge loop_head = this->control_flow.make_unconditional(loop);
    loop_head.patch_head(fs->pc);
-   fscope_loop_continue(fs, iter);
 
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(iter);
@@ -908,7 +906,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
    loop.patch_head(fs->pc);
-   fscope_loop_continue(fs, loopend.head());
    this->loop_stack.back().continue_target = loopend.head();
    this->loop_stack.back().continue_edge.patch_to(loopend.head());
    this->loop_stack.back().break_edge.patch_here();
@@ -992,7 +989,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
-   fscope_loop_continue(fs, iter);
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(iter);
    this->loop_stack.back().break_edge.patch_here();
