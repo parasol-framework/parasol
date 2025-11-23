@@ -128,66 +128,6 @@ private:
 UnsupportedNodeRecorder glUnsupportedNodes;
 
 //********************************************************************************************************************
-// Legacy helper call tracker for Phase 4 refactoring
-
-enum class LegacyHelperKind : uint8_t {
-   BinopLeft,
-   Binop,
-   Unop,
-   PresenceCheck,
-   Store,
-   AssignAdjust,
-   BranchTrue,
-   BranchFalse,
-   ManualJump,
-   Count
-};
-
-class LegacyHelperRecorder {
-public:
-   void record(LegacyHelperKind kind, const char* context) {
-      size_t index = size_t(kind);
-      if (index >= size_t(LegacyHelperKind::Count)) return;
-      uint32_t total = ++this->counts[index];
-      if ((total <= 8) or (total % 32 IS 0)) {
-         pf::Log log("Parser");
-         log.msg("ast-pipeline legacy helper=%s context=%s hits=%u",
-            describe_helper(kind), context ? context : "unknown", unsigned(total));
-      }
-   }
-
-   void dump_statistics() const {
-      pf::Log log("Parser");
-      log.msg("=== Legacy Helper Call Statistics ===");
-      for (size_t i = 0; i < size_t(LegacyHelperKind::Count); ++i) {
-         if (this->counts[i] > 0) {
-            log.msg("  %s: %u calls", describe_helper(LegacyHelperKind(i)), unsigned(this->counts[i]));
-         }
-      }
-   }
-
-private:
-   static const char* describe_helper(LegacyHelperKind kind) {
-      switch (kind) {
-         case LegacyHelperKind::BinopLeft: return "bcemit_binop_left";
-         case LegacyHelperKind::Binop: return "bcemit_binop";
-         case LegacyHelperKind::Unop: return "bcemit_unop";
-         case LegacyHelperKind::PresenceCheck: return "bcemit_presence_check";
-         case LegacyHelperKind::Store: return "bcemit_store";
-         case LegacyHelperKind::AssignAdjust: return "assign_adjust";
-         case LegacyHelperKind::BranchTrue: return "bcemit_branch_t";
-         case LegacyHelperKind::BranchFalse: return "bcemit_branch_f";
-         case LegacyHelperKind::ManualJump: return "manual_jump_patch";
-         default: return "unknown";
-      }
-   }
-
-   std::array<uint32_t, size_t(LegacyHelperKind::Count)> counts{};
-};
-
-LegacyHelperRecorder glLegacyHelperCalls;
-
-//********************************************************************************************************************
 
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
@@ -251,66 +191,36 @@ LegacyHelperRecorder glLegacyHelperCalls;
 [[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
 {
    switch (kind) {
-   case AstNodeKind::LiteralExpr:
-      return "LiteralExpr";
-   case AstNodeKind::IdentifierExpr:
-      return "IdentifierExpr";
-   case AstNodeKind::VarArgExpr:
-      return "VarArgExpr";
-   case AstNodeKind::UnaryExpr:
-      return "UnaryExpr";
-   case AstNodeKind::BinaryExpr:
-      return "BinaryExpr";
-   case AstNodeKind::UpdateExpr:
-      return "UpdateExpr";
-   case AstNodeKind::TernaryExpr:
-      return "TernaryExpr";
-   case AstNodeKind::PresenceExpr:
-      return "PresenceExpr";
-   case AstNodeKind::CallExpr:
-      return "CallExpr";
-   case AstNodeKind::MemberExpr:
-      return "MemberExpr";
-   case AstNodeKind::IndexExpr:
-      return "IndexExpr";
-   case AstNodeKind::TableExpr:
-      return "TableExpr";
-   case AstNodeKind::FunctionExpr:
-      return "FunctionExpr";
-   case AstNodeKind::BlockStmt:
-      return "BlockStmt";
-   case AstNodeKind::AssignmentStmt:
-      return "AssignmentStmt";
-   case AstNodeKind::LocalDeclStmt:
-      return "LocalDeclStmt";
-   case AstNodeKind::LocalFunctionStmt:
-      return "LocalFunctionStmt";
-   case AstNodeKind::FunctionStmt:
-      return "FunctionStmt";
-   case AstNodeKind::IfStmt:
-      return "IfStmt";
-   case AstNodeKind::WhileStmt:
-      return "WhileStmt";
-   case AstNodeKind::RepeatStmt:
-      return "RepeatStmt";
-   case AstNodeKind::NumericForStmt:
-      return "NumericForStmt";
-   case AstNodeKind::GenericForStmt:
-      return "GenericForStmt";
-   case AstNodeKind::BreakStmt:
-      return "BreakStmt";
-   case AstNodeKind::ContinueStmt:
-      return "ContinueStmt";
-   case AstNodeKind::ReturnStmt:
-      return "ReturnStmt";
-   case AstNodeKind::DeferStmt:
-      return "DeferStmt";
-   case AstNodeKind::DoStmt:
-      return "DoStmt";
-   case AstNodeKind::ExpressionStmt:
-      return "ExpressionStmt";
-   default:
-      return "Unknown";
+      case AstNodeKind::LiteralExpr: return "LiteralExpr";
+      case AstNodeKind::IdentifierExpr: return "IdentifierExpr";
+      case AstNodeKind::VarArgExpr: return "VarArgExpr";
+      case AstNodeKind::UnaryExpr: return "UnaryExpr";
+      case AstNodeKind::BinaryExpr: return "BinaryExpr";
+      case AstNodeKind::UpdateExpr: return "UpdateExpr";
+      case AstNodeKind::TernaryExpr: return "TernaryExpr";
+      case AstNodeKind::PresenceExpr: return "PresenceExpr";
+      case AstNodeKind::CallExpr: return "CallExpr";
+      case AstNodeKind::MemberExpr: return "MemberExpr";
+      case AstNodeKind::IndexExpr: return "IndexExpr";
+      case AstNodeKind::TableExpr: return "TableExpr";
+      case AstNodeKind::FunctionExpr: return "FunctionExpr";
+      case AstNodeKind::BlockStmt: return "BlockStmt";
+      case AstNodeKind::AssignmentStmt: return "AssignmentStmt";
+      case AstNodeKind::LocalDeclStmt: return "LocalDeclStmt";
+      case AstNodeKind::LocalFunctionStmt: return "LocalFunctionStmt";
+      case AstNodeKind::FunctionStmt: return "FunctionStmt";
+      case AstNodeKind::IfStmt: return "IfStmt";
+      case AstNodeKind::WhileStmt: return "WhileStmt";
+      case AstNodeKind::RepeatStmt: return "RepeatStmt";
+      case AstNodeKind::NumericForStmt: return "NumericForStmt";
+      case AstNodeKind::GenericForStmt: return "GenericForStmt";
+      case AstNodeKind::BreakStmt: return "BreakStmt";
+      case AstNodeKind::ContinueStmt: return "ContinueStmt";
+      case AstNodeKind::ReturnStmt: return "ReturnStmt";
+      case AstNodeKind::DeferStmt: return "DeferStmt";
+      case AstNodeKind::DoStmt: return "DoStmt";
+      case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
+      default: return "Unknown";
    }
 }
 
@@ -1213,7 +1123,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
       rhs = list.value_ref();
       this->operator_emitter.complete_concat(ValueSlot(&infix), ValueUse(&rhs));
-      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
    else {
@@ -1233,7 +1142,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
       this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), ValueUse(&rhs));
 
-      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
 
@@ -1484,7 +1392,6 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
    this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), ValueUse(&delta));
 
-   glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_update_expr");
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
 
@@ -1563,10 +1470,8 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
       this->operator_emitter.complete_concat(ValueSlot(&lhs), ValueUse(&rhs));
    }
    else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
-      // Bitwise operators need special legacy handling (emit bit.* library calls)
-      // Keep using bcemit_binop until these are migrated to OperatorEmitter
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/bitwise");
-      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+      // Bitwise operators: Route through OperatorEmitter (emits bit.* library calls)
+      this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), ValueUse(&rhs));
    }
    else {
       // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
@@ -1646,8 +1551,7 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& p
    auto value_result = this->emit_expression(*payload.value);
    if (not value_result.ok()) return value_result;
    ExpDesc value = value_result.value_ref();
-   glLegacyHelperCalls.record(LegacyHelperKind::PresenceCheck, "emit_presence_expr");
-   bcemit_presence_check(&this->func_state, &value);
+   this->operator_emitter.emit_presence_check(ValueSlot(&value));
    return ParserResult<ExpDesc>::success(value);
 }
 

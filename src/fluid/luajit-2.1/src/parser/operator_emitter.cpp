@@ -75,12 +75,15 @@ void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ValueUse right
 
 //********************************************************************************************************************
 // Emit bitwise binary operator
-// Bitwise operators use the same emission as arithmetic operators
+// Bitwise operators emit function calls to bit.* library (bit.lshift, bit.band, etc.)
 
 void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ValueUse right)
 {
-   // Bitwise operators use the same emission as arithmetic operators
-   bcemit_arith(this->func_state, opr, left.raw(), right.raw());
+   // Bitwise operators are implemented as calls to bit.* library functions
+   // Get the operator name from the priority table
+   const char* op_name = priority[opr].name;
+   size_t op_name_len = priority[opr].name_len;
+   bcemit_bit_call(this->func_state, std::string_view(op_name, op_name_len), left.raw(), right.raw());
 }
 
 //********************************************************************************************************************
@@ -494,4 +497,95 @@ void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
    }
 
    left_desc->k = ExpKind::Relocable;
+}
+
+//********************************************************************************************************************
+// Presence check operator (x?)
+// Returns boolean: true if value is truthy, false if falsey (nil, false, 0, "")
+
+void OperatorEmitter::emit_presence_check(ValueSlot operand)
+{
+   ExpDesc* e = operand.raw();
+   FuncState* fs = this->func_state;
+
+   // Discharge the operand first
+   ExpressionValue e_value(fs, *e);
+   e_value.discharge();
+   *e = e_value.legacy();
+
+   // Handle compile-time constants
+   if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) {
+      expr_init(e, ExpKind::False, 0);  // Falsey constant
+      return;
+   }
+
+   if (e->k IS ExpKind::Num and expr_numiszero(e)) {
+      expr_init(e, ExpKind::False, 0);  // Zero is falsey
+      return;
+   }
+
+   if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0) {
+      expr_init(e, ExpKind::False, 0);  // Empty string is falsey
+      return;
+   }
+
+   if (e->k IS ExpKind::True or (e->k IS ExpKind::Num and !expr_numiszero(e)) or
+       (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
+      expr_init(e, ExpKind::True, 0);  // Truthy constant
+      return;
+   }
+
+   // Runtime value - emit extended falsey checks
+   RegisterAllocator allocator(fs);
+   ExpressionValue e_runtime(fs, *e);
+   BCReg reg = e_runtime.discharge_to_any_reg(allocator);
+   *e = e_runtime.legacy();
+
+   // Create test expressions
+   ExpDesc nilv = make_nil_expr();
+   ExpDesc falsev = make_bool_expr(false);
+   ExpDesc zerov = make_num_expr(0.0);
+   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
+
+   // Emit equality checks for extended falsey values
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+   BCPos check_nil = bcemit_jmp(fs);
+
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+   BCPos check_false = bcemit_jmp(fs);
+
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+   BCPos check_zero = bcemit_jmp(fs);
+
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+   BCPos check_empty = bcemit_jmp(fs);
+
+   expr_free(fs, e);  // Free the expression register
+
+   // Reserve register for result
+   BCReg dest = fs->freereg;
+   allocator.reserve(1);
+
+   // Value is truthy - load true
+   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));
+   BCPos jmp_false_branch = bcemit_jmp(fs);
+
+   // False branch: patch all falsey jumps here and load false
+   BCPos false_pos = fs->pc;
+   ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
+   nil_edge.patch_to(false_pos);
+   ControlFlowEdge false_edge_check = this->cfg->make_unconditional(check_false);
+   false_edge_check.patch_to(false_pos);
+   ControlFlowEdge zero_edge = this->cfg->make_unconditional(check_zero);
+   zero_edge.patch_to(false_pos);
+   ControlFlowEdge empty_edge = this->cfg->make_unconditional(check_empty);
+   empty_edge.patch_to(false_pos);
+
+   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
+
+   // Patch skip jump to after false load
+   ControlFlowEdge skip_edge = this->cfg->make_unconditional(jmp_false_branch);
+   skip_edge.patch_to(fs->pc);
+
+   expr_init(e, ExpKind::NonReloc, dest);
 }

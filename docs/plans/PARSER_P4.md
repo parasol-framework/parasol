@@ -71,7 +71,20 @@
 ---
 
 ### ✅ Step 3: Rework binary/unary emission to use OperatorEmitter (COMPLETE)
-**Status:** All operators migrated to OperatorEmitter facade, no operators use legacy helpers directly
+**Status:** All operators migrated to OperatorEmitter facade, no operators use legacy helpers directly from AST pipeline
+
+**Final Update (2025-01-23):**
+* Completed migration of presence check operator (`x?`) to OperatorEmitter
+  - Added `emit_presence_check()` method to OperatorEmitter
+  - Implements extended falsey semantics (nil, false, 0, "")
+  - Uses CFG-based control flow for runtime checks
+* Fixed bitwise operator implementation
+  - Corrected `emit_binary_bitwise()` to call `bcemit_bit_call()` instead of `bcemit_arith()`
+  - Bitwise operators now properly emit calls to bit.lshift, bit.band, etc.
+  - Prevents invalid bytecode generation (USETV with bogus register numbers)
+* Verified all operator emissions in ir_emitter.cpp route through OperatorEmitter
+  - No direct calls to `bcemit_binop`, `bcemit_binop_left`, or `bcemit_presence_check` from AST pipeline
+  - All 22 call sites use `this->operator_emitter.*` methods
 
 **Achievements:**
 * Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
@@ -195,6 +208,51 @@ Step 4: Statement emission modernization with LValue descriptors is now ready to
 * Added scoped loop guards to guarantee loop-stack cleanup on success and failure paths, aligning statement emission with the modern CFG abstractions.
 
 **Next:** Proceed to Step 5 to isolate or retire the remaining legacy helpers.
+
+---
+
+### 🔄 Step 5: Retire or isolate legacy operator/statement helpers (IN PROGRESS)
+**Status:** Analysis complete, ready for implementation
+
+**Current State Analysis (2025-01-23):**
+* **AST Pipeline (ir_emitter.cpp):** CLEAN
+  - All operator emissions route through `OperatorEmitter` facade
+  - No direct calls to legacy operator helpers (`bcemit_binop`, `bcemit_binop_left`, `bcemit_presence_check`)
+  - Statement-level helpers (`bcemit_store`, `bcemit_branch_t`) still used appropriately for assignments and control flow
+
+* **Legacy Parser (parse_stmt.cpp):** STILL USES LEGACY HELPERS
+  - `assign_compound()` calls `bcemit_binop_left()` and `bcemit_binop()` at lines 238, 261, 263
+  - `assign_if_empty()`, `parse_assignment()`, `parse_func()` call `bcemit_store()` at lines 148, 323, 338, 575
+  - These are legitimate uses for the legacy parser path, not AST pipeline code
+
+* **Shared Helper Functions (parse_operators.cpp):**
+  - `foldarith()` - Exported, used by both legacy and modern paths via OperatorEmitter
+  - `bcemit_arith()` - Exported, used by both legacy and modern paths via OperatorEmitter
+  - `bcemit_comp()` - Exported, used by both legacy and modern paths via OperatorEmitter
+  - `bcemit_unop()` - Exported, used by both legacy and modern paths via OperatorEmitter
+  - `bcemit_unary_bit_call()` - Exported, used by OperatorEmitter for `~` operator
+  - `bcemit_binop_left()` - Static function, used only by legacy `bcemit_binop()` and `parse_stmt.cpp`
+  - `bcemit_binop()` - Static function, used only by `parse_stmt.cpp` (legacy path)
+  - `bcemit_bit_call()` - Static helper, used by both legacy and modern paths
+  - `bcemit_shift_call_at_base()` - Static helper, used by `bcemit_bit_call()`
+  - `bcemit_presence_check()` - Static function, migrated to OperatorEmitter, no longer used
+
+**Isolation Strategy:**
+The codebase currently supports dual parser modes:
+- **Modern (default):** AST pipeline → `IrEmitter` → `OperatorEmitter` → shared helpers
+- **Legacy (fallback):** Direct parsing → `parse_stmt.cpp` → `bcemit_binop/bcemit_binop_left` → shared helpers
+
+**Files That Need Build Guards:**
+None required yet. The current architecture cleanly separates:
+1. **Modern-only code:** `ir_emitter.cpp`, `operator_emitter.cpp`, `value_categories.cpp`
+2. **Legacy-only code:** Parts of `parse_stmt.cpp` (compound assignments)
+3. **Shared helpers:** `parse_operators.cpp` exported functions
+
+**Next Steps:**
+1. Verify bitwise operator and presence check tests pass
+2. Document the dual-parser architecture in this plan
+3. Consider adding parser mode selection documentation
+4. Optionally: Add #ifdef guards if we want to make legacy path compile-time optional
 
 ---
 
