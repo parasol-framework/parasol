@@ -76,6 +76,18 @@ private:
    OperatorEmitter operator_emitter;
 };
 
+struct PreparedAssignment {
+   PreparedAssignment() = default;
+   PreparedAssignment(PreparedAssignment&&) = default;
+   PreparedAssignment& operator=(PreparedAssignment&&) = default;
+   PreparedAssignment(const PreparedAssignment&) = delete;
+   PreparedAssignment& operator=(const PreparedAssignment&) = delete;
+
+   LValue target{};
+   ExpDesc storage{};
+   RegisterSpan reserved;
+};
+
 class IrEmitter {
 public:
    explicit IrEmitter(ParserContext& context);
@@ -83,6 +95,8 @@ public:
    ParserResult<IrEmitUnit> emit_chunk(const BlockStmt& chunk);
 
 private:
+   friend struct LoopStackGuard;
+
    ParserContext& ctx;
    FuncState& func_state;
    LexState& lex_state;
@@ -108,9 +122,9 @@ private:
    ParserResult<IrEmitUnit> emit_break_stmt(const BreakStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_continue_stmt(const ContinueStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
-   ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<ExpDesc> targets, const ExprNodeList& values);
-   ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, ExpDesc target, const ExprNodeList& values);
-   ParserResult<IrEmitUnit> emit_if_empty_assignment(ExpDesc target, const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values);
+   ParserResult<IrEmitUnit> emit_if_empty_assignment(PreparedAssignment target, const ExprNodeList& values);
 
    ParserResult<ExpDesc> emit_expression(const ExprNode& expr);
    ParserResult<ExpDesc> emit_literal_expr(const LiteralValue& literal);
@@ -130,7 +144,7 @@ private:
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
-   ParserResult<std::vector<ExpDesc>> prepare_assignment_targets(const ExprNodeList& targets);
+   ParserResult<std::vector<PreparedAssignment>> prepare_assignment_targets(const ExprNodeList& targets);
    void update_local_binding(GCstr* symbol, BCReg slot);
    std::optional<BCReg> resolve_local(GCstr* symbol) const;
    void materialise_to_next_reg(ExpDesc& expression, std::string_view usage);
@@ -143,5 +157,24 @@ private:
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
 
    ParserError make_error(ParserErrorCode code, std::string_view message) const;
+
+   struct LoopContext {
+      ControlFlowEdge break_edge;
+      ControlFlowEdge continue_edge;
+      BCReg defer_base;
+      BCPos continue_target;
+   };
+
+   struct LoopStackGuard {
+      explicit LoopStackGuard(IrEmitter* Owner) : emitter(Owner) {}
+      ~LoopStackGuard() { if (this->active and this->emitter) this->emitter->loop_stack.pop_back(); }
+
+      void release() { this->active = false; }
+
+      IrEmitter* emitter;
+      bool active = true;
+   };
+
+   std::vector<LoopContext> loop_stack;
 };
 

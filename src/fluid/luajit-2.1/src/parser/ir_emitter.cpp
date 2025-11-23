@@ -314,14 +314,7 @@ LegacyHelperRecorder glLegacyHelperCalls;
    }
 }
 
-[[nodiscard]] static FuncScope* find_loop_scope(FuncState& func_state)
-{
-   FuncScope* loop = func_state.bl;
-   while (loop and not has_flag(loop->flags, FuncScopeFlag::Loop)) {
-      loop = loop->prev;
-   }
-   return loop;
-}
+//********************************************************************************************************************
 
 [[nodiscard]] static NameRef make_name_ref(const Identifier& identifier)
 {
@@ -724,6 +717,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
 
    FuncState* fs = &this->func_state;
    BCPos start = fs->lasttarget = fs->pc;
+   LoopContext loop_context{};
+   loop_context.break_edge = this->control_flow.make_break_edge();
+   loop_context.continue_edge = this->control_flow.make_continue_edge();
+   loop_context.defer_base = fs->nactvar;
+   loop_context.continue_target = start;
+   this->loop_stack.push_back(loop_context);
+   LoopStackGuard loop_stack_guard(this);
    auto condexit_result = this->emit_condition_jump(*payload.condition);
    if (not condexit_result.ok()) {
       return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
@@ -741,11 +741,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
       }
       ControlFlowEdge body_jump = this->control_flow.make_unconditional(bcemit_jmp(fs));
       body_jump.patch_to(start);
-      fscope_loop_continue(fs, start);
    }
 
    condexit.patch_here();
    loop.patch_head(fs->pc);
+
+   this->loop_stack.back().continue_edge.patch_to(loop_context.continue_target);
+   this->loop_stack.back().break_edge.patch_here();
+   loop_stack_guard.release();
 
 #if LJ_DEBUG
    // Verify no register leaks at loop exit
@@ -767,6 +770,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    BCPos iter = NO_JMP;
    ControlFlowEdge condexit;
    bool inner_has_upvals = false;
+
+   LoopContext loop_context{};
+   loop_context.break_edge = this->control_flow.make_break_edge();
+   loop_context.continue_edge = this->control_flow.make_continue_edge();
+   loop_context.defer_base = fs->nactvar;
+   loop_context.continue_target = loop;
+   this->loop_stack.push_back(loop_context);
+   LoopStackGuard loop_stack_guard(this);
 
    FuncScope outer_scope;
    ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
@@ -799,7 +810,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    condexit.patch_to(loop);
    ControlFlowEdge loop_head = this->control_flow.make_unconditional(loop);
    loop_head.patch_head(fs->pc);
-   fscope_loop_continue(fs, iter);
+
+   this->loop_stack.back().continue_target = iter;
+   this->loop_stack.back().continue_edge.patch_to(iter);
+   this->loop_stack.back().break_edge.patch_here();
+   loop_stack_guard.release();
 
 #if LJ_DEBUG
    // Verify no register leaks at loop exit
@@ -858,6 +873,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
 
    this->lex_state.var_add(3);
 
+   LoopContext loop_context{};
+   loop_context.break_edge = this->control_flow.make_break_edge();
+   loop_context.continue_edge = this->control_flow.make_continue_edge();
+   loop_context.defer_base = fs->nactvar;
+   loop_context.continue_target = NO_JMP;
+   this->loop_stack.push_back(loop_context);
+   LoopStackGuard loop_stack_guard(this);
+
    ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORI, base, NO_JMP));
 
    {
@@ -883,7 +906,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
    loop.patch_head(fs->pc);
-   fscope_loop_continue(fs, loopend.head());
+   this->loop_stack.back().continue_target = loopend.head();
+   this->loop_stack.back().continue_edge.patch_to(loopend.head());
+   this->loop_stack.back().break_edge.patch_here();
+   loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -922,6 +948,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
    this->lex_state.var_add(3);
 
+   LoopContext loop_context{};
+   loop_context.break_edge = this->control_flow.make_break_edge();
+   loop_context.continue_edge = this->control_flow.make_continue_edge();
+   loop_context.defer_base = fs->nactvar;
+   loop_context.continue_target = NO_JMP;
+   this->loop_stack.push_back(loop_context);
+   LoopStackGuard loop_stack_guard(this);
+
    ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP));
 
    {
@@ -955,7 +989,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
    fs->bcbase[loopend.head()].line = payload.body->span.line;
    loopend.patch_head(loop.head() + 1);
-   fscope_loop_continue(fs, iter);
+   this->loop_stack.back().continue_target = iter;
+   this->loop_stack.back().continue_edge.patch_to(iter);
+   this->loop_stack.back().break_edge.patch_here();
+   loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1012,15 +1049,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
 
 ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 {
-   FuncScope* loop = find_loop_scope(this->func_state);
-   if (not loop) {
-     return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "break outside loop"));
+   if (this->loop_stack.empty()) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "break outside loop"));
    }
 
-   execute_defers(&this->func_state, loop->nactvar);
-   this->func_state.bl->flags |= FuncScopeFlag::Break;
-   MSize idx = this->lex_state.gola_new(kJumpBreak, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
-   (void)idx;
+   LoopContext& loop = this->loop_stack.back();
+   execute_defers(&this->func_state, loop.defer_base);
+   loop.break_edge.append(bcemit_jmp(&this->func_state));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1028,15 +1063,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 
 ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload&)
 {
-   FuncScope* loop = find_loop_scope(this->func_state);
-   if (not loop) {
+   if (this->loop_stack.empty()) {
       return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, "continue outside loop"));
    }
 
-   execute_defers(&this->func_state, loop->nactvar);
-   this->func_state.bl->flags |= FuncScopeFlag::Continue;
-   MSize idx = this->lex_state.gola_new(kJumpContinue, VarInfoFlag::Jump, bcemit_jmp(&this->func_state));
-   (void)idx;
+   LoopContext& loop = this->loop_stack.back();
+   execute_defers(&this->func_state, loop.defer_base);
+   loop.continue_edge.append(bcemit_jmp(&this->func_state));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1053,7 +1086,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
       return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
    }
 
-   std::vector<ExpDesc> targets = std::move(targets_result.value_ref());
+   std::vector<PreparedAssignment> targets = std::move(targets_result.value_ref());
 
    if (payload.op IS AssignmentOperator::Plain) {
       return this->emit_plain_assignment(std::move(targets), payload.values);
@@ -1066,17 +1099,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
    }
 
-   ExpDesc target = targets.front();
+   PreparedAssignment target = std::move(targets.front());
    if (payload.op IS AssignmentOperator::IfEmpty) {
-      return this->emit_if_empty_assignment(target, payload.values);
+      return this->emit_if_empty_assignment(std::move(target), payload.values);
    }
 
-   return this->emit_compound_assignment(payload.op, target, payload.values);
+   return this->emit_compound_assignment(payload.op, std::move(target), payload.values);
 }
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> targets, const ExprNodeList& values)
+ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values)
 {
    BCReg nvars = BCReg(targets.size());
    if (nvars IS 0) {
@@ -1093,16 +1126,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
       tail = list.value_ref();
    }
 
-   auto assign_from_stack = [&](std::vector<ExpDesc>::reverse_iterator first,
-      std::vector<ExpDesc>::reverse_iterator last)
+   auto assign_from_stack = [&](std::vector<PreparedAssignment>::reverse_iterator first,
+      std::vector<PreparedAssignment>::reverse_iterator last)
    {
       for (; first != last; ++first) {
          ExpDesc stack_value;
          expr_init(&stack_value, ExpKind::NonReloc, this->func_state.freereg - 1);
-         glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_plain_assignment/stack");
-         bcemit_store(&this->func_state, &(*first), &stack_value);
+         bcemit_store(&this->func_state, &first->storage, &stack_value);
       }
    };
+
+   RegisterAllocator allocator(&this->func_state);
 
    if (nexps IS nvars) {
       if (tail.k IS ExpKind::Call) {
@@ -1115,27 +1149,31 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<ExpDesc> t
             tail.k = ExpKind::NonReloc;
          }
       }
-      glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_plain_assignment/exact");
-      bcemit_store(&this->func_state, &targets.back(), &tail);
+      bcemit_store(&this->func_state, &targets.back().storage, &tail);
       if (targets.size() > 1) {
          auto begin = targets.rbegin();
          ++begin;
          assign_from_stack(begin, targets.rend());
       }
+      for (PreparedAssignment& prepared : targets) {
+         allocator.release(prepared.reserved);
+      }
       this->func_state.freereg = this->func_state.nactvar;
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
-   glLegacyHelperCalls.record(LegacyHelperKind::AssignAdjust, "emit_plain_assignment/adjust");
    this->lex_state.assign_adjust(nvars, nexps, &tail);
    assign_from_stack(targets.rbegin(), targets.rend());
+   for (PreparedAssignment& prepared : targets) {
+      allocator.release(prepared.reserved);
+   }
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, ExpDesc target, const ExprNodeList& values)
+ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values)
 {
    auto mapped = map_assignment_operator(op);
    if (not mapped.has_value()) {
@@ -1156,7 +1194,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 
    // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
-   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target.storage);
    ExpDesc working = copies.duplicated;
 
    ExpDesc rhs;
@@ -1176,7 +1214,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       rhs = list.value_ref();
       this->operator_emitter.complete_concat(ValueSlot(&infix), ValueUse(&rhs));
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
-      bcemit_store(&this->func_state, &target, &infix);
+      bcemit_store(&this->func_state, &target.storage, &infix);
    }
    else {
       this->materialise_to_next_reg(working, "compound assignment base");
@@ -1196,11 +1234,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), ValueUse(&rhs));
 
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/arith");
-      bcemit_store(&this->func_state, &target, &infix);
+      bcemit_store(&this->func_state, &target.storage, &infix);
    }
 
    register_guard.release_to(register_guard.saved());
-   release_indexed_original(this->func_state, target);
+   allocator.release(target.reserved);
+   allocator.release(copies.reserved);
+   release_indexed_original(this->func_state, target.storage);
    this->func_state.freereg = this->func_state.nactvar;
    register_guard.adopt_saved(this->func_state.freereg);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -1208,9 +1248,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target, const ExprNodeList& values)
+ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment target, const ExprNodeList& values)
 {
-   if (values.empty() or not vkisvar(target.k)) {
+   if (values.empty() or not vkisvar(target.storage.k)) {
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
    }
 
@@ -1219,7 +1259,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target, con
 
    // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
-   TableOperandCopies copies = allocator.duplicate_table_operands(target);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target.storage);
    ExpDesc working = copies.duplicated;
 
    // Use ExpressionValue for discharge operations
@@ -1260,7 +1300,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target, con
    ExpressionValue rhs_value(&this->func_state, rhs);
    rhs_value.discharge();
    this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
-   bcemit_store(&this->func_state, &target, &rhs);
+   bcemit_store(&this->func_state, &target.storage, &rhs);
 
    check_nil.patch_to(assign_pos);
    check_false.patch_to(assign_pos);
@@ -1269,7 +1309,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(ExpDesc target, con
    skip_assign.patch_to(this->func_state.pc);
 
    register_guard.release_to(register_guard.saved());
-   release_indexed_original(this->func_state, target);
+   allocator.release(target.reserved);
+   allocator.release(copies.reserved);
+   release_indexed_original(this->func_state, target.storage);
    this->func_state.freereg = this->func_state.nactvar;
    register_guard.adopt_saved(this->func_state.freereg);
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -2088,27 +2130,52 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList& expres
 
 //********************************************************************************************************************
 
-ParserResult<std::vector<ExpDesc>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
+ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
 {
-   std::vector<ExpDesc> lhs;
+   std::vector<PreparedAssignment> lhs;
    lhs.reserve(targets.size());
+   RegisterAllocator allocator(&this->func_state);
+
    for (const ExprNodePtr& node : targets) {
       if (not node) {
-         return ParserResult<std::vector<ExpDesc>>::failure(this->make_error(
+         return ParserResult<std::vector<PreparedAssignment>>::failure(this->make_error(
             ParserErrorCode::InternalInvariant, "assignment target missing"));
       }
+
       auto lvalue = this->emit_lvalue_expr(*node);
       if (not lvalue.ok()) {
-         return ParserResult<std::vector<ExpDesc>>::failure(lvalue.error_ref());
+         return ParserResult<std::vector<PreparedAssignment>>::failure(lvalue.error_ref());
       }
+
       ExpDesc slot = lvalue.value_ref();
-      if (slot.k IS ExpKind::Local) {
-         std::span<ExpDesc> hazards(lhs.data(), lhs.size());
-         this->lex_state.assign_hazard(hazards, slot);
+      PreparedAssignment prepared;
+      TableOperandCopies copies = allocator.duplicate_table_operands(slot);
+      prepared.storage = copies.duplicated;
+      prepared.reserved = std::move(copies.reserved);
+      prepared.target = LValue::from_expdesc(&prepared.storage);
+
+      if (prepared.target.is_local()) {
+         for (PreparedAssignment& existing : lhs) {
+            bool refresh_table = existing.target.is_indexed()
+               and existing.target.get_table_reg() IS prepared.target.get_local_reg();
+            bool refresh_key = existing.target.is_indexed() and is_register_key(existing.storage.u.s.aux)
+               and existing.target.get_key_reg() IS prepared.target.get_local_reg();
+            bool refresh_member = existing.target.is_member()
+               and existing.target.get_table_reg() IS prepared.target.get_local_reg();
+
+            if (refresh_table or refresh_key or refresh_member) {
+               TableOperandCopies refreshed = allocator.duplicate_table_operands(existing.storage);
+               existing.storage = refreshed.duplicated;
+               existing.reserved = std::move(refreshed.reserved);
+               existing.target = LValue::from_expdesc(&existing.storage);
+            }
+         }
       }
-      lhs.push_back(slot);
+
+      lhs.push_back(std::move(prepared));
    }
-   return ParserResult<std::vector<ExpDesc>>::success(std::move(lhs));
+
+   return ParserResult<std::vector<PreparedAssignment>>::success(std::move(lhs));
 }
 
 //********************************************************************************************************************

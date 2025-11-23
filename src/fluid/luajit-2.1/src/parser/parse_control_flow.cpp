@@ -130,6 +130,7 @@ void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
 {
    if (Index >= this->edges.size()) return;
    EdgeEntry& entry = this->edges[Index];
+   if (entry.resolved) return;
    if (entry.head IS NO_JMP) {
       this->mark_resolved(Index);
       return;
