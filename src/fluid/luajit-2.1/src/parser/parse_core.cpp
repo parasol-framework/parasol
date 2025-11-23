@@ -19,7 +19,7 @@ LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
    lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
 }
 
-LJ_NORET void err_limit(FuncState* fs, uint32_t limit, const char* what)
+[[noreturn]] static void err_limit(FuncState* fs, uint32_t limit, const char* what)
 {
    if (fs->ls->active_context) {
       fs->ls->active_context->report_limit_error(*fs, limit, what);

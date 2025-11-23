@@ -1,8 +1,9 @@
 // Copyright (C) 2025 Paul Manias
 
 // Add a number constant.
+// Exported for use by OperatorEmitter facade
 
-[[nodiscard]] static BCReg const_num(FuncState* fs, ExpDesc* e)
+[[nodiscard]] BCReg const_num(FuncState* fs, ExpDesc* e)
 {
    lua_State* L = fs->L;
    TValue* o;
@@ -28,8 +29,9 @@
 }
 
 // Add a string constant.
+// Exported for use by OperatorEmitter facade
 
-[[nodiscard]] static BCReg const_str(FuncState* fs, ExpDesc* e)
+[[nodiscard]] BCReg const_str(FuncState* fs, ExpDesc* e)
 {
    lj_assertFS(expr_isstrk(e) or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);

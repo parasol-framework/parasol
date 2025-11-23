@@ -1,4 +1,6 @@
 // Copyright (C) 2025 Paul Manias
+//
+// NOT TO BE INCLUDED OUTSIDE THE PARSER.
 
 #pragma once
 
@@ -10,13 +12,15 @@ enum class TokenKind : uint16_t;
 
 // Error handling (lj_parse_core.cpp)
 
-LJ_NORET void err_limit(FuncState *, uint32_t limit, const char* what);
+[[noreturn]] static void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
-static BCReg const_num(FuncState *, ExpDesc* e);
+// Exported for use by OperatorEmitter facade
+extern BCReg const_num(FuncState *, ExpDesc* e);
+extern BCReg const_str(FuncState *, ExpDesc* e);
+
 static BCReg const_gc(FuncState *, GCobj* gc, uint32_t itype);
-static BCReg const_str(FuncState *, ExpDesc* e);
 
 // Jump list handling (lj_parse_constants.cpp)
 
@@ -114,7 +118,8 @@ static void expr_free(FuncState *, ExpDesc* e);
 
 // Bytecode emission (lj_parse_regalloc.cpp)
 
-static BCPos bcemit_INS(FuncState *, BCIns ins);
+// Exported for use by OperatorEmitter facade
+extern BCPos bcemit_INS(FuncState *, BCIns ins);
 
 // Bytecode emission helper functions.
 
@@ -142,9 +147,12 @@ static BCReg expr_toanyreg(FuncState *, ExpDesc* e);
 static void expr_toval(FuncState *, ExpDesc* e);
 static void bcemit_store(FuncState *, ExpDesc* var, ExpDesc* e);
 static void bcemit_method(FuncState *, ExpDesc* e, ExpDesc* key);
-static BCPos bcemit_jmp(FuncState *);
-static void invertcond(FuncState *, ExpDesc* e);
-static BCPos bcemit_branch(FuncState *, ExpDesc* e, int cond);
+// These are now exported (non-static) for use by OperatorEmitter facade
+extern BCPos bcemit_jmp(FuncState *);
+extern void invertcond(FuncState *, ExpDesc* e);
+extern BCPos bcemit_branch(FuncState *, ExpDesc* e, int cond);
+
+// These remain static (legacy parser only)
 static void bcemit_branch_t(FuncState *, ExpDesc* e);
 static void bcemit_branch_f(FuncState *, ExpDesc* e);
 
@@ -160,7 +168,7 @@ extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
 static void bcemit_binop_left(FuncState *, BinOpr op, ExpDesc* e);
 static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
-static void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
+extern void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
 static void bcemit_presence_check(FuncState *, ExpDesc* e);
 static void bcemit_binop(FuncState *, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 
@@ -181,7 +189,6 @@ static void fscope_uvmark(FuncState *, BCReg level);
 
 #include "parse_raii.h"
 #include "parse_regalloc.h"
-
 #include "parse_concepts.h"
 
 // Function state (lj_parse_scope.cpp)

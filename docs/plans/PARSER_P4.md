@@ -70,41 +70,46 @@
 
 ---
 
-### 🟡 Step 3: Rework binary/unary emission to use OperatorEmitter (IN PROGRESS)
-**Status:** OperatorEmitter integrated into expression emitters, update/compound operators migrated
+### ✅ Step 3: Rework binary/unary emission to use OperatorEmitter (COMPLETE)
+**Status:** All operators migrated to OperatorEmitter facade, no operators use legacy helpers directly
 
 **Achievements:**
 * Added `OperatorEmitter` and `RegisterAllocator` members to `IrEmitter` class
-* Adapted `emit_unary_expr()` to route through `OperatorEmitter::emit_unary()`
-  - Negate, Not, Length operators now use facade
-  - BitNot still uses legacy helper (to be migrated later)
-* Adapted `emit_binary_expr()` to route through `OperatorEmitter` facade
-  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW, CONCAT) → `emit_binary_arith()`
+* Adapted `emit_unary_expr()` to route through OperatorEmitter
+  - Negate, Not, Length operators → `emit_unary()`
+  - BitNot operator → `emit_bitnot()` (calls bit.bnot library)
+* Adapted `emit_binary_expr()` to route through OperatorEmitter facade
+  - Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW) → `emit_binary_arith()`
   - Comparison operators (EQ, NE, LT, LE, GT, GE) → `emit_comparison()`
   - Bitwise operators (BAND, BOR, BXOR, SHL, SHR) → `emit_binary_arith()`
-  - Logical operators (AND, OR, IF_EMPTY) still use legacy helpers (require CFG integration)
+  - Logical operators (AND, OR, IF_EMPTY) → `prepare_logical_*/complete_logical_*()` (CFG-based)
+  - CONCAT operator → `prepare_concat()/complete_concat()` (BC_CAT chaining)
 * Adapted `emit_update_expr()` to use `OperatorEmitter::emit_binary_arith()`
   - Postfix/prefix increment (++x, x++) and decrement (--x, x--) now route through facade
   - Eliminated direct calls to `bcemit_binop_left`/`bcemit_binop` for update operators
-* Adapted `emit_compound_assignment()` to use `OperatorEmitter::emit_binary_arith()`
-  - Arithmetic compound assignments (+=, -=, *=, /=, %=) now route through facade
-  - Concat compound assignment (..=) still uses legacy helpers due to special left-to-right evaluation
+* Adapted `emit_compound_assignment()` to use OperatorEmitter methods
+  - Arithmetic compound assignments (+=, -=, *=, /=, %=) → `emit_binary_arith()`
+  - CONCAT compound assignment (..=) → `prepare_concat()/complete_concat()`
 * Verified functionality with comprehensive test scripts covering:
-  - All unary operators
+  - All unary operators (including BitNot)
   - All arithmetic operators
   - All comparison operators
   - All bitwise operators
+  - All logical operators (AND, OR, IF_EMPTY)
   - All update operators (++/--, postfix/prefix)
-  - All compound assignments (including table member assignments)
+  - All compound assignments (including ..=)
+  - CONCAT operator with BC_CAT chaining
 
 **Summary of OperatorEmitter Coverage:**
 * ✅ Arithmetic operators: ADD, SUB, MUL, DIV, MOD, POW fully migrated
 * ✅ Comparison operators: EQ, NE, LT, LE, GT, GE fully migrated
 * ✅ Bitwise operators: BAND, BOR, BXOR, SHL, SHR fully migrated
-* ✅ Unary operators: Negate, Not, Length fully migrated
+* ✅ Unary operators: Negate, Not, Length, BitNot fully migrated
 * ✅ Update operators: Increment, Decrement (prefix/postfix) fully migrated
-* ✅ Compound assignments: +=, -=, *=, /=, %= fully migrated
-* ⏳ Still using legacy: AND, OR, IF_EMPTY (logical short-circuit), CONCAT in compound assignments, BitNot
+* ✅ Compound assignments: +=, -=, *=, /=, %=, ..= fully migrated
+* ✅ Logical operators: AND, OR, IF_EMPTY (CFG-based short-circuit implementation) fully migrated
+* ✅ CONCAT operator: BC_CAT chaining implementation fully migrated
+* ✅ ALL OPERATORS MIGRATED - No operators use legacy helpers directly from AST pipeline
 
 * Defined value category abstractions (ValueUse, ValueSlot, LValue):
   - Created `value_categories.h` - Defines three value category classes
@@ -118,27 +123,48 @@
 
 **Remaining Work:**
 * **Integrate value categories into OperatorEmitter API** - Update method signatures to accept/return ValueUse/ValueSlot (currently thin wrappers, integration can happen incrementally)
-* **Migrate logical short-circuit operators (AND, OR, IF_EMPTY)** - Complex work requiring full CFG integration:
-  - AND uses `bcemit_branch_t` to skip RHS if left is false
-  - OR uses `bcemit_branch_f` to skip RHS if left is true
-  - IF_EMPTY (??) has extended falsey semantics (nil, false, 0, "") with complex constant optimization
-  - IF_EMPTY already partially uses ControlFlowGraph but needs full modernization
-  - Requires structured true/false edge handling instead of manual jump patching
-* **Migrate concat compound assignment (..=)** - Special left-to-right evaluation handling
-* **Migrate BitNot unary operator** - Calls bit library (bit.bnot), complex function call emission
-* **Remove remaining legacy helper calls** from operator emission once all operators migrated
 
-**Analysis of Remaining Items:**
-1. **ControlFlowGraph Infrastructure**: Available and working (`parse_control_flow.h`/`.cpp`), provides:
-   - Edge types: Unconditional, True, False, Break, Continue
-   - Edge operations: append, patch_here, patch_to, patch_with_value
-   - Already used in some places (IF_EMPTY partially)
+**Completed:**
+* ✅ **BitNot operator (~)** - Function call generation to bit.bnot library:
+  - Added emit_bitnot() method to OperatorEmitter
+  - Exported bcemit_unary_bit_call for facade use
+  - Generates function call to bit.bnot with proper register management
+  - All unary operators now route through OperatorEmitter
 
-2. **Complexity Assessment**:
-   - Logical operators (AND/OR/??) = High complexity (control flow, short-circuit, constant optimization)
-   - BitNot = High complexity (function call generation to bit library)
-   - Concat compound (..=) = Medium complexity (special evaluation order)
-   - Value category API integration = Low complexity (wrapper updates, can be gradual)
+
+* ✅ **Logical short-circuit operators (AND, OR, IF_EMPTY)** - Full CFG-based implementation completed:
+  - AND implemented with CFG-based short-circuit (skip RHS if left is false)
+  - OR implemented with CFG-based short-circuit (skip RHS if left is true)
+  - IF_EMPTY (??) implemented with extended falsey semantics (nil, false, 0, "")
+  - All operators use ControlFlowGraph edges for structured control flow
+  - Constant folding optimization integrated
+  - Comprehensive test coverage for all operators
+  - Migration plan documented in `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
+
+* ✅ **CONCAT operator (..) and compound assignment (..=)** - Full BC_CAT implementation completed:
+  - prepare_concat() discharges left operand to consecutive register
+  - complete_concat() emits BC_CAT instruction with chaining optimization
+  - BC_CAT chaining: "a".."b".."c" extends existing CAT instruction instead of creating new ones
+  - Compound assignment (..=) uses OperatorEmitter for consistency
+  - Eliminated legacy bcemit_binop calls for CONCAT
+  - Comprehensive test coverage for concatenation and chaining
+
+**Step 3 Completion Summary:**
+All operators have been successfully migrated to the OperatorEmitter facade. The AST pipeline no longer calls legacy operator helpers (bcemit_binop, bcemit_unop, etc.) directly. All operator emission now routes through OperatorEmitter methods, which provide:
+- Modern register management via RegisterAllocator
+- Structured control flow via ControlFlowGraph
+- Consistent API for all operator types
+- Elimination of direct freereg manipulation
+
+**ControlFlowGraph Infrastructure:**
+Successfully used for logical operators (AND, OR, IF_EMPTY) and provides:
+- Edge types: Unconditional, True, False, Break, Continue
+- Edge operations: append, patch_here, patch_to, patch_with_value
+- Structured control flow instead of manual jump patching
+
+**Next Step Options:**
+1. **Value category API integration** - Low complexity, can be done incrementally
+2. **Step 4: Statement emission modernization** - Assignments with LValue descriptors
 
 **Files Created:**
 * `src/fluid/luajit-2.1/src/parser/value_categories.h` - Value category abstractions header
@@ -149,13 +175,9 @@
 * `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp` - Initialize members, adapt emit_unary_expr, emit_binary_expr, emit_update_expr, emit_compound_assignment
 * `src/fluid/CMakeLists.txt` - Added value_categories.cpp to build
 
-**Next Steps (Options):**
-* **Option A**: Migrate logical short-circuit operators (AND, OR, IF_EMPTY) to full CFG-based implementation (substantial work, completes major Step 3 goal)
-  - **Detailed plan available:** `docs/plans/LOGICAL_OPERATORS_MIGRATION.md`
-  - 5 stages with clear testing milestones
-  - Estimated 9-12 hours of development
-* **Option B**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
-* **Option C**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
+**Next Steps:**
+* **Option A**: Begin Step 4 work on statement emission modernization (assignments with LValue descriptors)
+* **Option B**: Incrementally update OperatorEmitter API to use value categories (lower complexity, gradual improvement)
 
 ---
 

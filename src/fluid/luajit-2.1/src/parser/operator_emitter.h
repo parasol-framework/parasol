@@ -1,12 +1,9 @@
 // Copyright (C) 2025 Paul Manias
 //
-// Operator emission facade that translates AST operator payloads into
-// allocator/CFG-aware bytecode emission.
+// Operator emission facade that translates AST operator payloads into allocator/CFG-aware bytecode emission.
 //
-// This class is part of Phase 4 parser modernisation, providing a higher-level
-// abstraction over legacy operator helpers (bcemit_arith, bcemit_comp, bcemit_unop).
-// It manages register allocation via RegisterAllocator and control flow via
-// ControlFlowGraph, eliminating direct freereg manipulation.
+// This class manages register allocation via RegisterAllocator and control flow via ControlFlowGraph, eliminating
+// direct freereg manipulation.
 
 #pragma once
 
@@ -14,7 +11,6 @@
 
 #include "parser/parse_types.h"
 
-// Forward declarations for modern abstractions
 class RegisterAllocator;
 class ControlFlowGraph;
 
@@ -26,10 +22,14 @@ public:
    // Returns true if folding succeeded and result is in e1
    [[nodiscard]] bool fold_constant_arith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 
-   // Emit unary operator (negate, not, length, bitnot)
+   // Emit unary operator (negate, not, length)
    // Accepts operand as ExpDesc, emits bytecode, modifies operand in-place
    void emit_unary(int op, ExpDesc* operand);
-   
+
+   // Emit bitwise NOT operator (~)
+   // Calls bit.bnot library function, modifies operand in-place
+   void emit_bitnot(ExpDesc* operand);
+
    // Prepare left operand for binary operation
    // Must be called BEFORE evaluating right operand
    // Discharges LHS to appropriate form (register for comparisons, numeric constant or register for arithmetic)
@@ -47,6 +47,28 @@ public:
    // Emit bitwise binary operator (band, bor, bxor, shl, shr)
    // Treated as arithmetic operators with integer coercion
    void emit_binary_bitwise(BinOpr opr, ExpDesc* left, ExpDesc* right);
+
+   // Logical short-circuit operators - preparation phase
+   // These are called BEFORE evaluating RHS to set up short-circuit jumps
+   // CFG-based implementation with structured control flow edges
+   void prepare_logical_and(ExpDesc* left);
+   void prepare_logical_or(ExpDesc* left);
+   void prepare_if_empty(ExpDesc* left);
+
+   // Logical short-circuit operators - completion phase
+   // These are called AFTER evaluating RHS to complete the operation
+   // CFG-based implementation with edge merging and result handling
+   void complete_logical_and(ExpDesc* left, ExpDesc* right);
+   void complete_logical_or(ExpDesc* left, ExpDesc* right);
+   void complete_if_empty(ExpDesc* left, ExpDesc* right);
+
+   // CONCAT operator - preparation phase
+   // Called BEFORE evaluating RHS to discharge left to consecutive register
+   void prepare_concat(ExpDesc* left);
+
+   // CONCAT operator - completion phase
+   // Called AFTER evaluating RHS to emit BC_CAT instruction with chaining support
+   void complete_concat(ExpDesc* left, ExpDesc* right);
 
 private:
    FuncState* func_state;

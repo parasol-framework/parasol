@@ -1162,10 +1162,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    ExpDesc rhs;
    if (mapped.value() IS BinOpr::OPR_CONCAT) {
       ExpDesc infix = working;
-      // Concat uses special left-to-right evaluation via bcemit_binop_left
-      // Keep using legacy for now as it has special handling
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_compound_assignment/concat");
-      bcemit_binop_left(&this->func_state, mapped.value(), &infix);
+      // CONCAT compound assignment: use OperatorEmitter for BC_CAT chaining
+      this->operator_emitter.prepare_concat(&infix);
       auto list = this->emit_expression_list(values, count);
       if (not list.ok()) {
          return ParserResult<IrEmitUnit>::failure(list.error_ref());
@@ -1176,8 +1174,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
          return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
       }
       rhs = list.value_ref();
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_compound_assignment/concat");
-      bcemit_binop(&this->func_state, mapped.value(), &infix, &rhs);
+      this->operator_emitter.complete_concat(&infix, &rhs);
       glLegacyHelperCalls.record(LegacyHelperKind::Store, "emit_compound_assignment/concat");
       bcemit_store(&this->func_state, &target, &infix);
    }
@@ -1401,9 +1398,8 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
          this->operator_emitter.emit_unary(BC_LEN, &operand);
          break;
       case AstUnaryOperator::BitNot:
-         // BitNot still uses legacy helper as it's not in OperatorEmitter yet
-         glLegacyHelperCalls.record(LegacyHelperKind::Unop, "emit_unary_expr/bitnot");
-         bcemit_unary_bit_call(&this->func_state, "bnot", &operand);
+         // BitNot calls bit.bnot library function
+         this->operator_emitter.emit_bitnot(&operand);
          break;
    }
    return ParserResult<ExpDesc>::success(operand);
@@ -1477,10 +1473,21 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
    // CRITICAL: ALL binary operators need binop_left preparation before RHS evaluation
    // This discharges LHS to appropriate form to prevent register clobbering
-   if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
-      // Logical operators use legacy helpers (require CFG integration for modernization)
-      glLegacyHelperCalls.record(LegacyHelperKind::BinopLeft, "emit_binary_expr/logical");
-      bcemit_binop_left(&this->func_state, opr, &lhs);
+   if (opr IS OPR_AND) {
+      // Logical AND: CFG-based short-circuit implementation
+      this->operator_emitter.prepare_logical_and(&lhs);
+   }
+   else if (opr IS OPR_OR) {
+      // Logical OR: CFG-based short-circuit implementation
+      this->operator_emitter.prepare_logical_or(&lhs);
+   }
+   else if (opr IS OPR_IF_EMPTY) {
+      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
+      this->operator_emitter.prepare_if_empty(&lhs);
+   }
+   else if (opr IS OPR_CONCAT) {
+      // CONCAT operator: discharge to consecutive register for BC_CAT chaining
+      this->operator_emitter.prepare_concat(&lhs);
    }
    else {
       // All other operators use OperatorEmitter facade
@@ -1493,20 +1500,30 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    ExpDesc rhs = rhs_result.value_ref();
 
    // Emit the actual operation based on operator type
-   if (opr IS OPR_AND or opr IS OPR_OR or opr IS OPR_IF_EMPTY) {
-      // Logical operators: binop_left already set up short-circuit jumps
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/logical");
-      bcemit_binop(&this->func_state, opr, &lhs, &rhs);
+   if (opr IS OPR_AND) {
+      // Logical AND: CFG-based short-circuit implementation
+      this->operator_emitter.complete_logical_and(&lhs, &rhs);
+   }
+   else if (opr IS OPR_OR) {
+      // Logical OR: CFG-based short-circuit implementation
+      this->operator_emitter.complete_logical_or(&lhs, &rhs);
+   }
+   else if (opr IS OPR_IF_EMPTY) {
+      // IF_EMPTY (??): CFG-based implementation with extended falsey semantics
+      this->operator_emitter.complete_if_empty(&lhs, &rhs);
    }
    else if (opr >= OPR_NE and opr <= OPR_GT) {
       // Comparison operators (NE, EQ, LT, GE, LE, GT)
       this->operator_emitter.emit_comparison(opr, &lhs, &rhs);
    }
-   else if (opr IS OPR_CONCAT or opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
-      // CONCAT and bitwise operators need special legacy handling
-      // CONCAT uses special CAT bytecode chaining, bitwise ops emit bit.* library calls
+   else if (opr IS OPR_CONCAT) {
+      // CONCAT operator: CFG-based implementation with BC_CAT chaining
+      this->operator_emitter.complete_concat(&lhs, &rhs);
+   }
+   else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
+      // Bitwise operators need special legacy handling (emit bit.* library calls)
       // Keep using bcemit_binop until these are migrated to OperatorEmitter
-      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/concat_or_bitwise");
+      glLegacyHelperCalls.record(LegacyHelperKind::Binop, "emit_binary_expr/bitwise");
       bcemit_binop(&this->func_state, opr, &lhs, &rhs);
    }
    else {
