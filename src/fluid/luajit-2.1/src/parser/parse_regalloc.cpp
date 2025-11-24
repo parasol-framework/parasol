@@ -133,6 +133,19 @@ void RegisterAllocator::release_expression(ExpDesc *Expression)
    }
 }
 
+void RegisterAllocator::collapse_freereg(BCReg ResultReg)
+{
+   BCReg target = ResultReg + 1;
+   if (target < this->func_state->nactvar) target = BCReg(this->func_state->nactvar);
+
+   while (this->func_state->freereg > target) {
+      BCReg previous = this->func_state->freereg;
+      BCReg top = previous - 1;
+      this->release_register(top);
+      if (this->func_state->freereg IS previous) break;
+   }
+}
+
 TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Expression)
 {
    TableOperandCopies copies{};

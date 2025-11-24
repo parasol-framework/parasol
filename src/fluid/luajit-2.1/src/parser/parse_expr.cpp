@@ -100,11 +100,10 @@ void LexState::expr_bracket(ExpDesc* Expression)
 
 //********************************************************************************************************************
 
-static void expr_collapse_freereg(FuncState *State, BCReg result_reg)
+static void expr_collapse_freereg(FuncState *State, BCReg ResultReg)
 {
-   BCReg target = result_reg + 1;
-   if (target < State->nactvar) target = BCReg(State->nactvar);
-   if (State->freereg > target) State->freereg = target;
+   RegisterAllocator allocator(State);
+   allocator.collapse_freereg(ResultReg);
 }
 
 //********************************************************************************************************************

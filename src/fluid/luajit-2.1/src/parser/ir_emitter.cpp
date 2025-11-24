@@ -19,15 +19,6 @@
 #include "parser/token_types.h"
 
 //********************************************************************************************************************
-// TODO: Move small LocalBindingTable functions to the header for inlining.
-
-LocalBindingTable::LocalBindingTable() = default;
-
-void LocalBindingTable::push_scope()
-{
-   this->scope_marks.push_back(this->bindings.size());
-   this->depth++;
-}
 
 void LocalBindingTable::pop_scope()
 {
@@ -52,60 +43,12 @@ void LocalBindingTable::add(GCstr* symbol, BCReg slot)
    this->bindings.push_back(entry);
 }
 
-std::optional<BCReg> LocalBindingTable::resolve(GCstr* symbol) const
-{
-   if (not symbol) return std::nullopt;
-   for (auto it = this->bindings.rbegin(); it != this->bindings.rend(); ++it) {
-      if (it->symbol IS symbol) return it->slot;
-   }
-   return std::nullopt;
-}
-
-LocalBindingScope::LocalBindingScope(LocalBindingTable& table) : table(table)
-{
-   this->table.push_scope();
-}
-
-LocalBindingScope::~LocalBindingScope()
-{
-   this->table.pop_scope();
-}
-
+//********************************************************************************************************************
 // IR emission context implementation
-
-IrEmissionContext::IrEmissionContext(FuncState* State)
-   : func_state(State),
-     register_allocator(State),
-     control_flow_graph(State),
-     operator_emitter(State, &this->register_allocator, &this->control_flow_graph)
-{
-}
-
-RegisterAllocator& IrEmissionContext::allocator()
-{
-   return this->register_allocator;
-}
-
-ControlFlowGraph& IrEmissionContext::cfg()
-{
-   return this->control_flow_graph;
-}
-
-OperatorEmitter& IrEmissionContext::operators()
-{
-   return this->operator_emitter;
-}
-
-FuncState* IrEmissionContext::state() const
-{
-   return this->func_state;
-}
 
 namespace {
 
 constexpr size_t kAstNodeKindCount = size_t(AstNodeKind::ExpressionStmt) + 1;
-constexpr int kJumpBreak = 0;
-constexpr int kJumpContinue = 1;
 
 class UnsupportedNodeRecorder {
 public:
@@ -115,7 +58,7 @@ public:
       uint32_t total = ++this->counts[index];
       if ((total <= 8) or (total % 32 IS 0)) {
          pf::Log log("Parser");
-         log.msg("ast-pipeline unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
+         log.msg("Unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
             stage, unsigned(kind), unsigned(total), int(span.line), int(span.column),
             static_cast<long long>(span.offset));
       }
@@ -139,27 +82,27 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
    switch (op) {
-      case AstBinaryOperator::Add: return BinOpr::OPR_ADD;
+      case AstBinaryOperator::Add:      return BinOpr::OPR_ADD;
       case AstBinaryOperator::Subtract: return BinOpr::OPR_SUB;
       case AstBinaryOperator::Multiply: return BinOpr::OPR_MUL;
-      case AstBinaryOperator::Divide: return BinOpr::OPR_DIV;
-      case AstBinaryOperator::Modulo: return BinOpr::OPR_MOD;
-      case AstBinaryOperator::Power: return BinOpr::OPR_POW;
-      case AstBinaryOperator::Concat: return BinOpr::OPR_CONCAT;
+      case AstBinaryOperator::Divide:   return BinOpr::OPR_DIV;
+      case AstBinaryOperator::Modulo:   return BinOpr::OPR_MOD;
+      case AstBinaryOperator::Power:    return BinOpr::OPR_POW;
+      case AstBinaryOperator::Concat:   return BinOpr::OPR_CONCAT;
       case AstBinaryOperator::NotEqual: return BinOpr::OPR_NE;
-      case AstBinaryOperator::Equal: return BinOpr::OPR_EQ;
+      case AstBinaryOperator::Equal:    return BinOpr::OPR_EQ;
       case AstBinaryOperator::LessThan: return BinOpr::OPR_LT;
       case AstBinaryOperator::GreaterEqual: return BinOpr::OPR_GE;
-      case AstBinaryOperator::LessEqual: return BinOpr::OPR_LE;
-      case AstBinaryOperator::GreaterThan: return BinOpr::OPR_GT;
-      case AstBinaryOperator::BitAnd: return BinOpr::OPR_BAND;
-      case AstBinaryOperator::BitOr: return BinOpr::OPR_BOR;
-      case AstBinaryOperator::BitXor: return BinOpr::OPR_BXOR;
-      case AstBinaryOperator::ShiftLeft: return BinOpr::OPR_SHL;
+      case AstBinaryOperator::LessEqual:    return BinOpr::OPR_LE;
+      case AstBinaryOperator::GreaterThan:  return BinOpr::OPR_GT;
+      case AstBinaryOperator::BitAnd:     return BinOpr::OPR_BAND;
+      case AstBinaryOperator::BitOr:      return BinOpr::OPR_BOR;
+      case AstBinaryOperator::BitXor:     return BinOpr::OPR_BXOR;
+      case AstBinaryOperator::ShiftLeft:  return BinOpr::OPR_SHL;
       case AstBinaryOperator::ShiftRight: return BinOpr::OPR_SHR;
       case AstBinaryOperator::LogicalAnd: return BinOpr::OPR_AND;
-      case AstBinaryOperator::LogicalOr: return BinOpr::OPR_OR;
-      case AstBinaryOperator::IfEmpty: return BinOpr::OPR_IF_EMPTY;
+      case AstBinaryOperator::LogicalOr:  return BinOpr::OPR_OR;
+      case AstBinaryOperator::IfEmpty:    return BinOpr::OPR_IF_EMPTY;
       default: return std::nullopt;
    }
 }
@@ -169,12 +112,12 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
 {
    switch (op) {
-      case AssignmentOperator::Add: return BinOpr::OPR_ADD;
+      case AssignmentOperator::Add:      return BinOpr::OPR_ADD;
       case AssignmentOperator::Subtract: return BinOpr::OPR_SUB;
       case AssignmentOperator::Multiply: return BinOpr::OPR_MUL;
-      case AssignmentOperator::Divide: return BinOpr::OPR_DIV;
-      case AssignmentOperator::Modulo: return BinOpr::OPR_MOD;
-      case AssignmentOperator::Concat: return BinOpr::OPR_CONCAT;
+      case AssignmentOperator::Divide:   return BinOpr::OPR_DIV;
+      case AssignmentOperator::Modulo:   return BinOpr::OPR_MOD;
+      case AssignmentOperator::Concat:   return BinOpr::OPR_CONCAT;
       default: return std::nullopt;
    }
 }
@@ -191,34 +134,34 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
 {
    switch (kind) {
-      case AstNodeKind::LiteralExpr: return "LiteralExpr";
+      case AstNodeKind::LiteralExpr:    return "LiteralExpr";
       case AstNodeKind::IdentifierExpr: return "IdentifierExpr";
-      case AstNodeKind::VarArgExpr: return "VarArgExpr";
-      case AstNodeKind::UnaryExpr: return "UnaryExpr";
-      case AstNodeKind::BinaryExpr: return "BinaryExpr";
-      case AstNodeKind::UpdateExpr: return "UpdateExpr";
-      case AstNodeKind::TernaryExpr: return "TernaryExpr";
-      case AstNodeKind::PresenceExpr: return "PresenceExpr";
-      case AstNodeKind::CallExpr: return "CallExpr";
-      case AstNodeKind::MemberExpr: return "MemberExpr";
-      case AstNodeKind::IndexExpr: return "IndexExpr";
-      case AstNodeKind::TableExpr: return "TableExpr";
-      case AstNodeKind::FunctionExpr: return "FunctionExpr";
-      case AstNodeKind::BlockStmt: return "BlockStmt";
+      case AstNodeKind::VarArgExpr:     return "VarArgExpr";
+      case AstNodeKind::UnaryExpr:      return "UnaryExpr";
+      case AstNodeKind::BinaryExpr:     return "BinaryExpr";
+      case AstNodeKind::UpdateExpr:     return "UpdateExpr";
+      case AstNodeKind::TernaryExpr:    return "TernaryExpr";
+      case AstNodeKind::PresenceExpr:   return "PresenceExpr";
+      case AstNodeKind::CallExpr:       return "CallExpr";
+      case AstNodeKind::MemberExpr:     return "MemberExpr";
+      case AstNodeKind::IndexExpr:      return "IndexExpr";
+      case AstNodeKind::TableExpr:      return "TableExpr";
+      case AstNodeKind::FunctionExpr:   return "FunctionExpr";
+      case AstNodeKind::BlockStmt:      return "BlockStmt";
       case AstNodeKind::AssignmentStmt: return "AssignmentStmt";
-      case AstNodeKind::LocalDeclStmt: return "LocalDeclStmt";
+      case AstNodeKind::LocalDeclStmt:  return "LocalDeclStmt";
       case AstNodeKind::LocalFunctionStmt: return "LocalFunctionStmt";
-      case AstNodeKind::FunctionStmt: return "FunctionStmt";
-      case AstNodeKind::IfStmt: return "IfStmt";
-      case AstNodeKind::WhileStmt: return "WhileStmt";
-      case AstNodeKind::RepeatStmt: return "RepeatStmt";
+      case AstNodeKind::FunctionStmt:   return "FunctionStmt";
+      case AstNodeKind::IfStmt:         return "IfStmt";
+      case AstNodeKind::WhileStmt:      return "WhileStmt";
+      case AstNodeKind::RepeatStmt:     return "RepeatStmt";
       case AstNodeKind::NumericForStmt: return "NumericForStmt";
       case AstNodeKind::GenericForStmt: return "GenericForStmt";
-      case AstNodeKind::BreakStmt: return "BreakStmt";
-      case AstNodeKind::ContinueStmt: return "ContinueStmt";
-      case AstNodeKind::ReturnStmt: return "ReturnStmt";
-      case AstNodeKind::DeferStmt: return "DeferStmt";
-      case AstNodeKind::DoStmt: return "DoStmt";
+      case AstNodeKind::BreakStmt:      return "BreakStmt";
+      case AstNodeKind::ContinueStmt:   return "ContinueStmt";
+      case AstNodeKind::ReturnStmt:     return "ReturnStmt";
+      case AstNodeKind::DeferStmt:      return "DeferStmt";
+      case AstNodeKind::DoStmt:         return "DoStmt";
       case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
       default: return "Unknown";
    }
@@ -247,9 +190,11 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       case BC_MOV:
          name = gco2str(gcref(var_get(&lex_state, &func_state, bc_d(ins)).name));
          break;
+
       case BC_UGET:
          name = gco2str(gcref(lex_state.vstack[func_state.uvmap[bc_d(ins)]].name));
          break;
+
       case BC_GGET:
          table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "pairs"));
          if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
@@ -260,6 +205,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
             return 1;
          }
          return 0;
+
       default:
          return 0;
    }
@@ -271,17 +217,6 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
-// TODO: This function is now deprecated - use the allocator method instead
-
-static void ir_collapse_freereg(FuncState* func_state, BCReg result_reg)
-{
-   BCReg target = result_reg + 1;
-   if (target < func_state->nactvar) target = BCReg(func_state->nactvar);
-   if (func_state->freereg > target) func_state->freereg = target;
-}
-
-//********************************************************************************************************************
-
 static void release_indexed_original(FuncState& func_state, const ExpDesc& original)
 {
    if (original.k IS ExpKind::Indexed) {
@@ -1355,7 +1290,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    release_indexed_original(this->func_state, target);
 
    if (payload.is_postfix) {
-      ir_collapse_freereg(&this->func_state, saved_reg);
+      allocator.collapse_freereg(saved_reg);
       ExpDesc result;
       expr_init(&result, ExpKind::NonReloc, saved_reg);
       return ParserResult<ExpDesc>::success(result);
@@ -1481,7 +1416,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    // Clean up any RHS temporaries, but preserve the result register
 
-   ir_collapse_freereg(&this->func_state, lhs_reg);
+   allocator.collapse_freereg(lhs_reg);
 
    // Patch skip jump to here (after RHS)
 
@@ -1538,7 +1473,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpressionValue true_value(&this->func_state, true_result.value_ref());
    true_value.discharge();
    this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
-   ir_collapse_freereg(&this->func_state, cond_reg);
+   allocator.collapse_freereg(cond_reg);
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
@@ -1553,7 +1488,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpressionValue false_value(&this->func_state, false_result.value_ref());
    false_value.discharge();
    this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
-   ir_collapse_freereg(&this->func_state, cond_reg);
+   allocator.collapse_freereg(cond_reg);
 
    skip_false.patch_to(this->func_state.pc);
 

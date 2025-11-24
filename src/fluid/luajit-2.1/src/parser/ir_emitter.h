@@ -17,25 +17,42 @@
 #include "parser/parse_regalloc.h"
 #include "parser/parse_types.h"
 
+//********************************************************************************************************************
+
 struct LocalBindingEntry {
    GCstr *symbol = nullptr;
    BCReg slot = 0;
    uint32_t depth = 0;
 };
 
+//********************************************************************************************************************
+
 struct BlockBinding {
    GCstr *symbol = nullptr;
    BCReg slot = 0;
 };
 
+//********************************************************************************************************************
+
 class LocalBindingTable {
 public:
-   LocalBindingTable();
+   inline LocalBindingTable() = default;
 
-   void push_scope();
+   inline void push_scope() {
+      this->scope_marks.push_back(this->bindings.size());
+      this->depth++;
+   }
+
    void pop_scope();
-   void add(GCstr* symbol, BCReg slot);
-   [[nodiscard]] std::optional<BCReg> resolve(GCstr *) const;
+   void add(GCstr *, BCReg);
+
+   [[nodiscard]] inline std::optional<BCReg> resolve(GCstr *symbol) const {
+      if (not symbol) return std::nullopt;
+      for (auto it = this->bindings.rbegin(); it != this->bindings.rend(); ++it) {
+         if (it->symbol IS symbol) return it->slot;
+      }
+      return std::nullopt;
+   }
 
 private:
    std::vector<LocalBindingEntry> bindings;
@@ -43,34 +60,45 @@ private:
    uint32_t depth = 0;
 };
 
+//********************************************************************************************************************
+
 class LocalBindingScope {
 public:
-   explicit LocalBindingScope(LocalBindingTable &table);
-   ~LocalBindingScope();
-
    LocalBindingScope(const LocalBindingScope &) = delete;
    LocalBindingScope& operator=(const LocalBindingScope &) = delete;
 
+   explicit inline LocalBindingScope(LocalBindingTable &table) : table(table) {
+      this->table.push_scope();
+   }
+
+   inline ~LocalBindingScope() { this->table.pop_scope(); }
+
 private:
-   LocalBindingTable& table;
+   LocalBindingTable &table;
 };
+
+//********************************************************************************************************************
 
 struct IrEmitUnit {
 };
 
+//********************************************************************************************************************
 // IR emission context that bundles allocator, CFG, operator emitter, and FuncState
 
 class IrEmissionContext {
 public:
-   explicit IrEmissionContext(FuncState* State);
+   explicit IrEmissionContext(FuncState* State)
+      : func_state(State), register_allocator(State), control_flow_graph(State),
+        operator_emitter(State, &this->register_allocator, &this->control_flow_graph)
+   { }
 
-   [[nodiscard]] RegisterAllocator & allocator();
-   [[nodiscard]] ControlFlowGraph & cfg();
-   [[nodiscard]] OperatorEmitter & operators();
-   [[nodiscard]] FuncState * state() const;
+   inline RegisterAllocator & allocator() { return this->register_allocator; }
+   inline ControlFlowGraph & cfg() { return this->control_flow_graph; }
+   inline OperatorEmitter & operators() { return this->operator_emitter; }
+   inline FuncState * state() const { return this->func_state; }
 
 private:
-   FuncState* func_state;
+   FuncState *func_state;
    RegisterAllocator register_allocator;
    ControlFlowGraph control_flow_graph;
    OperatorEmitter operator_emitter;
@@ -88,6 +116,8 @@ struct PreparedAssignment {
    RegisterSpan reserved;
 };
 
+//********************************************************************************************************************
+
 class IrEmitter {
 public:
    explicit IrEmitter(ParserContext& context);
@@ -97,12 +127,12 @@ public:
 private:
    friend struct LoopStackGuard;
 
-   ParserContext& ctx;
-   FuncState& func_state;
-   LexState& lex_state;
+   ParserContext &ctx;
+   FuncState &func_state;
+   LexState &lex_state;
    RegisterAllocator register_allocator;
-   ControlFlowGraph control_flow;
-   OperatorEmitter operator_emitter;
+   ControlFlowGraph  control_flow;
+   OperatorEmitter   operator_emitter;
    LocalBindingTable binding_table;
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
@@ -178,4 +208,3 @@ private:
 
    std::vector<LoopContext> loop_stack;
 };
-
