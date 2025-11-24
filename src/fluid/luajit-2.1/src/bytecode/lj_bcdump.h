@@ -7,7 +7,7 @@
 #define _LJ_BCDUMP_H
 
 #include "lj_obj.h"
-#include "../parser/lj_lex.h"
+#include "../parser/lexer.h"
 
 // -- Bytecode dump format ------------------------------------------------
 

@@ -30,26 +30,10 @@
 #include "parser/parse_types.h"
 #include "parser/token_stream.h"
 #include "parser/token_types.h"
-#include "lj_parse.h"
+#include "parser.h"
 #include "../../../defs.h"
 
 static objScript *glTestScript = nullptr;
-
-ParserResult<ExprNodePtr> parse_expression_entry(uint8_t precedence)
-{
-   auto expression = AstBuilder->parse_expression(precedence);
-   if (not expression.ok()) return ParserResult<ExprNodePtr>::failure(expression.error_ref());
-   ExprNodePtr node = std::move(expression.value_ref());
-   return ParserResult<ExprNodePtr>::success(std::move(node));
-}
-
-ParserResult<ExprNodeList> parse_expression_list_entry()
-{
-   auto list = AstBuilder->parse_expression_list();
-   if (not list.ok()) return ParserResult<ExprNodeList>::failure(list.error_ref());
-   ExprNodeList nodes = std::move(list.value_ref());
-   return ParserResult<ExprNodeList>::success(std::move(nodes));
-}
 
 namespace {
 
@@ -83,6 +67,8 @@ static std::string describe_instruction(BCIns instruction)
       (int)bc_a(instruction), (int)bc_b(instruction), (int)bc_c(instruction), (int)bc_d(instruction));
    return std::string(buffer);
 }
+
+//********************************************************************************************************************
 
 struct LuaStateHolder {
    LuaStateHolder() {
@@ -124,6 +110,8 @@ struct AstHarnessResult {
    std::unique_ptr<LuaStateHolder> state;
 };
 
+//********************************************************************************************************************
+
 static AstHarnessResult build_ast_from_source(std::string_view source)
 {
    AstHarnessResult result;
@@ -163,6 +151,8 @@ struct ExpressionParseHarness {
    std::unique_ptr<ParserSession> session;
 };
 
+//********************************************************************************************************************
+
 static std::optional<ExpressionParseHarness> make_expression_harness(std::string_view source)
 {
    ExpressionParseHarness harness;
@@ -193,6 +183,8 @@ static std::optional<ExpressionParseHarness> make_expression_harness(std::string
    return harness;
 }
 
+//********************************************************************************************************************
+
 static void log_block_outline(const BlockStmt& block, pf::Log& log)
 {
    StatementListView view = block.view();
@@ -202,6 +194,8 @@ static void log_block_outline(const BlockStmt& block, pf::Log& log)
       ++index;
    }
 }
+
+//********************************************************************************************************************
 
 static bool test_parser_profiler_captures_stages(pf::Log& log)
 {
@@ -232,6 +226,8 @@ static bool test_parser_profiler_captures_stages(pf::Log& log)
    return true;
 }
 
+//********************************************************************************************************************
+
 static bool test_parser_profiler_disabled_noop(pf::Log& log)
 {
    ParserProfilingResult result;
@@ -251,6 +247,8 @@ static bool test_parser_profiler_disabled_noop(pf::Log& log)
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_literal_binary_expr(pf::Log &log)
 {
@@ -335,7 +333,7 @@ static bool test_expression_entry_point(pf::Log &log)
    BCReg before = fs.freereg;
 
    AstBuilder builder(context);
-   auto expression = builder.parse_expression_entry(0);
+   auto expression = builder.parse_expression(0);
 
    if (not expression.ok()) {
       log.error("expression entry parser reported failure");
@@ -358,6 +356,8 @@ static bool test_expression_entry_point(pf::Log &log)
    return true;
 }
 
+//********************************************************************************************************************
+
 static bool test_expression_list_entry_point(pf::Log &log)
 {
    auto harness = make_expression_harness("value, call(arg), 99");
@@ -370,7 +370,7 @@ static bool test_expression_list_entry_point(pf::Log &log)
    FuncState& fs = *harness->func_state;
    BCReg before = fs.freereg;
    AstBuilder builder(context);
-   auto list = builder.parse_expression_list_entry();
+   auto list = builder.parse_expression_list();
    if (not list.ok()) {
       log.error("expression list entry parser reported failure");
       auto diagnostics = context.diagnostics().entries();
@@ -391,6 +391,8 @@ static bool test_expression_list_entry_point(pf::Log &log)
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_loop_ast(pf::Log& log)
 {
@@ -455,6 +457,8 @@ end
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_if_stmt_with_elseif_ast(pf::Log& log)
 {
@@ -557,6 +561,8 @@ return output
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_local_function_table_ast(pf::Log& log)
 {
@@ -661,6 +667,8 @@ return build_pair(1, 2)
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_numeric_for_ast(pf::Log& log)
 {

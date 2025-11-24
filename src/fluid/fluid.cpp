@@ -43,7 +43,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
-#include "lj_parse.h"
+#include "parser/parser.h"
 #include "lj_bc.h"
 
 #include "hashes.h"
@@ -102,7 +102,7 @@ OBJECTPTR access_object(struct object *Object)
       return Object->ObjectPtr;
    }
    else if (!Object->UID) return nullptr; // Object reference is dead
-   else if ((!Object->ObjectPtr) or (Object->Detached)) { 
+   else if ((!Object->ObjectPtr) or (Object->Detached)) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;

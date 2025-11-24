@@ -205,21 +205,11 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
    OperatorEmitter emitter(fs, &allocator, &cfg);
    ValueSlot left(e);
 
-   if (op IS OPR_AND) {
-      emitter.prepare_logical_and(left);
-   }
-   else if (op IS OPR_OR) {
-      emitter.prepare_logical_or(left);
-   }
-   else if (op IS OPR_IF_EMPTY) {
-      emitter.prepare_if_empty(left);
-   }
-   else if (op IS OPR_CONCAT) {
-      emitter.prepare_concat(left);
-   }
-   else {
-      emitter.emit_binop_left(op, left);
-   }
+   if (op IS OPR_AND) emitter.prepare_logical_and(left);
+   else if (op IS OPR_OR) emitter.prepare_logical_or(left);
+   else if (op IS OPR_IF_EMPTY) emitter.prepare_if_empty(left);
+   else if (op IS OPR_CONCAT) emitter.prepare_concat(left);
+   else emitter.emit_binop_left(op, left);
 }
 
 //********************************************************************************************************************
@@ -316,19 +306,16 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    // Check if either operand is already at the top of the stack to avoid orphaning registers
    // when chaining operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result)
    BCReg base;
-   if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and
-       rhs->u.s.info + 1 IS fs->freereg) {
+   if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
       // RHS is at the top - reuse its register to avoid orphaning
       base = rhs->u.s.info;
    }
-   else if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar and
-            lhs->u.s.info + 1 IS fs->freereg) {
+   else if (lhs->k IS ExpKind::NonReloc and lhs->u.s.info >= fs->nactvar and lhs->u.s.info + 1 IS fs->freereg) {
       // LHS is at the top - reuse its register to avoid orphaning
       base = lhs->u.s.info;
    }
-   else {
-      base = fs->freereg;
-   }
+   else base = fs->freereg;
+
    allocator.reserve(1);  // Reserve for callee
    if (LJ_FR2) allocator.reserve(1);
    allocator.reserve(2);  // Reserve for arguments

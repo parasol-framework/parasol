@@ -12,28 +12,28 @@ TokenPayload::TokenPayload()
    this->owner = nullptr;
 }
 
-void TokenPayload::assign(lua_State* state, const TValue& value)
+void TokenPayload::assign(lua_State *state, const TValue &value)
 {
    this->owner = state;
    copyTV(state, &this->payload, &value);
    this->has_payload = true;
 }
 
-GCstr* TokenPayload::as_string() const
+GCstr * TokenPayload::as_string() const
 {
-   if (!this->has_payload) return nullptr;
-   if (!tvisstr(&this->payload)) return nullptr;
+   if (not this->has_payload) return nullptr;
+   if (not tvisstr(&this->payload)) return nullptr;
    return strV(&this->payload);
 }
 
 double TokenPayload::as_number() const
 {
-   if (!this->has_payload) return 0.0;
+   if (not this->has_payload) return 0.0;
    if (tvisnum(&this->payload)) return numV(&this->payload);
    return 0.0;
 }
 
-Token Token::from_current(LexState& state)
+Token Token::from_current(LexState &state)
 {
    Token token;
    token.token_kind = to_token_kind(state.tok);
@@ -43,7 +43,7 @@ Token Token::from_current(LexState& state)
    return token;
 }
 
-Token Token::from_lookahead(LexState& state)
+Token Token::from_lookahead(LexState &state)
 {
    Token token;
    LexToken lookahead = (state.lookahead != TK_eof) ? state.lookahead : state.lookahead_token();
@@ -74,14 +74,14 @@ bool Token::is_identifier() const
 bool Token::is_literal() const
 {
    switch (this->token_kind) {
-   case TokenKind::Number:
-   case TokenKind::String:
-   case TokenKind::Nil:
-   case TokenKind::TrueToken:
-   case TokenKind::FalseToken:
-      return true;
-   default:
-      return false;
+      case TokenKind::Number:
+      case TokenKind::String:
+      case TokenKind::Nil:
+      case TokenKind::TrueToken:
+      case TokenKind::FalseToken:
+         return true;
+      default:
+         return false;
    }
 }
 
@@ -90,7 +90,7 @@ bool Token::is_eof() const
    return this->token_kind IS TokenKind::EndOfFile;
 }
 
-GCstr* Token::identifier() const
+GCstr * Token::identifier() const
 {
    return this->data.as_string();
 }
@@ -100,8 +100,7 @@ TokenKind to_token_kind(LexToken token)
    return (TokenKind)token;
 }
 
-const char* token_kind_name(TokenKind kind, LexState& lex)
+const char * token_kind_name(TokenKind kind, LexState& lex)
 {
    return lex.token2str((LexToken)kind);
 }
-

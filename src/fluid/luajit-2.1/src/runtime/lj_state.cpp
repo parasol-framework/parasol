@@ -26,7 +26,7 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 #include "lj_prng.h"
-#include "../parser/lj_lex.h"
+#include "../parser/lexer.h"
 #include "../parser/parser_diagnostics.h"
 #include "lj_alloc.h"
 #include "luajit.h"

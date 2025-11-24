@@ -46,7 +46,7 @@
 #include <variant>
 #include <vector>
 
-#include "lj_lex.h"
+#include "lexer.h"
 
 class ParserDiagnostics;
 

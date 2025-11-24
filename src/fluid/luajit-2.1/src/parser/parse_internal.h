@@ -31,25 +31,33 @@ public:
       using iterator_category = std::forward_iterator_tag;
       using difference_type = ptrdiff_t;
       using value_type = BCPos;
-      Iterator(FuncState* State, BCPos Position);
-      [[nodiscard]] BCPos operator*() const;
-      Iterator& operator++();
-      [[nodiscard]] bool operator==(const Iterator& Other) const;
-      [[nodiscard]] bool operator!=(const Iterator& Other) const;
 
-   private:
+      Iterator(FuncState *State, BCPos Position) : func_state(State), position(Position) { }
+
+      [[nodiscard]] BCPos operator*() const { return this->position; }
+      Iterator& operator++() { this->position = next(this->func_state, this->position); return *this; }
+      [[nodiscard]] bool operator==(const Iterator& Other) const { return position IS Other.position; }
+      [[nodiscard]] bool operator!=(const Iterator& Other) const { return not(position IS Other.position); }
+
+      private:
       FuncState* func_state;
       BCPos position;
    };
 
-   JumpListView(FuncState* State, BCPos Head);
+   JumpListView(FuncState* State, BCPos Head) : func_state(State), list_head(Head) { }
 
-   [[nodiscard]] Iterator begin() const;
-   [[nodiscard]] Iterator end() const;
-   [[nodiscard]] bool empty() const;
-   [[nodiscard]] BCPos head() const;
-   [[nodiscard]] BCPos next(BCPos Position) const;
-   [[nodiscard]] static BCPos next(FuncState* State, BCPos Position);
+   [[nodiscard]] inline Iterator begin() const { return Iterator(func_state, list_head); }
+   [[nodiscard]] inline Iterator end() const { return Iterator(func_state, NO_JMP); }
+   [[nodiscard]] inline bool empty() const { return list_head IS NO_JMP; }
+   [[nodiscard]] inline BCPos head() const { return list_head; }
+   [[nodiscard]] inline BCPos next(BCPos Position) const { return next(func_state, Position); }
+
+   [[nodiscard]] static inline BCPos next(FuncState* State, BCPos Position) {
+      ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
+      if (BCPos(delta) IS NO_JMP) return NO_JMP;
+      return BCPos((ptrdiff_t(Position) + 1) + delta);
+   }
+
    [[nodiscard]] bool produces_values() const;
    [[nodiscard]] bool patch_test_register(BCPos Position, BCReg Register) const;
    void drop_values() const;

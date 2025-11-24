@@ -21,6 +21,8 @@ public:
    explicit AstBuilder(ParserContext& context);
 
    ParserResult<std::unique_ptr<BlockStmt>> parse_chunk();
+   ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
+   ParserResult<ExprNodeList> parse_expression_list();
 
 private:
    ParserContext& ctx;
@@ -45,13 +47,11 @@ private:
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_expression_stmt();
 
-   ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
    ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token);
    ParserResult<ExprNodePtr> parse_table_literal();
-   ParserResult<ExprNodeList> parse_expression_list();
 
    ParserResult<std::vector<Identifier>> parse_name_list();
    struct ParameterListResult {

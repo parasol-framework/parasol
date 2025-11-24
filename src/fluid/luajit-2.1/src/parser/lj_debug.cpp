@@ -28,8 +28,7 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
    cTValue* frame, * nextframe, * bot = tvref(L->stack) + LJ_FR2;
    // Traverse frames backwards.
    for (nextframe = frame = L->base - 1; frame > bot; ) {
-      if (frame_gc(frame) == obj2gco(L))
-         level++;  //  Skip dummy frames. See lj_err_optype_call().
+      if (frame_gc(frame) == obj2gco(L)) level++;  //  Skip dummy frames. See lj_err_optype_call().
       if (level-- == 0) {
          *size = (int)(nextframe - frame);
          return frame;  //  Level found.
@@ -55,9 +54,8 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
    const BCIns* ins;
    GCproto* pt;
    BCPos pos;
-   lj_assertL(fn->c.gct == ~LJ_TFUNC or fn->c.gct == ~LJ_TTHREAD,
-      "function or frame expected");
-   if (!isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
+   lj_assertL(fn->c.gct == ~LJ_TFUNC or fn->c.gct == ~LJ_TTHREAD, "function or frame expected");
+   if (not isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
    }
    else if (nextframe == nullptr) {  //  Lua function on top.
@@ -95,7 +93,7 @@ static BCPos debug_framepc(lua_State* L, GCfunc* fn, cTValue* nextframe)
             }
          }
          ins = cframe_pc(cf);
-         if (!ins) return NO_BCPOS;
+         if (not ins) return NO_BCPOS;
       }
    }
    pt = funcproto(fn);
@@ -185,7 +183,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar,
    TValue *nextframe = size ? frame + size : nullptr;
    GCfunc *fn = frame_func(frame);
    BCPos pc = debug_framepc(L, fn, nextframe);
-   if (!nextframe) nextframe = L->top + LJ_FR2;
+   if (not nextframe) nextframe = L->top + LJ_FR2;
    if ((int)slot1 < 0) {  //  Negative slot number is for varargs.
       if (pc != NO_BCPOS) {
          GCproto* pt = funcproto(fn);
@@ -214,7 +212,7 @@ const char* lj_debug_uvname(GCproto* pt, uint32_t idx)
 {
    const uint8_t* p = proto_uvinfo(pt);
    lj_assertX(idx < pt->sizeuv, "bad upvalue index");
-   if (!p) return "";
+   if (not p) return "";
    if (idx) while (*p++ or --idx);
    return (const char*)p;
 }
@@ -441,7 +439,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
    GCfunc* fn;
    if (*what == '>') {
       TValue* func = L->top - 1;
-      if (!tvisfunc(func)) return 0;
+      if (not tvisfunc(func)) return 0;
       fn = funcV(func);
       L->top--;
       what++;
@@ -452,7 +450,7 @@ int lj_debug_getinfo(lua_State* L, const char* what, lj_Debug* ar, int ext)
       lj_assertL(offset != 0, "bad frame offset");
       frame = tvref(L->stack) + offset;
       if (size) nextframe = frame + size;
-      lj_assertL(frame <= tvref(L->maxstack) and (!nextframe or nextframe <= tvref(L->maxstack)), "broken frame chain");
+      lj_assertL(frame <= tvref(L->maxstack) and (not nextframe or nextframe <= tvref(L->maxstack)), "broken frame chain");
       fn = frame_func(frame);
       lj_assertL(fn->c.gct == ~LJ_TFUNC, "bad frame function");
    }
@@ -579,7 +577,7 @@ extern void luaL_traceback(lua_State* L, lua_State* L1, const char* msg, int lev
    while (lua_getstack(L1, level++, &ar)) {
       GCfunc* fn;
       if (level > lim) {
-         if (!lua_getstack(L1, level + TRACEBACK_LEVELS2, &ar)) level--;
+         if (not lua_getstack(L1, level + TRACEBACK_LEVELS2, &ar)) level--;
          else {
             lua_pushliteral(L, "\n\t...");
             lua_getstack(L1, -10, &ar);

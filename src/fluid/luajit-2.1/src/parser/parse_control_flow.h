@@ -48,20 +48,10 @@ private:
 
 class ControlFlowGraph {
 public:
-   ControlFlowGraph();
-   explicit ControlFlowGraph(FuncState* State);
-
-   void reset(FuncState* State);
-
-   [[nodiscard]] bool valid() const;
-   [[nodiscard]] FuncState* state() const;
+   inline ControlFlowGraph() : func_state(nullptr) { }
+   explicit inline ControlFlowGraph(FuncState* State) : func_state(State) { }
 
    [[nodiscard]] ControlFlowEdge make_edge(ControlFlowEdgeKind Kind, BCPos Head = NO_JMP);
-   [[nodiscard]] ControlFlowEdge make_unconditional(BCPos Head = NO_JMP);
-   [[nodiscard]] ControlFlowEdge make_true_edge(BCPos Head = NO_JMP);
-   [[nodiscard]] ControlFlowEdge make_false_edge(BCPos Head = NO_JMP);
-   [[nodiscard]] ControlFlowEdge make_break_edge(BCPos Head = NO_JMP);
-   [[nodiscard]] ControlFlowEdge make_continue_edge(BCPos Head = NO_JMP);
 
    void finalize() const;
 
@@ -69,6 +59,20 @@ public:
    void trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head, size_t Index) const;
    void trace_edge_patch(size_t Index, BCPos Target) const;
    void trace_edge_append(size_t Index, BCPos Head) const;
+
+   inline void reset(FuncState* State) {
+      this->func_state = State;
+      this->edges.clear();
+   }
+
+   [[nodiscard]] inline bool valid() const { return this->func_state != nullptr; }
+
+   [[nodiscard]] inline FuncState* state() const { return this->func_state; }
+   inline ControlFlowEdge make_unconditional(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Unconditional, Head); }
+   inline ControlFlowEdge make_true_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::True, Head); }
+   inline ControlFlowEdge make_false_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::False, Head); }
+   inline ControlFlowEdge make_break_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Break, Head); }
+   inline ControlFlowEdge make_continue_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Continue, Head); }
 
 private:
    friend class ControlFlowEdge;
@@ -79,22 +83,46 @@ private:
       bool resolved = false;
    };
 
-   [[nodiscard]] BCPos edge_head(size_t Index) const;
-   [[nodiscard]] ControlFlowEdgeKind edge_kind(size_t Index) const;
-   [[nodiscard]] bool edge_resolved(size_t Index) const;
-   void set_edge_head(size_t Index, BCPos Head);
-   void mark_resolved(size_t Index);
    void append_edge(size_t Index, BCPos Head);
-   void append_edge(size_t Index, const ControlFlowEdge& Other);
    void patch_edge(size_t Index, BCPos Target);
    void patch_edge_head(size_t Index, BCPos Destination);
    void patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget);
    [[nodiscard]] bool edge_produces_values(size_t Index) const;
    void drop_edge_values(size_t Index);
-
    [[nodiscard]] static BCPos next_in_chain(FuncState* State, BCPos Position);
    [[nodiscard]] bool patch_test_register(BCPos Position, BCReg Register) const;
    void patch_instruction(BCPos Position, BCPos Destination) const;
+
+   inline void append_edge(size_t Index, const ControlFlowEdge& Other) {
+      if (Index >= this->edges.size() or not Other.valid() or Other.graph != this) return;
+      this->append_edge(Index, Other.head());
+      this->mark_resolved(Other.index);
+   }
+
+   [[nodiscard]] inline BCPos edge_head(size_t Index) const {
+      if (Index >= this->edges.size()) return NO_JMP;
+      return this->edges[Index].head;
+   }
+
+   inline ControlFlowEdgeKind edge_kind(size_t Index) const {
+      if (Index >= this->edges.size()) return ControlFlowEdgeKind::Unconditional;
+      return this->edges[Index].kind;
+   }
+
+   inline bool edge_resolved(size_t Index) const {
+      if (Index >= this->edges.size()) return true;
+      return this->edges[Index].resolved;
+   }
+
+   inline void set_edge_head(size_t Index, BCPos Head) {
+      if (Index >= this->edges.size()) return;
+      this->edges[Index].head = Head;
+   }
+
+   inline void mark_resolved(size_t Index) {
+      if (Index >= this->edges.size()) return;
+      this->edges[Index].resolved = true;
+   }
 
    FuncState* func_state;
    std::vector<EdgeEntry> edges;
@@ -176,4 +204,3 @@ inline void ControlFlowEdge::drop_values() const
 {
    if (this->graph) this->graph->drop_edge_values(this->index);
 }
-

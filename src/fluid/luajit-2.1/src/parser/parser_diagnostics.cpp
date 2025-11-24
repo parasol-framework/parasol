@@ -1,11 +1,12 @@
 // Copyright (C) 2025 Paul Manias
 
 #include "parser/parser_diagnostics.h"
+#include <parasol/main.h>
 #include <format>
 
 //********************************************************************************************************************
 
-static const char* severity_name(ParserDiagnosticSeverity Severity)
+static CSTRING severity_name(ParserDiagnosticSeverity Severity)
 {
    switch (Severity) {
       case ParserDiagnosticSeverity::Info:    return "Info";
@@ -17,7 +18,7 @@ static const char* severity_name(ParserDiagnosticSeverity Severity)
 
 //********************************************************************************************************************
 
-static const char* error_code_name(ParserErrorCode Code)
+static CSTRING error_code_name(ParserErrorCode Code)
 {
    switch (Code) {
       case ParserErrorCode::None:                return "None";
@@ -35,10 +36,8 @@ static const char* error_code_name(ParserErrorCode Code)
 std::string ParserDiagnostic::to_string(int LineOffset) const
 {
    SourceSpan span = this->token.span();
-   return std::format("[{}:{}] {}: {}: {}",
-      span.line + LineOffset, span.column,
-      severity_name(this->severity),
-      error_code_name(this->code),
+   return std::format("[{}:{}] {}: {}: {}", span.line + LineOffset, span.column,
+      severity_name(this->severity), error_code_name(this->code),
       this->message.empty() ? "No message" : this->message);
 }
 

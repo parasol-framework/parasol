@@ -81,17 +81,9 @@ public:
 
    // Manually release to a specific register level
 
-   inline void release_to(BCReg reg) {
-      fs_->freereg = reg;
-   }
-
-   inline void adopt_saved(BCReg reg) {
-      saved_freereg_ = reg;
-   }
-
-   inline void disarm() {
-      fs_ = nullptr;
-   }
+   inline void release_to(BCReg reg) { fs_->freereg = reg; }
+   inline void adopt_saved(BCReg reg) { saved_freereg_ = reg; }
+   inline void disarm() { fs_ = nullptr; }
 
    // Get saved register level
    [[nodiscard]] inline BCReg saved() const { return saved_freereg_; }
@@ -141,7 +133,7 @@ public:
 
    // Manually update saved position
    inline void update_saved() {
-      saved_vtop_ = ls_->vtop;
+      this->saved_vtop_ = ls_->vtop;
    }
 
    // Get saved vtop

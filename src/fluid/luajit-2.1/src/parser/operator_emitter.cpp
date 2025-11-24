@@ -4,7 +4,7 @@
 
 #include "lj_obj.h"
 #include "bytecode/lj_bc.h"
-#include "parser/lj_lex.h"
+#include "parser/lexer.h"
 
 #include <parasol/main.h>
 
@@ -112,7 +112,7 @@ bool OperatorEmitter::fold_constant_arith(BinOpr opr, ValueSlot e1, ValueUse e2)
 void OperatorEmitter::emit_unary(int op, ValueSlot operand)
 {
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber, 
+      pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber,
          get_unop_name(BCOp(op)), get_expkind_name(operand.raw()->k));
    }
 
@@ -142,7 +142,7 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 {
    RegisterAllocator allocator(this->func_state);
-   ExpDesc* e = left.raw();
+   ExpDesc *e = left.raw();
 
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       // Comparison operators (EQ, NE): discharge to register unless it's a constant/jump
@@ -488,8 +488,8 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
 
 void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
 {
-   ExpDesc* left_desc = left.raw();
-   ExpDesc* right_desc = right.raw();
+   ExpDesc *left_desc = left.raw();
+   ExpDesc *right_desc = right.raw();
 
    FuncState* fs = this->func_state;
    lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
@@ -498,6 +498,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
    // They skip RHS evaluation when LHS is truthy - we need to:
    // 1. Emit RHS materialization code (for falsey path)
    // 2. Patch the truthy jumps to skip all of that
+
    if (left_desc->t != NO_JMP) {
       // Get the RHS register if one was reserved
       BCReg rhs_reg = NO_REG;
