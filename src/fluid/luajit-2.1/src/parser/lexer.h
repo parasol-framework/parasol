@@ -1,5 +1,5 @@
-// Lexical analyzer.
-// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+// Lexical analyser.
+// Copyright (C) 2025 Paul Manias
 
 #pragma once
 
@@ -109,21 +109,21 @@ public:
    lua_Reader rfunc;        // Reader callback.
    void *     rdata;        // Reader callback data.
    BCLine     linenumber;   // Input line counter.
-   BCLine     lastline;    // Line of last token.
-   GCstr *    chunkname;  // Current chunk name (interned string).
-   const char *chunkarg; // Chunk name argument.
-   const char *mode;     // Allow loading bytecode (b) and/or source text (t).
+   BCLine     lastline;     // Line of last token.
+   GCstr *    chunkname;    // Current chunk name (interned string).
+   const char *chunkarg;    // Chunk name argument.
+   const char *mode;        // Allow loading bytecode (b) and/or source text (t).
    GCstr *    empty_string_constant; // Cached empty string reference.
-   VarInfo * vstack;     // Stack for names and extents of local variables.
-   MSize     sizevstack;  // Size of variable stack.
-   MSize     vtop;        // Top of variable stack.
-   BCInsLine* bcstack;   // Stack for bytecode instructions/line numbers.
-   MSize    sizebcstack; // Size of bytecode stack.
-   uint32_t level;       // Syntactical nesting level.
-   uint32_t ternary_depth; // Number of pending ternary operators.
-   uint8_t  pending_if_empty_colon; // Tracks ?: misuse after ??.
-   int      endmark;          // Trust bytecode end marker, even if not at EOF.
-   int      is_bytecode;      // Set to 1 if input is bytecode, 0 if source text.
+   VarInfo *  vstack;        // Stack for names and extents of local variables.
+   MSize      sizevstack;    // Size of variable stack.
+   MSize      vtop;          // Top of variable stack.
+   BCInsLine* bcstack;       // Stack for bytecode instructions/line numbers.
+   MSize      sizebcstack;   // Size of bytecode stack.
+   uint32_t   level;         // Syntactical nesting level.
+   uint32_t   ternary_depth; // Number of pending ternary operators.
+   uint8_t    pending_if_empty_colon; // Tracks ?: misuse after ??.
+   int        endmark;       // Trust bytecode end marker, even if not at EOF.
+   int        is_bytecode;   // Set to 1 if input is bytecode, 0 if source text.
 
    size_t   current_offset = 0;
    size_t   next_offset = 0;
@@ -230,7 +230,7 @@ public:
    void parse_chunk(ParserContext& Context);
 
    // Public parser helpers
-   GCstr* keepstr(std::string_view Value);
+   GCstr * keepstr(std::string_view Value);
    [[nodiscard]] GCstr* intern_empty_string();
    void ensure_lookahead(size_t count);
    [[nodiscard]] size_t available_lookahead() const;

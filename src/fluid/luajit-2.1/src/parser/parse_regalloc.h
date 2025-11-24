@@ -125,6 +125,8 @@ public:
    void release_register(BCReg Register);
    void release_expression(ExpDesc* Expression);
 
+   void collapse_freereg(BCReg ResultReg);
+
    [[nodiscard]] TableOperandCopies duplicate_table_operands(const ExpDesc& Expression);
 
    [[nodiscard]] FuncState* state() const { return func_state; }

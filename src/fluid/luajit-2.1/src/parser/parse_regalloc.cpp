@@ -34,9 +34,7 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
    BCReg start = this->func_state->freereg;
    this->bump(Count);
    this->func_state->freereg += Count;
-#if LJ_DEBUG
    this->trace_allocation(start, Count, "reserve_slots");
-#endif
    return start;
 }
 
@@ -132,6 +130,19 @@ void RegisterAllocator::release_expression(ExpDesc *Expression)
       if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
          this->release_span_internal(reg, 1, expected_top);
       }
+   }
+}
+
+void RegisterAllocator::collapse_freereg(BCReg ResultReg)
+{
+   BCReg target = ResultReg + 1;
+   if (target < this->func_state->nactvar) target = BCReg(this->func_state->nactvar);
+
+   while (this->func_state->freereg > target) {
+      BCReg previous = this->func_state->freereg;
+      BCReg top = previous - 1;
+      this->release_register(top);
+      if (this->func_state->freereg IS previous) break;
    }
 }
 
@@ -607,28 +618,6 @@ static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
    ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
    true_edge.patch_here();
    e->t = NO_JMP;
-}
-
-//********************************************************************************************************************
-// Emit branch on false condition.
-
-static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
-{
-   BCPos pc;
-   expr_discharge(fs, e);
-
-   if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) pc = NO_JMP;  // Never jump.
-   else if (e->k IS ExpKind::Jmp) pc = e->u.s.info;
-   else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
-   else pc = bcemit_branch(fs, e, 1);
-
-   ControlFlowGraph cfg(fs);
-   ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-   true_edge.append(pc);
-   e->t = true_edge.head();
-   ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
-   false_edge.patch_here();
-   e->f = NO_JMP;
 }
 
 //********************************************************************************************************************

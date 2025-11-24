@@ -30,7 +30,7 @@
 #include "parser/parse_types.h"
 #include "parser/token_stream.h"
 #include "parser/token_types.h"
-#include "lj_parse.h"
+#include "parser.h"
 #include "../../../defs.h"
 
 static objScript *glTestScript = nullptr;
@@ -67,6 +67,8 @@ static std::string describe_instruction(BCIns instruction)
       (int)bc_a(instruction), (int)bc_b(instruction), (int)bc_c(instruction), (int)bc_d(instruction));
    return std::string(buffer);
 }
+
+//********************************************************************************************************************
 
 struct LuaStateHolder {
    LuaStateHolder() {
@@ -108,6 +110,8 @@ struct AstHarnessResult {
    std::unique_ptr<LuaStateHolder> state;
 };
 
+//********************************************************************************************************************
+
 static AstHarnessResult build_ast_from_source(std::string_view source)
 {
    AstHarnessResult result;
@@ -147,6 +151,8 @@ struct ExpressionParseHarness {
    std::unique_ptr<ParserSession> session;
 };
 
+//********************************************************************************************************************
+
 static std::optional<ExpressionParseHarness> make_expression_harness(std::string_view source)
 {
    ExpressionParseHarness harness;
@@ -177,6 +183,8 @@ static std::optional<ExpressionParseHarness> make_expression_harness(std::string
    return harness;
 }
 
+//********************************************************************************************************************
+
 static void log_block_outline(const BlockStmt& block, pf::Log& log)
 {
    StatementListView view = block.view();
@@ -186,6 +194,8 @@ static void log_block_outline(const BlockStmt& block, pf::Log& log)
       ++index;
    }
 }
+
+//********************************************************************************************************************
 
 static bool test_parser_profiler_captures_stages(pf::Log& log)
 {
@@ -216,14 +226,18 @@ static bool test_parser_profiler_captures_stages(pf::Log& log)
    return true;
 }
 
+//********************************************************************************************************************
+
 static bool test_parser_profiler_disabled_noop(pf::Log& log)
 {
    ParserProfilingResult result;
    ParserProfiler profiler(false, &result);
+
    {
       auto stage = profiler.stage("parse");
       stage.stop();
    }
+
    profiler.record_stage("emit", std::chrono::milliseconds(3));
 
    if (not result.stages().empty()) {
@@ -234,7 +248,9 @@ static bool test_parser_profiler_disabled_noop(pf::Log& log)
    return true;
 }
 
-static bool test_literal_binary_expr(pf::Log& log)
+//********************************************************************************************************************
+
+static bool test_literal_binary_expr(pf::Log &log)
 {
    auto result = build_ast_from_source("return (value + 4) * 3");
    if (not result.chunk.ok()) {
@@ -243,7 +259,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const BlockStmt& block = *result.chunk.value_ref();
+   const BlockStmt &block = *result.chunk.value_ref();
    StatementListView statements = block.view();
    if (statements.size() != 1) {
       log.error("expected one statement, got %" PRId64, (int64_t)statements.size());
@@ -251,14 +267,14 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const StmtNode& stmt = statements[0];
+   const StmtNode &stmt = statements[0];
    if (not (stmt.kind IS AstNodeKind::ReturnStmt)) {
       log.error("expected return statement, got kind=%d", (int)stmt.kind);
       log_block_outline(block, log);
       return false;
    }
 
-   const auto* payload = std::get_if<ReturnStmtPayload>(&stmt.data);
+   const auto *payload = std::get_if<ReturnStmtPayload>(&stmt.data);
    if (not payload or payload->values.size() != 1) {
       log.error("return payload missing or wrong arity");
       return false;
@@ -281,7 +297,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const auto* add = std::get_if<BinaryExprPayload>(&multiply->left->data);
+   const auto *add = std::get_if<BinaryExprPayload>(&multiply->left->data);
    if (not add or not (add->op IS AstBinaryOperator::Add)) {
       log.error("expected addition in the left subtree");
       return false;
@@ -292,7 +308,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const auto* rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
+   const auto *rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
    if (not rhs_literal or not (rhs_literal->kind IS LiteralKind::Number) or rhs_literal->number_value != 3.0) {
       log.error("multiply RHS literal mismatch");
       return false;
@@ -301,7 +317,10 @@ static bool test_literal_binary_expr(pf::Log& log)
    return true;
 }
 
-static bool test_expression_entry_point(pf::Log& log)
+//********************************************************************************************************************
+// Expression parsing entry point tests.
+
+static bool test_expression_entry_point(pf::Log &log)
 {
    auto harness = make_expression_harness("value + 42");
    if (not harness.has_value()) {
@@ -314,7 +333,7 @@ static bool test_expression_entry_point(pf::Log& log)
    BCReg before = fs.freereg;
 
    AstBuilder builder(context);
-   auto expression = builder.parse_expression_entry(0);
+   auto expression = builder.parse_expression(0);
 
    if (not expression.ok()) {
       log.error("expression entry parser reported failure");
@@ -337,6 +356,8 @@ static bool test_expression_entry_point(pf::Log& log)
    return true;
 }
 
+//********************************************************************************************************************
+
 static bool test_expression_list_entry_point(pf::Log &log)
 {
    auto harness = make_expression_harness("value, call(arg), 99");
@@ -349,7 +370,7 @@ static bool test_expression_list_entry_point(pf::Log &log)
    FuncState& fs = *harness->func_state;
    BCReg before = fs.freereg;
    AstBuilder builder(context);
-   auto list = builder.parse_expression_list_entry();
+   auto list = builder.parse_expression_list();
    if (not list.ok()) {
       log.error("expression list entry parser reported failure");
       auto diagnostics = context.diagnostics().entries();
@@ -370,6 +391,8 @@ static bool test_expression_list_entry_point(pf::Log &log)
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_loop_ast(pf::Log& log)
 {
@@ -434,6 +457,8 @@ end
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_if_stmt_with_elseif_ast(pf::Log& log)
 {
@@ -536,6 +561,8 @@ return output
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_local_function_table_ast(pf::Log& log)
 {
@@ -640,6 +667,8 @@ return build_pair(1, 2)
 
    return true;
 }
+
+//********************************************************************************************************************
 
 static bool test_numeric_for_ast(pf::Log& log)
 {

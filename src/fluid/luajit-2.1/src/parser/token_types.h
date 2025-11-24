@@ -1,10 +1,13 @@
+// Copyright (C) 2025 Paul Manias
+
 #pragma once
 
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <parasol/main.h>
 
-#include "lj_lex.h"
+#include "lexer.h"
 
 // Strongly typed representation of lexer tokens.
 enum class TokenKind : uint16_t {
@@ -78,7 +81,7 @@ enum class TokenKind : uint16_t {
    Question = '?'
 };
 
-[[nodiscard]] const char* token_kind_name(TokenKind kind, LexState& lex);
+[[nodiscard]] CSTRING token_kind_name(TokenKind kind, LexState& lex);
 
 struct TokenPayload {
    TokenPayload();

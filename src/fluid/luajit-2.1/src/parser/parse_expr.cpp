@@ -100,11 +100,10 @@ void LexState::expr_bracket(ExpDesc* Expression)
 
 //********************************************************************************************************************
 
-static void expr_collapse_freereg(FuncState *State, BCReg result_reg)
+static void expr_collapse_freereg(FuncState *State, BCReg ResultReg)
 {
-   BCReg target = result_reg + 1;
-   if (target < State->nactvar) target = BCReg(State->nactvar);
-   if (State->freereg > target) State->freereg = target;
+   RegisterAllocator allocator(State);
+   allocator.collapse_freereg(ResultReg);
 }
 
 //********************************************************************************************************************
@@ -305,9 +304,9 @@ void LexState::expr_table(ExpDesc* Expression)
    BCReg nparams = 0;
 
    this->lex_check('(');
-   
+
    if (NeedSelf) this->var_new_lit(nparams++, "self");
-   
+
    if (this->tok != ')') {
       do {
          if (this->tok IS TK_name) this->var_new(nparams++, this->lex_str());
@@ -1158,7 +1157,7 @@ ParserResult<BinOpr> LexState::expr_binop(ExpDesc* Expression, uint32_t Limit, i
       bcemit_binop(this->fs, op, v, &v2);
       op = nextop;
    }
-   
+
    if (this->tok IS TK_ternary_sep and this->ternary_depth IS 0) {
       if (limit IS priority[OPR_IF_EMPTY].right) {
          this->pending_if_empty_colon = 1;
@@ -1190,9 +1189,8 @@ ParserResult<ExpDesc> LexState::expr_next()
 {
    ExpDesc expression;
    auto result = this->expr(&expression);
-   if (not result.ok()) {
-      return result;
-   }
+   if (not result.ok()) return result;
+
    RegisterAllocator allocator(this->fs);
    ExpressionValue value(this->fs, expression);
    value.to_next_reg(allocator);

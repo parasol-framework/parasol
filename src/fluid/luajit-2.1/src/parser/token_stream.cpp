@@ -3,7 +3,7 @@
 #include "parser/token_stream.h"
 
 #include "parser/parser_context.h"
-#include "lj_lex.h"
+#include "lexer.h"
 
 TokenStreamAdapter::TokenStreamAdapter(LexState& state)
    : lex_state(&state)

@@ -23,7 +23,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lj_buf.h"
-#include "../parser/lj_lex.h"
+#include "../parser/lexer.h"
 #include "lj_bcdump.h"
 #include "lib.h"
 

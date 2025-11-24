@@ -52,8 +52,7 @@ GCstr* LexState::keepstr(std::string_view str)
 
 GCstr* LexState::intern_empty_string()
 {
-   if (!this->empty_string_constant)
-      this->empty_string_constant = this->keepstr(std::string_view());
+   if (!this->empty_string_constant) this->empty_string_constant = this->keepstr(std::string_view());
    return this->empty_string_constant;
 }
 
@@ -81,69 +80,6 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 #endif
 
 // Jump list handling
-
-JumpListView::Iterator::Iterator(FuncState* State, BCPos Position)
-   : func_state(State), position(Position)
-{
-}
-
-[[nodiscard]] BCPos JumpListView::Iterator::operator*() const
-{
-   return position;
-}
-
-JumpListView::Iterator& JumpListView::Iterator::operator++()
-{
-   position = JumpListView::next(func_state, position);
-   return *this;
-}
-
-[[nodiscard]] bool JumpListView::Iterator::operator==(const Iterator& Other) const
-{
-   return position IS Other.position;
-}
-
-[[nodiscard]] bool JumpListView::Iterator::operator!=(const Iterator& Other) const
-{
-   return not(position IS Other.position);
-}
-
-JumpListView::JumpListView(FuncState* State, BCPos Head)
-   : func_state(State), list_head(Head)
-{
-}
-
-[[nodiscard]] JumpListView::Iterator JumpListView::begin() const
-{
-   return Iterator(func_state, list_head);
-}
-
-[[nodiscard]] JumpListView::Iterator JumpListView::end() const
-{
-   return Iterator(func_state, NO_JMP);
-}
-
-[[nodiscard]] bool JumpListView::empty() const
-{
-   return list_head IS NO_JMP;
-}
-
-[[nodiscard]] BCPos JumpListView::head() const
-{
-   return list_head;
-}
-
-[[nodiscard]] BCPos JumpListView::next(FuncState* State, BCPos Position)
-{
-   ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
-   if (BCPos(delta) IS NO_JMP) return NO_JMP;
-   return BCPos((ptrdiff_t(Position) + 1) + delta);
-}
-
-[[nodiscard]] BCPos JumpListView::next(BCPos Position) const
-{
-   return next(func_state, Position);
-}
 
 [[nodiscard]] bool JumpListView::produces_values() const
 {

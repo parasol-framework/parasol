@@ -1,29 +1,25 @@
 // Lua parser - Error handling.
 // Copyright (C) 2025 Paul Manias
 
+#include <parasol/main.h>
 #include "parser/parser_context.h"
 
-LJ_NORET LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
+[[noreturn]] LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
-   if (this->active_context) {
-      this->active_context->err_syntax(Message);
-   }
+   if (this->active_context) this->active_context->err_syntax(Message);
    lj_lex_error(this, this->tok, Message);
 }
 
-LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
+[[noreturn]] LJ_NOINLINE void LexState::err_token(LexToken Token)
 {
-   if (this->active_context) {
-      this->active_context->err_token(Token);
-   }
+   if (this->active_context) this->active_context->err_token(Token);
    lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
 }
 
-[[noreturn]] static void err_limit(FuncState* fs, uint32_t limit, const char* what)
+[[noreturn]] static void err_limit(FuncState *fs, uint32_t limit, CSTRING what)
 {
-   if (fs->ls->active_context) {
-      fs->ls->active_context->report_limit_error(*fs, limit, what);
-   }
+   if (fs->ls->active_context) fs->ls->active_context->report_limit_error(*fs, limit, what);
+
    if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
    else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
 }
@@ -32,9 +28,8 @@ LJ_NORET LJ_NOINLINE void LexState::err_token(LexToken Token)
 
 int LexState::lex_opt(LexToken Token)
 {
-   if (this->active_context) {
-      return this->active_context->lex_opt(Token);
-   }
+   if (this->active_context) return this->active_context->lex_opt(Token);
+
    if (this->tok == Token) {
       this->next();
       return 1;
@@ -58,14 +53,9 @@ void LexState::lex_check(LexToken Token)
 
 void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 {
-   if (this->active_context) {
-      this->active_context->lex_match(What, Who, Line);
-      return;
-   }
-   if (!this->lex_opt(What)) {
-      if (Line == this->linenumber) {
-         this->err_token(What);
-      }
+   if (this->active_context) this->active_context->lex_match(What, Who, Line);
+   else if (not this->lex_opt(What)) {
+      if (Line == this->linenumber) this->err_token(What);
       else {
          auto swhat = this->token2str(What);
          auto swho = this->token2str(Who);
@@ -76,14 +66,12 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 
 // Check for string token.
 
-GCstr* LexState::lex_str()
+[[nodiscard]] GCstr * LexState::lex_str()
 {
-   if (this->active_context) {
-      return this->active_context->lex_str();
-   }
-   GCstr* s;
+   if (this->active_context) return this->active_context->lex_str();
+
    if (this->tok != TK_name) this->err_token(TK_name);
-   s = strV(&this->tokval);
+   GCstr *s = strV(&this->tokval);
    this->next();
    return s;
 }

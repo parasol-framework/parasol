@@ -15,9 +15,11 @@
 #include "lj_iropt.h"
 
 // Some local macros to save typing. Undef'd at the end.
+
 #define IR(ref)      (&J->cur.ir[(ref)])
 
 // Scan through all snapshots and mark all referenced instructions.
+
 static void dce_marksnap(jit_State* J)
 {
    SnapNo i, nsnap = J->cur.nsnap;
@@ -34,6 +36,7 @@ static void dce_marksnap(jit_State* J)
 }
 
 // Backwards propagate marks. Replace unused instructions with NOPs.
+
 static void dce_propagate(jit_State* J)
 {
    IRRef1* pchain[IR__MAX];
@@ -56,12 +59,12 @@ static void dce_propagate(jit_State* J)
    }
 }
 
-/* Dead Code Elimination.
-**
-** First backpropagate marks for all used instructions. Then replace
-** the unused ones with a NOP. Note that compressing the IR to eliminate
-** the NOPs does not pay off.
-*/
+// Dead Code Elimination.
+//
+// First backpropagate marks for all used instructions. Then replace
+// the unused ones with a NOP. Note that compressing the IR to eliminate
+// the NOPs does not pay off.
+
 void lj_opt_dce(jit_State* J)
 {
    if ((J->flags & JIT_F_OPT_DCE)) {

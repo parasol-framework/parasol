@@ -15,8 +15,8 @@
 #include "lj_ctype.h"
 #endif
 #include "lj_strfmt.h"
-#include "lj_lex.h"
-#include "lj_parse.h"
+#include "lexer.h"
+#include "parser.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 

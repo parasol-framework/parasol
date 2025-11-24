@@ -9,15 +9,6 @@
 #include "parser/parse_types.h"
 #include "runtime/lj_str.h"
 
-static SourceSpan combine_spans(const SourceSpan& start, const SourceSpan& end)
-{
-   SourceSpan span = start;
-   span.offset = end.offset;
-   span.line = end.line;
-   span.column = end.column;
-   return span;
-}
-
 static FunctionExprPayload* function_payload_from(ExprNode& node)
 {
    if (node.kind != AstNodeKind::FunctionExpr) return nullptr;
@@ -42,39 +33,16 @@ AstBuilder::AstBuilder(ParserContext& context)
 {
 }
 
+//********************************************************************************************************************
+// Main entry point for parsing a chunk (entire source file).
+
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 {
    const TokenKind terms[] = { TokenKind::EndOfFile };
    return this->parse_block(terms);
 }
 
-/*
-
-TODO: Consider deprecating?  Only the unit tests use this.
-
-The parse_expression_entry and parse_expression_list_entry methods are redundant wrappers. They call parse_expression
-and parse_expression_list which already return ParserResult<ExprNodePtr> and ParserResult<ExprNodeList> respectively,
-then unnecessarily unwrap and rewrap the results. Consider removing these entry methods and having the free functions
-in parser_entry_points.cpp call the internal methods directly, or better yet, make the internal methods public if
-they need to be exposed.
-
-*/
-
-ParserResult<ExprNodePtr> AstBuilder::parse_expression_entry(uint8_t precedence)
-{
-   auto expression = this->parse_expression(precedence);
-   if (not expression.ok()) return ParserResult<ExprNodePtr>::failure(expression.error_ref());
-   ExprNodePtr node = std::move(expression.value_ref());
-   return ParserResult<ExprNodePtr>::success(std::move(node));
-}
-
-ParserResult<ExprNodeList> AstBuilder::parse_expression_list_entry()
-{
-   auto list = this->parse_expression_list();
-   if (not list.ok()) return ParserResult<ExprNodeList>::failure(list.error_ref());
-   ExprNodeList nodes = std::move(list.value_ref());
-   return ParserResult<ExprNodeList>::success(std::move(nodes));
-}
+//********************************************************************************************************************
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
@@ -89,6 +57,8 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
    block->span = this->span_from(start, end);
    return ParserResult<std::unique_ptr<BlockStmt>>::success(std::move(block));
 }
+
+//********************************************************************************************************************
 
 ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
@@ -131,6 +101,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
    }
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_local()
 {
    Token local_token = this->ctx.tokens().current();
@@ -172,6 +144,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
 
 ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 {
@@ -222,20 +196,20 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_if()
 {
    Token if_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    std::vector<IfClause> clauses;
    auto condition = this->parse_expression();
-   if (not condition.ok()) {
-      return ParserResult<StmtNodePtr>::failure(condition.error_ref());
-   }
+   if (not condition.ok()) return ParserResult<StmtNodePtr>::failure(condition.error_ref());
+
    this->ctx.consume(TokenKind::ThenToken, ParserErrorCode::ExpectedToken);
    auto then_block = this->parse_scoped_block({ TokenKind::ElseIf, TokenKind::Else, TokenKind::EndToken });
-   if (not then_block.ok()) {
-      return ParserResult<StmtNodePtr>::failure(then_block.error_ref());
-   }
+   if (not then_block.ok()) return ParserResult<StmtNodePtr>::failure(then_block.error_ref());
+
    IfClause clause;
    clause.condition = std::move(condition.value_ref());
    clause.block = std::move(then_block.value_ref());
@@ -244,14 +218,10 @@ ParserResult<StmtNodePtr> AstBuilder::parse_if()
    while (this->ctx.check(TokenKind::ElseIf)) {
       this->ctx.tokens().advance();
       auto cond = this->parse_expression();
-      if (not cond.ok()) {
-         return ParserResult<StmtNodePtr>::failure(cond.error_ref());
-      }
+      if (not cond.ok()) return ParserResult<StmtNodePtr>::failure(cond.error_ref());
       this->ctx.consume(TokenKind::ThenToken, ParserErrorCode::ExpectedToken);
       auto block = this->parse_scoped_block({ TokenKind::ElseIf, TokenKind::Else, TokenKind::EndToken });
-      if (not block.ok()) {
-         return ParserResult<StmtNodePtr>::failure(block.error_ref());
-      }
+      if (not block.ok()) return ParserResult<StmtNodePtr>::failure(block.error_ref());
       IfClause elseif_clause;
       elseif_clause.condition = std::move(cond.value_ref());
       elseif_clause.block = std::move(block.value_ref());
@@ -280,19 +250,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_if()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_while()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    auto condition = this->parse_expression();
-   if (not condition.ok()) {
-      return ParserResult<StmtNodePtr>::failure(condition.error_ref());
-   }
+   if (not condition.ok()) return ParserResult<StmtNodePtr>::failure(condition.error_ref());
    this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    auto body = this->parse_scoped_block({ TokenKind::EndToken });
-   if (not body.ok()) {
-      return ParserResult<StmtNodePtr>::failure(body.error_ref());
-   }
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
    StmtNodePtr stmt = std::make_unique<StmtNode>();
@@ -306,20 +274,18 @@ ParserResult<StmtNodePtr> AstBuilder::parse_while()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    const TokenKind terms[] = { TokenKind::Until };
    auto body = this->parse_block(terms);
-   if (not body.ok()) {
-      return ParserResult<StmtNodePtr>::failure(body.error_ref());
-   }
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::Until, ParserErrorCode::ExpectedToken);
    auto condition = this->parse_expression();
-   if (not condition.ok()) {
-      return ParserResult<StmtNodePtr>::failure(condition.error_ref());
-   }
+   if (not condition.ok()) return ParserResult<StmtNodePtr>::failure(condition.error_ref());
 
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::RepeatStmt;
@@ -332,38 +298,30 @@ ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_for()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-   if (not name_token.ok()) {
-      return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-   }
+   if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
 
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto start = this->parse_expression();
-      if (not start.ok()) {
-         return ParserResult<StmtNodePtr>::failure(start.error_ref());
-      }
+      if (not start.ok()) return ParserResult<StmtNodePtr>::failure(start.error_ref());
       this->ctx.consume(TokenKind::Comma, ParserErrorCode::ExpectedToken);
       auto stop = this->parse_expression();
-      if (not stop.ok()) {
-         return ParserResult<StmtNodePtr>::failure(stop.error_ref());
-      }
+      if (not stop.ok()) return ParserResult<StmtNodePtr>::failure(stop.error_ref());
       ExprNodePtr step_expr;
       if (this->ctx.match(TokenKind::Comma).ok()) {
          auto step = this->parse_expression();
-         if (not step.ok()) {
-            return ParserResult<StmtNodePtr>::failure(step.error_ref());
-         }
+         if (not step.ok()) return ParserResult<StmtNodePtr>::failure(step.error_ref());
          step_expr = std::move(step.value_ref());
       }
       this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
       auto body = this->parse_scoped_block({ TokenKind::EndToken });
-      if (not body.ok()) {
-         return ParserResult<StmtNodePtr>::failure(body.error_ref());
-      }
+      if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
       this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
       StmtNodePtr stmt = std::make_unique<StmtNode>();
@@ -383,26 +341,22 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    names.push_back(make_identifier(name_token.value_ref()));
    while (this->ctx.match(TokenKind::Comma).ok()) {
       auto extra = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (not extra.ok()) {
-         return ParserResult<StmtNodePtr>::failure(extra.error_ref());
-      }
+      if (not extra.ok()) return ParserResult<StmtNodePtr>::failure(extra.error_ref());
       names.push_back(make_identifier(extra.value_ref()));
    }
+
    this->ctx.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
    auto iterators = this->parse_expression_list();
-   if (not iterators.ok()) {
-      return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
-   }
+   if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
    this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    auto body = this->parse_scoped_block({ TokenKind::EndToken });
-   if (not body.ok()) {
-      return ParserResult<StmtNodePtr>::failure(body.error_ref());
-   }
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::GenericForStmt;
    stmt->span = token.span();
+
    GenericForStmtPayload payload;
    payload.names = std::move(names);
    payload.iterators = std::move(iterators.value_ref());
@@ -411,24 +365,29 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_do()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    const TokenKind terms[] = { TokenKind::EndToken };
    auto block = this->parse_block(terms);
-   if (not block.ok()) {
-      return ParserResult<StmtNodePtr>::failure(block.error_ref());
-   }
+   if (not block.ok()) return ParserResult<StmtNodePtr>::failure(block.error_ref());
+
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::DoStmt;
    stmt->span = token.span();
+
    DoStmtPayload payload;
    payload.block = std::move(block.value_ref());
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
 
 ParserResult<StmtNodePtr> AstBuilder::parse_defer()
 {
@@ -438,25 +397,19 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
    ParameterListResult param_info;
    if (has_params) {
       auto parsed = this->parse_parameter_list(true);
-      if (not parsed.ok()) {
-         return ParserResult<StmtNodePtr>::failure(parsed.error_ref());
-      }
+      if (not parsed.ok()) return ParserResult<StmtNodePtr>::failure(parsed.error_ref());
       param_info = std::move(parsed.value_ref());
    }
    const TokenKind body_terms[] = { TokenKind::EndToken };
    auto body = this->parse_block(body_terms);
-   if (not body.ok()) {
-      return ParserResult<StmtNodePtr>::failure(body.error_ref());
-   }
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
 
    ExprNodeList args;
    if (this->ctx.match(TokenKind::LeftParen).ok()) {
       if (not this->ctx.check(TokenKind::RightParen)) {
          auto parsed_args = this->parse_expression_list();
-         if (not parsed_args.ok()) {
-            return ParserResult<StmtNodePtr>::failure(parsed_args.error_ref());
-         }
+         if (not parsed_args.ok()) return ParserResult<StmtNodePtr>::failure(parsed_args.error_ref());
          args = std::move(parsed_args.value_ref());
       }
       this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
@@ -473,6 +426,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<StmtNodePtr> AstBuilder::parse_return()
 {
    Token token = this->ctx.tokens().current();
@@ -483,14 +438,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
       not this->ctx.check(TokenKind::ElseIf) and not this->ctx.check(TokenKind::Until) and
       not this->ctx.check(TokenKind::EndOfFile) and not this->ctx.check(TokenKind::Semicolon)) {
       auto exprs = this->parse_expression_list();
-      if (not exprs.ok()) {
-         return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
-      }
+      if (not exprs.ok()) return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
       if (exprs.value_ref().size() IS 1 and exprs.value_ref()[0]->kind IS AstNodeKind::CallExpr) {
          forwards_call = true;
       }
       values = std::move(exprs.value_ref());
    }
+
    if (this->ctx.match(TokenKind::Semicolon).ok()) {
       // Optional separator consumed.
    }
@@ -498,12 +452,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::ReturnStmt;
    stmt->span = token.span();
+
    ReturnStmtPayload payload;
    payload.values = std::move(values);
    payload.forwards_call = forwards_call;
+
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
+
+//********************************************************************************************************************
 
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 {
@@ -593,12 +551,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 {
    auto left = this->parse_unary();
-   if (not left.ok()) {
-      return left;
-   }
+   if (not left.ok()) return left;
 
    while (true) {
       Token next = this->ctx.tokens().current();
@@ -609,14 +567,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          if (1 <= precedence) break;
          this->ctx.tokens().advance();
          auto true_branch = this->parse_expression();
-         if (not true_branch.ok()) {
-            return true_branch;
-         }
+         if (not true_branch.ok()) return true_branch;
          this->ctx.consume(TokenKind::TernarySep, ParserErrorCode::ExpectedToken);
          auto false_branch = this->parse_expression();
-         if (not false_branch.ok()) {
-            return false_branch;
-         }
+         if (not false_branch.ok()) return false_branch;
          SourceSpan span = combine_spans(left.value_ref()->span, false_branch.value_ref()->span);
          ExprNodePtr ternary = make_ternary_expr(span,
             std::move(left.value_ref()), std::move(true_branch.value_ref()),
@@ -630,9 +584,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
       if (op_info->left <= precedence) break;
       this->ctx.tokens().advance();
       auto right = this->parse_expression(op_info->right);
-      if (not right.ok()) {
-         return right;
-      }
+      if (not right.ok()) return right;
       SourceSpan span = combine_spans(left.value_ref()->span, right.value_ref()->span);
       left = ParserResult<ExprNodePtr>::success(make_binary_expr(span,
          op_info->op, std::move(left.value_ref()), std::move(right.value_ref())));
@@ -641,122 +593,128 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
    return left;
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExprNodePtr> AstBuilder::parse_unary()
 {
    Token current = this->ctx.tokens().current();
    if (current.kind() IS TokenKind::NotToken) {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
-      if (not operand.ok()) {
-         return operand;
-      }
+      if (not operand.ok()) return operand;
+
       return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
          AstUnaryOperator::Not, std::move(operand.value_ref())));
    }
+
    if (current.kind() IS TokenKind::Minus) {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
-      if (not operand.ok()) {
-         return operand;
-      }
+      if (not operand.ok()) return operand;
+
       return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
          AstUnaryOperator::Negate, std::move(operand.value_ref())));
    }
+
    if (current.raw() IS '#') {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
-      if (not operand.ok()) {
-         return operand;
-      }
+      if (not operand.ok()) return operand;
       return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
          AstUnaryOperator::Length, std::move(operand.value_ref())));
    }
+
    if (current.raw() IS '~') {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
-      if (not operand.ok()) {
-         return operand;
-      }
+      if (not operand.ok()) return operand;
+
       return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
          AstUnaryOperator::BitNot, std::move(operand.value_ref())));
    }
    if (current.kind() IS TokenKind::PlusPlus) {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
-      if (not operand.ok()) {
-         return operand;
-      }
+      if (not operand.ok()) return operand;
+
       return ParserResult<ExprNodePtr>::success(make_update_expr(current.span(),
          AstUpdateOperator::Increment, false, std::move(operand.value_ref())));
    }
    return this->parse_primary();
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 {
    Token current = this->ctx.tokens().current();
    ExprNodePtr node;
    switch (current.kind()) {
-   case TokenKind::Number:
-   case TokenKind::String:
-   case TokenKind::Nil:
-   case TokenKind::TrueToken:
-   case TokenKind::FalseToken:
-      node = make_literal_expr(current.span(), make_literal(current));
-      this->ctx.tokens().advance();
-      break;
-   case TokenKind::Identifier: {
-      Identifier id = make_identifier(current);
-      NameRef name;
-      name.identifier = id;
-      node = make_identifier_expr(current.span(), name);
-      this->ctx.tokens().advance();
-      break;
-   }
-   case TokenKind::Dots:
-      node = make_vararg_expr(current.span());
-      this->ctx.tokens().advance();
-      break;
-   case TokenKind::Function: {
-      Token function_token = this->ctx.tokens().current();
-      this->ctx.tokens().advance();
-      auto fn = this->parse_function_literal(function_token);
-      if (not fn.ok()) {
-         return fn;
+      case TokenKind::Number:
+      case TokenKind::String:
+      case TokenKind::Nil:
+      case TokenKind::TrueToken:
+      case TokenKind::FalseToken:
+         node = make_literal_expr(current.span(), make_literal(current));
+         this->ctx.tokens().advance();
+         break;
+
+      case TokenKind::Identifier: {
+         Identifier id = make_identifier(current);
+         NameRef name;
+         name.identifier = id;
+         node = make_identifier_expr(current.span(), name);
+         this->ctx.tokens().advance();
+         break;
       }
-      node = std::move(fn.value_ref());
-      break;
-   }
-   case TokenKind::LeftBrace: {
-      auto table = this->parse_table_literal();
-      if (not table.ok()) {
-         return table;
+
+      case TokenKind::Dots:
+         node = make_vararg_expr(current.span());
+         this->ctx.tokens().advance();
+         break;
+
+      case TokenKind::Function: {
+         Token function_token = this->ctx.tokens().current();
+         this->ctx.tokens().advance();
+         auto fn = this->parse_function_literal(function_token);
+         if (not fn.ok()) return fn;
+
+         node = std::move(fn.value_ref());
+         break;
       }
-      node = std::move(table.value_ref());
-      break;
-   }
-   case TokenKind::LeftParen: {
-      this->ctx.tokens().advance();
-      auto expr = this->parse_expression();
-      if (not expr.ok()) {
-         return expr;
+
+      case TokenKind::LeftBrace: {
+         auto table = this->parse_table_literal();
+         if (not table.ok()) return table;
+
+         node = std::move(table.value_ref());
+         break;
       }
-      this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
-      node = std::move(expr.value_ref());
-      break;
-   }
-   default: {
-      auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
-      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
-      ParserError error;
-      error.code = ParserErrorCode::UnexpectedToken;
-      error.token = current;
-      error.message = msg;
-      return ParserResult<ExprNodePtr>::failure(error);
-   }
+
+      case TokenKind::LeftParen: {
+         this->ctx.tokens().advance();
+         auto expr = this->parse_expression();
+         if (not expr.ok()) return expr;
+
+         this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
+         node = std::move(expr.value_ref());
+         break;
+      }
+
+      default: {
+         auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = msg;
+         return ParserResult<ExprNodePtr>::failure(error);
+      }
    }
    return this->parse_suffixed(std::move(node));
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 {
@@ -802,9 +760,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          token.kind() IS TokenKind::String) {
          bool forwards = false;
          auto args = this->parse_call_arguments(&forwards);
-         if (not args.ok()) {
-            return ParserResult<ExprNodePtr>::failure(args.error_ref());
-         }
+         if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
          SourceSpan span = combine_spans(base->span, token.span());
          base = make_call_expr(span, std::move(base), std::move(args.value_ref()), forwards);
          continue;
@@ -826,6 +782,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
    return ParserResult<ExprNodePtr>::success(std::move(base));
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& function_token)
 {
    auto params = this->parse_parameter_list(false);
@@ -841,6 +799,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& functi
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
+//********************************************************************************************************************
+
 ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 {
    Token token = this->ctx.tokens().current();
@@ -853,6 +813,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
    ExprNodePtr node = make_table_expr(token.span(), std::move(fields.value_ref()), has_array);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
 {
@@ -884,6 +846,8 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
    return ParserResult<std::vector<Identifier>>::success(std::move(names));
 }
 
+//********************************************************************************************************************
+
 ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(bool allow_optional)
 {
    ParameterListResult result;
@@ -910,6 +874,8 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
    return ParserResult<ParameterListResult>::success(std::move(result));
 }
 
+//********************************************************************************************************************
+
 ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_array_part)
 {
    std::vector<TableField> fields;
@@ -920,9 +886,7 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
       if (current.kind() IS TokenKind::LeftBracket) {
          this->ctx.tokens().advance();
          auto key = this->parse_expression();
-         if (not key.ok()) {
-            return ParserResult<std::vector<TableField>>::failure(key.error_ref());
-         }
+         if (not key.ok()) return ParserResult<std::vector<TableField>>::failure(key.error_ref());
          this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
          this->ctx.consume(TokenKind::Equals, ParserErrorCode::ExpectedToken);
          auto value = this->parse_expression();
@@ -958,6 +922,8 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
    if (has_array_part) *has_array_part = array;
    return ParserResult<std::vector<TableField>>::success(std::move(fields));
 }
+
+//********************************************************************************************************************
 
 ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multret)
 {
@@ -1005,6 +971,8 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
    return ParserResult<ExprNodeList>::failure(error);
 }
 
+//********************************************************************************************************************
+
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(
    std::initializer_list<TokenKind> terminators)
 {
@@ -1026,20 +994,20 @@ bool AstBuilder::at_end_of_block(std::span<const TokenKind> terminators) const
 bool AstBuilder::is_statement_start(TokenKind kind) const
 {
    switch (kind) {
-   case TokenKind::Local:
-   case TokenKind::Function:
-   case TokenKind::If:
-   case TokenKind::WhileToken:
-   case TokenKind::Repeat:
-   case TokenKind::For:
-   case TokenKind::DoToken:
-   case TokenKind::DeferToken:
-   case TokenKind::ReturnToken:
-   case TokenKind::BreakToken:
-   case TokenKind::ContinueToken:
-      return true;
-   default:
-      return false;
+      case TokenKind::Local:
+      case TokenKind::Function:
+      case TokenKind::If:
+      case TokenKind::WhileToken:
+      case TokenKind::Repeat:
+      case TokenKind::For:
+      case TokenKind::DoToken:
+      case TokenKind::DeferToken:
+      case TokenKind::ReturnToken:
+      case TokenKind::BreakToken:
+      case TokenKind::ContinueToken:
+         return true;
+      default:
+         return false;
    }
 }
 
@@ -1056,158 +1024,156 @@ LiteralValue AstBuilder::make_literal(const Token& token)
 {
    LiteralValue literal;
    switch (token.kind()) {
-   case TokenKind::Number:
-      literal.kind = LiteralKind::Number;
-      literal.number_value = token.payload().as_number();
-      break;
-   case TokenKind::String:
-      literal.kind = LiteralKind::String;
-      literal.string_value = token.payload().as_string();
-      break;
-   case TokenKind::Nil:
-      literal.kind = LiteralKind::Nil;
-      break;
-   case TokenKind::TrueToken:
-      literal.kind = LiteralKind::Boolean;
-      literal.bool_value = true;
-      break;
-   case TokenKind::FalseToken:
-      literal.kind = LiteralKind::Boolean;
-      literal.bool_value = false;
-      break;
-   default:
-      break;
+      case TokenKind::Number:
+         literal.kind = LiteralKind::Number;
+         literal.number_value = token.payload().as_number();
+         break;
+      case TokenKind::String:
+         literal.kind = LiteralKind::String;
+         literal.string_value = token.payload().as_string();
+         break;
+      case TokenKind::Nil:
+         literal.kind = LiteralKind::Nil;
+         break;
+      case TokenKind::TrueToken:
+         literal.kind = LiteralKind::Boolean;
+         literal.bool_value = true;
+         break;
+      case TokenKind::FalseToken:
+         literal.kind = LiteralKind::Boolean;
+         literal.bool_value = false;
+         break;
+      default:
+         break;
    }
    return literal;
 }
 
-SourceSpan AstBuilder::span_from(const Token& token)
-{
-   return token.span();
-}
-
-SourceSpan AstBuilder::span_from(const Token& start, const Token& end) const
-{
-   return combine_spans(start.span(), end.span());
-}
+//********************************************************************************************************************
 
 std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const Token& token) const
 {
    BinaryOpInfo info;
    switch (token.kind()) {
-   case TokenKind::Plus:
-      info.op = AstBinaryOperator::Add;
-      info.left = 6;
-      info.right = 6;
-      return info;
-   case TokenKind::Minus:
-      info.op = AstBinaryOperator::Subtract;
-      info.left = 6;
-      info.right = 6;
-      return info;
-   case TokenKind::Multiply:
-      info.op = AstBinaryOperator::Multiply;
-      info.left = 7;
-      info.right = 7;
-      return info;
-   case TokenKind::Divide:
-      info.op = AstBinaryOperator::Divide;
-      info.left = 7;
-      info.right = 7;
-      return info;
-   case TokenKind::Modulo:
-      info.op = AstBinaryOperator::Modulo;
-      info.left = 7;
-      info.right = 7;
-      return info;
-   case TokenKind::Cat:
-      info.op = AstBinaryOperator::Concat;
-      info.left = 5;
-      info.right = 4;
-      return info;
-   case TokenKind::Equal:
-   case TokenKind::IsToken:
-      info.op = AstBinaryOperator::Equal;
-      info.left = 3;
-      info.right = 3;
-      return info;
-   case TokenKind::NotEqual:
-      info.op = AstBinaryOperator::NotEqual;
-      info.left = 3;
-      info.right = 3;
-      return info;
-   case TokenKind::LessEqual:
-      info.op = AstBinaryOperator::LessEqual;
-      info.left = 3;
-      info.right = 3;
-      return info;
-   case TokenKind::GreaterEqual:
-      info.op = AstBinaryOperator::GreaterEqual;
-      info.left = 3;
-      info.right = 3;
-      return info;
-   case TokenKind::AndToken:
-      info.op = AstBinaryOperator::LogicalAnd;
-      info.left = 2;
-      info.right = 2;
-      return info;
-   case TokenKind::OrToken:
-      info.op = AstBinaryOperator::LogicalOr;
-      info.left = 1;
-      info.right = 1;
-      return info;
-   case TokenKind::Presence:
-      // Only treat ?? as binary if-empty when lookahead indicates binary usage
-      if (not this->ctx.lex().should_emit_presence()) {
-         info.op = AstBinaryOperator::IfEmpty;
+      case TokenKind::Plus:
+         info.op = AstBinaryOperator::Add;
+         info.left = 6;
+         info.right = 6;
+         return info;
+      case TokenKind::Minus:
+         info.op = AstBinaryOperator::Subtract;
+         info.left = 6;
+         info.right = 6;
+         return info;
+      case TokenKind::Multiply:
+         info.op = AstBinaryOperator::Multiply;
+         info.left = 7;
+         info.right = 7;
+         return info;
+      case TokenKind::Divide:
+         info.op = AstBinaryOperator::Divide;
+         info.left = 7;
+         info.right = 7;
+         return info;
+      case TokenKind::Modulo:
+         info.op = AstBinaryOperator::Modulo;
+         info.left = 7;
+         info.right = 7;
+         return info;
+      case TokenKind::Cat:
+         info.op = AstBinaryOperator::Concat;
+         info.left = 5;
+         info.right = 4;
+         return info;
+      case TokenKind::Equal:
+      case TokenKind::IsToken:
+         info.op = AstBinaryOperator::Equal;
+         info.left = 3;
+         info.right = 3;
+         return info;
+      case TokenKind::NotEqual:
+         info.op = AstBinaryOperator::NotEqual;
+         info.left = 3;
+         info.right = 3;
+         return info;
+      case TokenKind::LessEqual:
+         info.op = AstBinaryOperator::LessEqual;
+         info.left = 3;
+         info.right = 3;
+         return info;
+      case TokenKind::GreaterEqual:
+         info.op = AstBinaryOperator::GreaterEqual;
+         info.left = 3;
+         info.right = 3;
+         return info;
+      case TokenKind::AndToken:
+         info.op = AstBinaryOperator::LogicalAnd;
+         info.left = 2;
+         info.right = 2;
+         return info;
+      case TokenKind::OrToken:
+         info.op = AstBinaryOperator::LogicalOr;
          info.left = 1;
          info.right = 1;
          return info;
-      }
-      break;  // Not a binary operator, will be handled as postfix
-   case TokenKind::ShiftLeft:
-      info.op = AstBinaryOperator::ShiftLeft;
-      info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-      info.right = 5;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
-      return info;
-   case TokenKind::ShiftRight:
-      info.op = AstBinaryOperator::ShiftRight;
-      info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-      info.right = 5;  // Left-associative
-      return info;
-   default:
-      break;
+      case TokenKind::Presence:
+         // Only treat ?? as binary if-empty when lookahead indicates binary usage
+         if (not this->ctx.lex().should_emit_presence()) {
+            info.op = AstBinaryOperator::IfEmpty;
+            info.left = 1;
+            info.right = 1;
+            return info;
+         }
+         break;  // Not a binary operator, will be handled as postfix
+      case TokenKind::ShiftLeft:
+         info.op = AstBinaryOperator::ShiftLeft;
+         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
+         info.right = 5;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
+         return info;
+      case TokenKind::ShiftRight:
+         info.op = AstBinaryOperator::ShiftRight;
+         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
+         info.right = 5;  // Left-associative
+         return info;
+      default:
+         break;
    }
+
    if (token.raw() IS '^') {
       info.op = AstBinaryOperator::Power;
       info.left = 10;
       info.right = 9;
       return info;
    }
+
    if (token.raw() IS '<') {
       info.op = AstBinaryOperator::LessThan;
       info.left = 3;
       info.right = 3;
       return info;
    }
+
    if (token.raw() IS '>') {
       info.op = AstBinaryOperator::GreaterThan;
       info.left = 3;
       info.right = 3;
       return info;
    }
+
    if (token.raw() IS '&') {
       info.op = AstBinaryOperator::BitAnd;
       info.left = 4;  // Lower than shifts (5) per C precedence
       info.right = 4;  // Left-associative: a & b & c = (a & b) & c
       return info;
    }
+
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
       info.left = 2;  // Lower than XOR (3) per C precedence: AND > XOR > OR
       info.right = 2;  // Left-associative: a | b | c = (a | b) | c
       return info;
    }
+
    if (token.raw() IS '~') {
       info.op = AstBinaryOperator::BitXor;
       info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
@@ -1216,5 +1182,3 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    }
    return std::nullopt;
 }
-
-

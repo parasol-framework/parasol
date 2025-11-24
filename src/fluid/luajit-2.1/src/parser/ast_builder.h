@@ -21,8 +21,8 @@ public:
    explicit AstBuilder(ParserContext& context);
 
    ParserResult<std::unique_ptr<BlockStmt>> parse_chunk();
-   ParserResult<ExprNodePtr> parse_expression_entry(uint8_t precedence = 0);
-   ParserResult<ExprNodeList> parse_expression_list_entry();
+   ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
+   ParserResult<ExprNodeList> parse_expression_list();
 
 private:
    ParserContext& ctx;
@@ -47,19 +47,25 @@ private:
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_expression_stmt();
 
-   ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
    ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token);
    ParserResult<ExprNodePtr> parse_table_literal();
-   ParserResult<ExprNodeList> parse_expression_list();
 
    ParserResult<std::vector<Identifier>> parse_name_list();
    struct ParameterListResult {
       std::vector<FunctionParameter> parameters;
       bool is_vararg = false;
    };
+
+   static inline SourceSpan combine_spans(const SourceSpan& start, const SourceSpan& end) {
+      SourceSpan span = start;
+      span.offset = end.offset;
+      span.line = end.line;
+      span.column = end.column;
+      return span;
+   }
 
    ParserResult<ParameterListResult> parse_parameter_list(bool allow_optional);
    ParserResult<std::vector<TableField>> parse_table_fields(bool* has_array_part);
@@ -71,8 +77,10 @@ private:
    [[nodiscard]] bool is_statement_start(TokenKind kind) const;
    [[nodiscard]] static Identifier make_identifier(const Token& token);
    [[nodiscard]] static LiteralValue make_literal(const Token& token);
-   [[nodiscard]] static SourceSpan span_from(const Token& token);
-   [[nodiscard]] SourceSpan span_from(const Token& start, const Token& end) const;
-   [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token& token) const;
-};
 
+   [[nodiscard]] inline SourceSpan span_from(const Token& token) { return token.span(); }
+   [[nodiscard]] inline SourceSpan span_from(const Token& start, const Token& end) const { return combine_spans(start.span(), end.span()); }
+
+   [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token& token) const;
+
+};

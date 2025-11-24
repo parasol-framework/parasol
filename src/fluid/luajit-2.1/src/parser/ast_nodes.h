@@ -1,8 +1,6 @@
 // Lua parser - AST/IR node schema
 // Copyright (C) 2025 Paul Manias
 //
-// This header defines the abstract syntax / intermediate representation (AST/IR)
-// used by the decoupled parser pipeline outlined in docs/plans/PARSER_P2.md.
 // The schema mirrors every construct currently handled by the LuaJIT parser and
 // describes how child nodes, source locations and semantic attributes are stored.
 //
@@ -25,6 +23,17 @@
 // repurposing existing payloads; see the "Extension guidelines" comment near the
 // end of this file.
 
+// Extension guidelines
+// 1. Add a new AstNodeKind entry and dedicated payload struct. Do NOT overload existing
+//    payloads unless semantics are identical.
+// 2. Prefer storing ownership via std::unique_ptr/std::vector so that AST lifetimes are
+//    explicit. Views (StatementListView / ExpressionListView) should wrap storage instead
+//    of returning raw references.
+// 3. Always assign a SourceSpan when constructing nodes. Builder helpers above centralise
+//    invariant checks; extend them when new nodes require validation.
+// 4. Keep Identifier/NameRef semantics stable so scope resolution can be threaded through
+//    later passes without rewriting node shapes.
+
 #pragma once
 
 #include <cstdint>
@@ -37,7 +46,7 @@
 #include <variant>
 #include <vector>
 
-#include "lj_lex.h"
+#include "lexer.h"
 
 class ParserDiagnostics;
 
@@ -161,6 +170,8 @@ enum class CallDispatch : uint8_t {
    Direct,
    Method
 };
+
+//********************************************************************************************************************
 
 struct Identifier {
    GCstr* symbol = nullptr;
@@ -506,6 +517,8 @@ struct ExpressionStmtPayload {
    ~ExpressionStmtPayload();
 };
 
+//********************************************************************************************************************
+
 struct StmtNode {
    AstNodeKind kind = AstNodeKind::ExpressionStmt;
    SourceSpan span{};
@@ -517,117 +530,114 @@ struct StmtNode {
       data;
 };
 
+//********************************************************************************************************************
+
 class StatementListView {
 public:
    StatementListView() = default;
-   explicit StatementListView(const StmtNodeList& nodes);
+   explicit StatementListView(const StmtNodeList &nodes) : storage(&nodes) { }
 
    class Iterator {
    public:
       using InnerIterator = StmtNodeList::const_iterator;
       Iterator() = default;
-      explicit Iterator(InnerIterator it);
-      const StmtNode& operator*() const;
-      const StmtNode* operator->() const;
-      Iterator& operator++();
-      bool operator==(const Iterator& other) const;
-      bool operator!=(const Iterator& other) const;
+      inline explicit Iterator(InnerIterator it) : iter(it) {}
+      inline const StmtNode& operator*() const { return *(*this->iter); }
+      inline const StmtNode* operator->() const { return this->iter->get(); }
+      inline Iterator& operator++() { ++this->iter; return *this; }
+      inline bool operator==(const Iterator& other) const { return this->iter == other.iter; }
+      inline bool operator!=(const Iterator& other) const { return !(*this == other); }
+
    private:
       InnerIterator iter{};
    };
 
-   Iterator begin() const;
-   Iterator end() const;
-   [[nodiscard]] size_t size() const;
-   [[nodiscard]] bool empty() const;
-   [[nodiscard]] const StmtNode& operator[](size_t index) const;
+   [[nodiscard]] const StmtNode& operator[](size_t index) const {
+      lj_assertX(this->storage and index < this->storage->size(), "Statement index out of range");
+      return *(*this->storage)[index];
+   }
+
+   inline Iterator begin() const { return this->storage ? Iterator(this->storage->begin()) : Iterator(); }
+   inline Iterator end() const { return this->storage ? Iterator(this->storage->end()) : Iterator(); }
+   inline size_t size() const { return this->storage ? this->storage->size() : 0; }
+   inline bool empty() const { return this->size() == 0; }
 
 private:
    const StmtNodeList* storage = nullptr;
 };
 
+//********************************************************************************************************************
+
 class ExpressionListView {
 public:
    ExpressionListView() = default;
-   explicit ExpressionListView(const ExprNodeList& nodes);
+   
+   explicit ExpressionListView(const ExprNodeList& nodes) : storage(&nodes) { }
 
    class Iterator {
    public:
       using InnerIterator = ExprNodeList::const_iterator;
       Iterator() = default;
-      explicit Iterator(InnerIterator it);
-      const ExprNode& operator*() const;
-      const ExprNode* operator->() const;
-      Iterator& operator++();
-      bool operator==(const Iterator& other) const;
-      bool operator!=(const Iterator& other) const;
+       
+      explicit Iterator(InnerIterator it) : iter(it) {}
+      const ExprNode& operator*() const { return *(*this->iter); }
+      const ExprNode* operator->() const { return this->iter->get(); }
+      Iterator& operator++() { ++this->iter; return *this; }
+      bool operator==(const Iterator& other) const { return this->iter == other.iter; }
+      bool operator!=(const Iterator& other) const { return !(*this == other); }
+
    private:
       InnerIterator iter{};
    };
 
-   Iterator begin() const;
-   Iterator end() const;
-   [[nodiscard]] size_t size() const;
-   [[nodiscard]] bool empty() const;
-   [[nodiscard]] const ExprNode& operator[](size_t index) const;
+   Iterator begin() const { return this->storage ? Iterator(this->storage->begin()) : Iterator(); }
+   Iterator end() const { return this->storage ? Iterator(this->storage->end()) : Iterator(); }
+   size_t size() const { return this->storage ? this->storage->size() : 0; }
+   bool empty() const { return this->size() == 0; }
+
+   const ExprNode & operator[](size_t index) const {
+      lj_assertX(this->storage and index < this->storage->size(), "Expression index out of range");
+      return *(*this->storage)[index];
+   }
 
 private:
    const ExprNodeList* storage = nullptr;
 };
 
+//********************************************************************************************************************
+
 struct BlockStmt {
    SourceSpan span{};
    StmtNodeList statements;
-   StatementListView view() const;
+
+   inline StatementListView view() const { return StatementListView(this->statements); }
+
    ~BlockStmt();
 };
 
-// Builder helpers -------------------------------------------------------------------------
+//********************************************************************************************************************
+// Builder helpers
 
 ExprNodePtr make_literal_expr(SourceSpan span, const LiteralValue& literal);
 ExprNodePtr make_identifier_expr(SourceSpan span, const NameRef& reference);
 ExprNodePtr make_vararg_expr(SourceSpan span);
 ExprNodePtr make_unary_expr(SourceSpan span, AstUnaryOperator op, ExprNodePtr operand);
-ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_postfix,
-   ExprNodePtr target);
-ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr left,
-   ExprNodePtr right);
-ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition,
-   ExprNodePtr if_true, ExprNodePtr if_false);
+ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_postfix, ExprNodePtr target);
+ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr left, ExprNodePtr right);
+ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePtr if_true, ExprNodePtr if_false);
 ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);
-ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee,
-   ExprNodeList arguments, bool forwards_multret);
-ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver,
-   Identifier method, ExprNodeList arguments, bool forwards_multret);
-ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member,
-   bool uses_method_dispatch);
+ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret);
+ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments, bool forwards_multret);
+ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member, bool uses_method_dispatch);
 ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
-ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields,
-   bool has_array_part);
-ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters,
-   bool is_vararg, std::unique_ptr<BlockStmt> body);
-std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters,
-   bool is_vararg, std::unique_ptr<BlockStmt> body);
-
+ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
+ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
+std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
-StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op,
-   ExprNodeList targets, ExprNodeList values);
-StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names,
-   ExprNodeList values);
+StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);
+StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names, ExprNodeList values);
 StmtNodePtr make_return_stmt(SourceSpan span, ExprNodeList values, bool forwards_call);
 StmtNodePtr make_expression_stmt(SourceSpan span, ExprNodePtr expression);
 
 [[nodiscard]] size_t ast_statement_child_count(const StmtNode& node);
 [[nodiscard]] size_t ast_expression_child_count(const ExprNode& node);
-
-// Extension guidelines --------------------------------------------------------------------
-// 1. Add a new AstNodeKind entry and dedicated payload struct. Do NOT overload existing
-//    payloads unless semantics are identical.
-// 2. Prefer storing ownership via std::unique_ptr/std::vector so that AST lifetimes are
-//    explicit. Views (StatementListView / ExpressionListView) should wrap storage instead
-//    of returning raw references.
-// 3. Always assign a SourceSpan when constructing nodes. Builder helpers above centralise
-//    invariant checks; extend them when new nodes require validation.
-// 4. Keep Identifier/NameRef semantics stable so scope resolution can be threaded through
-//    later passes without rewriting node shapes.
-

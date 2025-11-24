@@ -18,8 +18,8 @@
 #include "lj_ctype.h"
 #endif
 #include "lj_strfmt.h"
-#include "lj_lex.h"
-#include "lj_parse.h"
+#include "lexer.h"
+#include "parser.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
@@ -112,7 +112,7 @@ static void trace_ast_boundary(ParserContext &Context, const BlockStmt &Chunk, C
          int(stmt.kind), children, int(stmt_span.line), int(stmt_span.column), stmt_span.offset);
 
       if (stmt.kind IS AstNodeKind::ExpressionStmt) {
-         const auto* payload = std::get_if<ExpressionStmtPayload>(&stmt.data);
+         const auto * payload = std::get_if<ExpressionStmtPayload>(&stmt.data);
          if (payload and payload->expression) {
             const ExprNode& expr = *payload->expression;
             size_t expr_children = ast_expression_child_count(expr);
@@ -133,7 +133,9 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
 {
    ParserProfiler::StageTimer parse_timer = Profiler.stage("parse");
    AstBuilder builder(Context);
+
    auto chunk_result = builder.parse_chunk();
+
    if (not chunk_result.ok()) {
       report_pipeline_error(Context, chunk_result.error_ref());
       flush_non_fatal_errors(Context);

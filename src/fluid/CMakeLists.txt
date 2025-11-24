@@ -44,9 +44,7 @@ set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
 # Enable unit tests for deep testing of non-release builds only.
-if (NOT DEFINED ENABLE_UNIT_TESTS)
-   set (ENABLE_UNIT_TESTS ON)
-endif ()
+# set (ENABLE_UNIT_TESTS ON)
 
 # IDL processing for headers and documentation
 
@@ -640,8 +638,8 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/bytecode/lj_bcwrite.cpp"
    "${LUAJIT_SRC}/debug/dump_bytecode.cpp"
    "${LUAJIT_SRC}/parser/lj_debug.cpp"
-   "${LUAJIT_SRC}/parser/lj_parse.cpp"
-   "${LUAJIT_SRC}/parser/lj_lex.cpp"
+   "${LUAJIT_SRC}/parser/parser.cpp"
+   "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
 
 if (NOT DISABLE_DISPLAY)

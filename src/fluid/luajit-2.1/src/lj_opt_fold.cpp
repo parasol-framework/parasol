@@ -1,9 +1,7 @@
-/*
-** FOLD: Constant Folding, Algebraic Simplifications and Reassociation.
-** ABCelim: Array Bounds Check Elimination.
-** CSE: Common-Subexpression Elimination.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// FOLD: Constant Folding, Algebraic Simplifications and Reassociation.
+// ABCelim: Array Bounds Check Elimination.
+// CSE: Common-Subexpression Elimination.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_opt_fold_c
 #define LUA_CORE
@@ -22,10 +20,12 @@
 #include "lj_ircall.h"
 #include "lj_iropt.h"
 #include "lj_trace.h"
+
 #if LJ_HASFFI
 #include "lj_ctype.h"
 #include "lj_carith.h"
 #endif
+
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
@@ -134,12 +134,13 @@
 */
 
 // Some local macros to save typing. Undef'd at the end.
-#define IR(ref)      (&J->cur.ir[(ref)])
-#define fins      (&J->fold.ins)
+
+#define IR(ref)    (&J->cur.ir[(ref)])
+#define fins       (&J->fold.ins)
 #define fleft      (J->fold.left)
-#define fright      (J->fold.right)
+#define fright     (J->fold.right)
 #define knumleft   (ir_knum(fleft)->n)
-#define knumright   (ir_knum(fright)->n)
+#define knumright  (ir_knum(fright)->n)
 
 // Pass IR on to next optimization in chain (FOLD).
 #define emitir(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
@@ -156,10 +157,10 @@ typedef IRRef(LJ_FASTCALL* FoldFunc)(jit_State* J);
 // Barrier to prevent using operands across PHIs.
 #define PHIBARRIER(ir)   if (irt_isphi((ir)->t)) return NEXTFOLD
 
-/* Barrier to prevent folding across a GC step.
-** GC steps can only happen at the head of a trace and at LOOP.
-** And the GC is only driven forward if there's at least one allocation.
-*/
+// Barrier to prevent folding across a GC step.
+// GC steps can only happen at the head of a trace and at LOOP.
+// And the GC is only driven forward if there's at least one allocation.
+
 #define gcstep_barrier(J, ref) \
   ((ref) < J->chain[IR_LOOP] and \
    (J->chain[IR_SNEW] or J->chain[IR_XSNEW] or \
@@ -2230,6 +2231,7 @@ LJFOLDF(fwd_href_tdup)
 ** FLOADs. And NEWREF itself is treated like a store (see below).
 ** LREF is constant (per trace) since coroutine switches are not inlined.
 */
+
 LJFOLD(FLOAD TNEW IRFL_TAB_ASIZE)
 LJFOLDF(fload_tab_tnew_asize)
 {
@@ -2505,8 +2507,6 @@ LJFOLDX(lj_ir_emit)
 */
 
 #include "lj_folddef.h"
-
-// ------------------------------------------------------------------------
 
 // Fold IR instruction.
 TRef LJ_FASTCALL lj_opt_fold(jit_State* J)

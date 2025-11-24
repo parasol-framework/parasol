@@ -135,7 +135,7 @@ int LexState::assign_if_empty(ParserContext &Context, ExpDesc* lh)
    assign_pos = fs->pc;
 
    auto rhs_list = this->expr_list(&rh);
-   if (!rhs_list.ok()) {
+   if (not rhs_list.ok()) {
       return 0;
    }
    nexps = rhs_list.value_ref();
@@ -237,7 +237,7 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
       infix = *lh;
       bcemit_binop_left(fs, op, &infix);
       auto rhs_values = this->expr_list(&rh);
-      if (!rhs_values.ok()) {
+      if (not rhs_values.ok()) {
          return 0;
       }
       nexps = rhs_values.value_ref();
@@ -246,13 +246,13 @@ int LexState::assign_compound(ParserContext &Context, ExpDesc *lh, TokenKind OpT
    else {
       // For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous.
 
-      if (!(op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR)) {
+      if (not (op IS OPR_BAND or op IS OPR_BOR or op IS OPR_BXOR or op IS OPR_SHL or op IS OPR_SHR)) {
          ExpressionValue lh_value(fs, *lh);
          lh_value.to_next_reg(allocator);
          *lh = lh_value.legacy();
       }
       auto rhs_values = this->expr_list(&rh);
-      if (!rhs_values.ok()) {
+      if (not rhs_values.ok()) {
          return 0;
       }
       nexps = rhs_values.value_ref();
@@ -289,10 +289,10 @@ void LexState::parse_assignment(ParserContext &Context, ExpDesc *First)
 
    while (true) {
       auto comma = Context.match(TokenKind::Comma);
-      if (!comma.ok()) break;
+      if (not comma.ok()) break;
       ExpDesc next;
       auto next_result = this->expr_primary(&next);
-      if (!next_result.ok()) {
+      if (not next_result.ok()) {
          return;
       }
       checkcond(this, ExpKind::Local <= next.k and next.k <= ExpKind::Indexed, ErrMsg::XSYNTAX);
@@ -309,7 +309,7 @@ void LexState::parse_assignment(ParserContext &Context, ExpDesc *First)
 
    ExpDesc e;
    auto expr_values = this->expr_list(&e);
-   if (!expr_values.ok()) {
+   if (not expr_values.ok()) {
       return;
    }
    BCReg nexps = expr_values.value_ref();
@@ -372,7 +372,7 @@ void LexState::parse_call_assign(ParserContext &Context)
    FuncState* fs = this->fs;
    ExpDesc lhs;
    auto lhs_result = this->expr_primary(&lhs);
-   if (!lhs_result.ok()) {
+   if (not lhs_result.ok()) {
       return;
    }
    if (lhs.k IS ExpKind::NonReloc and expr_has_flag(&lhs, ExprFlag::PostfixIncStmt))
@@ -407,16 +407,14 @@ ParserResult<LocalDeclResult> LexState::parse_local(ParserContext &Context)
 
    if (Context.check(TokenKind::Function)) {  // Local function declaration.
       auto fn = Context.consume(TokenKind::Function, ParserErrorCode::ExpectedToken);
-      if (!fn.ok()) {
-         return ParserResult<LocalDeclResult>::failure(fn.error_ref());
-      }
+      if (not fn.ok()) return ParserResult<LocalDeclResult>::failure(fn.error_ref());
+
       ExpDesc v, b;
       FuncState* fs = this->fs;
       RegisterAllocator allocator(fs);
       auto name_token = Context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (!name_token.ok()) {
-         return ParserResult<LocalDeclResult>::failure(name_token.error_ref());
-      }
+      if (not name_token.ok()) return ParserResult<LocalDeclResult>::failure(name_token.error_ref());
+
       GCstr* func_name = name_token.value_ref().identifier();
       this->var_new(0, func_name ? func_name : NAME_BLANK);
       expr_init(&v, ExpKind::Local, fs->freereg);
@@ -439,18 +437,16 @@ ParserResult<LocalDeclResult> LexState::parse_local(ParserContext &Context)
    BCReg nexps = 0;
    do {  // Collect LHS.
       auto identifier = Context.expect_identifier(ParserErrorCode::ExpectedIdentifier);
-      if (!identifier.ok()) {
-         return ParserResult<LocalDeclResult>::failure(identifier.error_ref());
-      }
+      if (not identifier.ok()) return ParserResult<LocalDeclResult>::failure(identifier.error_ref());
+
       GCstr* name = identifier.value_ref().identifier();
       this->var_new(nvars++, is_blank_identifier(name) ? NAME_BLANK : name);
    } while (Context.match(TokenKind::Comma).ok());
 
    if (Context.match(TokenKind::Equals).ok()) {  // Optional RHS.
       auto rhs_list = this->expr_list(&e);
-      if (!rhs_list.ok()) {
-         return ParserResult<LocalDeclResult>::failure(rhs_list.error_ref());
-      }
+      if (not rhs_list.ok()) return ParserResult<LocalDeclResult>::failure(rhs_list.error_ref());
+
       nexps = rhs_list.value_ref();
    }
    else {  // Or implicitly set to nil.
@@ -527,9 +523,8 @@ void LexState::parse_defer()
       if (this->tok != ')') {
          do {
             auto arg_expr = this->expr(&arg);
-            if (!arg_expr.ok()) {
-               return;
-            }
+            if (not arg_expr.ok()) return;
+
             ExpressionValue arg_value(fs, arg);
             arg_value.to_next_reg(allocator);
             arg = arg_value.legacy();
@@ -610,7 +605,7 @@ void LexState::parse_return(ParserContext &Context)
    else {  // Return with one or more values.
       ExpDesc e;  // Receives the _last_ expression in the list.
       auto returns = this->expr_list(&e);
-      if (!returns.ok()) return;
+      if (not returns.ok()) return;
 
       BCReg nret = returns.value_ref();
       if (nret IS 1) {  // Return one result.
@@ -644,8 +639,7 @@ void LexState::parse_return(ParserContext &Context)
    }
    snapshot_return_regs(fs, &ins);
    execute_defers(fs, 0);
-   if (fs->flags & PROTO_CHILD)
-      bcemit_AJ(fs, BC_UCLO, 0, 0);  // May need to close upvalues first.
+   if (fs->flags & PROTO_CHILD) bcemit_AJ(fs, BC_UCLO, 0, 0);  // May need to close upvalues first.
    bcemit_INS(fs, ins);
 }
 
@@ -710,7 +704,7 @@ void LexState::parse_while(ParserContext &Context, BCLine line)
    start = fs->lasttarget = fs->pc;
    auto while_cond = this->expr_cond();
 
-   if (!while_cond.ok()) return;
+   if (not while_cond.ok()) return;
 
    condexit = while_cond.value_ref();
    FuncScope bl;
@@ -753,7 +747,7 @@ void LexState::parse_repeat(ParserContext &Context, BCLine line)
       this->lex_match(TK_until, TK_repeat, line);
       iter = fs->pc;
       auto repeat_cond = this->expr_cond();  // Parse condition (still inside inner scope).
-      if (!repeat_cond.ok()) {
+      if (not repeat_cond.ok()) {
          return;
       }
       condexit = repeat_cond.value_ref();
@@ -795,12 +789,12 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
 
    this->var_new(FORL_EXT, varname);
    Context.consume(TokenKind::Equals, ParserErrorCode::ExpectedToken);
-   if (!this->expr_next().ok()) return;
+   if (not this->expr_next().ok()) return;
    Context.consume(TokenKind::Comma, ParserErrorCode::ExpectedToken);
-   if (!this->expr_next().ok()) return;
+   if (not this->expr_next().ok()) return;
 
    if (Context.match(TokenKind::Comma).ok()) {
-      if (!this->expr_next().ok()) return;
+      if (not this->expr_next().ok()) return;
    }
    else {
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);  // Default step is 1.
@@ -838,8 +832,8 @@ void LexState::parse_for_num(ParserContext &Context, GCstr* varname, BCLine line
 static int predict_next(LexState *State, FuncState *fs, BCPos pc)
 {
    BCIns ins = fs->bcbase[pc].ins;
-   GCstr* name;
-   cTValue* o;
+   GCstr *name;
+   cTValue *table_entry;
 
    switch (bc_op(ins)) {
       case BC_MOV:
@@ -850,12 +844,10 @@ static int predict_next(LexState *State, FuncState *fs, BCPos pc)
          break;
       case BC_GGET:
          // There's no inverse index (yet), so lookup the strings.
-         o = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "pairs"));
-         if (o and tvhaskslot(o) and tvkslot(o) IS bc_d(ins))
-            return 1;
-         o = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "next"));
-         if (o and tvhaskslot(o) and tvkslot(o) IS bc_d(ins))
-            return 1;
+         table_entry = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "pairs"));
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) return 1;
+         table_entry = lj_tab_getstr(fs->kt, lj_str_newlit(State->L, "next"));
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) return 1;
          return 0;
       default:
          return 0;
@@ -896,7 +888,7 @@ void LexState::parse_for_iter(ParserContext &Context, GCstr* indexname)
    Context.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
    line = this->linenumber;
    auto iter_values = this->expr_list(&e);
-   if (!iter_values.ok()) return;
+   if (not iter_values.ok()) return;
 
    this->assign_adjust(3, iter_values.value_ref(), &e);
 
@@ -955,7 +947,7 @@ BCPos LexState::parse_then(ParserContext &Context)
    BCPos condexit;
    Context.tokens().advance();  // Skip 'if' or 'elseif'.
    auto if_cond = this->expr_cond();
-   if (!if_cond.ok()) return NO_JMP;
+   if (not if_cond.ok()) return NO_JMP;
    condexit = if_cond.value_ref();
    Context.consume(TokenKind::ThenToken, ParserErrorCode::ExpectedToken);
    this->parse_block(Context);
@@ -1074,7 +1066,7 @@ void LexState::parse_chunk(ParserContext &Context)
    }
    this->synlevel_end();
 
-   if (!Context.config().abort_on_error and Context.diagnostics().has_errors()) {
+   if (not Context.config().abort_on_error and Context.diagnostics().has_errors()) {
       raise_accumulated_diagnostics(Context);
    }
 }
