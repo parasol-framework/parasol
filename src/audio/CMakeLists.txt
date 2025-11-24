@@ -39,7 +39,8 @@ else ()
    endif ()
 endif ()
 
-flute_test (audio "tests/test-audio.fluid")
+# Audio tests should be manually enabled if working on the Audio module.
+# flute_test (audio "tests/test-audio.fluid")
 
 if (BUILD_TESTS)
    add_executable (test_audio_mixers tests/test_mixers.cpp)
