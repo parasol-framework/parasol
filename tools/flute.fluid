@@ -31,8 +31,14 @@ function runTests()
    end
 
    local body = loadFile(glFile)
+
    if not body then
       print("The Flute test file did not return a configuration table.  It is either not a Flute script or is misconfigured.")
+      return
+   elseif not body.tests then
+      -- This is considered legitimate - a test file may choose to have no tests.
+      print("The Flute test file did not return any tests to execute.")
+      glSelf.errorString = nil
       return
    end
 
@@ -98,6 +104,8 @@ function runTests()
    if glTestsPassed < glTestTotal then
       -- Setting the errorString will ensure that an error code is returned to the shell.
       glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
+   else
+      glSelf.errorString = nil
    end
 
    print("Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed)
@@ -122,5 +130,8 @@ end
       print(glHelp)
       return
    end
+   
+   -- Setting an error string ensures that ctest will register a failure if the tests do not complete as planned.
+   glSelf.errorString = "Unexpected execution failure - tests not executed as planned."
 
    runTests()

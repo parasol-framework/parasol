@@ -4,12 +4,15 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
+#include "parser/operator_emitter.h"
+#include "parser/parse_control_flow.h"
+
 //********************************************************************************************************************
 // Bytecode emitter for operators
 
 // Try constant-folding of arithmetic operators.
 
-[[nodiscard]] static int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+[[nodiscard]] int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    TValue o;
    lua_Number n;
@@ -31,7 +34,7 @@
 //********************************************************************************************************************
 // Emit arithmetic operator.
 
-static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
    BCReg rb, rc, t;
@@ -69,8 +72,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // Avoid two consts to satisfy bytecode constraints.
 
-      if (expr_isnumk(e1) and !expr_isnumk(e2) and
-         (t = const_num(fs, e1)) <= BCMAX_B) {
+      if (expr_isnumk(e1) and (not expr_isnumk(e2)) and (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
       else {
@@ -80,9 +82,9 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Release operand registers through allocator
+   allocator.release_expression(e2);
+   allocator.release_expression(e1);
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -90,41 +92,49 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit comparison operator.
 
-static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
    RegisterAllocator allocator(fs);
-   ExpDesc* eret = e1;
+   ExpDesc *eret = e1;
    BCIns ins;
+   BCReg cmp_reg_a = NO_REG, cmp_reg_b = NO_REG;  // Track registers used by comparison
    ExpressionValue e1_toval_pre(fs, *e1);
+
    e1_toval_pre.to_val();
    *e1 = e1_toval_pre.legacy();
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
+
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
+      cmp_reg_a = ra;
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
+
       switch (e2->k) {
-      case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
-         ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
-         break;
-      case ExpKind::Str:
-         ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
-         break;
-      case ExpKind::Num:
-         ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
-         break;
-      default: {
-         ExpressionValue e2_value(fs, *e2);
-         BCReg rb = e2_value.discharge_to_any_reg(allocator);
-         *e2 = e2_value.legacy();
-         ins = BCINS_AD(op, ra, rb);
-         break;
-      }
+         case ExpKind::Nil:
+         case ExpKind::False:
+         case ExpKind::True:
+            ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
+            break;
+         case ExpKind::Str:
+            ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
+            break;
+         case ExpKind::Num:
+            ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
+            break;
+         default: {
+            ExpressionValue e2_value(fs, *e2);
+            BCReg rb = e2_value.discharge_to_any_reg(allocator);
+            *e2 = e2_value.legacy();
+            cmp_reg_b = rb;
+            ins = BCINS_AD(op, ra, rb);
+            break;
+         }
       }
    }
    else {
@@ -151,97 +161,64 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
          ra = e1_value.discharge_to_any_reg(allocator);
          *e1 = e1_value.legacy();
       }
+      cmp_reg_a = ra;
+      cmp_reg_b = rd;
       ins = BCINS_AD(op, ra, rd);
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Emit the comparison instruction now that operands are prepared.
    bcemit_INS(fs, ins);
+
+   // Explicitly release operand registers through the allocator.
+   // Release in LIFO order (highest register first) to maximise the chance of
+   // collapsing freereg when both operands are adjacent temporaries.
+   if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
+      allocator.release_register(cmp_reg_b);
+      allocator.release_register(cmp_reg_a);
+   }
+   else {
+      allocator.release_register(cmp_reg_a);
+      if (cmp_reg_b != NO_REG) allocator.release_register(cmp_reg_b);
+   }
+
+   // Produce a Jmp expression as the result of the comparison, preserving
+   // existing short-circuit and conditional semantics.
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
 }
 
 //********************************************************************************************************************
 // Fixup left side of binary operator.
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
+// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
 
-static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
+[[deprecated]] static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
+   ControlFlowGraph cfg(fs);
+   OperatorEmitter emitter(fs, &allocator, &cfg);
+   ValueSlot left(e);
 
    if (op IS OPR_AND) {
-      bcemit_branch_t(fs, e);
+      emitter.prepare_logical_and(left);
    }
    else if (op IS OPR_OR) {
-      bcemit_branch_f(fs, e);
+      emitter.prepare_logical_or(left);
    }
    else if (op IS OPR_IF_EMPTY) {
-      // For ?, handle extended falsey checks - only set up jumps for compile-time constants
-      BCPos pc;
-
-      ExpressionValue e_value(fs, *e);
-      e_value.discharge();
-      *e = e_value.legacy();
-      // Extended falsey: nil, false, 0, ""
-      if (e->k IS ExpKind::Nil or e->k IS ExpKind::False)
-         pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k IS ExpKind::Num and expr_numiszero(e))
-         pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0)
-         pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Jmp)
-         pc = e->u.s.info;
-      else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) {
-         // Truthy constant - load to register and emit jump to skip RHS
-         allocator.reserve(1);
-         expr_toreg_nobranch(fs, e, fs->freereg - 1);
-         pc = bcemit_jmp(fs);
-      }
-      else {
-         // Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness
-         // Ensure the value resides in a dedicated register so that RHS evaluation cannot
-         // clobber it. Keep a copy of the original value even if the source lives in an
-         // active local slot.
-
-         if (!expr_isk_nojump(e)) {
-            ExpressionValue e_value_inner(fs, *e);
-            BCReg src_reg = e_value_inner.discharge_to_any_reg(allocator);
-            *e = e_value_inner.legacy();
-            BCReg rhs_reg = fs->freereg;
-            ExprFlag saved_flags = e->flags;
-            allocator.reserve(1);
-            expr_init(e, ExpKind::NonReloc, src_reg);
-            e->u.s.aux = rhs_reg;
-            e->flags = saved_flags | ExprFlag::HasRhsReg;
-         }
-         pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
-      }
-      ControlFlowGraph cfg(fs);
-      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-      true_edge.append(pc);
-      e->t = true_edge.head();
-      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
-      false_edge.patch_here();
-      e->f = NO_JMP;
+      emitter.prepare_if_empty(left);
    }
    else if (op IS OPR_CONCAT) {
-      ExpressionValue e_value(fs, *e);
-      e_value.to_next_reg(allocator);
-      *e = e_value.legacy();
-   }
-   else if (op IS OPR_EQ or op IS OPR_NE) {
-      if (!expr_isk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.prepare_concat(left);
    }
    else {
-      if (!expr_isnumk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.emit_binop_left(op, left);
    }
 }
 
@@ -361,8 +338,9 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
 
 //********************************************************************************************************************
 // Emit unary bit library call (e.g., bit.bnot).
+// Exported for use by OperatorEmitter facade
 
-static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
+void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
@@ -417,8 +395,16 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 // Emit bytecode for postfix presence check operator (x?).
 // Returns boolean: true if value is truthy (extended falsey semantics),
 // false if value is falsey (nil, false, 0, "").
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter::emit_presence_check() instead.
+// Do not call this function from new code - use OperatorEmitter methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_presence_check → shared helpers
 
-static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
+[[deprecated]] static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
    ExpressionValue e_value(fs, *e);
@@ -518,8 +504,16 @@ static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
 
 //********************************************************************************************************************
 // Emit binary operator.
+//
+// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
+// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
+// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
+//
+// Architecture:
+// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
+// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
 
-static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
+[[deprecated]] static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
 
@@ -715,7 +709,7 @@ static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit unary operator.
 
-static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
+void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
 

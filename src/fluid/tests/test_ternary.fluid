@@ -46,10 +46,25 @@ end
 -- Short-circuit tests
 function testShortCircuitTrue()
    local called = false
+
    local function false_branch()
       called = true
       return "B"
    end
+
+   -- This setup results in run-time evaluation
+
+   local function truth()
+      return true
+   end
+   local is_true = truth()
+
+   local v = is_true ? "A" :> false_branch()
+   assert(v is "A", "Failed short-circuit true")
+   assert(not called, "False branch should not be called")
+
+   -- This setup can be evaluated at compile-time
+
    local v = true ? "A" :> false_branch()
    assert(v is "A", "Failed short-circuit true")
    assert(not called, "False branch should not be called")
@@ -379,6 +394,14 @@ function testTernaryAsFunctionArgument()
    end
    local v = process(true ? 5 :> 10)
    assert(v is 10, "Failed ternary as function argument: expected 10, got " .. tostring(v))
+   
+   local function myFunc(value)
+      return value
+   end
+
+   local Number = 1
+   local result = myFunc(Number ? 1 :> 2) -- This should pass Number (1) to myFunc, not 2
+   assert(result is 1, "Expected 1, got " .. tostring(result))
 end
 
 -- Ternary in table constructor

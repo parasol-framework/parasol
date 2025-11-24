@@ -22,12 +22,12 @@
 */
 
 // Operand ranges and related constants.
-constexpr uint8_t BCMAX_A = 0xff;
-constexpr uint8_t BCMAX_B = 0xff;
-constexpr uint8_t BCMAX_C = 0xff;
+constexpr uint8_t  BCMAX_A = 0xff;
+constexpr uint8_t  BCMAX_B = 0xff;
+constexpr uint8_t  BCMAX_C = 0xff;
 constexpr uint16_t BCMAX_D = 0xffff;
 constexpr uint16_t BCBIAS_J = 0x8000;
-constexpr uint8_t NO_REG = BCMAX_A;
+constexpr uint8_t  NO_REG = BCMAX_A;
 #define NO_JMP      (~(BCPos)0)
 
 // Inline functions to get instruction fields (defined after BCOp enum).

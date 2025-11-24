@@ -136,6 +136,28 @@ function testShortCircuitTruth()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Ensure RHS is not evaluated when LHS is a RUNTIME truthy value (not compile-time constant)
+
+function testShortCircuitRuntimeTruthy()
+   local call_count = 0
+   local function rhs()
+      call_count = call_count + 1
+      return "RHS"
+   end
+
+   -- Use a function to get the LHS value so it's not a compile-time constant
+   local function getLHS()
+      return "Hello"
+   end
+
+   local lhs_value = getLHS()
+   local result = lhs_value ?? rhs()
+
+   assert(result is "Hello", "Failed runtime short-circuit: expected 'Hello', got '" .. tostring(result) .. "'")
+   assert(call_count is 0, "BUG: RHS was evaluated " .. tostring(call_count) .. " times when LHS was runtime truthy")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is evaluated exactly once when LHS is extended-falsey
 
 function testRHSOnce()
@@ -329,7 +351,7 @@ end
    return {
       tests = {
          'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
-         'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
+         'testShortCircuitTruth', 'testShortCircuitRuntimeTruthy', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
          'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
          'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError',
          'testMethodCallInOptionalForm', 'testNestedOptional', 'testOptionalReturnValue',

@@ -1,0 +1,1 @@
+The parser is built as an amalgamated build, with all source files included into a single compilation unit at `lj_parse.cpp`. This simplifies dependency management and ensures consistent compiler settings across the entire parser codebase.
