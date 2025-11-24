@@ -154,7 +154,6 @@ extern BCPos bcemit_branch(FuncState *, ExpDesc* e, int cond);
 
 // These remain static (legacy parser only)
 static void bcemit_branch_t(FuncState *, ExpDesc* e);
-static void bcemit_branch_f(FuncState *, ExpDesc* e);
 
 // Operators (lj_parse_operators.cpp)
 

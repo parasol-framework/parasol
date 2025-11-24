@@ -29,6 +29,10 @@ public:
       if (fs_) fscope_end(fs_);
    }
 
+   inline void disarm() {
+      fs_ = nullptr;
+   }
+
    // Prevent copying
    ScopeGuard(const ScopeGuard &) = delete;
    ScopeGuard& operator=(const ScopeGuard&) = delete;

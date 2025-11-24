@@ -176,11 +176,8 @@ private:
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
    ParserResult<std::vector<PreparedAssignment>> prepare_assignment_targets(const ExprNodeList& targets);
-   void update_local_binding(GCstr* symbol, BCReg slot);
-   std::optional<BCReg> resolve_local(GCstr* symbol) const;
    void materialise_to_next_reg(ExpDesc& expression, std::string_view usage);
    void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
-   void release_expression(ExpDesc& expression, std::string_view usage);
    void ensure_register_floor(std::string_view usage);
    void ensure_register_balance(std::string_view usage);
 
@@ -188,6 +185,10 @@ private:
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);
 
    ParserError make_error(ParserErrorCode code, std::string_view message) const;
+
+   inline std::optional<BCReg> resolve_local(GCstr* symbol) const { return this->binding_table.resolve(symbol); }
+   inline void update_local_binding(GCstr* symbol, BCReg slot) { this->binding_table.add(symbol, slot); }
+   inline void release_expression(ExpDesc& expression, std::string_view usage) { expr_free(&this->func_state, &expression); this->ensure_register_floor(usage); }
 
    struct LoopContext {
       ControlFlowEdge break_edge;

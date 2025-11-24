@@ -484,15 +484,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    this->lex_state.var_add(1);
 
    auto function_value = this->emit_function_expr(*payload.function);
-   if (not function_value.ok()) {
-      return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
-   }
+   if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
+
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, slot, "local function literal");
    var_get(&this->lex_state, &this->func_state, this->func_state.nactvar - 1).startpc = this->func_state.pc;
-   if (payload.name.symbol and not payload.name.is_blank) {
-      this->update_local_binding(payload.name.symbol, slot);
-   }
+   if (payload.name.symbol and not payload.name.is_blank) this->update_local_binding(payload.name.symbol, slot);
+
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -513,6 +511,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    this->func_state.freereg = this->func_state.nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 {
@@ -541,15 +541,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
       }
       else if (clause.block) {
          auto block_result = this->emit_block(*clause.block, FuncScopeFlag::None);
-         if (not block_result.ok()) {
-            return block_result;
-         }
+         if (not block_result.ok()) return block_result;
       }
    }
 
    escapelist.patch_here();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& payload)
 {
@@ -601,6 +601,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payload)
 {
    if (payload.style != LoopStyle::RepeatUntil or not payload.condition or not payload.body) {
@@ -632,9 +634,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
 
       iter = fs->pc;
       auto cond_result = this->emit_condition_jump(*payload.condition);
-      if (not cond_result.ok()) {
-         return ParserResult<IrEmitUnit>::failure(cond_result.error_ref());
-      }
+      if (not cond_result.ok()) return ParserResult<IrEmitUnit>::failure(cond_result.error_ref());
+
       condexit = cond_result.value_ref();
       inner_has_upvals = has_flag(inner_scope.flags, FuncScopeFlag::Upvalue);
       if (inner_has_upvals) {
@@ -663,6 +664,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPayload& payload)
 {
@@ -732,9 +735,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
          binding_span = std::span<const BlockBinding>(loop_bindings.data(), 1);
       }
       auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
-      if (not block_result.ok()) {
-         return block_result;
-      }
+      if (not block_result.ok()) return block_result;
    }
 
    ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORL, base, NO_JMP));
@@ -747,6 +748,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPayload& payload)
 {
@@ -830,11 +833,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+//********************************************************************************************************************
+
 ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payload)
 {
-   if (not payload.callable) {
-      return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
-   }
+   if (not payload.callable) return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
 
    FuncState* fs = &this->func_state;
    BCReg reg = fs->freereg;
@@ -879,6 +882,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    fs->freereg = fs->nactvar;
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
+
+//********************************************************************************************************************
 
 ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 {
@@ -1775,7 +1780,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload)
 {
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
@@ -1785,7 +1790,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& P
    ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, allocator, inherited);
    ParserSession session(child_ctx, inherited);
 
-   FuncState* parent_state = &this->func_state;
+   FuncState *parent_state = &this->func_state;
    ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
 
    this->lex_state.fs_init(&child_state);
@@ -1797,10 +1802,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& P
    if (Payload.is_vararg) child_state.flags |= PROTO_VARARG;
 
    FuncScope scope;
-
-   // TODO: Should use ScopeGuard, but currently crashes when its destructor calls fscope_end() during stack unwinding.
-   //ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
-   fscope_begin(&child_state, &scope, FuncScopeFlag::None);
+   ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
 
    BCReg param_count = BCReg(Payload.parameters.size());
    for (BCReg i = 0; i < param_count; ++i) {
@@ -1826,17 +1828,16 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& P
 
    auto body_result = child_emitter.emit_block(*Payload.body, FuncScopeFlag::None);
    if (not body_result.ok()) {
-      //fscope_end(&child_state); // Crashes in some cases
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
-   GCproto* pt = this->lex_state.fs_finish(Payload.body->span.line);
+   GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
+   scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bcstack + oldbase;
    parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase);
 
    ExpDesc expr;
-   expr_init(&expr, ExpKind::Relocable,
-      bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
+   expr_init(&expr, ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
 #if LJ_HASFFI
    parent_state->flags |= (child_state.flags & PROTO_FFI);
@@ -1847,7 +1848,6 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload& P
       parent_state->flags |= PROTO_CHILD;
    }
 
-   //fscope_end(&child_state); // Crashes in some cases
    return ParserResult<ExpDesc>::success(expr);
 }
 
@@ -1866,9 +1866,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
    size_t traverse_limit = path.method.has_value() ? path.segments.size() : (path.segments.size() > 0 ? path.segments.size() - 1 : 0);
    for (size_t i = 1; i < traverse_limit; ++i) {
       const Identifier& segment = path.segments[i];
-      if (not segment.symbol) {
-         return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
-      }
+      if (not segment.symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
+
       ExpDesc key = make_interned_string_expr(segment.symbol);
       ExpressionValue target_toval(&this->func_state, target);
       target_toval.to_val();
@@ -1916,9 +1915,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 
       case AstNodeKind::MemberExpr: {
          const auto& payload = std::get<MemberExprPayload>(expr.data);
-         if (not payload.table or not payload.member.symbol) {
-            return this->unsupported_expr(expr.kind, expr.span);
-         }
+         if (not payload.table or not payload.member.symbol) return this->unsupported_expr(expr.kind, expr.span);
 
          auto table_result = this->emit_expression(*payload.table);
          if (not table_result.ok()) return table_result;
@@ -1937,9 +1934,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 
       case AstNodeKind::IndexExpr: {
          const auto& payload = std::get<IndexExprPayload>(expr.data);
-         if (not payload.table or not payload.index) {
-            return this->unsupported_expr(expr.kind, expr.span);
-         }
+         if (not payload.table or not payload.index) return this->unsupported_expr(expr.kind, expr.span);
 
          auto table_result = this->emit_expression(*payload.table);
          if (not table_result.ok()) return table_result;
@@ -2013,9 +2008,7 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
       }
 
       auto lvalue = this->emit_lvalue_expr(*node);
-      if (not lvalue.ok()) {
-         return ParserResult<std::vector<PreparedAssignment>>::failure(lvalue.error_ref());
-      }
+      if (not lvalue.ok()) return ParserResult<std::vector<PreparedAssignment>>::failure(lvalue.error_ref());
 
       ExpDesc slot = lvalue.value_ref();
       PreparedAssignment prepared;
@@ -2058,16 +2051,6 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
 
 //********************************************************************************************************************
 
-std::optional<BCReg> IrEmitter::resolve_local(GCstr* symbol) const
-{
-   return this->binding_table.resolve(symbol);
-}
-
-void IrEmitter::update_local_binding(GCstr* symbol, BCReg slot)
-{
-   this->binding_table.add(symbol, slot);
-}
-
 void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view usage)
 {
    RegisterAllocator allocator(&this->func_state);
@@ -2083,12 +2066,6 @@ void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_
    ExpressionValue value(&this->func_state, expression);
    value.to_reg(allocator, slot);
    expression = value.legacy();
-   this->ensure_register_floor(usage);
-}
-
-void IrEmitter::release_expression(ExpDesc& expression, std::string_view usage)
-{
-   expr_free(&this->func_state, &expression);
    this->ensure_register_floor(usage);
 }
 
