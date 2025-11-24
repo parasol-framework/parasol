@@ -1161,7 +1161,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
 
-   this->func_state.freereg = copies.reserved.expected_top();
+   if (not copies.reserved.empty()) {
+      BCReg expected_top = copies.reserved.expected_top();
+      if ((expected_top >= this->func_state.nactvar) and (expected_top <= this->func_state.freereg)) {
+         this->func_state.freereg = expected_top;
+      }
+   }
    allocator.release(copies.reserved);
 
    this->func_state.freereg = target.reserved.expected_top();
