@@ -1068,6 +1068,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
          assign_from_stack(begin, targets.rend());
       }
       for (PreparedAssignment& prepared : targets) {
+         if (not prepared.reserved.empty()) {
+            BCReg expected_top = prepared.reserved.expected_top();
+            if ((expected_top >= this->func_state.nactvar) and (expected_top <= this->func_state.freereg)) {
+               this->func_state.freereg = expected_top;
+            }
+         }
          allocator.release(prepared.reserved);
       }
       register_guard.release_to(this->func_state.nactvar);
@@ -1078,6 +1084,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    this->lex_state.assign_adjust(nvars, nexps, &tail);
    assign_from_stack(targets.rbegin(), targets.rend());
    for (PreparedAssignment& prepared : targets) {
+      if (not prepared.reserved.empty()) {
+         BCReg expected_top = prepared.reserved.expected_top();
+         if ((expected_top >= this->func_state.nactvar) and (expected_top <= this->func_state.freereg)) {
+            this->func_state.freereg = expected_top;
+         }
+      }
       allocator.release(prepared.reserved);
    }
    register_guard.release_to(this->func_state.nactvar);
