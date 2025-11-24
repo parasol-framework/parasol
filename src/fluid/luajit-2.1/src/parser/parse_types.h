@@ -44,7 +44,8 @@ enum class ExpKind : uint8_t {
 enum class ExprFlag : uint8_t {
    None = 0x00u,
    PostfixIncStmt = 0x01u,
-   HasRhsReg = 0x02u
+   HasRhsReg = 0x02u,
+   ComparisonOperand = 0x04u  // Expression was discharged for a comparison operator
 };
 
 enum class FuncScopeFlag : uint8_t {

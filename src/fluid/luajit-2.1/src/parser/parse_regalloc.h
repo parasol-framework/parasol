@@ -61,7 +61,7 @@ public:
    {
       Other.allocator_ = nullptr;
    }
-   AllocatedRegister& operator=(AllocatedRegister&& Other) noexcept
+   AllocatedRegister& operator=(AllocatedRegister &&Other) noexcept
    {
       if (this IS &Other) return *this;
 
@@ -119,48 +119,29 @@ public:
 
    [[nodiscard]] FuncState* state() const { return func_state; }
 
-#if LJ_DEBUG
    // Debug verification methods
    void verify_no_leaks(const char* Context) const;
    void trace_allocation(BCReg Start, BCReg Count, const char* Context) const;
    void trace_release(BCReg Start, BCReg Count, const char* Context) const;
-#endif
 
 private:
-   [[nodiscard]] BCReg reserve_slots(BCReg Count);
+   BCReg reserve_slots(BCReg Count);
    void release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop);
 
    FuncState* func_state;
 };
 
 //********************************************************************************************************************
-// RegisterAllocator inline implementations
 
-inline RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State)
-{
-}
+inline RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State) { }
 
-inline void RegisterAllocator::reserve(BCReg Count)
-{
-   this->reserve_slots(Count);
-}
+inline void RegisterAllocator::reserve(BCReg Count) { this->reserve_slots(Count); }
 
-inline AllocatedRegister RegisterAllocator::acquire()
-{
+inline AllocatedRegister RegisterAllocator::acquire() {
    BCReg start = this->reserve_slots(1);
    return AllocatedRegister(this, start, start + 1);
 }
 
-//********************************************************************************************************************
-// RegisterSpan and AllocatedRegister inline implementations
+inline void RegisterSpan::release() { if (allocator_) allocator_->release(*this); }
 
-inline void RegisterSpan::release()
-{
-   if (allocator_) allocator_->release(*this);
-}
-
-inline void AllocatedRegister::release()
-{
-   if (allocator_) allocator_->release(*this);
-}
-
+inline void AllocatedRegister::release() { if (allocator_) allocator_->release(*this); }

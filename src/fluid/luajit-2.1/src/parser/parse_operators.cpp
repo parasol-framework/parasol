@@ -82,9 +82,9 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Release operand registers through allocator
+   allocator.release_expression(e2);
+   allocator.release_expression(e1);
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
 }
@@ -97,6 +97,7 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
    RegisterAllocator allocator(fs);
    ExpDesc *eret = e1;
    BCIns ins;
+   BCReg cmp_reg_a = NO_REG, cmp_reg_b = NO_REG;  // Track registers used by comparison
    ExpressionValue e1_toval_pre(fs, *e1);
 
    e1_toval_pre.to_val();
@@ -109,27 +110,31 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
+      cmp_reg_a = ra;
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
 
       switch (e2->k) {
-      case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
-         ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
-         break;
-      case ExpKind::Str:
-         ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
-         break;
-      case ExpKind::Num:
-         ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
-         break;
-      default: {
-         ExpressionValue e2_value(fs, *e2);
-         BCReg rb = e2_value.discharge_to_any_reg(allocator);
-         *e2 = e2_value.legacy();
-         ins = BCINS_AD(op, ra, rb);
-         break;
-      }
+         case ExpKind::Nil:
+         case ExpKind::False:
+         case ExpKind::True:
+            ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
+            break;
+         case ExpKind::Str:
+            ins = BCINS_AD(op + (BC_ISEQS - BC_ISEQV), ra, const_str(fs, e2));
+            break;
+         case ExpKind::Num:
+            ins = BCINS_AD(op + (BC_ISEQN - BC_ISEQV), ra, const_num(fs, e2));
+            break;
+         default: {
+            ExpressionValue e2_value(fs, *e2);
+            BCReg rb = e2_value.discharge_to_any_reg(allocator);
+            *e2 = e2_value.legacy();
+            cmp_reg_b = rb;
+            ins = BCINS_AD(op, ra, rb);
+            break;
+         }
       }
    }
    else {
@@ -156,12 +161,32 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
          ra = e1_value.discharge_to_any_reg(allocator);
          *e1 = e1_value.legacy();
       }
+      cmp_reg_a = ra;
+      cmp_reg_b = rd;
       ins = BCINS_AD(op, ra, rd);
    }
 
-   // Using expr_free might cause asserts if the order is wrong.
-   if (e1->k IS ExpKind::NonReloc and e1->u.s.info >= fs->nactvar) fs->freereg--;
-   if (e2->k IS ExpKind::NonReloc and e2->u.s.info >= fs->nactvar) fs->freereg--;
+   // Tag e1 and e2 with ComparisonOperand flag and store the register they were discharged to
+   expr_set_flag(e1, ExprFlag::ComparisonOperand);
+   e1->u.s.info = cmp_reg_a;
+   e1->k = ExpKind::NonReloc;
+   if (cmp_reg_b != NO_REG) {
+      expr_set_flag(e2, ExprFlag::ComparisonOperand);
+      e2->u.s.info = cmp_reg_b;
+      e2->k = ExpKind::NonReloc;
+   }
+
+   // Release operand registers through allocator
+   // The ComparisonOperand flag tells release_expression() to treat these specially
+   // Release in LIFO order (highest register first)
+   if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
+      allocator.release_expression(e2);
+      allocator.release_expression(e1);
+   }
+   else {
+      allocator.release_expression(e1);
+      if (cmp_reg_b != NO_REG) allocator.release_expression(e2);
+   }
    bcemit_INS(fs, ins);
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
@@ -181,80 +206,24 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 [[deprecated]] static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
 {
    RegisterAllocator allocator(fs);
+   ControlFlowGraph cfg(fs);
+   OperatorEmitter emitter(fs, &allocator, &cfg);
+   ValueSlot left(e);
 
    if (op IS OPR_AND) {
-      bcemit_branch_t(fs, e);
+      emitter.prepare_logical_and(left);
    }
    else if (op IS OPR_OR) {
-      bcemit_branch_f(fs, e);
+      emitter.prepare_logical_or(left);
    }
    else if (op IS OPR_IF_EMPTY) {
-      // For ?, handle extended falsey checks - only set up jumps for compile-time constants
-      BCPos pc;
-
-      ExpressionValue e_value(fs, *e);
-      e_value.discharge();
-      *e = e_value.legacy();
-      // Extended falsey: nil, false, 0, ""
-      if (e->k IS ExpKind::Nil or e->k IS ExpKind::False)
-         pc = NO_JMP;  // Never jump - these are falsey, evaluate RHS
-      else if (e->k IS ExpKind::Num and expr_numiszero(e))
-         pc = NO_JMP;  // Zero is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0)
-         pc = NO_JMP;  // Empty string is falsey, evaluate RHS
-      else if (e->k IS ExpKind::Jmp)
-         pc = e->u.s.info;
-      else if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) {
-         // Truthy constant - load to register and emit jump to skip RHS
-         allocator.reserve(1);
-         expr_toreg_nobranch(fs, e, fs->freereg - 1);
-         pc = bcemit_jmp(fs);
-      }
-      else {
-         // Runtime value - do NOT use bcemit_branch() as it uses standard Lua truthiness
-         // Ensure the value resides in a dedicated register so that RHS evaluation cannot
-         // clobber it. Keep a copy of the original value even if the source lives in an
-         // active local slot.
-
-         if (!expr_isk_nojump(e)) {
-            ExpressionValue e_value_inner(fs, *e);
-            BCReg src_reg = e_value_inner.discharge_to_any_reg(allocator);
-            *e = e_value_inner.legacy();
-            BCReg rhs_reg = fs->freereg;
-            ExprFlag saved_flags = e->flags;
-            allocator.reserve(1);
-            expr_init(e, ExpKind::NonReloc, src_reg);
-            e->u.s.aux = rhs_reg;
-            e->flags = saved_flags | ExprFlag::HasRhsReg;
-         }
-         pc = NO_JMP;  // No jump - will check extended falsey in bcemit_binop()
-      }
-      ControlFlowGraph cfg(fs);
-      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-      true_edge.append(pc);
-      e->t = true_edge.head();
-      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
-      false_edge.patch_here();
-      e->f = NO_JMP;
+      emitter.prepare_if_empty(left);
    }
    else if (op IS OPR_CONCAT) {
-      ExpressionValue e_value(fs, *e);
-      e_value.to_next_reg(allocator);
-      *e = e_value.legacy();
-   }
-   else if (op IS OPR_EQ or op IS OPR_NE) {
-      if (!expr_isk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.prepare_concat(left);
    }
    else {
-      if (!expr_isnumk_nojump(e)) {
-         ExpressionValue e_value(fs, *e);
-         e_value.discharge_to_any_reg(allocator);
-         *e = e_value.legacy();
-      }
+      emitter.emit_binop_left(op, left);
    }
 }
 
