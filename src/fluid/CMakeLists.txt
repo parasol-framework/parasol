@@ -44,9 +44,7 @@ set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
 # Enable unit tests for deep testing of non-release builds only.
-if (NOT DEFINED ENABLE_UNIT_TESTS)
-   set (ENABLE_UNIT_TESTS ON)
-endif ()
+# set (ENABLE_UNIT_TESTS ON)
 
 # IDL processing for headers and documentation
 

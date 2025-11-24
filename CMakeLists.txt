@@ -155,8 +155,11 @@ if (MSVC)
    # /LTCG enables link-time code generation for cross-module optimization
    string(REPLACE "/O2" "/Ox /GL" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
    string(REPLACE "/O2" "/Ox /GL" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-   set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG")
-   set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS_RELEASE} /LTCG")
+
+   if (PARASOL_STATIC)
+      set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG")
+      set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS_RELEASE} /LTCG")
+   endif ()
 endif ()
 
 include_directories("${PROJECT_SOURCE_DIR}/include"
@@ -1054,4 +1057,3 @@ ExecuteParameters=\"\"
    message(STATUS "Windows packaging configured: ${PACKAGE_TYPES}")
    message(STATUS "Package name: ${CPACK_PACKAGE_FILE_NAME}")
 endif()
-

@@ -60,7 +60,7 @@
       <description>
 <p>Action routines are associated with a new class by referring to a list of <st>ActionArray</st> items in this field. Each provided action ID must be paired with its associated routine.</p>
 <p>Internally, the provided list is copied to the <fl>ActionTable</fl> and the original values will serve no further purpose.</p>
-<p>The following example shows a list of <st>ActionArray</st> structures borrowed from the @Picture class.  Note that such lists can also be auto-generated using our IDL scripts - an approach that we strongly recommend.</p>
+<p>The following example shows a list of <st>ActionArray</st> structures borrowed from the <class name="Picture">Picture</class> class.  Note that such lists can also be auto-generated using our IDL scripts - an approach that we strongly recommend.</p>
 <pre>ActionArray clActions[] = {
    { AC::Free,          PIC_Free },
    { AC::NewObject,     PIC_NewObject },
@@ -278,7 +278,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field value must indicate the byte size of the objects that will be created from the MetaClass.  For example, the @Picture class defines this value as <code>sizeof(objPicture)</code>.</p>
+<p>This field value must indicate the byte size of the objects that will be created from the MetaClass.  For example, the <class name="Picture">Picture</class> class defines this value as <code>sizeof(objPicture)</code>.</p>
 <p>If the size is not explicitly defined, the initialisation process will determine the structure size by evaluating the field definitions that have been provided.</p>
       </description>
     </field>

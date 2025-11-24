@@ -35,6 +35,22 @@
 
 static objScript *glTestScript = nullptr;
 
+ParserResult<ExprNodePtr> parse_expression_entry(uint8_t precedence)
+{
+   auto expression = AstBuilder->parse_expression(precedence);
+   if (not expression.ok()) return ParserResult<ExprNodePtr>::failure(expression.error_ref());
+   ExprNodePtr node = std::move(expression.value_ref());
+   return ParserResult<ExprNodePtr>::success(std::move(node));
+}
+
+ParserResult<ExprNodeList> parse_expression_list_entry()
+{
+   auto list = AstBuilder->parse_expression_list();
+   if (not list.ok()) return ParserResult<ExprNodeList>::failure(list.error_ref());
+   ExprNodeList nodes = std::move(list.value_ref());
+   return ParserResult<ExprNodeList>::success(std::move(nodes));
+}
+
 namespace {
 
 static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::Log& log)
@@ -220,10 +236,12 @@ static bool test_parser_profiler_disabled_noop(pf::Log& log)
 {
    ParserProfilingResult result;
    ParserProfiler profiler(false, &result);
+
    {
       auto stage = profiler.stage("parse");
       stage.stop();
    }
+
    profiler.record_stage("emit", std::chrono::milliseconds(3));
 
    if (not result.stages().empty()) {
@@ -234,7 +252,7 @@ static bool test_parser_profiler_disabled_noop(pf::Log& log)
    return true;
 }
 
-static bool test_literal_binary_expr(pf::Log& log)
+static bool test_literal_binary_expr(pf::Log &log)
 {
    auto result = build_ast_from_source("return (value + 4) * 3");
    if (not result.chunk.ok()) {
@@ -243,7 +261,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const BlockStmt& block = *result.chunk.value_ref();
+   const BlockStmt &block = *result.chunk.value_ref();
    StatementListView statements = block.view();
    if (statements.size() != 1) {
       log.error("expected one statement, got %" PRId64, (int64_t)statements.size());
@@ -251,14 +269,14 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const StmtNode& stmt = statements[0];
+   const StmtNode &stmt = statements[0];
    if (not (stmt.kind IS AstNodeKind::ReturnStmt)) {
       log.error("expected return statement, got kind=%d", (int)stmt.kind);
       log_block_outline(block, log);
       return false;
    }
 
-   const auto* payload = std::get_if<ReturnStmtPayload>(&stmt.data);
+   const auto *payload = std::get_if<ReturnStmtPayload>(&stmt.data);
    if (not payload or payload->values.size() != 1) {
       log.error("return payload missing or wrong arity");
       return false;
@@ -281,7 +299,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const auto* add = std::get_if<BinaryExprPayload>(&multiply->left->data);
+   const auto *add = std::get_if<BinaryExprPayload>(&multiply->left->data);
    if (not add or not (add->op IS AstBinaryOperator::Add)) {
       log.error("expected addition in the left subtree");
       return false;
@@ -292,7 +310,7 @@ static bool test_literal_binary_expr(pf::Log& log)
       return false;
    }
 
-   const auto* rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
+   const auto *rhs_literal = std::get_if<LiteralValue>(&multiply->right->data);
    if (not rhs_literal or not (rhs_literal->kind IS LiteralKind::Number) or rhs_literal->number_value != 3.0) {
       log.error("multiply RHS literal mismatch");
       return false;
@@ -301,7 +319,10 @@ static bool test_literal_binary_expr(pf::Log& log)
    return true;
 }
 
-static bool test_expression_entry_point(pf::Log& log)
+//********************************************************************************************************************
+// Expression parsing entry point tests.
+
+static bool test_expression_entry_point(pf::Log &log)
 {
    auto harness = make_expression_harness("value + 42");
    if (not harness.has_value()) {

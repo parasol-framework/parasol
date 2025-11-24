@@ -133,7 +133,9 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
 {
    ParserProfiler::StageTimer parse_timer = Profiler.stage("parse");
    AstBuilder builder(Context);
+
    auto chunk_result = builder.parse_chunk();
+
    if (not chunk_result.ok()) {
       report_pipeline_error(Context, chunk_result.error_ref());
       flush_non_fatal_errors(Context);

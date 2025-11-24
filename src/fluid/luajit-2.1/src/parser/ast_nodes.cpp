@@ -4,17 +4,17 @@
 
 namespace {
 
-[[nodiscard]] static bool ensure_operand(const ExprNodePtr& node)
+[[nodiscard]] inline bool ensure_operand(const ExprNodePtr& node)
 {
    return node != nullptr;
 }
 
-static void assert_node(bool condition, const char* message)
+inline void assert_node(bool condition, const char* message)
 {
    lj_assertX(condition, message);
 }
 
-[[nodiscard]] static size_t block_child_count(const std::unique_ptr<BlockStmt>& block)
+[[nodiscard]] inline size_t block_child_count(const std::unique_ptr<BlockStmt>& block)
 {
    return block ? block->view().size() : 0;
 }
@@ -30,28 +30,28 @@ struct CallTargetChildCounter {
 };
 
 struct ExpressionChildCounter {
-   [[nodiscard]] size_t operator()(const LiteralValue&) const { return 0; }
-   [[nodiscard]] size_t operator()(const NameRef&) const { return 0; }
-   [[nodiscard]] size_t operator()(const VarArgExprPayload&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const LiteralValue&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const NameRef&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const VarArgExprPayload&) const { return 0; }
 
-   [[nodiscard]] size_t operator()(const UnaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const UnaryExprPayload& payload) const
    {
       return payload.operand ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const UpdateExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const UpdateExprPayload& payload) const
    {
       return payload.target ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const BinaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const BinaryExprPayload& payload) const
    {
       size_t total = payload.left ? 1 : 0;
       if (payload.right) total++;
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const TernaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const TernaryExprPayload& payload) const
    {
       size_t total = payload.condition ? 1 : 0;
       if (payload.if_true) total++;
@@ -59,31 +59,31 @@ struct ExpressionChildCounter {
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const PresenceExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const PresenceExprPayload& payload) const
    {
       return payload.value ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const CallExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const CallExprPayload& payload) const
    {
       size_t total = std::visit(CallTargetChildCounter{}, payload.target);
       total += payload.arguments.size();
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const MemberExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const MemberExprPayload& payload) const
    {
       return payload.table ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const IndexExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const IndexExprPayload& payload) const
    {
       size_t total = payload.table ? 1 : 0;
       if (payload.index) total++;
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const TableExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const TableExprPayload& payload) const
    {
       size_t total = 0;
       for (const TableField& field : payload.fields) {
@@ -93,34 +93,34 @@ struct ExpressionChildCounter {
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const FunctionExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const FunctionExprPayload& payload) const
    {
       return block_child_count(payload.body);
    }
 };
 
 struct StatementChildCounter {
-   [[nodiscard]] size_t operator()(const AssignmentStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const AssignmentStmtPayload& payload) const
    {
       return payload.targets.size() + payload.values.size();
    }
 
-   [[nodiscard]] size_t operator()(const LocalDeclStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LocalDeclStmtPayload& payload) const
    {
       return payload.values.size();
    }
 
-   [[nodiscard]] size_t operator()(const LocalFunctionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LocalFunctionStmtPayload& payload) const
    {
       return payload.function ? block_child_count(payload.function->body) : 0;
    }
 
-   [[nodiscard]] size_t operator()(const FunctionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const FunctionStmtPayload& payload) const
    {
       return payload.function ? block_child_count(payload.function->body) : 0;
    }
 
-   [[nodiscard]] size_t operator()(const IfStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const IfStmtPayload& payload) const
    {
       size_t total = 0;
       for (const IfClause& clause : payload.clauses) {
@@ -130,14 +130,14 @@ struct StatementChildCounter {
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const LoopStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LoopStmtPayload& payload) const
    {
       size_t total = payload.condition ? 1 : 0;
       total += block_child_count(payload.body);
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const NumericForStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const NumericForStmtPayload& payload) const
    {
       size_t total = 0;
       if (payload.start) total++;
@@ -147,22 +147,22 @@ struct StatementChildCounter {
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const GenericForStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const GenericForStmtPayload& payload) const
    {
       size_t total = payload.iterators.size();
       total += block_child_count(payload.body);
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const ReturnStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const ReturnStmtPayload& payload) const
    {
       return payload.values.size();
    }
 
-   [[nodiscard]] size_t operator()(const BreakStmtPayload&) const { return 0; }
-   [[nodiscard]] size_t operator()(const ContinueStmtPayload&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const BreakStmtPayload&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const ContinueStmtPayload&) const { return 0; }
 
-   [[nodiscard]] size_t operator()(const DeferStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const DeferStmtPayload& payload) const
    {
       size_t total = payload.arguments.size();
       if (payload.callable) {
@@ -171,12 +171,12 @@ struct StatementChildCounter {
       return total;
    }
 
-   [[nodiscard]] size_t operator()(const DoStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const DoStmtPayload& payload) const
    {
       return block_child_count(payload.block);
    }
 
-   [[nodiscard]] size_t operator()(const ExpressionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload& payload) const
    {
       return payload.expression ? 1 : 0;
    }
@@ -211,129 +211,6 @@ DeferStmtPayload::~DeferStmtPayload() = default;
 DoStmtPayload::~DoStmtPayload() = default;
 ExpressionStmtPayload::~ExpressionStmtPayload() = default;
 BlockStmt::~BlockStmt() = default;
-
-StatementListView::StatementListView(const StmtNodeList& nodes)
-   : storage(&nodes)
-{
-}
-
-StatementListView::Iterator::Iterator(InnerIterator it) : iter(it) {}
-
-const StmtNode& StatementListView::Iterator::operator*() const
-{
-   return *(*this->iter);
-}
-
-const StmtNode* StatementListView::Iterator::operator->() const
-{
-   return this->iter->get();
-}
-
-StatementListView::Iterator& StatementListView::Iterator::operator++()
-{
-   ++this->iter;
-   return *this;
-}
-
-bool StatementListView::Iterator::operator==(const Iterator& other) const
-{
-   return this->iter == other.iter;
-}
-
-bool StatementListView::Iterator::operator!=(const Iterator& other) const
-{
-   return !(*this == other);
-}
-
-StatementListView::Iterator StatementListView::begin() const
-{
-   return this->storage ? Iterator(this->storage->begin()) : Iterator();
-}
-
-StatementListView::Iterator StatementListView::end() const
-{
-   return this->storage ? Iterator(this->storage->end()) : Iterator();
-}
-
-size_t StatementListView::size() const
-{
-   return this->storage ? this->storage->size() : 0;
-}
-
-bool StatementListView::empty() const
-{
-   return this->size() == 0;
-}
-
-const StmtNode& StatementListView::operator[](size_t index) const
-{
-   lj_assertX(this->storage and index < this->storage->size(), "statement index out of range");
-   return *(*this->storage)[index];
-}
-
-ExpressionListView::ExpressionListView(const ExprNodeList& nodes)
-   : storage(&nodes)
-{
-}
-
-ExpressionListView::Iterator::Iterator(InnerIterator it) : iter(it) {}
-
-const ExprNode& ExpressionListView::Iterator::operator*() const
-{
-   return *(*this->iter);
-}
-
-const ExprNode* ExpressionListView::Iterator::operator->() const
-{
-   return this->iter->get();
-}
-
-ExpressionListView::Iterator& ExpressionListView::Iterator::operator++()
-{
-   ++this->iter;
-   return *this;
-}
-
-bool ExpressionListView::Iterator::operator==(const Iterator& other) const
-{
-   return this->iter == other.iter;
-}
-
-bool ExpressionListView::Iterator::operator!=(const Iterator& other) const
-{
-   return !(*this == other);
-}
-
-ExpressionListView::Iterator ExpressionListView::begin() const
-{
-   return this->storage ? Iterator(this->storage->begin()) : Iterator();
-}
-
-ExpressionListView::Iterator ExpressionListView::end() const
-{
-   return this->storage ? Iterator(this->storage->end()) : Iterator();
-}
-
-size_t ExpressionListView::size() const
-{
-   return this->storage ? this->storage->size() : 0;
-}
-
-bool ExpressionListView::empty() const
-{
-   return this->size() == 0;
-}
-
-const ExprNode& ExpressionListView::operator[](size_t index) const
-{
-   lj_assertX(this->storage and index < this->storage->size(), "expression index out of range");
-   return *(*this->storage)[index];
-}
-
-StatementListView BlockStmt::view() const
-{
-   return StatementListView(this->statements);
-}
 
 ExprNodePtr make_literal_expr(SourceSpan span, const LiteralValue& literal)
 {
