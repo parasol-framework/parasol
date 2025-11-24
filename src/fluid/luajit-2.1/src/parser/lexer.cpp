@@ -189,7 +189,7 @@ static void lex_number(LexState *State, TValue* tv)
       }
       else {
          cd = lj_cdata_new_(L, fmt IS STRSCAN_I64 ? CTID_INT64 : CTID_UINT64, 8);
-         *uint64_t(cdataptr(cd)) = tv->u64;
+         *(uint64_t*)(cdataptr(cd)) = tv->u64;
       }
       lj_parse_keepcdata(State, tv, cd);
       return;
