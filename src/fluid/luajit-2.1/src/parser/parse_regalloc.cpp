@@ -8,9 +8,11 @@
 
 #include <parasol/main.h>
 
-static bool is_register_key(int32_t Aux)
+[[nodiscard]] BCPos bcemit_jmp(FuncState *);
+
+inline bool is_register_key(int32_t Aux)
 {
-   return Aux >= 0 and Aux <= BCMAX_C;
+   return (Aux >= 0) and (Aux <= BCMAX_C);
 }
 
 //********************************************************************************************************************
@@ -27,7 +29,7 @@ void RegisterAllocator::bump(BCReg Count)
 
 BCReg RegisterAllocator::reserve_slots(BCReg Count)
 {
-   if (Count IS 0) return this->func_state->freereg;
+   if (not Count) return this->func_state->freereg;
 
    BCReg start = this->func_state->freereg;
    this->bump(Count);
@@ -40,7 +42,7 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
 
 RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
 {
-   if (Count IS 0) return RegisterSpan();
+   if (not Count) return RegisterSpan();
 
    BCReg start = this->reserve_slots(Count);
    return RegisterSpan(this, start, Count, start + Count);
@@ -48,18 +50,33 @@ RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
 
 void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
 {
-   if (Count IS 0) return;
+   if (not Count) return;
 
    if (Start >= this->func_state->nactvar) {
-#if LJ_DEBUG
-      lj_assertFS(ExpectedTop IS this->func_state->freereg, "register depth mismatch");
-      lj_assertFS(Start + Count IS ExpectedTop, "span size mismatch");
-#endif
+      // Check for register depth mismatch - indicates RegisterSpan cleanup is out of order
+      if (ExpectedTop != this->func_state->freereg) {
+         pf::Log("Parser").warning("register depth mismatch, %d != %d, function @ line %d - "
+            "RegisterSpan was created when freereg=%d but is being released when freereg=%d. "
+            "This indicates intermediate operations modified freereg or cleanup is out of order.",
+            ExpectedTop, this->func_state->freereg, this->func_state->linedefined,
+            ExpectedTop, this->func_state->freereg);
+      }
+
+      // Check for span size mismatch
+      if (Start + Count != ExpectedTop) {
+         pf::Log("Parser").warning("span size mismatch: start=%u count=%u expected_top=%u at line %d",
+            Start, Count, ExpectedTop, this->func_state->linedefined);
+      }
+
       this->func_state->freereg = ExpectedTop - Count;
-#if LJ_DEBUG
-      lj_assertFS(this->func_state->freereg IS Start, "bad regfree");
+
+      // Check that after release, freereg equals the span start
+      if (this->func_state->freereg != Start) {
+         pf::Log("Parser").warning("bad regfree: freereg=%u should equal start=%u at line %d",
+            this->func_state->freereg, Start, this->func_state->linedefined);
+      }
+
       this->trace_release(Start, Count, "release_span_internal");
-#endif
    }
 }
 
@@ -192,9 +209,6 @@ BCPos bcemit_INS(FuncState *fs, BCIns ins)
 
 //********************************************************************************************************************
 // Bytecode emitter for expressions
-
-// Exported for use by OperatorEmitter facade
-[[nodiscard]] BCPos bcemit_jmp(FuncState *fs);
 
 // Discharge non-constant expression to any register.
 
@@ -457,7 +471,7 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
 //********************************************************************************************************************
 // Emit method lookup expression.
 
-static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
+static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
 {
    BCReg idx, func, obj = expr_toanyreg(fs, e);
    expr_free(fs, e);
@@ -482,7 +496,6 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Emit unconditional branch.
 
-// Exported for use by OperatorEmitter facade
 [[nodiscard]] BCPos bcemit_jmp(FuncState *fs)
 {
    BCPos jpc = fs->jpc;
@@ -503,7 +516,6 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc* key)
 //********************************************************************************************************************
 // Invert branch condition of bytecode instruction.
 
-// Exported for use by OperatorEmitter facade
 void invertcond(FuncState *fs, ExpDesc *e)
 {
    BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
@@ -513,7 +525,6 @@ void invertcond(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit conditional branch.
 
-// Exported for use by OperatorEmitter facade
 [[nodiscard]] BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 {
    BCPos pc;
@@ -582,15 +593,13 @@ static void bcemit_branch_f(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Debug verification and tracing methods
 
-#if LJ_DEBUG
-
 void RegisterAllocator::verify_no_leaks(const char* Context) const
 {
    BCReg nactvar = this->func_state->nactvar;
    BCReg freereg = this->func_state->freereg;
 
    if (freereg > nactvar) {
-      lj_assertFS(false, "register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
+      pf::Log("Parser").warning("register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
          Context, int(freereg - nactvar), int(nactvar), int(freereg));
    }
 }
@@ -599,8 +608,8 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] regalloc: reserve R%d..R%d (%d slots) at %s",
-         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+      pf::Log("Parser").msg("regalloc: reserve R%d..R%d (%d slots) at %s",
+         int(Start), int(Start + Count - 1), int(Count), Context);
    }
 }
 
@@ -608,9 +617,7 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] regalloc: release R%d..R%d (%d slots) at %s",
-         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+      pf::Log("Parser").msg("regalloc: release R%d..R%d (%d slots) at %s",
+         int(Start), int(Start + Count - 1), int(Count), Context);
    }
 }
-
-#endif

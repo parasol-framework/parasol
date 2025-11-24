@@ -320,11 +320,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    if (not result.ok()) return result;
    this->control_flow.finalize();
 
-#if LJ_DEBUG
-   // Verify no register leaks at function exit
-   RegisterAllocator verifier(&this->func_state);
-   verifier.verify_no_leaks("function exit");
-#endif
+   if (GetResource(RES::LOG_LEVEL) >= 5) {
+      // Verify no register leaks at function exit
+      RegisterAllocator verifier(&this->func_state);
+      verifier.verify_no_leaks("function exit");
+   }
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -660,11 +660,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
-#if LJ_DEBUG
-   // Verify no register leaks at loop exit
-   RegisterAllocator verifier(fs);
-   verifier.verify_no_leaks("while loop exit");
-#endif
+   if (GetResource(RES::LOG_LEVEL) >= 5) {
+      // Verify no register leaks at loop exit
+      RegisterAllocator verifier(fs);
+      verifier.verify_no_leaks("while loop exit");
+   }
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -726,11 +726,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
-#if LJ_DEBUG
-   // Verify no register leaks at loop exit
-   RegisterAllocator verifier(fs);
-   verifier.verify_no_leaks("repeat loop exit");
-#endif
+   if (GetResource(RES::LOG_LEVEL) >= 5) {
+      // Verify no register leaks at loop exit
+      RegisterAllocator verifier(fs);
+      verifier.verify_no_leaks("repeat loop exit");
+   }
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -1425,9 +1425,9 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // Cannot use the standard prepare/emit RHS/complete pattern
 
    if (opr IS OPR_IF_EMPTY) return this->emit_if_empty_expr(lhs, *payload.right);
-   
+
    // ALL binary operators need binop_left preparation before RHS evaluation
- 
+
    // This discharges LHS to appropriate form to prevent register clobbering
 
    if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation

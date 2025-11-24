@@ -4,6 +4,9 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
+#include "parser/operator_emitter.h"
+#include "parser/parse_control_flow.h"
+
 //********************************************************************************************************************
 // Bytecode emitter for operators
 
@@ -69,8 +72,7 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // Avoid two consts to satisfy bytecode constraints.
 
-      if (expr_isnumk(e1) and !expr_isnumk(e2) and
-         (t = const_num(fs, e1)) <= BCMAX_B) {
+      if (expr_isnumk(e1) and (not expr_isnumk(e2)) and (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
       else {
@@ -90,17 +92,19 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit comparison operator.
 
-void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
+void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
    RegisterAllocator allocator(fs);
-   ExpDesc* eret = e1;
+   ExpDesc *eret = e1;
    BCIns ins;
    ExpressionValue e1_toval_pre(fs, *e1);
+
    e1_toval_pre.to_val();
    *e1 = e1_toval_pre.legacy();
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
+
       if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
@@ -108,6 +112,7 @@ void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
+
       switch (e2->k) {
       case ExpKind::Nil: case ExpKind::False: case ExpKind::True:
          ins = BCINS_AD(op + (BC_ISEQP - BC_ISEQV), ra, const_pri(e2));
