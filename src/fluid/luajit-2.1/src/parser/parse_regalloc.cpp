@@ -34,9 +34,7 @@ BCReg RegisterAllocator::reserve_slots(BCReg Count)
    BCReg start = this->func_state->freereg;
    this->bump(Count);
    this->func_state->freereg += Count;
-#if LJ_DEBUG
    this->trace_allocation(start, Count, "reserve_slots");
-#endif
    return start;
 }
 

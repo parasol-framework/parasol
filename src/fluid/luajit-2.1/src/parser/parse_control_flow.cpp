@@ -105,16 +105,12 @@ void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
    EdgeEntry& entry = this->edges[Index];
    if (entry.head IS NO_JMP) {
       entry.head = Head;
-#if LJ_DEBUG
       this->trace_edge_append(Index, Head);
-#endif
       return;
    }
 
    entry.head = JumpListView(this->func_state, entry.head).append(Head);
-#if LJ_DEBUG
    this->trace_edge_append(Index, Head);
-#endif
 }
 
 void ControlFlowGraph::append_edge(size_t Index, const ControlFlowEdge& Other)
@@ -127,15 +123,13 @@ void ControlFlowGraph::append_edge(size_t Index, const ControlFlowEdge& Other)
 void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
 {
    if (Index >= this->edges.size()) return;
-   EdgeEntry& entry = this->edges[Index];
+   EdgeEntry &entry = this->edges[Index];
    if (entry.resolved) return;
    if (entry.head IS NO_JMP) {
       this->mark_resolved(Index);
       return;
    }
-#if LJ_DEBUG
    this->trace_edge_patch(Index, Target);
-#endif
    JumpListView(this->func_state, entry.head).patch_to(Target);
    this->mark_resolved(Index);
 }
@@ -143,7 +137,7 @@ void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
 void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
 {
    if (Index >= this->edges.size()) return;
-   EdgeEntry& entry = this->edges[Index];
+   EdgeEntry &entry = this->edges[Index];
    if (entry.head IS NO_JMP) return;
    JumpListView(this->func_state, entry.head).patch_head(Destination);
    this->mark_resolved(Index);
@@ -152,7 +146,7 @@ void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
 void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)
 {
    if (Index >= this->edges.size()) return;
-   EdgeEntry& entry = this->edges[Index];
+   EdgeEntry &entry = this->edges[Index];
    if (entry.head IS NO_JMP) {
       this->mark_resolved(Index);
       return;
@@ -161,12 +155,9 @@ void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BC
    BCPos list = entry.head;
    while (not(list IS NO_JMP)) {
       BCPos next_pc = next_in_chain(this->func_state, list);
-      if (this->patch_test_register(list, Register)) {
-         this->patch_instruction(list, ValueTarget);
-      }
-      else {
-         this->patch_instruction(list, DefaultTarget);
-      }
+      if (this->patch_test_register(list, Register)) this->patch_instruction(list, ValueTarget);
+      else this->patch_instruction(list, DefaultTarget);
+
       list = next_pc;
    }
    this->mark_resolved(Index);
@@ -175,7 +166,7 @@ void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BC
 bool ControlFlowGraph::edge_produces_values(size_t Index) const
 {
    if (Index >= this->edges.size()) return false;
-   const EdgeEntry& entry = this->edges[Index];
+   const EdgeEntry &entry = this->edges[Index];
    if (entry.head IS NO_JMP) return false;
 
    for (BCPos list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
