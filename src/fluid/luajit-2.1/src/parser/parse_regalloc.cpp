@@ -48,15 +48,35 @@ RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
    return RegisterSpan(this, start, Count, start + Count);
 }
 
+RegisterSpan RegisterAllocator::reserve_span_soft(BCReg Count)
+{
+   if (not Count) return RegisterSpan();
+
+   BCReg start = this->reserve_slots(Count);
+   // ExpectedTop=0 marks this as a "soft" span: the allocator will not enforce
+   // strict RAII checks or adjust freereg when the span is released. Callers
+   // using soft spans are responsible for collapsing freereg themselves (for
+   // example, by restoring freereg to nactvar at the end of an assignment).
+   return RegisterSpan(this, start, Count, 0);
+}
+
 void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
 {
    if (not Count) return;
 
    if (Start >= this->func_state->nactvar) {
-      // Check for register depth mismatch - indicates RegisterSpan cleanup is out of order
-      if (ExpectedTop != this->func_state->freereg) {
-         pf::Log("Parser").warning("register depth mismatch, %d != %d, function @ line %d - "
-            "RegisterSpan was created when freereg=%d but is being released when freereg=%d. "
+      // Soft spans (ExpectedTop == 0) are used in contexts where the caller
+      // explicitly manages freereg (e.g. assignment emitters that duplicate
+      // table operands and later restore freereg to nactvar). For these spans
+      // we do not enforce RAII invariants or adjust freereg here.
+      if (ExpectedTop IS 0) {
+         this->trace_release(Start, Count, "release_span_internal_soft");
+         return;
+      }
+
+      if (this->func_state->freereg > ExpectedTop) {
+         pf::Log("Parser").warning("Register depth mismatch, %d != %d, function @ line %d - "
+            "RegisterSpan was created with freereg=%d but released as %d. "
             "This indicates intermediate operations modified freereg or cleanup is out of order.",
             ExpectedTop, this->func_state->freereg, this->func_state->linedefined,
             ExpectedTop, this->func_state->freereg);
@@ -127,7 +147,15 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 
       if (has_register_index) duplicate_count++;
 
-      copies.reserved = this->reserve_span(duplicate_count);
+      // Use a soft span here because assignment/update emitters that rely on
+      // these duplicates manage freereg explicitly (they collapse freereg back
+      // to nactvar after completing the operation). Enforcing strict RAII
+      // invariants for this span would produce false-positive warnings in
+      // perfectly valid patterns like:
+      //   t[i] = t[i] | f(i)
+      // where additional temporaries are allocated above the duplicated base
+      // and later dropped by restoring freereg.
+      copies.reserved = this->reserve_span_soft(duplicate_count);
 
       BCReg base_reg = copies.reserved.start();
       bcemit_AD(this->func_state, BC_MOV, base_reg, Expression.u.s.info);

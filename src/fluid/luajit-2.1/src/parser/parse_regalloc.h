@@ -108,7 +108,17 @@ public:
    inline void reserve(BCReg Count);
 
    [[nodiscard]] inline AllocatedRegister acquire();
+   // Reserve a strict RAII span: the allocator expects the span to be released
+   // while freereg still equals the top of the span. Used when callers rely on
+   // RegisterSpan to pop temporaries in LIFO order.
    [[nodiscard]] RegisterSpan reserve_span(BCReg Count);
+
+   // Reserve a "soft" span: the allocator tracks the range but does not enforce
+   // RAII invariants or adjust freereg when the span is released. This is used
+   // in patterns where callers explicitly manage freereg (e.g. assignment
+   // emitters that duplicate table operands and later collapse freereg to
+   // nactvar).
+   [[nodiscard]] RegisterSpan reserve_span_soft(BCReg Count);
 
    void release(AllocatedRegister& Handle);
    void release(RegisterSpan& Span);
