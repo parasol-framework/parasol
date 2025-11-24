@@ -1244,7 +1244,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    check_empty.patch_to(assign_pos);
    skip_assign.patch_to(this->func_state.pc);
 
-   this->func_state.freereg = copies.reserved.expected_top();
+   if (not copies.reserved.empty()) {
+      BCReg expected_top = copies.reserved.expected_top();
+      if ((expected_top >= this->func_state.nactvar) and (expected_top <= this->func_state.freereg)) {
+         this->func_state.freereg = expected_top;
+      }
+   }
    allocator.release(copies.reserved);
 
    this->func_state.freereg = target.reserved.expected_top();
