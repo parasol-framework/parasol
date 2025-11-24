@@ -53,12 +53,29 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
    if (not Count) return;
 
    if (Start >= this->func_state->nactvar) {
-      if (ExpectedTop != this->func_state->freereg) pf::Log("Parser").warning("register depth mismatch");
-      if (Start + Count != ExpectedTop) pf::Log("Parser").warning("span size mismatch");
+      // Check for register depth mismatch - indicates RegisterSpan cleanup is out of order
+      if (ExpectedTop != this->func_state->freereg) {
+         pf::Log("Parser").warning("register depth mismatch, %d != %d, function @ line %d - "
+            "RegisterSpan was created when freereg=%d but is being released when freereg=%d. "
+            "This indicates intermediate operations modified freereg or cleanup is out of order.",
+            ExpectedTop, this->func_state->freereg, this->func_state->linedefined,
+            ExpectedTop, this->func_state->freereg);
+      }
+
+      // Check for span size mismatch
+      if (Start + Count != ExpectedTop) {
+         pf::Log("Parser").warning("span size mismatch: start=%u count=%u expected_top=%u at line %d",
+            Start, Count, ExpectedTop, this->func_state->linedefined);
+      }
 
       this->func_state->freereg = ExpectedTop - Count;
 
-      if (this->func_state->freereg != Start) pf::Log("Parser").warning("bad regfree");
+      // Check that after release, freereg equals the span start
+      if (this->func_state->freereg != Start) {
+         pf::Log("Parser").warning("bad regfree: freereg=%u should equal start=%u at line %d",
+            this->func_state->freereg, Start, this->func_state->linedefined);
+      }
+
       this->trace_release(Start, Count, "release_span_internal");
    }
 }
@@ -611,8 +628,8 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] regalloc: reserve R%d..R%d (%d slots) at %s",
-         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+      pf::Log("Parser").msg("regalloc: reserve R%d..R%d (%d slots) at %s",
+         int(Start), int(Start + Count - 1), int(Count), Context);
    }
 }
 
@@ -620,7 +637,7 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("[%d] regalloc: release R%d..R%d (%d slots) at %s",
-         this->func_state->ls->linenumber, int(Start), int(Start + Count - 1), int(Count), Context);
+      pf::Log("Parser").msg("regalloc: release R%d..R%d (%d slots) at %s",
+         int(Start), int(Start + Count - 1), int(Count), Context);
    }
 }

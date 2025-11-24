@@ -1103,6 +1103,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
    }
 
+   // Check for register leak at entry - indicates prepare_assignment_targets() left registers allocated
+   if (this->func_state.freereg != this->func_state.nactvar) {
+      pf::Log("Parser").warning("emit_compound_assignment: register leak detected at entry - "
+         "freereg=%u should equal nactvar=%u at line %d. "
+         "This indicates prepare_assignment_targets() left registers allocated.",
+         this->func_state.freereg, this->func_state.nactvar, this->lex_state.linenumber);
+   }
+
    BCReg count = 0;
    RegisterGuard register_guard(&this->func_state);
 

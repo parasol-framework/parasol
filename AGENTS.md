@@ -81,7 +81,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 ### Scripting Integration
 
 **Fluid** is the integrated Lua-based scripting language:
-- Originally built on LuaJIT 2.1 for performance, now extensively modified for C++ and utilises C++20 capabilities.
+- Unique engine built on LuaJIT 2.1 for performance and extensively modified for C++, utilising C++20 capabilities.
 - Provides high-level access to all framework APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
 - Test scripts use `.fluid` extension
@@ -158,8 +158,8 @@ cd "src/svg/tests" && ../../../build/agents-install/parasol.exe ../../../tools/f
 ### Code Generation
 
 The build system heavily uses code generation:
-- FDL files are processed by `idl-c.fluid` to generate C headers
-- `idl-compile.fluid` generates IDL definition strings
+- FDL files are processed by `tools/idl/idl-c.fluid` to generate C headers
+- `tools/idl/idl-compile.fluid` generates IDL definition strings
 - Generated files are created in build directories and copied to `include/`
 - Use `BUILD_DEFS=OFF` to skip generation if no Parasol executable is available
 
@@ -216,6 +216,7 @@ Before considering ANY C++ code changes complete, verify:
 For Fluid code, verify:
 
 - [ ] All `~=` replaced with `!=`
+- [ ] All `==` replaced with `is`
 - [ ] All trailing whitespace removed
 
 ### Additional Code Style Standards
