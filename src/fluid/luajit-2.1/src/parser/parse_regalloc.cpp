@@ -98,14 +98,34 @@ void RegisterAllocator::release(AllocatedRegister &Handle)
 
 void RegisterAllocator::release_register(BCReg Register)
 {
-   this->release_span_internal(Register, 1, this->func_state->freereg);
+   BCReg expected_top = Register + 1;
+   if (Register >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+      this->release_span_internal(Register, 1, expected_top);
+   }
 }
 
 void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
-      BCReg expected_top = Expression->u.s.info + 1;
-      this->release_span_internal(Expression->u.s.info, 1, expected_top);
+      BCReg reg = Expression->u.s.info;
+      BCReg expected_top = reg + 1;
+
+      // Check if this is a comparison operand that needs special handling
+      if ((Expression->flags & ExprFlag::ComparisonOperand) != ExprFlag::None) {
+         // For comparison operands, we need to release them even if they're not at the top
+         // because the comparison instruction has already consumed their values.
+         // We can only safely do this if the register is at the top of the stack.
+
+         if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+            // Register is at top - release it normally
+            this->func_state->freereg = reg;
+         }
+         // If not at top, we can't release it without corrupting the stack
+      }
+      else if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
+         // Normal case: only release if the register is at the top of the stack
+         this->release_span_internal(reg, 1, expected_top);
+      }
    }
 }
 
