@@ -166,28 +166,23 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
       ins = BCINS_AD(op, ra, rd);
    }
 
-   // Tag e1 and e2 with ComparisonOperand flag and store the register they were discharged to
-   expr_set_flag(e1, ExprFlag::ComparisonOperand);
-   e1->u.s.info = cmp_reg_a;
-   e1->k = ExpKind::NonReloc;
-   if (cmp_reg_b != NO_REG) {
-      expr_set_flag(e2, ExprFlag::ComparisonOperand);
-      e2->u.s.info = cmp_reg_b;
-      e2->k = ExpKind::NonReloc;
-   }
+   // Emit the comparison instruction now that operands are prepared.
+   bcemit_INS(fs, ins);
 
-   // Release operand registers through allocator
-   // The ComparisonOperand flag tells release_expression() to treat these specially
-   // Release in LIFO order (highest register first)
+   // Explicitly release operand registers through the allocator.
+   // Release in LIFO order (highest register first) to maximise the chance of
+   // collapsing freereg when both operands are adjacent temporaries.
    if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
-      allocator.release_expression(e2);
-      allocator.release_expression(e1);
+      allocator.release_register(cmp_reg_b);
+      allocator.release_register(cmp_reg_a);
    }
    else {
-      allocator.release_expression(e1);
-      if (cmp_reg_b != NO_REG) allocator.release_expression(e2);
+      allocator.release_register(cmp_reg_a);
+      if (cmp_reg_b != NO_REG) allocator.release_register(cmp_reg_b);
    }
-   bcemit_INS(fs, ins);
+
+   // Produce a Jmp expression as the result of the comparison, preserving
+   // existing short-circuit and conditional semantics.
    eret->u.s.info = bcemit_jmp(fs);
    eret->k = ExpKind::Jmp;
 }
