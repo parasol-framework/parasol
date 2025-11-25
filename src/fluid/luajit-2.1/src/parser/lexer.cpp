@@ -464,9 +464,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          setstrV(State->L, tv, s);
 
          // Check for reserved word
-         if (s->reserved > 0) {
-            return TK_OFS + s->reserved;
-         }
+         if (s->reserved > 0) return TK_OFS + s->reserved;
          return TK_name;
       }
 

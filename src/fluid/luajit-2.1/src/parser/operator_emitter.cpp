@@ -77,8 +77,8 @@ static CSTRING get_expkind_name(ExpKind k)
       case ExpKind::NonReloc: return "nonreloc";
       case ExpKind::Relocable: return "relocable";
       case ExpKind::Jmp: return "jmp";
+      default: return "?";
    }
-   return "?";
 }
 
 //********************************************************************************************************************
@@ -141,14 +141,14 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 
 void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 {
-   RegisterAllocator allocator(this->func_state);
+   RegisterAllocator local_alloc(this->func_state);
    ExpDesc *e = left.raw();
 
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       // Comparison operators (EQ, NE): discharge to register unless it's a constant/jump
       if (not expr_isk_nojump(e)) {
          ExpressionValue e_value(this->func_state, *e);
-         e_value.discharge_to_any_reg(allocator);
+         e_value.discharge_to_any_reg(local_alloc);
          *e = e_value.legacy();
       }
    }
@@ -156,7 +156,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
       // Arithmetic and bitwise operators: discharge to register unless it's a numeric constant/jump
       if (not expr_isnumk_nojump(e)) {
          ExpressionValue e_value(this->func_state, *e);
-         e_value.discharge_to_any_reg(allocator);
+         e_value.discharge_to_any_reg(local_alloc);
          *e = e_value.legacy();
       }
    }
@@ -410,8 +410,8 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
       pc = left_desc->u.s.info;
    else if (left_desc->k IS ExpKind::Str or left_desc->k IS ExpKind::Num or left_desc->k IS ExpKind::True) {
       // Truthy constant - load to register and skip RHS
-      RegisterAllocator allocator(this->func_state);
-      allocator.reserve(1);
+      RegisterAllocator local_alloc(this->func_state);
+      local_alloc.reserve(1);
       expr_toreg_nobranch(this->func_state, left_desc, this->func_state->freereg - 1);
       pc = bcemit_jmp(this->func_state);
    }
@@ -420,8 +420,8 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
       // This implements proper short-circuit semantics
       if (!expr_isk_nojump(left_desc)) {
          ExpressionValue left_inner(this->func_state, *left_desc);
-         RegisterAllocator allocator(this->func_state);
-         BCReg reg = left_inner.discharge_to_any_reg(allocator);
+         RegisterAllocator local_alloc(this->func_state);
+         BCReg reg = left_inner.discharge_to_any_reg(local_alloc);
          *left_desc = left_inner.legacy();
 
          // Create test expressions for extended falsey values
@@ -462,7 +462,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          // Mark that we need to preserve LHS value and reserve register for RHS
          BCReg rhs_reg = this->func_state->freereg;
          ExprFlag saved_flags = left_desc->flags;
-         allocator.reserve(1);
+         local_alloc.reserve(1);
          expr_init(left_desc, ExpKind::NonReloc, reg);
          left_desc->u.s.aux = rhs_reg;
          left_desc->flags = saved_flags | ExprFlag::HasRhsReg;
@@ -508,11 +508,11 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
       }
 
       // RHS has been evaluated - store it in the reserved register (or allocate one)
-      RegisterAllocator allocator(fs);
+      RegisterAllocator local_alloc(fs);
       BCReg dest_reg;
       if (rhs_reg IS NO_REG) {
          dest_reg = fs->freereg;
-         allocator.reserve(1);
+         local_alloc.reserve(1);
       }
       else {
          dest_reg = rhs_reg;
@@ -520,7 +520,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
       }
 
       ExpressionValue right_val(fs, *right_desc);
-      right_val.to_reg(allocator, dest_reg);
+      right_val.to_reg(local_alloc, dest_reg);
       *right_desc = right_val.legacy();
 
       // Copy RHS result to LHS register (where the result should be)
@@ -539,10 +539,11 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
       left_desc->flags = saved_flags;
 
       // Clean up scratch register
-      if (dest_reg != lhs_reg and dest_reg >= fs->nactvar and fs->freereg > dest_reg) {
+      if ((dest_reg != lhs_reg) and (dest_reg >= fs->nactvar) and (fs->freereg > dest_reg)) {
          fs->freereg = dest_reg;
       }
-      if (lhs_reg >= fs->nactvar and fs->freereg > lhs_reg + 1) {
+
+      if ((lhs_reg >= fs->nactvar) and (fs->freereg > lhs_reg + 1)) {
          fs->freereg = lhs_reg + 1;
       }
    }
@@ -568,9 +569,9 @@ void OperatorEmitter::prepare_concat(ValueSlot left)
    // The BC_CAT instruction format is: BC_CAT dest, start_reg, end_reg
    // It concatenates all values from start_reg to end_reg
 
-   RegisterAllocator allocator(fs);
+   RegisterAllocator local_alloc(fs);
    ExpressionValue left_val(fs, *left_desc);
-   left_val.to_next_reg(allocator);
+   left_val.to_next_reg(local_alloc);
    *left_desc = left_val.legacy();
 }
 
@@ -584,7 +585,7 @@ void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
    ExpDesc* right_desc = right.raw();
 
    FuncState* fs = this->func_state;
-   RegisterAllocator allocator(fs);
+   RegisterAllocator local_alloc(fs);
 
    // First, convert right operand to val form
    ExpressionValue right_toval(fs, *right_desc);
@@ -604,7 +605,7 @@ void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
    else {
       // New concatenation: emit BC_CAT instruction
       ExpressionValue right_val(fs, *right_desc);
-      right_val.to_next_reg(allocator);
+      right_val.to_next_reg(local_alloc);
       *right_desc = right_val.legacy();
 
       expr_free(fs, right_desc);
@@ -654,9 +655,9 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    }
 
    // Runtime value - emit extended falsey checks
-   RegisterAllocator allocator(fs);
+   RegisterAllocator local_alloc(fs);
    ExpressionValue e_runtime(fs, *e);
-   BCReg reg = e_runtime.discharge_to_any_reg(allocator);
+   BCReg reg = e_runtime.discharge_to_any_reg(local_alloc);
    *e = e_runtime.legacy();
 
    // Create test expressions
@@ -682,7 +683,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Reserve register for result
    BCReg dest = fs->freereg;
-   allocator.reserve(1);
+   local_alloc.reserve(1);
 
    // Value is truthy - load true
    bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));

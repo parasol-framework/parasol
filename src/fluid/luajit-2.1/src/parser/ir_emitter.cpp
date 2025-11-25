@@ -1284,7 +1284,6 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    }
 
    ExpDesc operand = operand_value.legacy();  // Get ExpDesc for subsequent operations
-
    ExpDesc delta = make_num_expr(1.0);
    ExpDesc infix = operand;
 
@@ -1510,7 +1509,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload &Payload)
 {
    SourceSpan span = Payload.value ? Payload.value->span : SourceSpan{};
    if (not Payload.value) return this->unsupported_expr(AstNodeKind::PresenceExpr, span);
@@ -1523,7 +1522,7 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload& P
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Payload)
 {
    if (not Payload.table or Payload.member.symbol IS nullptr) {
       return this->unsupported_expr(AstNodeKind::MemberExpr, Payload.member.span);
@@ -1569,7 +1568,7 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 {
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
@@ -1649,7 +1648,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    allocator.reserve(1);
    freg++;
 
-   for (const TableField& field : Payload.fields) {
+   for (const TableField &field : Payload.fields) {
       if (not field.value) return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
       RegisterGuard entry_guard(fs);
       ExpDesc key;
@@ -1698,7 +1697,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
       if (emit_constant) {
          TValue k;
-         TValue* slot;
+         TValue *slot;
          if (not template_table) {
             BCReg kidx;
             template_table = lj_tab_new(fs->L, needarr ? narr : 0, hsize2hbits(nhash));
@@ -1753,7 +1752,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    else table.k = ExpKind::NonReloc;
 
    if (not template_table) {
-      BCIns* ip = &fs->bcbase[pc].ins;
+      BCIns *ip = &fs->bcbase[pc].ins;
       if (not needarr) narr = 0;
       else if (narr < 3) narr = 3;
       else if (narr > 0x7ff) narr = 0x7ff;
@@ -1765,10 +1764,10 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
       }
 
       if (fixt) {
-         Node* node = noderef(template_table->node);
+         Node *node = noderef(template_table->node);
          uint32_t hmask = template_table->hmask;
          for (uint32_t i = 0; i <= hmask; ++i) {
-            Node* n = &node[i];
+            Node *n = &node[i];
             if (tvistab(&n->val)) setnilV(&n->val);
          }
       }
@@ -1807,7 +1806,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    BCReg param_count = BCReg(Payload.parameters.size());
    for (BCReg i = 0; i < param_count; ++i) {
       const FunctionParameter& param = Payload.parameters[i];
-      GCstr* symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
+      GCstr *symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
       this->lex_state.var_new(i, symbol);
    }
 
@@ -1853,7 +1852,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& path)
+ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &path)
 {
    if (path.segments.empty()) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
@@ -1865,7 +1864,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
 
    size_t traverse_limit = path.method.has_value() ? path.segments.size() : (path.segments.size() > 0 ? path.segments.size() - 1 : 0);
    for (size_t i = 1; i < traverse_limit; ++i) {
-      const Identifier& segment = path.segments[i];
+      const Identifier &segment = path.segments[i];
       if (not segment.symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
       ExpDesc key = make_interned_string_expr(segment.symbol);
@@ -1879,7 +1878,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath& pa
       expr_index(&this->func_state, &target, &key);
    }
 
-   const Identifier* final_name = nullptr;
+   const Identifier *final_name = nullptr;
    if (path.method.has_value()) final_name = &path.method.value();
    else if (path.segments.size() > 1) final_name = &path.segments.back();
 
@@ -1914,7 +1913,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       }
 
       case AstNodeKind::MemberExpr: {
-         const auto& payload = std::get<MemberExprPayload>(expr.data);
+         const auto &payload = std::get<MemberExprPayload>(expr.data);
          if (not payload.table or not payload.member.symbol) return this->unsupported_expr(expr.kind, expr.span);
 
          auto table_result = this->emit_expression(*payload.table);
@@ -2073,7 +2072,7 @@ void IrEmitter::ensure_register_floor(std::string_view usage)
 {
    if (this->func_state.freereg < this->func_state.nactvar) {
       pf::Log log("Parser");
-      log.warning("ast-pipeline register underrun during %.*s (free=%u active=%u)",
+      log.warning("Register underrun during %.*s (free=%u active=%u)",
          int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
       this->func_state.freereg = this->func_state.nactvar;
    }
@@ -2085,7 +2084,7 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
    if (this->func_state.freereg > this->func_state.nactvar) {
       pf::Log log("Parser");
       int line = this->lex_state.lastline;
-      log.warning("ast-pipeline leaked %u registers after %.*s at line %d (free=%u active=%u)",
+      log.warning("Leaked %u registers after %.*s at line %d (free=%u active=%u)",
          unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
          line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
       this->func_state.freereg = this->func_state.nactvar;

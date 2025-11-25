@@ -165,8 +165,8 @@ public:
    void var_new_fixed(BCReg Reg, uintptr_t Name);
    void var_add(BCReg VariableCount);
    void var_remove(BCReg TargetLevel);
-   MSize var_lookup(ExpDesc* Expression);
-   MSize var_lookup_symbol(GCstr* Name, ExpDesc* Expression);
+   MSize var_lookup(ExpDesc *);
+   MSize var_lookup_symbol(GCstr* Name, ExpDesc *);
 
    // Break and continue management
    MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
@@ -182,52 +182,52 @@ public:
    void fs_init(FuncState* FunctionState);
 
    // Expression parsing
-   ParserResult<ExpDesc> expr(ExpDesc* Expression);
-   void expr_str(ExpDesc* Expression);
-   void expr_field(ExpDesc* Expression);
-   void expr_bracket(ExpDesc* Expression);
-   void expr_table(ExpDesc* Expression);
+   ParserResult<ExpDesc> expr(ExpDesc *);
+   void expr_str(ExpDesc *);
+   void expr_field(ExpDesc *);
+   void expr_bracket(ExpDesc *);
+   void expr_table(ExpDesc *);
    BCReg parse_params(int NeedSelf);
-   void parse_body_impl(ExpDesc* Expression, int NeedSelf, BCLine Line, int OptionalParams);
-   void parse_body(ExpDesc* Expression, int NeedSelf, BCLine Line);
-   void parse_body_defer(ExpDesc* Expression, BCLine Line);
-   ParserResult<BCReg> expr_list(ExpDesc* Expression);
-   void parse_args(ExpDesc* Expression);
-   void inc_dec_op(BinOpr Operator, ExpDesc* Expression, int IsPost);
-   ParserResult<ExpDesc> expr_primary(ExpDesc* Expression);
-   ParserResult<ExpDesc> expr_simple(ExpDesc* Expression);
+   void parse_body_impl(ExpDesc *, int NeedSelf, BCLine, int OptionalParams);
+   void parse_body(ExpDesc *, int NeedSelf, BCLine);
+   void parse_body_defer(ExpDesc *, BCLine);
+   ParserResult<BCReg> expr_list(ExpDesc *);
+   void parse_args(ExpDesc *);
+   void inc_dec_op(BinOpr Operator, ExpDesc *, int);
+   ParserResult<ExpDesc> expr_primary(ExpDesc *);
+   ParserResult<ExpDesc> expr_simple(ExpDesc *);
    void synlevel_begin();
    void synlevel_end();
-   ParserResult<BinOpr> expr_binop(ExpDesc* Expression, uint32_t Limit, int ChainLeftPriority = -1);
-   ParserResult<BinOpr> expr_shift_chain(ExpDesc* LeftHandSide, BinOpr Operator);
-   ParserResult<ExpDesc> expr_unop(ExpDesc* Expression);
+   ParserResult<BinOpr> expr_binop(ExpDesc *, uint32_t Limit, int ChainLeftPriority = -1);
+   ParserResult<BinOpr> expr_shift_chain(ExpDesc *, BinOpr);
+   ParserResult<ExpDesc> expr_unop(ExpDesc *);
    ParserResult<ExpDesc> expr_next();
    ParserResult<BCPos> expr_cond();
    bool should_emit_presence();
 
    // Statement parsing
-   void assign_hazard(std::span<ExpDesc> Left, const ExpDesc& Var);
-   void assign_adjust(BCReg VariableCount, BCReg ExpressionCount, ExpDesc* Expression);
-   int assign_if_empty(ParserContext& Context, ExpDesc* Variables);
-   int assign_compound(ParserContext& Context, ExpDesc* Variables, TokenKind OperatorType);
-   void parse_assignment(ParserContext& Context, ExpDesc* FirstVariable);
-   void parse_call_assign(ParserContext& Context);
-   ParserResult<LocalDeclResult> parse_local(ParserContext& Context);
+   void assign_hazard(std::span<ExpDesc>, const ExpDesc &);
+   void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
+   int assign_if_empty(ParserContext &, ExpDesc *);
+   int assign_compound(ParserContext &, ExpDesc *, TokenKind);
+   void parse_assignment(ParserContext &, ExpDesc *);
+   void parse_call_assign(ParserContext &);
+   ParserResult<LocalDeclResult> parse_local(ParserContext &);
    void parse_defer();
-   void parse_func(BCLine Line);
-   void parse_return(ParserContext& Context);
+   void parse_func(BCLine);
+   void parse_return(ParserContext &);
    void parse_continue();
    void parse_break();
-   void parse_block(ParserContext& Context);
-   void parse_while(ParserContext& Context, BCLine Line);
-   void parse_repeat(ParserContext& Context, BCLine Line);
-   void parse_for_num(ParserContext& Context, GCstr* VariableName, BCLine Line);
-   void parse_for_iter(ParserContext& Context, GCstr* IndexName);
-   void parse_for(ParserContext& Context, BCLine Line);
-   BCPos parse_then(ParserContext& Context);
-   void parse_if(ParserContext& Context, BCLine Line);
-   bool parse_stmt(ParserContext& Context);
-   void parse_chunk(ParserContext& Context);
+   void parse_block(ParserContext &);
+   void parse_while(ParserContext &, BCLine);
+   void parse_repeat(ParserContext &, BCLine);
+   void parse_for_num(ParserContext &, GCstr *, BCLine);
+   void parse_for_iter(ParserContext &, GCstr *);
+   void parse_for(ParserContext &, BCLine);
+   BCPos parse_then(ParserContext &);
+   void parse_if(ParserContext &, BCLine);
+   bool parse_stmt(ParserContext &);
+   void parse_chunk(ParserContext &);
 
    // Public parser helpers
    GCstr * keepstr(std::string_view Value);
