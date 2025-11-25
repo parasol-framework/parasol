@@ -4,6 +4,13 @@
 
 This plan describes the implementation of safe navigation operators for Fluid, allowing developers to safely access nested properties without explicit nil checks. The operators short-circuit evaluation when the base expression is `nil`, returning `nil` instead of raising an error.
 
+## Status
+
+- [x] Phase 1: Lexer Changes
+- [x] Phase 2: AST Node Changes
+- [x] Phase 3: AST Builder Changes
+- [x] Phase 4: IR Emitter Changes
+
 ### Operators to Implement
 
 | Operator | Syntax | Semantics |

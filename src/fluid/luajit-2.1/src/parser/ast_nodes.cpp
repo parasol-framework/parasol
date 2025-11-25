@@ -27,6 +27,11 @@ struct CallTargetChildCounter {
    [[nodiscard]] size_t operator()(const MethodCallTarget& target) const {
       return target.receiver ? 1 : 0;
    }
+
+   [[nodiscard]] size_t operator()(const SafeMethodCallTarget& target) const
+   {
+      return target.receiver ? 1 : 0;
+   }
 };
 
 struct ExpressionChildCounter {
@@ -77,6 +82,18 @@ struct ExpressionChildCounter {
    }
 
    [[nodiscard]] inline size_t operator()(const IndexExprPayload& payload) const
+   {
+      size_t total = payload.table ? 1 : 0;
+      if (payload.index) total++;
+      return total;
+   }
+
+   [[nodiscard]] inline size_t operator()(const SafeMemberExprPayload& payload) const
+   {
+      return payload.table ? 1 : 0;
+   }
+
+   [[nodiscard]] inline size_t operator()(const SafeIndexExprPayload& payload) const
    {
       size_t total = payload.table ? 1 : 0;
       if (payload.index) total++;
@@ -186,6 +203,7 @@ struct StatementChildCounter {
 
 DirectCallTarget::~DirectCallTarget() = default;
 MethodCallTarget::~MethodCallTarget() = default;
+SafeMethodCallTarget::~SafeMethodCallTarget() = default;
 UnaryExprPayload::~UnaryExprPayload() = default;
 UpdateExprPayload::~UpdateExprPayload() = default;
 BinaryExprPayload::~BinaryExprPayload() = default;
@@ -194,6 +212,8 @@ PresenceExprPayload::~PresenceExprPayload() = default;
 CallExprPayload::~CallExprPayload() = default;
 MemberExprPayload::~MemberExprPayload() = default;
 IndexExprPayload::~IndexExprPayload() = default;
+SafeMemberExprPayload::~SafeMemberExprPayload() = default;
+SafeIndexExprPayload::~SafeIndexExprPayload() = default;
 TableField::~TableField() = default;
 TableExprPayload::~TableExprPayload() = default;
 FunctionExprPayload::~FunctionExprPayload() = default;
@@ -325,7 +345,7 @@ ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arg
    return node;
 }
 
-ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments, 
+ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
    bool forwards_multret)
 {
    assert_node(ensure_operand(receiver), "method call requires receiver");
@@ -338,6 +358,24 @@ ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identif
    payload.forwards_multret = forwards_multret;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::CallExpr;
+   node->span = span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_safe_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
+   bool forwards_multret)
+{
+   assert_node(ensure_operand(receiver), "safe method call requires receiver");
+   CallExprPayload payload;
+   SafeMethodCallTarget target;
+   target.receiver = std::move(receiver);
+   target.method = method;
+   payload.target = std::move(target);
+   payload.arguments = std::move(arguments);
+   payload.forwards_multret = forwards_multret;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::SafeCallExpr;
    node->span = span;
    node->data = std::move(payload);
    return node;
@@ -366,6 +404,32 @@ ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr inde
    payload.index = std::move(index);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::IndexExpr;
+   node->span = span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier member)
+{
+   assert_node(ensure_operand(table), "safe member expression requires table value");
+   SafeMemberExprPayload payload;
+   payload.table = std::move(table);
+   payload.member = member;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::SafeMemberExpr;
+   node->span = span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index)
+{
+   assert_node(ensure_operand(table) and ensure_operand(index), "safe index expression requires operands");
+   SafeIndexExprPayload payload;
+   payload.table = std::move(table);
+   payload.index = std::move(index);
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::SafeIndexExpr;
    node->span = span;
    node->data = std::move(payload);
    return node;

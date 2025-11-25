@@ -1244,6 +1244,9 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::PresenceExpr: return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
       case AstNodeKind::MemberExpr:   return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
       case AstNodeKind::IndexExpr:    return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
+      case AstNodeKind::SafeMemberExpr: return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
+      case AstNodeKind::SafeIndexExpr:  return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
+      case AstNodeKind::SafeCallExpr:   return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::CallExpr:     return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::TableExpr:    return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr: return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
@@ -1636,6 +1639,169 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload
    key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload& Payload)
+{
+   if (not Payload.table or Payload.member.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::SafeMemberExpr, Payload.member.span);
+   }
+
+   auto table_result = this->emit_expression(*Payload.table);
+   if (not table_result.ok()) return table_result;
+
+   RegisterGuard register_guard(&this->func_state);
+   RegisterAllocator allocator(&this->func_state);
+
+   ExpressionValue table_value(&this->func_state, table_result.value_ref());
+   BCREG base_reg = table_value.discharge_to_any_reg(allocator);
+
+   ExpDesc nilv(ExpKind::Nil);
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, base_reg, const_pri(&nilv)));
+   ControlFlowEdge nil_jump = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   ExpDesc table = table_value.legacy();
+   ExpDesc key(Payload.member.symbol);
+   expr_index(&this->func_state, &table, &key);
+
+   this->materialise_to_reg(table, base_reg, "safe member access");
+   allocator.collapse_freereg(base_reg);
+
+   ControlFlowEdge skip_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   BCPOS nil_path = this->func_state.pc;
+   nil_jump.patch_to(nil_path);
+   bcemit_nil(&this->func_state, base_reg, 1);
+
+   skip_nil.patch_to(this->func_state.pc);
+
+   register_guard.disarm();
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, base_reg);
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload& Payload)
+{
+   if (not Payload.table or not Payload.index) {
+      return this->unsupported_expr(AstNodeKind::SafeIndexExpr, SourceSpan{});
+   }
+
+   auto table_result = this->emit_expression(*Payload.table);
+   if (not table_result.ok()) return table_result;
+
+   RegisterGuard register_guard(&this->func_state);
+   RegisterAllocator allocator(&this->func_state);
+
+   ExpressionValue table_value(&this->func_state, table_result.value_ref());
+   BCREG base_reg = table_value.discharge_to_any_reg(allocator);
+
+   ExpDesc nilv(ExpKind::Nil);
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, base_reg, const_pri(&nilv)));
+   ControlFlowEdge nil_jump = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   auto key_result = this->emit_expression(*Payload.index);
+   if (not key_result.ok()) return key_result;
+
+   ExpDesc key = key_result.value_ref();
+   ExpressionValue key_toval(&this->func_state, key);
+   key_toval.to_val();
+   key = key_toval.legacy();
+
+   ExpDesc table = table_value.legacy();
+   expr_index(&this->func_state, &table, &key);
+
+   this->materialise_to_reg(table, base_reg, "safe index access");
+   allocator.collapse_freereg(base_reg);
+
+   ControlFlowEdge skip_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   BCPOS nil_path = this->func_state.pc;
+   nil_jump.patch_to(nil_path);
+   bcemit_nil(&this->func_state, base_reg, 1);
+
+   skip_nil.patch_to(this->func_state.pc);
+
+   register_guard.disarm();
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, base_reg);
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payload)
+{
+   BCLine call_line = this->lex_state.lastline;
+
+   const auto* safe_method = std::get_if<SafeMethodCallTarget>(&Payload.target);
+   if (not safe_method or not safe_method->receiver or safe_method->method.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::SafeCallExpr, SourceSpan{});
+   }
+
+   auto receiver_result = this->emit_expression(*safe_method->receiver);
+   if (not receiver_result.ok()) return receiver_result;
+
+   RegisterGuard register_guard(&this->func_state);
+   RegisterAllocator allocator(&this->func_state);
+
+   ExpressionValue receiver_value(&this->func_state, receiver_result.value_ref());
+   BCREG base_reg = receiver_value.discharge_to_any_reg(allocator);
+
+   ExpDesc nilv(ExpKind::Nil);
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, base_reg, const_pri(&nilv)));
+   ControlFlowEdge nil_jump = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   ExpDesc callee = receiver_value.legacy();
+   ExpDesc key(ExpKind::Str);
+   key.u.sval = safe_method->method.symbol;
+   bcemit_method(&this->func_state, &callee, &key);
+   BCREG call_base = callee.u.s.info;
+
+   BCREG arg_count = 0;
+   ExpDesc args(ExpKind::Void);
+   if (not Payload.arguments.empty()) {
+      auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
+      if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
+      args = args_result.value_ref();
+   }
+
+   BCIns ins;
+   bool forward_tail = Payload.forwards_multret and (args.k IS ExpKind::Call);
+   if (forward_tail) {
+      setbc_b(ir_bcptr(&this->func_state, &args), 0);
+      ins = BCINS_ABC(BC_CALLM, call_base, 2, args.u.s.aux - call_base - 1 - LJ_FR2);
+   }
+   else {
+      if (not (args.k IS ExpKind::Void)) this->materialise_to_next_reg(args, "safe call arguments");
+      ins = BCINS_ABC(BC_CALL, call_base, 2, this->func_state.freereg - call_base - LJ_FR2);
+   }
+
+   this->lex_state.lastline = call_line;
+   BCPOS call_pc = bcemit_INS(&this->func_state, ins);
+
+   ControlFlowEdge skip_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+
+   BCPOS nil_path = this->func_state.pc;
+   nil_jump.patch_to(nil_path);
+   bcemit_nil(&this->func_state, call_base, 1);
+
+   skip_nil.patch_to(this->func_state.pc);
+
+   register_guard.adopt_saved(call_base + 1);
+   register_guard.disarm();
+
+   ExpDesc result;
+   result.init(ExpKind::Call, call_pc);
+   result.u.s.aux = call_base;
+   this->func_state.freereg = call_base + 1;
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************

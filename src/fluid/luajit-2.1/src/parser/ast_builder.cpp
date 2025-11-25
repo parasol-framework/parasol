@@ -730,6 +730,16 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          continue;
       }
 
+      if (token.kind() IS TokenKind::SafeField) {
+         this->ctx.tokens().advance();
+         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
+
+         base = make_safe_member_expr(span_from(token, name_token.value_ref()), std::move(base),
+            make_identifier(name_token.value_ref()));
+         continue;
+      }
+
       if (token.kind() IS TokenKind::LeftBracket) {
          this->ctx.tokens().advance();
          auto index = this->parse_expression();
@@ -738,6 +748,17 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
          SourceSpan span = combine_spans(base->span, index.value_ref()->span);
          base = make_index_expr(span, std::move(base), std::move(index.value_ref()));
+         continue;
+      }
+
+      if (token.kind() IS TokenKind::SafeIndex) {
+         this->ctx.tokens().advance();
+         auto index = this->parse_expression();
+         if (not index.ok()) return index;
+
+         this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+         SourceSpan span = combine_spans(base->span, index.value_ref()->span);
+         base = make_safe_index_expr(span, std::move(base), std::move(index.value_ref()));
          continue;
       }
 
@@ -752,6 +773,21 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
          SourceSpan span = combine_spans(base->span, name_token.value_ref().span());
          base = make_method_call_expr(span, std::move(base),
+            make_identifier(name_token.value_ref()), std::move(args.value_ref()), forwards);
+         continue;
+      }
+
+      if (token.kind() IS TokenKind::SafeMethod) {
+         this->ctx.tokens().advance();
+         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
+
+         bool forwards = false;
+         auto args = this->parse_call_arguments(&forwards);
+         if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
+
+         SourceSpan span = combine_spans(base->span, name_token.value_ref().span());
+         base = make_safe_method_call_expr(span, std::move(base),
             make_identifier(name_token.value_ref()), std::move(args.value_ref()), forwards);
          continue;
       }
