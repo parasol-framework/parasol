@@ -88,6 +88,7 @@ option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 option (GENERATE_DEBIAN_PKG "Generate Debian packaging files" OFF)
 option (DISABLE_CPACK     "Disable CPack Windows packaging support" OFF)
+option (FULL_OPTIMISATION "Use the highest levels of optimisation available" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -149,7 +150,7 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
 endif ()
 
 # MSVC-specific optimization flags for Release builds
-if (MSVC)
+if (MSVC AND FULL_OPTIMISATION)
    # Replace default /O2 with /Ox for maximum optimization
    # /GL enables whole program optimization at compile time
    # /LTCG enables link-time code generation for cross-module optimization

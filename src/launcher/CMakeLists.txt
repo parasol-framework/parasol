@@ -90,7 +90,11 @@ target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link"
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   if (NOT MSVC)
+      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   else ()
+      set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   endif ()
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
    set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
