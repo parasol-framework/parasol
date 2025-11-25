@@ -27,29 +27,29 @@ function testGetLocal()
       method     = 'GET',
       connectTimeout = 10,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
       end
    })
 
    local err = http.acActivate()
-   assert(err == ERR_Okay, "HTTP object failed to activate.")
+   assert(err is ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(nz(content), 'No content received.')
 
    print(string.format('%.80s [80 of %d bytes]', content, content:len()))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- POST to a local server using chunking (contentLength == -1)
+-- POST to a local server using chunking (contentLength is -1)
 
 function testPostStringLocal()
    local proc = processing.new({ timeout = 5.0 })
@@ -63,38 +63,38 @@ function testPostStringLocal()
       flags      = HTF_NO_HEAD,
       contentLength = -1,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end,
       outgoing = function(HTTP)
-         if (testPostStringCompleted) then error('This routine has been called a second time.') end
+         assert(testPostStringCompleted != true, 'This routine has been called a second time.')
          msg('Request for data received.')
          HTTP.acWrite(outgoing_body)
          testPostStringCompleted = true
          check(ERR_Terminate)
       end,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
       end
    })
 
-   assert(http.acActivate() == ERR_Okay, "HTTP object failed to activate.")
+   assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 
-   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
-   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
+   assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(nz(content), 'No content received.')
-   assert(http.status == 200, 'Unexpected HTTP status: ' .. http.status)
+   assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
    local js_content = json.decode(content)
-   assert(js_content.body == outgoing_body, 'Unexpected response: ' .. content)
+   assert(js_content.body is outgoing_body, 'Unexpected response: ' .. content)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- curl -v -X POST http://httpbin.org/post -d "fname=smith&lname=jones"
--- POST to an external server using chunking (contentLength == -1)
+-- POST to an external server using chunking (contentLength is -1)
 
 function testPostStringExt()
    local proc = processing.new({ timeout = 5.0 })
@@ -107,23 +107,23 @@ function testPostStringExt()
       flags      = HTF_NO_HEAD,
       contentLength = -1,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end,
       outgoing = function(HTTP)
-         if (testPostStringCompleted) then error('This routine has been called a second time.') end
+         assert(testPostStringCompleted != true, 'This routine has been called a second time.')
          msg('Request for data received.')
          HTTP.acWrite('fname=smith&lname=jones')
          testPostStringCompleted = true
          check(ERR_Terminate)
       end,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
       end
    })
 
-   assert(http.acActivate() == ERR_Okay, "HTTP object failed to activate.")
+   assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
    local err = proc.sleep()
 
@@ -132,15 +132,15 @@ function testPostStringExt()
       return
    end
 
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
-   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
-   assert(http.status == 200, 'Unexpected HTTP status: ' .. http.status)
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
+   assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
    assert(nz(content), 'No content received.')
 
    local form = json.decode(content)
    assert(form, 'No JSON response received.')
-   assert(form.form.fname == 'smith', 'Unexpected response: ' .. content)
+   assert(form.form.fname is 'smith', 'Unexpected response: ' .. content)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -159,26 +159,26 @@ function testPostStringFile()
       inputFile  = 'string:' .. outgoing_body,
       size       = outgoing_body:len(),
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
       end,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end
    })
 
-   assert(http.acActivate() == ERR_Okay, "HTTP object failed to activate.")
+   assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 
-   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
-   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
-   assert(http.status == 200, 'Unexpected HTTP status: ' .. http.status)
+   assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
+   assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
 
    local js_content = json.decode(content)
-   assert(js_content.body == outgoing_body, 'Unexpected response: ' .. content)
+   assert(js_content.body is outgoing_body, 'Unexpected response: ' .. content)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -195,10 +195,10 @@ function testSSLOverProxy()
    })
 
    local err = http.acActivate()
-   assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
    err = proc.sleep(5.0)
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -213,24 +213,24 @@ function testHTTPS()
       method     = 'get',
       outputFile = glOutFile,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) then
+         if (State is HGS_COMPLETED) then
             msg('State changed to COMPLETED.')
          end
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
          return ERR_Okay
       end
    })
 
-   assert(http.acActivate() == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+   assert(http.acActivate() is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
    local err = proc.sleep(5.0)
 
    local content = file.readAll(glOutFile)
    print(string.format('%.80s [%d bytes]', content, content:len()))
    assert(content, 'No content received.')
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -246,11 +246,11 @@ function testRedirectedHTTPS()
       method     = 'get',
       outputFile = glOutFile,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) then
+         if (State is HGS_COMPLETED) then
             content = file.readAll(glOutFile)
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
          return ERR_Okay
@@ -258,10 +258,10 @@ function testRedirectedHTTPS()
    })
 
    local err = http.acActivate()
-   assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
    local err = proc.sleep(5.0)
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    assert(content, 'No content received.')
 end
 
@@ -279,7 +279,7 @@ function testMultiPart()
       flags       = HTF_NO_HEADER,
       contenttype = 'multipart/form-data; boundary=' .. boundary,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end
    } )
 
@@ -291,19 +291,19 @@ function testMultiPart()
    // Parameters
 
    msg('Building parameters')
-   str = str .. '--' .. boundary .. CRLF
-   str = str .. "Content-Disposition: form-data; name=\"method\"" .. CRLF .. CRLF
-   str = str .. 'fileUpload' .. CRLF
+   str ..= '--' .. boundary .. CRLF
+   str ..= "Content-Disposition: form-data; name=\"method\"" .. CRLF .. CRLF
+   str ..= 'fileUpload' .. CRLF
 
-   str = str .. '--' .. boundary .. CRLF
-   str = str .. "Content-Disposition: form-data; name=\"workspace\"" .. CRLF .. CRLF
-   str = str .. '1' .. CRLF
+   str ..= '--' .. boundary .. CRLF
+   str ..= "Content-Disposition: form-data; name=\"workspace\"" .. CRLF .. CRLF
+   str ..= '1' .. CRLF
 
    // File header
 
-   str = str .. '--' .. boundary .. CRLF
-   str = str .. "Content-Disposition: form-data; name=\"file\"; filename=\"" .. filename .. "\"" .. CRLF
-   str = str .. 'Content-Type: application/octet-stream' .. CRLF .. CRLF
+   str ..= '--' .. boundary .. CRLF
+   str ..= "Content-Disposition: form-data; name=\"file\"; filename=\"" .. filename .. "\"" .. CRLF
+   str ..= 'Content-Type: application/octet-stream' .. CRLF .. CRLF
 
    local headfile = obj.new('file', { src='temp:http-head', flags='WRITE|NEW' } )
    headfile.acWrite(str, str:len())
@@ -324,8 +324,7 @@ function testMultiPart()
    tailfile = nil
    srcfile = nil
 
-   local err = proc.sleep(5.0)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   assert(proc.sleep(5.0) != ERR_TimeOut, 'Test timed-out.')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -340,26 +339,26 @@ function testIPV6()
       method     = 'get',
       connectTimeout = 10,
       stateChanged = function(HTTP, State)
-         if (State == HGS_COMPLETED) then
+         if (State is HGS_COMPLETED) then
             print(string.format('%.80s [80 of %d bytes]', content, content:len()))
          end
-         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+         if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
          end
       end,
       incoming = function(HTTP, Buffer)
-         content = content .. tostring(Buffer)
+         content ..= tostring(Buffer)
       end
    })
 
    local err = http.acActivate()
-   assert(err == ERR_Okay, "HTTP object failed to activate.")
+   assert(err is ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
-   if (http.error == ERR_HostNotFound) then print('Unable to test, IPv6 name resolution failed.') return end
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
-   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
+   if (http.error is ERR_HostNotFound) then print('Unable to test, IPv6 name resolution failed.') return end
+   assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
 
    if #content < 2048 then
        print('Response content:')
