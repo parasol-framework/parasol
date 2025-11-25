@@ -27,6 +27,7 @@ pf::vector<std::string> *glArgs;
 static int glArgsIndex = 0;
 //static STRING glAllow = nullptr;
 static std::string glTargetFile;
+static std::string glStatement;
 static OBJECTPTR glTask = nullptr;
 static objScript *glScript = nullptr;
 static bool glSandbox = false;
@@ -35,7 +36,7 @@ static bool glTime = false;
 static bool glDialog = false;
 static bool glBackstage = false;
 
-static ERR exec_source(CSTRING, int, const std::string);
+static ERR exec_source(std::string, int, const std::string);
 
 static const std::string glHelp =
    "Parasol Framework " PARASOL_VERSION R"(
@@ -50,6 +51,7 @@ The following options can be used when executing script files:
  --time          Print the amount of time that it took to execute the script.
  --dialog        Display a file dialog for choosing a script manually.
  --backstage     Enables the backstage REST API (see Wiki).
+ --statement     Instead of running a script file, executes a single statement or expression.
 
  --log-api       Activates run-time log messages at API level.
  --log-info      Activates run-time log messages at INFO level.
@@ -125,6 +127,13 @@ static ERR process_args(void)
                i++;
             }
          }
+         else if (pf::iequals(args[i], "--statement") or (pf::iequals(args[i], "-c")) or (pf::iequals(args[i], "-e"))) {
+            // NB: The support for -c and -e exists only for AI agents that like to use this syntax for whatever reason...
+            if (i + 1 < args.size()) {
+               glStatement.assign(args[i+1]);
+               i++;
+            }
+         }
          else if (pf::startswith(args[i], "--")) {
             // Unrecognised argument beginning with '--', ignore it.
          }
@@ -150,7 +159,7 @@ extern "C" int main(int argc, char **argv)
 
    if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
-         if (!strcmp(argv[i], "--verify")) return 0;
+         if (not strcmp(argv[i], "--verify")) return 0;
       }
       printf("%s\n", msg);
       return -1;
@@ -166,7 +175,7 @@ extern "C" int main(int argc, char **argv)
 
       if (glDialog) {
          auto start = glDialogScript.find("%%PATH%%");
-         if (!glTargetFile.empty()) {
+         if (not glTargetFile.empty()) {
             std::string::size_type n = 0;
             while ((n = glTargetFile.find('\\', n)) != std::string::npos) {
                 glTargetFile.replace(n, 1, "\\\\");
@@ -179,7 +188,10 @@ extern "C" int main(int argc, char **argv)
 
          result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
-      else if (!glTargetFile.empty()) {
+      else if (not glStatement.empty()) {
+         result = int(exec_source(std::string("STRING:") + glStatement, glTime, glProcedure));
+      }
+      else if (not glTargetFile.empty()) {
          CSTRING path;
          if (glTask->get(FID_Path, path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
@@ -194,9 +206,9 @@ extern "C" int main(int argc, char **argv)
          // Check for the presence of package.zip or main.fluid files in the working directory
 
          auto path = glTask->get<CSTRING>(FID_ProcessPath);
-         if ((!path) or (!path[0])) path = ".";
+         if ((not path) or (not path[0])) path = ".";
          std::string exe_path(path);
-         if (!((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
+         if (not ((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
             exe_path.append("/");
          }
 
