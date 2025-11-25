@@ -63,7 +63,6 @@ static const struct {
 #include "parse_scope.cpp"
 #include "parse_regalloc.cpp"
 #include "parse_expr.cpp"
-#include "parse_operators.cpp"
 #include "parse_stmt.cpp"
 #include "operator_emitter.cpp"
 #include "value_categories.cpp"

@@ -133,18 +133,7 @@ extern BCPOS bcemit_branch(FuncState *, ExpDesc* e, int cond);
 // These remain static (legacy parser only)
 static void bcemit_branch_t(FuncState *, ExpDesc* e);
 
-// Operators (lj_parse_operators.cpp)
-
-// These are now exported (non-static) for use by OperatorEmitter facade
-extern int foldarith(BinOpr opr, ExpDesc* e1, ExpDesc* e2);
-extern void bcemit_arith(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
-extern void bcemit_comp(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
-extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
-
-// These are internal helpers
-static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCREG base);
-static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
-extern void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
+// Operators are implemented in operator_emitter.cpp via the OperatorEmitter class
 
 // Variables and scope (lj_parse_scope.cpp)
 

@@ -49,9 +49,9 @@ ParserResult<Token> ParserContext::match(TokenKind kind)
       std::string expectation = this->format_expected_message(kind);
       ParserDiagnostic diagnostic;
       diagnostic.severity = ParserDiagnosticSeverity::Info;
-      diagnostic.code = ParserErrorCode::ExpectedToken;
-      diagnostic.message = expectation;
-      diagnostic.token = current;
+      diagnostic.code     = ParserErrorCode::ExpectedToken;
+      diagnostic.message  = expectation;
+      diagnostic.token    = current;
       this->diag.report(diagnostic);
       this->log_trace("expect", current, expectation);
    }
@@ -135,7 +135,7 @@ void ParserContext::err_syntax(ErrMsg message)
    Token current = this->tokens().current();
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
-   diagnostic.code = ParserErrorCode::UnexpectedToken;
+   diagnostic.code     = ParserErrorCode::UnexpectedToken;
    GCstr *text = lj_err_str(this->lua_state, message);
    if (text) diagnostic.message.assign(strdata(text), text->len);
    diagnostic.token = current;
@@ -150,9 +150,9 @@ void ParserContext::err_token(LexToken token)
    Token current = this->tokens().current();
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
-   diagnostic.code = ParserErrorCode::UnexpectedToken;
-   diagnostic.message = this->format_lex_error(token);
-   diagnostic.token = current;
+   diagnostic.code     = ParserErrorCode::UnexpectedToken;
+   diagnostic.message  = this->format_lex_error(token);
+   diagnostic.token    = current;
    this->diag.report(diagnostic);
    lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token));
 }
@@ -163,9 +163,9 @@ void ParserContext::report_limit_error(FuncState& func_state, uint32_t limit, co
 {
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
-   diagnostic.code = ParserErrorCode::UnexpectedToken;
-   diagnostic.message = std::string("function limit exceeded for ") + what;
-   diagnostic.token = this->tokens().current();
+   diagnostic.code     = ParserErrorCode::UnexpectedToken;
+   diagnostic.message  = std::string("function limit exceeded for ") + what;
+   diagnostic.token    = this->tokens().current();
    this->diag.report(diagnostic);
    if (func_state.linedefined IS 0) {
       lj_lex_error(func_state.ls, 0, ErrMsg::XLIMM, limit, what);
@@ -178,7 +178,7 @@ void ParserContext::report_limit_error(FuncState& func_state, uint32_t limit, co
 
 std::string ParserContext::format_expected_message(TokenKind kind) const
 {
-   const char* name = token_kind_name(kind, this->lex());
+   CSTRING name = token_kind_name(kind, this->lex());
    std::string message = std::string("expected ") + name;
    if ((LexToken)kind <= TK_OFS) {
       lua_pop(this->lua_state, 1);
@@ -216,9 +216,9 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
 {
    ParserDiagnostic diagnostic;
    diagnostic.severity = ParserDiagnosticSeverity::Error;
-   diagnostic.code = code;
+   diagnostic.code     = code;
    diagnostic.message.assign(message.begin(), message.end());
-   diagnostic.token = token;
+   diagnostic.token    = token;
    this->diag.report(diagnostic);
 
    auto prv = (prvFluid *)this->lua_state->Script->ChildPrivate;
@@ -275,9 +275,9 @@ std::string ParserContext::describe_token(const Token &token) const
    if (token.is_identifier()) {
       if (GCstr *identifier = token.identifier()) {
          result.push_back(' ');
-         result.push_back((char)39);
+         result.push_back('\'');
          result.append(strdata(identifier), identifier->len);
-         result.push_back((char)39);
+         result.push_back('\'');
       }
    }
    return result;

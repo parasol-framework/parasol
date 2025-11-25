@@ -4,6 +4,18 @@
 //
 // This class manages register allocation via RegisterAllocator and control flow via ControlFlowGraph, eliminating
 // direct freereg manipulation.
+//
+// OPERAND CONTRACT:
+// - Left operand (ValueSlot): Mutable reference - may be rewritten by operator methods
+// - Right operand (ExpDesc): Passed by value - logically read-only from caller's perspective
+//   (though internal copies may be modified during emission)
+//
+// EXTENDED FALSEY SEMANTICS:
+// Fluid's falsey semantics differ from standard Lua:
+// - Falsey values: nil, false, 0 (numeric zero), "" (empty string)
+// - All other values are truthy
+// - This affects the ?? (if-empty) operator and ? (presence check) operator
+// - Use ExpDesc::is_falsey() for compile-time constant checks
 
 #pragma once
 
@@ -73,7 +85,7 @@ public:
    void emit_presence_check(ValueSlot operand);
 
 private:
-   FuncState* func_state;
-   RegisterAllocator* allocator;
-   ControlFlowGraph* cfg;
+   FuncState *func_state;
+   RegisterAllocator *allocator;
+   ControlFlowGraph *cfg;
 };
