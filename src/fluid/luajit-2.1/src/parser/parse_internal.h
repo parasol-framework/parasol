@@ -171,13 +171,10 @@ extern void bcemit_arith(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 extern void bcemit_comp(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
 
-// These remain static (legacy parser only)
-static void bcemit_binop_left(FuncState *, BinOpr op, ExpDesc* e);
+// These are internal helpers
 static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
 extern void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
-static void bcemit_presence_check(FuncState *, ExpDesc* e);
-static void bcemit_binop(FuncState *, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 
 // Variables and scope (lj_parse_scope.cpp)
 

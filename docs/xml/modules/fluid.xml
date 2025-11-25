@@ -37,7 +37,6 @@
     <constants lookup="JOF" comment="JIT behaviour options">
       <const name="DIAGNOSE">Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.</const>
       <const name="DUMP_BYTECODE">Print a disassembly of bytecode instructions after parsing.</const>
-      <const name="LEGACY">Use the legacy parser.</const>
       <const name="PROFILE">Use timers to profile JIT parsing.  Required to configure run-time profiling.</const>
       <const name="TRACE">Synonym for <code>TRACE_TOKENS | TRACE_EXPECT | TRACE_BOUNDARY | TRACE_OPERATORS | TRACE_REGISTERS | TRACE_CFG | TRACE_ASSIGNMENTS | TRACE_VALUE_CATEGORY</code></const>
       <const name="TRACE_ASSIGNMENTS">Trace PreparedAssignment lifecycle and hazard handling.</const>

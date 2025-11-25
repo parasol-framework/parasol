@@ -67,7 +67,6 @@ static ERR save_binary(objScript *, OBJECTPTR);
 static const FieldDef clJitOptions[] = {
    { "TraceTokens",   JOF::TRACE_TOKENS },
    { "Diagnose",      JOF::DIAGNOSE },
-   { "Legacy",        JOF::LEGACY },
    { "TraceBoundary", JOF::TRACE_BOUNDARY },
    { "TraceExpect",   JOF::TRACE_EXPECT },
    { "DumpBytecode",  JOF::DUMP_BYTECODE },

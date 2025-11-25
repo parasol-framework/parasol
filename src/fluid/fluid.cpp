@@ -237,12 +237,6 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (pf::iequals(trimmed, "diagnose")) {
                      glJitOptions |= JOF::DIAGNOSE;
                   }
-                  else if (pf::iequals(trimmed, "ast-pipeline")) { // Use the new AST-based parser
-                     glJitOptions &= ~JOF::LEGACY;
-                  }
-                  else if (pf::iequals(trimmed, "ast-legacy")) { // Use the legacy parser
-                     glJitOptions |= JOF::LEGACY;
-                  }
                   else if (pf::iequals(trimmed, "trace-boundary")) {
                      glJitOptions |= JOF::TRACE_BOUNDARY;
                   }

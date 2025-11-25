@@ -1062,23 +1062,10 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
    return true;
 }
 
-inline void enable_legacy(lua_State *Lua)
-{
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   prv->JitOptions |= JOF::LEGACY;
-}
-
-inline void enable_ast(lua_State *Lua)
-{
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   prv->JitOptions &= ~JOF::LEGACY;
-}
 
 static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::string_view source,
    bool ast_pipeline, std::string& error)
 {
-   if (ast_pipeline) enable_ast(L);
-   else enable_legacy(L);
 
    if (luaL_loadbuffer(L, source.data(), source.size(), "parser-unit")) {
       const char* message = lua_tostring(L, -1);

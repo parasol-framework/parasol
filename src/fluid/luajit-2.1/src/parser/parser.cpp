@@ -215,21 +215,11 @@ extern GCproto * lj_parse(LexState *State)
 
    State->next(); // Read-ahead first token.
 
-   if ((prv->JitOptions & JOF::LEGACY) IS JOF::NIL) {
-      run_ast_pipeline(root_context, profiler);
+   run_ast_pipeline(root_context, profiler);
 
-      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
+   if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
 
-      flush_non_fatal_errors(root_context);
-   }
-   else {
-      log.msg("Using legacy Lua parser.");
-      ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
-      State->parse_chunk(root_context);
-      legacy_timer.stop();
-
-      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
-   }
+   flush_non_fatal_errors(root_context);
 
    if (profiler.enabled()) {
       profiler.log_results(log);
