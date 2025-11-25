@@ -31,7 +31,7 @@
 #include "luajit.h"
 
 // Bump GG_NUM_ASMFF in lj_dispatch.h as needed. Ugly.
-LJ_STATIC_ASSERT(GG_NUM_ASMFF == FF_NUM_ASMFUNC);
+static_assert(GG_NUM_ASMFF == FF_NUM_ASMFUNC);
 
 // -- Dispatch table management -------------------------------------------
 
@@ -256,14 +256,10 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    switch (mm) {
 #if LJ_HASJIT
    case LUAJIT_MODE_ENGINE:
-      if ((mode & LUAJIT_MODE_FLUSH)) {
-         lj_trace_flushall(L);
-      }
+      if ((mode & LUAJIT_MODE_FLUSH)) lj_trace_flushall(L);
       else {
-         if (!(mode & LUAJIT_MODE_ON))
-            G2J(g)->flags &= ~(uint32_t)JIT_F_ON;
-         else
-            G2J(g)->flags |= (uint32_t)JIT_F_ON;
+         if (!(mode & LUAJIT_MODE_ON)) G2J(g)->flags &= ~(uint32_t)JIT_F_ON;
+         else G2J(g)->flags |= (uint32_t)JIT_F_ON;
          lj_dispatch_update(g);
       }
       break;
@@ -304,19 +300,14 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
       if ((mode & LUAJIT_MODE_ON)) {
          if (idx != 0) {
             cTValue* tv = idx > 0 ? L->base + (idx - 1) : L->top + idx;
-            if (tvislightud(tv))
-               g->wrapf = (lua_CFunction)lightudV(g, tv);
-            else
-               return 0;  //  Failed.
+            if (tvislightud(tv)) g->wrapf = (lua_CFunction)lightudV(g, tv);
+            else return 0;  //  Failed.
          }
-         else {
-            return 0;  //  Failed.
-         }
+         else return 0;  //  Failed.
          g->bc_cfunc_ext = BCINS_AD(BC_FUNCCW, 0, 0);
       }
-      else {
-         g->bc_cfunc_ext = BCINS_AD(BC_FUNCC, 0, 0);
-      }
+      else g->bc_cfunc_ext = BCINS_AD(BC_FUNCC, 0, 0);
+
       break;
    default:
       return 0;  //  Failed.

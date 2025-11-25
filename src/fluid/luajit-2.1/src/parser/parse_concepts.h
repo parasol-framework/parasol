@@ -32,7 +32,7 @@ concept ConstExpressionDescriptor = ExpressionDescriptor<T> and requires(const T
 // Ensures type is compatible with BCReg operations.
 
 template<typename T>
-concept RegisterType = std::is_same_v<T, BCReg> or std::is_convertible_v<T, BCReg>;
+concept RegisterType = std::same_as<T, BCReg> or std::is_convertible_v<T, BCReg>;
 
 // UnsignedRegisterType: Stricter concept for unsigned register operations
 
@@ -42,12 +42,12 @@ concept UnsignedRegisterType = RegisterType<T> and std::unsigned_integral<T>;
 // PositionType: Concept for bytecode position types
 
 template<typename T>
-concept PositionType = std::is_same_v<T, BCPos> or std::is_convertible_v<T, BCPos>;
+concept PositionType = std::same_as<T, BCPos> or std::is_convertible_v<T, BCPos>;
 
 // IndexType: Concept for variable/upvalue index types
 
 template<typename T>
-concept IndexType = std::is_same_v<T, VarIndex> or std::is_same_v<T, MSize> or
+concept IndexType = std::same_as<T, VarIndex> or std::same_as<T, MSize> or
                     (std::unsigned_integral<T> and sizeof(T) >= sizeof(VarIndex));
 
 // FunctionState: Concept for function state pointers
@@ -55,44 +55,44 @@ concept IndexType = std::is_same_v<T, VarIndex> or std::is_same_v<T, MSize> or
 
 template<typename T>
 concept FunctionState = std::is_pointer_v<T> and
-                        std::is_same_v<std::remove_pointer_t<T>, FuncState>;
+                        std::same_as<std::remove_pointer_t<T>, FuncState>;
 
 // LexerState: Concept for lexer state pointers
 
 template<typename T>
 concept LexerState = std::is_pointer_v<T> and
-                     std::is_same_v<std::remove_pointer_t<T>, LexState>;
+                     std::same_as<std::remove_pointer_t<T>, LexState>;
 
 // BinaryOperator: Concept for binary operator types
 
 template<typename T>
-concept BinaryOperator = std::is_same_v<T, BinOpr> or
+concept BinaryOperator = std::same_as<T, BinOpr> or
                          (std::integral<T> and sizeof(T) <= sizeof(BinOpr));
 
 // UnaryOperator: Concept for unary operator types
 // Note: Currently unused - UnOpr type not defined in parser.
 
 // template<typename T>
-// concept UnaryOperator = std::is_same_v<T, UnOpr> or
+// concept UnaryOperator = std::same_as<T, UnOpr> or
 //                         (std::integral<T> and sizeof(T) <= sizeof(UnOpr));
 
 // BytecodeInstruction: Concept for bytecode instruction types
 
 template<typename T>
-concept BytecodeInstruction = std::is_same_v<T, BCIns> or
-                              (std::unsigned_integral<T> and sizeof(T) == sizeof(BCIns));
+concept BytecodeInstruction = std::same_as<T, BCIns> or
+                              (std::unsigned_integral<T> and sizeof(T) IS sizeof(BCIns));
 
 // BytecodeOpcode: Concept for bytecode opcode types
 
 template<typename T>
-concept BytecodeOpcode = std::is_same_v<T, BCOp> or
+concept BytecodeOpcode = std::same_as<T, BCOp> or
                          (std::integral<T> and sizeof(T) <= sizeof(BCOp));
 
 // GCString: Concept for GC-managed string types
 
 template<typename T>
 concept GCString = std::is_pointer_v<T> and
-                   std::is_same_v<std::remove_pointer_t<T>, GCstr>;
+                   std::same_as<std::remove_pointer_t<T>, GCstr>;
 
 // NumericValue: Concept for numeric constant values
 
@@ -114,7 +114,7 @@ concept FloatingValue = std::floating_point<T>;
 // Runtime validation still required for actual values.
 
 template<typename T>
-concept ValidExpKind = std::is_same_v<T, ExpKind> or
+concept ValidExpKind = std::same_as<T, ExpKind> or
                        (std::integral<T> and sizeof(T) <= sizeof(ExpKind));
 
 // ExpressionHandler: Composite concept for functions that handle expressions
@@ -130,3 +130,12 @@ template<typename F>
 concept ConstExpressionPredicate = requires(F f, const ExpDesc* e) {
    { f(e) } -> std::convertible_to<bool>;
 };
+
+// Compile-time validation of concept satisfaction
+// These static assertions ensure that the core types satisfy their intended concepts,
+// providing early detection of interface changes.
+
+static_assert(ExpressionDescriptor<ExpDesc>, "ExpDesc must satisfy ExpressionDescriptor concept");
+static_assert(RegisterType<BCReg>, "BCReg must satisfy RegisterType concept");
+static_assert(BytecodeOpcode<BCOp>, "BCOp must satisfy BytecodeOpcode concept");
+static_assert(FunctionState<FuncState*>, "FunctionState* must satisfy FunctionState concept");

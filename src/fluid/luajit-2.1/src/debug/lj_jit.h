@@ -219,9 +219,9 @@ inline constexpr uint32_t SNAP_CONT = 0x020000;   //  Continuation slot.
 inline constexpr uint32_t SNAP_NORESTORE = 0x040000;   //  No need to restore slot.
 inline constexpr uint32_t SNAP_SOFTFPNUM = 0x080000;   //  Soft-float number.
 inline constexpr uint32_t SNAP_KEYINDEX = 0x100000;   //  Traversal key index.
-LJ_STATIC_ASSERT(SNAP_FRAME IS TREF_FRAME);
-LJ_STATIC_ASSERT(SNAP_CONT IS TREF_CONT);
-LJ_STATIC_ASSERT(SNAP_KEYINDEX IS TREF_KEYINDEX);
+static_assert(SNAP_FRAME IS TREF_FRAME);
+static_assert(SNAP_CONT IS TREF_CONT);
+static_assert(SNAP_KEYINDEX IS TREF_KEYINDEX);
 
 [[nodiscard]] inline constexpr SnapEntry SNAP(uint32_t slot, uint32_t flags, uint32_t ref) noexcept {
    return ((SnapEntry(slot) << 24) + flags + ref);
@@ -331,7 +331,7 @@ struct GCtrace {
 #define traceref(J, n) \
   check_exp((n)>0 && (MSize)(n)<J->sizetrace, (GCtrace *)gcref(J->trace[(n)]))
 
-LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCtrace, gclist));
+static_assert(offsetof(GChead, gclist) == offsetof(GCtrace, gclist));
 
 [[nodiscard]] inline MSize snap_nextofs(GCtrace *T, SnapShot *snap) noexcept
 {

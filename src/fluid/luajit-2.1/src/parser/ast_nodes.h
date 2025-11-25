@@ -532,77 +532,62 @@ struct StmtNode {
 
 //********************************************************************************************************************
 
-class StatementListView {
-public:
-   StatementListView() = default;
-   explicit StatementListView(const StmtNodeList &nodes) : storage(&nodes) { }
-
-   class Iterator {
-   public:
-      using InnerIterator = StmtNodeList::const_iterator;
-      Iterator() = default;
-      inline explicit Iterator(InnerIterator it) : iter(it) {}
-      inline const StmtNode& operator*() const { return *(*this->iter); }
-      inline const StmtNode* operator->() const { return this->iter->get(); }
-      inline Iterator& operator++() { ++this->iter; return *this; }
-      inline bool operator==(const Iterator& other) const { return this->iter == other.iter; }
-      inline bool operator!=(const Iterator& other) const { return !(*this == other); }
-
-   private:
-      InnerIterator iter{};
-   };
-
-   [[nodiscard]] const StmtNode& operator[](size_t index) const {
-      lj_assertX(this->storage and index < this->storage->size(), "Statement index out of range");
-      return *(*this->storage)[index];
-   }
-
-   inline Iterator begin() const { return this->storage ? Iterator(this->storage->begin()) : Iterator(); }
-   inline Iterator end() const { return this->storage ? Iterator(this->storage->end()) : Iterator(); }
-   inline size_t size() const { return this->storage ? this->storage->size() : 0; }
-   inline bool empty() const { return this->size() == 0; }
-
-private:
-   const StmtNodeList* storage = nullptr;
+// Concept for AST node pointer types (ExprNodePtr, StmtNodePtr)
+template<typename NodePtr>
+concept AstNodePointer = requires(NodePtr ptr) {
+   { *ptr } -> std::convertible_to<const typename NodePtr::element_type&>;
+   { ptr.get() } -> std::same_as<typename NodePtr::element_type*>;
 };
 
-//********************************************************************************************************************
+// Unified template for AST node list views
+// Provides a read-only view over std::vector<std::unique_ptr<T>> collections.
+template<AstNodePointer NodePtr>
+class AstNodeListView {
+   using NodeList = std::vector<NodePtr>;
+   using NodeType = typename NodePtr::element_type;
 
-class ExpressionListView {
 public:
-   ExpressionListView() = default;
-   
-   explicit ExpressionListView(const ExprNodeList& nodes) : storage(&nodes) { }
+   constexpr AstNodeListView() noexcept = default;
+   explicit constexpr AstNodeListView(const NodeList& Nodes) noexcept : storage(&Nodes) {}
 
    class Iterator {
    public:
-      using InnerIterator = ExprNodeList::const_iterator;
+      using InnerIterator = typename NodeList::const_iterator;
+      using iterator_category = std::forward_iterator_tag;
+      using difference_type = std::ptrdiff_t;
+      using value_type = const NodeType;
+      using pointer = const NodeType*;
+      using reference = const NodeType&;
+
       Iterator() = default;
-       
-      explicit Iterator(InnerIterator it) : iter(it) {}
-      const ExprNode& operator*() const { return *(*this->iter); }
-      const ExprNode* operator->() const { return this->iter->get(); }
+      explicit Iterator(InnerIterator It) : iter(It) {}
+      reference operator*() const { return *(*this->iter); }
+      pointer operator->() const { return this->iter->get(); }
       Iterator& operator++() { ++this->iter; return *this; }
-      bool operator==(const Iterator& other) const { return this->iter == other.iter; }
-      bool operator!=(const Iterator& other) const { return !(*this == other); }
+      bool operator==(const Iterator& Other) const { return this->iter IS Other.iter; }
+      bool operator!=(const Iterator& Other) const { return not(*this IS Other); }
 
    private:
       InnerIterator iter{};
    };
 
-   Iterator begin() const { return this->storage ? Iterator(this->storage->begin()) : Iterator(); }
-   Iterator end() const { return this->storage ? Iterator(this->storage->end()) : Iterator(); }
-   size_t size() const { return this->storage ? this->storage->size() : 0; }
-   bool empty() const { return this->size() == 0; }
-
-   const ExprNode & operator[](size_t index) const {
-      lj_assertX(this->storage and index < this->storage->size(), "Expression index out of range");
-      return *(*this->storage)[index];
+   [[nodiscard]] const NodeType& operator[](size_t Index) const {
+      lj_assertX(this->storage and Index < this->storage->size(), "Node index out of range");
+      return *(*this->storage)[Index];
    }
 
+   [[nodiscard]] Iterator begin() const { return this->storage ? Iterator(this->storage->begin()) : Iterator(); }
+   [[nodiscard]] Iterator end() const { return this->storage ? Iterator(this->storage->end()) : Iterator(); }
+   [[nodiscard]] size_t size() const noexcept { return this->storage ? this->storage->size() : 0; }
+   [[nodiscard]] bool empty() const noexcept { return this->size() IS 0; }
+
 private:
-   const ExprNodeList* storage = nullptr;
+   const NodeList* storage = nullptr;
 };
+
+// Type aliases for specific node list views
+using StatementListView = AstNodeListView<StmtNodePtr>;
+using ExpressionListView = AstNodeListView<ExprNodePtr>;
 
 //********************************************************************************************************************
 
@@ -610,7 +595,7 @@ struct BlockStmt {
    SourceSpan span{};
    StmtNodeList statements;
 
-   inline StatementListView view() const { return StatementListView(this->statements); }
+   [[nodiscard]] StatementListView view() const { return StatementListView(this->statements); }
 
    ~BlockStmt();
 };

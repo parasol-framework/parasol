@@ -84,19 +84,90 @@ enum class TokenKind : uint16_t {
 
 [[nodiscard]] inline CSTRING token_kind_name(TokenKind kind, LexState &lex) { return lex.token2str((LexToken)kind); }
 
+// Constexpr alternative for compile-time token name lookup
+// Returns a string_view without requiring a LexState reference.
+[[nodiscard]] constexpr std::string_view token_kind_name_constexpr(TokenKind kind) noexcept {
+   switch (kind) {
+      case TokenKind::Identifier: return "<name>";
+      case TokenKind::Number: return "<number>";
+      case TokenKind::String: return "<string>";
+      case TokenKind::Nil: return "nil";
+      case TokenKind::TrueToken: return "true";
+      case TokenKind::FalseToken: return "false";
+      case TokenKind::Function: return "function";
+      case TokenKind::Local: return "local";
+      case TokenKind::EndToken: return "end";
+      case TokenKind::ReturnToken: return "return";
+      case TokenKind::If: return "if";
+      case TokenKind::Else: return "else";
+      case TokenKind::ElseIf: return "elseif";
+      case TokenKind::For: return "for";
+      case TokenKind::WhileToken: return "while";
+      case TokenKind::Repeat: return "repeat";
+      case TokenKind::Until: return "until";
+      case TokenKind::DoToken: return "do";
+      case TokenKind::ThenToken: return "then";
+      case TokenKind::InToken: return "in";
+      case TokenKind::BreakToken: return "break";
+      case TokenKind::ContinueToken: return "continue";
+      case TokenKind::DeferToken: return "defer";
+      case TokenKind::AndToken: return "and";
+      case TokenKind::OrToken: return "or";
+      case TokenKind::NotToken: return "not";
+      case TokenKind::IsToken: return "is";
+      case TokenKind::TernarySep: return ":>";
+      case TokenKind::Dots: return "...";
+      case TokenKind::Cat: return "..";
+      case TokenKind::Equal: return "==";
+      case TokenKind::NotEqual: return "!=";
+      case TokenKind::LessEqual: return "<=";
+      case TokenKind::GreaterEqual: return ">=";
+      case TokenKind::ShiftLeft: return "<<";
+      case TokenKind::ShiftRight: return ">>";
+      case TokenKind::CompoundAdd: return "+=";
+      case TokenKind::CompoundSub: return "-=";
+      case TokenKind::CompoundMul: return "*=";
+      case TokenKind::CompoundDiv: return "/=";
+      case TokenKind::CompoundMod: return "%=";
+      case TokenKind::CompoundConcat: return "..=";
+      case TokenKind::CompoundIfEmpty: return "?=";
+      case TokenKind::Presence: return "??";
+      case TokenKind::PlusPlus: return "++";
+      case TokenKind::EndOfFile: return "<eof>";
+      case TokenKind::LeftParen: return "(";
+      case TokenKind::RightParen: return ")";
+      case TokenKind::LeftBrace: return "{";
+      case TokenKind::RightBrace: return "}";
+      case TokenKind::LeftBracket: return "[";
+      case TokenKind::RightBracket: return "]";
+      case TokenKind::Dot: return ".";
+      case TokenKind::Colon: return ":";
+      case TokenKind::Comma: return ",";
+      case TokenKind::Semicolon: return ";";
+      case TokenKind::Equals: return "=";
+      case TokenKind::Plus: return "+";
+      case TokenKind::Minus: return "-";
+      case TokenKind::Multiply: return "*";
+      case TokenKind::Divide: return "/";
+      case TokenKind::Modulo: return "%";
+      case TokenKind::Question: return "?";
+      default: return "<unknown>";
+   }
+}
+
 //********************************************************************************************************************
 
 struct TokenPayload {
-   [[nodiscard]] bool has_value() const { return this->has_payload; }
-   [[nodiscard]] const TValue & value() const { return this->payload; }
+   [[nodiscard]] constexpr bool has_value() const noexcept { return this->has_payload; }
+   [[nodiscard]] constexpr const TValue& value() const noexcept { return this->payload; }
 
-   void assign(lua_State *state, const TValue &value) {
-      this->owner = state;
-      copyTV(state, &this->payload, &value);
+   void assign(lua_State* State, const TValue& Value) {
+      this->owner = State;
+      copyTV(State, &this->payload, &Value);
       this->has_payload = true;
    }
 
-   [[nodiscard]] GCstr * as_string() const {
+   [[nodiscard]] GCstr* as_string() const {
       if (not this->has_payload) return nullptr;
       if (not tvisstr(&this->payload)) return nullptr;
       return strV(&this->payload);
@@ -131,9 +202,9 @@ public:
    [[nodiscard]] bool is_literal() const;
    [[nodiscard]] const TokenPayload & payload() const { return this->data; }
 
-   bool is_identifier() const { return this->token_kind IS TokenKind::Identifier; }
-   bool is_eof() const { return this->token_kind IS TokenKind::EndOfFile; }
-   GCstr * identifier() const { return this->data.as_string(); }
+   [[nodiscard]] constexpr bool is_identifier() const noexcept { return this->token_kind IS TokenKind::Identifier; }
+   [[nodiscard]] constexpr bool is_eof() const noexcept { return this->token_kind IS TokenKind::EndOfFile; }
+   [[nodiscard]] GCstr* identifier() const { return this->data.as_string(); }
 
 private:
    TokenKind token_kind = TokenKind::Unknown;

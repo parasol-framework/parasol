@@ -490,7 +490,7 @@ typedef struct Node {
 #endif
 } Node;
 
-LJ_STATIC_ASSERT(offsetof(Node, val) == 0);
+static_assert(offsetof(Node, val) == 0);
 
 typedef struct GCtab {
    GCHeader;
@@ -744,18 +744,18 @@ typedef struct GChead {
 } GChead;
 
 // The env field SHOULD be at the same offset for all GC objects.
-LJ_STATIC_ASSERT(offsetof(GChead, env) == offsetof(GCfuncL, env));
-LJ_STATIC_ASSERT(offsetof(GChead, env) == offsetof(GCudata, env));
+static_assert(offsetof(GChead, env) == offsetof(GCfuncL, env));
+static_assert(offsetof(GChead, env) == offsetof(GCudata, env));
 
 // The metatable field MUST be at the same offset for all GC objects.
-LJ_STATIC_ASSERT(offsetof(GChead, metatable) == offsetof(GCtab, metatable));
-LJ_STATIC_ASSERT(offsetof(GChead, metatable) == offsetof(GCudata, metatable));
+static_assert(offsetof(GChead, metatable) == offsetof(GCtab, metatable));
+static_assert(offsetof(GChead, metatable) == offsetof(GCudata, metatable));
 
 // The gclist field MUST be at the same offset for all GC objects.
-LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(lua_State, gclist));
-LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCproto, gclist));
-LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCfuncL, gclist));
-LJ_STATIC_ASSERT(offsetof(GChead, gclist) == offsetof(GCtab, gclist));
+static_assert(offsetof(GChead, gclist) == offsetof(lua_State, gclist));
+static_assert(offsetof(GChead, gclist) == offsetof(GCproto, gclist));
+static_assert(offsetof(GChead, gclist) == offsetof(GCfuncL, gclist));
+static_assert(offsetof(GChead, gclist) == offsetof(GCtab, gclist));
 
 typedef union GCobj {
    GChead gch;

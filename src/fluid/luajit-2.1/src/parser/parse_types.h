@@ -65,64 +65,55 @@ enum class VarInfoFlag : uint8_t {
    DeferArg = 0x10u
 };
 
+// Concept for flag types that support bitwise operations
 template<typename Flag>
-struct FlagOpsEnabled : std::false_type {};
+concept FlagType = std::same_as<Flag, ExprFlag> or
+                   std::same_as<Flag, FuncScopeFlag> or
+                   std::same_as<Flag, VarInfoFlag>;
 
-template<>
-struct FlagOpsEnabled<ExprFlag> : std::true_type {};
-
-template<>
-struct FlagOpsEnabled<FuncScopeFlag> : std::true_type {};
-
-template<>
-struct FlagOpsEnabled<VarInfoFlag> : std::true_type {};
-
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
+template<FlagType Flag>
 [[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right)
 {
-   return Flag((uint8_t)Left | (uint8_t)Right);
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(Underlying(Left) | Underlying(Right));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
+template<FlagType Flag>
 [[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right)
 {
-   return Flag((uint8_t)Left & (uint8_t)Right);
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(Underlying(Left) & Underlying(Right));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
+template<FlagType Flag>
 [[nodiscard]] static constexpr Flag operator~(Flag Value)
 {
-   return Flag(~(uint8_t)Value);
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(~Underlying(Value));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-static inline Flag& operator|=(Flag& Left, Flag Right)
+template<FlagType Flag>
+static constexpr Flag& operator|=(Flag& Left, Flag Right)
 {
    Left = Left | Right;
    return Left;
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-static inline Flag& operator&=(Flag& Left, Flag Right)
+template<FlagType Flag>
+static constexpr Flag& operator&=(Flag& Left, Flag Right)
 {
    Left = Left & Right;
    return Left;
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-[[nodiscard]] static inline bool has_flag(Flag Flags, Flag Mask)
+template<FlagType Flag>
+[[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask)
 {
    return (Flags & Mask) != Flag::None;
 }
 
 // Expression descriptor.
-typedef struct ExpDesc {
+struct ExpDesc {
    union {
       struct {
          uint32_t info;   // Primary info.
@@ -135,7 +126,7 @@ typedef struct ExpDesc {
    ExprFlag flags;      // Expression flags.
    BCPos t;      // True condition jump list.
    BCPos f;      // False condition jump list.
-} ExpDesc;
+};
 
 // Expression helpers that previously relied on flag bits within ExpDesc.aux now
 // store their metadata in ExpDesc.flags. The aux field can therefore be used
@@ -233,12 +224,12 @@ static LJ_AINLINE int expr_numiszero(ExpDesc* e)
 
 // Per-function linked list of scope blocks.
 
-typedef struct FuncScope {
-   struct FuncScope* prev; // Link to outer scope.
+struct FuncScope {
+   FuncScope* prev;        // Link to outer scope.
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
    FuncScopeFlag flags;    // Scope flags.
-} FuncScope;
+};
 
 #define NAME_BREAK      ((GCstr*)uintptr_t(1))
 #define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
@@ -251,12 +242,12 @@ inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 // Variable info flags are defined in VarInfoFlag.
 
 // Per-function state.
-typedef struct FuncState {
+struct FuncState {
    GCtab* kt;          // Hash table for constants.
    LexState* ls;       // Lexer state.
    lua_State* L;       // Lua state.
    FuncScope* bl;      // Current scope.
-   struct FuncState* prev; // Enclosing function.
+   FuncState* prev;    // Enclosing function.
    BCPos pc;           // Next bytecode position.
    BCPos lasttarget;   // Bytecode position of last jump target.
    BCPos jpc;          // Pending jump list to next bytecode.
@@ -274,7 +265,7 @@ typedef struct FuncState {
    std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
-} FuncState;
+};
 
 // Variable access macro.
 [[nodiscard]] static inline VarInfo& var_get(LexState* ls, FuncState* fs, int32_t i) {
@@ -293,13 +284,14 @@ enum BinOpr : int {
    OPR_NOBINOPR
 };
 
-LJ_STATIC_ASSERT((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_SUBVV - (int)BC_ADDVV == (int)OPR_SUB - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
+// Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
+static_assert((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT, "BC_ISGE offset mismatch");
+static_assert((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT, "BC_ISLE offset mismatch");
+static_assert((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT, "BC_ISGT offset mismatch");
+static_assert((int)BC_SUBVV - (int)BC_ADDVV == (int)OPR_SUB - (int)OPR_ADD, "BC_SUBVV offset mismatch");
+static_assert((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD, "BC_MULVV offset mismatch");
+static_assert((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD, "BC_DIVVV offset mismatch");
+static_assert((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD, "BC_MODVV offset mismatch");
 
 #ifdef LUA_USE_ASSERT
 #define lj_assertFS(c, ...)   (lj_assertG_(G(fs->L), (c), __VA_ARGS__))

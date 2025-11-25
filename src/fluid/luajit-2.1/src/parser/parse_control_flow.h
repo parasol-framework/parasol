@@ -21,11 +21,11 @@ class ControlFlowGraph;
 
 class ControlFlowEdge {
 public:
-   inline ControlFlowEdge();
-   inline ControlFlowEdge(ControlFlowGraph* Graph, size_t Index);
+   constexpr ControlFlowEdge();
+   constexpr ControlFlowEdge(ControlFlowGraph* Graph, size_t Index);
 
    [[nodiscard]] inline bool empty() const;
-   [[nodiscard]] inline bool valid() const;
+   [[nodiscard]] constexpr bool valid() const noexcept;
    [[nodiscard]] inline ControlFlowEdgeKind kind() const;
    [[nodiscard]] inline BCPos head() const;
    [[nodiscard]] inline FuncState* state() const;
@@ -48,8 +48,8 @@ private:
 
 class ControlFlowGraph {
 public:
-   inline ControlFlowGraph() : func_state(nullptr) { }
-   explicit inline ControlFlowGraph(FuncState* State) : func_state(State) { }
+   constexpr ControlFlowGraph() noexcept : func_state(nullptr) { }
+   explicit constexpr ControlFlowGraph(FuncState* State) noexcept : func_state(State) { }
 
    [[nodiscard]] ControlFlowEdge make_edge(ControlFlowEdgeKind Kind, BCPos Head = NO_JMP);
 
@@ -65,14 +65,14 @@ public:
       this->edges.clear();
    }
 
-   [[nodiscard]] inline bool valid() const { return this->func_state != nullptr; }
+   [[nodiscard]] constexpr bool valid() const noexcept { return this->func_state != nullptr; }
 
-   [[nodiscard]] inline FuncState* state() const { return this->func_state; }
-   inline ControlFlowEdge make_unconditional(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Unconditional, Head); }
-   inline ControlFlowEdge make_true_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::True, Head); }
-   inline ControlFlowEdge make_false_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::False, Head); }
-   inline ControlFlowEdge make_break_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Break, Head); }
-   inline ControlFlowEdge make_continue_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Continue, Head); }
+   [[nodiscard]] constexpr FuncState* state() const noexcept { return this->func_state; }
+   [[nodiscard]] inline ControlFlowEdge make_unconditional(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Unconditional, Head); }
+   [[nodiscard]] inline ControlFlowEdge make_true_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::True, Head); }
+   [[nodiscard]] inline ControlFlowEdge make_false_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::False, Head); }
+   [[nodiscard]] inline ControlFlowEdge make_break_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Break, Head); }
+   [[nodiscard]] inline ControlFlowEdge make_continue_edge(BCPos Head = NO_JMP) { return this->make_edge(ControlFlowEdgeKind::Continue, Head); }
 
 private:
    friend class ControlFlowEdge;
@@ -131,11 +131,11 @@ private:
 //********************************************************************************************************************
 // ControlFlowEdge inline implementations
 
-inline ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
+constexpr ControlFlowEdge::ControlFlowEdge() : graph(nullptr), index(0)
 {
 }
 
-inline ControlFlowEdge::ControlFlowEdge(ControlFlowGraph* Graph, size_t Index) : graph(Graph), index(Index)
+constexpr ControlFlowEdge::ControlFlowEdge(ControlFlowGraph* Graph, size_t Index) : graph(Graph), index(Index)
 {
 }
 
@@ -145,7 +145,7 @@ inline bool ControlFlowEdge::empty() const
    return this->graph->edge_head(this->index) IS NO_JMP;
 }
 
-inline bool ControlFlowEdge::valid() const
+constexpr bool ControlFlowEdge::valid() const noexcept
 {
    return this->graph != nullptr;
 }

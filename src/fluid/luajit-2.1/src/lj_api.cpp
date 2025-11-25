@@ -345,20 +345,12 @@ extern int lua_lessthan(lua_State* L, int idx1, int idx2)
 {
    cTValue* o1 = index2adr(L, idx1);
    cTValue* o2 = index2adr(L, idx2);
-   if (o1 == niltv(L) or o2 == niltv(L)) {
-      return 0;
-   }
-   else if (tvisint(o1) and tvisint(o2)) {
-      return intV(o1) < intV(o2);
-   }
-   else if (tvisnumber(o1) and tvisnumber(o2)) {
-      return numberVnum(o1) < numberVnum(o2);
-   }
+   if (o1 == niltv(L) or o2 == niltv(L)) return 0;
+   else if (tvisint(o1) and tvisint(o2)) return intV(o1) < intV(o2);
+   else if (tvisnumber(o1) and tvisnumber(o2)) return numberVnum(o1) < numberVnum(o2);
    else {
       TValue* base = lj_meta_comp(L, o1, o2, 0);
-      if ((uintptr_t)base <= 1) {
-         return (int)(uintptr_t)base;
-      }
+      if ((uintptr_t)base <= 1) return (int)(uintptr_t)base;
       else {
          L->top = base + 2;
          lj_vm_call(L, base, 1 + 1);
@@ -372,12 +364,9 @@ extern lua_Number lua_tonumber(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o)))
-      return numberVnum(o);
-   else if (tvisstr(o) and lj_strscan_num(strV(o), &tmp))
-      return numV(&tmp);
-   else
-      return 0;
+   if (LJ_LIKELY(tvisnumber(o))) return numberVnum(o);
+   else if (tvisstr(o) and lj_strscan_num(strV(o), &tmp)) return numV(&tmp);
+   else return 0;
 }
 
 extern lua_Number lua_tonumberx(lua_State* L, int idx, int* ok)
@@ -413,12 +402,9 @@ extern lua_Number luaL_optnumber(lua_State* L, int idx, lua_Number def)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o)))
-      return numberVnum(o);
-   else if (tvisnil(o))
-      return def;
-   else if (!(tvisstr(o) and lj_strscan_num(strV(o), &tmp)))
-      lj_err_argt(L, idx, LUA_TNUMBER);
+   if (LJ_LIKELY(tvisnumber(o))) return numberVnum(o);
+   else if (tvisnil(o)) return def;
+   else if (!(tvisstr(o) and lj_strscan_num(strV(o), &tmp))) lj_err_argt(L, idx, LUA_TNUMBER);
    return numV(&tmp);
 }
 
@@ -1377,4 +1363,3 @@ extern void lua_setallocf(lua_State* L, lua_Alloc f, void* ud)
    g->allocd = ud;
    g->allocf = f;
 }
-

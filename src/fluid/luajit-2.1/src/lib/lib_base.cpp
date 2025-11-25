@@ -75,7 +75,7 @@ LJLIB_ASM_(type)      LJLIB_REC(.)
 // -- Base library: iterators ---------------------------------------------
 
 // This solves a circular dependency problem -- change FF_next_N as needed.
-LJ_STATIC_ASSERT((int)FF_next == FF_next_N);
+static_assert((int)FF_next == FF_next_N);
 
 LJLIB_ASM(next)         LJLIB_REC(.)
 {

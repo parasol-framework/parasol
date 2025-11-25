@@ -20,7 +20,7 @@
 {
    if (fs->ls->active_context) fs->ls->active_context->report_limit_error(*fs, limit, what);
 
-   if (fs->linedefined == 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
+   if (fs->linedefined IS 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
    else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
 }
 
@@ -30,7 +30,7 @@ int LexState::lex_opt(LexToken Token)
 {
    if (this->active_context) return this->active_context->lex_opt(Token);
 
-   if (this->tok == Token) {
+   if (this->tok IS Token) {
       this->next();
       return 1;
    }
@@ -55,7 +55,7 @@ void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
 {
    if (this->active_context) this->active_context->lex_match(What, Who, Line);
    else if (not this->lex_opt(What)) {
-      if (Line == this->linenumber) this->err_token(What);
+      if (Line IS this->linenumber) this->err_token(What);
       else {
          auto swhat = this->token2str(What);
          auto swho = this->token2str(Who);

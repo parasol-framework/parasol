@@ -199,28 +199,28 @@ typedef enum {
    BC__MAX
 } BCOp;
 
-LJ_STATIC_ASSERT((int)BC_ISEQV + 1 == (int)BC_ISNEV);
-LJ_STATIC_ASSERT(((int)BC_ISEQV ^ 1) == (int)BC_ISNEV);
-LJ_STATIC_ASSERT(((int)BC_ISEQS ^ 1) == (int)BC_ISNES);
-LJ_STATIC_ASSERT(((int)BC_ISEQN ^ 1) == (int)BC_ISNEN);
-LJ_STATIC_ASSERT(((int)BC_ISEQP ^ 1) == (int)BC_ISNEP);
-LJ_STATIC_ASSERT(((int)BC_ISLT ^ 1) == (int)BC_ISGE);
-LJ_STATIC_ASSERT(((int)BC_ISLE ^ 1) == (int)BC_ISGT);
-LJ_STATIC_ASSERT(((int)BC_ISLT ^ 3) == (int)BC_ISGT);
-LJ_STATIC_ASSERT((int)BC_IST - (int)BC_ISTC == (int)BC_ISF - (int)BC_ISFC);
-LJ_STATIC_ASSERT((int)BC_CALLT - (int)BC_CALL == (int)BC_CALLMT - (int)BC_CALLM);
-LJ_STATIC_ASSERT((int)BC_CALLMT + 1 == (int)BC_CALLT);
-LJ_STATIC_ASSERT((int)BC_RETM + 1 == (int)BC_RET);
-LJ_STATIC_ASSERT((int)BC_FORL + 1 == (int)BC_IFORL);
-LJ_STATIC_ASSERT((int)BC_FORL + 2 == (int)BC_JFORL);
-LJ_STATIC_ASSERT((int)BC_ITERL + 1 == (int)BC_IITERL);
-LJ_STATIC_ASSERT((int)BC_ITERL + 2 == (int)BC_JITERL);
-LJ_STATIC_ASSERT((int)BC_LOOP + 1 == (int)BC_ILOOP);
-LJ_STATIC_ASSERT((int)BC_LOOP + 2 == (int)BC_JLOOP);
-LJ_STATIC_ASSERT((int)BC_FUNCF + 1 == (int)BC_IFUNCF);
-LJ_STATIC_ASSERT((int)BC_FUNCF + 2 == (int)BC_JFUNCF);
-LJ_STATIC_ASSERT((int)BC_FUNCV + 1 == (int)BC_IFUNCV);
-LJ_STATIC_ASSERT((int)BC_FUNCV + 2 == (int)BC_JFUNCV);
+static_assert((int)BC_ISEQV + 1 == (int)BC_ISNEV);
+static_assert(((int)BC_ISEQV ^ 1) == (int)BC_ISNEV);
+static_assert(((int)BC_ISEQS ^ 1) == (int)BC_ISNES);
+static_assert(((int)BC_ISEQN ^ 1) == (int)BC_ISNEN);
+static_assert(((int)BC_ISEQP ^ 1) == (int)BC_ISNEP);
+static_assert(((int)BC_ISLT ^ 1) == (int)BC_ISGE);
+static_assert(((int)BC_ISLE ^ 1) == (int)BC_ISGT);
+static_assert(((int)BC_ISLT ^ 3) == (int)BC_ISGT);
+static_assert((int)BC_IST - (int)BC_ISTC == (int)BC_ISF - (int)BC_ISFC);
+static_assert((int)BC_CALLT - (int)BC_CALL == (int)BC_CALLMT - (int)BC_CALLM);
+static_assert((int)BC_CALLMT + 1 == (int)BC_CALLT);
+static_assert((int)BC_RETM + 1 == (int)BC_RET);
+static_assert((int)BC_FORL + 1 == (int)BC_IFORL);
+static_assert((int)BC_FORL + 2 == (int)BC_JFORL);
+static_assert((int)BC_ITERL + 1 == (int)BC_IITERL);
+static_assert((int)BC_ITERL + 2 == (int)BC_JITERL);
+static_assert((int)BC_LOOP + 1 == (int)BC_ILOOP);
+static_assert((int)BC_LOOP + 2 == (int)BC_JLOOP);
+static_assert((int)BC_FUNCF + 1 == (int)BC_IFUNCF);
+static_assert((int)BC_FUNCF + 2 == (int)BC_JFUNCF);
+static_assert((int)BC_FUNCV + 1 == (int)BC_IFUNCV);
+static_assert((int)BC_FUNCV + 2 == (int)BC_JFUNCV);
 
 // This solves a circular dependency problem, change as needed.
 #define FF_next_N   4

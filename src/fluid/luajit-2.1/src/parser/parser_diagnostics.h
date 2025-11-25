@@ -36,9 +36,11 @@ class ParserDiagnostics {
 public:
    ParserDiagnostics();
 
-   void set_limit(uint32_t limit);
-   void report(const ParserDiagnostic& diagnostic);
+   void set_limit(uint32_t Limit);
+   void report(const ParserDiagnostic& Diagnostic);
    [[nodiscard]] bool has_errors() const;
+   [[nodiscard]] bool empty() const { return this->storage.empty(); }
+   [[nodiscard]] size_t count() const { return this->counted_entries; }
    [[nodiscard]] std::span<const ParserDiagnostic> entries() const;
    void clear();
 
@@ -47,4 +49,3 @@ private:
    uint32_t counted_entries = 0;
    std::vector<ParserDiagnostic> storage;
 };
-

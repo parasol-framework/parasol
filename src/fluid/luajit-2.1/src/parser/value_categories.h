@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <variant>
+
 //********************************************************************************************************************
 // ValueUse - Read-only value wrapper
 //
@@ -107,57 +109,49 @@ private:
 // LValue is designed for statement emission (assignments, compound assignments) where we need to both read current
 // values and write new values to the same location.
 
-enum class LValueKind : uint8_t {
-   Local,      // Local variable
-   Upvalue,    // Upvalue
-   Global,     // Global variable
-   Indexed,    // Table slot (computed key)
-   Member      // Table member (constant string key)
-};
+// LValue variant types - strongly typed alternatives for each l-value category
+struct LocalLValue { BCReg reg; };
+struct UpvalueLValue { uint32_t index; };
+struct GlobalLValue { GCstr* name; };
+struct IndexedLValue { BCReg table_reg; BCReg key_reg; };
+struct MemberLValue { BCReg table_reg; uint32_t key_const; };
 
 class LValue {
 public:
-   LValue() = default;
+   LValue() : data(std::monostate{}) {}
 
    // Construct local l-value
    static LValue make_local(BCReg Register) {
       LValue lval;
-      lval.kind = LValueKind::Local;
-      lval.local_reg = Register;
+      lval.data = LocalLValue{Register};
       return lval;
    }
 
    // Construct upvalue l-value
    static LValue make_upvalue(uint32_t Index) {
       LValue lval;
-      lval.kind = LValueKind::Upvalue;
-      lval.upvalue_index = Index;
+      lval.data = UpvalueLValue{Index};
       return lval;
    }
 
    // Construct global l-value
    static LValue make_global(GCstr* Name) {
       LValue lval;
-      lval.kind = LValueKind::Global;
-      lval.global_name = Name;
+      lval.data = GlobalLValue{Name};
       return lval;
    }
 
    // Construct indexed l-value (table[key])
    static LValue make_indexed(BCReg TableReg, BCReg KeyReg) {
       LValue lval;
-      lval.kind = LValueKind::Indexed;
-      lval.indexed.table_reg = TableReg;
-      lval.indexed.key_reg = KeyReg;
+      lval.data = IndexedLValue{TableReg, KeyReg};
       return lval;
    }
 
    // Construct member l-value (table.member or table["constant"])
    static LValue make_member(BCReg TableReg, uint32_t KeyConst) {
       LValue lval;
-      lval.kind = LValueKind::Member;
-      lval.member.table_reg = TableReg;
-      lval.member.key_const = KeyConst;
+      lval.data = MemberLValue{TableReg, KeyConst};
       return lval;
    }
 
@@ -165,37 +159,23 @@ public:
    static LValue from_expdesc(const ExpDesc* Desc);
 
    // Query l-value kind
-   [[nodiscard]] LValueKind get_kind() const { return this->kind; }
-   [[nodiscard]] bool is_local() const { return this->kind IS LValueKind::Local; }
-   [[nodiscard]] bool is_upvalue() const { return this->kind IS LValueKind::Upvalue; }
-   [[nodiscard]] bool is_global() const { return this->kind IS LValueKind::Global; }
-   [[nodiscard]] bool is_indexed() const { return this->kind IS LValueKind::Indexed; }
-   [[nodiscard]] bool is_member() const { return this->kind IS LValueKind::Member; }
+   [[nodiscard]] bool is_local() const { return std::holds_alternative<LocalLValue>(this->data); }
+   [[nodiscard]] bool is_upvalue() const { return std::holds_alternative<UpvalueLValue>(this->data); }
+   [[nodiscard]] bool is_global() const { return std::holds_alternative<GlobalLValue>(this->data); }
+   [[nodiscard]] bool is_indexed() const { return std::holds_alternative<IndexedLValue>(this->data); }
+   [[nodiscard]] bool is_member() const { return std::holds_alternative<MemberLValue>(this->data); }
 
    // Accessors for variant data
-   [[nodiscard]] BCReg get_local_reg() const { return this->local_reg; }
-   [[nodiscard]] uint32_t get_upvalue_index() const { return this->upvalue_index; }
-   [[nodiscard]] GCstr* get_global_name() const { return this->global_name; }
+   [[nodiscard]] BCReg get_local_reg() const { return std::get<LocalLValue>(this->data).reg; }
+   [[nodiscard]] uint32_t get_upvalue_index() const { return std::get<UpvalueLValue>(this->data).index; }
+   [[nodiscard]] GCstr* get_global_name() const { return std::get<GlobalLValue>(this->data).name; }
    [[nodiscard]] BCReg get_table_reg() const {
-      return this->is_indexed() ? this->indexed.table_reg : this->member.table_reg;
+      if (this->is_indexed()) return std::get<IndexedLValue>(this->data).table_reg;
+      return std::get<MemberLValue>(this->data).table_reg;
    }
-   [[nodiscard]] BCReg get_key_reg() const { return this->indexed.key_reg; }
-   [[nodiscard]] uint32_t get_key_const() const { return this->member.key_const; }
+   [[nodiscard]] BCReg get_key_reg() const { return std::get<IndexedLValue>(this->data).key_reg; }
+   [[nodiscard]] uint32_t get_key_const() const { return std::get<MemberLValue>(this->data).key_const; }
 
 private:
-   LValueKind kind;
-
-   union {
-      BCReg local_reg;
-      uint32_t upvalue_index;
-      GCstr* global_name;
-      struct {
-         BCReg table_reg;
-         BCReg key_reg;
-      } indexed;
-      struct {
-         BCReg table_reg;
-         uint32_t key_const;
-      } member;
-   };
+   std::variant<std::monostate, LocalLValue, UpvalueLValue, GlobalLValue, IndexedLValue, MemberLValue> data;
 };

@@ -29,7 +29,7 @@ public:
       if (fs_) fscope_end(fs_);
    }
 
-   inline void disarm() {
+   constexpr void disarm() noexcept {
       fs_ = nullptr;
    }
 
@@ -81,12 +81,12 @@ public:
 
    // Manually release to a specific register level
 
-   inline void release_to(BCReg reg) { fs_->freereg = reg; }
-   inline void adopt_saved(BCReg reg) { saved_freereg_ = reg; }
-   inline void disarm() { fs_ = nullptr; }
+   constexpr void release_to(BCReg Reg) noexcept { fs_->freereg = Reg; }
+   constexpr void adopt_saved(BCReg Reg) noexcept { saved_freereg_ = Reg; }
+   constexpr void disarm() noexcept { fs_ = nullptr; }
 
    // Get saved register level
-   [[nodiscard]] inline BCReg saved() const { return saved_freereg_; }
+   [[nodiscard]] constexpr BCReg saved() const noexcept { return saved_freereg_; }
 
    // Prevent copying
    RegisterGuard(const RegisterGuard &) = delete;
@@ -132,12 +132,12 @@ public:
    }
 
    // Manually update saved position
-   inline void update_saved() {
+   constexpr void update_saved() noexcept {
       this->saved_vtop_ = ls_->vtop;
    }
 
    // Get saved vtop
-   [[nodiscard]] inline MSize saved() const { return saved_vtop_; }
+   [[nodiscard]] constexpr MSize saved() const noexcept { return saved_vtop_; }
 
    // Prevent copying
    VStackGuard(const VStackGuard &) = delete;
