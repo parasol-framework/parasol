@@ -1121,7 +1121,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
 
       rhs = list.value_ref();
-      this->operator_emitter.complete_concat(ValueSlot(&infix), ExpDesc(rhs));
+      this->operator_emitter.complete_concat(ValueSlot(&infix), rhs);
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
    else {
@@ -1139,7 +1139,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       ExpDesc infix = working;
 
       // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
-      this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), ExpDesc(rhs));
+      this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), rhs);
 
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
@@ -1360,7 +1360,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    ExpDesc infix = operand;
 
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
-   this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), ExpDesc(delta));
+   this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), delta);
 
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
@@ -1421,23 +1421,23 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
    // Emit the actual operation based on operator type
    if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_and(ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.complete_logical_and(ValueSlot(&lhs), rhs);
    }
    else if (opr IS OPR_OR) { // Logical OR: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_or(ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.complete_logical_or(ValueSlot(&lhs), rhs);
    }
    else if (opr >= OPR_NE and opr <= OPR_GT) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
-      this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), rhs);
    }
    else if (opr IS OPR_CONCAT) { // CONCAT: CFG-based implementation with BC_CAT chaining
-      this->operator_emitter.complete_concat(ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.complete_concat(ValueSlot(&lhs), rhs);
    }
    else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
       // Bitwise operators: Route through OperatorEmitter (emits bit.* library calls)
-      this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), rhs);
    }
    else { // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
-      this->operator_emitter.emit_binary_arith(opr, ValueSlot(&lhs), ExpDesc(rhs));
+      this->operator_emitter.emit_binary_arith(opr, ValueSlot(&lhs), rhs);
    }
 
    return ParserResult<ExpDesc>::success(lhs);

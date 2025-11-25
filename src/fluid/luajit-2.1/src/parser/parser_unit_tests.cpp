@@ -97,7 +97,7 @@ struct StringReaderCtx {
 static const char* unit_reader(lua_State*, void* data, size_t* size)
 {
    auto *ctx = (StringReaderCtx *)data;
-   if (ctx->size == 0) {
+   if (ctx->size IS 0) {
       return nullptr;
    }
    *size = ctx->size;
@@ -961,7 +961,7 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
       GCRef* kr = mref(pt->k, GCRef) - 1;
       for (ptrdiff_t i = 0; i < child_count; ++i, --kr) {
          GCobj* obj = gcref(*kr);
-         if (obj->gch.gct == ~LJ_TPROTO) {
+         if (obj->gch.gct IS ~LJ_TPROTO) {
             snapshot.children.push_back(snapshot_proto(gco2pt(obj)));
          }
       }
@@ -1023,9 +1023,9 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
          // loop control flow management (legacy GOLA vs AST loop_stack)
          BCOp legacy_op = bc_op(legacy_body[i]);
          BCOp ast_op = bc_op(ast_body[i]);
-         if (legacy_op == BC_JMP && ast_op == BC_JMP) {
+         if (legacy_op IS BC_JMP and ast_op IS BC_JMP) {
             // JMP instructions may have different 'a' registers but same jump offset
-            if (bc_d(legacy_body[i]) == bc_d(ast_body[i])) {
+            if (bc_d(legacy_body[i]) IS bc_d(ast_body[i])) {
                continue;  // Semantically equivalent
             }
          }
@@ -1211,7 +1211,7 @@ static bool test_ast_statement_matrix(pf::Log& log)
       { "control_flow_ladder", R"(
 local total = 0
 for i = 1, 4 do
-   if i % 2 == 0 then
+   if i % 2 IS 0 then
       total += i
    elseif i > 3 then
       break
@@ -1219,7 +1219,7 @@ for i = 1, 4 do
       total = total + 1
    end
 
-   if i == 3 then
+   if i IS 3 then
       continue
    end
 
@@ -1234,7 +1234,7 @@ for key, value in pairs(map) do
    defer
       sum = sum + value
    end
-   if key == 'beta' then
+   if key IS 'beta' then
       sum += value
    else
       sum = sum + value

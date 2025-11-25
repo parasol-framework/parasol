@@ -90,6 +90,94 @@ template<FlagType Flag> static constexpr Flag & operator|=(Flag &Left, Flag Righ
 template<FlagType Flag> static constexpr Flag & operator&=(Flag &Left, Flag Right) { return Left = Left & Right; }
 template<FlagType Flag> [[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask) { return (Flags & Mask) != Flag::None; }
 
+// Enhanced flag utilities for clearer flag handling
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_any(Flag Flags, Flag Mask) {
+   return (Flags & Mask) != Flag::None;
+}
+
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_all(Flag Flags, Flag Mask) {
+   return (Flags & Mask) IS Mask;
+}
+
+template<FlagType Flag> static constexpr void clear_flag(Flag &Flags, Flag Mask) {
+   Flags = Flags & ~Mask;
+}
+
+// Strong index types for type-safe register, position, and variable indices.
+// Uses C++20 three-way comparison for automatic generation of all six comparison operators.
+
+template<typename Tag, typename T>
+struct StrongIndex {
+   T value;
+
+   constexpr StrongIndex() = default;
+   constexpr explicit StrongIndex(T v) : value(v) {}
+   constexpr T raw() const { return value; }
+
+   auto operator<=>(const StrongIndex&) const = default;
+   bool operator==(const StrongIndex&) const = default;
+};
+
+// Arithmetic operators for StrongIndex types
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator+(StrongIndex<Tag, T> a, T offset) {
+   return StrongIndex<Tag, T>(a.value + offset);
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator-(StrongIndex<Tag, T> a, T offset) {
+   return StrongIndex<Tag, T>(a.value - offset);
+}
+
+template<typename Tag, typename T>
+constexpr T operator-(StrongIndex<Tag, T> a, StrongIndex<Tag, T> b) {
+   return a.value - b.value;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator++(StrongIndex<Tag, T>& a) {
+   ++a.value;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator++(StrongIndex<Tag, T>& a, int) {
+   auto old = a;
+   ++a.value;
+   return old;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator--(StrongIndex<Tag, T>& a) {
+   --a.value;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator--(StrongIndex<Tag, T>& a, int) {
+   auto old = a;
+   --a.value;
+   return old;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator+=(StrongIndex<Tag, T>& a, T offset) {
+   a.value += offset;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator-=(StrongIndex<Tag, T>& a, T offset) {
+   a.value -= offset;
+   return a;
+}
+
+// Strong type aliases using distinct tag types
+
+using BCPos = StrongIndex<struct BCPosTag, BCPOS>;
+using BCReg = StrongIndex<struct BCRegTag, BCREG>;
+
 // Expression descriptor.
 
 struct ExpDesc {
@@ -186,6 +274,9 @@ inline GCstr * const NAME_BLANK    = (GCstr*)uintptr_t(3);
 // Index into variable stack.
 typedef uint16_t VarIndex;
 inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
+
+// Strong type for variable slot indices (defined after VarIndex)
+using VarSlot = StrongIndex<struct VarSlotTag, VarIndex>;
 
 // Variable info flags are defined in VarInfoFlag.
 
