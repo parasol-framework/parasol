@@ -57,7 +57,7 @@ static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
    if (e->k <= ExpKind::True) setpriV(v, ~uint64_t(e->k));
    else if (e->k IS ExpKind::Str) setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    else {
-      lj_assertFS(tvisnumber(e->num_tv()), "bad number constant");
+      fs->assert(tvisnumber(e->num_tv()), "bad number constant");
       *v = *e->num_tv();
    }
 }

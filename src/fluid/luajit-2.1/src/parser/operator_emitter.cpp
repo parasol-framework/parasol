@@ -276,7 +276,7 @@ void OperatorEmitter::complete_logical_and(ValueSlot left, ValueUse right)
    // - We need to merge the false paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   lj_assertFS(left_desc->t IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->t IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
@@ -365,7 +365,7 @@ void OperatorEmitter::complete_logical_or(ValueSlot left, ValueUse right)
    // - We need to merge the true paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
@@ -425,11 +425,12 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          *left_desc = left_inner.legacy();
 
          // Create test expressions for extended falsey values
-         ExpDesc nilv = make_nil_expr();
-         ExpDesc emptyv = make_interned_string_expr(this->func_state->ls->intern_empty_string());
+         ExpDesc nilv(ExpKind::Nil);
          ExpDesc falsev(ExpKind::False);
          ExpDesc zerov(ExpKind::Num);
          setnumV(&zerov.u.nval, 0.0);
+         ExpDesc emptyv(ExpKind::Str);
+         emptyv.u.sval = this->func_state->ls->intern_empty_string();
 
          // Extended falsey check sequence
          // ISEQ* skips the JMP when values ARE equal (falsey), executes JMP when NOT equal (truthy)
@@ -493,7 +494,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
    ExpDesc *right_desc = right.raw();
 
    FuncState* fs = this->func_state;
-   lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
 
    // If left->t has jumps, those are from the extended falsey checks in prepare phase
    // They skip RHS evaluation when LHS is truthy - we need to:
@@ -598,7 +599,7 @@ void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
    if (right_desc->k IS ExpKind::Relocable and bc_op(*bcptr(fs, right_desc)) IS BC_CAT) {
       // Chaining case: "a".."b".."c"
       // The previous BC_CAT starts at e1->u.s.info and we extend it
-      lj_assertFS(left_desc->u.s.info IS bc_b(*bcptr(fs, right_desc)) - 1, "bad CAT stack layout");
+      fs->assert(left_desc->u.s.info IS bc_b(*bcptr(fs, right_desc)) - 1, "bad CAT stack layout");
       expr_free(fs, left_desc);
       setbc_b(bcptr(fs, right_desc), left_desc->u.s.info);
       left_desc->u.s.info = right_desc->u.s.info;
@@ -662,11 +663,10 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    *e = e_runtime.legacy();
 
    // Create test expressions
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
+   ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
-   ExpDesc zerov(ExpKind::Num);
-   setnumV(&zerov.u.nval, 0.0);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(fs->ls->intern_empty_string());
 
    // Emit equality checks for extended falsey values
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));

@@ -157,7 +157,7 @@ void ControlFlowGraph::patch_instruction(BCPos Position, BCPos Destination) cons
    FuncState* fs = this->func_state;
    BCIns* instruction = &fs->bcbase[Position].ins;
    BCPos offset = Destination - (Position + 1) + BCBIAS_J;
-   lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
+   fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }

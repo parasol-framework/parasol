@@ -65,7 +65,7 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      lj_assertFS(e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
+      fs->assert(e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
       ExpressionValue e1_toval(fs, *e1);
       e1_toval.to_val();
       *e1 = e1_toval.legacy();
@@ -270,7 +270,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    ExpressionValue lhs_value_discharge(fs, *lhs);
    lhs_value_discharge.discharge();
    *lhs = lhs_value_discharge.legacy();
-   lj_assertFS(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
+   fs->assert(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -295,7 +295,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    allocator.reserve(1);  // Reserve for callee
    if (LJ_FR2) allocator.reserve(1);
    allocator.reserve(2);  // Reserve for arguments
-   lj_assertFS(!fname.empty(), "bitlib name missing for bitwise operator");
+   fs->assert(!fname.empty(), "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
 
@@ -351,7 +351,7 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
    ExpressionValue arg_value_discharge(fs, *arg);
    arg_value_discharge.discharge();
    *arg = arg_value_discharge.legacy();
-   lj_assertFS(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
+   fs->assert(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -390,10 +390,10 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->u.s.info = fs->freereg - 1;
          e->k = ExpKind::NonReloc;
       }
-      else lj_assertFS(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
+      else fs->assert(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
    }
    else {
-      lj_assertFS(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
+      fs->assert(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
       if (op IS BC_UNM and not e->has_jump()) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.

@@ -11,10 +11,6 @@
 
 enum class TokenKind : uint16_t;
 
-// Error handling (lj_parse_core.cpp)
-
-[[noreturn]] static void err_limit(FuncState *, uint32_t limit, const char* what);
-
 // Constants (lj_parse_constants.cpp)
 
 // Exported for use by OperatorEmitter facade

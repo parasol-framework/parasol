@@ -4,6 +4,14 @@
 #include <parasol/main.h>
 #include "parser/parser_context.h"
 
+[[maybe_unused]] [[noreturn]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what)
+{
+   if (fs->ls->active_context) fs->ls->active_context->report_limit_error(*fs, limit, what);
+
+   if (fs->linedefined IS 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
+   else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
+}
+
 [[noreturn]] LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
 {
    if (this->active_context) this->active_context->err_syntax(Message);
@@ -14,14 +22,6 @@
 {
    if (this->active_context) this->active_context->err_token(Token);
    lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
-}
-
-[[noreturn]] static void err_limit(FuncState *fs, uint32_t limit, CSTRING what)
-{
-   if (fs->ls->active_context) fs->ls->active_context->report_limit_error(*fs, limit, what);
-
-   if (fs->linedefined IS 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
-   else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
 }
 
 // Check and consume optional token.

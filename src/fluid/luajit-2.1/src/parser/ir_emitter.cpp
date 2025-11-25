@@ -220,11 +220,11 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 
    switch (bc_op(ins)) {
       case BC_MOV:
-         name = gco2str(gcref(var_get(&lex_state, &func_state, bc_d(ins)).name));
+         name = gco2str(gcref(func_state.var_get(bc_d(ins)).name));
          break;
 
       case BC_UGET:
-         name = gco2str(gcref(lex_state.vstack[func_state.uvmap[bc_d(ins)]].name));
+         name = gco2str(gcref(func_state.var_get(func_state.uvmap[bc_d(ins)]).name));
          break;
 
       case BC_GGET:
@@ -501,7 +501,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
 //********************************************************************************************************************
 
-ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload &payload)
 {
    if (not payload.function) return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
 
@@ -520,7 +520,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, slot, "local function literal");
-   var_get(&this->lex_state, &this->func_state, this->func_state.nactvar - 1).startpc = this->func_state.pc;
+   this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
    if (payload.name.symbol and not payload.name.is_blank) this->update_local_binding(payload.name.symbol, slot);
 
    this->func_state.freereg = this->func_state.nactvar;
@@ -877,7 +877,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    RegisterAllocator allocator(fs);
    allocator.reserve(1);
    this->lex_state.var_add(1);
-   VarInfo* info = &var_get(&this->lex_state, fs, fs->nactvar - 1);
+   VarInfo* info = &fs->var_get(fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
 
    auto function_value = this->emit_function_expr(*payload.callable);
@@ -906,7 +906,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
       this->lex_state.var_add(nargs);
 
       for (BCReg i = 0; i < nargs; ++i) {
-         VarInfo* arg_info = &var_get(&this->lex_state, fs, fs->nactvar - nargs + i);
+         VarInfo* arg_info = &fs->var_get(fs->nactvar - nargs + i);
          arg_info->info |= VarInfoFlag::DeferArg;
       }
    }
@@ -1125,10 +1125,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    ExpressionValue lhs_value(&this->func_state, working);
    BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc falsev(ExpKind::False);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
    ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
@@ -1221,18 +1221,10 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 {
    ExpDesc expr;
    switch (literal.kind) {
-      case LiteralKind::Nil:
-         expr = make_nil_expr();
-         break;
-      case LiteralKind::Boolean:
-         expr = make_bool_expr(literal.bool_value);
-         break;
-      case LiteralKind::Number:
-         expr = make_num_expr(literal.number_value);
-         break;
-      case LiteralKind::String:
-         expr = make_interned_string_expr(literal.string_value);
-         break;
+      case LiteralKind::Nil:     expr = ExpDesc(ExpKind::Nil); break;
+      case LiteralKind::Boolean: expr = ExpDesc(literal.bool_value); break;
+      case LiteralKind::Number:  expr = ExpDesc(literal.number_value); break;
+      case LiteralKind::String:  expr = ExpDesc(literal.string_value); break;
       case LiteralKind::CData:
          expr.init(ExpKind::CData, 0);
          expr.u.nval = literal.cdata_value;
@@ -1316,7 +1308,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    }
 
    ExpDesc operand = operand_value.legacy();  // Get ExpDesc for subsequent operations
-   ExpDesc delta = make_num_expr(1.0);
+   ExpDesc delta(1.0);
    ExpDesc infix = operand;
 
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
@@ -1416,10 +1408,10 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    ExpressionValue lhs_value(&this->func_state, lhs);
    BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc falsev(ExpKind::False);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(this->lex_state.intern_empty_string());
 
    // Extended falsey checks - jumps skip to RHS when value is falsey
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
@@ -1489,10 +1481,10 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
    BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(this->lex_state.intern_empty_string());
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc falsev(ExpKind::False);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
    ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
@@ -1568,7 +1560,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
    ExpressionValue table_value(&this->func_state, table);
    table_value.discharge_to_any_reg(allocator);
    table = table_value.legacy();
-   ExpDesc key = make_interned_string_expr(Payload.member.symbol);
+   ExpDesc key(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
 }
@@ -1626,7 +1618,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       auto receiver_result = this->emit_expression(*method->receiver);
       if (not receiver_result.ok()) return receiver_result;
       callee = receiver_result.value_ref();
-      ExpDesc key = make_interned_string_expr(method->method.symbol);
+      ExpDesc key(ExpKind::Str);
+      key.u.sval = method->method.symbol;
       bcemit_method(&this->func_state, &callee, &key);
       base = callee.u.s.info;
    }
@@ -1705,7 +1698,8 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
             if (not field.name.has_value() or field.name->symbol IS nullptr) {
                return this->unsupported_expr(AstNodeKind::TableExpr, field.span);
             }
-            key = make_interned_string_expr(field.name->symbol);
+            key.init(ExpKind::Str, 0);
+            key.u.sval = field.name->symbol;
             nhash++;
             break;
          }
@@ -1899,7 +1893,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
       const Identifier &segment = path.segments[i];
       if (not segment.symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
-      ExpDesc key = make_interned_string_expr(segment.symbol);
+      ExpDesc key(segment.symbol);
       ExpressionValue target_toval(&this->func_state, target);
       target_toval.to_val();
       target = target_toval.legacy();
@@ -1918,10 +1912,11 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
 
    if (not final_name->symbol) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
-   ExpDesc key = make_interned_string_expr(final_name->symbol);
+   ExpDesc key(final_name->symbol);
    ExpressionValue target_toval_final(&this->func_state, target);
    target_toval_final.to_val();
    target = target_toval_final.legacy();
+
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue target_value(&this->func_state, target);
    target_value.discharge_to_any_reg(allocator);
@@ -1958,7 +1953,8 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
          ExpressionValue table_value(&this->func_state, table);
          table_value.discharge_to_any_reg(allocator);
          table = table_value.legacy();
-         ExpDesc key = make_interned_string_expr(payload.member.symbol);
+         ExpDesc key(ExpKind::Str);
+         key.u.sval = payload.member.symbol;
          expr_index(&this->func_state, &table, &key);
          return ParserResult<ExpDesc>::success(table);
       }

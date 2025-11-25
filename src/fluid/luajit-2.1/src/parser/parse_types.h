@@ -71,58 +71,36 @@ concept FlagType = std::same_as<Flag, ExprFlag> or
                    std::same_as<Flag, FuncScopeFlag> or
                    std::same_as<Flag, VarInfoFlag>;
 
-template<FlagType Flag>
-[[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right)
-{
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right) {
    using Underlying = std::underlying_type_t<Flag>;
    return Flag(Underlying(Left) | Underlying(Right));
 }
 
-template<FlagType Flag>
-[[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right)
-{
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right) {
    using Underlying = std::underlying_type_t<Flag>;
    return Flag(Underlying(Left) & Underlying(Right));
 }
 
-template<FlagType Flag>
-[[nodiscard]] static constexpr Flag operator~(Flag Value)
-{
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator~(Flag Value) {
    using Underlying = std::underlying_type_t<Flag>;
    return Flag(~Underlying(Value));
 }
 
-template<FlagType Flag>
-static constexpr Flag& operator|=(Flag& Left, Flag Right)
-{
-   Left = Left | Right;
-   return Left;
-}
-
-template<FlagType Flag>
-static constexpr Flag& operator&=(Flag& Left, Flag Right)
-{
-   Left = Left & Right;
-   return Left;
-}
-
-template<FlagType Flag>
-[[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask)
-{
-   return (Flags & Mask) != Flag::None;
-}
+template<FlagType Flag> static constexpr Flag & operator|=(Flag &Left, Flag Right) { return Left = Left | Right; }
+template<FlagType Flag> static constexpr Flag & operator&=(Flag &Left, Flag Right) { return Left = Left & Right; }
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask) { return (Flags & Mask) != Flag::None; }
 
 // Expression descriptor.
 struct ExpDesc {
    union {
-      struct {
+      struct { // For non-constant expressions like Local, Upval, Global, Indexed, Jmp, Relocable, NonReloc, Call, Void
          uint32_t info;  // Primary info.
          uint32_t aux;   // Secondary info.
       } s;
-      TValue nval;   // Number value.
-      GCstr* sval;   // String value.
+      TValue nval;   // ExpKind::Num number value.
+      GCstr* sval;   // ExpKind::Str string value.
    } u;
-   ExpKind k;
+   ExpKind k;      // Expression kind.
    ExprFlag flags; // Expression flags.
    BCPos t;        // True condition jump list.
    BCPos f;        // False condition jump list.
@@ -132,6 +110,19 @@ struct ExpDesc {
 
    constexpr ExpDesc(ExpKind Kind, uint32_t Info = 0) : u{}, k(Kind), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
       this->u.s.info = Info;
+      this->u.s.aux = 0;
+   }
+
+   explicit constexpr ExpDesc(GCstr* Value) : u{}, k(ExpKind::Str), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.sval = Value;
+   }
+
+   explicit constexpr ExpDesc(lua_Number Value) : u{}, k(ExpKind::Num), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      setnumV(&this->u.nval, Value);
+   }
+
+   explicit constexpr ExpDesc(bool Value) : u{}, k(Value ? ExpKind::True : ExpKind::False), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.s.info = 0;
       this->u.s.aux = 0;
    }
 
@@ -162,43 +153,6 @@ struct ExpDesc {
    }
 };
 
-// Initialise expression (legacy wrapper for existing code).
-static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
-{
-   e->init(k, info);
-}
-
-// Helper functions for creating constant expressions
-[[nodiscard]] static constexpr ExpDesc make_nil_expr()
-{
-   return ExpDesc(ExpKind::Nil);
-}
-
-[[deprecated]] [[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
-{
-   return ExpDesc(Value ? ExpKind::True : ExpKind::False);
-}
-
-[[deprecated]] [[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
-{
-   ExpDesc expression(ExpKind::Num);
-   setnumV(&expression.u.nval, Value);
-   return expression;
-}
-
-[[deprecated]] [[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
-{
-   ExpDesc expression(ExpKind::Str);
-   expression.u.sval = Value;
-   return expression;
-}
-
-// Check number constant for +-0.
-[[deprecated]] static LJ_AINLINE int expr_numiszero(ExpDesc* e)
-{
-   return e->is_num_zero();
-}
-
 // Per-function linked list of scope blocks.
 
 struct FuncScope {
@@ -208,9 +162,11 @@ struct FuncScope {
    FuncScopeFlag flags;    // Scope flags.
 };
 
-#define NAME_BREAK      ((GCstr*)uintptr_t(1))
-#define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
-#define NAME_BLANK      ((GCstr*)uintptr_t(3))
+// Sentinel GCstr* values for special variable names (not actual string pointers).
+
+inline GCstr * const NAME_BREAK    = (GCstr*)uintptr_t(1);
+inline GCstr * const NAME_CONTINUE = (GCstr*)uintptr_t(2);
+inline GCstr * const NAME_BLANK    = (GCstr*)uintptr_t(3);
 
 // Index into variable stack.
 typedef uint16_t VarIndex;
@@ -220,11 +176,11 @@ inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 
 // Per-function state.
 struct FuncState {
-   GCtab* kt;          // Hash table for constants.
-   LexState* ls;       // Lexer state.
-   lua_State* L;       // Lua state.
-   FuncScope* bl;      // Current scope.
-   FuncState* prev;    // Enclosing function.
+   GCtab *kt;          // Hash table for constants.
+   LexState *ls;       // Lexer state.
+   lua_State *L;       // Lua state.
+   FuncScope *bl;      // Current scope.
+   FuncState *prev;    // Enclosing function.
    BCPos pc;           // Next bytecode position.
    BCPos lasttarget;   // Bytecode position of last jump target.
    BCPos jpc;          // Pending jump list to next bytecode.
@@ -242,12 +198,15 @@ struct FuncState {
    std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
-};
 
-// Variable access macro.
-[[nodiscard]] static inline VarInfo& var_get(LexState* ls, FuncState* fs, int32_t i) {
-   return ls->vstack[fs->varmap[i]];
-}
+   inline VarInfo & var_get(int32_t i) { return ls->vstack[varmap[i]]; }
+
+#ifdef LUA_USE_ASSERT
+   inline void assert(bool condition, const char *message, ...) { lj_assertG_(G(L), condition, message, ...); }
+#else
+   inline void assert(bool condition, const char *message, ...) { }
+#endif
+};
 
 // Binary and unary operators. ORDER OPR
 enum BinOpr : int {
@@ -270,28 +229,20 @@ static_assert((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD, "BC_
 static_assert((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD, "BC_DIVVV offset mismatch");
 static_assert((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD, "BC_MODVV offset mismatch");
 
-#ifdef LUA_USE_ASSERT
-#define lj_assertFS(c, ...)   (lj_assertG_(G(fs->L), (c), __VA_ARGS__))
-#else
-#define lj_assertFS(c, ...)   ((void)fs)
-#endif
-
 // Return bytecode encoding for primitive constant.
 
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
-   lj_assertX(e->k <= ExpKind::True, "bad constant primitive");
+   lj_assertX(e->k <= ExpKind::True, "Bad constant primitive");
    return e->k;
 }
 
-[[nodiscard]] static inline bool tvhaskslot(const TValue* o) {
-   return o->u32.hi == 0;
-}
+[[nodiscard]] static inline bool tvhaskslot(const TValue* o) { return o->u32.hi == 0; }
+[[nodiscard]] static inline uint32_t tvkslot(const TValue* o) { return o->u32.lo; }
 
-[[nodiscard]] static inline uint32_t tvkslot(const TValue* o) {
-   return o->u32.lo;
-}
+// Error checking functions.
 
-// Error checking macros.
-#define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)
-#define checklimitgt(fs, v, l, m)   if ((v) > (l)) err_limit(fs, l, m)
-#define checkcond(ls, c, em)      { if (not (c)) (ls)->err_syntax(em); }
+[[maybe_unused]] [[noreturn]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what);
+
+inline void checklimit(FuncState *fs, MSize v, MSize l, const char *m) { if (v >= l) err_limit(fs, l, m); }
+inline void checklimitgt(FuncState *fs, MSize v, MSize l, const char *m) { if (v > l) err_limit(fs, l, m); }
+inline void checkcond(LexState *ls, bool c, ErrMsg em) { if (not (c)) { ls->err_syntax(em); } }

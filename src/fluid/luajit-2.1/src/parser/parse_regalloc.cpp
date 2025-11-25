@@ -380,7 +380,7 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k IS ExpKind::Void or e->k IS ExpKind::Jmp, "bad expr type %d", int(e->k));
+      fs->assert(e->k IS ExpKind::Void or e->k IS ExpKind::Jmp, "bad expr type %d", int(e->k));
       return;
    }
 
@@ -495,7 +495,7 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
    }
    else {
       BCReg ra, rc;
-      lj_assertFS(var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
+      fs->assert(var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
@@ -523,7 +523,7 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    expr_free(fs, e);
    func = fs->freereg;
    bcemit_AD(fs, BC_MOV, func + 1 + LJ_FR2, obj);  // Copy object to 1st argument.
-   lj_assertFS(key->is_str_constant(), "bad usage");
+   fs->assert(key->is_str_constant(), "bad usage");
    idx = const_str(fs, key);
    if (idx <= BCMAX_C) {
       bcreg_reserve(fs, 2 + LJ_FR2);

@@ -7,7 +7,7 @@
 {
    lua_State* L = fs->L;
    TValue* o;
-   lj_assertFS(e->is_num_constant(e), "bad usage");
+   fs->assert(e->is_num_constant(), "bad usage");
    o = lj_tab_set(L, fs->kt, &e->u.nval);
    if (tvhaskslot(o)) return tvkslot(o);
    o->u64 = fs->nkn;
@@ -33,7 +33,7 @@
 
 [[nodiscard]] BCReg const_str(FuncState* fs, ExpDesc* e)
 {
-   lj_assertFS(e->is_str_constant(e) or e->k IS ExpKind::Global, "bad usage");
+   fs->assert(e->is_str_constant() or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 
@@ -129,9 +129,8 @@ void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
    FuncState* fs = func_state;
    BCIns* instruction = &func_state->bcbase[Position].ins;
    BCPos offset = Destination - (Position + 1) + BCBIAS_J;
-   lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
-   if (offset > BCMAX_D)
-      func_state->ls->err_syntax(ErrMsg::XJUMP);
+   fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
+   if (offset > BCMAX_D) func_state->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
 
@@ -175,7 +174,7 @@ void JumpListView::patch_to(BCPos Target) const
    }
    else {
       FuncState* fs = func_state;
-      lj_assertFS(Target < func_state->pc, "bad jump target");
+      fs->assert(Target < func_state->pc, "bad jump target");
       patch_with_value(Target, NO_REG, Target);
    }
 }
