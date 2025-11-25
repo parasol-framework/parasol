@@ -56,32 +56,32 @@ public:
 
    inline bool has_jump() const
    {
-      return this->descriptor.t != this->descriptor.f;
+      return this->descriptor.has_jump();
    }
 
    inline bool is_constant() const
    {
-      return expr_isk(&this->descriptor);
+      return this->descriptor.is_constant();
    }
 
    inline bool is_constant_nojump() const
    {
-      return expr_isk_nojump(&this->descriptor);
+      return this->descriptor.is_constant_nojump();
    }
 
    inline bool is_number_constant() const
    {
-      return expr_isnumk(&this->descriptor);
+      return this->descriptor.is_num_constant();
    }
 
    inline bool is_number_constant_nojump() const
    {
-      return expr_isnumk_nojump(&this->descriptor);
+      return this->descriptor.is_num_constant_nojump();
    }
 
    inline bool is_string_constant() const
    {
-      return expr_isstrk(&this->descriptor);
+      return this->descriptor.is_str_constant();
    }
 
    inline bool has_flag(ExprFlag Flag) const

@@ -25,7 +25,7 @@ public:
    explicit ValueUse(ExpDesc* Desc) : desc(Desc) {}
 
    // Query value category
-   [[nodiscard]] bool is_constant() const { return expr_isk(this->desc); }
+   [[nodiscard]] bool is_constant() const { return this->desc->is_constant(); }
    [[nodiscard]] bool is_nil() const { return this->desc->k IS ExpKind::Nil; }
    [[nodiscard]] bool is_false() const { return this->desc->k IS ExpKind::False; }
    [[nodiscard]] bool is_true() const { return this->desc->k IS ExpKind::True; }

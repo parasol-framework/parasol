@@ -16,8 +16,8 @@
 {
    TValue o;
    lua_Number n;
-   if (!expr_isnumk_nojump(e1) or !expr_isnumk_nojump(e2)) [[likely]] return 0;
-   n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), int(opr) - OPR_ADD);
+   if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
+   n = lj_vm_foldarith(e1->number_value(), e2->number_value(), int(opr) - OPR_ADD);
    setnumV(&o, n);
    if (tvisnan(&o) or tvismzero(&o)) [[unlikely]] return 0;  // Avoid NaN and -0 as consts.
    if (LJ_DUALNUM) {
@@ -56,7 +56,7 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
-      if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
+      if (e2->is_num_constant() and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
       else {
          ExpressionValue e2_value(fs, *e2);
          rc = e2_value.discharge_to_any_reg(allocator);
@@ -65,14 +65,14 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      lj_assertFS(expr_isnumk(e1) or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
+      lj_assertFS(e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
       ExpressionValue e1_toval(fs, *e1);
       e1_toval.to_val();
       *e1 = e1_toval.legacy();
 
       // Avoid two consts to satisfy bytecode constraints.
 
-      if (expr_isnumk(e1) and (not expr_isnumk(e2)) and (t = const_num(fs, e1)) <= BCMAX_B) {
+      if (e1->is_num_constant() and (not e2->is_num_constant()) and (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
       else {
@@ -106,7 +106,7 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
 
-      if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
+      if (e1->is_constant()) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
@@ -245,12 +245,12 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    *rhs = rhs_value.legacy();
 
    // Now load bit.[lshift|rshift|...] into the base register
-   expr_init(&callee, ExpKind::Global, 0);
+   callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);
    callee_value.discharge_to_any_reg(allocator);
    callee = callee_value.legacy();
-   expr_init(&key, ExpKind::Str, 0);
+   key.init(ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    ExpressionValue callee_toval(fs, callee);
@@ -325,12 +325,12 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
    if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
 
    // Load bit.fname into base register.
-   expr_init(&callee, ExpKind::Global, 0);
+   callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);
    callee_value.discharge_to_any_reg(allocator);
    callee = callee_value.legacy();
-   expr_init(&key, ExpKind::Str, 0);
+   key.init(ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    ExpressionValue callee_toval2(fs, callee);
@@ -376,7 +376,7 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->k = ExpKind::True;
          return;
       }
-      else if (expr_isk(e) or (LJ_HASFFI and e->k IS ExpKind::CData)) {
+      else if (e->is_constant() or (LJ_HASFFI and e->k IS ExpKind::CData)) {
          e->k = ExpKind::False;
          return;
       }
@@ -394,7 +394,7 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
    }
    else {
       lj_assertFS(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
-      if (op IS BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
+      if (op IS BC_UNM and not e->has_jump()) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.
             GCcdata* cd = cdataV(&e->u.nval);
@@ -405,8 +405,8 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          }
          else
 #endif
-            if (expr_isnumk(e) and !expr_numiszero(e)) {  // Avoid folding to -0.
-               TValue* o = expr_numtv(e);
+            if (e->is_num_constant() and !e->is_num_zero()) {  // Avoid folding to -0.
+               TValue* o = e->num_tv();
                if (tvisint(o)) {
                   int32_t k = intV(o);
                   if (k IS -k) setnumV(o, -lua_Number(k));

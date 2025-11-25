@@ -17,17 +17,17 @@ static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
 {
    // Already called: expr_toval(State, e).
    t->k = ExpKind::Indexed;
-   if (expr_isnumk(e)) {
+   if (e->is_num_constant()) {
 #if LJ_DUALNUM
-      if (tvisint(expr_numtv(e))) {
-         int32_t k = intV(expr_numtv(e));
+      if (tvisint(e->num_tv())) {
+         int32_t k = intV(e->num_tv());
          if (checku8(k)) {
             t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
             return;
          }
       }
 #else
-      lua_Number n = expr_numberV(e);
+      lua_Number n = e->number_value();
       int32_t k = lj_num2int(n);
       if (checku8(k) and n IS lua_Number(k)) {
          t->u.s.aux = BCMAX_C + 1 + uint32_t(k);  // 256..511: const byte key
@@ -35,7 +35,7 @@ static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
       }
 #endif
    }
-   else if (expr_isstrk(e)) {
+   else if (e->is_str_constant()) {
       BCReg idx = const_str(State, e);
       if (idx <= BCMAX_C) {
          t->u.s.aux = ~idx;  // -256..-1: const string key
@@ -57,8 +57,8 @@ static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
    if (e->k <= ExpKind::True) setpriV(v, ~uint64_t(e->k));
    else if (e->k IS ExpKind::Str) setgcVraw(v, obj2gco(e->u.sval), LJ_TSTR);
    else {
-      lj_assertFS(tvisnumber(expr_numtv(e)), "bad number constant");
-      *v = *expr_numtv(e);
+      lj_assertFS(tvisnumber(e->num_tv()), "bad number constant");
+      *v = *e->num_tv();
    }
 }
 

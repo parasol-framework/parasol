@@ -117,7 +117,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
    if (fs) {
       auto reg = var_lookup_local(fs, name);
       if (reg.has_value()) {  // Local in this function?
-         expr_init(e, ExpKind::Local, reg.value());
+         e->init(ExpKind::Local, reg.value());
          if (!first)
             fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
          return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
@@ -132,7 +132,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
       }
    }
    else {  // Not found in any function, must be a global.
-      expr_init(e, ExpKind::Global, 0);
+      e->init(ExpKind::Global, 0);
       e->u.sval = name;
    }
    return MSize(-1);  // Global.
@@ -147,7 +147,7 @@ MSize LexState::var_lookup(ExpDesc* e)
 MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
 {
    if (name == nullptr or name == NAME_BLANK) {
-      expr_init(e, ExpKind::Global, 0);
+      e->init(ExpKind::Global, 0);
       e->u.sval = name ? name : NAME_BLANK;
       return MSize(-1);
    }

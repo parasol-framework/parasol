@@ -116,110 +116,87 @@ template<FlagType Flag>
 struct ExpDesc {
    union {
       struct {
-         uint32_t info;   // Primary info.
+         uint32_t info;  // Primary info.
          uint32_t aux;   // Secondary info.
       } s;
       TValue nval;   // Number value.
       GCstr* sval;   // String value.
    } u;
    ExpKind k;
-   ExprFlag flags;      // Expression flags.
-   BCPos t;      // True condition jump list.
-   BCPos f;      // False condition jump list.
+   ExprFlag flags; // Expression flags.
+   BCPos t;        // True condition jump list.
+   BCPos f;        // False condition jump list.
+
+   // Constructors
+   constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {}
+
+   constexpr ExpDesc(ExpKind Kind, uint32_t Info = 0) : u{}, k(Kind), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.s.info = Info;
+      this->u.s.aux = 0;
+   }
+
+   // Member methods for expression queries and manipulation
+   [[nodiscard]] inline bool has_jump() const { return this->t != this->f; }
+   [[nodiscard]] inline bool is_constant() const { return this->k <= ExpKind::Last; }
+   [[nodiscard]] inline bool is_constant_nojump() const { return this->is_constant() and not this->has_jump(); }
+   [[nodiscard]] inline bool is_num_constant() const { return this->k == ExpKind::Num; }
+   [[nodiscard]] inline bool is_num_constant_nojump() const { return this->is_num_constant() and not this->has_jump(); }
+   [[nodiscard]] inline bool is_str_constant() const { return this->k == ExpKind::Str; }
+   [[nodiscard]] inline lua_Number number_value() { return numberVnum(this->num_tv()); }
+
+   [[nodiscard]] inline TValue* num_tv() {
+      lj_assertX(this->is_num_constant(), "expr must be number constant");
+      return &this->u.nval;
+   }
+
+   inline void init(ExpKind kind, uint32_t info) {
+      this->k = kind;
+      this->u.s.info = info;
+      this->flags = ExprFlag::None;
+      this->f = this->t = NO_JMP;
+   }
+
+   [[nodiscard]] inline bool is_num_zero() {
+      TValue* o = this->num_tv();
+      return tvisint(o) ? (intV(o) == 0) : tviszero(o);
+   }
 };
 
-// Expression helpers that previously relied on flag bits within ExpDesc.aux now
-// store their metadata in ExpDesc.flags. The aux field can therefore be used
-// directly for temporary payloads (e.g., register numbers) without additional
-// masking.
-
-// TOOD: Expression query functions.
-// DEPRECATED: Use ExpressionValue::has_jump() when possible. This function is retained
-// for legitimate raw ExpDesc* usage where ExpressionValue wrapper is not available.
-
-[[nodiscard]] static inline bool expr_hasjump(const ExpDesc* e) {
-   return e->t != e->f;
-}
-
-[[nodiscard]] static inline bool expr_isk(const ExpDesc* e) {
-   return e->k <= ExpKind::Last;
-}
-
-[[nodiscard]] static inline bool expr_isk_nojump(const ExpDesc* e) {
-   return expr_isk(e) and not expr_hasjump(e);
-}
-
-[[nodiscard]] static inline bool expr_isnumk(const ExpDesc* e) {
-   return e->k == ExpKind::Num;
-}
-
-[[nodiscard]] static inline bool expr_isnumk_nojump(const ExpDesc* e) {
-   return expr_isnumk(e) and not expr_hasjump(e);
-}
-
-[[nodiscard]] static inline bool expr_isstrk(const ExpDesc* e) {
-   return e->k == ExpKind::Str;
-}
-
-[[nodiscard]] static inline TValue* expr_numtv(ExpDesc* e) {
-   lj_assertX(expr_isnumk(e), "expr must be number constant");
-   return &e->u.nval;
-}
-
-[[nodiscard]] static inline lua_Number expr_numberV(ExpDesc* e) {
-   return numberVnum(expr_numtv(e));
-}
-
-// Initialize expression.
+// Initialise expression (legacy wrapper for existing code).
 static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
 {
-   e->k = k;
-   e->u.s.info = info;
-   e->flags = ExprFlag::None;
-   e->f = e->t = NO_JMP;
+   e->init(k, info);
 }
 
-[[nodiscard]] static constexpr ExpDesc make_const_expr(ExpKind Kind, uint32_t Info = 0)
-{
-   ExpDesc expression{};
-   expression.u.s.info = Info;
-   expression.u.s.aux = 0;
-   expression.k = Kind;
-   expression.flags = ExprFlag::None;
-   expression.t = NO_JMP;
-   expression.f = NO_JMP;
-   return expression;
-}
-
+// Helper functions for creating constant expressions
 [[nodiscard]] static constexpr ExpDesc make_nil_expr()
 {
-   return make_const_expr(ExpKind::Nil);
+   return ExpDesc(ExpKind::Nil);
 }
 
-[[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
+[[deprecated]] [[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
 {
-   return make_const_expr(Value ? ExpKind::True : ExpKind::False);
+   return ExpDesc(Value ? ExpKind::True : ExpKind::False);
 }
 
-[[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
+[[deprecated]] [[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
 {
-   ExpDesc expression = make_const_expr(ExpKind::Num);
+   ExpDesc expression(ExpKind::Num);
    setnumV(&expression.u.nval, Value);
    return expression;
 }
 
-[[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
+[[deprecated]] [[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
 {
-   ExpDesc expression = make_const_expr(ExpKind::Str);
+   ExpDesc expression(ExpKind::Str);
    expression.u.sval = Value;
    return expression;
 }
 
 // Check number constant for +-0.
-static LJ_AINLINE int expr_numiszero(ExpDesc* e)
+[[deprecated]] static LJ_AINLINE int expr_numiszero(ExpDesc* e)
 {
-   TValue* o = expr_numtv(e);
-   return tvisint(o) ? (intV(o) == 0) : tviszero(o);
+   return e->is_num_zero();
 }
 
 // Per-function linked list of scope blocks.

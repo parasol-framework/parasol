@@ -7,7 +7,7 @@
 {
    lua_State* L = fs->L;
    TValue* o;
-   lj_assertFS(expr_isnumk(e), "bad usage");
+   lj_assertFS(e->is_num_constant(e), "bad usage");
    o = lj_tab_set(L, fs->kt, &e->u.nval);
    if (tvhaskslot(o)) return tvkslot(o);
    o->u64 = fs->nkn;
@@ -33,7 +33,7 @@
 
 [[nodiscard]] BCReg const_str(FuncState* fs, ExpDesc* e)
 {
-   lj_assertFS(expr_isstrk(e) or e->k IS ExpKind::Global, "bad usage");
+   lj_assertFS(e->is_str_constant(e) or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 

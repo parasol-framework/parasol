@@ -92,7 +92,7 @@ public:
          pf::Log log("Parser");
          log.msg("Unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
             stage, unsigned(kind), unsigned(total), int(span.line), int(span.column),
-            static_cast<long long>(span.offset));
+            (long long)(span.offset));
       }
    }
 
@@ -480,7 +480,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
    ExpDesc tail;
    BCReg nexps = 0;
-   if (payload.values.empty()) tail = make_const_expr(ExpKind::Void);
+   if (payload.values.empty()) tail = ExpDesc(ExpKind::Void);
    else {
       auto list = this->emit_expression_list(payload.values, nexps);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
@@ -509,7 +509,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    BCReg slot = this->func_state.freereg;
    this->lex_state.var_new(0, symbol);
    ExpDesc variable;
-   expr_init(&variable, ExpKind::Local, slot);
+   variable.init(ExpKind::Local, slot);
    variable.u.s.aux = this->func_state.varmap[slot];
    RegisterAllocator allocator(&this->func_state);
    allocator.reserve(1);
@@ -980,7 +980,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    BCReg nvars = BCReg(targets.size());
    if (not nvars) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
-   ExpDesc tail = make_const_expr(ExpKind::Void);
+   ExpDesc tail(ExpKind::Void);
    BCReg nexps = 0;
    if (not values.empty()) {
       auto list = this->emit_expression_list(values, nexps);
@@ -993,7 +993,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    {
       for (; first != last; ++first) {
          ExpDesc stack_value;
-         expr_init(&stack_value, ExpKind::NonReloc, this->func_state.freereg - 1);
+         stack_value.init(ExpKind::NonReloc, this->func_state.freereg - 1);
          bcemit_store(&this->func_state, &first->storage, &stack_value);
       }
    };
@@ -1234,7 +1234,7 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
          expr = make_interned_string_expr(literal.string_value);
          break;
       case LiteralKind::CData:
-         expr_init(&expr, ExpKind::CData, 0);
+         expr.init(ExpKind::CData, 0);
          expr.u.nval = literal.cdata_value;
          break;
    }
@@ -1258,7 +1258,7 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
    RegisterAllocator allocator(&this->func_state);
    allocator.reserve(1);
    BCReg base = this->func_state.freereg - 1;
-   expr_init(&expr, ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
+   expr.init(ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
    expr.u.s.aux = base;
    expr_set_flag(&expr, ExprFlag::HasRhsReg);
    return ParserResult<ExpDesc>::success(expr);
@@ -1328,7 +1328,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    if (payload.is_postfix) {
       allocator.collapse_freereg(saved_reg);
       ExpDesc result;
-      expr_init(&result, ExpKind::NonReloc, saved_reg);
+      result.init(ExpKind::NonReloc, saved_reg);
       return ParserResult<ExpDesc>::success(result);
    }
 
@@ -1467,7 +1467,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    // Result is in lhs_reg
 
    ExpDesc result;
-   expr_init(&result, ExpKind::NonReloc, lhs_reg);
+   result.init(ExpKind::NonReloc, lhs_reg);
    return ParserResult<ExpDesc>::success(result);
 }
 
@@ -1535,7 +1535,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    else register_guard.disarm();  // Keep current freereg (cond_reg + 1)
 
    ExpDesc result;
-   expr_init(&result, ExpKind::NonReloc, cond_reg);
+   result.init(ExpKind::NonReloc, cond_reg);
    return ParserResult<ExpDesc>::success(result);
 }
 
@@ -1633,7 +1633,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
    BCReg arg_count = 0;
-   ExpDesc args = make_const_expr(ExpKind::Void);
+   ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
       auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
       if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
@@ -1655,7 +1655,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    this->lex_state.lastline = call_line;
 
    ExpDesc result;
-   expr_init(&result, ExpKind::Call, bcemit_INS(&this->func_state, ins));
+   result.init(ExpKind::Call, bcemit_INS(&this->func_state, ins));
    result.u.s.aux = base;
    this->func_state.freereg = base + 1;
    return ParserResult<ExpDesc>::success(result);
@@ -1675,7 +1675,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    BCReg freg = fs->freereg;
    BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    ExpDesc table;
-   expr_init(&table, ExpKind::NonReloc, freg);
+   table.init(ExpKind::NonReloc, freg);
    RegisterAllocator allocator(fs);
    allocator.reserve(1);
    freg++;
@@ -1695,8 +1695,8 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
             ExpressionValue key_toval(fs, key);
             key_toval.to_val();
             key = key_toval.legacy();
-            if (not expr_isk(&key)) expr_index(fs, &table, &key);
-            if (expr_isnumk(&key) and expr_numiszero(&key)) needarr = 1;
+            if (not key.is_constant()) expr_index(fs, &table, &key);
+            if (key.is_num_constant() and key.is_num_zero()) needarr = 1;
             else nhash++;
             break;
          }
@@ -1712,7 +1712,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
          case TableFieldKind::Array:
          default: {
-            expr_init(&key, ExpKind::Num, 0);
+            key.init(ExpKind::Num, 0);
             setintV(&key.u.nval, int(narr));
             narr++;
             needarr = vcall = 1;
@@ -1725,7 +1725,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
       ExpDesc val = value_result.value_ref();
 
-      bool emit_constant = expr_isk(&key) and key.k != ExpKind::Nil and (key.k IS ExpKind::Str or expr_isk_nojump(&val));
+      bool emit_constant = key.is_constant() and key.k != ExpKind::Nil and (key.k IS ExpKind::Str or val.is_constant_nojump());
 
       if (emit_constant) {
          TValue k;
@@ -1741,7 +1741,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
          expr_kvalue(fs, &k, &key);
          slot = lj_tab_set(fs->L, template_table, &k);
          lj_gc_anybarriert(fs->L, template_table);
-         if (expr_isk_nojump(&val)) {
+         if (val.is_constant_nojump()) {
             expr_kvalue(fs, slot, &val);
             continue;
          }
@@ -1758,14 +1758,14 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
             val = val_value.legacy();
             vcall = 0;
          }
-         if (expr_isk(&key)) expr_index(fs, &table, &key);
+         if (key.is_constant()) expr_index(fs, &table, &key);
          bcemit_store(fs, &table, &val);
       }
    }
 
    if (vcall) {
       BCInsLine* ilp = &fs->bcbase[fs->pc - 1];
-      ExpDesc en = make_const_expr(ExpKind::Num);
+      ExpDesc en(ExpKind::Num);
       en.u.nval.u32.lo = narr - 1;
       en.u.nval.u32.hi = 0x43300000;
       if (narr > 256) {
@@ -1868,7 +1868,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase);
 
    ExpDesc expr;
-   expr_init(&expr, ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
+   expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
 #if LJ_HASFFI
    parent_state->flags |= (child_state.flags & PROTO_FFI);
@@ -2003,9 +2003,9 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expressions, BCReg &count)
 {
    count = 0;
-   if (expressions.empty()) return ParserResult<ExpDesc>::success(make_const_expr(ExpKind::Void));
+   if (expressions.empty()) return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
 
-   ExpDesc last = make_const_expr(ExpKind::Void);
+   ExpDesc last(ExpKind::Void);
    bool first = true;
    for (const ExprNodePtr &node : expressions) {
       if (not node) return this->unsupported_expr(AstNodeKind::ExpressionStmt, SourceSpan{});
