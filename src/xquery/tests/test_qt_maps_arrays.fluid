@@ -8,27 +8,27 @@ local function readExpectation(XmlDoc, Name)
    local base = '/test-set/test-case[@name="' .. Name .. '"]/result'
 
    local errString, stringValue = XmlDoc.mtEvaluate('string(' .. base .. '/assert-string-value)')
-   if errString == ERR_Okay and stringValue and stringValue != '' then
+   if errString is ERR_Okay and stringValue and stringValue != '' then
       return { type = 'string', value = stringValue }
    end
 
    local errEq, eqValue = XmlDoc.mtEvaluate('string(' .. base .. '/assert-eq)')
-   if errEq == ERR_Okay and eqValue and eqValue != '' then
+   if errEq is ERR_Okay and eqValue and eqValue != '' then
       return { type = 'string', value = eqValue }
    end
 
    local errTrue = select(1, XmlDoc.mtSearch(base .. '/assert-true'))
-   if errTrue == ERR_Okay then
+   if errTrue is ERR_Okay then
       return { type = 'boolean', value = true }
    end
 
    local errFalse = select(1, XmlDoc.mtSearch(base .. '/assert-false'))
-   if errFalse == ERR_Okay then
+   if errFalse is ERR_Okay then
       return { type = 'boolean', value = false }
    end
 
    local errError, errorNode = XmlDoc.mtSearch(base .. '/error')
-   if errError == ERR_Okay and errorNode and errorNode != 0 then
+   if errError is ERR_Okay and errorNode and errorNode != 0 then
       local errCode, codeValue = XmlDoc.mtGetAttrib(errorNode, 'code')
       return { type = 'error', code = codeValue or '' }
    end
@@ -42,10 +42,10 @@ local function loadCases(Path)
 
    local err = subsetXml.mtSearch('/test-set/test-case', function(XML, TagID)
       local errName, name = subsetXml.mtGetAttrib(TagID, 'name')
-      assert(errName == ERR_Okay and name and name != '', 'QT3 test-case is missing a name attribute.')
+      assert(errName is ERR_Okay and name and name != '', 'QT3 test-case is missing a name attribute.')
 
       local errQuery, query = subsetXml.mtEvaluate('string(/test-set/test-case[@name="' .. name .. '"]/test)')
-      assert(errQuery == ERR_Okay and query and query != '', 'QT3 test ' .. name .. ' is missing its query body.')
+      assert(errQuery is ERR_Okay and query and query != '', 'QT3 test ' .. name .. ' is missing its query body.')
 
       local expectation = readExpectation(subsetXml, name)
       assert(expectation, 'QT3 test ' .. name .. ' does not define an assertion.')
@@ -70,7 +70,7 @@ local function runQt3Case(TestCase)
 
    local err = xq.acActivate()
 
-   if TestCase.expect.type == 'error' then
+   if TestCase.expect.type is 'error' then
       assert(err != ERR_Okay, 'QT3 ' .. TestCase.name .. ' expected an error but succeeded.')
       if TestCase.expect.code and TestCase.expect.code != '' then
          local message = tostring(xq.errorMsg)
@@ -80,16 +80,16 @@ local function runQt3Case(TestCase)
       return
    end
 
-   assert(err == ERR_Okay, 'QT3 ' .. TestCase.name .. ' failed: ' .. tostring(xq.errorMsg))
+   assert(err is ERR_Okay, 'QT3 ' .. TestCase.name .. ' failed: ' .. tostring(xq.errorMsg))
 
    local actual = tostring(xq.resultString or '')
-   if TestCase.expect.type == 'boolean' then
+   if TestCase.expect.type is 'boolean' then
       local expectedString = TestCase.expect.value and 'true' or 'false'
-      assert(actual == expectedString, 'QT3 ' .. TestCase.name .. ' expected ' .. expectedString .. ', got ' .. actual)
-   elseif TestCase.expect.type == 'string' then
-      assert(actual == TestCase.expect.value, 'QT3 ' .. TestCase.name .. ' expected ' .. TestCase.expect.value .. ', got ' .. actual)
+      assert(actual is expectedString, 'QT3 ' .. TestCase.name .. ' expected ' .. expectedString .. ', got ' .. actual)
+   elseif TestCase.expect.type is 'string' then
+      assert(actual is TestCase.expect.value, 'QT3 ' .. TestCase.name .. ' expected ' .. TestCase.expect.value .. ', got ' .. actual)
    else
-      assert(actual == tostring(TestCase.expect.value), 'QT3 ' .. TestCase.name .. ' expected ' .. tostring(TestCase.expect.value) .. ', got ' .. actual)
+      assert(actual is tostring(TestCase.expect.value), 'QT3 ' .. TestCase.name .. ' expected ' .. tostring(TestCase.expect.value) .. ', got ' .. actual)
    end
 end
 

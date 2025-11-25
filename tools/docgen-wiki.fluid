@@ -30,7 +30,7 @@ function resolveSDKPath(Path)
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
       local msg = ''
@@ -62,7 +62,7 @@ end
    local err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
 
    if not pandoc_path?? then
-      if state.platform == 'Windows' then
+      if state.platform is 'Windows' then
          pandoc_path = 'C:\\Program Files\\Pandoc\\pandoc.exe'
          if (mSys.AnalysePath(pandoc_path) != ERR_Okay) then
             pandoc_path = nil
@@ -88,13 +88,13 @@ end
          output_path = output_path:gsub('%.md', '.html')
 
          err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err == ERR_Okay, 'Failed to resolve path ' .. src_path)
+         assert(err is ERR_Okay, 'Failed to resolve path ' .. src_path)
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
-         assert(err == ERR_Okay, 'Failed to resolve path ' .. output_path)
+         assert(err is ERR_Okay, 'Failed to resolve path ' .. output_path)
 
          err, res_header_path = mSys.ResolvePath(glSelf.workingPath .. 'wiki-header.inc', RSF_NO_FILE_CHECK)
-         assert(err == ERR_Okay, 'Failed to resolve path to wiki-header.inc')
+         assert(err is ERR_Okay, 'Failed to resolve path to wiki-header.inc')
 
          local pandoc_output = temp_output .. '-' .. math.random(1000000) .. '.html'
          local parameters = res_src_path .. ' -o ' .. pandoc_output .. ' -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
@@ -107,7 +107,7 @@ end
 
    local output_path = arg('output') -- Optional output path for the generated script.
 
-   if state.platform == 'Windows' then
+   if state.platform is 'Windows' then
       if not output_path then output_path = 'temp:docgen.bat' end
       cmdlist = cmdlist:gsub('\\','\\\\')
    else

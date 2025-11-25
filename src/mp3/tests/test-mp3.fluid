@@ -23,7 +23,7 @@ function testSeek()
    assert(snd, 'Failed to process MP3 file.')
 
    snd.acSeek(0.5, SEEK_RELATIVE)
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback MP3 sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback MP3 sample.')
    time = mSys.preciseTime()
 
    proc.sleep()
@@ -39,7 +39,7 @@ function testSeek()
    local snd = obj.new('sound', { path=glFolder .. 'synth-cbr-mono-192k.mp3', onStop=wake, volume=0.33 })
    assert(snd, 'Failed to process MP3 file.')
 
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback MP3 sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback MP3 sample.')
    snd.acSeek(0.5, SEEK_RELATIVE)
    time = mSys.preciseTime()
 

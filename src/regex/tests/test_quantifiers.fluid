@@ -6,10 +6,10 @@ function testGreedyAndLazy()
    local text = "<em>bold</em>"
 
    local match = greedy.search(text)
-   assert(match[1][1] == "<em>bold</em>", "Greedy quantifier should consume closing tag, got " .. tostring(match[1][1]))
+   assert(match[1][1] is "<em>bold</em>", "Greedy quantifier should consume closing tag, got " .. tostring(match[1][1]))
 
    match = lazy.search(text)
-   assert(match[1][1] == "<em>", "Lazy quantifier should stop at first closing bracket, got " .. tostring(match[1][1]))
+   assert(match[1][1] is "<em>", "Lazy quantifier should stop at first closing bracket, got " .. tostring(match[1][1]))
 end
 
 function testBoundedQuantifier()
@@ -35,7 +35,7 @@ end
 function testZeroLengthMatchHandling()
    local matcher = regex.new("a*")
    local result = matcher.search("bbb")
-   assert(result and result[1][1] == "", "Zero length matches should be represented as empty strings, got " .. tostring(result[1][1]))
+   assert(result and result[1][1] is "", "Zero length matches should be represented as empty strings, got " .. tostring(result[1][1]))
 end
 
 return {

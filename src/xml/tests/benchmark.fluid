@@ -87,12 +87,12 @@ end
 
 function benchmarkBasicNavigation()
    glXQuery.statement = '/catalog/categories/category[1]/products/product[1]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Basic navigation failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Basic navigation failed")
 end
 
 function benchmarkAttributeMatching()
    glXQuery.statement = '/catalog/categories/category[@name="electronics"]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Attribute matching failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Attribute matching failed")
 end
 
 function benchmarkDeepScanning()
@@ -101,7 +101,7 @@ function benchmarkDeepScanning()
    local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Deep scanning failed")
+   assert(err is ERR_Okay, "Deep scanning failed")
 end
 
 function benchmarkWildcardMatching()
@@ -110,7 +110,7 @@ function benchmarkWildcardMatching()
    local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Wildcard matching failed")
+   assert(err is ERR_Okay, "Wildcard matching failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -118,22 +118,22 @@ end
 
 function benchmarkNumericComparisons()
    glXQuery.statement = '//product[@price>=100 and @price<=1000]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Numeric comparisons failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Numeric comparisons failed")
 end
 
 function benchmarkFunctionPredicates()
    glXQuery.statement = '/catalog/categories/category[count(products/product)>10]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Function predicates failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Function predicates failed")
 end
 
 function benchmarkStringFunctions()
    glXQuery.statement = '//product[contains(@name,"Pro")]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "String function failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "String function failed")
 end
 
 function benchmarkPositionFunctions()
    glXQuery.statement = '//category/products/product[position()=last()]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Position function failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Position function failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ end
 
 function benchmarkAxesTraversal()
    glXQuery.statement = '//product[@id="prod-1"]/ancestor::category[@name]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Axes traversal failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Axes traversal failed")
 end
 
 function benchmarkUnionOperations()
@@ -150,17 +150,17 @@ function benchmarkUnionOperations()
    local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Union operations failed")
+   assert(err is ERR_Okay, "Union operations failed")
 end
 
 function benchmarkComplexPredicates()
    glXQuery.statement = '//product[@price>100 and @instock="true" and contains(@name,"Ultra")]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkNestedFunctions()
    glXQuery.statement = '//category[string-length(@name)>5 and count(products/product)>=3]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Nested functions failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Nested functions failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ function benchmarkLargeDeepScan()
    local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Large deep scan failed")
+   assert(err is ERR_Okay, "Large deep scan failed")
 end
 
 function benchmarkAttributeScanning()
@@ -181,7 +181,7 @@ function benchmarkAttributeScanning()
    local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Attribute scanning failed")
+   assert(err is ERR_Okay, "Attribute scanning failed")
 end
 
 function benchmarkConditionalCounting()
@@ -196,22 +196,22 @@ end
 
 function benchmarkStringManipulation()
    glXQuery.statement = '//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "String manipulation failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "String manipulation failed")
 end
 
 function benchmarkNumericFunctions()
    glXQuery.statement = '//product[floor(@price div 100) = 12]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkBooleanLogic()
    glXQuery.statement = '//product[@instock="true" and not(@discontinued="true")]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Boolean logic failed")
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Boolean logic failed")
 end
 
 function benchmarkComplexExpressions()
    glXQuery.statement = '//product[@price * 0.5 > 70 and position() mod 2 = 0]'
-   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
+   assert(glXQuery.mtSearch(glXML) is ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -226,7 +226,7 @@ end
 function benchmarkTextNodeAccess()
    glXQuery.statement = '//product/description[text()="High-performance device"]'
    local err, id = glXQuery.mtSearch(glXML)
-   assert(err == ERR_Okay, "Text node access failed")
+   assert(err is ERR_Okay, "Text node access failed")
 end
 
 function benchmarkMixedContentTraversal()
@@ -235,7 +235,7 @@ function benchmarkMixedContentTraversal()
    local err, id = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
-   assert(err == ERR_Okay, "Mixed content traversal failed")
+   assert(err is ERR_Okay, "Mixed content traversal failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -245,24 +245,24 @@ function benchmarkSimpleVsComplexPaths()
    -- Simple path
    glXQuery.statement = '/catalog/categories/category[1]'
    local err1, id1 = glXQuery.mtSearch(glXML)
-   assert(err1 == ERR_Okay, "Simple path failed")
+   assert(err1 is ERR_Okay, "Simple path failed")
 
    -- Complex equivalent path
    glXQuery.statement = '/catalog/descendant::categories/child::category[position()=1]'
    local err2, id2 = glXQuery.mtSearch(glXML)
-   assert(err2 == ERR_Okay, "Complex path failed")
+   assert(err2 is ERR_Okay, "Complex path failed")
 end
 
 function benchmarkIndexedVsPredicateAccess()
    -- Indexed access
    glXQuery.statement = '//product[5]'
    local err1 = glXQuery.mtSearch(glXML)
-   assert(err1 == ERR_Okay, "Indexed access failed")
+   assert(err1 is ERR_Okay, "Indexed access failed")
 
    -- Predicate equivalent
    glXQuery.statement = '//product[position()=5]'
    local err2 = glXQuery.mtSearch(glXML)
-   assert(err2 == ERR_Okay, "Predicate access failed")
+   assert(err2 is ERR_Okay, "Predicate access failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -270,19 +270,19 @@ end
 function benchmarkFlworSimpleFor()
    glXQuery.statement = [[for $p in //product return $p/@id]]
    local err = glXQuery.mtEvaluate(glXML)
-   assert(err == ERR_Okay, 'FLWOR simple for failed')
+   assert(err is ERR_Okay, 'FLWOR simple for failed')
 end
 
 function benchmarkFlworOrderBy()
    glXQuery.statement = [[for $p in //product order by number($p/@price) return $p]]
    local err = glXQuery.mtEvaluate(glXML)
-   assert(err == ERR_Okay, 'FLWOR order by failed')
+   assert(err is ERR_Okay, 'FLWOR order by failed')
 end
 
 function benchmarkFlworGroupBy()
    glXQuery.statement = [[for $p in //category/products/product group by $c := ../@name return $c]]
    local err = glXQuery.mtEvaluate(glXML)
-   assert(err == ERR_Okay, 'FLWOR group by failed')
+   assert(err is ERR_Okay, 'FLWOR group by failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -302,7 +302,7 @@ function benchmarkPrologManyFunctions()
    ]]
    glXQuery.statement = prolog .. 'local:f7()'
    local err = glXQuery.acActivate()
-   assert(err == ERR_Okay, 'Prolog many functions failed')
+   assert(err is ERR_Okay, 'Prolog many functions failed')
 end
 
 function benchmarkPrologArityLookup()
@@ -313,7 +313,7 @@ function benchmarkPrologArityLookup()
    ]]
    glXQuery.statement = prolog .. 'local:sum(1,2,3)'
    local err = glXQuery.acActivate()
-   assert(err == ERR_Okay, 'Prolog arity lookup failed')
+   assert(err is ERR_Okay, 'Prolog arity lookup failed')
 end
 
 function benchmarkPrologQNameNormalization()
@@ -323,7 +323,7 @@ function benchmarkPrologQNameNormalization()
    ]]
    glXQuery.statement = prolog .. 'local:noop()'
    local err = glXQuery.acActivate()
-   assert(err == ERR_Okay, 'Prolog QName normalization failed')
+   assert(err is ERR_Okay, 'Prolog QName normalization failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -341,7 +341,7 @@ function benchmarkTokenLongArithmetic()
       glXQuery.statement = expr
    end
    local err = glXQuery.acActivate()
-   assert(err == ERR_Okay, 'Token long arithmetic failed')
+   assert(err is ERR_Okay, 'Token long arithmetic failed')
 end
 
 function benchmarkTokenNestedFunctions()
@@ -350,7 +350,7 @@ function benchmarkTokenNestedFunctions()
       glXQuery.statement = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
    end
    local err = glXQuery.acActivate(glXML)
-   assert(err == ERR_Okay, 'Token nested functions failed')
+   assert(err is ERR_Okay, 'Token nested functions failed')
 end
 
 function benchmarkTokenLongPath()
@@ -362,7 +362,7 @@ function benchmarkTokenLongPath()
       glXQuery.statement = path
    end
    local err = glXQuery.mtEvaluate(glXML)
-   assert(err == ERR_Okay, 'Token long path failed')
+   assert(err is ERR_Okay, 'Token long path failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -370,19 +370,19 @@ end
 function benchmarkAxisDescendantDeep()
    glXQuery.statement = 'descendant-or-self::node()'
    local err = glXQuery.mtSearch(glXML)
-   assert(err == ERR_Okay, 'Axis descendant-or-self failed')
+   assert(err is ERR_Okay, 'Axis descendant-or-self failed')
 end
 
 function benchmarkAxisFollowing()
    glXQuery.statement = '/catalog/categories/category[1]/following::node()'
    local err = glXQuery.mtSearch(glXML)
-   assert(err == ERR_Okay, 'Axis following failed')
+   assert(err is ERR_Okay, 'Axis following failed')
 end
 
 function benchmarkAxisPreceding()
    glXQuery.statement = '/catalog/categories/category[last()]/preceding::node()'
    local err = glXQuery.mtSearch(glXML)
-   assert(err == ERR_Okay, 'Axis preceding failed')
+   assert(err is ERR_Okay, 'Axis preceding failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -571,13 +571,13 @@ end
    print('Failed tests:')
    local failedCount = 0
    for testName, result in pairs(benchmarkResults) do
-      if result == -1 then
+      if result is -1 then
          print('  - ' .. testName)
          failedCount = failedCount + 1
       end
    end
 
-   if failedCount == 0 then
+   if failedCount is 0 then
       print('  None - all tests passed!')
    end
 

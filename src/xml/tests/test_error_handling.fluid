@@ -22,12 +22,12 @@ end
 
 function testEmptyDocument()
    local xml = obj.new("xml", { statement = "" })
-   assert(not xml.tags or #xml.tags == 0, "Empty document should have no tags")
+   assert(not xml.tags or #xml.tags is 0, "Empty document should have no tags")
 
    -- Test whitespace-only document
    catch(function()
       local xml2 = obj.new("xml", { statement = "   \n\t  " })
-      assert(not xml2.tags or #xml2.tags == 0, "Whitespace-only document should have no tags")
+      assert(not xml2.tags or #xml2.tags is 0, "Whitespace-only document should have no tags")
    end) -- Raising an exception because there is no data to parse is acceptable
 end
 
@@ -45,7 +45,7 @@ function testLargeDocument()
 
    local xml = obj.new("xml", { statement = largeXML })
    assert(xml.tags, "Large document should parse successfully")
-   assert(#xml.tags[1].children == 1000, "All 1000 items should be parsed")
+   assert(#xml.tags[1].children is 1000, "All 1000 items should be parsed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -58,11 +58,11 @@ function testInvalidParameters()
 
    -- Test invalid tag ID
    local err, value = xml.mtGetAttrib(99999, 'id')
-   assert(err == ERR_NotFound, "Should return NotFound for invalid tag ID")
+   assert(err is ERR_NotFound, "Should return NotFound for invalid tag ID")
 
    -- Test nil XPath
    local err, result = xml.mtSearch(nil)
-   assert(err == ERR_NullArgs, "Should return NullArgs for nil XPath")
+   assert(err is ERR_NullArgs, "Should return NullArgs for nil XPath")
 
    -- Test empty XPath
    local err, result = xml.mtSearch("")
@@ -82,13 +82,13 @@ function testReadOnlyMode()
 
    -- Attempt to modify readonly XML
    local err = xml.mtSetAttrib(rootId, XMS_NEW, 'newattr', 'value')
-   assert(err == ERR_ReadOnly, "Should reject modifications in readonly mode")
+   assert(err is ERR_ReadOnly, "Should reject modifications in readonly mode")
 
    local err, newId = xml.mtInsertXML(rootId, XMI_CHILD, '<newchild/>')
-   assert(err == ERR_ReadOnly, "Should reject insertions in readonly mode")
+   assert(err is ERR_ReadOnly, "Should reject insertions in readonly mode")
 
    local err = xml.mtRemoveTag(rootId, 1)
-   assert(err == ERR_ReadOnly, "Should reject removals in readonly mode")
+   assert(err is ERR_ReadOnly, "Should reject removals in readonly mode")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -103,9 +103,9 @@ function testNamespaceHandling()
    assert(xml.tags, "Namespace XML should parse")
 
    local err, nsId = xml.mtSearch('/root/ns:child')
-   if err == ERR_Okay then
+   if err is ERR_Okay then
       local err, value = xml.mtGetAttrib(nsId, 'ns:attr')
-      assert(err == ERR_Okay and value == "value", "Namespace attribute not preserved")
+      assert(err is ERR_Okay and value is "value", "Namespace attribute not preserved")
    end
 end
 
@@ -121,7 +121,7 @@ function testSpecialCharacters()
 
    local rootId = xml.tags[1].id
    local err, attrValue = xml.mtGetAttrib(rootId, 'attr')
-   assert(err == ERR_Okay, "Should retrieve escaped attribute")
+   assert(err is ERR_Okay, "Should retrieve escaped attribute")
    -- Note: Values should be unescaped after parsing
 end
 
@@ -145,7 +145,7 @@ function testConcurrentAccess()
       count2 = count2 + 1
    end)
 
-   assert(count1 == 3 and count2 == 3, "Concurrent access should work correctly")
+   assert(count1 is 3 and count2 is 3, "Concurrent access should work correctly")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ function testXPathEdgeCases()
    -- Test very long XPath expressions
    local longPath = '/root' .. string.rep('/item', 50)
    local err, result = xml.mtSearch(longPath)
-   assert(err == ERR_Search, "Should fail gracefully for invalid long paths")
+   assert(err is ERR_Search, "Should fail gracefully for invalid long paths")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -188,13 +188,13 @@ function testSerializationEdgeCases()
 
    -- Test serialization of various node types
    local err, serialized = xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-   assert(err == ERR_Okay, "Serialization should succeed")
+   assert(err is ERR_Okay, "Serialization should succeed")
    assert(string.len(serialized) > 0, "Serialized string should not be empty")
 
    -- Test partial serialization
    local childId = xml.tags[1].children[1].id
    local err, partialSerialized = xml.mtSerialise(childId, 0)
-   assert(err == ERR_Okay, "Partial serialization should succeed")
+   assert(err is ERR_Okay, "Partial serialization should succeed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -225,7 +225,7 @@ function testDeepNesting()
    end
 
    local err, deepId = xml.mtSearch(deepPath)
-   assert(err == ERR_Okay, "Deep XPath should succeed")
+   assert(err is ERR_Okay, "Deep XPath should succeed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ function testAttributeLimits()
 
    local rootId = xml.tags[1].id
    local err, value = xml.mtGetAttrib(rootId, 'attr50')
-   assert(err == ERR_Okay and value == 'value50', "Middle attribute should be accessible")
+   assert(err is ERR_Okay and value is 'value50', "Middle attribute should be accessible")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

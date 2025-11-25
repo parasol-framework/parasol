@@ -19,17 +19,17 @@ function testInsertXML()
 
    -- Test CHILD insertion
    local err, newId = xml.mtInsertXML(rootId, XMI_CHILD, '<inserted>At beginning</inserted>')
-   assert(err == ERR_Okay, "Failed to insert as child: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert as child: " .. mSys.GetErrorMsg(err))
 
    -- Test CHILD_END insertion
    local err, endId = xml.mtInsertXML(rootId, XMI_CHILD_END, '<inserted>At end</inserted>')
-   assert(err == ERR_Okay, "Failed to insert at child end: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert at child end: " .. mSys.GetErrorMsg(err))
 
    -- Verify structure
    local children = xml.tags[1].children
-   assert(#children == 4, "Expected 4 children after insertions, got " .. #children)
-   assert(children[1].attribs[1].name == "inserted", "First insertion failed")
-   assert(children[4].attribs[1].name == "inserted", "Last insertion failed")
+   assert(#children is 4, "Expected 4 children after insertions, got " .. #children)
+   assert(children[1].attribs[1].name is "inserted", "First insertion failed")
+   assert(children[4].attribs[1].name is "inserted", "Last insertion failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -44,17 +44,17 @@ function testInsertXMLSiblings()
 
    -- Insert before child2
    local err, prevId = xml.mtInsertXML(child2Id, XMI_PREV, '<before/>')
-   assert(err == ERR_Okay, "Failed to insert before: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert before: " .. mSys.GetErrorMsg(err))
 
    -- Insert after child2
    local err, nextId = xml.mtInsertXML(child2Id, XMI_NEXT, '<after/>')
-   assert(err == ERR_Okay, "Failed to insert after: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert after: " .. mSys.GetErrorMsg(err))
 
    -- Verify positions
    local children = xml.tags[1].children
-   assert(#children == 5, "Expected 5 children after sibling insertions")
-   assert(children[2].attribs[1].name == "before", "PREV insertion in wrong position")
-   assert(children[4].attribs[1].name == "after", "NEXT insertion in wrong position")
+   assert(#children is 5, "Expected 5 children after sibling insertions")
+   assert(children[2].attribs[1].name is "before", "PREV insertion in wrong position")
+   assert(children[4].attribs[1].name is "after", "NEXT insertion in wrong position")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -69,18 +69,18 @@ function testSetAttrib()
 
    -- Update existing attribute
    local err = xml.mtSetAttrib(rootId, XMS_UPDATE, 'existing', 'newvalue')
-   assert(err == ERR_Okay, "Failed to update existing attribute: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to update existing attribute: " .. mSys.GetErrorMsg(err))
 
    -- Add new attribute
    local err = xml.mtSetAttrib(rootId, XMS_NEW, 'newattr', 'newvalue')
-   assert(err == ERR_Okay, "Failed to add new attribute: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to add new attribute: " .. mSys.GetErrorMsg(err))
 
    -- Verify updates
    local err, value = xml.mtGetAttrib(rootId, 'existing')
-   assert(err == ERR_Okay and value == 'newvalue', "Existing attribute not updated")
+   assert(err is ERR_Okay and value is 'newvalue', "Existing attribute not updated")
 
    local err, value = xml.mtGetAttrib(rootId, 'newattr')
-   assert(err == ERR_Okay and value == 'newvalue', "New attribute not added")
+   assert(err is ERR_Okay and value is 'newvalue', "New attribute not added")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -95,15 +95,15 @@ function testSetAttribRemove()
 
    -- Remove attribute by setting value to nil
    local err = xml.mtSetAttrib(rootId, XMS_UPDATE, 'attr2', nil)
-   assert(err == ERR_Okay, "Failed to remove attribute: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to remove attribute: " .. mSys.GetErrorMsg(err))
 
    -- Verify removal
    local err, value = xml.mtGetAttrib(rootId, 'attr2')
-   assert(err == ERR_NotFound, "Attribute should have been removed")
+   assert(err is ERR_NotFound, "Attribute should have been removed")
 
    -- Verify other attributes still exist
    local err, value = xml.mtGetAttrib(rootId, 'attr1')
-   assert(err == ERR_Okay and value == 'value1', "Other attributes were affected")
+   assert(err is ERR_Okay and value is 'value1', "Other attributes were affected")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -118,11 +118,11 @@ function testInsertContent()
 
    -- Insert content as child
    local err, contentId = xml.mtInsertContent(childId, XMI_CHILD, 'Inserted content')
-   assert(err == ERR_Okay, "Failed to insert content: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert content: " .. mSys.GetErrorMsg(err))
 
    -- Verify content insertion
    local child = xml.tags[1].children[1]
-   assert(#child.children == 2, "Expected 2 content nodes after insertion")
+   assert(#child.children is 2, "Expected 2 content nodes after insertion")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -137,12 +137,12 @@ function testRemoveTag()
 
    -- Remove single tag
    local err = xml.mtRemoveTag(child2Id, 1)
-   assert(err == ERR_Okay, "Failed to remove tag: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to remove tag: " .. mSys.GetErrorMsg(err))
 
    -- Verify removal
    local children = xml.tags[1].children
-   assert(#children == 3, "Expected 3 children after removal, got " .. #children)
-   assert(children[2].attribs[1].name == "child3", "Wrong tag was removed")
+   assert(#children is 3, "Expected 3 children after removal, got " .. #children)
+   assert(children[2].attribs[1].name is "child3", "Wrong tag was removed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -157,13 +157,13 @@ function testRemoveMultipleTags()
 
    -- Remove 3 consecutive tags starting from child2
    local err = xml.mtRemoveTag(child2Id, 3)
-   assert(err == ERR_Okay, "Failed to remove multiple tags: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to remove multiple tags: " .. mSys.GetErrorMsg(err))
 
    -- Verify removal
    local children = xml.tags[1].children
-   assert(#children == 2, "Expected 2 children after multiple removal, got " .. #children)
-   assert(children[1].attribs[1].name == "child1", "First child should remain")
-   assert(children[2].attribs[1].name == "child5", "Last child should remain")
+   assert(#children is 2, "Expected 2 children after multiple removal, got " .. #children)
+   assert(children[1].attribs[1].name is "child1", "First child should remain")
+   assert(children[2].attribs[1].name is "child5", "Last child should remain")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -180,16 +180,16 @@ function testMoveTags()
 
    -- Move source1 as child of dest
    local err = xml.mtMoveTags(source1Id, 1, destId, XMI_CHILD)
-   assert(err == ERR_Okay, "Failed to move tag as child: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to move tag as child: " .. mSys.GetErrorMsg(err))
 
    -- Verify move
    local rootChildren = xml.tags[1].children
-   assert(#rootChildren == 2, "Expected 2 root children after XMI_CHILD move")
+   assert(#rootChildren is 2, "Expected 2 root children after XMI_CHILD move")
 
    local destChildren = rootChildren[2].children
-   assert(#destChildren == 2, "Expected 2 dest children after XMI_CHILD move")
-   assert(destChildren[1].attribs[1].name == "source1", "XMI_CHILD: moved tag not in correct position")
-   assert(destChildren[2].attribs[1].name == "existing", "XMI_CHILD: existing child moved incorrectly")
+   assert(#destChildren is 2, "Expected 2 dest children after XMI_CHILD move")
+   assert(destChildren[1].attribs[1].name is "source1", "XMI_CHILD: moved tag not in correct position")
+   assert(destChildren[2].attribs[1].name is "existing", "XMI_CHILD: existing child moved incorrectly")
 end
 
 function testMoveTagsChildEnd()
@@ -203,14 +203,14 @@ function testMoveTagsChildEnd()
 
    -- Move source as last child of dest
    local err = xml.mtMoveTags(sourceId, 1, destId, XMI_CHILD_END)
-   assert(err == ERR_Okay, "Failed to move tag as child end: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to move tag as child end: " .. mSys.GetErrorMsg(err))
 
    -- Verify move
    local destChildren = xml.tags[1].children[1].children
-   assert(#destChildren == 3, "Expected 3 dest children after XMI_CHILD_END move")
-   assert(destChildren[1].attribs[1].name == "child1", "XMI_CHILD_END: first child moved incorrectly")
-   assert(destChildren[2].attribs[1].name == "child2", "XMI_CHILD_END: second child moved incorrectly")
-   assert(destChildren[3].attribs[1].name == "source", "XMI_CHILD_END: moved tag not at end")
+   assert(#destChildren is 3, "Expected 3 dest children after XMI_CHILD_END move")
+   assert(destChildren[1].attribs[1].name is "child1", "XMI_CHILD_END: first child moved incorrectly")
+   assert(destChildren[2].attribs[1].name is "child2", "XMI_CHILD_END: second child moved incorrectly")
+   assert(destChildren[3].attribs[1].name is "source", "XMI_CHILD_END: moved tag not at end")
 end
 
 function testMoveTagsPrev()
@@ -224,14 +224,14 @@ function testMoveTagsPrev()
 
    -- Move source before target
    local err = xml.mtMoveTags(sourceId, 1, targetId, XMI_PREV)
-   assert(err == ERR_Okay, "Failed to move tag as previous: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to move tag as previous: " .. mSys.GetErrorMsg(err))
 
    -- Verify move - source should now be before target
    local rootChildren = xml.tags[1].children
-   assert(#rootChildren == 3, "Expected 3 root children after XMI_PREV move")
-   assert(rootChildren[1].attribs[1].name == "source", "XMI_PREV: moved tag not in correct position")
-   assert(rootChildren[2].attribs[1].name == "target", "XMI_PREV: target tag moved incorrectly")
-   assert(rootChildren[3].attribs[1].name == "other", "XMI_PREV: other tag moved incorrectly")
+   assert(#rootChildren is 3, "Expected 3 root children after XMI_PREV move")
+   assert(rootChildren[1].attribs[1].name is "source", "XMI_PREV: moved tag not in correct position")
+   assert(rootChildren[2].attribs[1].name is "target", "XMI_PREV: target tag moved incorrectly")
+   assert(rootChildren[3].attribs[1].name is "other", "XMI_PREV: other tag moved incorrectly")
 end
 
 function testMoveTagsNext()
@@ -245,14 +245,14 @@ function testMoveTagsNext()
 
    -- Move source after target
    local err = xml.mtMoveTags(sourceId, 1, targetId, XMI_NEXT)
-   assert(err == ERR_Okay, "Failed to move tag as next: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to move tag as next: " .. mSys.GetErrorMsg(err))
 
    -- Verify move - source should now be after target
    local rootChildren = xml.tags[1].children
-   assert(#rootChildren == 3, "Expected 3 root children after XMI_NEXT move")
-   assert(rootChildren[1].attribs[1].name == "other", "XMI_NEXT: other tag moved incorrectly")
-   assert(rootChildren[2].attribs[1].name == "target", "XMI_NEXT: target tag moved incorrectly")
-   assert(rootChildren[3].attribs[1].name == "source", "XMI_NEXT: moved tag not in correct position")
+   assert(#rootChildren is 3, "Expected 3 root children after XMI_NEXT move")
+   assert(rootChildren[1].attribs[1].name is "other", "XMI_NEXT: other tag moved incorrectly")
+   assert(rootChildren[2].attribs[1].name is "target", "XMI_NEXT: target tag moved incorrectly")
+   assert(rootChildren[3].attribs[1].name is "source", "XMI_NEXT: moved tag not in correct position")
 end
 
 function testMoveMultipleTags()
@@ -266,18 +266,18 @@ function testMoveMultipleTags()
 
    -- Move 3 consecutive tags starting from source1 as children of dest
    local err = xml.mtMoveTags(source1Id, 3, destId, XMI_CHILD)
-   assert(err == ERR_Okay, "Failed to move multiple tags: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to move multiple tags: " .. mSys.GetErrorMsg(err))
 
    -- Verify move
    local rootChildren = xml.tags[1].children
-   assert(#rootChildren == 1, "Expected 1 root child after moving multiple tags")
+   assert(#rootChildren is 1, "Expected 1 root child after moving multiple tags")
 
    local destChildren = rootChildren[1].children
-   assert(#destChildren == 4, "Expected 4 dest children after moving multiple tags")
-   assert(destChildren[1].attribs[1].name == "source1", "Multiple move: first moved tag not in correct position")
-   assert(destChildren[2].attribs[1].name == "source2", "Multiple move: second moved tag not in correct position")
-   assert(destChildren[3].attribs[1].name == "source3", "Multiple move: third moved tag not in correct position")
-   assert(destChildren[4].attribs[1].name == "existing", "Multiple move: existing child moved incorrectly")
+   assert(#destChildren is 4, "Expected 4 dest children after moving multiple tags")
+   assert(destChildren[1].attribs[1].name is "source1", "Multiple move: first moved tag not in correct position")
+   assert(destChildren[2].attribs[1].name is "source2", "Multiple move: second moved tag not in correct position")
+   assert(destChildren[3].attribs[1].name is "source3", "Multiple move: third moved tag not in correct position")
+   assert(destChildren[4].attribs[1].name is "existing", "Multiple move: existing child moved incorrectly")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -290,15 +290,15 @@ function testInsertXPath()
 
    -- Insert using XPath
    local err, newId = xml.mtInsertXPath('/root/section[@name="target"]', XMI_CHILD, '<newitem/>')
-   assert(err == ERR_Okay, "Failed to insert via XPath: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to insert via XPath: " .. mSys.GetErrorMsg(err))
 
    -- Verify insertion
    local err, targetId = xml.mtSearch('/root/section[@name="target"]')
-   assert(err == ERR_Okay, "Failed to find target section")
+   assert(err is ERR_Okay, "Failed to find target section")
 
    local err, targetTag = xml.mtGetTag(targetId)
-   assert(err == ERR_Okay, "Failed to get target tag")
-   assert(#targetTag.children == 2, "Expected 2 children after XPath insertion")
+   assert(err is ERR_Okay, "Failed to get target tag")
+   assert(#targetTag.children is 2, "Expected 2 children after XPath insertion")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -394,7 +394,7 @@ function testTernaryAsFunctionArgument()
    end
    local v = process(true ? 5 :> 10)
    assert(v is 10, "Failed ternary as function argument: expected 10, got " .. tostring(v))
-   
+
    local function myFunc(value)
       return value
    end
@@ -478,6 +478,12 @@ function testInvalidTernary()
    assert(string.find(script.errorString, 'Unexpected Token') != nil, "Expected invalid token error, got: " .. tostring(script.errorString))
 end
 
+function testConditionsInTernary()
+   local test_val = true
+   local result = test_val ? (1 < 2) :> (1 > 2)
+   assert(result is true, "Expected true, got " .. tostring(result))
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -514,6 +520,7 @@ return {
       -- Function arguments and table constructors
       'testTernaryAsFunctionArgument', 'testTernaryInTableConstructor',
       -- Interaction with other operators
-      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction', 'testInvalidTernary', 'testEmbeddedConcat'
+      'testTernaryWithOrQuestionOperator', 'testConcat', 'testInFunction', 'testInvalidTernary', 'testEmbeddedConcat',
+      'testConditionsInTernary'
    }
 }

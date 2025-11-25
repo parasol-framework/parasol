@@ -9,20 +9,20 @@ function testNumericConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, infValue = xml.mtEvaluate("xs:double('INF')")
-   assert(err == ERR_Okay, 'xs:double should accept INF token: ' .. mSys.GetErrorMsg(err))
-   assert(infValue == 'Infinity', 'xs:double(\'INF\') should return Infinity, got: ' .. nz(infValue, 'NIL'))
+   assert(err is ERR_Okay, 'xs:double should accept INF token: ' .. mSys.GetErrorMsg(err))
+   assert(infValue is 'Infinity', 'xs:double(\'INF\') should return Infinity, got: ' .. nz(infValue, 'NIL'))
 
    local err2, negInfValue = xml.mtEvaluate("xs:double('-INF')")
-   assert(err2 == ERR_Okay, 'xs:double should accept -INF token: ' .. mSys.GetErrorMsg(err2))
-   assert(negInfValue == '-Infinity', 'xs:double(\'-INF\') should return -Infinity, got: ' .. nz(negInfValue, 'NIL'))
+   assert(err2 is ERR_Okay, 'xs:double should accept -INF token: ' .. mSys.GetErrorMsg(err2))
+   assert(negInfValue is '-Infinity', 'xs:double(\'-INF\') should return -Infinity, got: ' .. nz(negInfValue, 'NIL'))
 
    local err3, nanValue = xml.mtEvaluate("xs:double('NaN')")
-   assert(err3 == ERR_Okay, 'xs:double should accept NaN token: ' .. mSys.GetErrorMsg(err3))
-   assert(nanValue == 'NaN', 'xs:double(\'NaN\') should return NaN, got: ' .. nz(nanValue, 'NIL'))
+   assert(err3 is ERR_Okay, 'xs:double should accept NaN token: ' .. mSys.GetErrorMsg(err3))
+   assert(nanValue is 'NaN', 'xs:double(\'NaN\') should return NaN, got: ' .. nz(nanValue, 'NIL'))
 
    local err4, floatEquality = xml.mtEvaluate("xs:float('1.23E4') = 12300")
-   assert(err4 == ERR_Okay, 'xs:float should parse scientific notation: ' .. mSys.GetErrorMsg(err4))
-   assert(floatEquality == 'true', 'xs:float(\'1.23E4\') should equal 12300, got: ' .. nz(floatEquality, 'NIL'))
+   assert(err4 is ERR_Okay, 'xs:float should parse scientific notation: ' .. mSys.GetErrorMsg(err4))
+   assert(floatEquality is 'true', 'xs:float(\'1.23E4\') should equal 12300, got: ' .. nz(floatEquality, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -32,25 +32,25 @@ function testBooleanAndTemporalConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, booleanValue = xml.mtEvaluate('xs:boolean(1)')
-   assert(err == ERR_Okay, 'xs:boolean should accept numeric operands: ' .. mSys.GetErrorMsg(err))
-   assert(booleanValue == 'true', 'xs:boolean(1) should return true, got: ' .. nz(booleanValue, 'NIL'))
+   assert(err is ERR_Okay, 'xs:boolean should accept numeric operands: ' .. mSys.GetErrorMsg(err))
+   assert(booleanValue is 'true', 'xs:boolean(1) should return true, got: ' .. nz(booleanValue, 'NIL'))
 
    local err2, canonicalDate = xml.mtEvaluate("xs:date('2025-03-16Z')")
-   assert(err2 == ERR_Okay, 'xs:date should accept canonical lexical forms: ' .. mSys.GetErrorMsg(err2))
-   assert(canonicalDate == '2025-03-16Z', 'xs:date should preserve explicit timezone offsets, got: ' .. nz(canonicalDate, 'NIL'))
+   assert(err2 is ERR_Okay, 'xs:date should accept canonical lexical forms: ' .. mSys.GetErrorMsg(err2))
+   assert(canonicalDate is '2025-03-16Z', 'xs:date should preserve explicit timezone offsets, got: ' .. nz(canonicalDate, 'NIL'))
 
    local err3, canonicalDateTime = xml.mtEvaluate("xs:dateTime('2025-03-16T12:34:56-05:00')")
-   assert(err3 == ERR_Okay, 'xs:dateTime should accept negative timezone offsets: ' .. mSys.GetErrorMsg(err3))
-   assert(canonicalDateTime == '2025-03-16T12:34:56-05:00',
+   assert(err3 is ERR_Okay, 'xs:dateTime should accept negative timezone offsets: ' .. mSys.GetErrorMsg(err3))
+   assert(canonicalDateTime is '2025-03-16T12:34:56-05:00',
       'xs:dateTime should retain supplied timezone offsets, got: ' .. nz(canonicalDateTime, 'NIL'))
 
    local err4, canonicalTime = xml.mtEvaluate("xs:time('06:30:00Z')")
-   assert(err4 == ERR_Okay, 'xs:time should accept canonical lexical forms: ' .. mSys.GetErrorMsg(err4))
-   assert(canonicalTime == '06:30:00Z', 'xs:time should preserve lexical values, got: ' .. nz(canonicalTime, 'NIL'))
+   assert(err4 is ERR_Okay, 'xs:time should accept canonical lexical forms: ' .. mSys.GetErrorMsg(err4))
+   assert(canonicalTime is '06:30:00Z', 'xs:time should preserve lexical values, got: ' .. nz(canonicalTime, 'NIL'))
 
    local err5, durationValue = xml.mtEvaluate("xs:duration('P2DT3H4M')")
-   if err5 == ERR_Okay then
-      assert(durationValue == 'P2DT3H4M', 'xs:duration should preserve the canonical lexical string, got: ' .. nz(durationValue, 'NIL'))
+   if err5 is ERR_Okay then
+      assert(durationValue is 'P2DT3H4M', 'xs:duration should preserve the canonical lexical string, got: ' .. nz(durationValue, 'NIL'))
    else
       local message = string.lower(nz(xml.errorMsg, ''))
       assert(string.find(message, 'xpst0051', 1, true),
@@ -58,7 +58,7 @@ function testBooleanAndTemporalConstructors()
    end
 
    local err6, projectedDate = xml.mtEvaluate('string(xs:date(current-dateTime()))')
-   assert(err6 == ERR_Okay, 'xs:date(current-dateTime()) should be valid: ' .. mSys.GetErrorMsg(err6))
+   assert(err6 is ERR_Okay, 'xs:date(current-dateTime()) should be valid: ' .. mSys.GetErrorMsg(err6))
    assert(string.len(nz(projectedDate, '')) > 0,
       'xs:date(current-dateTime()) should yield a lexical value, got: ' .. nz(projectedDate, 'NIL'))
 end
@@ -70,8 +70,8 @@ function testConstructorNodeAtomisation()
    local xml = obj.new('xml', { statement = '<root><value>42</value></root>' })
 
    local err, intValue = xml.mtEvaluate('xs:int(/root/value)')
-   assert(err == ERR_Okay, 'xs:int should accept a singleton node-set: ' .. mSys.GetErrorMsg(err))
-   assert(intValue == '42', 'xs:int on a singleton node-set should yield the textual value, got: ' .. nz(intValue, 'NIL'))
+   assert(err is ERR_Okay, 'xs:int should accept a singleton node-set: ' .. mSys.GetErrorMsg(err))
+   assert(intValue is '42', 'xs:int on a singleton node-set should yield the textual value, got: ' .. nz(intValue, 'NIL'))
 
    local xmlMulti = obj.new('xml', { statement = '<root><value>1</value><value>2</value></root>' })
    local errMulti = xmlMulti.mtEvaluate('xs:int(/root/value)')
@@ -89,8 +89,8 @@ function testQNameConstructors()
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local err, qnameInstance = xml.mtEvaluate("declare namespace p='http://example.com/ns'; xs:QName('p:local') instance of xs:QName")
-   if err == ERR_Okay then
-      assert(qnameInstance == 'true', 'xs:QName with a bound prefix should return an xs:QName value, got: ' .. nz(qnameInstance, 'NIL'))
+   if err is ERR_Okay then
+      assert(qnameInstance is 'true', 'xs:QName with a bound prefix should return an xs:QName value, got: ' .. nz(qnameInstance, 'NIL'))
    else
       local message = string.lower(nz(xml.errorMsg, ''))
       assert(string.find(message, 'xpst0051', 1, true),

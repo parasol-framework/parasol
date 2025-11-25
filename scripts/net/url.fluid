@@ -101,7 +101,7 @@ end
 -- Parse query string into table of key-value pairs
 
 function url.parseQuery(queryString)
-   if not queryString or queryString == '' then return {} end
+   if not queryString or queryString is '' then return {} end
 
    local params = {}
    for pair in queryString:gmatch('[^&]+') do
@@ -131,7 +131,7 @@ end
 -- Parse query string into list of key-value pairs (preserves order and duplicates)
 
 function url.parseQueryList(queryString)
-   if not queryString or queryString == '' then return {} end
+   if not queryString or queryString is '' then return {} end
 
    local params = {}
    for pair in queryString:gmatch('[^&]+') do
@@ -160,7 +160,7 @@ function url.buildQuery(params)
    if #params > 0 then
       -- Array-like table (list of key-value pairs)
       for _, param in ipairs(params) do
-         if type(param) == 'table' and param.key then
+         if type(param) is 'table' and param.key then
             local key = url.encodePlus(tostring(param.key))
             local value = url.encodePlus(tostring(param.value or ''))
             table.insert(parts, key .. '=' .. value)
@@ -170,7 +170,7 @@ function url.buildQuery(params)
       -- Hash-like table
       for key, value in pairs(params) do
          key = url.encodePlus(tostring(key))
-         if type(value) == 'table' then
+         if type(value) is 'table' then
             -- Handle multiple values for same key
             for _, v in ipairs(value) do
                local encodedValue = url.encodePlus(tostring(v))
@@ -198,7 +198,7 @@ end
 -- Parse a URL into its components
 
 function url.parse(urlString)
-   if not urlString or urlString == '' then
+   if not urlString or urlString is '' then
       return nil, 'Empty URL string'
    end
 
@@ -234,7 +234,7 @@ function url.parse(urlString)
    end
 
    -- Handle authority (//host:port or //user:pass@host:port)
-   if remaining:sub(1, 2) == '//' then
+   if remaining:sub(1, 2) is '//' then
       remaining = remaining:sub(3) -- Remove //
 
       -- Find the end of authority (next /, ?, #, or end of string)
@@ -391,13 +391,13 @@ function url.join(baseUrl, relativeUrl)
    if not base then return relativeUrl end
 
    -- Handle fragment-only URLs
-   if relativeUrl:sub(1, 1) == '#' then
+   if relativeUrl:sub(1, 1) is '#' then
       base.fragment = relativeUrl:sub(2)
       return url.unparse(base)
    end
 
    -- Handle query-only URLs
-   if relativeUrl:sub(1, 1) == '?' then
+   if relativeUrl:sub(1, 1) is '?' then
       base.query = relativeUrl:sub(2)
       base.fragment = nil
       return url.unparse(base)
@@ -419,7 +419,7 @@ function url.join(baseUrl, relativeUrl)
    rel.auth = base.auth
 
    -- Handle absolute path
-   if rel.path and rel.path:sub(1, 1) == '/' then
+   if rel.path and rel.path:sub(1, 1) is '/' then
       return url.unparse(rel)
    end
 
@@ -441,10 +441,10 @@ function url.normalize(path)
    if not path then return '' end
 
    local segments = {}
-   local isAbsolute = path:sub(1, 1) == '/'
+   local isAbsolute = path:sub(1, 1) is '/'
 
    for segment in path:gmatch('[^/]+') do
-      if segment == '..' then
+      if segment is '..' then
          if #segments > 0 and segments[#segments] != '..' then
             table.remove(segments)
          elseif not isAbsolute then
@@ -459,7 +459,7 @@ function url.normalize(path)
    if isAbsolute then result = '/' .. result end
 
    -- Preserve trailing slash
-   if path:sub(-1) == '/' and result:sub(-1) != '/' and result != '' then
+   if path:sub(-1) is '/' and result:sub(-1) != '/' and result != '' then
       result = result .. '/'
    end
 

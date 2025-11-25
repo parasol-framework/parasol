@@ -20,7 +20,7 @@ function renderSVGToBitmap(Path)
 end
 
 function hashTestSVG(Path, ExpectedHash)
-   if ExpectedHash == -1 then return end
+   if ExpectedHash is -1 then return end
    local bmp = renderSVGToBitmap(glSVGFolder .. Path)
    local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
    if (ExpectedHash != hash) then

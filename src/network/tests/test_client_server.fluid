@@ -13,12 +13,12 @@ Client-Server Network Communications test.  Creates a server socket and then sta
    glTestCompleted = false
 
 function printableState(State)
-   if (State == NTC_CONNECTED) then return 'CONNECTED'
-   elseif (State == NTC_RESOLVING) then return 'RESOLVING'
-   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
-   elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
-   elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
-   elseif (State == NTC_MULTISTATE) then return 'MULTISTATE'
+   if (State is NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State is NTC_RESOLVING) then return 'RESOLVING'
+   elseif (State is NTC_CONNECTING) then return 'CONNECTING'
+   elseif (State is NTC_DISCONNECTED) then return 'DISCONNECTED'
+   elseif (State is NTC_HANDSHAKING) then return 'HANDSHAKING'
+   elseif (State is NTC_MULTISTATE) then return 'MULTISTATE'
    else return tostring(State) end
 end
 
@@ -48,7 +48,7 @@ function testStrToAddress()
 
    for i, addr in ipairs(validAddresses) do
       local dest = struct.new('IPAddress')
-      assert(mNet.StrToAddress(addr, dest) == ERR_Okay, 'StrToAddress should succeed for IPv6 address: ' .. addr)
+      assert(mNet.StrToAddress(addr, dest) is ERR_Okay, 'StrToAddress should succeed for IPv6 address: ' .. addr)
    end
 end
 
@@ -61,10 +61,10 @@ function testClientServer()
       name = 'Server',
       address = '127.0.0.1',
       feedback = function(Socket, Client, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[Server] Connection established to new client.')
             local err, len = Client.acWrite('Hello from the server')
-            assert(err == ERR_Okay, '[Server] Failed to send message to the client: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Server] Failed to send message to the client: ' .. mSys.GetErrorMsg(err))
          else
             print('[Server] Ignoring state ' .. printableState(State))
          end
@@ -74,7 +74,7 @@ function testClientServer()
          assert(Client, '[Server] Client parameter not defined.')
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
-         assert(err == ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
          local msg = buffer:sub(1,read_len)
          print('[Server] Received: ' .. msg)
          if (string.match(msg, 'Reply.*')) then
@@ -90,20 +90,20 @@ function testClientServer()
       name = 'Client',
       feedback = function(Socket, State)
          assert(Socket, 'Socket parameter not defined.')
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[Client] Writing hello message to the server...')
             local err, len = Socket.acWrite('Hello from the client.')
-            assert(err == ERR_Okay, '[Client] Failed to write chars, error: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Client] Failed to write chars, error: ' .. mSys.GetErrorMsg(err))
          end
       end,
       incoming = function(Socket, Script)
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
-         assert(err == ERR_Okay, '[Client] Failed to read data from the socket.')
+         assert(err is ERR_Okay, '[Client] Failed to read data from the socket.')
          print('[Client] Received: ' .. buffer:sub(1,read_len))
          print('[Client] Sending reply to server...')
          local err, len = Socket.acWrite('Reply from the client.')
-         assert(err == ERR_Okay, '[Client] Failed to send reply, error: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, '[Client] Failed to send reply, error: ' .. mSys.GetErrorMsg(err))
       end
    } )
 
@@ -111,7 +111,7 @@ function testClientServer()
 
    if (clientSocket.mtConnect('127.0.0.1', glPort) != ERR_Okay) then error('Failed to connect to server.') end
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
    assert(glTestCompleted, 'The test did not complete the steps as expected.')
 end
 
@@ -128,12 +128,12 @@ function testBasicCommunication()
       name = 'BasicTestServer',
       feedback = function(Socket, Client, State)
          print('[Server] Client state change: ' .. printableState(State))
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[Server] Client connected, sending welcome message...')
             local err, len = Client.acWrite('WELCOME:Server ready for communication')
-            assert(err == ERR_Okay, '[Server] Failed to send welcome message: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Server] Failed to send welcome message: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
-         elseif (State == NTC_DISCONNECTED) then
+         elseif (State is NTC_DISCONNECTED) then
             glTestSteps = glTestSteps + 1
             print('[Server] Client disconnected.  Step ' .. glTestSteps .. ' of ' .. glExpectedSteps)
             if (glTestSteps >= glExpectedSteps) then
@@ -145,7 +145,7 @@ function testBasicCommunication()
          local buffer = string.alloc(2048)
          local err, read_len = Client.acRead(buffer)
          if (err != ERR_Okay) then
-            if (err == ERR_Disconnected) then
+            if (err is ERR_Disconnected) then
                if not read_msg_sent then print('[Server] Client disconnected on Read()') end
                read_msg_sent = true
                return
@@ -160,7 +160,7 @@ function testBasicCommunication()
          if (string.match(msg, 'ACK:WELCOME')) then
             print('[Server] Client acknowledged welcome, requesting data...')
             local err, len = Client.acWrite('REQUEST:Send your test data')
-            assert(err == ERR_Okay, '[Server] Failed to send data request: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Server] Failed to send data request: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'DATA:')) then
@@ -168,7 +168,7 @@ function testBasicCommunication()
             glServerData = data
             print('[Server] Received data: ' .. data)
             local err, len = Client.acWrite('CONFIRM:Data received successfully')
-            assert(err == ERR_Okay, '[Server] Failed to send confirmation: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Server] Failed to send confirmation: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'COMPLETE:')) then
@@ -185,16 +185,16 @@ function testBasicCommunication()
       name = 'BasicTestClient',
       feedback = function(Socket, State)
          print('[Client] Connection state: ' .. printableState(State))
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[Client] Connected to server, waiting for welcome...')
-         elseif (State == NTC_DISCONNECTED) then
+         elseif (State is NTC_DISCONNECTED) then
             print('[Client] Disconnected from server')
          end
       end,
       incoming = function(Socket)
          local buffer = string.alloc(2048)
          local err, read_len = Socket.acRead(buffer)
-         assert(err == ERR_Okay, '[Client] Failed to read data from server: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, '[Client] Failed to read data from server: ' .. mSys.GetErrorMsg(err))
 
          local msg = buffer:sub(1, read_len)
          print('[Client] Received: ' .. msg)
@@ -202,19 +202,19 @@ function testBasicCommunication()
          if (string.match(msg, 'WELCOME:')) then
             print('[Client] Received welcome, sending acknowledgment...')
             local err, len = Socket.acWrite('ACK:WELCOME received, client ready')
-            assert(err == ERR_Okay, '[Client] Failed to send acknowledgment: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Client] Failed to send acknowledgment: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'REQUEST:')) then
             print('[Client] Received data request, sending test data...')
             glClientData = 'TestPayload123'
             local err, len = Socket.acWrite('DATA:' .. glClientData)
-            assert(err == ERR_Okay, '[Client] Failed to send data: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Client] Failed to send data: ' .. mSys.GetErrorMsg(err))
 
          elseif (string.match(msg, 'CONFIRM:')) then
             print('[Client] Server confirmed data receipt, completing test...')
             local err, len = Socket.acWrite('COMPLETE:Test finished')
-            assert(err == ERR_Okay, '[Client] Failed to send completion: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Client] Failed to send completion: ' .. mSys.GetErrorMsg(err))
             raise(ERR_Terminate)
          end
       end
@@ -222,18 +222,18 @@ function testBasicCommunication()
 
    print('[Client] Attempting connection to server...')
    local err = clientSocket.mtConnect('127.0.0.1', glPort)
-   assert(err == ERR_Okay, '[Client] Failed to connect to server: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, '[Client] Failed to connect to server: ' .. mSys.GetErrorMsg(err))
 
    -- Wait for test completion with timeout
 
    local err = proc.sleep(5)
-   assert(err == ERR_Okay, 'Test failed to complete: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Test failed to complete: ' .. mSys.GetErrorMsg(err))
 
    -- Verify test completion and data integrity
    assert(glTestSteps >= glExpectedSteps,
       'Test did not complete all steps. Expected: ' .. glExpectedSteps .. ', Actual: ' .. glTestSteps)
 
-   assert(glServerData == glClientData and glServerData != nil,
+   assert(glServerData is glClientData and glServerData != nil,
       'Data integrity check failed. Expected: ' .. nz(glClientData, 'nil') .. ', Received: ' .. nz(glServerData, 'nil'))
 
    print('Basic communication test completed successfully!')
@@ -266,7 +266,7 @@ function testConnectionStates()
       feedback = function(Socket, State)
          print('Client received state change.')
          table.insert(stateChanges, 'CLIENT_' .. printableState(State))
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             proc.signal()
          end
       end
@@ -312,8 +312,8 @@ function testConnectionTimeout()
          local elapsed = (currentTime - startTime) / 1000000.0  -- Convert to seconds
          print(string.format('[Client] State: %s after %.2fs', printableState(State), elapsed))
 
-         if (State == NTC_DISCONNECTED) then
-            if (Socket.error == ERR_TimeOut) then
+         if (State is NTC_DISCONNECTED) then
+            if (Socket.error is ERR_TimeOut) then
                connectionTimedOut = true
                proc.signal()
             end
@@ -324,7 +324,7 @@ function testConnectionTimeout()
    print(string.format('[Client] Attempting connection to %s:%d with %.1fs timeout...', testAddress, testPort, timeoutDuration))
 
    local err = clientSocket.mtConnect(testAddress, testPort, timeoutDuration)
-   assert(err == ERR_Okay, '[Client] Connect() call failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, '[Client] Connect() call failed: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
    local endTime = mSys.PreciseTime()
@@ -332,7 +332,7 @@ function testConnectionTimeout()
 
    -- Verify the timeout occurred within expected time bounds
    assert(connectionTimedOut, 'Connection timeout did not occur')
-   assert(clientSocket.error == ERR_TimeOut, 'Socket error should be ERR_TimeOut, got: ' .. mSys.GetErrorMsg(clientSocket.error))
+   assert(clientSocket.error is ERR_TimeOut, 'Socket error should be ERR_TimeOut, got: ' .. mSys.GetErrorMsg(clientSocket.error))
    assert(totalElapsed >= timeoutDuration, string.format('Timeout occurred too early: %.2fs < %.2fs', totalElapsed, timeoutDuration))
    assert(totalElapsed <= (timeoutDuration + 1.0), string.format('Timeout occurred too late: %.2fs > %.2fs', totalElapsed, timeoutDuration + 1.0))
 

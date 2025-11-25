@@ -3,7 +3,7 @@
 function testPositiveLookahead()
    local matcher = regex.new("foo(?=bar)")
    local match = matcher.search("foobar")
-   assert(match and match[1][1] == "foo", "Positive lookahead should match prefix without consuming suffix")
+   assert(match and match[1][1] is "foo", "Positive lookahead should match prefix without consuming suffix")
    assert(not matcher.test("foobaz"), "Lookahead condition should prevent mismatched suffix")
 end
 
@@ -16,7 +16,7 @@ end
 function testPositiveLookbehind()
    local matcher = regex.new("(?<=EUR)\\d+")
    local match = matcher.search("EUR250")
-   assert(match and match[1][1] == "250", "Lookbehind should capture digits following currency prefix")
+   assert(match and match[1][1] is "250", "Lookbehind should capture digits following currency prefix")
    assert(not matcher.test("USD250"), "Lookbehind should require preceding currency")
 end
 
@@ -24,13 +24,13 @@ function testNegativeLookbehind()
    local matcher = regex.new("(?<!USD)\\d+")
    assert(matcher.test("EUR99"), "Negative lookbehind should allow alternative prefix")
    local match = matcher.search("USD99")
-   assert(match[1][1] == '9', "Expected the final '9' to produce a match")
+   assert(match[1][1] is '9', "Expected the final '9' to produce a match")
 end
 
 function testLookaroundDoesNotConsume()
    local matcher = regex.new("(?<=@)([a-z]+)(?=\\.)")
    local match = matcher.search("Contact @support.example")
-   assert(match and match[1][1] == "support", "Lookarounds should not consume delimiter characters")
+   assert(match and match[1][1] is "support", "Lookarounds should not consume delimiter characters")
 end
 
 function testInvalidVariableWidthLookbehind()

@@ -29,12 +29,12 @@ end
 
 function testDocLoadsSecondaryDocument()
    local err, value = glPrimaryXML.mtEvaluate('doc("' .. glBaseFolder .. 'secondary.xml")/secondary/item[1]/@code')
-   assert(value == 'B', 'doc() should expose the first item code, got ' .. nz(value, 'NIL'))
+   assert(value is 'B', 'doc() should expose the first item code, got ' .. nz(value, 'NIL'))
 end
 
 function testDocSupportsStringUris()
    local err, value = glPrimaryXML.mtEvaluate('doc("string:<doc><item code=\'inline\'/></doc>")/doc/item/@code')
-   assert(value == 'inline', 'doc() should parse inline XML via string: URIs, got ' .. nz(value, 'NIL'))
+   assert(value is 'inline', 'doc() should parse inline XML via string: URIs, got ' .. nz(value, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -42,10 +42,10 @@ end
 
 function testDocAvailable()
    local err, available = glPrimaryXML.mtEvaluate('doc-available("' .. glBaseFolder .. 'secondary.xml")')
-   assert(available == 'true', 'doc-available() should report true for existing files')
+   assert(available is 'true', 'doc-available() should report true for existing files')
 
    local err, missing = glPrimaryXML.mtEvaluate('doc-available("' .. glBaseFolder .. 'missing.xml")')
-   assert(missing == 'false', 'doc-available() should report false for missing files')
+   assert(missing is 'false', 'doc-available() should report false for missing files')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -53,10 +53,10 @@ end
 
 function testCollectionEnumeratesFolder()
    local err, count = glPrimaryXML.mtEvaluate('count(collection("' .. glCollectionFolder .. '"))')
-   assert(tonumber(count) == 2, 'collection() should return two documents, got ' .. count)
+   assert(tonumber(count) is 2, 'collection() should return two documents, got ' .. count)
 
    local err, firstCode = glPrimaryXML.mtEvaluate('collection("' .. glCollectionFolder .. '")/doc/entry[1]/@code')
-   assert(firstCode == 'alpha', 'collection() should expose the first document entry, got ' .. nz(firstCode, 'NIL'))
+   assert(firstCode is 'alpha', 'collection() should expose the first document entry, got ' .. nz(firstCode, 'NIL'))
 end
 
 function testUriCollectionReturnsPaths()
@@ -69,20 +69,20 @@ end
 
 function testUnparsedTextNormalisesNewlines()
    local err, text = glPrimaryXML.mtEvaluate('unparsed-text("' .. glTextFolder .. 'sample.txt")')
-   assert(text == 'First line\nSecond line\nThird line', 'unparsed-text() should normalise newline sequences, got ' .. nz(text, 'NIL'))
+   assert(text is 'First line\nSecond line\nThird line', 'unparsed-text() should normalise newline sequences, got ' .. nz(text, 'NIL'))
 end
 
 function testUnparsedTextAvailable()
    local err, available = glPrimaryXML.mtEvaluate('unparsed-text-available("' .. glTextFolder .. 'sample.txt")')
-   assert(available == 'true', 'unparsed-text-available() should report true for readable files')
+   assert(available is 'true', 'unparsed-text-available() should report true for readable files')
 
    local err, missing = glPrimaryXML.mtEvaluate('unparsed-text-available("' .. glTextFolder .. 'missing.txt")')
-   assert(missing == 'false', 'unparsed-text-available() should report false for missing files')
+   assert(missing is 'false', 'unparsed-text-available() should report false for missing files')
 end
 
 function testUnparsedTextLinesSplitsContent()
    local err, second = glPrimaryXML.mtEvaluate('unparsed-text-lines("' .. glTextFolder .. 'sample.txt")[2]')
-   assert(second == 'Second line', 'unparsed-text-lines() should split by linefeed, got ' .. nz(second, 'NIL'))
+   assert(second is 'Second line', 'unparsed-text-lines() should split by linefeed, got ' .. nz(second, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -90,12 +90,12 @@ end
 
 function testRootReturnsDocumentElement()
    local err, name = glPrimaryXML.mtEvaluate('name(root(/library/section[1]/book))')
-   assert(name == 'library', 'root() should return the document element, got ' .. nz(name, 'NIL'))
+   assert(name is 'library', 'root() should return the document element, got ' .. nz(name, 'NIL'))
 end
 
 function testIdrefResolvesReferencingElements()
    local err, refName = glPrimaryXML.mtEvaluate('name(idref("B")[1])')
-   assert(refName == 'section', 'idref() should return the referencing section element, got ' .. nz(refName, 'NIL'))
+   assert(refName is 'section', 'idref() should return the referencing section element, got ' .. nz(refName, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

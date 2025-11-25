@@ -29,7 +29,7 @@ glMerge = 'Ignore this\r\n[MergedGroup]\r\nHello=World\r\n'
 function newConfig()
    local cfg = obj.new('config', { })
    local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
    return cfg
 end
 
@@ -42,8 +42,8 @@ function testKeyFilter()
 
    -- Expect success
    local err, value = cfg.mtReadValue('Clean', 'Points')
-   assert(err == ERR_Okay, 'ReadInt() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == '8', 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
+   assert(err is ERR_Okay, 'ReadInt() returned ' .. mSys.GetErrorMsg(err))
+   assert(value is '8', 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
    local err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
@@ -60,8 +60,8 @@ function testGroupFilter()
 
    -- Expect success
    local err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. nz(value,'NIL'))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(value is 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
    local err, value = cfg.mtReadValue('Clean', 'Points')
@@ -75,16 +75,16 @@ function testDeleteKeyAndGroup()
    local cfg = newConfig()
 
    local err, value = cfg.mtReadValue('Clean', 'Styles')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtDeleteKey('Clean', 'Styles')
-   assert(err == ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtReadValue('Clean', 'Styles')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtDeleteGroup('Clean')
-   assert(err == ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtReadValue('Clean', 'Name')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
@@ -99,14 +99,14 @@ function testMerge()
    local err = cfg.acDataFeed(0, DATA_TEXT, glMerge, 0)
 
    local err = cfg.mtMerge(cfgMerge);
-   assert(err == ERR_Okay, 'Merge() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Merge() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtReadValue(nil, 'Styles')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtReadValue('MergedGroup', 'Hello')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == 'World', 'Expected the World, received ' .. nz(value,'NIL'))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(value is 'World', 'Expected the World, received ' .. nz(value,'NIL'))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -115,18 +115,18 @@ function testWriteValues()
    local cfg = newConfig()
 
    local err = cfg.mtWriteValue('Clean', 'New', 'Value')
-   assert(err == ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
 
    local err = cfg.mtWriteValue('NewGroup', 'fruit', 'orange')
-   assert(err == ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
 
    local err, value = cfg.mtReadValue('Clean', 'New')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == 'Value', 'Expected a Value, received ' .. nz(value,'NIL'))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(value is 'Value', 'Expected a Value, received ' .. nz(value,'NIL'))
 
    local err, value = cfg.mtReadValue('NewGroup', 'fruit')
-   assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == 'orange', 'Expected an orange, received ' .. nz(value,'NIL'))
+   assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(value is 'orange', 'Expected an orange, received ' .. nz(value,'NIL'))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -148,14 +148,14 @@ function testSorting()
    local cfg = newConfig()
 
    local err = cfg.mtSortByKey('Sort', true)
-   assert(err == ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
 
    local err, groupName = cfg.mtGetGroupFromIndex(0)
-   assert(groupName == 'Clean', 'First group is incorrect, returned ' .. groupName)
+   assert(groupName is 'Clean', 'First group is incorrect, returned ' .. groupName)
    local err, groupName = cfg.mtGetGroupFromIndex(1)
-   assert(groupName == 'Courier Sans', 'Second group is incorrect, returned ' .. groupName)
+   assert(groupName is 'Courier Sans', 'Second group is incorrect, returned ' .. groupName)
    local err, groupName = cfg.mtGetGroupFromIndex(2)
-   assert(groupName == 'Alpha', 'Third group is incorrect, returned ' .. groupName)
+   assert(groupName is 'Alpha', 'Third group is incorrect, returned ' .. groupName)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -165,14 +165,14 @@ function testSave()
    local err, value = cfg.mtDeleteGroup('Courier Sans')
    local err, value = cfg.mtDeleteGroup('Alpha')
    local file = obj.new('file', { path='temp:test-write.cfg', flags='NEW|WRITE' })
-   assert(cfg.acSaveToObject(file) == ERR_Okay, 'Failed to save config file.')
+   assert(cfg.acSaveToObject(file) is ERR_Okay, 'Failed to save config file.')
    file = nil
    collectgarbage()
 
    local file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
    local buf = string.alloc(file.size)
    local err, result = file.acRead(buf, file.size)
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
 
    local expected_output = [[
 
@@ -185,7 +185,7 @@ Sort = 3
 Styles = Bold,Bold Italic,Italic,Regular
 ]]
 
-      assert(buf:len() == expected_output:len(), 'Wrote ' .. file.size .. ' bytes, expected ' .. expected_output:len())
+      assert(buf:len() is expected_output:len(), 'Wrote ' .. file.size .. ' bytes, expected ' .. expected_output:len())
 
       for i=1,buf:len() do
          if (buf:byte(i) != expected_output:byte(i)) then

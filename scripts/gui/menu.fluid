@@ -204,13 +204,13 @@ gui.menu = function(Options)
 
       if self.popup then
          local err, cursor_x, cursor_y = mGfx.getCursorPos()
-         if err == ERR_Okay then
+         if err is ERR_Okay then
             local parent = { }
 
             local sp = surface.parent
             if sp then
                err, parentInfo = mGfx.GetSurfaceInfo(sp)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   parent.width  = parentInfo.width
                   parent.height = parentInfo.height
                   parent.absX   = parentInfo.absX
@@ -220,7 +220,7 @@ gui.menu = function(Options)
                end
             else
                local err, scrInfo = mGfx.GetDisplayInfo(0)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   parent.width  = scrInfo.width
                   parent.height = scrInfo.height
                   parent.absX   = 0
@@ -266,7 +266,7 @@ gui.menu = function(Options)
          local parent = self.parentMenu
          if parent.menuSurfaceID then
             local err, info = mGfx.GetSurfaceInfo(parent.MenuSurfaceID)
-            if err == ERR_Okay then
+            if err is ERR_Okay then
                parent.x = info.x
                parent.y = info.y
                parent.width = info.width
@@ -301,20 +301,20 @@ gui.menu = function(Options)
          -- Correct the position of the menu according to the relative vector that it is offset from.
 
          local err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
-         if err == ERR_Okay then
+         if err is ERR_Okay then
             local rel = { absX = target.absX, absY = target.absY }
             local target = { absX = 0, absY = 0, height = 4096 }
 
             if Options.target then
                local err, target = mGfx.GetSurfaceInfo(Options.target)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   target.absX   = target.absX
                   target.absY   = target.absY
                   target.height = target.height
                end
             else
                local err, display = mGfx.GetDisplayInfo(0)
-               if err == ERR_Okay then
+               if err is ERR_Okay then
                   target.height = display.height
                end
             end
@@ -344,7 +344,7 @@ gui.menu = function(Options)
    end
 
    local function highlightItem(Item)
-      if Item == self.hItem then
+      if Item is self.hItem then
          return
       elseif Item then
          if Item.lineBreak or Item.disabled then
@@ -428,14 +428,14 @@ gui.menu = function(Options)
                check(ERR_Terminate)
             end
 
-            if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
-            if Value == KEY_UP then
-            elseif Value == KEY_DOWN then
+            if bit.band(Qualifiers, KQ_PRESSED) is 0 then return end
+            if Value is KEY_UP then
+            elseif Value is KEY_DOWN then
 
-            elseif Value == KEY_RETURN then
+            elseif Value is KEY_RETURN then
 
             end
-         end) == ERR_Okay then
+         end) is ERR_Okay then
             self._subscribedKb = true
          end
       end
@@ -444,8 +444,8 @@ gui.menu = function(Options)
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
       local ev = Events
       while ev do
-         if ev.type == JET_BUTTON_1 then
-            if ev.value == 1 then
+         if ev.type is JET_BUTTON_1 then
+            if ev.value is 1 then
                if self.hItem then -- Menu item activated
                   if self.hItem.config.feedback then
                      self.hItem.config.feedback(self, self.hItem.config)
@@ -456,7 +456,7 @@ gui.menu = function(Options)
                   self.surface.acHide()
                end
             end
-         elseif ev.type == JET_ABS_XY then
+         elseif ev.type is JET_ABS_XY then
             local highlightFound = false
             for _, item in pairs(self.items) do
                if not item.lineBreak then
@@ -483,7 +483,7 @@ gui.menu = function(Options)
                   _, self.tipTimer = mSys.SubscribeTimer(self.tipDelay, timer)
                end
             end
-         elseif (ev.type == JET_CROSSED_OUT) then
+         elseif (ev.type is JET_CROSSED_OUT) then
             if self.hItem then highlightItem(nil) end
          end
 

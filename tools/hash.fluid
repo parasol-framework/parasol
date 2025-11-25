@@ -10,15 +10,15 @@
    local comment    = arg("comment")
    local hashString = arg("string")
 
-   if (pattern == nil) then
+   if (pattern is nil) then
       pattern = "#define HASH_<NAME> 0x<HASH>"
    end
 
-   if (comment == nil) then
+   if (comment is nil) then
       comment = "/* <COMMENT> */"
    end
 
-   if (hashString == nil) and (srcPath == nil) then
+   if (hashString is nil) and (srcPath is nil) then
       print("COMMAND PARAMETERS\n")
       print("input   Path to a text file that contains strings to hash (each line is hashed).")
       print("string  A string to hash, if an input file is not provided.")

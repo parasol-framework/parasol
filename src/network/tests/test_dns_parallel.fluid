@@ -17,7 +17,7 @@ end
 function name_resolved(NetLookup, Error)
    local host = nz(NetLookup.hostName,'NIL')
 
-   assert(Error == ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
+   assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
 
    local total_ips = 0
 
@@ -28,8 +28,8 @@ function name_resolved(NetLookup, Error)
    if (addresses != nil) then
       total_ips = #addresses
       for index, ip in pairs(addresses) do
-         if (ip.type == IPADDR_V4) or (ip.type == IPADDR_V6) then
-            if (ip_list == nil) then
+         if (ip.type is IPADDR_V4) or (ip.type is IPADDR_V6) then
+            if (ip_list is nil) then
                ip_list = mNet.AddressToStr(ip)
             else
                ip_list = ip_list .. ', ' .. mNet.AddressToStr(ip)
@@ -46,7 +46,7 @@ function name_resolved(NetLookup, Error)
 
    glTotalResolved = glTotalResolved + 1
 
-   if (glTotalResolved == #glDomains) then
+   if (glTotalResolved is #glDomains) then
       proc.signal() // Breaks the proc.sleep() loop
    end
 end
@@ -61,13 +61,13 @@ function testDuplication()
 
    local domains = { 'google.com', 'reddit.com' }
    function duplicate_resolved(NetLookup, Error)
-      assert(Error == ERR_Okay, 'Failed to resolve ' .. NetLookup.hostName .. ', error ' ..mSys.GetErrorMsg(Error))
+      assert(Error is ERR_Okay, 'Failed to resolve ' .. NetLookup.hostName .. ', error ' ..mSys.GetErrorMsg(Error))
 
       print('Resolved: ' .. NetLookup.hostName)
 
       resolved = resolved + 1
 
-      if (resolved == #domains * 2) then print('All domains resolved.') end
+      if (resolved is #domains * 2) then print('All domains resolved.') end
 
       proc.signal()
    end
@@ -78,14 +78,14 @@ function testDuplication()
 
       local err = nlA.mtResolveName(v)
       err = proc.sleep()
-      assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
       print('First lookup processed successfully.')
 
       local save = resolved
       err = nlB.mtResolveName(v)
-      if (save == resolved) then
+      if (save is resolved) then
          err = proc.sleep()
-         assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
       end
       print('Second lookup processed successfully.')
    end
@@ -103,7 +103,7 @@ function testNameResolutionAsync()
    end
 
    local err = proc.sleep(5.0)
-   if (err == ERR_TimeOut) then error('Name resolution timed-out.') end
+   if (err is ERR_TimeOut) then error('Name resolution timed-out.') end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ function testBlockingNameResolution()
    for k,v in pairs(glDomains) do
       local expected_total = glTotalResolved + 1
       nl.mtBlockingResolveName(v)
-      assert(expected_total == glTotalResolved, 'Name was not resolved when ResolveName() had returned')
+      assert(expected_total is glTotalResolved, 'Name was not resolved when ResolveName() had returned')
    end
 end
 
@@ -127,14 +127,14 @@ function testBlockingAddressResolution()
    local nl = obj.new('NetLookup', {
       callback = function(NetLookup, Error)
          local host = nz(NetLookup.hostName,'NIL')
-         assert(Error == ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
-         assert(host == 'dns.google', 'IP resolved to ' .. host)
+         assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
+         assert(host is 'dns.google', 'IP resolved to ' .. host)
          address_resolved = true
       end
    })
    nl.mtBlockingResolveAddress('8.8.8.8')
 
-   assert(address_resolved == true, 'Failed to resolve the IP address.')
+   assert(address_resolved is true, 'Failed to resolve the IP address.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

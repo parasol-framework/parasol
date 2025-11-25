@@ -14,18 +14,18 @@ UDP Broadcast and Multicast Test
 function testMulticastGroups()
    local multicastSocket = obj.new('netsocket', { flags = 'UDP', multicastTTL = 2 })
 
-   assert(multicastSocket.multicastTTL == 2, 'MulticastTTL not set correctly')
+   assert(multicastSocket.multicastTTL is 2, 'MulticastTTL not set correctly')
 
    -- Test joining IPv4 multicast group
    local ipv4Group = '224.1.1.1'  -- Test multicast address
    print('Testing join IPv4 multicast group: ' .. ipv4Group)
    local err = multicastSocket.mtJoinMulticastGroup(ipv4Group)
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       print('Successfully joined IPv4 multicast group')
 
       -- Test leaving the group
       err = multicastSocket.mtLeaveMulticastGroup(ipv4Group)
-      assert(err == ERR_Okay, 'Failed to leave IPv4 multicast group: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'Failed to leave IPv4 multicast group: ' .. mSys.GetErrorMsg(err))
    else
       print('IPv4 multicast join failed (may be expected in some environments): ' .. mSys.GetErrorMsg(err))
    end
@@ -33,10 +33,10 @@ function testMulticastGroups()
    -- Test joining IPv6 multicast group
    local ipv6Group = 'ff02::1'  -- All-nodes multicast
    err = multicastSocket.mtJoinMulticastGroup(ipv6Group)
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       -- Test leaving the group
       err = multicastSocket.mtLeaveMulticastGroup(ipv6Group)
-      assert(err == ERR_Okay, 'Failed to leave IPv6 multicast group: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'Failed to leave IPv6 multicast group: ' .. mSys.GetErrorMsg(err))
    else
       print('IPv6 multicast join failed (may be expected in some environments): ' .. mSys.GetErrorMsg(err))
    end
@@ -68,7 +68,7 @@ function testMulticastErrorHandling()
    })
 
    local err = tcpSocket.mtJoinMulticastGroup('224.1.1.1')
-   assert(err == ERR_NoSupport, 'Multicast should not be supported on TCP sockets')
+   assert(err is ERR_NoSupport, 'Multicast should not be supported on TCP sockets')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -81,13 +81,13 @@ function testMulticastTTL()
    for i, ttl in ipairs(ttlValues) do
       local socket = obj.new('netsocket', { flags = 'UDP', multicastTTL = ttl })
 
-      assert(socket.multicastTTL == ttl, 'MulticastTTL not set correctly for value: ' .. ttl)
+      assert(socket.multicastTTL is ttl, 'MulticastTTL not set correctly for value: ' .. ttl)
       print('MulticastTTL set correctly to: ' .. ttl)
    end
 
    -- Test TTL = 0 (should not be set, use default)
    local defaultSocket = obj.new('netsocket', { flags = 'UDP', multicastTTL = 0 })
-   assert(defaultSocket.multicastTTL == 0, 'MulticastTTL should remain 0 when not specified')
+   assert(defaultSocket.multicastTTL is 0, 'MulticastTTL should remain 0 when not specified')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -107,7 +107,7 @@ function testBroadcastLoopback()
          local buffer = string.alloc(1024)
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-         if (err == ERR_Okay and bytesRead > 0) then
+         if (err is ERR_Okay and bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[Broadcast Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
             if (string.match(msg, 'Broadcast Test')) then
@@ -126,7 +126,7 @@ function testBroadcastLoopback()
    check(mNet.StrToAddress('127.0.0.1', dest))
    dest.port = server.port
    local err, bytesSent = client.mtSendTo(dest, 'Broadcast Test Message')
-   assert(err == ERR_Okay, 'Failed to send broadcast message: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to send broadcast message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
 

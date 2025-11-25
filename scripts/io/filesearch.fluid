@@ -12,7 +12,7 @@ file.search = function(Path, Options)
    local isRegexFilter = false
 
    local function contentMatch(Path)
-      if lOptions.contentFilter == nil then
+      if lOptions.contentFilter is nil then
          return true
       end
 
@@ -23,7 +23,7 @@ file.search = function(Path, Options)
       if fl then
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
-         if (bit.bor(fl.flags, FL_LINK) != 0) and (lOptions.scanLinks == true) then
+         if (bit.bor(fl.flags, FL_LINK) != 0) and (lOptions.scanLinks is true) then
             fl.free()
             return false
          end
@@ -33,9 +33,9 @@ file.search = function(Path, Options)
          local buf = string.alloc(bytes)
          local err, totalRead = fl.acRead(buf)
 
-         while (err == ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
+         while (err is ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
             if (buf:find(lOptions.contentFilter) != nil) then return true end
-            if fl.position == fl.size then return false end
+            if fl.position is fl.size then return false end
             fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT)
             err, totalRead = fl.acRead(buf)
          end
@@ -47,7 +47,7 @@ file.search = function(Path, Options)
    local function fileMatched(Path, FileName, File)
       if lOptions.matchFeedback then
          local result = lOptions.matchFeedback(Path, FileName, File)
-         if result == ERR_Terminate then lStop = true end
+         if result is ERR_Terminate then lStop = true end
       end
    end
 
@@ -75,7 +75,7 @@ file.search = function(Path, Options)
    end
 
    local function scanPath(Path, currentDepth)
-      if currentDepth == nil then currentDepth = 0 end
+      if currentDepth is nil then currentDepth = 0 end
       msg('scanPath() ' .. nz(Path, ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
@@ -91,10 +91,10 @@ file.search = function(Path, Options)
          return obj.new('file', { src=Path, flags=flags } )
       end)
 
-      if folder == nil then return end
+      if folder is nil then return end
 
       local err, fl = folder.mtNext()
-      while (err == ERR_Okay) and (not lStop) do
+      while (err is ERR_Okay) and (not lStop) do
          count = count + 1
          processing.sleep(0)
 
@@ -114,7 +114,7 @@ file.search = function(Path, Options)
                   match = false
                end
             elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
-               if string.find(cmpName, lOptions.nameFilter) == nil then
+               if string.find(cmpName, lOptions.nameFilter) is nil then
                   match = false
                end
             elseif cmpName != lOptions.nameFilter then -- Exact string match
@@ -138,13 +138,13 @@ file.search = function(Path, Options)
                mSys.AdjustLogLevel(-ADJUST_LOG) -- Temporarily revert debug log so that child behaviour can be analysed
 
                   local result = lOptions.matchFeedback(Path, fileName, fl)
-                  if result == ERR_Terminate then lStop = true end
+                  if result is ERR_Terminate then lStop = true end
 
                mSys.AdjustLogLevel(ADJUST_LOG) -- Raise log level again
             end
          elseif lOptions.ignoreFeedback then
             local result = lOptions.ignoreFeedback(Path, fileName, fl)
-            if result == ERR_Terminate then lStop = true end
+            if result is ERR_Terminate then lStop = true end
          end
 
          err, fl = folder.mtNext()
@@ -161,7 +161,7 @@ file.search = function(Path, Options)
 
          if folder then
             local err, fl = folder.mtNext()
-            while (err == ERR_Okay) and (not lStop) do
+            while (err is ERR_Okay) and (not lStop) do
                count = count + 1
                if bit.band(fl.flags, FL_LINK) != 0 then
                   -- Do not scan symbolicly linked directories (possible recursion)
@@ -174,7 +174,7 @@ file.search = function(Path, Options)
          end
       end
 
-      if count == 0 then processing.sleep(0) end  -- Message check required if the directory was empty
+      if count is 0 then processing.sleep(0) end  -- Message check required if the directory was empty
 
       collectgarbage()
    end
@@ -203,7 +203,7 @@ file.search = function(Path, Options)
             elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
                nameMatches = (string.find(cmpName, lOptions.nameFilter) != nil)
             else
-               nameMatches = (cmpName == lOptions.nameFilter)
+               nameMatches = (cmpName is lOptions.nameFilter)
             end
          end
 
@@ -238,7 +238,7 @@ file.search = function(Path, Options)
       lOptions.minDate = minDate
    end
 
-   if type(Path) == 'table' then
+   if type(Path) is 'table' then
       for k,v in pairs(Path) do
          processPath(v)
       end

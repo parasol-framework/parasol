@@ -15,7 +15,7 @@ function testIconArchive()
    local cmp = obj.new('compression', {
       path     = 'styles:icons/Default.zip',
       feedback = function(Compression, Info)
-         if (Info.progress == 0) then
+         if (Info.progress is 0) then
             file_count = file_count + 1
          end
       end
@@ -24,12 +24,12 @@ function testIconArchive()
    if not cmp then return end -- Non-existance of the icon archive means this test is skipped
 
    local err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
-   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    err = cmp.mtDecompressFile('nature/*', 'temp:cmp_icons/')
-   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
-   assert(file_count == 5, 'Decompressed file count is ' .. file_count)
+   assert(file_count is 5, 'Decompressed file count is ' .. file_count)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ function testDecompressWild()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
    local err = cmp.mtDecompressFile('*.fluid', 'temp:')
-   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ function testCompressFolder()
       path     = 'temp:cmp_test_scripts.zip',
       flags    = '!NEW',
       feedback = function(Compression, Info)
-         if (Info.progress == 0) then
+         if (Info.progress is 0) then
             print('Compressing file #' .. Info.index .. ', Path: \"' .. nz(Info.dest, 'NIL') .. '"')
             glCompressedFiles[Info.dest] = Info
             file_count = file_count + 1
@@ -75,7 +75,7 @@ function testCompressFolder()
    } )
 
    local err = cmp.mtCompressFile('scripts:gui/', 'scripts')
-   assert(err == ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    print('Compressed ' .. file_count .. ' files.')
    glCompressedFiles['COUNT'] = file_count
@@ -89,7 +89,7 @@ function testDecompressFolder()
    local cmp = obj.new('compression', {
       path     = 'temp:cmp_test_scripts.zip',
       feedback = function(Compression, Info)
-         if (Info.progress == 0) then
+         if (Info.progress is 0) then
             file_count = file_count + 1
             if (glCompressedFiles[Info.path]) then
                glCompressedFiles[Info.path].found = true
@@ -101,8 +101,8 @@ function testDecompressFolder()
    } )
 
    local err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
-   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
-   assert(file_count == glCompressedFiles['COUNT'], 'Decompressed file count of ' .. file_count .. ' != ' .. glCompressedFiles['COUNT'])
+   assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(file_count is glCompressedFiles['COUNT'], 'Decompressed file count of ' .. file_count .. ' != ' .. glCompressedFiles['COUNT'])
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -116,17 +116,17 @@ function testStreamedCompression()
 
    glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
-      if (cmp.mtCompressStreamStart() == ERR_Okay) then
+      if (cmp.mtCompressStreamStart() is ERR_Okay) then
          local input = string.alloc(16384)
          local err = ERR_Okay
-         while (err == ERR_Okay) do
+         while (err is ERR_Okay) do
             local len
             err, len = file.acRead(input)
             if (err != ERR_Okay) or (len <= 0) then break end
             err = cmp.mtCompressStream(input, len, 'streamedOutput')
          end
 
-         if (err == ERR_Okay) then
+         if (err is ERR_Okay) then
             err = cmp.mtCompressStreamEnd('streamedOutput')
          else
             error('Inner compression loop failed.')
@@ -148,15 +148,15 @@ function testArchiveVolume()
    local cmpsrc = array.new(file_size, 'byte')
 
    local err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
-   assert(err == ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
    local cmpstr = tostring(cmpsrc)
 
    -- Big buffer test
 
    local cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
    local err, len = cmpfile.acRead(cmpbuffer)
-   assert(err == ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
-   assert(tostring(cmpbuffer) == cmpstr, "The decompressed data does not match the original file.")
+   assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
+   assert(tostring(cmpbuffer) is cmpstr, "The decompressed data does not match the original file.")
 
    -- Small buffer test
 
@@ -166,15 +166,15 @@ function testArchiveVolume()
    local cmpbuffer = ''
    repeat
       err, len = cmpfile.acRead(smallbuffer)
-      assert(err == ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
       if (len < #smallbuffer) then
          cmpbuffer = cmpbuffer .. smallbuffer.getstring(0, len)
       else
          cmpbuffer = cmpbuffer .. tostring(smallbuffer)
       end
-   until (len == 0)
+   until (len is 0)
 
-   assert(cmpbuffer == cmpstr, "The decompressed data does not match the original file.")
+   assert(cmpbuffer is cmpstr, "The decompressed data does not match the original file.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -188,19 +188,19 @@ function testStreamedDecompression()
 
    glOutFile = obj.new('file', { src='temp:gui.fluid', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
-      if (cmp.mtDecompressStreamStart() == ERR_Okay) then
+      if (cmp.mtDecompressStreamStart() is ERR_Okay) then
          local input = string.alloc(16384)
          local err = ERR_Okay
-         while (err == ERR_Okay) do
+         while (err is ERR_Okay) do
             local len
             err, len = file.acRead(input)
-            if (err == ERR_Okay) then
+            if (err is ERR_Okay) then
                if (len <= 0) then break end
                err = cmp.mtDecompressStream(input, len, 'streamedOutput')
             end
          end
 
-         if (err == ERR_Okay) then
+         if (err is ERR_Okay) then
             err = cmp.mtDecompressStreamEnd('streamedOutput')
          else
             error('Inner decompression loop failed.')

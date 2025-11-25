@@ -11,18 +11,18 @@ function testBasicNamespaceRegistration()
 
    -- Test namespace registration
    local err, nsHash = xml.mtRegisterNamespace("http://example.com/ns1")
-   assert(err == ERR_Okay, "Namespace registration should succeed")
+   assert(err is ERR_Okay, "Namespace registration should succeed")
    assert(nsHash != 0, "Namespace hash should not be zero")
 
    -- Test duplicate registration returns same hash
    local err2, nsHash2 = xml.mtRegisterNamespace("http://example.com/ns1")
-   assert(err2 == ERR_Okay, "Duplicate registration should succeed")
-   assert(nsHash == nsHash2, "Duplicate registration should return same hash")
+   assert(err2 is ERR_Okay, "Duplicate registration should succeed")
+   assert(nsHash is nsHash2, "Duplicate registration should return same hash")
 
    -- Test URI retrieval
    local err3, uri = xml.mtGetNamespaceURI(nsHash)
-   assert(err3 == ERR_Okay, "URI retrieval should succeed")
-   assert(uri == "http://example.com/ns1", "Retrieved URI should match original")
+   assert(err3 is ERR_Okay, "URI retrieval should succeed")
+   assert(uri is "http://example.com/ns1", "Retrieved URI should match original")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -38,10 +38,10 @@ function testDefaultNamespace()
    assert(#xml.tags > 0, "XML should parse successfully")
 
    local err, rootId = xml.mtSearch('/root')
-   assert(err == ERR_Okay, "Should find root tag")
+   assert(err is ERR_Okay, "Should find root tag")
 
    local err2, childId = xml.mtSearch('/root/child')
-   assert(err2 == ERR_Okay, "Should find child tag")
+   assert(err2 is ERR_Okay, "Should find child tag")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -60,10 +60,10 @@ function testPrefixedNamespaces()
    assert(#xml.tags > 0, "XML should parse successfully")
 
    local err, ns1Id = xml.mtSearch('/root/ns1:child1')
-   assert(err == ERR_Okay, "Should find ns1:child1 tag")
+   assert(err is ERR_Okay, "Should find ns1:child1 tag")
 
    local err2, ns2Id = xml.mtSearch('/root/ns2:child2')
-   assert(err2 == ERR_Okay, "Should find ns2:child2 tag")
+   assert(err2 is ERR_Okay, "Should find ns2:child2 tag")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -84,10 +84,10 @@ function testNestedScopes()
    assert(#xml.tags > 0, "XML should parse successfully")
 
    local err, tag1Id = xml.mtSearch('/root/level1/ns1:tag1')
-   assert(err == ERR_Okay, "Should find ns1:tag1 in nested scope")
+   assert(err is ERR_Okay, "Should find ns1:tag1 in nested scope")
 
    local err2, tag2Id = xml.mtSearch('/root/level1/ns2:tag2')
-   assert(err2 == ERR_Okay, "Should find ns2:tag2 in nested scope")
+   assert(err2 is ERR_Okay, "Should find ns2:tag2 in nested scope")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -108,12 +108,12 @@ function testNamespaceXPath()
 
    -- Should find namespaced items
    local err, count = xml.mtEvaluate('count(/root/ns:item)')
-   assert(err == ERR_Okay, "Count query should succeed")
-   assert(tonumber(count) == 2, "Should find 2 namespaced items")
+   assert(err is ERR_Okay, "Count query should succeed")
+   assert(tonumber(count) is 2, "Should find 2 namespaced items")
 
    -- Should find non-namespaced item
    local err2, itemId = xml.mtSearch('/root/item[@id="3"]')
-   assert(err2 == ERR_Okay, "Should find non-namespaced item")
+   assert(err2 is ERR_Okay, "Should find non-namespaced item")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -130,10 +130,10 @@ function testXPathNamespaceAliasResolution()
    assert(xml.tags, "XML should parse successfully")
 
    local err, itemId = xml.mtSearch('/root/alias:item')
-   assert(err == ERR_Okay, 'Alias prefix should resolve via namespace URI bindings: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Alias prefix should resolve via namespace URI bindings: ' .. mSys.GetErrorMsg(err))
 
    local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
-   assert(errAttrib == ERR_Okay and value == 'ns-target', 'Matched element should expose id="ns-target", got ' .. nz(value, 'NIL'))
+   assert(errAttrib is ERR_Okay and value is 'ns-target', 'Matched element should expose id="ns-target", got ' .. nz(value, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ function testSerialization()
    assert(xml.tags, "XML should parse successfully")
 
    local err, serialized = xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-   assert(err == ERR_Okay, "Serialization should succeed")
+   assert(err is ERR_Okay, "Serialization should succeed")
    assert(string.len(serialized) > 0, "Serialized string should not be empty")
 
    -- Check that namespace declarations are preserved
@@ -192,15 +192,15 @@ function testPrefixResolution()
    assert(xml.tags, "XML should parse successfully")
 
    local err, childId = xml.mtSearch('/root/test:child')
-   assert(err == ERR_Okay, "Should find prefixed child")
+   assert(err is ERR_Okay, "Should find prefixed child")
 
    local err2, nsHash = xml.mtResolvePrefix("test", childId)
-   assert(err2 == ERR_Okay, "Prefix resolution should succeed")
+   assert(err2 is ERR_Okay, "Prefix resolution should succeed")
    assert(nsHash != 0, "Resolved namespace hash should not be zero")
 
    local err3, uri = xml.mtGetNamespaceURI(nsHash)
-   assert(err3 == ERR_Okay, "URI lookup should succeed")
-   assert(uri == "http://test.example.com", "Resolved URI should match")
+   assert(err3 is ERR_Okay, "URI lookup should succeed")
+   assert(uri is "http://test.example.com", "Resolved URI should match")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ function testNamespaceValidation()
 
    -- Valid namespace should work
    local err, validId = xml.mtSearch('/root/valid:child')
-   assert(err == ERR_Okay, "Valid namespace should be found")
+   assert(err is ERR_Okay, "Valid namespace should be found")
 
    -- Invalid namespace should be handled appropriately
    -- (Specific behavior depends on validation implementation)
@@ -240,10 +240,10 @@ function testExistingNamespaceHandling()
    assert(xml.tags, "Namespace XML should parse")
 
    local err, nsId = xml.mtSearch('/root/ns:child')
-   assert(err == ERR_Okay, "Should find namespaced child")
+   assert(err is ERR_Okay, "Should find namespaced child")
 
    local err, value = xml.mtGetAttrib(nsId, 'ns:attr')
-   assert(err == ERR_Okay and value == "value", "Namespace attribute should be preserved")
+   assert(err is ERR_Okay and value is "value", "Namespace attribute should be preserved")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -265,24 +265,24 @@ function testHierarchicalResolution()
 
    -- Find the target tag
    local err, targetId = xml.mtSearch('/root/level1/level2/target')
-   assert(err == ERR_Okay, "Should find target tag")
+   assert(err is ERR_Okay, "Should find target tag")
 
    -- Test ns1 resolution from target scope (should find level2 redefinition)
    local err2, ns1Hash = xml.mtResolvePrefix("ns1", targetId)
-   assert(err2 == ERR_Okay, "Should resolve ns1 prefix")
+   assert(err2 is ERR_Okay, "Should resolve ns1 prefix")
 
    -- Verify it resolves to the level2 redefinition
    local err3, ns1URI = xml.mtGetNamespaceURI(ns1Hash)
-   assert(err3 == ERR_Okay, "Should get ns1 URI")
-   assert(ns1URI == "http://level2.example.com", "Should resolve to level2 redefinition: " .. tostring(ns1URI))
+   assert(err3 is ERR_Okay, "Should get ns1 URI")
+   assert(ns1URI is "http://level2.example.com", "Should resolve to level2 redefinition: " .. tostring(ns1URI))
 
    -- Test ns2 resolution from target scope (should find level1 definition)
    local err4, ns2Hash = xml.mtResolvePrefix("ns2", targetId)
-   assert(err4 == ERR_Okay, "Should resolve ns2 prefix")
+   assert(err4 is ERR_Okay, "Should resolve ns2 prefix")
 
    local err5, ns2URI = xml.mtGetNamespaceURI(ns2Hash)
-   assert(err5 == ERR_Okay, "Should get ns2 URI")
-   assert(ns2URI == "http://level1.example.com", "Should resolve to level1 definition: " .. tostring(ns2URI))
+   assert(err5 is ERR_Okay, "Should get ns2 URI")
+   assert(ns2URI is "http://level1.example.com", "Should resolve to level1 definition: " .. tostring(ns2URI))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -304,26 +304,26 @@ function testDefaultNamespaceHierarchy()
 
    -- Find target in level2 scope
    local err, targetId = xml.mtSearch('/root/level1/level2/target')
-   assert(err == ERR_Okay, "Should find target tag")
+   assert(err is ERR_Okay, "Should find target tag")
 
    -- Test default namespace resolution (empty prefix)
    local err2, defaultHash = xml.mtResolvePrefix("", targetId)
-   assert(err2 == ERR_Okay, "Should resolve default namespace")
+   assert(err2 is ERR_Okay, "Should resolve default namespace")
 
    local err3, defaultURI = xml.mtGetNamespaceURI(defaultHash)
-   assert(err3 == ERR_Okay, "Should get default URI")
-   assert(defaultURI == "http://default2.example.com", "Should resolve to level2 default: " .. tostring(defaultURI))
+   assert(err3 is ERR_Okay, "Should get default URI")
+   assert(defaultURI is "http://default2.example.com", "Should resolve to level2 default: " .. tostring(defaultURI))
 
    -- Find target in level1 scope (inherits root default)
    local err4, level1Id = xml.mtSearch('/root/level1')
-   assert(err4 == ERR_Okay, "Should find level1 tag")
+   assert(err4 is ERR_Okay, "Should find level1 tag")
 
    local err5, level1DefaultHash = xml.mtResolvePrefix("", level1Id)
-   assert(err5 == ERR_Okay, "Should resolve level1 default namespace")
+   assert(err5 is ERR_Okay, "Should resolve level1 default namespace")
 
    local err6, level1DefaultURI = xml.mtGetNamespaceURI(level1DefaultHash)
-   assert(err6 == ERR_Okay, "Should get level1 default URI")
-   assert(level1DefaultURI == "http://default1.example.com", "Should resolve to root default: " .. tostring(level1DefaultURI))
+   assert(err6 is ERR_Okay, "Should get level1 default URI")
+   assert(level1DefaultURI is "http://default1.example.com", "Should resolve to root default: " .. tostring(level1DefaultURI))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -338,7 +338,7 @@ function testUndefinedPrefix()
    assert(xml.tags, "XML should parse successfully")
 
    local err, childId = xml.mtSearch('/root/child')
-   assert(err == ERR_Okay, "Should find child tag")
+   assert(err is ERR_Okay, "Should find child tag")
 
    -- Try to resolve undefined prefix
    local err2, hash = xml.mtResolvePrefix("undefined", childId)
@@ -360,9 +360,9 @@ function testNamespaceScopingDuringParsing()
    -- Get the actual NamespaceID assigned to each element during parsing
    local function get_tag_namespace_id(xpath)
       local err, tagId = xml.mtSearch(xpath)
-      if err == ERR_Okay then
+      if err is ERR_Okay then
          local err2, tag = xml.mtGetTag(tagId)
-         if err2 == ERR_Okay then
+         if err2 is ERR_Okay then
             return tag.namespaceID or 0
          end
       end
@@ -376,7 +376,7 @@ function testNamespaceScopingDuringParsing()
    -- Both ns:item1 and ns:item3 should have the same NamespaceID (namespace "a")
    -- because ns:item3 should not be affected by the xmlns:ns="b" declaration in <child>
    assert(ns_item1_id and ns_item3_id, "Should find both ns:item1 and ns:item3")
-   assert(ns_item1_id == ns_item3_id, "ns:item1 and ns:item3 should have same NamespaceID (both should resolve to 'a')")
+   assert(ns_item1_id is ns_item3_id, "ns:item1 and ns:item3 should have same NamespaceID (both should resolve to 'a')")
 
    -- ns:item2 should have a different NamespaceID (namespace "b")
    assert(ns_item2_id, "Should find ns:item2")
@@ -386,7 +386,7 @@ function testNamespaceScopingDuringParsing()
    local function get_namespace_uri(namespaceId)
       if namespaceId and namespaceId != 0 then
          local err, uri = xml.mtGetNamespaceURI(namespaceId)
-         if err == ERR_Okay then
+         if err is ERR_Okay then
             return uri
          end
       end
@@ -397,9 +397,9 @@ function testNamespaceScopingDuringParsing()
    local ns_item2_uri = get_namespace_uri(ns_item2_id)
    local ns_item3_uri = get_namespace_uri(ns_item3_id)
 
-   assert(ns_item1_uri == "a", "ns:item1 should resolve to namespace 'a', got: " .. ns_item1_uri)
-   assert(ns_item2_uri == "b", "ns:item2 should resolve to namespace 'b', got: " .. ns_item2_uri)
-   assert(ns_item3_uri == "a", "ns:item3 should resolve to namespace 'a', got: " .. ns_item3_uri)
+   assert(ns_item1_uri is "a", "ns:item1 should resolve to namespace 'a', got: " .. ns_item1_uri)
+   assert(ns_item2_uri is "b", "ns:item2 should resolve to namespace 'b', got: " .. ns_item2_uri)
+   assert(ns_item3_uri is "a", "ns:item3 should resolve to namespace 'a', got: " .. ns_item3_uri)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -415,41 +415,41 @@ function testNamespaceScopingDuringResolution()
 
    -- Test prefix resolution for each element using ResolvePrefix method
    local err1, item1Id = xml.mtSearch('/root/ns:item[@id="1"]')
-   assert(err1 == ERR_Okay, "Should find first ns:item")
+   assert(err1 is ERR_Okay, "Should find first ns:item")
 
    local err2, item2Id = xml.mtSearch('/root/child/ns:item[@id="2"]')
-   assert(err2 == ERR_Okay, "Should find second ns:item")
+   assert(err2 is ERR_Okay, "Should find second ns:item")
 
    local err3, item3Id = xml.mtSearch('/root/ns:item[@id="3"]')
-   assert(err3 == ERR_Okay, "Should find third ns:item")
+   assert(err3 is ERR_Okay, "Should find third ns:item")
 
    -- Test prefix resolution from each context
    local err4, ns1Hash = xml.mtResolvePrefix("ns", item1Id)
-   assert(err4 == ERR_Okay, "Should resolve ns prefix from item1 context")
+   assert(err4 is ERR_Okay, "Should resolve ns prefix from item1 context")
 
    local err5, ns2Hash = xml.mtResolvePrefix("ns", item2Id)
-   assert(err5 == ERR_Okay, "Should resolve ns prefix from item2 context")
+   assert(err5 is ERR_Okay, "Should resolve ns prefix from item2 context")
 
    local err6, ns3Hash = xml.mtResolvePrefix("ns", item3Id)
-   assert(err6 == ERR_Okay, "Should resolve ns prefix from item3 context")
+   assert(err6 is ERR_Okay, "Should resolve ns prefix from item3 context")
 
    -- Get the actual namespace URIs
    local err7, uri1 = xml.mtGetNamespaceURI(ns1Hash)
-   assert(err7 == ERR_Okay, "Should get URI for item1 namespace")
+   assert(err7 is ERR_Okay, "Should get URI for item1 namespace")
 
    local err8, uri2 = xml.mtGetNamespaceURI(ns2Hash)
-   assert(err8 == ERR_Okay, "Should get URI for item2 namespace")
+   assert(err8 is ERR_Okay, "Should get URI for item2 namespace")
 
    local err9, uri3 = xml.mtGetNamespaceURI(ns3Hash)
-   assert(err9 == ERR_Okay, "Should get URI for item3 namespace")
+   assert(err9 is ERR_Okay, "Should get URI for item3 namespace")
 
    -- Verify correct namespace resolution
-   assert(uri1 == "a", "Item1 ns prefix should resolve to 'a', got: " .. uri1)
-   assert(uri2 == "b", "Item2 ns prefix should resolve to 'b', got: " .. uri2)
-   assert(uri3 == "a", "Item3 ns prefix should resolve to 'a', got: " .. uri3)
+   assert(uri1 is "a", "Item1 ns prefix should resolve to 'a', got: " .. uri1)
+   assert(uri2 is "b", "Item2 ns prefix should resolve to 'b', got: " .. uri2)
+   assert(uri3 is "a", "Item3 ns prefix should resolve to 'a', got: " .. uri3)
 
    -- Verify that item1 and item3 resolve to the same namespace (not affected by child's declaration)
-   assert(ns1Hash == ns3Hash, "Item1 and item3 should resolve to same namespace (both 'a')")
+   assert(ns1Hash is ns3Hash, "Item1 and item3 should resolve to same namespace (both 'a')")
    assert(ns2Hash != ns1Hash, "Item2 should resolve to different namespace ('b')")
 end
 

@@ -29,7 +29,7 @@ function resolveSDKPath(Path)
       err, sdk_path = mSys.ResolvePath(Path .. '/.git')
    end
 
-   if (err == ERR_Okay) then
+   if (err is ERR_Okay) then
       sdk_path = sdk_path:match('(.+)%.git')
    else
       local msg = ''
@@ -59,7 +59,7 @@ end
    print('Using XSLT: ' .. resolved_xsl)
 
    err, output_folder = mSys.ResolvePath(output_folder, RSF_NO_FILE_CHECK)
-   assert(err == ERR_Okay, 'Failed to resolve output path.')
+   assert(err is ERR_Okay, 'Failed to resolve output path.')
 
    mSys.CreateFolder(output_folder .. 'modules/')
    mSys.CreateFolder(output_folder .. 'classes/')
@@ -78,10 +78,10 @@ end
          local output_file = output_folder .. 'modules/' .. FileName
 
          local err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err == ERR_Okay, 'Failed to resolve: ' .. src_path)
+         assert(err is ERR_Okay, 'Failed to resolve: ' .. src_path)
 
          local err, res_output = mSys.ResolvePath(output_file, RSF_NO_FILE_CHECK)
-         assert(err == ERR_Okay, 'Failed to resolve output: ' .. output_file)
+         assert(err is ERR_Okay, 'Failed to resolve output: ' .. output_file)
 
          local parameters = '-o ' .. res_output .. ' ' .. resolved_xsl .. ' ' .. res_src_path
          msg('xsltproc ' .. parameters)
@@ -105,10 +105,10 @@ end
          local output_file = output_folder .. 'classes/' .. FileName
 
          local err, res_src_path = mSys.ResolvePath(src_path)
-         assert(err == ERR_Okay, 'Failed to resolve: ' .. src_path)
+         assert(err is ERR_Okay, 'Failed to resolve: ' .. src_path)
 
          local err, res_output = mSys.ResolvePath(output_file, RSF_NO_FILE_CHECK)
-         assert(err == ERR_Okay, 'Failed to resolve output: ' .. output_file)
+         assert(err is ERR_Okay, 'Failed to resolve output: ' .. output_file)
 
          local parameters = '-o ' .. res_output .. ' ' .. resolved_xsl .. ' ' .. res_src_path
          msg('xsltproc ' .. parameters)

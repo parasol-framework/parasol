@@ -29,7 +29,7 @@ function testBindLocalhost()
       port = port,
       feedback = function(Socket, State)
          assert(Socket, 'Socket parameter not defined.')
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             proc.signal()
          end
       end,
@@ -37,7 +37,7 @@ function testBindLocalhost()
 
    proc.sleep()
 
-   assert(client.state == NTC_CONNECTED, 'Client failed to connect from localhost')
+   assert(client.state is NTC_CONNECTED, 'Client failed to connect from localhost')
 end
 
 ------------------------------------------------------------------------------------------------------------------------

@@ -68,14 +68,14 @@ function testSetTimeFields()
    time_obj.microSecond = 456789
 
    -- Verify the values were set correctly
-   assert(time_obj.year == 2024, 'Year not set correctly')
-   assert(time_obj.month == 3, 'Month not set correctly')
-   assert(time_obj.day == 15, 'Day not set correctly')
-   assert(time_obj.hour == 14, 'Hour not set correctly')
-   assert(time_obj.minute == 30, 'Minute not set correctly')
-   assert(time_obj.second == 45, 'Second not set correctly')
-   assert(time_obj.milliSecond == 123, 'MilliSecond not set correctly')
-   assert(time_obj.microSecond == 456789, 'MicroSecond not set correctly')
+   assert(time_obj.year is 2024, 'Year not set correctly')
+   assert(time_obj.month is 3, 'Month not set correctly')
+   assert(time_obj.day is 15, 'Day not set correctly')
+   assert(time_obj.hour is 14, 'Hour not set correctly')
+   assert(time_obj.minute is 30, 'Minute not set correctly')
+   assert(time_obj.second is 45, 'Second not set correctly')
+   assert(time_obj.milliSecond is 123, 'MilliSecond not set correctly')
+   assert(time_obj.microSecond is 456789, 'MicroSecond not set correctly')
 
    print('Time fields set successfully: ' .. time_obj.year .. '-' .. string.format('%02d', time_obj.month) .. '-' .. string.format('%02d', time_obj.day) .. ' ' .. string.format('%02d', time_obj.hour) .. ':' .. string.format('%02d', time_obj.minute) .. ':' .. string.format('%02d', time_obj.second))
 end
@@ -107,9 +107,9 @@ function testConsistentQueries()
    local time_diff = math.abs(time1.systemTime - time2.systemTime)
    assert(time_diff < 10000000, 'Time difference too large between consecutive queries: ' .. tostring(time_diff) .. ' microseconds')
 
-   assert(time1.year == time2.year, 'Years should match between consecutive queries')
-   assert(time1.month == time2.month, 'Months should match between consecutive queries')
-   assert(time1.day == time2.day, 'Days should match between consecutive queries')
+   assert(time1.year is time2.year, 'Years should match between consecutive queries')
+   assert(time1.month is time2.month, 'Months should match between consecutive queries')
+   assert(time1.day is time2.day, 'Days should match between consecutive queries')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -127,12 +127,12 @@ function testLeapYearDates()
    time_obj.second = 0
 
    -- Verify the values were set correctly
-   assert(time_obj.year == 2024, 'Leap year not set correctly')
-   assert(time_obj.month == 2, 'Leap year month not set correctly')
-   assert(time_obj.day == 29, 'Leap year day (Feb 29th) not set correctly')
-   assert(time_obj.hour == 12, 'Leap year hour not set correctly')
-   assert(time_obj.minute == 0, 'Leap year minute not set correctly')
-   assert(time_obj.second == 0, 'Leap year second not set correctly')
+   assert(time_obj.year is 2024, 'Leap year not set correctly')
+   assert(time_obj.month is 2, 'Leap year month not set correctly')
+   assert(time_obj.day is 29, 'Leap year day (Feb 29th) not set correctly')
+   assert(time_obj.hour is 12, 'Leap year hour not set correctly')
+   assert(time_obj.minute is 0, 'Leap year minute not set correctly')
+   assert(time_obj.second is 0, 'Leap year second not set correctly')
 
    print('Set leap year date: ' .. time_obj.year .. '-' .. string.format('%02d', time_obj.month) .. '-' .. string.format('%02d', time_obj.day))
 end
@@ -222,7 +222,7 @@ function testSetTimeMethod()
       return time_obj.mtSetTime()
    end)
 
-   if err == ERR_Okay then
+   if err is ERR_Okay then
       -- Restore original time if setting succeeded
       time_obj.year = original_time.year
       time_obj.month = original_time.month

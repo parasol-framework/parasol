@@ -725,9 +725,9 @@ gui.toolbar = function(Options)
       self._colBreadth = self._colBreadth + (self._groupMargin*2)
    end
 
-   if Options.orientation == 'horizontal' then
+   if Options.orientation is 'horizontal' then
       self._horizontal = true
-   elseif Options.orientation == 'vertical' then
+   elseif Options.orientation is 'vertical' then
       self._horizontal = false
    end
 

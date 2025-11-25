@@ -37,20 +37,20 @@ function testMultipleConnections()
    local server = obj.new('netsocket', {
       name = 'ConcurrentServer',
       feedback = function(Socket, Client, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             glActiveClients = glActiveClients + 1
             print('[Server] Client connected. Active clients: ' .. glActiveClients)
 
             -- Send unique welcome message to each client
             local welcome = 'WELCOME:Client-' .. glActiveClients .. ':Connected'
             local err, len = Client.acWrite(welcome)
-            assert(err == ERR_Okay, '[Server] Failed to send welcome to client: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Server] Failed to send welcome to client: ' .. mSys.GetErrorMsg(err))
 
-         elseif (State == NTC_DISCONNECTED) then
+         elseif (State is NTC_DISCONNECTED) then
             glActiveClients = glActiveClients - 1
             print('[Server] Client disconnected. Active clients: ' .. glActiveClients)
 
-            if (glClientsCreated == glMaxSockets) and (glActiveClients == 0) then
+            if (glClientsCreated is glMaxSockets) and (glActiveClients is 0) then
                print('[Server] All clients disconnected, test complete')
                proc.signal()
             end
@@ -59,8 +59,8 @@ function testMultipleConnections()
       incoming = function(Socket, Client)
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
-         if (err == ERR_Disconnected) then return end
-         assert(err == ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
+         if (err is ERR_Disconnected) then return end
+         assert(err is ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
 
          local msg = buffer:sub(1, read_len)
          print('[Server] Received: ' .. msg)
@@ -71,7 +71,7 @@ function testMultipleConnections()
          -- Echo back with server prefix
          local response = 'SERVER_ECHO:' .. msg
          local err, len = Client.acWrite(response)
-         assert(err == ERR_Okay, '[Server] Failed to echo to client: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, '[Server] Failed to echo to client: ' .. mSys.GetErrorMsg(err))
       end,
       port = glPort,
       flags = 'SERVER|MULTI_CONNECT',
@@ -87,9 +87,9 @@ function testMultipleConnections()
       clients[i] = obj.new('netsocket', {
          name = 'ConcurrentClient' .. i,
          feedback = function(Socket, Client, State)
-            if (State == NTC_CONNECTED) then
+            if (State is NTC_CONNECTED) then
                print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Connected to server')
-            elseif (State == NTC_DISCONNECTED) then
+            elseif (State is NTC_DISCONNECTED) then
                print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Disconnected from server')
             end
          end,
@@ -97,7 +97,7 @@ function testMultipleConnections()
             local data = client_data[Socket.id]
             local buffer = string.alloc(1024)
             local err, read_len = Socket.acRead(buffer)
-            assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to read: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to read: ' .. mSys.GetErrorMsg(err))
 
             local msg = buffer:sub(1, read_len)
             data.messagesReceived = data.messagesReceived + 1
@@ -109,7 +109,7 @@ function testMultipleConnections()
                -- Send first test message
                local test_msg = 'CLIENT_' .. data.id .. '_MSG_1'
                local err, len = Socket.acWrite(test_msg)
-               assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
+               assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                data.messagesSent = data.messagesSent + 1
 
             elseif (string.match(msg, 'SERVER_ECHO:')) then
@@ -118,7 +118,7 @@ function testMultipleConnections()
                   data.messagesSent = data.messagesSent + 1
                   local test_msg = 'CLIENT_' .. data.id .. '_MSG_' .. data.messagesSent
                   local err, len = Socket.acWrite(test_msg)
-                  assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
+                  assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                else
                   raise(ERR_Terminate) -- Disconnect
                end
@@ -137,13 +137,13 @@ function testMultipleConnections()
    print('[Test] Connecting all ' .. glMaxSockets .. ' clients...')
    for i = 1, glMaxSockets do
       local err = clients[i].mtConnect('127.0.0.1', glPort)
-      assert(err == ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
       glClientsCreated = glClientsCreated + 1
    end
 
    -- Wait for test completion
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'Concurrent connections test failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Concurrent connections test failed: ' .. mSys.GetErrorMsg(err))
 
    -- Verify results
    print('Test Results:')
@@ -151,7 +151,7 @@ function testMultipleConnections()
    print('  Total client responses received: ' .. #glClientResponses)
 
    local expected_server_messages = glMaxSockets * glMessagesPerClient
-   assert(#glServerReceived == expected_server_messages,
+   assert(#glServerReceived is expected_server_messages,
       'Server message count mismatch. Expected: ' .. expected_server_messages .. ', Got: ' .. #glServerReceived)
 
    local expected_client_responses = glMaxSockets * (glMessagesPerClient + 1) -- +1 for welcome
@@ -176,7 +176,7 @@ function testClientLimitEnforcement()
    local server = obj.new('netsocket', {
       name = 'LimitTestServer',
       feedback = function(Socket, Client, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             successfulConnections = successfulConnections + 1
             print('[Server] Client connected. Total: ' .. successfulConnections)
          end
@@ -192,9 +192,9 @@ function testClientLimitEnforcement()
       clients[i] = obj.new('netsocket', {
          name = 'LimitTestClient' .. i,
          feedback = function(Socket, Client, State)
-            if (State == NTC_CONNECTED) then
+            if (State is NTC_CONNECTED) then
                print('[Client ' .. i .. '] Connection successful')
-            elseif (State == NTC_DISCONNECTED) then
+            elseif (State is NTC_DISCONNECTED) then
                print('[Client ' .. i .. '] Connection failed or disconnected')
             end
          end
@@ -251,7 +251,7 @@ function testConnectionIsolation()
    local server = obj.new('netsocket', {
       name = 'IsolationTestServer',
       feedback = function(Socket, Client, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[Server] Client connected, sending start message')
             -- Send unique start signal to each client
             local start_msg = 'START:' .. mSys.PreciseTime()
@@ -311,7 +311,7 @@ function testConnectionIsolation()
                else
                   print('[Client ' .. clientId .. '] All messages completed')
                   completedClients = completedClients + 1
-                  if (completedClients == clientCount) then
+                  if (completedClients is clientCount) then
                      proc.signal()
                   end
                end
@@ -329,9 +329,9 @@ function testConnectionIsolation()
 
    local err = proc.sleep()
    print('Completed Clients: ' .. completedClients .. ', Client Count: ' .. clientCount)
-   assert(err == ERR_Okay, 'Connection isolation test failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Connection isolation test failed: ' .. mSys.GetErrorMsg(err))
 
-   assert(completedClients == clientCount,
+   assert(completedClients is clientCount,
       'Not all clients completed. Expected: ' .. clientCount .. ', Completed: ' .. completedClients)
 
    print('Connection isolation test completed successfully!')

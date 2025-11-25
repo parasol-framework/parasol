@@ -30,7 +30,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    if not glConfigFile then glConfigFile = 'user:config/http_server_cfg.fluid' end
 
    if glConfigFile then
-      if mSys.AnalysePath(glConfigFile) == ERR_Okay then
+      if mSys.AnalysePath(glConfigFile) is ERR_Okay then
          loadFile(glConfigFile, glOptions)
       end
    end
@@ -45,14 +45,14 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    if arg('verbose') then
       local verbose = arg('verbose'):lower()
-      glOptions.verbose = (verbose == 'true' or verbose == '1')
+      glOptions.verbose = (verbose is 'true' or verbose is '1')
    end
 
    if arg('timeout') then glOptions.timeout = tonumber(arg('timeout')) end
 
    if arg('autoindex') then
       local autoindex = arg('autoindex'):lower()
-      glOptions.autoIndex = (autoindex == 'true' or autoindex == '1')
+      glOptions.autoIndex = (autoindex is 'true' or autoindex is '1')
    end
 
    if arg('ratelimit') then glOptions.rateLimit = tonumber(arg('ratelimit')) end
@@ -67,7 +67,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    -- Convert to absolute path
    local err, resolvedPath = mSys.ResolvePath(glOptions.folder)
-   if err == ERR_Okay and resolvedPath then
+   if err is ERR_Okay and resolvedPath then
       glOptions.folder = resolvedPath
    end
 

@@ -30,7 +30,7 @@ function testUDPBasicIPv4()
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local err, bytesRead = Socket.mtRecvFrom(sv_source, sv_buffer)
-         assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = sv_buffer:sub(1, bytesRead)
@@ -40,7 +40,7 @@ function testUDPBasicIPv4()
             -- Echo back a response
             local response = 'Hello UDP Client'
             local err, bytesSent = Socket.mtSendTo(sv_source, response)
-            assert(err == ERR_Okay, 'Server failed to send UDP response: ' .. mSys.GetErrorMsg(err))
+            assert(err is ERR_Okay, 'Server failed to send UDP response: ' .. mSys.GetErrorMsg(err))
             print('[UDP Server] Sent response: "' .. response .. '"')
             serverReceived = true
          end
@@ -52,7 +52,7 @@ function testUDPBasicIPv4()
       flags = 'UDP',
       incoming = function(Socket)
          local err, bytesRead = Socket.mtRecvFrom(cl_source, cl_buffer)
-         assert(err == ERR_Okay, 'Client failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Client failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = cl_buffer:sub(1, bytesRead)
@@ -73,8 +73,8 @@ function testUDPBasicIPv4()
    dest.port = server.port
 
    local err, bytesSent = client.mtSendTo(dest, message)
-   assert(err == ERR_Okay, 'Client failed to send UDP data: ' .. mSys.GetErrorMsg(err))
-   assert(bytesSent == string.len(message), 'Not all bytes were sent')
+   assert(err is ERR_Okay, 'Client failed to send UDP data: ' .. mSys.GetErrorMsg(err))
+   assert(bytesSent is string.len(message), 'Not all bytes were sent')
 
    proc.sleep()
 
@@ -89,9 +89,9 @@ function testUDPConfiguration()
    local udpSocket = obj.new('netsocket', { flags = 'UDP|BROADCAST', maxPacketSize = 8192, multicastTTL = 10 })
 
    assert(bit.band(udpSocket.flags, NSF_UDP) != 0, 'UDP flag not set')
-   assert(udpSocket.maxPacketSize == 8192, 'MaxPacketSize not set correctly')
-   assert(udpSocket.multicastTTL == 10, 'MulticastTTL not set')
-   assert(udpSocket.state == NTC_CONNECTED, 'UDP socket should be in CONNECTED state')
+   assert(udpSocket.maxPacketSize is 8192, 'MaxPacketSize not set correctly')
+   assert(udpSocket.multicastTTL is 10, 'MulticastTTL not set')
+   assert(udpSocket.state is NTC_CONNECTED, 'UDP socket should be in CONNECTED state')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ function testUDPPacketSizes()
          local source = struct.new('IPAddress')
 
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-         assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             print('[UDP Server] Received packet of size: ' .. bytesRead)
@@ -158,15 +158,15 @@ function testUDPPacketSizes()
    -- Test small packet
    local smallMessage = 'Small'
    local err, bytesSent = client.mtSendTo(dest, smallMessage)
-   assert(err == ERR_Okay, 'Failed to send small packet: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to send small packet: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep(0.1)  -- Brief pause
 
    -- Test medium packet (1024 bytes)
    local mediumMessage = string.rep('M', 1024)
    err, bytesSent = client.mtSendTo(dest, mediumMessage)
-   assert(err == ERR_Okay, 'Failed to send medium packet')
-   assert(bytesSent == 1024, 'Medium packet not fully sent')
+   assert(err is ERR_Okay, 'Failed to send medium packet')
+   assert(bytesSent is 1024, 'Medium packet not fully sent')
 
    proc.sleep()
 

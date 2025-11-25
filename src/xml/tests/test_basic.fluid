@@ -7,10 +7,10 @@ function testTagsArray()
    local tags = glXML.tags
 
    local expected = 2
-   assert(#tags == expected, "Expected a tag count of " .. expected)
+   assert(#tags is expected, "Expected a tag count of " .. expected)
 
    expected = 7
-   assert(#tags[2].children == expected, "Expected a child count of " .. expected .. " not " .. #tags[2].children)
+   assert(#tags[2].children is expected, "Expected a child count of " .. expected .. " not " .. #tags[2].children)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -40,10 +40,10 @@ end
 
 function testGetAttrib()
    local err, index = glXML.mtSearch("/book/function/input/param")
-   assert(err == ERR_Okay, "Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
 
    local err, value = glXML.mtGetAttrib(index, 'type')
-   assert(err == ERR_Okay, "Failed to retrieve 'type' attribute, error: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to retrieve 'type' attribute, error: " .. mSys.GetErrorMsg(err))
 
    if (value != 'struct rkFont *') then
       error("Tag type value of '" .. value .. "' was not expected.")
@@ -54,7 +54,7 @@ end
 
 function testSerialise()
    local err, str = glXML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-   assert(err == ERR_Okay, "Serialise() failed.")
+   assert(err is ERR_Okay, "Serialise() failed.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -78,14 +78,14 @@ function testLineCount()
    end
 
    local xml = obj.new("xml", { statement = xml_content })
-   assert(xml.lineNo == expected_lines, "Expected line count of " .. expected_lines .. " but got " .. xml.lineNo)
+   assert(xml.lineNo is expected_lines, "Expected line count of " .. expected_lines .. " but got " .. xml.lineNo)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 function testSort()
    local err = glXML.mtSort('/book', 'name')
-   assert(err == ERR_Okay, 'Attempt to sort failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Attempt to sort failed: ' .. mSys.GetErrorMsg(err))
 
    local first, last
    local err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
@@ -94,10 +94,10 @@ function testSort()
       if (not first) then first = func.children[1].attribs[1].value end
       last = func.children[1].attribs[1].value
    end)
-   assert(err == ERR_Okay, "FindTag() failed.")
+   assert(err is ERR_Okay, "FindTag() failed.")
 
-   assert(first == "A.FirstFunction", "List not sorted as expected.")
-   assert(last == "Z.LastFunction", "List not sorted as expected.")
+   assert(first is "A.FirstFunction", "List not sorted as expected.")
+   assert(last is "Z.LastFunction", "List not sorted as expected.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

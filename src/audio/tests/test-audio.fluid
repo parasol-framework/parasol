@@ -21,7 +21,7 @@ function testSequentialPlayback()
    local duration = snd.duration
    collectgarbage()
 
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
    time = mSys.preciseTime()
 
    proc.sleep()
@@ -40,7 +40,7 @@ function testSequentialPlayback()
    end
 
    duration = snd.duration
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback high-tone sound sample.')
    time = mSys.preciseTime()
 
    proc.sleep()
@@ -66,7 +66,7 @@ function testPan()
 
    print('Play left speaker.')
 
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
@@ -74,7 +74,7 @@ function testPan()
 
    print('Play right speaker.')
    snd.pan = 1.0
-   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() is ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
@@ -153,7 +153,7 @@ function testWaveSave()
 
    -- Save the sound as WAVE format to the temporary file
    local result = snd.acSaveToObject(output_file)
-   assert(result == ERR_Okay, 'Failed to save sound to temporary file: ' .. mSys.GetErrorMsg(result))
+   assert(result is ERR_Okay, 'Failed to save sound to temporary file: ' .. mSys.GetErrorMsg(result))
 
    -- Close the output file to ensure data is flushed
    output_file = nil
@@ -170,7 +170,7 @@ function testWaveSave()
    local original_size = original_file.size
    local saved_size = saved_file.size
 
-   assert(original_size == saved_size, 'File sizes do not match: original=' .. original_size .. ', saved=' .. saved_size)
+   assert(original_size is saved_size, 'File sizes do not match: original=' .. original_size .. ', saved=' .. saved_size)
 
    -- Compare file content in chunks
    local chunk_size = 4096
@@ -187,7 +187,7 @@ function testWaveSave()
 
       assert(original_data, 'Failed to read from original file at offset ' .. bytes_compared)
       assert(saved_data, 'Failed to read from saved file at offset ' .. bytes_compared)
-      assert(size_a == size_b, 'Read size mismatch at offset ' .. bytes_compared)
+      assert(size_a is size_b, 'Read size mismatch at offset ' .. bytes_compared)
 
       -- Compare byte by byte
       for i = 1, read_size do

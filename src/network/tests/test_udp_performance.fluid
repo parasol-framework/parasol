@@ -28,11 +28,11 @@ function testUDPHighFrequency()
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
-         if (err == ERR_Okay) and (bytesRead > 0) then
+         if (err is ERR_Okay) and (bytesRead > 0) then
             messagesReceived = messagesReceived + 1
             if (messagesReceived >= targetMessages) then
                proc.signal()
-            elseif (messagesReceived % 20 == 0) then
+            elseif (messagesReceived % 20 is 0) then
                print('[High-Freq Server] Received ' .. messagesReceived .. ' messages so far')
             end
          end
@@ -50,10 +50,10 @@ function testUDPHighFrequency()
    for i = 1, targetMessages do
       local message = 'Message #' .. i
       local err, bytesSent = client.mtSendTo(dest, message)
-      assert(err == ERR_Okay, 'Failed to send message #' .. i .. ': ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'Failed to send message #' .. i .. ': ' .. mSys.GetErrorMsg(err))
 
       -- Small delay to prevent overwhelming the system
-      if (i % 10 == 0) then
+      if (i % 10 is 0) then
          proc.sleep(0.001)  -- 1ms pause every 10 messages
       end
    end
@@ -90,7 +90,7 @@ function testUDPLargePackets()
       incoming = function(Socket)
          local buffer = string.alloc(65600)  -- Slightly larger buffer
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
-         if (err == ERR_Okay) and (bytesRead > 0) then
+         if (err is ERR_Okay) and (bytesRead > 0) then
             print('[Large Packet Server] Received packet of size: ' .. bytesRead)
             receivedSize = bytesRead
             largePacketReceived = true
@@ -113,8 +113,8 @@ function testUDPLargePackets()
       local largeMessage = string.rep('X', size)
       local err, bytesSent = client.mtSendTo(dest, largeMessage)
 
-      if (err == ERR_Okay) then
-         assert(bytesSent == size, 'Not all bytes sent for size ' .. size .. ' (sent: ' .. bytesSent .. ')')
+      if (err is ERR_Okay) then
+         assert(bytesSent is size, 'Not all bytes sent for size ' .. size .. ' (sent: ' .. bytesSent .. ')')
          print('Successfully sent ' .. size .. ' byte packet')
       else
          print('Failed to send ' .. size .. ' byte packet: ' .. mSys.GetErrorMsg(err))
@@ -155,11 +155,11 @@ function testUDPConcurrency()
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
-         if (err == ERR_Okay) and (bytesRead > 0) then
+         if (err is ERR_Okay) and (bytesRead > 0) then
             totalReceived = totalReceived + 1
             local msg = buffer:sub(1, bytesRead)
 
-            if (totalReceived % 10 == 0) then
+            if (totalReceived % 10 is 0) then
                print('[Concurrent Server] Received ' .. totalReceived .. ' messages total')
             end
 
@@ -187,7 +187,7 @@ function testUDPConcurrency()
       for msgId = 1, messagesPerClient do
          local message = 'Client' .. clientId .. '_Msg' .. msgId
          local err, bytesSent = clients[clientId].mtSendTo(dest, message)
-         assert(err == ERR_Okay, 'Client ' .. clientId .. ' failed to send message ' .. msgId)
+         assert(err is ERR_Okay, 'Client ' .. clientId .. ' failed to send message ' .. msgId)
       end
       print('Client ' .. clientId .. ' sent all ' .. messagesPerClient .. ' messages')
    end
@@ -224,9 +224,9 @@ function testUDPBufferHandling()
       local message = 'Rapid message #' .. i
       local err, bytesSent = client.mtSendTo(dest, message)  -- Non-existent server
 
-      if (err == ERR_Okay) then
+      if (err is ERR_Okay) then
          successCount = successCount + 1
-      elseif (err == ERR_BufferOverflow) then
+      elseif (err is ERR_BufferOverflow) then
          bufferOverflowCount = bufferOverflowCount + 1
       end
 
@@ -261,7 +261,7 @@ function testUDPPerformanceBenchmark()
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
-         if (err == ERR_Okay and bytesRead > 0) then
+         if (err is ERR_Okay and bytesRead > 0) then
              messagesReceived = messagesReceived + 1
          end
       end
@@ -280,12 +280,12 @@ function testUDPPerformanceBenchmark()
    while (mSys.PreciseTime() < endTime) do
       local message = 'Benchmark message ' .. messagesSent
       local err, bytesSent = client.mtSendTo(dest, message)
-      if (err == ERR_Okay) then
+      if (err is ERR_Okay) then
          messagesSent = messagesSent + 1
       end
 
       -- Brief processing break every 100 messages
-      if (messagesSent % 100 == 0) then
+      if (messagesSent % 100 is 0) then
          proc.sleep(0.1)
       end
    end

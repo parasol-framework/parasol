@@ -13,7 +13,7 @@ end
 
 function testSelectFont()
    local err, path, meta = mFont.selectFont("Noto Sans", "Regular")
-   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
    local err, path, meta = mFont.selectFont("Does Not Exist,*", "Regular")
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
@@ -24,8 +24,8 @@ end
 
 function testResolveFamily()
    local err, name = mFont.resolveFamilyName("Does Not Exist,*")
-   assert(err == ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
-   assert(name == "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")
+   assert(err is ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
+   assert(name is "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")
 end
 
 //=====================================================================================================================

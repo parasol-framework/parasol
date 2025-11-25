@@ -34,7 +34,7 @@ function testUDPTCPCoexistence()
          local buffer = string.alloc(1024)
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-         if (err == ERR_Okay) and (bytesRead > 0) then
+         if (err is ERR_Okay) and (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[UDP Server] Received: "' .. msg .. '"')
             if (string.match(msg, 'UDP Test')) then
@@ -52,17 +52,17 @@ function testUDPTCPCoexistence()
       address = '127.0.0.1',
       flags = 'SERVER',  -- TCP only
       feedback = function(Socket, Client, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[TCP Server] Client connected')
             tcpConnected = true
             local err, len = Client.acWrite('TCP Hello')
-            assert(err == ERR_Okay, 'TCP server failed to send greeting')
+            assert(err is ERR_Okay, 'TCP server failed to send greeting')
          end
       end,
       incoming = function(Socket, Client)
          local buffer = string.alloc(1024)
          local err, readLen = Client.acRead(buffer)
-         if (err == ERR_Okay and readLen > 0) then
+         if (err is ERR_Okay and readLen > 0) then
             local msg = buffer:sub(1, readLen)
             print('[TCP Server] Received: "' .. msg .. '"')
             if (string.match(msg, 'TCP Test')) then
@@ -84,7 +84,7 @@ function testUDPTCPCoexistence()
          local buffer = string.alloc(1024)
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-         if (err == ERR_Okay) and (bytesRead > 0) then
+         if (err is ERR_Okay) and (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[UDP Client] Received response: "' .. msg .. '"')
          end
@@ -96,17 +96,17 @@ function testUDPTCPCoexistence()
       address = '127.0.0.1',
       port = tcpPort,
       feedback = function(Socket, State)
-         if (State == NTC_CONNECTED) then
+         if (State is NTC_CONNECTED) then
             print('[TCP Client] Connected to server')
             local message = 'TCP Test Message'
             local err, len = Socket.acWrite(message)
-            assert(err == ERR_Okay, 'TCP client failed to send message')
+            assert(err is ERR_Okay, 'TCP client failed to send message')
          end
       end,
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local err, readLen = Socket.acRead(buffer)
-         if (err == ERR_Okay and readLen > 0) then
+         if (err is ERR_Okay and readLen > 0) then
             local msg = buffer:sub(1, readLen)
             print('[TCP Client] Received: "' .. msg .. '"')
          end
@@ -122,7 +122,7 @@ function testUDPTCPCoexistence()
    local udpMessage = 'UDP Test Message'
    print('[UDP Client] Sending: "' .. udpMessage .. '"')
    local err, bytesSent = udpClient.mtSendTo(dest, udpMessage)
-   assert(err == ERR_Okay, 'UDP client failed to send message')
+   assert(err is ERR_Okay, 'UDP client failed to send message')
 
    proc.sleep()
 
@@ -149,7 +149,7 @@ function testMixedProtocolPatterns()
             local buffer = string.alloc(256)
             local source = struct.new('IPAddress')
             local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-            if (err == ERR_Okay and bytesRead > 0) then
+            if (err is ERR_Okay and bytesRead > 0) then
                results.udp1 = true
                print('UDP Server 1 received message')
             end
@@ -161,7 +161,7 @@ function testMixedProtocolPatterns()
          address = '127.0.0.1',
          flags = 'SERVER',
          feedback = function(Socket, Client, State)
-            if (State == NTC_CONNECTED) then
+            if (State is NTC_CONNECTED) then
                results.tcp1 = true
                print('TCP Server 1 got connection')
             end
@@ -177,7 +177,7 @@ function testMixedProtocolPatterns()
             local buffer = string.alloc(256)
             local source = struct.new('IPAddress')
             local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-            if (err == ERR_Okay and bytesRead > 0) then
+            if (err is ERR_Okay and bytesRead > 0) then
                results.udp2 = true
                print('UDP Server 2 (with broadcast) received message')
             end

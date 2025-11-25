@@ -16,24 +16,24 @@ function testBasicXPath()
    local err = xq.mtSearch(xml, function(XML, TagID)
       tag_id = TagID
    end)
-   assert(err == ERR_Okay, "Failed to find target with absolute path: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to find target with absolute path: " .. mSys.GetErrorMsg(err))
 
    local err, tag = xml.mtGetTag(tag_id)
-   assert(err == ERR_Okay, "Failed to get target tag " .. tostring(tag_id))
-   assert(tag.children[1].attribs[1].value == "Found", "Target content incorrect")
+   assert(err is ERR_Okay, "Failed to get target tag " .. tostring(tag_id))
+   assert(tag.children[1].attribs[1].value is "Found", "Target content incorrect")
 
    -- Simple deep evaluation
    tag_id = nil
    xq.statement = '//root'
    local err = xq.mtEvaluate(xml)
-   assert(err == ERR_Okay, "Failed to evaluate //root: " .. mSys.GetErrorMsg(err))
-   assert(xq.resultString == 'Found', 'Target content incorrect')
+   assert(err is ERR_Okay, "Failed to evaluate //root: " .. mSys.GetErrorMsg(err))
+   assert(xq.resultString is 'Found', 'Target content incorrect')
 
    -- Simple deep search
    local count = 0
    xq.statement = '//root'
    local err = xq.mtSearch(xml, function(XML, TagID) count += 1 end)
-   assert(err == ERR_Okay and count > 0, "Failed to find //root, count " .. count .. ", error: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay and count > 0, "Failed to find //root, count " .. count .. ", error: " .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -49,13 +49,13 @@ function testAttributeMatching()
    local err, index = xml.mtSearch('/root/item[@type="book"]', function(XML, TagID, Attrib)
       bookCount = bookCount + 1
       local err, tag = xml.mtGetTag(TagID)
-      assert(err == ERR_Okay, "Failed to get book tag")
+      assert(err is ERR_Okay, "Failed to get book tag")
 
       local err, typeValue = xml.mtGetAttrib(TagID, 'type')
-      assert(err == ERR_Okay and typeValue == "book", "Book type attribute incorrect")
+      assert(err is ERR_Okay and typeValue is "book", "Book type attribute incorrect")
    end)
 
-   assert(bookCount == 2, "Expected 2 books, found " .. bookCount)
+   assert(bookCount is 2, "Expected 2 books, found " .. bookCount)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ function testAttributePredicateExistence()
 
    -- Existence predicate
    local err, id = xml.mtSearch('/root/section[@title]')
-   assert(err == ERR_Okay, "Attribute existence predicate should find a section with title")
+   assert(err is ERR_Okay, "Attribute existence predicate should find a section with title")
 
    -- Non-existing attribute should not match
    err, id = xml.mtSearch('/root/section[@missing]')
@@ -76,7 +76,7 @@ function testAttributePredicateExistence()
 
    -- Wildcard attribute name matches any attribute with given value
    err, id = xml.mtSearch('/root/section[@*="alpha"]')
-   assert(err == ERR_Okay, "Wildcard attribute name should match any attribute with value")
+   assert(err is ERR_Okay, "Wildcard attribute name should match any attribute with value")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -89,19 +89,19 @@ function testIndexedAccess()
 
    -- Test first item (1-based indexing)
    local err, firstId = xml.mtSearch('/root/item[1]')
-   assert(err == ERR_Okay, "Failed to find first item: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to find first item: " .. mSys.GetErrorMsg(err))
 
    local err, tag = xml.mtGetTag(firstId)
-   assert(err == ERR_Okay, "Failed to get first tag")
-   assert(tag.children[1].attribs[1].value == "First", "First item content incorrect")
+   assert(err is ERR_Okay, "Failed to get first tag")
+   assert(tag.children[1].attribs[1].value is "First", "First item content incorrect")
 
    -- Test third item
    local err, thirdId = xml.mtSearch('/root/item[3]')
-   assert(err == ERR_Okay, "Failed to find third item: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to find third item: " .. mSys.GetErrorMsg(err))
 
    local err, tag = xml.mtGetTag(thirdId)
-   assert(err == ERR_Okay, "Failed to get third tag")
-   assert(tag.children[1].attribs[1].value == "Third", "Third item content incorrect")
+   assert(err is ERR_Okay, "Failed to get third tag")
+   assert(tag.children[1].attribs[1].value is "Third", "Third item content incorrect")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -118,11 +118,11 @@ function testDeepScanning()
    local err, index = xml.mtSearch('//target', function(XML, TagID, Attrib)
       targetCount = targetCount + 1
       local err, idValue = xml.mtGetAttrib(TagID, 'id')
-      assert(err == ERR_Okay, "Failed to get target id")
+      assert(err is ERR_Okay, "Failed to get target id")
       table.insert(foundIds, idValue)
    end)
 
-   assert(targetCount == 2, "Expected 2 targets, found " .. targetCount)
+   assert(targetCount is 2, "Expected 2 targets, found " .. targetCount)
    assert(table.contains(foundIds, "1") and table.contains(foundIds, "2"), "Target IDs not found correctly")
 end
 
@@ -135,7 +135,7 @@ function testDeepScanMidPath()
    })
 
    local err, id = xml.mtSearch('/root//target')
-   assert(err == ERR_Okay, "/root//target failed")
+   assert(err is ERR_Okay, "/root//target failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ function testWildcardMatching()
       childCount = childCount + 1
    end)
 
-   assert(childCount == 4, "Expected 4 children, found " .. childCount)
+   assert(childCount is 4, "Expected 4 children, found " .. childCount)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -177,11 +177,11 @@ function testContentMatching()
    err, index = xml.mtSearch('/root/item[=apple*]', function(XML, TagID, Attrib)
       appleCount = appleCount + 1
    end)
-   assert(appleCount == 2, "Wildcard content matching should find 2 items, found " .. appleCount)
+   assert(appleCount is 2, "Wildcard content matching should find 2 items, found " .. appleCount)
 
    -- Square bracket predicates should also support content equality
    local bananaErr, bananaId = xml.mtSearch('/root/item[=banana]')
-   assert(bananaErr == ERR_Okay, "[=value] predicate should locate the banana item")
+   assert(bananaErr is ERR_Okay, "[=value] predicate should locate the banana item")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -194,18 +194,18 @@ function testAttributeExtraction()
 
    -- Extract title attribute value
    local err, bookId = xml.mtSearch('/root/book')
-   assert(err == ERR_Okay, "Should locate the book element for attribute extraction")
+   assert(err is ERR_Okay, "Should locate the book element for attribute extraction")
 
    local titleErr, titleValue = xml.mtGetAttrib(bookId, 'title')
-   assert(titleErr == ERR_Okay and titleValue == "Guide", "Title attribute extraction failed")
+   assert(titleErr is ERR_Okay and titleValue is "Guide", "Title attribute extraction failed")
 
    -- Extract author attribute value
    local authorErr, authorValue = xml.mtGetAttrib(bookId, 'author')
-   assert(authorErr == ERR_Okay and authorValue == "Smith", "Author attribute extraction failed")
+   assert(authorErr is ERR_Okay and authorValue is "Smith", "Author attribute extraction failed")
 
    -- Wildcard attribute name in predicate: matches any attribute value
    local err, id = xml.mtSearch('/root/book[@*="Smith"]')
-   assert(err == ERR_Okay, "Wildcard attribute name predicate should match on any attribute")
+   assert(err is ERR_Okay, "Wildcard attribute name predicate should match on any attribute")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -219,12 +219,12 @@ function testCountOperations()
    -- Count all items
    local err, temp_totalItems = xml.mtEvaluate('count(//item)')
    local totalItems = tonumber(temp_totalItems)
-   assert(totalItems == 4, "Expected 4 total items, got " .. totalItems)
+   assert(totalItems is 4, "Expected 4 total items, got " .. totalItems)
 
    -- Count items in first section
    local err, temp_firstSectionItems = xml.mtEvaluate('count(/root/section[1]/item)')
    local firstSectionItems = tonumber(temp_firstSectionItems)
-   assert(firstSectionItems == 3, "Expected 3 items in first section, got " .. firstSectionItems)
+   assert(firstSectionItems is 3, "Expected 3 items in first section, got " .. firstSectionItems)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -237,17 +237,17 @@ function testExistsOperations()
 
    -- Test element existence via XPath lookup
    local err, sectionId = xml.mtSearch('/root/section')
-   assert(err == ERR_Okay, "Section should exist")
+   assert(err is ERR_Okay, "Section should exist")
 
    local missingErr, missingId = xml.mtSearch('/root/missing')
    assert(missingErr != ERR_Okay, "Missing element should not exist")
 
    -- Test attribute existence
    local titleErr, titleValue = xml.mtGetAttrib(sectionId, 'title')
-   assert(titleErr == ERR_Okay and titleValue == "Test", "Title attribute should exist")
+   assert(titleErr is ERR_Okay and titleValue is "Test", "Title attribute should exist")
 
    local missingAttrErr, missingAttrValue = xml.mtGetAttrib(sectionId, 'missing')
-   assert(missingAttrErr == ERR_NotFound, "Missing attribute should not exist")
+   assert(missingAttrErr is ERR_NotFound, "Missing attribute should not exist")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -298,7 +298,7 @@ function testComplexExpressions()
       electronicsCount = electronicsCount + 1
    end)
 
-   assert(electronicsCount == 2, "Expected 2 electronics products, found " .. electronicsCount)
+   assert(electronicsCount is 2, "Expected 2 electronics products, found " .. electronicsCount)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -315,7 +315,7 @@ function testNamespaceSupport()
       bookCount = bookCount + 1
    end)
 
-   if err == ERR_Okay then
+   if err is ERR_Okay then
       assert(bookCount >= 0, "Namespace matching should work or gracefully fail")
    end
 end
@@ -329,10 +329,10 @@ function testNamespacePrefixedSteps()
    })
 
    local err, tagId = xml.mtSearch('/root/book:item')
-   assert(err == ERR_Okay, "Prefixed node steps should locate namespaced elements")
+   assert(err is ERR_Okay, "Prefixed node steps should locate namespaced elements")
 
    local err, title = xml.mtGetAttrib(tagId, 'title')
-   assert(err == ERR_Okay and title == 'Guide', "Namespaced element should remain addressable by prefix")
+   assert(err is ERR_Okay and title is 'Guide', "Namespaced element should remain addressable by prefix")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -345,24 +345,24 @@ function testAttributeWildcards()
 
    -- Test wildcard in attribute values (currently supported in string-based evaluator when available)
    local err, itemId = xml.mtSearch('/root/item[@type="bo*"]')
-   if err == ERR_Okay then
+   if err is ERR_Okay then
       local attrErr, typeValue = xml.mtGetAttrib(itemId, 'type')
-      assert(attrErr == ERR_Okay and typeValue == "book", "Wildcard attribute predicate should return the matching node")
+      assert(attrErr is ERR_Okay and typeValue is "book", "Wildcard attribute predicate should return the matching node")
    else
-      assert(err == ERR_Search, "Wildcard attribute predicates should fail gracefully when not implemented")
+      assert(err is ERR_Search, "Wildcard attribute predicates should fail gracefully when not implemented")
    end
 
    -- Attribute existence without a value should be accepted
    local existsErr, existsId = xml.mtSearch('/root/item[@title]')
-   assert(existsErr == ERR_Okay, "Attribute existence predicate [@title] should succeed")
+   assert(existsErr is ERR_Okay, "Attribute existence predicate [@title] should succeed")
 
    -- Attribute name wildcards (@*) should match any attribute name using the provided pattern
    local nameWildErr, titledId = xml.mtSearch('/root/item[@*="Gu*"]')
-   if nameWildErr == ERR_Okay then
+   if nameWildErr is ERR_Okay then
       local _, titleValue = xml.mtGetAttrib(titledId, 'title')
-      assert(titleValue == "Guide", "Wildcard name predicate should still point at the correct node")
+      assert(titleValue is "Guide", "Wildcard name predicate should still point at the correct node")
    else
-      assert(nameWildErr == ERR_Search, "Attribute name wildcard should fall back to a search error when unsupported")
+      assert(nameWildErr is ERR_Search, "Attribute name wildcard should fall back to a search error when unsupported")
    end
 end
 
@@ -375,10 +375,10 @@ function testFunctionPredicateNodeSets()
    })
 
    local err, rootId = xml.mtSearch('/root[count(item)=3]')
-   assert(err == ERR_Okay, "count(item)=3 predicate should evaluate with node-set arguments (bug: identifiers become literals)")
+   assert(err is ERR_Okay, "count(item)=3 predicate should evaluate with node-set arguments (bug: identifiers become literals)")
 
    local err, result = xml.mtSearch('/root[count(item)=2]')
-   assert(err == ERR_Search, "count(item)=2 predicate should not match when the function result is false")
+   assert(err is ERR_Search, "count(item)=2 predicate should not match when the function result is false")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -390,22 +390,22 @@ function testXPathFunctions()
    })
 
    local err, itemId = xml.mtSearch('/root/item[position()=2]')
-   assert(err == ERR_Okay, "/root/item[position()=2] failed")
+   assert(err is ERR_Okay, "/root/item[position()=2] failed")
 
    err, itemId = xml.mtSearch('/root/item[position()=last()]')
-   assert(err == ERR_Okay, "/root/item[position()=last()] failed")
+   assert(err is ERR_Okay, "/root/item[position()=last()] failed")
 
    err, itemId = xml.mtSearch('/root/item[last()]')
-   assert(err == ERR_Okay, "last() predicate should select the final item")
+   assert(err is ERR_Okay, "last() predicate should select the final item")
    local err2, lastTag = xml.mtGetTag(itemId)
-   assert(err2 == ERR_Okay and lastTag.children[1].attribs[1].value == '3', "last() predicate should locate the third entry")
+   assert(err2 is ERR_Okay and lastTag.children[1].attribs[1].value is '3', "last() predicate should locate the third entry")
 
    err, itemId = xml.mtSearch('/root[count(item)>2]')
-   assert(err == ERR_Okay, "count(item)>2 should succeed when AST evaluation is active")
+   assert(err is ERR_Okay, "count(item)>2 should succeed when AST evaluation is active")
    assert(itemId != 0, "count(item)>2 should return a valid node identifier")
 
    local err, itemId = xml.mtSearch('/root/item[text()="2"]')
-   assert(err == ERR_Okay, 'text()="2" failed')
+   assert(err is ERR_Okay, 'text()="2" failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -417,10 +417,10 @@ function testNumericPositionPredicates()
    })
 
    local err, secondId = xml.mtSearch('/root/item[2]')
-   assert(err == ERR_Okay, "item[2] should return the second node (bug: predicate currently hard-codes index==1)")
+   assert(err is ERR_Okay, "item[2] should return the second node (bug: predicate currently hard-codes index==1)")
 
    local err, tag = xml.mtGetTag(secondId)
-   assert(err == ERR_Okay and tag.children[1].attribs[1].value == 'Second', "item[2] should locate the 'Second' entry")
+   assert(err is ERR_Okay and tag.children[1].attribs[1].value is 'Second', "item[2] should locate the 'Second' entry")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -432,17 +432,17 @@ function testBooleanOperators()
    })
 
    local err, productId = xml.mtSearch('/root/product[@price="100" and @category="electronics"]')
-   assert(err == ERR_Okay, "'and' operator should locate the product with matching price and category")
+   assert(err is ERR_Okay, "'and' operator should locate the product with matching price and category")
    local err2, category = xml.mtGetAttrib(productId, 'category')
-   assert(err2 == ERR_Okay and category == 'electronics', "'and' operator should return the electronics product")
+   assert(err2 is ERR_Okay and category is 'electronics', "'and' operator should return the electronics product")
 
    err, productId = xml.mtSearch('/root/product[@category="books" or @category="electronics"]')
-   assert(err == ERR_Okay, "'or' operator should locate a matching product")
+   assert(err is ERR_Okay, "'or' operator should locate a matching product")
    err2, category = xml.mtGetAttrib(productId, 'category')
-   assert(err2 == ERR_Okay and category == 'electronics', "'or' operator should prioritise the first matching product")
+   assert(err2 is ERR_Okay and category is 'electronics', "'or' operator should prioritise the first matching product")
 
    err, productId = xml.mtSearch('/root/product[not(@category="books")]')
-   assert(err == ERR_Okay, "'not()' should exclude the books category and return the electronics product")
+   assert(err is ERR_Okay, "'not()' should exclude the books category and return the electronics product")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -461,7 +461,7 @@ return {
    init = function(ScriptFolder)
       table.contains = function(table, element)
          for _, value in pairs(table) do
-            if value == element then return true end
+            if value is element then return true end
          end
          return false
       end

@@ -49,7 +49,7 @@ gui.listView = function(Options)
    -- When an item is hovered, create a highlight for it.
 
    local function highlightItem(View, Item, Highlighted)
-      if Item._vectors.viewport == nil then return end
+      if Item._vectors.viewport is nil then return end
 
       if not Item._vectors.highlight then
          Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
@@ -82,7 +82,7 @@ gui.listView = function(Options)
    end
 
    local function newItems(View, Items)
-      if #Items == 0 then return end
+      if #Items is 0 then return end
 
       local width  = View.frame.width - EDGE - EDGE
       local height = View.frame.height
@@ -107,7 +107,7 @@ gui.listView = function(Options)
          -- Respond to positive item selection by the user (e.g. button click)
 
          item._selectEvent = function(View, Item)
-            if Item == View.hItem then
+            if Item is View.hItem then
                Item._highlightEvent(View, Item, true)
             else
                Item._highlightEvent(View, Item, false)
@@ -144,7 +144,7 @@ gui.listView = function(Options)
                end
 
                if gui.style.page.iconHighlight then
-                  if gui.style.page.iconHighlight == gui.style.page.icon then
+                  if gui.style.page.iconHighlight is gui.style.page.icon then
                      View.hIcons[item.icon] = item.icon
                   else
                      gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconHighlight, '_h_' .. item.icon)
@@ -178,7 +178,7 @@ gui.listView = function(Options)
 
             item._vectors.text.x = MARGIN + ICON_MARGIN
             item._vectors.text.y = LINE_OFFSET
-            if type(item_name) == 'table' then
+            if type(item_name) is 'table' then
                item._vectors.text.string = item_name.value
             else
                item._vectors.text.string = item_name
@@ -191,7 +191,7 @@ gui.listView = function(Options)
 
             if item._selected then
                item._vectors.text.fill = gui.style.page.textSelect
-            elseif item.index and (item.index == lHighlightedItem) then
+            elseif item.index and (item.index is lHighlightedItem) then
                item._vectors.text.fill = gui.style.page.textHighlight
             else
                item._vectors.text.fill = (item.colour ?? gui.style.page.text)
@@ -214,7 +214,7 @@ gui.listView = function(Options)
 
       for _, item in pairs(View.items) do
          if not item.hidden then
-            if Options.compact == 1 then
+            if Options.compact is 1 then
                View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
             else
                View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)

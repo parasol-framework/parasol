@@ -35,8 +35,8 @@ function testIPv6AddressParsing()
          local addr = struct.new('IPAddress')
          local err = mNet.StrToAddress(addr_str, addr)
 
-         if err == ERR_Okay then
-            print('    Parsed successfully as ' .. ((addr.type == IPADDR_V6) and 'IPv6' or 'IPv4'))
+         if err is ERR_Okay then
+            print('    Parsed successfully as ' .. ((addr.type is IPADDR_V6) and 'IPv6' or 'IPv4'))
 
             -- Test conversion back to string
             local result_str = mNet.AddressToStr(addr)
@@ -73,7 +73,7 @@ function testIPv6ServerBinding()
       flags = NSF_SERVER,
       feedback = function(Socket, Client, State)
          print('[Server] State change: ' .. State)
-         if State == NTC_CONNECTED and Client then
+         if State is NTC_CONNECTED and Client then
             print('[Server] Client connected from IPv6 server')
             client_connected = true
             proc.signal()
@@ -83,7 +83,7 @@ function testIPv6ServerBinding()
          if Client then
             local buffer = string.rep('\\0', 256)
             local err, bytes = Client.acRead(buffer, string.len(buffer))
-            if err == ERR_Okay and bytes > 0 then
+            if err is ERR_Okay and bytes > 0 then
                local message = string.sub(buffer, 1, bytes)
                print('[Server] Received from client: ' .. message)
 
@@ -105,7 +105,7 @@ function testIPv6ServerBinding()
       name = 'IPv6TestClient',
       feedback = function(Socket, State)
          print('[Client] State: ' .. State)
-         if State == NTC_CONNECTED then
+         if State is NTC_CONNECTED then
             print('[Client] Connected to IPv6 server')
             Socket.acWrite('Hello IPv6 World!', string.len('Hello IPv6 World!'))
          end
@@ -113,7 +113,7 @@ function testIPv6ServerBinding()
       incoming = function(Socket)
          local buffer = string.rep('\\0', 256)
          local err, bytes = Socket.acRead(buffer, string.len(buffer))
-         if err == ERR_Okay and bytes > 0 then
+         if err is ERR_Okay and bytes > 0 then
             local response = string.sub(buffer, 1, bytes)
             print('[Client] Received response: ' .. response)
             proc.signal()
@@ -128,11 +128,11 @@ function testIPv6ServerBinding()
       print('[Client] IPv6 loopback connection failed, trying IPv4: ' .. mSys.GetErrorMsg(err))
       -- Fallback to IPv4 to test dual-stack
       err = client.mtConnect('127.0.0.1', glPort)
-      assert(err == ERR_Okay, '[Client] IPv4 fallback connection failed: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, '[Client] IPv4 fallback connection failed: ' .. mSys.GetErrorMsg(err))
    end
 
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'IPv6 server test failed: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'IPv6 server test failed: ' .. mSys.GetErrorMsg(err))
    assert(server_ready, 'Server was not ready')
 
    print('IPv6 server binding test completed successfully!')
@@ -150,11 +150,11 @@ function testIPv6DNSResolution()
    local lookup = obj.new('netlookup', {
       callback = function(Lookup, Error)
          local addresses = Lookup.addresses
-         if (Error == ERR_Okay) and addresses then
+         if (Error is ERR_Okay) and addresses then
             print('[DNS] Resolved ' .. nz(Lookup.hostName,'NIL') .. ' to ' .. #addresses .. ' addresses:')
             for i, addr in ipairs(addresses) do
                local addr_str = mNet.AddressToStr(addr)
-               local type_str = (addr.type == IPADDR_V6) and 'IPv6' or 'IPv4'
+               local type_str = (addr.type is IPADDR_V6) and 'IPv6' or 'IPv4'
                print('  ' .. i .. '. ' .. (addr_str or 'unknown') .. ' (' .. type_str .. ')')
             end
          else
@@ -168,9 +168,9 @@ function testIPv6DNSResolution()
 
    -- Test resolving a hostname that should have both IPv4 and IPv6 addresses
    local err = lookup.mtResolveName('dns.google')
-   if err == ERR_Okay then
+   if err is ERR_Okay then
       local err = proc.sleep()
-      assert(err == ERR_Okay, 'DNS resolution test failed: ' .. mSys.GetErrorMsg(err))
+      assert(err is ERR_Okay, 'DNS resolution test failed: ' .. mSys.GetErrorMsg(err))
       assert(resolution_complete, 'DNS resolution did not complete')
    else
       print('[DNS] Failed to start resolution: ' .. mSys.GetErrorMsg(err))
@@ -199,9 +199,9 @@ function testIPv6Utilities()
       local addr = struct.new('IPAddress')
       local err = mNet.StrToAddress(test.addr, addr)
 
-      if err == ERR_Okay then
-         if addr.type == test.expected_type then
-            print('    Correctly identified as ' .. ((addr.type == IPADDR_V6) and 'IPv6' or 'IPv4'))
+      if err is ERR_Okay then
+         if addr.type is test.expected_type then
+            print('    Correctly identified as ' .. ((addr.type is IPADDR_V6) and 'IPv6' or 'IPv4'))
 
             -- Test round-trip conversion
             local converted = mNet.AddressToStr(addr)

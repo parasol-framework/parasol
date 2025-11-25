@@ -24,7 +24,7 @@ function signFiles(destPath)
    local input = obj.new("file", { path=destPath, flags="READ" } )
    local error, sig = mSSL.CalcSigFromObject(input, 0, privateKey, nil, "sha256")
 
-   if (error == ERR_Okay) and (sig != nil) then
+   if (error is ERR_Okay) and (sig != nil) then
       if glSigFile?? then
          print("Saving signature to " .. glSigFile)
          local sigfile = obj.new("file", { path=glSigFile, flags="!NEW|WRITE" } )
@@ -52,7 +52,7 @@ end
 
    print("SSL Key Generator\n")
 
-   if (glInput == nil) or (glPrivateFile == nil) then
+   if (glInput is nil) or (glPrivateFile is nil) then
       print("This program generates an RSA key-pair and writes the keys as output files.")
       print("It can also generate the RSA signature for an input file and write generated signature to an output file.")
       print("")

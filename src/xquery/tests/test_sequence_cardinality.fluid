@@ -17,8 +17,8 @@ function testTypeswitchDataString()
    ]]
 
    local err, result = xml.mtEvaluate(query)
-   assert(err == ERR_Okay, "typeswitch over data() should evaluate: " .. mSys.GetErrorMsg(err))
-   assert(result == "matched", "typeswitch should match xs:string case, got: " .. nz(result, 'NIL'))
+   assert(err is ERR_Okay, "typeswitch over data() should evaluate: " .. mSys.GetErrorMsg(err))
+   assert(result is "matched", "typeswitch should match xs:string case, got: " .. nz(result, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -28,10 +28,10 @@ function testTreatAndInstanceOnData()
    local xml = obj.new("xml", { statement = '<root><n>42</n></root>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/n/text()) treat as xs:string')
-   assert(err1 == ERR_Okay, "treat as xs:string should succeed on data() result: " .. mSys.GetErrorMsg(err1))
+   assert(err1 is ERR_Okay, "treat as xs:string should succeed on data() result: " .. mSys.GetErrorMsg(err1))
 
    local err2, result2 = xml.mtEvaluate('data(/root/n/text()) instance of xs:string')
-   assert(err2 == ERR_Okay and result2 == "true", "data() result should be instance of xs:string, got: " .. nz(result2, 'NIL'))
+   assert(err2 is ERR_Okay and result2 is "true", "data() result should be instance of xs:string, got: " .. nz(result2, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -41,13 +41,13 @@ function testCastAndCastableOnData()
    local xml = obj.new("xml", { statement = '<root><n>123</n><s>abc</s></root>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/n/text()) cast as xs:string')
-   assert(err1 == ERR_Okay and result1 == "123", "cast to xs:string should return '123', got: " .. nz(result1, 'NIL'))
+   assert(err1 is ERR_Okay and result1 is "123", "cast to xs:string should return '123', got: " .. nz(result1, 'NIL'))
 
    local err2, result2 = xml.mtEvaluate('data(/root/n/text()) castable as xs:integer')
-   assert(err2 == ERR_Okay and result2 == "true", "numeric data() should be castable as xs:integer")
+   assert(err2 is ERR_Okay and result2 is "true", "numeric data() should be castable as xs:integer")
 
    local err3, result3 = xml.mtEvaluate('data(/root/s/text()) castable as xs:integer')
-   assert(err3 == ERR_Okay and result3 == "false", "non-numeric data() should not be castable as xs:integer")
+   assert(err3 is ERR_Okay and result3 is "false", "non-numeric data() should not be castable as xs:integer")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -57,12 +57,12 @@ function testAttributeDataCardinality()
    local xml = obj.new("xml", { statement = '<root val="yes"/>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/@val) instance of xs:string')
-   assert(err1 == ERR_Okay and result1 == "true", "attribute data() should be xs:string")
+   assert(err1 is ERR_Okay and result1 is "true", "attribute data() should be xs:string")
 
    local err2, result2 = xml.mtEvaluate([[typeswitch(data(/root/@val))
       case $s as xs:string return "ok"
       default return "bad"]])
-   assert(err2 == ERR_Okay and result2 == "ok", "typeswitch over attribute data() should match xs:string")
+   assert(err2 is ERR_Okay and result2 is "ok", "typeswitch over attribute data() should match xs:string")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ end
 function testTreatOptionalEmptyData()
    local xml = obj.new("xml", { statement = '<root/>' })
    local err, result = xml.mtEvaluate('data(()) treat as xs:string?')
-   assert(err == ERR_Okay, "treat as xs:string? should accept empty data(): " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "treat as xs:string? should accept empty data(): " .. mSys.GetErrorMsg(err))
 end
 
 function testTreatOneOrMoreEmptyData()

@@ -26,7 +26,7 @@ function testUDPIPv6Basic()
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
-         assert(err == ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
@@ -49,8 +49,8 @@ function testUDPIPv6Basic()
 
    print('[IPv6 UDP Client] Sending: "' .. message .. '" to ::1:' .. dest.port)
    local err, bytesSent = client.mtSendTo(dest, message)
-   assert(err == ERR_Okay, 'Client failed to send IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
-   assert(bytesSent == string.len(message), 'Not all bytes were sent')
+   assert(err is ERR_Okay, 'Client failed to send IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
+   assert(bytesSent is string.len(message), 'Not all bytes were sent')
 
    proc.sleep()
 
@@ -75,7 +75,7 @@ function testUDPDualStack()
          local buffer = string.alloc(1024)
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
-         assert(err == ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
@@ -105,7 +105,7 @@ function testUDPDualStack()
 
    print('[Dual-Stack Client] Sending IPv4 message to 127.0.0.1:' .. dest.port)
    local err, bytesSent = client.mtSendTo(dest, ipv4Message)
-   assert(err == ERR_Okay, 'Failed to send IPv4 message: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to send IPv4 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep(0.1)  -- Brief pause between messages
 
@@ -113,7 +113,7 @@ function testUDPDualStack()
    print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. server.port)
    check(mNet.StrToAddress('::1', dest))
    err, bytesSent = client.mtSendTo(dest, 'Hello from IPv6')
-   assert(err == ERR_Okay, 'Failed to send IPv6 message: ' .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, 'Failed to send IPv6 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
 
@@ -128,8 +128,8 @@ function testUDPIPv6Properties()
    local ipv6Socket = obj.new('netsocket', { address = '::1', flags = 'UDP', multicastTTL = 5 })
 
    assert(bit.band(ipv6Socket.flags, NSF_UDP) != 0, 'UDP flag not set on IPv6 socket')
-   assert(ipv6Socket.state == NTC_CONNECTED, 'IPv6 UDP socket should be in CONNECTED state')
-   assert(ipv6Socket.multicastTTL == 5, 'IPv6 multicast TTL (hops) not set correctly')
+   assert(ipv6Socket.state is NTC_CONNECTED, 'IPv6 UDP socket should be in CONNECTED state')
+   assert(ipv6Socket.multicastTTL is 5, 'IPv6 multicast TTL (hops) not set correctly')
 end
 
 ------------------------------------------------------------------------------------------------------------------------

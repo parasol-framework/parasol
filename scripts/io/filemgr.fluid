@@ -11,9 +11,9 @@ local progress_status, progress_dialog, progress_time
 local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
    msg('Copy feedback: ' .. Path .. ' TO ' .. Dest)
 
-   if progress_status == 'cancel' then
+   if progress_status is 'cancel' then
       return FFR_ABORT
-   elseif progress_status == 'closed' then
+   elseif progress_status is 'closed' then
       return FFR_OKAY
    end
 
@@ -27,7 +27,7 @@ local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
          message = 'Copying...\nPlease wait...',
          options = { id=-1, text='Cancel', icon='items/cancel' },
          feedback = function(Dialog, Response, State)
-            if Response and Response.id == -1 then
+            if Response and Response.id is -1 then
                progress_status = 'cancel'
             else
                progress_status = 'closed'
@@ -36,13 +36,13 @@ local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
       })
    end
 
-   if progress_dialog and (Position == 0 or Size > 32768) then
+   if progress_dialog and (Position is 0 or Size > 32768) then
       local folder, file = file.splitPath(Path)
 
       if string.len(file) >= 80 then file = '...' .. string.sub(file, -80) end
 
       local msg
-      if Position == 0 then
+      if Position is 0 then
          if Size >= 1048576 then
             msg = string.format('Copying: %s\n\n%.2f MB', file, Size / 1048576.0)
          else
@@ -69,7 +69,7 @@ end
 file.ui.paste = function(Dest)
    local clipboard = obj.new('clipboard')
    local err, datatype, files, flags = clipboard.mtGetFiles(CLIPTYPE_FILE, 0)
-   if (err != ERR_Okay) or (#files == 0) then
+   if (err != ERR_Okay) or (#files is 0) then
       msg('No files on the clipboard.')
       return
    end
@@ -88,7 +88,7 @@ end
 -- NB: This call can block if it needs a response from the user.  It does not return until the copy is complete.
 
 file.ui.copy = function(Source, Dest, Move)
-   if type(Source) == 'string' then Source = { Source } end
+   if type(Source) is 'string' then Source = { Source } end
    if type(Source) != 'table' then error('Provided Source is not a table') end
 
    -- Scan the file list and move or copy each file to the Dest folder
@@ -107,7 +107,7 @@ file.ui.copy = function(Source, Dest, Move)
       -- Check if the destination already exists
 
       if response != 'yes-all' then
-         if src_path == dest_path then
+         if src_path is dest_path then
             if Move then
                continue -- Do nothing for move operations when the source and destination are identical
             elseif dest_path:find('^[A-Z].+') then
@@ -121,14 +121,14 @@ file.ui.copy = function(Source, Dest, Move)
 
          local exists = false
          local err, path = mSys.ResolvePath(dest_path, RSF_NO_FILE_CHECK)
-         if err == ERR_Okay then -- Resolve to avoid multi-directory volume problems
+         if err is ERR_Okay then -- Resolve to avoid multi-directory volume problems
             local err, file_type = mSys.AnalysePath(path)
-            if (err == ERR_Okay) and (file_type == LOC_FILE or file_type == LOC_DIRECTORY) then
+            if (err is ERR_Okay) and (file_type is LOC_FILE or file_type is LOC_DIRECTORY) then
                exists = true
             end
          end
 
-         if exists and response == 'no-all' then
+         if exists and response is 'no-all' then
             continue
          end
 
@@ -144,13 +144,13 @@ file.ui.copy = function(Source, Dest, Move)
                message = 'You are about to overwrite this file.  Should it be replaced?\n\n' .. src_file,
                feedback = function(Dialog, Response, State)
                   if Response then
-                     if Response.id == -1 then
+                     if Response.id is -1 then
                         response = 'no'
-                     elseif Response.id == -2 then
+                     elseif Response.id is -2 then
                         response = 'no-all'
-                     elseif Response.id == 1 then
+                     elseif Response.id is 1 then
                         response = 'yes'
-                     elseif Response.id == 2 then
+                     elseif Response.id is 2 then
                         response = 'yes-all'
                      end
                   else
@@ -165,12 +165,12 @@ file.ui.copy = function(Source, Dest, Move)
          end
       end
 
-      if response == 'cancel' then
+      if response is 'cancel' then
          msg('Paste operation cancelled.')
          return ERR_Cancelled
       end
 
-      if response == 'no' or response == 'no-all' then
+      if response is 'no' or response is 'no-all' then
          msg('Skipping file ' .. src_file .. ', response ' .. response)
       else
          msg('Copy from "' .. src_path .. '" TO "' .. dest_path .. '"')
@@ -181,15 +181,15 @@ file.ui.copy = function(Source, Dest, Move)
             err = mSys.CopyFile(src_path, dest_path, copyFeedback)
          end
 
-         if err == ERR_Cancelled then return err end
+         if err is ERR_Cancelled then return err end
 
          if err != ERR_Okay then
             msg('Error during paste operation [' .. err .. ']: ' .. mSys.GetErrorMsg(err))
 
             local message
-            if err == ERR_OutOfSpace then
+            if err is ERR_OutOfSpace then
                message = 'There is not enough space in the destination drive to copy this file:\n\n' .. src_file
-            elseif err == ERR_Permissions then
+            elseif err is ERR_Permissions then
                message = 'You do not have the necessary permissions to copy this file:\n\n' .. src_file
             else
                local emsg = mSys.GetErrorMsg(err)
@@ -210,14 +210,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 file.ui.delete = function(Paths)
-   if type(Paths) == 'string' then Paths = { Paths } end
+   if type(Paths) is 'string' then Paths = { Paths } end
    if type(Paths) != 'table' then error('Path must be a string or string list.') end
 
    for _, path in pairs(Paths) do
       mSys.DeleteFile(path, function(Feedback)
-         if progress_status == 'cancel' then
+         if progress_status is 'cancel' then
             return FFR_ABORT
-         elseif progress_status == 'closed' then
+         elseif progress_status is 'closed' then
             return FFR_OKAY
          end
 
@@ -231,7 +231,7 @@ file.ui.delete = function(Paths)
                message = 'Deleting...',
                options = { id=-1, text='Cancel', icon='items/cancel' },
                feedback = function(Dialog, Response, State)
-                  if Response and Response.id == -1 then
+                  if Response and Response.id is -1 then
                      progress_status = 'cancel'
                   else
                      progress_status = 'closed'

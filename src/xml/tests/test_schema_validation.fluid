@@ -28,35 +28,35 @@ glPrefixedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 
 function testLoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
-   assert(err == ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
 
    assert(bit.band(glXML.flags, XMF_HAS_SCHEMA) != 0, "XMF_HAS_SCHEMA undefined")
 end
 
 function testValidateDocumentPass()
    local err = glXML.mtValidateDocument()
-   assert(err == ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
-   assert(glXML.errorMsg == "" or glXML.errorMsg == nil, "ErrorMsg should be cleared after successful validation.")
+   assert(err is ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
+   assert(glXML.errorMsg is "" or glXML.errorMsg is nil, "ErrorMsg should be cleared after successful validation.")
 end
 
 function testValidateDocumentPrefixedRoot()
    local doc = obj.new("xml", { statement = glPrefixedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
-   assert(err == ERR_Okay, "Failed to load schema for prefixed root document: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to load schema for prefixed root document: " .. mSys.GetErrorMsg(err))
 
    err = doc.mtValidateDocument()
-   assert(err == ERR_Okay, "Prefixed root document failed validation: " .. mSys.GetErrorMsg(err))
-   assert(doc.errorMsg == "" or doc.errorMsg == nil,
+   assert(err is ERR_Okay, "Prefixed root document failed validation: " .. mSys.GetErrorMsg(err))
+   assert(doc.errorMsg is "" or doc.errorMsg is nil,
       "Prefixed root document should not report an error message, found: " .. tostring(doc.errorMsg))
 end
 
 function testValidateDocumentFail()
    local invalid = obj.new("xml", { statement = glInvalidXML })
    local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
-   assert(err == ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
 
    err = invalid.mtValidateDocument()
-   assert(err == ERR_InvalidData, "ValidateDocument() should return InvalidData for schema violations, got: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_InvalidData, "ValidateDocument() should return InvalidData for schema violations, got: " .. mSys.GetErrorMsg(err))
    assert(invalid.errorMsg != nil and invalid.errorMsg != "",
       "ValidateDocument() did not populate errorMsg on failure.")
 end
@@ -64,30 +64,30 @@ end
 function testValidateWithoutSchema()
    local doc = obj.new("xml", { path = glScriptFolder .. "schema_inventory.xml" })
    local err = doc.mtValidateDocument()
-   assert(err == ERR_NoSupport, "ValidateDocument() without schema should return NoSupport, got: " .. mSys.GetErrorMsg(err))
-   assert(doc.errorMsg == "No schema has been loaded for this document.",
+   assert(err is ERR_NoSupport, "ValidateDocument() without schema should return NoSupport, got: " .. mSys.GetErrorMsg(err))
+   assert(doc.errorMsg is "No schema has been loaded for this document.",
       "Unexpected error message when schema is missing: " .. tostring(doc.errorMsg))
 end
 
 function testValidateDocumentWithoutContent()
    local doc = obj.new("xml")
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
-   assert(err == ERR_Okay, "Failed to load schema for empty document: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to load schema for empty document: " .. mSys.GetErrorMsg(err))
 
    err = doc.mtValidateDocument()
-   assert(err == ERR_NoData, "ValidateDocument() should return NoData when no tags are parsed, got: " .. mSys.GetErrorMsg(err))
-   assert(doc.errorMsg == "XML document has no parsed tags to validate.",
+   assert(err is ERR_NoData, "ValidateDocument() should return NoData when no tags are parsed, got: " .. mSys.GetErrorMsg(err))
+   assert(doc.errorMsg is "XML document has no parsed tags to validate.",
       "Unexpected error message for document without parsed tags: " .. tostring(doc.errorMsg))
 end
 
 function testValidateDocumentMismatchedRoot()
    local doc = obj.new("xml", { statement = glMismatchedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
-   assert(err == ERR_Okay, "Failed to load schema for mismatched root document: " .. mSys.GetErrorMsg(err))
+   assert(err is ERR_Okay, "Failed to load schema for mismatched root document: " .. mSys.GetErrorMsg(err))
 
    err = doc.mtValidateDocument()
-   assert(err == ERR_Search, "ValidateDocument() should return Search when the root element is undefined: " .. mSys.GetErrorMsg(err))
-   assert(doc.errorMsg == "Schema does not define root element 'catalog'.",
+   assert(err is ERR_Search, "ValidateDocument() should return Search when the root element is undefined: " .. mSys.GetErrorMsg(err))
+   assert(doc.errorMsg is "Schema does not define root element 'catalog'.",
       "Unexpected error message for mismatched root element: " .. tostring(doc.errorMsg))
 end
 

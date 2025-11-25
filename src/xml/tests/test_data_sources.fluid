@@ -14,8 +14,8 @@ function testPathLoading()
    local xml = obj.new("xml", { path = 'temp:test_xml_path.xml', flags = XMF_STRIP_HEADERS })
    local tags = xml.tags
    assert(tags, "XML should load from file path")
-   assert(tags[2].attribs[1].name == "testRoot", "Root tag should be testRoot; got " .. nz(tags[1].attribs[1].name, 'NIL'))
-   assert(tags[2].children[1].children[1].attribs[1].value == "Path content", "Content should be preserved")
+   assert(tags[2].attribs[1].name is "testRoot", "Root tag should be testRoot; got " .. nz(tags[1].attribs[1].name, 'NIL'))
+   assert(tags[2].children[1].children[1].attribs[1].value is "Path content", "Content should be preserved")
 
    collectgarbage()
    mSys.DeleteFile('temp:test_xml_path.xml')
@@ -35,8 +35,8 @@ function testObjectSource()
    local xml = obj.new("xml", { source = memory })
    local tags = xml.tags
    assert(tags, "XML should load from object source")
-   assert(tags[1].attribs[1].name == "sourceRoot", "Root tag should be sourceRoot")
-   assert(tags[1].children[1].children[1].attribs[1].value == "Object content", "Content should be preserved")
+   assert(tags[1].attribs[1].name is "sourceRoot", "Root tag should be sourceRoot")
+   assert(tags[1].children[1].children[1].attribs[1].value is "Object content", "Content should be preserved")
 
    memory = nil
 end
@@ -51,7 +51,7 @@ function testStringPathPrefix()
    local xml = obj.new("xml", { path = 'string:' .. testXML })
    local tags = xml.tags
    assert(tags, "string: prefix should parse XML content")
-   assert(tags[1].attribs[1].name == "stringRoot", "Root tag should be stringRoot")
+   assert(tags[1].attribs[1].name is "stringRoot", "Root tag should be stringRoot")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -62,11 +62,11 @@ function testDataFeed()
 
    -- Feed additional XML data
    local err = xml.acDataFeed(nil, DATA_XML, '<added>New content</added>')
-   assert(err == ERR_Okay, "DataFeed should succeed")
+   assert(err is ERR_Okay, "DataFeed should succeed")
 
    local tags = xml.tags
-   assert(#tags == 2, "Should have 2 root-level elements after DataFeed")
-   assert(tags[2].attribs[1].name == "added", "Added element should be present")
+   assert(#tags is 2, "Should have 2 root-level elements after DataFeed")
+   assert(tags[2].attribs[1].name is "added", "Added element should be present")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -77,17 +77,17 @@ function testDataFeedEmpty()
 
    -- Feed XML data to empty object
    local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
-   assert(err == ERR_Okay, "DataFeed to empty XML should succeed")
+   assert(err is ERR_Okay, "DataFeed to empty XML should succeed")
 
    local tags = xml.tags
-   assert(tags and #tags == 1, "Should have 1 element after first DataFeed")
+   assert(tags and #tags is 1, "Should have 1 element after first DataFeed")
 
    -- Feed more data
    local err = xml.acDataFeed(nil, DATA_XML, '<second>Second element</second>')
-   assert(err == ERR_Okay, "Second DataFeed should succeed")
+   assert(err is ERR_Okay, "Second DataFeed should succeed")
 
    tags = xml.tags
-   assert(#tags == 2, "Should have 2 elements after second DataFeed")
+   assert(#tags is 2, "Should have 2 elements after second DataFeed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -96,11 +96,11 @@ end
 function testSourceSwitching()
    -- Start with statement
    local xml = obj.new("xml", { statement = '<initial>Statement content</initial>' })
-   assert(xml.tags[1].attribs[1].name == "initial", "Initial load should work")
+   assert(xml.tags[1].attribs[1].name is "initial", "Initial load should work")
 
    -- Switch to different statement
    xml.statement = '<switched>New statement</switched>'
-   assert(xml.tags[1].attribs[1].name == "switched", "Statement switching should work")
+   assert(xml.tags[1].attribs[1].name is "switched", "Statement switching should work")
 
    -- Create file for path switching
    local fileXML = '<pathSwitched>Path content</pathSwitched>'
@@ -110,7 +110,7 @@ function testSourceSwitching()
 
    -- Switch to path
    xml.path = 'temp:test_switch.xml'
-   assert(xml.tags[1].attribs[1].name == "pathSwitched", "Path switching should work")
+   assert(xml.tags[1].attribs[1].name is "pathSwitched", "Path switching should work")
 
    collectgarbage()
    mSys.DeleteFile('temp:test_switch.xml')
@@ -131,7 +131,7 @@ function testLargeFileLoading()
    -- Load large file
    local xml = obj.new("xml", { statement = largeXML })
    assert(xml.tags, "Large XML file should load")
-   assert(#xml.tags[1].children == 500, "All 500 items should be loaded")
+   assert(#xml.tags[1].children is 500, "All 500 items should be loaded")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ function testInvalidFileHandling()
    -- Try to load non-existent file
 
    local ex, xml = catch(function() return obj.new("xml", { path = 'temp:nonexistent.xml' }) end)
-   assert(xml == nil, "Should report error for non-existent file")
+   assert(xml is nil, "Should report error for non-existent file")
 
    -- Try to parse invalid XML content.  Throwing an exception is considered acceptable if content is unparseable
    catch(function()

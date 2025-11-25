@@ -6,8 +6,8 @@ Documentation is available in the Parasol Wiki.
    require 'gui/listview'
    include 'display'
 
-   if (gui == nil) then gui = { } end
-   if (gui.dialog == nil) then gui.dialog = { } end
+   if (gui is nil) then gui = { } end
+   if (gui.dialog is nil) then gui.dialog = { } end
 
 gui.dialog.font = function(Options)
    local mFont = mod.load('font')
@@ -120,7 +120,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    local function getFonts()
       local err, list = mFont.GetList()
-      if (list == nil) then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
+      if not list then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
 
       lFonts       = { }
       lFontsSorted = { }
@@ -177,7 +177,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
 
       vwSize.selectItems(function(Item)
-         if Item.id == selectSize then return true end
+         if Item.id is selectSize then return true end
       end)
    end
 
@@ -187,10 +187,10 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    if (lOptions.face) then
       local s = string.split(face, ':') -- FaceName, Size, Style, Colour
-      if (s[1]) then lOptions.face = s[1] end
-      if (s[2]) then lOptions.pointSize = s[2] end
-      if (s[3]) then lOptions.style = s[3] end
-      if (s[4]) then lOptions.colour = s[4] end
+      if s[1] then lOptions.face = s[1] end
+      if s[2] then lOptions.pointSize = s[2] end
+      if s[3] then lOptions.style = s[3] end
+      if s[4] then lOptions.colour = s[4] end
    end
 
    lWindow = gui.window({
@@ -294,9 +294,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       itemSelected = function(View, Reason, Item)
          local selection = Item.name
          self.pointSize = tonumber(selection)
-         if (self.pointSize < 4) then
+         if self.pointSize < 4 then
             self.pointSize = 4
-         elseif (self.pointSize > 400) then
+         elseif self.pointSize > 400 then
             self.pointSize = 400
          end
          collectgarbage()
@@ -337,7 +337,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       sensitive    = true,
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
-         if (lFonts[Item.name] == nil) then
+         if not lFonts[Item.name] then
             error('Font "' .. (Item.name ?? 'NIL') .. '" not recognised.')
          end
 
@@ -350,7 +350,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          if self.style and lFonts[self.face] then
             local supported = false
             for _, v in ipairs(lFonts[self.face].styles) do
-               if (v == self.style) then
+               if v is self.style then
                   supported = true
                   break
                end
@@ -362,13 +362,13 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          end
 
          vwStyle.selectItems(function(Item)
-            if (Item.id == self.style) then return true end
+            if (Item.id is self.style) then return true end
          end)
 
          refreshExample()
 
          local sizes = lFonts[Item.name].sizes
-         if (lFonts[Item.name].scalable) or (sizes == nil) or (#sizes == 0) then
+         if (lFonts[Item.name].scalable) or (sizes is nil) or (#sizes is 0) then
             sizes = lSizes
          end
 
@@ -385,7 +385,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       if font.alias?? then font = lFonts[font.alias] end
 
-      if (font.scalable) then
+      if font.scalable then
          new_font.icon = 'items/font'
       else
          new_font.icon = 'layout/text_sans'
@@ -397,11 +397,11 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Preselect list items based on the preferences supplied by the client.
 
    vwFace.selectItems(function(Item)
-      if Item.id == (lOptions.face ?? 'Noto Sans') then return true end
+      if Item.id is (lOptions.face ?? 'Noto Sans') then return true end
    end)
 
    vwStyle.selectItems(function(Item)
-      if Item.id == (lOptions.style ?? 'Regular') then return true end
+      if Item.id is (lOptions.style ?? 'Regular') then return true end
    end)
 
    highlightSize(self.pointSize)
@@ -417,7 +417,7 @@ end
 
    do
       local state = getExecutionState()
-      if (state.inRequire != true) then
+      if state.inRequire != true then
          local dlg = font.dialog({
             popOver    = arg('popOver'),
             target     = arg('target'),

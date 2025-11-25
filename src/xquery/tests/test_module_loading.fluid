@@ -23,8 +23,8 @@ function testBasicModuleImport()
 
    local xq = obj.new('xquery', { statement = query, path=glScriptFolder })
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Module import compilation failed: ' .. tostring(xq.errorMsg))
-   assert(tonumber(xq.resultString) == 25, 'Should compute 5^2 = 25, got ' .. tostring(xq.resultString))
+   assert(err is ERR_Okay, 'Module import compilation failed: ' .. tostring(xq.errorMsg))
+   assert(tonumber(xq.resultString) is 25, 'Should compute 5^2 = 25, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ function testMultipleFunctions()
    ]], path=glScriptFolder })
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Multiple function calls failed: ' .. tostring(xq.errorMsg))
+   assert(err is ERR_Okay, 'Multiple function calls failed: ' .. tostring(xq.errorMsg))
    -- Result should be a sequence: "9:8" or similar representation
    local result = tostring(xq.resultString)
    assert(string.find(result, '9', 1, true) and string.find(result, '8', 1, true),
@@ -58,7 +58,7 @@ function testModuleVariables()
    ]], path=glScriptFolder })
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Module variable access failed: ' .. tostring(xq.errorMsg))
+   assert(err is ERR_Okay, 'Module variable access failed: ' .. tostring(xq.errorMsg))
    local pi_value = tonumber(xq.resultString)
    assert(pi_value and math.abs(pi_value - 3.14159) < 0.00001, 'Should return pi value 3.14159, got ' .. pi_value)
 
@@ -66,7 +66,7 @@ function testModuleVariables()
    assert(vars, "Expected module variables to be accessible")
    local math_pi_seen = false
    for k,v in pairs(vars) do
-      if (v == 'math:pi') then math_pi_seen = true end
+      if (v is 'math:pi') then math_pi_seen = true end
    end
    assert(math_pi_seen, "Module variable 'math:pi' not found in variables list")
 
@@ -74,7 +74,7 @@ function testModuleVariables()
    assert(list, "Expected module functions to be accessible")
    local math_count = 0
    for k,v in pairs(list) do
-      if (string.sub(v, 1, 5) == 'math:') then math_count = math_count + 1 end
+      if (string.sub(v, 1, 5) is 'math:') then math_count = math_count + 1 end
    end
    assert(math_count >= 2, "Module variable 'math:pi' not found in variables list")
 
@@ -90,7 +90,7 @@ function testMultipleModuleImports()
    -- First, ensure the built-in function fn:upper-case is available
    local xq = obj.new('xquery', { statement = [[fn:upper-case("hello")]], path = glScriptFolder })
    local err = xq.acActivate()
-   assert((err == ERR_Okay) and (tostring(xq.resultString) == 'HELLO'), 'Built-in function fn:upper-case not available')
+   assert((err is ERR_Okay) and (tostring(xq.resultString) is 'HELLO'), 'Built-in function fn:upper-case not available')
 
    xq.statement = [[
       import module namespace math = "http://example.com/math"
@@ -102,7 +102,7 @@ function testMultipleModuleImports()
    ]]
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Multiple module imports failed: ' .. tostring(xq.errorMsg))
+   assert(err is ERR_Okay, 'Multiple module imports failed: ' .. tostring(xq.errorMsg))
    local result = tostring(xq.resultString)
    assert(string.find(result, '16', 1, true) and string.find(result, 'HELLO', 1, true),
       'Should return both 16 and HELLO, got ' .. result)
@@ -120,7 +120,7 @@ function testTransitiveImports()
    ]], path=glScriptFolder })
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Transitive module import failed: ' .. tostring(xq.errorMsg))
+   assert(err is ERR_Okay, 'Transitive module import failed: ' .. tostring(xq.errorMsg))
    local area = tonumber(xq.resultString) -- area(10) = pi * 10^2 = 314.159
    assert(area and math.abs(area - 314.159) < 0.001, 'Should compute circle area 314.159, got ' .. area)
 end
@@ -136,8 +136,8 @@ function testModuleCaching()
    ]], path=glScriptFolder })
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'First module use failed: ' .. tostring(xq.errorMsg))
-   assert(tonumber(xq.resultString) == 4, 'First query should return 4, got ' .. tostring(xq.resultString))
+   assert(err is ERR_Okay, 'First module use failed: ' .. tostring(xq.errorMsg))
+   assert(tonumber(xq.resultString) is 4, 'First query should return 4, got ' .. tostring(xq.resultString))
 
    -- Second query reusing cached module
    xq.statement = [[
@@ -147,8 +147,8 @@ function testModuleCaching()
    ]]
 
    local err = xq.acActivate()
-   assert(err == ERR_Okay, 'Cached module use failed: ' .. tostring(xq.errorMsg))
-   assert(tonumber(xq.resultString) == 8, 'Second query should return 8, got ' .. tostring(xq.resultString))
+   assert(err is ERR_Okay, 'Cached module use failed: ' .. tostring(xq.errorMsg))
+   assert(tonumber(xq.resultString) is 8, 'Second query should return 8, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

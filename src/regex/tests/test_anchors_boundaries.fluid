@@ -8,7 +8,7 @@ end
 
 function testAbsoluteAnchors()
    local ex, matcher = catch(function() return regex.new("\\Astart.+finish\\Z") end)
-   assert(matcher == nil, "\\A and \\Z are not supported by ECMAScript")
+   assert(matcher is nil, "\\A and \\Z are not supported by ECMAScript")
 end
 
 function testWordBoundaries()
@@ -40,13 +40,13 @@ end
 function testContinuousFlag()
    local matcher = regex.new("\\d+")
    assert(matcher.search("abc123") ~= nil, "Search should find digits without CONTINUOUS flag")
-   assert(matcher.search("abc123", regex.CONTINUOUS) == nil, "CONTINUOUS should force match to start of string")
+   assert(matcher.search("abc123", regex.CONTINUOUS) is nil, "CONTINUOUS should force match to start of string")
 end
 
 function testNotNullFlag()
    local matcher = regex.new("a*") -- Match zero or more of 'a'
    assert(matcher.search("bbb"), "Zero length match should succeed by default")
-   assert(matcher.search("bbb", regex.NOT_NULL) == nil, "NOT_NULL should disallow zero length results")
+   assert(matcher.search("bbb", regex.NOT_NULL) is nil, "NOT_NULL should disallow zero length results")
 end
 
 return {
