@@ -146,7 +146,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       // Comparison operators (EQ, NE): discharge to register unless it's a constant/jump
-      if (not expr_isk_nojump(e)) {
+      if (not e->is_constant_nojump()) {
          ExpressionValue e_value(this->func_state, *e);
          e_value.discharge_to_any_reg(local_alloc);
          *e = e_value.legacy();
@@ -154,7 +154,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
    }
    else {
       // Arithmetic and bitwise operators: discharge to register unless it's a numeric constant/jump
-      if (not expr_isnumk_nojump(e)) {
+      if (not e->is_num_constant_nojump()) {
          ExpressionValue e_value(this->func_state, *e);
          e_value.discharge_to_any_reg(local_alloc);
          *e = e_value.legacy();
@@ -276,7 +276,7 @@ void OperatorEmitter::complete_logical_and(ValueSlot left, ValueUse right)
    // - We need to merge the false paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   lj_assertFS(left_desc->t IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->t IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
@@ -365,7 +365,7 @@ void OperatorEmitter::complete_logical_or(ValueSlot left, ValueUse right)
    // - We need to merge the true paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
@@ -402,7 +402,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
    // Handle constant folding for known falsey values
    if (left_desc->k IS ExpKind::Nil or left_desc->k IS ExpKind::False)
       pc = NO_JMP;  // Falsey constant - will evaluate RHS
-   else if (left_desc->k IS ExpKind::Num and expr_numiszero(left_desc))
+   else if (left_desc->k IS ExpKind::Num and left_desc->is_num_zero())
       pc = NO_JMP;  // Zero is falsey - will evaluate RHS
    else if (left_desc->k IS ExpKind::Str and left_desc->u.sval and left_desc->u.sval->len IS 0)
       pc = NO_JMP;  // Empty string is falsey - will evaluate RHS
@@ -418,17 +418,19 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
    else {
       // Runtime value - emit extended falsey checks NOW (before RHS evaluation)
       // This implements proper short-circuit semantics
-      if (!expr_isk_nojump(left_desc)) {
+      if (!left_desc->is_constant_nojump()) {
          ExpressionValue left_inner(this->func_state, *left_desc);
          RegisterAllocator local_alloc(this->func_state);
          BCReg reg = left_inner.discharge_to_any_reg(local_alloc);
          *left_desc = left_inner.legacy();
 
          // Create test expressions for extended falsey values
-         ExpDesc nilv = make_nil_expr();
-         ExpDesc falsev = make_bool_expr(false);
-         ExpDesc zerov = make_num_expr(0.0);
-         ExpDesc emptyv = make_interned_string_expr(this->func_state->ls->intern_empty_string());
+         ExpDesc nilv(ExpKind::Nil);
+         ExpDesc falsev(ExpKind::False);
+         ExpDesc zerov(ExpKind::Num);
+         setnumV(&zerov.u.nval, 0.0);
+         ExpDesc emptyv(ExpKind::Str);
+         emptyv.u.sval = this->func_state->ls->intern_empty_string();
 
          // Extended falsey check sequence
          // ISEQ* skips the JMP when values ARE equal (falsey), executes JMP when NOT equal (truthy)
@@ -463,7 +465,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          BCReg rhs_reg = this->func_state->freereg;
          ExprFlag saved_flags = left_desc->flags;
          local_alloc.reserve(1);
-         expr_init(left_desc, ExpKind::NonReloc, reg);
+         left_desc->init(ExpKind::NonReloc, reg);
          left_desc->u.s.aux = rhs_reg;
          left_desc->flags = saved_flags | ExprFlag::HasRhsReg;
       }
@@ -492,7 +494,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
    ExpDesc *right_desc = right.raw();
 
    FuncState* fs = this->func_state;
-   lj_assertFS(left_desc->f IS NO_JMP, "jump list not closed");
+   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
 
    // If left->t has jumps, those are from the extended falsey checks in prepare phase
    // They skip RHS evaluation when LHS is truthy - we need to:
@@ -535,7 +537,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
 
       // Result is in LHS register
       ExprFlag saved_flags = left_desc->flags;
-      expr_init(left_desc, ExpKind::NonReloc, lhs_reg);
+      left_desc->init(ExpKind::NonReloc, lhs_reg);
       left_desc->flags = saved_flags;
 
       // Clean up scratch register
@@ -597,7 +599,7 @@ void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
    if (right_desc->k IS ExpKind::Relocable and bc_op(*bcptr(fs, right_desc)) IS BC_CAT) {
       // Chaining case: "a".."b".."c"
       // The previous BC_CAT starts at e1->u.s.info and we extend it
-      lj_assertFS(left_desc->u.s.info IS bc_b(*bcptr(fs, right_desc)) - 1, "bad CAT stack layout");
+      fs->assert(left_desc->u.s.info IS bc_b(*bcptr(fs, right_desc)) - 1, "bad CAT stack layout");
       expr_free(fs, left_desc);
       setbc_b(bcptr(fs, right_desc), left_desc->u.s.info);
       left_desc->u.s.info = right_desc->u.s.info;
@@ -634,23 +636,23 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Handle compile-time constants
    if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) {
-      expr_init(e, ExpKind::False, 0);  // Falsey constant
+      e->init(ExpKind::False, 0);  // Falsey constant
       return;
    }
 
-   if (e->k IS ExpKind::Num and expr_numiszero(e)) {
-      expr_init(e, ExpKind::False, 0);  // Zero is falsey
+   if (e->k IS ExpKind::Num and e->is_num_zero()) {
+      e->init(ExpKind::False, 0);  // Zero is falsey
       return;
    }
 
    if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0) {
-      expr_init(e, ExpKind::False, 0);  // Empty string is falsey
+      e->init(ExpKind::False, 0);  // Empty string is falsey
       return;
    }
 
-   if (e->k IS ExpKind::True or (e->k IS ExpKind::Num and !expr_numiszero(e)) or
+   if (e->k IS ExpKind::True or (e->k IS ExpKind::Num and !e->is_num_zero()) or
        (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
-      expr_init(e, ExpKind::True, 0);  // Truthy constant
+      e->init(ExpKind::True, 0);  // Truthy constant
       return;
    }
 
@@ -661,10 +663,10 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    *e = e_runtime.legacy();
 
    // Create test expressions
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc falsev(ExpKind::False);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(fs->ls->intern_empty_string());
 
    // Emit equality checks for extended falsey values
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
@@ -706,5 +708,5 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    ControlFlowEdge skip_edge = this->cfg->make_unconditional(jmp_false_branch);
    skip_edge.patch_to(fs->pc);
 
-   expr_init(e, ExpKind::NonReloc, dest);
+   e->init(ExpKind::NonReloc, dest);
 }

@@ -70,6 +70,29 @@ static const struct {
 
 static constexpr size_t kMaxLoggedStatements = 12;
 
+static void raise_accumulated_diagnostics(ParserContext &Context)
+{
+   auto entries = Context.diagnostics().entries();
+   if (entries.empty()) return;
+
+   auto summary = std::format("parser reported {} {}:\n", entries.size(), entries.size() == 1 ? "error" : "errors");
+
+   for (const auto& diagnostic : entries) {
+      SourceSpan span = diagnostic.token.span();
+      std::string_view message = diagnostic.message.empty() ? "unexpected token" : diagnostic.message;
+      summary += std::format("   line {}:{} - {}\n", span.line, span.column, message);
+   }
+
+   lua_State *L = &Context.lua();
+
+   // Store diagnostic information in lua_State before throwing
+   L->parser_diagnostics = new ParserDiagnostics(Context.diagnostics());
+
+   GCstr *message = lj_str_new(L, summary.data(), summary.size());
+   setstrV(L, L->top++, message);
+   lj_err_throw(L, LUA_ERRSYNTAX);
+}
+
 //********************************************************************************************************************
 
 static void report_pipeline_error(ParserContext &Context, const ParserError &Error)
@@ -215,21 +238,11 @@ extern GCproto * lj_parse(LexState *State)
 
    State->next(); // Read-ahead first token.
 
-   if ((prv->JitOptions & JOF::LEGACY) IS JOF::NIL) {
-      run_ast_pipeline(root_context, profiler);
+   run_ast_pipeline(root_context, profiler);
 
-      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
+   if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
 
-      flush_non_fatal_errors(root_context);
-   }
-   else {
-      log.msg("Using legacy Lua parser.");
-      ParserProfiler::StageTimer legacy_timer = profiler.stage("legacy-chunk");
-      State->parse_chunk(root_context);
-      legacy_timer.stop();
-
-      if ((prv->JitOptions & JOF::DUMP_BYTECODE) != JOF::NIL) dump_bytecode(root_context);
-   }
+   flush_non_fatal_errors(root_context);
 
    if (profiler.enabled()) {
       profiler.log_results(log);

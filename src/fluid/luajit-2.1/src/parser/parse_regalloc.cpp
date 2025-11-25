@@ -166,6 +166,7 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
       //   t[i] = t[i] | f(i)
       // where additional temporaries are allocated above the duplicated base
       // and later dropped by restoring freereg.
+
       copies.reserved = this->reserve_span_soft(duplicate_count);
 
       BCReg base_reg = copies.reserved.start();
@@ -243,13 +244,6 @@ BCPos bcemit_INS(FuncState *fs, BCIns ins)
    fs->bcbase[pc].line = ls->lastline;
    fs->pc = pc + 1;
    return pc;
-}
-
-//********************************************************************************************************************
-// Get pointer to bytecode instruction for expression.
-
-[[nodiscard]] inline BCIns* bcptr(FuncState *fs, const ExpDesc *e) {
-   return &fs->bcbase[e->u.s.info].ins;
 }
 
 //********************************************************************************************************************
@@ -350,12 +344,12 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
    }
    else if (e->k IS ExpKind::Num) {
 #if LJ_DUALNUM
-      cTValue* tv = expr_numtv(e);
+      cTValue* tv = e->num_tv();
       if (tvisint(tv) and checki16(intV(tv)))
          ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(intV(tv))));
       else
 #else
-      lua_Number n = expr_numberV(e);
+      lua_Number n = e->number_value();
       int32_t k = lj_num2int(n);
       if (checki16(k) and n IS lua_Number(k))
          ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(k)));
@@ -386,7 +380,7 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
       ins = BCINS_AD(BC_KPRI, reg, const_pri(e));
    }
    else {
-      lj_assertFS(e->k IS ExpKind::Void or e->k IS ExpKind::Jmp, "bad expr type %d", static_cast<int>(e->k));
+      fs->assert(e->k IS ExpKind::Void or e->k IS ExpKind::Jmp, "bad expr type %d", int(e->k));
       return;
    }
 
@@ -411,7 +405,7 @@ static void expr_toreg(FuncState *fs, ExpDesc *e, BCReg reg)
       e->t = true_edge.head();
    }
 
-   if (expr_hasjump(e)) {  // Discharge expression with branches.
+   if (e->has_jump()) {  // Discharge expression with branches.
       BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
       ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
       ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
@@ -454,7 +448,7 @@ static BCReg expr_toanyreg(FuncState *fs, ExpDesc *e)
 {
    expr_discharge(fs, e);
    if (e->k IS ExpKind::NonReloc) [[likely]] {
-      if (!expr_hasjump(e)) [[likely]] return e->u.s.info;  // Already in a register.
+      if (!e->has_jump()) [[likely]] return e->u.s.info;  // Already in a register.
       if (e->u.s.info >= fs->nactvar) {
          expr_toreg(fs, e, e->u.s.info);  // Discharge to temp. register.
          return e->u.s.info;
@@ -469,7 +463,7 @@ static BCReg expr_toanyreg(FuncState *fs, ExpDesc *e)
 
 static void expr_toval(FuncState *fs, ExpDesc *e)
 {
-   if (expr_hasjump(e)) [[unlikely]]
+   if (e->has_jump()) [[unlikely]]
       expr_toanyreg(fs, e);
    else [[likely]]
       expr_discharge(fs, e);
@@ -501,7 +495,7 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
    }
    else {
       BCReg ra, rc;
-      lj_assertFS(var->k IS ExpKind::Indexed, "bad expr type %d", static_cast<int>(var->k));
+      fs->assert(var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
       if (int32_t(rc) < 0) ins = BCINS_ABC(BC_TSETS, ra, var->u.s.info, ~rc);
@@ -529,7 +523,7 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    expr_free(fs, e);
    func = fs->freereg;
    bcemit_AD(fs, BC_MOV, func + 1 + LJ_FR2, obj);  // Copy object to 1st argument.
-   lj_assertFS(expr_isstrk(key), "bad usage");
+   fs->assert(key->is_str_constant(), "bad usage");
    idx = const_str(fs, key);
    if (idx <= BCMAX_C) {
       bcreg_reserve(fs, 2 + LJ_FR2);

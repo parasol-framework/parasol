@@ -50,7 +50,7 @@ set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
 idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs 
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.cpp"
    ARGS "output-defs=module_def.cpp"
@@ -637,7 +637,6 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/bytecode/lj_bcread.cpp"
    "${LUAJIT_SRC}/bytecode/lj_bcwrite.cpp"
    "${LUAJIT_SRC}/debug/dump_bytecode.cpp"
-   "${LUAJIT_SRC}/parser/lj_debug.cpp"
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")

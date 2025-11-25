@@ -7,42 +7,9 @@
 
 #include "lua.h"
 
-#if defined(_MSC_VER) && (_MSC_VER < 1700)
-// Old MSVC is stuck in the last century and doesn't have C99's stdint.h.
-typedef __int8 int8_t;
-typedef __int16 int16_t;
-typedef __int32 int32_t;
-typedef __int64 int64_t;
-typedef unsigned __int8 uint8_t;
-typedef unsigned __int16 uint16_t;
-typedef unsigned __int32 uint32_t;
-typedef unsigned __int64 uint64_t;
-#ifdef _WIN64
-typedef __int64 intptr_t;
-typedef unsigned __int64 uintptr_t;
-#else
-typedef __int32 intptr_t;
-typedef unsigned __int32 uintptr_t;
-#endif
-#elif defined(__symbian__)
-// Cough.
-typedef signed char int8_t;
-typedef short int int16_t;
-typedef int int32_t;
-typedef long long int64_t;
-typedef unsigned char uint8_t;
-typedef unsigned short int uint16_t;
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-typedef int intptr_t;
-typedef unsigned int uintptr_t;
-#else
-#include <stdint.h>
-#endif
-
-// Needed everywhere.
-#include <string.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstring>
+#include <cstdlib>
 
 // Various VM limits.
 constexpr uint32_t LJ_MAX_MEM32 = 0x7fffff00u;   //  Max. 32 bit memory allocation.
@@ -86,9 +53,10 @@ constexpr int LJ_MAX_JSLOTS = 250;      //  Max. # of stack slots for a trace.
 constexpr int LJ_MAX_PHI = 64;      //  Max. # of PHIs for a loop.
 constexpr int LJ_MAX_EXITSTUBGR = 16;   //  Max. # of exit stub groups.
 
-// Various macros.
+// Mark unused parameters/variables to suppress compiler warnings.
+// Prefer [[maybe_unused]] attribute directly where possible.
 #ifndef UNUSED
-#define UNUSED(x)   ((void)(x))   //  to avoid warnings
+#define UNUSED(x)   ((void)(x))
 #endif
 
 // Utility macro for constructing 64-bit constants from hex values.
@@ -170,12 +138,11 @@ inline constexpr uintptr_t bloomtest(BloomFilter b, uintptr_t x) {
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__psp2__)
 
-#define LJ_NORET   __attribute__((noreturn))
+#define LJ_NORET   [[noreturn]]
 #define LJ_ALIGN(n)   __attribute__((aligned(n)))
 #define LJ_INLINE   inline
 #define LJ_AINLINE   inline __attribute__((always_inline))
 #define LJ_NOINLINE   __attribute__((noinline))
-#define LJ_UNUSED    __attribute__((unused))
 
 #if defined(__ELF__) || defined(__MACH__) || defined(__psp2__)
 #if !((defined(__sun__) && defined(__svr4__)) || defined(__CELLOS_LV2__))
@@ -304,7 +271,6 @@ static LJ_AINLINE uint32_t lj_getu32(const void* p)
 #define LJ_INLINE   inline
 #define LJ_AINLINE   __forceinline
 #define LJ_NOINLINE   __declspec(noinline)
-#define LJ_UNUSED
 #if defined(_M_IX86)
 #define LJ_FASTCALL   __fastcall
 #endif
@@ -370,7 +336,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #endif
 
 #ifndef LJ_NORET
-#define LJ_NORET
+#define LJ_NORET   [[noreturn]]
 #endif
 #ifndef LJ_NOAPI
 #ifdef __cplusplus
@@ -425,17 +391,6 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #define lj_assertL(c, ...)   ((void)L)
 #define lj_assertX(c, ...)   ((void)0)
 #define check_exp(c, e)      (e)
-#endif
-
-// Static assertions.
-#define LJ_ASSERT_NAME2(name, line)   name ## line
-#define LJ_ASSERT_NAME(line)      LJ_ASSERT_NAME2(lj_assert_, line)
-#ifdef __COUNTER__
-#define LJ_STATIC_ASSERT(cond) \
-  extern void LJ_ASSERT_NAME(__COUNTER__)(int STATIC_ASSERTION_FAILED[(cond)?1:-1])
-#else
-#define LJ_STATIC_ASSERT(cond) \
-  extern void LJ_ASSERT_NAME(__LINE__)(int STATIC_ASSERTION_FAILED[(cond)?1:-1])
 #endif
 
 // PRNG state. Need this here, details in lj_prng.h.

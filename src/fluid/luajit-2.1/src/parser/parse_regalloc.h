@@ -157,3 +157,7 @@ inline AllocatedRegister RegisterAllocator::acquire() {
 inline void RegisterSpan::release() { if (allocator_) allocator_->release(*this); }
 
 inline void AllocatedRegister::release() { if (allocator_) allocator_->release(*this); }
+
+// Get pointer to bytecode instruction for expression.
+
+[[nodiscard]] inline BCIns * bcptr(FuncState *fs, const ExpDesc *e) { return &fs->bcbase[e->u.s.info].ins; }

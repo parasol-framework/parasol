@@ -13,7 +13,7 @@ enum { JUMP_BREAK, JUMP_CONTINUE };
 
 static int is_blank_identifier(GCstr *name)
 {
-   return (name != nullptr and name->len == 1 and *(strdata(name)) == '_');
+   return (name != nullptr and name->len IS 1 and *(strdata(name)) IS '_');
 }
 
 //********************************************************************************************************************
@@ -25,11 +25,10 @@ void LexState::var_new(BCReg n, GCstr* name)
    MSize vtop = this->vtop;
    checklimit(fs, fs->nactvar + n, LJ_MAX_LOCVAR, "local variables");
    if (vtop >= this->sizevstack) [[unlikely]] {
-      if (this->sizevstack >= LJ_MAX_VSTACK)
-         lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
+      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
-   lj_assertFS(name == NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
+   fs->assert(name IS NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcref(this->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
@@ -56,7 +55,7 @@ void LexState::var_add(BCReg nvars)
    FuncState* fs = this->fs;
    BCReg nactvar = fs->nactvar;
    while (nvars--) {
-      VarInfo* v = &var_get(this, fs, nactvar);
+      VarInfo* v = &fs->var_get(nactvar);
       v->startpc = fs->pc;
       v->slot = nactvar++;
       v->info = VarInfoFlag::None;
@@ -70,21 +69,20 @@ void LexState::var_add(BCReg nvars)
 void LexState::var_remove(BCReg tolevel)
 {
    FuncState* fs = this->fs;
-   while (fs->nactvar > tolevel)
-      var_get(this, fs, --fs->nactvar).endpc = fs->pc;
+   while (fs->nactvar > tolevel) fs->var_get(--fs->nactvar).endpc = fs->pc;
 }
 
 //********************************************************************************************************************
 // Lookup local variable name.
 
-static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n)
+static std::optional<BCReg> var_lookup_local(FuncState *fs, GCstr *n)
 {
    int i;
    for (i = fs->nactvar - 1; i >= 0; i--) {
-      GCstr* varname = strref(var_get(fs->ls, fs, i).name);
-      if (varname == NAME_BLANK) [[unlikely]]
+      GCstr *varname = strref(fs->var_get(i).name);
+      if (varname IS NAME_BLANK) [[unlikely]]
          continue;  // Skip blank identifiers.
-      if (n == varname) [[likely]]
+      if (n IS varname) [[likely]]
          return BCReg(i);
    }
    return std::nullopt;  // Not found.
@@ -93,21 +91,20 @@ static std::optional<BCReg> var_lookup_local(FuncState* fs, GCstr* n)
 //********************************************************************************************************************
 // Lookup or add upvalue index.
 
-static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
+static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
 {
    MSize n = fs->nuv;
    // Check if upvalue already exists using range-based iteration.
    auto uvmap_view = std::span(fs->uvmap.data(), n);
    for (MSize i = 0; auto uv_idx : uvmap_view) {
-      if (uv_idx == vidx)
-         return i;  // Already exists.
+      if (uv_idx IS vidx) return i;  // Already exists.
       i++;
    }
    // Otherwise create a new one.
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
-   lj_assertFS(e->k == ExpKind::Local or e->k == ExpKind::Upval, "bad expr type %d", e->k);
+   fs->assert(e->k IS ExpKind::Local or e->k IS ExpKind::Upval, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
-   fs->uvtmp[n] = uint16_t(e->k == ExpKind::Local ? vidx : LJ_MAX_VSTACK + e->u.s.info);
+   fs->uvtmp[n] = uint16_t(e->k IS ExpKind::Local ? vidx : LJ_MAX_VSTACK + e->u.s.info);
    fs->nuv = n + 1;
    return n;
 }
@@ -120,7 +117,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
    if (fs) {
       auto reg = var_lookup_local(fs, name);
       if (reg.has_value()) {  // Local in this function?
-         expr_init(e, ExpKind::Local, reg.value());
+         e->init(ExpKind::Local, reg.value());
          if (!first)
             fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
          return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
@@ -135,7 +132,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
       }
    }
    else {  // Not found in any function, must be a global.
-      expr_init(e, ExpKind::Global, 0);
+      e->init(ExpKind::Global, 0);
       e->u.sval = name;
    }
    return MSize(-1);  // Global.
@@ -149,8 +146,8 @@ MSize LexState::var_lookup(ExpDesc* e)
 
 MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
 {
-   if (name == nullptr or name == NAME_BLANK) {
-      expr_init(e, ExpKind::Global, 0);
+   if (name IS nullptr or name IS NAME_BLANK) {
+      e->init(ExpKind::Global, 0);
       e->u.sval = name ? name : NAME_BLANK;
       return MSize(-1);
    }
@@ -170,7 +167,7 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
       if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
-   GCstr* name = (jump_type == JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
+   GCstr* name = (jump_type IS JUMP_BREAK) ? NAME_BREAK : NAME_CONTINUE;
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcrefp(this->vstack[vtop].name, obj2gco(name));
    this->vstack[vtop].startpc = pc;
@@ -215,8 +212,8 @@ void LexState::gola_close(VarInfo* vg)
    FuncState* fs = this->fs;
    BCPos pc = vg->startpc;
    BCIns* ip = &fs->bcbase[pc].ins;
-   lj_assertFS(gola_is_jump(vg), "expected goto");
-   lj_assertFS(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
+   fs->assert(gola_is_jump(vg), "expected goto");
+   fs->assert(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
    if (bc_op(*ip) IS BC_JMP) {
       BCPos next = JumpListView::next(fs, pc);
@@ -254,7 +251,7 @@ void LexState::gola_fixup(FuncScope* bl)
             VarInfo* vg;
             setgcrefnull(v->name);  // Invalidate target that goes out of scope.
             for (vg = v + 1; vg < ve; vg++)  // Resolve pending backward gotos.
-               if (strref(vg->name) == name and gola_is_jump(vg)) {
+               if (strref(vg->name) IS name and gola_is_jump(vg)) {
                   if (has_flag(bl->flags, FuncScopeFlag::Upvalue) and vg->slot > v->slot)
                      this->gola_close(vg);
                   this->gola_patch(vg, v);
@@ -262,15 +259,15 @@ void LexState::gola_fixup(FuncScope* bl)
          }
          else if (gola_is_jump(v)) {
             if (bl->prev) {  // Propagate break/continue to outer scope.
-               if (name == NAME_BREAK) bl->prev->flags |= FuncScopeFlag::Break;
-               else if (name == NAME_CONTINUE) bl->prev->flags |= FuncScopeFlag::Continue;
+               if (name IS NAME_BREAK) bl->prev->flags |= FuncScopeFlag::Break;
+               else if (name IS NAME_CONTINUE) bl->prev->flags |= FuncScopeFlag::Continue;
                v->slot = bl->nactvar;
                if (has_flag(bl->flags, FuncScopeFlag::Upvalue)) this->gola_close(v);
             }
             else {  // No outer scope: no loop for break/continue.
                this->linenumber = this->fs->bcbase[v->startpc].line;
-               if (name == NAME_BREAK) lj_lex_error(this, 0, ErrMsg::XBREAK);
-               else if (name == NAME_CONTINUE) lj_lex_error(this, 0, ErrMsg::XCONTINUE);
+               if (name IS NAME_BREAK) lj_lex_error(this, 0, ErrMsg::XBREAK);
+               else if (name IS NAME_CONTINUE) lj_lex_error(this, 0, ErrMsg::XCONTINUE);
             }
          }
       }
@@ -289,32 +286,13 @@ static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
    bl->vstart = fs->ls->vtop;
    bl->prev = fs->bl;
    fs->bl = bl;
-   lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
-}
-
-//********************************************************************************************************************
-
-static void fscope_loop_continue(FuncState* fs, BCPos pos)
-{
-   FuncScope* bl = fs->bl;
-   LexState* ls = fs->ls;
-
-   lj_assertFS(has_flag(bl->flags, FuncScopeFlag::Loop), "continue outside loop scope");
-
-   if (!has_flag(bl->flags, FuncScopeFlag::Continue)) return;
-
-   bl->flags &= ~FuncScopeFlag::Continue;
-
-   VStackGuard vstack_guard(ls);
-   MSize idx = ls->gola_new(JUMP_CONTINUE, VarInfoFlag::JumpTarget, pos);
-   ls->gola_resolve(bl, idx);
+   fs->assert(fs->freereg IS fs->nactvar, "bad regalloc");
 }
 
 //********************************************************************************************************************
 
 static void execute_defers(FuncState* fs, BCReg limit)
 {
-   LexState* ls = fs->ls;
    BCReg i = fs->nactvar;
    BCReg oldfreereg;
    BCReg argc = 0;
@@ -324,9 +302,9 @@ static void execute_defers(FuncState* fs, BCReg limit)
    oldfreereg = fs->freereg;
 
    while (i > limit) {
-      VarInfo* v = &var_get(ls, fs, --i);
+      VarInfo *v = &fs->var_get(--i);
       if (has_flag(v->info, VarInfoFlag::DeferArg)) {
-         lj_assertFS(argc < LJ_MAX_SLOTS, "too many defer args");
+         fs->assert(argc < LJ_MAX_SLOTS, "too many defer args");
          argslots[argc++] = v->slot;
          continue;
       }
@@ -345,10 +323,10 @@ static void execute_defers(FuncState* fs, BCReg limit)
          argc = 0;
          continue;
       }
-      lj_assertFS(argc == 0, "dangling defer arguments");
+      fs->assert(argc IS 0, "dangling defer arguments");
    }
 
-   lj_assertFS(argc == 0, "dangling defer arguments");
+   fs->assert(argc IS 0, "dangling defer arguments");
    fs->freereg = oldfreereg;
 }
 
@@ -365,7 +343,7 @@ static void fscope_end(FuncState* fs)
    execute_defers(fs, bl->nactvar);
    ls->var_remove(bl->nactvar);
    fs->freereg = fs->nactvar;
-   lj_assertFS(bl->nactvar == fs->nactvar, "bad regalloc");
+   fs->assert(bl->nactvar IS fs->nactvar, "bad regalloc");
    if ((bl->flags & (FuncScopeFlag::Upvalue | FuncScopeFlag::NoClose)) IS FuncScopeFlag::Upvalue) bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
    if (has_flag(bl->flags, FuncScopeFlag::Break)) {
       if (has_flag(bl->flags, FuncScopeFlag::Loop)) {
@@ -452,14 +430,14 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
       Node* n = &node[i];
       if (tvhaskslot(&n->val)) {
          ptrdiff_t kidx = ptrdiff_t(tvkslot(&n->val));
-         lj_assertFS(!tvisint(&n->key), "unexpected integer key");
+         fs->assert(!tvisint(&n->key), "unexpected integer key");
          if (tvisnum(&n->key)) {
             TValue* tv = &((TValue*)kptr)[kidx];
             if (LJ_DUALNUM) {
                lua_Number nn = numV(&n->key);
                int32_t k = lj_num2int(nn);
-               lj_assertFS(!tvismzero(&n->key), "unexpected -0 key");
-               if (lua_Number(k) == nn) setintV(tv, k);
+               fs->assert(!tvismzero(&n->key), "unexpected -0 key");
+               if (lua_Number(k) IS nn) setintV(tv, k);
                else *tv = n->key;
             }
             else *tv = n->key;
@@ -510,7 +488,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint8_t* li = (uint8_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         lj_assertFS(delta >= 0 and delta < 256, "bad line delta");
+         fs->assert(delta >= 0 and delta < 256, "bad line delta");
          li[i] = uint8_t(delta);
       } while (++i < n);
    }
@@ -518,7 +496,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint16_t* li = (uint16_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         lj_assertFS(delta >= 0 and delta < 65536, "bad line delta");
+         fs->assert(delta >= 0 and delta < 65536, "bad line delta");
          li[i] = uint16_t(delta);
       } while (++i < n);
    }
@@ -526,7 +504,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint32_t* li = (uint32_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         lj_assertFS(delta >= 0, "bad line delta");
+         fs->assert(delta >= 0, "bad line delta");
          li[i] = uint32_t(delta);
       } while (++i < n);
    }
@@ -537,16 +515,16 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
-   FuncState* fs = FunctionState;
-   VarInfo* vs = this->vstack, * ve;
+   FuncState *fs = FunctionState;
+   VarInfo *vs = this->vstack, * ve;
    BCPos lastpc;
    lj_buf_reset(&this->sb);  // Copy to temp. string buffer.
    // Store upvalue names using range-based iteration.
    auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
    for (auto uv_idx : uvmap_range) {
-      GCstr* s = strref(vs[uv_idx].name);
+      GCstr *s = strref(vs[uv_idx].name);
       MSize len = s->len + 1;
-      char* p = lj_buf_more(&this->sb, len);
+      char *p = lj_buf_more(&this->sb, len);
       p = lj_buf_wmem(p, strdata(s), len);
       this->sb.w = p;
    }
@@ -559,7 +537,7 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
       if (!gola_is_jump_or_target(vs)) {
          GCstr* s = strref(vs->name);
          BCPos startpc;
-         char* p;
+         char *p;
          if (uintptr_t(s) < VARNAME__MAX) {
             p = lj_buf_more(&this->sb, 1 + 2 * 5);
             *p++ = char(uintptr_t(s));
@@ -598,15 +576,11 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
-   UNUSED(FunctionState);
-   UNUSED(OffsetVar);
    return 0;
 }
 
 void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVar)
 {
-   UNUSED(Buffer);
-   UNUSED(OffsetVar);
    setmref((Prototype)->uvinfo, nullptr);
    setmref((Prototype)->varinfo, nullptr);
 }
@@ -616,14 +590,14 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 //********************************************************************************************************************
 // Check if bytecode op returns.
 
-static int bcopisret(BCOp op)
+[[nodiscard]] inline int bcopisret(BCOp op)
 {
    switch (op) {
-   case BC_CALLMT: case BC_CALLT:
-   case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
-      return 1;
-   default:
-      return 0;
+      case BC_CALLMT: case BC_CALLT:
+      case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
+         return 1;
+      default:
+         return 0;
    }
 }
 
@@ -641,7 +615,7 @@ static void fs_fixup_ret(FuncState* fs)
 
    fs->bl->flags |= FuncScopeFlag::NoClose;  // Handled above.
    fscope_end(fs);
-   lj_assertFS(fs->bl == nullptr, "bad scope nesting");
+   fs->assert(fs->bl IS nullptr, "bad scope nesting");
 
    // May need to fixup returns encoded before first function was created.
 
@@ -651,19 +625,19 @@ static void fs_fixup_ret(FuncState* fs)
          BCIns ins = fs->bcbase[pc].ins;
          BCPos offset;
          switch (bc_op(ins)) {
-         case BC_CALLMT: case BC_CALLT:
-         case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
-            offset = bcemit_INS(fs, ins);  // Copy original instruction.
-            fs->bcbase[offset].line = fs->bcbase[pc].line;
-            offset = offset - (pc + 1) + BCBIAS_J;
-            if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XFIXUP);
-            // Replace with UCLO plus branch.
-            fs->bcbase[pc].ins = BCINS_AD(BC_UCLO, 0, offset);
-            break;
-         case BC_UCLO:
-            return;  // We're done.
-         default:
-            break;
+            case BC_CALLMT: case BC_CALLT:
+            case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
+               offset = bcemit_INS(fs, ins);  // Copy original instruction.
+               fs->bcbase[offset].line = fs->bcbase[pc].line;
+               offset = offset - (pc + 1) + BCBIAS_J;
+               if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XFIXUP);
+               // Replace with UCLO plus branch.
+               fs->bcbase[pc].ins = BCINS_AD(BC_UCLO, 0, offset);
+               break;
+            case BC_UCLO:
+               return;  // We're done.
+            default:
+               break;
          }
       }
    }
@@ -716,7 +690,7 @@ GCproto* LexState::fs_finish(BCLine Line)
    L->top--;  // Pop table of constants.
    this->vtop = fs->vbase;  // Reset variable stack.
    this->fs = fs->prev;
-   lj_assertL(this->fs != nullptr or this->tok == TK_eof, "bad parser state");
+   lj_assertL(this->fs != nullptr or this->tok IS TK_eof, "bad parser state");
    return pt;
 }
 

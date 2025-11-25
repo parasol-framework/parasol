@@ -55,7 +55,7 @@ enum {
    SER_TAG_0x1f,
    SER_TAG_STR,      //  0x20 + str->len
 };
-LJ_STATIC_ASSERT((SER_TAG_TAB & 7) == 0);
+static_assert((SER_TAG_TAB & 7) == 0);
 
 // -- Helper functions ----------------------------------------------------
 

@@ -3,13 +3,12 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_BCDUMP_H
-#define _LJ_BCDUMP_H
+#pragma once
 
 #include "lj_obj.h"
 #include "../parser/lexer.h"
 
-// -- Bytecode dump format ------------------------------------------------
+// Bytecode dump format
 
 /*
 ** dump   = header proto+ 0U
@@ -33,17 +32,17 @@ constexpr uint8_t BCDUMP_HEAD1 = 0x1b;
 constexpr uint8_t BCDUMP_HEAD2 = 0x4c;
 constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 
-/* If you perform *any* kind of private modifications to the bytecode itself
-** or to the dump format, you *must* set BCDUMP_VERSION to 0x80 or higher.
-*/
+// If you perform *any* kind of private modifications to the bytecode itself
+// or to the dump format, you *must* set BCDUMP_VERSION to 0x80 or higher.
+
 constexpr int BCDUMP_VERSION = 2;
 
 // Compatibility flags.
+
 constexpr uint8_t BCDUMP_F_BE = 0x01;
 constexpr uint8_t BCDUMP_F_STRIP = 0x02;
 constexpr uint8_t BCDUMP_F_FFI = 0x04;
 constexpr uint8_t BCDUMP_F_FR2 = 0x08;
-
 constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_FR2*2-1);
 
 // Type codes for the GC constants of a prototype. Plus length for strings.
@@ -58,11 +57,8 @@ enum {
    BCDUMP_KTAB_INT, BCDUMP_KTAB_NUM, BCDUMP_KTAB_STR
 };
 
-// -- Bytecode reader/writer ----------------------------------------------
+// Bytecode reader/writer
 
-LJ_FUNC int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer,
-   void* data, int strip);
+LJ_FUNC int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data, int strip);
 LJ_FUNC GCproto* lj_bcread_proto(LexState* ls);
 LJ_FUNC GCproto* lj_bcread(LexState* ls);
-
-#endif

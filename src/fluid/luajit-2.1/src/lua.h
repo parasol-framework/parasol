@@ -186,91 +186,45 @@ extern int  (lua_yield) (lua_State *L, int nresults);
 extern int  (lua_resume) (lua_State *L, int narg);
 extern int  (lua_status) (lua_State *L);
 
-/*
-** garbage-collection function and options
-*/
+// Garbage collection function and options
 
-#define LUA_GCSTOP      0
-#define LUA_GCRESTART      1
-#define LUA_GCCOLLECT      2
-#define LUA_GCCOUNT      3
-#define LUA_GCCOUNTB      4
-#define LUA_GCSTEP      5
-#define LUA_GCSETPAUSE      6
-#define LUA_GCSETSTEPMUL   7
-#define LUA_GCISRUNNING      9
+constexpr int LUA_GCSTOP = 0;
+constexpr int LUA_GCRESTART = 1;
+constexpr int LUA_GCCOLLECT = 2;
+constexpr int LUA_GCCOUNT = 3;
+constexpr int LUA_GCCOUNTB = 4;
+constexpr int LUA_GCSTEP = 5;
+constexpr int LUA_GCSETPAUSE = 6;
+constexpr int LUA_GCSETSTEPMUL = 7;
+constexpr int LUA_GCISRUNNING = 9;
 
 extern int (lua_gc) (lua_State *L, int what, int data);
 
-/*
-** miscellaneous functions
-*/
-
 extern int   (lua_error) (lua_State *L);
-
 extern int   (lua_next) (lua_State *L, int idx);
-
 extern void  (lua_concat) (lua_State *L, int n);
-
 extern lua_Alloc (lua_getallocf) (lua_State *L, void **ud);
 extern void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);
 
-inline void lua_pop(lua_State *L, int N) {
-   lua_settop(L, -(N)-1);
-}
-
-inline void lua_newtable(lua_State *L) {
-   lua_createtable(L, 0, 0);
-}
-
-inline void lua_pushcfunction(lua_State *L, lua_CFunction F) {
-   lua_pushcclosure(L, F, 0);
-}
-
-inline void lua_setglobal(lua_State *L, const char *S) {
-   lua_setfield(L, LUA_GLOBALSINDEX, S);
-}
+inline void lua_pop(lua_State *L, int N) { lua_settop(L, -(N)-1); }
+inline void lua_newtable(lua_State *L) { lua_createtable(L, 0, 0); }
+inline void lua_pushcfunction(lua_State *L, lua_CFunction F) { lua_pushcclosure(L, F, 0); }
+inline void lua_setglobal(lua_State *L, const char *S) { lua_setfield(L, LUA_GLOBALSINDEX, S); }
 
 inline void lua_register(lua_State *L, const char *N, lua_CFunction F) {
    lua_pushcfunction(L, F);
    lua_setglobal(L, N);
 }
 
-inline size_t lua_strlen(lua_State *L, int I) {
-   return lua_objlen(L, I);
-}
-
-inline bool lua_isfunction(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TFUNCTION;
-}
-
-inline bool lua_istable(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TTABLE;
-}
-
-inline bool lua_islightuserdata(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TLIGHTUSERDATA;
-}
-
-inline bool lua_isnil(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TNIL;
-}
-
-inline bool lua_isboolean(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TBOOLEAN;
-}
-
-inline bool lua_isthread(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TTHREAD;
-}
-
-inline bool lua_isnone(lua_State *L, int N) {
-   return lua_type(L, N) == LUA_TNONE;
-}
-
-inline bool lua_isnoneornil(lua_State *L, int N) {
-   return lua_type(L, N) <= 0;
-}
+inline size_t lua_strlen(lua_State *L, int I) { return lua_objlen(L, I); }
+inline bool lua_isfunction(lua_State *L, int N) { return lua_type(L, N) == LUA_TFUNCTION; }
+inline bool lua_istable(lua_State *L, int N) { return lua_type(L, N) == LUA_TTABLE; }
+inline bool lua_islightuserdata(lua_State *L, int N) { return lua_type(L, N) == LUA_TLIGHTUSERDATA; }
+inline bool lua_isnil(lua_State *L, int N) { return lua_type(L, N) == LUA_TNIL; }
+inline bool lua_isboolean(lua_State *L, int N) { return lua_type(L, N) == LUA_TBOOLEAN; }
+inline bool lua_isthread(lua_State *L, int N) { return lua_type(L, N) == LUA_TTHREAD; }
+inline bool lua_isnone(lua_State *L, int N) { return lua_type(L, N) == LUA_TNONE; }
+inline bool lua_isnoneornil(lua_State *L, int N) { return lua_type(L, N) <= 0; }
 
 template<size_t N>
 inline void lua_pushliteral(lua_State *L, const char (&S)[N]) {
@@ -303,31 +257,22 @@ inline int lua_getgccount(lua_State *L) {
 // hack
 extern void lua_setlevel   (lua_State *from, lua_State *to);
 
-/*
-** {======================================================================
-** Debug API
-** =======================================================================
-*/
+// Event codes
 
-
-/*
-** Event codes
-*/
 #define LUA_HOOKCALL   0
 #define LUA_HOOKRET   1
 #define LUA_HOOKLINE   2
 #define LUA_HOOKCOUNT   3
 #define LUA_HOOKTAILRET 4
 
-/*
-** Event masks
-*/
+// Event masks
 #define LUA_MASKCALL   (1 << LUA_HOOKCALL)
 #define LUA_MASKRET   (1 << LUA_HOOKRET)
 #define LUA_MASKLINE   (1 << LUA_HOOKLINE)
 #define LUA_MASKCOUNT   (1 << LUA_HOOKCOUNT)
 
-typedef struct lua_Debug lua_Debug;  //  activation record
+// Activation record
+using lua_Debug = struct lua_Debug;
 
 // Functions to be called by the debuger in specific events
 using lua_Hook = void(*)(lua_State *L, lua_Debug *ar);
@@ -354,7 +299,6 @@ extern lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
 
 // From Lua 5.3.
 extern int lua_isyieldable (lua_State *L);
-
 
 struct lua_Debug {
   int event;

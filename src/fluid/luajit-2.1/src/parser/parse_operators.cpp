@@ -16,8 +16,8 @@
 {
    TValue o;
    lua_Number n;
-   if (!expr_isnumk_nojump(e1) or !expr_isnumk_nojump(e2)) [[likely]] return 0;
-   n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), int(opr) - OPR_ADD);
+   if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
+   n = lj_vm_foldarith(e1->number_value(), e2->number_value(), int(opr) - OPR_ADD);
    setnumV(&o, n);
    if (tvisnan(&o) or tvismzero(&o)) [[unlikely]] return 0;  // Avoid NaN and -0 as consts.
    if (LJ_DUALNUM) {
@@ -56,7 +56,7 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
       *e2 = e2_toval.legacy();
-      if (expr_isnumk(e2) and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
+      if (e2->is_num_constant() and (rc = const_num(fs, e2)) <= BCMAX_C) op -= BC_ADDVV - BC_ADDVN;
       else {
          ExpressionValue e2_value(fs, *e2);
          rc = e2_value.discharge_to_any_reg(allocator);
@@ -65,14 +65,14 @@ void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      lj_assertFS(expr_isnumk(e1) or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
+      fs->assert(e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
       ExpressionValue e1_toval(fs, *e1);
       e1_toval.to_val();
       *e1 = e1_toval.legacy();
 
       // Avoid two consts to satisfy bytecode constraints.
 
-      if (expr_isnumk(e1) and (not expr_isnumk(e2)) and (t = const_num(fs, e1)) <= BCMAX_B) {
+      if (e1->is_num_constant() and (not e2->is_num_constant()) and (t = const_num(fs, e1)) <= BCMAX_B) {
          rb = rc; rc = t; op -= BC_ADDVV - BC_ADDNV;
       }
       else {
@@ -106,7 +106,7 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
 
-      if (expr_isk(e1)) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
+      if (e1->is_constant()) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
       ra = e1_value.discharge_to_any_reg(allocator);  // First arg must be in a reg.
       *e1 = e1_value.legacy();
@@ -187,30 +187,6 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
    eret->k = ExpKind::Jmp;
 }
 
-//********************************************************************************************************************
-// Fixup left side of binary operator.
-//
-// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
-// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
-// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
-//
-// Architecture:
-// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
-// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
-
-[[deprecated]] static void bcemit_binop_left(FuncState* fs, BinOpr op, ExpDesc* e)
-{
-   RegisterAllocator allocator(fs);
-   ControlFlowGraph cfg(fs);
-   OperatorEmitter emitter(fs, &allocator, &cfg);
-   ValueSlot left(e);
-
-   if (op IS OPR_AND) emitter.prepare_logical_and(left);
-   else if (op IS OPR_OR) emitter.prepare_logical_or(left);
-   else if (op IS OPR_IF_EMPTY) emitter.prepare_if_empty(left);
-   else if (op IS OPR_CONCAT) emitter.prepare_concat(left);
-   else emitter.emit_binop_left(op, left);
-}
 
 //********************************************************************************************************************
 // Emit a call to a bit library function (bit.lshift, bit.rshift, etc.) at a specific base register.
@@ -269,12 +245,12 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    *rhs = rhs_value.legacy();
 
    // Now load bit.[lshift|rshift|...] into the base register
-   expr_init(&callee, ExpKind::Global, 0);
+   callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);
    callee_value.discharge_to_any_reg(allocator);
    callee = callee_value.legacy();
-   expr_init(&key, ExpKind::Str, 0);
+   key.init(ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    ExpressionValue callee_toval(fs, callee);
@@ -294,7 +270,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    ExpressionValue lhs_value_discharge(fs, *lhs);
    lhs_value_discharge.discharge();
    *lhs = lhs_value_discharge.legacy();
-   lj_assertFS(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
+   fs->assert(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -319,7 +295,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    allocator.reserve(1);  // Reserve for callee
    if (LJ_FR2) allocator.reserve(1);
    allocator.reserve(2);  // Reserve for arguments
-   lj_assertFS(!fname.empty(), "bitlib name missing for bitwise operator");
+   fs->assert(!fname.empty(), "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
 
@@ -349,12 +325,12 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
    if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
 
    // Load bit.fname into base register.
-   expr_init(&callee, ExpKind::Global, 0);
+   callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);
    callee_value.discharge_to_any_reg(allocator);
    callee = callee_value.legacy();
-   expr_init(&key, ExpKind::Str, 0);
+   key.init(ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    ExpressionValue callee_toval2(fs, callee);
@@ -375,322 +351,7 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
    ExpressionValue arg_value_discharge(fs, *arg);
    arg_value_discharge.discharge();
    *arg = arg_value_discharge.legacy();
-   lj_assertFS(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
-}
-
-//********************************************************************************************************************
-// Emit bytecode for postfix presence check operator (x?).
-// Returns boolean: true if value is truthy (extended falsey semantics),
-// false if value is falsey (nil, false, 0, "").
-//
-// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
-// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter::emit_presence_check() instead.
-// Do not call this function from new code - use OperatorEmitter methods.
-//
-// Architecture:
-// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers
-// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_presence_check → shared helpers
-
-[[deprecated]] static void bcemit_presence_check(FuncState* fs, ExpDesc* e)
-{
-   RegisterAllocator allocator(fs);
-   ExpressionValue e_value(fs, *e);
-   e_value.discharge();
-   *e = e_value.legacy();
-
-   // Handle compile-time constants
-   if (e->k IS ExpKind::Nil or e->k IS ExpKind::False) { // Falsey constant - set to false
-      expr_init(e, ExpKind::False, 0);
-      return;
-   }
-
-   if (e->k IS ExpKind::Num and expr_numiszero(e)) { // Zero is falsey - set to false
-      expr_init(e, ExpKind::False, 0);
-      return;
-   }
-
-   if (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len IS 0) {
-      // Empty string is falsey - set to false
-      expr_init(e, ExpKind::False, 0);
-      return;
-   }
-
-   if (e->k IS ExpKind::True or (e->k IS ExpKind::Num and !expr_numiszero(e)) or
-      (e->k IS ExpKind::Str and e->u.sval and e->u.sval->len > 0)) {
-      // Truthy constant - set to true
-      expr_init(e, ExpKind::True, 0);
-      return;
-   }
-
-   // Runtime value - emit checks
-   // Follow `?` pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch
-
-   // Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
-   // Pattern: BC_ISEQP reg, ExpKind::Nil + JMP means:
-   //   - If reg IS nil: skip JMP, continue to next check
-   //   - If reg != nil: execute JMP, jump to target (patched to false branch)
-   // By chaining multiple checks and patching all JMPs to the same false branch:
-   //   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
-   //   - Truthy values: all checks fail, first JMP executes, jumps to false branch
-
-   ExpressionValue e_value_runtime(fs, *e);
-   BCReg reg = e_value_runtime.discharge_to_any_reg(allocator);
-   *e = e_value_runtime.legacy();
-   ExpDesc nilv = make_nil_expr();
-   ExpDesc falsev = make_bool_expr(false);
-   ExpDesc zerov = make_num_expr(0.0);
-   ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
-   BCPos jmp_false_branch;
-   BCPos check_nil, check_false, check_zero, check_empty;
-
-   // Check for nil
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-   check_nil = bcemit_jmp(fs);
-
-   // Check for false
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-   check_false = bcemit_jmp(fs);
-
-   // Check for zero
-   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-   check_zero = bcemit_jmp(fs);
-
-   // Check for empty string
-   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-   check_empty = bcemit_jmp(fs);
-
-   expr_free(fs, e); // Free the expression register immediately after we're done using it
-
-   // Reserve a register for the result
-   BCReg dest = fs->freereg;
-   allocator.reserve(1);
-
-   // If all checks pass (value is truthy), load true
-   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));
-   jmp_false_branch = bcemit_jmp(fs);
-
-   // False branch: patch all falsey jumps here and load false
-   BCPos false_pos = fs->pc;
-   ControlFlowGraph cfg(fs);
-   ControlFlowEdge nil_edge = cfg.make_unconditional(check_nil);
-   nil_edge.patch_to(false_pos);
-   ControlFlowEdge false_edge_check = cfg.make_unconditional(check_false);
-   false_edge_check.patch_to(false_pos);
-   ControlFlowEdge zero_edge = cfg.make_unconditional(check_zero);
-   zero_edge.patch_to(false_pos);
-   ControlFlowEdge empty_edge = cfg.make_unconditional(check_empty);
-   empty_edge.patch_to(false_pos);
-   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
-
-   // Patch skip jump to after false load
-   ControlFlowEdge skip_edge = cfg.make_unconditional(jmp_false_branch);
-   skip_edge.patch_to(fs->pc);
-
-   expr_init(e, ExpKind::NonReloc, dest);
-}
-
-//********************************************************************************************************************
-// Emit binary operator.
-//
-// LEGACY PARSER PATH ONLY: This function is used by the legacy parser (parse_expr.cpp) when
-// JOF::LEGACY is set. The modern AST pipeline uses OperatorEmitter instead.
-// Do not call this function from new code - use OperatorEmitter::emit_binary_*() methods.
-//
-// Architecture:
-// - Modern path (default): AST pipeline → IrEmitter → OperatorEmitter → shared helpers (foldarith, bcemit_arith)
-// - Legacy path (opt-in): Direct parsing → parse_expr.cpp → bcemit_binop/bcemit_binop_left → shared helpers
-
-[[deprecated]] static void bcemit_binop(FuncState* fs, BinOpr op, ExpDesc* e1, ExpDesc* e2)
-{
-   RegisterAllocator allocator(fs);
-
-   if (op <= OPR_POW) {
-      bcemit_arith(fs, op, e1, e2);
-   }
-   else if (op IS OPR_AND) {
-      lj_assertFS(e1->t IS NO_JMP, "jump list not closed");
-      ExpressionValue e2_value(fs, *e2);
-      e2_value.discharge();
-      *e2 = e2_value.legacy();
-      ControlFlowGraph cfg(fs);
-      ControlFlowEdge false_edge = cfg.make_false_edge(e2->f);
-      false_edge.append(e1->f);
-      e2->f = false_edge.head();
-      *e1 = *e2;
-   }
-   else if (op IS OPR_OR) {
-      lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
-      ExpressionValue e2_value(fs, *e2);
-      e2_value.discharge();
-      *e2 = e2_value.legacy();
-      ControlFlowGraph cfg(fs);
-      ControlFlowEdge true_edge = cfg.make_true_edge(e2->t);
-      true_edge.append(e1->t);
-      e2->t = true_edge.head();
-      *e1 = *e2;
-   }
-   else if (op IS OPR_IF_EMPTY) {
-      lj_assertFS(e1->f IS NO_JMP, "jump list not closed");
-
-      // bcemit_binop_left() already set up jumps in e1->t for truthy LHS
-      // If e1->t has jumps, LHS is truthy - patch jumps to skip RHS, return LHS
-
-      if (e1->t != NO_JMP) {
-         // Patch jumps to skip RHS
-         ControlFlowGraph cfg(fs);
-         ControlFlowEdge true_edge = cfg.make_true_edge(e1->t);
-         true_edge.patch_to(fs->pc);
-         e1->t = NO_JMP;
-
-         // LHS is truthy - no need to evaluate RHS
-         // bcemit_binop_left() already loaded truthy constants to a register
-         // Just ensure expression is properly set up
-
-         if (e1->k != ExpKind::NonReloc and e1->k != ExpKind::Relocable) {
-            if (expr_isk(e1)) { // Constant - load to register
-               allocator.reserve(1);
-               expr_toreg_nobranch(fs, e1, fs->freereg - 1);
-            }
-            else {
-               ExpressionValue e1_value_alt(fs, *e1);
-               e1_value_alt.discharge_to_any_reg(allocator);
-               *e1 = e1_value_alt.legacy();
-            }
-         }
-      }
-      else {
-         // LHS is falsey (no jumps) OR runtime value - need to check
-         BCReg rhs_reg = NO_REG;
-         if (expr_consume_flag(e1, ExprFlag::HasRhsReg)) {
-            rhs_reg = BCReg(e1->u.s.aux);
-         }
-
-         ExpressionValue e1_value(fs, *e1);
-         e1_value.discharge();
-         *e1 = e1_value.legacy();
-
-         if (e1->k IS ExpKind::NonReloc or e1->k IS ExpKind::Relocable) {
-            // Runtime value - emit extended falsey checks
-            ExpressionValue e1_runtime(fs, *e1);
-            BCReg reg = e1_runtime.discharge_to_any_reg(allocator);
-            *e1 = e1_runtime.legacy();
-            ExpDesc nilv = make_nil_expr();
-            ExpDesc falsev = make_bool_expr(false);
-            ExpDesc zerov = make_num_expr(0.0);
-            ExpDesc emptyv = make_interned_string_expr(fs->ls->intern_empty_string());
-            BCPos skip;
-            BCPos check_nil, check_false, check_zero, check_empty;
-            BCReg dest_reg;
-
-            // Check for nil
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-            check_nil = bcemit_jmp(fs);
-
-            // Check for false
-            bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-            check_false = bcemit_jmp(fs);
-
-            // Check for zero
-            bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-            check_zero = bcemit_jmp(fs);
-
-            // Check for empty string
-            bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-            check_empty = bcemit_jmp(fs);
-
-            if (rhs_reg IS NO_REG) {
-               dest_reg = fs->freereg;
-               allocator.reserve(1);
-            }
-            else {
-               dest_reg = rhs_reg;
-               if (dest_reg >= fs->freereg) fs->freereg = dest_reg + 1;
-            }
-
-            // Preserve original value for truthy path before emitting skip jump.
-            bcemit_AD(fs, BC_MOV, dest_reg, reg);
-
-            // If all checks pass (value is truthy), skip RHS
-            skip = bcemit_jmp(fs);
-
-            // Patch falsey checks to jump to RHS evaluation
-            ControlFlowGraph cfg_checks(fs);
-            ControlFlowEdge nil_edge = cfg_checks.make_unconditional(check_nil);
-            nil_edge.patch_to(fs->pc);
-            ControlFlowEdge false_edge_check = cfg_checks.make_unconditional(check_false);
-            false_edge_check.patch_to(fs->pc);
-            ControlFlowEdge zero_edge = cfg_checks.make_unconditional(check_zero);
-            zero_edge.patch_to(fs->pc);
-            ControlFlowEdge empty_edge = cfg_checks.make_unconditional(check_empty);
-            empty_edge.patch_to(fs->pc);
-
-            // Evaluate RHS
-            ExpressionValue e2_value(fs, *e2);
-            e2_value.to_reg(allocator, dest_reg);
-            *e2 = e2_value.legacy();
-            if (dest_reg != reg) {
-               // Copy the fallback result back into the original slot so callers
-               // (assignments, returns) continue to observe the same register
-               // they used for the LHS. This mirrors the ternary operator,
-               // which always delivers its result in the condition register.
-               bcemit_AD(fs, BC_MOV, reg, dest_reg);
-            }
-            ControlFlowGraph cfg_skip(fs);
-            ControlFlowEdge skip_edge = cfg_skip.make_unconditional(skip);
-            skip_edge.patch_to(fs->pc);
-            ExprFlag saved_flags = e1->flags;  // Save flags before expr_init
-
-            expr_init(e1, ExpKind::NonReloc, reg);
-            e1->flags = saved_flags;  // Restore flags after expr_init
-
-            // Collapse any scratch register reserved for the RHS when it is no longer
-            // needed. Returning the allocator to the original base mirrors the ternary
-            // operator semantics and prevents the optional from leaking an extra
-            // argument slot when used in function-call contexts.
-
-            if (dest_reg != reg and dest_reg >= fs->nactvar and fs->freereg > dest_reg) {
-               fs->freereg = dest_reg;
-            }
-
-            if (reg >= fs->nactvar and fs->freereg > reg + 1) {
-               fs->freereg = reg + 1;
-            }
-         }
-         else { // Constant falsey value - evaluate RHS directly
-            ExpressionValue e2_value(fs, *e2);
-            e2_value.discharge();
-            *e2 = e2_value.legacy();
-            *e1 = *e2;
-         }
-      }
-   }
-   else if ((op IS OPR_SHL) or (op IS OPR_SHR) or (op IS OPR_BAND) or (op IS OPR_BOR) or (op IS OPR_BXOR)) {
-      bcemit_bit_call(fs, std::string_view(priority[op].name, priority[op].name_len), e1, e2);
-   }
-   else if (op IS OPR_CONCAT) {
-      ExpressionValue e2_toval_concat(fs, *e2);
-      e2_toval_concat.to_val();
-      *e2 = e2_toval_concat.legacy();
-      if (e2->k IS ExpKind::Relocable and bc_op(*bcptr(fs, e2)) IS BC_CAT) {
-         lj_assertFS(e1->u.s.info IS bc_b(*bcptr(fs, e2)) - 1, "bad CAT stack layout");
-         expr_free(fs, e1);
-         setbc_b(bcptr(fs, e2), e1->u.s.info);
-         e1->u.s.info = e2->u.s.info;
-      }
-      else {
-         ExpressionValue e2_value(fs, *e2);
-         e2_value.to_next_reg(allocator);
-         *e2 = e2_value.legacy();
-         expr_free(fs, e2);
-         expr_free(fs, e1);
-         e1->u.s.info = bcemit_ABC(fs, BC_CAT, 0, e1->u.s.info, e2->u.s.info);
-      }
-      e1->k = ExpKind::Relocable;
-   }
-   else {
-      lj_assertFS(op IS OPR_NE or op IS OPR_EQ or op IS OPR_LT or op IS OPR_GE or op IS OPR_LE or op IS OPR_GT, "bad binop %d", op);
-      bcemit_comp(fs, op, e1, e2);
-   }
+   fs->assert(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -715,7 +376,7 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->k = ExpKind::True;
          return;
       }
-      else if (expr_isk(e) or (LJ_HASFFI and e->k IS ExpKind::CData)) {
+      else if (e->is_constant() or (LJ_HASFFI and e->k IS ExpKind::CData)) {
          e->k = ExpKind::False;
          return;
       }
@@ -729,11 +390,11 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->u.s.info = fs->freereg - 1;
          e->k = ExpKind::NonReloc;
       }
-      else lj_assertFS(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
+      else fs->assert(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
    }
    else {
-      lj_assertFS(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
-      if (op IS BC_UNM and not expr_hasjump(e)) {  // Constant-fold negations.
+      fs->assert(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
+      if (op IS BC_UNM and not e->has_jump()) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.
             GCcdata* cd = cdataV(&e->u.nval);
@@ -744,8 +405,8 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          }
          else
 #endif
-            if (expr_isnumk(e) and !expr_numiszero(e)) {  // Avoid folding to -0.
-               TValue* o = expr_numtv(e);
+            if (e->is_num_constant() and !e->is_num_zero()) {  // Avoid folding to -0.
+               TValue* o = e->num_tv();
                if (tvisint(o)) {
                   int32_t k = intV(o);
                   if (k IS -k) setnumV(o, -lua_Number(k));

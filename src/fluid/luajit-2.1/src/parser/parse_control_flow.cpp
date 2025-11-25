@@ -5,6 +5,8 @@
 #include <parasol/main.h>
 #include "parser/parse_internal.h"
 
+//********************************************************************************************************************
+
 ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPos Head)
 {
    EdgeEntry entry;
@@ -15,6 +17,8 @@ ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPos Head
    this->trace_edge_creation(Kind, Head, index);
    return ControlFlowEdge(this, index);
 }
+
+//********************************************************************************************************************
 
 void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
 {
@@ -32,6 +36,8 @@ void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
    this->trace_edge_append(Index, Head);
 }
 
+//********************************************************************************************************************
+
 void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
 {
    if (Index >= this->edges.size()) return;
@@ -46,6 +52,8 @@ void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
    this->mark_resolved(Index);
 }
 
+//********************************************************************************************************************
+
 void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
 {
    if (Index >= this->edges.size()) return;
@@ -54,6 +62,8 @@ void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
    JumpListView(this->func_state, entry.head).patch_head(Destination);
    this->mark_resolved(Index);
 }
+
+//********************************************************************************************************************
 
 void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)
 {
@@ -75,6 +85,8 @@ void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BC
    this->mark_resolved(Index);
 }
 
+//********************************************************************************************************************
+
 bool ControlFlowGraph::edge_produces_values(size_t Index) const
 {
    if (Index >= this->edges.size()) return false;
@@ -90,6 +102,8 @@ bool ControlFlowGraph::edge_produces_values(size_t Index) const
    return false;
 }
 
+//********************************************************************************************************************
+
 void ControlFlowGraph::drop_edge_values(size_t Index)
 {
    if (Index >= this->edges.size()) return;
@@ -101,12 +115,16 @@ void ControlFlowGraph::drop_edge_values(size_t Index)
    }
 }
 
+//********************************************************************************************************************
+
 BCPos ControlFlowGraph::next_in_chain(FuncState* State, BCPos Position)
 {
    ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
    if (BCPos(delta) IS NO_JMP) return NO_JMP;
    return BCPos((ptrdiff_t(Position) + 1) + delta);
 }
+
+//********************************************************************************************************************
 
 bool ControlFlowGraph::patch_test_register(BCPos Position, BCReg Register) const
 {
@@ -139,10 +157,12 @@ void ControlFlowGraph::patch_instruction(BCPos Position, BCPos Destination) cons
    FuncState* fs = this->func_state;
    BCIns* instruction = &fs->bcbase[Position].ins;
    BCPos offset = Destination - (Position + 1) + BCBIAS_J;
-   lj_assertFS(not(Destination IS NO_JMP), "uninitialized jump target");
+   fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
+
+//********************************************************************************************************************
 
 void ControlFlowGraph::finalize() const
 {
@@ -174,6 +194,8 @@ void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head,
    }
 }
 
+//********************************************************************************************************************
+
 void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
@@ -181,6 +203,8 @@ void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
       pf::Log("Parser").msg("[%d] cfg: patch edge #%" PRId64 " to target=%d", this->func_state->ls->linenumber, Index, int(Target));
    }
 }
+
+//********************************************************************************************************************
 
 void ControlFlowGraph::trace_edge_append(size_t Index, BCPos Head) const
 {

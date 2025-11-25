@@ -5,14 +5,11 @@
 #pragma once
 
 #include <iterator>
+#include <ranges>
 #include <string_view>
 #include <cstdint>
 
 enum class TokenKind : uint16_t;
-
-// Error handling (lj_parse_core.cpp)
-
-[[noreturn]] static void err_limit(FuncState *, uint32_t limit, const char* what);
 
 // Constants (lj_parse_constants.cpp)
 
@@ -24,7 +21,7 @@ static BCReg const_gc(FuncState *, GCobj* gc, uint32_t itype);
 
 // Jump list handling (lj_parse_constants.cpp)
 
-class JumpListView {
+class JumpListView : public std::ranges::view_interface<JumpListView> {
 public:
    class Iterator {
    public:
@@ -51,6 +48,10 @@ public:
    [[nodiscard]] inline bool empty() const { return list_head IS NO_JMP; }
    [[nodiscard]] inline BCPos head() const { return list_head; }
    [[nodiscard]] inline BCPos next(BCPos Position) const { return next(func_state, Position); }
+
+   // Enable range-based algorithms via ADL
+   friend auto begin(const JumpListView& v) { return v.begin(); }
+   friend auto end(const JumpListView& v) { return v.end(); }
 
    [[nodiscard]] static inline BCPos next(FuncState* State, BCPos Position) {
       ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
@@ -171,25 +172,21 @@ extern void bcemit_arith(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 extern void bcemit_comp(FuncState *, BinOpr opr, ExpDesc* e1, ExpDesc* e2);
 extern void bcemit_unop(FuncState *, BCOp op, ExpDesc* e);
 
-// These remain static (legacy parser only)
-static void bcemit_binop_left(FuncState *, BinOpr op, ExpDesc* e);
+// These are internal helpers
 static void bcemit_shift_call_at_base(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base);
 static void bcemit_bit_call(FuncState *, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs);
 extern void bcemit_unary_bit_call(FuncState *, std::string_view fname, ExpDesc* arg);
-static void bcemit_presence_check(FuncState *, ExpDesc* e);
-static void bcemit_binop(FuncState *, BinOpr op, ExpDesc* e1, ExpDesc* e2);
 
 // Variables and scope (lj_parse_scope.cpp)
 
-static int is_blank_identifier(GCstr* name);
-static std::optional<BCReg> var_lookup_local(FuncState *, GCstr* n);
-static MSize var_lookup_uv(FuncState *, MSize vidx, ExpDesc* e);
-static MSize var_lookup_(FuncState *, GCstr* name, ExpDesc* e, int first);
+[[nodiscard]] static int is_blank_identifier(GCstr* name);
+[[nodiscard]] static std::optional<BCReg> var_lookup_local(FuncState *, GCstr* n);
+[[nodiscard]] static MSize var_lookup_uv(FuncState *, MSize vidx, ExpDesc* e);
+[[nodiscard]] static MSize var_lookup_(FuncState *, GCstr* name, ExpDesc* e, int first);
 
 // Function scope (lj_parse_scope.cpp)
 
 static void fscope_begin(FuncState *, FuncScope* bl, FuncScopeFlag flags);
-static void fscope_loop_continue(FuncState *, BCPos pos);
 static void execute_defers(FuncState *, BCReg limit);
 static void fscope_end(FuncState *);
 static void fscope_uvmark(FuncState *, BCReg level);
@@ -204,19 +201,16 @@ static void fs_fixup_bc(FuncState *, GCproto* pt, BCIns* bc, MSize n);
 static void fs_fixup_uv2(FuncState *, GCproto* pt);
 static void fs_fixup_k(FuncState *, GCproto* pt, void* kptr);
 static void fs_fixup_uv1(FuncState *, GCproto* pt, uint16_t* uv);
-static size_t fs_prep_line(FuncState *, BCLine numline);
+[[nodiscard]] static size_t fs_prep_line(FuncState *, BCLine numline);
 static void fs_fixup_line(FuncState *, GCproto* pt, void* lineinfo, BCLine numline);
-static int bcopisret(BCOp op);
+[[nodiscard]] static int bcopisret(BCOp op);
 static void fs_fixup_ret(FuncState *);
 
 // Expressions (lj_parse_expr.cpp)
 
 static void expr_index(FuncState *, ExpDesc* t, ExpDesc* e);
 static void expr_kvalue(FuncState *, TValue* v, ExpDesc* e);
-static BinOpr token2binop(LexToken tok);
 
 // Statements (lj_parse_stmt.cpp)
 
 static void snapshot_return_regs(FuncState *, BCIns* ins);
-static bool parse_is_end(TokenKind kind);
-static int predict_next(LexState* ls, FuncState *, BCPos pc);

@@ -65,184 +65,108 @@ enum class VarInfoFlag : uint8_t {
    DeferArg = 0x10u
 };
 
+// Concept for flag types that support bitwise operations
 template<typename Flag>
-struct FlagOpsEnabled : std::false_type {};
+concept FlagType = std::same_as<Flag, ExprFlag> or
+                   std::same_as<Flag, FuncScopeFlag> or
+                   std::same_as<Flag, VarInfoFlag>;
 
-template<>
-struct FlagOpsEnabled<ExprFlag> : std::true_type {};
-
-template<>
-struct FlagOpsEnabled<FuncScopeFlag> : std::true_type {};
-
-template<>
-struct FlagOpsEnabled<VarInfoFlag> : std::true_type {};
-
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-[[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right)
-{
-   return Flag((uint8_t)Left | (uint8_t)Right);
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator|(Flag Left, Flag Right) {
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(Underlying(Left) | Underlying(Right));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-[[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right)
-{
-   return Flag((uint8_t)Left & (uint8_t)Right);
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator&(Flag Left, Flag Right) {
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(Underlying(Left) & Underlying(Right));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-[[nodiscard]] static constexpr Flag operator~(Flag Value)
-{
-   return Flag(~(uint8_t)Value);
+template<FlagType Flag> [[nodiscard]] static constexpr Flag operator~(Flag Value) {
+   using Underlying = std::underlying_type_t<Flag>;
+   return Flag(~Underlying(Value));
 }
 
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-static inline Flag& operator|=(Flag& Left, Flag Right)
-{
-   Left = Left | Right;
-   return Left;
-}
-
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-static inline Flag& operator&=(Flag& Left, Flag Right)
-{
-   Left = Left & Right;
-   return Left;
-}
-
-template<typename Flag>
-requires FlagOpsEnabled<Flag>::value
-[[nodiscard]] static inline bool has_flag(Flag Flags, Flag Mask)
-{
-   return (Flags & Mask) != Flag::None;
-}
+template<FlagType Flag> static constexpr Flag & operator|=(Flag &Left, Flag Right) { return Left = Left | Right; }
+template<FlagType Flag> static constexpr Flag & operator&=(Flag &Left, Flag Right) { return Left = Left & Right; }
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask) { return (Flags & Mask) != Flag::None; }
 
 // Expression descriptor.
-typedef struct ExpDesc {
+struct ExpDesc {
    union {
-      struct {
-         uint32_t info;   // Primary info.
+      struct { // For non-constant expressions like Local, Upval, Global, Indexed, Jmp, Relocable, NonReloc, Call, Void
+         uint32_t info;  // Primary info.
          uint32_t aux;   // Secondary info.
       } s;
-      TValue nval;   // Number value.
-      GCstr* sval;   // String value.
+      TValue nval;   // ExpKind::Num number value.
+      GCstr* sval;   // ExpKind::Str string value.
    } u;
-   ExpKind k;
-   ExprFlag flags;      // Expression flags.
-   BCPos t;      // True condition jump list.
-   BCPos f;      // False condition jump list.
-} ExpDesc;
+   ExpKind k;      // Expression kind.
+   ExprFlag flags; // Expression flags.
+   BCPos t;        // True condition jump list.
+   BCPos f;        // False condition jump list.
 
-// Expression helpers that previously relied on flag bits within ExpDesc.aux now
-// store their metadata in ExpDesc.flags. The aux field can therefore be used
-// directly for temporary payloads (e.g., register numbers) without additional
-// masking.
+   // Constructors
+   constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {}
 
-// TOOD: Expression query functions.
-// DEPRECATED: Use ExpressionValue::has_jump() when possible. This function is retained
-// for legitimate raw ExpDesc* usage where ExpressionValue wrapper is not available.
+   constexpr ExpDesc(ExpKind Kind, uint32_t Info = 0) : u{}, k(Kind), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.s.info = Info;
+      this->u.s.aux = 0;
+   }
 
-[[nodiscard]] static inline bool expr_hasjump(const ExpDesc* e) {
-   return e->t != e->f;
-}
+   explicit constexpr ExpDesc(GCstr* Value) : u{}, k(ExpKind::Str), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.sval = Value;
+   }
 
-[[nodiscard]] static inline bool expr_isk(const ExpDesc* e) {
-   return e->k <= ExpKind::Last;
-}
+   explicit constexpr ExpDesc(lua_Number Value) : u{}, k(ExpKind::Num), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      setnumV(&this->u.nval, Value);
+   }
 
-[[nodiscard]] static inline bool expr_isk_nojump(const ExpDesc* e) {
-   return expr_isk(e) and not expr_hasjump(e);
-}
+   explicit constexpr ExpDesc(bool Value) : u{}, k(Value ? ExpKind::True : ExpKind::False), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {
+      this->u.s.info = 0;
+      this->u.s.aux = 0;
+   }
 
-[[nodiscard]] static inline bool expr_isnumk(const ExpDesc* e) {
-   return e->k == ExpKind::Num;
-}
+   // Member methods for expression queries and manipulation
+   [[nodiscard]] inline bool has_jump() const { return this->t != this->f; }
+   [[nodiscard]] inline bool is_constant() const { return this->k <= ExpKind::Last; }
+   [[nodiscard]] inline bool is_constant_nojump() const { return this->is_constant() and not this->has_jump(); }
+   [[nodiscard]] inline bool is_num_constant() const { return this->k == ExpKind::Num; }
+   [[nodiscard]] inline bool is_num_constant_nojump() const { return this->is_num_constant() and not this->has_jump(); }
+   [[nodiscard]] inline bool is_str_constant() const { return this->k == ExpKind::Str; }
+   [[nodiscard]] inline lua_Number number_value() { return numberVnum(this->num_tv()); }
 
-[[nodiscard]] static inline bool expr_isnumk_nojump(const ExpDesc* e) {
-   return expr_isnumk(e) and not expr_hasjump(e);
-}
+   [[nodiscard]] inline TValue* num_tv() {
+      lj_assertX(this->is_num_constant(), "expr must be number constant");
+      return &this->u.nval;
+   }
 
-[[nodiscard]] static inline bool expr_isstrk(const ExpDesc* e) {
-   return e->k == ExpKind::Str;
-}
+   inline void init(ExpKind kind, uint32_t info) {
+      this->k = kind;
+      this->u.s.info = info;
+      this->flags = ExprFlag::None;
+      this->f = this->t = NO_JMP;
+   }
 
-[[nodiscard]] static inline TValue* expr_numtv(ExpDesc* e) {
-   lj_assertX(expr_isnumk(e), "expr must be number constant");
-   return &e->u.nval;
-}
-
-[[nodiscard]] static inline lua_Number expr_numberV(ExpDesc* e) {
-   return numberVnum(expr_numtv(e));
-}
-
-// Initialize expression.
-static LJ_AINLINE void expr_init(ExpDesc* e, ExpKind k, uint32_t info)
-{
-   e->k = k;
-   e->u.s.info = info;
-   e->flags = ExprFlag::None;
-   e->f = e->t = NO_JMP;
-}
-
-[[nodiscard]] static constexpr ExpDesc make_const_expr(ExpKind Kind, uint32_t Info = 0)
-{
-   ExpDesc expression{};
-   expression.u.s.info = Info;
-   expression.u.s.aux = 0;
-   expression.k = Kind;
-   expression.flags = ExprFlag::None;
-   expression.t = NO_JMP;
-   expression.f = NO_JMP;
-   return expression;
-}
-
-[[nodiscard]] static constexpr ExpDesc make_nil_expr()
-{
-   return make_const_expr(ExpKind::Nil);
-}
-
-[[nodiscard]] static constexpr ExpDesc make_bool_expr(bool Value)
-{
-   return make_const_expr(Value ? ExpKind::True : ExpKind::False);
-}
-
-[[nodiscard]] static inline ExpDesc make_num_expr(lua_Number Value)
-{
-   ExpDesc expression = make_const_expr(ExpKind::Num);
-   setnumV(&expression.u.nval, Value);
-   return expression;
-}
-
-[[nodiscard]] static inline ExpDesc make_interned_string_expr(GCstr* Value)
-{
-   ExpDesc expression = make_const_expr(ExpKind::Str);
-   expression.u.sval = Value;
-   return expression;
-}
-
-// Check number constant for +-0.
-static LJ_AINLINE int expr_numiszero(ExpDesc* e)
-{
-   TValue* o = expr_numtv(e);
-   return tvisint(o) ? (intV(o) == 0) : tviszero(o);
-}
+   [[nodiscard]] inline bool is_num_zero() {
+      TValue* o = this->num_tv();
+      return tvisint(o) ? (intV(o) == 0) : tviszero(o);
+   }
+};
 
 // Per-function linked list of scope blocks.
 
-typedef struct FuncScope {
-   struct FuncScope* prev; // Link to outer scope.
+struct FuncScope {
+   FuncScope* prev;        // Link to outer scope.
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
    FuncScopeFlag flags;    // Scope flags.
-} FuncScope;
+};
 
-#define NAME_BREAK      ((GCstr*)uintptr_t(1))
-#define NAME_CONTINUE   ((GCstr*)uintptr_t(2))
-#define NAME_BLANK      ((GCstr*)uintptr_t(3))
+// Sentinel GCstr* values for special variable names (not actual string pointers).
+
+inline GCstr * const NAME_BREAK    = (GCstr*)uintptr_t(1);
+inline GCstr * const NAME_CONTINUE = (GCstr*)uintptr_t(2);
+inline GCstr * const NAME_BLANK    = (GCstr*)uintptr_t(3);
 
 // Index into variable stack.
 typedef uint16_t VarIndex;
@@ -251,12 +175,12 @@ inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 // Variable info flags are defined in VarInfoFlag.
 
 // Per-function state.
-typedef struct FuncState {
-   GCtab* kt;          // Hash table for constants.
-   LexState* ls;       // Lexer state.
-   lua_State* L;       // Lua state.
-   FuncScope* bl;      // Current scope.
-   struct FuncState* prev; // Enclosing function.
+struct FuncState {
+   GCtab *kt;          // Hash table for constants.
+   LexState *ls;       // Lexer state.
+   lua_State *L;       // Lua state.
+   FuncScope *bl;      // Current scope.
+   FuncState *prev;    // Enclosing function.
    BCPos pc;           // Next bytecode position.
    BCPos lasttarget;   // Bytecode position of last jump target.
    BCPos jpc;          // Pending jump list to next bytecode.
@@ -274,12 +198,15 @@ typedef struct FuncState {
    std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
-} FuncState;
 
-// Variable access macro.
-[[nodiscard]] static inline VarInfo& var_get(LexState* ls, FuncState* fs, int32_t i) {
-   return ls->vstack[fs->varmap[i]];
-}
+   inline VarInfo & var_get(int32_t i) { return ls->vstack[varmap[i]]; }
+
+#ifdef LUA_USE_ASSERT
+   inline void assert(bool condition, const char *message, ...) { lj_assertG_(G(L), condition, message, ...); }
+#else
+   inline void assert(bool condition, const char *message, ...) { }
+#endif
+};
 
 // Binary and unary operators. ORDER OPR
 enum BinOpr : int {
@@ -293,36 +220,29 @@ enum BinOpr : int {
    OPR_NOBINOPR
 };
 
-LJ_STATIC_ASSERT((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT);
-LJ_STATIC_ASSERT((int)BC_SUBVV - (int)BC_ADDVV == (int)OPR_SUB - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD);
-LJ_STATIC_ASSERT((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD);
-
-#ifdef LUA_USE_ASSERT
-#define lj_assertFS(c, ...)   (lj_assertG_(G(fs->L), (c), __VA_ARGS__))
-#else
-#define lj_assertFS(c, ...)   ((void)fs)
-#endif
+// Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
+static_assert((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT, "BC_ISGE offset mismatch");
+static_assert((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT, "BC_ISLE offset mismatch");
+static_assert((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT, "BC_ISGT offset mismatch");
+static_assert((int)BC_SUBVV - (int)BC_ADDVV == (int)OPR_SUB - (int)OPR_ADD, "BC_SUBVV offset mismatch");
+static_assert((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD, "BC_MULVV offset mismatch");
+static_assert((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD, "BC_DIVVV offset mismatch");
+static_assert((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD, "BC_MODVV offset mismatch");
 
 // Return bytecode encoding for primitive constant.
 
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
-   lj_assertX(e->k <= ExpKind::True, "bad constant primitive");
+   lj_assertX(e->k <= ExpKind::True, "Bad constant primitive");
    return e->k;
 }
 
-[[nodiscard]] static inline bool tvhaskslot(const TValue* o) {
-   return o->u32.hi == 0;
-}
+[[nodiscard]] static inline bool tvhaskslot(const TValue* o) { return o->u32.hi == 0; }
+[[nodiscard]] static inline uint32_t tvkslot(const TValue* o) { return o->u32.lo; }
 
-[[nodiscard]] static inline uint32_t tvkslot(const TValue* o) {
-   return o->u32.lo;
-}
+// Error checking functions.
 
-// Error checking macros.
-#define checklimit(fs, v, l, m)      if ((v) >= (l)) err_limit(fs, l, m)
-#define checklimitgt(fs, v, l, m)   if ((v) > (l)) err_limit(fs, l, m)
-#define checkcond(ls, c, em)      { if (not (c)) (ls)->err_syntax(em); }
+[[maybe_unused]] [[noreturn]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what);
+
+inline void checklimit(FuncState *fs, MSize v, MSize l, const char *m) { if (v >= l) err_limit(fs, l, m); }
+inline void checklimitgt(FuncState *fs, MSize v, MSize l, const char *m) { if (v > l) err_limit(fs, l, m); }
+inline void checkcond(LexState *ls, bool c, ErrMsg em) { if (not (c)) { ls->err_syntax(em); } }

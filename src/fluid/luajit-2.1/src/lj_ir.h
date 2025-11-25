@@ -159,19 +159,19 @@ typedef enum {
 // Stored opcode.
 using IROp1 = uint8_t;
 
-LJ_STATIC_ASSERT(((int)IR_EQ ^ 1) == (int)IR_NE);
-LJ_STATIC_ASSERT(((int)IR_LT ^ 1) == (int)IR_GE);
-LJ_STATIC_ASSERT(((int)IR_LE ^ 1) == (int)IR_GT);
-LJ_STATIC_ASSERT(((int)IR_LT ^ 3) == (int)IR_GT);
-LJ_STATIC_ASSERT(((int)IR_LT ^ 4) == (int)IR_ULT);
+static_assert(((int)IR_EQ ^ 1) == (int)IR_NE);
+static_assert(((int)IR_LT ^ 1) == (int)IR_GE);
+static_assert(((int)IR_LE ^ 1) == (int)IR_GT);
+static_assert(((int)IR_LT ^ 3) == (int)IR_GT);
+static_assert(((int)IR_LT ^ 4) == (int)IR_ULT);
 
 // Delta between xLOAD and xSTORE.
 constexpr int IRDELTA_L2S = ((int)IR_ASTORE - (int)IR_ALOAD);
 
-LJ_STATIC_ASSERT((int)IR_HLOAD + IRDELTA_L2S == (int)IR_HSTORE);
-LJ_STATIC_ASSERT((int)IR_ULOAD + IRDELTA_L2S == (int)IR_USTORE);
-LJ_STATIC_ASSERT((int)IR_FLOAD + IRDELTA_L2S == (int)IR_FSTORE);
-LJ_STATIC_ASSERT((int)IR_XLOAD + IRDELTA_L2S == (int)IR_XSTORE);
+static_assert((int)IR_HLOAD + IRDELTA_L2S == (int)IR_HSTORE);
+static_assert((int)IR_ULOAD + IRDELTA_L2S == (int)IR_USTORE);
+static_assert((int)IR_FLOAD + IRDELTA_L2S == (int)IR_FSTORE);
+static_assert((int)IR_XLOAD + IRDELTA_L2S == (int)IR_XSTORE);
 
 // -- Named IR literals ---------------------------------------------------
 
@@ -612,7 +612,7 @@ static LJ_AINLINE int ir_sideeff(IRIns* ir)
    return (((ir->t.irt | ~IRT_GUARD) & lj_ir_mode[ir->o]) >= IRM_S);
 }
 
-LJ_STATIC_ASSERT((int)IRT_GUARD == (int)IRM_W);
+static_assert((int)IRT_GUARD == (int)IRM_W);
 
 // Replace IR instruction with NOP.
 static LJ_AINLINE void lj_ir_nop(IRIns* ir)

@@ -15,7 +15,6 @@ function()
 
   flags("JOF", { comment="JIT behaviour options" },
      "DIAGNOSE:        Cancels aborting on error so that the full script is parsed.  Enables deeper log tracing.",
-     "LEGACY:          Use the legacy parser.",
      "DUMP_BYTECODE:   Print a disassembly of bytecode instructions after parsing.",
      "PROFILE:         Use timers to profile JIT parsing.  Required to configure run-time profiling.",
      "TRACE_TOKENS:    Trace the emission of tokens.",

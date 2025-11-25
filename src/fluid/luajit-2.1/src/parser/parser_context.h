@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 #include "parser/parser_diagnostics.h"
 #include "parser/token_stream.h"
@@ -42,31 +43,36 @@ struct ParserError {
 template<typename T>
 class ParserResult {
 public:
-   ParserResult() = default;
+   ParserResult() : data(ParserError{}) {}
 
    static ParserResult<T> success(T value) {
       ParserResult<T> result;
-      result.has_value = true;
-      result.value = std::move(value);
+      result.data = std::move(value);
       return result;
    }
 
    static ParserResult<T> failure(const ParserError& error) {
       ParserResult<T> result;
-      result.has_value = false;
-      result.error = error;
+      result.data = error;
       return result;
    }
 
-   [[nodiscard]] bool ok() const { return this->has_value; }
-   [[nodiscard]] const T& value_ref() const { return this->value; }
-   [[nodiscard]] T& value_ref() { return this->value; }
-   [[nodiscard]] const ParserError& error_ref() const { return this->error; }
+   [[nodiscard]] bool ok() const { return std::holds_alternative<T>(this->data); }
+
+   [[nodiscard]] const T& value_ref() const {
+      return std::get<T>(this->data);
+   }
+
+   [[nodiscard]] T& value_ref() {
+      return std::get<T>(this->data);
+   }
+
+   [[nodiscard]] const ParserError& error_ref() const {
+      return std::get<ParserError>(this->data);
+   }
 
 private:
-   bool has_value = false;
-   T value;
-   ParserError error;
+   std::variant<T, ParserError> data;
 };
 
 //********************************************************************************************************************

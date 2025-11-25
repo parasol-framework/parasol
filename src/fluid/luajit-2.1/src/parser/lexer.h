@@ -181,53 +181,8 @@ public:
    GCproto* fs_finish(BCLine Line);
    void fs_init(FuncState* FunctionState);
 
-   // Expression parsing
-   ParserResult<ExpDesc> expr(ExpDesc *);
-   void expr_str(ExpDesc *);
-   void expr_field(ExpDesc *);
-   void expr_bracket(ExpDesc *);
-   void expr_table(ExpDesc *);
-   BCReg parse_params(int NeedSelf);
-   void parse_body_impl(ExpDesc *, int NeedSelf, BCLine, int OptionalParams);
-   void parse_body(ExpDesc *, int NeedSelf, BCLine);
-   void parse_body_defer(ExpDesc *, BCLine);
-   ParserResult<BCReg> expr_list(ExpDesc *);
-   void parse_args(ExpDesc *);
-   void inc_dec_op(BinOpr Operator, ExpDesc *, int);
-   ParserResult<ExpDesc> expr_primary(ExpDesc *);
-   ParserResult<ExpDesc> expr_simple(ExpDesc *);
-   void synlevel_begin();
-   void synlevel_end();
-   ParserResult<BinOpr> expr_binop(ExpDesc *, uint32_t Limit, int ChainLeftPriority = -1);
-   ParserResult<BinOpr> expr_shift_chain(ExpDesc *, BinOpr);
-   ParserResult<ExpDesc> expr_unop(ExpDesc *);
-   ParserResult<ExpDesc> expr_next();
-   ParserResult<BCPos> expr_cond();
-   bool should_emit_presence();
-
-   // Statement parsing
-   void assign_hazard(std::span<ExpDesc>, const ExpDesc &);
-   void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
-   int assign_if_empty(ParserContext &, ExpDesc *);
-   int assign_compound(ParserContext &, ExpDesc *, TokenKind);
-   void parse_assignment(ParserContext &, ExpDesc *);
-   void parse_call_assign(ParserContext &);
-   ParserResult<LocalDeclResult> parse_local(ParserContext &);
-   void parse_defer();
-   void parse_func(BCLine);
-   void parse_return(ParserContext &);
-   void parse_continue();
-   void parse_break();
-   void parse_block(ParserContext &);
-   void parse_while(ParserContext &, BCLine);
-   void parse_repeat(ParserContext &, BCLine);
-   void parse_for_num(ParserContext &, GCstr *, BCLine);
-   void parse_for_iter(ParserContext &, GCstr *);
-   void parse_for(ParserContext &, BCLine);
-   BCPos parse_then(ParserContext &);
-   void parse_if(ParserContext &, BCLine);
-   bool parse_stmt(ParserContext &);
-   void parse_chunk(ParserContext &);
+   [[maybe_unused]] void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
+   [[nodiscard]] bool should_emit_presence();
 
    // Public parser helpers
    GCstr * keepstr(std::string_view Value);

@@ -132,6 +132,7 @@ static LJ_AINLINE uint32_t bcread_byte(LexState *State)
    return (uint32_t)(uint8_t)*State->p++;
 }
 
+//********************************************************************************************************************
 // Read ULEB128 value from buffer.
 
 static LJ_AINLINE uint32_t bcread_uleb128(LexState *State)
@@ -141,6 +142,7 @@ static LJ_AINLINE uint32_t bcread_uleb128(LexState *State)
    return v;
 }
 
+//********************************************************************************************************************
 // Read top 32 bits of 33 bit ULEB128 value from buffer.
 
 static uint32_t bcread_uleb128_33(LexState *State)
@@ -159,9 +161,10 @@ static uint32_t bcread_uleb128_33(LexState *State)
    return v;
 }
 
+//********************************************************************************************************************
 // Read debug info of a prototype.
 
-static void bcread_dbg(LexState *State, GCproto* pt, MSize sizedbg)
+static void bcread_dbg(LexState *State, GCproto *pt, MSize sizedbg)
 {
    void* lineinfo = (void*)proto_lineinfo(pt);
    bcread_block(State, lineinfo, sizedbg);
@@ -179,9 +182,10 @@ static void bcread_dbg(LexState *State, GCproto* pt, MSize sizedbg)
    }
 }
 
+//********************************************************************************************************************
 // Find pointer to varinfo.
 
-static const void* bcread_varinfo(GCproto* pt)
+static const void* bcread_varinfo(GCproto *pt)
 {
    const uint8_t* p = proto_uvinfo(pt);
    MSize n = pt->sizeuv;
@@ -189,6 +193,7 @@ static const void* bcread_varinfo(GCproto* pt)
    return p;
 }
 
+//********************************************************************************************************************
 // Read a single constant key/value of a template table.
 
 static void bcread_ktabk(LexState *State, TValue* o)
@@ -212,6 +217,7 @@ static void bcread_ktabk(LexState *State, TValue* o)
    }
 }
 
+//********************************************************************************************************************
 // Read a template table.
 
 static GCtab* bcread_ktab(LexState *State)
@@ -237,9 +243,10 @@ static GCtab* bcread_ktab(LexState *State)
    return t;
 }
 
+//********************************************************************************************************************
 // Read GC constants of a prototype.
 
-static void bcread_kgc(LexState *State, GCproto* pt, MSize sizekgc)
+static void bcread_kgc(LexState *State, GCproto *pt, MSize sizekgc)
 {
    MSize i;
    GCRef* kr = mref(pt->k, GCRef) - (ptrdiff_t)sizekgc;
@@ -282,7 +289,7 @@ static void bcread_kgc(LexState *State, GCproto* pt, MSize sizekgc)
 
 // Read number constants of a prototype.
 
-static void bcread_knum(LexState *State, GCproto* pt, MSize sizekn)
+static void bcread_knum(LexState *State, GCproto *pt, MSize sizekn)
 {
    MSize i;
    TValue* o = mref(pt->k, TValue);
@@ -299,9 +306,10 @@ static void bcread_knum(LexState *State, GCproto* pt, MSize sizekn)
    }
 }
 
+//********************************************************************************************************************
 // Read bytecode instructions.
 
-static void bcread_bytecode(LexState *State, GCproto* pt, MSize sizebc)
+static void bcread_bytecode(LexState *State, GCproto *pt, MSize sizebc)
 {
    BCIns* bc = proto_bc(pt);
    bc[0] = BCINS_AD((pt->flags & PROTO_VARARG) ? BC_FUNCV : BC_FUNCF,
@@ -314,9 +322,10 @@ static void bcread_bytecode(LexState *State, GCproto* pt, MSize sizebc)
    }
 }
 
+//********************************************************************************************************************
 // Read upvalue refs.
 
-static void bcread_uv(LexState *State, GCproto* pt, MSize sizeuv)
+static void bcread_uv(LexState *State, GCproto *pt, MSize sizeuv)
 {
    if (sizeuv) {
       uint16_t* uv = proto_uv(pt);
@@ -330,11 +339,12 @@ static void bcread_uv(LexState *State, GCproto* pt, MSize sizeuv)
    }
 }
 
+//********************************************************************************************************************
 // Read a prototype.
 
-GCproto* lj_bcread_proto(LexState *State)
+GCproto *lj_bcread_proto(LexState *State)
 {
-   GCproto* pt;
+   GCproto *pt;
    MSize framesize, numparams, flags, sizeuv, sizekgc, sizekn, sizebc, sizept;
    MSize ofsk, ofsuv, ofsdbg;
    MSize sizedbg = 0;
@@ -440,9 +450,10 @@ static int bcread_header(LexState *State)
    return 1;  //  Ok.
 }
 
+//********************************************************************************************************************
 // Read a bytecode dump.
 
-GCproto* lj_bcread(LexState *State)
+GCproto *lj_bcread(LexState *State)
 {
    lua_State* L = State->L;
    State->assert_condition(State->c == BCDUMP_HEAD1, "bad bytecode header");
@@ -452,8 +463,8 @@ GCproto* lj_bcread(LexState *State)
    // Check for a valid bytecode dump header.
    if (!bcread_header(State)) bcread_error(State, ErrMsg::BCFMT);
 
-   for (;;) {  // Process all prototypes in the bytecode dump.
-      GCproto* pt;
+   while (true) {  // Process all prototypes in the bytecode dump.
+      GCproto *pt;
       MSize len;
       const char* startp;
       // Read length.
@@ -480,4 +491,3 @@ GCproto* lj_bcread(LexState *State)
    L->top--;
    return protoV(L->top);
 }
-
