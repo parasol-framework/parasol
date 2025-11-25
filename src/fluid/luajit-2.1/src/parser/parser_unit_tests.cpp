@@ -10,6 +10,7 @@
 
 #include "lj_bc.h"
 #include "lj_obj.h"
+#include "runtime/lj_str.h"
 
 #include <array>
 #include <chrono>
@@ -1318,11 +1319,253 @@ struct TestCase {
    bool (*fn)(pf::Log&);
 };
 
+//********************************************************************************************************************
+// Test ExpDesc::is_falsey() method for extended falsey semantics
+
+static bool test_expdesc_is_falsey(pf::Log& log)
+{
+   // Test nil
+   ExpDesc nil_expr(ExpKind::Nil);
+   if (not nil_expr.is_falsey()) {
+      log.error("nil should be falsey");
+      return false;
+   }
+
+   // Test false
+   ExpDesc false_expr(ExpKind::False);
+   if (not false_expr.is_falsey()) {
+      log.error("false should be falsey");
+      return false;
+   }
+
+   // Test true
+   ExpDesc true_expr(ExpKind::True);
+   if (true_expr.is_falsey()) {
+      log.error("true should be truthy");
+      return false;
+   }
+
+   // Test zero (integer)
+   ExpDesc zero_int(0.0);
+   if (not zero_int.is_falsey()) {
+      log.error("zero (0.0) should be falsey");
+      return false;
+   }
+
+   // Test non-zero number
+   ExpDesc nonzero(42.0);
+   if (nonzero.is_falsey()) {
+      log.error("non-zero number should be truthy");
+      return false;
+   }
+
+   // Test negative number
+   ExpDesc negative(-5.0);
+   if (negative.is_falsey()) {
+      log.error("negative number should be truthy");
+      return false;
+   }
+
+   // Test empty string (need Lua state for string creation)
+   auto harness = make_expression_harness("");
+   if (not harness.has_value()) {
+      log.error("failed to create harness for string test");
+      return false;
+   }
+
+   LexState* lex = harness->lex.get();
+   GCstr* empty_str = lex->intern_empty_string();
+   ExpDesc empty_string_expr(empty_str);
+   if (not empty_string_expr.is_falsey()) {
+      log.error("empty string should be falsey");
+      return false;
+   }
+
+   // Test non-empty string
+   GCstr* hello_str = lj_str_newlit(lex->L, "hello");
+   ExpDesc nonempty_string_expr(hello_str);
+   if (nonempty_string_expr.is_falsey()) {
+      log.error("non-empty string should be truthy");
+      return false;
+   }
+
+   // Test non-constant expressions (should return false - conservative assumption)
+   ExpDesc local_expr(ExpKind::Local, 0);
+   if (local_expr.is_falsey()) {
+      log.error("non-constant local should conservatively be truthy");
+      return false;
+   }
+
+   ExpDesc nonreloc_expr(ExpKind::NonReloc, 1);
+   if (nonreloc_expr.is_falsey()) {
+      log.error("non-constant nonreloc should conservatively be truthy");
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test ?? operator with constant folding
+
+static bool test_if_empty_operator_constants(pf::Log& log)
+{
+   // Test: nil ?? 5 should evaluate to 5
+   {
+      auto result = build_ast_from_source("return nil ?? 5");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'nil ?? 5'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: false ?? 10 should evaluate to 10
+   {
+      auto result = build_ast_from_source("return false ?? 10");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'false ?? 10'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: 0 ?? 20 should evaluate to 20
+   {
+      auto result = build_ast_from_source("return 0 ?? 20");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '0 ?? 20'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: "" ?? "default" should evaluate to "default"
+   {
+      auto result = build_ast_from_source("return \"\" ?? \"default\"");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '\"\" ?? \"default\"'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: true ?? 30 should evaluate to true (not 30)
+   {
+      auto result = build_ast_from_source("return true ?? 30");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'true ?? 30'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: 42 ?? 50 should evaluate to 42 (not 50)
+   {
+      auto result = build_ast_from_source("return 42 ?? 50");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '42 ?? 50'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: "hello" ?? "world" should evaluate to "hello"
+   {
+      auto result = build_ast_from_source("return \"hello\" ?? \"world\"");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '\"hello\" ?? \"world\"'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test ternary operator with falsey semantics
+
+static bool test_ternary_falsey_semantics(pf::Log& log)
+{
+   // Test: nil ? "yes" :> "no" should evaluate to "no"
+   {
+      auto result = build_ast_from_source("return nil ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'nil ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: false ? "yes" :> "no" should evaluate to "no"
+   {
+      auto result = build_ast_from_source("return false ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'false ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: 0 ? "yes" :> "no" should evaluate to "no"
+   {
+      auto result = build_ast_from_source("return 0 ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '0 ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: "" ? "yes" :> "no" should evaluate to "no"
+   {
+      auto result = build_ast_from_source("return \"\" ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '\"\" ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: true ? "yes" :> "no" should evaluate to "yes"
+   {
+      auto result = build_ast_from_source("return true ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse 'true ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: 42 ? "yes" :> "no" should evaluate to "yes"
+   {
+      auto result = build_ast_from_source("return 42 ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '42 ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   // Test: "hello" ? "yes" :> "no" should evaluate to "yes"
+   {
+      auto result = build_ast_from_source("return \"hello\" ? 'yes' :> 'no'");
+      if (not result.chunk.ok()) {
+         log.error("failed to parse '\"hello\" ? yes :> no'");
+         log_diagnostics(result.diagnostics, log);
+         return false;
+      }
+   }
+
+   return true;
+}
+
 }  // namespace
 
 extern void parser_unit_tests(int& Passed, int& Total)
 {
-   constexpr std::array<TestCase, 16> tests = { {
+   constexpr std::array<TestCase, 19> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
       { "literal_binary_ast", test_literal_binary_expr },
@@ -1338,7 +1581,10 @@ extern void parser_unit_tests(int& Passed, int& Total)
       { "ternary_presence_expr_ast", test_ternary_presence_expr_ast },
       { "return_lowering", test_return_lowering },
       { "ast_call_lowering", test_ast_call_lowering },
-      { "bytecode_equivalence", test_bytecode_equivalence }
+      { "bytecode_equivalence", test_bytecode_equivalence },
+      { "expdesc_is_falsey", test_expdesc_is_falsey },
+      { "if_empty_operator_constants", test_if_empty_operator_constants },
+      { "ternary_falsey_semantics", test_ternary_falsey_semantics }
    } };
 
    // A dummy object is required to manage state.

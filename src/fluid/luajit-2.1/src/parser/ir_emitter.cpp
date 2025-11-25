@@ -19,6 +19,53 @@
 #include "parser/token_types.h"
 
 //********************************************************************************************************************
+// Snapshot return register state.
+// Used by ir_emitter for return statement handling.
+
+static void snapshot_return_regs(FuncState* fs, BCIns* ins)
+{
+   BCOp op = bc_op(*ins);
+
+   if (op IS BC_RET1) {
+      BCREG src = bc_a(*ins);
+      if (src < fs->nactvar) {
+         RegisterAllocator allocator(fs);
+         BCREG dst = fs->freereg;
+         allocator.reserve(1);
+         bcemit_AD(fs, BC_MOV, dst, src);
+         setbc_a(ins, dst);
+      }
+   }
+   else if (op IS BC_RET) {
+      BCREG base = bc_a(*ins);
+      BCREG nres = bc_d(*ins);
+      BCREG top = base + nres - 1;
+      if (top < fs->nactvar) {
+         BCREG dst = fs->freereg;
+         RegisterAllocator allocator(fs);
+         allocator.reserve(nres);
+         for (BCREG i = 0; i < nres; ++i) {
+            bcemit_AD(fs, BC_MOV, dst + i, base + i);
+         }
+         setbc_a(ins, dst);
+      }
+   }
+   else if (op IS BC_RETM) {
+      BCREG base = bc_a(*ins);
+      BCREG nfixed = bc_d(*ins);
+      if (base < fs->nactvar) {
+         BCREG dst = fs->freereg;
+         RegisterAllocator allocator(fs);
+         allocator.reserve(nfixed);
+         for (BCREG i = 0; i < nfixed; ++i) {
+            bcemit_AD(fs, BC_MOV, dst + i, base + i);
+         }
+         setbc_a(ins, dst);
+      }
+   }
+}
+
+//********************************************************************************************************************
 // Adjust LHS/RHS of an assignment.
 // Exclusively used by ir_emitter for assignment statements, local declarations, and for loops.
 // TOOD: May as well be a regular function instead of a LexState method.
@@ -457,6 +504,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
          }
       }
    }
+
    snapshot_return_regs(&this->func_state, &ins);
    execute_defers(&this->func_state, 0);
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);

@@ -168,7 +168,3 @@ static void fs_fixup_ret(FuncState *);
 
 static void expr_index(FuncState *, ExpDesc* t, ExpDesc* e);
 static void expr_kvalue(FuncState *, TValue* v, ExpDesc* e);
-
-// Statements (lj_parse_stmt.cpp)
-
-static void snapshot_return_regs(FuncState *, BCIns* ins);

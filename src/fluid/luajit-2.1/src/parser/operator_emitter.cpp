@@ -119,6 +119,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    RegisterAllocator allocator(fs);
    BCREG rb, rc, t;
    uint32_t op;
+
    if (foldarith(opr, e1, e2)) return;
 
    if (opr IS OPR_POW) {
@@ -508,7 +509,6 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
 
 //********************************************************************************************************************
 // OperatorEmitter facade class implementation
-//********************************************************************************************************************
 
 OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator, ControlFlowGraph* Cfg)
    : func_state(State), allocator(Allocator), cfg(Cfg)
