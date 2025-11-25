@@ -10,6 +10,7 @@ This plan describes the implementation of safe navigation operators for Fluid, a
 - [x] Phase 2: AST Node Changes
 - [x] Phase 3: AST Builder Changes
 - [x] Phase 4: IR Emitter Changes
+- [x] Phase 5: Testing
 
 ### Operators to Implement
 
