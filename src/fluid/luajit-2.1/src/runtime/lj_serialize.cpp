@@ -379,7 +379,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       if (!tvisnum(o)) setnanV(o);  //  Fix non-canonical NaNs.
    }
    else if (tp <= SER_TAG_TRUE) {
-      setpriV(o, ~(uint64_t(tp)));
+      setpriV(o, ~tp);
    }
    else if (tp == SER_TAG_DICT_STR) {
       GCtab* dict_str;

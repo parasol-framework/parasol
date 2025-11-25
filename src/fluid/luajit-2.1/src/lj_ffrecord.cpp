@@ -1524,8 +1524,7 @@ static TRef recff_io_fp(jit_State* J, TRef* udp, int32_t id)
    return fp;
 }
 
-static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd) LJ_UNUSED;
-static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd)
+[[maybe_unused]] static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd)
 {
    TRef ud, fp = recff_io_fp(J, &ud, rd->data);
    TRef zero = lj_ir_kint(J, 0);
@@ -1553,8 +1552,7 @@ static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd)
    J->base[0] = LJ_52 ? ud : TREF_TRUE;
 }
 
-static void LJ_FASTCALL recff_io_flush(jit_State* J, RecordFFData* rd) LJ_UNUSED;
-static void LJ_FASTCALL recff_io_flush(jit_State* J, RecordFFData* rd)
+[[maybe_unused]] static void LJ_FASTCALL recff_io_flush(jit_State* J, RecordFFData* rd)
 {
    TRef ud, fp = recff_io_fp(J, &ud, rd->data);
    TRef tr = lj_ir_call(J, IRCALL_fflush, fp);

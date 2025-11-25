@@ -25,7 +25,6 @@ public:
    explicit ValueUse(ExpDesc* Desc) : desc(Desc) {}
 
    // Query value category
-   [[nodiscard]] bool is_constant() const { return this->desc->is_constant(); }
    [[nodiscard]] bool is_nil() const { return this->desc->k IS ExpKind::Nil; }
    [[nodiscard]] bool is_false() const { return this->desc->k IS ExpKind::False; }
    [[nodiscard]] bool is_true() const { return this->desc->k IS ExpKind::True; }
@@ -35,12 +34,10 @@ public:
    [[nodiscard]] bool is_upvalue() const { return this->desc->k IS ExpKind::Upval; }
    [[nodiscard]] bool is_global() const { return this->desc->k IS ExpKind::Global; }
    [[nodiscard]] bool is_indexed() const { return this->desc->k IS ExpKind::Indexed; }
-   [[nodiscard]] bool is_register() const {
-      return this->desc->k IS ExpKind::Local or this->desc->k IS ExpKind::NonReloc;
-   }
+   [[nodiscard]] bool is_register() const { return this->desc->k IS ExpKind::Local or this->desc->k IS ExpKind::NonReloc; }
 
    // Extended falsey check (nil, false, 0, "")
-   // Note: Supports Fluid's extended falsey semantics for ?? operator
+   // Supports Fluid's extended falsey semantics for ?? operator
    [[nodiscard]] bool is_falsey() const;
 
    // Access underlying ExpDesc (for interop with legacy code)

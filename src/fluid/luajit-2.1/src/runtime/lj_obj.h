@@ -141,7 +141,7 @@ typedef struct GCRef {
 ** may invalidate the incremental GC invariant.
 */
 
-// -- Common type definitions ---------------------------------------------
+// Common type definitions
 
 // Types for handling bytecodes. Need this here, details in lj_bc.h.
 using BCIns = uint32_t;  //  Bytecode instruction.
@@ -158,7 +158,7 @@ typedef struct SBuf {
    SBufHeader;
 } SBuf;
 
-// -- Tags and values -----------------------------------------------------
+// Tags and values
 
 // Frame link.
 typedef union {

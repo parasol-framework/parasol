@@ -276,7 +276,7 @@ LJLIB_CF(table_pack)
    return 1;
 }
 
-LJLIB_NOREG LJLIB_CF(table_new)      LJLIB_REC(.)
+LJLIB_NOREG LJLIB_CF(table_new) LJLIB_REC(.)
 {
    int32_t a = lj_lib_checkint(L, 1);
    int32_t h = lj_lib_checkint(L, 2);
@@ -288,7 +288,8 @@ LJLIB_NOREG LJLIB_CF(table_new)      LJLIB_REC(.)
 // Returns true if the given table is empty. If the argument is nil, it is treated as empty and returns true. This
 // mirrors the emptiness check used in Parasol's user-facing helpers, but implemented natively.
 
-static int lj_cf_table_empty(lua_State* L) LJ_UNUSED;
+[[maybe_unused]] static int lj_cf_table_empty(lua_State* L);
+
 LJLIB_CF(table_empty)
 {
    GCtab* t = lj_lib_checktabornil(L, 1);

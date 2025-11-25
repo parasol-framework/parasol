@@ -169,9 +169,7 @@ void JumpListView::patch_to_here() const
 
 void JumpListView::patch_to(BCPos Target) const
 {
-   if (Target IS func_state->pc) {
-      patch_to_here();
-   }
+   if (Target IS func_state->pc) patch_to_here();
    else {
       FuncState* fs = func_state;
       fs->assert(Target < func_state->pc, "bad jump target");
