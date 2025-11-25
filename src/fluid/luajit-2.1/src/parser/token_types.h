@@ -10,6 +10,7 @@
 #include "lexer.h"
 
 // Strongly typed representation of lexer tokens.
+
 enum class TokenKind : uint16_t {
    Unknown = 0,
 #define TOKEN_KIND_ENUM(name) name = TK_##name,
@@ -81,22 +82,39 @@ enum class TokenKind : uint16_t {
    Question = '?'
 };
 
-[[nodiscard]] CSTRING token_kind_name(TokenKind kind, LexState& lex);
+[[nodiscard]] inline CSTRING token_kind_name(TokenKind kind, LexState &lex) { return lex.token2str((LexToken)kind); }
+
+//********************************************************************************************************************
 
 struct TokenPayload {
-   TokenPayload();
-   void assign(lua_State* state, const TValue& value);
-
    [[nodiscard]] bool has_value() const { return this->has_payload; }
-   [[nodiscard]] const TValue& value() const { return this->payload; }
-   [[nodiscard]] GCstr* as_string() const;
-   [[nodiscard]] double as_number() const;
+   [[nodiscard]] const TValue & value() const { return this->payload; }
+
+   void assign(lua_State *state, const TValue &value) {
+      this->owner = state;
+      copyTV(state, &this->payload, &value);
+      this->has_payload = true;
+   }
+
+   [[nodiscard]] GCstr * as_string() const {
+      if (not this->has_payload) return nullptr;
+      if (not tvisstr(&this->payload)) return nullptr;
+      return strV(&this->payload);
+   }
+
+   [[nodiscard]] double as_number() const {
+      if (not this->has_payload) return 0.0;
+      if (tvisnum(&this->payload)) return numV(&this->payload);
+      return 0.0;
+   }
 
 private:
-   bool has_payload = false;
    TValue payload;
    lua_State* owner = nullptr;
+   bool has_payload = false;
 };
+
+//********************************************************************************************************************
 
 class Token {
 public:
@@ -110,11 +128,12 @@ public:
    [[nodiscard]] LexToken raw() const { return this->raw_token; }
    [[nodiscard]] SourceSpan span() const { return this->source; }
    [[nodiscard]] bool is(TokenKind kind) const { return this->token_kind IS kind; }
-   [[nodiscard]] bool is_identifier() const;
    [[nodiscard]] bool is_literal() const;
-   [[nodiscard]] bool is_eof() const;
-   [[nodiscard]] const TokenPayload& payload() const { return this->data; }
-   [[nodiscard]] GCstr* identifier() const;
+   [[nodiscard]] const TokenPayload & payload() const { return this->data; }
+
+   bool is_identifier() const { return this->token_kind IS TokenKind::Identifier; }
+   bool is_eof() const { return this->token_kind IS TokenKind::EndOfFile; }
+   GCstr * identifier() const { return this->data.as_string(); }
 
 private:
    TokenKind token_kind = TokenKind::Unknown;
@@ -123,5 +142,4 @@ private:
    TokenPayload data;
 };
 
-TokenKind to_token_kind(LexToken token);
-
+[[nodiscard]] inline TokenKind to_token_kind(LexToken token) { return (TokenKind)token; }

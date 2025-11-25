@@ -19,6 +19,38 @@
 #include "parser/token_types.h"
 
 //********************************************************************************************************************
+// Adjust LHS/RHS of an assignment.
+// Exclusively used by ir_emitter for assignment statements, local declarations, and for loops.
+// TOOD: May as well be a regular function instead of a LexState method.
+
+void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
+{
+   FuncState* fs = this->fs;
+   RegisterAllocator allocator(fs);
+   int32_t extra = int32_t(nvars) - int32_t(nexps);
+   if (Expr->k IS ExpKind::Call) {
+      extra++;  // Compensate for the ExpKind::Call itself.
+      if (extra < 0) extra = 0;
+      setbc_b(bcptr(fs, Expr), extra + 1);  // Fixup call results.
+      if (extra > 1) allocator.reserve(BCReg(extra) - 1);
+   }
+   else {
+      if (Expr->k != ExpKind::Void) {
+         ExpressionValue value(fs, *Expr);
+         value.to_next_reg(allocator);
+         *Expr = value.legacy();
+      }
+      if (extra > 0) {  // Leftover LHS are set to nil.
+         BCReg reg = fs->freereg;
+         allocator.reserve(BCReg(extra));
+         bcemit_nil(fs, reg, BCReg(extra));
+      }
+   }
+
+   if (nexps > nvars) fs->freereg -= nexps - nvars;  // Drop leftover regs.
+}
+
+//********************************************************************************************************************
 
 void LocalBindingTable::pop_scope()
 {

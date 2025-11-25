@@ -246,13 +246,6 @@ BCPos bcemit_INS(FuncState *fs, BCIns ins)
 }
 
 //********************************************************************************************************************
-// Get pointer to bytecode instruction for expression.
-
-[[nodiscard]] inline BCIns* bcptr(FuncState *fs, const ExpDesc *e) {
-   return &fs->bcbase[e->u.s.info].ins;
-}
-
-//********************************************************************************************************************
 // Bytecode emitter for expressions
 
 // Discharge non-constant expression to any register.

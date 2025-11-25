@@ -1,27 +1,24 @@
-/*
-** Bytecode instruction format.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Bytecode instruction format.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#ifndef _LJ_BC_H
-#define _LJ_BC_H
+#pragma once
 
 #include "lj_def.h"
 #include "lj_arch.h"
 
-/* Bytecode instruction format, 32 bit wide, fields of 8 or 16 bit:
-**
-** +----+----+----+----+
-** | B  | C  | A  | OP | Format ABC
-** +----+----+----+----+
-** |    D    | A  | OP | Format AD
-** +--------------------
-** MSB               LSB
-**
-** In-memory instructions are always stored in host byte order.
-*/
+// Bytecode instruction format, 32 bit wide, fields of 8 or 16 bit:
+//
+// +----+----+----+----+
+// | B  | C  | A  | OP | Format ABC
+// +----+----+----+----+
+// |    D    | A  | OP | Format AD
+// +--------------------
+// MSB               LSB
+//
+// In-memory instructions are always stored in host byte order.
 
 // Operand ranges and related constants.
+
 constexpr uint8_t  BCMAX_A = 0xff;
 constexpr uint8_t  BCMAX_B = 0xff;
 constexpr uint8_t  BCMAX_C = 0xff;
@@ -31,30 +28,28 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define NO_JMP      (~(BCPos)0)
 
 // Inline functions to get instruction fields (defined after BCOp enum).
+
 #define bc_op(i)   ((BCOp)((i)&0xff))
-#define bc_a(i)      ((BCReg)(((i)>>8)&0xff))
-#define bc_b(i)      ((BCReg)((i)>>24))
-#define bc_c(i)      ((BCReg)(((i)>>16)&0xff))
-#define bc_d(i)      ((BCReg)((i)>>16))
-#define bc_j(i)      ((ptrdiff_t)bc_d(i)-BCBIAS_J)
+#define bc_a(i)    ((BCReg)(((i)>>8)&0xff))
+#define bc_b(i)    ((BCReg)((i)>>24))
+#define bc_c(i)    ((BCReg)(((i)>>16)&0xff))
+#define bc_d(i)    ((BCReg)((i)>>16))
+#define bc_j(i)    ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
 // Macros to set instruction fields.
-#define setbc_byte(p, x, ofs) \
-  ((uint8_t *)(p))[LJ_ENDIAN_SELECT(ofs, 3-ofs)] = (uint8_t)(x)
-#define setbc_op(p, x)   setbc_byte(p, (x), 0)
+
+#define setbc_byte(p, x, ofs) ((uint8_t *)(p))[LJ_ENDIAN_SELECT(ofs, 3-ofs)] = (uint8_t)(x)
+#define setbc_op(p, x)  setbc_byte(p, (x), 0)
 #define setbc_a(p, x)   setbc_byte(p, (x), 1)
 #define setbc_b(p, x)   setbc_byte(p, (x), 3)
 #define setbc_c(p, x)   setbc_byte(p, (x), 2)
-#define setbc_d(p, x) \
-  ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
+#define setbc_d(p, x)   ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
 #define setbc_j(p, x)   setbc_d(p, (BCPos)((int32_t)(x)+BCBIAS_J))
 
 // Macros to compose instructions.
-#define BCINS_ABC(o, a, b, c) \
-  (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(b)<<24)|((BCIns)(c)<<16))
-#define BCINS_AD(o, a, d) \
-  (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
-#define BCINS_AJ(o, a, j)   BCINS_AD(o, a, (BCPos)((int32_t)(j)+BCBIAS_J))
+#define BCINS_ABC(o, a, b, c) (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(b)<<24)|((BCIns)(c)<<16))
+#define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
+#define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPos)((int32_t)(j)+BCBIAS_J))
 
 /* Bytecode instruction definition. Order matters, see below.
 **
@@ -261,5 +256,3 @@ static LJ_AINLINE int bc_isret(BCOp op)
 
 LJ_DATA const uint16_t lj_bc_mode[];
 LJ_DATA const uint16_t lj_bc_ofs[];
-
-#endif

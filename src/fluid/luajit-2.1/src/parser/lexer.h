@@ -181,9 +181,8 @@ public:
    GCproto* fs_finish(BCLine Line);
    void fs_init(FuncState* FunctionState);
 
-   // Shared parser helpers used by AST pipeline
-   void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
-   bool should_emit_presence();
+   [[maybe_unused]] void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
+   [[nodiscard]] bool should_emit_presence();
 
    // Public parser helpers
    GCstr * keepstr(std::string_view Value);

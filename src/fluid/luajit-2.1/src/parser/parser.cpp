@@ -70,6 +70,29 @@ static const struct {
 
 static constexpr size_t kMaxLoggedStatements = 12;
 
+static void raise_accumulated_diagnostics(ParserContext &Context)
+{
+   auto entries = Context.diagnostics().entries();
+   if (entries.empty()) return;
+
+   auto summary = std::format("parser reported {} {}:\n", entries.size(), entries.size() == 1 ? "error" : "errors");
+
+   for (const auto& diagnostic : entries) {
+      SourceSpan span = diagnostic.token.span();
+      std::string_view message = diagnostic.message.empty() ? "unexpected token" : diagnostic.message;
+      summary += std::format("   line {}:{} - {}\n", span.line, span.column, message);
+   }
+
+   lua_State *L = &Context.lua();
+
+   // Store diagnostic information in lua_State before throwing
+   L->parser_diagnostics = new ParserDiagnostics(Context.diagnostics());
+
+   GCstr *message = lj_str_new(L, summary.data(), summary.size());
+   setstrV(L, L->top++, message);
+   lj_err_throw(L, LUA_ERRSYNTAX);
+}
+
 //********************************************************************************************************************
 
 static void report_pipeline_error(ParserContext &Context, const ParserError &Error)

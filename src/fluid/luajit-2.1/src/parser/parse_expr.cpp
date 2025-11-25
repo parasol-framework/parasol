@@ -11,7 +11,7 @@
 
 //********************************************************************************************************************
 // Return index expression.
-// Used by AST pipeline (ir_emitter.cpp) and operator emitters.
+// Used by ir_emitter and operator emitters.
 
 static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
 {
@@ -50,7 +50,7 @@ static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
 
 //********************************************************************************************************************
 // Get value of constant expression.
-// Used by AST pipeline (ir_emitter.cpp) for table constructor optimization.
+// Used by ir_emitter for table constructor optimization.
 
 static void expr_kvalue(FuncState *fs, TValue *v, ExpDesc *e)
 {

@@ -25,8 +25,7 @@ void LexState::var_new(BCReg n, GCstr* name)
    MSize vtop = this->vtop;
    checklimit(fs, fs->nactvar + n, LJ_MAX_LOCVAR, "local variables");
    if (vtop >= this->sizevstack) [[unlikely]] {
-      if (this->sizevstack >= LJ_MAX_VSTACK)
-         lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
+      if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
    lj_assertFS(name == NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
@@ -70,8 +69,7 @@ void LexState::var_add(BCReg nvars)
 void LexState::var_remove(BCReg tolevel)
 {
    FuncState* fs = this->fs;
-   while (fs->nactvar > tolevel)
-      var_get(this, fs, --fs->nactvar).endpc = fs->pc;
+   while (fs->nactvar > tolevel) var_get(this, fs, --fs->nactvar).endpc = fs->pc;
 }
 
 //********************************************************************************************************************
@@ -99,8 +97,7 @@ static MSize var_lookup_uv(FuncState* fs, MSize vidx, ExpDesc* e)
    // Check if upvalue already exists using range-based iteration.
    auto uvmap_view = std::span(fs->uvmap.data(), n);
    for (MSize i = 0; auto uv_idx : uvmap_view) {
-      if (uv_idx == vidx)
-         return i;  // Already exists.
+      if (uv_idx == vidx) return i;  // Already exists.
       i++;
    }
    // Otherwise create a new one.
@@ -290,24 +287,6 @@ static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
    bl->prev = fs->bl;
    fs->bl = bl;
    lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
-}
-
-//********************************************************************************************************************
-
-static void fscope_loop_continue(FuncState* fs, BCPos pos)
-{
-   FuncScope* bl = fs->bl;
-   LexState* ls = fs->ls;
-
-   lj_assertFS(has_flag(bl->flags, FuncScopeFlag::Loop), "continue outside loop scope");
-
-   if (!has_flag(bl->flags, FuncScopeFlag::Continue)) return;
-
-   bl->flags &= ~FuncScopeFlag::Continue;
-
-   VStackGuard vstack_guard(ls);
-   MSize idx = ls->gola_new(JUMP_CONTINUE, VarInfoFlag::JumpTarget, pos);
-   ls->gola_resolve(bl, idx);
 }
 
 //********************************************************************************************************************
@@ -598,15 +577,11 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 
 size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
-   UNUSED(FunctionState);
-   UNUSED(OffsetVar);
    return 0;
 }
 
 void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVar)
 {
-   UNUSED(Buffer);
-   UNUSED(OffsetVar);
    setmref((Prototype)->uvinfo, nullptr);
    setmref((Prototype)->varinfo, nullptr);
 }
@@ -651,19 +626,19 @@ static void fs_fixup_ret(FuncState* fs)
          BCIns ins = fs->bcbase[pc].ins;
          BCPos offset;
          switch (bc_op(ins)) {
-         case BC_CALLMT: case BC_CALLT:
-         case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
-            offset = bcemit_INS(fs, ins);  // Copy original instruction.
-            fs->bcbase[offset].line = fs->bcbase[pc].line;
-            offset = offset - (pc + 1) + BCBIAS_J;
-            if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XFIXUP);
-            // Replace with UCLO plus branch.
-            fs->bcbase[pc].ins = BCINS_AD(BC_UCLO, 0, offset);
-            break;
-         case BC_UCLO:
-            return;  // We're done.
-         default:
-            break;
+            case BC_CALLMT: case BC_CALLT:
+            case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:
+               offset = bcemit_INS(fs, ins);  // Copy original instruction.
+               fs->bcbase[offset].line = fs->bcbase[pc].line;
+               offset = offset - (pc + 1) + BCBIAS_J;
+               if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XFIXUP);
+               // Replace with UCLO plus branch.
+               fs->bcbase[pc].ins = BCINS_AD(BC_UCLO, 0, offset);
+               break;
+            case BC_UCLO:
+               return;  // We're done.
+            default:
+               break;
          }
       }
    }
