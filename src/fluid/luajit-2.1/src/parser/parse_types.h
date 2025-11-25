@@ -91,6 +91,7 @@ template<FlagType Flag> static constexpr Flag & operator&=(Flag &Left, Flag Righ
 template<FlagType Flag> [[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask) { return (Flags & Mask) != Flag::None; }
 
 // Expression descriptor.
+
 struct ExpDesc {
    union {
       struct { // For non-constant expressions like Local, Upval, Global, Indexed, Jmp, Relocable, NonReloc, Call, Void
@@ -102,8 +103,8 @@ struct ExpDesc {
    } u;
    ExpKind k;      // Expression kind.
    ExprFlag flags; // Expression flags.
-   BCPos t;        // True condition jump list.
-   BCPos f;        // False condition jump list.
+   BCPOS t;        // True condition jump list.
+   BCPOS f;        // False condition jump list.
 
    // Constructors
    constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {}
@@ -195,15 +196,15 @@ struct FuncState {
    lua_State *L;       // Lua state.
    FuncScope *bl;      // Current scope.
    FuncState *prev;    // Enclosing function.
-   BCPos pc;           // Next bytecode position.
-   BCPos lasttarget;   // Bytecode position of last jump target.
-   BCPos jpc;          // Pending jump list to next bytecode.
-   BCReg freereg;      // First free register.
-   BCReg nactvar;      // Number of active local variables.
-   BCReg nkn, nkgc;    // Number of lua_Number/GCobj constants
+   BCPOS pc;           // Next bytecode position.
+   BCPOS lasttarget;   // Bytecode position of last jump target.
+   BCPOS jpc;          // Pending jump list to next bytecode.
+   BCREG freereg;      // First free register.
+   BCREG nactvar;      // Number of active local variables.
+   BCREG nkn, nkgc;    // Number of lua_Number/GCobj constants
    BCLine linedefined; // First line of the function definition.
    BCInsLine* bcbase;  // Base of bytecode stack.
-   BCPos bclim;        // Limit of bytecode stack.
+   BCPOS bclim;        // Limit of bytecode stack.
    MSize vbase;        // Base of variable stack for this function.
    uint8_t flags;      // Prototype flags.
    uint8_t numparams;  // Number of parameters.
@@ -223,6 +224,7 @@ struct FuncState {
 };
 
 // Binary and unary operators. ORDER OPR
+
 enum BinOpr : int {
    OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  // ORDER ARITH
    OPR_CONCAT,
@@ -235,6 +237,7 @@ enum BinOpr : int {
 };
 
 // Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
+
 static_assert((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT, "BC_ISGE offset mismatch");
 static_assert((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT, "BC_ISLE offset mismatch");
 static_assert((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT, "BC_ISGT offset mismatch");

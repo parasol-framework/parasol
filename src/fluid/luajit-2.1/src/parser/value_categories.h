@@ -62,18 +62,18 @@ private:
 // values and write new values to the same location.
 
 // LValue variant types - strongly typed alternatives for each l-value category
-struct LocalLValue { BCReg reg; };
+struct LocalLValue { BCREG reg; };
 struct UpvalueLValue { uint32_t index; };
 struct GlobalLValue { GCstr* name; };
-struct IndexedLValue { BCReg table_reg; BCReg key_reg; };
-struct MemberLValue { BCReg table_reg; uint32_t key_const; };
+struct IndexedLValue { BCREG table_reg; BCREG key_reg; };
+struct MemberLValue { BCREG table_reg; uint32_t key_const; };
 
 class LValue {
 public:
    LValue() : data(std::monostate{}) {}
 
    // Construct local l-value
-   static LValue make_local(BCReg Register) {
+   static LValue make_local(BCREG Register) {
       LValue lval;
       lval.data = LocalLValue{Register};
       return lval;
@@ -94,14 +94,14 @@ public:
    }
 
    // Construct indexed l-value (table[key])
-   static LValue make_indexed(BCReg TableReg, BCReg KeyReg) {
+   static LValue make_indexed(BCREG TableReg, BCREG KeyReg) {
       LValue lval;
       lval.data = IndexedLValue{TableReg, KeyReg};
       return lval;
    }
 
    // Construct member l-value (table.member or table["constant"])
-   static LValue make_member(BCReg TableReg, uint32_t KeyConst) {
+   static LValue make_member(BCREG TableReg, uint32_t KeyConst) {
       LValue lval;
       lval.data = MemberLValue{TableReg, KeyConst};
       return lval;
@@ -118,14 +118,14 @@ public:
    [[nodiscard]] bool is_member() const { return std::holds_alternative<MemberLValue>(this->data); }
 
    // Accessors for variant data
-   [[nodiscard]] BCReg get_local_reg() const { return std::get<LocalLValue>(this->data).reg; }
+   [[nodiscard]] BCREG get_local_reg() const { return std::get<LocalLValue>(this->data).reg; }
    [[nodiscard]] uint32_t get_upvalue_index() const { return std::get<UpvalueLValue>(this->data).index; }
    [[nodiscard]] GCstr* get_global_name() const { return std::get<GlobalLValue>(this->data).name; }
-   [[nodiscard]] BCReg get_table_reg() const {
+   [[nodiscard]] BCREG get_table_reg() const {
       if (this->is_indexed()) return std::get<IndexedLValue>(this->data).table_reg;
       return std::get<MemberLValue>(this->data).table_reg;
    }
-   [[nodiscard]] BCReg get_key_reg() const { return std::get<IndexedLValue>(this->data).key_reg; }
+   [[nodiscard]] BCREG get_key_reg() const { return std::get<IndexedLValue>(this->data).key_reg; }
    [[nodiscard]] uint32_t get_key_const() const { return std::get<MemberLValue>(this->data).key_const; }
 
 private:

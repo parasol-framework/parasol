@@ -79,7 +79,7 @@ typedef struct ASMState {
    IRRef sectref;   //  Section base reference (loopref or 0).
    IRRef loopref;   //  Reference of LOOP instruction (or 0).
 
-   BCReg topslot;   //  Number of slots for stack check (unless 0).
+   BCREG topslot;   //  Number of slots for stack check (unless 0).
    int32_t gcsteps;   //  Accumulated number of GC steps (per section).
 
    GCtrace* T;      //  Trace to assemble.
@@ -2103,7 +2103,7 @@ static void asm_head_side(ASMState* as)
 // -- Tail of trace -------------------------------------------------------
 
 // Get base slot for a snapshot.
-static BCReg asm_baseslot(ASMState* as, SnapShot* snap, int* gotframe)
+static BCREG asm_baseslot(ASMState* as, SnapShot* snap, int* gotframe)
 {
    SnapEntry* map = &as->T->snapmap[snap->mapofs];
    MSize n;
@@ -2123,7 +2123,7 @@ static void asm_tail_link(ASMState* as)
    SnapNo snapno = as->T->nsnap - 1;  //  Last snapshot.
    SnapShot* snap = &as->T->snap[snapno];
    int gotframe = 0;
-   BCReg baseslot = asm_baseslot(as, snap, &gotframe);
+   BCREG baseslot = asm_baseslot(as, snap, &gotframe);
 
    as->topslot = snap->topslot;
    checkmclim(as);

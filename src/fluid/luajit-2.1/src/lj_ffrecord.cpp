@@ -104,7 +104,7 @@ static void recff_stitch(jit_State* J)
    ASMFunction cont = lj_cont_stitch;
    lua_State* L = J->L;
    TValue* base = L->base;
-   BCReg nslot = J->maxslot + 1 + LJ_FR2;
+   BCREG nslot = J->maxslot + 1 + LJ_FR2;
    TValue* nframe = base + 1 + LJ_FR2;
    const BCIns* pc = frame_pc(base - 1);
    TValue* pframe = frame_prevl(base - 1);
@@ -659,7 +659,7 @@ static void LJ_FASTCALL recff_math_minmax(jit_State* J, RecordFFData* rd)
 {
    TRef tr = lj_ir_tonumber(J, J->base[0]);
    uint32_t op = rd->data;
-   BCReg i;
+   BCREG i;
    for (i = 1; J->base[i] != 0; i++) {
       TRef tr2 = lj_ir_tonumber(J, J->base[i]);
       IRType t = IRT_INT;
@@ -734,7 +734,7 @@ static void LJ_FASTCALL recff_bit_nary(jit_State* J, RecordFFData* rd)
    {
       TRef tr = lj_opt_narrow_tobit(J, J->base[0]);
       uint32_t ot = IRTI(rd->data);
-      BCReg i;
+      BCREG i;
       for (i = 1; J->base[i] != 0; i++)
          tr = emitir(ot, tr, lj_opt_narrow_tobit(J, J->base[i]));
       J->base[0] = tr;
@@ -898,7 +898,7 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_string_char(jit_State* J, RecordFFData* rd)
 {
    TRef k255 = lj_ir_kint(J, 255);
-   BCReg i;
+   BCREG i;
    for (i = 0; J->base[i] != 0; i++) {  // Convert char values to strings.
       TRef tr = lj_opt_narrow_toint(J, J->base[i]);
       emitir(IRTGI(IR_ULE), tr, k255);

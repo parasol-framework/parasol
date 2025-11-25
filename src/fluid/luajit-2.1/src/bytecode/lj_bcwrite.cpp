@@ -242,7 +242,7 @@ static char* bcwrite_bytecode(BCWriteCtx* ctx, char* p, GCproto* pt)
             q[LJ_ENDIAN_SELECT(0, 3)] = (uint8_t)(op - BC_IFORL + BC_FORL);
          }
          else if (op == BC_JFORL or op == BC_JITERL or op == BC_JLOOP) {
-            BCReg rd = q[LJ_ENDIAN_SELECT(2, 1)] + (q[LJ_ENDIAN_SELECT(3, 0)] << 8);
+            BCREG rd = q[LJ_ENDIAN_SELECT(2, 1)] + (q[LJ_ENDIAN_SELECT(3, 0)] << 8);
             memcpy(q, &traceref(J, rd)->startins, 4);
          }
       }

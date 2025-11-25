@@ -375,7 +375,7 @@ static void callhook(lua_State* L, int event, BCLine line)
 // -- Dispatch callbacks --------------------------------------------------
 
 // Calculate number of used stack slots in the current frame.
-static BCReg cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
+static BCREG cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
 {
    BCIns ins = pc[-1];
    if (bc_op(ins) == BC_UCLO)
@@ -397,7 +397,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
    void* cf = cframe_raw(L->cframe);
    const BCIns* oldpc = cframe_pc(cf);
    global_State* g = G(L);
-   BCReg slots;
+   BCREG slots;
    setcframe_pc(cf, pc);
    slots = cur_topslot(pt, pc, cframe_multres_n(cf));
    L->top = L->base + slots;  //  Fix top.
@@ -421,8 +421,8 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       L->top = L->base + slots;  //  Fix top again.
    }
    if ((g->hookmask & LUA_MASKLINE)) {
-      BCPos npc = proto_bcpos(pt, pc) - 1;
-      BCPos opc = proto_bcpos(pt, oldpc) - 1;
+      BCPOS npc = proto_bcpos(pt, pc) - 1;
+      BCPOS opc = proto_bcpos(pt, oldpc) - 1;
       BCLine line = lj_debug_line(pt, npc);
       if (pc <= oldpc or opc >= pt->sizebc or line != lj_debug_line(pt, opc)) {
          callhook(L, LUA_HOOKLINE, line);

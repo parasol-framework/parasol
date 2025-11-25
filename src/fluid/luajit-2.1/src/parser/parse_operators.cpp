@@ -37,7 +37,7 @@
 void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
-   BCReg rb, rc, t;
+   BCREG rb, rc, t;
    uint32_t op;
    if (foldarith(opr, e1, e2)) return;
 
@@ -97,14 +97,14 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
    RegisterAllocator allocator(fs);
    ExpDesc *eret = e1;
    BCIns ins;
-   BCReg cmp_reg_a = NO_REG, cmp_reg_b = NO_REG;  // Track registers used by comparison
+   BCREG cmp_reg_a = NO_REG, cmp_reg_b = NO_REG;  // Track registers used by comparison
    ExpressionValue e1_toval_pre(fs, *e1);
 
    e1_toval_pre.to_val();
    *e1 = e1_toval_pre.legacy();
    if (opr IS OPR_EQ or opr IS OPR_NE) {
       BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
-      BCReg ra;
+      BCREG ra;
 
       if (e1->is_constant()) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
       ExpressionValue e1_value(fs, *e1);
@@ -129,7 +129,7 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
             break;
          default: {
             ExpressionValue e2_value(fs, *e2);
-            BCReg rb = e2_value.discharge_to_any_reg(allocator);
+            BCREG rb = e2_value.discharge_to_any_reg(allocator);
             *e2 = e2_value.legacy();
             cmp_reg_b = rb;
             ins = BCINS_AD(op, ra, rb);
@@ -139,7 +139,7 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
    }
    else {
       uint32_t op = opr - OPR_LT + BC_ISLT;
-      BCReg ra, rd;
+      BCREG ra, rd;
       if ((op - BC_ISLT) & 1) {  // GT -> LT, GE -> LE
          e1 = e2; e2 = eret;  // Swap operands.
          op = ((op - BC_ISLT) ^ 3) + BC_ISLT;
@@ -223,12 +223,12 @@ void bcemit_comp(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 //   rhs   - Right-hand side expression (shift count, may be ExpKind::Call)
 //   base  - Base register for the call (allows register reuse for chaining)
 
-static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCReg base)
+static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCREG base)
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   BCReg arg1 = base + 1 + LJ_FR2;  // First argument register (after frame link if present)
-   BCReg arg2 = arg1 + 1;            // Second argument register
+   BCREG arg1 = base + 1 + LJ_FR2;  // First argument register (after frame link if present)
+   BCREG arg2 = arg1 + 1;            // Second argument register
 
    // Normalise both operands into registers before loading the callee.
    ExpressionValue lhs_toval(fs, *lhs);
@@ -281,7 +281,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    // Allocate a base register for the call
    // Check if either operand is already at the top of the stack to avoid orphaning registers
    // when chaining operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result)
-   BCReg base;
+   BCREG base;
    if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
       // RHS is at the top - reuse its register to avoid orphaning
       base = rhs->u.s.info;
@@ -307,8 +307,8 @@ void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   BCReg base = fs->freereg;
-   BCReg arg_reg = base + 1 + LJ_FR2;
+   BCREG base = fs->freereg;
+   BCREG arg_reg = base + 1 + LJ_FR2;
 
    allocator.reserve(1);  // Reserve for callee
    if (LJ_FR2) allocator.reserve(1);  // Reserve for frame link on x64
@@ -363,7 +363,7 @@ void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
 
    if (op IS BC_NOT) {
       // Swap true and false lists.
-      { BCPos temp = e->f; e->f = e->t; e->t = temp; }
+      { BCPOS temp = e->f; e->f = e->t; e->t = temp; }
       ControlFlowGraph cfg(fs);
       ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
       false_edge.drop_values();

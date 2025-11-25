@@ -206,7 +206,7 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
    left_val.discharge();
    *left_desc = left_val.legacy();
 
-   BCPos pc;
+   BCPOS pc;
    bool will_skip_rhs = false;
 
    // Handle constant folding
@@ -296,7 +296,7 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
    left_val.discharge();
    *left_desc = left_val.legacy();
 
-   BCPos pc;
+   BCPOS pc;
    bool will_skip_rhs = false;
 
    // Handle constant folding
@@ -380,7 +380,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
    left_val.discharge();
    *left_desc = left_val.legacy();
 
-   BCPos pc;
+   BCPOS pc;
 
    // Handle constant folding for known falsey values
    if (left_desc->k IS ExpKind::Nil or left_desc->k IS ExpKind::False)
@@ -404,7 +404,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
       if (!left_desc->is_constant_nojump()) {
          ExpressionValue left_inner(this->func_state, *left_desc);
          RegisterAllocator local_alloc(this->func_state);
-         BCReg reg = left_inner.discharge_to_any_reg(local_alloc);
+         BCREG reg = left_inner.discharge_to_any_reg(local_alloc);
          *left_desc = left_inner.legacy();
 
          // Create test expressions for extended falsey values
@@ -421,16 +421,16 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          //          When value is falsey, ONE check matches → that JMP skipped → fall through to RHS
 
          bcemit_INS(this->func_state, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-         BCPos check_nil = bcemit_jmp(this->func_state);
+         BCPOS check_nil = bcemit_jmp(this->func_state);
 
          bcemit_INS(this->func_state, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-         BCPos check_false = bcemit_jmp(this->func_state);
+         BCPOS check_false = bcemit_jmp(this->func_state);
 
          bcemit_INS(this->func_state, BCINS_AD(BC_ISEQN, reg, const_num(this->func_state, &zerov)));
-         BCPos check_zero = bcemit_jmp(this->func_state);
+         BCPOS check_zero = bcemit_jmp(this->func_state);
 
          bcemit_INS(this->func_state, BCINS_AD(BC_ISEQS, reg, const_str(this->func_state, &emptyv)));
-         BCPos check_empty = bcemit_jmp(this->func_state);
+         BCPOS check_empty = bcemit_jmp(this->func_state);
 
          // RHS will be emitted after this prepare phase
          // The jumps above will skip RHS when value is truthy (all JMPs execute)
@@ -445,7 +445,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          pc = skip_rhs.head();
 
          // Mark that we need to preserve LHS value and reserve register for RHS
-         BCReg rhs_reg = this->func_state->freereg;
+         BCREG rhs_reg = this->func_state->freereg;
          ExprFlag saved_flags = left_desc->flags;
          local_alloc.reserve(1);
          left_desc->init(ExpKind::NonReloc, reg);
@@ -486,15 +486,15 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
 
    if (left_desc->t != NO_JMP) {
       // Get the RHS register if one was reserved
-      BCReg rhs_reg = NO_REG;
-      BCReg lhs_reg = left_desc->u.s.info;
+      BCREG rhs_reg = NO_REG;
+      BCREG lhs_reg = left_desc->u.s.info;
       if (expr_consume_flag(left_desc, ExprFlag::HasRhsReg)) {
-         rhs_reg = BCReg(left_desc->u.s.aux);
+         rhs_reg = BCREG(left_desc->u.s.aux);
       }
 
       // RHS has been evaluated - store it in the reserved register (or allocate one)
       RegisterAllocator local_alloc(fs);
-      BCReg dest_reg;
+      BCREG dest_reg;
       if (rhs_reg IS NO_REG) {
          dest_reg = fs->freereg;
          local_alloc.reserve(1);
@@ -640,7 +640,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    // Runtime value - emit extended falsey checks
    RegisterAllocator local_alloc(fs);
    ExpressionValue e_runtime(fs, *e);
-   BCReg reg = e_runtime.discharge_to_any_reg(local_alloc);
+   BCREG reg = e_runtime.discharge_to_any_reg(local_alloc);
    *e = e_runtime.legacy();
 
    // Create test expressions
@@ -651,29 +651,29 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Emit equality checks for extended falsey values
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-   BCPos check_nil = bcemit_jmp(fs);
+   BCPOS check_nil = bcemit_jmp(fs);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-   BCPos check_false = bcemit_jmp(fs);
+   BCPOS check_false = bcemit_jmp(fs);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-   BCPos check_zero = bcemit_jmp(fs);
+   BCPOS check_zero = bcemit_jmp(fs);
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-   BCPos check_empty = bcemit_jmp(fs);
+   BCPOS check_empty = bcemit_jmp(fs);
 
    expr_free(fs, e);  // Free the expression register
 
    // Reserve register for result
-   BCReg dest = fs->freereg;
+   BCREG dest = fs->freereg;
    local_alloc.reserve(1);
 
    // Value is truthy - load true
-   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::True));
-   BCPos jmp_false_branch = bcemit_jmp(fs);
+   bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::True));
+   BCPOS jmp_false_branch = bcemit_jmp(fs);
 
    // False branch: patch all falsey jumps here and load false
-   BCPos false_pos = fs->pc;
+   BCPOS false_pos = fs->pc;
    ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
    nil_edge.patch_to(false_pos);
    ControlFlowEdge false_edge_check = this->cfg->make_unconditional(check_false);
@@ -683,7 +683,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    ControlFlowEdge empty_edge = this->cfg->make_unconditional(check_empty);
    empty_edge.patch_to(false_pos);
 
-   bcemit_AD(fs, BC_KPRI, dest, BCReg(ExpKind::False));
+   bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::False));
 
    // Patch skip jump to after false load
    ControlFlowEdge skip_edge = this->cfg->make_unconditional(jmp_false_branch);

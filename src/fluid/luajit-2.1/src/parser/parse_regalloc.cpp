@@ -8,7 +8,7 @@
 
 #include <parasol/main.h>
 
-[[nodiscard]] BCPos bcemit_jmp(FuncState *);
+[[nodiscard]] BCPOS bcemit_jmp(FuncState *);
 
 inline bool is_register_key(int32_t Aux)
 {
@@ -18,39 +18,39 @@ inline bool is_register_key(int32_t Aux)
 //********************************************************************************************************************
 // Register allocation methods
 
-void RegisterAllocator::bump(BCReg Count)
+void RegisterAllocator::bump(BCREG Count)
 {
-   BCReg target = this->func_state->freereg + Count;
+   BCREG target = this->func_state->freereg + Count;
    if (target > this->func_state->framesize) {
       if (target >= LJ_MAX_SLOTS) this->func_state->ls->err_syntax(ErrMsg::XSLOTS);
       this->func_state->framesize = uint8_t(target);
    }
 }
 
-BCReg RegisterAllocator::reserve_slots(BCReg Count)
+BCREG RegisterAllocator::reserve_slots(BCREG Count)
 {
    if (not Count) return this->func_state->freereg;
 
-   BCReg start = this->func_state->freereg;
+   BCREG start = this->func_state->freereg;
    this->bump(Count);
    this->func_state->freereg += Count;
    this->trace_allocation(start, Count, "reserve_slots");
    return start;
 }
 
-RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
+RegisterSpan RegisterAllocator::reserve_span(BCREG Count)
 {
    if (not Count) return RegisterSpan();
 
-   BCReg start = this->reserve_slots(Count);
+   BCREG start = this->reserve_slots(Count);
    return RegisterSpan(this, start, Count, start + Count);
 }
 
-RegisterSpan RegisterAllocator::reserve_span_soft(BCReg Count)
+RegisterSpan RegisterAllocator::reserve_span_soft(BCREG Count)
 {
    if (not Count) return RegisterSpan();
 
-   BCReg start = this->reserve_slots(Count);
+   BCREG start = this->reserve_slots(Count);
    // ExpectedTop=0 marks this as a "soft" span: the allocator will not enforce
    // strict RAII checks or adjust freereg when the span is released. Callers
    // using soft spans are responsible for collapsing freereg themselves (for
@@ -58,7 +58,7 @@ RegisterSpan RegisterAllocator::reserve_span_soft(BCReg Count)
    return RegisterSpan(this, start, Count, 0);
 }
 
-void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
+void RegisterAllocator::release_span_internal(BCREG Start, BCREG Count, BCREG ExpectedTop)
 {
    if (not Count) return;
 
@@ -114,9 +114,9 @@ void RegisterAllocator::release(AllocatedRegister &Handle)
    }
 }
 
-void RegisterAllocator::release_register(BCReg Register)
+void RegisterAllocator::release_register(BCREG Register)
 {
-   BCReg expected_top = Register + 1;
+   BCREG expected_top = Register + 1;
    if (Register >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
       this->release_span_internal(Register, 1, expected_top);
    }
@@ -125,22 +125,22 @@ void RegisterAllocator::release_register(BCReg Register)
 void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
-      BCReg reg = Expression->u.s.info;
-      BCReg expected_top = reg + 1;
+      BCREG reg = Expression->u.s.info;
+      BCREG expected_top = reg + 1;
       if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
          this->release_span_internal(reg, 1, expected_top);
       }
    }
 }
 
-void RegisterAllocator::collapse_freereg(BCReg ResultReg)
+void RegisterAllocator::collapse_freereg(BCREG ResultReg)
 {
-   BCReg target = ResultReg + 1;
-   if (target < this->func_state->nactvar) target = BCReg(this->func_state->nactvar);
+   BCREG target = ResultReg + 1;
+   if (target < this->func_state->nactvar) target = BCREG(this->func_state->nactvar);
 
    while (this->func_state->freereg > target) {
-      BCReg previous = this->func_state->freereg;
-      BCReg top = previous - 1;
+      BCREG previous = this->func_state->freereg;
+      BCREG top = previous - 1;
       this->release_register(top);
       if (this->func_state->freereg IS previous) break;
    }
@@ -153,7 +153,7 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 
    if (Expression.k IS ExpKind::Indexed) {
       uint32_t original_aux = Expression.u.s.aux;
-      BCReg duplicate_count = 1;
+      BCREG duplicate_count = 1;
       bool has_register_index = is_register_key(int32_t(original_aux));
 
       if (has_register_index) duplicate_count++;
@@ -169,13 +169,13 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 
       copies.reserved = this->reserve_span_soft(duplicate_count);
 
-      BCReg base_reg = copies.reserved.start();
+      BCREG base_reg = copies.reserved.start();
       bcemit_AD(this->func_state, BC_MOV, base_reg, Expression.u.s.info);
       copies.duplicated.u.s.info = base_reg;
 
       if (has_register_index) {
-         BCReg index_reg = BCReg(base_reg + 1);
-         bcemit_AD(this->func_state, BC_MOV, index_reg, BCReg(original_aux));
+         BCREG index_reg = BCREG(base_reg + 1);
+         bcemit_AD(this->func_state, BC_MOV, index_reg, BCREG(original_aux));
          copies.duplicated.u.s.aux = index_reg;
       }
    }
@@ -186,7 +186,7 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 //********************************************************************************************************************
 // Bump frame size.
 
-inline void bcreg_bump(FuncState *fs, BCReg n)
+inline void bcreg_bump(FuncState *fs, BCREG n)
 {
    RegisterAllocator allocator(fs);
    allocator.bump(n);
@@ -195,7 +195,7 @@ inline void bcreg_bump(FuncState *fs, BCReg n)
 //********************************************************************************************************************
 // Reserve registers.
 
-inline void bcreg_reserve(FuncState *fs, BCReg n)
+inline void bcreg_reserve(FuncState *fs, BCREG n)
 {
    RegisterAllocator allocator(fs);
    allocator.reserve(n);
@@ -204,7 +204,7 @@ inline void bcreg_reserve(FuncState *fs, BCReg n)
 //********************************************************************************************************************
 // Free register.
 
-inline void bcreg_free(FuncState *fs, BCReg reg)
+inline void bcreg_free(FuncState *fs, BCREG reg)
 {
    RegisterAllocator allocator(fs);
    allocator.release_register(reg);
@@ -223,9 +223,9 @@ inline void expr_free(FuncState *fs, ExpDesc *e)
 // Emit bytecode instruction.
 // Exported for use by OperatorEmitter facade
 
-BCPos bcemit_INS(FuncState *fs, BCIns ins)
+BCPOS bcemit_INS(FuncState *fs, BCIns ins)
 {
-   BCPos pc = fs->pc;
+   BCPOS pc = fs->pc;
    LexState* ls = fs->ls;
    ControlFlowGraph cfg(fs);
    ControlFlowEdge pending = cfg.make_unconditional(fs->jpc);
@@ -236,7 +236,7 @@ BCPos bcemit_INS(FuncState *fs, BCIns ins)
       ptrdiff_t base = fs->bcbase - ls->bcstack;
       checklimit(fs, ls->sizebcstack, LJ_MAX_BCINS, "bytecode instructions");
       lj_mem_growvec(fs->L, ls->bcstack, ls->sizebcstack, LJ_MAX_BCINS, BCInsLine);
-      fs->bclim = BCPos(ls->sizebcstack - base);
+      fs->bclim = BCPOS(ls->sizebcstack - base);
       fs->bcbase = ls->bcstack + base;
    }
 
@@ -266,7 +266,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
    }
    else if (e->k IS ExpKind::Indexed) {
-      BCReg rc = e->u.s.aux;
+      BCREG rc = e->u.s.aux;
       if (int32_t(rc) < 0) {
          ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, ~rc);
       }
@@ -297,11 +297,11 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit bytecode to set a range of registers to nil.
 
-static void bcemit_nil(FuncState *fs, BCReg from, BCReg n)
+static void bcemit_nil(FuncState *fs, BCREG from, BCREG n)
 {
    if (fs->pc > fs->lasttarget) {  // No jumps to current position?
       BCIns* ip = &fs->bcbase[fs->pc - 1].ins;
-      BCReg pto, pfrom = bc_a(*ip);
+      BCREG pto, pfrom = bc_a(*ip);
       switch (bc_op(*ip)) {  // Try to merge with the previous instruction.
          case BC_KPRI:
             if (bc_d(*ip) != ~LJ_TNIL) break;
@@ -335,7 +335,7 @@ static void bcemit_nil(FuncState *fs, BCReg from, BCReg n)
 //********************************************************************************************************************
 // Discharge an expression to a specific register. Ignore branches.
 
-static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
+static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCREG reg)
 {
    BCIns ins;
    expr_discharge(fs, e);
@@ -346,13 +346,13 @@ static void expr_toreg_nobranch(FuncState *fs, ExpDesc *e, BCReg reg)
 #if LJ_DUALNUM
       cTValue* tv = e->num_tv();
       if (tvisint(tv) and checki16(intV(tv)))
-         ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(intV(tv))));
+         ins = BCINS_AD(BC_KSHORT, reg, BCREG(uint16_t(intV(tv))));
       else
 #else
       lua_Number n = e->number_value();
       int32_t k = lj_num2int(n);
       if (checki16(k) and n IS lua_Number(k))
-         ins = BCINS_AD(BC_KSHORT, reg, BCReg(uint16_t(k)));
+         ins = BCINS_AD(BC_KSHORT, reg, BCREG(uint16_t(k)));
       else
 #endif
          ins = BCINS_AD(BC_KNUM, reg, const_num(fs, e));
@@ -394,7 +394,7 @@ noins:
 //********************************************************************************************************************
 // Discharge an expression to a specific register.
 
-static void expr_toreg(FuncState *fs, ExpDesc *e, BCReg reg)
+static void expr_toreg(FuncState *fs, ExpDesc *e, BCREG reg)
 {
    expr_toreg_nobranch(fs, e, reg);
    ControlFlowGraph cfg(fs);
@@ -406,15 +406,15 @@ static void expr_toreg(FuncState *fs, ExpDesc *e, BCReg reg)
    }
 
    if (e->has_jump()) {  // Discharge expression with branches.
-      BCPos jend, jfalse = NO_JMP, jtrue = NO_JMP;
+      BCPOS jend, jfalse = NO_JMP, jtrue = NO_JMP;
       ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
       ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
 
       if (true_edge.produces_values() or false_edge.produces_values()) {
-         BCPos jval = (e->k IS ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
-         jfalse = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::False));
+         BCPOS jval = (e->k IS ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
+         jfalse = bcemit_AD(fs, BC_KPRI, reg, BCREG(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
-         jtrue = bcemit_AD(fs, BC_KPRI, reg, BCReg(ExpKind::True));
+         jtrue = bcemit_AD(fs, BC_KPRI, reg, BCREG(ExpKind::True));
          ControlFlowEdge jval_edge = cfg.make_unconditional(jval);
          jval_edge.patch_here();
       }
@@ -444,7 +444,7 @@ static void expr_tonextreg(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Discharge an expression to any register.
 
-static BCReg expr_toanyreg(FuncState *fs, ExpDesc *e)
+static BCREG expr_toanyreg(FuncState *fs, ExpDesc *e)
 {
    expr_discharge(fs, e);
    if (e->k IS ExpKind::NonReloc) [[likely]] {
@@ -490,11 +490,11 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
       else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
    }
    else if (var->k IS ExpKind::Global) {
-      BCReg ra = expr_toanyreg(fs, e);
+      BCREG ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
    else {
-      BCReg ra, rc;
+      BCREG ra, rc;
       fs->assert(var->k IS ExpKind::Indexed, "bad expr type %d", int(var->k));
       ra = expr_toanyreg(fs, e);
       rc = var->u.s.aux;
@@ -519,7 +519,7 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
 
 static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
 {
-   BCReg idx, func, obj = expr_toanyreg(fs, e);
+   BCREG idx, func, obj = expr_toanyreg(fs, e);
    expr_free(fs, e);
    func = fs->freereg;
    bcemit_AD(fs, BC_MOV, func + 1 + LJ_FR2, obj);  // Copy object to 1st argument.
@@ -542,10 +542,10 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
 //********************************************************************************************************************
 // Emit unconditional branch.
 
-[[nodiscard]] BCPos bcemit_jmp(FuncState *fs)
+[[nodiscard]] BCPOS bcemit_jmp(FuncState *fs)
 {
-   BCPos jpc = fs->jpc;
-   BCPos j = fs->pc - 1;
+   BCPOS jpc = fs->jpc;
+   BCPOS j = fs->pc - 1;
    BCIns* ip = &fs->bcbase[j].ins;
    fs->jpc = NO_JMP;
    if (int32_t(j) >= int32_t(fs->lasttarget) and bc_op(*ip) IS BC_UCLO) {
@@ -571,9 +571,9 @@ inline void invertcond(FuncState *fs, ExpDesc *e)
 //********************************************************************************************************************
 // Emit conditional branch.
 
-[[nodiscard]] BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
+[[nodiscard]] BCPOS bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 {
-   BCPos pc;
+   BCPOS pc;
 
    if (e->k IS ExpKind::Relocable) {
       BCIns* ip = bcptr(fs, e);
@@ -599,7 +599,7 @@ inline void invertcond(FuncState *fs, ExpDesc *e)
 
 static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 {
-   BCPos pc;
+   BCPOS pc;
    expr_discharge(fs, e);
    if (e->k IS ExpKind::Str or e->k IS ExpKind::Num or e->k IS ExpKind::True) pc = NO_JMP;  // Never jump.
    else if (e->k IS ExpKind::Jmp) invertcond(fs, e), pc = e->u.s.info;
@@ -619,8 +619,8 @@ static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 
 void RegisterAllocator::verify_no_leaks(const char* Context) const
 {
-   BCReg nactvar = this->func_state->nactvar;
-   BCReg freereg = this->func_state->freereg;
+   BCREG nactvar = this->func_state->nactvar;
+   BCREG freereg = this->func_state->freereg;
 
    if (freereg > nactvar) {
       pf::Log("Parser").warning("Register leak at %s: %d temporary registers not released (nactvar=%d, freereg=%d)",
@@ -628,7 +628,7 @@ void RegisterAllocator::verify_no_leaks(const char* Context) const
    }
 }
 
-void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* Context) const
+void RegisterAllocator::trace_allocation(BCREG Start, BCREG Count, const char* Context) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
@@ -637,7 +637,7 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
    }
 }
 
-void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Context) const
+void RegisterAllocator::trace_release(BCREG Start, BCREG Count, const char* Context) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {

@@ -4,7 +4,7 @@
 #pragma once
 
 static void fscope_end(FuncState *);
-static void bcreg_reserve(FuncState *, BCReg);
+static void bcreg_reserve(FuncState *, BCREG);
 
 // ScopeGuard: RAII wrapper for automatic scope cleanup
 //
@@ -64,13 +64,13 @@ public:
 
 class RegisterGuard {
    FuncState *fs_;
-   BCReg saved_freereg_;
+   BCREG saved_freereg_;
 
 public:
    explicit RegisterGuard(FuncState *fs)
       : fs_(fs), saved_freereg_(fs->freereg) {}
 
-   explicit RegisterGuard(FuncState *fs, BCReg reserve_count)
+   explicit RegisterGuard(FuncState *fs, BCREG reserve_count)
       : fs_(fs), saved_freereg_(fs->freereg) {
       if (reserve_count > 0) bcreg_reserve(fs, reserve_count);
    }
@@ -81,12 +81,12 @@ public:
 
    // Manually release to a specific register level
 
-   constexpr void release_to(BCReg Reg) noexcept { fs_->freereg = Reg; }
-   constexpr void adopt_saved(BCReg Reg) noexcept { saved_freereg_ = Reg; }
+   constexpr void release_to(BCREG Reg) noexcept { fs_->freereg = Reg; }
+   constexpr void adopt_saved(BCREG Reg) noexcept { saved_freereg_ = Reg; }
    constexpr void disarm() noexcept { fs_ = nullptr; }
 
    // Get saved register level
-   [[nodiscard]] constexpr BCReg saved() const noexcept { return saved_freereg_; }
+   [[nodiscard]] constexpr BCREG saved() const noexcept { return saved_freereg_; }
 
    // Prevent copying
    RegisterGuard(const RegisterGuard &) = delete;

@@ -137,7 +137,7 @@ static std::string_view get_proto_uvname(GCproto *Proto, uint32_t Index)
 
 //********************************************************************************************************************
 
-static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc)
+static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPOS Pc)
 {
    switch (Mode) {
       case BCMdst:
@@ -170,7 +170,7 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1);
 
       case BCMjump: {
-         if ((BCPos)Value IS NO_JMP) return "->(no)";
+         if ((BCPOS)Value IS NO_JMP) return "->(no)";
 
          const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
          const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
@@ -197,7 +197,7 @@ static void append_operand(std::string &Operands, std::string_view Label, std::s
 //********************************************************************************************************************
 // Describe operand value during parsing (from FuncState context)
 
-static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Value, BCPos Pc)
+static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Value, BCPOS Pc)
 {
    switch (Mode) {
       case BCMdst:
@@ -271,7 +271,7 @@ static std::string describe_operand_from_fs(FuncState *fs, BCMode Mode, int Valu
       }
 
       case BCMjump: {
-         if ((BCPos)Value IS NO_JMP) return "->(no)";
+         if ((BCPOS)Value IS NO_JMP) return "->(no)";
 
          const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
          const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
@@ -329,7 +329,7 @@ static void trace_proto_bytecode(GCproto *Proto, int Indent = 0)
          int(Proto->firstline + Proto->numline), int(Proto->sizebc));
    }
 
-   for (BCPos pc = 0; pc < Proto->sizebc; ++pc) {
+   for (BCPOS pc = 0; pc < Proto->sizebc; ++pc) {
       BCIns instruction = bc_stream[pc];
       auto info = extract_instruction_info(instruction);
 
@@ -372,7 +372,7 @@ extern void dump_bytecode(ParserContext &Context)
 
    FuncState &fs = Context.func();
    log.branch("Instruction Count: %u", (unsigned)fs.pc);
-   for (BCPos pc = 0; pc < fs.pc; ++pc) {
+   for (BCPOS pc = 0; pc < fs.pc; ++pc) {
       const BCInsLine& line = fs.bcbase[pc];
       auto info = extract_instruction_info(line.ins);
 

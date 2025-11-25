@@ -23,7 +23,7 @@
 // Exclusively used by ir_emitter for assignment statements, local declarations, and for loops.
 // TOOD: May as well be a regular function instead of a LexState method.
 
-void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
+void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
 {
    FuncState* fs = this->fs;
    RegisterAllocator allocator(fs);
@@ -32,7 +32,7 @@ void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, Expr), extra + 1);  // Fixup call results.
-      if (extra > 1) allocator.reserve(BCReg(extra) - 1);
+      if (extra > 1) allocator.reserve(BCREG(extra) - 1);
    }
    else {
       if (Expr->k != ExpKind::Void) {
@@ -41,9 +41,9 @@ void LexState::assign_adjust(BCReg nvars, BCReg nexps, ExpDesc *Expr)
          *Expr = value.legacy();
       }
       if (extra > 0) {  // Leftover LHS are set to nil.
-         BCReg reg = fs->freereg;
-         allocator.reserve(BCReg(extra));
-         bcemit_nil(fs, reg, BCReg(extra));
+         BCREG reg = fs->freereg;
+         allocator.reserve(BCREG(extra));
+         bcemit_nil(fs, reg, BCREG(extra));
       }
    }
 
@@ -65,7 +65,7 @@ void LocalBindingTable::pop_scope()
    if (this->depth > 0) this->depth--;
 }
 
-void LocalBindingTable::add(GCstr* symbol, BCReg slot)
+void LocalBindingTable::add(GCstr* symbol, BCREG slot)
 {
    if (not symbol) return;
    LocalBindingEntry entry;
@@ -212,7 +212,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 
 //********************************************************************************************************************
 
-[[nodiscard]] static int predict_next(LexState& lex_state, FuncState& func_state, BCPos pc)
+[[nodiscard]] static int predict_next(LexState& lex_state, FuncState& func_state, BCPOS pc)
 {
    BCIns ins = func_state.bcbase[pc].ins;
    GCstr *name = nullptr;
@@ -254,8 +254,8 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
    if (original.k IS ExpKind::Indexed) {
       RegisterAllocator allocator(&func_state);
       uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) allocator.release_register(BCReg(orig_aux));
-      allocator.release_register(BCReg(original.u.s.info));
+      if (is_register_key(orig_aux)) allocator.release_register(BCREG(orig_aux));
+      allocator.release_register(BCREG(original.u.s.info));
    }
 }
 
@@ -422,7 +422,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {
-      BCReg count = 0;
+      BCREG count = 0;
       auto list = this->emit_expression_list(payload.values, count);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
 
@@ -442,7 +442,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
          else {
             RegisterAllocator allocator(&this->func_state);
             ExpressionValue value(&this->func_state, last);
-            BCReg reg = value.discharge_to_any_reg(allocator);
+            BCREG reg = value.discharge_to_any_reg(allocator);
             ins = BCINS_AD(BC_RET1, reg, 2);
          }
       }
@@ -469,17 +469,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
 
 ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
 {
-   BCReg nvars = BCReg(payload.names.size());
+   BCREG nvars = BCREG(payload.names.size());
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
-   for (BCReg i = 0; i < nvars; ++i) {
+   for (BCREG i = 0; i < nvars; ++i) {
       const Identifier& identifier = payload.names[i];
       GCstr* symbol = identifier.symbol;
       this->lex_state.var_new(i, is_blank_symbol(identifier) ? NAME_BLANK : symbol);
    }
 
    ExpDesc tail;
-   BCReg nexps = 0;
+   BCREG nexps = 0;
    if (payload.values.empty()) tail = ExpDesc(ExpKind::Void);
    else {
       auto list = this->emit_expression_list(payload.values, nexps);
@@ -489,8 +489,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
    this->lex_state.assign_adjust(nvars, nexps, &tail);
    this->lex_state.var_add(nvars);
-   BCReg base = this->func_state.nactvar - nvars;
-   for (BCReg i = 0; i < nvars; ++i) {
+   BCREG base = this->func_state.nactvar - nvars;
+   for (BCREG i = 0; i < nvars; ++i) {
       const Identifier& identifier = payload.names[i];
       if (is_blank_symbol(identifier)) continue;
       this->update_local_binding(identifier.symbol, base + i);
@@ -506,7 +506,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    if (not payload.function) return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
 
    GCstr* symbol = payload.name.symbol ? payload.name.symbol : NAME_BLANK;
-   BCReg slot = this->func_state.freereg;
+   BCREG slot = this->func_state.freereg;
    this->lex_state.var_new(0, symbol);
    ExpDesc variable;
    variable.init(ExpKind::Local, slot);
@@ -590,7 +590,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    }
 
    FuncState* fs = &this->func_state;
-   BCPos start = fs->lasttarget = fs->pc;
+   BCPOS start = fs->lasttarget = fs->pc;
    LoopContext loop_context{};
    loop_context.break_edge = this->control_flow.make_break_edge();
    loop_context.continue_edge = this->control_flow.make_continue_edge();
@@ -642,8 +642,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    }
 
    FuncState* fs = &this->func_state;
-   BCPos loop = fs->lasttarget = fs->pc;
-   BCPos iter = NO_JMP;
+   BCPOS loop = fs->lasttarget = fs->pc;
+   BCPOS iter = NO_JMP;
    ControlFlowEdge condexit;
    bool inner_has_upvals = false;
 
@@ -706,7 +706,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    }
 
    FuncState* fs = &this->func_state;
-   BCReg base = fs->freereg;
+   BCREG base = fs->freereg;
    GCstr* control_symbol = payload.control.symbol ? payload.control.symbol : NAME_BLANK;
 
    FuncScope outer_scope;
@@ -790,8 +790,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    }
 
    FuncState* fs = &this->func_state;
-   BCReg base = fs->freereg + 3;
-   BCReg nvars = 0;
+   BCREG base = fs->freereg + 3;
+   BCREG nvars = 0;
 
    FuncScope outer_scope;
    ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
@@ -805,8 +805,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       this->lex_state.var_new(nvars++, symbol);
    }
 
-   BCPos exprpc = fs->pc;
-   BCReg iterator_count = 0;
+   BCPOS exprpc = fs->pc;
+   BCREG iterator_count = 0;
    auto iter_values = this->emit_expression_list(payload.iterators, iterator_count);
    if (not iter_values.ok()) return ParserResult<IrEmitUnit>::failure(iter_values.error_ref());
 
@@ -830,13 +830,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    {
       FuncScope visible_scope;
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
-      BCReg visible = nvars - 3;
+      BCREG visible = nvars - 3;
       this->lex_state.var_add(visible);
       RegisterAllocator allocator(fs);
       allocator.reserve(visible);
       std::vector<BlockBinding> loop_bindings;
       loop_bindings.reserve(visible);
-      for (BCReg i = 0; i < visible; ++i) {
+      for (BCREG i = 0; i < visible; ++i) {
          const Identifier& identifier = payload.names[i];
          if (identifier.symbol and not identifier.is_blank) {
             BlockBinding binding;
@@ -853,7 +853,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    }
 
    loop.patch_head(fs->pc);
-   BCPos iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 3);
+   BCPOS iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 3);
    ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_ITERL, base, NO_JMP));
    fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
    fs->bcbase[loopend.head()].line = payload.body->span.line;
@@ -872,7 +872,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    if (not payload.callable) return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
 
    FuncState* fs = &this->func_state;
-   BCReg reg = fs->freereg;
+   BCREG reg = fs->freereg;
    this->lex_state.var_new(0, NAME_BLANK);
    RegisterAllocator allocator(fs);
    allocator.reserve(1);
@@ -886,7 +886,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, reg, "defer callable");
 
-   BCReg nargs = 0;
+   BCREG nargs = 0;
    for (const ExprNodePtr& argument : payload.arguments) {
       if (not argument) continue;
 
@@ -899,13 +899,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    }
 
    if (nargs > 0) {
-      for (BCReg i = 0; i < nargs; ++i) {
+      for (BCREG i = 0; i < nargs; ++i) {
          this->lex_state.var_new(i, NAME_BLANK);
       }
 
       this->lex_state.var_add(nargs);
 
-      for (BCReg i = 0; i < nargs; ++i) {
+      for (BCREG i = 0; i < nargs; ++i) {
          VarInfo* arg_info = &fs->var_get(fs->nactvar - nargs + i);
          arg_info->info |= VarInfoFlag::DeferArg;
       }
@@ -977,11 +977,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
 ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values)
 {
-   BCReg nvars = BCReg(targets.size());
+   BCREG nvars = BCREG(targets.size());
    if (not nvars) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    ExpDesc tail(ExpKind::Void);
-   BCReg nexps = 0;
+   BCREG nexps = 0;
    if (not values.empty()) {
       auto list = this->emit_expression_list(values, nexps);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
@@ -1050,7 +1050,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 
    if (values.empty()) return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
 
-   BCReg count = 0;
+   BCREG count = 0;
    RegisterGuard register_guard(&this->func_state);
 
    // Use RegisterAllocator::duplicate_table_operands()
@@ -1113,7 +1113,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
    }
 
-   BCReg count = 0;
+   BCREG count = 0;
    RegisterGuard register_guard(&this->func_state);
 
    // Use RegisterAllocator::duplicate_table_operands()
@@ -1123,7 +1123,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
 
    // Use ExpressionValue for discharge operations
    ExpressionValue lhs_value(&this->func_state, working);
-   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+   BCREG lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1143,7 +1143,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
    ControlFlowEdge skip_assign = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
-   BCPos assign_pos = this->func_state.pc;
+   BCPOS assign_pos = this->func_state.pc;
 
    auto list = this->emit_expression_list(values, count);
    if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
@@ -1249,7 +1249,7 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
    ExpDesc expr;
    RegisterAllocator allocator(&this->func_state);
    allocator.reserve(1);
-   BCReg base = this->func_state.freereg - 1;
+   BCREG base = this->func_state.freereg - 1;
    expr.init(ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
    expr.u.s.aux = base;
    expr.flags |= ExprFlag::HasRhsReg;
@@ -1298,9 +1298,9 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 
    // Use ExpressionValue for discharge operations
    ExpressionValue operand_value(&this->func_state, working);
-   BCReg operand_reg = operand_value.discharge_to_any_reg(allocator);
+   BCREG operand_reg = operand_value.discharge_to_any_reg(allocator);
 
-   BCReg saved_reg = operand_reg;
+   BCREG saved_reg = operand_reg;
    if (payload.is_postfix) {
       saved_reg = this->func_state.freereg;
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
@@ -1406,7 +1406,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue lhs_value(&this->func_state, lhs);
-   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+   BCREG lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1428,7 +1428,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    // Patch falsey checks to jump here (RHS evaluation)
 
-   BCPos rhs_start = this->func_state.pc;
+   BCPOS rhs_start = this->func_state.pc;
    check_nil.patch_to(rhs_start);
    check_false.patch_to(rhs_start);
    check_zero.patch_to(rhs_start);
@@ -1479,7 +1479,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    RegisterGuard register_guard(&this->func_state);
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
-   BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
+   BCREG cond_reg = condition_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1505,7 +1505,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
-   BCPos false_start = this->func_state.pc;
+   BCPOS false_start = this->func_state.pc;
    check_nil.patch_to(false_start);
    check_false.patch_to(false_start);
    check_zero.patch_to(false_start);
@@ -1598,7 +1598,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    BCLine call_line = this->lex_state.lastline;
 
    ExpDesc callee;
-   BCReg base = 0;
+   BCREG base = 0;
    if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       auto callee_result = this->emit_expression(*direct->callable);
@@ -1625,7 +1625,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    }
    else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
-   BCReg arg_count = 0;
+   BCREG arg_count = 0;
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
       auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
@@ -1665,8 +1665,8 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    int fixt = 0;
    uint32_t narr = 1;
    uint32_t nhash = 0;
-   BCReg freg = fs->freereg;
-   BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+   BCREG freg = fs->freereg;
+   BCPOS pc = bcemit_AD(fs, BC_TNEW, freg, 0);
    ExpDesc table;
    table.init(ExpKind::NonReloc, freg);
    RegisterAllocator allocator(fs);
@@ -1725,7 +1725,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
          TValue k;
          TValue *slot;
          if (not template_table) {
-            BCReg kidx;
+            BCREG kidx;
             template_table = lj_tab_new(fs->L, needarr ? narr : 0, hsize2hbits(nhash));
             kidx = const_gc(fs, obj2gco(template_table), LJ_TTAB);
             fs->bcbase[pc].ins = BCINS_AD(BC_TDUP, freg - 1, kidx);
@@ -1829,8 +1829,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    FuncScope scope;
    ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
 
-   BCReg param_count = BCReg(Payload.parameters.size());
-   for (BCReg i = 0; i < param_count; ++i) {
+   BCREG param_count = BCREG(Payload.parameters.size());
+   for (BCREG i = 0; i < param_count; ++i) {
       const FunctionParameter& param = Payload.parameters[i];
       GCstr *symbol = (param.name.symbol and not param.name.is_blank) ? param.name.symbol : NAME_BLANK;
       this->lex_state.var_new(i, symbol);
@@ -1844,8 +1844,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    }
 
    IrEmitter child_emitter(child_ctx);
-   BCReg base = child_state.nactvar - param_count;
-   for (BCReg i = 0; i < param_count; ++i) {
+   BCREG base = child_state.nactvar - param_count;
+   for (BCREG i = 0; i < param_count; ++i) {
       const FunctionParameter& param = Payload.parameters[i];
       if (param.name.is_blank or param.name.symbol IS nullptr) continue;
       child_emitter.update_local_binding(param.name.symbol, base + i);
@@ -1859,7 +1859,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bcstack + oldbase;
-   parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase);
+   parent_state->bclim = BCPOS(this->lex_state.sizebcstack - oldbase);
 
    ExpDesc expr;
    expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
@@ -1996,7 +1996,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expressions, BCReg &count)
+ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expressions, BCREG &count)
 {
    count = 0;
    if (expressions.empty()) return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
@@ -2087,7 +2087,7 @@ void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view us
    this->ensure_register_floor(usage);
 }
 
-void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage)
+void IrEmitter::materialise_to_reg(ExpDesc& expression, BCREG slot, std::string_view usage)
 {
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue value(&this->func_state, expression);

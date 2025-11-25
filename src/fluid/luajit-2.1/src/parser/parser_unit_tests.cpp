@@ -330,7 +330,7 @@ static bool test_expression_entry_point(pf::Log &log)
 
    ParserContext& context = *harness->context;
    FuncState& fs = *harness->func_state;
-   BCReg before = fs.freereg;
+   BCREG before = fs.freereg;
 
    AstBuilder builder(context);
    auto expression = builder.parse_expression(0);
@@ -368,7 +368,7 @@ static bool test_expression_list_entry_point(pf::Log &log)
 
    ParserContext& context = *harness->context;
    FuncState& fs = *harness->func_state;
-   BCReg before = fs.freereg;
+   BCREG before = fs.freereg;
    AstBuilder builder(context);
    auto list = builder.parse_expression_list();
    if (not list.ok()) {

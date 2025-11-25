@@ -246,8 +246,8 @@ static_assert(SNAP_KEYINDEX IS TREF_KEYINDEX);
    return (sn & 0xffff);
 }
 
-[[nodiscard]] inline constexpr BCReg snap_slot(SnapEntry sn) noexcept {
-   return BCReg(sn >> 24);
+[[nodiscard]] inline constexpr BCREG snap_slot(SnapEntry sn) noexcept {
+   return BCREG(sn >> 24);
 }
 
 [[nodiscard]] inline constexpr bool snap_isframe(SnapEntry sn) noexcept {
@@ -510,8 +510,8 @@ struct jit_State {
   TRef *base;        //  Current frame base, points into J->slots.
 
   uint32_t flags;    //  JIT engine flags.
-  BCReg maxslot;     //  Relative to baseslot.
-  BCReg baseslot;    //  Current frame base, offset into J->slots.
+  BCREG maxslot;     //  Relative to baseslot.
+  BCREG baseslot;    //  Current frame base, offset into J->slots.
 
   uint8_t mergesnap;   //  Allowed to merge with next snapshot.
   uint8_t needsnap;   //  Need snapshot before recording next bytecode.

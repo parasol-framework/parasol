@@ -35,20 +35,20 @@ public:
    inline void release();
 
    [[nodiscard]] bool empty() const { return count_ IS 0; }
-   [[nodiscard]] BCReg start() const { return start_; }
-   [[nodiscard]] BCReg count() const { return count_; }
-   [[nodiscard]] BCReg expected_top() const { return expected_top_; }
+   [[nodiscard]] BCREG start() const { return start_; }
+   [[nodiscard]] BCREG count() const { return count_; }
+   [[nodiscard]] BCREG expected_top() const { return expected_top_; }
 
 private:
    friend class RegisterAllocator;
 
-   RegisterSpan(RegisterAllocator* Allocator, BCReg Start, BCReg Count, BCReg ExpectedTop)
+   RegisterSpan(RegisterAllocator* Allocator, BCREG Start, BCREG Count, BCREG ExpectedTop)
       : allocator_(Allocator), start_(Start), count_(Count), expected_top_(ExpectedTop) {}
 
    RegisterAllocator* allocator_;
-   BCReg start_;
-   BCReg count_;
-   BCReg expected_top_;
+   BCREG start_;
+   BCREG count_;
+   BCREG expected_top_;
 };
 
 //********************************************************************************************************************
@@ -77,18 +77,18 @@ public:
    inline void release();
 
    [[nodiscard]] bool valid() const { return allocator_ != nullptr; }
-   [[nodiscard]] BCReg index() const { return index_; }
-   [[nodiscard]] BCReg expected_top() const { return expected_top_; }
+   [[nodiscard]] BCREG index() const { return index_; }
+   [[nodiscard]] BCREG expected_top() const { return expected_top_; }
 
 private:
    friend class RegisterAllocator;
 
-   AllocatedRegister(RegisterAllocator* Allocator, BCReg Index, BCReg ExpectedTop)
+   AllocatedRegister(RegisterAllocator* Allocator, BCREG Index, BCREG ExpectedTop)
       : allocator_(Allocator), index_(Index), expected_top_(ExpectedTop) {}
 
    RegisterAllocator* allocator_;
-   BCReg index_;
-   BCReg expected_top_;
+   BCREG index_;
+   BCREG expected_top_;
 };
 
 //********************************************************************************************************************
@@ -104,28 +104,28 @@ class RegisterAllocator {
 public:
    inline explicit RegisterAllocator(FuncState* State);
 
-   void bump(BCReg Count);
-   inline void reserve(BCReg Count);
+   void bump(BCREG Count);
+   inline void reserve(BCREG Count);
 
    [[nodiscard]] inline AllocatedRegister acquire();
    // Reserve a strict RAII span: the allocator expects the span to be released
    // while freereg still equals the top of the span. Used when callers rely on
    // RegisterSpan to pop temporaries in LIFO order.
-   [[nodiscard]] RegisterSpan reserve_span(BCReg Count);
+   [[nodiscard]] RegisterSpan reserve_span(BCREG Count);
 
    // Reserve a "soft" span: the allocator tracks the range but does not enforce
    // RAII invariants or adjust freereg when the span is released. This is used
    // in patterns where callers explicitly manage freereg (e.g. assignment
    // emitters that duplicate table operands and later collapse freereg to
    // nactvar).
-   [[nodiscard]] RegisterSpan reserve_span_soft(BCReg Count);
+   [[nodiscard]] RegisterSpan reserve_span_soft(BCREG Count);
 
    void release(AllocatedRegister& Handle);
    void release(RegisterSpan& Span);
-   void release_register(BCReg Register);
+   void release_register(BCREG Register);
    void release_expression(ExpDesc* Expression);
 
-   void collapse_freereg(BCReg ResultReg);
+   void collapse_freereg(BCREG ResultReg);
 
    [[nodiscard]] TableOperandCopies duplicate_table_operands(const ExpDesc& Expression);
 
@@ -133,12 +133,12 @@ public:
 
    // Debug verification methods
    void verify_no_leaks(const char* Context) const;
-   void trace_allocation(BCReg Start, BCReg Count, const char* Context) const;
-   void trace_release(BCReg Start, BCReg Count, const char* Context) const;
+   void trace_allocation(BCREG Start, BCREG Count, const char* Context) const;
+   void trace_release(BCREG Start, BCREG Count, const char* Context) const;
 
 private:
-   BCReg reserve_slots(BCReg Count);
-   void release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop);
+   BCREG reserve_slots(BCREG Count);
+   void release_span_internal(BCREG Start, BCREG Count, BCREG ExpectedTop);
 
    FuncState* func_state;
 };
@@ -147,10 +147,10 @@ private:
 
 inline RegisterAllocator::RegisterAllocator(FuncState* State) : func_state(State) { }
 
-inline void RegisterAllocator::reserve(BCReg Count) { this->reserve_slots(Count); }
+inline void RegisterAllocator::reserve(BCREG Count) { this->reserve_slots(Count); }
 
 inline AllocatedRegister RegisterAllocator::acquire() {
-   BCReg start = this->reserve_slots(1);
+   BCREG start = this->reserve_slots(1);
    return AllocatedRegister(this, start, start + 1);
 }
 

@@ -52,19 +52,19 @@ public:
    inline void set_true_jumps(const ControlFlowEdge& Edge) { this->descriptor.t = Edge.head(); }
    inline void set_false_jumps(const ControlFlowEdge& Edge) { this->descriptor.f = Edge.head(); }
 
-   inline void set_jump_heads(BCPos TrueHead, BCPos FalseHead) {
+   inline void set_jump_heads(BCPOS TrueHead, BCPOS FalseHead) {
       this->descriptor.t = TrueHead;
       this->descriptor.f = FalseHead;
    }
 
-   inline BCReg to_reg(RegisterAllocator& Allocator, BCReg Slot) {
+   inline BCREG to_reg(RegisterAllocator& Allocator, BCREG Slot) {
       expr_toreg(Allocator.state(), &this->descriptor, Slot);
       return this->descriptor.u.s.info;
    }
 
-   inline BCReg to_any_reg(RegisterAllocator& Allocator) { return expr_toanyreg(Allocator.state(), &this->descriptor); }
+   inline BCREG to_any_reg(RegisterAllocator& Allocator) { return expr_toanyreg(Allocator.state(), &this->descriptor); }
 
-   inline BCReg to_next_reg(RegisterAllocator& Allocator) {
+   inline BCREG to_next_reg(RegisterAllocator& Allocator) {
       expr_tonextreg(Allocator.state(), &this->descriptor);
       return this->descriptor.u.s.info;
    }
@@ -80,7 +80,7 @@ public:
 
    inline void to_val() { expr_toval(this->func_state, &this->descriptor); }
 
-   inline void discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg) {
+   inline void discharge_nobranch(RegisterAllocator& Allocator, BCREG Reg) {
       expr_toreg_nobranch(Allocator.state(), &this->descriptor, Reg);
    }
 
@@ -88,7 +88,7 @@ public:
       bcemit_store(Allocator.state(), &Target.descriptor, &this->descriptor);
    }
 
-   inline BCReg discharge_to_any_reg(RegisterAllocator& Allocator) {
+   inline BCREG discharge_to_any_reg(RegisterAllocator& Allocator) {
       this->discharge();
       return this->to_any_reg(Allocator);
    }

@@ -19,7 +19,7 @@
 #endif
 
 // Invalid bytecode position.
-#define NO_BCPOS   (~(BCPos)0)
+#define NO_BCPOS   (~(BCPOS)0)
 
 //********************************************************************************************************************
 // Get frame corresponding to a level.
@@ -48,11 +48,11 @@ cTValue* lj_debug_frame(lua_State* L, int level, int* size)
 //********************************************************************************************************************
 // Return bytecode position for function/frame or NO_BCPOS.
 
-static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
+static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
 {
    const BCIns* ins;
    GCproto* pt;
-   BCPos pos;
+   BCPOS pos;
    lj_assertL(fn->c.gct == ~LJ_TFUNC or fn->c.gct == ~LJ_TTHREAD, "function or frame expected");
    if (not isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
       return NO_BCPOS;
@@ -109,7 +109,7 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
 //********************************************************************************************************************
 // Get line number for a bytecode position.
 
-BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
+BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPOS pc)
 {
    const void* lineinfo = proto_lineinfo(pt);
    if (pc <= pt->sizebc and lineinfo) {
@@ -128,7 +128,7 @@ BCLine LJ_FASTCALL lj_debug_line(GCproto* pt, BCPos pc)
 
 static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
 {
-   BCPos pc = debug_framepc(L, fn, nextframe);
+   BCPOS pc = debug_framepc(L, fn, nextframe);
    if (pc != NO_BCPOS) {
       GCproto* pt = funcproto(fn);
       lj_assertL(pc <= pt->sizebc, "PC out of range");
@@ -140,15 +140,15 @@ static BCLine debug_frameline(lua_State* L, GCfunc* fn, cTValue* nextframe)
 //********************************************************************************************************************
 // Get name of a local variable from slot number and PC.
 
-static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
+static const char* debug_varname(const GCproto* pt, BCPOS pc, BCREG slot)
 {
    const char* p = (const char*)proto_varinfo(pt);
    if (p) {
-      BCPos lastpc = 0;
+      BCPOS lastpc = 0;
       for (;;) {
          const char* name = p;
          uint32_t vn = *(const uint8_t*)p;
-         BCPos startpc, endpc;
+         BCPOS startpc, endpc;
          if (vn < VARNAME__MAX) {
             if (vn == VARNAME_END) break;  //  End of varinfo.
          }
@@ -176,20 +176,20 @@ static const char* debug_varname(const GCproto* pt, BCPos pc, BCReg slot)
 //********************************************************************************************************************
 // Get name of local variable from 1-based slot number and function/frame.
 
-static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** name, BCReg slot1)
+static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** name, BCREG slot1)
 {
    uint32_t offset = (uint32_t)ar->i_ci & 0xffff;
    uint32_t size = (uint32_t)ar->i_ci >> 16;
    TValue *frame = tvref(L->stack) + offset;
    TValue *nextframe = size ? frame + size : nullptr;
    GCfunc *fn = frame_func(frame);
-   BCPos pc = debug_framepc(L, fn, nextframe);
+   BCPOS pc = debug_framepc(L, fn, nextframe);
    if (not nextframe) nextframe = L->top + LJ_FR2;
    if ((int)slot1 < 0) {  //  Negative slot number is for varargs.
       if (pc != NO_BCPOS) {
          GCproto* pt = funcproto(fn);
          if ((pt->flags & PROTO_VARARG)) {
-            slot1 = pt->numparams + (BCReg)(-(int)slot1);
+            slot1 = pt->numparams + (BCREG)(-(int)slot1);
             if (frame_isvarg(frame)) {  //  Vararg frame has been set up? (pc!=0)
                nextframe = frame;
                frame = frame_prevd(frame);
@@ -250,7 +250,7 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
 //********************************************************************************************************************
 // Deduce name of an object from slot number and PC.
 
-const char* lj_debug_slotname(GCproto* pt, const BCIns* ip, BCReg slot, const char** name)
+const char* lj_debug_slotname(GCproto* pt, const BCIns* ip, BCREG slot, const char** name)
 {
    const char* lname;
 restart:
@@ -259,7 +259,7 @@ restart:
    while (--ip > proto_bc(pt)) {
       BCIns ins = *ip;
       BCOp op = bc_op(ins);
-      BCReg ra = bc_a(ins);
+      BCREG ra = bc_a(ins);
       if (bcmode_a(op) == BCMbase) {
          if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins)))
             return nullptr;
@@ -297,7 +297,7 @@ const char * lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
 {
    cTValue* pframe;
    GCfunc* fn;
-   BCPos pc;
+   BCPOS pc;
    if (frame <= tvref(L->stack) + LJ_FR2) return nullptr;
    if (frame_isvarg(frame)) frame = frame_prevd(frame);
    pframe = frame_prev(frame);
@@ -308,7 +308,7 @@ const char * lj_debug_funcname(lua_State* L, cTValue* frame, const char** name)
       const BCIns* ip = &proto_bc(pt)[check_exp(pc < pt->sizebc, pc)];
       MMS mm = bcmode_mm(bc_op(*ip));
       if (mm == MM_call) {
-         BCReg slot = bc_a(*ip);
+         BCREG slot = bc_a(*ip);
          if (bc_op(*ip) == BC_ITERC) slot -= 3;
          return lj_debug_slotname(pt, ip, slot, name);
       }
@@ -380,7 +380,7 @@ void lj_debug_addloc(lua_State* L, const char* msg, cTValue* frame, cTValue* nex
 //********************************************************************************************************************
 // Push location string for a bytecode position to Lua stack.
 
-void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
+void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 {
    GCstr* name = proto_chunkname(pt);
    const char* s = strdata(name);
@@ -415,14 +415,14 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
 {
    const char* name = nullptr;
    if (ar) {
-      TValue* o = debug_localname(L, ar, &name, (BCReg)n);
+      TValue* o = debug_localname(L, ar, &name, (BCREG)n);
       if (name) {
          copyTV(L, L->top, o);
          incr_top(L);
       }
    }
    else if (tvisfunc(L->top - 1) and isluafunc(funcV(L->top - 1))) {
-      name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCReg)n - 1);
+      name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCREG)n - 1);
    }
    return name;
 }
@@ -432,7 +432,7 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPos pc)
 extern const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
    const char* name = nullptr;
-   TValue* o = debug_localname(L, ar, &name, (BCReg)n);
+   TValue* o = debug_localname(L, ar, &name, (BCREG)n);
    if (name)
       copyTV(L, o, L->top - 1);
    L->top--;

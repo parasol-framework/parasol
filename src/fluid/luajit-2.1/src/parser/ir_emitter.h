@@ -21,7 +21,7 @@
 
 struct LocalBindingEntry {
    GCstr *symbol = nullptr;
-   BCReg slot = 0;
+   BCREG slot = 0;
    uint32_t depth = 0;
 };
 
@@ -29,7 +29,7 @@ struct LocalBindingEntry {
 
 struct BlockBinding {
    GCstr *symbol = nullptr;
-   BCReg slot = 0;
+   BCREG slot = 0;
 };
 
 //********************************************************************************************************************
@@ -44,9 +44,9 @@ public:
    }
 
    void pop_scope();
-   void add(GCstr *, BCReg);
+   void add(GCstr *, BCREG);
 
-   [[nodiscard]] inline std::optional<BCReg> resolve(GCstr *symbol) const {
+   [[nodiscard]] inline std::optional<BCREG> resolve(GCstr *symbol) const {
       if (not symbol) return std::nullopt;
       for (auto it = this->bindings.rbegin(); it != this->bindings.rend(); ++it) {
          if (it->symbol IS symbol) return it->slot;
@@ -171,13 +171,13 @@ private:
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
-   ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
+   ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCREG& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
    ParserResult<std::vector<PreparedAssignment>> prepare_assignment_targets(const ExprNodeList& targets);
    void materialise_to_next_reg(ExpDesc& expression, std::string_view usage);
-   void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
+   void materialise_to_reg(ExpDesc& expression, BCREG slot, std::string_view usage);
    void ensure_register_floor(std::string_view usage);
    void ensure_register_balance(std::string_view usage);
 
@@ -186,15 +186,15 @@ private:
 
    ParserError make_error(ParserErrorCode code, std::string_view message) const;
 
-   inline std::optional<BCReg> resolve_local(GCstr* symbol) const { return this->binding_table.resolve(symbol); }
-   inline void update_local_binding(GCstr* symbol, BCReg slot) { this->binding_table.add(symbol, slot); }
+   inline std::optional<BCREG> resolve_local(GCstr* symbol) const { return this->binding_table.resolve(symbol); }
+   inline void update_local_binding(GCstr* symbol, BCREG slot) { this->binding_table.add(symbol, slot); }
    inline void release_expression(ExpDesc& expression, std::string_view usage) { expr_free(&this->func_state, &expression); this->ensure_register_floor(usage); }
 
    struct LoopContext {
       ControlFlowEdge break_edge;
       ControlFlowEdge continue_edge;
-      BCReg defer_base;
-      BCPos continue_target;
+      BCREG defer_base;
+      BCPOS continue_target;
    };
 
    struct LoopStackGuard {

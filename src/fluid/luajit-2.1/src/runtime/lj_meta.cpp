@@ -214,7 +214,7 @@ static cTValue* str2num(cTValue* o, TValue* n)
 
 // Helper for arithmetic instructions. Coercion, metamethod.
 TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
-   BCReg op)
+   BCREG op)
 {
    MMS mm = bcmode_mm(op);
    TValue tempb, tempc;
@@ -442,7 +442,7 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 }
 
 // Helper for ISTYPE and ISNUM. Implicit coercion or error.
-void lj_meta_istype(lua_State* L, BCReg ra, BCReg tp)
+void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp)
 {
    L->top = curr_topL(L);
    ra++; tp--;

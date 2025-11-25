@@ -14,8 +14,8 @@
 template<typename T>
 concept ExpressionDescriptor = requires(T e) {
    { e.k } -> std::convertible_to<ExpKind>;
-   { e.t } -> std::convertible_to<BCPos>;
-   { e.f } -> std::convertible_to<BCPos>;
+   { e.t } -> std::convertible_to<BCPOS>;
+   { e.f } -> std::convertible_to<BCPOS>;
    requires sizeof(e.u) > 0;  // Has union member
 };
 
@@ -24,15 +24,15 @@ concept ExpressionDescriptor = requires(T e) {
 template<typename T>
 concept ConstExpressionDescriptor = ExpressionDescriptor<T> and requires(const T* e) {
    { e->k } -> std::convertible_to<ExpKind>;
-   { e->t } -> std::convertible_to<BCPos>;
-   { e->f } -> std::convertible_to<BCPos>;
+   { e->t } -> std::convertible_to<BCPOS>;
+   { e->f } -> std::convertible_to<BCPOS>;
 };
 
 // RegisterType: Concept for bytecode register types
-// Ensures type is compatible with BCReg operations.
+// Ensures type is compatible with BCREG operations.
 
 template<typename T>
-concept RegisterType = std::same_as<T, BCReg> or std::is_convertible_v<T, BCReg>;
+concept RegisterType = std::same_as<T, BCREG> or std::is_convertible_v<T, BCREG>;
 
 // UnsignedRegisterType: Stricter concept for unsigned register operations
 
@@ -42,7 +42,7 @@ concept UnsignedRegisterType = RegisterType<T> and std::unsigned_integral<T>;
 // PositionType: Concept for bytecode position types
 
 template<typename T>
-concept PositionType = std::same_as<T, BCPos> or std::is_convertible_v<T, BCPos>;
+concept PositionType = std::same_as<T, BCPOS> or std::is_convertible_v<T, BCPOS>;
 
 // IndexType: Concept for variable/upvalue index types
 
@@ -136,6 +136,6 @@ concept ConstExpressionPredicate = requires(F f, const ExpDesc* e) {
 // providing early detection of interface changes.
 
 static_assert(ExpressionDescriptor<ExpDesc>, "ExpDesc must satisfy ExpressionDescriptor concept");
-static_assert(RegisterType<BCReg>, "BCReg must satisfy RegisterType concept");
+static_assert(RegisterType<BCREG>, "BCREG must satisfy RegisterType concept");
 static_assert(BytecodeOpcode<BCOp>, "BCOp must satisfy BytecodeOpcode concept");
 static_assert(FunctionState<FuncState*>, "FunctionState* must satisfy FunctionState concept");

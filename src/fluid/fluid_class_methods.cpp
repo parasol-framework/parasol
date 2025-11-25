@@ -54,11 +54,11 @@ static std::string format_string_constant(std::string_view Data)
 //********************************************************************************************************************
 
 template<std::integral T>
-static BCLine get_line_from_info(const void *LineInfo, BCPos Offset, BCLine FirstLine) {
+static BCLine get_line_from_info(const void *LineInfo, BCPOS Offset, BCLine FirstLine) {
    return FirstLine + (BCLine)((const T *)LineInfo)[Offset];
 }
 
-static BCLine get_proto_line(GCproto *Proto, BCPos Pc)
+static BCLine get_proto_line(GCproto *Proto, BCPOS Pc)
 {
    const void *lineinfo = proto_lineinfo(Proto);
 
@@ -67,7 +67,7 @@ static BCLine get_proto_line(GCproto *Proto, BCPos Pc)
       if (Pc IS Proto->sizebc) return first_line + Proto->numline;
       if (Pc IS 0) return first_line;
 
-      const BCPos offset = Pc - 1;
+      const BCPOS offset = Pc - 1;
 
       if (Proto->numline < 256) return get_line_from_info<uint8_t>(lineinfo, offset, first_line);
       if (Proto->numline < 65536) return get_line_from_info<uint16_t>(lineinfo, offset, first_line);
@@ -150,7 +150,7 @@ static void append_operand(std::string &Operands, std::string_view Label, std::s
 
 //********************************************************************************************************************
 
-static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPos Pc, [[maybe_unused]] bool Compact)
+static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value, BCPOS Pc, [[maybe_unused]] bool Compact)
 {
    switch (Mode) {
       case BCMdst:
@@ -183,7 +183,7 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          return describe_gc_constant(Proto, -(ptrdiff_t)Value - 1, Compact);
 
       case BCMjump: {
-         if ((BCPos)Value IS NO_JMP) return "->(no)";
+         if ((BCPOS)Value IS NO_JMP) return "->(no)";
 
          const ptrdiff_t offset = (ptrdiff_t)Value - BCBIAS_J;
          const ptrdiff_t dest = (ptrdiff_t)Pc + 1 + offset;
@@ -191,7 +191,7 @@ static std::string describe_operand_value(GCproto *Proto, BCMode Mode, int Value
          if (dest < 0) return "->(neg)";
          if (dest >= (ptrdiff_t)Proto->sizebc) return "->(out)";
 
-         return std::format("->{}", (BCPos)dest);
+         return std::format("->{}", (BCPOS)dest);
       }
 
       case BCMnone:
@@ -210,7 +210,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
    std::vector<uint8_t> targets(Proto->sizebc ? Proto->sizebc : 1, 0);
    std::string indent_str(Indent * 2, ' ');
 
-   for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
+   for (BCPOS pc = 0; pc < Proto->sizebc; pc++) {
       BCIns instruction = bc_stream[pc];
       BCOp opcode = bc_op(instruction);
 
@@ -218,7 +218,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
          BCMode mode_d = bcmode_d(opcode);
          if (mode_d IS BCMjump) {
             int value = bc_d(instruction);
-            if ((BCPos)value != NO_JMP) {
+            if ((BCPOS)value != NO_JMP) {
                ptrdiff_t offset = (ptrdiff_t)value - BCBIAS_J;
                ptrdiff_t dest = (ptrdiff_t)pc + 1 + offset;
                if (dest >= 0 and dest < (ptrdiff_t)Proto->sizebc) targets[(size_t)dest] = 1;
@@ -227,7 +227,7 @@ static void emit_disassembly(GCproto *Proto, std::ostringstream &Buf, bool Compa
       }
    }
 
-   for (BCPos pc = 0; pc < Proto->sizebc; pc++) {
+   for (BCPOS pc = 0; pc < Proto->sizebc; pc++) {
       BCIns instruction = bc_stream[pc];
       BCOp opcode = bc_op(instruction);
       BCMode mode_a = bcmode_a(opcode);

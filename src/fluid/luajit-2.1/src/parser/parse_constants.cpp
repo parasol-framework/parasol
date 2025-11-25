@@ -3,7 +3,7 @@
 // Add a number constant.
 // Exported for use by OperatorEmitter facade
 
-[[nodiscard]] BCReg const_num(FuncState* fs, ExpDesc* e)
+[[nodiscard]] BCREG const_num(FuncState* fs, ExpDesc* e)
 {
    lua_State* L = fs->L;
    TValue* o;
@@ -16,7 +16,7 @@
 
 // Add a GC object constant.
 
-[[nodiscard]] static BCReg const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
+[[nodiscard]] static BCREG const_gc(FuncState* fs, GCobj* gc, uint32_t itype)
 {
    lua_State* L = fs->L;
    TValue key, * o;
@@ -31,7 +31,7 @@
 // Add a string constant.
 // Exported for use by OperatorEmitter facade
 
-[[nodiscard]] BCReg const_str(FuncState* fs, ExpDesc* e)
+[[nodiscard]] BCREG const_str(FuncState* fs, ExpDesc* e)
 {
    fs->assert(e->is_str_constant() or e->k IS ExpKind::Global, "bad usage");
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
@@ -83,7 +83,7 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 
 [[nodiscard]] bool JumpListView::produces_values() const
 {
-   for (BCPos list = list_head; not(list IS NO_JMP); list = next(func_state, list)) {
+   for (BCPOS list = list_head; not(list IS NO_JMP); list = next(func_state, list)) {
       BCIns prior = func_state->bcbase[list >= 1 ? list - 1 : list].ins;
       if (!(bc_op(prior) IS BC_ISTC or bc_op(prior) IS BC_ISFC or bc_a(prior) IS NO_REG))
          return true;
@@ -91,7 +91,7 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
    return false;
 }
 
-[[nodiscard]] bool JumpListView::patch_test_register(BCPos Position, BCReg Register) const
+[[nodiscard]] bool JumpListView::patch_test_register(BCPOS Position, BCREG Register) const
 {
    BCInsLine* line = &func_state->bcbase[Position >= 1 ? Position - 1 : Position];
    BCOp op = bc_op(line->ins);
@@ -120,26 +120,26 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 
 void JumpListView::drop_values() const
 {
-   for (BCPos list = list_head; not(list IS NO_JMP); list = next(func_state, list))
+   for (BCPOS list = list_head; not(list IS NO_JMP); list = next(func_state, list))
       (void)patch_test_register(list, NO_REG);
 }
 
-void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
+void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
 {
    FuncState* fs = func_state;
    BCIns* instruction = &func_state->bcbase[Position].ins;
-   BCPos offset = Destination - (Position + 1) + BCBIAS_J;
+   BCPOS offset = Destination - (Position + 1) + BCBIAS_J;
    fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D) func_state->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
 
-[[nodiscard]] BCPos JumpListView::append(BCPos Other) const
+[[nodiscard]] BCPOS JumpListView::append(BCPOS Other) const
 {
    if (Other IS NO_JMP) return list_head;
    if (list_head IS NO_JMP) return Other;
-   BCPos list = list_head;
-   BCPos next_pc;
+   BCPOS list = list_head;
+   BCPOS next_pc;
    while (true) {
       next_pc = next(func_state, list);
       if (next_pc IS NO_JMP) break;
@@ -149,11 +149,11 @@ void JumpListView::patch_instruction(BCPos Position, BCPos Destination) const
    return list_head;
 }
 
-void JumpListView::patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const
+void JumpListView::patch_with_value(BCPOS ValueTarget, BCREG Register, BCPOS DefaultTarget) const
 {
-   BCPos list = list_head;
+   BCPOS list = list_head;
    while (not(list IS NO_JMP)) {
-      BCPos next_pc = next(func_state, list);
+      BCPOS next_pc = next(func_state, list);
       if (patch_test_register(list, Register)) patch_instruction(list, ValueTarget);
       else patch_instruction(list, DefaultTarget);
       list = next_pc;
@@ -167,7 +167,7 @@ void JumpListView::patch_to_here() const
    func_state->jpc = pending.append(list_head);
 }
 
-void JumpListView::patch_to(BCPos Target) const
+void JumpListView::patch_to(BCPOS Target) const
 {
    if (Target IS func_state->pc) patch_to_here();
    else {
@@ -177,7 +177,7 @@ void JumpListView::patch_to(BCPos Target) const
    }
 }
 
-void JumpListView::patch_head(BCPos Destination) const
+void JumpListView::patch_head(BCPOS Destination) const
 {
    if (list_head IS NO_JMP) return;
    patch_instruction(list_head, Destination);

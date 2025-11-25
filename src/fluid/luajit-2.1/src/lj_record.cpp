@@ -101,7 +101,7 @@ static void rec_check_ir(jit_State* J)
 // Compare stack slots and frames of the recorder and the VM.
 static void rec_check_slots(jit_State* J)
 {
-   BCReg s, nslots = J->baseslot + J->maxslot;
+   BCREG s, nslots = J->baseslot + J->maxslot;
    int32_t depth = 0;
    cTValue* base = J->L->base - J->baseslot;
    lj_assertJ(J->baseslot >= 1 + LJ_FR2, "bad baseslot");
@@ -130,7 +130,7 @@ static void rec_check_slots(jit_State* J)
          }
          else if ((tr & TREF_FRAME)) {
             GCfunc* fn = gco2func(frame_gc(tv));
-            BCReg delta = (BCReg)(tv - frame_prev(tv));
+            BCREG delta = (BCREG)(tv - frame_prev(tv));
 #if LJ_FR2
             lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64,
                "frame slot %d PC mismatch", s);
@@ -287,7 +287,7 @@ typedef enum {
 // Canonicalize slots: convert integers to numbers.
 static void canonicalize_slots(jit_State* J)
 {
-   BCReg s;
+   BCREG s;
    if (LJ_DUALNUM) return;
    for (s = J->baseslot + J->maxslot - 1; s >= 1; s--) {
       TRef tr = J->slot[s];
@@ -324,7 +324,7 @@ nocanon:
 }
 
 // Search bytecode backwards for a int/num constant slot initializer.
-static TRef find_kinit(jit_State* J, const BCIns* endpc, BCReg slot, IRType t)
+static TRef find_kinit(jit_State* J, const BCIns* endpc, BCREG slot, IRType t)
 {
    /* This algorithm is rather simplistic and assumes quite a bit about
    ** how the bytecode is generated. It works fine for FORI initializers,
@@ -370,7 +370,7 @@ static TRef find_kinit(jit_State* J, const BCIns* endpc, BCReg slot, IRType t)
 }
 
 // Load and optionally convert a FORI argument from a slot.
-static TRef fori_load(jit_State* J, BCReg slot, IRType t, int mode)
+static TRef fori_load(jit_State* J, BCREG slot, IRType t, int mode)
 {
    int conv = (tvisint(&J->L->base[slot]) != (t IS IRT_INT)) ? IRSLOAD_CONVERT : 0;
    return sloadt(J, (int32_t)slot,
@@ -381,7 +381,7 @@ static TRef fori_load(jit_State* J, BCReg slot, IRType t, int mode)
 
 // Peek before FORI to find a const initializer. Otherwise load from slot.
 
-static TRef fori_arg(jit_State* J, const BCIns* fori, BCReg slot, IRType t, int mode)
+static TRef fori_arg(jit_State* J, const BCIns* fori, BCREG slot, IRType t, int mode)
 {
    TRef tr = J->base[slot];
    if (not tr) {
@@ -462,7 +462,7 @@ static void rec_for_check(jit_State* J, IRType t, int dir,
 
 static void rec_for_loop(jit_State* J, const BCIns* fori, ScEvEntry* scev, int init)
 {
-   BCReg ra = bc_a(*fori);
+   BCREG ra = bc_a(*fori);
    cTValue* tv = &J->L->base[ra];
    TRef idx = J->base[ra + FORL_IDX];
    IRType t = idx ? tref_type(idx) :
@@ -499,7 +499,7 @@ static void rec_for_loop(jit_State* J, const BCIns* fori, ScEvEntry* scev, int i
 // Record FORL/JFORL or FORI/JFORI.
 static LoopEvent rec_for(jit_State* J, const BCIns* fori, int isforl)
 {
-   BCReg ra = bc_a(*fori);
+   BCREG ra = bc_a(*fori);
    TValue* tv = &J->L->base[ra];
    TRef* tr = &J->base[ra];
    IROp op;
@@ -522,7 +522,7 @@ static LoopEvent rec_for(jit_State* J, const BCIns* fori, int isforl)
       }
    }
    else {  // Handle FORI/JFORI opcodes.
-      BCReg i;
+      BCREG i;
       lj_meta_for(J->L, tv);
       t = (LJ_DUALNUM or tref_isint(tr[FORL_IDX])) ? lj_opt_narrow_forl(J, tv) :
          IRT_NUM;
@@ -574,7 +574,7 @@ static LoopEvent rec_for(jit_State* J, const BCIns* fori, int isforl)
 // Record ITERL/JITERL.
 static LoopEvent rec_iterl(jit_State* J, const BCIns iterins)
 {
-   BCReg ra = bc_a(iterins);
+   BCREG ra = bc_a(iterins);
    if (not tref_isnil(getslot(J, ra))) {  // Looping back?
       J->base[ra - 1] = J->base[ra];  //  Copy result of ITERC to control var.
       J->maxslot = ra - 1 + bc_b(J->pc[-1]);
@@ -589,7 +589,7 @@ static LoopEvent rec_iterl(jit_State* J, const BCIns iterins)
 }
 
 // Record LOOP/JLOOP. Now, that was easy.
-static LoopEvent rec_loop(jit_State* J, BCReg ra, int skip)
+static LoopEvent rec_loop(jit_State* J, BCREG ra, int skip)
 {
    if (ra < J->maxslot) J->maxslot = ra;
    J->pc += skip;
@@ -661,7 +661,7 @@ static void rec_loop_jit(jit_State* J, TraceNo lnk, LoopEvent ev)
 }
 
 // Record ITERN.
-static LoopEvent rec_itern(jit_State* J, BCReg ra, BCReg rb)
+static LoopEvent rec_itern(jit_State* J, BCREG ra, BCREG rb)
 {
 #if LJ_BE
    /* YAGNI: Disabled on big-endian due to issues with lj_vm_next,
@@ -708,7 +708,7 @@ static LoopEvent rec_itern(jit_State* J, BCReg ra, BCReg rb)
 }
 
 // Record ISNEXT.
-static void rec_isnext(jit_State* J, BCReg ra)
+static void rec_isnext(jit_State* J, BCREG ra)
 {
    cTValue* b = &J->L->base[ra - 3];
    if (tvisfunc(b) and funcV(b)->c.ffid IS FF_next &&
@@ -766,7 +766,7 @@ static TRef rec_call_specialize(jit_State* J, GCfunc* fn, TRef tr)
 }
 
 // Record call setup.
-static void rec_call_setup(jit_State* J, BCReg func, ptrdiff_t nargs)
+static void rec_call_setup(jit_State* J, BCREG func, ptrdiff_t nargs)
 {
    RecordIndex ix;
    TValue* functv = &J->L->base[func];
@@ -795,11 +795,11 @@ static void rec_call_setup(jit_State* J, BCReg func, ptrdiff_t nargs)
 #else
    fbase[0] = kfunc | TREF_FRAME;
 #endif
-   J->maxslot = (BCReg)nargs;
+   J->maxslot = (BCREG)nargs;
 }
 
 // Record call.
-void lj_record_call(jit_State* J, BCReg func, ptrdiff_t nargs)
+void lj_record_call(jit_State* J, BCREG func, ptrdiff_t nargs)
 {
    rec_call_setup(J, func, nargs);
    // Bump frame.
@@ -811,14 +811,14 @@ void lj_record_call(jit_State* J, BCReg func, ptrdiff_t nargs)
 }
 
 // Record tail call.
-void lj_record_tailcall(jit_State* J, BCReg func, ptrdiff_t nargs)
+void lj_record_tailcall(jit_State* J, BCREG func, ptrdiff_t nargs)
 {
    rec_call_setup(J, func, nargs);
    if (frame_isvarg(J->L->base - 1)) {
-      BCReg cbase = (BCReg)frame_delta(J->L->base - 1);
+      BCREG cbase = (BCREG)frame_delta(J->L->base - 1);
       if (--J->framedepth < 0)
          lj_trace_err(J, LJ_TRERR_NYIRETL);
-      J->baseslot -= (BCReg)cbase;
+      J->baseslot -= (BCREG)cbase;
       J->base -= cbase;
       func += cbase;
    }
@@ -856,23 +856,23 @@ static int check_downrec_unroll(jit_State* J, GCproto* pt)
    return 0;
 }
 
-static TRef rec_cat(jit_State* J, BCReg baseslot, BCReg topslot);
+static TRef rec_cat(jit_State* J, BCREG baseslot, BCREG topslot);
 
 // Record return.
-void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
+void lj_record_ret(jit_State* J, BCREG rbase, ptrdiff_t gotresults)
 {
    TValue* frame = J->L->base - 1;
    ptrdiff_t i;
    for (i = 0; i < gotresults; i++)
       (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
    while (frame_ispcall(frame)) {  // Immediately resolve pcall() returns.
-      BCReg cbase = (BCReg)frame_delta(frame);
+      BCREG cbase = (BCREG)frame_delta(frame);
       if (--J->framedepth <= 0)
          lj_trace_err(J, LJ_TRERR_NYIRETL);
       lj_assertJ(J->baseslot > 1 + LJ_FR2, "bad baseslot for return");
       gotresults++;
       rbase += cbase;
-      J->baseslot -= (BCReg)cbase;
+      J->baseslot -= (BCREG)cbase;
       J->base -= cbase;
       J->base[--rbase] = TREF_TRUE;  //  Prepend true to results.
       frame = frame_prevd(frame);
@@ -886,30 +886,30 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
       // NYI: specialize to frame type and return directly, not via RET*.
       for (i = 0; i < (ptrdiff_t)rbase; i++)
          J->base[i] = 0;  //  Purge dead slots.
-      J->maxslot = rbase + (BCReg)gotresults;
+      J->maxslot = rbase + (BCREG)gotresults;
       lj_record_stop(J, TraceLink::RETURN, 0);  //  Return to interpreter.
       return;
    }
    if (frame_isvarg(frame)) {
-      BCReg cbase = (BCReg)frame_delta(frame);
+      BCREG cbase = (BCREG)frame_delta(frame);
       if (--J->framedepth < 0)  //  NYI: return of vararg func to lower frame.
          lj_trace_err(J, LJ_TRERR_NYIRETL);
       lj_assertJ(J->baseslot > 1 + LJ_FR2, "bad baseslot for return");
       rbase += cbase;
-      J->baseslot -= (BCReg)cbase;
+      J->baseslot -= (BCREG)cbase;
       J->base -= cbase;
       frame = frame_prevd(frame);
    }
    if (frame_islua(frame)) {  // Return to Lua frame.
       BCIns callins = *(frame_pc(frame) - 1);
       ptrdiff_t nresults = bc_b(callins) ? (ptrdiff_t)bc_b(callins) - 1 : gotresults;
-      BCReg cbase = bc_a(callins);
+      BCREG cbase = bc_a(callins);
       GCproto* pt = funcproto(frame_func(frame - (cbase + 1 + LJ_FR2)));
       if ((pt->flags & PROTO_NOJIT))
          lj_trace_err(J, LJ_TRERR_CJITOFF);
       if (J->framedepth IS 0 and J->pt and frame IS J->L->base - 1) {
          if (check_downrec_unroll(J, pt)) {
-            J->maxslot = (BCReg)(rbase + gotresults);
+            J->maxslot = (BCREG)(rbase + gotresults);
             lj_snap_purge(J);
             lj_record_stop(J, TraceLink::DOWNREC, J->cur.traceno);  //  Down-rec.
             return;
@@ -918,7 +918,7 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
       }
       for (i = 0; i < nresults; i++)  //  Adjust results.
          J->base[i - 1 - LJ_FR2] = i < gotresults ? J->base[rbase + i] : TREF_NIL;
-      J->maxslot = cbase + (BCReg)nresults;
+      J->maxslot = cbase + (BCREG)nresults;
       if (J->framedepth > 0) {  // Return to a frame that is part of the trace.
          J->framedepth--;
          lj_assertJ(J->baseslot > cbase + 1 + LJ_FR2, "bad baseslot for return");
@@ -947,15 +947,15 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
    }
    else if (frame_iscont(frame)) {  // Return to continuation frame.
       ASMFunction cont = frame_contf(frame);
-      BCReg cbase = (BCReg)frame_delta(frame);
+      BCREG cbase = (BCREG)frame_delta(frame);
       if ((J->framedepth -= 2) < 0)
          lj_trace_err(J, LJ_TRERR_NYIRETL);
-      J->baseslot -= (BCReg)cbase;
+      J->baseslot -= (BCREG)cbase;
       J->base -= cbase;
       J->maxslot = cbase - (2 << LJ_FR2);
       if (cont IS lj_cont_ra) {
          // Copy result to destination slot.
-         BCReg dst = bc_a(*(frame_contpc(frame) - 1));
+         BCREG dst = bc_a(*(frame_contpc(frame) - 1));
          J->base[dst] = gotresults ? J->base[cbase + rbase] : TREF_NIL;
          if (dst >= J->maxslot) {
             J->maxslot = dst + 1;
@@ -965,7 +965,7 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
          // Nothing to do here.
       }
       else if (cont IS lj_cont_cat) {
-         BCReg bslot = bc_b(*(frame_contpc(frame) - 1));
+         BCREG bslot = bc_b(*(frame_contpc(frame) - 1));
          TRef tr = gotresults ? J->base[cbase + rbase] : TREF_NIL;
          if (bslot != J->maxslot) {  // Concatenate the remainder.
             TValue* b = J->L->base, save;  //  Simulate lower frame and result.
@@ -983,7 +983,7 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
             copyTV(J->L, b - (2 << LJ_FR2), &save);
          }
          if (tr) {  // Store final result.
-            BCReg dst = bc_a(*(frame_contpc(frame) - 1));
+            BCREG dst = bc_a(*(frame_contpc(frame) - 1));
             J->base[dst] = tr;
             if (dst >= J->maxslot) {
                J->maxslot = dst + 1;
@@ -1005,9 +1005,9 @@ void lj_record_ret(jit_State* J, BCReg rbase, ptrdiff_t gotresults)
 // -- Metamethod handling -------------------------------------------------
 
 // Prepare to record call to metamethod.
-static BCReg rec_mm_prep(jit_State* J, ASMFunction cont)
+static BCREG rec_mm_prep(jit_State* J, ASMFunction cont)
 {
-   BCReg s, top = cont IS lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
+   BCREG s, top = cont IS lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
 #if LJ_FR2
    J->base[top] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
    J->base[top + 1] = TREF_CONT;
@@ -1093,7 +1093,7 @@ nocheck:
 static TRef rec_mm_arith(jit_State* J, RecordIndex* ix, MMS mm)
 {
    // Set up metamethod call first to save ix->tab and ix->tabv.
-   BCReg func = rec_mm_prep(J, mm IS MM_concat ? lj_cont_cat : lj_cont_ra);
+   BCREG func = rec_mm_prep(J, mm IS MM_concat ? lj_cont_cat : lj_cont_ra);
    TRef* base = J->base + func;
    TValue* basev = J->L->base + func;
    base[1 + LJ_FR2] = ix->tab; base[2 + LJ_FR2] = ix->key;
@@ -1125,7 +1125,7 @@ static TRef rec_mm_len(jit_State* J, TRef tr, TValue* tv)
    ix.tab = tr;
    copyTV(J->L, &ix.tabv, tv);
    if (lj_record_mm_lookup(J, &ix, MM_len)) {
-      BCReg func = rec_mm_prep(J, lj_cont_ra);
+      BCREG func = rec_mm_prep(J, lj_cont_ra);
       TRef* base = J->base + func;
       TValue* basev = J->L->base + func;
       base[0] = ix.mobj; copyTV(J->L, basev + 0, &ix.mobjv);
@@ -1150,7 +1150,7 @@ static TRef rec_mm_len(jit_State* J, TRef tr, TValue* tv)
 // Call a comparison metamethod.
 static void rec_mm_callcomp(jit_State* J, RecordIndex* ix, int op)
 {
-   BCReg func = rec_mm_prep(J, (op & 1) ? lj_cont_condf : lj_cont_condt);
+   BCREG func = rec_mm_prep(J, (op & 1) ? lj_cont_condf : lj_cont_condt);
    TRef* base = J->base + func + LJ_FR2;
    TValue* tv = J->L->base + func + LJ_FR2;
    base[-LJ_FR2] = ix->mobj; base[1] = ix->val; base[2] = ix->key;
@@ -1481,7 +1481,7 @@ TRef lj_record_idx(jit_State* J, RecordIndex* ix)
          lj_trace_err(J, LJ_TRERR_NOMM);
    handlemm:
       if (tref_isfunc(ix->mobj)) {  // Handle metamethod call.
-         BCReg func = rec_mm_prep(J, ix->val ? lj_cont_nop : lj_cont_ra);
+         BCREG func = rec_mm_prep(J, ix->val ? lj_cont_nop : lj_cont_ra);
          TRef* base = J->base + func + LJ_FR2;
          TValue* tv = J->L->base + func + LJ_FR2;
          base[-LJ_FR2] = ix->mobj; base[1] = ix->tab; base[2] = ix->key;
@@ -1666,7 +1666,7 @@ int lj_record_next(jit_State* J, RecordIndex* ix)
    }
 }
 
-static void rec_tsetm(jit_State* J, BCReg ra, BCReg rn, int32_t i)
+static void rec_tsetm(jit_State* J, BCREG ra, BCREG rn, int32_t i)
 {
    RecordIndex ix;
    cTValue* basev = J->L->base;
@@ -1764,7 +1764,7 @@ noconstify:
             }
             else {
                J->base[slot] = val;
-               if (slot >= (int32_t)J->maxslot) J->maxslot = (BCReg)(slot + 1);
+               if (slot >= (int32_t)J->maxslot) J->maxslot = (BCREG)(slot + 1);
                return 0;
             }
          }
@@ -1836,7 +1836,7 @@ static void check_call_unroll(jit_State* J, TraceNo lnk)
 static void rec_func_setup(jit_State* J)
 {
    GCproto* pt = J->pt;
-   BCReg s, numparams = pt->numparams;
+   BCREG s, numparams = pt->numparams;
    if ((pt->flags & PROTO_NOJIT))
       lj_trace_err(J, LJ_TRERR_CJITOFF);
    if (J->baseslot + pt->framesize >= LJ_MAX_JSLOTS)
@@ -1852,7 +1852,7 @@ static void rec_func_setup(jit_State* J)
 static void rec_func_vararg(jit_State* J)
 {
    GCproto* pt = J->pt;
-   BCReg s, fixargs, vframe = J->maxslot + 1 + LJ_FR2;
+   BCREG s, fixargs, vframe = J->maxslot + 1 + LJ_FR2;
    lj_assertJ((pt->flags & PROTO_VARARG), "FUNCV in non-vararg function");
    if (J->baseslot + vframe + pt->framesize >= LJ_MAX_JSLOTS)
       lj_trace_err(J, LJ_TRERR_STACKOV);
@@ -1918,7 +1918,7 @@ static int select_detect(jit_State* J)
 }
 
 // Record vararg instruction.
-static void rec_varg(jit_State* J, BCReg dst, ptrdiff_t nresults)
+static void rec_varg(jit_State* J, BCREG dst, ptrdiff_t nresults)
 {
    int32_t numparams = J->pt->numparams;
    ptrdiff_t nvararg = frame_delta(J->L->base - 1) - numparams - 1 - LJ_FR2;
@@ -1930,10 +1930,10 @@ static void rec_varg(jit_State* J, BCReg dst, ptrdiff_t nresults)
       if (nvararg < 0) nvararg = 0;
       if (nresults IS -1) {
          nresults = nvararg;
-         J->maxslot = dst + (BCReg)nvararg;
+         J->maxslot = dst + (BCREG)nvararg;
       }
       else if (dst + nresults > J->maxslot) {
-         J->maxslot = dst + (BCReg)nresults;
+         J->maxslot = dst + (BCREG)nresults;
       }
       for (i = 0; i < nresults; i++)
          J->base[dst + i] = i < nvararg ? getslot(J, i - nvararg - 1 - LJ_FR2) : TREF_NIL;
@@ -1964,8 +1964,8 @@ static void rec_varg(jit_State* J, BCReg dst, ptrdiff_t nresults)
          }
          for (i = nvararg; i < nresults; i++)
             J->base[dst + i] = TREF_NIL;
-         if (dst + (BCReg)nresults > J->maxslot)
-            J->maxslot = dst + (BCReg)nresults;
+         if (dst + (BCREG)nresults > J->maxslot)
+            J->maxslot = dst + (BCREG)nresults;
       }
       else if (select_detect(J)) {  // y = select(x, ...)
          TRef tridx = J->base[dst - 1];
@@ -2042,11 +2042,11 @@ static TRef rec_tnew(jit_State* J, uint32_t ah)
 
 // -- Concatenation -------------------------------------------------------
 
-static TRef rec_cat(jit_State* J, BCReg baseslot, BCReg topslot)
+static TRef rec_cat(jit_State* J, BCREG baseslot, BCREG topslot)
 {
    TRef* top = &J->base[topslot];
    TValue savetv[5];
-   BCReg s;
+   BCREG s;
    RecordIndex ix;
    lj_assertJ(baseslot < topslot, "bad CAT arg");
    for (s = baseslot; s <= topslot; s++)
@@ -2068,7 +2068,7 @@ static TRef rec_cat(jit_State* J, BCReg baseslot, BCReg topslot)
          tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr, *trp++);
       } while (trp <= top);
       tr = emitir(IRTG(IR_BUFSTR, IRT_STR), tr, hdr);
-      J->maxslot = (BCReg)(xbase - J->base);
+      J->maxslot = (BCREG)(xbase - J->base);
       if (xbase IS base) return tr;  //  Return simple concatenation result.
       // Pass partial result.
       topslot = J->maxslot--;
@@ -2151,7 +2151,7 @@ void lj_record_ins(jit_State* J)
          // fallthrough
       case LJ_POST_FIXBOOL:
          if (not tvistruecond(&J2G(J)->tmptv2)) {
-            BCReg s;
+            BCREG s;
             TValue* tv = J->L->base;
             for (s = 0; s < J->maxslot; s++)  //  Fixup stack slot (if any).
                if (J->base[s] IS TREF_TRUE and tvisfalse(&tv[s])) {
@@ -2162,7 +2162,7 @@ void lj_record_ins(jit_State* J)
          break;
       case LJ_POST_FIXCONST:
       {
-         BCReg s;
+         BCREG s;
          TValue* tv = J->L->base;
          for (s = 0; s < J->maxslot; s++)  //  Constify stack slots (if any).
             if (J->base[s] IS TREF_NIL and !tvisnil(&tv[s]))
@@ -2480,7 +2480,7 @@ void lj_record_ins(jit_State* J)
       break;
 
    case BC_TSETM:
-      rec_tsetm(J, ra, (BCReg)(J->L->top - J->L->base), (int32_t)rcv->u32.lo);
+      rec_tsetm(J, ra, (BCREG)(J->L->top - J->L->base), (int32_t)rcv->u32.lo);
       break;
 
    case BC_TNEW:
@@ -2513,14 +2513,14 @@ void lj_record_ins(jit_State* J)
 
       // L->top is set to L->base+ra+rc+NARGS-1+1. See lj_dispatch_ins().
    case BC_CALLM:
-      rc = (BCReg)(J->L->top - J->L->base) - ra - LJ_FR2;
+      rc = (BCREG)(J->L->top - J->L->base) - ra - LJ_FR2;
       // fallthrough
    case BC_CALL:
       lj_record_call(J, ra, (ptrdiff_t)rc - 1);
       break;
 
    case BC_CALLMT:
-      rc = (BCReg)(J->L->top - J->L->base) - ra - LJ_FR2;
+      rc = (BCREG)(J->L->top - J->L->base) - ra - LJ_FR2;
       // fallthrough
    case BC_CALLT:
       lj_record_tailcall(J, ra, (ptrdiff_t)rc - 1);
@@ -2534,7 +2534,7 @@ void lj_record_ins(jit_State* J)
 
    case BC_RETM:
       // L->top is set to L->base+ra+rc+NRESULTS-1, see lj_dispatch_ins().
-      rc = (BCReg)(J->L->top - J->L->base) - ra + 1;
+      rc = (BCREG)(J->L->top - J->L->base) - ra + 1;
       // fallthrough
    case BC_RET: case BC_RET0: case BC_RET1:
       lj_record_ret(J, ra, (ptrdiff_t)rc - 1);
@@ -2661,7 +2661,7 @@ static const BCIns* rec_setup_root(jit_State* J)
    // Determine the next PC and the bytecode range for the loop.
    const BCIns* pcj, * pc = J->pc;
    BCIns ins = *pc;
-   BCReg ra = bc_a(ins);
+   BCREG ra = bc_a(ins);
    switch (bc_op(ins)) {
    case BC_FORL:
       J->bc_extent = (MSize)(-bc_j(ins)) * sizeof(BCIns);

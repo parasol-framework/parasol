@@ -5,17 +5,15 @@
 
 #include "lj_bc.h"
 
-// ExpDesc implementation
+// Extended falsey semantics for Fluid's ?? operator:
+// - nil is falsey
+// - false is falsey
+// - 0 (numeric zero) is falsey
+// - "" (empty string) is falsey
+// All other values are truthy
 
 bool ExpDesc::is_falsey() const
 {
-   // Extended falsey semantics for Fluid's ?? operator:
-   // - nil is falsey
-   // - false is falsey
-   // - 0 (numeric zero) is falsey
-   // - "" (empty string) is falsey
-   // All other values are truthy
-
    switch (this->k) {
       case ExpKind::Nil:
       case ExpKind::False:
@@ -45,14 +43,14 @@ bool ExpDesc::is_falsey() const
 LValue LValue::from_expdesc(const ExpDesc* Desc)
 {
    switch (Desc->k) {
-      case ExpKind::Local: return LValue::make_local(BCReg(Desc->u.s.info));
+      case ExpKind::Local: return LValue::make_local(BCREG(Desc->u.s.info));
       case ExpKind::Upval: return LValue::make_upvalue(Desc->u.s.info);
       case ExpKind::Global: return LValue::make_global(Desc->u.sval);
 
       case ExpKind::Indexed: {
          bool key_is_register = (int32_t(Desc->u.s.aux) >= 0) and (Desc->u.s.aux <= BCMAX_C);
-         if (key_is_register) return LValue::make_indexed(BCReg(Desc->u.s.info), BCReg(Desc->u.s.aux));
-         return LValue::make_member(BCReg(Desc->u.s.info), Desc->u.s.aux);
+         if (key_is_register) return LValue::make_indexed(BCREG(Desc->u.s.info), BCREG(Desc->u.s.aux));
+         return LValue::make_member(BCREG(Desc->u.s.info), Desc->u.s.aux);
       }
 
       default:
