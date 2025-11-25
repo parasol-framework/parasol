@@ -4,6 +4,18 @@
 //
 // This class manages register allocation via RegisterAllocator and control flow via ControlFlowGraph, eliminating
 // direct freereg manipulation.
+//
+// OPERAND CONTRACT:
+// - Left operand (ValueSlot): Mutable reference - may be rewritten by operator methods
+// - Right operand (ExpDesc): Passed by value - logically read-only from caller's perspective
+//   (though internal copies may be modified during emission)
+//
+// EXTENDED FALSEY SEMANTICS:
+// Fluid's falsey semantics differ from standard Lua:
+// - Falsey values: nil, false, 0 (numeric zero), "" (empty string)
+// - All other values are truthy
+// - This affects the ?? (if-empty) operator and ? (presence check) operator
+// - Use ExpDesc::is_falsey() for compile-time constant checks
 
 #pragma once
 
@@ -18,10 +30,6 @@ class ControlFlowGraph;
 class OperatorEmitter {
 public:
    explicit OperatorEmitter(FuncState* State, RegisterAllocator* Allocator, ControlFlowGraph* Cfg);
-
-   // Constant folding for arithmetic operators
-   // Returns true if folding succeeded and result is in e1
-   [[nodiscard]] bool fold_constant_arith(BinOpr opr, ValueSlot e1, ValueUse e2);
 
    // Emit unary operator (negate, not, length)
    // Accepts operand as ValueSlot, emits bytecode, modifies operand in-place
@@ -39,15 +47,15 @@ public:
    // Emit arithmetic binary operator (add, sub, mul, div, mod, pow, concat)
    // Accepts left/right operands, emits bytecode, stores result in left
    // Uses constant folding when possible
-   void emit_binary_arith(BinOpr opr, ValueSlot left, ValueUse right);
+   void emit_binary_arith(BinOpr opr, ValueSlot left, ExpDesc right);
 
    // Emit comparison operator (eq, ne, lt, le, gt, ge)
    // Emits comparison bytecode with jump, stores jump in left operand
-   void emit_comparison(BinOpr opr, ValueSlot left, ValueUse right);
+   void emit_comparison(BinOpr opr, ValueSlot left, ExpDesc right);
 
    // Emit bitwise binary operator (band, bor, bxor, shl, shr)
    // Treated as arithmetic operators with integer coercion
-   void emit_binary_bitwise(BinOpr opr, ValueSlot left, ValueUse right);
+   void emit_binary_bitwise(BinOpr opr, ValueSlot left, ExpDesc right);
 
    // Logical short-circuit operators - preparation phase
    // These are called BEFORE evaluating RHS to set up short-circuit jumps
@@ -59,9 +67,9 @@ public:
    // Logical short-circuit operators - completion phase
    // These are called AFTER evaluating RHS to complete the operation
    // CFG-based implementation with edge merging and result handling
-   void complete_logical_and(ValueSlot left, ValueUse right);
-   void complete_logical_or(ValueSlot left, ValueUse right);
-   void complete_if_empty(ValueSlot left, ValueUse right);
+   void complete_logical_and(ValueSlot left, ExpDesc right);
+   void complete_logical_or(ValueSlot left, ExpDesc right);
+   void complete_if_empty(ValueSlot left, ExpDesc right);
 
    // CONCAT operator - preparation phase
    // Called BEFORE evaluating RHS to discharge left to consecutive register
@@ -69,7 +77,7 @@ public:
 
    // CONCAT operator - completion phase
    // Called AFTER evaluating RHS to emit BC_CAT instruction with chaining support
-   void complete_concat(ValueSlot left, ValueUse right);
+   void complete_concat(ValueSlot left, ExpDesc right);
 
    // Presence check operator (x?)
    // Emits bytecode to check if value is truthy (extended falsey semantics)
@@ -77,10 +85,7 @@ public:
    void emit_presence_check(ValueSlot operand);
 
 private:
-   FuncState* func_state;
-   RegisterAllocator* allocator;
-   ControlFlowGraph* cfg;
-
-   // Internal helper to discharge operands for arithmetic operations
-   void discharge_arith_operands(BinOpr opr, ExpDesc* e1, ExpDesc* e2, BCReg& rb, BCReg& rc, uint32_t& op);
+   FuncState *func_state;
+   RegisterAllocator *allocator;
+   ControlFlowGraph *cfg;
 };

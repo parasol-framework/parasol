@@ -1,8 +1,6 @@
 # LuaJIT 2.1 Integration Notes
 
-This file captures practices and gotchas observed while maintaining the
-LuaJIT 2.1 sources that ship inside Parasol. Use it as a quick orientation
-before diving into changes.
+This file captures practices and gotchas observed while maintaining the LuaJIT 2.1 sources that ship inside Parasol. Use it as a quick orientation before diving into changes.
 
 ## Parser File Structure (src/parser/)
 
@@ -15,10 +13,10 @@ The parser has been modernised to C++20 and refactored into focused modules:
 - `parse_internal.h` - Internal function declarations and template helpers for bytecode emission
 
 **Lexer:**
-- `lj_lex.h` / `lj_lex.cpp` - Tokenisation and lexical analysis
+- `lexer.h` / `lexer.cpp` - Tokenisation and lexical analysis
 
 **Parser Core:**
-- `lj_parse.h` / `lj_parse.cpp` - Main parser entry point and binary operator precedence handling
+- `parser.h` / `parser.cpp` - Main parser entry point and binary operator precedence handling
 - `parse_core.cpp` - Core utilities, error handling, and token checking functions
 
 **Parser Components:**
@@ -33,8 +31,7 @@ The parser has been modernised to C++20 and refactored into focused modules:
 - `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernisations
 - `src/parser/`: C++20 refactored parser (see structure above)
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT runtime
-- CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static
-  library ends up in `build/agents/luajit-2.1/lib/`.
+- CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static library ends up in `build/agents/luajit-2.1/lib/`.
 
 ## Key Implementation Patterns
 
@@ -42,7 +39,7 @@ The parser has been modernised to C++20 and refactored into focused modules:
 ```cpp
 // Use concepts for compile-time validation
 template<BytecodeOpcode Op>
-static inline BCPos bcemit_ABC(FuncState* fs, Op o, BCReg a, BCReg b, BCReg c);
+static inline BCPOS bcemit_ABC(FuncState* fs, Op o, BCREG a, BCREG b, BCREG c);
 ```
 
 **RAII for Resource Management:**
@@ -72,33 +69,19 @@ static GCstr* keepstr(std::string_view str);
 ```
 
 ## Integration & Build Tips
-- Always rebuild via CMake (e.g. `cmake --build build/agents --config <BuildType>`)
-  after touching LuaJIT or Fluid sources so the static library target is
-  regenerated and relinked into the Fluid module.
-- CMake drives three build strategies, matching the logic in
-  `src/fluid/CMakeLists.txt`:
-  - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and
-    `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
-  - **Unix-like toolchains**: CMake builds the host tools (`minilua` and
-    `buildvm`), generates assembly with DynASM, then archives
-    `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
-- Install (`cmake --install build/agents --config <BuildType>`) before running
-  tests so the freshly built `parasol` binary (or `parasol.exe` on Windows)
-  and scripts land in `build/agents-install/`.
+- Always rebuild via CMake (e.g. `cmake --build build/agents --config <BuildType>`) after touching LuaJIT or Fluid sources so the static library target is regenerated and relinked into the Fluid module.
+- CMake drives three build strategies, matching the logic in `src/fluid/CMakeLists.txt`:
+  - **MSVC**: `msvcbuild_codegen.bat` produces generated headers and `lj_vm.obj`, and CMake links `lua51.lib` next to the upstream sources.
+  - **Unix-like toolchains**: CMake builds the host tools (`minilua` and `buildvm`), generates assembly with DynASM, then archives `lj_vm.o` + `ljamalg.o` into `libluajit-5.1.a`.
+- Install (`cmake --install build/agents --config <BuildType>`) before running tests so the freshly built `parasol` binary (or `parasol.exe` on Windows) and scripts land in `build/agents-install/`.
 
 ## Error Handling Configuration
-- **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses
-  Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.
-  There is no "internal unwinding" implementation for MSVC - SEH is the only
-  viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling
-  and causes catch() tests to fail with "attempt to call a nil value" errors.
+- **Windows (MSVC)**: Must NOT define `LUAJIT_NO_UNWIND`. MSVC always uses Structured Exception Handling (SEH) via `RaiseException()` and `lj_err_unwind_win()`.  There is no "internal unwinding" implementation for MSVC - SEH is the only viable mechanism. Setting `LJ_NO_UNWIND` for MSVC breaks exception handling and causes catch() tests to fail with "attempt to call a nil value" errors.
 - The `LJ_NO_UNWIND` flag results in broken code that corrupts memory if used in GCC builds.
 
 ## Testing
-- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run subsets, or omit `-R` for the full suite. Fluid regression tests are under
-  `src/fluid/tests/` and catch most parser/VM regressions.
-- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning`
-  so failures bubble out as exit codes.
+- Use `ctest --build-config <BuildType> --test-dir build/agents -R <label>` to run subsets, or omit `-R` for the full suite. Fluid regression tests are under `src/fluid/tests/` and catch most parser/VM regressions.
+- For quick manual checks, launch `parasol` (or `parasol.exe` on Windows) from `build/agents-install/bin/` with `--no-crash-handler --log-warning` so failures bubble out as exit codes.
 - **Critical**: After touching LuaJIT C sources, rebuild both the Fluid module and `parasol_cmd`, then reinstall:
   ```bash
   cmake --build build/agents --config <BuildType> --parallel
@@ -108,8 +91,6 @@ static GCstr* keepstr(std::string_view str);
 - Unit tests are managed by `MODTests()` in `src/fluid/fluid.cpp`.
 - To run the compiled-in unit tests, run `src/fluid/tests/test_unit_tests.fluid` with the `--log-api` option to view the output from stderr.
 - Run `parasol` with `--jit-options` to pass JIT engine flags as a CSV list, e.g. `--jit-options dump-bytecode,trace-boundary`.  Available options are:
-  - `ast-pipeline` Use the new AST-based parser (default)
-  - `ast-legacy` Use the legacy parser
   - `trace-tokens` Trace tokenisation
   - `trace-expect` Trace expectations
   - `trace-boundary` Trace boundary crossings between interpreted and JIT code
@@ -130,35 +111,31 @@ static GCstr* keepstr(std::string_view str);
 ```
 
 ## Troubleshooting Register Allocation
-- LuaJIT's legacy parser in `lj_parse.cpp` heavily relies on `freereg`, `nactvar`, and
-  expression kinds (`ExpKind`). When changing emission logic:
-  - Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
-  - Ensure every path that creates a `VCALL` either converts it to
-    `VNONRELOC` or signals to assignment helpers how many results the call
-    should return.
-  - The helper `expr_discharge()` is frequently used to normalise expressions
-    before storage; inspect current usage before inventing new patterns.
+
+When changing emission logic:
+
+- Never reduce `fs->freereg` below `fs->nactvar`; locals are stored there.
+- Ensure every path that creates a `VCALL` either converts it to `VNONRELOC` or signals to assignment helpers how many results the call should return.
+- The helper `expr_discharge()` is frequently used to normalise expressions before storage; inspect current usage before inventing new patterns.
 
 ### Register Management for Unary/Postfix Operators
-When implementing operators that transform a value in-place (like unary `-`, `not`, or
-custom postfix operators):
+
+When implementing operators that transform a value in-place (like unary `-`, `not`, or custom postfix operators):
 
 1. **Modifying the Same Register (In-Place):**
    ```c
-   BCReg reg = expr_toanyreg(fs, e);
+   BCREG reg = expr_toanyreg(fs, e);
    // Emit bytecode that modifies reg in-place
    bcemit_AD(fs, BC_UNM, reg, reg);  // Example: negate the value
    // Expression still points to same register
    ```
-   **Issue:** If the original variable is referenced again later in the same expression,
-   it will get the modified value, not the original. Example: `x? and x` would see
-   boolean for both uses of `x`.
+   **Issue:** If the original variable is referenced again later in the same expression, it will get the modified value, not the original. Example: `x? and x` would see boolean for both uses of `x`.
 
 2. **Allocating a New Register (Recommended for Value-Transforming Operators):**
    ```c
-   BCReg src_reg = expr_toanyreg(fs, e);
+   BCREG src_reg = expr_toanyreg(fs, e);
    expr_free(fs, e);              // CRITICAL: Free source register first
-   BCReg dest_reg = fs->freereg;
+   BCREG dest_reg = fs->freereg;
    bcreg_reserve(fs, 1);          // Allocate new register for result
    // Emit bytecode that reads src_reg, writes to dest_reg
    bcemit_AD(fs, BC_KPRI, dest_reg, VKTRUE);  // Example
@@ -175,16 +152,12 @@ custom postfix operators):
    ```
    This pattern (from `bcemit_unop()`) defers register allocation until later.
 
-**Common Pitfall:** Forgetting `expr_free()` before allocating a new register causes
-the function to return multiple values (the original value AND the transformed value),
-which manifests as extra arguments in function calls or assignment contexts.
+**Common Pitfall:** Forgetting `expr_free()` before allocating a new register causes the function to return multiple values (the original value AND the transformed value), which manifests as extra arguments in function calls or assignment contexts.
 
 ### CALL Instructions and Base Registers
-- After a `BC_CALL` instruction executes, the result(s) are placed starting at
-  the base register, **overwriting the function** that was there.
-- When emitting multiple calls that reuse the same base register, always move
-  values to their destination positions **before** loading the next function
-  into the base register. Otherwise, the previous result will be overwritten.
+
+- After a `BC_CALL` instruction executes, the result(s) are placed starting at the base register, **overwriting the function** that was there.
+- When emitting multiple calls that reuse the same base register, always move values to their destination positions **before** loading the next function into the base register. Otherwise, the previous result will be overwritten.
 - Example pattern for chained operations:
   ```c
   // CORRECT: Move result to argument position before reloading function
@@ -197,19 +170,16 @@ which manifests as extra arguments in function calls or assignment contexts.
   ```
 
 ### Controlling VCALL Result Counts
-- By default, `VCALL` expressions can return multiple values, which may leak
-  into assignment contexts. To restrict a call to a single result:
+
+- By default, `VCALL` expressions can return multiple values, which may leak into assignment contexts. To restrict a call to a single result:
   - Set `VCALL_SINGLE_RESULT_FLAG` in `expr->u.s.aux` (bitwise OR with base reg)
   - Call `expr_discharge()` to convert the `VCALL` to `VNONRELOC`
   - The flag is automatically handled in `expr_discharge()` and `assign_adjust()`
-- This pattern ensures chained operations don't expose multi-value semantics
-  to the assignment machinery.
+- This pattern ensures chained operations don't expose multi-value semantics to the assignment machinery.
 
 ### Preventing Orphaned Registers in Chained Operations
-When implementing operators that can chain across precedence boundaries (e.g.,
-operators with C-style precedence), be careful to avoid orphaning intermediate
-results on the register stack, which manifests as expressions returning multiple
-values instead of one.
+
+When implementing operators that can chain across precedence boundaries (e.g., operators with C-style precedence), be careful to avoid orphaning intermediate results on the register stack, which manifests as expressions returning multiple values instead of one.
 
 **The Problem Pattern:**
 1. First operation completes, stores result in register N, sets `freereg = N+1`
@@ -218,9 +188,7 @@ values instead of one.
 4. Register N is left orphaned on the stack, becoming an extra return value
 
 **The Solution:**
-Before allocating a base register for an operation, check if the LHS operand
-(which may be the previous operation's result) is already at the top of the
-stack. The check pattern is:
+Before allocating a base register for an operation, check if the LHS operand (which may be the previous operation's result) is already at the top of the stack. The check pattern is:
 ```c
 if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
     lhs->u.s.info + 1 == fs->freereg) {
@@ -229,9 +197,7 @@ if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
 }
 ```
 
-This commonly occurs when chaining across precedence levels where the parser
-returns control between operations rather than handling the entire chain in
-one function call.
+This commonly occurs when chaining across precedence levels where the parser returns control between operations rather than handling the entire chain in one function call.
 
 **Debugging Orphaned Registers:**
 - Symptom: Expressions return multiple values when they should return one
@@ -403,12 +369,9 @@ When adding single-character operators (like `?`):
 When adding operators that extend reserved words:
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro.
-
 2. **Handle recognition in the lexer** (`lj_lex.cpp`) after identifying a reserved word by checking the next character.
-   **Important**: Check the next character (`ls->c`) **after** recognising the reserved word,
-   not in the character switch statement.
-
-3. **Map the token to an operator** in `token2binop()` in `lj_parse.cpp`
+   **Important**: Check the next character (`ls->c`) **after** recognising the reserved word, not in the character switch statement.
+3. **Map the token to an operator** in `token2binop()` in `parser.cpp`
 
 ## Debugging Parser Issues
 
@@ -474,9 +437,9 @@ If an operator returns multiple values instead of one:
 - **Common cause**: Allocating a new register without calling `expr_free()` first
 - **Fix pattern**:
   ```cpp
-  BCReg src_reg = expr_toanyreg(fs, e);
+  BCREG src_reg = expr_toanyreg(fs, e);
   expr_free(fs, e);           // Free the source register
-  BCReg dest_reg = fs->freereg;
+  BCREG dest_reg = fs->freereg;
   bcreg_reserve(fs, 1);       // Allocate result register
   ```
 - **Test with**: Create a function that counts return values using `{...}` and `#`
@@ -509,7 +472,6 @@ When implementing new operators:
 **File Locations:**
 - Parser source: `src/fluid/luajit-2.1/src/parser/`
 - Fluid tests: `src/fluid/tests/`
-- Modernisation plan: `docs/plans/parser-cpp20-modernisation.md`
 
 **Common Tasks:**
 - Adding an operator: See "Implementing Binary Logical Operators" and "Single-Character Token Recognition" sections

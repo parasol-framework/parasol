@@ -190,7 +190,7 @@ LJLIB_CF(jit_util_funcinfo)
 {
    GCproto* pt = check_Lproto(L, 1);
    if (pt) {
-      BCPos pc = (BCPos)lj_lib_optint(L, 2, 0);
+      BCPOS pc = (BCPOS)lj_lib_optint(L, 2, 0);
       GCtab* t;
       lua_createtable(L, 0, 16);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
@@ -229,7 +229,7 @@ LJLIB_CF(jit_util_funcinfo)
 LJLIB_CF(jit_util_funcbc)
 {
    GCproto* pt = check_Lproto(L, 0);
-   BCPos pc = (BCPos)lj_lib_checkint(L, 2);
+   BCPOS pc = (BCPOS)lj_lib_checkint(L, 2);
    if (pc < pt->sizebc) {
       BCIns ins = proto_bc(pt)[pc];
       BCOp op = bc_op(ins);

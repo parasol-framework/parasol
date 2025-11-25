@@ -25,15 +25,15 @@ constexpr uint8_t  BCMAX_C = 0xff;
 constexpr uint16_t BCMAX_D = 0xffff;
 constexpr uint16_t BCBIAS_J = 0x8000;
 constexpr uint8_t  NO_REG = BCMAX_A;
-#define NO_JMP      (~(BCPos)0)
+#define NO_JMP      (~(BCPOS)0)
 
 // Inline functions to get instruction fields (defined after BCOp enum).
 
 #define bc_op(i)   ((BCOp)((i)&0xff))
-#define bc_a(i)    ((BCReg)(((i)>>8)&0xff))
-#define bc_b(i)    ((BCReg)((i)>>24))
-#define bc_c(i)    ((BCReg)(((i)>>16)&0xff))
-#define bc_d(i)    ((BCReg)((i)>>16))
+#define bc_a(i)    ((BCREG)(((i)>>8)&0xff))
+#define bc_b(i)    ((BCREG)((i)>>24))
+#define bc_c(i)    ((BCREG)(((i)>>16)&0xff))
+#define bc_d(i)    ((BCREG)((i)>>16))
 #define bc_j(i)    ((ptrdiff_t)bc_d(i)-BCBIAS_J)
 
 // Macros to set instruction fields.
@@ -44,12 +44,12 @@ constexpr uint8_t  NO_REG = BCMAX_A;
 #define setbc_b(p, x)   setbc_byte(p, (x), 3)
 #define setbc_c(p, x)   setbc_byte(p, (x), 2)
 #define setbc_d(p, x)   ((uint16_t *)(p))[LJ_ENDIAN_SELECT(1, 0)] = (uint16_t)(x)
-#define setbc_j(p, x)   setbc_d(p, (BCPos)((int32_t)(x)+BCBIAS_J))
+#define setbc_j(p, x)   setbc_d(p, (BCPOS)((int32_t)(x)+BCBIAS_J))
 
 // Macros to compose instructions.
 #define BCINS_ABC(o, a, b, c) (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(b)<<24)|((BCIns)(c)<<16))
 #define BCINS_AD(o, a, d)     (((BCIns)(o))|((BCIns)(a)<<8)|((BCIns)(d)<<16))
-#define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPos)((int32_t)(j)+BCBIAS_J))
+#define BCINS_AJ(o, a, j)     BCINS_AD(o, a, (BCPOS)((int32_t)(j)+BCBIAS_J))
 
 /* Bytecode instruction definition. Order matters, see below.
 **

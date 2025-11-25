@@ -904,7 +904,7 @@ LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
       GCproto* pt = curr_proto(L);
       const BCIns* pc = cframe_Lpc(L) - 1;
       const char* oname = nullptr;
-      const char* kind = lj_debug_slotname(pt, pc, (BCReg)(o - L->base), &oname);
+      const char* kind = lj_debug_slotname(pt, pc, (BCREG)(o - L->base), &oname);
       if (kind)
          err_msgv(L, ErrMsg::BADOPRT, opname, kind, oname, tname);
    }

@@ -1,8 +1,8 @@
 // Copyright (C) 2025 Paul Manias
 
-static void bcreg_reserve(FuncState* fs, BCReg n);
-static void fscope_uvmark(FuncState* fs, BCReg level);
-static void execute_defers(FuncState* fs, BCReg limit);
+static void bcreg_reserve(FuncState* fs, BCREG n);
+static void fscope_uvmark(FuncState* fs, BCREG level);
+static void execute_defers(FuncState* fs, BCREG limit);
 
 // Jump types for break and continue statements.
 
@@ -19,7 +19,7 @@ static int is_blank_identifier(GCstr *name)
 //********************************************************************************************************************
 // Define a new local variable.
 
-void LexState::var_new(BCReg n, GCstr* name)
+void LexState::var_new(BCREG n, GCstr* name)
 {
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
@@ -37,12 +37,12 @@ void LexState::var_new(BCReg n, GCstr* name)
 
 //********************************************************************************************************************
 
-void LexState::var_new_lit(BCReg n, std::string_view value)
+void LexState::var_new_lit(BCREG n, std::string_view value)
 {
    this->var_new(n, this->keepstr(value));
 }
 
-void LexState::var_new_fixed(BCReg n, uintptr_t name)
+void LexState::var_new_fixed(BCREG n, uintptr_t name)
 {
    this->var_new(n, (GCstr*)name);
 }
@@ -50,10 +50,10 @@ void LexState::var_new_fixed(BCReg n, uintptr_t name)
 //********************************************************************************************************************
 // Add local variables.
 
-void LexState::var_add(BCReg nvars)
+void LexState::var_add(BCREG nvars)
 {
    FuncState* fs = this->fs;
-   BCReg nactvar = fs->nactvar;
+   BCREG nactvar = fs->nactvar;
    while (nvars--) {
       VarInfo* v = &fs->var_get(nactvar);
       v->startpc = fs->pc;
@@ -66,7 +66,7 @@ void LexState::var_add(BCReg nvars)
 //********************************************************************************************************************
 // Remove local variables.
 
-void LexState::var_remove(BCReg tolevel)
+void LexState::var_remove(BCREG tolevel)
 {
    FuncState* fs = this->fs;
    while (fs->nactvar > tolevel) fs->var_get(--fs->nactvar).endpc = fs->pc;
@@ -75,7 +75,7 @@ void LexState::var_remove(BCReg tolevel)
 //********************************************************************************************************************
 // Lookup local variable name.
 
-static std::optional<BCReg> var_lookup_local(FuncState *fs, GCstr *n)
+static std::optional<BCREG> var_lookup_local(FuncState *fs, GCstr *n)
 {
    int i;
    for (i = fs->nactvar - 1; i >= 0; i--) {
@@ -83,7 +83,7 @@ static std::optional<BCReg> var_lookup_local(FuncState *fs, GCstr *n)
       if (varname IS NAME_BLANK) [[unlikely]]
          continue;  // Skip blank identifiers.
       if (n IS varname) [[likely]]
-         return BCReg(i);
+         return BCREG(i);
    }
    return std::nullopt;  // Not found.
 }
@@ -159,7 +159,7 @@ MSize LexState::var_lookup_symbol(GCstr* name, ExpDesc* e)
 
 // Add a new jump or target
 
-MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
+MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPOS pc)
 {
    FuncState* fs = this->fs;
    MSize vtop = this->vtop;
@@ -198,7 +198,7 @@ MSize LexState::gola_new(int jump_type, VarInfoFlag info, BCPos pc)
 void LexState::gola_patch(VarInfo* vg, VarInfo* vl)
 {
    FuncState* fs = this->fs;
-   BCPos pc = vg->startpc;
+   BCPOS pc = vg->startpc;
    setgcrefnull(vg->name);  // Invalidate pending goto.
    setbc_a(&fs->bcbase[pc].ins, vl->slot);
    JumpListView(fs, pc).patch_to(vl->startpc);
@@ -210,13 +210,13 @@ void LexState::gola_patch(VarInfo* vg, VarInfo* vl)
 void LexState::gola_close(VarInfo* vg)
 {
    FuncState* fs = this->fs;
-   BCPos pc = vg->startpc;
+   BCPOS pc = vg->startpc;
    BCIns* ip = &fs->bcbase[pc].ins;
    fs->assert(gola_is_jump(vg), "expected goto");
    fs->assert(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
    if (bc_op(*ip) IS BC_JMP) {
-      BCPos next = JumpListView::next(fs, pc);
+      BCPOS next = JumpListView::next(fs, pc);
       if (next != NO_JMP) JumpListView(fs, next).patch_to(pc);  // Jump to UCLO.
       setbc_op(ip, BC_UCLO);  // Turn into UCLO.
       setbc_j(ip, NO_JMP);
@@ -291,12 +291,12 @@ static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
 
 //********************************************************************************************************************
 
-static void execute_defers(FuncState* fs, BCReg limit)
+static void execute_defers(FuncState* fs, BCREG limit)
 {
-   BCReg i = fs->nactvar;
-   BCReg oldfreereg;
-   BCReg argc = 0;
-   BCReg argslots[LJ_MAX_SLOTS];
+   BCREG i = fs->nactvar;
+   BCREG oldfreereg;
+   BCREG argc = 0;
+   BCREG argslots[LJ_MAX_SLOTS];
 
    if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
    oldfreereg = fs->freereg;
@@ -310,13 +310,13 @@ static void execute_defers(FuncState* fs, BCReg limit)
       }
 
       if (has_flag(v->info, VarInfoFlag::Defer)) {
-         BCReg callbase = fs->freereg;
-         BCReg j;
+         BCREG callbase = fs->freereg;
+         BCREG j;
          RegisterAllocator allocator(fs);
          allocator.reserve(argc + 1 + LJ_FR2);
          bcemit_AD(fs, BC_MOV, callbase, v->slot);
          for (j = 0; j < argc; j++) {
-            BCReg src = argslots[argc - 1 - j];
+            BCREG src = argslots[argc - 1 - j];
             bcemit_AD(fs, BC_MOV, callbase + LJ_FR2 + j + 1, src);
          }
          bcemit_ABC(fs, BC_CALL, callbase, 1, argc + 1);
@@ -364,7 +364,7 @@ static void fscope_end(FuncState* fs)
 //********************************************************************************************************************
 // Mark scope as having an upvalue.
 
-static void fscope_uvmark(FuncState* fs, BCReg level)
+static void fscope_uvmark(FuncState* fs, BCREG level)
 {
    FuncScope* bl;
    for (bl = fs->bl; bl and bl->nactvar > level; bl = bl->prev);
@@ -517,7 +517,7 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
 {
    FuncState *fs = FunctionState;
    VarInfo *vs = this->vstack, * ve;
-   BCPos lastpc;
+   BCPOS lastpc;
    lj_buf_reset(&this->sb);  // Copy to temp. string buffer.
    // Store upvalue names using range-based iteration.
    auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
@@ -536,7 +536,7 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
    for (ve = vs + this->vtop, vs += fs->vbase; vs < ve; vs++) {
       if (!gola_is_jump_or_target(vs)) {
          GCstr* s = strref(vs->name);
-         BCPos startpc;
+         BCPOS startpc;
          char *p;
          if (uintptr_t(s) < VARNAME__MAX) {
             p = lj_buf_more(&this->sb, 1 + 2 * 5);
@@ -606,7 +606,7 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 
 static void fs_fixup_ret(FuncState* fs)
 {
-   BCPos lastpc = fs->pc;
+   BCPOS lastpc = fs->pc;
    if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
       execute_defers(fs, 0);
       if (has_flag(fs->bl->flags, FuncScopeFlag::Upvalue)) bcemit_AJ(fs, BC_UCLO, 0, 0);
@@ -620,10 +620,10 @@ static void fs_fixup_ret(FuncState* fs)
    // May need to fixup returns encoded before first function was created.
 
    if (fs->flags & PROTO_FIXUP_RETURN) {
-      BCPos pc;
+      BCPOS pc;
       for (pc = 1; pc < lastpc; pc++) {
          BCIns ins = fs->bcbase[pc].ins;
-         BCPos offset;
+         BCPOS offset;
          switch (bc_op(ins)) {
             case BC_CALLMT: case BC_CALLT:
             case BC_RETM: case BC_RET: case BC_RET0: case BC_RET1:

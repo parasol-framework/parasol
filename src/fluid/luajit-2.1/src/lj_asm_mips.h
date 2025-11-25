@@ -470,7 +470,7 @@ static void asm_retf(ASMState* as, IRIns* ir)
    Reg base = ra_alloc1(as, REF_BASE, RSET_GPR);
    void* pc = ir_kptr(IR(ir->op2));
    int32_t delta = 1 + LJ_FR2 + bc_a(*((const BCIns*)pc - 1));
-   as->topslot -= (BCReg)delta;
+   as->topslot -= (BCREG)delta;
    if ((int32_t)as->topslot < 0) as->topslot = 0;
    irt_setmark(IR(REF_BASE)->t);  //  Children must not coalesce with BASE reg.
    emit_setgl(as, base, jit_base);
@@ -2594,7 +2594,7 @@ static void asm_prof(ASMState* as, IRIns* ir)
 // -- Stack handling ------------------------------------------------------
 
 // Check Lua stack size for overflow. Use exit handler as fallback.
-static void asm_stack_check(ASMState* as, BCReg topslot,
+static void asm_stack_check(ASMState* as, BCREG topslot,
    IRIns* irp, RegSet allow, ExitNo exitno)
 {
    // Try to get an unused temp. register, otherwise spill/restore RID_RET*.
@@ -2635,7 +2635,7 @@ static void asm_stack_restore(ASMState* as, SnapShot* snap)
    // Store the value of all modified slots to the Lua stack.
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
-      BCReg s = snap_slot(sn);
+      BCREG s = snap_slot(sn);
       int32_t ofs = 8 * ((int32_t)s - 1 - LJ_FR2);
       IRRef ref = snap_ref(sn);
       IRIns* ir = IR(ref);

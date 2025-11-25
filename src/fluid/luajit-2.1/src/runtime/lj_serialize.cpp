@@ -57,7 +57,7 @@ enum {
 };
 static_assert((SER_TAG_TAB & 7) == 0);
 
-// -- Helper functions ----------------------------------------------------
+// Helper functions
 
 static LJ_AINLINE char* serialize_more(char* w, SBufExt* sbx, MSize sz)
 {
@@ -387,14 +387,12 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
       idx++;
       dict_str = tabref(sbx->dict_str);
-      if (dict_str and idx < dict_str->asize and tvisstr(arrayslot(dict_str, idx)))
-         copyTV(sbufL(sbx), o, arrayslot(dict_str, idx));
-      else
-         lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
+      if (dict_str and idx < dict_str->asize and tvisstr(arrayslot(dict_str, idx))) copyTV(sbufL(sbx), o, arrayslot(dict_str, idx));
+      else lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
    }
    else if (tp >= SER_TAG_TAB and tp <= SER_TAG_DICT_MT) {
       uint32_t narray = 0, nhash = 0;
-      GCtab* t, * mt = nullptr;
+      GCtab *t, *mt = nullptr;
       if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DEPTH);
       sbx->depth--;
       if (tp == SER_TAG_DICT_MT) {
@@ -403,20 +401,17 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
          idx++;
          dict_mt = tabref(sbx->dict_mt);
-         if (dict_mt and idx < dict_mt->asize and tvistab(arrayslot(dict_mt, idx)))
-            mt = tabV(arrayslot(dict_mt, idx));
-         else
-            lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
+         if (dict_mt and idx < dict_mt->asize and tvistab(arrayslot(dict_mt, idx))) mt = tabV(arrayslot(dict_mt, idx));
+         else lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
          r = serialize_ru124(r, w, &tp); if (LJ_UNLIKELY(!r)) goto eob;
          if (!(tp >= SER_TAG_TAB and tp < SER_TAG_DICT_MT)) goto badtag;
       }
-      if (tp >= SER_TAG_TAB + 2) {
-         r = serialize_ru124(r, w, &narray); if (LJ_UNLIKELY(!r)) goto eob;
-      }
-      if ((tp & 1)) {
-         r = serialize_ru124(r, w, &nhash); if (LJ_UNLIKELY(!r)) goto eob;
-      }
+
+      if (tp >= SER_TAG_TAB + 2) r = serialize_ru124(r, w, &narray); if (LJ_UNLIKELY(!r)) goto eob;
+      if ((tp & 1)) r = serialize_ru124(r, w, &nhash); if (LJ_UNLIKELY(!r)) goto eob;
+
       t = lj_tab_new(sbufL(sbx), narray, hsize2hbits(nhash));
+
       // NOBARRIER: The table is new (marked white).
       setgcref(t->metatable, obj2gco(mt));
       settabV(sbufL(sbx), o, t);
@@ -425,13 +420,13 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          TValue* oe = tvref(t->array) + narray;
          while (oa < oe) r = serialize_get(r, sbx, oa++);
       }
+
       if (nhash) {
          do {
             TValue k, * v;
             r = serialize_get(r, sbx, &k);
             v = lj_tab_set(sbufL(sbx), t, &k);
-            if (LJ_UNLIKELY(!tvisnil(v)))
-               lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DUPKEY);
+            if (LJ_UNLIKELY(!tvisnil(v))) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DUPKEY);
             r = serialize_get(r, sbx, v);
          } while (--nhash);
       }
@@ -491,7 +486,7 @@ eob:
    return nullptr;
 }
 
-// -- External serialization API ------------------------------------------
+// -- External serialization API
 
 // Encode to buffer.
 SBufExt* LJ_FASTCALL lj_serialize_put(SBufExt* sbx, cTValue* o)

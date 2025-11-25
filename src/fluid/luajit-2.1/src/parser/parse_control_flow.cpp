@@ -7,7 +7,7 @@
 
 //********************************************************************************************************************
 
-ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPos Head)
+ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPOS Head)
 {
    EdgeEntry entry;
    entry.head = Head;
@@ -20,7 +20,7 @@ ControlFlowEdge ControlFlowGraph::make_edge(ControlFlowEdgeKind Kind, BCPos Head
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
+void ControlFlowGraph::append_edge(size_t Index, BCPOS Head)
 {
    if (Index >= this->edges.size()) return;
    if (Head IS NO_JMP) return;
@@ -38,7 +38,7 @@ void ControlFlowGraph::append_edge(size_t Index, BCPos Head)
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
+void ControlFlowGraph::patch_edge(size_t Index, BCPOS Target)
 {
    if (Index >= this->edges.size()) return;
    EdgeEntry &entry = this->edges[Index];
@@ -54,7 +54,7 @@ void ControlFlowGraph::patch_edge(size_t Index, BCPos Target)
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
+void ControlFlowGraph::patch_edge_head(size_t Index, BCPOS Destination)
 {
    if (Index >= this->edges.size()) return;
    EdgeEntry &entry = this->edges[Index];
@@ -65,7 +65,7 @@ void ControlFlowGraph::patch_edge_head(size_t Index, BCPos Destination)
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BCReg Register, BCPos DefaultTarget)
+void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPOS ValueTarget, BCREG Register, BCPOS DefaultTarget)
 {
    if (Index >= this->edges.size()) return;
    EdgeEntry &entry = this->edges[Index];
@@ -74,9 +74,9 @@ void ControlFlowGraph::patch_edge_with_value(size_t Index, BCPos ValueTarget, BC
       return;
    }
 
-   BCPos list = entry.head;
+   BCPOS list = entry.head;
    while (not(list IS NO_JMP)) {
-      BCPos next_pc = next_in_chain(this->func_state, list);
+      BCPOS next_pc = next_in_chain(this->func_state, list);
       if (this->patch_test_register(list, Register)) this->patch_instruction(list, ValueTarget);
       else this->patch_instruction(list, DefaultTarget);
 
@@ -93,7 +93,7 @@ bool ControlFlowGraph::edge_produces_values(size_t Index) const
    const EdgeEntry &entry = this->edges[Index];
    if (entry.head IS NO_JMP) return false;
 
-   for (BCPos list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
+   for (BCPOS list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
       BCIns prior = this->func_state->bcbase[list >= 1 ? list - 1 : list].ins;
       if (not(bc_op(prior) IS BC_ISTC or bc_op(prior) IS BC_ISFC or bc_a(prior) IS NO_REG)) {
          return true;
@@ -110,23 +110,23 @@ void ControlFlowGraph::drop_edge_values(size_t Index)
    EdgeEntry& entry = this->edges[Index];
    if (entry.head IS NO_JMP) return;
 
-   for (BCPos list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
+   for (BCPOS list = entry.head; not(list IS NO_JMP); list = next_in_chain(this->func_state, list)) {
       (void)this->patch_test_register(list, NO_REG);
    }
 }
 
 //********************************************************************************************************************
 
-BCPos ControlFlowGraph::next_in_chain(FuncState* State, BCPos Position)
+BCPOS ControlFlowGraph::next_in_chain(FuncState* State, BCPOS Position)
 {
    ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
-   if (BCPos(delta) IS NO_JMP) return NO_JMP;
-   return BCPos((ptrdiff_t(Position) + 1) + delta);
+   if (BCPOS(delta) IS NO_JMP) return NO_JMP;
+   return BCPOS((ptrdiff_t(Position) + 1) + delta);
 }
 
 //********************************************************************************************************************
 
-bool ControlFlowGraph::patch_test_register(BCPos Position, BCReg Register) const
+bool ControlFlowGraph::patch_test_register(BCPOS Position, BCREG Register) const
 {
    FuncState *fs = this->func_state;
    BCInsLine *line = &fs->bcbase[Position >= 1 ? Position - 1 : Position];
@@ -152,11 +152,11 @@ bool ControlFlowGraph::patch_test_register(BCPos Position, BCReg Register) const
    return true;
 }
 
-void ControlFlowGraph::patch_instruction(BCPos Position, BCPos Destination) const
+void ControlFlowGraph::patch_instruction(BCPOS Position, BCPOS Destination) const
 {
    FuncState* fs = this->func_state;
    BCIns* instruction = &fs->bcbase[Position].ins;
-   BCPos offset = Destination - (Position + 1) + BCBIAS_J;
+   BCPOS offset = Destination - (Position + 1) + BCBIAS_J;
    fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D) fs->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
@@ -178,7 +178,7 @@ void ControlFlowGraph::finalize() const
 //********************************************************************************************************************
 // Debug tracing methods
 
-void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head, size_t Index) const
+void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPOS Head, size_t Index) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_CFG) != JOF::NIL) {
@@ -196,7 +196,7 @@ void ControlFlowGraph::trace_edge_creation(ControlFlowEdgeKind Kind, BCPos Head,
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
+void ControlFlowGraph::trace_edge_patch(size_t Index, BCPOS Target) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_CFG) != JOF::NIL) {
@@ -206,7 +206,7 @@ void ControlFlowGraph::trace_edge_patch(size_t Index, BCPos Target) const
 
 //********************************************************************************************************************
 
-void ControlFlowGraph::trace_edge_append(size_t Index, BCPos Head) const
+void ControlFlowGraph::trace_edge_append(size_t Index, BCPOS Head) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_CFG) != JOF::NIL) {

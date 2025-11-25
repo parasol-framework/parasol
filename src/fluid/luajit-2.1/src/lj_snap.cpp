@@ -60,10 +60,10 @@ void lj_snap_grow_map_(jit_State* J, MSize need)
 // -- Snapshot generation -------------------------------------------------
 
 // Add all modified slots to the snapshot.
-static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCReg nslots)
+static MSize snapshot_slots(jit_State* J, SnapEntry* map, BCREG nslots)
 {
    IRRef retf = J->chain[IR_RETF];  //  Limits SLOAD restore elimination.
-   BCReg s;
+   BCREG s;
    MSize n = 0;
    for (s = 0; s < nslots; s++) {
       TRef tr = J->slot[s];
@@ -162,7 +162,7 @@ static MSize snapshot_framelinks(jit_State* J, SnapEntry* map, uint8_t* topslot)
 // Take a snapshot of the current stack.
 static void snapshot_stack(jit_State* J, SnapShot* snap, MSize nsnapmap)
 {
-   BCReg nslots = J->baseslot + J->maxslot;
+   BCREG nslots = J->baseslot + J->maxslot;
    MSize nent;
    SnapEntry* p;
    // Conservative estimate.
@@ -208,10 +208,10 @@ void lj_snap_add(jit_State* J)
 #define SNAP_USEDEF_SLOTS   (LJ_MAX_JSLOTS+LJ_STACK_EXTRA)
 
 // Find unused slots with reaching-definitions bytecode data-flow analysis.
-static BCReg snap_usedef(jit_State* J, uint8_t* udf,
-   const BCIns* pc, BCReg maxslot)
+static BCREG snap_usedef(jit_State* J, uint8_t* udf,
+   const BCIns* pc, BCREG maxslot)
 {
-   BCReg s;
+   BCREG s;
    GCobj* o;
 
    if (maxslot == 0) return 0;
@@ -252,7 +252,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
          break;
       case BCMjump:
       handle_jump: {
-         BCReg minslot = bc_a(ins);
+         BCREG minslot = bc_a(ins);
          if (op >= BC_FORI and op <= BC_JFORL) minslot += FORL_EXT;
          else if (op >= BC_ITERL and op <= BC_JITERL) minslot += bc_b(pc[-2]) - 1;
          else if (op == BC_UCLO) {
@@ -269,7 +269,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
             goto handle_jump;
          }
          else if (bc_isret(op)) {
-            BCReg top = op == BC_RETM ? maxslot : (bc_a(ins) + bc_d(ins) - 1);
+            BCREG top = op == BC_RETM ? maxslot : (bc_a(ins) + bc_d(ins) - 1);
             for (s = 0; s < bc_a(ins); s++) DEF_SLOT(s);
             for (; s < top; s++) USE_SLOT(s);
             for (; s < maxslot; s++) DEF_SLOT(s);
@@ -286,7 +286,7 @@ static BCReg snap_usedef(jit_State* J, uint8_t* udf,
          break;
       case BCMbase:
          if (op >= BC_CALLM and op <= BC_ITERN) {
-            BCReg top = (op == BC_CALLM or op == BC_CALLMT or bc_c(ins) == 0) ?
+            BCREG top = (op == BC_CALLM or op == BC_CALLMT or bc_c(ins) == 0) ?
                maxslot : (bc_a(ins) + bc_c(ins) + LJ_FR2);
             if (LJ_FR2) DEF_SLOT(bc_a(ins) + 1);
             s = bc_a(ins) - ((op == BC_ITERC or op == BC_ITERN) ? 3 : 0);
@@ -348,7 +348,7 @@ static void snap_useuv(GCproto* pt, uint8_t* udf)
 void lj_snap_purge(jit_State* J)
 {
    uint8_t udf[SNAP_USEDEF_SLOTS];
-   BCReg s, maxslot = J->maxslot;
+   BCREG s, maxslot = J->maxslot;
    if (bc_op(*J->pc) == BC_FUNCV and maxslot > J->pt->numparams)
       maxslot = J->pt->numparams;
    s = snap_usedef(J, udf, J->pc, maxslot);
@@ -367,15 +367,15 @@ void lj_snap_shrink(jit_State* J)
    SnapEntry* map = &J->cur.snapmap[snap->mapofs];
    MSize n, m, nlim, nent = snap->nent;
    uint8_t udf[SNAP_USEDEF_SLOTS];
-   BCReg maxslot = J->maxslot;
-   BCReg baseslot = J->baseslot;
-   BCReg minslot = snap_usedef(J, udf, snap_pc(&map[nent]), maxslot);
+   BCREG maxslot = J->maxslot;
+   BCREG baseslot = J->baseslot;
+   BCREG minslot = snap_usedef(J, udf, snap_pc(&map[nent]), maxslot);
    if (minslot < maxslot) snap_useuv(J->pt, udf);
    maxslot += baseslot;
    minslot += baseslot;
    snap->nslots = (uint8_t)maxslot;
    for (n = m = 0; n < nent; n++) {  // Remove unused slots from snapshot.
-      BCReg s = snap_slot(map[n]);
+      BCREG s = snap_slot(map[n]);
       if (s < minslot or (s < maxslot and udf[s - baseslot] == 0))
          map[m++] = map[n];  //  Only copy used slots.
    }
@@ -525,7 +525,7 @@ void lj_snap_replay(jit_State* J, GCtrace* T)
    // Emit IR for slots inherited from parent snapshot.
    for (n = 0; n < nent; n++) {
       SnapEntry sn = map[n];
-      BCReg s = snap_slot(sn);
+      BCREG s = snap_slot(sn);
       IRRef ref = snap_ref(sn);
       IRIns* ir = &T->ir[ref];
       TRef tr;

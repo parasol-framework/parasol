@@ -90,7 +90,96 @@ template<FlagType Flag> static constexpr Flag & operator|=(Flag &Left, Flag Righ
 template<FlagType Flag> static constexpr Flag & operator&=(Flag &Left, Flag Right) { return Left = Left & Right; }
 template<FlagType Flag> [[nodiscard]] static constexpr bool has_flag(Flag Flags, Flag Mask) { return (Flags & Mask) != Flag::None; }
 
+// Enhanced flag utilities for clearer flag handling
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_any(Flag Flags, Flag Mask) {
+   return (Flags & Mask) != Flag::None;
+}
+
+template<FlagType Flag> [[nodiscard]] static constexpr bool has_all(Flag Flags, Flag Mask) {
+   return (Flags & Mask) IS Mask;
+}
+
+template<FlagType Flag> static constexpr void clear_flag(Flag &Flags, Flag Mask) {
+   Flags = Flags & ~Mask;
+}
+
+// Strong index types for type-safe register, position, and variable indices.
+// Uses C++20 three-way comparison for automatic generation of all six comparison operators.
+
+template<typename Tag, typename T>
+struct StrongIndex {
+   T value;
+
+   constexpr StrongIndex() = default;
+   constexpr explicit StrongIndex(T v) : value(v) {}
+   constexpr T raw() const { return value; }
+
+   auto operator<=>(const StrongIndex&) const = default;
+   bool operator==(const StrongIndex&) const = default;
+};
+
+// Arithmetic operators for StrongIndex types
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator+(StrongIndex<Tag, T> a, T offset) {
+   return StrongIndex<Tag, T>(a.value + offset);
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator-(StrongIndex<Tag, T> a, T offset) {
+   return StrongIndex<Tag, T>(a.value - offset);
+}
+
+template<typename Tag, typename T>
+constexpr T operator-(StrongIndex<Tag, T> a, StrongIndex<Tag, T> b) {
+   return a.value - b.value;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator++(StrongIndex<Tag, T>& a) {
+   ++a.value;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator++(StrongIndex<Tag, T>& a, int) {
+   auto old = a;
+   ++a.value;
+   return old;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator--(StrongIndex<Tag, T>& a) {
+   --a.value;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator--(StrongIndex<Tag, T>& a, int) {
+   auto old = a;
+   --a.value;
+   return old;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator+=(StrongIndex<Tag, T>& a, T offset) {
+   a.value += offset;
+   return a;
+}
+
+template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T>& operator-=(StrongIndex<Tag, T>& a, T offset) {
+   a.value -= offset;
+   return a;
+}
+
+// Strong type aliases using distinct tag types
+
+using BCPos = StrongIndex<struct BCPosTag, BCPOS>;
+using BCReg = StrongIndex<struct BCRegTag, BCREG>;
+
 // Expression descriptor.
+
 struct ExpDesc {
    union {
       struct { // For non-constant expressions like Local, Upval, Global, Indexed, Jmp, Relocable, NonReloc, Call, Void
@@ -102,8 +191,8 @@ struct ExpDesc {
    } u;
    ExpKind k;      // Expression kind.
    ExprFlag flags; // Expression flags.
-   BCPos t;        // True condition jump list.
-   BCPos f;        // False condition jump list.
+   BCPOS t;        // True condition jump list.
+   BCPOS f;        // False condition jump list.
 
    // Constructors
    constexpr ExpDesc() : u{}, k(ExpKind::Void), flags(ExprFlag::None), t(NO_JMP), f(NO_JMP) {}
@@ -134,6 +223,20 @@ struct ExpDesc {
    [[nodiscard]] inline bool is_num_constant_nojump() const { return this->is_num_constant() and not this->has_jump(); }
    [[nodiscard]] inline bool is_str_constant() const { return this->k == ExpKind::Str; }
    [[nodiscard]] inline lua_Number number_value() { return numberVnum(this->num_tv()); }
+   [[nodiscard]] inline bool is_nil() const { return this->k IS ExpKind::Nil; }
+   [[nodiscard]] inline bool is_false() const { return this->k IS ExpKind::False; }
+   [[nodiscard]] inline bool is_true() const { return this->k IS ExpKind::True; }
+   [[nodiscard]] inline bool is_string() const { return this->k IS ExpKind::Str; }
+   [[nodiscard]] inline bool is_number() const { return this->k IS ExpKind::Num; }
+   [[nodiscard]] inline bool is_local() const { return this->k IS ExpKind::Local; }
+   [[nodiscard]] inline bool is_upvalue() const { return this->k IS ExpKind::Upval; }
+   [[nodiscard]] inline bool is_global() const { return this->k IS ExpKind::Global; }
+   [[nodiscard]] inline bool is_indexed() const { return this->k IS ExpKind::Indexed; }
+   [[nodiscard]] inline bool is_register() const { return this->k IS ExpKind::Local or this->k IS ExpKind::NonReloc; }
+
+   // Extended falsey check (nil, false, 0, "")
+   // Supports Fluid's extended falsey semantics for ?? operator
+   [[nodiscard]] bool is_falsey() const;
 
    [[nodiscard]] inline TValue* num_tv() {
       lj_assertX(this->is_num_constant(), "expr must be number constant");
@@ -172,6 +275,9 @@ inline GCstr * const NAME_BLANK    = (GCstr*)uintptr_t(3);
 typedef uint16_t VarIndex;
 inline constexpr int LJ_MAX_VSTACK = (65536 - LJ_MAX_UPVAL);
 
+// Strong type for variable slot indices (defined after VarIndex)
+using VarSlot = StrongIndex<struct VarSlotTag, VarIndex>;
+
 // Variable info flags are defined in VarInfoFlag.
 
 // Per-function state.
@@ -181,15 +287,15 @@ struct FuncState {
    lua_State *L;       // Lua state.
    FuncScope *bl;      // Current scope.
    FuncState *prev;    // Enclosing function.
-   BCPos pc;           // Next bytecode position.
-   BCPos lasttarget;   // Bytecode position of last jump target.
-   BCPos jpc;          // Pending jump list to next bytecode.
-   BCReg freereg;      // First free register.
-   BCReg nactvar;      // Number of active local variables.
-   BCReg nkn, nkgc;    // Number of lua_Number/GCobj constants
+   BCPOS pc;           // Next bytecode position.
+   BCPOS lasttarget;   // Bytecode position of last jump target.
+   BCPOS jpc;          // Pending jump list to next bytecode.
+   BCREG freereg;      // First free register.
+   BCREG nactvar;      // Number of active local variables.
+   BCREG nkn, nkgc;    // Number of lua_Number/GCobj constants
    BCLine linedefined; // First line of the function definition.
    BCInsLine* bcbase;  // Base of bytecode stack.
-   BCPos bclim;        // Limit of bytecode stack.
+   BCPOS bclim;        // Limit of bytecode stack.
    MSize vbase;        // Base of variable stack for this function.
    uint8_t flags;      // Prototype flags.
    uint8_t numparams;  // Number of parameters.
@@ -209,6 +315,7 @@ struct FuncState {
 };
 
 // Binary and unary operators. ORDER OPR
+
 enum BinOpr : int {
    OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  // ORDER ARITH
    OPR_CONCAT,
@@ -221,6 +328,7 @@ enum BinOpr : int {
 };
 
 // Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
+
 static_assert((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT, "BC_ISGE offset mismatch");
 static_assert((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT, "BC_ISLE offset mismatch");
 static_assert((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT, "BC_ISGT offset mismatch");

@@ -145,8 +145,8 @@ typedef struct GCRef {
 
 // Types for handling bytecodes. Need this here, details in lj_bc.h.
 using BCIns = uint32_t;  //  Bytecode instruction.
-using BCPos = uint32_t;  //  Bytecode position.
-using BCReg = uint32_t;  //  Bytecode register.
+using BCPOS = uint32_t;  //  Bytecode position.
+using BCREG = uint32_t;  //  Bytecode register.
 using BCLine = int32_t;  //  Bytecode line number.
 
 // Internal assembler functions. Never call these directly from C.
@@ -415,7 +415,7 @@ typedef struct GCproto {
 #define proto_knumtv(pt, idx) \
   check_exp((uintptr_t)(idx) < (pt)->sizekn, &mref((pt)->k, TValue)[(idx)])
 #define proto_bc(pt)      ((BCIns *)((char *)(pt) + sizeof(GCproto)))
-#define proto_bcpos(pt, pc)   ((BCPos)((pc) - proto_bc(pt)))
+#define proto_bcpos(pt, pc)   ((BCPOS)((pc) - proto_bc(pt)))
 #define proto_uv(pt)      (mref((pt)->uv, uint16_t))
 
 #define proto_chunkname(pt)   (strref((pt)->chunkname))

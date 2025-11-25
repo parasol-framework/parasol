@@ -214,7 +214,7 @@ static void loop_subst_snap(jit_State* J, SnapShot* osnap,
    SnapEntry* nextmap = &J->cur.snapmap[snap_nextofs(&J->cur, osnap)];
    MSize nmapofs;
    MSize on, ln, nn, onent = osnap->nent;
-   BCReg nslots = osnap->nslots;
+   BCREG nslots = osnap->nslots;
    SnapShot* snap = &J->cur.snap[J->cur.nsnap];
    if (irt_isguard(J->guardemit)) {  // Guard inbetween?
       nmapofs = J->cur.nsnapmap;

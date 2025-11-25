@@ -60,8 +60,8 @@ enum class VarInfoFlag : uint8_t;
 
 typedef struct VarInfo {
    GCRef name;        //  Local variable name.
-   BCPos startpc;     //  First point where the local variable is active.
-   BCPos endpc;       //  First point where the local variable is dead.
+   BCPOS startpc;     //  First point where the local variable is active.
+   BCPOS endpc;       //  First point where the local variable is dead.
    uint8_t slot;      //  Variable slot.
    VarInfoFlag info;  //  Variable info flags.
 } VarInfo;
@@ -80,8 +80,8 @@ class ParserResult;
 enum class TokenKind : uint16_t;
 
 struct LocalDeclResult {
-   BCReg declared = 0;
-   BCReg initialised = 0;
+   BCREG declared = 0;
+   BCREG initialised = 0;
 };
 
 // Lua lexer state.
@@ -160,16 +160,16 @@ public:
    GCstr* lex_str();
 
    // Variable management
-   void var_new(BCReg Reg, GCstr* Name);
-   void var_new_lit(BCReg Reg, std::string_view Value);
-   void var_new_fixed(BCReg Reg, uintptr_t Name);
-   void var_add(BCReg VariableCount);
-   void var_remove(BCReg TargetLevel);
+   void var_new(BCREG Reg, GCstr* Name);
+   void var_new_lit(BCREG Reg, std::string_view Value);
+   void var_new_fixed(BCREG Reg, uintptr_t Name);
+   void var_add(BCREG VariableCount);
+   void var_remove(BCREG TargetLevel);
    MSize var_lookup(ExpDesc *);
    MSize var_lookup_symbol(GCstr* Name, ExpDesc *);
 
    // Break and continue management
-   MSize gola_new(int JumpType, VarInfoFlag Info, BCPos Position);
+   MSize gola_new(int JumpType, VarInfoFlag Info, BCPOS Position);
    void gola_patch(VarInfo* GotoInfo, VarInfo* LabelInfo);
    void gola_close(VarInfo* GotoInfo);
    void gola_resolve(FuncScope* Scope, MSize Index);
@@ -181,7 +181,7 @@ public:
    GCproto* fs_finish(BCLine Line);
    void fs_init(FuncState* FunctionState);
 
-   [[maybe_unused]] void assign_adjust(BCReg VariableCount, BCReg, ExpDesc *);
+   [[maybe_unused]] void assign_adjust(BCREG VariableCount, BCREG, ExpDesc *);
    [[nodiscard]] bool should_emit_presence();
 
    // Public parser helpers

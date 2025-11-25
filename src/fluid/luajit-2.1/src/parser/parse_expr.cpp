@@ -36,7 +36,7 @@ static void expr_index(FuncState *State, ExpDesc *t, ExpDesc *e)
 #endif
    }
    else if (e->is_str_constant()) {
-      BCReg idx = const_str(State, e);
+      BCREG idx = const_str(State, e);
       if (idx <= BCMAX_C) {
          t->u.s.aux = ~idx;  // -256..-1: const string key
          return;

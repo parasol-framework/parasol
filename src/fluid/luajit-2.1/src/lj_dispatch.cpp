@@ -1,7 +1,5 @@
-/*
-** Instruction dispatch handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Instruction dispatch handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_dispatch_c
 #define LUA_CORE
@@ -251,8 +249,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    int mm = mode & LUAJIT_MODE_MASK;
    lj_trace_abort(g);  //  Abort recording on any state change.
    // Avoid pulling the rug from under our own feet.
-   if ((g->hookmask & HOOK_GC))
-      lj_err_caller(L, ErrMsg::NOGCMM);
+   if ((g->hookmask & HOOK_GC)) lj_err_caller(L, ErrMsg::NOGCMM);
    switch (mm) {
 #if LJ_HASJIT
    case LUAJIT_MODE_ENGINE:
@@ -271,19 +268,14 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
       GCproto* pt;
       if ((idx == 0 or tvisfunc(tv)) and isluafunc(&gcval(tv)->fn))
          pt = funcproto(&gcval(tv)->fn);  //  Cannot use funcV() for frame slot.
-      else if (tvisproto(tv))
-         pt = protoV(tv);
-      else
-         return 0;  //  Failed.
-      if (mm != LUAJIT_MODE_ALLSUBFUNC)
-         setptmode(g, pt, mode);
-      if (mm != LUAJIT_MODE_FUNC)
-         setptmode_all(g, pt, mode);
+      else if (tvisproto(tv)) pt = protoV(tv);
+      else return 0;  //  Failed.
+      if (mm != LUAJIT_MODE_ALLSUBFUNC) setptmode(g, pt, mode);
+      if (mm != LUAJIT_MODE_FUNC) setptmode_all(g, pt, mode);
       break;
    }
    case LUAJIT_MODE_TRACE:
-      if (!(mode & LUAJIT_MODE_FLUSH))
-         return 0;  //  Failed.
+      if (!(mode & LUAJIT_MODE_FLUSH)) return 0;  //  Failed.
       lj_trace_flush(G2J(g), idx);
       break;
 #else
@@ -291,9 +283,7 @@ int luaJIT_setmode(lua_State* L, int idx, int mode)
    case LUAJIT_MODE_FUNC:
    case LUAJIT_MODE_ALLFUNC:
    case LUAJIT_MODE_ALLSUBFUNC:
-      UNUSED(idx);
-      if ((mode & LUAJIT_MODE_ON))
-         return 0;  //  Failed.
+      if ((mode & LUAJIT_MODE_ON)) return 0;  //  Failed.
       break;
 #endif
    case LUAJIT_MODE_WRAPCFUNC:
@@ -375,7 +365,7 @@ static void callhook(lua_State* L, int event, BCLine line)
 // -- Dispatch callbacks --------------------------------------------------
 
 // Calculate number of used stack slots in the current frame.
-static BCReg cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
+static BCREG cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
 {
    BCIns ins = pc[-1];
    if (bc_op(ins) == BC_UCLO)
@@ -397,7 +387,7 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
    void* cf = cframe_raw(L->cframe);
    const BCIns* oldpc = cframe_pc(cf);
    global_State* g = G(L);
-   BCReg slots;
+   BCREG slots;
    setcframe_pc(cf, pc);
    slots = cur_topslot(pt, pc, cframe_multres_n(cf));
    L->top = L->base + slots;  //  Fix top.
@@ -421,8 +411,8 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
       L->top = L->base + slots;  //  Fix top again.
    }
    if ((g->hookmask & LUA_MASKLINE)) {
-      BCPos npc = proto_bcpos(pt, pc) - 1;
-      BCPos opc = proto_bcpos(pt, oldpc) - 1;
+      BCPOS npc = proto_bcpos(pt, pc) - 1;
+      BCPOS opc = proto_bcpos(pt, oldpc) - 1;
       BCLine line = lj_debug_line(pt, npc);
       if (pc <= oldpc or opc >= pt->sizebc or line != lj_debug_line(pt, opc)) {
          callhook(L, LUA_HOOKLINE, line);
