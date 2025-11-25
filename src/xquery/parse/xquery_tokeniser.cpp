@@ -903,11 +903,13 @@ XPathToken XPathTokeniser::scan_operator()
       case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
       case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
       case '?': {
-         size_t lookahead = position + 1;
-         while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
-         char next = lookahead < length ? input[lookahead] : '\0';
+         // Only treat as LOOKUP if immediately followed by a lookup key (no whitespace).
+         // With whitespace (e.g. "xs:string? external"), treat as occurrence indicator.
+         char immediate_next = (position + 1 < length) ? input[position + 1] : '\0';
          bool lookup_context = false;
-         if (next IS '(' or next IS '*' or is_digit(next) or is_name_start_char(next)) lookup_context = true;
+         if (immediate_next IS '(' or immediate_next IS '*' or is_digit(immediate_next) or is_name_start_char(immediate_next)) {
+            lookup_context = true;
+         }
          XPathTokenType type = lookup_context ? XPathTokenType::LOOKUP : XPathTokenType::QUESTION_MARK;
          position++;
          return XPathToken(type, single_char, start, 1);
