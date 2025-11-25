@@ -89,23 +89,6 @@ OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator,
 }
 
 //********************************************************************************************************************
-// Constant folding for arithmetic operators
-// Facade wrapper over legacy foldarith() function
-
-bool OperatorEmitter::fold_constant_arith(BinOpr opr, ValueSlot e1, ValueUse e2)
-{
-   bool folded = foldarith(opr, e1.raw(), e2.raw()) != 0;
-
-   if (should_trace_operators(this->func_state)) {
-      if (folded) {
-         pf::Log("Parser").msg("[%d] operator %s: constant folded", this->func_state->ls->linenumber, get_binop_name(opr));
-      }
-   }
-
-   return folded;
-}
-
-//********************************************************************************************************************
 // Emit unary operator
 // Facade wrapper over legacy bcemit_unop() function
 
@@ -113,7 +96,7 @@ void OperatorEmitter::emit_unary(int op, ValueSlot operand)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber,
-         get_unop_name(BCOp(op)), get_expkind_name(operand.raw()->k));
+         get_unop_name(BCOp(op)), get_expkind_name(operand.kind()));
    }
 
    bcemit_unop(this->func_state, BCOp(op), operand.raw());
@@ -127,7 +110,7 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator ~: calling bit.bnot, operand kind=%s", this->func_state->ls->linenumber,
-         get_expkind_name(operand.raw()->k));
+         get_expkind_name(operand.kind()));
    }
 
    bcemit_unary_bit_call(this->func_state, "bnot", operand.raw());
@@ -166,46 +149,46 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 // Emit arithmetic binary operator
 // Facade wrapper over legacy bcemit_arith() function
 
-void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ValueUse right)
+void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
-         get_binop_name(opr), get_expkind_name(left.raw()->k), get_expkind_name(right.raw()->k));
+         get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
-   bcemit_arith(this->func_state, opr, left.raw(), right.raw());
+   bcemit_arith(this->func_state, opr, left.raw(), &right);
 }
 
 //********************************************************************************************************************
 // Emit comparison operator
 // Facade wrapper over legacy bcemit_comp() function
 
-void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ValueUse right)
+void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
-         get_binop_name(opr), get_expkind_name(left.raw()->k), get_expkind_name(right.raw()->k));
+         get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
-   bcemit_comp(this->func_state, opr, left.raw(), right.raw());
+   bcemit_comp(this->func_state, opr, left.raw(), &right);
 }
 
 //********************************************************************************************************************
 // Emit bitwise binary operator
 // Bitwise operators emit function calls to bit.* library (bit.lshift, bit.band, etc.)
 
-void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ValueUse right)
+void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ExpDesc right)
 {
    CSTRING op_name = priority[opr].name;
    size_t op_name_len = priority[opr].name_len;
 
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: calling bit.%.*s, left kind=%s, right kind=%s",
-         this->func_state->ls->linenumber, get_binop_name(opr), int(op_name_len), op_name, get_expkind_name(left.raw()->k),
-         get_expkind_name(right.raw()->k));
+         this->func_state->ls->linenumber, get_binop_name(opr), int(op_name_len), op_name, get_expkind_name(left.kind()),
+         get_expkind_name(right.k));
    }
 
-   bcemit_bit_call(this->func_state, std::string_view(op_name, op_name_len), left.raw(), right.raw());
+   bcemit_bit_call(this->func_state, std::string_view(op_name, op_name_len), left.raw(), &right);
 }
 
 //********************************************************************************************************************
@@ -265,10 +248,10 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
 //********************************************************************************************************************
 // Complete logical AND operator (called AFTER RHS evaluation)
 
-void OperatorEmitter::complete_logical_and(ValueSlot left, ValueUse right)
+void OperatorEmitter::complete_logical_and(ValueSlot left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
-   ExpDesc *right_desc = right.raw();
+   ExpDesc *right_desc = &right;
 
    // At this point:
    // - left->f contains jumps for "left is false" path
@@ -354,10 +337,10 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
 // Complete logical OR operator (called AFTER RHS evaluation)
 // CFG-based implementation using ControlFlowGraph
 
-void OperatorEmitter::complete_logical_or(ValueSlot left, ValueUse right)
+void OperatorEmitter::complete_logical_or(ValueSlot left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
-   ExpDesc *right_desc = right.raw();
+   ExpDesc *right_desc = &right;
 
    // At this point:
    // - left->t contains jumps for "left is true" path
@@ -488,10 +471,10 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
 // Complete IF_EMPTY (??) operator (called AFTER RHS evaluation)
 // Extended falsey checks are now emitted in prepare phase for proper short-circuit semantics
 
-void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
+void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
-   ExpDesc *right_desc = right.raw();
+   ExpDesc *right_desc = &right;
 
    FuncState* fs = this->func_state;
    fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
@@ -526,9 +509,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ValueUse right)
       *right_desc = right_val.legacy();
 
       // Copy RHS result to LHS register (where the result should be)
-      if (dest_reg != lhs_reg) {
-         bcemit_AD(fs, BC_MOV, lhs_reg, dest_reg);
-      }
+      if (dest_reg != lhs_reg) bcemit_AD(fs, BC_MOV, lhs_reg, dest_reg);
 
       // NOW patch the truthy-skip jumps to jump HERE (past all RHS materialization)
       ControlFlowEdge true_edge = this->cfg->make_true_edge(left_desc->t);
@@ -581,12 +562,12 @@ void OperatorEmitter::prepare_concat(ValueSlot left)
 // CONCAT operator - completion phase
 // Emits BC_CAT instruction with support for chaining multiple concatenations
 
-void OperatorEmitter::complete_concat(ValueSlot left, ValueUse right)
+void OperatorEmitter::complete_concat(ValueSlot left, ExpDesc right)
 {
-   ExpDesc* left_desc = left.raw();
-   ExpDesc* right_desc = right.raw();
+   ExpDesc *left_desc = left.raw();
+   ExpDesc *right_desc = &right;
 
-   FuncState* fs = this->func_state;
+   FuncState *fs = this->func_state;
    RegisterAllocator local_alloc(fs);
 
    // First, convert right operand to val form

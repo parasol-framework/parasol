@@ -164,7 +164,7 @@ if (MSVC)
 
    # Exclude library and parser files that are compiled into the Fluid module instead
    list(FILTER LUAJIT_LIB_SOURCES EXCLUDE REGEX "lib_.*\\.cpp$")
-   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|lj_parse_tests\\.cpp$")
+   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|parser_unit_tests\\.cpp$")
 
    file(GLOB LUAJIT_DEP_LJ_H
       "${LUAJIT_SRC}/bytecode/lj_*.h"
@@ -537,7 +537,7 @@ else ()
 
    # Exclude library and parser files that are compiled into the Fluid module instead
    list(FILTER LUAJIT_LIB_SOURCES EXCLUDE REGEX "lib_.*\\.cpp$")
-   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|lj_parse_tests\\.cpp$")
+   list(FILTER LUAJIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|parser_unit_tests\\.cpp$")
 
    # Generate list of object files from source files
    set(LUAJIT_OBJECT_FILES "")
@@ -639,7 +639,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/debug/dump_bytecode.cpp"
    "${LUAJIT_SRC}/parser/parser.cpp"
    "${LUAJIT_SRC}/parser/lexer.cpp"
-   "${LUAJIT_SRC}/parser/lj_parse_tests.cpp")
+   "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
 
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")

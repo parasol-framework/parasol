@@ -6,51 +6,6 @@
 #include <variant>
 
 //********************************************************************************************************************
-// ValueUse - Read-only value wrapper
-//
-// Represents a value being read for consumption in an operation. This is a lightweight wrapper around ExpDesc that
-// provides a value-oriented API for reading values without modification.
-//
-// Value categories:
-// - ConstantValue: Compile-time constants (nil, boolean, number, string, cdata)
-// - RegisterValue: Value in a register (local, temp result)
-// - IndexedValue: Table slot requiring table and key registers
-// - GlobalValue: Global variable requiring name constant
-//
-// This class does NOT own the underlying ExpDesc and assumes the caller manages its lifetime.
-
-class ValueUse {
-public:
-   // Construct from existing ExpDesc pointer (non-owning)
-   explicit ValueUse(ExpDesc* Desc) : desc(Desc) {}
-
-   // Query value category
-   [[nodiscard]] bool is_nil() const { return this->desc->k IS ExpKind::Nil; }
-   [[nodiscard]] bool is_false() const { return this->desc->k IS ExpKind::False; }
-   [[nodiscard]] bool is_true() const { return this->desc->k IS ExpKind::True; }
-   [[nodiscard]] bool is_string() const { return this->desc->k IS ExpKind::Str; }
-   [[nodiscard]] bool is_number() const { return this->desc->k IS ExpKind::Num; }
-   [[nodiscard]] bool is_local() const { return this->desc->k IS ExpKind::Local; }
-   [[nodiscard]] bool is_upvalue() const { return this->desc->k IS ExpKind::Upval; }
-   [[nodiscard]] bool is_global() const { return this->desc->k IS ExpKind::Global; }
-   [[nodiscard]] bool is_indexed() const { return this->desc->k IS ExpKind::Indexed; }
-   [[nodiscard]] bool is_register() const { return this->desc->k IS ExpKind::Local or this->desc->k IS ExpKind::NonReloc; }
-
-   // Extended falsey check (nil, false, 0, "")
-   // Supports Fluid's extended falsey semantics for ?? operator
-   [[nodiscard]] bool is_falsey() const;
-
-   // Access underlying ExpDesc (for interop with legacy code)
-   [[nodiscard]] ExpDesc* raw() const { return this->desc; }
-
-   // Get raw ExpKind
-   [[nodiscard]] ExpKind kind() const { return this->desc->k; }
-
-private:
-   ExpDesc *desc;
-};
-
-//********************************************************************************************************************
 // ValueSlot - Write target wrapper
 //
 // Represents a destination for storing a computed value. This is also a lightweight wrapper around ExpDesc but with
@@ -93,7 +48,7 @@ private:
 //********************************************************************************************************************
 // LValue - Assignment target descriptor
 //
-// Represents an assignable location for statements. Unlike ValueUse/ValueSlot which are thin wrappers, LValue is a
+// Represents an assignable location for statements. Unlike ExpDesc/ValueSlot which are thin wrappers, LValue is a
 // more structured descriptor that can represent complex assignment targets.
 //
 // Value categories:

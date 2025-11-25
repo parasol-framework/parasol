@@ -75,44 +75,13 @@ private:
    BCPos list_head;
 };
 
-// Expression flag lifecycle management
-
-// Helper functions for managing expression flags with explicit lifecycle semantics.
-// These make flag ownership and consumption more explicit and easier to audit.
-
-// TODO: Legacy flag helper functions for raw ExpDesc manipulation.
-// DEPRECATED: Prefer using ExpressionValue member functions (has_flag, set_flag, clear_flag, consume_flag)
-// when working with ExpressionValue wrappers. These legacy helpers are only for cases where direct
-// ExpDesc access is required without an ExpressionValue wrapper in context.
-
-// Check if an expression has a flag without consuming it.
-
-[[nodiscard]] static inline bool expr_has_flag(const ExpDesc* Expression, ExprFlag Flag)
-{
-   return has_flag(Expression->flags, Flag);
-}
-
-// Set a flag on an expression.
-
-static inline void expr_set_flag(ExpDesc* Expression, ExprFlag Flag)
-{
-   Expression->flags |= Flag;
-}
-
-// Clear a flag on an expression.
-
-static inline void expr_clear_flag(ExpDesc* Expression, ExprFlag Flag)
-{
-   Expression->flags &= ~Flag;
-}
-
 // Consume a flag from an expression, clearing it and returning whether it was set.
 // Use this when an operator takes ownership of a flagged value.
 
 [[nodiscard]] static inline bool expr_consume_flag(ExpDesc* Expression, ExprFlag Flag)
 {
    if (has_flag(Expression->flags, Flag)) {
-      expr_clear_flag(Expression, Flag);
+      Expression->flags &= ~Flag;
       return true;
    }
    return false;

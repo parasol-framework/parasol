@@ -134,6 +134,20 @@ struct ExpDesc {
    [[nodiscard]] inline bool is_num_constant_nojump() const { return this->is_num_constant() and not this->has_jump(); }
    [[nodiscard]] inline bool is_str_constant() const { return this->k == ExpKind::Str; }
    [[nodiscard]] inline lua_Number number_value() { return numberVnum(this->num_tv()); }
+   [[nodiscard]] inline bool is_nil() const { return this->k IS ExpKind::Nil; }
+   [[nodiscard]] inline bool is_false() const { return this->k IS ExpKind::False; }
+   [[nodiscard]] inline bool is_true() const { return this->k IS ExpKind::True; }
+   [[nodiscard]] inline bool is_string() const { return this->k IS ExpKind::Str; }
+   [[nodiscard]] inline bool is_number() const { return this->k IS ExpKind::Num; }
+   [[nodiscard]] inline bool is_local() const { return this->k IS ExpKind::Local; }
+   [[nodiscard]] inline bool is_upvalue() const { return this->k IS ExpKind::Upval; }
+   [[nodiscard]] inline bool is_global() const { return this->k IS ExpKind::Global; }
+   [[nodiscard]] inline bool is_indexed() const { return this->k IS ExpKind::Indexed; }
+   [[nodiscard]] inline bool is_register() const { return this->k IS ExpKind::Local or this->k IS ExpKind::NonReloc; }
+
+   // Extended falsey check (nil, false, 0, "")
+   // Supports Fluid's extended falsey semantics for ?? operator
+   [[nodiscard]] bool is_falsey() const;
 
    [[nodiscard]] inline TValue* num_tv() {
       lj_assertX(this->is_num_constant(), "expr must be number constant");
