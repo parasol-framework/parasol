@@ -119,9 +119,9 @@ static CSTRING get_expkind_name(ExpKind k)
 {
    if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
 
-   // Convert to 32-bit integers (matching bit.tobit semantics)
-   auto k1 = int32_t(e1->number_value());
-   auto k2 = int32_t(e2->number_value());
+   // Convert to 32-bit integers using lj_num2bit() to match bit library semantics
+   auto k1 = lj_num2bit(e1->number_value());
+   auto k2 = lj_num2bit(e2->number_value());
    int32_t result;
 
    switch (opr) {
@@ -149,9 +149,9 @@ static CSTRING get_expkind_name(ExpKind k)
 {
    if (!e->is_num_constant_nojump()) [[likely]] return 0;
 
-   // Convert to 32-bit integer and apply bitwise NOT
+   // Convert to 32-bit integer using lj_num2bit() and apply bitwise NOT
 
-   auto k = int32_t(e->number_value());
+   auto k = lj_num2bit(e->number_value());
    int32_t result = ~k;
 
    // Store result as integer if possible, otherwise as number

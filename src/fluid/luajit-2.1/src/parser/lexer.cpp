@@ -1,5 +1,5 @@
 // Lexical analyser.
-// 
+//
 // Copyright (C) 2025 Paul Manias
 
 #define LUA_CORE
@@ -147,6 +147,9 @@ namespace {
    }
 } // anonymous namespace
 
+//********************************************************************************************************************
+// Parse numeric literal for lex_scan()
+
 static void lex_number(LexState *State, TValue* tv)
 {
    State->assert_condition(isdigit(State->c), "bad usage");
@@ -221,32 +224,31 @@ static int lex_skipeq(LexState *State)
 static void lex_longstring(LexState *State, TValue* tv, int sep)
 {
    lex_savenext(State);  // Skip second '['.
-   if (lex_iseol(State->c))  // Skip initial newline.
-      lex_newline(State);
+   if (lex_iseol(State->c)) lex_newline(State); // Skip initial newline.
 
-   for (;;) {
+   while (true) {
       switch (State->c) {
-      case LEX_EOF:
-         lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
-         break;
+         case LEX_EOF:
+            lj_lex_error(State, TK_eof, tv ? ErrMsg::XLSTR : ErrMsg::XLCOM);
+            break;
 
-      case ']':
-         if (lex_skipeq(State) IS sep) {
-            lex_savenext(State);  // Skip second ']'.
-            goto endloop;
-         }
-         break;
+         case ']':
+            if (lex_skipeq(State) IS sep) {
+               lex_savenext(State);  // Skip second ']'.
+               goto endloop;
+            }
+            break;
 
-      case '\n':
-      case '\r':
-         lex_save(State, '\n');
-         lex_newline(State);
-         if (not tv) lj_buf_reset(&State->sb);  // Don't waste space for comments.
-         break;
+         case '\n':
+         case '\r':
+            lex_save(State, '\n');
+            lex_newline(State);
+            if (not tv) lj_buf_reset(&State->sb);  // Don't waste space for comments.
+            break;
 
-      default:
-         lex_savenext(State);
-         break;
+         default:
+            lex_savenext(State);
+            break;
       }
    }
 
@@ -439,6 +441,9 @@ namespace {
       return 0;
    }
 } // anonymous namespace
+
+//********************************************************************************************************************
+// Token scanner, main entry point
 
 static LexToken lex_scan(LexState *State, TValue *tv)
 {
