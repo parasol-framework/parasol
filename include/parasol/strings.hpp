@@ -168,17 +168,17 @@ inline void camelcase(std::string &s) noexcept {
 
 // A case insensitive alternative to std::string_view.starts_with()
 
-[[nodiscard]] inline bool startswith(const std::string_view StringA, const std::string_view StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view Prefix, const std::string_view String) noexcept
 {
-   if (StringA.size() > StringB.size()) return false;
-   return std::ranges::equal(StringA, StringB.substr(0, StringA.size()),
+   if (Prefix.size() > String.size()) return false;
+   return std::ranges::equal(Prefix, String.substr(0, Prefix.size()),
                             [](char a, char b) { return std::tolower((uint8_t)(a)) IS std::tolower((uint8_t)(b)); });
 }
 
-[[nodiscard]] inline bool startswith(const std::string_view StringA, CSTRING StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view Prefix, CSTRING String) noexcept
 {
-   for (std::size_t i = 0; i < StringA.size(); i++) {
-      if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
+   for (std::size_t i = 0; i < Prefix.size(); i++) {
+      if (std::tolower(Prefix[i]) != std::tolower(String[i])) return false;
    }
    return true;
 }

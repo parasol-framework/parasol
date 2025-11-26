@@ -134,7 +134,11 @@ static ERR process_args(void)
                i++;
             }
          }
-         else if (pf::startswith(args[i], "--")) {
+         else if (pf::iequals(args[i], "--jit-options")) {
+            // Handled by the Fluid module, we just need to skip the next argument.
+            if (i + 1 < args.size()) i++;
+         }
+         else if (pf::startswith("--", args[i])) {
             // Unrecognised argument beginning with '--', ignore it.
          }
          else { // If argument not recognised, assume this arg is the target file.
