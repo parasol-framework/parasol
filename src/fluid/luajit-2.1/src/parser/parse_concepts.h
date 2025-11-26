@@ -190,7 +190,7 @@ concept VariableNameType = GCString<T> or std::same_as<T, VarName>;
 // SpecialNameType: Concept for special name sentinel values
 
 template<typename T>
-concept SpecialNameType = std::same_as<T, SpecialName> or std::is_enum_v<T>;
+concept SpecialNameType = std::same_as<T, SpecialName>;
 
 // Compile-time validation of concept satisfaction
 // These static assertions ensure that the core types satisfy their intended concepts,
