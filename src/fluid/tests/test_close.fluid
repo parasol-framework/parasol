@@ -1,6 +1,7 @@
 -- Tests for <close> attribute and __close metamethod support.
 
--- Test 1: Basic __close is called when scope ends
+-- Basic __close is called when scope ends
+
 function testBasicClose()
    local closed = false
    local mt = {
@@ -15,7 +16,8 @@ function testBasicClose()
    print('testBasicClose: passed')
 end
 
--- Test 2: __close receives self as first argument
+-- __close receives self as first argument
+
 function testCloseSelfArg()
    local received_self = nil
    local obj_value = { data = 'test_value' }
@@ -32,7 +34,8 @@ function testCloseSelfArg()
    print('testCloseSelfArg: passed')
 end
 
--- Test 3: __close receives nil as second argument (normal exit)
+-- __close receives nil as second argument (normal exit)
+
 function testCloseNilErrArg()
    local received_err = 'not_nil'
    local mt = {
@@ -47,7 +50,8 @@ function testCloseNilErrArg()
    print('testCloseNilErrArg: passed')
 end
 
--- Test 4: <close> with nil value - should not crash
+-- <close> with nil value - should not crash
+
 function testCloseWithNil()
    do
       local a <close> = nil
@@ -55,7 +59,8 @@ function testCloseWithNil()
    print('testCloseWithNil: passed')
 end
 
--- Test 5: <close> with false value - should not crash
+-- <close> with false value - should not crash
+
 function testCloseWithFalse()
    do
       local a <close> = false
@@ -63,7 +68,8 @@ function testCloseWithFalse()
    print('testCloseWithFalse: passed')
 end
 
--- Test 6: Multiple close variables - LIFO order
+-- Multiple close variables - LIFO order
+
 function testMultipleClosesLIFO()
    local order = {}
    local function makeMt(n)
@@ -87,7 +93,8 @@ function testMultipleClosesLIFO()
    print('testMultipleClosesLIFO: passed')
 end
 
--- Test 7: Close in nested scopes
+-- Close in nested scopes
+
 function testNestedScopes()
    local order = {}
    do
@@ -108,7 +115,8 @@ function testNestedScopes()
    print('testNestedScopes: passed')
 end
 
--- Test 8: Close with defer - close should run before defer
+-- Close with defer - close should run before defer
+
 function testCloseWithDefer()
    local order = {}
    do
@@ -125,7 +133,8 @@ function testCloseWithDefer()
    print('testCloseWithDefer: passed')
 end
 
--- Test 9: Close on function return
+-- Close on function return
+
 function testCloseOnReturn()
    local closed = false
    local mt = {
@@ -145,7 +154,8 @@ function testCloseOnReturn()
    print('testCloseOnReturn: passed')
 end
 
--- Test 10: Close in for loop
+-- Close in for loop
+
 function testCloseInForLoop()
    local close_count = 0
    local mt = { __close = function() close_count += 1 end }
@@ -158,7 +168,8 @@ function testCloseInForLoop()
    print('testCloseInForLoop: passed')
 end
 
--- Test 11: Close on break
+-- Close on break
+
 function testCloseOnBreak()
    local closed = false
    local mt = { __close = function() closed = true end }
@@ -174,7 +185,8 @@ function testCloseOnBreak()
    print('testCloseOnBreak: passed')
 end
 
--- Test 12: Close on continue
+-- Close on continue
+
 function testCloseOnContinue()
    local close_count = 0
    local mt = { __close = function() close_count += 1 end }
@@ -190,7 +202,8 @@ function testCloseOnContinue()
    print('testCloseOnContinue: passed')
 end
 
--- Test 13: Close with value that has no metatable
+-- Close with value that has no metatable
+
 function testCloseNoMetatable()
    do
       local t <close> = {}
@@ -198,7 +211,8 @@ function testCloseNoMetatable()
    print('testCloseNoMetatable: passed')
 end
 
--- Test 14: Close with metatable but no __close
+-- Close with metatable but no __close
+
 function testCloseMetatableNoClose()
    local mt = { __index = function() return 'value' end }
    do
@@ -207,7 +221,8 @@ function testCloseMetatableNoClose()
    print('testCloseMetatableNoClose: passed')
 end
 
--- Test 15: Mixed close values (some nil)
+-- Mixed close values (some nil)
+
 function testMixedCloseValues()
    local order = {}
    do
@@ -226,9 +241,10 @@ function testMixedCloseValues()
    print('testMixedCloseValues: passed')
 end
 
--- Test 16: Close on error path (using pcall)
+-- Close on error path (using pcall)
 -- Tests that __close IS called when using pcall to catch errors,
 -- AND that the error value is passed to the __close handler.
+
 function testCloseWithPcall()
    local closed = false
    local received_err = nil
@@ -247,13 +263,14 @@ function testCloseWithPcall()
    local ok, err = pcall(inner)
    assert(not ok, 'pcall should catch error')
    assert(closed, 'Close should be called when error is caught by pcall')
-   -- The error MUST be passed to __close during error unwinding (Phase 10 implementation)
+   -- The error must be passed to __close during error unwinding
    assert(received_err != nil, 'Error should be passed to __close handler')
    assert(tostring(received_err):find('test error message'), 'Error message should contain "test error message": got ' .. tostring(received_err))
    print('testCloseWithPcall: passed (with error propagation)')
 end
 
--- Test 17: Close with string value - should not crash
+-- Close with string value - should not crash
+
 function testCloseWithString()
    do
       local s <close> = 'hello'
@@ -261,7 +278,8 @@ function testCloseWithString()
    print('testCloseWithString: passed')
 end
 
--- Test 18: Close with number value - should not crash
+-- Close with number value - should not crash
+
 function testCloseWithNumber()
    do
       local n <close> = 42
@@ -269,7 +287,8 @@ function testCloseWithNumber()
    print('testCloseWithNumber: passed')
 end
 
--- Test 19: Multiple close handlers during error - all should be called with error
+-- Multiple close handlers during error - all should be called with error
+
 function testMultipleCloseOnError()
    local order = {}
    local errors_received = {}
@@ -303,7 +322,8 @@ function testMultipleCloseOnError()
    print('testMultipleCloseOnError: passed')
 end
 
--- Test 20: Close in while loop
+-- Close in while loop
+
 function testCloseInWhileLoop()
    local close_count = 0
    local mt = { __close = function() close_count += 1 end }
@@ -318,7 +338,8 @@ function testCloseInWhileLoop()
    print('testCloseInWhileLoop: passed')
 end
 
--- Test 21: Close with xpcall
+-- Close with xpcall
+
 function testCloseWithXpcall()
    local closed = false
    local received_err = nil
@@ -348,9 +369,10 @@ function testCloseWithXpcall()
    print('testCloseWithXpcall: passed')
 end
 
--- Test 22: Nested function calls with close
+-- Nested function calls with close
 -- Note: With tail-call optimization, the order may vary. The important thing
 -- is that both handlers are called and the return value propagates correctly.
+
 function testNestedFunctionsClose()
    local order = {}
    local mt_outer = { __close = function() table.insert(order, 'outer') end }
@@ -381,7 +403,8 @@ function testNestedFunctionsClose()
    print('testNestedFunctionsClose: passed')
 end
 
--- Test 23: Close with early return in loop
+-- Close with early return in loop
+
 function testCloseEarlyReturnInLoop()
    local close_count = 0
    local mt = { __close = function() close_count += 1 end }
@@ -402,7 +425,8 @@ function testCloseEarlyReturnInLoop()
    print('testCloseEarlyReturnInLoop: passed')
 end
 
--- Test 24: Error in __close handler replaces original error (Lua 5.4 semantics)
+-- Error in __close handler replaces original error (Lua 5.4 semantics)
+
 function testCloseHandlerError()
    local order = {}
    local mt1 = {
@@ -435,7 +459,8 @@ function testCloseHandlerError()
    print('testCloseHandlerError: passed')
 end
 
--- Test 25: Multiple __close errors - last one wins
+-- Multiple __close errors - last one wins
+
 function testMultipleCloseErrors()
    local order = {}
    local mt1 = {

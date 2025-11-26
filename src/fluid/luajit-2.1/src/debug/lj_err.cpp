@@ -1,7 +1,5 @@
-/*
-** Error handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Error handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #define lj_err_c
 #define LUA_CORE
@@ -95,11 +93,13 @@ LJ_DATADEF const char* lj_err_allmsg =
 
 // Internal frame unwinding
 
+//********************************************************************************************************************
 // Call __close handlers for to-be-closed locals during error unwinding.
 // Sets _G.__close_err so bytecode-based close handlers can access the error.
 // Returns the error object to propagate (may be updated if a __close handler throws).
 // Per Lua 5.4: if a __close handler throws, that error replaces the original,
 // but all other pending __close handlers are still called.
+
 static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
 {
    // Get the function from this frame
@@ -113,7 +113,7 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
    if (closeslots IS 0) return errobj;
 
    // Set _G.__close_err for bytecode-based handlers that might run later
-   global_State* g = G(L);
+
    GCtab* env = tabref(L->env);
    if (env) {
       GCstr* key = lj_str_newlit(L, "__close_err");
@@ -126,10 +126,8 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
    }
 
    // Also set L->close_err for direct access
-   if (errobj)
-      copyTV(L, &L->close_err, errobj);
-   else
-      setnilV(&L->close_err);
+   if (errobj) copyTV(L, &L->close_err, errobj);
+   else setnilV(&L->close_err);
 
    // Call lj_meta_close for each slot with <close> attribute in LIFO order
    // Iterate from highest slot to lowest to match Lua 5.4 semantics
@@ -160,13 +158,15 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
    return current_err;
 }
 
+//********************************************************************************************************************
 // Call __close handlers for all frames from 'from' down to 'to'.
 // This must be called BEFORE L->base is modified during unwinding.
 // If a __close handler throws, the new error replaces the original at L->top - 1.
-static void unwind_close_all(lua_State* L, TValue* from, TValue* to)
+
+static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
 {
-   TValue* errobj = (L->top > to) ? L->top - 1 : nullptr;
-   TValue* frame = from;
+   TValue *errobj = (L->top > to) ? L->top - 1 : nullptr;
+   TValue *frame = from;
    int count = 0;
    while (frame >= to and count < 100) {  // Limit iterations for safety
       count++;
@@ -179,25 +179,23 @@ static void unwind_close_all(lua_State* L, TValue* from, TValue* to)
       errobj = new_err;  // Use the (possibly updated) error for subsequent handlers
       // Move to previous frame based on type
       int ftype = frame_type(frame);
-      if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP)
-         frame = frame_prevl(frame);
-      else
-         frame = frame_prevd(frame);
+      if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP) frame = frame_prevl(frame);
+      else frame = frame_prevd(frame);
    }
 
    // Clear __close_err after all handlers run
-   global_State* g = G(L);
-   GCtab* env = tabref(L->env);
-   if (env) {
-      GCstr* key = lj_str_newlit(L, "__close_err");
-      TValue* slot = lj_tab_setstr(L, env, key);
+
+   if (GCtab *env = tabref(L->env)) {
+      GCstr *key = lj_str_newlit(L, "__close_err");
+      TValue *slot = lj_tab_setstr(L, env, key);
       setnilV(slot);
    }
    setnilV(&L->close_err);
 }
 
 // Unwind Lua stack and move error message to new top.
-LJ_NOINLINE static void unwindstack(lua_State* L, TValue* top)
+
+LJ_NOINLINE static void unwindstack(lua_State *L, TValue *top)
 {
    lj_func_closeuv(L, top);
    if (top < L->top - 1) {
@@ -296,15 +294,16 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
          return (void*)((intptr_t)cf | CFRAME_UNWIND_FF);
       }
    }
+
    // No C frame.
+
    if (errcode) {
       TValue* target = tvref(L->stack) + 1 + LJ_FR2;
       unwind_close_all(L, L->base - 1, target);
       L->base = target;
       L->cframe = nullptr;
       unwindstack(L, L->base);
-      if (G(L)->panic)
-         G(L)->panic(L);
+      if (G(L)->panic) G(L)->panic(L);
       exit(EXIT_FAILURE);
    }
    return L;  //  Anything non-nullptr will do.
@@ -427,7 +426,9 @@ extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
 #error "NYI: Windows arch-specific unwinder for JIT-compiled code"
 #endif
 
+//********************************************************************************************************************
 // Windows unwinder for JIT-compiled code.
+
 static void err_unwind_win_jit(global_State* g, int errcode)
 {
    CONTEXT ctx;
@@ -457,6 +458,7 @@ static void err_unwind_win_jit(global_State* g, int errcode)
 }
 #endif
 
+//********************************************************************************************************************
 // Raise Windows exception.
 static void err_raise_ext(global_State* g, int errcode)
 {
@@ -882,7 +884,9 @@ LJ_NOINLINE GCstr* lj_err_str(lua_State* L, ErrMsg em)
    return lj_str_newz(L, err2msg(em));
 }
 
+//********************************************************************************************************************
 // Out-of-memory error.
+
 LJ_NOINLINE void lj_err_mem(lua_State* L)
 {
    if (L->status == LUA_ERRERR + 1)  //  Don't touch the stack during lua_open.
@@ -891,6 +895,7 @@ LJ_NOINLINE void lj_err_mem(lua_State* L)
    lj_err_throw(L, LUA_ERRMEM);
 }
 
+//********************************************************************************************************************
 // Find error function for runtime errors. Requires an extra stack traversal.
 static ptrdiff_t finderrfunc(lua_State* L)
 {
@@ -942,7 +947,9 @@ static ptrdiff_t finderrfunc(lua_State* L)
    return 0;
 }
 
+//********************************************************************************************************************
 // Runtime error.
+
 LJ_NOINLINE void LJ_FASTCALL lj_err_run(lua_State* L)
 {
    ptrdiff_t ef = (LJ_HASJIT and tvref(G(L)->jit_base)) ? 0 : finderrfunc(L);
@@ -974,7 +981,9 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_trace(lua_State* L, int errcode)
 }
 #endif
 
+//********************************************************************************************************************
 // Formatted runtime error message.
+
 LJ_NORET LJ_NOINLINE static void err_msgv(lua_State* L, ErrMsg em, ...)
 {
    const char* msg;
@@ -993,9 +1002,10 @@ LJ_NOINLINE void lj_err_msg(lua_State* L, ErrMsg em)
    err_msgv(L, em);
 }
 
+//********************************************************************************************************************
 // Lexer error.
-LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok,
-   BCLine line, ErrMsg em, va_list argp)
+
+LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok, BCLine line, ErrMsg em, va_list argp)
 {
    char buff[LUA_IDSIZE];
    const char* msg;
@@ -1007,7 +1017,9 @@ LJ_NOINLINE void lj_err_lex(lua_State* L, GCstr* src, const char* tok,
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
 
+//********************************************************************************************************************
 // Typecheck error for operands.
+
 LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
 {
    const char* tname = lj_typename(o);
@@ -1023,7 +1035,9 @@ LJ_NOINLINE void lj_err_optype(lua_State* L, cTValue* o, ErrMsg opm)
    err_msgv(L, ErrMsg::BADOPRV, opname, tname);
 }
 
+//********************************************************************************************************************
 // Typecheck error for ordered comparisons.
+
 LJ_NOINLINE void lj_err_comp(lua_State* L, cTValue* o1, cTValue* o2)
 {
    const char* t1 = lj_typename(o1);
@@ -1032,7 +1046,9 @@ LJ_NOINLINE void lj_err_comp(lua_State* L, cTValue* o1, cTValue* o2)
    // This assumes the two "boolean" entries are commoned by the C compiler.
 }
 
+//********************************************************************************************************************
 // Typecheck error for __call.
+
 LJ_NOINLINE void lj_err_optype_call(lua_State* L, TValue* o)
 {
    /* Gross hack if lua_[p]call or pcall/xpcall fail for a non-callable object:
@@ -1051,7 +1067,9 @@ LJ_NOINLINE void lj_err_optype_call(lua_State* L, TValue* o)
    lj_err_optype(L, o, ErrMsg::OPCALL);
 }
 
+//********************************************************************************************************************
 // Error in context of caller.
+
 LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
 {
    TValue* frame = nullptr, * pframe = nullptr;
@@ -1083,7 +1101,9 @@ LJ_NOINLINE void lj_err_callermsg(lua_State* L, const char* msg)
    lj_err_run(L);
 }
 
+//********************************************************************************************************************
 // Formatted error in context of caller.
+
 LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
 {
    const char* msg;
@@ -1094,15 +1114,18 @@ LJ_NOINLINE void lj_err_callerv(lua_State* L, ErrMsg em, ...)
    lj_err_callermsg(L, msg);
 }
 
+//********************************************************************************************************************
 // Error in context of caller.
+
 LJ_NOINLINE void lj_err_caller(lua_State* L, ErrMsg em)
 {
    lj_err_callermsg(L, err2msg(em));
 }
 
+//********************************************************************************************************************
 // Argument error message.
-LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg,
-   const char* msg)
+
+LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg, const char* msg)
 {
    const char* fname = "?";
    const char* ftype = lj_debug_funcname(L, L->base - 1, &fname);
@@ -1115,7 +1138,9 @@ LJ_NORET LJ_NOINLINE static void err_argmsg(lua_State* L, int narg,
    lj_err_callermsg(L, msg);
 }
 
+//********************************************************************************************************************
 // Formatted argument error.
+
 LJ_NOINLINE void lj_err_argv(lua_State* L, int narg, ErrMsg em, ...)
 {
    const char* msg;
@@ -1126,13 +1151,17 @@ LJ_NOINLINE void lj_err_argv(lua_State* L, int narg, ErrMsg em, ...)
    err_argmsg(L, narg, msg);
 }
 
+//********************************************************************************************************************
 // Argument error.
+
 LJ_NOINLINE void lj_err_arg(lua_State* L, int narg, ErrMsg em)
 {
    err_argmsg(L, narg, err2msg(em));
 }
 
+//********************************************************************************************************************
 // Typecheck error for arguments.
+
 LJ_NOINLINE void lj_err_argtype(lua_State* L, int narg, const char* xname)
 {
    const char* tname, * msg;
@@ -1157,12 +1186,15 @@ LJ_NOINLINE void lj_err_argtype(lua_State* L, int narg, const char* xname)
    err_argmsg(L, narg, msg);
 }
 
+//********************************************************************************************************************
 // Typecheck error for arguments.
+
 LJ_NOINLINE void lj_err_argt(lua_State* L, int narg, int tt)
 {
    lj_err_argtype(L, narg, lj_obj_typename[tt + 1]);
 }
 
+//********************************************************************************************************************
 // Public error handling API
 
 extern lua_CFunction lua_atpanic(lua_State* L, lua_CFunction panicf)
