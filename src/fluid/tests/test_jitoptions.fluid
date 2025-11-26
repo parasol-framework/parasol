@@ -41,7 +41,7 @@ function testTraceDiagnose()
    msg('--- Testing bad script without DIAGNOSE: Should print 1 error')
    local script = obj.new('fluid', { statement = glBadScript })
    script.acActivate()
-   
+
    msg('--- Testing bad script with DIAGNOSE: Should print 2+ errors')
    local script = obj.new('fluid', { statement = glBadScript, jitOptions = JOF_DIAGNOSE })
    script.acActivate()
@@ -74,8 +74,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 
-      'testTraceTokens', 'testTraceExpect', 
+      tests = {
+      'testTraceTokens', 'testTraceExpect',
       'testDumpBytecode', 'testTraceDiagnose', 'testTraceBoundary', 'testProfile'
       }
    }

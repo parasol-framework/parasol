@@ -321,37 +321,38 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 }
 
 //********************************************************************************************************************
-// Emit a call to a bit library function (bit.lshift, bit.rshift, etc.) at a specific base register.
+// Emit a call to a bit library function (bit.band, bit.bor, bit.bxor, bit.lshift, bit.rshift) at a specific base
+// register.
 //
-// This function is used to implement C-style bitwise shift operators (<<, >>) by translating them
-// into calls to LuaJIT's bit library functions. The base register is explicitly provided to allow
-// chaining of multiple shift operations while reusing the same register for intermediate results.
+// This function is used to implement C-style bitwise operators (&, |, ~, <<, >>) by translating them into calls to
+// LuaJIT's bit library functions. The base register is explicitly provided to allow chaining of multiple bitwise
+// operations while reusing the same register for intermediate results.
 //
 // Register Layout (x64 with LJ_FR2=1):
-//   base     - Function to call (bit.lshift, bit.rshift, etc.)
+//   base     - Function to call (bit.band, bit.bor, etc.)
 //   base+1   - Frame link register (LJ_FR2, not an argument)
-//   base+2   - arg1: First operand (value to shift)
-//   base+3   - arg2: Second operand (shift count)
+//   base+2   - arg1: First operand
+//   base+3   - arg2: Second operand
 //
 // BC_CALL Instruction Format:
-//   - A field: base register
-//   - B field: Call type (2 for regular calls, 0 for varargs)
-//   - C field: Argument count = freereg - base - LJ_FR2
+//   - A field: base register (where function is located and result will be stored)
+//   - B field: Expected result count + 1 (B=2 means 1 result, B=0 means variable/forward all)
+//   - C field: Argument count + 1
 //
 // ExpKind::Call Handling (Multi-Return Functions):
-//   When RHS is a ExpKind::Call (function call with multiple return values), standard Lua binary operator
-//   semantics apply: only the first return value is used. The ExpKind::Call is discharged before being
-//   passed as an argument. This matches the behavior of expressions like `x + f()` in Lua.
+//   When an operand is a function call returning multiple values, standard Lua binary operator semantics apply:
+//   only the first return value is used. The caller (bcemit_bit_call) discharges ExpKind::Call expressions to
+//   ExpKind::NonReloc BEFORE calling this function, ensuring proper register allocation and truncation of
+//   multi-return values. This matches the behaviour of expressions like `x + f()` in Lua.
 //
-//   Note: Unlike function argument lists (which use BC_CALLM to forward all return values),
-//   binary operators always restrict multi-return expressions to single values. This is a
-//   fundamental Lua language semantic, not a limitation of this implementation.
+//   Note: Unlike function argument lists (which use BC_CALLM to forward all return values), binary operators
+//   always restrict multi-return expressions to single values. This is a fundamental Lua language semantic.
 //
 // Parameters:
 //   fs    - Function state for bytecode generation
-//   fname - Name of bit library function (e.g., "lshift", "rshift")
-//   lhs   - Left-hand side expression (value to shift)
-//   rhs   - Right-hand side expression (shift count, may be ExpKind::Call)
+//   fname - Name of bit library function (e.g., "band", "bor", "lshift")
+//   lhs   - Left-hand side expression (first operand, already discharged if was ExpKind::Call)
+//   rhs   - Right-hand side expression (second operand, already discharged if was ExpKind::Call)
 //   base  - Base register for the call (allows register reuse for chaining)
 
 static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCREG base)
@@ -420,9 +421,29 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
 {
    RegisterAllocator allocator(fs);
+
+   // Discharge Call expressions to NonReloc first. This ensures that function calls
+   // returning multiple values are properly truncated to single values before being
+   // used as operands, matching Lua's standard semantics for binary operators.
+   // Without this, the base register check below fails for Call expressions, causing
+   // the result to go to a different register than expected.
+
+   if (lhs->k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, *lhs);
+      lhs_discharge.discharge();
+      *lhs = lhs_discharge.legacy();
+   }
+
+   if (rhs->k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, *rhs);
+      rhs_discharge.discharge();
+      *rhs = rhs_discharge.legacy();
+   }
+
    // Allocate a base register for the call
    // Check if either operand is already at the top of the stack to avoid orphaning registers
    // when chaining operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result)
+
    BCREG base;
    if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
       // RHS is at the top - reuse its register to avoid orphaning
@@ -455,6 +476,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    if (LJ_FR2) allocator.reserve(BCReg(1));  // Reserve for frame link on x64
 
    // Place argument in register.
+
    ExpressionValue arg_toval(fs, *arg);
    arg_toval.to_val();
    *arg = arg_toval.legacy();
@@ -463,9 +485,11 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    *arg = arg_value.legacy();
 
    // Ensure freereg accounts for argument register so it's not clobbered.
+
    if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
 
    // Load bit.fname into base register.
+
    callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);

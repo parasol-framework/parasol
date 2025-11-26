@@ -177,6 +177,85 @@ When implementing operators that transform a value in-place (like unary `-`, `no
   - The flag is automatically handled in `expr_discharge()` and `assign_adjust()`
 - This pattern ensures chained operations don't expose multi-value semantics to the assignment machinery.
 
+### Multi-Return Function Calls as Binary Operator Operands
+
+When a function returning multiple values is used as an operand in a binary operator (e.g., `1 & returns_two_values()`), standard Lua semantics dictate that only the first return value should be used. However, this requires careful handling in the parser.
+
+**The Problem:**
+
+For operators implemented via library calls (like bitwise operators calling `bit.band`), the base register selection logic checks if operands are at the top of the stack:
+
+```cpp
+if (rhs->k IS ExpKind::NonReloc and rhs->u.s.info >= fs->nactvar and rhs->u.s.info + 1 IS fs->freereg) {
+   base = rhs->u.s.info;  // Reuse RHS register
+}
+```
+
+This check **fails** when RHS is still `ExpKind::Call` (not yet discharged to `NonReloc`), causing:
+1. A new base register to be allocated at `fs->freereg`
+2. The library call result to go to the wrong register
+3. The local variable assignment to use the wrong value (the raw call result instead of the operator result)
+
+**Example Bug Scenario:**
+
+```lua
+local function returns6_99()
+   return 6, 99
+end
+
+local x = 1 & returns6_99()  -- Expected: bit.band(1, 6) = 0, Got: 6
+```
+
+The bytecode would show:
+```
+CALL       A=R2 B=#2 C=#1    -- returns6_99() result (6) in R2
+KSHORT     A=R5 D=#1         -- Load 1 to R5
+MOV        A=R6 D=R2         -- Copy 6 to R6
+TGETS      A=R3 ... "band"   -- Load bit.band to R3 (not R2!)
+CALL       A=R3 B=#2 C=#3    -- bit.band result (0) goes to R3
+GGET       A=R3 D="assert"   -- R3 immediately overwritten!
+ISEQV      A=R2 D=R0         -- Compares R2 (still 6!) with expected
+```
+
+**The Solution:**
+
+Discharge `Call` expressions to `NonReloc` **before** base register calculation:
+
+```cpp
+static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
+{
+   RegisterAllocator allocator(fs);
+
+   // Discharge Call expressions to NonReloc first. This ensures that function calls
+   // returning multiple values are properly truncated to single values before being
+   // used as operands, matching Lua's standard semantics for binary operators.
+   if (lhs->k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, *lhs);
+      lhs_discharge.discharge();
+      *lhs = lhs_discharge.legacy();
+   }
+   if (rhs->k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, *rhs);
+      rhs_discharge.discharge();
+      *rhs = rhs_discharge.legacy();
+   }
+
+   // Now the base register check will correctly identify NonReloc operands
+   BCREG base;
+   if (rhs->k IS ExpKind::NonReloc and ...) { ... }
+}
+```
+
+**Key Insights:**
+
+1. **Discharge timing matters**: The `expr_discharge()` function converts `ExpKind::Call` to `ExpKind::NonReloc` by setting `e->u.s.info = e->u.s.aux` (the call's base register). This must happen before any logic that depends on the expression kind.
+
+2. **Runtime truncation is automatic**: The `BC_CALL` instruction's `B` field (result count) handles runtime truncation. When `bc_b=2` (expect 1 result), extra return values are discarded by the VM. The parser issue is about correctly tracking *which register* holds the result.
+
+3. **This pattern applies to any operator implemented via function calls**: Not just bitwise operators, but any custom operator that emits library calls should discharge Call operands first.
+
+4. **Test with multi-return functions**: Always include tests like `op(literal, multi_return_func())` to catch these issues. The test file `test_bitwise.fluid` includes `testMultipleReturnRHS` for this purpose.
+
 ### Preventing Orphaned Registers in Chained Operations
 
 When implementing operators that can chain across precedence boundaries (e.g., operators with C-style precedence), be careful to avoid orphaning intermediate results on the register stack, which manifests as expressions returning multiple values instead of one.
