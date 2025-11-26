@@ -159,3 +159,62 @@ public:
       return *this;
    }
 };
+
+// FuncStateGuard: RAII wrapper for nested function parsing
+//
+// Saves and restores ls->fs and ls->vtop when parsing child functions.
+// This ensures proper cleanup even when parsing fails with an error,
+// preventing dangling pointers to destroyed FuncState objects.
+//
+// Usage:
+//    FuncState child_state;
+//    lex_state.fs_init(&child_state);
+//    FuncStateGuard fs_guard(&lex_state, &child_state);
+//    // ... parse function body ...
+//    // On success: call fs_guard.disarm() before fs_finish()
+//    // On error: automatic cleanup restores ls->fs and ls->vtop
+
+class FuncStateGuard {
+   LexState* ls_;
+   FuncState* saved_fs_;
+   MSize saved_vtop_;
+
+public:
+   explicit FuncStateGuard(LexState* ls, FuncState* child_fs)
+      : ls_(ls), saved_fs_(child_fs->prev), saved_vtop_(child_fs->vbase) {}
+
+   ~FuncStateGuard() {
+      if (ls_) {
+         ls_->vtop = saved_vtop_;
+         ls_->fs = saved_fs_;
+      }
+   }
+
+   constexpr void disarm() noexcept {
+      ls_ = nullptr;
+   }
+
+   // Prevent copying
+   FuncStateGuard(const FuncStateGuard &) = delete;
+   FuncStateGuard & operator=(const FuncStateGuard &) = delete;
+
+   // Allow moving
+   FuncStateGuard(FuncStateGuard &&other) noexcept
+      : ls_(other.ls_), saved_fs_(other.saved_fs_), saved_vtop_(other.saved_vtop_) {
+      other.ls_ = nullptr;
+   }
+
+   FuncStateGuard & operator=(FuncStateGuard &&other) noexcept {
+      if (this != &other) {
+         if (ls_) {
+            ls_->vtop = saved_vtop_;
+            ls_->fs = saved_fs_;
+         }
+         ls_ = other.ls_;
+         saved_fs_ = other.saved_fs_;
+         saved_vtop_ = other.saved_vtop_;
+         other.ls_ = nullptr;
+      }
+      return *this;
+   }
+};

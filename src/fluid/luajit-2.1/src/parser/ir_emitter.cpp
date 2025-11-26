@@ -650,6 +650,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       const Identifier& identifier = payload.names[i.raw()];
       if (not identifier.has_close) continue;
 
+      // Check slot limit for closeslots bitmap (max 64 slots supported)
+      uint8_t slot = uint8_t(base.raw() + i.raw());
+      if (slot >= 64) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(
+            ParserErrorCode::InternalInvariant,
+            "too many local variables with <close> attribute (max 64 slots)"));
+      }
+
       VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
       info->info |= VarInfoFlag::Close;
    }
@@ -2094,6 +2102,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
 
    this->lex_state.fs_init(&child_state);
+   FuncStateGuard fs_guard(&this->lex_state, &child_state);  // Restore ls->fs on error
    // Use lastline which was set to the function expression's line by emit_expression()
    child_state.linedefined = this->lex_state.lastline;
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
@@ -2131,6 +2140,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
+   fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bcstack + oldbase;

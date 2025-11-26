@@ -342,7 +342,6 @@ static void execute_defers(FuncState* fs, BCREG limit)
 // 5. Calls __close(value, nil) - nil indicates normal scope exit (not error unwinding)
 //
 // All skip jumps are patched to the end of the sequence. Errors in __close are not currently protected
-// (Phase 10 will add pcall wrapping for error safety).
 
 static void bcemit_close(FuncState* fs, BCREG slot)
 {
@@ -793,13 +792,13 @@ GCproto* LexState::fs_finish(BCLine Line)
 
    // Build bitmap of locals with <close> attribute for error unwinding.
    // Use the actual register slot index from VarInfo::slot, not the vstack index.
+   // Note: Slots >= 64 are rejected at parse time in emit_local_decl_stmt().
    pt->closeslots = 0;
    for (MSize i = fs->vbase; i < this->vtop; i++) {
       if (has_flag(this->vstack[i].info, VarInfoFlag::Close)) {
          uint8_t slot = this->vstack[i].slot;
-         if (slot < 64) {
-            pt->closeslots |= (1ULL << slot);
-         }
+         lj_assertX(slot < 64, "close slot overflow should be caught at parse time");
+         pt->closeslots |= (1ULL << slot);
       }
    }
 
