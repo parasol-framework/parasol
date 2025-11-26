@@ -382,7 +382,8 @@ static void strscan_double(uint64_t x, TValue* o, int32_t ex2, int32_t neg)
 }
 
 //********************************************************************************************************************
-// Scan string containing a number. Returns format. Returns value in o.  Used only by the lexer
+// Scan string containing a number. Returns format. Returns value in o.  Used directly by the lexer and indirectly
+// via lj_strscan_num()
 
 StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o, uint32_t opt)
 {
@@ -422,8 +423,8 @@ StrScanFmt lj_strscan_scan(const uint8_t* p, MSize len, TValue* o, uint32_t opt)
       int32_t ex = 0;
 
       // Determine base and skip leading zeros.
-      if (LJ_UNLIKELY(*p <= '0')) {
-         if (*p IS '0') {
+      if (*p <= '0') [[unlikely]] {
+         if (*p IS '0') [[likely]] {
             if (casecmp(p[1], 'x')) base = 16, cmask = LJ_CHAR_XDIGIT, p += 2;
             else if (casecmp(p[1], 'b')) base = 2, cmask = LJ_CHAR_DIGIT, p += 2;
          }

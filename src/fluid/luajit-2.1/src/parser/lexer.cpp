@@ -443,6 +443,33 @@ namespace {
 } // anonymous namespace
 
 //********************************************************************************************************************
+// Unicode operator recognition
+// Checks for UTF-8 sequences that represent operators.
+// Returns the token if recognised, 0 otherwise.
+
+static LexToken lex_unicode_operator(LexState *State) noexcept
+{
+   // UTF-8 sequences starting with 0xE2 0x89 (Mathematical operators)
+   // ≠ (U+2260) = E2 89 A0 → TK_ne
+   // ≤ (U+2264) = E2 89 A4 → TK_le
+   // ≥ (U+2265) = E2 89 A5 → TK_ge
+   if (State->c IS 0xE2 and State->p + 1 < State->pe and uint8_t(State->p[0]) IS 0x89) {
+      uint8_t third = uint8_t(State->p[1]);
+      LexToken tok = 0;
+      if (third IS 0xA0) tok = TK_ne;       // ≠
+      else if (third IS 0xA4) tok = TK_le;  // ≤
+      else if (third IS 0xA5) tok = TK_ge;  // ≥
+
+      if (tok) {
+         State->mark_token_start();
+         lex_next(State); lex_next(State); lex_next(State);
+         return tok;
+      }
+   }
+   return 0;
+}
+
+//********************************************************************************************************************
 // Token scanner, main entry point
 
 static LexToken lex_scan(LexState *State, TValue *tv)
@@ -450,6 +477,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
    lj_buf_reset(&State->sb);
 
    while (true) {
+      // Check for Unicode operators before identifier scanning
+      if (LexToken unicode_tok = lex_unicode_operator(State)) {
+         return unicode_tok;
+      }
+
       // Identifier or numeric literal
       if (lj_char_isident(State->c)) {
          State->mark_token_start();
