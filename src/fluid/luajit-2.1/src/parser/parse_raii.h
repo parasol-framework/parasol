@@ -64,29 +64,29 @@ public:
 
 class RegisterGuard {
    FuncState *fs_;
-   BCREG saved_freereg_;
+   BCReg saved_freereg_;
 
 public:
    explicit RegisterGuard(FuncState *fs)
-      : fs_(fs), saved_freereg_(fs->freereg) {}
+      : fs_(fs), saved_freereg_(BCReg(fs->freereg)) {}
 
-   explicit RegisterGuard(FuncState *fs, BCREG reserve_count)
-      : fs_(fs), saved_freereg_(fs->freereg) {
-      if (reserve_count > 0) bcreg_reserve(fs, reserve_count);
+   explicit RegisterGuard(FuncState *fs, BCReg reserve_count)
+      : fs_(fs), saved_freereg_(BCReg(fs->freereg)) {
+      if (reserve_count.raw() > 0) bcreg_reserve(fs, reserve_count.raw());
    }
 
    ~RegisterGuard() {
-      if (fs_) fs_->freereg = saved_freereg_;
+      if (fs_) fs_->freereg = saved_freereg_.raw();
    }
 
    // Manually release to a specific register level
 
-   constexpr void release_to(BCREG Reg) noexcept { fs_->freereg = Reg; }
-   constexpr void adopt_saved(BCREG Reg) noexcept { saved_freereg_ = Reg; }
+   constexpr void release_to(BCReg Reg) noexcept { fs_->freereg = Reg.raw(); }
+   constexpr void adopt_saved(BCReg Reg) noexcept { saved_freereg_ = Reg; }
    constexpr void disarm() noexcept { fs_ = nullptr; }
 
    // Get saved register level
-   [[nodiscard]] constexpr BCREG saved() const noexcept { return saved_freereg_; }
+   [[nodiscard]] constexpr BCReg saved() const noexcept { return saved_freereg_; }
 
    // Prevent copying
    RegisterGuard(const RegisterGuard &) = delete;
@@ -100,7 +100,7 @@ public:
 
    RegisterGuard & operator=(RegisterGuard &&other) noexcept {
       if (this != &other) {
-         if (fs_) fs_->freereg = saved_freereg_;
+         if (fs_) fs_->freereg = saved_freereg_.raw();
          fs_ = other.fs_;
          saved_freereg_ = other.saved_freereg_;
          other.fs_ = nullptr;

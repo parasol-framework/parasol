@@ -27,36 +27,36 @@ public:
    public:
       using iterator_category = std::forward_iterator_tag;
       using difference_type = ptrdiff_t;
-      using value_type = BCPOS;
+      using value_type = BCPos;
 
-      Iterator(FuncState *State, BCPOS Position) : func_state(State), position(Position) { }
+      Iterator(FuncState *State, BCPos Position) : func_state(State), position(Position) { }
 
-      [[nodiscard]] BCPOS operator*() const { return this->position; }
+      [[nodiscard]] BCPos operator*() const { return this->position; }
       Iterator& operator++() { this->position = next(this->func_state, this->position); return *this; }
-      [[nodiscard]] bool operator==(const Iterator& Other) const { return position IS Other.position; }
-      [[nodiscard]] bool operator!=(const Iterator& Other) const { return not(position IS Other.position); }
+      [[nodiscard]] bool operator==(const Iterator& Other) const { return position.raw() IS Other.position.raw(); }
+      [[nodiscard]] bool operator!=(const Iterator& Other) const { return not(position.raw() IS Other.position.raw()); }
 
       private:
       FuncState* func_state;
-      BCPOS position;
+      BCPos position;
    };
 
    JumpListView(FuncState* State, BCPOS Head) : func_state(State), list_head(Head) { }
 
-   [[nodiscard]] inline Iterator begin() const { return Iterator(func_state, list_head); }
-   [[nodiscard]] inline Iterator end() const { return Iterator(func_state, NO_JMP); }
+   [[nodiscard]] inline Iterator begin() const { return Iterator(func_state, BCPos(list_head)); }
+   [[nodiscard]] inline Iterator end() const { return Iterator(func_state, BCPos(NO_JMP)); }
    [[nodiscard]] inline bool empty() const { return list_head IS NO_JMP; }
    [[nodiscard]] inline BCPOS head() const { return list_head; }
-   [[nodiscard]] inline BCPOS next(BCPOS Position) const { return next(func_state, Position); }
+   [[nodiscard]] inline BCPos next(BCPos Position) const { return next(func_state, Position); }
 
    // Enable range-based algorithms via ADL
    friend auto begin(const JumpListView& v) { return v.begin(); }
    friend auto end(const JumpListView& v) { return v.end(); }
 
-   [[nodiscard]] static inline BCPOS next(FuncState* State, BCPOS Position) {
-      ptrdiff_t delta = bc_j(State->bcbase[Position].ins);
-      if (BCPOS(delta) IS NO_JMP) return NO_JMP;
-      return BCPOS((ptrdiff_t(Position) + 1) + delta);
+   [[nodiscard]] static inline BCPos next(FuncState* State, BCPos Position) {
+      ptrdiff_t delta = bc_j(State->bcbase[Position.raw()].ins);
+      if (BCPOS(delta) IS NO_JMP) return BCPos(NO_JMP);
+      return BCPos(BCPOS((ptrdiff_t(Position.raw()) + 1) + delta));
    }
 
    [[nodiscard]] bool produces_values() const;
@@ -100,6 +100,8 @@ static void expr_free(FuncState *, ExpDesc* e);
 extern BCPOS bcemit_INS(FuncState *, BCIns ins);
 
 // Bytecode emission helper functions.
+// Note: These templates remain on raw types for compatibility with C macros (BCINS_*)
+// Call-sites should wrap results with BCPos() when needed
 
 template<typename Op>
 static inline BCPOS bcemit_ABC(FuncState *fs, Op o, BCREG a, BCREG b, BCREG c) {

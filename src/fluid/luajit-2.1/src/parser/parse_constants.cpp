@@ -83,8 +83,8 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 
 [[nodiscard]] bool JumpListView::produces_values() const
 {
-   for (BCPOS list = list_head; not(list IS NO_JMP); list = next(func_state, list)) {
-      BCIns prior = func_state->bcbase[list >= 1 ? list - 1 : list].ins;
+   for (BCPos list = BCPos(list_head); not(list.raw() IS NO_JMP); list = next(func_state, list)) {
+      BCIns prior = func_state->bcbase[list.raw() >= 1 ? list.raw() - 1 : list.raw()].ins;
       if (!(bc_op(prior) IS BC_ISTC or bc_op(prior) IS BC_ISFC or bc_a(prior) IS NO_REG))
          return true;
    }
@@ -120,8 +120,8 @@ LJ_USED LJ_FUNC void lj_parse_keepcdata(LexState* ls, TValue* tv, GCcdata* cd)
 
 void JumpListView::drop_values() const
 {
-   for (BCPOS list = list_head; not(list IS NO_JMP); list = next(func_state, list))
-      (void)patch_test_register(list, NO_REG);
+   for (BCPos list = BCPos(list_head); not(list.raw() IS NO_JMP); list = next(func_state, list))
+      (void)patch_test_register(list.raw(), NO_REG);
 }
 
 void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
@@ -138,24 +138,24 @@ void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
 {
    if (Other IS NO_JMP) return list_head;
    if (list_head IS NO_JMP) return Other;
-   BCPOS list = list_head;
-   BCPOS next_pc;
+   BCPos list = BCPos(list_head);
+   BCPos next_pc;
    while (true) {
       next_pc = next(func_state, list);
-      if (next_pc IS NO_JMP) break;
+      if (next_pc.raw() IS NO_JMP) break;
       list = next_pc;
    }
-   patch_instruction(list, Other);
+   patch_instruction(list.raw(), Other);
    return list_head;
 }
 
 void JumpListView::patch_with_value(BCPOS ValueTarget, BCREG Register, BCPOS DefaultTarget) const
 {
-   BCPOS list = list_head;
-   while (not(list IS NO_JMP)) {
-      BCPOS next_pc = next(func_state, list);
-      if (patch_test_register(list, Register)) patch_instruction(list, ValueTarget);
-      else patch_instruction(list, DefaultTarget);
+   BCPos list = BCPos(list_head);
+   while (not(list.raw() IS NO_JMP)) {
+      BCPos next_pc = next(func_state, list);
+      if (patch_test_register(list.raw(), Register)) patch_instruction(list.raw(), ValueTarget);
+      else patch_instruction(list.raw(), DefaultTarget);
       list = next_pc;
    }
 }
