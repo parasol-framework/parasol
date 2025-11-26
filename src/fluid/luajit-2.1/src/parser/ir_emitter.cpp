@@ -610,6 +610,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
    }
 
    snapshot_return_regs(&this->func_state, &ins);
+   // Both __close and defer handlers must run before returning from function.
+   // Order: closes before defers (LIFO - most recently declared runs first).
    execute_closes(&this->func_state, 0);
    execute_defers(&this->func_state, 0);
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
@@ -1086,6 +1088,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
    }
 
    LoopContext& loop = this->loop_stack.back();
+   // Both __close and defer handlers must run when jumping out of scope via break.
+   // Order: closes before defers (LIFO - most recently declared runs first).
+   execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
    loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -1100,6 +1105,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    }
 
    LoopContext& loop = this->loop_stack.back();
+   // Both __close and defer handlers must run when jumping out of scope via continue.
+   // Order: closes before defers (LIFO - most recently declared runs first).
+   execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
    loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});

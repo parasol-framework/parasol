@@ -28,8 +28,22 @@ local f <close> = io.open("file.txt")
 
 - **Phase 8 Bug Fix**: Fixed critical bug where `__close` was inserted in the wrong position in `MMDEF` macro (after `gc` instead of at the end). This caused all metamethod enum values after `gc` to shift, breaking the VM's metamethod lookup and causing all tests to fail with "unprotected error in call to Lua API". The fix moves `__close` to the end of `MMDEF` (after `tostring`, before `MMDEF_FFI` and `MMDEF_PAIRS`).
 - **Phase 8 Build Fix**: Identified that changes to `lj_obj.h` require regenerating `lj_vm.obj` since the VM assembly contains hardcoded metamethod table offsets. Must delete `build/agents/src/fluid/luajit-generated/buildvm.exe` and `lj_vm.obj` to force regeneration.
-- **Phase 8 Parser Tests**: Created `test_close.fluid` with comprehensive syntax tests verifying that the `<close>` attribute is correctly parsed in various contexts (nil values, false values, multiple variables, nested scopes, loops, break, continue, with defer).
-- **Phase 8 Status**: Parser correctly accepts `<close>` syntax. Current `bcemit_close()` implementation uses placeholder `BC_UCLO` bytecode. Full `__close` metamethod invocation requires implementing the bytecode sequence to lookup and call the metamethod at runtime.
+- **Phase 8 bcemit_close()**: Implemented full `bcemit_close()` bytecode emission:
+  1. Check if value is nil/false (skip - they can't have metatables)
+  2. Call `getmetatable(value)` to get metatable
+  3. Check if metatable is nil (skip)
+  4. Get `__close` from metatable using `BC_TGETS`
+  5. Check if `__close` is nil (skip)
+  6. Call `__close(value, nil)` - nil indicates normal scope exit
+  - Fixed BC_TGETS instruction format (uses ABC format, not AD format)
+- **Phase 8 break/continue Fix**: Added `execute_closes()` calls before `execute_defers()` in `emit_break_stmt()` and `emit_continue_stmt()` to ensure close handlers run on early loop exit.
+- **Phase 8 Tests**: Created comprehensive `test_close.fluid` with 15 tests covering:
+  - Basic close, self argument, nil error argument
+  - nil/false values, multiple close variables (LIFO order)
+  - Nested scopes, close with defer (close before defer)
+  - Function return, for loops, break, continue
+  - No metatable, metatable without __close, mixed values
+- **Phase 8 Status**: ✅ Complete - `__close` metamethod is fully functional for normal scope exit paths.
 
 ## Benefits for Parasol/Fluid
 

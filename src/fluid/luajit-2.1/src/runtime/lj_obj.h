@@ -557,7 +557,11 @@ enum {
   /* The following must be in ORDER ARITH. */ \
   _(add) _(sub) _(mul) _(div) _(mod) _(pow) _(unm) \
   /* The following are used in the standard libraries. */ \
-  _(metatable) _(tostring) _(close) MMDEF_FFI(_) MMDEF_PAIRS(_)
+  _(metatable) _(tostring) \
+  /* CRITICAL: New metamethods must be added at the END to avoid shifting indices. */ \
+  /* The MMDEF order determines MM_* enum values which are hardcoded in lj_vm.obj. */ \
+  /* Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt. */ \
+  _(close) MMDEF_FFI(_) MMDEF_PAIRS(_)
 
 typedef enum {
 #define MMENUM(name)   MM_##name,
