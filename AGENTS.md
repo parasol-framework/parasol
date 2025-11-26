@@ -24,6 +24,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
+- Statements can be tested on the commandline with `--statement`, e.g. `parasol --statement "print('Hello')"`
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
 
 **Verify:**
@@ -133,27 +134,14 @@ Tests are written in Fluid and executed with the Flute test runner:
 
 **Flute Test Command Format:**
 
-**For Windows (relative paths avoid path separator issues):**
-```bash
-cd src/network/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test_bind_address.fluid --gfx-driver=headless
-```
+Working example when working from the root folder (recommended):
 
-**For Linux:**
 ```bash
-cd "path/to/module/directory" && ../build/agents-install/parasol /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
-```
-
-**Example - Running SVG tests:**
-```bash
-cd "src/svg/tests" && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test_svg.fluid --gfx-driver=headless
+build/agents-install/parasol tools/flute.fluid file=src/network/tests/test_bind_address.fluid --log-warning
 ```
 
 **Key Requirements for Flute Tests:**
-- Must `cd` to the directory containing the test file
-- **Windows:** Use relative paths for executables (e.g., `../../../build/agents-install/parasol.exe`) to avoid Windows path separator issues in Bash
-- **Linux:** Use absolute paths for executables
-- Use absolute path for the test file parameter (`file=...`) - this works cross-platform
-- This ensures proper variable initialization (e.g., `glSVGFolder` for SVG tests)
+- Use absolute path for the test file parameter (`file=...`) if not running from the root folder.
 
 ### Code Generation
 
