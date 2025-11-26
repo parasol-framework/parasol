@@ -33,3 +33,6 @@ LJ_FUNCA TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
 LJ_FUNCA void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp);
 LJ_FUNCA void lj_meta_call(lua_State* L, TValue* func, TValue* top);
 LJ_FUNCA void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
+
+// Helper for __close metamethod during scope exit. Returns error code (0 = success).
+LJ_FUNC int lj_meta_close(lua_State* L, TValue* o, TValue* err);

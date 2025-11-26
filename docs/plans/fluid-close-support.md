@@ -44,6 +44,13 @@ local f <close> = io.open("file.txt")
   - Function return, for loops, break, continue
   - No metatable, metatable without __close, mixed values
 - **Phase 8 Status**: ✅ Complete - `__close` metamethod is fully functional for normal scope exit paths.
+- **Phase 9 Runtime Helper**: Added `lj_meta_close()` runtime function to `lj_meta.cpp`:
+  - Follows the same protected-call pattern as `gc_call_finalizer()` in `lj_gc.cpp`
+  - Uses `lj_vm_pcall()` for error protection during `__close` execution
+  - Accepts `TValue* err` parameter: nil for normal scope exit, error object for unwinding
+  - Returns error code (0 = success) instead of propagating errors
+  - Enables future Phase 10 implementation (error unwinding support)
+- **Phase 9 Status**: ✅ Complete - Runtime helper available for C code to call `__close` metamethods.
 
 ## Benefits for Parasol/Fluid
 
