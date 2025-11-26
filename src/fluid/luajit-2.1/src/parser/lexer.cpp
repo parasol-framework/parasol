@@ -445,61 +445,36 @@ namespace {
 //********************************************************************************************************************
 // Unicode operator recognition
 
-static bool is_unicode_operator_start(LexState *State) noexcept
-{
-   // Checks for UTF-8 sequences that represent operators.
+// Shared lookup function that matches Unicode operator sequences without consuming characters.
+// Returns the token type if matched, or 0 if no match. Also returns the byte length via output parameter.
 
-   if (State->c IS 0xC2 and State->p < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
-      if (second IS 0xAB or second IS 0xBB) return true;  // « »
-   }
-   if (State->c IS 0xC3 and State->p < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
-      if (second IS 0x97 or second IS 0xB7) return true;  // × ÷
-   }
-   if (State->c IS 0xE2 and State->p + 1 < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
-      uint8_t third = uint8_t(State->p[1]);
-      if (second IS 0x80 and (third IS 0xA5 or third IS 0xA6)) return true;  // ‥ …
-      if (second IS 0x81 and third IS 0x87) return true;  // ⁇
-      if (second IS 0x89 and (third IS 0xA0 or third IS 0xA4 or third IS 0xA5)) return true;  // ≠ ≤ ≥
-      if (second IS 0x96 and third IS 0xB7) return true;  // ▷
-      if (second IS 0xA7 and third IS 0xBA) return true;  // ⧺
-   }
-   return false;
-}
-
-static LexToken lex_unicode_operator(LexState *State) noexcept
+static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcept
 {
+   ByteLength = 0;
+
    // UTF-8 sequences starting with 0xC2 (Latin-1 Supplement)
-   // « (U+00AB) = C2 AB → TK_shl (left shift)
-   // » (U+00BB) = C2 BB → TK_shr (right shift)
    if (State->c IS 0xC2 and State->p < State->pe) {
       uint8_t second = uint8_t(State->p[0]);
-      LexToken tok = 0;
-      if (second IS 0xAB) tok = TK_shl;     // «
-      else if (second IS 0xBB) tok = TK_shr; // »
-
-      if (tok) {
-         State->mark_token_start();
-         lex_next(State); lex_next(State);
-         return tok;
+      if (second IS 0xAB) {
+         ByteLength = 2;
+         return TK_shl;     // «
+      }
+      else if (second IS 0xBB) {
+         ByteLength = 2;
+         return TK_shr;     // »
       }
    }
 
    // UTF-8 sequences starting with 0xC3 (Latin-1 Supplement continued)
-   // × (U+00D7) = C3 97 → '*' (multiplication sign)
-   // ÷ (U+00F7) = C3 B7 → '/' (division sign)
    if (State->c IS 0xC3 and State->p < State->pe) {
       uint8_t second = uint8_t(State->p[0]);
-      LexToken tok = 0;
-      if (second IS 0x97) tok = '*';      // ×
-      else if (second IS 0xB7) tok = '/'; // ÷
-
-      if (tok) {
-         State->mark_token_start();
-         lex_next(State); lex_next(State);
-         return tok;
+      if (second IS 0x97) {
+         ByteLength = 2;
+         return '*';      // ×
+      }
+      else if (second IS 0xB7) {
+         ByteLength = 2;
+         return '/';      // ÷
       }
    }
 
@@ -507,43 +482,70 @@ static LexToken lex_unicode_operator(LexState *State) noexcept
    if (State->c IS 0xE2 and State->p + 1 < State->pe) {
       uint8_t second = uint8_t(State->p[0]);
       uint8_t third = uint8_t(State->p[1]);
-      LexToken tok = 0;
 
-      // 0xE2 0x80 (General Punctuation)
-      // ‥ (U+2025) = E2 80 A5 → TK_concat (two dot leader)
-      // … (U+2026) = E2 80 A6 → TK_dots (horizontal ellipsis)
       if (second IS 0x80) {
-         if (third IS 0xA5) tok = TK_concat;     // ‥
-         else if (third IS 0xA6) tok = TK_dots;  // …
+         if (third IS 0xA5) {
+            ByteLength = 3;
+            return TK_concat;     // ‥
+         }
+         else if (third IS 0xA6) {
+            ByteLength = 3;
+            return TK_dots;       // …
+         }
       }
 
-      // 0xE2 0x81 (General Punctuation continued)
-      // ⁇ (U+2047) = E2 81 87 → TK_if_empty (null coalescing)
-      else if (second IS 0x81 and third IS 0x87) tok = TK_if_empty;  // ⁇
-
-      // 0xE2 0x89 (Mathematical operators)
-      // ≠ (U+2260) = E2 89 A0 → TK_ne
-      // ≤ (U+2264) = E2 89 A4 → TK_le
-      // ≥ (U+2265) = E2 89 A5 → TK_ge
-      else if (second IS 0x89) {
-         if (third IS 0xA0) tok = TK_ne;       // ≠
-         else if (third IS 0xA4) tok = TK_le;  // ≤
-         else if (third IS 0xA5) tok = TK_ge;  // ≥
+      if (second IS 0x81 and third IS 0x87) {
+         ByteLength = 3;
+         return TK_if_empty;  // ⁇
       }
 
-      // 0xE2 0x96 (Geometric Shapes)
-      // ▷ (U+25B7) = E2 96 B7 → TK_ternary_sep (ternary separator)
-      else if (second IS 0x96 and third IS 0xB7) tok = TK_ternary_sep;  // ▷
-
-      // 0xE2 0xA7 (Supplemental Mathematical Operators)
-      // ⧺ (U+29FA) = E2 A7 BA → TK_plusplus (increment)
-      else if (second IS 0xA7 and third IS 0xBA) tok = TK_plusplus;  // ⧺
-
-      if (tok) {
-         State->mark_token_start();
-         lex_next(State); lex_next(State); lex_next(State);
-         return tok;
+      if (second IS 0x89) {
+         if (third IS 0xA0) {
+            ByteLength = 3;
+            return TK_ne;       // ≠
+         }
+         else if (third IS 0xA4) {
+            ByteLength = 3;
+            return TK_le;        // ≤
+         }
+         else if (third IS 0xA5) {
+            ByteLength = 3;
+            return TK_ge;        // ≥
+         }
       }
+
+      if (second IS 0x96 and third IS 0xB7) {
+         ByteLength = 3;
+         return TK_ternary_sep;  // ▷
+      }
+      else if (second IS 0xA7 and third IS 0xBA) {
+         ByteLength = 3;
+         return TK_plusplus;     // ⧺
+      }
+   }
+
+   return 0;
+}
+
+inline bool is_unicode_operator_start(LexState *State) noexcept
+{
+   // Checks for UTF-8 sequences that represent operators (peek mode, doesn't consume characters).
+   int byte_length;
+   return match_unicode_operator(State, byte_length) != 0;
+}
+
+static LexToken lex_unicode_operator(LexState *State) noexcept
+{
+   // Lexes a Unicode operator and consumes the appropriate number of bytes.
+   int byte_length;
+   LexToken tok = match_unicode_operator(State, byte_length);
+
+   if (tok) {
+      State->mark_token_start();
+      for (int i = 0; i < byte_length; ++i) {
+         lex_next(State);
+      }
+      return tok;
    }
 
    return 0;
@@ -587,159 +589,161 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 
       // Token dispatch
       switch (State->c) {
-      case '\n':
-      case '\r':
-         lex_newline(State);
-         continue;
+         case '\n':
+         case '\r':
+            lex_newline(State);
+            continue;
 
-      case ' ':
-      case '\t':
-      case '\v':
-      case '\f':
-         lex_next(State);
-         continue;
+         case ' ':
+         case '\t':
+         case '\v':
+         case '\f':
+            lex_next(State);
+            continue;
 
-      case '-':
-         State->mark_token_start();
-         lex_next(State);
-         if (auto tok = check_compound(State, TK_csub)) return tok;
-         if (State->c != '-') return '-';
+         case '-':
+            State->mark_token_start();
+            lex_next(State);
+            if (auto tok = check_compound(State, TK_csub)) return tok;
+            if (State->c != '-') return '-';
 
-         lex_next(State);
-         if (State->c IS '[') {  // Long comment "--[=*[...]=*]"
-            int sep = lex_skipeq(State);
-            lj_buf_reset(&State->sb);  // lex_skipeq may dirty the buffer
-            if (sep >= 0) {
-               lex_longstring(State, nullptr, sep);
-               lj_buf_reset(&State->sb);
-               continue;
+            lex_next(State);
+            if (State->c IS '[') {  // Long comment "--[=*[...]=*]"
+               int sep = lex_skipeq(State);
+               lj_buf_reset(&State->sb);  // lex_skipeq may dirty the buffer
+               if (sep >= 0) {
+                  lex_longstring(State, nullptr, sep);
+                  lj_buf_reset(&State->sb);
+                  continue;
+               }
             }
-         }
 
-         // Short comment "--.*\n"
-         while (not lex_iseol(State->c) and State->c != LEX_EOF) lex_next(State);
-         continue;
+            // Short comment "--.*\n"
+            while (not lex_iseol(State->c) and State->c != LEX_EOF) lex_next(State);
+            continue;
 
-      case '[': {
-         State->mark_token_start();
-         int sep = lex_skipeq(State);
-         if (sep >= 0) {
-            lex_longstring(State, tv, sep);
-            return TK_string;
-         }
-         if (sep IS -1) return '[';
-         lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
-         continue;
-      }
-
-      case '+':
-         State->mark_token_start();
-         lex_next(State);
-         if (auto tok = check_compound(State, TK_cadd)) return tok;
-         if (auto tok = check_double(State, '+', TK_plusplus)) return tok;
-         return '+';
-
-      case '*':
-         State->mark_token_start();
-         lex_next(State);
-         if (auto tok = check_compound(State, TK_cmul)) return tok;
-         return '*';
-
-      case '/':
-         State->mark_token_start();
-         lex_next(State);
-         if (auto tok = check_compound(State, TK_cdiv)) return tok;
-         if (State->c IS '/') {  // Single-line comment "//"
-            while (State->c != '\n' and State->c != LEX_EOF) lex_next(State);
+         case '[': {
+            State->mark_token_start();
+            int sep = lex_skipeq(State);
+            if (sep >= 0) {
+               lex_longstring(State, tv, sep);
+               return TK_string;
+            }
+            if (sep IS -1) return '[';
+            lj_lex_error(State, TK_string, ErrMsg::XLDELIM);
             continue;
          }
-         return '/';
 
-      case '%':
-         State->mark_token_start();
-         lex_next(State);
-         if (auto tok = check_compound(State, TK_cmod)) return tok;
-         return '%';
-
-      case '!':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '=') { lex_next(State); return TK_ne; }
-         return '!';
-
-      case '=':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '=') { lex_next(State); return TK_eq; }
-         return '=';
-
-      case '<':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '=') { lex_next(State); return TK_le; }
-         if (State->c IS '<') { lex_next(State); return TK_shl; }
-         return '<';
-
-      case '>':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '=') { lex_next(State); return TK_ge; }
-         if (State->c IS '>') { lex_next(State); return TK_shr; }
-         return '>';
-
-      case '~':  // Deprecated: ~=
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '=') { lex_next(State); return TK_ne; }
-         return '~';
-
-      case ':':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '>') { lex_next(State); return TK_ternary_sep; }
-         return ':';
-
-      case '?':
-         State->mark_token_start();
-         lex_next(State);
-         if (State->c IS '.') { lex_next(State); return TK_safe_field; }
-         if (State->c IS '[') { lex_next(State); return TK_safe_index; }
-         if (State->c IS ':') { lex_next(State); return TK_safe_method; }
-         if (State->c IS '=') { lex_next(State); return TK_cif_empty; }
-         if (State->c IS '?') { lex_next(State); return TK_if_empty; }
-         return '?';
-
-      case '"':
-      case '\'':
-         State->mark_token_start();
-         lex_string(State, tv);
-         return TK_string;
-
-      case '.':
-         State->mark_token_start();
-         if (lex_savenext(State) IS '.') {
+         case '+':
+            State->mark_token_start();
             lex_next(State);
-            if (State->c IS '.') {
-               lex_next(State);
-               return TK_dots;  // ...
+            if (auto tok = check_compound(State, TK_cadd)) return tok;
+            if (auto tok = check_double(State, '+', TK_plusplus)) return tok;
+            return '+';
+
+         case '*':
+            State->mark_token_start();
+            lex_next(State);
+            if (auto tok = check_compound(State, TK_cmul)) return tok;
+            return '*';
+
+         case '/':
+            State->mark_token_start();
+            lex_next(State);
+            if (auto tok = check_compound(State, TK_cdiv)) return tok;
+            if (State->c IS '/') {  // Single-line comment "//"
+               while (State->c != '\n' and State->c != LEX_EOF) lex_next(State);
+               continue;
             }
-            if (State->c IS '=') { lex_next(State); return TK_cconcat; }
-            return TK_concat;  // ..
+            return '/';
+
+         case '%':
+            State->mark_token_start();
+            lex_next(State);
+            if (auto tok = check_compound(State, TK_cmod)) return tok;
+            return '%';
+
+         case '!':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '=') { lex_next(State); return TK_ne; }
+            return '!';
+
+         case '=':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '=') { lex_next(State); return TK_eq; }
+            return '=';
+
+         case '<':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '=') { lex_next(State); return TK_le; }
+            if (State->c IS '<') { lex_next(State); return TK_shl; }
+            return '<';
+
+         case '>':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '=') { lex_next(State); return TK_ge; }
+            if (State->c IS '>') { lex_next(State); return TK_shr; }
+            return '>';
+
+         case '~':  // Deprecated: ~=
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '=') { lex_next(State); return TK_ne; }
+            return '~';
+
+         case ':':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '>') { lex_next(State); return TK_ternary_sep; }
+            return ':';
+
+         case '?':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '.') { lex_next(State); return TK_safe_field; }
+            else if (State->c IS '[') { lex_next(State); return TK_safe_index; }
+            else if (State->c IS ':') { lex_next(State); return TK_safe_method; }
+            else if (State->c IS '=') { lex_next(State); return TK_cif_empty; }
+            else if (State->c IS '?') { lex_next(State); return TK_if_empty; }
+            else return '?';
+
+         case '"':
+         case '\'':
+            State->mark_token_start();
+            lex_string(State, tv);
+            return TK_string;
+
+         case '.':
+            State->mark_token_start();
+            if (lex_savenext(State) IS '.') {
+               lex_next(State);
+               if (State->c IS '.') {
+                  lex_next(State);
+                  return TK_dots;  // ...
+               }
+               else if (State->c IS '=') { lex_next(State); return TK_cconcat; }
+               else return TK_concat;  // ..
+            }
+            else if (not isdigit(State->c)) return '.';
+            else {
+               lex_number(State, tv);
+               return TK_number;
+            }
+
+         case LEX_EOF:
+            State->mark_token_start();
+            return TK_eof;
+
+         default: {
+            State->mark_token_start();
+            LexChar c = State->c;
+            lex_next(State);
+            return c;  // Single-char tokens
          }
-         if (not isdigit(State->c)) return '.';
-         lex_number(State, tv);
-         return TK_number;
-
-      case LEX_EOF:
-         State->mark_token_start();
-         return TK_eof;
-
-      default: {
-         State->mark_token_start();
-         LexChar c = State->c;
-         lex_next(State);
-         return c;  // Single-char tokens
-      }
       }
    }
 }
