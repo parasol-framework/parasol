@@ -12,6 +12,8 @@
 #include <string_view>
 #include <concepts>
 #include <type_traits>
+#include <variant>
+#include <ranges>
 
 // Expression kinds.
 
@@ -267,16 +269,41 @@ struct ExpDesc {
 };
 
 // Per-function linked list of scope blocks.
+// Design: FuncScope is always stack-allocated at call sites, so parent scopes naturally outlive
+// child scopes via C++ stack semantics. The raw `prev` pointer is intentional for zero-overhead
+// traversal without ownership concerns. Lifecycle is managed by ScopeGuard RAII wrapper.
 
 struct FuncScope {
-   FuncScope* prev;        // Link to outer scope.
+   FuncScope* prev;        // Link to outer scope (non-owning, stack guarantees validity).
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
    FuncScopeFlag flags;    // Scope flags.
 };
 
-// Sentinel GCstr* values for special variable names (not actual string pointers).
+// Type-safe special variable names to replace legacy sentinel pointers.
 
+enum class SpecialName : uint8_t { None, Break, Continue, Blank };
+
+struct VarName {
+   std::variant<SpecialName, GCstr*> value;
+
+   constexpr VarName() : value(SpecialName::None) {}
+   constexpr VarName(SpecialName special) : value(special) {}
+   constexpr VarName(GCstr* str) : value(str) {}
+
+   [[nodiscard]] constexpr bool is_special() const { return std::holds_alternative<SpecialName>(value); }
+   [[nodiscard]] constexpr bool is_break() const { return is_special() and std::get<SpecialName>(value) IS SpecialName::Break; }
+   [[nodiscard]] constexpr bool is_continue() const { return is_special() and std::get<SpecialName>(value) IS SpecialName::Continue; }
+   [[nodiscard]] constexpr bool is_blank() const { return is_special() and std::get<SpecialName>(value) IS SpecialName::Blank; }
+   [[nodiscard]] constexpr GCstr* as_string() const { return std::get<GCstr*>(value); }
+
+   [[nodiscard]] constexpr bool operator==(const VarName& other) const = default;
+   [[nodiscard]] constexpr bool operator==(GCstr* str) const {
+      return not is_special() and as_string() IS str;
+   }
+};
+
+// Legacy sentinel pointers for backward compatibility during transition.
 inline GCstr * const NAME_BREAK    = (GCstr*)uintptr_t(1);
 inline GCstr * const NAME_CONTINUE = (GCstr*)uintptr_t(2);
 inline GCstr * const NAME_BLANK    = (GCstr*)uintptr_t(3);
@@ -326,32 +353,71 @@ struct FuncState {
 
 // Binary and unary operators. ORDER OPR
 
-enum BinOpr : int {
-   OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  // ORDER ARITH
-   OPR_CONCAT,
-   OPR_NE, OPR_EQ,
-   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
-   OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
-   OPR_AND, OPR_OR, OPR_IF_EMPTY,
-   OPR_TERNARY,
-   OPR_NOBINOPR
+enum class BinOpr : int8_t {
+   Add, Sub, Mul, Div, Mod, Pow,  // ORDER ARITH
+   Concat,
+   NotEqual, Equal,
+   LessThan, GreaterEqual, LessEqual, GreaterThan,
+   BitAnd, BitOr, BitXor, ShiftLeft, ShiftRight,
+   LogicalAnd, LogicalOr, IfEmpty,
+   Ternary,
+   None
 };
+
+// Arithmetic offset helper for bytecode generation
+[[nodiscard]] constexpr int to_arith_offset(BinOpr op) {
+   return int(op) - int(BinOpr::Add);
+}
+
+// Operator classification helpers (non-template versions for parse_types.h)
+// Template versions with concept constraints are in parse_internal.h
+
+[[nodiscard]] constexpr bool is_arithmetic_op(BinOpr op) {
+   return op >= BinOpr::Add and op <= BinOpr::Pow;
+}
+
+[[nodiscard]] constexpr bool is_comparison_op(BinOpr op) {
+   return op >= BinOpr::NotEqual and op <= BinOpr::GreaterThan;
+}
+
+[[nodiscard]] constexpr bool is_bitwise_op(BinOpr op) {
+   return op >= BinOpr::BitAnd and op <= BinOpr::ShiftRight;
+}
+
+[[nodiscard]] constexpr bool is_logical_op(BinOpr op) {
+   return op IS BinOpr::LogicalAnd or op IS BinOpr::LogicalOr or op IS BinOpr::IfEmpty;
+}
 
 // Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
 
-static_assert((int)BC_ISGE - (int)BC_ISLT == (int)OPR_GE - (int)OPR_LT, "BC_ISGE offset mismatch");
-static_assert((int)BC_ISLE - (int)BC_ISLT == (int)OPR_LE - (int)OPR_LT, "BC_ISLE offset mismatch");
-static_assert((int)BC_ISGT - (int)BC_ISLT == (int)OPR_GT - (int)OPR_LT, "BC_ISGT offset mismatch");
-static_assert((int)BC_SUBVV - (int)BC_ADDVV == (int)OPR_SUB - (int)OPR_ADD, "BC_SUBVV offset mismatch");
-static_assert((int)BC_MULVV - (int)BC_ADDVV == (int)OPR_MUL - (int)OPR_ADD, "BC_MULVV offset mismatch");
-static_assert((int)BC_DIVVV - (int)BC_ADDVV == (int)OPR_DIV - (int)OPR_ADD, "BC_DIVVV offset mismatch");
-static_assert((int)BC_MODVV - (int)BC_ADDVV == (int)OPR_MOD - (int)OPR_ADD, "BC_MODVV offset mismatch");
+static_assert((int)BC_ISGE - (int)BC_ISLT == int(BinOpr::GreaterEqual) - int(BinOpr::LessThan), "BC_ISGE offset mismatch");
+static_assert((int)BC_ISLE - (int)BC_ISLT == int(BinOpr::LessEqual) - int(BinOpr::LessThan), "BC_ISLE offset mismatch");
+static_assert((int)BC_ISGT - (int)BC_ISLT == int(BinOpr::GreaterThan) - int(BinOpr::LessThan), "BC_ISGT offset mismatch");
+static_assert((int)BC_SUBVV - (int)BC_ADDVV == int(BinOpr::Sub) - int(BinOpr::Add), "BC_SUBVV offset mismatch");
+static_assert((int)BC_MULVV - (int)BC_ADDVV == int(BinOpr::Mul) - int(BinOpr::Add), "BC_MULVV offset mismatch");
+static_assert((int)BC_DIVVV - (int)BC_ADDVV == int(BinOpr::Div) - int(BinOpr::Add), "BC_DIVVV offset mismatch");
+static_assert((int)BC_MODVV - (int)BC_ADDVV == int(BinOpr::Mod) - int(BinOpr::Add), "BC_MODVV offset mismatch");
 
 // Return bytecode encoding for primitive constant.
 
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
    lj_assertX(e->k <= ExpKind::True, "Bad constant primitive");
    return e->k;
+}
+
+// Register manipulation helpers (non-template versions for parse_types.h)
+// Template versions with concept constraints are in parse_internal.h
+
+[[nodiscard]] constexpr bool is_valid_register(BCREG reg) {
+   return reg < NO_REG;
+}
+
+[[nodiscard]] constexpr bool is_valid_jump(BCPOS pos) {
+   return pos != NO_JMP;
+}
+
+[[nodiscard]] constexpr BCREG next_register(BCREG reg) {
+   return reg + 1;
 }
 
 [[nodiscard]] static inline bool tvhaskslot(const TValue* o) { return o->u32.hi == 0; }

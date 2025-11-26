@@ -34,21 +34,21 @@ static inline bool should_trace_operators(FuncState* fs)
 static CSTRING get_binop_name(BinOpr opr)
 {
    switch (opr) {
-      case OPR_ADD: return "+";
-      case OPR_SUB: return "-";
-      case OPR_MUL: return "*";
-      case OPR_DIV: return "/";
-      case OPR_MOD: return "%";
-      case OPR_POW: return "^";
-      case OPR_CONCAT: return "..";
-      case OPR_EQ: return "is";
-      case OPR_NE: return "!=";
-      case OPR_LT: return "<";
-      case OPR_LE: return "<=";
-      case OPR_GT: return ">";
-      case OPR_GE: return ">=";
-      case OPR_AND: return "and";
-      case OPR_OR: return "or";
+      case BinOpr::Add: return "+";
+      case BinOpr::Sub: return "-";
+      case BinOpr::Mul: return "*";
+      case BinOpr::Div: return "/";
+      case BinOpr::Mod: return "%";
+      case BinOpr::Pow: return "^";
+      case BinOpr::Concat: return "..";
+      case BinOpr::Equal: return "is";
+      case BinOpr::NotEqual: return "!=";
+      case BinOpr::LessThan: return "<";
+      case BinOpr::LessEqual: return "<=";
+      case BinOpr::GreaterThan: return ">";
+      case BinOpr::GreaterEqual: return ">=";
+      case BinOpr::LogicalAnd: return "and";
+      case BinOpr::LogicalOr: return "or";
       default: return "?";
    }
 }
@@ -97,7 +97,7 @@ static CSTRING get_expkind_name(ExpKind k)
    TValue o;
    lua_Number n;
    if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
-   n = lj_vm_foldarith(e1->number_value(), e2->number_value(), int(opr) - OPR_ADD);
+   n = lj_vm_foldarith(e1->number_value(), e2->number_value(), to_arith_offset(opr));
    setnumV(&o, n);
    if (tvisnan(&o) or tvismzero(&o)) [[unlikely]] return 0;  // Avoid NaN and -0 as consts.
    if (LJ_DUALNUM) {
@@ -125,11 +125,11 @@ static CSTRING get_expkind_name(ExpKind k)
    int32_t result;
 
    switch (opr) {
-      case OPR_BAND: result = k1 & k2; break;
-      case OPR_BOR:  result = k1 | k2; break;
-      case OPR_BXOR: result = k1 ^ k2; break;
-      case OPR_SHL:  result = k1 << (k2 & 31); break;  // Mask shift count to 0-31
-      case OPR_SHR:  result = int32_t(uint32_t(k1) >> (k2 & 31)); break;  // Unsigned right shift
+      case BinOpr::BitAnd: result = k1 & k2; break;
+      case BinOpr::BitOr:  result = k1 | k2; break;
+      case BinOpr::BitXor: result = k1 ^ k2; break;
+      case BinOpr::ShiftLeft:  result = k1 << (k2 & 31); break;  // Mask shift count to 0-31
+      case BinOpr::ShiftRight:  result = int32_t(uint32_t(k1) >> (k2 & 31)); break;  // Unsigned right shift
       default: return 0;
    }
 
@@ -174,7 +174,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
    if (foldarith(opr, e1, e2)) return;
 
-   if (opr IS OPR_POW) {
+   if (opr IS BinOpr::Pow) {
       op = BC_POW;
       ExpressionValue e2_value(fs, *e2);
       rc = e2_value.discharge_to_any_reg(allocator);
@@ -184,7 +184,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       *e1 = e1_value.legacy();
    }
    else {
-      op = opr - OPR_ADD + BC_ADDVV;
+      op = to_arith_offset(opr) + BC_ADDVV;
       // Must discharge 2nd operand first since ExpKind::Indexed might free regs.
       ExpressionValue e2_toval(fs, *e2);
       e2_toval.to_val();
@@ -235,8 +235,8 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
    e1_toval_pre.to_val();
    *e1 = e1_toval_pre.legacy();
-   if (opr IS OPR_EQ or opr IS OPR_NE) {
-      BCOp op = opr IS OPR_EQ ? BC_ISEQV : BC_ISNEV;
+   if (opr IS BinOpr::Equal or opr IS BinOpr::NotEqual) {
+      BCOp op = opr IS BinOpr::Equal ? BC_ISEQV : BC_ISNEV;
       BCReg ra;
 
       if (e1->is_constant()) { e1 = e2; e2 = eret; }  // Need constant in 2nd arg.
@@ -271,7 +271,7 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
       }
    }
    else {
-      uint32_t op = opr - OPR_LT + BC_ISLT;
+      uint32_t op = (int(opr) - int(BinOpr::LessThan)) + BC_ISLT;
       BCReg ra, rd;
       if ((op - BC_ISLT) & 1) {  // GT -> LT, GE -> LE
          e1 = e2; e2 = eret;  // Swap operands.
@@ -650,7 +650,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
    RegisterAllocator local_alloc(this->func_state);
    ExpDesc *e = left.raw();
 
-   if (opr IS OPR_EQ or opr IS OPR_NE) {
+   if (opr IS BinOpr::Equal or opr IS BinOpr::NotEqual) {
       // Comparison operators (EQ, NE): discharge to register unless it's a constant/jump
       if (not e->is_constant_nojump()) {
          ExpressionValue e_value(this->func_state, *e);
@@ -711,8 +711,8 @@ void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ExpDesc ri
       return;
    }
 
-   CSTRING op_name = priority[opr].name;
-   size_t op_name_len = priority[opr].name_len;
+   CSTRING op_name = priority[int(opr)].name;
+   size_t op_name_len = priority[int(opr)].name_len;
 
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: calling bit.%.*s, left kind=%s, right kind=%s",

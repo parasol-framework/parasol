@@ -77,8 +77,7 @@ void LexState::var_remove(BCREG tolevel)
 
 static std::optional<BCREG> var_lookup_local(FuncState *fs, GCstr *n)
 {
-   int i;
-   for (i = fs->nactvar - 1; i >= 0; i--) {
+   for (int i : std::views::iota(0, int(fs->nactvar)) | std::views::reverse) {
       GCstr *varname = strref(fs->var_get(i).name);
       if (varname IS NAME_BLANK) [[unlikely]]
          continue;  // Skip blank identifiers.

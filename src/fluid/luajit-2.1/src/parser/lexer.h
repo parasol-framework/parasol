@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <deque>
 #include <optional>
@@ -20,29 +22,162 @@ struct SourceSpan {
    size_t offset = 0;
 };
 
-// Lua lexer tokens.
-#define TKDEF(_, __) \
-  _(and) _(break) _(continue) _(defer) _(do) _(else) _(elseif) _(end) _(false) \
-  _(for) _(function) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
-  _(repeat) _(return) _(then) _(true) _(until) _(while) \
-  __(if_empty, ?\?) __(safe_field, ?.) __(safe_index, ?[) __(safe_method, ?:) \
-  __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
-  __(shl, <<) __(shr, >>) __(ternary_sep, :>) \
-  __(number, <number>) __(name, <name>) __(string, <string>) \
-  __(cadd, +=) __(csub, -=) __(cmul, *=) __(cdiv, /=) __(cconcat, ..=) __(cmod, %=) \
-  __(cif_empty, ?=) \
-  __(plusplus, ++) \
-  __(eof, <eof>)
+//********************************************************************************************************************
+// Token definitions using C++20 constexpr structures.
+// Replaces the legacy X-Macro pattern for improved debuggability and IDE support.
 
+struct TokenDefinition {
+   std::string_view name;    // Token identifier (e.g., "and", "if_empty")
+   std::string_view symbol;  // Display symbol (e.g., "and", "??")
+   bool reserved;            // True for reserved words that cannot be used as identifiers
+
+   [[nodiscard]] constexpr bool is_reserved() const noexcept { return reserved; }
+};
+
+// Complete token definitions array. Order defines enum values starting from TK_OFS (256).
+// Reserved words must appear first, ending with "while", to correctly compute TK_RESERVED.
+inline constexpr std::array TOKEN_DEFINITIONS = {
+   // Reserved words (name matches symbol) - these must come first
+   TokenDefinition{"and",      "and",      true},
+   TokenDefinition{"break",    "break",    true},
+   TokenDefinition{"continue", "continue", true},
+   TokenDefinition{"defer",    "defer",    true},
+   TokenDefinition{"do",       "do",       true},
+   TokenDefinition{"else",     "else",     true},
+   TokenDefinition{"elseif",   "elseif",   true},
+   TokenDefinition{"end",      "end",      true},
+   TokenDefinition{"false",    "false",    true},
+   TokenDefinition{"for",      "for",      true},
+   TokenDefinition{"function", "function", true},
+   TokenDefinition{"if",       "if",       true},
+   TokenDefinition{"in",       "in",       true},
+   TokenDefinition{"is",       "is",       true},
+   TokenDefinition{"local",    "local",    true},
+   TokenDefinition{"nil",      "nil",      true},
+   TokenDefinition{"not",      "not",      true},
+   TokenDefinition{"or",       "or",       true},
+   TokenDefinition{"repeat",   "repeat",   true},
+   TokenDefinition{"return",   "return",   true},
+   TokenDefinition{"then",     "then",     true},
+   TokenDefinition{"true",     "true",     true},
+   TokenDefinition{"until",    "until",    true},
+   TokenDefinition{"while",    "while",    true},  // Last reserved word
+
+   // Non-reserved tokens with explicit symbols
+   TokenDefinition{"if_empty",    "??",       false},
+   TokenDefinition{"safe_field",  "?.",       false},
+   TokenDefinition{"safe_index",  "?[",       false},
+   TokenDefinition{"safe_method", "?:",       false},
+   TokenDefinition{"concat",      "..",       false},
+   TokenDefinition{"dots",        "...",      false},
+   TokenDefinition{"eq",          "==",       false},
+   TokenDefinition{"ge",          ">=",       false},
+   TokenDefinition{"le",          "<=",       false},
+   TokenDefinition{"ne",          "~=",       false},
+   TokenDefinition{"shl",         "<<",       false},
+   TokenDefinition{"shr",         ">>",       false},
+   TokenDefinition{"ternary_sep", ":>",       false},
+   TokenDefinition{"number",      "<number>", false},
+   TokenDefinition{"name",        "<name>",   false},
+   TokenDefinition{"string",      "<string>", false},
+   TokenDefinition{"cadd",        "+=",       false},
+   TokenDefinition{"csub",        "-=",       false},
+   TokenDefinition{"cmul",        "*=",       false},
+   TokenDefinition{"cdiv",        "/=",       false},
+   TokenDefinition{"cconcat",     "..=",      false},
+   TokenDefinition{"cmod",        "%=",       false},
+   TokenDefinition{"cif_empty",   "?=",       false},
+   TokenDefinition{"plusplus",    "++",       false},
+   TokenDefinition{"eof",         "<eof>",    false},
+};
+
+// Compile-time count of reserved words
+inline constexpr size_t generate_reserved_count() noexcept {
+   size_t count = 0;
+   for (const auto& def : TOKEN_DEFINITIONS) {
+      if (def.is_reserved()) ++count;
+   }
+   return count;
+}
+
+// Compile-time token symbol lookup by index
+[[nodiscard]] inline constexpr std::string_view token_symbol(size_t Index) noexcept {
+   if (Index < TOKEN_DEFINITIONS.size()) {
+      return TOKEN_DEFINITIONS[Index].symbol;
+   }
+   return "<invalid>";
+}
+
+// Compile-time token name lookup by index
+[[nodiscard]] inline constexpr std::string_view token_name(size_t Index) noexcept {
+   if (Index < TOKEN_DEFINITIONS.size()) {
+      return TOKEN_DEFINITIONS[Index].name;
+   }
+   return "<invalid>";
+}
+
+// Token enum values. Order must match TOKEN_DEFINITIONS array.
+// Note: TK_OFS is the offset base, and token values start at TK_OFS + 1.
 enum {
    TK_OFS = 256,
-#define TKENUM1(name)      TK_##name,
-#define TKENUM2(name, sym)   TK_##name,
-   TKDEF(TKENUM1, TKENUM2)
-#undef TKENUM1
-#undef TKENUM2
+   TK_and,          // = 257
+   TK_break,
+   TK_continue,
+   TK_defer,
+   TK_do,
+   TK_else,
+   TK_elseif,
+   TK_end,
+   TK_false,
+   TK_for,
+   TK_function,
+   TK_if,
+   TK_in,
+   TK_is,
+   TK_local,
+   TK_nil,
+   TK_not,
+   TK_or,
+   TK_repeat,
+   TK_return,
+   TK_then,
+   TK_true,
+   TK_until,
+   TK_while,        // Last reserved word
+   TK_if_empty,
+   TK_safe_field,
+   TK_safe_index,
+   TK_safe_method,
+   TK_concat,
+   TK_dots,
+   TK_eq,
+   TK_ge,
+   TK_le,
+   TK_ne,
+   TK_shl,
+   TK_shr,
+   TK_ternary_sep,
+   TK_number,
+   TK_name,
+   TK_string,
+   TK_cadd,
+   TK_csub,
+   TK_cmul,
+   TK_cdiv,
+   TK_cconcat,
+   TK_cmod,
+   TK_cif_empty,
+   TK_plusplus,
+   TK_eof,
    TK_RESERVED = TK_while - TK_OFS
 };
+
+// Static assertions to verify enum and TOKEN_DEFINITIONS stay in sync.
+// Token values start at TK_OFS + 1 (e.g., TK_and = 257).
+static_assert(TK_eof - TK_OFS == TOKEN_DEFINITIONS.size(),
+   "TOKEN_DEFINITIONS array size must match enum token count");
+static_assert(TK_RESERVED == generate_reserved_count(),
+   "Reserved word count mismatch between enum and TOKEN_DEFINITIONS");
 
 typedef int LexChar;   //  Lexical character. Unsigned ext. from char.
 typedef int LexToken;   //  Lexical token.
@@ -70,7 +205,7 @@ typedef struct VarInfo {
 
 struct FuncScope;
 struct ExpDesc;
-enum BinOpr : int;
+enum class BinOpr : int8_t;
 
 void lj_reserve_words(lua_State *);
 
