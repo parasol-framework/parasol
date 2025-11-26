@@ -30,9 +30,10 @@ concept ConstExpressionDescriptor = ExpressionDescriptor<T> and requires(const T
 
 // RegisterType: Concept for bytecode register types
 // Ensures type is compatible with BCREG operations.
+// Accepts both raw BCREG and strong BCReg types.
 
 template<typename T>
-concept RegisterType = std::same_as<T, BCREG> or std::is_convertible_v<T, BCREG>;
+concept RegisterType = std::same_as<T, BCREG> or std::same_as<T, BCReg> or std::is_convertible_v<T, BCREG>;
 
 // UnsignedRegisterType: Stricter concept for unsigned register operations
 
@@ -40,14 +41,16 @@ template<typename T>
 concept UnsignedRegisterType = RegisterType<T> and std::unsigned_integral<T>;
 
 // PositionType: Concept for bytecode position types
+// Accepts both raw BCPOS and strong BCPos types.
 
 template<typename T>
-concept PositionType = std::same_as<T, BCPOS> or std::is_convertible_v<T, BCPOS>;
+concept PositionType = std::same_as<T, BCPOS> or std::same_as<T, BCPos> or std::is_convertible_v<T, BCPOS>;
 
 // IndexType: Concept for variable/upvalue index types
+// Accepts both raw VarIndex and strong VarSlot types.
 
 template<typename T>
-concept IndexType = std::same_as<T, VarIndex> or std::same_as<T, MSize> or
+concept IndexType = std::same_as<T, VarIndex> or std::same_as<T, VarSlot> or std::same_as<T, MSize> or
                     (std::unsigned_integral<T> and sizeof(T) >= sizeof(VarIndex));
 
 // FunctionState: Concept for function state pointers
@@ -137,5 +140,10 @@ concept ConstExpressionPredicate = requires(F f, const ExpDesc* e) {
 
 static_assert(ExpressionDescriptor<ExpDesc>, "ExpDesc must satisfy ExpressionDescriptor concept");
 static_assert(RegisterType<BCREG>, "BCREG must satisfy RegisterType concept");
+static_assert(RegisterType<BCReg>, "BCReg must satisfy RegisterType concept");
+static_assert(PositionType<BCPOS>, "BCPOS must satisfy PositionType concept");
+static_assert(PositionType<BCPos>, "BCPos must satisfy PositionType concept");
+static_assert(IndexType<VarIndex>, "VarIndex must satisfy IndexType concept");
+static_assert(IndexType<VarSlot>, "VarSlot must satisfy IndexType concept");
 static_assert(BytecodeOpcode<BCOp>, "BCOp must satisfy BytecodeOpcode concept");
 static_assert(FunctionState<FuncState*>, "FunctionState* must satisfy FunctionState concept");

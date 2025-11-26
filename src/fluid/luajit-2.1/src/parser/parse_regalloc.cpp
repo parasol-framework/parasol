@@ -18,80 +18,80 @@ inline bool is_register_key(int32_t Aux)
 //********************************************************************************************************************
 // Register allocation methods
 
-void RegisterAllocator::bump(BCREG Count)
+void RegisterAllocator::bump(BCReg Count)
 {
-   BCREG target = this->func_state->freereg + Count;
+   BCREG target = this->func_state->freereg + Count.raw();
    if (target > this->func_state->framesize) {
       if (target >= LJ_MAX_SLOTS) this->func_state->ls->err_syntax(ErrMsg::XSLOTS);
       this->func_state->framesize = uint8_t(target);
    }
 }
 
-BCREG RegisterAllocator::reserve_slots(BCREG Count)
+BCReg RegisterAllocator::reserve_slots(BCReg Count)
 {
-   if (not Count) return this->func_state->freereg;
+   if (not Count.raw()) return BCReg(this->func_state->freereg);
 
-   BCREG start = this->func_state->freereg;
+   BCReg start = BCReg(this->func_state->freereg);
    this->bump(Count);
-   this->func_state->freereg += Count;
+   this->func_state->freereg += Count.raw();
    this->trace_allocation(start, Count, "reserve_slots");
    return start;
 }
 
-RegisterSpan RegisterAllocator::reserve_span(BCREG Count)
+RegisterSpan RegisterAllocator::reserve_span(BCReg Count)
 {
-   if (not Count) return RegisterSpan();
+   if (not Count.raw()) return RegisterSpan();
 
-   BCREG start = this->reserve_slots(Count);
-   return RegisterSpan(this, start, Count, start + Count);
+   BCReg start = this->reserve_slots(Count);
+   return RegisterSpan(this, start, Count, start + Count.raw());
 }
 
-RegisterSpan RegisterAllocator::reserve_span_soft(BCREG Count)
+RegisterSpan RegisterAllocator::reserve_span_soft(BCReg Count)
 {
-   if (not Count) return RegisterSpan();
+   if (not Count.raw()) return RegisterSpan();
 
-   BCREG start = this->reserve_slots(Count);
+   BCReg start = this->reserve_slots(Count);
    // ExpectedTop=0 marks this as a "soft" span: the allocator will not enforce
    // strict RAII checks or adjust freereg when the span is released. Callers
    // using soft spans are responsible for collapsing freereg themselves (for
    // example, by restoring freereg to nactvar at the end of an assignment).
-   return RegisterSpan(this, start, Count, 0);
+   return RegisterSpan(this, start, Count, BCReg(0));
 }
 
-void RegisterAllocator::release_span_internal(BCREG Start, BCREG Count, BCREG ExpectedTop)
+void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)
 {
-   if (not Count) return;
+   if (not Count.raw()) return;
 
-   if (Start >= this->func_state->nactvar) {
+   if (Start.raw() >= this->func_state->nactvar) {
       // Soft spans (ExpectedTop == 0) are used in contexts where the caller
       // explicitly manages freereg (e.g. assignment emitters that duplicate
       // table operands and later restore freereg to nactvar). For these spans
       // we do not enforce RAII invariants or adjust freereg here.
-      if (ExpectedTop IS 0) {
+      if (ExpectedTop.raw() IS 0) {
          this->trace_release(Start, Count, "release_span_internal_soft");
          return;
       }
 
-      if (this->func_state->freereg > ExpectedTop) {
+      if (this->func_state->freereg > ExpectedTop.raw()) {
          pf::Log("Parser").warning("Register depth mismatch, %d != %d, function @ line %d - "
             "RegisterSpan was created with freereg=%d but released as %d. "
             "This indicates intermediate operations modified freereg or cleanup is out of order.",
-            ExpectedTop, this->func_state->freereg, this->func_state->linedefined,
-            ExpectedTop, this->func_state->freereg);
+            ExpectedTop.raw(), this->func_state->freereg, this->func_state->linedefined,
+            ExpectedTop.raw(), this->func_state->freereg);
       }
 
       // Check for span size mismatch
-      if (Start + Count != ExpectedTop) {
+      if (Start.raw() + Count.raw() != ExpectedTop.raw()) {
          pf::Log("Parser").warning("Span size mismatch: start=%u count=%u expected_top=%u at line %d",
-            Start, Count, ExpectedTop, this->func_state->linedefined);
+            Start.raw(), Count.raw(), ExpectedTop.raw(), this->func_state->linedefined);
       }
 
-      this->func_state->freereg = ExpectedTop - Count;
+      this->func_state->freereg = ExpectedTop.raw() - Count.raw();
 
       // Check that after release, freereg equals the span start
-      if (this->func_state->freereg != Start) {
+      if (this->func_state->freereg != Start.raw()) {
          pf::Log("Parser").warning("Bad regfree: freereg=%u should equal start=%u at line %d",
-            this->func_state->freereg, Start, this->func_state->linedefined);
+            this->func_state->freereg, Start.raw(), this->func_state->linedefined);
       }
 
       this->trace_release(Start, Count, "release_span_internal");
@@ -109,39 +109,39 @@ void RegisterAllocator::release(RegisterSpan &Span)
 void RegisterAllocator::release(AllocatedRegister &Handle)
 {
    if (Handle.allocator_) {
-      this->release_span_internal(Handle.index_, 1, Handle.expected_top_);
+      this->release_span_internal(Handle.index_, BCReg(1), Handle.expected_top_);
       Handle.allocator_ = nullptr;
    }
 }
 
-void RegisterAllocator::release_register(BCREG Register)
+void RegisterAllocator::release_register(BCReg Register)
 {
-   BCREG expected_top = Register + 1;
-   if (Register >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
-      this->release_span_internal(Register, 1, expected_top);
+   BCReg expected_top = Register + BCREG(1);
+   if (Register.raw() >= this->func_state->nactvar and expected_top.raw() IS this->func_state->freereg) {
+      this->release_span_internal(Register, BCReg(1), expected_top);
    }
 }
 
 void RegisterAllocator::release_expression(ExpDesc *Expression)
 {
    if (Expression->k IS ExpKind::NonReloc) {
-      BCREG reg = Expression->u.s.info;
-      BCREG expected_top = reg + 1;
-      if (reg >= this->func_state->nactvar and expected_top IS this->func_state->freereg) {
-         this->release_span_internal(reg, 1, expected_top);
+      BCReg reg = BCReg(Expression->u.s.info);
+      BCReg expected_top = reg + BCREG(1);
+      if (reg.raw() >= this->func_state->nactvar and expected_top.raw() IS this->func_state->freereg) {
+         this->release_span_internal(reg, BCReg(1), expected_top);
       }
    }
 }
 
-void RegisterAllocator::collapse_freereg(BCREG ResultReg)
+void RegisterAllocator::collapse_freereg(BCReg ResultReg)
 {
-   BCREG target = ResultReg + 1;
-   if (target < this->func_state->nactvar) target = BCREG(this->func_state->nactvar);
+   BCREG target = ResultReg.raw() + 1;
+   if (target < this->func_state->nactvar) target = this->func_state->nactvar;
 
    while (this->func_state->freereg > target) {
       BCREG previous = this->func_state->freereg;
       BCREG top = previous - 1;
-      this->release_register(top);
+      this->release_register(BCReg(top));
       if (this->func_state->freereg IS previous) break;
    }
 }
@@ -167,9 +167,9 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
       // where additional temporaries are allocated above the duplicated base
       // and later dropped by restoring freereg.
 
-      copies.reserved = this->reserve_span_soft(duplicate_count);
+      copies.reserved = this->reserve_span_soft(BCReg(duplicate_count));
 
-      BCREG base_reg = copies.reserved.start();
+      BCREG base_reg = copies.reserved.start().raw();
       bcemit_AD(this->func_state, BC_MOV, base_reg, Expression.u.s.info);
       copies.duplicated.u.s.info = base_reg;
 
@@ -189,7 +189,7 @@ TableOperandCopies RegisterAllocator::duplicate_table_operands(const ExpDesc &Ex
 inline void bcreg_bump(FuncState *fs, BCREG n)
 {
    RegisterAllocator allocator(fs);
-   allocator.bump(n);
+   allocator.bump(BCReg(n));
 }
 
 //********************************************************************************************************************
@@ -198,7 +198,7 @@ inline void bcreg_bump(FuncState *fs, BCREG n)
 inline void bcreg_reserve(FuncState *fs, BCREG n)
 {
    RegisterAllocator allocator(fs);
-   allocator.reserve(n);
+   allocator.reserve(BCReg(n));
 }
 
 //********************************************************************************************************************
@@ -207,7 +207,7 @@ inline void bcreg_reserve(FuncState *fs, BCREG n)
 inline void bcreg_free(FuncState *fs, BCREG reg)
 {
    RegisterAllocator allocator(fs);
-   allocator.release_register(reg);
+   allocator.release_register(BCReg(reg));
 }
 
 //********************************************************************************************************************
@@ -628,20 +628,20 @@ void RegisterAllocator::verify_no_leaks(const char* Context) const
    }
 }
 
-void RegisterAllocator::trace_allocation(BCREG Start, BCREG Count, const char* Context) const
+void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* Context) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
       pf::Log("Parser").msg("Regalloc: reserve R%d..R%d (%d slots) at %s",
-         int(Start), int(Start + Count - 1), int(Count), Context);
+         int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
    }
 }
 
-void RegisterAllocator::trace_release(BCREG Start, BCREG Count, const char* Context) const
+void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Context) const
 {
    auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
       pf::Log("Parser").msg("Regalloc: release R%d..R%d (%d slots) at %s",
-         int(Start), int(Start + Count - 1), int(Count), Context);
+         int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
    }
 }

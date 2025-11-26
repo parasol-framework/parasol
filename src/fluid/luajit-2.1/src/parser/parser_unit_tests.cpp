@@ -1211,7 +1211,7 @@ static bool test_ast_statement_matrix(pf::Log& log)
       { "control_flow_ladder", R"(
 local total = 0
 for i = 1, 4 do
-   if i % 2 IS 0 then
+   if i % 2 is 0 then
       total += i
    elseif i > 3 then
       break
@@ -1219,7 +1219,7 @@ for i = 1, 4 do
       total = total + 1
    end
 
-   if i IS 3 then
+   if i is 3 then
       continue
    end
 
@@ -1234,7 +1234,7 @@ for key, value in pairs(map) do
    defer
       sum = sum + value
    end
-   if key IS 'beta' then
+   if key is 'beta' then
       sum += value
    else
       sum = sum + value

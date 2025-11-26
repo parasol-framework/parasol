@@ -254,12 +254,12 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    // Release in LIFO order (highest register first) to maximise the chance of
    // collapsing freereg when both operands are adjacent temporaries.
    if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
-      allocator.release_register(cmp_reg_b);
-      allocator.release_register(cmp_reg_a);
+      allocator.release_register(BCReg(cmp_reg_b));
+      allocator.release_register(BCReg(cmp_reg_a));
    }
    else {
-      allocator.release_register(cmp_reg_a);
-      if (cmp_reg_b != NO_REG) allocator.release_register(cmp_reg_b);
+      allocator.release_register(BCReg(cmp_reg_a));
+      if (cmp_reg_b != NO_REG) allocator.release_register(BCReg(cmp_reg_b));
    }
 
    // Produce a Jmp expression as the result of the comparison, preserving
@@ -372,9 +372,9 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    }
    else base = fs->freereg;
 
-   allocator.reserve(1);  // Reserve for callee
-   if (LJ_FR2) allocator.reserve(1);
-   allocator.reserve(2);  // Reserve for arguments
+   allocator.reserve(BCReg(1));  // Reserve for callee
+   if (LJ_FR2) allocator.reserve(BCReg(1));
+   allocator.reserve(BCReg(2));  // Reserve for arguments
    fs->assert(!fname.empty(), "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
@@ -389,8 +389,8 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    BCREG base = fs->freereg;
    BCREG arg_reg = base + 1 + LJ_FR2;
 
-   allocator.reserve(1);  // Reserve for callee
-   if (LJ_FR2) allocator.reserve(1);  // Reserve for frame link on x64
+   allocator.reserve(BCReg(1));  // Reserve for callee
+   if (LJ_FR2) allocator.reserve(BCReg(1));  // Reserve for frame link on x64
 
    // Place argument in register.
    ExpressionValue arg_toval(fs, *arg);
@@ -464,7 +464,7 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          return;
       }
       else if (e->k IS ExpKind::Relocable) {
-         allocator.reserve(1);
+         allocator.reserve(BCReg(1));
          setbc_a(bcptr(fs, e), fs->freereg - 1);
          e->u.s.info = fs->freereg - 1;
          e->k = ExpKind::NonReloc;
@@ -813,7 +813,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
    else if (left_desc->is_constant() and not left_desc->is_falsey()) {
       // Truthy constant - load to register and skip RHS
       RegisterAllocator local_alloc(this->func_state);
-      local_alloc.reserve(1);
+      local_alloc.reserve(BCReg(1));
       expr_toreg_nobranch(this->func_state, left_desc, this->func_state->freereg - 1);
       pc = bcemit_jmp(this->func_state);
    }
@@ -866,7 +866,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          // Mark that we need to preserve LHS value and reserve register for RHS
          BCREG rhs_reg = this->func_state->freereg;
          ExprFlag saved_flags = left_desc->flags;
-         local_alloc.reserve(1);
+         local_alloc.reserve(BCReg(1));
          left_desc->init(ExpKind::NonReloc, reg);
          left_desc->u.s.aux = rhs_reg;
          left_desc->flags = saved_flags | ExprFlag::HasRhsReg;
@@ -915,7 +915,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
       BCREG dest_reg;
       if (rhs_reg IS NO_REG) {
          dest_reg = fs->freereg;
-         local_alloc.reserve(1);
+         local_alloc.reserve(BCReg(1));
       }
       else {
          dest_reg = rhs_reg;
@@ -1068,7 +1068,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Reserve register for result
    BCREG dest = fs->freereg;
-   local_alloc.reserve(1);
+   local_alloc.reserve(BCReg(1));
 
    // Value is truthy - load true
    bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::True));

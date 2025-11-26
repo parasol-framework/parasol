@@ -31,7 +31,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       if (src < fs->nactvar) {
          RegisterAllocator allocator(fs);
          BCREG dst = fs->freereg;
-         allocator.reserve(1);
+         allocator.reserve(BCReg(1));
          bcemit_AD(fs, BC_MOV, dst, src);
          setbc_a(ins, dst);
       }
@@ -43,7 +43,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       if (top < fs->nactvar) {
          BCREG dst = fs->freereg;
          RegisterAllocator allocator(fs);
-         allocator.reserve(nres);
+         allocator.reserve(BCReg(nres));
          for (BCREG i = 0; i < nres; ++i) {
             bcemit_AD(fs, BC_MOV, dst + i, base + i);
          }
@@ -56,7 +56,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       if (base < fs->nactvar) {
          BCREG dst = fs->freereg;
          RegisterAllocator allocator(fs);
-         allocator.reserve(nfixed);
+         allocator.reserve(BCReg(nfixed));
          for (BCREG i = 0; i < nfixed; ++i) {
             bcemit_AD(fs, BC_MOV, dst + i, base + i);
          }
@@ -79,7 +79,7 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
       extra++;  // Compensate for the ExpKind::Call itself.
       if (extra < 0) extra = 0;
       setbc_b(bcptr(fs, Expr), extra + 1);  // Fixup call results.
-      if (extra > 1) allocator.reserve(BCREG(extra) - 1);
+      if (extra > 1) allocator.reserve(BCReg(BCREG(extra) - 1));
    }
    else {
       if (Expr->k != ExpKind::Void) {
@@ -89,7 +89,7 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
       }
       if (extra > 0) {  // Leftover LHS are set to nil.
          BCREG reg = fs->freereg;
-         allocator.reserve(BCREG(extra));
+         allocator.reserve(BCReg(BCREG(extra)));
          bcemit_nil(fs, reg, BCREG(extra));
       }
    }
@@ -301,8 +301,8 @@ static void release_indexed_original(FuncState& func_state, const ExpDesc& origi
    if (original.k IS ExpKind::Indexed) {
       RegisterAllocator allocator(&func_state);
       uint32_t orig_aux = original.u.s.aux;
-      if (is_register_key(orig_aux)) allocator.release_register(BCREG(orig_aux));
-      allocator.release_register(BCREG(original.u.s.info));
+      if (is_register_key(orig_aux)) allocator.release_register(BCReg(orig_aux));
+      allocator.release_register(BCReg(original.u.s.info));
    }
 }
 
@@ -560,7 +560,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    variable.init(ExpKind::Local, slot);
    variable.u.s.aux = this->func_state.varmap[slot];
    RegisterAllocator allocator(&this->func_state);
-   allocator.reserve(1);
+   allocator.reserve(BCReg(1));
    this->lex_state.var_add(1);
 
    auto function_value = this->emit_function_expr(*payload.function);
@@ -786,7 +786,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    else {
       RegisterAllocator allocator(fs);
       bcemit_AD(fs, BC_KSHORT, fs->freereg, 1);
-      allocator.reserve(1);
+      allocator.reserve(BCReg(1));
    }
 
    this->lex_state.var_add(3);
@@ -806,7 +806,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       ScopeGuard guard(fs, &visible_scope, FuncScopeFlag::None);
       this->lex_state.var_add(1);
       RegisterAllocator allocator(fs);
-      allocator.reserve(1);
+      allocator.reserve(BCReg(1));
       std::array<BlockBinding, 1> loop_bindings{};
       std::span<const BlockBinding> binding_span;
       if (payload.control.symbol and not payload.control.is_blank) {
@@ -881,7 +881,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       BCREG visible = nvars - 3;
       this->lex_state.var_add(visible);
       RegisterAllocator allocator(fs);
-      allocator.reserve(visible);
+      allocator.reserve(BCReg(visible));
       std::vector<BlockBinding> loop_bindings;
       loop_bindings.reserve(visible);
       for (BCREG i = 0; i < visible; ++i) {
@@ -923,7 +923,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    BCREG reg = fs->freereg;
    this->lex_state.var_new(0, NAME_BLANK);
    RegisterAllocator allocator(fs);
-   allocator.reserve(1);
+   allocator.reserve(BCReg(1));
    this->lex_state.var_add(1);
    VarInfo* info = &fs->var_get(fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
@@ -1149,7 +1149,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    allocator.release(copies.reserved);
    release_indexed_original(this->func_state, target.storage);
    this->func_state.freereg = this->func_state.nactvar;
-   register_guard.adopt_saved(this->func_state.freereg);
+   register_guard.adopt_saved(BCReg(this->func_state.freereg));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1219,7 +1219,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    allocator.release(copies.reserved);
    release_indexed_original(this->func_state, target.storage);
    this->func_state.freereg = this->func_state.nactvar;
-   register_guard.adopt_saved(this->func_state.freereg);
+   register_guard.adopt_saved(BCReg(this->func_state.freereg));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1296,7 +1296,7 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 {
    ExpDesc expr;
    RegisterAllocator allocator(&this->func_state);
-   allocator.reserve(1);
+   allocator.reserve(BCReg(1));
    BCREG base = this->func_state.freereg - 1;
    expr.init(ExpKind::Call, bcemit_ABC(&this->func_state, BC_VARG, base, 2, this->func_state.numparams));
    expr.u.s.aux = base;
@@ -1352,7 +1352,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    if (payload.is_postfix) {
       saved_reg = this->func_state.freereg;
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
-      allocator.reserve(1);
+      allocator.reserve(BCReg(1));
    }
 
    ExpDesc operand = operand_value.legacy();  // Get ExpDesc for subsequent operations
@@ -1366,7 +1366,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    release_indexed_original(this->func_state, target);
 
    if (payload.is_postfix) {
-      allocator.collapse_freereg(saved_reg);
+      allocator.collapse_freereg(BCReg(saved_reg));
       ExpDesc result;
       result.init(ExpKind::NonReloc, saved_reg);
       return ParserResult<ExpDesc>::success(result);
@@ -1492,7 +1492,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    // Clean up any RHS temporaries, but preserve the result register
 
-   allocator.collapse_freereg(lhs_reg);
+   allocator.collapse_freereg(BCReg(lhs_reg));
 
    // Patch skip jump to here (after RHS)
 
@@ -1501,7 +1501,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    // Preserve result register by adjusting what RegisterGuard will restore to
    // Only restore to saved_freereg if it's beyond the result register
 
-   if (register_guard.saved() > lhs_reg + 1) register_guard.adopt_saved(register_guard.saved());
+   if (register_guard.saved() > BCReg(lhs_reg + 1)) register_guard.adopt_saved(register_guard.saved());
    else register_guard.disarm();  // Keep current freereg (lhs_reg + 1)
 
    // Result is in lhs_reg
@@ -1549,7 +1549,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpressionValue true_value(&this->func_state, true_result.value_ref());
    true_value.discharge();
    this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
-   allocator.collapse_freereg(cond_reg);
+   allocator.collapse_freereg(BCReg(cond_reg));
 
    ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
 
@@ -1564,14 +1564,14 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpressionValue false_value(&this->func_state, false_result.value_ref());
    false_value.discharge();
    this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
-   allocator.collapse_freereg(cond_reg);
+   allocator.collapse_freereg(BCReg(cond_reg));
 
    skip_false.patch_to(this->func_state.pc);
 
    // Preserve result register by adjusting what RegisterGuard will restore to
    // Only restore to saved_freereg if it's beyond the result register
 
-   if (register_guard.saved() > cond_reg + 1) register_guard.adopt_saved(register_guard.saved());
+   if (register_guard.saved() > BCReg(cond_reg + 1)) register_guard.adopt_saved(register_guard.saved());
    else register_guard.disarm();  // Keep current freereg (cond_reg + 1)
 
    ExpDesc result;
@@ -1655,7 +1655,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       this->materialise_to_next_reg(callee, "call callee");
 #if LJ_FR2
       RegisterAllocator allocator(&this->func_state);
-      allocator.reserve(1);
+      allocator.reserve(BCReg(1));
 #endif
       base = callee.u.s.info;
    }
@@ -1718,7 +1718,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    ExpDesc table;
    table.init(ExpKind::NonReloc, freg);
    RegisterAllocator allocator(fs);
-   allocator.reserve(1);
+   allocator.reserve(BCReg(1));
    freg++;
 
    for (const TableField &field : Payload.fields) {
@@ -1888,7 +1888,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    this->lex_state.var_add(param_count);
    if (child_state.nactvar > 0) {
       RegisterAllocator child_allocator(&child_state);
-      child_allocator.reserve(child_state.nactvar);
+      child_allocator.reserve(BCReg(child_state.nactvar));
    }
 
    IrEmitter child_emitter(child_ctx);
@@ -2092,12 +2092,12 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
       prepared.reserved = std::move(copies.reserved);
       prepared.target = LValue::from_expdesc(&prepared.storage);
 
-      if (trace_assignments and prepared.reserved.count() > 0) {
+      if (trace_assignments and prepared.reserved.count().raw() > 0) {
          const char* target_kind = prepared.target.is_indexed() ? "indexed" : "member";
          pf::Log("Parser").msg("[%d] assignment: prepared %s target, duplicated %d registers (R%d..R%d)",
             this->func_state.ls->linenumber, target_kind,
-            prepared.reserved.count(), prepared.reserved.start(),
-            prepared.reserved.start() + prepared.reserved.count() - 1);
+            prepared.reserved.count().raw(), prepared.reserved.start().raw(),
+            prepared.reserved.start().raw() + prepared.reserved.count().raw() - 1);
       }
 
       if (prepared.target.is_local()) {
