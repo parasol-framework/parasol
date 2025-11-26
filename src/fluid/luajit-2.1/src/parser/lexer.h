@@ -70,7 +70,7 @@ typedef struct VarInfo {
 
 struct FuncScope;
 struct ExpDesc;
-enum BinOpr : int;
+enum class BinOpr : int8_t;
 
 void lj_reserve_words(lua_State *);
 

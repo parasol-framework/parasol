@@ -265,27 +265,27 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
    switch (op) {
-      case AstBinaryOperator::Add:      return BinOpr::OPR_ADD;
-      case AstBinaryOperator::Subtract: return BinOpr::OPR_SUB;
-      case AstBinaryOperator::Multiply: return BinOpr::OPR_MUL;
-      case AstBinaryOperator::Divide:   return BinOpr::OPR_DIV;
-      case AstBinaryOperator::Modulo:   return BinOpr::OPR_MOD;
-      case AstBinaryOperator::Power:    return BinOpr::OPR_POW;
-      case AstBinaryOperator::Concat:   return BinOpr::OPR_CONCAT;
-      case AstBinaryOperator::NotEqual: return BinOpr::OPR_NE;
-      case AstBinaryOperator::Equal:    return BinOpr::OPR_EQ;
-      case AstBinaryOperator::LessThan: return BinOpr::OPR_LT;
-      case AstBinaryOperator::GreaterEqual: return BinOpr::OPR_GE;
-      case AstBinaryOperator::LessEqual:    return BinOpr::OPR_LE;
-      case AstBinaryOperator::GreaterThan:  return BinOpr::OPR_GT;
-      case AstBinaryOperator::BitAnd:     return BinOpr::OPR_BAND;
-      case AstBinaryOperator::BitOr:      return BinOpr::OPR_BOR;
-      case AstBinaryOperator::BitXor:     return BinOpr::OPR_BXOR;
-      case AstBinaryOperator::ShiftLeft:  return BinOpr::OPR_SHL;
-      case AstBinaryOperator::ShiftRight: return BinOpr::OPR_SHR;
-      case AstBinaryOperator::LogicalAnd: return BinOpr::OPR_AND;
-      case AstBinaryOperator::LogicalOr:  return BinOpr::OPR_OR;
-      case AstBinaryOperator::IfEmpty:    return BinOpr::OPR_IF_EMPTY;
+      case AstBinaryOperator::Add:      return BinOpr::Add;
+      case AstBinaryOperator::Subtract: return BinOpr::Sub;
+      case AstBinaryOperator::Multiply: return BinOpr::Mul;
+      case AstBinaryOperator::Divide:   return BinOpr::Div;
+      case AstBinaryOperator::Modulo:   return BinOpr::Mod;
+      case AstBinaryOperator::Power:    return BinOpr::Pow;
+      case AstBinaryOperator::Concat:   return BinOpr::Concat;
+      case AstBinaryOperator::NotEqual: return BinOpr::NotEqual;
+      case AstBinaryOperator::Equal:    return BinOpr::Equal;
+      case AstBinaryOperator::LessThan: return BinOpr::LessThan;
+      case AstBinaryOperator::GreaterEqual: return BinOpr::GreaterEqual;
+      case AstBinaryOperator::LessEqual:    return BinOpr::LessEqual;
+      case AstBinaryOperator::GreaterThan:  return BinOpr::GreaterThan;
+      case AstBinaryOperator::BitAnd:     return BinOpr::BitAnd;
+      case AstBinaryOperator::BitOr:      return BinOpr::BitOr;
+      case AstBinaryOperator::BitXor:     return BinOpr::BitXor;
+      case AstBinaryOperator::ShiftLeft:  return BinOpr::ShiftLeft;
+      case AstBinaryOperator::ShiftRight: return BinOpr::ShiftRight;
+      case AstBinaryOperator::LogicalAnd: return BinOpr::LogicalAnd;
+      case AstBinaryOperator::LogicalOr:  return BinOpr::LogicalOr;
+      case AstBinaryOperator::IfEmpty:    return BinOpr::IfEmpty;
       default: return std::nullopt;
    }
 }
@@ -295,12 +295,12 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
 {
    switch (op) {
-      case AssignmentOperator::Add:      return BinOpr::OPR_ADD;
-      case AssignmentOperator::Subtract: return BinOpr::OPR_SUB;
-      case AssignmentOperator::Multiply: return BinOpr::OPR_MUL;
-      case AssignmentOperator::Divide:   return BinOpr::OPR_DIV;
-      case AssignmentOperator::Modulo:   return BinOpr::OPR_MOD;
-      case AssignmentOperator::Concat:   return BinOpr::OPR_CONCAT;
+      case AssignmentOperator::Add:      return BinOpr::Add;
+      case AssignmentOperator::Subtract: return BinOpr::Sub;
+      case AssignmentOperator::Multiply: return BinOpr::Mul;
+      case AssignmentOperator::Divide:   return BinOpr::Div;
+      case AssignmentOperator::Modulo:   return BinOpr::Mod;
+      case AssignmentOperator::Concat:   return BinOpr::Concat;
       default: return std::nullopt;
    }
 }
@@ -1211,7 +1211,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    ExpDesc working = copies.duplicated;
 
    ExpDesc rhs;
-   if (mapped.value() IS BinOpr::OPR_CONCAT) {
+   if (mapped.value() IS BinOpr::Concat) {
       ExpDesc infix = working;
       // CONCAT compound assignment: use OperatorEmitter for BC_CAT chaining
       this->operator_emitter.prepare_concat(ValueSlot(&infix));
@@ -1449,7 +1449,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
-   BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::OPR_ADD : BinOpr::OPR_SUB;
+   BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::Add : BinOpr::Sub;
 
    // Use ExpressionValue for discharge operations
    ExpressionValue operand_value(&this->func_state, working);
@@ -1501,19 +1501,19 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // IF_EMPTY requires special handling - it must emit RHS conditionally like ternary
    // Cannot use the standard prepare/emit RHS/complete pattern
 
-   if (opr IS OPR_IF_EMPTY) return this->emit_if_empty_expr(lhs, *payload.right);
+   if (opr IS BinOpr::IfEmpty) return this->emit_if_empty_expr(lhs, *payload.right);
 
    // ALL binary operators need binop_left preparation before RHS evaluation
 
    // This discharges LHS to appropriate form to prevent register clobbering
 
-   if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation
+   if (opr IS BinOpr::LogicalAnd) { // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_and(ValueSlot(&lhs));
    }
-   else if (opr IS OPR_OR) { // Logical OR: CFG-based short-circuit implementation
+   else if (opr IS BinOpr::LogicalOr) { // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.prepare_logical_or(ValueSlot(&lhs));
    }
-   else if (opr IS OPR_CONCAT) { // CONCAT: Discharge to consecutive register for BC_CAT chaining
+   else if (opr IS BinOpr::Concat) { // CONCAT: Discharge to consecutive register for BC_CAT chaining
       this->operator_emitter.prepare_concat(ValueSlot(&lhs));
    }
    else { // All other operators use OperatorEmitter facade
@@ -1527,19 +1527,19 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    ExpDesc rhs = rhs_result.value_ref();
 
    // Emit the actual operation based on operator type
-   if (opr IS OPR_AND) { // Logical AND: CFG-based short-circuit implementation
+   if (opr IS BinOpr::LogicalAnd) { // Logical AND: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_and(ValueSlot(&lhs), rhs);
    }
-   else if (opr IS OPR_OR) { // Logical OR: CFG-based short-circuit implementation
+   else if (opr IS BinOpr::LogicalOr) { // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_or(ValueSlot(&lhs), rhs);
    }
-   else if (opr >= OPR_NE and opr <= OPR_GT) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
+   else if (opr >= BinOpr::NotEqual and opr <= BinOpr::GreaterThan) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
       this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), rhs);
    }
-   else if (opr IS OPR_CONCAT) { // CONCAT: CFG-based implementation with BC_CAT chaining
+   else if (opr IS BinOpr::Concat) { // CONCAT: CFG-based implementation with BC_CAT chaining
       this->operator_emitter.complete_concat(ValueSlot(&lhs), rhs);
    }
-   else if (opr IS OPR_BAND or opr IS OPR_BOR or opr IS OPR_BXOR or opr IS OPR_SHL or opr IS OPR_SHR) {
+   else if (opr IS BinOpr::BitAnd or opr IS BinOpr::BitOr or opr IS BinOpr::BitXor or opr IS BinOpr::ShiftLeft or opr IS BinOpr::ShiftRight) {
       // Bitwise operators: Route through OperatorEmitter (emits bit.* library calls)
       this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), rhs);
    }
