@@ -166,7 +166,7 @@ return {
       'testCStylePrecedenceComplex',
       'testShiftBitwiseBinding',
       'testRHSFunctionCallsAndRegisterPreservation',
-      --'testMultipleReturnRHS',
+      'testMultipleReturnRHS',
       'testByteStringKeysWithBitwise',
       'testBitwiseInParameters'
    }
