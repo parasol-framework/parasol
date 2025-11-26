@@ -487,7 +487,8 @@ int lj_meta_close(lua_State* L, TValue* o, TValue* err)
 
    top = L->top;
    copyTV(L, top++, mo);         // Push __close function
-   if (LJ_FR2) setnilV(top++);
+   if (LJ_FR2) setnilV(top++);   // Frame slot for LJ_FR2
+   TValue* argbase = top;        // First argument position (for lj_vm_pcall base)
    copyTV(L, top++, o);          // Push object (first argument)
    if (err)
       copyTV(L, top++, err);     // Push error value (second argument)
@@ -496,7 +497,7 @@ int lj_meta_close(lua_State* L, TValue* o, TValue* err)
    L->top = top;
 
    // Call __close(obj, err) with protection. nres1=1 means 0 results expected.
-   errcode = lj_vm_pcall(L, top - 2 - LJ_FR2, 1, -1);
+   errcode = lj_vm_pcall(L, argbase, 1, -1);
 
    hook_restore(g, oldh);
    if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);

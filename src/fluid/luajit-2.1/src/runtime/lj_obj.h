@@ -390,6 +390,7 @@ typedef struct GCproto {
    MRef lineinfo;     //  Compressed map from bytecode ins. to source line.
    MRef uvinfo;       //  Upvalue names.
    MRef varinfo;      //  Names and compressed extents of local variables.
+   uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
 } GCproto;
 
 // Flags for prototype.
@@ -702,6 +703,7 @@ struct lua_State {
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
+   TValue close_err;  // Current error for __close handlers (nil if no error)
 
    // Constructor/destructor not actually used as yet.
 /*

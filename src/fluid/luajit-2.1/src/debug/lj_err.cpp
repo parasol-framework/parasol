@@ -17,6 +17,9 @@
 #include "lj_trace.h"
 #include "lj_vm.h"
 #include "lj_strfmt.h"
+#include "lj_meta.h"
+#include "lj_tab.h"
+#include "lj_gc.h"
 
 /*
 ** LuaJIT can either use internal or external frame unwinding:
@@ -92,6 +95,81 @@ LJ_DATADEF const char* lj_err_allmsg =
 
 // Internal frame unwinding
 
+// Call __close handlers for to-be-closed locals during error unwinding.
+// Sets _G.__close_err so bytecode-based close handlers can access the error.
+static void unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
+{
+   // Get the function from this frame
+   GCfunc* fn = frame_func(frame);
+
+   // Only process Lua functions (they have closeslots in their prototype)
+   if (!isluafunc(fn)) return;
+
+   GCproto* pt = funcproto(fn);
+   uint64_t closeslots = pt->closeslots;
+   if (closeslots IS 0) return;
+
+   // Set _G.__close_err for bytecode-based handlers that might run later
+   global_State* g = G(L);
+   GCtab* env = tabref(L->env);
+   if (env) {
+      GCstr* key = lj_str_newlit(L, "__close_err");
+      TValue* slot = lj_tab_setstr(L, env, key);
+      if (errobj)
+         copyTV(L, slot, errobj);
+      else
+         setnilV(slot);
+      lj_gc_anybarriert(L, env);
+   }
+
+   // Also set L->close_err for direct access
+   if (errobj)
+      copyTV(L, &L->close_err, errobj);
+   else
+      setnilV(&L->close_err);
+
+   // Call lj_meta_close for each slot with <close> attribute in LIFO order
+   // Iterate from highest slot to lowest to match Lua 5.4 semantics
+   TValue* base = frame + 1;
+   for (int slot = 63; slot >= 0; slot--) {
+      if (closeslots & (1ULL << slot)) {
+         TValue* o = base + slot;
+         if (o < L->top and !tvisnil(o) and !tvisfalse(o)) {
+            lj_meta_close(L, o, errobj);
+         }
+      }
+   }
+}
+
+// Call __close handlers for all frames from 'from' down to 'to'.
+// This must be called BEFORE L->base is modified during unwinding.
+static void unwind_close_all(lua_State* L, TValue* from, TValue* to)
+{
+   TValue* errobj = (L->top > to) ? L->top - 1 : nullptr;
+   TValue* frame = from;
+   int count = 0;
+   while (frame >= to and count < 100) {  // Limit iterations for safety
+      count++;
+      unwind_close_handlers(L, frame, errobj);
+      // Move to previous frame based on type
+      int ftype = frame_type(frame);
+      if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP)
+         frame = frame_prevl(frame);
+      else
+         frame = frame_prevd(frame);
+   }
+
+   // Clear __close_err after all handlers run
+   global_State* g = G(L);
+   GCtab* env = tabref(L->env);
+   if (env) {
+      GCstr* key = lj_str_newlit(L, "__close_err");
+      TValue* slot = lj_tab_setstr(L, env, key);
+      setnilV(slot);
+   }
+   setnilV(&L->close_err);
+}
+
 // Unwind Lua stack and move error message to new top.
 LJ_NOINLINE static void unwindstack(lua_State* L, TValue* top)
 {
@@ -114,6 +192,7 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
          TValue* top = restorestack(L, -nres);
          if (frame < top) {  // Frame reached?
             if (errcode) {
+               unwind_close_all(L, L->base - 1, top);
                L->base = frame + 1;
                L->cframe = cframe_prev(cf);
                unwindstack(L, top);
@@ -132,9 +211,11 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
       unwind_c:
 #if LJ_UNWIND_EXT
          if (errcode) {
+            TValue* target = frame - LJ_FR2;
+            unwind_close_all(L, L->base - 1, target);
             L->base = frame_prevd(frame) + 1;
             L->cframe = cframe_prev(cf);
-            unwindstack(L, frame - LJ_FR2);
+            unwindstack(L, target);
          }
          else if (cf != stopcf) {
             cf = cframe_prev(cf);
@@ -177,9 +258,12 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
                frame = frame_prevd(frame);
                break;
             }
-            if (frame_typep(frame) == FRAME_PCALL)
+            if (frame_typep(frame) IS FRAME_PCALL)
                hook_leave(G(L));
-            L->base = frame_prevd(frame) + 1;
+            // Call __close handlers BEFORE modifying L->base
+            TValue* target = frame_prevd(frame) + 1;
+            unwind_close_all(L, L->base - 1, target);
+            L->base = target;
             L->cframe = cf;
             unwindstack(L, L->base);
          }
@@ -188,7 +272,9 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
    }
    // No C frame.
    if (errcode) {
-      L->base = tvref(L->stack) + 1 + LJ_FR2;
+      TValue* target = tvref(L->stack) + 1 + LJ_FR2;
+      unwind_close_all(L, L->base - 1, target);
+      L->base = target;
       L->cframe = nullptr;
       unwindstack(L, L->base);
       if (G(L)->panic)
@@ -1096,4 +1182,3 @@ extern int luaL_error(lua_State* L, const char* fmt, ...)
    lj_err_callermsg(L, msg);
    return 0;  //  unreachable
 }
-

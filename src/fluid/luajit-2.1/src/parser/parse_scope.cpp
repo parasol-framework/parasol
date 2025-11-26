@@ -398,7 +398,7 @@ static void bcemit_close(FuncState* fs, BCREG slot)
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, close_fn_reg, const_pri(&nilv)));
    skip_jumps[num_skip_jumps++] = bcemit_jmp(fs);
 
-   // Step 7: Call __close(value, nil)
+   // Step 7: Call __close(value, err)
    // __close function is in close_fn_reg, move to call base
    BCREG call_base = base;
    bcemit_AD(fs, BC_MOV, call_base, close_fn_reg);
@@ -406,10 +406,14 @@ static void bcemit_close(FuncState* fs, BCREG slot)
    // First arg: the value being closed
    bcemit_AD(fs, BC_MOV, call_base + 1 + LJ_FR2, slot);
 
-   // Second arg: nil (no error during normal scope exit)
-   bcemit_AD(fs, BC_KPRI, call_base + 2 + LJ_FR2, int(ExpKind::Nil));
+   // Second arg: read from _G.__close_err (nil for normal exit, error for unwinding)
+   // This allows error propagation to __close handlers when set by error handling code
+   ExpDesc err_global;
+   err_global.init(ExpKind::Global, 0);
+   err_global.u.sval = ls->keepstr("__close_err");
+   expr_toreg(fs, &err_global, call_base + 2 + LJ_FR2);
 
-   // Call __close(value, nil) -> no results needed
+   // Call __close(value, err) -> no results needed
    bcemit_ABC(fs, BC_CALL, call_base, 1, 3);  // 0 results, 2 args
 
    // Patch all skip jumps to here
@@ -786,6 +790,18 @@ GCproto* LexState::fs_finish(BCLine Line)
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
    setgcref(pt->chunkname, obj2gco(this->chunkname));
+
+   // Build bitmap of locals with <close> attribute for error unwinding.
+   // Use the actual register slot index from VarInfo::slot, not the vstack index.
+   pt->closeslots = 0;
+   for (MSize i = fs->vbase; i < this->vtop; i++) {
+      if (has_flag(this->vstack[i].info, VarInfoFlag::Close)) {
+         uint8_t slot = this->vstack[i].slot;
+         if (slot < 64) {
+            pt->closeslots |= (1ULL << slot);
+         }
+      }
+   }
 
    // Close potentially uninitialized gap between bc and kgc.
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (fs->nkgc + 1)) = 0;
