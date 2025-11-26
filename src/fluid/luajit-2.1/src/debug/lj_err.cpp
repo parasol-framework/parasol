@@ -136,7 +136,8 @@ static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj
    for (int slot = 63; slot >= 0; slot--) {
       if (closeslots & (1ULL << slot)) {
          TValue* o = base + slot;
-         if (o < L->top and !tvisnil(o) and !tvisfalse(o)) {
+         // Verify slot is within valid frame range: must be >= base and < L->top
+         if (o >= base and o < L->top and !tvisnil(o) and !tvisfalse(o)) {
             int errcode = lj_meta_close(L, o, current_err);
             if (errcode != 0) {
                // Per Lua 5.4: error in __close replaces the original error.
@@ -168,7 +169,10 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
    TValue *errobj = (L->top > to) ? L->top - 1 : nullptr;
    TValue *frame = from;
    int count = 0;
-   while (frame >= to and count < 100) {  // Limit iterations for safety
+   // Use LUAI_MAXCSTACK as the safety limit - this matches the maximum call depth
+   // that LuaJIT enforces, so any valid frame chain should terminate well before this.
+   // The limit guards against stack corruption causing infinite loops.
+   while (frame >= to and count < LUAI_MAXCSTACK) {
       count++;
       // unwind_close_handlers may return a different error if a __close threw
       TValue* new_err = unwind_close_handlers(L, frame, errobj);
@@ -182,6 +186,9 @@ static void unwind_close_all(lua_State *L, TValue *from, TValue *to)
       if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP) frame = frame_prevl(frame);
       else frame = frame_prevd(frame);
    }
+   // If we hit the limit, the frame chain is likely corrupt. Log an assertion
+   // in debug builds to help diagnose the issue.
+   lj_assertL(count < LUAI_MAXCSTACK, "frame chain exceeded LUAI_MAXCSTACK during __close unwinding");
 
    // Clear __close_err after all handlers run
 
