@@ -109,7 +109,27 @@ function testRHSFunctionCallsAndRegisterPreservation()
    assert(t[3] is bit.band(bit.bor(3, bit.lshift(3, 1)), u[3]), 'indexed & RHS index usage is safe')
 end
 
--- Currently if a function returns 2+ results to a bitwise operator then the results are undefined.
+function testMultipleReturnLHS()
+   -- Test multi-return on LHS of bitwise AND
+   local band_cmp = bit.band(6, 1)  -- 6 & 1 = 0
+   local x = returns6_99() & 1      -- Should use first return value (6)
+   assert(x is band_cmp, 'band multi-return LHS failed: ' .. x .. ' vs ' .. band_cmp)
+
+   -- Test multi-return on RHS of shift (shift count)
+   local shift_cmp = bit.lshift(1, 6)  -- 1 << 6 = 64
+   local x2 = 1 << returns6_99()       -- Should use first return value (6) as shift count
+   assert(x2 is shift_cmp, 'lshift multi-return RHS failed: ' .. x2 .. ' vs ' .. shift_cmp)
+
+   -- Test multi-return on LHS of shift (value to shift)
+   local shift_lhs_cmp = bit.lshift(6, 1)  -- 6 << 1 = 12
+   local x3 = returns6_99() << 1           -- Should use first return value (6) as value
+   assert(x3 is shift_lhs_cmp, 'lshift multi-return LHS failed: ' .. x3 .. ' vs ' .. shift_lhs_cmp)
+
+   -- Test multi-return on RHS of right shift
+   local rshift_cmp = bit.rshift(64, 6)  -- 64 >> 6 = 1
+   local x4 = 64 >> returns6_99()        -- Should use first return value (6) as shift count
+   assert(x4 is rshift_cmp, 'rshift multi-return RHS failed: ' .. x4 .. ' vs ' .. rshift_cmp)
+end
 
 function testMultipleReturnRHS()
    local cmp = bit.band(1, 6)
@@ -166,6 +186,7 @@ return {
       'testCStylePrecedenceComplex',
       'testShiftBitwiseBinding',
       'testRHSFunctionCallsAndRegisterPreservation',
+      'testMultipleReturnLHS',
       'testMultipleReturnRHS',
       'testByteStringKeysWithBitwise',
       'testBitwiseInParameters'
