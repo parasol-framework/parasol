@@ -269,9 +269,12 @@ struct ExpDesc {
 };
 
 // Per-function linked list of scope blocks.
+// Design: FuncScope is always stack-allocated at call sites, so parent scopes naturally outlive
+// child scopes via C++ stack semantics. The raw `prev` pointer is intentional for zero-overhead
+// traversal without ownership concerns. Lifecycle is managed by ScopeGuard RAII wrapper.
 
 struct FuncScope {
-   FuncScope* prev;        // Link to outer scope.
+   FuncScope* prev;        // Link to outer scope (non-owning, stack guarantees validity).
    MSize vstart;           // Start of block-local variables.
    uint8_t nactvar;        // Number of active vars outside the scope.
    FuncScopeFlag flags;    // Scope flags.

@@ -31,27 +31,21 @@
 #include "../bytecode/lj_bcdump.h"
 
 //********************************************************************************************************************
-// Compile-time token name generation
+// Compile-time token name generation using TOKEN_DEFINITIONS from lexer.h
 
 namespace {
-   constexpr auto generate_token_names() noexcept {
-      constexpr size_t token_count = TK_eof - TK_OFS + 1;
-      std::array<const char*, token_count> names{};
-
-      // Token names defined via TKDEF macro
-#define TKSTR1(name)      #name,
-#define TKSTR2(name, sym) #sym,
-      constexpr const char* raw_names[] = { TKDEF(TKSTR1, TKSTR2) };
-#undef TKSTR1
-#undef TKSTR2
-
-      for (size_t i = 0; i < token_count - 1; ++i) {
-         names[i] = raw_names[i];
+   // Generate token symbol array from TOKEN_DEFINITIONS at compile time
+   constexpr auto generate_token_symbols() noexcept {
+      std::array<const char*, TOKEN_DEFINITIONS.size()> symbols{};
+      // Note: We store pointers to the symbol data. Since TOKEN_DEFINITIONS contains
+      // string_view literals, the underlying data has static storage duration.
+      for (size_t i = 0; i < TOKEN_DEFINITIONS.size(); ++i) {
+         symbols[i] = TOKEN_DEFINITIONS[i].symbol.data();
       }
-      return names;
+      return symbols;
    }
 
-   constexpr auto token_names = generate_token_names();
+   constexpr auto token_names = generate_token_symbols();
 } // anonymous namespace
 
 //********************************************************************************************************************
@@ -1058,12 +1052,15 @@ void lj_lex_error(LexState *State, LexToken tok, ErrMsg em, ...)
 }
 
 //********************************************************************************************************************
-// Reserved word initialization
+// Reserved word initialisation using TOKEN_DEFINITIONS from lexer.h
 
 void lj_reserve_words(lua_State *Lua)
 {
-   for (uint32_t i = 0; i < TK_RESERVED; i++) {
-      GCstr *s = lj_str_newz(Lua, token_names[i]);
+   // Register all reserved words from TOKEN_DEFINITIONS with the string table.
+   // Reserved words are identified by their is_reserved() flag in the definition.
+   for (uint32_t i = 0; i < TOKEN_DEFINITIONS.size(); i++) {
+      if (not TOKEN_DEFINITIONS[i].is_reserved()) break;  // Reserved words are contiguous at the start
+      GCstr *s = lj_str_newz(Lua, TOKEN_DEFINITIONS[i].name.data());
       fixstring(s);  // Reserved words are never collected
       s->reserved = uint8_t(i + 1);
    }
