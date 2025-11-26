@@ -72,6 +72,9 @@ enum class AstNodeKind : uint16_t {
    CallExpr,
    MemberExpr,
    IndexExpr,
+   SafeMemberExpr,
+   SafeIndexExpr,
+   SafeCallExpr,
    TableExpr,
    FunctionExpr,
    BlockStmt,
@@ -219,7 +222,18 @@ struct MethodCallTarget {
    ~MethodCallTarget();
 };
 
-using CallTarget = std::variant<DirectCallTarget, MethodCallTarget>;
+struct SafeMethodCallTarget {
+   SafeMethodCallTarget() = default;
+   SafeMethodCallTarget(const SafeMethodCallTarget&) = delete;
+   SafeMethodCallTarget& operator=(const SafeMethodCallTarget&) = delete;
+   SafeMethodCallTarget(SafeMethodCallTarget&&) noexcept = default;
+   SafeMethodCallTarget& operator=(SafeMethodCallTarget&&) noexcept = default;
+   ExprNodePtr receiver;
+   Identifier method;
+   ~SafeMethodCallTarget();
+};
+
+using CallTarget = std::variant<DirectCallTarget, MethodCallTarget, SafeMethodCallTarget>;
 
 struct VarArgExprPayload {};
 
@@ -315,6 +329,28 @@ struct IndexExprPayload {
    ~IndexExprPayload();
 };
 
+struct SafeMemberExprPayload {
+   SafeMemberExprPayload() = default;
+   SafeMemberExprPayload(const SafeMemberExprPayload&) = delete;
+   SafeMemberExprPayload& operator=(const SafeMemberExprPayload&) = delete;
+   SafeMemberExprPayload(SafeMemberExprPayload&&) noexcept = default;
+   SafeMemberExprPayload& operator=(SafeMemberExprPayload&&) noexcept = default;
+   ExprNodePtr table;
+   Identifier member;
+   ~SafeMemberExprPayload();
+};
+
+struct SafeIndexExprPayload {
+   SafeIndexExprPayload() = default;
+   SafeIndexExprPayload(const SafeIndexExprPayload&) = delete;
+   SafeIndexExprPayload& operator=(const SafeIndexExprPayload&) = delete;
+   SafeIndexExprPayload(SafeIndexExprPayload&&) noexcept = default;
+   SafeIndexExprPayload& operator=(SafeIndexExprPayload&&) noexcept = default;
+   ExprNodePtr table;
+   ExprNodePtr index;
+   ~SafeIndexExprPayload();
+};
+
 struct TableField {
    TableField() = default;
    TableField(const TableField&) = delete;
@@ -358,7 +394,8 @@ struct ExprNode {
    std::variant<LiteralValue, NameRef, VarArgExprPayload, UnaryExprPayload,
       UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
       PresenceExprPayload, CallExprPayload, MemberExprPayload, IndexExprPayload,
-      TableExprPayload, FunctionExprPayload>
+      SafeMemberExprPayload, SafeIndexExprPayload, TableExprPayload,
+      FunctionExprPayload>
       data;
 };
 
@@ -613,8 +650,12 @@ ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePt
 ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);
 ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret);
 ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments, bool forwards_multret);
+ExprNodePtr make_safe_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
+   bool forwards_multret);
 ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member, bool uses_method_dispatch);
 ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
+ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier member);
+ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);

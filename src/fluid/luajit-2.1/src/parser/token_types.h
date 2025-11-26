@@ -58,6 +58,9 @@ enum class TokenKind : uint16_t {
    CompoundMod = TK_cmod,
    CompoundConcat = TK_cconcat,
    CompoundIfEmpty = TK_cif_empty,
+   SafeField = TK_safe_field,
+   SafeIndex = TK_safe_index,
+   SafeMethod = TK_safe_method,
    Presence = TK_if_empty, // NOTE: This single token covers use of both `if present?? then` (postfix) and `(variable ?? default_value)` (if empty).
    PlusPlus = TK_plusplus,
    EndOfFile = TK_eof,
@@ -131,6 +134,9 @@ enum class TokenKind : uint16_t {
       case TokenKind::CompoundMod: return "%=";
       case TokenKind::CompoundConcat: return "..=";
       case TokenKind::CompoundIfEmpty: return "?=";
+      case TokenKind::SafeField: return "?.";
+      case TokenKind::SafeIndex: return "?[";
+      case TokenKind::SafeMethod: return "?:";
       case TokenKind::Presence: return "??";
       case TokenKind::PlusPlus: return "++";
       case TokenKind::EndOfFile: return "<eof>";

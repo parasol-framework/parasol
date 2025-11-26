@@ -585,6 +585,9 @@ static LexToken lex_scan(LexState *State, TValue *tv)
       case '?':
          State->mark_token_start();
          lex_next(State);
+         if (State->c IS '.') { lex_next(State); return TK_safe_field; }
+         if (State->c IS '[') { lex_next(State); return TK_safe_index; }
+         if (State->c IS ':') { lex_next(State); return TK_safe_method; }
          if (State->c IS '=') { lex_next(State); return TK_cif_empty; }
          if (State->c IS '?') { lex_next(State); return TK_if_empty; }
          return '?';

@@ -19,6 +19,105 @@
 #include "parser/token_types.h"
 
 //********************************************************************************************************************
+// NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
+//
+// Encapsulates the common control flow for safe navigation operators:
+//   1. Discharge operand to register
+//   2. Emit BC_ISEQP nil check with conditional jump
+//   3. [Caller performs operation on non-nil path]
+//   4. complete() emits nil path and patches jumps
+//
+// Usage:
+//   NilShortCircuitGuard guard(emitter, base_expression);
+//   if (not guard.ok()) return guard.error<ExpDesc>();
+//   // ... perform operation using guard.base_register() ...
+//   materialise_to_reg(result, guard.base_register(), "...");
+//   return guard.complete();
+
+class NilShortCircuitGuard {
+public:
+   NilShortCircuitGuard(IrEmitter *Emitter, ExpDesc BaseExpr)
+      : emitter(Emitter), register_guard(&Emitter->func_state), allocator(&Emitter->func_state)
+   {
+      ExpressionValue base_value(&this->emitter->func_state, BaseExpr);
+      this->result_reg = base_value.discharge_to_any_reg(this->allocator);
+      this->base_expr = base_value.legacy();
+
+      ExpDesc nilv(ExpKind::Nil);
+      bcemit_INS(&this->emitter->func_state, BCINS_AD(BC_ISEQP, this->result_reg, const_pri(&nilv)));
+      this->nil_jump = this->emitter->control_flow.make_unconditional(bcemit_jmp(&this->emitter->func_state));
+      this->setup_ok = true;
+   }
+
+   [[nodiscard]] bool ok() const { return this->setup_ok; }
+
+   template<typename T>
+   ParserResult<T> error() const {
+      ParserError err;
+      err.code = ParserErrorCode::InternalInvariant;
+      err.message = "nil guard setup failed";
+      return ParserResult<T>::failure(err);
+   }
+
+   [[nodiscard]] BCREG base_register() const { return this->result_reg; }
+   [[nodiscard]] ExpDesc base_expression() const { return this->base_expr; }
+   [[nodiscard]] RegisterAllocator& reg_allocator() { return this->allocator; }
+
+   // Complete the nil short-circuit: emit nil path, patch jumps, return result.
+   // The result is stored in base_register() as a NonReloc expression.
+   ParserResult<ExpDesc> complete()
+   {
+      this->allocator.collapse_freereg(this->result_reg);
+
+      ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
+         bcemit_jmp(&this->emitter->func_state));
+
+      BCPOS nil_path = this->emitter->func_state.pc;
+      this->nil_jump.patch_to(nil_path);
+      bcemit_nil(&this->emitter->func_state, this->result_reg, 1);
+
+      skip_nil.patch_to(this->emitter->func_state.pc);
+
+      this->register_guard.disarm();
+
+      ExpDesc result;
+      result.init(ExpKind::NonReloc, this->result_reg);
+      return ParserResult<ExpDesc>::success(result);
+   }
+
+   // Complete with a custom result register (for call expressions where result may differ)
+   ParserResult<ExpDesc> complete_call(BCREG CallBase, BCPOS CallPc)
+   {
+      ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
+         bcemit_jmp(&this->emitter->func_state));
+
+      BCPOS nil_path = this->emitter->func_state.pc;
+      this->nil_jump.patch_to(nil_path);
+      bcemit_nil(&this->emitter->func_state, CallBase, 1);
+
+      skip_nil.patch_to(this->emitter->func_state.pc);
+
+      this->register_guard.adopt_saved(CallBase + 1);
+      this->register_guard.disarm();
+
+      ExpDesc result;
+      result.init(ExpKind::Call, CallPc);
+      result.u.s.aux = CallBase;
+      this->emitter->func_state.freereg = CallBase + 1;
+      return ParserResult<ExpDesc>::success(result);
+   }
+
+private:
+   IrEmitter *emitter;
+   RegisterGuard register_guard;
+   RegisterAllocator allocator;
+   ControlFlowEdge nil_jump;
+   ExpDesc base_expr;
+   BCREG result_reg = 0;
+   bool setup_ok = false;
+};
+
+//********************************************************************************************************************
 // Snapshot return register state.
 // Used by ir_emitter for return statement handling.
 
@@ -1244,6 +1343,9 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::PresenceExpr: return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
       case AstNodeKind::MemberExpr:   return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
       case AstNodeKind::IndexExpr:    return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
+      case AstNodeKind::SafeMemberExpr: return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
+      case AstNodeKind::SafeIndexExpr:  return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
+      case AstNodeKind::SafeCallExpr:   return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::CallExpr:     return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::TableExpr:    return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr: return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
@@ -1636,6 +1738,107 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload
    key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload& Payload)
+{
+   if (not Payload.table or Payload.member.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::SafeMemberExpr, Payload.member.span);
+   }
+
+   auto table_result = this->emit_expression(*Payload.table);
+   if (not table_result.ok()) return table_result;
+
+   NilShortCircuitGuard guard(this, table_result.value_ref());
+   if (not guard.ok()) return guard.error<ExpDesc>();
+
+   ExpDesc table = guard.base_expression();
+   ExpDesc key(Payload.member.symbol);
+   expr_index(&this->func_state, &table, &key);
+
+   this->materialise_to_reg(table, guard.base_register(), "safe member access");
+   return guard.complete();
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload& Payload)
+{
+   if (not Payload.table or not Payload.index) {
+      return this->unsupported_expr(AstNodeKind::SafeIndexExpr, SourceSpan{});
+   }
+
+   auto table_result = this->emit_expression(*Payload.table);
+   if (not table_result.ok()) return table_result;
+
+   NilShortCircuitGuard guard(this, table_result.value_ref());
+   if (not guard.ok()) return guard.error<ExpDesc>();
+
+   // Index expression is evaluated only on non-nil path (short-circuit)
+   auto key_result = this->emit_expression(*Payload.index);
+   if (not key_result.ok()) return key_result;
+
+   ExpDesc key = key_result.value_ref();
+   ExpressionValue key_toval(&this->func_state, key);
+   key_toval.to_val();
+   key = key_toval.legacy();
+
+   ExpDesc table = guard.base_expression();
+   expr_index(&this->func_state, &table, &key);
+
+   this->materialise_to_reg(table, guard.base_register(), "safe index access");
+   return guard.complete();
+}
+
+//********************************************************************************************************************
+
+ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payload)
+{
+   BCLine call_line = this->lex_state.lastline;
+
+   const auto* safe_method = std::get_if<SafeMethodCallTarget>(&Payload.target);
+   if (not safe_method or not safe_method->receiver or safe_method->method.symbol IS nullptr) {
+      return this->unsupported_expr(AstNodeKind::SafeCallExpr, SourceSpan{});
+   }
+
+   auto receiver_result = this->emit_expression(*safe_method->receiver);
+   if (not receiver_result.ok()) return receiver_result;
+
+   NilShortCircuitGuard guard(this, receiver_result.value_ref());
+   if (not guard.ok()) return guard.error<ExpDesc>();
+
+   // Method dispatch and arguments are evaluated only on non-nil path (short-circuit)
+   ExpDesc callee = guard.base_expression();
+   ExpDesc key(ExpKind::Str);
+   key.u.sval = safe_method->method.symbol;
+   bcemit_method(&this->func_state, &callee, &key);
+   BCREG call_base = callee.u.s.info;
+
+   BCREG arg_count = 0;
+   ExpDesc args(ExpKind::Void);
+   if (not Payload.arguments.empty()) {
+      auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
+      if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
+      args = args_result.value_ref();
+   }
+
+   BCIns ins;
+   bool forward_tail = Payload.forwards_multret and (args.k IS ExpKind::Call);
+   if (forward_tail) {
+      setbc_b(ir_bcptr(&this->func_state, &args), 0);
+      ins = BCINS_ABC(BC_CALLM, call_base, 2, args.u.s.aux - call_base - 1 - LJ_FR2);
+   }
+   else {
+      if (not (args.k IS ExpKind::Void)) this->materialise_to_next_reg(args, "safe call arguments");
+      ins = BCINS_ABC(BC_CALL, call_base, 2, this->func_state.freereg - call_base - LJ_FR2);
+   }
+
+   this->lex_state.lastline = call_line;
+   BCPOS call_pc = bcemit_INS(&this->func_state, ins);
+
+   return guard.complete_call(call_base, call_pc);
 }
 
 //********************************************************************************************************************
