@@ -114,6 +114,11 @@ struct StrongIndex {
    constexpr explicit StrongIndex(T v) : value(v) {}
    constexpr T raw() const { return value; }
 
+   // Implicit conversion to underlying type for ergonomic usage
+   // This allows: int(bcpos), printf("%d", bcreg), bcpos >= 1, etc.
+   // while still preventing implicit construction from raw types
+   constexpr operator T() const { return value; }
+
    auto operator<=>(const StrongIndex&) const = default;
    bool operator==(const StrongIndex&) const = default;
 };

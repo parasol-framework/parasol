@@ -216,8 +216,8 @@ void LexState::gola_close(VarInfo* vg)
    fs->assert(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
    if (bc_op(*ip) IS BC_JMP) {
-      BCPOS next = JumpListView::next(fs, pc);
-      if (next != NO_JMP) JumpListView(fs, next).patch_to(pc);  // Jump to UCLO.
+      BCPos next = JumpListView::next(fs, BCPos(pc));
+      if (next.raw() != NO_JMP) JumpListView(fs, next.raw()).patch_to(pc);  // Jump to UCLO.
       setbc_op(ip, BC_UCLO);  // Turn into UCLO.
       setbc_j(ip, NO_JMP);
    }

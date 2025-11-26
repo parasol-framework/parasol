@@ -489,7 +489,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
          else {
             RegisterAllocator allocator(&this->func_state);
             ExpressionValue value(&this->func_state, last);
-            BCREG reg = value.discharge_to_any_reg(allocator);
+            BCReg reg = value.discharge_to_any_reg(allocator);
             ins = BCINS_AD(BC_RET1, reg, 2);
          }
       }
@@ -614,7 +614,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
          }
 
          if (has_next) {
-            escapelist.append(bcemit_jmp(&this->func_state));
+            escapelist.append(BCPos(bcemit_jmp(&this->func_state)));
             condexit.patch_here();
          }
          else escapelist.append(condexit);
@@ -656,19 +656,19 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    {
       FuncScope loop_scope;
       ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
-      loop = this->control_flow.make_unconditional(bcemit_AD(fs, BC_LOOP, fs->nactvar, 0));
+      loop = this->control_flow.make_unconditional(BCPos(bcemit_AD(fs, BC_LOOP, fs->nactvar, 0)));
       auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) {
          return block_result;
       }
-      ControlFlowEdge body_jump = this->control_flow.make_unconditional(bcemit_jmp(fs));
-      body_jump.patch_to(start);
+      ControlFlowEdge body_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+      body_jump.patch_to(BCPos(start));
    }
 
    condexit.patch_here();
-   loop.patch_head(fs->pc);
+   loop.patch_head(BCPos(fs->pc));
 
-   this->loop_stack.back().continue_edge.patch_to(loop_context.continue_target);
+   this->loop_stack.back().continue_edge.patch_to(BCPos(loop_context.continue_target));
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
@@ -725,14 +725,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
       }
    }
 
-   if (inner_has_upvals) condexit = this->control_flow.make_unconditional(bcemit_jmp(fs));
+   if (inner_has_upvals) condexit = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 
-   condexit.patch_to(loop);
-   ControlFlowEdge loop_head = this->control_flow.make_unconditional(loop);
-   loop_head.patch_head(fs->pc);
+   condexit.patch_to(BCPos(loop));
+   ControlFlowEdge loop_head = this->control_flow.make_unconditional(BCPos(loop));
+   loop_head.patch_head(BCPos(fs->pc));
 
    this->loop_stack.back().continue_target = iter;
-   this->loop_stack.back().continue_edge.patch_to(iter);
+   this->loop_stack.back().continue_edge.patch_to(BCPos(iter));
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
@@ -799,7 +799,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
 
-   ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORI, base, NO_JMP));
+   ControlFlowEdge loop = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORI, base, NO_JMP)));
 
    {
       FuncScope visible_scope;
@@ -818,11 +818,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       if (not block_result.ok()) return block_result;
    }
 
-   ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_FORL, base, NO_JMP));
-   fs->bcbase[loopend.head()].line = payload.body->span.line;
-   loopend.patch_head(loop.head() + 1);
-   loop.patch_head(fs->pc);
-   this->loop_stack.back().continue_target = loopend.head();
+   ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORL, base, NO_JMP)));
+   fs->bcbase[loopend.head().raw()].line = payload.body->span.line;
+   loopend.patch_head(BCPos(loop.head().raw() + 1));
+   loop.patch_head(BCPos(fs->pc));
+   this->loop_stack.back().continue_target = loopend.head().raw();
    this->loop_stack.back().continue_edge.patch_to(loopend.head());
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
@@ -873,7 +873,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
 
-   ControlFlowEdge loop = this->control_flow.make_unconditional(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP));
+   ControlFlowEdge loop = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP)));
 
    {
       FuncScope visible_scope;
@@ -900,14 +900,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       }
    }
 
-   loop.patch_head(fs->pc);
+   loop.patch_head(BCPos(fs->pc));
    BCPOS iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - 3 + 1, 3);
-   ControlFlowEdge loopend = this->control_flow.make_unconditional(bcemit_AJ(fs, BC_ITERL, base, NO_JMP));
-   fs->bcbase[loopend.head() - 1].line = payload.body->span.line;
-   fs->bcbase[loopend.head()].line = payload.body->span.line;
-   loopend.patch_head(loop.head() + 1);
+   ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_ITERL, base, NO_JMP)));
+   fs->bcbase[loopend.head().raw() - 1].line = payload.body->span.line;
+   fs->bcbase[loopend.head().raw()].line = payload.body->span.line;
+   loopend.patch_head(BCPos(loop.head().raw() + 1));
    this->loop_stack.back().continue_target = iter;
-   this->loop_stack.back().continue_edge.patch_to(iter);
+   this->loop_stack.back().continue_edge.patch_to(BCPos(iter));
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -973,7 +973,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 
    LoopContext& loop = this->loop_stack.back();
    execute_defers(&this->func_state, loop.defer_base);
-   loop.break_edge.append(bcemit_jmp(&this->func_state));
+   loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -987,7 +987,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
 
    LoopContext& loop = this->loop_stack.back();
    execute_defers(&this->func_state, loop.defer_base);
-   loop.continue_edge.append(bcemit_jmp(&this->func_state));
+   loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1171,7 +1171,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
 
    // Use ExpressionValue for discharge operations
    ExpressionValue lhs_value(&this->func_state, working);
-   BCREG lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1179,18 +1179,18 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    ExpDesc emptyv(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
-   ControlFlowEdge skip_assign = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    BCPOS assign_pos = this->func_state.pc;
 
    auto list = this->emit_expression_list(values, count);
@@ -1208,11 +1208,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
    bcemit_store(&this->func_state, &target.storage, &rhs);
 
-   check_nil.patch_to(assign_pos);
-   check_false.patch_to(assign_pos);
-   check_zero.patch_to(assign_pos);
-   check_empty.patch_to(assign_pos);
-   skip_assign.patch_to(this->func_state.pc);
+   check_nil.patch_to(BCPos(assign_pos));
+   check_false.patch_to(BCPos(assign_pos));
+   check_zero.patch_to(BCPos(assign_pos));
+   check_empty.patch_to(BCPos(assign_pos));
+   skip_assign.patch_to(BCPos(this->func_state.pc));
 
    register_guard.release_to(register_guard.saved());
    allocator.release(target.reserved);
@@ -1260,7 +1260,7 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
    ExpDesc result = condition.value_ref();
    if (result.k IS ExpKind::Nil) result.k = ExpKind::False;
    bcemit_branch_t(&this->func_state, &result);
-   return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(result.f));
+   return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(BCPos(result.f)));
 }
 
 //********************************************************************************************************************
@@ -1346,11 +1346,11 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 
    // Use ExpressionValue for discharge operations
    ExpressionValue operand_value(&this->func_state, working);
-   BCREG operand_reg = operand_value.discharge_to_any_reg(allocator);
+   BCReg operand_reg = operand_value.discharge_to_any_reg(allocator);
 
-   BCREG saved_reg = operand_reg;
+   BCReg saved_reg = operand_reg;
    if (payload.is_postfix) {
-      saved_reg = this->func_state.freereg;
+      saved_reg = BCReg(this->func_state.freereg);
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
       allocator.reserve(BCReg(1));
    }
@@ -1454,7 +1454,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue lhs_value(&this->func_state, lhs);
-   BCREG lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+   BCReg lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1463,24 +1463,24 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    // Extended falsey checks - jumps skip to RHS when value is falsey
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    // LHS is truthy - it's already in lhs_reg, just skip RHS
-   ControlFlowEdge skip_rhs = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge skip_rhs = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    // Patch falsey checks to jump here (RHS evaluation)
 
    BCPOS rhs_start = this->func_state.pc;
-   check_nil.patch_to(rhs_start);
-   check_false.patch_to(rhs_start);
-   check_zero.patch_to(rhs_start);
-   check_empty.patch_to(rhs_start);
+   check_nil.patch_to(BCPos(rhs_start));
+   check_false.patch_to(BCPos(rhs_start));
+   check_zero.patch_to(BCPos(rhs_start));
+   check_empty.patch_to(BCPos(rhs_start));
 
    // Emit RHS - only executed when LHS is falsey
 
@@ -1496,7 +1496,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 
    // Patch skip jump to here (after RHS)
 
-   skip_rhs.patch_to(this->func_state.pc);
+   skip_rhs.patch_to(BCPos(this->func_state.pc));
 
    // Preserve result register by adjusting what RegisterGuard will restore to
    // Only restore to saved_freereg if it's beyond the result register
@@ -1527,7 +1527,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    RegisterGuard register_guard(&this->func_state);
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
-   BCREG cond_reg = condition_value.discharge_to_any_reg(allocator);
+   BCReg cond_reg = condition_value.discharge_to_any_reg(allocator);
 
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc falsev(ExpKind::False);
@@ -1535,13 +1535,13 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    ExpDesc emptyv(this->lex_state.intern_empty_string());
 
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    auto true_result = this->emit_expression(*Payload.if_true);
    if (not true_result.ok()) return true_result;
@@ -1551,13 +1551,13 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    this->materialise_to_reg(true_value.legacy(), cond_reg, "ternary true branch");
    allocator.collapse_freereg(BCReg(cond_reg));
 
-   ControlFlowEdge skip_false = this->control_flow.make_unconditional(bcemit_jmp(&this->func_state));
+   ControlFlowEdge skip_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    BCPOS false_start = this->func_state.pc;
-   check_nil.patch_to(false_start);
-   check_false.patch_to(false_start);
-   check_zero.patch_to(false_start);
-   check_empty.patch_to(false_start);
+   check_nil.patch_to(BCPos(false_start));
+   check_false.patch_to(BCPos(false_start));
+   check_zero.patch_to(BCPos(false_start));
+   check_empty.patch_to(BCPos(false_start));
 
    auto false_result = this->emit_expression(*Payload.if_false);
    if (not false_result.ok()) return false_result;
@@ -1566,7 +1566,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
    this->materialise_to_reg(false_value.legacy(), cond_reg, "ternary false branch");
    allocator.collapse_freereg(BCReg(cond_reg));
 
-   skip_false.patch_to(this->func_state.pc);
+   skip_false.patch_to(BCPos(this->func_state.pc));
 
    // Preserve result register by adjusting what RegisterGuard will restore to
    // Only restore to saved_freereg if it's beyond the result register
@@ -2139,7 +2139,7 @@ void IrEmitter::materialise_to_reg(ExpDesc& expression, BCREG slot, std::string_
 {
    RegisterAllocator allocator(&this->func_state);
    ExpressionValue value(&this->func_state, expression);
-   value.to_reg(allocator, slot);
+   value.to_reg(allocator, BCReg(slot));
    expression = value.legacy();
    this->ensure_register_floor(usage);
 }

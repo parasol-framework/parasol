@@ -228,8 +228,8 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    BCPOS pc = fs->pc;
    LexState* ls = fs->ls;
    ControlFlowGraph cfg(fs);
-   ControlFlowEdge pending = cfg.make_unconditional(fs->jpc);
-   pending.patch_with_value(pc, NO_REG, pc);
+   ControlFlowEdge pending = cfg.make_unconditional(BCPos(fs->jpc));
+   pending.patch_with_value(BCPos(pc), BCReg(NO_REG), BCPos(pc));
    fs->jpc = NO_JMP;
 
    if (pc >= fs->bclim) [[unlikely]] {
@@ -400,29 +400,29 @@ static void expr_toreg(FuncState *fs, ExpDesc *e, BCREG reg)
    ControlFlowGraph cfg(fs);
 
    if (e->k IS ExpKind::Jmp) {
-      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-      true_edge.append(e->u.s.info);
-      e->t = true_edge.head();
+      ControlFlowEdge true_edge = cfg.make_true_edge(BCPos(e->t));
+      true_edge.append(BCPos(e->u.s.info));
+      e->t = true_edge.head().raw();
    }
 
    if (e->has_jump()) {  // Discharge expression with branches.
       BCPOS jend, jfalse = NO_JMP, jtrue = NO_JMP;
-      ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
-      ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
+      ControlFlowEdge true_edge = cfg.make_true_edge(BCPos(e->t));
+      ControlFlowEdge false_edge = cfg.make_false_edge(BCPos(e->f));
 
       if (true_edge.produces_values() or false_edge.produces_values()) {
          BCPOS jval = (e->k IS ExpKind::Jmp) ? NO_JMP : bcemit_jmp(fs);
          jfalse = bcemit_AD(fs, BC_KPRI, reg, BCREG(ExpKind::False));
          bcemit_AJ(fs, BC_JMP, fs->freereg, 1);
          jtrue = bcemit_AD(fs, BC_KPRI, reg, BCREG(ExpKind::True));
-         ControlFlowEdge jval_edge = cfg.make_unconditional(jval);
+         ControlFlowEdge jval_edge = cfg.make_unconditional(BCPos(jval));
          jval_edge.patch_here();
       }
 
       jend = fs->pc;
       fs->lasttarget = jend;
-      false_edge.patch_with_value(jend, reg, jfalse);
-      true_edge.patch_with_value(jend, reg, jtrue);
+      false_edge.patch_with_value(BCPos(jend), BCReg(reg), BCPos(jfalse));
+      true_edge.patch_with_value(BCPos(jend), BCReg(reg), BCPos(jtrue));
    }
 
    e->f = e->t = NO_JMP;
@@ -554,9 +554,9 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    }
    else j = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
    ControlFlowGraph cfg(fs);
-   ControlFlowEdge edge = cfg.make_unconditional(j);
-   edge.append(jpc);
-   return edge.head();
+   ControlFlowEdge edge = cfg.make_unconditional(BCPos(j));
+   edge.append(BCPos(jpc));
+   return edge.head().raw();
 }
 
 //********************************************************************************************************************
@@ -606,10 +606,10 @@ static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
    else if (e->k IS ExpKind::False or e->k IS ExpKind::Nil) expr_toreg_nobranch(fs, e, NO_REG), pc = bcemit_jmp(fs);
    else pc = bcemit_branch(fs, e, 0);
    ControlFlowGraph cfg(fs);
-   ControlFlowEdge false_edge = cfg.make_false_edge(e->f);
-   false_edge.append(pc);
-   e->f = false_edge.head();
-   ControlFlowEdge true_edge = cfg.make_true_edge(e->t);
+   ControlFlowEdge false_edge = cfg.make_false_edge(BCPos(e->f));
+   false_edge.append(BCPos(pc));
+   e->f = false_edge.head().raw();
+   ControlFlowEdge true_edge = cfg.make_true_edge(BCPos(e->t));
    true_edge.patch_here();
    e->t = NO_JMP;
 }

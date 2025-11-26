@@ -47,26 +47,26 @@ public:
       return false;
    }
 
-   inline ControlFlowEdge true_jumps(ControlFlowGraph& Graph) const { return Graph.make_true_edge(this->descriptor.t); }
-   inline ControlFlowEdge false_jumps(ControlFlowGraph& Graph) const { return Graph.make_false_edge(this->descriptor.f); }
-   inline void set_true_jumps(const ControlFlowEdge& Edge) { this->descriptor.t = Edge.head(); }
-   inline void set_false_jumps(const ControlFlowEdge& Edge) { this->descriptor.f = Edge.head(); }
+   inline ControlFlowEdge true_jumps(ControlFlowGraph& Graph) const { return Graph.make_true_edge(BCPos(this->descriptor.t)); }
+   inline ControlFlowEdge false_jumps(ControlFlowGraph& Graph) const { return Graph.make_false_edge(BCPos(this->descriptor.f)); }
+   inline void set_true_jumps(const ControlFlowEdge& Edge) { this->descriptor.t = Edge.head().raw(); }
+   inline void set_false_jumps(const ControlFlowEdge& Edge) { this->descriptor.f = Edge.head().raw(); }
 
-   inline void set_jump_heads(BCPOS TrueHead, BCPOS FalseHead) {
-      this->descriptor.t = TrueHead;
-      this->descriptor.f = FalseHead;
+   inline void set_jump_heads(BCPos TrueHead, BCPos FalseHead) {
+      this->descriptor.t = TrueHead.raw();
+      this->descriptor.f = FalseHead.raw();
    }
 
-   inline BCREG to_reg(RegisterAllocator& Allocator, BCREG Slot) {
-      expr_toreg(Allocator.state(), &this->descriptor, Slot);
-      return this->descriptor.u.s.info;
+   inline BCReg to_reg(RegisterAllocator& Allocator, BCReg Slot) {
+      expr_toreg(Allocator.state(), &this->descriptor, Slot.raw());
+      return BCReg(this->descriptor.u.s.info);
    }
 
-   inline BCREG to_any_reg(RegisterAllocator& Allocator) { return expr_toanyreg(Allocator.state(), &this->descriptor); }
+   inline BCReg to_any_reg(RegisterAllocator& Allocator) { return BCReg(expr_toanyreg(Allocator.state(), &this->descriptor)); }
 
-   inline BCREG to_next_reg(RegisterAllocator& Allocator) {
+   inline BCReg to_next_reg(RegisterAllocator& Allocator) {
       expr_tonextreg(Allocator.state(), &this->descriptor);
-      return this->descriptor.u.s.info;
+      return BCReg(this->descriptor.u.s.info);
    }
 
    inline void discharge() { expr_discharge(this->func_state, &this->descriptor); }
@@ -80,15 +80,15 @@ public:
 
    inline void to_val() { expr_toval(this->func_state, &this->descriptor); }
 
-   inline void discharge_nobranch(RegisterAllocator& Allocator, BCREG Reg) {
-      expr_toreg_nobranch(Allocator.state(), &this->descriptor, Reg);
+   inline void discharge_nobranch(RegisterAllocator& Allocator, BCReg Reg) {
+      expr_toreg_nobranch(Allocator.state(), &this->descriptor, Reg.raw());
    }
 
    inline void store_to(RegisterAllocator& Allocator, ExpressionValue& Target) {
       bcemit_store(Allocator.state(), &Target.descriptor, &this->descriptor);
    }
 
-   inline BCREG discharge_to_any_reg(RegisterAllocator& Allocator) {
+   inline BCReg discharge_to_any_reg(RegisterAllocator& Allocator) {
       this->discharge();
       return this->to_any_reg(Allocator);
    }
