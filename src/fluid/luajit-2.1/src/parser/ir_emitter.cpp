@@ -85,7 +85,11 @@ public:
       return ParserResult<ExpDesc>::success(result);
    }
 
-   // Complete with a custom result register (for call expressions where result may differ)
+   // Complete with a custom result register (for call expressions where result may differ).
+   // Note: Unlike complete(), we don't call collapse_freereg(result_reg) here because CallBase
+   // may differ from result_reg after method dispatch setup, and we explicitly set freereg to
+   // CallBase + 1 at the end, which is the correct final state for call expressions.
+
    ParserResult<ExpDesc> complete_call(BCREG CallBase, BCPOS CallPc)
    {
       ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
