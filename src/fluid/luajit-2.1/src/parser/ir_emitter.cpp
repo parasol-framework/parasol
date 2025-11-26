@@ -610,6 +610,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
    }
 
    snapshot_return_regs(&this->func_state, &ins);
+   execute_closes(&this->func_state, 0);
    execute_defers(&this->func_state, 0);
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
@@ -642,6 +643,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
    this->lex_state.var_add(nvars);
    BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
+
+   for (BCReg i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = payload.names[i.raw()];
+      if (not identifier.has_close) continue;
+
+      VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
+      info->info |= VarInfoFlag::Close;
+   }
+
    for (BCReg i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;

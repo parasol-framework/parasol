@@ -14,6 +14,16 @@ local f <close> = io.open("file.txt")
 -- even if an error occurs
 ```
 
+## Progress Update (2025-02-05)
+
+- **Phase 1**: Registered the `__close` metamethod in `lj_obj.h` so it is part of the VM's metamethod table.
+- **Phase 2**: Added parser support for the `<close>` attribute by tracking it on identifiers and mapping it to a new `VarInfoFlag::Close`.
+- **Phase 3**: Propagated the `<close>` marker into `VarInfo` entries during local declaration emission. Scope-exit execution and VM/runtime handling remain to be implemented in later phases.
+- **Phase 4**: Added scope-exit hooks that walk to-be-closed locals before defers, emitting close operations in LIFO order.
+- **Phase 5**: Ensured implicit returns also trigger close handling so late returns respect `<close>` semantics.
+- **Phase 6**: Wired explicit `return` statements to run `<close>` clean-up before defers, aligning all return paths with scope-exit close ordering.
+- **Phase 7**: Unified return-time close handling for child prototypes, ensuring nested functions emit close opcodes prior to any pending defers.
+
 ## Benefits for Parasol/Fluid
 
 - **Deterministic resource cleanup**: Critical for file handles, network sockets, graphics resources

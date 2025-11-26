@@ -151,6 +151,7 @@ static void bcemit_branch_t(FuncState *, ExpDesc* e);
 
 static void fscope_begin(FuncState *, FuncScope* bl, FuncScopeFlag flags);
 static void execute_defers(FuncState *, BCREG limit);
+static void execute_closes(FuncState *, BCREG limit);
 static void fscope_end(FuncState *);
 static void fscope_uvmark(FuncState *, BCREG level);
 

@@ -2,7 +2,9 @@
 
 static void bcreg_reserve(FuncState* fs, BCREG n);
 static void fscope_uvmark(FuncState* fs, BCREG level);
+static void bcemit_close(FuncState* fs, BCREG slot);
 static void execute_defers(FuncState* fs, BCREG limit);
+static void execute_closes(FuncState* fs, BCREG limit);
 
 // Jump types for break and continue statements.
 
@@ -330,6 +332,35 @@ static void execute_defers(FuncState* fs, BCREG limit)
 }
 
 //********************************************************************************************************************
+// Emit close calls for to-be-closed locals.
+
+static void bcemit_close(FuncState* fs, BCREG slot)
+{
+   RegisterAllocator allocator(fs);
+   allocator.reserve(BCReg(1));
+   bcemit_AJ(fs, BC_UCLO, slot, 0);
+}
+
+//********************************************************************************************************************
+// Execute close handlers for scope.
+
+static void execute_closes(FuncState* fs, BCREG limit)
+{
+   BCREG i = fs->nactvar;
+   BCREG oldfreereg;
+
+   if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
+   oldfreereg = fs->freereg;
+
+   while (i > limit) {
+      VarInfo *v = &fs->var_get(--i);
+      if (has_flag(v->info, VarInfoFlag::Close)) bcemit_close(fs, v->slot);
+   }
+
+   fs->freereg = oldfreereg;
+}
+
+//********************************************************************************************************************
 // End a scope.
 
 static void fscope_end(FuncState* fs)
@@ -339,6 +370,7 @@ static void fscope_end(FuncState* fs)
    FuncScope* bl = fs->bl;
    LexState* ls = fs->ls;
    fs->bl = bl->prev;
+   execute_closes(fs, bl->nactvar);
    execute_defers(fs, bl->nactvar);
    ls->var_remove(bl->nactvar);
    fs->freereg = fs->nactvar;
@@ -607,6 +639,7 @@ static void fs_fixup_ret(FuncState* fs)
 {
    BCPOS lastpc = fs->pc;
    if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
+      execute_closes(fs, 0);
       execute_defers(fs, 0);
       if (has_flag(fs->bl->flags, FuncScopeFlag::Upvalue)) bcemit_AJ(fs, BC_UCLO, 0, 0);
       bcemit_AD(fs, BC_RET0, 0, 1);  // Need final return.
