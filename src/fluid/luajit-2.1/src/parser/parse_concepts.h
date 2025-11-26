@@ -134,6 +134,64 @@ concept ConstExpressionPredicate = requires(F f, const ExpDesc* e) {
    { f(e) } -> std::convertible_to<bool>;
 };
 
+// StrongIndexType: Concept for StrongIndex wrapper types
+// Validates that a type is a StrongIndex with proper tag and underlying type
+
+template<typename T>
+concept StrongIndexType = requires(T idx) {
+   { idx.raw() } -> std::integral;
+   requires requires(T a, T b) {
+      { a <=> b };
+      { a == b } -> std::convertible_to<bool>;
+   };
+   requires std::integral<decltype(idx.value)>;
+};
+
+// JumpTarget: Concept for jump target types (BCPOS or NO_JMP sentinel)
+
+template<typename T>
+concept JumpTarget = PositionType<T>;
+
+// ExpressionValueType: Concept for types that can be converted to expression values
+// This includes constants, registers, and computed values
+// Note: Renamed from ExpressionValue to avoid naming conflict with ExpressionValue class
+
+template<typename T>
+concept ExpressionValueType = NumericValue<T> or GCString<T> or RegisterType<T>;
+
+// ScopeHandler: Concept for scope management functions
+
+template<typename F>
+concept ScopeHandler = requires(F f, FuncScope* scope) {
+   { f(scope) };
+};
+
+// BinaryOperatorHandler: Concept for functions that handle binary operators
+// Used to constrain operator emission functions
+
+template<typename F>
+concept BinaryOperatorHandler = requires(F f, BinOpr op, ExpDesc* left, ExpDesc* right) {
+   { f(op, left, right) };
+};
+
+// UnaryOperatorHandler: Concept for functions that handle unary operators
+
+template<typename F>
+concept UnaryOperatorHandler = requires(F f, int op, ExpDesc* operand) {
+   { f(op, operand) };
+};
+
+// VariableNameType: Concept for variable name types
+// Accepts both legacy GCstr* and modern VarName types
+
+template<typename T>
+concept VariableNameType = GCString<T> or std::same_as<T, VarName>;
+
+// SpecialNameType: Concept for special name sentinel values
+
+template<typename T>
+concept SpecialNameType = std::same_as<T, SpecialName> or std::is_enum_v<T>;
+
 // Compile-time validation of concept satisfaction
 // These static assertions ensure that the core types satisfy their intended concepts,
 // providing early detection of interface changes.
@@ -147,3 +205,10 @@ static_assert(IndexType<VarIndex>, "VarIndex must satisfy IndexType concept");
 static_assert(IndexType<VarSlot>, "VarSlot must satisfy IndexType concept");
 static_assert(BytecodeOpcode<BCOp>, "BCOp must satisfy BytecodeOpcode concept");
 static_assert(FunctionState<FuncState*>, "FunctionState* must satisfy FunctionState concept");
+static_assert(BinaryOperator<BinOpr>, "BinOpr must satisfy BinaryOperator concept");
+static_assert(BytecodeInstruction<BCIns>, "BCIns must satisfy BytecodeInstruction concept");
+static_assert(GCString<GCstr*>, "GCstr* must satisfy GCString concept");
+static_assert(StrongIndexType<BCReg>, "BCReg must satisfy StrongIndexType concept");
+static_assert(StrongIndexType<BCPos>, "BCPos must satisfy StrongIndexType concept");
+static_assert(StrongIndexType<VarSlot>, "VarSlot must satisfy StrongIndexType concept");
+static_assert(SpecialNameType<SpecialName>, "SpecialName must satisfy SpecialNameType concept");

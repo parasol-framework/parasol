@@ -9,6 +9,8 @@
 #include <string_view>
 #include <cstdint>
 
+#include "parse_concepts.h"  // Must be early for concept-constrained templates
+
 enum class TokenKind : uint16_t;
 
 // Constants (lj_parse_constants.cpp)
@@ -102,18 +104,19 @@ extern BCPOS bcemit_INS(FuncState *, BCIns ins);
 // Bytecode emission helper functions.
 // Note: These templates remain on raw types for compatibility with C macros (BCINS_*)
 // Call-sites should wrap results with BCPos() when needed
+// Templates constrained with BytecodeOpcode concept for type safety
 
-template<typename Op>
+template<BytecodeOpcode Op>
 static inline BCPOS bcemit_ABC(FuncState *fs, Op o, BCREG a, BCREG b, BCREG c) {
    return bcemit_INS(fs, BCINS_ABC(o, a, b, c));
 }
 
-template<typename Op>
+template<BytecodeOpcode Op>
 static inline BCPOS bcemit_AD(FuncState *fs, Op o, BCREG a, BCREG d) {
    return bcemit_INS(fs, BCINS_AD(o, a, d));
 }
 
-template<typename Op>
+template<BytecodeOpcode Op>
 static inline BCPOS bcemit_AJ(FuncState *fs, Op o, BCREG a, BCPOS j) {
    return bcemit_INS(fs, BCINS_AJ(o, a, j));
 }
@@ -153,7 +156,6 @@ static void fscope_uvmark(FuncState *, BCREG level);
 
 #include "parse_raii.h"
 #include "parse_regalloc.h"
-#include "parse_concepts.h"
 
 // Function state (lj_parse_scope.cpp)
 

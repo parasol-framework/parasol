@@ -366,6 +366,25 @@ enum class BinOpr : int8_t {
    return int(op) - int(BinOpr::Add);
 }
 
+// Operator classification helpers (non-template versions for parse_types.h)
+// Template versions with concept constraints are in parse_internal.h
+
+[[nodiscard]] constexpr bool is_arithmetic_op(BinOpr op) {
+   return op >= BinOpr::Add and op <= BinOpr::Pow;
+}
+
+[[nodiscard]] constexpr bool is_comparison_op(BinOpr op) {
+   return op >= BinOpr::NotEqual and op <= BinOpr::GreaterThan;
+}
+
+[[nodiscard]] constexpr bool is_bitwise_op(BinOpr op) {
+   return op >= BinOpr::BitAnd and op <= BinOpr::ShiftRight;
+}
+
+[[nodiscard]] constexpr bool is_logical_op(BinOpr op) {
+   return op IS BinOpr::LogicalAnd or op IS BinOpr::LogicalOr or op IS BinOpr::IfEmpty;
+}
+
 // Verify bytecode opcodes maintain correct offsets relative to their operator counterparts.
 
 static_assert((int)BC_ISGE - (int)BC_ISLT == int(BinOpr::GreaterEqual) - int(BinOpr::LessThan), "BC_ISGE offset mismatch");
@@ -381,6 +400,21 @@ static_assert((int)BC_MODVV - (int)BC_ADDVV == int(BinOpr::Mod) - int(BinOpr::Ad
 [[nodiscard]] static constexpr ExpKind const_pri(const ExpDesc* e) {
    lj_assertX(e->k <= ExpKind::True, "Bad constant primitive");
    return e->k;
+}
+
+// Register manipulation helpers (non-template versions for parse_types.h)
+// Template versions with concept constraints are in parse_internal.h
+
+[[nodiscard]] constexpr bool is_valid_register(BCREG reg) {
+   return reg < NO_REG;
+}
+
+[[nodiscard]] constexpr bool is_valid_jump(BCPOS pos) {
+   return pos != NO_JMP;
+}
+
+[[nodiscard]] constexpr BCREG next_register(BCREG reg) {
+   return reg + 1;
 }
 
 [[nodiscard]] static inline bool tvhaskslot(const TValue* o) { return o->u32.hi == 0; }
