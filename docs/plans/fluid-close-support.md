@@ -24,6 +24,13 @@ local f <close> = io.open("file.txt")
 - **Phase 6**: Wired explicit `return` statements to run `<close>` clean-up before defers, aligning all return paths with scope-exit close ordering.
 - **Phase 7**: Unified return-time close handling for child prototypes, ensuring nested functions emit close opcodes prior to any pending defers.
 
+## Progress Update (2025-11-26)
+
+- **Phase 8 Bug Fix**: Fixed critical bug where `__close` was inserted in the wrong position in `MMDEF` macro (after `gc` instead of at the end). This caused all metamethod enum values after `gc` to shift, breaking the VM's metamethod lookup and causing all tests to fail with "unprotected error in call to Lua API". The fix moves `__close` to the end of `MMDEF` (after `tostring`, before `MMDEF_FFI` and `MMDEF_PAIRS`).
+- **Phase 8 Build Fix**: Identified that changes to `lj_obj.h` require regenerating `lj_vm.obj` since the VM assembly contains hardcoded metamethod table offsets. Must delete `build/agents/src/fluid/luajit-generated/buildvm.exe` and `lj_vm.obj` to force regeneration.
+- **Phase 8 Parser Tests**: Created `test_close.fluid` with comprehensive syntax tests verifying that the `<close>` attribute is correctly parsed in various contexts (nil values, false values, multiple variables, nested scopes, loops, break, continue, with defer).
+- **Phase 8 Status**: Parser correctly accepts `<close>` syntax. Current `bcemit_close()` implementation uses placeholder `BC_UCLO` bytecode. Full `__close` metamethod invocation requires implementing the bytecode sequence to lookup and call the metamethod at runtime.
+
 ## Benefits for Parasol/Fluid
 
 - **Deterministic resource cleanup**: Critical for file handles, network sockets, graphics resources
