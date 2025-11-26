@@ -118,6 +118,8 @@ struct PreparedAssignment {
 
 //********************************************************************************************************************
 
+class NilShortCircuitGuard;
+
 class IrEmitter {
 public:
    explicit IrEmitter(ParserContext& context);
@@ -126,6 +128,7 @@ public:
 
 private:
    friend struct LoopStackGuard;
+   friend class NilShortCircuitGuard;
 
    ParserContext &ctx;
    FuncState &func_state;
