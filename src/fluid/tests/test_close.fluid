@@ -402,6 +402,69 @@ function testCloseEarlyReturnInLoop()
    print('testCloseEarlyReturnInLoop: passed')
 end
 
+-- Test 24: Error in __close handler replaces original error (Lua 5.4 semantics)
+function testCloseHandlerError()
+   local order = {}
+   local mt1 = {
+      __close = function(self, err)
+         table.insert(order, 'close1')
+         error('close1 error')
+      end
+   }
+   local mt2 = {
+      __close = function(self, err)
+         table.insert(order, 'close2')
+         -- This handler should receive the error from close1 (or original)
+      end
+   }
+
+   local function inner()
+      local obj2 <close> = setmetatable({}, mt2)  -- Called second (LIFO)
+      local obj1 <close> = setmetatable({}, mt1)  -- Called first (LIFO), throws
+      error('original error')
+   end
+
+   local ok, err = pcall(inner)
+   assert(not ok, 'pcall should catch error')
+   -- Both close handlers should be called even when one throws
+   assert(#order is 2, 'Both close handlers should be called: ' .. #order)
+   assert(order[1] is 'close1', 'close1 first (LIFO)')
+   assert(order[2] is 'close2', 'close2 second (LIFO)')
+   -- The error should be from close1, not the original (per Lua 5.4)
+   assert(tostring(err):find('close1 error'), 'Error from __close should replace original: ' .. tostring(err))
+   print('testCloseHandlerError: passed')
+end
+
+-- Test 25: Multiple __close errors - last one wins
+function testMultipleCloseErrors()
+   local order = {}
+   local mt1 = {
+      __close = function(self, err)
+         table.insert(order, 'close1')
+         error('close1 error')
+      end
+   }
+   local mt2 = {
+      __close = function(self, err)
+         table.insert(order, 'close2')
+         error('close2 error')
+      end
+   }
+
+   local function inner()
+      local obj2 <close> = setmetatable({}, mt2)  -- Called second, also throws
+      local obj1 <close> = setmetatable({}, mt1)  -- Called first, throws
+      error('original error')
+   end
+
+   local ok, err = pcall(inner)
+   assert(not ok, 'pcall should catch error')
+   assert(#order is 2, 'Both close handlers should be called')
+   -- The last error (from close2) should be the final error
+   assert(tostring(err):find('close2 error'), 'Last __close error should win: ' .. tostring(err))
+   print('testMultipleCloseErrors: passed')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -428,6 +491,8 @@ return {
       'testCloseInWhileLoop',
       'testCloseWithXpcall',
       'testNestedFunctionsClose',
-      'testCloseEarlyReturnInLoop'
+      'testCloseEarlyReturnInLoop',
+      'testCloseHandlerError',
+      'testMultipleCloseErrors'
    }
 }

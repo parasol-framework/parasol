@@ -97,17 +97,20 @@ LJ_DATADEF const char* lj_err_allmsg =
 
 // Call __close handlers for to-be-closed locals during error unwinding.
 // Sets _G.__close_err so bytecode-based close handlers can access the error.
-static void unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
+// Returns the error object to propagate (may be updated if a __close handler throws).
+// Per Lua 5.4: if a __close handler throws, that error replaces the original,
+// but all other pending __close handlers are still called.
+static TValue* unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
 {
    // Get the function from this frame
    GCfunc* fn = frame_func(frame);
 
    // Only process Lua functions (they have closeslots in their prototype)
-   if (!isluafunc(fn)) return;
+   if (!isluafunc(fn)) return errobj;
 
    GCproto* pt = funcproto(fn);
    uint64_t closeslots = pt->closeslots;
-   if (closeslots IS 0) return;
+   if (closeslots IS 0) return errobj;
 
    // Set _G.__close_err for bytecode-based handlers that might run later
    global_State* g = G(L);
@@ -131,18 +134,35 @@ static void unwind_close_handlers(lua_State* L, TValue* frame, TValue* errobj)
    // Call lj_meta_close for each slot with <close> attribute in LIFO order
    // Iterate from highest slot to lowest to match Lua 5.4 semantics
    TValue* base = frame + 1;
+   TValue* current_err = errobj;
    for (int slot = 63; slot >= 0; slot--) {
       if (closeslots & (1ULL << slot)) {
          TValue* o = base + slot;
          if (o < L->top and !tvisnil(o) and !tvisfalse(o)) {
-            lj_meta_close(L, o, errobj);
+            int errcode = lj_meta_close(L, o, current_err);
+            if (errcode != 0) {
+               // Per Lua 5.4: error in __close replaces the original error.
+               // The new error is at L->top - 1 after the failed pcall.
+               // Continue calling other __close handlers with the new error.
+               current_err = L->top - 1;
+               // Update _G.__close_err with the new error
+               if (env) {
+                  GCstr* key = lj_str_newlit(L, "__close_err");
+                  TValue* slot = lj_tab_setstr(L, env, key);
+                  copyTV(L, slot, current_err);
+                  lj_gc_anybarriert(L, env);
+               }
+               copyTV(L, &L->close_err, current_err);
+            }
          }
       }
    }
+   return current_err;
 }
 
 // Call __close handlers for all frames from 'from' down to 'to'.
 // This must be called BEFORE L->base is modified during unwinding.
+// If a __close handler throws, the new error replaces the original at L->top - 1.
 static void unwind_close_all(lua_State* L, TValue* from, TValue* to)
 {
    TValue* errobj = (L->top > to) ? L->top - 1 : nullptr;
@@ -150,7 +170,13 @@ static void unwind_close_all(lua_State* L, TValue* from, TValue* to)
    int count = 0;
    while (frame >= to and count < 100) {  // Limit iterations for safety
       count++;
-      unwind_close_handlers(L, frame, errobj);
+      // unwind_close_handlers may return a different error if a __close threw
+      TValue* new_err = unwind_close_handlers(L, frame, errobj);
+      if (new_err != errobj and new_err != nullptr and errobj != nullptr) {
+         // A __close handler threw - update the error at the original location
+         copyTV(L, errobj, new_err);
+      }
+      errobj = new_err;  // Use the (possibly updated) error for subsequent handlers
       // Move to previous frame based on type
       int ftype = frame_type(frame);
       if (ftype IS FRAME_LUA or ftype IS FRAME_LUAP)
