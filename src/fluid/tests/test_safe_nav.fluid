@@ -4,7 +4,7 @@
 
 function testSafeFieldOnNil()
    local user = nil
-   local name = user?.profile?.details.name
+   local name = user?.profile?.details?.name
    assert(name is nil, "Safe field on nil should yield nil")
 end
 
