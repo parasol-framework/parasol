@@ -254,12 +254,12 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    // Release in LIFO order (highest register first) to maximise the chance of
    // collapsing freereg when both operands are adjacent temporaries.
    if (cmp_reg_b != NO_REG and cmp_reg_b > cmp_reg_a) {
-      allocator.release_register(BCReg(cmp_reg_b));
-      allocator.release_register(BCReg(cmp_reg_a));
+      allocator.release_register(cmp_reg_b);
+      allocator.release_register(cmp_reg_a);
    }
    else {
-      allocator.release_register(BCReg(cmp_reg_a));
-      if (cmp_reg_b != NO_REG) allocator.release_register(BCReg(cmp_reg_b));
+      allocator.release_register(cmp_reg_a);
+      if (cmp_reg_b != NO_REG) allocator.release_register(cmp_reg_b);
    }
 
    // Produce a Jmp expression as the result of the comparison, preserving
@@ -306,40 +306,49 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   BCReg arg1 = BCReg(BCREG(base + 1 + LJ_FR2));  // First argument register (after frame link if present)
-   BCReg arg2 = arg1 + BCREG(1);            // Second argument register
+   auto arg1 = BCReg(base + 1 + LJ_FR2);  // First argument register (after frame link if present)
+   auto arg2 = arg1 + 1;            // Second argument register
 
    // Normalise both operands into registers before loading the callee.
+
    ExpressionValue lhs_toval(fs, *lhs);
    lhs_toval.to_val();
    *lhs = lhs_toval.legacy();
+
    ExpressionValue rhs_toval(fs, *rhs);
    rhs_toval.to_val();
    *rhs = rhs_toval.legacy();
+
    ExpressionValue lhs_value(fs, *lhs);
-   lhs_value.to_reg(allocator, BCReg(arg1));
+   lhs_value.to_reg(allocator, arg1);
    *lhs = lhs_value.legacy();
+
    ExpressionValue rhs_value(fs, *rhs);
    rhs_value.to_reg(allocator, BCReg(arg2));
    *rhs = rhs_value.legacy();
 
    // Now load bit.[lshift|rshift|...] into the base register
+
    callee.init(ExpKind::Global, 0);
    callee.u.sval = fs->ls->keepstr("bit");
    ExpressionValue callee_value(fs, callee);
+
    callee_value.discharge_to_any_reg(allocator);
    callee = callee_value.legacy();
    key.init(ExpKind::Str, 0);
    key.u.sval = fs->ls->keepstr(fname);
    expr_index(fs, &callee, &key);
    ExpressionValue callee_toval(fs, callee);
+
    callee_toval.to_val();
    callee = callee_toval.legacy();
    ExpressionValue callee_value2(fs, callee);
+
    callee_value2.to_reg(allocator, BCReg(base));
    callee = callee_value2.legacy();
 
    // Emit CALL instruction
+
    fs->freereg = arg2 + 1;  // Ensure freereg covers all arguments
    lhs->k = ExpKind::Call;
    lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
@@ -386,8 +395,8 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   BCReg base = BCReg(fs->freereg);
-   BCReg arg_reg = base + BCREG(1 + LJ_FR2);
+   auto base = BCReg(fs->freereg);
+   BCReg arg_reg = BCReg(int(base) + 1 + LJ_FR2);
 
    allocator.reserve(BCReg(1));  // Reserve for callee
    if (LJ_FR2) allocator.reserve(BCReg(1));  // Reserve for frame link on x64
@@ -397,7 +406,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    arg_toval.to_val();
    *arg = arg_toval.legacy();
    ExpressionValue arg_value(fs, *arg);
-   arg_value.to_reg(allocator, BCReg(arg_reg));
+   arg_value.to_reg(allocator, arg_reg);
    *arg = arg_value.legacy();
 
    // Ensure freereg accounts for argument register so it's not clobbered.
@@ -416,7 +425,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    callee_toval2.to_val();
    callee = callee_toval2.legacy();
    ExpressionValue callee_value2(fs, callee);
-   callee_value2.to_reg(allocator, BCReg(base));
+   callee_value2.to_reg(allocator, base);
    callee = callee_value2.legacy();
 
    // Emit CALL instruction.
@@ -864,16 +873,14 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
          pc = skip_rhs.head().raw();
 
          // Mark that we need to preserve LHS value and reserve register for RHS
-         BCReg rhs_reg = BCReg(this->func_state->freereg);
+         auto rhs_reg = BCReg(this->func_state->freereg);
          ExprFlag saved_flags = left_desc->flags;
          local_alloc.reserve(BCReg(1));
          left_desc->init(ExpKind::NonReloc, reg);
          left_desc->u.s.aux = rhs_reg;
          left_desc->flags = saved_flags | ExprFlag::HasRhsReg;
       }
-      else {
-         pc = NO_JMP;
-      }
+      else pc = NO_JMP;
    }
 
    // Set up CFG edges
@@ -904,8 +911,8 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
 
    if (left_desc->t != NO_JMP) {
       // Get the RHS register if one was reserved
-      BCReg rhs_reg = BCReg(NO_REG);
-      BCReg lhs_reg = BCReg(left_desc->u.s.info);
+      auto rhs_reg = BCReg(NO_REG);
+      auto lhs_reg = BCReg(left_desc->u.s.info);
       if (expr_consume_flag(left_desc, ExprFlag::HasRhsReg)) {
          rhs_reg = BCReg(left_desc->u.s.aux);
       }
@@ -1053,16 +1060,16 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Emit equality checks for extended falsey values
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-   BCPos check_nil = BCPos(bcemit_jmp(fs));
+   auto check_nil = BCPos(bcemit_jmp(fs));
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-   BCPos check_false = BCPos(bcemit_jmp(fs));
+   auto check_false = BCPos(bcemit_jmp(fs));
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-   BCPos check_zero = BCPos(bcemit_jmp(fs));
+   auto check_zero = BCPos(bcemit_jmp(fs));
 
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-   BCPos check_empty = BCPos(bcemit_jmp(fs));
+   auto check_empty = BCPos(bcemit_jmp(fs));
 
    expr_free(fs, e);  // Free the expression register
 
@@ -1072,10 +1079,10 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Value is truthy - load true
    bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::True));
-   BCPos jmp_false_branch = BCPos(bcemit_jmp(fs));
+   auto jmp_false_branch = BCPos(bcemit_jmp(fs));
 
    // False branch: patch all falsey jumps here and load false
-   BCPos false_pos = BCPos(fs->pc);
+   auto false_pos = BCPos(fs->pc);
    ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
    nil_edge.patch_to(false_pos);
    ControlFlowEdge false_edge_check = this->cfg->make_unconditional(check_false);

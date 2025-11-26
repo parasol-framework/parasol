@@ -138,7 +138,7 @@ void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
 {
    if (Other IS NO_JMP) return list_head;
    if (list_head IS NO_JMP) return Other;
-   BCPos list = BCPos(list_head);
+   auto list = BCPos(list_head);
    BCPos next_pc;
    while (true) {
       next_pc = next(func_state, list);
@@ -151,7 +151,7 @@ void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
 
 void JumpListView::patch_with_value(BCPOS ValueTarget, BCREG Register, BCPOS DefaultTarget) const
 {
-   BCPos list = BCPos(list_head);
+   auto list = BCPos(list_head);
    while (not(list.raw() IS NO_JMP)) {
       BCPos next_pc = next(func_state, list);
       if (patch_test_register(list.raw(), Register)) patch_instruction(list.raw(), ValueTarget);

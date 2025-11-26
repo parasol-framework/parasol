@@ -45,7 +45,7 @@ public:
 
       ExpDesc nilv(ExpKind::Nil);
       bcemit_INS(&this->emitter->func_state, BCINS_AD(BC_ISEQP, this->result_reg, const_pri(&nilv)));
-      this->nil_jump = this->emitter->control_flow.make_unconditional(bcemit_jmp(&this->emitter->func_state));
+      this->nil_jump = this->emitter->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->emitter->func_state)));
       this->setup_ok = true;
    }
 
@@ -65,18 +65,19 @@ public:
 
    // Complete the nil short-circuit: emit nil path, patch jumps, return result.
    // The result is stored in base_register() as a NonReloc expression.
+
    ParserResult<ExpDesc> complete()
    {
-      this->allocator.collapse_freereg(this->result_reg);
+      this->allocator.collapse_freereg(BCReg(this->result_reg));
 
       ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
-         bcemit_jmp(&this->emitter->func_state));
+         BCPos(bcemit_jmp(&this->emitter->func_state)));
 
-      BCPOS nil_path = this->emitter->func_state.pc;
+      BCPos nil_path = BCPos(this->emitter->func_state.pc);
       this->nil_jump.patch_to(nil_path);
       bcemit_nil(&this->emitter->func_state, this->result_reg, 1);
 
-      skip_nil.patch_to(this->emitter->func_state.pc);
+      skip_nil.patch_to(BCPos(this->emitter->func_state.pc));
 
       this->register_guard.disarm();
 
@@ -90,18 +91,18 @@ public:
    // may differ from result_reg after method dispatch setup, and we explicitly set freereg to
    // CallBase + 1 at the end, which is the correct final state for call expressions.
 
-   ParserResult<ExpDesc> complete_call(BCREG CallBase, BCPOS CallPc)
+   ParserResult<ExpDesc> complete_call(BCReg CallBase, BCPos CallPc)
    {
       ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
-         bcemit_jmp(&this->emitter->func_state));
+         BCPos(bcemit_jmp(&this->emitter->func_state)));
 
-      BCPOS nil_path = this->emitter->func_state.pc;
+      BCPos nil_path = BCPos(this->emitter->func_state.pc);
       this->nil_jump.patch_to(nil_path);
-      bcemit_nil(&this->emitter->func_state, CallBase, 1);
+      bcemit_nil(&this->emitter->func_state, CallBase.raw(), 1);
 
-      skip_nil.patch_to(this->emitter->func_state.pc);
+      skip_nil.patch_to(BCPos(this->emitter->func_state.pc));
 
-      this->register_guard.adopt_saved(CallBase + 1);
+      this->register_guard.adopt_saved(BCReg(CallBase.raw() + 1));
       this->register_guard.disarm();
 
       ExpDesc result;
@@ -117,7 +118,7 @@ private:
    RegisterAllocator allocator;
    ControlFlowEdge nil_jump;
    ExpDesc base_expr;
-   BCREG result_reg = 0;
+   BCReg result_reg = BCReg(0);
    bool setup_ok = false;
 };
 
@@ -1762,7 +1763,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
    ExpDesc key(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
 
-   this->materialise_to_reg(table, guard.base_register(), "safe member access");
+   this->materialise_to_reg(table, BCReg(guard.base_register()), "safe member access");
    return guard.complete();
 }
 
@@ -1792,7 +1793,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
    ExpDesc table = guard.base_expression();
    expr_index(&this->func_state, &table, &key);
 
-   this->materialise_to_reg(table, guard.base_register(), "safe index access");
+   this->materialise_to_reg(table, BCReg(guard.base_register()), "safe index access");
    return guard.complete();
 }
 
@@ -1814,13 +1815,14 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payl
    if (not guard.ok()) return guard.error<ExpDesc>();
 
    // Method dispatch and arguments are evaluated only on non-nil path (short-circuit)
+
    ExpDesc callee = guard.base_expression();
    ExpDesc key(ExpKind::Str);
    key.u.sval = safe_method->method.symbol;
    bcemit_method(&this->func_state, &callee, &key);
-   BCREG call_base = callee.u.s.info;
 
-   BCREG arg_count = 0;
+   auto call_base = BCReg(callee.u.s.info);
+   auto arg_count = BCReg(0);
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
       auto args_result = this->emit_expression_list(Payload.arguments, arg_count);
@@ -1840,7 +1842,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payl
    }
 
    this->lex_state.lastline = call_line;
-   BCPOS call_pc = bcemit_INS(&this->func_state, ins);
+   auto call_pc = BCPos(bcemit_INS(&this->func_state, ins));
 
    return guard.complete_call(call_base, call_pc);
 }

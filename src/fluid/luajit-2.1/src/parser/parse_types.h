@@ -131,6 +131,11 @@ constexpr StrongIndex<Tag, T> operator+(StrongIndex<Tag, T> a, T offset) {
 }
 
 template<typename Tag, typename T>
+constexpr StrongIndex<Tag, T> operator+(StrongIndex<Tag, T> a, StrongIndex<Tag, T> offset) {
+   return StrongIndex<Tag, T>(a.value + offset.value);
+}
+
+template<typename Tag, typename T>
 constexpr StrongIndex<Tag, T> operator-(StrongIndex<Tag, T> a, T offset) {
    return StrongIndex<Tag, T>(a.value - offset);
 }
