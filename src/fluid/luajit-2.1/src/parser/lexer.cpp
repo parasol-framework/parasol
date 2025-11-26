@@ -444,21 +444,100 @@ namespace {
 
 //********************************************************************************************************************
 // Unicode operator recognition
-// Checks for UTF-8 sequences that represent operators.
-// Returns the token if recognised, 0 otherwise.
+
+static bool is_unicode_operator_start(LexState *State) noexcept
+{
+   // Checks for UTF-8 sequences that represent operators.
+
+   if (State->c IS 0xC2 and State->p < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
+      if (second IS 0xAB or second IS 0xBB) return true;  // « »
+   }
+   if (State->c IS 0xC3 and State->p < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
+      if (second IS 0x97 or second IS 0xB7) return true;  // × ÷
+   }
+   if (State->c IS 0xE2 and State->p + 1 < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
+      uint8_t third = uint8_t(State->p[1]);
+      if (second IS 0x80 and (third IS 0xA5 or third IS 0xA6)) return true;  // ‥ …
+      if (second IS 0x81 and third IS 0x87) return true;  // ⁇
+      if (second IS 0x89 and (third IS 0xA0 or third IS 0xA4 or third IS 0xA5)) return true;  // ≠ ≤ ≥
+      if (second IS 0x96 and third IS 0xB7) return true;  // ▷
+      if (second IS 0xA7 and third IS 0xBA) return true;  // ⧺
+   }
+   return false;
+}
 
 static LexToken lex_unicode_operator(LexState *State) noexcept
 {
-   // UTF-8 sequences starting with 0xE2 0x89 (Mathematical operators)
-   // ≠ (U+2260) = E2 89 A0 → TK_ne
-   // ≤ (U+2264) = E2 89 A4 → TK_le
-   // ≥ (U+2265) = E2 89 A5 → TK_ge
-   if (State->c IS 0xE2 and State->p + 1 < State->pe and uint8_t(State->p[0]) IS 0x89) {
+   // UTF-8 sequences starting with 0xC2 (Latin-1 Supplement)
+   // « (U+00AB) = C2 AB → TK_shl (left shift)
+   // » (U+00BB) = C2 BB → TK_shr (right shift)
+   if (State->c IS 0xC2 and State->p < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
+      LexToken tok = 0;
+      if (second IS 0xAB) tok = TK_shl;     // «
+      else if (second IS 0xBB) tok = TK_shr; // »
+
+      if (tok) {
+         State->mark_token_start();
+         lex_next(State); lex_next(State);
+         return tok;
+      }
+   }
+
+   // UTF-8 sequences starting with 0xC3 (Latin-1 Supplement continued)
+   // × (U+00D7) = C3 97 → '*' (multiplication sign)
+   // ÷ (U+00F7) = C3 B7 → '/' (division sign)
+   if (State->c IS 0xC3 and State->p < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
+      LexToken tok = 0;
+      if (second IS 0x97) tok = '*';      // ×
+      else if (second IS 0xB7) tok = '/'; // ÷
+
+      if (tok) {
+         State->mark_token_start();
+         lex_next(State); lex_next(State);
+         return tok;
+      }
+   }
+
+   // UTF-8 sequences starting with 0xE2 (3-byte sequences)
+   if (State->c IS 0xE2 and State->p + 1 < State->pe) {
+      uint8_t second = uint8_t(State->p[0]);
       uint8_t third = uint8_t(State->p[1]);
       LexToken tok = 0;
-      if (third IS 0xA0) tok = TK_ne;       // ≠
-      else if (third IS 0xA4) tok = TK_le;  // ≤
-      else if (third IS 0xA5) tok = TK_ge;  // ≥
+
+      // 0xE2 0x80 (General Punctuation)
+      // ‥ (U+2025) = E2 80 A5 → TK_concat (two dot leader)
+      // … (U+2026) = E2 80 A6 → TK_dots (horizontal ellipsis)
+      if (second IS 0x80) {
+         if (third IS 0xA5) tok = TK_concat;     // ‥
+         else if (third IS 0xA6) tok = TK_dots;  // …
+      }
+
+      // 0xE2 0x81 (General Punctuation continued)
+      // ⁇ (U+2047) = E2 81 87 → TK_if_empty (null coalescing)
+      else if (second IS 0x81 and third IS 0x87) tok = TK_if_empty;  // ⁇
+
+      // 0xE2 0x89 (Mathematical operators)
+      // ≠ (U+2260) = E2 89 A0 → TK_ne
+      // ≤ (U+2264) = E2 89 A4 → TK_le
+      // ≥ (U+2265) = E2 89 A5 → TK_ge
+      else if (second IS 0x89) {
+         if (third IS 0xA0) tok = TK_ne;       // ≠
+         else if (third IS 0xA4) tok = TK_le;  // ≤
+         else if (third IS 0xA5) tok = TK_ge;  // ≥
+      }
+
+      // 0xE2 0x96 (Geometric Shapes)
+      // ▷ (U+25B7) = E2 96 B7 → TK_ternary_sep (ternary separator)
+      else if (second IS 0x96 and third IS 0xB7) tok = TK_ternary_sep;  // ▷
+
+      // 0xE2 0xA7 (Supplemental Mathematical Operators)
+      // ⧺ (U+29FA) = E2 A7 BA → TK_plusplus (increment)
+      else if (second IS 0xA7 and third IS 0xBA) tok = TK_plusplus;  // ⧺
 
       if (tok) {
          State->mark_token_start();
@@ -466,6 +545,7 @@ static LexToken lex_unicode_operator(LexState *State) noexcept
          return tok;
       }
    }
+
    return 0;
 }
 
@@ -491,10 +571,10 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             return TK_number;
          }
 
-         // Scan identifier
+         // Scan identifier (stop before Unicode operators like ⧺)
          do {
             lex_savenext(State);
-         } while (lj_char_isident(State->c));
+         } while (lj_char_isident(State->c) and not is_unicode_operator_start(State));
 
          auto str_view = std::string_view(State->sb.b, sbuflen(&State->sb));
          GCstr *s = State->keepstr(str_view);
