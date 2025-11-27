@@ -280,9 +280,9 @@ for (i = 1; i <= len and i < dict->asize; i++) {
 
 **CRITICAL: Establish unit tests BEFORE making changes.**
 
-1. Create `src/fluid/luajit-2.1/src/runtime/unit_test_indexing.cpp`
+1. Create `src/fluid/luajit-2.1/src/runtime/unit_test_indexing.cpp`.  Refer to MODTest() in fluid.cpp for hooks and `src/fluid/luajit-2.1/src/parser/parser_unit_tests.cpp` for working test patterns.
 2. Implement baseline tests that pass with current 1-based indexing
-3. Register `indexing_unit_tests()` in the test runner
+3. Unit tests are run by test_unit_tests.fluid and require ENABLE_UNIT_TESTS to have been enabled in the build.
 4. Verify all baseline tests pass before proceeding
 
 ### Phase 1: Core Infrastructure (Estimated: 2-3 days)
