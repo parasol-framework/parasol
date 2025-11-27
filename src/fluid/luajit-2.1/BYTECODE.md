@@ -15,7 +15,7 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 - This document focuses on conditional and control-flow opcodes that affect short-circuiting; arithmetic and data-movement opcodes are intentionally omitted.
 
 ### 3.2 Resources and Cross-References
-- Opcode definitions: `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`, opcode metadata in `lj_bcdef.h`.
+- Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
 - Parser emission sites: `parse_operators.cpp` (operator lowering), `operator_emitter.cpp` (register-aware helpers), `ir_emitter.cpp` (control-flow builders).
 - Behavioural context and patterns: `src/fluid/luajit-2.1/AGENTS.md` (parser wiring tips) and `src/fluid/luajit-2.1/src/parser/` files noted there.
 - Tests exercising these paths live under `src/fluid/tests/`.
