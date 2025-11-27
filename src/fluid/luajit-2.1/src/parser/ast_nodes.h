@@ -106,7 +106,8 @@ enum class FluidType : uint8_t {
    Func,
    Thread,
    CData,
-   Object       // Parasol userdata
+   Object,       // Parasol userdata
+   Unknown
 };
 
 // Convert type name string to FluidType

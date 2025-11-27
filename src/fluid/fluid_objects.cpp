@@ -33,8 +33,22 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static uint32_t OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_getKey;
-static uint32_t OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
+static constexpr uint32_t OJH_init = simple_hash("init");
+static constexpr uint32_t OJH_free = simple_hash("free");
+static constexpr uint32_t OJH_lock = simple_hash("lock");
+static constexpr uint32_t OJH_children = simple_hash("children");
+static constexpr uint32_t OJH_detach = simple_hash("detach");
+static constexpr uint32_t OJH_get = simple_hash("get");
+static constexpr uint32_t OJH_new = simple_hash("new");
+static constexpr uint32_t OJH_state = simple_hash("_state");
+static constexpr uint32_t OJH_state_dep = simple_hash("state"); // Deprecated, use _state
+static constexpr uint32_t OJH_getKey = simple_hash("getKey");
+static constexpr uint32_t OJH_set = simple_hash("set");
+static constexpr uint32_t OJH_setKey = simple_hash("setKey");
+static constexpr uint32_t OJH_delayCall = simple_hash("delayCall");
+static constexpr uint32_t OJH_exists = simple_hash("exists");
+static constexpr uint32_t OJH_subscribe = simple_hash("subscribe");
+static constexpr uint32_t OJH_unsubscribe = simple_hash("unsubscribe");
 
 [[nodiscard]] static int object_action_call_args(lua_State *);
 [[nodiscard]] static int object_method_call_args(lua_State *);
@@ -1189,21 +1203,4 @@ void register_object_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, objectlib_methods, 0);
    luaL_openlib(Lua, "obj", objectlib_functions, 0);
-
-   OJH_init        = simple_hash("init");
-   OJH_free        = simple_hash("free");
-   OJH_lock        = simple_hash("lock");
-   OJH_children    = simple_hash("children");
-   OJH_detach      = simple_hash("detach");
-   OJH_get         = simple_hash("get");
-   OJH_new         = simple_hash("new");
-   OJH_state_dep   = simple_hash("state"); // Deprecated, use _state
-   OJH_state       = simple_hash("_state");
-   OJH_getKey      = simple_hash("getKey");
-   OJH_set         = simple_hash("set");
-   OJH_setKey      = simple_hash("setKey");
-   OJH_delayCall   = simple_hash("delayCall");
-   OJH_exists      = simple_hash("exists");
-   OJH_subscribe   = simple_hash("subscribe");
-   OJH_unsubscribe = simple_hash("unsubscribe");
 }

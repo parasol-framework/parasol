@@ -18,7 +18,7 @@ static FunctionExprPayload* function_payload_from(ExprNode& node)
 static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& node)
 {
    auto* payload = function_payload_from(*node);
-   if (payload == nullptr) {
+   if (payload IS nullptr) {
       return std::make_unique<FunctionExprPayload>();
    }
    std::unique_ptr<FunctionExprPayload> result = std::make_unique<FunctionExprPayload>();
@@ -973,10 +973,8 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
 
             param.type = parse_type_name(type_view);
             // If parse_type_name returns an invalid type, emit error
-            if (param.type == TypeKind::Unknown) {
-               std::string message("unknown type name '");
-               message.append(type_view);
-               message.append("'; expected a valid type name");
+            if (param.type IS FluidType::Unknown) {
+               auto message = std::string("unknown type name '") + std::string(type_view) + "'; expected a valid type name";
                this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
 
                ParserError error;
@@ -1135,7 +1133,7 @@ Identifier AstBuilder::make_identifier(const Token& token)
    Identifier id;
    id.symbol = token.identifier();
    id.span = token.span();
-   id.is_blank = (id.symbol == NAME_BLANK);
+   id.is_blank = (id.symbol IS NAME_BLANK);
    return id;
 }
 

@@ -31,7 +31,7 @@ FluidType parse_type_name(std::string_view Name)
       if (Name IS entry.name) return entry.type;
    }
 
-   return FluidType::Any;
+   return FluidType::Unknown;
 }
 
 std::string_view type_name(FluidType Type)
