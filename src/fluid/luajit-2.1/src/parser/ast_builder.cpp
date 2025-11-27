@@ -943,6 +943,52 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
 
          FunctionParameter param;
          param.name = make_identifier(name.value_ref());
+
+         if (this->ctx.check(TokenKind::Colon)) {
+            this->ctx.tokens().advance();
+
+            Token type_token = this->ctx.tokens().current();
+            std::string_view type_view;
+
+            auto kind = type_token.kind();
+            if (kind IS TokenKind::Identifier) {
+               this->ctx.tokens().advance();
+               GCstr* type_symbol = type_token.identifier();
+               if (type_symbol) type_view = std::string_view(strdata(type_symbol), type_symbol->len);
+            }
+            else if (kind IS TokenKind::Function or kind IS TokenKind::Nil) {
+               this->ctx.tokens().advance();
+               type_view = token_kind_name_constexpr(kind);
+            }
+            else {
+               constexpr std::string_view expected_type_name = "expected type name after ':'";
+               this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, expected_type_name);
+
+               ParserError error;
+               error.code = ParserErrorCode::ExpectedTypeName;
+               error.token = type_token;
+               error.message.assign(expected_type_name.begin(), expected_type_name.end());
+               return ParserResult<ParameterListResult>::failure(error);
+            }
+
+            constexpr std::string_view known_types[] = {
+               "any", "nil", "bool", "boolean", "num", "number", "str", "string",
+               "table", "func", "function", "thread", "cdata", "obj", "object"
+            };
+
+            bool recognised = false;
+            for (auto name_view : known_types) {
+               if (type_view IS name_view) { recognised = true; break; }
+            }
+
+            param.type = parse_type_name(type_view);
+            if (not recognised) {
+               std::string message("unknown type name '");
+               message.append(type_view);
+               message.append("'; expected one of: num, str, bool, table, func, nil, any, thread, cdata, obj");
+               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
+            }
+         }
          result.parameters.push_back(param);
       } while (this->ctx.match(TokenKind::Comma).ok());
    }

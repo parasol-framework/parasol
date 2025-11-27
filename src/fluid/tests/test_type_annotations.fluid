@@ -1,0 +1,85 @@
+-- Regression tests for Fluid parameter type annotations and static analysis helpers
+
+-- Compile a function with the provided signature and return the callable
+local function parameter_names(Signature)
+   local names = {}
+   for entry in string.gmatch(Signature, "[^,]+") do
+      local trimmed = string.match(entry, "^%s*(.-)%s*$")
+      if trimmed?? then
+         local colon = string.find(trimmed, ":", 1, true)
+         if colon?? then trimmed = string.sub(trimmed, 1, colon - 1) end
+         table.insert(names, trimmed)
+      end
+   end
+   return names
+end
+
+local function build_source(Signature)
+   local names = parameter_names(Signature)
+   local returns = table.concat(names, ", ")
+   if returns is "" then returns = "nil" end
+   return "local function typed(" .. Signature .. ") return " .. returns .. " end return typed"
+end
+
+local function compile_signature(Signature)
+   local chunk, message = load(build_source(Signature))
+   assert(chunk, message ?? "Compilation failed")
+   local factory = chunk()
+   assert(type(factory) is "function", "Chunk did not produce a function")
+   return factory
+end
+
+function testBasicParsing()
+   local typed = compile_signature("A:num, B:str, C:table")
+   local results = { typed(7, "hello", { value = true }) }
+   assert(results[1] is 7, "Expected numeric argument to be returned")
+   assert(results[2] is "hello", "Expected string argument to be returned")
+   assert(type(results[3]) is "table", "Expected table argument to be returned")
+end
+
+function testMixedParameters()
+   local mixed = compile_signature("Untyped, Typed:bool")
+   local results = { mixed("anything", true) }
+   assert(results[1] is "anything", "Untyped parameter should accept any value")
+   assert(results[2] is true, "Typed boolean parameter should pass through")
+end
+
+local function assert_compiles(Signature)
+   local chunk, message = load(build_source(Signature))
+   assert(chunk, message ?? "Expected signature to compile")
+   local fn = chunk()
+   assert(type(fn) is "function", "Expected a function from compiled chunk")
+end
+
+function testAllTypeNames()
+   assert_compiles("N:num")
+   assert_compiles("Number:number")
+   assert_compiles("S:str")
+   assert_compiles("String:string")
+   assert_compiles("B:bool")
+   assert_compiles("Boolean:boolean")
+   assert_compiles("T:table")
+   assert_compiles("F:func")
+   assert_compiles("Function:function")
+   assert_compiles("A:any")
+   assert_compiles("NilVal:nil")
+   assert_compiles("ThreadVal:thread")
+   assert_compiles("ObjVal:obj")
+   assert_compiles("ObjectVal:object")
+   assert_compiles("Data:cdata")
+end
+
+function testUnknownTypeRejected()
+   local chunk, message = load("local function rejected(Value:unknown_type) return Value end return rejected")
+   assert(chunk is nil, "Expected unknown type name to prevent compilation")
+   assert(message ?? false, "Expected an error message for unknown type")
+end
+
+return {
+   tests = {
+      'testBasicParsing',
+      'testMixedParameters',
+      'testAllTypeNames',
+      'testUnknownTypeRejected',
+   }
+}

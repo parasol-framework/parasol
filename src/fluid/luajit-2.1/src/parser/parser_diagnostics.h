@@ -20,7 +20,12 @@ enum class ParserErrorCode : uint16_t {
    ExpectedToken,
    ExpectedIdentifier,
    UnexpectedEndOfFile,
-   InternalInvariant
+   InternalInvariant,
+   ExpectedTypeName,
+   UnknownTypeName,
+   TypeMismatchArgument,
+   TypeMismatchAssignment,
+   TypeMismatchReturn
 };
 
 struct ParserDiagnostic {

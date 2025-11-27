@@ -39,6 +39,15 @@ Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffe
    return token;
 }
 
+Token Token::from_span(SourceSpan span, TokenKind kind)
+{
+   Token token;
+   token.token_kind = kind;
+   token.raw_token = (LexToken)kind;
+   token.source = span;
+   return token;
+}
+
 [[nodiscard]] bool Token::is_literal() const
 {
    switch (this->token_kind) {

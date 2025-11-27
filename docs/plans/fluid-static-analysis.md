@@ -24,6 +24,9 @@ end
 **Scope:** This plan covers compile-time static analysis only. Runtime checks (Option B) and JIT optimisation
 (Option D) are deferred to future work.
 
+**Status:** Phases 1–7 are implemented with diagnostics; parser type annotations are recorded, static
+analysis validates calls, and regression tests plus documentation updates are in place.
+
 ---
 
 ## Type System
@@ -498,36 +501,15 @@ void run_ast_pipeline(ParserContext& Context, ParserProfiler& Profiler)
 
 ### Phase 7: Error Reporting
 
-**File:** `src/fluid/luajit-2.1/src/parser/parser_errors.h`
+**Files:** `src/fluid/luajit-2.1/src/parser/parser_diagnostics.h`,
+`src/fluid/luajit-2.1/src/parser/ast_builder.cpp`,
+`src/fluid/luajit-2.1/src/parser/type_analysis.cpp`
 
-Add new error codes:
-
-```cpp
-enum class ParserErrorCode : uint16_t {
-   // ... existing codes ...
-
-   // Type annotation errors
-   ExpectedTypeName,
-   UnknownTypeName,
-
-   // Type mismatch warnings
-   TypeMismatchArgument,
-   TypeMismatchAssignment,
-   TypeMismatchReturn
-};
-```
-
-Error messages:
-
-```cpp
-inline constexpr std::array TYPE_ERROR_MESSAGES = {
-   "expected type name after ':'",
-   "unknown type name '{}'; expected one of: num, str, bool, table, func, nil, any",
-   "type mismatch: argument {} expects '{}', got '{}'",
-   "type mismatch: cannot assign '{}' to variable of type '{}'",
-   "type mismatch: function returns '{}', expected '{}'"
-};
-```
+- Add dedicated parser error codes for type annotations and mismatches.
+- Emit specific diagnostics when a type name is missing after `:` or when an
+  unknown type name is supplied in a parameter list.
+- Surface type analysis results with matching error codes so the diagnostic
+  stream carries the correct category for each mismatch.
 
 ---
 
@@ -639,19 +621,19 @@ struct ParserConfig {
 
 ## Implementation Checklist
 
-- [ ] **Phase 1:** Verify lexer handles `:` correctly in parameter context
-- [ ] **Phase 2:** Add `FluidType` enum to `ast_nodes.h`
-- [ ] **Phase 2:** Extend `FunctionParameter` with `type` field
-- [ ] **Phase 3:** Implement `parse_type_name()` function
-- [ ] **Phase 3:** Modify `parse_parameter_list()` to handle type annotations
-- [ ] **Phase 4:** Create `type_checker.h` with `TypeCheckScope` class
-- [ ] **Phase 5:** Implement expression type inference
-- [ ] **Phase 6:** Create `TypeAnalyser` class
-- [ ] **Phase 6:** Integrate type analysis into AST pipeline
-- [ ] **Phase 7:** Add error codes and messages
-- [ ] **Testing:** Create `test_type_annotations.fluid`
-- [ ] **Testing:** Verify all type shorthand names work
-- [ ] **Documentation:** Update Fluid reference manual
+- [x] **Phase 1:** Verify lexer handles `:` correctly in parameter context
+- [x] **Phase 2:** Add `FluidType` enum to `ast_nodes.h`
+- [x] **Phase 2:** Extend `FunctionParameter` with `type` field
+- [x] **Phase 3:** Implement `parse_type_name()` function
+- [x] **Phase 3:** Modify `parse_parameter_list()` to handle type annotations
+- [x] **Phase 4:** Create `type_checker.h` with `TypeCheckScope` class
+- [x] **Phase 5:** Implement expression type inference
+- [x] **Phase 6:** Create `TypeAnalyser` class
+- [x] **Phase 6:** Integrate type analysis into AST pipeline
+- [x] **Phase 7:** Add error codes and messages
+- [x] **Testing:** Create `test_type_annotations.fluid`
+- [x] **Testing:** Verify all type shorthand names work
+- [x] **Documentation:** Update Fluid reference manual
 
 ---
 
