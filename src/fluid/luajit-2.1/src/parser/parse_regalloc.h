@@ -131,6 +131,33 @@ public:
 
    [[nodiscard]] FuncState* state() const { return func_state; }
 
+   // Expression management methods (migrated from static functions)
+   // These provide type-safe discharge and storage operations for expressions
+
+   // Discharge expression to any available form (non-constant to register)
+   void discharge(ExpDesc& Expression);
+
+   // Discharge expression to specific register with branch handling
+   void discharge_to_register(ExpDesc& Expression, BCReg Target);
+
+   // Discharge expression to specific register without branch handling
+   void discharge_to_register_nobranch(ExpDesc& Expression, BCReg Target);
+
+   // Discharge expression to next free register
+   void discharge_to_next_register(ExpDesc& Expression);
+
+   // Discharge expression to any register (allocates if needed)
+   [[nodiscard]] BCReg discharge_to_any_register(ExpDesc& Expression);
+
+   // Partially discharge expression to value form
+   void discharge_to_value(ExpDesc& Expression);
+
+   // Store expression value into variable location
+   void store_value(ExpDesc& Variable, ExpDesc& Value);
+
+   // Emit bytecode to set register range to nil
+   void emit_nil_range(BCReg Start, BCReg Count);
+
    // Debug verification methods
    void verify_no_leaks(const char* Context) const;
    void trace_allocation(BCReg Start, BCReg Count, const char* Context) const;

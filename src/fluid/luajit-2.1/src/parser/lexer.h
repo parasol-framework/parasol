@@ -34,63 +34,66 @@ struct TokenDefinition {
    [[nodiscard]] constexpr bool is_reserved() const noexcept { return reserved; }
 };
 
-// Complete token definitions array. Order defines enum values starting from TK_OFS (256).
-// Reserved words must appear first, ending with "while", to correctly compute TK_RESERVED.
+// Define all tokens once using X-macro pattern
+// Format: TOKEN_DEF(name, symbol, reserved)
+#define TOKEN_DEF_LIST \
+   TOKEN_DEF(and,          "and",      true) \
+   TOKEN_DEF(break,        "break",    true) \
+   TOKEN_DEF(continue,     "continue", true) \
+   TOKEN_DEF(defer,        "defer",    true) \
+   TOKEN_DEF(do,           "do",       true) \
+   TOKEN_DEF(else,         "else",     true) \
+   TOKEN_DEF(elseif,       "elseif",   true) \
+   TOKEN_DEF(end,          "end",      true) \
+   TOKEN_DEF(false,        "false",    true) \
+   TOKEN_DEF(for,          "for",      true) \
+   TOKEN_DEF(function,     "function", true) \
+   TOKEN_DEF(if,           "if",       true) \
+   TOKEN_DEF(in,           "in",       true) \
+   TOKEN_DEF(is,           "is",       true) \
+   TOKEN_DEF(local,        "local",    true) \
+   TOKEN_DEF(nil,          "nil",      true) \
+   TOKEN_DEF(not,          "not",      true) \
+   TOKEN_DEF(or,           "or",       true) \
+   TOKEN_DEF(repeat,       "repeat",   true) \
+   TOKEN_DEF(return,       "return",   true) \
+   TOKEN_DEF(then,         "then",     true) \
+   TOKEN_DEF(true,         "true",     true) \
+   TOKEN_DEF(until,        "until",    true) \
+   TOKEN_DEF(while,        "while",    true) \
+   TOKEN_DEF(if_empty,     "??",       false) \
+   TOKEN_DEF(safe_field,   "?.",       false) \
+   TOKEN_DEF(safe_index,   "?[",       false) \
+   TOKEN_DEF(safe_method,  "?:",       false) \
+   TOKEN_DEF(concat,       "..",       false) \
+   TOKEN_DEF(dots,         "...",      false) \
+   TOKEN_DEF(eq,           "==",       false) \
+   TOKEN_DEF(ge,           ">=",       false) \
+   TOKEN_DEF(le,           "<=",       false) \
+   TOKEN_DEF(ne,           "~=",       false) \
+   TOKEN_DEF(shl,          "<<",       false) \
+   TOKEN_DEF(shr,          ">>",       false) \
+   TOKEN_DEF(ternary_sep,  ":>",       false) \
+   TOKEN_DEF(number,       "<number>", false) \
+   TOKEN_DEF(name,         "<name>",   false) \
+   TOKEN_DEF(string,       "<string>", false) \
+   TOKEN_DEF(cadd,         "+=",       false) \
+   TOKEN_DEF(csub,         "-=",       false) \
+   TOKEN_DEF(cmul,         "*=",       false) \
+   TOKEN_DEF(cdiv,         "/=",       false) \
+   TOKEN_DEF(cconcat,      "..=",      false) \
+   TOKEN_DEF(cmod,         "%=",       false) \
+   TOKEN_DEF(cif_empty,    "?=",       false) \
+   TOKEN_DEF(plusplus,     "++",       false) \
+   TOKEN_DEF(eof,          "<eof>",    false)
 
+// Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST
+// This array provides compile-time token metadata
+#define TOKEN_DEF(name, symbol, reserved) TokenDefinition{#name, symbol, reserved},
 inline constexpr std::array TOKEN_DEFINITIONS = {
-   // Reserved words (name matches symbol) - these must come first
-   TokenDefinition{"and",      "and",      true},
-   TokenDefinition{"break",    "break",    true},
-   TokenDefinition{"continue", "continue", true},
-   TokenDefinition{"defer",    "defer",    true},
-   TokenDefinition{"do",       "do",       true},
-   TokenDefinition{"else",     "else",     true},
-   TokenDefinition{"elseif",   "elseif",   true},
-   TokenDefinition{"end",      "end",      true},
-   TokenDefinition{"false",    "false",    true},
-   TokenDefinition{"for",      "for",      true},
-   TokenDefinition{"function", "function", true},
-   TokenDefinition{"if",       "if",       true},
-   TokenDefinition{"in",       "in",       true},
-   TokenDefinition{"is",       "is",       true},
-   TokenDefinition{"local",    "local",    true},
-   TokenDefinition{"nil",      "nil",      true},
-   TokenDefinition{"not",      "not",      true},
-   TokenDefinition{"or",       "or",       true},
-   TokenDefinition{"repeat",   "repeat",   true},
-   TokenDefinition{"return",   "return",   true},
-   TokenDefinition{"then",     "then",     true},
-   TokenDefinition{"true",     "true",     true},
-   TokenDefinition{"until",    "until",    true},
-   TokenDefinition{"while",    "while",    true},  // Last reserved word
-
-   // Non-reserved tokens with explicit symbols
-   TokenDefinition{"if_empty",    "??",       false},
-   TokenDefinition{"safe_field",  "?.",       false},
-   TokenDefinition{"safe_index",  "?[",       false},
-   TokenDefinition{"safe_method", "?:",       false},
-   TokenDefinition{"concat",      "..",       false},
-   TokenDefinition{"dots",        "...",      false},
-   TokenDefinition{"eq",          "==",       false},
-   TokenDefinition{"ge",          ">=",       false},
-   TokenDefinition{"le",          "<=",       false},
-   TokenDefinition{"ne",          "~=",       false},
-   TokenDefinition{"shl",         "<<",       false},
-   TokenDefinition{"shr",         ">>",       false},
-   TokenDefinition{"ternary_sep", ":>",       false},
-   TokenDefinition{"number",      "<number>", false},
-   TokenDefinition{"name",        "<name>",   false},
-   TokenDefinition{"string",      "<string>", false},
-   TokenDefinition{"cadd",        "+=",       false},
-   TokenDefinition{"csub",        "-=",       false},
-   TokenDefinition{"cmul",        "*=",       false},
-   TokenDefinition{"cdiv",        "/=",       false},
-   TokenDefinition{"cconcat",     "..=",      false},
-   TokenDefinition{"cmod",        "%=",       false},
-   TokenDefinition{"cif_empty",   "?=",       false},
-   TokenDefinition{"plusplus",    "++",       false},
-   TokenDefinition{"eof",         "<eof>",    false},
+   TOKEN_DEF_LIST
 };
+#undef TOKEN_DEF
 
 // Compile-time count of reserved words
 inline constexpr size_t generate_reserved_count() noexcept {
@@ -117,62 +120,15 @@ inline constexpr size_t generate_reserved_count() noexcept {
    return "<invalid>";
 }
 
-// Token enum values. Order must match TOKEN_DEFINITIONS array.
-// Note: TK_OFS is the offset base, and token values start at TK_OFS + 1.
-
+// Generate enum values from TOKEN_DEF_LIST
+// SINGLE SOURCE OF TRUTH: All token definitions come from TOKEN_DEF_LIST above
+#define TOKEN_DEF(name, symbol, reserved) TK_##name,
 enum {
    TK_OFS = 256,
-   TK_and,          // = 257
-   TK_break,
-   TK_continue,
-   TK_defer,
-   TK_do,
-   TK_else,
-   TK_elseif,
-   TK_end,
-   TK_false,
-   TK_for,
-   TK_function,
-   TK_if,
-   TK_in,
-   TK_is,
-   TK_local,
-   TK_nil,
-   TK_not,
-   TK_or,
-   TK_repeat,
-   TK_return,
-   TK_then,
-   TK_true,
-   TK_until,
-   TK_while,        // Last reserved word
-   TK_if_empty,
-   TK_safe_field,
-   TK_safe_index,
-   TK_safe_method,
-   TK_concat,
-   TK_dots,
-   TK_eq,
-   TK_ge,
-   TK_le,
-   TK_ne,
-   TK_shl,
-   TK_shr,
-   TK_ternary_sep,
-   TK_number,
-   TK_name,
-   TK_string,
-   TK_cadd,
-   TK_csub,
-   TK_cmul,
-   TK_cdiv,
-   TK_cconcat,
-   TK_cmod,
-   TK_cif_empty,
-   TK_plusplus,
-   TK_eof,
+   TOKEN_DEF_LIST
    TK_RESERVED = TK_while - TK_OFS
 };
+#undef TOKEN_DEF
 
 // Static assertions to verify enum and TOKEN_DEFINITIONS stay in sync.
 // Token values start at TK_OFS + 1 (e.g., TK_and = 257).

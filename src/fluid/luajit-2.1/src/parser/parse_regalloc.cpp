@@ -645,3 +645,46 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
          int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
    }
 }
+
+//********************************************************************************************************************
+// Expression management methods - migrated from static functions to RegisterAllocator methods
+
+void RegisterAllocator::discharge(ExpDesc& Expression)
+{
+   expr_discharge(this->func_state, &Expression);
+}
+
+void RegisterAllocator::discharge_to_register(ExpDesc& Expression, BCReg Target)
+{
+   expr_toreg(this->func_state, &Expression, Target.raw());
+}
+
+void RegisterAllocator::discharge_to_register_nobranch(ExpDesc& Expression, BCReg Target)
+{
+   expr_toreg_nobranch(this->func_state, &Expression, Target.raw());
+}
+
+void RegisterAllocator::discharge_to_next_register(ExpDesc& Expression)
+{
+   expr_tonextreg(this->func_state, &Expression);
+}
+
+BCReg RegisterAllocator::discharge_to_any_register(ExpDesc& Expression)
+{
+   return BCReg(expr_toanyreg(this->func_state, &Expression));
+}
+
+void RegisterAllocator::discharge_to_value(ExpDesc& Expression)
+{
+   expr_toval(this->func_state, &Expression);
+}
+
+void RegisterAllocator::store_value(ExpDesc& Variable, ExpDesc& Value)
+{
+   bcemit_store(this->func_state, &Variable, &Value);
+}
+
+void RegisterAllocator::emit_nil_range(BCReg Start, BCReg Count)
+{
+   bcemit_nil(this->func_state, Start.raw(), Count.raw());
+}
