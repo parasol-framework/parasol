@@ -228,7 +228,7 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    BCPOS pc = fs->pc;
    LexState* ls = fs->ls;
    ControlFlowGraph cfg(fs);
-   ControlFlowEdge pending = cfg.make_unconditional(BCPos(fs->jpc));
+   ControlFlowEdge pending = cfg.make_unconditional(fs->pending_jmp());
    pending.patch_with_value(BCPos(pc), BCReg(NO_REG), BCPos(pc));
    fs->jpc = NO_JMP;
 

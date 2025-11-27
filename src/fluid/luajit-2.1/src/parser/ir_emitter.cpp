@@ -134,7 +134,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       BCReg src = BCReg(bc_a(*ins));
       if (src < fs->nactvar) {
          RegisterAllocator allocator(fs);
-         BCReg dst = BCReg(fs->freereg);
+         BCReg dst = fs->free_reg();
          allocator.reserve(BCReg(1));
          bcemit_AD(fs, BC_MOV, dst, src);
          setbc_a(ins, dst);
@@ -145,7 +145,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       BCReg nres = BCReg(bc_d(*ins));
       BCReg top = BCReg(base.raw() + nres.raw() - 1);
       if (top < fs->nactvar) {
-         BCReg dst = BCReg(fs->freereg);
+         BCReg dst = fs->free_reg();
          RegisterAllocator allocator(fs);
          allocator.reserve(nres);
          for (BCReg i = BCReg(0); i < nres; ++i) {
@@ -158,7 +158,7 @@ static void snapshot_return_regs(FuncState* fs, BCIns* ins)
       BCReg base = BCReg(bc_a(*ins));
       BCReg nfixed = BCReg(bc_d(*ins));
       if (base < fs->nactvar) {
-         BCReg dst = BCReg(fs->freereg);
+         BCReg dst = fs->free_reg();
          RegisterAllocator allocator(fs);
          allocator.reserve(nfixed);
          for (BCReg i = BCReg(0); i < nfixed; ++i) {
@@ -192,7 +192,7 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
          *Expr = value.legacy();
       }
       if (extra > 0) {  // Leftover LHS are set to nil.
-         BCReg reg = BCReg(fs->freereg);
+         BCReg reg = fs->free_reg();
          allocator.reserve(BCReg(BCREG(extra)));
          bcemit_nil(fs, reg, BCREG(extra));
       }
@@ -766,7 +766,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    LoopContext loop_context{};
    loop_context.break_edge = this->control_flow.make_break_edge();
    loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = BCReg(fs->nactvar);
+   loop_context.defer_base = fs->active_var_count();
    loop_context.continue_target = start;
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
@@ -790,7 +790,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    }
 
    condexit.patch_here();
-   loop.patch_head(BCPos(fs->pc));
+   loop.patch_head(fs->current_pc());
 
    this->loop_stack.back().continue_edge.patch_to(BCPos(loop_context.continue_target));
    this->loop_stack.back().break_edge.patch_here();
@@ -822,7 +822,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    LoopContext loop_context{};
    loop_context.break_edge = this->control_flow.make_break_edge();
    loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = BCReg(fs->nactvar);
+   loop_context.defer_base = fs->active_var_count();
    loop_context.continue_target = loop;
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
@@ -836,7 +836,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
       auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) return block_result;
 
-      iter = BCPos(fs->pc);
+      iter = fs->current_pc();
       auto cond_result = this->emit_condition_jump(*payload.condition);
       if (not cond_result.ok()) return ParserResult<IrEmitUnit>::failure(cond_result.error_ref());
 
@@ -853,7 +853,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
 
    condexit.patch_to(BCPos(loop));
    ControlFlowEdge loop_head = this->control_flow.make_unconditional(BCPos(loop));
-   loop_head.patch_head(BCPos(fs->pc));
+   loop_head.patch_head(fs->current_pc());
 
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(BCPos(iter));
@@ -878,7 +878,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    }
 
    FuncState* fs = &this->func_state;
-   BCReg base = BCReg(fs->freereg);
+   BCReg base = fs->free_reg();
    GCstr* control_symbol = payload.control.symbol ? payload.control.symbol : NAME_BLANK;
 
    FuncScope outer_scope;
@@ -918,7 +918,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    LoopContext loop_context{};
    loop_context.break_edge = this->control_flow.make_break_edge();
    loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = BCReg(fs->nactvar);
+   loop_context.defer_base = fs->active_var_count();
    loop_context.continue_target = BCPos(NO_JMP);
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
@@ -945,7 +945,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORL, base, NO_JMP)));
    fs->bcbase[loopend.head().raw()].line = payload.body->span.line;
    loopend.patch_head(BCPos(loop.head().raw() + 1));
-   loop.patch_head(BCPos(fs->pc));
+   loop.patch_head(fs->current_pc());
    this->loop_stack.back().continue_target = loopend.head();
    this->loop_stack.back().continue_edge.patch_to(loopend.head());
    this->loop_stack.back().break_edge.patch_here();
@@ -977,7 +977,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       this->lex_state.var_new(nvars++, symbol);
    }
 
-   BCPos exprpc = BCPos(fs->pc);
+   BCPos exprpc = fs->current_pc();
    BCReg iterator_count = BCReg(0);
    auto iter_values = this->emit_expression_list(payload.iterators, iterator_count);
    if (not iter_values.ok()) return ParserResult<IrEmitUnit>::failure(iter_values.error_ref());
@@ -992,7 +992,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    LoopContext loop_context{};
    loop_context.break_edge = this->control_flow.make_break_edge();
    loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = BCReg(fs->nactvar);
+   loop_context.defer_base = fs->active_var_count();
    loop_context.continue_target = BCPos(NO_JMP);
    this->loop_stack.push_back(loop_context);
    LoopStackGuard loop_stack_guard(this);
@@ -1024,7 +1024,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       }
    }
 
-   loop.patch_head(BCPos(fs->pc));
+   loop.patch_head(fs->current_pc());
    BCPos iter = BCPos(bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - BCREG(3) + BCREG(1), 3));
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_ITERL, base, NO_JMP)));
    fs->bcbase[loopend.head().raw() - 1].line = payload.body->span.line;
@@ -1044,7 +1044,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    if (not payload.callable) return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
 
    FuncState* fs = &this->func_state;
-   BCReg reg = BCReg(fs->freereg);
+   BCReg reg = fs->free_reg();
    this->lex_state.var_new(0, NAME_BLANK);
    RegisterAllocator allocator(fs);
    allocator.reserve(BCReg(1));
@@ -1083,7 +1083,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
       }
    }
 
-   fs->freereg = fs->nactvar;
+   fs->reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1948,7 +1948,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    int fixt = 0;
    uint32_t narr = 1;
    uint32_t nhash = 0;
-   BCReg freg = BCReg(fs->freereg);
+   BCReg freg = fs->free_reg();
    BCPos pc = BCPos(bcemit_AD(fs, BC_TNEW, freg, 0));
    ExpDesc table;
    table.init(ExpKind::NonReloc, freg);
