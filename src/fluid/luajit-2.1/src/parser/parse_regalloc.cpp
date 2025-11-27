@@ -62,7 +62,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
 {
    if (not Count.raw()) return;
 
-   if (Start.raw() >= this->func_state->nactvar) {
+   if (this->func_state->is_temp_register(Start)) {
       // Soft spans (ExpectedTop == 0) are used in contexts where the caller
       // explicitly manages freereg (e.g. assignment emitters that duplicate
       // table operands and later restore freereg to nactvar). For these spans
@@ -117,7 +117,7 @@ void RegisterAllocator::release(AllocatedRegister &Handle)
 void RegisterAllocator::release_register(BCReg Register)
 {
    BCReg expected_top = Register + BCREG(1);
-   if (Register.raw() >= this->func_state->nactvar and expected_top.raw() IS this->func_state->freereg) {
+   if (this->func_state->is_temp_register(Register) and expected_top.raw() IS this->func_state->freereg) {
       this->release_span_internal(Register, BCReg(1), expected_top);
    }
 }
@@ -127,7 +127,7 @@ void RegisterAllocator::release_expression(ExpDesc *Expression)
    if (Expression->k IS ExpKind::NonReloc) {
       BCReg reg = BCReg(Expression->u.s.info);
       BCReg expected_top = reg + BCREG(1);
-      if (reg.raw() >= this->func_state->nactvar and expected_top.raw() IS this->func_state->freereg) {
+      if (this->func_state->is_temp_register(reg) and expected_top.raw() IS this->func_state->freereg) {
          this->release_span_internal(reg, BCReg(1), expected_top);
       }
    }
@@ -228,9 +228,9 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
    BCPOS pc = fs->pc;
    LexState* ls = fs->ls;
    ControlFlowGraph cfg(fs);
-   ControlFlowEdge pending = cfg.make_unconditional(BCPos(fs->jpc));
+   ControlFlowEdge pending = cfg.make_unconditional(fs->pending_jmp());
    pending.patch_with_value(BCPos(pc), BCReg(NO_REG), BCPos(pc));
-   fs->jpc = NO_JMP;
+   fs->clear_pending_jumps();
 
    if (pc >= fs->bclim) [[unlikely]] {
       ptrdiff_t base = fs->bcbase - ls->bcstack;
@@ -300,7 +300,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
 static void bcemit_nil(FuncState *fs, BCREG from, BCREG n)
 {
    if (fs->pc > fs->lasttarget) {  // No jumps to current position?
-      BCIns* ip = &fs->bcbase[fs->pc - 1].ins;
+      BCIns* ip = &fs->last_instruction().ins;
       BCREG pto, pfrom = bc_a(*ip);
       switch (bc_op(*ip)) {  // Try to merge with the previous instruction.
          case BC_KPRI:
@@ -547,7 +547,7 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    BCPOS jpc = fs->jpc;
    BCPOS j = fs->pc - 1;
    BCIns* ip = &fs->bcbase[j].ins;
-   fs->jpc = NO_JMP;
+   fs->clear_pending_jumps();
    if (int32_t(j) >= int32_t(fs->lasttarget) and bc_op(*ip) IS BC_UCLO) {
       setbc_j(ip, NO_JMP);
       fs->lasttarget = j + 1;
@@ -564,7 +564,7 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
 
 inline void invertcond(FuncState *fs, ExpDesc *e)
 {
-   BCIns* ip = &fs->bcbase[e->u.s.info - 1].ins;
+   BCIns* ip = &fs->bytecode_at(BCPos(e->u.s.info - 1)).ins;
    setbc_op(ip, bc_op(*ip) ^ 1);
 }
 

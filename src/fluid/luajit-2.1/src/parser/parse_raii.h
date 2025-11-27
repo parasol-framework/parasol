@@ -68,10 +68,10 @@ class RegisterGuard {
 
 public:
    explicit RegisterGuard(FuncState *fs)
-      : fs_(fs), saved_freereg_(BCReg(fs->freereg)) {}
+      : fs_(fs), saved_freereg_(fs->free_reg()) {}
 
    explicit RegisterGuard(FuncState *fs, BCReg reserve_count)
-      : fs_(fs), saved_freereg_(BCReg(fs->freereg)) {
+      : fs_(fs), saved_freereg_(fs->free_reg()) {
       if (reserve_count.raw() > 0) bcreg_reserve(fs, reserve_count.raw());
    }
 

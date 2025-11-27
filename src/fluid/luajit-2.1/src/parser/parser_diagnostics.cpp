@@ -6,6 +6,16 @@
 
 //********************************************************************************************************************
 
+[[maybe_unused]] [[noreturn]] void err_limit(FuncState *fs, uint32_t limit, CSTRING what)
+{
+   if (fs->ls->active_context) fs->ls->active_context->report_limit_error(*fs, limit, what);
+
+   if (fs->linedefined IS 0) lj_lex_error(fs->ls, 0, ErrMsg::XLIMM, limit, what);
+   else lj_lex_error(fs->ls, 0, ErrMsg::XLIMF, fs->linedefined, limit, what);
+}
+
+//********************************************************************************************************************
+
 static CSTRING severity_name(ParserDiagnosticSeverity Severity)
 {
    switch (Severity) {
@@ -78,4 +88,3 @@ void ParserDiagnostics::clear()
    this->storage.clear();
    this->counted_entries = 0;
 }
-

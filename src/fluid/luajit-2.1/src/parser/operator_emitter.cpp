@@ -469,7 +469,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   auto base = BCReg(fs->freereg);
+   auto base = fs->free_reg();
    BCReg arg_reg = BCReg(int(base) + 1 + LJ_FR2);
 
    allocator.reserve(BCReg(1));  // Reserve for callee
@@ -1020,7 +1020,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
       RegisterAllocator local_alloc(fs);
       BCReg dest_reg;
       if (rhs_reg.raw() IS NO_REG) {
-         dest_reg = BCReg(fs->freereg);
+         dest_reg = fs->free_reg();
          local_alloc.reserve(BCReg(1));
       }
       else {
@@ -1037,7 +1037,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
 
       // NOW patch the truthy-skip jumps to jump HERE (past all RHS materialization)
       ControlFlowEdge true_edge = this->cfg->make_true_edge(BCPos(left_desc->t));
-      true_edge.patch_to(BCPos(fs->pc));
+      true_edge.patch_to(fs->current_pc());
       left_desc->t = NO_JMP;
 
       // Result is in LHS register
@@ -1046,11 +1046,11 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
       left_desc->flags = saved_flags;
 
       // Clean up scratch register
-      if ((dest_reg != lhs_reg) and (dest_reg >= fs->nactvar) and (fs->freereg > dest_reg)) {
+      if ((dest_reg != lhs_reg) and (fs->is_temp_register(BCReg(dest_reg))) and (fs->freereg > dest_reg)) {
          fs->freereg = dest_reg;
       }
 
-      if ((lhs_reg >= fs->nactvar) and (fs->freereg > lhs_reg + 1)) {
+      if ((fs->is_temp_register(BCReg(lhs_reg))) and (fs->freereg > lhs_reg + 1)) {
          fs->freereg = lhs_reg + 1;
       }
    }
@@ -1173,7 +1173,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    expr_free(fs, e);  // Free the expression register
 
    // Reserve register for result
-   BCReg dest = BCReg(fs->freereg);
+   BCReg dest = fs->free_reg();
    local_alloc.reserve(BCReg(1));
 
    // Value is truthy - load true
@@ -1181,7 +1181,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
    auto jmp_false_branch = BCPos(bcemit_jmp(fs));
 
    // False branch: patch all falsey jumps here and load false
-   auto false_pos = BCPos(fs->pc);
+   auto false_pos = fs->current_pc();
    ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
    nil_edge.patch_to(false_pos);
    ControlFlowEdge false_edge_check = this->cfg->make_unconditional(check_false);
@@ -1195,7 +1195,7 @@ void OperatorEmitter::emit_presence_check(ValueSlot operand)
 
    // Patch skip jump to after false load
    ControlFlowEdge skip_edge = this->cfg->make_unconditional(jmp_false_branch);
-   skip_edge.patch_to(BCPos(fs->pc));
+   skip_edge.patch_to(fs->current_pc());
 
    e->init(ExpKind::NonReloc, dest);
 }

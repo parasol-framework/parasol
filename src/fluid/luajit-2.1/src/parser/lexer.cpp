@@ -25,6 +25,7 @@
 #include "lj_state.h"
 #include "lexer.h"
 #include "parser.h"
+#include "parser_context.h"
 #include "lj_char.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
@@ -1007,6 +1008,70 @@ void LexState::ensure_lookahead(size_t count)
 {
    if (index >= this->buffered_tokens.size()) return nullptr;
    return &this->buffered_tokens[index];
+}
+
+[[noreturn]] LJ_NOINLINE void LexState::err_syntax(ErrMsg Message)
+{
+   if (this->active_context) this->active_context->err_syntax(Message);
+   lj_lex_error(this, this->tok, Message);
+}
+
+[[noreturn]] LJ_NOINLINE void LexState::err_token(LexToken Token)
+{
+   if (this->active_context) this->active_context->err_token(Token);
+   lj_lex_error(this, this->tok, ErrMsg::XTOKEN, this->token2str(Token));
+}
+
+// Check and consume optional token.
+
+int LexState::lex_opt(LexToken Token)
+{
+   if (this->active_context) return this->active_context->lex_opt(Token);
+
+   if (this->tok IS Token) {
+      this->next();
+      return 1;
+   }
+   return 0;
+}
+
+// Check and consume token.
+
+void LexState::lex_check(LexToken Token)
+{
+   if (this->active_context) {
+      this->active_context->lex_check(Token);
+      return;
+   }
+   if (this->tok != Token) this->err_token(Token);
+   this->next();
+}
+
+// Check for matching token.
+
+void LexState::lex_match(LexToken What, LexToken Who, BCLine Line)
+{
+   if (this->active_context) this->active_context->lex_match(What, Who, Line);
+   else if (not this->lex_opt(What)) {
+      if (Line IS this->linenumber) this->err_token(What);
+      else {
+         auto swhat = this->token2str(What);
+         auto swho = this->token2str(Who);
+         lj_lex_error(this, this->tok, ErrMsg::XMATCH, swhat, swho, Line);
+      }
+   }
+}
+
+// Check for string token.
+
+[[nodiscard]] GCstr * LexState::lex_str()
+{
+   if (this->active_context) return this->active_context->lex_str();
+
+   if (this->tok != TK_name) this->err_token(TK_name);
+   GCstr *s = strV(&this->tokval);
+   this->next();
+   return s;
 }
 
 //********************************************************************************************************************

@@ -287,7 +287,7 @@ static void fscope_begin(FuncState* fs, FuncScope* bl, FuncScopeFlag flags)
    bl->vstart = fs->ls->vtop;
    bl->prev = fs->bl;
    fs->bl = bl;
-   fs->assert(fs->freereg IS fs->nactvar, "bad regalloc");
+   fs->assert_freereg_at_locals();
 }
 
 //********************************************************************************************************************
@@ -299,7 +299,7 @@ static void execute_defers(FuncState* fs, BCREG limit)
    BCREG argc = 0;
    BCREG argslots[LJ_MAX_SLOTS];
 
-   if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
+   fs->ensure_freereg_at_locals();
    oldfreereg = fs->freereg;
 
    while (i > limit) {
@@ -430,7 +430,7 @@ static void execute_closes(FuncState* fs, BCREG limit)
    BCREG i = fs->nactvar;
    BCREG oldfreereg;
 
-   if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
+   fs->ensure_freereg_at_locals();
    oldfreereg = fs->freereg;
 
    while (i > limit) {
@@ -455,8 +455,8 @@ static void fscope_end(FuncState* fs)
    execute_closes(fs, bl->nactvar);
    execute_defers(fs, bl->nactvar);
    ls->var_remove(bl->nactvar);
-   fs->freereg = fs->nactvar;
-   fs->assert(bl->nactvar IS fs->nactvar, "bad regalloc");
+   fs->reset_freereg();
+   fs->assert_freereg_at_locals();
    if ((bl->flags & (FuncScopeFlag::Upvalue | FuncScopeFlag::NoClose)) IS FuncScopeFlag::Upvalue) bcemit_AJ(fs, BC_UCLO, bl->nactvar, 0);
    if (has_flag(bl->flags, FuncScopeFlag::Break)) {
       if (has_flag(bl->flags, FuncScopeFlag::Loop)) {
@@ -720,7 +720,7 @@ void LexState::fs_fixup_var(GCproto* Prototype, uint8_t* Buffer, size_t OffsetVa
 static void fs_fixup_ret(FuncState* fs)
 {
    BCPOS lastpc = fs->pc;
-   if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bcbase[lastpc - 1].ins))) {
+   if (lastpc <= fs->lasttarget or !bcopisret(bc_op(fs->bytecode_at(BCPos(lastpc - 1)).ins))) {
       // Implicit return: run __close and defer handlers (LIFO order)
       execute_closes(fs, 0);
       execute_defers(fs, 0);
@@ -834,7 +834,7 @@ void LexState::fs_init(FuncState* FunctionState)
    fs->L = L;
    fs->pc = 0;
    fs->lasttarget = 0;
-   fs->jpc = NO_JMP;
+   fs->clear_pending_jumps();
    fs->freereg = 0;
    fs->nkgc = 0;
    fs->nkn = 0;

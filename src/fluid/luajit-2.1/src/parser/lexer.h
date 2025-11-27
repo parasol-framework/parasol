@@ -36,6 +36,7 @@ struct TokenDefinition {
 
 // Complete token definitions array. Order defines enum values starting from TK_OFS (256).
 // Reserved words must appear first, ending with "while", to correctly compute TK_RESERVED.
+
 inline constexpr std::array TOKEN_DEFINITIONS = {
    // Reserved words (name matches symbol) - these must come first
    TokenDefinition{"and",      "and",      true},
@@ -118,6 +119,7 @@ inline constexpr size_t generate_reserved_count() noexcept {
 
 // Token enum values. Order must match TOKEN_DEFINITIONS array.
 // Note: TK_OFS is the offset base, and token values start at TK_OFS + 1.
+
 enum {
    TK_OFS = 256,
    TK_and,          // = 257
@@ -174,12 +176,11 @@ enum {
 
 // Static assertions to verify enum and TOKEN_DEFINITIONS stay in sync.
 // Token values start at TK_OFS + 1 (e.g., TK_and = 257).
-static_assert(TK_eof - TK_OFS == TOKEN_DEFINITIONS.size(),
-   "TOKEN_DEFINITIONS array size must match enum token count");
-static_assert(TK_RESERVED == generate_reserved_count(),
-   "Reserved word count mismatch between enum and TOKEN_DEFINITIONS");
 
-typedef int LexChar;   //  Lexical character. Unsigned ext. from char.
+static_assert(TK_eof - TK_OFS == TOKEN_DEFINITIONS.size(), "TOKEN_DEFINITIONS array size must match enum token count");
+static_assert(TK_RESERVED == generate_reserved_count(), "Reserved word count mismatch between enum and TOKEN_DEFINITIONS");
+
+typedef int LexChar;    //  Lexical character. Unsigned ext. from char.
 typedef int LexToken;   //  Lexical token.
 
 // Combined bytecode ins/line. Only used during bytecode generation.
