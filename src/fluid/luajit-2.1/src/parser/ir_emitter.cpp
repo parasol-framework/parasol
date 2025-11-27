@@ -610,6 +610,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
    }
 
    snapshot_return_regs(&this->func_state, &ins);
+   // Both __close and defer handlers must run before returning from function.
+   // Order: closes before defers (LIFO - most recently declared runs first).
+   execute_closes(&this->func_state, 0);
    execute_defers(&this->func_state, 0);
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
@@ -642,6 +645,23 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
    this->lex_state.var_add(nvars);
    BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
+
+   for (BCReg i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = payload.names[i.raw()];
+      if (not identifier.has_close) continue;
+
+      // Check slot limit for closeslots bitmap (max 64 slots supported)
+      uint8_t slot = uint8_t(base.raw() + i.raw());
+      if (slot >= 64) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(
+            ParserErrorCode::InternalInvariant,
+            "too many local variables with <close> attribute (max 64 slots)"));
+      }
+
+      VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
+      info->info |= VarInfoFlag::Close;
+   }
+
    for (BCReg i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;
@@ -1076,6 +1096,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
    }
 
    LoopContext& loop = this->loop_stack.back();
+   // Both __close and defer handlers must run when jumping out of scope via break.
+   // Order: closes before defers (LIFO - most recently declared runs first).
+   execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
    loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -1090,6 +1113,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
    }
 
    LoopContext& loop = this->loop_stack.back();
+   // Both __close and defer handlers must run when jumping out of scope via continue.
+   // Order: closes before defers (LIFO - most recently declared runs first).
+   execute_closes(&this->func_state, loop.defer_base);
    execute_defers(&this->func_state, loop.defer_base);
    loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -2076,6 +2102,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
 
    this->lex_state.fs_init(&child_state);
+   FuncStateGuard fs_guard(&this->lex_state, &child_state);  // Restore ls->fs on error
    // Use lastline which was set to the function expression's line by emit_expression()
    child_state.linedefined = this->lex_state.lastline;
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
@@ -2113,6 +2140,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
 
+   fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bcstack + oldbase;

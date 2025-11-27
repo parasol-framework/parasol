@@ -390,6 +390,7 @@ typedef struct GCproto {
    MRef lineinfo;     //  Compressed map from bytecode ins. to source line.
    MRef uvinfo;       //  Upvalue names.
    MRef varinfo;      //  Names and compressed extents of local variables.
+   uint64_t closeslots;  //  Bitmap of locals with <close> attribute (max 64 slots)
 } GCproto;
 
 // Flags for prototype.
@@ -557,7 +558,11 @@ enum {
   /* The following must be in ORDER ARITH. */ \
   _(add) _(sub) _(mul) _(div) _(mod) _(pow) _(unm) \
   /* The following are used in the standard libraries. */ \
-  _(metatable) _(tostring) MMDEF_FFI(_) MMDEF_PAIRS(_)
+  _(metatable) _(tostring) \
+  /* CRITICAL: New metamethods must be added at the END to avoid shifting indices. */ \
+  /* The MMDEF order determines MM_* enum values which are hardcoded in lj_vm.obj. */ \
+  /* Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt. */ \
+  _(close) MMDEF_FFI(_) MMDEF_PAIRS(_)
 
 typedef enum {
 #define MMENUM(name)   MM_##name,
@@ -698,6 +703,7 @@ struct lua_State {
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
+   TValue close_err;  // Current error for __close handlers (nil if no error)
 
    // Constructor/destructor not actually used as yet.
 /*

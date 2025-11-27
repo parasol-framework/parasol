@@ -870,14 +870,54 @@ ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
 ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 {
    std::vector<Identifier> names;
-   auto first = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+
+   auto parse_named_identifier = [&]() -> ParserResult<Identifier> {
+      auto token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not token.ok()) return ParserResult<Identifier>::failure(token.error_ref());
+
+      Identifier identifier = make_identifier(token.value_ref());
+
+      if (this->ctx.tokens().current().raw() IS '<') {
+         this->ctx.tokens().advance();
+
+         auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not attribute.ok()) return ParserResult<Identifier>::failure(attribute.error_ref());
+
+         bool is_close_attribute = false;
+         if (GCstr* attr_name = attribute.value_ref().identifier()) {
+            std::string_view view(strdata(attr_name), attr_name->len);
+            if (view IS std::string_view("close")) {
+               is_close_attribute = true;
+            }
+         }
+
+         if (not this->ctx.lex_opt('>')) {
+            Token current = this->ctx.tokens().current();
+            std::string message("expected '>' after attribute");
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, current, message);
+
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedToken;
+            error.token = current;
+            error.message = message;
+            return ParserResult<Identifier>::failure(error);
+         }
+
+         if (is_close_attribute) identifier.has_close = true;
+         else this->ctx.emit_error(ParserErrorCode::UnexpectedToken, attribute.value_ref(), "unknown attribute");
+      }
+
+      return ParserResult<Identifier>::success(std::move(identifier));
+   };
+
+   auto first = parse_named_identifier();
    if (not first.ok()) return ParserResult<std::vector<Identifier>>::failure(first.error_ref());
 
-   names.push_back(make_identifier(first.value_ref()));
+   names.push_back(std::move(first.value_ref()));
    while (this->ctx.match(TokenKind::Comma).ok()) {
-      auto name = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      auto name = parse_named_identifier();
       if (not name.ok()) return ParserResult<std::vector<Identifier>>::failure(name.error_ref());
-      names.push_back(make_identifier(name.value_ref()));
+      names.push_back(std::move(name.value_ref()));
    }
    return ParserResult<std::vector<Identifier>>::success(std::move(names));
 }

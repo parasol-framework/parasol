@@ -19,6 +19,8 @@
 #include "lj_frame.h"
 #include "lj_bc.h"
 #include "lj_vm.h"
+#include "lj_trace.h"
+#include "lj_dispatch.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lib.h"
@@ -465,6 +467,47 @@ void lj_meta_call(lua_State* L, TValue* func, TValue* top)
    copyTV(L, func, mo);
 }
 
+// Helper for __close metamethod. Called during scope exit for to-be-closed variables.
+// Returns error code: 0 = success, non-zero = error during __close call.
+int lj_meta_close(lua_State* L, TValue* o, TValue* err)
+{
+   cTValue* mo = lj_meta_lookup(L, o, MM_close);
+   if (tvisnil(mo)) return 0;  // No __close metamethod, nothing to do.
+
+   global_State* g = G(L);
+   uint8_t oldh = hook_save(g);
+   GCSize oldt = g->gc.threshold;
+   int errcode;
+   TValue* top;
+
+   lj_trace_abort(g);
+   hook_entergc(g);  // Disable hooks and new traces during __close.
+   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
+   g->gc.threshold = LJ_MAX_MEM;  // Prevent GC steps.
+
+   top = L->top;
+   copyTV(L, top++, mo);         // Push __close function
+   if (LJ_FR2) setnilV(top++);   // Frame slot for LJ_FR2
+   TValue* argbase = top;        // First argument position (for lj_vm_pcall base)
+   copyTV(L, top++, o);          // Push object (first argument)
+   if (err)
+      copyTV(L, top++, err);     // Push error value (second argument)
+   else
+      setnilV(top++);            // Push nil for normal scope exit
+   L->top = top;
+
+   // Call __close(obj, err) with protection. nres1=1 means 0 results expected.
+   errcode = lj_vm_pcall(L, argbase, 1, -1);
+
+   hook_restore(g, oldh);
+   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
+   g->gc.threshold = oldt;  // Restore GC threshold.
+
+   // Unlike __gc, we return the error code instead of propagating.
+   // The caller decides how to handle errors from __close.
+   return errcode;
+}
+
 // Helper for FORI. Coercion.
 void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
 {
@@ -496,4 +539,3 @@ void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
       }
    }
 }
-

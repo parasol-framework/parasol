@@ -64,7 +64,8 @@ enum class VarInfoFlag : uint8_t {
    Jump = 0x02u,
    JumpTarget = 0x04u,
    Defer = 0x08u,
-   DeferArg = 0x10u
+   DeferArg = 0x10u,
+   Close = 0x20u
 };
 
 // Concept for flag types that support bitwise operations

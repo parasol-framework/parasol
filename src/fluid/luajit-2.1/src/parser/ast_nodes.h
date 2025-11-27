@@ -180,6 +180,7 @@ struct Identifier {
    GCstr* symbol = nullptr;
    SourceSpan span{};
    bool is_blank = false;
+   bool has_close = false;
 };
 
 struct NameRef {
