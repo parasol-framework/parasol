@@ -30,7 +30,7 @@ int32_t LJ_FASTCALL lj_str_cmp(GCstr* a, GCstr* b)
          i -= n;
          if ((int32_t)i >= -3) {
             va >>= 32 + (i << 3); vb >>= 32 + (i << 3);
-            if (va == vb) break;
+            if (va IS vb) break;
          }
          return va < vb ? -1 : 1;
       }
@@ -42,7 +42,7 @@ int32_t LJ_FASTCALL lj_str_cmp(GCstr* a, GCstr* b)
 const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
 {
    if (plen <= slen) {
-      if (plen == 0) {
+      if (plen IS 0) {
          return s;
       }
       else {
@@ -51,7 +51,7 @@ const char* lj_str_find(const char* s, const char* p, MSize slen, MSize plen)
          while (slen) {
             const char* q = (const char*)memchr(s, c, slen);
             if (!q) break;
-            if (memcmp(q + 1, p, plen) == 0) return q;
+            if (memcmp(q + 1, p, plen) IS 0) return q;
             q++; slen -= (MSize)(q - s); s = q;
          }
       }
@@ -135,7 +135,7 @@ void lj_str_resize(lua_State* L, MSize newmask)
    MSize i;
 
    // No resizing during GC traversal or if already too big.
-   if (g->gc.state == GCSsweepstring or newmask >= LJ_MAX_STRTAB - 1)
+   if (g->gc.state IS GCSsweepstring or newmask >= LJ_MAX_STRTAB - 1)
       return;
 
    newtab = lj_mem_newvec(L, newmask + 1, GCRef);
@@ -224,7 +224,7 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
    const char* str, MSize len)
 {
    global_State* g = G(L);
-   int ow = g->gc.state == GCSsweepstring ? otherwhite(g) : 0;  //  Sweeping?
+   int ow = g->gc.state IS GCSsweepstring ? otherwhite(g) : 0;  // Sweeping?
    GCRef* strtab = g->str.tab;
    MSize strmask = g->str.mask;
    GCobj* o = gcref(strtab[hashc & strmask]);
@@ -242,7 +242,7 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
             makewhite(g, o);
          }
          else {  // Free dead string.
-            lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED,
+            lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED,
                "sweep of unlive string");
             lj_str_free(g, s);
             o = next;
@@ -335,8 +335,8 @@ GCstr* lj_str_new(lua_State* L, const char* str, size_t lenx)
 #endif
       while (o != nullptr) {
          GCstr* sx = gco2str(o);
-         if (sx->hash == hash and sx->len == len) {
-            if (memcmp(str, strdata(sx), len) == 0) {
+         if (sx->hash IS hash and sx->len IS len) {
+            if (memcmp(str, strdata(sx), len) IS 0) {
                if (isdead(g, o)) flipwhite(o);  //  Resurrect if dead.
                return sx;  //  Return existing string.
             }
@@ -373,4 +373,3 @@ void LJ_FASTCALL lj_str_init(lua_State* L)
    g->str.seed = lj_prng_u64(&g->prng);
    lj_str_resize(L, LJ_MIN_STRTAB - 1);
 }
-

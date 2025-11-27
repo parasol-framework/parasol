@@ -171,18 +171,18 @@ static void strscan_double(uint64_t x, TValue* o, int32_t ex2, int32_t neg)
 
    // Format-specific handling.
    switch (fmt) {
-   case STRSCAN_INT:
-      if (x >= 0x80000000u + neg) fmt = STRSCAN_U32;
-      // fallthrough
-   case STRSCAN_U32:
-      if ((x >> 32)) return STRSCAN_ERROR;
-      o->i = neg ? -(int32_t)x : (int32_t)x;
-      break;
-   default:
-   case STRSCAN_I64:
-   case STRSCAN_U64:
-      o->u64 = neg ? (uint64_t)-(int64_t)x : x;
-      break;
+      case STRSCAN_INT:
+         if (x >= 0x80000000u + neg) fmt = STRSCAN_U32;
+         // fallthrough
+      case STRSCAN_U32:
+         if ((x >> 32)) return STRSCAN_ERROR;
+         o->i = neg ? -(int32_t)x : (int32_t)x;
+         break;
+      default:
+      case STRSCAN_I64:
+      case STRSCAN_U64:
+         o->u64 = neg ? (uint64_t)-(int64_t)x : x;
+         break;
    }
    return fmt;
 }

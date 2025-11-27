@@ -20,13 +20,30 @@
 ** delta 110  ff pcall() frame
 ** delta 111  ff pcall() frame with active hook
 */
-enum {
-   FRAME_LUA, FRAME_C, FRAME_CONT, FRAME_VARG,
-   FRAME_LUAP, FRAME_CP, FRAME_PCALL, FRAME_PCALLH
+enum class FrameType : int {
+   Lua = 0,
+   C = 1,
+   Cont = 2,
+   Varg = 3,
+   LuaP = 4,
+   CP = 5,
+   Pcall = 6,
+   PcallH = 7
 };
+
+// Legacy frame type enum values for backwards compatibility
+inline constexpr int FRAME_LUA = int(FrameType::Lua);
+inline constexpr int FRAME_C = int(FrameType::C);
+inline constexpr int FRAME_CONT = int(FrameType::Cont);
+inline constexpr int FRAME_VARG = int(FrameType::Varg);
+inline constexpr int FRAME_LUAP = int(FrameType::LuaP);
+inline constexpr int FRAME_CP = int(FrameType::CP);
+inline constexpr int FRAME_PCALL = int(FrameType::Pcall);
+inline constexpr int FRAME_PCALLH = int(FrameType::PcallH);
+
 inline constexpr int FRAME_TYPE = 3;
 inline constexpr int FRAME_P = 4;
-inline constexpr int FRAME_TYPEP = (FRAME_TYPE|FRAME_P);
+inline constexpr int FRAME_TYPEP = (FRAME_TYPE | FRAME_P);
 
 // Macros to access and modify Lua frames.
 #if LJ_FR2

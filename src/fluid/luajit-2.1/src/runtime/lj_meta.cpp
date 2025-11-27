@@ -1,10 +1,8 @@
-/*
-** Metamethod handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Metamethod handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lj_meta_c
 #define LUA_CORE
@@ -25,9 +23,9 @@
 #include "lj_strfmt.h"
 #include "lib.h"
 
-// -- Metamethod handling -------------------------------------------------
-
+//********************************************************************************************************************
 // String interning of metamethod names for fast indexing.
+
 void lj_meta_init(lua_State* L)
 {
 #define MMNAME(name)   "__" #name
@@ -45,7 +43,9 @@ void lj_meta_init(lua_State* L)
    }
 }
 
+//********************************************************************************************************************
 // Negative caching of a few fast metamethods. See the lj_meta_fast() macro.
+
 cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
 {
    cTValue* mo = lj_tab_getstr(mt, name);
@@ -57,7 +57,9 @@ cTValue* lj_meta_cache(GCtab* mt, MMS mm, GCstr* name)
    return mo;
 }
 
+//********************************************************************************************************************
 // Lookup metamethod for object.
+
 cTValue* lj_meta_lookup(lua_State* L, cTValue* o, MMS mm)
 {
    GCtab* mt;
@@ -74,6 +76,8 @@ cTValue* lj_meta_lookup(lua_State* L, cTValue* o, MMS mm)
    }
    return niltv(L);
 }
+
+//********************************************************************************************************************
 
 #if LJ_HASFFI
 // Tailcall from C function.
@@ -104,9 +108,10 @@ int lj_meta_tailcall(lua_State* L, cTValue* tv)
 }
 #endif
 
+//********************************************************************************************************************
 // Setup call to metamethod to be run by Assembler VM.
-static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo,
-   cTValue* a, cTValue* b)
+
+static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo, cTValue* a, cTValue* b)
 {
    /*
    **           |-- framesize -> top       top+1       top+2 top+3
@@ -131,9 +136,11 @@ static TValue* mmcall(lua_State* L, ASMFunction cont, cTValue* mo,
    return top;  //  Return new base.
 }
 
+//********************************************************************************************************************
 // -- C helpers for some instructions, called from assembler VM -----------
 
 // Helper for TGET*. __index chain and metamethod.
+
 cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
 {
    int loop;
@@ -160,7 +167,9 @@ cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k)
    return nullptr;  //  unreachable
 }
 
+//********************************************************************************************************************
 // Helper for TSET*. __newindex chain and metamethod.
+
 TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
 {
    TValue tmp;
@@ -202,19 +211,19 @@ TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k)
    return nullptr;  //  unreachable
 }
 
+//********************************************************************************************************************
+
 static cTValue* str2num(cTValue* o, TValue* n)
 {
-   if (tvisnum(o))
-      return o;
-   else if (tvisint(o))
-      return (setnumV(n, (lua_Number)intV(o)), n);
-   else if (tvisstr(o) and lj_strscan_num(strV(o), n))
-      return n;
-   else
-      return nullptr;
+   if (tvisnum(o)) return o;
+   else if (tvisint(o)) return (setnumV(n, (lua_Number)intV(o)), n);
+   else if (tvisstr(o) and lj_strscan_num(strV(o), n)) return n;
+   else return nullptr;
 }
 
+//********************************************************************************************************************
 // Helper for arithmetic instructions. Coercion, metamethod.
+
 TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
    BCREG op)
 {
@@ -240,7 +249,9 @@ TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc,
    }
 }
 
+//********************************************************************************************************************
 // Helper for CAT. Coercion, iterative concat, __concat metamethod.
+
 TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
 {
    int fromc = 0;
@@ -293,7 +304,7 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);
-         lj_buf_more(sb, (MSize)tlen);
+         (void)lj_buf_more(sb, (MSize)tlen);
          for (e = top, top = o; o <= e; o++) {
             if (tvisstr(o)) {
                GCstr* s = strV(o);
@@ -304,16 +315,13 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
                SBufExt* sbx = bufV(o);
                lj_buf_putmem(sb, sbx->r, sbufxlen(sbx));
             }
-            else if (tvisint(o)) {
-               lj_strfmt_putint(sb, intV(o));
-            }
-            else {
-               lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));
-            }
+            else if (tvisint(o)) lj_strfmt_putint(sb, intV(o));
+            else lj_strfmt_putfnum(sb, STRFMT_G14, numV(o));
          }
          setstrV(L, top, lj_buf_str(L, sb));
       }
    } while (left >= 1);
+
    if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) {
       if (!fromc) L->top = curr_topL(L);
       lj_gc_step(L);
@@ -321,21 +329,23 @@ TValue* lj_meta_cat(lua_State* L, TValue* top, int left)
    return nullptr;
 }
 
+//********************************************************************************************************************
 // Helper for LEN. __len metamethod.
+
 TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o)
 {
    cTValue* mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
-      if (LJ_52 and tvistab(o))
-         tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
-      else
-         lj_err_optype(L, o, ErrMsg::OPLEN);
+      if (LJ_52 and tvistab(o)) tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
+      else lj_err_optype(L, o, ErrMsg::OPLEN);
       return nullptr;
    }
    return mmcall(L, lj_cont_ra, mo, o, LJ_52 ? o : niltv(L));
 }
 
+//********************************************************************************************************************
 // Helper for equality comparisons. __eq metamethod.
+
 TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
 {
    // Field metatable must be at same offset for GCtab and GCudata!
@@ -345,9 +355,9 @@ TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
       uint32_t it;
       if (tabref(o1->gch.metatable) != tabref(o2->gch.metatable)) {
          cTValue* mo2 = lj_meta_fast(L, tabref(o2->gch.metatable), MM_eq);
-         if (mo2 == nullptr or !lj_obj_equal(mo, mo2))
-            return (TValue*)(intptr_t)ne;
+         if (mo2 == nullptr or !lj_obj_equal(mo, mo2)) return (TValue*)(intptr_t)ne;
       }
+
       top = curr_top(L);
       setcont(top++, ne ? lj_cont_condf : lj_cont_condt);
       if (LJ_FR2) setnilV(top++);
@@ -360,6 +370,8 @@ TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne)
    }
    return (TValue*)(intptr_t)ne;
 }
+
+//********************************************************************************************************************
 
 #if LJ_HASFFI
 TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
@@ -393,7 +405,9 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
 }
 #endif
 
+//********************************************************************************************************************
 // Helper for ordered comparisons. String compare, __lt/__le metamethods.
+
 TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
 {
    if (LJ_HASFFI and (tviscdata(o1) or tviscdata(o2))) {
@@ -443,7 +457,9 @@ TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op)
    }
 }
 
+//********************************************************************************************************************
 // Helper for ISTYPE and ISNUM. Implicit coercion or error.
+
 void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp)
 {
    L->top = curr_topL(L);
@@ -455,7 +471,9 @@ void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp)
    else lj_err_argtype(L, ra, lj_obj_itypename[tp]);
 }
 
+//********************************************************************************************************************
 // Helper for calls. __call metamethod.
+
 void lj_meta_call(lua_State* L, TValue* func, TValue* top)
 {
    cTValue* mo = lj_meta_lookup(L, func, MM_call);
@@ -467,8 +485,10 @@ void lj_meta_call(lua_State* L, TValue* func, TValue* top)
    copyTV(L, func, mo);
 }
 
+//********************************************************************************************************************
 // Helper for __close metamethod. Called during scope exit for to-be-closed variables.
 // Returns error code: 0 = success, non-zero = error during __close call.
+
 int lj_meta_close(lua_State* L, TValue* o, TValue* err)
 {
    cTValue* mo = lj_meta_lookup(L, o, MM_close);
@@ -508,7 +528,9 @@ int lj_meta_close(lua_State* L, TValue* o, TValue* err)
    return errcode;
 }
 
+//********************************************************************************************************************
 // Helper for FORI. Coercion.
+
 void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
 {
    if (!lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
@@ -521,10 +543,12 @@ void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o)
       ptrdiff_t i;
       for (i = 0; i <= 2; i++) {
          if (tvisint(o + i)) {
-            k[i] = intV(o + i); nint++;
+            k[i] = intV(o + i);
+            nint++;
          }
          else {
-            k[i] = lj_num2int(numV(o + i)); nint += ((lua_Number)k[i] == numV(o + i));
+            k[i] = lj_num2int(numV(o + i));
+            nint += ((lua_Number)k[i] == numV(o + i));
          }
       }
       if (nint == 3) {  // Narrow to integers.

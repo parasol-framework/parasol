@@ -9,7 +9,47 @@
 #include "lua.h"
 #include "lj_def.h"
 #include "lj_arch.h"
-//#include "parser/parser_diagnostics.h"
+
+#ifndef IS
+#define IS ==
+#endif
+
+// -- Forward declarations ------------------------------------------------
+// These forward declarations establish the core type hierarchy of the VM.
+
+// GC object types
+union GCobj;
+struct GCstr;
+struct GCudata;
+struct GCcdata;
+struct GCcdataVar;
+struct GCproto;
+struct GCupval;
+union GCfunc;
+struct GCfuncC;
+struct GCfuncL;
+struct GCtab;
+struct GChead;
+struct Node;
+
+// State objects
+struct lua_State;
+struct global_State;
+struct GCState;
+struct StrInternState;
+
+// Value types
+union TValue;
+// Note: FrameLink is defined inline as it's a simple union used only in TValue
+struct MRef;
+struct GCRef;
+struct SBuf;
+
+// External classes
+class ParserDiagnostics;
+class objScript;
+
+// -- Basic type aliases --------------------------------------------------
 
 // Memory and GC object sizes.
 using MSize = uint32_t;
@@ -20,69 +60,220 @@ using GCSize = uint32_t;
 #endif
 
 // Memory reference
-typedef struct MRef {
+struct MRef {
 #if LJ_GC64
    uint64_t ptr64;   //  True 64 bit pointer.
 #else
    uint32_t ptr32;   //  Pseudo 32 bit pointer.
 #endif
-} MRef;
+};
 
+// MRef accessor functions - template implementations
 #if LJ_GC64
-#define mref(r, t)   ((t *)(void *)(r).ptr64)
-#define mrefu(r)   ((r).ptr64)
+template<typename T>
+[[nodiscard]] constexpr inline T* mref_get(MRef r) noexcept
+{
+   return (T*)(void*)r.ptr64;
+}
 
-#define setmref(r, p)   ((r).ptr64 = (uint64_t)(void *)(p))
-#define setmrefu(r, u)   ((r).ptr64 = (uint64_t)(u))
-#define setmrefr(r, v)   ((r).ptr64 = (v).ptr64)
+[[nodiscard]] constexpr inline uint64_t mrefu(MRef r) noexcept
+{
+   return r.ptr64;
+}
+
+template<typename T>
+constexpr inline void setmref_fn(MRef& r, T* p) noexcept
+{
+   r.ptr64 = uint64_t((void*)p);
+}
+
+// Overload for nullptr
+constexpr inline void setmref_fn(MRef& r, std::nullptr_t) noexcept
+{
+   r.ptr64 = 0;
+}
+
+constexpr inline void setmrefu(MRef& r, uint64_t u) noexcept
+{
+   r.ptr64 = u;
+}
+
+constexpr inline void setmrefr(MRef& r, MRef v) noexcept
+{
+   r.ptr64 = v.ptr64;
+}
 #else
-#define mref(r, t)   ((t *)(void *)(uintptr_t)(r).ptr32)
-#define mrefu(r)   ((r).ptr32)
+template<typename T>
+[[nodiscard]] constexpr inline T* mref_get(MRef r) noexcept
+{
+   return (T*)(void*)(uintptr_t)r.ptr32;
+}
 
-#define setmref(r, p)   ((r).ptr32 = (uint32_t)(uintptr_t)(void *)(p))
-#define setmrefu(r, u)   ((r).ptr32 = (uint32_t)(u))
-#define setmrefr(r, v)   ((r).ptr32 = (v).ptr32)
+[[nodiscard]] constexpr inline uint32_t mrefu(MRef r) noexcept
+{
+   return r.ptr32;
+}
+
+template<typename T>
+constexpr inline void setmref_fn(MRef& r, T* p) noexcept
+{
+   r.ptr32 = uint32_t((uintptr_t)(void*)p);
+}
+
+// Overload for nullptr
+constexpr inline void setmref_fn(MRef& r, std::nullptr_t) noexcept
+{
+   r.ptr32 = 0;
+}
+
+constexpr inline void setmrefu(MRef& r, uint32_t u) noexcept
+{
+   r.ptr32 = u;
+}
+
+constexpr inline void setmrefr(MRef& r, MRef v) noexcept
+{
+   r.ptr32 = v.ptr32;
+}
 #endif
+
+// Compatibility macros - thin wrappers over template functions
+#define mref(r, t)      mref_get<t>(r)
+#define setmref(r, p)   setmref_fn((r), (p))
 
 // -- GC object references ------------------------------------------------
 
 // GCobj reference
-typedef struct GCRef {
+struct GCRef {
 #if LJ_GC64
    uint64_t gcptr64;   //  True 64 bit pointer.
 #else
    uint32_t gcptr32;   //  Pseudo 32 bit pointer.
 #endif
-} GCRef;
+};
 
 // Common GC header for all collectable objects.
+// Note: This macro must remain as it defines struct fields inline.
 #define GCHeader   GCRef nextgc; uint8_t marked; uint8_t gct
 // This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields.
 
+// GCRef accessor functions - some can be inline functions as they don't
+// dereference GCobj, others must remain macros until GCobj is fully defined.
 #if LJ_GC64
-#define gcref(r)   ((GCobj *)(r).gcptr64)
-#define gcrefp(r, t)   ((t *)(void *)(r).gcptr64)
-#define gcrefu(r)   ((r).gcptr64)
-#define gcrefeq(r1, r2)   ((r1).gcptr64 == (r2).gcptr64)
+// These just cast - they don't dereference, so can be inline functions
+[[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
+{
+   return (GCobj*)r.gcptr64;
+}
 
-#define setgcref(r, gc)   ((r).gcptr64 = (uint64_t)&(gc)->gch)
-#define setgcreft(r, gc, it) \
-  (r).gcptr64 = (uint64_t)&(gc)->gch | (((uint64_t)(it)) << 47)
-#define setgcrefp(r, p)   ((r).gcptr64 = (uint64_t)(p))
-#define setgcrefnull(r)   ((r).gcptr64 = 0)
-#define setgcrefr(r, v)   ((r).gcptr64 = (v).gcptr64)
+template<typename T>
+[[nodiscard]] inline T* gcrefp_fn(GCRef r) noexcept
+{
+   return (T*)(void*)r.gcptr64;
+}
+
+[[nodiscard]] inline uint64_t gcrefu(GCRef r) noexcept
+{
+   return r.gcptr64;
+}
+
+[[nodiscard]] inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
+{
+   return r1.gcptr64 IS r2.gcptr64;
+}
+
+template<typename T>
+inline void setgcrefp_fn(GCRef& r, T* p) noexcept
+{
+   r.gcptr64 = uint64_t(p);
+}
+
+// Overload for integer types (used in some low-level operations)
+// Note: On 64-bit, uintptr_t is typically uint64_t, so only need one
+inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept
+{
+   r.gcptr64 = v;
+}
+
+inline void setgcrefp_fn(GCRef& r, int v) noexcept
+{
+   r.gcptr64 = uint64_t(v);
+}
+
+inline void setgcrefnull(GCRef& r) noexcept
+{
+   r.gcptr64 = 0;
+}
+
+inline void setgcrefr(GCRef& r, GCRef v) noexcept
+{
+   r.gcptr64 = v.gcptr64;
+}
+
+// These dereference GCobj->gch, so must remain macros until GCobj is defined
+// They will be converted to inline functions after GCobj definition
+#define setgcref(r, gc)      ((r).gcptr64 = (uint64_t)&(gc)->gch)
+#define setgcreft(r, gc, it) ((r).gcptr64 = (uint64_t)&(gc)->gch | (((uint64_t)(it)) << 47))
 #else
-#define gcref(r)   ((GCobj *)(uintptr_t)(r).gcptr32)
-#define gcrefp(r, t)   ((t *)(void *)(uintptr_t)(r).gcptr32)
-#define gcrefu(r)   ((r).gcptr32)
-#define gcrefeq(r1, r2)   ((r1).gcptr32 == (r2).gcptr32)
+[[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
+{
+   return (GCobj*)(uintptr_t)r.gcptr32;
+}
 
-#define setgcref(r, gc)   ((r).gcptr32 = (uint32_t)(uintptr_t)&(gc)->gch)
-#define setgcrefp(r, p)   ((r).gcptr32 = (uint32_t)(uintptr_t)(p))
-#define setgcrefnull(r)   ((r).gcptr32 = 0)
-#define setgcrefr(r, v)   ((r).gcptr32 = (v).gcptr32)
+template<typename T>
+[[nodiscard]] inline T* gcrefp_fn(GCRef r) noexcept
+{
+   return (T*)(void*)(uintptr_t)r.gcptr32;
+}
+
+[[nodiscard]] inline uint32_t gcrefu(GCRef r) noexcept
+{
+   return r.gcptr32;
+}
+
+[[nodiscard]] inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
+{
+   return r1.gcptr32 IS r2.gcptr32;
+}
+
+inline void setgcref(GCRef& r, GCobj* gc) noexcept;  // Forward declaration - defined after GCobj
+
+template<typename T>
+inline void setgcrefp_fn(GCRef& r, T* p) noexcept
+{
+   r.gcptr32 = uint32_t((uintptr_t)p);
+}
+
+// Overload for integer types (used in some low-level operations)
+inline void setgcrefp_fn(GCRef& r, uintptr_t v) noexcept
+{
+   r.gcptr32 = uint32_t(v);
+}
+
+inline void setgcrefp_fn(GCRef& r, int v) noexcept
+{
+   r.gcptr32 = uint32_t(v);
+}
+
+inline void setgcrefnull(GCRef& r) noexcept
+{
+   r.gcptr32 = 0;
+}
+
+inline void setgcrefr(GCRef& r, GCRef v) noexcept
+{
+   r.gcptr32 = v.gcptr32;
+}
+
+// This dereferences GCobj->gch, so must remain macro until GCobj is defined
+#define setgcref(r, gc)  ((r).gcptr32 = (uint32_t)(uintptr_t)&(gc)->gch)
 #endif
 
+// Compatibility macro for template function
+#define gcrefp(r, t)    gcrefp_fn<t>(r)
+#define setgcrefp(r, p) setgcrefp_fn((r), (p))
+
+// gcnext dereferences GCobj, will be defined as inline function after GCobj
 #define gcnext(gc)   (gcref((gc)->gch.nextgc))
 
 /* IMPORTANT NOTE:
@@ -210,12 +401,15 @@ typedef LJ_ALIGN(8) union TValue {
 
 using cTValue = const TValue;
 
-#define tvref(r)   (mref(r, TValue))
+[[nodiscard]] inline TValue* tvref(MRef r) noexcept
+{
+   return mref(r, TValue);
+}
 
 // More external and GCobj tags for internal objects.
-#define LAST_TT      LUA_TTHREAD
-#define LUA_TPROTO   (LAST_TT+1)
-#define LUA_TCDATA   (LAST_TT+2)
+inline constexpr int LAST_TT     = LUA_TTHREAD;
+inline constexpr int LUA_TPROTO  = LAST_TT + 1;
+inline constexpr int LUA_TCDATA  = LAST_TT + 2;
 
 /* Internal object tags.
 **
@@ -254,44 +448,45 @@ using cTValue = const TValue;
 ** Also check lj_ir.h for similar ordering constraints.
 */
 
-#define LJ_TNIL       (~0u)
-#define LJ_TFALSE     (~1u)
-#define LJ_TTRUE      (~2u)
-#define LJ_TLIGHTUD   (~3u)
-#define LJ_TSTR       (~4u)
-#define LJ_TUPVAL     (~5u)
-#define LJ_TTHREAD    (~6u)
-#define LJ_TPROTO     (~7u)
-#define LJ_TFUNC      (~8u)
-#define LJ_TTRACE     (~9u)
-#define LJ_TCDATA     (~10u)
-#define LJ_TTAB       (~11u)
-#define LJ_TUDATA     (~12u)
+// Internal type tags. ORDER LJ_T
+inline constexpr uint32_t LJ_TNIL      = ~0u;
+inline constexpr uint32_t LJ_TFALSE    = ~1u;
+inline constexpr uint32_t LJ_TTRUE     = ~2u;
+inline constexpr uint32_t LJ_TLIGHTUD  = ~3u;
+inline constexpr uint32_t LJ_TSTR      = ~4u;
+inline constexpr uint32_t LJ_TUPVAL    = ~5u;
+inline constexpr uint32_t LJ_TTHREAD   = ~6u;
+inline constexpr uint32_t LJ_TPROTO    = ~7u;
+inline constexpr uint32_t LJ_TFUNC     = ~8u;
+inline constexpr uint32_t LJ_TTRACE    = ~9u;
+inline constexpr uint32_t LJ_TCDATA    = ~10u;
+inline constexpr uint32_t LJ_TTAB      = ~11u;
+inline constexpr uint32_t LJ_TUDATA    = ~12u;
 // This is just the canonical number type used in some places.
-#define LJ_TNUMX      (~13u)
+inline constexpr uint32_t LJ_TNUMX     = ~13u;
 
 // Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM
 #if LJ_64 && !LJ_GC64
-#define LJ_TISNUM      0xfffeffffu
+inline constexpr uint32_t LJ_TISNUM = 0xfffeffffu;
 #else
-#define LJ_TISNUM      LJ_TNUMX
+inline constexpr uint32_t LJ_TISNUM = LJ_TNUMX;
 #endif
-#define LJ_TISTRUECOND      LJ_TFALSE
-#define LJ_TISPRI      LJ_TTRUE
-#define LJ_TISGCV      (LJ_TSTR+1)
-#define LJ_TISTABUD      LJ_TTAB
+inline constexpr uint32_t LJ_TISTRUECOND = LJ_TFALSE;
+inline constexpr uint32_t LJ_TISPRI      = LJ_TTRUE;
+inline constexpr uint32_t LJ_TISGCV      = LJ_TSTR + 1;
+inline constexpr uint32_t LJ_TISTABUD    = LJ_TTAB;
 
 // Type marker for slot holding a traversal index. Must be lightuserdata.
-#define LJ_KEYINDEX      0xfffe7fffu
+inline constexpr uint32_t LJ_KEYINDEX = 0xfffe7fffu;
 
 #if LJ_GC64
-#define LJ_GCVMASK      (((uint64_t)1 << 47) - 1)
+inline constexpr uint64_t LJ_GCVMASK = (uint64_t(1) << 47) - 1;
 #endif
 
 #if LJ_64
 // To stay within 47 bits, lightuserdata is segmented.
-#define LJ_LIGHTUD_BITS_SEG   8
-#define LJ_LIGHTUD_BITS_LO   (47 - LJ_LIGHTUD_BITS_SEG)
+inline constexpr int LJ_LIGHTUD_BITS_SEG = 8;
+inline constexpr int LJ_LIGHTUD_BITS_LO  = 47 - LJ_LIGHTUD_BITS_SEG;
 #endif
 
 // -- String object -------------------------------------------------------
@@ -303,15 +498,26 @@ typedef uint32_t StrID;      //  String ID.
 typedef struct GCstr {
    GCHeader;
    uint8_t reserved;   //  Used by lexer for fast lookup of reserved words.
-   uint8_t hashalg;   //  Hash algorithm.
-   StrID sid;      //  Interned string ID.
-   LuaStrHash hash;      //  Hash of string.
-   MSize len;      //  Size of string.
+   uint8_t hashalg;    //  Hash algorithm.
+   StrID sid;          //  Interned string ID.
+   LuaStrHash hash;    //  Hash of string.
+   MSize len;          //  Size of string.
 } GCstr;
 
-#define strref(r)   (&gcref((r))->str)
-#define strdata(s)   ((const char *)((s)+1))
-#define strdatawr(s)   ((char *)((s)+1))
+// String accessor functions - strref defined after GCobj, others are simple
+inline GCstr* strref(GCRef r) noexcept;  // Defined after GCobj
+
+[[nodiscard]] inline const char* strdata(const GCstr* s) noexcept
+{
+   return (const char*)(s + 1);
+}
+
+[[nodiscard]] inline char* strdatawr(GCstr* s) noexcept
+{
+   return (char*)(s + 1);
+}
+
+// strVdata uses strV which is defined later
 #define strVdata(o)   strdata(strV(o))
 
 // -- Userdata object -----------------------------------------------------
@@ -336,8 +542,15 @@ enum {
    UDTYPE__MAX
 };
 
-#define uddata(u)   ((void *)((u)+1))
-#define sizeudata(u)   (sizeof(struct GCudata)+(u)->len)
+[[nodiscard]] inline void* uddata(GCudata* u) noexcept
+{
+   return (void*)(u + 1);
+}
+
+[[nodiscard]] inline MSize sizeudata(const GCudata* u) noexcept
+{
+   return sizeof(GCudata) + u->len;
+}
 
 // -- C data object -------------------------------------------------------
 
@@ -354,17 +567,44 @@ typedef struct GCcdataVar {
    MSize len;         //  Size of payload.
 } GCcdataVar;
 
-#define cdataptr(cd)   ((void *)((cd)+1))
-#define cdataisv(cd)   ((cd)->marked & 0x80)
-#define cdatav(cd)   ((GCcdataVar *)((char *)(cd) - sizeof(GCcdataVar)))
-#define cdatavlen(cd)   check_exp(cdataisv(cd), cdatav(cd)->len)
-#define sizecdatav(cd)   (cdatavlen(cd) + cdatav(cd)->extra)
-#define memcdatav(cd)   ((void *)((char *)(cd) - cdatav(cd)->offset))
+[[nodiscard]] inline void* cdataptr(GCcdata* cd) noexcept
+{
+   return (void*)(cd + 1);
+}
+
+[[nodiscard]] inline bool cdataisv(const GCcdata* cd) noexcept
+{
+   return (cd->marked & 0x80) != 0;
+}
+
+[[nodiscard]] inline GCcdataVar* cdatav(GCcdata* cd) noexcept
+{
+   return (GCcdataVar*)((char*)cd - sizeof(GCcdataVar));
+}
+
+[[nodiscard]] inline MSize cdatavlen(GCcdata* cd) noexcept
+{
+   return check_exp(cdataisv(cd), cdatav(cd)->len);
+}
+
+[[nodiscard]] inline MSize sizecdatav(GCcdata* cd) noexcept
+{
+   return cdatavlen(cd) + cdatav(cd)->extra;
+}
+
+[[nodiscard]] inline void* memcdatav(GCcdata* cd) noexcept
+{
+   return (void*)((char*)cd - cdatav(cd)->offset);
+}
 
 // -- Prototype object ----------------------------------------------------
 
-#define SCALE_NUM_GCO   ((int32_t)sizeof(lua_Number)/sizeof(GCRef))
-#define round_nkgc(n)   (((n) + SCALE_NUM_GCO-1) & ~(SCALE_NUM_GCO-1))
+inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCRef));
+
+[[nodiscard]] constexpr inline MSize round_nkgc(MSize n) noexcept
+{
+   return (n + SCALE_NUM_GCO - 1) & ~(SCALE_NUM_GCO - 1);
+}
 
 typedef struct GCproto {
    GCHeader;
@@ -394,36 +634,66 @@ typedef struct GCproto {
 } GCproto;
 
 // Flags for prototype.
-#define PROTO_CHILD      0x01   //  Has child prototypes.
-#define PROTO_VARARG     0x02   //  Vararg function.
-#define PROTO_FFI        0x04   //  Uses BC_KCDATA for FFI datatypes.
-#define PROTO_NOJIT      0x08   //  JIT disabled for this function.
-#define PROTO_ILOOP      0x10   //  Patched bytecode with ILOOP etc.
+inline constexpr uint8_t PROTO_CHILD        = 0x01;   //  Has child prototypes.
+inline constexpr uint8_t PROTO_VARARG       = 0x02;   //  Vararg function.
+inline constexpr uint8_t PROTO_FFI          = 0x04;   //  Uses BC_KCDATA for FFI datatypes.
+inline constexpr uint8_t PROTO_NOJIT        = 0x08;   //  JIT disabled for this function.
+inline constexpr uint8_t PROTO_ILOOP        = 0x10;   //  Patched bytecode with ILOOP etc.
 // Only used during parsing.
-#define PROTO_HAS_RETURN   0x20   //  Already emitted a return.
-#define PROTO_FIXUP_RETURN   0x40   //  Need to fixup emitted returns.
+inline constexpr uint8_t PROTO_HAS_RETURN   = 0x20;   //  Already emitted a return.
+inline constexpr uint8_t PROTO_FIXUP_RETURN = 0x40;   //  Need to fixup emitted returns.
 // Top bits used for counting created closures.
-#define PROTO_CLCOUNT      0x20   //  Base of saturating 3 bit counter.
-#define PROTO_CLC_BITS      3
-#define PROTO_CLC_POLY      (3*PROTO_CLCOUNT)  //  Polymorphic threshold.
+inline constexpr uint8_t PROTO_CLCOUNT      = 0x20;   //  Base of saturating 3 bit counter.
+inline constexpr int PROTO_CLC_BITS         = 3;
+inline constexpr int PROTO_CLC_POLY         = 3 * PROTO_CLCOUNT;  //  Polymorphic threshold.
 
-#define PROTO_UV_LOCAL      0x8000   //  Upvalue for local slot.
-#define PROTO_UV_IMMUTABLE   0x4000   //  Immutable upvalue.
+inline constexpr uint16_t PROTO_UV_LOCAL     = 0x8000;   //  Upvalue for local slot.
+inline constexpr uint16_t PROTO_UV_IMMUTABLE = 0x4000;   //  Immutable upvalue.
 
-#define proto_kgc(pt, idx) \
-  check_exp((uintptr_t)(intptr_t)(idx) >= (uintptr_t)-(intptr_t)(pt)->sizekgc, \
-       gcref(mref((pt)->k, GCRef)[(idx)]))
-#define proto_knumtv(pt, idx) \
-  check_exp((uintptr_t)(idx) < (pt)->sizekn, &mref((pt)->k, TValue)[(idx)])
-#define proto_bc(pt)      ((BCIns *)((char *)(pt) + sizeof(GCproto)))
-#define proto_bcpos(pt, pc)   ((BCPOS)((pc) - proto_bc(pt)))
-#define proto_uv(pt)      (mref((pt)->uv, uint16_t))
+[[nodiscard]] inline GCobj* proto_kgc(const GCproto* pt, ptrdiff_t idx) noexcept
+{
+   return check_exp(uintptr_t(intptr_t(idx)) >= uintptr_t(-intptr_t(pt->sizekgc)),
+      gcref(mref(pt->k, GCRef)[idx]));
+}
 
-#define proto_chunkname(pt)   (strref((pt)->chunkname))
-#define proto_chunknamestr(pt)   (strdata(proto_chunkname((pt))))
-#define proto_lineinfo(pt)   (mref((pt)->lineinfo, const void))
-#define proto_uvinfo(pt)   (mref((pt)->uvinfo, const uint8_t))
-#define proto_varinfo(pt)   (mref((pt)->varinfo, const uint8_t))
+[[nodiscard]] inline TValue* proto_knumtv(const GCproto* pt, MSize idx) noexcept
+{
+   return check_exp(uintptr_t(idx) < pt->sizekn, &mref(pt->k, TValue)[idx]);
+}
+
+[[nodiscard]] inline BCIns* proto_bc(const GCproto* pt) noexcept
+{
+   return (BCIns*)((char*)pt + sizeof(GCproto));
+}
+
+[[nodiscard]] inline BCPOS proto_bcpos(const GCproto* pt, const BCIns* pc) noexcept
+{
+   return BCPOS(pc - proto_bc(pt));
+}
+
+[[nodiscard]] inline uint16_t* proto_uv(const GCproto* pt) noexcept
+{
+   return mref(pt->uv, uint16_t);
+}
+
+// Forward declarations - defined after GCobj is complete
+inline GCstr* proto_chunkname(const GCproto* pt) noexcept;
+inline const char* proto_chunknamestr(const GCproto* pt) noexcept;
+
+[[nodiscard]] inline const void* proto_lineinfo(const GCproto* pt) noexcept
+{
+   return mref(pt->lineinfo, const void);
+}
+
+[[nodiscard]] inline const uint8_t* proto_uvinfo(const GCproto* pt) noexcept
+{
+   return mref(pt->uvinfo, const uint8_t);
+}
+
+[[nodiscard]] inline const uint8_t* proto_varinfo(const GCproto* pt) noexcept
+{
+   return mref(pt->varinfo, const uint8_t);
+}
 
 // -- Upvalue object ------------------------------------------------------
 
@@ -442,9 +712,14 @@ typedef struct GCupval {
    uint32_t dhash;   //  Disambiguation hash: dh1 != dh2 => cannot alias.
 } GCupval;
 
-#define uvprev(uv_)   (&gcref((uv_)->prev)->uv)
-#define uvnext(uv_)   (&gcref((uv_)->next)->uv)
-#define uvval(uv_)   (mref((uv_)->v, TValue))
+// Forward declarations - defined after GCobj is complete
+inline GCupval* uvprev(GCupval* uv) noexcept;
+inline GCupval* uvnext(GCupval* uv) noexcept;
+
+[[nodiscard]] inline TValue* uvval(GCupval* uv) noexcept
+{
+   return mref(uv->v, TValue);
+}
 
 // -- Function object (closures) ------------------------------------------
 
@@ -469,15 +744,38 @@ typedef union GCfunc {
    GCfuncL l;
 } GCfunc;
 
-#define FF_LUA      0
-#define FF_C      1
-#define isluafunc(fn)   ((fn)->c.ffid == FF_LUA)
-#define iscfunc(fn)   ((fn)->c.ffid == FF_C)
-#define isffunc(fn)   ((fn)->c.ffid > FF_C)
-#define funcproto(fn) \
-  check_exp(isluafunc(fn), (GCproto *)(mref((fn)->l.pc, char)-sizeof(GCproto)))
-#define sizeCfunc(n)   (sizeof(GCfuncC)-sizeof(TValue)+sizeof(TValue)*(n))
-#define sizeLfunc(n)   (sizeof(GCfuncL)-sizeof(GCRef)+sizeof(GCRef)*(n))
+inline constexpr uint8_t FF_LUA = 0;
+inline constexpr uint8_t FF_C   = 1;
+
+[[nodiscard]] inline bool isluafunc(const GCfunc* fn) noexcept
+{
+   return fn->c.ffid IS FF_LUA;
+}
+
+[[nodiscard]] inline bool iscfunc(const GCfunc* fn) noexcept
+{
+   return fn->c.ffid IS FF_C;
+}
+
+[[nodiscard]] inline bool isffunc(const GCfunc* fn) noexcept
+{
+   return fn->c.ffid > FF_C;
+}
+
+[[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept
+{
+   return check_exp(isluafunc(fn), (GCproto*)(mref(fn->l.pc, char) - sizeof(GCproto)));
+}
+
+[[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept
+{
+   return sizeof(GCfuncC) - sizeof(TValue) + sizeof(TValue) * n;
+}
+
+[[nodiscard]] constexpr inline size_t sizeLfunc(MSize n) noexcept
+{
+   return sizeof(GCfuncL) - sizeof(GCRef) + sizeof(GCRef) * n;
+}
 
 // -- Table object --------------------------------------------------------
 
@@ -508,16 +806,44 @@ typedef struct GCtab {
 #endif
 } GCtab;
 
-#define sizetabcolo(n) ((n)*sizeof(TValue) + sizeof(GCtab))
-#define tabref(r)      (&gcref((r))->tab)
-#define noderef(r)     (mref((r), Node))
-#define nextnode(n)    (mref((n)->next, Node))
+[[nodiscard]] constexpr inline size_t sizetabcolo(MSize n) noexcept
+{
+   return n * sizeof(TValue) + sizeof(GCtab);
+}
+
+// Forward declaration - defined after GCobj is complete
+inline GCtab* tabref(GCRef r) noexcept;
+
+[[nodiscard]] constexpr inline Node* noderef(MRef r) noexcept
+{
+   return mref(r, Node);
+}
+
+[[nodiscard]] inline Node* nextnode(Node* n) noexcept
+{
+   return mref(n->next, Node);
+}
+
 #if LJ_GC64
-#define getfreetop(t, n)   (noderef((t)->freetop))
-#define setfreetop(t, n, v)   (setmref((t)->freetop, (v)))
+[[nodiscard]] inline Node* getfreetop(const GCtab* t, Node*) noexcept
+{
+   return noderef(t->freetop);
+}
+
+inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
+{
+   setmref(t->freetop, v);
+}
 #else
-#define getfreetop(t, n)   (noderef((n)->freetop))
-#define setfreetop(t, n, v)   (setmref((n)->freetop, (v)))
+[[nodiscard]] inline Node* getfreetop(GCtab*, Node* n) noexcept
+{
+   return noderef(n->freetop);
+}
+
+inline void setfreetop(GCtab*, Node* n, Node* v) noexcept
+{
+   setmref(n->freetop, v);
+}
 #endif
 
 // -- State objects -------------------------------------------------------
@@ -537,6 +863,10 @@ enum {
 #define setvmstate(g, st)   ((g)->vmstate = ~LJ_VMST_##st)
 
 // Metamethods. ORDER MM
+// CRITICAL: Metamethod order determines enum values hardcoded in lj_vm.obj.
+// New metamethods must be added at the END to avoid shifting indices.
+// Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt.
+
 #ifdef LJ_HASFFI
 #define MMDEF_FFI(_) _(new)
 #else
@@ -547,10 +877,9 @@ enum {
 #define MMDEF_PAIRS(_) _(pairs) _(ipairs)
 #else
 #define MMDEF_PAIRS(_)
-#define MM_pairs   255
-#define MM_ipairs   255
 #endif
 
+// X-macro defining all metamethods - used for enum generation and name strings
 #define MMDEF(_) \
   _(index) _(newindex) _(gc) _(mode) _(eq) _(len) \
   /* Only the above (fast) metamethods are negative cached (max. 8). */ \
@@ -559,12 +888,11 @@ enum {
   _(add) _(sub) _(mul) _(div) _(mod) _(pow) _(unm) \
   /* The following are used in the standard libraries. */ \
   _(metatable) _(tostring) \
-  /* CRITICAL: New metamethods must be added at the END to avoid shifting indices. */ \
-  /* The MMDEF order determines MM_* enum values which are hardcoded in lj_vm.obj. */ \
-  /* Inserting in the middle breaks all metamethod dispatch until lj_vm.obj is rebuilt. */ \
   _(close) MMDEF_FFI(_) MMDEF_PAIRS(_)
 
-typedef enum {
+// Metamethod IDs - uses typedef enum because MMDEF generates conditional members
+// and the X-macro pattern is required for string generation in lj_meta.cpp
+typedef enum : uint8_t {
 #define MMENUM(name)   MM_##name,
    MMDEF(MMENUM)
 #undef MMENUM
@@ -573,19 +901,26 @@ typedef enum {
    MM_FAST = MM_len
 } MMS;
 
-// GC root IDs.
-typedef enum {
-   GCROOT_MMNAME,   //  Metamethod names.
+// Sentinel values for when pairs/ipairs are not available
+#if !(LJ_52 || LJ_HASFFI)
+inline constexpr uint8_t MM_pairs  = 255;
+inline constexpr uint8_t MM_ipairs = 255;
+#endif
+
+// GC root IDs
+typedef enum : uint32_t {
+   GCROOT_MMNAME,                              // Metamethod names
    GCROOT_MMNAME_LAST = GCROOT_MMNAME + MM__MAX - 1,
-   GCROOT_BASEMT,   //  Metatables for base types.
+   GCROOT_BASEMT,                              // Metatables for base types
    GCROOT_BASEMT_NUM = GCROOT_BASEMT + ~LJ_TNUMX,
-   GCROOT_IO_INPUT,   //  Userdata for default I/O input file.
-   GCROOT_IO_OUTPUT,   //  Userdata for default I/O output file.
+   GCROOT_IO_INPUT,                            // Userdata for default I/O input file
+   GCROOT_IO_OUTPUT,                           // Userdata for default I/O output file
    GCROOT_MAX
 } GCRootID;
 
-#define basemt_it(g, it)   ((g)->gcroot[GCROOT_BASEMT+~(it)])
-#define basemt_obj(g, o)   ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
+// GC root accessors - must remain as macros due to header ordering
+#define basemt_it(g, it)    ((g)->gcroot[GCROOT_BASEMT+~(it)])
+#define basemt_obj(g, o)    ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
 #define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+int(mm)]))
 
 // Garbage collector state.
@@ -661,31 +996,60 @@ typedef struct global_State {
    GCRef     gcroot[GCROOT_MAX];  //  GC roots.
 } global_State;
 
-#define mainthread(g)   (&gcref(g->mainthref)->th)
-#define niltv(L) check_exp(tvisnil(&G(L)->nilnode.val), &G(L)->nilnode.val)
-#define niltvg(g) check_exp(tvisnil(&(g)->nilnode.val), &(g)->nilnode.val)
+// Forward declarations - defined after GCobj is complete
+inline lua_State* mainthread(global_State* g) noexcept;
+inline TValue* niltv(lua_State* L) noexcept;
+
+// niltvg doesn't depend on GCobj, can be defined here
+[[nodiscard]] inline TValue* niltvg(global_State* g) noexcept
+{
+   return check_exp(tvisnil(&g->nilnode.val), &g->nilnode.val);
+}
 
 // Hook management. Hook event masks are defined in lua.h.
-#define HOOK_EVENTMASK      0x0f
-#define HOOK_ACTIVE      0x10
-#define HOOK_ACTIVE_SHIFT   4
-#define HOOK_VMEVENT      0x20
-#define HOOK_GC         0x40
-#define HOOK_PROFILE      0x80
-#define hook_active(g)      ((g)->hookmask & HOOK_ACTIVE)
-#define hook_enter(g)      ((g)->hookmask |= HOOK_ACTIVE)
-#define hook_entergc(g) \
-  ((g)->hookmask = ((g)->hookmask | (HOOK_ACTIVE|HOOK_GC)) & ~HOOK_PROFILE)
-#define hook_vmevent(g)      ((g)->hookmask |= (HOOK_ACTIVE|HOOK_VMEVENT))
-#define hook_leave(g)      ((g)->hookmask &= ~HOOK_ACTIVE)
-#define hook_save(g)      ((g)->hookmask & ~HOOK_EVENTMASK)
-#define hook_restore(g, h) \
-  ((g)->hookmask = ((g)->hookmask & HOOK_EVENTMASK) | (h))
+inline constexpr uint8_t HOOK_EVENTMASK    = 0x0f;
+inline constexpr uint8_t HOOK_ACTIVE       = 0x10;
+inline constexpr int HOOK_ACTIVE_SHIFT     = 4;
+inline constexpr uint8_t HOOK_VMEVENT      = 0x20;
+inline constexpr uint8_t HOOK_GC           = 0x40;
+inline constexpr uint8_t HOOK_PROFILE      = 0x80;
+
+[[nodiscard]] inline bool hook_active(const global_State* g) noexcept
+{
+   return (g->hookmask & HOOK_ACTIVE) != 0;
+}
+
+inline void hook_enter(global_State* g) noexcept
+{
+   g->hookmask |= HOOK_ACTIVE;
+}
+
+inline void hook_entergc(global_State* g) noexcept
+{
+   g->hookmask = (g->hookmask | (HOOK_ACTIVE | HOOK_GC)) & ~HOOK_PROFILE;
+}
+
+inline void hook_vmevent(global_State* g) noexcept
+{
+   g->hookmask |= (HOOK_ACTIVE | HOOK_VMEVENT);
+}
+
+inline void hook_leave(global_State* g) noexcept
+{
+   g->hookmask &= ~HOOK_ACTIVE;
+}
+
+[[nodiscard]] inline uint8_t hook_save(const global_State* g) noexcept
+{
+   return g->hookmask & ~HOOK_EVENTMASK;
+}
+
+inline void hook_restore(global_State* g, uint8_t h) noexcept
+{
+   g->hookmask = (g->hookmask & HOOK_EVENTMASK) | h;
+}
 
 // Per-thread state object.
-
-class ParserDiagnostics; // Forward declaration
-
 struct lua_State {
    GCHeader;
    uint8_t dummy_ffid;  //  Fake FF_C for curr_funcisL() on dummy frames.
@@ -716,21 +1080,23 @@ struct lua_State {
 */
 };
 
-#define G(L)        (mref(L->glref, global_State))
-#define registry(L) (&G(L)->registrytv)
+[[nodiscard]] inline global_State* G(lua_State* L) noexcept
+{
+   return mref(L->glref, global_State);
+}
 
-// Macros to access the currently executing (Lua) function.
-#if LJ_GC64
-#define curr_func(L)      (&gcval(L->base-2)->fn)
-#elif LJ_FR2
-#define curr_func(L)      (&gcref((L->base-2)->gcr)->fn)
-#else
-#define curr_func(L)      (&gcref((L->base-1)->fr.func)->fn)
-#endif
-#define curr_funcisL(L)  (isluafunc(curr_func(L)))
-#define curr_proto(L)    (funcproto(curr_func(L)))
-#define curr_topL(L)     (L->base + curr_proto(L)->framesize)
-#define curr_top(L)      (curr_funcisL(L) ? curr_topL(L) : L->top)
+[[nodiscard]] inline TValue* registry(lua_State* L) noexcept
+{
+   return &G(L)->registrytv;
+}
+
+// Forward declarations - defined after GCobj is complete
+// Functions to access the currently executing (Lua) function.
+inline GCfunc* curr_func(lua_State* L) noexcept;
+inline bool curr_funcisL(lua_State* L) noexcept;
+inline GCproto* curr_proto(lua_State* L) noexcept;
+inline TValue* curr_topL(lua_State* L) noexcept;
+inline TValue* curr_top(lua_State* L) noexcept;
 
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line,
@@ -775,88 +1141,348 @@ typedef union GCobj {
    GCudata ud;
 } GCobj;
 
-// Macros to convert a GCobj pointer into a specific value.
-#define gco2str(o)   check_exp((o)->gch.gct == ~LJ_TSTR, &(o)->str)
-#define gco2uv(o)   check_exp((o)->gch.gct == ~LJ_TUPVAL, &(o)->uv)
-#define gco2th(o)   check_exp((o)->gch.gct == ~LJ_TTHREAD, &(o)->th)
-#define gco2pt(o)   check_exp((o)->gch.gct == ~LJ_TPROTO, &(o)->pt)
-#define gco2func(o)   check_exp((o)->gch.gct == ~LJ_TFUNC, &(o)->fn)
-#define gco2cd(o)   check_exp((o)->gch.gct == ~LJ_TCDATA, &(o)->cd)
-#define gco2tab(o)   check_exp((o)->gch.gct == ~LJ_TTAB, &(o)->tab)
-#define gco2ud(o)   check_exp((o)->gch.gct == ~LJ_TUDATA, &(o)->ud)
+// Functions to convert a GCobj pointer into a specific value.
+[[nodiscard]] inline GCstr* gco2str(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TSTR, &o->str);
+}
 
-// Macro to convert any collectable object into a GCobj pointer.
-#define obj2gco(v)   ((GCobj *)(v))
+[[nodiscard]] inline GCupval* gco2uv(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TUPVAL, &o->uv);
+}
+
+[[nodiscard]] inline lua_State* gco2th(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TTHREAD, &o->th);
+}
+
+[[nodiscard]] inline GCproto* gco2pt(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TPROTO, &o->pt);
+}
+
+[[nodiscard]] inline GCfunc* gco2func(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TFUNC, &o->fn);
+}
+
+[[nodiscard]] inline GCcdata* gco2cd(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TCDATA, &o->cd);
+}
+
+[[nodiscard]] inline GCtab* gco2tab(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TTAB, &o->tab);
+}
+
+[[nodiscard]] inline GCudata* gco2ud(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud);
+}
+
+// Convert any collectable object into a GCobj pointer.
+template<typename T>
+[[nodiscard]] inline GCobj* obj2gco(T* v) noexcept
+{
+   return (GCobj*)v;
+}
+
+// -- Deferred inline function definitions (require complete GCobj type) --
+
+// gcval: get GC object pointer from tagged value (just pointer math, no dereference)
+#if LJ_GC64
+[[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept
+{
+   return (GCobj*)(gcrefu(o->gcr) & LJ_GCVMASK);
+}
+#else
+[[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept
+{
+   return gcref(o->gcr);
+}
+#endif
+
+// String accessors
+[[nodiscard]] inline GCstr* strref(GCRef r) noexcept
+{
+   return &gcref(r)->str;
+}
+
+// Prototype accessors
+[[nodiscard]] inline GCstr* proto_chunkname(const GCproto* pt) noexcept
+{
+   return strref(pt->chunkname);
+}
+
+[[nodiscard]] inline const char* proto_chunknamestr(const GCproto* pt) noexcept
+{
+   return strdata(proto_chunkname(pt));
+}
+
+// Table accessors
+[[nodiscard]] inline GCtab* tabref(GCRef r) noexcept
+{
+   return &gcref(r)->tab;
+}
+
+// Thread/state accessors
+[[nodiscard]] inline lua_State* mainthread(global_State* g) noexcept
+{
+   return &gcref(g->mainthref)->th;
+}
+
+// Function accessors for currently executing function
+#if LJ_GC64
+[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
+{
+   return &gcval(L->base - 2)->fn;
+}
+#elif LJ_FR2
+[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
+{
+   return &gcref((L->base - 2)->gcr)->fn;
+}
+#else
+[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
+{
+   return &gcref((L->base - 1)->fr.func)->fn;
+}
+#endif
+
+[[nodiscard]] inline bool curr_funcisL(lua_State* L) noexcept
+{
+   return isluafunc(curr_func(L));
+}
+
+[[nodiscard]] inline GCproto* curr_proto(lua_State* L) noexcept
+{
+   return funcproto(curr_func(L));
+}
+
+[[nodiscard]] inline TValue* curr_topL(lua_State* L) noexcept
+{
+   return L->base + curr_proto(L)->framesize;
+}
+
+[[nodiscard]] inline TValue* curr_top(lua_State* L) noexcept
+{
+   return curr_funcisL(L) ? curr_topL(L) : L->top;
+}
+
+// Upvalue list navigation
+[[nodiscard]] inline GCupval* uvprev(GCupval* uv) noexcept
+{
+   return &gcref(uv->prev)->uv;
+}
+
+[[nodiscard]] inline GCupval* uvnext(GCupval* uv) noexcept
+{
+   return &gcref(uv->next)->uv;
+}
+
+// niltv defined at end of file (needs tvisnil which is defined below)
 
 // -- TValue getters/setters ----------------------------------------------
 
-// Macros to test types.
+// Type test functions.
 #if LJ_GC64
-#define itype(o)     ((uint32_t)((o)->it64 >> 47))
-#define tvisnil(o)   ((o)->it64 == -1)
+[[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept
+{
+   return uint32_t(o->it64 >> 47);
+}
+
+[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept
+{
+   return o->it64 IS -1;
+}
 #else
-#define itype(o)     ((o)->it)
-#define tvisnil(o)   (itype(o) == LJ_TNIL)
+[[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept
+{
+   return o->it;
+}
+
+[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TNIL;
+}
 #endif
-#define tvisfalse(o)  (itype(o) == LJ_TFALSE)
-#define tvistrue(o)   (itype(o) == LJ_TTRUE)
-#define tvisbool(o)   (tvisfalse(o) || tvistrue(o))
+
+[[nodiscard]] constexpr inline bool tvisfalse(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TFALSE;
+}
+
+[[nodiscard]] constexpr inline bool tvistrue(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TTRUE;
+}
+
+[[nodiscard]] constexpr inline bool tvisbool(cTValue* o) noexcept
+{
+   return tvisfalse(o) or tvistrue(o);
+}
+
 #if LJ_64 && !LJ_GC64
-#define tvislightud(o)   (((int32_t)itype(o) >> 15) == -2)
+[[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept
+{
+   return (((int32_t)itype(o) >> 15) == -2);
+}
 #else
-#define tvislightud(o)   (itype(o) == LJ_TLIGHTUD)
+[[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TLIGHTUD;
+}
 #endif
-#define tvisstr(o)     (itype(o) == LJ_TSTR)
-#define tvisfunc(o)    (itype(o) == LJ_TFUNC)
-#define tvisthread(o)  (itype(o) == LJ_TTHREAD)
-#define tvisproto(o)   (itype(o) == LJ_TPROTO)
-#define tviscdata(o)   (itype(o) == LJ_TCDATA)
-#define tvistab(o)     (itype(o) == LJ_TTAB)
-#define tvisudata(o)   (itype(o) == LJ_TUDATA)
-#define tvisnumber(o)  (itype(o) <= LJ_TISNUM)
-#define tvisint(o)     (LJ_DUALNUM && itype(o) == LJ_TISNUM)
-#define tvisnum(o)     (itype(o) < LJ_TISNUM)
 
-#define tvistruecond(o) (itype(o) < LJ_TISTRUECOND)
-#define tvispri(o)      (itype(o) >= LJ_TISPRI)
-#define tvistabud(o)    (itype(o) <= LJ_TISTABUD)  //  && !tvisnum()
-#define tvisgcv(o)      ((itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV))
+[[nodiscard]] constexpr inline bool tvisstr(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TSTR;
+}
 
-// Special macros to test numbers for NaN, +0, -0, +1 and raw equality.
-#define tvisnan(o)   ((o)->n != (o)->n)
+[[nodiscard]] constexpr inline bool tvisfunc(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TFUNC;
+}
+
+[[nodiscard]] constexpr inline bool tvisthread(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TTHREAD;
+}
+
+[[nodiscard]] constexpr inline bool tvisproto(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TPROTO;
+}
+
+[[nodiscard]] constexpr inline bool tviscdata(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TCDATA;
+}
+
+[[nodiscard]] constexpr inline bool tvistab(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TTAB;
+}
+
+[[nodiscard]] constexpr inline bool tvisudata(cTValue* o) noexcept
+{
+   return itype(o) IS LJ_TUDATA;
+}
+
+[[nodiscard]] constexpr inline bool tvisnumber(cTValue* o) noexcept
+{
+   return itype(o) <= LJ_TISNUM;
+}
+
+[[nodiscard]] constexpr inline bool tvisint(cTValue* o) noexcept
+{
+   return LJ_DUALNUM and itype(o) IS LJ_TISNUM;
+}
+
+[[nodiscard]] constexpr inline bool tvisnum(cTValue* o) noexcept
+{
+   return itype(o) < LJ_TISNUM;
+}
+
+[[nodiscard]] constexpr inline bool tvistruecond(cTValue* o) noexcept
+{
+   return itype(o) < LJ_TISTRUECOND;
+}
+
+[[nodiscard]] constexpr inline bool tvispri(cTValue* o) noexcept
+{
+   return itype(o) >= LJ_TISPRI;
+}
+
+[[nodiscard]] constexpr inline bool tvistabud(cTValue* o) noexcept
+{
+   return itype(o) <= LJ_TISTABUD;
+}
+
+[[nodiscard]] constexpr inline bool tvisgcv(cTValue* o) noexcept
+{
+   return (itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV);
+}
+
+// Special functions to test numbers for NaN, +0, -0, +1 and raw equality.
+[[nodiscard]] constexpr inline bool tvisnan(cTValue* o) noexcept
+{
+   return o->n != o->n;
+}
+
 #if LJ_64
-#define tviszero(o)   (((o)->u64 << 1) == 0)
+[[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept
+{
+   return (o->u64 << 1) IS 0;
+}
 #else
-#define tviszero(o)   (((o)->u32.lo | ((o)->u32.hi << 1)) == 0)
+[[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept
+{
+   return (o->u32.lo | (o->u32.hi << 1)) IS 0;
+}
 #endif
-#define tvispzero(o)   ((o)->u64 == 0)
-#define tvismzero(o)   ((o)->u64 == U64x(80000000,00000000))
-#define tvispone(o)   ((o)->u64 == U64x(3ff00000,00000000))
-#define rawnumequal(o1, o2)   ((o1)->u64 == (o2)->u64)
 
-// Macros to convert type ids.
+[[nodiscard]] constexpr inline bool tvispzero(cTValue* o) noexcept
+{
+   return o->u64 IS 0;
+}
+
+[[nodiscard]] constexpr inline bool tvismzero(cTValue* o) noexcept
+{
+   return o->u64 IS U64x(80000000, 00000000);
+}
+
+[[nodiscard]] constexpr inline bool tvispone(cTValue* o) noexcept
+{
+   return o->u64 IS U64x(3ff00000, 00000000);
+}
+
+[[nodiscard]] constexpr inline bool rawnumequal(cTValue* o1, cTValue* o2) noexcept
+{
+   return o1->u64 IS o2->u64;
+}
+
+// Convert internal type to type map index.
 #if LJ_64 && !LJ_GC64
-#define itypemap(o) \
-  (tvisnumber(o) ? ~LJ_TNUMX : tvislightud(o) ? ~LJ_TLIGHTUD : ~itype(o))
+[[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept
+{
+   if (tvisnumber(o)) return ~LJ_TNUMX;
+   if (tvislightud(o)) return ~LJ_TLIGHTUD;
+   return ~itype(o);
+}
 #else
-#define itypemap(o)   (tvisnumber(o) ? ~LJ_TNUMX : ~itype(o))
+[[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept
+{
+   return tvisnumber(o) ? ~LJ_TNUMX : ~itype(o);
+}
 #endif
 
-// Macros to get tagged values.
-#if LJ_GC64
-#define gcval(o)   ((GCobj *)(gcrefu((o)->gcr) & LJ_GCVMASK))
-#else
-#define gcval(o)   (gcref((o)->gcr))
-#endif
-#define boolV(o)   check_exp(tvisbool(o), (LJ_TFALSE - itype(o)))
+// Functions to get tagged values (gcval is defined in deferred section above)
+
+[[nodiscard]] inline int boolV(cTValue* o) noexcept
+{
+   return check_exp(tvisbool(o), int(LJ_TFALSE - itype(o)));
+}
+
 #if LJ_64
-#define lightudseg(u) \
-  (((u) >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG)-1))
-#define lightudlo(u) \
-  ((u) & (((uint64_t)1 << LJ_LIGHTUD_BITS_LO) - 1))
-#define lightudup(p) \
-  ((uint32_t)(((p) >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO-32)))
-static LJ_AINLINE void* lightudV(global_State* g, cTValue* o)
+[[nodiscard]] constexpr inline uint64_t lightudseg(uint64_t u) noexcept
+{
+   return (u >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG) - 1);
+}
+
+[[nodiscard]] constexpr inline uint64_t lightudlo(uint64_t u) noexcept
+{
+   return u & ((uint64_t(1) << LJ_LIGHTUD_BITS_LO) - 1);
+}
+
+[[nodiscard]] constexpr inline uint32_t lightudup(uint64_t p) noexcept
+{
+   return uint32_t((p >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO - 32));
+}
+
+[[nodiscard]] static LJ_AINLINE void* lightudV(global_State* g, cTValue* o) noexcept
 {
    uint64_t u = o->u64;
    uint64_t seg = lightudseg(u);
@@ -866,30 +1492,105 @@ static LJ_AINLINE void* lightudV(global_State* g, cTValue* o)
    return (void*)(((uint64_t)segmap[seg] << 32) | lightudlo(u));
 }
 #else
-#define lightudV(g, o)   check_exp(tvislightud(o), gcrefp((o)->gcr, void))
+[[nodiscard]] inline void* lightudV(global_State* g, cTValue* o) noexcept
+{
+   UNUSED(g);
+   return check_exp(tvislightud(o), gcrefp(o->gcr, void));
+}
 #endif
-#define gcV(o)      check_exp(tvisgcv(o), gcval(o))
-#define strV(o)      check_exp(tvisstr(o), &gcval(o)->str)
-#define funcV(o)   check_exp(tvisfunc(o), &gcval(o)->fn)
-#define threadV(o)   check_exp(tvisthread(o), &gcval(o)->th)
-#define protoV(o)   check_exp(tvisproto(o), &gcval(o)->pt)
-#define cdataV(o)   check_exp(tviscdata(o), &gcval(o)->cd)
-#define tabV(o)      check_exp(tvistab(o), &gcval(o)->tab)
-#define udataV(o)   check_exp(tvisudata(o), &gcval(o)->ud)
-#define numV(o)      check_exp(tvisnum(o), (o)->n)
-#define intV(o)      check_exp(tvisint(o), (int32_t)(o)->i)
 
-// Macros to set tagged values.
+[[nodiscard]] inline GCobj* gcV(cTValue* o) noexcept
+{
+   return check_exp(tvisgcv(o), gcval(o));
+}
+
+[[nodiscard]] inline GCstr* strV(cTValue* o) noexcept
+{
+   return check_exp(tvisstr(o), &gcval(o)->str);
+}
+
+[[nodiscard]] inline GCfunc* funcV(cTValue* o) noexcept
+{
+   return check_exp(tvisfunc(o), &gcval(o)->fn);
+}
+
+[[nodiscard]] inline lua_State* threadV(cTValue* o) noexcept
+{
+   return check_exp(tvisthread(o), &gcval(o)->th);
+}
+
+[[nodiscard]] inline GCproto* protoV(cTValue* o) noexcept
+{
+   return check_exp(tvisproto(o), &gcval(o)->pt);
+}
+
+[[nodiscard]] inline GCcdata* cdataV(cTValue* o) noexcept
+{
+   return check_exp(tviscdata(o), &gcval(o)->cd);
+}
+
+[[nodiscard]] inline GCtab* tabV(cTValue* o) noexcept
+{
+   return check_exp(tvistab(o), &gcval(o)->tab);
+}
+
+[[nodiscard]] inline GCudata* udataV(cTValue* o) noexcept
+{
+   return check_exp(tvisudata(o), &gcval(o)->ud);
+}
+
+[[nodiscard]] inline lua_Number numV(cTValue* o) noexcept
+{
+   return check_exp(tvisnum(o), o->n);
+}
+
+[[nodiscard]] inline int32_t intV(cTValue* o) noexcept
+{
+   return check_exp(tvisint(o), int32_t(o->i));
+}
+
+// Functions to set tagged values.
 #if LJ_GC64
-#define setitype(o, i)      ((o)->it = ((i) << 15))
-#define setnilV(o)      ((o)->it64 = -1)
-#define setpriV(o, x)      ((o)->it64 = (int64_t)~((uint64_t)~(x)<<47))
-#define setboolV(o, x)      ((o)->it64 = (int64_t)~((uint64_t)((x)+1)<<47))
+inline void setitype(TValue* o, uint32_t i) noexcept
+{
+   o->it = i << 15;
+}
+
+inline void setnilV(TValue* o) noexcept
+{
+   o->it64 = -1;
+}
+
+inline void setpriV(TValue* o, uint32_t x) noexcept
+{
+   // Avoid C4319 warning by doing negation at 64-bit level: ~x as 32-bit is (x ^ 0xFFFFFFFF)
+   o->it64 = int64_t(~(((uint64_t(x) ^ 0xFFFFFFFFULL)) << 47));
+}
+
+inline void setboolV(TValue* o, int x) noexcept
+{
+   o->it64 = int64_t(~(uint64_t(x + 1) << 47));
+}
 #else
-#define setitype(o, i)      ((o)->it = (i))
-#define setnilV(o)      ((o)->it = LJ_TNIL)
-#define setboolV(o, x)      ((o)->it = LJ_TFALSE-(uint32_t)(x))
-#define setpriV(o, i)      (setitype((o), (i)))
+inline void setitype(TValue* o, uint32_t i) noexcept
+{
+   o->it = i;
+}
+
+inline void setnilV(TValue* o) noexcept
+{
+   o->it = LJ_TNIL;
+}
+
+inline void setboolV(TValue* o, int x) noexcept
+{
+   o->it = LJ_TFALSE - uint32_t(x);
+}
+
+inline void setpriV(TValue* o, uint32_t i) noexcept
+{
+   setitype(o, i);
+}
 #endif
 
 inline void setrawlightudV(TValue* o, void* p)
@@ -913,12 +1614,12 @@ inline void setrawlightudV(TValue* o, void* p)
   ((o)->u64 = (uint64_t)(void *)(f) - (uint64_t)lj_vm_asm_begin)
 #endif
 
-inline void checklivetv(lua_State* L, TValue* o, const char* msg)
+inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
    UNUSED(L); UNUSED(o); UNUSED(msg);
 #if LUA_USE_ASSERT
    if (tvisgcv(o)) {
-      lj_assertL(~itype(o) == gcval(o)->gch.gct,
+      lj_assertL(~itype(o) IS gcval(o)->gch.gct,
          "mismatch of TValue type %d vs GC type %d",
          ~itype(o), gcval(o)->gch.gct);
       // Copy of isdead check from lj_gc.h to avoid circular include.
@@ -927,53 +1628,105 @@ inline void checklivetv(lua_State* L, TValue* o, const char* msg)
 #endif
 }
 
-inline void setgcVraw(TValue* o, GCobj* v, uint32_t itype) {
+inline void setgcVraw(TValue* o, GCobj* v, uint32_t IType) noexcept
+{
 #if LJ_GC64
-   setgcreft(o->gcr, v, itype);
+   setgcreft(o->gcr, v, IType);
 #else
-   setgcref(o->gcr, v); setitype(o, itype);
+   setgcref(o->gcr, v);
+   setitype(o, IType);
 #endif
 }
 
-inline void setgcV(lua_State* L, TValue* o, GCobj* v, uint32_t it) {
-   setgcVraw(o, v, it);
+inline void setgcV(lua_State* L, TValue* o, GCobj* v, uint32_t It) noexcept
+{
+   setgcVraw(o, v, It);
    checklivetv(L, o, "store to dead GC object");
 }
 
-#define define_setV(name, type, tag) static LJ_AINLINE void name(lua_State *L, TValue *o, const type *v) { setgcV(L, o, obj2gco(v), tag); }
+inline void setstrV(lua_State* L, TValue* o, const GCstr* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TSTR);
+}
 
-define_setV(setstrV, GCstr, LJ_TSTR)
-define_setV(setthreadV, lua_State, LJ_TTHREAD)
-define_setV(setprotoV, GCproto, LJ_TPROTO)
-define_setV(setfuncV, GCfunc, LJ_TFUNC)
-define_setV(setcdataV, GCcdata, LJ_TCDATA)
-define_setV(settabV, GCtab, LJ_TTAB)
-define_setV(setudataV, GCudata, LJ_TUDATA)
+inline void setthreadV(lua_State* L, TValue* o, const lua_State* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TTHREAD);
+}
 
-#define setnumV(o, x)   ((o)->n = (x))
-#define setnanV(o)      ((o)->u64 = U64x(fff80000,00000000))
-#define setpinfV(o)     ((o)->u64 = U64x(7ff00000,00000000))
-#define setminfV(o)     ((o)->u64 = U64x(fff00000,00000000))
+inline void setprotoV(lua_State* L, TValue* o, const GCproto* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TPROTO);
+}
 
-constexpr inline void setintV(TValue* o, int32_t i)
+inline void setfuncV(lua_State* L, TValue* o, const GCfunc* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TFUNC);
+}
+
+inline void setcdataV(lua_State* L, TValue* o, const GCcdata* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TCDATA);
+}
+
+inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TTAB);
+}
+
+inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept
+{
+   setgcV(L, o, obj2gco(v), LJ_TUDATA);
+}
+
+constexpr inline void setnumV(TValue* o, lua_Number x) noexcept
+{
+   o->n = x;
+}
+
+inline void setnanV(TValue* o) noexcept
+{
+   o->u64 = U64x(fff80000, 00000000);
+}
+
+inline void setpinfV(TValue* o) noexcept
+{
+   o->u64 = U64x(7ff00000, 00000000);
+}
+
+inline void setminfV(TValue* o) noexcept
+{
+   o->u64 = U64x(fff00000, 00000000);
+}
+
+inline void setintV(TValue* o, int32_t i) noexcept
 {
 #if LJ_DUALNUM
-   o->i = (uint32_t)i; setitype(o, LJ_TISNUM);
+   o->i = uint32_t(i);
+   setitype(o, LJ_TISNUM);
 #else
-   o->n = (lua_Number)i;
+   o->n = lua_Number(i);
 #endif
 }
 
-constexpr inline void setint64V(TValue* o, int64_t i)
+inline void setint64V(TValue* o, int64_t i) noexcept
 {
-   if (LJ_DUALNUM && LJ_LIKELY(i == (int64_t)(int32_t)i)) setintV(o, (int32_t)i);
-   else setnumV(o, (lua_Number)i);
+   if (LJ_DUALNUM and LJ_LIKELY(i IS int64_t(int32_t(i))))
+      setintV(o, int32_t(i));
+   else
+      setnumV(o, lua_Number(i));
 }
 
 #if LJ_64
-#define setintptrV(o, i)   setint64V((o), (i))
+inline void setintptrV(TValue* o, intptr_t i) noexcept
+{
+   setint64V(o, i);
+}
 #else
-#define setintptrV(o, i)   setintV((o), (i))
+inline void setintptrV(TValue* o, intptr_t i) noexcept
+{
+   setintV(o, i);
+}
 #endif
 
 // Copy tagged values.
@@ -992,7 +1745,8 @@ LJ_ASMF int32_t lj_vm_tointg(double x);
 #endif
 #endif
 
-inline int32_t lj_num2bit(lua_Number n) {
+[[nodiscard]] inline int32_t lj_num2bit(lua_Number n) noexcept
+{
 #if LJ_SOFTFP
    return lj_vm_tobit(n);
 #else
@@ -1002,7 +1756,10 @@ inline int32_t lj_num2bit(lua_Number n) {
 #endif
 }
 
-#define lj_num2int(n)   ((int32_t)(n))
+[[nodiscard]] constexpr inline int32_t lj_num2int(lua_Number n) noexcept
+{
+   return (int32_t)(n);
+}
 
 // This must match the JIT backend behavior. In particular for archs
 // that don't have a common hardware instruction for this conversion.
@@ -1010,7 +1767,7 @@ inline int32_t lj_num2bit(lua_Number n) {
 // result and should never be relied upon in portable FFI code.
 // See also: C99 or C11 standard, 6.3.1.4, footnote of (1).
 
-inline uint64_t lj_num2u64(lua_Number n)
+[[nodiscard]] inline uint64_t lj_num2u64(lua_Number n) noexcept
 {
 #if LJ_TARGET_X86ORX64 || LJ_TARGET_MIPS
    int64_t i = (int64_t)n;
@@ -1021,12 +1778,14 @@ inline uint64_t lj_num2u64(lua_Number n)
 #endif
 }
 
-inline int32_t numberVint(cTValue* o) {
+[[nodiscard]] inline int32_t numberVint(cTValue* o) noexcept
+{
    if (LJ_LIKELY(tvisint(o))) return intV(o);
    else return lj_num2int(numV(o));
 }
 
-inline lua_Number numberVnum(cTValue* o) {
+[[nodiscard]] inline lua_Number numberVnum(cTValue* o) noexcept
+{
    if (LJ_UNLIKELY(tvisint(o))) return (lua_Number)intV(o);
    else return numV(o);
 }
@@ -1035,8 +1794,18 @@ inline lua_Number numberVnum(cTValue* o) {
 LJ_DATA const char* const lj_obj_typename[1 + LUA_TCDATA + 1];
 LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 
-#define lj_typename(o)   (lj_obj_itypename[itypemap(o)])
+[[nodiscard]] inline const char* lj_typename(cTValue* o) noexcept
+{
+   return lj_obj_itypename[itypemap(o)];
+}
 
 // Compare two objects without calling metamethods.
 LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2);
 LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o);
+
+// -- Late deferred function definitions (need tvisnil, G) -----------------
+
+[[nodiscard]] inline TValue* niltv(lua_State* L) noexcept
+{
+   return check_exp(tvisnil(&G(L)->nilnode.val), &G(L)->nilnode.val);
+}
