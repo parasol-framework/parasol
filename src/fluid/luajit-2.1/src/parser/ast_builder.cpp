@@ -971,21 +971,12 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                return ParserResult<ParameterListResult>::failure(error);
             }
 
-            constexpr std::string_view known_types[] = {
-               "any", "nil", "bool", "boolean", "num", "number", "str", "string",
-               "table", "func", "function", "thread", "cdata", "obj", "object"
-            };
-
-            bool recognised = false;
-            for (auto name_view : known_types) {
-               if (type_view IS name_view) { recognised = true; break; }
-            }
-
             param.type = parse_type_name(type_view);
-            if (not recognised) {
+            // If parse_type_name returns an invalid type, emit error
+            if (param.type == TypeKind::Unknown) {
                std::string message("unknown type name '");
                message.append(type_view);
-               message.append("'; expected one of: num, str, bool, table, func, nil, any, thread, cdata, obj");
+               message.append("'; expected a valid type name");
                this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
             }
          }
