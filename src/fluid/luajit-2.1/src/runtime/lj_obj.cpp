@@ -22,7 +22,7 @@ LJ_DATADEF const char* const lj_obj_itypename[] = {  // ORDER LJ_T
 // Compare two objects without calling metamethods.
 int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2)
 {
-   if (itype(o1) == itype(o2)) {
+   if (itype(o1) IS itype(o2)) {
       if (tvispri(o1))
          return 1;
       if (!tvisnum(o1))
@@ -31,7 +31,7 @@ int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2)
    else if (!tvisnumber(o1) or !tvisnumber(o2)) {
       return 0;
    }
-   return numberVnum(o1) == numberVnum(o2);
+   return numberVnum(o1) IS numberVnum(o2);
 }
 
 // Return pointer to object or its object data.

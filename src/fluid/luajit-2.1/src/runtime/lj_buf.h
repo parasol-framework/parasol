@@ -32,11 +32,30 @@ typedef struct SBufExt {
    int depth;      //  Remaining recursion depth.
 } SBufExt;
 
-#define sbufsz(sb)      ((MSize)((sb)->e - (sb)->b))
-#define sbuflen(sb)      ((MSize)((sb)->w - (sb)->b))
-#define sbufleft(sb)      ((MSize)((sb)->e - (sb)->w))
-#define sbufxlen(sbx)      ((MSize)((sbx)->w - (sbx)->r))
-#define sbufxslack(sbx)      ((MSize)((sbx)->r - (sbx)->b))
+[[nodiscard]] constexpr inline MSize sbufsz(const void* sb) noexcept
+{
+   return (MSize)(((const SBuf*)sb)->e - ((const SBuf*)sb)->b);
+}
+
+[[nodiscard]] constexpr inline MSize sbuflen(const void* sb) noexcept
+{
+   return (MSize)(((const SBuf*)sb)->w - ((const SBuf*)sb)->b);
+}
+
+[[nodiscard]] constexpr inline MSize sbufleft(const void* sb) noexcept
+{
+   return (MSize)(((const SBuf*)sb)->e - ((const SBuf*)sb)->w);
+}
+
+[[nodiscard]] constexpr inline MSize sbufxlen(const SBufExt* sbx) noexcept
+{
+   return (MSize)((sbx)->w - (sbx)->r);
+}
+
+[[nodiscard]] constexpr inline MSize sbufxslack(const SBufExt* sbx) noexcept
+{
+   return (MSize)((sbx)->r - (sbx)->b);
+}
 
 constexpr int SBUF_MASK_FLAG = 7;
 #define SBUF_MASK_L      (~(GCSize)SBUF_MASK_FLAG)
@@ -52,11 +71,30 @@ constexpr int SBUF_FLAG_BORROW = 4;   //  Borrowed string buffer.
 #define setsbufXL_(sb, l) \
   (setmrefu((sb)->L, (GCSize)(uintptr_t)(void *)(l) | (mrefu((sb)->L) & SBUF_MASK_FLAG)))
 
-#define sbufflag(sb)      (mrefu((sb)->L))
-#define sbufisext(sb)      (sbufflag((sb)) & SBUF_FLAG_EXT)
-#define sbufiscow(sb)      (sbufflag((sb)) & SBUF_FLAG_COW)
-#define sbufisborrow(sb)   (sbufflag((sb)) & SBUF_FLAG_BORROW)
-#define sbufiscoworborrow(sb)   (sbufflag((sb)) & (SBUF_FLAG_COW|SBUF_FLAG_BORROW))
+[[nodiscard]] constexpr inline GCSize sbufflag(const SBuf* sb) noexcept
+{
+   return mrefu((sb)->L);
+}
+
+[[nodiscard]] constexpr inline bool sbufisext(const void* sb) noexcept
+{
+   return sbufflag((const SBuf*)sb) & SBUF_FLAG_EXT;
+}
+
+[[nodiscard]] constexpr inline bool sbufiscow(const void* sb) noexcept
+{
+   return sbufflag((const SBuf*)sb) & SBUF_FLAG_COW;
+}
+
+[[nodiscard]] constexpr inline bool sbufisborrow(const void* sb) noexcept
+{
+   return sbufflag((const SBuf*)sb) & SBUF_FLAG_BORROW;
+}
+
+[[nodiscard]] constexpr inline bool sbufiscoworborrow(const void* sb) noexcept
+{
+   return sbufflag((const SBuf*)sb) & (SBUF_FLAG_COW | SBUF_FLAG_BORROW);
+}
 #define sbufX(sb) \
   (lj_assertG_(G(sbufL(sb)), sbufisext(sb), "not an SBufExt"), (SBufExt *)(sb))
 #define setsbufflag(sb, flag)   (setmrefu((sb)->L, (flag)))
@@ -71,18 +109,18 @@ LJ_FUNC char* LJ_FASTCALL lj_buf_more2(SBuf* sb, MSize sz);
 LJ_FUNC void LJ_FASTCALL lj_buf_shrink(lua_State* L, SBuf* sb);
 LJ_FUNC char* LJ_FASTCALL lj_buf_tmp(lua_State* L, MSize sz);
 
-static LJ_AINLINE void lj_buf_init(lua_State* L, SBuf* sb)
+static LJ_AINLINE void lj_buf_init(lua_State* L, SBuf* sb) noexcept
 {
    setsbufL(sb, L);
    sb->w = sb->e = sb->b = NULL;
 }
 
-static LJ_AINLINE void lj_buf_reset(SBuf* sb)
+static LJ_AINLINE void lj_buf_reset(SBuf* sb) noexcept
 {
    sb->w = sb->b;
 }
 
-static LJ_AINLINE SBuf* lj_buf_tmp_(lua_State* L)
+[[nodiscard]] static LJ_AINLINE SBuf* lj_buf_tmp_(lua_State* L) noexcept
 {
    SBuf* sb = &G(L)->tmpbuf;
    setsbufL(sb, L);
@@ -90,20 +128,20 @@ static LJ_AINLINE SBuf* lj_buf_tmp_(lua_State* L)
    return sb;
 }
 
-static LJ_AINLINE void lj_buf_free(global_State* g, SBuf* sb)
+static LJ_AINLINE void lj_buf_free(global_State* g, SBuf* sb) noexcept
 {
    lj_assertG(!sbufisext(sb), "bad free of SBufExt");
    lj_mem_free(g, sb->b, sbufsz(sb));
 }
 
-static LJ_AINLINE char* lj_buf_need(SBuf* sb, MSize sz)
+[[nodiscard]] static LJ_AINLINE char* lj_buf_need(SBuf* sb, MSize sz) noexcept
 {
    if (LJ_UNLIKELY(sz > sbufsz(sb)))
       return lj_buf_need2(sb, sz);
    return sb->b;
 }
 
-static LJ_AINLINE char* lj_buf_more(SBuf* sb, MSize sz)
+[[nodiscard]] static LJ_AINLINE char* lj_buf_more(SBuf* sb, MSize sz) noexcept
 {
    if (LJ_UNLIKELY(sz > sbufleft(sb)))
       return lj_buf_more2(sb, sz);
@@ -111,13 +149,13 @@ static LJ_AINLINE char* lj_buf_more(SBuf* sb, MSize sz)
 }
 
 // Extended buffer management
-static LJ_AINLINE void lj_bufx_init(lua_State* L, SBufExt* sbx)
+static LJ_AINLINE void lj_bufx_init(lua_State* L, SBufExt* sbx) noexcept
 {
    memset(sbx, 0, sizeof(SBufExt));
    setsbufXL(sbx, L, SBUF_FLAG_EXT);
 }
 
-static LJ_AINLINE void lj_bufx_set_borrow(lua_State* L, SBufExt* sbx, SBuf* sb)
+static LJ_AINLINE void lj_bufx_set_borrow(lua_State* L, SBufExt* sbx, SBuf* sb) noexcept
 {
    setsbufXL(sbx, L, SBUF_FLAG_EXT | SBUF_FLAG_BORROW);
    setmref(sbx->bsb, sb);
@@ -126,14 +164,14 @@ static LJ_AINLINE void lj_bufx_set_borrow(lua_State* L, SBufExt* sbx, SBuf* sb)
 }
 
 static LJ_AINLINE void lj_bufx_set_cow(lua_State* L, SBufExt* sbx,
-   const char* p, MSize len)
+   const char* p, MSize len) noexcept
 {
    setsbufXL(sbx, L, SBUF_FLAG_EXT | SBUF_FLAG_COW);
    sbx->r = sbx->b = (char*)p;
    sbx->w = sbx->e = (char*)p + len;
 }
 
-static LJ_AINLINE void lj_bufx_reset(SBufExt* sbx)
+static LJ_AINLINE void lj_bufx_reset(SBufExt* sbx) noexcept
 {
    if (sbufiscow(sbx)) {
       setmrefu(sbx->L, (mrefu(sbx->L) & ~(GCSize)SBUF_FLAG_COW));
@@ -143,7 +181,7 @@ static LJ_AINLINE void lj_bufx_reset(SBufExt* sbx)
    sbx->r = sbx->w = sbx->b;
 }
 
-static LJ_AINLINE void lj_bufx_free(lua_State* L, SBufExt* sbx)
+static LJ_AINLINE void lj_bufx_free(lua_State* L, SBufExt* sbx) noexcept
 {
    if (!sbufiscoworborrow(sbx)) lj_mem_free(G(L), sbx->b, sbufsz(sbx));
    setsbufXL(sbx, L, SBUF_FLAG_EXT);

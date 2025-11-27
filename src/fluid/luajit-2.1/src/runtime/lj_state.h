@@ -3,18 +3,19 @@
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 */
 
-#ifndef _LJ_STATE_H
-#define _LJ_STATE_H
+#pragma once
 
 #include "lj_obj.h"
 
-#define incr_top(L) \
-  (++L->top >= tvref(L->maxstack) and (lj_state_growstack1(L), 0))
+#define incr_top(L) (++L->top >= tvref(L->maxstack) and (lj_state_growstack1(L), 0))
 
-inline ptrdiff_t savestack(lua_State* L, TValue* p) {
-   return (char*)(p) - mref(L->stack, char);
+[[nodiscard]] inline ptrdiff_t savestack(lua_State* L, const TValue* p) noexcept
+{
+   return (const char*)(p) - mref(L->stack, char);
 }
-inline TValue* restorestack(lua_State* L, ptrdiff_t n) {
+
+[[nodiscard]] inline TValue* restorestack(lua_State* L, ptrdiff_t n) noexcept
+{
    return (TValue*)(mref(L->stack, char) + n);
 }
 
@@ -30,12 +31,10 @@ static LJ_AINLINE void lj_state_checkstack(lua_State* L, MSize need)
       lj_state_growstack(L, need);
 }
 
-LJ_FUNC lua_State* lj_state_new(lua_State* L);
+LJ_FUNC [[nodiscard]] lua_State* lj_state_new(lua_State* L);
 LJ_FUNC void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L);
 #if LJ_64 && !LJ_GC64 && !(defined(LUAJIT_USE_VALGRIND) && defined(LUAJIT_USE_SYSMALLOC))
-LJ_FUNC lua_State* lj_state_newstate(lua_Alloc f, void* ud);
+LJ_FUNC [[nodiscard]] lua_State* lj_state_newstate(lua_Alloc f, void* ud);
 #endif
 
 #define LJ_ALLOCF_INTERNAL   ((lua_Alloc)(void *)(uintptr_t)(1237<<4))
-
-#endif

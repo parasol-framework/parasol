@@ -75,24 +75,12 @@ static LJ_AINLINE void lj_prng_condition(PRNGState* rs)
 
 // Nothing to define.
 
-#elif LJ_TARGET_XBOX360
-
-extern int XNetRandom(void* buf, unsigned int len);
-
-#elif LJ_TARGET_PS3
-
-extern int sys_get_random_number(void* buf, uint64_t len);
-
-#elif LJ_TARGET_PS4 or LJ_TARGET_PSVITA
-
-extern int sceRandomGetRandomNumber(void* buf, size_t len);
-
-#elif LJ_TARGET_WINDOWS or LJ_TARGET_XBOXONE
+#elif LJ_TARGET_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#if LJ_TARGET_UWP or LJ_TARGET_XBOXONE
+#if LJ_TARGET_UWP
 // Must use BCryptGenRandom.
 #include <bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
@@ -161,22 +149,7 @@ int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 // Securely seed PRNG from system entropy. Returns 0 on failure.
 int LJ_FASTCALL lj_prng_seed_secure(PRNGState* rs)
 {
-#if LJ_TARGET_XBOX360
-
-   if (XNetRandom(rs->u, (unsigned int)sizeof(rs->u)) == 0)
-      goto ok;
-
-#elif LJ_TARGET_PS3
-
-   if (sys_get_random_number(rs->u, sizeof(rs->u)) == 0)
-      goto ok;
-
-#elif LJ_TARGET_PS4 or LJ_TARGET_PSVITA
-
-   if (sceRandomGetRandomNumber(rs->u, sizeof(rs->u)) == 0)
-      goto ok;
-
-#elif LJ_TARGET_UWP or LJ_TARGET_XBOXONE
+#if LJ_TARGET_UWP or LJ_TARGET_XBOXONE
 
    if (BCryptGenRandom(nullptr, (PUCHAR)(rs->u), (ULONG)sizeof(rs->u),
       BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0)
@@ -247,4 +220,3 @@ ok:
 }
 
 #endif
-

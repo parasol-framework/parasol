@@ -28,22 +28,71 @@ enum {
 #define LJ_GC_COLORS   (LJ_GC_WHITES | LJ_GC_BLACK)
 #define LJ_GC_WEAK   (LJ_GC_WEAKKEY | LJ_GC_WEAKVAL)
 
-// Macros to test and set GCobj colors.
-#define iswhite(x)   ((x)->gch.marked & LJ_GC_WHITES)
-#define isblack(x)   ((x)->gch.marked & LJ_GC_BLACK)
-#define isgray(x)   (!((x)->gch.marked & (LJ_GC_BLACK|LJ_GC_WHITES)))
-#define tviswhite(x)   (tvisgcv(x) and iswhite(gcV(x)))
-#define otherwhite(g)   (g->gc.currentwhite ^ LJ_GC_WHITES)
-#define isdead(g, v)   ((v)->gch.marked & otherwhite(g) & LJ_GC_WHITES)
+// Modern constexpr GC colour test functions (C++20)
+[[nodiscard]] constexpr inline bool iswhite(const GCobj* x) noexcept
+{
+   return (x)->gch.marked & LJ_GC_WHITES;
+}
 
-#define curwhite(g)   ((g)->gc.currentwhite & LJ_GC_WHITES)
-#define newwhite(g, x)   (obj2gco(x)->gch.marked = (uint8_t)curwhite(g))
-#define makewhite(g, x) \
-  ((x)->gch.marked = ((x)->gch.marked & (uint8_t)~LJ_GC_COLORS) | curwhite(g))
-#define flipwhite(x)   ((x)->gch.marked ^= LJ_GC_WHITES)
-#define black2gray(x)   ((x)->gch.marked &= (uint8_t)~LJ_GC_BLACK)
-#define fixstring(s)   ((s)->marked |= LJ_GC_FIXED)
-#define markfinalized(x)   ((x)->gch.marked |= LJ_GC_FINALIZED)
+[[nodiscard]] constexpr inline bool isblack(const GCobj* x) noexcept
+{
+   return (x)->gch.marked & LJ_GC_BLACK;
+}
+
+[[nodiscard]] constexpr inline bool isgray(const GCobj* x) noexcept
+{
+   return !((x)->gch.marked & (LJ_GC_BLACK | LJ_GC_WHITES));
+}
+
+[[nodiscard]] inline bool tviswhite(cTValue* x) noexcept
+{
+   return tvisgcv(x) and iswhite(gcV(x));
+}
+
+[[nodiscard]] inline uint8_t otherwhite(const global_State* g) noexcept
+{
+   return (uint8_t)(g->gc.currentwhite ^ LJ_GC_WHITES);
+}
+
+[[nodiscard]] inline bool isdead(const global_State* g, const GCobj* v) noexcept
+{
+   return (v)->gch.marked & otherwhite(g) & LJ_GC_WHITES;
+}
+
+[[nodiscard]] inline uint8_t curwhite(const global_State* g) noexcept
+{
+   return (uint8_t)((g)->gc.currentwhite & LJ_GC_WHITES);
+}
+
+inline void newwhite(global_State* g, void* x) noexcept
+{
+   ((GCobj*)x)->gch.marked = (uint8_t)curwhite(g);
+}
+
+inline void makewhite(global_State* g, GCobj* x) noexcept
+{
+   x->gch.marked = (uint8_t)((x->gch.marked & (uint8_t)~LJ_GC_COLORS) | curwhite(g));
+}
+
+inline void flipwhite(GCobj* x) noexcept
+{
+   x->gch.marked ^= LJ_GC_WHITES;
+}
+
+inline void black2gray(GCobj* x) noexcept
+{
+   x->gch.marked &= (uint8_t)~LJ_GC_BLACK;
+}
+
+inline void fixstring(GCstr* s) noexcept
+{
+   s->marked |= LJ_GC_FIXED;
+}
+
+inline void markfinalized(GCobj* x) noexcept
+{
+   x->gch.marked |= LJ_GC_FINALIZED;
+}
 
 // Collector.
 LJ_FUNC size_t lj_gc_separateudata(global_State* g, int all);

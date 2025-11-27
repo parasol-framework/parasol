@@ -23,7 +23,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure`
 - Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
-- When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
+- When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
 - Statements can be tested on the commandline with `--statement`, e.g. `parasol --statement "print('Hello')"`
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
 
@@ -185,7 +185,7 @@ Parasol maintains retained scene graphs that can be modified at runtime. This en
 - **NEVER use `static_cast`** - Use C-style casting instead, e.g. `int(variable)` NOT `static_cast<int>(variable)`
 - **NEVER use `&&`** - Use `and` instead of `&&`
 - **NEVER use `||`** - Use `or` instead of `||`
-- **NEVER use `==`** - Use the `IS` macro instead of `==`
+- **NEVER use `==`** - Use the `IS` macro instead of `==` (exceptions made for operator overloading)
 - **NEVER use C++ exceptions** - Error management relies on checking function results
 
 ### 📋 MANDATORY CODING CHECKLIST
