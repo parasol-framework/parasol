@@ -31,6 +31,7 @@ The parser has been modernised to C++20 and refactored into focused modules:
 - `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernisations
 - `src/parser/`: C++20 refactored parser (see structure above)
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT runtime
+- `BYTECODE.md`: Complete bytecode instruction reference with control-flow semantics for parser/emitter work
 - CMake drops generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static library ends up in `build/agents/luajit-2.1/lib/`.
 
 ## Key Implementation Patterns
@@ -572,6 +573,7 @@ When adding entries to `MMDEF` in `lj_obj.h`:
 
 **File Locations:**
 - Parser source: `src/fluid/luajit-2.1/src/parser/`
+- Bytecode reference: `src/fluid/luajit-2.1/BYTECODE.md` (instruction matrix, control-flow semantics)
 - Fluid tests: `src/fluid/tests/`
 
 **Common Tasks:**
