@@ -112,7 +112,7 @@ end:
 ## 7. Common Emission Patterns and Anti-Patterns
 ### 7.1 Canonical Patterns (Do This)
 - Compare + `JMP` for "branch on not-equal": `ISEQP A,const; JMP target` with true skipping the jump; see `operator_emitter::emit_compare_const`.
-- Presence / if-empty chains: sequential `ISEQP/ISEQN/ISEQS` with shared jump list patched to the truthy or RHS path; see `ir_emit_presence` and `emit_if_empty_expr`.
+- Presence / if-empty chains: sequential `ISEQP/ISEQN/ISEQS` with shared jump list patched to the truthy or RHS path; see `operator_emitter.emit_presence_check` (called from `IrEmitter::emit_presence_expr`) and `IrEmitter::emit_if_empty_expr`.
 - Logical short-circuit: `a or b` uses compare + `JMP` into RHS only when falsey; `a and b` jumps over RHS when falsey. Implemented in `emit_or_expr` / `emit_and_expr`.
 - Ternary layout: condition in place, compare chain, then true/false blocks writing back into the same register, with end jump to merge; see `emit_ternary_expr`.
 
