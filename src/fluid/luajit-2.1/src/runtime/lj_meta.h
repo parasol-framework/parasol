@@ -17,7 +17,7 @@ LJ_FUNC int lj_meta_tailcall(lua_State* L, cTValue* tv);
 
 [[nodiscard]] inline cTValue* lj_meta_fastg(global_State* g, GCtab* mt, MMS mm) noexcept
 {
-   return (mt) IS nullptr ? nullptr : ((mt)->nomm & (1u << (mm))) ? nullptr :
+   return mt IS nullptr ? nullptr : ((mt)->nomm & (1u << (mm))) ? nullptr :
       lj_meta_cache(mt, mm, mmname_str(g, mm));
 }
 
