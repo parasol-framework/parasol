@@ -544,6 +544,28 @@ When implementing new operators:
 - Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often
   surface as subtle script regressions rather than outright crashes.
 
+## VM Assembly and buildvm Dependencies
+
+**Critical Build Dependency**: The `lj_obj.h` file contains the `MMDEF` macro which defines the metamethod table. When modifying `MMDEF` (e.g., adding new metamethods like `__close`), both `buildvm.exe` and `lj_vm.obj` must be regenerated.
+
+**Why This Matters:**
+- `buildvm` generates `lj_vm.obj` with hardcoded metamethod offsets derived from `MMDEF`
+- If `lj_obj.h` changes but `lj_vm.obj` is not regenerated, the VM assembly will have stale offsets
+- This causes cryptic runtime failures like `PANIC: unprotected error in call to Lua API ()` affecting *all* Fluid scripts
+
+**Adding New Metamethods:**
+
+When adding entries to `MMDEF` in `lj_obj.h`:
+1. **Position matters**: The `MMDEF` macro generates an enum (`MM_*`) with sequential values. The first 6-8 metamethods are "fast" (negative cached). New metamethods should typically be added at the end, after `_(tostring)`, to avoid shifting existing metamethod indices.
+2. **Force rebuild**: After modifying `MMDEF`, delete the generated VM files to force regeneration:
+   ```bash
+   rm build/agents/src/fluid/luajit-generated/buildvm.exe
+   rm build/agents/src/fluid/luajit-generated/lj_vm.obj
+   ```
+3. **Full rebuild**: Run `cmake --build build/agents --config <BuildType> --parallel` to regenerate and rebuild.
+
+**CMake Dependency**: The CMakeLists.txt includes `lj_obj.h` in the `DEPENDS` clause for both buildvm compilation and VM generation commands. This ensures automatic regeneration when `lj_obj.h` changes.
+
 ---
 
 ## Quick Reference

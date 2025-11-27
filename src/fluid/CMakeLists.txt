@@ -215,6 +215,7 @@ if (MSVC)
    )
 
    # Build buildvm host tool
+   # Note: lj_obj.h contains MMDEF which defines metamethod tables used by buildvm
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_CXX_COMPILER} /nologo /c /W3 /std:c++20
@@ -227,13 +228,14 @@ if (MSVC)
          ${LUAJIT_BUILD_DIR}/buildvm_peobj.obj
          ${LUAJIT_BUILD_DIR}/buildvm_lib.obj
          ${LUAJIT_BUILD_DIR}/buildvm_fold.obj
-      DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
+      DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H} "${LUAJIT_SRC}/runtime/lj_obj.h"
       WORKING_DIRECTORY "${LUAJIT_BUILD_DIR}"
       COMMENT "Building buildvm host tool for ${LUAJIT_ARCH}"
       VERBATIM
    )
 
    # Generate headers and VM object file using buildvm
+   # lj_obj.h dependency ensures VM is regenerated when metamethod table changes
    add_custom_command(
       OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
       COMMAND ${BUILDVM_TARGET} -m peobj -o ${LUAJIT_VM_OBJ}
@@ -243,7 +245,7 @@ if (MSVC)
       COMMAND ${BUILDVM_TARGET} -m recdef -o ${LUAJIT_BUILD_DIR}/lj_recdef.h ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h ${LUAJIT_SRC}/lj_opt_fold.cpp
       COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp"
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp" "${LUAJIT_SRC}/runtime/lj_obj.h"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       COMMENT "Generating LuaJIT headers and VM object for ${LUAJIT_ARCH}"
       VERBATIM
@@ -470,6 +472,7 @@ else ()
    )
 
    # Build buildvm host tool
+   # Note: lj_obj.h contains MMDEF which defines metamethod tables used by buildvm
 
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
@@ -477,7 +480,7 @@ else ()
          ${LUAJIT_NON_MSVC_DEFS}
          ${LUAJIT_INCLUDE_DIRS}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${LUAJIT_MATH_LIB}
-      DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
+      DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H} "${LUAJIT_SRC}/runtime/lj_obj.h"
       COMMENT "Building buildvm host tool"
       VERBATIM
    )
@@ -485,6 +488,7 @@ else ()
    # Generate headers and VM file using buildvm
    # Windows (MinGW) uses peobj to generate .obj directly like MSVC
    # Unix uses elfasm to generate .S assembly source that gets compiled later
+   # lj_obj.h dependency ensures VM is regenerated when metamethod table changes
 
    # Set platform-specific VM generation parameters
 
@@ -509,7 +513,7 @@ else ()
       COMMAND ${BUILDVM_TARGET} -m folddef -o ${LUAJIT_BUILD_DIR}/lj_folddef.h "${LUAJIT_SRC}/lj_opt_fold.cpp"
       COMMAND ${BUILDVM_TARGET} -m vmdef -o ${LUAJIT_VMDEF_LUA} ${LJLIB_C}
       COMMAND ${BUILDVM_TARGET} -m ${LUAJIT_VM_MODE} -o ${LUAJIT_VM_OUTPUT}
-      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp"
+      DEPENDS ${BUILDVM_TARGET} ${LJLIB_C} "${LUAJIT_SRC}/lj_opt_fold.cpp" "${LUAJIT_SRC}/runtime/lj_obj.h"
       WORKING_DIRECTORY ${LUAJIT_SRC}
       COMMENT ${LUAJIT_VM_COMMENT}
       VERBATIM
