@@ -2,9 +2,19 @@
 // Copyright (C) 2025 Paul Manias
 
 #include "parser/value_categories.h"
+#include "parser/parse_regalloc.h"
 
 #include "lj_bc.h"
 
+// Forward declarations for discharge functions (defined in parse_regalloc.cpp)
+extern void expr_discharge(FuncState* fs, ExpDesc* e);
+extern BCREG expr_toanyreg(FuncState* fs, ExpDesc* e);
+extern void expr_tonextreg(FuncState* fs, ExpDesc* e);
+extern void expr_toreg(FuncState* fs, ExpDesc* e, BCREG reg);
+extern void expr_toreg_nobranch(FuncState* fs, ExpDesc* e, BCREG reg);
+extern void expr_toval(FuncState* fs, ExpDesc* e);
+
+//********************************************************************************************************************
 // Extended falsey semantics for Fluid's ?? operator:
 // - nil is falsey
 // - false is falsey
@@ -35,6 +45,36 @@ bool ExpDesc::is_falsey() const
          // Return false (conservative - assume truthy)
          return false;
    }
+}
+
+//********************************************************************************************************************
+// RValue implementation - Discharge operations
+
+inline void RValue::discharge()
+{
+   expr_discharge(this->func_state_, this->desc_);
+}
+
+inline BCReg RValue::to_register(BCReg Target)
+{
+   expr_toreg(this->func_state_, this->desc_, Target.raw());
+   return BCReg(this->desc_->u.s.info);
+}
+
+inline BCReg RValue::to_next_register()
+{
+   expr_tonextreg(this->func_state_, this->desc_);
+   return BCReg(this->desc_->u.s.info);
+}
+
+inline BCReg RValue::to_any_register()
+{
+   return BCReg(expr_toanyreg(this->func_state_, this->desc_));
+}
+
+inline void RValue::to_value()
+{
+   expr_toval(this->func_state_, this->desc_);
 }
 
 //********************************************************************************************************************
