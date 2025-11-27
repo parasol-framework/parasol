@@ -1563,8 +1563,8 @@ inline void setnilV(TValue* o) noexcept
 
 inline void setpriV(TValue* o, uint32_t x) noexcept
 {
-   // Avoid C4319 warning by doing negation at 64-bit level: ~x as 32-bit is (x ^ 0xFFFFFFFF)
-   o->it64 = int64_t(~(((uint64_t(x) ^ 0xFFFFFFFFULL)) << 47));
+   // Avoid C4319 warning by doing negation at 64-bit level: use ~ on the shifted value.
+   o->it64 = int64_t(~(uint64_t(x) << 47));
 }
 
 inline void setboolV(TValue* o, int x) noexcept
