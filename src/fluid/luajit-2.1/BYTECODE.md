@@ -1,282 +1,282 @@
-# Bytecode Semantics Reference (Draft Layout)
-
-> **Note to writer:** This file is a *scaffold* only. Do not remove the instructional text until the document is fully written and reviewed. Replace each “Instructions for this section” block with real content when authoring the final version.
-
----
+# Bytecode Semantics Reference
 
 ## 1. Introduction and Scope
-
-**Instructions for this section:**
-- Explain *why* this document exists:
-  - To capture the semantics of LuaJIT bytecode as used by the Fluid parser and AST pipeline.
-  - To prevent control-flow misunderstandings (e.g. around `BC_ISEQP` “skip-next” behaviour) when modifying operators or control structures.
-- Clarify that this document reflects the **Parasol‑integrated LuaJIT 2.1** variant, not arbitrary upstream forks.
-- State the primary audiences:
-  - Parser / IR emitter maintainers (`IrEmitter`, `OperatorEmitter`, legacy `parse_expr.cpp` / `parse_stmt.cpp`).
-  - People adding / debugging operators (`??`, `?`, ternary, logical ops, bitwise ops).
-- Briefly list the main kinds of questions this doc should answer (e.g. “What does `BC_ISEQP` do when values are equal?”, “How do I wire short‑circuiting for `lhs ?? rhs`?”).
-
----
+Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the control-flow semantics of its bytecode so parser and emitter changes do not regress short-circuiting or extended-falsey behaviour. It answers questions such as "when does `BC_ISEQP` skip the next instruction?" and "how do `??` and `?` wire their jumps?" and is aimed at maintainers working on `IrEmitter`/`OperatorEmitter` or debugging logical and ternary operators.
 
 ## 2. Notation, Conventions, and Versioning
-
-**Instructions for this section:**
-- Define the notational conventions used in the rest of the document:
-  - How registers are denoted (`R0`, `R1`, `base`, `A/B/C/D` fields, etc.).
-  - How conditions are written (e.g. “*equal → skip next instruction; not equal → execute next instruction*”).
-  - How “next instruction” is interpreted in the presence of `JMP`.
-- State which **LuaJIT version and configuration** this description matches (e.g. LuaJIT 2.1, Parasol’s integrated tree, `LJ_FR2` assumptions where relevant).
-- Clarify how differences between:
-  - **Legacy parser path** (`parse_expr.cpp` / `parse_stmt.cpp`),
-  - **AST pipeline** (`IrEmitter`, `operator_emitter.cpp`),
-  will be called out (e.g. explicit tags like “LEGACY ONLY” vs “AST‑PIPELINE ONLY”).
-- Include a note on how to keep this file in sync:
-  - “Whenever bytecode emission patterns change in `parse_operators.cpp`, `operator_emitter.cpp`, or `ir_emitter.cpp`, review and update this document.”
-
----
+- Registers are shown as `R0`, `R1`, etc. Fields A/B/C/D follow LuaJIT encoding: `A` is usually a destination or base, `B`/`C` are sources, `D` is a constant or split field. `base` is the current stack frame start.
+- Conditions are expressed as "condition true → skip next instruction; condition false → execute next instruction (normally a `JMP`)." "Next instruction" means the sequential `BCIns`; a taken `JMP` applies its offset from the following instruction.
+- Version: LuaJIT 2.1 with Parasol patches, assuming the `LJ_FR2` two-slot frame layout used by all supported platforms.
+- Keep this file aligned with changes in `src/fluid/luajit-2.1/src/parser/*`, whenever bytecode emission patterns change.
 
 ## 3. Bytecode Overview
-
 ### 3.1 High-Level Structure
+- Each instruction is a 32-bit `BCIns` packed with opcode and A/B/C/D fields. Prototypes (`GCproto`) hold the instruction stream, constants, and line table.
+- Format ABC: `[B:8][C:8][A:8][OP:8]`, Format AD: `[D:16][A:8][OP:8]`
 
-**Instructions for this subsection:**
-- Provide a brief overview of how LuaJIT bytecode is structured:
-  - Instruction words (`BCIns`), line table, prototype (`GCproto`), etc.
-  - The meaning of A/B/C/D fields at a high level.
-- Emphasise that this document focuses on **control‑flow and conditional instructions**, not the full opcode set.
+### 3.2 Complete Bytecode Instruction Matrix
 
-### 3.2 Resources and Cross-References
+Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (~itype), B=byte literal, M=multiple args/results.
 
-**Instructions for this subsection:**
-- List key source files that define or manipulate bytecode:
-  - Where opcodes are defined (e.g. `lj_bc.h`, `lj_bcdef.h`).
-  - Where they are emitted from the parser paths (`parse_operators.cpp`, `operator_emitter.cpp`, `ir_emitter.cpp`, legacy `parse_expr.cpp` / `parse_stmt.cpp`).
-  - Any relevant AGENTS or design docs (e.g. parser AGENTS file).
-- For each referenced file, briefly state *what kind of information* it contains (definitions, patterns, tests).
+#### Comparison Ops (condition true → skip next; false → execute next)
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `ISLT` | A D | R(A) < R(D) |
+| `ISGE` | A D | R(A) >= R(D) |
+| `ISLE` | A D | R(A) <= R(D) |
+| `ISGT` | A D | R(A) > R(D) |
+| `ISEQV` | A D | R(A) == R(D) |
+| `ISNEV` | A D | R(A) != R(D) |
+| `ISEQS` | A D | R(A) == str(D) |
+| `ISNES` | A D | R(A) != str(D) |
+| `ISEQN` | A D | R(A) == num(D) |
+| `ISNEN` | A D | R(A) != num(D) |
+| `ISEQP` | A D | R(A) == pri(D) (nil/false/true) |
+| `ISNEP` | A D | R(A) != pri(D) |
 
----
+#### Unary Test and Copy Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `ISTC` | A D | Copy R(D) to R(A) if truthy, else skip next |
+| `ISFC` | A D | Copy R(D) to R(A) if falsey, else skip next |
+| `IST` | D | Skip next if R(D) is truthy |
+| `ISF` | D | Skip next if R(D) is falsey |
+| `ISTYPE` | A D | Assert R(A) is type D (debug) |
+| `ISNUM` | A D | Assert R(A) is number (debug) |
+
+#### Unary Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `MOV` | A D | R(A) = R(D) |
+| `NOT` | A D | R(A) = not R(D) |
+| `UNM` | A D | R(A) = -R(D) |
+| `LEN` | A D | R(A) = #R(D) |
+
+#### Binary Arithmetic Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `ADDVN` | A B C | R(A) = R(B) + num(C) |
+| `SUBVN` | A B C | R(A) = R(B) - num(C) |
+| `MULVN` | A B C | R(A) = R(B) * num(C) |
+| `DIVVN` | A B C | R(A) = R(B) / num(C) |
+| `MODVN` | A B C | R(A) = R(B) % num(C) |
+| `ADDNV` | A B C | R(A) = num(C) + R(B) |
+| `SUBNV` | A B C | R(A) = num(C) - R(B) |
+| `MULNV` | A B C | R(A) = num(C) * R(B) |
+| `DIVNV` | A B C | R(A) = num(C) / R(B) |
+| `MODNV` | A B C | R(A) = num(C) % R(B) |
+| `ADDVV` | A B C | R(A) = R(B) + R(C) |
+| `SUBVV` | A B C | R(A) = R(B) - R(C) |
+| `MULVV` | A B C | R(A) = R(B) * R(C) |
+| `DIVVV` | A B C | R(A) = R(B) / R(C) |
+| `MODVV` | A B C | R(A) = R(B) % R(C) |
+| `POW` | A B C | R(A) = R(B) ^ R(C) |
+| `CAT` | A B C | R(A) = R(B) .. ... .. R(C) (concatenate range) |
+
+#### Constant Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `KSTR` | A D | R(A) = str(D) |
+| `KCDATA` | A D | R(A) = cdata(D) (FFI) |
+| `KSHORT` | A D | R(A) = signed 16-bit D |
+| `KNUM` | A D | R(A) = num(D) |
+| `KPRI` | A D | R(A) = pri(D) (nil/false/true) |
+| `KNIL` | A D | R(A) ... R(D) = nil (range) |
+
+#### Upvalue and Function Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `UGET` | A D | R(A) = upvalue(D) |
+| `USETV` | A D | upvalue(A) = R(D) |
+| `USETS` | A D | upvalue(A) = str(D) |
+| `USETN` | A D | upvalue(A) = num(D) |
+| `USETP` | A D | upvalue(A) = pri(D) |
+| `UCLO` | A D | Close upvalues for R >= A; JMP to D |
+| `FNEW` | A D | R(A) = new closure from proto(D) |
+
+#### Table Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `TNEW` | A D | R(A) = new table (D encodes array/hash sizes) |
+| `TDUP` | A D | R(A) = copy of template table(D) |
+| `GGET` | A D | R(A) = _G[str(D)] |
+| `GSET` | A D | _G[str(D)] = R(A) |
+| `TGETV` | A B C | R(A) = R(B)[R(C)] |
+| `TGETS` | A B C | R(A) = R(B)[str(C)] |
+| `TGETB` | A B C | R(A) = R(B)[C] (byte index) |
+| `TGETR` | A B C | R(A) = R(B)[R(C)] (raw, no metamethod) |
+| `TSETV` | A B C | R(B)[R(C)] = R(A) |
+| `TSETS` | A B C | R(B)[str(C)] = R(A) |
+| `TSETB` | A B C | R(B)[C] = R(A) (byte index) |
+| `TSETM` | A D | table[MULTRES...] = R(A)... (multi-set) |
+| `TSETR` | A B C | R(B)[R(C)] = R(A) (raw, no metamethod) |
+
+#### Call and Vararg Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `CALLM` | A B C | R(A)...R(A+B-2) = R(A)(R(A+1)...R(A+C+MULTRES)) |
+| `CALL` | A B C | R(A)...R(A+B-2) = R(A)(R(A+1)...R(A+C-1)) |
+| `CALLMT` | A D | return R(A)(R(A+1)...R(A+D+MULTRES)) (tail) |
+| `CALLT` | A D | return R(A)(R(A+1)...R(A+D-1)) (tail) |
+| `ITERC` | A B C | Call iterator: R(A)...R(A+B-2) = R(A-3)(R(A-2), R(A-1)) |
+| `ITERN` | A B C | Specialised next() iterator call |
+| `VARG` | A B C | R(A)...R(A+B-2) = vararg (C=base offset) |
+| `ISNEXT` | A D | Verify iterator is next(); JMP to D if not |
+
+#### Return Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `RETM` | A D | return R(A)...R(A+D+MULTRES-1) |
+| `RET` | A D | return R(A)...R(A+D-2) |
+| `RET0` | A D | return (no values) |
+| `RET1` | A D | return R(A) (single value) |
+
+#### Loop and Branch Ops
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `FORI` | A D | Numeric for init: R(A) = start, R(A+1) = limit, R(A+2) = step; JMP D |
+| `JFORI` | A D | FORI with JIT trace linkage |
+| `FORL` | A D | Numeric for loop: R(A) += R(A+2); if step>0 ? R(A)<=R(A+1) : R(A)>=R(A+1) then JMP D |
+| `IFORL` | A D | FORL interpreter-only variant |
+| `JFORL` | A D | FORL with JIT trace linkage |
+| `ITERL` | A D | Iterator for loop: if R(A) != nil then R(A-1) = R(A); JMP D |
+| `IITERL` | A D | ITERL interpreter-only variant |
+| `JITERL` | A D | ITERL with JIT trace linkage |
+| `LOOP` | A D | Loop hint (no-op in interpreter, JIT uses for tracing) |
+| `ILOOP` | A D | LOOP interpreter-only variant |
+| `JLOOP` | A D | LOOP with JIT trace linkage |
+| `JMP` | A D | PC += D - 0x8000 (signed jump offset) |
+
+#### Function Header Ops (internal, not emitted by parser)
+| Opcode | Format | Description |
+|--------|--------|-------------|
+| `FUNCF` | A | Fixed-arg Lua function entry |
+| `IFUNCF` | A | FUNCF interpreter-only variant |
+| `JFUNCF` | A D | FUNCF with JIT trace linkage |
+| `FUNCV` | A | Vararg Lua function entry |
+| `IFUNCV` | A | FUNCV interpreter-only variant |
+| `JFUNCV` | A D | FUNCV with JIT trace linkage |
+| `FUNCC` | A | C function entry |
+| `FUNCCW` | A | C function entry (with wrapper) |
+
+### 3.3 Resources and Cross-References
+- Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
+- Parser emission sites: `parse_operators.cpp` (operator lowering), `operator_emitter.cpp` (register-aware helpers), `ir_emitter.cpp` (control-flow builders).
+- Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
+- Tests exercising these paths live under `src/fluid/tests/`.
 
 ## 4. Conditional and Comparison Bytecodes
-
-### 4.1 Summary Table: Conditional Bytecode Matrix
-
-**Instructions for this subsection:**
-- Provide a **compact table** (matrix) summarising:
-  - Opcode (e.g. `BC_ISEQP`, `BC_ISEQN`, `BC_ISEQS`, `BC_ISEQV`, `BC_ISNEP`, `BC_ISNEV`, `BC_ISLT`, `BC_ISGE`, etc.).
-  - Logical condition on operands (e.g. “A == const”, “A != const”, “A < B”).
-  - Behaviour for a **true** condition: does the VM **execute or skip** the next instruction?
-  - Behaviour for a **false** condition: does the VM **execute or skip** the next instruction?
-  - Typical immediate follower instruction in the parser (`JMP`, `KPRI`, etc.).
-- The goal is that a maintainer can answer “if this comparison is true, does the subsequent `JMP` run or get skipped?” in one glance.
+### 4.1 Conditional Bytecode Semantics
+All comparison opcodes follow: **condition true → skip next instruction; condition false → execute next instruction** (normally a `JMP`).
 
 ### 4.2 Equality-with-Constant Opcodes (`BC_ISEQP`, `BC_ISEQN`, `BC_ISEQS`, `BC_ISNEP`, `BC_ISNEV`)
-
-**Instructions for this subsection:**
-- For each of these opcodes:
-  - Restate the condition in plain language (e.g. “`BC_ISEQP A, const` tests equality with a primitive (‘pri’) constant”).
-  - Explain **exactly** when the VM skips the next instruction vs executes it.
-  - Show the canonical **“compare + `JMP`” pattern** for “branch when *not* equal” vs “branch when equal”.
-- Include at least one concrete, annotated example that matches patterns used in the parser (e.g. the presence operator’s comparison chain).
+- `BC_ISEQP A, pri(D)`: compare register with primitive constant (nil/false/true). Equal → skip next; not equal → execute next.
+- `BC_ISEQN A, num(D)`: compare with numeric constant; same skip/execute behaviour.
+- `BC_ISEQS A, str(D)`: compare with interned string constant; same skip/execute.
+- `BC_ISNEP A, pri(D)` / `BC_ISNEV A, R(D)`: not-equal variants; condition true (not equal) skips next.
+- Canonical branching: to branch on equality, place `JMP` immediately after the compare. Example (branch when value is nil):
+  ```
+  ISEQP   A, nil    ; nil → skip JMP, fall through to nil path
+  JMP     target    ; non-nil → jump to alternate path
+  ; nil path continues here
+  ```
+  For inverted sense (branch when not nil), use `ISNEP` with the same layout.
 
 ### 4.3 Generic Comparison Opcodes (`BC_ISLT`, `BC_ISGE`, `BC_ISLE`, `BC_ISGT`)
-
-**Instructions for this subsection:**
-- Describe how these opcodes compare two registers (or register vs constant) and how they interact with `JMP`.
-- Document:
-  - The condition they test.
-  - Whether they follow the same “skip next instruction when condition is true” idiom, or something different.
-- Include a simple pattern example used by the parser (e.g. numeric `for` loop bounds, or comparison operators in expressions).
+- These compare two registers (or a register and constant folded into D). Condition true skips the next instruction; condition false executes it.
+- Pattern for `if a < b then ... else ... end`:
+  ```
+  ISLT    A, D      ; a < b → skip JMP → enter then-branch
+  JMP     else      ; a >= b → jump to else-branch
+  ```
+- The parser uses the same idiom for numeric `for` bounds and relational operators in expressions.
 
 ### 4.4 Interaction with `BC_JMP` and Jump Lists
-
-**Instructions for this subsection:**
-- Describe the pattern “comparison followed by `BC_JMP`” used by the parser:
-  - What it means for a jump to be **taken** vs **skipped** in this encoding.
-  - How `ControlFlowEdge` / `jmp_patch` manage these targets in the C++ code.
-- Clarify the difference between:
-  - A single `JMP` being patched.
-  - A **list** of jumps (e.g. for chained conditions) all patched to a shared target.
-- Include guidance on **reading** these patterns in the emitted bytecode listing (e.g. from `mtDebugLog('disasm')`).
-
----
+- Comparison + `JMP` encodes "if condition holds, skip the jump; otherwise execute the jump". A taken jump applies its signed offset from the instruction after the `JMP`.
+- `jmp_patch` links jumps into singly linked lists so multiple comparisons can target a shared label. Patching a list fixes all pending offsets at once (e.g. chained falsey checks all landing on the RHS evaluation).
+- Disassembly shows skipped jumps as `----` offsets; when reading dumps from `mtDebugLog('disasm')`, identify compare/JMP pairs and the final patched destination to understand flow.
 
 ## 5. Control-Flow and Short-Circuit Patterns
-
 ### 5.1 Logical Operators (`and`, `or`)
-
-**Instructions for this subsection:**
-- Describe, at a bytecode level, how short‑circuiting is achieved for `and` / `or`:
-  - How the first operand is evaluated and normalised.
-  - How conditional branches are wired so that the RHS is evaluated only when needed.
-- Show the relationship between:
-  - Legacy implementation (`bcemit_binop_left`, `bcemit_binop`) and
-  - Modern implementation via `OperatorEmitter::prepare_logical_and/or` and `complete_logical_and/or`.
-- Provide one or two annotated bytecode examples of `a and b` and `a or b` with truthy and falsey first operands.
+- `a and b`: evaluate `a`; emit compare + `JMP` that jumps past `b` when `a` is falsey. True `a` skips the `JMP`, so `b` is evaluated and its result replaces/occupies the same slot.
+- `a or b`: evaluate `a`; emit compare + `JMP` that jumps into `b` only when `a` is falsey. Truthy `a` skips the `JMP` and becomes the result; `b` is untouched.
+- Registers are normalised so the resulting value lives in the LHS register; `freereg` collapses after RHS evaluation to avoid leaks.
 
 ### 5.2 Ternary Operator (`cond ? true_val :> false_val`)
-
-**Instructions for this subsection:**
-- Explain the ternary operator’s contract:
-  - Only one of the branches is evaluated.
-  - The final result lives in a **single, predictable register** (e.g. the condition’s register).
-- Map out the bytecode pattern used by `IrEmitter::emit_ternary_expr`:
-  - How extended falsey semantics are implemented (if applicable).
-  - How jumps from the condition drive control into the true vs false branch.
-  - How register collapse (`freereg`) is handled after each branch.
-- Include an example or pseudo‑bytecode trace for a simple ternary expression.
+- Only one branch executes. The condition is evaluated in place; compare + `JMP` sends control to the false branch when the condition is extended-falsey.
+- `IrEmitter::emit_ternary_expr` places both branches so the result lands in the condition register. Each branch frees temporaries before convergence, and `freereg` is patched back to the condition’s base to guarantee a single-slot result.
+- Example sketch:
+  ```
+  <eval cond in RA>
+  ISEQP  RA, nil ; skip if nil
+  JMP    false   ; non-nil → jump if needed depending on extended checks
+  ; true branch emits true_val into RA
+  JMP    end
+false:
+  ; false branch emits false_val into RA
+end:
+  ```
 
 ### 5.3 Presence Operator (`x?`) – Extended Falsey Check
-
-**Instructions for this subsection:**
-- Describe the semantics of the presence operator:
-  - Which values are considered falsey (nil, false, 0, empty string).
-  - How it differs from Lua’s built‑in truthiness.
-- Document the **comparison + jump chain** pattern used to implement these checks:
-  - How each `BC_ISEQP` / `BC_ISEQN` / `BC_ISEQS` is followed by a `JMP`.
-  - How the jumps are patched to the “false” or “true” branch.
-- Emphasise that this section should make it obvious why mis‑wiring these patches changes the semantics.
+- Falsey set: `nil`, `false`, numeric zero, empty string. If operand is in this set, result is `false` and RHS (if any) is skipped.
+- Emission: chain `BC_ISEQP`/`BC_ISEQN`/`BC_ISEQS` comparisons, each followed by a `JMP` to the truthy path. Equality skips its `JMP`, advancing to the next check; if none match, the first `JMP` executes to bypass falsey handling. This preserves short-circuiting without running RHS helpers.
+- Jump lists patch the truthy exit after the chain; falsey fallthrough sets the result and collapses `freereg`.
 
 ### 5.4 If-Empty Operator (`lhs ?? rhs`) – Short-Circuiting with Extended Falsey Semantics
-
-**Instructions for this subsection:**
-- State the high‑level semantics:
-  - Evaluate `lhs`; if it is extended‑falsey (nil/false/0/""), evaluate and return `rhs`.
-  - Otherwise, return `lhs` and **do not** evaluate `rhs`.
-- Describe *both* implementations:
-  - Legacy `??` path in `parse_stmt.cpp` / legacy helpers.
-  - AST pipeline path (`IrEmitter::emit_if_empty_expr` and any `OperatorEmitter` support).
-- For each path:
-  - Spell out the comparison+JMP chain for extended falsey values.
-  - Explain exactly how jumps are patched to “evaluate RHS” vs “skip RHS”.
-  - Note how the result is kept in a single register and how `freereg` is collapsed to avoid leaks / extra arguments.
-- Explicitly warn about the common misinterpretation (e.g. “all checks chain to RHS, therefore RHS always runs”) and show why it’s incorrect for the current implementation.
-
----
+- Evaluate `lhs`; if it is nil/false/0/"", evaluate `rhs` and return it; otherwise return `lhs` without touching `rhs`.
+- Implemented in `IrEmitter::emit_if_empty_expr` plus helper routines in `operator_emitter.cpp`. The compare chain mirrors the presence operator: each equality skips its `JMP`, so a matching falsey value falls through into RHS evaluation; a truthy value triggers the first `JMP` and skips RHS entirely.
+- The result register is the original `lhs` slot; RHS evaluation reuses it and collapses `freereg` afterward to avoid leaked arguments or vararg tails.
 
 ## 6. Register Semantics and Multi-Value Behaviour
-
 ### 6.1 Register Lifetimes, `freereg`, and `nactvar`
-
-**Instructions for this subsection:**
-- Summarise how LuaJIT manages:
-  - Active variables (`nactvar`).
-  - Free registers (`freereg`) above the active window.
-- Explain how the parser and register allocator are expected to:
-  - Allocate temporaries.
-  - Collapse `freereg` when a temporary is no longer needed (e.g. via helpers like `ir_collapse_freereg`, `RegisterGuard`, `expr_free`).
-- Highlight why getting this wrong can manifest as:
-  - Extra values leaking into vararg / function call contexts.
-  - Spurious arguments or return values.
+- `nactvar` tracks active local slots; `freereg` is the first free slot above them. Temporaries are allocated above `nactvar` and must be reclaimed when no longer needed.
+- Helpers such as `expr_free`, `RegisterGuard`, and `ir_collapse_freereg` ensure temporaries are released so following expressions do not see spurious stack entries.
+- Failing to collapse `freereg` manifests as leaked arguments in calls or extra return values in vararg contexts.
 
 ### 6.2 `ExpKind::Call` and Multi-Return Semantics
-
-**Instructions for this subsection:**
-- Describe how a `BC_CALL` result initially appears as an `ExpKind::Call` with a base register and auxiliary info.
-- Clarify:
-  - When a call is allowed to propagate multiple returns (e.g. `BC_CALLM` for argument lists).
-  - When operators or expressions are required to *collapse* it to a single value.
-- Show patterns where:
-  - Calls are used as operands to binary operators (must restrict to single result).
-  - Calls are used in contexts like `lhs ?? rhs`, presence check, or ternary.
+- A freshly emitted `BC_CALL` yields an `ExpKind::Call` tied to its base register and may return multiple values (`BC_CALLM`) if left uncapped.
+- Binary operators and control-flow constructs force single-value semantics: they convert call expressions to registers (`expr_toanyreg`), then free the call expression to cap results at one slot.
+- Multi-return propagation is allowed only when explicitly constructing vararg lists; otherwise collapse to a single register before further comparisons or jumps.
 
 ### 6.3 Preventing Register Leaks in Chained Operations
-
-**Instructions for this subsection:**
-- Summarise known pitfalls documented elsewhere (e.g. in AGENTS docs):
-  - Orphaned registers when chaining across precedence levels.
-  - Leaked slots when reusing borrowed registers incorrectly.
-- Provide concrete rules of thumb:
-  - When to reuse the top‑of‑stack register from LHS.
-  - When to free or collapse temporary registers after an operation finish.
-
----
+- Reuse the LHS register when chaining operators at the same precedence; allocate new temporaries only when operands cannot share.
+- After emitting a RHS, immediately free or collapse temporaries so the stack height matches `freereg` expectations before emitting the next operator.
+- Always call `expr_free` before reserving new registers when an operand might still own a multi-return slot.
 
 ## 7. Common Emission Patterns and Anti-Patterns
-
 ### 7.1 Canonical Patterns (Do This)
-
-**Instructions for this subsection:**
-- Provide a small catalogue of **“blessed” patterns**:
-  - Conditional compare + `JMP` for “branch on not‑equal”.
-  - Presence / if‑empty extended falsey check chains.
-  - Logical operator short‑circuiting layouts.
-  - Ternary implementation layout.
-- For each, instruct the writer to:
-  - Show the high‑level Fluid / Lua source.
-  - Show the expected bytecode snippet.
-  - Cross‑reference the exact helper functions that emit it.
+- Compare + `JMP` for "branch on not-equal": `ISEQP A,const; JMP target` with true skipping the jump; see the relevant compare/jump emission logic in `operator_emitter.cpp`.
+- Presence / if-empty chains: sequential `ISEQP/ISEQN/ISEQS` with shared jump list patched to the truthy or RHS path; see `operator_emitter.emit_presence_check` (called from `IrEmitter::emit_presence_expr`) and `IrEmitter::emit_if_empty_expr`.
+- Logical short-circuit: `a or b` uses compare + `JMP` into RHS only when falsey; `a and b` jumps over RHS when falsey. Implemented via general binary operator emission in `operator_emitter.cpp` and `ir_emitter.cpp`.
+- Ternary layout: condition in place, compare chain, then true/false blocks writing back into the same register, with end jump to merge; see `IrEmitter::emit_ternary_expr`.
 
 ### 7.2 Typical Mistakes (Do NOT Do This)
-
-**Instructions for this subsection:**
-- List recurring errors seen historically:
-  - Misunderstanding “skip next instruction when equal” and wiring jumps to the wrong branch.
-  - Forgetting to collapse `freereg` after emitting RHS values, leading to leaked arguments.
-  - Allocating a new register without `expr_free`, causing multi‑value leaks.
-- For each anti‑pattern, instruct the writer to:
-  - Provide a short “buggy bytecode sketch”.
-  - Explain the runtime symptom (e.g. RHS runs when it should not, extra arguments appear).
-  - Point to one or more regression tests that would catch the issue.
-
----
+- Wiring compare + `JMP` backwards (treating "skip on equal" as "jump on equal"), which executes the wrong branch.
+- Failing to collapse `freereg` after evaluating RHS, causing leaked stack slots that appear as extra arguments or returns.
+- Allocating a new register for an operand without freeing the previous expression, allowing multi-return values to flow into subsequent operators.
+- Regression tests that catch these issues: `src/fluid/tests/test_if_empty.fluid`, `test_presence.fluid`, logical operator suites, and ternary-focused cases; add new ones when patterns change.
 
 ## 8. Testing, Debugging, and Tooling
-
 ### 8.1 Using Flute and Fluid Tests
-
-**Instructions for this subsection:**
-- Explain how to use the existing Fluid test suite to validate control‑flow changes:
-  - Which tests cover `??`, `?`, logical operators, ternary, etc. (e.g. `test_if_empty.fluid`).
-  - How to run them under both `ast-pipeline` and `ast-legacy` where applicable.
-- Recommend strategies for designing new tests:
-  - Use side‑effects (counters, errors) on the RHS to detect unwanted evaluation.
-  - Use vararg capturing (`...`) to spot leaked arguments.
+- Run the Fluid regression tests under `src/fluid/tests/` (e.g. `test_if_empty.fluid`, `test_presence.fluid`, logical/ternary suites) to validate control-flow changes.
+- When adding coverage, use side effects (counters, print hooks) on RHS expressions to prove short-circuiting, and capture varargs with `{...}` to detect leaked registers.
 
 ### 8.2 Disassembly and Bytecode Inspection
-
-**Instructions for this subsection:**
-- Describe how to obtain disassemblies:
-  - Via `mtDebugLog('disasm')` on `fluid` objects.
-  - Any command‑line flags (`--jit-options dump-bytecode,diagnose`, etc.).
-- Show how to map disassembled output back to:
-  - Source expressions.
-  - IR emitter / operator emitter code paths.
-- Encourage using disassembly as the **source of truth** when reasoning about control‑flow.
-
-### 8.3 JIT Options and Parser Modes
-
-**Instructions for this subsection:**
-- Briefly document JIT options that influence which parser path is used:
-  - `ast-pipeline`, `ast-legacy`, and any diagnostic flags relevant to bytecode emission.
-- Explain how to:
-  - Force a given script through a specific parser mode.
-  - Confirm which mode was used when tests were run.
-
----
+- Obtain bytecode via `mtDebugLog('disasm')` on a `fluid` object or run scripts with `--jit-options dump-bytecode,diagnose`.
+- Map disassembly back to source by matching instruction order to expression evaluation order, then locate emission sites in `ir_emitter.cpp` or `operator_emitter.cpp`.
+- Treat disassembly as the source of truth for branch direction when debugging control flow.
 
 ## 9. Maintenance Guidelines
-
-**Instructions for this section:**
-- Define a checklist for contributors who touch:
-  - Conditional bytecode emission.
-  - Short‑circuiting operators.
-  - Register allocation in operator paths.
-- Include items like:
-  - “Update the opcode matrix if you introduce or repurpose a conditional bytecode.”
-  - “Add or update regression tests in `src/fluid/tests/` for new control‑flow behaviours.”
-  - “Regenerate and examine disassembly for representative examples.”
-- Clarify the process for reviewers:
-  - What aspects they should double‑check against this document.
-  - How to spot mismatches between code and documented semantics.
-
----
+- When touching conditional emission or short-circuit logic, update the opcode matrix and the relevant sections here.
+- Add or adjust regression tests in `src/fluid/tests/` to cover new control-flow behaviours; rerun tests after installing a fresh build.
+- Re-generate disassembly for representative snippets (logical ops, ternary, `??`, `?`) to verify register collapse and branch wiring.
+- Reviewers should confirm emitted patterns match the documented skip/execute semantics and that test coverage exercises both true and false paths.
 
 ## 10. Glossary and Quick Reference
-
-**Instructions for this section:**
-- Provide short, precise definitions of key terms:
-  - `BCIns`, `BCOp`, `freereg`, `nactvar`, `ExpKind`, “extended falsey”, “short‑circuit”, etc.
-- Include a very concise **“cheat sheet”**:
-  - A miniature version of the conditional‑bytecode matrix.
-  - A one‑line summary for each major operator’s control‑flow pattern (`and`, `or`, `?`, `??`, ternary).
-- Ensure this section is optimised for “I have 30 seconds to remind myself what `BC_ISEQP` does” scenarios.
+- `BCIns`/`BCOp`: packed bytecode word and opcode enum.
+- `freereg`: first free stack slot above active locals; must be collapsed after temporaries.
+- `nactvar`: count of active local variables.
+- `ExpKind`: parser expression classification (`VNONRELOC`, `VRELOCABLE`, `VCALL`, etc.).
+- Extended falsey: `nil`, `false`, numeric zero, empty string.
+- Short-circuit: using compare+`JMP` so RHS executes only when needed.
+- Cheat sheet: `ISEQ*`/`ISNE*`/`IS*` comparisons — true skips next, false executes next; `and` skips RHS on falsey, `or` skips RHS on truthy; `x?` and `lhs ?? rhs` use chained equality tests with shared jump lists; ternary writes result back into the condition register with one branch skipped.
