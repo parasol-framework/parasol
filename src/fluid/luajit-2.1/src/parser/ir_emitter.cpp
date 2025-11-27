@@ -559,7 +559,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    value_toval.to_val();
    value = value_toval.legacy();
    release_indexed_original(this->func_state, value);
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -616,7 +616,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
    execute_defers(&this->func_state, 0);
    if (this->func_state.flags & PROTO_CHILD) bcemit_AJ(&this->func_state, BC_UCLO, 0, 0);
    bcemit_INS(&this->func_state, ins);
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -667,7 +667,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       if (is_blank_symbol(identifier)) continue;
       this->update_local_binding(identifier.symbol, BCReg(base.raw() + i.raw()));
    }
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -695,7 +695,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
    if (payload.name.symbol and not payload.name.is_blank) this->update_local_binding(payload.name.symbol, slot);
 
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -712,7 +712,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    ExpDesc value = function_value.value_ref();
    bcemit_store(&this->func_state, &target, &value);
    release_indexed_original(this->func_state, target);
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1198,7 +1198,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       for (PreparedAssignment& prepared : targets) {
          allocator.release(prepared.reserved);
       }
-      this->func_state.freereg = this->func_state.nactvar;
+      this->func_state.reset_freereg();
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
@@ -1207,7 +1207,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    for (PreparedAssignment& prepared : targets) {
       allocator.release(prepared.reserved);
    }
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1278,7 +1278,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    allocator.release(target.reserved);
    allocator.release(copies.reserved);
    release_indexed_original(this->func_state, target.storage);
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    register_guard.adopt_saved(BCReg(this->func_state.freereg));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -1348,7 +1348,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    allocator.release(target.reserved);
    allocator.release(copies.reserved);
    release_indexed_original(this->func_state, target.storage);
-   this->func_state.freereg = this->func_state.nactvar;
+   this->func_state.reset_freereg();
    register_guard.adopt_saved(BCReg(this->func_state.freereg));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -2041,7 +2041,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    }
 
    if (vcall) {
-      BCInsLine* ilp = &fs->bcbase[fs->pc - 1];
+      BCInsLine* ilp = &fs->last_instruction();
       ExpDesc en(ExpKind::Num);
       en.u.nval.u32.lo = narr - 1;
       en.u.nval.u32.hi = 0x43300000;
@@ -2387,7 +2387,7 @@ void IrEmitter::ensure_register_floor(std::string_view usage)
       pf::Log log("Parser");
       log.warning("Register underrun during %.*s (free=%u active=%u)",
          int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
-      this->func_state.freereg = this->func_state.nactvar;
+      this->func_state.reset_freereg();
    }
 }
 
@@ -2400,7 +2400,7 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
       log.warning("Leaked %u registers after %.*s at line %d (free=%u active=%u)",
          unsigned(this->func_state.freereg - this->func_state.nactvar), int(usage.size()), usage.data(),
          line + 1, unsigned(this->func_state.freereg), unsigned(this->func_state.nactvar));
-      this->func_state.freereg = this->func_state.nactvar;
+      this->func_state.reset_freereg();
    }
 }
 

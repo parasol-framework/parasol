@@ -1046,11 +1046,11 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
       left_desc->flags = saved_flags;
 
       // Clean up scratch register
-      if ((dest_reg != lhs_reg) and (dest_reg >= fs->nactvar) and (fs->freereg > dest_reg)) {
+      if ((dest_reg != lhs_reg) and (fs->is_temp_register(BCReg(dest_reg))) and (fs->freereg > dest_reg)) {
          fs->freereg = dest_reg;
       }
 
-      if ((lhs_reg >= fs->nactvar) and (fs->freereg > lhs_reg + 1)) {
+      if ((fs->is_temp_register(BCReg(lhs_reg))) and (fs->freereg > lhs_reg + 1)) {
          fs->freereg = lhs_reg + 1;
       }
    }
