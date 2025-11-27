@@ -27,6 +27,9 @@ struct ParserAllocator {
 struct ParserConfig {
    uint32_t max_diagnostics = 8; // Defines the 'limit' value in ParserDiagnostics
    bool abort_on_error = true;
+   bool enable_type_analysis = true;       // Enable static type checking
+   bool type_errors_are_fatal = false;     // Treat type mismatches as errors vs warnings
+   bool infer_local_types = true;          // Track types of local variables
    ParserProfilingResult profiling_result;
 };
 

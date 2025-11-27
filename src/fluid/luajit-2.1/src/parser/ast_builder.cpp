@@ -18,7 +18,7 @@ static FunctionExprPayload* function_payload_from(ExprNode& node)
 static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& node)
 {
    auto* payload = function_payload_from(*node);
-   if (payload == nullptr) {
+   if (payload IS nullptr) {
       return std::make_unique<FunctionExprPayload>();
    }
    std::unique_ptr<FunctionExprPayload> result = std::make_unique<FunctionExprPayload>();
@@ -943,6 +943,47 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
 
          FunctionParameter param;
          param.name = make_identifier(name.value_ref());
+
+         if (this->ctx.check(TokenKind::Colon)) {
+            this->ctx.tokens().advance();
+
+            Token type_token = this->ctx.tokens().current();
+            std::string_view type_view;
+
+            auto kind = type_token.kind();
+            if (kind IS TokenKind::Identifier) {
+               this->ctx.tokens().advance();
+               GCstr* type_symbol = type_token.identifier();
+               if (type_symbol) type_view = std::string_view(strdata(type_symbol), type_symbol->len);
+            }
+            else if (kind IS TokenKind::Function or kind IS TokenKind::Nil) {
+               this->ctx.tokens().advance();
+               type_view = token_kind_name_constexpr(kind);
+            }
+            else {
+               constexpr std::string_view expected_type_name = "Expected type name after ':'";
+               this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, expected_type_name);
+
+               ParserError error;
+               error.code = ParserErrorCode::ExpectedTypeName;
+               error.token = type_token;
+               error.message.assign(expected_type_name.begin(), expected_type_name.end());
+               return ParserResult<ParameterListResult>::failure(error);
+            }
+
+            param.type = parse_type_name(type_view);
+            // If parse_type_name returns an invalid type, emit error
+            if (param.type IS FluidType::Unknown) {
+               auto message = std::format("Unknown type name '{}'; expected a valid type name", type_view);
+               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
+
+               ParserError error;
+               error.code = ParserErrorCode::UnknownTypeName;
+               error.token = type_token;
+               error.message = message;
+               return ParserResult<ParameterListResult>::failure(error);
+            }
+         }
          result.parameters.push_back(param);
       } while (this->ctx.match(TokenKind::Comma).ok());
    }
@@ -1092,7 +1133,7 @@ Identifier AstBuilder::make_identifier(const Token& token)
    Identifier id;
    id.symbol = token.identifier();
    id.span = token.span();
-   id.is_blank = (id.symbol == NAME_BLANK);
+   id.is_blank = (id.symbol IS NAME_BLANK);
    return id;
 }
 

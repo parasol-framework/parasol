@@ -27,7 +27,7 @@
    return token;
 }
 
-Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffered)
+[[nodiscard]] Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffered)
 {
    Token token;
    token.token_kind    = to_token_kind(Buffered.token);
@@ -36,6 +36,15 @@ Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffe
    token.source.column = Buffered.column;
    token.source.offset = Buffered.offset;
    token.data.assign(State.L, Buffered.value);
+   return token;
+}
+
+[[nodiscard]] Token Token::from_span(SourceSpan span, TokenKind kind)
+{
+   Token token;
+   token.token_kind = kind;
+   token.raw_token = (LexToken)kind;
+   token.source = span;
    return token;
 }
 

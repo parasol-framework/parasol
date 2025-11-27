@@ -200,6 +200,7 @@ public:
    [[nodiscard]] static Token from_current(LexState& state);
    [[nodiscard]] static Token from_lookahead(LexState& state);
    [[nodiscard]] static Token from_buffered(LexState& state, const LexState::BufferedToken& buffered);
+   [[nodiscard]] static Token from_span(SourceSpan span, TokenKind kind = TokenKind::Unknown);
 
    [[nodiscard]] TokenKind kind() const { return this->token_kind; }
    [[nodiscard]] LexToken raw() const { return this->raw_token; }

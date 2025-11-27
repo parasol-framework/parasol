@@ -66,6 +66,8 @@ static const struct {
 #include "parse_expr.cpp"
 #include "operator_emitter.cpp"
 #include "value_categories.cpp"
+#include "type_checker.cpp"
+#include "type_analysis.cpp"
 
 static constexpr size_t kMaxLoggedStatements = 12;
 
@@ -167,6 +169,12 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
    std::unique_ptr<BlockStmt> chunk = std::move(chunk_result.value_ref());
    parse_timer.stop();
    trace_ast_boundary(Context, *chunk, "parse");
+
+   if (Context.config().enable_type_analysis) {
+      ParserProfiler::StageTimer type_timer = Profiler.stage("type_analysis");
+      run_type_analysis(Context, *chunk);
+      type_timer.stop();
+   }
 
    ParserProfiler::StageTimer emit_timer = Profiler.stage("emit");
    IrEmitter emitter(Context);

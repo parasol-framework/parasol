@@ -37,6 +37,11 @@ static CSTRING error_code_name(ParserErrorCode Code)
       case ParserErrorCode::ExpectedIdentifier:  return "Expected Identifier";
       case ParserErrorCode::UnexpectedEndOfFile: return "Unexpected EOF";
       case ParserErrorCode::InternalInvariant:   return "Internal invariant";
+      case ParserErrorCode::ExpectedTypeName:    return "Expected type name";
+      case ParserErrorCode::UnknownTypeName:     return "Unknown type name";
+      case ParserErrorCode::TypeMismatchArgument:   return "Type mismatch (argument)";
+      case ParserErrorCode::TypeMismatchAssignment: return "Type mismatch (assignment)";
+      case ParserErrorCode::TypeMismatchReturn:     return "Type mismatch (return)";
       default: return "Unknown";
    }
 }
