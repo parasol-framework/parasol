@@ -58,18 +58,9 @@ public:
    }
 
    [[nodiscard]] bool ok() const { return std::holds_alternative<T>(this->data); }
-
-   [[nodiscard]] const T& value_ref() const {
-      return std::get<T>(this->data);
-   }
-
-   [[nodiscard]] T& value_ref() {
-      return std::get<T>(this->data);
-   }
-
-   [[nodiscard]] const ParserError& error_ref() const {
-      return std::get<ParserError>(this->data);
-   }
+   [[nodiscard]] const T& value_ref() const { return std::get<T>(this->data); }
+   [[nodiscard]] T& value_ref() { return std::get<T>(this->data); }
+   [[nodiscard]] const ParserError& error_ref() const { return std::get<ParserError>(this->data); }
 
 private:
    std::variant<T, ParserError> data;
@@ -179,4 +170,3 @@ private:
    ParserContext* ctx;
    ParserConfig previous;
 };
-
