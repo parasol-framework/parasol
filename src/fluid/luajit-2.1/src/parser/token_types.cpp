@@ -27,7 +27,7 @@
    return token;
 }
 
-Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffered)
+[[nodiscard]] Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffered)
 {
    Token token;
    token.token_kind    = to_token_kind(Buffered.token);
@@ -39,7 +39,7 @@ Token Token::from_buffered(LexState &State, const LexState::BufferedToken &Buffe
    return token;
 }
 
-Token Token::from_span(SourceSpan span, TokenKind kind)
+[[nodiscard]] Token Token::from_span(SourceSpan span, TokenKind kind)
 {
    Token token;
    token.token_kind = kind;

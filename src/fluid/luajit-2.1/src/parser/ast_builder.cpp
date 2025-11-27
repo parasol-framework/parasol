@@ -961,7 +961,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                type_view = token_kind_name_constexpr(kind);
             }
             else {
-               constexpr std::string_view expected_type_name = "expected type name after ':'";
+               constexpr std::string_view expected_type_name = "Expected type name after ':'";
                this->ctx.emit_error(ParserErrorCode::ExpectedTypeName, type_token, expected_type_name);
 
                ParserError error;
@@ -974,7 +974,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
             param.type = parse_type_name(type_view);
             // If parse_type_name returns an invalid type, emit error
             if (param.type IS FluidType::Unknown) {
-               auto message = std::string("unknown type name '") + std::string(type_view) + "'; expected a valid type name";
+               auto message = std::format("Unknown type name '{}'; expected a valid type name", type_view);
                this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
 
                ParserError error;

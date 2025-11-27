@@ -134,7 +134,11 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
          if (payload) {
             for (const auto& clause : payload->clauses) {
                if (clause.condition) this->analyse_expression(*clause.condition);
-               if (clause.block) this->analyse_block(*clause.block);
+               if (clause.block) {
+                  this->push_scope();
+                  this->analyse_block(*clause.block);
+                  this->pop_scope();
+               }
             }
          }
          break;
@@ -144,7 +148,11 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
          auto* payload = std::get_if<LoopStmtPayload>(&Statement.data);
          if (payload) {
             if (payload->condition) this->analyse_expression(*payload->condition);
-            if (payload->body) this->analyse_block(*payload->body);
+            if (payload->body) {
+               this->push_scope();
+               this->analyse_block(*payload->body);
+               this->pop_scope();
+            }
          }
          break;
       }
@@ -154,7 +162,17 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
             if (payload->start) this->analyse_expression(*payload->start);
             if (payload->stop) this->analyse_expression(*payload->stop);
             if (payload->step) this->analyse_expression(*payload->step);
-            if (payload->body) this->analyse_block(*payload->body);
+            if (payload->body) {
+               this->push_scope();
+               // For loop control variable is implicitly typed as num
+               if (payload->control.symbol) {
+                  InferredType loop_var;
+                  loop_var.primary = FluidType::Num;
+                  this->current_scope().declare_local(payload->control.symbol, loop_var);
+               }
+               this->analyse_block(*payload->body);
+               this->pop_scope();
+            }
          }
          break;
       }
@@ -164,7 +182,19 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
             for (const auto& iterator : payload->iterators) {
                this->analyse_expression(*iterator);
             }
-            if (payload->body) this->analyse_block(*payload->body);
+            if (payload->body) {
+               this->push_scope();
+               // Declare loop variables in the for loop's scope
+               for (const auto& name : payload->names) {
+                  if (name.symbol) {
+                     InferredType loop_var;
+                     loop_var.primary = FluidType::Any;  // Type depends on iterator
+                     this->current_scope().declare_local(name.symbol, loop_var);
+                  }
+               }
+               this->analyse_block(*payload->body);
+               this->pop_scope();
+            }
          }
          break;
       }
@@ -189,7 +219,11 @@ void TypeAnalyser::analyse_statement(const StmtNode& Statement)
       }
       case AstNodeKind::DoStmt: {
          auto* payload = std::get_if<DoStmtPayload>(&Statement.data);
-         if (payload and payload->block) this->analyse_block(*payload->block);
+         if (payload and payload->block) {
+            this->push_scope();
+            this->analyse_block(*payload->block);
+            this->pop_scope();
+         }
          break;
       }
       case AstNodeKind::ExpressionStmt: {
