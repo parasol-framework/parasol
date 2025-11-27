@@ -172,12 +172,12 @@ template<typename T>
    return (T*)(void*)r.gcptr64;
 }
 
-[[nodiscard]] inline uint64_t gcrefu(GCRef r) noexcept
+[[nodiscard]] constexpr inline uint64_t gcrefu(GCRef r) noexcept
 {
    return r.gcptr64;
 }
 
-[[nodiscard]] inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
+[[nodiscard]] constexpr inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
 {
    return r1.gcptr64 IS r2.gcptr64;
 }
@@ -190,22 +190,22 @@ inline void setgcrefp_fn(GCRef& r, T* p) noexcept
 
 // Overload for integer types (used in some low-level operations)
 // Note: On 64-bit, uintptr_t is typically uint64_t, so only need one
-inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept
+constexpr inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept
 {
    r.gcptr64 = v;
 }
 
-inline void setgcrefp_fn(GCRef& r, int v) noexcept
+constexpr inline void setgcrefp_fn(GCRef& r, int v) noexcept
 {
    r.gcptr64 = uint64_t(v);
 }
 
-inline void setgcrefnull(GCRef& r) noexcept
+constexpr inline void setgcrefnull(GCRef& r) noexcept
 {
    r.gcptr64 = 0;
 }
 
-inline void setgcrefr(GCRef& r, GCRef v) noexcept
+constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept
 {
    r.gcptr64 = v.gcptr64;
 }
@@ -215,18 +215,18 @@ inline void setgcrefr(GCRef& r, GCRef v) noexcept
 #define setgcref(r, gc)      ((r).gcptr64 = (uint64_t)&(gc)->gch)
 #define setgcreft(r, gc, it) ((r).gcptr64 = (uint64_t)&(gc)->gch | (((uint64_t)(it)) << 47))
 #else
-[[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
+[[nodiscard]] constexpr inline GCobj* gcref(GCRef r) noexcept
 {
    return (GCobj*)(uintptr_t)r.gcptr32;
 }
 
 template<typename T>
-[[nodiscard]] inline T* gcrefp_fn(GCRef r) noexcept
+[[nodiscard]] constexpr inline T* gcrefp_fn(GCRef r) noexcept
 {
    return (T*)(void*)(uintptr_t)r.gcptr32;
 }
 
-[[nodiscard]] inline uint32_t gcrefu(GCRef r) noexcept
+[[nodiscard]] constexpr inline uint32_t gcrefu(GCRef r) noexcept
 {
    return r.gcptr32;
 }
@@ -245,17 +245,17 @@ inline void setgcrefp_fn(GCRef& r, T* p) noexcept
 }
 
 // Overload for integer types (used in some low-level operations)
-inline void setgcrefp_fn(GCRef& r, uintptr_t v) noexcept
+constexpr inline void setgcrefp_fn(GCRef& r, uintptr_t v) noexcept
 {
    r.gcptr32 = uint32_t(v);
 }
 
-inline void setgcrefp_fn(GCRef& r, int v) noexcept
+constexpr inline void setgcrefp_fn(GCRef& r, int v) noexcept
 {
    r.gcptr32 = uint32_t(v);
 }
 
-inline void setgcrefnull(GCRef& r) noexcept
+constexpr inline void setgcrefnull(GCRef& r) noexcept
 {
    r.gcptr32 = 0;
 }

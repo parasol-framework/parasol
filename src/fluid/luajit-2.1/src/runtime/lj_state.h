@@ -7,15 +7,14 @@
 
 #include "lj_obj.h"
 
-#define incr_top(L) \
-  (++L->top >= tvref(L->maxstack) and (lj_state_growstack1(L), 0))
+#define incr_top(L) (++L->top >= tvref(L->maxstack) and (lj_state_growstack1(L), 0))
 
-[[nodiscard]] inline constexpr ptrdiff_t savestack(lua_State* L, const TValue* p) noexcept
+[[nodiscard]] inline ptrdiff_t savestack(lua_State* L, const TValue* p) noexcept
 {
    return (const char*)(p) - mref(L->stack, char);
 }
 
-[[nodiscard]] inline constexpr TValue* restorestack(lua_State* L, ptrdiff_t n) noexcept
+[[nodiscard]] inline TValue* restorestack(lua_State* L, ptrdiff_t n) noexcept
 {
    return (TValue*)(mref(L->stack, char) + n);
 }
