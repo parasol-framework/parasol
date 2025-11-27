@@ -17,7 +17,7 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 ### 3.2 Resources and Cross-References
 - Opcode definitions and metadata (including the `BCDEF` macro): `src/fluid/luajit-2.1/src/bytecode/lj_bc.h`.
 - Parser emission sites: `parse_operators.cpp` (operator lowering), `operator_emitter.cpp` (register-aware helpers), `ir_emitter.cpp` (control-flow builders).
-- Behavioural context and patterns: `src/fluid/luajit-2.1/AGENTS.md` (parser wiring tips) and `src/fluid/luajit-2.1/src/parser/` files noted there.
+- Behavioural context and patterns: `src/fluid/luajit-2.1/src/parser/operator_emitter.cpp`, `src/fluid/luajit-2.1/src/parser/ir_emitter.cpp`, and `src/fluid/luajit-2.1/src/parser/parse_control_flow.cpp` (parser wiring and control-flow emission patterns).
 - Tests exercising these paths live under `src/fluid/tests/`.
 
 ## 4. Conditional and Comparison Bytecodes
