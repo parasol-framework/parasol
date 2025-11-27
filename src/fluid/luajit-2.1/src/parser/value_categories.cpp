@@ -2,9 +2,11 @@
 // Copyright (C) 2025 Paul Manias
 
 #include "parser/value_categories.h"
+#include "parser/parse_regalloc.h"
 
 #include "lj_bc.h"
 
+//********************************************************************************************************************
 // Extended falsey semantics for Fluid's ?? operator:
 // - nil is falsey
 // - false is falsey

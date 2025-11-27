@@ -1242,7 +1242,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
    if (mapped.value() IS BinOpr::Concat) {
       ExpDesc infix = working;
       // CONCAT compound assignment: use OperatorEmitter for BC_CAT chaining
-      this->operator_emitter.prepare_concat(ValueSlot(&infix));
+      this->operator_emitter.prepare_concat(ExprValue(&infix));
       auto list = this->emit_expression_list(values, count);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
 
@@ -1253,7 +1253,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       }
 
       rhs = list.value_ref();
-      this->operator_emitter.complete_concat(ValueSlot(&infix), rhs);
+      this->operator_emitter.complete_concat(ExprValue(&infix), rhs);
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
    else {
@@ -1271,7 +1271,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
       ExpDesc infix = working;
 
       // Use OperatorEmitter for arithmetic compound assignments (+=, -=, *=, /=, %=)
-      this->operator_emitter.emit_binary_arith(mapped.value(), ValueSlot(&infix), rhs);
+      this->operator_emitter.emit_binary_arith(mapped.value(), ExprValue(&infix), rhs);
 
       bcemit_store(&this->func_state, &target.storage, &infix);
    }
@@ -1450,12 +1450,12 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
 
    // Use OperatorEmitter facade for unary operators
    switch (payload.op) {
-      case AstUnaryOperator::Negate: this->operator_emitter.emit_unary(BC_UNM, ValueSlot(&operand)); break;
-      case AstUnaryOperator::Not: this->operator_emitter.emit_unary(BC_NOT, ValueSlot(&operand)); break;
-      case AstUnaryOperator::Length: this->operator_emitter.emit_unary(BC_LEN, ValueSlot(&operand)); break;
+      case AstUnaryOperator::Negate: this->operator_emitter.emit_unary(BC_UNM, ExprValue(&operand)); break;
+      case AstUnaryOperator::Not: this->operator_emitter.emit_unary(BC_NOT, ExprValue(&operand)); break;
+      case AstUnaryOperator::Length: this->operator_emitter.emit_unary(BC_LEN, ExprValue(&operand)); break;
       case AstUnaryOperator::BitNot:
          // BitNot calls bit.bnot library function
-         this->operator_emitter.emit_bitnot(ValueSlot(&operand));
+         this->operator_emitter.emit_bitnot(ExprValue(&operand));
          break;
    }
    return ParserResult<ExpDesc>::success(operand);
@@ -1495,7 +1495,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    ExpDesc infix = operand;
 
    // Use OperatorEmitter for arithmetic operation (operand +/- 1)
-   this->operator_emitter.emit_binary_arith(op, ValueSlot(&infix), delta);
+   this->operator_emitter.emit_binary_arith(op, ExprValue(&infix), delta);
 
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
@@ -1536,16 +1536,16 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // This discharges LHS to appropriate form to prevent register clobbering
 
    if (opr IS BinOpr::LogicalAnd) { // Logical AND: CFG-based short-circuit implementation
-      this->operator_emitter.prepare_logical_and(ValueSlot(&lhs));
+      this->operator_emitter.prepare_logical_and(ExprValue(&lhs));
    }
    else if (opr IS BinOpr::LogicalOr) { // Logical OR: CFG-based short-circuit implementation
-      this->operator_emitter.prepare_logical_or(ValueSlot(&lhs));
+      this->operator_emitter.prepare_logical_or(ExprValue(&lhs));
    }
    else if (opr IS BinOpr::Concat) { // CONCAT: Discharge to consecutive register for BC_CAT chaining
-      this->operator_emitter.prepare_concat(ValueSlot(&lhs));
+      this->operator_emitter.prepare_concat(ExprValue(&lhs));
    }
    else { // All other operators use OperatorEmitter facade
-      this->operator_emitter.emit_binop_left(opr, ValueSlot(&lhs));
+      this->operator_emitter.emit_binop_left(opr, ExprValue(&lhs));
    }
 
    // Now evaluate RHS (safe because binop_left prepared LHS)
@@ -1556,23 +1556,23 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
    // Emit the actual operation based on operator type
    if (opr IS BinOpr::LogicalAnd) { // Logical AND: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_and(ValueSlot(&lhs), rhs);
+      this->operator_emitter.complete_logical_and(ExprValue(&lhs), rhs);
    }
    else if (opr IS BinOpr::LogicalOr) { // Logical OR: CFG-based short-circuit implementation
-      this->operator_emitter.complete_logical_or(ValueSlot(&lhs), rhs);
+      this->operator_emitter.complete_logical_or(ExprValue(&lhs), rhs);
    }
    else if (opr >= BinOpr::NotEqual and opr <= BinOpr::GreaterThan) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
-      this->operator_emitter.emit_comparison(opr, ValueSlot(&lhs), rhs);
+      this->operator_emitter.emit_comparison(opr, ExprValue(&lhs), rhs);
    }
    else if (opr IS BinOpr::Concat) { // CONCAT: CFG-based implementation with BC_CAT chaining
-      this->operator_emitter.complete_concat(ValueSlot(&lhs), rhs);
+      this->operator_emitter.complete_concat(ExprValue(&lhs), rhs);
    }
    else if (opr IS BinOpr::BitAnd or opr IS BinOpr::BitOr or opr IS BinOpr::BitXor or opr IS BinOpr::ShiftLeft or opr IS BinOpr::ShiftRight) {
       // Bitwise operators: Route through OperatorEmitter (emits bit.* library calls)
-      this->operator_emitter.emit_binary_bitwise(opr, ValueSlot(&lhs), rhs);
+      this->operator_emitter.emit_binary_bitwise(opr, ExprValue(&lhs), rhs);
    }
    else { // Arithmetic operators (ADD, SUB, MUL, DIV, MOD, POW)
-      this->operator_emitter.emit_binary_arith(opr, ValueSlot(&lhs), rhs);
+      this->operator_emitter.emit_binary_arith(opr, ExprValue(&lhs), rhs);
    }
 
    return ParserResult<ExpDesc>::success(lhs);
@@ -1723,7 +1723,7 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload &P
    auto value_result = this->emit_expression(*Payload.value);
    if (not value_result.ok()) return value_result;
    ExpDesc value = value_result.value_ref();
-   this->operator_emitter.emit_presence_check(ValueSlot(&value));
+   this->operator_emitter.emit_presence_check(ExprValue(&value));
    return ParserResult<ExpDesc>::success(value);
 }
 

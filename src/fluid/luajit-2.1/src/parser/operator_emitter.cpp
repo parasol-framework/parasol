@@ -604,7 +604,7 @@ OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator,
 //********************************************************************************************************************
 // Emit unary operator
 
-void OperatorEmitter::emit_unary(int op, ValueSlot operand)
+void OperatorEmitter::emit_unary(int op, ExprValue operand)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber,
@@ -618,7 +618,7 @@ void OperatorEmitter::emit_unary(int op, ValueSlot operand)
 // Emit bitwise NOT operator (~)
 // Performs constant folding when possible, otherwise calls bit.bnot library function
 
-void OperatorEmitter::emit_bitnot(ValueSlot operand)
+void OperatorEmitter::emit_bitnot(ExprValue operand)
 {
    ExpDesc* e = operand.raw();
 
@@ -645,7 +645,7 @@ void OperatorEmitter::emit_bitnot(ValueSlot operand)
 //
 // Logical operators (AND, OR, IF_EMPTY, CONCAT) use specialized prepare_* methods instead.
 
-void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
+void OperatorEmitter::emit_binop_left(BinOpr opr, ExprValue left)
 {
    RegisterAllocator local_alloc(this->func_state);
    ExpDesc *e = left.raw();
@@ -671,7 +671,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ValueSlot left)
 //********************************************************************************************************************
 // Emit arithmetic binary operator
 
-void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ExpDesc right)
+void OperatorEmitter::emit_binary_arith(BinOpr opr, ExprValue left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
@@ -684,7 +684,7 @@ void OperatorEmitter::emit_binary_arith(BinOpr opr, ValueSlot left, ExpDesc righ
 //********************************************************************************************************************
 // Emit comparison operator
 
-void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ExpDesc right)
+void OperatorEmitter::emit_comparison(BinOpr opr, ExprValue left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
       pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber,
@@ -698,7 +698,7 @@ void OperatorEmitter::emit_comparison(BinOpr opr, ValueSlot left, ExpDesc right)
 // Emit bitwise binary operator
 // Performs constant folding when possible, otherwise emits function calls to bit.* library
 
-void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ExpDesc right)
+void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ExprValue left, ExpDesc right)
 {
    ExpDesc* lhs = left.raw();
 
@@ -726,7 +726,7 @@ void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ValueSlot left, ExpDesc ri
 //********************************************************************************************************************
 // Prepare logical AND operator (called BEFORE RHS evaluation)
 
-void OperatorEmitter::prepare_logical_and(ValueSlot left)
+void OperatorEmitter::prepare_logical_and(ExprValue left)
 {
    ExpDesc* left_desc = left.raw();
 
@@ -780,7 +780,7 @@ void OperatorEmitter::prepare_logical_and(ValueSlot left)
 //********************************************************************************************************************
 // Complete logical AND operator (called AFTER RHS evaluation)
 
-void OperatorEmitter::complete_logical_and(ValueSlot left, ExpDesc right)
+void OperatorEmitter::complete_logical_and(ExprValue left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
    ExpDesc *right_desc = &right;
@@ -816,7 +816,7 @@ void OperatorEmitter::complete_logical_and(ValueSlot left, ExpDesc right)
 // Prepare logical OR operator (called BEFORE RHS evaluation)
 // CFG-based implementation using ControlFlowGraph
 
-void OperatorEmitter::prepare_logical_or(ValueSlot left)
+void OperatorEmitter::prepare_logical_or(ExprValue left)
 {
    ExpDesc* left_desc = left.raw();
 
@@ -869,7 +869,7 @@ void OperatorEmitter::prepare_logical_or(ValueSlot left)
 // Complete logical OR operator (called AFTER RHS evaluation)
 // CFG-based implementation using ControlFlowGraph
 
-void OperatorEmitter::complete_logical_or(ValueSlot left, ExpDesc right)
+void OperatorEmitter::complete_logical_or(ExprValue left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
 
@@ -899,7 +899,7 @@ void OperatorEmitter::complete_logical_or(ValueSlot left, ExpDesc right)
 // Prepare IF_EMPTY (??) operator (called BEFORE RHS evaluation)
 // CFG-based implementation with extended falsey semantics
 
-void OperatorEmitter::prepare_if_empty(ValueSlot left)
+void OperatorEmitter::prepare_if_empty(ExprValue left)
 {
    ExpDesc* left_desc = left.raw();
 
@@ -996,7 +996,7 @@ void OperatorEmitter::prepare_if_empty(ValueSlot left)
 // Complete IF_EMPTY (??) operator (called AFTER RHS evaluation)
 // Extended falsey checks are now emitted in prepare phase for proper short-circuit semantics
 
-void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
+void OperatorEmitter::complete_if_empty(ExprValue left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
 
@@ -1067,7 +1067,7 @@ void OperatorEmitter::complete_if_empty(ValueSlot left, ExpDesc right)
 // CONCAT operator - preparation phase
 // Discharges left operand to next consecutive register for BC_CAT chaining
 
-void OperatorEmitter::prepare_concat(ValueSlot left)
+void OperatorEmitter::prepare_concat(ExprValue left)
 {
    ExpDesc* left_desc = left.raw();
    FuncState* fs = this->func_state;
@@ -1086,7 +1086,7 @@ void OperatorEmitter::prepare_concat(ValueSlot left)
 // CONCAT operator - completion phase
 // Emits BC_CAT instruction with support for chaining multiple concatenations
 
-void OperatorEmitter::complete_concat(ValueSlot left, ExpDesc right)
+void OperatorEmitter::complete_concat(ExprValue left, ExpDesc right)
 {
    ExpDesc *left_desc = left.raw();
 
@@ -1128,7 +1128,7 @@ void OperatorEmitter::complete_concat(ValueSlot left, ExpDesc right)
 // Presence check operator (x?)
 // Returns boolean: true if value is truthy, false if falsey (nil, false, 0, "")
 
-void OperatorEmitter::emit_presence_check(ValueSlot operand)
+void OperatorEmitter::emit_presence_check(ExprValue operand)
 {
    ExpDesc* e = operand.raw();
    FuncState* fs = this->func_state;
