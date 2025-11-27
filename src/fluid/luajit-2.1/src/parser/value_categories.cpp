@@ -40,41 +40,6 @@ bool ExpDesc::is_falsey() const
 }
 
 //********************************************************************************************************************
-// RValue implementation - Discharge operations using RegisterAllocator
-
-inline void RValue::discharge()
-{
-   RegisterAllocator allocator(this->func_state_);
-   allocator.discharge(*this->desc_);
-}
-
-inline BCReg RValue::to_register(BCReg Target)
-{
-   RegisterAllocator allocator(this->func_state_);
-   allocator.discharge_to_register(*this->desc_, Target);
-   return BCReg(this->desc_->u.s.info);
-}
-
-inline BCReg RValue::to_next_register()
-{
-   RegisterAllocator allocator(this->func_state_);
-   allocator.discharge_to_next_register(*this->desc_);
-   return BCReg(this->desc_->u.s.info);
-}
-
-inline BCReg RValue::to_any_register()
-{
-   RegisterAllocator allocator(this->func_state_);
-   return allocator.discharge_to_any_register(*this->desc_);
-}
-
-inline void RValue::to_value()
-{
-   RegisterAllocator allocator(this->func_state_);
-   allocator.discharge_to_value(*this->desc_);
-}
-
-//********************************************************************************************************************
 // LValue implementation
 
 LValue LValue::from_expdesc(const ExpDesc* Desc)

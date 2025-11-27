@@ -12,12 +12,10 @@
 // RValue (readable expression)
 //   - Extends ExprValue with discharge operations (to register, to any register, etc.)
 //   - Used when evaluating expressions as operands
-//   - Methods: to_reg(), to_any_reg(), to_next_reg(), to_val()
 //
 // LValue (assignable expression)
 //   - Extends ExprValue with storage operations
 //   - Used for assignment targets and update operations
-//   - Methods: store_value()
 
 #pragma once
 
@@ -110,12 +108,32 @@ public:
 
    [[nodiscard]] inline FuncState* state() const { return func_state_; }
 
-   // Discharge operations (implementations in parse_regalloc.cpp)
-   inline void discharge();
-   [[nodiscard]] inline BCReg to_register(BCReg Target);
-   [[nodiscard]] inline BCReg to_next_register();
-   [[nodiscard]] inline BCReg to_any_register();
-   inline void to_value();
+   inline void discharge() {
+      RegisterAllocator allocator(this->func_state_);
+      allocator.discharge(*this->desc_);
+   }
+
+   [[nodiscard]] inline BCReg to_register(BCReg Target) {
+      RegisterAllocator allocator(this->func_state_);
+      allocator.discharge_to_register(*this->desc_, Target);
+      return BCReg(this->desc_->u.s.info);
+   }
+
+   [[nodiscard]] inline BCReg to_next_register() {
+      RegisterAllocator allocator(this->func_state_);
+      allocator.discharge_to_next_register(*this->desc_);
+      return BCReg(this->desc_->u.s.info);
+   }
+
+   [[nodiscard]] inline BCReg to_any_register() {
+      RegisterAllocator allocator(this->func_state_);
+      return allocator.discharge_to_any_register(*this->desc_);
+   }
+
+   inline void to_value() {
+      RegisterAllocator allocator(this->func_state_);
+      allocator.discharge_to_value(*this->desc_);
+   }
 
 protected:
    FuncState* func_state_;
