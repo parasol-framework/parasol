@@ -12,7 +12,7 @@
   - To prevent control-flow misunderstandings (e.g. around `BC_ISEQP` “skip-next” behaviour) when modifying operators or control structures.
 - Clarify that this document reflects the **Parasol‑integrated LuaJIT 2.1** variant, not arbitrary upstream forks.
 - State the primary audiences:
-  - Parser / IR emitter maintainers (`IrEmitter`, `OperatorEmitter`, legacy `parse_expr.cpp` / `parse_stmt.cpp`).
+  - Parser / IR emitter maintainers (`IrEmitter`, `OperatorEmitter`).
   - People adding / debugging operators (`??`, `?`, ternary, logical ops, bitwise ops).
 - Briefly list the main kinds of questions this doc should answer (e.g. “What does `BC_ISEQP` do when values are equal?”, “How do I wire short‑circuiting for `lhs ?? rhs`?”).
 
@@ -26,10 +26,6 @@
   - How conditions are written (e.g. “*equal → skip next instruction; not equal → execute next instruction*”).
   - How “next instruction” is interpreted in the presence of `JMP`.
 - State which **LuaJIT version and configuration** this description matches (e.g. LuaJIT 2.1, Parasol’s integrated tree, `LJ_FR2` assumptions where relevant).
-- Clarify how differences between:
-  - **Legacy parser path** (`parse_expr.cpp` / `parse_stmt.cpp`),
-  - **AST pipeline** (`IrEmitter`, `operator_emitter.cpp`),
-  will be called out (e.g. explicit tags like “LEGACY ONLY” vs “AST‑PIPELINE ONLY”).
 - Include a note on how to keep this file in sync:
   - “Whenever bytecode emission patterns change in `parse_operators.cpp`, `operator_emitter.cpp`, or `ir_emitter.cpp`, review and update this document.”
 
@@ -50,7 +46,7 @@
 **Instructions for this subsection:**
 - List key source files that define or manipulate bytecode:
   - Where opcodes are defined (e.g. `lj_bc.h`, `lj_bcdef.h`).
-  - Where they are emitted from the parser paths (`parse_operators.cpp`, `operator_emitter.cpp`, `ir_emitter.cpp`, legacy `parse_expr.cpp` / `parse_stmt.cpp`).
+  - Where they are emitted from the parser paths (`parse_operators.cpp`, `operator_emitter.cpp`, `ir_emitter.cpp`).
   - Any relevant AGENTS or design docs (e.g. parser AGENTS file).
 - For each referenced file, briefly state *what kind of information* it contains (definitions, patterns, tests).
 
@@ -108,9 +104,6 @@
 - Describe, at a bytecode level, how short‑circuiting is achieved for `and` / `or`:
   - How the first operand is evaluated and normalised.
   - How conditional branches are wired so that the RHS is evaluated only when needed.
-- Show the relationship between:
-  - Legacy implementation (`bcemit_binop_left`, `bcemit_binop`) and
-  - Modern implementation via `OperatorEmitter::prepare_logical_and/or` and `complete_logical_and/or`.
 - Provide one or two annotated bytecode examples of `a and b` and `a or b` with truthy and falsey first operands.
 
 ### 5.2 Ternary Operator (`cond ? true_val :> false_val`)
@@ -142,13 +135,10 @@
 - State the high‑level semantics:
   - Evaluate `lhs`; if it is extended‑falsey (nil/false/0/""), evaluate and return `rhs`.
   - Otherwise, return `lhs` and **do not** evaluate `rhs`.
-- Describe *both* implementations:
-  - Legacy `??` path in `parse_stmt.cpp` / legacy helpers.
-  - AST pipeline path (`IrEmitter::emit_if_empty_expr` and any `OperatorEmitter` support).
-- For each path:
-  - Spell out the comparison+JMP chain for extended falsey values.
-  - Explain exactly how jumps are patched to “evaluate RHS” vs “skip RHS”.
-  - Note how the result is kept in a single register and how `freereg` is collapsed to avoid leaks / extra arguments.
+- Describe AST pipeline path (`IrEmitter::emit_if_empty_expr` and any `OperatorEmitter` support).
+- Spell out the comparison+JMP chain for extended falsey values.
+- Explain exactly how jumps are patched to “evaluate RHS” vs “skip RHS”.
+- Note how the result is kept in a single register and how `freereg` is collapsed to avoid leaks / extra arguments.
 - Explicitly warn about the common misinterpretation (e.g. “all checks chain to RHS, therefore RHS always runs”) and show why it’s incorrect for the current implementation.
 
 ---
@@ -227,7 +217,6 @@
 **Instructions for this subsection:**
 - Explain how to use the existing Fluid test suite to validate control‑flow changes:
   - Which tests cover `??`, `?`, logical operators, ternary, etc. (e.g. `test_if_empty.fluid`).
-  - How to run them under both `ast-pipeline` and `ast-legacy` where applicable.
 - Recommend strategies for designing new tests:
   - Use side‑effects (counters, errors) on the RHS to detect unwanted evaluation.
   - Use vararg capturing (`...`) to spot leaked arguments.
@@ -242,15 +231,6 @@
   - Source expressions.
   - IR emitter / operator emitter code paths.
 - Encourage using disassembly as the **source of truth** when reasoning about control‑flow.
-
-### 8.3 JIT Options and Parser Modes
-
-**Instructions for this subsection:**
-- Briefly document JIT options that influence which parser path is used:
-  - `ast-pipeline`, `ast-legacy`, and any diagnostic flags relevant to bytecode emission.
-- Explain how to:
-  - Force a given script through a specific parser mode.
-  - Confirm which mode was used when tests were run.
 
 ---
 
