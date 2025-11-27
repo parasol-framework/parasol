@@ -2,6 +2,55 @@
 
 #include "lj_def.h"
 
+FluidType parse_type_name(std::string_view Name)
+{
+   struct TypeName {
+      std::string_view name;
+      FluidType type;
+   };
+
+   constexpr TypeName names[] = {
+      { "any", FluidType::Any },
+      { "nil", FluidType::Nil },
+      { "bool", FluidType::Bool },
+      { "boolean", FluidType::Bool },
+      { "num", FluidType::Num },
+      { "number", FluidType::Num },
+      { "str", FluidType::Str },
+      { "string", FluidType::Str },
+      { "table", FluidType::Table },
+      { "func", FluidType::Func },
+      { "function", FluidType::Func },
+      { "thread", FluidType::Thread },
+      { "cdata", FluidType::CData },
+      { "obj", FluidType::Object },
+      { "object", FluidType::Object }
+   };
+
+   for (const auto& entry : names) {
+      if (Name IS entry.name) return entry.type;
+   }
+
+   return FluidType::Unknown;
+}
+
+std::string_view type_name(FluidType Type)
+{
+   switch (Type) {
+      case FluidType::Nil: return "nil";
+      case FluidType::Bool: return "bool";
+      case FluidType::Num: return "num";
+      case FluidType::Str: return "str";
+      case FluidType::Table: return "table";
+      case FluidType::Func: return "func";
+      case FluidType::Thread: return "thread";
+      case FluidType::CData: return "cdata";
+      case FluidType::Object: return "obj";
+      case FluidType::Any:
+      default: return "any";
+   }
+}
+
 namespace {
 
 [[nodiscard]] inline bool ensure_operand(const ExprNodePtr& node)

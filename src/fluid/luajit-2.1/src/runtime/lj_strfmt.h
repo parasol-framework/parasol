@@ -90,13 +90,13 @@ LJ_FUNC [[nodiscard]] char* LJ_FASTCALL lj_strfmt_wuleb128(char* p, uint32_t v);
 LJ_FUNC [[nodiscard]] const char* lj_strfmt_wstrnum(lua_State* L, cTValue* o, MSize* lenp);
 
 // Unformatted conversions to buffer.
-LJ_FUNC [[nodiscard]] SBuf* LJ_FASTCALL lj_strfmt_putint(SBuf* sb, int32_t k);
+LJ_FUNC SBuf* LJ_FASTCALL lj_strfmt_putint(SBuf* sb, int32_t k);
 #if LJ_HASJIT
-LJ_FUNC [[nodiscard]] SBuf* LJ_FASTCALL lj_strfmt_putnum(SBuf* sb, cTValue* o);
+LJ_FUNC SBuf* LJ_FASTCALL lj_strfmt_putnum(SBuf* sb, cTValue* o);
 #endif
-LJ_FUNC [[nodiscard]] SBuf* LJ_FASTCALL lj_strfmt_putptr(SBuf* sb, const void* v);
+LJ_FUNC SBuf* LJ_FASTCALL lj_strfmt_putptr(SBuf* sb, const void* v);
 #if LJ_HASJIT
-LJ_FUNC [[nodiscard]] SBuf* LJ_FASTCALL lj_strfmt_putquoted(SBuf* sb, GCstr* str);
+LJ_FUNC SBuf* LJ_FASTCALL lj_strfmt_putquoted(SBuf* sb, GCstr* str);
 #endif
 
 // Formatted conversions to buffer.

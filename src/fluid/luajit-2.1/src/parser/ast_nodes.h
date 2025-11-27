@@ -95,6 +95,27 @@ enum class AstNodeKind : uint16_t {
    ExpressionStmt
 };
 
+// Parameter type annotation for static analysis
+enum class FluidType : uint8_t {
+   Any = 0,     // No type constraint (default)
+   Nil,
+   Bool,
+   Num,
+   Str,
+   Table,
+   Func,
+   Thread,
+   CData,
+   Object,       // Parasol userdata
+   Unknown
+};
+
+// Convert type name string to FluidType
+[[nodiscard]] FluidType parse_type_name(std::string_view Name);
+
+// Convert FluidType to display string
+[[nodiscard]] std::string_view type_name(FluidType Type);
+
 enum class LiteralKind : uint8_t {
    Nil,
    Boolean,
@@ -199,6 +220,7 @@ struct LiteralValue {
 
 struct FunctionParameter {
    Identifier name;
+   FluidType type = FluidType::Any;
    bool is_self = false;
 };
 
