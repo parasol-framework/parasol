@@ -978,6 +978,12 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                message.append(type_view);
                message.append("'; expected a valid type name");
                this->ctx.emit_error(ParserErrorCode::UnknownTypeName, type_token, message);
+
+               ParserError error;
+               error.code = ParserErrorCode::UnknownTypeName;
+               error.token = type_token;
+               error.message = message;
+               return ParserResult<ParameterListResult>::failure(error);
             }
          }
          result.parameters.push_back(param);
