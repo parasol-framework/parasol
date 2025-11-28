@@ -398,10 +398,13 @@ Unit testing should be implemented as the primary validation mechanism for all i
 - Phase 1: Core Infrastructure - implemented
 - Phase 2: Library Functions - implemented
 - Phase 3: VM and JIT - implemented
-- Phase 4: Auxiliary Systems - implemented (serialization dictionaries and buffer table writes respect LJ_STARTING_INDEX)
-- Phase 5: Integration Testing - Debug build validated; dual-configuration test sweeps remain pending
-- Phase 6: C API Zero-Based Entry Points - implemented (`lua_rawgetzi`/`lua_rawsetzi` added for 0-based integer table access)
-- Phase 7: VM Iterator Key Offsets - implemented (BC_ITERN now returns semantic array keys with LJ_STARTING_INDEX applied across non-MIPS back ends)
+- Phase 4: Serialization and buffer preparation - implemented
+- Phase 5: Integration Testing - pending dual-configuration sweeps
+- Phase 6: C API Zero-Based Entry Points - implemented
+- Phase 7: VM Iterator Key Offsets - implemented
+- Phase 8: Buffer Library alignment - implemented
+- Phase 9: JIT Recording adjustments - implemented
+- Phase 10: Serialization dictionary offsets - implemented
 
 ### New Unit Test File: `unit_test_indexing.cpp`
 

@@ -446,11 +446,11 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
    if (tref_istab(ix.tab)) {
       if (!tvisnumber(&rd->argv[1]))  //  No support for string coercion.
          lj_trace_err(J, LJ_TRERR_BADTYPE);
-      setintV(&ix.keyv, numberVint(&rd->argv[1]) + LJ_STARTING_INDEX);
+      setintV(&ix.keyv, numberVint(&rd->argv[1]) + 1);
       settabV(J->L, &ix.tabv, tabV(&rd->argv[0]));
       ix.val = 0; ix.idxchain = 0;
       ix.key = lj_opt_narrow_toint(J, J->base[1]);
-      J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, LJ_STARTING_INDEX));
+      J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, 1));
       J->base[1] = lj_record_idx(J, &ix);
       rd->nres = tref_isnil(J->base[1]) ? 0 : 2;
    }  // else: Interpreter will throw.
@@ -1470,10 +1470,11 @@ static void LJ_FASTCALL recff_table_concat(jit_State* J, RecordFFData* rd)
       TRef sep = !tref_isnil(J->base[1]) ?
          lj_ir_tostr(J, J->base[1]) : lj_ir_knull(J, IRT_STR);
       TRef tri = (J->base[1] and !tref_isnil(J->base[2])) ?
-         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 1);
+         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, LJ_STARTING_INDEX);
       TRef tre = (J->base[1] and J->base[2] and !tref_isnil(J->base[3])) ?
          lj_opt_narrow_toint(J, J->base[3]) :
-         emitir(IRTI(IR_ALEN), tab, TREF_NIL);
+         emitir(IRTI(IR_ADD), emitir(IRTI(IR_ALEN), tab, TREF_NIL),
+            lj_ir_kint(J, LJ_STARTING_INDEX - 1));
       TRef hdr = recff_bufhdr(J);
       TRef tr = lj_ir_call(J, IRCALL_lj_buf_puttab, hdr, tab, sep, tri, tre);
       emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, nullptr));
