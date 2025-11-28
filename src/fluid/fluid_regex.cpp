@@ -220,7 +220,7 @@ static int regex_search(lua_State *Lua)
 
    size_t text_len = 0;
    auto text = luaL_checklstring(Lua, 1, &text_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    lua_createtable(Lua, 0, 0); // Result table
 

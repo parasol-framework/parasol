@@ -376,14 +376,13 @@ static int array_get(lua_State *Lua)
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
          int index = lua_tointeger(Lua, 2);
 
-         if ((index < 1) or (index > a->Total)) {
-            luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
+         if ((index < 0) or (index >= a->Total)) {
+            luaL_error(Lua, "Invalid array index: 0 <= %d < %d", index, a->Total);
             return 0;
          }
 
          log.trace("array.index(%d)", index);
 
-         index--; // Convert Lua index to C index
          switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRUCT: {
                // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
@@ -412,7 +411,7 @@ static int array_get(lua_State *Lua)
       else if (auto field = lua_checkstringview(Lua, 2); !field.empty()) {
          log.trace("Field: %s", field);
 
-         if (std::string_view("table") == field) { // Convert the array to a standard Lua table.
+         if (std::string_view("table") IS field) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
@@ -436,17 +435,17 @@ static int array_get(lua_State *Lua)
 
             return 1;
          }
-         else if ("getstring" == field) {
+         else if ("getstring" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if ("copy" == field) {
+         else if ("copy" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;
          }
-         else if ("concat" == field) {
+         else if ("concat" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_concat, 1);
             return 1;
@@ -472,12 +471,10 @@ static int array_set(lua_State *Lua)
 
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
          int index = lua_tointeger(Lua, 2);
-         if ((index < 1) or (index > a->Total)) {
-            luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
+         if ((index < 0) or (index >= a->Total)) {
+            luaL_error(Lua, "Invalid array index: 0 <= %d < %d", index, a->Total);
             return 0;
          }
-
-         index--; // Convert Lua index to C index
 
          if (a->Type & FD_STRUCT) {
             if (a->Type & FD_POINTER) { // Array of struct pointers
@@ -520,17 +517,17 @@ static int array_copy(lua_State *Lua)
 {
    auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
 
-   if (!a) {
+   if (not a) {
       luaL_error(Lua, "Expected array in upvalue.");
       return 0;
    }
 
    if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
-   int to_index = 1;
+   int to_index = 0;
    if (lua_isnumber(Lua, 2)) {
       to_index = lua_tointeger(Lua, 2);
-      if ((to_index < 1) or (to_index > a->Total)) {
+      if ((to_index < 0) or (to_index >= a->Total)) {
          luaL_argerror(Lua, 2, "Invalid destination index.");
          return 0;
       }
@@ -568,7 +565,7 @@ static int array_copy(lua_State *Lua)
       if (copy_total < 0) copy_total = table_len;
       else if (copy_total > table_len) copy_total = table_len;
 
-      int c_index = to_index - 1; // Convert Lua index to C index
+      int c_index = to_index;
 
       // Check bounds for destination array
       if ((c_index < 0) or (c_index >= a->Total)) {
@@ -583,8 +580,8 @@ static int array_copy(lua_State *Lua)
 
       // Copy table elements using ipairs-style iteration
       for (int i = 0; i < copy_total; i++) {
-         lua_pushinteger(Lua, i + 1); // Lua tables are 1-indexed
-         lua_gettable(Lua, 1);        // Get table[i+1]
+         lua_pushinteger(Lua, i);
+         lua_gettable(Lua, 1);        // Get table[i]
 
          int dest_index = c_index + i;
 
@@ -636,16 +633,14 @@ static int array_copy(lua_State *Lua)
    }
    else { luaL_argerror(Lua, 1, "String or array expected."); return 0; }
 
-   to_index--; // Lua index to C index
-
    // Enhanced bounds checking with overflow protection
    if ((to_index < 0) or (to_index >= a->Total)) {
-      luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index + 1, a->Total);
+      luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index, a->Total);
       return 0;
    }
 
    if ((src_size > SIZE_MAX - to_index) or (to_index + src_size > (size_t)a->Total)) {
-      luaL_error(Lua, "Copy operation would exceed array bounds (%d+%d > %d).", to_index + 1, (int)src_size, a->Total);
+      luaL_error(Lua, "Copy operation would exceed array bounds (%d+%d > %d).", to_index, (int)src_size, a->Total);
       return 0;
    }
 
@@ -693,7 +688,7 @@ static int array_copy(lua_State *Lua)
 static int array_concat(lua_State *Lua)
 {
    auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
-   if (!a) {
+   if (not a) {
       luaL_error(Lua, "Expected array.");
       return 0;
    }
@@ -710,8 +705,8 @@ static int array_concat(lua_State *Lua)
    int format_count = 0;
    bool in_format = false;
    for (CSTRING p = format; *p; p++) {
-      if (*p == '%') {
-         if (*(p+1) == '%') {
+      if (*p IS '%') {
+         if (*(p+1) IS '%') {
             p++; // Skip escaped %
             continue;
          }

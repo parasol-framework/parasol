@@ -20,8 +20,8 @@ function testCompoundAssignment()
    local store = { count = 10, list = { 3, 5, 7 } }
    store.count -= 4
    assert(store.count is 6, 'table field compound assignments should store results')
-   store.list[2] *= 2
-   assert(store.list[2] is 10, 'indexed table compound assignments should store results')
+   store.list[1] *= 2
+   assert(store.list[1] is 10, 'indexed table compound assignments should store results')
 end
 
 function testIfEmptyAssignment()
@@ -83,8 +83,8 @@ function testIncrement()
    assert(object.tally is 5, 'table field ++ should store incremented value')
 
    local data = { 1, 2, 3 }
-   data[3]++
-   assert(data[3] is 4, 'indexed ++ should store incremented value')
+   data[2]++
+   assert(data[2] is 4, 'indexed ++ should store incremented value')
 end
 
 function testContinue()
@@ -101,8 +101,8 @@ function testContinue()
    assert(total is 9, 'continue should skip to next loop iteration')
 
    local seen = {}
-   for i = 1, 5 do
-      if i is 3 then
+   for i = 0, 4 do
+      if i is 2 then
          continue
       end
       table.insert(seen, i)
@@ -113,7 +113,7 @@ function testContinue()
    local attempts = 0
    local ready = false
    repeat
-      attempts += 1
+      attempts++
       if attempts < 3 then
          continue
       end
@@ -124,12 +124,12 @@ end
 
 function testIndexedWithFunctionRHS()
    local t = { 1, 2, 3 }
-   local i = 2
+   local i = 1
    local function add_three(x)
       return x + 3
    end
    t[i] += add_three(4)
-   assert(t[2] is 9, 'indexed += with function RHS should preserve base/index registers')
+   assert(t[1] is 9, 'indexed += with function RHS should preserve base/index registers')
 end
 
 function testFieldWithFunctionRHS()
@@ -154,20 +154,20 @@ end
 
 function testRegisterIndexPreservedAcrossRHS()
    local t = { 10, 20, 30 }
-   local i = 1
+   local i = 0
    local u = { 3, 4, 5 }
-   t[i] += u[i + 1] + u[3]
-   assert(t[1] is 19, 'indexed += should handle RHS table lookups without corrupting index')
+   t[i] += u[i] + u[2]
+   assert(t[0] is 18, 'indexed += should handle RHS table lookups without corrupting index')
 end
 
 function testNestedIndexPreservation()
    local u = { { x = 1 }, { x = 2 } }
-   local i = 2
+   local i = 1
    local function f()
       return 5
    end
    u[i].x += f()
-   assert(u[2].x is 7, 'nested indexed field += should preserve inner base/index registers')
+   assert(u[1].x is 7, 'nested indexed field += should preserve inner base/index registers')
 end
 
 function testByteAndStringKeyVariants()
@@ -184,9 +184,9 @@ end
 
 function testSelfReferentialReadOnRHS()
    local t = { 6, 0 }
-   local i = 1
+   local i = 0
    t[i] += t[i]
-   assert(t[1] is 12, 'indexed += with same element on RHS should double the value')
+   assert(t[0] is 12, 'indexed += with same element on RHS should double the value')
 end
 
 function testMultipleReturnOnlyFirstUsed()
@@ -207,21 +207,21 @@ end
 
 function testIndexRegisterReusedByRHS()
    local t = { 1, 2, 3 }
-   local i = 2
+   local i = 1
    local function f(a, b)
       return a + b
    end
-   t[i] *= f(i, t[1])
-   assert(t[2] is 6, 'indexed *= RHS using index register should keep index intact')
+   t[i] *= f(i, t[0]) -- 2 *= f(1, 1)
+   assert(t[1] is 4, 'indexed *= RHS using index register should keep index intact')
 end
 
 function testBaseReusedByRHS()
    local t = { 3, 4 }
    local function get_from_same(tbl)
-      return tbl[1] + tbl[2]
+      return tbl[0] + tbl[1]
    end
-   t[1] += get_from_same(t)
-   assert(t[1] is 10, 'indexed += RHS reading from same table should use original base for store')
+   t[0] += get_from_same(t)
+   assert(t[0] is 10, 'indexed += RHS reading from same table should use original base for store')
 end
 
 return {

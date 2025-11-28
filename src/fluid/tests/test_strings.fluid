@@ -17,24 +17,24 @@ function testSplit()
    -- Basic comma split
    local parts = string.split("a,b,c", ",")
    assert(#parts is 3, "Expected 3 parts, got " .. #parts)
-   assert(parts[1] is "a", "Expected 'a', got '" .. parts[1] .. "'")
-   assert(parts[2] is "b", "Expected 'b', got '" .. parts[2] .. "'")
-   assert(parts[3] is "c", "Expected 'c', got '" .. parts[3] .. "'")
+   assert(parts[0] is "a", "Expected 'a', got '" .. parts[0] .. "'")
+   assert(parts[1] is "b", "Expected 'b', got '" .. parts[1] .. "'")
+   assert(parts[2] is "c", "Expected 'c', got '" .. parts[2] .. "'")
 
    -- Whitespace split (default)
    local words = string.split("hello world\ttab\nnewline")
    assert(#words is 4, "Expected 4 words, got " .. #words)
-   assert(words[1] is "hello", "Expected 'hello', got '" .. words[1] .. "'")
-   assert(words[2] is "world", "Expected 'world', got '" .. words[2] .. "'")
-   assert(words[3] is "tab", "Expected 'tab', got '" .. words[3] .. "'")
-   assert(words[4] is "newline", "Expected 'newline', got '" .. words[4] .. "'")
+   assert(words[0] is "hello", "Expected 'hello', got '" .. words[0] .. "'")
+   assert(words[1] is "world", "Expected 'world', got '" .. words[1] .. "'")
+   assert(words[2] is "tab", "Expected 'tab', got '" .. words[2] .. "'")
+   assert(words[3] is "newline", "Expected 'newline', got '" .. words[3] .. "'")
 
    -- Multi-character separator
    local multi = string.split("one::two::three", "::")
    assert(#multi is 3, "Expected 3 parts with :: separator, got " .. #multi)
-   assert(multi[1] is "one", "Expected 'one', got '" .. multi[1] .. "'")
-   assert(multi[2] is "two", "Expected 'two', got '" .. multi[2] .. "'")
-   assert(multi[3] is "three", "Expected 'three', got '" .. multi[3] .. "'")
+   assert(multi[0] is "one", "Expected 'one', got '" .. multi[0] .. "'")
+   assert(multi[1] is "two", "Expected 'two', got '" .. multi[1] .. "'")
+   assert(multi[2] is "three", "Expected 'three', got '" .. multi[2] .. "'")
 
    -- Empty string
    local empty = string.split("")
@@ -43,7 +43,7 @@ function testSplit()
    -- No separator found
    local nosep = string.split("hello", ",")
    assert(#nosep is 1, "No separator should return single item, got " .. #nosep)
-   assert(nosep[1] is "hello", "Expected 'hello', got '" .. nosep[1] .. "'")
+   assert(nosep[0] is "hello", "Expected 'hello', got '" .. nosep[0] .. "'")
 end
 
 function testTrim()

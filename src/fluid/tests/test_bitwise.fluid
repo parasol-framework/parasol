@@ -97,16 +97,16 @@ end
 
 function testRHSFunctionCallsAndRegisterPreservation()
    local t = { 1, 2, 3 }
-   local i = 3
+   local i = 2
    local function f(a)
       return bit.lshift(a, 1)
    end
    t[i] = t[i] | f(i)
-   assert(t[3] is bit.bor(3, bit.lshift(3, 1)), 'indexed |= with function RHS should preserve base/index')
+   assert(t[2] is bit.bor(3, bit.lshift(3, 1)), 'indexed |= with function RHS should preserve base/index')
    -- Use index register on RHS too
    local u = { 1, 2, 4 }
    t[i] = t[i] & u[i]
-   assert(t[3] is bit.band(bit.bor(3, bit.lshift(3, 1)), u[3]), 'indexed & RHS index usage is safe')
+   assert(t[2] is bit.band(bit.bor(3, bit.lshift(3, 1)), u[2]), 'indexed & RHS index usage is safe')
 end
 
 function testMultipleReturnLHS()
