@@ -650,10 +650,8 @@ LJLIB_NOREG LJLIB_ASM(coroutine_wrap_aux)
 
 // Inline declarations.
 LJ_ASMF void lj_ff_coroutine_wrap_aux(void);
-#if !(LJ_TARGET_MIPS && defined(ljamalg_c))
 LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L,
    lua_State* co);
-#endif
 
 // Error handler, called from assembler VM.
 void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
@@ -709,4 +707,3 @@ extern int luaopen_base(lua_State* L)
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);
    return 2;
 }
-

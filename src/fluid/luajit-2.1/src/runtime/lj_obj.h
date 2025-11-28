@@ -1740,9 +1740,6 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 
 #if LJ_SOFTFP
 LJ_ASMF int32_t lj_vm_tobit(double x);
-#if LJ_TARGET_MIPS64
-LJ_ASMF int32_t lj_vm_tointg(double x);
-#endif
 #endif
 
 [[nodiscard]] inline int32_t lj_num2bit(lua_Number n) noexcept
@@ -1769,7 +1766,7 @@ LJ_ASMF int32_t lj_vm_tointg(double x);
 
 [[nodiscard]] inline uint64_t lj_num2u64(lua_Number n) noexcept
 {
-#if LJ_TARGET_X86ORX64 || LJ_TARGET_MIPS
+#if LJ_TARGET_X86ORX64
    int64_t i = (int64_t)n;
    if (i < 0) i = (int64_t)(n - 18446744073709551616.0);
    return (uint64_t)i;

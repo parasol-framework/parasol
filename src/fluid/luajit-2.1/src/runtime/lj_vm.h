@@ -22,9 +22,6 @@ LJ_ASMF void lj_vm_unwind_ff_eh(void);
 #if LJ_TARGET_X86ORX64
 LJ_ASMF void lj_vm_unwind_rethrow(void);
 #endif
-#if LJ_TARGET_MIPS
-LJ_ASMF void lj_vm_unwind_stub(void);
-#endif
 
 // Miscellaneous functions.
 #if LJ_TARGET_X86ORX64
@@ -54,7 +51,7 @@ LJ_ASMF void lj_vm_exit_handler(void);
 LJ_ASMF void lj_vm_exit_interp(void);
 
 // Internal math helper functions.
-#if LJ_TARGET_PPC || LJ_TARGET_ARM64 || (LJ_TARGET_MIPS && LJ_ABI_SOFTFP)
+#if LJ_TARGET_PPC || LJ_TARGET_ARM64
 #define lj_vm_floor   floor
 #define lj_vm_ceil   ceil
 #else
@@ -88,9 +85,7 @@ LJ_ASMF double lj_vm_log2(double);
 #else
 #define lj_vm_log2   cmath_log2
 #endif
-#if !(defined(_LJ_DISPATCH_H) && LJ_TARGET_MIPS)
 LJ_ASMF int32_t LJ_FASTCALL lj_vm_modi(int32_t, int32_t);
-#endif
 
 #if LJ_HASJIT
 #if LJ_TARGET_X86ORX64

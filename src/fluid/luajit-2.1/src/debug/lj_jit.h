@@ -46,24 +46,6 @@ inline constexpr uint32_t JIT_F_ROUND = (JIT_F_CPU << 1);
 
 inline constexpr const char* JIT_F_CPUSTRING = "\4SQRT\5ROUND";
 
-#elif LJ_TARGET_MIPS
-
-inline constexpr uint32_t JIT_F_MIPSXXR2 = (JIT_F_CPU << 0);
-
-#if LJ_TARGET_MIPS32
-#if LJ_TARGET_MIPSR6
-inline constexpr const char* JIT_F_CPUSTRING = "\010MIPS32R6";
-#else
-inline constexpr const char* JIT_F_CPUSTRING = "\010MIPS32R2";
-#endif
-#else
-#if LJ_TARGET_MIPSR6
-inline constexpr const char* JIT_F_CPUSTRING = "\010MIPS64R6";
-#else
-inline constexpr const char* JIT_F_CPUSTRING = "\010MIPS64R2";
-#endif
-#endif
-
 #else
 
 inline constexpr const char* JIT_F_CPUSTRING = "";
@@ -407,13 +389,6 @@ enum class K64 : unsigned int {
   M2P64_31 = unsigned(M2P64),
 #endif
 #endif
-#if LJ_TARGET_MIPS
-  _2P31,      //  2^31
-#if LJ_64
-  _2P63,      //  2^63
-  M2P64,      //  -2^64
-#endif
-#endif
   _MAX,
 };
 
@@ -424,13 +399,6 @@ inline constexpr unsigned int LJ_K64_2P64 = unsigned(K64::_2P64);
 inline constexpr unsigned int LJ_K64_M2P64 = unsigned(K64::M2P64);
 inline constexpr unsigned int LJ_K64_M2P64_31 = unsigned(K64::M2P64_31);
 #endif
-#if LJ_TARGET_MIPS
-inline constexpr unsigned int LJ_K64_2P31 = unsigned(K64::_2P31);
-#if LJ_64
-inline constexpr unsigned int LJ_K64_2P63 = unsigned(K64::_2P63);
-inline constexpr unsigned int LJ_K64_M2P64 = unsigned(K64::M2P64);
-#endif
-#endif
 inline constexpr unsigned int LJ_K64__MAX = unsigned(K64::_MAX);
 
 enum class K32 : unsigned int {
@@ -440,13 +408,7 @@ enum class K32 : unsigned int {
 #if LJ_TARGET_PPC
   _2P52_2P31,   //  2^52 + 2^31
   _2P52,      //  2^52
-#endif
-#if LJ_TARGET_PPC or LJ_TARGET_MIPS
   _2P31,      //  2^31
-#endif
-#if LJ_TARGET_MIPS64
-  _2P63,      //  2^63
-  M2P64,      //  -2^64
 #endif
   _MAX
 };
@@ -458,13 +420,7 @@ inline constexpr unsigned int LJ_K32_M2P64_31 = unsigned(K32::M2P64_31);
 #if LJ_TARGET_PPC
 inline constexpr unsigned int LJ_K32_2P52_2P31 = unsigned(K32::_2P52_2P31);
 inline constexpr unsigned int LJ_K32_2P52 = unsigned(K32::_2P52);
-#endif
-#if LJ_TARGET_PPC or LJ_TARGET_MIPS
 inline constexpr unsigned int LJ_K32_2P31 = unsigned(K32::_2P31);
-#endif
-#if LJ_TARGET_MIPS64
-inline constexpr unsigned int LJ_K32_2P63 = unsigned(K32::_2P63);
-inline constexpr unsigned int LJ_K32_M2P64 = unsigned(K32::M2P64);
 #endif
 inline constexpr unsigned int LJ_K32__MAX = unsigned(K32::_MAX);
 

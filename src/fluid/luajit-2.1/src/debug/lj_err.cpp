@@ -628,13 +628,7 @@ static int err_unwind_jit(int version, int actions,
       lj_assertG(tvref(g->jit_base), "unexpected throw across mcode frame");
       if (stub) {  // Jump to side exit to unwind the trace.
          G2J(g)->exitcode = LJ_UEXCLASS_ERRCODE(uexclass);
-#ifdef LJ_TARGET_MIPS
-         _Unwind_SetGR(ctx, 4, stub);
-         _Unwind_SetGR(ctx, 5, exitno);
-         _Unwind_SetIP(ctx, (uintptr_t)(void*)lj_vm_unwind_stub);
-#else
          _Unwind_SetIP(ctx, stub);
-#endif
          return _URC_INSTALL_CONTEXT;
       }
       return _URC_FATAL_PHASE2_ERROR;
