@@ -429,9 +429,9 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
       Buf << name << " = ";
 
       switch (type) {
-         case LUA_TNIL: Buf << "nil"; break;
+         case LUA_TNIL:     Buf << "nil"; break;
          case LUA_TBOOLEAN: Buf << (lua_toboolean(Prv->Lua, -1) ? "true" : "false"); break;
-         case LUA_TNUMBER: Buf << lua_tonumber(Prv->Lua, -1); break;
+         case LUA_TNUMBER:  Buf << lua_tonumber(Prv->Lua, -1); break;
          case LUA_TSTRING: {
             size_t len;
             CSTRING str = lua_tolstring(Prv->Lua, -1, &len);
@@ -440,10 +440,10 @@ static void emit_locals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compac
             else Buf << "\"" << sv << "\"";
             break;
          }
-         case LUA_TTABLE: Buf << "{ ... }"; break;
+         case LUA_TTABLE:    Buf << "{ ... }"; break;
          case LUA_TFUNCTION: Buf << "<function>"; break;
          case LUA_TUSERDATA: Buf << "<userdata>"; break;
-         case LUA_TTHREAD: Buf << "<thread>"; break;
+         case LUA_TTHREAD:   Buf << "<thread>"; break;
          default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
       }
 

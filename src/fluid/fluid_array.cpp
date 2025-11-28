@@ -412,7 +412,7 @@ static int array_get(lua_State *Lua)
       else if (auto field = lua_checkstringview(Lua, 2); !field.empty()) {
          log.trace("Field: %s", field);
 
-         if (std::string_view("table") == field) { // Convert the array to a standard Lua table.
+         if (std::string_view("table") IS field) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
@@ -436,17 +436,17 @@ static int array_get(lua_State *Lua)
 
             return 1;
          }
-         else if ("getstring" == field) {
+         else if ("getstring" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if ("copy" == field) {
+         else if ("copy" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;
          }
-         else if ("concat" == field) {
+         else if ("concat" IS field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_concat, 1);
             return 1;
@@ -520,7 +520,7 @@ static int array_copy(lua_State *Lua)
 {
    auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
 
-   if (!a) {
+   if (not a) {
       luaL_error(Lua, "Expected array in upvalue.");
       return 0;
    }
@@ -693,7 +693,7 @@ static int array_copy(lua_State *Lua)
 static int array_concat(lua_State *Lua)
 {
    auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
-   if (!a) {
+   if (not a) {
       luaL_error(Lua, "Expected array.");
       return 0;
    }
@@ -710,8 +710,8 @@ static int array_concat(lua_State *Lua)
    int format_count = 0;
    bool in_format = false;
    for (CSTRING p = format; *p; p++) {
-      if (*p == '%') {
-         if (*(p+1) == '%') {
+      if (*p IS '%') {
+         if (*(p+1) IS '%') {
             p++; // Skip escaped %
             continue;
          }

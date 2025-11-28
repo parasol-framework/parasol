@@ -14,26 +14,23 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 
-// -- Object hashing ------------------------------------------------------
+// Object hashing
 
 // Hash an arbitrary key and return its anchor position in the hash table.
 static Node* hashkey(const GCtab* t, cTValue* key)
 {
    lj_assertX(!tvisint(key), "attempt to hash integer");
-   if (tvisstr(key))
-      return hashstr(t, strV(key));
-   else if (tvisnum(key))
-      return hashnum(t, key);
-   else if (tvisbool(key))
-      return hashmask(t, boolV(key));
-   else
-      return hashgcref(t, key->gcr);
+   if (tvisstr(key)) return hashstr(t, strV(key));
+   else if (tvisnum(key)) return hashnum(t, key);
+   else if (tvisbool(key)) return hashmask(t, boolV(key));
+   else return hashgcref(t, key->gcr);
    // Only hash 32 bits of lightuserdata on a 64 bit CPU. Good enough?
 }
 
-// -- Table creation and destruction --------------------------------------
+// Table creation and destruction
 
 // Create new hash part for table.
+
 static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
 {
    uint32_t hsize;
@@ -137,6 +134,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 ** The hash size is given in hash bits. hbits=0 means no hash part.
 ** hbits=1 creates 2 hash slots, hbits=2 creates 4 hash slots and so on.
 */
+
 GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 {
    GCtab* t = newtab(L, asize, hbits);
@@ -162,14 +160,15 @@ GCtab* LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
 #endif
 
 // Duplicate a table.
+
 GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
 {
    GCtab* t;
    uint32_t asize, hmask;
    t = newtab(L, kt->asize, kt->hmask > 0 ? lj_fls(kt->hmask) + 1 : 0);
-   lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask,
-      "mismatched size of table and template");
+   lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask, "mismatched size of table and template");
    t->nomm = 0;  //  Keys with metamethod names may be present.
+
    asize = kt->asize;
    if (asize > 0) {
       TValue* array = tvref(t->array);
@@ -183,6 +182,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
          memcpy(array, karray, asize * sizeof(TValue));
       }
    }
+
    hmask = kt->hmask;
    if (hmask > 0) {
       uint32_t i;
@@ -707,4 +707,3 @@ MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
    return lj_tab_len(t);
 }
 #endif
-

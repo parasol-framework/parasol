@@ -220,10 +220,11 @@ static int regex_search(lua_State *Lua)
 
    size_t text_len = 0;
    auto text = luaL_checklstring(Lua, 1, &text_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    lua_createtable(Lua, 0, 0); // Result table
 
+   // Use match_many() to populate the table with the matches.
    auto meta = regex_callback { Lua };
    meta.subject = std::string_view(text, text_len);
    auto cb = C_FUNCTION(match_many, &meta);
@@ -264,7 +265,7 @@ static int regex_split(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
 
    size_t text_len = 0;
-   const char *text = luaL_checklstring(Lua, 1, &text_len);
+   auto text = luaL_checklstring(Lua, 1, &text_len);
    auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    pf::vector<std::string> parts;
