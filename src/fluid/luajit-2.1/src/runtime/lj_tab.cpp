@@ -664,11 +664,13 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
    cTValue* tv;
    size_t lo = hi;
    hi++;
+   // Handle wrap-around when hi was SIZE_MAX (sentinel for empty array part)
+   if (hi == 0) hi = 1;
    // Widening search for an upper bound.
    while ((tv = lj_tab_getint(t, (int32_t)hi)) and !tvisnil(tv)) {
       lo = hi;
       hi += hi;
-      if (hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
+      if (hi == 0 or hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
          lo = 0;  // 0-based: start linear search at index 0
          while ((tv = lj_tab_getint(t, (int32_t)lo)) and !tvisnil(tv)) lo++;
          return lo - 1;

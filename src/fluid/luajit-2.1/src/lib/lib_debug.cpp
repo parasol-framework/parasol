@@ -85,17 +85,12 @@ static void settabsb(lua_State* L, const char* i, int v)
    lua_setfield(L, -2, i);
 }
 
+// Convert 0-based user index to 1-based internal slot number.
+// Negative indices (varargs) pass through unchanged.
 static int32_t debug_semantic_index_to_internal(int32_t Index)
 {
-   if (Index > 0) {
-#if LJ_STARTING_INDEX == 0
-      return Index + 1;
-#else
-      return Index;
-#endif
-   }
-
-   return Index;
+   if (Index >= 0) return Index + 1;  // 0-based: slot 0 → internal 1
+   return Index;  // Negative (varargs) unchanged
 }
 
 static lua_State* getthread(lua_State* L, int* arg)
@@ -422,4 +417,3 @@ extern int luaopen_debug(lua_State* L)
    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
    return 1;
 }
-

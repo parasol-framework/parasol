@@ -174,12 +174,6 @@ static const char* debug_varname(const GCproto* pt, BCPOS pc, BCREG slot)
 }
 
 //********************************************************************************************************************
-// 0-based: convert semantic slot number to internal register (add 1 for positive slots)
-static inline BCREG debug_semantic_slot_to_internal(int32_t Slot)
-{
-   if (Slot > 0) return (BCREG)(Slot + 1);
-   return (BCREG)Slot;
-}
 
 // Get name of local variable from semantic slot number and function/frame.
 
@@ -418,30 +412,32 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
 //********************************************************************************************************************
 
+// Note: n is the internal slot number (1-based). Call sites should convert from
+// 0-based user indices if needed (e.g., debug_semantic_index_to_internal in lib_debug.cpp).
 [[nodiscard]] extern const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
    const char* name = nullptr;
-   int32_t slot = debug_semantic_slot_to_internal(n);
    if (ar) {
-      TValue* o = debug_localname(L, ar, &name, slot);
+      TValue* o = debug_localname(L, ar, &name, n);
       if (name) {
          copyTV(L, L->top, o);
          incr_top(L);
       }
    }
    else if (tvisfunc(L->top - 1) and isluafunc(funcV(L->top - 1))) {
-      name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCREG)slot - 1);
+      name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCREG)n - 1);
    }
    return name;
 }
 
 //********************************************************************************************************************
 
+// Note: n is the internal slot number (1-based). Call sites should convert from
+// 0-based user indices if needed.
 extern const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
    const char* name = nullptr;
-   int32_t slot = debug_semantic_slot_to_internal(n);
-   TValue* o = debug_localname(L, ar, &name, slot);
+   TValue* o = debug_localname(L, ar, &name, n);
    if (name)
       copyTV(L, o, L->top - 1);
    L->top--;
