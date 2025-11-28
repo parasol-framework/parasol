@@ -247,9 +247,9 @@ SBuf* lj_buf_putstr_rep(SBuf* sb, GCstr* s, int32_t rep)
 SBuf* lj_buf_puttab(SBuf* sb, GCtab* t, GCstr* sep, int32_t i, int32_t e)
 {
    MSize seplen = sep ? sep->len : 0;
-   int32_t start = LJ_STARTING_INDEX;
-   if (i < start)
-      i = start;
+   // 0-based: clamp start index to 0
+   if (i < 0)
+      i = 0;
    if (i <= e) {
       for (;;) {
          cTValue* o = lj_tab_getint(t, i);

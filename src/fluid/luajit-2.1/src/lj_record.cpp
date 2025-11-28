@@ -1333,11 +1333,10 @@ static void rec_idx_bump(jit_State* J, RecordIndex* ix)
 }
 #endif
 
-// Record bounds-check.
+// Record bounds-check. 0-based indexing: valid indices are [0, asize).
 static void rec_idx_abc(jit_State* J, TRef asizeref, TRef ikey, uint32_t asize)
 {
-   if (LJ_STARTING_INDEX > 0)
-      emitir(IRTGI(IR_UGE), ikey, lj_ir_kint(J, LJ_STARTING_INDEX));
+   // 0-based: no lower bound check needed (unsigned comparison handles negative indices)
    // Try to emit invariant bounds checks.
    if ((J->flags & (JIT_F_OPT_LOOP | JIT_F_OPT_ABC)) ==
       (JIT_F_OPT_LOOP | JIT_F_OPT_ABC)) {
@@ -1390,10 +1389,10 @@ static TRef rec_idx_key(jit_State* J, RecordIndex* ix, IRRef* rbref,
       int32_t k = numberVint(&ix->keyv);
       if (not tvisint(&ix->keyv) and numV(&ix->keyv) != (lua_Number)k)
          k = LJ_MAX_ASIZE;
-      if (k >= LJ_STARTING_INDEX and (MSize)k < LJ_MAX_ASIZE) {  // Potential array key?
+      if (k >= 0 and (MSize)k < LJ_MAX_ASIZE) {  // 0-based: potential array key?
          TRef ikey = lj_opt_narrow_index(J, key);
          TRef asizeref = emitir(IRTI(IR_FLOAD), ix->tab, IRFL_TAB_ASIZE);
-         if ((MSize)k >= (MSize)LJ_STARTING_INDEX and (MSize)k < t->asize) {  // Currently an array key?
+         if ((MSize)k < t->asize) {  // 0-based: currently an array key?
             TRef arrayref;
             rec_idx_abc(J, asizeref, ikey, t->asize);
             arrayref = emitir(IRT(IR_FLOAD, IRT_PGC), ix->tab, IRFL_TAB_ARRAY);

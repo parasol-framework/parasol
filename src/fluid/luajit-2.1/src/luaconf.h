@@ -18,7 +18,7 @@
 // Array indexing configuration.
 // Set to 0 for C-style 0-based indexing, or 1 for traditional Lua 1-based indexing.
 #ifndef LJ_STARTING_INDEX
-#define LJ_STARTING_INDEX 1
+#define LJ_STARTING_INDEX 0
 #endif
 
 // Default path for loading Lua and C modules with require().

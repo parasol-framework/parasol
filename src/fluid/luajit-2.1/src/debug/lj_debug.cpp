@@ -174,16 +174,10 @@ static const char* debug_varname(const GCproto* pt, BCPOS pc, BCREG slot)
 }
 
 //********************************************************************************************************************
+// 0-based: convert semantic slot number to internal register (add 1 for positive slots)
 static inline BCREG debug_semantic_slot_to_internal(int32_t Slot)
 {
-   if (Slot > 0) {
-#if LJ_STARTING_INDEX == 0
-      return (BCREG)(Slot + 1);
-#else
-      return (BCREG)Slot;
-#endif
-   }
-
+   if (Slot > 0) return (BCREG)(Slot + 1);
    return (BCREG)Slot;
 }
 

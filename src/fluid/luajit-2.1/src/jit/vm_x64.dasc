@@ -1455,10 +1455,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov [BASE-16], CFUNC:RD
   |  mov [BASE-8], TMPR
   |.if DUALNUM
-  |  mov64 RD, ((uint64_t)LJ_TISNUM<<47)
+  |  mov64 RD, (((uint64_t)LJ_TISNUM<<47) | 0xFFFFFFFF)  // 0-based: init to -1
   |  mov [BASE], RD
   |.else
-  |  mov qword [BASE], 0
+  |  mov64 RD, 0xBFF0000000000000  // 0-based: -1.0 in IEEE 754
+  |  mov [BASE], RD
   |.endif
   |  mov RDd, 1+3
   |  jmp ->fff_res
@@ -4938,4 +4939,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

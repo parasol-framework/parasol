@@ -144,9 +144,10 @@ GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 }
 
 // The API of this function conforms to lua_createtable().
+// 0-based: asize = a for a array elements at indices 0..a-1
 GCtab* lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
 {
-   return lj_tab_new(L, (uint32_t)(a > 0 ? a + LJ_STARTING_INDEX : 0), hsize2hbits(h));
+   return lj_tab_new(L, (uint32_t)(a > 0 ? a : 0), hsize2hbits(h));
 }
 
 #if LJ_HASJIT
@@ -300,9 +301,8 @@ static uint32_t countint(cTValue* key, uint32_t* bins)
    if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      // Only count keys that would be valid array indices (>= LJ_STARTING_INDEX).
-      // This must match the inarray() check to avoid infinite rehash loops.
-      if (k >= LJ_STARTING_INDEX and (uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
+      // 0-based: valid array indices are [0, LJ_MAX_ASIZE)
+      if (k >= 0 and (uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
          bins[(k > 2 ? lj_fls((uint32_t)(k - 1)) : 0)]++;
          return 1;
       }
@@ -585,9 +585,9 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
 
 // -- Table traversal -----------------------------------------------------
 
-/* Table traversal indexes:
+/* Table traversal indexes (0-based):
 **
-** Array key index: [LJ_STARTING_INDEX .. t->asize-1]
+** Array key index: [0 .. t->asize-1]
 ** Hash key index:  [t->asize .. t->asize+t->hmask]
 ** Invalid key:     ~0
 */
@@ -598,7 +598,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    TValue tmp;
    if (tvisint(key)) {
       int32_t k = intV(key);
-      if ((uint32_t)k >= (uint32_t)LJ_STARTING_INDEX and (uint32_t)k < t->asize)
+      if ((uint32_t)k < t->asize)  // 0-based: valid if k in [0, asize)
          return (uint32_t)k + 1;
       setnumV(&tmp, (lua_Number)k);
       key = &tmp;
@@ -606,7 +606,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    else if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k >= (uint32_t)LJ_STARTING_INDEX and (uint32_t)k < t->asize and nk == (lua_Number)k)
+      if ((uint32_t)k < t->asize and nk == (lua_Number)k)  // 0-based
          return (uint32_t)k + 1;
    }
    if (!tvisnil(key)) {
@@ -626,14 +626,11 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 {
    uint32_t idx = lj_tab_keyindex(t, key);  //  Find successor index of key.
-   // Note: idx is an internal traversal index (0-based), not a semantic Lua index.
    // First traverse the array part (slots 0 to asize-1).
    for (; idx < t->asize; idx++) {
       cTValue* a = arrayslot(t, idx);
       if (LJ_LIKELY(!tvisnil(a))) {
-         // Return the semantic index to Lua. For 1-based, slot i contains semantic index i.
-         // For 0-based, we'd need LJ_IDX_FROM_STORAGE(idx), but since storage[i] = semantic[i]
-         // for valid indices >= LJ_STARTING_INDEX, just return idx directly.
+         // 0-based: storage index = semantic index, so return idx directly
          setintV(o, idx);
          o[1] = *a;
          return 1;
@@ -654,13 +651,12 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 
 // -- Table length calculation --------------------------------------------
 
-// Compute table length. Slow path with mixed array/hash lookups.
+// 0-based: length = last_index + 1 (e.g., last element at index 2 → length 3)
 static LJ_AINLINE MSize semantic_length(size_t last_index)
 {
-   size_t start = (size_t)LJ_STARTING_INDEX;
    // Handle sentinel value (size_t)-1 representing "before the first element"
    if (last_index == (size_t)-1) return 0;
-   return last_index >= start ? (MSize)(last_index - start + 1) : 0;
+   return (MSize)(last_index + 1);
 }
 
 LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
@@ -673,7 +669,7 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
       lo = hi;
       hi += hi;
       if (hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
-         lo = (size_t)LJ_STARTING_INDEX;
+         lo = 0;  // 0-based: start linear search at index 0
          while ((tv = lj_tab_getint(t, (int32_t)lo)) and !tvisnil(tv)) lo++;
          return lo - 1;
       }
@@ -687,26 +683,25 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
    return lo;
 }
 
-// Compute table length. Fast path.
+// Compute table length. Fast path. 0-based indexing.
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
-   size_t start = (size_t)LJ_STARTING_INDEX;
-
    // Initialize last_index to sentinel value representing "before the first element"
-   size_t last_index = start > 0 ? start - 1 : (size_t)-1;
+   size_t last_index = (size_t)-1;
    size_t hi = (size_t)t->asize;
    if (hi) {
       hi--;
-      if (hi >= start and LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
+      if (LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
          // Binary search to find a non-nil to nil transition in the array.
-         size_t lo = start > 0 ? start - 1 : (size_t)-1;
+         size_t lo = (size_t)-1;  // 0-based: sentinel is -1
          while (hi - lo > 1) {
             size_t mid = (lo + hi) >> 1;
             if (tvisnil(arrayslot(t, mid))) hi = mid; else lo = mid;
          }
          last_index = lo;
       }
-      else if (hi >= start) {
+      else {
+         // 0-based: hi is a valid index (since hi >= 0 is always true for size_t)
          last_index = hi;
       }
    }

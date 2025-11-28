@@ -67,14 +67,12 @@ static bool run_lua_test(lua_State* L, std::string_view Code, std::string& Error
 }
 
 //********************************************************************************************************************
-// Core indexing tests - validate LJ_STARTING_INDEX configuration
+// Core indexing tests - validate 0-based indexing
 
 static bool test_starting_index_constant(pf::Log& Log)
 {
-   static_assert(LJ_STARTING_INDEX IS 0 or LJ_STARTING_INDEX IS 1,
-      "LJ_STARTING_INDEX must be 0 or 1");
-
-   Log.msg("LJ_STARTING_INDEX = %d", LJ_STARTING_INDEX);
+   static_assert(LJ_STARTING_INDEX IS 0, "LJ_STARTING_INDEX must be 0 (0-based indexing)");
+   Log.msg("Using 0-based indexing");
    return true;
 }
 
@@ -91,8 +89,8 @@ static bool test_array_first_element_access(pf::Log& Log)
    std::string Error;
    const char* Code = R"(
       local t = {10, 20, 30}
-      return t[)" STRINGIFY(LJ_STARTING_INDEX) R"(]
-   )";
+      return t[0]
+   )";  // 0-based: first element at index 0
 
    if (not run_lua_test(L, Code, Error)) {
       Log.error("test failed: %s", Error.c_str());
@@ -141,7 +139,38 @@ static bool test_ipairs_starting_index(pf::Log& Log)
    }
    luaL_openlibs(L);
 
+   // First, check what ipairs() returns as the initial control variable
    std::string Error;
+   const char* CheckInit = R"(
+      local iter, t, init = ipairs({10, 20, 30})
+      return init
+   )";
+
+   if (not run_lua_test(L, CheckInit, Error)) {
+      Log.error("ipairs init check failed: %s", Error.c_str());
+      return false;
+   }
+   lua_Number InitVal = lua_tonumber(L, -1);
+   Log.msg("ipairs() returned init value: %g", InitVal);
+   lua_pop(L, 1);
+
+   // Now check the first call to ipairs_aux
+   const char* CheckFirstCall = R"(
+      local iter, t, init = ipairs({10, 20, 30})
+      local idx, val = iter(t, init)
+      return idx, val
+   )";
+
+   if (not run_lua_test(L, CheckFirstCall, Error)) {
+      Log.error("ipairs_aux first call failed: %s", Error.c_str());
+      return false;
+   }
+   lua_Number FirstIdx = lua_tonumber(L, -2);
+   lua_Number FirstVal = lua_tonumber(L, -1);
+   Log.msg("First ipairs_aux call: idx=%g, val=%g", FirstIdx, FirstVal);
+   lua_pop(L, 2);
+
+   // Now run the full iteration test
    const char* Code = R"(
       local first = nil
       local count = 0
@@ -159,9 +188,9 @@ static bool test_ipairs_starting_index(pf::Log& Log)
 
    lua_Number First = lua_tonumber(L, -2);
    lua_Number Count = lua_tonumber(L, -1);
-   if (First IS LJ_STARTING_INDEX and Count IS 3) return true;
+   if (First IS 0 and Count IS 3) return true;  // 0-based: first index is 0
 
-   Log.error("expected first index %d and count 3, got %g and %g", LJ_STARTING_INDEX, First, Count);
+   Log.error("expected first index 0 and count 3, got %g and %g", First, Count);
    return false;
 }
 
@@ -180,8 +209,8 @@ static bool test_table_insert_position(pf::Log& Log)
       local t = {}
       table.insert(t, 'a')
       table.insert(t, 'b')
-      return t[)" STRINGIFY(LJ_STARTING_INDEX) R"(], t[)" STRINGIFY(LJ_STARTING_INDEX) R"( + 1], #t
-   )";
+      return t[0], t[1], #t
+   )";  // 0-based: elements at indices 0 and 1
 
    if (not run_lua_test(L, Code, Error)) {
       Log.error("test failed: %s", Error.c_str());
@@ -219,7 +248,7 @@ static bool test_string_find_returns_correct_index(pf::Log& Log)
    }
 
    lua_Number Index = lua_tonumber(L, -2);
-   lua_Number Expected = LJ_STARTING_INDEX + 2;
+   lua_Number Expected = 2;  // 0-based: 'l' is at index 2 in "hello"
    if (Index IS Expected) return true;
 
    Log.error("expected index %g, got %g", Expected, Index);
@@ -311,8 +340,8 @@ static bool test_table_sort_operates_on_sequence(pf::Log& Log)
    const char* Code = R"(
       local t = {3, 1, 2}
       table.sort(t)
-      return t[)" STRINGIFY(LJ_STARTING_INDEX) R"(], t[)" STRINGIFY(LJ_STARTING_INDEX) R"( + 1], t[)" STRINGIFY(LJ_STARTING_INDEX) R"( + 2]
-   )";
+      return t[0], t[1], t[2]
+   )";  // 0-based: elements at indices 0, 1, 2
 
    if (not run_lua_test(L, Code, Error)) {
       Log.error("test failed: %s", Error.c_str());
@@ -389,13 +418,13 @@ static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
    GCtab* Table = lj_tab_new(L, 4, 0);
    TValue Value;
    setintV(&Value, 10);
-   copyTV(L, lj_tab_setint(L, Table, LJ_STARTING_INDEX), &Value);
+   copyTV(L, lj_tab_setint(L, Table, 0), &Value);  // 0-based
    setintV(&Value, 20);
-   copyTV(L, lj_tab_setint(L, Table, LJ_STARTING_INDEX + 1), &Value);
+   copyTV(L, lj_tab_setint(L, Table, 1), &Value);
    setintV(&Value, 30);
-   copyTV(L, lj_tab_setint(L, Table, LJ_STARTING_INDEX + 2), &Value);
+   copyTV(L, lj_tab_setint(L, Table, 2), &Value);
 
-   cTValue* First = lj_tab_getint(Table, LJ_STARTING_INDEX);
+   cTValue* First = lj_tab_getint(Table, 0);  // 0-based: first element at index 0
    // Note: tvisint() returns false when LJ_DUALNUM is not enabled (the default).
    // In that case, setintV stores the value as a number, so check tvisnumber instead.
    if (First and tvisnumber(First) and numberVnum(First) == 10.0) return true;
@@ -417,7 +446,7 @@ static bool test_lj_tab_len_returns_element_count(pf::Log& Log)
    TValue Value;
    for (int Index = 0; Index < 3; Index++) {
       setintV(&Value, (Index + 1) * 10);
-      copyTV(L, lj_tab_setint(L, Table, LJ_STARTING_INDEX + Index), &Value);
+      copyTV(L, lj_tab_setint(L, Table, Index), &Value);  // 0-based
    }
 
    MSize Length = lj_tab_len(Table);
