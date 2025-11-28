@@ -200,7 +200,7 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
    else if (tvistab(o)) {
       const GCtab* t = tabV(o);
       uint32_t narray = 0, nhash = 0;
-      uint32_t array_flag = LJ_STARTING_INDEX IS 0 ? 2u : 4u;
+      uint32_t array_start_flag = LJ_STARTING_INDEX IS 0 ? 2u : 4u;
       if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DEPTH);
       sbx->depth--;
       if (t->asize > 0) {  // Determine max. length of array part.
