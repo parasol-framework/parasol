@@ -3407,8 +3407,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   cmp TMP0, TISNIL
     |   cinc CARG1, CARG1, eq		// Skip holes in array part.
     |   beq <1
-    |   add CARG1, CARG1, TISNUM
-    |   stp CARG1, TMP0, [RA]
+    |   mov TMP2, CARG1
+    |   add TMP2, TMP2, #LJ_STARTING_INDEX
+    |   add TMP2, TMP2, TISNUM
+    |   stp TMP2, TMP0, [RA]
     |    add CARG1, CARG1, #1
     |3:
     |    str CARG1w, [RA, #-8+LO]	// Update control var.

@@ -373,6 +373,12 @@ for (i = 1; i <= len and i < dict->asize; i++) {
 2. Translate zero-based indices to the configured semantic base internally so the array part remains consistent
 3. Document that these functions supersede the existing `lua_rawgeti`/`lua_rawseti` and will replace them in future phases
 
+### Phase 7: VM Iterator Key Offsets (Estimated: 0.5 day)
+
+1. Update `BC_ITERN` iterator fast paths in `vm_*.dasc` so integer keys returned from the array part are adjusted by `LJ_STARTING_INDEX` before being pushed to the stack.
+2. Keep the control variable in storage indices to preserve iteration state while mapping returned keys to semantic indices.
+3. Apply the adjustment across x86, x64, ARM, ARM64, and PPC back ends; MIPS may be addressed later if re-enabled.
+
 ### Test-Driven Development Workflow
 
 For each code change:
@@ -395,6 +401,7 @@ Unit testing should be implemented as the primary validation mechanism for all i
 - Phase 4: Auxiliary Systems - implemented (serialization dictionaries and buffer table writes respect LJ_STARTING_INDEX)
 - Phase 5: Integration Testing - Debug build validated; dual-configuration test sweeps remain pending
 - Phase 6: C API Zero-Based Entry Points - implemented (`lua_rawgetzi`/`lua_rawsetzi` added for 0-based integer table access)
+- Phase 7: VM Iterator Key Offsets - implemented (BC_ITERN now returns semantic array keys with LJ_STARTING_INDEX applied across non-MIPS back ends)
 
 ### New Unit Test File: `unit_test_indexing.cpp`
 

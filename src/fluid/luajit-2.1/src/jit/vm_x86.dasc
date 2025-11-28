@@ -4834,11 +4834,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |1:  // Traverse array part.
     |  cmp RC, DISPATCH; jae >5		// Index points after array part?
     |  cmp dword [KBASE+RC*8+4], LJ_TNIL; je >4
+    |  mov TMP3, RC
+    |  add TMP3, LJ_STARTING_INDEX
     |.if DUALNUM
     |  mov dword [BASE+RA*8+4], LJ_TISNUM
-    |  mov dword [BASE+RA*8], RC
+    |  mov dword [BASE+RA*8], TMP3
     |.else
-    |  cvtsi2sd xmm0, RC
+    |  cvtsi2sd xmm0, TMP3
     |.endif
     |  // Copy array slot to returned value.
     |.if X64

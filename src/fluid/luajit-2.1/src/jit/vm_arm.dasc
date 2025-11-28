@@ -3998,9 +3998,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   mvn CARG2, #~LJ_TISNUM
     |    strd CARG34, [RA, #8]
     |  add RC, PC, RC, lsl #2
-    |    add RB, CARG1, #1
+    |   add RB, CARG1, #LJ_STARTING_INDEX
+    |   mov CARG1, RB
     |   strd CARG12, [RA]
     |  sub PC, RC, #0x20000
+    |    add RB, RB, #(1 - LJ_STARTING_INDEX)
     |    str RB, [RA, #-8]		// Update control var.
     |3:
     |  ins_next
