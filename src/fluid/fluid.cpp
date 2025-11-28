@@ -297,13 +297,19 @@ extern void indexing_unit_tests(int& Passed, int& Total);
 
 static void MODTest(CSTRING Options, int *Passed, int *Total)
 {
-   pf::Log log("FluidTests");
 #ifdef ENABLE_UNIT_TESTS
-   log.branch("Running Fluid unit tests...");
-   parser_unit_tests(*Passed, *Total);
-   indexing_unit_tests(*Passed, *Total);
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running indexing unit tests...");
+      indexing_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running parser unit tests...");
+      parser_unit_tests(*Passed, *Total);
+   }
 #else
-   log.warning("Unit tests are disabled in this build.");
+   pf::Log("FluidTests").warning("Unit tests are disabled in this build.");
 #endif
 }
 

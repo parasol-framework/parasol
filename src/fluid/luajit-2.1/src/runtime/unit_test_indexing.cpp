@@ -22,6 +22,7 @@ static objScript *glTestScript = nullptr;
 
 namespace {
 
+#undef STRINGIFY
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)
 
@@ -395,7 +396,9 @@ static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
    copyTV(L, lj_tab_setint(L, Table, LJ_STARTING_INDEX + 2), &Value);
 
    cTValue* First = lj_tab_getint(Table, LJ_STARTING_INDEX);
-   if (First and tvisint(First) and intV(First) IS 10) return true;
+   // Note: tvisint() returns false when LJ_DUALNUM is not enabled (the default).
+   // In that case, setintV stores the value as a number, so check tvisnumber instead.
+   if (First and tvisnumber(First) and numberVnum(First) == 10.0) return true;
 
    Log.error("lj_tab_getint failed for first element");
    return false;
@@ -464,4 +467,3 @@ extern void indexing_unit_tests(int& Passed, int& Total)
 }
 
 #endif // ENABLE_UNIT_TESTS
-

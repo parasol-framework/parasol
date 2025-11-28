@@ -14,26 +14,23 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 
-// -- Object hashing ------------------------------------------------------
+// Object hashing
 
 // Hash an arbitrary key and return its anchor position in the hash table.
 static Node* hashkey(const GCtab* t, cTValue* key)
 {
    lj_assertX(!tvisint(key), "attempt to hash integer");
-   if (tvisstr(key))
-      return hashstr(t, strV(key));
-   else if (tvisnum(key))
-      return hashnum(t, key);
-   else if (tvisbool(key))
-      return hashmask(t, boolV(key));
-   else
-      return hashgcref(t, key->gcr);
+   if (tvisstr(key)) return hashstr(t, strV(key));
+   else if (tvisnum(key)) return hashnum(t, key);
+   else if (tvisbool(key)) return hashmask(t, boolV(key));
+   else return hashgcref(t, key->gcr);
    // Only hash 32 bits of lightuserdata on a 64 bit CPU. Good enough?
 }
 
-// -- Table creation and destruction --------------------------------------
+// Table creation and destruction
 
 // Create new hash part for table.
+
 static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
 {
    uint32_t hsize;
@@ -137,6 +134,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 ** The hash size is given in hash bits. hbits=0 means no hash part.
 ** hbits=1 creates 2 hash slots, hbits=2 creates 4 hash slots and so on.
 */
+
 GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 {
    GCtab* t = newtab(L, asize, hbits);
@@ -162,14 +160,15 @@ GCtab* LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
 #endif
 
 // Duplicate a table.
+
 GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
 {
    GCtab* t;
    uint32_t asize, hmask;
    t = newtab(L, kt->asize, kt->hmask > 0 ? lj_fls(kt->hmask) + 1 : 0);
-   lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask,
-      "mismatched size of table and template");
+   lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask, "mismatched size of table and template");
    t->nomm = 0;  //  Keys with metamethod names may be present.
+
    asize = kt->asize;
    if (asize > 0) {
       TValue* array = tvref(t->array);
@@ -183,6 +182,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
          memcpy(array, karray, asize * sizeof(TValue));
       }
    }
+
    hmask = kt->hmask;
    if (hmask > 0) {
       uint32_t i;
@@ -300,7 +300,9 @@ static uint32_t countint(cTValue* key, uint32_t* bins)
    if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
+      // Only count keys that would be valid array indices (>= LJ_STARTING_INDEX).
+      // This must match the inarray() check to avoid infinite rehash loops.
+      if (k >= LJ_STARTING_INDEX and (uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
          bins[(k > 2 ? lj_fls((uint32_t)(k - 1)) : 0)]++;
          return 1;
       }
@@ -617,18 +619,21 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
          return key->u32.lo;
       return ~0u;  //  Invalid key to next.
    }
-   return (uint32_t)LJ_STARTING_INDEX;  //  A nil key starts the traversal.
+   return 0;  //  A nil key starts the traversal at internal index 0.
 }
 
 // Get the next key/value pair of a table traversal.
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 {
    uint32_t idx = lj_tab_keyindex(t, key);  //  Find successor index of key.
-   if (idx < (uint32_t)LJ_STARTING_INDEX) idx = (uint32_t)LJ_STARTING_INDEX;
-   // First traverse the array part.
+   // Note: idx is an internal traversal index (0-based), not a semantic Lua index.
+   // First traverse the array part (slots 0 to asize-1).
    for (; idx < t->asize; idx++) {
       cTValue* a = arrayslot(t, idx);
       if (LJ_LIKELY(!tvisnil(a))) {
+         // Return the semantic index to Lua. For 1-based, slot i contains semantic index i.
+         // For 0-based, we'd need LJ_IDX_FROM_STORAGE(idx), but since storage[i] = semantic[i]
+         // for valid indices >= LJ_STARTING_INDEX, just return idx directly.
          setintV(o, idx);
          o[1] = *a;
          return 1;
@@ -653,6 +658,8 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 static LJ_AINLINE MSize semantic_length(size_t last_index)
 {
    size_t start = (size_t)LJ_STARTING_INDEX;
+   // Handle sentinel value (size_t)-1 representing "before the first element"
+   if (last_index == (size_t)-1) return 0;
    return last_index >= start ? (MSize)(last_index - start + 1) : 0;
 }
 
@@ -684,14 +691,15 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
    size_t start = (size_t)LJ_STARTING_INDEX;
-   if ((t->asize IS 0) and (t->hmask IS 0)) return 0;
-   size_t last_index = start > 0 ? start - 1 : 0;
+
+   // Initialize last_index to sentinel value representing "before the first element"
+   size_t last_index = start > 0 ? start - 1 : (size_t)-1;
    size_t hi = (size_t)t->asize;
    if (hi) {
       hi--;
       if (hi >= start and LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
          // Binary search to find a non-nil to nil transition in the array.
-         size_t lo = start > 0 ? start - 1 : 0;
+         size_t lo = start > 0 ? start - 1 : (size_t)-1;
          while (hi - lo > 1) {
             size_t mid = (lo + hi) >> 1;
             if (tvisnil(arrayslot(t, mid))) hi = mid; else lo = mid;
@@ -721,4 +729,3 @@ MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
    return lj_tab_len(t);
 }
 #endif
-
