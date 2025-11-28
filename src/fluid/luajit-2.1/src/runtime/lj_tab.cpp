@@ -684,6 +684,7 @@ LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
    size_t start = (size_t)LJ_STARTING_INDEX;
+   if ((t->asize IS 0) and (t->hmask IS 0)) return 0;
    size_t last_index = start > 0 ? start - 1 : 0;
    size_t hi = (size_t)t->asize;
    if (hi) {
