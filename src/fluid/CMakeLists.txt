@@ -645,6 +645,10 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
 
+if (ENABLE_UNIT_TESTS)
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")
+endif ()
+
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")
 endif ()

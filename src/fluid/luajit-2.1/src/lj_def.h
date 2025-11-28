@@ -22,6 +22,12 @@ constexpr uint64_t LJ_MAX_MEM64 = ((uint64_t)1 << 47);  //  Max. 64 bit memory a
 #define LJ_MAX_BUF   LJ_MAX_MEM32   //  Max. buffer length.
 #define LJ_MAX_UDATA   LJ_MAX_MEM32   //  Max. userdata length.
 
+// Index adjustment macros for converting between semantic and storage indices.
+// Semantic index: The index as seen by Lua code (starts at LJ_STARTING_INDEX).
+// Storage index: The internal array index (always 0-based).
+#define LJ_IDX_TO_STORAGE(idx)    ((idx) - LJ_STARTING_INDEX)
+#define LJ_IDX_FROM_STORAGE(idx)  ((idx) + LJ_STARTING_INDEX)
+
 constexpr uint32_t LJ_MAX_STRTAB = (1u << 26);      //  Max. string table size.
 constexpr int LJ_MAX_HBITS = 26;      //  Max. hash bits.
 constexpr int LJ_MAX_ABITS = 28;      //  Max. bits of array key.

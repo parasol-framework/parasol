@@ -5143,11 +5143,12 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  checknil TMP2
     |     lwz INS, -4(PC)
     |  beq >4
+    |   addi TMP2, RC, LJ_STARTING_INDEX
     |.if DUALNUM
-    |   stw RC, 4(RA)
+    |   stw TMP2, 4(RA)
     |   stw TISNUM, 0(RA)
     |.else
-    |   tonum_u f1, RC
+    |   tonum_u f1, TMP2
     |.endif
     |    addi RC, RC, 1
     |     addis TMP3, PC, -(BCBIAS_J*4 >> 16)

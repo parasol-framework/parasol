@@ -367,6 +367,18 @@ for (i = 1; i <= len and i < dict->asize; i++) {
 
 6. Performance regression testing
 
+### Phase 6: C API Zero-Based Entry Points (Estimated: 0.5-1 day)
+
+1. Add `lua_rawgetzi`/`lua_rawsetzi` to provide zero-based integer table access for embedders
+2. Translate zero-based indices to the configured semantic base internally so the array part remains consistent
+3. Document that these functions supersede the existing `lua_rawgeti`/`lua_rawseti` and will replace them in future phases
+
+### Phase 7: VM Iterator Key Offsets (Estimated: 0.5 day)
+
+1. Update `BC_ITERN` iterator fast paths in `vm_*.dasc` so integer keys returned from the array part are adjusted by `LJ_STARTING_INDEX` before being pushed to the stack.
+2. Keep the control variable in storage indices to preserve iteration state while mapping returned keys to semantic indices.
+3. Apply the adjustment across x86, x64, ARM, ARM64, and PPC back ends; MIPS may be addressed later if re-enabled.
+
 ### Test-Driven Development Workflow
 
 For each code change:
@@ -380,6 +392,21 @@ For each code change:
 ## Unit Testing Strategy
 
 Unit testing should be implemented as the primary validation mechanism for all index-related changes. A dedicated unit test file `unit_test_indexing.cpp` should be created following the pattern established by `parser/parser_unit_tests.cpp`.
+
+## Status Update
+
+- Phase 1: Core Infrastructure - implemented
+- Phase 2: Library Functions - implemented
+- Phase 3: VM and JIT - implemented
+- Phase 4: Serialization and buffer preparation - implemented
+- Phase 5: Integration Testing - pending dual-configuration sweeps
+- Phase 6: C API Zero-Based Entry Points - implemented
+- Phase 7: VM Iterator Key Offsets - implemented
+- Phase 8: Buffer Library alignment - implemented
+- Phase 9: JIT Recording adjustments - implemented
+- Phase 10: Serialization dictionary offsets - implemented
+- Phase 11: Debug Library adjustments - implemented
+- Indexing unit tests: `indexing_unit_tests()` registered with the Fluid module and compiled when `ENABLE_UNIT_TESTS` is set
 
 ### New Unit Test File: `unit_test_indexing.cpp`
 

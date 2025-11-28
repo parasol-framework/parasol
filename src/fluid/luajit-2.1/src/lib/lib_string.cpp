@@ -44,17 +44,21 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
 {
    GCstr* s = lj_lib_checkstr(L, 1);
    int32_t len = (int32_t)s->len;
-   int32_t start = lj_lib_optint(L, 2, 1);
+   int32_t start = lj_lib_optint(L, 2, LJ_STARTING_INDEX);
    int32_t stop = lj_lib_optint(L, 3, start);
    int32_t n, i;
    const unsigned char* p;
-   if (stop < 0) stop += len + 1;
-   if (start < 0) start += len + 1;
-   if (start <= 0) start = 1;
-   if (stop > len) stop = len;
+   if (stop < 0) stop += len + LJ_STARTING_INDEX;
+   if (start < 0) start += len + LJ_STARTING_INDEX;
+   if (start < LJ_STARTING_INDEX) start = LJ_STARTING_INDEX;
+   {
+      int32_t max_index = len + LJ_STARTING_INDEX - 1;
+      if (stop > max_index) stop = max_index;
+   }
    if (start > stop) return FFH_RES(0);  //  Empty interval: return no results.
-   start--;
-   n = stop - start;
+   start -= LJ_STARTING_INDEX;
+   stop -= LJ_STARTING_INDEX;
+   n = stop - start + 1;
    if ((uint32_t)n > LUAI_MAXCSTACK)
       lj_err_caller(L, ErrMsg::STRSLC);
    lj_state_checkstack(L, (MSize)n);
@@ -137,7 +141,7 @@ LJLIB_CF(string_split)
    MSize seplen;
    MSize slen = s->len;
    GCtab* t;
-   int32_t idx = 1;
+   int32_t idx = LJ_STARTING_INDEX;
 
    if ((!sep) or (sep->len == 0)) {
       sepstr = " \t\n\r";  //  Default whitespace separators
@@ -327,6 +331,8 @@ LJLIB_CF(string_join)
    MSize seplen = 0;
    SBuf* sb = lj_buf_tmp_(L);
    int32_t len = (int32_t)lj_tab_len(t);
+   int32_t first = LJ_STARTING_INDEX;
+   int32_t last = len + LJ_STARTING_INDEX - 1;
    int32_t i;
 
    if (sep) {
@@ -336,7 +342,7 @@ LJLIB_CF(string_join)
 
    lj_buf_reset(sb);
 
-   for (i = 1; i <= len; i++) {
+   for (i = first; i <= last; i++) {
       cTValue* tv = lj_tab_getint(t, i);
       if (tv and !tvisnil(tv)) {
          int isValidType = 0;
@@ -823,7 +829,7 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
       ptrdiff_t l = ms->capture[i].len;
       if (l == CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
       if (l == CAP_POSITION)
-         lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init + 1);
+         lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init + LJ_STARTING_INDEX);
       else
          lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
    }
@@ -843,9 +849,9 @@ static int str_find_aux(lua_State* L, int find)
 {
    GCstr* s = lj_lib_checkstr(L, 1);
    GCstr* p = lj_lib_checkstr(L, 2);
-   int32_t start = lj_lib_optint(L, 3, 1);
+   int32_t start = lj_lib_optint(L, 3, LJ_STARTING_INDEX);
    MSize st;
-   if (start < 0) start += (int32_t)s->len; else start--;
+   if (start < 0) start += (int32_t)s->len + LJ_STARTING_INDEX; else start -= LJ_STARTING_INDEX;
    if (start < 0) start = 0;
    st = (MSize)start;
    if (st > s->len) {
@@ -880,8 +886,8 @@ static int str_find_aux(lua_State* L, int find)
          q = match(&ms, sstr, pstr);
          if (q) {
             if (find) {
-               setintV(L->top++, (int32_t)(sstr - (strdata(s) - 1)));
-               setintV(L->top++, (int32_t)(q - strdata(s)));
+               setintV(L->top++, (int32_t)(sstr - strdata(s) + LJ_STARTING_INDEX));
+               setintV(L->top++, (int32_t)(q - strdata(s) + LJ_STARTING_INDEX - 1));
                return push_captures(&ms, nullptr, nullptr) + 2;
             }
             else {

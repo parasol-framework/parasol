@@ -4087,15 +4087,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |1:  // Traverse array part.
     |  cmp RCd, TMPRd; jae >5		// Index points after array part?
     |  cmp aword [ITYPE+RC*8], LJ_TNIL; je >4
+    |  mov RB, [ITYPE+RC*8]
+    |  mov ITYPEd, RCd
+    |  add ITYPEd, LJ_STARTING_INDEX
     |.if not DUALNUM
-    |  cvtsi2sd xmm0, RCd
+    |  cvtsi2sd xmm0, ITYPEd
     |.endif
     |  // Copy array slot to returned value.
-    |  mov RB, [ITYPE+RC*8]
     |  mov [BASE+RA*8+8], RB
     |  // Return array index as a numeric key.
     |.if DUALNUM
-    |  setint ITYPE, RC
+    |  setint ITYPE, ITYPE
     |  mov [BASE+RA*8], ITYPE
     |.else
     |  movsd qword [BASE+RA*8], xmm0

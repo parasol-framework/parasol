@@ -464,7 +464,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
       if (tref_istab(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
          J->base[1] = tr;
-         J->base[2] = rd->data ? lj_ir_kint(J, 0) : TREF_NIL;
+         J->base[2] = rd->data ? lj_ir_kint(J, LJ_STARTING_INDEX - 1) : TREF_NIL;
          rd->nres = 3;
       }  // else: Interpreter will throw.
    }
@@ -1470,10 +1470,11 @@ static void LJ_FASTCALL recff_table_concat(jit_State* J, RecordFFData* rd)
       TRef sep = !tref_isnil(J->base[1]) ?
          lj_ir_tostr(J, J->base[1]) : lj_ir_knull(J, IRT_STR);
       TRef tri = (J->base[1] and !tref_isnil(J->base[2])) ?
-         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 1);
+         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, LJ_STARTING_INDEX);
       TRef tre = (J->base[1] and J->base[2] and !tref_isnil(J->base[3])) ?
          lj_opt_narrow_toint(J, J->base[3]) :
-         emitir(IRTI(IR_ALEN), tab, TREF_NIL);
+         emitir(IRTI(IR_ADD), emitir(IRTI(IR_ALEN), tab, TREF_NIL),
+            lj_ir_kint(J, LJ_STARTING_INDEX - 1));
       TRef hdr = recff_bufhdr(J);
       TRef tr = lj_ir_call(J, IRCALL_lj_buf_puttab, hdr, tab, sep, tri, tre);
       emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, nullptr));

@@ -78,7 +78,7 @@ LJLIB_CF(table_maxn)
 LJLIB_CF(table_insert)      LJLIB_REC(.)
 {
    GCtab* t = lj_lib_checktab(L, 1);
-   int32_t n, i = (int32_t)lj_tab_len(t) + 1;
+   int32_t n, i = (int32_t)lj_tab_len(t) + LJ_STARTING_INDEX;
    int nargs = (int)((char*)L->top - (char*)L->base);
    if (nargs != 2 * sizeof(TValue)) {
       if (nargs != 3 * sizeof(TValue))
@@ -148,8 +148,8 @@ LJLIB_CF(table_concat) LJLIB_REC(.)
 {
    GCtab* t = lj_lib_checktab(L, 1);
    GCstr* sep = lj_lib_optstr(L, 2);
-   int32_t i = lj_lib_optint(L, 3, 1);
-   int32_t e = (L->base + 3 < L->top and !tvisnil(L->base + 3)) ? lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t);
+   int32_t i = lj_lib_optint(L, 3, LJ_STARTING_INDEX);
+   int32_t e = (L->base + 3 < L->top and !tvisnil(L->base + 3)) ? lj_lib_checkint(L, 4) : (int32_t)lj_tab_len(t) + LJ_STARTING_INDEX - 1;
    SBuf* sb = lj_buf_tmp_(L);
    SBuf* sbx = lj_buf_puttab(sb, t, sep, i, e);
    if (LJ_UNLIKELY(!sbx)) {  // Error: bad element type.
@@ -257,7 +257,7 @@ LJLIB_CF(table_sort)
    lua_settop(L, 2);
    if (!tvisnil(L->base + 1))
       lj_lib_checkfunc(L, 2);
-   auxsort(L, 1, n);
+   auxsort(L, LJ_STARTING_INDEX, n + LJ_STARTING_INDEX - 1);
    return 0;
 }
 
@@ -266,10 +266,10 @@ LJLIB_CF(table_pack)
 {
    TValue* array, * base = L->base;
    MSize i, n = (uint32_t)(L->top - base);
-   GCtab* t = lj_tab_new(L, n ? n + 1 : 0, 1);
+   GCtab* t = lj_tab_new(L, n ? n + LJ_STARTING_INDEX : 0, 1);
    // NOBARRIER: The table is new (marked white).
    setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
-   for (array = tvref(t->array) + 1, i = 0; i < n; i++) copyTV(L, &array[i], &base[i]);
+   for (array = tvref(t->array) + LJ_STARTING_INDEX, i = 0; i < n; i++) copyTV(L, &array[i], &base[i]);
    settabV(L, base, t);
    L->top = base + 1;
    lj_gc_check(L);

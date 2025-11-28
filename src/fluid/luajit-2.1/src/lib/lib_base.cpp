@@ -98,7 +98,7 @@ static int ffh_pairs(lua_State* L, MMS mm)
       if (!tvistab(o)) lj_err_argt(L, 1, LUA_TTABLE);
       if (LJ_FR2) { copyTV(L, o - 1, o); o--; }
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
-      if (mm == MM_pairs) setnilV(o + 1); else setintV(o + 1, 0);
+      if (mm == MM_pairs) setnilV(o + 1); else setintV(o + 1, LJ_STARTING_INDEX - 1);
       return FFH_RES(3);
    }
 }
@@ -225,9 +225,9 @@ LJLIB_CF(rawlen)      LJLIB_REC(.)
 LJLIB_CF(unpack)
 {
    GCtab* t = lj_lib_checktab(L, 1);
-   int32_t n, i = lj_lib_optint(L, 2, 1);
+   int32_t n, i = lj_lib_optint(L, 2, LJ_STARTING_INDEX);
    int32_t e = (L->base + 3 - 1 < L->top and !tvisnil(L->base + 3 - 1)) ?
-      lj_lib_checkint(L, 3) : (int32_t)lj_tab_len(t);
+      lj_lib_checkint(L, 3) : (int32_t)lj_tab_len(t) + LJ_STARTING_INDEX - 1;
    uint32_t nu;
    if (i > e) return 0;
    nu = (uint32_t)e - (uint32_t)i;
@@ -256,7 +256,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
    else {
       int32_t i = lj_lib_checkint(L, 1);
       if (i < 0) i = n + i; else if (i > n) i = n;
-      if (i < 1)
+      if (i < LJ_STARTING_INDEX)
          lj_err_arg(L, 1, ErrMsg::IDXRNG);
       return n - i;
    }

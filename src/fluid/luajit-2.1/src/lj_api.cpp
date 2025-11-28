@@ -880,6 +880,21 @@ extern void lua_rawgeti(lua_State* L, int idx, int n)
    incr_top(L);
 }
 
+extern void lua_rawgetzi(lua_State* L, int idx, int n)
+{
+   cTValue* v, * t = index2adr(L, idx);
+   int semantic_index = LJ_IDX_FROM_STORAGE(n);
+   lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
+   v = lj_tab_getint(tabV(t), semantic_index);
+   if (v) {
+      copyTV(L, L->top, v);
+   }
+   else {
+      setnilV(L->top);
+   }
+   incr_top(L);
+}
+
 extern int lua_getmetatable(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
@@ -1060,6 +1075,19 @@ extern void lua_rawseti(lua_State* L, int idx, int n)
    TValue* dst, * src;
    lj_checkapi_slot(1);
    dst = lj_tab_setint(L, t, n);
+   src = L->top - 1;
+   copyTV(L, dst, src);
+   lj_gc_barriert(L, t, dst);
+   L->top = src;
+}
+
+extern void lua_rawsetzi(lua_State* L, int idx, int n)
+{
+   GCtab* t = tabV(index2adr(L, idx));
+   TValue* dst, * src;
+   int semantic_index = LJ_IDX_FROM_STORAGE(n);
+   lj_checkapi_slot(1);
+   dst = lj_tab_setint(L, t, semantic_index);
    src = L->top - 1;
    copyTV(L, dst, src);
    lj_gc_barriert(L, t, dst);

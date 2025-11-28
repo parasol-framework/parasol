@@ -85,6 +85,19 @@ static void settabsb(lua_State* L, const char* i, int v)
    lua_setfield(L, -2, i);
 }
 
+static int32_t debug_semantic_index_to_internal(int32_t Index)
+{
+   if (Index > 0) {
+#if LJ_STARTING_INDEX == 0
+      return Index + 1;
+#else
+      return Index;
+#endif
+   }
+
+   return Index;
+}
+
 static lua_State* getthread(lua_State* L, int* arg)
 {
    if (L->base < L->top and tvisthread(L->base)) {
@@ -167,7 +180,7 @@ LJLIB_CF(debug_getlocal)
    lua_State* L1 = getthread(L, &arg);
    lua_Debug ar;
    const char* name;
-   int slot = lj_lib_checkint(L, arg + 2);
+   int slot = debug_semantic_index_to_internal(lj_lib_checkint(L, arg + 2));
    if (tvisfunc(L->base + arg)) {
       L->top = L->base + arg + 1;
       lua_pushstring(L, lua_getlocal(L, nullptr, slot));
@@ -198,13 +211,13 @@ LJLIB_CF(debug_setlocal)
       lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
    tv = lj_lib_checkany(L, arg + 3);
    copyTV(L1, L1->top++, tv);
-   lua_pushstring(L, lua_setlocal(L1, &ar, lj_lib_checkint(L, arg + 2)));
+   lua_pushstring(L, lua_setlocal(L1, &ar, debug_semantic_index_to_internal(lj_lib_checkint(L, arg + 2))));
    return 1;
 }
 
 static int debug_getupvalue(lua_State* L, int get)
 {
-   int32_t n = lj_lib_checkint(L, 2);
+   int32_t n = debug_semantic_index_to_internal(lj_lib_checkint(L, 2));
    const char* name;
    lj_lib_checkfunc(L, 1);
    name = get ? lua_getupvalue(L, 1, n) : lua_setupvalue(L, 1, n);
@@ -232,7 +245,7 @@ LJLIB_CF(debug_setupvalue)
 LJLIB_CF(debug_upvalueid)
 {
    GCfunc* fn = lj_lib_checkfunc(L, 1);
-   int32_t n = lj_lib_checkint(L, 2) - 1;
+   int32_t n = debug_semantic_index_to_internal(lj_lib_checkint(L, 2)) - 1;
    if ((uint32_t)n >= fn->l.nupvalues)
       lj_err_arg(L, 2, ErrMsg::IDXRNG);
    lua_pushlightuserdata(L, isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) :
@@ -250,7 +263,7 @@ LJLIB_CF(debug_upvaluejoin)
       fn[i] = lj_lib_checkfunc(L, 2 * i + 1);
       if (!isluafunc(fn[i]))
          lj_err_arg(L, 2 * i + 1, ErrMsg::NOLFUNC);
-      n = lj_lib_checkint(L, 2 * i + 2) - 1;
+      n = debug_semantic_index_to_internal(lj_lib_checkint(L, 2 * i + 2)) - 1;
       if ((uint32_t)n >= fn[i]->l.nupvalues)
          lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
       p[i] = &fn[i]->l.uvptr[n];
