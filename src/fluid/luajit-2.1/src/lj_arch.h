@@ -24,12 +24,6 @@
 #define LUAJIT_ARCH_arm64   4
 #define LUAJIT_ARCH_PPC      5
 #define LUAJIT_ARCH_ppc      5
-#define LUAJIT_ARCH_MIPS   6
-#define LUAJIT_ARCH_mips   6
-#define LUAJIT_ARCH_MIPS32   6
-#define LUAJIT_ARCH_mips32   6
-#define LUAJIT_ARCH_MIPS64   7
-#define LUAJIT_ARCH_mips64   7
 
 // Target OS.
 #define LUAJIT_OS_OTHER      0
@@ -60,10 +54,6 @@
 #define LUAJIT_TARGET   LUAJIT_ARCH_ARM64
 #elif defined(__ppc__) || defined(__ppc) || defined(__PPC__) || defined(__PPC) || defined(__powerpc__) || defined(__powerpc) || defined(__POWERPC__) || defined(__POWERPC) || defined(_M_PPC)
 #define LUAJIT_TARGET   LUAJIT_ARCH_PPC
-#elif defined(__mips64__) || defined(__mips64) || defined(__MIPS64__) || defined(__MIPS64)
-#define LUAJIT_TARGET   LUAJIT_ARCH_MIPS64
-#elif defined(__mips__) || defined(__mips) || defined(__MIPS__) || defined(__MIPS)
-#define LUAJIT_TARGET   LUAJIT_ARCH_MIPS32
 #else
 #error "No support for this architecture (yet)"
 #endif
@@ -338,85 +328,6 @@
 #define LJ_ARCH_XENON      1
 #endif
 
-#elif LUAJIT_TARGET == LUAJIT_ARCH_MIPS32 || LUAJIT_TARGET == LUAJIT_ARCH_MIPS64
-
-#if defined(__MIPSEL__) || defined(__MIPSEL) || defined(_MIPSEL)
-#if __mips_isa_rev >= 6
-#define LJ_TARGET_MIPSR6   1
-#define LJ_TARGET_UNALIGNED   1
-#endif
-#if LUAJIT_TARGET == LUAJIT_ARCH_MIPS32
-#if LJ_TARGET_MIPSR6
-#define LJ_ARCH_NAME      "mips32r6el"
-#else
-#define LJ_ARCH_NAME      "mipsel"
-#endif
-#else
-#if LJ_TARGET_MIPSR6
-#define LJ_ARCH_NAME      "mips64r6el"
-#else
-#define LJ_ARCH_NAME      "mips64el"
-#endif
-#endif
-#define LJ_ARCH_ENDIAN      LUAJIT_LE
-#else
-#if LUAJIT_TARGET == LUAJIT_ARCH_MIPS32
-#if LJ_TARGET_MIPSR6
-#define LJ_ARCH_NAME      "mips32r6"
-#else
-#define LJ_ARCH_NAME      "mips"
-#endif
-#else
-#if LJ_TARGET_MIPSR6
-#define LJ_ARCH_NAME      "mips64r6"
-#else
-#define LJ_ARCH_NAME      "mips64"
-#endif
-#endif
-#define LJ_ARCH_ENDIAN      LUAJIT_BE
-#endif
-
-#if !defined(LJ_ARCH_HASFPU)
-#ifdef __mips_soft_float
-#define LJ_ARCH_HASFPU      0
-#else
-#define LJ_ARCH_HASFPU      1
-#endif
-#endif
-
-#if !defined(LJ_ABI_SOFTFP)
-#ifdef __mips_soft_float
-#define LJ_ABI_SOFTFP      1
-#else
-#define LJ_ABI_SOFTFP      0
-#endif
-#endif
-
-#if LUAJIT_TARGET == LUAJIT_ARCH_MIPS32
-#define LJ_ARCH_BITS      32
-#define LJ_TARGET_MIPS32   1
-#else
-#define LJ_ARCH_BITS      64
-#define LJ_TARGET_MIPS64   1
-#define LJ_TARGET_GC64      1
-#endif
-#define LJ_TARGET_MIPS      1
-#define LJ_TARGET_EHRETREG   4
-#define LJ_TARGET_EHRAREG   31
-#define LJ_TARGET_JUMPRANGE   27   //  2*2^27 = 256MB-aligned region
-#define LJ_TARGET_MASKSHIFT   1
-#define LJ_TARGET_MASKROT   1
-#define LJ_TARGET_UNIFYROT   2   //  Want only IR_BROR.
-#define LJ_ARCH_NUMMODE      LJ_NUMMODE_DUAL
-
-#if LJ_TARGET_MIPSR6
-#define LJ_ARCH_VERSION      60
-#elif _MIPS_ARCH_MIPS32R2 || _MIPS_ARCH_MIPS64R2
-#define LJ_ARCH_VERSION      20
-#else
-#define LJ_ARCH_VERSION      10
-#endif
-
 #else
 #error "No target architecture defined"
 #endif
@@ -480,19 +391,6 @@
 #endif
 #if defined(__NO_FPRS__) && !defined(_SOFT_FLOAT)
 #error "No support for PPC/e500 anymore (use LuaJIT 2.0)"
-#endif
-#elif LJ_TARGET_MIPS32
-#if !((defined(_MIPS_SIM_ABI32) && _MIPS_SIM == _MIPS_SIM_ABI32) || (defined(_ABIO32) && _MIPS_SIM == _ABIO32))
-#error "Only o32 ABI supported for MIPS32"
-#endif
-#if LJ_TARGET_MIPSR6
-// Not that useful, since most available r6 CPUs are 64 bit.
-#error "No support for MIPS32R6"
-#endif
-#elif LJ_TARGET_MIPS64
-#if !((defined(_MIPS_SIM_ABI64) && _MIPS_SIM == _MIPS_SIM_ABI64) || (defined(_ABI64) && _MIPS_SIM == _ABI64))
-// MIPS32ON64 aka n32 ABI support might be desirable, but difficult.
-#error "Only n64 ABI supported for MIPS64"
 #endif
 #endif
 #endif

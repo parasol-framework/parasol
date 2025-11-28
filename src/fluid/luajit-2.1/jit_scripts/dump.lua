@@ -85,10 +85,6 @@ local nexitsym = 0
 local function fillsymtab_tr(tr, nexit)
   local t = {}
   symtabmt.__index = t
-  if jit.arch:sub(1, 4) == "mips" then
-    t[traceexitstub(tr, 0)] = "exit"
-    return
-  end
   for i=0,nexit-1 do
     local addr = traceexitstub(tr, i)
     if addr < 0 then addr = addr + 2^32 end
@@ -619,7 +615,6 @@ end
 ------------------------------------------------------------------------------
 
 local gpr64 = jit.arch:match("64")
-local fprmips32 = jit.arch == "mips" or jit.arch == "mipsel"
 
 -- Dump taken trace exits.
 local function dump_texit(tr, ex, ngpr, nfpr, ...)
@@ -637,16 +632,9 @@ local function dump_texit(tr, ex, ngpr, nfpr, ...)
 	if i % 8 == 0 then out:write("\n") end
       end
     end
-    if fprmips32 then
-      for i=1,nfpr,2 do
-	out:write(format(" %+17.14g", regs[ngpr+i]))
-	if i % 8 == 7 then out:write("\n") end
-      end
-    else
-      for i=1,nfpr do
-	out:write(format(" %+17.14g", regs[ngpr+i]))
-	if i % 4 == 0 then out:write("\n") end
-      end
+    for i=1,nfpr do
+      out:write(format(" %+17.14g", regs[ngpr+i]))
+      if i % 4 == 0 then out:write("\n") end
     end
   end
 end
@@ -723,4 +711,3 @@ return {
   off = dumpoff,
   start = dumpon -- For -j command line option.
 }
-
