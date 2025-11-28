@@ -446,11 +446,11 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
    if (tref_istab(ix.tab)) {
       if (!tvisnumber(&rd->argv[1]))  //  No support for string coercion.
          lj_trace_err(J, LJ_TRERR_BADTYPE);
-      setintV(&ix.keyv, numberVint(&rd->argv[1]) + 1);
+      setintV(&ix.keyv, numberVint(&rd->argv[1]) + LJ_STARTING_INDEX);
       settabV(J->L, &ix.tabv, tabV(&rd->argv[0]));
       ix.val = 0; ix.idxchain = 0;
       ix.key = lj_opt_narrow_toint(J, J->base[1]);
-      J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, 1));
+      J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, LJ_STARTING_INDEX));
       J->base[1] = lj_record_idx(J, &ix);
       rd->nres = tref_isnil(J->base[1]) ? 0 : 2;
    }  // else: Interpreter will throw.
@@ -464,7 +464,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
       if (tref_istab(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
          J->base[1] = tr;
-         J->base[2] = rd->data ? lj_ir_kint(J, 0) : TREF_NIL;
+         J->base[2] = rd->data ? lj_ir_kint(J, LJ_STARTING_INDEX - 1) : TREF_NIL;
          rd->nres = 3;
       }  // else: Interpreter will throw.
    }

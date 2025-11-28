@@ -94,7 +94,11 @@ LJ_FUNCA TValue* lj_tab_setinth(lua_State* L, GCtab* t, int32_t key);
 LJ_FUNC TValue* lj_tab_setstr(lua_State* L, GCtab* t, const GCstr* key);
 LJ_FUNC TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key);
 
+#if LJ_STARTING_INDEX == 0
 #define inarray(t, key)      ((MSize)(key) < (MSize)(t)->asize)
+#else
+#define inarray(t, key)      ((MSize)(key) >= (MSize)LJ_STARTING_INDEX and (MSize)(key) < (MSize)(t)->asize)
+#endif
 #define arrayslot(t, i)      (&tvref((t)->array)[(i)])
 #define lj_tab_getint(t, key) \
   (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_getinth((t), (key)))

@@ -132,13 +132,14 @@ void LJ_FASTCALL lj_serialize_dict_prep_str(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
       MSize i, len = lj_tab_len(dict);
+      MSize start = (MSize)LJ_STARTING_INDEX;
       if (!len) return;
       lj_tab_resize(L, dict, dict->asize, hsize2hbits(len));
-      for (i = 1; i <= len and i < dict->asize; i++) {
+      for (i = start; i <= len + start - 1 and i < dict->asize; i++) {
          cTValue* o = arrayslot(dict, i);
          if (tvisstr(o)) {
             if (!lj_tab_getstr(dict, strV(o))) {  // Ignore dups.
-               lj_tab_newkey(L, dict, o)->u64 = (uint64_t)(i - 1);
+               lj_tab_newkey(L, dict, o)->u64 = (uint64_t)LJ_IDX_TO_STORAGE(i);
             }
          }
          else if (!tvisfalse(o)) {
@@ -153,13 +154,14 @@ void LJ_FASTCALL lj_serialize_dict_prep_mt(lua_State* L, GCtab* dict)
 {
    if (!dict->hmask) {  // No hash part means not prepared, yet.
       MSize i, len = lj_tab_len(dict);
+      MSize start = (MSize)LJ_STARTING_INDEX;
       if (!len) return;
       lj_tab_resize(L, dict, dict->asize, hsize2hbits(len));
-      for (i = 1; i <= len and i < dict->asize; i++) {
+      for (i = start; i <= len + start - 1 and i < dict->asize; i++) {
          cTValue* o = arrayslot(dict, i);
          if (tvistab(o)) {
             if (tvisnil(lj_tab_get(L, dict, o))) {  // Ignore dups.
-               lj_tab_newkey(L, dict, o)->u64 = (uint64_t)(i - 1);
+               lj_tab_newkey(L, dict, o)->u64 = (uint64_t)LJ_IDX_TO_STORAGE(i);
             }
          }
          else if (!tvisfalse(o)) {
@@ -197,7 +199,8 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
    }
    else if (tvistab(o)) {
       const GCtab* t = tabV(o);
-      uint32_t narray = 0, nhash = 0, one = 2;
+      uint32_t narray = 0, nhash = 0;
+      uint32_t array_flag = LJ_STARTING_INDEX IS 0 ? 2u : 4u;
       if (sbx->depth <= 0) lj_err_caller(sbufL(sbx), ErrMsg::BUFFER_DEPTH);
       sbx->depth--;
       if (t->asize > 0) {  // Determine max. length of array part.
@@ -207,7 +210,6 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
             if (!tvisnil(&array[i]))
                break;
          narray = (uint32_t)(i + 1);
-         if (narray and tvisnil(&array[0])) one = 4;
       }
       if (t->hmask > 0) {  // Count number of used hash slots.
          uint32_t i, hmask = t->hmask;
@@ -233,11 +235,11 @@ static char* serialize_put(char* w, SBufExt* sbx, cTValue* o)
       }
       // Write number of array slots and hash slots.
       w = serialize_more(w, sbx, 1 + 2 * 5);
-      *w++ = (char)(SER_TAG_TAB + (nhash ? 1 : 0) + (narray ? one : 0));
+      *w++ = (char)(SER_TAG_TAB + (nhash ? 1 : 0) + (narray ? array_flag : 0));
       if (narray) w = serialize_wu124(w, narray);
       if (nhash) w = serialize_wu124(w, nhash);
       if (narray) {  // Write array entries.
-         cTValue* oa = tvref(t->array) + (one >> 2);
+         cTValue* oa = tvref(t->array) + (array_flag >> 2);
          cTValue* oe = tvref(t->array) + narray;
          while (oa < oe) w = serialize_put(w, sbx, oa++);
       }
@@ -385,7 +387,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
       GCtab* dict_str;
       uint32_t idx;
       r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
-      idx++;
+      idx = LJ_IDX_FROM_STORAGE(idx);
       dict_str = tabref(sbx->dict_str);
       if (dict_str and idx < dict_str->asize and tvisstr(arrayslot(dict_str, idx))) copyTV(sbufL(sbx), o, arrayslot(dict_str, idx));
       else lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);
@@ -399,7 +401,7 @@ static char* serialize_get(char* r, SBufExt* sbx, TValue* o)
          GCtab* dict_mt;
          uint32_t idx;
          r = serialize_ru124(r, w, &idx); if (LJ_UNLIKELY(!r)) goto eob;
-         idx++;
+         idx = LJ_IDX_FROM_STORAGE(idx);
          dict_mt = tabref(sbx->dict_mt);
          if (dict_mt and idx < dict_mt->asize and tvistab(arrayslot(dict_mt, idx))) mt = tabV(arrayslot(dict_mt, idx));
          else lj_err_callerv(sbufL(sbx), ErrMsg::BUFFER_BADDICTX, idx);

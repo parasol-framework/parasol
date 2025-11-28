@@ -154,6 +154,7 @@ extern void  (lua_gettable) (lua_State *L, int idx);
 extern void  (lua_getfield) (lua_State *L, int idx, const char *k);
 extern void  (lua_rawget) (lua_State *L, int idx);
 extern void  (lua_rawgeti) (lua_State *L, int idx, int n);
+extern void  (lua_rawgetzi) (lua_State *L, int idx, int n);
 extern void  (lua_createtable) (lua_State *L, int narr, int nrec);
 extern void *(lua_newuserdata) (lua_State *L, size_t sz);
 extern int   (lua_getmetatable) (lua_State *L, int objindex);
@@ -167,6 +168,7 @@ extern void  (lua_settable) (lua_State *L, int idx);
 extern void  (lua_setfield) (lua_State *L, int idx, const char *k);
 extern void  (lua_rawset) (lua_State *L, int idx);
 extern void  (lua_rawseti) (lua_State *L, int idx, int n);
+extern void  (lua_rawsetzi) (lua_State *L, int idx, int n);
 extern int   (lua_setmetatable) (lua_State *L, int objindex);
 extern int   (lua_setfenv) (lua_State *L, int idx);
 

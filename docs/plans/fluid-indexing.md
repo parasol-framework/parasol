@@ -367,6 +367,12 @@ for (i = 1; i <= len and i < dict->asize; i++) {
 
 6. Performance regression testing
 
+### Phase 6: C API Zero-Based Entry Points (Estimated: 0.5-1 day)
+
+1. Add `lua_rawgetzi`/`lua_rawsetzi` to provide zero-based integer table access for embedders
+2. Translate zero-based indices to the configured semantic base internally so the array part remains consistent
+3. Document that these functions supersede the existing `lua_rawgeti`/`lua_rawseti` and will replace them in future phases
+
 ### Test-Driven Development Workflow
 
 For each code change:
@@ -380,6 +386,15 @@ For each code change:
 ## Unit Testing Strategy
 
 Unit testing should be implemented as the primary validation mechanism for all index-related changes. A dedicated unit test file `unit_test_indexing.cpp` should be created following the pattern established by `parser/parser_unit_tests.cpp`.
+
+## Status Update
+
+- Phase 1: Core Infrastructure - implemented
+- Phase 2: Library Functions - implemented
+- Phase 3: VM and JIT - implemented
+- Phase 4: Auxiliary Systems - implemented (serialization dictionaries and buffer table writes respect LJ_STARTING_INDEX)
+- Phase 5: Integration Testing - Debug build validated; dual-configuration test sweeps remain pending
+- Phase 6: C API Zero-Based Entry Points - implemented (`lua_rawgetzi`/`lua_rawsetzi` added for 0-based integer table access)
 
 ### New Unit Test File: `unit_test_indexing.cpp`
 
