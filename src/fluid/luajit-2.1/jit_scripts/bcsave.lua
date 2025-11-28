@@ -78,12 +78,6 @@ local map_arch = {
   arm64 =	{ e = "le", b = 64, m = 183, p = 0xaa64, },
   arm64be =	{ e = "be", b = 64, m = 183, },
   ppc =		{ e = "be", b = 32, m = 20, },
-  mips =	{ e = "be", b = 32, m = 8, f = 0x50001006, },
-  mipsel =	{ e = "le", b = 32, m = 8, f = 0x50001006, },
-  mips64 =	{ e = "be", b = 64, m = 8, f = 0x80000007, },
-  mips64el =	{ e = "le", b = 64, m = 8, f = 0x80000007, },
-  mips64r6 =	{ e = "be", b = 64, m = 8, f = 0xa0000407, },
-  mips64r6el =	{ e = "le", b = 64, m = 8, f = 0xa0000407, },
 }
 
 local map_os = {
@@ -675,4 +669,3 @@ end
 return {
   start = docmd -- Process -b command line option.
 }
-

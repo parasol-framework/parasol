@@ -335,10 +335,6 @@ else ()
       set (LUAJIT_TARGET_ARCH "arm")
    elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^(powerpc|ppc)")
       set (LUAJIT_TARGET_ARCH "ppc")
-   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^mips64")
-      set (LUAJIT_TARGET_ARCH "mips64")
-   elseif (LUAJIT_SYSTEM_PROCESSOR_LOWER MATCHES "^mips")
-      set (LUAJIT_TARGET_ARCH "mips")
    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
       # For x64 builds, check if LJ_FR2 is enabled (tied to LJ_GC64)
       # If GC64 is disabled (LJ_FR2=0), we need to use x86 VM instead of x64
@@ -435,10 +431,6 @@ else ()
          "if(ARCH_DEFS MATCHES \"__APPLE__\" AND ARCH_DEFS MATCHES \"LJ_ARCH_ARM\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"IOS\")\n"
          "endif()\n"
-         "# MIPSR6 flag for MIPS R6 architectures\n"
-         "if(ARCH_DEFS MATCHES \"LJ_ARCH_MIPSR6 1\")\n"
-         "   list(APPEND DASM_AFLAGS \"-D\" \"MIPSR6\")\n"
-         "endif()\n"
          "# SQRT, ROUND, and GPR64 flags for PowerPC\n"
          "if(ARCH_DEFS MATCHES \"LJ_ARCH_PPC 1\")\n"
          "   list(APPEND DASM_AFLAGS \"-D\" \"SQRT\")\n"
@@ -465,8 +457,7 @@ else ()
       DEPENDS ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua ${DYNASM_SCRIPT}
          "${LUAJIT_SRC}/lj_arch.h" "${LUAJIT_SRC}/lua.h" "${LUAJIT_SRC}/luaconf.h"
          "${LUAJIT_SRC}/jit/vm_x64.dasc" "${LUAJIT_SRC}/jit/vm_x86.dasc" "${LUAJIT_SRC}/jit/vm_arm.dasc"
-         "${LUAJIT_SRC}/jit/vm_arm64.dasc" "${LUAJIT_SRC}/jit/vm_ppc.dasc" "${LUAJIT_SRC}/jit/vm_mips.dasc"
-         "${LUAJIT_SRC}/jit/vm_mips64.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
+         "${LUAJIT_SRC}/jit/vm_arm64.dasc" "${LUAJIT_SRC}/jit/vm_ppc.dasc" "${LUAJIT_BUILD_DIR}/test_arch.c"
       COMMENT "Generating buildvm_arch.h via dynasm"
       VERBATIM
    )

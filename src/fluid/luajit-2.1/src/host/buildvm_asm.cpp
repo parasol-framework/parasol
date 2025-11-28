@@ -151,11 +151,6 @@ static void emit_asm_wordreloc(BuildCtx *ctx, uint8_t *p, int n,
 	    ins, sym);
     exit(1);
   }
-#elif LJ_TARGET_MIPS
-  fprintf(stderr,
-	  "Error: unsupported opcode %08x for %s symbol relocation.\n",
-	  ins, sym);
-  exit(1);
 #else
 #error "missing relocation support for this architecture"
 #endif
@@ -269,9 +264,6 @@ void emit_asm(BuildCtx *ctx)
 	  ".pad #28\n");
 #endif
 #endif
-#if LJ_TARGET_MIPS
-  fprintf(ctx->fp, ".set nomips16\n.abicalls\n.set noreorder\n.set nomacro\n");
-#endif
 
   for (i = rel = 0; i < ctx->nsym; i++) {
     int32_t ofs = ctx->sym[i].ofs;
@@ -345,4 +337,3 @@ void emit_asm(BuildCtx *ctx)
   }
   fprintf(ctx->fp, "\n");
 }
-

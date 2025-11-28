@@ -55,7 +55,7 @@ using RegSP = uint32_t;
 /* Bitset for registers. 32 registers suffice for most architectures.
 ** Note that one set holds bits for both GPRs and FPRs.
 */
-#if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
+#if LJ_TARGET_PPC || LJ_TARGET_ARM64
 using RegSet = uint64_t;
 #else
 using RegSet = uint32_t;
@@ -69,7 +69,7 @@ constexpr inline int rset_test(RegSet rs, Reg r) { return (int)((rs) >> (r)) & 1
 #define rset_set(rs, r)      (rs |= RID2RSET(r))
 #define rset_clear(rs, r)   (rs &= ~RID2RSET(r))
 constexpr inline RegSet rset_exclude(RegSet rs, Reg r) { return rs & ~RID2RSET(r); }
-#if LJ_TARGET_PPC || LJ_TARGET_MIPS || LJ_TARGET_ARM64
+#if LJ_TARGET_PPC || LJ_TARGET_ARM64
 #define rset_picktop(rs)   ((Reg)(__builtin_clzll(rs)^63))
 #define rset_pickbot(rs)   ((Reg)__builtin_ctzll(rs))
 #else
@@ -142,8 +142,6 @@ using RegCost = uint32_t;
 #include "lj_target_arm64.h"
 #elif LJ_TARGET_PPC
 #include "lj_target_ppc.h"
-#elif LJ_TARGET_MIPS
-#include "lj_target_mips.h"
 #else
 #error "Missing include for target CPU"
 #endif
