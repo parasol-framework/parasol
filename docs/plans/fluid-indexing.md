@@ -405,6 +405,8 @@ Unit testing should be implemented as the primary validation mechanism for all i
 - Phase 8: Buffer Library alignment - implemented
 - Phase 9: JIT Recording adjustments - implemented
 - Phase 10: Serialization dictionary offsets - implemented
+- Phase 11: Debug Library adjustments - implemented
+- Indexing unit tests: `indexing_unit_tests()` registered with the Fluid module and compiled when `ENABLE_UNIT_TESTS` is set
 
 ### New Unit Test File: `unit_test_indexing.cpp`
 
