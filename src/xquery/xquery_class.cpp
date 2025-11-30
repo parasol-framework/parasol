@@ -66,11 +66,11 @@ function for each matching node, enabling streaming processing of large result s
 Compiling and evaluating queries:
 
 <pre>
-objXQuery::create query { statement="/bookstore/book[@price < 10]/title" };
+objXQuery::create query { statement="/bookstore/book[@price &lt; 10]/title" };
 if (query.ok()) {
    XPathValue *result;
-   if (query->evaluate(xml) IS ERR::Okay) {
-      log.msg("Got: %s", query->get<CSTRING>(FID_ResultString));
+   if (query-&gt;evaluate(xml) IS ERR::Okay) {
+      log.msg("Got: %s", query-&gt;get&lt;CSTRING&gt;(FID_ResultString));
    }
 }
 </pre>

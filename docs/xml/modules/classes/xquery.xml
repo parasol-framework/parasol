@@ -47,26 +47,19 @@
 if (query.ok()) {
    XPathValue *result;
    if (query-&gt;evaluate(xml) IS ERR::Okay) {
-      log.msg(&quot;Got: %s&quot;, query-&gt;get<CSTRING>(FID_ResultString));
+      log.msg(&quot;Got: %s&quot;, query-&gt;get&lt;CSTRING&gt;(FID_ResultString));
    }
 }
-</CSTRING>
-
-Node iteration with callbacks:
-
+</pre>
+<p>Node iteration with callbacks:</p>
 <pre>objXQuery::create query { statement=&quot;//chapter[@status='draft']&quot; };
 if (query.ok()) {
    auto callback = C_FUNCTION(process_node);
    query-&gt;search(xml, &amp;callback);
 }
 </pre>
-
 <header>Extensions</header>
-
-The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the
-<code>[=...]</code> syntax allows matching on encapsulated content, e.g., <code>/menu[=contentmatch]</code>.  Backslash (<code>\</code>) can be used as
-an escape character in attribute strings.
-</pre></description>
+<p>The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the <code>[=...]</code> syntax allows matching on encapsulated content, e.g., <code>/menu[=contentmatch]</code>.  Backslash (<code>\</code>) can be used as an escape character in attribute strings.</p></description>
     <source>
       <file>xquery_class.cpp</file>
     </source>
