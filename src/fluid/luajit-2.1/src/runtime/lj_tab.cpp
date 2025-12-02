@@ -92,9 +92,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
       t->hmask = 0;
       nilnode = &G(L)->nilnode;
       setmref(t->node, nilnode);
-#if LJ_GC64
       setmref(t->freetop, nilnode);
-#endif
    }
    else {  // Otherwise separately allocate the array part.
       Node* nilnode;
@@ -108,9 +106,7 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
       t->hmask = 0;
       nilnode = &G(L)->nilnode;
       setmref(t->node, nilnode);
-#if LJ_GC64
       setmref(t->freetop, nilnode);
-#endif
       if (asize > 0) {
          if (asize > LJ_MAX_ASIZE)
             lj_err_msg(L, ErrMsg::TABOV);
@@ -265,9 +261,7 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
    else {
       global_State* g = G(L);
       setmref(t->node, &g->nilnode);
-#if LJ_GC64
       setmref(t->freetop, &g->nilnode);
-#endif
       t->hmask = 0;
    }
    if (asize < oldasize) {  // Array part shrinks?

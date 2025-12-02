@@ -53,23 +53,14 @@ class objScript;
 
 // Memory and GC object sizes.
 using MSize = uint32_t;
-#if LJ_GC64
-using GCSize = uint64_t;
-#else
-using GCSize = uint32_t;
-#endif
+using GCSize = uint64_t;  // Always 64-bit
 
-// Memory reference
+// Memory reference - always 64-bit
 struct MRef {
-#if LJ_GC64
    uint64_t ptr64;   //  True 64 bit pointer.
-#else
-   uint32_t ptr32;   //  Pseudo 32 bit pointer.
-#endif
 };
 
-// MRef accessor functions - template implementations
-#if LJ_GC64
+// MRef accessor functions - 64-bit only
 template<typename T>
 [[nodiscard]] constexpr inline T* mref_get(MRef r) noexcept
 {
@@ -102,40 +93,6 @@ constexpr inline void setmrefr(MRef& r, MRef v) noexcept
 {
    r.ptr64 = v.ptr64;
 }
-#else
-template<typename T>
-[[nodiscard]] constexpr inline T* mref_get(MRef r) noexcept
-{
-   return (T*)(void*)(uintptr_t)r.ptr32;
-}
-
-[[nodiscard]] constexpr inline uint32_t mrefu(MRef r) noexcept
-{
-   return r.ptr32;
-}
-
-template<typename T>
-constexpr inline void setmref_fn(MRef& r, T* p) noexcept
-{
-   r.ptr32 = uint32_t((uintptr_t)(void*)p);
-}
-
-// Overload for nullptr
-constexpr inline void setmref_fn(MRef& r, std::nullptr_t) noexcept
-{
-   r.ptr32 = 0;
-}
-
-constexpr inline void setmrefu(MRef& r, uint32_t u) noexcept
-{
-   r.ptr32 = u;
-}
-
-constexpr inline void setmrefr(MRef& r, MRef v) noexcept
-{
-   r.ptr32 = v.ptr32;
-}
-#endif
 
 // Compatibility macros - thin wrappers over template functions
 #define mref(r, t)      mref_get<t>(r)
@@ -143,13 +100,9 @@ constexpr inline void setmrefr(MRef& r, MRef v) noexcept
 
 // -- GC object references ------------------------------------------------
 
-// GCobj reference
+// GCobj reference - always 64-bit
 struct GCRef {
-#if LJ_GC64
    uint64_t gcptr64;   //  True 64 bit pointer.
-#else
-   uint32_t gcptr32;   //  Pseudo 32 bit pointer.
-#endif
 };
 
 // Common GC header for all collectable objects.
@@ -157,9 +110,7 @@ struct GCRef {
 #define GCHeader   GCRef nextgc; uint8_t marked; uint8_t gct
 // This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields.
 
-// GCRef accessor functions - some can be inline functions as they don't
-// dereference GCobj, others must remain macros until GCobj is fully defined.
-#if LJ_GC64
+// GCRef accessor functions - 64-bit only
 // These just cast - they don't dereference, so can be inline functions
 [[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
 {
@@ -214,60 +165,6 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept
 // They will be converted to inline functions after GCobj definition
 #define setgcref(r, gc)      ((r).gcptr64 = (uint64_t)&(gc)->gch)
 #define setgcreft(r, gc, it) ((r).gcptr64 = (uint64_t)&(gc)->gch | (((uint64_t)(it)) << 47))
-#else
-[[nodiscard]] constexpr inline GCobj* gcref(GCRef r) noexcept
-{
-   return (GCobj*)(uintptr_t)r.gcptr32;
-}
-
-template<typename T>
-[[nodiscard]] constexpr inline T* gcrefp_fn(GCRef r) noexcept
-{
-   return (T*)(void*)(uintptr_t)r.gcptr32;
-}
-
-[[nodiscard]] constexpr inline uint32_t gcrefu(GCRef r) noexcept
-{
-   return r.gcptr32;
-}
-
-[[nodiscard]] inline bool gcrefeq(GCRef r1, GCRef r2) noexcept
-{
-   return r1.gcptr32 IS r2.gcptr32;
-}
-
-inline void setgcref(GCRef& r, GCobj* gc) noexcept;  // Forward declaration - defined after GCobj
-
-template<typename T>
-inline void setgcrefp_fn(GCRef& r, T* p) noexcept
-{
-   r.gcptr32 = uint32_t((uintptr_t)p);
-}
-
-// Overload for integer types (used in some low-level operations)
-constexpr inline void setgcrefp_fn(GCRef& r, uintptr_t v) noexcept
-{
-   r.gcptr32 = uint32_t(v);
-}
-
-constexpr inline void setgcrefp_fn(GCRef& r, int v) noexcept
-{
-   r.gcptr32 = uint32_t(v);
-}
-
-constexpr inline void setgcrefnull(GCRef& r) noexcept
-{
-   r.gcptr32 = 0;
-}
-
-inline void setgcrefr(GCRef& r, GCRef v) noexcept
-{
-   r.gcptr32 = v.gcptr32;
-}
-
-// This dereferences GCobj->gch, so must remain macro until GCobj is defined
-#define setgcref(r, gc)  ((r).gcptr32 = (uint32_t)(uintptr_t)&(gc)->gch)
-#endif
 
 // Compatibility macro for template function
 #define gcrefp(r, t)    gcrefp_fn<t>(r)
@@ -361,7 +258,6 @@ typedef union {
 typedef LJ_ALIGN(8) union TValue {
    uint64_t u64;      //  64 bit pattern overlaps number.
    lua_Number n;      //  Number object overlaps split tag/value object.
-#if LJ_GC64
    GCRef gcr;      //  GCobj reference with tag.
    int64_t it64;
    struct {
@@ -370,17 +266,6 @@ typedef LJ_ALIGN(8) union TValue {
       , uint32_t it;   //  Internal object tag. Must overlap MSW of number.
          )
    };
-#else
-   struct {
-      LJ_ENDIAN_LOHI(
-         union {
-         GCRef gcr;   //  GCobj reference (if any).
-         int32_t i;   //  Integer value.
-      };
-      , uint32_t it;   //  Internal object tag. Must overlap MSW of number.
-         )
-   };
-#endif
 #if LJ_FR2
    int64_t ftsz;      //  Frame type and size of previous frame, or PC.
 #else
@@ -411,24 +296,7 @@ inline constexpr int LAST_TT     = LUA_TTHREAD;
 inline constexpr int LUA_TPROTO  = LAST_TT + 1;
 inline constexpr int LUA_TCDATA  = LAST_TT + 2;
 
-/* Internal object tags.
-**
-** Format for 32 bit GC references (!LJ_GC64):
-**
-** Internal tags overlap the MSW of a number object (must be a double).
-** Interpreted as a double these are special NaNs. The FPU only generates
-** one type of NaN (0xfff8_0000_0000_0000). So MSWs > 0xfff80000 are available
-** for use as internal tags. Small negative numbers are used to shorten the
-** encoding of type comparisons (reg/mem against sign-ext. 8 bit immediate).
-**
-**                  ---MSW---.---LSW---
-** primitive types |  itype  |         |
-** lightuserdata   |  itype  |  void * |  (32 bit platforms)
-** lightuserdata   |ffff|seg|    ofs   |  (64 bit platforms)
-** GC objects      |  itype  |  GCRef  |
-** int (LJ_DUALNUM)|  itype  |   int   |
-** number           -------double------
-**
+/*
 ** Format for 64 bit GC references (LJ_GC64):
 **
 ** The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next
@@ -466,11 +334,8 @@ inline constexpr uint32_t LJ_TUDATA    = ~12u;
 inline constexpr uint32_t LJ_TNUMX     = ~13u;
 
 // Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM
-#if LJ_64 && !LJ_GC64
-inline constexpr uint32_t LJ_TISNUM = 0xfffeffffu;
-#else
+// Always LJ_TNUMX for 64-bit GC64 mode
 inline constexpr uint32_t LJ_TISNUM = LJ_TNUMX;
-#endif
 inline constexpr uint32_t LJ_TISTRUECOND = LJ_TFALSE;
 inline constexpr uint32_t LJ_TISPRI      = LJ_TTRUE;
 inline constexpr uint32_t LJ_TISGCV      = LJ_TSTR + 1;
@@ -479,15 +344,12 @@ inline constexpr uint32_t LJ_TISTABUD    = LJ_TTAB;
 // Type marker for slot holding a traversal index. Must be lightuserdata.
 inline constexpr uint32_t LJ_KEYINDEX = 0xfffe7fffu;
 
-#if LJ_GC64
+// GC64 pointer mask - always defined for 64-bit
 inline constexpr uint64_t LJ_GCVMASK = (uint64_t(1) << 47) - 1;
-#endif
 
-#if LJ_64
-// To stay within 47 bits, lightuserdata is segmented.
+// Lightuserdata is segmented to stay within 47 bits
 inline constexpr int LJ_LIGHTUD_BITS_SEG = 8;
 inline constexpr int LJ_LIGHTUD_BITS_LO  = 47 - LJ_LIGHTUD_BITS_SEG;
-#endif
 
 // -- String object -------------------------------------------------------
 
@@ -611,9 +473,7 @@ typedef struct GCproto {
    uint8_t numparams;   //  Number of parameters.
    uint8_t framesize;   //  Fixed frame size.
    MSize sizebc;      //  Number of bytecode instructions.
-#if LJ_GC64
-   uint32_t unused_gc64;
-#endif
+   uint32_t unused_gc64;  // Padding for 64-bit alignment
    GCRef gclist;
    MRef k;      //  Split constant array (points to the middle).
    MRef uv;      //  Upvalue list. local slot|0x8000 or parent uv idx.
@@ -784,9 +644,6 @@ typedef struct Node {
    TValue val;      //  Value object. Must be first field.
    TValue key;      //  Key object.
    MRef next;      //  Hash chain.
-#if !LJ_GC64
-   MRef freetop;      //  Top of free elements (stored in t->node[0]).
-#endif
 } Node;
 
 static_assert(offsetof(Node, val) == 0);
@@ -801,9 +658,7 @@ typedef struct GCtab {
    MRef node;      //  Hash part.
    uint32_t asize;   //  Size of array part (keys [0, asize-1]).
    uint32_t hmask;   //  Hash part mask (size of hash part - 1).
-#if LJ_GC64
    MRef freetop;      //  Top of free elements.
-#endif
 } GCtab;
 
 [[nodiscard]] constexpr inline size_t sizetabcolo(MSize n) noexcept
@@ -824,7 +679,6 @@ inline GCtab* tabref(GCRef r) noexcept;
    return mref(n->next, Node);
 }
 
-#if LJ_GC64
 [[nodiscard]] inline Node* getfreetop(const GCtab* t, Node*) noexcept
 {
    return noderef(t->freetop);
@@ -834,17 +688,6 @@ inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
 {
    setmref(t->freetop, v);
 }
-#else
-[[nodiscard]] inline Node* getfreetop(GCtab*, Node* n) noexcept
-{
-   return noderef(n->freetop);
-}
-
-inline void setfreetop(GCtab*, Node* n, Node* v) noexcept
-{
-   setmref(n->freetop, v);
-}
-#endif
 
 // -- State objects -------------------------------------------------------
 
@@ -901,8 +744,8 @@ typedef enum : uint8_t {
    MM_FAST = MM_len
 } MMS;
 
-// Sentinel values for when pairs/ipairs are not available
-#if !(LJ_52 || LJ_HASFFI)
+// Sentinel values for when pairs/ipairs are not available (Lua 5.1 mode)
+#if !LJ_52
 inline constexpr uint8_t MM_pairs  = 255;
 inline constexpr uint8_t MM_ipairs = 255;
 #endif
@@ -930,11 +773,7 @@ typedef struct GCState {
    uint8_t currentwhite; // Current white color.
    uint8_t state;        // GC state.
    uint8_t nocdatafin;   // No cdata finalizer called.
-#if LJ_64
-   uint8_t lightudnum;   //  Number of lightuserdata segments - 1.
-#else
-   uint8_t unused1;
-#endif
+   uint8_t lightudnum;   //  Number of lightuserdata segments - 1 (64-bit only).
    MSize sweepstr;  // Sweep position in string table.
    GCRef root;      // List of all collectable objects.
    MRef sweep;      // Sweep position in root list.
@@ -946,9 +785,7 @@ typedef struct GCState {
    GCSize estimate; // Estimate of memory actually in use.
    MSize stepmul;   // Incremental GC step granularity.
    MSize pause;     // Pause between successive GC cycles.
-#if LJ_64
-   MRef lightudseg;   //  Upper bits of lightuserdata segments.
-#endif
+   MRef lightudseg;   //  Upper bits of lightuserdata segments (64-bit).
 } GCState;
 
 // String interning state.
@@ -1192,17 +1029,11 @@ template<typename T>
 // -- Deferred inline function definitions (require complete GCobj type) --
 
 // gcval: get GC object pointer from tagged value (just pointer math, no dereference)
-#if LJ_GC64
+
 [[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept
 {
    return (GCobj*)(gcrefu(o->gcr) & LJ_GCVMASK);
 }
-#else
-[[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept
-{
-   return gcref(o->gcr);
-}
-#endif
 
 // String accessors
 [[nodiscard]] inline GCstr* strref(GCRef r) noexcept
@@ -1234,22 +1065,11 @@ template<typename T>
 }
 
 // Function accessors for currently executing function
-#if LJ_GC64
+
 [[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
 {
    return &gcval(L->base - 2)->fn;
 }
-#elif LJ_FR2
-[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
-{
-   return &gcref((L->base - 2)->gcr)->fn;
-}
-#else
-[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
-{
-   return &gcref((L->base - 1)->fr.func)->fn;
-}
-#endif
 
 [[nodiscard]] inline bool curr_funcisL(lua_State* L) noexcept
 {
@@ -1286,8 +1106,7 @@ template<typename T>
 
 // -- TValue getters/setters ----------------------------------------------
 
-// Type test functions.
-#if LJ_GC64
+// Type test functions - 64-bit GC64 mode only
 [[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept
 {
    return uint32_t(o->it64 >> 47);
@@ -1297,17 +1116,6 @@ template<typename T>
 {
    return o->it64 IS -1;
 }
-#else
-[[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept
-{
-   return o->it;
-}
-
-[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TNIL;
-}
-#endif
 
 [[nodiscard]] constexpr inline bool tvisfalse(cTValue* o) noexcept
 {
@@ -1324,17 +1132,10 @@ template<typename T>
    return tvisfalse(o) or tvistrue(o);
 }
 
-#if LJ_64 && !LJ_GC64
-[[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept
-{
-   return (((int32_t)itype(o) >> 15) == -2);
-}
-#else
 [[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept
 {
    return itype(o) IS LJ_TLIGHTUD;
 }
-#endif
 
 [[nodiscard]] constexpr inline bool tvisstr(cTValue* o) noexcept
 {
@@ -1412,17 +1213,10 @@ template<typename T>
    return o->n != o->n;
 }
 
-#if LJ_64
 [[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept
 {
    return (o->u64 << 1) IS 0;
 }
-#else
-[[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept
-{
-   return (o->u32.lo | (o->u32.hi << 1)) IS 0;
-}
-#endif
 
 [[nodiscard]] constexpr inline bool tvispzero(cTValue* o) noexcept
 {
@@ -1444,20 +1238,11 @@ template<typename T>
    return o1->u64 IS o2->u64;
 }
 
-// Convert internal type to type map index.
-#if LJ_64 && !LJ_GC64
-[[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept
-{
-   if (tvisnumber(o)) return ~LJ_TNUMX;
-   if (tvislightud(o)) return ~LJ_TLIGHTUD;
-   return ~itype(o);
-}
-#else
+// Convert internal type to type map index - 64-bit GC64 mode
 [[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept
 {
    return tvisnumber(o) ? ~LJ_TNUMX : ~itype(o);
 }
-#endif
 
 // Functions to get tagged values (gcval is defined in deferred section above)
 
@@ -1466,7 +1251,7 @@ template<typename T>
    return check_exp(tvisbool(o), int(LJ_TFALSE - itype(o)));
 }
 
-#if LJ_64
+// Lightuserdata segment/offset extraction - 64-bit only
 [[nodiscard]] constexpr inline uint64_t lightudseg(uint64_t u) noexcept
 {
    return (u >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG) - 1);
@@ -1482,6 +1267,7 @@ template<typename T>
    return uint32_t((p >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO - 32));
 }
 
+// Lightuserdata value extraction - 64-bit only
 [[nodiscard]] static LJ_AINLINE void* lightudV(global_State* g, cTValue* o) noexcept
 {
    uint64_t u = o->u64;
@@ -1491,13 +1277,6 @@ template<typename T>
    lj_assertG(seg <= g->gc.lightudnum, "bad lightuserdata segment %d", seg);
    return (void*)(((uint64_t)segmap[seg] << 32) | lightudlo(u));
 }
-#else
-[[nodiscard]] inline void* lightudV(global_State* g, cTValue* o) noexcept
-{
-   UNUSED(g);
-   return check_exp(tvislightud(o), gcrefp(o->gcr, void));
-}
-#endif
 
 [[nodiscard]] inline GCobj* gcV(cTValue* o) noexcept
 {
@@ -1550,7 +1329,7 @@ template<typename T>
 }
 
 // Functions to set tagged values.
-#if LJ_GC64
+
 inline void setitype(TValue* o, uint32_t i) noexcept
 {
    o->it = i << 15;
@@ -1571,37 +1350,10 @@ inline void setboolV(TValue* o, int x) noexcept
 {
    o->it64 = int64_t(~(uint64_t(x + 1) << 47));
 }
-#else
-inline void setitype(TValue* o, uint32_t i) noexcept
-{
-   o->it = i;
-}
-
-inline void setnilV(TValue* o) noexcept
-{
-   o->it = LJ_TNIL;
-}
-
-inline void setboolV(TValue* o, int x) noexcept
-{
-   o->it = LJ_TFALSE - uint32_t(x);
-}
-
-inline void setpriV(TValue* o, uint32_t i) noexcept
-{
-   setitype(o, i);
-}
-#endif
 
 inline void setrawlightudV(TValue* o, void* p)
 {
-#if LJ_GC64
    o->u64 = (uint64_t)p | (((uint64_t)LJ_TLIGHTUD) << 47);
-#elif LJ_64
-   o->u64 = (uint64_t)p | (((uint64_t)0xffff) << 48);
-#else
-   setgcrefp(o->gcr, p); setitype(o, LJ_TLIGHTUD);
-#endif
 }
 
 #if LJ_FR2 || LJ_32
@@ -1630,12 +1382,7 @@ inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 
 inline void setgcVraw(TValue* o, GCobj* v, uint32_t IType) noexcept
 {
-#if LJ_GC64
    setgcreft(o->gcr, v, IType);
-#else
-   setgcref(o->gcr, v);
-   setitype(o, IType);
-#endif
 }
 
 inline void setgcV(lua_State* L, TValue* o, GCobj* v, uint32_t It) noexcept

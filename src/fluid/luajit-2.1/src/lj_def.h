@@ -14,9 +14,8 @@
 // Various VM limits.
 constexpr uint32_t LJ_MAX_MEM32 = 0x7fffff00u;   //  Max. 32 bit memory allocation.
 constexpr uint64_t LJ_MAX_MEM64 = ((uint64_t)1 << 47);  //  Max. 64 bit memory allocation.
-// Max. total memory allocation.
-// Note: LJ_MAX_MEM and LJ_MAX_ALLOC require runtime conditional, kept as macros below
-#define LJ_MAX_MEM   (LJ_GC64 ? LJ_MAX_MEM64 : LJ_MAX_MEM32)
+// Max. total memory allocation - always 64-bit.
+#define LJ_MAX_MEM   LJ_MAX_MEM64
 #define LJ_MAX_ALLOC   LJ_MAX_MEM   //  Max. individual allocation length.
 #define LJ_MAX_STR   LJ_MAX_MEM32   //  Max. string length.
 #define LJ_MAX_BUF   LJ_MAX_MEM32   //  Max. buffer length.
@@ -36,7 +35,7 @@ constexpr int LJ_MAX_LOCVAR = 200;      //  Max. # of local variables.
 constexpr int LJ_MAX_UPVAL = 60;      //  Max. # of upvalues.
 
 constexpr int LJ_MAX_IDXCHAIN = 100;      //  __index/__newindex chain limit.
-#define LJ_STACK_EXTRA   (5+2*LJ_FR2)   //  Extra stack space (metamethods).
+#define LJ_STACK_EXTRA   (5+2)   //  Extra stack space (metamethods).
 
 constexpr int LJ_NUM_CBPAGE = 1;      //  Number of FFI callback pages.
 
@@ -75,8 +74,8 @@ inline constexpr int64_t i64ptr(T p) { return (int64_t)(intptr_t)(void *)(p); }
 template<typename T>
 inline constexpr uint64_t u64ptr(T p) { return (uint64_t)(intptr_t)(void *)(p); }
 
-// Note: Must use macro for igcptr as LJ_GC64 is a compile-time macro
-#define igcptr(p)   (LJ_GC64 ? i64ptr(p) : i32ptr(p))
+// Always use 64-bit pointers for GC references
+#define igcptr(p)   i64ptr(p)
 
 // Type check inline functions.
 template<typename T>
@@ -106,8 +105,8 @@ inline constexpr bool checkptr32(T x) { return (uintptr_t)(x) IS (uint32_t)(uint
 template<typename T>
 inline constexpr bool checkptr47(T x) { return ((uint64_t)(uintptr_t)(x) >> 47) IS 0; }
 
-// Note: Must use macro for checkptrGC as LJ_GC64/LJ_64 are compile-time macros
-#define checkptrGC(x)   (LJ_GC64 ? checkptr47((x)) : LJ_64 ? checkptr31((x)) : 1)
+// Always use 47-bit pointer check for GC64 mode
+#define checkptrGC(x)   checkptr47((x))
 
 // Rotate inline functions - compilers transform this into rotate instructions.
 template<typename T>
@@ -154,13 +153,7 @@ inline constexpr uintptr_t bloomtest(BloomFilter b, uintptr_t x) {
 #endif
 #endif
 
-/* Note: it's only beneficial to use fastcall on x86 and then only for up to
-** two non-FP args. The amalgamated compile covers all LJ_FUNC cases. Only
-** indirect calls and related tail-called C functions are marked as fastcall.
-*/
-#if defined(__i386__)
-#define LJ_FASTCALL   __attribute__((fastcall))
-#endif
+/* Note: fastcall was only used on 32-bit x86, no longer needed for 64-bit. */
 
 #define LJ_LIKELY(x)   __builtin_expect(!!(x), 1)
 #define LJ_UNLIKELY(x)   __builtin_expect(!!(x), 0)
@@ -212,23 +205,16 @@ static LJ_AINLINE uint64_t lj_bswap64(uint64_t x)
 {
    return (uint64_t)__builtin_bswap64((int64_t)x);
 }
-#elif defined(__i386__) || defined(__x86_64__)
+#elif defined(__x86_64__)
 static LJ_AINLINE uint32_t lj_bswap(uint32_t x)
 {
    uint32_t r; __asm__("bswap %0" : "=r" (r) : "0" (x)); return r;
 }
 
-#if defined(__i386__)
-static LJ_AINLINE uint64_t lj_bswap64(uint64_t x)
-{
-   return ((uint64_t)lj_bswap((uint32_t)x) << 32) | lj_bswap((uint32_t)(x >> 32));
-}
-#else
 static LJ_AINLINE uint64_t lj_bswap64(uint64_t x)
 {
    uint64_t r; __asm__("bswap %0" : "=r" (r) : "0" (x)); return r;
 }
-#endif
 #else
 static LJ_AINLINE uint32_t lj_bswap(uint32_t x)
 {
@@ -271,9 +257,6 @@ static LJ_AINLINE uint32_t lj_getu32(const void* p)
 #define LJ_INLINE   inline
 #define LJ_AINLINE   __forceinline
 #define LJ_NOINLINE   __declspec(noinline)
-#if defined(_M_IX86)
-#define LJ_FASTCALL   __fastcall
-#endif
 
 #ifdef _M_PPC
 unsigned int _CountLeadingZeros(long);
@@ -329,8 +312,7 @@ static LJ_AINLINE uint32_t lj_getu32(const void* v)
 #error "missing defines for your compiler"
 #endif
 
-// The FASTCALL must be defined on 32-bit builds (see elsewhere for the declaration) because the VM has a dependency on it.
-
+// LJ_FASTCALL is no longer needed for 64-bit only builds, define as empty for compatibility.
 #ifndef LJ_FASTCALL
 #define LJ_FASTCALL
 #endif

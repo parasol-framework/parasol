@@ -41,7 +41,7 @@
 // Pass IR on to next optimization in chain (FOLD).
 #define emitir(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
 
-// -- IR tables -----------------------------------------------------------
+// IR tables
 
 // IR instruction modes.
 LJ_DATADEF const uint8_t lj_ir_mode[IR__MAX + 1] = {
@@ -194,11 +194,7 @@ static LJ_AINLINE IRRef ir_nextk64(jit_State* J)
    return ref;
 }
 
-#if LJ_GC64
 #define ir_nextkgc ir_nextk64
-#else
-#define ir_nextkgc ir_nextk
-#endif
 
 // Intern int32_t constant.
 TRef LJ_FASTCALL lj_ir_kint(jit_State* J, int32_t k)

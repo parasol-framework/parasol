@@ -122,21 +122,17 @@ static void rec_check_slots(jit_State* J)
          }
          if (s IS 0) {
             lj_assertJ(tref_isfunc(tr), "frame slot 0 is not a function");
-#if LJ_FR2
          }
          else if (s IS 1) {
             lj_assertJ((tr & ~TREF_FRAME) IS 0, "bad frame slot 1");
-#endif
          }
          else if ((tr & TREF_FRAME)) {
             GCfunc* fn = gco2func(frame_gc(tv));
             BCREG delta = (BCREG)(tv - frame_prev(tv));
-#if LJ_FR2
             lj_assertJ(not ref or ir_knum(ir)->u64 IS tv->u64,
                "frame slot %d PC mismatch", s);
             tr = J->slot[s - 1];
             ir = IR(tref_ref(tr));
-#endif
             lj_assertJ(tref_isfunc(tr),
                "frame slot %d is not a function", s - LJ_FR2);
             lj_assertJ(not tref_isk(tr) or fn IS ir_kfunc(ir),
@@ -782,19 +778,13 @@ static void rec_call_setup(jit_State* J, BCREG func, ptrdiff_t nargs)
          lj_trace_err(J, LJ_TRERR_NOMM);
       for (i = ++nargs; i > LJ_FR2; i--)  //  Shift arguments up.
          fbase[i + LJ_FR2] = fbase[i + LJ_FR2 - 1];
-#if LJ_FR2
       fbase[2] = fbase[0];
-#endif
       fbase[0] = ix.mobj;  //  Replace function.
       functv = &ix.mobjv;
    }
    kfunc = rec_call_specialize(J, funcV(functv), fbase[0]);
-#if LJ_FR2
    fbase[0] = kfunc;
    fbase[1] = TREF_FRAME;
-#else
-   fbase[0] = kfunc | TREF_FRAME;
-#endif
    J->maxslot = (BCREG)nargs;
 }
 
@@ -1008,12 +998,8 @@ void lj_record_ret(jit_State* J, BCREG rbase, ptrdiff_t gotresults)
 static BCREG rec_mm_prep(jit_State* J, ASMFunction cont)
 {
    BCREG s, top = cont IS lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
-#if LJ_FR2
    J->base[top] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
    J->base[top + 1] = TREF_CONT;
-#else
-   J->base[top] = lj_ir_kptr(J, contptr(cont)) | TREF_CONT;
-#endif
    J->framedepth++;
    for (s = J->maxslot; s < top; s++) J->base[s] = 0;  //  Clear frame gap to avoid resurrecting previous refs.
    return top + 1 + LJ_FR2;
@@ -1132,11 +1118,7 @@ static TRef rec_mm_len(jit_State* J, TRef tr, TValue* tv)
       base += LJ_FR2;
       basev += LJ_FR2;
       base[1] = tr; copyTV(J->L, basev + 1, tv);
-#if LJ_52
       base[2] = tr; copyTV(J->L, basev + 2, tv);
-#else
-      base[2] = TREF_NIL; setnilV(basev + 2);
-#endif
       lj_record_call(J, func, 2);
    }
    else {
@@ -1858,9 +1840,7 @@ static void rec_func_vararg(jit_State* J)
    if (J->baseslot + vframe + pt->framesize >= LJ_MAX_JSLOTS)
       lj_trace_err(J, LJ_TRERR_STACKOV);
    J->base[vframe - 1 - LJ_FR2] = J->base[-1 - LJ_FR2];  //  Copy function up.
-#if LJ_FR2
    J->base[vframe - 1] = TREF_FRAME;
-#endif
    // Copy fixarg slots up and set their original slots to nil.
    fixargs = pt->numparams < J->maxslot ? pt->numparams : J->maxslot;
    for (s = 0; s < fixargs; s++) {
@@ -2427,11 +2407,7 @@ void lj_record_ins(jit_State* J)
    case BC_MOV:
       // Clear gap of method call to avoid resurrecting previous refs.
       if (ra > J->maxslot) {
-#if LJ_FR2
          memset(J->base + J->maxslot, 0, (ra - J->maxslot) * sizeof(TRef));
-#else
-         J->base[ra - 1] = 0;
-#endif
       }
       break;
    case BC_KSTR: case BC_KNUM: case BC_KPRI:

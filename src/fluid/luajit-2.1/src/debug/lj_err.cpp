@@ -87,7 +87,7 @@
 
 // Error message strings.
 LJ_DATADEF const char* lj_err_allmsg =
-#define ERRDEF(name, msg)	msg "\0"
+#define ERRDEF(name, msg)  msg "\0"
 #include "lj_errmsg.h"
 ;
 
@@ -361,13 +361,13 @@ VOID RtlUnwindEx_FIXED(PVOID, PVOID, PVOID, PVOID, PVOID, PVOID) asm("RtlUnwindE
 #define RtlUnwindEx RtlUnwindEx_FIXED
 #endif
 
-#define LJ_MSVC_EXCODE		((DWORD)0xe06d7363)
-#define LJ_GCC_EXCODE		((DWORD)0x20474343)
+#define LJ_MSVC_EXCODE     ((DWORD)0xe06d7363)
+#define LJ_GCC_EXCODE      ((DWORD)0x20474343)
 
-#define LJ_EXCODE		((DWORD)0xe24c4a00)
-#define LJ_EXCODE_MAKE(c)	(LJ_EXCODE | (DWORD)(c))
-#define LJ_EXCODE_CHECK(cl)	(((cl) ^ LJ_EXCODE) <= 0xff)
-#define LJ_EXCODE_ERRCODE(cl)	((int)((cl) & 0xff))
+#define LJ_EXCODE    ((DWORD)0xe24c4a00)
+#define LJ_EXCODE_MAKE(c)  (LJ_EXCODE | (DWORD)(c))
+#define LJ_EXCODE_CHECK(cl)   (((cl) ^ LJ_EXCODE) <= 0xff)
+#define LJ_EXCODE_ERRCODE(cl) ((int)((cl) & 0xff))
 
 // Windows exception handler for interpreter frame.
 extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
@@ -426,11 +426,11 @@ extern "C" int lj_err_unwind_win(EXCEPTION_RECORD* rec,
 #if LJ_UNWIND_JIT
 
 #if LJ_TARGET_X64
-#define CONTEXT_REG_PC	Rip
+ #define CONTEXT_REG_PC  Rip
 #elif LJ_TARGET_ARM64
-#define CONTEXT_REG_PC	Pc
+ #define CONTEXT_REG_PC  Pc
 #else
-#error "NYI: Windows arch-specific unwinder for JIT-compiled code"
+ #error "NYI: Windows arch-specific unwinder for JIT-compiled code"
 #endif
 
 //********************************************************************************************************************
@@ -491,18 +491,18 @@ static void err_raise_ext(global_State* g, int errcode)
 
 typedef struct _Unwind_Context _Unwind_Context;
 
-#define _URC_OK			0
-#define _URC_FATAL_PHASE2_ERROR	2
-#define _URC_FATAL_PHASE1_ERROR	3
-#define _URC_HANDLER_FOUND	6
-#define _URC_INSTALL_CONTEXT	7
-#define _URC_CONTINUE_UNWIND	8
-#define _URC_FAILURE		9
+#define _URC_OK         0
+#define _URC_FATAL_PHASE2_ERROR  2
+#define _URC_FATAL_PHASE1_ERROR  3
+#define _URC_HANDLER_FOUND 6
+#define _URC_INSTALL_CONTEXT  7
+#define _URC_CONTINUE_UNWIND  8
+#define _URC_FAILURE    9
 
-#define LJ_UEXCLASS		0x4c55414a49543200ULL	//  LUAJIT2\0
-#define LJ_UEXCLASS_MAKE(c)	(LJ_UEXCLASS | (uint64_t)(c))
-#define LJ_UEXCLASS_CHECK(cl)	(((cl) ^ LJ_UEXCLASS) <= 0xff)
-#define LJ_UEXCLASS_ERRCODE(cl)	((int)((cl) & 0xff))
+#define LJ_UEXCLASS     0x4c55414a49543200ULL   //  LUAJIT2\0
+#define LJ_UEXCLASS_MAKE(c)   (LJ_UEXCLASS | (uint64_t)(c))
+#define LJ_UEXCLASS_CHECK(cl) (((cl) ^ LJ_UEXCLASS) <= 0xff)
+#define LJ_UEXCLASS_ERRCODE(cl)  ((int)((cl) & 0xff))
 
 #if !LJ_TARGET_ARM
 
@@ -512,7 +512,7 @@ typedef struct _Unwind_Exception
    void (*excleanup)(int, struct _Unwind_Exception*);
    uintptr_t p1, p2;
 } __attribute__((__aligned__)) _Unwind_Exception;
-#define UNWIND_EXCEPTION_TYPE	_Unwind_Exception
+#define UNWIND_EXCEPTION_TYPE _Unwind_Exception
 
 extern "C" uintptr_t _Unwind_GetCFA(_Unwind_Context*);
 extern "C" void _Unwind_SetGR(_Unwind_Context*, int, uintptr_t);
@@ -521,14 +521,13 @@ extern "C" void _Unwind_SetIP(_Unwind_Context*, uintptr_t);
 extern "C" void _Unwind_DeleteException(_Unwind_Exception*);
 extern "C" int _Unwind_RaiseException(_Unwind_Exception*);
 
-#define _UA_SEARCH_PHASE	1
-#define _UA_CLEANUP_PHASE	2
-#define _UA_HANDLER_FRAME	4
-#define _UA_FORCE_UNWIND	8
+#define _UA_SEARCH_PHASE   1
+#define _UA_CLEANUP_PHASE  2
+#define _UA_HANDLER_FRAME  4
+#define _UA_FORCE_UNWIND   8
 
 // DWARF2 personality handler referenced from interpreter .eh_frame.
-LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions,
-   uint64_t uexclass, _Unwind_Exception* uex, _Unwind_Context* ctx)
+LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions, uint64_t uexclass, _Unwind_Exception* uex, _Unwind_Context* ctx)
 {
    void* cf;
    lua_State* L;
@@ -538,8 +537,7 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions,
    L = cframe_L(cf);
    if ((actions & _UA_SEARCH_PHASE)) {
 #if LJ_UNWIND_EXT
-      if (err_unwind(L, cf, 0) == nullptr)
-         return _URC_CONTINUE_UNWIND;
+      if (err_unwind(L, cf, 0) == nullptr) return _URC_CONTINUE_UNWIND;
 #endif
       if (!LJ_UEXCLASS_CHECK(uexclass)) {
          setstrV(L, L->top++, lj_err_str(L, ErrMsg::ERRCPP));
@@ -563,9 +561,7 @@ LJ_FUNCA int lj_err_unwind_dwarf(int version, int actions,
       }
       else if (cf) {
          _Unwind_SetGR(ctx, LJ_TARGET_EHRETREG, errcode);
-         _Unwind_SetIP(ctx, (uintptr_t)(cframe_unwind_ff(cf) ?
-            lj_vm_unwind_ff_eh :
-            lj_vm_unwind_c_eh));
+         _Unwind_SetIP(ctx, (uintptr_t)(cframe_unwind_ff(cf) ? lj_vm_unwind_ff_eh : lj_vm_unwind_c_eh));
          return _URC_INSTALL_CONTEXT;
       }
 #if LJ_TARGET_X86ORX64
@@ -643,48 +639,42 @@ static int err_unwind_jit(int version, int actions,
 ** The frame handler always installs a new context to jump to the exit,
 ** so don't bother to add any unwind opcodes.
 */
+
 static const uint8_t err_frame_jit_template[] = {
 #if LJ_BE
   0,0,0,
 #endif
-  LJ_64 ? 0x1c : 0x14,  //  CIE length.
+  0x1c,  //  CIE length.
 #if LJ_LE
   0,0,0,
 #endif
   0,0,0,0, 1, 'z','P','R',0,  //  CIE mark, CIE version, augmentation.
-  1, LJ_64 ? 0x78 : 0x7c, LJ_TARGET_EHRAREG,  //  Code/data align, RA.
-#if LJ_64
+  1, 0x78, LJ_TARGET_EHRAREG,  //  Code/data align, RA.
   10, 0, 0,0,0,0,0,0,0,0, 0x1b,  //  Aug. data ABS handler, PCREL|SDATA4 code.
   0,0,0,0,0,  //  Alignment.
-#else
-  6, 0, 0,0,0,0, 0x1b,  //  Aug. data ABS handler, PCREL|SDATA4 code.
-  0,  //  Alignment.
-#endif
 #if LJ_BE
   0,0,0,
 #endif
-  LJ_64 ? 0x14 : 0x10,  //  FDE length.
+  0x14,  //  FDE length.
   0,0,0,
-  LJ_64 ? 0x24 : 0x1c,  //  CIE offset.
+  0x24,  //  CIE offset.
   0,0,0,
-  LJ_64 ? 0x14 : 0x10,  //  Code offset. After Final FDE.
+  0x14,  //  Code offset. After Final FDE.
 #if LJ_LE
   0,0,0,
 #endif
   0,0,0,0, 0, 0,0,0, //  Code size, augmentation length, alignment.
-#if LJ_64
   0,0,0,0,  //  Alignment.
-#endif
   0,0,0,0  //  Final FDE.
 };
 
-#define ERR_FRAME_JIT_OFS_HANDLER	0x12
-#define ERR_FRAME_JIT_OFS_FDE		(LJ_64 ? 0x20 : 0x18)
-#define ERR_FRAME_JIT_OFS_CODE_SIZE	(LJ_64 ? 0x2c : 0x24)
+#define ERR_FRAME_JIT_OFS_HANDLER   0x12
+#define ERR_FRAME_JIT_OFS_FDE       0x20
+#define ERR_FRAME_JIT_OFS_CODE_SIZE 0x2c
 #if LJ_TARGET_OSX
-#define ERR_FRAME_JIT_OFS_REGISTER	ERR_FRAME_JIT_OFS_FDE
+#define ERR_FRAME_JIT_OFS_REGISTER  ERR_FRAME_JIT_OFS_FDE
 #else
-#define ERR_FRAME_JIT_OFS_REGISTER	0
+#define ERR_FRAME_JIT_OFS_REGISTER  0
 #endif
 
 extern "C" void __register_frame(const void*);
@@ -718,13 +708,13 @@ void lj_err_deregister_mcode(void* base, size_t sz, uint8_t* info)
 
 #else //  LJ_TARGET_ARM
 
-#define _US_VIRTUAL_UNWIND_FRAME	0
-#define _US_UNWIND_FRAME_STARTING	1
-#define _US_ACTION_MASK			3
-#define _US_FORCE_UNWIND		8
+#define _US_VIRTUAL_UNWIND_FRAME 0
+#define _US_UNWIND_FRAME_STARTING   1
+#define _US_ACTION_MASK       3
+#define _US_FORCE_UNWIND      8
 
 typedef struct _Unwind_Control_Block _Unwind_Control_Block;
-#define UNWIND_EXCEPTION_TYPE	_Unwind_Control_Block
+#define UNWIND_EXCEPTION_TYPE _Unwind_Control_Block
 
 struct _Unwind_Control_Block {
    uint64_t exclass;

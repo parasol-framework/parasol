@@ -359,7 +359,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 {
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
-   auto arg1 = BCReg(base + 1 + LJ_FR2);  // First argument register (after frame link if present)
+   auto arg1 = BCReg(base + 1  + 1);  // First argument register (after frame link if present)
    auto arg2 = arg1 + 1;            // Second argument register
 
    // Normalise both operands into registers before loading the callee.
@@ -404,7 +404,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 
    fs->freereg = arg2 + 1;  // Ensure freereg covers all arguments
    lhs->k = ExpKind::Call;
-   lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+   lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base  - 1));
    lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
@@ -470,7 +470,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    RegisterAllocator allocator(fs);
    ExpDesc callee, key;
    auto base = fs->free_reg();
-   BCReg arg_reg = BCReg(int(base) + 1 + LJ_FR2);
+   BCReg arg_reg = BCReg(int(base) + 1  + 1);
 
    allocator.reserve(BCReg(1));  // Reserve for callee
    if (LJ_FR2) allocator.reserve(BCReg(1));  // Reserve for frame link on x64
@@ -508,7 +508,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    // Emit CALL instruction.
    fs->freereg = arg_reg + 1;
    arg->k = ExpKind::Call;
-   arg->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+   arg->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base  - 1));
    arg->u.s.aux = base;
    fs->freereg = base + 1;
 

@@ -229,22 +229,13 @@ extern int lua_type(lua_State* L, int idx)
    cTValue* o = index2adr(L, idx);
    if (tvisnumber(o)) {
       return LUA_TNUMBER;
-#if LJ_64 && !LJ_GC64
-   }
-   else if (tvislightud(o)) {
-      return LUA_TLIGHTUSERDATA;
-#endif
    }
    else if (o == niltv(L)) {
       return LUA_TNONE;
    }
    else {  // Magic internal/external tag conversion. ORDER LJ_T
       uint32_t t = ~itype(o);
-#if LJ_64
       int tt = (int)((U64x(75a06, 98042110) >> 4 * t) & 15u);
-#else
-      int tt = (int)(((t < 8 ? 0x98042110u : 0x75a06u) >> 4 * (t & 7)) & 15u);
-#endif
       lj_assertL(tt != LUA_TNIL or tvisnil(o), "bad tag conversion");
       return tt;
    }
@@ -315,11 +306,6 @@ extern int lua_equal(lua_State* L, int idx1, int idx2)
    }
    else if (tvispri(o1)) {
       return o1 != niltv(L) && o2 != niltv(L);
-#if LJ_64 && !LJ_GC64
-   }
-   else if (tvislightud(o1)) {
-      return o1->u64 == o2->u64;
-#endif
    }
    else if (gcrefeq(o1->gcr, o2->gcr)) {
       return 1;
@@ -426,11 +412,7 @@ extern lua_Integer lua_tointeger(lua_State* L, int idx)
          return intV(&tmp);
       n = numV(&tmp);
    }
-#if LJ_64
    return (lua_Integer)n;
-#else
-   return lj_num2int(n);
-#endif
 }
 
 extern lua_Integer lua_tointegerx(lua_State* L, int idx, int* ok)
@@ -457,11 +439,7 @@ extern lua_Integer lua_tointegerx(lua_State* L, int idx, int* ok)
       n = numV(&tmp);
    }
    if (ok) *ok = 1;
-#if LJ_64
    return (lua_Integer)n;
-#else
-   return lj_num2int(n);
-#endif
 }
 
 extern lua_Integer luaL_checkinteger(lua_State* L, int idx)
@@ -482,11 +460,7 @@ extern lua_Integer luaL_checkinteger(lua_State* L, int idx)
          return (lua_Integer)intV(&tmp);
       n = numV(&tmp);
    }
-#if LJ_64
    return (lua_Integer)n;
-#else
-   return lj_num2int(n);
-#endif
 }
 
 extern lua_Integer luaL_optinteger(lua_State* L, int idx, lua_Integer def)
@@ -510,11 +484,7 @@ extern lua_Integer luaL_optinteger(lua_State* L, int idx, lua_Integer def)
          return (lua_Integer)intV(&tmp);
       n = numV(&tmp);
    }
-#if LJ_64
    return (lua_Integer)n;
-#else
-   return lj_num2int(n);
-#endif
 }
 
 extern int lua_toboolean(lua_State* L, int idx)
@@ -743,9 +713,7 @@ extern void lua_pushboolean(lua_State* L, int b)
 
 extern void lua_pushlightuserdata(lua_State* L, void* p)
 {
-#if LJ_64
    p = lj_lightud_intern(L, p);
-#endif
    setrawlightudV(L->top, p);
    incr_top(L);
 }
@@ -1069,7 +1037,7 @@ extern int lua_setmetatable(lua_State* L, int idx)
 {
    GCtab *mt;
    cTValue *o = index2adr_check(L, idx);
-   
+
    lj_checkapi_slot(1);
    if (tvisnil(L->top - 1)) {
       mt = nullptr;
@@ -1154,7 +1122,6 @@ extern const char* lua_setupvalue(lua_State* L, int idx, int n)
 
 // Calls
 
-#if LJ_FR2
 static TValue* api_call_base(lua_State* L, int nargs)
 {
    TValue* o = L->top, * base = o - nargs;
@@ -1163,9 +1130,6 @@ static TValue* api_call_base(lua_State* L, int nargs)
    setnilV(o);
    return o + 1;
 }
-#else
-#define api_call_base(L, nargs)   (L->top - (nargs))
-#endif
 
 extern void lua_call(lua_State* L, int nargs, int nresults)
 {
@@ -1201,10 +1165,8 @@ static TValue* cpcall(lua_State* L, lua_CFunction func, void* ud)
    TValue* top = L->top;
    fn->c.f = func;
    setfuncV(L, top++, fn);
-   if (LJ_FR2) setnilV(top++);
-#if LJ_64
+   setnilV(top++);
    ud = lj_lightud_intern(L, ud);
-#endif
    setrawlightudV(top++, ud);
    cframe_nres(L->cframe) = 1 + 0;  //  Zero results.
    L->top = top;
@@ -1227,7 +1189,7 @@ extern int luaL_callmeta(lua_State* L, int idx, const char* field)
 {
    if (luaL_getmetafield(L, idx, field)) {
       TValue* top = L->top--;
-      if (LJ_FR2) setnilV(top++);
+      setnilV(top++);
       copyTV(L, top++, index2adr(L, idx));
       L->top = top;
       lj_vm_call(L, top - 1, 1 + 1);
@@ -1265,11 +1227,11 @@ extern int lua_yield(lua_State* L, int nresults)
          hook_leave(g);
          (top++)->u64 = cframe_multres(cf);
          setcont(top, lj_cont_hook);
-         if (LJ_FR2) top++;
+         top++;
          setframe_pc(top, cframe_pc(cf) - 1);
          top++;
          setframe_gc(top, obj2gco(L), LJ_TTHREAD);
-         if (LJ_FR2) top++;
+         top++;
          setframe_ftsz(top, ((char*)(top + 1) - (char*)L->base) + FRAME_CONT);
          L->top = L->base = top + 1;
 #if ((defined(__GNUC__) or defined(__clang__)) && (LJ_TARGET_X64 or defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND) or LJ_TARGET_WINDOWS

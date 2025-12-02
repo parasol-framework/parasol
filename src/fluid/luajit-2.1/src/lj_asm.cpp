@@ -335,11 +335,7 @@ static Reg ra_rematk(ASMState* as, IRRef ref)
       lj_assertA(!rset_test(as->freeset, r), "rematk of free reg %d", r);
       ra_free(as, r);
       ra_modified(as, r);
-#if LJ_64
       emit_loadu64(as, r, ra_krefk(as, ref));
-#else
-      emit_loadi(as, r, ra_krefk(as, ref));
-#endif
       return r;
    }
    ir = IR(ref);
@@ -365,7 +361,6 @@ static Reg ra_rematk(ASMState* as, IRRef ref)
          // REF_NIL stores ASMREF_L register.
          lj_assertA(irt_isnil(ir->t), "rematk of bad ASMREF_L");
          emit_getgl(as, r, cur_L);
-#if LJ_64
       }
       else if (ir->o == IR_KINT64) {
          emit_loadu64(as, r, ir_kint64(ir)->u64);
@@ -376,7 +371,6 @@ static Reg ra_rematk(ASMState* as, IRRef ref)
       }
       else if (ir->o == IR_KPTR or ir->o == IR_KKPTR) {
          emit_loadu64(as, r, (uintptr_t)ir_kptr(ir));
-#endif
 #endif
       }
       else {
@@ -568,7 +562,6 @@ static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow)
       IRRef ref;
       r = rset_pickbot(work);
       ref = regcost_ref(as->cost[r]);
-#if LJ_64
       if (ref < ASMREF_L) {
          if (ra_iskref(ref)) {
             if (k == ra_krefk(as, ref))
@@ -589,11 +582,6 @@ static Reg ra_allock(ASMState* as, intptr_t k, RegSet allow)
                return r;
          }
       }
-#else
-      if (ref < ASMREF_L &&
-         k == (ra_iskref(ref) ? ra_krefk(as, ref) : IR(ref)->i))
-         return r;
-#endif
       rset_clear(work, r);
    }
    pick = as->freeset & allow;
@@ -779,7 +767,6 @@ static void ra_left(ASMState* as, Reg dest, IRRef lref)
                emit_loadk64(as, dest, ir);
                return;
             }
-#if LJ_64
          }
          else if (ir->o == IR_KINT64) {
             emit_loadk64(as, dest, ir);
@@ -789,7 +776,6 @@ static void ra_left(ASMState* as, Reg dest, IRRef lref)
          else if (ir->o == IR_KGC or ir->o == IR_KPTR or ir->o == IR_KKPTR) {
             emit_loadk64(as, dest, ir);
             return;
-#endif
 #endif
          }
          else if (ir->o != IR_KPRI) {
@@ -1110,11 +1096,7 @@ static uint32_t ir_khash(ASMState* as, IRIns* ir)
    else {
       lj_assertA(irt_isgcv(ir->t), "hash of bad IR type %d", irt_type(ir->t));
       lo = u32ptr(ir_kgc(ir));
-#if LJ_GC64
       hi = (uint32_t)(u64ptr(ir_kgc(ir)) >> 32) | (irt_toitype(ir->t) << 15);
-#else
-      hi = lo + HASH_BIAS;
-#endif
    }
    return hashrot(lo, hi);
 }
@@ -1313,36 +1295,6 @@ static void asm_tostr(ASMState* as, IRIns* ir)
       asm_tvptr(as, ra_releasetmp(as, ASMREF_TMP1), ir->op1, IRTMPREF_IN1);
 }
 
-#if LJ_32 and LJ_HASFFI and !LJ_SOFTFP and !LJ_TARGET_X86
-static void asm_conv64(ASMState* as, IRIns* ir)
-{
-   IRType st = (IRType)((ir - 1)->op2 & IRCONV_SRCMASK);
-   IRType dt = (((ir - 1)->op2 & IRCONV_DSTMASK) >> IRCONV_DSH);
-   IRCallID id;
-   IRRef args[2];
-   lj_assertA((ir - 1)->o == IR_CONV and ir->o == IR_HIOP,
-      "not a CONV/HIOP pair at IR %04d", (int)(ir - as->ir) - REF_BIAS);
-   args[LJ_BE] = (ir - 1)->op1;
-   args[LJ_LE] = ir->op1;
-   if (st == IRT_NUM or st == IRT_FLOAT) {
-      id = IRCALL_fp64_d2l + ((st == IRT_FLOAT) ? 2 : 0) + (dt - IRT_I64);
-      ir--;
-   }
-   else {
-      id = IRCALL_fp64_l2d + ((dt == IRT_FLOAT) ? 2 : 0) + (st - IRT_I64);
-   }
-   {
-#if LJ_TARGET_ARM and !LJ_ABI_SOFTFP
-      CCallInfo cim = lj_ir_callinfo[id], * ci = &cim;
-      cim.flags |= CCI_VARARG;  //  These calls don't use the hard-float ABI!
-#else
-      const CCallInfo* ci = &lj_ir_callinfo[id];
-#endif
-      asm_setupresult(as, ir, ci);
-      asm_gencall(as, ci, args);
-   }
-}
-#endif
 
 // -- Memory references ---------------------------------------------------
 
@@ -2134,12 +2086,7 @@ static void asm_tail_link(ASMState* as)
          if (bc_isret(bc_op(*retpc)))
             pc = retpc;
       }
-#if LJ_GC64
       emit_loadu64(as, RID_LPC, u64ptr(pc));
-#else
-      ra_allockreg(as, i32ptr(J2GG(as->J)->dispatch), RID_DISPATCH);
-      ra_allockreg(as, i32ptr(pc), RID_LPC);
-#endif
       mres = (int32_t)(snap->nslots - baseslot - LJ_FR2);
       switch (bc_op(*pc)) {
       case BC_CALLM: case BC_CALLMT:
@@ -2192,13 +2139,8 @@ static void asm_setup_regsp(ASMState* as)
    for (ir = IR(T->nk), lastir = IR(REF_BASE); ir < lastir; ir++) {
       ir->prev = REGSP_INIT;
       if (irt_is64(ir->t) and ir->o != IR_KNULL) {
-#if LJ_GC64
          // The false-positive of irt_is64() for ASMREF_L (REF_NIL) is OK here.
          ir->i = 0;  //  Will become non-zero only for RIP-relative addresses.
-#else
-         // Make life easier for backends by putting address of constant in i.
-         ir->i = (int32_t)(intptr_t)(ir + 1);
-#endif
          ir++;
       }
    }
@@ -2379,16 +2321,6 @@ static void asm_setup_regsp(ASMState* as)
             continue;
          }
          break;
-#if LJ_64 and LJ_SOFTFP
-      case IR_ADD: case IR_SUB: case IR_MUL:
-         if (irt_isnum(ir->t)) {
-            ir->prev = REGSP_HINT(RID_RET);
-            if (inloop)
-               as->modset |= (RSET_SCRATCH & RSET_GPR);
-            continue;
-         }
-         break;
-#endif
       case IR_FPMATH:
 #if LJ_TARGET_X86ORX64
          if (ir->op2 <= IRFPM_TRUNC) {
