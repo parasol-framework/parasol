@@ -608,9 +608,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
 
    BCPos body_start = BCPos(this->func_state.pc);
    check_nil.patch_to(body_start);
-   check_false.patch_to(BCPos(body_start));
-   check_zero.patch_to(BCPos(body_start));
-   check_empty.patch_to(BCPos(body_start));
+   check_false.patch_to(body_start);
+   check_zero.patch_to(body_start);
+   check_empty.patch_to(body_start);
 
    auto body_result = this->emit_statement(*payload.body);
    if (not body_result.ok()) return body_result;
