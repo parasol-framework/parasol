@@ -18,6 +18,8 @@
 #include "parser/parse_value.h"
 #include "parser/token_types.h"
 
+#include "../../../defs.h"  // For glPrintMsg
+
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
 //
@@ -186,7 +188,12 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
       if (extra > 1) allocator.reserve(BCReg(BCREG(extra) - 1));
    }
    else {
-      if (Expr->k != ExpKind::Void) {
+      if (Expr->k IS ExpKind::Void) {
+         // Void expression contributes no values, so all LHS variables need nil.
+         // This handles cases like `local a, b = assert(...)` where shadow assert returns void.
+         extra = int32_t(nvars);
+      }
+      else {
          ExpressionValue value(fs, *Expr);
          value.to_next_reg(allocator);
          *Expr = value.legacy();
@@ -1809,7 +1816,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload)
 {
    if (not Payload.table or not Payload.index) return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
 
@@ -1834,7 +1841,7 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload& Payload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload &Payload)
 {
    if (not Payload.table or Payload.member.symbol IS nullptr) {
       return this->unsupported_expr(AstNodeKind::SafeMemberExpr, Payload.member.span);
@@ -1856,7 +1863,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload &Payload)
 {
    if (not Payload.table or not Payload.index) {
       return this->unsupported_expr(AstNodeKind::SafeIndexExpr, SourceSpan{});
@@ -1886,7 +1893,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
 
 //********************************************************************************************************************
 
-ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payload)
 {
    BCLine call_line = this->lex_state.lastline;
 
@@ -1941,9 +1948,40 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
 
+   // Check for shadow function optimisations (functions we transform at compile-time).
+   // NOTE: This optimisation may cause confusion during debugging sessions, so we may want to add
+   // a way to disable it later (and don't delete the functions that are being shadowed).
+
+   if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
+      if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
+         const auto *name_ref = std::get_if<NameRef>(&direct->callable->data);
+         if (name_ref and name_ref->identifier.symbol) {
+            GCstr *func_name = name_ref->identifier.symbol;
+
+            // Shadow function table - add new entries here by comparing against interned strings.
+            // Note: We match by name only. If a local shadows the global (e.g., local assert = ...),
+            // the var_lookup_symbol() call during emission will resolve correctly.
+
+            static GCstr *assert_str = nullptr; // Global state - this is confirmed as thread safe.
+            static GCstr *msg_str = nullptr;
+            if (not assert_str) assert_str = lj_str_newlit(this->lex_state.L, "assert");
+            if (not msg_str) msg_str = lj_str_newlit(this->lex_state.L, "msg");
+
+            if (func_name IS assert_str) {
+               return this->emit_shadow_assert(Payload.arguments, call_line);
+            }
+
+            // msg() is eliminated entirely when debug messaging is disabled at compile time.
+            if ((func_name IS msg_str) and not glPrintMsg) {
+               return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
+            }
+         }
+      }
+   }
+
    ExpDesc callee;
    auto base = BCReg(0);
-   if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
+   if (const auto *direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
       auto callee_result = this->emit_expression(*direct->callable);
       if (not callee_result.ok()) return callee_result;
@@ -1994,6 +2032,79 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    result.init(ExpKind::Call, bcemit_INS(&this->func_state, ins));
    result.u.s.aux = base;
    this->func_state.freereg = base + 1;
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+// Shadow function: assert(condition, message)
+// Transforms: assert(expr, msg) -> if not expr then error(msg) end
+// This provides short-circuiting of the message expression when the assertion passes.
+
+ParserResult<ExpDesc> IrEmitter::emit_shadow_assert(const ExprNodeList& arguments, BCLine call_line)
+{
+   // assert() requires at least one argument (the condition)
+   if (arguments.empty()) {
+      return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+         "assert() requires at least 1 argument"));
+   }
+
+   FuncState* fs = &this->func_state;
+
+   // Save the starting register so we can restore it after emitting the shadow code.
+   // This is important because the shadow assert uses temporary registers for the error
+   // call path, but returns Void - the caller needs freereg to be where locals should go.
+   auto saved_freereg = fs->freereg;
+
+   // Emit the condition expression
+   auto cond_result = this->emit_expression(*arguments[0]);
+   if (not cond_result.ok()) return cond_result;
+   ExpDesc condition = cond_result.value_ref();
+
+   // Test the condition and jump to success path if true
+   // bcemit_branch_t emits IST/ISFC and sets condition.f to the jump-if-false position
+   if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
+   bcemit_branch_t(fs, &condition);
+   ControlFlowEdge fail_edge = this->control_flow.make_false_edge(BCPos(condition.f));
+
+   // Success path: Jump over the error call
+   ControlFlowEdge success_edge = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+
+   fail_edge.patch_here(); // Failure path: Call error(message)
+
+   // Look up the 'error' function
+   ExpDesc error_func;
+   this->lex_state.var_lookup_symbol(lj_str_newlit(this->lex_state.L, "error"), &error_func);
+   this->materialise_to_next_reg(error_func, "assert error function");
+
+   // Reserve register for frame link
+   RegisterAllocator allocator(fs);
+   allocator.reserve(BCReg(1));
+   auto error_base = BCReg(error_func.u.s.info);
+
+   // Emit the message argument (or default message)
+   if (arguments.size() >= 2) {
+      // User provided a message
+      auto msg_result = this->emit_expression(*arguments[1]);
+      if (not msg_result.ok()) return msg_result;
+      ExpDesc msg = msg_result.value_ref();
+      this->materialise_to_next_reg(msg, "assert error message");
+   }
+   else { // Default message: "assertion failed"
+      ExpDesc default_msg(lj_str_newlit(this->lex_state.L, "assertion failed"));
+      this->materialise_to_next_reg(default_msg, "assert default message");
+   }
+
+   // Emit the error() call
+   this->lex_state.lastline = call_line;
+   BCIns error_ins = BCINS_ABC(BC_CALL, error_base, 2, fs->freereg - error_base - 1);
+   bcemit_INS(fs, error_ins);
+
+   success_edge.patch_here(); // Success path continues here
+
+   fs->freereg = saved_freereg;
+
+   // Return a void expression since we don't support assert() return values
+   ExpDesc result(ExpKind::Void);
    return ParserResult<ExpDesc>::success(result);
 }
 

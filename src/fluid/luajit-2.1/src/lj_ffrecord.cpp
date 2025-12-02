@@ -177,7 +177,7 @@ static TRef recff_tmpref(jit_State* J, TRef tr, int mode)
 static void LJ_FASTCALL recff_assert(jit_State* J, RecordFFData* rd)
 {
    // Arguments already specialized. The interpreter throws for nil/false.
-   rd->nres = J->maxslot;  //  Pass through all arguments.
+   rd->nres = 0;  // Returns no values (void).
 }
 
 static void LJ_FASTCALL recff_type(jit_State* J, RecordFFData* rd)

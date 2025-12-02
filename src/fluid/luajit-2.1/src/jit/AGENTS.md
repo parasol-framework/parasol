@@ -1,0 +1,1 @@
+The functions in the *.dasc files are typically backed by fallback functions in C++, e.g. assert in vm_x64.dasc has associated code in `src/fluid/luajit-2.1/src/lib/lib_base.cpp` and `src/fluid/luajit-2.1/src/lj_ffrecord.cpp`

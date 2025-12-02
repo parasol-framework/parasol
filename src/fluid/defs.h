@@ -27,6 +27,7 @@ template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
 template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
 
 extern CSTRING const glBytecodeNames[];
+extern bool glPrintMsg;
 
 //********************************************************************************************************************
 
