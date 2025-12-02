@@ -356,6 +356,22 @@ function testShortHand()
 
    test()
    assert(returned_early is true, "Failed shorthand optional early return test")
+
+   true ?? "My message " .. test() .. " here"
+   assert(returned_early is true, "Failed shorthand optional early return test")
+end
+
+-- Internally, assert() calls are converted to "condition ?? error(message)", hence this test being here
+
+function testAssertCircuit()
+   local inc = 0
+   local function increment()
+      inc++
+      return inc
+   end
+
+   assert(true, "Test assert short-circuit " .. increment())
+   assert(inc is 0, "RHS function should not have been called, inc should be 0, got " .. tostring(inc))
 end
 
 -- Test return with value
@@ -441,6 +457,6 @@ end
          'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
          'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction', 'testShortHand',
          'testShortHandReturnValue', 'testShortHandBreak', 'testShortHandContinue',
-         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody'
+         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody', 'testAssertCircuit'
       }
    }

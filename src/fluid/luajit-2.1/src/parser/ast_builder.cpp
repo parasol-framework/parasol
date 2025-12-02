@@ -894,8 +894,45 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          bool forwards = false;
          auto args = this->parse_call_arguments(&forwards);
          if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
+
+         // Transform assert(expression, message) to expression ?? error(message)
+         // This short-circuits message evaluation when expression is truthy
+         ExprNodeList call_args = std::move(args.value_ref());
+         if (base->kind IS AstNodeKind::IdentifierExpr) {
+            const auto* name_ref = std::get_if<NameRef>(&base->data);
+            if (name_ref and name_ref->identifier.symbol) {
+               GCstr* symbol = name_ref->identifier.symbol;
+               std::string_view name_view(strdata(symbol), symbol->len);
+               if (name_view IS std::string_view("assert") and call_args.size() IS 2) {
+                  // Extract the two arguments
+                  ExprNodePtr condition = std::move(call_args[0]);
+                  ExprNodePtr message = std::move(call_args[1]);
+
+                  // Create error() call with the message
+                  Identifier error_id;
+                  error_id.symbol = lj_str_newlit(&this->ctx.lua(), "error");
+                  error_id.span = base->span;
+                  error_id.is_blank = false;
+                  NameRef error_ref;
+                  error_ref.identifier = error_id;
+                  ExprNodePtr error_callee = make_identifier_expr(base->span, error_ref);
+
+                  ExprNodeList error_args;
+                  error_args.push_back(std::move(message));
+                  SourceSpan error_span = combine_spans(base->span, token.span());
+                  ExprNodePtr error_call = make_call_expr(error_span, std::move(error_callee), std::move(error_args), false);
+
+                  // Create binary expression: condition ?? error(message)
+                  SourceSpan binary_span = combine_spans(condition->span, error_call->span);
+                  base = make_binary_expr(binary_span, AstBinaryOperator::IfEmpty,
+                     std::move(condition), std::move(error_call));
+                  continue;
+               }
+            }
+         }
+
          SourceSpan span = combine_spans(base->span, token.span());
-         base = make_call_expr(span, std::move(base), std::move(args.value_ref()), forwards);
+         base = make_call_expr(span, std::move(base), std::move(call_args), forwards);
          continue;
       }
 

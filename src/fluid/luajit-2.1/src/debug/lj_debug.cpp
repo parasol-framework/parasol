@@ -342,17 +342,14 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
    }
    else {  //  Output [string "string"] or [builtin:name].
       size_t len;  //  Length, up to first control char.
-      for (len = 0; len < LUA_IDSIZE - 12; len++)
-         if (((const unsigned char*)src)[len] < ' ') break;
+      for (len = 0; len < LUA_IDSIZE - 12; len++) if (((const unsigned char*)src)[len] < ' ') break;
       strcpy(out, line == ~(BCLine)0 ? "[builtin:" : "[string \""); out += 9;
       if (src[len] != '\0') {  //  Must truncate?
          if (len > LUA_IDSIZE - 15) len = LUA_IDSIZE - 15;
          strncpy(out, src, len); out += len;
          strcpy(out, "..."); out += 3;
       }
-      else {
-         strcpy(out, src); out += len;
-      }
+      else strcpy(out, src); out += len;
       strcpy(out, line == ~(BCLine)0 ? "]" : "\"]");
    }
 }
@@ -560,6 +557,7 @@ extern int lua_getinfo(lua_State* L, const char* what, lua_Debug* ar)
    return lj_debug_getinfo(L, what, (lj_Debug*)ar, 0);
 }
 
+//********************************************************************************************************************
 // This function fills parts of a lua_Debug structure with an identification of the activation record of the function
 // executing at a given level. Level 0 is the current running function, whereas level n+1 is the function that has
 // called level n (except for tail calls, which do not count on the stack). When there are no errors, lua_getstack
