@@ -1719,10 +1719,13 @@ static void build_subroutines(BuildCtx *ctx)
 #endif
   |.if DUALNUM
   |  stw TISNUM, 8(BASE)
+  |  li TMP0, -1			// 0-based: init to -1
+  |  stw TMP0, 12(BASE)
   |.else
-  |  stw ZERO, 8(BASE)
+  |  lis TMP0, 0xBFF0		// 0-based: high word of -1.0
+  |  stw TMP0, 8(BASE)
+  |  stw ZERO, 12(BASE)		// low word of -1.0 is 0
   |.endif
-  |   stw ZERO, 12(BASE)
   |  li RD, (3+1)*8
   |.if FPU
   |  stfd f0, 0(RA)
@@ -2450,15 +2453,15 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |   lwz TMP0, STR:CARG1->len
   |  cmplw TMP0, TMP2			// len < end? (unsigned compare)
-  |   addi TMP3, TMP2, 1
+  |   add TMP3, TMP2, TMP0		// For negative index conversion
   |  blt >5
   |2:
-  |  cmpwi TMP1, 0			// start <= 0?
+  |  cmpwi TMP1, 0			// start < 0?
   |   add TMP3, TMP1, TMP0
-  |  ble >7
+  |  blt >7
   |3:
   |  sub CARG3, TMP2, TMP1
-  |    addi CARG2, STR:CARG1, #STR-1
+  |    addi CARG2, STR:CARG1, #STR	// Zero-indexed: no -1 offset
   |  srawi TMP0, CARG3, 31
   |   addi CARG3, CARG3, 1
   |    add CARG2, CARG2, TMP1
@@ -2471,19 +2474,18 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |5:  // Negative end or overflow.
   |  cmpw TMP0, TMP2			// len >= end? (signed compare)
-  |   add TMP2, TMP0, TMP3		// Negative end: end = end+len+1.
+  |   add TMP2, TMP2, TMP0		// Negative end: end = end+len
   |  bge <2
-  |   mr TMP2, TMP0			// Overflow: end = len.
+  |   addi TMP2, TMP0, -1		// Overflow: end = len-1 (zero-indexed)
   |  b <2
   |
   |7:  // Negative start or underflow.
-  |  .gpr64 extsw TMP1, TMP1
-  |  addic CARG3, TMP1, -1
-  |  subfe CARG3, CARG3, CARG3
-  |   srawi CARG2, TMP3, 31		// Note: modifies carry.
-  |  andc TMP3, TMP3, CARG3
-  |   andc TMP1, TMP3, CARG2
-  |  addi TMP1, TMP1, 1			// start = 1 + (start ? start+len : 0)
+  |  cmpwi TMP3, 0			// start+len >= 0?
+  |  bge >8
+  |  li TMP1, 0				// Underflow: start = 0 (zero-indexed)
+  |  b <3
+  |8:
+  |  mr TMP1, TMP3			// start = start+len
   |  b <3
   |
   |// string.substr(str, start, end) - like string.sub but end is exclusive (zero-indexed)
@@ -6122,4 +6124,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

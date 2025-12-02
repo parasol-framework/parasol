@@ -1157,7 +1157,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  cbnz TAB:CARG2, ->fff_fallback
 #endif
   |  mov RC, #(3+1)*8
-  |  stp CARG1, TISNUM, [BASE, #-8]
+  |  mov TMP0w, #-1			// 0-based: -1 in 32-bit
+  |  add TMP0, TMP0, TISNUM		// Create tagged integer -1
+  |  stp CARG1, TMP0, [BASE, #-8]	// Store table at [BASE-8], -1 at [BASE]
   |   str CFUNC:CARG4, [BASE, #-16]
   |  b ->fff_res
   |
@@ -4216,4 +4218,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-
