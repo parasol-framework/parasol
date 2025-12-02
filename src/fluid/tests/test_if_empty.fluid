@@ -346,6 +346,87 @@ function testInFunction()
    assert(result is 1, "Failed test: expected 1, got " .. tostring(result))
 end
 
+function testShortHand()
+   local not_true = false
+   local returned_early = true
+   local function test()
+      not_true ?? return
+      returned_early = false
+   end
+
+   test()
+   assert(returned_early is true, "Failed shorthand optional early return test")
+end
+
+-- Test return with value
+function testShortHandReturnValue()
+   local function getValue(input)
+      input ?? return "default"
+      return input
+   end
+
+   assert(getValue(nil) is "default", "nil should return default")
+   assert(getValue(false) is "default", "false should return default")
+   assert(getValue(0) is "default", "0 should return default")
+   assert(getValue("") is "default", "empty string should return default")
+   assert(getValue("hello") is "hello", "truthy should return input")
+   assert(getValue(42) is 42, "truthy number should return input")
+end
+
+-- Test break in loop
+function testShortHandBreak()
+   local iterations = 0
+   local values = { 1, 2, 0, 4, 5 }  -- 0 at index 2 should break
+
+   for i = 0, #values - 1 do
+      values[i] ?? break
+      iterations += 1
+   end
+
+   assert(iterations is 2, "Should break after 2 iterations, got " .. tostring(iterations))
+end
+
+-- Test continue in loop
+function testShortHandContinue()
+   local sum = 0
+   local values = { 1, 0, 2, "", 3 }  -- Skip falsey values
+
+   for i = 0, #values - 1 do
+      values[i] ?? continue
+      sum += values[i]
+   end
+
+   assert(sum is 6, "Sum should be 6 (1+2+3), got " .. tostring(sum))
+end
+
+-- Test with runtime values (not compile-time constants)
+function testShortHandRuntimeCondition()
+   local function getCondition()
+      return nil
+   end
+
+   local executed_body = false
+   local function test()
+      getCondition() ?? return
+      executed_body = true
+   end
+
+   test()
+   assert(executed_body is false, "Body should not execute when condition is falsey")
+end
+
+-- Test truthy condition does not execute body
+function testShortHandTruthySkipsBody()
+   local body_executed = false
+   local function test()
+      "truthy" ?? return
+      body_executed = true
+   end
+
+   test()
+   assert(body_executed is true, "Body should execute when condition is truthy")
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
    return {
@@ -358,6 +439,8 @@ end
          'testOptionalTableField', 'testOptionalMissingField', 'testOptionalEmptyString',
          'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
          'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
-         'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction'
+         'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction', 'testShortHand',
+         'testShortHandReturnValue', 'testShortHandBreak', 'testShortHandContinue',
+         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody'
       }
    }

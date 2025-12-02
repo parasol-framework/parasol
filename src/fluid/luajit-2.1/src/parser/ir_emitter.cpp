@@ -346,6 +346,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::ReturnStmt:     return "ReturnStmt";
       case AstNodeKind::DeferStmt:      return "DeferStmt";
       case AstNodeKind::DoStmt:         return "DoStmt";
+      case AstNodeKind::ConditionalShorthandStmt: return "ConditionalShorthandStmt";
       case AstNodeKind::ExpressionStmt: return "ExpressionStmt";
       default: return "Unknown";
    }
@@ -542,6 +543,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
       if (payload.block) return this->emit_block(*payload.block, FuncScopeFlag::None);
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
+   case AstNodeKind::ConditionalShorthandStmt: {
+      const auto &payload = std::get<ConditionalShorthandStmtPayload>(stmt.data);
+      return this->emit_conditional_shorthand_stmt(payload);
+   }
    default:
       return this->unsupported_stmt(stmt.kind, stmt.span);
    }
@@ -562,6 +567,60 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    value = value_toval.legacy();
    release_indexed_original(this->func_state, value);
    this->func_state.reset_freereg();
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+
+ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload& payload)
+{
+   if (not payload.condition or not payload.body) {
+      return this->unsupported_stmt(AstNodeKind::ConditionalShorthandStmt, SourceSpan{});
+   }
+
+   auto condition_result = this->emit_expression(*payload.condition);
+   if (not condition_result.ok()) {
+      return ParserResult<IrEmitUnit>::failure(condition_result.error_ref());
+   }
+
+   RegisterGuard register_guard(&this->func_state);
+   RegisterAllocator allocator(&this->func_state);
+
+   ExpDesc condition = condition_result.value_ref();
+   ExpressionValue condition_value(&this->func_state, condition);
+   auto cond_reg = condition_value.discharge_to_any_reg(allocator);
+
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc falsev(ExpKind::False);
+   ExpDesc zerov(0.0);
+   ExpDesc emptyv(this->lex_state.intern_empty_string());
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
+   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
+   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
+   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+   ControlFlowEdge skip_body = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+   BCPos body_start = BCPos(this->func_state.pc);
+   check_nil.patch_to(body_start);
+   check_false.patch_to(BCPos(body_start));
+   check_zero.patch_to(BCPos(body_start));
+   check_empty.patch_to(BCPos(body_start));
+
+   auto body_result = this->emit_statement(*payload.body);
+   if (not body_result.ok()) return body_result;
+
+   skip_body.patch_to(BCPos(this->func_state.pc));
+
+   allocator.collapse_freereg(BCReg(cond_reg));
+   register_guard.disarm();
+   this->func_state.reset_freereg();
+
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 

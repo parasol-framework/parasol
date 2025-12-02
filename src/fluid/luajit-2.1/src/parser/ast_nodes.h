@@ -92,6 +92,7 @@ enum class AstNodeKind : uint16_t {
    ReturnStmt,
    DeferStmt,
    DoStmt,
+   ConditionalShorthandStmt,
    ExpressionStmt
 };
 
@@ -567,6 +568,17 @@ struct DoStmtPayload {
    ~DoStmtPayload();
 };
 
+struct ConditionalShorthandStmtPayload {
+   ConditionalShorthandStmtPayload() = default;
+   ConditionalShorthandStmtPayload(const ConditionalShorthandStmtPayload&) = delete;
+   ConditionalShorthandStmtPayload& operator=(const ConditionalShorthandStmtPayload&) = delete;
+   ConditionalShorthandStmtPayload(ConditionalShorthandStmtPayload&&) noexcept = default;
+   ConditionalShorthandStmtPayload& operator=(ConditionalShorthandStmtPayload&&) noexcept = default;
+   ExprNodePtr condition;
+   StmtNodePtr body;
+   ~ConditionalShorthandStmtPayload();
+};
+
 struct ExpressionStmtPayload {
    ExpressionStmtPayload() = default;
    ExpressionStmtPayload(const ExpressionStmtPayload&) = delete;
@@ -586,7 +598,7 @@ struct StmtNode {
       LocalFunctionStmtPayload, FunctionStmtPayload, IfStmtPayload,
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,
-      DoStmtPayload, ExpressionStmtPayload>
+      DoStmtPayload, ConditionalShorthandStmtPayload, ExpressionStmtPayload>
       data;
 };
 

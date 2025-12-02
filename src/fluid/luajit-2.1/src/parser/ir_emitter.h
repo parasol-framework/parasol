@@ -154,6 +154,7 @@ private:
    ParserResult<IrEmitUnit> emit_defer_stmt(const DeferStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_break_stmt(const BreakStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_continue_stmt(const ContinueStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_assignment_stmt(const AssignmentStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values);
    ParserResult<IrEmitUnit> emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values);

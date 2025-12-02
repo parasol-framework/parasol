@@ -28,6 +28,23 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& n
    return result;
 }
 
+static bool is_shorthand_statement_keyword(TokenKind kind)
+{
+   switch (kind) {
+      case TokenKind::ReturnToken:
+      case TokenKind::BreakToken:
+      case TokenKind::ContinueToken:
+         return true;
+      default:
+         return false;
+   }
+}
+
+static bool is_presence_expr(const ExprNodePtr& expr)
+{
+   return expr and expr->kind IS AstNodeKind::PresenceExpr;
+}
+
 AstBuilder::AstBuilder(ParserContext& context)
    : ctx(context)
 {
@@ -529,6 +546,86 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
       payload.values = std::move(values.value_ref());
       stmt->data = std::move(payload);
       return ParserResult<StmtNodePtr>::success(std::move(stmt));
+   }
+
+   // Conditional shorthand pattern: value ?? return/break/continue
+   if (targets.size() IS 1 and is_presence_expr(targets[0])) {
+      Token next = this->ctx.tokens().current();
+      if (is_shorthand_statement_keyword(next.kind())) {
+         auto* presence_payload = std::get_if<PresenceExprPayload>(&targets[0]->data);
+         if (presence_payload and presence_payload->value) {
+            ExprNodePtr condition = std::move(presence_payload->value);
+            StmtNodePtr body;
+
+            if (next.kind() IS TokenKind::ReturnToken) {
+               Token return_token = next;
+               this->ctx.tokens().advance();
+
+               ExprNodeList values;
+               bool forwards_call = false;
+
+               Token current = this->ctx.tokens().current();
+               bool is_terminator = this->ctx.check(TokenKind::EndToken) or this->ctx.check(TokenKind::Else) or
+                  this->ctx.check(TokenKind::ElseIf) or this->ctx.check(TokenKind::Until) or
+                  this->ctx.check(TokenKind::EndOfFile) or this->ctx.check(TokenKind::Semicolon);
+               bool same_line = (current.kind() IS TokenKind::EndOfFile)
+                  ? false
+                  : (current.span().line IS return_token.span().line);
+
+               if (same_line and not is_terminator) {
+                  auto exprs = this->parse_expression_list();
+                  if (not exprs.ok()) return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
+                  if (exprs.value_ref().size() IS 1 and exprs.value_ref()[0]->kind IS AstNodeKind::CallExpr) {
+                     forwards_call = true;
+                  }
+                  values = std::move(exprs.value_ref());
+               }
+
+               if (this->ctx.match(TokenKind::Semicolon).ok()) {
+                  // Optional separator consumed.
+               }
+
+               StmtNodePtr node = std::make_unique<StmtNode>();
+               node->kind = AstNodeKind::ReturnStmt;
+               node->span = return_token.span();
+
+               ReturnStmtPayload payload;
+               payload.values = std::move(values);
+               payload.forwards_call = forwards_call;
+
+               node->data = std::move(payload);
+               body = std::move(node);
+            }
+            else if (next.kind() IS TokenKind::BreakToken) {
+               StmtNodePtr node = std::make_unique<StmtNode>();
+               node->kind = AstNodeKind::BreakStmt;
+               node->span = next.span();
+               node->data.emplace<BreakStmtPayload>();
+               this->ctx.tokens().advance();
+               body = std::move(node);
+            }
+            else if (next.kind() IS TokenKind::ContinueToken) {
+               StmtNodePtr node = std::make_unique<StmtNode>();
+               node->kind = AstNodeKind::ContinueStmt;
+               node->span = next.span();
+               node->data.emplace<ContinueStmtPayload>();
+               this->ctx.tokens().advance();
+               body = std::move(node);
+            }
+
+            if (body) {
+               SourceSpan span = combine_spans(condition->span, body->span);
+               StmtNodePtr stmt = std::make_unique<StmtNode>();
+               stmt->kind = AstNodeKind::ConditionalShorthandStmt;
+               stmt->span = span;
+               ConditionalShorthandStmtPayload payload;
+               payload.condition = std::move(condition);
+               payload.body = std::move(body);
+               stmt->data = std::move(payload);
+               return ParserResult<StmtNodePtr>::success(std::move(stmt));
+            }
+         }
+      }
    }
 
    if (targets.size() > 1) {

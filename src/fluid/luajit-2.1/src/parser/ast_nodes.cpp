@@ -10,24 +10,24 @@ FluidType parse_type_name(std::string_view Name)
    };
 
    constexpr TypeName names[] = {
-      { "any", FluidType::Any },
-      { "nil", FluidType::Nil },
-      { "bool", FluidType::Bool },
-      { "boolean", FluidType::Bool },
-      { "num", FluidType::Num },
-      { "number", FluidType::Num },
-      { "str", FluidType::Str },
-      { "string", FluidType::Str },
-      { "table", FluidType::Table },
-      { "func", FluidType::Func },
+      { "any",      FluidType::Any },
+      { "nil",      FluidType::Nil },
+      { "bool",     FluidType::Bool },
+      { "boolean",  FluidType::Bool },
+      { "num",      FluidType::Num },
+      { "number",   FluidType::Num },
+      { "str",      FluidType::Str },
+      { "string",   FluidType::Str },
+      { "table",    FluidType::Table },
+      { "func",     FluidType::Func },
       { "function", FluidType::Func },
-      { "thread", FluidType::Thread },
-      { "cdata", FluidType::CData },
-      { "obj", FluidType::Object },
-      { "object", FluidType::Object }
+      { "thread",   FluidType::Thread },
+      { "cdata",    FluidType::CData },
+      { "obj",      FluidType::Object },
+      { "object",   FluidType::Object }
    };
 
-   for (const auto& entry : names) {
+   for (const auto &entry : names) {
       if (Name IS entry.name) return entry.type;
    }
 
@@ -37,14 +37,14 @@ FluidType parse_type_name(std::string_view Name)
 std::string_view type_name(FluidType Type)
 {
    switch (Type) {
-      case FluidType::Nil: return "nil";
-      case FluidType::Bool: return "bool";
-      case FluidType::Num: return "num";
-      case FluidType::Str: return "str";
-      case FluidType::Table: return "table";
-      case FluidType::Func: return "func";
+      case FluidType::Nil:    return "nil";
+      case FluidType::Bool:   return "bool";
+      case FluidType::Num:    return "num";
+      case FluidType::Str:    return "str";
+      case FluidType::Table:  return "table";
+      case FluidType::Func:   return "func";
       case FluidType::Thread: return "thread";
-      case FluidType::CData: return "cdata";
+      case FluidType::CData:  return "cdata";
       case FluidType::Object: return "obj";
       case FluidType::Any:
       default: return "any";
@@ -53,198 +53,205 @@ std::string_view type_name(FluidType Type)
 
 namespace {
 
-[[nodiscard]] inline bool ensure_operand(const ExprNodePtr& node)
+[[nodiscard]] inline bool ensure_operand(const ExprNodePtr &node)
 {
    return node != nullptr;
 }
 
-inline void assert_node(bool condition, const char* message)
+inline void assert_node(bool condition, CSTRING message)
 {
    lj_assertX(condition, message);
 }
 
-[[nodiscard]] inline size_t block_child_count(const std::unique_ptr<BlockStmt>& block)
+[[nodiscard]] inline size_t block_child_count(const std::unique_ptr<BlockStmt> &block)
 {
    return block ? block->view().size() : 0;
 }
 
 struct CallTargetChildCounter {
-   [[nodiscard]] size_t operator()(const DirectCallTarget& target) const {
-      return target.callable ? 1 : 0;
+   [[nodiscard]] size_t operator()(const DirectCallTarget &Target) const {
+      return Target.callable ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const MethodCallTarget& target) const {
-      return target.receiver ? 1 : 0;
+   [[nodiscard]] size_t operator()(const MethodCallTarget &Target) const {
+      return Target.receiver ? 1 : 0;
    }
 
-   [[nodiscard]] size_t operator()(const SafeMethodCallTarget& target) const
+   [[nodiscard]] size_t operator()(const SafeMethodCallTarget &Target) const
    {
-      return target.receiver ? 1 : 0;
+      return Target.receiver ? 1 : 0;
    }
 };
 
 struct ExpressionChildCounter {
-   [[nodiscard]] inline size_t operator()(const LiteralValue&) const { return 0; }
-   [[nodiscard]] inline size_t operator()(const NameRef&) const { return 0; }
-   [[nodiscard]] inline size_t operator()(const VarArgExprPayload&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const LiteralValue &) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const NameRef &) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const VarArgExprPayload &) const { return 0; }
 
-   [[nodiscard]] inline size_t operator()(const UnaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const UnaryExprPayload &Payload) const
    {
-      return payload.operand ? 1 : 0;
+      return Payload.operand ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const UpdateExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const UpdateExprPayload &Payload) const
    {
-      return payload.target ? 1 : 0;
+      return Payload.target ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const BinaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const BinaryExprPayload &Payload) const
    {
-      size_t total = payload.left ? 1 : 0;
-      if (payload.right) total++;
+      size_t total = Payload.left ? 1 : 0;
+      if (Payload.right) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const TernaryExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const TernaryExprPayload &Payload) const
    {
-      size_t total = payload.condition ? 1 : 0;
-      if (payload.if_true) total++;
-      if (payload.if_false) total++;
+      size_t total = Payload.condition ? 1 : 0;
+      if (Payload.if_true) total++;
+      if (Payload.if_false) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const PresenceExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const PresenceExprPayload &Payload) const
    {
-      return payload.value ? 1 : 0;
+      return Payload.value ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const CallExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const CallExprPayload &Payload) const
    {
-      size_t total = std::visit(CallTargetChildCounter{}, payload.target);
-      total += payload.arguments.size();
+      size_t total = std::visit(CallTargetChildCounter{}, Payload.target);
+      total += Payload.arguments.size();
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const MemberExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const MemberExprPayload &Payload) const
    {
-      return payload.table ? 1 : 0;
+      return Payload.table ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const IndexExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const IndexExprPayload &Payload) const
    {
-      size_t total = payload.table ? 1 : 0;
-      if (payload.index) total++;
+      size_t total = Payload.table ? 1 : 0;
+      if (Payload.index) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const SafeMemberExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const SafeMemberExprPayload &Payload) const
    {
-      return payload.table ? 1 : 0;
+      return Payload.table ? 1 : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const SafeIndexExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const SafeIndexExprPayload &Payload) const
    {
-      size_t total = payload.table ? 1 : 0;
-      if (payload.index) total++;
+      size_t total = Payload.table ? 1 : 0;
+      if (Payload.index) total++;
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const TableExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const TableExprPayload &Payload) const
    {
       size_t total = 0;
-      for (const TableField& field : payload.fields) {
+      for (const TableField &field : Payload.fields) {
          if (field.key) total++;
          if (field.value) total++;
       }
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const FunctionExprPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const FunctionExprPayload &Payload) const
    {
-      return block_child_count(payload.body);
+      return block_child_count(Payload.body);
    }
 };
 
 struct StatementChildCounter {
-   [[nodiscard]] inline size_t operator()(const AssignmentStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const AssignmentStmtPayload &Payload) const
    {
-      return payload.targets.size() + payload.values.size();
+      return Payload.targets.size() + Payload.values.size();
    }
 
-   [[nodiscard]] inline size_t operator()(const LocalDeclStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LocalDeclStmtPayload &Payload) const
    {
-      return payload.values.size();
+      return Payload.values.size();
    }
 
-   [[nodiscard]] inline size_t operator()(const LocalFunctionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LocalFunctionStmtPayload &Payload) const
    {
-      return payload.function ? block_child_count(payload.function->body) : 0;
+      return Payload.function ? block_child_count(Payload.function->body) : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const FunctionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const FunctionStmtPayload &Payload) const
    {
-      return payload.function ? block_child_count(payload.function->body) : 0;
+      return Payload.function ? block_child_count(Payload.function->body) : 0;
    }
 
-   [[nodiscard]] inline size_t operator()(const IfStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const IfStmtPayload &Payload) const
    {
       size_t total = 0;
-      for (const IfClause& clause : payload.clauses) {
+      for (const IfClause& clause : Payload.clauses) {
          if (clause.condition) total++;
          total += block_child_count(clause.block);
       }
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const LoopStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const LoopStmtPayload &Payload) const
    {
-      size_t total = payload.condition ? 1 : 0;
-      total += block_child_count(payload.body);
+      size_t total = Payload.condition ? 1 : 0;
+      total += block_child_count(Payload.body);
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const NumericForStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const NumericForStmtPayload &Payload) const
    {
       size_t total = 0;
-      if (payload.start) total++;
-      if (payload.stop) total++;
-      if (payload.step) total++;
-      total += block_child_count(payload.body);
+      if (Payload.start) total++;
+      if (Payload.stop) total++;
+      if (Payload.step) total++;
+      total += block_child_count(Payload.body);
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const GenericForStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const GenericForStmtPayload &Payload) const
    {
-      size_t total = payload.iterators.size();
-      total += block_child_count(payload.body);
+      size_t total = Payload.iterators.size();
+      total += block_child_count(Payload.body);
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const ReturnStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const ReturnStmtPayload &Payload) const
    {
-      return payload.values.size();
+      return Payload.values.size();
    }
 
-   [[nodiscard]] inline size_t operator()(const BreakStmtPayload&) const { return 0; }
-   [[nodiscard]] inline size_t operator()(const ContinueStmtPayload&) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const BreakStmtPayload &) const { return 0; }
+   [[nodiscard]] inline size_t operator()(const ContinueStmtPayload &) const { return 0; }
 
-   [[nodiscard]] inline size_t operator()(const DeferStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const DeferStmtPayload &Payload) const
    {
-      size_t total = payload.arguments.size();
-      if (payload.callable) {
-         total += block_child_count(payload.callable->body);
+      size_t total = Payload.arguments.size();
+      if (Payload.callable) {
+         total += block_child_count(Payload.callable->body);
       }
       return total;
    }
 
-   [[nodiscard]] inline size_t operator()(const DoStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const DoStmtPayload &Payload) const
    {
-      return block_child_count(payload.block);
+      return block_child_count(Payload.block);
    }
 
-   [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload& payload) const
+   [[nodiscard]] inline size_t operator()(const ConditionalShorthandStmtPayload &Payload) const
    {
-      return payload.expression ? 1 : 0;
+      size_t total = Payload.condition ? 1 : 0;
+      if (Payload.body) total += ast_statement_child_count(*Payload.body);
+      return total;
+   }
+
+   [[nodiscard]] inline size_t operator()(const ExpressionStmtPayload &Payload) const
+   {
+      return Payload.expression ? 1 : 0;
    }
 };
 
@@ -279,49 +286,50 @@ ReturnStmtPayload::~ReturnStmtPayload() = default;
 DeferStmtPayload::~DeferStmtPayload() = default;
 DoStmtPayload::~DoStmtPayload() = default;
 ExpressionStmtPayload::~ExpressionStmtPayload() = default;
+ConditionalShorthandStmtPayload::~ConditionalShorthandStmtPayload() = default;
 BlockStmt::~BlockStmt() = default;
 
-ExprNodePtr make_literal_expr(SourceSpan span, const LiteralValue& literal)
+ExprNodePtr make_literal_expr(SourceSpan Span, const LiteralValue &Literal)
 {
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::LiteralExpr;
-   node->span = span;
-   node->data = literal;
+   node->span = Span;
+   node->data = Literal;
    return node;
 }
 
-ExprNodePtr make_identifier_expr(SourceSpan span, const NameRef& reference)
+ExprNodePtr make_identifier_expr(SourceSpan Span, const NameRef &Reference)
 {
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::IdentifierExpr;
-   node->span = span;
-   node->data = reference;
+   node->span = Span;
+   node->data = Reference;
    return node;
 }
 
-ExprNodePtr make_vararg_expr(SourceSpan span)
+ExprNodePtr make_vararg_expr(SourceSpan Span)
 {
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::VarArgExpr;
-   node->span = span;
+   node->span = Span;
    node->data.emplace<VarArgExprPayload>();
    return node;
 }
 
-ExprNodePtr make_unary_expr(SourceSpan span, AstUnaryOperator op, ExprNodePtr operand)
+ExprNodePtr make_unary_expr(SourceSpan Span, AstUnaryOperator op, ExprNodePtr Operand)
 {
-   assert_node(ensure_operand(operand), "unary expression requires operand");
+   assert_node(ensure_operand(Operand), "unary expression requires operand");
    UnaryExprPayload payload;
    payload.op = op;
-   payload.operand = std::move(operand);
+   payload.operand = std::move(Operand);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::UnaryExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_postfix,
+ExprNodePtr make_update_expr(SourceSpan Span, AstUpdateOperator op, bool is_postfix,
    ExprNodePtr target)
 {
    assert_node(ensure_operand(target), "update expression requires target");
@@ -331,12 +339,12 @@ ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_post
    payload.target = std::move(target);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::UpdateExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr left,
+ExprNodePtr make_binary_expr(SourceSpan Span, AstBinaryOperator op, ExprNodePtr left,
    ExprNodePtr right)
 {
    assert_node(ensure_operand(left) and ensure_operand(right), "binary expression requires operands");
@@ -346,12 +354,12 @@ ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr 
    payload.right = std::move(right);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::BinaryExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePtr if_true, ExprNodePtr if_false)
+ExprNodePtr make_ternary_expr(SourceSpan Span, ExprNodePtr condition, ExprNodePtr if_true, ExprNodePtr if_false)
 {
    assert_node(ensure_operand(condition) and ensure_operand(if_true) and ensure_operand(if_false),
       "ternary expression requires three operands");
@@ -361,24 +369,24 @@ ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePt
    payload.if_false = std::move(if_false);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::TernaryExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value)
+ExprNodePtr make_presence_expr(SourceSpan Span, ExprNodePtr value)
 {
    assert_node(ensure_operand(value), "presence expression requires operand");
    PresenceExprPayload payload;
    payload.value = std::move(value);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::PresenceExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret)
+ExprNodePtr make_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret)
 {
    assert_node(ensure_operand(callee), "call expression requires callee");
    CallExprPayload payload;
@@ -389,12 +397,12 @@ ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arg
    payload.forwards_multret = forwards_multret;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::CallExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
+ExprNodePtr make_method_call_expr(SourceSpan Span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
    bool forwards_multret)
 {
    assert_node(ensure_operand(receiver), "method call requires receiver");
@@ -407,12 +415,12 @@ ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identif
    payload.forwards_multret = forwards_multret;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::CallExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_safe_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
+ExprNodePtr make_safe_method_call_expr(SourceSpan Span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,
    bool forwards_multret)
 {
    assert_node(ensure_operand(receiver), "safe method call requires receiver");
@@ -425,79 +433,77 @@ ExprNodePtr make_safe_method_call_expr(SourceSpan span, ExprNodePtr receiver, Id
    payload.forwards_multret = forwards_multret;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::SafeCallExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member,
-   bool uses_method_dispatch)
+ExprNodePtr make_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier member, bool uses_method_dispatch)
 {
-   assert_node(ensure_operand(table), "member expression requires table value");
+   assert_node(ensure_operand(Table), "member expression requires table value");
    MemberExprPayload payload;
-   payload.table = std::move(table);
+   payload.table = std::move(Table);
    payload.member = member;
    payload.uses_method_dispatch = uses_method_dispatch;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::MemberExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index)
+ExprNodePtr make_index_expr(SourceSpan Span, ExprNodePtr Table, ExprNodePtr index)
 {
-   assert_node(ensure_operand(table) and ensure_operand(index), "index expression requires operands");
+   assert_node(ensure_operand(Table) and ensure_operand(index), "index expression requires operands");
    IndexExprPayload payload;
-   payload.table = std::move(table);
+   payload.table = std::move(Table);
    payload.index = std::move(index);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::IndexExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier member)
+ExprNodePtr make_safe_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier Member)
 {
-   assert_node(ensure_operand(table), "safe member expression requires table value");
+   assert_node(ensure_operand(Table), "safe member expression requires table value");
    SafeMemberExprPayload payload;
-   payload.table = std::move(table);
-   payload.member = member;
+   payload.table = std::move(Table);
+   payload.member = Member;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::SafeMemberExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index)
+ExprNodePtr make_safe_index_expr(SourceSpan Span, ExprNodePtr Table, ExprNodePtr Index)
 {
-   assert_node(ensure_operand(table) and ensure_operand(index), "safe index expression requires operands");
+   assert_node(ensure_operand(Table) and ensure_operand(Index), "safe index expression requires operands");
    SafeIndexExprPayload payload;
-   payload.table = std::move(table);
-   payload.index = std::move(index);
+   payload.table = std::move(Table);
+   payload.index = std::move(Index);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::SafeIndexExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part)
+ExprNodePtr make_table_expr(SourceSpan Span, std::vector<TableField> fields, bool has_array_part)
 {
    TableExprPayload payload;
    payload.fields = std::move(fields);
    payload.has_array_part = has_array_part;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::TableExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
 
-ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters,
-   bool is_vararg, std::unique_ptr<BlockStmt> body)
+ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body)
 {
    assert_node(body != nullptr, "function literal body required");
    FunctionExprPayload payload;
@@ -506,7 +512,7 @@ ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> p
    payload.body = std::move(body);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::FunctionExpr;
-   node->span = span;
+   node->span = Span;
    node->data = std::move(payload);
    return node;
 }
@@ -522,20 +528,19 @@ std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionP
    return payload;
 }
 
-std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements)
+std::unique_ptr<BlockStmt> make_block(SourceSpan Span, StmtNodeList statements)
 {
    auto block = std::make_unique<BlockStmt>();
-   block->span = span;
+   block->span = Span;
    block->statements = std::move(statements);
    return block;
 }
 
-StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op,
-   ExprNodeList targets, ExprNodeList values)
+StmtNodePtr make_assignment_stmt(SourceSpan Span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values)
 {
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::AssignmentStmt;
-   node->span = span;
+   node->span = Span;
    AssignmentStmtPayload payload;
    payload.op = op;
    payload.targets = std::move(targets);
@@ -544,12 +549,11 @@ StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op,
    return node;
 }
 
-StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names,
-   ExprNodeList values)
+StmtNodePtr make_local_decl_stmt(SourceSpan Span, std::vector<Identifier> names, ExprNodeList values)
 {
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::LocalDeclStmt;
-   node->span = span;
+   node->span = Span;
    LocalDeclStmtPayload payload;
    payload.names = std::move(names);
    payload.values = std::move(values);
@@ -557,11 +561,11 @@ StmtNodePtr make_local_decl_stmt(SourceSpan span, std::vector<Identifier> names,
    return node;
 }
 
-StmtNodePtr make_return_stmt(SourceSpan span, ExprNodeList values, bool forwards_call)
+StmtNodePtr make_return_stmt(SourceSpan Span, ExprNodeList values, bool forwards_call)
 {
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::ReturnStmt;
-   node->span = span;
+   node->span = Span;
    ReturnStmtPayload payload;
    payload.values = std::move(values);
    payload.forwards_call = forwards_call;
@@ -569,23 +573,23 @@ StmtNodePtr make_return_stmt(SourceSpan span, ExprNodeList values, bool forwards
    return node;
 }
 
-StmtNodePtr make_expression_stmt(SourceSpan span, ExprNodePtr expression)
+StmtNodePtr make_expression_stmt(SourceSpan Span, ExprNodePtr expression)
 {
    StmtNodePtr node = std::make_unique<StmtNode>();
    node->kind = AstNodeKind::ExpressionStmt;
-   node->span = span;
+   node->span = Span;
    ExpressionStmtPayload payload;
    payload.expression = std::move(expression);
    node->data = std::move(payload);
    return node;
 }
 
-size_t ast_statement_child_count(const StmtNode& node)
+size_t ast_statement_child_count(const StmtNode &Node)
 {
-   return std::visit(StatementChildCounter{}, node.data);
+   return std::visit(StatementChildCounter{}, Node.data);
 }
 
-size_t ast_expression_child_count(const ExprNode& node)
+size_t ast_expression_child_count(const ExprNode &Node)
 {
-   return std::visit(ExpressionChildCounter{}, node.data);
+   return std::visit(ExpressionChildCounter{}, Node.data);
 }
