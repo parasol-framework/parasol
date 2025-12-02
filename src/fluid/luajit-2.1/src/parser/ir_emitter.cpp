@@ -1948,7 +1948,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    int vcall = 0;
    int needarr = 0;
    int fixt = 0;
-   uint32_t narr = 1;
+   uint32_t narr = 0;  // 0-based array indexing
    uint32_t nhash = 0;
    auto freg = fs->free_reg();
    BCPos pc = BCPos(bcemit_AD(fs, BC_TNEW, freg, 0));

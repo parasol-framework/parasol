@@ -9,8 +9,8 @@
 --    spec.
 --  * They are not recursive. Such a structure cannot be specified in json.
 --
--- A Lua table is considered to be an array if and only if its set of keys is a consecutive sequence of positive integers
--- starting at 1. Arrays are encoded like so: `[2, 3, false, "hi"]`. Any other type of Lua table is encoded as a json
+-- A Lua table is considered to be an array if and only if its set of keys is a consecutive sequence of integers
+-- starting at 0. Arrays are encoded like so: `[2, 3, false, "hi"]`. Any other type of Lua table is encoded as a json
 -- object, encoded like so: `{"key1": 2, "key2": false}`.
 --
 -- Because the Lua nil value cannot be a key, and as a table value is considerd equivalent to a missing key, there is no
@@ -42,11 +42,17 @@ do
 
    local function kind_of(obj)
       if type(obj) != 'table' then return type(obj) end
-      local i = 1
+      -- Count total elements
+      local count = 0
       for _ in pairs(obj) do
-         if obj[i] then i = i + 1 else return 'table' end
+         count++
       end
-      if i is 1 then return 'table' else return 'array' end
+      -- Empty table is treated as a table (object)
+      if count is 0 then return 'table' end
+      for i = 0, count - 1 do
+         if obj[i] is nil then return 'table' end
+      end
+      return 'array'
    end
 
    local function escape_str(s)
@@ -62,6 +68,7 @@ do
    -- 1. Delimiter found: pos = pos after leading space + delim; did_find = true.
    -- 2. Delimiter not found: pos = pos after leading space;     did_find = false.
    -- This throws an error if err_if_missing is true and the delim is not found.
+
    local function skip_delim(str, pos, delim, err_if_missing)
       pos += #str:match('^%s*', pos)
       if str:sub(pos, pos) != delim then
@@ -75,21 +82,23 @@ do
 
    -- Expects the given pos to be the first character after the opening quote.
    -- Returns val, pos; the returned pos is after the closing quote character.
+
    local function decode_str_val(str, pos, val)
       val = val or ''
       local early_end_error = 'End of input found while parsing string.'
-      if pos > #str then error(early_end_error) end
+      assert(pos < #str, early_end_error)
       local c = str:sub(pos, pos)
       if c is '"'  then return val, pos + 1 end
       if c != '\\' then return decode_str_val(str, pos + 1, val .. c) end
       -- We must have a \ character.
       local esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
       local nextc = str:sub(pos + 1, pos + 1)
-      if not nextc then error(early_end_error) end
+      assert(nextc, early_end_error)
       return decode_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
    end
 
    -- Returns val, pos; the returned pos is after the number's final character.
+
    local function decode_num_val(str, pos)
       local num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
       local val = tonumber(num_str)
@@ -107,26 +116,26 @@ do
             local msg = 'Can\'t encode array as key.'
             if err_callback then err_callback(msg) else error(msg) end
          else
-            s[#s + 1] = '['
+            s[#s] = '['  -- 0-based: append at current length
             for i, val in ipairs(obj) do
-               if i > 1 then s[#s + 1] = ', ' end
-               s[#s + 1] = json.encode(val, err_callback)
+               if i > 0 then s[#s] = ', ' end
+               s[#s] = json.encode(val, err_callback)
             end
-            s[#s + 1] = ']'
+            s[#s] = ']'
          end
       elseif kind is 'table' then
          if as_key then
             local msg = 'Can\'t encode table as key.'
             if err_callback then err_callback(msg) else error(msg) end
          else
-            s[#s + 1] = '{'
+            s[#s] = '{'  -- 0-based: append at current length
             for k, v in pairs(obj) do
-               if #s > 1 then s[#s + 1] = ', ' end
-               s[#s + 1] = json.encode(k, err_callback, true)
-               s[#s + 1] = ':'
-               s[#s + 1] = json.encode(v, err_callback)
+               if #s > 1 then s[#s] = ', ' end  -- More than just the opening brace
+               s[#s] = json.encode(k, err_callback, true)
+               s[#s] = ':'
+               s[#s] = json.encode(v, err_callback)
             end
-            s[#s + 1] = '}'
+            s[#s] = '}'
          end
       elseif kind is 'string' then
          return '"' .. escape_str(obj) .. '"'
@@ -150,9 +159,9 @@ do
    json.null = {}  -- This is a one-off table to represent the null value.
 
    function json.decode(str, pos, end_delim)
-      pos = pos or 1
-      if pos > #str then error('Reached unexpected end of input.') end
-      local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace.
+      pos = pos or 0
+      if pos >= #str then error('Reached unexpected end of input.') end
+      local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace
       local first = str:sub(pos, pos)
       if first is '{' then  -- Parse an object.
          local obj, key, delim_found = {}, true, true
@@ -172,7 +181,7 @@ do
             val, pos = json.decode(str, pos, ']')
             if not val then return arr, pos end -- NB: Distinction between false and nil is essential
             if not delim_found then error('Comma missing between array items.') end
-            arr[#arr + 1] = val
+            arr[#arr] = val
             pos, delim_found = skip_delim(str, pos, ',')
          end
       elseif first is '"' then  -- Parse a string.

@@ -950,7 +950,7 @@ extern const char* lua_getupvalue(lua_State* L, int idx, int n)
 {
    TValue* val;
    GCobj* o;
-   const char* name = lj_debug_uvnamev(index2adr(L, idx), (uint32_t)(n - 1), &val, &o);
+   auto name = lj_debug_uvnamev(index2adr(L, idx), (uint32_t)(n - 1), &val, &o);
    if (name) {
       copyTV(L, L->top, val);
       incr_top(L);
@@ -963,8 +963,7 @@ extern void* lua_upvalueid(lua_State* L, int idx, int n)
    GCfunc* fn = funcV(index2adr(L, idx));
    n--;
    lj_checkapi((uint32_t)n < fn->l.nupvalues, "bad upvalue %d", n);
-   return isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) :
-      (void*)&fn->c.upvalue[n];
+   return isluafunc(fn) ? (void*)gcref(fn->l.uvptr[n]) : (void*)&fn->c.upvalue[n];
 }
 
 extern void lua_upvaluejoin(lua_State* L, int idx1, int n1, int idx2, int n2)
@@ -1068,9 +1067,9 @@ extern void lua_rawseti(lua_State* L, int idx, int n)
 
 extern int lua_setmetatable(lua_State* L, int idx)
 {
-   global_State* g;
-   GCtab* mt;
-   cTValue* o = index2adr_check(L, idx);
+   GCtab *mt;
+   cTValue *o = index2adr_check(L, idx);
+   
    lj_checkapi_slot(1);
    if (tvisnil(L->top - 1)) {
       mt = nullptr;
@@ -1079,21 +1078,19 @@ extern int lua_setmetatable(lua_State* L, int idx)
       lj_checkapi(tvistab(L->top - 1), "top stack slot is not a table");
       mt = tabV(L->top - 1);
    }
-   g = G(L);
+
+   auto g = G(L);
    if (tvistab(o)) {
       setgcref(tabV(o)->metatable, obj2gco(mt));
-      if (mt)
-         lj_gc_objbarriert(L, tabV(o), mt);
+      if (mt) lj_gc_objbarriert(L, tabV(o), mt);
    }
    else if (tvisudata(o)) {
       setgcref(udataV(o)->metatable, obj2gco(mt));
-      if (mt)
-         lj_gc_objbarrier(L, udataV(o), mt);
+      if (mt) lj_gc_objbarrier(L, udataV(o), mt);
    }
    else {
       // Flush cache, since traces specialize to basemt. But not during __gc.
-      if (lj_trace_flushall(L))
-         lj_err_caller(L, ErrMsg::NOGCMM);
+      if (lj_trace_flushall(L)) lj_err_caller(L, ErrMsg::NOGCMM);
       if (tvisbool(o)) {
          // NOBARRIER: basemt is a GC root.
          setgcref(basemt_it(g, LJ_TTRUE), obj2gco(mt));
@@ -1141,12 +1138,12 @@ extern int lua_setfenv(lua_State* L, int idx)
 
 extern const char* lua_setupvalue(lua_State* L, int idx, int n)
 {
-   cTValue* f = index2adr(L, idx);
-   TValue* val;
-   GCobj* o;
-   const char* name;
+   cTValue *f = index2adr(L, idx);
+   TValue *val;
+   GCobj *o;
+
    lj_checkapi_slot(1);
-   name = lj_debug_uvnamev(f, (uint32_t)(n - 1), &val, &o);
+   auto name = lj_debug_uvnamev(f, (uint32_t)(n - 1), &val, &o);
    if (name) {
       L->top--;
       copyTV(L, val, L->top);
@@ -1184,12 +1181,11 @@ extern int lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
    uint8_t oldh = hook_save(g);
    ptrdiff_t ef;
    int status;
-   lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR,
-      "thread called in wrong state %d", L->status);
+
+   lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
-   if (errfunc == 0) {
-      ef = 0;
-   }
+
+   if (errfunc == 0) ef = 0;
    else {
       auto o = index2adr_stack(L, errfunc);
       ef = savestack(L, o);
@@ -1292,9 +1288,7 @@ extern int lua_yield(lua_State* L, int nresults)
 extern int lua_resume(lua_State* L, int nargs)
 {
    if (L->cframe == nullptr and L->status <= LUA_YIELD)
-      return lj_vm_resume(L,
-         L->status == LUA_OK ? api_call_base(L, nargs) : L->top - nargs,
-         0, 0);
+      return lj_vm_resume(L, L->status == LUA_OK ? api_call_base(L, nargs) : L->top - nargs, 0, 0);
    L->top = L->base;
    setstrV(L, L->top, lj_err_str(L, ErrMsg::COSUSP));
    incr_top(L);

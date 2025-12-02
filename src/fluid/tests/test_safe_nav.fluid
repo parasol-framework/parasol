@@ -40,7 +40,7 @@ end
 function testSafeIndexShortCircuit()
    local calls = 0
    local function nextIndex()
-      calls += 1
+      calls++
       return 2
    end
    local arr = nil
@@ -272,7 +272,7 @@ end
 
 function testSafeIndexNumericKeys()
    local arr = { 10, 20, 30, 40 }
-   local v = arr?[3]
+   local v = arr?[2]
    assert(v is 30, "Safe index should work with numeric keys")
 
    local nilArr = nil

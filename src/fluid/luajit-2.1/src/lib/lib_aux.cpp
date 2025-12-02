@@ -235,8 +235,9 @@ extern int luaL_ref(lua_State* L, int t)
       lua_rawseti(L, t, FREELIST_REF);  //  (t[FREELIST_REF] = t[ref])
    }
    else {  // no free elements
+      // 0-based: objlen returns count (e.g., 3 means indices 0,1,2 used)
+      // Next free index is simply the count itself (not count+1 as in 1-based)
       ref = (int)lua_objlen(L, t);
-      ref++;  //  create new reference
    }
    lua_rawseti(L, t, ref);
    return ref;

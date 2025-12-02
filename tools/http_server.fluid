@@ -27,12 +27,10 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    glOptions = { }
 
-   if not glConfigFile then glConfigFile = 'user:config/http_server_cfg.fluid' end
+   glConfigFile ?= 'user:config/http_server_cfg.fluid'
 
-   if glConfigFile then
-      if mSys.AnalysePath(glConfigFile) is ERR_Okay then
-         loadFile(glConfigFile, glOptions)
-      end
+   if mSys.AnalysePath(glConfigFile) is ERR_Okay then
+      loadFile(glConfigFile, glOptions)
    end
 
    if arg('help') then

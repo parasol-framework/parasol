@@ -14,7 +14,7 @@ local ICON_SIZE = 12
 local count = 0
 
 local function counter()
-   count = count + 1
+   count++
    return count
 end
 
@@ -149,8 +149,8 @@ local function arrangeItems(self)
          end
       end
 
-      x = x + item.width
-      spanCount = spanCount + 1
+      x += item.width
+      spanCount++
 
       item = item.next
    end
@@ -168,11 +168,11 @@ gui.menubar = function(Options)
    }
 
    local function applyFill(Vector, Fill)
-      while (Vector != nil) do
-         if (Vector.fill != 'none') then
+      while Vector do
+         if Vector.fill != 'none' then
             Vector.fill = Fill
          end
-         if (Vector.stroke != nil) then Vector.stroke = Fill end
+         if Vector.stroke then Vector.stroke = Fill end
          local child = Vector.child
          if (child != nil) then applyFill(child, Fill) end
          Vector = Vector.next
@@ -241,10 +241,10 @@ gui.menubar = function(Options)
       if (not Options.target) then error('A target viewport is required.') end
 
       self.viewport = Options.target.new('vectorviewport')
-      self.viewport.x      = (Options.x ?? 0)
-      self.viewport.y      = (Options.y ?? 0)
+      self.viewport.x      = Options.x ?? 0
+      self.viewport.y      = Options.y ?? 0
       self.viewport.height = 1
-      self.viewport.xOffset = (Options.xOffset ?? 0)
+      self.viewport.xOffset = Options.xOffset ?? 0
 
       if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
 
@@ -282,9 +282,9 @@ gui.menubar = function(Options)
       self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), function(Viewport, Events)
          local ev = Events
          while ev do
-            if (ev.type is JET_CROSSED_IN) then
+            if ev.type is JET_CROSSED_IN then
 
-            elseif (ev.type is JET_CROSSED_OUT) then
+            elseif ev.type is JET_CROSSED_OUT then
                if self._currentItem then
                   hoverUpdate(nil)
                end
@@ -295,9 +295,9 @@ gui.menubar = function(Options)
 
                hoverUpdate(item)
             elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
-               if (ev.type != JET_BUTTON_1) then return end
+               if ev.type != JET_BUTTON_1 then return end
 
-               if (ev.value != 0) then
+               if ev.value != 0 then
                   if self._currentItem then
                      if self._currentItem.disabled or self._disabled then return end
 
@@ -321,9 +321,9 @@ gui.menubar = function(Options)
             if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
                activateItem(self)
             elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
-               if (self._currentItem) then
+               if self._currentItem then
                   local scan = self._currentItem.prev
-                  if (not scan) then scan = lastItem(self) end
+                  scan ?= lastItem(self)
                   highlightItem(self, scan)
                else
                   highlightItem(self, firstItem(self))
@@ -331,7 +331,7 @@ gui.menubar = function(Options)
             elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) or (Code is KEY_TAB) then
                if self._currentItem then
                   local scan = self._currentItem.next
-                  if (not scan) then scan = firstItem(self) end
+                  scan ?= firstItem(self)
                   highlightItem(self, scan)
                else
                   highlightItem(self, firstItem(self))

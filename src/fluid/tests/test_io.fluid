@@ -30,7 +30,7 @@ function readFileContent(path)
    local buffer = string.alloc(4096)
    local err, bytes = file.acRead(buffer)
    if err is ERR_Okay and bytes > 0 then
-      return buffer:sub(1, bytes)
+      return buffer:sub(0, bytes-1)
    end
    return nil
 end
@@ -237,14 +237,14 @@ function testIoLines()
    local line_count = 0
    local collected_lines = {}
    for line in io.lines(test_path) do
-      line_count = line_count + 1
+      line_count++
       table.insert(collected_lines, line)
    end
 
    assert(line_count is 3, 'Should read 3 lines, got ' .. line_count)
-   assert(collected_lines[1] is 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] is 'Line 2', 'Second line should be "Line 2"')
-   assert(collected_lines[3] is 'Line 3', 'Third line should be "Line 3"')
+   assert(collected_lines[0] is 'Line 1', 'First line should be "Line 1", got ' .. nz(collected_lines[0], 'NIL'))
+   assert(collected_lines[1] is 'Line 2', 'Second line should be "Line 2"')
+   assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
 end
 
 function testFileLines()
@@ -263,9 +263,9 @@ function testFileLines()
    end
 
    assert(line_count is 3, 'Should read 3 lines from file handle')
-   assert(collected_lines[1] is 'First', 'First line should be "First", got ' .. nz(collected_lines[1], 'NIL'))
-   assert(collected_lines[2] is 'Second', 'Second line should be "Second"')
-   assert(collected_lines[3] is 'Third', 'Third line should be "Third"')
+   assert(collected_lines[0] is 'First', 'First line should be "First", got ' .. nz(collected_lines[0], 'NIL'))
+   assert(collected_lines[1] is 'Second', 'Second line should be "Second"')
+   assert(collected_lines[2] is 'Third', 'Third line should be "Third"')
 
    file:close()
 end
@@ -386,9 +386,9 @@ function testIntegration()
    end
 
    assert(#lines_read is 3, 'Should read exactly 3 lines')
-   assert(lines_read[1] is 'First line of data', 'First line incorrect')
-   assert(lines_read[2] is 'Second line of data', 'Second line incorrect')
-   assert(lines_read[3] is 'Third line of data', 'Third line incorrect')
+   assert(lines_read[0] is 'First line of data', 'First line incorrect')
+   assert(lines_read[1] is 'Second line of data', 'Second line incorrect')
+   assert(lines_read[2] is 'Third line of data', 'Third line incorrect')
 
    -- Test seek and read operations with file_read() implementation
    local read_file = io.open(test_path, 'r')

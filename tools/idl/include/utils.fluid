@@ -14,7 +14,7 @@ end
 
 function output(String)
    if String?? then
-      if (String:sub(-1) is '\n') then
+      if String:sub(-1) is '\n' then
          table.insert(glOutput, String)
       else
          table.insert(glOutput, String:rtrim())
@@ -28,8 +28,8 @@ end
 -- Verify that the Options parameter is a table or nil, otherwise throw an error.
 
 function checkOptions(Options)
-   if (type(Options) != 'table') then
-      if (type(Options) != 'nil') then
+   if type(Options) != 'table' then
+      if Options then
          error('Invalid option type "' .. type(Options) .. '", expected table.')
       else
          return { }
@@ -43,7 +43,7 @@ end
 -- header.
 
 function priority(Input)
-   if (type(Input) is 'function') then
+   if type(Input) is 'function' then
       local saveOutput = glOutput
       glOutput = { }
       Input()
@@ -67,13 +67,13 @@ function shortName(Name)
       if (n is "XY") or (n is "SSL") or (n is "HTML") or (n is "CDATA") or (n is "2D") or (n  is "3D") or (n is "DGA") or
          (n is "DPMS") or (n is "GTF") or (n is "SRGB") or (n is "RGB") or (n is "HSV") or (n is "CX") or (n is "CY") or
          (n is "FX") or (n is "FY") then
-         result = result .. n
+         result ..= n
       else
          local cap, word = n:match("^(.)(.+)$")
-         if (cap is nil) or (word is nil) then
-            result = result .. n:upper()
+         if not cap or not word then
+            result ..= n:upper()
          else
-            result = result .. cap:upper() .. word:lower()
+            result ..= cap:upper() .. word:lower()
          end
       end
    end
@@ -86,7 +86,7 @@ end
 function findClassField(Class, FieldName)
    if Class.fields then
       for _, f in ipairs(Class.fields) do
-         if (f.name is FieldName) then
+         if f.name is FieldName then
             return f
          end
       end
@@ -148,23 +148,23 @@ function getMetaFieldDefinition(Field)
    getFieldType(fl, Field.flags, Field.name, Field.arg)
    fl.docType = fl.doc_type
 
-   if (Field.flags & FD_SYNONYM) != 0 then
+   if (Field.flags & FD_SYNONYM)?? then
       fl.synonym = true
    end
 
    if Field.getField?? then
       fl.read = 'Get'
       fl.get = Field.getField
-   elseif (Field.flags & FD_READ) != 0 then
+   elseif (Field.flags & FD_READ)?? then
       fl.read = 'Read'
    end
 
    if Field.setField?? then
       fl.write = 'Set'
       fl.set = Field.setField
-   elseif (Field.flags & FD_WRITE) != 0 then
+   elseif (Field.flags & FD_WRITE)?? then
       fl.write = 'Write'
-   elseif (Field.flags & FD_INIT) != 0 then
+   elseif (Field.flags & FD_INIT)?? then
       fl.write = 'Init'
    end
 
@@ -195,7 +195,7 @@ function loadActions()
    glActions = { }
    for id, actions in ipairs(mSys.ActionList()) do
       if not table.empty(actions) and actions.name?? then
-         glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id-1 }
+         glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id }
       end
    end
 end
@@ -214,19 +214,19 @@ function resolveSDKPath(Path)
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
-         limit = limit - 1
+         limit -= 1
       end
    else
       table.insert(search_list, Path .. '/CMakeLists.txt')
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err is ERR_Okay) then
+   if err is ERR_Okay then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
       local msg = ''
       for _, path in ipairs(search_list) do
-         msg = msg .. path .. '\n'
+         msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')

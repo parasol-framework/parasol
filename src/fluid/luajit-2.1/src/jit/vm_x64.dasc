@@ -1455,10 +1455,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov [BASE-16], CFUNC:RD
   |  mov [BASE-8], TMPR
   |.if DUALNUM
-  |  mov64 RD, ((uint64_t)LJ_TISNUM<<47)
+  |  mov64 RD, (((uint64_t)LJ_TISNUM<<47) | 0xFFFFFFFF)  // 0-based: init to -1
   |  mov [BASE], RD
   |.else
-  |  mov qword [BASE], 0
+  |  mov64 RD, 0xBFF0000000000000  // 0-based: -1.0 in IEEE 754
+  |  mov [BASE], RD
   |.endif
   |  mov RDd, 1+3
   |  jmp ->fff_res
@@ -1948,39 +1949,104 @@ static void build_subroutines(BuildCtx *ctx)
   |  cvttsd2si RAd, qword [BASE+8]
   |.endif
   |  mov RCd, STR:RB->len
-  |  cmp RCd, TMPRd			// len < end? (unsigned compare)
-  |  jb >5
+  |  test RCd, RCd			// len == 0?
+  |  jz ->fff_emptystr			// Return empty string immediately
+  |  cmp RCd, TMPRd			// len <= end? (unsigned compare)
+  |  jbe >5
   |2:
   |  test RAd, RAd			// start <= 0?
   |  jle >7
   |3:
   |  sub TMPRd, RAd			// start > end?
   |  jl ->fff_emptystr
-  |  lea RD, [STR:RB+RAd+#STR-1]
+  |  lea RD, [STR:RB+RAd+#STR]  // Zero-indexed: no -1 offset needed
   |  add TMPRd, 1
   |4:
   |  jmp ->fff_newstr
   |
   |5:  // Negative end or overflow.
-  |  jl >6
-  |  lea TMPRd, [TMPRd+RCd+1]		// end = end+(len+1)
+  |  test TMPRd, TMPRd			// Check if end is negative
+  |  jns >6				// If end >= 0, it's overflow (since len <= end)
+  |  lea TMPRd, [TMPRd+RCd]		// end = end+len (negative index conversion)
   |  jmp <2
   |6:  // Overflow.
-  |  mov TMPRd, RCd			// end = len
+  |  lea TMPRd, [RCd-1]			// end = len-1 (zero-indexed: last valid index)
   |  jmp <2
   |
   |7:  // Negative start or underflow.
   |  je >8
-  |  add RAd, RCd			// start = start+(len+1)
-  |  add RAd, 1
-  |  jg <3				// start > 0?
+  |  add RAd, RCd			// start = start+len
+  |  jge <3				// start >= 0?
   |8:  // Underflow.
-  |  mov RAd, 1				// start = 1
+  |  xor RAd, RAd			// start = 0 (zero-indexed)
   |  jmp <3
   |
   |->fff_emptystr:  // Range underflow.
   |  xor TMPRd, TMPRd			// Zero length. Any ptr in RD is ok.
   |  jmp <4
+  |
+  |// string.substr(str, start, end) - like string.sub but end is exclusive
+  |.ffunc string_substr
+  |  ffgccheck
+  |  mov TMPRd, -1
+  |  cmp NARGS:RDd, 1+2;  jb ->fff_fallback
+  |  jna >1
+  |.if DUALNUM
+  |  mov TMPR, [BASE+16]
+  |  checkint TMPR, ->fff_fallback
+  |.else
+  |  checknumtp [BASE+16], ->fff_fallback
+  |  cvttsd2si TMPRd, qword [BASE+16]
+  |.endif
+  |  // Convert exclusive end to inclusive: end = end - 1 (only for positive values)
+  |  test TMPRd, TMPRd
+  |  jle >1
+  |  sub TMPRd, 1
+  |1:
+  |  mov STR:RB, [BASE]
+  |  checkstr STR:RB, ->fff_fallback
+  |.if DUALNUM
+  |  mov ITYPE, [BASE+8]
+  |  mov RAd, ITYPEd			// Must clear hiword for lea below.
+  |  sar ITYPE, 47
+  |  cmp ITYPEd, LJ_TISNUM
+  |  jne ->fff_fallback
+  |.else
+  |  checknumtp [BASE+8], ->fff_fallback
+  |  cvttsd2si RAd, qword [BASE+8]
+  |.endif
+  |  mov RCd, STR:RB->len
+  |  test RCd, RCd			// len == 0?
+  |  jz ->fff_emptystr			// Return empty string immediately
+  |  cmp RCd, TMPRd			// len <= end? (unsigned compare)
+  |  jbe >5
+  |2:
+  |  test RAd, RAd			// start <= 0?
+  |  jle >7
+  |3:
+  |  sub TMPRd, RAd			// start > end?
+  |  jl ->fff_emptystr
+  |  lea RD, [STR:RB+RAd+#STR]  // Zero-indexed: no -1 offset needed
+  |  add TMPRd, 1
+  |4:
+  |  jmp ->fff_newstr
+  |
+  |5:  // Negative end or overflow.
+  |  test TMPRd, TMPRd			// Check if end is negative
+  |  jns >6				// If end >= 0, it's overflow (since len <= end)
+  |  lea TMPRd, [TMPRd+RCd]		// end = end+len (negative index conversion)
+  |  jmp <2
+  |6:  // Overflow.
+  |  lea TMPRd, [RCd-1]			// end = len-1 (zero-indexed: last valid index)
+  |  jmp <2
+  |
+  |7:  // Negative start or underflow.
+  |  je >8
+  |  add RAd, RCd			// start = start+len
+  |  jge <3				// start >= 0?
+  |8:  // Underflow.
+  |  xor RAd, RAd			// start = 0 (zero-indexed)
+  |  jmp <3
   |
   |.macro ffstring_op, name
   |  .ffunc_1 string_ .. name
@@ -4087,15 +4153,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |1:  // Traverse array part.
     |  cmp RCd, TMPRd; jae >5		// Index points after array part?
     |  cmp aword [ITYPE+RC*8], LJ_TNIL; je >4
+    |  mov RB, [ITYPE+RC*8]
+    |  mov ITYPEd, RCd
+    |  add ITYPEd, 0
     |.if not DUALNUM
-    |  cvtsi2sd xmm0, RCd
+    |  cvtsi2sd xmm0, ITYPEd
     |.endif
     |  // Copy array slot to returned value.
-    |  mov RB, [ITYPE+RC*8]
     |  mov [BASE+RA*8+8], RB
     |  // Return array index as a numeric key.
     |.if DUALNUM
-    |  setint ITYPE, RC
+    |  setint ITYPE, ITYPE
     |  mov [BASE+RA*8], ITYPE
     |.else
     |  movsd qword [BASE+RA*8], xmm0
@@ -4936,4 +5004,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

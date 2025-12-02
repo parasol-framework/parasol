@@ -87,9 +87,9 @@ function testMultipleClosesLIFO()
    end
 
    assert(#order is 3, 'All three close handlers should be called')
-   assert(order[1] is 3, 'LIFO order: first closed should be 3, got ' .. tostring(order[1]))
-   assert(order[2] is 2, 'LIFO order: second closed should be 2, got ' .. tostring(order[2]))
-   assert(order[3] is 1, 'LIFO order: third closed should be 1, got ' .. tostring(order[3]))
+   assert(order[0] is 3, 'LIFO order: first closed should be 3, got ' .. tostring(order[0]))
+   assert(order[1] is 2, 'LIFO order: second closed should be 2, got ' .. tostring(order[1]))
+   assert(order[2] is 1, 'LIFO order: third closed should be 1, got ' .. tostring(order[2]))
    print('testMultipleClosesLIFO: passed')
 end
 
@@ -109,9 +109,9 @@ function testNestedScopes()
       table.insert(order, 'between')
    end
    assert(#order is 3, 'Should have 3 events')
-   assert(order[1] is 'inner', 'Inner scope closes first: ' .. tostring(order[1]))
-   assert(order[2] is 'between', 'Between event: ' .. tostring(order[2]))
-   assert(order[3] is 'outer', 'Outer scope closes last: ' .. tostring(order[3]))
+   assert(order[0] is 'inner', 'Inner scope closes first: ' .. tostring(order[0]))
+   assert(order[1] is 'between', 'Between event: ' .. tostring(order[1]))
+   assert(order[2] is 'outer', 'Outer scope closes last: ' .. tostring(order[2]))
    print('testNestedScopes: passed')
 end
 
@@ -128,8 +128,8 @@ function testCloseWithDefer()
       })
    end
    assert(#order is 2, 'Both close and defer should run')
-   assert(order[1] is 'close', 'Close should run before defer: ' .. tostring(order[1]))
-   assert(order[2] is 'defer', 'Defer should run after close: ' .. tostring(order[2]))
+   assert(order[0] is 'close', 'Close should run before defer: ' .. tostring(order[0]))
+   assert(order[1] is 'defer', 'Defer should run after close: ' .. tostring(order[1]))
    print('testCloseWithDefer: passed')
 end
 
@@ -236,8 +236,8 @@ function testMixedCloseValues()
    end
 
    assert(#order is 2, 'Only non-nil values should trigger close')
-   assert(order[1] is 'c', 'LIFO: c first')
-   assert(order[2] is 'a', 'LIFO: a second')
+   assert(order[0] is 'c', 'LIFO: c first')
+   assert(order[1] is 'a', 'LIFO: a second')
    print('testMixedCloseValues: passed')
 end
 
@@ -302,20 +302,20 @@ function testMultipleCloseOnError()
    end
 
    local function inner()
-      local a <close> = setmetatable({}, makeMt(1))
-      local b <close> = setmetatable({}, makeMt(2))
-      local c <close> = setmetatable({}, makeMt(3))
+      local a <close> = setmetatable({}, makeMt(0))
+      local b <close> = setmetatable({}, makeMt(1))
+      local c <close> = setmetatable({}, makeMt(2))
       error('multi close error')
    end
 
    local ok = pcall(inner)
    assert(not ok, 'pcall should catch error')
    assert(#order is 3, 'All three close handlers should be called: ' .. #order)
-   assert(order[1] is 3, 'LIFO: 3 first')
-   assert(order[2] is 2, 'LIFO: 2 second')
-   assert(order[3] is 1, 'LIFO: 1 third')
+   assert(order[0] is 2, 'LIFO: 3 first, got ' .. tostring(order[0]))
+   assert(order[1] is 1, 'LIFO: 2 second, got ' .. tostring(order[1]))
+   assert(order[2] is 0, 'LIFO: 1 third, got ' .. tostring(order[2]))
    -- All handlers should receive the same error
-   for i = 1, 3 do
+   for i = 0, 2 do
       assert(errors_received[i] != nil, 'Handler ' .. i .. ' should receive error')
       assert(tostring(errors_received[i]):find('multi close error'), 'Handler ' .. i .. ' should get correct error')
    end
@@ -452,8 +452,8 @@ function testCloseHandlerError()
    assert(not ok, 'pcall should catch error')
    -- Both close handlers should be called even when one throws
    assert(#order is 2, 'Both close handlers should be called: ' .. #order)
-   assert(order[1] is 'close1', 'close1 first (LIFO)')
-   assert(order[2] is 'close2', 'close2 second (LIFO)')
+   assert(order[0] is 'close1', 'close1 first (LIFO)')
+   assert(order[1] is 'close2', 'close2 second (LIFO)')
    -- The error should be from close1, not the original (per Lua 5.4)
    assert(tostring(err):find('close1 error'), 'Error from __close should replace original: ' .. tostring(err))
    print('testCloseHandlerError: passed')

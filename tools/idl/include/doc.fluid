@@ -15,7 +15,7 @@ glIgnoreList[AC_Init] = true
 glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
-glIgnoreList[(AC_NewPlacement ?? 0)] = true
+glIgnoreList[AC_NewPlacement ?? 0] = true
 
 function setAction(Action, Options)
    for k, v in pairs(Options) do
@@ -392,6 +392,8 @@ end
 -- should be used for in-place code formatting.
 
 function extractParagraph(Input, Caller, References)
+   if not Input?? then error('No Input provided to extractParagraph()\n' .. debug.traceback()) end
+
    Input = Input:trim()
 
    -- Convert dangling XML characters: < > &
@@ -410,33 +412,29 @@ function extractParagraph(Input, Caller, References)
    -- need special treatment.
 
    local lines = Input:split('\n')
-   Input = ''
-   local i = 1
+   local output = ''
    local currentParagraph = nil
 
    local function closeParagraph()
-      if (currentParagraph != nil) then
-         Input = (Input ?? '') .. '<p>' .. currentParagraph .. '</p>\n'
+      if currentParagraph then
+         output ..= '<p>' .. currentParagraph .. '</p>\n'
          currentParagraph = nil
       end
    end
-
-   while i <= #lines do
+   
+   local i = 0
+   while i < #lines do
       local line = string.trim(lines[i])
       if line?? then
          local action
-         if (line:match('^!(%w*)$') != nil) then
+         if line:match('^!(%w*)$') then
             action = 'insert'
             line = line:gsub('!(%w*)', function(Lookup)
                if glStructures[Lookup] then
-                  if References then
-                     References['STRUCT:' .. Lookup] = 1
-                  end
+                  if References then References['STRUCT:' .. Lookup] = 1 end
                   return '<struct lookup="' .. Lookup .. '"/>'
                elseif glCustomTypes[Lookup] then
-                  if References then
-                     References['TYPE:' .. Lookup] = 1
-                  end
+                  if References then References['TYPE:' .. Lookup] = 1 end
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
@@ -456,21 +454,26 @@ function extractParagraph(Input, Caller, References)
            action = 'paragraph'
          end
 
-         if (action is 'balance') then
+         if action is 'balance' then
+            -- Process everything within the tag verbatim
             closeParagraph()
             local balance = 0
             repeat
                string.gsub(lines[i], '<(.-)>', function(key,val)
-                  if (key:sub(1,1) is '/') then
-                     balance -= 1
+                  if key:startsWith('/') then
+                     balance = balance - 1
                   else
-                     balance++
+                     balance = balance + 1
                   end
                end)
-               Input ..= lines[i] .. '\n'
+               output = output .. lines[i] .. '\n'
                i++
-            until (balance <= 0) or (i > #lines)
-         elseif (action is 'paragraph') then
+            until (balance is 0) or (not lines[i])
+            
+            if balance != 0 then
+               print('Unbalanced tags (' .. balance .. ') detected: [[' .. string.format('%s ...', output) .. ']]')
+            end
+         elseif action is 'paragraph' then
             -- Sanity check for tags that start a line but are part of a paragraph.
             if not currentParagraph then
                currentParagraph = line
@@ -478,9 +481,9 @@ function extractParagraph(Input, Caller, References)
                currentParagraph ..= ' ' .. line
             end
             i++
-         elseif (action is 'insert') then
+         elseif action is 'insert' then
             closeParagraph()
-            Input ..= line .. '\n'
+            output ..= line .. '\n'
             i++
          end
       else -- Blank line
@@ -493,14 +496,14 @@ function extractParagraph(Input, Caller, References)
 
    -- Handle <field>, <method> and <action> references
 
-   if Input?? and (Input:len() > 12) then
+   if output?? and output:len() > 12 then
       if Caller and Caller.meta then
-         Input = substituteReferences(Input, Caller)
+         output = substituteReferences(output, Caller)
       else
-         Input = substituteReferences(Input, nil)
+         output = substituteReferences(output, nil)
       end
 
-      return cleanXMLString(Input, Caller)
+      return cleanXMLString(output, Caller)
    else
       return ''
    end
@@ -518,12 +521,12 @@ function substituteReferences(String, Class)
 
    String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
       if glStructures[Lookup] then
-         if (glStructures[Lookup].restrict is 'c') then return Lookup .. Whitespace end
+         if glStructures[Lookup].restrict is 'c' then return Lookup .. Whitespace end
 
-         if Class then Class.references['STRUCT:' .. Lookup] = 1 end
+         if Class and Class.references then Class.references['STRUCT:' .. Lookup] = 1 end
 
          return '<st>' .. Lookup .. '</st>' .. Whitespace
-      elseif (glCustomTypes[Lookup]) then
+      elseif glCustomTypes[Lookup] then
          if Class then Class.references['TYPE:' .. Lookup] = 1 end
          return '<lk>' .. Lookup .. '</lk>' .. Whitespace
       else
@@ -537,9 +540,9 @@ function substituteReferences(String, Class)
    String = String:gsub('#([A-Z]%w*)%(%)', function(CallName)
       if not Class then
          return '<action>' .. CallName .. '</action>'
-      elseif (Class.lookupMethods) and (Class.lookupMethods[CallName]) then
+      elseif Class.lookupMethods and Class.lookupMethods[CallName] then
          return '<method>' .. CallName .. '</method>'
-      elseif (glActions[CallName]) then
+      elseif glActions[CallName] then
          return '<action>' .. CallName .. '</action>'
       else
          print('Unrecognised class action or method "' .. CallName .. '"')
@@ -552,7 +555,7 @@ function substituteReferences(String, Class)
       if not Class then
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
-            if (Field:match('[A-Z0-9]+') != nil) then return end
+            if Field:match('[A-Z0-9]+') then return end
          end
 
          return '<fl>' .. Field .. '</fl>'
@@ -561,7 +564,7 @@ function substituteReferences(String, Class)
       else
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() is 6) or (Field:len() is 8) then
-            if (Field:match('[A-Z0-9]+') != nil) then return end
+            if Field:match('[A-Z0-9]+') then return end
          end
 
          print('Unrecognised ' .. Class.name .. ' field "' .. Field .. '"')
@@ -577,7 +580,7 @@ function substituteReferences(String, Class)
    -- Substitue local function references, identified as ~Function()
 
    String = String:gsub('~([A-Z]%w+)%(%)', function(FunctionName)
-      if (glFunctionLookup[FunctionName] != nil) then
+      if glFunctionLookup[FunctionName] then
          return '<function>' .. FunctionName .. '</function>'
       else
          print('Unrecognised function reference ~' .. FunctionName .. '()')
@@ -599,9 +602,9 @@ function substituteReferences(String, Class)
 
    String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
       local meta = mSys.FindClass(ClassName:hash(), 0)
-      if (meta) then
+      if meta then
          local err, field, src = meta.mtFindField(FieldName:hash())
-         if (field != nil) then
+         if field then
             return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else
             print('Failed to find field ' .. ClassName .. '.' .. FieldName)
@@ -688,7 +691,7 @@ function docClass(Class)
             if a.comment?? then out ..= '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
 
             if glActions[a.name].prototype?? then
-               out = out .. '      <prototype>' .. glActions[a.name].prototype:escXML() .. '</prototype>\n'
+               out ..= '      <prototype>' .. glActions[a.name].prototype:escXML() .. '</prototype>\n'
             end
 
             if glActions[a.name].params?? then
@@ -711,18 +714,18 @@ function docClass(Class)
             if not table.empty(a.results) then
                local results = ''
                for _, result in ipairs(a.results) do
-                  results = results .. '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
+                  results ..= '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
                end
 
                if results?? then
-                  out = out .. '      <result>\n' .. results .. '      </result>\n'
+                  out ..= '      <result>\n' .. results .. '      </result>\n'
                end
             end
 
-            out = out .. '    </action>\n\n'
+            out ..= '    </action>\n\n'
          end
       end
-      out = out .. '  </actions>\n'
+      out ..= '  </actions>\n'
    end
 
    if not table.empty(Class.methods) then
@@ -733,31 +736,29 @@ function docClass(Class)
 
       table.sort(Class.sortedMethods, function(a,b) return a.name < b.name end)
 
-      out = out .. '\n  <methods>\n'
+      out ..= '\n  <methods>\n'
       for _, method in ipairs(Class.sortedMethods) do
-         if (method.comment?? and (method.comment:find('^Private'))) then
+         if method.comment?? and (method.comment:find('^Private')) then
             -- Ignore method
          else
-            out = out .. '    <method>\n'
-            out = out .. '      <name>' .. method.name .. '</name>\n'
-            out = out .. '      <comment>' .. substituteReferences((method.comment ?? ''):escXML(), Class) .. '</comment>\n'
+            out ..= '    <method>\n'
+            out ..= '      <name>' .. method.name .. '</name>\n'
+            out ..= '      <comment>' .. substituteReferences((method.comment ?? ''):escXML(), Class) .. '</comment>\n'
             if method.prototype?? then out = out .. '      <prototype>' .. method.prototype:escXML() .. '</prototype>\n' end
 
             if not table.empty(method.params) then
-               out = out .. '      <input>\n'
+               out ..= '      <input>\n'
                for _, param in ipairs(method.params) do
                   local ref = ''
                   if param.ref?? then ref = " lookup=\"" .. param.lookup .. '"' end
-                  if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"') end
-                  out = out .. "        <param type=\"" .. param.docType:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+                  assert(param.comment, 'No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"')
+                  out ..= "        <param type=\"" .. param.docType:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
-               out = out .. '      </input>\n'
+               out ..= '      </input>\n'
             end
 
             if method.description?? then
-               out = out .. '      <description>\n'
-               out = out .. extractParagraph(method.description, Class, Class.references)
-               out = out .. '\n      </description>\n'
+               out ..= '      <description>\n' .. extractParagraph(method.description, Class, Class.references) .. '\n      </description>\n'
             end
 
             if not table.empty(method.results) then
@@ -767,14 +768,14 @@ function docClass(Class)
                end
 
                if results?? then
-                  out = out .. "      <result>\n" .. results .. "      </result>\n"
+                  out ..= "      <result>\n" .. results .. "      </result>\n"
                end
             end
 
-            out = out .. '    </method>\n\n'
+            out ..= '    </method>\n\n'
          end
       end
-      out = out .. '  </methods>\n'
+      out ..= '  </methods>\n'
    end
 
    if not table.empty(Class.fields) then
@@ -788,40 +789,40 @@ function docClass(Class)
 
       out ..= '\n  <fields>\n'
       for _, f in ipairs(Class.sortedFields) do
-         if (f.private != true) then
+         if f.private != true then
             out ..= '    <field>\n'
             out ..= '      <name>' .. f.name .. '</name>\n'
 
             if f.comment?? then
-               out = out .. '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
+               out ..= '      <comment>' .. substituteReferences(f.comment:escXML(), Class) .. '</comment>\n'
             else
                print("No comment for field '" .. Class.name .. "." .. f.name .. "'.")
             end
 
-            out = out .. '      <access'
-            if f.read?? then out = out .. ' read="' .. f.read:sub(1,1) .. '"' end
-            if f.write?? then out = out .. ' write="' .. f.write:sub(1,1) .. '"' end
-            out = out .. '>' .. (f.access ?? '-/-') .. '</access>\n'
+            out ..= '      <access'
+            if f.read?? then out ..= ' read="' .. f.read:sub(0,0) .. '"' end
+            if f.write?? then out ..= ' write="' .. f.write:sub(0,0) .. '"' end
+            out ..= '>' .. (f.access ?? '-/-') .. '</access>\n'
 
             local lookup = ''
             local prototype = ''
             if f.lookup then lookup = ' lookup="' .. f.lookup .. '"' end
-            local typeName = (f.docType ?? (f.type ?? 'NIL'))
-            if (typeName is 'struct RGB8') then
+            local typeName = f.docType ?? (f.type ?? 'NIL')
+            if typeName is 'struct RGB8' then
                typeName = 'RGB8'
-            elseif (typeName is 'int') then
+            elseif typeName is 'int' then
                typeName = 'INT'
-            elseif (typeName is 'int64_t') then
+            elseif typeName is 'int64_t' then
                typeName = 'INT64'
-            elseif (f.className) then
+            elseif f.className then
                typeName = '*' .. f.className
                lookup = ' class="' .. f.className .. '"'
-            elseif (f.isFunctionPtr) then
+            elseif f.isFunctionPtr then
                typeName = 'FUNCTION *'
                prototype = ' prototype="' .. f.docType .. '"'
             end
 
-            out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
+            out ..= '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
 
             local description = f.description
             if description then
@@ -830,7 +831,7 @@ function docClass(Class)
 
             if f.lookup then
                local lookup = '<types lookup="' .. f.lookup .. '"/>'
-               if (description) then
+               if description then
                   if not (description:find('<types lookup="' .. f.lookup .. '"')) then
                      description = description .. '\n' .. lookup
                   end

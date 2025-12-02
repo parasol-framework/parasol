@@ -509,7 +509,9 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
    if (not Compact) Buf << "=== GLOBALS ===\n";
 
    // Access the storage table where user-defined globals are stored.
-   // The storage table is stored as an upvalue in the __index closure of the global metatable.
+   // The storage table is either:
+   //   1. The __index table directly (JIT-compatible mode), or
+   //   2. An upvalue in the __index closure (legacy mode)
 
    lua_pushvalue(Prv->Lua, LUA_GLOBALSINDEX); // Push global environment
    if (not lua_getmetatable(Prv->Lua, -1)) {
@@ -518,23 +520,34 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
    }
 
    lua_pushstring(Prv->Lua, "__index");
-   lua_rawget(Prv->Lua, -2); // Get the __index closure
+   lua_rawget(Prv->Lua, -2); // Get __index (could be table or function)
 
-   if (not lua_isfunction(Prv->Lua, -1)) {
-      lua_pop(Prv->Lua, 2);
-      return;
+   int storage_table_idx;
+   int items_to_pop;
+
+   if (lua_istable(Prv->Lua, -1)) {
+      // JIT-compatible mode: __index IS the storage table directly
+      storage_table_idx = lua_gettop(Prv->Lua);
+      items_to_pop = 3; // storage table, metatable, global env
    }
-
-   // The storage table is the first upvalue of the __index closure
-   auto upvalue_name = lua_getupvalue(Prv->Lua, -1, 1);
-   if (not upvalue_name or not lua_istable(Prv->Lua, -1)) {
+   else if (lua_isfunction(Prv->Lua, -1)) {
+      // Legacy mode: __index is a closure with storage table as upvalue
+      auto upvalue_name = lua_getupvalue(Prv->Lua, -1, 1);
+      if (not upvalue_name or not lua_istable(Prv->Lua, -1)) {
+         lua_pop(Prv->Lua, 3);
+         return;
+      }
+      storage_table_idx = lua_gettop(Prv->Lua);
+      items_to_pop = 4; // storage table, __index closure, metatable, global env
+   }
+   else {
       lua_pop(Prv->Lua, 3);
       return;
    }
 
    int count = 0;
    lua_pushnil(Prv->Lua);
-   while (lua_next(Prv->Lua, -2)) {
+   while (lua_next(Prv->Lua, storage_table_idx)) {
       CSTRING key = lua_tostring(Prv->Lua, -2);
       Buf << key << " = ";
 
@@ -556,7 +569,7 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
          default: Buf << "<" << lua_typename(Prv->Lua, type) << ">"; break;
       }
 
-      if (not Compact) Buf <<" (" << lua_typename(Prv->Lua, type) << ")";
+      if (not Compact) Buf << " (" << lua_typename(Prv->Lua, type) << ")";
       Buf << "\n";
       count++;
 
@@ -564,10 +577,7 @@ static void emit_globals_info(prvFluid *Prv, std::ostringstream &Buf, bool Compa
    }
 
    if (count IS 0) Buf << "(none)\n";
-   lua_pop(Prv->Lua, 1); // Pop storage table
-   lua_pop(Prv->Lua, 1); // Pop __index closure
-   lua_pop(Prv->Lua, 1); // Pop metatable
-   lua_pop(Prv->Lua, 1); // Pop global environment
+   lua_pop(Prv->Lua, items_to_pop);
 
    if (not Compact) Buf << "\n";
 }

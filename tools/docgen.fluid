@@ -23,7 +23,7 @@ function resolveSDKPath(Path)
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
-         limit = limit - 1
+         limit -= 1
       end
    else
       table.insert(search_list, Path .. '/CMakeLists.txt')
@@ -35,7 +35,7 @@ function resolveSDKPath(Path)
    else
       local msg = ''
       for _, path in ipairs(search_list) do
-         msg = msg .. path .. '\n'
+         msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')
@@ -80,7 +80,7 @@ end
 
          local parameters = '"' .. res_src_path .. '" --encoding UTF-8 -o "' .. res_output_path .. '" --path "' .. res_module_folder .. ' ' .. res_class_folder .. '"'
 
-         cmdlist = cmdlist .. 'xsltproc ' .. parameters .. '\n'
+         cmdlist ..= 'xsltproc ' .. parameters .. '\n'
       end
    })
 

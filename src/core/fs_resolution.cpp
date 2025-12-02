@@ -172,7 +172,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       error = resolve(src, dest, Flags);
 
       if (error IS ERR::VirtualVolume) {
-         log.trace("Detected virtual volume '%s'", dest);
+         log.trace("Detected virtual volume '%s'", dest.c_str());
 
          // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names, otherwise Okay.
 

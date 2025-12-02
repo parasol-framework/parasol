@@ -127,7 +127,7 @@ function testForExpressionNodeAggregation()
    assert(#collected is 3, 'For expression should yield three items, got ' .. #collected)
 
    table.sort(collected)
-   assert(collected[1] is 'a' and collected[2] is 'b' and collected[3] is 'c', 'For expression should gather all item identifiers, got ' .. table.concat(collected, ','))
+   assert(collected[0] is 'a' and collected[1] is 'b' and collected[2] is 'c', 'For expression should gather all item identifiers, got ' .. table.concat(collected, ','))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ function testForExpressionMultipleBindings()
 
    assert(err is ERR_Okay, 'Multi-binding for expression evaluation should succeed: ' .. mSys.GetErrorMsg(err))
    table.sort(matched)
-   assert(#matched is 2 and matched[1] is 'a' and matched[2] is 'c', 'Multi-binding for expression should filter matching ids, got ' .. table.concat(matched, ','))
+   assert(#matched is 2 and matched[0] is 'a' and matched[1] is 'c', 'Multi-binding for expression should filter matching ids, got ' .. table.concat(matched, ','))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ function testFlworForLetCombination()
 
    assert(err is ERR_Okay, 'FLWOR for-let evaluation should succeed: ' .. mSys.GetErrorMsg(err))
    table.sort(collected)
-   assert(#collected is 2 and collected[1] is 'a' and collected[2] is 'c', 'FLWOR for-let should filter fiction books, got ' .. table.concat(collected, ','))
+   assert(#collected is 2 and collected[0] is 'a' and collected[1] is 'c', 'FLWOR for-let should filter fiction books, got ' .. table.concat(collected, ','))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ function testFlworLetForCombination()
 
    assert(err is ERR_Okay, 'FLWOR let-for evaluation should succeed: ' .. mSys.GetErrorMsg(err))
    table.sort(expensive)
-   assert(#expensive is 2 and expensive[1] is 'b' and expensive[2] is 'c', 'FLWOR let-for should filter books above price 40, got ' .. table.concat(expensive, ','))
+   assert(#expensive is 2 and expensive[0] is 'b' and expensive[1] is 'c', 'FLWOR let-for should filter books above price 40, got ' .. table.concat(expensive, ','))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ function testSequenceSetOperators()
 
    assert(errUnion is ERR_Okay, 'Union keyword expression should evaluate successfully: ' .. mSys.GetErrorMsg(errUnion))
    assert(#unionOrder is 3, 'Union keyword should return three matching nodes, got ' .. #unionOrder)
-   assert(unionOrder[1] is 'a' and unionOrder[2] is 'b' and unionOrder[3] is 'd',
+   assert(unionOrder[0] is 'a' and unionOrder[1] is 'b' and unionOrder[2] is 'd',
       'Union keyword should preserve document order of a, b, d, got ' .. table.concat(unionOrder, ','))
 
    local xmlIntersect = obj.new("xml", {
@@ -258,7 +258,7 @@ function testSequenceSetOperators()
    end)
 
    assert(errIntersect is ERR_Okay, 'Intersect operator should evaluate successfully: ' .. mSys.GetErrorMsg(errIntersect))
-   assert(#intersectIds is 2 and intersectIds[1] is 'one' and intersectIds[2] is 'four',
+   assert(#intersectIds is 2 and intersectIds[0] is 'one' and intersectIds[1] is 'four',
       'Intersect operator should return ids one and four in document order, got ' .. table.concat(intersectIds, ','))
 
    local exceptIds = {}
@@ -269,7 +269,7 @@ function testSequenceSetOperators()
    end)
 
    assert(errExcept is ERR_Okay, 'Except operator should evaluate successfully: ' .. mSys.GetErrorMsg(errExcept))
-   assert(#exceptIds is 1 and exceptIds[1] is 'one',
+   assert(#exceptIds is 1 and exceptIds[0] is 'one',
       'Except operator should filter excluded nodes leaving only id one, got ' .. table.concat(exceptIds, ','))
 end
 

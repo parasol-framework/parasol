@@ -81,7 +81,7 @@ Node iteration with callbacks:
 objXQuery::create query { statement="//chapter[@status='draft']" };
 if (query.ok()) {
    auto callback = C_FUNCTION(process_node);
-   query->search(xml, &callback);
+   query-&gt;search(xml, &callback);
 }
 </pre>
 

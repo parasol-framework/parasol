@@ -523,6 +523,7 @@ else ()
    endif ()
 
    # Expand glob patterns for source files (mirrors MSVC approach)
+
    file(GLOB LUAJIT_CORE_SOURCES
       "${LUAJIT_SRC}/debug/lj_*.cpp"
       "${LUAJIT_SRC}/runtime/lj_*.cpp"
@@ -636,6 +637,17 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/parser/lexer.cpp"
    "${LUAJIT_SRC}/parser/parser_unit_tests.cpp")
 
+if (ENABLE_UNIT_TESTS)
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_vm_asm.cpp")
+
+   # Add MASM assembly file for register capture on MSVC x64
+   if (MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+      enable_language(ASM_MASM)
+      list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/register_capture_x64.asm")
+   endif ()
+endif ()
+
 if (NOT DISABLE_DISPLAY)
    list (APPEND FLUID_SOURCES "fluid_input.cpp")
 endif ()
@@ -675,7 +687,7 @@ endif ()
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank ternary table complex stress unit_tests jitoptions
-   unicode ellipsis safe_nav close type_annotations
+   unicode ellipsis safe_nav close type_annotations jit
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

@@ -120,8 +120,8 @@ end
    })
 
    input.subscribe(JTYPE_BUTTON, win.surface, 0, function(Surface, Events)
-      if (Events.type is JET_BUTTON_2) then
-         if (Events.value is 0) then
+      if Events.type is JET_BUTTON_2 then
+         if Events.value is 0 then
             popupMenu.show()
          end
       end

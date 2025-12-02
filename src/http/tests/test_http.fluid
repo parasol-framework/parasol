@@ -45,7 +45,7 @@ function testGetLocal()
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(nz(content), 'No content received.')
 
-   print(string.format('%.80s [80 of %d bytes]', content, content:len()))
+   print(string.format('Received: %.80s [80 of %d bytes]', content, content:len()))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ function testPostStringFile()
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
 
    local js_content = json.decode(content)
-   assert(js_content.body is outgoing_body, 'Unexpected response: ' .. content)
+   assert(js_content.body is outgoing_body, 'Unexpected response in body: ' .. content)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -365,7 +365,7 @@ function testIPV6()
        print(content)
    else
        print('Response preview (first 500 chars):')
-       print(string.sub(content, 1, 500) .. '...')
+       print(string.sub(content, 0, 499) .. '...')
    end
 end
 

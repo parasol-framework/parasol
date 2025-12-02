@@ -132,7 +132,7 @@ end
 function testBlankInTable()
    -- Blank identifiers work with table destructuring patterns
    local t = {1, 2, 3}
-   local _, _, x = t[1], t[2], t[3]
+   local _, _, x = t[0], t[1], t[2]
    assert(x is 3, "Failed blank in table: expected x=3, got " .. x)
 end
 

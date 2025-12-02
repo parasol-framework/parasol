@@ -20,7 +20,7 @@ function selectGradient(Text)
    focalEllipse.visibility = 'hidden'
    rect.visibility = 'visible'
 
-   if Text == 'Radial' then
+   if Text is 'Radial' then
       gradient.type = 'radial'
       focalEllipse.visibility = 'visible'
       uiEvent = function(ev)
@@ -29,7 +29,7 @@ function selectGradient(Text)
       end
       gradient.cX = '50%'
       gradient.cY = '50%'
-   elseif (Text == 'Conic') or (Text == 'Diamond') then
+   elseif (Text is 'Conic') or (Text is 'Diamond') then
       gradient.type = Text
       uiEvent = function(ev)
          gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
@@ -37,7 +37,7 @@ function selectGradient(Text)
          gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
          gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
       end
-   elseif Text == 'Contour' then
+   elseif Text is 'Contour' then
       gradient.type = 'contour'
       gradient.x1 = 0
       gradient.x2 = 2.0
@@ -51,7 +51,7 @@ function selectGradient(Text)
             gradient.x1 = y * gradient.x2
          end
       end
-   elseif Text == 'Contour Shape' then
+   elseif Text is 'Contour Shape' then
       contourShape.visibility = 'visible'
       gradient.type = 'contour'
       rect.visibility = 'hidden'
@@ -60,14 +60,9 @@ function selectGradient(Text)
       uiEvent = function(ev)
          local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
          local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
-
-         if xscale > yscale then
-            gradient.x1 = xscale
-         else
-            gradient.x1 = yscale
-         end
+         gradient.x1 = xscale > yscale ? xscale :> yscale
       end
-   elseif Text == 'Linear' then
+   elseif Text is 'Linear' then
       gradient.type = 'linear'
       uiEvent = function(ev)
          gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
@@ -138,13 +133,13 @@ function buildScene()
       items  = { { item='Pad' }, { item='Repeat' }, { item='Reflect' }, { item='Clip' } },
       events = {
          activate = function(Widget, Text)
-            if Text == 'Pad' then
+            if Text is 'Pad' then
                gradient.spreadMethod = VSPREAD_PAD
-            elseif Text == 'Reflect' then
+            elseif Text is 'Reflect' then
                gradient.spreadMethod = VSPREAD_REFLECT
-            elseif Text == 'Repeat' then
+            elseif Text is 'Repeat' then
                gradient.spreadMethod = VSPREAD_REPEAT
-            elseif Text == 'Clip' then
+            elseif Text is 'Clip' then
                gradient.spreadMethod = VSPREAD_CLIP
             end
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -202,7 +197,7 @@ function buildScene()
                warnExists  = true,
                filterList  = { { name='PNG Images', ext='.png' } },
                feedback    = function(Dialog, Path, Files)
-                  if (Files == nil) then return end
+                  if (Files is nil) then return end
 
                   local target_file = Path .. Files[1].filename
 
@@ -240,14 +235,14 @@ end
    check(gradientVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events
       while ev do
-         if (ev.type == JET_ABS_XY) then
-            if button_held == 1 then
+         if ev.type is JET_ABS_XY then
+            if button_held is 1 then
                uiEvent(ev)
                gradientVP.scene.surface.mtScheduleRedraw()
             end
-         elseif (ev.type == JET_BUTTON_1) then -- LMB
+         elseif ev.type is JET_BUTTON_1 then -- LMB
             button_held = ev.value
-            if button_held == 1 then
+            if button_held is 1 then
                uiEvent(ev)
                gradientVP.scene.surface.mtScheduleRedraw()
             end

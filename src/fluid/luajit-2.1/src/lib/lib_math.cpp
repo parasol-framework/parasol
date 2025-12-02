@@ -17,8 +17,6 @@
 #include "lj_vm.h"
 #include "lj_prng.h"
 
-// ------------------------------------------------------------------------
-
 #define LJLIB_MODULE_math
 
 LJLIB_ASM(math_abs)      LJLIB_REC(.)
@@ -113,8 +111,6 @@ LJLIB_CF(math_round)
 LJLIB_PUSH(3.14159265358979323846) LJLIB_SET(pi)
 LJLIB_PUSH(1e310) LJLIB_SET(huge)
 
-// ------------------------------------------------------------------------
-
 /* This implements a Tausworthe PRNG with period 2^223. Based on:
 **   Tables of maximally-equidistributed combined LFSR generators,
 **   Pierre L'Ecuyer, 1991, table 3, 1st entry.
@@ -137,8 +133,8 @@ static void random_seed(PRNGState* rs, double d)
       if (u.u64 < m) u.u64 += m;  //  Ensure k[i] MSB of u[i] are non-zero.
       rs->u[i] = u.u64;
    }
-   for (i = 0; i < 10; i++)
-      (void)lj_prng_u64(rs);
+
+   for (i = 0; i < 10; i++) (void)lj_prng_u64(rs);
 }
 
 // PRNG extract function.

@@ -38,7 +38,7 @@ function testDocumentUriReturnsDocumentPath()
    local query = obj.new('xquery', { statement='document-uri(/root/*[local-name()="child" and namespace-uri()="urn:test"])' })
    assert(query.mtEvaluate(glAccessorXML) is ERR_Okay, 'Evaluate() failed: ' .. tostring(query.errorMsg))
 
-   assert(string.find(query.resultString, glXMLPath, 1, true) != nil,
+   assert(string.find(query.resultString, glXMLPath, 0, true) != nil,
       'document-uri() should return the document path for descendant nodes, got ' .. tostring(query.resultString))
 end
 

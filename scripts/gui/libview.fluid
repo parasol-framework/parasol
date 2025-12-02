@@ -74,7 +74,7 @@ local function lastItem(View)
 end
 
 local function selectItem(View, Item)
-   if (Item is View.sItem) then return end
+   if Item is View.sItem then return end
 
    View.sItem = Item
 
@@ -155,8 +155,8 @@ end
 
 local function selectPrev(View, Filter)
    if not View.sItem then
-      for i=1, #View.items do
-         local item = View.items[#View.items + 1 - i]
+      for i=0, #View.items-1 do
+         local item = View.items[#View.items - i]
          if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
@@ -164,8 +164,8 @@ local function selectPrev(View, Filter)
       end
    else
       local found = false
-      for i=1, #View.items do
-         local item = View.items[#View.items + 1 - i]
+      for i=0, #View.items-1 do
+         local item = View.items[#View.items - i]
          if item is View.sItem then
             found = true
          elseif found and (not item.hidden) and Filter(item) then
@@ -185,7 +185,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       zones      = { },
       items      = { },
       disabled   = false,
-      sensitive  = (Options.sensitive ?? false),
+      sensitive  = Options.sensitive ?? false,
       hItem      = nil, -- Highlighted item
       sItem      = nil, -- Selected item
       activeItem = nil,
@@ -193,16 +193,16 @@ gui.initView = function(Options, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil, -- Host of the page
-      fontFace   = (Options.fontFace ?? gui.fonts.page.face),
-      fontSize   = (Options.fontSize ?? gui.fonts.page.size),
-      fontStyle  = (Options.fontStyle ?? gui.fonts.page.style),
+      fontFace   = Options.fontFace ?? gui.fonts.page.face,
+      fontSize   = Options.fontSize ?? gui.fonts.page.size,
+      fontStyle  = Options.fontStyle ?? gui.fonts.page.style,
       noIcons    = Options.noIcons,
       itemSelected    = Options.itemSelected,
       itemDeselected  = Options.itemDeselected,
       itemActivated   = Options.itemActivated,
       invertedPalette = Options.invertPalette,
       activeChange    = Options.activeChange,
-      events          = (Options.events ?? {}),
+      events          = Options.events ?? {},
       top             = { },
       totalTop        = 0
    }
@@ -241,7 +241,7 @@ gui.initView = function(Options, BuildUI, NewItems)
          table.insert(vw.items, new_item)
          if NewItems then table.insert(new_items, new_item) end
          vw.lookup[lItemCounter] = new_item
-         lItemCounter = lItemCounter + 1
+         lItemCounter++
       end
 
       if NewItems and (#new_items > 0) then NewItems(vw, new_items) end -- Report new items to view manager
@@ -257,7 +257,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             if Input.value is 0 then
                if vw.sensitive and (not Zone.item.insensitive) then
                   reportItemActivated(vw, 'user', Zone.item)
-               elseif (bit.band(Input.flags, JTYPE_DBL_CLICK) != 0) then
+               elseif (Input.flags & JTYPE_DBL_CLICK)?? then
                   reportItemActivated(vw, 'user', Zone.item)
                end
             end
@@ -302,7 +302,7 @@ gui.initView = function(Options, BuildUI, NewItems)
          hoverCallback = HoverCallback
       })
 
-      return vw.zones[#vw.zones]
+      return vw.zones[#vw.zones-1]
    end
 
    -- Clears a view of all internal content and updates the display.
@@ -395,10 +395,10 @@ gui.initView = function(Options, BuildUI, NewItems)
       end
 
       highlightItem(vw, nil)
-      vw.activeItem = vw.items[1]
-      vw.sItem = vw.items[1]
-      reportItemSelected(vw, 'selected', vw.items[1])
-      reportActiveChange(vw, 'selected', vw.items[1])
+      vw.activeItem = vw.items[0]
+      vw.sItem = vw.items[0]
+      reportItemSelected(vw, 'selected', vw.items[0])
+      reportActiveChange(vw, 'selected', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -447,8 +447,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       vw.sItem = nil
       vw.activeItem = nil
-      reportItemDeselected(vw, 'deselected', vw.items[1])
-      reportActiveChange(vw, 'deselected', vw.items[1])
+      reportItemDeselected(vw, 'deselected', vw.items[0])
+      reportActiveChange(vw, 'deselected', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -482,8 +482,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       if (#vw.items <= 1) then return end
 
-      if (type(vw.items[1][Attrib]) is 'table') then
-         if vw.items[1][Attrib]['sort'] then
+      if (type(vw.items[0][Attrib]) is 'table') then
+         if vw.items[0][Attrib]['sort'] then
             table.sort(vw.items, function(a,b)
                return Ascending ? (a[Attrib].sort < b[Attrib].sort) :> (a[Attrib].sort > b[Attrib].sort)
             end)
@@ -543,7 +543,6 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.scene    = vw.parentViewport.scene
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
-
    vw.frame = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
 
    vw.bkgd = vw.frame.new('VectorRectangle', {
@@ -575,7 +574,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.parentViewport = nil
    end)
 --[[
-   vw.parentViewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+   vw.parentViewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)
       if (Event is FM_LOST_FOCUS) then
 
       else
@@ -596,7 +595,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.scrollbar.vbar.viewport.y = 1
    end
 
-   vw.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+   vw.viewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)
       if Event is FM_LOST_FOCUS then
          vw.hasFocus = false
          if vw.border then vw.border.stroke = gui.style.border end
@@ -639,26 +638,24 @@ gui.initView = function(Options, BuildUI, NewItems)
       end
    end)
 
-   vw.page.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING, JTYPE_EXT_MOVEMENT), function(Viewport, Events)
+   vw.page.mtSubscribeInput((JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING | JTYPE_EXT_MOVEMENT), function(Viewport, Events)
       local ev = Events
-      while (ev) do
-         if (ev.type is JET_CROSSED_IN) then
+      while ev do
+         if ev.type is JET_CROSSED_IN then
             vw.cursorX = ev.x
             vw.cursorY = ev.y
             checkCursorImage(vw)
-         elseif (ev.type is JET_CROSSED_OUT) then
+         elseif ev.type is JET_CROSSED_OUT then
             vw.cursorX = nil
             vw.cursorY = nil
             checkCursorImage(vw)
             if vw.hItem then
                highlightItem(vw, nil)
             end
-         elseif (ev.type is JET_BUTTON_1) then
-            if (bit.band(ev.flags, JTYPE_REPEATED) != 0) then
-               return
-            end
+         elseif ev.type is JET_BUTTON_1 then
+            if (ev.flags & JTYPE_REPEATED)?? then return end
 
-            if (ev.value is 1) then
+            if ev.value is 1 then
                vw.clickAbsX = ev.absX
                vw.clickAbsY = ev.absY
                vw.clickX = ev.x

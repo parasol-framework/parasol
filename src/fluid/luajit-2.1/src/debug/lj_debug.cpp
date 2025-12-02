@@ -174,9 +174,10 @@ static const char* debug_varname(const GCproto* pt, BCPOS pc, BCREG slot)
 }
 
 //********************************************************************************************************************
-// Get name of local variable from 1-based slot number and function/frame.
 
-static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** name, BCREG slot1)
+// Get name of local variable from semantic slot number and function/frame.
+
+static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** name, int32_t Slot)
 {
    uint32_t offset = (uint32_t)ar->i_ci & 0xffff;
    uint32_t size = (uint32_t)ar->i_ci >> 16;
@@ -185,11 +186,11 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
    GCfunc *fn = frame_func(frame);
    BCPOS pc = debug_framepc(L, fn, nextframe);
    if (not nextframe) nextframe = L->top + LJ_FR2;
-   if ((int)slot1 < 0) {  //  Negative slot number is for varargs.
+   if (Slot < 0) {  //  Negative slot number is for varargs.
       if (pc != NO_BCPOS) {
          GCproto* pt = funcproto(fn);
          if ((pt->flags & PROTO_VARARG)) {
-            slot1 = pt->numparams + (BCREG)(-(int)slot1);
+            BCREG slot1 = (BCREG)(pt->numparams + (BCREG)(-Slot));
             if (frame_isvarg(frame)) {  //  Vararg frame has been set up? (pc!=0)
                nextframe = frame;
                frame = frame_prevd(frame);
@@ -203,9 +204,9 @@ static TValue* debug_localname(lua_State* L, const lua_Debug* ar, const char** n
       return nullptr;
    }
 
-   if (pc != NO_BCPOS and (*name = debug_varname(funcproto(fn), pc, slot1 - 1)) != nullptr);
-   else if (slot1 > 0 and frame + slot1 + LJ_FR2 < nextframe) *name = "(*temporary)";
-   return frame + slot1;
+   if (pc != NO_BCPOS and (*name = debug_varname(funcproto(fn), pc, (BCREG)Slot - 1)) != nullptr);
+   else if (Slot > 0 and frame + Slot + LJ_FR2 < nextframe) *name = "(*temporary)";
+   return frame + Slot;
 }
 
 //********************************************************************************************************************
@@ -411,11 +412,13 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
 //********************************************************************************************************************
 
+// Note: n is the internal slot number (1-based). Call sites should convert from
+// 0-based user indices if needed (e.g., debug_semantic_index_to_internal in lib_debug.cpp).
 [[nodiscard]] extern const char* lua_getlocal(lua_State* L, const lua_Debug* ar, int n)
 {
    const char* name = nullptr;
    if (ar) {
-      TValue* o = debug_localname(L, ar, &name, (BCREG)n);
+      TValue* o = debug_localname(L, ar, &name, n);
       if (name) {
          copyTV(L, L->top, o);
          incr_top(L);
@@ -429,10 +432,12 @@ void lj_debug_pushloc(lua_State* L, GCproto* pt, BCPOS pc)
 
 //********************************************************************************************************************
 
+// Note: n is the internal slot number (1-based). Call sites should convert from
+// 0-based user indices if needed.
 extern const char* lua_setlocal(lua_State* L, const lua_Debug* ar, int n)
 {
    const char* name = nullptr;
-   TValue* o = debug_localname(L, ar, &name, (BCREG)n);
+   TValue* o = debug_localname(L, ar, &name, n);
    if (name)
       copyTV(L, o, L->top - 1);
    L->top--;

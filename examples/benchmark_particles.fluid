@@ -10,7 +10,7 @@ Parameters:
    require 'gui/window'
    include 'display'
 
-   mVec = mod.load('vector')
+   mVec ?= mod.load('vector')
 
    glBestFPS = 0
 
@@ -48,7 +48,7 @@ end
 
 function updateTime(elapsed)
    table.insert(glTimes, elapsed)
-   if (#glTimes > 50) then table.remove(glTimes, 1) end
+   if #glTimes > 50 then table.remove(glTimes, 1) end
    local totalTime = 0
    for _,time in pairs(glTimes) do
       totalTime = totalTime + time
@@ -74,20 +74,20 @@ function newParticle()
       y = (glWinHeight / 2) - 6
    }
 
-   if (glMode == MODE_VECTOR) then
-      local colour = glColours[1+(math.floor(math.random() * #glColours))]
+   if glMode is MODE_VECTOR then
+      local colour = glColours[(math.floor(math.random() * #glColours))]
       particle.vector = glViewport.new('VectorEllipse', {
          fill    = string.format('rgb(%f,%f,%f)', colour.r, colour.g, colour.b),
          centerx = particle.x,
          centery = particle.y,
          radius  = particle.radius
       })
-   elseif (glMode == MODE_DIRECTVECTOR) then
-      particle.colour = glColours[1+(math.floor(math.random() * #glColours))]
+   elseif glMode is MODE_DIRECTVECTOR then
+      particle.colour = glColours[(math.floor(math.random() * #glColours))]
       local err
       err, particle.path = mVec.GenerateEllipse(particle.x, particle.y, particle.radius, particle.radius, 0)
-   elseif (glMode == MODE_PRIMITIVE) then
-      particle.colour = glColours[1+(math.floor(math.random() * #glColours))]
+   elseif glMode is MODE_PRIMITIVE then
+      particle.colour = glColours[(math.floor(math.random() * #glColours))]
    end
 
    return particle
@@ -96,9 +96,9 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function timer(Subscriber, Elapsed, Current)
-   local moveflag = bit.bor(MTF_X, MTF_Y)
-   glWinWidth  = (glSurface.width ?? 1)
-   glWinHeight = (glSurface.height ?? 1)
+   local moveflag = MTF_X|MTF_Y
+   glWinWidth  = glSurface.width ?? 1
+   glWinHeight = glSurface.height ?? 1
 
    for _,p in pairs(glParticles) do
       -- Calculate next position of particle
@@ -111,7 +111,7 @@ function timer(Subscriber, Elapsed, Current)
 
       -- If particle is going to move off right side of screen
 
-      if (nextX + p.radius * 2 > glWinWidth) then
+      if nextX + p.radius * 2 > glWinWidth then
          if ((p.angle >= 0) and (p.angle < math.pi * 0.5)) then
             p.angle = math.pi - p.angle
          elseif (p.angle > math.pi / 2 * 3) then
@@ -121,7 +121,7 @@ function timer(Subscriber, Elapsed, Current)
 
       -- If particle is going to move off left side of screen
 
-      if (nextX < 0) then  -- If angle is between 6 o'clock and 9 o'clock
+      if nextX < 0 then  -- If angle is between 6 o'clock and 9 o'clock
          if ((p.angle > math.pi / 2) and (p.angle < math.pi)) then
             p.angle = math.pi - p.angle
          elseif (p.angle > math.pi) and (p.angle < math.pi * 0.5 * 3) then
@@ -139,15 +139,15 @@ function timer(Subscriber, Elapsed, Current)
 
       -- If particle is going to move off top side of screen
 
-      if (nextY < 0) then
+      if nextY < 0 then
          if ((p.angle > math.pi) and (p.angle < math.pi * 2)) then
             p.angle = p.angle - (p.angle - math.pi) * 2
          end
       end
 
-      if (glMode == MODE_VECTOR) then
+      if glMode is MODE_VECTOR then
          p.vector.acMoveToPoint(nextX + p.radius, nextY + p.radius, 0, moveflag)
-      elseif (glMode == MODE_DIRECTVECTOR) then
+      elseif glMode is MODE_DIRECTVECTOR then
          mVec.TranslatePath(p.path, tx, ty)
       end
 
@@ -158,7 +158,7 @@ function timer(Subscriber, Elapsed, Current)
    glViewport.acDraw()
    updateTime(glScene.renderTime)
 
-   if (math.round(Current / 1000000) % 4 == 0) then
+   if math.round(Current / 1000000) % 4 is 0 then
       if not glPrinted then
          glPrinted = true
          print('Best frame rate: ' .. math.round(glBestFPS))
@@ -188,7 +188,7 @@ function createWindow()
    glSurface  = glWindow.surface
    glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
    glScene    = glViewport.scene
-   glScene.flags = bit.bor(glScene.flags, VPF_RENDER_TIME)
+   glScene.flags = glScene.flags | VPF_RENDER_TIME
    --glViewport.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='rgb(255,255,255)' })
    --glFPS = glViewport.new('VectorText', { x=10, y = 30, string='FPS:', fill='rgb(0,0,0)' })
 
@@ -206,9 +206,9 @@ MODE_DIRECTVECTOR = 3 -- Tests the drawing speed of DrawPath() and bypasses the 
 function setBenchmarkMode()
    local reqMode = arg('mode', 'vector')
 
-   if (reqMode == 'primitive') then
+   if reqMode is 'primitive' then
       glMode = MODE_PRIMITIVE
-   elseif (reqMode == 'directvector') then
+   elseif reqMode is 'directvector' then
       glMode = MODE_DIRECTVECTOR
    else
       glMode = MODE_VECTOR
@@ -225,7 +225,7 @@ end
 
    glTimes = {}
 
-   if (glMode == MODE_PRIMITIVE) then
+   if glMode is MODE_PRIMITIVE then
       print('Drawing Mode: Primitive')
 
       glSurface.mtAddCallback(drawPrimitive)
@@ -234,7 +234,7 @@ end
         { r=0xcc, g=0, b=0 }, { r=0xff, g=0xcc, b=0 }, { r=0xaa, g=0xff, b=0 },
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
       }
-   elseif (glMode == MODE_VECTOR) then
+   elseif (glMode is MODE_VECTOR) then
       print('Drawing Mode: Vector')
 
       glColours = {
@@ -242,7 +242,7 @@ end
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
       }
 
-   elseif (glMode == MODE_DIRECTVECTOR) then
+   elseif (glMode is MODE_DIRECTVECTOR) then
       print('Drawing Mode: Direct Vector')
 
       glSurface.mtAddCallback(drawDirectVector)
@@ -259,7 +259,7 @@ end
 
    glParticles = {}
    local max = tonumber((arg('maxParticles') ?? 500))
-   if (max < 100) then max = 100 end
+   if max < 100 then max = 100 end
    for i=1,max do
       table.insert(glParticles, newParticle())
    end

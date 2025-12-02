@@ -6,7 +6,7 @@ This code illustrates how to read environment variables (any platform) and Windo
 
    local error, path = task.mtGetEnv("PATH")
 
-   if (error == ERR_Okay) then
+   if error is ERR_Okay then
       print("PATH: " .. path)
    else
       print("Failed to read PATH variable.")
@@ -14,7 +14,7 @@ This code illustrates how to read environment variables (any platform) and Windo
 
    local error, progfiles = task.mtGetEnv("\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir")
 
-   if (error == ERR_Okay) then
+   if error is ERR_Okay then
       print("The Windows registry key for program files is \"" .. progfiles .. "\"")
    else
       print("Failed to read Windows registry.")

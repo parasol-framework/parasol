@@ -75,17 +75,13 @@ gui.dialog.message = function(Options)
    end
 
    local function docEvent(Document, EventFlag, Parameters)
-      if (EventFlag & DEF_LINK_ACTIVATED) != 0 then
+      if (EventFlag & DEF_LINK_ACTIVATED)?? then
          if self.feedback then
             local responseIndex = tonumber(Parameters.response)
             local response = self.options[responseIndex]
             local state = { }
 
-            if Document.getKey('checkbox') is '1' then
-               state.checkbox = true
-            else
-               state.checkbox = false
-            end
+            state.checkbox = Document.getKey('checkbox') is '1' ? true :> false
 
             local input = Document.getKey('input')
             if input?? then state.input = input end
@@ -116,8 +112,8 @@ gui.dialog.message = function(Options)
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            if option_icons?? then option_icons = option_icons .. '\n' end
-            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="48" height="48"/>\n'
+            if option_icons?? then option_icons ..= '\n' end
+            option_icons ..= '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="48" height="48"/>\n'
          end
       end
 
@@ -164,18 +160,11 @@ gui.dialog.message = function(Options)
 
       if Options.userInput then
          local inputOptions = ''
-         if Options.secret then
-            inputOptions = 'secret="true"'
-         end
+         if Options.secret then inputOptions = 'secret="true"' end
 
-         local msg
-         if type(Options.userInput) is 'string' then
-            msg = Options.userInput
-         else
-            msg = ''
-         end
+         local msg = type(Options.userInput) is 'string' ? Options.userInput :> ''
 
-         doc = doc .. '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
+         doc ..= '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then

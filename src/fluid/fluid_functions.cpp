@@ -159,9 +159,10 @@ int fcmd_catch(lua_State *Lua)
                   lua_pushnil(Lua);  // First key
                   while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
-                     if (lua_tointeger(Lua, -1) IS int(filter_error)) {
-                        caught_by_filter = true;
-                        lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
+                     if (lua_type(Lua, -1) IS LUA_TNUMBER) {
+                        if (lua_tointeger(Lua, -1) IS int(filter_error)) {
+                           caught_by_filter = true;
+                        }
                      }
                      lua_pop(Lua, 1); // Removes 'value'; keeps 'key' for next iteration
                   }

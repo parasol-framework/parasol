@@ -41,6 +41,7 @@
 /parasol-*/
 /visual-studio/
 /projects/*
+/*.sh
 
 /install/
 /packages/

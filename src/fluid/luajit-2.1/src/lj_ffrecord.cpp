@@ -1,7 +1,22 @@
-/*
-** Fast function call recorder.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Fast function call recorder.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Conventions for fast function call handlers:
+//
+// The argument slots start at J->base[0]. All of them are guaranteed to be valid and type-specialized references.
+// J->base[J->maxslot] is set to 0 as a sentinel. The runtime argument values start at rd->argv[0].
+//
+// In general fast functions should check for presence of all of their arguments and for the correct argument
+// types. Some simplifications are allowed if the interpreter throws instead. But even if recording is aborted,
+// the generated IR must be consistent (no zero-refs).
+//
+// The number of results in rd->nres is set to 1. Handlers that return a different number of results need to
+// override it. A negative value prevents return processing (e.g. for pending calls).
+//
+// Results need to be stored starting at J->base[0]. Return processing moves them to the right slots later.
+//
+// The per-ffid auxiliary data is the value of the 2nd part of the LJLIB_REC() annotation. This allows handling
+// similar functionality in a common handler.
 
 #define lj_ffrecord_c
 #define LUA_CORE
@@ -36,31 +51,6 @@
 // Pass IR on to next optimization in chain (FOLD).
 #define emitir(ot, a, b)   (lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
 
-// -- Fast function recording handlers ------------------------------------
-
-/* Conventions for fast function call handlers:
-**
-** The argument slots start at J->base[0]. All of them are guaranteed to be
-** valid and type-specialized references. J->base[J->maxslot] is set to 0
-** as a sentinel. The runtime argument values start at rd->argv[0].
-**
-** In general fast functions should check for presence of all of their
-** arguments and for the correct argument types. Some simplifications
-** are allowed if the interpreter throws instead. But even if recording
-** is aborted, the generated IR must be consistent (no zero-refs).
-**
-** The number of results in rd->nres is set to 1. Handlers that return
-** a different number of results need to override it. A negative value
-** prevents return processing (e.g. for pending calls).
-**
-** Results need to be stored starting at J->base[0]. Return processing
-** moves them to the right slots later.
-**
-** The per-ffid auxiliary data is the value of the 2nd part of the
-** LJLIB_REC() annotation. This allows handling similar functionality
-** in a common handler.
-*/
-
 // Type of handler to record a fast function.
 typedef void (LJ_FASTCALL* RecordFunc)(jit_State* J, RecordFFData* rd);
 
@@ -88,16 +78,6 @@ static GCstr* argv2str(jit_State* J, TValue* o)
    }
 }
 
-// Return number of results wanted by caller.
-static ptrdiff_t results_wanted(jit_State* J)
-{
-   TValue* frame = J->L->base - 1;
-   if (frame_islua(frame))
-      return (ptrdiff_t)bc_b(frame_pc(frame)[-1]) - 1;
-   else
-      return -1;
-}
-
 // Trace stitching: add continuation below frame to start a new trace.
 static void recff_stitch(jit_State* J)
 {
@@ -110,8 +90,7 @@ static void recff_stitch(jit_State* J)
    TValue* pframe = frame_prevl(base - 1);
 
    // Check for this now. Throwing in lj_record_stop messes up the stack.
-   if (J->cur.nsnap >= (MSize)J->param[JIT_P_maxsnap])
-      lj_trace_err(J, LJ_TRERR_SNAPOV);
+   if (J->cur.nsnap >= (MSize)J->param[JIT_P_maxsnap]) lj_trace_err(J, LJ_TRERR_SNAPOV);
 
    // Move func + args up in Lua stack and insert continuation.
    memmove(&base[1], &base[-1 - LJ_FR2], sizeof(TValue) * nslot);
@@ -303,6 +282,7 @@ static void LJ_FASTCALL recff_rawlen(jit_State* J, RecordFFData* rd)
 #endif
 
 // Determine mode of select() call.
+// Returns SELECT_MODE_COUNT for '#' mode, or the 0-based start index for select(n, ...).
 int32_t lj_ffrecord_select_mode(jit_State* J, TRef tr, TValue* tv)
 {
    if (tref_isstr(tr) and *strVdata(tv) == '#') {  // select('#', ...)
@@ -314,12 +294,11 @@ int32_t lj_ffrecord_select_mode(jit_State* J, TRef tr, TValue* tv)
          TRef trchar = emitir(IRT(IR_XLOAD, IRT_U8), trptr, IRXLOAD_READONLY);
          emitir(IRTGI(IR_EQ), trchar, lj_ir_kint(J, '#'));
       }
-      return 0;
+      return SELECT_MODE_COUNT;
    }
    else {  // select(n, ...)
       int32_t start = argv2int(J, tv);
-      if (start == 0) lj_trace_err(J, LJ_TRERR_BADTYPE);  //  A bit misleading.
-      return start;
+      return start;  // 0-based: index 0 is valid, negative indices also valid
    }
 }
 
@@ -328,14 +307,14 @@ static void LJ_FASTCALL recff_select(jit_State* J, RecordFFData* rd)
    TRef tr = J->base[0];
    if (tr) {
       ptrdiff_t start = lj_ffrecord_select_mode(J, tr, &rd->argv[0]);
-      if (start == 0) {  // select('#', ...)
+      if (start == SELECT_MODE_COUNT) {  // select('#', ...)
          J->base[0] = lj_ir_kint(J, J->maxslot - 1);
       }
       else if (tref_isk(tr)) {  // select(k, ...)
          ptrdiff_t n = (ptrdiff_t)J->maxslot;
          if (start < 0) start += n;
          else if (start > n) start = n;
-         if (start >= 1) {
+         if (start >= 0) {  // 0-based: index 0 is valid
             ptrdiff_t i;
             rd->nres = n - start;
             for (i = 0; i < n - start; i++)
@@ -448,7 +427,8 @@ static void LJ_FASTCALL recff_ipairs_aux(jit_State* J, RecordFFData* rd)
          lj_trace_err(J, LJ_TRERR_BADTYPE);
       setintV(&ix.keyv, numberVint(&rd->argv[1]) + 1);
       settabV(J->L, &ix.tabv, tabV(&rd->argv[0]));
-      ix.val = 0; ix.idxchain = 0;
+      ix.val = 0;
+      ix.idxchain = 0;
       ix.key = lj_opt_narrow_toint(J, J->base[1]);
       J->base[0] = ix.key = emitir(IRTI(IR_ADD), ix.key, lj_ir_kint(J, 1));
       J->base[1] = lj_record_idx(J, &ix);
@@ -464,7 +444,7 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
       if (tref_istab(tr)) {
          J->base[0] = lj_ir_kfunc(J, funcV(&J->fn->c.upvalue[0]));
          J->base[1] = tr;
-         J->base[2] = rd->data ? lj_ir_kint(J, 0) : TREF_NIL;
+         J->base[2] = rd->data ? lj_ir_kint(J, -1) : TREF_NIL;  // 0-based: ipairs starts at -1
          rd->nres = 3;
       }  // else: Interpreter will throw.
    }
@@ -778,12 +758,13 @@ static void LJ_FASTCALL recff_bit_tohex(jit_State* J, RecordFFData* rd)
 
 // -- String library fast functions ---------------------------------------
 
-// Specialize to relative starting position for string.
+// Specialize to relative starting position for string (0-based indexing).
 static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr,
    TRef trlen, TRef tr0)
 {
    int32_t start = *st;
    if (start < 0) {
+      // Negative index: convert to 0-based (e.g., -1 -> len-1)
       emitir(IRTGI(IR_LT), tr, tr0);
       tr = emitir(IRTI(IR_ADD), trlen, tr);
       start = start + (int32_t)s->len;
@@ -793,14 +774,9 @@ static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr,
          start = 0;
       }
    }
-   else if (start == 0) {
-      emitir(IRTGI(IR_EQ), tr, tr0);
-      tr = tr0;
-   }
    else {
-      tr = emitir(IRTI(IR_ADD), tr, lj_ir_kint(J, -1));
+      // 0-based: positive indices are used as-is, just verify >= 0
       emitir(IRTGI(IR_GE), tr, tr0);
-      start--;
    }
    *st = start;
    return tr;
@@ -809,6 +785,9 @@ static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr,
 // Handle string.byte (rd->data = 0) and string.sub (rd->data = 1).
 static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
 {
+   //static bool triggered = false;
+   //if (not triggered) { printf("---recff_string_range---\n"); triggered = true; }
+
    TRef trstr = lj_ir_tostr(J, J->base[0]);
    TRef trlen = emitir(IRTI(IR_FLOAD), trstr, IRFL_STR_LEN);
    TRef tr0 = lj_ir_kint(J, 0);
@@ -830,8 +809,8 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
    }
    else {  // string.byte(str, [,start [,end]])
       if (tref_isnil(J->base[1])) {
-         start = 1;
-         trstart = lj_ir_kint(J, 1);
+         start = 0;  // 0-based: default start is 0
+         trstart = lj_ir_kint(J, 0);
       }
       else {
          start = argv2int(J, &rd->argv[1]);
@@ -847,24 +826,29 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
       }
    }
    if (end < 0) {
+      // 0-based: -1 -> len-1, -2 -> len-2, etc.
       emitir(IRTGI(IR_LT), trend, tr0);
-      trend = emitir(IRTI(IR_ADD), emitir(IRTI(IR_ADD), trlen, trend),
-         lj_ir_kint(J, 1));
-      end = end + (int32_t)str->len + 1;
-   }
-   else if ((MSize)end <= str->len) {
-      emitir(IRTGI(IR_ULE), trend, trlen);
+      trend = emitir(IRTI(IR_ADD), trlen, trend);
+      end = end + (int32_t)str->len;
    }
    else {
-      emitir(IRTGI(IR_UGT), trend, trlen);
-      end = (int32_t)str->len;
-      trend = trlen;
+      // 0-based: end is inclusive, max valid is len-1
+      TRef trmax = emitir(IRTI(IR_ADD), trlen, lj_ir_kint(J, -1));
+      if ((MSize)end < str->len) {
+         emitir(IRTGI(IR_ULE), trend, trmax);
+      }
+      else {
+         emitir(IRTGI(IR_UGT), trend, trmax);
+         end = (int32_t)str->len - 1;
+         trend = trmax;
+      }
    }
    trstart = recff_string_start(J, str, &start, trstart, trlen, tr0);
    if (rd->data) {  // Return string.sub result.
       if (end - start >= 0) {
-         // Also handle empty range here, to avoid extra traces.
+         // 0-based inclusive: length = end - start + 1
          TRef trptr, trslen = emitir(IRTI(IR_SUB), trend, trstart);
+         trslen = emitir(IRTI(IR_ADD), trslen, lj_ir_kint(J, 1));
          emitir(IRTGI(IR_GE), trslen, tr0);
          trptr = emitir(IRT(IR_STRREF, IRT_PGC), trstr, trstart);
          J->base[0] = emitir(IRT(IR_SNEW, IRT_STR), trptr, trslen);
@@ -875,14 +859,16 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
       }
    }
    else {  // Return string.byte result(s).
-      ptrdiff_t i, len = end - start;
-      if (len > 0) {
+      // 0-based inclusive: count = end - start + 1
+      ptrdiff_t i, count = end - start + 1;
+      if (count > 0) {
          TRef trslen = emitir(IRTI(IR_SUB), trend, trstart);
-         emitir(IRTGI(IR_EQ), trslen, lj_ir_kint(J, (int32_t)len));
-         if (J->baseslot + len > LJ_MAX_JSLOTS)
+         trslen = emitir(IRTI(IR_ADD), trslen, lj_ir_kint(J, 1));
+         emitir(IRTGI(IR_EQ), trslen, lj_ir_kint(J, (int32_t)count));
+         if (J->baseslot + count > LJ_MAX_JSLOTS)
             lj_trace_err_info(J, LJ_TRERR_STACKOV);
-         rd->nres = len;
-         for (i = 0; i < len; i++) {
+         rd->nres = count;
+         for (i = 0; i < count; i++) {
             TRef tmp = emitir(IRTI(IR_ADD), trstart, lj_ir_kint(J, (int32_t)i));
             tmp = emitir(IRT(IR_STRREF, IRT_PGC), trstr, tmp);
             J->base[i] = emitir(IRT(IR_XLOAD, IRT_U8), tmp, IRXLOAD_READONLY);
@@ -962,8 +948,8 @@ static void LJ_FASTCALL recff_string_find(jit_State* J, RecordFFData* rd)
    int32_t start;
    J->needsnap = 1;
    if (tref_isnil(J->base[2])) {
-      trstart = lj_ir_kint(J, 1);
-      start = 1;
+      trstart = lj_ir_kint(J, 0);  // 0-based: default start is 0
+      start = 0;
    }
    else {
       trstart = lj_opt_narrow_toint(J, J->base[2]);
@@ -999,8 +985,10 @@ static void LJ_FASTCALL recff_string_find(jit_State* J, RecordFFData* rd)
          emitir(IRTG(IR_NE, IRT_PGC), tr, trp0);
          // Recompute offset. trsptr may not point into trstr after folding.
          pos = emitir(IRTI(IR_ADD), emitir(IRTI(IR_SUB), tr, trsptr), trstart);
-         J->base[0] = emitir(IRTI(IR_ADD), pos, lj_ir_kint(J, 1));
-         J->base[1] = emitir(IRTI(IR_ADD), pos, trplen);
+         // 0-based: return start position and inclusive end position
+         J->base[0] = pos;
+         J->base[1] = emitir(IRTI(IR_ADD), pos,
+            emitir(IRTI(IR_ADD), trplen, lj_ir_kint(J, -1)));
          rd->nres = 2;
       }
       else {
@@ -1030,8 +1018,7 @@ static void recff_format(jit_State* J, RecordFFData* rd, TRef hdr, int sbufx)
       IRCallID id;
       switch (STRFMT_TYPE(sf)) {
       case STRFMT_LIT:
-         tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr,
-            lj_ir_kstr(J, lj_str_new(J->L, fs.str, fs.len)));
+         tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr, lj_ir_kstr(J, lj_str_new(J->L, fs.str, fs.len)));
          break;
       case STRFMT_INT:
          id = IRCALL_lj_strfmt_putfnum_int;
@@ -1080,18 +1067,14 @@ static void recff_format(jit_State* J, RecordFFData* rd, TRef hdr, int sbufx)
          }
          if (sf == STRFMT_STR)  //  Shortcut for plain %s.
             tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr, tra);
-         else if ((sf & STRFMT_T_QUOTED))
-            tr = lj_ir_call(J, IRCALL_lj_strfmt_putquoted, tr, tra);
-         else
-            tr = lj_ir_call(J, IRCALL_lj_strfmt_putfstr, tr, trsf, tra);
+         else if ((sf & STRFMT_T_QUOTED)) tr = lj_ir_call(J, IRCALL_lj_strfmt_putquoted, tr, tra);
+         else tr = lj_ir_call(J, IRCALL_lj_strfmt_putfstr, tr, trsf, tra);
          break;
       case STRFMT_CHAR:
          tra = lj_opt_narrow_toint(J, tra);
          if (sf == STRFMT_CHAR)  //  Shortcut for plain %c.
-            tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr,
-               emitir(IRT(IR_TOSTR, IRT_STR), tra, IRTOSTR_CHAR));
-         else
-            tr = lj_ir_call(J, IRCALL_lj_strfmt_putfchar, tr, trsf, tra);
+            tr = emitir(IRTG(IR_BUFPUT, IRT_PGC), tr, emitir(IRT(IR_TOSTR, IRT_STR), tra, IRTOSTR_CHAR));
+         else tr = lj_ir_call(J, IRCALL_lj_strfmt_putfchar, tr, trsf, tra);
          break;
       case STRFMT_PTR:  //  NYI
       case STRFMT_ERR:
@@ -1447,12 +1430,12 @@ static void LJ_FASTCALL recff_table_insert(jit_State* J, RecordFFData* rd)
    ix.val = J->base[1];
    rd->nres = 0;
    if (tref_istab(ix.tab) and ix.val) {
-      if (!J->base[2]) {  // Simple push: t[#t+1] = v
+      if (!J->base[2]) {  // Simple push: t[#t] = v (0-based: next index = len)
          TRef trlen = emitir(IRTI(IR_ALEN), ix.tab, TREF_NIL);
          GCtab* t = tabV(&rd->argv[0]);
-         ix.key = emitir(IRTI(IR_ADD), trlen, lj_ir_kint(J, 1));
+         ix.key = trlen;  // 0-based: next available index is len
          settabV(J->L, &ix.tabv, t);
-         setintV(&ix.keyv, lj_tab_len(t) + 1);
+         setintV(&ix.keyv, lj_tab_len(t));  // 0-based: next index = len
          ix.idxchain = 0;
          lj_record_idx(J, &ix);  //  Set new value.
       }
@@ -1470,10 +1453,11 @@ static void LJ_FASTCALL recff_table_concat(jit_State* J, RecordFFData* rd)
       TRef sep = !tref_isnil(J->base[1]) ?
          lj_ir_tostr(J, J->base[1]) : lj_ir_knull(J, IRT_STR);
       TRef tri = (J->base[1] and !tref_isnil(J->base[2])) ?
-         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 1);
+         lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 0);  // 0-based: default start
       TRef tre = (J->base[1] and J->base[2] and !tref_isnil(J->base[3])) ?
          lj_opt_narrow_toint(J, J->base[3]) :
-         emitir(IRTI(IR_ALEN), tab, TREF_NIL);
+         emitir(IRTI(IR_ADD), emitir(IRTI(IR_ALEN), tab, TREF_NIL),
+            lj_ir_kint(J, -1));  // 0-based: end = len - 1
       TRef hdr = recff_bufhdr(J);
       TRef tr = lj_ir_call(J, IRCALL_lj_buf_puttab, hdr, tab, sep, tri, tre);
       emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, nullptr));
@@ -1498,67 +1482,6 @@ static void LJ_FASTCALL recff_table_clear(jit_State* J, RecordFFData* rd)
       lj_ir_call(J, IRCALL_lj_tab_clear, tr);
       J->needsnap = 1;
    }  // else: Interpreter will throw.
-}
-
-// -- I/O library fast functions ------------------------------------------
-
-/* Get FILE* for I/O function. Any I/O error aborts recording, so there's
-** no need to encode the alternate cases for any of the guards.
-*/
-static TRef recff_io_fp(jit_State* J, TRef* udp, int32_t id)
-{
-   TRef tr, ud, fp;
-   if (id) {  // io.func()
-      ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot) + (int)(id * sizeof(GCRef)));
-   }
-   else {  // fp:method()
-      ud = J->base[0];
-      if (!tref_isudata(ud))
-         lj_trace_err(J, LJ_TRERR_BADTYPE);
-      tr = emitir(IRT(IR_FLOAD, IRT_U8), ud, IRFL_UDATA_UDTYPE);
-      emitir(IRTGI(IR_EQ), tr, lj_ir_kint(J, UDTYPE_IO_FILE));
-   }
-   *udp = ud;
-   fp = emitir(IRT(IR_FLOAD, IRT_PTR), ud, IRFL_UDATA_FILE);
-   emitir(IRTG(IR_NE, IRT_PTR), fp, lj_ir_knull(J, IRT_PTR));
-   return fp;
-}
-
-[[maybe_unused]] static void LJ_FASTCALL recff_io_write(jit_State* J, RecordFFData* rd)
-{
-   TRef ud, fp = recff_io_fp(J, &ud, rd->data);
-   TRef zero = lj_ir_kint(J, 0);
-   TRef one = lj_ir_kint(J, 1);
-   ptrdiff_t i = rd->data == 0 ? 1 : 0;
-   for (; J->base[i]; i++) {
-      TRef str = lj_ir_tostr(J, J->base[i]);
-      TRef buf = emitir(IRT(IR_STRREF, IRT_PGC), str, zero);
-      TRef len = emitir(IRTI(IR_FLOAD), str, IRFL_STR_LEN);
-      if (tref_isk(len) and IR(tref_ref(len))->i == 1) {
-         IRIns* irs = IR(tref_ref(str));
-         TRef tr = (irs->o == IR_TOSTR and irs->op2 == IRTOSTR_CHAR) ?
-            irs->op1 :
-            emitir(IRT(IR_XLOAD, IRT_U8), buf, IRXLOAD_READONLY);
-         tr = lj_ir_call(J, IRCALL_fputc, tr, fp);
-         if (results_wanted(J) != 0)  //  Check result only if not ignored.
-            emitir(IRTGI(IR_NE), tr, lj_ir_kint(J, -1));
-      }
-      else {
-         TRef tr = lj_ir_call(J, IRCALL_fwrite, buf, one, len, fp);
-         if (results_wanted(J) != 0)  //  Check result only if not ignored.
-            emitir(IRTGI(IR_EQ), tr, len);
-      }
-   }
-   J->base[0] = LJ_52 ? ud : TREF_TRUE;
-}
-
-[[maybe_unused]] static void LJ_FASTCALL recff_io_flush(jit_State* J, RecordFFData* rd)
-{
-   TRef ud, fp = recff_io_fp(J, &ud, rd->data);
-   TRef tr = lj_ir_call(J, IRCALL_fflush, fp);
-   if (results_wanted(J) != 0)  //  Check result only if not ignored.
-      emitir(IRTGI(IR_EQ), tr, lj_ir_kint(J, 0));
-   J->base[0] = TREF_TRUE;
 }
 
 // -- Debug library fast functions ----------------------------------------
@@ -1591,10 +1514,8 @@ static void LJ_FASTCALL recff_debug_getmetatable(jit_State* J, RecordFFData* rd)
 
 static uint32_t recdef_lookup(GCfunc* fn)
 {
-   if (fn->c.ffid < sizeof(recff_idmap) / sizeof(recff_idmap[0]))
-      return recff_idmap[fn->c.ffid];
-   else
-      return 0;
+   if (fn->c.ffid < sizeof(recff_idmap) / sizeof(recff_idmap[0])) return recff_idmap[fn->c.ffid];
+   else return 0;
 }
 
 // Record entry to a fast function or C function.

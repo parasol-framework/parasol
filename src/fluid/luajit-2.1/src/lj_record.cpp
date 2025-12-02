@@ -1333,9 +1333,10 @@ static void rec_idx_bump(jit_State* J, RecordIndex* ix)
 }
 #endif
 
-// Record bounds-check.
+// Record bounds-check. 0-based indexing: valid indices are [0, asize).
 static void rec_idx_abc(jit_State* J, TRef asizeref, TRef ikey, uint32_t asize)
 {
+   // 0-based: no lower bound check needed (unsigned comparison handles negative indices)
    // Try to emit invariant bounds checks.
    if ((J->flags & (JIT_F_OPT_LOOP | JIT_F_OPT_ABC)) ==
       (JIT_F_OPT_LOOP | JIT_F_OPT_ABC)) {
@@ -1388,10 +1389,10 @@ static TRef rec_idx_key(jit_State* J, RecordIndex* ix, IRRef* rbref,
       int32_t k = numberVint(&ix->keyv);
       if (not tvisint(&ix->keyv) and numV(&ix->keyv) != (lua_Number)k)
          k = LJ_MAX_ASIZE;
-      if ((MSize)k < LJ_MAX_ASIZE) {  // Potential array key?
+      if (k >= 0 and (MSize)k < LJ_MAX_ASIZE) {  // 0-based: potential array key?
          TRef ikey = lj_opt_narrow_index(J, key);
          TRef asizeref = emitir(IRTI(IR_FLOAD), ix->tab, IRFL_TAB_ASIZE);
-         if ((MSize)k < t->asize) {  // Currently an array key?
+         if ((MSize)k < t->asize) {  // 0-based: currently an array key?
             TRef arrayref;
             rec_idx_abc(J, asizeref, ikey, t->asize);
             arrayref = emitir(IRT(IR_FLOAD, IRT_PGC), ix->tab, IRFL_TAB_ARRAY);
@@ -1971,28 +1972,30 @@ static void rec_varg(jit_State* J, BCREG dst, ptrdiff_t nresults)
          TRef tridx = J->base[dst - 1];
          TRef tr = TREF_NIL;
          ptrdiff_t idx = lj_ffrecord_select_mode(J, tridx, &J->L->base[dst - 1]);
-         if (idx < 0) goto nyivarg;
-         if (idx != 0 and !tref_isinteger(tridx))
+         if (idx != SELECT_MODE_COUNT and idx < 0) goto nyivarg;  // Negative indices NYI
+         if (idx != SELECT_MODE_COUNT and !tref_isinteger(tridx))
             tridx = emitir(IRTGI(IR_CONV), tridx, IRCONV_INT_NUM | IRCONV_INDEX);
-         if (idx != 0 and tref_isk(tridx)) {
-            emitir(IRTGI(idx <= nvararg ? IR_GE : IR_LT),
-               fr, lj_ir_kint(J, frofs + 8 * (int32_t)idx));
-            frofs -= 8;  //  Bias for 1-based index.
+         if (idx != SELECT_MODE_COUNT and tref_isk(tridx)) {
+            // 0-based: use idx directly, add 1 to get 1-based offset for frame calc
+            emitir(IRTGI(idx < nvararg ? IR_GE : IR_LT),
+               fr, lj_ir_kint(J, frofs + 8 * ((int32_t)idx + 1)));
          }
-         else if (idx <= nvararg) {  // Compute size.
+         else if (idx == SELECT_MODE_COUNT or idx < nvararg) {  // Compute size.
             TRef tmp = emitir(IRTI(IR_ADD), fr, lj_ir_kint(J, -frofs));
             if (numparams)
                emitir(IRTGI(IR_GE), tmp, lj_ir_kint(J, 0));
             tr = emitir(IRTI(IR_BSHR), tmp, lj_ir_kint(J, 3));
-            if (idx != 0) {
-               tridx = emitir(IRTI(IR_ADD), tridx, lj_ir_kint(J, -1));
+            if (idx != SELECT_MODE_COUNT) {
+               // 0-based: index used directly for bounds check
                rec_idx_abc(J, tr, tridx, (uint32_t)nvararg);
             }
          }
          else {
             TRef tmp = lj_ir_kint(J, frofs);
-            if (idx != 0) {
-               TRef tmp2 = emitir(IRTI(IR_BSHL), tridx, lj_ir_kint(J, 3));
+            if (idx != SELECT_MODE_COUNT) {
+               // 0-based: add 1 to convert to 1-based frame offset
+               TRef tridx1 = emitir(IRTI(IR_ADD), tridx, lj_ir_kint(J, 1));
+               TRef tmp2 = emitir(IRTI(IR_BSHL), tridx1, lj_ir_kint(J, 3));
                tmp = emitir(IRTI(IR_ADD), tmp2, tmp);
             }
             else {
@@ -2000,12 +2003,13 @@ static void rec_varg(jit_State* J, BCREG dst, ptrdiff_t nresults)
             }
             emitir(IRTGI(IR_LT), fr, tmp);
          }
-         if (idx != 0 and idx <= nvararg) {
+         if (idx != SELECT_MODE_COUNT and idx < nvararg) {
             IRType t;
             TRef aref, vbase = emitir(IRT(IR_SUB, IRT_IGC), REF_BASE, fr);
             vbase = emitir(IRT(IR_ADD, IRT_PGC), vbase,
                lj_ir_kint(J, frofs - (8 << LJ_FR2)));
-            t = itype2irt(&J->L->base[idx - 2 - LJ_FR2 - nvararg]);
+            // 0-based: use idx directly for type lookup
+            t = itype2irt(&J->L->base[idx - 1 - LJ_FR2 - nvararg]);
             aref = emitir(IRT(IR_AREF, IRT_PGC), vbase, tridx);
             tr = lj_record_vload(J, aref, 0, t);
          }

@@ -7,10 +7,10 @@ function testTagsArray()
    local tags = glXML.tags
 
    local expected = 2
-   assert(#tags is expected, "Expected a tag count of " .. expected)
+   assert(#tags is expected, "Expected a tag count of " .. expected .. " not " .. #tags)
 
    expected = 7
-   assert(#tags[2].children is expected, "Expected a child count of " .. expected .. " not " .. #tags[2].children)
+   assert(#tags[1].children is expected, "Expected a child count of " .. expected .. " not " .. #tags[1].children)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ function testNestedReservedWords()
    local err, tag = glXML.mtGetTag(index)
    assert(err is ERR_Okay, "Failed to get 'if' tag")
    assert(#tag.children is 1, "Expected 1 child in 'if' element")
-   assert(tag.children[1].attribs[1].value is "do this", "Expected 'do this' content")
+   assert(tag.children[0].attribs[0].value is "do this", "Expected 'do this' content")
 
    -- Test 'else' element nested within 'default' element
    err, index = glXML.mtSearch("/book/reservedwords/default/else")
@@ -74,7 +74,7 @@ function testNestedReservedWords()
 
    err, tag = glXML.mtGetTag(index)
    assert(err is ERR_Okay, "Failed to get 'else' tag")
-   assert(tag.children[1].attribs[1].value is "do that", "Expected 'do that' content")
+   assert(tag.children[0].attribs[0].value is "do that", "Expected 'do that' content")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ function testReservedWordContent()
    local err, tag = glXML.mtGetTag(index)
    assert(err is ERR_Okay, "Failed to get 'ascending' tag")
 
-   local content = tag.children[1].attribs[1].value
+   local content = tag.children[0].attribs[0].value
    assert(content is "import module group by", "Expected 'import module group by', got '" .. tostring(content) .. "'")
 end
 
@@ -97,29 +97,29 @@ end
 
 function testReservedWordPredicates()
    -- Test predicate filtering on reserved word attribute
-   local totalFound = 0
+   local total_found = 0
    local err, index, taglist = glXML.mtSearch("/book/reservedwords/*[@or='not']", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 match for [@or='not'], got " .. totalFound)
+   assert(total_found is 1, "Expected 1 match for [@or='not'], got " .. total_found)
 
    -- Test predicate filtering on reserved word element name with attribute
-   totalFound = 0
+   total_found = 0
    err, index, taglist = glXML.mtSearch("/book/reservedwords/default[@return='0']", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 match for default[@return='0'], got " .. totalFound)
+   assert(total_found is 1, "Expected 1 match for default[@return='0'], got " .. total_found)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test wildcard matching with reserved word elements
 
 function testReservedWordWildcard()
-   local totalFound = 0
+   local total_found = 0
    local err, index, taglist = glXML.mtSearch("/book/reservedwords/*", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 8, "Expected 8 reserved word elements, got " .. totalFound)
+   assert(total_found is 8, "Expected 8 reserved word elements, got " .. total_found)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -127,18 +127,18 @@ end
 
 function testReservedWordDescendant()
    -- Test finding all 'if' elements regardless of depth
-   local totalFound = 0
+   local total_found = 0
    local err, index, taglist = glXML.mtSearch("//if", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 'if' element, got " .. totalFound)
+   assert(total_found is 1, "Expected 1 'if' element, got " .. total_found)
 
    -- Test finding all elements with 'or' attribute
-   totalFound = 0
+   total_found = 0
    err, index, taglist = glXML.mtSearch("//*[@or]", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 element with 'or' attribute, got " .. totalFound)
+   assert(total_found is 1, "Expected 1 element with 'or' attribute, got " .. total_found)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -244,20 +244,20 @@ end
 -- Test attribute existence checks with reserved words
 
 function testReservedWordAttributeExistence()
-   local totalFound = 0
+   local total_found = 0
 
    -- Find all elements with 'descending' attribute
    local err, index, taglist = glXML.mtSearch("//*[@descending]", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 element with 'descending' attribute, got " .. totalFound)
+   assert(total_found is 1, "Expected 1 element with 'descending' attribute, got " .. total_found)
 
    -- Find all elements with 'by' attribute
-   totalFound = 0
+   total_found = 0
    err, index, taglist = glXML.mtSearch("//*[@by]", function(XML, TagID, Attrib)
-      totalFound = totalFound + 1
+      total_found++
    end)
-   assert(totalFound is 1, "Expected 1 element with 'by' attribute, got " .. totalFound)
+   assert(total_found is 1, "Expected 1 element with 'by' attribute, got " .. total_found)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -270,10 +270,10 @@ function testIndexing()
       local err, func = glXML.mtGetTag(TagID)
 
       if #func.attribs > 0 then
-         if func.attribs[1].name != 'function' then
-            error("Expected 'function', got '" .. nz(func.attribs[1].name,"NIL") .. "'")
+         if func.attribs[0].name != 'function' then
+            error("Expected 'function', got '" .. nz(func.attribs[0].name,"NIL") .. "'")
          end
-         totalFunctions = totalFunctions + 1
+         totalFunctions++
       end
    end)
 
@@ -321,7 +321,7 @@ function testLineCount()
 
    local expected_lines = newline_count
    if xml_content:sub(-1) != '\n' then
-      expected_lines = expected_lines + 1
+      expected_lines++
    end
 
    local xml = obj.new("xml", { statement = xml_content })
@@ -337,9 +337,8 @@ function testSort()
    local first, last
    local err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
-      print(func.children[1].attribs[1].value)
-      if (not first) then first = func.children[1].attribs[1].value end
-      last = func.children[1].attribs[1].value
+      if not first then first = func.children[0].attribs[0].value end
+      last = func.children[0].attribs[0].value
    end)
    assert(err is ERR_Okay, "FindTag() failed.")
 

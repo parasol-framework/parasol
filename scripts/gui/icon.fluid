@@ -11,9 +11,9 @@ local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
 local function imageLocation(Path)
-   if (Path:find('^icons:') is 1) then
+   if (Path:find('^icons:') is 0) then
       return Path
-   elseif (Path:find('^[%w]+:') is 1) then
+   elseif (Path:find('^[%w]+:') is 0) then
       return Path
    else
       return 'icons:' .. Path
@@ -38,8 +38,8 @@ gui.icon = function(Options)
    local lLineHeight = 0
 
    local function inputFeedback(Viewport, Msg)
-      if (Msg.type is JET_BUTTON_1) then
-         if (Msg.value > 0) then
+      if Msg.type is JET_BUTTON_1 then
+         if Msg.value > 0 then
             lClick.held = true
             lClick.x = Msg.absX
             lClick.y = Msg.absY
@@ -50,10 +50,10 @@ gui.icon = function(Options)
             Viewport.opacity = 1.0
             --Viewport.acMoveToBack()
 
-            if ((math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2)) then
+            if (math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2) then
                -- Do nothing - mouse moved/dragged when icon was clicked
             elseif self.events.activate then
-               if (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) then
+               if (Msg.flags & JTYPE_DBL_CLICK)?? then
                   self.events.activate(self, { name='dblclick' })
                else
                   self.events.activate(self, { name='click' })
@@ -61,7 +61,7 @@ gui.icon = function(Options)
             end
          end
          Viewport.acDraw()
-      elseif (Msg.type is JET_BUTTON_2) then
+      elseif Msg.type is JET_BUTTON_2 then
          self.events.activate(self, { name='altclick' })
       end
    end
@@ -69,11 +69,11 @@ gui.icon = function(Options)
    local function calcWords()
       lWords = { }
       lLines = { }
-      if (not lText) or (#lText is 0) then return end
+      if not lText?? then return end
 
-      if (lIconSize < 26) then
+      if lIconSize < 26 then
          lFontSize = 6
-      elseif (lIconSize < 60) then
+      elseif lIconSize < 60 then
          lFontSize = 8
       else
          lFontSize = 10
@@ -107,7 +107,7 @@ gui.icon = function(Options)
          else
             local new_line = current_line .. ' ' .. word.word
             local width = mVec.stringWidth(font, new_line, -1)
-            if (width + (MARGIN * 2) < lIconWidth) then
+            if width + (MARGIN * 2) < lIconWidth then
                current_line = new_line
             else
                table.insert(lLines, current_line)
@@ -195,7 +195,7 @@ gui.icon = function(Options)
    end
 
    local src = imageLocation(Options.image)
-   if not src then error('Invalid image source ' .. Options.image) end
+   assert(src, 'Invalid image source ' .. Options.image)
    self.svg = obj.new('svg', { target=self.iconVP, path=src })
 
    local gname = 'iconFill' .. self.iconVP.id

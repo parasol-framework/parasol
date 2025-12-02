@@ -149,15 +149,15 @@ local function buildLayout(self, Options)
       align     = 'left'
    })
 
-   dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
+   dy += gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
    -- Configure an array of 8x6 buttons representing a pre-selected colour palette
 
    local y = dy
-   local colour = 1
-   for row=1, 7 do
+   local colour = 0
+   for row=0, 6 do
       local x = WIDGET_GAP - 1
-      for col=1, 8 do
+      for col=0, 7 do
          local rgb = gui.strToRGB(COMMON[colour])
 
          local vec = self.viewport.new('VectorRectangle', {
@@ -180,7 +180,7 @@ local function buildLayout(self, Options)
          })
 
          x += BTNSIZE + BTNGAP
-         colour = colour + 1
+         colour++
       end
       y += BTNSIZE + BTNGAP
    end

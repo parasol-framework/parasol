@@ -15,7 +15,7 @@ function testParallelRequests()
    local completed = 0
    local total_req = 5
 
-   for i = 1, total_req do
+   for i = 0, total_req-1 do
       results[i] = {}
       results[i].http = obj.new('http', {
          src    = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/parallel/' .. i,
@@ -28,7 +28,7 @@ function testParallelRequests()
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               completed = completed + 1
+               completed++
                print('Completed ' .. completed .. ' of ' .. total_req)
                if completed >= total_req then
                   proc.signal()
@@ -61,7 +61,7 @@ function testConcurrentPOST()
    local completed = 0
    local total_posts = 3
 
-   for i = 1, total_posts do
+   for i = 0, total_posts-1 do
       local test_data = '{"id":' .. i .. ',"data":"test_data_' .. i .. '"}'
       results[i] = {}
       results[i].http = obj.new('http', {
@@ -77,7 +77,7 @@ function testConcurrentPOST()
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               completed = completed + 1
+               completed++
                if completed >= total_posts then
                   proc.signal()
                end
@@ -110,7 +110,7 @@ function testHighLoadRequests()
 
    print('Starting high load test with ' .. total_req .. ' requests...')
 
-   for i = 1, total_req do
+   for i = 0, total_req-1 do
       results[i] = {}
       results[i].http = obj.new('http', {
          src            = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/load-test/' .. i,
@@ -123,7 +123,7 @@ function testHighLoadRequests()
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               completed = completed + 1
+               completed++
                if completed >= total_req then
                   proc.signal()
                end

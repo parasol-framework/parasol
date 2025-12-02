@@ -48,14 +48,14 @@ function testLetSyntaxErrors()
    local err = xq.init()
    assert(err is ERR_Syntax, 'Missing assignment should be a syntax error, got ' .. mSys.getErrorMsg(err))
    local message = nz(xq.errorMsg, '')
-   assert(string.find(message, "Expected ':=' in let binding", 1, true),
+   assert(string.find(message, "Expected ':=' in let binding", 0, true),
       'Error message should reference missing :=, got ' .. message)
 
    xq.statement = 'let $a := return 5'
    local err = xq.init()
    assert(err is ERR_Syntax, 'Missing expression should be a syntax error, got ' .. mSys.GetErrorMsg(err))
    local message = nz(xq.errorMsg, '')
-   assert(string.find(message, "Expected expression after ':=' in let binding", 1, true),
+   assert(string.find(message, "Expected expression after ':=' in let binding", 0, true),
       'Error message should reference missing binding expression, got ' .. message)
 end
 
@@ -75,7 +75,7 @@ function testFlworNonNodeReturnError()
    assert(err is ERR_Okay, 'Numeric FLWOR return should now succeed with atomic value wrapping')
    assert(result != nil, 'FLWOR should return wrapped atomic values')
    -- The result should be something like "35.1:49.5" (the two discounted prices concatenated)
-   assert(string.find(tostring(result), '35.1', 1, true) or string.find(tostring(result), '49.5', 1, true),
+   assert(string.find(tostring(result), '35.1', 0, true) or string.find(tostring(result), '49.5', 0, true),
       'FLWOR result should contain discounted prices, got ' .. tostring(result))
 end
 
@@ -91,7 +91,7 @@ function testFlworRepeatedEvaluationConsistency()
                   '</library>'
    })
 
-   for iteration = 1, 25 do
+   for iteration = 0, 24 do
       local collected = {}
       local err = xml.mtSearch('for $book in /library/book let $genre := $book/@genre return $book[$genre = "fiction"]',
          function(XML, TagID)
@@ -103,7 +103,7 @@ function testFlworRepeatedEvaluationConsistency()
 
       assert(err is ERR_Okay, 'Iteration ' .. iteration .. ' should evaluate successfully: ' .. mSys.GetErrorMsg(err))
       table.sort(collected)
-      assert(#collected is 2 and collected[1] is 'a' and collected[2] is 'c',
+      assert(#collected is 2 and collected[0] is 'a' and collected[1] is 'c',
          'Iteration ' .. iteration .. ' should yield consistent fiction ids, got ' .. table.concat(collected, ','))
    end
 end
@@ -131,7 +131,7 @@ function testWhereFiltersNodes()
 
    assert(err is ERR_Okay, 'WHERE clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    table.sort(filtered)
-   assert(#filtered is 2 and filtered[1] is 'bk-1' and filtered[2] is 'bk-3',
+   assert(#filtered is 2 and filtered[0] is 'bk-1' and filtered[1] is 'bk-3',
       'Filtered identifiers should match price predicate, got ' .. table.concat(filtered, ','))
 end
 
@@ -269,7 +269,7 @@ function testCountProvidesPosition()
       end)
 
    assert(err is ERR_Okay, 'COUNT clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
-   assert(order[1] is '1:bk-1' and order[2] is '2:bk-3' and order[3] is '3:bk-2',
+   assert(order[0] is '1:bk-1' and order[1] is '2:bk-3' and order[2] is '3:bk-2',
       'COUNT clause should align positional counters with sorted order, got "' .. table.concat(order, ',') .. '"')
 end
 
@@ -316,7 +316,7 @@ function testOrderByMultipleKeysEmptyHandling()
          table.insert(seq1, idv)
       end)
    assert(err1 is ERR_Okay, 'ORDER BY with empty modes should evaluate: ' .. tostring(xml.errorMsg))
-   assert(seq1[1] is 'bk-2' or seq1[1] is 'bk-3', 'First element should be empty-greatest genre or lowest price within first genre')
+   assert(seq1[0] is 'bk-2' or seq1[0] is 'bk-3', 'First element should be empty-greatest genre or lowest price within first genre')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -326,8 +326,8 @@ function testLetVariableShadowing()
    local xq = obj.new('xquery', { statement = 'let $x := "outer" return (let $x := "inner" return $x, $x)' })
    local err = xq.acActivate()
    local s = tostring(xq.resultString)
-   assert(string.find(s, 'inner', 1, true), 'Inner let should produce inner value, got ' .. s)
-   assert(string.find(s, 'outer', 1, true), 'Outer let should remain accessible after inner scope, got ' .. s)
+   assert(string.find(s, 'inner', 0, true), 'Inner let should produce inner value, got ' .. s)
+   assert(string.find(s, 'outer', 0, true), 'Outer let should remain accessible after inner scope, got ' .. s)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -339,7 +339,7 @@ function testInvalidOrdering()
    local err = xml.mtSearch('for $node in /root/value order by $node where $node return $node')
    assert(err is ERR_Syntax, 'ORDER BY followed by WHERE should be rejected as syntax error, got ' .. mSys.GetErrorMsg(err))
    local message = tostring(xml.errorMsg)
-   assert(string.find(message, 'where clause must precede order by', 1, true), 'Error message should describe WHERE/ORDER BY ordering requirement, got ' .. message)
+   assert(string.find(message, 'where clause must precede order by', 0, true), 'Error message should describe WHERE/ORDER BY ordering requirement, got ' .. message)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -353,7 +353,7 @@ function testInvalidGroupByExpression()
    local err = xml.mtSearch('for $item in /root/item group by $key := $undefined return $item')
    assert(err != ERR_Okay, 'Group by referencing undefined bindings should fail evaluation')
    local message = tostring(xml.errorMsg)
-   assert(string.find(message, 'Group key expression could not be evaluated.', 1, true), 'Error message should describe invalid grouping expression, got ' .. message)
+   assert(string.find(message, 'Group key expression could not be evaluated.', 0, true), 'Error message should describe invalid grouping expression, got ' .. message)
 end
 
 -----------------------------------------------------------------------------------------------------------------------

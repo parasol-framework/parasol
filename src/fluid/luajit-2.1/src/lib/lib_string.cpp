@@ -29,7 +29,8 @@
 #include "lj_strfmt.h"
 #include "lib.h"
 
-// ------------------------------------------------------------------------
+// NOTE: Any string function marked with the ASM macro uses a custom assembly implementation in the
+// .dasc files.  Changing the C++ code here will have no effect in such cases.
 
 #define LJLIB_MODULE_string
 
@@ -40,21 +41,22 @@ LJLIB_LUA(string_len) /*
   end
 */
 
+// NOTE: ASM version exists
+
 LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
 {
    GCstr* s = lj_lib_checkstr(L, 1);
    int32_t len = (int32_t)s->len;
-   int32_t start = lj_lib_optint(L, 2, 1);
+   int32_t start = lj_lib_optint(L, 2, 0);  // 0-based: default start is 0
    int32_t stop = lj_lib_optint(L, 3, start);
    int32_t n, i;
    const unsigned char* p;
-   if (stop < 0) stop += len + 1;
-   if (start < 0) start += len + 1;
-   if (start <= 0) start = 1;
-   if (stop > len) stop = len;
+   if (stop < 0) stop += len;   // 0-based: -1 → len-1 (last char)
+   if (start < 0) start += len;
+   if (start < 0) start = 0;
+   if (stop > len - 1) stop = len - 1;  // 0-based: max valid index is len-1
    if (start > stop) return FFH_RES(0);  //  Empty interval: return no results.
-   start--;
-   n = stop - start;
+   n = stop - start + 1;
    if ((uint32_t)n > LUAI_MAXCSTACK)
       lj_err_caller(L, ErrMsg::STRSLC);
    lj_state_checkstack(L, (MSize)n);
@@ -64,19 +66,27 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    return FFH_RES(n);
 }
 
+// NOTE: ASM version exists
+
 LJLIB_ASM(string_char)      LJLIB_REC(.)
 {
    int i, nargs = (int)(L->top - L->base);
    char* buf = lj_buf_tmp(L, (MSize)nargs);
    for (i = 1; i <= nargs; i++) {
       int32_t k = lj_lib_checkint(L, i);
-      if (!checku8(k))
-         lj_err_arg(L, i, ErrMsg::BADVAL);
+      if (!checku8(k)) lj_err_arg(L, i, ErrMsg::BADVAL);
       buf[i - 1] = (char)k;
    }
    setstrV(L, L->base - 1 - LJ_FR2, lj_str_new(L, buf, (size_t)nargs));
    return FFH_RES(1);
 }
+
+// NOTE: Backed by an ASM implementation
+// If you switch to the C implementation then you need to reduce GG_NUM_ASMFF in lj_dispatch.h
+
+#if 1
+// string_sub:	Declares an assembly ffunc as its primary implementation. The C code that follows is the fallback (called when the ffunc jumps to ->fff_fallback).
+// string_range 1: Tells the JIT recorder how to handle this function. string_range is the recorder function name, 1 is a parameter distinguishing it from other range operations.
 
 LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
 {
@@ -85,6 +95,80 @@ LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
    setintV(L->base + 2, lj_lib_optint(L, 3, -1));
    return FFH_RETRY;
 }
+#else
+LJ_LIB_CF(string_sub)
+{
+   GCstr* s = lj_lib_checkstr(L, 1);
+   int32_t len = (int32_t)s->len;
+   int32_t start = lj_lib_checkint(L, 2);
+   int32_t end = lj_lib_optint(L, 3, -1);
+
+   if (end < 0) end += len;
+   if (start < 0) start += len;
+   if (start < 0) start = 0;
+   if (end > len - 1) end = len - 1;
+   if (start > end) {
+      setstrV(L, L->top - 1, &G(L)->strempty);
+      return 1;
+   }
+
+   int32_t sublen = end - start + 1;
+   GCstr* result = lj_str_new(L, strdata(s) + start, (size_t)sublen);
+   setstrV(L, L->top - 1, result);
+   lj_gc_check(L);
+   return 1;
+}
+#endif
+
+// NOTE: Backed by an ASM implementation
+// If you switch to the C++ implementation then you need to reduce GG_NUM_ASMFF in lj_dispatch.h
+//
+// string.substr() is identical to string.sub() except that the end parameter is exclusive.
+// This matches the behaviour of JavaScript's substring() and Python's slicing.
+
+#if 1
+LJLIB_ASM(string_substr)      LJLIB_REC(string_range 1)
+{
+   lj_lib_checkstr(L, 1);
+   lj_lib_checkint(L, 2);
+   int32_t end_val = lj_lib_optint(L, 3, -1);
+   // Convert exclusive end to inclusive by subtracting 1, but only for positive indices.
+   // Negative indices already reference positions from the end, so no adjustment needed.
+   if (end_val > 0) end_val--;
+   setintV(L->base + 2, end_val);
+   return FFH_RETRY;
+}
+#else
+LJ_LIB_CF(string_substr)
+{
+   GCstr* s = lj_lib_checkstr(L, 1);
+   int32_t len = (int32_t)s->len;
+   int32_t start = lj_lib_checkint(L, 2);
+   int32_t end = lj_lib_optint(L, 3, len);  // Default to length for exclusive semantics
+
+   // Handle negative indices first (before exclusive-to-inclusive conversion)
+   if (end < 0) end += len;
+   if (start < 0) start += len;
+
+   // Convert exclusive end to inclusive by subtracting 1
+   // This must happen AFTER negative index conversion
+   end--;
+
+   // Clamp to valid range
+   if (start < 0) start = 0;
+   if (end > len - 1) end = len - 1;
+   if (start > end) {
+      setstrV(L, L->top - 1, &G(L)->strempty);
+      return 1;
+   }
+
+   int32_t sublen = end - start + 1;
+   GCstr* result = lj_str_new(L, strdata(s) + start, (size_t)sublen);
+   setstrV(L, L->top - 1, result);
+   lj_gc_check(L);
+   return 1;
+}
+#endif
 
 LJLIB_CF(string_rep)      LJLIB_REC(.)
 {
@@ -106,8 +190,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
    return 1;
 }
 
-// PARASOL FEATURE: string.alloc() is a quicker version of string.rep() for reserving space without filling it.
-// Clients can also use the LuaJIT buffer library, but this function remains useful for string data.
+// string.alloc() is a quicker version of string.rep() for reserving space without filling it.
 //
 // 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
 // 2. Validates the size - Checks that size is not negative and throws an error if it is
@@ -137,7 +220,7 @@ LJLIB_CF(string_split)
    MSize seplen;
    MSize slen = s->len;
    GCtab* t;
-   int32_t idx = 1;
+   int32_t idx = 0;  // 0-based
 
    if ((!sep) or (sep->len == 0)) {
       sepstr = " \t\n\r";  //  Default whitespace separators
@@ -327,6 +410,7 @@ LJLIB_CF(string_join)
    MSize seplen = 0;
    SBuf* sb = lj_buf_tmp_(L);
    int32_t len = (int32_t)lj_tab_len(t);
+   int32_t last = len - 1;  // 0-based: last index = len-1
    int32_t i;
 
    if (sep) {
@@ -336,7 +420,7 @@ LJLIB_CF(string_join)
 
    lj_buf_reset(sb);
 
-   for (i = 1; i <= len; i++) {
+   for (i = 0; i <= last; i++) {
       cTValue* tv = lj_tab_getint(t, i);
       if (tv and !tvisnil(tv)) {
          int isValidType = 0;
@@ -823,7 +907,7 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
       ptrdiff_t l = ms->capture[i].len;
       if (l == CAP_UNFINISHED) lj_err_caller(ms->L, ErrMsg::STRCAPU);
       if (l == CAP_POSITION)
-         lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init + 1);
+         lua_pushinteger(ms->L, ms->capture[i].init - ms->src_init);  // 0-based position
       else
          lua_pushlstring(ms->L, ms->capture[i].init, (size_t)l);
    }
@@ -843,9 +927,9 @@ static int str_find_aux(lua_State* L, int find)
 {
    GCstr* s = lj_lib_checkstr(L, 1);
    GCstr* p = lj_lib_checkstr(L, 2);
-   int32_t start = lj_lib_optint(L, 3, 1);
+   int32_t start = lj_lib_optint(L, 3, 0);  // 0-based: default start at 0
    MSize st;
-   if (start < 0) start += (int32_t)s->len; else start--;
+   if (start < 0) start += (int32_t)s->len;  // 0-based: -1 → len-1
    if (start < 0) start = 0;
    st = (MSize)start;
    if (st > s->len) {
@@ -860,8 +944,8 @@ static int str_find_aux(lua_State* L, int find)
       !lj_str_haspattern(p))) {  // Search for fixed string.
       const char* q = lj_str_find(strdata(s) + st, strdata(p), s->len - st, p->len);
       if (q) {
-         setintV(L->top - 2, (int32_t)(q - strdata(s)) + 1);
-         setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len);
+         setintV(L->top - 2, (int32_t)(q - strdata(s)));  // 0-based start
+         setintV(L->top - 1, (int32_t)(q - strdata(s)) + (int32_t)p->len - 1);  // 0-based end (inclusive)
          return 2;
       }
    }
@@ -880,8 +964,8 @@ static int str_find_aux(lua_State* L, int find)
          q = match(&ms, sstr, pstr);
          if (q) {
             if (find) {
-               setintV(L->top++, (int32_t)(sstr - (strdata(s) - 1)));
-               setintV(L->top++, (int32_t)(q - strdata(s)));
+               setintV(L->top++, (int32_t)(sstr - strdata(s)));  // 0-based start
+               setintV(L->top++, (int32_t)(q - strdata(s)) - 1);  // 0-based end (inclusive)
                return push_captures(&ms, nullptr, nullptr) + 2;
             }
             else {
@@ -1046,21 +1130,35 @@ LJLIB_CF(string_format)      LJLIB_REC(.)
    return 1;
 }
 
-// ------------------------------------------------------------------------
-
 #include "lj_libdef.h"
 
 extern int luaopen_string(lua_State* L)
 {
-   GCtab* mt;
-   global_State* g;
-   LJ_LIB_REG(L, LUA_STRLIBNAME, string);
-   mt = lj_tab_new(L, 0, 1);
+   LJ_LIB_REG(L, "string", string);
+   GCtab *mt = lj_tab_new(L, 0, 1);
+
    // NOBARRIER: basemt is a GC root.
-   g = G(L);
+   global_State *g = G(L);
+
+   // Stores the newly created table mt as the “base metatable” for the string type. basemt_it(g, LJ_TSTR) selects 
+   // the slot for the string base metatable in the global state, obj2gco(mt) converts the GCtab* to a generic GC 
+   // object reference, and setgcref writes that GC reference into the global state (so the runtime knows the 
+   // canonical metatable for strings).
+
    setgcref(basemt_it(g, LJ_TSTR), obj2gco(mt));
+
+   // Create the entry mt[mmname_str(g, MM_index)] (i.e. __index) and set its value to L->top - 1.
+
    settabV(L, lj_tab_setstr(L, mt, mmname_str(g, MM_index)), tabV(L->top - 1));
+
+   // Update the metatable’s negative‑metamethod cache (nomm). The bitwise expression clears the bit 
+   // corresponding to MM_index (and sets other bits), marking that this metamethod slot should not be treated as 
+   // “absent” by the fast metamethod check. Practically, this tells the runtime the MM_index metamethod is present 
+   // (so subsequent lookups/optimisations behave accordingly).
+   // 
+   // NOTE: nomm is an 8‑bit negative cache, so MM_index must fit within those bits; the bit trick is intentional 
+   // to flip the absence/presence semantics used by the VM.
+
    mt->nomm = (uint8_t)(~(1u << MM_index));
    return 1;
 }
-

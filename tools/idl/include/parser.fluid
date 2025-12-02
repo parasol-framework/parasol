@@ -2,13 +2,13 @@
 ----------------------------------------------------------------------------------------------------------------------
 
 function parseClassEntry(Class, Type, Extract)
-   if (Type is '-CLASS-') then
+   if Type is '-CLASS-' then
       parseClassHeader(Class, Extract)
-   elseif (Type is '-METHOD-') then
+   elseif Type is '-METHOD-' then
       parseMethod(Class, Extract)
-   elseif (Type is '-ACTION-') then
+   elseif Type is '-ACTION-' then
       parseAction(Class, Extract)
-   elseif (Type is '-FIELD-') then
+   elseif Type is '-FIELD-' then
       parseField(Class, Extract)
    end
 end
@@ -20,11 +20,7 @@ function parseClassHeader(Class, Extract)
    local name
    name, Class.comment = Extract:match('\n(%w+):%s+(.-)\n')
    Class.status = Extract:match('\n[Ss]tatus:%s+(.-)\n')
-
-   if (name:lower() != Class.name:lower()) then
-      error("The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
-   end
-
+   assert(name:lower() is Class.name:lower(), "The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
    Class.description = Extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
 end
 
@@ -86,7 +82,7 @@ function parseField(class, extract)
    if f then
       if comment?? then f.comment = comment end
       if lookup?? then
-         if (glCustomTypes[lookup]) then
+         if glCustomTypes[lookup] then
             f.lookup = lookup
             class.references['TYPE:' .. lookup] = 1
          else
@@ -137,16 +133,16 @@ function parseMethod(class, extract)
       name = name:match('(%a+)()')
    end
 
-   if not name?? then error('Failed to extract a name tag from -METHOD- definition.') end
-   if not comment?? then error("Failed to extract a comment tag from -METHOD- definition of '" .. name .. "'")  end
-   if not description?? then error("Failed to extract a description from -METHOD- definition of '" .. name .. "'") end
+   assert(name??, 'Failed to extract a name tag from -METHOD- definition.')
+   assert(comment??, "Failed to extract a comment tag from -METHOD- definition of '" .. name .. "'")
+   assert(description??, "Failed to extract a description from -METHOD- definition of '" .. name .. "'")
 
-   if (glFeedback is 'verbose') then print('Processing method ' .. name) end
+   if glFeedback is 'verbose' then print('Processing method ' .. name) end
 
    local method -- Retrieve the definition for this method
    if class.methods then
       method = class.lookupMethods[name]
-      if not method then error("Method '" .. name .. "' is not registered in the FDL.") end
+      assert(method, "Method '" .. name .. "' is not registered in the FDL.")
    else
       error("Methods need to be pre-defined for class '" .. tostring(class.name) .. "' with methods()")
    end
@@ -222,11 +218,11 @@ function parseClassFields(class, ClientSpec)
          if def and (def.synonym != true) then
             local f = findClassField(class, def.name) -- Retrieve field parsed from FDL, if defined
             if f then
-               f.write  = def.write
-               f.read   = def.read
-               f.flags  = def.flags
-               f.access = (def.access ?? def.access)
-               f.private = (f.private ?? def.private)
+               f.write   = def.write
+               f.read    = def.read
+               f.flags   = def.flags
+               f.access  = def.access ?? def.access
+               f.private = f.private ?? def.private
                if not f.type then f.type = tostring(def.type) end
             else
                def.virtual = true
@@ -259,15 +255,15 @@ function parseClassFields(class, ClientSpec)
       if not f.virtual then
          local field_name = cName(f)
 
-         if (field_name:len() > name_len) then name_len = field_name:len() end
+         if field_name:len() > name_len then name_len = field_name:len() end
 
-         if (f.type:len() > class.longestType) then
-            if (f.type:len() < 10) then
+         if f.type:len() > class.longestType then
+            if f.type:len() < 10 then
                class.longestType = f.type:len()
             end
          end
 
-         if (f.type:len() + field_name:len() > class.longestFieldType) then
+         if f.type:len() + field_name:len() > class.longestFieldType then
             class.longestFieldType = f.type:len() + 2 + field_name:len()
          end
 
@@ -275,7 +271,7 @@ function parseClassFields(class, ClientSpec)
             cdef ..= outputLookup(class.name .. f.name, f.ref.list)
          end
 
-         if not f.fullType?? then error('The fullType is not defined for field ' .. tostring(f.name)) end
+         assert(f.fullType??, 'The fullType is not defined for field ' .. tostring(f.name))
 
          fdef ..= "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
       end
@@ -319,7 +315,7 @@ function parseSourceFiles()
 
       -- Process -FUNCTION- definitions
 
-      if (glFeedback is 'verbose') then
+      if glFeedback is 'verbose' then
          print()
          print('File: ' .. path)
       end
@@ -338,15 +334,15 @@ function parseSourceFiles()
       local processing = nil
       for line in string.gmatch(content, '(.-\n)') do
          if line?? then
-            line = (line:match('^(.*%S)') ?? '')
+            line = line:match('^(.*%S)') ?? ''
             if (line is '-CATEGORY-') or (line is '-FUNCTION-') then
-               if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
-               if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
+               if processing is '-CATEGORY-' then parseCategory(currentExtract) end
+               if processing is '-FUNCTION-' then parseFunction(currentExtract) end
                currentExtract = ''
                processing = line
             elseif (line is '-END-') or (line is '-INTERNAL-') then
-               if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
-               if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
+               if processing is '-CATEGORY-' then parseCategory(currentExtract) end
+               if processing is '-FUNCTION-' then parseFunction(currentExtract) end
                currentExtract = nil
                processing = nil
             elseif processing then
@@ -357,8 +353,8 @@ function parseSourceFiles()
          end
       end
 
-      if (processing is '-CATEGORY-') then parseCategory(currentExtract) end
-      if (processing is '-FUNCTION-') then parseFunction(currentExtract) end
+      if processing is '-CATEGORY-' then parseCategory(currentExtract) end
+      if processing is '-FUNCTION-' then parseFunction(currentExtract) end
    end
 end
 
@@ -389,19 +385,11 @@ function parseFunction(extract)
       name = name:match('(%a+)()')
    end
 
-   if not name?? then
-      error('Failed to extract a name tag from -FUNCTION- definition.')
-   end
+   assert(name??, 'Failed to extract a name tag from -FUNCTION- definition.')
+   assert(comment??, "Failed to extract a comment tag from -FUNCTION- definition of '" .. name .. "'")
+   assert(description??, "Failed to extract a description from -FUNCTION- definition of '" .. name .. "'")
 
-   if not comment?? then
-      error("Failed to extract a comment tag from -FUNCTION- definition of '" .. name .. "'")
-   end
-
-   if not description?? then
-      error("Failed to extract a description from -FUNCTION- definition of '" .. name .. "'")
-   end
-
-   if (glFeedback is "verbose") then
+   if glFeedback is "verbose" then
       print("Processing function " .. name .. "()")
    end
 
@@ -429,7 +417,7 @@ function parseFunction(extract)
          else
             ecode = line:match("(%a+):?")
             if ecode?? then
-               codeValue = _G['ERR_' .. ecode]
+               local codeValue = _G['ERR_' .. ecode]
                if not codeValue then
                   print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
                else
@@ -444,7 +432,7 @@ function parseFunction(extract)
       local result = extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
       if result?? then
          local ext_type, comment = result:match("(.-):%s-(.+)$")
-         if not ext_type then error("Incorrectly defined result section in function '" .. name .. "'") end
+         assert(ext_type, "Incorrectly defined result section in function '" .. name .. "'")
          def.result = cType({ type=ext_type, comment=comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
       end
    end

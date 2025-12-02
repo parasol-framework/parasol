@@ -42,7 +42,7 @@ function testMultipleFunctions()
    assert(err is ERR_Okay, 'Multiple function calls failed: ' .. tostring(xq.errorMsg))
    -- Result should be a sequence: "9:8" or similar representation
    local result = tostring(xq.resultString)
-   assert(string.find(result, '9', 1, true) and string.find(result, '8', 1, true),
+   assert(string.find(result, '9', 0, true) and string.find(result, '8', 0, true),
       'Should return both 3^2=9 and 2^3=8, got ' .. result)
 end
 
@@ -74,13 +74,13 @@ function testModuleVariables()
    assert(list, "Expected module functions to be accessible")
    local math_count = 0
    for k,v in pairs(list) do
-      if (string.sub(v, 1, 5) is 'math:') then math_count = math_count + 1 end
+      if (string.sub(v, 0, 4) is 'math:') then math_count++ end
    end
    assert(math_count >= 2, "Module variable 'math:pi' not found in variables list")
 
    -- Verify feature flags include ModuleImports
 
-   assert(string.find(xq.get("$featureFlags"), 'ModuleImports', 1, true), "Expected feature flags to include ModuleImports")
+   assert(string.find(xq.get("$featureFlags"), 'ModuleImports', 0, true), "Expected feature flags to include ModuleImports")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ function testMultipleModuleImports()
    local err = xq.acActivate()
    assert(err is ERR_Okay, 'Multiple module imports failed: ' .. tostring(xq.errorMsg))
    local result = tostring(xq.resultString)
-   assert(string.find(result, '16', 1, true) and string.find(result, 'HELLO', 1, true),
+   assert(string.find(result, '16', 0, true) and string.find(result, 'HELLO', 0, true),
       'Should return both 16 and HELLO, got ' .. result)
 end
 
@@ -165,7 +165,7 @@ function testCircularDependencyDetection()
    local err = xq.acActivate()
    assert(err != ERR_Okay, 'Should detect circular dependency')
    local error_msg = string.lower(tostring(xq.errorMsg))
-   assert(string.find(error_msg, 'circular', 1, true), 'Error message should mention circular dependency, got ' .. tostring(xq.errorMsg))
+   assert(string.find(error_msg, 'circular', 0, true), 'Error message should mention circular dependency, got ' .. tostring(xq.errorMsg))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ function testNamespaceValidation()
    local err = xq.acActivate()
    assert(err != ERR_Okay, 'Should detect namespace mismatch')
    local error_msg = string.lower(tostring(xq.errorMsg))
-   assert(string.find(error_msg, 'namespace', 1, true) or string.find(error_msg, 'mismatch', 1, true),
+   assert(string.find(error_msg, 'namespace', 0, true) or string.find(error_msg, 'mismatch', 0, true),
       'Error message should mention namespace issue, got ' .. tostring(xq.errorMsg))
 end
 
@@ -216,7 +216,7 @@ function testLibraryModuleValidation()
    local err = xq.acActivate()
    assert(err != ERR_Okay, 'Should reject non-library module')
    local error_msg = string.lower(tostring(xq.errorMsg))
-   assert(string.find(error_msg, 'library', 1, true),
+   assert(string.find(error_msg, 'library', 0, true),
       'Error message should mention library module requirement, got ' .. tostring(xq.errorMsg))
 end
 

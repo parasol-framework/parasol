@@ -17,7 +17,7 @@ A basic demonstration of receiving keyboard input from a viewport.
    -- that the user presses a key when the window has the focus.
 
    viewport.mtSubscribeKeyboard(function(Viewport, Flags, Value, Unicode)
-      if (Unicode > 0) then
+      if Unicode > 0 then
          glChars = (glChars ?? '') .. string.char(Unicode)
          glChars = glChars:sub(-10)
       end

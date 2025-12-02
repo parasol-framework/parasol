@@ -21,7 +21,7 @@ function testValidateHeaderSuccess()
    local http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/auth/protected',
       method = 'GET',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      flags = HTF_NO_HEAD | HTF_NO_DIALOG,
       _Authorization = 'Bearer valid-token-123',
       incoming = function(HTTP, Buffer)
          content ..= tostring(Buffer)
@@ -54,7 +54,7 @@ function testValidateHeaderFailure()
    local http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/auth/protected',
       method = 'GET',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      flags = HTF_NO_HEAD | HTF_NO_DIALOG,
       _Authorization = 'Bearer invalid-token',
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -81,7 +81,7 @@ function testValidateHeaderCustomError()
    local http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/admin-only',
       method = 'POST',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      flags = HTF_NO_HEAD | HTF_NO_DIALOG,
       _Authorization = 'Bearer user-token',
       inputFile = 'string:{"data":"test"}',
       size = 15,
@@ -110,7 +110,7 @@ function testValidateHeaderMissingAuth()
    local http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/auth/protected',
       method = 'GET',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      flags = HTF_NO_HEAD | HTF_NO_DIALOG,
       -- No Authorization header
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -134,15 +134,15 @@ function testValidateHeaderContentType()
    local proc = processing.new({ timeout = 5.0 })
 
    -- Send XML to an endpoint that only accepts JSON
-   local xmlData = '<?xml version="1.0"?><test>data</test>'
+   local xml_data = '<?xml version="1.0"?><test>data</test>'
 
    local http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/json-only',
-      method = 'POST',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      src         = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/json-only',
+      method      = 'POST',
+      flags       = HTF_NO_HEAD | HTF_NO_DIALOG,
       contentType = 'application/xml',
-      inputFile = 'string:' .. xmlData,
-      size = xmlData:len(),
+      inputFile   = 'string:' .. xml_data,
+      size        = xml_data:len(),
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
@@ -166,9 +166,9 @@ function testValidateHeaderException()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/error/validation-crash',
+      src    = 'http://127.0.0.1:' .. SERVER_PORT .. '/error/validation-crash',
       method = 'GET',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      flags  = HTF_NO_HEAD | HTF_NO_DIALOG,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
@@ -193,9 +193,9 @@ function testNoValidateHeaderCallback()
    local content = ''
 
    local http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/public/no-validation',
-      method = 'GET',
-      flags = bit.bor(HTF_NO_HEAD, HTF_NO_DIALOG),
+      src      = 'http://127.0.0.1:' .. SERVER_PORT .. '/public/no-validation',
+      method   = 'GET',
+      flags    = HTF_NO_HEAD | HTF_NO_DIALOG,
       incoming = function(HTTP, Buffer)
          content ..= tostring(Buffer)
       end,

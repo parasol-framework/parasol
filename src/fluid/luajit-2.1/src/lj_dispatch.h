@@ -25,7 +25,7 @@ constexpr int HOTCOUNT_LOOP = 2;
 constexpr int HOTCOUNT_CALL = 1;
 
 // This solves a circular dependency problem -- bump as needed. Sigh.
-constexpr int GG_NUM_ASMFF = 57;
+constexpr int GG_NUM_ASMFF = 58;
 
 constexpr int GG_LEN_DDISP = (BC__MAX + GG_NUM_ASMFF);
 constexpr int GG_LEN_SDISP = BC_FUNCF;

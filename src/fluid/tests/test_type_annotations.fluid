@@ -6,8 +6,8 @@ local function parameter_names(Signature)
    for entry in string.gmatch(Signature, "[^,]+") do
       local trimmed = string.match(entry, "^%s*(.-)%s*$")
       if trimmed?? then
-         local colon = string.find(trimmed, ":", 1, true)
-         if colon?? then trimmed = string.sub(trimmed, 1, colon - 1) end
+         local colon = string.find(trimmed, ":", 0, true)
+         if colon?? then trimmed = string.sub(trimmed, 0, colon - 1) end
          table.insert(names, trimmed)
       end
    end
@@ -32,16 +32,16 @@ end
 function testBasicParsing()
    local typed = compile_signature("A:num, B:str, C:table")
    local results = { typed(7, "hello", { value = true }) }
-   assert(results[1] is 7, "Expected numeric argument to be returned")
-   assert(results[2] is "hello", "Expected string argument to be returned")
-   assert(type(results[3]) is "table", "Expected table argument to be returned")
+   assert(results[0] is 7, "Expected numeric argument to be returned")
+   assert(results[1] is "hello", "Expected string argument to be returned")
+   assert(type(results[2]) is "table", "Expected table argument to be returned, got " .. type(results[2]))
 end
 
 function testMixedParameters()
    local mixed = compile_signature("Untyped, Typed:bool")
    local results = { mixed("anything", true) }
-   assert(results[1] is "anything", "Untyped parameter should accept any value")
-   assert(results[2] is true, "Typed boolean parameter should pass through")
+   assert(results[0] is "anything", "Untyped parameter should accept any value")
+   assert(results[1] is true, "Typed boolean parameter should pass through")
 end
 
 local function assert_compiles(Signature)

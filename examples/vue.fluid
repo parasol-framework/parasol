@@ -50,7 +50,7 @@ A file viewer for recognised documents like SVG and RIPL
 
 function displayInlineDoc(Content, Parameters)
    local doc = glViewArea.new('document', { })
-   if type(Parameters) == 'table' then
+   if type(Parameters) is 'table' then
       for k, v in pairs(Parameters) do
          doc.acSetKey(k, v)
       end
@@ -90,7 +90,7 @@ function displaySVG(Path)
    local vp = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
    local svg = vp.new('svg', { target=vp, path=Path, flags=SVF_ENFORCE_TRACKING })
 
-   if (svg.frameRate < 60) then svg.frameRate = 60 end
+   if svg.frameRate < 60 then svg.frameRate = 60 end
    svg.acActivate() -- Animation support
 
    glTerminateView = function()
@@ -144,7 +144,7 @@ function displayFile(Path)
 
    if not Path then return end
 
-   if glTerminateView != nil then
+   if glTerminateView then
       glTerminateView()
       glTerminateView = nil
    end
@@ -152,13 +152,13 @@ function displayFile(Path)
    glStats = { }
 
    local lpath = Path:lower()
-   if (lpath:find('^.+%.png$')) then
+   if lpath:find('^.+%.png$') then
       displayImage(Path)
-   elseif (lpath:find('^.+%.jpeg$')) or (lpath:find('^.+%.jpg$')) then
+   elseif lpath:find('^.+%.jpeg$') or lpath:find('^.+%.jpg$') then
       displayImage(Path)
-   elseif (lpath:find('^.+%.svg$')) then
+   elseif lpath:find('^.+%.svg$') then
       displaySVG(Path)
-   elseif (lpath:find('^.+%.ripl$')) or (lpath:find('^.+%.rpl$')) then
+   elseif lpath:find('^.+%.ripl$') or lpath:find('^.+%.rpl$') then
       displayDoc(Path)
    else -- File is unsupported
       displayError([[<p>Unrecognised file "]] .. Path .. [["</p>]])
@@ -215,7 +215,7 @@ end
             displayFile(FileView.selectionPath())
             title = FileView.selectionFile()
             if glStats.width and glStats.height then
-               title = title .. ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
+               title ..= ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
             end
             glWindow:setTitle(title)
          end
@@ -251,9 +251,9 @@ end
                   popOver     = glWindow.surface,
                   warnExists  = true,
                   feedback = function(Dialog, Path, Files)
-                     if (Files == nil) then return end
+                     if not Files then return end
 
-                     local target_file = Path .. Files[1].filename
+                     local target_file = Path .. Files[0].filename
 
                      local bmp = glViewArea.buffer
                      if bmp then

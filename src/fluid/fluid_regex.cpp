@@ -76,7 +76,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
    if (skip_match) return ERR::Okay;
 
-   int slot = Meta.result_index + 1;
+   int slot = Meta.result_index;
    lua_pushinteger(lua_state, slot);
 
    // Create capture table for this result (attached to results table)
@@ -84,7 +84,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
    // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
    for (int j=0; j < std::ssize(Captures); ++j) {
-      lua_pushinteger(lua_state, (lua_Integer)(j + 1));
+      lua_pushinteger(lua_state, (lua_Integer)j);
       if (Captures[j].data()) {
          lua_pushlstring(lua_state, Captures[j].data(), Captures[j].length());
       }
@@ -94,7 +94,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 
    lua_settable(lua_state, -3); // Add capture table to results
 
-   Meta.result_index = slot;
+   Meta.result_index = slot + 1;
 
    return ERR::Okay;
 }
@@ -111,7 +111,7 @@ static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t 
 
    // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
    for (int j=0; j < std::ssize(Captures); ++j) {
-      lua_pushinteger(lua_state, (lua_Integer)(j + 1));
+      lua_pushinteger(lua_state, (lua_Integer)j);
       if (Captures[j].data()) {
          lua_pushlstring(lua_state, Captures[j].data(), Captures[j].length());
       }
@@ -272,7 +272,7 @@ static int regex_split(lua_State *Lua)
    rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, flags);
 
    lua_createtable(Lua, std::ssize(parts), 0); // Result table
-   int part_index = 1;
+   int part_index = 0;
    for (auto &part : parts) {
       lua_pushinteger(Lua, part_index++);
       if (part.empty()) lua_pushstring(Lua, "");

@@ -10,12 +10,12 @@ To be used in conjunction with the gui.menubar or as an independent pop-up only.
    if not mGfx then mGfx = mod.load('display') end
 
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
-local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
-local VMARGIN = math.floor(ITEM_HEIGHT * 0.33)
-local HMARGIN = 6
-local ICON_SIZE = math.floor(ITEM_HEIGHT * 0.8)
+local ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)
+local VMARGIN      = math.floor(ITEM_HEIGHT * 0.33)
+local HMARGIN      = 6
+local ICON_SIZE    = math.floor(ITEM_HEIGHT * 0.8)
 local KB_HIGHLIGHT = 'rgba(0,0,0,.5)'
-local ICON_STRIP = 'rgba(255,255,255,.15)'
+local ICON_STRIP   = 'rgba(255,255,255,.15)'
 
 gui.menu = function(Options)
    local self = { -- Public variables
@@ -28,16 +28,16 @@ gui.menu = function(Options)
       visible  = false,
       client   = Options.client,
       feedback = Options.feedback,
-      x        = (Options.x ?? 0),
-      y        = (Options.y ?? 0),
-      popup    = (Options.popup ?? false),
+      x        = Options.x ?? 0,
+      y        = Options.y ?? 0,
+      popup    = Options.popup ?? false,
       relative = Options.relative,
-      style    = (Options.style ?? 'popup'),
+      style    = Options.style ?? 'popup',
       items    = { }
    }
 
    local function initVectorScene()
-      local showIcons = (Options.showIcons ?? true)
+      local showIcons = Options.showIcons ?? true
       local TEXT_X = HMARGIN
 
       if showIcons then
@@ -141,7 +141,7 @@ gui.menu = function(Options)
 
             vText.y = mi.textY
             mi.height = ITEM_HEIGHT
-            y = y + mi.height
+            y += mi.height
 
             table.insert(self.items, mi)
          end
@@ -246,15 +246,15 @@ gui.menu = function(Options)
                   end
                else
                   x = cursor_x - parent.absX - 1
-                  if (x + surface.width > parent.width - 2) then
-                     x = x - surface.width + gui.style.widget.margin
+                  if x + surface.width > parent.width - 2 then
+                     x -= surface.width + gui.style.widget.margin
                      self.reverseX = true
                   end
                end
 
                local y = cursor_y - parent.absY - 1
-               if (y + surface.height > parent.height - 2) then
-                  y = y - surface.height + surface.bottomMargin
+               if y + surface.height > parent.height - 2 then
+                  y -= surface.height + surface.bottomMargin
                end
 
                surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
@@ -483,7 +483,7 @@ gui.menu = function(Options)
                   _, self.tipTimer = mSys.SubscribeTimer(self.tipDelay, timer)
                end
             end
-         elseif (ev.type is JET_CROSSED_OUT) then
+         elseif ev.type is JET_CROSSED_OUT then
             if self.hItem then highlightItem(nil) end
          end
 

@@ -291,14 +291,31 @@ static ERR MODOpen(OBJECTPTR Module)
    return ERR::Okay;
 }
 
+#ifdef ENABLE_UNIT_TESTS
+extern void indexing_unit_tests(int& Passed, int& Total);
+extern void vm_asm_unit_tests(int& Passed, int& Total);
+#endif
+
 static void MODTest(CSTRING Options, int *Passed, int *Total)
 {
-   pf::Log log("FluidTests");
 #ifdef ENABLE_UNIT_TESTS
-   log.branch("Running Fluid unit tests...");
-   parser_unit_tests(*Passed, *Total);
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running indexing unit tests...");
+      indexing_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running parser unit tests...");
+      parser_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running VM assembly unit tests...");
+      vm_asm_unit_tests(*Passed, *Total);
+   }
 #else
-   log.warning("Unit tests are disabled in this build.");
+   pf::Log("FluidTests").warning("Unit tests are disabled in this build.");
 #endif
 }
 
@@ -433,23 +450,23 @@ void make_table(lua_State *Lua, int Type, int Elements, CPTR Data)
          if (Type & FD_CPP) {
             auto vec = ((pf::vector<std::string> *)Data);
             for (int i=0; i < Elements; i++) {
-               lua_pushinteger(Lua, i+1);
+               lua_pushinteger(Lua, i);
                lua_pushlstring(Lua, (*vec)[i].c_str(), (*vec)[i].size());
                lua_settable(Lua, -3);
             }
          }
          else {
-            for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); }
+            for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); }
          }
          break;
-      case FD_OBJECT:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_POINTER: for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_FLOAT:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((float *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_DOUBLE:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((double *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT64:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((int64_t *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT:     for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_WORD:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int16_t *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_BYTE:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int8_t *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_OBJECT:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_POINTER: for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_FLOAT:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((float *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_DOUBLE:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((double *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT64:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, ((int64_t *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT:     for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_WORD:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int16_t *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_BYTE:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, ((int8_t *)Data)[i]); lua_settable(Lua, -3); } break;
    }
 }
 
@@ -477,7 +494,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPT
    if (prv->Structs.contains(s_name)) {
       std::vector<lua_ref> ref;
       for (int i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i+1);
+         lua_pushinteger(Lua, i);
          if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
          lua_settable(Lua, -3);
       }
@@ -520,7 +537,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, 
       std::vector<lua_ref> ref;
 
       for (int i=0; i < Elements; i++) {
-         lua_pushinteger(Lua, i+1);
+         lua_pushinteger(Lua, i);
          if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
          Data = (int8_t *)Data + def_size;
          lua_settable(Lua, -3);

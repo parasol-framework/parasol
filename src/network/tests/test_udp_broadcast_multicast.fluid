@@ -108,7 +108,7 @@ function testBroadcastLoopback()
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
          if (err is ERR_Okay and bytesRead > 0) then
-            local msg = buffer:sub(1, bytesRead)
+            local msg = buffer:sub(0, bytesRead-1)
             print('[Broadcast Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
             if (string.match(msg, 'Broadcast Test')) then
                broadcastReceived = true

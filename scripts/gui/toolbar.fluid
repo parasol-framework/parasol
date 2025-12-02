@@ -16,7 +16,7 @@ local TI_BREAK = 2
 local TI_GROUP = 3
 
 local function counter()
-   lCounter = lCounter + 1
+   lCounter++
    return lCounter
 end
 
@@ -282,9 +282,9 @@ gui.toolbar = function(Options)
             end
 
             if self._horizontal then
-               x = x + item.width
+               x += item.width
             else
-               y = y + item.height
+               y += item.height
             end
 
             spanCount = spanCount + 1
@@ -316,9 +316,9 @@ gui.toolbar = function(Options)
 
                if spanCount is currentGroup.span then
                   if self._horizontal then
-                     x = x + groupOffset -- Gap between groups
+                     x += groupOffset -- Gap between groups
                   else
-                     y = y + groupOffset
+                     y += groupOffset
                   end
                   currentGroup = nil
                end
@@ -460,7 +460,7 @@ gui.toolbar = function(Options)
          end
 
          if type(Content) is 'string' then
-            if Content:len() > 1 then Content = Content:sub(1,1) end
+            if Content:len() > 1 then Content = Content:sub(0,0) end
          end
 
          local font_size = sticker_size * 0.75
@@ -569,7 +569,7 @@ gui.toolbar = function(Options)
             if self._current then
                hoverUpdate(nil)
             end
-         elseif bit.band(ev.flags, JTYPE_MOVEMENT) != 0 then
+         elseif (ev.flags & JTYPE_MOVEMENT)?? then
             if self._clicked then return end
 
             local item = getCursorItem(ev.x, ev.y)
@@ -580,7 +580,7 @@ gui.toolbar = function(Options)
             else
                cancelTipTimer()
             end
-         elseif bit.band(ev.flags, JTYPE_BUTTON) != 0 then
+         elseif (ev.flags & JTYPE_BUTTON)?? then
             if ev.value > 0 then
                if self._disabled then return end
 
@@ -722,7 +722,7 @@ gui.toolbar = function(Options)
 
    self._colBreadth = self._iconSize + (self._cellMargin * 2)
    if self._groupCount > 0 then
-      self._colBreadth = self._colBreadth + (self._groupMargin*2)
+      self._colBreadth += (self._groupMargin*2)
    end
 
    if Options.orientation is 'horizontal' then

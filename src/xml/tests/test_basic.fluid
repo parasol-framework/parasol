@@ -10,7 +10,7 @@ function testTagsArray()
    assert(#tags is expected, "Expected a tag count of " .. expected)
 
    expected = 7
-   assert(#tags[2].children is expected, "Expected a child count of " .. expected .. " not " .. #tags[2].children)
+   assert(#tags[1].children is expected, "Expected a child count of " .. expected .. " not " .. #tags[1].children)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -23,10 +23,10 @@ function testIndexing()
       local err, func = glXML.mtGetTag(TagID)
 
       if #func.attribs > 0 then
-         if func.attribs[1].name != 'function' then
-            error("Expected 'function', got '" .. nz(func.attribs[1].name,"NIL") .. "'")
+         if func.attribs[0].name != 'function' then
+            error("Expected 'function', got '" .. nz(func.attribs[0].name,"NIL") .. "'")
          end
-         totalFunctions = totalFunctions + 1
+         totalFunctions++
       end
    end)
 
@@ -90,9 +90,9 @@ function testSort()
    local first, last
    local err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
-      print(func.children[1].attribs[1].value)
-      if (not first) then first = func.children[1].attribs[1].value end
-      last = func.children[1].attribs[1].value
+      print(func.children[0].attribs[0].value)
+      if (not first) then first = func.children[0].attribs[0].value end
+      last = func.children[0].attribs[0].value
    end)
    assert(err is ERR_Okay, "FindTag() failed.")
 

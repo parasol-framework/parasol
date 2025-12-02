@@ -209,9 +209,9 @@ function testModuleImportDeclaration()
    local message = tostring(xq.errorMsg)
    assert(err != ERR_Okay, 'Module import should fail without loader')
    -- Loader now emits a structured error with code and attempted locations
-   assert(string.find(message, 'XQST0059', 1, true)
-      and string.find(message, 'Cannot load module for namespace', 1, true)
-      and string.find(message, 'urn:math', 1, true),
+   assert(string.find(message, 'XQST0059', 0, true)
+      and string.find(message, 'Cannot load module for namespace', 0, true)
+      and string.find(message, 'urn:math', 0, true),
       'Module import should record structural diagnostic, got ' .. message)
 end
 

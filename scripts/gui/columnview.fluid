@@ -98,8 +98,8 @@ local function highlightItem(View, Item, Highlighted)
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
          local col = gui.interpolateRGB(gui.strToRGB(gui.style.page.textHighlightBkgd), gui.strToRGB(gui.style.page.textSelectBkgd))
-         Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
-         Item._vectors.highlight.stroke = gui.style.page.textHighlightBkgd
+         Item._vectors.highlight.fill        = gui.style.page.textSelectBkgd
+         Item._vectors.highlight.stroke      = gui.style.page.textHighlightBkgd
          Item._vectors.highlight.strokeWidth = 2
          if Item._vectors.iconImage and Item._iconHighlight then
             Item._vectors.iconImage.fill = Item._iconHighlight
@@ -108,7 +108,7 @@ local function highlightItem(View, Item, Highlighted)
          for k, col in pairs(Item._col) do
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
-         Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
+         Item._vectors.highlight.fill        = gui.style.page.textHighlightBkgd
          Item._vectors.highlight.strokeWidth = 0
          if Item._vectors.iconImage and Item._iconHighlight then
             Item._vectors.iconImage.fill = Item._iconHighlight
@@ -156,11 +156,7 @@ local function arrangeColumns(View)
 
    local pc = struct.new('PathCommand')
    for _, col in pairs(View.columns) do
-      if col.align is 'right' then
-         col.vecTitle.x = col.px_width - MARGIN
-      else
-         col.vecTitle.x = MARGIN
-      end
+      col.vecTitle.x = col.align is 'right' ? col.px_width - MARGIN :> MARGIN
 
       pc.type = PE_Move
       pc.x    = col.x + col.px_width
@@ -180,9 +176,9 @@ local function arrangeColumns(View)
          col.fillItemSelect = gui.style.page.textHighlight
       elseif not col.vecGradient then
          local defName = 'colGradient' .. lCounter
-         lCounter = lCounter + 1
+         lCounter++
          local selName = 'colSelect' .. lCounter
-         lCounter = lCounter + 1
+         lCounter++
 
          if (col.align ?? 'left') is 'right' then
             col.vecGradient = gui.simpleGradient(View.scene, defName,
@@ -212,11 +208,7 @@ local function arrangeColumns(View)
 
    if View._sort then
       local col = View._sort.col
-      if col.align is 'right' then
-         View._sort.icon.x = MARGIN
-      else
-         View._sort.icon.x = col.px_width - MARGIN - ICON_SIZE
-      end
+      View._sort.icon.x = col.align is 'right' ? MARGIN :> col.px_width - MARGIN - ICON_SIZE
    end
 
    if View.scrollbar then
@@ -270,11 +262,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       end
    end
 
-   if Col.align is 'right' then
-      View._sort.icon.x = MARGIN
-   else
-      View._sort.icon.x = Col.px_width - MARGIN - ICON_SIZE
-   end
+   View._sort.icon.x = Col.align is 'right' ? MARGIN :> Col.px_width - MARGIN - ICON_SIZE
 
    View:sortColumn(Col, View._sort.ascending)
    View.viewport.acDraw()
@@ -289,12 +277,7 @@ local function rearrangeItems(View)
    for _, item in pairs(View.items) do
       item._y = y
       if item._vectors.viewport then
-         local vis
-         if item.hidden then
-            vis = VIS_HIDDEN
-         else
-            vis = VIS_VISIBLE
-         end
+         local vis = item.hidden ? VIS_HIDDEN :> VIS_VISIBLE
 
          item._vectors.viewport.visibility = vis
          item._vectors.iconImage.visibility = vis
@@ -320,7 +303,7 @@ local function rearrangeItems(View)
 
       if not item.hidden then
          View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y = y + LINE_HEIGHT + VSPACING
+         y += LINE_HEIGHT + VSPACING
       end
    end
 
@@ -334,7 +317,7 @@ gui.columnView = function(Options)
    local function setColumns(View, Columns)
       if #Columns is 0 then return end
 
-      local c = 1
+      local c = 0
       local set = { }
       View.namedCol = { }
       for _, col in pairs(Columns) do
@@ -344,7 +327,7 @@ gui.columnView = function(Options)
          for k, v in pairs(col) do new_col[k] = v end
          table.insert(set, new_col)
          View.namedCol[col['attrib']] = new_col
-         c = c + 1
+         c++
       end
 
       if View.columns then -- Clear any existing banner allocations
@@ -366,11 +349,7 @@ gui.columnView = function(Options)
 
       -- Background graphics
 
-      if View.invertedPalette then
-         View.banner.fgFill = gui.palette.altText
-      else
-         View.banner.fgFill = gui.style.window.text
-      end
+      View.banner.fgFill =  View.invertedPalette ? gui.palette.altText :> gui.style.window.text
 
       View.banner.clip = View.viewport.new('VectorViewport', {
          name = 'banner_clip',
@@ -393,7 +372,7 @@ gui.columnView = function(Options)
          local ev = Events
          while ev do
             if ev.type is JET_BUTTON_1 then
-               if (ev.flags & JTYPE_REPEATED) != 0 then return end
+               if (ev.flags & JTYPE_REPEATED)?? then return end
 
                for _, col in pairs(View.columns) do
                   if (ev.x >= col.x+2) and (ev.x < col.x + col.px_width-2) then
@@ -440,7 +419,7 @@ gui.columnView = function(Options)
                fontSize  = string.format('%.2fpt', View.fontSize),
                fontStyle = View.fontStyle,
                fill      = View.banner.fgFill,
-               align     = (col.align ?? 'left'),
+               align     = col.align ?? 'left',
                y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
             })
 
@@ -455,7 +434,7 @@ gui.columnView = function(Options)
             col.resizeVP.dragCallback = function(SizeVP, X, Y)
                -- Rearrange layout
                local delta_x = X - SizeVP.x
-               col.px_width = col.px_width + delta_x
+               col.px_width += delta_x
                if col.px_width < MARGIN then col.px_width = MARGIN end
                col.vecViewport.width = col.px_width
 
@@ -465,7 +444,7 @@ gui.columnView = function(Options)
                   scan.x = new_x
                   scan.resizeVP.x = new_x + scan.px_width - (MARGIN * 0.5)
                   scan.vecViewport.x = new_x
-                  new_x = new_x + scan.px_width
+                  new_x += scan.px_width
                   scan = scan.next
                end
 
@@ -498,7 +477,7 @@ gui.columnView = function(Options)
 
          col.vecTitle.string = (col['title'] ?? 'Untitled')
 
-         x = x + col.px_width
+         x += col.px_width
          prev = col
       end
 
@@ -541,12 +520,7 @@ gui.columnView = function(Options)
          if not item._vectors then item._vectors = { } end
          if not item._col then item._col = { } end
 
-         local vis
-         if item.hidden then
-            vis = VIS_HIDDEN
-         else
-            vis = VIS_VISIBLE
-         end
+         local vis = item.hidden ? VIS_HIDDEN :> VIS_VISIBLE
 
          item._y = y
 
@@ -554,8 +528,7 @@ gui.columnView = function(Options)
 
          if not item._vectors.viewport then
             item._vectors.viewport = View.page.new('VectorViewport', {
-               name = 'item_vp',
-               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
+               name = 'item_vp', x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
             })
          else
             item._vectors.viewport.y     = y
@@ -566,11 +539,7 @@ gui.columnView = function(Options)
          item._highlightEvent = highlightItem
 
          item._selectEvent = function(View, Item)
-            if Item is View.hItem then
-               Item._highlightEvent(View, Item, true)
-            else
-               Item._highlightEvent(View, Item, false)
-            end
+            Item._highlightEvent(View, Item, Item is View.hItem)
          end
 
          local cx = 0
@@ -581,15 +550,15 @@ gui.columnView = function(Options)
 
             if col.showIcons and item.icon then
                pcall(function()
-                  local theme = (item.iconTheme ?? gui.style.page.icon)
-                  local uid = theme .. '+' .. item.icon
-                  local info = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
+                  local theme = item.iconTheme ?? gui.style.page.icon
+                  local uid   = theme .. '+' .. item.icon
+                  local info  = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
                   item._iconFill = info.fill
 
                   if gui.style.page.iconHighlight and gui.style.page.iconHighlight != theme then
                      local theme = gui.style.page.iconHighlight
-                     local uid = theme .. '+' .. item.icon
-                     local info = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
+                     local uid   = theme .. '+' .. item.icon
+                     local info  = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
                      item._iconHighlight = info.fill
                   end
 
@@ -630,7 +599,7 @@ gui.columnView = function(Options)
                      face      = View.fontFace,
                      fontSize  = string.format('%.2fpt', View.fontSize),
                      fontStyle = View.fontStyle,
-                     align     = (col.align ?? 'left'),
+                     align     = col.align ?? 'left',
                      y         = y + LINE_OFFSET,
                      visibility = vis
                   })
@@ -658,11 +627,11 @@ gui.columnView = function(Options)
                View.addZone(0, item._y, nil, LINE_HEIGHT, item)
             end
 
-            cx = cx + col.px_width
+            cx += col.px_width
          end
 
          if not item.hidden then
-            y = y + LINE_HEIGHT + VSPACING
+            y += LINE_HEIGHT + VSPACING
          end
       end
 
@@ -678,11 +647,11 @@ gui.columnView = function(Options)
 
    local function constructColumnView(View)
       LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
-      ICON_SIZE = LINE_HEIGHT
-      MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
-      LINE_HEIGHT = math.round(LINE_HEIGHT * 1.5)
-      ICON_OFFSET = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5)
-      LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+      ICON_SIZE     = LINE_HEIGHT
+      MARGIN        = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
+      LINE_HEIGHT   = math.round(LINE_HEIGHT * 1.5)
+      ICON_OFFSET   = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5)
+      LINE_OFFSET   = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
       BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 
       setColumns(View, (Options.columns ?? { }))
@@ -715,39 +684,23 @@ gui.columnView = function(Options)
       if type(Column) is 'table' then
          if #View.items > 0 then
             local attrib = Column['attrib']
-            if type(View.items[1][attrib]) is 'table' then
-               if View.items[1][attrib]['sort'] then
+            if type(View.items[0][attrib]) is 'table' then
+               if View.items[0][attrib]['sort'] then
                   table.sort(View.items, function(a,b)
-                     if Ascending then
-                        return a[attrib].sort < b[attrib].sort
-                     else
-                        return a[attrib].sort > b[attrib].sort
-                     end
+                     return Ascending ? a[attrib].sort < b[attrib].sort :> a[attrib].sort > b[attrib].sort
                   end)
                else
                   table.sort(View.items, function(a,b)
-                     if Ascending then
-                        return a[attrib].value < b[attrib].value
-                     else
-                        return a[attrib].value > b[attrib].value
-                     end
+                     return Ascending ? a[attrib].value < b[attrib].value :> a[attrib].value > b[attrib].value
                   end)
                end
-            elseif type(View.items[1][attrib]) is 'string' then
+            elseif type(View.items[0][attrib]) is 'string' then
                table.sort(View.items, function(a,b)
-                  if Ascending then
-                     return a[attrib]:lower() < b[attrib]:lower()
-                  else
-                     return a[attrib]:lower() > b[attrib]:lower()
-                  end
+                  return Ascending ? a[attrib]:lower() < b[attrib]:lower() :> a[attrib]:lower() > b[attrib]:lower()
                end)
             else
                table.sort(View.items, function(a,b)
-                  if Ascending then
-                     return a[attrib] < b[attrib]
-                  else
-                     return a[attrib] > b[attrib]
-                  end
+                  return Ascending ? a[attrib] < b[attrib] :> a[attrib] > b[attrib]
                end)
             end
          end

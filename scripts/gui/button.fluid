@@ -78,11 +78,11 @@ gui.button = function(Options)
       stroke = gui.style.widget.stroke,
       strokeWidth = gui.style.widget.strokeWidth,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-         if (Vector.width != Width) then
+         if Vector.width != Width then
             Vector.width = Width - gui.style.widget.strokeWidth
          end
 
-         if (Vector.height != Height) then
+         if Vector.height != Height then
             Vector.height = Height - gui.style.widget.strokeWidth
          end
       end
@@ -174,7 +174,7 @@ gui.button = function(Options)
             if Msg.value > 0 then
                if not self.disabled then
                   -- Click event is triggered on release unless the button is set to pulse
-                  if (Msg.flags & JTYPE_REPEATED) != 0 then
+                  if (Msg.flags & JTYPE_REPEATED)?? then
                      if self.pulse then
                         if self.events.activate then self.events.activate(self) end
                      end
@@ -188,8 +188,8 @@ gui.button = function(Options)
                self.clicked = false
                local clickX = Msg.x - self.clickX
                local clickY = Msg.y - self.clickY
-               if (clickX < 0) then clickX = -clickX end
-               if (clickY < 0) then clickY = -clickY end
+               if clickX < 0 then clickX = -clickX end
+               if clickY < 0 then clickY = -clickY end
 
                if ((clickX < 4) and (clickY < 4)) or self.pulse then
                   if self.events.activate then self.events.activate(self) end

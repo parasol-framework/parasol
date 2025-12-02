@@ -19,17 +19,13 @@ local function rearrangeItems(View)
    for _, item in pairs(View.items) do
       item._y = y
       if item._vectors.viewport then
-         if item.hidden then
-            item._vectors.viewport.visibility = VIS_HIDDEN
-         else
-            item._vectors.viewport.visibility = VIS_VISIBLE
-         end
+         item._vectors.viewport.visibility = item.hidden ? VIS_HIDDEN :> VIS_VISIBLE
          item._vectors.viewport.y = y + EDGE
       end
 
       if not item.hidden then
          View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y = y + LINE_HEIGHT + VSPACING
+         y += LINE_HEIGHT + VSPACING
       end
    end
 end
@@ -37,8 +33,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.listView = function(Options)
-   local lTextAttrib = (Options.textAttrib ?? 'name')
-   local lCompact    = (Options.compact ?? 0)
+   local lTextAttrib = Options.textAttrib ?? 'name'
+   local lCompact    = Options.compact ?? 0
 
    local function setListTextFill(Item, Fill)
       if Item._vectors.text then
@@ -194,7 +190,7 @@ gui.listView = function(Options)
             elseif item.index and (item.index is lHighlightedItem) then
                item._vectors.text.fill = gui.style.page.textHighlight
             else
-               item._vectors.text.fill = (item.colour ?? gui.style.page.text)
+               item._vectors.text.fill = item.colour ?? gui.style.page.text
             end
          end
 
@@ -202,7 +198,7 @@ gui.listView = function(Options)
             vp.visibility = VIS_HIDDEN
          else
             vp.visibility = VIS_VISIBLE
-            y = y + LINE_HEIGHT + VSPACING
+            y += LINE_HEIGHT + VSPACING
          end
 
          if width > widest_item then widest_item = width end

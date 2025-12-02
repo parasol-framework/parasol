@@ -23,7 +23,7 @@ file.search = function(Path, Options)
       if fl then
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
-         if (bit.bor(fl.flags, FL_LINK) != 0) and (lOptions.scanLinks is true) then
+         if (fl.flags & FL_LINK)?? and (lOptions.scanLinks != true) then
             fl.free()
             return false
          end
@@ -91,11 +91,11 @@ file.search = function(Path, Options)
          return obj.new('file', { src=Path, flags=flags } )
       end)
 
-      if folder is nil then return end
+      if not folder then return end
 
       local err, fl = folder.mtNext()
       while (err is ERR_Okay) and (not lStop) do
-         count = count + 1
+         count++
          processing.sleep(0)
 
          local fileFolder, fileName = file.splitPath(fl.path)
@@ -162,8 +162,8 @@ file.search = function(Path, Options)
          if folder then
             local err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
-               count = count + 1
-               if bit.band(fl.flags, FL_LINK) != 0 then
+               count++
+               if (fl.flags & FL_LINK)?? then
                   -- Do not scan symbolicly linked directories (possible recursion)
                else
                   processing.sleep(0)

@@ -62,7 +62,7 @@ gui.strToRGB = function(Value)
    local result, fail
    xpcall(function()
       if string.byte(Value) is 35 then
-         local colour = tonumber(string.sub(Value,2), 16)
+         local colour = tonumber(string.sub(Value,1), 16)
          if Value:len() is 7 then
             result = {
                r = bit.band(bit.rshift(colour, 16), 0xff),
@@ -85,10 +85,10 @@ gui.strToRGB = function(Value)
          for str in string.gmatch(Value, '([^,]+)') do
             table.insert(colours, tonumber(str))
          end
-         local r = (colours[1] ?? 0)
-         local g = (colours[2] ?? 0)
-         local b = (colours[3] ?? 0)
-         local a = (colours[4] ?? 255)
+         local r = colours[0] ?? 0
+         local g = colours[1] ?? 0
+         local b = colours[2] ?? 0
+         local a = colours[3] ?? 255
          if r > 255 then r = 255 end
          if g > 255 then g = 255 end
          if b > 255 then b = 255 end
@@ -266,7 +266,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
    local i = 0
    for _, col in pairs(Colours) do
       local vc = struct.new('GradientStop')
-      vc.offset    = (col.offset ?? i / (#Colours-1))
+      vc.offset    = col.offset ?? (i / (#Colours - 1))
       vc.rgb.red   = col.r / 255
       vc.rgb.green = col.g / 255
       vc.rgb.blue  = col.b / 255
@@ -276,7 +276,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
          vc.rgb.alpha = col.a / 255
       end
       table.insert(stops, vc)
-      i = i + 1
+      i++
    end
 
    local gradient = Scene.new('VectorGradient', {
@@ -314,7 +314,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    local lGradient = gui.iconThemes.default
    local icon = { size=Size }
 
-   gui._counter = gui._counter + 1
+   gui._counter++
    local gname = 'icon_grd' .. gui._counter
 
    if type(Theme) is 'table' then
@@ -340,7 +340,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
 
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1, 'boundingbox', true)
-   if string.find(Path, 'icons:') != 1 then
+   if not string.startsWith(Path, 'icons:') then
       Path = 'icons:' .. Path .. '.svg'
    end
    icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
