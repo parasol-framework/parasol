@@ -14,8 +14,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
-- Build: `cmake --build build/agents --config [BuildType] --parallel`
-- Install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents`
+- Build and install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.  In static builds, use `--target [module] parasol_cmd` to ensure that the parasol executable is rebuilt to include the changes.
 
 **Testing:**
@@ -94,7 +93,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
 - General API framework documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
-#### Fluid Features Additional to Lua
+#### Fluid Features and Breaking Changes to Lua
 
 - `is` instead of `==`
 - `continue` statement in loops
@@ -107,6 +106,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - `?=` and `??` conditional operators as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
 - `defer() ... end` statement that runs code when de-scoped.
 - `goto`, labels, `==` and `~=` are deprecated
+- Zero-based indexing for tables and string functions.
 
 #### Fluid Coding Patterns
 

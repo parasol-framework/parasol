@@ -349,16 +349,14 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
       std::string lookup;
       lookup.assign(name, 5, i-5);
 
-      auto def = Self->Defs.find(lookup);
-      if (def != Self->Defs.end()) {
+      if (auto def = Self->Defs.find(lookup); def != Self->Defs.end()) {
          Args->Def = def->second;
          return ERR::Okay;
       }
       else return ERR::Search;
    }
 
-   auto def = Self->Defs.find(name);
-   if (def != Self->Defs.end()) {
+   if (auto def = Self->Defs.find(name); def != Self->Defs.end()) {
       Args->Def = def->second;
       return ERR::Okay;
    }
