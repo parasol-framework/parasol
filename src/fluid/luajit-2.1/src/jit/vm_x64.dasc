@@ -2,6 +2,8 @@
 |// Bytecode interpreter, fast functions and helper functions.
 |// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 |
+|// NB: The functions in this file are typically backed by fallback functions in C++, e.g. assert -> lib_base.cpp and lj_ffrecord.cpp
+|
 |.arch x64
 |.section code_op, code_sub
 |
@@ -1178,25 +1180,10 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |.ffunc_1 assert
   |  mov ITYPE, [BASE]
-  |  mov RB, ITYPE
   |  sar ITYPE, 47
   |  cmp ITYPEd, LJ_TISTRUECOND; jae ->fff_fallback
   |  mov PC, [BASE-8]
-  |  mov MULTRES, RDd
-  |  mov RB, [BASE]
-  |  mov [BASE-16], RB
-  |  sub RDd, 2
-  |  jz >2
-  |  mov RA, BASE
-  |1:
-  |  add RA, 8
-  |  mov RB, [RA]
-  |  mov [RA-16], RB
-  |  sub RDd, 1
-  |  jnz <1
-  |2:
-  |  mov RDd, MULTRES
-  |  jmp ->fff_res_
+  |  jmp ->fff_res0  // Return 0 values (assert no longer returns its arguments)
   |
   |.ffunc_1 type
   |  mov RC, [BASE]

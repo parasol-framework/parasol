@@ -62,6 +62,7 @@ OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
 OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
+bool glPrintMsg = false;
 JOF glJitOptions = JOF::NIL;
 ankerl::unordered_dense::map<std::string_view, ACTIONID, CaseInsensitiveHashView, CaseInsensitiveEqualView> glActionLookup;
 ankerl::unordered_dense::map<std::string_view, uint32_t> glStructSizes;
@@ -187,6 +188,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    CoreBase = argCoreBase;
 
    glFluidContext = CurrentContext();
+   glPrintMsg = GetResource(RES::LOG_LEVEL) >= 5;
 
    argModule->get(FID_Root, modFluid);
 
