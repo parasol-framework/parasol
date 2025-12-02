@@ -2052,7 +2052,7 @@ ParserResult<ExpDesc> IrEmitter::emit_shadow_assert(const ExprNodeList& argument
    ExpDesc condition = cond_result.value_ref();
 
    // Test the condition and jump to success path if true
-   // bcemit_branch_t emits IST/ISFC and returns jump-if-false
+   // bcemit_branch_t emits IST/ISFC and sets condition.f to the jump-if-false position
    if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
    bcemit_branch_t(fs, &condition);
    ControlFlowEdge fail_edge = this->control_flow.make_false_edge(BCPos(condition.f));
