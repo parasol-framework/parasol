@@ -895,8 +895,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          auto args = this->parse_call_arguments(&forwards);
          if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
 
-         // Transform assert(expression, message) to expression ?? error(message)
+         // Transform assert(expression, message) to "expression ?? error(message)"
          // This short-circuits message evaluation when expression is truthy
+
          ExprNodeList call_args = std::move(args.value_ref());
          if (base->kind IS AstNodeKind::IdentifierExpr) {
             const auto* name_ref = std::get_if<NameRef>(&base->data);
