@@ -6,7 +6,7 @@ Internal script for combobox drop-down menus.
    require 'gui'
    include 'display'
 
-   if not mGfx then mGfx = mod.load('display') end
+   mGfx ?= mod.load('display')
 
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
 local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
@@ -196,7 +196,7 @@ gui.dropdown = function(Options)
             end
 
             if y + surface.height > target.height then
-               y = y - surface.height - (Options.y ?? 0)
+               y -= surface.height - (Options.y ?? 0)
             end
 
             surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
@@ -330,7 +330,7 @@ gui.dropdown = function(Options)
             if not highlightFound and self.hItem then
                highlightItem(nil)
             end
-         elseif (ev.type is JET_CROSSED_OUT) then
+         elseif ev.type is JET_CROSSED_OUT then
             if self.hItem then highlightItem(nil) end
          end
 

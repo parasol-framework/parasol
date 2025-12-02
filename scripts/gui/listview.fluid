@@ -29,7 +29,7 @@ local function rearrangeItems(View)
 
       if not item.hidden then
          View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y = y + LINE_HEIGHT + VSPACING
+         y += LINE_HEIGHT + VSPACING
       end
    end
 end
@@ -37,8 +37,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.listView = function(Options)
-   local lTextAttrib = (Options.textAttrib ?? 'name')
-   local lCompact    = (Options.compact ?? 0)
+   local lTextAttrib = Options.textAttrib ?? 'name'
+   local lCompact    = Options.compact ?? 0
 
    local function setListTextFill(Item, Fill)
       if Item._vectors.text then
@@ -202,7 +202,7 @@ gui.listView = function(Options)
             vp.visibility = VIS_HIDDEN
          else
             vp.visibility = VIS_VISIBLE
-            y = y + LINE_HEIGHT + VSPACING
+            y += LINE_HEIGHT + VSPACING
          end
 
          if width > widest_item then widest_item = width end

@@ -42,7 +42,7 @@ Gamepad demonstration
       txtButtons.string = 'Buttons: ' .. string.format('%.8x', ctrl.buttons)
 
       local speed = MAX_SPEED
-      if bit.band(ctrl.buttons, CON_GAMEPAD_S) != 0 then
+      if (ctrl.buttons & CON_GAMEPAD_S)?? then
          speed = speed * 2
       end
 

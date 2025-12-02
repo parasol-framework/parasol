@@ -10,8 +10,8 @@ Documentation is available in the Parasol Wiki.
    require 'gui/input'
    require 'gui/window'
 
-   if (gui is nil) then gui = { } end
-   if (gui.dialog is nil) then gui.dialog = { } end
+   gui ?= { }
+   gui.dialog ?= { }
 
 local GAP = 8
 
@@ -29,12 +29,12 @@ gui.dialog.file = function(Options)
       local list = self.fileview.view.selectedItems()
 
       if (self.warnExists is true) and (#list > 0) then
-         local error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[1].filename)
-         if (type is LOC_FILE) then
+         local error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
+         if type is LOC_FILE then
             local msg
 
             if #list is 1 then
-               msg = "You are about to overwrite the file '" .. list[1].filename .. "'.  Do you want to continue?"
+               msg = "You are about to overwrite the file '" .. list[0].filename .. "'.  Do you want to continue?"
             else
                msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
             end
@@ -63,7 +63,7 @@ gui.dialog.file = function(Options)
       end
 
       if self.feedback then
-         if (#list is 0) then list = nil end
+         if #list is 0 then list = nil end
          self.feedback(self, self.fileview.path, list)
       end
 
@@ -127,7 +127,7 @@ gui.dialog.file = function(Options)
 
    local lCancelButton = gui.button({
       target  = self.viewport,
-      text    = (Options.cancelText ?? 'Cancel'),
+      text    = Options.cancelText ?? 'Cancel',
       xOffset = GAP,
       yOffset = footer,
       icon    = 'items/cancel',
@@ -144,7 +144,7 @@ gui.dialog.file = function(Options)
 
    local lOkayButton = gui.button({
       target     = self.viewport,
-      text       = (Options.okText ?? 'Okay'),
+      text       = Options.okText ?? 'Okay',
       xOffset    = lCancelButton.viewport.width + (GAP * 2),
       yOffset    = footer,
       icon       = 'items/checkmark',
@@ -153,7 +153,7 @@ gui.dialog.file = function(Options)
       }
    })
 
-   footer = footer + lOkayButton.viewport.height + GAP
+   footer += lOkayButton.viewport.height + GAP
 
    -- Filter selection
 

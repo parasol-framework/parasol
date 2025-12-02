@@ -22,7 +22,7 @@ Demonstrates the functionality provided by the divider interface.
       x = leftVP.x + leftVP.width, y = win.margins.top, xOffset = win.margins.right, yOffset = win.margins.bottom
    })
 
-   gui.divider({ left = leftVP, right = rightVP, minA = 30, maxA = win.surface.insideWidth * 0.6, minB = 30 })
+   gui.divider({ left = leftVP, right = rightVP, minA = 30, maxA = win.surface.width * 0.6, minB = 30 })
 
    -- The right-side viewport contains two child viewports with a horizontal divider to split them.
 

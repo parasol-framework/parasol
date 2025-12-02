@@ -106,11 +106,7 @@ gui.checkbox = function(Options)
       height = ICON_SIZE,
       fill   = chk_icon.fill,
       opacity = (function()
-         if self.state is 1 then
-            return 1.0
-         else
-            return 0.25
-         end
+         return self.state is 1 ? 1.0 :> 0.25
       end)()
    })
 
@@ -164,7 +160,7 @@ gui.checkbox = function(Options)
    self.viewport.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Msg)
       repeat
          if Msg.type is JET_LMB then
-            if (Msg.value > 0) then
+            if Msg.value > 0 then
                toggleState(self)
             end
          end

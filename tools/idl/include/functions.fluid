@@ -165,14 +165,14 @@ function flags(Prefix, Options, ...)
    end
 
    local function outputFlagDef(Options, Prefix, flag_name, val)
-      if (not Options.weak) then
-         if (Options.bits is 16) then
+      if not Options.weak then
+         if Options.bits is 16 then
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
          else
             local hash_id = string.format('%08x', val):sub(-8)
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%s,', flag_name, hash_id) } )
          end
-      elseif (Options.bits is 16) then
+      elseif Options.bits is 16 then
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val) })
       else
          -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
@@ -181,13 +181,13 @@ function flags(Prefix, Options, ...)
       end
    end
 
-   if (not Options.weak) then
+   if not Options.weak then
       local type_size = 'uint32_t'
-      if (Options.bits is 64) then
+      if Options.bits is 64 then
          type_size = 'int64_t'
-      elseif (Options.bits is 16) then
+      elseif Options.bits is 16 then
          type_size = 'uint16_t'
-      elseif (Options.bits is 8) then
+      elseif Options.bits is 8 then
          type_size = 'uint8_t'
       end
       table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
@@ -197,9 +197,9 @@ function flags(Prefix, Options, ...)
    local lookup = { }
    local flags = {...}
    local f = 0
-   for a=1,#flags do
+   for a=0, #flags - 1 do
       local flag_name
-      if (type(flags[a]) is 'string') then
+      if type(flags[a]) is 'string' then
          local key, comment = flags[a]:match('^(.-):%s+(.+)$')
          if not key then key = flags[a] end
 
@@ -208,12 +208,12 @@ function flags(Prefix, Options, ...)
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
          end
-      elseif (type(flags[a]) is 'table') then
+      elseif type(flags[a]) is 'table' then
          for flag_name, ref in pairs(flags[a]) do
             local val = 0
 
             local key, comment
-            if (type(ref) != 'number') then
+            if type(ref) != 'number' then
                key, comment = ref:match('^(.-):%s+(.+)$')
                if key then
                   if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
@@ -244,7 +244,7 @@ function flags(Prefix, Options, ...)
          error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flags[a]) .. "'")
       end
 
-      f += 1
+      f++
    end
 
    table.sort(sortedFlags, function(a,b) return a.value < b.value end)
@@ -252,7 +252,7 @@ function flags(Prefix, Options, ...)
       table.insert(out, flag.define)
    end
 
-   if (not Options.weak) then
+   if not Options.weak then
       table.insert(out, '};')
       table.insert(out, '')
       table.insert(out, 'DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
@@ -322,12 +322,12 @@ function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    local out = { }
-   if (Options.comment??) then
+   if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
 
-   if (Options.type) then -- Strong typing enabled, convert via cType()
+   if Options.type then -- Strong typing enabled, convert via cType()
       Options.type = cType({ type=Options.type }, Prefix)
       table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
@@ -335,13 +335,13 @@ function const(Prefix, Options, ...)
 
    local list = { }
    for k,va in ipairs({...}) do
-      if (type(va) is 'string') then
+      if type(va) is 'string' then
          local key, comment = va:match('^(.-):%s+(.+)$')
          if not key then key = va end
          for _, v in ipairs(key:split('|')) do
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
-      elseif (type(va) is 'table') then
+      elseif type(va) is 'table' then
          local sorted = { }
          for name, value in pairs(va) do
             table.insert(sorted, { name = name, value = value })
@@ -358,12 +358,12 @@ function const(Prefix, Options, ...)
 
          for _, v in ipairs(sorted) do
             local val, comment
-            if (type(v.value) is 'string') then
+            if type(v.value) is 'string' then
                val, comment = v.value:match('^(.-):%s+(.+)$')
             end
             if not val then val = v.value end
 
-            if (Options.type) then
+            if Options.type then
                table.insert(out, '   ' .. v.name .. ' = ' .. val .. ',')
             else
                table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
@@ -376,7 +376,7 @@ function const(Prefix, Options, ...)
       end
    end
 
-   if (Options.type) then
+   if Options.type then
       table.insert(out, '};')
    end
 
@@ -405,12 +405,12 @@ function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    local out = { }
-   if (Options.comment??) then
+   if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
 
-   if (Options.type) then -- Strong typing enabled, convert via cType()
+   if Options.type then -- Strong typing enabled, convert via cType()
       Options.type = cType({ type=Options.type }, Prefix)
       table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
@@ -426,7 +426,7 @@ function enum(Prefix, Options, ...)
          for _, name in ipairs(key:split('|')) do
             if Options.type then
                table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
-            elseif (Options.bits is 64) then
+            elseif Options.bits is 64 then
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc .. 'LL')
             else
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
@@ -436,7 +436,7 @@ function enum(Prefix, Options, ...)
             synonym = true
          end
 
-         inc += 1
+         inc++
       elseif type(va) is 'table' then -- The client provided a table of fixed values
          for name, client_val in pairs(va) do
             if (type(client_val) != 'number') then
@@ -799,7 +799,7 @@ function class(Name, Options, Spec, Private, Custom)
             local i = 1
             for str in string.gmatch(method.input, '([^;]+)') do
                t[i] = str:trim()
-               i += 1
+               i++
             end
 
             method.params = { }

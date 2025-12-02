@@ -34,7 +34,7 @@ gui.scrollbar = function(Options)
          slider_size = min_size
          local scale = (PageLength - ViewLength) / (HostLength - min_size)
          offset = Position / scale
-         if (slider_size + offset > HostLength) then
+         if slider_size + offset > HostLength then
             offset = HostLength - slider_size
             if (offset < 0) then offset = 0 end
             if (slider_size + offset) > HostLength then
@@ -47,7 +47,7 @@ gui.scrollbar = function(Options)
          else
             offset = (Position * HostLength) / PageLength
          end
-         if (offset < 0) then offset = 0 end
+         if offset < 0 then offset = 0 end
       end
 
       if (slider_size + offset) > HostLength then
@@ -132,9 +132,9 @@ gui.scrollbar = function(Options)
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
             local slider_height = Viewport.height
             local host_height   = self.vbar.sliderHostVP.height
-            if (Y < 0) then Y = 0 end
-            if (Y + slider_height > host_height) then Y = host_height - slider_height end
-            if (Viewport.y is Y) then return end
+            if Y < 0 then Y = 0 end
+            if Y + slider_height > host_height then Y = host_height - slider_height end
+            if Viewport.y is Y then return end
 
             if (Y != self.vbar.slider.offset) or (slider_height != self.vbar.slider.size) then
                local pct_pos = Y / (host_height - slider_height)
@@ -197,7 +197,7 @@ gui.scrollbar = function(Options)
                   end
                end
                Msg = Msg.next
-            until Msg is nil
+            until not Msg
          end)
 
       bar.negVP.mtSubscribeInput(JTYPE_BUTTON|JTYPE_REPEATED,
@@ -215,7 +215,7 @@ gui.scrollbar = function(Options)
                   lStyle.negButtonPress(bar, Msg.value)
                end
                Msg = Msg.next
-            until Msg is nil
+            until not Msg
          end)
 
       bar.posVP.mtSubscribeInput(JTYPE_BUTTON|JTYPE_REPEATED,
@@ -233,7 +233,7 @@ gui.scrollbar = function(Options)
                   lStyle.posButtonPress(bar, Msg.value)
                end
                Msg = Msg.next
-            until Msg is nil
+            until not Msg
          end)
 
       return bar
@@ -249,26 +249,26 @@ gui.scrollbar = function(Options)
 
          if (lPageMode is 'dynamic') then
             local nw = lMinWidth
-            if (nw < lView.width) then -- Maximise page width in dynamic mode
-               if (px != 0) then
+            if nw < lView.width then -- Maximise page width in dynamic mode
+               if px != 0 then
                   px = 0
                   lPage.x = 0
                end
                nw = lView.width
             end
-            if (pw != nw) then
+            if pw != nw then
                lPage.width = nw
                pw = nw
             end
          end
 
-         if (px + pw < lView.width) then
+         if px + pw < lView.width then
             local x = lView.width - pw
             if x > 0 then x = 0 end
             if px != x then lPage.x = math.floor(x) end
          end
 
-         if (py + lPage.height < lView.height) then
+         if py + lPage.height < lView.height then
             local y = lView.height - lPage.height
             if y > 0 then y = 0 end
             if py != y then lPage.y = math.floor(y) end

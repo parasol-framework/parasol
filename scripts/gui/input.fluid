@@ -32,7 +32,7 @@ end
 
 gui.input = function(Options)
    local self = { -- Public variables
-      events         = (Options.events ?? { }),
+      events         = Options.events ?? { },
       label          = Options.label,
       parentViewport = Options.target,
       inputMask      = Options.inputMask,
@@ -145,10 +145,10 @@ gui.input = function(Options)
       name      = 'vt_input',
       x         = 4,
       y         = math.round(font_height + math.floor((box_height - font_height - (gui.style.page.strokeWidth * 2)) * 0.5)),
-      face      = (Options.textFace ?? gui.fonts.widget.face),
+      face      = Options.textFace ?? gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fontStyle = (Options.textStyle ?? gui.fonts.widget.style),
-      fill      = (Options.textFill ?? gui.style.page.text),
+      fontStyle = Options.textStyle ?? gui.fonts.widget.style,
+      fill      = Options.textFill ?? gui.style.page.text,
       string    = Options.text,
       lineLimit = 1,
       textFlags = (function()
@@ -161,7 +161,7 @@ gui.input = function(Options)
    if Options.selected then self.text.mtSelectArea(0, 20000) end
 
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-      if (Event is FM_LOST_FOCUS) then
+      if Event is FM_LOST_FOCUS then
          self.bkgd.stroke = gui.style.page.stroke
          if self.events.lostFocus then self.events.lostFocus(self) end
          if validateInput(self) then
@@ -202,7 +202,7 @@ gui.input = function(Options)
                if self.events.cursorExit then self.events.cursorExit(self) end
             end
             Msg = Msg.next
-         until Msg is nil
+         until not Msg
       end)
    end
 

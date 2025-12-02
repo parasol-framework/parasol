@@ -10,7 +10,7 @@
       feedback = function(Dialog, Path, Files)
          mSys.SendMessage(MSGID_QUIT)
 
-         if (Files == nil) then
+         if (Files is nil) then
             print('Dialog was cancelled.')
             return
          end

@@ -102,11 +102,11 @@ gui.combobox = function(Options)
       yOffset = 0,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          local new_width = Width - self.labelSize
-         if (Vector.width != new_width) then
+         if Vector.width != new_width then
             Vector.width = new_width
          end
 
-         if (Vector.height != Height) then
+         if Vector.height != Height then
             Vector.height = Height
          end
       end

@@ -6,8 +6,8 @@ Documentation is available in the Parasol Wiki.
    require 'gui/listview'
    include 'display'
 
-   if (gui is nil) then gui = { } end
-   if (gui.dialog is nil) then gui.dialog = { } end
+   gui ?= { }
+   gui.dialog ?= { }
 
 gui.dialog.font = function(Options)
    local mFont = mod.load('font')
@@ -47,7 +47,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
       self.compactFace = self.face .. ':' .. self.pointSize .. ':' .. self.style .. ':' .. colour
 
-      if (lOptions.feedback != nil) then
+      if lOptions.feedback then
          lOptions.feedback(self, Accepted)
       end
 
@@ -66,7 +66,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          local x1 = gap
          local x2 = pageWidth - gap
          for y = baseline, self.examplePage.height, spacing do
-            seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
+            seq ..= string.format('M%f,%f L%f,%f ', x1, y, x2, y)
          end
          self.guidelines.sequence = seq
 
@@ -140,7 +140,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          if not font.hidden?? then
             table.insert(lFontsSorted, lFonts[font.name])
          end
-         index = index + 1
+         index++
          font = font.next
       end
    end
@@ -158,7 +158,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    local function showStyles(Face)
       local styles = { }
       if lFonts[Face].alias?? then Face = lFonts[Face].alias end
-      local font_styles = (lFonts[Face].styles ?? { 'Regular' })
+      local font_styles = lFonts[Face].styles ?? { 'Regular' }
       for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })
       end
@@ -185,12 +185,12 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    -- Disassemble any compact font face definition.
 
-   if (lOptions.face) then
+   if lOptions.face then
       local s = string.split(face, ':') -- FaceName, Size, Style, Colour
-      if s[1] then lOptions.face = s[1] end
-      if s[2] then lOptions.pointSize = s[2] end
-      if s[3] then lOptions.style = s[3] end
-      if s[4] then lOptions.colour = s[4] end
+      if s[0] then lOptions.face = s[0] end
+      if s[1] then lOptions.pointSize = s[1] end
+      if s[2] then lOptions.style = s[2] end
+      if s[3] then lOptions.colour = s[3] end
    end
 
    lWindow = gui.window({
@@ -205,11 +205,11 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       popOver      = lOptions.popOver,
       parent       = lOptions.target,
       icon         = 'items/font',
-      title        = (lOptions.title ?? 'Select a font'),
-      modal        = (lOptions.modal ?? false),
+      title        = lOptions.title ?? 'Select a font',
+      modal        = lOptions.modal ?? false,
       events = {
          close = function(Window)
-            if (lOptions.feedback != nil) then
+            if lOptions.feedback then
                lOptions.feedback(self, nil)
             end
             lWindow = nil
@@ -253,7 +253,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       }
    })
 
-   footer = footer + lOkayButton.viewport.height + WIDGET_GAP
+   footer += lOkayButton.viewport.height + WIDGET_GAP
 
    -- Font example area
 
@@ -337,9 +337,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       sensitive    = true,
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
-         if not lFonts[Item.name] then
-            error('Font "' .. (Item.name ?? 'NIL') .. '" not recognised.')
-         end
+         assert(lFonts[Item.name], 'Font "' .. (Item.name ?? 'NIL') .. '" not recognised.')
 
          self.face = Item.name
 
@@ -374,7 +372,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
          showFontSizes(sizes)
 
-         if (sizes[1] > self.pointSize) then self.pointSize = sizes[1] end
+         if (sizes[0] > self.pointSize) then self.pointSize = sizes[0] end
          highlightSize(self.pointSize)
       end
    })
@@ -382,14 +380,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    local faces = { }
    for _, font in ipairs(lFontsSorted) do
       local new_font = { id=font.name, name=font.name }
-
       if font.alias?? then font = lFonts[font.alias] end
-
-      if font.scalable then
-         new_font.icon = 'items/font'
-      else
-         new_font.icon = 'layout/text_sans'
-      end
+      new_font.icon = font.scalable ? 'items/font' :> 'layout/text_sans'
       table.insert(faces, new_font)
    end
    vwFace.loadItems(faces)

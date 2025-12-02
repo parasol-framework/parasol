@@ -4,7 +4,7 @@ Documentation is available in the Parasol Wiki.
 
    require 'common'
 
-   if (gui is nil) then gui = { } end
+   gui ?= { }
 
 gui.tooltip = function(Options)
    local self = { } -- Public variables

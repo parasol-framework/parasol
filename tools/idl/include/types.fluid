@@ -53,7 +53,7 @@ glTypes = {
 function getFieldType(Def, Type, CustomName, Option)
    local result
 
-   if Type & FD_CUSTOM != 0 then
+   if (Type & FD_CUSTOM)?? then
       if CustomName?? then
          Def.type = CustomName
       else
@@ -180,7 +180,7 @@ end
 
 function cType(Field, Origin)
    if not Field.type then
-      error("Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'")
+      error("Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'\n" .. debug.traceback())
    end
 
    Field.defType = Field.type -- Save the original type name
@@ -556,7 +556,7 @@ function cType(Field, Origin)
 
          -- Process function result type
 
-         Field.type = ((#arglist < 1) ? 'void' :> (glTypes[arglist[1]].c_type ?? arglist[1])) .. ' (*' .. Field.name .. ')'
+         Field.type = ((#arglist is 0) ? 'void' :> (glTypes[arglist[0]].c_type ?? arglist[0])) .. ' (*' .. Field.name .. ')'
 
          -- Process function parameters
 
@@ -564,7 +564,7 @@ function cType(Field, Origin)
             Field.type ..= '(void)'
          else
             local params = ''
-            for i=2, #arglist do
+            for i=1, #arglist-1 do
                if params?? then params ..= ', ' end
                params ..=  cType({ type=arglist[i], name='' }, Origin).type
             end

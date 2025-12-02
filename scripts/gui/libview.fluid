@@ -155,8 +155,8 @@ end
 
 local function selectPrev(View, Filter)
    if not View.sItem then
-      for i=1, #View.items do
-         local item = View.items[#View.items + 1 - i]
+      for i=0, #View.items-1 do
+         local item = View.items[#View.items - i]
          if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
@@ -164,8 +164,8 @@ local function selectPrev(View, Filter)
       end
    else
       local found = false
-      for i=1, #View.items do
-         local item = View.items[#View.items + 1 - i]
+      for i=0, #View.items-1 do
+         local item = View.items[#View.items - i]
          if item is View.sItem then
             found = true
          elseif found and (not item.hidden) and Filter(item) then
@@ -241,7 +241,7 @@ gui.initView = function(Options, BuildUI, NewItems)
          table.insert(vw.items, new_item)
          if NewItems then table.insert(new_items, new_item) end
          vw.lookup[lItemCounter] = new_item
-         lItemCounter = lItemCounter + 1
+         lItemCounter++
       end
 
       if NewItems and (#new_items > 0) then NewItems(vw, new_items) end -- Report new items to view manager
@@ -302,7 +302,7 @@ gui.initView = function(Options, BuildUI, NewItems)
          hoverCallback = HoverCallback
       })
 
-      return vw.zones[#vw.zones]
+      return vw.zones[#vw.zones-1]
    end
 
    -- Clears a view of all internal content and updates the display.
@@ -395,10 +395,10 @@ gui.initView = function(Options, BuildUI, NewItems)
       end
 
       highlightItem(vw, nil)
-      vw.activeItem = vw.items[1]
-      vw.sItem = vw.items[1]
-      reportItemSelected(vw, 'selected', vw.items[1])
-      reportActiveChange(vw, 'selected', vw.items[1])
+      vw.activeItem = vw.items[0]
+      vw.sItem = vw.items[0]
+      reportItemSelected(vw, 'selected', vw.items[0])
+      reportActiveChange(vw, 'selected', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -447,8 +447,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       vw.sItem = nil
       vw.activeItem = nil
-      reportItemDeselected(vw, 'deselected', vw.items[1])
-      reportActiveChange(vw, 'deselected', vw.items[1])
+      reportItemDeselected(vw, 'deselected', vw.items[0])
+      reportActiveChange(vw, 'deselected', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -482,8 +482,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       if (#vw.items <= 1) then return end
 
-      if (type(vw.items[1][Attrib]) is 'table') then
-         if vw.items[1][Attrib]['sort'] then
+      if (type(vw.items[0][Attrib]) is 'table') then
+         if vw.items[0][Attrib]['sort'] then
             table.sort(vw.items, function(a,b)
                return Ascending ? (a[Attrib].sort < b[Attrib].sort) :> (a[Attrib].sort > b[Attrib].sort)
             end)

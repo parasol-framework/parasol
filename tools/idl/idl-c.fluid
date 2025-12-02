@@ -224,30 +224,26 @@ glActionStubs = {
 ----------------------------------------------------------------------------------------------------------------------
 
 function outputLookup(Name, List)
-    local sorted = { }
-    for _, v in pairs(List) do
-        table.insert(sorted, v)
-    end
+   local sorted = { }
+   for _, v in pairs(List) do
+      table.insert(sorted, v)
+   end
 
-    table.sort(sorted, function(a,b)
-        if (a.value is b.value) then
-            return a.name < b.name
-        else
-            return a.value < b.value
-        end
-    end)
+   table.sort(sorted, function(a,b)
+      return (a.value is b.value) ? a.name < b.name :> a.value < b.value
+   end)
 
-    local list = ''
-    for _, v in ipairs(sorted) do
-        if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
-            -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-            local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
-            if hash_id:match('^0x[8f][%dabcdef]+') then hash_id = '(int)' .. hash_id end
-            list = list .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
-        end
-    end
+   local list = ''
+   for _, v in ipairs(sorted) do
+      if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
+         -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+         local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
+         if hash_id:match('^0x[8f][%dabcdef]+') then hash_id = '(int)' .. hash_id end
+         list ..= string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
+      end
+   end
 
-    return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { nullptr, 0 }\n};\n\n'
+   return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { nullptr, 0 }\n};\n\n'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -312,7 +308,7 @@ function outputClassHeader(class, Private, Custom)
    if not table.empty(class.sortedActions) then
       for _, action in ipairs(class.sortedActions) do
          if glActionStubs[action.name] then
-            if (glActionStubs[action.name]:len() != 0) then
+            if glActionStubs[action.name]:len() != 0 then
                local stub = glActionStubs[action.name]
                stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
                output(stub)
@@ -350,7 +346,7 @@ function outputClassHeader(class, Private, Custom)
          local fid_name = field_name
          local id = fid_name:sub(-3)
          if id:find('^%lID$') then
-            fid_name = fid_name:sub(1, -3)
+            fid_name = fid_name:sub(0, -3)
          end
 
          local field_type = f.type
@@ -360,13 +356,13 @@ function outputClassHeader(class, Private, Custom)
          end
 
          if not field_type:find('^const ') then
-            if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) is 0) then
+            if ((f.flags & FD_STRING) != 0) and ((f.flags & FD_ARRAY) is 0) then
                if field_type:find('^STRING') or field_type:find('^CSTRING') then
                   field_type = 'T &&'
                else
                   field_type = 'const ' .. field_type
                end
-            elseif bit.band(f.flags, bit.bor(FD_POINTER, FD_OBJECT)) != 0 then
+            elseif (f.flags & (FD_POINTER | FD_OBJECT)) != 0 then
                -- Applying const to pointers can cause type conversion issues.
             else
                field_type = 'const ' .. field_type
@@ -381,10 +377,10 @@ function outputClassHeader(class, Private, Custom)
             end
 
             if field_type:sub(-2) is '[]' then
-               field_type = field_type:sub(1,-3) .. '*'
+               field_type = field_type:sub(0,-3) .. '*'
                output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
-            elseif (bit.band(f.flags, FD_ARRAY) != 0) then
-               if bit.band(f.flags, FD_CPP) != 0 then
+            elseif ((f.flags & FD_ARRAY) != 0) then
+               if (f.flags & FD_CPP) != 0 then
                   output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
                else
                   output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
@@ -405,7 +401,7 @@ function outputClassHeader(class, Private, Custom)
                print('Failed to field ' .. f.name .. ' in class ' .. class.name)
             end
 
-            if err is ERR_Okay and (target.id is class.meta.id) then
+            if err is ERR_Okay and target.id is class.meta.id then
                output(indent .. 'auto target = this;')
                output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
             else
@@ -413,44 +409,44 @@ function outputClassHeader(class, Private, Custom)
                output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
             end
 
-            if bit.band(f.flags, FD_UNIT) != 0 then
-               if bit.band(f.flags, bit.bor(FD_INT,FD_INT64,FD_DOUBLE,FD_FLOAT)) != 0 then
+            if (f.flags & FD_UNIT) != 0 then
+               if (f.flags & (FD_INT|FD_INT64|FD_DOUBLE|FD_FLOAT)) != 0 then
                   output(indent .. 'Unit var(Value);')
                   output(indent .. 'return field->WriteValue(target, field, FD_UNIT, &var, 1);')
                else
                   -- Pass through as pointer; requires further analysis to determine viability
                   output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
                end
-            elseif bit.band(f.flags, FD_ARRAY) != 0 then
-               if bit.band(f.flags, FD_CPP) != 0 then
+            elseif (f.flags & FD_ARRAY) != 0 then
+               if (f.flags & FD_CPP) != 0 then
                   local flags = string.format('%08x', f.flags):sub(-8)
                   output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, int(Value->size()));')
                else
                   local flags = string.format('%08x', f.flags):sub(-8)
                   output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
                end
-            elseif bit.band(f.flags, FD_FUNCTION) != 0 then
+            elseif (f.flags & FD_FUNCTION) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
-            elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
+            elseif (f.flags & FD_STRING) != 0 then
                local flags = string.format('%08x', f.flags):sub(-8)
                output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
-            elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
+            elseif (f.flags & FD_POINTER) != 0 then
                local flags = string.format('%08x', f.flags):sub(-8)
                output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
-            elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
+            elseif (f.flags & (FD_DOUBLE | FD_FLOAT)) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
-            elseif bit.band(f.flags, FD_INT64) != 0 then
+            elseif (f.flags & FD_INT64) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_INT64, &Value, 1);')
             else
                output(indent .. 'return field->WriteValue(target, field, FD_INT, &Value, 1);')
             end
          else
-            if (field_type is 'T &&') then
+            if field_type is 'T &&' then
                output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
             else
                output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
             end
-            if (f.write is 'Init') then
+            if f.write is 'Init' then
                output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
             end
             output(indent .. string.format('this->%s = Value;', field_name))
@@ -506,7 +502,7 @@ function parseFDLFile(Source)
 
    glFDLFolder = file.splitPath(full_path)
 
-   if (err is ERR_Okay) then
+   if err is ERR_Okay then
       verbose('Process FDL file ' .. full_path)
       loadFile(full_path)
       return ERR_Okay
@@ -593,7 +589,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             end
 
             if param.type is '...' then
-               proto ..= '...'
+               proto     ..= '...'
                doc_proto ..= '...'
                if not outValues?? then
                   -- This special case is required when '...' is the first parameter.
@@ -606,7 +602,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues ..= 'Tags...'
                variadic = true
             else
-               proto ..= (param.extType ?? param.type) .. ' ' .. cName(param)
+               proto     ..= (param.extType ?? param.type) .. ' ' .. cName(param)
                doc_proto ..= (param.docType ?? param.type) .. ' ' .. cName(param)
                outValues ..= param.name
             end
@@ -627,7 +623,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto
       if (string.sub(argSeq, -3) is '...') then
-         argSeq = string.sub(argSeq, 1, -4) .. 'Args... Tags'
+         argSeq = string.sub(argSeq, 0, -4) .. 'Args... Tags'
       end
    elseif not jumpArgs then
       jumpArgs = argSeq
@@ -636,7 +632,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    -- The func.def is used for building the jump table
    func.def = '   ' .. tostring(response.type)
    if Def.attrib then func.def = func.def .. ' ' .. Def.attrib end
-   func.def = func.def  .. ' (*_' .. func.name .. ')(' .. (jumpArgs ?? 'void') .. ');'
+   func.def ..= ' (*_' .. func.name .. ')(' .. (jumpArgs ?? 'void') .. ');'
 
    func.c_proto = proto
    func.doc_proto = doc_proto
@@ -694,10 +690,10 @@ function saveOutput()
       priority() -- Blank line at the end
 
       local blank = 0
-      for a=1, #glHeader do
+      for a=0, #glHeader-1 do
          local str = glHeader[a] .. '\n'
-         if (str is '\n') then
-            blank += 1
+         if str is '\n' then
+            blank++
          else
             blank = 0
          end
@@ -705,10 +701,10 @@ function saveOutput()
          if (blank < 2) then file.acWrite(str, str:len()) end
       end
 
-      for a=1, #glConstants do
+      for a=0, #glConstants-1 do
          local str = glConstants[a] .. '\n'
-         if (str is '\n') then
-            blank += 1
+         if str is '\n' then
+            blank++
          else
             blank = 0
          end
@@ -716,8 +712,8 @@ function saveOutput()
          if blank < 2 then file.acWrite(str, str:len()) end
       end
 
-      for a=1, #glOutput do
-         if (glOutput[a] is '__FUNCTION_TABLE__') then
+      for a=0, #glOutput-1 do
+         if glOutput[a] is '__FUNCTION_TABLE__' then
             local out = ''
             out ..= '#ifdef PARASOL_STATIC\n'
             out ..= '#define JUMPTABLE_' .. glModule.name:upper() .. ' [[maybe_unused]] static struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base = nullptr;\n'
@@ -765,7 +761,7 @@ function saveOutput()
          else
             local str = glOutput[a] .. '\n'
             if str is '\n' then
-               blank += 1
+               blank++
             else
                blank = 0
             end
@@ -866,9 +862,9 @@ function buildDefs()
          if type?? then
             local fd = type.fd
             local result_name = 'Result'
-            if (fd is 'FD_INT|FD_ERROR') then
+            if fd is 'FD_INT|FD_ERROR' then
                result_name = 'Error'
-            elseif (fd is 'FD_OBJECTPTR') then
+            elseif fd is 'FD_OBJECTPTR' then
                result_name = 'Object'
             elseif func.result.struct then
                result_name = func.result.struct
@@ -931,8 +927,6 @@ end
       print("  prototypes   Set to 'static' to output static prototype functions.")
       return
    end
-
-   mSys = mod.load('core')
 
    glFunctions      = { }
    glFunctionLookup = { }

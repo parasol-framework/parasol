@@ -6,13 +6,13 @@ Documentation is available in the Parasol Wiki.
    require 'gui'
    include 'display'
 
-   if not mGfx then mGfx = mod.load('display') end
+   mGfx ?= mod.load('display')
 
 local DEFAULT_WIDTH  = 600
 local DEFAULT_HEIGHT = 400
 
 local lStyle = (function()
-   if (mSys.AnalysePath('style:window.fluid') is ERR_Okay) then
+   if mSys.AnalysePath('style:window.fluid') is ERR_Okay then
       return loadFile('style:window.fluid')
    else
       return loadFile('styles:default/window.fluid')
@@ -133,19 +133,19 @@ gui.window = function(Options)
    -- border of the window.
 
    self.resize = function(self, X, Y, Width, Height)
-      if not Width then Width = self.surface.width end
-      if not Height then Height = self.surface.height end
+      Width ?= self.surface.width
+      Height ?= self.surface.height
 
       if hosted(self) then
-         if not X then X = self.surface.x end
-         if not Y then Y = self.surface.y end
+         X ?= self.surface.x
+         Y ?= self.surface.y
          self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0,
             Width - self.client.left - self.client.right,
             Height - self.client.top - self.client.bottom, 0)
       else
          if (X) or (Y) then
-            if not X then X = self.surface.x end
-            if not Y then Y = self.surface.y end
+            X ?= self.surface.x
+            Y ?= self.surface.y
             self.surface.acRedimension(X, Y, 0, Width, Height, 0)
          else
             self.surface.acResize(Width, Height, 0)
@@ -182,7 +182,7 @@ gui.window = function(Options)
    -- Run the minimise procedure for the window (environment dependent).
 
    self.minimise = function(self)
-      if (self.MinimiseEnabled) then
+      if self.MinimiseEnabled then
          if self.events and self.events.minimise then
             self.events.minimise(self)
          end
@@ -280,8 +280,8 @@ gui.window = function(Options)
             if self.surface.popOver then
                local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
                if err is ERR_Okay then
-                  x = x + ((powidth - self.surface.width) / 2)
-                  y = y + ((poheight - self.surface.height) / 2)
+                  x += ((powidth - self.surface.width) / 2)
+                  y += ((poheight - self.surface.height) / 2)
                   local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
                   if err is ERR_Okay then
                      return x - px, y - py
@@ -289,7 +289,7 @@ gui.window = function(Options)
                end
             elseif self.surface.parent then
                local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
-               if (err is ERR_Okay) then
+               if err is ERR_Okay then
                   x = vx + ((vwidth - self.surface.width) / 2)
                   y = vy + ((vheight - self.surface.height) / 2)
                   --check_overlap(self, x, y, 0, 0)

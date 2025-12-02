@@ -23,8 +23,8 @@ local copy_list = [[
    local source_size = arg('source:size')
    if source_size?? then
       glList = { }
-      for i=1, source_size do
-         table.insert(glList, arg('source(' .. (i-1) .. ')'))
+      for i=0, source_size-1 do
+         table.insert(glList, arg('source(' .. i .. ')'))
       end
    else
       glList = { arg('source') }
@@ -38,13 +38,7 @@ local TBID = {
    BOOKMARK=12, CREATE_FOLDER=13, RENAME=14, DELETE=15, COL_VIEW=17, LIST_VIEW=18, FONT=19
 }
 
-local lFolderFill = gui.strToRGB(gui.style.page.bkgd)
-
-   if gui.rgbValue(lFolderFill) > 127 then
-      lFolderFill = 'rgb(20,20,110)'
-   else
-      lFolderFill = 'rgb(245,245,255)'
-   end
+local lFolderFill = gui.rgbValue(gui.strToRGB(gui.style.page.bkgd)) > 127 ? 'rgb(20,20,110)' :> 'rgb(245,245,255)'
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -234,7 +228,7 @@ end
 local function selectedFilters(self)
    local count = 0
    for _, filter in ipairs(self.filterList) do
-      if filter.selected then count = count + 1 end
+      if filter.selected then count++ end
    end
    return count
 end
@@ -608,7 +602,7 @@ gui.fileview = function(Options)
    local function eventVolumeDeleted(Info)
       if self.path then return end
 
-      --if delete_item(self.view.items[1], self.view, Info.name .. ':') then
+      --if delete_item(self.view.items[0], self.view, Info.name .. ':') then
       --   self.view.acRefresh()
       --end
    end
@@ -700,7 +694,7 @@ gui.fileview = function(Options)
             end
          end
 
-         if path:sub(1,2) is '\\\\' then
+         if path:startsWith('\\\\') then
             -- Windows doesn't cope well when constantly refreshing UNC paths (folders sometimes fail analysis).
 
          else
@@ -757,8 +751,8 @@ gui.fileview = function(Options)
 
       if not Path then -- If no file is given, the monitored folder was affected by something.
          if ((Flags & MFF_DELETE)?? and (Flags & MFF_SELF)??) or (Flags & MFF_UNMOUNT)?? then
-            if self.path:sub(1,2) is 'cd' then
-            elseif self.path:sub(1,4) is 'disk' then
+            if self.path:startsWith('cd') then
+            elseif self.path:startsWith('disk') then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
                if mSys.AnalysePath(self.path, 0) != ERR_Okay then
                   self.browse(nil)
@@ -965,7 +959,7 @@ gui.fileview = function(Options)
       end
 
       if self.limitPath then -- Limit browsing to the limitPath folder and its sub-folders.
-         if not self.path or (self.path:sub(1, self.limitPath:len()) != self.limitPath) then
+         if not self.path or (self.path:sub(0, self.limitPath:len()-1) != self.limitPath) then
             self.path = self.limitPath
          end
       end
@@ -1031,7 +1025,7 @@ gui.fileview = function(Options)
       if self.path and Dest?? then
          for _, items in pairs(self.view.selectedItems()) do
             local file_list = { }
-            for _,item in pairs(items) do
+            for _, item in pairs(items) do
                table.insert(file_list, self.path .. item.name)
             end
             copyFromList(Dest, file_list)
@@ -1047,7 +1041,7 @@ gui.fileview = function(Options)
       if not self.path then return end
       if self.limitPath and self.limitPath:lower() is self.path:lower() then return end
 
-      local reduced_path, count = self.path:sub(1, -2):gsub('(.+[:/\\]+).+', '%1', 1)
+      local reduced_path, count = self.path:sub(0, -2):gsub('(.+[:/\\]+).+', '%1', 1)
 
       if count is 0 then
          self.browse(nil)
@@ -1145,8 +1139,8 @@ gui.fileview = function(Options)
       if #items > 1 then
          msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
       else
-         local fl = items[1].filename ?? 'NIL'
-         local item_type = items[1].type ?? 'NIL'
+         local fl = items[0].filename ?? 'NIL'
+         local item_type = items[0].type ?? 'NIL'
          msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
@@ -1292,7 +1286,6 @@ gui.fileview = function(Options)
                   msg_time = current_time
                   processing.sleep(0)
                end
-
             end
 
             if #items > 0 then self.view.addItems(items) end
@@ -1371,7 +1364,7 @@ gui.fileview = function(Options)
             if lOptions.autoMode then
                local tags = { Item, -1 }
 
-               if tags[1] != -1 then
+               if tags[0] != -1 then
                   if lOptions.autoMode is 'open' then
                      openFiles(tags, 'Open')
                   elseif lOptions.autoMode is 'edit' then
@@ -1666,11 +1659,11 @@ gui.fileview = function(Options)
             return
          end
 
-         if Datatypes[1] is DATA_FILE then
+         if Datatypes[0] is DATA_FILE then
             local items = self.view.dragItems
             if #items > 0 then
                local files = { }
-               for i=1,#items do
+               for i=0,#items-1 do
                   table.insert(files, { file = { path=self.path .. items[i].name.value } })
                end
 
@@ -1757,7 +1750,7 @@ gui.fileview = function(Options)
 
    self.refresh()
 
-   if (not self.watch) and self.path?? then
+   if not self.watch and self.path?? then
       catch(function()
          self.watch = obj.new('file', { path = self.path })
          self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
