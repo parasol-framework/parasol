@@ -42,20 +42,20 @@ function testMatchMethod()
    local word_regex = regex.new("(\\w+)")
    local matches = word_regex.search("hello world")
    assert(matches, "Match should succeed")
-   assert(#matches is 2, "Expected two matches (hello and world)")
-   assert(matches[1][1] is "hello", "Full match should be 'hello'")
-   assert(matches[1][2] is "hello", "Capture should be 'hello'")
-   assert(matches[2][1] is "world", "Full match should be 'world'")
-   assert(matches[2][2] is "world", "Capture should be 'world'")
+   assert(#matches is 2, "Expected two matches (hello and world), got " .. #matches)
+   assert(matches[0][0] is "hello", "Full match should be 'hello'")
+   assert(matches[0][1] is "hello", "Capture should be 'hello'")
+   assert(matches[1][0] is "world", "Full match should be 'world'")
+   assert(matches[1][1] is "world", "Capture should be 'world'")
 
    -- Multiple capture groups
    local email_regex = regex.new("([^@]+)@([^.]+)\\.(.+)")
    local email_matches = email_regex.match("user@example.com")
    assert(email_matches, "Should match email")
-   assert(email_matches[1] is "user@example.com", "Full match incorrect")
-   assert(email_matches[2] is "user", "Username capture incorrect")
-   assert(email_matches[3] is "example", "Domain capture incorrect")
-   assert(email_matches[4] is "com", "TLD capture incorrect")
+   assert(email_matches[0] is "user@example.com", "Full match incorrect")
+   assert(email_matches[1] is "user", "Username capture incorrect")
+   assert(email_matches[2] is "example", "Domain capture incorrect")
+   assert(email_matches[3] is "com", "TLD capture incorrect")
 
    -- No match case
    local no_regex = regex.new("([ABC]+)")
@@ -68,10 +68,10 @@ function testSearchMethod()
    local digit_regex = regex.new("(\\d+)")
    local all_matches = digit_regex.search("abc123def456ghi")
    assert(#all_matches is 2, "Should find 2 digit sequences")
-   assert(all_matches[1][1] is "123", "First match should be '123'")
-   assert(all_matches[1][2] is "123", "First capture group should be '123'")
-   assert(all_matches[2][1] is "456", "Second match should be '456'")
-   assert(all_matches[2][2] is "456", "Second capture group should be '456'")
+   assert(all_matches[0][0] is "123", "First match should be '123'")
+   assert(all_matches[0][1] is "123", "First capture group should be '123'")
+   assert(all_matches[1][0] is "456", "Second match should be '456'")
+   assert(all_matches[1][1] is "456", "Second capture group should be '456'")
 
    -- Test with no matches
    local no_matches = digit_regex.search("hello world")
@@ -110,23 +110,23 @@ function testSplitMethod()
    local comma_regex = regex.new("\\s*,\\s*")
    local split_result = comma_regex.split("apple, banana,  cherry")
    assert(#split_result is 3, "Should split into 3 parts")
-   assert(split_result[1] is "apple", "First part should be 'apple'")
-   assert(split_result[2] is "banana", "Second part should be 'banana'")
-   assert(split_result[3] is "cherry", "Third part should be 'cherry'")
+   assert(split_result[0] is "apple", "First part should be 'apple'")
+   assert(split_result[1] is "banana", "Second part should be 'banana'")
+   assert(split_result[2] is "cherry", "Third part should be 'cherry'")
 
    -- Test splitting with multiple delimiters
    local multi_regex = regex.new("[,;]\\s*")
    local multi_result = multi_regex.split("a,b; c,d")
    assert(#multi_result is 4, "Should split on both comma and semicolon")
-   assert(multi_result[1] is "a", "First part incorrect")
-   assert(multi_result[2] is "b", "Second part incorrect")
-   assert(multi_result[3] is "c", "Third part incorrect")
-   assert(multi_result[4] is "d", "Fourth part incorrect")
+   assert(multi_result[0] is "a", "First part incorrect")
+   assert(multi_result[1] is "b", "Second part incorrect")
+   assert(multi_result[2] is "c", "Third part incorrect")
+   assert(multi_result[3] is "d", "Fourth part incorrect")
 
    -- Test no split (no matches)
    local no_split_result = comma_regex.split("no delimiters here")
    assert(#no_split_result is 1, "Should return single element")
-   assert(no_split_result[1] is "no delimiters here", "Should return original string")
+   assert(no_split_result[0] is "no delimiters here", "Should return original string")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -164,9 +164,9 @@ function testRealWorldPatterns()
    -- URL extraction
    local url_extractor = regex.new("https?://[\\w.\\-]+(?:/[\\w.\\/?%&=]*)?")
    local url_matches = url_extractor.search("Visit https://example.com or http://test.org/path")
-   assert(#url_matches is 2, "Should find 2 URLs")
-   assert(url_matches[1][1] is "https://example.com", "First URL incorrect")
-   assert(url_matches[2][1] is "http://test.org/path", "Second URL incorrect")
+   assert(#url_matches is 2, "Should find 2 URLs, got " .. #url_matches)
+   assert(url_matches[0][0] is "https://example.com", "First URL incorrect")
+   assert(url_matches[1][0] is "http://test.org/path", "Second URL incorrect")
 
    -- HTML tag removal
    local html_stripper = regex.new("<[^>]*>")
@@ -184,7 +184,7 @@ end
 function testMemoryManagement()
    -- Create many regex objects to test memory handling
    local regex_list = {}
-   for i = 1, 100 do
+   for i = 0, 99 do
       regex_list[i] = regex.new("pattern" .. i)
    end
 

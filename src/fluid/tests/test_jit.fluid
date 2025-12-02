@@ -1,0 +1,281 @@
+-- Flute tests for the jit, jit.util and jit.opt interfaces.
+
+jit.on()
+jit.opt.start()  -- Reset to default JIT options before starting tests.
+
+local cached_trace_no = nil
+local cached_trace_info = nil
+local outer_upvalue = 37
+
+local function assert_security_range(Value, Name)
+   if Value < 0 or Value > 3 then
+      error(Name .. " security mode out of range: " .. tostring(Value))
+   end
+end
+
+local function build_trace()
+   jit.on()
+   jit.flush()
+   jit.opt.start("hotloop=1", "hotexit=1", "minstitch=0")
+
+   local function traced_sum(Count)
+      local running_total = 0
+      for i = 1, Count do
+         running_total += i
+      end
+      return running_total
+   end
+
+   for i = 1, 80 do
+      traced_sum(10)
+   end
+
+   for trace_no = 1, 20 do
+      local info = jit.util.traceinfo(trace_no)
+      if info then
+         cached_trace_no = trace_no
+         cached_trace_info = info
+         return trace_no, info
+      end
+   end
+
+   error("Failed to create a JIT trace for inspection")
+end
+
+local function get_trace()
+   if cached_trace_no != nil and cached_trace_info != nil then
+      return cached_trace_no, cached_trace_info
+   end
+   return build_trace()
+end
+
+local function sample_vararg(Left, Right, ...)
+   local padding = 1
+   return Left + Right + padding
+end
+
+local function upvalue_consumer(Multiplier)
+   local extra = outer_upvalue * Multiplier
+   return extra
+end
+
+local function constant_target(Value)
+   local offset = 12345.6789  -- Non-integer to ensure it is stored in the numeric constant pool.
+   local label = "jit-constant"
+   if Value > 0 then
+      return Value + offset, label
+   end
+   return offset, label
+end
+
+function testEngineModeToggles()
+   jit.on()
+   local enabled_on = jit.status()
+   assert(enabled_on is true, "jit.on() should enable the compiler")
+
+   jit.off()
+   local enabled_off = jit.status()
+   assert(enabled_off is false, "jit.off() should disable the compiler")
+
+   jit.on()
+   local enabled_again, first_flag = jit.status()
+   assert(enabled_again is true, "jit.on() should restore the compiler state")
+
+   if first_flag != nil and type(first_flag) != 'string' then
+      error("jit.status secondary results should be flag strings when present")
+   end
+end
+
+function testSecurityModes()
+   local prng_level = jit.security("prng")
+   local strhash_level = jit.security("strhash")
+   local strid_level = jit.security("strid")
+   local mcode_level = jit.security("mcode")
+
+   assert_security_range(prng_level, "prng")
+   assert_security_range(strhash_level, "strhash")
+   assert_security_range(strid_level, "strid")
+   assert_security_range(mcode_level, "mcode")
+end
+
+function testFuncInfoForLuaFunction()
+   local info = jit.util.funcinfo(sample_vararg, 0)
+   assert(info.params is 2, "Expected sample_vararg to report two parameters")
+   assert(info.isVarArg is true, "Vararg flag should be set for sample_vararg")
+   assert(info.lastLineDefined >= info.lineDefined, "Line range should be ordered")
+   assert(info.stackSlots > 0, "Stack slots should be reported")
+   assert(info.byteCodes > 0, "Bytecode count should be reported")
+   assert(info.proto != nil, "Proto reference should be available for Lua functions")
+end
+
+function testFuncInfoForCFunction()
+   local info = jit.util.funcinfo(print)
+   if info.ffid != nil then
+      assert(type(info.ffid) is "number", "FFI id should be numeric when present")
+   end
+   assert(type(info.addr) is "number", "C function address should be numeric")
+   assert(type(info.upvalues) is "number", "C function upvalue count should be numeric")
+end
+
+function testFuncBCAndFunck()
+   local info = jit.util.funcinfo(constant_target, 0)
+   local first_ins, mode = jit.util.funcbc(constant_target, 0)
+   assert(type(first_ins) is "number", "funcbc should return an instruction")
+   assert(type(mode) is "number", "funcbc should return an instruction mode")
+
+   local invalid_ins, invalid_mode = jit.util.funcbc(constant_target, info.byteCodes)
+   assert(invalid_ins is nil and invalid_mode is nil, "Out-of-range funcbc should return nothing")
+
+   local constants = { }
+   local numeric_count = 0
+   for idx = 0, info.nConsts - 1 do
+      local value = jit.util.funck(constant_target, idx)
+      if value != nil then
+         constants[numeric_count] = value
+         numeric_count += 1
+      end
+   end
+
+   local found_number = false
+   for i = 0, numeric_count - 1 do
+      if type(constants[i]) is "number" then found_number = true end
+   end
+   assert(found_number is true, "jit.util.funck should expose numeric constants")
+
+   local gc_values = { }
+   local gc_count = 0
+   for idx = -1, -info.gcConsts, -1 do
+      local value = jit.util.funck(constant_target, idx)
+      if value != nil then
+         gc_values[gc_count] = value
+         gc_count += 1
+      end
+   end
+
+   local found_label = false
+   for i = 0, gc_count - 1 do
+      if type(gc_values[i]) is "string" then found_label = true end
+   end
+   assert(found_label is true, "jit.util.funck should expose GC constants")
+end
+
+function testFuncUpvalueName()
+   local name = jit.util.funcuvname(upvalue_consumer, 0)
+   assert(name is "outer_upvalue", "First upvalue name should match outer_upvalue")
+end
+
+function testTraceInfoAndIR()
+   local trace_no, info = get_trace()
+
+   assert(type(info.nins) is "number" and info.nins > 0, "traceinfo should report instruction count")
+   assert(type(info.link) is "number", "traceinfo link should be numeric")
+   assert(type(info.linktype) is "string", "traceinfo linktype should be a string")
+
+   local allowed_links = {
+      root = true,
+      loop = true,
+      ["tail-recursion"] = true,
+      ["up-recursion"] = true,
+      ["down-recursion"] = true,
+      interpreter = true,
+      ["return"] = true,
+      stitch = true,
+      none = true
+   }
+   assert(allowed_links[info.linktype] is true, "Unexpected linktype: " .. tostring(info.linktype))
+
+   local ir_mode, ir_ot, ir_op1, ir_op2, ir_prev = jit.util.traceir(trace_no, info.nins)
+   assert(type(ir_mode) is "number", "traceir should return mode information")
+   assert(type(ir_ot) is "number", "traceir should return type information")
+   assert(type(ir_op1) is "number", "traceir should return first operand")
+   assert(type(ir_op2) is "number", "traceir should return second operand")
+   assert(type(ir_prev) is "number", "traceir should return previous reference")
+end
+
+function testTraceConstantsAndSnapshot()
+   local trace_no, info = get_trace()
+   if type(info.nk) is "number" and info.nk <= 0 then
+      error("Trace did not expose any constants for verification")
+   end
+
+   local k_value, k_type, k_slot = nil, nil, nil
+   for idx = -info.nk, -1 do
+      local value, kind, slot = jit.util.tracek(trace_no, idx)
+      if value != nil then
+         k_value, k_type, k_slot = value, kind, slot
+         break
+      end
+   end
+   assert(k_value != nil, "tracek should return at least one constant for available trace constants")
+   assert(type(k_type) is "number", "tracek should return a type tag")
+   if k_slot != nil then
+      assert(type(k_slot) is "number", "tracek slot should be numeric when present")
+   end
+
+   local snapshot = jit.util.tracesnap(trace_no, 0)
+   assert(snapshot != nil, "tracesnap should provide a snapshot table")
+   assert(type(snapshot[0]) is "number", "Snapshot should store reference at index 0")
+   assert(type(snapshot[1]) is "number", "Snapshot should store slot count at index 1")
+   assert(#snapshot >= 3, "Snapshot should include map entries and sentinel")
+end
+
+function testTraceMachineCodeAndExitStub()
+   local trace_no = get_trace()
+   local mcode, addr, loop_flag = jit.util.tracemc(trace_no)
+   assert(mcode != nil, "tracemc should return machine code for hot traces")
+   assert(type(addr) is "number", "tracemc should return a code address")
+   assert(type(loop_flag) is "number", "tracemc should return loop flag information")
+   if #mcode <= 0 then
+      error("tracemc returned an empty machine code buffer")
+   end
+
+   local exit_addr = jit.util.traceexitstub(trace_no, 0)
+   if exit_addr is nil then
+      exit_addr = jit.util.traceexitstub(0)
+   end
+   assert(exit_addr != nil, "traceexitstub should return a stub address")
+   assert(type(exit_addr) is "number", "traceexitstub should return a numeric address")
+end
+
+function testIrCallAddrLookup()
+   local addr = jit.util.ircalladdr(0)
+   assert(addr != nil, "ircalladdr(0) should return a function pointer")
+   assert(type(addr) is "number", "ircalladdr(0) should be numeric")
+
+   local invalid = jit.util.ircalladdr(99999)
+   assert(invalid is nil, "Out-of-range ircalladdr should return nil")
+end
+
+function testJitAttachTraceEvent()
+   cached_trace_no = nil
+   cached_trace_info = nil
+
+   local trace_events = 0
+   local function trace_handler(TraceNo, Reason)
+      trace_events += 1
+   end
+
+   jit.attach(trace_handler, "trace")
+   build_trace()
+   jit.attach(trace_handler)
+
+   assert(trace_events > 0, "Trace handler should run at least once")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testEngineModeToggles',
+         'testSecurityModes',
+         'testFuncInfoForLuaFunction',
+         'testFuncInfoForCFunction',
+         'testFuncBCAndFunck',
+         'testFuncUpvalueName',
+         'testTraceInfoAndIR',
+         'testTraceConstantsAndSnapshot',
+         'testTraceMachineCodeAndExitStub',
+         'testIrCallAddrLookup',
+         'testJitAttachTraceEvent'
+      }
+   }

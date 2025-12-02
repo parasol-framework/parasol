@@ -2,11 +2,11 @@
 
 function testIntegerArrayConcat()
    local int_array = array.new(5, "integer")
-   int_array[1] = 10
-   int_array[2] = 20
-   int_array[3] = 30
-   int_array[4] = 40
-   int_array[5] = 50
+   int_array[0] = 10
+   int_array[1] = 20
+   int_array[2] = 30
+   int_array[3] = 40
+   int_array[4] = 50
 
    local result = int_array.concat("%d", ", ")
    if result != "10, 20, 30, 40, 50" then
@@ -22,9 +22,9 @@ end
 
 function testFloatArrayConcat()
    local float_array = array.new(3, "float")
-   float_array[1] = 1.5
-   float_array[2] = 2.7
-   float_array[3] = 3.14
+   float_array[0] = 1.5
+   float_array[1] = 2.7
+   float_array[2] = 3.14
 
    local result = float_array.concat("%.2f", " | ")
    if result != "1.50 | 2.70 | 3.14" then
@@ -34,10 +34,10 @@ end
 
 function testByteArrayConcat()
    local byte_array = array.new(4, "byte")
-   byte_array[1] = 65  -- 'A'
-   byte_array[2] = 66  -- 'B'
-   byte_array[3] = 67  -- 'C'
-   byte_array[4] = 68  -- 'D'
+   byte_array[0] = 65  -- 'A'
+   byte_array[1] = 66  -- 'B'
+   byte_array[2] = 67  -- 'C'
+   byte_array[3] = 68  -- 'D'
 
    local result = byte_array.concat("%c", "")
    if result != "ABCD" then
@@ -53,8 +53,8 @@ end
 
 function testDoubleArrayConcat()
    local double_array = array.new(2, "double")
-   double_array[1] = 3.141592653589793
-   double_array[2] = 2.718281828459045
+   double_array[0] = 3.141592653589793
+   double_array[1] = 2.718281828459045
 
    local result = double_array.concat("%.3f", " and ")
    if result != "3.142 and 2.718" then
@@ -64,9 +64,9 @@ end
 
 function testWordArrayConcat()
    local word_array = array.new(3, "word")
-   word_array[1] = 1000
-   word_array[2] = 2000
-   word_array[3] = 3000
+   word_array[0] = 1000
+   word_array[1] = 2000
+   word_array[2] = 3000
 
    local result = word_array.concat("%04d", ", ")
    if result != "1000, 2000, 3000" then
@@ -76,7 +76,7 @@ end
 
 function testSingleElementConcat()
    local single_array = array.new(1, "integer")
-   single_array[1] = 42
+   single_array[0] = 42
 
    local result = single_array.concat("%d", ", ")
    if result != "42" then
@@ -86,8 +86,8 @@ end
 
 function testFormatValidation()
    local int_array = array.new(2, "integer")
-   int_array[1] = 10
-   int_array[2] = 20
+   int_array[0] = 10
+   int_array[1] = 20
 
    -- Test valid formats work
    local result = int_array.concat("%d", ", ")
@@ -142,18 +142,18 @@ function testArrayBoundsChecking()
    local arr = array.new(10, "integer")
 
    -- Test valid access
-   arr[1] = 100
-   assert(arr[1] is 100, "Valid array access failed")
+   arr[0] = 100
+   assert(arr[0] is 100, "Valid array access failed")
 
    -- Test invalid negative index
    local status, err = pcall(function()
-      return arr[0]
+      return arr[-1]
    end)
    assert(not status, "Should reject negative array index")
 
    -- Test invalid high index
    local status, err = pcall(function()
-      return arr[11]
+      return arr[10]
    end)
    assert(not status, "Should reject index beyond array size")
 end
@@ -227,7 +227,7 @@ function testArrayCopyBounds()
 
    -- Test invalid destination index (0 is invalid, should be 1-based)
    local status, err = pcall(function()
-      dest.copy(source, 0)
+      dest.copy(source, -1)
    end)
    assert(not status, "Should reject invalid destination index")
 
@@ -256,7 +256,7 @@ function testArrayWriteBounds()
 
    -- Test write at invalid index
    local status, err = pcall(function()
-      arr[0] = 100
+      arr[-1] = 100
    end)
    assert(not status, "Should reject write at invalid index")
 end
@@ -272,7 +272,7 @@ function testTableToIntegerArrayCopy()
    arr.copy(table_data)
 
    -- Verify values were copied correctly
-   for i = 1, 5 do
+   for i = 0, 4 do
       assert(arr[i] is table_data[i], "Table to integer array copy failed at index " .. i)
    end
 end
@@ -284,7 +284,7 @@ function testTableToFloatArrayCopy()
    arr.copy(table_data)
 
    -- Check with small tolerance for float comparison
-   for i = 1, 4 do
+   for i = 0, 3 do
       local diff = math.abs(arr[i] - table_data[i])
       assert(diff < 0.0001, "Table to float array copy failed at index " .. i)
    end
@@ -296,7 +296,7 @@ function testTableToByteArrayCopy()
 
    arr.copy(table_data)
 
-   for i = 1, 4 do
+   for i = 0, 3 do
       assert(arr[i] is table_data[i], "Table to byte array copy failed at index " .. i)
    end
 end
@@ -307,7 +307,7 @@ function testTableToDoubleArrayCopy()
 
    arr.copy(table_data)
 
-   for i = 1, 3 do
+   for i = 0, 2 do
       local diff = math.abs(arr[i] - table_data[i])
       assert(diff < 0.000000001, "Table to double array copy failed at index " .. i)
    end
@@ -319,34 +319,34 @@ function testTableToWordArrayCopy()
 
    arr.copy(table_data)
 
-   for i = 1, 3 do
+   for i = 0, 2 do
       assert(arr[i] is table_data[i], "Table to word array copy failed at index " .. i)
    end
 end
 
 function testTableCopyWithDestinationIndex()
    local arr = array.new(6, "integer")
-   local table_data = {100, 200, 300}
 
    -- Initialize array with different values
-   for i = 1, 6 do
+   for i = 0, 5 do
       arr[i] = i
    end
 
    -- Copy table starting at index 3
-   arr.copy(table_data, 3)
+   local table_data = {100, 200, 300}
+   arr.copy(table_data, 2) -- Source, DestIndex, Total
 
    -- Check that first 2 elements are unchanged
+   assert(arr[0] is 0, "Element before copy should be unchanged")
    assert(arr[1] is 1, "Element before copy should be unchanged")
-   assert(arr[2] is 2, "Element before copy should be unchanged")
 
    -- Check copied elements
-   assert(arr[3] is 100, "Copied element 1 incorrect")
-   assert(arr[4] is 200, "Copied element 2 incorrect")
-   assert(arr[5] is 300, "Copied element 3 incorrect")
+   assert(arr[2] is 100, "Copied element 1 incorrect")
+   assert(arr[3] is 200, "Copied element 2 incorrect")
+   assert(arr[4] is 300, "Copied element 3 incorrect")
 
    -- Check that last element is unchanged
-   assert(arr[6] is 6, "Element after copy should be unchanged")
+   assert(arr[5] is 5, "Element after copy should be unchanged")
 end
 
 function testTableCopyWithLimitedTotal()
@@ -354,15 +354,15 @@ function testTableCopyWithLimitedTotal()
    local table_data = {10, 20, 30, 40, 50}
 
    -- Copy only first 3 elements
-   arr.copy(table_data, 1, 3)
+   arr.copy(table_data, 0, 3)
 
-   assert(arr[1] is 10, "Limited copy element 1 incorrect")
-   assert(arr[2] is 20, "Limited copy element 2 incorrect")
-   assert(arr[3] is 30, "Limited copy element 3 incorrect")
+   assert(arr[0] is 10, "Limited copy element 1 incorrect")
+   assert(arr[1] is 20, "Limited copy element 2 incorrect")
+   assert(arr[2] is 30, "Limited copy element 3 incorrect")
 
-   -- Elements 4 and 5 should be uninitialized (0)
+   -- Elements 3 and 4 should be uninitialized (0)
+   assert(arr[3] is 0, "Element beyond copy should be 0")
    assert(arr[4] is 0, "Element beyond copy should be 0")
-   assert(arr[5] is 0, "Element beyond copy should be 0")
 end
 
 function testTableCopyBoundsChecking()
@@ -396,9 +396,9 @@ function testTableCopyTypeConversion()
 
    float_arr.copy(int_table)
 
-   assert(math.abs(float_arr[1] - 1.0) < 0.0001, "Integer to float conversion failed")
-   assert(math.abs(float_arr[2] - 2.0) < 0.0001, "Integer to float conversion failed")
-   assert(math.abs(float_arr[3] - 3.0) < 0.0001, "Integer to float conversion failed")
+   assert(math.abs(float_arr[0] - 1.0) < 0.0001, "Integer to float conversion failed")
+   assert(math.abs(float_arr[1] - 2.0) < 0.0001, "Integer to float conversion failed")
+   assert(math.abs(float_arr[2] - 3.0) < 0.0001, "Integer to float conversion failed")
 
    -- Test copying floats to integer array (truncation)
    local int_arr = array.new(3, "integer")
@@ -406,9 +406,9 @@ function testTableCopyTypeConversion()
 
    int_arr.copy(float_table)
 
-   assert(int_arr[1] is 1, "Float to integer conversion failed")
-   assert(int_arr[2] is 2, "Float to integer conversion failed")
-   assert(int_arr[3] is 3, "Float to integer conversion failed")
+   assert(int_arr[0] is 1, "Float to integer conversion failed")
+   assert(int_arr[1] is 2, "Float to integer conversion failed")
+   assert(int_arr[2] is 3, "Float to integer conversion failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -441,5 +441,3 @@ end
          'testTableCopyTypeConversion'
       }
    }
-
-

@@ -21,13 +21,11 @@
 #include "lj_ctype.h"
 #endif
 
-#if LJ_HASJIT
 #include "lj_ir.h"
 #include "lj_jit.h"
 #include "lj_ircall.h"
 #include "lj_iropt.h"
 #include "lj_target.h"
-#endif
 
 #include "lj_trace.h"
 #include "lj_dispatch.h"
@@ -39,7 +37,10 @@
 
 // jit.* functions
 
-#define LJLIB_MODULE_jit
+#define LJLIB_MODULE_jit // For lj_libdef.h
+
+//********************************************************************************************************************
+// Configure JIT mode for the engine or a specific function/prototype.
 
 static int setjitmode(lua_State* L, int mode)
 {
@@ -57,60 +58,67 @@ static int setjitmode(lua_State* L, int mode)
    }
 
    if (luaJIT_setmode(L, idx, mode) != 1) {
-      if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE)
-         lj_err_caller(L, ErrMsg::NOJIT);
+      if ((mode & LUAJIT_MODE_MASK) == LUAJIT_MODE_ENGINE) lj_err_caller(L, ErrMsg::NOJIT);
    err:
       lj_err_argt(L, 1, LUA_TFUNCTION);
    }
    return 0;
 }
 
+//********************************************************************************************************************
+// Enable JIT compilation globally or for a specific function or prototype.
+
 LJLIB_CF(jit_on)
 {
    return setjitmode(L, LUAJIT_MODE_ON);
 }
+
+//********************************************************************************************************************
+// Disable JIT compilation globally or for a specific function or prototype.
 
 LJLIB_CF(jit_off)
 {
    return setjitmode(L, LUAJIT_MODE_OFF);
 }
 
+//********************************************************************************************************************
+// Flush compiled traces for a specific trace or scope, optionally changing JIT mode.
+
 LJLIB_CF(jit_flush)
 {
-#if LJ_HASJIT
    if (L->base < L->top and tvisnumber(L->base)) {
       int traceno = lj_lib_checkint(L, 1);
       luaJIT_setmode(L, traceno, LUAJIT_MODE_FLUSH | LUAJIT_MODE_TRACE);
       return 0;
    }
-#endif
    return setjitmode(L, LUAJIT_MODE_FLUSH);
 }
 
-#if LJ_HASJIT
+//********************************************************************************************************************
 // Push a string for every flag bit that is set.
+
 static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base, const char* str)
 {
    for (; *str; base <<= 1, str += 1 + *str)
       if (flags & base)
          setstrV(L, L->top++, lj_str_new(L, str + 1, *(uint8_t*)str));
 }
-#endif
+
+//********************************************************************************************************************
+// Report whether JIT is enabled and list active CPU and optimisation flags.
 
 LJLIB_CF(jit_status)
 {
-#if LJ_HASJIT
    jit_State* J = L2J(L);
    L->top = L->base;
    setboolV(L->top++, (J->flags & JIT_F_ON) ? 1 : 0);
    flagbits_to_strings(L, J->flags, JIT_F_CPU, JIT_F_CPUSTRING);
    flagbits_to_strings(L, J->flags, JIT_F_OPT, JIT_F_OPTSTRING);
    return (int)(L->top - L->base);
-#else
-   setboolV(L->top++, 0);
-   return 1;
-#endif
 }
+
+//********************************************************************************************************************
+// Return the security mode index for the selected JIT security profile.
 
 LJLIB_CF(jit_security)
 {
@@ -118,6 +126,9 @@ LJLIB_CF(jit_security)
    setintV(L->top++, ((LJ_SECURITY_MODE >> (2 * idx)) & 3));
    return 1;
 }
+
+//********************************************************************************************************************
+// Attach or detach a VM event callback for JIT-related events such as trace recording.
 
 LJLIB_CF(jit_attach)
 {
@@ -153,58 +164,61 @@ LJLIB_PUSH(top-4) LJLIB_SET(arch)
 LJLIB_PUSH(top-3) LJLIB_SET(version_num)
 LJLIB_PUSH(top-2) LJLIB_SET(version)
 
-#include "lj_libdef.h"
+#include "lj_libdef.h" // Includes the LJLIB_MODULE_jit table: lj_lib_cf_jit and lj_lib_init_jit
 
+//********************************************************************************************************************
 // jit.util.* functions
 
-#define LJLIB_MODULE_jit_util
+#define LJLIB_MODULE_jit_util // For lj_libdef.h
 
 // Reflection API for Lua functions
 
-// Return prototype of first argument (Lua function or prototype object)
+//********************************************************************************************************************
+// Return the Lua prototype for the first argument, optionally allowing non-Lua functions when requested.
+
 static GCproto* check_Lproto(lua_State* L, int nolua)
 {
    TValue* o = L->base;
    if (L->top > o) {
-      if (tvisproto(o)) {
-         return protoV(o);
-      }
+      if (tvisproto(o)) return protoV(o);
       else if (tvisfunc(o)) {
-         if (isluafunc(funcV(o)))
-            return funcproto(funcV(o));
-         else if (nolua)
-            return NULL;
+         if (isluafunc(funcV(o))) return funcproto(funcV(o));
+         else if (nolua) return nullptr;
       }
    }
    lj_err_argt(L, 1, LUA_TFUNCTION);
-   return NULL;  //  unreachable
+   return nullptr;  //  unreachable
 }
+
+//********************************************************************************************************************
+// Write an integer field with the given name into the supplied table.
 
 static void setintfield(lua_State* L, GCtab* t, const char* name, int32_t val)
 {
    setintV(lj_tab_setstr(L, t, lj_str_newz(L, name)), val);
 }
 
+//********************************************************************************************************************
 // local info = jit.util.funcinfo(func [,pc])
+// Return reflective information about a Lua or C function in a table, optionally at a specific bytecode position.
+
 LJLIB_CF(jit_util_funcinfo)
 {
-   GCproto* pt = check_Lproto(L, 1);
-   if (pt) {
+   if (auto pt = check_Lproto(L, 1)) {
       BCPOS pc = (BCPOS)lj_lib_optint(L, 2, 0);
-      GCtab* t;
       lua_createtable(L, 0, 16);  //  Increment hash size if fields are added.
-      t = tabV(L->top - 1);
-      setintfield(L, t, "linedefined", pt->firstline);
-      setintfield(L, t, "lastlinedefined", pt->firstline + pt->numline);
-      setintfield(L, t, "stackslots", pt->framesize);
+      GCtab *t = tabV(L->top - 1);
+      setintfield(L, t, "lineDefined", pt->firstline);
+      setintfield(L, t, "lastLineDefined", pt->firstline + pt->numline);
+      setintfield(L, t, "stackSlots", pt->framesize);
       setintfield(L, t, "params", pt->numparams);
-      setintfield(L, t, "bytecodes", (int32_t)pt->sizebc);
-      setintfield(L, t, "gcconsts", (int32_t)pt->sizekgc);
-      setintfield(L, t, "nconsts", (int32_t)pt->sizekn);
+      setintfield(L, t, "byteCodes", (int32_t)pt->sizebc);
+      setintfield(L, t, "gcConsts", (int32_t)pt->sizekgc);
+      setintfield(L, t, "nConsts", (int32_t)pt->sizekn);
       setintfield(L, t, "upvalues", (int32_t)pt->sizeuv);
-      if (pc < pt->sizebc) setintfield(L, t, "currentline", lj_debug_line(pt, pc));
+      if (pc < pt->sizebc) setintfield(L, t, "currentLine", lj_debug_line(pt, pc));
       lua_pushboolean(L, (pt->flags & PROTO_VARARG));
-      lua_setfield(L, -2, "isvararg");
+      lua_setfield(L, -2, "isVarArg");
       lua_pushboolean(L, (pt->flags & PROTO_CHILD));
       lua_setfield(L, -2, "children");
       setstrV(L, L->top++, proto_chunkname(pt));
@@ -214,8 +228,8 @@ LJLIB_CF(jit_util_funcinfo)
       setprotoV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "proto")), pt);
    }
    else {
-      GCfunc* fn = funcV(L->base);
-      GCtab* t;
+      GCfunc *fn = funcV(L->base);
+      GCtab *t;
       lua_createtable(L, 0, 4);  //  Increment hash size if fields are added.
       t = tabV(L->top - 1);
       if (!iscfunc(fn)) setintfield(L, t, "ffid", fn->c.ffid);
@@ -225,10 +239,13 @@ LJLIB_CF(jit_util_funcinfo)
    return 1;
 }
 
+//********************************************************************************************************************
 // local ins, m = jit.util.funcbc(func, pc)
+// Return the raw bytecode word and mode for the given function and bytecode position.
+
 LJLIB_CF(jit_util_funcbc)
 {
-   GCproto* pt = check_Lproto(L, 0);
+   GCproto *pt = check_Lproto(L, 0);
    BCPOS pc = (BCPOS)lj_lib_checkint(L, 2);
    if (pc < pt->sizebc) {
       BCIns ins = proto_bc(pt)[pc];
@@ -242,7 +259,9 @@ LJLIB_CF(jit_util_funcbc)
    return 0;
 }
 
+//********************************************************************************************************************
 // local k = jit.util.funck(func, idx)
+// Return the numeric or GC constant stored at the given index in a function prototype.
 
 LJLIB_CF(jit_util_funck)
 {
@@ -264,7 +283,9 @@ LJLIB_CF(jit_util_funck)
    return 0;
 }
 
+//********************************************************************************************************************
 // local name = jit.util.funcuvname(func, idx)
+// Return the name of the upvalue at the given index for a function prototype.
 
 LJLIB_CF(jit_util_funcuvname)
 {
@@ -279,9 +300,8 @@ LJLIB_CF(jit_util_funcuvname)
 
 // Reflection API for traces
 
-#if LJ_HASJIT
-
-// Check trace argument. Must not throw for non-existent trace numbers.
+//********************************************************************************************************************
+// Check the trace argument and return the trace object, without throwing for non-existent trace numbers.
 
 static GCtrace* jit_checktrace(lua_State* L)
 {
@@ -289,17 +309,19 @@ static GCtrace* jit_checktrace(lua_State* L)
    jit_State* J = L2J(L);
    if (tr > 0 and tr < J->sizetrace)
       return traceref(J, tr);
-   return NULL;
+   return nullptr;
 }
 
+//********************************************************************************************************************
 // Names of link types. ORDER LJ_TRLINK
 
-static const char* const jit_trlinkname[] = {
-  "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion",
-  "interpreter", "return", "stitch"
+static const char * const jit_trlinkname[] = {
+  "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion", "interpreter", "return", "stitch"
 };
 
+//********************************************************************************************************************
 // local info = jit.util.traceinfo(tr)
+// Return high-level information about a recorded trace such as size, exits and link type.
 
 LJLIB_CF(jit_util_traceinfo)
 {
@@ -320,14 +342,16 @@ LJLIB_CF(jit_util_traceinfo)
    return 0;
 }
 
+//********************************************************************************************************************
 // local m, ot, op1, op2, prev = jit.util.traceir(tr, idx)
+// Return IR opcode metadata and operands for the specified instruction in a recorded trace.
 
 LJLIB_CF(jit_util_traceir)
 {
    GCtrace* T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
    if (T and ref >= REF_BIAS and ref < T->nins) {
-      IRIns* ir = &T->ir[ref];
+      IRIns *ir = &T->ir[ref];
       int32_t m = lj_ir_mode[ir->o];
       setintV(L->top - 2, m);
       setintV(L->top - 1, ir->ot);
@@ -339,11 +363,13 @@ LJLIB_CF(jit_util_traceir)
    return 0;
 }
 
+//********************************************************************************************************************
 // local k, t [, slot] = jit.util.tracek(tr, idx)
+// Return the IR constant value, its type and optional slot for a trace constant.
 
 LJLIB_CF(jit_util_tracek)
 {
-   GCtrace* T = jit_checktrace(L);
+   GCtrace *T = jit_checktrace(L);
    IRRef ref = (IRRef)lj_lib_checkint(L, 2) + REF_BIAS;
    if (T and ref >= T->nk and ref < REF_BIAS) {
       IRIns* ir = &T->ir[ref];
@@ -357,43 +383,44 @@ LJLIB_CF(jit_util_tracek)
 #endif
       lj_ir_kvalue(L, L->top - 2, ir);
       setintV(L->top - 1, (int32_t)irt_type(ir->t));
-      if (slot == -1)
-         return 2;
+      if (slot == -1) return 2;
       setintV(L->top++, slot);
       return 3;
    }
    return 0;
 }
 
+//********************************************************************************************************************
 // local snap = jit.util.tracesnap(tr, sn)
+// Return a snapshot description including reference, slot count and packed slot map entries.
 
 LJLIB_CF(jit_util_tracesnap)
 {
    GCtrace* T = jit_checktrace(L);
    SnapNo sn = (SnapNo)lj_lib_checkint(L, 2);
    if (T and sn < T->nsnap) {
-      SnapShot* snap = &T->snap[sn];
-      SnapEntry* map = &T->snapmap[snap->mapofs];
+      SnapShot *snap = &T->snap[sn];
+      SnapEntry *map = &T->snapmap[snap->mapofs];
       MSize n, nent = snap->nent;
-      GCtab* t;
       lua_createtable(L, nent + 2, 0);
-      t = tabV(L->top - 1);
+      GCtab *t = tabV(L->top - 1);
       setintV(lj_tab_setint(L, t, 0), (int32_t)snap->ref - REF_BIAS);
       setintV(lj_tab_setint(L, t, 1), (int32_t)snap->nslots);
-      for (n = 0; n < nent; n++)
-         setintV(lj_tab_setint(L, t, (int32_t)(n + 2)), (int32_t)map[n]);
+      for (n = 0; n < nent; n++) setintV(lj_tab_setint(L, t, (int32_t)(n + 2)), (int32_t)map[n]);
       setintV(lj_tab_setint(L, t, (int32_t)(nent + 2)), (int32_t)SNAP(255, 0, 0));
       return 1;
    }
    return 0;
 }
 
+//********************************************************************************************************************
 // local mcode, addr, loop = jit.util.tracemc(tr)
+// Return the machine code for a trace together with its address and loop entry offset.
 
 LJLIB_CF(jit_util_tracemc)
 {
-   GCtrace* T = jit_checktrace(L);
-   if (T and T->mcode != NULL) {
+   GCtrace *T = jit_checktrace(L);
+   if (T and T->mcode != nullptr) {
       setstrV(L, L->top - 1, lj_str_new(L, (const char*)T->mcode, T->szmcode));
       setintptrV(L->top++, (intptr_t)(void*)T->mcode);
       setintV(L->top++, T->mcloop);
@@ -402,23 +429,25 @@ LJLIB_CF(jit_util_tracemc)
    return 0;
 }
 
+//********************************************************************************************************************
 // local addr = jit.util.traceexitstub([tr,] exitno)
+// Return the address of the exit stub for a global or trace-local exit number.
 
 LJLIB_CF(jit_util_traceexitstub)
 {
 #ifdef EXITSTUBS_PER_GROUP
-   ExitNo exitno = (ExitNo)lj_lib_checkint(L, 1);
-   jit_State* J = L2J(L);
+   auto exitno = (ExitNo)lj_lib_checkint(L, 1);
+   jit_State *J = L2J(L);
    if (exitno < EXITSTUBS_PER_GROUP * LJ_MAX_EXITSTUBGR) {
       setintptrV(L->top - 1, (intptr_t)(void*)exitstub_addr(J, exitno));
       return 1;
    }
 #else
    if (L->top > L->base + 1) {  // Don't throw for one-argument variant.
-      GCtrace* T = jit_checktrace(L);
-      ExitNo exitno = (ExitNo)lj_lib_checkint(L, 2);
+      GCtrace *T = jit_checktrace(L);
+      auto exitno = (ExitNo)lj_lib_checkint(L, 2);
       ExitNo maxexit = T->root ? T->nsnap + 1 : T->nsnap;
-      if (T and T->mcode != NULL and exitno < maxexit) {
+      if (T and T->mcode != nullptr and exitno < maxexit) {
          setintptrV(L->top - 1, (intptr_t)(void*)exitstub_trace_addr(T, exitno));
          return 1;
       }
@@ -427,7 +456,9 @@ LJLIB_CF(jit_util_traceexitstub)
    return 0;
 }
 
+//********************************************************************************************************************
 // local addr = jit.util.ircalladdr(idx)
+// Return the C function address associated with the given IR call index.
 
 LJLIB_CF(jit_util_ircalladdr)
 {
@@ -439,21 +470,14 @@ LJLIB_CF(jit_util_ircalladdr)
    return 0;
 }
 
-#endif
+//********************************************************************************************************************
 
-#include "lj_libdef.h"
+#include "lj_libdef.h" // Includes the LJLIB_MODULE_jit_util table: lj_lib_cf_jit and lj_lib_init_jit_util
 
-static int luaopen_jit_util(lua_State* L)
-{
-   LJ_LIB_REG(L, NULL, jit_util);
-   return 1;
-}
-
+//********************************************************************************************************************
 // jit.opt module
 
-#if LJ_HASJIT
-
-#define LJLIB_MODULE_jit_opt
+#define LJLIB_MODULE_jit_opt // For lj_libdef.h
 
 // Parse optimization level.
 static int jitopt_level(jit_State* J, const char* str)
@@ -470,7 +494,9 @@ static int jitopt_level(jit_State* J, const char* str)
    return 0;  //  No match.
 }
 
+//********************************************************************************************************************
 // Parse optimization flag.
+
 static int jitopt_flag(jit_State* J, const char* str)
 {
    const char* lst = JIT_F_OPTSTRING;
@@ -500,7 +526,9 @@ static int jitopt_flag(jit_State* J, const char* str)
    return 0;  //  No match.
 }
 
+//********************************************************************************************************************
 // Parse optimization parameter.
+
 static int jitopt_param(jit_State* J, const char* str)
 {
    const char* lst = JIT_P_STRING;
@@ -513,8 +541,17 @@ static int jitopt_param(jit_State* J, const char* str)
          const char* p = &str[len + 1];
          while (*p >= '0' and *p <= '9')
             n = n * 10 + (*p++ - '0');
-         if (*p) return 0;  //  Malformed number.
-         J->param[i] = n;
+         if (*p or (int32_t)n < 0) return 0;  // Malformed number.
+         if (i == JIT_P_sizemcode) {  // Adjust to required range here.
+#if LJ_TARGET_JUMPRANGE
+            int32_t maxkb = ((1 << (LJ_TARGET_JUMPRANGE - 10)) - 64);
+#else
+            int32_t maxkb = ((1 << (31 - 10)) - 64);
+#endif
+            n = (n + (LJ_PAGESIZE >> 10) - 1) & ~((LJ_PAGESIZE >> 10) - 1);
+            if (n > maxkb) n = maxkb;
+         }
+         J->param[i] = (int32_t)n;
          if (i == JIT_P_hotloop)
             lj_dispatch_init_hotcount(J2G(J));
          return 1;  //  Ok.
@@ -524,6 +561,7 @@ static int jitopt_param(jit_State* J, const char* str)
    return 0;  //  No match.
 }
 
+//********************************************************************************************************************
 // jit.opt.start(flags...)
 
 LJLIB_CF(jit_opt_start)
@@ -534,26 +572,25 @@ LJLIB_CF(jit_opt_start)
       J->flags = (J->flags & ~JIT_F_OPT_MASK) | JIT_F_OPT_DEFAULT;
    }
    else {
-      int i;
-      for (i = 1; i <= nargs; i++) {
-         const char* str = strdata(lj_lib_checkstr(L, i));
-         if (!jitopt_level(J, str) &&
-            !jitopt_flag(J, str) &&
-            !jitopt_param(J, str))
+      for (int i = 1; i <= nargs; i++) {
+         auto str = strdata(lj_lib_checkstr(L, i));
+         if (!jitopt_level(J, str) and !jitopt_flag(J, str) and !jitopt_param(J, str)) {
             lj_err_callerv(L, ErrMsg::JITOPT, str);
+         }
       }
    }
    return 0;
 }
 
-#include "lj_libdef.h"
+//********************************************************************************************************************
 
-#endif
+#include "lj_libdef.h" // Includes the LJLIB_MODULE_jit_opt table: lj_lib_cf_jit and lj_lib_init_jit_opt
 
+//********************************************************************************************************************
 // JIT compiler initialization
 
-#if LJ_HASJIT
 // Default values for JIT parameters.
+
 static const int32_t jit_param_default[JIT_P__MAX + 1] = {
 #define JIT_PARAMINIT(len, name, value)   (value),
 JIT_PARAMDEF(JIT_PARAMINIT)
@@ -565,7 +602,9 @@ JIT_PARAMDEF(JIT_PARAMINIT)
 #include <sys/utsname.h>
 #endif
 
+//********************************************************************************************************************
 // Arch-dependent CPU feature detection.
+
 static uint32_t jit_cpudetect(void)
 {
    uint32_t flags = 0;
@@ -612,6 +651,7 @@ static uint32_t jit_cpudetect(void)
 #if LJ_ARCH_SQRT
    flags |= JIT_F_SQRT;
 #endif
+
 #if LJ_ARCH_ROUND
    flags |= JIT_F_ROUND;
 #endif
@@ -622,30 +662,35 @@ static uint32_t jit_cpudetect(void)
    return flags;
 }
 
-// Initialize JIT compiler.
-static void jit_init(lua_State* L)
-{
-   jit_State* J = L2J(L);
-   J->flags = jit_cpudetect() | JIT_F_ON | JIT_F_OPT_DEFAULT;
-   memcpy(J->param, jit_param_default, sizeof(J->param));
-   lj_dispatch_update(G(L));
-}
-#endif
+//********************************************************************************************************************
+// Initialise the jit library and register util/opt subtables.
 
 extern int luaopen_jit(lua_State* L)
 {
-#if LJ_HASJIT
-   jit_init(L);
-#endif
+   jit_State *J = L2J(L);
+   J->flags = jit_cpudetect() | JIT_F_ON | JIT_F_OPT_DEFAULT;
+   memcpy(J->param, jit_param_default, sizeof(J->param));
+   lj_dispatch_update(G(L));
+
    lua_pushliteral(L, LJ_OS_NAME);
    lua_pushliteral(L, LJ_ARCH_NAME);
    lua_pushinteger(L, LUAJIT_VERSION_NUM);
    lua_pushliteral(L, LUAJIT_VERSION);
-   LJ_LIB_REG(L, "jit", jit);
-   lj_lib_prereg(L, "jit.util", luaopen_jit_util, tabref(L->env));
-#if LJ_HASJIT
-   LJ_LIB_REG(L, "jit.opt", jit_opt);
-#endif
-   L->top -= 2;
+
+   LJ_LIB_REG(L, "jit", jit);  // Creates jit table, leaves it on stack
+
+   // Register jit.util as a subtable of jit (avoid lib_create_table's dotted name handling)
+   lua_getglobal(L, "jit");  // Get the jit table we just created
+   LJ_LIB_REG(L, nullptr, jit_util);  // Create util table without setting in globals
+   lua_setfield(L, -2, "util");
+   lua_pop(L, 1);
+
+   // Register jit.opt as a subtable of jit
+
+   lua_getglobal(L, "jit");
+   LJ_LIB_REG(L, nullptr, jit_opt);
+   lua_setfield(L, -2, "opt");
+   lua_pop(L, 1);
+
    return 1;
 }

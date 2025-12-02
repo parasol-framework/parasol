@@ -6,7 +6,7 @@
 function testLongAdditionChain()
    local count = 40000
    local terms = {}
-   for index = 1, count do
+   for index = 0, count do
       terms[index] = tostring(index)
    end
 
@@ -22,7 +22,7 @@ function testDeepNesting()
 
    -- Create deeply nested function calls
    local function increment(Value)
-      count += 1
+      count++
       return Value + 1
    end
 
@@ -51,13 +51,13 @@ end
 function testLargeTableConstruction()
    -- Test creating very large tables
    local large_array = {}
-   for i = 1, 50000 do
+   for i = 0, 50000 do
       large_array[i] = i * 2
    end
 
    -- Test large hash table
    local large_hash = {}
-   for i = 1, 25000 do
+   for i = 0, 25000 do
       large_hash["key_" .. i] = "value_" .. i
    end
 
@@ -71,7 +71,7 @@ end
 function testStringConcatenation()
    -- Test very long string concatenation chains
    local result = ""
-   for i = 1, 10000 do
+   for i = 0, 10000 do
       result ..= tostring(i)
       if i < 10000 then
          result ..= ","
@@ -80,7 +80,7 @@ function testStringConcatenation()
 
    -- Test the ..= operator with compound assignments
    local compound = "start"
-   for i = 1, 1000 do
+   for i = 0, 1000 do
       compound ..= "_" .. i
    end
 end
@@ -250,10 +250,10 @@ function testDeferStatements()
    test_defer_scope()
 
    assert(#execution_order is 4, "Defer execution count wrong")
-   assert(execution_order[1] is 1, "Defer order wrong")
-   assert(execution_order[2] is 2, "Defer order wrong")
-   assert(execution_order[3] is 3, "Defer order wrong")
-   assert(execution_order[4] is 4, "Defer order wrong")
+   assert(execution_order[0] is 1, "Defer order wrong")
+   assert(execution_order[1] is 2, "Defer order wrong")
+   assert(execution_order[2] is 3, "Defer order wrong")
+   assert(execution_order[3] is 4, "Defer order wrong")
 
    -- Test multiple nested defer statements
    local defer_counter = 0

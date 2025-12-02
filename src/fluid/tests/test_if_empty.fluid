@@ -107,8 +107,8 @@ function testTableAccessLHS()
    table.insert(t, 30)
    table.insert(t, 40)
 
-   local one = (t[1] ?? 0)
-   local two = (t[2] ?? 0)
+   local one = (t[0] ?? 0)
+   local two = (t[1] ?? 0)
 
    assert(one is 10, "Array access LHS test failed for first element: expected 10, got '" .. tostring(one) .. "'")
    assert(two is 20, "Array access LHS test failed for second element: expected 20, got '" .. tostring(two) .. "'")
@@ -213,8 +213,8 @@ function testIfEmptyArgumentLeakCapture()
    local function capture(...)
       local args = { ... }
       record.count = #args
-      record.first = args[1]
-      record.second = args[2]
+      record.first = args[0]
+      record.second = args[1]
    end
 
    capture(Function.status ?? 'then')
@@ -232,8 +232,8 @@ function testIfEmptyStringFindError()
    end)
 
    assert(ok is true, "string.find should succeed once the argument leak is fixed")
-   assert(start_index is 2, "Expected search to start at index 2, got '" .. tostring(start_index) .. "'")
-   assert(end_index is 2, "Expected search to end at index 2, got '" .. tostring(end_index) .. "'")
+   assert(start_index is 1, "Expected search to start at index 1, got '" .. tostring(start_index) .. "'")
+   assert(end_index is 1, "Expected search to end at index 1, got '" .. tostring(end_index) .. "'")
 end
 
 function testMethodCallInOptionalForm()
@@ -343,7 +343,7 @@ function testInFunction()
 
    -- If-empty operator within a function
    local result = string.find((Function.status ?? 'then'), 'e')
-   assert(result is 2, "Failed test: expected 2, got " .. tostring(result))
+   assert(result is 1, "Failed test: expected 1, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------

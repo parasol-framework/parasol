@@ -123,13 +123,9 @@ static void free_all(objScript *Self)
 }
 
 //********************************************************************************************************************
-// Proxy functions for controlling access to global variables.
-
-static int global_index(lua_State *Lua) // Read global via proxy
-{
-   lua_rawget(Lua, lua_upvalueindex(1));
-   return 1;
-}
+// Proxy function for controlling writes to global variables.
+// Note: __index uses a direct table reference (not a function) for JIT compatibility.
+// When __index is a table, LuaJIT can trace through global reads without aborting.
 
 static int global_newindex(lua_State *Lua) // Write global variable via proxy
 {
@@ -346,21 +342,25 @@ static ERR FLUID_Activate(objScript *Self)
       prv->Lua->Script             = Self;
       prv->Lua->ProtectedGlobals   = false;
 
-      // Change the __newindex and __index methods of the global table so that all access passes
-      // through a proxy table that we control.
+      // Set up global variable protection that is JIT-compatible.
+      // Key insight: __index can be a TABLE (JIT traces through it) instead of a FUNCTION (JIT aborts).
+      // We use:
+      //   __index = storage_table (direct table lookup, JIT-compatible)
+      //   __newindex = C function (only called on writes, protects existing functions)
 
-      lua_newtable(prv->Lua); // Storage table
+      lua_newtable(prv->Lua); // Storage table (will hold all globals) - stack index 1
       {
-         lua_newtable(prv->Lua); // table = { __newindex = A, __index = B }
+         lua_newtable(prv->Lua); // Metatable = { __newindex = func, __index = storage_table }
          {
+            // __newindex: C function for write protection (only called when writing new keys)
             lua_pushstring(prv->Lua, "__newindex");
-            lua_pushvalue(prv->Lua, 1); // Storage table
+            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
             lua_pushcclosure(prv->Lua, global_newindex, 1);
             lua_settable(prv->Lua, -3);
 
+            // __index: Direct table reference (JIT-compatible, no C function call)
             lua_pushstring(prv->Lua, "__index");
-            lua_pushvalue(prv->Lua, 1);
-            lua_pushcclosure(prv->Lua, global_index, 1);
+            lua_pushvalue(prv->Lua, 1); // Storage table (absolute index)
             lua_settable(prv->Lua, -3);
          }
          lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
@@ -563,7 +563,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
                   if (not xml->Tags.empty()) {
                      auto &tag = xml->Tags[0];
-                     int i = 1;
+                     int i = 0;
                      if (iequals("receipt", tag.name())) {
                         for (auto &scan : tag.Children) {
                            lua_pushinteger(prv->Lua, i++);

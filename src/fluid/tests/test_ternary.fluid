@@ -324,7 +324,7 @@ end
 -- Array/table indexing tests
 function testArrayIndexingInBranch()
    local arr = { "first", "second", "third" }
-   local v = true ? arr[2] :> arr[3]
+   local v = true ? arr[1] :> arr[2]
    assert(v is "second", "Failed array indexing in branch: expected 'second', got " .. tostring(v))
 end
 
@@ -450,7 +450,7 @@ function testInFunction()
 
    -- Ternary operator within a function
    local result = string.find((Function.status ? 'then' :> 'else'), 'e')
-   assert(result is 3, "Failed test: expected 3, got " .. tostring(result))
+   assert(result is 2, "Failed test: expected 3, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -70,7 +70,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values,
          auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
 
          for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-            int index = lua_tointeger(Lua, -2) - 1;
+            int index = lua_tointeger(Lua, -2);
             if ((index >= 0) and (index < total)) {
                APTR sti = structbuf.get() + (aligned_size * index);
                int type = lua_type(Lua, -1);

@@ -27,8 +27,8 @@ function test_sparse_and_holes()
 
    -- Table with only holes (all nil)
    local holes = {}
+   holes[0] = nil
    holes[1] = nil
-   holes[2] = nil
    assert(table.empty(holes) is true, "Table with only nil entries should be empty")
 end
 
@@ -41,7 +41,7 @@ function test_clear_and_mutation()
    assert(table.empty(t) is true, "table.clear() should result in an empty table")
 
    -- Re-populate and re-check
-   t[1] = 10
+   t[0] = 10
    assert(table.empty(t) is false, "Re-populated table should not be empty")
 end
 
@@ -49,18 +49,30 @@ function test_lookup_with_field()
    local cfg = { }
    table.insert(cfg, { apple = "banana", orange = "lemon" })
    local lookup = { value = "apple" }
-   assert(cfg[1][lookup.value] is "banana", "Lookup with field should return correct value")
+   assert(cfg[0][lookup.value] is "banana", "Lookup with field should return correct value")
 
    local m = {}
    local clients = { }
-   for i = 1, 2 do
+   for i = 0, 1 do
       m[i] = {}
       table.insert(m[i], 'CLIENT_' .. i)
    end
-   clients[1] = { }
-   clients[1].messageIndex = 1
-   local result = m[1][clients[1].messageIndex]
-   assert(result is 'CLIENT_1', 'Expected CLIENT_1, got ' .. tostring(result))
+   clients[0] = { }
+   clients[0].messageIndex = 0
+   local result = m[0][clients[0].messageIndex]
+   assert(result is 'CLIENT_0', 'Expected CLIENT_0, got ' .. tostring(result))
+end
+
+function test_sort_by_keys()
+   local t = { b = 2, a = 1, c = 3 }
+   local keys = {}
+   for k, v in table.sortByKeys(t) do
+      table.insert(keys, k)
+   end
+   assert(#keys is 3, "Should have 3 keys after sorting, got " .. #keys)
+   assert(keys[0] is 'a', "First key should be 'a'")  
+   assert(keys[1] is 'b', "Second key should be 'b'") 
+   assert(keys[2] is 'c', "Third key should be 'c'")  
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -71,6 +83,7 @@ end
          'test_array_and_hash',
          'test_sparse_and_holes',
          'test_clear_and_mutation',
-         'test_lookup_with_field'
+         'test_lookup_with_field',
+         'test_sort_by_keys'
       }
    }

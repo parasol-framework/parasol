@@ -1785,10 +1785,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov [BASE-8], CFUNC:RD
   |.if DUALNUM
   |  mov dword [BASE+12], LJ_TISNUM
-  |  mov dword [BASE+8], 0
+  |  mov dword [BASE+8], -1  // 0-based: init to -1
   |.else
-  |  xorps xmm0, xmm0
-  |  movsd qword [BASE+8], xmm0
+  |  mov dword [BASE+8], 0x00000000  // 0-based: -1.0 in IEEE 754 (lo word)
+  |  mov dword [BASE+12], 0xBFF00000  // 0-based: -1.0 in IEEE 754 (hi word)
   |.endif
   |  mov RD, 1+3
   |  jmp ->fff_res
@@ -2353,14 +2353,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov STR:RB, [BASE]
   |  mov TMP3, STR:RB
   |  mov RB, STR:RB->len
+  |  test RB, RB				// len == 0?
+  |  jz ->fff_emptystr			// Return empty string immediately
   |.if DUALNUM
   |  mov RA, dword [BASE+8]
   |.else
   |  cvttsd2si RA, qword [BASE+8]
   |.endif
   |  mov RC, TMP2
-  |  cmp RB, RC				// len < end? (unsigned compare)
-  |  jb >5
+  |  cmp RB, RC				// len <= end? (unsigned compare)
+  |  jbe >5
   |2:
   |  test RA, RA			// start <= 0?
   |  jle >7
@@ -2368,7 +2370,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov STR:RB, TMP3
   |  sub RC, RA				// start > end?
   |  jl ->fff_emptystr
-  |  lea RB, [STR:RB+RA+#STR-1]
+  |  lea RB, [STR:RB+RA+#STR]  // Zero-indexed: no -1 offset needed
   |  add RC, 1
   |4:
   |.if X64
@@ -2380,25 +2382,101 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp ->fff_newstr
   |
   |5:  // Negative end or overflow.
-  |  jl >6
-  |  lea RC, [RC+RB+1]			// end = end+(len+1)
+  |  test RC, RC			// Check if end is negative
+  |  jns >6				// If end >= 0, it's overflow (since len <= end)
+  |  lea RC, [RC+RB]			// end = end+len (negative index conversion)
   |  jmp <2
   |6:  // Overflow.
-  |  mov RC, RB				// end = len
+  |  lea RC, [RB-1]			// end = len-1 (zero-indexed: last valid index)
   |  jmp <2
   |
   |7:  // Negative start or underflow.
   |  je >8
-  |  add RA, RB				// start = start+(len+1)
-  |  add RA, 1
-  |  jg <3				// start > 0?
+  |  add RA, RB				// start = start+len
+  |  jge <3				// start >= 0?
   |8:  // Underflow.
-  |  mov RA, 1				// start = 1
+  |  xor RA, RA				// start = 0 (zero-indexed)
   |  jmp <3
   |
   |->fff_emptystr:  // Range underflow.
   |  xor RC, RC				// Zero length. Any ptr in RB is ok.
   |  jmp <4
+  |
+  |// string.substr(str, start, end) - like string.sub but end is exclusive
+  |.ffunc string_substr
+  |  ffgccheck
+  |  mov TMP2, -1
+  |  cmp NARGS:RD, 1+2;  jb ->fff_fallback
+  |  jna >1
+  |  cmp dword [BASE+20], LJ_TISNUM
+  |.if DUALNUM
+  |  jne ->fff_fallback
+  |  mov RB, dword [BASE+16]
+  |  mov TMP2, RB
+  |.else
+  |  jae ->fff_fallback
+  |  cvttsd2si RB, qword [BASE+16]
+  |  mov TMP2, RB
+  |.endif
+  |  // Convert exclusive end to inclusive: end = end - 1 (only for positive values)
+  |  test dword TMP2, TMP2
+  |  jle >1
+  |  sub dword TMP2, 1
+  |1:
+  |  cmp dword [BASE+4], LJ_TSTR;  jne ->fff_fallback
+  |  cmp dword [BASE+12], LJ_TISNUM
+  |.if DUALNUM
+  |  jne ->fff_fallback
+  |.else
+  |  jae ->fff_fallback
+  |.endif
+  |  mov STR:RB, [BASE]
+  |  mov TMP3, STR:RB
+  |  mov RB, STR:RB->len
+  |  test RB, RB				// len == 0?
+  |  jz ->fff_emptystr			// Return empty string immediately
+  |.if DUALNUM
+  |  mov RA, dword [BASE+8]
+  |.else
+  |  cvttsd2si RA, qword [BASE+8]
+  |.endif
+  |  mov RC, TMP2
+  |  cmp RB, RC				// len <= end? (unsigned compare)
+  |  jbe >5
+  |2:
+  |  test RA, RA			// start <= 0?
+  |  jle >7
+  |3:
+  |  mov STR:RB, TMP3
+  |  sub RC, RA				// start > end?
+  |  jl ->fff_emptystr
+  |  lea RB, [STR:RB+RA+#STR]  // Zero-indexed: no -1 offset needed
+  |  add RC, 1
+  |4:
+  |.if X64
+  |  mov TMP3, RC
+  |.else
+  |  mov ARG3, RC
+  |.endif
+  |  mov RD, RB
+  |  jmp ->fff_newstr
+  |
+  |5:  // Negative end or overflow.
+  |  test RC, RC			// Check if end is negative
+  |  jns >6				// If end >= 0, it's overflow (since len <= end)
+  |  lea RC, [RC+RB]			// end = end+len (negative index conversion)
+  |  jmp <2
+  |6:  // Overflow.
+  |  lea RC, [RB-1]			// end = len-1 (zero-indexed: last valid index)
+  |  jmp <2
+  |
+  |7:  // Negative start or underflow.
+  |  je >8
+  |  add RA, RB				// start = start+len
+  |  jge <3				// start >= 0?
+  |8:  // Underflow.
+  |  xor RA, RA				// start = 0 (zero-indexed)
+  |  jmp <3
   |
   |.macro ffstring_op, name
   |  .ffunc_1 string_ .. name
@@ -4834,11 +4912,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |1:  // Traverse array part.
     |  cmp RC, DISPATCH; jae >5		// Index points after array part?
     |  cmp dword [KBASE+RC*8+4], LJ_TNIL; je >4
+    |  mov TMP3, RC
+    |  add TMP3, 0
     |.if DUALNUM
     |  mov dword [BASE+RA*8+4], LJ_TISNUM
-    |  mov dword [BASE+RA*8], RC
+    |  mov dword [BASE+RA*8], TMP3
     |.else
-    |  cvtsi2sd xmm0, RC
+    |  cvtsi2sd xmm0, TMP3
     |.endif
     |  // Copy array slot to returned value.
     |.if X64
@@ -5826,4 +5906,3 @@ static void emit_asm_debug(BuildCtx *ctx)
     break;
   }
 }
-

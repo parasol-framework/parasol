@@ -144,9 +144,10 @@ GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 }
 
 // The API of this function conforms to lua_createtable().
+// 0-based: asize = a for a array elements at indices 0..a-1
 GCtab* lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
 {
-   return lj_tab_new(L, (uint32_t)(a > 0 ? a + 1 : 0), hsize2hbits(h));
+   return lj_tab_new(L, (uint32_t)(a > 0 ? a : 0), hsize2hbits(h));
 }
 
 #if LJ_HASJIT
@@ -300,7 +301,8 @@ static uint32_t countint(cTValue* key, uint32_t* bins)
    if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
+      // 0-based: valid array indices are [0, LJ_MAX_ASIZE)
+      if (k >= 0 and (uint32_t)k < LJ_MAX_ASIZE and nk == (lua_Number)k) {
          bins[(k > 2 ? lj_fls((uint32_t)(k - 1)) : 0)]++;
          return 1;
       }
@@ -583,7 +585,7 @@ TValue* lj_tab_set(lua_State* L, GCtab* t, cTValue* key)
 
 // -- Table traversal -----------------------------------------------------
 
-/* Table traversal indexes:
+/* Table traversal indexes (0-based):
 **
 ** Array key index: [0 .. t->asize-1]
 ** Hash key index:  [t->asize .. t->asize+t->hmask]
@@ -596,7 +598,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    TValue tmp;
    if (tvisint(key)) {
       int32_t k = intV(key);
-      if ((uint32_t)k < t->asize)
+      if ((uint32_t)k < t->asize)  // 0-based: valid if k in [0, asize)
          return (uint32_t)k + 1;
       setnumV(&tmp, (lua_Number)k);
       key = &tmp;
@@ -604,7 +606,7 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
    else if (tvisnum(key)) {
       lua_Number nk = numV(key);
       int32_t k = lj_num2int(nk);
-      if ((uint32_t)k < t->asize and nk == (lua_Number)k)
+      if ((uint32_t)k < t->asize and nk == (lua_Number)k)  // 0-based
          return (uint32_t)k + 1;
    }
    if (!tvisnil(key)) {
@@ -617,17 +619,18 @@ uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab* t, cTValue* key)
          return key->u32.lo;
       return ~0u;  //  Invalid key to next.
    }
-   return 0;  //  A nil key starts the traversal.
+   return 0;  //  A nil key starts the traversal at internal index 0.
 }
 
 // Get the next key/value pair of a table traversal.
 int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 {
    uint32_t idx = lj_tab_keyindex(t, key);  //  Find successor index of key.
-   // First traverse the array part.
+   // First traverse the array part (slots 0 to asize-1).
    for (; idx < t->asize; idx++) {
       cTValue* a = arrayslot(t, idx);
       if (LJ_LIKELY(!tvisnil(a))) {
+         // 0-based: storage index = semantic index, so return idx directly
          setintV(o, idx);
          o[1] = *a;
          return 1;
@@ -648,20 +651,29 @@ int lj_tab_next(GCtab* t, cTValue* key, TValue* o)
 
 // -- Table length calculation --------------------------------------------
 
-// Compute table length. Slow path with mixed array/hash lookups.
-LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
+// 0-based: length = last_index + 1 (e.g., last element at index 2 → length 3)
+static LJ_AINLINE MSize semantic_length(size_t last_index)
+{
+   // Handle sentinel value (size_t)-1 representing "before the first element"
+   if (last_index == (size_t)-1) return 0;
+   return (MSize)(last_index + 1);
+}
+
+LJ_NOINLINE static size_t tab_len_slow(GCtab* t, size_t hi)
 {
    cTValue* tv;
    size_t lo = hi;
    hi++;
+   // Handle wrap-around when hi was SIZE_MAX (sentinel for empty array part)
+   if (hi == 0) hi = 1;
    // Widening search for an upper bound.
    while ((tv = lj_tab_getint(t, (int32_t)hi)) and !tvisnil(tv)) {
       lo = hi;
       hi += hi;
-      if (hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
-         lo = 1;
+      if (hi == 0 or hi > (size_t)(INT_MAX - 2)) {  // Punt and do a linear search.
+         lo = 0;  // 0-based: start linear search at index 0
          while ((tv = lj_tab_getint(t, (int32_t)lo)) and !tvisnil(tv)) lo++;
-         return (MSize)(lo - 1);
+         return lo - 1;
       }
    }
    // Binary search to find a non-nil to nil transition.
@@ -670,26 +682,33 @@ LJ_NOINLINE static MSize tab_len_slow(GCtab* t, size_t hi)
       cTValue* tvb = lj_tab_getint(t, (int32_t)mid);
       if (tvb and !tvisnil(tvb)) lo = mid; else hi = mid;
    }
-   return (MSize)lo;
+   return lo;
 }
 
-// Compute table length. Fast path.
+// Compute table length. Fast path. 0-based indexing.
 MSize LJ_FASTCALL lj_tab_len(GCtab* t)
 {
+   // Initialize last_index to sentinel value representing "before the first element"
+   size_t last_index = (size_t)-1;
    size_t hi = (size_t)t->asize;
-   if (hi) hi--;
-   // In a growing array the last array element is very likely nil.
-   if (hi > 0 and LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
-      // Binary search to find a non-nil to nil transition in the array.
-      size_t lo = 0;
-      while (hi - lo > 1) {
-         size_t mid = (lo + hi) >> 1;
-         if (tvisnil(arrayslot(t, mid))) hi = mid; else lo = mid;
+   if (hi) {
+      hi--;
+      if (LJ_LIKELY(tvisnil(arrayslot(t, hi)))) {
+         // Binary search to find a non-nil to nil transition in the array.
+         size_t lo = (size_t)-1;  // 0-based: sentinel is -1
+         while (hi - lo > 1) {
+            size_t mid = (lo + hi) >> 1;
+            if (tvisnil(arrayslot(t, mid))) hi = mid; else lo = mid;
+         }
+         last_index = lo;
       }
-      return (MSize)lo;
+      else {
+         // 0-based: hi is a valid index (since hi >= 0 is always true for size_t)
+         last_index = hi;
+      }
    }
    // Without a hash part, there's an implicit nil after the last element.
-   return t->hmask ? tab_len_slow(t, hi) : (MSize)hi;
+   return t->hmask ? semantic_length(tab_len_slow(t, last_index)) : semantic_length(last_index);
 }
 
 #if LJ_HASJIT
@@ -699,10 +718,10 @@ MSize LJ_FASTCALL lj_tab_len_hint(GCtab* t, size_t hint)
    size_t asize = (size_t)t->asize;
    cTValue* tv = arrayslot(t, hint);
    if (LJ_LIKELY(hint + 1 < asize)) {
-      if (LJ_LIKELY(!tvisnil(tv) and tvisnil(tv + 1))) return (MSize)hint;
+      if (LJ_LIKELY(!tvisnil(tv) and tvisnil(tv + 1))) return semantic_length(hint);
    }
    else if (hint + 1 <= asize and LJ_LIKELY(t->hmask == 0) and !tvisnil(tv)) {
-      return (MSize)hint;
+      return semantic_length(hint);
    }
    return lj_tab_len(t);
 }

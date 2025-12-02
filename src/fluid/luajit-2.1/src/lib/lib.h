@@ -1,28 +1,25 @@
-/*
-** Library function support.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Library function support.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
-#ifndef _LJ_LIB_H
-#define _LJ_LIB_H
+#pragma once
 
 #include "lj_obj.h"
 
 // A fallback handler is called by the assembler VM if the fast path fails:
 //
 // - too few arguments:   unrecoverable.
-// - wrong argument type:   recoverable, if coercion succeeds.
+// - wrong argument type: recoverable, if coercion succeeds.
 // - bad argument value:  unrecoverable.
-// - stack overflow:        recoverable, if stack reallocation succeeds.
-// - extra handling:        recoverable.
+// - stack overflow:      recoverable, if stack reallocation succeeds.
+// - extra handling:      recoverable.
 //
-// The unrecoverable cases throw an error with lj_err_arg(), lj_err_argtype(),
-// lj_err_caller() or lj_err_callermsg().
+// The unrecoverable cases throw an error with lj_err_arg(), lj_err_argtype(), lj_err_caller() or lj_err_callermsg().
 // The recoverable cases return 0 or the number of results + 1.
 // The assembler VM retries the fast path only if 0 is returned.
 // This time the fallback must not be called again or it gets stuck in a loop.
 
 // Return values from fallback handler.
+
 constexpr int FFH_RETRY = 0;
 #define FFH_UNREACHABLE   FFH_RETRY
 #define FFH_RES(n)   ((n)+1)
@@ -52,21 +49,15 @@ LJ_FUNC int32_t lj_lib_checkintrange(lua_State* L, int narg,
 
 // Avoid including lj_frame.h.
 #if LJ_GC64
-#define lj_lib_upvalue(L, n) \
-  (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
+#define lj_lib_upvalue(L, n) (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
 #elif LJ_FR2
-#define lj_lib_upvalue(L, n) \
-  (&gcref((L->base-2)->gcr)->fn.c.upvalue[(n)-1])
+#define lj_lib_upvalue(L, n) (&gcref((L->base-2)->gcr)->fn.c.upvalue[(n)-1])
 #else
-#define lj_lib_upvalue(L, n) \
-  (&gcref((L->base-1)->fr.func)->fn.c.upvalue[(n)-1])
+#define lj_lib_upvalue(L, n) (&gcref((L->base-1)->fr.func)->fn.c.upvalue[(n)-1])
 #endif
 
 #if LJ_TARGET_WINDOWS
-#define lj_lib_checkfpu(L) \
-  do { setnumV(L->top++, (lua_Number)1437217655); \
-    if (lua_tointeger(L, -1) != 1437217655) lj_err_caller(L, ErrMsg::BADFPU); \
-    L->top--; } while (0)
+#define lj_lib_checkfpu(L) do { setnumV(L->top++, (lua_Number)1437217655); if (lua_tointeger(L, -1) != 1437217655) lj_err_caller(L, ErrMsg::BADFPU); L->top--; } while (0)
 #else
 #define lj_lib_checkfpu(L)   UNUSED(L)
 #endif
@@ -85,15 +76,11 @@ LJ_FUNC GCfunc* lj_lib_pushcc(lua_State* L, lua_CFunction f, int id, int n);
 #define LJLIB_NOREGUV
 #define LJLIB_NOREG
 
-#define LJ_LIB_REG(L, regname, name) \
-  lj_lib_register(L, regname, lj_lib_init_##name, lj_lib_cf_##name)
+#define LJ_LIB_REG(L, regname, name) lj_lib_register(L, regname, lj_lib_init_##name, lj_lib_cf_##name)
 
-LJ_FUNC void lj_lib_register(lua_State* L, const char* libname,
-   const uint8_t* init, const lua_CFunction* cf);
-LJ_FUNC void lj_lib_prereg(lua_State* L, const char* name, lua_CFunction f,
-   GCtab* env);
-LJ_FUNC int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id,
-   const char* name);
+LJ_FUNC void lj_lib_register(lua_State* L, const char* libname, const uint8_t* init, const lua_CFunction* cf);
+LJ_FUNC void lj_lib_prereg(lua_State* L, const char* name, lua_CFunction f, GCtab* env);
+LJ_FUNC int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id, const char* name);
 
 // Library init data tags.
 #define LIBINIT_LENMASK   0x3f
@@ -110,5 +97,3 @@ LJ_FUNC int lj_lib_postreg(lua_State* L, lua_CFunction cf, int id,
 #define LIBINIT_LASTCL   0xfd
 #define LIBINIT_FFID   0xfe
 #define LIBINIT_END   0xff
-
-#endif
