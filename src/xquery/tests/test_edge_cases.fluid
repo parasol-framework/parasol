@@ -8,7 +8,7 @@
 function testMediumAdditionChain()
    local count = 40
    local terms = {}
-   for index = 1, count do
+   for index = 0, count do
       terms[index] = tostring(index)
    end
 
@@ -26,8 +26,8 @@ end
 function testLongAdditionChain()
    local count = 400
    local terms = {}
-   for index = 1, count do
-      terms[index] = tostring(index)
+   for index = 0, count-1 do
+      terms[index] = tostring(index + 1)
    end
 
    local expected = (count * (count + 1)) / 2
@@ -44,7 +44,7 @@ end
 function testMultiplicationChain()
    local factors = {}
    for index = 2, 10 do
-      factors[#factors + 1] = tostring(index)
+      factors[#factors] = tostring(index)
    end
    local chain = table.concat(factors, ' * ')
 

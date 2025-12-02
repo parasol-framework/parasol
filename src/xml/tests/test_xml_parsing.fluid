@@ -14,7 +14,7 @@ function testStatementParsing()
    local tags = xml.tags
    assert(tags, "XML parsing failed - no tags created")
    assert(#tags is 1, "Expected 1 root tag, got " .. #tags)
-   assert(tags[1].attribs[1].name is "root", "Expected root tag name")
+   assert(tags[0].attribs[0].name is "root", "Expected root tag name")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -27,9 +27,9 @@ function testCDATAParsing()
 
    local tags = xml.tags
    assert(tags, "CDATA parsing failed")
-   local children = tags[1].children
+   local children = tags[0].children
    assert(#children is 1, "Expected 1 CDATA child")
-   assert(children[1].attribs[1].value is "Some <special> & content", "CDATA content not preserved")
+   assert(children[0].attribs[0].value is "Some <special> & content", "CDATA content not preserved")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ function testCommentHandling()
    })
 
    -- Comments should be stripped by default
-   assert(xml.tags[1].children[1].attribs[1].name is "child", "Comment not stripped properly")
+   assert(xml.tags[0].children[0].attribs[0].name is "child", "Comment not stripped properly")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -52,15 +52,15 @@ function testAttributeParsing()
       statement = '<root attr1="value1" attr2=\'value2\' attr3=unquoted><child/></root>'
    })
 
-   local err, value1 = xml.mtGetAttrib(xml.tags[1].id, 'attr1')
+   local err, value1 = xml.mtGetAttrib(xml.tags[0].id, 'attr1')
    assert(err is ERR_Okay, "Failed to get attr1")
    assert(value1 is "value1", "attr1 value incorrect")
 
-   local err, value2 = xml.mtGetAttrib(xml.tags[1].id, 'attr2')
+   local err, value2 = xml.mtGetAttrib(xml.tags[0].id, 'attr2')
    assert(err is ERR_Okay, "Failed to get attr2")
    assert(value2 is "value2", "attr2 value incorrect")
 
-   local err, value3 = xml.mtGetAttrib(xml.tags[1].id, 'attr3')
+   local err, value3 = xml.mtGetAttrib(xml.tags[0].id, 'attr3')
    assert(err is ERR_Okay, "Failed to get attr3")
    assert(value3 is "unquoted", "attr3 value incorrect")
 end
@@ -73,15 +73,15 @@ function testNestedStructure()
       statement = '<root><level1><level2><level3>Deep content</level3></level2></level1></root>'
    })
 
-   local level1 = xml.tags[1].children[1]
-   local level2 = level1.children[1]
-   local level3 = level2.children[1]
-   local content = level3.children[1]
+   local level1 = xml.tags[0].children[0]
+   local level2 = level1.children[0]
+   local level3 = level2.children[0]
+   local content = level3.children[0]
 
-   assert(level1.attribs[1].name is "level1", "Level1 tag name incorrect")
-   assert(level2.attribs[1].name is "level2", "Level2 tag name incorrect")
-   assert(level3.attribs[1].name is "level3", "Level3 tag name incorrect")
-   assert(content.attribs[1].value is "Deep content", "Deep content not preserved")
+   assert(level1.attribs[0].name is "level1", "Level1 tag name incorrect")
+   assert(level2.attribs[0].name is "level2", "Level2 tag name incorrect")
+   assert(level3.attribs[0].name is "level3", "Level3 tag name incorrect")
+   assert(content.attribs[0].value is "Deep content", "Deep content not preserved")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -92,11 +92,11 @@ function testSelfClosingTags()
       statement = '<root><self-closed attr="value"/><normal>content</normal></root>'
    })
 
-   local children = xml.tags[1].children
+   local children = xml.tags[0].children
    assert(#children is 2, "Expected 2 children, got " .. #children)
-   assert(children[1].attribs[1].name is "self-closed", "Self-closed tag name incorrect")
+   assert(children[0].attribs[0].name is "self-closed", "Self-closed tag name incorrect")
 
-   local err, value = xml.mtGetAttrib(children[1].id, 'attr')
+   local err, value = xml.mtGetAttrib(children[0].id, 'attr')
    assert(err is ERR_Okay and value is "value", "Self-closed tag attribute not preserved")
 end
 
@@ -120,11 +120,11 @@ function testMixedContent()
       statement = '<root>Text before <child>Child content</child> Text after</root>'
    })
 
-   local children = xml.tags[1].children
+   local children = xml.tags[0].children
    assert(#children is 3, "Expected 3 content nodes, got " .. #children)
-   assert(children[1].attribs[1].value is "Text before ", "First content incorrect")
-   assert(children[2].attribs[1].name is "child", "Child tag missing")
-   assert(children[3].attribs[1].value is " Text after", "Last content incorrect")
+   assert(children[0].attribs[0].value is "Text before ", "First content incorrect")
+   assert(children[1].attribs[0].name is "child", "Child tag missing")
+   assert(children[2].attribs[0].value is " Text after", "Last content incorrect")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -135,10 +135,10 @@ function testEmptyElements()
       statement = '<root><empty></empty><empty-self/></root>'
    })
 
-   local children = xml.tags[1].children
+   local children = xml.tags[0].children
    assert(#children is 2, "Expected 2 empty elements")
-   assert(children[1].attribs[1].name is "empty", "First empty element name incorrect")
-   assert(children[2].attribs[1].name is "empty-self", "Second empty element name incorrect")
+   assert(children[0].attribs[0].name is "empty", "First empty element name incorrect")
+   assert(children[1].attribs[0].name is "empty-self", "Second empty element name incorrect")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

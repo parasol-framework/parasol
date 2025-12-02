@@ -81,7 +81,7 @@ function testObjectSearches()
 
    -- Test ListChildren()
 
-   for i=1,9 do
+   for i=0,8 do
       local obj = parent.new('xml', { name='TestFO', flags='NEW' })
       table.insert(objects, obj)
    end
@@ -92,10 +92,10 @@ function testObjectSearches()
    assert(#children is 10, 'Parent object listed ' .. #children .. ' objects.')
 
    local check = { }
-   for i=1,10 do
+   for i=0,9 do
       check[objects[i].id] = true
    end
-   for i=1,10 do
+   for i=0,9 do
       assert(check[children[i]] is true, "Object tables don't match")
    end
 end

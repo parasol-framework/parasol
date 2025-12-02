@@ -17,7 +17,7 @@ function testParsingFlags()
 
    -- Test with comment stripping (default)
    local xml2 = obj.new("xml", { statement = xmlWithComments })
-   assert(xml2.tags[1].children[1].attribs[1].name is "child", "Comments should be stripped by default")
+   assert(xml2.tags[0].children[0].attribs[0].name is "child", "Comments should be stripped by default")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ function testWhitespaceHandling()
 
    -- Test default whitespace handling
    local xml2 = obj.new("xml", { statement = xmlWithWhitespace })
-   assert(xml2.tags[1].children[1].attribs[1].name is "child", "Child should be found despite whitespace")
+   assert(xml2.tags[0].children[0].attribs[0].name is "child", "Child should be found despite whitespace")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -51,8 +51,8 @@ function testContentStripping()
    })
 
    -- Content should be stripped, only element structure preserved
-   assert(xml.tags[1].children[1].attribs[1].name is "element", "Element structure should remain")
-   assert(#xml.tags[1].children[1].children is 0, "Content should be stripped")
+   assert(xml.tags[0].children[0].attribs[0].name is "element", "Element structure should remain")
+   assert(#xml.tags[0].children[0].children is 0, "Content should be stripped")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ function testHeaderStripping()
    })
 
    -- Should only have the root element, no processing instructions
-   assert(xml.tags[1].attribs[1].name is "root", "Root element should be preserved")
+   assert(xml.tags[0].attribs[0].name is "root", "Root element should be preserved")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ function testContentExtraction()
       statement = '<root>Before <em>emphasized</em> after <strong>strong</strong> end</root>'
    })
 
-   local rootId = xml.tags[1].id
+   local rootId = xml.tags[0].id
 
    -- Test shallow content extraction
    local buffer = string.alloc(1000)
@@ -257,8 +257,8 @@ function testFilterMethod()
    -- Should now only have the filtered content
    local tags = xml.tags
    assert(#tags is 1, "Should have only 1 root element after filter")
-   assert(tags[1].attribs[1].name is "keep", "Root should be the filtered element")
-   assert(tags[1].children[1].attribs[1].name is "target", "Children should be preserved")
+   assert(tags[0].attribs[0].name is "keep", "Root should be the filtered element")
+   assert(tags[0].children[0].attribs[0].name is "target", "Children should be preserved")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

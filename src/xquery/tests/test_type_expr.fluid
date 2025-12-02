@@ -723,7 +723,7 @@ function testConstructorUnknownType()
    assert(err != ERR_Okay, 'Unknown constructor type should raise XPST0051')
 
    local message = string.lower(nz(xml.errorMsg, ''))
-   assert(string.find(message, 'xpst0051', 1, true),
+   assert(string.find(message, 'xpst0051', 0, true),
       'Error message should include XPST0051 for unknown constructor types, got ' .. message)
 end
 
@@ -734,7 +734,7 @@ function testConstructorUnboundPrefix()
    assert(err != ERR_Okay, 'Constructor with unbound prefix should raise XPST0081')
 
    local message = string.lower(nz(xml.errorMsg, ''))
-   assert(string.find(message, 'xpst0081', 1, true),
+   assert(string.find(message, 'xpst0081', 0, true),
       'Error message should include XPST0081 for missing namespace bindings, got ' .. message)
 end
 

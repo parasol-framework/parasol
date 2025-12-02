@@ -20,7 +20,7 @@ function testBasicXPath()
 
    local err, tag = xml.mtGetTag(tag_id)
    assert(err is ERR_Okay, "Failed to get target tag " .. tostring(tag_id))
-   assert(tag.children[1].attribs[1].value is "Found", "Target content incorrect")
+   assert(tag.children[0].attribs[0].value is "Found", "Target content incorrect")
 
    -- Simple deep evaluation
    tag_id = nil
@@ -93,7 +93,7 @@ function testIndexedAccess()
 
    local err, tag = xml.mtGetTag(firstId)
    assert(err is ERR_Okay, "Failed to get first tag")
-   assert(tag.children[1].attribs[1].value is "First", "First item content incorrect")
+   assert(tag.children[0].attribs[0].value is "First", "First item content incorrect")
 
    -- Test third item
    local err, thirdId = xml.mtSearch('/root/item[3]')
@@ -101,7 +101,7 @@ function testIndexedAccess()
 
    local err, tag = xml.mtGetTag(thirdId)
    assert(err is ERR_Okay, "Failed to get third tag")
-   assert(tag.children[1].attribs[1].value is "Third", "Third item content incorrect")
+   assert(tag.children[0].attribs[0].value is "Third", "Third item content incorrect")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -398,7 +398,7 @@ function testXPathFunctions()
    err, itemId = xml.mtSearch('/root/item[last()]')
    assert(err is ERR_Okay, "last() predicate should select the final item")
    local err2, lastTag = xml.mtGetTag(itemId)
-   assert(err2 is ERR_Okay and lastTag.children[1].attribs[1].value is '3', "last() predicate should locate the third entry")
+   assert(err2 is ERR_Okay and lastTag.children[0].attribs[0].value is '3', "last() predicate should locate the third entry")
 
    err, itemId = xml.mtSearch('/root[count(item)>2]')
    assert(err is ERR_Okay, "count(item)>2 should succeed when AST evaluation is active")
@@ -420,7 +420,7 @@ function testNumericPositionPredicates()
    assert(err is ERR_Okay, "item[2] should return the second node (bug: predicate currently hard-codes index==1)")
 
    local err, tag = xml.mtGetTag(secondId)
-   assert(err is ERR_Okay and tag.children[1].attribs[1].value is 'Second', "item[2] should locate the 'Second' entry")
+   assert(err is ERR_Okay and tag.children[0].attribs[0].value is 'Second', "item[2] should locate the 'Second' entry")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

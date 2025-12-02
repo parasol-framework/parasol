@@ -4,24 +4,24 @@ function testSimpleSplit()
    local matcher = regex.new(",\\s*")
    local result = matcher.split("apple, banana,carrot")
    assert(#result is 3, "Comma split should produce three tokens")
-   assert(result[2] is "banana", "Whitespace should be trimmed by pattern")
+   assert(result[1] is "banana", "Whitespace should be trimmed by pattern")
 end
 
 function testConsecutiveDelimiters()
    local matcher = regex.new(",")
    local result = matcher.split("a,,b")
    assert(#result is 3, "Consecutive delimiters should yield empty field")
-   assert(result[2] is "", "Empty field should be preserved between delimiters")
+   assert(result[1] is "", "Empty field should be preserved between delimiters")
 end
 
 function testLeadingTrailingDelimiters()
    -- Expecting [ "", "start", "end", "" ]
    local matcher = regex.new("\\|")
    local result = matcher.split("|start|end|")
-   assert(result[1] is "", "Leading separator should produce empty string")
-   assert(result[2] is "start", "Expected 'start' at index 2")
-   assert(result[3] is "end", "Expected 'end' at index 3")
-   assert(result[4] is "", "Trailing separator should produce empty string")
+   assert(result[0] is "", "Leading separator should produce empty string")
+   assert(result[1] is "start", "Expected 'start' at index 2")
+   assert(result[2] is "end", "Expected 'end' at index 3")
+   assert(result[3] is "", "Trailing separator should produce empty string")
    assert(#result is 4, "Expected 4 tokens, got " .. #result)
 end
 
@@ -36,7 +36,7 @@ function testSplitContinuousFlag()
    local regular = matcher.split("a,b,c")
    local continuous = matcher.split("a,b,c", regex.CONTINUOUS)
    assert(#regular is 3, "Baseline split should return all parts")
-   assert(#continuous is 1 and continuous[1] is "a,b,c", "CONTINUOUS flag should suppress matches away from start")
+   assert(#continuous is 1 and continuous[0] is "a,b,c", "CONTINUOUS flag should suppress matches away from start")
 end
 
 return {

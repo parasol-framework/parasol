@@ -29,7 +29,7 @@ function testEmptyPatternMatch()
    local matcher = regex.new("")
    assert(matcher.test("anything"), "Empty pattern should match any string")
    local replaced = matcher.replace("abc", "-")
-   assert(replaced:sub(1, 1) is "-", "Replacement on empty pattern should insert replacement at start")
+   assert(replaced:sub(0, 0) is "-", "Replacement on empty pattern should insert replacement at start")
 end
 
 return {
