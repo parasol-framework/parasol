@@ -23,8 +23,6 @@ struct SourceSpan {
 };
 
 //********************************************************************************************************************
-// Token definitions using C++20 constexpr structures.
-// Replaces the legacy X-Macro pattern for improved debuggability and IDE support.
 
 struct TokenDefinition {
    std::string_view name;    // Token identifier (e.g., "and", "if_empty")
