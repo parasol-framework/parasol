@@ -53,17 +53,11 @@ inline constexpr int HASH_ROT3 = 13;
    return hashlohi(t, o->u32.lo, (o->u32.hi << 1));
 }
 
-#if LJ_GC64
+// Hash GC reference - 64-bit only
 [[nodiscard]] inline constexpr Node* hashgcref(const GCtab* t, GCRef r) noexcept
 {
    return hashlohi(t, (uint32_t)gcrefu(r), (uint32_t)(gcrefu(r) >> 32));
 }
-#else
-[[nodiscard]] inline constexpr Node* hashgcref(const GCtab* t, GCRef r) noexcept
-{
-   return hashlohi(t, gcrefu(r), gcrefu(r) + HASH_BIAS);
-}
-#endif
 
 #define hsize2hbits(s)   ((s) ? ((s)==1 ? 1 : 1+lj_fls((uint32_t)((s)-1))) : 0)
 

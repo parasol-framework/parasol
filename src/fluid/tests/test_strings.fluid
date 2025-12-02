@@ -359,7 +359,7 @@ function testSubstr()
    -- For negative indices: works the same as string.sub()
 
    local s = "hello world"
-   
+
    for i=0,1000 do
       -- Basic usage - positive indices (exclusive end)
       local substr = string.substr(s, 0, 5) -- Indices 0,1,2,3,4 (not 5)

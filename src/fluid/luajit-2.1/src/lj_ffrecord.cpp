@@ -103,13 +103,9 @@ static void recff_stitch(jit_State* J)
 
    // Ditto for the IR.
    memmove(&J->base[1], &J->base[-1 - LJ_FR2], sizeof(TRef) * nslot);
-#if LJ_FR2
    J->base[2] = TREF_FRAME;
    J->base[-1] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
    J->base[0] = lj_ir_k64(J, IR_KNUM, u64ptr(pc)) | TREF_CONT;
-#else
-   J->base[0] = lj_ir_kptr(J, contptr(cont)) | TREF_CONT;
-#endif
    J->ktrace = tref_ref((J->base[-1 - LJ_FR2] = lj_ir_ktrace(J)));
    J->base += 2 + LJ_FR2;
    J->baseslot += 2 + LJ_FR2;
@@ -190,7 +186,7 @@ static void LJ_FASTCALL recff_type(jit_State* J, RecordFFData* rd)
    uint32_t t;
    if (tvisnumber(&rd->argv[0]))
       t = ~LJ_TNUMX;
-   else if (LJ_64 and !LJ_GC64 and tvislightud(&rd->argv[0]))
+   else if (!LJ_GC64 and tvislightud(&rd->argv[0]))
       t = ~LJ_TLIGHTUD;
    else
       t = ~itype(&rd->argv[0]);
@@ -453,10 +449,8 @@ static void LJ_FASTCALL recff_xpairs(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_pcall(jit_State* J, RecordFFData* rd)
 {
    if (J->maxslot >= 1) {
-#if LJ_FR2
       // Shift function arguments up.
       memmove(J->base + 1, J->base, sizeof(TRef) * J->maxslot);
-#endif
       lj_record_call(J, 0, J->maxslot - 1);
       rd->nres = -1;  //  Pending call.
       J->needsnap = 1;  //  Start catching on-trace errors.
@@ -483,10 +477,8 @@ static void LJ_FASTCALL recff_xpcall(jit_State* J, RecordFFData* rd)
       copyTV(J->L, &argv1, &rd->argv[1]);
       copyTV(J->L, &rd->argv[0], &argv1);
       copyTV(J->L, &rd->argv[1], &argv0);
-#if LJ_FR2
       // Shift function arguments up.
       memmove(J->base + 2, J->base + 1, sizeof(TRef) * (J->maxslot - 1));
-#endif
       // Need to protect lj_record_call because it may throw.
       errcode = lj_vm_cpcall(J->L, nullptr, J, recff_xpcall_cp);
       // Always undo Lua stack swap to avoid confusing the interpreter.
@@ -698,8 +690,7 @@ static void LJ_FASTCALL recff_bit_tobit(jit_State* J, RecordFFData* rd)
 static void LJ_FASTCALL recff_bit_unary(jit_State* J, RecordFFData* rd)
 {
 #if LJ_HASFFI
-   if (recff_bit64_unary(J, rd))
-      return;
+   if (recff_bit64_unary(J, rd)) return;
 #endif
    J->base[0] = emitir(IRTI(rd->data), lj_opt_narrow_tobit(J, J->base[0]), 0);
 }
@@ -1125,8 +1116,7 @@ static LJ_AINLINE void recff_sbufx_set_ptr(jit_State* J, TRef ud, IRFieldID fl, 
 static LJ_AINLINE TRef recff_sbufx_len(jit_State* J, TRef trr, TRef trw)
 {
    TRef len = emitir(IRT(IR_SUB, IRT_INTP), trw, trr);
-   if (LJ_64)
-      len = emitir(IRTI(IR_CONV), len, (IRT_INT << 5) | IRT_INTP | IRCONV_NONE);
+   len = emitir(IRTI(IR_CONV), len, (IRT_INT << 5) | IRT_INTP | IRCONV_NONE);
    return len;
 }
 
@@ -1185,9 +1175,7 @@ static void LJ_FASTCALL recff_buffer_method_reset(jit_State* J, RecordFFData* rd
    TRef zero = lj_ir_kint(J, 0);
    emitir(IRTG(iscow ? IR_NE : IR_EQ, IRT_IGC), trcow, zero);
    if (iscow) {
-      trl = emitir(IRT(IR_BXOR, IRT_IGC), trl,
-         LJ_GC64 ? lj_ir_kint64(J, SBUF_FLAG_COW) :
-         lj_ir_kint(J, SBUF_FLAG_COW));
+      trl = emitir(IRT(IR_BXOR, IRT_IGC), trl, lj_ir_kint64(J, SBUF_FLAG_COW));
       recff_sbufx_set_ptr(J, ud, IRFL_SBUF_W, zero);
       recff_sbufx_set_ptr(J, ud, IRFL_SBUF_E, zero);
       recff_sbufx_set_ptr(J, ud, IRFL_SBUF_B, zero);

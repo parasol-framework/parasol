@@ -6,7 +6,7 @@ Parasol integrates a heavily modified LuaJIT 2.1 VM. This note captures the cont
 ## 2. Notation, Conventions, and Versioning
 - Registers are shown as `R0`, `R1`, etc. Fields A/B/C/D follow LuaJIT encoding: `A` is usually a destination or base, `B`/`C` are sources, `D` is a constant or split field. `base` is the current stack frame start.
 - Conditions are expressed as "condition true → skip next instruction; condition false → execute next instruction (normally a `JMP`)." "Next instruction" means the sequential `BCIns`; a taken `JMP` applies its offset from the following instruction.
-- Version: LuaJIT 2.1 with Parasol patches, assuming the `LJ_FR2` two-slot frame layout used by all supported platforms.
+- Version: LuaJIT 2.1 with extensive changes, assuming the `LJ_FR2` two-slot frame layout used by all supported platforms.
 - Keep this file aligned with changes in `src/fluid/luajit-2.1/src/parser/*`, whenever bytecode emission patterns change.
 
 ## 3. Bytecode Overview

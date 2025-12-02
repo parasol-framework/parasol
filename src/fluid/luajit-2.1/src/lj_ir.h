@@ -384,7 +384,7 @@ struct IRType1 { uint8_t irt; };
 #define irt_isi64(t)      (irt_type(t) == IRT_I64)
 #define irt_isu64(t)      (irt_type(t) == IRT_U64)
 
-#define irt_isfp(t)      (irt_isnum(t) || irt_isfloat(t))
+#define irt_isfp(t)      (irt_isnum(t) or irt_isfloat(t))
 #define irt_isinteger(t)   (irt_typerange((t), IRT_I8, IRT_INT))
 #define irt_isgcv(t)      (irt_typerange((t), IRT_STR, IRT_UDATA))
 #define irt_isaddr(t)      (irt_typerange((t), IRT_LIGHTUD, IRT_UDATA))
@@ -414,25 +414,15 @@ LJ_DATA const uint8_t lj_ir_type_size[];
 
 static LJ_AINLINE IRType itype2irt(const TValue* tv)
 {
-   if (tvisint(tv))
-      return IRT_INT;
-   else if (tvisnum(tv))
-      return IRT_NUM;
-#if LJ_64 && !LJ_GC64
-   else if (tvislightud(tv))
-      return IRT_LIGHTUD;
-#endif
-   else
-      return (IRType)~itype(tv);
+   if (tvisint(tv)) return IRT_INT;
+   else if (tvisnum(tv)) return IRT_NUM;
+   else return (IRType)~itype(tv);
 }
 
 static LJ_AINLINE uint32_t irt_toitype_(IRType t)
 {
-   lj_assertX(!LJ_64 || LJ_GC64 || t != IRT_LIGHTUD,
-      "no plain type tag for lightuserdata");
-   if (LJ_DUALNUM && t > IRT_NUM) {
-      return LJ_TISNUM;
-   }
+   lj_assertX(!LJ_64 or LJ_GC64 or t != IRT_LIGHTUD, "no plain type tag for lightuserdata");
+   if (LJ_DUALNUM && t > IRT_NUM) return LJ_TISNUM;
    else {
       lj_assertX(t <= IRT_NUM, "no plain type tag for IR type %d", t);
       return ~(uint32_t)t;
@@ -530,7 +520,7 @@ static constexpr TRef TREF(uint32_t ref, IRType t)
 #define tref_istruecond(tr)   (!tref_typerange((tr), IRT_NIL, IRT_FALSE))
 #define tref_isinteger(tr)   (tref_typerange((tr), IRT_I8, IRT_INT))
 #define tref_isnumber(tr)   (tref_typerange((tr), IRT_NUM, IRT_INT))
-#define tref_isnumber_str(tr)   (tref_isnumber((tr)) || tref_isstr((tr)))
+#define tref_isnumber_str(tr)   (tref_isnumber((tr)) or tref_isstr((tr)))
 #define tref_isgcv(tr)      (tref_typerange((tr), IRT_STR, IRT_UDATA))
 
 #define tref_isk(tr)      (irref_isk(tref_ref((tr))))
@@ -583,28 +573,23 @@ union IRIns {
       , uint8_t s;   //  Spill slot allocation (overlaps prev).
          )
    };
-   int32_t i;      /* 32 bit signed integer literal (overlaps op12). */
-   GCRef gcr;      /* GCobj constant (overlaps op12 or entire slot). */
-   MRef ptr;      /* Pointer constant (overlaps op12 or entire slot). */
-   TValue tv;      /* TValue constant (overlaps entire slot). */
+   int32_t i;      // 32 bit signed integer literal (overlaps op12).
+   GCRef gcr;      // GCobj constant (overlaps op12 or entire slot).
+   MRef ptr;       // Pointer constant (overlaps op12 or entire slot).
+   TValue tv;      // TValue constant (overlaps entire slot).
 };
 
-#define ir_isk64(ir) \
-  ((ir)->o == IR_KNUM || (ir)->o == IR_KINT64 || \
-   (LJ_GC64 && \
-    ((ir)->o == IR_KGC || (ir)->o == IR_KPTR || (ir)->o == IR_KKPTR)))
+#define ir_isk64(ir) ((ir)->o == IR_KNUM or (ir)->o == IR_KINT64 or (LJ_GC64 && ((ir)->o == IR_KGC or (ir)->o == IR_KPTR or (ir)->o == IR_KKPTR)))
 
-#define ir_kgc(ir)   check_exp((ir)->o == IR_KGC, gcref((ir)[LJ_GC64].gcr))
+#define ir_kgc(ir)    check_exp((ir)->o == IR_KGC, gcref((ir)[LJ_GC64].gcr))
 #define ir_kstr(ir)   (gco2str(ir_kgc((ir))))
 #define ir_ktab(ir)   (gco2tab(ir_kgc((ir))))
-#define ir_kfunc(ir)   (gco2func(ir_kgc((ir))))
-#define ir_kcdata(ir)   (gco2cd(ir_kgc((ir))))
+#define ir_kfunc(ir)  (gco2func(ir_kgc((ir))))
+#define ir_kcdata(ir) (gco2cd(ir_kgc((ir))))
 #define ir_knum(ir)   check_exp((ir)->o == IR_KNUM, &(ir)[1].tv)
-#define ir_kint64(ir)   check_exp((ir)->o == IR_KINT64, &(ir)[1].tv)
-#define ir_k64(ir)   check_exp(ir_isk64(ir), &(ir)[1].tv)
-#define ir_kptr(ir) \
-  check_exp((ir)->o == IR_KPTR || (ir)->o == IR_KKPTR, \
-    mref((ir)[LJ_GC64].ptr, void))
+#define ir_kint64(ir) check_exp((ir)->o == IR_KINT64, &(ir)[1].tv)
+#define ir_k64(ir)    check_exp(ir_isk64(ir), &(ir)[1].tv)
+#define ir_kptr(ir)   check_exp((ir)->o == IR_KPTR or (ir)->o == IR_KKPTR, mref((ir)[LJ_GC64].ptr, void))
 
 // A store or any other op with a non-weak guard has a side-effect.
 static LJ_AINLINE int ir_sideeff(IRIns* ir)

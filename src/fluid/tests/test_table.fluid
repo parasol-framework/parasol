@@ -70,9 +70,9 @@ function test_sort_by_keys()
       table.insert(keys, k)
    end
    assert(#keys is 3, "Should have 3 keys after sorting, got " .. #keys)
-   assert(keys[0] is 'a', "First key should be 'a'")  
-   assert(keys[1] is 'b', "Second key should be 'b'") 
-   assert(keys[2] is 'c', "Third key should be 'c'")  
+   assert(keys[0] is 'a', "First key should be 'a'")
+   assert(keys[1] is 'b', "Second key should be 'b'")
+   assert(keys[2] is 'c', "Third key should be 'c'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

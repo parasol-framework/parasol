@@ -1140,9 +1140,9 @@ extern int luaopen_string(lua_State* L)
    // NOBARRIER: basemt is a GC root.
    global_State *g = G(L);
 
-   // Stores the newly created table mt as the “base metatable” for the string type. basemt_it(g, LJ_TSTR) selects 
-   // the slot for the string base metatable in the global state, obj2gco(mt) converts the GCtab* to a generic GC 
-   // object reference, and setgcref writes that GC reference into the global state (so the runtime knows the 
+   // Stores the newly created table mt as the “base metatable” for the string type. basemt_it(g, LJ_TSTR) selects
+   // the slot for the string base metatable in the global state, obj2gco(mt) converts the GCtab* to a generic GC
+   // object reference, and setgcref writes that GC reference into the global state (so the runtime knows the
    // canonical metatable for strings).
 
    setgcref(basemt_it(g, LJ_TSTR), obj2gco(mt));
@@ -1151,12 +1151,12 @@ extern int luaopen_string(lua_State* L)
 
    settabV(L, lj_tab_setstr(L, mt, mmname_str(g, MM_index)), tabV(L->top - 1));
 
-   // Update the metatable’s negative‑metamethod cache (nomm). The bitwise expression clears the bit 
-   // corresponding to MM_index (and sets other bits), marking that this metamethod slot should not be treated as 
-   // “absent” by the fast metamethod check. Practically, this tells the runtime the MM_index metamethod is present 
+   // Update the metatable’s negative‑metamethod cache (nomm). The bitwise expression clears the bit
+   // corresponding to MM_index (and sets other bits), marking that this metamethod slot should not be treated as
+   // “absent” by the fast metamethod check. Practically, this tells the runtime the MM_index metamethod is present
    // (so subsequent lookups/optimisations behave accordingly).
-   // 
-   // NOTE: nomm is an 8‑bit negative cache, so MM_index must fit within those bits; the bit trick is intentional 
+   //
+   // NOTE: nomm is an 8‑bit negative cache, so MM_index must fit within those bits; the bit trick is intentional
    // to flip the absence/presence semantics used by the VM.
 
    mt->nomm = (uint8_t)(~(1u << MM_index));

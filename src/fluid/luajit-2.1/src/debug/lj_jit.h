@@ -214,12 +214,6 @@ static_assert(SNAP_KEYINDEX IS TREF_KEYINDEX);
            (tr & (TREF_KEYINDEX|TREF_CONT|TREF_FRAME|TREF_REFMASK)));
 }
 
-#if !LJ_FR2
-[[nodiscard]] inline constexpr SnapEntry SNAP_MKPC(const void* pc) noexcept {
-   return SnapEntry(u32ptr(pc));
-}
-#endif
-
 [[nodiscard]] inline constexpr SnapEntry SNAP_MKFTSZ(uint32_t ftsz) noexcept {
    return SnapEntry(ftsz);
 }
@@ -242,13 +236,9 @@ static_assert(SNAP_KEYINDEX IS TREF_KEYINDEX);
 
 [[nodiscard]] inline const BCIns *snap_pc(SnapEntry *sn) noexcept
 {
-#if LJ_FR2
   uint64_t pcbase;
   memcpy(&pcbase, sn, sizeof(uint64_t));
   return (const BCIns *)(pcbase >> 8);
-#else
-  return (const BCIns *)(uintptr_t)*sn;
-#endif
 }
 
 // Snapshot and exit numbers.

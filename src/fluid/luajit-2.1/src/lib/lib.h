@@ -48,13 +48,7 @@ LJ_FUNC int32_t lj_lib_checkintrange(lua_State* L, int narg,
 #endif
 
 // Avoid including lj_frame.h.
-#if LJ_GC64
 #define lj_lib_upvalue(L, n) (&gcval(L->base-2)->fn.c.upvalue[(n)-1])
-#elif LJ_FR2
-#define lj_lib_upvalue(L, n) (&gcref((L->base-2)->gcr)->fn.c.upvalue[(n)-1])
-#else
-#define lj_lib_upvalue(L, n) (&gcref((L->base-1)->fr.func)->fn.c.upvalue[(n)-1])
-#endif
 
 #if LJ_TARGET_WINDOWS
 #define lj_lib_checkfpu(L) do { setnumV(L->top++, (lua_Number)1437217655); if (lua_tointeger(L, -1) != 1437217655) lj_err_caller(L, ErrMsg::BADFPU); L->top--; } while (0)

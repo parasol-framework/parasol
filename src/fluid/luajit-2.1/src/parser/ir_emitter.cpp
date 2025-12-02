@@ -1047,7 +1047,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    ExpDesc tail = iter_values.value_ref();
    this->lex_state.assign_adjust(3, iterator_count.raw(), &tail);
 
-   bcreg_bump(fs, 3 + LJ_FR2);
+   bcreg_bump(fs, 3  + 1);
    int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
    this->lex_state.var_add(3);
 
@@ -1921,11 +1921,11 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload& Payl
    bool forward_tail = Payload.forwards_multret and (args.k IS ExpKind::Call);
    if (forward_tail) {
       setbc_b(ir_bcptr(&this->func_state, &args), 0);
-      ins = BCINS_ABC(BC_CALLM, call_base, 2, args.u.s.aux - call_base - 1 - LJ_FR2);
+      ins = BCINS_ABC(BC_CALLM, call_base, 2, args.u.s.aux - call_base - 1  - 1);
    }
    else {
       if (not (args.k IS ExpKind::Void)) this->materialise_to_next_reg(args, "safe call arguments");
-      ins = BCINS_ABC(BC_CALL, call_base, 2, this->func_state.freereg - call_base - LJ_FR2);
+      ins = BCINS_ABC(BC_CALL, call_base, 2, this->func_state.freereg - call_base  - 1);
    }
 
    this->lex_state.lastline = call_line;
@@ -1949,10 +1949,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       if (not callee_result.ok()) return callee_result;
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "call callee");
-#if LJ_FR2
+      // FR2 is always 1 in 64-bit mode - reserve register for frame link
       RegisterAllocator allocator(&this->func_state);
       allocator.reserve(BCReg(1));
-#endif
       base = BCReg(callee.u.s.info);
    }
    else if (const auto* method = std::get_if<MethodCallTarget>(&Payload.target)) {
@@ -1981,11 +1980,11 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    bool forward_tail = Payload.forwards_multret and (args.k IS ExpKind::Call);
    if (forward_tail) {
       setbc_b(ir_bcptr(&this->func_state, &args), 0);
-      ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1 - LJ_FR2);
+      ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1  - 1);
    }
    else {
       if (not (args.k IS ExpKind::Void)) this->materialise_to_next_reg(args, "call arguments");
-      ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base - LJ_FR2);
+      ins = BCINS_ABC(BC_CALL, base, 2, this->func_state.freereg - base  - 1);
    }
 
    // Restore the saved line number so the CALL instruction gets the correct line
