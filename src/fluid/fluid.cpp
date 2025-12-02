@@ -188,7 +188,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    CoreBase = argCoreBase;
 
    glFluidContext = CurrentContext();
-   glPrintMsg = GetResource(RES::LOG_LEVEL) >= 5;
+   glPrintMsg = GetResource(RES::LOG_LEVEL) >= 4;
 
    argModule->get(FID_Root, modFluid);
 

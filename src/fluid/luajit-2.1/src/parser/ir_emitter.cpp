@@ -18,6 +18,8 @@
 #include "parser/parse_value.h"
 #include "parser/token_types.h"
 
+#include "../../../defs.h"  // For glPrintMsg
+
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
 //
@@ -1961,10 +1963,17 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
             // the var_lookup_symbol() call during emission will resolve correctly.
 
             static GCstr *assert_str = nullptr; // Global state - this is confirmed as thread safe.
+            static GCstr *msg_str = nullptr;
             if (not assert_str) assert_str = lj_str_newlit(this->lex_state.L, "assert");
+            if (not msg_str) msg_str = lj_str_newlit(this->lex_state.L, "msg");
 
             if (func_name IS assert_str) {
                return this->emit_shadow_assert(Payload.arguments, call_line);
+            }
+
+            // msg() is eliminated entirely when debug messaging is disabled at compile time.
+            if ((func_name IS msg_str) and not glPrintMsg) {
+               return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
             }
          }
       }
