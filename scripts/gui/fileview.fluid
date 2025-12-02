@@ -299,9 +299,10 @@ local function displayFilters(self)
             height = descent
             item.vp.y = height
          end
-         if not text_y then text_y = math.round(item.txt.displayHeight + descent) end
-         if not text_x then text_x = math.floor(item.txt.displayHeight * 0.5) end
-         if not item_height then item_height = math.floor((item.txt.displayHeight + descent) * 1.3) end
+
+         text_y ?= math.round(item.txt.displayHeight + descent)
+         text_x ?= math.floor(item.txt.displayHeight * 0.5)
+         item_height ?= math.floor((item.txt.displayHeight + descent) * 1.3)
 
          if item.selected then item.highlight.visibility = VIS_VISIBLE end
 
@@ -352,7 +353,7 @@ local function displayFilters(self)
       self.filterViewport.visibility = VIS_HIDDEN
    else
       self.filterViewport.visibility = VIS_VISIBLE
-      list_y = list_y + self.filterViewport.height
+      list_y += self.filterViewport.height
    end
    self.view.frame.y = list_y
    self.view.scrollbar.vbar.viewport.y = list_y
@@ -367,7 +368,7 @@ local lBkgdTasks = { }
 -- Paste from a list of files to a destination folder.
 
 local function copyFromList(Folder, List, Move)
-   if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
+   assert(file.isFolder(Folder), 'Invalid folder target of ' .. Folder)
 
    catch(function()
       msg('copyFromList("' .. Folder ..  ')')
@@ -382,9 +383,9 @@ local function copyFromList(Folder, List, Move)
       table.insert(params, '}')
 
       local task = obj.new('task', {
-         location = 'parasol:fluid',
+         location   = 'parasol:fluid',
          parameters = params,
-         flags = '!Pipe',
+         flags      = '!Pipe',
          exitCallback = function(Task)
             if not self.watch then self.refresh() end
             lBkgdTasks[Task.id] = nil
@@ -483,7 +484,7 @@ local function createFileItem(self, Info)
          display_name = Info.name:gsub("^(.-)[:/\\]+$", '%1') -- Strip trailing folder symbols
       end
 
-      if Info.name:sub(-1) != '/' then
+      if not Info.name:endsWith('/') then
          display_name = display_name .. '/'
       end
 
@@ -508,7 +509,7 @@ local function createFileItem(self, Info)
    elseif (Info.Flags & RDF_FILE)?? then
       if lNoFiles then return end
 
-      if not lFilter or (string.find(Info.name, lFilter) != nil) then
+      if not lFilter or string.find(Info.name, lFilter) then
          local filename
          if lNoExtensions then
             filename = Info.name:gsub('^(.-)%.[^:/\\]+$', '%1')
@@ -555,7 +556,7 @@ gui.fileview = function(Options)
       path          = Options.path,
       timer         = nil,
       resetTimer    = nil,
-      refreshRate   = 0.25, -- Cycles per second
+      refreshRate   = 1.0, -- Cycles per second
       limitPath     = Options.limitPath,
       showHidden    = Options.showHidden ?? false,
       showSystem    = Options.showSystem ?? false,
@@ -626,7 +627,7 @@ gui.fileview = function(Options)
          if not lNoFiles then flags = flags|RDF_FILE end
 
          local err
-         err, lDir = mSys.OpenDir((self.path ?? ':'), flags)
+         err, lDir = mSys.OpenDir(self.path ?? ':', flags)
          if err != ERR_Okay then
             error('Failed to resolve path ' .. (self.path ?? ':'))
             return
@@ -705,8 +706,7 @@ gui.fileview = function(Options)
 
                local vw_items = self.view.items
                if #vw_items is 0 then break end
-
-               if (self._delete_index is nil) or (self._delete_index is 0) or (self._delete_index > #vw_items - 1) then
+               if (self._delete_index is nil) or (self._delete_index is -1) or (self._delete_index > #vw_items - 1) then
                   self._delete_index = #vw_items - 1
                end
 
@@ -714,16 +714,15 @@ gui.fileview = function(Options)
                if not item then break end
 
                while (delete_count < 10) and item do
-                  delete_count = delete_count + 1
-
+                  delete_count++
                   if item.filename then -- Extract the full name of the file for analysis
                      local item_path = path .. item.filename
                      if item.type is 'volume' then
-                        item_path = item_path .. ':'
+                        item_path ..= ':'
                      elseif item.type is 'folder' then
-                        item_path = item_path .. '/'
+                        item_path ..= '/'
                      end
-                     if mSys.ResolvePath(item_path, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
+                     if mSys.ResolvePath(item_path, RSF_CASE_SENSITIVE) != ERR_Okay then
                         self.view.removeItem(item)
                         self._file_table[item.filename] = nil
                         refresh = true
@@ -731,7 +730,7 @@ gui.fileview = function(Options)
                         break
                      end
                   end
-                  self._delete_index = self._delete_index - 1
+                  self._delete_index -= 1
                   item = vw_items[self._delete_index]
                end
             end
@@ -892,7 +891,7 @@ gui.fileview = function(Options)
                modal    = true,
                feedback = function(Dialog, Response, State)
                   if mSys.MoveFile(Dialog.var.src, Dialog.var.dest) is ERR_Okay then
-                     --DelayMsg(AC_Refresh, Self.Head.UniqueID, NULL)
+                     --DelayMsg(AC_Refresh, Self.Head.UniqueID)
                   else
                      gui.dialog.error('File Rename Failure', 'The rename operation failed.')
                   end
@@ -976,7 +975,7 @@ gui.fileview = function(Options)
          self.timer = nil
       end
 
-      if self.path then -- Monitor the new path for changes.  Note that not all platforms support this feature.
+      if self.path and self.path != ':' then -- Monitor the new path for changes.  Note that not all platforms support this feature.
          msg('Monitor path "' .. self.path .. '"')
          catch(function()
             self.watch = obj.new('file', { path = self.path })
@@ -1262,7 +1261,7 @@ gui.fileview = function(Options)
       local msg_time  = mSys.PreciseTime()
       local orig_path = self.path
       local flags     = RDF_READ_ALL|RDF_TAGS
-      if lNoFiles then flags = (flags & bit.bxor(RDF_FILE)) end
+      if lNoFiles then flags = flags & bit.bxor(RDF_FILE) end
       local err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
       if err is ERR_Okay then
          mSys.AdjustLogLevel(1)
@@ -1305,7 +1304,7 @@ gui.fileview = function(Options)
       end
 
       local err
-      if self.deviceInfo and not self.watch and self.path then
+      if self.deviceInfo and not self.watch and self.path and self.path != ':' then
          if (self.deviceInfo.deviceFlags & DEVICE_REMOVABLE)?? then
             if (self.deviceInfo.deviceFlags & DEVICE_WRITE) is 0 then
                -- Read only device, do not refresh
@@ -1750,7 +1749,7 @@ gui.fileview = function(Options)
 
    self.refresh()
 
-   if not self.watch and self.path?? then
+   if not self.watch and self.path?? and self.path != ':' then
       catch(function()
          self.watch = obj.new('file', { path = self.path })
          self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
