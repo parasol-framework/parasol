@@ -349,7 +349,9 @@ void lj_debug_shortname(char* out, GCstr* str, BCLine line)
          strncpy(out, src, len); out += len;
          strcpy(out, "..."); out += 3;
       }
-      else strcpy(out, src); out += len;
+      else {
+         strcpy(out, src); out += len;
+      }
       strcpy(out, line == ~(BCLine)0 ? "]" : "\"]");
    }
 }
