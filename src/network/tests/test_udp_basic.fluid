@@ -33,7 +33,7 @@ function testUDPBasicIPv4()
          assert(err is ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
-            local msg = sv_buffer:sub(0, bytesRead-1)
+            local msg = sv_buffer:sub(0, bytesRead)
             print('[UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(sv_source) .. ':' .. sv_source.port)
             assert(string.match(msg, 'Hello UDP Server'), 'Unexpected message received')
 
@@ -55,7 +55,7 @@ function testUDPBasicIPv4()
          assert(err is ERR_Okay, 'Client failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
-            local msg = cl_buffer:sub(0, bytesRead-1)
+            local msg = cl_buffer:sub(0, bytesRead)
             print('[UDP Client] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(cl_source) .. ':' .. cl_source.port)
             assert(string.match(msg, 'Hello UDP Client'), 'Unexpected response received')
             clientReceived = true

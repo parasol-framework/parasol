@@ -99,7 +99,7 @@ function testMessageThroughput()
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay) then
-            local msg = buffer:sub(1, read_len)
+            local msg = buffer:sub(0, read_len)
             Socket.acWrite(msg) -- Echo back immediately
          end
       end
@@ -158,7 +158,7 @@ function testLargeMessagePerformance()
 
          -- May need multiple reads for very large messages
          while (total_read < expected_size) do
-            local err, read_len = Client.acRead(buffer:sub(total_read + 1))
+            local err, read_len = Client.acRead(buffer:sub(total_read))
             if (err is ERR_Okay and read_len > 0) then
                total_read = total_read + read_len
             elseif (err is ERR_NoData) then
@@ -208,7 +208,7 @@ function testLargeMessagePerformance()
          local buffer = string.alloc(300000) -- Large buffer
          local err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay and read_len > 0) then
-            local msg = buffer:sub(1, read_len)
+            local msg = buffer:sub(0, read_len)
             Socket.acWrite(msg) -- Echo back
          end
       end
@@ -381,7 +381,7 @@ function testWriteQueuePerformance()
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay) then
-            local msg = buffer:sub(1, read_len)
+            local msg = buffer:sub(0, read_len)
             Socket.acWrite('ACK') -- Simple acknowledgment
          end
       end

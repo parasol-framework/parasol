@@ -160,7 +160,7 @@ local function processChunkedBody(state, server)
             return false -- Need more data for chunk size line
          end
 
-         local size_line = state.buffer:sub(0, line_end - 1)
+         local size_line = state.buffer:sub(0, line_end)
          state.buffer = state.buffer:sub(line_end + 2) -- Remove \r\n
 
          -- Parse chunk size (ignore extensions after semicolon)
@@ -195,7 +195,7 @@ local function processChunkedBody(state, server)
          end
 
          local to_take = math.min(available, needed)
-         state.request.body   = state.request.body .. state.buffer:sub(0, to_take-1)
+         state.request.body   = state.request.body .. state.buffer:sub(0, to_take)
          state.buffer         = state.buffer:sub(to_take)
          state.chunk_received = state.chunk_received + to_take
          state.body_received  = state.body_received + to_take
@@ -258,7 +258,7 @@ local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
          break -- No more data
       end
 
-      requestData ..= buffer:sub(0, bytes_read-1)
+      requestData ..= buffer:sub(0, bytes_read)
       totalRead += bytes_read
 
       -- Check for end of HTTP headers (\r\n\r\n)
@@ -327,7 +327,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
             end
          end
 
-         chunkSizeLine ..= buffer:sub(0, 0)
+         chunkSizeLine ..= buffer:sub(0, 1)
 
          -- Prevent infinite line reading
          if #chunkSizeLine > 100 then
@@ -373,7 +373,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
                -- Connection closed while reading chunk data
                -- Return what we have so far if it's valid
                if chunkRead > 0 then
-                  body ..= chunkData:sub(0, chunkRead-1)
+                  body ..= chunkData:sub(0, chunkRead)
                end
                if #body > 0 then
                   return body, nil, true  -- Mark as early termination
@@ -387,7 +387,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
          if bytes_read is 0 then
             -- No more data - return what we have
             if chunkRead > 0 then
-               body ..= chunkData:sub(0, chunkRead-1)
+               body ..= chunkData:sub(0, chunkRead)
             end
 
             if #body > 0 then
@@ -396,7 +396,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
                return nil, 'unexpected_end', false
             end
          end
-         chunkData ..= buffer:sub(0, bytes_read-1)
+         chunkData ..= buffer:sub(0, bytes_read)
          chunkRead += bytes_read
       end
 
@@ -427,7 +427,7 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
             earlyTermination = true
             break
          end
-         crlf ..= buffer:sub(0, 0)
+         crlf ..= buffer:sub(0, 1)
       end
 
       -- Be lenient about CRLF validation - some clients may not send it properly
@@ -799,7 +799,7 @@ local function serveFile(self, ClientSocket, FilePath, Request)
          end
 
          if bytes_read > 0 then
-            err = ClientSocket.acWrite(buffer:sub(0, bytes_read-1))
+            err = ClientSocket.acWrite(buffer:sub(0, bytes_read))
             if err != ERR_Okay then
                logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
                return
@@ -828,7 +828,7 @@ local function serveFile(self, ClientSocket, FilePath, Request)
 
       sendHttpResponse(self, ClientSocket, 200, "OK", {
          ['content-type'] = mimeType
-      }, buffer:sub(0, bytes_read-1))
+      }, buffer:sub(0, bytes_read))
    end
 end
 
@@ -1345,7 +1345,7 @@ local function serverIncoming(self, ClientSocket)
 
    -- Accumulate data
 
-   state.buffer ..= buffer:sub(0, bytes_read-1)
+   state.buffer ..= buffer:sub(0, bytes_read)
    if #state.buffer > self.maxRequestSize then
       local errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
       sendHttpResponse(self, ClientSocket, 413, "Payload Too Large", {
@@ -1361,7 +1361,7 @@ local function serverIncoming(self, ClientSocket)
       if not header_end then return end -- Wait for more data
 
       -- Extract header section
-      local header_section = state.buffer:sub(0, header_end + 2) -- Include the \r\n\r\n
+      local header_section = state.buffer:sub(0, header_end + 3) -- Include the \r\n\r\n
       state.request = parseHttpRequest(header_section)
 
       if not state.request then
@@ -1472,7 +1472,7 @@ local function serverIncoming(self, ClientSocket)
 
          if available > 0 then
             local to_take = math.min(available, needed)
-            state.request.body = state.request.body .. state.buffer:sub(0, to_take-1)
+            state.request.body = state.request.body .. state.buffer:sub(0, to_take)
             state.buffer = state.buffer:sub(to_take)
             state.body_received = state.body_received + to_take
 

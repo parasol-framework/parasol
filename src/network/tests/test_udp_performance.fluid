@@ -157,7 +157,7 @@ function testUDPConcurrency()
          local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
             totalReceived = totalReceived + 1
-            local msg = buffer:sub(1, bytesRead)
+            local msg = buffer:sub(0, bytesRead)
 
             if (totalReceived % 10 is 0) then
                print('[Concurrent Server] Received ' .. totalReceived .. ' messages total')

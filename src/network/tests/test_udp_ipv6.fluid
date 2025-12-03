@@ -29,7 +29,7 @@ function testUDPIPv6Basic()
          assert(err is ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
-            local msg = buffer:sub(0, bytesRead-1)
+            local msg = buffer:sub(0, bytesRead)
             print('[IPv6 UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(sv_source) .. ':' .. sv_source.port)
             assert(string.match(msg, 'Hello IPv6'), 'Unexpected message received')
             messageReceived = true
@@ -78,7 +78,7 @@ function testUDPDualStack()
          assert(err is ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
-            local msg = buffer:sub(0, bytesRead-1)
+            local msg = buffer:sub(0, bytesRead)
             print('[Dual-Stack UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
 
             if (string.match(msg, 'IPv4')) then

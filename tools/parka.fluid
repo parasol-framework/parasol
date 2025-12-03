@@ -30,7 +30,7 @@ function parseInfo()
    end
 
    glInfoXML = obj.new("xml", { path=infoPath })
-   if (glInfoXML is nil) then
+   if not glInfoXML then
       print("Failed to parse the parc.xml file at " .. infoPath)
       return
    end
@@ -116,7 +116,7 @@ function zipPackage()
 
    local err, file = folder.mtNext()
    while (err is ERR_Okay) do
-      if bit.band(file.flags, FL_FOLDER) != 0 then
+      if (file.flags & FL_FOLDER)?? then
          local name = file.path:match("([^:/]+)/-$")
          print("Compressing " .. name)
          zip.mtCompressFile(file.path, "/")
@@ -126,9 +126,9 @@ function zipPackage()
 
    -- Compress glInfoXML as 'parc.xml' in the package's root folder.
 
-   if (glInfoXML != nil) then
+   if glInfoXML then
       local infoFile = obj.new("file", { path="temp:parc.xml", flags="!NEW|WRITE" })
-      if (infoFile != nil) then
+      if infoFile then
          glInfoXML.acSaveToObject(infoFile)
          zip.mtCompressFile("temp:parc.xml", nil)
          infoFile.mtDelete()
@@ -177,10 +177,10 @@ function readSignature(Path)
    local PSIG = 0x47495350
 
    local file = obj.new("file", { path=Path, flags="!READ" })
-   if (file != nil) then
+   if file then
       file.acSeek(-SIGLEN, SEEK_END)
       local header = mem.alloc(SIGLEN)
-      if (file.acRead(header) is ERR_Okay) then
+      if file.acRead(header) is ERR_Okay then
          header.indextype("integer")
          if (header[1] != PSIG) then
             print("The package has not been signed with an RSA key.")
@@ -190,7 +190,7 @@ function readSignature(Path)
          local siglen = header[0]
          file.acSeek(-SIGLEN-siglen, SEEK_END)
          local signature = mem.alloc(siglen)
-         if (file.acRead(signature) is ERR_Okay) then
+         if file.acRead(signature) is ERR_Okay then
             return signature
          else
             print("Failed to read signature of " .. siglen .. " bytes.")
@@ -209,7 +209,7 @@ end
 
 function verifyPackage()
    local zip = obj.new("compression", { src=glVerify, compressionLevel=0 })
-   if (zip is nil) then
+   if not zip then
       print("Failed to create new zip package at " .. glVerify)
       return
    end
@@ -223,13 +223,13 @@ function verifyPackage()
    -- Parse the parc.xml data into an XML object
 
    local xmlInfo = obj.new("xml", { flags="!NEW", statement=fileObject.buffer.getstring() } )
-   if (xmlInfo is nil) then
+   if not xmlInfo then
       print("Failed to parse the parc.xml file.")
       return
    end
 
    local publicKey = xmlInfo.get("/info/key")
-   if (publicKey is nil) then
+   if not publicKey then
       print("The package is not signed with an RSA key.")
       return
    end
@@ -237,7 +237,7 @@ function verifyPackage()
    -- Read the binary signature from the end of the PARC file.
 
    local signature = readSignature(glVerify)
-   if (signature is nil) then return end
+   signature ?? return
 
    local outsig = obj.new("file", { path="package_out.sig", flags="!NEW|WRITE" } )
    outsig.acWrite(signature)
@@ -245,7 +245,7 @@ function verifyPackage()
    -- Use the public key to recalculate the signature from the PARC file.
 
    local file = obj.new("file", { path=glVerify, flags="!READ" } )
-   if (file != nil) then
+   if file then
       local error = mSSL.VerifySig(file, file.size - SIGLEN - signature.size, publicKey, "sha256", signature)
       if (error != ERR_Okay) then print("Signature verification failed: " .. mSys.GetErrorMsg(error))
       else print("Signature verification passed.") end
@@ -288,13 +288,13 @@ end
    -- The source must be a folder reference.
 
    local lastChar = glLocation:sub(-1)
-   if ((lastChar != ':') and (lastChar != '/')) then
+   if (lastChar != ':') and (lastChar != '/') then
       glLocation = glLocation .. "/"
    end
 
    if glPrivateKeyFile?? then
       glPrivateKey = file.readAll(glPrivateKeyFile)
-      if (glPrivateKey is nil) then
+      if not glPrivateKey then
          print("Failed to load RSA key file: " .. glPrivateKeyFile)
          return
       end
@@ -309,7 +309,7 @@ end
    end
 
    glInfo = parseInfo()
-   if (glInfo is nil) then return end
+   if not glInfo then return end
 
    printPackage()
 

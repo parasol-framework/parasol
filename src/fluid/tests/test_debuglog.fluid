@@ -54,7 +54,7 @@ function testUpvalues()
    local config = { enabled = true }
 
    local function closure()
-      counter = counter + 1
+      counter++
       if config.enabled then end  -- Use config so it becomes an upvalue
       local err, result = glSelf.mtDebugLog('upvalues')
       return result

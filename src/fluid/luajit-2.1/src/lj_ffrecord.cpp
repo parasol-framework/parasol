@@ -785,7 +785,7 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
    TRef trstart, trend;
    GCstr* str = argv2str(J, &rd->argv[0]);
    int32_t start, end;
-   if (rd->data) {  // string.sub(str, start [,end])
+   if (rd->data) {  // string.sub(str, start [,end]) - end is exclusive
       start = argv2int(J, &rd->argv[1]);
       trstart = lj_opt_narrow_toint(J, J->base[1]);
       trend = J->base[2];
@@ -796,6 +796,11 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
       else {
          trend = lj_opt_narrow_toint(J, trend);
          end = argv2int(J, &rd->argv[2]);
+         // Convert exclusive end to inclusive (only for positive values)
+         if (end > 0) {
+            end--;
+            trend = emitir(IRTI(IR_ADD), trend, lj_ir_kint(J, -1));
+         }
       }
    }
    else {  // string.byte(str, [,start [,end]])

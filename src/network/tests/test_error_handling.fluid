@@ -279,7 +279,7 @@ function testNTECloseHandling()
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if (err is ERR_Okay) then
-            print('[Server] Received: ' .. buffer:sub(1, read_len))
+            print('[Server] Received: ' .. buffer:sub(0, read_len))
          else
             print('[Server] Read error during close: ' .. mSys.GetErrorMsg(err))
          end
@@ -302,7 +302,7 @@ function testNTECloseHandling()
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay) then
-            print('[Client] Received: ' .. buffer:sub(1, read_len))
+            print('[Client] Received: ' .. buffer:sub(0, read_len))
          else
             print('[Client] Read error (expected during close): ' .. mSys.GetErrorMsg(err))
             if (err is ERR_Disconnected or err is ERR_Failed) then

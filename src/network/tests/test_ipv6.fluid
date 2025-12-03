@@ -84,7 +84,7 @@ function testIPv6ServerBinding()
             local buffer = string.rep('\\0', 256)
             local err, bytes = Client.acRead(buffer, string.len(buffer))
             if err is ERR_Okay and bytes > 0 then
-               local message = string.sub(buffer, 1, bytes)
+               local message = string.sub(buffer, 0, bytes)
                print('[Server] Received from client: ' .. message)
 
                -- Echo back
@@ -114,7 +114,7 @@ function testIPv6ServerBinding()
          local buffer = string.rep('\\0', 256)
          local err, bytes = Socket.acRead(buffer, string.len(buffer))
          if err is ERR_Okay and bytes > 0 then
-            local response = string.sub(buffer, 1, bytes)
+            local response = string.sub(buffer, 0, bytes)
             print('[Client] Received response: ' .. response)
             proc.signal()
          end

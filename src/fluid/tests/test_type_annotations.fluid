@@ -7,7 +7,7 @@ local function parameter_names(Signature)
       local trimmed = string.match(entry, "^%s*(.-)%s*$")
       if trimmed?? then
          local colon = string.find(trimmed, ":", 0, true)
-         if colon?? then trimmed = string.sub(trimmed, 0, colon - 1) end
+         if colon?? then trimmed = string.sub(trimmed, 0, colon) end
          table.insert(names, trimmed)
       end
    end

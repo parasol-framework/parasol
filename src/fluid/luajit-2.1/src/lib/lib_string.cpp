@@ -92,7 +92,11 @@ LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
 {
    lj_lib_checkstr(L, 1);
    lj_lib_checkint(L, 2);
-   setintV(L->base + 2, lj_lib_optint(L, 3, -1));
+   int32_t end_val = lj_lib_optint(L, 3, -1);
+   // Convert exclusive end to inclusive by subtracting 1, but only for positive indices.
+   // Negative indices already reference positions from the end, so no adjustment needed.
+   if (end_val > 0) end_val--;
+   setintV(L->base + 2, end_val);
    return FFH_RETRY;
 }
 #else
@@ -103,6 +107,9 @@ LJ_LIB_CF(string_sub)
    int32_t start = lj_lib_checkint(L, 2);
    int32_t end = lj_lib_optint(L, 3, -1);
 
+   // Convert exclusive end to inclusive (only for positive indices)
+   if (end > 0) end--;
+
    if (end < 0) end += len;
    if (start < 0) start += len;
    if (start < 0) start = 0;
@@ -120,55 +127,14 @@ LJ_LIB_CF(string_sub)
 }
 #endif
 
-// NOTE: Backed by an ASM implementation
-// If you switch to the C++ implementation then you need to reduce GG_NUM_ASMFF in lj_dispatch.h
-//
-// string.substr() is identical to string.sub() except that the end parameter is exclusive.
-// This matches the behaviour of JavaScript's substring() and Python's slicing.
+// string.substr() is now an alias for string.sub() - both use exclusive end semantics.
+// The ASM implementation jumps directly to string_sub.
 
-#if 1
 LJLIB_ASM(string_substr)      LJLIB_REC(string_range 1)
 {
-   lj_lib_checkstr(L, 1);
-   lj_lib_checkint(L, 2);
-   int32_t end_val = lj_lib_optint(L, 3, -1);
-   // Convert exclusive end to inclusive by subtracting 1, but only for positive indices.
-   // Negative indices already reference positions from the end, so no adjustment needed.
-   if (end_val > 0) end_val--;
-   setintV(L->base + 2, end_val);
+   // Fallback: just retry with the same arguments - string_sub will handle it
    return FFH_RETRY;
 }
-#else
-LJ_LIB_CF(string_substr)
-{
-   GCstr* s = lj_lib_checkstr(L, 1);
-   int32_t len = (int32_t)s->len;
-   int32_t start = lj_lib_checkint(L, 2);
-   int32_t end = lj_lib_optint(L, 3, len);  // Default to length for exclusive semantics
-
-   // Handle negative indices first (before exclusive-to-inclusive conversion)
-   if (end < 0) end += len;
-   if (start < 0) start += len;
-
-   // Convert exclusive end to inclusive by subtracting 1
-   // This must happen AFTER negative index conversion
-   end--;
-
-   // Clamp to valid range
-   if (start < 0) start = 0;
-   if (end > len - 1) end = len - 1;
-   if (start > end) {
-      setstrV(L, L->top - 1, &G(L)->strempty);
-      return 1;
-   }
-
-   int32_t sublen = end - start + 1;
-   GCstr* result = lj_str_new(L, strdata(s) + start, (size_t)sublen);
-   setstrV(L, L->top - 1, result);
-   lj_gc_check(L);
-   return 1;
-}
-#endif
 
 LJLIB_CF(string_rep)      LJLIB_REC(.)
 {
@@ -933,12 +899,8 @@ static int str_find_aux(lua_State* L, int find)
    if (start < 0) start = 0;
    st = (MSize)start;
    if (st > s->len) {
-#if LJ_52
       setnilV(L->top - 1);
       return 1;
-#else
-      st = s->len;
-#endif
    }
    if (find and ((L->base + 3 < L->top and tvistruecond(L->base + 3)) ||
       !lj_str_haspattern(p))) {  // Search for fixed string.

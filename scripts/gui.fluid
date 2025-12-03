@@ -1,6 +1,6 @@
 -- Graphical User Interface functions
 
-if gui then return end
+   if gui then return end
 
    mVec ?= mod.load('vector')
 
@@ -62,20 +62,21 @@ gui.strToRGB = function(Value)
    local result, fail
    xpcall(function()
       if string.byte(Value) is 35 then
-         local colour = tonumber(string.sub(Value,1), 16)
-         if Value:len() is 7 then
+         local colour = tonumber(string.sub(Value,1), 16) -- Convert hex string to number
+
+         if colour and Value:len() is 7 then
             result = {
-               r = bit.band(bit.rshift(colour, 16), 0xff),
-               g = bit.band(bit.rshift(colour, 8), 0xff),
-               b = bit.band(colour, 0xff),
+               r = ((colour>>16) & 0xff),
+               g = ((colour>>8) & 0xff),
+               b = (colour & 0xff),
                a = 255
             }
-         elseif Value:len() is 9 then
+         elseif colour and Value:len() is 9 then
             result = {
-               r = bit.band(bit.rshift(colour, 24), 0xff),
-               g = bit.band(bit.rshift(colour, 16), 0xff),
-               b = bit.band(bit.rshift(colour, 8), 0xff),
-               a = bit.band(colour, 0xff)
+               r = ((colour>>24) & 0xff),
+               g = ((colour>>16) & 0xff),
+               b = ((colour>>8) & 0xff),
+               a = (colour & 0xff)
             }
          else
             result = { r=0, g=0, b=0, a=255 }
@@ -509,7 +510,5 @@ end
          end
       end
 
-      if not gui.fonts[k].style then
-         gui.fonts[k].style = 'Regular'
-      end
+      gui.fonts[k].style ?= 'Regular'
    end

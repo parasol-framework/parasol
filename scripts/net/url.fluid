@@ -43,8 +43,8 @@ function url.encode(str, extraChars)
 
    -- Simple character-by-character encoding to avoid pattern issues
    local result = {}
-   for i = 1, #str do
-      local c = str:sub(i, i)
+   for i = 0, #str-1 do
+      local c = str:sub(i, i+1)
       if chars_to_encode:find(c, 1, true) then
          table.insert(result, string.format('%%%02X', string.byte(c)))
       else
@@ -217,14 +217,14 @@ function url.parse(urlString)
 
    local fragPos = remaining:find('#')
    if fragPos then
-      components.fragment = remaining:sub(fragPos + 1)
-      remaining = remaining:sub(1, fragPos - 1)
+      components.fragment = remaining:sub(fragPos)
+      remaining = remaining:sub(0, fragPos)
    end
 
    local queryPos = remaining:find('?', 1, true)
    if queryPos then
-      components.query = remaining:sub(queryPos + 1)
-      remaining = remaining:sub(1, queryPos - 1)
+      components.query = remaining:sub(queryPos)
+      remaining = remaining:sub(0, queryPos)
    end
 
    local schemeMatch = remaining:match('^([%w+.-]+):(.*)')
@@ -234,19 +234,19 @@ function url.parse(urlString)
    end
 
    -- Handle authority (//host:port or //user:pass@host:port)
-   if remaining:sub(1, 2) is '//' then
-      remaining = remaining:sub(3) -- Remove //
+   if remaining:sub(0, 2) is '//' then
+      remaining = remaining:sub(2) -- Remove //
 
       -- Find the end of authority (next /, ?, #, or end of string)
       local pathStart = remaining:find('/') or (#remaining + 1)
-      local authority = remaining:sub(1, pathStart - 1)
+      local authority = remaining:sub(0, pathStart - 1)
       remaining = remaining:sub(pathStart)
 
       -- Extract auth (user:pass@)
       local authEnd = authority:find('@')
       if authEnd then
-         components.auth = authority:sub(1, authEnd - 1)
-         authority = authority:sub(authEnd + 1)
+         components.auth = authority:sub(0, authEnd - 1)
+         authority = authority:sub(authEnd)
       end
 
       -- Handle IPv6 addresses [host]:port
@@ -261,8 +261,8 @@ function url.parse(urlString)
          -- Handle regular host:port
          local colonPos = authority:find(':', 1, true)
          if colonPos then
-            components.host = authority:sub(1, colonPos - 1)
-            local portStr = authority:sub(colonPos + 1)
+            components.host = authority:sub(0, colonPos - 1)
+            local portStr = authority:sub(colonPos)
             if portStr != '' then
                components.port = tonumber(portStr)
             end
@@ -281,8 +281,8 @@ function url.parse(urlString)
    if components.path then
       local paramPos = components.path:find(';')
       if paramPos then
-         components.params = components.path:sub(paramPos + 1)
-         components.path = components.path:sub(1, paramPos - 1)
+         components.params = components.path:sub(paramPos)
+         components.path = components.path:sub(0, paramPos - 1)
       end
    end
 
@@ -370,7 +370,7 @@ function url.defrag(urlString)
 
    local fragPos = urlString:find('#')
    if fragPos then
-      local base = urlString:sub(1, fragPos - 1)
+      local base = urlString:sub(0, fragPos - 1)
       local fragment = urlString:sub(fragPos + 1)
       return base, fragment
    end
@@ -391,14 +391,14 @@ function url.join(baseUrl, relativeUrl)
    if not base then return relativeUrl end
 
    -- Handle fragment-only URLs
-   if relativeUrl:sub(1, 1) is '#' then
-      base.fragment = relativeUrl:sub(2)
+   if relativeUrl:sub(0, 1) is '#' then
+      base.fragment = relativeUrl:sub(1)
       return url.unparse(base)
    end
 
    -- Handle query-only URLs
-   if relativeUrl:sub(1, 1) is '?' then
-      base.query = relativeUrl:sub(2)
+   if relativeUrl:sub(0, 1) is '?' then
+      base.query = relativeUrl:sub(1)
       base.fragment = nil
       return url.unparse(base)
    end
@@ -419,7 +419,7 @@ function url.join(baseUrl, relativeUrl)
    rel.auth = base.auth
 
    -- Handle absolute path
-   if rel.path and rel.path:sub(1, 1) is '/' then
+   if rel.path and rel.path:sub(0, 1) is '/' then
       return url.unparse(rel)
    end
 
@@ -441,7 +441,7 @@ function url.normalize(path)
    if not path then return '' end
 
    local segments = {}
-   local isAbsolute = path:sub(1, 1) is '/'
+   local isAbsolute = path:sub(0, 1) is '/'
 
    for segment in path:gmatch('[^/]+') do
       if segment is '..' then

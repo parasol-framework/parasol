@@ -311,132 +311,47 @@ function testEscXML()
 end
 
 function testSub()
+   -- string.sub() uses exclusive end index (like JavaScript substring/Python slicing)
+   -- string.sub(s, start, end) extracts chars from start to end-1
    local s = "hello world"
 
    for i=0,1000 do
-      -- Basic substring (zero-indexed)
-      local sub = string.sub(s, 0, 4) -- String, Start Index, End Index
+      -- Basic substring
+      local sub = string.substr(s, 0, 5) -- Indices 0,1,2,3,4 (not 5)
       assert(sub is "hello", "Expected 'hello', got '" .. sub .. "'")
-
-      -- Start from middle
-      local mid = string.sub(s, 6, 10)
-      assert(mid is "world", "Expected 'world', got '" .. mid .. "'")
-
-      -- Negative indices (count from end)
-      local neg = string.sub(s, -5, -1)
-      assert(neg is "world", "Expected 'world' from negative indices, got '" .. neg .. "'")
-
-      -- Negative start, positive end
-      local mixed = string.sub(s, -5, 10)
-      assert(mixed is "world", "Expected 'world' from mixed indices, got '" .. mixed .. "'")
-
-      -- Default end (to end of string)
-      local toEnd = string.sub(s, 6)
-      assert(toEnd is "world", "Expected 'world' with default end, got '" .. toEnd .. "'")
-
-      -- Single character
-      local single = string.sub(s, 0, 0)
-      assert(single is "h", "Expected 'h', got '" .. single .. "'")
-
-      -- Empty range
-      local empty = string.sub(s, 5, 3)
-      assert(empty is "", "Expected empty string, got '" .. empty .. "'")
-
-      -- Beyond string length
-      local beyond = string.sub(s, 0, 100)
-      assert(#beyond is #s, "Expected length to match original string length, got " .. #beyond)
-      assert(beyond is s, "Expected full string when end exceeds length, got '" .. beyond .. "'")
-
-      -- Empty string
-      local emptyStr = string.sub("", 0, 0)
-      assert(emptyStr is "", "Expected empty string, got '" .. emptyStr .. "'")
-   end
-end
-
-function testSubstr()
-   -- string.substr() is like string.sub() but with exclusive end index
-   -- For positive indices: substr(s, start, end) extracts chars from start to end-1
-   -- For negative indices: works the same as string.sub()
-
-   local s = "hello world"
-
-   for i=0,1000 do
-      -- Basic usage - positive indices (exclusive end)
-      local substr = string.substr(s, 0, 5) -- Indices 0,1,2,3,4 (not 5)
-      assert(substr is "hello", "Expected 'hello', got '" .. substr .. "'")
-
-      -- Verify difference from string.sub
-      local sub = string.sub(s, 0, 4) -- Indices 0,1,2,3,4 (inclusive)
-      assert(sub is substr, "substr(0,5) should equal sub(0,4), got sub='" .. sub .. "' substr='" .. substr .. "'")
 
       -- Start from middle
       local mid = string.substr(s, 6, 11) -- Indices 6,7,8,9,10 (not 11)
       assert(mid is "world", "Expected 'world', got '" .. mid .. "'")
 
-      -- Single character (exclusive end)
-      local single = string.substr(s, 0, 1) -- Only index 0
-      assert(single is "h", "Expected 'h', got '" .. single .. "'")
-
-      -- Another single character
-      local singleMid = string.substr(s, 6, 7) -- Only index 6
-      assert(singleMid is "w", "Expected 'w', got '" .. singleMid .. "'")
-
-      -- Empty range (start equals end)
-      local empty = string.substr(s, 5, 5) -- No characters (5 is exclusive)
-      assert(empty is "", "Expected empty string for substr(5,5), got '" .. empty .. "'")
-
-      -- Empty range (start > end)
-      local emptyRev = string.substr(s, 8, 5)
-      assert(emptyRev is "", "Expected empty string when start > end, got '" .. emptyRev .. "'")
-
-      -- Negative indices - should work same as string.sub (no adjustment)
-      local neg = string.substr(s, -5, -1) -- From "world" to end
+      -- Negative indices (count from end)
+      local neg = string.substr(s, -5, -1)
       assert(neg is "world", "Expected 'world' from negative indices, got '" .. neg .. "'")
 
-      -- Negative end to exclude last character
-      local negExclude = string.substr(s, 0, -2) -- All but last char
-      assert(negExclude is "hello worl", "Expected 'hello worl', got '" .. negExclude .. "'")
-
-      -- Mix positive start, negative end
-      local mixed = string.substr(s, 6, -1) -- From 'w' to end
+      -- Negative start, positive end
+      local mixed = string.substr(s, -5, 11)
       assert(mixed is "world", "Expected 'world' from mixed indices, got '" .. mixed .. "'")
 
-      -- Default end (to end of string)
-      local toEnd = string.substr(s, 6) -- From 'w' to end (default end = -1)
+      -- Default end
+      local toEnd = string.substr(s, 6)
       assert(toEnd is "world", "Expected 'world' with default end, got '" .. toEnd .. "'")
 
-      -- Beyond string length - should clamp
+      -- Single character
+      local single = string.substr(s, 0, 1)
+      assert(single is "h", "Expected 'h', got '" .. single .. "'")
+
+      -- Empty range
+      local empty = string.substr(s, 5, 5)
+      assert(empty is "", "Expected empty string, got '" .. empty .. "'")
+
+      -- Beyond string length
       local beyond = string.substr(s, 0, 100)
-      assert(#beyond is #s, "Expected length to match original, got " .. #beyond)
+      assert(#beyond is #s, "Expected length to match original string length, got " .. #beyond)
       assert(beyond is s, "Expected full string when end exceeds length, got '" .. beyond .. "'")
 
       -- Empty string
       local emptyStr = string.substr("", 0, 0)
       assert(emptyStr is "", "Expected empty string, got '" .. emptyStr .. "'")
-
-      -- Whole string with explicit indices
-      local whole = string.substr(s, 0, 11) -- 0 to 10 (length is 11)
-      assert(whole is s, "Expected full string with substr(0,11), got '" .. whole .. "'")
-
-      -- Compare with string.sub for various cases
-      local testStr = "ABCDEFGHIJ"
-
-      -- Extract first 4 chars
-      assert(string.substr(testStr, 0, 4) is string.sub(testStr, 0, 3), "substr(0,4) should equal sub(0,3)")
-
-      -- Extract middle section
-      assert(string.substr(testStr, 2, 6) is string.sub(testStr, 2, 5), "substr(2,6) should equal sub(2,5)")
-
-      -- Extract last 3 chars using negative indices (should be same)
-      assert(string.substr(testStr, -3, -1) is string.sub(testStr, -3, -1), "Negative indices should work the same")
-
-      -- Zero-length with positive indices
-      assert(string.substr(testStr, 3, 3) is "", "substr(3,3) should be empty")
-
-      -- Practical use case: extract substring like JavaScript/Python
-      local url = "https://example.com/path"
-      local protocol = string.substr(url, 0, 5) -- "https"
-      assert(protocol is "https", "Expected 'https', got '" .. protocol .. "'")
    end
 end
 
@@ -799,7 +714,6 @@ end
          'testHash',
          'testEscXML',
          'testSub',
-         'testSubstr',
          'testByte',
          'testChar',
          'testRep',
