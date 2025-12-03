@@ -70,6 +70,14 @@ private:
    ParserResult<ParameterListResult> parse_parameter_list(bool allow_optional);
    ParserResult<std::vector<TableField>> parse_table_fields(bool* has_array_part);
    ParserResult<ExprNodeList> parse_call_arguments(bool* forwards_multret);
+
+   struct ResultFilterInfo {
+      uint64_t keep_mask = 0;
+      uint8_t explicit_count = 0;
+      bool trailing_keep = false;
+   };
+   ParserResult<ResultFilterInfo> parse_result_filter_pattern();
+   ParserResult<ExprNodePtr> parse_result_filter_expr(const Token& start_token);
    ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(
       std::initializer_list<TokenKind> terminators);
 

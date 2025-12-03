@@ -324,6 +324,58 @@ static void LJ_FASTCALL recff_select(jit_State* J, RecordFFData* rd)
    }  // else: Interpreter will throw.
 }
 
+// Record __filter(mask, count, trailing_keep, ...)
+// Filters return values based on a bitmask pattern compiled at parse time.
+static void LJ_FASTCALL recff___filter(jit_State* J, RecordFFData* rd)
+{
+   TRef tr_mask = J->base[0];
+   TRef tr_count = J->base[1];
+   TRef tr_trailing = J->base[2];
+
+   // All three parameters must be constants for JIT compilation
+   // (they're always constant since they're emitted by the parser)
+   if (!tr_mask or !tr_count or !tr_trailing) {
+      recff_nyiu(J, rd);
+      return;
+   }
+   if (!tref_isk(tr_mask) or !tref_isk(tr_count)) {
+      recff_nyiu(J, rd);  // NYI: non-constant filter parameters
+      return;
+   }
+
+   // Extract constant values
+   uint64_t mask = uint64_t(ir_knum(IR(tref_ref(tr_mask)))->u64);
+   int32_t count = IR(tref_ref(tr_count))->i;
+   bool trailing_keep = !tref_isfalse(tr_trailing);
+
+   // Calculate which values to keep
+   ptrdiff_t n = ptrdiff_t(J->maxslot);
+   ptrdiff_t value_start = 3;  // Values start at slot 3
+   ptrdiff_t value_count = n - value_start;
+
+   // Build output by copying kept values
+   int32_t out_idx = 0;
+   for (ptrdiff_t i = 0; i < value_count; i++) {
+      bool keep;
+      if (i < count) {
+         keep = (mask & (1ULL << i)) != 0;
+      }
+      else {
+         keep = trailing_keep;
+      }
+
+      if (keep) {
+         TRef tr = J->base[value_start + i];
+         if (tr) {
+            J->base[out_idx] = tr;
+            out_idx++;
+         }
+      }
+   }
+
+   rd->nres = out_idx;
+}
+
 static void LJ_FASTCALL recff_tonumber(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];

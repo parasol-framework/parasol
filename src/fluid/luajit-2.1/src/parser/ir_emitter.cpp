@@ -336,6 +336,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::CallExpr:       return "CallExpr";
       case AstNodeKind::MemberExpr:     return "MemberExpr";
       case AstNodeKind::IndexExpr:      return "IndexExpr";
+      case AstNodeKind::ResultFilterExpr: return "ResultFilterExpr";
       case AstNodeKind::TableExpr:      return "TableExpr";
       case AstNodeKind::FunctionExpr:   return "FunctionExpr";
       case AstNodeKind::BlockStmt:      return "BlockStmt";
@@ -1447,6 +1448,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::SafeIndexExpr:  return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
       case AstNodeKind::SafeCallExpr:   return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::CallExpr:     return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
+      case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
       case AstNodeKind::TableExpr:    return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr: return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
       default: return this->unsupported_expr(expr.kind, expr.span);
@@ -2227,6 +2229,61 @@ ParserResult<ExpDesc> IrEmitter::emit_shadow_assert(const ExprNodeList& argument
 
    // Return a void expression since we don't support assert() return values
    ExpDesc result(ExpKind::Void);
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+// Result filter expression: [_*]func(), [*_]obj:method(), etc.
+// Transforms to: __filter(mask, count, trailing_keep, func(...))
+// The __filter function is a built-in that selectively returns values based on the filter pattern.
+
+ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPayload& Payload)
+{
+   if (not Payload.expression) return this->unsupported_expr(AstNodeKind::ResultFilterExpr, SourceSpan{});
+
+   FuncState* fs = &this->func_state;
+
+   // Look up and emit the __filter function
+   BCReg base = fs->free_reg();
+   ExpDesc filter_fn;
+   this->lex_state.var_lookup_symbol(lj_str_newlit(this->lex_state.L, "__filter"), &filter_fn);
+   this->materialise_to_next_reg(filter_fn, "filter function");
+
+   // Reserve register for frame link (FR2)
+   RegisterAllocator allocator(fs);
+   allocator.reserve(BCReg(1));
+
+   // Emit arguments: mask, count, trailing_keep
+   ExpDesc mask_expr(double(Payload.keep_mask));
+   this->materialise_to_next_reg(mask_expr, "filter mask");
+
+   ExpDesc count_expr(double(Payload.explicit_count));
+   this->materialise_to_next_reg(count_expr, "filter count");
+
+   ExpDesc trail_expr(Payload.trailing_keep);
+   this->materialise_to_next_reg(trail_expr, "filter trailing");
+
+   // Emit the call expression
+   auto call_result = this->emit_expression(*Payload.expression);
+   if (not call_result.ok()) return call_result;
+   ExpDesc call = call_result.value_ref();
+
+   // Set B=0 on the inner call to request all return values
+   if (call.k IS ExpKind::Call) {
+      setbc_b(ir_bcptr(fs, &call), 0);
+   }
+   this->materialise_to_next_reg(call, "filter input");
+
+   // Emit CALLM to call __filter with variable arguments from the inner call
+   // CALLM: base = function, C+1 = fixed args before vararg (3: mask, count, trailing)
+   // The varargs come from the inner call's multiple returns
+   BCIns ins = BCINS_ABC(BC_CALLM, base, 0, 3);  // 3 fixed args before vararg
+
+   ExpDesc result;
+   result.init(ExpKind::Call, bcemit_INS(fs, ins));
+   result.u.s.aux = base;
+   fs->freereg = base + 1;
+
    return ParserResult<ExpDesc>::success(result);
 }
 

@@ -860,6 +860,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          break;
       }
 
+      case TokenKind::LeftBracket: {
+         // Result filter prefix syntax: [_*]func()
+         return this->parse_result_filter_expr(current);
+      }
+
       default: {
          auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
          this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
@@ -1341,6 +1346,143 @@ LiteralValue AstBuilder::make_literal(const Token& token)
          break;
    }
    return literal;
+}
+
+//********************************************************************************************************************
+// Parses the result filter pattern inside brackets: [_*], [*_], [_**_], etc.
+// The pattern consists of '_' (drop) and '*' (keep) characters.
+// The last character determines the trailing behaviour for excess values.
+
+ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_pattern()
+{
+   ResultFilterInfo info;
+   info.keep_mask = 0;
+   info.explicit_count = 0;
+   info.trailing_keep = false;
+
+   uint8_t position = 0;
+   Token current = this->ctx.tokens().current();
+
+   while (current.kind() != TokenKind::RightBracket) {
+      if (position >= 64) {
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+            "result filter pattern too long (max 64 positions)");
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = "result filter pattern too long (max 64 positions)";
+         return ParserResult<ResultFilterInfo>::failure(error);
+      }
+
+      if (current.kind() IS TokenKind::Multiply) {  // *
+         info.keep_mask |= (1ULL << position);
+         info.trailing_keep = true;
+         position++;
+      }
+      else if (current.kind() IS TokenKind::Identifier) {
+         // Check for underscore identifier - may contain multiple underscores (e.g. "__")
+         GCstr* id = current.identifier();
+         if (id) {
+            const char* data = strdata(id);
+            MSize len = id->len;
+            bool all_underscores = true;
+            for (MSize i = 0; i < len; i++) {
+               if (data[i] != '_') {
+                  all_underscores = false;
+                  break;
+               }
+            }
+            if (all_underscores and len > 0) {
+               // Each underscore counts as one "drop" position
+               for (MSize i = 0; i < len; i++) {
+                  if (position >= 64) {
+                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+                        "result filter pattern too long (max 64 positions)");
+                     ParserError error;
+                     error.code = ParserErrorCode::UnexpectedToken;
+                     error.token = current;
+                     error.message = "result filter pattern too long (max 64 positions)";
+                     return ParserResult<ResultFilterInfo>::failure(error);
+                  }
+                  info.trailing_keep = false;
+                  position++;
+               }
+            }
+            else {
+               this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+                  "result filter pattern expects '_' or '*'");
+               ParserError error;
+               error.code = ParserErrorCode::UnexpectedToken;
+               error.token = current;
+               error.message = "result filter pattern expects '_' or '*'";
+               return ParserResult<ResultFilterInfo>::failure(error);
+            }
+         }
+         else {
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+               "result filter pattern expects '_' or '*'");
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = current;
+            error.message = "result filter pattern expects '_' or '*'";
+            return ParserResult<ResultFilterInfo>::failure(error);
+         }
+      }
+      else {
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+            "result filter pattern expects '_' or '*'");
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = "result filter pattern expects '_' or '*'";
+         return ParserResult<ResultFilterInfo>::failure(error);
+      }
+
+      this->ctx.tokens().advance();
+      current = this->ctx.tokens().current();
+   }
+
+   info.explicit_count = position;
+   return ParserResult<ResultFilterInfo>::success(info);
+}
+
+//********************************************************************************************************************
+// Parses result filter expressions: [_*]func(), [*_]obj:method(), etc.
+// This syntax allows selective extraction of return values from multi-value function calls.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token& StartToken)
+{
+   this->ctx.tokens().advance();  // Consume '['
+
+   auto filter = this->parse_result_filter_pattern();
+   if (not filter.ok()) return ParserResult<ExprNodePtr>::failure(filter.error_ref());
+
+   this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+
+   // Parse the expression to filter (must be followed by a callable)
+   auto expr = this->parse_unary();
+   if (not expr.ok()) return expr;
+
+   expr = this->parse_suffixed(std::move(expr.value_ref()));
+   if (not expr.ok()) return expr;
+
+   // Validate that result is a call expression
+   AstNodeKind kind = expr.value_ref()->kind;
+   if (kind != AstNodeKind::CallExpr and kind != AstNodeKind::SafeCallExpr) {
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, StartToken,
+         "result filter requires a function call");
+      ParserError error;
+      error.code = ParserErrorCode::UnexpectedToken;
+      error.token = StartToken;
+      error.message = "result filter requires a function call";
+      return ParserResult<ExprNodePtr>::failure(error);
+   }
+
+   SourceSpan span = combine_spans(StartToken.span(), expr.value_ref()->span);
+   return ParserResult<ExprNodePtr>::success(
+      make_result_filter_expr(span, std::move(expr.value_ref()),
+         filter.value_ref().keep_mask, filter.value_ref().explicit_count,
+         filter.value_ref().trailing_keep));
 }
 
 //********************************************************************************************************************

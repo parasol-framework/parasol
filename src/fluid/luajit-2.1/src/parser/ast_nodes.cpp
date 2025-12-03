@@ -156,6 +156,11 @@ struct ExpressionChildCounter {
       return total;
    }
 
+   [[nodiscard]] inline size_t operator()(const ResultFilterPayload &Payload) const
+   {
+      return Payload.expression ? 1 : 0;
+   }
+
    [[nodiscard]] inline size_t operator()(const TableExprPayload &Payload) const
    {
       size_t total = 0;
@@ -278,6 +283,7 @@ MemberExprPayload::~MemberExprPayload() = default;
 IndexExprPayload::~IndexExprPayload() = default;
 SafeMemberExprPayload::~SafeMemberExprPayload() = default;
 SafeIndexExprPayload::~SafeIndexExprPayload() = default;
+ResultFilterPayload::~ResultFilterPayload() = default;
 TableField::~TableField() = default;
 TableExprPayload::~TableExprPayload() = default;
 FunctionExprPayload::~FunctionExprPayload() = default;
@@ -508,6 +514,22 @@ ExprNodePtr make_safe_index_expr(SourceSpan Span, ExprNodePtr Table, ExprNodePtr
    payload.index = std::move(Index);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::SafeIndexExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_result_filter_expr(SourceSpan Span, ExprNodePtr Expression, uint64_t KeepMask,
+   uint8_t ExplicitCount, bool TrailingKeep)
+{
+   assert_node(ensure_operand(Expression), "result filter expression requires call expression");
+   ResultFilterPayload payload;
+   payload.expression = std::move(Expression);
+   payload.keep_mask = KeepMask;
+   payload.explicit_count = ExplicitCount;
+   payload.trailing_keep = TrailingKeep;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::ResultFilterExpr;
    node->span = Span;
    node->data = std::move(payload);
    return node;
