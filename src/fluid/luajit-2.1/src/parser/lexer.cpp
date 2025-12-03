@@ -729,6 +729,36 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                return TK_number;
             }
 
+         case '|':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '>') {
+               // Basic pipe: |>
+               lex_next(State);
+               setintV(tv, 0);  // 0 = unlimited (default)
+               return TK_pipe;
+            }
+            else if (isdigit(State->c)) {
+               // Pipe with limit: |2>, |10>, etc.
+               TValue limit_val;
+               lex_number(State, &limit_val);
+               if (State->c IS '>') {
+                  lex_next(State);
+                  // Store limit in token payload
+                  *tv = limit_val;
+                  // Validate limit is positive integer
+                  if (tvisnum(&limit_val) and numV(&limit_val) < 1) {
+                     lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
+                  }
+                  return TK_pipe;
+               }
+               else {
+                  // Error: expected '>' after number
+                  lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
+               }
+            }
+            return '|';  // Bitwise OR
+
          case LEX_EOF:
             State->mark_token_start();
             return TK_eof;

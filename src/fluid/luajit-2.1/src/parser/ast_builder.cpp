@@ -657,6 +657,52 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 
    while (true) {
       Token next = this->ctx.tokens().current();
+
+      // Pipe operator: precedence 2, right-associative (left=2, right=1)
+      // Higher than logical operators, lower than comparison
+      if (next.kind() IS TokenKind::Pipe) {
+         constexpr uint8_t pipe_left = 2;
+         constexpr uint8_t pipe_right = 1;
+         if (pipe_left <= precedence) break;
+
+         // Extract limit from token payload (0 = unlimited)
+         uint32_t limit = 0;
+         if (next.payload().has_value()) {
+            double limit_val = next.payload().as_number();
+            if (limit_val >= 1) {
+               limit = uint32_t(limit_val);
+            }
+         }
+
+         this->ctx.tokens().advance();
+
+         // Parse RHS as a primary expression with suffixes (to allow call expressions)
+         auto rhs = this->parse_unary();
+         if (not rhs.ok()) return rhs;
+
+         // Apply suffixes to get the complete RHS expression
+         rhs = this->parse_suffixed(std::move(rhs.value_ref()));
+         if (not rhs.ok()) return rhs;
+
+         // Validate that RHS is a call expression
+         if (rhs.value_ref()->kind != AstNodeKind::CallExpr and
+             rhs.value_ref()->kind != AstNodeKind::SafeCallExpr) {
+            Token bad = this->ctx.tokens().current();
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad,
+               "pipe operator requires function call on right-hand side");
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = next;
+            error.message = "pipe operator requires function call on right-hand side";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+
+         SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
+         left = ParserResult<ExprNodePtr>::success(make_pipe_expr(span,
+            std::move(left.value_ref()), std::move(rhs.value_ref()), limit));
+         continue;
+      }
+
       if (next.kind() IS TokenKind::Question) {
          // Ternary operator has priority 1 (lowest). Only process if current
          // precedence level allows it, otherwise let higher-priority operators

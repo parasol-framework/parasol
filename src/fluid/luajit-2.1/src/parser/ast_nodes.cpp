@@ -118,6 +118,13 @@ struct ExpressionChildCounter {
       return Payload.value ? 1 : 0;
    }
 
+   [[nodiscard]] inline size_t operator()(const PipeExprPayload &Payload) const
+   {
+      size_t total = Payload.lhs ? 1 : 0;
+      if (Payload.rhs_call) total++;
+      return total;
+   }
+
    [[nodiscard]] inline size_t operator()(const CallExprPayload &Payload) const
    {
       size_t total = std::visit(CallTargetChildCounter{}, Payload.target);
@@ -265,6 +272,7 @@ UpdateExprPayload::~UpdateExprPayload() = default;
 BinaryExprPayload::~BinaryExprPayload() = default;
 TernaryExprPayload::~TernaryExprPayload() = default;
 PresenceExprPayload::~PresenceExprPayload() = default;
+PipeExprPayload::~PipeExprPayload() = default;
 CallExprPayload::~CallExprPayload() = default;
 MemberExprPayload::~MemberExprPayload() = default;
 IndexExprPayload::~IndexExprPayload() = default;
@@ -381,6 +389,20 @@ ExprNodePtr make_presence_expr(SourceSpan Span, ExprNodePtr value)
    payload.value = std::move(value);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::PresenceExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_pipe_expr(SourceSpan Span, ExprNodePtr lhs, ExprNodePtr rhs_call, uint32_t limit)
+{
+   assert_node(ensure_operand(lhs) and ensure_operand(rhs_call), "pipe expression requires lhs and rhs_call");
+   PipeExprPayload payload;
+   payload.lhs = std::move(lhs);
+   payload.rhs_call = std::move(rhs_call);
+   payload.limit = limit;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::PipeExpr;
    node->span = Span;
    node->data = std::move(payload);
    return node;

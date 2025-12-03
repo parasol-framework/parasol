@@ -1440,6 +1440,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::BinaryExpr:   return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
       case AstNodeKind::TernaryExpr:  return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
       case AstNodeKind::PresenceExpr: return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
+      case AstNodeKind::PipeExpr:     return this->emit_pipe_expr(std::get<PipeExprPayload>(expr.data));
       case AstNodeKind::MemberExpr:   return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
       case AstNodeKind::IndexExpr:    return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
       case AstNodeKind::SafeMemberExpr: return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
@@ -1791,6 +1792,127 @@ ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload &P
    ExpDesc value = value_result.value_ref();
    this->operator_emitter.emit_presence_check(ExprValue(&value));
    return ParserResult<ExpDesc>::success(value);
+}
+
+//********************************************************************************************************************
+// Pipe expression: lhs |> rhs_call()
+// Prepends the LHS result(s) as argument(s) to the RHS function call.
+// The RHS must be a CallExpr node.
+//
+// Register layout for calls:
+//   R(base)   = function
+//   R(base+1) = frame link (FR2, 64-bit mode)
+//   R(base+2) = first argument (LHS piped value)
+//   R(base+3...) = remaining arguments from RHS call
+
+ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
+{
+   if (not Payload.lhs or not Payload.rhs_call) {
+      return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
+   }
+
+   // The RHS must be a call expression - this was validated in the parser
+   if (Payload.rhs_call->kind != AstNodeKind::CallExpr and
+       Payload.rhs_call->kind != AstNodeKind::SafeCallExpr) {
+      return this->unsupported_expr(AstNodeKind::PipeExpr, Payload.rhs_call->span);
+   }
+
+   BCLine call_line = this->lex_state.lastline;
+   FuncState* fs = &this->func_state;
+
+   // Get the RHS call payload
+   const CallExprPayload& call_payload = std::get<CallExprPayload>(Payload.rhs_call->data);
+
+   // 1. Emit the callee (function) FIRST to establish base register
+   ExpDesc callee;
+   BCReg base(0);
+   if (const auto* direct = std::get_if<DirectCallTarget>(&call_payload.target)) {
+      if (not direct->callable) return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
+      auto callee_result = this->emit_expression(*direct->callable);
+      if (not callee_result.ok()) return callee_result;
+      callee = callee_result.value_ref();
+      this->materialise_to_next_reg(callee, "pipe call callee");
+      RegisterAllocator allocator(fs);
+      allocator.reserve(BCReg(1)); // Frame link (FR2)
+      base = BCReg(callee.u.s.info);
+   }
+   else if (const auto* method = std::get_if<MethodCallTarget>(&call_payload.target)) {
+      if (not method->receiver or method->method.symbol IS nullptr) {
+         return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
+      }
+      auto receiver_result = this->emit_expression(*method->receiver);
+      if (not receiver_result.ok()) return receiver_result;
+      callee = receiver_result.value_ref();
+      ExpDesc key(ExpKind::Str);
+      key.u.sval = method->method.symbol;
+      bcemit_method(fs, &callee, &key);
+      base = BCReg(callee.u.s.info);
+   }
+   else return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
+
+   // 2. Emit LHS expression as the first argument(s)
+   auto lhs_result = this->emit_expression(*Payload.lhs);
+   if (not lhs_result.ok()) return lhs_result;
+   ExpDesc lhs = lhs_result.value_ref();
+
+   // Determine if LHS is a multi-value expression (function call)
+   bool lhs_is_call = (lhs.k IS ExpKind::Call);
+   bool forward_multret = false;
+
+   if (lhs_is_call) {
+      // Multi-value case: discharge the call result to registers
+      // If limit > 0, we want exactly 'limit' results
+      // If limit == 0, we want all results (multi-return)
+      if (Payload.limit > 0) {
+         // Set BC_CALL B field to request exactly 'limit' return values
+         // B = limit + 1 means "expect limit results"
+         setbc_b(ir_bcptr(fs, &lhs), Payload.limit + 1);
+         // The call results are placed starting at lhs.u.s.aux (the call base)
+         // Update freereg to reflect the limited number of results
+         fs->freereg = lhs.u.s.aux + Payload.limit;
+      }
+      else {
+         // Forward all return values - keep B=0 for CALLM pattern
+         setbc_b(ir_bcptr(fs, &lhs), 0);
+         forward_multret = true;
+      }
+   }
+   else {
+      // Single value case - materialize to next register
+      this->materialise_to_next_reg(lhs, "pipe LHS value");
+   }
+
+   // 3. Emit remaining RHS arguments
+   BCReg arg_count(0);
+   ExpDesc args(ExpKind::Void);
+   if (not call_payload.arguments.empty()) {
+      auto args_result = this->emit_expression_list(call_payload.arguments, arg_count);
+      if (not args_result.ok()) return ParserResult<ExpDesc>::failure(args_result.error_ref());
+      args = args_result.value_ref();
+   }
+
+   // 4. Emit the call instruction
+   BCIns ins;
+   if (forward_multret and call_payload.arguments.empty()) {
+      // Use CALLM to forward all LHS return values as arguments (no additional args)
+      // C field = number of fixed args before the vararg (0 in this case)
+      ins = BCINS_ABC(BC_CALLM, base, 2, lhs.u.s.aux - base - 1 - 1);
+   }
+   else {
+      // Regular CALL with fixed argument count
+      if (args.k != ExpKind::Void) {
+         this->materialise_to_next_reg(args, "pipe rhs arguments");
+      }
+      ins = BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - 1);
+   }
+
+   this->lex_state.lastline = call_line;
+
+   ExpDesc result;
+   result.init(ExpKind::Call, bcemit_INS(fs, ins));
+   result.u.s.aux = base;
+   fs->freereg = base + 1;
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************
