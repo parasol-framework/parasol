@@ -1406,6 +1406,15 @@ ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_patte
                   }
                   info.trailing_keep = false;
                   position++;
+                  if (position == 64) {
+                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+                        "result filter pattern too long (max 64 positions)");
+                     ParserError error;
+                     error.code = ParserErrorCode::UnexpectedToken;
+                     error.token = current;
+                     error.message = "result filter pattern too long (max 64 positions)";
+                     return ParserResult<ResultFilterInfo>::failure(error);
+                  }
                }
             }
             else {
