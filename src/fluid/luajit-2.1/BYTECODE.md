@@ -167,49 +167,52 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 
 ## 4. Conditional and Comparison Bytecodes
 ### 4.1 Conditional Bytecode Semantics
-All comparison opcodes follow: **condition true → skip next instruction; condition false → execute next instruction** (normally a `JMP`).
+All comparison opcodes follow: **condition true → take the following JMP; condition false → fall through to next instruction**.
+
+The comparison opcode and the following `JMP` form a single logical unit. When the condition is true, control branches to the JMP target; when false, execution continues sequentially.
 
 ### 4.2 Equality-with-Constant Opcodes (`BC_ISEQP`, `BC_ISEQN`, `BC_ISEQS`, `BC_ISNEP`, `BC_ISNEV`)
-- `BC_ISEQP A, pri(D)`: compare register with primitive constant (nil/false/true). Equal → skip next; not equal → execute next.
-- `BC_ISEQN A, num(D)`: compare with numeric constant; same skip/execute behaviour.
-- `BC_ISEQS A, str(D)`: compare with interned string constant; same skip/execute.
-- `BC_ISNEP A, pri(D)` / `BC_ISNEV A, R(D)`: not-equal variants; condition true (not equal) skips next.
+- `BC_ISEQP A, pri(D)`: compare register with primitive constant (nil/false/true). Equal → take JMP; not equal → fall through.
+- `BC_ISEQN A, num(D)`: compare with numeric constant; same branch/fall-through behaviour.
+- `BC_ISEQS A, str(D)`: compare with interned string constant; same branch/fall-through behaviour.
+- `BC_ISNEP A, pri(D)` / `BC_ISNEV A, R(D)`: not-equal variants; not equal → take JMP; equal → fall through.
 - Canonical branching: to branch on equality, place `JMP` immediately after the compare. Example (branch when value is nil):
   ```
-  ISEQP   A, nil    ; nil → skip JMP, fall through to nil path
-  JMP     target    ; non-nil → jump to alternate path
-  ; nil path continues here
+  ISEQP   A, nil    ; nil → take JMP to target
+  JMP     target    ; non-nil → fall through to next instruction
+  ; non-nil path continues here
   ```
   For inverted sense (branch when not nil), use `ISNEP` with the same layout.
 
 ### 4.3 Generic Comparison Opcodes (`BC_ISLT`, `BC_ISGE`, `BC_ISLE`, `BC_ISGT`)
-- These compare two registers (or a register and constant folded into D). Condition true skips the next instruction; condition false executes it.
+- These compare two registers (or a register and constant folded into D). Condition true takes the following JMP; condition false falls through.
 - Pattern for `if a < b then ... else ... end`:
   ```
-  ISLT    A, D      ; a < b → skip JMP → enter then-branch
-  JMP     else      ; a >= b → jump to else-branch
+  ISLT    A, D      ; a < b → take JMP to else-branch
+  JMP     else      ; a >= b → fall through to then-branch
+  ; then-branch code here
   ```
 - The parser uses the same idiom for numeric `for` bounds and relational operators in expressions.
 
 ### 4.4 Interaction with `BC_JMP` and Jump Lists
-- Comparison + `JMP` encodes "if condition holds, skip the jump; otherwise execute the jump". A taken jump applies its signed offset from the instruction after the `JMP`.
+- Comparison + `JMP` encodes "if condition holds, branch to the jump target; otherwise fall through". A taken jump applies its signed offset from the instruction after the `JMP`.
 - `jmp_patch` links jumps into singly linked lists so multiple comparisons can target a shared label. Patching a list fixes all pending offsets at once (e.g. chained falsey checks all landing on the RHS evaluation).
-- Disassembly shows skipped jumps as `----` offsets; when reading dumps from `mtDebugLog('disasm')`, identify compare/JMP pairs and the final patched destination to understand flow.
+- Disassembly shows unpatched jumps as `----` offsets; when reading dumps from `--jit-options dump-bytecode`, identify compare/JMP pairs and the final patched destination to understand flow.
 
 ## 5. Control-Flow and Short-Circuit Patterns
 ### 5.1 Logical Operators (`and`, `or`)
-- `a and b`: evaluate `a`; emit compare + `JMP` that jumps past `b` when `a` is falsey. True `a` skips the `JMP`, so `b` is evaluated and its result replaces/occupies the same slot.
-- `a or b`: evaluate `a`; emit compare + `JMP` that jumps into `b` only when `a` is falsey. Truthy `a` skips the `JMP` and becomes the result; `b` is untouched.
+- `a and b`: evaluate `a`; emit compare + `JMP` that branches past `b` when `a` is falsey. Truthy `a` falls through, so `b` is evaluated and its result replaces/occupies the same slot.
+- `a or b`: evaluate `a`; emit compare + `JMP` that branches into `b` only when `a` is falsey. Truthy `a` falls through and becomes the result; `b` is untouched.
 - Registers are normalised so the resulting value lives in the LHS register; `freereg` collapses after RHS evaluation to avoid leaks.
 
 ### 5.2 Ternary Operator (`cond ? true_val :> false_val`)
 - Only one branch executes. The condition is evaluated in place; compare + `JMP` sends control to the false branch when the condition is extended-falsey.
-- `IrEmitter::emit_ternary_expr` places both branches so the result lands in the condition register. Each branch frees temporaries before convergence, and `freereg` is patched back to the condition’s base to guarantee a single-slot result.
+- `IrEmitter::emit_ternary_expr` places both branches so the result lands in the condition register. Each branch frees temporaries before convergence, and `freereg` is patched back to the condition's base to guarantee a single-slot result.
 - Example sketch:
   ```
   <eval cond in RA>
-  ISEQP  RA, nil ; skip if nil
-  JMP    false   ; non-nil → jump if needed depending on extended checks
+  ISEQP  RA, nil ; nil → branch to false
+  JMP    false   ; non-nil → fall through to true branch
   ; true branch emits true_val into RA
   JMP    end
 false:
@@ -219,12 +222,12 @@ end:
 
 ### 5.3 Presence Operator (`x?`) – Extended Falsey Check
 - Falsey set: `nil`, `false`, numeric zero, empty string. If operand is in this set, result is `false` and RHS (if any) is skipped.
-- Emission: chain `BC_ISEQP`/`BC_ISEQN`/`BC_ISEQS` comparisons, each followed by a `JMP` to the truthy path. Equality skips its `JMP`, advancing to the next check; if none match, the first `JMP` executes to bypass falsey handling. This preserves short-circuiting without running RHS helpers.
-- Jump lists patch the truthy exit after the chain; falsey fallthrough sets the result and collapses `freereg`.
+- Emission: chain `BC_ISEQP`/`BC_ISEQN`/`BC_ISEQS` comparisons, each followed by a `JMP` to the falsey path. A matching equality branches to that path; non-matching comparisons fall through to the next check. If all checks fall through (truthy value), execution continues past the chain.
+- Jump lists patch the falsey exit after the chain; truthy fallthrough sets the result and collapses `freereg`.
 
 ### 5.4 If-Empty Operator (`lhs ?? rhs`) – Short-Circuiting with Extended Falsey Semantics
 - Evaluate `lhs`; if it is nil/false/0/"", evaluate `rhs` and return it; otherwise return `lhs` without touching `rhs`.
-- Implemented in `IrEmitter::emit_if_empty_expr` plus helper routines in `operator_emitter.cpp`. The compare chain mirrors the presence operator: each equality skips its `JMP`, so a matching falsey value falls through into RHS evaluation; a truthy value triggers the first `JMP` and skips RHS entirely.
+- Implemented in `IrEmitter::emit_if_empty_expr` plus helper routines in `operator_emitter.cpp`. The compare chain mirrors the presence operator: a matching falsey value branches to RHS evaluation; a truthy value falls through all checks and skips RHS entirely.
 - The result register is the original `lhs` slot; RHS evaluation reuses it and collapses `freereg` afterward to avoid leaked arguments or vararg tails.
 
 ## 6. Register Semantics and Multi-Value Behaviour
