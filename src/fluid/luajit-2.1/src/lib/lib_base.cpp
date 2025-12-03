@@ -293,7 +293,7 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
 {
    int32_t nargs = int32_t(L->top - L->base);
    if (nargs < 3) {
-      lj_err_arg(L, 3, ErrMsg::NOVAL);
+      lj_err_arg(L, nargs + 1, ErrMsg::NOVAL);
       return 0;
    }
 
