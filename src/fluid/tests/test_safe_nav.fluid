@@ -253,8 +253,18 @@ end
 -- Test chaining with methods and fields
 
 function testChainingMethodsAndFields()
+   local ef_called = 0
    local service = {
-      data = { value = 42, embedded_function = function() return 0xff end },
+      data = { 
+         value = 42, 
+         embedded_function = function(arg1, arg2, arg3)
+            ef_called++
+            assert(arg1 is 1, "Embedded function arg1 mismatch, got " .. tostring(arg1))
+            assert(arg2 is '2', "Embedded function arg2 mismatch, got " .. tostring(arg2))
+            assert(arg3[0] is '3', "Embedded function arg3 mismatch, got " .. tostring(arg3[0]))
+            return 0xff 
+         end 
+      },
       getData = function(self)
          return self.data
       end
@@ -266,17 +276,16 @@ function testChainingMethodsAndFields()
    local v2 = nilService?:getData()?.value
    assert(v2 is nil, "Chaining methods and fields should short-circuit on nil")
 
-   local v = service.data.embedded_function()
+   local v = service.data.embedded_function(1, "2", { "3" })
    assert(v is 255, "Embedded function should return the correct value")
 
-   local v = service.data?:embedded_function()
-   assert(v is 255, "Embedded function should return the correct value")
-
-   local v = service.data?.embedded_function()
+   local v = service.data?.embedded_function(1, "2", { "3" })
    assert(v is 255, "Embedded function should return the correct value")
 
    local v = service.data?.not_embedded_function()
    assert(not v, "Expected nil for function that doesn't exist")
+
+   assert(ef_called is 2, "Embedded function should have been called 3 times, was called " .. tostring(ef_called) .. " times")
 end
 
 ----------------------------------------------------------------------------------------------------------------------

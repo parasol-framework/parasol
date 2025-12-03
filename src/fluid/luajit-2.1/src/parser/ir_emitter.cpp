@@ -61,9 +61,9 @@ public:
       return ParserResult<T>::failure(err);
    }
 
-   [[nodiscard]] BCREG base_register() const { return this->result_reg; }
-   [[nodiscard]] ExpDesc base_expression() const { return this->base_expr; }
-   [[nodiscard]] RegisterAllocator& reg_allocator() { return this->allocator; }
+   [[nodiscard]] inline BCREG base_register() const { return this->result_reg; }
+   [[nodiscard]] inline ExpDesc base_expression() const { return this->base_expr; }
+   [[nodiscard]] inline RegisterAllocator& reg_allocator() { return this->allocator; }
 
    // Complete the nil short-circuit: emit nil path, patch jumps, return result.
    // The result is stored in base_register() as a NonReloc expression.
@@ -400,13 +400,9 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 
       case BC_GGET:
          table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "pairs"));
-         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
-            return 1;
-         }
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) return 1;
          table_entry = lj_tab_getstr(func_state.kt, lj_str_newlit(lex_state.L, "next"));
-         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) {
-            return 1;
-         }
+         if (table_entry and tvhaskslot(table_entry) and tvkslot(table_entry) IS bc_d(ins)) return 1;
          return 0;
 
       default:
