@@ -125,9 +125,10 @@ LJLIB_ASM(ipairs)      LJLIB_REC(xpairs 1)
    return ffh_pairs(L, MM_ipairs);
 }
 
-// -- Base library: getters and setters -----------------------------------
+// Base library: getters and setters
 
 LJLIB_ASM_(getmetatable)   LJLIB_REC(.)
+
 // Recycle the lj_lib_checkany(L, 1) from assert.
 
 LJLIB_ASM(setmetatable)      LJLIB_REC(.)
@@ -149,8 +150,7 @@ LJLIB_CF(getfenv)      LJLIB_REC(.)
    if (!(o < L->top and tvisfunc(o))) {
       int level = lj_lib_optint(L, 1, 1);
       o = lj_debug_frame(L, level, &level);
-      if (o == nullptr)
-         lj_err_arg(L, 1, ErrMsg::INVLVL);
+      if (o == nullptr) lj_err_arg(L, 1, ErrMsg::INVLVL);
       if (LJ_FR2) o--;
    }
    fn = &gcval(o)->fn;
@@ -208,7 +208,6 @@ LJLIB_CF(rawequal)      LJLIB_REC(.)
    return 1;
 }
 
-#if LJ_52
 LJLIB_CF(rawlen)      LJLIB_REC(.)
 {
    cTValue* o = L->base;
@@ -220,7 +219,6 @@ LJLIB_CF(rawlen)      LJLIB_REC(.)
    setintV(L->top - 1, len);
    return 1;
 }
-#endif
 
 LJLIB_CF(unpack)
 {
@@ -262,7 +260,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
    }
 }
 
-// -- Base library: conversions -------------------------------------------
+// Base library: conversions
 
 LJLIB_ASM(tonumber)      LJLIB_REC(.)
 {

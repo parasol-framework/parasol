@@ -1922,6 +1922,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  checknumtp [BASE+16], ->fff_fallback
   |  cvttsd2si TMPRd, qword [BASE+16]
   |.endif
+  |  // Convert exclusive end to inclusive: end = end - 1 (only for positive values)
+  |  test TMPRd, TMPRd
+  |  jle >1
+  |  sub TMPRd, 1
   |1:
   |  mov STR:RB, [BASE]
   |  checkstr STR:RB, ->fff_fallback
@@ -1972,68 +1976,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  xor TMPRd, TMPRd			// Zero length. Any ptr in RD is ok.
   |  jmp <4
   |
-  |// string.substr(str, start, end) - like string.sub but end is exclusive
+  |// string.substr() is now an alias for string.sub() - both use exclusive end
   |.ffunc string_substr
-  |  ffgccheck
-  |  mov TMPRd, -1
-  |  cmp NARGS:RDd, 1+2;  jb ->fff_fallback
-  |  jna >1
-  |.if DUALNUM
-  |  mov TMPR, [BASE+16]
-  |  checkint TMPR, ->fff_fallback
-  |.else
-  |  checknumtp [BASE+16], ->fff_fallback
-  |  cvttsd2si TMPRd, qword [BASE+16]
-  |.endif
-  |  // Convert exclusive end to inclusive: end = end - 1 (only for positive values)
-  |  test TMPRd, TMPRd
-  |  jle >1
-  |  sub TMPRd, 1
-  |1:
-  |  mov STR:RB, [BASE]
-  |  checkstr STR:RB, ->fff_fallback
-  |.if DUALNUM
-  |  mov ITYPE, [BASE+8]
-  |  mov RAd, ITYPEd			// Must clear hiword for lea below.
-  |  sar ITYPE, 47
-  |  cmp ITYPEd, LJ_TISNUM
-  |  jne ->fff_fallback
-  |.else
-  |  checknumtp [BASE+8], ->fff_fallback
-  |  cvttsd2si RAd, qword [BASE+8]
-  |.endif
-  |  mov RCd, STR:RB->len
-  |  test RCd, RCd			// len == 0?
-  |  jz ->fff_emptystr			// Return empty string immediately
-  |  cmp RCd, TMPRd			// len <= end? (unsigned compare)
-  |  jbe >5
-  |2:
-  |  test RAd, RAd			// start <= 0?
-  |  jle >7
-  |3:
-  |  sub TMPRd, RAd			// start > end?
-  |  jl ->fff_emptystr
-  |  lea RD, [STR:RB+RAd+#STR]  // Zero-indexed: no -1 offset needed
-  |  add TMPRd, 1
-  |4:
-  |  jmp ->fff_newstr
-  |
-  |5:  // Negative end or overflow.
-  |  test TMPRd, TMPRd			// Check if end is negative
-  |  jns >6				// If end >= 0, it's overflow (since len <= end)
-  |  lea TMPRd, [TMPRd+RCd]		// end = end+len (negative index conversion)
-  |  jmp <2
-  |6:  // Overflow.
-  |  lea TMPRd, [RCd-1]			// end = len-1 (zero-indexed: last valid index)
-  |  jmp <2
-  |
-  |7:  // Negative start or underflow.
-  |  je >8
-  |  add RAd, RCd			// start = start+len
-  |  jge <3				// start >= 0?
-  |8:  // Underflow.
-  |  xor RAd, RAd			// start = 0 (zero-indexed)
-  |  jmp <3
+  |  jmp ->ff_string_sub
   |
   |.macro ffstring_op, name
   |  .ffunc_1 string_ .. name

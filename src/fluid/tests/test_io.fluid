@@ -30,7 +30,7 @@ function readFileContent(path)
    local buffer = string.alloc(4096)
    local err, bytes = file.acRead(buffer)
    if err is ERR_Okay and bytes > 0 then
-      return buffer:sub(0, bytes-1)
+      return buffer:sub(0, bytes)
    end
    return nil
 end
