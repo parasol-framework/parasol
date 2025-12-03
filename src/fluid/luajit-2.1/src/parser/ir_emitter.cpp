@@ -2144,8 +2144,17 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 
    ExpDesc callee;
    auto base = BCReg(0);
+   bool is_safe_callable = false;
+
    if (const auto *direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
+
+      // Check if the callable is a safe navigation expression (?.field or ?[index])
+      // If so, we need to add a nil check on the result before calling
+
+      is_safe_callable = (direct->callable->kind IS AstNodeKind::SafeMemberExpr) or
+                         (direct->callable->kind IS AstNodeKind::SafeIndexExpr);
+
       auto callee_result = this->emit_expression(*direct->callable);
       if (not callee_result.ok()) return callee_result;
       callee = callee_result.value_ref();
@@ -2169,6 +2178,16 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    }
    else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
+   // For safe callable expressions (obj?.method()), emit a nil check on the callable.
+   // If the callable is nil, skip the call and return nil instead.
+
+   ControlFlowEdge nil_jump;
+   if (is_safe_callable) {
+      ExpDesc nilv(ExpKind::Nil);
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, base, const_pri(&nilv)));
+      nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   }
+
    auto arg_count = BCReg(0);
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
@@ -2189,10 +2208,25 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    }
 
    // Restore the saved line number so the CALL instruction gets the correct line
+
    this->lex_state.lastline = call_line;
 
+   auto call_pc = BCPos(bcemit_INS(&this->func_state, ins));
+
+   // For safe callable: emit the nil path and patch jumps
+
+   if (is_safe_callable) {
+      ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      BCPos nil_path = BCPos(this->func_state.pc);
+      nil_jump.patch_to(nil_path);
+      bcemit_nil(&this->func_state, base.raw(), 1);
+
+      skip_nil.patch_to(BCPos(this->func_state.pc));
+   }
+
    ExpDesc result;
-   result.init(ExpKind::Call, bcemit_INS(&this->func_state, ins));
+   result.init(ExpKind::Call, call_pc);
    result.u.s.aux = base;
    this->func_state.freereg = base + 1;
    return ParserResult<ExpDesc>::success(result);
@@ -2666,6 +2700,11 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
          expr_index(&this->func_state, &table, &key);
          return ParserResult<ExpDesc>::success(table);
       }
+
+      case AstNodeKind::SafeMemberExpr:
+      case AstNodeKind::SafeIndexExpr:
+         return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+            "Safe navigation operators (?. and ?[]) cannot be used as assignment targets"));
 
       default:
          return this->unsupported_expr(expr.kind, expr.span);

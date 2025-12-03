@@ -254,7 +254,7 @@ end
 
 function testChainingMethodsAndFields()
    local service = {
-      data = { value = 42 },
+      data = { value = 42, embedded_function = function() return 0xff end },
       getData = function(self)
          return self.data
       end
@@ -265,6 +265,18 @@ function testChainingMethodsAndFields()
    local nilService = nil
    local v2 = nilService?:getData()?.value
    assert(v2 is nil, "Chaining methods and fields should short-circuit on nil")
+
+   local v = service.data.embedded_function()
+   assert(v is 255, "Embedded function should return the correct value")
+
+   local v = service.data?:embedded_function()
+   assert(v is 255, "Embedded function should return the correct value")
+
+   local v = service.data?.embedded_function()
+   assert(v is 255, "Embedded function should return the correct value")
+
+   local v = service.data?.not_embedded_function()
+   assert(not v, "Expected nil for function that doesn't exist")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
