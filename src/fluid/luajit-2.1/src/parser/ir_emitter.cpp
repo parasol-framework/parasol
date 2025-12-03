@@ -210,6 +210,7 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
 }
 
 //********************************************************************************************************************
+// Restore the local binding table to the previous scope level by removing bindings added in the current scope.
 
 void LocalBindingTable::pop_scope()
 {
@@ -223,6 +224,8 @@ void LocalBindingTable::pop_scope()
    this->bindings.resize(restore);
    if (this->depth > 0) this->depth--;
 }
+
+// Add a new local variable binding to the table, associating a symbol with its register slot.
 
 void LocalBindingTable::add(GCstr* symbol, BCReg slot)
 {
@@ -262,6 +265,7 @@ private:
 UnsupportedNodeRecorder glUnsupportedNodes;
 
 //********************************************************************************************************************
+// Check if an identifier is blank (underscore placeholder) or has no associated symbol.
 
 [[nodiscard]] static bool is_blank_symbol(const Identifier& identifier)
 {
@@ -269,6 +273,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Map an AST binary operator to its corresponding bytecode binary operator representation.
 
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
@@ -299,6 +304,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Map a compound assignment operator (+=, -=, etc.) to its corresponding binary operator.
 
 [[nodiscard]] static std::optional<BinOpr> map_assignment_operator(AssignmentOperator op)
 {
@@ -314,6 +320,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Check if an auxiliary value represents a valid register key (used for indexed expressions).
 
 [[nodiscard]] static bool is_register_key(uint32_t aux)
 {
@@ -321,6 +328,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Convert an AST node kind enumeration to its human-readable string representation for debugging and logging.
 
 [[nodiscard]] static std::string_view describe_node_kind(AstNodeKind kind)
 {
@@ -361,6 +369,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Create an unresolved name reference from an identifier for later symbol resolution.
 
 [[nodiscard]] static NameRef make_name_ref(const Identifier& identifier)
 {
@@ -372,6 +381,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Predict if a bytecode instruction loads the 'pairs' or 'next' iterator, used to optimise generic for loops.
 
 [[nodiscard]] static int predict_next(LexState& lex_state, FuncState &func_state, BCPos pc)
 {
@@ -410,6 +420,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Release registers held by an indexed expression's base and key after they are no longer needed.
 
 static void release_indexed_original(FuncState &func_state, const ExpDesc &original)
 {
@@ -420,6 +431,8 @@ static void release_indexed_original(FuncState &func_state, const ExpDesc &origi
       allocator.release_register(BCReg(original.u.s.info));
    }
 }
+
+// Get a pointer to the bytecode instruction referenced by an expression descriptor.
 
 [[nodiscard]] static BCIns* ir_bcptr(FuncState* func_state, const ExpDesc* expression)
 {
@@ -438,7 +451,19 @@ IrEmitter::IrEmitter(ParserContext& context)
 {
 }
 
+IrEmitter::LoopStackGuard IrEmitter::push_loop_context(BCPos continue_target)
+{
+   LoopContext loop_context{};
+   loop_context.break_edge = this->control_flow.make_break_edge();
+   loop_context.continue_edge = this->control_flow.make_continue_edge();
+   loop_context.defer_base = this->func_state.active_var_count();
+   loop_context.continue_target = continue_target;
+   this->loop_stack.push_back(loop_context);
+   return LoopStackGuard(this);
+}
+
 //********************************************************************************************************************
+// Emit bytecode for a complete function chunk, the top-level code block of a function.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
 {
@@ -458,12 +483,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
+// Emit bytecode for a block statement, creating a new scope with the specified flags.
+
 ParserResult<IrEmitUnit> IrEmitter::emit_block(const BlockStmt& block, FuncScopeFlag flags)
 {
    return this->emit_block_with_bindings(block, flags, std::span<const BlockBinding>());
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a block statement with pre-existing local bindings (used for loops and function parameters).
 
 ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
    const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings)
@@ -483,6 +511,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_block_with_bindings(
 }
 
 //********************************************************************************************************************
+// Dispatch statement emission to the appropriate handler based on the AST node kind.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 {
@@ -561,6 +590,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an expression statement, evaluating the expression and discarding its result.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPayload &payload)
 {
@@ -579,6 +609,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a conditional shorthand statement (executes body only for falsey values like nil, false, 0, or empty string).
 
 ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload& payload)
 {
@@ -633,6 +664,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a return statement, handling zero, single, or multiple return values.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &payload)
 {
@@ -690,6 +722,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a local variable declaration statement, allocating slots and initialising values.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
 {
@@ -740,6 +773,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a local function declaration, creating a local variable and assigning a function to it.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload &payload)
 {
@@ -768,6 +802,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a function declaration statement, assigning a function to a global or table field.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload& payload)
 {
@@ -787,6 +822,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an if statement with one or more conditional clauses and an optional else clause.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 {
@@ -824,6 +860,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a while loop, evaluating the condition before each iteration.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& payload)
 {
@@ -833,13 +870,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
 
    FuncState* fs = &this->func_state;
    BCPos start = BCPos(fs->lasttarget = fs->pc);
-   LoopContext loop_context{};
-   loop_context.break_edge = this->control_flow.make_break_edge();
-   loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = fs->active_var_count();
-   loop_context.continue_target = start;
-   this->loop_stack.push_back(loop_context);
-   LoopStackGuard loop_stack_guard(this);
+   auto loop_stack_guard = this->push_loop_context(start);
    auto condexit_result = this->emit_condition_jump(*payload.condition);
    if (not condexit_result.ok()) return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
 
@@ -862,7 +893,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    condexit.patch_here();
    loop.patch_head(fs->current_pc());
 
-   this->loop_stack.back().continue_edge.patch_to(BCPos(loop_context.continue_target));
+   this->loop_stack.back().continue_edge.patch_to(start);
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
@@ -876,6 +907,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a repeat-until loop, executing the body at least once before testing the condition.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payload)
 {
@@ -889,13 +921,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    ControlFlowEdge condexit;
    bool inner_has_upvals = false;
 
-   LoopContext loop_context{};
-   loop_context.break_edge = this->control_flow.make_break_edge();
-   loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = fs->active_var_count();
-   loop_context.continue_target = loop;
-   this->loop_stack.push_back(loop_context);
-   LoopStackGuard loop_stack_guard(this);
+   auto loop_stack_guard = this->push_loop_context(loop);
 
    FuncScope outer_scope;
    ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
@@ -940,6 +966,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a numeric for loop with start, stop, and optional step values.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPayload& payload)
 {
@@ -985,13 +1012,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
 
    this->lex_state.var_add(3);
 
-   LoopContext loop_context{};
-   loop_context.break_edge = this->control_flow.make_break_edge();
-   loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = fs->active_var_count();
-   loop_context.continue_target = BCPos(NO_JMP);
-   this->loop_stack.push_back(loop_context);
-   LoopStackGuard loop_stack_guard(this);
+   auto loop_stack_guard = this->push_loop_context(BCPos(NO_JMP));
 
    ControlFlowEdge loop = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORI, base, NO_JMP)));
 
@@ -1024,6 +1045,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a generic for loop using iterator functions (e.g., pairs, ipairs).
 
 ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPayload& payload)
 {
@@ -1059,13 +1081,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    int isnext = (nvars <= 5) ? predict_next(this->lex_state, *fs, exprpc) : 0;
    this->lex_state.var_add(3);
 
-   LoopContext loop_context{};
-   loop_context.break_edge = this->control_flow.make_break_edge();
-   loop_context.continue_edge = this->control_flow.make_continue_edge();
-   loop_context.defer_base = fs->active_var_count();
-   loop_context.continue_target = BCPos(NO_JMP);
-   this->loop_stack.push_back(loop_context);
-   LoopStackGuard loop_stack_guard(this);
+   auto loop_stack_guard = this->push_loop_context(BCPos(NO_JMP));
 
    ControlFlowEdge loop = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, isnext ? BC_ISNEXT : BC_JMP, base, NO_JMP)));
 
@@ -1108,6 +1124,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a defer statement, registering a function to execute when the current scope exits.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payload)
 {
@@ -1158,6 +1175,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a break statement, exiting the innermost loop after executing close and defer handlers.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 {
@@ -1175,6 +1193,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a continue statement, jumping to the next iteration after executing close and defer handlers.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload&)
 {
@@ -1192,6 +1211,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an assignment statement, dispatching to plain, compound, or if-empty assignment handlers.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPayload& payload)
 {
@@ -1222,6 +1242,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a plain assignment, storing values into one or more target lvalues.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAssignment> targets, const ExprNodeList& values)
 {
@@ -1282,6 +1303,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a compound assignment (+=, -=, etc.), combining a binary operation with storage.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values)
 {
@@ -1353,6 +1375,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an if-empty assignment (?=), assigning only if the target is nil, false, 0, or empty string.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment target, const ExprNodeList& values)
 {
@@ -1423,6 +1446,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
 }
 
 //********************************************************************************************************************
+// Dispatch expression emission to the appropriate handler based on the AST node kind.
 
 ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
 {
@@ -1456,6 +1480,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a conditional expression with a jump on false (used in if/while statements).
 
 ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& expr)
 {
@@ -1468,6 +1493,7 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a literal expression (nil, boolean, number, string, or CData).
 
 ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 {
@@ -1486,6 +1512,7 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an identifier expression, resolving the name to a local, upvalue, or global variable.
 
 ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 {
@@ -1495,6 +1522,7 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a vararg expression (...), accessing variadic function arguments.
 
 ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 {
@@ -1509,6 +1537,7 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a unary expression (negation, not, length, or bitwise not).
 
 ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload)
 {
@@ -1531,6 +1560,7 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an update expression (++, --), incrementing or decrementing a variable in place.
 
 ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& payload)
 {
@@ -1580,6 +1610,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a binary expression (arithmetic, comparison, logical, bitwise, or concatenation operators).
 
 ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& payload)
 {
@@ -1716,6 +1747,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a ternary expression (condition ? true_value : false_value), with falsey checks.
 
 ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Payload)
 {
@@ -1784,6 +1816,7 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a presence check expression (??), testing if a value is not nil.
 
 ParserResult<ExpDesc> IrEmitter::emit_presence_expr(const PresenceExprPayload &Payload)
 {
@@ -1918,6 +1951,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a member access expression (table.field), indexing a table with a string key.
 
 ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Payload)
 {
@@ -1939,6 +1973,7 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an index expression (table[key]), indexing a table with an arbitrary key.
 
 ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload)
 {
@@ -1964,6 +1999,7 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a safe member access expression (table?.field), returning nil if the table is nil.
 
 ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPayload &Payload)
 {
@@ -1986,6 +2022,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a safe index expression (table?[key]), returning nil if the table is nil.
 
 ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload &Payload)
 {
@@ -2016,6 +2053,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a safe call expression (obj:?method()), returning nil if the receiver is nil.
 
 ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payload)
 {
@@ -2066,6 +2104,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payl
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a call expression (func(args) or obj:method(args)), handling direct and method calls.
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 {
@@ -2288,6 +2327,7 @@ ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPaylo
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a table constructor expression ({key=value, [expr]=value, value}), optimising constant fields.
 
 ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload)
 {
@@ -2437,6 +2477,7 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
 
 ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload)
 {
@@ -2512,6 +2553,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a function declaration path (module.submodule.name or module:method), resolving the lvalue target.
 
 ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &path)
 {
@@ -2561,6 +2603,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
 }
 
 //********************************************************************************************************************
+// Emit bytecode for an lvalue expression (assignable location like identifier, member, or index).
 
 ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 {
@@ -2630,6 +2673,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
 }
 
 //********************************************************************************************************************
+// Emit bytecode for a list of expressions, materialising intermediate results and returning the last expression.
 
 ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expressions, BCReg &count)
 {
@@ -2653,6 +2697,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expres
 }
 
 //********************************************************************************************************************
+// Prepare assignment targets by resolving lvalues and duplicating table operands to prevent register clobbering.
 
 ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
 {
@@ -2712,6 +2757,7 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
 }
 
 //********************************************************************************************************************
+// Materialise an expression to the next available register, ensuring it's stored in a concrete location.
 
 void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view usage)
 {
@@ -2722,6 +2768,8 @@ void IrEmitter::materialise_to_next_reg(ExpDesc& expression, std::string_view us
    this->ensure_register_floor(usage);
 }
 
+// Materialise an expression to a specific register slot.
+
 void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage)
 {
    RegisterAllocator allocator(&this->func_state);
@@ -2730,6 +2778,8 @@ void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_
    expression = value.legacy();
    this->ensure_register_floor(usage);
 }
+
+// Ensure the free register pointer hasn't fallen below the active variable count (register underrun check).
 
 void IrEmitter::ensure_register_floor(std::string_view usage)
 {
@@ -2740,6 +2790,8 @@ void IrEmitter::ensure_register_floor(std::string_view usage)
       this->func_state.reset_freereg();
    }
 }
+
+// Ensure registers are balanced (no leaks or underruns) after completing an operation.
 
 void IrEmitter::ensure_register_balance(std::string_view usage)
 {
@@ -2754,6 +2806,8 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
    }
 }
 
+// Report an unsupported statement node and return an internal invariant error.
+
 ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const SourceSpan& span)
 {
    glUnsupportedNodes.record(kind, span, "stmt");
@@ -2761,12 +2815,16 @@ ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const Sou
    return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant, message));
 }
 
+// Report an unsupported expression node and return an internal invariant error.
+
 ParserResult<ExpDesc> IrEmitter::unsupported_expr(AstNodeKind kind, const SourceSpan& span)
 {
    glUnsupportedNodes.record(kind, span, "expr");
    std::string message = "IR emitter does not yet support expression kind " + std::to_string(int(kind));
    return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant, message));
 }
+
+// Create a parser error with the specified error code and message, capturing the current token context.
 
 ParserError IrEmitter::make_error(ParserErrorCode code, std::string_view message) const
 {

@@ -231,74 +231,75 @@ static void* err_unwind(lua_State* L, void* stopcf, int errcode)
             return cf;
          }
       }
-      if (frame <= tvref(L->stack) + LJ_FR2)
-         break;
+
+      if (frame <= tvref(L->stack) + LJ_FR2) break;
+
       switch (frame_typep(frame)) {
-      case FRAME_LUA:  //  Lua frame.
-      case FRAME_LUAP:
-         frame = frame_prevl(frame);
-         break;
-      case FRAME_C:  //  C frame.
-      unwind_c:
-#if LJ_UNWIND_EXT
-         if (errcode) {
-            TValue* target = frame - LJ_FR2;
-            unwind_close_all(L, L->base - 1, target);
-            L->base = frame_prevd(frame) + 1;
-            L->cframe = cframe_prev(cf);
-            unwindstack(L, target);
-         }
-         else if (cf != stopcf) {
-            cf = cframe_prev(cf);
-            frame = frame_prevd(frame);
+         case FRAME_LUA:  //  Lua frame.
+         case FRAME_LUAP:
+            frame = frame_prevl(frame);
             break;
-         }
-         return nullptr;  //  Continue unwinding.
-#else
-         UNUSED(stopcf);
-         cf = cframe_prev(cf);
-         frame = frame_prevd(frame);
-         break;
-#endif
-      case FRAME_CP:  //  Protected C frame.
-         if (cframe_canyield(cf)) {  // Resume?
+         case FRAME_C:  //  C frame.
+         unwind_c:
+   #if LJ_UNWIND_EXT
             if (errcode) {
-               hook_leave(G(L));  //  Assumes nobody uses coroutines inside hooks.
-               L->cframe = nullptr;
-               L->status = (uint8_t)errcode;
+               TValue* target = frame - LJ_FR2;
+               unwind_close_all(L, L->base - 1, target);
+               L->base = frame_prevd(frame) + 1;
+               L->cframe = cframe_prev(cf);
+               unwindstack(L, target);
             }
-            return cf;
-         }
-         if (errcode) {
-            L->base = frame_prevd(frame) + 1;
-            L->cframe = cframe_prev(cf);
-            unwindstack(L, frame - LJ_FR2);
-         }
-         return cf;
-      case FRAME_CONT:  //  Continuation frame.
-         if (frame_iscont_fficb(frame))
-            goto unwind_c;
-         // fallthrough
-      case FRAME_VARG:  //  Vararg frame.
-         frame = frame_prevd(frame);
-         break;
-      case FRAME_PCALL:  //  FF pcall() frame.
-      case FRAME_PCALLH:  //  FF pcall() frame inside hook.
-         if (errcode) {
-            if (errcode == LUA_YIELD) {
+            else if (cf != stopcf) {
+               cf = cframe_prev(cf);
                frame = frame_prevd(frame);
                break;
             }
-            if (frame_typep(frame) IS FRAME_PCALL)
-               hook_leave(G(L));
-            // Call __close handlers BEFORE modifying L->base
-            TValue* target = frame_prevd(frame) + 1;
-            unwind_close_all(L, L->base - 1, target);
-            L->base = target;
-            L->cframe = cf;
-            unwindstack(L, L->base);
-         }
-         return (void*)((intptr_t)cf | CFRAME_UNWIND_FF);
+            return nullptr;  //  Continue unwinding.
+   #else
+            UNUSED(stopcf);
+            cf = cframe_prev(cf);
+            frame = frame_prevd(frame);
+            break;
+   #endif
+         case FRAME_CP:  //  Protected C frame.
+            if (cframe_canyield(cf)) {  // Resume?
+               if (errcode) {
+                  hook_leave(G(L));  //  Assumes nobody uses coroutines inside hooks.
+                  L->cframe = nullptr;
+                  L->status = (uint8_t)errcode;
+               }
+               return cf;
+            }
+            if (errcode) {
+               L->base = frame_prevd(frame) + 1;
+               L->cframe = cframe_prev(cf);
+               unwindstack(L, frame - LJ_FR2);
+            }
+            return cf;
+         case FRAME_CONT:  //  Continuation frame.
+            if (frame_iscont_fficb(frame))
+               goto unwind_c;
+            // fallthrough
+         case FRAME_VARG:  //  Vararg frame.
+            frame = frame_prevd(frame);
+            break;
+         case FRAME_PCALL:  //  FF pcall() frame.
+         case FRAME_PCALLH:  //  FF pcall() frame inside hook.
+            if (errcode) {
+               if (errcode == LUA_YIELD) {
+                  frame = frame_prevd(frame);
+                  break;
+               }
+               if (frame_typep(frame) IS FRAME_PCALL)
+                  hook_leave(G(L));
+               // Call __close handlers BEFORE modifying L->base
+               TValue* target = frame_prevd(frame) + 1;
+               unwind_close_all(L, L->base - 1, target);
+               L->base = target;
+               L->cframe = cf;
+               unwindstack(L, L->base);
+            }
+            return (void*)((intptr_t)cf | CFRAME_UNWIND_FF);
       }
    }
 

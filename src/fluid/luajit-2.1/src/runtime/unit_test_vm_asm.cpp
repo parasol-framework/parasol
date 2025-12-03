@@ -1303,7 +1303,8 @@ static bool test_asm_string_sub_basic(pf::Log& Log)
 
    std::string Error;
    // 3-arg case: uses assembly fast-path
-   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 1, 3)", Error)) {
+   // Note: end parameter is exclusive for positive values
+   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 1, 4)", Error)) {
       Log.error("test failed: %s", Error.c_str());
       return false;
    }
@@ -1485,7 +1486,8 @@ static bool test_asm_string_sub_single_char(pf::Log& Log)
 #endif
 
    std::string Error;
-   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 2, 2)", Error)) {
+   // Note: end parameter is exclusive for positive values, so 2,3 extracts char at index 2
+   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 2, 3)", Error)) {
       Log.error("test failed: %s", Error.c_str());
       return false;
    }
@@ -1573,7 +1575,8 @@ static bool test_asm_string_sub_from_zero(pf::Log& Log)
 #endif
 
    std::string Error;
-   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 0, 2)", Error)) {
+   // Note: end parameter is exclusive for positive values
+   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', 0, 3)", Error)) {
       Log.error("test failed: %s", Error.c_str());
       return false;
    }
@@ -1603,7 +1606,8 @@ static bool test_asm_string_sub_start_underflow(pf::Log& Log)
 
    std::string Error;
    // Start -100 on 5-char string: assembly clamps via label 8
-   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', -100, 2)", Error)) {
+   // Note: end parameter is exclusive for positive values
+   if (not run_lua_test_with_capture(before, after, L, "return string.sub('ABCDE', -100, 3)", Error)) {
       Log.error("test failed: %s", Error.c_str());
       return false;
    }

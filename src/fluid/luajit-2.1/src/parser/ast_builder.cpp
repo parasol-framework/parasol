@@ -52,6 +52,17 @@ static bool is_presence_expr(const ExprNodePtr &Expr)
    return Expr and Expr->kind IS AstNodeKind::PresenceExpr;
 }
 
+static ParserResult<StmtNodePtr> make_control_stmt(ParserContext& Context, AstNodeKind Kind, const Token& Token)
+{
+   StmtNodePtr node = std::make_unique<StmtNode>();
+   node->kind = Kind;
+   node->span = Token.span();
+   if (Kind IS AstNodeKind::BreakStmt) node->data.emplace<BreakStmtPayload>();
+   else node->data.emplace<ContinueStmtPayload>();
+   Context.tokens().advance();
+   return ParserResult<StmtNodePtr>::success(std::move(node));
+}
+
 AstBuilder::AstBuilder(ParserContext &Context)
    : ctx(Context)
 {
@@ -101,21 +112,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::ReturnToken: return this->parse_return();
 
       case TokenKind::BreakToken: {
-         StmtNodePtr node = std::make_unique<StmtNode>();
-         node->kind = AstNodeKind::BreakStmt;
-         node->span = current.span();
-         node->data.emplace<BreakStmtPayload>();
-         this->ctx.tokens().advance();
-         return ParserResult<StmtNodePtr>::success(std::move(node));
+         return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
       }
 
       case TokenKind::ContinueToken: {
-         StmtNodePtr node = std::make_unique<StmtNode>();
-         node->kind = AstNodeKind::ContinueStmt;
-         node->span = current.span();
-         node->data.emplace<ContinueStmtPayload>();
-         this->ctx.tokens().advance();
-         return ParserResult<StmtNodePtr>::success(std::move(node));
+         return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
       }
 
       case TokenKind::Semicolon:
@@ -461,19 +462,24 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
 }
 
 //********************************************************************************************************************
-// Parses return statements with optional return values.
+// Parse return payload shared by explicit returns and conditional shorthand returns.
 
-ParserResult<StmtNodePtr> AstBuilder::parse_return()
+ParserResult<ReturnStmtPayload> AstBuilder::parse_return_payload(const Token& return_token, bool same_line_only)
 {
-   Token token = this->ctx.tokens().current();
-   this->ctx.tokens().advance();
    ExprNodeList values;
    bool forwards_call = false;
-   if (not this->ctx.check(TokenKind::EndToken) and not this->ctx.check(TokenKind::Else) and
-      not this->ctx.check(TokenKind::ElseIf) and not this->ctx.check(TokenKind::Until) and
-      not this->ctx.check(TokenKind::EndOfFile) and not this->ctx.check(TokenKind::Semicolon)) {
+   Token current = this->ctx.tokens().current();
+   bool is_terminator = this->ctx.check(TokenKind::EndToken) or this->ctx.check(TokenKind::Else) or
+      this->ctx.check(TokenKind::ElseIf) or this->ctx.check(TokenKind::Until) or
+      this->ctx.check(TokenKind::EndOfFile) or this->ctx.check(TokenKind::Semicolon);
+   bool same_line = same_line_only
+      ? ((current.kind() IS TokenKind::EndOfFile) ? false : (current.span().line IS return_token.span().line))
+      : true;
+   bool parse_values = not is_terminator and (not same_line_only or same_line);
+
+   if (parse_values) {
       auto exprs = this->parse_expression_list();
-      if (not exprs.ok()) return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
+      if (not exprs.ok()) return ParserResult<ReturnStmtPayload>::failure(exprs.error_ref());
       if (exprs.value_ref().size() IS 1 and exprs.value_ref()[0]->kind IS AstNodeKind::CallExpr) {
          forwards_call = true;
       }
@@ -484,15 +490,27 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
       // Optional separator consumed.
    }
 
+   ReturnStmtPayload payload;
+   payload.values = std::move(values);
+   payload.forwards_call = forwards_call;
+   return ParserResult<ReturnStmtPayload>::success(std::move(payload));
+}
+
+//********************************************************************************************************************
+// Parses return statements with optional return values.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_return()
+{
+   Token token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();
+   auto payload = this->parse_return_payload(token, false);
+   if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
+
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::ReturnStmt;
    stmt->span = token.span();
 
-   ReturnStmtPayload payload;
-   payload.values = std::move(values);
-   payload.forwards_call = forwards_call;
-
-   stmt->data = std::move(payload);
+   stmt->data = std::move(payload.value_ref());
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
@@ -580,56 +598,25 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
                Token return_token = next;
                this->ctx.tokens().advance();
 
-               ExprNodeList values;
-               bool forwards_call = false;
-
-               Token current = this->ctx.tokens().current();
-               bool is_terminator = this->ctx.check(TokenKind::EndToken) or this->ctx.check(TokenKind::Else) or
-                  this->ctx.check(TokenKind::ElseIf) or this->ctx.check(TokenKind::Until) or
-                  this->ctx.check(TokenKind::EndOfFile) or this->ctx.check(TokenKind::Semicolon);
-               bool same_line = (current.kind() IS TokenKind::EndOfFile)
-                  ? false
-                  : (current.span().line IS return_token.span().line);
-
-               if (same_line and not is_terminator) {
-                  auto exprs = this->parse_expression_list();
-                  if (not exprs.ok()) return ParserResult<StmtNodePtr>::failure(exprs.error_ref());
-                  if (exprs.value_ref().size() IS 1 and exprs.value_ref()[0]->kind IS AstNodeKind::CallExpr) {
-                     forwards_call = true;
-                  }
-                  values = std::move(exprs.value_ref());
-               }
-
-               if (this->ctx.match(TokenKind::Semicolon).ok()) {
-                  // Optional separator consumed.
-               }
+               auto payload = this->parse_return_payload(return_token, true);
+               if (not payload.ok()) return ParserResult<StmtNodePtr>::failure(payload.error_ref());
 
                StmtNodePtr node = std::make_unique<StmtNode>();
                node->kind = AstNodeKind::ReturnStmt;
                node->span = return_token.span();
 
-               ReturnStmtPayload payload;
-               payload.values = std::move(values);
-               payload.forwards_call = forwards_call;
-
-               node->data = std::move(payload);
+               node->data = std::move(payload.value_ref());
                body = std::move(node);
             }
             else if (next.kind() IS TokenKind::BreakToken) {
-               StmtNodePtr node = std::make_unique<StmtNode>();
-               node->kind = AstNodeKind::BreakStmt;
-               node->span = next.span();
-               node->data.emplace<BreakStmtPayload>();
-               this->ctx.tokens().advance();
-               body = std::move(node);
+               auto control = make_control_stmt(this->ctx, AstNodeKind::BreakStmt, next);
+               if (not control.ok()) return ParserResult<StmtNodePtr>::failure(control.error_ref());
+               body = std::move(control.value_ref());
             }
             else if (next.kind() IS TokenKind::ContinueToken) {
-               StmtNodePtr node = std::make_unique<StmtNode>();
-               node->kind = AstNodeKind::ContinueStmt;
-               node->span = next.span();
-               node->data.emplace<ContinueStmtPayload>();
-               this->ctx.tokens().advance();
-               body = std::move(node);
+               auto control = make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, next);
+               if (not control.ok()) return ParserResult<StmtNodePtr>::failure(control.error_ref());
+               body = std::move(control.value_ref());
             }
 
             if (body) {

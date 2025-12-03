@@ -217,5 +217,6 @@ private:
       bool active = true;
    };
 
+   LoopStackGuard push_loop_context(BCPos continue_target);
    std::vector<LoopContext> loop_stack;
 };
