@@ -371,7 +371,7 @@ function url.defrag(urlString)
    local fragPos = urlString:find('#')
    if fragPos then
       local base = urlString:sub(0, fragPos - 1)
-      local fragment = urlString:sub(fragPos)
+      local fragment = urlString:sub(fragPos + 1)
       return base, fragment
    end
 
