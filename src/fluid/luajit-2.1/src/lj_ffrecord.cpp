@@ -334,21 +334,25 @@ static void LJ_FASTCALL recff___filter(jit_State* J, RecordFFData* rd)
 
    // All three parameters must be constants for JIT compilation
    // (they're always constant since they're emitted by the parser)
+
    if (!tr_mask or !tr_count or !tr_trailing) {
       recff_nyiu(J, rd);
       return;
    }
+
    if (!tref_isk(tr_mask) or !tref_isk(tr_count) or !tref_isk(tr_trailing)) {
       recff_nyiu(J, rd);  // NYI: non-constant filter parameters
       return;
    }
 
    // Extract constant values
+
    uint64_t mask = uint64_t(ir_knum(IR(tref_ref(tr_mask)))->u64);
    int32_t count = IR(tref_ref(tr_count))->i;
    bool trailing_keep = !tref_isfalse(tr_trailing);
 
    // Calculate which values to keep
+
    ptrdiff_t n = ptrdiff_t(J->maxslot);
    ptrdiff_t value_start = 3;  // Values start at slot 3
    ptrdiff_t value_count = n - value_start;

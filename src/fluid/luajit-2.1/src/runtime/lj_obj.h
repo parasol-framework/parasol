@@ -98,7 +98,8 @@ constexpr inline void setmrefr(MRef& r, MRef v) noexcept
 #define mref(r, t)      mref_get<t>(r)
 #define setmref(r, p)   setmref_fn((r), (p))
 
-// -- GC object references ------------------------------------------------
+//********************************************************************************************************************
+// GC object references
 
 // GCobj reference - always 64-bit
 struct GCRef {
@@ -107,11 +108,14 @@ struct GCRef {
 
 // Common GC header for all collectable objects.
 // Note: This macro must remain as it defines struct fields inline.
+
 #define GCHeader   GCRef nextgc; uint8_t marked; uint8_t gct
+
 // This occupies 6 bytes, so use the next 2 bytes for non-32 bit fields.
 
 // GCRef accessor functions - 64-bit only
 // These just cast - they don't dereference, so can be inline functions
+
 [[nodiscard]] inline GCobj* gcref(GCRef r) noexcept
 {
    return (GCobj*)r.gcptr64;
@@ -141,6 +145,7 @@ inline void setgcrefp_fn(GCRef& r, T* p) noexcept
 
 // Overload for integer types (used in some low-level operations)
 // Note: On 64-bit, uintptr_t is typically uint64_t, so only need one
+
 constexpr inline void setgcrefp_fn(GCRef& r, uint64_t v) noexcept
 {
    r.gcptr64 = v;
@@ -163,14 +168,17 @@ constexpr inline void setgcrefr(GCRef& r, GCRef v) noexcept
 
 // These dereference GCobj->gch, so must remain macros until GCobj is defined
 // They will be converted to inline functions after GCobj definition
+
 #define setgcref(r, gc)      ((r).gcptr64 = (uint64_t)&(gc)->gch)
 #define setgcreft(r, gc, it) ((r).gcptr64 = (uint64_t)&(gc)->gch | (((uint64_t)(it)) << 47))
 
 // Compatibility macro for template function
+
 #define gcrefp(r, t)    gcrefp_fn<t>(r)
 #define setgcrefp(r, p) setgcrefp_fn((r), (p))
 
 // gcnext dereferences GCobj, will be defined as inline function after GCobj
+
 #define gcnext(gc)   (gcref((gc)->gch.nextgc))
 
 /* IMPORTANT NOTE:
@@ -266,16 +274,8 @@ typedef LJ_ALIGN(8) union TValue {
       , uint32_t it;   //  Internal object tag. Must overlap MSW of number.
          )
    };
-#if LJ_FR2
    int64_t ftsz;      //  Frame type and size of previous frame, or PC.
-#else
-   struct {
-      LJ_ENDIAN_LOHI(
-         GCRef func;   //  Function for next frame (or dummy L).
-      , FrameLink tp;   //  Link to previous frame.
-         )
-   } fr;
-#endif
+
    struct {
       LJ_ENDIAN_LOHI(
          uint32_t lo;   //  Lower 32 bits of number.
@@ -1356,15 +1356,8 @@ inline void setrawlightudV(TValue* o, void* p)
    o->u64 = (uint64_t)p | (((uint64_t)LJ_TLIGHTUD) << 47);
 }
 
-#if LJ_FR2 || LJ_32
 #define contptr(f)      ((void *)(f))
 #define setcont(o, f)      ((o)->u64 = (uint64_t)(uintptr_t)contptr(f))
-#else
-#define contptr(f) \
-  ((void *)(uintptr_t)(uint32_t)((intptr_t)(f) - (intptr_t)lj_vm_asm_begin))
-#define setcont(o, f) \
-  ((o)->u64 = (uint64_t)(void *)(f) - (uint64_t)lj_vm_asm_begin)
-#endif
 
 inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
@@ -1464,17 +1457,10 @@ inline void setint64V(TValue* o, int64_t i) noexcept
       setnumV(o, lua_Number(i));
 }
 
-#if LJ_64
 inline void setintptrV(TValue* o, intptr_t i) noexcept
 {
    setint64V(o, i);
 }
-#else
-inline void setintptrV(TValue* o, intptr_t i) noexcept
-{
-   setintV(o, i);
-}
-#endif
 
 // Copy tagged values.
 inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
