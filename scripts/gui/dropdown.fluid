@@ -130,12 +130,7 @@ gui.dropdown = function(Options)
 
    local lastTime = 0
    self.toggle = function(TimeLapse)
-      local timelapse
-      if TimeLapse and (TimeLapse >= 0) then
-         timelapse = TimeLapse * 1000
-      else
-         timelapse = 5000
-      end
+      local timelapse = TimeLapse and TimeLapse >= 0 ? TimeLapse * 1000 :> 5000
 
       local currentTime = mSys.PreciseTime()
       if self.timeShow > self.timeHide then -- Hide the menu
@@ -164,7 +159,7 @@ gui.dropdown = function(Options)
 
    self.show = function()
       local surface = self.surface
-      if bit.band(surface.flags, RNF_VISIBLE) != 0 then return end
+      if (surface.flags & RNF_VISIBLE) != 0 then return end
 
       if self.relative then
          -- Correct the position of the menu according to the relative vector that it is offset from.
@@ -302,12 +297,8 @@ gui.dropdown = function(Options)
          if ev.type is JET_BUTTON_1 then
             if ev.value is 1 then
                if self.hItem then -- Menu item activated
-                  if self.hItem.config.feedback then
-                     self.hItem.config.feedback(self, self.hItem.config)
-                  end
-                  if self.feedback then
-                     self.feedback(self, self.hItem.config)
-                  end
+                  self.hItem.config?.feedback(self, self.hItem.config)
+                  self?.feedback(self, self.hItem.config)
                   self.surface.acHide()
                end
             end

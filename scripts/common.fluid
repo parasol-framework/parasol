@@ -35,7 +35,7 @@ table.toXML = function(t)
             end
          end
 
-         if child != '' then
+         if child?? then
             out ..= '>' .. child .. '</>'
          else
             out ..= '/>'
@@ -73,19 +73,13 @@ file ?= { ui = { } }
 
 file.readAll = function(Path)
    local ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
-
-   if ex then
-      error('Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
-   end
+   assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
 
    local file_buffer = string.alloc(fl.size)
    local err, bytes_read = fl.acRead(file_buffer)
    fl.free()
-   if (err is ERR_Okay) or (bytes_read != #file_buffer) then
-      return file_buffer
-   else
-      error('Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
-   end
+   assert(err is ERR_Okay and bytes_read is #file_buffer, 'Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
+   return file_buffer
 end
 
 ------------------------------------------------------------------------------
@@ -109,9 +103,7 @@ end
 file.splitPath = function(Path)
    if not Path then return nil, nil end
    local path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
-   if not path then
-      return nil, Path
-   end
+   if not path then return nil, Path end
    return path, fl
 end
 
