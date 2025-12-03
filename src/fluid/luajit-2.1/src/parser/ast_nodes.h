@@ -69,6 +69,7 @@ enum class AstNodeKind : uint16_t {
    UpdateExpr,
    TernaryExpr,
    PresenceExpr,
+   PipeExpr,
    CallExpr,
    MemberExpr,
    IndexExpr,
@@ -318,6 +319,18 @@ struct PresenceExprPayload {
    ~PresenceExprPayload();
 };
 
+struct PipeExprPayload {
+   PipeExprPayload() = default;
+   PipeExprPayload(const PipeExprPayload&) = delete;
+   PipeExprPayload& operator=(const PipeExprPayload&) = delete;
+   PipeExprPayload(PipeExprPayload&&) noexcept = default;
+   PipeExprPayload& operator=(PipeExprPayload&&) noexcept = default;
+   ExprNodePtr lhs;              // Left-hand side expression (piped value)
+   ExprNodePtr rhs_call;         // Right-hand side call expression
+   uint32_t limit = 0;           // Result limit (0 = unlimited)
+   ~PipeExprPayload();
+};
+
 struct CallExprPayload {
    CallExprPayload() = default;
    CallExprPayload(const CallExprPayload&) = delete;
@@ -417,9 +430,9 @@ struct ExprNode {
    SourceSpan span{};
    std::variant<LiteralValue, NameRef, VarArgExprPayload, UnaryExprPayload,
       UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
-      PresenceExprPayload, CallExprPayload, MemberExprPayload, IndexExprPayload,
-      SafeMemberExprPayload, SafeIndexExprPayload, TableExprPayload,
-      FunctionExprPayload>
+      PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
+      IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
+      TableExprPayload, FunctionExprPayload>
       data;
 };
 
@@ -683,6 +696,7 @@ ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_post
 ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr left, ExprNodePtr right);
 ExprNodePtr make_ternary_expr(SourceSpan span, ExprNodePtr condition, ExprNodePtr if_true, ExprNodePtr if_false);
 ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);
+ExprNodePtr make_pipe_expr(SourceSpan span, ExprNodePtr lhs, ExprNodePtr rhs_call, uint32_t limit);
 ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret);
 ExprNodePtr make_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments, bool forwards_multret);
 ExprNodePtr make_safe_method_call_expr(SourceSpan span, ExprNodePtr receiver, Identifier method, ExprNodeList arguments,

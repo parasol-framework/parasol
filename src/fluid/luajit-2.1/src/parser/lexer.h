@@ -83,6 +83,7 @@ struct TokenDefinition {
    TOKEN_DEF(cmod,         "%=",       false) \
    TOKEN_DEF(cif_empty,    "?=",       false) \
    TOKEN_DEF(plusplus,     "++",       false) \
+   TOKEN_DEF(pipe,         "|>",       false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
 // Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST
