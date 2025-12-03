@@ -138,6 +138,32 @@ function testNestedFunctionPipe()
    assert(result is 60, "Failed nested function pipe: expected 60, got " .. tostring(result))  -- outer(inner(5)) = outer(6) = 60
 end
 
+function testInvalidFloatLimit()
+   -- Floating-point limits like |2.5> should cause a parse error
+   local script = obj.new('fluid', {
+      statement = [[
+         local function identity(x) return x end
+         local result = 1 |2.5> identity()
+      ]]
+   })
+
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Script with float limit should have thrown an error")
+end
+
+function testInvalidZeroLimit()
+   -- Zero limit |0> should cause a parse error (limit must be >= 1)
+   local script = obj.new('fluid', {
+      statement = [[
+         local function identity(x) return x end
+         local result = 1 |0> identity()
+      ]]
+   })
+
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Script with zero limit should have thrown an error")
+end
+
 return {
    tests = {
       'testBasicPipe',
@@ -152,6 +178,8 @@ return {
       'testPipeWithMathFunctions',
       'testPipeWithMultipleAdditionalArgs',
       'testPipePrecedence',
-      'testNestedFunctionPipe'
+      'testNestedFunctionPipe',
+      'testInvalidFloatLimit',
+      'testInvalidZeroLimit'
    }
 }

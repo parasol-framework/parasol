@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <concepts>
 #include <string_view>
 
@@ -744,12 +745,13 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                lex_number(State, &limit_val);
                if (State->c IS '>') {
                   lex_next(State);
-                  // Store limit in token payload
-                  *tv = limit_val;
-                  // Validate limit is positive integer
-                  if (tvisnum(&limit_val) and numV(&limit_val) < 1) {
+                  // Validate limit is a positive integer
+                  double num = tvisnum(&limit_val) ? numV(&limit_val) : double(intV(&limit_val));
+                  if (num < 1 or num != std::floor(num)) {
                      lj_lex_error(State, TK_pipe, ErrMsg::XSYMBOL);
                   }
+                  // Store limit in token payload
+                  *tv = limit_val;
                   return TK_pipe;
                }
                else {
