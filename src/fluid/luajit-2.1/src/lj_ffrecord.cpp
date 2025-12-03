@@ -338,7 +338,7 @@ static void LJ_FASTCALL recff___filter(jit_State* J, RecordFFData* rd)
       recff_nyiu(J, rd);
       return;
    }
-   if (!tref_isk(tr_mask) or !tref_isk(tr_count)) {
+   if (!tref_isk(tr_mask) or !tref_isk(tr_count) or !tref_isk(tr_trailing)) {
       recff_nyiu(J, rd);  // NYI: non-constant filter parameters
       return;
    }
