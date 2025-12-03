@@ -195,7 +195,7 @@ function testFilterPreservesReferences()
 end
 
 -- Test error case: Invalid pattern should fail at parse time
--- These tests use pcall/catch to verify error handling
+
 function testErrorInvalidPatternCharacter()
    local ok, err = pcall(function()
       loadstring("[x]multi()")()
@@ -217,34 +217,17 @@ function testErrorFilterOnVariable()
    assert(not ok, "filter on variable should fail to parse")
 end
 
--- Run all tests
-testFilterKeepAll()
-testFilterDropFirst()
-testFilterDropFirstTwo()
-testFilterKeepFirstOnly()
-testFilterDropFirstKeepSecondDropRest()
-testFilterKeepValues234Only()
-testFilterKeepSecondAndFourthOnwards()
-testEmptyFilterDropsAll()
-testFilterWithMethodCalls()
-testFilterWithThreeReturnValues()
-testFilterFirstAndSecond()
-
--- Edge case tests
-testFilterMorePositionsThanValues()
-testFilterExactPositions()
-testFilterSingleValue()
-testFilterNoValues()
-testNestedFilters()
-testFilterOnFilteredResult()
-testLongUnderscorePattern()
-testAlternatingPattern()
-testFilterMixedTypes()
-testFilterPreservesReferences()
-
--- Error case tests
-testErrorInvalidPatternCharacter()
-testErrorFilterOnNonCall()
-testErrorFilterOnVariable()
-
-print("All result filter tests passed!")
+return {
+   tests = {    
+      -- Run all tests
+      'testFilterKeepAll', 'testFilterDropFirst', 'testFilterDropFirstTwo', 'testFilterKeepFirstOnly',
+      'testFilterDropFirstKeepSecondDropRest', 'testFilterKeepValues234Only', 'testFilterKeepSecondAndFourthOnwards',
+      'testEmptyFilterDropsAll', 'testFilterWithMethodCalls', 'testFilterWithThreeReturnValues', 'testFilterFirstAndSecond',
+      -- Edge case tests
+      'testFilterMorePositionsThanValues', 'testFilterExactPositions', 'testFilterSingleValue', 'testFilterNoValues',
+      'testNestedFilters', 'testFilterOnFilteredResult', 'testLongUnderscorePattern', 'testAlternatingPattern',
+      'testFilterMixedTypes', 'testFilterPreservesReferences',
+      -- Error case tests
+      'testErrorInvalidPatternCharacter', 'testErrorFilterOnNonCall', 'testErrorFilterOnVariable'
+   }
+}
