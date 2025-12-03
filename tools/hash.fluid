@@ -42,7 +42,7 @@
          if hashname:len() < 1 then break end
       end
 
-      _, _, hashname = hashname:find("([^%s]+)")
+      hashname = [__*]hashname:find("([^%s]+)")
 
       if hashname?? then
          local hash = string.format("%.8x", hashname:hash())

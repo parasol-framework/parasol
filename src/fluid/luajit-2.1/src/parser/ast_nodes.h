@@ -76,6 +76,7 @@ enum class AstNodeKind : uint16_t {
    SafeMemberExpr,
    SafeIndexExpr,
    SafeCallExpr,
+   ResultFilterExpr,
    TableExpr,
    FunctionExpr,
    BlockStmt,
@@ -388,6 +389,21 @@ struct SafeIndexExprPayload {
    ~SafeIndexExprPayload();
 };
 
+struct ResultFilterPayload {
+   ResultFilterPayload() = default;
+   ResultFilterPayload(const ResultFilterPayload&) = delete;
+   ResultFilterPayload& operator=(const ResultFilterPayload&) = delete;
+   ResultFilterPayload(ResultFilterPayload&&) noexcept = default;
+   ResultFilterPayload& operator=(ResultFilterPayload&&) noexcept = default;
+
+   ExprNodePtr expression;     // The wrapped expression (must be a call)
+   uint64_t keep_mask = 0;     // Bitmask: bit N = 1 means keep value N
+   uint8_t explicit_count = 0; // Number of explicitly specified positions
+   bool trailing_keep = false; // True if last symbol was *, false if _
+
+   ~ResultFilterPayload();
+};
+
 struct TableField {
    TableField() = default;
    TableField(const TableField&) = delete;
@@ -432,7 +448,7 @@ struct ExprNode {
       UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
       PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
       IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
-      TableExprPayload, FunctionExprPayload>
+      ResultFilterPayload, TableExprPayload, FunctionExprPayload>
       data;
 };
 
@@ -705,6 +721,7 @@ ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier memb
 ExprNodePtr make_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
 ExprNodePtr make_safe_member_expr(SourceSpan span, ExprNodePtr table, Identifier member);
 ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr index);
+ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uint64_t keep_mask, uint8_t explicit_count, bool trailing_keep);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);

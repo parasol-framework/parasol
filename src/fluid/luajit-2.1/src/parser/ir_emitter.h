@@ -177,6 +177,7 @@ private:
    ParserResult<ExpDesc> emit_safe_index_expr(const SafeIndexExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
+   ParserResult<ExpDesc> emit_result_filter_expr(const ResultFilterPayload& payload);
    ParserResult<ExpDesc> emit_shadow_assert(const ExprNodeList& arguments, BCLine call_line);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);

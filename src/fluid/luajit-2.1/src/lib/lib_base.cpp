@@ -283,6 +283,64 @@ LJLIB_CF(select)      LJLIB_REC(.)
 }
 
 //********************************************************************************************************************
+// __filter(mask, count, trailing_keep, ...)
+// Filters return values based on a bitmask pattern.
+// mask: uint64 bitmask where bit N=1 means keep value at position N
+// count: number of explicitly specified positions in the pattern
+// trailing_keep: true if excess values should be kept, false to drop
+
+LJLIB_CF(__filter)      LJLIB_REC(.)
+{
+   int32_t nargs = int32_t(L->top - L->base);
+   if (nargs < 3) {
+      lj_err_arg(L, nargs + 1, ErrMsg::NOVAL);
+      return 0;
+   }
+
+   // Extract filter parameters
+   uint64_t mask = uint64_t(lj_lib_checknum(L, 1));
+   int32_t count = lj_lib_checkint(L, 2);
+   bool trailing_keep = tvistruecond(L->base + 2);
+
+   // Values to filter start at position 4 (index 3, 0-based)
+   int32_t value_count = nargs - 3;
+
+   // First pass: count how many values we'll keep (for stack check)
+   int32_t out_count = 0;
+   for (int32_t i = 0; i < value_count; i++) {
+      bool keep = (i < count) ? ((mask & (1ULL << i)) != 0) : trailing_keep;
+      if (keep) out_count++;
+   }
+
+   // Ensure we have enough stack space
+   if (out_count > 0 and !lua_checkstack(L, out_count)) {
+      lj_err_caller(L, ErrMsg::STKOV);
+      return 0;
+   }
+
+   // Move kept values into position at L->base (overwriting the args)
+   // This is similar to how select() works but with filtering
+   TValue* src = L->base + 3;  // Values start after mask, count, trailing_keep
+   TValue* dst = L->base;      // Overwrite from the start
+
+   int32_t written = 0;
+   for (int32_t i = 0; i < value_count; i++) {
+      bool keep = (i < count) ? ((mask & (1ULL << i)) != 0) : trailing_keep;
+      if (keep) {
+         if (dst + written != src + i) {
+            copyTV(L, dst + written, src + i);
+         }
+         written++;
+      }
+   }
+
+   // Adjust L->top to reflect the number of returns
+   L->top = L->base + written;
+
+   return written;
+}
+
+//********************************************************************************************************************
 // Base library: conversions
 
 LJLIB_ASM(tonumber)      LJLIB_REC(.)

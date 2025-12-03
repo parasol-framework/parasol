@@ -311,8 +311,8 @@ function testEscXML()
 end
 
 function testSub()
-   -- string.sub() uses exclusive end index (like JavaScript substring/Python slicing)
-   -- string.sub(s, start, end) extracts chars from start to end-1
+   -- string.substr() and sub() use exclusive end index (like JavaScript substring/Python slicing)
+   -- string.substr(s, start, end) extracts chars from start to end-1
    local s = "hello world"
 
    for i=0,1000 do

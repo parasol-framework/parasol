@@ -11,20 +11,19 @@
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
 
-static FunctionExprPayload* function_payload_from(ExprNode& node)
+static FunctionExprPayload* function_payload_from(ExprNode &Node)
 {
-   if (node.kind != AstNodeKind::FunctionExpr) return nullptr;
-   return std::get_if<FunctionExprPayload>(&node.data);
+   if (Node.kind != AstNodeKind::FunctionExpr) return nullptr;
+   return std::get_if<FunctionExprPayload>(&Node.data);
 }
 
 // Moves the function payload data out of an expression node, transferring ownership of parameters and body.
 
-static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& node)
+static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr &Node)
 {
-   auto* payload = function_payload_from(*node);
-   if (payload IS nullptr) {
-      return std::make_unique<FunctionExprPayload>();
-   }
+   auto *payload = function_payload_from(*Node);
+   if (payload IS nullptr) return std::make_unique<FunctionExprPayload>();
+
    std::unique_ptr<FunctionExprPayload> result = std::make_unique<FunctionExprPayload>();
    result->parameters = std::move(payload->parameters);
    result->is_vararg = payload->is_vararg;
@@ -34,9 +33,9 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& n
 
 // Checks if a token kind is a statement keyword that can be used in conditional shorthand syntax (e.g., value ?? return).
 
-static bool is_shorthand_statement_keyword(TokenKind kind)
+static bool is_shorthand_statement_keyword(TokenKind Kind)
 {
-   switch (kind) {
+   switch (Kind) {
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
       case TokenKind::ContinueToken:
@@ -48,13 +47,13 @@ static bool is_shorthand_statement_keyword(TokenKind kind)
 
 // Checks if an expression node is a presence check expression (the ?? operator).
 
-static bool is_presence_expr(const ExprNodePtr& expr)
+static bool is_presence_expr(const ExprNodePtr &Expr)
 {
-   return expr and expr->kind IS AstNodeKind::PresenceExpr;
+   return Expr and Expr->kind IS AstNodeKind::PresenceExpr;
 }
 
-AstBuilder::AstBuilder(ParserContext& context)
-   : ctx(context)
+AstBuilder::AstBuilder(ParserContext &Context)
+   : ctx(Context)
 {
 }
 
@@ -860,6 +859,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          break;
       }
 
+      case TokenKind::LeftBracket: {
+         // Result filter prefix syntax: [_*]func()
+         return this->parse_result_filter_expr(current);
+      }
+
       default: {
          auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
          this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
@@ -981,7 +985,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 //********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
 
-ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& function_token)
+ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
@@ -1049,7 +1053,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          if (not attribute.ok()) return ParserResult<Identifier>::failure(attribute.error_ref());
 
          bool is_close_attribute = false;
-         if (GCstr* attr_name = attribute.value_ref().identifier()) {
+         if (GCstr *attr_name = attribute.value_ref().identifier()) {
             std::string_view view(strdata(attr_name), attr_name->len);
             if (view IS std::string_view("close")) {
                is_close_attribute = true;
@@ -1119,7 +1123,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
             auto kind = type_token.kind();
             if (kind IS TokenKind::Identifier) {
                this->ctx.tokens().advance();
-               GCstr* type_symbol = type_token.identifier();
+               GCstr *type_symbol = type_token.identifier();
                if (type_symbol) type_view = std::string_view(strdata(type_symbol), type_symbol->len);
             }
             else if (kind IS TokenKind::Function or kind IS TokenKind::Nil) {
@@ -1160,7 +1164,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
 //********************************************************************************************************************
 // Parses the fields inside table constructors, distinguishing between array, record, and computed key forms.
 
-ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_array_part)
+ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool *has_array_part)
 {
    std::vector<TableField> fields;
    bool array = false;
@@ -1210,10 +1214,10 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
 //********************************************************************************************************************
 // Parses function call arguments, handling parenthesised expressions, table constructors, and string literals.
 
-ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multret)
+ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultret)
 {
    ExprNodeList args;
-   *forwards_multret = false;
+   *ForwardsMultret = false;
    if (this->ctx.check(TokenKind::LeftParen)) {
       this->ctx.tokens().advance();
       if (not this->ctx.check(TokenKind::RightParen)) {
@@ -1224,7 +1228,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
          if (not args.empty()) {
             const ExprNodePtr& tail = args.back();
             if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr)) {
-               *forwards_multret = true;
+               *ForwardsMultret = true;
             }
          }
       }
@@ -1259,8 +1263,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
 //********************************************************************************************************************
 // Parses a scoped block with a specified set of terminator tokens, automatically adding end-of-file as a terminator.
 
-ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(
-   std::initializer_list<TokenKind> terminators)
+ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(std::initializer_list<TokenKind> terminators)
 {
    std::vector<TokenKind> merged(terminators);
    merged.push_back(TokenKind::EndOfFile);
@@ -1303,18 +1306,18 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
 
 // Creates an identifier structure from a token, extracting its symbol and source span.
 
-Identifier AstBuilder::make_identifier(const Token& token)
+Identifier AstBuilder::make_identifier(const Token &Token)
 {
    Identifier id;
-   id.symbol = token.identifier();
-   id.span = token.span();
-   id.is_blank = (id.symbol IS NAME_BLANK);
+   id.symbol   = Token.identifier();
+   id.span     = Token.span();
+   id.is_blank = id.symbol IS NAME_BLANK;
    return id;
 }
 
 // Creates a literal value structure from a token, extracting the appropriate value based on token type.
 
-LiteralValue AstBuilder::make_literal(const Token& token)
+LiteralValue AstBuilder::make_literal(const Token &token)
 {
    LiteralValue literal;
    switch (token.kind()) {
@@ -1344,9 +1347,159 @@ LiteralValue AstBuilder::make_literal(const Token& token)
 }
 
 //********************************************************************************************************************
+// Parses the result filter pattern inside brackets: [_*], [*_], [_**_], etc.
+// The pattern consists of '_' (drop) and '*' (keep) characters.
+// The last character determines the trailing behaviour for excess values.
+
+ParserResult<AstBuilder::ResultFilterInfo> AstBuilder::parse_result_filter_pattern()
+{
+   ResultFilterInfo info;
+   info.keep_mask = 0;
+   info.explicit_count = 0;
+   info.trailing_keep = false;
+
+   uint8_t position = 0;
+   Token current = this->ctx.tokens().current();
+
+   while (current.kind() != TokenKind::RightBracket) {
+      if (position >= 64) {
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current,
+            "result filter pattern too long (max 64 positions)");
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = "result filter pattern too long (max 64 positions)";
+         return ParserResult<ResultFilterInfo>::failure(error);
+      }
+
+      if (current.kind() IS TokenKind::Multiply) {  // *
+         info.keep_mask |= (1ULL << position);
+         info.trailing_keep = true;
+         position++;
+      }
+      else if (current.kind() IS TokenKind::Identifier) {
+         // Check for underscore identifier - may contain multiple underscores (e.g. "__")
+         GCstr *id = current.identifier();
+         if (id) {
+            const char* data = strdata(id);
+            MSize len = id->len;
+            bool all_underscores = true;
+            for (MSize i = 0; i < len; i++) {
+               if (data[i] != '_') {
+                  all_underscores = false;
+                  break;
+               }
+            }
+            if (all_underscores and len > 0) {
+               // Each underscore counts as one "drop" position
+               for (MSize i = 0; i < len; i++) {
+                  if (position >= 64) {
+                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern too long (max 64 positions)");
+                     ParserError error;
+                     error.code = ParserErrorCode::UnexpectedToken;
+                     error.token = current;
+                     error.message = "result filter pattern too long (max 64 positions)";
+                     return ParserResult<ResultFilterInfo>::failure(error);
+                  }
+                  info.trailing_keep = false;
+                  position++;
+                  if (position == 64) {
+                     this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern too long (max 64 positions)");
+                     ParserError error;
+                     error.code = ParserErrorCode::UnexpectedToken;
+                     error.token = current;
+                     error.message = "result filter pattern too long (max 64 positions)";
+                     return ParserResult<ResultFilterInfo>::failure(error);
+                  }
+               }
+            }
+            else {
+               this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
+               ParserError error;
+               error.code = ParserErrorCode::UnexpectedToken;
+               error.token = current;
+               error.message = "result filter pattern expects '_' or '*'";
+               return ParserResult<ResultFilterInfo>::failure(error);
+            }
+         }
+         else {
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = current;
+            error.message = "result filter pattern expects '_' or '*'";
+            return ParserResult<ResultFilterInfo>::failure(error);
+         }
+      }
+      else {
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, "result filter pattern expects '_' or '*'");
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = "result filter pattern expects '_' or '*'";
+         return ParserResult<ResultFilterInfo>::failure(error);
+      }
+
+      this->ctx.tokens().advance();
+      current = this->ctx.tokens().current();
+   }
+
+   info.explicit_count = position;
+   return ParserResult<ResultFilterInfo>::success(info);
+}
+
+//********************************************************************************************************************
+// Parses result filter expressions: [_*]func(), [*_]obj:method(), etc.
+// This syntax allows selective extraction of return values from multi-value function calls.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_result_filter_expr(const Token &StartToken)
+{
+   this->ctx.tokens().advance();  // Consume '['
+
+   auto filter = this->parse_result_filter_pattern();
+   if (not filter.ok()) return ParserResult<ExprNodePtr>::failure(filter.error_ref());
+
+   this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+
+   // Parse the expression to filter (must be followed by a callable)
+   auto expr = this->parse_unary();
+   if (not expr.ok()) return expr;
+
+   expr = this->parse_suffixed(std::move(expr.value_ref()));
+   if (not expr.ok()) return expr;
+
+   // Validate that result is a call expression
+   AstNodeKind kind = expr.value_ref()->kind;
+   if (kind != AstNodeKind::CallExpr and kind != AstNodeKind::SafeCallExpr) {
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, StartToken,
+         "result filter requires a function call");
+      ParserError error;
+      error.code = ParserErrorCode::UnexpectedToken;
+      error.token = StartToken;
+      error.message = "result filter requires a function call";
+      return ParserResult<ExprNodePtr>::failure(error);
+   }
+
+   // Optimisation: If the filter keeps all values (trailing_keep=true and all explicit
+   // positions are kept), skip the filter wrapper entirely. This handles [*], [**], [***], etc.
+   // A mask of all 1s up to explicit_count means (1 << count) - 1
+
+   auto &f = filter.value_ref();
+   uint64_t all_kept_mask = (f.explicit_count > 0) ? ((1ULL << f.explicit_count) - 1) : 0;
+   if (f.trailing_keep and f.keep_mask IS all_kept_mask) {
+      return expr;  // No filtering needed - just return the call expression
+   }
+
+   SourceSpan span = combine_spans(StartToken.span(), expr.value_ref()->span);
+   return ParserResult<ExprNodePtr>::success(
+      make_result_filter_expr(span, std::move(expr.value_ref()),
+         f.keep_mask, f.explicit_count, f.trailing_keep));
+}
+
+//********************************************************************************************************************
 // Matches a token to a binary operator and returns its precedence information, or returns empty if not a binary operator.
 
-std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const Token& token) const
+std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const Token &token) const
 {
    BinaryOpInfo info;
    switch (token.kind()) {

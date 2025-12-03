@@ -166,22 +166,22 @@ enum class TokenKind : uint16_t {
 //********************************************************************************************************************
 
 struct TokenPayload {
-   [[nodiscard]] constexpr bool has_value() const noexcept { return this->has_payload; }
-   [[nodiscard]] constexpr const TValue& value() const noexcept { return this->payload; }
+   [[nodiscard]] constexpr inline bool has_value() const noexcept { return this->has_payload; }
+   [[nodiscard]] constexpr inline const TValue& value() const noexcept { return this->payload; }
 
-   void assign(lua_State* State, const TValue& Value) {
+   inline void assign(lua_State *State, const TValue& Value) {
       this->owner = State;
       copyTV(State, &this->payload, &Value);
       this->has_payload = true;
    }
 
-   [[nodiscard]] GCstr* as_string() const {
+   [[nodiscard]] inline GCstr * as_string() const {
       if (not this->has_payload) return nullptr;
       if (not tvisstr(&this->payload)) return nullptr;
       return strV(&this->payload);
    }
 
-   [[nodiscard]] double as_number() const {
+   [[nodiscard]] inline double as_number() const {
       if (not this->has_payload) return 0.0;
       if (tvisnum(&this->payload)) return numV(&this->payload);
       return 0.0;
@@ -204,16 +204,16 @@ public:
    [[nodiscard]] static Token from_buffered(LexState& state, const LexState::BufferedToken& buffered);
    [[nodiscard]] static Token from_span(SourceSpan span, TokenKind kind = TokenKind::Unknown);
 
-   [[nodiscard]] TokenKind kind() const { return this->token_kind; }
-   [[nodiscard]] LexToken raw() const { return this->raw_token; }
-   [[nodiscard]] SourceSpan span() const { return this->source; }
-   [[nodiscard]] bool is(TokenKind kind) const { return this->token_kind IS kind; }
-   [[nodiscard]] bool is_literal() const;
-   [[nodiscard]] const TokenPayload & payload() const { return this->data; }
+   [[nodiscard]] inline TokenKind kind() const { return this->token_kind; }
+   [[nodiscard]] inline LexToken raw() const { return this->raw_token; }
+   [[nodiscard]] inline SourceSpan span() const { return this->source; }
+   [[nodiscard]] inline bool is(TokenKind kind) const { return this->token_kind IS kind; }
+   [[nodiscard]] inline bool is_literal() const;
+   [[nodiscard]] inline const TokenPayload & payload() const { return this->data; }
 
    [[nodiscard]] constexpr bool is_identifier() const noexcept { return this->token_kind IS TokenKind::Identifier; }
    [[nodiscard]] constexpr bool is_eof() const noexcept { return this->token_kind IS TokenKind::EndOfFile; }
-   [[nodiscard]] GCstr* identifier() const { return this->data.as_string(); }
+   [[nodiscard]] inline GCstr * identifier() const { return this->data.as_string(); }
 
 private:
    TokenKind token_kind = TokenKind::Unknown;
