@@ -1,10 +1,8 @@
-/*
-** Base and coroutine library.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2011 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Base and coroutine library.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2011 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #include <stdio.h>
 #include <cctype>
@@ -38,7 +36,8 @@
 #include "lj_strfmt.h"
 #include "lib.h"
 
-// -- Base library: checks ------------------------------------------------
+//********************************************************************************************************************
+// Base library: checks
 
 #define LJLIB_MODULE_base
 
@@ -54,7 +53,9 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
    return FFH_UNREACHABLE;
 }
 
+//********************************************************************************************************************
 // ORDER LJ_T
+
 LJLIB_PUSH("nil")
 LJLIB_PUSH("boolean")
 LJLIB_PUSH(top-1)  //  boolean
@@ -70,26 +71,29 @@ LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
 LJLIB_PUSH("number")
 LJLIB_ASM_(type)      LJLIB_REC(.)
+
 // Recycle the lj_lib_checkany(L, 1) from assert.
 
-// -- Base library: iterators ---------------------------------------------
+//********************************************************************************************************************
+// Base library: iterators
 
 // This solves a circular dependency problem -- change FF_next_N as needed.
 static_assert((int)FF_next == FF_next_N);
 
-LJLIB_ASM(next)         LJLIB_REC(.)
+LJLIB_ASM(next) LJLIB_REC(.) // Use of '.' indicates the function name in the recorder is unchanged
 {
    lj_lib_checktab(L, 1);
    lj_err_msg(L, ErrMsg::NEXTIDX);
    return FFH_UNREACHABLE;
 }
 
-#if LJ_52 or LJ_HASFFI
+//********************************************************************************************************************
+
 static int ffh_pairs(lua_State* L, MMS mm)
 {
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo = lj_meta_lookup(L, o, mm);
-   if ((LJ_52 or tviscdata(o)) and !tvisnil(mo)) {
+   if (not tvisnil(mo)) {
       L->top = o + 1;  //  Only keep one argument.
       copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
       return FFH_TAILCALL;
@@ -102,15 +106,16 @@ static int ffh_pairs(lua_State* L, MMS mm)
       return FFH_RES(3);
    }
 }
-#else
-#define ffh_pairs(L, mm)   (lj_lib_checktab(L, 1), FFH_UNREACHABLE)
-#endif
+
+//********************************************************************************************************************
 
 LJLIB_PUSH(lastcl)
 LJLIB_ASM(pairs)      LJLIB_REC(xpairs 0)
 {
    return ffh_pairs(L, MM_pairs);
 }
+
+//********************************************************************************************************************
 
 LJLIB_NOREGUV LJLIB_ASM(ipairs_aux)   LJLIB_REC(.)
 {
@@ -119,16 +124,20 @@ LJLIB_NOREGUV LJLIB_ASM(ipairs_aux)   LJLIB_REC(.)
    return FFH_UNREACHABLE;
 }
 
+//********************************************************************************************************************
+
 LJLIB_PUSH(lastcl)
 LJLIB_ASM(ipairs)      LJLIB_REC(xpairs 1)
 {
    return ffh_pairs(L, MM_ipairs);
 }
 
+//********************************************************************************************************************
 // Base library: getters and setters
 
 LJLIB_ASM_(getmetatable)   LJLIB_REC(.)
 
+//********************************************************************************************************************
 // Recycle the lj_lib_checkany(L, 1) from assert.
 
 LJLIB_ASM(setmetatable)      LJLIB_REC(.)
@@ -142,6 +151,8 @@ LJLIB_ASM(setmetatable)      LJLIB_REC(.)
    settabV(L, L->base - 1 - LJ_FR2, t);
    return FFH_RES(1);
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(getfenv)      LJLIB_REC(.)
 {
@@ -157,6 +168,8 @@ LJLIB_CF(getfenv)      LJLIB_REC(.)
    settabV(L, L->top++, isluafunc(fn) ? tabref(fn->l.env) : tabref(L->env));
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(setfenv)
 {
@@ -184,12 +197,16 @@ LJLIB_CF(setfenv)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_ASM(rawget)      LJLIB_REC(.)
 {
    lj_lib_checktab(L, 1);
    lj_lib_checkany(L, 2);
    return FFH_UNREACHABLE;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(rawset)      LJLIB_REC(.)
 {
@@ -200,6 +217,8 @@ LJLIB_CF(rawset)      LJLIB_REC(.)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(rawequal)      LJLIB_REC(.)
 {
    cTValue* o1 = lj_lib_checkany(L, 1);
@@ -207,6 +226,8 @@ LJLIB_CF(rawequal)      LJLIB_REC(.)
    setboolV(L->top - 1, lj_obj_equal(o1, o2));
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(rawlen)      LJLIB_REC(.)
 {
@@ -220,6 +241,8 @@ LJLIB_CF(rawlen)      LJLIB_REC(.)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(unpack)
 {
    GCtab* t = lj_lib_checktab(L, 1);
@@ -227,22 +250,21 @@ LJLIB_CF(unpack)
    int32_t e = (L->base + 3 - 1 < L->top and !tvisnil(L->base + 3 - 1)) ?
       lj_lib_checkint(L, 3) : (int32_t)lj_tab_len(t) - 1;  // 0-based: last index is len-1
    uint32_t nu;
+
    if (i > e) return 0;
    nu = (uint32_t)e - (uint32_t)i;
    n = (int32_t)(nu + 1);
-   if (nu >= LUAI_MAXCSTACK or !lua_checkstack(L, n))
-      lj_err_caller(L, ErrMsg::UNPACK);
+   if (nu >= LUAI_MAXCSTACK or !lua_checkstack(L, n)) lj_err_caller(L, ErrMsg::UNPACK);
+
    do {
       cTValue* tv = lj_tab_getint(t, i);
-      if (tv) {
-         copyTV(L, L->top++, tv);
-      }
-      else {
-         setnilV(L->top++);
-      }
+      if (tv) copyTV(L, L->top++, tv);
+      else setnilV(L->top++);
    } while (i++ < e);
    return n;
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(select)      LJLIB_REC(.)
 {
@@ -260,6 +282,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
    }
 }
 
+//********************************************************************************************************************
 // Base library: conversions
 
 LJLIB_ASM(tonumber)      LJLIB_REC(.)
@@ -323,6 +346,8 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
    return FFH_RES(1);
 }
 
+//********************************************************************************************************************
+
 LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
    TValue* o = lj_lib_checkany(L, 1);
@@ -337,7 +362,8 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
    return FFH_RES(1);
 }
 
-// -- Base library: throw and catch errors --------------------------------
+//********************************************************************************************************************
+//  Base library: throw and catch errors
 
 LJLIB_CF(error)
 {
@@ -359,6 +385,7 @@ LJLIB_ASM(pcall)      LJLIB_REC(.)
 }
 LJLIB_ASM_(xpcall)      LJLIB_REC(.)
 
+//********************************************************************************************************************
 // -- Base library: load Lua code -----------------------------------------
 
 static int load_aux(lua_State* L, int status, int envarg)
@@ -378,6 +405,8 @@ static int load_aux(lua_State* L, int status, int envarg)
    }
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(loadfile)
 {
    GCstr* fname = lj_lib_optstr(L, 1);
@@ -388,6 +417,8 @@ LJLIB_CF(loadfile)
       mode ? strdata(mode) : nullptr);
    return load_aux(L, status, 3);
 }
+
+//********************************************************************************************************************
 
 static const char* reader_func(lua_State* L, void* ud, size_t* size)
 {
@@ -409,6 +440,8 @@ static const char* reader_func(lua_State* L, void* ud, size_t* size)
       return nullptr;
    }
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(load)
 {
@@ -448,6 +481,8 @@ LJLIB_CF(loadstring)
    return lj_cf_load(L);
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(dofile)
 {
    GCstr* fname = lj_lib_optstr(L, 1);
@@ -459,7 +494,8 @@ LJLIB_CF(dofile)
    return (int)(L->top - L->base) - 1;
 }
 
-// -- Base library: GC control --------------------------------------------
+//********************************************************************************************************************
+// Base library: GC control
 
 LJLIB_CF(gcinfo)
 {
@@ -477,10 +513,8 @@ LJLIB_CF(collectgarbage)
    }
    else {
       int res = lua_gc(L, opt, data);
-      if (opt == LUA_GCSTEP or opt == LUA_GCISRUNNING)
-         setboolV(L->top, res);
-      else
-         setintV(L->top, res);
+      if (opt == LUA_GCSTEP or opt == LUA_GCISRUNNING) setboolV(L->top, res);
+      else setintV(L->top, res);
    }
    L->top++;
    return 1;
@@ -587,15 +621,9 @@ LJLIB_CF(coroutine_status)
 
 LJLIB_CF(coroutine_running)
 {
-#if LJ_52
    int ismain = lua_pushthread(L);
    setboolV(L->top++, ismain);
    return 2;
-#else
-   if (lua_pushthread(L))
-      setnilV(L->top++);
-   return 1;
-#endif
 }
 
 LJLIB_CF(coroutine_isyieldable)

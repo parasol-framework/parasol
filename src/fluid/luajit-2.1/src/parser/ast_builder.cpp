@@ -9,11 +9,15 @@
 #include "parser/parse_types.h"
 #include "runtime/lj_str.h"
 
+// Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
+
 static FunctionExprPayload* function_payload_from(ExprNode& node)
 {
    if (node.kind != AstNodeKind::FunctionExpr) return nullptr;
    return std::get_if<FunctionExprPayload>(&node.data);
 }
+
+// Moves the function payload data out of an expression node, transferring ownership of parameters and body.
 
 static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& node)
 {
@@ -28,6 +32,8 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr& n
    return result;
 }
 
+// Checks if a token kind is a statement keyword that can be used in conditional shorthand syntax (e.g., value ?? return).
+
 static bool is_shorthand_statement_keyword(TokenKind kind)
 {
    switch (kind) {
@@ -39,6 +45,8 @@ static bool is_shorthand_statement_keyword(TokenKind kind)
          return false;
    }
 }
+
+// Checks if an expression node is a presence check expression (the ?? operator).
 
 static bool is_presence_expr(const ExprNodePtr& expr)
 {
@@ -60,6 +68,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_chunk()
 }
 
 //********************************************************************************************************************
+// Parses a block of statements, stopping when a terminator token or end of file is encountered.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const TokenKind> terminators)
 {
@@ -76,6 +85,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
 }
 
 //********************************************************************************************************************
+// Parses a single statement by examining the current token and dispatching to the appropriate statement parser.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
@@ -119,6 +129,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 }
 
 //********************************************************************************************************************
+// Parses local variable declarations and local function statements.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_local()
 {
@@ -163,6 +174,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
 }
 
 //********************************************************************************************************************
+// Parses function declarations, including method definitions with colon syntax.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 {
@@ -214,6 +226,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 }
 
 //********************************************************************************************************************
+// Parses if-then-else conditional statements with support for elseif chains.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_if()
 {
@@ -268,6 +281,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_if()
 }
 
 //********************************************************************************************************************
+// Parses while-do loop statements.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_while()
 {
@@ -292,6 +306,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_while()
 }
 
 //********************************************************************************************************************
+// Parses repeat-until loop statements.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
 {
@@ -316,6 +331,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
 }
 
 //********************************************************************************************************************
+// Parses for loops, handling both numeric (for i=start,stop,step) and generic (for k,v in iterator) forms.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_for()
 {
@@ -383,6 +399,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
 }
 
 //********************************************************************************************************************
+// Parses do-end block statements that create a new scope.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_do()
 {
@@ -405,6 +422,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
 }
 
 //********************************************************************************************************************
+// Parses defer statements that execute code when the current scope exits.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_defer()
 {
@@ -444,6 +462,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
 }
 
 //********************************************************************************************************************
+// Parses return statements with optional return values.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_return()
 {
@@ -479,6 +498,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
 }
 
 //********************************************************************************************************************
+// Parses expression statements, handling assignments, compound assignments, conditional shorthands, and standalone expressions.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 {
@@ -649,6 +669,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 }
 
 //********************************************************************************************************************
+// Parses expressions using precedence climbing for binary operators, ternary conditionals, and pipe operators.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 {
@@ -660,36 +681,35 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 
       // Pipe operator: precedence 2, right-associative (left=2, right=1)
       // Higher than logical operators, lower than comparison
+
       if (next.kind() IS TokenKind::Pipe) {
          constexpr uint8_t pipe_left = 2;
-         constexpr uint8_t pipe_right = 1;
          if (pipe_left <= precedence) break;
 
          // Extract limit from token payload (0 = unlimited)
          uint32_t limit = 0;
          if (next.payload().has_value()) {
             double limit_val = next.payload().as_number();
-            if (limit_val >= 1) {
-               limit = uint32_t(limit_val);
-            }
+            if (limit_val >= 1) limit = uint32_t(limit_val);
          }
 
          this->ctx.tokens().advance();
 
          // Parse RHS as a primary expression with suffixes (to allow call expressions)
+
          auto rhs = this->parse_unary();
          if (not rhs.ok()) return rhs;
 
          // Apply suffixes to get the complete RHS expression
+
          rhs = this->parse_suffixed(std::move(rhs.value_ref()));
          if (not rhs.ok()) return rhs;
 
          // Validate that RHS is a call expression
-         if (rhs.value_ref()->kind != AstNodeKind::CallExpr and
-             rhs.value_ref()->kind != AstNodeKind::SafeCallExpr) {
+
+         if (rhs.value_ref()->kind != AstNodeKind::CallExpr and rhs.value_ref()->kind != AstNodeKind::SafeCallExpr) {
             Token bad = this->ctx.tokens().current();
-            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad,
-               "pipe operator requires function call on right-hand side");
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "pipe operator requires function call on right-hand side");
             ParserError error;
             error.code = ParserErrorCode::UnexpectedToken;
             error.token = next;
@@ -698,8 +718,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          }
 
          SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
-         left = ParserResult<ExprNodePtr>::success(make_pipe_expr(span,
-            std::move(left.value_ref()), std::move(rhs.value_ref()), limit));
+         left = ParserResult<ExprNodePtr>::success(make_pipe_expr(span, std::move(left.value_ref()), std::move(rhs.value_ref()), limit));
          continue;
       }
 
@@ -707,6 +726,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          // Ternary operator has priority 1 (lowest). Only process if current
          // precedence level allows it, otherwise let higher-priority operators
          // complete first (e.g., x > 0 ? ... should parse as (x > 0) ? ...)
+
          if (1 <= precedence) break;
          this->ctx.tokens().advance();
          auto true_branch = this->parse_expression();
@@ -729,14 +749,14 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
       auto right = this->parse_expression(op_info->right);
       if (not right.ok()) return right;
       SourceSpan span = combine_spans(left.value_ref()->span, right.value_ref()->span);
-      left = ParserResult<ExprNodePtr>::success(make_binary_expr(span,
-         op_info->op, std::move(left.value_ref()), std::move(right.value_ref())));
+      left = ParserResult<ExprNodePtr>::success(make_binary_expr(span, op_info->op, std::move(left.value_ref()), std::move(right.value_ref())));
    }
 
    return left;
 }
 
 //********************************************************************************************************************
+// Parses unary expressions (not, negation, length, bit not, prefix increment).
 
 ParserResult<ExprNodePtr> AstBuilder::parse_unary()
 {
@@ -746,8 +766,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_unary()
       auto operand = this->parse_unary();
       if (not operand.ok()) return operand;
 
-      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
-         AstUnaryOperator::Not, std::move(operand.value_ref())));
+      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(), AstUnaryOperator::Not, std::move(operand.value_ref())));
    }
 
    if (current.kind() IS TokenKind::Minus) {
@@ -755,16 +774,14 @@ ParserResult<ExprNodePtr> AstBuilder::parse_unary()
       auto operand = this->parse_unary();
       if (not operand.ok()) return operand;
 
-      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
-         AstUnaryOperator::Negate, std::move(operand.value_ref())));
+      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(), AstUnaryOperator::Negate, std::move(operand.value_ref())));
    }
 
    if (current.raw() IS '#') {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
       if (not operand.ok()) return operand;
-      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
-         AstUnaryOperator::Length, std::move(operand.value_ref())));
+      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(), AstUnaryOperator::Length, std::move(operand.value_ref())));
    }
 
    if (current.raw() IS '~') {
@@ -772,21 +789,20 @@ ParserResult<ExprNodePtr> AstBuilder::parse_unary()
       auto operand = this->parse_unary();
       if (not operand.ok()) return operand;
 
-      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(),
-         AstUnaryOperator::BitNot, std::move(operand.value_ref())));
+      return ParserResult<ExprNodePtr>::success(make_unary_expr(current.span(), AstUnaryOperator::BitNot, std::move(operand.value_ref())));
    }
    if (current.kind() IS TokenKind::PlusPlus) {
       this->ctx.tokens().advance();
       auto operand = this->parse_unary();
       if (not operand.ok()) return operand;
 
-      return ParserResult<ExprNodePtr>::success(make_update_expr(current.span(),
-         AstUpdateOperator::Increment, false, std::move(operand.value_ref())));
+      return ParserResult<ExprNodePtr>::success(make_update_expr(current.span(), AstUpdateOperator::Increment, false, std::move(operand.value_ref())));
    }
    return this->parse_primary();
 }
 
 //********************************************************************************************************************
+// Parses primary expressions (literals, identifiers, varargs, functions, tables, parenthesised expressions) and their suffixes.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 {
@@ -858,6 +874,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 }
 
 //********************************************************************************************************************
+// Parses suffix operations on expressions (field access, indexing, method calls, function calls, postfix increment, presence checks).
 
 ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 {
@@ -962,6 +979,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 }
 
 //********************************************************************************************************************
+// Parses function literals (anonymous functions) with parameters and body.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& function_token)
 {
@@ -979,6 +997,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token& functi
 }
 
 //********************************************************************************************************************
+// Parses table constructor expressions with array and record fields.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 {
@@ -994,6 +1013,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 }
 
 //********************************************************************************************************************
+// Parses comma-separated lists of expressions.
 
 ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
 {
@@ -1009,6 +1029,8 @@ ParserResult<ExprNodeList> AstBuilder::parse_expression_list()
    }
    return ParserResult<ExprNodeList>::success(std::move(nodes));
 }
+
+// Parses comma-separated lists of identifiers with optional attributes (e.g., <close>).
 
 ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 {
@@ -1066,6 +1088,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
 }
 
 //********************************************************************************************************************
+// Parses function parameter lists with optional type annotations and varargs.
 
 ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(bool allow_optional)
 {
@@ -1135,6 +1158,7 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
 }
 
 //********************************************************************************************************************
+// Parses the fields inside table constructors, distinguishing between array, record, and computed key forms.
 
 ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_array_part)
 {
@@ -1184,6 +1208,7 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool* has_a
 }
 
 //********************************************************************************************************************
+// Parses function call arguments, handling parenthesised expressions, table constructors, and string literals.
 
 ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multret)
 {
@@ -1232,6 +1257,7 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool* forwards_multr
 }
 
 //********************************************************************************************************************
+// Parses a scoped block with a specified set of terminator tokens, automatically adding end-of-file as a terminator.
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(
    std::initializer_list<TokenKind> terminators)
@@ -1240,6 +1266,8 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(
    merged.push_back(TokenKind::EndOfFile);
    return this->parse_block(merged);
 }
+
+// Checks if the current token indicates the end of a block by matching against terminator tokens.
 
 bool AstBuilder::at_end_of_block(std::span<const TokenKind> terminators) const
 {
@@ -1250,6 +1278,8 @@ bool AstBuilder::at_end_of_block(std::span<const TokenKind> terminators) const
    }
    return false;
 }
+
+// Checks if a token kind can begin a statement.
 
 bool AstBuilder::is_statement_start(TokenKind kind) const
 {
@@ -1271,6 +1301,8 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
    }
 }
 
+// Creates an identifier structure from a token, extracting its symbol and source span.
+
 Identifier AstBuilder::make_identifier(const Token& token)
 {
    Identifier id;
@@ -1279,6 +1311,8 @@ Identifier AstBuilder::make_identifier(const Token& token)
    id.is_blank = (id.symbol IS NAME_BLANK);
    return id;
 }
+
+// Creates a literal value structure from a token, extracting the appropriate value based on token type.
 
 LiteralValue AstBuilder::make_literal(const Token& token)
 {
@@ -1310,6 +1344,7 @@ LiteralValue AstBuilder::make_literal(const Token& token)
 }
 
 //********************************************************************************************************************
+// Matches a token to a binary operator and returns its precedence information, or returns empty if not a binary operator.
 
 std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const Token& token) const
 {

@@ -2,23 +2,16 @@
 
    require "common"
 
-   mSys = mod.load("core")
-
    local srcPath    = arg("input")
    local outputPath = arg("output")
    local pattern    = arg("pattern")
    local comment    = arg("comment")
    local hashString = arg("string")
 
-   if (pattern is nil) then
-      pattern = "#define HASH_<NAME> 0x<HASH>"
-   end
+   pattern ?= "#define HASH_<NAME> 0x<HASH>"
+   comment ?= "/* <COMMENT> */"
 
-   if (comment is nil) then
-      comment = "/* <COMMENT> */"
-   end
-
-   if (hashString is nil) and (srcPath is nil) then
+   if (not hashString) and (not srcPath) then
       print("COMMAND PARAMETERS\n")
       print("input   Path to a text file that contains strings to hash (each line is hashed).")
       print("string  A string to hash, if an input file is not provided.")
@@ -28,7 +21,7 @@
       return
    end
 
-   if (hashString) then
+   if hashString then
       print("Hash: 0x" .. string.format("%.8x", hashString:hash()))
       return
    end
@@ -39,16 +32,14 @@
    local hashname, result
    local i = 0
    while i do
-      local strend = strbuf:find(string.char(10), i+1)
+      local strend = strbuf:find(string.char(10), i)
       if strend then
-         hashname = strbuf:sub(i, tonumber(strend) - 1)
+         hashname = strbuf:sub(i, tonumber(strend))
          i = strend + 1
       else
          hashname = strbuf:sub(i)
          i = nil
-         if hashname:len() < 1 then
-            break
-         end
+         if hashname:len() < 1 then break end
       end
 
       _, _, hashname = hashname:find("([^%s]+)")

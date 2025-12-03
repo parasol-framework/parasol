@@ -35,7 +35,7 @@ function testUDPTCPCoexistence()
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
-            local msg = buffer:sub(0, bytesRead-1)
+            local msg = buffer:sub(0, bytesRead)
             print('[UDP Server] Received: "' .. msg .. '"')
             if (string.match(msg, 'UDP Test')) then
                udpReceived = true
@@ -63,7 +63,7 @@ function testUDPTCPCoexistence()
          local buffer = string.alloc(1024)
          local err, readLen = Client.acRead(buffer)
          if (err is ERR_Okay and readLen > 0) then
-            local msg = buffer:sub(0, readLen-1)
+            local msg = buffer:sub(0, readLen)
             print('[TCP Server] Received: "' .. msg .. '"')
             if (string.match(msg, 'TCP Test')) then
                tcpReceived = true
@@ -85,7 +85,7 @@ function testUDPTCPCoexistence()
          local source = struct.new('IPAddress')
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
-            local msg = buffer:sub(0, bytesRead-1)
+            local msg = buffer:sub(0, bytesRead)
             print('[UDP Client] Received response: "' .. msg .. '"')
          end
       end
@@ -107,7 +107,7 @@ function testUDPTCPCoexistence()
          local buffer = string.alloc(1024)
          local err, readLen = Socket.acRead(buffer)
          if (err is ERR_Okay and readLen > 0) then
-            local msg = buffer:sub(0, readLen-1)
+            local msg = buffer:sub(0, readLen)
             print('[TCP Client] Received: "' .. msg .. '"')
          end
       end

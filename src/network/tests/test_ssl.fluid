@@ -112,7 +112,7 @@ function testBasicSSLCommunication()
                error('Received incoming data notification with no data to read.')
             end
 
-            local emsg = buffer:sub(0, read_len-1)
+            local emsg = buffer:sub(0, read_len)
             msg('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
 
             -- Verify message integrity over SSL
@@ -165,7 +165,7 @@ function testBasicSSLCommunication()
                error('Received incoming data notification with no data to read.')
             end
 
-            local emsg = buffer:sub(0, read_len-1)
+            local emsg = buffer:sub(0, read_len)
             msg('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
 
             -- Echo back the message to verify bidirectional SSL
@@ -244,7 +244,7 @@ function testSSLStateTransitions()
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if (err is ERR_Okay) then
-            local emsg = buffer:sub(0, read_len-1)
+            local emsg = buffer:sub(0, read_len)
             msg('[Server] Received: ' .. emsg)
             data_exchange_complete = true
             Socket.mtDisconnectSocket(Client)
@@ -270,7 +270,7 @@ function testSSLStateTransitions()
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if err is ERR_Okay then
-            local emsg = buffer:sub(0, read_len-1)
+            local emsg = buffer:sub(0, read_len)
             print('[Client] Received: ' .. emsg)
             print('[Client] Sending acknowledgment...')
             local err, len = Socket.acWrite('SSL_STATES_VERIFIED')
@@ -353,7 +353,7 @@ function testSSLDataIntegrity()
          local err, read_len = Client.acRead(buffer)
 
          if (err is ERR_Okay) then
-            local received = buffer:sub(0, read_len-1)
+            local received = buffer:sub(0, read_len)
             local expected = test_messages[msgIndex]
 
             print('[Server] Received echo ' .. msgIndex .. ' (' .. read_len .. ' bytes)')
@@ -388,7 +388,7 @@ function testSSLDataIntegrity()
          local err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
-            local emsg = buffer:sub(0, read_len-1)
+            local emsg = buffer:sub(0, read_len)
             print('[Client] Received message (' .. read_len .. ' bytes), echoing back...')
 
             -- Echo back exactly what was received
@@ -461,7 +461,7 @@ function testHTTPSConnection()
                local buffer = string.alloc(8192)
                local err, read_len = Socket.acRead(buffer)
                if err is ERR_Okay and read_len > 0 then
-                  local chunk = buffer:sub(0, read_len-1)
+                  local chunk = buffer:sub(0, read_len)
                   page_content = page_content .. chunk
                   print('Read ' .. read_len .. ' bytes during disconnect (total: ' .. #page_content .. ')')
                   data_received = true
@@ -489,7 +489,7 @@ function testHTTPSConnection()
 
                chunks_received++
                callback_total += read_len
-               local chunk = buffer:sub(0, read_len-1)
+               local chunk = buffer:sub(0, read_len)
                page_content = page_content .. chunk
 
                print('Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' ..
@@ -584,10 +584,10 @@ function testHTTPSConnection()
          print(page_content)
       else
          print('Response preview (first 500 chars):')
-         print(string.sub(page_content, 0, 499) .. '...')
+         print(string.sub(page_content, 0, 500) .. '...')
       end
    else
-      print('Response content preview: ' .. string.sub(page_content, 0, 199))
+      print('Response content preview: ' .. string.sub(page_content, 0, 200))
       error('Invalid HTTP response received from ' .. SITE)
    end
 end
@@ -639,7 +639,7 @@ function testCustomCertificate()
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if err is ERR_Okay then
-            local message = buffer:sub(0, read_len-1)
+            local message = buffer:sub(0, read_len)
             msg('[Server] Received: ' .. message)
             custom_cert_test_complete = true
             Socket.mtDisconnectSocket(Client)

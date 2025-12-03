@@ -128,11 +128,9 @@ end
 -- Register a class by name and return its table. If the class already exists, return the existing table.
 
 function registerClass(Name)
-   if not Name?? then error('No Name provided to registerClass()') end
-   if not glClasses then glClasses = { } end
-   if not glClasses[Name:lower()] then
-      glClasses[Name:lower()] = { name=Name:cap() }
-   end
+   assert(Name??, 'No Name provided to registerClass()')
+   glClasses ?= { }
+   glClasses[Name:lower()] ?= { name=Name:cap() }
    return glClasses[Name:lower()]
 end
 

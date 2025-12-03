@@ -71,7 +71,7 @@ do
 
    local function skip_delim(str, pos, delim, err_if_missing)
       pos += #str:match('^%s*', pos)
-      if str:sub(pos, pos) != delim then
+      if str:sub(pos, pos+1) != delim then
          if err_if_missing then
             error('Expected ' .. delim .. ' near position ' .. pos)
          end
@@ -87,12 +87,12 @@ do
       val = val or ''
       local early_end_error = 'End of input found while parsing string.'
       assert(pos < #str, early_end_error)
-      local c = str:sub(pos, pos)
+      local c = str:sub(pos, pos+1)
       if c is '"'  then return val, pos + 1 end
       if c != '\\' then return decode_str_val(str, pos + 1, val .. c) end
       -- We must have a \ character.
       local esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
-      local nextc = str:sub(pos + 1, pos + 1)
+      local nextc = str:sub(pos + 1, pos + 2)
       assert(nextc, early_end_error)
       return decode_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
    end
@@ -162,7 +162,7 @@ do
       pos = pos or 0
       if pos >= #str then error('Reached unexpected end of input.') end
       local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace
-      local first = str:sub(pos, pos)
+      local first = str:sub(pos, pos+1)
       if first is '{' then  -- Parse an object.
          local obj, key, delim_found = {}, true, true
          pos++
@@ -193,10 +193,10 @@ do
       else  -- Parse true, false, or null.
          local literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
          for lit_str, lit_val in pairs(literals) do
-            local lit_end = pos + #lit_str - 1
-            if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end + 1 end
+            local lit_end = pos + #lit_str
+            if str:sub(pos, lit_end) is lit_str then return lit_val, lit_end end
          end
-         local pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 10)
+         local pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 11)
          error('Invalid json syntax starting at ' .. pos_info_str)
       end
    end

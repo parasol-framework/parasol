@@ -118,5 +118,5 @@ end
 ------------------------------------------------------------------------------
 
 file.sanitisePath = function(Path)
-   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(0,0) end)
+   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(0,1) end)
 end

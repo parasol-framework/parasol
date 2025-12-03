@@ -62,7 +62,7 @@ function testMultipleConnections()
          if (err is ERR_Disconnected) then return end
          assert(err is ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
 
-         local msg = buffer:sub(0, read_len-1)
+         local msg = buffer:sub(0, read_len)
          print('[Server] Received: ' .. msg)
 
          -- Track messages per client
@@ -99,7 +99,7 @@ function testMultipleConnections()
             local err, read_len = Socket.acRead(buffer)
             assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to read: ' .. mSys.GetErrorMsg(err))
 
-            local msg = buffer:sub(0, read_len-1)
+            local msg = buffer:sub(0, read_len)
             data.messagesReceived++
 
             -- Store response for verification
@@ -261,7 +261,7 @@ function testConnectionIsolation()
       incoming = function(Socket, Client)
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
-         local msg = buffer:sub(0, read_len-1)
+         local msg = buffer:sub(0, read_len)
 
          print('[Server] Received isolated message: ' .. msg)
 
@@ -287,7 +287,7 @@ function testConnectionIsolation()
          incoming = function(Socket, Script)
             local buffer = string.alloc(1024)
             local err, read_len = Socket.acRead(buffer)
-            local msg = buffer:sub(0, read_len-1)
+            local msg = buffer:sub(0, read_len)
             local clientId = i
 
             print('[Client ' .. clientId .. '] Received: ' .. msg)

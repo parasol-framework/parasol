@@ -23,7 +23,7 @@ function resolveSDKPath(Path)
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
          search_path = '../' .. search_path
-         limit = limit - 1
+         limit -= 1
       end
    else
       table.insert(search_list, Path .. '/CMakeLists.txt')
@@ -35,7 +35,7 @@ function resolveSDKPath(Path)
    else
       local msg = ''
       for _, path in ipairs(search_list) do
-         msg = msg .. path .. '\n'
+         msg ..= path .. '\n'
       end
       print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')
@@ -99,7 +99,7 @@ end
          local pandoc_output = temp_output .. '-' .. math.random(1000000) .. '.html'
          local parameters = res_src_path .. ' -o ' .. pandoc_output .. ' -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
 
-         cmdlist = cmdlist .. '"' .. pandoc_path .. '"' .. ' ' .. parameters .. '\n'
+         cmdlist ..= '"' .. pandoc_path .. '"' .. ' ' .. parameters .. '\n'
 
          table.insert(output_files, { title=title, pandoc_output=pandoc_output, target_path=res_output_path })
       end

@@ -36,7 +36,7 @@ function testRawHTTP()
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err is ERR_Okay) then
-            print(buffer:sub(1,80))
+            print(buffer:sub(0,80))
          elseif (err is ERR_Disconnected) then
             proc.signal()
          else

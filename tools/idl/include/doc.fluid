@@ -421,7 +421,7 @@ function extractParagraph(Input, Caller, References)
          currentParagraph = nil
       end
    end
-   
+
    local i = 0
    while i < #lines do
       local line = string.trim(lines[i])
@@ -469,7 +469,7 @@ function extractParagraph(Input, Caller, References)
                output = output .. lines[i] .. '\n'
                i++
             until (balance is 0) or (not lines[i])
-            
+
             if balance != 0 then
                print('Unbalanced tags (' .. balance .. ') detected: [[' .. string.format('%s ...', output) .. ']]')
             end
@@ -686,7 +686,7 @@ function docClass(Class)
          if (ignoreAction(glActions[a.name].id) != true) or a.description?? then
             out ..= '    <action>\n'
             out ..= '      <name>' .. a.name .. '</name>\n'
-            
+
             if not a.comment then a.comment = glActions[a.name].comment end
             if a.comment?? then out ..= '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
 
@@ -800,8 +800,8 @@ function docClass(Class)
             end
 
             out ..= '      <access'
-            if f.read?? then out ..= ' read="' .. f.read:sub(0,0) .. '"' end
-            if f.write?? then out ..= ' write="' .. f.write:sub(0,0) .. '"' end
+            if f.read?? then out ..= ' read="' .. f.read:sub(0,1) .. '"' end
+            if f.write?? then out ..= ' write="' .. f.write:sub(0,1) .. '"' end
             out ..= '>' .. (f.access ?? '-/-') .. '</access>\n'
 
             local lookup = ''
