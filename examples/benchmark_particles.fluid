@@ -114,7 +114,7 @@ function timer(Subscriber, Elapsed, Current)
       if nextX + p.radius * 2 > glWinWidth then
          if ((p.angle >= 0) and (p.angle < math.pi * 0.5)) then
             p.angle = math.pi - p.angle
-         elseif (p.angle > math.pi / 2 * 3) then
+         elseif p.angle > math.pi / 2 * 3 then
             p.angle = p.angle - (p.angle - math.pi / 2 * 3) * 2
          end
       end
@@ -131,8 +131,8 @@ function timer(Subscriber, Elapsed, Current)
 
       -- If particle is going to move off bottom side of screen
 
-      if (nextY + p.radius * 2 > glWinHeight) then
-         if ((p.angle > 0 and p.angle < math.pi)) then
+      if nextY + p.radius * 2 > glWinHeight then
+         if p.angle > 0 and p.angle < math.pi then
             p.angle = math.pi * 2 - p.angle
          end
       end
@@ -140,7 +140,7 @@ function timer(Subscriber, Elapsed, Current)
       -- If particle is going to move off top side of screen
 
       if nextY < 0 then
-         if ((p.angle > math.pi) and (p.angle < math.pi * 2)) then
+         if p.angle > math.pi and p.angle < math.pi * 2 then
             p.angle = p.angle - (p.angle - math.pi) * 2
          end
       end

@@ -232,7 +232,7 @@ function flags(Prefix, Options, ...)
                   assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   val = val | lookup[v].value
                end
-               if not comment then comment = 'Synonym for `' .. key:gsub('|',' | ') .. '`' end
+               comment ?= 'Synonym for `' .. key:gsub('|',' | ') .. '`'
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }

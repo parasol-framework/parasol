@@ -37,9 +37,9 @@ Gamepad demonstration
    local err, controllerTimer = mSys.SubscribeTimer(1/60, function(Subscriber, Elapsed, CurrentTime)
       ctrl.acQuery()
 
-      txtLeftStick.string = 'Left Stick: ' .. string.format('%.2f %.2f', ctrl.leftStickX, ctrl.leftStickY)
+      txtLeftStick.string  = 'Left Stick: ' .. string.format('%.2f %.2f', ctrl.leftStickX, ctrl.leftStickY)
       txtRightStick.string = 'Right Stick: ' .. string.format('%.2f %.2f', ctrl.rightStickX, ctrl.rightStickY)
-      txtButtons.string = 'Buttons: ' .. string.format('%.8x', ctrl.buttons)
+      txtButtons.string    = 'Buttons: ' .. string.format('%.8x', ctrl.buttons)
 
       local speed = MAX_SPEED
       if (ctrl.buttons & CON_GAMEPAD_S)?? then
