@@ -23,6 +23,7 @@
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
+#include "lib/lib_utils.h"
 
 // Common helper functions
 
@@ -123,15 +124,13 @@ extern void luaL_checkstack(lua_State* L, int size, const char* msg)
 
 extern void lua_xmove(lua_State* L, lua_State* to, int n)
 {
-   TValue* f, * t;
    if (L == to) return;
    lj_checkapi_slot(n);
    lj_checkapi(G(L) == G(to), "move across global states");
    lj_state_checkstack(to, (MSize)n);
-   f = L->top;
-   t = to->top = to->top + n;
-   while (--n >= 0) copyTV(to, --t, --f);
-   L->top = f;
+   copy_range(to, to->top, L->top - n, n);
+   L->top -= n;
+   to->top += n;
 }
 
 extern const lua_Number* lua_version(lua_State* L)
@@ -155,7 +154,9 @@ extern void lua_settop(lua_State* L, int idx)
       if (L->base + idx > L->top) {
          if (L->base + idx >= tvref(L->maxstack))
             lj_state_growstack(L, (MSize)idx - (MSize)(L->top - L->base));
-         do { setnilV(L->top++); } while (L->top < L->base + idx);
+         size_t count = (L->base + idx) - L->top;
+         set_range_nil(L->top, count);
+         L->top += count;
       }
       else {
          L->top = L->base + idx;
@@ -350,141 +351,74 @@ extern lua_Number lua_tonumber(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o))) return numberVnum(o);
-   else if (tvisstr(o) and lj_strscan_num(strV(o), &tmp)) return numV(&tmp);
-   else return 0;
+   if (auto num = try_to_number(o, &tmp)) return *num;
+   return 0;
 }
 
 extern lua_Number lua_tonumberx(lua_State* L, int idx, int* ok)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o))) {
+   if (auto num = try_to_number(o, &tmp)) {
       if (ok) *ok = 1;
-      return numberVnum(o);
+      return *num;
    }
-   else if (tvisstr(o) and lj_strscan_num(strV(o), &tmp)) {
-      if (ok) *ok = 1;
-      return numV(&tmp);
-   }
-   else {
-      if (ok) *ok = 0;
-      return 0;
-   }
+   if (ok) *ok = 0;
+   return 0;
 }
 
 extern lua_Number luaL_checknumber(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o)))
-      return numberVnum(o);
-   else if (!(tvisstr(o) and lj_strscan_num(strV(o), &tmp)))
-      lj_err_argt(L, idx, LUA_TNUMBER);
-   return numV(&tmp);
+   if (auto num = try_to_number(o, &tmp)) return *num;
+   lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
 extern lua_Number luaL_optnumber(lua_State* L, int idx, lua_Number def)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   if (LJ_LIKELY(tvisnumber(o))) return numberVnum(o);
-   else if (tvisnil(o)) return def;
-   else if (!(tvisstr(o) and lj_strscan_num(strV(o), &tmp))) lj_err_argt(L, idx, LUA_TNUMBER);
-   return numV(&tmp);
+   if (tvisnil(o)) return def;
+   if (auto num = try_to_number(o, &tmp)) return *num;
+   lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
 extern lua_Integer lua_tointeger(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   lua_Number n;
-   if (LJ_LIKELY(tvisint(o))) {
-      return intV(o);
-   }
-   else if (LJ_LIKELY(tvisnum(o))) {
-      n = numV(o);
-   }
-   else {
-      if (!(tvisstr(o) and lj_strscan_number(strV(o), &tmp)))
-         return 0;
-      if (tvisint(&tmp))
-         return intV(&tmp);
-      n = numV(&tmp);
-   }
-   return (lua_Integer)n;
+   if (auto i = try_to_integer(o, &tmp)) return *i;
+   return 0;
 }
 
 extern lua_Integer lua_tointegerx(lua_State* L, int idx, int* ok)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   lua_Number n;
-   if (LJ_LIKELY(tvisint(o))) {
+   if (auto i = try_to_integer(o, &tmp)) {
       if (ok) *ok = 1;
-      return intV(o);
+      return *i;
    }
-   else if (LJ_LIKELY(tvisnum(o))) {
-      n = numV(o);
-   }
-   else {
-      if (!(tvisstr(o) and lj_strscan_number(strV(o), &tmp))) {
-         if (ok) *ok = 0;
-         return 0;
-      }
-      if (tvisint(&tmp)) {
-         if (ok) *ok = 1;
-         return intV(&tmp);
-      }
-      n = numV(&tmp);
-   }
-   if (ok) *ok = 1;
-   return (lua_Integer)n;
+   if (ok) *ok = 0;
+   return 0;
 }
 
 extern lua_Integer luaL_checkinteger(lua_State* L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   lua_Number n;
-   if (LJ_LIKELY(tvisint(o))) {
-      return intV(o);
-   }
-   else if (LJ_LIKELY(tvisnum(o))) {
-      n = numV(o);
-   }
-   else {
-      if (!(tvisstr(o) and lj_strscan_number(strV(o), &tmp)))
-         lj_err_argt(L, idx, LUA_TNUMBER);
-      if (tvisint(&tmp))
-         return (lua_Integer)intV(&tmp);
-      n = numV(&tmp);
-   }
-   return (lua_Integer)n;
+   if (auto i = try_to_integer(o, &tmp)) return *i;
+   lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
 extern lua_Integer luaL_optinteger(lua_State* L, int idx, lua_Integer def)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
-   lua_Number n;
-   if (LJ_LIKELY(tvisint(o))) {
-      return intV(o);
-   }
-   else if (LJ_LIKELY(tvisnum(o))) {
-      n = numV(o);
-   }
-   else if (tvisnil(o)) {
-      return def;
-   }
-   else {
-      if (!(tvisstr(o) and lj_strscan_number(strV(o), &tmp)))
-         lj_err_argt(L, idx, LUA_TNUMBER);
-      if (tvisint(&tmp))
-         return (lua_Integer)intV(&tmp);
-      n = numV(&tmp);
-   }
-   return (lua_Integer)n;
+   if (tvisnil(o)) return def;
+   if (auto i = try_to_integer(o, &tmp)) return *i;
+   lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
 extern int lua_toboolean(lua_State* L, int idx)
@@ -839,12 +773,7 @@ extern void lua_rawgeti(lua_State* L, int idx, int n)
    cTValue* v, * t = index2adr(L, idx);
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    v = lj_tab_getint(tabV(t), n);
-   if (v) {
-      copyTV(L, L->top, v);
-   }
-   else {
-      setnilV(L->top);
-   }
+   copy_or_nil(L, L->top, v);
    incr_top(L);
 }
 
@@ -1214,9 +1143,8 @@ extern int lua_yield(lua_State* L, int nresults)
       if (!hook_active(g)) {  // Regular yield: move results down if needed.
          cTValue* f = L->top - nresults;
          if (f > L->base) {
-            TValue* t = L->base;
-            while (--nresults >= 0) copyTV(L, t++, f++);
-            L->top = t;
+            copy_range(L, L->base, f, nresults);
+            L->top = L->base + nresults;
          }
          L->cframe = nullptr;
          L->status = LUA_YIELD;

@@ -67,10 +67,8 @@ void lj_mcode_sync(void* start, void* end)
 
 static void* mcode_alloc_at(jit_State* J, uintptr_t hint, size_t sz, DWORD prot)
 {
-   void* p = LJ_WIN_VALLOC((void*)hint, sz,
-      MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, prot);
-   if (!p and !hint)
-      lj_trace_err(J, LJ_TRERR_MCODEAL);
+   void* p = LJ_WIN_VALLOC((void*)hint, sz, MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, prot);
+   if (!p and !hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
    return p;
 }
 
@@ -319,8 +317,7 @@ MCode* lj_mcode_patch(jit_State* J, MCode* ptr, int finish)
 {
    if (finish) {
 #if LUAJIT_SECURITY_MCODE
-      if (J->mcarea == ptr)
-         mcode_protect(J, MCPROT_RUN);
+      if (J->mcarea == ptr) mcode_protect(J, MCPROT_RUN);
       else if (LJ_UNLIKELY(mcode_setprot(ptr, ((MCLink*)ptr)->size, MCPROT_RUN)))
          mcode_protfail(J);
 #endif
@@ -358,10 +355,8 @@ void lj_mcode_limiterr(jit_State* J, size_t need)
    sizemcode = (size_t)J->param[JIT_P_sizemcode] << 10;
    sizemcode = (sizemcode + LJ_PAGESIZE - 1) & ~(size_t)(LJ_PAGESIZE - 1);
    maxmcode = (size_t)J->param[JIT_P_maxmcode] << 10;
-   if ((size_t)need > sizemcode)
-      lj_trace_err(J, LJ_TRERR_MCODEOV);  //  Too long for any area.
-   if (J->szallmcarea + sizemcode > maxmcode)
-      lj_trace_err(J, LJ_TRERR_MCODEAL);
+   if ((size_t)need > sizemcode) lj_trace_err(J, LJ_TRERR_MCODEOV);  //  Too long for any area.
+   if (J->szallmcarea + sizemcode > maxmcode) lj_trace_err(J, LJ_TRERR_MCODEAL);
    mcode_allocarea(J);
    lj_trace_err(J, LJ_TRERR_MCODELM);  //  Retry with new area.
 }

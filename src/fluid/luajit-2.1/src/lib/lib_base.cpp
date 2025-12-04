@@ -35,6 +35,9 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lib.h"
+#include "lib_utils.h"
+#include "runtime/stack_utils.h"
+#include "debug/error_guard.h"
 
 //********************************************************************************************************************
 // Base library: checks
@@ -95,12 +98,12 @@ static int ffh_pairs(lua_State* L, MMS mm)
    cTValue* mo = lj_meta_lookup(L, o, mm);
    if (not tvisnil(mo)) {
       L->top = o + 1;  //  Only keep one argument.
-      copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
+      copyTV(L, L->base - 2, mo);  //  Replace callable.
       return FFH_TAILCALL;
    }
    else {
-      if (!tvistab(o)) lj_err_argt(L, 1, LUA_TTABLE);
-      if (LJ_FR2) { copyTV(L, o - 1, o); o--; }
+      LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
+      copyTV(L, o - 1, o); o--;
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
       if (mm == MM_pairs) setnilV(o + 1); else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
@@ -148,7 +151,7 @@ LJLIB_ASM(setmetatable)      LJLIB_REC(.)
       lj_err_caller(L, ErrMsg::PROTMT);
    setgcref(t->metatable, obj2gco(mt));
    if (mt) { lj_gc_objbarriert(L, t, mt); }
-   settabV(L, L->base - 1 - LJ_FR2, t);
+   settabV(L, L->base - 2, t);
    return FFH_RES(1);
 }
 
@@ -161,8 +164,8 @@ LJLIB_CF(getfenv)      LJLIB_REC(.)
    if (!(o < L->top and tvisfunc(o))) {
       int level = lj_lib_optint(L, 1, 1);
       o = lj_debug_frame(L, level, &level);
-      if (o == nullptr) lj_err_arg(L, 1, ErrMsg::INVLVL);
-      if (LJ_FR2) o--;
+      LJ_CHECK_ARG(L, 1, o != nullptr, ErrMsg::INVLVL);
+      o--;
    }
    fn = &gcval(o)->fn;
    settabV(L, L->top++, isluafunc(fn) ? tabref(fn->l.env) : tabref(L->env));
@@ -186,7 +189,7 @@ LJLIB_CF(setfenv)
       o = lj_debug_frame(L, level, &level);
       if (o == nullptr)
          lj_err_arg(L, 1, ErrMsg::INVLVL);
-      if (LJ_FR2) o--;
+      o--;
    }
    fn = &gcval(o)->fn;
    if (!isluafunc(fn))
@@ -258,8 +261,7 @@ LJLIB_CF(unpack)
 
    do {
       cTValue* tv = lj_tab_getint(t, i);
-      if (tv) copyTV(L, L->top++, tv);
-      else setnilV(L->top++);
+      copy_or_nil(L, L->top++, tv);
    } while (i++ < e);
    return n;
 }
@@ -288,13 +290,18 @@ LJLIB_CF(select)      LJLIB_REC(.)
 // mask: uint64 bitmask where bit N=1 means keep value at position N
 // count: number of explicitly specified positions in the pattern
 // trailing_keep: true if excess values should be kept, false to drop
+//
+// RAII Pattern: Uses StackFrame to ensure L->top is restored on error paths.
+// The frame automatically cleans up if an error is thrown, preventing stack leaks.
 
 LJLIB_CF(__filter)      LJLIB_REC(.)
 {
+   StackFrame frame(L);
+
    int32_t nargs = int32_t(L->top - L->base);
    if (nargs < 3) {
       lj_err_arg(L, nargs + 1, ErrMsg::NOVAL);
-      return 0;
+      return 0;  // StackFrame destructor will restore L->top
    }
 
    // Extract filter parameters
@@ -315,7 +322,7 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    // Ensure we have enough stack space
    if (out_count > 0 and !lua_checkstack(L, out_count)) {
       lj_err_caller(L, ErrMsg::STKOV);
-      return 0;
+      return 0;  // StackFrame destructor will restore L->top
    }
 
    // Move kept values into position at L->base (overwriting the args)
@@ -335,7 +342,10 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    }
 
    // Adjust L->top to reflect the number of returns
+   // Note: We manually set L->top here because the results start at L->base,
+   // not at the saved_top position.
    L->top = L->base + written;
+   frame.disarm();  // Disarm the guard since we manually set L->top
 
    return written;
 }
@@ -349,7 +359,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
    if (base == 10) {
       TValue* o = lj_lib_checkany(L, 1);
       if (lj_strscan_numberobj(o)) {
-         copyTV(L, L->base - 1 - LJ_FR2, o);
+         copyTV(L, L->base - 2, o);
          return FFH_RES(1);
       }
 #if LJ_HASFFI
@@ -362,11 +372,11 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
                ct->size <= 4 and !(ct->size == 4 and (ct->info & CTF_UNSIGNED))) {
                int32_t i;
                lj_cconv_ct_tv(cts, ctype_get(cts, CTID_INT32), (uint8_t*)&i, o, 0);
-               setintV(L->base - 1 - LJ_FR2, i);
+               setintV(L->base - 2, i);
                return FFH_RES(1);
             }
             lj_cconv_ct_tv(cts, ctype_get(cts, CTID_DOUBLE),
-               (uint8_t*)&(L->base - 1 - LJ_FR2)->n, o, 0);
+               (uint8_t*)&(L->base - 2)->n, o, 0);
             return FFH_RES(1);
          }
       }
@@ -377,7 +387,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       char* ep;
       unsigned int neg = 0;
       unsigned long ul;
-      if (base < 2 or base > 36) lj_err_arg(L, 2, ErrMsg::BASERNG);
+      LJ_CHECK_RANGE(L, 2, base, 2, 36, ErrMsg::BASERNG);
       while (isspace((unsigned char)(*p))) p++;
       if (*p == '-') { p++; neg = 1; }
       else if (*p == '+') { p++; }
@@ -388,35 +398,41 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
             if (*ep == '\0') {
                if (LJ_DUALNUM and LJ_LIKELY(ul < 0x80000000u + neg)) {
                   if (neg) ul = (unsigned long)-(long)ul;
-                  setintV(L->base - 1 - LJ_FR2, (int32_t)ul);
+                  setintV(L->base - 2, (int32_t)ul);
                }
                else {
                   lua_Number n = (lua_Number)ul;
                   if (neg) n = -n;
-                  setnumV(L->base - 1 - LJ_FR2, n);
+                  setnumV(L->base - 2, n);
                }
                return FFH_RES(1);
             }
          }
       }
    }
-   setnilV(L->base - 1 - LJ_FR2);
+   setnilV(L->base - 2);
    return FFH_RES(1);
 }
 
 //********************************************************************************************************************
+// RAII Pattern: Uses StackFrame to ensure L->top is restored if metamethod lookup
+// or string formatting triggers an error, preventing stack inconsistencies.
 
 LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
+   StackFrame frame(L);
+
    TValue* o = lj_lib_checkany(L, 1);
    cTValue* mo;
    L->top = o + 1;  //  Only keep one argument.
    if (!tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
-      copyTV(L, L->base - 1 - LJ_FR2, mo);  //  Replace callable.
+      copyTV(L, L->base - 2, mo);  //  Replace callable.
+      frame.disarm();  // Disarm before tail call
       return FFH_TAILCALL;
    }
    lj_gc_check(L);
-   setstrV(L, L->base - 1 - LJ_FR2, lj_strfmt_obj(L, L->base));
+   setstrV(L, L->base - 2, lj_strfmt_obj(L, L->base));
+   frame.disarm();  // Disarm - result already in place
    return FFH_RES(1);
 }
 
@@ -444,7 +460,7 @@ LJLIB_ASM(pcall)      LJLIB_REC(.)
 LJLIB_ASM_(xpcall)      LJLIB_REC(.)
 
 //********************************************************************************************************************
-// -- Base library: load Lua code -----------------------------------------
+// Base library: load Lua code
 
 static int load_aux(lua_State* L, int status, int envarg)
 {
@@ -610,8 +626,12 @@ LJLIB_CF(newproxy)
 }
 
 LJLIB_PUSH("tostring")
+// RAII Pattern: Uses StackFrame to ensure L->top is restored if tostring conversion
+// fails or triggers an error during the print loop, preventing stack corruption.
 LJLIB_CF(print)
 {
+   StackFrame frame(L);
+
    ptrdiff_t i, nargs = L->top - L->base;
    cTValue* tv = lj_tab_getstr(tabref(L->env), strV(lj_lib_upvalue(L, 1)));
    int shortcut;
@@ -623,7 +643,7 @@ LJLIB_CF(print)
       lua_gettable(L, LUA_GLOBALSINDEX);
       tv = L->top - 1;
    }
-   shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid == FF_tostring) &&
+   shortcut = (tvisfunc(tv) and funcV(tv)->c.ffid IS FF_tostring) and
       !gcrefu(basemt_it(G(L), LJ_TNUMX));
    for (i = 0; i < nargs; i++) {
       cTValue* o = &L->base[i];
@@ -640,7 +660,7 @@ LJLIB_CF(print)
          lua_call(L, 1, 1);
          str = lua_tolstring(L, -1, &size);
          if (!str)
-            lj_err_caller(L, ErrMsg::PRTOSTR);
+            lj_err_caller(L, ErrMsg::PRTOSTR);  // StackFrame will restore L->top
          L->top--;
       }
       if (i)
@@ -648,6 +668,7 @@ LJLIB_CF(print)
       fwrite(str, 1, size, stdout);
    }
    putchar('\n');
+   frame.commit(0);  // No return values
    return 0;
 }
 
@@ -670,7 +691,7 @@ LJLIB_CF(coroutine_status)
    if (co == L) s = "running";
    else if (co->status == LUA_YIELD) s = "suspended";
    else if (co->status != LUA_OK) s = "dead";
-   else if (co->base > tvref(co->stack) + 1 + LJ_FR2) s = "normal";
+   else if (co->base > tvref(co->stack) + 1 + 1) s = "normal";
    else if (co->top == co->base) s = "dead";
    else s = "suspended";
    lua_pushstring(L, s);
@@ -712,8 +733,8 @@ static int ffh_resume(lua_State* L, lua_State* co, int wrap)
       (co->status == LUA_OK and co->top == co->base)) {
       ErrMsg em = co->cframe ? ErrMsg::CORUN : ErrMsg::CODEAD;
       if (wrap) lj_err_caller(L, em);
-      setboolV(L->base - 1 - LJ_FR2, 0);
-      setstrV(L, L->base - LJ_FR2, lj_err_str(L, em));
+      setboolV(L->base - 2, 0);
+      setstrV(L, L->base - 1, lj_err_str(L, em));
       return FFH_RES(2);
    }
    lj_state_growstack(co, (MSize)(L->top - L->base));

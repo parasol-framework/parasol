@@ -28,6 +28,7 @@
 #include "lj_char.h"
 #include "lj_strfmt.h"
 #include "lib.h"
+#include "debug/error_guard.h"
 
 // NOTE: Any string function marked with the ASM macro uses a custom assembly implementation in the
 // .dasc files.  Changing the C++ code here will have no effect in such cases.
@@ -74,7 +75,7 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
    char* buf = lj_buf_tmp(L, (MSize)nargs);
    for (i = 1; i <= nargs; i++) {
       int32_t k = lj_lib_checkint(L, i);
-      if (!checku8(k)) lj_err_arg(L, i, ErrMsg::BADVAL);
+      LJ_CHECK_ARG(L, i, checku8(k), ErrMsg::BADVAL);
       buf[i - 1] = (char)k;
    }
    setstrV(L, L->base - 1 - LJ_FR2, lj_str_new(L, buf, (size_t)nargs));
@@ -167,7 +168,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
 LJLIB_CF(string_alloc)
 {
    int32_t size = lj_lib_checkint(L, 1);
-   if (size < 0) lj_err_arg(L, 1, ErrMsg::NUMRNG);
+   LJ_CHECK_ARG(L, 1, size >= 0, ErrMsg::NUMRNG);
    SBuf* sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
    lj_buf_need(sb, (MSize)size);

@@ -18,6 +18,7 @@
 #include "lj_tab.h"
 #include "lj_ff.h"
 #include "lib.h"
+#include "lib_utils.h"
 
 #define LJLIB_MODULE_table
 
@@ -90,8 +91,7 @@ LJLIB_CF(table_insert)      LJLIB_REC(.)
          // The set may invalidate the get pointer, so need to do it first!
          TValue* dst = lj_tab_setint(L, t, i);
          cTValue* src = lj_tab_getint(t, i - 1);
-         if (src) copyTV(L, dst, src);
-         else setnilV(dst);
+         copy_or_nil(L, dst, src);
       }
       i = n;
    }
@@ -119,17 +119,14 @@ LJLIB_CF(table_remove)
 
    // Get the element to return
    cTValue* src = lj_tab_getint(t, pos);
-   if (src) copyTV(L, L->top, src);
-   else setnilV(L->top);
-   L->top++;
+   copy_or_nil(L, L->top++, src);
 
    // Shift elements down (if not removing the last element)
    int32_t last = len - 1;
    for (int32_t i = pos; i < last; i++) {
       TValue* dst = lj_tab_setint(L, t, i);
       src = lj_tab_getint(t, i + 1);
-      if (src) copyTV(L, dst, src);
-      else setnilV(dst);
+      copy_or_nil(L, dst, src);
    }
 
    // Remove the last element by setting it to nil
@@ -284,7 +281,8 @@ LJLIB_CF(table_pack)
    GCtab* t = lj_tab_new(L, n, 1);  // 0-based: asize = n for n elements
    // NOBARRIER: The table is new (marked white).
    setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
-   for (array = tvref(t->array), i = 0; i < n; i++) copyTV(L, &array[i], &base[i]);  // 0-based: start at array[0]
+   array = tvref(t->array);
+   copy_range(L, array, base, n);  // 0-based: copy all n elements starting at array[0]
    settabV(L, base, t);
    L->top = base + 1;
    lj_gc_check(L);
