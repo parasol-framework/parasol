@@ -84,14 +84,12 @@ end
 -- Scan Class.fields for a specific FieldName.
 
 function findClassField(Class, FieldName)
-   if Class.fields then
-      for _, f in ipairs(Class.fields) do
-         if f.name is FieldName then
-            return f
-         end
+   assert(Class.fields, 'Class.fields is empty')
+
+   for _, f in ipairs(Class.fields) do
+      if f.name is FieldName then
+         return f
       end
-   else
-      error('Class.fields is empty')
    end
 end
 

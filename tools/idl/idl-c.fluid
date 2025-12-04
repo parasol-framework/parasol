@@ -466,7 +466,7 @@ end
 function extractFields(Def, Origin)
    local fields = { }
 
-   if not Def then return fields end
+   Def ?? return fields
 
    for line, content in ipairs(Def:split('\n')) do
       -- Extract comment, if specified
@@ -538,7 +538,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.description = Description
    func.category    = Category
 
-   if not Def then Def = { } end
+   Def ?= { }
 
    if Def.result?? then
       func.result = Def.result

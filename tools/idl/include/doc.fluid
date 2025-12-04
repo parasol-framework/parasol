@@ -3,7 +3,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 
 function ignoreAction(actionID)
-   if not actionID then return nil end
+   actionID ?? return
    return glIgnoreList[actionID]
 end
 
@@ -372,9 +372,7 @@ function saveDocuments()
                file.acWrite(out)
             end)
 
-            if not status then
-               print('Failed to produce documentation for class ' .. className .. ': ' .. err)
-            end
+            status ?? print('Failed to produce documentation for class ' .. className .. ': ' .. err)
          else
             print('No meta information for class ' .. className)
          end
