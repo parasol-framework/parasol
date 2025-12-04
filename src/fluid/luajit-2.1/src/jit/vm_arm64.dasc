@@ -977,6 +977,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  asr ITYPE, CARG1, #47
   |  cmn ITYPE, #~LJ_TISNUM
   |  csinv TMP1, TMP0, ITYPE, lo
+  |  // Check for deferred expression: type==function (8), ffid==0, proto has PROTO_DEFERRED
+  |  cmp TMP1, #8
+  |  bne >2				// Not a function? Continue normally.
+  |  and LFUNC:TMP2, CARG1, #LJ_GCVMASK	// Get GCfunc pointer
+  |  ldrb TMP3w, LFUNC:TMP2->ffid
+  |  cbnz TMP3w, >2			// Not a Lua function (ffid != 0)? Continue.
+  |  ldr TMP2, LFUNC:TMP2->pc		// Get PC (points past GCproto)
+  |  ldrb TMP3w, [TMP2, #PC2PROTO(flags)]
+  |  tbnz TMP3w, #7, ->fff_fallback	// PROTO_DEFERRED (0x80)? Fallback to C.
+  |2:
   |  add TMP1, TMP1, #offsetof(GCfuncC, upvalue)/8
   |  ldr CARG1, [CFUNC:CARG3, TMP1, lsl #3]
   |  b ->fff_restv

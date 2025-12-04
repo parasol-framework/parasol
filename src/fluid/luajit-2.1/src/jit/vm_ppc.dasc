@@ -1423,6 +1423,18 @@ static void build_subroutines(BuildCtx *ctx)
   |  subfe TMP2, CARG1, CARG1
   |  orc TMP1, TMP2, TMP0
   |  addi TMP1, TMP1, ~LJ_TISNUM+1
+  |  // Check for deferred expression (type index 8 = function)
+  |  cmpwi TMP1, 8
+  |  bne >2
+  |  lwz LFUNC:TMP3, 4(BASE)		// Load GC pointer (low word)
+  |  lbz TMP0, LFUNC:TMP3->ffid
+  |  cmpwi TMP0, 0			// FF_LUA = 0
+  |  bne >2
+  |  lwz TMP0, LFUNC:TMP3->pc
+  |  lbz TMP0, PC2PROTO(flags)(TMP0)
+  |  andix. TMP0, TMP0, PROTO_DEFERRED
+  |  bne ->fff_fallback
+  |2:
   |  slwi TMP1, TMP1, 3
   |.if FPU
   |   la TMP2, CFUNC:RB->upvalue
