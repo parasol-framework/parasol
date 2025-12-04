@@ -157,10 +157,14 @@ static void resolve_call_args(lua_State *L, int nargs)
             copyTV(L, L->top, arg);
             L->top++;
 
-            // Set flag to prevent infinite recursion, then call via lua_call
+            // Set flag to prevent infinite recursion, then call via lua_pcall.
+            // lua_call longjmps on errors which would leave resolving_deferred set.
             resolving_deferred = true;
-            lua_call(L, 0, 1);  // Call deferred with 0 args, 1 result
+            int status = lua_pcall(L, 0, 1, 0);
             resolving_deferred = false;
+            if (status) {
+               lj_err_throw(L, status);
+            }
 
             // Result is now at L->top - 1
             TValue *result = L->top - 1;
