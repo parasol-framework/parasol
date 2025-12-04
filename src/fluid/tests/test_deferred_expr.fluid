@@ -1,107 +1,288 @@
--- Flute regression tests for deferred expressions <{ expr }>
+-- Flute regression tests for deferred expressions <{ expr }> and <type{ expr }>
 
--- Test that deferred expressions are created as functions
-function testDeferredExprCreation()
+----------------------------------------------------------------------------------------------------------------------
+-- Type inference tests
+
+function testInferredStringType()
    local x = <{ 'hello' }>
-   -- Deferred expressions are stored as closures with FF_DEFERRED marker
-   -- They appear as functions until resolved
-   assert(x != nil, "Deferred expression should not be nil")
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type, got ' .. type(result))
+   assert(result is 'hello', 'Expected "hello", got "' .. result .. '"')
 end
 
--- Test that deferred expressions can wrap simple literals
-function testDeferredLiteral()
+function testInferredNumberType()
    local x = <{ 42 }>
-   assert(x != nil, "Deferred number expression should not be nil")
-
-   local y = <{ true }>
-   assert(y != nil, "Deferred boolean expression should not be nil")
-
-   local z = <{ 'string' }>
-   assert(z != nil, "Deferred string expression should not be nil")
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type, got ' .. type(result))
+   assert(result is 42, 'Expected 42, got ' .. tostring(result))
 end
 
--- Test that deferred expressions can wrap complex expressions
-function testDeferredComplexExpr()
+function testInferredBooleanType()
+   local x = <{ true }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type, got ' .. type(result))
+   assert(result is true, 'Expected true')
+
+   local y = <{ false }>
+   local result2 = resolve(y)
+   assert(type(result2) is 'boolean', 'Expected boolean type')
+   assert(result2 is false, 'Expected false')
+end
+
+function testInferredNilType()
+   local x = <{ nil }>
+   local result = resolve(x)
+   assert(result is nil, 'Expected nil')
+end
+
+function testInferredTableType()
+   local x = <{ { a = 1, b = 2 } }>
+   local result = resolve(x)
+   assert(type(result) is 'table', 'Expected table type, got ' .. type(result))
+   assert(result.a is 1, 'Expected result.a = 1')
+   assert(result.b is 2, 'Expected result.b = 2')
+end
+
+function testInferredArithmeticType()
    local a = 10
    local b = 20
    local x = <{ a + b }>
-   assert(x != nil, "Deferred arithmetic expression should not be nil")
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type from arithmetic')
+   assert(result is 30, 'Expected 30, got ' .. tostring(result))
 end
 
--- Test that deferred expressions can capture upvalues
-function testDeferredUpvalueCapture()
-   local base = 100
-   local x = <{ base * 2 }>
-   assert(x != nil, "Deferred expression with upvalue should not be nil")
+function testInferredConcatType()
+   local prefix = 'Hello'
+   local suffix = 'World'
+   local x = <{ prefix .. ' ' .. suffix }>
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type from concat')
+   assert(result is 'Hello World', 'Expected "Hello World", got "' .. result .. '"')
 end
 
--- Test that deferred expressions can contain function calls
--- Function calls require explicit type annotation since return type cannot be inferred
-function testDeferredFunctionCall()
+function testInferredComparisonType()
+   local a = 5
+   local b = 10
+   local x = <{ a < b }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type from comparison')
+   assert(result is true, 'Expected true')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Explicit type annotation tests
+
+function testExplicitStringType()
+   local function getValue()
+      return 'computed'
+   end
+   local x = <string{ getValue() }>
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type')
+   assert(result is 'computed', 'Expected "computed"')
+end
+
+function testExplicitNumberType()
    local function compute()
       return 42
    end
    local x = <number{ compute() }>
-   assert(x != nil, "Deferred function call expression should not be nil")
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type')
+   assert(result is 42, 'Expected 42')
 end
 
--- Test string concatenation in deferred expression
-function testDeferredConcat()
-   local prefix = 'Hello'
-   local suffix = 'World'
-   local x = <{ prefix .. ' ' .. suffix }>
-   assert(x != nil, "Deferred concat expression should not be nil")
+function testExplicitTypeShortForm()
+   local x = <num{ 123 }>
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type')
+   assert(result is 123, 'Expected 123')
+
+   local y = <str{ 'test' }>
+   local result2 = resolve(y)
+   assert(type(result2) is 'string', 'Expected string type')
+   assert(result2 is 'test', 'Expected "test"')
 end
 
--- Test nested deferred expressions (outer deferred containing another)
--- The outer deferred contains an identifier (inner), which requires explicit type annotation
+function testExplicitTableType()
+   local function buildTable()
+      return { value = 99 }
+   end
+   local x = <table{ buildTable() }>
+   local result = resolve(x)
+   assert(type(result) is 'table', 'Expected table type')
+   assert(result.value is 99, 'Expected result.value = 99')
+end
+
+function testExplicitBooleanType()
+   local function checkCondition()
+      return true
+   end
+   local x = <bool{ checkCondition() }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type')
+   assert(result is true, 'Expected true')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- resolve() behaviour tests
+
+function testResolveNonDeferred()
+   local str = 'plain string'
+   local result1 = resolve(str)
+   assert(result1 is str, 'resolve should return non-deferred values unchanged')
+
+   local num = 42
+   local result2 = resolve(num)
+   assert(result2 is num, 'resolve should return non-deferred numbers unchanged')
+
+   local tbl = { x = 1 }
+   local result3 = resolve(tbl)
+   assert(result3 is tbl, 'resolve should return non-deferred tables unchanged')
+end
+
+function testDeferredUpvalueCapture()
+   local base = 100
+   local multiplier = 2
+   local x = <{ base * multiplier }>
+   local result = resolve(x)
+   assert(result is 200, 'Expected 200')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- type() returns the expected type for deferred expressions (not "function")
+
+function testTypeReturnsExpectedType()
+   local str = <{ 'hello' }>
+   assert(type(str) is 'string', 'Expected type(str) to be "string", got "' .. type(str) .. '"')
+
+   local num = <{ 42 }>
+   assert(type(num) is 'number', 'Expected type(num) to be "number", got "' .. type(num) .. '"')
+
+   local bool = <{ true }>
+   assert(type(bool) is 'boolean', 'Expected type(bool) to be "boolean", got "' .. type(bool) .. '"')
+
+   local tbl = <{ {} }>
+   assert(type(tbl) is 'table', 'Expected type(tbl) to be "table", got "' .. type(tbl) .. '"')
+
+   local nilval = <{ nil }>
+   assert(type(nilval) is 'nil', 'Expected type(nilval) to be "nil", got "' .. type(nilval) .. '"')
+end
+
+function testTypeWithExplicitAnnotation()
+   local function getValue()
+      return 'computed'
+   end
+
+   local x = <string{ getValue() }>
+   assert(type(x) is 'string', 'Expected type(x) to be "string" for explicitly typed deferred')
+
+   local y = <number{ 42 }>
+   assert(type(y) is 'number', 'Expected type(y) to be "number" for explicitly typed deferred')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Deferred expressions in various contexts
+
 function testDeferredNested()
    local inner = <{ 'inner' }>
    local outer = <string{ inner }>
-   assert(outer != nil, "Nested deferred expression should not be nil")
+   -- Resolving outer returns the inner deferred, which then needs resolving
+   local result = resolve(resolve(outer))
+   assert(result is 'inner', 'Expected nested deferred to resolve to "inner"')
 end
 
--- Test deferred expression in table constructor
 function testDeferredInTable()
    local t = {
       lazy = <{ 'computed later' }>
    }
-   assert(t.lazy != nil, "Deferred expression in table should not be nil")
+   local result = resolve(t.lazy)
+   assert(result is 'computed later', 'Expected table field deferred to resolve correctly')
 end
 
--- Test deferred expression with conditional
 function testDeferredTernary()
    local flag = true
    local x = <{ flag ? 'yes' :> 'no' }>
-   assert(x != nil, "Deferred ternary expression should not be nil")
+   local result = resolve(x)
+   assert(result is 'yes', 'Expected ternary deferred to resolve to "yes"')
+
+   flag = false
+   local y = <{ flag ? 'yes' :> 'no' }>
+   local result2 = resolve(y)
+   assert(result2 is 'no', 'Expected ternary deferred to resolve to "no"')
 end
 
--- Test deferred expression passed as argument
 function testDeferredAsArgument()
    local function identity(val)
-      return val
+      return resolve(val)
    end
    local x = <{ 'test' }>
    local result = identity(x)
-   -- The deferred expression is passed and the function receives it
-   assert(result != nil, "Deferred expression passed to function should not be nil")
+   assert(result is 'test', 'Expected deferred passed to function to resolve correctly')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+-- assert() short-circuit evaluation with deferred messages
 
-local tests = {
-   'testDeferredExprCreation',
-   'testDeferredLiteral',
-   'testDeferredComplexExpr',
-   'testDeferredUpvalueCapture',
-   'testDeferredFunctionCall',
-   'testDeferredConcat',
-   'testDeferredNested',
-   'testDeferredInTable',
-   'testDeferredTernary',
-   'testDeferredAsArgument'
-}
+function testAssertShortCircuit()
+   local evaluated = false
+   local function makeMessage()
+      evaluated = true
+      return 'This is the error message'
+   end
+
+   -- Test that deferred message is NOT evaluated when assert succeeds
+   evaluated = false
+   assert(true, <string{ makeMessage() }>)
+   assert(evaluated is false, 'Deferred message should NOT be evaluated when assert succeeds')
+end
+
+function testAssertWithDeferredMessage()
+   local context = 'test context'
+   local value = 42
+
+   local success, err = pcall(function()
+      assert(false, <string{ 'Error in ' .. context .. ': value = ' .. tostring(value) }>)
+   end)
+   assert(success is false, 'assert(false) should fail')
+   assert(err != nil, 'Error message should not be nil')
+   -- Verify the error message contains expected content
+   assert(string.find(err, 'Error in test context') != nil, 'Error should contain context')
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
-   tests = tests
+   tests = {
+      -- Type inference
+      'testInferredStringType',
+      'testInferredNumberType',
+      'testInferredBooleanType',
+      'testInferredNilType',
+      'testInferredTableType',
+      'testInferredArithmeticType',
+      'testInferredConcatType',
+      'testInferredComparisonType',
+      -- Explicit type annotations
+      'testExplicitStringType',
+      'testExplicitNumberType',
+      'testExplicitTypeShortForm',
+      'testExplicitTableType',
+      'testExplicitBooleanType',
+      -- resolve() behaviour
+      'testResolveNonDeferred',
+      'testDeferredUpvalueCapture',
+      -- type() returns expected type
+      'testTypeReturnsExpectedType',
+      'testTypeWithExplicitAnnotation',
+      -- Various contexts
+      'testDeferredNested',
+      'testDeferredInTable',
+      'testDeferredTernary',
+      'testDeferredAsArgument',
+      -- assert() short-circuit
+      'testAssertShortCircuit',
+      'testAssertWithDeferredMessage'
+   }
 }
