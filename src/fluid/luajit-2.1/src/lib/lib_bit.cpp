@@ -23,6 +23,7 @@
 #endif
 #include "lj_ff.h"
 #include "lib.h"
+#include "debug/error_guard.h"
 
 #define LJLIB_MODULE_bit
 
@@ -38,7 +39,12 @@ static int bit_result64(lua_State* L, CTypeID id, uint64_t x)
 static int32_t bit_checkbit(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top and lj_strscan_numberobj(o))) lj_err_argt(L, narg, LUA_TNUMBER);
+   if (o < L->top and lj_strscan_numberobj(o)) {
+      // Valid number argument
+   }
+   else {
+      lj_err_argt(L, narg, LUA_TNUMBER);  // Keep original type error for now
+   }
 
    if (LJ_LIKELY(tvisint(o))) return intV(o);
    else {

@@ -64,6 +64,7 @@ public:
    [[nodiscard]] inline BCREG base_register() const { return this->result_reg; }
    [[nodiscard]] inline ExpDesc base_expression() const { return this->base_expr; }
    [[nodiscard]] inline RegisterAllocator& reg_allocator() { return this->allocator; }
+   [[nodiscard]] inline ControlFlowEdge& nil_jump_edge() { return this->nil_jump; }
 
    // Complete the nil short-circuit: emit nil path, patch jumps, return result.
    // The result is stored in base_register() as a NonReloc expression.
@@ -470,7 +471,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_chunk(const BlockStmt& chunk)
    if (not result.ok()) return result;
    this->control_flow.finalize();
 
-   if (GetResource(RES::LOG_LEVEL) >= 5) {
+   if (glPrintMsg) {
       // Verify no register leaks at function exit
       RegisterAllocator verifier(&this->func_state);
       verifier.verify_no_leaks("function exit");
@@ -893,7 +894,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
-   if (GetResource(RES::LOG_LEVEL) >= 5) {
+   if (glPrintMsg) {
       // Verify no register leaks at loop exit
       RegisterAllocator verifier(fs);
       verifier.verify_no_leaks("while loop exit");
@@ -952,7 +953,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
-   if (GetResource(RES::LOG_LEVEL) >= 5) {
+   if (glPrintMsg) {
       // Verify no register leaks at loop exit
       RegisterAllocator verifier(fs);
       verifier.verify_no_leaks("repeat loop exit");
@@ -1301,13 +1302,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 //********************************************************************************************************************
 // Emit bytecode for a compound assignment (+=, -=, etc.), combining a binary operation with storage.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList& values)
+ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator op, PreparedAssignment target, const ExprNodeList &values)
 {
    auto mapped = map_assignment_operator(op);
    if (not mapped.has_value()) {
       const ExprNode* raw = nullptr;
       if (not values.empty()) {
-         const ExprNodePtr& first = values.front();
+         const ExprNodePtr &first = values.front();
          raw = first ? first.get() : nullptr;
       }
       SourceSpan span = raw ? raw->span : SourceSpan{};
@@ -1453,24 +1454,24 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
    this->lex_state.lastline = expr.span.line;
 
    switch (expr.kind) {
-      case AstNodeKind::LiteralExpr:  return this->emit_literal_expr(std::get<LiteralValue>(expr.data));
+      case AstNodeKind::LiteralExpr:    return this->emit_literal_expr(std::get<LiteralValue>(expr.data));
       case AstNodeKind::IdentifierExpr: return this->emit_identifier_expr(std::get<NameRef>(expr.data));
-      case AstNodeKind::VarArgExpr:   return this->emit_vararg_expr();
-      case AstNodeKind::UnaryExpr:    return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
-      case AstNodeKind::UpdateExpr:   return this->emit_update_expr(std::get<UpdateExprPayload>(expr.data));
-      case AstNodeKind::BinaryExpr:   return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
-      case AstNodeKind::TernaryExpr:  return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
-      case AstNodeKind::PresenceExpr: return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
-      case AstNodeKind::PipeExpr:     return this->emit_pipe_expr(std::get<PipeExprPayload>(expr.data));
-      case AstNodeKind::MemberExpr:   return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
-      case AstNodeKind::IndexExpr:    return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
+      case AstNodeKind::VarArgExpr:     return this->emit_vararg_expr();
+      case AstNodeKind::UnaryExpr:      return this->emit_unary_expr(std::get<UnaryExprPayload>(expr.data));
+      case AstNodeKind::UpdateExpr:     return this->emit_update_expr(std::get<UpdateExprPayload>(expr.data));
+      case AstNodeKind::BinaryExpr:     return this->emit_binary_expr(std::get<BinaryExprPayload>(expr.data));
+      case AstNodeKind::TernaryExpr:    return this->emit_ternary_expr(std::get<TernaryExprPayload>(expr.data));
+      case AstNodeKind::PresenceExpr:   return this->emit_presence_expr(std::get<PresenceExprPayload>(expr.data));
+      case AstNodeKind::PipeExpr:       return this->emit_pipe_expr(std::get<PipeExprPayload>(expr.data));
+      case AstNodeKind::MemberExpr:     return this->emit_member_expr(std::get<MemberExprPayload>(expr.data));
+      case AstNodeKind::IndexExpr:      return this->emit_index_expr(std::get<IndexExprPayload>(expr.data));
       case AstNodeKind::SafeMemberExpr: return this->emit_safe_member_expr(std::get<SafeMemberExprPayload>(expr.data));
       case AstNodeKind::SafeIndexExpr:  return this->emit_safe_index_expr(std::get<SafeIndexExprPayload>(expr.data));
       case AstNodeKind::SafeCallExpr:   return this->emit_safe_call_expr(std::get<CallExprPayload>(expr.data));
-      case AstNodeKind::CallExpr:     return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
+      case AstNodeKind::CallExpr:       return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
-      case AstNodeKind::TableExpr:    return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
-      case AstNodeKind::FunctionExpr: return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
+      case AstNodeKind::TableExpr:        return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
+      case AstNodeKind::FunctionExpr:     return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
       default: return this->unsupported_expr(expr.kind, expr.span);
    }
 }
@@ -1849,12 +1850,12 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    }
 
    BCLine call_line = this->lex_state.lastline;
-   FuncState* fs = &this->func_state;
+   FuncState *fs = &this->func_state;
 
-   // Get the RHS call payload
-   const CallExprPayload& call_payload = std::get<CallExprPayload>(Payload.rhs_call->data);
+   const CallExprPayload &call_payload = std::get<CallExprPayload>(Payload.rhs_call->data);
 
-   // 1. Emit the callee (function) FIRST to establish base register
+   // Emit the callee (function) FIRST to establish base register
+
    ExpDesc callee;
    BCReg base(0);
    if (const auto* direct = std::get_if<DirectCallTarget>(&call_payload.target)) {
@@ -1867,7 +1868,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       allocator.reserve(BCReg(1)); // Frame link (FR2)
       base = BCReg(callee.u.s.info);
    }
-   else if (const auto* method = std::get_if<MethodCallTarget>(&call_payload.target)) {
+   else if (const auto *method = std::get_if<MethodCallTarget>(&call_payload.target)) {
       if (not method->receiver or method->method.symbol IS nullptr) {
          return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
       }
@@ -1881,13 +1882,15 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    }
    else return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
 
-   // 2. Emit LHS expression as the first argument(s)
+   // Emit LHS expression as the first argument(s)
+
    auto lhs_result = this->emit_expression(*Payload.lhs);
    if (not lhs_result.ok()) return lhs_result;
    ExpDesc lhs = lhs_result.value_ref();
 
    // Determine if LHS is a multi-value expression (function call)
-   bool lhs_is_call = (lhs.k IS ExpKind::Call);
+
+   bool lhs_is_call = lhs.k IS ExpKind::Call;
    bool forward_multret = false;
 
    if (lhs_is_call) {
@@ -1902,18 +1905,17 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          // Update freereg to reflect the limited number of results
          fs->freereg = lhs.u.s.aux + Payload.limit;
       }
-      else {
-         // Forward all return values - keep B=0 for CALLM pattern
+      else { // Forward all return values - keep B=0 for CALLM pattern
          setbc_b(ir_bcptr(fs, &lhs), 0);
          forward_multret = true;
       }
    }
-   else {
-      // Single value case - materialize to next register
+   else { // Single value case - materialize to next register
       this->materialise_to_next_reg(lhs, "pipe LHS value");
    }
 
-   // 3. Emit remaining RHS arguments
+   // Emit remaining RHS arguments
+
    BCReg arg_count(0);
    ExpDesc args(ExpKind::Void);
    if (not call_payload.arguments.empty()) {
@@ -1922,18 +1924,16 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       args = args_result.value_ref();
    }
 
-   // 4. Emit the call instruction
+   // Emit the call instruction
+
    BCIns ins;
    if (forward_multret and call_payload.arguments.empty()) {
       // Use CALLM to forward all LHS return values as arguments (no additional args)
       // C field = number of fixed args before the vararg (0 in this case)
       ins = BCINS_ABC(BC_CALLM, base, 2, lhs.u.s.aux - base - 1 - 1);
    }
-   else {
-      // Regular CALL with fixed argument count
-      if (args.k != ExpKind::Void) {
-         this->materialise_to_next_reg(args, "pipe rhs arguments");
-      }
+   else { // Regular CALL with fixed argument count
+      if (args.k != ExpKind::Void) this->materialise_to_next_reg(args, "pipe rhs arguments");
       ins = BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - 1);
    }
 
@@ -2013,8 +2013,27 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_member_expr(const SafeMemberExprPaylo
    ExpDesc key(Payload.member.symbol);
    expr_index(&this->func_state, &table, &key);
 
-   this->materialise_to_reg(table, BCReg(guard.base_register()), "safe member access");
-   return guard.complete();
+   // Materialize the indexed result to a new register.
+   // Do NOT reuse base_register() as that would clobber the table variable
+
+   ExpressionValue indexed_value(&this->func_state, table);
+   BCReg result_reg = indexed_value.discharge_to_any_reg(guard.reg_allocator());
+
+   // Collapse freereg to include the result register
+   guard.reg_allocator().collapse_freereg(result_reg);
+
+   // Emit the nil path
+   ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+   BCPos nil_path = BCPos(this->func_state.pc);
+   guard.nil_jump_edge().patch_to(nil_path);
+   bcemit_nil(&this->func_state, result_reg.raw(), 1);
+
+   skip_nil.patch_to(BCPos(this->func_state.pc));
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, result_reg);
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************
@@ -2044,8 +2063,27 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_index_expr(const SafeIndexExprPayload
    ExpDesc table = guard.base_expression();
    expr_index(&this->func_state, &table, &key);
 
-   this->materialise_to_reg(table, BCReg(guard.base_register()), "safe index access");
-   return guard.complete();
+   // Materialize the indexed result to a new register.
+   // Do NOT reuse base_register() as that would clobber the table variable,
+   // causing issues if the table is referenced again.
+   ExpressionValue indexed_value(&this->func_state, table);
+   BCReg result_reg = indexed_value.discharge_to_any_reg(guard.reg_allocator());
+
+   // Collapse freereg to include the result register
+   guard.reg_allocator().collapse_freereg(result_reg);
+
+   // Emit the nil path
+   ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+   BCPos nil_path = BCPos(this->func_state.pc);
+   guard.nil_jump_edge().patch_to(nil_path);
+   bcemit_nil(&this->func_state, result_reg.raw(), 1);
+
+   skip_nil.patch_to(BCPos(this->func_state.pc));
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, result_reg);
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************
@@ -2155,7 +2193,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       if (not callee_result.ok()) return callee_result;
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "call callee");
-      // FR2 is always 1 in 64-bit mode - reserve register for frame link
+      // Reserve register for frame link
       RegisterAllocator allocator(&this->func_state);
       allocator.reserve(BCReg(1));
       base = BCReg(callee.u.s.info);
@@ -2175,7 +2213,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
    // For safe callable expressions (obj?.method()), emit a nil check on the callable.
-   // If the callable is nil, skip the call and return nil instead.
+   // If the callable is nil, skip the call (including argument evaluation) and return nil instead.
 
    ControlFlowEdge nil_jump;
    if (is_safe_callable) {
@@ -2184,6 +2222,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    }
 
+   // Evaluate arguments only after the nil check, so if callable is nil we skip argument evaluation
    auto arg_count = BCReg(0);
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
@@ -2318,7 +2357,7 @@ ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPaylo
    this->lex_state.var_lookup_symbol(lj_str_newlit(this->lex_state.L, "__filter"), &filter_fn);
    this->materialise_to_next_reg(filter_fn, "filter function");
 
-   // Reserve register for frame link (FR2)
+   // Reserve register for frame link
    RegisterAllocator allocator(fs);
    allocator.reserve(BCReg(1));
 

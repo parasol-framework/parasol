@@ -28,6 +28,8 @@
 #include "lj_char.h"
 #include "lj_strfmt.h"
 #include "lib.h"
+#include "lib_utils.h"
+#include "debug/error_guard.h"
 
 // NOTE: Any string function marked with the ASM macro uses a custom assembly implementation in the
 // .dasc files.  Changing the C++ code here will have no effect in such cases.
@@ -45,7 +47,7 @@ LJLIB_LUA(string_len) /*
 
 LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
+   GCstr *s = lj_lib_checkstr(L, 1);
    int32_t len = (int32_t)s->len;
    int32_t start = lj_lib_optint(L, 2, 0);  // 0-based: default start is 0
    int32_t stop = lj_lib_optint(L, 3, start);
@@ -74,7 +76,7 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
    char* buf = lj_buf_tmp(L, (MSize)nargs);
    for (i = 1; i <= nargs; i++) {
       int32_t k = lj_lib_checkint(L, i);
-      if (!checku8(k)) lj_err_arg(L, i, ErrMsg::BADVAL);
+      LJ_CHECK_ARG(L, i, checku8(k), ErrMsg::BADVAL);
       buf[i - 1] = (char)k;
    }
    setstrV(L, L->base - 1 - LJ_FR2, lj_str_new(L, buf, (size_t)nargs));
@@ -167,7 +169,7 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
 LJLIB_CF(string_alloc)
 {
    int32_t size = lj_lib_checkint(L, 1);
-   if (size < 0) lj_err_arg(L, 1, ErrMsg::NUMRNG);
+   LJ_CHECK_ARG(L, 1, size >= 0, ErrMsg::NUMRNG);
    SBuf* sb = lj_buf_tmp_(L);
    lj_buf_reset(sb);
    lj_buf_need(sb, (MSize)size);
@@ -202,9 +204,9 @@ LJLIB_CF(string_split)
 
    if (slen == 0) return 1;  //  Return empty table for empty string
 
-   const char* start = str;
-   const char* end = str + slen;
-   const char* pos = start;
+   const char *start = str;
+   const char *end = str + slen;
+   const char *pos = start;
 
    while (pos <= end) {
       const char* found = nullptr;
@@ -324,18 +326,21 @@ LJLIB_CF(string_startsWith)
    MSize prefixlen = prefix->len;
 
    // Empty prefix always matches
+
    if (prefixlen == 0) {
       setboolV(L->top - 1, 1);
       return 1;
    }
 
    // Prefix longer than string cannot match
+
    if (prefixlen > slen) {
       setboolV(L->top - 1, 0);
       return 1;
    }
 
    // Compare prefix with start of string
+
    int matches = (memcmp(str, prefixstr, prefixlen) == 0);
    setboolV(L->top - 1, matches);
    return 1;
