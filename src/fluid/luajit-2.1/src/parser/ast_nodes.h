@@ -120,6 +120,15 @@ enum class FluidType : uint8_t {
 // Convert FluidType to display string
 [[nodiscard]] std::string_view type_name(FluidType Type);
 
+// Infer the result type of an expression from its AST structure
+// Returns FluidType::Unknown if type cannot be inferred (e.g., function calls without return type info)
+[[nodiscard]] FluidType infer_expression_type(const ExprNode& Expr);
+
+// Convert FluidType to LJ type tag base value (0-13)
+// The LJ_T* tags are defined as ~value, so LJ_TNIL = ~0, LJ_TSTR = ~4, etc.
+// Returns 0xFF (255) for Unknown/Any types that should trigger evaluation
+[[nodiscard]] uint8_t fluid_type_to_lj_tag(FluidType Type);
+
 enum class LiteralKind : uint8_t {
    Nil,
    Boolean,
@@ -442,14 +451,16 @@ struct FunctionExprPayload {
    ~FunctionExprPayload();
 };
 
-// Deferred expression payload: wraps an expression for lazy evaluation <{ expr }>
+// Deferred expression payload: wraps an expression for lazy evaluation <{ expr }> or <type{ expr }>
 struct DeferredExprPayload {
    DeferredExprPayload() = default;
    DeferredExprPayload(const DeferredExprPayload&) = delete;
    DeferredExprPayload& operator=(const DeferredExprPayload&) = delete;
    DeferredExprPayload(DeferredExprPayload&&) noexcept = default;
    DeferredExprPayload& operator=(DeferredExprPayload&&) noexcept = default;
-   ExprNodePtr inner;  // The wrapped expression to be evaluated lazily
+   ExprNodePtr inner;              // The wrapped expression to be evaluated lazily
+   FluidType deferred_type = FluidType::Unknown;  // Expected result type (inferred or explicit)
+   bool type_explicit = false;     // True if type was explicitly annotated (e.g. <string{ expr }>)
    ~DeferredExprPayload();
 };
 
@@ -736,7 +747,7 @@ ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr
 ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uint64_t keep_mask, uint8_t explicit_count, bool trailing_keep);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
-ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner);
+ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);

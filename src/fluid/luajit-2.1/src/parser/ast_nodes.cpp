@@ -51,6 +51,160 @@ std::string_view type_name(FluidType Type)
    }
 }
 
+//********************************************************************************************************************
+// Convert FluidType to LJ type tag base value.
+// The LJ_T* tags are defined as ~value (bitwise NOT), e.g.:
+//   LJ_TNIL = ~0, LJ_TFALSE = ~1, LJ_TTRUE = ~2, LJ_TSTR = ~4, LJ_TTAB = ~11, LJ_TNUMX = ~13
+// We store the base value (0-13) and recover the tag with ~value
+// Returns 0xFF for Unknown/Any types to signal "needs evaluation"
+
+uint8_t fluid_type_to_lj_tag(FluidType Type)
+{
+   switch (Type) {
+      case FluidType::Nil:    return 0;   // ~0 = LJ_TNIL
+      case FluidType::Bool:   return 2;   // ~2 = LJ_TTRUE (we use true as the canonical boolean)
+      case FluidType::Str:    return 4;   // ~4 = LJ_TSTR
+      case FluidType::Thread: return 6;   // ~6 = LJ_TTHREAD
+      case FluidType::Func:   return 8;   // ~8 = LJ_TFUNC
+      case FluidType::CData:  return 10;  // ~10 = LJ_TCDATA
+      case FluidType::Table:  return 11;  // ~11 = LJ_TTAB
+      case FluidType::Object: return 12;  // ~12 = LJ_TUDATA
+      case FluidType::Num:    return 13;  // ~13 = LJ_TNUMX
+      case FluidType::Any:
+      case FluidType::Unknown:
+      default: return 0xFF;  // Unknown - needs evaluation
+   }
+}
+
+//********************************************************************************************************************
+// Infer the result type of an expression from its AST structure.
+// This is used for type-carrying deferred expressions to store the expected result type.
+
+FluidType infer_expression_type(const ExprNode& Expr)
+{
+   switch (Expr.kind) {
+      case AstNodeKind::LiteralExpr: {
+         const auto& literal = std::get<LiteralValue>(Expr.data);
+         switch (literal.kind) {
+            case LiteralKind::Nil:     return FluidType::Nil;
+            case LiteralKind::Boolean: return FluidType::Bool;
+            case LiteralKind::Number:  return FluidType::Num;
+            case LiteralKind::String:  return FluidType::Str;
+            case LiteralKind::CData:   return FluidType::CData;
+         }
+         break;
+      }
+
+      case AstNodeKind::TableExpr:
+         return FluidType::Table;
+
+      case AstNodeKind::FunctionExpr:
+         return FluidType::Func;
+
+      // Unary operators: result type depends on operator
+      case AstNodeKind::UnaryExpr: {
+         const auto& payload = std::get<UnaryExprPayload>(Expr.data);
+         switch (payload.op) {
+            case AstUnaryOperator::Negate:  return FluidType::Num;
+            case AstUnaryOperator::Not:     return FluidType::Bool;
+            case AstUnaryOperator::Length:  return FluidType::Num;
+            case AstUnaryOperator::BitNot:  return FluidType::Num;
+         }
+         break;
+      }
+
+      // Binary operators: result type depends on operator
+      case AstNodeKind::BinaryExpr: {
+         const auto& payload = std::get<BinaryExprPayload>(Expr.data);
+         switch (payload.op) {
+            // Arithmetic operators return numbers
+            case AstBinaryOperator::Add:
+            case AstBinaryOperator::Subtract:
+            case AstBinaryOperator::Multiply:
+            case AstBinaryOperator::Divide:
+            case AstBinaryOperator::Modulo:
+            case AstBinaryOperator::Power:
+            case AstBinaryOperator::BitAnd:
+            case AstBinaryOperator::BitOr:
+            case AstBinaryOperator::BitXor:
+            case AstBinaryOperator::ShiftLeft:
+            case AstBinaryOperator::ShiftRight:
+               return FluidType::Num;
+
+            // Comparison operators return boolean
+            case AstBinaryOperator::NotEqual:
+            case AstBinaryOperator::Equal:
+            case AstBinaryOperator::LessThan:
+            case AstBinaryOperator::GreaterEqual:
+            case AstBinaryOperator::LessEqual:
+            case AstBinaryOperator::GreaterThan:
+               return FluidType::Bool;
+
+            // Concatenation returns string
+            case AstBinaryOperator::Concat:
+               return FluidType::Str;
+
+            // Logical operators return the type of their operands (short-circuit)
+            // Cannot reliably infer without evaluating
+            case AstBinaryOperator::LogicalAnd:
+            case AstBinaryOperator::LogicalOr:
+            case AstBinaryOperator::IfEmpty:
+               return FluidType::Unknown;
+         }
+         break;
+      }
+
+      // Update expressions (++/--) return numbers
+      case AstNodeKind::UpdateExpr:
+         return FluidType::Num;
+
+      // Ternary expression: type depends on branches (would need to check both)
+      case AstNodeKind::TernaryExpr: {
+         const auto& payload = std::get<TernaryExprPayload>(Expr.data);
+         if (payload.if_true) {
+            FluidType true_type = infer_expression_type(*payload.if_true);
+            if (payload.if_false) {
+               FluidType false_type = infer_expression_type(*payload.if_false);
+               // If both branches have the same type, use it
+               if (true_type IS false_type) return true_type;
+            }
+            // If types differ or false branch unknown, return unknown
+            return FluidType::Unknown;
+         }
+         return FluidType::Unknown;
+      }
+
+      // Presence check returns boolean
+      case AstNodeKind::PresenceExpr:
+         return FluidType::Bool;
+
+      // For these, we cannot infer without runtime information
+      case AstNodeKind::IdentifierExpr:
+      case AstNodeKind::VarArgExpr:
+      case AstNodeKind::CallExpr:
+      case AstNodeKind::SafeCallExpr:
+      case AstNodeKind::MemberExpr:
+      case AstNodeKind::IndexExpr:
+      case AstNodeKind::SafeMemberExpr:
+      case AstNodeKind::SafeIndexExpr:
+      case AstNodeKind::PipeExpr:
+      case AstNodeKind::ResultFilterExpr:
+         return FluidType::Unknown;
+
+      // Deferred expressions return the type of their inner expression
+      case AstNodeKind::DeferredExpr: {
+         const auto& payload = std::get<DeferredExprPayload>(Expr.data);
+         if (payload.type_explicit) return payload.deferred_type;
+         if (payload.inner) return infer_expression_type(*payload.inner);
+         return FluidType::Unknown;
+      }
+
+      default:
+         break;
+   }
+   return FluidType::Unknown;
+}
+
 namespace {
 
 [[nodiscard]] inline bool ensure_operand(const ExprNodePtr &node)
@@ -567,11 +721,13 @@ ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> p
    return node;
 }
 
-ExprNodePtr make_deferred_expr(SourceSpan Span, ExprNodePtr inner)
+ExprNodePtr make_deferred_expr(SourceSpan Span, ExprNodePtr inner, FluidType Type, bool TypeExplicit)
 {
    assert_node(ensure_operand(inner), "deferred expression requires inner expression");
    DeferredExprPayload payload;
    payload.inner = std::move(inner);
+   payload.deferred_type = Type;
+   payload.type_explicit = TypeExplicit;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::DeferredExpr;
    node->span = Span;

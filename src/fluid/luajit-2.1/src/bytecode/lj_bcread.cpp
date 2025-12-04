@@ -389,6 +389,7 @@ GCproto *lj_bcread_proto(LexState *State)
    pt->sizeuv = (uint8_t)sizeuv;
    pt->flags = (uint8_t)flags;
    pt->trace = 0;
+   pt->deferred_type = 0xFF;  // Default to unknown type for bytecode-loaded prototypes
    setgcref(pt->chunkname, obj2gco(State->chunkname));
 
    // Close potentially uninitialized gap between bc and kgc.

@@ -788,6 +788,7 @@ GCproto* LexState::fs_finish(BCLine Line)
    pt->flags = uint8_t(fs->flags & ~(PROTO_HAS_RETURN | PROTO_FIXUP_RETURN));
    pt->numparams = fs->numparams;
    pt->framesize = fs->framesize;
+   pt->deferred_type = 0xFF;  // Default to unknown type (0xFF means needs evaluation)
    setgcref(pt->chunkname, obj2gco(this->chunkname));
 
    // Build bitmap of locals with <close> attribute for error unwinding.

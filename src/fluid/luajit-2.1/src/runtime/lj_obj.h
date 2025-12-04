@@ -473,7 +473,9 @@ typedef struct GCproto {
    uint8_t numparams;   //  Number of parameters.
    uint8_t framesize;   //  Fixed frame size.
    MSize sizebc;      //  Number of bytecode instructions.
-   uint32_t unused_gc64;  // Padding for 64-bit alignment
+   uint8_t deferred_type; //  For PROTO_DEFERRED: LJ type tag (0-13) of expected result, 0xFF if unknown
+   uint8_t unused1;       //  Padding
+   uint16_t unused2;      //  Padding for 64-bit alignment
    GCRef gclist;
    MRef k;      //  Split constant array (points to the middle).
    MRef uv;      //  Upvalue list. local slot|0x8000 or parent uv idx.

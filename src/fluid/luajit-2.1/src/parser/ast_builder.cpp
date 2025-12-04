@@ -866,7 +866,46 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
             error.message = "Expected '}>' to close deferred expression";
             return ParserResult<ExprNodePtr>::failure(error);
          }
-         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()), std::move(inner.value_ref()));
+         // Infer type from inner expression
+         FluidType inferred_type = infer_expression_type(*inner.value_ref());
+         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
+            std::move(inner.value_ref()), inferred_type, false);
+         break;
+      }
+
+      case TokenKind::DeferredTyped: {
+         // Typed deferred expression: <type{ expr }>
+         Token start = this->ctx.tokens().current();
+         // Get the type name from the token payload
+         GCstr *type_str = start.payload().as_string();
+         FluidType explicit_type = FluidType::Unknown;
+         if (type_str) {
+            std::string_view type_name(strdata(type_str), type_str->len);
+            explicit_type = parse_type_name(type_name);
+            if (explicit_type IS FluidType::Unknown) {
+               auto message = std::format("Unknown type name '{}' in typed deferred expression", type_name);
+               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, start, message);
+               ParserError error;
+               error.code = ParserErrorCode::UnknownTypeName;
+               error.token = start;
+               error.message = message;
+               return ParserResult<ExprNodePtr>::failure(error);
+            }
+         }
+         this->ctx.tokens().advance();
+         auto inner = this->parse_expression();
+         if (not inner.ok()) return inner;
+         if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+               "Expected '}>' to close typed deferred expression");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedToken;
+            error.token = this->ctx.tokens().current();
+            error.message = "Expected '}>' to close typed deferred expression";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
+            std::move(inner.value_ref()), explicit_type, true);
          break;
       }
 

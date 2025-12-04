@@ -141,6 +141,17 @@ static const TValue * deferred_resolve_const(lua_State *L, int idx)
    return deferred_resolve(L, idx);
 }
 
+// Check if a value is a deferred expression
+extern int lua_isdeferred(lua_State *L, int idx)
+{
+   cTValue *o = index2adr(L, idx);
+   if (tvisfunc(o)) {
+      GCfunc *fn = funcV(o);
+      return isdeferred(fn) ? 1 : 0;
+   }
+   return 0;
+}
+
 // Miscellaneous API functions
 
 extern int lua_status(lua_State *L)

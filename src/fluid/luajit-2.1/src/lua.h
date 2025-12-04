@@ -115,6 +115,7 @@ extern int (lua_isnumber) (lua_State *L, int idx);
 extern int (lua_isstring) (lua_State *L, int idx);
 extern int (lua_iscfunction) (lua_State *L, int idx);
 extern int (lua_isuserdata) (lua_State *L, int idx);
+extern int (lua_isdeferred) (lua_State *L, int idx);  // Check if value is a deferred expression
 extern int (lua_type) (lua_State *L, int idx);
 extern const char *(lua_typename) (lua_State *L, int tp);
 

@@ -86,6 +86,7 @@ struct TokenDefinition {
    TOKEN_DEF(plusplus,     "++",       false) \
    TOKEN_DEF(pipe,         "|>",       false) \
    TOKEN_DEF(defer_open,   "<{",       false) \
+   TOKEN_DEF(defer_typed,  "<type{",   false) \
    TOKEN_DEF(defer_close,  "}>",       false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 

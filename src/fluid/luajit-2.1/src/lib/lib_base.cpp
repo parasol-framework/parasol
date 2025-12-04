@@ -57,25 +57,69 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
 }
 
 //********************************************************************************************************************
-// ORDER LJ_T
+// type(value) - Returns the type of a value as a string.
+// For deferred expressions, returns the expected result type (stored at compile time).
+//
+// Note: LJ_T* type tags are inverted (~value), so LJ_TNIL = ~0, LJ_TSTR = ~4, etc.
+// The lj_obj_itypename array is indexed by ~itype(o) which gives 0-13.
 
-LJLIB_PUSH("nil")
-LJLIB_PUSH("boolean")
-LJLIB_PUSH(top-1)  //  boolean
-LJLIB_PUSH("userdata")
-LJLIB_PUSH("string")
-LJLIB_PUSH("upval")
-LJLIB_PUSH("thread")
-LJLIB_PUSH("proto")
-LJLIB_PUSH("function")
-LJLIB_PUSH("trace")
-LJLIB_PUSH("cdata")
-LJLIB_PUSH("table")
-LJLIB_PUSH(top-9)  //  userdata
-LJLIB_PUSH("number")
-LJLIB_ASM_(type)      LJLIB_REC(.)
+LJLIB_CF(type) LJLIB_REC(.)
+{
+   TValue *o = lj_lib_checkany(L, 1);
+
+   // For deferred expressions, return the stored expected type
+   if (tvisfunc(o)) {
+      GCfunc *fn = funcV(o);
+      if (isdeferred(fn)) {
+         GCproto *pt = funcproto(fn);
+         uint8_t dtype = pt->deferred_type;
+         if (dtype < 14) {
+            // Valid type tag - return the corresponding type name
+            // Note: lj_obj_itypename is indexed by base type (0-13), which is what we store
+            lua_pushstring(L, lj_obj_itypename[dtype]);
+            return 1;
+         }
+         // Unknown type (0xFF) - fall through to return "function"
+      }
+   }
+
+   // Standard type lookup using lj_typename() which handles the inversion correctly
+   lua_pushstring(L, lj_typename(o));
+   return 1;
+}
 
 // Recycle the lj_lib_checkany(L, 1) from assert.
+
+//********************************************************************************************************************
+// resolve(value) - Explicitly evaluate a deferred expression and return its value.
+// If the value is not a deferred expression, returns it unchanged.
+
+LJLIB_CF(resolve)
+{
+   TValue *o = lj_lib_checkany(L, 1);
+
+   // Check if this is a deferred expression (Lua function with PROTO_DEFERRED flag)
+   if (tvisfunc(o)) {
+      GCfunc *fn = funcV(o);
+      if (isdeferred(fn)) {
+         // Call the deferred expression to get its value
+         // lua_call will place the result where the function was on the stack
+         copyTV(L, L->top, o);
+         incr_top(L);
+         lua_call(L, 0, 1);
+         // After lua_call with 1 result, result is at L->top - 1
+         // Copy result to first argument position for proper return
+         copyTV(L, L->base, L->top - 1);
+         L->top = L->base + 1;
+         return 1;
+      }
+   }
+
+   // Not a deferred expression - return the value unchanged
+   // The value is already at L->base (first argument), just return it
+   L->top = L->base + 1;
+   return 1;
+}
 
 //********************************************************************************************************************
 // Base library: iterators

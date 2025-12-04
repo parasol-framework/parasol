@@ -223,7 +223,9 @@ static_assert((int)BC_FUNCV + 1 == (int)BC_IFUNCV);
 static_assert((int)BC_FUNCV + 2 == (int)BC_JFUNCV);
 
 // This solves a circular dependency problem, change as needed.
-#define FF_next_N   4
+// Updated when functions are added before 'next' in lib_base.cpp
+// Current order: LUA(0), C(1), assert(2), type(3), resolve(4), next(5)
+#define FF_next_N   5
 
 // Stack slots used by FORI/FORL, relative to operand A.
 enum {

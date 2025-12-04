@@ -65,6 +65,7 @@ enum class TokenKind : uint16_t {
    PlusPlus = TK_plusplus,
    Pipe = TK_pipe,
    DeferredOpen = TK_defer_open,
+   DeferredTyped = TK_defer_typed,
    DeferredClose = TK_defer_close,
    ThunkToken = TK_thunk,
    EndOfFile = TK_eof,
@@ -144,6 +145,9 @@ enum class TokenKind : uint16_t {
       case TokenKind::Presence: return "??";
       case TokenKind::PlusPlus: return "++";
       case TokenKind::Pipe: return "|>";
+      case TokenKind::DeferredOpen: return "<{";
+      case TokenKind::DeferredTyped: return "<type{";
+      case TokenKind::DeferredClose: return "}>";
       case TokenKind::EndOfFile: return "<eof>";
       case TokenKind::LeftParen: return "(";
       case TokenKind::RightParen: return ")";

@@ -2668,6 +2668,15 @@ ParserResult<ExpDesc> IrEmitter::emit_deferred_expr(const DeferredExprPayload &P
    fs_guard.disarm();
    GCproto *pt = this->lex_state.fs_finish(Payload.inner->span.line);
    pt->flags |= PROTO_DEFERRED;  // Mark as deferred expression prototype
+
+   // Store the expected result type in the prototype for runtime type checking.
+   // If explicit type was provided, use it; otherwise use inferred type from AST.
+   FluidType result_type = Payload.deferred_type;
+   if (result_type IS FluidType::Unknown) {
+      result_type = infer_expression_type(*Payload.inner);
+   }
+   pt->deferred_type = fluid_type_to_lj_tag(result_type);
+
    scope_guard.disarm();
 
    // Restore parent state
