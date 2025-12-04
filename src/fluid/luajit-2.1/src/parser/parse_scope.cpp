@@ -839,6 +839,7 @@ void LexState::fs_init(FuncState* FunctionState)
    fs->nkgc = 0;
    fs->nkn = 0;
    fs->nactvar = 0;
+   fs->numparams = 0;  // Initialize parameter count to zero.
    fs->nuv = 0;
    fs->bl = nullptr;
    fs->flags = 0;

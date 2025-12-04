@@ -2624,7 +2624,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
 //********************************************************************************************************************
 // Emit bytecode for a deferred expression (<{ expr }>), creating a child function that returns the inner expression.
-// The function is marked with PROTO_DEFERRED so that lj_func_newL_gc sets FF_DEFERRED on the resulting closure.
+// The function's prototype is marked with PROTO_DEFERRED to identify it as a deferred expression.
+// The closure uses FF_LUA (like regular Lua functions) so the VM dispatches it correctly.
 
 ParserResult<ExpDesc> IrEmitter::emit_deferred_expr(const DeferredExprPayload &Payload)
 {

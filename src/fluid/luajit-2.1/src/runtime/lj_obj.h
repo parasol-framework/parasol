@@ -605,9 +605,10 @@ typedef union GCfunc {
    GCfuncL l;
 } GCfunc;
 
-inline constexpr uint8_t FF_LUA      = 0;
-inline constexpr uint8_t FF_C        = 1;
-inline constexpr uint8_t FF_DEFERRED = 254;   // Marks a deferred expression thunk
+inline constexpr uint8_t FF_LUA = 0;
+inline constexpr uint8_t FF_C   = 1;
+// Note: ffid values > FF_C are fast functions (library functions).
+// Deferred expressions use FF_LUA and are distinguished by PROTO_DEFERRED flag.
 
 [[nodiscard]] inline bool isluafunc(const GCfunc* fn) noexcept
 {
@@ -624,14 +625,26 @@ inline constexpr uint8_t FF_DEFERRED = 254;   // Marks a deferred expression thu
    return fn->c.ffid > FF_C;
 }
 
-[[nodiscard]] inline bool isdeferred(const GCfunc* fn) noexcept
+// Deferred expressions are Lua functions with PROTO_DEFERRED flag in their prototype.
+// Must be a Lua function (isluafunc) to safely access funcproto().
+[[nodiscard]] inline bool isdeferred(const GCfunc* fn) noexcept;  // Defined after funcproto
+
+// Check if function has Lua function memory layout (GCfuncL structure with uvptr[]).
+// This is equivalent to isluafunc() since deferred expressions also use FF_LUA.
+[[nodiscard]] inline bool isLfunc(const GCfunc* fn) noexcept
 {
-   return fn->c.ffid IS FF_DEFERRED;
+   return fn->c.ffid IS FF_LUA;
 }
 
 [[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept
 {
-   return check_exp(isluafunc(fn), (GCproto*)(mref(fn->l.pc, char) - sizeof(GCproto)));
+   return check_exp(isLfunc(fn), (GCproto*)(mref(fn->l.pc, char) - sizeof(GCproto)));
+}
+
+// isdeferred: Check if function is a deferred expression by looking at prototype flag.
+[[nodiscard]] inline bool isdeferred(const GCfunc* fn) noexcept
+{
+   return isluafunc(fn) and (funcproto(fn)->flags & PROTO_DEFERRED);
 }
 
 [[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept

@@ -126,8 +126,9 @@ static GCfunc* func_newL(lua_State* L, GCproto* pt, GCtab* env)
    uint32_t count;
    GCfunc* fn = (GCfunc*)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv));
    fn->l.gct = ~LJ_TFUNC;
-   // Check if prototype is marked as deferred expression
-   fn->l.ffid = (pt->flags & PROTO_DEFERRED) ? FF_DEFERRED : FF_LUA;
+   // Deferred expressions use FF_LUA to be dispatched correctly by VM.
+   // They are identified by PROTO_DEFERRED flag in their prototype.
+   fn->l.ffid = FF_LUA;
    fn->l.nupvalues = 0;  //  Set to zero until upvalues are initialized.
    // NOBARRIER: Really a setgcref. But the GCfunc is new (marked white).
    setmref(fn->l.pc, proto_bc(pt));
