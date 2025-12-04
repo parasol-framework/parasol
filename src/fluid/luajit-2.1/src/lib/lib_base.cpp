@@ -62,8 +62,29 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
 //
 // Note: LJ_T* type tags are inverted (~value), so LJ_TNIL = ~0, LJ_TSTR = ~4, etc.
 // The lj_obj_itypename array is indexed by ~itype(o) which gives 0-13.
+//
+// The push instructions below set up upvalues used by the ASM fast path to look up type names.
+// ORDER LJ_T - these must match the LJ_T* type tag order
+//
+// This fallback handler is called by the ASM fast function for deferred expressions.
+// The ASM version checks for PROTO_DEFERRED and jumps to fff_fallback if found.
+// Returns FFH_RES(1) to indicate 1 result pushed.
 
-LJLIB_CF(type) LJLIB_REC(.)
+LJLIB_PUSH("nil")
+LJLIB_PUSH("boolean")
+LJLIB_PUSH(top-1)  //  boolean
+LJLIB_PUSH("userdata")
+LJLIB_PUSH("string")
+LJLIB_PUSH("upval")
+LJLIB_PUSH("thread")
+LJLIB_PUSH("proto")
+LJLIB_PUSH("function")
+LJLIB_PUSH("trace")
+LJLIB_PUSH("cdata")
+LJLIB_PUSH("table")
+LJLIB_PUSH(top-9)  //  userdata
+LJLIB_PUSH("number")
+LJLIB_ASM(type) LJLIB_REC(.)
 {
    TValue *o = lj_lib_checkany(L, 1);
 
@@ -75,9 +96,9 @@ LJLIB_CF(type) LJLIB_REC(.)
          uint8_t dtype = pt->deferred_type;
          if (dtype < 14) {
             // Valid type tag - return the corresponding type name
-            // Note: lj_obj_itypename is indexed by base type (0-13), which is what we store
+            // Note: lj_obj_itypename array is indexed by base type (0-13)
             lua_pushstring(L, lj_obj_itypename[dtype]);
-            return 1;
+            return FFH_RES(1);
          }
          // Unknown type (0xFF) - fall through to return "function"
       }
@@ -85,7 +106,7 @@ LJLIB_CF(type) LJLIB_REC(.)
 
    // Standard type lookup using lj_typename() which handles the inversion correctly
    lua_pushstring(L, lj_typename(o));
-   return 1;
+   return FFH_RES(1);
 }
 
 // Recycle the lj_lib_checkany(L, 1) from assert.

@@ -1192,6 +1192,14 @@ static void build_subroutines(BuildCtx *ctx)
   |  cmp RCd, RBd
   |  cmovb RCd, RBd
   |  not RCd
+  |  // Check for deferred expression: type==function (8), ffid==0, proto has PROTO_DEFERRED
+  |  cmp RCd, 8;  jne >2			// Not a function? Continue normally.
+  |  mov RA, [BASE]			// Get GCfunc pointer
+  |  cleartp LFUNC:RA
+  |  cmp byte LFUNC:RA->ffid, 0; jne >2	// Not a Lua function? Continue normally.
+  |  mov RA, LFUNC:RA->pc		// Get PC (points past GCproto)
+  |  test byte [RA+PC2PROTO(flags)], PROTO_DEFERRED
+  |  jnz ->fff_fallback			// Deferred? Fallback to C handler.
   |2:
   |  mov CFUNC:RB, [BASE-16]
   |  cleartp CFUNC:RB
