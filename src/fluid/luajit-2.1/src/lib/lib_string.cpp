@@ -204,9 +204,9 @@ LJLIB_CF(string_split)
 
    if (slen == 0) return 1;  //  Return empty table for empty string
 
-   const char* start = str;
-   const char* end = str + slen;
-   const char* pos = start;
+   const char *start = str;
+   const char *end = str + slen;
+   const char *pos = start;
 
    while (pos <= end) {
       const char* found = nullptr;
