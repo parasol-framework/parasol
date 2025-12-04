@@ -181,6 +181,7 @@ private:
    ParserResult<ExpDesc> emit_shadow_assert(const ExprNodeList& arguments, BCLine call_line);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
+   ParserResult<ExpDesc> emit_deferred_expr(const DeferredExprPayload& payload);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);

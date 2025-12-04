@@ -126,12 +126,13 @@ static GCfunc* func_newL(lua_State* L, GCproto* pt, GCtab* env)
    uint32_t count;
    GCfunc* fn = (GCfunc*)lj_mem_newgco(L, sizeLfunc((MSize)pt->sizeuv));
    fn->l.gct = ~LJ_TFUNC;
-   fn->l.ffid = FF_LUA;
+   // Check if prototype is marked as deferred expression
+   fn->l.ffid = (pt->flags & PROTO_DEFERRED) ? FF_DEFERRED : FF_LUA;
    fn->l.nupvalues = 0;  //  Set to zero until upvalues are initialized.
    // NOBARRIER: Really a setgcref. But the GCfunc is new (marked white).
    setmref(fn->l.pc, proto_bc(pt));
    setgcref(fn->l.env, obj2gco(env));
-   // Saturating 3 bit counter (0..7) for created closures.
+   // Saturating 2 bit counter (0..3) for created closures (reduced from 3 bits to accommodate PROTO_DEFERRED).
    count = (uint32_t)pt->flags + PROTO_CLCOUNT;
    pt->flags = (uint8_t)(count - ((count >> PROTO_CLC_BITS) & PROTO_CLCOUNT));
    return fn;

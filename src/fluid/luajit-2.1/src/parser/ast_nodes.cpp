@@ -175,6 +175,11 @@ struct ExpressionChildCounter {
    {
       return block_child_count(Payload.body);
    }
+
+   [[nodiscard]] inline size_t operator()(const DeferredExprPayload &Payload) const
+   {
+      return Payload.inner ? 1 : 0;
+   }
 };
 
 struct StatementChildCounter {
@@ -287,6 +292,7 @@ ResultFilterPayload::~ResultFilterPayload() = default;
 TableField::~TableField() = default;
 TableExprPayload::~TableExprPayload() = default;
 FunctionExprPayload::~FunctionExprPayload() = default;
+DeferredExprPayload::~DeferredExprPayload() = default;
 IfClause::~IfClause() = default;
 AssignmentStmtPayload::~AssignmentStmtPayload() = default;
 LocalDeclStmtPayload::~LocalDeclStmtPayload() = default;
@@ -556,6 +562,18 @@ ExprNodePtr make_function_expr(SourceSpan Span, std::vector<FunctionParameter> p
    payload.body = std::move(body);
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::FunctionExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_deferred_expr(SourceSpan Span, ExprNodePtr inner)
+{
+   assert_node(ensure_operand(inner), "deferred expression requires inner expression");
+   DeferredExprPayload payload;
+   payload.inner = std::move(inner);
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::DeferredExpr;
    node->span = Span;
    node->data = std::move(payload);
    return node;

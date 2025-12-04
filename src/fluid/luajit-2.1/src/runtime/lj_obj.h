@@ -502,9 +502,10 @@ inline constexpr uint8_t PROTO_ILOOP        = 0x10;   //  Patched bytecode with 
 // Only used during parsing.
 inline constexpr uint8_t PROTO_HAS_RETURN   = 0x20;   //  Already emitted a return.
 inline constexpr uint8_t PROTO_FIXUP_RETURN = 0x40;   //  Need to fixup emitted returns.
-// Top bits used for counting created closures.
-inline constexpr uint8_t PROTO_CLCOUNT      = 0x20;   //  Base of saturating 3 bit counter.
-inline constexpr int PROTO_CLC_BITS         = 3;
+inline constexpr uint8_t PROTO_DEFERRED     = 0x80;   //  Deferred expression (thunk).
+// Bits 5-6 used for counting created closures (reduced from 3 bits to accommodate PROTO_DEFERRED).
+inline constexpr uint8_t PROTO_CLCOUNT      = 0x20;   //  Base of saturating 2 bit counter.
+inline constexpr int PROTO_CLC_BITS         = 2;      //  Reduced from 3 to 2 bits.
 inline constexpr int PROTO_CLC_POLY         = 3 * PROTO_CLCOUNT;  //  Polymorphic threshold.
 
 inline constexpr uint16_t PROTO_UV_LOCAL     = 0x8000;   //  Upvalue for local slot.
@@ -604,8 +605,9 @@ typedef union GCfunc {
    GCfuncL l;
 } GCfunc;
 
-inline constexpr uint8_t FF_LUA = 0;
-inline constexpr uint8_t FF_C   = 1;
+inline constexpr uint8_t FF_LUA      = 0;
+inline constexpr uint8_t FF_C        = 1;
+inline constexpr uint8_t FF_DEFERRED = 254;   // Marks a deferred expression thunk
 
 [[nodiscard]] inline bool isluafunc(const GCfunc* fn) noexcept
 {
@@ -620,6 +622,11 @@ inline constexpr uint8_t FF_C   = 1;
 [[nodiscard]] inline bool isffunc(const GCfunc* fn) noexcept
 {
    return fn->c.ffid > FF_C;
+}
+
+[[nodiscard]] inline bool isdeferred(const GCfunc* fn) noexcept
+{
+   return fn->c.ffid IS FF_DEFERRED;
 }
 
 [[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept

@@ -64,6 +64,9 @@ enum class TokenKind : uint16_t {
    Presence = TK_if_empty, // NOTE: This single token covers use of both `if present?? then` (postfix) and `(variable ?? default_value)` (if empty).
    PlusPlus = TK_plusplus,
    Pipe = TK_pipe,
+   DeferredOpen = TK_defer_open,
+   DeferredClose = TK_defer_close,
+   ThunkToken = TK_thunk,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM
 #undef TOKEN_KIND_ENUM_SYM

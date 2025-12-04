@@ -676,6 +676,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             lex_next(State);
             if (State->c IS '=') { lex_next(State); return TK_le; }
             if (State->c IS '<') { lex_next(State); return TK_shl; }
+            if (State->c IS '{') { lex_next(State); return TK_defer_open; }
             return '<';
 
          case '>':
@@ -760,6 +761,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                }
             }
             return '|';  // Bitwise OR
+
+         case '}':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '>') { lex_next(State); return TK_defer_close; }
+            return '}';
 
          case LEX_EOF:
             State->mark_token_start();

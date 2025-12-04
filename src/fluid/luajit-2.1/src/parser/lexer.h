@@ -56,6 +56,7 @@ struct TokenDefinition {
    TOKEN_DEF(repeat,       "repeat",   true) \
    TOKEN_DEF(return,       "return",   true) \
    TOKEN_DEF(then,         "then",     true) \
+   TOKEN_DEF(thunk,        "thunk",    true) \
    TOKEN_DEF(true,         "true",     true) \
    TOKEN_DEF(until,        "until",    true) \
    TOKEN_DEF(while,        "while",    true) \
@@ -84,6 +85,8 @@ struct TokenDefinition {
    TOKEN_DEF(cif_empty,    "?=",       false) \
    TOKEN_DEF(plusplus,     "++",       false) \
    TOKEN_DEF(pipe,         "|>",       false) \
+   TOKEN_DEF(defer_open,   "<{",       false) \
+   TOKEN_DEF(defer_close,  "}>",       false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
 // Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST

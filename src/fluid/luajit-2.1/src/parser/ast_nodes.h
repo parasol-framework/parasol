@@ -79,6 +79,7 @@ enum class AstNodeKind : uint16_t {
    ResultFilterExpr,
    TableExpr,
    FunctionExpr,
+   DeferredExpr,  // Deferred expression <{ expr }>
    BlockStmt,
    AssignmentStmt,
    LocalDeclStmt,
@@ -441,6 +442,17 @@ struct FunctionExprPayload {
    ~FunctionExprPayload();
 };
 
+// Deferred expression payload: wraps an expression for lazy evaluation <{ expr }>
+struct DeferredExprPayload {
+   DeferredExprPayload() = default;
+   DeferredExprPayload(const DeferredExprPayload&) = delete;
+   DeferredExprPayload& operator=(const DeferredExprPayload&) = delete;
+   DeferredExprPayload(DeferredExprPayload&&) noexcept = default;
+   DeferredExprPayload& operator=(DeferredExprPayload&&) noexcept = default;
+   ExprNodePtr inner;  // The wrapped expression to be evaluated lazily
+   ~DeferredExprPayload();
+};
+
 struct ExprNode {
    AstNodeKind kind = AstNodeKind::LiteralExpr;
    SourceSpan span{};
@@ -448,7 +460,7 @@ struct ExprNode {
       UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
       PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
       IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
-      ResultFilterPayload, TableExprPayload, FunctionExprPayload>
+      ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload>
       data;
 };
 
@@ -724,6 +736,7 @@ ExprNodePtr make_safe_index_expr(SourceSpan span, ExprNodePtr table, ExprNodePtr
 ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uint64_t keep_mask, uint8_t explicit_count, bool trailing_keep);
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
+ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);

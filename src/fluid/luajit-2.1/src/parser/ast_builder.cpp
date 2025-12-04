@@ -851,6 +851,25 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          return this->parse_result_filter_expr(current);
       }
 
+      case TokenKind::DeferredOpen: {
+         // Deferred expression: <{ expr }>
+         Token start = this->ctx.tokens().current();
+         this->ctx.tokens().advance();
+         auto inner = this->parse_expression();
+         if (not inner.ok()) return inner;
+         if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+               "Expected '}>' to close deferred expression");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedToken;
+            error.token = this->ctx.tokens().current();
+            error.message = "Expected '}>' to close deferred expression";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()), std::move(inner.value_ref()));
+         break;
+      }
+
       default: {
          auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
          this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);

@@ -1472,6 +1472,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
       case AstNodeKind::TableExpr:        return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr:     return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
+      case AstNodeKind::DeferredExpr:     return this->emit_deferred_expr(std::get<DeferredExprPayload>(expr.data));
       default: return this->unsupported_expr(expr.kind, expr.span);
    }
 }
@@ -2606,6 +2607,73 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    parent_state->bcbase = this->lex_state.bcstack + oldbase;
    parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
 
+   ExpDesc expr;
+   expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
+
+#if LJ_HASFFI
+   parent_state->flags |= (child_state.flags & PROTO_FFI);
+#endif
+
+   if (not (parent_state->flags & PROTO_CHILD)) {
+      if (parent_state->flags & PROTO_HAS_RETURN) parent_state->flags |= PROTO_FIXUP_RETURN;
+      parent_state->flags |= PROTO_CHILD;
+   }
+
+   return ParserResult<ExpDesc>::success(expr);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for a deferred expression (<{ expr }>), creating a child function that returns the inner expression.
+// The function is marked with PROTO_DEFERRED so that lj_func_newL_gc sets FF_DEFERRED on the resulting closure.
+
+ParserResult<ExpDesc> IrEmitter::emit_deferred_expr(const DeferredExprPayload &Payload)
+{
+   if (not Payload.inner) return this->unsupported_expr(AstNodeKind::DeferredExpr, SourceSpan{});
+
+   FuncState child_state;
+   ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
+   ParserConfig inherited = this->ctx.config();
+   ParserContext child_ctx = ParserContext::from(this->lex_state, child_state, allocator, inherited);
+   ParserSession session(child_ctx, inherited);
+
+   FuncState *parent_state = &this->func_state;
+   ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bcstack;
+
+   this->lex_state.fs_init(&child_state);
+   FuncStateGuard fs_guard(&this->lex_state, &child_state);
+   child_state.linedefined = this->lex_state.lastline;
+   child_state.bcbase = parent_state->bcbase + parent_state->pc;
+   child_state.bclim = parent_state->bclim - parent_state->pc;
+
+   // Deferred expressions take no parameters
+   bcemit_AD(&child_state, BC_FUNCF, 0, 0);
+
+   FuncScope scope;
+   ScopeGuard scope_guard(&child_state, &scope, FuncScopeFlag::None);
+
+   // Emit the inner expression
+   IrEmitter child_emitter(child_ctx);
+   auto inner_result = child_emitter.emit_expression(*Payload.inner);
+   if (not inner_result.ok()) {
+      return ParserResult<ExpDesc>::failure(inner_result.error_ref());
+   }
+
+   // Return the expression value
+   ExpDesc inner = inner_result.value_ref();
+   child_emitter.materialise_to_next_reg(inner, "deferred return value");
+   bcemit_AD(&child_state, BC_RET1, inner.u.s.info, 2);
+
+   // Finalise and create prototype with PROTO_DEFERRED flag
+   fs_guard.disarm();
+   GCproto *pt = this->lex_state.fs_finish(Payload.inner->span.line);
+   pt->flags |= PROTO_DEFERRED;  // Mark as deferred expression prototype
+   scope_guard.disarm();
+
+   // Restore parent state
+   parent_state->bcbase = this->lex_state.bcstack + oldbase;
+   parent_state->bclim = BCPos(this->lex_state.sizebcstack - oldbase).raw();
+
+   // Emit BC_FNEW to create the closure
    ExpDesc expr;
    expr.init(ExpKind::Relocable, bcemit_AD(parent_state, BC_FNEW, 0, const_gc(parent_state, obj2gco(pt), LJ_TPROTO)));
 
