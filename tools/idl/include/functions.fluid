@@ -204,7 +204,7 @@ function flags(Prefix, Options, ...)
          if not key then key = flags[a] end
 
          for _, flag_name in ipairs(key:split('|')) do
-            local val = bit.lshift(1, f)
+            local val = 1 << f
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
          end
@@ -229,11 +229,8 @@ function flags(Prefix, Options, ...)
             else -- Process named reference(s) to other flags
                local v
                for _, v in ipairs(key:split('|')) do
-                  if lookup[v] then
-                     val = bit.bor(val, lookup[v].value)
-                  else
-                     error("Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
-                  end
+                  assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
+                  val = val | lookup[v].value
                end
                if not comment then comment = 'Synonym for `' .. key:gsub('|',' | ') .. '`' end
             end
