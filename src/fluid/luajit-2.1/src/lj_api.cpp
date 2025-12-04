@@ -24,6 +24,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lib/lib_utils.h"
+#include "runtime/stack_helpers.h"
 
 // Common helper functions
 
@@ -114,27 +115,16 @@ static TValue * deferred_resolve(lua_State *L, int idx)
    if (o and tvisfunc(o)) {
       GCfunc* fn = funcV(o);
       if (isdeferred(fn)) {
-         // Save stack offset (not pointer) since stack may be reallocated during call
-         ptrdiff_t slot_offset = savestack(L, o);
+         // Use StackRef to safely track slot across potential stack reallocation
+         StackRef slot(L, o);
 
-         // Set up call frame: [func] at base, then frame link slot
-         // Pattern matches lua_equal/lua_lessthan in this file
-         TValue * base = L->top;
-         copyTV(L, base, o);    // Push the deferred function at base
-         setnilV(base + 1);     // Frame link slot for LJ_FR2 mode
-         L->top = base + 2;     // Set top past frame link
+         // Use SimpleDeferredCall to handle frame setup and invocation
+         SimpleDeferredCall call(L);
+         TValue* result = call.evaluate(o);
 
-         // Call: base points to function, nres1 = 1+1 (1 result + sentinel)
-         lj_vm_call(L, base, 1 + 1);
-
-         // After call, adjust top and retrieve result (matches lua_equal pattern)
-         L->top -= 2 + LJ_FR2;
-
-         // Restore slot pointer (may have moved during call)
-         o = restorestack(L, slot_offset);
-
-         // Result is at L->top + 1 + LJ_FR2 after the adjustment
-         copyTV(L, o, L->top + 1 + LJ_FR2);
+         // Restore slot pointer (may have moved during call) and copy result
+         o = slot.get();
+         copyTV(L, o, result);
       }
    }
    return o;
@@ -413,14 +403,9 @@ extern int lua_equal(lua_State *L, int idx1, int idx2)
    else {
       TValue * base = lj_meta_equal(L, gcV(o1), gcV(o2), 0);
       if ((uintptr_t)base <= 1) {
-         return (int)(uintptr_t)base;
+         return int(uintptr_t(base));
       }
-      else {
-         L->top = base + 2;
-         lj_vm_call(L, base, 1 + 1);
-         L->top -= 2 + LJ_FR2;
-         return tvistruecond(L->top + 1 + LJ_FR2);
-      }
+      return tvistruecond(MetaCall::invoke(L, base, 2));
    }
 }
 
@@ -433,13 +418,8 @@ extern int lua_lessthan(lua_State *L, int idx1, int idx2)
    else if (tvisnumber(o1) and tvisnumber(o2)) return numberVnum(o1) < numberVnum(o2);
    else {
       TValue * base = lj_meta_comp(L, o1, o2, 0);
-      if ((uintptr_t)base <= 1) return (int)(uintptr_t)base;
-      else {
-         L->top = base + 2;
-         lj_vm_call(L, base, 1 + 1);
-         L->top -= 2 + LJ_FR2;
-         return tvistruecond(L->top + 1 + LJ_FR2);
-      }
+      if ((uintptr_t)base <= 1) return int(uintptr_t(base));
+      return tvistruecond(MetaCall::invoke(L, base, 2));
    }
 }
 
@@ -950,11 +930,7 @@ extern void lua_concat(lua_State *L, int n)
             L->top -= n;
             break;
          }
-         n -= (int)(L->top - (top - 2 * LJ_FR2));
-         L->top = top + 2;
-         lj_vm_call(L, top, 1 + 1);
-         L->top -= 1 + LJ_FR2;
-         copyTV(L, L->top - 1, L->top + LJ_FR2);
+         n -= MetaCall::invokeConcat(L, top);
       } while (--n > 0);
    }
    else if (n == 0) {  // Push empty string.
@@ -971,10 +947,7 @@ extern void lua_gettable(lua_State *L, int idx)
    cTValue * t = index2adr_check(L, idx);
    cTValue * v = lj_meta_tget(L, t, L->top - 1);
    if (v == nullptr) {
-      L->top += 2;
-      lj_vm_call(L, L->top - 2, 1 + 1);
-      L->top -= 2 + LJ_FR2;
-      v = L->top + 1 + LJ_FR2;
+      v = MetaCall::invokeGet(L);
    }
    copyTV(L, L->top - 1, v);
 }
@@ -986,10 +959,7 @@ extern void lua_getfield(lua_State *L, int idx, const char* k)
    setstrV(L, &key, lj_str_newz(L, k));
    v = lj_meta_tget(L, t, &key);
    if (v == nullptr) {
-      L->top += 2;
-      lj_vm_call(L, L->top - 2, 1 + 1);
-      L->top -= 2 + LJ_FR2;
-      v = L->top + 1 + LJ_FR2;
+      v = MetaCall::invokeGet(L);
    }
    copyTV(L, L->top, v);
    incr_top(L);
@@ -1130,11 +1100,7 @@ extern void lua_settable(lua_State *L, int idx)
       copyTV(L, o, L->top + 1);
    }
    else {
-      TValue * base = L->top;
-      copyTV(L, base + 2, base - 3 - 2 * LJ_FR2);
-      L->top = base + 3;
-      lj_vm_call(L, base, 0 + 1);
-      L->top -= 3 + LJ_FR2;
+      MetaCall::invokeSetTable(L, L->top);
    }
 }
 
@@ -1151,11 +1117,7 @@ extern void lua_setfield(lua_State *L, int idx, const char* k)
       copyTV(L, o, --L->top);
    }
    else {
-      TValue * base = L->top;
-      copyTV(L, base + 2, base - 3 - 2 * LJ_FR2);
-      L->top = base + 3;
-      lj_vm_call(L, base, 0 + 1);
-      L->top -= 2 + LJ_FR2;
+      MetaCall::invokeSetField(L, L->top);
    }
 }
 
@@ -1337,11 +1299,13 @@ extern int lua_cpcall(lua_State *L, lua_CFunction func, void * ud)
 extern int luaL_callmeta(lua_State *L, int idx, const char* field)
 {
    if (luaL_getmetafield(L, idx, field)) {
-      TValue * top = L->top--;
-      setnilV(top++);
-      copyTV(L, top++, index2adr(L, idx));
-      L->top = top;
-      lj_vm_call(L, top - 1, 1 + 1);
+      // luaL_getmetafield pushed the metamethod at L->top - 1
+      // We need to call it with the object at idx as argument
+      TValue* fn = L->top - 1;
+      VMCall call(L);
+      call.func(fn);
+      call.arg(index2adr(L, idx));
+      (void)call.invoke(1);  // Result left on stack by VMCall
       return 1;
    }
    return 0;
