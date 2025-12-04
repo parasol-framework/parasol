@@ -176,7 +176,7 @@ function getMetaFieldDefinition(Field)
       fl.access = 'Private'
    end
 
-   if ((Field.flags & FD_SYSTEM) != 0) then
+   if (Field.flags & FD_SYSTEM)?? then
       fl.access = 'Private'
       fl.private = true
    end

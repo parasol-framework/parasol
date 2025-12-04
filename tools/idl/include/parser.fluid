@@ -215,7 +215,7 @@ function parseClassFields(class, ClientSpec)
 
       for k, f in ipairs(metaFields) do
          local def = getMetaFieldDefinition(f)
-         if def and (def.synonym != true) then
+         if def and def.synonym != true then
             local f = findClassField(class, def.name) -- Retrieve field parsed from FDL, if defined
             if f then
                f.write   = def.write
@@ -285,7 +285,7 @@ end
 -- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
 
 function parseSourceFiles()
-   if (glFeedback is 'verbose') then print('Processing source files...') end
+   if glFeedback is 'verbose' then print('Processing source files...') end
 
    local srcFiles = { }
 
@@ -293,8 +293,8 @@ function parseSourceFiles()
       table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
    end
 
-   if (#srcFiles < 1) then
-      if (glFeedback is 'verbose') then print('No source files were detected.') end
+   if #srcFiles < 1 then
+      if glFeedback is 'verbose' then print('No source files were detected.') end
       return
    end
 

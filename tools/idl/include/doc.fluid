@@ -338,7 +338,7 @@ setAction('Write', {
 function saveDocuments()
    -- Save module functions, if any
 
-   local outPath = (glDocPath ?? 'sdk:docs/xml/modules/')
+   local outPath = glDocPath ?? 'sdk:docs/xml/modules/'
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
    if not table.empty(glFunctions) then
@@ -366,15 +366,10 @@ function saveDocuments()
 
          if cl.meta then
             local status, err = pcall(function()
-               local out = docClass(cl)
-               out ..= docTypes(cl.references)
-               out ..= docStructures(cl.references)
-               out ..= '</book>\n'
-               if out?? then
-                  local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
-                  print("Saving XML class documentation to \"" .. file.path .. '"')
-                  file.acWrite(out)
-               end
+               local out = docClass(cl) .. docTypes(cl.references) .. docStructures(cl.references) .. '</book>\n'
+               local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
+               print("Saving XML class documentation to \"" .. file.path .. '"')
+               file.acWrite(out)
             end)
 
             if not status then
@@ -461,12 +456,12 @@ function extractParagraph(Input, Caller, References)
             repeat
                string.gsub(lines[i], '<(.-)>', function(key,val)
                   if key:startsWith('/') then
-                     balance = balance - 1
+                     balance -= 1
                   else
-                     balance = balance + 1
+                     balance++
                   end
                end)
-               output = output .. lines[i] .. '\n'
+               output ..= lines[i] .. '\n'
                i++
             until (balance is 0) or (not lines[i])
 
@@ -764,7 +759,7 @@ function docClass(Class)
             if not table.empty(method.results) then
                local results = ''
                for _, result in ipairs(method.results) do
-                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
+                  results ..= "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
 
                if results?? then
@@ -832,8 +827,8 @@ function docClass(Class)
             if f.lookup then
                local lookup = '<types lookup="' .. f.lookup .. '"/>'
                if description then
-                  if not (description:find('<types lookup="' .. f.lookup .. '"')) then
-                     description = description .. '\n' .. lookup
+                  if not description:find('<types lookup="' .. f.lookup .. '"') then
+                     description ..= '\n' .. lookup
                   end
                else
                   description = lookup
@@ -887,9 +882,9 @@ function docModuleHeader()
       for _, path in pairs(srcFiles) do
          local filename = path:gsub('.*[:/\\](.-)', '%1', 1)
          local path = path:match('(.*[:/\\])(.-)')
-         out = out .. "      <file path=\"" .. path:escXML() .. "\">" .. filename:escXML() .. "</file>\n"
+         out ..= "      <file path=\"" .. path:escXML() .. "\">" .. filename:escXML() .. "</file>\n"
       end
-      out = out .. '    </source>\n'
+      out ..= '    </source>\n'
    end
 
    if not table.empty(glClasses) then
@@ -979,7 +974,7 @@ function docFunction(Function)
          end
       elseif Function.result.comment?? then
          local ref = ''
-         if (Function.result.ref != nil) then
+         if Function.result.ref then
             ref = " lookup=\"" .. Function.result.lookup .. '"'
          end
 
@@ -1006,9 +1001,9 @@ function docTypes(References)
       if ct.comment then comment = " comment=\"" .. ct.comment:escXML() .. '"' end
 
       local typeName
-      if (ct.grouping is 'constants') then
+      if ct.grouping is 'constants' then
          typeName = 'const'
-      elseif (ct.grouping is 'flags') then
+      elseif ct.grouping is 'flags' then
          typeName = 'flag'
       else
          error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
@@ -1028,7 +1023,7 @@ function docTypes(References)
          table.sort(sortedValues, function(a,b) return a.name < b.name end)
 
          for _, v in pairs(sortedValues) do
-            if (v.synonym) then
+            if v.synonym then
                -- Don't publish synonyms
             elseif v.comment?? then
                if (v.comment:find('^Internal')) or (v.comment:find('^Private')) then
@@ -1092,7 +1087,7 @@ function docStructures(References)
             end
 
             out ..= "      <field name=\"" .. f.name .. "\" type=\"" .. type:escXML() .. '"' .. prototype .. ref .. arraySize .. ">"
-            if f.comment?? then out = out .. substituteReferences(f.comment:escXML()) end
+            if f.comment?? then out ..= substituteReferences(f.comment:escXML()) end
             out ..= '</field>\n'
          end
          out ..= '    </struct>\n\n'

@@ -158,7 +158,7 @@ function const(Prefix, Options, ...)
             end
             if not val then val = v end
 
-            if (string.find(val, '^0x%d+$')) or (string.find(val, '^[+-]?%d+$')) then
+            if string.find(val, '^0x%d+$') or string.find(val, '^[+-]?%d+$') then
                val = tonumber(val)
             end
 
@@ -433,7 +433,7 @@ end
 
 function struct(Name, Options, Def, Append)
    Options = checkOptions(Options)
-   if Options.restrict?? or (glRestrict) then return end -- Restricted structures are never exported
+   if Options.restrict?? or glRestrict then return end -- Restricted structures are never exported
    if Options.module?? and (Options.module:lower() != glModuleName:lower()) then return end
    verbose('Processing structure ' .. Name)
    local struct = {
@@ -570,7 +570,6 @@ end
       return
    end
 
-   mSys = mod.load('core')
    resolveSDKPath(arg('sdk'))
 
    glOrderedStructures = { }
@@ -578,9 +577,7 @@ end
    glConstants = { }
 
    local err, type = mSys.AnalysePath(glSource)
-   if type != LOC_FILE then
-      error('The specified source "' .. glSource .. '" is invalid.')
-   end
+   assert(type is LOC_FILE, 'The specified source "' .. glSource .. '" is invalid.')
 
    loadFile(glSource)
    saveOutput()

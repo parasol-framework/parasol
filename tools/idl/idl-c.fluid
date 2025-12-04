@@ -563,6 +563,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
          elseif content?? then
             error('No comment found for function parameter in ' .. Name .. '()')
          end
+
          local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
          if type then
             local param = cType({
@@ -571,8 +572,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             table.insert(func.input, param)
 
             if argSeq?? then
-               argSeq ..= ', '
-               proto ..= ', '
+               argSeq    ..= ', '
+               proto     ..= ', '
                doc_proto ..= ', '
                outValues ..= ','
             end
@@ -593,7 +594,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                doc_proto ..= '...'
                if not outValues?? then
                   -- This special case is required when '...' is the first parameter.
-                  if (param.fullType.fd is 'FD_VARTAGS') then
+                  if param.fullType.fd is 'FD_VARTAGS' then
                      proto = 'int64_t,' .. proto
                   else
                      proto = 'int,' .. proto
@@ -622,7 +623,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if Def.ext_proto then
       jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto
-      if (string.sub(argSeq, -3) is '...') then
+      if string.sub(argSeq, -3) is '...' then
          argSeq = string.sub(argSeq, 0, -4) .. 'Args... Tags'
       end
    elseif not jumpArgs then
@@ -698,7 +699,7 @@ function saveOutput()
             blank = 0
          end
 
-         if (blank < 2) then file.acWrite(str, str:len()) end
+         if blank < 2 then file.acWrite(str, str:len()) end
       end
 
       for a=0, #glConstants-1 do
@@ -741,21 +742,26 @@ function saveOutput()
                   out ..= func.macro() .. '\n'
                end
             end
+
             if glFunctionPrefix?? then
                out ..= '} // namespace\n'
             end
+
             out ..= '#else\n'
             if glFunctionPrefix?? then
                out ..= 'namespace ' .. glFunctionPrefix:lower() .. ' {\n'
             end
+
             for k, func in ipairs(glFunctions) do
                if func.staticMacro?? and (func.status != 'private') then
                   out ..= func.staticMacro() .. '\n'
                end
             end
+
             if glFunctionPrefix?? then
                out ..= '} // namespace\n'
             end
+
             out ..= '#endif // PARASOL_STATIC\n\n'
             file.acWrite(out, out:len())
          else

@@ -95,7 +95,7 @@ function module(Options, Function)
 
       local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
-         extracted_content = extracted_content .. '\n' .. extract
+         extracted_content ..= '\n' .. extract
       end
 
       mod_desc = string.match(extracted_content, '%-MODULE%-(.-)%-END%-')
@@ -159,7 +159,7 @@ function flags(Prefix, Options, ...)
 
    local out = { }
    local sortedFlags = { }
-   if (Options.comment??) then
+   if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
@@ -216,7 +216,7 @@ function flags(Prefix, Options, ...)
             if type(ref) != 'number' then
                key, comment = ref:match('^(.-):%s+(.+)$')
                if key then
-                  if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
+                  if key:find('^0x%d+$') or key:find('^[+-]?%d+$') then
                      key = tonumber(key)
                   end
                end
@@ -271,7 +271,7 @@ function flags(Prefix, Options, ...)
       restrict=glRestrict
    }
 
-   if (not Options.weak) then -- Promote strong-typing to other C++ definitions
+   if not Options.weak then -- Promote strong-typing to other C++ definitions
       glCustomTypes[Prefix].type = 'int'
    end
 end
@@ -317,7 +317,7 @@ end
 
 function const(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' constants.')
-   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 
@@ -347,7 +347,7 @@ function const(Prefix, Options, ...)
             table.insert(sorted, { name = name, value = value })
          end
          table.sort(sorted, function(a,b)
-            if (a.value is b.value) then
+            if a.value is b.value then
                return a.name < b.name
             elseif type(a.value) is 'number' and type(b.value) is 'number' then
                return a.value < b.value
@@ -400,7 +400,7 @@ end
 
 function enum(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' enum.')
-   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 
@@ -439,9 +439,7 @@ function enum(Prefix, Options, ...)
          inc++
       elseif type(va) is 'table' then -- The client provided a table of fixed values
          for name, client_val in pairs(va) do
-            if (type(client_val) != 'number') then
-               error('Client-provided enum values must be numeric')
-            end
+            assert(type(client_val) is 'number', 'Client-provided enum values must be numeric, got ' .. tostring(client_val))
 
             if Options.type then
                table.insert(out, '   ' .. name .. ' = ' .. client_val .. ',')
@@ -563,15 +561,15 @@ function struct(Name, Options, Def, Append)
       local type_max = 0
       for i, f in ipairs(fields) do
          local field_name = cName(f, true)
-         if (field_name:len() > name_len) then name_len = field_name:len() end
+         if field_name:len() > name_len then name_len = field_name:len() end
 
-         if (f.type:len() > type_len) then
-            if (f.type:len() < 10) then
+         if f.type:len() > type_len then
+            if f.type:len() < 10 then
                type_len = f.type:len()
             end
          end
 
-         if (f.type:len() + field_name:len() > type_max) then
+         if f.type:len() + field_name:len() > type_max then
             type_max = f.type:len() + 2 + field_name:len()
          end
       end
@@ -632,7 +630,7 @@ end
 -- Create a C/C++ field name from the definitions in a Field object.
 
 function cName(Field, CStruct)
-   if (Field.isFunctionPtr) then return '' end -- Functions have their name embedded in the type.
+   if Field.isFunctionPtr then return '' end -- Functions have their name embedded in the type.
 
    local name = Field.name
    if CStruct then
@@ -678,16 +676,16 @@ function class(Name, Options, Spec, Private, Custom)
 
    glActiveRefs = class.references
 
-   if (type(class.src) is 'string') then class.src = { class.src } end -- Convert string to an array of strings
+   if type(class.src) is 'string' then class.src = { class.src } end -- Convert string to an array of strings
 
-   if (mSys.GetResource(RES_STATIC_BUILD) is 0) then
+   if mSys.GetResource(RES_STATIC_BUILD) is 0 then
       -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
       -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
 
-      if (mSys.AnalysePath('~modules:' .. glModule.name) is ERR_Okay) then
+      if mSys.AnalysePath('~modules:' .. glModule.name) is ERR_Okay then
          class.meta = mSys.FindClass(Name:hash(), 0)
       else
-         if (glFeedback is 'verbose') then
+         if glFeedback is 'verbose' then
             print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
          end
       end
@@ -720,7 +718,7 @@ function class(Name, Options, Spec, Private, Custom)
 
       local path
       for _, path in pairs(class.src) do
-         if (glFeedback is 'verbose') then
+         if glFeedback is 'verbose' then
             print()
             print('Class file: ' .. glFDLFolder .. path)
          end
@@ -735,6 +733,7 @@ function class(Name, Options, Spec, Private, Custom)
             'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
             'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
          }
+
          for _, pattern in pairs(patterns) do
             for actionName in string.gmatch(content, pattern) do
                if glActions[actionName] then
@@ -764,11 +763,11 @@ function class(Name, Options, Spec, Private, Custom)
                   if currentEntry then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = ''
                   processing = line
-               elseif (line is '-END-') then
+               elseif line is '-END-' then
                   if currentEntry then parseClassEntry(class, processing, currentEntry) end
                   currentEntry = nil
                   processing = nil
-               elseif (line is '-INTERNAL-') then
+               elseif line is '-INTERNAL-' then
                   currentEntry = nil
                   processing = nil
                elseif currentEntry then
@@ -789,7 +788,7 @@ function class(Name, Options, Spec, Private, Custom)
       local pfx  = class.methodPrefix
       local lpfx = pfx:lower()
 
-      if (glFeedback is 'verbose') then
+      if glFeedback is 'verbose' then
          print('Generating ' .. #class.methods .. ' methods.')
       end
 
@@ -816,14 +815,14 @@ function class(Name, Options, Spec, Private, Custom)
 
          method.funcName = method.name
          if glActions[method.funcName] then
-            method.funcName = method.funcName .. Name
+            method.funcName ..= Name
          end
 
          local function pName(Param)
             local name = Param.name
             if (Param.type is 'OBJECTID') or (Param.type is 'MEMORYID') then
                if name:sub(-2) != 'ID' then
-                  name = name .. 'ID'
+                  name ..= 'ID'
                end
             end
             return name
@@ -839,13 +838,13 @@ function class(Name, Options, Spec, Private, Custom)
 
                if params?? then params ..= ', ' end
 
-               if (param.type is 'FUNCTION *') then
+               if param.type is 'FUNCTION *' then
                   params ..= 'FUNCTION ' .. pName(param)
-                  if values?? then values = values .. ', ' end
+                  if values?? then values ..= ', ' end
                   values ..= '&' .. pName(param)
                else
                   params ..= param.type .. ' ' .. pName(param)
-                  if values?? then values = values .. ', ' end
+                  if values?? then values ..= ', ' end
 
                   if param.resultValue then
                      values ..= '(' .. param.basicType .. ')0'
@@ -858,7 +857,7 @@ function class(Name, Options, Spec, Private, Custom)
          end
 
          local action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
-         if method.params and (#method.params > 0) then
+         if method.params and #method.params > 0 then
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
          else
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
@@ -870,7 +869,7 @@ function class(Name, Options, Spec, Private, Custom)
          local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
          local args = 'nullptr'
 
-         if method.params and (#method.params > 0) then
+         if method.params and #method.params > 0 then
             inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
             args = '&args'
          end
@@ -971,7 +970,7 @@ end
 function functionNames(Prefix, ...)
    glFunctionPrefix = (Prefix ?? '')
    for _, fname in ipairs({...}) do
-      if (fname:find('[^%w]')) then
+      if fname:find('[^%w]') then
          error('Invalid function name "' .. fname .. '"')
       end
 

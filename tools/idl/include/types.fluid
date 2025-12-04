@@ -179,9 +179,7 @@ end
 -- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment, basicType, allocated, resultValue }
 
 function cType(Field, Origin)
-   if not Field.type then
-      error("Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'\n" .. debug.traceback())
-   end
+   assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'\n" .. debug.traceback())
 
    Field.defType = Field.type -- Save the original type name
 

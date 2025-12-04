@@ -44,12 +44,7 @@ function selectGradient(Text)
       uiEvent = function(ev)
          local x = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
          local y = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
-
-         if x > y then
-            gradient.x1 = x * gradient.x2
-         else
-            gradient.x1 = y * gradient.x2
-         end
+         gradient.x1 = x > y ? x * gradient.x2 :> y * gradient.x2
       end
    elseif Text is 'Contour Shape' then
       contourShape.visibility = 'visible'
@@ -197,7 +192,7 @@ function buildScene()
                warnExists  = true,
                filterList  = { { name='PNG Images', ext='.png' } },
                feedback    = function(Dialog, Path, Files)
-                  if (Files is nil) then return end
+                  Files ?? return
 
                   local target_file = Path .. Files[1].filename
 
@@ -232,7 +227,7 @@ end
    buildScene()
 
    local button_held = false
-   check(gradientVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+   check(gradientVP.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON, function(Viewport, Events)
       local ev = Events
       while ev do
          if ev.type is JET_ABS_XY then

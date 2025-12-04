@@ -124,8 +124,6 @@ end
    glTest = arg('test')
    glSelf = obj.find('self')
 
-   mSys = mod.load("core")
-
    if not glFile?? then
       print(glHelp)
       return
