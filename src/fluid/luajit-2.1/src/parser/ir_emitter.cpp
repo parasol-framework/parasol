@@ -1855,7 +1855,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    const CallExprPayload &call_payload = std::get<CallExprPayload>(Payload.rhs_call->data);
 
    // Emit the callee (function) FIRST to establish base register
-   
+
    ExpDesc callee;
    BCReg base(0);
    if (const auto* direct = std::get_if<DirectCallTarget>(&call_payload.target)) {
@@ -1883,7 +1883,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    else return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
 
    // Emit LHS expression as the first argument(s)
-   
+
    auto lhs_result = this->emit_expression(*Payload.lhs);
    if (not lhs_result.ok()) return lhs_result;
    ExpDesc lhs = lhs_result.value_ref();

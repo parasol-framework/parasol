@@ -276,9 +276,9 @@ LJLIB_CF(table_sort)
 LJLIB_PUSH("n")
 LJLIB_CF(table_pack)
 {
-   TValue* array, * base = L->base;
-   MSize i, n = (uint32_t)(L->top - base);
-   GCtab* t = lj_tab_new(L, n, 1);  // 0-based: asize = n for n elements
+   TValue *array, *base = L->base;
+   MSize n = (uint32_t)(L->top - base);
+   GCtab *t = lj_tab_new(L, n, 1);  // 0-based: asize = n for n elements
    // NOBARRIER: The table is new (marked white).
    setintV(lj_tab_setstr(L, t, strV(lj_lib_upvalue(L, 1))), (int32_t)n);
    array = tvref(t->array);

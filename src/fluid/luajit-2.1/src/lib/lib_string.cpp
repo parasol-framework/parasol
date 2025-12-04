@@ -28,6 +28,7 @@
 #include "lj_char.h"
 #include "lj_strfmt.h"
 #include "lib.h"
+#include "lib_utils.h"
 #include "debug/error_guard.h"
 
 // NOTE: Any string function marked with the ASM macro uses a custom assembly implementation in the
@@ -46,7 +47,7 @@ LJLIB_LUA(string_len) /*
 
 LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
 {
-   GCstr* s = lj_lib_checkstr(L, 1);
+   GCstr *s = lj_lib_checkstr(L, 1);
    int32_t len = (int32_t)s->len;
    int32_t start = lj_lib_optint(L, 2, 0);  // 0-based: default start is 0
    int32_t stop = lj_lib_optint(L, 3, start);
@@ -325,18 +326,21 @@ LJLIB_CF(string_startsWith)
    MSize prefixlen = prefix->len;
 
    // Empty prefix always matches
+
    if (prefixlen == 0) {
       setboolV(L->top - 1, 1);
       return 1;
    }
 
    // Prefix longer than string cannot match
+
    if (prefixlen > slen) {
       setboolV(L->top - 1, 0);
       return 1;
    }
 
    // Compare prefix with start of string
+
    int matches = (memcmp(str, prefixstr, prefixlen) == 0);
    setboolV(L->top - 1, matches);
    return 1;
