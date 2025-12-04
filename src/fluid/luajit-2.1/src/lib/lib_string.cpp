@@ -59,12 +59,10 @@ LJLIB_ASM(string_byte)      LJLIB_REC(string_range 0)
    if (stop > len - 1) stop = len - 1;  // 0-based: max valid index is len-1
    if (start > stop) return FFH_RES(0);  //  Empty interval: return no results.
    n = stop - start + 1;
-   if ((uint32_t)n > LUAI_MAXCSTACK)
-      lj_err_caller(L, ErrMsg::STRSLC);
+   if ((uint32_t)n > LUAI_MAXCSTACK) lj_err_caller(L, ErrMsg::STRSLC);
    lj_state_checkstack(L, (MSize)n);
    p = (const unsigned char*)strdata(s) + start;
-   for (i = 0; i < n; i++)
-      setintV(L->base + i - 1 - LJ_FR2, p[i]);
+   for (i = 0; i < n; i++) setintV(L->base + i - 1 - LJ_FR2, p[i]);
    return FFH_RES(n);
 }
 

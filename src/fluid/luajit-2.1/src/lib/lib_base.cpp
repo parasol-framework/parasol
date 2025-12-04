@@ -49,7 +49,7 @@ LJLIB_ASM(assert)      LJLIB_REC(.)
    lj_lib_checkany(L, 1);
    if (L->top == L->base + 1)
       lj_err_caller(L, ErrMsg::ASSERT);
-   else if (tvisstr(L->base + 1) or tvisnumber(L->base + 1))
+   else if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base + 1))
       lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
    else
       lj_err_run(L);
@@ -187,8 +187,9 @@ LJLIB_CF(setfenv)
          return 0;
       }
       o = lj_debug_frame(L, level, &level);
-      if (o == nullptr)
-         lj_err_arg(L, 1, ErrMsg::INVLVL);
+      if (o == nullptr) {
+         LJ_CHECK_ARG(L, 1, false, ErrMsg::INVLVL);
+      }
       o--;
    }
    fn = &gcval(o)->fn;
@@ -278,8 +279,7 @@ LJLIB_CF(select)      LJLIB_REC(.)
    else {
       int32_t i = lj_lib_checkint(L, 1);
       if (i < 0) i = n + i; else if (i > n) i = n;
-      if (i < 0)
-         lj_err_arg(L, 1, ErrMsg::IDXRNG);
+      LJ_CHECK_RANGE(L, 1, i, 0, n, ErrMsg::IDXRNG);
       return n - i;
    }
 }
@@ -299,10 +299,7 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
    StackFrame frame(L);
 
    int32_t nargs = int32_t(L->top - L->base);
-   if (nargs < 3) {
-      lj_err_arg(L, nargs + 1, ErrMsg::NOVAL);
-      return 0;  // StackFrame destructor will restore L->top
-   }
+   require_arg_count(L, 3);
 
    // Extract filter parameters
    uint64_t mask = uint64_t(lj_lib_checknum(L, 1));
@@ -505,7 +502,7 @@ static const char* reader_func(lua_State* L, void* ud, size_t* size)
       *size = 0;
       return nullptr;
    }
-   else if (tvisstr(L->top) or tvisnumber(L->top)) {
+   else if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->top)) {
       copyTV(L, L->base + 4, L->top);  //  Anchor string in reserved stack slot.
       return lua_tolstring(L, 5, size);
    }
@@ -523,7 +520,7 @@ LJLIB_CF(load)
    GCstr* mode = lj_lib_optstr(L, 3);
    int status;
    if (L->base < L->top &&
-      (tvisstr(L->base) or tvisnumber(L->base) or tvisbuf(L->base))) {
+      (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base) or tvisbuf(L->base))) {
       const char* s;
       MSize len;
       if (tvisbuf(L->base)) {
