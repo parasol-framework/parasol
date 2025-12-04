@@ -20,9 +20,7 @@ local lStyle = (function()
 end)()
 
 local function hosted(self)
-   if self.hosted is nil then
-      self.hosted = self.surface and self.surface.parent ? false :> true
-   end
+   self.hosted ?= self.surface and self.surface.parent ? false :> true
    return self.hosted
 end
 
@@ -170,7 +168,7 @@ gui.window = function(Options)
       self.smartLimitsEnabled = true
       if not hosted(self) then
          local err, info = mGfx.GetSurfaceInfo(self.surface.parent)
-         if (err is ERR_Okay) then
+         if err is ERR_Okay then
             self.surface.topLimit    = 0
             self.surface.bottomLimit = -self.surface.height + self.surface.topMargin
             self.surface.leftLimit   = -(self.surface.width * 0.75)
@@ -183,9 +181,7 @@ gui.window = function(Options)
 
    self.minimise = function(self)
       if self.MinimiseEnabled then
-         if self.events and self.events.minimise then
-            self.events.minimise(self)
-         end
+         self?.events?.minimise(self)
       end
    end
 
@@ -278,17 +274,17 @@ gui.window = function(Options)
       if Options.center or Center then -- Options.center is obsolete
          local x, y = (function()
             if self.surface.popOver then
-               local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
+               local err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
                if err is ERR_Okay then
                   x += ((powidth - self.surface.width) / 2)
                   y += ((poheight - self.surface.height) / 2)
-                  local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
+                  local err, px, py = [*__**__]mGfx.GetSurfaceCoords(self.surface.parent)
                   if err is ERR_Okay then
                      return x - px, y - py
                   end
                end
             elseif self.surface.parent then
-               local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+               local err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(self.surface.parent)
                if err is ERR_Okay then
                   x = vx + ((vwidth - self.surface.width) / 2)
                   y = vy + ((vheight - self.surface.height) / 2)

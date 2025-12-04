@@ -50,9 +50,7 @@ gui.dialog.file = function(Options)
                popOver = windowID,
                feedback = function(Dialog, Response, State)
                   if Response and (Response.id is 1) then
-                     if self.feedback then
-                        self.feedback(self, self.fileview.path, list)
-                     end
+                     self?.feedback(self, self.fileview.path, list)
                      self.window = nil
                   end
                end
@@ -86,10 +84,7 @@ gui.dialog.file = function(Options)
       modal        = Options.modal ?? false,
       events = {
          close = function(Window)
-            if (Options.feedback != nil) then
-               Options.feedback(self, nil)
-            end
-
+            Options?.feedback(self, nil)
             table.clear(self)
             collectgarbage()
          end
@@ -133,9 +128,7 @@ gui.dialog.file = function(Options)
       icon    = 'items/cancel',
       events = {
          activate = function(Button)
-            if Options.feedback != nil then
-               Options.feedback(self, nil)
-            end
+            Options?.feedback(self, nil)
             table.clear(self)
             collectgarbage()
          end
@@ -168,7 +161,8 @@ gui.dialog.file = function(Options)
             break
          end
       end
-      if not selection then Options.filterList[1].selected = true end
+
+      if not selection then Options.filterList[0].selected = true end
 
       for _, filter in pairs(Options.filterList) do
          table.insert(fv_filters, filter)
@@ -214,7 +208,7 @@ end
 
    do
       local state = getExecutionState()
-      if (state.inRequire != true) then
+      if state.inRequire != true then
          local dlg = gui.dialog.file({
             popOver      = arg('popOver'),
             target       = arg('target'),

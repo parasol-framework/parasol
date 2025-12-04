@@ -18,28 +18,22 @@ local function checkCursorImage(View)
    end
 end
 
-local function highlightItem(View, Item)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
+local function highlightItem(View, Item:table)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
    if Item is View.hItem then return end
 
-   if View.hItem and View.hItem._highlightEvent and (Item != View.hItem) then
-      View.hItem._highlightEvent(View, View.hItem, false)
+   if Item != View.hItem then
+      View.hItem?._highlightEvent(View, View.hItem, false)
    end
 
    View.hItem = Item
-
-   if Item and Item._highlightEvent then
-      Item._highlightEvent(View, Item, true)
-   end
-
+   Item?._highlightEvent(View, Item, true)
    View.viewport.acDraw()
 end
 
 local function clearItems(View)
    if View.items then
       for _, item in pairs(View.items) do
-         if item then
-            item:_free()
-         end
+         item?:_free()
       end
    end
 
@@ -53,20 +47,16 @@ local function deselectAll(View)
    for _, i in ipairs(View.items) do
       if i._selected then
          i._selected = false
-         if i._selectEvent then
-            i._selectEvent(View, i)
-         end
+         i?._selectEvent(View, i)
       end
    end
 end
 
 local function deselectItem(View, Item)
-   if (View.sItem is Item) then View.sItem = nil end
+   if View.sItem is Item then View.sItem = nil end
 
    Item._selected = false
-   if Item._selectEvent then
-      Item._selectEvent(View, Item)
-   end
+   Item?._selectEvent(View, Item)
 end
 
 local function lastItem(View)
@@ -80,9 +70,7 @@ local function selectItem(View, Item)
 
    if Item then
       Item._selected = true
-      if Item._selectEvent then
-         Item._selectEvent(View, Item)
-      end
+      Item?._selectEvent(View, Item)
    end
 end
 
@@ -96,26 +84,20 @@ end
 --   manual:    Item was manually selected (by the application, not the user).
 
 local function reportItemSelected(View, Reason, Item)
-   if View.itemSelected then
-      View.itemSelected(View, Reason, Item)
-   end
+   View?.itemSelected(View, Reason, Item)
 end
 
 local function reportItemDeselected(View, Reason, Item)
-   if View.itemDeselected then
-      View.itemDeselected(View, Reason, Item)
-   end
+   View?.itemDeselected(View, Reason, Item)
 end
 
 local function reportItemActivated(View, Reason, Item)
    if Item.activity then Item.activity(Item) end
-   if View.itemActivated then View.itemActivated(View, Reason, Item) end
+   View?.itemActivated(View, Reason, Item)
 end
 
 local function reportActiveChange(View, Reason, Item)
-   if View.activeChange then
-      View.activeChange(View, Reason, Item)
-   end
+   View?.activeChange(View, Reason, Item)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -228,7 +210,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                   v.free()
                end
 
-               if vp then vp.free() end
+               vp?.free()
 
                Item._vectors = { }
             end
@@ -523,7 +505,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       BuildUI(vw)
       cursorActivity() -- Reset the cursor
-      if vw.border then vw.border.acMoveToFront() end
+      vw?.border.acMoveToFront()
       vw.scene.surface.mtScheduleRedraw()
    end
 
@@ -543,7 +525,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.scene    = vw.parentViewport.scene
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
-   vw.frame = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
+   vw.frame    = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
 
    vw.bkgd = vw.frame.new('VectorRectangle', {
       name   = 'view_bkgd',
@@ -618,7 +600,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                while scan do
                   scan = scan.prev -- TODO: prev is not supported yet
                end
-               if (not scan) then scan = lastItem(vw) end
+               scan ?= lastItem(vw)
                highlightItem(vw, scan)
             else
                highlightItem(vw, vw.items)
@@ -663,9 +645,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             end
 
             if vw.activeZone then -- Custom zone for click activity
-               if vw.activeZone.clickRelease then
-                  vw.activeZone.clickRelease(ev.x, ev.y, ev.absX, ev.absY)
-               end
+               vw.activeZone?.clickRelease(ev.x, ev.y, ev.absX, ev.absY)
                vw.activeZone = nil
                cursorActivity()
                return
@@ -692,11 +672,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
                vw.scene.surface.mtScheduleRedraw()
             end
-         elseif (ev.type is JET_ABS_XY) then
-            if vw.activeZone and vw.activeZone.clickMove then
-               vw.activeZone.clickMove(ev)
-            end
-
+         elseif ev.type is JET_ABS_XY then
+            vw?.activeZone?.clickMove(ev)
             vw.cursorX = ev.x
             vw.cursorY = ev.y
             vw.cursorAbsX = ev.absX

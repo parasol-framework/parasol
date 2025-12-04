@@ -255,15 +255,15 @@ end
 function testChainingMethodsAndFields()
    local ef_called = 0
    local service = {
-      data = { 
-         value = 42, 
+      data = {
+         value = 42,
          embedded_function = function(arg1, arg2, arg3)
             ef_called++
             assert(arg1 is 1, "Embedded function arg1 mismatch, got " .. tostring(arg1))
             assert(arg2 is '2', "Embedded function arg2 mismatch, got " .. tostring(arg2))
             assert(arg3[0] is '3', "Embedded function arg3 mismatch, got " .. tostring(arg3[0]))
-            return 0xff 
-         end 
+            return 0xff
+         end
       },
       getData = function(self)
          return self.data

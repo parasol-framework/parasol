@@ -27,16 +27,16 @@ gui.toolbar = function(Options)
       _groupMargin   = 4,
       _groupCount    = 0,
       _round         = 4,
-      _cellMargin    = (Options.cellMargin ?? 6),
+      _cellMargin    = Options.cellMargin ?? 6,
       _disabled      = false,
       _lookup        = { },
-      _iconSize      = (Options.iconSize ?? gui.interface.iconSize),
+      _iconSize      = Options.iconSize ?? gui.interface.iconSize,
       _hasFocus      = false,
-      _iconTheme     = (Options.iconTheme ?? gui.style.page.icon),
-      _iconHighlight = (Options.iconHighlight ?? gui.style.page.iconHighlight),
-      _hoverFill     = (Options.hoverFill ?? gui.style.button.highlight),
-      _selectFill    = (Options.selectFill ?? gui.palette.prime),
-      _groupBorder   = (Options.groupBorder ?? gui.style.widget.stroke)
+      _iconTheme     = Options.iconTheme ?? gui.style.page.icon,
+      _iconHighlight = Options.iconHighlight ?? gui.style.page.iconHighlight,
+      _hoverFill     = Options.hoverFill ?? gui.style.button.highlight,
+      _selectFill    = Options.selectFill ?? gui.palette.prime,
+      _groupBorder   = Options.groupBorder ?? gui.style.widget.stroke
    }
 
    local function sendFeedback()
@@ -69,7 +69,7 @@ gui.toolbar = function(Options)
       item.prev = self._last
       item.next = nil
       self._last = item
-      if not self._first then self._first = item end
+      self._first ?= item
 
       if ID then self._lookup[ID] = item end
       return item
@@ -137,8 +137,8 @@ gui.toolbar = function(Options)
 
       -- The _groupClip simplifies masking and 'vg' provides a container for hosting vectors.
 
-      if self._groupClip then self._groupClip.free() end
-      if self.vg then self.vg.free() end
+      self._groupClip?.free()
+      self.vg?.free()
 
       if self._groupCount > 0 then
          self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='UserSpace' })
@@ -192,17 +192,9 @@ gui.toolbar = function(Options)
          elseif item.type is TI_GROUP then
             if not Options.flush then
                if self._horizontal then
-                  if not item.prev then
-                     x += groupOffset
-                  else
-                     x += (self._iconSize * 0.25)
-                  end
+                  x += not item.prev ? groupOffset :> (self._iconSize * 0.25)
                else
-                  if not item.prev then
-                     y += groupOffset
-                  else
-                     y += (self._iconSize * 0.25)
-                  end
+                  y += not item.prev ? groupOffset :> (self._iconSize * 0.25)
                end
 
                currentGroup = item
@@ -287,7 +279,7 @@ gui.toolbar = function(Options)
                y += item.height
             end
 
-            spanCount = spanCount + 1
+            spanCount++
 
             if currentGroup then
                item.group = currentGroup
@@ -383,7 +375,7 @@ gui.toolbar = function(Options)
       else
          local item = newItem(TI_GROUP, Name, ID)
          item.group = { span=Span }
-         self._groupCount = self._groupCount + 1
+         self._groupCount++
          return item
       end
    end
@@ -525,16 +517,13 @@ gui.toolbar = function(Options)
       self._current = Item
 
       if self._current and (not self._current.disabled) and (not self._disabled) then
-         if self._clicked then
-            self._vHover.fill = self._selectFill
-         else
-            self._vHover.fill = self._hoverFill
+         self._vHover.fill = self._clicked ? self._selectFill :> self._hoverFill
+
+         if Item.icon and Item.iconAltFill then
+            Item.icon.fill = Item.iconAltFill
+         elseif Item.vectorText and Item.textAltFill then
+            Item.vectorText.fill = Item.textAltFill
          end
-            if Item.icon and Item.iconAltFill then
-               Item.icon.fill = Item.iconAltFill
-            elseif Item.vectorText and Item.textAltFill then
-               Item.vectorText.fill = Item.textAltFill
-            end
 
          if self._horizontal then
             self._vHover.x      = self._current.x
@@ -620,7 +609,7 @@ gui.toolbar = function(Options)
 
    -- Main entry point
 
-   if not Options.target then error('A target viewport is required.') end
+   assert(Options.target, 'A target viewport is required.')
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
@@ -629,8 +618,8 @@ gui.toolbar = function(Options)
 
    self.host = Options.target
    self.viewport = Options.target.new('VectorViewport')
-   self.viewport.x = (Options.x ?? 0)
-   self.viewport.y = (Options.y ?? 0)
+   self.viewport.x = Options.x ?? 0
+   self.viewport.y = Options.y ?? 0
    self.viewport.overflow = 'hidden'
 
    if Options.yOffset then

@@ -26,13 +26,12 @@ local function columnText(Value, Type)
       Value = Value.value
    end
 
-   if not Value then return '' end
+   Value ?? return ''
 
    if Type is 'bytesize' then
       Value = tonumber(Value)
-      if not Value then
-         return ''
-      elseif Value < 1024 then
+      Value ?? return ''
+      if Value < 1024 then
          return string.format('%.0f', Value)
       elseif Value < 1024 * 1024 then
          return string.format('%.0f KB', Value / 1024)
@@ -83,7 +82,7 @@ local function setListTextFill(Item, Fill)
    end
 end
 
-local function highlightItem(View, Item, Highlighted)
+local function highlightItem(View, Item:table, Highlighted)
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
          name = 'item_highlight',

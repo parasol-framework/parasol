@@ -130,7 +130,7 @@ end
       print(glHelp)
       return
    end
-   
+
    -- Setting an error string ensures that ctest will register a failure if the tests do not complete as planned.
    glSelf.errorString = "Unexpected execution failure - tests not executed as planned."
 

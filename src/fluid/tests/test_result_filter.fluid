@@ -223,7 +223,7 @@ function testErrorFilterOnVariable()
 end
 
 return {
-   tests = {    
+   tests = {
       -- Run all tests
       'testFilterKeepAll', 'testFilterDropFirst', 'testFilterDropFirstTwo', 'testFilterKeepFirstOnly',
       'testFilterDropFirstKeepSecondDropRest', 'testFilterKeepValues234Only', 'testFilterKeepSecondAndFourthOnwards',

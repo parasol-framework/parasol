@@ -61,7 +61,7 @@ end
 local function refreshColourNodes(self)
    for idx, node in ipairs(self._colourNodes) do
       local rgb = self._userColours[idx] ?? { }
-      
+
       if not rgb.r then rgb.r = 255 end
       if not rgb.g then rgb.g = 255 end
       if not rgb.b then rgb.b = 255 end
@@ -276,7 +276,7 @@ local function buildLayout(self, Options)
             events = {
                activate = function(Icon)
                   for k, v in pairs(self._userColours) do
-                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then                     
+                     if (v.r is self._rgb.r) and (v.g is self._rgb.g) and (v.b is self._rgb.b) then
                         self._paletteChanged = true
                         table.remove(self._userColours, k)
                         refreshColourNodes(self)

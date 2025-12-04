@@ -10,7 +10,7 @@ local BOX_SIZE = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
    local lStyle
-   if (mSys.AnalysePath('style:slider.fluid') is ERR_Okay) then
+   if mSys.AnalysePath('style:slider.fluid') is ERR_Okay then
       lStyle = loadFile('style:slider.fluid')
    else
       lStyle = loadFile('styles:default/slider.fluid')
@@ -18,36 +18,35 @@ local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
 gui.slider = function(Options)
    local self = { -- Public variables
-      min    = (Options.min ?? 0),
-      max    = (Options.max ?? 1),
-      value  = (Options.value ?? Options.min + ((Options.max - Options.min) * 0.5)),
+      min    = Options.min ?? 0,
+      max    = Options.max ?? 1,
+      value  = Options.value ?? Options.min + ((Options.max - Options.min) * 0.5),
       label  = Options.label,
-      events = (Options.events ?? { }),
+      events = Options.events ?? { },
       viewport = nil
    }
 
    local function setValue(Value)
       self.value = Value
-      if self.events.activate then self.events.activate(self, Value) end
+      self.events?.activate(self, Value)
       self.viewport.scene.surface.mtScheduleRedraw()
    end
 
    self.setRange = function(Min, Max)
-      if (Max <= Min) then error('The min/max values are invalid.') end
+      assert(Max > Min, 'The min/max values are invalid.')
       self.min = Min
       self.max = Max
-      if (self.value < self.min) then setValue(self.min) end
-      if (self.value > self.max) then setValue(self.max) end
+      if self.value < self.min then setValue(self.min) end
+      if self.value > self.max then setValue(self.max) end
    end
 
    -- Main entry point
 
    local target = Options.target
-   if (not target) then error('A target viewport is required.') end
-   if (self.max <= self.min) then error('The min/max values are invalid.') end
+   assert(target, 'A target viewport is required.')
+   assert(self.max > self.min, 'The min/max values are invalid.')
 
-   if Options.orientation is 'vertical' then self.orientation = 'V' else self.orientation = 'H' end
-
+   self.orientation = (Options.orientation is 'vertical') ? 'V' :> 'H'
    self._labelSize = 0
 
    if (self.orientation is 'V') then
@@ -60,9 +59,9 @@ gui.slider = function(Options)
 
       self._sliderVP.dragCallback = function(Viewport, X, Y)
          local max_size = self._sliderHostVP.height - BOX_SIZE
-         if (Y < 0) then Y = 0 end
-         if (Y > max_size) then Y = max_size end
-         if (Viewport.y is Y) then return end
+         if Y < 0 then Y = 0 end
+         if Y > max_size then Y = max_size end
+         if Viewport.y is Y then return end
 
          Viewport.y = Y
          setValue(self.min + (self.max - self.min) * ((max_size - Y) / max_size))
@@ -97,9 +96,9 @@ gui.slider = function(Options)
 
       self._sliderVP.dragCallback = function(Viewport, X, Y)
          local max_size  = self._sliderHostVP.width - BOX_SIZE
-         if (X < 0) then X = 0 end
-         if (X > max_size) then X = max_size end
-         if (Viewport.x is X) then return end
+         if X < 0 then X = 0 end
+         if X > max_size then X = max_size end
+         if Viewport.x is X then return end
 
          Viewport.x = X
          setValue(self.min + (self.max - self.min) * (X / max_size))
