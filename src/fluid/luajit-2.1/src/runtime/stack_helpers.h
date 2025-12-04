@@ -9,6 +9,7 @@
 #include "lj_obj.h"
 #include "lj_state.h"
 #include "lj_vm.h"
+#include "lua.h"
 
 //********************************************************************************************************************
 // StackRef: Safe stack reference that survives reallocation
@@ -200,7 +201,11 @@ public:
 // SimpleDeferredCall: Specialised helper for evaluating deferred expressions
 //
 // Deferred expressions are zero-argument functions that return one value.
-// This helper encapsulates the common pattern used in deferred_resolve().
+// This helper uses lua_call to properly set up C frames, which is required when
+// evaluating deferred expressions from within fast function fallbacks (e.g., assert).
+//
+// Using lj_vm_call directly from fast function fallbacks corrupts the VM state
+// because the C frame is not properly set up.
 //
 // Usage:
 //    if (isdeferred(funcV(o))) {
@@ -218,10 +223,20 @@ public:
 
    // Evaluate a deferred expression (zero-argument function returning 1 value)
    // Returns pointer to the result
+   //
+   // Uses lua_call instead of lj_vm_call to properly handle C frame setup.
+   // This is essential when called from fast function fallbacks.
    [[nodiscard]] TValue* evaluate(TValue* deferredFunc) noexcept {
-      VMCall call(L_);
-      call.func(deferredFunc);
-      return call.invoke(1);
+      // Push the deferred function to the stack
+      copyTV(L_, L_->top, deferredFunc);
+      incr_top(L_);
+
+      // Call via lua_call which properly sets up C frames
+      // lua_call has recursion protection for deferred resolution
+      lua_call(L_, 0, 1);
+
+      // Result is at top - 1
+      return L_->top - 1;
    }
 
    [[nodiscard]] TValue* evaluate(cTValue* deferredFunc) noexcept {

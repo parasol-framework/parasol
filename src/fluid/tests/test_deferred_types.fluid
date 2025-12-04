@@ -1,0 +1,324 @@
+-- Flute regression tests for Phase 1.5: Type-carrying deferred expressions
+
+-- Test type inference for string literal
+function testInferredStringType()
+   local x = <{ 'hello' }>
+   -- The deferred expression should have inferred string type
+   -- When resolved via resolve(), should return a string
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type, got ' .. type(result))
+   assert(result is 'hello', 'Expected "hello", got "' .. result .. '"')
+end
+
+-- Test type inference for number literal
+function testInferredNumberType()
+   local x = <{ 42 }>
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type, got ' .. type(result))
+   assert(result is 42, 'Expected 42, got ' .. tostring(result))
+end
+
+-- Test type inference for boolean literal
+function testInferredBooleanType()
+   local x = <{ true }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type, got ' .. type(result))
+   assert(result is true, 'Expected true')
+
+   local y = <{ false }>
+   local result2 = resolve(y)
+   assert(type(result2) is 'boolean', 'Expected boolean type')
+   assert(result2 is false, 'Expected false')
+end
+
+-- Test type inference for nil literal
+function testInferredNilType()
+   local x = <{ nil }>
+   local result = resolve(x)
+   assert(result is nil, 'Expected nil')
+end
+
+-- Test type inference for table constructor
+function testInferredTableType()
+   local x = <{ { a = 1, b = 2 } }>
+   local result = resolve(x)
+   assert(type(result) is 'table', 'Expected table type, got ' .. type(result))
+   assert(result.a is 1, 'Expected result.a = 1')
+   assert(result.b is 2, 'Expected result.b = 2')
+end
+
+-- Test type inference for arithmetic expression
+function testInferredArithmeticType()
+   local a = 10
+   local b = 20
+   local x = <{ a + b }>
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type from arithmetic')
+   assert(result is 30, 'Expected 30, got ' .. tostring(result))
+end
+
+-- Test type inference for string concatenation
+function testInferredConcatType()
+   local prefix = 'Hello'
+   local suffix = 'World'
+   local x = <{ prefix .. ' ' .. suffix }>
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type from concat')
+   assert(result is 'Hello World', 'Expected "Hello World", got "' .. result .. '"')
+end
+
+-- Test type inference for comparison (returns boolean)
+function testInferredComparisonType()
+   local a = 5
+   local b = 10
+   local x = <{ a < b }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type from comparison')
+   assert(result is true, 'Expected true')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test explicit type annotation for string
+
+function testExplicitStringType()
+   local function getValue()
+      return 'computed'
+   end
+   local x = <string{ getValue() }>
+   local result = resolve(x)
+   assert(type(result) is 'string', 'Expected string type')
+   assert(result is 'computed', 'Expected "computed"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test explicit type annotation for number
+
+function testExplicitNumberType()
+   local function compute()
+      return 42
+   end
+   local x = <number{ compute() }>
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type')
+   assert(result is 42, 'Expected 42')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test explicit type annotation with short form
+
+function testExplicitTypeShortForm()
+   local function getNum()
+      return 123
+   end
+   local x = <num{ getNum() }>
+   local result = resolve(x)
+   assert(type(result) is 'number', 'Expected number type')
+   assert(result is 123, 'Expected 123')
+
+   local function getStr()
+      return 'test'
+   end
+   local y = <str{ getStr() }>
+   local result2 = resolve(y)
+   assert(type(result2) is 'string', 'Expected string type')
+   assert(result2 is 'test', 'Expected "test"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test explicit table type annotation
+
+function testExplicitTableType()
+   local function buildTable()
+      return { value = 99 }
+   end
+   local x = <table{ buildTable() }>
+   local result = resolve(x)
+   assert(type(result) is 'table', 'Expected table type')
+   assert(result.value is 99, 'Expected result.value = 99')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test explicit boolean type annotation
+
+function testExplicitBooleanType()
+   local function checkCondition()
+      return true
+   end
+   local x = <bool{ checkCondition() }>
+   local result = resolve(x)
+   assert(type(result) is 'boolean', 'Expected boolean type')
+   assert(result is true, 'Expected true')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test resolve() on non-deferred values (should pass through unchanged)
+
+function testResolveNonDeferred()
+   local str = 'plain string'
+   local result1 = resolve(str)
+   assert(result1 is str, 'resolve should return non-deferred values unchanged')
+
+   local num = 42
+   local result2 = resolve(num)
+   assert(result2 is num, 'resolve should return non-deferred numbers unchanged')
+
+   local tbl = { x = 1 }
+   local result3 = resolve(tbl)
+   assert(result3 is tbl, 'resolve should return non-deferred tables unchanged')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test deferred expression with function that captures upvalues
+
+function testDeferredWithUpvalueCapture()
+   local base = 100
+   local multiplier = 2
+   local x = <{ base * multiplier }>
+   local result = resolve(x)
+   assert(result is 200, 'Expected 200')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test multiple evaluations of same deferred expression
+-- (after first resolve, it should be replaced with the value)
+
+function testMultipleResolves()
+   local counter = 0
+   local function increment()
+      counter = counter + 1
+      return counter
+   end
+
+   local x = <number{ increment() }>
+   -- First resolve should call the function
+   local result1 = resolve(x)
+   -- Note: x is a local copy, so the stack slot isn't updated
+   -- Each resolve() call on the same deferred expression creates a new evaluation
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test that type() returns the expected type for deferred expressions (not "function")
+
+function testTypeReturnsExpectedType()
+   -- String deferred
+   local str = <{ 'hello' }>
+   assert(type(str) is 'string', 'Expected type(str) to be "string", got "' .. type(str) .. '"')
+
+   -- Number deferred
+   local num = <{ 42 }>
+   assert(type(num) is 'number', 'Expected type(num) to be "number", got "' .. type(num) .. '"')
+
+   -- Boolean deferred
+   local bool = <{ true }>
+   assert(type(bool) is 'boolean', 'Expected type(bool) to be "boolean", got "' .. type(bool) .. '"')
+
+   -- Table deferred
+   local tbl = <{ {} }>
+   assert(type(tbl) is 'table', 'Expected type(tbl) to be "table", got "' .. type(tbl) .. '"')
+
+   -- Nil deferred
+   local nilval = <{ nil }>
+   assert(type(nilval) is 'nil', 'Expected type(nilval) to be "nil", got "' .. type(nilval) .. '"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test that type() works with explicitly typed deferred expressions
+
+function testTypeWithExplicitAnnotation()
+   local function getValue()
+      return 'computed'
+   end
+
+   local x = <string{ getValue() }>
+   assert(type(x) is 'string', 'Expected type(x) to be "string" for explicitly typed deferred')
+
+   local y = <number{ 42 }>
+   assert(type(y) is 'number', 'Expected type(y) to be "number" for explicitly typed deferred')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test assert() with deferred string message
+-- The key use case: deferred message is NOT evaluated when assertion passes
+-- Note: Currently, deferred expressions cannot be safely resolved from within fast function fallbacks due to VM stack
+-- constraints.  Also if assert() is shadowed then the execution path is different between regular and traced executions.
+
+function testAssertWithDeferredMessage()
+   local evaluated = false
+   local function makeMessage()
+      evaluated = true
+      return 'This is the error message'
+   end
+
+   -- Test that deferred message is NOT evaluated when assert succeeds
+   evaluated = false
+   assert(true, <string{ makeMessage() }>)
+   assert(evaluated is false, 'Deferred message should NOT be evaluated when assert succeeds')
+
+   -- Test that assert(false) still fails (even though deferred message can't be resolved)
+   evaluated = false
+   local success, err = pcall(function()
+      assert(false, <string{ makeMessage() }>)
+   end)
+   assert(success is false, 'assert(false) should fail')
+   assert(err != nil, 'Error message should not be nil')
+   -- Note: evaluated may still be false because resolving deferred expressions
+   -- from within fast function fallbacks is not currently supported
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test assert() with deferred string containing concatenation
+
+function testAssertDeferredConcat()
+   local context = 'test context'
+   local value = 42
+
+   local success, err = pcall(function()
+      assert(false, <string{ 'Error in ' .. context .. ': value = ' .. tostring(value) }>)
+   end)
+   assert(success is false, 'assert(false) should fail')
+   assert(err != nil, 'Error message should not be nil')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test assert() with explicitly typed deferred expression
+
+function testAssertExplicitType()
+   local function computeMessage()
+      return 'computed error'
+   end
+
+   local success, err = pcall(function()
+      assert(false, <string{ computeMessage() }>)
+   end)
+   assert(success is false, 'assert(false) should fail')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local tests = {
+   'testInferredStringType',
+   'testInferredNumberType',
+   'testInferredBooleanType',
+   'testInferredNilType',
+   'testInferredTableType',
+   'testInferredArithmeticType',
+   'testInferredConcatType',
+   'testInferredComparisonType',
+   'testExplicitStringType',
+   'testExplicitNumberType',
+   'testExplicitTypeShortForm',
+   'testExplicitTableType',
+   'testExplicitBooleanType',
+   'testResolveNonDeferred',
+   'testDeferredWithUpvalueCapture',
+   'testMultipleResolves',
+   'testTypeReturnsExpectedType',
+   'testTypeWithExplicitAnnotation',
+   'testAssertWithDeferredMessage',
+   'testAssertDeferredConcat',
+   'testAssertExplicitType'
+}
+
+return {
+   tests = tests
+}

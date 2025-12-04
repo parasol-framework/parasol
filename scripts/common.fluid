@@ -73,7 +73,7 @@ file ?= { ui = { } }
 
 file.readAll = function(Path)
    local ex, fl = catch(function() return obj.new('file', { flags='READ', path=Path } ) end)
-   assert(not ex, 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message)
+   assert(not ex, <{ 'Failed to open file "' .. tostring(Path) .. '": ' .. ex.message }>)
 
    local file_buffer = string.alloc(fl.size)
    local err, bytes_read = fl.acRead(file_buffer)

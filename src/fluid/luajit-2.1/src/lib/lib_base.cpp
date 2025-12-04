@@ -97,15 +97,16 @@ LJLIB_ASM(type) LJLIB_REC(.)
          if (dtype < 14) {
             // Valid type tag - return the corresponding type name
             // Note: lj_obj_itypename array is indexed by base type (0-13)
-            lua_pushstring(L, lj_obj_itypename[dtype]);
+            // Result must be placed at L->base - 2 for FFH_RES(1) to work correctly
+            setstrV(L, L->base - 2, lj_str_newz(L, lj_obj_itypename[dtype]));
             return FFH_RES(1);
          }
          // Unknown type (0xFF) - fall through to return "function"
       }
    }
 
-   // Standard type lookup using lj_typename() which handles the inversion correctly
-   lua_pushstring(L, lj_typename(o));
+   // Standard type lookup - result placed at L->base - 2
+   setstrV(L, L->base - 2, lj_str_newz(L, lj_typename(o)));
    return FFH_RES(1);
 }
 

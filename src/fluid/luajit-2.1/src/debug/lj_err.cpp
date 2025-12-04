@@ -1043,10 +1043,10 @@ LJ_NOINLINE void lj_err_comp(lua_State* L, cTValue* o1, cTValue* o2)
 
 LJ_NOINLINE void lj_err_optype_call(lua_State* L, TValue* o)
 {
-   /* Gross hack if lua_[p]call or pcall/xpcall fail for a non-callable object:
-   ** L->base still points to the caller. So add a dummy frame with L instead
-   ** of a function. See lua_getstack().
-   */
+   // Gross hack if lua_[p]call or pcall/xpcall fail for a non-callable object:
+   // L->base still points to the caller. So add a dummy frame with L instead
+   // of a function. See lua_getstack().
+
    const BCIns* pc = cframe_Lpc(L);
    if (((ptrdiff_t)pc & FRAME_TYPE) != FRAME_LUA) {
       const char* tname = lj_typename(o);

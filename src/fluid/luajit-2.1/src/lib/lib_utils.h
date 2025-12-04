@@ -65,14 +65,30 @@
 //
 // Replaces patterns like:
 //    if (tvisstr(o) or tvisnumber(o) or tvistab(o)) { ... }
+//
+// For deferred expressions, checks the stored deferred_type against the requested tags.
+// This allows type checking without evaluating the deferred expression.
 
 template<uint32_t... Tags>
-[[nodiscard]] constexpr bool is_any_type(const TValue* o) noexcept
+[[nodiscard]] inline bool is_any_type(const TValue* o) noexcept
 {
    if constexpr (sizeof...(Tags) IS 0) return false;
    else {
       uint32_t it = itype(o);
-      return ((it IS Tags) or ...);
+      // First check if the raw type matches
+      if (((it IS Tags) or ...)) return true;
+
+      // If it's a deferred expression, check the stored deferred type
+      if (tvisfunc(o)) {
+         GCfunc* fn = funcV(o);
+         if (isdeferred(fn)) {
+            GCproto* pt = funcproto(fn);
+            // deferred_type stores base tag (0-13), convert to itype format (~tag)
+            uint32_t deferred_itype = ~uint32_t(pt->deferred_type);
+            return ((deferred_itype IS Tags) or ...);
+         }
+      }
+      return false;
    }
 }
 

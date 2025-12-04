@@ -661,6 +661,7 @@ set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank ternary table complex stress unit_tests jitoptions
    unicode ellipsis safe_nav close type_annotations jit shadow_assert pipe result_filter
+   deferred_types deferred_expr
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

@@ -1,0 +1,107 @@
+-- Flute regression tests for deferred expressions <{ expr }>
+
+-- Test that deferred expressions are created as functions
+function testDeferredExprCreation()
+   local x = <{ 'hello' }>
+   -- Deferred expressions are stored as closures with FF_DEFERRED marker
+   -- They appear as functions until resolved
+   assert(x != nil, "Deferred expression should not be nil")
+end
+
+-- Test that deferred expressions can wrap simple literals
+function testDeferredLiteral()
+   local x = <{ 42 }>
+   assert(x != nil, "Deferred number expression should not be nil")
+
+   local y = <{ true }>
+   assert(y != nil, "Deferred boolean expression should not be nil")
+
+   local z = <{ 'string' }>
+   assert(z != nil, "Deferred string expression should not be nil")
+end
+
+-- Test that deferred expressions can wrap complex expressions
+function testDeferredComplexExpr()
+   local a = 10
+   local b = 20
+   local x = <{ a + b }>
+   assert(x != nil, "Deferred arithmetic expression should not be nil")
+end
+
+-- Test that deferred expressions can capture upvalues
+function testDeferredUpvalueCapture()
+   local base = 100
+   local x = <{ base * 2 }>
+   assert(x != nil, "Deferred expression with upvalue should not be nil")
+end
+
+-- Test that deferred expressions can contain function calls
+-- Function calls require explicit type annotation since return type cannot be inferred
+function testDeferredFunctionCall()
+   local function compute()
+      return 42
+   end
+   local x = <number{ compute() }>
+   assert(x != nil, "Deferred function call expression should not be nil")
+end
+
+-- Test string concatenation in deferred expression
+function testDeferredConcat()
+   local prefix = 'Hello'
+   local suffix = 'World'
+   local x = <{ prefix .. ' ' .. suffix }>
+   assert(x != nil, "Deferred concat expression should not be nil")
+end
+
+-- Test nested deferred expressions (outer deferred containing another)
+-- The outer deferred contains an identifier (inner), which requires explicit type annotation
+function testDeferredNested()
+   local inner = <{ 'inner' }>
+   local outer = <string{ inner }>
+   assert(outer != nil, "Nested deferred expression should not be nil")
+end
+
+-- Test deferred expression in table constructor
+function testDeferredInTable()
+   local t = {
+      lazy = <{ 'computed later' }>
+   }
+   assert(t.lazy != nil, "Deferred expression in table should not be nil")
+end
+
+-- Test deferred expression with conditional
+function testDeferredTernary()
+   local flag = true
+   local x = <{ flag ? 'yes' :> 'no' }>
+   assert(x != nil, "Deferred ternary expression should not be nil")
+end
+
+-- Test deferred expression passed as argument
+function testDeferredAsArgument()
+   local function identity(val)
+      return val
+   end
+   local x = <{ 'test' }>
+   local result = identity(x)
+   -- The deferred expression is passed and the function receives it
+   assert(result != nil, "Deferred expression passed to function should not be nil")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+local tests = {
+   'testDeferredExprCreation',
+   'testDeferredLiteral',
+   'testDeferredComplexExpr',
+   'testDeferredUpvalueCapture',
+   'testDeferredFunctionCall',
+   'testDeferredConcat',
+   'testDeferredNested',
+   'testDeferredInTable',
+   'testDeferredTernary',
+   'testDeferredAsArgument'
+}
+
+return {
+   tests = tests
+}

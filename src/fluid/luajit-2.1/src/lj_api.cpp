@@ -130,6 +130,55 @@ static TValue * deferred_resolve(lua_State *L, int idx)
    return o;
 }
 
+// Thread-local flag to prevent recursive deferred resolution
+static thread_local bool resolving_deferred = false;
+
+// Resolve all deferred expression arguments before a function call.
+// This is called from lua_call/lua_pcall to ensure arguments are evaluated
+// before being passed to the called function.
+// Stack layout: [func][arg1][arg2]...[argN] where top points past argN
+
+static void resolve_call_args(lua_State *L, int nargs)
+{
+   // Prevent recursive resolution (when lua_call is used to resolve a deferred)
+   if (resolving_deferred) return;
+
+   TValue *arg = L->top - nargs;  // First argument
+   TValue *end = L->top;          // Past last argument
+
+   for (; arg < end; arg++) {
+      if (tvisfunc(arg)) {
+         GCfunc *fn = funcV(arg);
+         if (isdeferred(fn)) {
+            // Track slot position (may move during nested calls)
+            ptrdiff_t slot_offset = savestack(L, arg);
+
+            // Push the deferred function for calling
+            copyTV(L, L->top, arg);
+            L->top++;
+
+            // Set flag to prevent infinite recursion, then call via lua_call
+            resolving_deferred = true;
+            lua_call(L, 0, 1);  // Call deferred with 0 args, 1 result
+            resolving_deferred = false;
+
+            // Result is now at L->top - 1
+            TValue *result = L->top - 1;
+
+            // Restore arg pointer (stack may have been reallocated)
+            arg = restorestack(L, slot_offset);
+            end = L->top - 1;  // Adjust end since we consumed the result slot
+
+            // Copy result to the argument slot
+            copyTV(L, arg, result);
+
+            // Pop the result (it's now in the arg slot)
+            L->top--;
+         }
+      }
+   }
+}
+
 // Variant that returns const pointer for read-only access.
 // For pseudo-indices (upvalues, registry, etc.), can't evaluate deferred expressions.
 
@@ -358,15 +407,19 @@ extern int lua_isnumber(lua_State *L, int idx)
 
 extern int lua_isstring(lua_State *L, int idx)
 {
-   cTValue * o;
-   // Resolve deferred expressions for stack positions
-   if (idx > LUA_REGISTRYINDEX) {
-      o = deferred_resolve_const(L, idx);
+   cTValue *o = index2adr(L, idx);
+   if (tvisstr(o) or tvisnumber(o)) return 1;
+
+   // Check deferred expression's stored type without evaluating
+   if (tvisfunc(o)) {
+      GCfunc *fn = funcV(o);
+      if (isdeferred(fn)) {
+         GCproto *pt = funcproto(fn);
+         // deferred_type 4 = string, 13 = number (both coerce to string)
+         return (pt->deferred_type IS 4 or pt->deferred_type IS 13) ? 1 : 0;
+      }
    }
-   else {
-      o = index2adr(L, idx);
-   }
-   return (tvisstr(o) or tvisnumber(o));
+   return 0;
 }
 
 extern int lua_isuserdata(lua_State *L, int idx)
@@ -934,6 +987,20 @@ extern void lua_concat(lua_State *L, int n)
 {
    lj_checkapi_slot(n);
    if (n >= 2) {
+      // Resolve any deferred expressions in the concat range first
+      for (int i = 0; i < n; i++) {
+         TValue *slot = L->top - n + i;
+         if (tvisfunc(slot)) {
+            GCfunc *fn = funcV(slot);
+            if (isdeferred(fn)) {
+               SimpleDeferredCall call(L);
+               TValue *result = call.evaluate(slot);
+               // Stack may have moved, recalculate slot
+               slot = L->top - n + i;
+               copyTV(L, slot, result);
+            }
+         }
+      }
       n--;
       do {
          TValue * top = lj_meta_cat(L, L->top - 1, -n);
@@ -1258,6 +1325,7 @@ extern void lua_call(lua_State *L, int nargs, int nresults)
 {
    lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
+   resolve_call_args(L, nargs);  // Resolve deferred expressions in arguments
    lj_vm_call(L, api_call_base(L, nargs), nresults + 1);
 }
 
@@ -1270,6 +1338,7 @@ extern int lua_pcall(lua_State *L, int nargs, int nresults, int errfunc)
 
    lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
+   resolve_call_args(L, nargs);  // Resolve deferred expressions in arguments
 
    if (errfunc == 0) ef = 0;
    else {
@@ -1372,8 +1441,10 @@ extern int lua_yield(lua_State *L, int nresults)
 
 extern int lua_resume(lua_State *L, int nargs)
 {
-   if (L->cframe == nullptr and L->status <= LUA_YIELD)
+   if (L->cframe == nullptr and L->status <= LUA_YIELD) {
+      if (L->status == LUA_OK) resolve_call_args(L, nargs);  // Resolve deferred expressions
       return lj_vm_resume(L, L->status == LUA_OK ? api_call_base(L, nargs) : L->top - nargs, 0, 0);
+   }
    L->top = L->base;
    setstrV(L, L->top, lj_err_str(L, ErrMsg::COSUSP));
    incr_top(L);

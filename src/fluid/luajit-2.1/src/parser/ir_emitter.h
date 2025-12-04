@@ -178,7 +178,6 @@ private:
    ParserResult<ExpDesc> emit_safe_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_result_filter_expr(const ResultFilterPayload& payload);
-   ParserResult<ExpDesc> emit_shadow_assert(const ExprNodeList& arguments, BCLine call_line);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
    ParserResult<ExpDesc> emit_deferred_expr(const DeferredExprPayload& payload);
@@ -191,6 +190,7 @@ private:
    void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
    void ensure_register_floor(std::string_view usage);
    void ensure_register_balance(std::string_view usage);
+   void optimise_assert(const ExprNodeList &);
 
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);

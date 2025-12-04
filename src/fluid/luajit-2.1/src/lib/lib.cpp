@@ -26,6 +26,7 @@
 #include "../parser/lexer.h"
 #include "lj_bcdump.h"
 #include "lib.h"
+#include "runtime/stack_helpers.h"
 
 // -- Library initialization ----------------------------------------------
 
@@ -208,6 +209,21 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
          GCstr* s = lj_strfmt_number(L, o);
          setstrV(L, o, s);
          return s;
+      }
+      else if (tvisfunc(o)) {
+         GCfunc* fn = funcV(o);
+         if (isdeferred(fn)) {
+            GCproto* pt = funcproto(fn);
+            // Check if stored type is string (4 = ~LJ_TSTR)
+            if (pt->deferred_type IS 4) {
+               StackRef slot(L, o);
+               SimpleDeferredCall call(L);
+               TValue* result = call.evaluate(o);
+               o = slot.get();
+               copyTV(L, o, result);
+               if (tvisstr(o)) return strV(o);
+            }
+         }
       }
    }
    lj_err_argt(L, narg, LUA_TSTRING);
