@@ -27,6 +27,8 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr &N
    std::unique_ptr<FunctionExprPayload> result = std::make_unique<FunctionExprPayload>();
    result->parameters = std::move(payload->parameters);
    result->is_vararg = payload->is_vararg;
+   result->is_thunk = payload->is_thunk;
+   result->thunk_return_type = payload->thunk_return_type;
    result->body = std::move(payload->body);
    return result;
 }
@@ -103,6 +105,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
    switch (current.kind()) {
       case TokenKind::Local:       return this->parse_local();
       case TokenKind::Function:    return this->parse_function_stmt();
+      case TokenKind::ThunkToken:  return this->parse_function_stmt();
       case TokenKind::If:          return this->parse_if();
       case TokenKind::WhileToken:  return this->parse_while();
       case TokenKind::Repeat:      return this->parse_repeat();
@@ -129,18 +132,27 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 }
 
 //********************************************************************************************************************
-// Parses local variable declarations and local function statements.
+// Parses local variable declarations, local function statements and local thunk function statements.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_local()
 {
    Token local_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
-   if (this->ctx.check(TokenKind::Function)) {
-      Token function_token = this->ctx.tokens().current();
+
+   bool is_thunk = false;
+   if (this->ctx.check(TokenKind::ThunkToken)) {
+      is_thunk = true;
       this->ctx.tokens().advance();
+   }
+
+   if (this->ctx.check(TokenKind::Function) or is_thunk) {
+      if (not is_thunk) {
+         this->ctx.tokens().advance();
+      }
+      Token function_token = local_token;  // Use local_token as span start
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-      auto fn = this->parse_function_literal(function_token);
+      auto fn = this->parse_function_literal(function_token, is_thunk);
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
       StmtNodePtr stmt = std::make_unique<StmtNode>();
@@ -174,11 +186,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
 }
 
 //********************************************************************************************************************
-// Parses function declarations, including method definitions with colon syntax.
+// Parses function declarations, including method definitions with colon syntax and thunk functions.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 {
    Token func_token = this->ctx.tokens().current();
+   bool is_thunk = (func_token.kind() IS TokenKind::ThunkToken);
    this->ctx.tokens().advance();
    FunctionNamePath path;
    auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
@@ -193,6 +206,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    }
 
    if (this->ctx.match(TokenKind::Colon).ok()) {
+      if (is_thunk) {
+         Token current = this->ctx.tokens().current();
+         std::string message("thunk functions do not support method syntax");
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = message;
+         return ParserResult<StmtNodePtr>::failure(error);
+      }
       method = true;
       auto seg = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not seg.ok()) {
@@ -201,7 +224,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       path.method = make_identifier(seg.value_ref());
    }
 
-   auto fn = this->parse_function_literal(func_token);
+   auto fn = this->parse_function_literal(func_token, is_thunk);
    if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    ExprNodePtr function_expr = std::move(fn.value_ref());
 
@@ -821,7 +844,17 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       case TokenKind::Function: {
          Token function_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
-         auto fn = this->parse_function_literal(function_token);
+         auto fn = this->parse_function_literal(function_token, false);
+         if (not fn.ok()) return fn;
+
+         node = std::move(fn.value_ref());
+         break;
+      }
+
+      case TokenKind::ThunkToken: {
+         Token thunk_token = this->ctx.tokens().current();
+         this->ctx.tokens().advance();
+         auto fn = this->parse_function_literal(thunk_token, true);
          if (not fn.ok()) return fn;
 
          node = std::move(fn.value_ref());
@@ -849,6 +882,64 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       case TokenKind::LeftBracket: {
          // Result filter prefix syntax: [_*]func()
          return this->parse_result_filter_expr(current);
+      }
+
+      case TokenKind::DeferredOpen: {
+         // Deferred expression: <{ expr }>
+         Token start = this->ctx.tokens().current();
+         this->ctx.tokens().advance();
+         auto inner = this->parse_expression();
+         if (not inner.ok()) return inner;
+         if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+               "Expected '}>' to close deferred expression");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedToken;
+            error.token = this->ctx.tokens().current();
+            error.message = "Expected '}>' to close deferred expression";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+         // Infer type from inner expression
+         FluidType inferred_type = infer_expression_type(*inner.value_ref());
+         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
+            std::move(inner.value_ref()), inferred_type, false);
+         break;
+      }
+
+      case TokenKind::DeferredTyped: {
+         // Typed deferred expression: <type{ expr }>
+         Token start = this->ctx.tokens().current();
+         // Get the type name from the token payload
+         GCstr *type_str = start.payload().as_string();
+         FluidType explicit_type = FluidType::Unknown;
+         if (type_str) {
+            std::string_view type_name(strdata(type_str), type_str->len);
+            explicit_type = parse_type_name(type_name);
+            if (explicit_type IS FluidType::Unknown) {
+               auto message = std::format("Unknown type name '{}' in typed deferred expression", type_name);
+               this->ctx.emit_error(ParserErrorCode::UnknownTypeName, start, message);
+               ParserError error;
+               error.code = ParserErrorCode::UnknownTypeName;
+               error.token = start;
+               error.message = message;
+               return ParserResult<ExprNodePtr>::failure(error);
+            }
+         }
+         this->ctx.tokens().advance();
+         auto inner = this->parse_expression();
+         if (not inner.ok()) return inner;
+         if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+               "Expected '}>' to close typed deferred expression");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedToken;
+            error.token = this->ctx.tokens().current();
+            error.message = "Expected '}>' to close typed deferred expression";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
+            std::move(inner.value_ref()), explicit_type, true);
+         break;
       }
 
       default: {
@@ -971,11 +1062,30 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
 //********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
+// If is_thunk is true, parses optional return type annotation after parameters.
 
-ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token)
+ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token, bool is_thunk)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
+
+   FluidType return_type = FluidType::Any;
+   if (is_thunk) {
+      if (params.value_ref().is_vararg) {
+         Token current = this->ctx.tokens().current();
+         std::string message("thunk functions do not support varargs");
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, message);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = current;
+         error.message = message;
+         return ParserResult<ExprNodePtr>::failure(error);
+      }
+
+      auto type_result = this->parse_return_type_annotation();
+      if (not type_result.ok()) return ParserResult<ExprNodePtr>::failure(type_result.error_ref());
+      return_type = type_result.value_ref();
+   }
 
    const TokenKind terms[] = { TokenKind::EndToken };
    auto body = this->parse_block(terms);
@@ -983,7 +1093,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
-      params.value_ref().is_vararg, std::move(body.value_ref()));
+      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, return_type);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -1616,4 +1726,46 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
       return info;
    }
    return std::nullopt;
+}
+
+//********************************************************************************************************************
+// Parses optional return type annotation after function parameters (`:type` syntax).
+// Returns FluidType::Any if no annotation is present.
+
+ParserResult<FluidType> AstBuilder::parse_return_type_annotation()
+{
+   if (not this->ctx.match(TokenKind::Colon).ok()) {
+      return ParserResult<FluidType>::success(FluidType::Any);
+   }
+
+   auto type_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+   if (not type_token.ok()) {
+      return ParserResult<FluidType>::failure(type_token.error_ref());
+   }
+
+   GCstr *type_name = type_token.value_ref().identifier();
+   if (type_name IS nullptr) {
+      std::string message("expected type name after ':'");
+      this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, type_token.value_ref(), message);
+      ParserError error;
+      error.code = ParserErrorCode::ExpectedIdentifier;
+      error.token = type_token.value_ref();
+      error.message = message;
+      return ParserResult<FluidType>::failure(error);
+   }
+
+   std::string_view type_str(strdata(type_name), type_name->len);
+   FluidType parsed_type = parse_type_name(type_str);
+
+   if (parsed_type IS FluidType::Unknown) {
+      std::string message = std::format("unknown type name '{}'", type_str);
+      this->ctx.emit_error(ParserErrorCode::UnexpectedToken, type_token.value_ref(), message);
+      ParserError error;
+      error.code = ParserErrorCode::UnexpectedToken;
+      error.token = type_token.value_ref();
+      error.message = message;
+      return ParserResult<FluidType>::failure(error);
+   }
+
+   return ParserResult<FluidType>::success(parsed_type);
 }

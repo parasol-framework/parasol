@@ -676,6 +676,42 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             lex_next(State);
             if (State->c IS '=') { lex_next(State); return TK_le; }
             if (State->c IS '<') { lex_next(State); return TK_shl; }
+            if (State->c IS '{') { lex_next(State); return TK_defer_open; }
+            // Check for typed deferred expression: <identifier{
+            // Only enter this if we see a letter/underscore immediately (no whitespace)
+            if (isalpha(State->c) or State->c IS '_') {
+               // Save token position before scanning the identifier
+               BCLine ident_line = State->linenumber;
+               BCLine ident_column = BCLine(State->current_offset - State->line_start_offset + 1);
+               size_t ident_offset = State->current_offset;
+
+               // Scan the identifier into the buffer
+               do {
+                  lex_savenext(State);
+               } while (lj_char_isident(State->c));
+
+               // Check if immediately followed by '{'
+               if (State->c IS '{') {
+                  lex_next(State);  // Consume the '{'
+                  // Store the type name in the token value
+                  auto str_view = std::string_view(State->sb.b, sbuflen(&State->sb));
+                  GCstr *s = State->keepstr(str_view);
+                  setstrV(State->L, tv, s);
+                  return TK_defer_typed;
+               }
+               // Not a typed deferred expression (e.g., "x < y" comparison)
+               // Push the identifier as a buffered token to be returned after '<'
+               auto str_view = std::string_view(State->sb.b, sbuflen(&State->sb));
+               GCstr *s = State->keepstr(str_view);
+
+               LexState::BufferedToken buffered;
+               buffered.token = (s->reserved > 0) ? (TK_OFS + s->reserved) : TK_name;
+               setstrV(State->L, &buffered.value, s);
+               buffered.line = ident_line;
+               buffered.column = ident_column;
+               buffered.offset = ident_offset;
+               State->buffered_tokens.push_front(buffered);
+            }
             return '<';
 
          case '>':
@@ -760,6 +796,12 @@ static LexToken lex_scan(LexState *State, TValue *tv)
                }
             }
             return '|';  // Bitwise OR
+
+         case '}':
+            State->mark_token_start();
+            lex_next(State);
+            if (State->c IS '>') { lex_next(State); return TK_defer_close; }
+            return '}';
 
          case LEX_EOF:
             State->mark_token_start();
