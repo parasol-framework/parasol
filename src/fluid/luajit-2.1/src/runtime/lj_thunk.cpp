@@ -374,7 +374,7 @@ static int thunk_le(lua_State *L)
 }
 
 //********************************************************************************************************************
-// Index (field access) - resolves thunk then performs table lookup
+// Index (field access) - resolves thunk then performs table/userdata lookup
 
 static int thunk_index(lua_State *L)
 {
@@ -411,13 +411,41 @@ static int thunk_index(lua_State *L)
       return 1;
    }
 
-   // Not a table - error
+   // Handle userdata (e.g., Parasol objects) - delegate to their metatable's __index
+   if (tvisudata(o)) {
+      GCudata *ud = udataV(o);
+      GCtab *mt = tabref(ud->metatable);
+      if (mt) {
+         cTValue *idx = lj_tab_getstr(mt, lj_str_newlit(L, "__index"));
+         if (idx and not tvisnil(idx)) {
+            if (tvisfunc(idx)) {
+               // __index is a function: call __index(userdata, key)
+               copyTV(L, L->top, idx);
+               copyTV(L, L->top + 1, o);
+               copyTV(L, L->top + 2, key);
+               L->top += 3;
+               lua_call(L, 2, 1);
+               return 1;
+            } else if (tvistab(idx)) {
+               // __index is a table: look up key in that table
+               cTValue *res = lj_tab_get(L, tabV(idx), key);
+               copyTV(L, L->top++, res);
+               return 1;
+            }
+         }
+      }
+      // Userdata without __index metamethod
+      lj_err_optype(L, o, ErrMsg::OPINDEX);
+      return 0;
+   }
+
+   // Not a table or userdata - error
    lj_err_optype(L, o, ErrMsg::OPINDEX);
    return 0;
 }
 
 //********************************************************************************************************************
-// Newindex (field assignment) - resolves thunk then performs table assignment
+// Newindex (field assignment) - resolves thunk then performs table/userdata assignment
 
 static int thunk_newindex(lua_State *L)
 {
@@ -427,13 +455,74 @@ static int thunk_newindex(lua_State *L)
 
    if (tvistab(o)) {
       GCtab *t = tabV(o);
+
+      // Check if key exists in table - if not, check for __newindex metamethod
+      cTValue *existing = lj_tab_get(L, t, key);
+      if (tvisnil(existing)) {
+         GCtab *mt = tabref(t->metatable);
+         if (mt) {
+            cTValue *newidx = lj_tab_getstr(mt, lj_str_newlit(L, "__newindex"));
+            if (newidx and not tvisnil(newidx)) {
+               if (tvisfunc(newidx)) {
+                  // __newindex is a function: call __newindex(table, key, value)
+                  copyTV(L, L->top, newidx);
+                  copyTV(L, L->top + 1, o);
+                  copyTV(L, L->top + 2, key);
+                  copyTV(L, L->top + 3, val);
+                  L->top += 4;
+                  lua_call(L, 3, 0);
+                  return 0;
+               } else if (tvistab(newidx)) {
+                  // __newindex is a table: set key in that table
+                  GCtab *target = tabV(newidx);
+                  TValue *slot = lj_tab_set(L, target, key);
+                  copyTV(L, slot, val);
+                  lj_gc_anybarriert(L, target);
+                  return 0;
+               }
+            }
+         }
+      }
+
+      // Key exists or no __newindex - set directly in table
       TValue *slot = lj_tab_set(L, t, key);
       copyTV(L, slot, val);
       lj_gc_anybarriert(L, t);
       return 0;
    }
 
-   // Not a table - error
+   // Handle userdata (e.g., Parasol objects) - delegate to their metatable's __newindex
+   if (tvisudata(o)) {
+      GCudata *ud = udataV(o);
+      GCtab *mt = tabref(ud->metatable);
+      if (mt) {
+         cTValue *newidx = lj_tab_getstr(mt, lj_str_newlit(L, "__newindex"));
+         if (newidx and not tvisnil(newidx)) {
+            if (tvisfunc(newidx)) {
+               // __newindex is a function: call __newindex(userdata, key, value)
+               copyTV(L, L->top, newidx);
+               copyTV(L, L->top + 1, o);
+               copyTV(L, L->top + 2, key);
+               copyTV(L, L->top + 3, val);
+               L->top += 4;
+               lua_call(L, 3, 0);
+               return 0;
+            } else if (tvistab(newidx)) {
+               // __newindex is a table: set key in that table
+               GCtab *t = tabV(newidx);
+               TValue *slot = lj_tab_set(L, t, key);
+               copyTV(L, slot, val);
+               lj_gc_anybarriert(L, t);
+               return 0;
+            }
+         }
+      }
+      // Userdata without __newindex metamethod
+      lj_err_optype(L, o, ErrMsg::OPINDEX);
+      return 0;
+   }
+
+   // Not a table or userdata - error
    lj_err_optype(L, o, ErrMsg::OPINDEX);
    return 0;
 }
