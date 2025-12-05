@@ -993,7 +993,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  ldr TAB:RB, TAB:CARG1->metatable
   |2:
   |   mov CARG1, TISNIL
-  |   ldr STR:RC, GL->gcroot[GCROOT_MMNAME+MM_metatable]
+  |   ldr STR:RC, GL->gcroot[GCROOT_MMNAME+int(MM_metatable)]
   |  cbz TAB:RB, ->fff_restv
   |  ldr TMP1w, TAB:RB->hmask
   |   ldr TMP2w, STR:RC->sid

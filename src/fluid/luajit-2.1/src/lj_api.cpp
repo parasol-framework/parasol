@@ -30,10 +30,10 @@
 #define lj_checkapi_slot(idx) \
   lj_checkapi((idx) <= (L->top - L->base), "stack slot %d out of range", (idx))
 
-static TValue* index2adr(lua_State* L, int idx)
+static TValue * index2adr(lua_State *L, int idx)
 {
    if (idx > 0) {
-      TValue* o = L->base + (idx - 1);
+      TValue * o = L->base + (idx - 1);
       return o < L->top ? o : niltv(L);
    }
    else if (idx > LUA_REGISTRYINDEX) {
@@ -42,7 +42,7 @@ static TValue* index2adr(lua_State* L, int idx)
       return L->top + idx;
    }
    else if (idx == LUA_GLOBALSINDEX) {
-      TValue* o = &G(L)->tmptv;
+      TValue * o = &G(L)->tmptv;
       settabV(L, o, tabref(L->env));
       return o;
    }
@@ -54,7 +54,7 @@ static TValue* index2adr(lua_State* L, int idx)
       lj_checkapi(fn->c.gct == ~LJ_TFUNC and !isluafunc(fn),
          "calling frame is not a C function");
       if (idx == LUA_ENVIRONINDEX) {
-         TValue* o = &G(L)->tmptv;
+         TValue * o = &G(L)->tmptv;
          settabV(L, o, tabref(fn->c.env));
          return o;
       }
@@ -65,17 +65,17 @@ static TValue* index2adr(lua_State* L, int idx)
    }
 }
 
-static LJ_AINLINE TValue* index2adr_check(lua_State* L, int idx)
+static LJ_AINLINE TValue * index2adr_check(lua_State *L, int idx)
 {
-   TValue* o = index2adr(L, idx);
+   TValue * o = index2adr(L, idx);
    lj_checkapi(o != niltv(L), "invalid stack slot %d", idx);
    return o;
 }
 
-static TValue* index2adr_stack(lua_State* L, int idx)
+static TValue * index2adr_stack(lua_State *L, int idx)
 {
    if (idx > 0) {
-      TValue* o = L->base + (idx - 1);
+      TValue * o = L->base + (idx - 1);
       if (o < L->top) {
          return o;
       }
@@ -92,7 +92,7 @@ static TValue* index2adr_stack(lua_State* L, int idx)
    }
 }
 
-static GCtab* getcurrenv(lua_State* L)
+static GCtab* getcurrenv(lua_State *L)
 {
    GCfunc* fn = curr_func(L);
    return fn->c.gct == ~LJ_TFUNC ? tabref(fn->c.env) : tabref(L->env);
@@ -100,12 +100,12 @@ static GCtab* getcurrenv(lua_State* L)
 
 // Miscellaneous API functions
 
-extern int lua_status(lua_State* L)
+extern int lua_status(lua_State *L)
 {
    return L->status;
 }
 
-extern int lua_checkstack(lua_State* L, int size)
+extern int lua_checkstack(lua_State *L, int size)
 {
    if (size > LUAI_MAXCSTACK or (L->top - L->base + size) > LUAI_MAXCSTACK) {
       return 0;  //  Stack overflow.
@@ -116,13 +116,13 @@ extern int lua_checkstack(lua_State* L, int size)
    return 1;
 }
 
-extern void luaL_checkstack(lua_State* L, int size, const char* msg)
+extern void luaL_checkstack(lua_State *L, int size, const char* msg)
 {
    if (!lua_checkstack(L, size))
       lj_err_callerv(L, ErrMsg::STKOVM, msg);
 }
 
-extern void lua_xmove(lua_State* L, lua_State* to, int n)
+extern void lua_xmove(lua_State *L, lua_State* to, int n)
 {
    if (L == to) return;
    lj_checkapi_slot(n);
@@ -133,7 +133,7 @@ extern void lua_xmove(lua_State* L, lua_State* to, int n)
    to->top += n;
 }
 
-extern const lua_Number* lua_version(lua_State* L)
+extern const lua_Number * lua_version(lua_State *L)
 {
    static const lua_Number version = LUA_VERSION_NUM;
    UNUSED(L);
@@ -142,12 +142,12 @@ extern const lua_Number* lua_version(lua_State* L)
 
 // Stack manipulation
 
-extern int lua_gettop(lua_State* L)
+extern int lua_gettop(lua_State *L)
 {
    return (int)(L->top - L->base);
 }
 
-extern void lua_settop(lua_State* L, int idx)
+extern void lua_settop(lua_State *L, int idx)
 {
    if (idx >= 0) {
       lj_checkapi(idx <= tvref(L->maxstack) - L->base, "bad stack slot %d", idx);
@@ -168,21 +168,21 @@ extern void lua_settop(lua_State* L, int idx)
    }
 }
 
-extern void lua_remove(lua_State* L, int idx)
+extern void lua_remove(lua_State *L, int idx)
 {
-   TValue* p = index2adr_stack(L, idx);
+   TValue * p = index2adr_stack(L, idx);
    while (++p < L->top) copyTV(L, p - 1, p);
    L->top--;
 }
 
-extern void lua_insert(lua_State* L, int idx)
+extern void lua_insert(lua_State *L, int idx)
 {
-   TValue* q, * p = index2adr_stack(L, idx);
+   TValue * q, * p = index2adr_stack(L, idx);
    for (q = L->top; q > p; q--) copyTV(L, q, q - 1);
    copyTV(L, p, L->top);
 }
 
-static void copy_slot(lua_State* L, TValue* f, int idx)
+static void copy_slot(lua_State *L, TValue * f, int idx)
 {
    if (idx == LUA_GLOBALSINDEX) {
       lj_checkapi(tvistab(f), "stack slot %d is not a table", idx);
@@ -198,26 +198,26 @@ static void copy_slot(lua_State* L, TValue* f, int idx)
       lj_gc_barrier(L, fn, f);
    }
    else {
-      TValue* o = index2adr_check(L, idx);
+      TValue * o = index2adr_check(L, idx);
       copyTV(L, o, f);
       if (idx < LUA_GLOBALSINDEX)  //  Need a barrier for upvalues.
          lj_gc_barrier(L, curr_func(L), f);
    }
 }
 
-extern void lua_replace(lua_State* L, int idx)
+extern void lua_replace(lua_State *L, int idx)
 {
    lj_checkapi_slot(1);
    copy_slot(L, L->top - 1, idx);
    L->top--;
 }
 
-extern void lua_copy(lua_State* L, int fromidx, int toidx)
+extern void lua_copy(lua_State *L, int fromidx, int toidx)
 {
    copy_slot(L, index2adr(L, fromidx), toidx);
 }
 
-extern void lua_pushvalue(lua_State* L, int idx)
+extern void lua_pushvalue(lua_State *L, int idx)
 {
    copyTV(L, L->top, index2adr(L, idx));
    incr_top(L);
@@ -225,7 +225,7 @@ extern void lua_pushvalue(lua_State* L, int idx)
 
 // Stack getters
 
-extern int lua_type(lua_State* L, int idx)
+extern int lua_type(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    if (tvisnumber(o)) {
@@ -242,38 +242,38 @@ extern int lua_type(lua_State* L, int idx)
    }
 }
 
-extern void luaL_checktype(lua_State* L, int idx, int tt)
+extern void luaL_checktype(lua_State *L, int idx, int tt)
 {
    if (lua_type(L, idx) != tt)
       lj_err_argt(L, idx, tt);
 }
 
-extern void luaL_checkany(lua_State* L, int idx)
+extern void luaL_checkany(lua_State *L, int idx)
 {
    if (index2adr(L, idx) == niltv(L))
       lj_err_arg(L, idx, ErrMsg::NOVAL);
 }
 
-extern const char* lua_typename(lua_State* L, int t)
+extern const char* lua_typename(lua_State *L, int t)
 {
    UNUSED(L);
    return lj_obj_typename[t + 1];
 }
 
-extern int lua_iscfunction(lua_State* L, int idx)
+extern int lua_iscfunction(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    return tvisfunc(o) and !isluafunc(funcV(o));
 }
 
-extern int lua_isnumber(lua_State* L, int idx)
+extern int lua_isnumber(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
    return (tvisnumber(o) or (tvisstr(o) and lj_strscan_number(strV(o), &tmp)));
 }
 
-extern int lua_isstring(lua_State* L, int idx)
+extern int lua_isstring(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    return (tvisstr(o) or tvisnumber(o));
@@ -285,17 +285,17 @@ extern int lua_isuserdata(lua_State* L, int idx)
    return (tvisudata(o) or tvislightud(o));
 }
 
-extern int lua_rawequal(lua_State* L, int idx1, int idx2)
+extern int lua_rawequal(lua_State *L, int idx1, int idx2)
 {
-   cTValue* o1 = index2adr(L, idx1);
-   cTValue* o2 = index2adr(L, idx2);
+   cTValue * o1 = index2adr(L, idx1);
+   cTValue * o2 = index2adr(L, idx2);
    return (o1 == niltv(L) or o2 == niltv(L)) ? 0 : lj_obj_equal(o1, o2);
 }
 
-extern int lua_equal(lua_State* L, int idx1, int idx2)
+extern int lua_equal(lua_State *L, int idx1, int idx2)
 {
-   cTValue* o1 = index2adr(L, idx1);
-   cTValue* o2 = index2adr(L, idx2);
+   cTValue * o1 = index2adr(L, idx1);
+   cTValue * o2 = index2adr(L, idx2);
    if (tvisint(o1) and tvisint(o2)) {
       return intV(o1) == intV(o2);
    }
@@ -315,7 +315,7 @@ extern int lua_equal(lua_State* L, int idx1, int idx2)
       return 0;
    }
    else {
-      TValue* base = lj_meta_equal(L, gcV(o1), gcV(o2), 0);
+      TValue * base = lj_meta_equal(L, gcV(o1), gcV(o2), 0);
       if ((uintptr_t)base <= 1) {
          return (int)(uintptr_t)base;
       }
@@ -328,10 +328,10 @@ extern int lua_equal(lua_State* L, int idx1, int idx2)
    }
 }
 
-extern int lua_lessthan(lua_State* L, int idx1, int idx2)
+extern int lua_lessthan(lua_State *L, int idx1, int idx2)
 {
-   cTValue* o1 = index2adr(L, idx1);
-   cTValue* o2 = index2adr(L, idx2);
+   cTValue * o1 = index2adr(L, idx1);
+   cTValue * o2 = index2adr(L, idx2);
    if (o1 == niltv(L) or o2 == niltv(L)) return 0;
    else if (tvisint(o1) and tvisint(o2)) return intV(o1) < intV(o2);
    else if (tvisnumber(o1) and tvisnumber(o2)) return numberVnum(o1) < numberVnum(o2);
@@ -347,7 +347,7 @@ extern int lua_lessthan(lua_State* L, int idx1, int idx2)
    }
 }
 
-extern lua_Number lua_tonumber(lua_State* L, int idx)
+extern lua_Number lua_tonumber(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -355,7 +355,7 @@ extern lua_Number lua_tonumber(lua_State* L, int idx)
    return 0;
 }
 
-extern lua_Number lua_tonumberx(lua_State* L, int idx, int* ok)
+extern lua_Number lua_tonumberx(lua_State *L, int idx, int* ok)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -367,7 +367,7 @@ extern lua_Number lua_tonumberx(lua_State* L, int idx, int* ok)
    return 0;
 }
 
-extern lua_Number luaL_checknumber(lua_State* L, int idx)
+extern lua_Number luaL_checknumber(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -375,7 +375,7 @@ extern lua_Number luaL_checknumber(lua_State* L, int idx)
    lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
-extern lua_Number luaL_optnumber(lua_State* L, int idx, lua_Number def)
+extern lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -384,7 +384,7 @@ extern lua_Number luaL_optnumber(lua_State* L, int idx, lua_Number def)
    lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
-extern lua_Integer lua_tointeger(lua_State* L, int idx)
+extern lua_Integer lua_tointeger(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -392,7 +392,7 @@ extern lua_Integer lua_tointeger(lua_State* L, int idx)
    return 0;
 }
 
-extern lua_Integer lua_tointegerx(lua_State* L, int idx, int* ok)
+extern lua_Integer lua_tointegerx(lua_State *L, int idx, int* ok)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -404,7 +404,7 @@ extern lua_Integer lua_tointegerx(lua_State* L, int idx, int* ok)
    return 0;
 }
 
-extern lua_Integer luaL_checkinteger(lua_State* L, int idx)
+extern lua_Integer luaL_checkinteger(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -412,7 +412,7 @@ extern lua_Integer luaL_checkinteger(lua_State* L, int idx)
    lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
-extern lua_Integer luaL_optinteger(lua_State* L, int idx, lua_Integer def)
+extern lua_Integer luaL_optinteger(lua_State *L, int idx, lua_Integer def)
 {
    cTValue* o = index2adr(L, idx);
    TValue tmp;
@@ -421,13 +421,13 @@ extern lua_Integer luaL_optinteger(lua_State* L, int idx, lua_Integer def)
    lj_err_argt(L, idx, LUA_TNUMBER);
 }
 
-extern int lua_toboolean(lua_State* L, int idx)
+extern int lua_toboolean(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    return tvistruecond(o);
 }
 
-extern const char* lua_tolstring(lua_State* L, int idx, size_t* len)
+extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 {
    TValue* o = index2adr(L, idx);
    GCstr* s;
@@ -448,7 +448,7 @@ extern const char* lua_tolstring(lua_State* L, int idx, size_t* len)
    return strdata(s);
 }
 
-extern const char* luaL_checklstring(lua_State* L, int idx, size_t* len)
+extern const char* luaL_checklstring(lua_State *L, int idx, size_t* len)
 {
    TValue* o = index2adr(L, idx);
    GCstr* s;
@@ -468,7 +468,7 @@ extern const char* luaL_checklstring(lua_State* L, int idx, size_t* len)
    return strdata(s);
 }
 
-extern const char* luaL_optlstring(lua_State* L, int idx,
+extern const char* luaL_optlstring(lua_State *L, int idx,
    const char* def, size_t* len)
 {
    TValue* o = index2adr(L, idx);
@@ -493,7 +493,7 @@ extern const char* luaL_optlstring(lua_State* L, int idx,
    return strdata(s);
 }
 
-extern int luaL_checkoption(lua_State* L, int idx, const char* def,
+extern int luaL_checkoption(lua_State *L, int idx, const char* def,
    const char* const lst[])
 {
    ptrdiff_t i;

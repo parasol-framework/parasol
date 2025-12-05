@@ -1443,7 +1443,7 @@ static void build_subroutines(BuildCtx *ctx)
   |2:
   |  li CARG3, LJ_TNIL
   |   cmplwi TAB:CARG1, 0
-  |  lwz STR:RC, DISPATCH_GL(gcroot[GCROOT_MMNAME+MM_metatable])(DISPATCH)
+  |  lwz STR:RC, DISPATCH_GL(gcroot[GCROOT_MMNAME+int(MM_metatable)])(DISPATCH)
   |   beq ->fff_restv
   |  lwz TMP0, TAB:CARG1->hmask
   |   li CARG3, LJ_TTAB			// Use metatable as default result.

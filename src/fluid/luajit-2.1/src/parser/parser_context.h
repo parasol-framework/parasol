@@ -10,6 +10,12 @@
 #include "parser/token_stream.h"
 #include "parser/parser_profiler.h"
 
+enum class ParserChannel : uint8_t {
+   Error,
+   Expect,
+   Advance
+};
+
 //********************************************************************************************************************
 
 struct ParserAllocator {
@@ -146,7 +152,7 @@ private:
    std::string format_expected_message(TokenKind kind) const;
    ParserError make_error(ParserErrorCode code, const Token& token, std::string_view message);
    std::string describe_token(const Token& token) const;
-   void log_trace(const char* channel, const Token& token, std::string_view note) const;
+   void log_trace(ParserChannel, const Token& token, std::string_view note) const;
 
    LexState* lex_state;
    FuncState* func_state;
