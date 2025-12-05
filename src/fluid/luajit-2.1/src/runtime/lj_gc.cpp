@@ -65,7 +65,7 @@ static void gc_mark(global_State* g, GCobj* o)
       gray2black(o);  //  Userdata are never gray.
       if (mt) gc_markobj(g, mt);
       gc_markobj(g, tabref(gco2ud(o)->env));
-      if (LJ_HASBUFFER and gco2ud(o)->udtype == UDTYPE_BUFFER) {
+      if (LJ_HASBUFFER and gco2ud(o)->udtype IS UDTYPE_BUFFER) {
          SBufExt* sbx = (SBufExt*)uddata(gco2ud(o));
          if (sbufiscow(sbx) and gcref(sbx->cowref))
             gc_markobj(g, gcref(sbx->cowref));
@@ -73,6 +73,16 @@ static void gc_mark(global_State* g, GCobj* o)
             gc_markobj(g, gcref(sbx->dict_str));
          if (gcref(sbx->dict_mt))
             gc_markobj(g, gcref(sbx->dict_mt));
+      }
+      else if (gco2ud(o)->udtype IS UDTYPE_THUNK) {
+         // Mark thunk payload contents to prevent GC from collecting them
+         ThunkPayload* payload = thunk_payload(gco2ud(o));
+         // Mark the deferred function
+         if (gcref(payload->deferred_func))
+            gc_markobj(g, gcref(payload->deferred_func));
+         // Mark the cached value if it's a GC object
+         if (payload->resolved and tvisgcv(&payload->cached_value))
+            gc_markobj(g, gcval(&payload->cached_value));
       }
    }
    else if (LJ_UNLIKELY(gct == ~LJ_TUPVAL)) {
@@ -420,18 +430,16 @@ static GCRef* gc_sweep(global_State* g, GCRef* p, uint32_t lim)
    while ((o = gcref(*p)) != nullptr and lim-- > 0) {
       if (o->gch.gct == ~LJ_TTHREAD)  //  Need to sweep open upvalues, too.
          gc_fullsweep(g, &gco2th(o)->openupval);
+
       if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white?
-         lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED),
-            "sweep of undead object");
+         lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED), "sweep of undead object");
          makewhite(g, o);  //  Value is alive, change to the current white.
          p = &o->gch.nextgc;
       }
       else {  // Otherwise value is dead, free it.
-         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED,
-            "sweep of unlive object");
+         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED, "sweep of unlive object");
          setgcrefr(*p, o->gch.nextgc);
-         if (o == gcref(g->gc.root))
-            setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
+         if (o == gcref(g->gc.root)) setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
          gc_freefunc[o->gch.gct - ~LJ_TSTR](g, o);
       }
    }
@@ -450,14 +458,12 @@ static void gc_sweepstr(global_State* g, GCRef* chain)
    setgcrefp(q, (u & ~(uintptr_t)1));
    while ((o = gcref(*p)) != nullptr) {
       if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white?
-         lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED),
-            "sweep of undead string");
+         lj_assertG(!isdead(g, o) or (o->gch.marked & LJ_GC_FIXED), "sweep of undead string");
          makewhite(g, o);  //  String is alive, change to the current white.
          p = &o->gch.nextgc;
       }
       else {  // Otherwise string is dead, free it.
-         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED,
-            "sweep of unlive string");
+         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED, "sweep of unlive string");
          setgcrefr(*p, o->gch.nextgc);
          lj_str_free(g, gco2str(o));
       }

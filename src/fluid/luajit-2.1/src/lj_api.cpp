@@ -1062,8 +1062,7 @@ static TValue* api_call_base(lua_State* L, int nargs)
 
 extern void lua_call(lua_State* L, int nargs, int nresults)
 {
-   lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR,
-      "thread called in wrong state %d", L->status);
+   lj_checkapi(L->status == LUA_OK or L->status == LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
    lj_vm_call(L, api_call_base(L, nargs), nresults + 1);
 }

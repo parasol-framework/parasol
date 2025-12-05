@@ -21,6 +21,7 @@
 #include "lj_dispatch.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
+#include "lj_thunk.h"
 #include "lib.h"
 
 //********************************************************************************************************************
@@ -404,6 +405,77 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins)
       return (TValue*)(intptr_t)(bc_op(ins) & 1);
 }
 #endif
+
+//********************************************************************************************************************
+// Helper for thunk equality comparisons. Resolves thunk and compares with any type.
+
+TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State* L, BCIns ins)
+{
+   ASMFunction cont = (bc_op(ins) & 1) ? lj_cont_condf : lj_cont_condt;
+   int op = (int)bc_op(ins) & ~1;
+   TValue tv;
+   cTValue* o1 = &L->base[bc_a(ins)];
+   cTValue* o2;
+
+   // Decode o2 based on bytecode operation
+   if (op IS BC_ISEQV) {
+      o2 = &L->base[bc_d(ins)];
+   }
+   else if (op IS BC_ISEQS) {
+      setstrV(L, &tv, gco2str(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
+      o2 = &tv;
+   }
+   else if (op IS BC_ISEQN) {
+      o2 = &mref(curr_proto(L)->k, cTValue)[bc_d(ins)];
+   }
+   else {
+      lj_assertL(op IS BC_ISEQP, "bad bytecode op %d", op);
+      setpriV(&tv, ~bc_d(ins));
+      o2 = &tv;
+   }
+
+   // Resolve thunks if present
+   cTValue* resolved_o1 = o1;
+   cTValue* resolved_o2 = o2;
+
+   if (lj_thunk_isthunk(o1)) {
+      GCudata *ud = udataV(o1);
+      resolved_o1 = lj_thunk_resolve(L, ud);
+   }
+   if (lj_thunk_isthunk(o2)) {
+      GCudata *ud = udataV(o2);
+      resolved_o2 = lj_thunk_resolve(L, ud);
+   }
+
+   // Now compare the resolved values
+   int result;
+   if (resolved_o1 IS resolved_o2) {
+      result = 1;  // Same TValue pointer
+   }
+   else if (tvisnum(resolved_o1) and tvisnum(resolved_o2)) {
+      result = (numV(resolved_o1) == numV(resolved_o2));
+   }
+   else if (tvisstr(resolved_o1) and tvisstr(resolved_o2)) {
+      result = (strV(resolved_o1) IS strV(resolved_o2));  // String interning
+   }
+   else if (tvistab(resolved_o1) and tvistab(resolved_o2)) {
+      result = (tabV(resolved_o1) IS tabV(resolved_o2));
+   }
+   else if (tvisnil(resolved_o1) and tvisnil(resolved_o2)) {
+      result = 1;
+   }
+   else if (tvisbool(resolved_o1) and tvisbool(resolved_o2)) {
+      result = (boolV(resolved_o1) IS boolV(resolved_o2));
+   }
+   else {
+      result = 0;  // Different types
+   }
+
+   // Invert result for NE operations
+   if (bc_op(ins) & 1) result = !result;
+
+   return (TValue*)(intptr_t)result;
+}
 
 //********************************************************************************************************************
 // Helper for ordered comparisons. String compare, __lt/__le metamethods.

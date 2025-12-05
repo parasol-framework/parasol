@@ -74,7 +74,27 @@ LJLIB_PUSH("cdata")
 LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
 LJLIB_PUSH("number")
-LJLIB_ASM_(type)      LJLIB_REC(.)
+LJLIB_ASM(type)      LJLIB_REC(.)
+{
+   // C fallback for type() - handles thunks with declared types
+   TValue *o = L->base;
+   if (tvisudata(o)) {
+      GCudata *ud = udataV(o);
+      if (ud->udtype IS UDTYPE_THUNK) {
+         ThunkPayload *payload = thunk_payload(ud);
+         if (payload->expected_type != 0xFF) {
+            // Use the declared type string from the upvalue array
+            GCfunc *fn = funcV(L->base - 1 - LJ_FR2);
+            GCstr *type_str = strV(&fn->c.upvalue[payload->expected_type]);
+            setstrV(L, L->base - 1 - LJ_FR2, type_str);
+            return FFH_RES(1);
+         }
+      }
+   }
+   // Fall through to default "userdata" - should not reach here in normal operation
+   // as the assembly path handles non-thunk cases
+   return FFH_RETRY;  // Retry will use the fast path result
+}
 
 // Recycle the lj_lib_checkany(L, 1) from assert.
 

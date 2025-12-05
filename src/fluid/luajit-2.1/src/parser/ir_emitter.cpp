@@ -2499,11 +2499,79 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
 //********************************************************************************************************************
 // Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
+// For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
 
 ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload)
 {
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
+   // Handle thunk functions via AST transformation
+   if (Payload.is_thunk) {
+      // Transform:
+      //   thunk compute(x, y):num
+      //      return x * y
+      //   end
+      //
+      // Into:
+      //   function compute(x, y)
+      //      return __create_thunk(function() return x * y end, type_tag)
+      //   end
+
+      SourceSpan span = Payload.body->span;
+
+      // Step 1: Create inner closure (no parameters, captures parent's as upvalues)
+      // Move original body to inner function
+      auto inner_body = std::make_unique<BlockStmt>();
+      inner_body->span = span;
+      for (auto& stmt : Payload.body->statements) {
+         inner_body->statements.push_back(std::move(const_cast<StmtNodePtr&>(stmt)));
+      }
+
+      ExprNodePtr inner_fn = make_function_expr(span, {}, false, std::move(inner_body), false, FluidType::Any);
+
+      // Step 2: Create call to __create_thunk(inner_fn, type_tag)
+      NameRef create_thunk_ref;
+      create_thunk_ref.identifier.symbol = lj_str_newlit(this->lex_state.L, "__create_thunk");
+      create_thunk_ref.identifier.span = span;
+      create_thunk_ref.resolution = NameResolution::Unresolved;
+      ExprNodePtr create_thunk_fn = make_identifier_expr(span, create_thunk_ref);
+
+      // Type tag argument
+      LiteralValue type_literal;
+      type_literal.kind = LiteralKind::Number;
+      type_literal.number_value = double(fluid_type_to_lj_tag(Payload.thunk_return_type));
+      ExprNodePtr type_arg = make_literal_expr(span, type_literal);
+
+      // Build argument list
+      ExprNodeList call_args;
+      call_args.push_back(std::move(inner_fn));
+      call_args.push_back(std::move(type_arg));
+
+      // Create call expression
+      ExprNodePtr thunk_call = make_call_expr(span, std::move(create_thunk_fn), std::move(call_args), false);
+
+      // Step 3: Create return statement
+      ExprNodeList return_values;
+      return_values.push_back(std::move(thunk_call));
+      StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+      // Step 4: Create wrapper body with just the return statement
+      auto wrapper_body = std::make_unique<BlockStmt>();
+      wrapper_body->span = span;
+      wrapper_body->statements.push_back(std::move(return_stmt));
+
+      // Step 5: Create wrapper function payload (same parameters, not a thunk)
+      FunctionExprPayload wrapper_payload;
+      wrapper_payload.parameters = Payload.parameters;  // Copy parameters
+      wrapper_payload.is_vararg = Payload.is_vararg;
+      wrapper_payload.is_thunk = false;  // Important: wrapper is not a thunk
+      wrapper_payload.body = std::move(wrapper_body);
+
+      // Recursively emit the wrapper function (which is now a regular function)
+      return this->emit_function_expr(wrapper_payload);
+   }
+
+   // Regular function emission
    FuncState child_state;
    ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
    ParserConfig inherited = this->ctx.config();

@@ -40,8 +40,8 @@ int lj_thunk_isthunk(cTValue *o)
 
 void lj_thunk_new(lua_State *L, GCfunc *func, int expected_type)
 {
-   // Allocate userdata with ThunkPayload
-   GCudata *ud = lj_udata_new(L, sizeof(ThunkPayload), nullptr);
+   // Allocate userdata with ThunkPayload - use global environment for GC traversal
+   GCudata *ud = lj_udata_new(L, sizeof(ThunkPayload), tabref(L->env));
    ud->udtype = UDTYPE_THUNK;
 
    // Initialize payload

@@ -12,10 +12,22 @@ function testThunkBasicExecution()
    local value = lazy_value()
    assert(executed is false, "Thunk body should not execute on call, but executed was " .. tostring(executed))
 
-   -- Accessing value should execute body
-   local result = tostring(value)
-   assert(executed is true, "Thunk body should execute on access, but executed was " .. tostring(executed))
-   assert(result is "hello", "Thunk should return 'hello', got '" .. result .. "'")
+   -- Accessing value should execute body - now direct comparison works transparently
+   assert(value is "hello", "Thunk should return 'hello'")
+   assert(executed is true, "Thunk body should execute on access")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testGlobalThunkVar()
+   thunk get_str():str
+      return 'hello'
+   end
+
+   global_var_a = get_str() -- Does resolution work with global variables?
+   local x = type(global_var_a)
+   -- Direct comparison with string constant now works transparently
+   assert(global_var_a is 'hello', 'Expected hello')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -61,9 +73,9 @@ function testLocalThunk()
    local local_val = local_lazy()
    assert(exec_local is false, "Local thunk should not execute on call")
 
-   local local_result = tostring(local_val)
-   assert(exec_local is true, "Local thunk should execute on access, but exec_local is " .. tostring(exec_local))
-   assert(local_result is "local", "Local thunk should return 'local', got '" .. local_result .. "'")
+   -- Direct comparison now works transparently
+   assert(local_val is "local", "Local thunk should return 'local'")
+   assert(exec_local is true, "Local thunk should execute on access")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -125,13 +137,13 @@ function testThunkReturnTypes()
    local t = get_table()
 
    -- type() should return the declared type without execution
-   assert(type(s) is "string", "type() should return 'string' for :str thunk")
-   assert(type(n) is "number", "type() should return 'number' for :num thunk")
-   assert(type(t) is "table", "type() should return 'table' for :table thunk")
+   assert(type(s) is "string", "type() should return 'string' for :str thunk, got " .. type(s))
+   assert(type(n) is "number", "type() should return 'number' for :num thunk, got " .. type(n))
+   assert(type(t) is "table", "type() should return 'table' for :table thunk, got " .. type(t))
 
-   -- Verify actual values after resolution
-   assert(tostring(s) is "typed", "String thunk should return 'typed'")
-   assert(n + 0 is 42, "Number thunk should return 42")
+   -- Verify actual values - direct comparison now works transparently
+   assert(s is "typed", "String thunk should return 'typed'")
+   assert(n is 42, "Number thunk should return 42")
    assert(t.key is "value", "Table thunk should have key='value'")
 end
 
@@ -153,9 +165,10 @@ function testThunkControlFlow()
    local neg = conditional(-3)
    local zero = conditional(0)
 
-   assert(pos + 0 is 10, "Positive path: 5 * 2 = 10, got " .. (pos + 0))
-   assert(neg + 0 is 3, "Negative path: -3 * -1 = 3, got " .. (neg + 0))
-   assert(zero + 0 is 0, "Zero path should return 0, got " .. (zero + 0))
+   -- Direct number comparison now works transparently
+   assert(pos is 10, "Positive path: 5 * 2 = 10")
+   assert(neg is 3, "Negative path: -3 * -1 = 3")
+   assert(zero is 0, "Zero path should return 0")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -171,7 +184,7 @@ function testThunkWithLoop()
    end
 
    local result = sum_to(5)
-   assert(result + 0 is 15, "sum_to(5) should be 15, got " .. (result + 0))
+   assert(result is 15, "sum_to(5) should be 15")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -205,8 +218,8 @@ function testThunkDefaultReturnType()
    end
 
    local val = untyped_thunk()
-   local result = tostring(val)
-   assert(result is "default", "Untyped thunk should work, got '" .. result .. "'")
+   -- Direct comparison now works transparently
+   assert(val is "default", "Untyped thunk should work")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -235,7 +248,7 @@ function testRecursiveThunk()
    end
 
    local result = factorial(5)
-   assert(result + 0 is 120, "factorial(5) should be 120, got " .. (result + 0))
+   assert(result is 120, "factorial(5) should be 120")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -267,9 +280,223 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+function testThunkArithmeticOperators()
+   -- Test all arithmetic metamethods
+   thunk get_ten():num return 10 end
+   thunk get_three():num return 3 end
+
+   local a = get_ten()
+   local b = get_three()
+
+   -- Subtraction
+   assert(a - b is 7, "10 - 3 should be 7")
+
+   -- Multiplication
+   assert(a * b is 30, "10 * 3 should be 30")
+
+   -- Division
+   assert(a / b > 3.3 and a / b < 3.4, "10 / 3 should be ~3.33")
+
+   -- Modulo
+   assert(a % b is 1, "10 % 3 should be 1")
+
+   -- Power
+   assert(b ^ 2 is 9, "3 ^ 2 should be 9")
+
+   -- Unary minus
+   assert(-a is -10, "-10 should be -10")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkConcatenation()
+   -- Test string concatenation metamethod
+   thunk get_hello():str return "Hello" end
+   thunk get_world():str return "World" end
+
+   local a = get_hello()
+   local b = get_world()
+
+   local result = a .. " " .. b
+   assert(result is "Hello World", "Concatenation should produce 'Hello World', got '" .. result .. "'")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkComparison()
+   -- Test comparison metamethods (thunk vs thunk)
+   thunk cmp_get_five():num return 5 end
+   thunk cmp_get_ten():num return 10 end
+   thunk cmp_get_five_again():num return 5 end
+
+   local a = cmp_get_five()
+   local b = cmp_get_ten()
+   local c = cmp_get_five_again()
+
+   -- Less than
+   assert(a < b, "5 should be < 10")
+   assert(not (b < a), "10 should not be < 5")
+
+   -- Less than or equal
+   assert(a <= b, "5 should be <= 10")
+   assert(a <= c, "5 should be <= 5")
+
+   -- Equality (thunk vs thunk - both must be thunks for __eq to trigger)
+   assert(a is c, "Two thunks returning 5 should be equal") -- Note: This only works if both are thunks
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkNewindex()
+   -- Test table field assignment through thunk
+   thunk newindex_get_table():table return { x = 1 } end
+
+   local t = newindex_get_table()
+   t.y = 2  -- __newindex should resolve and assign
+
+   assert(t.x is 1, "Original field should be accessible")
+   assert(t.y is 2, "New field should be assigned")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkLength()
+   -- Test length operator
+   thunk len_get_array():table return {1, 2, 3, 4, 5} end
+   thunk len_get_string():str return "hello" end
+
+   local arr = len_get_array()
+   local str = len_get_string()
+
+   assert(#arr is 5, "Array length should be 5, got " .. #arr)
+   assert(#str is 5, "String length should be 5, got " .. #str)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkCall()
+   -- Test calling a thunk that resolves to a function
+   -- Note: Direct call thunk(args) doesn't propagate return values correctly
+   -- Use resolve() to get the function, then call it
+   thunk get_adder():func
+      return function(x, y) return x + y end
+   end
+
+   local adder = get_adder()
+   local fn = resolve(adder)
+   local result = fn(3, 4)
+
+   assert(result is 7, "Calling resolved function should return 7, got " .. tostring(result))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testIsthunkFunction()
+   -- Test the isthunk() helper function
+   thunk get_value():num return 42 end
+
+   local thunk_val = get_value()
+   local regular_val = 42
+   local regular_str = "hello"
+   local regular_table = {}
+
+   assert(isthunk(thunk_val) is true, "isthunk should return true for thunk")
+   assert(isthunk(regular_val) is false, "isthunk should return false for number")
+   assert(isthunk(regular_str) is false, "isthunk should return false for string")
+   assert(isthunk(regular_table) is false, "isthunk should return false for table")
+   assert(isthunk(nil) is false, "isthunk should return false for nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkGCSurvival()
+   -- Test that thunks and their resolved values survive garbage collection
+   thunk get_data():table return { value = "persistent" } end
+
+   local t = get_data()
+
+   -- Force resolution
+   local val = t.value
+   assert(val is "persistent", "Value should be 'persistent' before GC")
+
+   -- Force multiple GC cycles
+   collectgarbage()
+   collectgarbage()
+   collectgarbage()
+
+   -- Access again after GC
+   local val_after = t.value
+   assert(val_after is "persistent", "Value should still be 'persistent' after GC")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkBoolReturnType()
+   -- Test boolean return type
+   thunk is_positive(x):bool
+      return x > 0
+   end
+
+   local result_true = is_positive(5)
+   local result_false = is_positive(-5)
+
+   assert(type(result_true) is "boolean", "type() should return 'boolean' for :bool thunk")
+   assert(type(result_false) is "boolean", "type() should return 'boolean' for :bool thunk")
+
+   -- Note: Thunks are always truthy in conditionals (userdata are truthy)
+   -- Must use resolve() or tostring() to get the actual boolean value
+   local resolved_true = resolve(result_true)
+   local resolved_false = resolve(result_false)
+
+   assert(resolved_true is true, "is_positive(5) should resolve to true")
+   assert(resolved_false is false, "is_positive(-5) should resolve to false")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkWithNilReturn()
+   -- Test thunk that returns nil (uses default/any type since :nil isn't a valid annotation)
+   thunk get_nil()
+      return nil
+   end
+
+   local val = get_nil()
+   -- Direct comparison with nil now works transparently
+   assert(val is nil, "Thunk returning nil should compare equal to nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function testThunkCachingBehavior()
+   -- Verify that thunks cache their result and don't re-execute
+   local exec_count = 0
+
+   thunk cached_value():num
+      exec_count++
+      return 42
+   end
+
+   local t = cached_value()
+
+   -- Multiple accesses should only execute once
+   local r1 = t + 0
+   local r2 = t + 0
+   local r3 = t + 0
+   local r4 = tostring(t)
+   local r5 = t * 2
+
+   assert(exec_count is 1, "Thunk body should execute exactly once, but executed " .. exec_count .. " times")
+   assert(r1 is 42, "First access should return 42")
+   assert(r2 is 42, "Second access should return 42")
+   assert(r5 is 84, "Multiplication should work with cached value")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testThunkBasicExecution',
+      'testGlobalThunkVar',
       'testThunkParameterCapture',
       'testLocalThunk',
       'testAnonymousThunk',
@@ -281,6 +508,17 @@ return {
       'testThunkDefaultReturnType',
       'testThunkWithTableAccess',
       'testRecursiveThunk',
-      'testMultipleThunkResolutions'
+      'testMultipleThunkResolutions',
+      'testThunkArithmeticOperators',
+      'testThunkConcatenation',
+      'testThunkComparison',
+      'testThunkNewindex',
+      'testThunkLength',
+      'testThunkCall',
+      'testIsthunkFunction',
+      'testThunkGCSurvival',
+      'testThunkBoolReturnType',
+      'testThunkWithNilReturn',
+      'testThunkCachingBehavior'
    }
 }
