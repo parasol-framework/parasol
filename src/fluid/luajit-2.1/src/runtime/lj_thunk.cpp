@@ -289,29 +289,54 @@ static int thunk_concat(lua_State *L)
 //********************************************************************************************************************
 // Comparison metamethods
 
-// Equality - compares resolved values
+// Equality - compares resolved values using full Lua equality semantics
 static int thunk_eq(lua_State *L)
 {
    TValue *a = resolve_at(L, 0);
    TValue *b = resolve_at(L, 1);
 
-   int result;
-   if (tvisnumber(a) and tvisnumber(b)) {
-      result = (getnumvalue(a) == getnumvalue(b));
-   } else if (tvisstr(a) and tvisstr(b)) {
-      result = (strV(a) == strV(b));  // String interning means pointer comparison works
-   } else if (tvistab(a) and tvistab(b)) {
-      result = (tabV(a) == tabV(b));  // Reference equality for tables
-   } else if (tvisnil(a) and tvisnil(b)) {
-      result = 1;
-   } else if (tvisbool(a) and tvisbool(b)) {
-      result = (boolV(a) == boolV(b));
-   } else {
-      // Different types are not equal (except number subtypes handled above)
-      result = 0;
+   // Same pointer means equal
+   if (a IS b) {
+      setboolV(L->top++, 1);
+      return 1;
    }
 
-   setboolV(L->top++, result);
+   // Use lj_obj_equal for basic equality (numbers, strings, primitives, reference equality)
+   if (lj_obj_equal(a, b)) {
+      setboolV(L->top++, 1);
+      return 1;
+   }
+
+   // For tables and userdata with same type, check __eq metamethod
+   if (itype(a) IS itype(b)) {
+      if (tvistab(a) or tvisudata(a)) {
+         GCobj *gcobj_a = gcV(a);
+         GCobj *gcobj_b = gcV(b);
+
+         // Check for __eq metamethod
+         cTValue *mo = lj_meta_fast(L, tabref(gcobj_a->gch.metatable), MM_eq);
+         if (mo) {
+            // Both objects need the same metamethod
+            if (tabref(gcobj_a->gch.metatable) IS tabref(gcobj_b->gch.metatable) or
+                lj_obj_equal(mo, lj_meta_fast(L, tabref(gcobj_b->gch.metatable), MM_eq))) {
+               // Call __eq(a, b)
+               copyTV(L, L->top, mo);
+               copyTV(L, L->top + 1, a);
+               copyTV(L, L->top + 2, b);
+               L->top += 3;
+               lua_call(L, 2, 1);
+               // Result is at L->top - 1, convert to boolean
+               int result = tvistruecond(L->top - 1);
+               L->top--;
+               setboolV(L->top++, result);
+               return 1;
+            }
+         }
+      }
+   }
+
+   // Different types or no metamethod - not equal
+   setboolV(L->top++, 0);
    return 1;
 }
 

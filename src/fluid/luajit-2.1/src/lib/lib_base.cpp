@@ -466,6 +466,8 @@ LJLIB_CF(error)
    return lua_error(L);
 }
 
+//********************************************************************************************************************
+
 LJLIB_ASM(pcall)      LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
@@ -565,6 +567,8 @@ LJLIB_CF(load)
    return load_aux(L, status, 4);
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(loadstring)
 {
    return lj_cf_load(L);
@@ -592,6 +596,8 @@ LJLIB_CF(gcinfo)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(collectgarbage)
 {
    int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  //  ORDER LUA_GC*
@@ -609,7 +615,8 @@ LJLIB_CF(collectgarbage)
    return 1;
 }
 
-// -- Base library: miscellaneous functions -------------------------------
+//********************************************************************************************************************
+// Base library: miscellaneous functions
 
 LJLIB_PUSH(top-2)  //  Upvalue holds weak table.
 LJLIB_CF(newproxy)
@@ -640,9 +647,11 @@ LJLIB_CF(newproxy)
    return 1;
 }
 
-LJLIB_PUSH("tostring")
+//********************************************************************************************************************
 // RAII Pattern: Uses StackFrame to ensure L->top is restored if tostring conversion
 // fails or triggers an error during the print loop, preventing stack corruption.
+
+LJLIB_PUSH("tostring")
 LJLIB_CF(print)
 {
    StackFrame frame(L);
@@ -694,6 +703,7 @@ LJLIB_SET(_VERSION)
 // Base library: thunk functions
 
 // Check if a value is an unresolved thunk
+
 LJLIB_CF(isthunk)
 {
    cTValue *o = lj_lib_checkany(L, 1);
@@ -701,7 +711,9 @@ LJLIB_CF(isthunk)
    return 1;
 }
 
+//********************************************************************************************************************
 // Explicitly resolve a thunk (returns the value unchanged if not a thunk)
+
 LJLIB_CF(resolve)
 {
    cTValue *o = lj_lib_checkany(L, 1);
@@ -718,9 +730,11 @@ LJLIB_CF(resolve)
    return 1;
 }
 
+//********************************************************************************************************************
 // Internal function for creating thunk userdata (called by IR emitter)
 // Args: (closure:function, expected_type:number)
 // Returns: thunk userdata
+
 LJLIB_CF(__create_thunk)
 {
    GCfunc *fn = lj_lib_checkfunc(L, 1);
@@ -735,7 +749,8 @@ LJLIB_CF(__create_thunk)
 
 #include "lj_libdef.h"
 
-// -- Coroutine library ---------------------------------------------------
+//********************************************************************************************************************
+// Coroutine library
 
 #define LJLIB_MODULE_coroutine
 
@@ -756,6 +771,8 @@ LJLIB_CF(coroutine_status)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(coroutine_running)
 {
    int ismain = lua_pushthread(L);
@@ -763,27 +780,34 @@ LJLIB_CF(coroutine_running)
    return 2;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(coroutine_isyieldable)
 {
    setboolV(L->top++, cframe_canyield(L->cframe));
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(coroutine_create)
 {
    lua_State* L1;
-   if (!(L->base < L->top and tvisfunc(L->base)))
-      lj_err_argt(L, 1, LUA_TFUNCTION);
+   if (!(L->base < L->top and tvisfunc(L->base))) lj_err_argt(L, 1, LUA_TFUNCTION);
    L1 = lua_newthread(L);
    setfuncV(L, L1->top++, funcV(L->base));
    return 1;
 }
+
+//********************************************************************************************************************
 
 LJLIB_ASM(coroutine_yield)
 {
    lj_err_caller(L, ErrMsg::CYIELD);
    return FFH_UNREACHABLE;
 }
+
+//********************************************************************************************************************
 
 static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 {
@@ -799,12 +823,16 @@ static int ffh_resume(lua_State* L, lua_State* co, int wrap)
    return FFH_RETRY;
 }
 
+//********************************************************************************************************************
+
 LJLIB_ASM(coroutine_resume)
 {
    if (!(L->top > L->base and tvisthread(L->base)))
       lj_err_arg(L, 1, ErrMsg::NOCORO);
    return ffh_resume(L, threadV(L->base), 0);
 }
+
+//********************************************************************************************************************
 
 LJLIB_NOREG LJLIB_ASM(coroutine_wrap_aux)
 {
@@ -813,10 +841,11 @@ LJLIB_NOREG LJLIB_ASM(coroutine_wrap_aux)
 
 // Inline declarations.
 LJ_ASMF void lj_ff_coroutine_wrap_aux(void);
-LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L,
-   lua_State* co);
+LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co);
 
+//********************************************************************************************************************
 // Error handler, called from assembler VM.
+
 void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
 {
    co->top--; copyTV(L, L->top, co->top); L->top++;
@@ -826,7 +855,9 @@ void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State* L, lua_State* co)
       lj_err_run(L);
 }
 
+//********************************************************************************************************************
 // Forward declaration.
+
 static void setpc_wrap_aux(lua_State* L, GCfunc* fn);
 
 LJLIB_CF(coroutine_wrap)
@@ -840,13 +871,15 @@ LJLIB_CF(coroutine_wrap)
 
 #include "lj_libdef.h"
 
+//********************************************************************************************************************
 // Fix the PC of wrap_aux. Really ugly workaround.
+
 static void setpc_wrap_aux(lua_State* L, GCfunc* fn)
 {
    setmref(fn->c.pc, &L2GG(L)->bcff[lj_lib_init_coroutine[1] + 2]);
 }
 
-// ------------------------------------------------------------------------
+//********************************************************************************************************************
 
 static void newproxy_weaktable(lua_State* L)
 {
@@ -854,10 +887,11 @@ static void newproxy_weaktable(lua_State* L)
    GCtab* t = lj_tab_new(L, 0, 1);
    settabV(L, L->top++, t);
    setgcref(t->metatable, obj2gco(t));
-   setstrV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "__mode")),
-      lj_str_newlit(L, "kv"));
+   setstrV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "__mode")), lj_str_newlit(L, "kv"));
    t->nomm = (uint8_t)(~(1u << MM_mode));
 }
+
+//********************************************************************************************************************
 
 extern int luaopen_base(lua_State* L)
 {

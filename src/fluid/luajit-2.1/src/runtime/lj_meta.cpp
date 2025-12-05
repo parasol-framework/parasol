@@ -64,16 +64,13 @@ cTValue *lj_meta_cache(GCtab* mt, MMS mm, GCstr *name)
 cTValue *lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
 {
    GCtab* mt;
-   if (tvistab(o))
-      mt = tabref(tabV(o)->metatable);
-   else if (tvisudata(o))
-      mt = tabref(udataV(o)->metatable);
-   else
-      mt = tabref(basemt_obj(G(L), o));
+   if (tvistab(o)) mt = tabref(tabV(o)->metatable);
+   else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
+   else mt = tabref(basemt_obj(G(L), o));
+
    if (mt) {
       cTValue *mo = lj_tab_getstr(mt, mmname_str(G(L), mm));
-      if (mo)
-         return mo;
+      if (mo) return mo;
    }
    return niltv(L);
 }
@@ -277,8 +274,8 @@ TValue* lj_meta_cat(lua_State *L, TValue* top, int left)
          copyTV(L, top + 2 * LJ_FR2 + 1, top - 1);
          copyTV(L, top + LJ_FR2, mo);
          setcont(top - 1, lj_cont_cat);
-         setnilV(top); 
-         setnilV(top + 2); 
+         setnilV(top);
+         setnilV(top + 2);
          top += 2;
          return top + 1;  //  Trigger metamethod call.
       }
@@ -441,34 +438,34 @@ TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
       resolved_o2 = lj_thunk_resolve(L, ud);
    }
 
-   // Now compare the resolved values
-   int result;
+   // Now compare the resolved values using standard Lua equality semantics
+   // Return semantics: 0 = don't branch, 1 = branch
+   // For ISEQV (ne=0): return 1 if equal (branch to target), 0 if not equal
+   // For ISNEV (ne=1): return 1 if not equal (branch to target), 0 if equal
+   int ne = bc_op(ins) & 1;
+
+   // Check for same TValue pointer first
    if (resolved_o1 IS resolved_o2) {
-      result = 1;  // Same TValue pointer
-   }
-   else if (tvisnum(resolved_o1) and tvisnum(resolved_o2)) {
-      result = (numV(resolved_o1) IS numV(resolved_o2));
-   }
-   else if (tvisstr(resolved_o1) and tvisstr(resolved_o2)) {
-      result = (strV(resolved_o1) IS strV(resolved_o2));  // String interning
-   }
-   else if (tvistab(resolved_o1) and tvistab(resolved_o2)) {
-      result = (tabV(resolved_o1) IS tabV(resolved_o2));
-   }
-   else if (tvisnil(resolved_o1) and tvisnil(resolved_o2)) {
-      result = 1;
-   }
-   else if (tvisbool(resolved_o1) and tvisbool(resolved_o2)) {
-      result = (boolV(resolved_o1) IS boolV(resolved_o2));
-   }
-   else {
-      result = 0;  // Different types
+      return (TValue*)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
    }
 
-   // Invert result for NE operations
-   if (bc_op(ins) & 1) result = !result;
+   // Use lj_obj_equal for basic equality (handles numbers, strings, primitives, reference equality)
+   if (lj_obj_equal(resolved_o1, resolved_o2)) {
+      return (TValue*)(intptr_t)(ne ? 0 : 1);  // Equal: ISEQ branches, ISNE doesn't
+   }
 
-   return (TValue*)(intptr_t)result;
+   // For tables and userdata with same type, check __eq metamethod
+   if (itype(resolved_o1) IS itype(resolved_o2)) {
+      if (tvistab(resolved_o1) or tvisudata(resolved_o1)) {
+         // Delegate to lj_meta_equal which handles __eq metamethods
+         GCobj *gcobj1 = gcV(resolved_o1);
+         GCobj *gcobj2 = gcV(resolved_o2);
+         return lj_meta_equal(L, gcobj1, gcobj2, ne);
+      }
+   }
+
+   // Different types or no metamethod - not equal
+   return (TValue*)(intptr_t)(ne ? 1 : 0);  // Not equal: ISNE branches, ISEQ doesn't
 }
 
 //********************************************************************************************************************
