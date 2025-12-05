@@ -48,12 +48,9 @@
 LJLIB_ASM(assert)      LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
-   if (L->top == L->base + 1)
-      lj_err_caller(L, ErrMsg::ASSERT);
-   else if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base + 1))
-      lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
-   else
-      lj_err_run(L);
+   if (L->top == L->base + 1) lj_err_caller(L, ErrMsg::ASSERT);
+   else if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base + 1)) lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
+   else lj_err_run(L);
    return FFH_UNREACHABLE;
 }
 

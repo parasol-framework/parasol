@@ -279,27 +279,27 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
    switch (op) {
-      case AstBinaryOperator::Add:      return BinOpr::Add;
-      case AstBinaryOperator::Subtract: return BinOpr::Sub;
-      case AstBinaryOperator::Multiply: return BinOpr::Mul;
-      case AstBinaryOperator::Divide:   return BinOpr::Div;
-      case AstBinaryOperator::Modulo:   return BinOpr::Mod;
-      case AstBinaryOperator::Power:    return BinOpr::Pow;
-      case AstBinaryOperator::Concat:   return BinOpr::Concat;
-      case AstBinaryOperator::NotEqual: return BinOpr::NotEqual;
-      case AstBinaryOperator::Equal:    return BinOpr::Equal;
-      case AstBinaryOperator::LessThan: return BinOpr::LessThan;
+      case AstBinaryOperator::Add:          return BinOpr::Add;
+      case AstBinaryOperator::Subtract:     return BinOpr::Sub;
+      case AstBinaryOperator::Multiply:     return BinOpr::Mul;
+      case AstBinaryOperator::Divide:       return BinOpr::Div;
+      case AstBinaryOperator::Modulo:       return BinOpr::Mod;
+      case AstBinaryOperator::Power:        return BinOpr::Pow;
+      case AstBinaryOperator::Concat:       return BinOpr::Concat;
+      case AstBinaryOperator::NotEqual:     return BinOpr::NotEqual;
+      case AstBinaryOperator::Equal:        return BinOpr::Equal;
+      case AstBinaryOperator::LessThan:     return BinOpr::LessThan;
       case AstBinaryOperator::GreaterEqual: return BinOpr::GreaterEqual;
       case AstBinaryOperator::LessEqual:    return BinOpr::LessEqual;
       case AstBinaryOperator::GreaterThan:  return BinOpr::GreaterThan;
-      case AstBinaryOperator::BitAnd:     return BinOpr::BitAnd;
-      case AstBinaryOperator::BitOr:      return BinOpr::BitOr;
-      case AstBinaryOperator::BitXor:     return BinOpr::BitXor;
-      case AstBinaryOperator::ShiftLeft:  return BinOpr::ShiftLeft;
-      case AstBinaryOperator::ShiftRight: return BinOpr::ShiftRight;
-      case AstBinaryOperator::LogicalAnd: return BinOpr::LogicalAnd;
-      case AstBinaryOperator::LogicalOr:  return BinOpr::LogicalOr;
-      case AstBinaryOperator::IfEmpty:    return BinOpr::IfEmpty;
+      case AstBinaryOperator::BitAnd:       return BinOpr::BitAnd;
+      case AstBinaryOperator::BitOr:        return BinOpr::BitOr;
+      case AstBinaryOperator::BitXor:       return BinOpr::BitXor;
+      case AstBinaryOperator::ShiftLeft:    return BinOpr::ShiftLeft;
+      case AstBinaryOperator::ShiftRight:   return BinOpr::ShiftRight;
+      case AstBinaryOperator::LogicalAnd:   return BinOpr::LogicalAnd;
+      case AstBinaryOperator::LogicalOr:    return BinOpr::LogicalOr;
+      case AstBinaryOperator::IfEmpty:      return BinOpr::IfEmpty;
       default: return std::nullopt;
    }
 }
@@ -2261,35 +2261,62 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 }
 
 //********************************************************************************************************************
-// Optimise assert(condition, message) expressions by wrapping the message in a deferred expression if it isn't one
-// already. This provides short-circuiting: the message is only evaluated when the assertion fails.
+// Optimise assert(condition, message) expressions by wrapping the message in an anonymous thunk call.
+// This provides short-circuiting: the message is only evaluated when the assertion fails.
+//
+// Transforms: assert(cond, expensive_expr)
+// Into:       assert(cond, (thunk():str return expensive_expr end)())
 
 void IrEmitter::optimise_assert(const ExprNodeList &Args)
 {
-   // Ready to be enabled when deferred expressions are supported.
-/*
    if (Args.size() < 2) return;  // No message argument
 
    // Simple literals and identifiers don't benefit from deferral.
-
    const ExprNode &msg = *Args[1];
 
    switch (msg.kind) {
-      case AstNodeKind::DeferredExpr:  // Already deferred
-      case AstNodeKind::LiteralExpr:   // String/number literals are cheap
+      case AstNodeKind::LiteralExpr:    // String/number literals are cheap
       case AstNodeKind::IdentifierExpr: // Simple variable access is cheap
          return;
+      case AstNodeKind::CallExpr: {
+         // Check if this is already a thunk call (anonymous thunk being invoked)
+         // Pattern: CallExpr with FunctionExpr callee where is_thunk=true
+         const auto &call_payload = std::get<CallExprPayload>(msg.data);
+         if (std::holds_alternative<DirectCallTarget>(call_payload.target)) {
+            const auto &target = std::get<DirectCallTarget>(call_payload.target);
+            if (target.callable and target.callable->kind IS AstNodeKind::FunctionExpr) {
+               const auto &func_payload = std::get<FunctionExprPayload>(target.callable->data);
+               if (func_payload.is_thunk) return;  // Already a thunk call
+            }
+         }
+         break;
+      }
       default:
          break;
    }
 
-   // Modify the argument list in place - the caller (emit_call_expr) will continue
-   // with normal call processing using the modified Args.
+   // Wrap the message in an anonymous thunk call:
+   //   (thunk():str return msg end)()
 
    ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
-   SourceSpan span = msg_arg->span;  // Save span before move
-   msg_arg = make_deferred_expr(span, std::move(msg_arg), FluidType::Str, true);
-*/
+   SourceSpan span = msg_arg->span;
+
+   // Step 1: Build return statement with the message expression
+   ExprNodeList return_values;
+   return_values.push_back(std::move(msg_arg));
+   StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+   // Step 2: Build thunk body containing just the return statement
+   StmtNodeList body_stmts;
+   body_stmts.push_back(std::move(return_stmt));
+   auto body = make_block(span, std::move(body_stmts));
+
+   // Step 3: Build anonymous thunk function (no parameters, is_thunk=true, returns string)
+   ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, FluidType::Str);
+
+   // Step 4: Build immediate call to thunk (no arguments)
+   ExprNodeList call_args;
+   msg_arg = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
 }
 
 //********************************************************************************************************************

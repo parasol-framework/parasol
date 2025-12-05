@@ -1,6 +1,7 @@
 -- Internally, assert() silently transforms assert() calls so that the message is deferred.
 -- This avoids evaluating the message when the assertion passes.
 
+----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that passes (message should not be evaluated)
 
 function testAssertPassesNoEval()
@@ -14,6 +15,7 @@ function testAssertPassesNoEval()
    assert(message_evaluated is false, 'Message was evaluated when assertion passed')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that fails
 
 function testAssertFails()
@@ -25,6 +27,7 @@ function testAssertFails()
    assert(err:find('Custom error message') != nil, 'Error message should contain custom message')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with no message (uses default)
 
 function testAssertDefaultMessage()
@@ -36,14 +39,18 @@ function testAssertDefaultMessage()
    assert(err:find('assertion failed') != nil, 'Error should contain default message')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with complex condition
+
 function testAssertComplexCondition()
    local x = 10
    local y = 20
    assert(x < y, 'x should be less than y')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with expression that has side effects in condition
+
 function testAssertConditionSideEffects()
    local counter = 0
    local function increment()
@@ -55,7 +62,9 @@ function testAssertConditionSideEffects()
    assert(counter is 1, 'Condition should be evaluated once')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Multiple asserts in sequence
+
 function testMultipleAsserts()
    assert(1 is 1)
    assert(2 is 2, 'two is two')
@@ -63,7 +72,9 @@ function testMultipleAsserts()
    assert(not false, 'not false is true')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with string concatenation in message (lazy evaluation test)
+
 function testAssertExpensiveMessage()
    local expensive_called = false
    local function expensive_operation()
@@ -75,7 +86,9 @@ function testAssertExpensiveMessage()
    assert(expensive_called is false, 'Expensive operation should not be called when assertion passes')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with nil condition
+
 function testAssertNil()
    local success, err = pcall(function()
       assert(nil, 'nil is falsey')
@@ -84,17 +97,23 @@ function testAssertNil()
    assert(success is false, 'Assert on nil should fail')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with 0 (which is truthy in Lua)
+
 function testAssertZero()
    assert(0, 'zero is truthy')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert with empty string (which is truthy in Lua)
+
 function testAssertEmptyString()
    assert('', 'empty string is truthy')
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Assert does NOT return values (shadow optimization always applies)
+
 function testAssertNoReturn()
    -- Shadow function: assert() returns no values in all contexts.
    -- Unlike standard Lua where assert returns all its arguments, the shadow
@@ -107,6 +126,8 @@ function testAssertNoReturn()
       error('Shadow assert() should return no values, got ' .. tostring(a) .. ' and ' .. tostring(b))
    end
 end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
