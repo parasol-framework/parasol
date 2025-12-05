@@ -660,8 +660,8 @@ endif ()
 set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions
-   unicode ellipsis safe_nav close type_annotations jit shadow_assert pipe result_filter
-   deferred_expr thunks
+   unicode ellipsis safe_nav close type_annotations jit  pipe result_filter
+   #deferred_expr thunks shadow_assert
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

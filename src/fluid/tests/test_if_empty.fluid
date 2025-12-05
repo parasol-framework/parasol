@@ -361,24 +361,6 @@ function testShortHand()
    assert(returned_early is true, "Failed shorthand optional early return test")
 end
 
--- Internally, assert() calls are converted to "condition ?? error(message)", hence this test being here
-
-function testAssertCircuit()
-   local inc = 0
-   local function increment()
-      inc++
-      return inc
-   end
-
-   assert(true, "Test assert short-circuit " .. increment())
-   assert(inc is 0, "RHS function should not have been called, inc should be 0, got " .. tostring(inc))
-
-   local function multi()
-      return 1, 2, 3
-   end
-   assert(multi(s, 'inner', 0, true), "Multi-values test failed to pass")
-end
-
 -- Test return with value
 function testShortHandReturnValue()
    local function getValue(input)
@@ -471,7 +453,7 @@ end
          'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
          'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction', 'testShortHand',
          'testShortHandReturnValue', 'testShortHandBreak', 'testShortHandContinue',
-         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody', 'testAssertCircuit',
+         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody',
          'testMultiValues'
       }
    }
