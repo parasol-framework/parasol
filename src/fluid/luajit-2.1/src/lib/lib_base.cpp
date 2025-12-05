@@ -37,6 +37,7 @@
 #include "lib.h"
 #include "lib_utils.h"
 #include "runtime/stack_utils.h"
+#include "runtime/lj_thunk.h"
 #include "debug/error_guard.h"
 
 //********************************************************************************************************************
@@ -671,6 +672,49 @@ LJLIB_CF(print)
 
 LJLIB_PUSH(top-3)
 LJLIB_SET(_VERSION)
+
+//********************************************************************************************************************
+// Base library: thunk functions
+
+// Check if a value is an unresolved thunk
+LJLIB_CF(isthunk)
+{
+   cTValue *o = lj_lib_checkany(L, 1);
+   setboolV(L->top++, lj_thunk_isthunk(o));
+   return 1;
+}
+
+// Explicitly resolve a thunk (returns the value unchanged if not a thunk)
+LJLIB_CF(resolve)
+{
+   cTValue *o = lj_lib_checkany(L, 1);
+
+   if (lj_thunk_isthunk(o)) {
+      GCudata *ud = udataV(o);
+      TValue *resolved = lj_thunk_resolve(L, ud);
+      copyTV(L, L->top++, resolved);
+      return 1;
+   }
+
+   // Not a thunk - return as-is
+   copyTV(L, L->top++, o);
+   return 1;
+}
+
+// Internal function for creating thunk userdata (called by IR emitter)
+// Args: (closure:function, expected_type:number)
+// Returns: thunk userdata
+LJLIB_CF(__create_thunk)
+{
+   GCfunc *fn = lj_lib_checkfunc(L, 1);
+   int expected_type = (int)lj_lib_checkint(L, 2);
+
+   // Create thunk userdata
+   lj_thunk_new(L, fn, expected_type);
+
+   // Thunk userdata is now at L->top-1
+   return 1;
+}
 
 #include "lj_libdef.h"
 

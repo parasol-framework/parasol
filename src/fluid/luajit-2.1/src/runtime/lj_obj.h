@@ -398,11 +398,25 @@ typedef struct GCudata {
 // Userdata types.
 enum {
    UDTYPE_USERDATA,   //  Regular userdata.
-   UDTYPE_IO_FILE,   //  I/O library FILE.
+   UDTYPE_IO_FILE,    //  I/O library FILE.
    UDTYPE_FFI_CLIB,   //  FFI C library namespace.
-   UDTYPE_BUFFER,   //  String buffer.
+   UDTYPE_BUFFER,     //  String buffer.
+   UDTYPE_THUNK,      //  Thunk (deferred evaluation).
    UDTYPE__MAX
 };
+
+// Thunk userdata payload - stored after GCudata header
+// Used for deferred/lazy evaluation of expressions
+typedef struct ThunkPayload {
+   GCRef deferred_func;    // The deferred closure (GCfunc)
+   TValue cached_value;    // Cached resolved value
+   uint8_t resolved;       // Resolution flag (0 = not resolved, 1 = resolved)
+   uint8_t expected_type;  // LJ type tag for type() (LUA_TSTRING, LUA_TNUMBER, etc.)
+   uint16_t padding;       // Padding for alignment
+} ThunkPayload;
+
+// Helper to get thunk payload from userdata
+#define thunk_payload(u)  ((ThunkPayload *)uddata(u))
 
 [[nodiscard]] inline void* uddata(GCudata* u) noexcept
 {
