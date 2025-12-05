@@ -917,6 +917,7 @@ struct lua_State {
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
+   uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TValue close_err;  // Current error for __close handlers (nil if no error)
 

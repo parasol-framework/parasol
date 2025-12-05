@@ -26,6 +26,7 @@
 #include "../parser/lexer.h"
 #include "lj_bcdump.h"
 #include "lib.h"
+#include "runtime/lj_thunk.h"
 
 // -- Library initialization ----------------------------------------------
 
@@ -201,6 +202,14 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
    if (o < L->top) {
+      // Resolve thunk if present
+      if (lj_thunk_isthunk(o)) {
+         GCudata *ud = udataV(o);
+         TValue *resolved = lj_thunk_resolve(L, ud);
+         // Stack may have moved, recalculate o
+         o = L->base + narg - 1;
+         copyTV(L, o, resolved);
+      }
       if (LJ_LIKELY(tvisstr(o))) {
          return strV(o);
       }
@@ -232,7 +241,17 @@ void lj_lib_checknumber(lua_State* L, int narg)
 lua_Number lj_lib_checknum(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
-   if (!(o < L->top &&
+   if (o < L->top) {
+      // Resolve thunk if present
+      if (lj_thunk_isthunk(o)) {
+         GCudata *ud = udataV(o);
+         TValue *resolved = lj_thunk_resolve(L, ud);
+         // Stack may have moved, recalculate o
+         o = L->base + narg - 1;
+         copyTV(L, o, resolved);
+      }
+   }
+   if (!(o < L->top and
       (tvisnumber(o) or (tvisstr(o) and lj_strscan_num(strV(o), o)))))
       lj_err_argt(L, narg, LUA_TNUMBER);
    if (LJ_UNLIKELY(tvisint(o))) {

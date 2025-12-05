@@ -24,6 +24,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lib/lib_utils.h"
+#include "runtime/lj_thunk.h"
 
 // Common helper functions
 
@@ -96,6 +97,57 @@ static GCtab* getcurrenv(lua_State *L)
 {
    GCfunc* fn = curr_func(L);
    return fn->c.gct == ~LJ_TFUNC ? tabref(fn->c.env) : tabref(L->env);
+}
+
+// Thunk resolution helpers
+//
+// These helpers resolve thunk userdata when values are retrieved from the stack
+// via C API functions. This ensures that when C code calls lua_tostring, lua_tonumber,
+// etc., it receives the resolved value rather than the thunk userdata.
+//
+// The resolving_thunk flag is stored in lua_State to prevent recursive resolution
+// within the same thread/coroutine.
+
+// Resolve thunk at stack position, replacing the slot with the resolved value.
+// Returns pointer to the (possibly updated) value.
+
+static TValue * thunk_resolve_at(lua_State *L, int idx)
+{
+   TValue *o = index2adr_stack(L, idx);
+   if (o and lj_thunk_isthunk(o) and not L->resolving_thunk) {
+      GCudata *ud = udataV(o);
+      ThunkPayload *payload = thunk_payload(ud);
+
+      // If already resolved, just return the cached value pointer
+      if (payload->resolved) {
+         return &payload->cached_value;
+      }
+
+      // Track slot position (may move during resolution)
+      ptrdiff_t slot_offset = savestack(L, o);
+
+      // Set flag to prevent infinite recursion
+      L->resolving_thunk = 1;
+      TValue *result = lj_thunk_resolve(L, ud);
+      L->resolving_thunk = 0;
+
+      // Restore slot pointer (stack may have been reallocated)
+      o = restorestack(L, slot_offset);
+
+      // Copy resolved value to stack slot for consistency
+      copyTV(L, o, result);
+      return o;
+   }
+   return o;
+}
+
+// Const variant for read-only access - resolves but returns const pointer
+static cTValue * thunk_resolve_const(lua_State *L, int idx)
+{
+   if (idx <= LUA_REGISTRYINDEX) {
+      return index2adr(L, idx);  // Pseudo-indices can't be thunks
+   }
+   return thunk_resolve_at(L, idx);
 }
 
 // Miscellaneous API functions
@@ -349,7 +401,7 @@ extern int lua_lessthan(lua_State *L, int idx1, int idx2)
 
 extern lua_Number lua_tonumber(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) return *num;
    return 0;
@@ -357,7 +409,7 @@ extern lua_Number lua_tonumber(lua_State *L, int idx)
 
 extern lua_Number lua_tonumberx(lua_State *L, int idx, int* ok)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) {
       if (ok) *ok = 1;
@@ -369,7 +421,7 @@ extern lua_Number lua_tonumberx(lua_State *L, int idx, int* ok)
 
 extern lua_Number luaL_checknumber(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto num = try_to_number(o, &tmp)) return *num;
    lj_err_argt(L, idx, LUA_TNUMBER);
@@ -377,7 +429,7 @@ extern lua_Number luaL_checknumber(lua_State *L, int idx)
 
 extern lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (tvisnil(o)) return def;
    if (auto num = try_to_number(o, &tmp)) return *num;
@@ -386,7 +438,7 @@ extern lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
 
 extern lua_Integer lua_tointeger(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) return *i;
    return 0;
@@ -394,7 +446,7 @@ extern lua_Integer lua_tointeger(lua_State *L, int idx)
 
 extern lua_Integer lua_tointegerx(lua_State *L, int idx, int* ok)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) {
       if (ok) *ok = 1;
@@ -406,7 +458,7 @@ extern lua_Integer lua_tointegerx(lua_State *L, int idx, int* ok)
 
 extern lua_Integer luaL_checkinteger(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (auto i = try_to_integer(o, &tmp)) return *i;
    lj_err_argt(L, idx, LUA_TNUMBER);
@@ -414,7 +466,7 @@ extern lua_Integer luaL_checkinteger(lua_State *L, int idx)
 
 extern lua_Integer luaL_optinteger(lua_State *L, int idx, lua_Integer def)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    TValue tmp;
    if (tvisnil(o)) return def;
    if (auto i = try_to_integer(o, &tmp)) return *i;
@@ -423,20 +475,20 @@ extern lua_Integer luaL_optinteger(lua_State *L, int idx, lua_Integer def)
 
 extern int lua_toboolean(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_const(L, idx) : index2adr(L, idx);
    return tvistruecond(o);
 }
 
 extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 {
-   TValue* o = index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
    GCstr* s;
    if (LJ_LIKELY(tvisstr(o))) {
       s = strV(o);
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  //  GC may move the stack.
+      o = (idx > LUA_REGISTRYINDEX) ? index2adr_stack(L, idx) : index2adr(L, idx);
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
@@ -450,14 +502,14 @@ extern const char* lua_tolstring(lua_State *L, int idx, size_t* len)
 
 extern const char* luaL_checklstring(lua_State *L, int idx, size_t* len)
 {
-   TValue* o = index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
    GCstr* s;
    if (LJ_LIKELY(tvisstr(o))) {
       s = strV(o);
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  //  GC may move the stack.
+      o = (idx > LUA_REGISTRYINDEX) ? index2adr_stack(L, idx) : index2adr(L, idx);
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
@@ -471,7 +523,7 @@ extern const char* luaL_checklstring(lua_State *L, int idx, size_t* len)
 extern const char* luaL_optlstring(lua_State *L, int idx,
    const char* def, size_t* len)
 {
-   TValue* o = index2adr(L, idx);
+   TValue *o = (idx > LUA_REGISTRYINDEX) ? thunk_resolve_at(L, idx) : index2adr(L, idx);
    GCstr* s;
    if (LJ_LIKELY(tvisstr(o))) {
       s = strV(o);
@@ -482,7 +534,7 @@ extern const char* luaL_optlstring(lua_State *L, int idx,
    }
    else if (tvisnumber(o)) {
       lj_gc_check(L);
-      o = index2adr(L, idx);  //  GC may move the stack.
+      o = (idx > LUA_REGISTRYINDEX) ? index2adr_stack(L, idx) : index2adr(L, idx);
       s = lj_strfmt_number(L, o);
       setstrV(L, o, s);
    }
