@@ -305,58 +305,6 @@ static void LJ_FASTCALL recff_rawlen(jit_State* J, RecordFFData* rd)
    UNUSED(rd);
 }
 
-//********************************************************************************************************************
-// Determine mode of select() call.
-// Returns SELECT_MODE_COUNT for '#' mode, or the 0-based start index for select(n, ...).
-
-// TODO: DEPRECATE
-int32_t lj_ffrecord_select_mode(jit_State* J, TRef tr, TValue* tv)
-{
-   if (tref_isstr(tr) and *strVdata(tv) == '#') {  // select('#', ...)
-      if (strV(tv)->len == 1) {
-         emitir(IRTG(IR_EQ, IRT_STR), tr, lj_ir_kstr(J, strV(tv)));
-      }
-      else {
-         TRef trptr = emitir(IRT(IR_STRREF, IRT_PGC), tr, lj_ir_kint(J, 0));
-         TRef trchar = emitir(IRT(IR_XLOAD, IRT_U8), trptr, IRXLOAD_READONLY);
-         emitir(IRTGI(IR_EQ), trchar, lj_ir_kint(J, '#'));
-      }
-      return SELECT_MODE_COUNT;
-   }
-   else {  // select(n, ...)
-      int32_t start = argv2int(J, tv);
-      return start;  // 0-based: index 0 is valid, negative indices also valid
-   }
-}
-
-//********************************************************************************************************************
-
-// TODO: DEPRECATE
-static void LJ_FASTCALL recff_select(jit_State* J, RecordFFData* rd)
-{
-   TRef tr = J->base[0];
-   if (tr) {
-      ptrdiff_t start = lj_ffrecord_select_mode(J, tr, &rd->argv[0]);
-      if (start == SELECT_MODE_COUNT) {  // select('#', ...)
-         J->base[0] = lj_ir_kint(J, J->maxslot - 1);
-      }
-      else if (tref_isk(tr)) {  // select(k, ...)
-         ptrdiff_t n = (ptrdiff_t)J->maxslot;
-         if (start < 0) start += n;
-         else if (start > n) start = n;
-         if (start >= 0) {  // 0-based: index 0 is valid
-            ptrdiff_t i;
-            rd->nres = n - start;
-            for (i = 0; i < n - start; i++)
-               J->base[i] = J->base[start + i];
-         }  // else: Interpreter will throw.
-      }
-      else {
-         recff_nyiu(J, rd);
-         return;
-      }
-   }  // else: Interpreter will throw.
-}
 
 //********************************************************************************************************************
 // Record __filter(mask, count, trailing_keep, ...)
@@ -591,20 +539,6 @@ static void LJ_FASTCALL recff_xpcall(jit_State* J, RecordFFData* rd)
       rd->nres = -1;  //  Pending call.
       J->needsnap = 1;  //  Start catching on-trace errors.
    }  // else: Interpreter will throw.
-}
-
-//********************************************************************************************************************
-
-static void LJ_FASTCALL recff_getfenv(jit_State* J, RecordFFData* rd)
-{
-   TRef tr = J->base[0];
-   // Only support getfenv(0) for now.
-   if (tref_isint(tr) and tref_isk(tr) and IR(tref_ref(tr))->i == 0) {
-      TRef trl = emitir(IRT(IR_LREF, IRT_THREAD), 0, 0);
-      J->base[0] = emitir(IRT(IR_FLOAD, IRT_TAB), trl, IRFL_THREAD_ENV);
-      return;
-   }
-   recff_nyiu(J, rd);
 }
 
 //********************************************************************************************************************

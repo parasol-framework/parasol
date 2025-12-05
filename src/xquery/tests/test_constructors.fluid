@@ -155,8 +155,7 @@ function testMapArrayLookup()
    assert(err is ERR_Okay, 'Dynamic array lookup failed to evaluate.')
    assert(lookup_result is 'blue', 'Dynamic array lookup should honour the computed index, got ' .. tostring(lookup_result))
 
-   err = select(1, xml.mtEvaluate('array { 1 }?5'))
-   assert(err != ERR_Okay, 'Out-of-range array lookup should raise FOAY0001')
+   assert([*_]xml.mtEvaluate('array { 1 }?5') != ERR_Okay, 'Out-of-range array lookup should raise FOAY0001')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

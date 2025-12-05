@@ -1883,21 +1883,6 @@ static void rec_func_jit(jit_State* J, TraceNo lnk)
 
 // -- Vararg handling -----------------------------------------------------
 
-// Detect y = select(x, ...) idiom.
-static int select_detect(jit_State* J)
-{
-   BCIns ins = J->pc[1];
-   if (bc_op(ins) IS BC_CALLM and bc_b(ins) IS 2 and bc_c(ins) IS 1) {
-      cTValue* func = &J->L->base[bc_a(ins)];
-      if (tvisfunc(func) and funcV(func)->c.ffid IS FF_select) {
-         TRef kfunc = lj_ir_kfunc(J, funcV(func));
-         emitir(IRTG(IR_EQ, IRT_FUNC), getslot(J, bc_a(ins)), kfunc);
-         return 1;
-      }
-   }
-   return 0;
-}
-
 // Record vararg instruction.
 static void rec_varg(jit_State* J, BCREG dst, ptrdiff_t nresults)
 {
@@ -1948,57 +1933,7 @@ static void rec_varg(jit_State* J, BCREG dst, ptrdiff_t nresults)
          if (dst + (BCREG)nresults > J->maxslot)
             J->maxslot = dst + (BCREG)nresults;
       }
-      else if (select_detect(J)) {  // y = select(x, ...)
-         TRef tridx = J->base[dst - 1];
-         TRef tr = TREF_NIL;
-         ptrdiff_t idx = lj_ffrecord_select_mode(J, tridx, &J->L->base[dst - 1]);
-         if (idx != SELECT_MODE_COUNT and idx < 0) goto nyivarg;  // Negative indices NYI
-         if (idx != SELECT_MODE_COUNT and !tref_isinteger(tridx))
-            tridx = emitir(IRTGI(IR_CONV), tridx, IRCONV_INT_NUM | IRCONV_INDEX);
-         if (idx != SELECT_MODE_COUNT and tref_isk(tridx)) {
-            // 0-based: use idx directly, add 1 to get 1-based offset for frame calc
-            emitir(IRTGI(idx < nvararg ? IR_GE : IR_LT),
-               fr, lj_ir_kint(J, frofs + 8 * ((int32_t)idx + 1)));
-         }
-         else if (idx == SELECT_MODE_COUNT or idx < nvararg) {  // Compute size.
-            TRef tmp = emitir(IRTI(IR_ADD), fr, lj_ir_kint(J, -frofs));
-            if (numparams)
-               emitir(IRTGI(IR_GE), tmp, lj_ir_kint(J, 0));
-            tr = emitir(IRTI(IR_BSHR), tmp, lj_ir_kint(J, 3));
-            if (idx != SELECT_MODE_COUNT) {
-               // 0-based: index used directly for bounds check
-               rec_idx_abc(J, tr, tridx, (uint32_t)nvararg);
-            }
-         }
-         else {
-            TRef tmp = lj_ir_kint(J, frofs);
-            if (idx != SELECT_MODE_COUNT) {
-               // 0-based: add 1 to convert to 1-based frame offset
-               TRef tridx1 = emitir(IRTI(IR_ADD), tridx, lj_ir_kint(J, 1));
-               TRef tmp2 = emitir(IRTI(IR_BSHL), tridx1, lj_ir_kint(J, 3));
-               tmp = emitir(IRTI(IR_ADD), tmp2, tmp);
-            }
-            else {
-               tr = lj_ir_kint(J, 0);
-            }
-            emitir(IRTGI(IR_LT), fr, tmp);
-         }
-         if (idx != SELECT_MODE_COUNT and idx < nvararg) {
-            IRType t;
-            TRef aref, vbase = emitir(IRT(IR_SUB, IRT_IGC), REF_BASE, fr);
-            vbase = emitir(IRT(IR_ADD, IRT_PGC), vbase,
-               lj_ir_kint(J, frofs - (8 << LJ_FR2)));
-            // 0-based: use idx directly for type lookup
-            t = itype2irt(&J->L->base[idx - 1 - LJ_FR2 - nvararg]);
-            aref = emitir(IRT(IR_AREF, IRT_PGC), vbase, tridx);
-            tr = lj_record_vload(J, aref, 0, t);
-         }
-         J->base[dst - 2 - LJ_FR2] = tr;
-         J->maxslot = dst - 1 - LJ_FR2;
-         J->bcskip = 2;  //  Skip CALLM + select.
-      }
       else {
-      nyivarg:
          setintV(&J->errinfo, BC_VARG);
          lj_trace_err_info(J, LJ_TRERR_NYIBC);
       }

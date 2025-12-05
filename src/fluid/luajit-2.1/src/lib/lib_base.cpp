@@ -175,52 +175,6 @@ LJLIB_ASM(setmetatable)      LJLIB_REC(.)
 
 //********************************************************************************************************************
 
-LJLIB_CF(getfenv)      LJLIB_REC(.)
-{
-   GCfunc* fn;
-   cTValue* o = L->base;
-   if (!(o < L->top and tvisfunc(o))) {
-      int level = lj_lib_optint(L, 1, 1);
-      o = lj_debug_frame(L, level, &level);
-      LJ_CHECK_ARG(L, 1, o != nullptr, ErrMsg::INVLVL);
-      o--;
-   }
-   fn = &gcval(o)->fn;
-   settabV(L, L->top++, isluafunc(fn) ? tabref(fn->l.env) : tabref(L->env));
-   return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(setfenv)
-{
-   GCfunc* fn;
-   GCtab* t = lj_lib_checktab(L, 2);
-   cTValue* o = L->base;
-   if (!(o < L->top and tvisfunc(o))) {
-      int level = lj_lib_checkint(L, 1);
-      if (level == 0) {
-         // NOBARRIER: A thread (i.e. L) is never black.
-         setgcref(L->env, obj2gco(t));
-         return 0;
-      }
-      o = lj_debug_frame(L, level, &level);
-      if (o == nullptr) {
-         LJ_CHECK_ARG(L, 1, false, ErrMsg::INVLVL);
-      }
-      o--;
-   }
-   fn = &gcval(o)->fn;
-   if (!isluafunc(fn))
-      lj_err_caller(L, ErrMsg::SETFENV);
-   setgcref(fn->l.env, obj2gco(t));
-   lj_gc_objbarrier(L, obj2gco(fn), t);
-   setfuncV(L, L->top++, fn);
-   return 1;
-}
-
-//********************************************************************************************************************
-
 LJLIB_ASM(rawget)      LJLIB_REC(.)
 {
    lj_lib_checktab(L, 1);
@@ -261,45 +215,6 @@ LJLIB_CF(rawlen)      LJLIB_REC(.)
       len = (int32_t)lj_tab_len(lj_lib_checktab(L, 1));
    setintV(L->top - 1, len);
    return 1;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(unpack)
-{
-   GCtab* t = lj_lib_checktab(L, 1);
-   int32_t n, i = lj_lib_optint(L, 2, 0);  // 0-based: default start index is 0
-   int32_t e = (L->base + 3 - 1 < L->top and !tvisnil(L->base + 3 - 1)) ?
-      lj_lib_checkint(L, 3) : (int32_t)lj_tab_len(t) - 1;  // 0-based: last index is len-1
-   uint32_t nu;
-
-   if (i > e) return 0;
-   nu = (uint32_t)e - (uint32_t)i;
-   n = (int32_t)(nu + 1);
-   if (nu >= LUAI_MAXCSTACK or !lua_checkstack(L, n)) lj_err_caller(L, ErrMsg::UNPACK);
-
-   do {
-      cTValue* tv = lj_tab_getint(t, i);
-      copy_or_nil(L, L->top++, tv);
-   } while (i++ < e);
-   return n;
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(select)      LJLIB_REC(.)
-{
-   int32_t n = (int32_t)(L->top - L->base);
-   if (n >= 1 and tvisstr(L->base) and *strVdata(L->base) == '#') {
-      setintV(L->top - 1, n - 1);
-      return 1;
-   }
-   else {
-      int32_t i = lj_lib_checkint(L, 1);
-      if (i < 0) i = n + i; else if (i > n) i = n;
-      LJ_CHECK_RANGE(L, 1, i, 0, n, ErrMsg::IDXRNG);
-      return n - i;
-   }
 }
 
 //********************************************************************************************************************
@@ -568,35 +483,7 @@ LJLIB_CF(load)
 }
 
 //********************************************************************************************************************
-
-LJLIB_CF(loadstring)
-{
-   return lj_cf_load(L);
-}
-
-//********************************************************************************************************************
-
-LJLIB_CF(dofile)
-{
-   GCstr* fname = lj_lib_optstr(L, 1);
-   setnilV(L->top);
-   L->top = L->base + 1;
-   if (luaL_loadfile(L, fname ? strdata(fname) : nullptr) != LUA_OK)
-      lua_error(L);
-   lua_call(L, 0, LUA_MULTRET);
-   return (int)(L->top - L->base) - 1;
-}
-
-//********************************************************************************************************************
 // Base library: GC control
-
-LJLIB_CF(gcinfo)
-{
-   setintV(L->top++, (int32_t)(G(L)->gc.total >> 10));
-   return 1;
-}
-
-//********************************************************************************************************************
 
 LJLIB_CF(collectgarbage)
 {
