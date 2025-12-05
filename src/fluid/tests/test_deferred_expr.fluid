@@ -38,9 +38,9 @@ end
 function testInferredTableType()
    local x = <{ { a = 1, b = 2 } }>
    local a = x.a  -- Resolve 'x' and retrieve 'a'
-   assert(type(x) is 'table', 'Expected table type, got ' .. type(result))
-   assert(result.a is 1, 'Expected result.a = 1')
-   assert(result.b is 2, 'Expected result.b = 2')
+   assert(type(x) is 'table', 'Expected table type, got ' .. type(x))
+   assert(x.a is 1, 'Expected x.a = 1')
+   assert(x.b is 2, 'Expected x.b = 2')
 end
 
 function testInferredArithmeticType()

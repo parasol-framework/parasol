@@ -886,28 +886,48 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
       case TokenKind::DeferredOpen: {
          // Deferred expression: <{ expr }>
+         // Desugar to: (thunk():inferred_type return expr end)()
          Token start = this->ctx.tokens().current();
          this->ctx.tokens().advance();
          auto inner = this->parse_expression();
          if (not inner.ok()) return inner;
+         Token close_token = this->ctx.tokens().current();
          if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token,
                "Expected '}>' to close deferred expression");
             ParserError error;
             error.code = ParserErrorCode::ExpectedToken;
-            error.token = this->ctx.tokens().current();
+            error.token = close_token;
             error.message = "Expected '}>' to close deferred expression";
             return ParserResult<ExprNodePtr>::failure(error);
          }
+
          // Infer type from inner expression
          FluidType inferred_type = infer_expression_type(*inner.value_ref());
-         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
-            std::move(inner.value_ref()), inferred_type, false);
+         SourceSpan span = span_from(start, close_token);
+
+         // Step 1: Build return statement with inner expression
+         ExprNodeList return_values;
+         return_values.push_back(std::move(inner.value_ref()));
+         StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+         // Step 2: Build thunk body containing just the return statement
+         StmtNodeList body_stmts;
+         body_stmts.push_back(std::move(return_stmt));
+         auto body = make_block(span, std::move(body_stmts));
+
+         // Step 3: Build anonymous thunk function (no parameters, is_thunk=true)
+         ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, inferred_type);
+
+         // Step 4: Build immediate call to thunk (no arguments)
+         ExprNodeList call_args;
+         node = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
          break;
       }
 
       case TokenKind::DeferredTyped: {
          // Typed deferred expression: <type{ expr }>
+         // Desugar to: (thunk():explicit_type return expr end)()
          Token start = this->ctx.tokens().current();
          // Get the type name from the token payload
          GCstr *type_str = start.payload().as_string();
@@ -928,17 +948,35 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          this->ctx.tokens().advance();
          auto inner = this->parse_expression();
          if (not inner.ok()) return inner;
+         Token close_token = this->ctx.tokens().current();
          if (not this->ctx.match(TokenKind::DeferredClose).ok()) {
-            this->ctx.emit_error(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            this->ctx.emit_error(ParserErrorCode::ExpectedToken, close_token,
                "Expected '}>' to close typed deferred expression");
             ParserError error;
             error.code = ParserErrorCode::ExpectedToken;
-            error.token = this->ctx.tokens().current();
+            error.token = close_token;
             error.message = "Expected '}>' to close typed deferred expression";
             return ParserResult<ExprNodePtr>::failure(error);
          }
-         node = make_deferred_expr(span_from(start, this->ctx.tokens().current()),
-            std::move(inner.value_ref()), explicit_type, true);
+
+         SourceSpan span = span_from(start, close_token);
+
+         // Step 1: Build return statement with inner expression
+         ExprNodeList return_values;
+         return_values.push_back(std::move(inner.value_ref()));
+         StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+         // Step 2: Build thunk body containing just the return statement
+         StmtNodeList body_stmts;
+         body_stmts.push_back(std::move(return_stmt));
+         auto body = make_block(span, std::move(body_stmts));
+
+         // Step 3: Build anonymous thunk function (no parameters, is_thunk=true)
+         ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, explicit_type);
+
+         // Step 4: Build immediate call to thunk (no arguments)
+         ExprNodeList call_args;
+         node = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
          break;
       }
 

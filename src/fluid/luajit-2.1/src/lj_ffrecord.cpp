@@ -873,11 +873,12 @@ static void LJ_FASTCALL recff_bit_tohex(jit_State* J, RecordFFData* rd)
 #endif
 }
 
-// -- String library fast functions ---------------------------------------
+//********************************************************************************************************************
+// String library fast functions
 
 // Specialize to relative starting position for string (0-based indexing).
-static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr,
-   TRef trlen, TRef tr0)
+
+static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr, TRef trlen, TRef tr0)
 {
    int32_t start = *st;
    if (start < 0) {
@@ -899,7 +900,9 @@ static TRef recff_string_start(jit_State* J, GCstr* s, int32_t* st, TRef tr,
    return tr;
 }
 
+//********************************************************************************************************************
 // Handle string.byte (rd->data = 0) and string.sub (rd->data = 1).
+
 static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
 {
    //static bool triggered = false;
@@ -938,6 +941,7 @@ static void LJ_FASTCALL recff_string_range(jit_State* J, RecordFFData* rd)
          start = argv2int(J, &rd->argv[1]);
          trstart = lj_opt_narrow_toint(J, J->base[1]);
       }
+
       if (J->base[1] and !tref_isnil(J->base[2])) {
          trend = lj_opt_narrow_toint(J, J->base[2]);
          end = argv2int(J, &rd->argv[2]);

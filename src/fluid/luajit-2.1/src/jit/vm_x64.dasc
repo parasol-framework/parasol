@@ -3051,7 +3051,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov RB, [BASE+RA*8]  // Reload RB with full tagged value
     |  cleartp RB
     |  cmp RB, [KBASE+RD*8]
-  iseqne_test:
     if (vk) {
       |  jne >2
     } else {
