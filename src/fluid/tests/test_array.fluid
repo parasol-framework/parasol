@@ -91,39 +91,28 @@ function testFormatValidation()
 
    -- Test valid formats work
    local result = int_array.concat("%d", ", ")
-   if result != "10, 20" then
-      error("Valid format test failed, expected '10, 20', got '" .. result .. "'")
-   end
+   assert(result is "10, 20", "Valid format test failed, expected '10, 20', got '" .. result .. "'")
 
    -- Test multiple format specifiers are rejected
    local success = pcall(function()
       return int_array.concat("%d %s", ", ")
    end)
-   if success then
-      error("Multiple format specifiers should be rejected")
-   end
-
+   assert(not success, "Multiple format specifiers should be rejected")
    -- Test no format specifier is rejected
-   local success2 = pcall(function()
+   local success = pcall(function()
       return int_array.concat("no format", ", ")
    end)
-   if success2 then
-      error("No format specifier should be rejected")
-   end
-
+   assert(not success, "No format specifier should be rejected")
    -- Test incomplete format specifier is rejected
    local success3 = pcall(function()
       return int_array.concat("incomplete %", ", ")
    end)
-   if success3 then
-      error("Incomplete format specifier should be rejected")
-   end
+
+   assert(not success3, "Incomplete format specifier should be rejected")
 
    -- Test escaped %% works
    local result_escaped = int_array.concat("%%d:%d", ", ")
-   if result_escaped != "%d:10, %d:20" then
-      error("Escaped %% test failed, expected '%d:10, %d:20', got '" .. result_escaped .. "'")
-   end
+   assert(result_escaped is "%d:10, %d:20", "Escaped %% test failed, expected '%d:10, %d:20', got '" .. result_escaped .. "'")
 end
 
 function testStringArrayUnsupported()
@@ -135,6 +124,7 @@ function testStringArrayUnsupported()
    -- This test would need actual string array assignment to work properly
    -- For now, we'll skip this test until string array assignment is implemented
 end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test basic array bounds checking
 
@@ -176,7 +166,7 @@ function testArraySizeValidation()
 
    -- Test reasonable size acceptance
    local arr = array.new(100, "integer")
-   assert(arr ~= nil, "Should accept reasonable array size")
+   assert(arr != nil, "Should accept reasonable array size")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

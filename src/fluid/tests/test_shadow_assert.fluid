@@ -1,5 +1,4 @@
--- Test shadow function transformation for assert()
--- The parser should transform assert(cond, msg) to if not cond then error(msg) end
+-- Internally, assert() silently transforms assert() calls so that the message is deferred.
 -- This avoids evaluating the message when the assertion passes.
 
 -- Basic assert that passes (message should not be evaluated)
