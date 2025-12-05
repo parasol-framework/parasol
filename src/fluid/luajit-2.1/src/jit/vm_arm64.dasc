@@ -786,6 +786,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <3
   |.endif
   |
+  |->vmeta_equal_thunk:
+  |  sub PC, PC, #4
+  |   str BASE, L->base
+  |   mov CARG1, L
+  |   mov CARG2w, INSw
+  |  str PC, SAVE_PC
+  |  bl extern lj_meta_equal_thunk	// (lua_State *L, BCIns ins)
+  |  // Returns 0/1 in CRET1.
+  |  b <3
+  |
   |->vmeta_istype:
   |  sub PC, PC, #4
   |   str BASE, L->base
@@ -993,7 +1003,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  ldr TAB:RB, TAB:CARG1->metatable
   |2:
   |   mov CARG1, TISNIL
-  |   ldr STR:RC, GL->gcroot[GCROOT_MMNAME+MM_metatable]
+  |   ldr STR:RC, GL->gcroot[GCROOT_MMNAME+int(MM_metatable)]
   |  cbz TAB:RB, ->fff_restv
   |  ldr TMP1w, TAB:RB->hmask
   |   ldr TMP2w, STR:RC->sid
@@ -2377,6 +2387,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   ccmn TMP0, #-LJ_TCDATA, #4, ne
     |  beq ->vmeta_equal_cd
     |.endif
+    |  // Check if RC is a thunk userdata
+    |  cmn ITYPE, #-LJ_TUDATA
+    |  bne >8
+    |  and TMP1, CARG3, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |8:
+    |  // Check if RA is a thunk userdata
+    |  cmn TMP0, #-LJ_TUDATA
+    |  bne >9
+    |  and TMP1, CARG1, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |9:
     |  cmp CARG1, CARG3
     |  bne >2
     |  // Tag and value are equal.
@@ -2422,9 +2448,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   ldr CARG2, [KBASE, RC, lsl #3]
     |    add PC, PC, #4
     |   movn TMP0, #~LJ_TSTR
-    |.if FFI
     |  asr ITYPE, CARG1, #47
-    |.endif
     |    add RB, PC, RB, lsl #2
     |   add CARG2, CARG2, TMP0, lsl #47
     |    sub RB, RB, #0x20000
@@ -2432,6 +2456,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmn ITYPE, #-LJ_TCDATA
     |  beq ->vmeta_equal_cd
     |.endif
+    |  // Check if type is string
+    |  cmn ITYPE, #-LJ_TSTR
+    |  bne >6
+    |  // Normal string comparison
     |  cmp CARG1, CARG2
     if (vk) {
       |  csel PC, RB, PC, eq
@@ -2439,6 +2467,25 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  csel PC, RB, PC, ne
     }
     |  ins_next
+    |6:  // Not a string - check for thunk userdata
+    |  cmn ITYPE, #-LJ_TUDATA
+    if (vk) {
+      |  bne >7  // Not userdata, not equal - skip branch
+    } else {
+      |  bne >7  // Not userdata, not equal - take branch
+    }
+    |  // Check udtype at offset 10 for UDTYPE_THUNK (4)
+    |  and TMP1, CARG1, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4
+    |  beq ->vmeta_equal_thunk
+    |7:
+    if (vk) {
+      |  ins_next  // Not equal, don't take branch
+    } else {
+      |  mov PC, RB  // Not equal, take branch
+      |  ins_next
+    }
     break;
 
   case BC_ISEQN: case BC_ISNEN:
@@ -2471,11 +2518,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |4:  // RA not int.
-    |.if FFI
-    |  blo >7
-    |.else
-    |  blo <2
-    |.endif
+    |  blo >7  // Not a number, check for thunk or cdata
     |    ldr FARG1, [BASE, RA, lsl #3]
     |    ldr FARG2, [RC]
     |   cmp TISNUMhi, CARG3, lsr #32
@@ -2497,8 +2540,26 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:
     |  asr ITYPE, CARG1, #47
     |  cmn ITYPE, #-LJ_TCDATA
+    |  beq ->vmeta_equal_cd
+    |  // Check for thunk userdata
+    |  cmn ITYPE, #-LJ_TUDATA
     |  bne <2
-    |  b ->vmeta_equal_cd
+    |  and TMP1, CARG1, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |  b <2
+    |.else
+    |7:
+    |  // Check for thunk userdata (no FFI case)
+    |  asr ITYPE, CARG1, #47
+    |  cmn ITYPE, #-LJ_TUDATA
+    |  bne <2
+    |  and TMP1, CARG1, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |  b <2
     |.endif
     break;
 
@@ -2510,14 +2571,20 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   add PC, PC, #4
     |  add RC, RC, #1
     |   add RB, PC, RB, lsl #2
-    |.if FFI
     |  asr ITYPE, TMP0, #47
+    |.if FFI
     |  cmn ITYPE, #-LJ_TCDATA
     |  beq ->vmeta_equal_cd
-    |  cmn RC, ITYPE
-    |.else
-    |  cmn RC, TMP0, asr #47
     |.endif
+    |  // Check for thunk userdata
+    |  cmn ITYPE, #-LJ_TUDATA
+    |  bne >6
+    |  and TMP1, TMP0, #LJ_GCVMASK
+    |  ldrb TMP1w, [TMP1, #10]
+    |  cmp TMP1w, #4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |6:
+    |  cmn RC, ITYPE
     |   sub RB, RB, #0x20000
     if (vk) {
       |  csel PC, RB, PC, eq

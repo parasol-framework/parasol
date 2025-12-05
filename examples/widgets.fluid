@@ -17,8 +17,8 @@ A demonstration of standard widgets
    require 'gui/window'
    require 'vfx'
 
-   glSelf = obj.find('self')
-   glPath = glSelf.workingPath
+   glSelf = <{ obj.find('self') }>
+   glPath = <{ glSelf.workingPath }>
 
    local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400 })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })

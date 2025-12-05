@@ -53,7 +53,7 @@ ParserResult<Token> ParserContext::match(TokenKind kind)
       diagnostic.message  = expectation;
       diagnostic.token    = current;
       this->diag.report(diagnostic);
-      this->log_trace("expect", current, expectation);
+      this->log_trace(ParserChannel::Expect, current, expectation);
    }
 
    ParserError error = this->make_error(ParserErrorCode::ExpectedToken, current, std::string_view{});
@@ -205,7 +205,7 @@ void ParserContext::trace_token_advance(const Token &previous, const Token &curr
 
    if ((prv->JitOptions & JOF::TRACE_TOKENS) != JOF::NIL) {
       std::string detail = std::string("previous: ") + this->describe_token(previous);
-      this->log_trace("advance", current, detail);
+      this->log_trace(ParserChannel::Advance, current, detail);
    }
 }
 
@@ -221,9 +221,7 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
    diagnostic.token    = token;
    this->diag.report(diagnostic);
 
-   auto prv = (prvFluid *)this->lua_state->Script->ChildPrivate;
-
-   if ((prv->JitOptions & JOF::TRACE_EXPECT) != JOF::NIL) this->log_trace("error", token, message);
+   this->log_trace(ParserChannel::Error, token, message);
 
    if (this->current_config.abort_on_error) {
       // Save the diagnostics for client analysis
@@ -285,18 +283,27 @@ std::string ParserContext::describe_token(const Token &token) const
 
 //********************************************************************************************************************
 
-void ParserContext::log_trace(const char* channel, const Token &token, std::string_view note) const
+void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::string_view note) const
 {
    pf::Log log("Parser");
 
    std::string name = this->describe_token(token);
    BCLine line = token.span().line;
    BCLine column = token.span().column;
+   
+   VLF level = VLF::API;
+   CSTRING channel;
+   switch(Channel) {
+      case ParserChannel::Error:   channel = "Error"; level = VLF::WARNING; break;
+      case ParserChannel::Expect:  channel = "Expect"; break;
+      case ParserChannel::Advance: channel = "Advance"; break;
+      default:                     channel = "Unknown"; break;
+   }
 
    if (note.empty()) {
-      log.msg("[%d:%d] %s: %s", (int)line, (int)column, channel, name.c_str());
+      log.msg(level, "[%d:%d] %s: %s", (int)line, (int)column, channel, name.c_str());
       return;
    }
 
-   log.msg("[%d:%d] %s: %s - %.*s", (int)line, (int)column,channel, name.c_str(), (int)note.size(), note.data());
+   log.msg(level, "[%d:%d] %s: %s - %.*s", (int)line, (int)column, channel, name.c_str(), (int)note.size(), note.data());
 }

@@ -11,6 +11,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 #include "lj_arch.h"
+#include "runtime/lj_thunk.h"
 
 static const luaL_Reg lj_lib_load[] = {
   { "",               luaopen_base },
@@ -48,5 +49,8 @@ extern void luaL_openlibs(lua_State* L)
    }
 
    lua_pop(L, 1);
+
+   // Initialize thunk metatable for deferred evaluation support
+   lj_thunk_init(L);
 }
 

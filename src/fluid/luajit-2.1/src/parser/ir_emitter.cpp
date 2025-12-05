@@ -191,7 +191,7 @@ void LexState::assign_adjust(BCREG nvars, BCREG nexps, ExpDesc *Expr)
    else {
       if (Expr->k IS ExpKind::Void) {
          // Void expression contributes no values, so all LHS variables need nil.
-         // This handles cases like `local a, b = assert(...)` where shadow assert returns void.
+         // This handles cases like `local a, b = assert(...)` where a shadow function might return void.
          extra = int32_t(nvars);
       }
       else {
@@ -279,27 +279,27 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
 {
    switch (op) {
-      case AstBinaryOperator::Add:      return BinOpr::Add;
-      case AstBinaryOperator::Subtract: return BinOpr::Sub;
-      case AstBinaryOperator::Multiply: return BinOpr::Mul;
-      case AstBinaryOperator::Divide:   return BinOpr::Div;
-      case AstBinaryOperator::Modulo:   return BinOpr::Mod;
-      case AstBinaryOperator::Power:    return BinOpr::Pow;
-      case AstBinaryOperator::Concat:   return BinOpr::Concat;
-      case AstBinaryOperator::NotEqual: return BinOpr::NotEqual;
-      case AstBinaryOperator::Equal:    return BinOpr::Equal;
-      case AstBinaryOperator::LessThan: return BinOpr::LessThan;
+      case AstBinaryOperator::Add:          return BinOpr::Add;
+      case AstBinaryOperator::Subtract:     return BinOpr::Sub;
+      case AstBinaryOperator::Multiply:     return BinOpr::Mul;
+      case AstBinaryOperator::Divide:       return BinOpr::Div;
+      case AstBinaryOperator::Modulo:       return BinOpr::Mod;
+      case AstBinaryOperator::Power:        return BinOpr::Pow;
+      case AstBinaryOperator::Concat:       return BinOpr::Concat;
+      case AstBinaryOperator::NotEqual:     return BinOpr::NotEqual;
+      case AstBinaryOperator::Equal:        return BinOpr::Equal;
+      case AstBinaryOperator::LessThan:     return BinOpr::LessThan;
       case AstBinaryOperator::GreaterEqual: return BinOpr::GreaterEqual;
       case AstBinaryOperator::LessEqual:    return BinOpr::LessEqual;
       case AstBinaryOperator::GreaterThan:  return BinOpr::GreaterThan;
-      case AstBinaryOperator::BitAnd:     return BinOpr::BitAnd;
-      case AstBinaryOperator::BitOr:      return BinOpr::BitOr;
-      case AstBinaryOperator::BitXor:     return BinOpr::BitXor;
-      case AstBinaryOperator::ShiftLeft:  return BinOpr::ShiftLeft;
-      case AstBinaryOperator::ShiftRight: return BinOpr::ShiftRight;
-      case AstBinaryOperator::LogicalAnd: return BinOpr::LogicalAnd;
-      case AstBinaryOperator::LogicalOr:  return BinOpr::LogicalOr;
-      case AstBinaryOperator::IfEmpty:    return BinOpr::IfEmpty;
+      case AstBinaryOperator::BitAnd:       return BinOpr::BitAnd;
+      case AstBinaryOperator::BitOr:        return BinOpr::BitOr;
+      case AstBinaryOperator::BitXor:       return BinOpr::BitXor;
+      case AstBinaryOperator::ShiftLeft:    return BinOpr::ShiftLeft;
+      case AstBinaryOperator::ShiftRight:   return BinOpr::ShiftRight;
+      case AstBinaryOperator::LogicalAnd:   return BinOpr::LogicalAnd;
+      case AstBinaryOperator::LogicalOr:    return BinOpr::LogicalOr;
+      case AstBinaryOperator::IfEmpty:      return BinOpr::IfEmpty;
       default: return std::nullopt;
    }
 }
@@ -1210,32 +1210,32 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
 //********************************************************************************************************************
 // Emit bytecode for an assignment statement, dispatching to plain, compound, or if-empty assignment handlers.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPayload &Payload)
 {
-   if (payload.targets.empty()) return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   if (Payload.targets.empty()) return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
 
-   auto targets_result = this->prepare_assignment_targets(payload.targets);
+   auto targets_result = this->prepare_assignment_targets(Payload.targets);
    if (not targets_result.ok()) return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
 
    std::vector<PreparedAssignment> targets = std::move(targets_result.value_ref());
 
-   if (payload.op IS AssignmentOperator::Plain) {
-      return this->emit_plain_assignment(std::move(targets), payload.values);
+   if (Payload.op IS AssignmentOperator::Plain) {
+      return this->emit_plain_assignment(std::move(targets), Payload.values);
    }
 
    if (targets.size() != 1) {
-      const ExprNodePtr& node = payload.targets.front();
+      const ExprNodePtr& node = Payload.targets.front();
       const ExprNode* raw = node ? node.get() : nullptr;
       SourceSpan span = raw ? raw->span : SourceSpan{};
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
    }
 
    PreparedAssignment target = std::move(targets.front());
-   if (payload.op IS AssignmentOperator::IfEmpty) {
-      return this->emit_if_empty_assignment(std::move(target), payload.values);
+   if (Payload.op IS AssignmentOperator::IfEmpty) {
+      return this->emit_if_empty_assignment(std::move(target), Payload.values);
    }
 
-   return this->emit_compound_assignment(payload.op, std::move(target), payload.values);
+   return this->emit_compound_assignment(Payload.op, std::move(target), Payload.values);
 }
 
 //********************************************************************************************************************
@@ -1536,15 +1536,15 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 //********************************************************************************************************************
 // Emit bytecode for a unary expression (negation, not, length, or bitwise not).
 
-ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& Payload)
 {
-   if (not payload.operand) return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
-   auto operand_result = this->emit_expression(*payload.operand);
+   if (not Payload.operand) return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
+   auto operand_result = this->emit_expression(*Payload.operand);
    if (not operand_result.ok()) return operand_result;
    ExpDesc operand = operand_result.value_ref();
 
    // Use OperatorEmitter facade for unary operators
-   switch (payload.op) {
+   switch (Payload.op) {
       case AstUnaryOperator::Negate: this->operator_emitter.emit_unary(BC_UNM, ExprValue(&operand)); break;
       case AstUnaryOperator::Not: this->operator_emitter.emit_unary(BC_NOT, ExprValue(&operand)); break;
       case AstUnaryOperator::Length: this->operator_emitter.emit_unary(BC_LEN, ExprValue(&operand)); break;
@@ -1559,11 +1559,11 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& payload
 //********************************************************************************************************************
 // Emit bytecode for an update expression (++, --), incrementing or decrementing a variable in place.
 
-ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& Payload)
 {
-   if (not payload.target) return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
+   if (not Payload.target) return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
 
-   auto target_result = this->emit_lvalue_expr(*payload.target);
+   auto target_result = this->emit_lvalue_expr(*Payload.target);
    if (not target_result.ok()) return target_result;
 
    ExpDesc target = target_result.value_ref();
@@ -1573,14 +1573,14 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
-   BinOpr op = (payload.op IS AstUpdateOperator::Increment) ? BinOpr::Add : BinOpr::Sub;
+   BinOpr op = (Payload.op IS AstUpdateOperator::Increment) ? BinOpr::Add : BinOpr::Sub;
 
    // Use ExpressionValue for discharge operations
    ExpressionValue operand_value(&this->func_state, working);
    auto operand_reg = operand_value.discharge_to_any_reg(allocator);
 
    auto saved_reg = operand_reg;
-   if (payload.is_postfix) {
+   if (Payload.is_postfix) {
       saved_reg = BCReg(this->func_state.freereg);
       bcemit_AD(&this->func_state, BC_MOV, saved_reg, operand_reg);
       allocator.reserve(BCReg(1));
@@ -1596,7 +1596,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
    bcemit_store(&this->func_state, &target, &infix);
    release_indexed_original(this->func_state, target);
 
-   if (payload.is_postfix) {
+   if (Payload.is_postfix) {
       allocator.collapse_freereg(BCReg(saved_reg));
       ExpDesc result;
       result.init(ExpKind::NonReloc, saved_reg);
@@ -1609,14 +1609,14 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& paylo
 //********************************************************************************************************************
 // Emit bytecode for a binary expression (arithmetic, comparison, logical, bitwise, or concatenation operators).
 
-ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& payload)
+ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& Payload)
 {
-   auto lhs_result = this->emit_expression(*payload.left);
+   auto lhs_result = this->emit_expression(*Payload.left);
    if (not lhs_result.ok()) return lhs_result;
 
-   auto mapped = map_binary_operator(payload.op);
+   auto mapped = map_binary_operator(Payload.op);
    if (not mapped.has_value()) {
-      SourceSpan span = payload.left ? payload.left->span : SourceSpan{};
+      SourceSpan span = Payload.left ? Payload.left->span : SourceSpan{};
       return this->unsupported_expr(AstNodeKind::BinaryExpr, span);
    }
 
@@ -1626,7 +1626,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
    // IF_EMPTY requires special handling - it must emit RHS conditionally like ternary
    // Cannot use the standard prepare/emit RHS/complete pattern
 
-   if (opr IS BinOpr::IfEmpty) return this->emit_if_empty_expr(lhs, *payload.right);
+   if (opr IS BinOpr::IfEmpty) return this->emit_if_empty_expr(lhs, *Payload.right);
 
    // ALL binary operators need binop_left preparation before RHS evaluation
 
@@ -1647,7 +1647,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& paylo
 
    // Now evaluate RHS (safe because binop_left prepared LHS)
 
-   auto rhs_result = this->emit_expression(*payload.right);
+   auto rhs_result = this->emit_expression(*Payload.right);
    if (not rhs_result.ok()) return rhs_result;
    ExpDesc rhs = rhs_result.value_ref();
 
@@ -2145,9 +2145,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;
 
-   // Check for shadow function optimisations (functions we transform at compile-time).
-   // NOTE: This optimisation may cause confusion during debugging sessions, so we may want to add
-   // a way to disable it later (and don't delete the functions that are being shadowed).
+   // First pass optimisations: In some cases we can optimise functions during parsing.
+   // NOTE: Optimisations may cause confusion during debugging sessions, so we may want to add
+   // a way to disable them if tracing/profiling is enabled.
 
    if (const auto* direct = std::get_if<DirectCallTarget>(&Payload.target)) {
       if (direct->callable and direct->callable->kind IS AstNodeKind::IdentifierExpr) {
@@ -2155,21 +2155,14 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
          if (name_ref and name_ref->identifier.symbol) {
             GCstr *func_name = name_ref->identifier.symbol;
 
-            // Shadow function table - add new entries here by comparing against interned strings.
-            // Note: We match by name only. If a local shadows the global (e.g., local assert = ...),
-            // the var_lookup_symbol() call during emission will resolve correctly.
-
             static GCstr *assert_str = nullptr; // Global state - this is confirmed as thread safe.
             static GCstr *msg_str = nullptr;
             if (not assert_str) assert_str = lj_str_newlit(this->lex_state.L, "assert");
             if (not msg_str) msg_str = lj_str_newlit(this->lex_state.L, "msg");
 
-            if (func_name IS assert_str) {
-               return this->emit_shadow_assert(Payload.arguments, call_line);
-            }
-
-            // msg() is eliminated entirely when debug messaging is disabled at compile time.
-            if ((func_name IS msg_str) and not glPrintMsg) {
+            if (func_name IS assert_str) this->optimise_assert(Payload.arguments);
+            else if ((func_name IS msg_str) and not glPrintMsg) {
+               // msg() is eliminated entirely when debug messaging is disabled at compile time.
                return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Void));
             }
          }
@@ -2268,76 +2261,62 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 }
 
 //********************************************************************************************************************
-// Shadow function: assert(condition, message)
-// Transforms: assert(expr, msg) -> if not expr then error(msg) end
-// This provides short-circuiting of the message expression when the assertion passes.
+// Optimise assert(condition, message) expressions by wrapping the message in an anonymous thunk call.
+// This provides short-circuiting: the message is only evaluated when the assertion fails.
+//
+// Transforms: assert(cond, expensive_expr)
+// Into:       assert(cond, (thunk():str return expensive_expr end)())
 
-ParserResult<ExpDesc> IrEmitter::emit_shadow_assert(const ExprNodeList& arguments, BCLine call_line)
+void IrEmitter::optimise_assert(const ExprNodeList &Args)
 {
-   // assert() requires at least one argument (the condition)
-   if (arguments.empty()) {
-      return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-         "assert() requires at least 1 argument"));
+   if (Args.size() < 2) return;  // No message argument
+
+   // Simple literals and identifiers don't benefit from deferral.
+   const ExprNode &msg = *Args[1];
+
+   switch (msg.kind) {
+      case AstNodeKind::LiteralExpr:    // String/number literals are cheap
+      case AstNodeKind::IdentifierExpr: // Simple variable access is cheap
+         return;
+      case AstNodeKind::CallExpr: {
+         // Check if this is already a thunk call (anonymous thunk being invoked)
+         // Pattern: CallExpr with FunctionExpr callee where is_thunk=true
+         const auto &call_payload = std::get<CallExprPayload>(msg.data);
+         if (std::holds_alternative<DirectCallTarget>(call_payload.target)) {
+            const auto &target = std::get<DirectCallTarget>(call_payload.target);
+            if (target.callable and target.callable->kind IS AstNodeKind::FunctionExpr) {
+               const auto &func_payload = std::get<FunctionExprPayload>(target.callable->data);
+               if (func_payload.is_thunk) return;  // Already a thunk call
+            }
+         }
+         break;
+      }
+      default:
+         break;
    }
 
-   FuncState* fs = &this->func_state;
+   // Wrap the message in an anonymous thunk call:
+   //   (thunk():str return msg end)()
 
-   // Save the starting register so we can restore it after emitting the shadow code.
-   // This is important because the shadow assert uses temporary registers for the error
-   // call path, but returns Void - the caller needs freereg to be where locals should go.
-   auto saved_freereg = fs->freereg;
+   ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
+   SourceSpan span = msg_arg->span;
 
-   // Emit the condition expression
-   auto cond_result = this->emit_expression(*arguments[0]);
-   if (not cond_result.ok()) return cond_result;
-   ExpDesc condition = cond_result.value_ref();
+   // Step 1: Build return statement with the message expression
+   ExprNodeList return_values;
+   return_values.push_back(std::move(msg_arg));
+   StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
-   // Test the condition and jump to success path if true
-   // bcemit_branch_t emits IST/ISFC and sets condition.f to the jump-if-false position
-   if (condition.k IS ExpKind::Nil) condition.k = ExpKind::False;
-   bcemit_branch_t(fs, &condition);
-   ControlFlowEdge fail_edge = this->control_flow.make_false_edge(BCPos(condition.f));
+   // Step 2: Build thunk body containing just the return statement
+   StmtNodeList body_stmts;
+   body_stmts.push_back(std::move(return_stmt));
+   auto body = make_block(span, std::move(body_stmts));
 
-   // Success path: Jump over the error call
-   ControlFlowEdge success_edge = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+   // Step 3: Build anonymous thunk function (no parameters, is_thunk=true, returns string)
+   ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, FluidType::Str);
 
-   fail_edge.patch_here(); // Failure path: Call error(message)
-
-   // Look up the 'error' function
-   ExpDesc error_func;
-   this->lex_state.var_lookup_symbol(lj_str_newlit(this->lex_state.L, "error"), &error_func);
-   this->materialise_to_next_reg(error_func, "assert error function");
-
-   // Reserve register for frame link
-   RegisterAllocator allocator(fs);
-   allocator.reserve(BCReg(1));
-   auto error_base = BCReg(error_func.u.s.info);
-
-   // Emit the message argument (or default message)
-   if (arguments.size() >= 2) {
-      // User provided a message
-      auto msg_result = this->emit_expression(*arguments[1]);
-      if (not msg_result.ok()) return msg_result;
-      ExpDesc msg = msg_result.value_ref();
-      this->materialise_to_next_reg(msg, "assert error message");
-   }
-   else { // Default message: "assertion failed"
-      ExpDesc default_msg(lj_str_newlit(this->lex_state.L, "assertion failed"));
-      this->materialise_to_next_reg(default_msg, "assert default message");
-   }
-
-   // Emit the error() call
-   this->lex_state.lastline = call_line;
-   BCIns error_ins = BCINS_ABC(BC_CALL, error_base, 2, fs->freereg - error_base - 1);
-   bcemit_INS(fs, error_ins);
-
-   success_edge.patch_here(); // Success path continues here
-
-   fs->freereg = saved_freereg;
-
-   // Return a void expression since we don't support assert() return values
-   ExpDesc result(ExpKind::Void);
-   return ParserResult<ExpDesc>::success(result);
+   // Step 4: Build immediate call to thunk (no arguments)
+   ExprNodeList call_args;
+   msg_arg = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
 }
 
 //********************************************************************************************************************
@@ -2345,7 +2324,7 @@ ParserResult<ExpDesc> IrEmitter::emit_shadow_assert(const ExprNodeList& argument
 // Transforms to: __filter(mask, count, trailing_keep, func(...))
 // The __filter function is a built-in that selectively returns values based on the filter pattern.
 
-ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPayload &Payload)
 {
    if (not Payload.expression) return this->unsupported_expr(AstNodeKind::ResultFilterExpr, SourceSpan{});
 
@@ -2547,11 +2526,79 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
 
 //********************************************************************************************************************
 // Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
+// For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
 
 ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload)
 {
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
+   // Handle thunk functions via AST transformation
+   if (Payload.is_thunk) {
+      // Transform:
+      //   thunk compute(x, y):num
+      //      return x * y
+      //   end
+      //
+      // Into:
+      //   function compute(x, y)
+      //      return __create_thunk(function() return x * y end, type_tag)
+      //   end
+
+      SourceSpan span = Payload.body->span;
+
+      // Step 1: Create inner closure (no parameters, captures parent's as upvalues)
+      // Move original body to inner function
+      auto inner_body = std::make_unique<BlockStmt>();
+      inner_body->span = span;
+      for (auto& stmt : Payload.body->statements) {
+         inner_body->statements.push_back(std::move(const_cast<StmtNodePtr&>(stmt)));
+      }
+
+      ExprNodePtr inner_fn = make_function_expr(span, {}, false, std::move(inner_body), false, FluidType::Any);
+
+      // Step 2: Create call to __create_thunk(inner_fn, type_tag)
+      NameRef create_thunk_ref;
+      create_thunk_ref.identifier.symbol = lj_str_newlit(this->lex_state.L, "__create_thunk");
+      create_thunk_ref.identifier.span = span;
+      create_thunk_ref.resolution = NameResolution::Unresolved;
+      ExprNodePtr create_thunk_fn = make_identifier_expr(span, create_thunk_ref);
+
+      // Type tag argument
+      LiteralValue type_literal;
+      type_literal.kind = LiteralKind::Number;
+      type_literal.number_value = double(fluid_type_to_lj_tag(Payload.thunk_return_type));
+      ExprNodePtr type_arg = make_literal_expr(span, type_literal);
+
+      // Build argument list
+      ExprNodeList call_args;
+      call_args.push_back(std::move(inner_fn));
+      call_args.push_back(std::move(type_arg));
+
+      // Create call expression
+      ExprNodePtr thunk_call = make_call_expr(span, std::move(create_thunk_fn), std::move(call_args), false);
+
+      // Step 3: Create return statement
+      ExprNodeList return_values;
+      return_values.push_back(std::move(thunk_call));
+      StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
+
+      // Step 4: Create wrapper body with just the return statement
+      auto wrapper_body = std::make_unique<BlockStmt>();
+      wrapper_body->span = span;
+      wrapper_body->statements.push_back(std::move(return_stmt));
+
+      // Step 5: Create wrapper function payload (same parameters, not a thunk)
+      FunctionExprPayload wrapper_payload;
+      wrapper_payload.parameters = Payload.parameters;  // Copy parameters
+      wrapper_payload.is_vararg = Payload.is_vararg;
+      wrapper_payload.is_thunk = false;  // Important: wrapper is not a thunk
+      wrapper_payload.body = std::move(wrapper_body);
+
+      // Recursively emit the wrapper function (which is now a regular function)
+      return this->emit_function_expr(wrapper_payload);
+   }
+
+   // Regular function emission
    FuncState child_state;
    ParserAllocator allocator = ParserAllocator::from(this->lex_state.L);
    ParserConfig inherited = this->ctx.config();
@@ -2674,21 +2721,21 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
 //********************************************************************************************************************
 // Emit bytecode for an lvalue expression (assignable location like identifier, member, or index).
 
-ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
+ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr)
 {
-   switch (expr.kind) {
+   switch (Expr.kind) {
       case AstNodeKind::IdentifierExpr: {
-         auto result = this->emit_identifier_expr(std::get<NameRef>(expr.data));
+         auto result = this->emit_identifier_expr(std::get<NameRef>(Expr.data));
          if (not result.ok()) return result;
          ExpDesc value = result.value_ref();
          if (value.k IS ExpKind::Local) value.u.s.aux = this->func_state.varmap[value.u.s.info];
-         if (not vkisvar(value.k)) return this->unsupported_expr(expr.kind, expr.span);
+         if (not vkisvar(value.k)) return this->unsupported_expr(Expr.kind, Expr.span);
          return ParserResult<ExpDesc>::success(value);
       }
 
       case AstNodeKind::MemberExpr: {
-         const auto &payload = std::get<MemberExprPayload>(expr.data);
-         if (not payload.table or not payload.member.symbol) return this->unsupported_expr(expr.kind, expr.span);
+         const auto &payload = std::get<MemberExprPayload>(Expr.data);
+         if (not payload.table or not payload.member.symbol) return this->unsupported_expr(Expr.kind, Expr.span);
 
          auto table_result = this->emit_expression(*payload.table);
          if (not table_result.ok()) return table_result;
@@ -2707,8 +2754,8 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
       }
 
       case AstNodeKind::IndexExpr: {
-         const auto &payload = std::get<IndexExprPayload>(expr.data);
-         if (not payload.table or not payload.index) return this->unsupported_expr(expr.kind, expr.span);
+         const auto &payload = std::get<IndexExprPayload>(Expr.data);
+         if (not payload.table or not payload.index) return this->unsupported_expr(Expr.kind, Expr.span);
 
          auto table_result = this->emit_expression(*payload.table);
          if (not table_result.ok()) return table_result;
@@ -2742,7 +2789,7 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode& expr)
             "Safe navigation operators (?. and ?[]) cannot be used as assignment targets"));
 
       default:
-         return this->unsupported_expr(expr.kind, expr.span);
+         return this->unsupported_expr(Expr.kind, Expr.span);
    }
 }
 
@@ -2773,16 +2820,16 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expres
 //********************************************************************************************************************
 // Prepare assignment targets by resolving lvalues and duplicating table operands to prevent register clobbering.
 
-ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList& targets)
+ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList &Targets)
 {
    std::vector<PreparedAssignment> lhs;
-   lhs.reserve(targets.size());
+   lhs.reserve(Targets.size());
    RegisterAllocator allocator(&this->func_state);
 
    auto prv = (prvFluid *)this->func_state.ls->L->Script->ChildPrivate;
    bool trace_assignments = (prv->JitOptions & JOF::TRACE_ASSIGNMENTS) != JOF::NIL;
 
-   for (const ExprNodePtr& node : targets) {
+   for (const ExprNodePtr &node : Targets) {
       if (not node) {
          return ParserResult<std::vector<PreparedAssignment>>::failure(this->make_error(
             ParserErrorCode::InternalInvariant, "assignment target missing"));
@@ -2799,11 +2846,11 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
       prepared.target = LValue::from_expdesc(&prepared.storage);
 
       if (trace_assignments and prepared.reserved.count().raw() > 0) {
-         const char* target_kind = prepared.target.is_indexed() ? "indexed" : "member";
+         auto target_kind = prepared.target.is_indexed() ? "indexed" : "member";
          pf::Log("Parser").msg("[%d] assignment: prepared %s target, duplicated %d registers (R%d..R%d)",
             this->func_state.ls->linenumber, target_kind,
-            prepared.reserved.count().raw(), prepared.reserved.start().raw(),
-            prepared.reserved.start().raw() + prepared.reserved.count().raw() - 1);
+            unsigned(prepared.reserved.count().raw()), unsigned(prepared.reserved.start().raw()),
+            unsigned(prepared.reserved.start().raw() + prepared.reserved.count().raw() - 1));
       }
 
       if (prepared.target.is_local()) {

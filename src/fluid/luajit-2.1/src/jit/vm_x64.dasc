@@ -975,6 +975,17 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp <3
   |.endif
   |
+  |->vmeta_equal_thunk:
+  |  sub PC, 4
+  |  mov L:RB, SAVE_L
+  |  mov L:RB->base, BASE
+  |  mov CARG1, L:RB
+  |  mov CARG2d, dword [PC-4]
+  |  mov SAVE_PC, PC
+  |  call extern lj_meta_equal_thunk	// (lua_State *L, BCIns ins)
+  |  // 0/1 returned in eax (RC).
+  |  jmp <3
+  |
   |->vmeta_istype:
   |  mov L:RB, SAVE_L
   |  mov L:RB->base, BASE		// Caveat: CARG2/CARG3 may be BASE.
@@ -1192,6 +1203,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  cmp RCd, RBd
   |  cmovb RCd, RBd
   |  not RCd
+  |  // Check for userdata (base type 12) - defer to C fallback for thunk handling
+  |  cmp RCd, ~LJ_TUDATA
+  |  je ->fff_fallback
   |2:
   |  mov CFUNC:RB, [BASE-16]
   |  cleartp CFUNC:RB
@@ -1215,7 +1229,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  jz ->fff_res1
   |  settp TAB:RC, TAB:RB, LJ_TTAB
   |  mov [BASE-16], TAB:RC		// Store metatable as default result.
-  |  mov STR:RC, [DISPATCH+DISPATCH_GL(gcroot)+8*(GCROOT_MMNAME+MM_metatable)]
+  |  mov STR:RC, [DISPATCH+DISPATCH_GL(gcroot)+8*(GCROOT_MMNAME+int(MM_metatable))]
   |  mov RAd, TAB:RB->hmask
   |  and RAd, STR:RC->sid
   |  settp STR:RC, LJ_TSTR
@@ -2973,6 +2987,15 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
       |  cmp ITYPEd, LJ_TCDATA; je ->vmeta_equal_cd
       |.endif
+      |  // Check for thunk userdata in either operand (RB has type of RD, ITYPE has type of RA)
+      |  cmp RBd, LJ_TUDATA; jne >6
+      |  mov TMPR, RD; cleartp TMPR
+      |  cmp byte [TMPR+10], 4; je ->vmeta_equal_thunk  // UDTYPE_THUNK
+      |6:
+      |  cmp ITYPEd, LJ_TUDATA; jne >7
+      |  mov TMPR, RA; cleartp TMPR
+      |  cmp byte [TMPR+10], 4; je ->vmeta_equal_thunk  // UDTYPE_THUNK
+      |7:
       |  cmp RA, RD
       |  je <1				// Same GCobjs or pvalues?
       |  cmp RBd, ITYPEd
@@ -3012,9 +3035,22 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_AND	// RA = src, RD = str const, JMP with RD = target
     |  mov RB, [BASE+RA*8]
     |  add PC, 4
-    |  checkstr RB, >3
+    |  mov ITYPE, RB
+    |  sar ITYPE, 47
+    |  cmp ITYPEd, LJ_TSTR
+    |  je >6  // Is a string, do normal comparison
+    |  // Not a string - check if it's a thunk userdata
+    |  cmp ITYPEd, LJ_TUDATA
+    |  jne >3  // Not userdata, definitely not equal
+    |  // It's userdata - check if it's a thunk (udtype == 4 at offset 10)
+    |  cleartp RB  // Clear type tag to get raw pointer
+    |  cmp byte [RB+10], 4  // UDTYPE_THUNK = 4
+    |  jne >3  // Not a thunk, not equal
+    |  jmp ->vmeta_equal_thunk  // It's a thunk, resolve and compare
+    |6:  // Normal string comparison
+    |  mov RB, [BASE+RA*8]  // Reload RB with full tagged value
+    |  cleartp RB
     |  cmp RB, [KBASE+RD*8]
-  iseqne_test:
     if (vk) {
       |  jne >2
     } else {
@@ -3042,7 +3078,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |7:  // RA is not an integer.
-    |  ja >3
+    |  jbe >71  // RA is a number (below or equal)
+    |  // RA is not a number - check for thunk
+    |  mov ITYPE, RB
+    |  sar ITYPE, 47
+    |  cmp ITYPEd, LJ_TUDATA
+    |  jne >3  // Not userdata
+    |  cleartp RB
+    |  cmp byte [RB+10], 4  // UDTYPE_THUNK
+    |  jne >3  // Not a thunk
+    |  jmp ->vmeta_equal_thunk
+    |71:
+    |  mov RB, [BASE+RA*8]  // Reload RB
     |  // RA is a number.
     |  mov RD, [KBASE+RD*8]
     |  checkint RD, >1
@@ -3058,7 +3105,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |1:
     |  movd xmm0, RD
     |.else
-    |  checknum RB, >3
+    |  // Check if RB is a number, with thunk fallback
+    |  mov ITYPE, RB
+    |  sar ITYPE, 47
+    |  cmp ITYPEd, LJ_TISNUM
+    |  jb >1  // Is a number
+    |  // Not a number - check for thunk
+    |  cmp ITYPEd, LJ_TUDATA
+    |  jne >3  // Not userdata
+    |  cleartp RB
+    |  cmp byte [RB+10], 4  // UDTYPE_THUNK
+    |  jne >3  // Not a thunk
+    |  jmp ->vmeta_equal_thunk
     |1:
     |  movsd xmm0, qword [KBASE+RD*8]
     |.endif
@@ -3073,7 +3131,38 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  sar RB, 47
     |  add PC, 4
     |  cmp RBd, RDd
-    if (!LJ_HASFFI) goto iseqne_test;
+    if (!LJ_HASFFI) {
+      // Without FFI, check for thunk before iseqne_test
+      if (vk) {
+        |  jne >3
+        |  movzx RDd, PC_RD
+        |  branchPC RD
+        |2:
+        |  ins_next
+        |3:
+        |  cmp RBd, LJ_TUDATA; jne <2  // Not userdata, not equal
+        |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
+        |  cleartp TMPR
+        |  cmp byte [TMPR+10], 4  // UDTYPE_THUNK
+        |  jne <2  // Not a thunk
+        |  jmp ->vmeta_equal_thunk
+      } else {
+        |  je >2
+        |  cmp RBd, LJ_TUDATA
+        |  jne >3  // Not userdata
+        |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
+        |  cleartp TMPR
+        |  cmp byte [TMPR+10], 4  // UDTYPE_THUNK
+        |  jne >3  // Not a thunk
+        |  jmp ->vmeta_equal_thunk
+        |3:
+        |  movzx RDd, PC_RD
+        |  branchPC RD
+        |2:
+        |  ins_next
+      }
+      break;
+    }
     if (vk) {
       |  jne >3
       |  movzx RDd, PC_RD
@@ -3081,11 +3170,24 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
       |2:
       |  ins_next
       |3:
-      |  cmp RBd, LJ_TCDATA; jne <2
-      |  jmp ->vmeta_equal_cd
+      |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
+      |  cmp RBd, LJ_TUDATA; jne <2  // Not userdata, not equal
+      |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
+      |  cleartp TMPR
+      |  cmp byte [TMPR+10], 4  // UDTYPE_THUNK
+      |  jne <2  // Not a thunk
+      |  jmp ->vmeta_equal_thunk
     } else {
       |  je >2
       |  cmp RBd, LJ_TCDATA; je ->vmeta_equal_cd
+      |  cmp RBd, LJ_TUDATA
+      |  jne >3  // Not userdata
+      |  mov TMPR, [BASE+RA*8]  // Reload and check udtype
+      |  cleartp TMPR
+      |  cmp byte [TMPR+10], 4  // UDTYPE_THUNK
+      |  jne >3  // Not a thunk
+      |  jmp ->vmeta_equal_thunk
+      |3:
       |  movzx RDd, PC_RD
       |  branchPC RD
       |2:

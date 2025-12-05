@@ -1183,6 +1183,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <3
   |.endif
   |
+  |->vmeta_equal_thunk:
+  |  subi PC, PC, 4
+  |   stp BASE, L->base
+  |  mr CARG1, L
+  |  mr CARG2, INS
+  |   stw PC, SAVE_PC
+  |  bl extern lj_meta_equal_thunk	// (lua_State *L, BCIns ins)
+  |  // Returns 0/1 in CRET1.
+  |  b <3
+  |
   |->vmeta_istype:
   |  subi PC, PC, 4
   |   stp BASE, L->base
@@ -1443,7 +1453,7 @@ static void build_subroutines(BuildCtx *ctx)
   |2:
   |  li CARG3, LJ_TNIL
   |   cmplwi TAB:CARG1, 0
-  |  lwz STR:RC, DISPATCH_GL(gcroot[GCROOT_MMNAME+MM_metatable])(DISPATCH)
+  |  lwz STR:RC, DISPATCH_GL(gcroot[GCROOT_MMNAME+int(MM_metatable)])(DISPATCH)
   |   beq ->fff_restv
   |  lwz TMP0, TAB:CARG1->hmask
   |   li CARG3, LJ_TTAB			// Use metatable as default result.
@@ -3570,6 +3580,20 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.if FFI
     |  beq cr7, ->vmeta_equal_cd
     |.endif
+    |  // Check if CARG3 (RD) is a thunk userdata
+    |  cmpwi CARG3, LJ_TUDATA
+    |  bne >7
+    |  lbz TMP3, 10(CARG4)  // CARG4 holds pointer for RD
+    |  cmpwi TMP3, 4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |7:
+    |  // Check if CARG1 (RA) is a thunk userdata
+    |  cmpwi CARG1, LJ_TUDATA
+    |  bne >8
+    |  lbz TMP3, 10(CARG2)  // CARG2 holds pointer for RA
+    |  cmpwi TMP3, 4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |8:
     |    cmplw cr5, CARG2, CARG4
     |  crandc 4*cr0+gt, 4*cr0+eq, 4*cr1+gt	// 2: Same type and primitive.
     |  crorc 4*cr0+lt, 4*cr5+eq, 4*cr0+eq	// 1: Same tv or different type.
@@ -3621,13 +3645,19 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |    addi PC, PC, 4
     |.if FFI
     |  cmpwi TMP0, LJ_TCDATA
+    |  beq ->vmeta_equal_cd
     |.endif
+    |  // Check for thunk userdata
+    |  cmpwi TMP0, LJ_TUDATA
+    |  bne >6
+    |  // Load udtype at offset 10 from the pointer in STR:TMP3
+    |  lbz CARG3, 10(STR:TMP3)
+    |  cmpwi CARG3, 4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |6:
     |   lwzx STR:TMP1, KBASE, RD	// KBASE-4-str_const*4
     |  .gpr64 extsw TMP0, TMP0
     |  subfic TMP0, TMP0, LJ_TSTR
-    |.if FFI
-    |  beq ->vmeta_equal_cd
-    |.endif
     |  sub TMP1, STR:TMP1, STR:TMP3
     |  or TMP0, TMP0, TMP1
     |    decode_RD4 TMP2, TMP2
@@ -3704,6 +3734,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |3:
     |  cmpwi CARG1, LJ_TCDATA
     |  beq ->vmeta_equal_cd
+    |  // Check for thunk userdata
+    |  cmpwi CARG1, LJ_TUDATA
+    |  bne <1
+    |  // Load pointer and check udtype
+    |  lwz TMP0, 4(RA)
+    |  lbz TMP0, 10(TMP0)
+    |  cmpwi TMP0, 4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
     |  b <1
     |.endif
     |.if DUALNUM
@@ -3749,11 +3787,19 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |    addi PC, PC, 4
     |.if FFI
     |  cmpwi TMP0, LJ_TCDATA
-    |.endif
-    |  sub TMP0, TMP0, TMP1
-    |.if FFI
     |  beq ->vmeta_equal_cd
     |.endif
+    |  // Check for thunk userdata
+    |  cmpwi TMP0, LJ_TUDATA
+    |  bne >6
+    |  // Load pointer from RA+4 and check udtype
+    |  add TMP3, BASE, RA
+    |  lwz TMP3, 4(TMP3)
+    |  lbz TMP3, 10(TMP3)
+    |  cmpwi TMP3, 4  // UDTYPE_THUNK
+    |  beq ->vmeta_equal_thunk
+    |6:
+    |  sub TMP0, TMP0, TMP1
     |    decode_RD4 TMP2, TMP2
     |  .gpr64 extsw TMP0, TMP0
     |  addic TMP0, TMP0, -1

@@ -35,6 +35,7 @@ LJ_FUNCA [[nodiscard]] TValue* lj_meta_cat(lua_State* L, TValue* top, int left);
 LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o);
 LJ_FUNCA [[nodiscard]] TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne);
 LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins);
+LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State* L, BCIns ins);
 LJ_FUNCA [[nodiscard]] TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
 LJ_FUNCA void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp);
 LJ_FUNCA void lj_meta_call(lua_State* L, TValue* func, TValue* top);

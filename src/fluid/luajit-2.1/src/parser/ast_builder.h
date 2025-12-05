@@ -50,9 +50,10 @@ private:
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
-   ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token);
+   ParserResult<ExprNodePtr> parse_function_literal(const Token& function_token, bool is_thunk = false);
    ParserResult<ExprNodePtr> parse_table_literal();
    ParserResult<ReturnStmtPayload> parse_return_payload(const Token& return_token, bool same_line_only);
+   ParserResult<FluidType> parse_return_type_annotation();
 
    ParserResult<std::vector<Identifier>> parse_name_list();
    struct ParameterListResult {

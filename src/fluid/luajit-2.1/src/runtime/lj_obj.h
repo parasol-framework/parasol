@@ -398,11 +398,25 @@ typedef struct GCudata {
 // Userdata types.
 enum {
    UDTYPE_USERDATA,   //  Regular userdata.
-   UDTYPE_IO_FILE,   //  I/O library FILE.
+   UDTYPE_IO_FILE,    //  I/O library FILE.
    UDTYPE_FFI_CLIB,   //  FFI C library namespace.
-   UDTYPE_BUFFER,   //  String buffer.
+   UDTYPE_BUFFER,     //  String buffer.
+   UDTYPE_THUNK,      //  Thunk (deferred evaluation).
    UDTYPE__MAX
 };
+
+// Thunk userdata payload - stored after GCudata header
+// Used for deferred/lazy evaluation of expressions
+typedef struct ThunkPayload {
+   GCRef deferred_func;    // The deferred closure (GCfunc)
+   TValue cached_value;    // Cached resolved value
+   uint8_t resolved;       // Resolution flag (0 = not resolved, 1 = resolved)
+   uint8_t expected_type;  // LJ type tag for type() (LUA_TSTRING, LUA_TNUMBER, etc.)
+   uint16_t padding;       // Padding for alignment
+} ThunkPayload;
+
+// Helper to get thunk payload from userdata
+#define thunk_payload(u)  ((ThunkPayload *)uddata(u))
 
 [[nodiscard]] inline void* uddata(GCudata* u) noexcept
 {
@@ -903,6 +917,7 @@ struct lua_State {
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
    class objScript * Script;
    uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
+   uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TValue close_err;  // Current error for __close handlers (nil if no error)
 
