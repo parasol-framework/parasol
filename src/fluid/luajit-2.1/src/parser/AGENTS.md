@@ -35,7 +35,7 @@ The parser has been modernised to C++20 and refactored into focused modules:
 ```cpp
 // Use concepts for compile-time validation
 template<BytecodeOpcode Op>
-static inline BCPOS bcemit_ABC(FuncState* fs, Op o, BCREG a, BCREG b, BCREG c);
+static inline BCPOS bcemit_ABC(FuncState *, Op, BCREG, BCREG, BCREG);
 ```
 
 **RAII for Resource Management:**
@@ -61,7 +61,7 @@ auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
 for (auto uv_idx : uvmap_range) { ... }
 
 // Use std::string_view for string parameters
-static GCstr* keepstr(std::string_view str);
+static GCstr * keepstr(std::string_view str);
 ```
 
 ## Troubleshooting Register Allocation
@@ -176,27 +176,27 @@ ISEQV      A=R2 D=R0         -- Compares R2 (still 6!) with expected
 Discharge `Call` expressions to `NonReloc` **before** base register calculation:
 
 ```cpp
-static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs)
+static void bcemit_bit_call(FuncState *fs, std::string_view FName, ExpDesc *LHS, ExpDesc *RHS)
 {
    RegisterAllocator allocator(fs);
 
    // Discharge Call expressions to NonReloc first. This ensures that function calls
    // returning multiple values are properly truncated to single values before being
    // used as operands, matching Lua's standard semantics for binary operators.
-   if (lhs->k IS ExpKind::Call) {
-      ExpressionValue lhs_discharge(fs, *lhs);
+   if (LHS->k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, *LHS);
       lhs_discharge.discharge();
-      *lhs = lhs_discharge.legacy();
+      *LHS = lhs_discharge.legacy();
    }
-   if (rhs->k IS ExpKind::Call) {
-      ExpressionValue rhs_discharge(fs, *rhs);
+   if (RHS->k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, *RHS);
       rhs_discharge.discharge();
-      *rhs = rhs_discharge.legacy();
+      *RHS = rhs_discharge.legacy();
    }
 
    // Now the base register check will correctly identify NonReloc operands
    BCREG base;
-   if (rhs->k IS ExpKind::NonReloc and ...) { ... }
+   if (RHS->k IS ExpKind::NonReloc and ...) { ... }
 }
 ```
 
@@ -223,8 +223,7 @@ When implementing operators that can chain across precedence boundaries (e.g., o
 **The Solution:**
 Before allocating a base register for an operation, check if the LHS operand (which may be the previous operation's result) is already at the top of the stack. The check pattern is:
 ```c
-if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
-    lhs->u.s.info + 1 == fs->freereg) {
+if (lhs->k IS VNONRELOC and lhs->u.s.info >= fs->nactvar and lhs->u.s.info + 1 IS fs->freereg) {
    // LHS is at the top - reuse its register to avoid orphaning
    base_reg = lhs->u.s.info;
 }
@@ -277,7 +276,7 @@ if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` a
    `NO_JMP` for falsey LHS (to evaluate RHS). For truthy constants, you must allocate a
    register before loading them:
    ```c
-   if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
+   if (e->k IS VKSTR or e->k IS VKNUM or e->k IS VKTRUE) {
      bcreg_reserve(fs, 1);  // CRITICAL: Allocate register first
      expr_toreg_nobranch(fs, e, fs->freereg-1);
      pc = bcemit_jmp(fs);  // Jump to skip RHS
@@ -299,7 +298,7 @@ if-empty operator), follow a two-phase pattern: setup in `bcemit_binop_left()` a
 
 **Critical Gotcha:**
 - After `expr_toreg_nobranch()` with a proper register, the expression becomes `VNONRELOC`
-- Check `e1->k == VNONRELOC` before trying to load it again in `bcemit_binop()`
+- Check `e1->k IS VNONRELOC` before trying to load it again in `bcemit_binop()`
 - If the constant was already loaded in `bcemit_binop_left()`, it's already in a register
 
 **Pattern for Extended Falsey Checks** (as used in `?` if-empty operator and `??` presence check):
@@ -309,16 +308,16 @@ The pattern chains multiple equality checks, where each check's JMP is patched t
 ```c
 // Check for nil
 bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-check_nil = bcemit_jmp(fs);  // Skipped when reg == nil
+check_nil = bcemit_jmp(fs);  // Skipped when reg IS nil
 // Check for false
 bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-check_false = bcemit_jmp(fs);  // Skipped when reg == false
+check_false = bcemit_jmp(fs);  // Skipped when reg IS false
 // Check for zero
 bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-check_zero = bcemit_jmp(fs);  // Skipped when reg == 0
+check_zero = bcemit_jmp(fs);  // Skipped when reg IS 0
 // Check for empty string
 bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-check_empty = bcemit_jmp(fs);  // Skipped when reg == ""
+check_empty = bcemit_jmp(fs);  // Skipped when reg IS ""
 
 // Patch all JMPs to the falsey branch (e.g., RHS evaluation)
 jmp_patch(fs, check_nil, falsey_branch_pc);
@@ -328,8 +327,8 @@ jmp_patch(fs, check_empty, falsey_branch_pc);
 ```
 
 **How This Works**:
-- **When value is falsey** (e.g., `reg == nil`): The matching `BC_ISEQP` (e.g., `BC_ISEQP reg, VKNIL`) finds equality → skips its JMP → execution continues past all checks → eventually reaches code that handles the falsey case (e.g., load false, evaluate RHS)
-- **When value is truthy** (e.g., `reg == "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
+- **When value is falsey** (e.g., `reg IS nil`): The matching `BC_ISEQP` (e.g., `BC_ISEQP reg, VKNIL`) finds equality → skips its JMP → execution continues past all checks → eventually reaches code that handles the falsey case (e.g., load false, evaluate RHS)
+- **When value is truthy** (e.g., `reg IS "hello"`): ALL `BC_ISEQP` checks find inequality (reg != nil, reg != false, reg != 0, reg != "") → NONE skip their JMPs → the first JMP executes and jumps to the falsey branch → result is correct (e.g., load true, skip RHS)
 
 **Note**: This pattern works because we chain multiple checks and patch all JMPs to the same location. If the value matches any falsey check, that check's JMP is skipped and execution continues. If the value matches none of the checks (is truthy), all JMPs execute and the first one jumps to the falsey branch. The exact behavior depends on how the falsey branch is structured.
 
@@ -340,11 +339,11 @@ in addition to `nil` and `false`):
 
 1. **Handle compile-time constants separately** in `bcemit_binop()`:
    ```c
-   if (e1->k == VKNIL || e1->k == VKFALSE) {
+   if (e1->k IS VKNIL or e1->k IS VKFALSE) {
      // Definitely falsey - evaluate RHS
-   } else if (e1->k == VKNUM && expr_numiszero(e1)) {
+   } else if (e1->k IS VKNUM and expr_numiszero(e1)) {
      // Zero is falsey - evaluate RHS
-   } else if (e1->k == VKSTR && e1->u.sval && e1->u.sval->len == 0) {
+   } else if (e1->k IS VKSTR and e1->u.sval and e1->u.sval->len IS 0) {
      // Empty string is falsey - evaluate RHS
    }
    ```
@@ -371,7 +370,7 @@ in addition to `nil` and `false`):
    ```
 
    **How This Works**:
-   - When `reg == nil`: `BC_ISEQP` skips the `JMP` → execution continues past all checks
+   - When `reg IS nil`: `BC_ISEQP` skips the `JMP` → execution continues past all checks
    - When `reg != nil`: `BC_ISEQP` doesn't skip → `JMP` executes → jumps to RHS evaluation
    - Since we want to evaluate RHS when ANY falsey value is found, we patch all jumps to the RHS evaluation point
    - If the value is truthy, ALL checks skip their jumps, and execution continues (returning the truthy value)
@@ -414,8 +413,7 @@ When adding new operators or modifying expression parsing, use these strategies:
 Add temporary printf statements to trace token values through parsing:
 ```cpp
 // In expr_primary() suffix loop or similar:
-printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok,
-       (ls->tok >= 32 && ls->tok < 127) ? ls->tok : '?');
+printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok, (ls->tok >= 32 and ls->tok < 127) ? ls->tok : '?');
 ```
 Remember to remove these before committing. Token values < 256 are ASCII characters;
 values >= 256 are token type constants from `lj_lex.h`.

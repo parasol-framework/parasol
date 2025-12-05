@@ -1,0 +1,279 @@
+-- Flute test suite for Fluid Range type (Phase 1: Core functionality)
+-- Tests range() constructor and basic operations before parser syntax support
+
+function testRangeConstructorBasic()
+   -- Test basic exclusive range (default)
+   local r = range(0, 5)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 5, "stop should be 5")
+   assert(r.inclusive is false, "should be exclusive by default")
+   assert(r.step is 1, "step should default to 1")
+end
+
+function testRangeConstructorInclusive()
+   -- Test inclusive range
+   local r = range(0, 5, true)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 5, "stop should be 5")
+   assert(r.inclusive is true, "should be inclusive")
+   assert(r.step is 1, "step should default to 1")
+end
+
+function testRangeConstructorWithStep()
+   -- Test range with custom step
+   local r = range(0, 10, false, 2)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 10, "stop should be 10")
+   assert(r.step is 2, "step should be 2")
+   assert(r.inclusive is false, "should be exclusive")
+end
+
+function testRangeConstructorReverseAutoStep()
+   -- Test reverse range auto-detects negative step
+   local r = range(10, 0)
+   assert(r.start is 10, "start should be 10")
+   assert(r.stop is 0, "stop should be 0")
+   assert(r.step is -1, "step should auto-detect as -1 for reverse range")
+end
+
+function testRangeLengthExclusive()
+   -- Test length calculation for exclusive ranges
+   local r1 = range(0, 5)        -- 0, 1, 2, 3, 4 = 5 elements
+   assert(#r1 is 5, "exclusive range 0..5 should have 5 elements, got " .. #r1)
+
+   local r2 = range(0, 0)        -- Empty range
+   assert(#r2 is 0, "exclusive range 0..0 should be empty, got " .. #r2)
+
+   local r3 = range(3, 7)        -- 3, 4, 5, 6 = 4 elements
+   assert(#r3 is 4, "exclusive range 3..7 should have 4 elements, got " .. #r3)
+end
+
+function testRangeLengthInclusive()
+   -- Test length calculation for inclusive ranges
+   local r1 = range(0, 5, true)  -- 0, 1, 2, 3, 4, 5 = 6 elements
+   assert(#r1 is 6, "inclusive range 0...5 should have 6 elements, got " .. #r1)
+
+   local r2 = range(0, 0, true)  -- Just 0 = 1 element
+   assert(#r2 is 1, "inclusive range 0...0 should have 1 element, got " .. #r2)
+end
+
+function testRangeLengthReverse()
+   -- Test length for reverse ranges
+   local r1 = range(5, 0)        -- Exclusive: 5, 4, 3, 2, 1 = 5 elements
+   assert(#r1 is 5, "exclusive reverse range 5..0 should have 5 elements, got " .. #r1)
+
+   local r2 = range(5, 0, true)  -- Inclusive: 5, 4, 3, 2, 1, 0 = 6 elements
+   assert(#r2 is 6, "inclusive reverse range 5...0 should have 6 elements, got " .. #r2)
+end
+
+function testRangeLengthWithStep()
+   -- Test length with custom step values
+   local r1 = range(0, 10, false, 2)  -- 0, 2, 4, 6, 8 = 5 elements
+   assert(#r1 is 5, "range 0..10 step 2 should have 5 elements, got " .. #r1)
+
+   local r2 = range(0, 10, true, 2)   -- 0, 2, 4, 6, 8, 10 = 6 elements
+   assert(#r2 is 6, "inclusive range 0...10 step 2 should have 6 elements, got " .. #r2)
+end
+
+function testRangeToString()
+   -- Test string representation
+   local r1 = range(0, 5)
+   local s1 = tostring(r1)
+   assert(s1 is "{0..5}", "exclusive range should show as {0..5}, got " .. s1)
+
+   local r2 = range(0, 5, true)
+   local s2 = tostring(r2)
+   assert(s2 is "{0...5}", "inclusive range should show as {0...5}, got " .. s2)
+
+   local r3 = range(10, 0)
+   local s3 = tostring(r3)
+   assert(s3 is "{10..0}", "reverse range should show as {10..0}, got " .. s3)
+end
+
+function testRangeEquality()
+   -- Test equality comparison
+   local r1 = range(0, 5)
+   local r2 = range(0, 5)
+   local r3 = range(0, 5, true)
+   local r4 = range(1, 5)
+   local r5 = range(0, 6)
+
+   assert(r1 is r2, "identical ranges should be equal")
+   assert(r1 != r3, "ranges with different inclusivity should not be equal")
+   assert(r1 != r4, "ranges with different start should not be equal")
+   assert(r1 != r5, "ranges with different stop should not be equal")
+end
+
+function testRangeEqualityWithStep()
+   -- Test equality with step values
+   local r1 = range(0, 10, false, 2)
+   local r2 = range(0, 10, false, 2)
+   local r3 = range(0, 10, false, 3)
+
+   assert(r1 is r2, "ranges with same step should be equal")
+   assert(r1 != r3, "ranges with different step should not be equal")
+end
+
+function testRangeContainsExclusive()
+   -- Test contains method for exclusive ranges
+   local r = range(0, 10)  -- 0-9
+
+   assert(r:contains(0) is true, "0 should be in range 0..10")
+   assert(r:contains(5) is true, "5 should be in range 0..10")
+   assert(r:contains(9) is true, "9 should be in range 0..10")
+   assert(r:contains(10) is false, "10 should NOT be in exclusive range 0..10")
+   assert(r:contains(-1) is false, "-1 should NOT be in range 0..10")
+   assert(r:contains(11) is false, "11 should NOT be in range 0..10")
+end
+
+function testRangeContainsInclusive()
+   -- Test contains method for inclusive ranges
+   local r = range(0, 10, true)  -- 0-10
+
+   assert(r:contains(0) is true, "0 should be in range 0...10")
+   assert(r:contains(10) is true, "10 should be in inclusive range 0...10")
+   assert(r:contains(11) is false, "11 should NOT be in range 0...10")
+end
+
+function testRangeContainsWithStep()
+   -- Test contains with step values
+   local r = range(0, 10, false, 2)  -- 0, 2, 4, 6, 8
+
+   assert(r:contains(0) is true, "0 should be in range 0..10 step 2")
+   assert(r:contains(2) is true, "2 should be in range 0..10 step 2")
+   assert(r:contains(8) is true, "8 should be in range 0..10 step 2")
+   assert(r:contains(1) is false, "1 should NOT be in range 0..10 step 2")
+   assert(r:contains(3) is false, "3 should NOT be in range 0..10 step 2")
+   assert(r:contains(10) is false, "10 should NOT be in exclusive range 0..10 step 2")
+end
+
+function testRangeContainsReverse()
+   -- Test contains for reverse ranges
+   local r = range(10, 0)  -- 10, 9, 8, ... 1 (exclusive of 0)
+
+   assert(r:contains(10) is true, "10 should be in range 10..0")
+   assert(r:contains(5) is true, "5 should be in range 10..0")
+   assert(r:contains(1) is true, "1 should be in range 10..0")
+   assert(r:contains(0) is false, "0 should NOT be in exclusive range 10..0")
+   assert(r:contains(11) is false, "11 should NOT be in range 10..0")
+end
+
+function testRangeToTable()
+   -- Test toTable method
+   local r1 = range(0, 5)
+   local t1 = r1:toTable()
+   assert(#t1 is 5, "toTable should return 5 elements")
+   assert(t1[0] is 0, "first element should be 0")
+   assert(t1[4] is 4, "last element should be 4")
+
+   local r2 = range(0, 5, true)
+   local t2 = r2:toTable()
+   assert(#t2 is 6, "inclusive toTable should return 6 elements")
+   assert(t2[5] is 5, "last element should be 5")
+end
+
+function testRangeToTableWithStep()
+   -- Test toTable with step
+   local r = range(0, 10, false, 2)
+   local t = r:toTable()
+   assert(#t is 5, "toTable with step 2 should return 5 elements")
+   assert(t[0] is 0, "first element should be 0")
+   assert(t[1] is 2, "second element should be 2")
+   assert(t[4] is 8, "last element should be 8")
+end
+
+function testRangeToTableReverse()
+   -- Test toTable for reverse range
+   local r = range(5, 0, true)
+   local t = r:toTable()
+   assert(#t is 6, "reverse toTable should return 6 elements")
+   assert(t[0] is 5, "first element should be 5")
+   assert(t[5] is 0, "last element should be 0")
+end
+
+function testRangeCheckFunction()
+   -- Test range.check() type checking (named 'check' because 'is' is a Fluid keyword)
+   local r = range(0, 5)
+
+   assert(range.check(r) is true, "range.check should return true for range")
+   assert(range.check(5) is false, "range.check should return false for number")
+   assert(range.check("hello") is false, "range.check should return false for string")
+   assert(range.check({1, 2, 3}) is false, "range.check should return false for table")
+   assert(range.check(nil) is false, "range.check should return false for nil")
+end
+
+function testRangeMetatableName()
+   -- Test metatable __name field
+   local r = range(0, 5)
+   local mt = getmetatable(r)
+   assert(mt != nil, "range should have metatable")
+   assert(mt.__name is "Fluid.range", "metatable __name should be Fluid.range")
+end
+
+function testRangePropertyLength()
+   -- Test .length property (alternative to #)
+   local r1 = range(0, 5)
+   assert(r1.length is 5, ".length should return 5 for exclusive range 0..5")
+
+   local r2 = range(0, 5, true)
+   assert(r2.length is 6, ".length should return 6 for inclusive range 0...5")
+end
+
+function testRangeErrorNonInteger()
+   -- Test that non-integer values throw errors
+   local ok, err = pcall(function() return range(1.5, 5) end)
+   assert(ok is false, "non-integer start should throw error")
+
+   ok, err = pcall(function() return range(0, 5.5) end)
+   assert(ok is false, "non-integer stop should throw error")
+end
+
+function testRangeErrorNilValues()
+   -- Test that nil values throw errors
+   local ok, err = pcall(function() return range(nil, 5) end)
+   assert(ok is false, "nil start should throw error")
+
+   ok, err = pcall(function() return range(0, nil) end)
+   assert(ok is false, "nil stop should throw error")
+end
+
+function testRangeErrorInvalidStep()
+   -- Test that zero step throws error
+   local ok, err = pcall(function() return range(0, 10, false, 0) end)
+   assert(ok is false, "zero step should throw error")
+end
+
+--------------------------------------------------------------
+
+return {
+   tests = {
+      "testRangeConstructorBasic",
+      "testRangeConstructorInclusive",
+      "testRangeConstructorWithStep",
+      "testRangeConstructorReverseAutoStep",
+      "testRangeLengthExclusive",
+      "testRangeLengthInclusive",
+      "testRangeLengthReverse",
+      "testRangeLengthWithStep",
+      "testRangeToString",
+      "testRangeEquality",
+      "testRangeEqualityWithStep",
+      "testRangeContainsExclusive",
+      "testRangeContainsInclusive",
+      "testRangeContainsWithStep",
+      "testRangeContainsReverse",
+      "testRangeToTable",
+      "testRangeToTableWithStep",
+      "testRangeToTableReverse",
+      "testRangeCheckFunction",
+      "testRangeMetatableName",
+      "testRangePropertyLength",
+      "testRangeErrorNonInteger",
+      "testRangeErrorNilValues",
+      "testRangeErrorInvalidStep"
+   },
+   init = function(Folder)
+   end,
+   cleanup = function()
+   end
+}
