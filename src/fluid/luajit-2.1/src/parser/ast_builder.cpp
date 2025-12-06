@@ -54,6 +54,36 @@ static bool is_presence_expr(const ExprNodePtr &Expr)
    return Expr and Expr->kind IS AstNodeKind::PresenceExpr;
 }
 
+// Validates that an expression can be used as an arrow function parameter (identifier only).
+
+static bool extract_arrow_parameter(const ExprNodePtr &Expr, FunctionParameter &Parameter)
+{
+   if (not Expr) return false;
+   if (not (Expr->kind IS AstNodeKind::IdentifierExpr)) return false;
+
+   auto *name_ref = std::get_if<NameRef>(&Expr->data);
+   if (name_ref IS nullptr) return false;
+
+   Parameter.name = name_ref->identifier;
+   return true;
+}
+
+// Populates a parameter list from expressions parsed before the arrow token.
+
+static bool build_arrow_parameters(const ExprNodeList &Expressions, std::vector<FunctionParameter> &Parameters,
+   const ExprNodePtr **Invalid)
+{
+   for (const auto &expr : Expressions) {
+      FunctionParameter param;
+      if (not extract_arrow_parameter(expr, param)) {
+         if (Invalid) *Invalid = &expr;
+         return false;
+      }
+      Parameters.push_back(param);
+   }
+   return true;
+}
+
 static ParserResult<StmtNodePtr> make_control_stmt(ParserContext& Context, AstNodeKind Kind, const Token& Token)
 {
    StmtNodePtr node = std::make_unique<StmtNode>();
@@ -962,8 +992,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          Identifier id = make_identifier(current);
          NameRef name;
          name.identifier = id;
-         node = make_identifier_expr(current.span(), name);
          this->ctx.tokens().advance();
+         ExprNodePtr identifier_expr = make_identifier_expr(current.span(), name);
+         if (this->ctx.check(TokenKind::Arrow)) {
+            ExprNodeList parameters;
+            parameters.push_back(std::move(identifier_expr));
+            return this->parse_arrow_function(std::move(parameters));
+         }
+
+         node = std::move(identifier_expr);
          break;
       }
 
@@ -1001,12 +1038,54 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       }
 
       case TokenKind::LeftParen: {
+         Token open_paren = this->ctx.tokens().current();
          this->ctx.tokens().advance();
-         auto expr = this->parse_expression();
-         if (not expr.ok()) return expr;
+         ExprNodeList expressions;
+         bool parsed_empty = false;
 
-         this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
-         node = std::move(expr.value_ref());
+         if (this->ctx.check(TokenKind::RightParen)) {
+            parsed_empty = true;
+            this->ctx.tokens().advance();
+         }
+         else {
+            auto expr = this->parse_expression();
+            if (not expr.ok()) return expr;
+
+            expressions.push_back(std::move(expr.value_ref()));
+            while (this->ctx.match(TokenKind::Comma).ok()) {
+               auto next_expr = this->parse_expression();
+               if (not next_expr.ok()) return next_expr;
+               expressions.push_back(std::move(next_expr.value_ref()));
+            }
+
+            this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
+         }
+
+         if (this->ctx.check(TokenKind::Arrow)) {
+            return this->parse_arrow_function(std::move(expressions));
+         }
+
+         if (parsed_empty) {
+            Token bad = Token::from_span(open_paren.span(), TokenKind::LeftParen);
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "empty parentheses are not an expression");
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = bad;
+            error.message = "empty parentheses are not an expression";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+
+         if (expressions.size() > 1) {
+            Token bad = Token::from_span(open_paren.span(), TokenKind::LeftParen);
+            this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "multiple expressions in parentheses are not supported");
+            ParserError error;
+            error.code = ParserErrorCode::UnexpectedToken;
+            error.token = bad;
+            error.message = "multiple expressions in parentheses are not supported";
+            return ParserResult<ExprNodePtr>::failure(error);
+         }
+
+         node = std::move(expressions.front());
          break;
       }
 
@@ -1122,6 +1201,67 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       }
    }
    return this->parse_suffixed(std::move(node));
+}
+
+//********************************************************************************************************************
+// Parses arrow function expressions: params => expr | params => do ... end.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList parameters)
+{
+   Token arrow_token = this->ctx.tokens().current();
+   this->ctx.consume(TokenKind::Arrow, ParserErrorCode::ExpectedToken);
+
+   std::vector<FunctionParameter> parsed_params;
+   parsed_params.reserve(parameters.size());
+   const ExprNodePtr *invalid_param = nullptr;
+
+   if (not build_arrow_parameters(parameters, parsed_params, &invalid_param)) {
+      SourceSpan span = arrow_token.span();
+      if (invalid_param and *invalid_param) span = (*invalid_param)->span;
+      Token param_token = Token::from_span(span, TokenKind::Identifier);
+      this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, param_token,
+         "arrow function parameters must be identifiers");
+
+      ParserError error;
+      error.code = ParserErrorCode::ExpectedIdentifier;
+      error.token = param_token;
+      error.message = "arrow function parameters must be identifiers";
+      return ParserResult<ExprNodePtr>::failure(error);
+   }
+
+   std::unique_ptr<BlockStmt> body;
+
+   if (this->ctx.check(TokenKind::DoToken)) {
+      this->ctx.tokens().advance();
+      auto block = this->parse_scoped_block({ TokenKind::EndToken });
+      if (not block.ok()) return ParserResult<ExprNodePtr>::failure(block.error_ref());
+      this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+      body = std::move(block.value_ref());
+   }
+   else {
+      auto expr = this->parse_expression();
+      if (not expr.ok()) return ParserResult<ExprNodePtr>::failure(expr.error_ref());
+
+      ExprNodeList return_values;
+      return_values.push_back(std::move(expr.value_ref()));
+      SourceSpan return_span = return_values.front()->span;
+      StmtNodePtr return_stmt = make_return_stmt(return_span, std::move(return_values), false);
+
+      StmtNodeList statements;
+      statements.push_back(std::move(return_stmt));
+      body = make_block(return_span, std::move(statements));
+   }
+
+   SourceSpan function_span = arrow_token.span();
+   if (not parsed_params.empty()) {
+      function_span = combine_spans(parsed_params.front().name.span, body->span);
+   }
+   else {
+      function_span = combine_spans(arrow_token.span(), body->span);
+   }
+
+   ExprNodePtr node = make_function_expr(function_span, std::move(parsed_params), false, std::move(body));
+   return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
 //********************************************************************************************************************

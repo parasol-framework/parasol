@@ -64,6 +64,7 @@ enum class TokenKind : uint16_t {
    Presence = TK_if_empty, // NOTE: This single token covers use of both `if present?? then` (postfix) and `(variable ?? default_value)` (if empty).
    PlusPlus = TK_plusplus,
    Pipe = TK_pipe,
+   Arrow = TK_arrow,
    DeferredOpen = TK_defer_open,
    DeferredTyped = TK_defer_typed,
    DeferredClose = TK_defer_close,
@@ -145,6 +146,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::Presence: return "??";
       case TokenKind::PlusPlus: return "++";
       case TokenKind::Pipe: return "|>";
+      case TokenKind::Arrow: return "=>";
       case TokenKind::DeferredOpen: return "<{";
       case TokenKind::DeferredTyped: return "<type{";
       case TokenKind::DeferredClose: return "}>";
