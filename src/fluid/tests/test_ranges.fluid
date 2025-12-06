@@ -1,5 +1,5 @@
--- Flute test suite for Fluid Range type (Phase 1: Core functionality)
--- Tests range() constructor and basic operations before parser syntax support
+-- Flute test suite for Fluid Range type
+----------------------------------------------------------------------------------------------------------------------
 
 function testRangeConstructorBasic()
    -- Test basic exclusive range (default)
@@ -243,10 +243,124 @@ function testRangeErrorInvalidStep()
    assert(ok is false, "zero step should throw error")
 end
 
---------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+-- Range Literal Syntax Tests
+
+function testRangeLiteralExclusive()
+   -- Test exclusive range literal syntax {start..stop}
+   local r = {1..5}
+   assert(r.start is 1, "literal start should be 1")
+   assert(r.stop is 5, "literal stop should be 5")
+   assert(r.inclusive is false, "{..} should be exclusive")
+   assert(#r is 4, "{1..5} should have 4 elements (1,2,3,4)")
+end
+
+function testRangeLiteralInclusive()
+   -- Test inclusive range literal syntax {start...stop}
+   local r = {1...5}
+   assert(r.start is 1, "literal start should be 1")
+   assert(r.stop is 5, "literal stop should be 5")
+   assert(r.inclusive is true, "{...} should be inclusive")
+   assert(#r is 5, "{1...5} should have 5 elements (1,2,3,4,5)")
+end
+
+function testRangeLiteralReverse()
+   -- Test reverse range literal
+   local r = {10..1}
+   assert(r.start is 10, "reverse start should be 10")
+   assert(r.stop is 1, "reverse stop should be 1")
+   assert(r.step is -1, "reverse range should auto-detect step -1")
+   assert(#r is 9, "{10..1} should have 9 elements")
+end
+
+function testRangeLiteralReverseInclusive()
+   -- Test reverse inclusive range literal
+   local r = {5...1}
+   assert(r.start is 5, "reverse start should be 5")
+   assert(r.stop is 1, "reverse stop should be 1")
+   assert(r.inclusive is true, "{...} should be inclusive")
+   assert(#r is 5, "{5...1} should have 5 elements (5,4,3,2,1)")
+end
+
+function testRangeLiteralEquality()
+   -- Test that literals produce same result as constructor
+   local lit = {0..5}
+   local con = range(0, 5)
+   assert(lit is con, "{0..5} should equal range(0, 5)")
+
+   local lit2 = {0...5}
+   local con2 = range(0, 5, true)
+   assert(lit2 is con2, "{0...5} should equal range(0, 5, true)")
+end
+
+function testRangeLiteralToString()
+   -- Test string representation of literals
+   local r1 = {0..5}
+   assert(tostring(r1) is "{0..5}", "exclusive literal tostring should be {0..5}")
+
+   local r2 = {0...5}
+   assert(tostring(r2) is "{0...5}", "inclusive literal tostring should be {0...5}")
+end
+
+function testRangeLiteralContains()
+   -- Test contains method on range literals
+   local r = {0..10}
+   assert(r:contains(0) is true, "0 should be in {0..10}")
+   assert(r:contains(5) is true, "5 should be in {0..10}")
+   assert(r:contains(9) is true, "9 should be in {0..10}")
+   assert(r:contains(10) is false, "10 should NOT be in {0..10} (exclusive)")
+end
+
+function testRangeLiteralWithVariables()
+   -- Test range literals with variable expressions
+   local start = 3
+   local stop = 8
+   local r = {start..stop}
+   assert(r.start is 3, "variable start should be 3")
+   assert(r.stop is 8, "variable stop should be 8")
+   assert(#r is 5, "{3..8} should have 5 elements")
+end
+
+function testRangeLiteralWithExpressions()
+   -- Test range literals with expressions (must use parentheses)
+   local r = {(1+1)..(2*3)}  -- {2..6}
+   assert(r.start is 2, "expression start should be 2")
+   assert(r.stop is 6, "expression stop should be 6")
+   assert(#r is 4, "{2..6} should have 4 elements")
+end
+
+function testRangeLiteralNegativeValues()
+   -- Test range literals with negative values
+   local r = {-5..-1}
+   assert(r.start is -5, "negative start should be -5")
+   assert(r.stop is -1, "negative stop should be -1")
+   assert(#r is 4, "{-5..-1} should have 4 elements (-5,-4,-3,-2)")
+
+   local r2 = {-5...-1}
+   assert(#r2 is 5, "{-5...-1} should have 5 elements (inclusive)")
+end
+
+function testRangeLiteralZeroRange()
+   -- Test range literals that produce empty or single-element ranges
+   local r1 = {5..5}  -- Empty exclusive range
+   assert(#r1 is 0, "{5..5} should be empty")
+
+   local r2 = {5...5}  -- Single element inclusive range
+   assert(#r2 is 1, "{5...5} should have 1 element")
+end
+
+function testRangeLiteralTypeCheck()
+   -- Test that range literals are detected by range.check
+   local r = {0..5}
+   assert(range.check(r) is true, "range.check should return true for literal")
+   assert(type(r) is "userdata", "type of range literal should be userdata")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
+      -- Phase 1: Constructor and basic operations
       "testRangeConstructorBasic",
       "testRangeConstructorInclusive",
       "testRangeConstructorWithStep",
@@ -270,7 +384,20 @@ return {
       "testRangePropertyLength",
       "testRangeErrorNonInteger",
       "testRangeErrorNilValues",
-      "testRangeErrorInvalidStep"
+      "testRangeErrorInvalidStep",
+      -- Phase 2: Range literal syntax
+      "testRangeLiteralExclusive",
+      "testRangeLiteralInclusive",
+      "testRangeLiteralReverse",
+      "testRangeLiteralReverseInclusive",
+      "testRangeLiteralEquality",
+      "testRangeLiteralToString",
+      "testRangeLiteralContains",
+      "testRangeLiteralWithVariables",
+      "testRangeLiteralWithExpressions",
+      "testRangeLiteralNegativeValues",
+      "testRangeLiteralZeroRange",
+      "testRangeLiteralTypeCheck"
    },
    init = function(Folder)
    end,

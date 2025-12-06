@@ -88,9 +88,10 @@ LJLIB_ASM(type)      LJLIB_REC(.)
          }
       }
    }
-   // Fall through to default "userdata" - should not reach here in normal operation
-   // as the assembly path handles non-thunk cases
-   return FFH_RETRY;  // Retry will use the fast path result
+   // For non-thunk userdata, return "userdata" string (upvalue index 3)
+   GCfunc *fn = funcV(L->base - 1 - LJ_FR2);
+   setstrV(L, L->base - 1 - LJ_FR2, strV(&fn->c.upvalue[3]));
+   return FFH_RES(1);
 }
 
 // Recycle the lj_lib_checkany(L, 1) from assert.

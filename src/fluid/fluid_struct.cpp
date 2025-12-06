@@ -139,23 +139,23 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
                      for (int i = 0; i < field.ArraySize; i++) {
                         lua_pushinteger(Lua, i + 1); // Lua arrays are 1-based
                         lua_gettable(Lua, -2); // Get value at index
-                        if (type & FD_FLOAT)       ((float *)address)[i]  = lua_tonumber(Lua, -1);
-                        else if (type & FD_DOUBLE) ((double *)address)[i] = lua_tonumber(Lua, -1);
-                        else if (type & FD_INT64)  ((int64_t *)address)[i]  = lua_tonumber(Lua, -1);
-                        else if (type & FD_INT)    ((int *)address)[i]   = lua_tointeger(Lua, -1);
-                        else if (type & FD_WORD)   ((int16_t *)address)[i]   = lua_tointeger(Lua, -1);
-                        else if (type & FD_BYTE)   ((uint8_t *)address)[i]  = lua_tointeger(Lua, -1);
+                        if (type & FD_FLOAT)       ((float *)address)[i]   = lua_tonumber(Lua, -1);
+                        else if (type & FD_DOUBLE) ((double *)address)[i]  = lua_tonumber(Lua, -1);
+                        else if (type & FD_INT64)  ((int64_t *)address)[i] = lua_tonumber(Lua, -1);
+                        else if (type & FD_INT)    ((int *)address)[i]     = lua_tointeger(Lua, -1);
+                        else if (type & FD_WORD)   ((int16_t *)address)[i] = lua_tointeger(Lua, -1);
+                        else if (type & FD_BYTE)   ((uint8_t *)address)[i] = lua_tointeger(Lua, -1);
                         lua_pop(Lua, 1); // Remove value
                      }
                   }
                }
                else if (type & (FD_STRING|FD_STRUCT|FD_POINTER));
-               else if (type & FD_FLOAT)  ((float *)address)[0]  = lua_tonumber(Lua, -1);
-               else if (type & FD_DOUBLE) ((double *)address)[0] = lua_tonumber(Lua, -1);
-               else if (type & FD_INT64)  ((int64_t *)address)[0]  = lua_tonumber(Lua, -1);
-               else if (type & FD_INT)    ((int *)address)[0]   = lua_tointeger(Lua, -1);
-               else if (type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, -1);
-               else if (type & FD_BYTE)   ((uint8_t *)address)[0]  = lua_tointeger(Lua, -1);
+               else if (type & FD_FLOAT)  ((float *)address)[0]   = lua_tonumber(Lua, -1);
+               else if (type & FD_DOUBLE) ((double *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_INT64)  ((int64_t *)address)[0] = lua_tonumber(Lua, -1);
+               else if (type & FD_INT)    ((int *)address)[0]     = lua_tointeger(Lua, -1);
+               else if (type & FD_WORD)   ((int16_t *)address)[0] = lua_tointeger(Lua, -1);
+               else if (type & FD_BYTE)   ((uint8_t *)address)[0] = lua_tointeger(Lua, -1);
                break;
             }
          }

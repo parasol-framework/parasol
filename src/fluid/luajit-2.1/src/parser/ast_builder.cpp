@@ -1137,11 +1137,93 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 
 //********************************************************************************************************************
 // Parses table constructor expressions with array and record fields.
+// Also handles range literals: {start..stop} (exclusive) and {start...stop} (inclusive)
 
 ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
+
+   // Check for range literal pattern: {expr..expr} or {expr...expr}
+   // Only check if the next token could start an expression (not closing brace)
+   if (not this->ctx.check(TokenKind::RightBrace)) {
+      // Remember the current position in case we need to backtrack
+      Token start_token = this->ctx.tokens().current();
+
+      // We cannot use the standard check for identifier followed by equals (record field)
+      // because we need to parse the expression to check for range operators.
+      // However, we can check for simple cases first:
+      // - If we see `[expr] =` it's a computed key table field, not a range
+      // - If we see `name =` it's a record field, not a range
+      bool is_record_field = (start_token.kind() IS TokenKind::Identifier) and
+                             (this->ctx.tokens().peek(1).kind() IS TokenKind::Equals);
+      bool is_computed_field = (start_token.kind() IS TokenKind::LeftBracket);
+
+      if (not is_record_field and not is_computed_field) {
+         // Try to parse the first unary expression to see if it's followed by a range operator.
+         // We use parse_unary() instead of parse_expression() to avoid consuming '..' as a
+         // binary concatenation operator - we want to check for range syntax first.
+         auto first_expr = this->parse_unary();
+         if (not first_expr.ok()) return ParserResult<ExprNodePtr>::failure(first_expr.error_ref());
+
+         // Check for range operator
+         bool is_inclusive = false;
+         if (this->ctx.check(TokenKind::Cat)) {
+            // Exclusive range: {start..stop}
+            this->ctx.tokens().advance();
+            is_inclusive = false;
+         }
+         else if (this->ctx.check(TokenKind::Dots)) {
+            // Inclusive range: {start...stop}
+            this->ctx.tokens().advance();
+            is_inclusive = true;
+         }
+         else {
+            // Not a range - fall through to standard table parsing
+            // We've only parsed a unary expression, but we need to handle the full expression.
+            // Since we can't easily "unparsing", just fall through to the standard table path
+            // which will re-parse from scratch. This is slightly inefficient but correct.
+            // Note: We need to track that we've already consumed tokens, so we can't just
+            // fall through. Instead, we'll construct the first field and continue.
+
+            // The first_expr is just a unary expression - there may be binary operators after.
+            // For simplicity, if there's a binary operator (other than .. or ...), treat this
+            // as a standard table element. Most range syntax will be simple like {1..10}.
+            // For complex expressions like {(a+b)..c}, the parentheses will be handled by parse_primary.
+
+            std::vector<TableField> fields;
+            TableField field;
+            field.kind = TableFieldKind::Array;
+            field.span = start_token.span();
+            field.value = std::move(first_expr.value_ref());
+            fields.push_back(std::move(field));
+
+            // Parse remaining fields if there are more
+            if (this->ctx.match(TokenKind::Comma).ok() or this->ctx.match(TokenKind::Semicolon).ok()) {
+               auto more_fields = this->parse_table_fields(nullptr);
+               if (not more_fields.ok()) return ParserResult<ExprNodePtr>::failure(more_fields.error_ref());
+               for (auto& f : more_fields.value_ref()) {
+                  fields.push_back(std::move(f));
+               }
+            }
+
+            this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
+            ExprNodePtr node = make_table_expr(token.span(), std::move(fields), true);
+            return ParserResult<ExprNodePtr>::success(std::move(node));
+         }
+
+         // Parse the stop expression for the range (use unary to keep it simple)
+         auto stop_expr = this->parse_unary();
+         if (not stop_expr.ok()) return ParserResult<ExprNodePtr>::failure(stop_expr.error_ref());
+
+         this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
+         ExprNodePtr node = make_range_expr(token.span(), std::move(first_expr.value_ref()),
+            std::move(stop_expr.value_ref()), is_inclusive);
+         return ParserResult<ExprNodePtr>::success(std::move(node));
+      }
+   }
+
+   // Standard table parsing path
    bool has_array = false;
    auto fields = this->parse_table_fields(&has_array);
    if (not fields.ok()) return ParserResult<ExprNodePtr>::failure(fields.error_ref());

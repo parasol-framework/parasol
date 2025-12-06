@@ -80,6 +80,7 @@ enum class AstNodeKind : uint16_t {
    TableExpr,
    FunctionExpr,
    DeferredExpr,  // Deferred expression <{ expr }>
+   RangeExpr,     // Range literal {start..stop} or {start...stop}
    BlockStmt,
    AssignmentStmt,
    LocalDeclStmt,
@@ -466,6 +467,19 @@ struct DeferredExprPayload {
    ~DeferredExprPayload();
 };
 
+// Range expression payload: represents {start..stop} or {start...stop} literal syntax
+struct RangeExprPayload {
+   RangeExprPayload() = default;
+   RangeExprPayload(const RangeExprPayload&) = delete;
+   RangeExprPayload& operator=(const RangeExprPayload&) = delete;
+   RangeExprPayload(RangeExprPayload&&) noexcept = default;
+   RangeExprPayload& operator=(RangeExprPayload&&) noexcept = default;
+   ExprNodePtr start;      // Start index expression
+   ExprNodePtr stop;       // Stop index expression
+   bool inclusive = false; // True for ... (inclusive), false for .. (exclusive)
+   ~RangeExprPayload();
+};
+
 struct ExprNode {
    AstNodeKind kind = AstNodeKind::LiteralExpr;
    SourceSpan span{};
@@ -473,7 +487,8 @@ struct ExprNode {
       UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
       PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
       IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
-      ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload>
+      ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload,
+      RangeExprPayload>
       data;
 };
 
@@ -750,6 +765,7 @@ ExprNodePtr make_result_filter_expr(SourceSpan span, ExprNodePtr expression, uin
 ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, bool has_array_part);
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
+ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);

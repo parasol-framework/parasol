@@ -155,8 +155,13 @@ static void lex_number(LexState *State, TValue* tv)
    LexChar exponent = 'e';
    if (c IS '0' and (lex_savenext(State) | 0x20) IS 'x') exponent = 'p';
 
-   // Scan all number characters
+   // Scan all number characters.
+   // Special case: Stop before '..' to allow range literals like {1..5}
    while (is_number_char(State->c, c)) {
+      // If we see '.', check if the next character is also '.' (range operator)
+      if (State->c IS '.' and State->p < State->pe and *State->p IS '.') {
+         break; // Don't consume the '.', let parser handle '..' as range operator
+      }
       c = State->c;
       lex_savenext(State);
    }
