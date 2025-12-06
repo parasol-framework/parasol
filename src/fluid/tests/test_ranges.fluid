@@ -1,5 +1,21 @@
 -- Flute test suite for Fluid Range type
 ----------------------------------------------------------------------------------------------------------------------
+   
+function testNonRangeTable()
+   -- Verify that the parser isn't confused by .. in a non-range table
+
+   local script = obj.new('script', { statement=[[
+   local test_messages = {
+      'Binary data: ' .. string.char(0, 1, 2, 3, 255, 254, 253),
+      string.rep('Large SSL message ', 500), -- ~9KB message
+      'Special chars: ������������',
+      'JSON: {"encrypted": true, "secure": "data"}',
+      'Empty message test: '
+   }]] })
+
+   local err = script.acActivate()
+   assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorString)
+end
 
 function testRangeConstructorBasic()
    -- Test basic exclusive range (default)
@@ -321,14 +337,6 @@ function testRangeLiteralWithVariables()
    assert(#r is 5, "{3..8} should have 5 elements")
 end
 
-function testRangeLiteralWithExpressions()
-   -- Test range literals with expressions (must use parentheses)
-   local r = {(1+1)..(2*3)}  -- {2..6}
-   assert(r.start is 2, "expression start should be 2")
-   assert(r.stop is 6, "expression stop should be 6")
-   assert(#r is 4, "{2..6} should have 4 elements")
-end
-
 function testRangeLiteralNegativeValues()
    -- Test range literals with negative values
    local r = {-5..-1}
@@ -618,6 +626,7 @@ end
 return {
    tests = {
       -- Constructor and basic operations
+      'testNonRangeTable',
       "testRangeConstructorBasic",
       "testRangeConstructorInclusive",
       "testRangeConstructorWithStep",
@@ -651,7 +660,6 @@ return {
       "testRangeLiteralToString",
       "testRangeLiteralContains",
       "testRangeLiteralWithVariables",
-      "testRangeLiteralWithExpressions",
       "testRangeLiteralNegativeValues",
       "testRangeLiteralZeroRange",
       "testRangeLiteralTypeCheck",

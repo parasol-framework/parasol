@@ -32,23 +32,23 @@
 //********************************************************************************************************************
 // Helper to get range userdata from stack with type checking
 
-static fluid_range* get_range(lua_State* L, int idx)
+static fluid_range * get_range(lua_State *L, int idx)
 {
-   return (fluid_range*)luaL_checkudata(L, idx, RANGE_METATABLE);
+   return (fluid_range *)luaL_checkudata(L, idx, RANGE_METATABLE);
 }
 
 //********************************************************************************************************************
 // Helper to check if a value is a range userdata (returns nullptr if not)
 
-static fluid_range* check_range(lua_State* L, int idx)
+static fluid_range * check_range(lua_State *L, int idx)
 {
-   void* ud = lua_touserdata(L, idx);
+   void *ud = lua_touserdata(L, idx);
    if (ud) {
       if (lua_getmetatable(L, idx)) {
          lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
          if (lua_rawequal(L, -1, -2)) {
             lua_pop(L, 2);
-            return (fluid_range*)ud;
+            return (fluid_range *)ud;
          }
          lua_pop(L, 2);
       }
@@ -59,25 +59,23 @@ static fluid_range* check_range(lua_State* L, int idx)
 //********************************************************************************************************************
 // Calculate the number of elements in a range
 
-static int32_t range_length(const fluid_range* r)
+static int32_t range_length(const fluid_range *r)
 {
-   if (r->step == 0) return 0;
+   if (r->step IS 0) return 0;
 
    int32_t start = r->start;
    int32_t stop = r->stop;
    int32_t step = r->step;
 
    // Adjust stop for exclusive ranges
+
    if (not r->inclusive) {
-      if (step > 0) {
-         stop = stop - 1;
-      }
-      else {
-         stop = stop + 1;
-      }
+      if (step > 0) stop = stop - 1;
+      else stop = stop + 1;
    }
 
    // Calculate count
+
    if (step > 0) {
       if (stop < start) return 0;
       return ((stop - start) / step) + 1;
@@ -130,36 +128,39 @@ LJLIB_CF(range_new)
    }
 
    // Get optional inclusive flag (default: false)
+
    bool inclusive = false;
    if (lua_gettop(L) >= 3 and not lua_isnil(L, 3)) {
       inclusive = lua_toboolean(L, 3);
    }
 
    // Get optional step value
+
    int32_t step;
    if (lua_gettop(L) >= 4 and not lua_isnil(L, 4)) {
       if (not lua_isnumber(L, 4)) {
          lj_err_argt(L, 4, LUA_TNUMBER);
          return 0;
       }
+
       lua_Number step_num = lua_tonumber(L, 4);
       step = (int32_t)step_num;
       if ((lua_Number)step != step_num) {
          lj_err_arg(L, 4, ErrMsg::NUMRNG);
          return 0;
       }
-      if (step == 0) {
+
+      if (step IS 0) {
          lj_err_arg(L, 4, ErrMsg::NUMRNG);
          return 0;
       }
    }
-   else {
-      // Auto-detect step based on direction
+   else { // Auto-detect step based on direction
       step = (start <= stop) ? 1 : -1;
    }
 
    // Create userdata
-   fluid_range* r = (fluid_range*)lua_newuserdata(L, sizeof(fluid_range));
+   auto r = (fluid_range *)lua_newuserdata(L, sizeof(fluid_range));
    r->start = start;
    r->stop = stop;
    r->step = step;
@@ -178,7 +179,7 @@ LJLIB_CF(range_new)
 
 LJLIB_CF(range_check)
 {
-   fluid_range* r = check_range(L, 1);
+   auto r = check_range(L, 1);
    lua_pushboolean(L, r != nullptr);
    return 1;
 }
@@ -187,15 +188,11 @@ LJLIB_CF(range_check)
 // __tostring metamethod
 // Returns "{start..stop}" or "{start...stop}" based on inclusivity
 
-static int range_tostring(lua_State* L)
+static int range_tostring(lua_State *L)
 {
-   fluid_range* r = get_range(L, 1);
-   if (r->inclusive) {
-      lua_pushfstring(L, "{%d...%d}", r->start, r->stop);
-   }
-   else {
-      lua_pushfstring(L, "{%d..%d}", r->start, r->stop);
-   }
+   auto r = get_range(L, 1);
+   if (r->inclusive) lua_pushfstring(L, "{%d...%d}", r->start, r->stop);
+   else lua_pushfstring(L, "{%d..%d}", r->start, r->stop);
    return 1;
 }
 
@@ -203,20 +200,20 @@ static int range_tostring(lua_State* L)
 // __eq metamethod
 // Compares two ranges for equality (all fields must match)
 
-static int range_eq(lua_State* L)
+static int range_eq(lua_State *L)
 {
-   fluid_range* r1 = check_range(L, 1);
-   fluid_range* r2 = check_range(L, 2);
+   auto r1 = check_range(L, 1);
+   auto r2 = check_range(L, 2);
 
    if (not r1 or not r2) {
       lua_pushboolean(L, 0);
       return 1;
    }
 
-   bool equal = (r1->start == r2->start) and
-                (r1->stop == r2->stop) and
-                (r1->step == r2->step) and
-                (r1->inclusive == r2->inclusive);
+   bool equal = (r1->start IS r2->start) and
+                (r1->stop IS r2->stop) and
+                (r1->step IS r2->step) and
+                (r1->inclusive IS r2->inclusive);
 
    lua_pushboolean(L, equal);
    return 1;
@@ -226,9 +223,9 @@ static int range_eq(lua_State* L)
 // __len metamethod
 // Returns the number of elements in the range
 
-static int range_len(lua_State* L)
+static int range_len(lua_State *L)
 {
-   fluid_range* r = get_range(L, 1);
+   auto r = get_range(L, 1);
    lua_pushinteger(L, range_length(r));
    return 1;
 }
@@ -237,9 +234,9 @@ static int range_len(lua_State* L)
 // range:contains(n)
 // Returns true if n is within the range (respecting step)
 
-static int range_contains(lua_State* L)
+static int range_contains(lua_State *L)
 {
-   fluid_range* r = (fluid_range*)lua_touserdata(L, lua_upvalueindex(1));
+   auto r = (fluid_range *)lua_touserdata(L, lua_upvalueindex(1));
    if (not r) {
       lj_err_caller(L, ErrMsg::BADVAL);
       return 0;
@@ -308,9 +305,9 @@ static int range_contains(lua_State* L)
 // range:toTable()
 // Returns an array containing all values in the range
 
-static int range_totable(lua_State* L)
+static int range_totable(lua_State *L)
 {
-   fluid_range* r = (fluid_range*)lua_touserdata(L, lua_upvalueindex(1));
+   auto r = (fluid_range *)lua_touserdata(L, lua_upvalueindex(1));
    if (not r) {
       lj_err_caller(L, ErrMsg::BADVAL);
       return 0;
@@ -321,7 +318,7 @@ static int range_totable(lua_State* L)
    // Create table with appropriate size
    lua_createtable(L, len, 0);
 
-   if (len == 0) return 1;
+   if (len IS 0) return 1;
 
    int32_t step = r->step;
    int32_t stop = r->stop;
@@ -358,41 +355,41 @@ static int range_totable(lua_State* L)
 // Handles property access (.start, .stop, .step, .inclusive, .length)
 // and method calls (:contains, :toTable)
 
-static int range_index(lua_State* L)
+static int range_index(lua_State *L)
 {
-   fluid_range* r = get_range(L, 1);
+   auto r = get_range(L, 1);
 
-   if (lua_type(L, 2) == LUA_TSTRING) {
+   if (lua_type(L, 2) IS LUA_TSTRING) {
       const char* key = lua_tostring(L, 2);
 
       // Properties
-      if (strcmp(key, "start") == 0) {
+      if (strcmp(key, "start") IS 0) {
          lua_pushinteger(L, r->start);
          return 1;
       }
-      else if (strcmp(key, "stop") == 0) {
+      else if (strcmp(key, "stop") IS 0) {
          lua_pushinteger(L, r->stop);
          return 1;
       }
-      else if (strcmp(key, "step") == 0) {
+      else if (strcmp(key, "step") IS 0) {
          lua_pushinteger(L, r->step);
          return 1;
       }
-      else if (strcmp(key, "inclusive") == 0) {
+      else if (strcmp(key, "inclusive") IS 0) {
          lua_pushboolean(L, r->inclusive);
          return 1;
       }
-      else if (strcmp(key, "length") == 0) {
+      else if (strcmp(key, "length") IS 0) {
          lua_pushinteger(L, range_length(r));
          return 1;
       }
       // Methods - return closures with range as upvalue
-      else if (strcmp(key, "contains") == 0) {
+      else if (strcmp(key, "contains") IS 0) {
          lua_pushvalue(L, 1);  // Push the range userdata
          lua_pushcclosure(L, range_contains, 1);
          return 1;
       }
-      else if (strcmp(key, "toTable") == 0) {
+      else if (strcmp(key, "toTable") IS 0) {
          lua_pushvalue(L, 1);  // Push the range userdata
          lua_pushcclosure(L, range_totable, 1);
          return 1;
@@ -407,25 +404,22 @@ static int range_index(lua_State* L)
 // __call metamethod for the library table
 // Allows range(start, stop, ...) syntax instead of range.new(start, stop, ...)
 
-static int range_lib_call(lua_State* L)
+static int range_lib_call(lua_State *L)
 {
    // Remove the table argument (first argument in __call is the table itself)
    lua_remove(L, 1);
 
-   // Check required arguments
-   if (lua_gettop(L) < 2) {
+   if (lua_gettop(L) < 2) { // Check required arguments
       lj_err_caller(L, ErrMsg::NUMRNG);
       return 0;
    }
-
-   // Validate start is a number
-   if (not lua_isnumber(L, 1)) {
+  
+   if (not lua_isnumber(L, 1)) {  // Validate start is a number
       lj_err_argt(L, 1, LUA_TNUMBER);
       return 0;
    }
 
-   // Validate stop is a number
-   if (not lua_isnumber(L, 2)) {
+   if (not lua_isnumber(L, 2)) {  // Validate stop is a number
       lj_err_argt(L, 2, LUA_TNUMBER);
       return 0;
    }
@@ -466,7 +460,7 @@ static int range_lib_call(lua_State* L)
          lj_err_arg(L, 4, ErrMsg::NUMRNG);
          return 0;
       }
-      if (step == 0) {
+      if (step IS 0) {
          lj_err_arg(L, 4, ErrMsg::NUMRNG);
          return 0;
       }
@@ -477,13 +471,12 @@ static int range_lib_call(lua_State* L)
    }
 
    // Create userdata
-   fluid_range* r = (fluid_range*)lua_newuserdata(L, sizeof(fluid_range));
+   auto r = (fluid_range *)lua_newuserdata(L, sizeof(fluid_range));
    r->start = start;
    r->stop = stop;
    r->step = step;
    r->inclusive = inclusive;
 
-   // Set metatable
    luaL_getmetatable(L, RANGE_METATABLE);
    lua_setmetatable(L, -2);
 
@@ -497,21 +490,20 @@ static int range_lib_call(lua_State* L)
 // Generic for loop calls: iterator(state, control_var)
 // We use: iterator(nil, previous_value) where previous_value is what we returned last time
 
-static int range_iterator_next(lua_State* L)
+static int range_iterator_next(lua_State *L)
 {
    // Upvalue 1: the range userdata
-   fluid_range* r = (fluid_range*)lua_touserdata(L, lua_upvalueindex(1));
+   auto r = (fluid_range *)lua_touserdata(L, lua_upvalueindex(1));
    if (not r) return 0;
 
    // Argument 2 is the control variable (previous return value, or initial value on first call)
    // For generic for: f(s, var) where var is the control variable
+
    int32_t current;
-   if (lua_isnil(L, 2)) {
-      // First iteration - return the start value
+   if (lua_isnil(L, 2)) { // First iteration - return the start value
       current = r->start;
    }
-   else {
-      // Subsequent iterations - advance from previous value
+   else { // Subsequent iterations - advance from previous value
       current = (int32_t)lua_tointeger(L, 2) + r->step;
    }
 
@@ -519,12 +511,8 @@ static int range_iterator_next(lua_State* L)
    int32_t limit = r->stop;
    if (not r->inclusive) {
       // For exclusive ranges, adjust the limit
-      if (r->step > 0) {
-         limit = r->stop - 1;
-      }
-      else {
-         limit = r->stop + 1;
-      }
+      if (r->step > 0) limit = r->stop - 1;
+      else limit = r->stop + 1;
    }
 
    // Check if we've passed the end
@@ -544,10 +532,10 @@ static int range_iterator_next(lua_State* L)
 // __call metamethod for range userdata
 // Enables `for i in range do` syntax by returning iterator, state, initial value
 
-static int range_call(lua_State* L)
+static int range_call(lua_State *L)
 {
    // Argument 1 is the range userdata itself
-   fluid_range* r = (fluid_range*)luaL_checkudata(L, 1, RANGE_METATABLE);
+   auto r = (fluid_range *)luaL_checkudata(L, 1, RANGE_METATABLE);
    if (not r) {
       lj_err_caller(L, ErrMsg::BADVAL);
       return 0;
@@ -568,7 +556,7 @@ static int range_call(lua_State* L)
 //********************************************************************************************************************
 // Register the range library
 
-extern "C" int luaopen_range(lua_State* L)
+extern "C" int luaopen_range(lua_State *L)
 {
    // Create metatable for range objects
    luaL_newmetatable(L, RANGE_METATABLE);
