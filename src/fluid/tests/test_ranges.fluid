@@ -512,7 +512,7 @@ end
 function testRangeIterationExclusive()
    -- Test forward exclusive iteration: {1..6} iterates 1,2,3,4,5
    local sum = 0
-   for i in {1..6}() do
+   for i in {1..6} do
       sum += i
    end
    assert(sum is 15, "sum of {1..6} should be 15 (1+2+3+4+5), got " .. sum)
@@ -521,7 +521,7 @@ end
 function testRangeIterationInclusive()
    -- Test forward inclusive iteration: {1...5} iterates 1,2,3,4,5
    local sum = 0
-   for i in {1...5}() do
+   for i in {1...5} do
       sum += i
    end
    assert(sum is 15, "sum of {1...5} should be 15, got " .. sum)
@@ -530,7 +530,7 @@ end
 function testRangeIterationReverse()
    -- Test reverse iteration: {5..1} iterates 5,4,3,2 (exclusive of 1)
    local result = {}
-   for i in {5..1}() do
+   for i in {5..1} do
       result[#result] = i
    end
    assert(#result is 4, "reverse {5..1} should have 4 elements, got " .. #result)
@@ -541,7 +541,7 @@ end
 function testRangeIterationReverseInclusive()
    -- Test reverse inclusive iteration: {5...1} iterates 5,4,3,2,1
    local result = {}
-   for i in {5...1}() do
+   for i in {5...1} do
       result[#result] = i
    end
    assert(#result is 5, "reverse {5...1} should have 5 elements, got " .. #result)
@@ -574,7 +574,7 @@ end
 function testRangeIterationEmpty()
    -- Test empty range iteration
    local count = 0
-   for i in {5..5}() do
+   for i in {5..5} do
       count += 1
    end
    assert(count is 0, "empty range {5..5} should iterate 0 times, got " .. count)
@@ -584,7 +584,7 @@ function testRangeIterationSingleElement()
    -- Test single element range iteration
    local count = 0
    local value = nil
-   for i in {5...5}() do
+   for i in {5...5} do
       count += 1
       value = i
    end
@@ -605,7 +605,7 @@ end
 function testRangeIterationBreak()
    -- Test early termination with break
    local sum = 0
-   for i in {1..100}() do
+   for i in {1..100} do
       if i > 5 then break end
       sum += i
    end

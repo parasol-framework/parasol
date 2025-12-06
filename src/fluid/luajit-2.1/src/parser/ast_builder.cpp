@@ -404,6 +404,28 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    this->ctx.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
    auto iterators = this->parse_expression_list();
    if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
+
+   // Special-case for range literals in generic for loops:
+   // Allow sugar `for i in {0..5} do` by implicitly treating the range
+   // literal as a callable iterator (`({0..5})()`), so users no longer
+   // need to write the trailing `()` in loop headers.
+   //
+   // This transformation is intentionally restricted to generic for-loop
+   // iterator lists so that range literals continue to behave normally
+   // in all other expression contexts.
+
+   ExprNodeList iterator_nodes = std::move(iterators.value_ref());
+   if (iterator_nodes.size() IS 1) {
+      ExprNodePtr &first = iterator_nodes[0];
+      if (first and first->kind IS AstNodeKind::RangeExpr) {
+         SourceSpan span = first->span;
+         ExprNodePtr callee = std::move(first);
+         ExprNodeList args;
+         bool forwards_multret = false;
+         first = make_call_expr(span, std::move(callee), std::move(args), forwards_multret);
+      }
+   }
+
    this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    auto body = this->parse_scoped_block({ TokenKind::EndToken });
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
@@ -415,7 +437,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
 
    GenericForStmtPayload payload;
    payload.names = std::move(names);
-   payload.iterators = std::move(iterators.value_ref());
+   payload.iterators = std::move(iterator_nodes);
    payload.body = std::move(body.value_ref());
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
