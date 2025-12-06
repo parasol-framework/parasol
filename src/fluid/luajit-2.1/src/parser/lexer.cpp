@@ -27,6 +27,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "parser_context.h"
+#include "../../defs.h"
 #include "lj_char.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
@@ -76,6 +77,15 @@ static LJ_NOINLINE LexChar lex_more(LexState *State) noexcept
       sz = ~uintptr_t(0) - uintptr_t(p);
       if (sz >= LJ_MAX_BUF) sz = LJ_MAX_BUF - 1;
       State->endmark = 1;
+   }
+
+   // Trace chunk loading for debugging buffer boundary issues (enabled via JitOptions TraceBoundary)
+
+   auto prv = (prvFluid *)State->L->Script->ChildPrivate;
+   if ((prv->JitOptions & JOF::TRACE_BOUNDARY) != JOF::NIL) {
+      pf::Log("Parser").msg("Loading %" PRId64 " bytes at line %d, col %d, offset %" PRId64,
+         sz, State->linenumber, int(State->current_offset - State->line_start_offset + 1),
+         State->current_offset);
    }
 
    State->pe = p + sz;
@@ -159,13 +169,38 @@ static void lex_number(LexState *State, TValue* tv)
    // Special case: Stop before '..' to allow range literals like {1..5}
    while (is_number_char(State->c, c)) {
       // If we see '.', check if the next character is also '.' (range operator)
-      if (State->c IS '.' and State->p < State->pe and *State->p IS '.') {
-         break; // Don't consume the '.', let parser handle '..' as range operator
+      // We must handle buffer boundaries properly: if p >= pe, we need to peek
+      // by advancing (which may refill the buffer), then restore if it was '.'
+      if (State->c IS '.') {
+         LexChar next_char;
+         if (State->p < State->pe) {
+            // Buffer has more data, we can peek directly
+            next_char = LexChar(uint8_t(*State->p));
+         }
+         else {
+            // At buffer boundary - we need to advance to see next char.
+            // DON'T save the '.' yet - we don't know if it's part of '..'
+            lex_next(State);             // Advance (may refill buffer)
+            next_char = State->c;
+            if (next_char IS '.') {
+               // It's '..' - we need to let the main lexer handle this.
+               // State->c is now second '.', but we need the lexer to see '..' token.
+               // Set a flag so lex_scan will return the '..' token next.
+               State->pending_dotdot = true;
+               break;
+            }
+            // Not '..', the '.' is part of the number (e.g., "3.14")
+            // NOW we need to save the '.' we consumed
+            lex_save(State, '.');
+            // Continue scanning - '.' is now saved, c has next char
+            c = State->c;
+            continue;
+         }
+         if (next_char IS '.') break;  // Don't consume '.', let parser handle '..'
       }
       c = State->c;
       lex_savenext(State);
    }
-
    lex_save(State, '\0');
    auto fmt = lj_strscan_scan((const uint8_t*)State->sb.b, sbuflen(&State->sb) - 1, tv, scan_options());
 
@@ -559,6 +594,23 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 {
    lj_buf_reset(&State->sb);
 
+   // Check for pending '..' token from buffer boundary in lex_number
+   if (State->pending_dotdot) {
+      State->pending_dotdot = 0;
+      State->mark_token_start();
+      // State->c is currently the second '.', advance past it
+      lex_next(State);
+      if (State->c IS '.') {
+         lex_next(State);
+         return TK_dots;  // ...
+      }
+      else if (State->c IS '=') {
+         lex_next(State);
+         return TK_cconcat;  // ..=
+      }
+      return TK_concat;  // ..
+   }
+
    while (true) {
       // Check for Unicode operators before identifier scanning
       if (LexToken unicode_tok = lex_unicode_operator(State)) {
@@ -850,6 +902,7 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    , level(0)
    , ternary_depth(0)
    , pending_if_empty_colon(0)
+   , pending_dotdot(0)
    , endmark(0)
    , is_bytecode(0)
    , current_offset(0)
@@ -934,6 +987,7 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    , level(BCDUMP_F_STRIP | (LJ_BE * BCDUMP_F_BE))
    , ternary_depth(0)
    , pending_if_empty_colon(0)
+   , pending_dotdot(0)
    , endmark(0)
    , is_bytecode(1)
    , current_offset(0)

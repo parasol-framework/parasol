@@ -218,6 +218,7 @@ public:
    uint32_t   level;         // Syntactical nesting level.
    uint32_t   ternary_depth; // Number of pending ternary operators.
    uint8_t    pending_if_empty_colon; // Tracks ?: misuse after ??.
+   uint8_t    pending_dotdot;  // Set when '..' detected at buffer boundary in lex_number
    int        endmark;       // Trust bytecode end marker, even if not at EOF.
    int        is_bytecode;   // Set to 1 if input is bytecode, 0 if source text.
 

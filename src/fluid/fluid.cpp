@@ -236,17 +236,8 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   else if (pf::iequals(trimmed, "trace-expect")) {
                      glJitOptions |= JOF::TRACE_EXPECT;
                   }
-                  else if (pf::iequals(trimmed, "diagnose")) {
-                     glJitOptions |= JOF::DIAGNOSE;
-                  }
                   else if (pf::iequals(trimmed, "trace-boundary")) {
                      glJitOptions |= JOF::TRACE_BOUNDARY;
-                  }
-                  else if (pf::iequals(trimmed, "dump-bytecode")) {
-                     glJitOptions |= JOF::DUMP_BYTECODE;
-                  }
-                  else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
-                     glJitOptions |= JOF::PROFILE;
                   }
                   else if (pf::iequals(trimmed, "trace-operators")) {
                      glJitOptions |= JOF::TRACE_OPERATORS;
@@ -262,6 +253,15 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   }
                   else if (pf::iequals(trimmed, "trace-value-category")) {
                      glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
+                  }
+                  else if (pf::iequals(trimmed, "diagnose")) {
+                     glJitOptions |= JOF::DIAGNOSE;
+                  }
+                  else if (pf::iequals(trimmed, "dump-bytecode")) {
+                     glJitOptions |= JOF::DUMP_BYTECODE;
+                  }
+                  else if (pf::iequals(trimmed, "profile")) { // Use timers to profile JIT execution
+                     glJitOptions |= JOF::PROFILE;
                   }
                   else if (pf::iequals(trimmed, "trace")) { // Shortcut for tracing everything
                      glJitOptions |= JOF::TRACE;

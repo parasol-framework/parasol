@@ -144,6 +144,368 @@ static int range_each(lua_State* L)
 }
 
 //********************************************************************************************************************
+// range:filter(function(Value) return bool end) -> table
+// Returns a table containing only values for which the predicate returns true.
+
+static int range_filter(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Create result table
+   lua_createtable(L, 0, 0);
+   int result_table = lua_gettop(L);
+   int array_index = 0;
+
+   // Check for empty range - return empty table
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);  // Push callback
+   int callback_index = lua_gettop(L);
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, value);
+      lua_call(L, 1, 1);
+
+      if (lua_toboolean(L, -1)) {
+         lua_pushinteger(L, value);
+         lua_rawseti(L, result_table, array_index++);
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pop(L, 1);  // Pop callback
+   return 1;       // Return result table
+}
+
+//********************************************************************************************************************
+// range:reduce(initial, function(Acc, Value) return new_acc end) -> value
+// Folds the range into a single accumulated value.
+
+static int range_reduce(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   // Arg 2: initial value (any type)
+   // Arg 3: reducer function
+   luaL_checktype(L, 3, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Start with initial value on stack
+   lua_pushvalue(L, 2);
+   int acc_index = lua_gettop(L);
+
+   // Check for empty range - return initial value
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      return 1;
+   }
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, 3);           // Push reducer function
+      lua_pushvalue(L, acc_index);   // Push current accumulator
+      lua_pushinteger(L, value);     // Push current value
+      lua_call(L, 2, 1);             // Call reducer(acc, value)
+
+      // Replace accumulator with result
+      lua_replace(L, acc_index);
+   }
+
+   return 1;  // Return final accumulator
+}
+
+//********************************************************************************************************************
+// range:map(function(Value) return transformed end) -> table
+// Returns a table with each value transformed by the function.
+
+static int range_map(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Create result table with estimated size
+   int32_t estimated_size = range_length(r);
+   lua_createtable(L, estimated_size > 0 ? estimated_size : 0, 0);
+   int result_table = lua_gettop(L);
+   int array_index = 0;
+
+   // Check for empty range - return empty table
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);  // Push callback
+   int callback_index = lua_gettop(L);
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, value);
+      lua_call(L, 1, 1);
+
+      // Store transformed value in result table
+      lua_rawseti(L, result_table, array_index++);
+   }
+
+   lua_pop(L, 1);  // Pop callback
+   return 1;       // Return result table
+}
+
+//********************************************************************************************************************
+// range:take(n) -> table
+// Returns a table containing the first n values from the range.
+
+static int range_take(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   int32_t n = (int32_t)luaL_checkinteger(L, 2);
+   if (n < 0) n = 0;
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Create result table
+   lua_createtable(L, n, 0);
+   int result_table = lua_gettop(L);
+   int array_index = 0;
+
+   // Check for empty range or zero take
+   if (n IS 0 or (step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      return 1;
+   }
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop) and array_index < n; value += step) {
+      lua_pushinteger(L, value);
+      lua_rawseti(L, result_table, array_index++);
+   }
+
+   return 1;  // Return result table
+}
+
+//********************************************************************************************************************
+// range:any(function(Value) return bool end) -> bool
+// Returns true if any value in the range satisfies the predicate.
+
+static int range_any(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Check for empty range - return false
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      lua_pushboolean(L, 0);
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);  // Push callback
+   int callback_index = lua_gettop(L);
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, value);
+      lua_call(L, 1, 1);
+
+      if (lua_toboolean(L, -1)) {
+         lua_pop(L, 2);  // Pop result and callback
+         lua_pushboolean(L, 1);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pop(L, 1);  // Pop callback
+   lua_pushboolean(L, 0);
+   return 1;
+}
+
+//********************************************************************************************************************
+// range:all(function(Value) return bool end) -> bool
+// Returns true if all values in the range satisfy the predicate.
+
+static int range_all(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Check for empty range - return true (vacuous truth)
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      lua_pushboolean(L, 1);
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);  // Push callback
+   int callback_index = lua_gettop(L);
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, value);
+      lua_call(L, 1, 1);
+
+      if (not lua_toboolean(L, -1)) {
+         lua_pop(L, 2);  // Pop result and callback
+         lua_pushboolean(L, 0);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pop(L, 1);  // Pop callback
+   lua_pushboolean(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+// range:find(function(Value) return bool end) -> value or nil
+// Returns the first value that satisfies the predicate, or nil if none found.
+
+static int range_find(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Check for empty range - return nil
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);  // Push callback
+   int callback_index = lua_gettop(L);
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, value);
+      lua_call(L, 1, 1);
+
+      if (lua_toboolean(L, -1)) {
+         lua_pop(L, 2);  // Pop result and callback
+         lua_pushinteger(L, value);
+         return 1;
+      }
+      lua_pop(L, 1);
+   }
+
+   lua_pop(L, 1);  // Pop callback
+   lua_pushnil(L);
+   return 1;
+}
+
+//********************************************************************************************************************
 // range.new(start, stop [, inclusive [, step]])
 // Creates a new range object
 
@@ -416,6 +778,13 @@ constexpr auto HASH_length    = pf::strhash("length");
 constexpr auto HASH_contains  = pf::strhash("contains");
 constexpr auto HASH_toTable   = pf::strhash("toTable");
 constexpr auto HASH_each      = pf::strhash("each");
+constexpr auto HASH_filter    = pf::strhash("filter");
+constexpr auto HASH_reduce    = pf::strhash("reduce");
+constexpr auto HASH_map       = pf::strhash("map");
+constexpr auto HASH_take      = pf::strhash("take");
+constexpr auto HASH_any       = pf::strhash("any");
+constexpr auto HASH_all       = pf::strhash("all");
+constexpr auto HASH_find      = pf::strhash("find");
 
 static int range_index(lua_State *Lua)
 {
@@ -430,6 +799,14 @@ static int range_index(lua_State *Lua)
          case HASH_step:      lua_pushinteger(Lua, r->step); return 1;
          case HASH_inclusive: lua_pushboolean(Lua, r->inclusive); return 1;
          case HASH_length:    lua_pushinteger(Lua, range_length(r)); return 1;
+         case HASH_each:      lua_pushcfunction(Lua, range_each); return 1;
+         case HASH_filter:    lua_pushcfunction(Lua, range_filter); return 1;
+         case HASH_reduce:    lua_pushcfunction(Lua, range_reduce); return 1;
+         case HASH_map:       lua_pushcfunction(Lua, range_map); return 1;
+         case HASH_take:      lua_pushcfunction(Lua, range_take); return 1;
+         case HASH_any:       lua_pushcfunction(Lua, range_any); return 1;
+         case HASH_all:       lua_pushcfunction(Lua, range_all); return 1;
+         case HASH_find:      lua_pushcfunction(Lua, range_find); return 1;
          case HASH_contains: // Methods - return closures with range as upvalue
             lua_pushvalue(Lua, 1);  // Push the range userdata
             lua_pushcclosure(Lua, range_contains, 1);
@@ -437,12 +814,6 @@ static int range_index(lua_State *Lua)
          case HASH_toTable:
             lua_pushvalue(Lua, 1);  // Push the range userdata
             lua_pushcclosure(Lua, range_totable, 1);
-            return 1;
-         case HASH_each:
-            // Function-style via library table: r:each(function(Value) ... end)
-
-            //lua_pushvalue(Lua, 1); // Arg1: Duplicate the range reference
-            lua_pushcfunction(Lua, range_each);
             return 1;
       }
    }
@@ -590,6 +961,20 @@ static int range_call(lua_State *L)
    if (not r) {
       lj_err_caller(L, ErrMsg::BADVAL);
       return 0;
+   }
+
+   // Detect misuse: if called with 2+ args where arg2 is nil or number,
+   // this looks like Lua's for-loop is calling us as an iterator function
+   // rather than us being called once to return the iterator.
+   // Correct usage: r() returns (iter, nil, nil), then for-loop calls iter(nil, nil)
+   // Incorrect: for i in r do -> for-loop calls r(nil, nil) directly
+
+   if (lua_gettop(L) >= 2) {
+      int arg2_type = lua_type(L, 2);
+      if (arg2_type IS LUA_TNIL or arg2_type IS LUA_TNUMBER) {
+         luaL_error(L, "range used incorrectly in for loop; use 'for i in range()' not 'for i in range'");
+         return 0;
+      }
    }
 
    // Return iterator function (closure with range as upvalue), nil state, nil initial
