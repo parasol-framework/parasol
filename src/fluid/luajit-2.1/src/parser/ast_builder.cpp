@@ -1343,8 +1343,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          continue;
       }
 
-      if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::LeftBrace or
-         token.kind() IS TokenKind::String) {
+      if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::String) {
          bool forwards = false;
          auto args = this->parse_call_arguments(&forwards);
          if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
