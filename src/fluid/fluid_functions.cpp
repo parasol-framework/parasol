@@ -157,7 +157,7 @@ int fcmd_catch(lua_State *Lua)
                if ((filter_error >= ERR::ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
-                  while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
+                  while ((not caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
                      if (lua_type(Lua, -1) IS LUA_TNUMBER) {
                         if (lua_tointeger(Lua, -1) IS int(filter_error)) {
@@ -299,7 +299,7 @@ static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
 {
    auto Script = (objScript *)CurrentContext();
    auto prv = (prvFluid *)Script->ChildPrivate;
-   if (!prv) return;
+   if (not prv) return;
 
    pf::Log log(__FUNCTION__);
    log.trace("Received event $%.8x%.8x", (int)((Info->EventID>>32) & 0xffffffff), (int)(Info->EventID & 0xffffffff));
@@ -321,7 +321,7 @@ static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
 int fcmd_unsubscribe_event(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   if (!prv) return 0;
+   if (not prv) return 0;
 
    if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
@@ -350,13 +350,13 @@ int fcmd_unsubscribe_event(lua_State *Lua)
 int fcmd_subscribe_event(lua_State *Lua)
 {
    CSTRING event;
-   if (!(event = lua_tostring(Lua, 1))) {
+   if (not (event = lua_tostring(Lua, 1))) {
       luaL_argerror(Lua, 1, "Event string expected.");
       return 0;
    }
 
-   if (!lua_isfunction(Lua, 2)) {
-      if (!lua_isnil(Lua, 2)) {
+   if (not lua_isfunction(Lua, 2)) {
+      if (not lua_isnil(Lua, 2)) {
          luaL_argerror(Lua, 2, "Function or nil expected.");
          return 0;
       }
@@ -415,7 +415,7 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    EVENTID event_id = GetEventID(group_id, subgroup_str.c_str(), event);
 
-   if (!event_id) {
+   if (not event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
       lua_pushinteger(Lua, int(ERR::Failed));
       return 1;
@@ -451,7 +451,7 @@ int fcmd_msg(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to pass to tostring
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (!s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       {
          pf::Log log("Fluid");
@@ -476,7 +476,7 @@ int fcmd_print(lua_State *Lua)
       lua_pushvalue(Lua, i);   // value to print
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
-      if (!s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+      if (not s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       #ifdef __ANDROID__
          {
@@ -498,7 +498,7 @@ int fcmd_print(lua_State *Lua)
 
 int fcmd_include(lua_State *Lua)
 {
-   if (!lua_isstring(Lua, 1)) {
+   if (not lua_isstring(Lua, 1)) {
       luaL_argerror(Lua, 1, "Include name(s) required.");
       return 0;
    }
@@ -581,12 +581,10 @@ int fcmd_require(lua_State *Lua)
    objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
 
    if (file.ok()) {
-      std::vector<char> buffer(SIZE_READ);
-      struct code_reader_handle handle = { *file, buffer.data() };
-      if (!lua_load(Lua, &code_reader, &handle, module.data())) {
+      if (not lua_load(Lua, *file, module.data())) {
          prv->RequireCounter++; // Used by getExecutionState()
          auto result_top = lua_gettop(Lua);
-         if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) { // Success, mark the module as loaded.
+         if (not lua_pcall(Lua, 0, LUA_MULTRET, 0)) { // Success, mark the module as loaded.
             auto results = lua_gettop(Lua) - result_top + 1;
             if (results > 0) {
                // If an interface table is returned, store it with the modkey for future require calls.
@@ -697,10 +695,7 @@ int fcmd_loadfile(lua_State *Lua)
 
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
-         std::vector<char> buffer(SIZE_READ);
          {
-            struct code_reader_handle handle = { *file, buffer.data() };
-
             // Check for the presence of a compiled header and skip it if present
 
             {
@@ -710,7 +705,7 @@ int fcmd_loadfile(lua_State *Lua)
                   if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
                      recompile = false; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
-                     if (!header[i]) i++;
+                     if (not header[i]) i++;
                      else i = 0;
                   }
                   else i = 0;
@@ -728,7 +723,7 @@ int fcmd_loadfile(lua_State *Lua)
             // Prefix chunk name with '@' (Lua convention for file-based chunks) for better debug output
             std::string chunk_name = std::string("@") + (path + i);
 
-            if (!lua_load(Lua, &code_reader, &handle, chunk_name.c_str())) {
+            if (not lua_load(Lua, *file, chunk_name.c_str())) {
                // TODO Code compilation not currently supported
             /*
                if (recompile) {
@@ -743,7 +738,7 @@ int fcmd_loadfile(lua_State *Lua)
                      struct DateTime *date;
                      f = clvalue(Lua->top + (-1))->l.p;
                      luaU_dump(Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
-                     if (!file.obj->getPtr(FID_Date, &date)) {
+                     if (not file.obj->getPtr(FID_Date, &date)) {
                         cachefile->setDate(date);
                      }
                   }
@@ -752,7 +747,7 @@ int fcmd_loadfile(lua_State *Lua)
 
                int result_top = lua_gettop(Lua);
 
-               if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
+               if (not lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
                   results = lua_gettop(Lua) - result_top + 1;
                }
                else error_msg = lua_tostring(Lua, -1);
@@ -762,7 +757,7 @@ int fcmd_loadfile(lua_State *Lua)
       }
       else error = ERR::DoesNotExist;
 
-      if ((!error_msg) and (error != ERR::Okay)) error_msg = GetErrorMsg(error);
+      if ((not error_msg) and (error != ERR::Okay)) error_msg = GetErrorMsg(error);
       if (error_msg) luaL_error(Lua, "Failed to load/parse file '%s', error: %s", path, error_msg);
    }
    else luaL_argerror(Lua, 1, "File path required.");
@@ -772,14 +767,9 @@ int fcmd_loadfile(lua_State *Lua)
 
 //********************************************************************************************************************
 // Usage: exec(Statement)
-
-struct luaReader {
-   CSTRING String;
-   int Index;
-   int Size;
-};
-
-static const char * code_reader_buffer(lua_State *, void *, size_t *);
+// 
+// Executes a string statement within a pcall.  Returns results if there are any.  An execption will be raised if an
+// error occurs during statement execution.
 
 int fcmd_exec(lua_State *Lua)
 {
@@ -802,10 +792,9 @@ int fcmd_exec(lua_State *Lua)
             len -= (i + 1);
          }
 
-         struct luaReader lr = { statement, 0, int(len) };
-         if (!lua_load(Lua, &code_reader_buffer, &lr, "exec")) {
+         if (not lua_load(Lua, std::string_view(statement, len), "exec")) {
             int result_top = lua_gettop(Lua);
-            if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
+            if (not lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
                results = lua_gettop(Lua) - result_top + 1;
             }
             else error_msg = lua_tostring(Lua, -1);
@@ -818,16 +807,6 @@ int fcmd_exec(lua_State *Lua)
    else luaL_argerror(Lua, 1, "Fluid statement required.");
 
    return results;
-}
-
-//********************************************************************************************************************
-
-const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize)
-{
-   struct luaReader *lr = (struct luaReader *)Source;
-   *ResultSize = lr->Size - lr->Index;
-   lr->Index += *ResultSize;
-   return lr->String;
 }
 
 //********************************************************************************************************************

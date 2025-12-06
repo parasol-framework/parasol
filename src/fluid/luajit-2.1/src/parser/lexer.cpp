@@ -64,48 +64,31 @@ namespace {
 } // anonymous namespace
 
 //********************************************************************************************************************
-// Input buffer management
+// Character stream operations
 
-static LJ_NOINLINE LexChar lex_more(LexState *State) noexcept
+// Peek at character at offset from current position (0 = next unread char)
+[[nodiscard]] LexChar LexState::peek(size_t Offset) const noexcept
 {
-   size_t sz;
-   auto p = State->rfunc(State->L, State->rdata, &sz);
-   if (not p or not sz) return LEX_EOF;
-
-   if (sz >= LJ_MAX_BUF) {
-      if (sz != ~size_t(0)) lj_err_mem(State->L);
-      sz = ~uintptr_t(0) - uintptr_t(p);
-      if (sz >= LJ_MAX_BUF) sz = LJ_MAX_BUF - 1;
-      State->endmark = 1;
-   }
-
-   // Trace chunk loading for debugging buffer boundary issues (enabled via JitOptions TraceBoundary)
-
-   auto prv = (prvFluid *)State->L->Script->ChildPrivate;
-   if ((prv->JitOptions & JOF::TRACE_BOUNDARY) != JOF::NIL) {
-      pf::Log("Parser").msg("Loading %" PRId64 " bytes at line %d, col %d, offset %" PRId64,
-         sz, State->linenumber, int(State->current_offset - State->line_start_offset + 1),
-         State->current_offset);
-   }
-
-   State->pe = p + sz;
-   State->p = p + 1;
-   return LexChar(uint8_t(p[0]));
+   size_t idx = this->pos + Offset;
+   if (idx >= this->source.size()) return LEX_EOF;
+   return LexChar(uint8_t(this->source[idx]));
 }
 
-//********************************************************************************************************************
-// Character stream operations
+// Peek at next character without advancing
+[[nodiscard]] LexChar LexState::peek_next() const noexcept
+{
+   return this->peek(0);
+}
 
 static LJ_AINLINE LexChar lex_next(LexState *State) noexcept
 {
-   LexChar ch = (State->p < State->pe) ? LexChar(uint8_t(*State->p++)) : lex_more(State);
-
-   State->c = ch;
-   if (ch != LEX_EOF) {
-      State->current_offset = State->next_offset;
-      State->next_offset++;
+   if (State->pos >= State->source.size()) {
+      State->c = LEX_EOF;
+      return LEX_EOF;
    }
-   return ch;
+   State->current_offset = State->pos;
+   State->c = LexChar(uint8_t(State->source[State->pos++]));
+   return State->c;
 }
 
 static LJ_AINLINE void lex_save(LexState *State, LexChar c) noexcept
@@ -168,35 +151,9 @@ static void lex_number(LexState *State, TValue* tv)
    // Scan all number characters.
    // Special case: Stop before '..' to allow range literals like {1..5}
    while (is_number_char(State->c, c)) {
-      // If we see '.', check if the next character is also '.' (range operator)
-      // We must handle buffer boundaries properly: if p >= pe, we need to peek
-      // by advancing (which may refill the buffer), then restore if it was '.'
-      if (State->c IS '.') {
-         LexChar next_char;
-         if (State->p < State->pe) {
-            // Buffer has more data, we can peek directly
-            next_char = LexChar(uint8_t(*State->p));
-         }
-         else {
-            // At buffer boundary - we need to advance to see next char.
-            // DON'T save the '.' yet - we don't know if it's part of '..'
-            lex_next(State);             // Advance (may refill buffer)
-            next_char = State->c;
-            if (next_char IS '.') {
-               // It's '..' - we need to let the main lexer handle this.
-               // State->c is now second '.', but we need the lexer to see '..' token.
-               // Set a flag so lex_scan will return the '..' token next.
-               State->pending_dotdot = true;
-               break;
-            }
-            // Not '..', the '.' is part of the number (e.g., "3.14")
-            // NOW we need to save the '.' we consumed
-            lex_save(State, '.');
-            // Continue scanning - '.' is now saved, c has next char
-            c = State->c;
-            continue;
-         }
-         if (next_char IS '.') break;  // Don't consume '.', let parser handle '..'
+      // If we see '.', check if next character is also '.' (range operator)
+      if (State->c IS '.' and State->peek_next() IS '.') {
+         break;  // Don't consume '.', let parser handle '..'
       }
       c = State->c;
       lex_savenext(State);
@@ -489,8 +446,8 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
    ByteLength = 0;
 
    // UTF-8 sequences starting with 0xC2 (Latin-1 Supplement)
-   if (State->c IS 0xC2 and State->p < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
+   if (State->c IS 0xC2) {
+      LexChar second = State->peek_next();
       if (second IS 0xAB) {
          ByteLength = 2;
          return TK_shl;     // «
@@ -502,8 +459,8 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
    }
 
    // UTF-8 sequences starting with 0xC3 (Latin-1 Supplement continued)
-   if (State->c IS 0xC3 and State->p < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
+   if (State->c IS 0xC3) {
+      LexChar second = State->peek_next();
       if (second IS 0x97) {
          ByteLength = 2;
          return '*';      // ×
@@ -515,9 +472,9 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
    }
 
    // UTF-8 sequences starting with 0xE2 (3-byte sequences)
-   if (State->c IS 0xE2 and State->p + 1 < State->pe) {
-      uint8_t second = uint8_t(State->p[0]);
-      uint8_t third = uint8_t(State->p[1]);
+   if (State->c IS 0xE2) {
+      LexChar second = State->peek(0);
+      LexChar third = State->peek(1);
 
       if (second IS 0x80) {
          if (third IS 0xA5) {
@@ -593,23 +550,6 @@ static LexToken lex_unicode_operator(LexState *State) noexcept
 static LexToken lex_scan(LexState *State, TValue *tv)
 {
    lj_buf_reset(&State->sb);
-
-   // Check for pending '..' token from buffer boundary in lex_number
-   if (State->pending_dotdot) {
-      State->pending_dotdot = 0;
-      State->mark_token_start();
-      // State->c is currently the second '.', advance past it
-      lex_next(State);
-      if (State->c IS '.') {
-         lex_next(State);
-         return TK_dots;  // ...
-      }
-      else if (State->c IS '=') {
-         lex_next(State);
-         return TK_cconcat;  // ..=
-      }
-      return TK_concat;  // ..
-   }
 
    while (true) {
       // Check for Unicode operators before identifier scanning
@@ -878,16 +818,14 @@ static LexToken lex_scan(LexState *State, TValue *tv)
 //********************************************************************************************************************
 // LexState source text constructor
 
-LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode)
+LexState::LexState(lua_State* L, std::string_view Source, std::string_view Chunkarg, std::optional<std::string_view> Mode)
    : fs(nullptr)
    , L(L)
-   , p(nullptr)
-   , pe(nullptr)
+   , source(Source)
+   , pos(0)
    , c(-1)
    , tok(0)
    , lookahead(TK_eof)
-   , rfunc(Rfunc)
-   , rdata(Rdata)
    , linenumber(1)
    , lastline(1)
    , chunkname(nullptr)
@@ -902,11 +840,8 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    , level(0)
    , ternary_depth(0)
    , pending_if_empty_colon(0)
-   , pending_dotdot(0)
-   , endmark(0)
    , is_bytecode(0)
    , current_offset(0)
-   , next_offset(0)
    , line_start_offset(0)
    , current_token_line(1)
    , current_token_column(1)
@@ -927,12 +862,10 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
    // Skip UTF-8 BOM if present
    constexpr uint8_t BOM[] = { 0xef, 0xbb, 0xbf };
    bool header = false;
-   if (this->c IS BOM[0] and this->p + 2 <= this->pe and
-       uint8_t(this->p[0]) IS BOM[1] and uint8_t(this->p[1]) IS BOM[2]) {
+   if (this->c IS BOM[0] and this->peek(0) IS BOM[1] and this->peek(1) IS BOM[2]) {
       constexpr size_t BOM_SIZE = 2;
-      this->p += BOM_SIZE;
+      this->pos += BOM_SIZE;
       this->current_offset += BOM_SIZE;
-      this->next_offset += BOM_SIZE;
       this->line_start_offset += BOM_SIZE;
       lex_next(this);
       header = true;
@@ -957,22 +890,24 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
          lj_err_throw(L, LUA_ERRSYNTAX);
       }
       this->is_bytecode = 1;
+      // Set up p/pe for bytecode reader compatibility (lj_bcread uses these)
+      this->p = this->source.data();
+      this->pe = this->source.data() + this->source.size();
    }
 }
 
 //********************************************************************************************************************
-// LexState bytecode constructor
+// LexState direct bytecode constructor (for embedded bytecode in libraries)
 
 LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    : fs(nullptr)
    , L(L)
-   , p(BytecodePtr)
-   , pe((const char*)~uintptr_t(0))
-   , c(-1)
+   , pos(0)
+   , c(0)
    , tok(0)
    , lookahead(TK_eof)
-   , rfunc(nullptr)
-   , rdata(nullptr)
+   , p(BytecodePtr)
+   , pe((const char*)~uintptr_t(0))  // Unlimited - bytecode reader handles its own bounds
    , linenumber(1)
    , lastline(1)
    , chunkname(ChunkName)
@@ -987,11 +922,8 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    , level(BCDUMP_F_STRIP | (LJ_BE * BCDUMP_F_BE))
    , ternary_depth(0)
    , pending_if_empty_colon(0)
-   , pending_dotdot(0)
-   , endmark(0)
    , is_bytecode(1)
    , current_offset(0)
-   , next_offset(0)
    , line_start_offset(0)
    , current_token_line(1)
    , current_token_column(1)
@@ -1005,6 +937,68 @@ LexState::LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName)
    , active_context(nullptr)
 {
    lj_buf_init(L, &this->sb);
+}
+
+//********************************************************************************************************************
+// LexState bytecode streaming constructor (uses lua_Reader for streaming bytecode)
+
+LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode)
+   : fs(nullptr)
+   , L(L)
+   , pos(0)
+   , c(0)  // Bytecode reader uses c=0 as valid, c<0 as EOF
+   , tok(0)
+   , lookahead(TK_eof)
+   , p(nullptr)
+   , pe(nullptr)
+   , rfunc(Rfunc)
+   , rdata(Rdata)
+   , linenumber(1)
+   , lastline(1)
+   , chunkname(nullptr)
+   , chunkarg(Chunkarg.data())
+   , mode(Mode.has_value() ? Mode->data() : nullptr)
+   , empty_string_constant(nullptr)
+   , vstack(nullptr)
+   , sizevstack(0)
+   , vtop(0)
+   , bcstack(nullptr)
+   , sizebcstack(0)
+   , level(0)
+   , ternary_depth(0)
+   , pending_if_empty_colon(0)
+   , is_bytecode(0)  // Will be set after checking first character
+   , current_offset(0)
+   , line_start_offset(0)
+   , current_token_line(1)
+   , current_token_column(1)
+   , current_token_offset(0)
+   , lookahead_line(1)
+   , lookahead_column(1)
+   , lookahead_offset(0)
+   , pending_token_line(1)
+   , pending_token_column(1)
+   , pending_token_offset(0)
+   , active_context(nullptr)
+{
+   lj_buf_init(L, &this->sb);
+
+   // For bytecode streaming, we need to read the first chunk to determine if this is bytecode
+   size_t sz;
+   const char* buf = this->rfunc(L, this->rdata, &sz);
+   if (buf and sz > 0) {
+      this->p = buf;
+      this->pe = buf + sz;
+      this->c = LexChar(uint8_t(buf[0]));
+
+      // Check for bytecode signature
+      if (this->c IS LUA_SIGNATURE[0]) {
+         this->is_bytecode = 1;
+      }
+   }
+   else {
+      this->c = -1;  // EOF
+   }
 }
 
 //********************************************************************************************************************
@@ -1089,7 +1083,7 @@ const char* LexState::token2str(LexToken Tok)
 
 void LexState::mark_token_start()
 {
-   size_t token_offset = (this->c IS LEX_EOF) ? this->next_offset : this->current_offset;
+   size_t token_offset = (this->c IS LEX_EOF) ? this->pos : this->current_offset;
    this->pending_token_line = this->linenumber;
 
    if (token_offset >= this->line_start_offset) {

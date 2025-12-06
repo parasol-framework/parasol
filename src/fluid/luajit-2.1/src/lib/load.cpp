@@ -4,6 +4,7 @@
 #include <parasol/main.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string>
 
 #define lj_load_c
 #define LUA_CORE
@@ -25,13 +26,13 @@
 //********************************************************************************************************************
 // Load Lua source code and bytecode
 
-static TValue* cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
+static TValue * cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 {
-   LexState* ls = (LexState*)ud;
+   auto ls = (LexState*)ud;
    GCproto* pt;
    GCfunc* fn;
    int bc;
-   UNUSED(dummy);
+
    cframe_errfunc(L->cframe) = -1;  //  Inherit error function.
    bc = ls->is_bytecode;
    if (ls->mode and !strchr(ls->mode, bc ? 'b' : 't')) {
@@ -47,107 +48,36 @@ static TValue* cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 
 //********************************************************************************************************************
 
-extern int lua_loadx(lua_State* L, lua_Reader reader, APTR data, CSTRING chunkname, CSTRING mode)
+extern int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 {
-   LexState ls(L, reader, data, chunkname ? chunkname : "?",
-      mode ? std::optional<std::string_view>(mode) : std::nullopt);
-   int status;
-   status = lj_vm_cpcall(L, nullptr, &ls, cpparser);
-   // Destructor will be called automatically when ls goes out of scope
-   lj_gc_check(L);
+   std::string buffer;
+   auto filesize = File->get<int>(FID_Size);
+   buffer.resize(filesize);
+   File->read(buffer.data(), filesize);
+
+   LexState ls(Lua, buffer, SourceName, std::nullopt);
+   auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser);
+   lj_gc_check(Lua);
    return status;
 }
 
-extern int lua_load(lua_State* L, lua_Reader reader, APTR data, CSTRING chunkname)
+extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
 {
-   return lua_loadx(L, reader, data, chunkname, nullptr);
-}
-
-typedef struct FileReaderCtx {
-   FILE* fp;
-   char buf[LUAL_BUFFERSIZE];
-} FileReaderCtx;
-
-static CSTRING reader_file(lua_State* L, APTR ud, size_t* size)
-{
-   FileReaderCtx* ctx = (FileReaderCtx*)ud;
-   UNUSED(L);
-   if (feof(ctx->fp)) return nullptr;
-   *size = fread(ctx->buf, 1, sizeof(ctx->buf), ctx->fp);
-   return *size > 0 ? ctx->buf : nullptr;
-}
-
-//********************************************************************************************************************
-// Load a file as a Lua chunk.
-
-extern int luaL_loadfilex(lua_State* L, CSTRING filename, CSTRING mode)
-{
-   FileReaderCtx ctx;
-   int status;
-   CSTRING chunkname;
-   if (filename) {
-      ctx.fp = fopen(filename, "rb");
-      if (ctx.fp == nullptr) {
-         lua_pushfstring(L, "cannot open %s: %s", filename, strerror(errno));
-         return LUA_ERRFILE;
-      }
-      chunkname = lua_pushfstring(L, "@%s", filename);
-   }
-   else {
-      ctx.fp = stdin;
-      chunkname = "=stdin";
-   }
-   status = lua_loadx(L, reader_file, &ctx, chunkname, mode);
-   if (ferror(ctx.fp)) {
-      L->top -= filename ? 2 : 1;
-      lua_pushfstring(L, "cannot read %s: %s", chunkname + 1, strerror(errno));
-      if (filename)
-         fclose(ctx.fp);
-      return LUA_ERRFILE;
-   }
-   if (filename) {
-      L->top--;
-      copyTV(L, L->top - 1, L->top);
-      fclose(ctx.fp);
-   }
+   LexState ls(Lua, Source, SourceName, std::nullopt);
+   auto status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser);
+   lj_gc_check(Lua);
    return status;
 }
 
 //********************************************************************************************************************
+// Load from buffer (deprecated)
 
-extern int luaL_loadfile(lua_State* L, CSTRING filename)
+extern int luaL_loadbuffer(lua_State *Lua, CSTRING Buffer, size_t Size, CSTRING SourceName)
 {
-   return luaL_loadfilex(L, filename, nullptr);
-}
-
-//********************************************************************************************************************
-
-typedef struct StringReaderCtx {
-   CSTRING str;
-   size_t size;
-} StringReaderCtx;
-
-static CSTRING reader_string(lua_State* L, APTR ud, size_t* size)
-{
-   StringReaderCtx* ctx = (StringReaderCtx*)ud;
-   UNUSED(L);
-   if (ctx->size == 0) return nullptr;
-   *size = ctx->size;
-   ctx->size = 0;
-   return ctx->str;
-}
-
-extern int luaL_loadbufferx(lua_State* L, CSTRING buf, size_t size, CSTRING name, CSTRING mode)
-{
-   StringReaderCtx ctx;
-   ctx.str = buf;
-   ctx.size = size;
-   return lua_loadx(L, reader_string, &ctx, name, mode);
-}
-
-extern int luaL_loadbuffer(lua_State* L, CSTRING buf, size_t size, CSTRING name)
-{
-   return luaL_loadbufferx(L, buf, size, name, nullptr);
+   LexState ls(Lua, std::string_view(Buffer, Size), SourceName, std::nullopt);
+   int status = lj_vm_cpcall(Lua, nullptr, &ls, cpparser);
+   lj_gc_check(Lua);
+   return status;
 }
 
 //********************************************************************************************************************

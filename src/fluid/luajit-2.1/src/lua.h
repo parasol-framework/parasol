@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <string_view>
 
 #include "luaconf.h"
 
@@ -176,7 +177,8 @@ extern int   (lua_setfenv) (lua_State *L, int idx);
 extern void  (lua_call) (lua_State *L, int nargs, int nresults);
 extern int   (lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
 extern int   (lua_cpcall) (lua_State *L, lua_CFunction func, void *ud);
-extern int   (lua_load) (lua_State *L, lua_Reader reader, void *dt, const char *chunkname);
+extern int   (lua_load) (lua_State *L, class objFile *, const char *chunkname);
+extern int   (lua_load) (lua_State *L, std::string_view, const char *chunkname);
 extern int (lua_dump) (lua_State *L, lua_Writer writer, void *data);
 
 /*
@@ -291,7 +293,6 @@ extern int lua_gethookcount (lua_State *L);
 // From Lua 5.2.
 extern void *lua_upvalueid (lua_State *L, int idx, int n);
 extern void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
-extern int lua_loadx (lua_State *L, lua_Reader reader, void *dt, const char *chunkname, const char *mode);
 extern const lua_Number *lua_version (lua_State *L);
 extern void lua_copy (lua_State *L, int fromidx, int toidx);
 extern lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
