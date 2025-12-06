@@ -2,6 +2,7 @@
 
 #include "parser/ast_builder.h"
 
+#include <cstring>
 #include <format>
 #include <utility>
 
@@ -41,6 +42,25 @@ static bool is_shorthand_statement_keyword(TokenKind Kind)
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
       case TokenKind::ContinueToken:
+         return true;
+      default:
+         return false;
+   }
+}
+
+// Checks if a token kind is a compound assignment operator (+=, -=, etc.).
+// These are statements, not expressions, which helps provide better error messages.
+
+static bool is_compound_assignment(TokenKind Kind)
+{
+   switch (Kind) {
+      case TokenKind::CompoundAdd:
+      case TokenKind::CompoundSub:
+      case TokenKind::CompoundMul:
+      case TokenKind::CompoundDiv:
+      case TokenKind::CompoundMod:
+      case TokenKind::CompoundConcat:
+      case TokenKind::CompoundIfEmpty:
          return true;
       default:
          return false;
@@ -840,9 +860,52 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          rhs = this->parse_suffixed(std::move(rhs.value_ref()));
          if (not rhs.ok()) return rhs;
 
-         // Validate that RHS is a call expression
+         // Check for pipe iteration pattern: range |> function
+         // When LHS is a range and RHS is a function (not a call), rewrite to range:each(func)
+         // Also support chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
 
-         if (rhs.value_ref()->kind != AstNodeKind::CallExpr and rhs.value_ref()->kind != AstNodeKind::SafeCallExpr) {
+         bool lhs_is_range = left.value_ref()->kind IS AstNodeKind::RangeExpr;
+
+         // Check if LHS is a method call to :each() (for chaining support)
+         bool lhs_is_each_call = false;
+         if (left.value_ref()->kind IS AstNodeKind::CallExpr) {
+            const CallExprPayload& call_data = std::get<CallExprPayload>(left.value_ref()->data);
+            if (const auto* method = std::get_if<MethodCallTarget>(&call_data.target)) {
+               if (method->method.symbol and strcmp(strdata(method->method.symbol), "each") IS 0) {
+                  lhs_is_each_call = true;
+               }
+            }
+         }
+
+         bool rhs_is_function = rhs.value_ref()->kind IS AstNodeKind::FunctionExpr or
+                                rhs.value_ref()->kind IS AstNodeKind::IdentifierExpr or
+                                rhs.value_ref()->kind IS AstNodeKind::MemberExpr or
+                                rhs.value_ref()->kind IS AstNodeKind::IndexExpr;
+         bool rhs_is_call = rhs.value_ref()->kind IS AstNodeKind::CallExpr or
+                            rhs.value_ref()->kind IS AstNodeKind::SafeCallExpr;
+
+         if ((lhs_is_range or lhs_is_each_call) and rhs_is_function) {
+            // Pipe iteration: transform range |> func into range:each(func)
+            // For chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
+            SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
+
+            Identifier method;
+            method.symbol = lj_str_newlit(&this->ctx.lua(), "each");
+            method.span = next.span();
+            method.is_blank = false;
+            method.has_close = false;
+
+            ExprNodeList args;
+            args.push_back(std::move(rhs.value_ref()));
+
+            ExprNodePtr call = make_method_call_expr(span, std::move(left.value_ref()), method, std::move(args), false);
+            left = ParserResult<ExprNodePtr>::success(std::move(call));
+            continue;
+         }
+
+         // Validate that RHS is a call expression for normal pipes
+
+         if (not rhs_is_call) {
             Token bad = this->ctx.tokens().current();
             this->ctx.emit_error(ParserErrorCode::UnexpectedToken, bad, "pipe operator requires function call on right-hand side");
             ParserError error;
@@ -1191,7 +1254,14 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       }
 
       default: {
-         auto msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
+         std::string msg;
+         if (is_compound_assignment(current.kind())) {
+            msg = std::format("'{}' is a statement, not an expression; use 'do ... end' for statements in arrow functions",
+               this->ctx.lex().token2str(current.raw()));
+         }
+         else {
+            msg = std::format("Expected expression, got '{}'", this->ctx.lex().token2str(current.raw()));
+         }
          this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
          ParserError error;
          error.code = ParserErrorCode::UnexpectedToken;
@@ -1241,6 +1311,20 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
    else {
       auto expr = this->parse_expression();
       if (not expr.ok()) return ParserResult<ExprNodePtr>::failure(expr.error_ref());
+
+      // Check if a compound assignment follows - this indicates the user tried to use a statement
+      // in an expression-body arrow function. Provide a helpful error message.
+      Token next = this->ctx.tokens().current();
+      if (is_compound_assignment(next.kind())) {
+         auto msg = std::format("'{}' is a statement, not an expression; use 'do ... end' for statement bodies in arrow functions",
+            this->ctx.lex().token2str(next.raw()));
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, next, msg);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.token = next;
+         error.message = msg;
+         return ParserResult<ExprNodePtr>::failure(error);
+      }
 
       ExprNodeList return_values;
       return_values.push_back(std::move(expr.value_ref()));
