@@ -405,16 +405,90 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    auto iterators = this->parse_expression_list();
    if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
 
-   // Special-case for range literals in generic for loops:
-   // Allow sugar `for i in {0..5} do` by implicitly treating the range
-   // literal as a callable iterator (`({0..5})()`), so users no longer
-   // need to write the trailing `()` in loop headers.
-   //
-   // This transformation is intentionally restricted to generic for-loop
-   // iterator lists so that range literals continue to behave normally
-   // in all other expression contexts.
-
    ExprNodeList iterator_nodes = std::move(iterators.value_ref());
+
+   // JIT Optimisation: Convert range literals with a single loop variable to numeric for loops.
+   // This allows the JIT to compile `for i in {1..10} do` into optimised BC_FORI/BC_FORL bytecode
+   // instead of the slower generic iterator path (BC_ITERC/BC_ITERL).
+   //
+   // Conversion: for i in {start..stop} do  =>  for i = start, stop-1, step do  (exclusive)
+   //             for i in {start...stop} do =>  for i = start, stop, step do    (inclusive)
+   //
+   // Step is computed at runtime based on start/stop direction.
+
+   if (names.size() IS 1 and iterator_nodes.size() IS 1) {
+      ExprNodePtr &first = iterator_nodes[0];
+      if (first and first->kind IS AstNodeKind::RangeExpr) {
+         auto* range_payload = std::get_if<RangeExprPayload>(&first->data);
+         if (range_payload and range_payload->start and range_payload->stop) {
+            SourceSpan span = first->span;
+
+            // Move the start and stop expressions from the range
+            ExprNodePtr start_expr = std::move(range_payload->start);
+            ExprNodePtr stop_expr = std::move(range_payload->stop);
+            bool inclusive = range_payload->inclusive;
+
+            // Check if both start and stop are numeric literals for compile-time optimisation.
+            // When both are constants, we can compute the step direction and exclusive adjustment
+            // at compile time, producing optimal BC_FORI/BC_FORL bytecode.
+            bool start_is_num = start_expr->kind IS AstNodeKind::LiteralExpr and
+               std::get_if<LiteralValue>(&start_expr->data) and
+               std::get<LiteralValue>(start_expr->data).kind IS LiteralKind::Number;
+            bool stop_is_num = stop_expr->kind IS AstNodeKind::LiteralExpr and
+               std::get_if<LiteralValue>(&stop_expr->data) and
+               std::get<LiteralValue>(stop_expr->data).kind IS LiteralKind::Number;
+
+            if (start_is_num and stop_is_num) {
+               lua_Number start_val = std::get<LiteralValue>(start_expr->data).number_value;
+               lua_Number stop_val = std::get<LiteralValue>(stop_expr->data).number_value;
+
+               // Determine step direction based on start/stop values
+               lua_Number step_val = (start_val <= stop_val) ? 1.0 : -1.0;
+
+               // For exclusive ranges, adjust stop
+               lua_Number final_stop = stop_val;
+               if (not inclusive) {
+                  final_stop = (step_val > 0) ? (stop_val - 1) : (stop_val + 1);
+               }
+
+               // Create literals for stop and step
+               LiteralValue stop_lit;
+               stop_lit.kind = LiteralKind::Number;
+               stop_lit.number_value = final_stop;
+               ExprNodePtr final_stop_expr = make_literal_expr(stop_expr->span, stop_lit);
+
+               LiteralValue step_lit;
+               step_lit.kind = LiteralKind::Number;
+               step_lit.number_value = step_val;
+               ExprNodePtr step_expr = make_literal_expr(span, step_lit);
+
+               this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
+               auto body = this->parse_scoped_block({ TokenKind::EndToken });
+               if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
+               this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
+               StmtNodePtr stmt = std::make_unique<StmtNode>();
+               stmt->kind = AstNodeKind::NumericForStmt;
+               stmt->span = token.span();
+               NumericForStmtPayload payload;
+               payload.control = std::move(names[0]);
+               payload.start = std::move(start_expr);
+               payload.stop = std::move(final_stop_expr);
+               payload.step = std::move(step_expr);
+               payload.body = std::move(body.value_ref());
+               stmt->data = std::move(payload);
+               return ParserResult<StmtNodePtr>::success(std::move(stmt));
+            }
+
+            // Non-constant range: fall back to generic for loop with iterator
+            // Restore the range expression since we moved from it
+            range_payload->start = std::move(start_expr);
+            range_payload->stop = std::move(stop_expr);
+         }
+      }
+   }
+
+   // Generic for loop path: wrap range literals in a call to get the iterator
    if (iterator_nodes.size() IS 1) {
       ExprNodePtr &first = iterator_nodes[0];
       if (first and first->kind IS AstNodeKind::RangeExpr) {

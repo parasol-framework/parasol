@@ -320,17 +320,15 @@ static int range_contains(lua_State *L)
    int32_t step = r->step;
 
    // Calculate effective stop for exclusive ranges
+
    int32_t effective_stop = stop;
    if (not r->inclusive) {
-      if (step > 0) {
-         effective_stop = stop - 1;
-      }
-      else {
-         effective_stop = stop + 1;
-      }
+      if (step > 0) effective_stop = stop - 1;
+      else effective_stop = stop + 1;
    }
 
    // Check bounds
+
    if (step > 0) {
       if (n < start or n > effective_stop) {
          lua_pushboolean(L, 0);
@@ -345,8 +343,9 @@ static int range_contains(lua_State *L)
    }
 
    // Check step alignment
+
    int32_t diff = n - start;
-   if (diff % step != 0) {
+   if (std::abs(diff) % std::abs(step) != 0) {
       lua_pushboolean(L, 0);
       return 1;
    }
