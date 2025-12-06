@@ -677,6 +677,149 @@ function testRangeIteratorReturnsFunction()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Range each() Method Tests
+
+function testRangeEachBasic()
+   -- Test basic each() iteration
+   local sum = 0
+   local r = {1..6}
+   r:each(function(Value) sum += Value end)
+   assert(sum is 15, "each() sum of {1..6} should be 15 (1+2+3+4+5), got " .. sum)
+end
+
+function testRangeEachInclusive()
+   -- Test each() with inclusive range
+   local sum = 0
+   local r = {1...5}
+   r:each(function(Value) sum += Value end)
+   assert(sum is 15, "each() sum of {1...5} should be 15, got " .. sum)
+end
+
+function testRangeEachReverse()
+   -- Test each() with reverse range
+   local result = {}
+   local r = {5..1}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 4, "each() reverse {5..1} should have 4 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[3] is 2, "last element should be 2")
+end
+
+function testRangeEachReverseInclusive()
+   -- Test each() with reverse inclusive range
+   local result = {}
+   local r = {5...1}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() reverse {5...1} should have 5 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeEachWithStep()
+   -- Test each() with custom step via range constructor
+   local result = {}
+   range(0, 10, false, 2):each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() with step 2 should have 5 elements, got " .. #result)
+   assert(result[0] is 0, "first element should be 0")
+   assert(result[4] is 8, "last element should be 8")
+end
+
+function testRangeEachEmpty()
+   -- Test each() on empty range
+   local count = 0
+   local r = {5..5}
+   r:each(function(Value) count += 1 end)
+   assert(count is 0, "each() on empty range {5..5} should not iterate, got " .. count)
+end
+
+function testRangeEachSingleElement()
+   -- Test each() on single element inclusive range
+   local count = 0
+   local captured = nil
+   local r = {5...5}
+   r:each(function(Value) count += 1; captured = Value end)
+   assert(count is 1, "each() on {5...5} should iterate once, got " .. count)
+   assert(captured is 5, "captured value should be 5")
+end
+
+function testRangeEachEarlyTermination()
+   -- Test early termination by returning false
+   local sum = 0
+   local r = {1..100}
+   r:each(function(Value)
+      if Value > 5 then return false end
+      sum += Value
+   end)
+   assert(sum is 15, "each() with early termination should sum to 15, got " .. sum)
+end
+
+function testRangeEachContinuesOnTrue()
+   -- Test that returning true does NOT terminate early
+   local sum = 0
+   local r = {1..6}
+   r:each(function(Value)
+      sum += Value
+      return true  -- Should continue iterating
+   end)
+   assert(sum is 15, "each() returning true should complete all iterations, got " .. sum)
+end
+
+function testRangeEachContinuesOnNil()
+   -- Test that returning nil (no return) continues iteration
+   local count = 0
+   local r = {1..6}
+   r:each(function(Value)
+      count += 1
+      -- No explicit return
+   end)
+   assert(count is 5, "each() with no return should complete all iterations, got " .. count)
+end
+
+function testRangeEachChaining()
+   -- Test that each() returns the range for chaining
+   local sum1 = 0
+   local sum2 = 0
+   local r = {1..6}
+   local returned = r:each(function(Value) sum1 += Value end)
+   assert(returned is r, "each() should return the original range for chaining")
+
+   -- Chain another each call
+   returned:each(function(Value) sum2 += Value end)
+   assert(sum2 is 15, "chained each() should also work, got " .. sum2)
+end
+
+function testRangeEachWithVariable()
+   -- Test each() on range stored in variable
+   local r = {0..5}
+   local sum = 0
+   r:each(function(Value) sum += Value end)
+   assert(sum is 10, "each() via variable should sum to 10, got " .. sum)
+end
+
+function testRangeEachNegativeRange()
+   -- Test each() with negative values
+   local result = {}
+   local r = {-3..2}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() on {-3..2} should have 5 elements, got " .. #result)
+   assert(result[0] is -3, "first element should be -3")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeEachReverseEarlyTermination()
+   -- Test early termination in reverse iteration
+   local result = {}
+   local r = {10..0}
+   r:each(function(Value)
+      result[#result] = Value
+      if Value <= 7 then return false end
+   end)
+   assert(#result is 4, "each() reverse with early termination should have 4 elements, got " .. #result)
+   assert(result[0] is 10, "first element should be 10")
+   assert(result[3] is 7, "last element should be 7")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
@@ -747,7 +890,22 @@ return {
       "testRangeIterationSingleElement",
       "testRangeIterationWithVariable",
       "testRangeIterationBreak",
-      "testRangeIteratorReturnsFunction"
+      "testRangeIteratorReturnsFunction",
+      -- Range each() method
+      "testRangeEachBasic",
+      "testRangeEachInclusive",
+      "testRangeEachReverse",
+      "testRangeEachReverseInclusive",
+      "testRangeEachWithStep",
+      "testRangeEachEmpty",
+      "testRangeEachSingleElement",
+      "testRangeEachEarlyTermination",
+      "testRangeEachContinuesOnTrue",
+      "testRangeEachContinuesOnNil",
+      "testRangeEachChaining",
+      "testRangeEachWithVariable",
+      "testRangeEachNegativeRange",
+      "testRangeEachReverseEarlyTermination"
    },
    init = function(Folder)
    end,

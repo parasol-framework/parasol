@@ -26,6 +26,7 @@
 #include "lj_str.h"
 #include "lib.h"
 #include "lib_range.h"
+#include <parasol/strings.hpp>
 
 #define LJLIB_MODULE_range
 
@@ -42,8 +43,7 @@ static fluid_range * get_range(lua_State *L, int idx)
 
 static fluid_range * check_range(lua_State *L, int idx)
 {
-   void *ud = lua_touserdata(L, idx);
-   if (ud) {
+   if (void *ud = lua_touserdata(L, idx)) {
       if (lua_getmetatable(L, idx)) {
          lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
          if (lua_rawequal(L, -1, -2)) {
@@ -87,25 +87,79 @@ static int32_t range_length(const fluid_range *r)
 }
 
 //********************************************************************************************************************
+// range:each(function(Value) ... end)
+
+static int range_each(lua_State* L)
+{
+   auto r = check_range(L, 1);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+
+   int32_t step = r->step;
+   int32_t stop = r->stop;
+
+   if (not r->inclusive) {
+      if (step > 0) stop--;
+      else stop++;
+   }
+
+   // Check for empty range before setting up callback
+   if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
+      lua_pushvalue(L, 1);
+      return 1;
+   }
+
+   lua_pushvalue(L, 2);
+   int callback_index = lua_gettop(L);
+
+   // Invoke callback and check for early termination (returns false)
+   auto invoke_callback = [L, callback_index](int32_t Value) -> bool {
+      lua_pushvalue(L, callback_index);
+      lua_pushinteger(L, Value);
+      lua_call(L, 1, 1);
+      bool terminate = (not lua_isnil(L, -1) and not lua_toboolean(L, -1));
+      lua_pop(L, 1);
+      return terminate;
+   };
+
+   auto should_continue = (step > 0)
+      ? [](int32_t Value, int32_t Stop) { return Value <= Stop; }
+      : [](int32_t Value, int32_t Stop) { return Value >= Stop; };
+
+   for (int32_t value = r->start; should_continue(value, stop); value += step) {
+      if (invoke_callback(value)) {
+         lua_pop(L, 1);
+         lua_pushvalue(L, 1);
+         return 1;
+      }
+   }
+
+   lua_pop(L, 1);
+   lua_pushvalue(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
 // range.new(start, stop [, inclusive [, step]])
 // Creates a new range object
 
 LJLIB_CF(range_new)
 {
-   // Check required arguments
-   if (lua_gettop(L) < 2) {
+   if (lua_gettop(L) < 2) { // Check required arguments
       lj_err_caller(L, ErrMsg::NUMRNG);
       return 0;
    }
 
-   // Validate start is a number
-   if (not lua_isnumber(L, 1)) {
+   if (not lua_isnumber(L, 1)) { // Validate start is a number
       lj_err_argt(L, 1, LUA_TNUMBER);
       return 0;
    }
 
-   // Validate stop is a number
-   if (not lua_isnumber(L, 2)) {
+   if (not lua_isnumber(L, 2)) { // Validate stop is a number
       lj_err_argt(L, 2, LUA_TNUMBER);
       return 0;
    }
@@ -355,48 +409,46 @@ static int range_totable(lua_State *L)
 // Handles property access (.start, .stop, .step, .inclusive, .length)
 // and method calls (:contains, :toTable)
 
-static int range_index(lua_State *L)
+constexpr auto HASH_start     = pf::strhash("start");
+constexpr auto HASH_stop      = pf::strhash("stop");
+constexpr auto HASH_step      = pf::strhash("step");
+constexpr auto HASH_inclusive = pf::strhash("inclusive");
+constexpr auto HASH_length    = pf::strhash("length");
+constexpr auto HASH_contains  = pf::strhash("contains");
+constexpr auto HASH_toTable   = pf::strhash("toTable");
+constexpr auto HASH_each      = pf::strhash("each");
+
+static int range_index(lua_State *Lua)
 {
-   auto r = get_range(L, 1);
+   auto r = get_range(Lua, 1);
 
-   if (lua_type(L, 2) IS LUA_TSTRING) {
-      const char* key = lua_tostring(L, 2);
+   if (lua_type(Lua, 2) IS LUA_TSTRING) {
+      auto hash = pf::strhash(lua_tostring(Lua, 2));
 
-      // Properties
-      if (strcmp(key, "start") IS 0) {
-         lua_pushinteger(L, r->start);
-         return 1;
-      }
-      else if (strcmp(key, "stop") IS 0) {
-         lua_pushinteger(L, r->stop);
-         return 1;
-      }
-      else if (strcmp(key, "step") IS 0) {
-         lua_pushinteger(L, r->step);
-         return 1;
-      }
-      else if (strcmp(key, "inclusive") IS 0) {
-         lua_pushboolean(L, r->inclusive);
-         return 1;
-      }
-      else if (strcmp(key, "length") IS 0) {
-         lua_pushinteger(L, range_length(r));
-         return 1;
-      }
-      // Methods - return closures with range as upvalue
-      else if (strcmp(key, "contains") IS 0) {
-         lua_pushvalue(L, 1);  // Push the range userdata
-         lua_pushcclosure(L, range_contains, 1);
-         return 1;
-      }
-      else if (strcmp(key, "toTable") IS 0) {
-         lua_pushvalue(L, 1);  // Push the range userdata
-         lua_pushcclosure(L, range_totable, 1);
-         return 1;
+      switch(hash) {
+         case HASH_start:     lua_pushinteger(Lua, r->start); return 1;
+         case HASH_stop:      lua_pushinteger(Lua, r->stop); return 1;
+         case HASH_step:      lua_pushinteger(Lua, r->step); return 1;
+         case HASH_inclusive: lua_pushboolean(Lua, r->inclusive); return 1;
+         case HASH_length:    lua_pushinteger(Lua, range_length(r)); return 1;
+         case HASH_contains: // Methods - return closures with range as upvalue
+            lua_pushvalue(Lua, 1);  // Push the range userdata
+            lua_pushcclosure(Lua, range_contains, 1);
+            return 1;
+         case HASH_toTable:
+            lua_pushvalue(Lua, 1);  // Push the range userdata
+            lua_pushcclosure(Lua, range_totable, 1);
+            return 1;
+         case HASH_each:
+            // Function-style via library table: r:each(function(Value) ... end)
+
+            //lua_pushvalue(Lua, 1); // Arg1: Duplicate the range reference
+            lua_pushcfunction(Lua, range_each);
+            return 1;
       }
    }
 
-   lua_pushnil(L);
+   lua_pushnil(Lua);
    return 1;
 }
 
@@ -413,7 +465,7 @@ static int range_lib_call(lua_State *L)
       lj_err_caller(L, ErrMsg::NUMRNG);
       return 0;
    }
-  
+
    if (not lua_isnumber(L, 1)) {  // Validate start is a number
       lj_err_argt(L, 1, LUA_TNUMBER);
       return 0;
@@ -587,6 +639,7 @@ extern "C" int luaopen_range(lua_State *L)
    LJ_LIB_REG(L, "range", range);
 
    // At this point the range table is on the stack, add a metatable with __call
+
    lua_createtable(L, 0, 1);  // Create metatable for the library table
    lua_pushcfunction(L, range_lib_call);
    lua_setfield(L, -2, "__call");
