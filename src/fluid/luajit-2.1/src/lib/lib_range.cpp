@@ -25,20 +25,9 @@
 #include "lj_tab.h"
 #include "lj_str.h"
 #include "lib.h"
+#include "lib_range.h"
 
 #define LJLIB_MODULE_range
-
-//********************************************************************************************************************
-// Range structure - stored as userdata payload
-
-struct fluid_range {
-   int32_t start;     // Start index (always inclusive)
-   int32_t stop;      // End index (exclusive by default)
-   int32_t step;      // Step value (default: 1, or -1 for reverse)
-   bool inclusive;    // If true, stop is included (default: false)
-};
-
-static const char* RANGE_METATABLE = "Fluid.range";
 
 //********************************************************************************************************************
 // Helper to get range userdata from stack with type checking

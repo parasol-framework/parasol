@@ -357,10 +357,152 @@ function testRangeLiteralTypeCheck()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- String Slicing with Ranges
+
+function testStringSliceExclusive()
+   -- Test exclusive range string slicing
+   local s = "Hello, World!"
+   assert(s[{0..5}] is "Hello", "s[{0..5}] should be 'Hello', got '" .. s[{0..5}] .. "'")
+   assert(s[{7..12}] is "World", "s[{7..12}] should be 'World', got '" .. s[{7..12}] .. "'")
+end
+
+function testStringSliceInclusive()
+   -- Test inclusive range string slicing
+   local s = "Hello, World!"
+   assert(s[{0...4}] is "Hello", "s[{0...4}] should be 'Hello', got '" .. s[{0...4}] .. "'")
+   assert(s[{7...11}] is "World", "s[{7...11}] should be 'World', got '" .. s[{7...11}] .. "'")
+end
+
+function testStringSliceNegativeIndices()
+   -- Test negative indices (always inclusive per design doc)
+   local s = "Hello, World!"
+   assert(s[{-6..-1}] is "World!", "s[{-6..-1}] should be 'World!', got '" .. s[{-6..-1}] .. "'")
+   assert(s[{-1..-1}] is "!", "s[{-1..-1}] should be '!', got '" .. s[{-1..-1}] .. "'")
+
+   local s2 = "ABCDE"
+   assert(s2[{-3..-1}] is "CDE", "s2[{-3..-1}] should be 'CDE', got '" .. s2[{-3..-1}] .. "'")
+   assert(s2[{-5..-1}] is "ABCDE", "s2[{-5..-1}] should be 'ABCDE', got '" .. s2[{-5..-1}] .. "'")
+end
+
+function testStringSliceOutOfBounds()
+   -- Test out-of-bounds ranges return empty string
+   local s = "Hello"
+   assert(s[{10..20}] is "", "out of bounds range should return empty string")
+   assert(s[{5..10}] is "", "range starting at end should return empty string")
+end
+
+function testStringSliceEmptyRange()
+   -- Test empty ranges (exclusive with same start/stop)
+   local s = "Hello"
+   assert(s[{2..2}] is "", "{2..2} should return empty string (exclusive)")
+   assert(s[{2...2}] is "l", "{2...2} should return 'l' (inclusive)")
+end
+
+function testStringSliceSingleChar()
+   -- Test numeric indexing for single character access
+   local s = "Hello"
+   assert(s[0] is "H", "s[0] should be 'H', got '" .. tostring(s[0]) .. "'")
+   assert(s[1] is "e", "s[1] should be 'e'")
+   assert(s[4] is "o", "s[4] should be 'o'")
+   assert(s[-1] is "o", "s[-1] should be 'o' (last char)")
+   assert(s[-2] is "l", "s[-2] should be 'l'")
+end
+
+function testStringSliceWithVariable()
+   -- Test string slicing with range stored in variable
+   local s = "Hello, World!"
+   local r = {0..5}
+   assert(s[r] is "Hello", "s[r] with r={0..5} should be 'Hello'")
+
+   local r2 = range(7, 12)
+   assert(s[r2] is "World", "s[r2] with r2=range(7,12) should be 'World'")
+end
+
+function testStringSliceBoundsClipping()
+   -- Test that ranges are clipped to string bounds
+   local s = "Hello"
+   assert(s[{0..100}] is "Hello", "range extending past end should be clipped")
+   assert(s[{3..100}] is "lo", "range starting mid-string extending past end should be clipped")
+end
+
+function testStringMethodsStillWork()
+   -- Ensure string methods still work after adding range support
+   local s = "hello"
+   assert(s.upper(s) is "HELLO", "string.upper should still work")
+   assert(s.sub(s, 0, 3) is "hel", "string.sub should still work")
+   assert(s.len(s) is 5, "string.len should still work")
+   assert(s.reverse(s) is "olleh", "string.reverse should still work")
+end
+
+function testStringSliceMixedAccess()
+   -- Test mixing range access with other string operations
+   local s = "Hello, World!"
+   local slice = s[{0..5}]
+   assert(slice.upper(slice) is "HELLO", "should be able to call methods on sliced result")
+   assert(#slice is 5, "sliced result should have correct length")
+end
+
+function testStringSliceInvalidKey()
+   -- Test that invalid key types return nil (not errors)
+   local s = "Hello"
+   assert(s[{}] is nil, "empty table key should return nil")
+   assert(s[true] is nil, "boolean key should return nil")
+end
+
+function testStringSliceNilIndex()
+   -- Test nil index returns nil
+   local s = "Hello"
+   local result = s[nil]
+   assert(result is nil, "nil index should return nil")
+end
+
+function testRangeConstructorTypeErrors()
+   -- Test that range constructor throws on invalid types
+   local ok, err = pcall(function() return range("a", 5) end)
+   assert(ok is false, "string start should throw error")
+
+   ok, err = pcall(function() return range(0, "b") end)
+   assert(ok is false, "string stop should throw error")
+
+   ok, err = pcall(function() return range({}, 5) end)
+   assert(ok is false, "table start should throw error")
+
+   ok, err = pcall(function() return range(0, {}) end)
+   assert(ok is false, "table stop should throw error")
+end
+
+function testRangeLiteralTypeErrors()
+   -- Test that range literals with non-numeric values throw errors at runtime
+   -- The parser interprets {a..b} as a range literal, so string variables
+   -- will cause a runtime error when the range() function is called
+
+   local ok, err = pcall(function()
+      local a = "x"
+      local b = "y"
+      return {a..b}  -- Parser treats this as range literal, throws at runtime
+   end)
+   assert(ok is false, "range literal with string variables should throw")
+
+   -- Direct range() call with strings should also throw
+   ok, err = pcall(function()
+      local bad = range("start", "stop")
+      return bad
+   end)
+   assert(ok is false, "range with string arguments should throw")
+end
+
+function testStringIndexOutOfBounds()
+   -- Test single character index out of bounds returns nil
+   local s = "Hello"
+   assert(s[100] is nil, "index beyond string length should return nil")
+   assert(s[-100] is nil, "large negative index should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
-      -- Phase 1: Constructor and basic operations
+      -- Constructor and basic operations
       "testRangeConstructorBasic",
       "testRangeConstructorInclusive",
       "testRangeConstructorWithStep",
@@ -385,7 +527,7 @@ return {
       "testRangeErrorNonInteger",
       "testRangeErrorNilValues",
       "testRangeErrorInvalidStep",
-      -- Phase 2: Range literal syntax
+      -- Range literal syntax
       "testRangeLiteralExclusive",
       "testRangeLiteralInclusive",
       "testRangeLiteralReverse",
@@ -397,7 +539,23 @@ return {
       "testRangeLiteralWithExpressions",
       "testRangeLiteralNegativeValues",
       "testRangeLiteralZeroRange",
-      "testRangeLiteralTypeCheck"
+      "testRangeLiteralTypeCheck",
+      -- String slicing with ranges
+      "testStringSliceExclusive",
+      "testStringSliceInclusive",
+      "testStringSliceNegativeIndices",
+      "testStringSliceOutOfBounds",
+      "testStringSliceEmptyRange",
+      "testStringSliceSingleChar",
+      "testStringSliceWithVariable",
+      "testStringSliceBoundsClipping",
+      "testStringMethodsStillWork",
+      "testStringSliceMixedAccess",
+      "testStringSliceInvalidKey",
+      "testStringSliceNilIndex",
+      "testRangeConstructorTypeErrors",
+      "testRangeLiteralTypeErrors",
+      "testStringIndexOutOfBounds"
    },
    init = function(Folder)
    end,
