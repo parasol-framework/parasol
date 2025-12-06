@@ -1,6 +1,6 @@
 -- Flute test suite for Fluid Range type
 ----------------------------------------------------------------------------------------------------------------------
-   
+
 function testNonRangeTable()
    -- Verify that the parser isn't confused by .. in a non-range table
 
@@ -820,6 +820,243 @@ function testRangeEachReverseEarlyTermination()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Range filter() method tests
+
+function testRangeFilterBasic()
+   local result = {1..10}:filter(i => i % 2 is 0)
+   assert(#result is 4, "filter even numbers from {1..10} should have 4 elements, got " .. #result)
+   assert(result[0] is 2, "first even should be 2")
+   assert(result[1] is 4, "second even should be 4")
+   assert(result[3] is 8, "fourth even should be 8")
+end
+
+function testRangeFilterNoneMatch()
+   local result = {1..5}:filter(i => i > 100)
+   assert(#result is 0, "filter with no matches should return empty table")
+end
+
+function testRangeFilterAllMatch()
+   local result = {1..5}:filter(i => i > 0)
+   assert(#result is 4, "filter where all match should have 4 elements, got " .. #result)
+end
+
+function testRangeFilterEmpty()
+   local result = {5..5}:filter(i => true)
+   assert(#result is 0, "filter on empty range should return empty table")
+end
+
+function testRangeFilterInclusive()
+   local result = {1...5}:filter(i => i % 2 is 1)
+   assert(#result is 3, "filter odd from {1...5} should have 3 elements, got " .. #result)
+   assert(result[0] is 1)
+   assert(result[1] is 3)
+   assert(result[2] is 5)
+end
+
+function testRangeFilterReverse()
+   -- {10..5} is exclusive reverse: 10, 9, 8, 7, 6 (excludes 5)
+   -- Filtering i > 7 gives: 10, 9, 8
+   local result = {10..5}:filter(i => i > 7)
+   assert(#result is 3, "filter from reverse range should work, got " .. #result)
+   assert(result[0] is 10, "first should be 10")
+   assert(result[1] is 9, "second should be 9")
+   assert(result[2] is 8, "third should be 8")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range reduce() method tests
+
+function testRangeReduceSum()
+   local sum = {1..6}:reduce(0, (acc, i) => acc + i)
+   assert(sum is 15, "reduce sum of {1..6} should be 15, got " .. sum)
+end
+
+function testRangeReduceProduct()
+   local product = {1...5}:reduce(1, (acc, i) => acc * i)
+   assert(product is 120, "reduce product of {1...5} should be 120, got " .. product)
+end
+
+function testRangeReduceEmpty()
+   local result = {5..5}:reduce(42, (acc, i) => acc + i)
+   assert(result is 42, "reduce on empty range should return initial value")
+end
+
+function testRangeReduceStringConcat()
+   local str = {1..4}:reduce("", (acc, i) => acc .. tostring(i))
+   assert(str is "123", "reduce string concat should be '123', got '" .. str .. "'")
+end
+
+function testRangeReduceReverse()
+   local result = {5...1}:reduce({}, function(acc, i)
+      acc[#acc] = i
+      return acc
+   end)
+   assert(#result is 5, "reduce on reverse range should have 5 elements")
+   assert(result[0] is 5, "first should be 5")
+   assert(result[4] is 1, "last should be 1")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range map() method tests
+
+function testRangeMapBasic()
+   local result = {1..5}:map(i => i * 2)
+   assert(#result is 4, "map should have 4 elements, got " .. #result)
+   assert(result[0] is 2, "first should be 2")
+   assert(result[1] is 4, "second should be 4")
+   assert(result[3] is 8, "fourth should be 8")
+end
+
+function testRangeMapToStrings()
+   local result = {1..4}:map(i => "n" .. tostring(i))
+   assert(result[0] is "n1")
+   assert(result[1] is "n2")
+   assert(result[2] is "n3")
+end
+
+function testRangeMapEmpty()
+   local result = {5..5}:map(i => i * 2)
+   assert(#result is 0, "map on empty range should return empty table")
+end
+
+function testRangeMapInclusive()
+   local result = {1...3}:map(i => i * i)
+   assert(#result is 3, "map on {1...3} should have 3 elements")
+   assert(result[0] is 1)
+   assert(result[1] is 4)
+   assert(result[2] is 9)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range take() method tests
+
+function testRangeTakeBasic()
+   local result = {1..100}:take(5)
+   assert(#result is 5, "take(5) should have 5 elements, got " .. #result)
+   assert(result[0] is 1)
+   assert(result[4] is 5)
+end
+
+function testRangeTakeMoreThanAvailable()
+   local result = {1..4}:take(10)
+   assert(#result is 3, "take(10) from {1..4} should have 3 elements, got " .. #result)
+end
+
+function testRangeTakeZero()
+   local result = {1..10}:take(0)
+   assert(#result is 0, "take(0) should return empty table")
+end
+
+function testRangeTakeFromReverse()
+   -- {10..0} is exclusive reverse: 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 (excludes 0)
+   -- Taking 3 gives: 10, 9, 8
+   local result = {10..0}:take(3)
+   assert(#result is 3, "take from reverse should have 3 elements")
+   assert(result[0] is 10, "first should be 10")
+   assert(result[1] is 9, "second should be 9")
+   assert(result[2] is 8, "third should be 8")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range any() method tests
+
+function testRangeAnyTrue()
+   assert({1..10}:any(i => i > 5) is true, "any(i > 5) on {1..10} should be true")
+end
+
+function testRangeAnyFalse()
+   assert({1..10}:any(i => i > 100) is false, "any(i > 100) on {1..10} should be false")
+end
+
+function testRangeAnyEmpty()
+   assert({5..5}:any(i => true) is false, "any on empty range should be false")
+end
+
+function testRangeAnyFirstElement()
+   local called_count = 0
+   {1..100}:any(function(i)
+      called_count += 1
+      return i is 1
+   end)
+   assert(called_count is 1, "any should stop on first match, called " .. called_count .. " times")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range all() method tests
+
+function testRangeAllTrue()
+   assert({1..10}:all(i => i > 0) is true, "all(i > 0) on {1..10} should be true")
+end
+
+function testRangeAllFalse()
+   assert({1..10}:all(i => i < 5) is false, "all(i < 5) on {1..10} should be false")
+end
+
+function testRangeAllEmpty()
+   assert({5..5}:all(i => false) is true, "all on empty range should be true (vacuous truth)")
+end
+
+function testRangeAllStopsOnFail()
+   local called_count = 0
+   {1..100}:all(function(i)
+      called_count += 1
+      return i < 5
+   end)
+   assert(called_count is 5, "all should stop on first failure, called " .. called_count .. " times")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range find() method tests
+
+function testRangeFindBasic()
+   local found = {1..10}:find(i => i > 5)
+   assert(found is 6, "find(i > 5) should return 6, got " .. tostring(found))
+end
+
+function testRangeFindNotFound()
+   local found = {1..10}:find(i => i > 100)
+   assert(found is nil, "find with no match should return nil")
+end
+
+function testRangeFindEmpty()
+   local found = {5..5}:find(i => true)
+   assert(found is nil, "find on empty range should return nil")
+end
+
+function testRangeFindFirst()
+   local found = {1..10}:find(i => i % 2 is 0)
+   assert(found is 2, "find first even should be 2, got " .. tostring(found))
+end
+
+function testRangeFindReverse()
+   local found = {10..0}:find(i => i < 5)
+   assert(found is 4, "find in reverse range should work, got " .. tostring(found))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Method chaining tests
+
+function testRangeMethodChaining()
+   -- Use reduce directly on a range (filter returns a table, so can't chain reduce on it)
+   -- Sum even numbers by filtering in the reducer
+   local sum = {1..20}:reduce(0, function(acc, i)
+      if i % 2 is 0 then return acc + i end
+      return acc
+   end)
+   -- Even numbers 2,4,6,8,10,12,14,16,18 = 90
+   assert(sum is 90, "reduce with even filter should be 90, got " .. sum)
+end
+
+function testRangeMapFilterChain()
+   -- Note: map/filter return tables, not ranges, so chaining range methods doesn't work
+   local doubled = {1..6}:map(i => i * 2)
+   -- doubled = {2, 4, 6, 8, 10}
+   assert(#doubled is 5, "map should produce 5 elements")
+   assert(doubled[0] is 2)
+   assert(doubled[4] is 10)
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
@@ -905,7 +1142,49 @@ return {
       "testRangeEachChaining",
       "testRangeEachWithVariable",
       "testRangeEachNegativeRange",
-      "testRangeEachReverseEarlyTermination"
+      "testRangeEachReverseEarlyTermination",
+      -- Range filter() method
+      "testRangeFilterBasic",
+      "testRangeFilterNoneMatch",
+      "testRangeFilterAllMatch",
+      "testRangeFilterEmpty",
+      "testRangeFilterInclusive",
+      "testRangeFilterReverse",
+      -- Range reduce() method
+      "testRangeReduceSum",
+      "testRangeReduceProduct",
+      "testRangeReduceEmpty",
+      "testRangeReduceStringConcat",
+      "testRangeReduceReverse",
+      -- Range map() method
+      "testRangeMapBasic",
+      "testRangeMapToStrings",
+      "testRangeMapEmpty",
+      "testRangeMapInclusive",
+      -- Range take() method
+      "testRangeTakeBasic",
+      "testRangeTakeMoreThanAvailable",
+      "testRangeTakeZero",
+      "testRangeTakeFromReverse",
+      -- Range any() method
+      "testRangeAnyTrue",
+      "testRangeAnyFalse",
+      "testRangeAnyEmpty",
+      "testRangeAnyFirstElement",
+      -- Range all() method
+      "testRangeAllTrue",
+      "testRangeAllFalse",
+      "testRangeAllEmpty",
+      "testRangeAllStopsOnFail",
+      -- Range find() method
+      "testRangeFindBasic",
+      "testRangeFindNotFound",
+      "testRangeFindEmpty",
+      "testRangeFindFirst",
+      "testRangeFindReverse",
+      -- Method chaining
+      "testRangeMethodChaining",
+      "testRangeMapFilterChain"
    },
    init = function(Folder)
    end,
