@@ -491,6 +491,77 @@ static int range_lib_call(lua_State* L)
 }
 
 //********************************************************************************************************************
+// Iterator function for range iteration
+// Called repeatedly by the for loop until it returns nil
+//
+// Generic for loop calls: iterator(state, control_var)
+// We use: iterator(nil, previous_value) where previous_value is what we returned last time
+
+static int range_iterator_next(lua_State* L)
+{
+   // Upvalue 1: the range userdata
+   fluid_range* r = (fluid_range*)lua_touserdata(L, lua_upvalueindex(1));
+   if (not r) return 0;
+
+   // Argument 2 is the control variable (previous return value, or initial value on first call)
+   // For generic for: f(s, var) where var is the control variable
+   int32_t current;
+   if (lua_isnil(L, 2)) {
+      // First iteration - return the start value
+      current = r->start;
+   }
+   else {
+      // Subsequent iterations - advance from previous value
+      current = (int32_t)lua_tointeger(L, 2) + r->step;
+   }
+
+   // Calculate the limit
+   int32_t limit = r->stop;
+   if (not r->inclusive) {
+      // For exclusive ranges, adjust the limit
+      if (r->step > 0) {
+         limit = r->stop - 1;
+      }
+      else {
+         limit = r->stop + 1;
+      }
+   }
+
+   // Check if we've passed the end
+   if (r->step > 0) {
+      if (current > limit) return 0;  // Iteration complete
+   }
+   else {
+      if (current < limit) return 0;  // Iteration complete
+   }
+
+   // Return the current value (becomes the new control variable)
+   lua_pushinteger(L, current);
+   return 1;
+}
+
+//********************************************************************************************************************
+// __call metamethod for range userdata
+// Enables `for i in range do` syntax by returning iterator, state, initial value
+
+static int range_call(lua_State* L)
+{
+   // Argument 1 is the range userdata itself
+   fluid_range* r = (fluid_range*)luaL_checkudata(L, 1, RANGE_METATABLE);
+   if (not r) {
+      lj_err_caller(L, ErrMsg::BADVAL);
+      return 0;
+   }
+
+   // Return iterator function (closure with range as upvalue), nil state, nil initial
+   lua_pushvalue(L, 1);  // Push the range userdata as upvalue
+   lua_pushcclosure(L, range_iterator_next, 1);  // Create iterator closure
+   lua_pushnil(L);       // State (not used, range is in upvalue)
+   lua_pushnil(L);       // Initial control variable (nil triggers first iteration logic)
+   return 3;
+}
+
+//********************************************************************************************************************
 
 #include "lj_libdef.h"
 
@@ -518,6 +589,9 @@ extern "C" int luaopen_range(lua_State* L)
 
    lua_pushcfunction(L, range_index);
    lua_setfield(L, -2, "__index");
+
+   lua_pushcfunction(L, range_call);
+   lua_setfield(L, -2, "__call");
 
    lua_pop(L, 1);  // Pop metatable
 

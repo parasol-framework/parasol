@@ -499,6 +499,121 @@ function testStringIndexOutOfBounds()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Range Iteration (Phase 4)
+
+function testRangeIterationExclusive()
+   -- Test forward exclusive iteration: {1..6} iterates 1,2,3,4,5
+   local sum = 0
+   for i in {1..6}() do
+      sum += i
+   end
+   assert(sum is 15, "sum of {1..6} should be 15 (1+2+3+4+5), got " .. sum)
+end
+
+function testRangeIterationInclusive()
+   -- Test forward inclusive iteration: {1...5} iterates 1,2,3,4,5
+   local sum = 0
+   for i in {1...5}() do
+      sum += i
+   end
+   assert(sum is 15, "sum of {1...5} should be 15, got " .. sum)
+end
+
+function testRangeIterationReverse()
+   -- Test reverse iteration: {5..1} iterates 5,4,3,2 (exclusive of 1)
+   local result = {}
+   for i in {5..1}() do
+      result[#result] = i
+   end
+   assert(#result is 4, "reverse {5..1} should have 4 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[3] is 2, "last element should be 2")
+end
+
+function testRangeIterationReverseInclusive()
+   -- Test reverse inclusive iteration: {5...1} iterates 5,4,3,2,1
+   local result = {}
+   for i in {5...1}() do
+      result[#result] = i
+   end
+   assert(#result is 5, "reverse {5...1} should have 5 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeIterationWithStep()
+   -- Test iteration with custom step
+   local result = {}
+   for i in range(0, 10, false, 2)() do
+      result[#result] = i
+   end
+   assert(#result is 5, "range(0,10,false,2) should have 5 elements, got " .. #result)
+   assert(result[0] is 0, "first element should be 0")
+   assert(result[1] is 2, "second element should be 2")
+   assert(result[4] is 8, "last element should be 8")
+end
+
+function testRangeIterationWithStepInclusive()
+   -- Test inclusive iteration with custom step
+   local result = {}
+   for i in range(0, 10, true, 2)() do
+      result[#result] = i
+   end
+   assert(#result is 6, "range(0,10,true,2) should have 6 elements, got " .. #result)
+   assert(result[5] is 10, "last element should be 10")
+end
+
+function testRangeIterationEmpty()
+   -- Test empty range iteration
+   local count = 0
+   for i in {5..5}() do
+      count += 1
+   end
+   assert(count is 0, "empty range {5..5} should iterate 0 times, got " .. count)
+end
+
+function testRangeIterationSingleElement()
+   -- Test single element range iteration
+   local count = 0
+   local value = nil
+   for i in {5...5}() do
+      count += 1
+      value = i
+   end
+   assert(count is 1, "single element range {5...5} should iterate once, got " .. count)
+   assert(value is 5, "single element should be 5")
+end
+
+function testRangeIterationWithVariable()
+   -- Test iteration using range stored in variable
+   local r = {0..5}
+   local sum = 0
+   for i in r() do
+      sum += i
+   end
+   assert(sum is 10, "sum of {0..5} via variable should be 10, got " .. sum)
+end
+
+function testRangeIterationBreak()
+   -- Test early termination with break
+   local sum = 0
+   for i in {1..100}() do
+      if i > 5 then break end
+      sum += i
+   end
+   assert(sum is 15, "sum with break at 5 should be 15, got " .. sum)
+end
+
+function testRangeIteratorReturnsFunction()
+   -- Test that calling a range returns iterator components
+   local r = {1..5}
+   local iter, state, init = r()
+   assert(type(iter) is "function", "first return should be function")
+   assert(state is nil, "state should be nil")
+   assert(init is nil, "initial value should be nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
@@ -555,7 +670,19 @@ return {
       "testStringSliceNilIndex",
       "testRangeConstructorTypeErrors",
       "testRangeLiteralTypeErrors",
-      "testStringIndexOutOfBounds"
+      "testStringIndexOutOfBounds",
+      -- Range iteration
+      "testRangeIterationExclusive",
+      "testRangeIterationInclusive",
+      "testRangeIterationReverse",
+      "testRangeIterationReverseInclusive",
+      "testRangeIterationWithStep",
+      "testRangeIterationWithStepInclusive",
+      "testRangeIterationEmpty",
+      "testRangeIterationSingleElement",
+      "testRangeIterationWithVariable",
+      "testRangeIterationBreak",
+      "testRangeIteratorReturnsFunction"
    },
    init = function(Folder)
    end,
