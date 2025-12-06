@@ -22,9 +22,7 @@ local function build_source(Signature)
 end
 
 local function compile_signature(Signature)
-   local chunk, message = load(build_source(Signature))
-   assert(chunk, message ?? "Compilation failed")
-   local factory = chunk()
+   local factory = exec(build_source(Signature))
    assert(type(factory) is "function", "Chunk did not produce a function")
    return factory
 end
@@ -45,9 +43,7 @@ function testMixedParameters()
 end
 
 local function assert_compiles(Signature)
-   local chunk, message = load(build_source(Signature))
-   assert(chunk, message ?? "Expected signature to compile")
-   local fn = chunk()
+   local fn = exec(build_source(Signature))
    assert(type(fn) is "function", "Expected a function from compiled chunk")
 end
 
@@ -70,9 +66,11 @@ function testAllTypeNames()
 end
 
 function testUnknownTypeRejected()
-   local chunk, message = load("local function rejected(Value:unknown_type) return Value end return rejected")
-   assert(chunk is nil, "Expected unknown type name to prevent compilation")
-   assert(message ?? false, "Expected an error message for unknown type")
+   local ex, result = catch(function()
+      return exec("local function rejected(Value:unknown_type) return Value end return rejected")
+   end)
+
+   assert(ex, "Expected unknown type name to prevent compilation")
 end
 
 return {

@@ -196,14 +196,20 @@ public:
    lua_State *L;            // Lua state.
    TValue     tokval;       // Current token value.
    TValue     lookaheadval; // Lookahead token value.
-   const char *p;           // Current position in input buffer.
-   const char *pe;          // End of input buffer.
-   LexChar    c;            // Current character.
+   std::string_view source; // Complete source text (immutable).
+   size_t     pos = 0;      // Current position in source.
+   LexChar    c;            // Current character (cached).
    LexToken   tok;          // Current token.
    LexToken   lookahead;    // Lookahead token.
    SBuf       sb;           // String buffer for tokens.
-   lua_Reader rfunc;        // Reader callback.
-   void *     rdata;        // Reader callback data.
+
+   // Bytecode reader compatibility fields (used only by lj_bcread.cpp)
+   const char *p = nullptr;  // Current position in bytecode buffer.
+   const char *pe = nullptr; // End of bytecode buffer.
+   lua_Reader rfunc = nullptr; // Reader callback for bytecode streaming.
+   void *rdata = nullptr;    // Reader callback data.
+   int endmark = 0;          // Trust bytecode end marker.
+
    BCLine     linenumber;   // Input line counter.
    BCLine     lastline;     // Line of last token.
    GCstr *    chunkname;    // Current chunk name (interned string).
@@ -218,12 +224,9 @@ public:
    uint32_t   level;         // Syntactical nesting level.
    uint32_t   ternary_depth; // Number of pending ternary operators.
    uint8_t    pending_if_empty_colon; // Tracks ?: misuse after ??.
-   uint8_t    pending_dotdot;  // Set when '..' detected at buffer boundary in lex_number
-   int        endmark;       // Trust bytecode end marker, even if not at EOF.
    int        is_bytecode;   // Set to 1 if input is bytecode, 0 if source text.
 
    size_t   current_offset = 0;
-   size_t   next_offset = 0;
    size_t   line_start_offset = 0;
 
    BCLine   current_token_line = 1;
@@ -242,9 +245,14 @@ public:
    std::deque<BufferedToken> buffered_tokens;
 
    LexState() = default;  // Default constructor for bytecode reader usage
-   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);
-   LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Constructor for direct bytecode reading
+   LexState(lua_State* L, std::string_view Source, std::string_view Chunkarg, std::optional<std::string_view> Mode = std::nullopt);
+   LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view Chunkarg, std::optional<std::string_view> Mode);  // Bytecode streaming constructor
+   LexState(lua_State* L, const char* BytecodePtr, GCstr* ChunkName);  // Direct bytecode reading (for embedded bytecode)
    ~LexState();
+
+   // Character stream operations
+   [[nodiscard]] LexChar peek(size_t Offset = 0) const noexcept;
+   [[nodiscard]] LexChar peek_next() const noexcept;
 
    void next();
    LexToken lookahead_token();

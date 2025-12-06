@@ -43,14 +43,10 @@ constexpr int LUA_REFNIL = (-1);
 
 extern int (luaL_ref) (lua_State *L, int t);
 extern void (luaL_unref) (lua_State *L, int t, int ref);
-extern int (luaL_loadfile) (lua_State *L, const char *filename);
 extern int (luaL_loadbuffer) (lua_State *L, const char *buff, size_t sz, const char *name);
 extern lua_State *(luaL_newstate) (class objScript *);
 extern const char *(luaL_gsub) (lua_State *L, const char *s, const char *p, const char *r);
 extern const char *(luaL_findtable) (lua_State *L, int idx, const char *fname, int szhint);
-// From Lua 5.2.
-extern int (luaL_loadfilex) (lua_State *L, const char *filename, const char *mode);
-extern int (luaL_loadbufferx) (lua_State *L, const char *buff, std::size_t sz, const char *name, const char *mode);
 extern void luaL_traceback (lua_State *L, lua_State *L1, const char *msg, int level);
 extern void (luaL_setfuncs) (lua_State *L, const luaL_Reg *l, int nup);
 extern void (luaL_pushmodule) (lua_State *L, const char *modname, int sizehint);
@@ -87,10 +83,6 @@ inline long luaL_optlong(lua_State *L, int N, long D) {
 
 inline const char *luaL_typename(lua_State *L, int I) {
    return lua_typename(L, lua_type(L, I));
-}
-
-inline int luaL_dofile(lua_State *L, const char *Fn) {
-   return luaL_loadfile(L, Fn) or lua_pcall(L, 0, LUA_MULTRET, 0);
 }
 
 inline void luaL_getmetatable(lua_State *L, const char *N) {

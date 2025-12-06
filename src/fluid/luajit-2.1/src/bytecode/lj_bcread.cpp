@@ -32,6 +32,7 @@
 
 // Input buffer handling
 
+//********************************************************************************************************************
 // Throw reader error.
 
 static LJ_NOINLINE void bcread_error(LexState *State, ErrMsg em)
@@ -44,13 +45,14 @@ static LJ_NOINLINE void bcread_error(LexState *State, ErrMsg em)
    lj_err_throw(L, LUA_ERRSYNTAX);
 }
 
+//********************************************************************************************************************
 // Refill buffer.
 
 static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
 {
    State->assert_condition(len != 0, "empty refill");
-   if (len > LJ_MAX_BUF or State->c < 0)
-      bcread_error(State, ErrMsg::BCBAD);
+   if (len > LJ_MAX_BUF or State->c < 0) bcread_error(State, ErrMsg::BCBAD);
+
    do {
       const char* buf;
       size_t sz;
@@ -91,6 +93,7 @@ static LJ_NOINLINE void bcread_fill(LexState *State, MSize len, int need)
    } while ((MSize)(State->pe - State->p) < len);
 }
 
+//********************************************************************************************************************
 // Need a certain number of bytes.
 
 static LJ_AINLINE void bcread_need(LexState *State, MSize len)
@@ -99,6 +102,7 @@ static LJ_AINLINE void bcread_need(LexState *State, MSize len)
       bcread_fill(State, len, 1);
 }
 
+//********************************************************************************************************************
 // Want to read up to a certain number of bytes, but may need less.
 
 static LJ_AINLINE void bcread_want(LexState *State, MSize len)
@@ -107,6 +111,7 @@ static LJ_AINLINE void bcread_want(LexState *State, MSize len)
       bcread_fill(State, len, 0);
 }
 
+//********************************************************************************************************************
 // Return memory block from buffer.
 
 static LJ_AINLINE uint8_t* bcread_mem(LexState *State, MSize len)
@@ -117,6 +122,7 @@ static LJ_AINLINE uint8_t* bcread_mem(LexState *State, MSize len)
    return p;
 }
 
+//********************************************************************************************************************
 // Copy memory block from buffer.
 
 static void bcread_block(LexState *State, void* q, MSize len)
@@ -124,6 +130,7 @@ static void bcread_block(LexState *State, void* q, MSize len)
    memcpy(q, bcread_mem(State, len), len);
 }
 
+//********************************************************************************************************************
 // Read byte from buffer.
 
 static LJ_AINLINE uint32_t bcread_byte(LexState *State)
@@ -287,6 +294,7 @@ static void bcread_kgc(LexState *State, GCproto *pt, MSize sizekgc)
    }
 }
 
+//********************************************************************************************************************
 // Read number constants of a prototype.
 
 static void bcread_knum(LexState *State, GCproto *pt, MSize sizekn)
@@ -367,15 +375,15 @@ GCproto *lj_bcread_proto(LexState *State)
    }
 
    // Calculate total size of prototype including all colocated arrays.
-   sizept = (MSize)sizeof(GCproto) +
-      sizebc * (MSize)sizeof(BCIns) +
-      sizekgc * (MSize)sizeof(GCRef);
+
+   sizept = (MSize)sizeof(GCproto) + sizebc * (MSize)sizeof(BCIns) + sizekgc * (MSize)sizeof(GCRef);
    sizept = (sizept + (MSize)sizeof(TValue) - 1) & ~((MSize)sizeof(TValue) - 1);
    ofsk = sizept; sizept += sizekn * (MSize)sizeof(TValue);
    ofsuv = sizept; sizept += ((sizeuv + 1) & ~1) * 2;
    ofsdbg = sizept; sizept += sizedbg;
 
    // Allocate prototype object and initialize its fields.
+
    pt = (GCproto*)lj_mem_newgco(State->L, (MSize)sizept);
    pt->gct = ~LJ_TPROTO;
    pt->numparams = (uint8_t)numparams;
@@ -392,18 +400,22 @@ GCproto *lj_bcread_proto(LexState *State)
    setgcref(pt->chunkname, obj2gco(State->chunkname));
 
    // Close potentially uninitialized gap between bc and kgc.
+
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (sizekgc + 1)) = 0;
 
    // Read bytecode instructions and upvalue refs.
+
    bcread_bytecode(State, pt, sizebc);
    bcread_uv(State, pt, sizeuv);
 
    // Read constants.
+
    bcread_kgc(State, pt, sizekgc);
    pt->sizekgc = sizekgc;
    bcread_knum(State, pt, sizekn);
 
    // Read and initialize debug info.
+
    pt->firstline = firstline;
    pt->numline = numline;
    if (sizedbg) {
@@ -421,6 +433,7 @@ GCproto *lj_bcread_proto(LexState *State)
    return pt;
 }
 
+//********************************************************************************************************************
 // Read and check header of bytecode dump.
 
 static int bcread_header(LexState *State)
@@ -439,6 +452,7 @@ static int bcread_header(LexState *State)
       return 0;
 #endif
    }
+
    if ((flags & BCDUMP_F_STRIP)) {
       State->chunkname = lj_str_newz(State->L, State->chunkarg);
    }
