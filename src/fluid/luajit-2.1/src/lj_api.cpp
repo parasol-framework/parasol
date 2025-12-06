@@ -38,8 +38,7 @@ static TValue * index2adr(lua_State *L, int idx)
       return o < L->top ? o : niltv(L);
    }
    else if (idx > LUA_REGISTRYINDEX) {
-      lj_checkapi(idx != 0 and -idx <= L->top - L->base,
-         "bad stack slot %d", idx);
+      lj_checkapi(idx != 0 and -idx <= L->top - L->base, "bad stack slot %d", idx);
       return L->top + idx;
    }
    else if (idx == LUA_GLOBALSINDEX) {

@@ -179,6 +179,7 @@ private:
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_result_filter_expr(const ResultFilterPayload& payload);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
+   ParserResult<ExpDesc> emit_range_expr(const RangeExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);

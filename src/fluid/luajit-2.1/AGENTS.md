@@ -4,9 +4,12 @@ This file captures practices and gotchas observed while maintaining the LuaJIT 2
 
 **Note:** For parser-specific implementation details, register allocation, operator implementation, and debugging strategies, see [`src/parser/AGENTS.md`](src/parser/AGENTS.md).
 
+**Note:** For library system details including LJLIB_* macros, buildvm code generation, fast function implementation, and JIT recording, see [`src/lib/AGENTS.md`](src/lib/AGENTS.md).
+
 ## Repository Layout Highlights
 - `src/`: Upstream LuaJIT sources (parser, VM, JIT engine) with Parasol-specific modernisations
 - `src/parser/`: C++20 refactored parser (see [`src/parser/AGENTS.md`](src/parser/AGENTS.md) for structure details)
+- `src/lib/`: Library implementations with LJLIB_* macros (see [`src/lib/AGENTS.md`](src/lib/AGENTS.md) for buildvm and fast function details)
 - `src/fluid/tests/`: Fluid regression tests exercise the embedded LuaJIT runtime
 - [`BYTECODE.md`](BYTECODE.md): Complete bytecode instruction reference with control-flow semantics for parser/emitter work
 - CMake writes generated headers, the VM object/assembly, and host helpers under `build/agents/src/fluid/luajit-generated/`. The final static library ends up in `build/agents/luajit-2.1/lib/`.

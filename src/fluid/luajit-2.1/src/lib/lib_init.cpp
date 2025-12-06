@@ -13,6 +13,8 @@
 #include "lj_arch.h"
 #include "runtime/lj_thunk.h"
 
+extern "C" int luaopen_range(lua_State* L);
+
 static const luaL_Reg lj_lib_load[] = {
   { "",               luaopen_base },
   { LUA_TABLIBNAME,   luaopen_table },
@@ -21,6 +23,7 @@ static const luaL_Reg lj_lib_load[] = {
   { LUA_DBLIBNAME,    luaopen_debug },
   { LUA_BITLIBNAME,   luaopen_bit },
   { LUA_JITLIBNAME,   luaopen_jit },
+  { "range",          luaopen_range },
   { nullptr,      nullptr }
 };
 

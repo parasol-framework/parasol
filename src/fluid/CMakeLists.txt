@@ -122,6 +122,7 @@ set (LJLIB_C
    "${LUAJIT_SRC}/lib/lib_bit.cpp"
    "${LUAJIT_SRC}/lib/lib_string.cpp"
    "${LUAJIT_SRC}/lib/lib_table.cpp"
+   "${LUAJIT_SRC}/lib/lib_range.cpp"
    "${LUAJIT_SRC}/lib/lib_debug.cpp"
    "${LUAJIT_SRC}/lib/lib_jit.cpp"
 )
@@ -600,6 +601,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/lib/lib_init.cpp"
    "${LUAJIT_SRC}/lib/lib_jit.cpp"
    "${LUAJIT_SRC}/lib/lib_math.cpp"
+   "${LUAJIT_SRC}/lib/lib_range.cpp"
    "${LUAJIT_SRC}/lib/lib_string.cpp"
    "${LUAJIT_SRC}/lib/lib_table.cpp"
    "${LUAJIT_SRC}/bytecode/lj_bc.cpp"
@@ -661,7 +663,7 @@ set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions
    unicode ellipsis safe_nav close type_annotations jit  pipe result_filter
-   thunks deferred_expr shadow_assert
+   thunks deferred_expr shadow_assert ranges
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

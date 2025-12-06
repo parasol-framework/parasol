@@ -404,6 +404,28 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    this->ctx.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
    auto iterators = this->parse_expression_list();
    if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
+
+   // Special-case for range literals in generic for loops:
+   // Allow sugar `for i in {0..5} do` by implicitly treating the range
+   // literal as a callable iterator (`({0..5})()`), so users no longer
+   // need to write the trailing `()` in loop headers.
+   //
+   // This transformation is intentionally restricted to generic for-loop
+   // iterator lists so that range literals continue to behave normally
+   // in all other expression contexts.
+
+   ExprNodeList iterator_nodes = std::move(iterators.value_ref());
+   if (iterator_nodes.size() IS 1) {
+      ExprNodePtr &first = iterator_nodes[0];
+      if (first and first->kind IS AstNodeKind::RangeExpr) {
+         SourceSpan span = first->span;
+         ExprNodePtr callee = std::move(first);
+         ExprNodeList args;
+         bool forwards_multret = false;
+         first = make_call_expr(span, std::move(callee), std::move(args), forwards_multret);
+      }
+   }
+
    this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
    auto body = this->parse_scoped_block({ TokenKind::EndToken });
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
@@ -415,7 +437,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
 
    GenericForStmtPayload payload;
    payload.names = std::move(names);
-   payload.iterators = std::move(iterators.value_ref());
+   payload.iterators = std::move(iterator_nodes);
    payload.body = std::move(body.value_ref());
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
@@ -748,6 +770,41 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
             std::move(left.value_ref()), std::move(true_branch.value_ref()),
             std::move(false_branch.value_ref()));
          left = ParserResult<ExprNodePtr>::success(std::move(ternary));
+         continue;
+      }
+
+      // Membership operator: expr in range
+      // Transform `lhs in rhs` into a method call `rhs:contains(lhs)` so that
+      // ranges can implement membership via their :contains method.
+
+      if (next.kind() IS TokenKind::InToken) {
+         constexpr uint8_t in_left = 3;
+         constexpr uint8_t in_right = 3;
+
+         if (in_left <= precedence) break;
+
+         this->ctx.tokens().advance();
+         auto right = this->parse_expression(in_right);
+         if (not right.ok()) return right;
+
+         SourceSpan left_span = left.value_ref()->span;
+         SourceSpan right_span = right.value_ref()->span;
+
+         ExprNodePtr rhs_expr = std::move(right.value_ref());
+         ExprNodePtr lhs_expr = std::move(left.value_ref());
+
+         Identifier method;
+         method.symbol = lj_str_newlit(&this->ctx.lua(), "contains");
+         method.span = next.span();
+         method.is_blank = false;
+         method.has_close = false;
+
+         ExprNodeList args;
+         args.push_back(std::move(lhs_expr));
+
+         SourceSpan span = combine_spans(left_span, right_span);
+         ExprNodePtr call = make_method_call_expr(span, std::move(rhs_expr), method, std::move(args), false);
+         left = ParserResult<ExprNodePtr>::success(std::move(call));
          continue;
       }
 
@@ -1136,12 +1193,87 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 }
 
 //********************************************************************************************************************
+// Checks if the token stream matches a range literal pattern using lookahead.
+// Valid patterns: {num..num}, {ident..ident}, {-num..num}, {ident..-num}, etc.
+// Returns true if the pattern matches, and sets is_inclusive for ... (three dots).
+
+static bool check_range_pattern(ParserContext& ctx, bool& is_inclusive)
+{
+   is_inclusive = false;
+
+   // Helper to get the token count for a simple range operand (number, identifier, or -number)
+   // Returns 0 if not a valid range operand
+   auto operand_length = [&ctx](int start_offset) -> int {
+      Token tok = ctx.tokens().peek(start_offset);
+      if (tok.kind() IS TokenKind::Number or tok.kind() IS TokenKind::Identifier) {
+         return 1;
+      }
+      if (tok.kind() IS TokenKind::Minus) {
+         Token next = ctx.tokens().peek(start_offset + 1);
+         if (next.kind() IS TokenKind::Number) return 2;  // -num
+      }
+      return 0;
+   };
+
+   // Check first operand
+   int first_len = operand_length(0);
+   if (first_len IS 0) return false;
+
+   // Check for range operator at expected position
+   Token range_op = ctx.tokens().peek(first_len);
+   if (range_op.kind() IS TokenKind::Cat) {
+      is_inclusive = false;
+   }
+   else if (range_op.kind() IS TokenKind::Dots) {
+      is_inclusive = true;
+   }
+   else {
+      return false;
+   }
+
+   // Check second operand
+   int second_len = operand_length(first_len + 1);
+   if (second_len IS 0) return false;
+
+   // Verify the range is followed by closing brace (strict pattern match)
+   Token closing = ctx.tokens().peek(first_len + 1 + second_len);
+   return closing.kind() IS TokenKind::RightBrace;
+}
+
+//********************************************************************************************************************
 // Parses table constructor expressions with array and record fields.
+// Also handles range literals: {start..stop} (exclusive) and {start...stop} (inclusive)
 
 ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
+
+   // Check for range literal pattern using lookahead: {expr..expr} or {expr...expr}
+   // This avoids ambiguity with string concatenation like {'str' .. func(), ...}
+   if (not this->ctx.check(TokenKind::RightBrace)) {
+      bool is_inclusive = false;
+
+      if (check_range_pattern(this->ctx, is_inclusive)) {
+         // Confirmed range pattern - parse start expression
+         auto first_expr = this->parse_unary();
+         if (not first_expr.ok()) return ParserResult<ExprNodePtr>::failure(first_expr.error_ref());
+
+         // Consume the range operator (already verified by lookahead)
+         this->ctx.tokens().advance();
+
+         // Parse stop expression
+         auto stop_expr = this->parse_unary();
+         if (not stop_expr.ok()) return ParserResult<ExprNodePtr>::failure(stop_expr.error_ref());
+
+         this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
+         ExprNodePtr node = make_range_expr(token.span(), std::move(first_expr.value_ref()),
+            std::move(stop_expr.value_ref()), is_inclusive);
+         return ParserResult<ExprNodePtr>::success(std::move(node));
+      }
+   }
+
+   // Standard table parsing path
    bool has_array = false;
    auto fields = this->parse_table_fields(&has_array);
    if (not fields.ok()) return ParserResult<ExprNodePtr>::failure(fields.error_ref());

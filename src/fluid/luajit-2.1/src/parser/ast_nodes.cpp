@@ -199,6 +199,9 @@ FluidType infer_expression_type(const ExprNode& Expr)
          return FluidType::Unknown;
       }
 
+      // Range expressions are userdata objects
+      case AstNodeKind::RangeExpr:
+         return FluidType::Object;
       default:
          break;
    }
@@ -334,6 +337,13 @@ struct ExpressionChildCounter {
    {
       return Payload.inner ? 1 : 0;
    }
+
+   [[nodiscard]] inline size_t operator()(const RangeExprPayload &Payload) const
+   {
+      size_t total = Payload.start ? 1 : 0;
+      if (Payload.stop) total++;
+      return total;
+   }
 };
 
 struct StatementChildCounter {
@@ -447,6 +457,7 @@ TableField::~TableField() = default;
 TableExprPayload::~TableExprPayload() = default;
 FunctionExprPayload::~FunctionExprPayload() = default;
 DeferredExprPayload::~DeferredExprPayload() = default;
+RangeExprPayload::~RangeExprPayload() = default;
 IfClause::~IfClause() = default;
 AssignmentStmtPayload::~AssignmentStmtPayload() = default;
 LocalDeclStmtPayload::~LocalDeclStmtPayload() = default;
@@ -732,6 +743,21 @@ ExprNodePtr make_deferred_expr(SourceSpan Span, ExprNodePtr inner, FluidType Typ
    payload.type_explicit = TypeExplicit;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::DeferredExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_range_expr(SourceSpan Span, ExprNodePtr Start, ExprNodePtr Stop, bool Inclusive)
+{
+   assert_node(ensure_operand(Start), "range expression requires start expression");
+   assert_node(ensure_operand(Stop), "range expression requires stop expression");
+   RangeExprPayload payload;
+   payload.start = std::move(Start);
+   payload.stop = std::move(Stop);
+   payload.inclusive = Inclusive;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::RangeExpr;
    node->span = Span;
    node->data = std::move(payload);
    return node;

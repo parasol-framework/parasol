@@ -347,6 +347,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::IndexExpr:      return "IndexExpr";
       case AstNodeKind::ResultFilterExpr: return "ResultFilterExpr";
       case AstNodeKind::TableExpr:      return "TableExpr";
+      case AstNodeKind::RangeExpr:      return "RangeExpr";
       case AstNodeKind::FunctionExpr:   return "FunctionExpr";
       case AstNodeKind::BlockStmt:      return "BlockStmt";
       case AstNodeKind::AssignmentStmt: return "AssignmentStmt";
@@ -1471,6 +1472,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::CallExpr:       return this->emit_call_expr(std::get<CallExprPayload>(expr.data));
       case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
       case AstNodeKind::TableExpr:        return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
+      case AstNodeKind::RangeExpr:        return this->emit_range_expr(std::get<RangeExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr:     return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
       default: return this->unsupported_expr(expr.kind, expr.span);
    }
@@ -2522,6 +2524,58 @@ ParserResult<ExpDesc> IrEmitter::emit_table_expr(const TableExprPayload &Payload
    }
 
    return ParserResult<ExpDesc>::success(table);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for a range literal expression ({start..stop} or {start...stop}).
+// Emits a call to the global `range` function: range(start, stop, inclusive)
+
+ParserResult<ExpDesc> IrEmitter::emit_range_expr(const RangeExprPayload &Payload)
+{
+   FuncState* fs = &this->func_state;
+   RegisterAllocator allocator(fs);
+
+   // Emit the start and stop expressions first
+   if (not Payload.start or not Payload.stop) {
+      return this->unsupported_expr(AstNodeKind::RangeExpr, SourceSpan{});
+   }
+
+   // Load the 'range' global function first
+   BCReg base = fs->free_reg();
+   ExpDesc callee;
+   callee.init(ExpKind::Global, 0);
+   callee.u.sval = fs->ls->keepstr("range");
+   this->materialise_to_next_reg(callee, "range function");
+
+   // Reserve register for frame link (LJ_FR2)
+   allocator.reserve(BCReg(1));
+
+   // Emit start expression as arg1
+   auto start_result = this->emit_expression(*Payload.start);
+   if (not start_result.ok()) return start_result;
+   ExpDesc start_expr = start_result.value_ref();
+   this->materialise_to_next_reg(start_expr, "range start");
+
+   // Emit stop expression as arg2
+   auto stop_result = this->emit_expression(*Payload.stop);
+   if (not stop_result.ok()) return stop_result;
+   ExpDesc stop_expr = stop_result.value_ref();
+   this->materialise_to_next_reg(stop_expr, "range stop");
+
+   // Emit inclusive flag as arg3
+   ExpDesc inclusive_expr(Payload.inclusive);
+   this->materialise_to_next_reg(inclusive_expr, "range inclusive");
+
+   // Emit CALL instruction: range(start, stop, inclusive)
+   // BC_CALL A=base, B=2 (expect 1 result), C=4 (3 args + 1)
+   BCIns ins = BCINS_ABC(BC_CALL, base, 2, 4);
+
+   ExpDesc result;
+   result.init(ExpKind::Call, bcemit_INS(fs, ins));
+   result.u.s.aux = base;
+   fs->freereg = base + 1;
+
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************

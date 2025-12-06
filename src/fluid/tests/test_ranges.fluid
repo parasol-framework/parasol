@@ -1,0 +1,914 @@
+-- Flute test suite for Fluid Range type
+----------------------------------------------------------------------------------------------------------------------
+   
+function testNonRangeTable()
+   -- Verify that the parser isn't confused by .. in a non-range table
+
+   local script = obj.new('script', { statement=[[
+   local test_messages = {
+      'Binary data: ' .. string.char(0, 1, 2, 3, 255, 254, 253),
+      string.rep('Large SSL message ', 500), -- ~9KB message
+      'Special chars: ������������',
+      'JSON: {"encrypted": true, "secure": "data"}',
+      'Empty message test: '
+   }]] })
+
+   local err = script.acActivate()
+   assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorString)
+end
+
+function testRangeConstructorBasic()
+   -- Test basic exclusive range (default)
+   local r = range(0, 5)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 5, "stop should be 5")
+   assert(r.inclusive is false, "should be exclusive by default")
+   assert(r.step is 1, "step should default to 1")
+end
+
+function testRangeConstructorInclusive()
+   -- Test inclusive range
+   local r = range(0, 5, true)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 5, "stop should be 5")
+   assert(r.inclusive is true, "should be inclusive")
+   assert(r.step is 1, "step should default to 1")
+end
+
+function testRangeConstructorWithStep()
+   -- Test range with custom step
+   local r = range(0, 10, false, 2)
+   assert(r.start is 0, "start should be 0")
+   assert(r.stop is 10, "stop should be 10")
+   assert(r.step is 2, "step should be 2")
+   assert(r.inclusive is false, "should be exclusive")
+end
+
+function testRangeConstructorReverseAutoStep()
+   -- Test reverse range auto-detects negative step
+   local r = range(10, 0)
+   assert(r.start is 10, "start should be 10")
+   assert(r.stop is 0, "stop should be 0")
+   assert(r.step is -1, "step should auto-detect as -1 for reverse range")
+end
+
+function testRangeLengthExclusive()
+   -- Test length calculation for exclusive ranges
+   local r1 = range(0, 5)        -- 0, 1, 2, 3, 4 = 5 elements
+   assert(#r1 is 5, "exclusive range 0..5 should have 5 elements, got " .. #r1)
+
+   local r2 = range(0, 0)        -- Empty range
+   assert(#r2 is 0, "exclusive range 0..0 should be empty, got " .. #r2)
+
+   local r3 = range(3, 7)        -- 3, 4, 5, 6 = 4 elements
+   assert(#r3 is 4, "exclusive range 3..7 should have 4 elements, got " .. #r3)
+end
+
+function testRangeLengthInclusive()
+   -- Test length calculation for inclusive ranges
+   local r1 = range(0, 5, true)  -- 0, 1, 2, 3, 4, 5 = 6 elements
+   assert(#r1 is 6, "inclusive range 0...5 should have 6 elements, got " .. #r1)
+
+   local r2 = range(0, 0, true)  -- Just 0 = 1 element
+   assert(#r2 is 1, "inclusive range 0...0 should have 1 element, got " .. #r2)
+end
+
+function testRangeLengthReverse()
+   -- Test length for reverse ranges
+   local r1 = range(5, 0)        -- Exclusive: 5, 4, 3, 2, 1 = 5 elements
+   assert(#r1 is 5, "exclusive reverse range 5..0 should have 5 elements, got " .. #r1)
+
+   local r2 = range(5, 0, true)  -- Inclusive: 5, 4, 3, 2, 1, 0 = 6 elements
+   assert(#r2 is 6, "inclusive reverse range 5...0 should have 6 elements, got " .. #r2)
+end
+
+function testRangeLengthWithStep()
+   -- Test length with custom step values
+   local r1 = range(0, 10, false, 2)  -- 0, 2, 4, 6, 8 = 5 elements
+   assert(#r1 is 5, "range 0..10 step 2 should have 5 elements, got " .. #r1)
+
+   local r2 = range(0, 10, true, 2)   -- 0, 2, 4, 6, 8, 10 = 6 elements
+   assert(#r2 is 6, "inclusive range 0...10 step 2 should have 6 elements, got " .. #r2)
+end
+
+function testRangeToString()
+   -- Test string representation
+   local r1 = range(0, 5)
+   local s1 = tostring(r1)
+   assert(s1 is "{0..5}", "exclusive range should show as {0..5}, got " .. s1)
+
+   local r2 = range(0, 5, true)
+   local s2 = tostring(r2)
+   assert(s2 is "{0...5}", "inclusive range should show as {0...5}, got " .. s2)
+
+   local r3 = range(10, 0)
+   local s3 = tostring(r3)
+   assert(s3 is "{10..0}", "reverse range should show as {10..0}, got " .. s3)
+end
+
+function testRangeEquality()
+   -- Test equality comparison
+   local r1 = range(0, 5)
+   local r2 = range(0, 5)
+   local r3 = range(0, 5, true)
+   local r4 = range(1, 5)
+   local r5 = range(0, 6)
+
+   assert(r1 is r2, "identical ranges should be equal")
+   assert(r1 != r3, "ranges with different inclusivity should not be equal")
+   assert(r1 != r4, "ranges with different start should not be equal")
+   assert(r1 != r5, "ranges with different stop should not be equal")
+end
+
+function testRangeEqualityWithStep()
+   -- Test equality with step values
+   local r1 = range(0, 10, false, 2)
+   local r2 = range(0, 10, false, 2)
+   local r3 = range(0, 10, false, 3)
+
+   assert(r1 is r2, "ranges with same step should be equal")
+   assert(r1 != r3, "ranges with different step should not be equal")
+end
+
+function testRangeContainsExclusive()
+   -- Test contains method for exclusive ranges
+   local r = range(0, 10)  -- 0-9
+
+   assert(r:contains(0) is true, "0 should be in range 0..10")
+   assert(r:contains(5) is true, "5 should be in range 0..10")
+   assert(r:contains(9) is true, "9 should be in range 0..10")
+   assert(r:contains(10) is false, "10 should NOT be in exclusive range 0..10")
+   assert(r:contains(-1) is false, "-1 should NOT be in range 0..10")
+   assert(r:contains(11) is false, "11 should NOT be in range 0..10")
+end
+
+function testRangeContainsInclusive()
+   -- Test contains method for inclusive ranges
+   local r = range(0, 10, true)  -- 0-10
+
+   assert(r:contains(0) is true, "0 should be in range 0...10")
+   assert(r:contains(10) is true, "10 should be in inclusive range 0...10")
+   assert(r:contains(11) is false, "11 should NOT be in range 0...10")
+end
+
+function testRangeContainsWithStep()
+   -- Test contains with step values
+   local r = range(0, 10, false, 2)  -- 0, 2, 4, 6, 8
+
+   assert(r:contains(0) is true, "0 should be in range 0..10 step 2")
+   assert(r:contains(2) is true, "2 should be in range 0..10 step 2")
+   assert(r:contains(8) is true, "8 should be in range 0..10 step 2")
+   assert(r:contains(1) is false, "1 should NOT be in range 0..10 step 2")
+   assert(r:contains(3) is false, "3 should NOT be in range 0..10 step 2")
+   assert(r:contains(10) is false, "10 should NOT be in exclusive range 0..10 step 2")
+end
+
+function testRangeContainsReverse()
+   -- Test contains for reverse ranges
+   local r = range(10, 0)  -- 10, 9, 8, ... 1 (exclusive of 0)
+
+   assert(r:contains(10) is true, "10 should be in range 10..0")
+   assert(r:contains(5) is true, "5 should be in range 10..0")
+   assert(r:contains(1) is true, "1 should be in range 10..0")
+   assert(r:contains(0) is false, "0 should NOT be in exclusive range 10..0")
+   assert(r:contains(11) is false, "11 should NOT be in range 10..0")
+end
+
+function testRangeMembership()
+   -- Test membership operator using ranges
+   local r = {0..10}              -- Exclusive: 0-9
+
+   assert(5 in r, "5 should be in range 0..10")
+   assert(not (10 in r), "10 should NOT be in exclusive range 0..10")
+   assert(not (-1 in r), "-1 should NOT be in range 0..10")
+
+   local ri = {0...10}            -- Inclusive: 0-10
+
+   assert(10 in ri, "10 should be in inclusive range 0...10")
+   assert(not (11 in ri), "11 should NOT be in inclusive range 0...10")
+
+   -- Literal membership without variables
+   assert(5 in {0..10}, "5 should be in literal range 0..10")
+   assert(not (10 in {0..10}), "10 should NOT be in literal exclusive range 0..10")
+end
+
+function testRangeMembershipInIf()
+   -- Test membership operator inside conditional statements
+   local in_range = false
+   if 5 in {0..10} then
+      in_range = true
+   end
+   assert(in_range is true, "5 in {0..10} should be true in if condition")
+
+   local out_of_range = false
+   if 11 in {0..10} then
+      out_of_range = true
+   end
+   assert(out_of_range is false, "11 in {0..10} should be false in if condition")
+end
+
+function testRangeToTable()
+   -- Test toTable method
+   local r1 = range(0, 5)
+   local t1 = r1:toTable()
+   assert(#t1 is 5, "toTable should return 5 elements")
+   assert(t1[0] is 0, "first element should be 0")
+   assert(t1[4] is 4, "last element should be 4")
+
+   local r2 = range(0, 5, true)
+   local t2 = r2:toTable()
+   assert(#t2 is 6, "inclusive toTable should return 6 elements")
+   assert(t2[5] is 5, "last element should be 5")
+end
+
+function testRangeToTableWithStep()
+   -- Test toTable with step
+   local r = range(0, 10, false, 2)
+   local t = r:toTable()
+   assert(#t is 5, "toTable with step 2 should return 5 elements")
+   assert(t[0] is 0, "first element should be 0")
+   assert(t[1] is 2, "second element should be 2")
+   assert(t[4] is 8, "last element should be 8")
+end
+
+function testRangeToTableReverse()
+   -- Test toTable for reverse range
+   local r = range(5, 0, true)
+   local t = r:toTable()
+   assert(#t is 6, "reverse toTable should return 6 elements")
+   assert(t[0] is 5, "first element should be 5")
+   assert(t[5] is 0, "last element should be 0")
+end
+
+function testRangeCheckFunction()
+   -- Test range.check() type checking (named 'check' because 'is' is a Fluid keyword)
+   local r = range(0, 5)
+
+   assert(range.check(r) is true, "range.check should return true for range")
+   assert(range.check(5) is false, "range.check should return false for number")
+   assert(range.check("hello") is false, "range.check should return false for string")
+   assert(range.check({1, 2, 3}) is false, "range.check should return false for table")
+   assert(range.check(nil) is false, "range.check should return false for nil")
+end
+
+function testRangeMetatableName()
+   -- Test metatable __name field
+   local r = range(0, 5)
+   local mt = getmetatable(r)
+   assert(mt != nil, "range should have metatable")
+   assert(mt.__name is "Fluid.range", "metatable __name should be Fluid.range")
+end
+
+function testRangePropertyLength()
+   -- Test .length property (alternative to #)
+   local r1 = range(0, 5)
+   assert(r1.length is 5, ".length should return 5 for exclusive range 0..5")
+
+   local r2 = range(0, 5, true)
+   assert(r2.length is 6, ".length should return 6 for inclusive range 0...5")
+end
+
+function testRangeErrorNonInteger()
+   -- Test that non-integer values throw errors
+   local ok, err = pcall(function() return range(1.5, 5) end)
+   assert(ok is false, "non-integer start should throw error")
+
+   ok, err = pcall(function() return range(0, 5.5) end)
+   assert(ok is false, "non-integer stop should throw error")
+end
+
+function testRangeErrorNilValues()
+   -- Test that nil values throw errors
+   local ok, err = pcall(function() return range(nil, 5) end)
+   assert(ok is false, "nil start should throw error")
+
+   ok, err = pcall(function() return range(0, nil) end)
+   assert(ok is false, "nil stop should throw error")
+end
+
+function testRangeErrorInvalidStep()
+   -- Test that zero step throws error
+   local ok, err = pcall(function() return range(0, 10, false, 0) end)
+   assert(ok is false, "zero step should throw error")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range Literal Syntax Tests
+
+function testRangeLiteralExclusive()
+   -- Test exclusive range literal syntax {start..stop}
+   local r = {1..5}
+   assert(r.start is 1, "literal start should be 1")
+   assert(r.stop is 5, "literal stop should be 5")
+   assert(r.inclusive is false, "{..} should be exclusive")
+   assert(#r is 4, "{1..5} should have 4 elements (1,2,3,4)")
+end
+
+function testRangeLiteralInclusive()
+   -- Test inclusive range literal syntax {start...stop}
+   local r = {1...5}
+   assert(r.start is 1, "literal start should be 1")
+   assert(r.stop is 5, "literal stop should be 5")
+   assert(r.inclusive is true, "{...} should be inclusive")
+   assert(#r is 5, "{1...5} should have 5 elements (1,2,3,4,5)")
+end
+
+function testRangeLiteralReverse()
+   -- Test reverse range literal
+   local r = {10..1}
+   assert(r.start is 10, "reverse start should be 10")
+   assert(r.stop is 1, "reverse stop should be 1")
+   assert(r.step is -1, "reverse range should auto-detect step -1")
+   assert(#r is 9, "{10..1} should have 9 elements")
+end
+
+function testRangeLiteralReverseInclusive()
+   -- Test reverse inclusive range literal
+   local r = {5...1}
+   assert(r.start is 5, "reverse start should be 5")
+   assert(r.stop is 1, "reverse stop should be 1")
+   assert(r.inclusive is true, "{...} should be inclusive")
+   assert(#r is 5, "{5...1} should have 5 elements (5,4,3,2,1)")
+end
+
+function testRangeLiteralEquality()
+   -- Test that literals produce same result as constructor
+   local lit = {0..5}
+   local con = range(0, 5)
+   assert(lit is con, "{0..5} should equal range(0, 5)")
+
+   local lit2 = {0...5}
+   local con2 = range(0, 5, true)
+   assert(lit2 is con2, "{0...5} should equal range(0, 5, true)")
+end
+
+function testRangeLiteralToString()
+   -- Test string representation of literals
+   local r1 = {0..5}
+   assert(tostring(r1) is "{0..5}", "exclusive literal tostring should be {0..5}")
+
+   local r2 = {0...5}
+   assert(tostring(r2) is "{0...5}", "inclusive literal tostring should be {0...5}")
+end
+
+function testRangeLiteralContains()
+   -- Test contains method on range literals
+   local r = {0..10}
+   assert(r:contains(0) is true, "0 should be in {0..10}")
+   assert(r:contains(5) is true, "5 should be in {0..10}")
+   assert(r:contains(9) is true, "9 should be in {0..10}")
+   assert(r:contains(10) is false, "10 should NOT be in {0..10} (exclusive)")
+end
+
+function testRangeLiteralWithVariables()
+   -- Test range literals with variable expressions
+   local start = 3
+   local stop = 8
+   local r = {start..stop}
+   assert(r.start is 3, "variable start should be 3")
+   assert(r.stop is 8, "variable stop should be 8")
+   assert(#r is 5, "{3..8} should have 5 elements")
+end
+
+function testRangeLiteralNegativeValues()
+   -- Test range literals with negative values
+   local r = {-5..-1}
+   assert(r.start is -5, "negative start should be -5")
+   assert(r.stop is -1, "negative stop should be -1")
+   assert(#r is 4, "{-5..-1} should have 4 elements (-5,-4,-3,-2)")
+
+   local r2 = {-5...-1}
+   assert(#r2 is 5, "{-5...-1} should have 5 elements (inclusive)")
+end
+
+function testRangeLiteralZeroRange()
+   -- Test range literals that produce empty or single-element ranges
+   local r1 = {5..5}  -- Empty exclusive range
+   assert(#r1 is 0, "{5..5} should be empty")
+
+   local r2 = {5...5}  -- Single element inclusive range
+   assert(#r2 is 1, "{5...5} should have 1 element")
+end
+
+function testRangeLiteralTypeCheck()
+   -- Test that range literals are detected by range.check
+   local r = {0..5}
+   assert(range.check(r) is true, "range.check should return true for literal")
+   assert(type(r) is "userdata", "type of range literal should be userdata")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- String Slicing with Ranges
+
+function testStringSliceExclusive()
+   -- Test exclusive range string slicing
+   local s = "Hello, World!"
+   assert(s[{0..5}] is "Hello", "s[{0..5}] should be 'Hello', got '" .. s[{0..5}] .. "'")
+   assert(s[{7..12}] is "World", "s[{7..12}] should be 'World', got '" .. s[{7..12}] .. "'")
+end
+
+function testStringSliceInclusive()
+   -- Test inclusive range string slicing
+   local s = "Hello, World!"
+   assert(s[{0...4}] is "Hello", "s[{0...4}] should be 'Hello', got '" .. s[{0...4}] .. "'")
+   assert(s[{7...11}] is "World", "s[{7...11}] should be 'World', got '" .. s[{7...11}] .. "'")
+end
+
+function testStringSliceNegativeIndices()
+   -- Test negative indices (always inclusive per design doc)
+   local s = "Hello, World!"
+   assert(s[{-6..-1}] is "World!", "s[{-6..-1}] should be 'World!', got '" .. s[{-6..-1}] .. "'")
+   assert(s[{-1..-1}] is "!", "s[{-1..-1}] should be '!', got '" .. s[{-1..-1}] .. "'")
+
+   local s2 = "ABCDE"
+   assert(s2[{-3..-1}] is "CDE", "s2[{-3..-1}] should be 'CDE', got '" .. s2[{-3..-1}] .. "'")
+   assert(s2[{-5..-1}] is "ABCDE", "s2[{-5..-1}] should be 'ABCDE', got '" .. s2[{-5..-1}] .. "'")
+end
+
+function testStringSliceOutOfBounds()
+   -- Test out-of-bounds ranges return empty string
+   local s = "Hello"
+   assert(s[{10..20}] is "", "out of bounds range should return empty string")
+   assert(s[{5..10}] is "", "range starting at end should return empty string")
+end
+
+function testStringSliceEmptyRange()
+   -- Test empty ranges (exclusive with same start/stop)
+   local s = "Hello"
+   assert(s[{2..2}] is "", "{2..2} should return empty string (exclusive)")
+   assert(s[{2...2}] is "l", "{2...2} should return 'l' (inclusive)")
+end
+
+function testStringSliceSingleChar()
+   -- Test numeric indexing for single character access
+   local s = "Hello"
+   assert(s[0] is "H", "s[0] should be 'H', got '" .. tostring(s[0]) .. "'")
+   assert(s[1] is "e", "s[1] should be 'e'")
+   assert(s[4] is "o", "s[4] should be 'o'")
+   assert(s[-1] is "o", "s[-1] should be 'o' (last char)")
+   assert(s[-2] is "l", "s[-2] should be 'l'")
+end
+
+function testStringSliceWithVariable()
+   -- Test string slicing with range stored in variable
+   local s = "Hello, World!"
+   local r = {0..5}
+   assert(s[r] is "Hello", "s[r] with r={0..5} should be 'Hello'")
+
+   local r2 = range(7, 12)
+   assert(s[r2] is "World", "s[r2] with r2=range(7,12) should be 'World'")
+end
+
+function testStringSliceBoundsClipping()
+   -- Test that ranges are clipped to string bounds
+   local s = "Hello"
+   assert(s[{0..100}] is "Hello", "range extending past end should be clipped")
+   assert(s[{3..100}] is "lo", "range starting mid-string extending past end should be clipped")
+end
+
+function testStringMethodsStillWork()
+   -- Ensure string methods still work after adding range support
+   local s = "hello"
+   assert(s.upper(s) is "HELLO", "string.upper should still work")
+   assert(s.sub(s, 0, 3) is "hel", "string.sub should still work")
+   assert(s.len(s) is 5, "string.len should still work")
+   assert(s.reverse(s) is "olleh", "string.reverse should still work")
+end
+
+function testStringSliceMixedAccess()
+   -- Test mixing range access with other string operations
+   local s = "Hello, World!"
+   local slice = s[{0..5}]
+   assert(slice.upper(slice) is "HELLO", "should be able to call methods on sliced result")
+   assert(#slice is 5, "sliced result should have correct length")
+end
+
+function testStringSliceInvalidKey()
+   -- Test that invalid key types return nil (not errors)
+   local s = "Hello"
+   assert(s[{}] is nil, "empty table key should return nil")
+   assert(s[true] is nil, "boolean key should return nil")
+end
+
+function testStringSliceNilIndex()
+   -- Test nil index returns nil
+   local s = "Hello"
+   local result = s[nil]
+   assert(result is nil, "nil index should return nil")
+end
+
+function testRangeConstructorTypeErrors()
+   -- Test that range constructor throws on invalid types
+   local ok, err = pcall(function() return range("a", 5) end)
+   assert(ok is false, "string start should throw error")
+
+   ok, err = pcall(function() return range(0, "b") end)
+   assert(ok is false, "string stop should throw error")
+
+   ok, err = pcall(function() return range({}, 5) end)
+   assert(ok is false, "table start should throw error")
+
+   ok, err = pcall(function() return range(0, {}) end)
+   assert(ok is false, "table stop should throw error")
+end
+
+function testRangeLiteralTypeErrors()
+   -- Test that range literals with invalid values throw errors at runtime
+   -- The parser interprets {a..b} as a range literal, so invalid operands
+   -- will cause a runtime error when the range() function is called
+
+   local ok, err = pcall(function()
+      local a = "x"
+      local b = "y"
+      return {a..b}  -- Parser treats this as range literal, throws at runtime
+   end)
+   assert(ok is false, "range literal with string variables should throw")
+
+   -- Direct range() call with strings should also throw
+   ok, err = pcall(function()
+      local bad = range("start", "stop")
+      return bad
+   end)
+   assert(ok is false, "range with string arguments should throw")
+
+   -- Non-integer numeric values in literals
+   ok, err = pcall(function()
+      return {1.5..5}
+   end)
+   assert(ok is false, "range literal with non-integer start should throw")
+
+   ok, err = pcall(function()
+      return {0..5.5}
+   end)
+   assert(ok is false, "range literal with non-integer stop should throw")
+
+   -- Nil values in literals
+   ok, err = pcall(function()
+      return {nil..5}
+   end)
+   assert(ok is false, "range literal with nil start should throw")
+
+   ok, err = pcall(function()
+      return {0..nil}
+   end)
+   assert(ok is false, "range literal with nil stop should throw")
+end
+
+function testStringIndexOutOfBounds()
+   -- Test single character index out of bounds returns nil
+   local s = "Hello"
+   assert(s[100] is nil, "index beyond string length should return nil")
+   assert(s[-100] is nil, "large negative index should return nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range Iteration (Phase 4)
+
+function testRangeIterationExclusive()
+   -- Test forward exclusive iteration: {1..6} iterates 1,2,3,4,5
+   local sum = 0
+   for i in {1..6} do
+      sum += i
+   end
+   assert(sum is 15, "sum of {1..6} should be 15 (1+2+3+4+5), got " .. sum)
+end
+
+function testRangeIterationInclusive()
+   -- Test forward inclusive iteration: {1...5} iterates 1,2,3,4,5
+   local sum = 0
+   for i in {1...5} do
+      sum += i
+   end
+   assert(sum is 15, "sum of {1...5} should be 15, got " .. sum)
+end
+
+function testRangeIterationReverse()
+   -- Test reverse iteration: {5..1} iterates 5,4,3,2 (exclusive of 1)
+   local result = {}
+   for i in {5..1} do
+      result[#result] = i
+   end
+   assert(#result is 4, "reverse {5..1} should have 4 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[3] is 2, "last element should be 2")
+end
+
+function testRangeIterationReverseInclusive()
+   -- Test reverse inclusive iteration: {5...1} iterates 5,4,3,2,1
+   local result = {}
+   for i in {5...1} do
+      result[#result] = i
+   end
+   assert(#result is 5, "reverse {5...1} should have 5 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeIterationWithStep()
+   -- Test iteration with custom step
+   local result = {}
+   for i in range(0, 10, false, 2)() do
+      result[#result] = i
+   end
+   assert(#result is 5, "range(0,10,false,2) should have 5 elements, got " .. #result)
+   assert(result[0] is 0, "first element should be 0")
+   assert(result[1] is 2, "second element should be 2")
+   assert(result[4] is 8, "last element should be 8")
+end
+
+function testRangeIterationWithStepInclusive()
+   -- Test inclusive iteration with custom step
+   local result = {}
+   for i in range(0, 10, true, 2)() do
+      result[#result] = i
+   end
+   assert(#result is 6, "range(0,10,true,2) should have 6 elements, got " .. #result)
+   assert(result[5] is 10, "last element should be 10")
+end
+
+function testRangeIterationEmpty()
+   -- Test empty range iteration
+   local count = 0
+   for i in {5..5} do
+      count += 1
+   end
+   assert(count is 0, "empty range {5..5} should iterate 0 times, got " .. count)
+end
+
+function testRangeIterationSingleElement()
+   -- Test single element range iteration
+   local count = 0
+   local value = nil
+   for i in {5...5} do
+      count += 1
+      value = i
+   end
+   assert(count is 1, "single element range {5...5} should iterate once, got " .. count)
+   assert(value is 5, "single element should be 5")
+end
+
+function testRangeIterationWithVariable()
+   -- Test iteration using range stored in variable
+   local r = {0..5}
+   local sum = 0
+   for i in r() do
+      sum += i
+   end
+   assert(sum is 10, "sum of {0..5} via variable should be 10, got " .. sum)
+end
+
+function testRangeIterationBreak()
+   -- Test early termination with break
+   local sum = 0
+   for i in {1..100} do
+      if i > 5 then break end
+      sum += i
+   end
+   assert(sum is 15, "sum with break at 5 should be 15, got " .. sum)
+end
+
+function testRangeIteratorReturnsFunction()
+   -- Test that calling a range returns iterator components
+   local r = {1..5}
+   local iter, state, init = r()
+   assert(type(iter) is "function", "first return should be function")
+   assert(state is nil, "state should be nil")
+   assert(init is nil, "initial value should be nil")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Range each() Method Tests
+
+function testRangeEachBasic()
+   -- Test basic each() iteration
+   local sum = 0
+   local r = {1..6}
+   r:each(function(Value) sum += Value end)
+   assert(sum is 15, "each() sum of {1..6} should be 15 (1+2+3+4+5), got " .. sum)
+end
+
+function testRangeEachInclusive()
+   -- Test each() with inclusive range
+   local sum = 0
+   local r = {1...5}
+   r:each(function(Value) sum += Value end)
+   assert(sum is 15, "each() sum of {1...5} should be 15, got " .. sum)
+end
+
+function testRangeEachReverse()
+   -- Test each() with reverse range
+   local result = {}
+   local r = {5..1}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 4, "each() reverse {5..1} should have 4 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[3] is 2, "last element should be 2")
+end
+
+function testRangeEachReverseInclusive()
+   -- Test each() with reverse inclusive range
+   local result = {}
+   local r = {5...1}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() reverse {5...1} should have 5 elements, got " .. #result)
+   assert(result[0] is 5, "first element should be 5")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeEachWithStep()
+   -- Test each() with custom step via range constructor
+   local result = {}
+   range(0, 10, false, 2):each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() with step 2 should have 5 elements, got " .. #result)
+   assert(result[0] is 0, "first element should be 0")
+   assert(result[4] is 8, "last element should be 8")
+end
+
+function testRangeEachEmpty()
+   -- Test each() on empty range
+   local count = 0
+   local r = {5..5}
+   r:each(function(Value) count += 1 end)
+   assert(count is 0, "each() on empty range {5..5} should not iterate, got " .. count)
+end
+
+function testRangeEachSingleElement()
+   -- Test each() on single element inclusive range
+   local count = 0
+   local captured = nil
+   local r = {5...5}
+   r:each(function(Value) count += 1; captured = Value end)
+   assert(count is 1, "each() on {5...5} should iterate once, got " .. count)
+   assert(captured is 5, "captured value should be 5")
+end
+
+function testRangeEachEarlyTermination()
+   -- Test early termination by returning false
+   local sum = 0
+   local r = {1..100}
+   r:each(function(Value)
+      if Value > 5 then return false end
+      sum += Value
+   end)
+   assert(sum is 15, "each() with early termination should sum to 15, got " .. sum)
+end
+
+function testRangeEachContinuesOnTrue()
+   -- Test that returning true does NOT terminate early
+   local sum = 0
+   local r = {1..6}
+   r:each(function(Value)
+      sum += Value
+      return true  -- Should continue iterating
+   end)
+   assert(sum is 15, "each() returning true should complete all iterations, got " .. sum)
+end
+
+function testRangeEachContinuesOnNil()
+   -- Test that returning nil (no return) continues iteration
+   local count = 0
+   local r = {1..6}
+   r:each(function(Value)
+      count += 1
+      -- No explicit return
+   end)
+   assert(count is 5, "each() with no return should complete all iterations, got " .. count)
+end
+
+function testRangeEachChaining()
+   -- Test that each() returns the range for chaining
+   local sum1 = 0
+   local sum2 = 0
+   local r = {1..6}
+   local returned = r:each(function(Value) sum1 += Value end)
+   assert(returned is r, "each() should return the original range for chaining")
+
+   -- Chain another each call
+   returned:each(function(Value) sum2 += Value end)
+   assert(sum2 is 15, "chained each() should also work, got " .. sum2)
+end
+
+function testRangeEachWithVariable()
+   -- Test each() on range stored in variable
+   local r = {0..5}
+   local sum = 0
+   r:each(function(Value) sum += Value end)
+   assert(sum is 10, "each() via variable should sum to 10, got " .. sum)
+end
+
+function testRangeEachNegativeRange()
+   -- Test each() with negative values
+   local result = {}
+   local r = {-3..2}
+   r:each(function(Value) result[#result] = Value end)
+   assert(#result is 5, "each() on {-3..2} should have 5 elements, got " .. #result)
+   assert(result[0] is -3, "first element should be -3")
+   assert(result[4] is 1, "last element should be 1")
+end
+
+function testRangeEachReverseEarlyTermination()
+   -- Test early termination in reverse iteration
+   local result = {}
+   local r = {10..0}
+   r:each(function(Value)
+      result[#result] = Value
+      if Value <= 7 then return false end
+   end)
+   assert(#result is 4, "each() reverse with early termination should have 4 elements, got " .. #result)
+   assert(result[0] is 10, "first element should be 10")
+   assert(result[3] is 7, "last element should be 7")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      -- Constructor and basic operations
+      'testNonRangeTable',
+      "testRangeConstructorBasic",
+      "testRangeConstructorInclusive",
+      "testRangeConstructorWithStep",
+      "testRangeConstructorReverseAutoStep",
+      "testRangeLengthExclusive",
+      "testRangeLengthInclusive",
+      "testRangeLengthReverse",
+      "testRangeLengthWithStep",
+      "testRangeToString",
+      "testRangeEquality",
+      "testRangeEqualityWithStep",
+      "testRangeContainsExclusive",
+      "testRangeContainsInclusive",
+      "testRangeContainsWithStep",
+      "testRangeContainsReverse",
+      "testRangeMembership",
+      "testRangeMembershipInIf",
+      "testRangeToTable",
+      "testRangeToTableWithStep",
+      "testRangeToTableReverse",
+      "testRangeCheckFunction",
+      "testRangeMetatableName",
+      "testRangePropertyLength",
+      "testRangeErrorNonInteger",
+      "testRangeErrorNilValues",
+      "testRangeErrorInvalidStep",
+      -- Range literal syntax
+      "testRangeLiteralExclusive",
+      "testRangeLiteralInclusive",
+      "testRangeLiteralReverse",
+      "testRangeLiteralReverseInclusive",
+      "testRangeLiteralEquality",
+      "testRangeLiteralToString",
+      "testRangeLiteralContains",
+      "testRangeLiteralWithVariables",
+      "testRangeLiteralNegativeValues",
+      "testRangeLiteralZeroRange",
+      "testRangeLiteralTypeCheck",
+      -- String slicing with ranges
+      "testStringSliceExclusive",
+      "testStringSliceInclusive",
+      "testStringSliceNegativeIndices",
+      "testStringSliceOutOfBounds",
+      "testStringSliceEmptyRange",
+      "testStringSliceSingleChar",
+      "testStringSliceWithVariable",
+      "testStringSliceBoundsClipping",
+      "testStringMethodsStillWork",
+      "testStringSliceMixedAccess",
+      "testStringSliceInvalidKey",
+      "testStringSliceNilIndex",
+      "testRangeConstructorTypeErrors",
+      "testRangeLiteralTypeErrors",
+      "testStringIndexOutOfBounds",
+      -- Range iteration
+      "testRangeIterationExclusive",
+      "testRangeIterationInclusive",
+      "testRangeIterationReverse",
+      "testRangeIterationReverseInclusive",
+      "testRangeIterationWithStep",
+      "testRangeIterationWithStepInclusive",
+      "testRangeIterationEmpty",
+      "testRangeIterationSingleElement",
+      "testRangeIterationWithVariable",
+      "testRangeIterationBreak",
+      "testRangeIteratorReturnsFunction",
+      -- Range each() method
+      "testRangeEachBasic",
+      "testRangeEachInclusive",
+      "testRangeEachReverse",
+      "testRangeEachReverseInclusive",
+      "testRangeEachWithStep",
+      "testRangeEachEmpty",
+      "testRangeEachSingleElement",
+      "testRangeEachEarlyTermination",
+      "testRangeEachContinuesOnTrue",
+      "testRangeEachContinuesOnNil",
+      "testRangeEachChaining",
+      "testRangeEachWithVariable",
+      "testRangeEachNegativeRange",
+      "testRangeEachReverseEarlyTermination"
+   },
+   init = function(Folder)
+   end,
+   cleanup = function()
+   end
+}

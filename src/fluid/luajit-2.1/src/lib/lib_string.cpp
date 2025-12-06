@@ -29,7 +29,32 @@
 #include "lj_strfmt.h"
 #include "lib.h"
 #include "lib_utils.h"
+#include "lib_range.h"
 #include "debug/error_guard.h"
+
+// Helper to check if a TValue is a range userdata and extract it
+static fluid_range* get_range_from_tvalue(lua_State* L, cTValue* tv)
+{
+   if (not tvisudata(tv)) return nullptr;
+
+   GCudata* ud = udataV(tv);
+   GCtab* mt = tabref(ud->metatable);
+   if (not mt) return nullptr;
+
+   // Get the expected metatable for ranges
+   lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      return nullptr;
+   }
+   GCtab* range_mt = tabV(L->top - 1);
+   lua_pop(L, 1);
+
+   // Compare metatables
+   if (mt != range_mt) return nullptr;
+
+   return (fluid_range*)uddata(ud);
+}
 
 // NOTE: Any string function marked with the ASM macro uses a custom assembly implementation in the
 // .dasc files.  Changing the C++ code here will have no effect in such cases.
@@ -1097,28 +1122,129 @@ LJLIB_CF(string_format)      LJLIB_REC(.)
 
 #include "lj_libdef.h"
 
+//********************************************************************************************************************
+// Custom __index handler for strings
+// Handles numeric keys for single-character access, range userdata for substring extraction,
+// and string keys for method lookups (delegated to string library table)
+
+static int string_index_handler(lua_State* L)
+{
+   // Argument 1: the string
+   // Argument 2: the key (number, range userdata, or string)
+
+   if (not tvisstr(L->base)) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   GCstr* str = strV(L->base);
+   int32_t len = (int32_t)str->len;
+   cTValue* key = L->base + 1;
+
+   // Check for numeric key (single character access)
+   if (tvisnum(key) or tvisint(key)) {
+      int32_t idx = lj_lib_checkint(L, 2);
+
+      // Handle negative indices (0-based: -1 means last character)
+      if (idx < 0) idx += len;
+
+      // Bounds check
+      if (idx < 0 or idx >= len) {
+         lua_pushnil(L);
+         return 1;
+      }
+
+      // Return single character as string
+      lua_pushlstring(L, strdata(str) + idx, 1);
+      return 1;
+   }
+
+   // Check for range userdata (substring extraction)
+   fluid_range* r = get_range_from_tvalue(L, key);
+   if (r) {
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+
+      // Handle negative indices (always inclusive for negative ranges, per design doc)
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;  // Negative indices ignore inclusive flag
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Apply exclusive semantics if not inclusive
+      // For exclusive ranges, stop is NOT included, so we subtract 1 to make it inclusive
+      // for the final substring calculation
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         effective_stop = stop - 1;
+      }
+
+      // Bounds checking
+      if (start < 0) start = 0;
+      if (effective_stop >= len) effective_stop = len - 1;
+
+      // Handle empty/invalid ranges
+      if (start > effective_stop or start >= len) {
+         lua_pushstring(L, "");
+         return 1;
+      }
+
+      // Return substring
+      int32_t sublen = effective_stop - start + 1;
+      lua_pushlstring(L, strdata(str) + start, (size_t)sublen);
+      return 1;
+   }
+
+   // Check for string key (method lookup)
+   if (tvisstr(key)) {
+      // Get the string library table (stored in upvalue 1)
+      lua_pushvalue(L, lua_upvalueindex(1));
+      lua_pushvalue(L, 2);  // Push the key
+      lua_rawget(L, -2);    // Get string_lib[key] without metamethods
+      return 1;
+   }
+
+   // Unknown key type
+   lua_pushnil(L);
+   return 1;
+}
+
 extern int luaopen_string(lua_State* L)
 {
    LJ_LIB_REG(L, "string", string);
+   // At this point, L->top - 1 has the string library table on the Lua stack
+
    GCtab *mt = lj_tab_new(L, 0, 1);
 
    // NOBARRIER: basemt is a GC root.
    global_State *g = G(L);
 
-   // Stores the newly created table mt as the “base metatable” for the string type. basemt_it(g, LJ_TSTR) selects
+   // Stores the newly created table mt as the "base metatable" for the string type. basemt_it(g, LJ_TSTR) selects
    // the slot for the string base metatable in the global state, obj2gco(mt) converts the GCtab* to a generic GC
    // object reference, and setgcref writes that GC reference into the global state (so the runtime knows the
    // canonical metatable for strings).
 
    setgcref(basemt_it(g, LJ_TSTR), obj2gco(mt));
 
-   // Create the entry mt[mmname_str(g, MM_index)] (i.e. __index) and set its value to L->top - 1.
+   // Create a closure for string_index_handler with the string library table as upvalue.
+   // This allows str[idx], str[{0..5}], and str.method() syntax.
+   // Stack after LJ_LIB_REG: [..., string_lib_table] at position -1
 
-   settabV(L, lj_tab_setstr(L, mt, mmname_str(g, MM_index)), tabV(L->top - 1));
+   lua_pushvalue(L, -1);  // Push copy of string library table for upvalue
+   lua_pushcclosure(L, string_index_handler, 1);  // Create closure with 1 upvalue
+   // Stack: [..., string_lib_table, closure]
 
-   // Update the metatable’s negative‑metamethod cache (nomm). The bitwise expression clears the bit
+   // Set the closure as __index metamethod
+   TValue* index_slot = lj_tab_setstr(L, mt, mmname_str(g, MM_index));
+   setfuncV(L, index_slot, funcV(L->top - 1));
+   lua_pop(L, 1);  // Pop the closure
+   // Stack: [..., string_lib_table]
+
+   // Update the metatable's negative‑metamethod cache (nomm). The bitwise expression clears the bit
    // corresponding to MM_index (and sets other bits), marking that this metamethod slot should not be treated as
-   // “absent” by the fast metamethod check. Practically, this tells the runtime the MM_index metamethod is present
+   // "absent" by the fast metamethod check. Practically, this tells the runtime the MM_index metamethod is present
    // (so subsequent lookups/optimisations behave accordingly).
    //
    // NOTE: nomm is an 8‑bit negative cache, so MM_index must fit within those bits; the bit trick is intentional
