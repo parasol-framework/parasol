@@ -773,6 +773,41 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          continue;
       }
 
+      // Membership operator: expr in range
+      // Transform `lhs in rhs` into a method call `rhs:contains(lhs)` so that
+      // ranges can implement membership via their :contains method.
+
+      if (next.kind() IS TokenKind::InToken) {
+         constexpr uint8_t in_left = 3;
+         constexpr uint8_t in_right = 3;
+
+         if (in_left <= precedence) break;
+
+         this->ctx.tokens().advance();
+         auto right = this->parse_expression(in_right);
+         if (not right.ok()) return right;
+
+         SourceSpan left_span = left.value_ref()->span;
+         SourceSpan right_span = right.value_ref()->span;
+
+         ExprNodePtr rhs_expr = std::move(right.value_ref());
+         ExprNodePtr lhs_expr = std::move(left.value_ref());
+
+         Identifier method;
+         method.symbol = lj_str_newlit(&this->ctx.lua(), "contains");
+         method.span = next.span();
+         method.is_blank = false;
+         method.has_close = false;
+
+         ExprNodeList args;
+         args.push_back(std::move(lhs_expr));
+
+         SourceSpan span = combine_spans(left_span, right_span);
+         ExprNodePtr call = make_method_call_expr(span, std::move(rhs_expr), method, std::move(args), false);
+         left = ParserResult<ExprNodePtr>::success(std::move(call));
+         continue;
+      }
+
       auto op_info = this->match_binary_operator(next);
       if (not op_info.has_value()) break;
       if (op_info->left <= precedence) break;

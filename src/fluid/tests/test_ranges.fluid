@@ -174,6 +174,39 @@ function testRangeContainsReverse()
    assert(r:contains(11) is false, "11 should NOT be in range 10..0")
 end
 
+function testRangeMembership()
+   -- Test membership operator using ranges
+   local r = {0..10}              -- Exclusive: 0-9
+
+   assert(5 in r, "5 should be in range 0..10")
+   assert(not (10 in r), "10 should NOT be in exclusive range 0..10")
+   assert(not (-1 in r), "-1 should NOT be in range 0..10")
+
+   local ri = {0...10}            -- Inclusive: 0-10
+
+   assert(10 in ri, "10 should be in inclusive range 0...10")
+   assert(not (11 in ri), "11 should NOT be in inclusive range 0...10")
+
+   -- Literal membership without variables
+   assert(5 in {0..10}, "5 should be in literal range 0..10")
+   assert(not (10 in {0..10}), "10 should NOT be in literal exclusive range 0..10")
+end
+
+function testRangeMembershipInIf()
+   -- Test membership operator inside conditional statements
+   local in_range = false
+   if 5 in {0..10} then
+      in_range = true
+   end
+   assert(in_range is true, "5 in {0..10} should be true in if condition")
+
+   local out_of_range = false
+   if 11 in {0..10} then
+      out_of_range = true
+   end
+   assert(out_of_range is false, "11 in {0..10} should be false in if condition")
+end
+
 function testRangeToTable()
    -- Test toTable method
    local r1 = range(0, 5)
@@ -480,8 +513,8 @@ function testRangeConstructorTypeErrors()
 end
 
 function testRangeLiteralTypeErrors()
-   -- Test that range literals with non-numeric values throw errors at runtime
-   -- The parser interprets {a..b} as a range literal, so string variables
+   -- Test that range literals with invalid values throw errors at runtime
+   -- The parser interprets {a..b} as a range literal, so invalid operands
    -- will cause a runtime error when the range() function is called
 
    local ok, err = pcall(function()
@@ -497,6 +530,28 @@ function testRangeLiteralTypeErrors()
       return bad
    end)
    assert(ok is false, "range with string arguments should throw")
+
+   -- Non-integer numeric values in literals
+   ok, err = pcall(function()
+      return {1.5..5}
+   end)
+   assert(ok is false, "range literal with non-integer start should throw")
+
+   ok, err = pcall(function()
+      return {0..5.5}
+   end)
+   assert(ok is false, "range literal with non-integer stop should throw")
+
+   -- Nil values in literals
+   ok, err = pcall(function()
+      return {nil..5}
+   end)
+   assert(ok is false, "range literal with nil start should throw")
+
+   ok, err = pcall(function()
+      return {0..nil}
+   end)
+   assert(ok is false, "range literal with nil stop should throw")
 end
 
 function testStringIndexOutOfBounds()
@@ -642,6 +697,8 @@ return {
       "testRangeContainsInclusive",
       "testRangeContainsWithStep",
       "testRangeContainsReverse",
+      "testRangeMembership",
+      "testRangeMembershipInIf",
       "testRangeToTable",
       "testRangeToTableWithStep",
       "testRangeToTableReverse",
