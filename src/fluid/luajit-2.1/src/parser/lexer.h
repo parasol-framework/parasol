@@ -64,6 +64,7 @@ struct TokenDefinition {
    TOKEN_DEF(safe_field,   "?.",       false) \
    TOKEN_DEF(safe_index,   "?[",       false) \
    TOKEN_DEF(safe_method,  "?:",       false) \
+   TOKEN_DEF(arrow,        "=>",       false) \
    TOKEN_DEF(concat,       "..",       false) \
    TOKEN_DEF(dots,         "...",      false) \
    TOKEN_DEF(eq,           "==",       false) \
