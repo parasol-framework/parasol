@@ -124,7 +124,7 @@ static void key_event(evKey *, int, struct finput *);
 [[nodiscard]] static int input_keyboard(lua_State *Lua)
 {
    pf::Log log("input.keyboard");
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    OBJECTID object_id;
    struct object *obj;
@@ -167,7 +167,7 @@ static void key_event(evKey *, int, struct finput *);
       if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, input), &event);
 
       input->InputHandle = 0;
-      input->Script      = Lua->Script;
+      input->Script      = Lua->script;
       input->SurfaceID   = object_id;
       input->KeyEvent    = event;
       if (function_type IS LUA_TFUNCTION) {
@@ -199,7 +199,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static int input_request_item(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    if (not lua_isfunction(Lua, 4)) {
       luaL_argerror(Lua, 4, "Function expected.");
@@ -265,7 +265,7 @@ static void key_event(evKey *, int, struct finput *);
             .Preference = { char(datatype), 0 }
          };
 
-         auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));
+         auto error = acDataFeed(*src, Lua->script, DATA::REQUEST, &dcr, sizeof(dcr));
          if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
       }
    }
@@ -281,7 +281,7 @@ static void key_event(evKey *, int, struct finput *);
 [[nodiscard]] static int input_subscribe(lua_State *Lua)
 {
    pf::Log log("input.subscribe");
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
 
@@ -388,8 +388,8 @@ failed:
       if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
       if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = nullptr; }
 
-      if (Lua->Script) { // Remove from the chain.
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      if (Lua->script) { // Remove from the chain.
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          if (prv->InputList IS input) prv->InputList = input->Next;
          else {
             auto list = prv->InputList;
@@ -449,8 +449,8 @@ static void key_event(evKey *Event, int Size, struct finput *Input)
 static void focus_event(evFocus *Event, int Size, lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   objScript *script = Lua->Script;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
+   objScript *script = Lua->script;
 
    if ((not script) or (not prv)) {
       log.trace("Script undefined.");

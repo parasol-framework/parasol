@@ -3,7 +3,7 @@
 
 inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING Action, ERR Error)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    if ((Error >= ERR::ExceptionThreshold) and (prv->Catch)) {
       char msg[180];
       prv->CaughtError = Error;

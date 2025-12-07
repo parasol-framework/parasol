@@ -95,13 +95,17 @@ static std::optional<BCREG> var_lookup_local(FuncState *fs, GCstr *n)
 static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
 {
    MSize n = fs->nuv;
+   
    // Check if upvalue already exists using range-based iteration.
+   
    auto uvmap_view = std::span(fs->uvmap.data(), n);
    for (MSize i = 0; auto uv_idx : uvmap_view) {
       if (uv_idx IS vidx) return i;  // Already exists.
       i++;
    }
+
    // Otherwise create a new one.
+   
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
    fs->assert(e->k IS ExpKind::Local or e->k IS ExpKind::Upval, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
@@ -119,8 +123,7 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
       auto reg = var_lookup_local(fs, name);
       if (reg.has_value()) {  // Local in this function?
          e->init(ExpKind::Local, reg.value());
-         if (!first)
-            fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
+         if (!first) fscope_uvmark(fs, reg.value());  // Scope now has an upvalue.
          return MSize(e->u.s.aux = uint32_t(fs->varmap[reg.value()]));
       }
       else {

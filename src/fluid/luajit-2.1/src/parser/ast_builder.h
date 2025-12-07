@@ -1,10 +1,9 @@
-// AST builder that threads typed tokens through the parser and produces the
-// schema declared in ast_nodes.h without touching FuncState/bytecode state.
+// AST builder that threads typed tokens through the parser and produces the schema declared in ast_nodes.h without 
+// touching FuncState/bytecode state.
 //
-// The top-level parse contract is `parse_chunk()` which returns ownership of the
-// root BlockStmt describing the current chunk; `IrEmitter::emit_chunk()`
-// consumes that BlockStmt to generate bytecode, so the builder and emitter can
-// evolve independently while sharing a single AST boundary.
+// The top-level parse contract is `parse_chunk()` which returns ownership of the root BlockStmt describing the 
+// current chunk; `IrEmitter::emit_chunk()` consumes that BlockStmt to generate bytecode, so the builder and emitter 
+// can evolve independently while sharing a single AST boundary.
 
 #pragma once
 
@@ -33,8 +32,7 @@ private:
       uint8_t right = 0;
    };
 
-   [[nodiscard]] ParserResult<std::unique_ptr<BlockStmt>> parse_block(
-      std::span<const TokenKind> terminators);
+   [[nodiscard]] ParserResult<std::unique_ptr<BlockStmt>> parse_block(std::span<const TokenKind> terminators);
    ParserResult<StmtNodePtr> parse_statement();
    ParserResult<StmtNodePtr> parse_local();
    ParserResult<StmtNodePtr> parse_function_stmt();
@@ -46,7 +44,6 @@ private:
    ParserResult<StmtNodePtr> parse_defer();
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_expression_stmt();
-
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);
@@ -79,19 +76,17 @@ private:
       uint8_t explicit_count = 0;
       bool trailing_keep = false;
    };
+
    ParserResult<ResultFilterInfo> parse_result_filter_pattern();
    ParserResult<ExprNodePtr> parse_result_filter_expr(const Token& start_token);
-   ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(
-      std::initializer_list<TokenKind> terminators);
+   ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(std::initializer_list<TokenKind> terminators);
 
    [[nodiscard]] bool at_end_of_block(std::span<const TokenKind> terminators) const;
    [[nodiscard]] bool is_statement_start(TokenKind kind) const;
    [[nodiscard]] static Identifier make_identifier(const Token& token);
    [[nodiscard]] static LiteralValue make_literal(const Token& token);
-
    [[nodiscard]] inline SourceSpan span_from(const Token& token) { return token.span(); }
    [[nodiscard]] inline SourceSpan span_from(const Token& start, const Token& end) const { return combine_spans(start.span(), end.span()); }
-
    [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token& token) const;
 
 };

@@ -43,11 +43,11 @@ static int thread_script(lua_State *Lua)
 
       if (lua_isfunction(Lua, 2)) {
          lua_pushvalue(Lua, 2);
-         callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-         callback.MetaValue = Lua->Script->UID;
+         callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+         callback.MetaValue = Lua->script->UID;
       }
 
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
       prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
          acActivate(Script);
@@ -123,11 +123,11 @@ static int thread_action(lua_State *Lua)
    type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
-      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, 3);
-      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
 
    int arg_size = 0;
@@ -223,11 +223,11 @@ static int thread_method(lua_State *Lua)
                int type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else if (type IS LUA_TFUNCTION) {
                   lua_pushvalue(Lua, 3);
-                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = CALL::NIL;
                callback.Meta = APTR(lua_tointeger(Lua, 4));

@@ -62,7 +62,7 @@ function runTests()
       if type(func) is "string" then
          func_name = func
          print("-- Test " .. i .. ": " .. func .. " --")
-         if (glTest) and (func != glTest) then
+         if glTest and (func != glTest) then
             skip = true
          end
          func = _G[func]

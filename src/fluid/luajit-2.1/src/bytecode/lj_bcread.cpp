@@ -308,9 +308,7 @@ static void bcread_knum(LexState *State, GCproto *pt, MSize sizekn)
          o->u32.lo = lo;
          o->u32.hi = bcread_uleb128(State);
       }
-      else {
-         setintV(o, lo);
-      }
+      else setintV(o, lo);
    }
 }
 
@@ -359,13 +357,13 @@ GCproto *lj_bcread_proto(LexState *State)
    BCLine firstline = 0, numline = 0;
 
    // Read prototype header.
-   flags = bcread_byte(State);
+   flags     = bcread_byte(State);
    numparams = bcread_byte(State);
    framesize = bcread_byte(State);
-   sizeuv = bcread_byte(State);
-   sizekgc = bcread_uleb128(State);
-   sizekn = bcread_uleb128(State);
-   sizebc = bcread_uleb128(State) + 1;
+   sizeuv    = bcread_byte(State);
+   sizekgc   = bcread_uleb128(State);
+   sizekn    = bcread_uleb128(State);
+   sizebc    = bcread_uleb128(State) + 1;
    if (!(bcread_flags(State) & BCDUMP_F_STRIP)) {
       sizedbg = bcread_uleb128(State);
       if (sizedbg) {
@@ -378,8 +376,8 @@ GCproto *lj_bcread_proto(LexState *State)
 
    sizept = (MSize)sizeof(GCproto) + sizebc * (MSize)sizeof(BCIns) + sizekgc * (MSize)sizeof(GCRef);
    sizept = (sizept + (MSize)sizeof(TValue) - 1) & ~((MSize)sizeof(TValue) - 1);
-   ofsk = sizept; sizept += sizekn * (MSize)sizeof(TValue);
-   ofsuv = sizept; sizept += ((sizeuv + 1) & ~1) * 2;
+   ofsk   = sizept; sizept += sizekn * (MSize)sizeof(TValue);
+   ofsuv  = sizept; sizept += ((sizeuv + 1) & ~1) * 2;
    ofsdbg = sizept; sizept += sizedbg;
 
    // Allocate prototype object and initialize its fields.

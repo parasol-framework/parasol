@@ -81,7 +81,7 @@ static int processing_new(lua_State *Lua)
       }
 
       if (fp->Signals->empty()) { // Monitor the script for a signal if the client did not specify any objects
-         ObjectSignal sig = { .Object = Lua->Script };
+         ObjectSignal sig = { .Object = Lua->script };
          fp->Signals->push_back(sig);
       }
 
@@ -148,14 +148,14 @@ static int processing_sleep(lua_State *Lua)
          error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
-         if ((Lua->Script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
+         if ((Lua->script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
             log.detail("Lua script already in signalled state.");
-            Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+            Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
             error = ERR::Okay;
          }
          else {
             ObjectSignal signal_list_c[2];
-            signal_list_c[0].Object   = Lua->Script;
+            signal_list_c[0].Object   = Lua->script;
             signal_list_c[1].Object   = nullptr;
 
             std::scoped_lock lock(recursion);
@@ -180,7 +180,7 @@ static int processing_sleep(lua_State *Lua)
 
 static int processing_signal(lua_State *Lua)
 {
-   Action(AC::Signal, Lua->Script, nullptr);
+   Action(AC::Signal, Lua->script, nullptr);
    return 0;
 }
 
@@ -191,7 +191,7 @@ static int processing_signal(lua_State *Lua)
 
 static int processing_flush(lua_State *Lua)
 {
-   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+   Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
    return 0;
 }
 
@@ -202,7 +202,7 @@ static int processing_flush(lua_State *Lua)
 
 static int processing_task(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    object *obj = push_object(prv->Lua, CurrentTask());
    obj->Detached = true;  // External reference
    return 1;
@@ -225,7 +225,7 @@ static int processing_get(lua_State *Lua)
          return 1;
       }
       else if (std::string_view("flush") IS fieldname) {
-         Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+         Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
          if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing")) {
             for (auto &entry : *fp->Signals) {
                entry.Object->Flags &= (~NF::SIGNALLED);
@@ -251,12 +251,12 @@ static ERR msg_handler(APTR Meta, int MsgID, int MsgType, APTR Message, int MsgS
    if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
 
    auto lua = (lua_State *)Meta;
-   auto prv = (prvFluid *)lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)lua->script->ChildPrivate;
    int ref = *(int *)Message;
    lua_rawgeti(lua, LUA_REGISTRYINDEX, ref); // Get the function from the registry
    luaL_unref(lua, LUA_REGISTRYINDEX, ref); // Remove it
    if (lua_pcall(prv->Lua, 0, 0, 0)) {
-      process_error(lua->Script, "delayedCall()");
+      process_error(lua->script, "delayedCall()");
    }
    return ERR::Okay;
 }

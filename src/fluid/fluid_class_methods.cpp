@@ -606,13 +606,13 @@ static void emit_state_info(prvFluid *Prv, std::ostringstream &Buf, bool Compact
    if (not Compact) Buf << "=== STATE ===\n";
 
    Buf << std::format("Stack top: {}\n", lua_gettop(Prv->Lua));
-   Buf << std::format("Protected globals: {}\n", Prv->Lua->ProtectedGlobals ? "true" : "false");
+   Buf << std::format("Protected globals: {}\n", Prv->Lua->protected_globals ? "true" : "false");
 
    if (auto hook_mask = lua_gethookmask(Prv->Lua)) {
       std::vector<std::string_view> flags;
-      if (hook_mask & LUA_MASKCALL) flags.emplace_back("CALL");
-      if (hook_mask & LUA_MASKRET) flags.emplace_back("RET");
-      if (hook_mask & LUA_MASKLINE) flags.emplace_back("LINE");
+      if (hook_mask & LUA_MASKCALL)  flags.emplace_back("CALL");
+      if (hook_mask & LUA_MASKRET)   flags.emplace_back("RET");
+      if (hook_mask & LUA_MASKLINE)  flags.emplace_back("LINE");
       if (hook_mask & LUA_MASKCOUNT) flags.emplace_back("COUNT");
 
       Buf << "Hook mask: ";

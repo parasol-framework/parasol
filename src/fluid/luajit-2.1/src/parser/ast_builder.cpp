@@ -153,25 +153,18 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
    Token current = this->ctx.tokens().current();
    switch (current.kind()) {
-      case TokenKind::Local:       return this->parse_local();
-      case TokenKind::Function:    return this->parse_function_stmt();
-      case TokenKind::ThunkToken:  return this->parse_function_stmt();
-      case TokenKind::If:          return this->parse_if();
-      case TokenKind::WhileToken:  return this->parse_while();
-      case TokenKind::Repeat:      return this->parse_repeat();
-      case TokenKind::For:         return this->parse_for();
-      case TokenKind::DoToken:     return this->parse_do();
-      case TokenKind::DeferToken:  return this->parse_defer();
-      case TokenKind::ReturnToken: return this->parse_return();
-
-      case TokenKind::BreakToken: {
-         return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
-      }
-
-      case TokenKind::ContinueToken: {
-         return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
-      }
-
+      case TokenKind::Local:         return this->parse_local();
+      case TokenKind::Function:      return this->parse_function_stmt();
+      case TokenKind::ThunkToken:    return this->parse_function_stmt();
+      case TokenKind::If:            return this->parse_if();
+      case TokenKind::WhileToken:    return this->parse_while();
+      case TokenKind::Repeat:        return this->parse_repeat();
+      case TokenKind::For:           return this->parse_for();
+      case TokenKind::DoToken:       return this->parse_do();
+      case TokenKind::DeferToken:    return this->parse_defer();
+      case TokenKind::ReturnToken:   return this->parse_return();
+      case TokenKind::BreakToken:    return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
+      case TokenKind::ContinueToken: return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
       case TokenKind::Semicolon:
          this->ctx.tokens().advance();
          return ParserResult<StmtNodePtr>::success(nullptr);

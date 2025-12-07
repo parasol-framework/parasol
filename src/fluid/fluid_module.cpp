@@ -89,7 +89,7 @@ static int module_load(lua_State *Lua)
 
    // Check if there is an include file with the same name as this module.
 
-   auto error = load_include(Lua->Script, modname);
+   auto error = load_include(Lua->script, modname);
    if ((error != ERR::Okay) and (error != ERR::FileNotFound)) {
       log.debranch();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);
@@ -168,7 +168,7 @@ static int module_index(lua_State *Lua)
 static int module_call(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
-   objScript *Self = Lua->Script;
+   objScript *Self = Lua->script;
    uint8_t buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
 
@@ -803,7 +803,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
                   if (((APTR *)var)[0]) {
                      if (argtype & FD_RESOURCE) {
                         // Resource structures are managed with direct data addresses.
-                        push_struct(prv->Lua->Script, ((APTR *)var)[0], args[i].Name, (argtype & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                        push_struct(prv->Lua->script, ((APTR *)var)[0], args[i].Name, (argtype & FD_ALLOC) ? TRUE : FALSE, TRUE);
                      }
                      else {
                         if (named_struct_to_table(prv->Lua, args[i].Name, ((APTR *)var)[0]) != ERR::Okay) lua_pushnil(prv->Lua);

@@ -24,7 +24,7 @@
 
 static inline bool should_trace_operators(FuncState* fs)
 {
-   auto prv = (prvFluid *)fs->L->Script->ChildPrivate;
+   auto prv = (prvFluid *)fs->L->script->ChildPrivate;
    return (prv->JitOptions & JOF::TRACE_OPERATORS) != JOF::NIL;
 }
 
