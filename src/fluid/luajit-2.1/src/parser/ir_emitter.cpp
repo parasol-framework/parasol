@@ -352,6 +352,7 @@ UnsupportedNodeRecorder glUnsupportedNodes;
       case AstNodeKind::BlockStmt:      return "BlockStmt";
       case AstNodeKind::AssignmentStmt: return "AssignmentStmt";
       case AstNodeKind::LocalDeclStmt:  return "LocalDeclStmt";
+      case AstNodeKind::GlobalDeclStmt: return "GlobalDeclStmt";
       case AstNodeKind::LocalFunctionStmt: return "LocalFunctionStmt";
       case AstNodeKind::FunctionStmt:   return "FunctionStmt";
       case AstNodeKind::IfStmt:         return "IfStmt";
@@ -528,6 +529,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_statement(const StmtNode& stmt)
    case AstNodeKind::LocalDeclStmt: {
       const auto &payload = std::get<LocalDeclStmtPayload>(stmt.data);
       return this->emit_local_decl_stmt(payload);
+   }
+   case AstNodeKind::GlobalDeclStmt: {
+      const auto &payload = std::get<GlobalDeclStmtPayload>(stmt.data);
+      return this->emit_global_decl_stmt(payload);
    }
    case AstNodeKind::LocalFunctionStmt: {
       const auto &payload = std::get<LocalFunctionStmtPayload>(stmt.data);
@@ -766,6 +771,56 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       if (is_blank_symbol(identifier)) continue;
       this->update_local_binding(identifier.symbol, BCReg(base.raw() + i.raw()));
    }
+   this->func_state.reset_freereg();
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+// Emit bytecode for a global variable declaration statement, explicitly storing values in the global table.
+
+ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPayload& payload)
+{
+   auto nvars = BCReg(BCREG(payload.names.size()));
+   if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+
+   // Evaluate all expressions first
+   std::vector<ExpDesc> values;
+   values.reserve(payload.values.size());
+
+   for (const ExprNodePtr& expr : payload.values) {
+      if (not expr) continue;
+      auto result = this->emit_expression(*expr);
+      if (not result.ok()) return ParserResult<IrEmitUnit>::failure(result.error_ref());
+      ExpDesc value = result.value_ref();
+      ExpressionValue ev(&this->func_state, value);
+      ev.discharge();
+      values.push_back(ev.legacy());
+   }
+
+   // Store each value to its corresponding global variable
+   auto nexps = BCReg(BCREG(values.size()));
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = payload.names[i.raw()];
+      if (is_blank_symbol(identifier)) continue;
+
+      GCstr* name = identifier.symbol;
+      if (not name) continue;
+
+      ExpDesc var;
+      var.init(ExpKind::Global, 0);
+      var.u.sval = name;
+
+      if (i < nexps) {
+         // Assign the corresponding expression value
+         bcemit_store(&this->func_state, &var, &values[i.raw()]);
+      }
+      else {
+         // Assign nil for missing values
+         ExpDesc nil_value(ExpKind::Nil);
+         bcemit_store(&this->func_state, &var, &nil_value);
+      }
+   }
+
    this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }

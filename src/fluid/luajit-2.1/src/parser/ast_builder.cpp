@@ -154,6 +154,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
    Token current = this->ctx.tokens().current();
    switch (current.kind()) {
       case TokenKind::Local:         return this->parse_local();
+      case TokenKind::Global:        return this->parse_global();
       case TokenKind::Function:      return this->parse_function_stmt();
       case TokenKind::ThunkToken:    return this->parse_function_stmt();
       case TokenKind::If:            return this->parse_if();
@@ -222,6 +223,34 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    stmt->kind = AstNodeKind::LocalDeclStmt;
    stmt->span = local_token.span();
    LocalDeclStmtPayload payload;
+   payload.names = std::move(names.value_ref());
+   payload.values = std::move(values);
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses global variable declarations, forcing variables to be stored in the global table.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_global()
+{
+   Token global_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();
+
+   auto names = this->parse_name_list();
+   if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
+
+   ExprNodeList values;
+   if (this->ctx.match(TokenKind::Equals).ok()) {
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+
+   StmtNodePtr stmt = std::make_unique<StmtNode>();
+   stmt->kind = AstNodeKind::GlobalDeclStmt;
+   stmt->span = global_token.span();
+   GlobalDeclStmtPayload payload;
    payload.names = std::move(names.value_ref());
    payload.values = std::move(values);
    stmt->data = std::move(payload);

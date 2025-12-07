@@ -35,6 +35,7 @@ private:
    [[nodiscard]] ParserResult<std::unique_ptr<BlockStmt>> parse_block(std::span<const TokenKind> terminators);
    ParserResult<StmtNodePtr> parse_statement();
    ParserResult<StmtNodePtr> parse_local();
+   ParserResult<StmtNodePtr> parse_global();
    ParserResult<StmtNodePtr> parse_function_stmt();
    ParserResult<StmtNodePtr> parse_if();
    ParserResult<StmtNodePtr> parse_while();

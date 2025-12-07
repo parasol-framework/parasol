@@ -84,6 +84,7 @@ enum class AstNodeKind : uint16_t {
    BlockStmt,
    AssignmentStmt,
    LocalDeclStmt,
+   GlobalDeclStmt,
    LocalFunctionStmt,
    FunctionStmt,
    IfStmt,
@@ -526,6 +527,17 @@ struct LocalDeclStmtPayload {
    ~LocalDeclStmtPayload();
 };
 
+struct GlobalDeclStmtPayload {
+   GlobalDeclStmtPayload() = default;
+   GlobalDeclStmtPayload(const GlobalDeclStmtPayload&) = delete;
+   GlobalDeclStmtPayload& operator=(const GlobalDeclStmtPayload&) = delete;
+   GlobalDeclStmtPayload(GlobalDeclStmtPayload&&) noexcept = default;
+   GlobalDeclStmtPayload& operator=(GlobalDeclStmtPayload&&) noexcept = default;
+   std::vector<Identifier> names;
+   ExprNodeList values;
+   ~GlobalDeclStmtPayload();
+};
+
 struct LocalFunctionStmtPayload {
    LocalFunctionStmtPayload() = default;
    LocalFunctionStmtPayload(const LocalFunctionStmtPayload&) = delete;
@@ -663,7 +675,7 @@ struct ExpressionStmtPayload {
 struct StmtNode {
    AstNodeKind kind = AstNodeKind::ExpressionStmt;
    SourceSpan span{};
-   std::variant<AssignmentStmtPayload, LocalDeclStmtPayload,
+   std::variant<AssignmentStmtPayload, LocalDeclStmtPayload, GlobalDeclStmtPayload,
       LocalFunctionStmtPayload, FunctionStmtPayload, IfStmtPayload,
       LoopStmtPayload, NumericForStmtPayload, GenericForStmtPayload,
       ReturnStmtPayload, BreakStmtPayload, ContinueStmtPayload, DeferStmtPayload,

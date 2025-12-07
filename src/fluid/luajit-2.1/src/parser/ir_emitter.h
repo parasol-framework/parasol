@@ -144,6 +144,7 @@ private:
    ParserResult<IrEmitUnit> emit_expression_stmt(const ExpressionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_return_stmt(const ReturnStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_local_decl_stmt(const LocalDeclStmtPayload& payload);
+   ParserResult<IrEmitUnit> emit_global_decl_stmt(const GlobalDeclStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_local_function_stmt(const LocalFunctionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_function_stmt(const FunctionStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_if_stmt(const IfStmtPayload& payload);
