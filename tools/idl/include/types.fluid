@@ -1,13 +1,13 @@
 -- Type conversion for idl-c
 
-glActiveRefs = { }
-glCustomTypes = { }
+global glActiveRefs = { }
+global glCustomTypes = { }
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
 -- Use cType() to perform conversion and don't access glTypes directly.
 
-glTypes = {
+global glTypes = {
    arraysize  = { fd='FD_INT|FD_ARRAYSIZE',   c_type='int', doc_type='INT' },
    bufsize    = { fd='FD_INT|FD_BUFSIZE',     c_type='int', doc_type='INT' },
    char       = { fd='FD_BYTE',               c_type='int8_t', doc_type='INT8' },
@@ -50,7 +50,7 @@ glTypes = {
 -----------------------------------------------------------------------------------------------------------------------
 -- Convert FD flags into a printable C type.  Used by getMetaFieldDefinition() for classes.
 
-function getFieldType(Def, Type, CustomName, Option)
+global function getFieldType(Def, Type, CustomName, Option)
    local result
 
    if (Type & FD_CUSTOM)?? then
@@ -178,7 +178,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment, basicType, allocated, resultValue }
 
-function cType(Field, Origin)
+global function cType(Field, Origin)
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'\n" .. debug.traceback())
 
    Field.defType = Field.type -- Save the original type name

@@ -2,12 +2,12 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function ignoreAction(actionID)
+global function ignoreAction(actionID)
    actionID ?? return
    return glIgnoreList[actionID]
 end
 
-glIgnoreList = { }
+global glIgnoreList = { }
 glIgnoreList[AC_DataFeed] = true
 glIgnoreList[AC_Free] = true
 glIgnoreList[AC_FreeWarning] = true
@@ -17,7 +17,7 @@ glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
 glIgnoreList[AC_NewPlacement ?? 0] = true
 
-function setAction(Action, Options)
+global function setAction(Action, Options)
    for k, v in pairs(Options) do
       glActions[Action][k] = v
    end
@@ -335,14 +335,14 @@ setAction('Write', {
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function saveDocuments()
+global function saveDocuments()
    -- Save module functions, if any
 
-   local outPath = glDocPath ?? 'sdk:docs/xml/modules/'
+   outPath = glDocPath ?? 'sdk:docs/xml/modules/'
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
    if not table.empty(glFunctions) then
-      local out = docModuleHeader()
+      out = docModuleHeader()
       for _, func in ipairs(glFunctions) do
          out ..= docFunction(func)
       end
@@ -384,7 +384,7 @@ end
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
-function extractParagraph(Input, Caller, References)
+global function extractParagraph(Input, Caller, References)
    if not Input?? then error('No Input provided to extractParagraph()\n' .. debug.traceback()) end
 
    Input = Input:trim()
@@ -509,7 +509,7 @@ end
 -- Use ! to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
 --   definition will be pulled in to that section.
 
-function substituteReferences(String, Class)
+global function substituteReferences(String, Class)
    -- Substitute struct insertion requests
 
    String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
@@ -626,7 +626,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate a header suitable for class documents.
 
-function docClass(Class)
+global function docClass(Class)
    if not Class.meta then
       print('No compiled meta information available for class ' .. Class.name)
       return
@@ -660,11 +660,10 @@ function docClass(Class)
 
    if not table.empty(Class.src) then
       out ..= '    <source>\n'
-      local path
       for _, path in pairs(Class.src) do
-         local filename = path:gsub('.*[:/\\](.-)', '%1', 1)
-         local path = path:match('(.*[:/\\])(.-)')
-         local xpath = ''
+         filename = path:gsub('.*[:/\\](.-)', '%1', 1)
+         path = path:match('(.*[:/\\])(.-)')
+         xpath = ''
          if path?? then xpath = " path=\"" .. path:escXML() .. '"' end
          out ..= "      <file" .. xpath .. ">" .. filename:escXML() .. "</file>\n"
       end
@@ -690,7 +689,7 @@ function docClass(Class)
             if glActions[a.name].params?? then
                out = out .. '      <input>\n'
                for _, param in ipairs(glActions[a.name].params) do
-                  local ref = ''
+                  ref = ''
                   if param.lookup?? then ref = ' lookup="' .. param.lookup .. '"' end
                   if not param.comment then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
                   out ..= "        <param type=\"" .. (param.docType ?? param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
@@ -705,7 +704,7 @@ function docClass(Class)
             end
 
             if not table.empty(a.results) then
-               local results = ''
+               results = ''
                for _, result in ipairs(a.results) do
                   results ..= '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
                end
@@ -742,7 +741,7 @@ function docClass(Class)
             if not table.empty(method.params) then
                out ..= '      <input>\n'
                for _, param in ipairs(method.params) do
-                  local ref = ''
+                  ref = ''
                   if param.ref?? then ref = " lookup=\"" .. param.lookup .. '"' end
                   assert(param.comment, 'No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"')
                   out ..= "        <param type=\"" .. param.docType:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
@@ -755,7 +754,7 @@ function docClass(Class)
             end
 
             if not table.empty(method.results) then
-               local results = ''
+               results = ''
                for _, result in ipairs(method.results) do
                   results ..= "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
@@ -797,10 +796,10 @@ function docClass(Class)
             if f.write?? then out ..= ' write="' .. f.write:sub(0,1) .. '"' end
             out ..= '>' .. (f.access ?? '-/-') .. '</access>\n'
 
-            local lookup = ''
-            local prototype = ''
+            lookup = ''
+            prototype = ''
             if f.lookup then lookup = ' lookup="' .. f.lookup .. '"' end
-            local typeName = f.docType ?? (f.type ?? 'NIL')
+            typeName = f.docType ?? (f.type ?? 'NIL')
             if typeName is 'struct RGB8' then
                typeName = 'RGB8'
             elseif typeName is 'int' then
@@ -817,13 +816,13 @@ function docClass(Class)
 
             out ..= '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
 
-            local description = f.description
+            description = f.description
             if description then
                description = extractParagraph(description, Class, Class.references)
             end
 
             if f.lookup then
-               local lookup = '<types lookup="' .. f.lookup .. '"/>'
+               lookup = '<types lookup="' .. f.lookup .. '"/>'
                if description then
                   if not description:find('<types lookup="' .. f.lookup .. '"') then
                      description ..= '\n' .. lookup
@@ -851,8 +850,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate a header suitable for a module that exports at least one function.
 
-function docModuleHeader()
-   local out = '<?xml version="1.0"?>\n'
+global function docModuleHeader()
+   out = '<?xml version="1.0"?>\n'
    out ..= '<?xml-stylesheet type="text/xsl" href="module.xsl"?>\n\n'
    out ..= '<book>\n'
    out ..= '  <info>\n'
@@ -878,8 +877,8 @@ function docModuleHeader()
       out ..= '    <source>\n'
       local path
       for _, path in pairs(srcFiles) do
-         local filename = path:gsub('.*[:/\\](.-)', '%1', 1)
-         local path = path:match('(.*[:/\\])(.-)')
+         filename = path:gsub('.*[:/\\](.-)', '%1', 1)
+         path = path:match('(.*[:/\\])(.-)')
          out ..= "      <file path=\"" .. path:escXML() .. "\">" .. filename:escXML() .. "</file>\n"
       end
       out ..= '    </source>\n'
@@ -906,14 +905,14 @@ function docModuleHeader()
    return out
 end
 
-function docFunction(Function)
+global function docFunction(Function)
    if string.find((Function.status ?? ''), '^[Pp]rivate') or
       string.find((Function.status ?? ''), '^[Ii]nternal') or
       string.find((Function.comment ?? ''), '^[Pp]rivate') then
       return ''
    end
 
-   local out = '  <function>\n'
+   out = '  <function>\n'
 
    if Function.name??      then out ..= '    <name>' .. Function.name .. '</name>\n' end
    if Function.category??  then out ..= '    <category>' .. Function.category .. '</category>\n' end
@@ -926,9 +925,9 @@ function docFunction(Function)
    -- Function arguments
 
    if not table.empty(Function.input) then
-      local args = ''
+      args = ''
       for k, fa in ipairs(Function.input) do
-         local ref = ''
+         ref = ''
          if fa.ref then
             ref = ' lookup="' .. fa.lookup .. '"'
          end
@@ -961,9 +960,9 @@ function docFunction(Function)
 
    if not table.empty(Function.result) then
       if not table.empty(Function.result.values) then
-         local errors = ''
+         errors = ''
          for _, result in ipairs(Function.result.values) do
-            local comment = (result.msg ?? mSys.GetErrorMsg(code))
+            comment = (result.msg ?? mSys.GetErrorMsg(code))
             errors ..= "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
          end
 
@@ -971,7 +970,7 @@ function docFunction(Function)
             out ..= "    <result type=\"ERR\">\n" .. errors .. "    </result>\n"
          end
       elseif Function.result.comment?? then
-         local ref = ''
+         ref = ''
          if Function.result.ref then
             ref = " lookup=\"" .. Function.result.lookup .. '"'
          end
@@ -985,9 +984,9 @@ end
 
 -- Output custom types - flags, enumerators etc
 
-function docTypes(References)
-   local out = ''
-   local sortedTypes = { }
+global function docTypes(References)
+   out = ''
+   sortedTypes = { }
    for prefix, ct in pairs(glCustomTypes) do
       table.insert(sortedTypes, ct)
    end
@@ -995,7 +994,7 @@ function docTypes(References)
    table.sort(sortedTypes, function(a,b) return a.prefix < b.prefix end)
 
    for _, ct in ipairs(sortedTypes) do
-      local comment = ''
+      comment = ''
       if ct.comment then comment = " comment=\"" .. ct.comment:escXML() .. '"' end
 
       local typeName
@@ -1014,7 +1013,7 @@ function docTypes(References)
       else
          out ..= "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
 
-         local sortedValues = { }
+         sortedValues = { }
          for _, v in pairs(ct.list) do
             table.insert(sortedValues, v)
          end
@@ -1046,10 +1045,10 @@ end
 
 -- Output structures.  Modules need to output all the structures; Classes output structures that are referenced.
 
-function docStructures(References)
-   local out = '  <structs>\n'
+global function docStructures(References)
+   out = '  <structs>\n'
 
-   local sortedStructs = { }
+   sortedStructs = { }
    for _, f in pairs(glStructures) do
       table.insert(sortedStructs, f)
    end
@@ -1064,21 +1063,21 @@ function docStructures(References)
          -- Don't output unreferenced structures.
          --verbose(struct.name .. ' is unreferenced.')
       else
-         local comment = ''
-         local typeName = ''
+         comment = ''
+         typeName = ''
          if struct.comment then comment = " comment=\"" .. struct.comment:escXML() .. '"' end
          if struct.type then typeName = " typeName=\"" .. struct.type:escXML() .. '"' end
 
          out ..= "    <struct name=\"" .. struct.name .. '"' .. comment .. typeName .. '>\n'
          for i, f in ipairs(struct.fields) do
-            local ref = ''
+            ref = ''
             if f.lookup then ref = " lookup=\"" .. f.lookup .. '"' end
 
-            local arraySize = ''
+            arraySize = ''
             if f.arraySize then arraySize = " size=\"" .. f.arraySize .. '"' end
 
-            local type = (f.docType ?? 'NIL')
-            local prototype = ''
+            type = (f.docType ?? 'NIL')
+            prototype = ''
             if f.isFunctionPtr then
                type = 'FUNCTION *'
                prototype = ' prototype="' .. f.docType:escXML() .. '"'

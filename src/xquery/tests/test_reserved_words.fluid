@@ -1,6 +1,6 @@
 -- Flute tests for XML
 
-glXML
+local glXML
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Check that the Tags array works as expected when used in Fluid

@@ -6,7 +6,7 @@
 glBaseFolder = 'temp:xpath_documents/'
 glCollectionFolder = glBaseFolder .. 'collection/'
 glTextFolder = glBaseFolder .. 'texts/'
-glPrimaryXML
+local glPrimaryXML
 
 local function writeFile(path, content)
    local file = obj.new('file', { path = path, flags = 'WRITE|NEW' })

@@ -8,24 +8,46 @@
 
    require 'common'
 
+   global glHeader = { }
+   global glOutput = { }
+   global glConstants = { }
+
+   global glSelf = obj.find('self')
+   global glPath = glSelf.workingPath
+   global glIDLTimestamp = 20241015
+   math.randomseed(mSys.preciseTime())
+   
+   global glFunctions      = { }
+   global glFunctionLookup = { }
+   global glMethods        = { }
+   global glFields         = { }
+   global glPaths          = { }
+   global glCustomTypes    = { }
+   global glStructures     = { }
+   global glDocuments      = { }
+   global glModule         = { }
+   global glTotalWarnings  = 0
+   global glCategory       = nil
+   global glCategories     = { }
+   global glPrivateNames   = { }
+   
+   global glProgram     = 'idl-c' -- FDL's can read this
+   global glSource      = arg('src')
+   global glOutputPath  = arg('output')
+   global glFeedback    = arg('feedback')
+   global glOutputDefs  = arg('output-defs')
+   global glOutputProto = arg('output-proto')
+   global glPrototypes  = arg('prototypes')
+   
    require './include/utils'
    require './include/parser'
    require './include/functions'
    require './include/types'
    require './include/doc'
 
-   glHeader = { }
-   glOutput = { }
-   glConstants = { }
-
-   glSelf = obj.find('self')
-   glPath = glSelf.workingPath
-   glIDLTimestamp = 20241015
-   math.randomseed(mSys.preciseTime())
-
 ----------------------------------------------------------------------------------------------------------------------
 
-glActionStubs = {
+global glActionStubs = {
    -- Hidden actions
    Free          = '',
    FreeWarning   = '',
@@ -223,8 +245,8 @@ glActionStubs = {
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function outputLookup(Name, List)
-   local sorted = { }
+global function outputLookup(Name, List)
+   sorted = { }
    for _, v in pairs(List) do
       table.insert(sorted, v)
    end
@@ -233,11 +255,11 @@ function outputLookup(Name, List)
       return (a.value is b.value) ? a.name < b.name :> a.value < b.value
    end)
 
-   local list = ''
+   list = ''
    for _, v in ipairs(sorted) do
       if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
          -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-         local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
+         hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
          if hash_id:match('^0x[8f][%dabcdef]+') then hash_id = '(int)' .. hash_id end
          list ..= string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
       end
@@ -249,8 +271,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Output the CPP compatible class definition
 
-function outputClassHeader(class, Private, Custom)
-   local physicalFields = false
+global function outputClassHeader(class, Private, Custom)
+   physicalFields = false
    for _, f in ipairs(class.fields) do
       if not f.virtual then physicalFields = true end
    end
@@ -266,12 +288,12 @@ function outputClassHeader(class, Private, Custom)
    if physicalFields then
       output('')
 
-      local max_len = 3 + class.longestFieldType + 1 + 2
+      max_len = 3 + class.longestFieldType + 1 + 2
 
       for _, f in ipairs(class.fields) do
          if not f.virtual then
             local left
-            local field_name = cName(f, true)
+            field_name = cName(f, true)
             if field_name?? then
                left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
             else
@@ -279,7 +301,7 @@ function outputClassHeader(class, Private, Custom)
             end
 
             if f.comment?? then
-               local clean_comment = f.comment:gsub('[`!@#]', '')
+               clean_comment = f.comment:gsub('[`!@#]', '')
                output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
             else
                output(left)
@@ -309,7 +331,7 @@ function outputClassHeader(class, Private, Custom)
       for _, action in ipairs(class.sortedActions) do
          if glActionStubs[action.name] then
             if glActionStubs[action.name]:len() != 0 then
-               local stub = glActionStubs[action.name]
+               stub = glActionStubs[action.name]
                stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
                output(stub)
             end
@@ -338,18 +360,18 @@ function outputClassHeader(class, Private, Custom)
 
    output('')
    output('   // Customised field setting\n')
-   local indent = '      '
+   indent = '      '
 
    for _, f in ipairs(class.fields) do
-      local field_name = cName(f, true)
+      field_name = cName(f, true)
       if field_name?? and f.write then
-         local fid_name = field_name
-         local id = fid_name:sub(-3)
+         fid_name = field_name
+         id = fid_name:sub(-3)
          if id:find('^%lID$') then
             fid_name = fid_name:sub(0, -3)
          end
 
-         local field_type = f.type
+         field_type = f.type
 
          if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
             field_type = 'APTR'
@@ -379,7 +401,7 @@ function outputClassHeader(class, Private, Custom)
             if field_type:sub(-2) is '[]' then
                field_type = field_type:sub(0,-3) .. '*'
                output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
-            elseif ((f.flags & FD_ARRAY) != 0) then
+            elseif (f.flags & FD_ARRAY) != 0 then
                if (f.flags & FD_CPP) != 0 then
                   output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
                else
@@ -395,7 +417,7 @@ function outputClassHeader(class, Private, Custom)
                output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
             end
 
-            local err, fl, target = class.meta.mtFindField(f.name:hash())
+            err, fl, target = class.meta.mtFindField(f.name:hash())
 
             if err != ERR_Okay then
                print('Failed to field ' .. f.name .. ' in class ' .. class.name)
@@ -419,19 +441,19 @@ function outputClassHeader(class, Private, Custom)
                end
             elseif (f.flags & FD_ARRAY) != 0 then
                if (f.flags & FD_CPP) != 0 then
-                  local flags = string.format('%08x', f.flags):sub(-8)
+                  flags = string.format('%08x', f.flags):sub(-8)
                   output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, int(Value->size()));')
                else
-                  local flags = string.format('%08x', f.flags):sub(-8)
+                  flags = string.format('%08x', f.flags):sub(-8)
                   output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
                end
             elseif (f.flags & FD_FUNCTION) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
             elseif (f.flags & FD_STRING) != 0 then
-               local flags = string.format('%08x', f.flags):sub(-8)
+               flags = string.format('%08x', f.flags):sub(-8)
                output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
             elseif (f.flags & FD_POINTER) != 0 then
-               local flags = string.format('%08x', f.flags):sub(-8)
+               flags = string.format('%08x', f.flags):sub(-8)
                output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
             elseif (f.flags & (FD_DOUBLE | FD_FLOAT)) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
@@ -463,14 +485,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
-function extractFields(Def, Origin)
-   local fields = { }
+global function extractFields(Def, Origin)
+   fields = { }
 
    Def ?? return fields
 
    for line, content in ipairs(Def:split('\n')) do
       -- Extract comment, if specified
-      local comment = content:match('^.+#%s-(.+)$')
+      comment = content:match('^.+#%s-(.+)$')
       if comment?? then
          content = content:match('^(.+)#%s-.+$')
       else
@@ -481,9 +503,9 @@ function extractFields(Def, Origin)
          end
       end
 
-      local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
+      type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
       if type?? then
-         local field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
+         field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
          table.insert(fields, field)
       elseif not content:trim()?? then
          -- Ignore empty line
@@ -497,10 +519,10 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function parseFDLFile(Source)
-   local err, full_path = mSys.ResolvePath(Source)
+global function parseFDLFile(Source)
+   err, full_path = mSys.ResolvePath(Source)
 
-   glFDLFolder = file.splitPath(full_path)
+   global glFDLFolder = file.splitPath(full_path)
 
    if err is ERR_Okay then
       verbose('Process FDL file ' .. full_path)
@@ -514,7 +536,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
-function idlFunction(Name, Category, Comment, Status, Description, Def)
+global function idlFunction(Name, Category, Comment, Status, Description, Def)
    -- Find the registered function definition that must have been pre-declared in the FDL.
 
    local func
@@ -526,7 +548,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 
    if not func then
-      local list = ''
+      list = ''
       for k, f in ipairs(glFunctions) do
          list ..= f.name .. '\n'
       end
@@ -546,27 +568,27 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       func.result = cType({ type='error', values=Def.errors, isFunction=true }, 'Function ' .. Name)
    end
 
-   local outValues  = ''
-   local argSeq     = ''
-   local jumpArgs
-   local proto      = ''
-   local doc_proto  = ''
-   local variadic   = false
-   local last_param = nil
+   outValues  = ''
+   argSeq     = ''
+   jumpArgs   = nil
+   proto      = ''
+   doc_proto  = ''
+   variadic   = false
+   last_param = nil
 
    if Def.input?? then
       func.input = { }
       for line, content in ipairs(Def.input:split('\n')) do
-         local comment = content:match('^.-:%s-(.+)$')
+         comment = content:match('^.-:%s-(.+)$')
          if comment?? then
             content = content:match('^(.-):%s-.+$')
          elseif content?? then
             error('No comment found for function parameter in ' .. Name .. '()')
          end
 
-         local type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
+         type, name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
          if type then
-            local param = cType({
+            param = cType({
                type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true
             }, 'Function ' .. Name)
             table.insert(func.input, param)
@@ -615,7 +637,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       end
    end
 
-   local response = func.result
+   response = func.result
    if not func.result then
       response = { type='void' }
    end
@@ -635,9 +657,9 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if Def.attrib then func.def = func.def .. ' ' .. Def.attrib end
    func.def ..= ' (*_' .. func.name .. ')(' .. (jumpArgs ?? 'void') .. ');'
 
-   func.c_proto = proto
-   func.doc_proto = doc_proto
-   func.c_response = response.type
+   func.c_proto      = proto
+   func.doc_proto    = doc_proto
+   func.c_response   = response.type
    func.doc_response = response.docType
 
    if variadic then
@@ -672,9 +694,9 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function saveOutput()
-   local tempPath = 'temp:' .. (glModule.name ?? 'idl-c-' .. math.random(1000000)):lower() .. '.h'
-   local outPath = glOutputPath
+global function saveOutput()
+   tempPath = 'temp:' .. (glModule.name ?? 'idl-c-' .. math.random(1000000)):lower() .. '.h'
+   outPath = glOutputPath
    if not outPath then
       if glModule.name?? then
          outPath = 'sdk:include/parasol/modules/' .. glModule.name:lower() .. '.h'
@@ -686,13 +708,13 @@ function saveOutput()
    verbose("Saving C header to \"" .. outPath .. "\"")
 
    do
-      local file = obj.new('file', { flags='WRITE|NEW', location=tempPath } )
+      file = obj.new('file', { flags='WRITE|NEW', location=tempPath } )
 
       priority() -- Blank line at the end
 
-      local blank = 0
+      blank = 0
       for a=0, #glHeader-1 do
-         local str = glHeader[a] .. '\n'
+         str = glHeader[a] .. '\n'
          if str is '\n' then
             blank++
          else
@@ -703,7 +725,7 @@ function saveOutput()
       end
 
       for a=0, #glConstants-1 do
-         local str = glConstants[a] .. '\n'
+         str = glConstants[a] .. '\n'
          if str is '\n' then
             blank++
          else
@@ -715,7 +737,7 @@ function saveOutput()
 
       for a=0, #glOutput-1 do
          if glOutput[a] is '__FUNCTION_TABLE__' then
-            local out = ''
+            out = ''
             out ..= '#ifdef PARASOL_STATIC\n'
             out ..= '#define JUMPTABLE_' .. glModule.name:upper() .. ' [[maybe_unused]] static struct ' .. glModule.name .. 'Base *' .. glModule.name .. 'Base = nullptr;\n'
             out ..= '#else\n'
@@ -765,7 +787,7 @@ function saveOutput()
             out ..= '#endif // PARASOL_STATIC\n\n'
             file.acWrite(out, out:len())
          else
-            local str = glOutput[a] .. '\n'
+            str = glOutput[a] .. '\n'
             if str is '\n' then
                blank++
             else
@@ -785,12 +807,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate private C function prototypes for the module.
 
-function buildPrototypes()
+global function buildPrototypes()
    if glClasses then
       for className, cl in pairs(glClasses) do
          if not table.empty(cl.methods) then
             for _, method in ipairs(cl.methods) do
-               local proto = 'OBJECTPTR Object'
+               proto = 'OBJECTPTR Object'
                if method.params?? then
                   for _, param in ipairs(method.params) do
                      proto ..= ', ' .. (param.extType ?? param.docType) .. ' ' .. param.name
@@ -803,8 +825,8 @@ function buildPrototypes()
    end
 
    if not table.empty(glFunctions) then
-      local proto = ''
-      local prefix = ''
+      proto = ''
+      prefix = ''
       if glFunctionPrefix?? then
          proto = 'namespace ' .. glFunctionPrefix .. ' {\n'
          prefix = glFunctionPrefix .. '::'
@@ -841,13 +863,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate private C definitions that describe the public functions of a module.
 
-function buildDefs()
+global function buildDefs()
    if table.empty(glFunctions) then return '' end
 
-   local prefix = ''
+   prefix = ''
    if glFunctionPrefix?? then prefix = glFunctionPrefix .. '::' end
 
-   local flist = '\nconst struct Function glFunctions[] = {\n'
+   flist = '\nconst struct Function glFunctions[] = {\n'
    for _, func in ipairs(glFunctions) do
       flist ..= "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
@@ -856,18 +878,18 @@ function buildDefs()
 
    table.sort(glFunctions, function(a,b) return a.name < b.name end)
 
-   local plist = ''
+   plist = ''
    for _, func in ipairs(glFunctions) do
       plist ..= 'FDEF args' .. func.name .. '[] = {'
 
       -- Process the result type first
 
       if func.result and func.result.type then
-         local type = func.result.fullType
+         type = func.result.fullType
 
          if type?? then
-            local fd = type.fd
-            local result_name = 'Result'
+            fd = type.fd
+            result_name = 'Result'
             if fd is 'FD_INT|FD_ERROR' then
                result_name = 'Error'
             elseif fd is 'FD_OBJECTPTR' then
@@ -893,11 +915,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Build C parameter definitions for a function or method
 
-function buildInputParameters(List)
-   local plist = ''
+global function buildInputParameters(List)
+   plist = ''
    if List then
       for _, param in ipairs(List) do
-         local fd = param.fullType.fd
+         fd = param.fullType.fd
          if param.allocated then fd ..= '|FD_ALLOC' end
          if param.resultValue then fd ..= '|FD_RESULT' end
          if param.struct then
@@ -911,14 +933,6 @@ function buildInputParameters(List)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
-
-   glProgram     = 'idl-c' -- FDL's can read this
-   glSource      = arg('src')
-   glOutputPath  = arg('output')
-   glFeedback    = arg('feedback')
-   glOutputDefs  = arg('output-defs')
-   glOutputProto = arg('output-proto')
-   glPrototypes  = arg('prototypes')
 
    if not glSource then
       print("This command is used to compile self-documenting source files.  Provide a reference to a")
@@ -934,20 +948,6 @@ end
       return
    end
 
-   glFunctions      = { }
-   glFunctionLookup = { }
-   glMethods        = { }
-   glFields         = { }
-   glPaths          = { }
-   glCustomTypes    = { }
-   glStructures     = { }
-   glDocuments      = { }
-   glModule         = { }
-   glTotalWarnings  = 0
-   glCategory       = nil
-   glCategories     = { }
-   glPrivateNames   = { }
-
    resolveSDKPath(arg('sdk'))
 
    loadActions()
@@ -961,17 +961,17 @@ end
       parseSourceFiles()
       saveOutput()
 
-      local protoDef = buildPrototypes()
+      protoDef = buildPrototypes()
 
       if glOutputDefs?? then
          catch(function()
-            local file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
+            file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
             file.acWrite('// Auto-generated by idl-c.fluid\n\n')
             if (glOutputProto is glOutputDefs) and protoDef?? then
                glOutputProto = nil
                file.acWrite(protoDef)
             end
-            local defs = buildDefs()
+            defs = buildDefs()
             if defs?? then file.acWrite(defs) end
          end,
          function(Exception)
@@ -981,7 +981,7 @@ end
 
       if glOutputProto?? then
          catch(function()
-            local file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
+            file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
             file.acWrite('// Auto-generated by idl-c.fluid\n\n')
             if protoDef?? then file.acWrite(protoDef) end
          end,

@@ -605,18 +605,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    ExpDesc value = expression.value_ref();
 
    // When protected_globals is enabled and we have a bare Unscoped identifier as an expression
-   // statement, treat it as a local variable declaration (initialized to nil).
+   // statement, this is an error - the user must explicitly declare locals with 'local'.
 
    if (value.k IS ExpKind::Unscoped and this->func_state.L->protected_globals) {
       GCstr* name = value.u.sval;
-      // Create a local variable initialized to nil
-      this->lex_state.var_new(BCReg(0), name);
-      bcemit_nil(&this->func_state, this->func_state.freereg, 1);
-      this->lex_state.var_add(BCReg(1));
-      BCReg slot = BCReg(this->func_state.nactvar - 1);
-      this->update_local_binding(name, slot);
-      this->func_state.reset_freereg();
-      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+      std::string msg = "undeclared variable '";
+      msg += std::string_view(strdata(name), name->len);
+      msg += "' - use 'local' to declare new variables";
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg));
    }
 
    // For other expression statements, we need to ensure any bytecode emitted for the expression

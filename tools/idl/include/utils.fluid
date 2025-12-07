@@ -3,7 +3,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Print a message to stdout if verbose mode is enabled
 
-function verbose(String)
+global function verbose(String)
    if glFeedback is 'verbose' then
       print(String)
    end
@@ -12,7 +12,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Add a line to the output. If the string ends with a newline character, preserve it, otherwise trim trailing spaces.
 
-function output(String)
+global function output(String)
    if String?? then
       if String:sub(-1) is '\n' then
          table.insert(glOutput, String)
@@ -27,7 +27,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Verify that the Options parameter is a table or nil, otherwise throw an error.
 
-function checkOptions(Options)
+global function checkOptions(Options)
    if type(Options) != 'table' then
       if Options then
          error('Invalid option type "' .. type(Options) .. '", expected table.')
@@ -42,9 +42,9 @@ end
 -- Add a line to the header with high priority. If Input is a function, execute it and add its output lines to the
 -- header.
 
-function priority(Input)
+global function priority(Input)
    if type(Input) is 'function' then
-      local saveOutput = glOutput
+      saveOutput = glOutput
       glOutput = { }
       Input()
       for k,v in ipairs(glOutput) do
@@ -61,15 +61,15 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Convert a string such as 'SHOW_IMAGES' to 'ShowImages'
 
-function shortName(Name)
-   local result = ""
+global function shortName(Name)
+   result = ""
    for _, n in ipairs(Name:split("_")) do
       if (n is "XY") or (n is "SSL") or (n is "HTML") or (n is "CDATA") or (n is "2D") or (n  is "3D") or (n is "DGA") or
          (n is "DPMS") or (n is "GTF") or (n is "SRGB") or (n is "RGB") or (n is "HSV") or (n is "CX") or (n is "CY") or
          (n is "FX") or (n is "FY") then
          result ..= n
       else
-         local cap, word = n:match("^(.)(.+)$")
+         cap, word = n:match("^(.)(.+)$")
          if not cap or not word then
             result ..= n:upper()
          else
@@ -83,7 +83,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Scan Class.fields for a specific FieldName.
 
-function findClassField(Class, FieldName)
+global function findClassField(Class, FieldName)
    assert(Class.fields, 'Class.fields is empty')
 
    for _, f in ipairs(Class.fields) do
@@ -99,35 +99,36 @@ end
 -- From: <something>content</>
 -- To:   <something>content</something>
 
-function cleanXMLString(str, caller)
+global function cleanXMLString(str, caller)
    if str?? then
       if str:find('[<>]') then
          str = '<ROOT>' .. str .. '</ROOT>'
 
+         local cleanXMLString_xml
          if not cleanXMLString_xml then
             cleanXMLString_xml, err = obj.new('xml', { statement=str, flags=XMF_INCLUDE_WHITESPACE })
          end
 
          if cleanXMLString_xml then
             cleanXMLString_xml.statement = str
-            local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+            err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if clean_str then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
             error('Failed to parse XML for ' .. (caller ?? 'undefined') .. '.')
          end
       end
+      return str
    else
-      str = ''
+      return ''
    end
-   return str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Register a class by name and return its table. If the class already exists, return the existing table.
 
-function registerClass(Name)
+global function registerClass(Name)
    assert(Name??, 'No Name provided to registerClass()')
-   glClasses ?= { }
+   if not glClasses then global glClasses = { } end
    glClasses[Name:lower()] ?= { name=Name:cap() }
    return glClasses[Name:lower()]
 end
@@ -135,8 +136,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Extract information from a compiled class' field definition.
 
-function getMetaFieldDefinition(Field)
-   local fl = {
+global function getMetaFieldDefinition(Field)
+   fl = {
       name  = Field.name,
       flags = Field.flags
    }
@@ -185,10 +186,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Build a list of all available action names and their parameters.
 
-function loadActions()
+global function loadActions()
    if glActions then return end
    verbose("Loading core actions...")
-   glActions = { }
+   global glActions = { }
    for id, actions in ipairs(mSys.ActionList()) do
       if not table.empty(actions) and actions.name?? then
          glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id }
@@ -199,13 +200,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-function resolveSDKPath(Path)
+global function resolveSDKPath(Path)
    local sdk_path
-   local err = ERR_Failed
-   local search_list = { }
+   err = ERR_Failed
+   search_list = { }
    if not Path then
-      local search_path = 'CMakeLists.txt'
-      local limit = 5
+      search_path = 'CMakeLists.txt'
+      limit = 5
       while (err != ERR_Okay) and (limit > 0) do
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
@@ -220,7 +221,7 @@ function resolveSDKPath(Path)
    if err is ERR_Okay then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
-      local msg = ''
+      msg = ''
       for _, path in ipairs(search_list) do
          msg ..= path .. '\n'
       end

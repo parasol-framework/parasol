@@ -579,7 +579,7 @@ const char* lj_strfmt_pushvf(lua_State* L, const char* fmt, va_list argp)
       case STRFMT_UINT: lj_strfmt_putfxint(sb, sf, va_arg(argp, uint32_t)); break;
       case STRFMT_NUM:  lj_strfmt_putfnum(sb, STRFMT_G14, va_arg(argp, lua_Number)); break;
       case STRFMT_STR: {
-         auto s = va_arg(argp, char*);
+         const char* s = va_arg(argp, const char*);
          if (s == nullptr) s = "(null)";
          lj_buf_putmem(sb, s, (MSize)strlen(s));
          break;
