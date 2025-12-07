@@ -38,10 +38,10 @@ end
 
 return {
    tests = {
-      'testSearchFindsAllMatches',
-      'testSearchReturnsNilWhenMissing',
-      'testSearchProvidesFullAndGroup',
-      'testSearchNotNullFlag',
-      'testSearchContinuousFlag'
+      testSearchFindsAllMatches,
+      testSearchReturnsNilWhenMissing,
+      testSearchProvidesFullAndGroup,
+      testSearchNotNullFlag,
+      testSearchContinuousFlag
    }
 }

@@ -114,6 +114,9 @@ struct PreparedAssignment {
    LValue target{};
    ExpDesc storage{};
    RegisterSpan reserved;
+   bool newly_created = false;   // True if a new local was created for an undeclared variable
+   bool needs_var_add = false;   // True if var_add() must be called after expression evaluation
+   GCstr* pending_symbol = nullptr;  // Symbol name for deferred var_add
 };
 
 //********************************************************************************************************************
@@ -181,12 +184,12 @@ private:
    ParserResult<ExpDesc> emit_result_filter_expr(const ResultFilterPayload& payload);
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_range_expr(const RangeExprPayload& payload);
-   ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload);
+   ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload, GCstr* funcname = nullptr);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
-   ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr);
+   ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr, bool allow_new_local = true);
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);
    ParserResult<ExpDesc> emit_function_lvalue(const FunctionNamePath& path);
-   ParserResult<std::vector<PreparedAssignment>> prepare_assignment_targets(const ExprNodeList& targets);
+   ParserResult<std::vector<PreparedAssignment>> prepare_assignment_targets(const ExprNodeList& targets, bool allow_new_local = true);
    void materialise_to_next_reg(ExpDesc& expression, std::string_view usage);
    void materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_view usage);
    void ensure_register_floor(std::string_view usage);

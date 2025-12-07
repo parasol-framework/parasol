@@ -135,11 +135,11 @@ static MSize var_lookup_(FuncState* fs, GCstr* name, ExpDesc* e, int first)
          }
       }
    }
-   else {  // Not found in any function, must be a global.
-      e->init(ExpKind::Global, 0);
+   else {  // Not found in any function - scope is undetermined.
+      e->init(ExpKind::Unscoped, 0);
       e->u.sval = name;
    }
-   return MSize(-1);  // Global.
+   return MSize(-1);  // Unscoped (will be resolved to local or global by context).
 }
 
 // Lookup variable name.
@@ -773,9 +773,11 @@ GCproto* LexState::fs_finish(BCLine Line)
    GCproto* pt;
 
    // Apply final fixups.
+
    fs_fixup_ret(fs);
 
    // Calculate total size of prototype including all colocated arrays.
+
    sizept = sizeof(GCproto) + fs->pc * sizeof(BCIns) + fs->nkgc * sizeof(GCRef);
    sizept = (sizept + sizeof(TValue) - 1) & ~(sizeof(TValue) - 1);
    ofsk = sizept; sizept += fs->nkn * sizeof(TValue);
@@ -784,6 +786,7 @@ GCproto* LexState::fs_finish(BCLine Line)
    ofsdbg = sizept; sizept += this->fs_prep_var(fs, &ofsvar);
 
    // Allocate prototype and initialize its fields.
+
    pt = (GCproto*)lj_mem_newgco(L, MSize(sizept));
    pt->gct = ~LJ_TPROTO;
    pt->sizept = MSize(sizept);
@@ -793,9 +796,14 @@ GCproto* LexState::fs_finish(BCLine Line)
    pt->framesize = fs->framesize;
    setgcref(pt->chunkname, obj2gco(this->chunkname));
 
+   // Register the function name if one was provided (for named function declarations).
+      
+   if (fs->funcname) lj_funcname_register(G(this->L), pt, strdata(fs->funcname), fs->funcname->len);
+
    // Build bitmap of locals with <close> attribute for error unwinding.
    // Use the actual register slot index from VarInfo::slot, not the vstack index.
    // Note: Slots >= 64 are rejected at parse time in emit_local_decl_stmt().
+
    pt->closeslots = 0;
    for (MSize i = fs->vbase; i < this->vtop; i++) {
       if (has_flag(this->vstack[i].info, VarInfoFlag::Close)) {
@@ -806,6 +814,7 @@ GCproto* LexState::fs_finish(BCLine Line)
    }
 
    // Close potentially uninitialized gap between bc and kgc.
+
    *(uint32_t*)((char*)pt + ofsk - sizeof(GCRef) * (fs->nkgc + 1)) = 0;
    fs_fixup_bc(fs, pt, (BCIns*)((char*)pt + sizeof(GCproto)), fs->pc);
    fs_fixup_k(fs, pt, (void*)((char*)pt + ofsk));

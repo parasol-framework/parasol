@@ -26,7 +26,8 @@ enum class ParserErrorCode : uint16_t {
    TypeMismatchArgument,
    TypeMismatchAssignment,
    TypeMismatchReturn,
-   DeferredTypeRequired
+   DeferredTypeRequired,
+   UndefinedVariable
 };
 
 struct ParserDiagnostic {

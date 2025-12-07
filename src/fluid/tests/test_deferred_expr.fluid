@@ -256,33 +256,33 @@ end
 return {
    tests = {
       -- Type inference
-      'testInferredStringType',
-      'testInferredNumberType',
-      'testInferredBooleanType',
-      'testInferredNilType',
-      'testInferredTableType',
-      'testInferredArithmeticType',
-      'testInferredConcatType',
-      'testInferredComparisonType',
+      testInferredStringType,
+      testInferredNumberType,
+      testInferredBooleanType,
+      testInferredNilType,
+      testInferredTableType,
+      testInferredArithmeticType,
+      testInferredConcatType,
+      testInferredComparisonType,
       -- Explicit type annotations
-      'testExplicitStringType',
-      'testExplicitNumberType',
-      'testExplicitTypeShortForm',
-      'testExplicitTableType',
-      'testExplicitBooleanType',
+      testExplicitStringType,
+      testExplicitNumberType,
+      testExplicitTypeShortForm,
+      testExplicitTableType,
+      testExplicitBooleanType,
       -- resolve() behaviour
-      'testResolveNonDeferred',
-      'testDeferredUpvalueCapture',
+      testResolveNonDeferred,
+      testDeferredUpvalueCapture,
       -- type() returns expected type
-      'testTypeReturnsExpectedType',
-      'testTypeWithExplicitAnnotation',
+      testTypeReturnsExpectedType,
+      testTypeWithExplicitAnnotation,
       -- Various contexts
-      'testDeferredNested',
-      'testDeferredInTable',
-      'testDeferredTernary',
-      'testDeferredAsArgument',
+      testDeferredNested,
+      testDeferredInTable,
+      testDeferredTernary,
+      testDeferredAsArgument,
       -- assert() short-circuit
-      'testAssertShortCircuit',
-      'testAssertWithDeferredMessage'
+      testAssertShortCircuit,
+      testAssertWithDeferredMessage
    }
 }

@@ -603,9 +603,31 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
    if (not expression.ok()) return ParserResult<IrEmitUnit>::failure(expression.error_ref());
 
    ExpDesc value = expression.value_ref();
-   ExpressionValue value_toval(&this->func_state, value);
-   value_toval.to_val();
-   value = value_toval.legacy();
+
+   // When protected_globals is enabled and we have a bare Unscoped identifier as an expression
+   // statement, treat it as a local variable declaration (initialized to nil).
+
+   if (value.k IS ExpKind::Unscoped and this->func_state.L->protected_globals) {
+      GCstr* name = value.u.sval;
+      // Create a local variable initialized to nil
+      this->lex_state.var_new(BCReg(0), name);
+      bcemit_nil(&this->func_state, this->func_state.freereg, 1);
+      this->lex_state.var_add(BCReg(1));
+      BCReg slot = BCReg(this->func_state.nactvar - 1);
+      this->update_local_binding(name, slot);
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // For other expression statements, we need to ensure any bytecode emitted for the expression
+   // doesn't clobber local variables. Using to_any_reg ensures Relocable expressions
+   // (like GGET for global reads) get properly relocated to a register above nactvar.
+
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue expr_value(&this->func_state, value);
+   expr_value.to_any_reg(allocator);
+   value = expr_value.legacy();
+
    release_indexed_original(this->func_state, value);
    this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -783,6 +805,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
    auto nvars = BCReg(BCREG(payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
+   // Register all declared global names so nested functions can recognise them
+
+   for (const Identifier& identifier : payload.names) {
+      if (is_blank_symbol(identifier)) continue;
+      GCstr* name = identifier.symbol;
+      if (name) this->func_state.declared_globals.insert(name);
+   }
+
    // Evaluate all expressions first
    std::vector<ExpDesc> values;
    values.reserve(payload.values.size());
@@ -842,7 +872,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    allocator.reserve(BCReg(1));
    this->lex_state.var_add(1);
 
-   auto function_value = this->emit_function_expr(*payload.function);
+   // Pass the function name for tostring() support
+   auto function_value = this->emit_function_expr(*payload.function, payload.name.symbol);
    if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc fn = function_value.value_ref();
@@ -855,15 +886,73 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 }
 
 //********************************************************************************************************************
-// Emit bytecode for a function declaration statement, assigning a function to a global or table field.
+// Emit bytecode for a function declaration statement.
+// With protected_globals enabled, simple function declarations (function foo()) create local functions.
+// Method syntax (function foo:bar()) and table paths (function foo.bar()) always store to the target.
+// Explicit global declarations (global function foo()) always store to global.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload& payload)
 {
    if (not payload.function) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
 
+   // If explicitly declared as global, register the name so nested functions can access it
+
+   if (payload.name.is_explicit_global and not payload.name.segments.empty()) {
+      GCstr *name = payload.name.segments.front().symbol;
+      if (name) this->func_state.declared_globals.insert(name);
+   }
+
+   // Check if this is a simple function name (not a path like foo.bar or method foo:bar)
+   // and if protected_globals is enabled without explicit global declaration
+
+   bool is_simple_name = payload.name.segments.size() == 1 and not payload.name.method.has_value();
+   bool should_be_local = is_simple_name and this->func_state.L->protected_globals and
+      not payload.name.is_explicit_global;
+
+   // Determine the function name for tostring() support.
+   // For simple names, use the single segment. For paths like foo.bar, use the last segment.
+   // For methods like foo:bar, use the method name.
+
+   GCstr *funcname = nullptr;
+   if (payload.name.method.has_value() and payload.name.method->symbol) {
+      funcname = payload.name.method->symbol;
+   }
+   else if (not payload.name.segments.empty()) {
+      funcname = payload.name.segments.back().symbol;
+   }
+
+   if (should_be_local) {
+      // Emit as a local function (same as local function foo())
+      GCstr *symbol = payload.name.segments.front().symbol;
+      if (not symbol) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
+
+      auto slot = BCReg(this->func_state.freereg);
+      this->lex_state.var_new(0, symbol);
+      ExpDesc variable;
+      variable.init(ExpKind::Local, slot);
+      variable.u.s.aux = this->func_state.varmap[slot];
+      RegisterAllocator allocator(&this->func_state);
+      allocator.reserve(BCReg(1));
+      this->lex_state.var_add(1);
+
+      // Pass the function name for tostring() support
+      auto function_value = this->emit_function_expr(*payload.function, funcname);
+      if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
+
+      ExpDesc fn = function_value.value_ref();
+      this->materialise_to_reg(fn, slot, "function literal");
+      this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
+      this->update_local_binding(symbol, slot);
+
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // Original behaviour: store to global or table field
    auto target_result = this->emit_function_lvalue(payload.name);
    if (not target_result.ok()) return ParserResult<IrEmitUnit>::failure(target_result.error_ref());
-   auto function_value = this->emit_function_expr(*payload.function);
+   // Pass the function name for tostring() support
+   auto function_value = this->emit_function_expr(*payload.function, funcname);
    if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc target = target_result.value_ref();
@@ -928,7 +1017,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    if (not condexit_result.ok()) return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
 
    ControlFlowEdge condexit = condexit_result.value_ref();
-
    ControlFlowEdge loop;
 
    {
@@ -950,8 +1038,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
    this->loop_stack.back().break_edge.patch_here();
    loop_stack_guard.release();
 
-   if (glPrintMsg) {
-      // Verify no register leaks at loop exit
+   if (glPrintMsg) { // Verify no register leaks at loop exit
       RegisterAllocator verifier(fs);
       verifier.verify_no_leaks("while loop exit");
    }
@@ -1270,7 +1357,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 {
    if (Payload.targets.empty()) return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
 
-   auto targets_result = this->prepare_assignment_targets(Payload.targets);
+   // For compound assignments (+=, -=, etc.), do NOT create new locals for unscoped variables.
+   // The variable must already exist - we should modify the existing storage.
+   // For plain (=) and if-empty (?=) assignments, allow new local creation.
+   // If-empty on an undeclared variable creates a local and assigns (since undefined is "empty").
+   bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty);
+
+   auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal);
    if (not targets_result.ok()) return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
 
    std::vector<PreparedAssignment> targets = std::move(targets_result.value_ref());
@@ -1302,6 +1395,50 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    auto nvars = BCReg(BCREG(targets.size()));
    if (not nvars) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
+   // Count pending locals that need to be created after expression evaluation
+   BCReg pending_locals = BCReg(0);
+   for (const PreparedAssignment& target : targets) {
+      if (target.needs_var_add) ++pending_locals;
+   }
+
+   // If ALL targets are new locals (undeclared), use a simpler approach similar to local declarations
+   if (pending_locals IS nvars) {
+      // Register all new variable names with var_new
+      BCReg idx = BCReg(0);
+      for (PreparedAssignment& target : targets) {
+         if (target.pending_symbol) {
+            this->lex_state.var_new(idx, target.pending_symbol);
+            ++idx;
+         }
+      }
+
+      // Evaluate expressions
+      ExpDesc tail(ExpKind::Void);
+      auto nexps = BCReg(0);
+      if (not values.empty()) {
+         auto list = this->emit_expression_list(values, nexps);
+         if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+         tail = list.value_ref();
+      }
+
+      // Use assign_adjust to place values correctly and handle multi-return
+      this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
+      this->lex_state.var_add(nvars);
+
+      // Update binding table
+      BCReg base = BCReg(this->func_state.nactvar - nvars.raw());
+      for (BCReg i = BCReg(0); i < nvars; ++i) {
+         PreparedAssignment& target = targets[i.raw()];
+         if (target.pending_symbol) {
+            this->update_local_binding(target.pending_symbol, base + i);
+         }
+      }
+
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // Mixed case or all-existing case: evaluate expressions first, then assign
    ExpDesc tail(ExpKind::Void);
    auto nexps = BCReg(0);
    if (not values.empty()) {
@@ -1310,6 +1447,65 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       tail = list.value_ref();
    }
 
+   RegisterAllocator allocator(&this->func_state);
+
+   // For mixed assignments with pending locals, we need special handling
+   // regardless of whether nexps == nvars (for multi-return calls, nexps=1 but nvars>1)
+   if (pending_locals > BCReg(0)) {
+      // Handle call results - adjust for multi-return
+      if (tail.k IS ExpKind::Call) {
+         if (bc_op(*ir_bcptr(&this->func_state, &tail)) IS BC_VARG) {
+            setbc_b(ir_bcptr(&this->func_state, &tail), nvars.raw() + 1);
+            this->func_state.freereg--;
+            allocator.reserve(BCReg(nvars.raw() - 1));
+         }
+         else {
+            // Fixup call result count
+            setbc_b(ir_bcptr(&this->func_state, &tail), nvars.raw() + 1);
+            if (nvars > BCReg(1)) {
+               allocator.reserve(BCReg(nvars.raw() - 1));
+            }
+         }
+      }
+      else {
+         // Non-call: use assign_adjust to pad with nils if needed
+         this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
+      }
+
+      // Values are in consecutive registers starting at tail.u.s.aux (for calls)
+      BCReg value_base = BCReg(tail.u.s.aux);
+
+      // Process targets from first to last
+      for (size_t i = 0; i < targets.size(); ++i) {
+         PreparedAssignment& target = targets[i];
+         BCReg value_slot = value_base + BCReg(i);
+
+         if (target.needs_var_add and target.pending_symbol) {
+            // Create new local for this undeclared variable
+            this->lex_state.var_new(BCReg(0), target.pending_symbol);
+            this->lex_state.var_add(BCReg(1));
+            BCReg local_slot = BCReg(this->func_state.nactvar - 1);
+
+            // If the value isn't already at the local slot, move it
+            if (value_slot.raw() != local_slot.raw()) {
+               bcemit_AD(&this->func_state, BC_MOV, local_slot, value_slot);
+            }
+            this->update_local_binding(target.pending_symbol, local_slot);
+         }
+         else {
+            // Existing target - copy value to it
+            ExpDesc value_expr;
+            value_expr.init(ExpKind::NonReloc, value_slot);
+            bcemit_store(&this->func_state, &target.storage, &value_expr);
+         }
+         allocator.release(target.reserved);
+      }
+
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // No pending locals - use the original assignment logic
    auto assign_from_stack = [&](std::vector<PreparedAssignment>::reverse_iterator first,
       std::vector<PreparedAssignment>::reverse_iterator last)
    {
@@ -1319,8 +1515,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
          bcemit_store(&this->func_state, &first->storage, &stack_value);
       }
    };
-
-   RegisterAllocator allocator(&this->func_state);
 
    if (nexps IS nvars) {
       if (tail.k IS ExpKind::Call) {
@@ -1434,6 +1628,38 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
 {
    if (values.empty() or not vkisvar(target.storage.k)) {
       return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   }
+
+   // If the target is a newly created local (from an undeclared variable), skip the emptiness
+   // checks and go straight to assignment. The variable is undefined, which is semantically empty.
+
+   if (target.newly_created) {
+      auto count = BCReg(0);
+      auto list = this->emit_expression_list(values, count);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+      if (count != 1) {
+         const ExprNodePtr& node = values.front();
+         SourceSpan span = node ? node->span : SourceSpan{};
+         return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+      }
+
+      // Finalize deferred local variable now that expression is evaluated
+
+      if (target.needs_var_add and target.pending_symbol) {
+         this->lex_state.var_new(BCReg(0), target.pending_symbol);
+         this->lex_state.var_add(BCReg(1));
+         BCReg slot = BCReg(this->func_state.nactvar - 1);
+         // Update target.storage to point to the new local
+         target.storage.init(ExpKind::Local, slot);
+         target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
+         this->update_local_binding(target.pending_symbol, slot);
+      }
+
+      ExpDesc rhs = list.value_ref();
+      bcemit_store(&this->func_state, &target.storage, &rhs);
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
    auto count = BCReg(0);
@@ -1620,19 +1846,22 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& Paylo
 {
    if (not Payload.target) return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
 
-   auto target_result = this->emit_lvalue_expr(*Payload.target);
-   if (not target_result.ok()) return target_result;
+   // For update expressions, do not create a new local for unscoped variables.  The variable must already exist.
 
+   auto target_result = this->emit_lvalue_expr(*Payload.target, false);
+   if (not target_result.ok()) return target_result;
    ExpDesc target = target_result.value_ref();
 
-   // Use RegisterAllocator::duplicate_table_operands()
    RegisterAllocator allocator(&this->func_state);
+
+   // For indexed expressions, we need to duplicate table operands to avoid clobbering
+
    TableOperandCopies copies = allocator.duplicate_table_operands(target);
    ExpDesc working = copies.duplicated;
 
    BinOpr op = (Payload.op IS AstUpdateOperator::Increment) ? BinOpr::Add : BinOpr::Sub;
 
-   // Use ExpressionValue for discharge operations
+   // Discharge the value to a register for arithmetic
    ExpressionValue operand_value(&this->func_state, working);
    auto operand_reg = operand_value.discharge_to_any_reg(allocator);
 
@@ -2636,8 +2865,9 @@ ParserResult<ExpDesc> IrEmitter::emit_range_expr(const RangeExprPayload &Payload
 //********************************************************************************************************************
 // Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
 // For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
+// The optional funcname parameter sets the function's name for tostring() output.
 
-ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload)
+ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &Payload, GCstr* funcname)
 {
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
@@ -2719,6 +2949,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
    this->lex_state.fs_init(&child_state);
    FuncStateGuard fs_guard(&this->lex_state, &child_state);  // Restore ls->fs on error
+
+   // Inherit declared globals from parent so nested functions recognize them
+   child_state.declared_globals = parent_state->declared_globals;
+
    // Use lastline which was set to the function expression's line by emit_expression()
    child_state.linedefined = this->lex_state.lastline;
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
@@ -2755,6 +2989,9 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    if (not body_result.ok()) {
       return ParserResult<ExpDesc>::failure(body_result.error_ref());
    }
+
+   // Set the function name before finishing the prototype
+   child_state.funcname = funcname;
 
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Payload.body->span.line);
@@ -2829,16 +3066,51 @@ ParserResult<ExpDesc> IrEmitter::emit_function_lvalue(const FunctionNamePath &pa
 
 //********************************************************************************************************************
 // Emit bytecode for an lvalue expression (assignable location like identifier, member, or index).
+// When AllocNewLocal is false, unscoped variables will not create new locals even when protected_globals
+// is true. This is used for compound assignments (+=, -=) and update expressions (++, --) where the
+// variable must already exist.
 
-ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr)
+ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool AllocNewLocal)
 {
    switch (Expr.kind) {
       case AstNodeKind::IdentifierExpr: {
          auto result = this->emit_identifier_expr(std::get<NameRef>(Expr.data));
          if (not result.ok()) return result;
          ExpDesc value = result.value_ref();
-         if (value.k IS ExpKind::Local) value.u.s.aux = this->func_state.varmap[value.u.s.info];
-         if (not vkisvar(value.k)) return this->unsupported_expr(Expr.kind, Expr.span);
+         if (value.k IS ExpKind::Local) {
+            value.u.s.aux = this->func_state.varmap[value.u.s.info];
+         }
+         else if (value.k IS ExpKind::Unscoped) {
+            // Undeclared variable used as assignment target
+            GCstr* name = value.u.sval;
+
+            // Check if this was explicitly declared as global (in this or parent scope)
+            if (this->func_state.declared_globals.count(name) > 0) {
+               // Explicitly declared global - always treat as global
+               value.k = ExpKind::Global;
+            }
+            else if (this->func_state.L->protected_globals) {
+               if (AllocNewLocal) {
+                  // Plain assignment: return Unscoped and let prepare_assignment_targets handle
+                  // the local creation with proper timing for multi-value assignments.
+                  // The ExpKind::Unscoped with name will signal that a new local should be created.
+                  // value is already Unscoped with name set, so just return it.
+               }
+               else {
+                  // Compound/update assignment on undeclared variable - error
+                  // The variable must exist for operations like ++, +=, etc.
+                  std::string var_name(strdata(name), name->len);
+                  std::string msg = "cannot use compound/update operator on undeclared variable '" + var_name + "'";
+                  return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::UndefinedVariable, msg));
+               }
+            }
+            else {
+               // Traditional Lua behaviour: treat as global
+               value.k = ExpKind::Global;
+            }
+         }
+         // Allow Unscoped for deferred local creation in prepare_assignment_targets
+         if (not vkisvar(value.k) and value.k != ExpKind::Unscoped) return this->unsupported_expr(Expr.kind, Expr.span);
          return ParserResult<ExpDesc>::success(value);
       }
 
@@ -2928,8 +3200,11 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expres
 
 //********************************************************************************************************************
 // Prepare assignment targets by resolving lvalues and duplicating table operands to prevent register clobbering.
+// When AllocNewLocal is false, unscoped variables will NOT create new locals even when protected_globals
+// is true. This is used for compound assignments (+=, -=) and if-empty assignments (?=) where the variable
+// must already exist - we should modify the existing storage, not create a new local.
 
-ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList &Targets)
+ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList &Targets, bool AllocNewLocal)
 {
    std::vector<PreparedAssignment> lhs;
    lhs.reserve(Targets.size());
@@ -2944,11 +3219,23 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
             ParserErrorCode::InternalInvariant, "assignment target missing"));
       }
 
-      auto lvalue = this->emit_lvalue_expr(*node);
+      auto lvalue = this->emit_lvalue_expr(*node, AllocNewLocal);
       if (not lvalue.ok()) return ParserResult<std::vector<PreparedAssignment>>::failure(lvalue.error_ref());
 
       ExpDesc slot = lvalue.value_ref();
       PreparedAssignment prepared;
+
+      // Check if this is an Unscoped variable that needs a new local
+      // Keep it as Unscoped and defer local creation until after expression evaluation
+
+      if (slot.k IS ExpKind::Unscoped and this->func_state.L->protected_globals) {
+         prepared.needs_var_add = true;
+         prepared.newly_created = true;
+         prepared.pending_symbol = slot.u.sval;
+         // Don't convert to Local yet - keep as Unscoped for now
+         // The actual local slot will be determined later in emit_plain_assignment
+      }
+
       TableOperandCopies copies = allocator.duplicate_table_operands(slot);
       prepared.storage = copies.duplicated;
       prepared.reserved = std::move(copies.reserved);
@@ -2966,8 +3253,10 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
          for (PreparedAssignment& existing : lhs) {
             bool refresh_table = existing.target.is_indexed()
                and existing.target.get_table_reg() IS prepared.target.get_local_reg();
+
             bool refresh_key = existing.target.is_indexed() and is_register_key(existing.storage.u.s.aux)
                and existing.target.get_key_reg() IS prepared.target.get_local_reg();
+
             bool refresh_member = existing.target.is_member()
                and existing.target.get_table_reg() IS prepared.target.get_local_reg();
 

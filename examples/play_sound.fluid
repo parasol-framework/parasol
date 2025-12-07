@@ -4,7 +4,7 @@
 -- This function identifies the type of file being loaded and uses the correct class to open it.
 
 function id_file(Path)
-   local err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
+   err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
 
    if (class == mSys.StrHash('sound')) then
       return obj.new('sound', { path=Path })
@@ -17,15 +17,15 @@ end
 
    -- Retrieve the sound sample path from the command line arguments
 
-   local src = arg('src')
+   src = arg('src')
    if (src == nil) then
       print('Please supply a source audio file with "src=[file]"')
       return
    end
 
-   local seek = arg('seek')
+   seek = arg('seek')
 
-   local player = id_file(src)
+   player = id_file(src)
    if not player then
       print('Failed to identify the type of the source file "' .. src .. '"')
       return
@@ -33,7 +33,7 @@ end
 
    -- Use the processing API to help us manage the program flow
 
-   local proc = processing.new()
+   proc = processing.new()
 
    -- Subscribe to OnStop so that we can exit once the sample has fully played.
 

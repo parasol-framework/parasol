@@ -2,20 +2,25 @@
 Tests for resolving server names in parallel.
 --]]
 
-   mNet = mod.load('network')
+   mNet ?= mod.load('network')
 
    local glSelf = obj.find('self')
    local proc = processing.new({ timeout = 5.0 })
+   global glDomains, glTotalResolved
+
+----------------------------------------------------------------------------------------------------------------------
 
 function netAddressToString(IP)
-   return bit.rshift(bit.band(IP.data[1], 0xff000000), 24) .. '.' ..
-      bit.rshift(bit.band(IP.data[1], 0xff0000), 16) .. '.' ..
-      bit.rshift(bit.band(IP.data[1], 0xff00), 8) .. '.' ..
-      bit.band(IP.data[1], 0xff)
+   return ((IP.data[0] & 0xff000000)>>24) .. '.' ..
+      ((IP.data[0] & 0xff0000)>>16) .. '.' ..
+      ((IP.data[0] & 0xff00)>>8) .. '.' ..
+      (IP.data[0] & 0xff)
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
 function name_resolved(NetLookup, Error)
-   local host = nz(NetLookup.hostName,'NIL')
+   local host = NetLookup.hostName ?? 'NIL'
 
    assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
 
@@ -25,33 +30,30 @@ function name_resolved(NetLookup, Error)
 
    local ip_list = nil
    local addresses = NetLookup.addresses
-   if (addresses != nil) then
+   if addresses then
       total_ips = #addresses
       for index, ip in pairs(addresses) do
-         if (ip.type is IPADDR_V4) or (ip.type is IPADDR_V6) then
-            if (ip_list is nil) then
-               ip_list = mNet.AddressToStr(ip)
-            else
-               ip_list = ip_list .. ', ' .. mNet.AddressToStr(ip)
-            end
+         assert((ip.type is IPADDR_V4) or (ip.type is IPADDR_V6), 'Unrecognised TCP/IP address type ' .. ip.type)
+         if not ip_list then
+            ip_list = netAddressToString(ip)
          else
-            error('Unrecognised TCP/IP address type ' .. ip.type)
+            ip_list ..= ', ' .. netAddressToString(ip)
          end
       end
    end
 
    local msg = 'Resolved ' .. host .. ' with ' .. total_ips .. ' IP addresses.'
-   if (ip_list) then msg = msg .. '  IPs: ' .. ip_list end
+   if ip_list then msg ..= '  IPs: ' .. ip_list end
    print(msg)
 
-   glTotalResolved = glTotalResolved + 1
+   glTotalResolved++
 
-   if (glTotalResolved is #glDomains) then
-      proc.signal() // Breaks the proc.sleep() loop
+   if glTotalResolved is #glDomains then
+      proc.signal() -- Breaks the proc.sleep() loop
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- This test resolves each name more than once.  The expected response is for the callback to be called multiple times
 -- for the same host.  In the log output you may see a thread being created for the first resolve, then the second call
 -- will hit the local DNS cache and return immediately.
@@ -62,13 +64,9 @@ function testDuplication()
    local domains = { 'google.com', 'reddit.com' }
    function duplicate_resolved(NetLookup, Error)
       assert(Error is ERR_Okay, 'Failed to resolve ' .. NetLookup.hostName .. ', error ' ..mSys.GetErrorMsg(Error))
-
       print('Resolved: ' .. NetLookup.hostName)
-
-      resolved = resolved + 1
-
-      if (resolved is #domains * 2) then print('All domains resolved.') end
-
+      resolved++
+      if resolved is #domains * 2 then print('All domains resolved.') end
       proc.signal()
    end
 
@@ -83,7 +81,7 @@ function testDuplication()
 
       local save = resolved
       err = nlB.mtResolveName(v)
-      if (save is resolved) then
+      if save is resolved then
          err = proc.sleep()
          assert(err is ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
       end
@@ -91,7 +89,7 @@ function testDuplication()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Non-blocking name resolution (default)
 
 function testNameResolutionAsync()
@@ -106,7 +104,7 @@ function testNameResolutionAsync()
    if (err is ERR_TimeOut) then error('Name resolution timed-out.') end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Blocking name resolution
 
 function testBlockingNameResolution()
@@ -116,17 +114,17 @@ function testBlockingNameResolution()
    for k,v in pairs(glDomains) do
       local expected_total = glTotalResolved + 1
       nl.mtBlockingResolveName(v)
-      assert(expected_total is glTotalResolved, 'Name was not resolved when ResolveName() had returned')
+      assert(expected_total is glTotalResolved, 'Name was not resolved when ResolveName() had returned, got ' .. glTotalResolved .. '/' .. expected_total)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testBlockingAddressResolution()
    local address_resolved = false
    local nl = obj.new('NetLookup', {
       callback = function(NetLookup, Error)
-         local host = nz(NetLookup.hostName,'NIL')
+         local host = NetLookup.hostName ?? 'NIL'
          assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
          assert(host is 'dns.google', 'IP resolved to ' .. host)
          address_resolved = true
@@ -137,17 +135,18 @@ function testBlockingAddressResolution()
    assert(address_resolved is true, 'Failed to resolve the IP address.')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-         'testBlockingNameResolution',
-         'testNameResolutionAsync',
-         'testBlockingAddressResolution',
-         'testDuplication'
+         testBlockingNameResolution,
+         testNameResolutionAsync,
+         testBlockingAddressResolution,
+         testDuplication
       },
       init = function()
-         glDomains = { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
+         global glDomains = { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
+         global glTotalResolved = 0
       end,
       cleanup = function()
          glDomains = nil

@@ -240,15 +240,15 @@ end
 
    return {
       tests = {
-         'testTimeCreation',
-         'testSystemTime',
-         'testTimeStamp',
-         'testSetTimeFields',
-         'testDayOfWeekCalculation',
-         'testConsistentQueries',
-         'testLeapYearDates',
-         'testEdgeCaseDates',
-         'testMicrosecondPrecision',
-         --'testSetTimeMethod'
+         testTimeCreation,
+         testSystemTime,
+         testTimeStamp,
+         testSetTimeFields,
+         testDayOfWeekCalculation,
+         testConsistentQueries,
+         testLeapYearDates,
+         testEdgeCaseDates,
+         testMicrosecondPrecision,
+         --testSetTimeMethod
       }
    }

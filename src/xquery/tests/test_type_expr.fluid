@@ -308,14 +308,14 @@ function testInstanceOfNodeWithAtomicSequence()
    -- Purely atomic sequence should not be instance of node()
    local err, result = xml.mtEvaluate('(1, 2) instance of node()')
    assert(err is ERR_Okay, "Instance of node() on atomic sequence should evaluate: " .. mSys.GetErrorMsg(err))
-   assert(result is "false", "(1, 2) must not satisfy node(), got: " .. nz(result, 'NIL'))
+   assert(result is "false", "(1, 2) must not satisfy node(), got: " .. tostring(result))
 
    -- Control checks: real nodes should satisfy node()
    local err2, result2 = xml.mtEvaluate('/root/text() instance of node()')
-   assert(err2 is ERR_Okay and result2 is "true", "text() should satisfy node(), got: " .. nz(result2, 'NIL'))
+   assert(err2 is ERR_Okay and result2 is "true", "text() should satisfy node(), got: " .. tostring(result2))
 
    local err3, result3 = xml.mtEvaluate('/root/@attr instance of node()')
-   assert(err3 is ERR_Okay and result3 is "true", "@attr should satisfy node(), got: " .. nz(result3, 'NIL'))
+   assert(err3 is ERR_Okay and result3 is "true", "@attr should satisfy node(), got: " .. tostring(result3))
 end
 
 -- Test instance of with occurrence indicator ?
@@ -722,7 +722,7 @@ function testConstructorUnknownType()
    local err = xml.mtEvaluate('xs:notAType("42")')
    assert(err != ERR_Okay, 'Unknown constructor type should raise XPST0051')
 
-   local message = string.lower(nz(xml.errorMsg, ''))
+   local message = string.lower(tostring(xml.errorMsg))
    assert(string.find(message, 'xpst0051', 0, true),
       'Error message should include XPST0051 for unknown constructor types, got ' .. message)
 end
@@ -733,7 +733,7 @@ function testConstructorUnboundPrefix()
    local err = xml.mtEvaluate('abc:decimal("7")')
    assert(err != ERR_Okay, 'Constructor with unbound prefix should raise XPST0081')
 
-   local message = string.lower(nz(xml.errorMsg, ''))
+   local message = string.lower(tostring(xml.errorMsg))
    assert(string.find(message, 'xpst0081', 0, true),
       'Error message should include XPST0081 for missing namespace bindings, got ' .. message)
 end
@@ -748,13 +748,13 @@ function testConstructorCastChaining()
       .. "return string($value cast as xs:dateTime)")
    assert(err is ERR_Okay, 'Casting constructor results to the same type should succeed: ' .. mSys.GetErrorMsg(err))
    assert(castDateTime is '2024-05-01T06:30:00+02:00',
-      'Casting xs:dateTime results should preserve canonical lexical forms, got: ' .. nz(castDateTime, 'NIL'))
+      'Casting xs:dateTime results should preserve canonical lexical forms, got: ' .. tostring(castDateTime))
 
    local err2, castDate = xml.mtEvaluate("let $value := xs:date(xs:dateTime('2024-05-01T06:30:00+02:00')) "
       .. "return string($value cast as xs:date)")
    assert(err2 is ERR_Okay, 'xs:date values should remain castable to xs:date: ' .. mSys.GetErrorMsg(err2))
    assert(castDate is '2024-05-01+02:00',
-      'Casting xs:date projections should retain their timezone component, got: ' .. nz(castDate, 'NIL'))
+      'Casting xs:date projections should retain their timezone component, got: ' .. tostring(castDate))
 end
 
 function testConstructorTreatAsChaining()
@@ -764,12 +764,12 @@ function testConstructorTreatAsChaining()
       .. "return ($value treat as xs:duration) instance of xs:duration")
    assert(err is ERR_Okay, 'Treating constructor duration values as xs:duration should succeed: ' .. mSys.GetErrorMsg(err))
    assert(treatDuration is 'true',
-      'Treat as expression should preserve xs:duration annotations, got: ' .. nz(treatDuration, 'NIL'))
+      'Treat as expression should preserve xs:duration annotations, got: ' .. tostring(treatDuration))
 
    local err2, treatQName = xml.mtEvaluate("declare namespace p='http://example.com/ns'; "
       .. "let $value := xs:QName('p:local') return ($value treat as xs:QName) instance of xs:QName")
    assert(err2 is ERR_Okay, 'Treating xs:QName constructor values should succeed when prefixes are bound: ' .. mSys.GetErrorMsg(err2))
-   assert(treatQName is 'true', 'Treat as should preserve xs:QName typing, got: ' .. nz(treatQName, 'NIL'))
+   assert(treatQName is 'true', 'Treat as should preserve xs:QName typing, got: ' .. tostring(treatQName))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -777,45 +777,45 @@ end
 return {
    tests = {
       -- Cast expression tests
-      'testCastToString', 'testCastToDecimal', 'testCastToInteger', 'testCastToBoolean',
-      'testCastToDate', 'testCastToDateTime', 'testCastInvalidConversion', 'testCastEmptySequence',
-      'testCastFromAttribute', 'testCastFromElement',
+      testCastToString, testCastToDecimal, testCastToInteger, testCastToBoolean,
+      testCastToDate, testCastToDateTime, testCastInvalidConversion, testCastEmptySequence,
+      testCastFromAttribute, testCastFromElement,
 
       -- Castable expression tests
-      'testCastableToString', 'testCastableValidNumeric', 'testCastableInvalidNumeric',
-      'testCastableValidDate', 'testCastableInvalidDate', 'testCastableBoolean',
-      'testCastableEmptySequence', 'testCastableFromAttribute',
+      testCastableToString, testCastableValidNumeric, testCastableInvalidNumeric,
+      testCastableValidDate, testCastableInvalidDate, testCastableBoolean,
+      testCastableEmptySequence, testCastableFromAttribute,
 
       -- Treat as expression tests
-      'testTreatAsMatchingType', 'testTreatAsString', 'testTreatAsMismatchedType',
-      'testTreatAsOptional', 'testTreatAsOneOrMore', 'testTreatAsZeroOrMore',
-      'testTreatAsElementSequence',
+      testTreatAsMatchingType, testTreatAsString, testTreatAsMismatchedType,
+      testTreatAsOptional, testTreatAsOneOrMore, testTreatAsZeroOrMore,
+      testTreatAsElementSequence,
 
       -- Instance of expression tests
-      'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
-      'testInstanceOfBoolean', 'testInstanceOfOptional', 'testInstanceOfOneOrMore',
-      'testInstanceOfZeroOrMore', 'testInstanceOfElement', 'testInstanceOfAttribute',
-      'testInstanceOfText',
+      testInstanceOfInteger, testInstanceOfNonMatchingType, testInstanceOfString,
+      testInstanceOfBoolean, testInstanceOfOptional, testInstanceOfOneOrMore,
+      testInstanceOfZeroOrMore, testInstanceOfElement, testInstanceOfAttribute,
+      testInstanceOfText,
 
       -- Typeswitch expression tests
-      'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
-      'testTypeswitchVariableBinding', 'testTypeswitchMultipleCases', 'testTypeswitchFirstMatchWins',
-      'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
+      testTypeswitchInteger, testTypeswitchString, testTypeswitchDefault,
+      testTypeswitchVariableBinding, testTypeswitchMultipleCases, testTypeswitchFirstMatchWins,
+      testTypeswitchElement, testTypeswitchOccurrenceIndicators,
 
       -- To range operator tests
-      'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',
-      'testRangeNegative', 'testRangeZero', 'testRangeLarge', 'testRangeInFor',
-      'testRangeWithPredicates', 'testRangeWithArithmetic', 'testRangeNonInteger',
+      testRangeBasic, testRangeCount, testRangeSingleElement, testRangeEmpty,
+      testRangeNegative, testRangeZero, testRangeLarge, testRangeInFor,
+      testRangeWithPredicates, testRangeWithArithmetic, testRangeNonInteger,
 
       -- Combined expression tests
-      'testCastWithRange', 'testInstanceOfWithTypeswitch', 'testCastableInConditional',
-      'testTreatAsWithRange',
+      testCastWithRange, testInstanceOfWithTypeswitch, testCastableInConditional,
+      testTreatAsWithRange,
 
       -- Constructor chaining tests
-      'testConstructorCastChaining', 'testConstructorTreatAsChaining',
+      testConstructorCastChaining, testConstructorTreatAsChaining,
 
       -- Constructor error tests
-      'testConstructorUnknownType', 'testConstructorUnboundPrefix'
+      testConstructorUnknownType, testConstructorUnboundPrefix
    },
    init = function(ScriptFolder)
       -- No global initialization needed

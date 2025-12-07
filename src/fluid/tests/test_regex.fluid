@@ -198,15 +198,15 @@ end
 
    return {
       tests = {
-         'testConstruction',
-         'testTestMethod',
-         'testMatchMethod',
-         'testSearchMethod',
-         'testReplaceMethod',
-         'testSplitMethod',
-         'testFlags',
-         'testErrorHandling',
-         'testRealWorldPatterns',
-         'testMemoryManagement'
+         testConstruction,
+         testTestMethod,
+         testMatchMethod,
+         testSearchMethod,
+         testReplaceMethod,
+         testSplitMethod,
+         testFlags,
+         testErrorHandling,
+         testRealWorldPatterns,
+         testMemoryManagement
       }
    }

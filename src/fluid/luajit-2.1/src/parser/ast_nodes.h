@@ -552,6 +552,7 @@ struct LocalFunctionStmtPayload {
 struct FunctionNamePath {
    std::vector<Identifier> segments;
    std::optional<Identifier> method;
+   bool is_explicit_global = false;  // True when declared with `global function`
 };
 
 struct FunctionStmtPayload {

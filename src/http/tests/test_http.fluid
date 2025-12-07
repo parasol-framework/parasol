@@ -373,18 +373,18 @@ end
 
    return {
       tests = {
-        'testGetLocal',
-        'testPostStringLocal',
-        'testPostStringExt',
-        'testPostStringFile',
-        'testHTTPS',
-        'testRedirectedHTTPS',
-        'testIPV6'
+        testGetLocal,
+        testPostStringLocal,
+        testPostStringExt,
+        testPostStringFile,
+        testHTTPS,
+        testRedirectedHTTPS,
+        testIPV6
       },
       init = function(Path)
          print('Serving files from ' .. Path)
 
-         glServer = hslib.start({
+         global glServer = hslib.start({
             port    = SERVER_PORT,
             folder  = Path,
             verbose = true,

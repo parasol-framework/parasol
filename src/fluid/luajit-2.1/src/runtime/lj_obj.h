@@ -844,6 +844,7 @@ typedef struct global_State {
    MRef      jit_base;       // Current JIT code L->base or NULL.
    MRef      ctype_state;    // Pointer to C type state.
    PRNGState prng;           // Global PRNG state.
+   void     *funcnames;      // Map of GCproto* to function names (std::unordered_map<>*).
    GCRef     gcroot[GCROOT_MAX];  //  GC roots.
 } global_State;
 

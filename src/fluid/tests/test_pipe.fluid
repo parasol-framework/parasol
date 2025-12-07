@@ -166,20 +166,20 @@ end
 
 return {
    tests = {
-      'testBasicPipe',
-      'testChainedPipes',
-      'testPipeWithAdditionalArgs',
-      'testMultiValuePipe',
-      'testMultiValueWithLimit',
-      'testLimitTwoValues',
-      'testComplexChaining',
-      'testPipeWithString',
-      'testPipeWithTable',
-      'testPipeWithMathFunctions',
-      'testPipeWithMultipleAdditionalArgs',
-      'testPipePrecedence',
-      'testNestedFunctionPipe',
-      'testInvalidFloatLimit',
-      'testInvalidZeroLimit'
+      testBasicPipe,
+      testChainedPipes,
+      testPipeWithAdditionalArgs,
+      testMultiValuePipe,
+      testMultiValueWithLimit,
+      testLimitTwoValues,
+      testComplexChaining,
+      testPipeWithString,
+      testPipeWithTable,
+      testPipeWithMathFunctions,
+      testPipeWithMultipleAdditionalArgs,
+      testPipePrecedence,
+      testNestedFunctionPipe,
+      testInvalidFloatLimit,
+      testInvalidZeroLimit
    }
 }

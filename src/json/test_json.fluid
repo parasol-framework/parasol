@@ -27,7 +27,7 @@ end
 
    return {
       tests = {
-        'testLoadJSON'
+        testLoadJSON
       },
       init = nil,
       cleanup = function()

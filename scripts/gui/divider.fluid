@@ -5,7 +5,7 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-   if not mGfx then mGfx = mod.load('display') end
+   if not mGfx then global mGfx = mod.load('display') end
 
 local GAP = 6
 local HALF_GAP = GAP / 2

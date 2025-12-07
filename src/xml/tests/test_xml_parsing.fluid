@@ -145,10 +145,10 @@ end
 
 return {
    tests = {
-      'testStatementParsing',
-      'testCDATAParsing', 'testCommentHandling',
-      'testAttributeParsing', 'testNestedStructure', 'testSelfClosingTags',
-      'testXMLInstructions', 'testMixedContent', 'testEmptyElements'
+      testStatementParsing,
+      testCDATAParsing, testCommentHandling,
+      testAttributeParsing, testNestedStructure, testSelfClosingTags,
+      testXMLInstructions, testMixedContent, testEmptyElements
    },
    init = function(ScriptFolder)
       -- No global init needed for these tests

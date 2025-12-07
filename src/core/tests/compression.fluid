@@ -1,7 +1,7 @@
 -- $FLUID
 -- Flute tests for the Compression module
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- This test takes advantage of the icon archive to test our compatibility levels (icons are compressed by the host
 -- system rather than our compression API).
 
@@ -11,19 +11,19 @@ function testIconArchive()
       return
    end
 
-   local file_count = 0
-   local cmp = obj.new('compression', {
+   file_count = 0
+   cmp = obj.new('compression', {
       path     = 'styles:icons/Default.zip',
       feedback = function(Compression, Info)
-         if (Info.progress is 0) then
-            file_count = file_count + 1
+         if Info.progress is 0 then
+            file_count++
          end
       end
    })
 
    if not cmp then return end -- Non-existance of the icon archive means this test is skipped
 
-   local err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
+   err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
    assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    err = cmp.mtDecompressFile('nature/*', 'temp:cmp_icons/')
@@ -32,37 +32,37 @@ function testIconArchive()
    assert(file_count is 5, 'Decompressed file count is ' .. file_count)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Compress a few files and then decompress them.
 
 function testCreateCompress()
-   local cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
+   cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
 
-   local err = cmp.mtCompressFile('scripts:gui.fluid', '')
-   if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
+   err = cmp.mtCompressFile('scripts:gui.fluid', '')
+   assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    err = cmp.mtCompressFile('config:styles/default/window.fluid', '')
-   if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
+   assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    cmp = null
-   collectgarbage()  // Flush the compressed file to disk
+   collectgarbage()  -- Flush the compressed file to disk
 end
 
 function testDecompressWild()
-   local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
+   cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
-   local err = cmp.mtDecompressFile('*.fluid', 'temp:')
+   err = cmp.mtDecompressFile('*.fluid', 'temp:')
    assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Compress an entire folder and then decompress it to a new location.
 
 function testCompressFolder()
-   local file_count = 0
-   glCompressedFiles = { }
+   file_count = 0
+   global glCompressedFiles = { }
 
-   local cmp = obj.new('compression', {
+   cmp = obj.new('compression', {
       path     = 'temp:cmp_test_scripts.zip',
       flags    = '!NEW',
       feedback = function(Compression, Info)
@@ -74,19 +74,19 @@ function testCompressFolder()
       end
    } )
 
-   local err = cmp.mtCompressFile('scripts:gui/', 'scripts')
+   err = cmp.mtCompressFile('scripts:gui/', 'scripts')
    assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    print('Compressed ' .. file_count .. ' files.')
    glCompressedFiles['COUNT'] = file_count
 
    cmp = null
-   collectgarbage() // Flush the compressed file to disk
+   collectgarbage() -- Flush the compressed file to disk
 end
 
 function testDecompressFolder()
-   local file_count = 0
-   local cmp = obj.new('compression', {
+   file_count = 0
+   cmp = obj.new('compression', {
       path     = 'temp:cmp_test_scripts.zip',
       feedback = function(Compression, Info)
          if (Info.progress is 0) then
@@ -100,133 +100,110 @@ function testDecompressFolder()
       end
    } )
 
-   local err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
+   err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
    assert(err is ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
    assert(file_count is glCompressedFiles['COUNT'], 'Decompressed file count of ' .. file_count .. ' != ' .. glCompressedFiles['COUNT'])
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Test streamed compression
 
 function testStreamedCompression()
-   local cmp = obj.new('compression' , { } )
+   cmp = obj.new('compression' , { } )
+   file = obj.new('file', { src='scripts:gui.fluid', flags='!READ' } )
 
-   local file = obj.new('file', { src='scripts:gui.fluid', flags='!READ' } )
-   assert(file, 'Failed to open source file.')
-
-   glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
-   if nz(glOutFile) then
-      if (cmp.mtCompressStreamStart() is ERR_Okay) then
-         local input = string.alloc(16384)
-         local err = ERR_Okay
-         while (err is ERR_Okay) do
-            local len
-            err, len = file.acRead(input)
-            if (err != ERR_Okay) or (len <= 0) then break end
-            err = cmp.mtCompressStream(input, len, 'streamedOutput')
-         end
-
-         if (err is ERR_Okay) then
-            err = cmp.mtCompressStreamEnd('streamedOutput')
-         else
-            error('Inner compression loop failed.')
-         end
+   global glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
+   if (cmp.mtCompressStreamStart() is ERR_Okay) then
+      input = string.alloc(16384)
+      err = ERR_Okay
+      while (err is ERR_Okay) do
+         err, len = file.acRead(input)
+         if (err != ERR_Okay) or (len <= 0) then break end
+         err = cmp.mtCompressStream(input, len, 'streamedOutput')
       end
+
+      assert(err is ERR_Okay, 'Inner compression loop failed: ' .. mSys.GetErrorMsg(err))
+      err = cmp.mtCompressStreamEnd('streamedOutput')
    end
 
    assert(glOutFile.size > 0, "The size of the compressed output file is zero.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testArchiveVolume()
-   local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', archiveName='test' } )
-   local file = obj.new('file', { path='scripts:gui/button.fluid' } )
-   local file_size = file.size
+   cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', archiveName='test' } )
+   file = obj.new('file', { path='scripts:gui/button.fluid' } )
+   file_size = file.size
 
-   local cmpbuffer = array.new(file_size, 'byte')
-   local cmpsrc = array.new(file_size, 'byte')
+   cmpbuffer = array.new(file_size, 'byte')
+   cmpsrc = array.new(file_size, 'byte')
 
-   local err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
+   err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
    assert(err is ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
-   local cmpstr = tostring(cmpsrc)
+   cmpstr = tostring(cmpsrc)
 
    -- Big buffer test
 
-   local cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
-   local err, len = cmpfile.acRead(cmpbuffer)
+   cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
+   err, len = cmpfile.acRead(cmpbuffer)
    assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
    assert(tostring(cmpbuffer) is cmpstr, "The decompressed data does not match the original file.")
 
    -- Small buffer test
 
    cmpfile.acSeek(0, SEEK_START)
-   local smallbuffer = array.new(256, 'byte')
-   local len
-   local cmpbuffer = ''
+   smallbuffer = array.new(256, 'byte')
+   cmpbuffer = ''
    repeat
       err, len = cmpfile.acRead(smallbuffer)
       assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
-      if (len < #smallbuffer) then
-         cmpbuffer = cmpbuffer .. smallbuffer.getstring(0, len)
+      if len < #smallbuffer then
+         cmpbuffer ..= smallbuffer.getstring(0, len)
       else
-         cmpbuffer = cmpbuffer .. tostring(smallbuffer)
+         cmpbuffer ..= tostring(smallbuffer)
       end
    until (len is 0)
 
    assert(cmpbuffer is cmpstr, "The decompressed data does not match the original file.")
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Test streamed decompression
 
 function testStreamedDecompression()
-   local cmp = obj.new('compression' , { } )
+   cmp = obj.new('compression' , { } )
+   file = obj.new('file', { src='temp:scripts.gz', flags='!READ' } )
 
-   local file = obj.new('file', { src='temp:scripts.gz', flags='!READ' } )
-   assert(file, 'Failed to open source file.')
-
-   glOutFile = obj.new('file', { src='temp:gui.fluid', flags='!WRITE|NEW' } )
-   if nz(glOutFile) then
-      if (cmp.mtDecompressStreamStart() is ERR_Okay) then
-         local input = string.alloc(16384)
-         local err = ERR_Okay
-         while (err is ERR_Okay) do
-            local len
-            err, len = file.acRead(input)
-            if (err is ERR_Okay) then
-               if (len <= 0) then break end
-               err = cmp.mtDecompressStream(input, len, 'streamedOutput')
-            end
-         end
-
-         if (err is ERR_Okay) then
-            err = cmp.mtDecompressStreamEnd('streamedOutput')
-         else
-            error('Inner decompression loop failed.')
-         end
-      else
-         error('Failed to initialise decompression.')
+   global glOutFile = obj.new('file', { src='temp:gui.fluid', flags='!WRITE|NEW' } )
+   assert(cmp.mtDecompressStreamStart() is ERR_Okay, 'Failed to initialise decompression.')
+   input = string.alloc(16384)
+   err = ERR_Okay
+   while (err is ERR_Okay) do
+      err, len = file.acRead(input)
+      if err is ERR_Okay then
+         if len <= 0 then break end
+         err = cmp.mtDecompressStream(input, len, 'streamedOutput')
       end
    end
+
+   assert(err is ERR_Okay, 'Inner decompression loop failed: ' .. mSys.GetErrorMsg(err))
+   err = cmp.mtDecompressStreamEnd('streamedOutput')
    glOutFile = nil
 end
 
-function streamedOutput(CompressedID, Data)
-   local err, len = glOutFile.acWrite(Data)
+global function streamedOutput(CompressedID, Data)
+   err, len = glOutFile.acWrite(Data)
    if (err != ERR_Okay) then return ERR_Write end
    return ERR_Okay
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-        'testCreateCompress', 'testDecompressWild',
-        'testCompressFolder', 'testDecompressFolder',
-        'testStreamedCompression', 'testStreamedDecompression',
-        'testArchiveVolume',
-        'testIconArchive'
+        testCreateCompress, testDecompressWild, testCompressFolder, testDecompressFolder, testStreamedCompression, 
+        testStreamedDecompression, testArchiveVolume, testIconArchive
       },
       init = nil,
       cleanup = function()

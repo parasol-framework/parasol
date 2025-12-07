@@ -313,10 +313,10 @@ end
 
    return {
       tests = {
-         'testUDPBufferHandling',
-         'testUDPLargePackets',
-         'testUDPConcurrency',
-         'testUDPHighFrequency',
-         'testUDPPerformanceBenchmark'
+         testUDPBufferHandling,
+         testUDPLargePackets,
+         testUDPConcurrency,
+         testUDPHighFrequency,
+         testUDPPerformanceBenchmark
       }
    }

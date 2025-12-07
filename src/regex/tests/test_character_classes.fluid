@@ -38,10 +38,10 @@ end
 
 return {
    tests = {
-      'testDigitClass',
-      'testWordClass',
-      'testWhitespaceClass',
-      'testNegatedClass',
-      'testEscapedDot'
+      testDigitClass,
+      testWordClass,
+      testWhitespaceClass,
+      testNegatedClass,
+      testEscapedDot
    }
 }

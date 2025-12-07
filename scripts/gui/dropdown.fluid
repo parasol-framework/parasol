@@ -6,7 +6,7 @@ Internal script for combobox drop-down menus.
    require 'gui'
    include 'display'
 
-   mGfx ?= mod.load('display')
+   if not mGfx then global mGfx = mod.load('display') end
 
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
 local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)

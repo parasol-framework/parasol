@@ -12,6 +12,7 @@
 #include <string_view>
 #include <concepts>
 #include <type_traits>
+#include <ankerl/unordered_dense.h>
 #include <variant>
 #include <ranges>
 
@@ -29,7 +30,8 @@ enum class ExpKind : uint8_t {
    // Non-constant expressions follow:
    Local,      // info = local register, aux = vstack index
    Upval,      // info = upvalue index, aux = vstack index
-   Global,     // sval = string value
+   Global,     // sval = string value (explicit global or known global reference)
+   Unscoped,   // sval = string value (undeclared variable - scope determined by context)
    Indexed,    // info = table register, aux = index reg/byte/string const
    Jmp,        // info = instruction PC
    Relocable,  // info = instruction PC
@@ -38,7 +40,8 @@ enum class ExpKind : uint8_t {
    Void
 };
 
-// Expression kind helper function.
+// Expression kind helper function - returns true for variable-like expressions.
+// Note: Unscoped is between Global and Indexed, so this range check covers it.
 [[nodiscard]] static constexpr bool vkisvar(ExpKind k) {
    return ExpKind::Local <= k and k <= ExpKind::Indexed;
 }
@@ -358,6 +361,14 @@ struct FuncState {
    std::array<VarIndex, LJ_MAX_LOCVAR> varmap;  // Map from register to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvmap;   // Map from upvalue to variable idx.
    std::array<VarIndex, LJ_MAX_UPVAL> uvtmp;   // Temporary upvalue map.
+
+   // Track explicitly declared global names.  This prevents new unscoped variables from being interpreted as locals
+   // and thus shadowing global variables.
+   ankerl::unordered_dense::set<GCstr*> declared_globals;
+
+   // Function name for named function declarations (used for tostring() output).
+   // Set before fs_finish() is called. nullptr for anonymous functions.
+   GCstr* funcname = nullptr;
 
    // --- Type-Safe Accessors ---
    // Return strong types for bytecode positions and registers

@@ -323,10 +323,10 @@ end
 
 return {
    tests = {
-      'testParsingFlags', 'testWhitespaceHandling', 'testContentStripping', 'testHeaderStripping',
-      'testWellFormedValidation', 'testEntityParsing', 'testStandalonePreventsExternalDTD', 'testNoEscapeMode', 'testSortingFlags',
-      'testSerialisationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
-      'testRemoveXPathAttributes', 'testExists'
+      testParsingFlags, testWhitespaceHandling, testContentStripping, testHeaderStripping,
+      testWellFormedValidation, testEntityParsing, testStandalonePreventsExternalDTD, testNoEscapeMode, testSortingFlags,
+      testSerialisationFlags, testContentExtraction, testCountMethods, testFilterMethod,
+      testRemoveXPathAttributes, testExists
    },
    init = function(ScriptFolder)
       -- No global init needed for these tests

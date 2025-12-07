@@ -146,7 +146,7 @@ function testMultiStepNodePredicates()
    assert(err is ERR_Okay, 'Multi-step predicates should locate the Plot Twist chapter: ' .. mSys.GetErrorMsg(err))
 
    local err, chapterText = xml.mtEvaluate('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
-   assert(chapterText is 'Plot Twist', 'Plot Twist chapter should be returned, got ' .. nz(chapterText, 'NIL'))
+   assert(chapterText is 'Plot Twist', 'Plot Twist chapter should be returned, got ' .. tostring(chapterText))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ function testMultiStepAttributePredicates()
    })
 
    local err, attrValue = xml.mtEvaluate('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/@code[starts-with(., "fic-")][contains(., "001")]')
-   assert(attrValue is 'fic-001', 'Attribute predicates should retain matches across helpers, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'fic-001', 'Attribute predicates should retain matches across helpers, got ' .. tostring(attrValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -197,12 +197,12 @@ function testPredicateOperationHandlers()
    local errEquals, equalsId = xml.mtSearch('/root/item[@data-code="fic-*"]')
    assert(errEquals is ERR_Okay, 'attribute-equals should honour wildcard patterns: ' .. mSys.GetErrorMsg(errEquals))
    local errAttrib, attribValue = xml.mtGetAttrib(equalsId, 'id')
-   assert(errAttrib is ERR_Okay and attribValue is 'book-1', 'Wildcard attribute-equals should return book-1, got ' .. nz(attribValue, 'NIL'))
+   assert(errAttrib is ERR_Okay and attribValue is 'book-1', 'Wildcard attribute-equals should return book-1, got ' .. tostring(attribValue))
 
    local errContent, titleId = xml.mtSearch('/root/item/title[="Plot*"]')
    assert(errContent is ERR_Okay, 'content-equals should permit wildcard text matches: ' .. mSys.GetErrorMsg(errContent))
    local err, titleText = xml.mtEvaluate('/root/item/title[="Plot*"]')
-   assert(titleText is 'Plot Twist', 'content-equals wildcard should resolve Plot Twist title, got ' .. nz(titleText, 'NIL'))
+   assert(titleText is 'Plot Twist', 'content-equals wildcard should resolve Plot Twist title, got ' .. tostring(titleText))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ function testXPathStringFunctions()
    assert(err is ERR_Okay, 'string-length(.) predicate should select five-character strings, err=' .. mSys.GetErrorMsg(err))
 
    local err, value = xml.mtEvaluate('/root/item[string-length(.) = 5]')
-   assert(value is 'alpha', 'string-length(.) predicate should locate the "alpha" element, got ' .. nz(value, 'NIL'))
+   assert(value is 'alpha', 'string-length(.) predicate should locate the "alpha" element, got ' .. tostring(value))
 
    local xmlWhitespace = obj.new("xml", {
       statement = '<root><item>  alpha  </item><item>beta</item></root>'
@@ -250,7 +250,7 @@ function testXPathStringFunctions()
    assert(err is ERR_Okay, 'normalize-space(.) predicate should trim surrounding whitespace, err=' .. mSys.GetErrorMsg(err))
 
    local err, value = xmlWhitespace.mtEvaluate('/root/item[normalize-space(.) = "alpha"]')
-   assert(value is '  alpha  ', 'normalize-space(.) predicate should select the whitespace entry, got ' .. nz(value, 'NIL'))
+   assert(value is '  alpha  ', 'normalize-space(.) predicate should select the whitespace entry, got ' .. tostring(value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -452,7 +452,7 @@ function testXPathNameFunctions()
    assert(err is ERR_Okay, 'name() should return the qualified element name: ' .. mSys.GetErrorMsg(err))
 
    local err, attrValue = xml.mtEvaluate('/root/ns:item/@ns:code[local-name() = "code" and name() = "ns:code"]')
-   assert(attrValue is 'X1', 'local-name() and name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'X1', 'local-name() and name() should operate on attribute nodes, got ' .. tostring(attrValue))
 
    local err, itemId = xml.mtSearch('/root/ns:item[local-name() = "item" and name() = "ns:item"]')
    assert(err is ERR_Okay, 'local-name() and name() should resolve element names correctly: ' .. mSys.GetErrorMsg(err))
@@ -461,10 +461,10 @@ function testXPathNameFunctions()
    assert(err is ERR_Okay, 'local-name() and namespace-uri() should resolve element namespaces: ' .. mSys.GetErrorMsg(err))
 
    local err, attrValue = xml.mtEvaluate('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
-   assert(attrValue is 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. tostring(attrValue))
 
    local err, attrValue = xml.mtEvaluate('/root/ns:item/@data-id[name() = "data-id"]')
-   assert(attrValue is 'A1', 'name() should expose unqualified attribute names, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'A1', 'name() should expose unqualified attribute names, got ' .. tostring(attrValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -597,7 +597,7 @@ function testFunctionLibrary()
    -- Verify multiple child access patterns work
    local childCount = 0
    xml.mtSearch('/library/authors/author', function(XML, TagID, Attrib)
-      childCount = childCount + 1
+      childCount++
    end)
    assert(childCount is 3, "Should find all 3 authors, found " .. childCount)
 
@@ -804,34 +804,34 @@ function testXPathFullEvaluation()
    })
 
    local err, count = xml.mtEvaluate('count(/root/item)')
-   assert(count is "3", "Expected count of 3 items, got " .. nz(count, "NIL"))
+   assert(count is "3", "Expected count of 3 items, got " .. tostring(count))
 
    local err, total_count = xml.mtEvaluate('count(/root/*)')
-   assert(total_count is "4", "Expected count of 4 elements, got " .. nz(total_count, "NIL"))
+   assert(total_count is "4", "Expected count of 4 elements, got " .. tostring(total_count))
 
    local err, if_result = xml.mtEvaluate('if (/root/item[1]) then /root/item[1] else /root/item[2]')
-   assert(if_result is "A", "Expected if result 'A', got " .. nz(if_result, "NIL"))
+   assert(if_result is "A", "Expected if result 'A', got " .. tostring(if_result))
 
    local err, length = xml.mtEvaluate('string-length(/root/item[1])')
-   assert(length is "1", "Expected string length of 1, got " .. nz(length, "NIL"))
+   assert(length is "1", "Expected string length of 1, got " .. tostring(length))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
-      'testComparisonOperators', 'testMathematicalExpressions',
-      'testAttributeNameVariants', 'testVariables',
-      'testComplexNestedPredicates', 'testMultiStepNodePredicates',
-      'testMultiStepAttributePredicates', 'testPredicateOperationHandlers',
-      'testRoundBracketAlternatives',
-      'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
-      'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
-      'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
-      'testFunctionLibrary', 'testXPathOperators',
-      'testXPathExpressions', 'testXPathArithmetic', 'testXPathMultiplicationOutsidePredicates',
-      'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions',
-      'testXPathFullEvaluation'
+      testComparisonOperators, testMathematicalExpressions,
+      testAttributeNameVariants, testVariables,
+      testComplexNestedPredicates, testMultiStepNodePredicates,
+      testMultiStepAttributePredicates, testPredicateOperationHandlers,
+      testRoundBracketAlternatives,
+      testXPathStringFunctions, testXPathAdditionalStringFunctions,
+      testXPathNumberFunctions, testXPathExtendedNumberFunctions,
+      testEscapeCharacters, testEdgeCases, testPerformanceScenarios,
+      testFunctionLibrary, testXPathOperators,
+      testXPathExpressions, testXPathArithmetic, testXPathMultiplicationOutsidePredicates,
+      testXPathBooleanFunctions, testXPathIdFunction, testXPathNameFunctions,
+      testXPathFullEvaluation
    },
    init = function(ScriptFolder)
    end,

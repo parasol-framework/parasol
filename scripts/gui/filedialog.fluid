@@ -10,7 +10,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui/input'
    require 'gui/window'
 
-   gui ?= { }
+   if not gui then global gui = { } end
    gui.dialog ?= { }
 
 local GAP = 8

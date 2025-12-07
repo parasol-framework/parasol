@@ -3,7 +3,7 @@ UDP Broadcast and Multicast Test
 --]]
 
    include 'network'
-   if not mNet then mNet = mod.load('network') end
+   mNet ?= mod.load('network')
 
    local glBasePort = 19820  -- Base port for broadcast/multicast tests
    local glTestTimeout = 3.0
@@ -137,9 +137,9 @@ end
 
    return {
       tests = {
-         'testBroadcastLoopback',
-         'testMulticastTTL',
-         'testMulticastErrorHandling',
-         'testMulticastGroups'
+         testBroadcastLoopback,
+         testMulticastTTL,
+         testMulticastErrorHandling,
+         testMulticastGroups
       }
    }

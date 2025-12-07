@@ -223,18 +223,18 @@ end
 
    return {
       tests = {
-         'testValidateHeaderSuccess',
-         'testValidateHeaderFailure',
-         'testValidateHeaderCustomError',
-         'testValidateHeaderMissingAuth',
-         'testValidateHeaderContentType',
-         'testValidateHeaderException',
-         'testNoValidateHeaderCallback'
+         testValidateHeaderSuccess,
+         testValidateHeaderFailure,
+         testValidateHeaderCustomError,
+         testValidateHeaderMissingAuth,
+         testValidateHeaderContentType,
+         testValidateHeaderException,
+         testNoValidateHeaderCallback
       },
       init = function(Path)
-         glPath = Path
+         global glPath = Path
 
-         glServer = hslib.start({
+         global glServer = hslib.start({
             port = SERVER_PORT,
             folder = glPath,
             verbose = false,

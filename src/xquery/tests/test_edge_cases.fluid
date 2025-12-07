@@ -142,8 +142,8 @@ end
 
 return {
    tests = {
-      'testMediumAdditionChain', 'testLongAdditionChain', 'testMultiplicationChain', 'testMixedAdditionAndSubtraction',
-      'testUnparenthesizedMultiplication', 'testMultiplicationAfterReturn', 'testMultiplicationAfterAssign',
-      'testWildcardPathsStillWork', 'testQNameWildcardStillWorks'
+      testMediumAdditionChain, testLongAdditionChain, testMultiplicationChain, testMixedAdditionAndSubtraction,
+      testUnparenthesizedMultiplication, testMultiplicationAfterReturn, testMultiplicationAfterAssign,
+      testWildcardPathsStillWork, testQNameWildcardStillWorks
    }
 }

@@ -16,10 +16,10 @@ constexpr uint32_t LJ_MAX_MEM32 = 0x7fffff00u;   //  Max. 32 bit memory allocati
 constexpr uint64_t LJ_MAX_MEM64 = ((uint64_t)1 << 47);  //  Max. 64 bit memory allocation.
 // Max. total memory allocation - always 64-bit.
 #define LJ_MAX_MEM   LJ_MAX_MEM64
-#define LJ_MAX_ALLOC   LJ_MAX_MEM   //  Max. individual allocation length.
+#define LJ_MAX_ALLOC LJ_MAX_MEM   //  Max. individual allocation length.
 #define LJ_MAX_STR   LJ_MAX_MEM32   //  Max. string length.
 #define LJ_MAX_BUF   LJ_MAX_MEM32   //  Max. buffer length.
-#define LJ_MAX_UDATA   LJ_MAX_MEM32   //  Max. userdata length.
+#define LJ_MAX_UDATA LJ_MAX_MEM32   //  Max. userdata length.
 
 constexpr uint32_t LJ_MAX_STRTAB = (1u << 26);      //  Max. string table size.
 constexpr int LJ_MAX_HBITS = 26;      //  Max. hash bits.

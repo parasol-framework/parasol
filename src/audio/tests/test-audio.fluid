@@ -210,12 +210,12 @@ end
 
    return {
       tests = {
-        'testSequentialPlayback',
-        'testPan',
-        'testVolume',
-        'testTones',
-        'testBeep',
-        'testWaveSave'
+        testSequentialPlayback,
+        testPan,
+        testVolume,
+        testTones,
+        testBeep,
+        testWaveSave
       },
       init = function(Folder)
          glFolder = Folder

@@ -84,6 +84,6 @@ end
 
 return {
    tests = {
-      'testMapFunctions', 'testArrayFunctions', 'testMapArrayFunctionErrors'
+      testMapFunctions, testArrayFunctions, testMapArrayFunctionErrors
    }
 }

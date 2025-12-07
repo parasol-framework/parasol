@@ -1,6 +1,6 @@
 -- Flute tests for the DebugLog() method
 
-   glSelf = obj.find('self')
+   global glSelf = obj.find('self')
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default behaviour (stack trace only)
@@ -71,8 +71,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test globals option
 
-testGlobal = 'visible'
-anotherGlobal = 123
+global testGlobal = 'visible'
+global anotherGlobal = 123
 
 function testGlobals()
    local err, result = glSelf.mtDebugLog('globals')
@@ -336,20 +336,20 @@ end
 
    return {
       tests = {
-         'testDefaultStackTrace',
-         'testLocals',
-         'testUpvalues',
-         'testGlobals',
-         'testMemory',
-         'testState',
-         'testMultipleOptions',
-         'testAllOption',
-         'testCompactMode',
-         'testLongString',
-         'testVariousTypes',
-         'testNestedStack',
-         'testFuncInfo',
-         'testDisassembly',
-         'testBytecodeDump'
+         testDefaultStackTrace,
+         testLocals,
+         testUpvalues,
+         testGlobals,
+         testMemory,
+         testState,
+         testMultipleOptions,
+         testAllOption,
+         testCompactMode,
+         testLongString,
+         testVariousTypes,
+         testNestedStack,
+         testFuncInfo,
+         testDisassembly,
+         testBytecodeDump
       }
    }

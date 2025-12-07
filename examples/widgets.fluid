@@ -20,8 +20,8 @@ A demonstration of standard widgets
    glSelf = <{ obj.find('self') }>
    glPath = <{ glSelf.workingPath }>
 
-   local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400 })
-   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
+   win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400 })
+   viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
 function itemCallback(Bar, Item)
    print('Callback: ' .. Item.id .. ', ' .. Item.name)
@@ -46,7 +46,7 @@ function widgetFocus(Widget)
    --end)
 end
 
-   local menubar = gui.menubar({
+   menubar = gui.menubar({
       target = viewport,
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
@@ -74,7 +74,7 @@ end
       end
    })
 
-   local y = menubar.viewport.height
+   y = menubar.viewport.height
 
    lToolbar = gui.toolbar({
       target      = viewport,
@@ -102,7 +102,7 @@ end
 
    y += lToolbar.viewport.height + 10
 
-   local popupMenu = gui.menu({
+   popupMenu = gui.menu({
       x     = 30,
       y     = 50,
       popup = true,
@@ -127,13 +127,13 @@ end
       end
    end)
 
-   local text = viewport.new('vectortext', {
+   text = viewport.new('vectortext', {
       x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
    text.y += text.fontSize
    y += text.fontSize + 14
 
-   local msgButton = gui.button({
+   msgButton = gui.button({
       target = viewport,
       text   = 'Message Box',
       x      = win.margins.left,
@@ -171,7 +171,7 @@ end
       }
    })
 
-   local colourButton = gui.button({
+   colourButton = gui.button({
       target = viewport,
       text   = 'Select Colour',
       x      = msgButton.viewport.x + msgButton.viewport.width + 4,
@@ -197,7 +197,7 @@ end
       }
    })
 
-   local fontButton = gui.button({
+   fontButton = gui.button({
       target = viewport,
       text   = 'Select Font',
       x      = colourButton.viewport.x + colourButton.viewport.width + 4,
@@ -224,7 +224,7 @@ end
       }
    })
 
-   local fileButton = gui.button({
+   fileButton = gui.button({
       target = viewport,
       text   = 'Select File',
       x      = fontButton.viewport.x + fontButton.viewport.width + 4,
@@ -258,7 +258,7 @@ end
 
    y += msgButton.viewport.height + 12
 
-   local checkbox = gui.checkbox({
+   checkbox = gui.checkbox({
       target = viewport,
       label  = 'Checkbox',
       align  = 'left',
@@ -271,7 +271,7 @@ end
       }
    })
 
-   local slider = gui.slider({
+   slider = gui.slider({
       target = viewport,
       label  = 'Slider:',
       orientation = 'vertical',
@@ -288,7 +288,7 @@ end
 
    y += checkbox.viewport.height + 12
 
-   local combobox = gui.combobox({
+   combobox = gui.combobox({
       target = viewport,
       label  = 'Combobox:',
       string = 'Your text here',
@@ -312,7 +312,7 @@ end
    })
    y += combobox.viewport.height + 12
 
-   local input = gui.input({
+   input = gui.input({
       target = viewport,
       x      = win.margins.left,
       y      = y,
@@ -329,7 +329,7 @@ end
    y += input.viewport.height + 16
 
    catch(function()
-      sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })
+      global sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })
    end)
 
    gui.icon({
@@ -355,7 +355,7 @@ end
    })
 
    catch(function()
-      sndWilhelm = obj.new('sound', { path=glPath .. 'data/wilhelm.mp3', volume=0.2 })
+      global sndWilhelm = obj.new('sound', { path=glPath .. 'data/wilhelm.mp3', volume=0.2 })
    end)
 
    gui.icon({

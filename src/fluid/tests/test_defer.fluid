@@ -322,21 +322,21 @@ end
    local supportsErrorPropagation = false
 
    local tests = {
-      'testBasicExecution',
-      'testDeferWithoutParens',
-      'testLifoOrder',
-      'testEarlyReturn',
-      'testNestedScopes',
-      'testBreak',
-      'testContinue',
-      'testUpvalues',
-      'testConditionalScopes',
-      'testLoopMultipleDefers',
-      'testRecursive',
-      'testClosureReturn',
-      'testMultiReturnPreservesLocals',
-      'testArgumentSnapshot',
-      'testResourceCleanupPattern'
+      testBasicExecution,
+      testDeferWithoutParens,
+      testLifoOrder,
+      testEarlyReturn,
+      testNestedScopes,
+      testBreak,
+      testContinue,
+      testUpvalues,
+      testConditionalScopes,
+      testLoopMultipleDefers,
+      testRecursive,
+      testClosureReturn,
+      testMultiReturnPreservesLocals,
+      testArgumentSnapshot,
+      testResourceCleanupPattern
    }
 
    return {

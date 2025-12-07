@@ -37,4 +37,8 @@ LJ_FUNC void LJ_FASTCALL lj_state_free(global_State* g, lua_State* L);
 LJ_FUNC [[nodiscard]] lua_State* lj_state_newstate(lua_Alloc f, void* ud);
 #endif
 
+// Function name registry for tostring() support on named functions.
+LJ_FUNC void lj_funcname_register(global_State* g, const GCproto* pt, const char* name, size_t len);
+LJ_FUNC const char* lj_funcname_lookup(global_State* g, const GCproto* pt, size_t* len);
+
 #define LJ_ALLOCF_INTERNAL   ((lua_Alloc)(void *)(uintptr_t)(1237<<4))

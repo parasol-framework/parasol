@@ -5,13 +5,13 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-local HEIGHT        = math.floor(LINE_SPACING * 1.75) + 1
-local ICON_SIZE     = HEIGHT * 0.56
-local GAP           = HEIGHT * 0.35
+LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+HEIGHT        = math.floor(LINE_SPACING * 1.75) + 1
+ICON_SIZE     = HEIGHT * 0.56
+GAP           = HEIGHT * 0.35
 
 gui.button = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       events         = Options.events ?? { },
       parentViewport = Options.target,
       text           = nil, -- A VectorText that represents the string
@@ -46,9 +46,9 @@ gui.button = function(Options)
       self.events.activate = Options.feedback
    end
 
-   local label_offset = 0
+   label_offset = 0
 
-   local vps = { -- Viewport settings
+   vps = { -- Viewport settings
       x       = Options.x,
       y       = Options.y,
       width   = Options.width,
@@ -57,7 +57,7 @@ gui.button = function(Options)
       yOffset = Options.yOffset
    }
 
-   local calc_width = false
+   calc_width = false
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not (vps.xOffset and vps.x) then
@@ -90,7 +90,7 @@ gui.button = function(Options)
 
    if Options.icon then
       pcall(function()
-         local icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text))
+         icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text))
 
          if icon then
             self.iconRender = self.viewport.new('VectorViewport', {
@@ -186,8 +186,8 @@ gui.button = function(Options)
                end
             elseif self.clicked then
                self.clicked = false
-               local clickX = Msg.x - self.clickX
-               local clickY = Msg.y - self.clickY
+               clickX = Msg.x - self.clickX
+               clickY = Msg.y - self.clickY
                if clickX < 0 then clickX = -clickX end
                if clickY < 0 then clickY = -clickY end
 

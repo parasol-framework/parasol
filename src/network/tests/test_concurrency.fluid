@@ -341,9 +341,9 @@ end
 
    return {
       tests = {
-         'testMultipleConnections',
-         'testClientLimitEnforcement',
-         'testConnectionIsolation'
+         testMultipleConnections,
+         testClientLimitEnforcement,
+         testConnectionIsolation
       },
       cleanup = function()
          glActiveClients = 0

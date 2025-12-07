@@ -449,14 +449,14 @@ end
 
 return {
    tests = {
-      'testBasicXPath', 'testAttributeMatching', 'testAttributePredicateExistence',
-      'testIndexedAccess', 'testDeepScanning', 'testDeepScanMidPath',
-      'testWildcardMatching', 'testContentMatching', 'testAttributeExtraction',
-      'testCountOperations', 'testExistsOperations', 'testContentExtraction',
-      'testExtractOperations', 'testComplexExpressions', 'testNamespaceSupport',
-      'testNamespacePrefixedSteps', 'testAttributeWildcards',
-      'testFunctionPredicateNodeSets', 'testXPathFunctions',
-      'testNumericPositionPredicates', 'testBooleanOperators'
+      testBasicXPath, testAttributeMatching, testAttributePredicateExistence,
+      testIndexedAccess, testDeepScanning, testDeepScanMidPath,
+      testWildcardMatching, testContentMatching, testAttributeExtraction,
+      testCountOperations, testExistsOperations, testContentExtraction,
+      testExtractOperations, testComplexExpressions, testNamespaceSupport,
+      testNamespacePrefixedSteps, testAttributeWildcards,
+      testFunctionPredicateNodeSets, testXPathFunctions,
+      testNumericPositionPredicates, testBooleanOperators
    },
    init = function(ScriptFolder)
       table.contains = function(table, element)

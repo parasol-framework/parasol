@@ -30,9 +30,9 @@ end
 
 return {
    tests = {
-      'testCaseInsensitiveFlag',
-      'testMultilineAnchors',
-      'testDotAllMatchesNewlines',
-      'testPrevAvailableSupportsLookbehind'
+      testCaseInsensitiveFlag,
+      testMultilineAnchors,
+      testDotAllMatchesNewlines,
+      testPrevAvailableSupportsLookbehind
    }
 }

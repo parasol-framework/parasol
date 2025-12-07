@@ -46,10 +46,10 @@ function testEmptyFunction()
    local xml = createSequenceXml()
 
    local err, emptyValue = xml.mtEvaluate('empty(/root/empty/item)')
-   assert(emptyValue is 'true', "empty should return true for missing nodes, got " .. nz(emptyValue, 'NIL'))
+   assert(emptyValue is 'true', "empty should return true for missing nodes, got " .. tostring(emptyValue))
 
    local err, nonEmptyValue = xml.mtEvaluate('empty(/root/numbers/value)')
-   assert(nonEmptyValue is 'false', "empty should return false for existing nodes, got " .. nz(nonEmptyValue, 'NIL'))
+   assert(nonEmptyValue is 'false', "empty should return false for existing nodes, got " .. tostring(nonEmptyValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -86,13 +86,13 @@ function testDistinctValuesFunction()
    assert(totalValues is 3, "distinct-values should return three unique entries, got " .. tostring(totalValues))
 
    local err, firstValue = xml.mtEvaluate('distinct-values(/root/duplicates/value)[1]')
-   assert(firstValue is 'alpha', "distinct-values should keep first occurrence of alpha, got " .. nz(firstValue, 'NIL'))
+   assert(firstValue is 'alpha', "distinct-values should keep first occurrence of alpha, got " .. tostring(firstValue))
 
    local err, secondValue = xml.mtEvaluate('distinct-values(/root/duplicates/value)[2]')
-   assert(secondValue is 'beta', "distinct-values should keep beta in second position, got " .. nz(secondValue, 'NIL'))
+   assert(secondValue is 'beta', "distinct-values should keep beta in second position, got " .. tostring(secondValue))
 
    local err, thirdValue = xml.mtEvaluate('distinct-values(/root/duplicates/value)[3]')
-   assert(thirdValue is 'gamma', "distinct-values should keep gamma as last entry, got " .. nz(thirdValue, 'NIL'))
+   assert(thirdValue is 'gamma', "distinct-values should keep gamma as last entry, got " .. tostring(thirdValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -102,31 +102,31 @@ function testInsertRemoveReverse()
    local xml = createSequenceXml()
 
    local err, insertFirst = xml.mtEvaluate('insert-before(/root/order/step/@pos, 2, "2")[1]')
-   assert(insertFirst is '1', "insert-before should retain first element, got " .. nz(insertFirst, 'NIL'))
+   assert(insertFirst is '1', "insert-before should retain first element, got " .. tostring(insertFirst))
 
    local err, insertSecond = xml.mtEvaluate('insert-before(/root/order/step/@pos, 2, "2")[2]')
-   assert(insertSecond is '2', "insert-before should place new value at position 2, got " .. nz(insertSecond, 'NIL'))
+   assert(insertSecond is '2', "insert-before should place new value at position 2, got " .. tostring(insertSecond))
 
    local err, insertThird = xml.mtEvaluate('insert-before(/root/order/step/@pos, 2, "2")[3]')
-   assert(insertThird is '3', "insert-before should shift original third element, got " .. nz(insertThird, 'NIL'))
+   assert(insertThird is '3', "insert-before should shift original third element, got " .. tostring(insertThird))
 
    local err, insertFourth = xml.mtEvaluate('insert-before(/root/order/step/@pos, 2, "2")[4]')
-   assert(insertFourth is '4', "insert-before should append remaining element, got " .. nz(insertFourth, 'NIL'))
+   assert(insertFourth is '4', "insert-before should append remaining element, got " .. tostring(insertFourth))
 
    local err, removedFirst = xml.mtEvaluate('remove(/root/codes/code, 2)[1]')
-   assert(removedFirst is '1', "remove should keep first element, got " .. nz(removedFirst, 'NIL'))
+   assert(removedFirst is '1', "remove should keep first element, got " .. tostring(removedFirst))
 
    local err, removedSecond = xml.mtEvaluate('remove(/root/codes/code, 2)[2]')
-   assert(removedSecond is '3', "remove should drop middle element, got " .. nz(removedSecond, 'NIL'))
+   assert(removedSecond is '3', "remove should drop middle element, got " .. tostring(removedSecond))
 
    local err, reverseFirst = xml.mtEvaluate('reverse(/root/codes/code)[1]')
-   assert(reverseFirst is '3', "reverse should place last element first, got " .. nz(reverseFirst, 'NIL'))
+   assert(reverseFirst is '3', "reverse should place last element first, got " .. tostring(reverseFirst))
 
    local err, reverseSecond = xml.mtEvaluate('reverse(/root/codes/code)[2]')
-   assert(reverseSecond is '2', "reverse should place middle element second, got " .. nz(reverseSecond, 'NIL'))
+   assert(reverseSecond is '2', "reverse should place middle element second, got " .. tostring(reverseSecond))
 
    local err, reverseThird = xml.mtEvaluate('reverse(/root/codes/code)[3]')
-   assert(reverseThird is '1', "reverse should place first element last, got " .. nz(reverseThird, 'NIL'))
+   assert(reverseThird is '1', "reverse should place first element last, got " .. tostring(reverseThird))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -136,19 +136,19 @@ function testSubsequenceDeepEqual()
    local xml = createSequenceXml()
 
    local err, subseqFirst = xml.mtEvaluate('subsequence(/root/duplicates/value, 2, 2)[1]')
-   assert(subseqFirst is 'beta', "subsequence should extract beta as first result, got " .. nz(subseqFirst, 'NIL'))
+   assert(subseqFirst is 'beta', "subsequence should extract beta as first result, got " .. tostring(subseqFirst))
 
    local err, subseqSecond = xml.mtEvaluate('subsequence(/root/duplicates/value, 2, 2)[2]')
-   assert(subseqSecond is 'alpha', "subsequence should extract alpha as second result, got " .. nz(subseqSecond, 'NIL'))
+   assert(subseqSecond is 'alpha', "subsequence should extract alpha as second result, got " .. tostring(subseqSecond))
 
    local err, unorderedEqual = xml.mtEvaluate('deep-equal(unordered(/root/codes/code), /root/codes/code)')
-   assert(unorderedEqual is 'true', "unordered should preserve all members, got " .. nz(unorderedEqual, 'NIL'))
+   assert(unorderedEqual is 'true', "unordered should preserve all members, got " .. tostring(unorderedEqual))
 
    local err, deepEqualTrue = xml.mtEvaluate('deep-equal(/root/codes/code, /root/codes/code)')
-   assert(deepEqualTrue is 'true', "deep-equal should return true for identical sequences, got " .. nz(deepEqualTrue, 'NIL'))
+   assert(deepEqualTrue is 'true', "deep-equal should return true for identical sequences, got " .. tostring(deepEqualTrue))
 
    local err, deepEqualFalse = xml.mtEvaluate('deep-equal(/root/codes/code, remove(/root/codes/code, 3))')
-   assert(deepEqualFalse is 'false', "deep-equal should detect differing lengths, got " .. nz(deepEqualFalse, 'NIL'))
+   assert(deepEqualFalse is 'false', "deep-equal should detect differing lengths, got " .. tostring(deepEqualFalse))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
-      'testEmptyFunction', 'testIndexOfFunction', 'testDistinctValuesFunction',
-      'testInsertRemoveReverse', 'testSubsequenceDeepEqual', 'testCardinalityFunctions'
+      testEmptyFunction, testIndexOfFunction, testDistinctValuesFunction,
+      testInsertRemoveReverse, testSubsequenceDeepEqual, testCardinalityFunctions
    }
 }

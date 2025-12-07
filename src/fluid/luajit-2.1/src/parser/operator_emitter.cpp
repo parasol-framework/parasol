@@ -78,6 +78,7 @@ static CSTRING get_expkind_name(ExpKind k)
       case ExpKind::Local: return "local";
       case ExpKind::Upval: return "upval";
       case ExpKind::Global: return "global";
+      case ExpKind::Unscoped: return "unscoped";
       case ExpKind::Indexed: return "indexed";
       case ExpKind::Call: return "call";
       case ExpKind::NonReloc: return "nonreloc";

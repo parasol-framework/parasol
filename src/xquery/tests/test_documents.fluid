@@ -3,9 +3,10 @@
    include 'xml'
    require 'common'
 
-local glBaseFolder = 'temp:xpath_documents/'
-local glCollectionFolder = glBaseFolder .. 'collection/'
-local glTextFolder = glBaseFolder .. 'texts/'
+glBaseFolder = 'temp:xpath_documents/'
+glCollectionFolder = glBaseFolder .. 'collection/'
+glTextFolder = glBaseFolder .. 'texts/'
+glPrimaryXML
 
 local function writeFile(path, content)
    local file = obj.new('file', { path = path, flags = 'WRITE|NEW' })
@@ -29,12 +30,12 @@ end
 
 function testDocLoadsSecondaryDocument()
    local err, value = glPrimaryXML.mtEvaluate('doc("' .. glBaseFolder .. 'secondary.xml")/secondary/item[1]/@code')
-   assert(value is 'B', 'doc() should expose the first item code, got ' .. nz(value, 'NIL'))
+   assert(value is 'B', 'doc() should expose the first item code, got ' .. tostring(value))
 end
 
 function testDocSupportsStringUris()
    local err, value = glPrimaryXML.mtEvaluate('doc("string:<doc><item code=\'inline\'/></doc>")/doc/item/@code')
-   assert(value is 'inline', 'doc() should parse inline XML via string: URIs, got ' .. nz(value, 'NIL'))
+   assert(value is 'inline', 'doc() should parse inline XML via string: URIs, got ' .. tostring(value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -56,12 +57,12 @@ function testCollectionEnumeratesFolder()
    assert(tonumber(count) is 2, 'collection() should return two documents, got ' .. count)
 
    local err, firstCode = glPrimaryXML.mtEvaluate('collection("' .. glCollectionFolder .. '")/doc/entry[1]/@code')
-   assert(firstCode is 'alpha', 'collection() should expose the first document entry, got ' .. nz(firstCode, 'NIL'))
+   assert(firstCode is 'alpha', 'collection() should expose the first document entry, got ' .. tostring(firstCode))
 end
 
 function testUriCollectionReturnsPaths()
    local err, first = glPrimaryXML.mtEvaluate('uri-collection("' .. glCollectionFolder .. '")[1]')
-   assert(first:find('alpha.xml', 1, true), 'uri-collection() should return sorted file URIs, got ' .. nz(first, 'NIL'))
+   assert(first:find('alpha.xml', 1, true), 'uri-collection() should return sorted file URIs, got ' .. tostring(first))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -69,7 +70,7 @@ end
 
 function testUnparsedTextNormalisesNewlines()
    local err, text = glPrimaryXML.mtEvaluate('unparsed-text("' .. glTextFolder .. 'sample.txt")')
-   assert(text is 'First line\nSecond line\nThird line', 'unparsed-text() should normalise newline sequences, got ' .. nz(text, 'NIL'))
+   assert(text is 'First line\nSecond line\nThird line', 'unparsed-text() should normalise newline sequences, got ' .. tostring(text))
 end
 
 function testUnparsedTextAvailable()
@@ -82,7 +83,7 @@ end
 
 function testUnparsedTextLinesSplitsContent()
    local err, second = glPrimaryXML.mtEvaluate('unparsed-text-lines("' .. glTextFolder .. 'sample.txt")[2]')
-   assert(second is 'Second line', 'unparsed-text-lines() should split by linefeed, got ' .. nz(second, 'NIL'))
+   assert(second is 'Second line', 'unparsed-text-lines() should split by linefeed, got ' .. tostring(second))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -90,22 +91,22 @@ end
 
 function testRootReturnsDocumentElement()
    local err, name = glPrimaryXML.mtEvaluate('name(root(/library/section[1]/book))')
-   assert(name is 'library', 'root() should return the document element, got ' .. nz(name, 'NIL'))
+   assert(name is 'library', 'root() should return the document element, got ' .. tostring(name))
 end
 
 function testIdrefResolvesReferencingElements()
    local err, refName = glPrimaryXML.mtEvaluate('name(idref("B")[1])')
-   assert(refName is 'section', 'idref() should return the referencing section element, got ' .. nz(refName, 'NIL'))
+   assert(refName is 'section', 'idref() should return the referencing section element, got ' .. tostring(refName))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
-      'testDocLoadsSecondaryDocument', 'testDocSupportsStringUris', 'testDocAvailable',
-      'testCollectionEnumeratesFolder', 'testUriCollectionReturnsPaths',
-      'testUnparsedTextNormalisesNewlines', 'testUnparsedTextAvailable',
-      'testUnparsedTextLinesSplitsContent', 'testRootReturnsDocumentElement', 'testIdrefResolvesReferencingElements'
+      testDocLoadsSecondaryDocument, testDocSupportsStringUris, testDocAvailable,
+      testCollectionEnumeratesFolder, testUriCollectionReturnsPaths,
+      testUnparsedTextNormalisesNewlines, testUnparsedTextAvailable,
+      testUnparsedTextLinesSplitsContent, testRootReturnsDocumentElement, testIdrefResolvesReferencingElements
    },
    init = function(ScriptFolder)
       mSys.DeleteFile(glBaseFolder)

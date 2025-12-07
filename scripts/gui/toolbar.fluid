@@ -8,6 +8,7 @@ Documentation is available in the Parasol Wiki.
    require 'translate'
    include 'vector'
 
+local lClickX, lClickY
 local lCounter = 0
 local lTipDelay = 0.75
 

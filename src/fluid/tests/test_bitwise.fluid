@@ -177,18 +177,18 @@ end
 
 return {
    tests = {
-      'testUnaryBnot',
-      'testBinaryBitwiseBasics',
-      'testBitwisePrecedenceAndGrouping',
-      'testChainedOperators',
-      'testCStylePrecedence',
-      'testCStylePrecedenceAND',
-      'testCStylePrecedenceComplex',
-      'testShiftBitwiseBinding',
-      'testRHSFunctionCallsAndRegisterPreservation',
-      'testMultipleReturnLHS',
-      'testMultipleReturnRHS',
-      'testByteStringKeysWithBitwise',
-      'testBitwiseInParameters'
+      testUnaryBnot,
+      testBinaryBitwiseBasics,
+      testBitwisePrecedenceAndGrouping,
+      testChainedOperators,
+      testCStylePrecedence,
+      testCStylePrecedenceAND,
+      testCStylePrecedenceComplex,
+      testShiftBitwiseBinding,
+      testRHSFunctionCallsAndRegisterPreservation,
+      testMultipleReturnLHS,
+      testMultipleReturnRHS,
+      testByteStringKeysWithBitwise,
+      testBitwiseInParameters
    }
 }

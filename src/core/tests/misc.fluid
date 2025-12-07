@@ -104,7 +104,7 @@ end
 
    return {
       tests = {
-         'testActionList', 'testMetaClassArrays', 'testEnvPath', 'testPreciseTime', 'testRegistry', 'testObjectSearches'
+         testActionList, testMetaClassArrays, testEnvPath, testPreciseTime, testRegistry, testObjectSearches
       },
       init = function()
       end,

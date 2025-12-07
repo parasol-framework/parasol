@@ -323,20 +323,20 @@ end
 
 return {
    tests = {
-      'testEncoding',
-      'testDecoding',
-      'testQueryParsing',
-      'testQueryList',
-      'testQueryBuilding',
-      'testBasicParsing',
-      'testIPv6Parsing',
-      'testRelativeURLs',
-      'testURLUnparsing',
-      'testURLJoining',
-      'testPathNormalization',
-      'testUtilities',
-      'testEdgeCases',
-      'testDefrag'
+      testEncoding,
+      testDecoding,
+      testQueryParsing,
+      testQueryList,
+      testQueryBuilding,
+      testBasicParsing,
+      testIPv6Parsing,
+      testRelativeURLs,
+      testURLUnparsing,
+      testURLJoining,
+      testPathNormalization,
+      testUtilities,
+      testEdgeCases,
+      testDefrag
    },
    init = function(Folder)
       -- No special initialization needed

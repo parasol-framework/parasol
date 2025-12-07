@@ -266,16 +266,16 @@ end
 
    return {
       tests = {
-         'testEngineModeToggles',
-         'testSecurityModes',
-         'testFuncInfoForLuaFunction',
-         'testFuncInfoForCFunction',
-         'testFuncBCAndFunck',
-         'testFuncUpvalueName',
-         'testTraceInfoAndIR',
-         'testTraceConstantsAndSnapshot',
-         'testTraceMachineCodeAndExitStub',
-         'testIrCallAddrLookup',
-         'testJitAttachTraceEvent'
+         testEngineModeToggles,
+         testSecurityModes,
+         testFuncInfoForLuaFunction,
+         testFuncInfoForCFunction,
+         testFuncBCAndFunck,
+         testFuncUpvalueName,
+         testTraceInfoAndIR,
+         testTraceConstantsAndSnapshot,
+         testTraceMachineCodeAndExitStub,
+         testIrCallAddrLookup,
+         testJitAttachTraceEvent
       }
    }

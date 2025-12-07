@@ -7,7 +7,7 @@ To be used in conjunction with the gui.menubar or as an independent pop-up only.
    require 'gui'
    include 'display'
 
-   if not mGfx then mGfx = mod.load('display') end
+   if not mGfx then global mGfx = mod.load('display') end
 
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
 local ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)

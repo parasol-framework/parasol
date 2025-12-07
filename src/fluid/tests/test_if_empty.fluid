@@ -443,17 +443,17 @@ end
 
    return {
       tests = {
-         'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
-         'testShortCircuitTruth', 'testShortCircuitRuntimeTruthy', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr',
-         'testRuntimeZero', 'testTable', 'testFunction', 'testConcat', 'testConcatMsg',
-         'testTableAccessLHS', 'testIfEmptyArgumentLeakCapture', 'testIfEmptyStringFindError',
-         'testMethodCallInOptionalForm', 'testNestedOptional', 'testOptionalReturnValue',
-         'testOptionalTableField', 'testOptionalMissingField', 'testOptionalEmptyString',
-         'testOptionalShortCircuit', 'testOptionalRuntimeTruthy', 'testOptionalRuntimeFalsey',
-         'testOptionalTruthyString', 'testOptionalTruthyNumber', 'testOptionalTruthyNegative',
-         'testOptionalNil', 'testOptionalFalse', 'testOptionalZero', 'testInFunction', 'testShortHand',
-         'testShortHandReturnValue', 'testShortHandBreak', 'testShortHandContinue',
-         'testShortHandRuntimeCondition', 'testShortHandTruthySkipsBody',
-         'testMultiValues'
+         testNil, testFalse, testZero, testEmptyString, testTruthyString, testTruthyNumber,
+         testShortCircuitTruth, testShortCircuitRuntimeTruthy, testRHSOnce, testChaining, testDifferenceFromLuaOr,
+         testRuntimeZero, testTable, testFunction, testConcat, testConcatMsg,
+         testTableAccessLHS, testIfEmptyArgumentLeakCapture, testIfEmptyStringFindError,
+         testMethodCallInOptionalForm, testNestedOptional, testOptionalReturnValue,
+         testOptionalTableField, testOptionalMissingField, testOptionalEmptyString,
+         testOptionalShortCircuit, testOptionalRuntimeTruthy, testOptionalRuntimeFalsey,
+         testOptionalTruthyString, testOptionalTruthyNumber, testOptionalTruthyNegative,
+         testOptionalNil, testOptionalFalse, testOptionalZero, testInFunction, testShortHand,
+         testShortHandReturnValue, testShortHandBreak, testShortHandContinue,
+         testShortHandRuntimeCondition, testShortHandTruthySkipsBody,
+         testMultiValues
       }
    }

@@ -79,11 +79,11 @@ end
 
    return {
       tests = {
-         'test_nil_and_empty',
-         'test_array_and_hash',
-         'test_sparse_and_holes',
-         'test_clear_and_mutation',
-         'test_lookup_with_field',
-         'test_sort_by_keys'
+         test_nil_and_empty,
+         test_array_and_hash,
+         test_sparse_and_holes,
+         test_clear_and_mutation,
+         test_lookup_with_field,
+         test_sort_by_keys
       }
    }

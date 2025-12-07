@@ -40,11 +40,11 @@ end
 
 return {
    tests = {
-      'testPositiveLookahead',
-      'testNegativeLookahead',
-      'testPositiveLookbehind',
-      'testNegativeLookbehind',
-      'testLookaroundDoesNotConsume',
-      'testInvalidVariableWidthLookbehind'
+      testPositiveLookahead,
+      testNegativeLookahead,
+      testPositiveLookbehind,
+      testNegativeLookbehind,
+      testLookaroundDoesNotConsume,
+      testInvalidVariableWidthLookbehind
    }
 }

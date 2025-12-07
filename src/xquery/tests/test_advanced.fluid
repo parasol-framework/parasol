@@ -2,7 +2,7 @@
 
    include 'xml'
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Deeply nested path traversal combining multiple predicates and steps
 
 function testDeeplyNestedPathTraversal()
@@ -14,10 +14,10 @@ function testDeeplyNestedPathTraversal()
    assert(err is ERR_Okay, 'last() combined with position() should locate the first paragraph of the last chapter: ' .. mSys.GetErrorMsg(err))
 
    local err, content = xml.mtEvaluate('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
-   assert(content is 'Conclusion', 'Paragraph content should be "Conclusion", got ' .. nz(content, 'NIL'))
+   assert(content is 'Conclusion', 'Paragraph content should be "Conclusion", got ' .. tostring(content))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Edge case: sequential predicates mixing numeric and functional tests
 
 function testSequentialPredicateEvaluation()
@@ -29,10 +29,10 @@ function testSequentialPredicateEvaluation()
    assert(err is ERR_Okay, 'Sequential predicates should allow position()=last() evaluation: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, priority = xml.mtGetAttrib(tag_id, 'priority')
-   assert(errAttr is ERR_Okay and priority is '5', 'Expected the final record entry priority to be 5, got ' .. nz(priority, 'NIL'))
+   assert(errAttr is ERR_Okay and priority is '5', 'Expected the final record entry priority to be 5, got ' .. tostring(priority))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Edge case: navigating relative to the current node using .// patterns
 
 function testRelativeCurrentNodeTraversal()
@@ -44,13 +44,13 @@ function testRelativeCurrentNodeTraversal()
    assert(err is ERR_Okay, 'Predicate using ./group should evaluate relative to the current node: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, section_name = xml.mtGetAttrib(section_id, 'id')
-   assert(errAttr is ERR_Okay and section_name is 'beta', 'Expected the section containing the target item to be beta, got ' .. nz(section_name, 'NIL'))
+   assert(errAttr is ERR_Okay and section_name is 'beta', 'Expected the section containing the target item to be beta, got ' .. tostring(section_name))
 
    local errItem, item_id = xml.mtSearch('/root/section[@id="beta"]//item[@id="target"]')
    assert(errItem is ERR_Okay, '// should descend from the matched section to find the nested target item: ' .. mSys.GetErrorMsg(errItem))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Edge case: ensuring failed lookups return error codes cleanly
 
 function testMissingPathError()
@@ -63,7 +63,7 @@ function testMissingPathError()
    assert(tag_id is nil or tag_id is 0, 'No tag identifier should be returned when the lookup fails, got ' .. tag_id)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Complex descendant traversal mixing attribute and element access
 
 function testDescendantAxisAttributeAccess()
@@ -72,13 +72,13 @@ function testDescendantAxisAttributeAccess()
    })
 
    local err, category = xml.mtEvaluate('//branch[@name="west"]/../@category')
-   assert(category is 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. nz(category, 'NIL'))
+   assert(category is 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. tostring(category))
 
    local err, tag_id = xml.mtSearch('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
    assert(err is ERR_Okay, 'Complex descendant traversal should locate the advanced book entry: ' .. mSys.GetErrorMsg(err))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testSimpleDeep()
    local xml = obj.new("xml", {
@@ -93,7 +93,7 @@ function testSimpleDeep()
    assert(err is ERR_Okay, 'Finding //root failed: ' .. mSys.GetErrorMsg(err))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Conditional expressions should select the correct branch
 
 function testConditionalIfExpression()
@@ -102,13 +102,13 @@ function testConditionalIfExpression()
    })
 
    local err, chosen = xml.mtEvaluate('if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
-   assert(chosen is 'Alpha', 'If expression should return Alpha branch when predicate succeeds, got ' .. nz(chosen, 'NIL'))
+   assert(chosen is 'Alpha', 'If expression should return Alpha branch when predicate succeeds, got ' .. tostring(chosen))
 
    local err, fallback = xml.mtEvaluate('if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
-   assert(fallback is 'Beta', 'If expression should evaluate else branch when condition fails, got ' .. nz(fallback, 'NIL'))
+   assert(fallback is 'Beta', 'If expression should evaluate else branch when condition fails, got ' .. tostring(fallback))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- For expressions should iterate sequences and aggregate node results
 
 function testForExpressionNodeAggregation()
@@ -130,7 +130,7 @@ function testForExpressionNodeAggregation()
    assert(collected[0] is 'a' and collected[1] is 'b' and collected[2] is 'c', 'For expression should gather all item identifiers, got ' .. table.concat(collected, ','))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Quantified expressions should evaluate boolean logic correctly
 
 function testQuantifiedExpressions()
@@ -139,16 +139,16 @@ function testQuantifiedExpressions()
    })
 
    local err, someResult = xml.mtEvaluate('if (some $g in /root/group satisfies $g/@name = "beta") then "yes" else "no"')
-   assert(someResult is 'yes', 'Quantified some expression should detect the beta group, got ' .. nz(someResult, 'NIL'))
+   assert(someResult is 'yes', 'Quantified some expression should detect the beta group, got ' .. tostring(someResult))
 
    local err, everyResult = xml.mtEvaluate('if (every $item in /root/group[@name="alpha"]/item satisfies @class = "one") then "all" else "mixed"')
-   assert(everyResult is 'mixed', 'Quantified every expression should detect mixed class values, got ' .. nz(everyResult, 'NIL'))
+   assert(everyResult is 'mixed', 'Quantified every expression should detect mixed class values, got ' .. tostring(everyResult))
 
    local err, nestedResult = xml.mtEvaluate('if (some $g in /root/group, $item in $g/item satisfies $item/@id = "c") then "found" else "missing"')
-   assert(nestedResult is 'found', 'Nested quantified expression should locate item c, got ' .. nz(nestedResult, 'NIL'))
+   assert(nestedResult is 'found', 'Nested quantified expression should locate item c, got ' .. tostring(nestedResult))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- For expressions with multiple bindings should iterate nested sequences
 
 function testForExpressionMultipleBindings()
@@ -168,7 +168,7 @@ function testForExpressionMultipleBindings()
    assert(#matched is 2 and matched[0] is 'a' and matched[1] is 'c', 'Multi-binding for expression should filter matching ids, got ' .. table.concat(matched, ','))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FLWOR expressions should allow mixing FOR and LET clauses with shared variables
 
 function testFlworForLetCombination()
@@ -192,7 +192,7 @@ function testFlworForLetCombination()
    assert(#collected is 2 and collected[0] is 'a' and collected[1] is 'c', 'FLWOR for-let should filter fiction books, got ' .. table.concat(collected, ','))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- LET clauses preceding FOR clauses should bind variables for subsequent iterations
 
 function testFlworLetForCombination()
@@ -216,7 +216,7 @@ function testFlworLetForCombination()
    assert(#expensive is 2 and expensive[0] is 'b' and expensive[1] is 'c', 'FLWOR let-for should filter books above price 40, got ' .. table.concat(expensive, ','))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Sequence set operators should merge and filter node collections
 
 function testSequenceSetOperators()
@@ -273,7 +273,7 @@ function testSequenceSetOperators()
       'Except operator should filter excluded nodes leaving only id one, got ' .. table.concat(exceptIds, ','))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Node tests named after set operator keywords should continue to resolve
 
 function testSetOperatorKeywordNameTests()
@@ -286,26 +286,26 @@ function testSetOperatorKeywordNameTests()
    })
 
    local err, unionId = xml.mtEvaluate('/root/union/@id')
-   assert(unionId is 'u', 'Selecting /root/union should expose id attribute, got ' .. nz(unionId, 'NIL'))
+   assert(unionId is 'u', 'Selecting /root/union should expose id attribute, got ' .. tostring(unionId))
 
    local errUnionAxis, unionAxisTag = xml.mtSearch('/root/child::union')
    assert(errUnionAxis is ERR_Okay, 'child::union axis form should resolve the union element: ' .. mSys.GetErrorMsg(errUnionAxis))
-   assert(unionAxisTag != nil and unionAxisTag != 0, 'child::union should return a valid tag id, got ' .. nz(unionAxisTag, 'NIL'))
+   assert(unionAxisTag != nil and unionAxisTag != 0, 'child::union should return a valid tag id, got ' .. tostring(unionAxisTag))
 
    local errIntersect, intersectTag = xml.mtSearch('/root/intersect')
    assert(errIntersect is ERR_Okay, 'Path lookup should resolve intersect element: ' .. mSys.GetErrorMsg(errIntersect))
    local errIntersectAttrib, intersectValue = xml.mtGetAttrib(intersectTag, 'value')
    assert(errIntersectAttrib is ERR_Okay and intersectValue is 'keep',
-       'Intersect element attribute should be retrievable, got ' .. nz(intersectValue, 'NIL'))
+       'Intersect element attribute should be retrievable, got ' .. tostring(intersectValue))
 
    local errExcept, exceptTag = xml.mtSearch('/root/except')
    assert(errExcept is ERR_Okay, 'Path lookup should resolve except element: ' .. mSys.GetErrorMsg(errExcept))
    local errExceptAttrib, exceptFlag = xml.mtGetAttrib(exceptTag, 'flag')
    assert(errExceptAttrib is ERR_Okay and exceptFlag is 'omit',
-      'Except element attribute should be retrievable, got ' .. nz(exceptFlag, 'NIL'))
+      'Except element attribute should be retrievable, got ' .. tostring(exceptFlag))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Lookup operator chains should navigate nested maps, arrays, and sequences
 
 function testLookupOperatorChains()
@@ -319,12 +319,13 @@ function testLookupOperatorChains()
    assert(failure_err != ERR_Okay, 'Out-of-range lookup should raise FOAY0001')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
-      'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
-      'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
-      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testFlworForLetCombination', 'testFlworLetForCombination', 'testSequenceSetOperators',
-      'testSetOperatorKeywordNameTests', 'testLookupOperatorChains', 'testSimpleDeep'
+      testDeeplyNestedPathTraversal, testSequentialPredicateEvaluation, testRelativeCurrentNodeTraversal,
+      testMissingPathError, testDescendantAxisAttributeAccess, testConditionalIfExpression, testForExpressionNodeAggregation,
+      testQuantifiedExpressions, testForExpressionMultipleBindings, testFlworForLetCombination, testFlworLetForCombination, testSequenceSetOperators,
+      testSetOperatorKeywordNameTests, testLookupOperatorChains, testSimpleDeep
    }
 }

@@ -51,12 +51,12 @@ end
 
 return {
    tests = {
-      'testStartEndAnchors',
-      'testAbsoluteAnchors',
-      'testWordBoundaries',
-      'testBoundaryNegationFlags',
-      'testLineBoundaryFlags',
-      'testContinuousFlag',
-      'testNotNullFlag'
+      testStartEndAnchors,
+      testAbsoluteAnchors,
+      testWordBoundaries,
+      testBoundaryNegationFlags,
+      testLineBoundaryFlags,
+      testContinuousFlag,
+      testNotNullFlag
    }
 }

@@ -224,13 +224,13 @@ end
 
 return {
    tests = {
-      'testBasicModuleImport', 'testMultipleFunctions', 'testModuleVariables',
-      'testMultipleModuleImports', 'testTransitiveImports', 'testModuleCaching',
-      'testCircularDependencyDetection', 'testMissingModuleError',
-      'testNamespaceValidation', 'testLibraryModuleValidation'
+      testBasicModuleImport, testMultipleFunctions, testModuleVariables,
+      testMultipleModuleImports, testTransitiveImports, testModuleCaching,
+      testCircularDependencyDetection, testMissingModuleError,
+      testNamespaceValidation, testLibraryModuleValidation
    },
    init = function(ScriptFolder)
-      glScriptFolder = ScriptFolder
+      global glScriptFolder = ScriptFolder
    end,
    cleanup = function()
    end

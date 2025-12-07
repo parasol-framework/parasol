@@ -100,14 +100,14 @@ end
 
 return {
    tests = {
-      --'testMultiReturn',
-      'testBinaryBitwiseBasics',
-      'testBitwisePrecedenceAndGrouping',
-      'testChainedBitshifts',
-      'testLargeShiftCounts',
-      'testAdditionTighterThanBitshift',
-      'testShiftTighterThanBitwiseOps',
-      'testShiftTighterThanComparison',
-      'testMultiplicationTighterThanShift'
+      --testMultiReturn,
+      testBinaryBitwiseBasics,
+      testBitwisePrecedenceAndGrouping,
+      testChainedBitshifts,
+      testLargeShiftCounts,
+      testAdditionTighterThanBitshift,
+      testShiftTighterThanBitwiseOps,
+      testShiftTighterThanComparison,
+      testMultiplicationTighterThanShift
    }
 }

@@ -62,15 +62,15 @@ end
 
 return {
    tests = {
-      'testSimpleReplacement',
-      'testBackreferenceReplacement',
-      'testZeroCaptureReplacement',
-      'testLiteralDollarEscape',
-      'testWholeMatchPlaceholder',
-      'testSuffixPlaceholderAcrossMatches',
-      'testNamedCaptureReplacement',
-      'testReplaceNoCopyFlag',
-      'testReplaceFirstOnlyFlag',
-      'testPrefixPlaceholderAcrossMatches'
+      testSimpleReplacement,
+      testBackreferenceReplacement,
+      testZeroCaptureReplacement,
+      testLiteralDollarEscape,
+      testWholeMatchPlaceholder,
+      testSuffixPlaceholderAcrossMatches,
+      testNamedCaptureReplacement,
+      testReplaceNoCopyFlag,
+      testReplaceFirstOnlyFlag,
+      testPrefixPlaceholderAcrossMatches
    }
 }

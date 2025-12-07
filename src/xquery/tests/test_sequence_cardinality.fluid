@@ -18,7 +18,7 @@ function testTypeswitchDataString()
 
    local err, result = xml.mtEvaluate(query)
    assert(err is ERR_Okay, "typeswitch over data() should evaluate: " .. mSys.GetErrorMsg(err))
-   assert(result is "matched", "typeswitch should match xs:string case, got: " .. nz(result, 'NIL'))
+   assert(result is "matched", "typeswitch should match xs:string case, got: " .. tostring(result))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ function testTreatAndInstanceOnData()
    assert(err1 is ERR_Okay, "treat as xs:string should succeed on data() result: " .. mSys.GetErrorMsg(err1))
 
    local err2, result2 = xml.mtEvaluate('data(/root/n/text()) instance of xs:string')
-   assert(err2 is ERR_Okay and result2 is "true", "data() result should be instance of xs:string, got: " .. nz(result2, 'NIL'))
+   assert(err2 is ERR_Okay and result2 is "true", "data() result should be instance of xs:string, got: " .. tostring(result2))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ function testCastAndCastableOnData()
    local xml = obj.new("xml", { statement = '<root><n>123</n><s>abc</s></root>' })
 
    local err1, result1 = xml.mtEvaluate('data(/root/n/text()) cast as xs:string')
-   assert(err1 is ERR_Okay and result1 is "123", "cast to xs:string should return '123', got: " .. nz(result1, 'NIL'))
+   assert(err1 is ERR_Okay and result1 is "123", "cast to xs:string should return '123', got: " .. tostring(result1))
 
    local err2, result2 = xml.mtEvaluate('data(/root/n/text()) castable as xs:integer')
    assert(err2 is ERR_Okay and result2 is "true", "numeric data() should be castable as xs:integer")
@@ -85,13 +85,13 @@ end
 
 return {
    tests = {
-      'testTypeswitchDataString',
-      'testTreatAndInstanceOnData',
-      'testCastAndCastableOnData',
-      'testAttributeDataCardinality',
+      testTypeswitchDataString,
+      testTreatAndInstanceOnData,
+      testCastAndCastableOnData,
+      testAttributeDataCardinality,
       -- Cardinality with empty sequences
-      'testTreatOptionalEmptyData',
-      'testTreatOneOrMoreEmptyData',
+      testTreatOptionalEmptyData,
+      testTreatOneOrMoreEmptyData,
    },
    init = function(ScriptFolder)
    end,

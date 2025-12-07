@@ -228,20 +228,20 @@ end
 
 return {
    tests = {
-      'testCompoundAssignment',
-      'testIfEmptyAssignment',
-      'testIncrement',
-      'testContinue',
-      'testIndexedWithFunctionRHS',
-      'testFieldWithFunctionRHS',
-      'testConcatWithFunctionRHS',
-      'testRegisterIndexPreservedAcrossRHS',
-      'testNestedIndexPreservation',
-      'testByteAndStringKeyVariants',
-      'testSelfReferentialReadOnRHS',
-      'testMultipleReturnOnlyFirstUsed',
-      'testIndexRegisterReusedByRHS',
-      'testBaseReusedByRHS',
-      'testIfEmptyShortCircuit'
+      testCompoundAssignment,
+      testIfEmptyAssignment,
+      testIncrement,
+      testContinue,
+      testIndexedWithFunctionRHS,
+      testFieldWithFunctionRHS,
+      testConcatWithFunctionRHS,
+      testRegisterIndexPreservedAcrossRHS,
+      testNestedIndexPreservation,
+      testByteAndStringKeyVariants,
+      testSelfReferentialReadOnRHS,
+      testMultipleReturnOnlyFirstUsed,
+      testIndexRegisterReusedByRHS,
+      testBaseReusedByRHS,
+      testIfEmptyShortCircuit
    }
 }

@@ -253,9 +253,9 @@ end
 
 return {
    tests = {
-      'testMalformedXML', 'testEmptyDocument', 'testLargeDocument', 'testInvalidParameters',
-      'testReadOnlyMode', 'testNamespaceHandling', 'testSpecialCharacters', 'testConcurrentAccess',
-      'testMemoryHandling', 'testXPathEdgeCases', 'testSerializationEdgeCases', 'testDeepNesting',
-      'testAttributeLimits'
+      testMalformedXML, testEmptyDocument, testLargeDocument, testInvalidParameters,
+      testReadOnlyMode, testNamespaceHandling, testSpecialCharacters, testConcurrentAccess,
+      testMemoryHandling, testXPathEdgeCases, testSerializationEdgeCases, testDeepNesting,
+      testAttributeLimits
    }
 }

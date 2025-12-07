@@ -2,6 +2,8 @@
 
    include 'xml'
 
+glTestXML = nil
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testCodepointConversions()
@@ -48,25 +50,25 @@ function testAnalyzeString()
    local xml = glTestXML
 
    local err, first = xml.mtEvaluate("analyze-string('abc123','([0-9]+)')[1]")
-   assert(first is 'non-match:abc', "analyze-string should report unmatched prefix, got '" .. nz(first,'NIL') .. "'")
+   assert(first is 'non-match:abc', "analyze-string should report unmatched prefix, got '" .. tostring(first) .. "'")
 
    local err, second = xml.mtEvaluate("analyze-string('abc123','([0-9]+)')[2]")
-   assert(second is 'match:123', "analyze-string should report matched text, got '" .. nz(second,'NIL') .. "'")
+   assert(second is 'match:123', "analyze-string should report matched text, got '" .. tostring(second) .. "'")
 
    local err, third = xml.mtEvaluate("analyze-string('abc123','([0-9]+)')[3]")
-   assert(third is 'group1:123', "analyze-string should include capture groups, got '" .. nz(third,'NIL') .. "'")
+   assert(third is 'group1:123', "analyze-string should include capture groups, got '" .. tostring(third) .. "'")
 
    local err, gap = xml.mtEvaluate("analyze-string('ab12cd34ef','([0-9]+)')[4]")
-   assert(gap is 'non-match:cd', "analyze-string should report intermediate gaps once, got '" .. nz(gap,'NIL') .. "'")
+   assert(gap is 'non-match:cd', "analyze-string should report intermediate gaps once, got '" .. tostring(gap) .. "'")
 
    local err, secondMatch = xml.mtEvaluate("analyze-string('ab12cd34ef','([0-9]+)')[5]")
-   assert(secondMatch is 'match:34', "analyze-string should capture subsequent matches, got '" .. nz(secondMatch,'NIL') .. "'")
+   assert(secondMatch is 'match:34', "analyze-string should capture subsequent matches, got '" .. tostring(secondMatch) .. "'")
 
    local err, secondGroup = xml.mtEvaluate("analyze-string('ab12cd34ef','([0-9]+)')[6]")
-   assert(secondGroup is 'group1:34', "analyze-string should report groups for each match, got '" .. nz(secondGroup,'NIL') .. "'")
+   assert(secondGroup is 'group1:34', "analyze-string should report groups for each match, got '" .. tostring(secondGroup) .. "'")
 
    local err, tail = xml.mtEvaluate("analyze-string('ab12cd34ef','([0-9]+)')[7]")
-   assert(tail is 'non-match:ef', "analyze-string should append the trailing suffix once, got '" .. nz(tail,'NIL') .. "'")
+   assert(tail is 'non-match:ef', "analyze-string should append the trailing suffix once, got '" .. tostring(tail) .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -106,8 +108,8 @@ end
 
 return {
    tests = {
-      'testCodepointConversions', 'testStringFunctions', 'testAnalyzeString',
-      'testResolveUri', 'testFormattingFunctions'
+      testCodepointConversions, testStringFunctions, testAnalyzeString,
+      testResolveUri, testFormattingFunctions
    },
    init = function()
       glTestXML = obj.new("xml", {

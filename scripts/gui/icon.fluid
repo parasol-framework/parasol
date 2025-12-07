@@ -11,9 +11,9 @@ local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
 local function imageLocation(Path)
-   if (Path:find('^icons:') is 0) then
+   if Path:find('^icons:') is 0 then
       return Path
-   elseif (Path:find('^[%w]+:') is 0) then
+   elseif Path:find('^[%w]+:') is 0 then
       return Path
    else
       return 'icons:' .. Path
@@ -27,8 +27,7 @@ gui.icon = function(Options)
       viewport       = nil -- The icon's primary viewport
    }
 
-   local lText
-   local lTextGroup
+   local lText, lTextGroup, lThemeColour
    local lClick      = { held=false, x=0, y=0 }
    local lWords      = { }
    local lLines      = { }
