@@ -801,6 +801,11 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '>') { lex_next(State); return TK_defer_close; }
             return '}';
 
+         case '@':
+            State->mark_token_start();
+            lex_next(State);
+            return TK_annotate;
+
          case LEX_EOF:
             State->mark_token_start();
             return TK_eof;

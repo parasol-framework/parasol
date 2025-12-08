@@ -185,6 +185,7 @@ private:
    ParserResult<ExpDesc> emit_table_expr(const TableExprPayload& payload);
    ParserResult<ExpDesc> emit_range_expr(const RangeExprPayload& payload);
    ParserResult<ExpDesc> emit_function_expr(const FunctionExprPayload& payload, GCstr* funcname = nullptr);
+   ParserResult<IrEmitUnit> emit_annotation_registration(BCReg func_reg, const std::vector<AnnotationEntry>& annotations, GCstr* funcname);
    ParserResult<ExpDesc> emit_expression_list(const ExprNodeList& expressions, BCReg& count);
    ParserResult<ExpDesc> emit_lvalue_expr(const ExprNode& expr, bool allow_new_local = true);
    ParserResult<ControlFlowEdge> emit_condition_jump(const ExprNode& expr);

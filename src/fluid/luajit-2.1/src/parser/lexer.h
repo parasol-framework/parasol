@@ -90,6 +90,7 @@ struct TokenDefinition {
    TOKEN_DEF(defer_open,   "<{",       false) \
    TOKEN_DEF(defer_typed,  "<type{",   false) \
    TOKEN_DEF(defer_close,  "}>",       false) \
+   TOKEN_DEF(annotate,     "@",        false) \
    TOKEN_DEF(eof,          "<eof>",    false)
 
 // Generate TOKEN_DEFINITIONS array from TOKEN_DEF_LIST

@@ -139,6 +139,23 @@ enum class LiteralKind : uint8_t {
    CData
 };
 
+// Annotation argument value - supports the types allowed in annotation syntax
+struct AnnotationArgValue {
+   enum class Type : uint8_t { Nil, Bool, Number, String, Array };
+   Type type = Type::Nil;
+   bool bool_value = false;
+   double number_value = 0.0;
+   GCstr* string_value = nullptr;
+   std::vector<AnnotationArgValue> array_value;
+};
+
+// Single annotation entry with name and arguments
+struct AnnotationEntry {
+   GCstr* name = nullptr;                                     // Annotation name (e.g., "Test", "Requires")
+   SourceSpan span{};                                         // Source location of the annotation
+   std::vector<std::pair<GCstr*, AnnotationArgValue>> args;   // Named arguments (key-value pairs)
+};
+
 enum class AstUnaryOperator : uint8_t {
    Negate,
    Not,
@@ -452,6 +469,7 @@ struct FunctionExprPayload {
    bool is_thunk = false;              // Marks function as thunk
    FluidType thunk_return_type = FluidType::Any;  // Return type for thunk (default: Any)
    std::unique_ptr<BlockStmt> body;
+   std::vector<AnnotationEntry> annotations;  // Annotations attached to this function
    ~FunctionExprPayload();
 };
 
