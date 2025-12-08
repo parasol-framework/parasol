@@ -20,6 +20,9 @@
 #include "lib.h"
 #include "debug/error_guard.h"
 
+#include <cctype>    // For isalnum, isdigit
+#include <cstdlib>   // For strtod
+
 //********************************************************************************************************************
 
 #define LJLIB_MODULE_debug
@@ -510,11 +513,325 @@ LJLIB_CF(debug_locality)
 }
 
 //********************************************************************************************************************
+// Annotation string parser helper - parses a single value
+// Returns true on success (pushes value to stack), false on error
 
-#include "lj_libdef.h"
+static bool parse_annotation_value(lua_State* L, const char** p)
+{
+   const char* s = *p;
+
+   // Skip whitespace
+   while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
+
+   // String literal (double or single quotes)
+   if (*s IS '"' or *s IS '\'') {
+      char quote = *s++;
+      const char* start = s;
+      while (*s and *s != quote) {
+         if (*s IS '\\' and *(s + 1)) s++;  // Skip escaped characters
+         s++;
+      }
+      if (*s != quote) return false;
+      lua_pushlstring(L, start, s - start);
+      s++;
+      *p = s;
+      return true;
+   }
+
+   // Boolean literals
+   if (strncmp(s, "true", 4) IS 0 and not isalnum(s[4]) and s[4] != '_') {
+      lua_pushboolean(L, 1);
+      *p = s + 4;
+      return true;
+   }
+   if (strncmp(s, "false", 5) IS 0 and not isalnum(s[5]) and s[5] != '_') {
+      lua_pushboolean(L, 0);
+      *p = s + 5;
+      return true;
+   }
+
+   // Number literal
+   if (isdigit(*s) or (*s IS '-' and isdigit(s[1]))) {
+      char* end;
+      double num = strtod(s, &end);
+      if (end > s) {
+         lua_pushnumber(L, num);
+         *p = end;
+         return true;
+      }
+      return false;
+   }
+
+   // Array literal: [item, item, ...] or {item, item, ...}
+   if (*s IS '[' or *s IS '{') {
+      char close = (*s IS '[') ? ']' : '}';
+      s++;
+      lua_newtable(L);
+      int idx = 0;
+
+      while (*s and *s != close) {
+         // Skip whitespace
+         while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
+         if (*s IS close) break;
+
+         // Parse array element
+         if (not parse_annotation_value(L, &s)) {
+            lua_pop(L, 1);  // Pop table
+            return false;
+         }
+         lua_rawseti(L, -2, idx++);
+
+         // Skip whitespace and comma
+         while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
+         if (*s IS ',') s++;
+      }
+
+      if (*s IS close) s++;
+      *p = s;
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Parses annotation string syntax like: @Test(name="foo", labels=["a","b"]); @Requires(network=true)
+// Returns true on success (pushes annotations array to stack), false on parse error
+
+static bool lj_parse_annotation_string(lua_State* L, const char* str)
+{
+   lua_newtable(L);  // Result array
+   int anno_idx = 0;
+
+   const char* p = str;
+   while (*p) {
+      // Skip whitespace and semicolons
+      while (*p and (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS ';')) p++;
+      if (not *p) break;
+
+      // Expect @
+      if (*p != '@') {
+         lua_pop(L, 1);
+         return false;
+      }
+      p++;
+
+      // Parse annotation name (identifier)
+      const char* name_start = p;
+      while (*p and (isalnum(*p) or *p IS '_')) p++;
+      if (p IS name_start) {
+         lua_pop(L, 1);
+         return false;
+      }
+
+      lua_newtable(L);  // Annotation entry
+      lua_pushlstring(L, name_start, p - name_start);
+      lua_setfield(L, -2, "name");
+
+      // Parse optional arguments
+      while (*p and (*p IS ' ' or *p IS '\t')) p++;
+      if (*p IS '(') {
+         p++;
+         lua_newtable(L);  // Args table
+
+         while (*p and *p != ')') {
+            // Skip whitespace
+            while (*p and (*p IS ' ' or *p IS '\t' or *p IS '\n')) p++;
+            if (*p IS ')') break;
+
+            // Parse key or bare identifier
+            const char* key_start = p;
+            while (*p and (isalnum(*p) or *p IS '_')) p++;
+            size_t key_len = p - key_start;
+            if (key_len IS 0) {
+               lua_pop(L, 3);  // Pop args, entry, result
+               return false;
+            }
+
+            while (*p and (*p IS ' ' or *p IS '\t')) p++;
+
+            if (*p IS '=') {
+               // key=value pair
+               p++;
+               while (*p and (*p IS ' ' or *p IS '\t')) p++;
+
+               // Parse value (string, number, bool, array)
+               if (not parse_annotation_value(L, &p)) {
+                  lua_pop(L, 3);  // Pop args, entry, result
+                  return false;
+               }
+               // Use lua_pushlstring to create key, then lua_rawset
+               lua_pushlstring(L, key_start, key_len);  // Push key
+               lua_pushvalue(L, -2);  // Copy value
+               lua_rawset(L, -4);     // args[key] = value
+               lua_pop(L, 1);         // Pop original value
+            }
+            else {
+               // Bare identifier = true
+               lua_pushlstring(L, key_start, key_len);  // Push key
+               lua_pushboolean(L, 1);  // Push value
+               lua_rawset(L, -3);      // args[key] = true
+            }
+
+            // Skip comma
+            while (*p and (*p IS ' ' or *p IS '\t')) p++;
+            if (*p IS ',') p++;
+         }
+
+         if (*p IS ')') p++;
+         lua_setfield(L, -2, "args");
+      }
+      else {
+         // No args - set empty args table
+         lua_newtable(L);
+         lua_setfield(L, -2, "args");
+      }
+
+      lua_rawseti(L, -2, anno_idx++);
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+#define LJLIB_MODULE_debug_anno
+
+//********************************************************************************************************************
+// debug.anno.get(func) - Returns annotation entry for a function, or nil
+
+LJLIB_CF(debug_anno_get)
+{
+   lj_lib_checkfunc(L, 1);
+
+   // Get _ANNO global
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_pushnil(L);
+      return 1;
+   }
+
+   // Look up annotations for this function: _ANNO[func]
+   lua_pushvalue(L, 1);  // Push function reference
+   lua_gettable(L, -2);  // Get _ANNO[func]
+   lua_remove(L, -2);    // Remove _ANNO table
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.anno.set(func, annotations [, source [, name]]) - Sets annotations for a function
+// annotations can be a table or a string to parse
+// source is optional and defaults to "<runtime>"
+// name is optional function name (falls back to debug info, then "<anonymous>")
+
+LJLIB_CF(debug_anno_set)
+{
+   lj_lib_checkfunc(L, 1);
+   lj_lib_checkany(L, 2);
+
+   auto source = luaL_optstring(L, 3, "<runtime>");
+   auto name = luaL_optstring(L, 4, nullptr);
+
+   // Get or create _ANNO global
+
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_pushvalue(L, -1);
+      lua_setglobal(L, "_ANNO");
+   }
+
+   // Handle string input - parse annotation syntax
+
+   if (lua_isstring(L, 2)) {
+      const char* str = lua_tostring(L, 2);
+      if (not lj_parse_annotation_string(L, str)) {
+         lua_pop(L, 1);  // Pop _ANNO
+         return luaL_error(L, "Failed to parse annotation string");
+      }
+      // Parsed annotations array is now on stack
+   }
+   else if (lua_istable(L, 2)) {
+      lua_pushvalue(L, 2);  // Push annotations table/array
+   }
+   else {
+      lua_pop(L, 1);  // Pop _ANNO
+      lj_err_argt(L, 2, LUA_TTABLE);
+   }
+
+   // Create entry table with name, source, and annotations
+
+   lua_newtable(L);  // Entry table
+
+   // Get function name: use provided name, fall back to debug info, then "<anonymous>"
+
+   if (name) lua_pushstring(L, name);
+   else {
+      lua_Debug ar;
+      lua_pushvalue(L, 1);
+      if (lua_getinfo(L, ">n", &ar) and ar.name) lua_pushstring(L, ar.name);
+      else lua_pushliteral(L, "<anonymous>");
+   }
+   lua_setfield(L, -2, "name");
+
+   // Set source
+   lua_pushstring(L, source);
+   lua_setfield(L, -2, "source");
+
+   // Set annotations array
+   lua_pushvalue(L, -2);  // Push annotations array
+   lua_setfield(L, -2, "annotations");
+   lua_remove(L, -2);  // Remove standalone annotations array
+
+   // _ANNO[func] = entry
+   lua_pushvalue(L, 1);   // Push function reference as key
+   lua_pushvalue(L, -2);  // Push entry table as value
+   lua_settable(L, -4);   // _ANNO[func] = entry
+
+   lua_remove(L, -2);  // Remove _ANNO table
+   return 1;  // Return the entry table
+}
+
+//********************************************************************************************************************
+// debug.anno.list() - Returns shallow copy of entire _ANNO table
+
+LJLIB_CF(debug_anno_list)
+{
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);  // Return empty table if _ANNO doesn't exist
+   }
+   else {
+      // Create shallow copy
+      lua_newtable(L);
+      lua_pushnil(L);
+      while (lua_next(L, -3) != 0) {
+         lua_pushvalue(L, -2);  // Copy key
+         lua_pushvalue(L, -2);  // Copy value
+         lua_settable(L, -5);   // Set in new table
+         lua_pop(L, 1);         // Pop value, keep key for next iteration
+      }
+      lua_remove(L, -2);  // Remove original _ANNO
+   }
+   return 1;
+}
+
+//********************************************************************************************************************
+
+#include "lj_libdef.h"  // Includes LJLIB_MODULE_debug table
 
 extern int luaopen_debug(lua_State* L)
 {
    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
+
+   // Register debug.anno as a subtable of debug
+   lua_getglobal(L, LUA_DBLIBNAME);  // Get the debug table we just created
+   LJ_LIB_REG(L, nullptr, debug_anno);  // Create anno table without setting in globals
+   lua_setfield(L, -2, "anno");      // debug.anno = anno_table
+   lua_pop(L, 1);                     // Pop debug table
+
    return 1;
 }
