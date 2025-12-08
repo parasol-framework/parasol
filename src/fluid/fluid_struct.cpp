@@ -60,7 +60,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 [[nodiscard]] ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Address)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    auto def = prv->Structs.find(StructName); // NB: Custom comparator will stop if a colon is encountered in StructName
    if (def != prv->Structs.end()) {
@@ -111,7 +111,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
    if (!lua_istable(Lua, -1)) return log.warning(ERR::WrongType);
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    auto def = prv->Structs.find(StructName);
    if (def IS prv->Structs.end()) return ERR::Search;
 
@@ -198,7 +198,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
    References.push_back({ Address, table_ref });
    lua_rawgeti(Lua, LUA_REGISTRYINDEX, table_ref); // Retrieve the struct table
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    for (auto &field : StructDef.Fields) {
 
@@ -518,7 +518,7 @@ static void make_camel_case(std::string &String)
       return ERR::NullArgs;
    }
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    if (prv->Structs.contains(StructName)) {
       luaL_error(Lua, "Structure '%s' is already registered.", StructName.data());
@@ -531,7 +531,7 @@ static void make_camel_case(std::string &String)
    prv->Structs[StructName] = struct_record(StructName);
 
    int computed_size = 0;
-   if (auto error = generate_structdef(Lua->Script, StructName, Sequence, prv->Structs[StructName], &computed_size); error != ERR::Okay) {
+   if (auto error = generate_structdef(Lua->script, StructName, Sequence, prv->Structs[StructName], &computed_size); error != ERR::Okay) {
       if (error IS ERR::BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
       else if (error IS ERR::Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
       else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName.data(), GetErrorMsg(error));
@@ -569,7 +569,7 @@ find_field(struct fstruct *Struct, CSTRING FieldName)
 static int struct_size(lua_State *Lua)
 {
    if (auto name = lua_tostring(Lua, 1)) {
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       auto def = prv->Structs.find(struct_name(name));
       if (def != prv->Structs.end()) {
          lua_pushnumber(Lua, def->second.Size);
@@ -591,7 +591,7 @@ static int struct_size(lua_State *Lua)
 static int struct_new(lua_State *Lua)
 {
    if (auto s_name = lua_tostring(Lua, 1)) {
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
       auto def = prv->Structs.find(struct_name(s_name));
       if (def IS prv->Structs.end()) {
@@ -721,12 +721,12 @@ static int struct_get(lua_State *Lua)
                      }
                      else make_array(Lua, field.Type, field.StructRef.c_str(), (APTR *)address, array_size, false);
                   }
-                  else push_struct(Lua->Script, ((APTR *)address)[0], field.StructRef, false, false);
+                  else push_struct(Lua->script, ((APTR *)address)[0], field.StructRef, false, false);
                }
                else lua_pushnil(Lua);
             }
             else if (field.Type & FD_STRUCT) { // Embedded structure
-               push_struct(Lua->Script, address, field.StructRef, false, false);
+               push_struct(Lua->script, address, field.StructRef, false, false);
             }
             else if (field.Type & FD_STRING) {
                if (field.Type & FD_ARRAY) {

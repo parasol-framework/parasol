@@ -167,12 +167,12 @@ end
 
 return {
    tests = {
-      'testBasicAssignment', 'testBlankFirst', 'testBlankLast', 'testBlankMiddle',
-      'testMultipleBlanks', 'testAllBlanks', 'testBlankWithNil', 'testBlankPartialAssignment',
-      'testForLoopBlankIndex', 'testForLoopBlankValue', 'testForLoopPairsBlank',
-      'testForLoopPairsBlankValue', 'testForLoopMultipleBlanks',
-      'testFunctionReturn', 'testFunctionReturnBlankFirst',
-      'testNestedFunctions', 'testMultipleStatements', 'testBlankInTable',
-      'testNonLocalAssignment', 'testNonLocalAssignmentSimple', 'testNonLocalInFunction'
+      testBasicAssignment, testBlankFirst, testBlankLast, testBlankMiddle,
+      testMultipleBlanks, testAllBlanks, testBlankWithNil, testBlankPartialAssignment,
+      testForLoopBlankIndex, testForLoopBlankValue, testForLoopPairsBlank,
+      testForLoopPairsBlankValue, testForLoopMultipleBlanks,
+      testFunctionReturn, testFunctionReturnBlankFirst,
+      testNestedFunctions, testMultipleStatements, testBlankInTable,
+      testNonLocalAssignment, testNonLocalAssignmentSimple, testNonLocalInFunction
    }
 }

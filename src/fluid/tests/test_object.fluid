@@ -30,5 +30,5 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testPairs', 'testIPairs', 'testType' }
+      tests = { testPairs, testIPairs, testType }
    }

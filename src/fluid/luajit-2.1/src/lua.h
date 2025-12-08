@@ -13,12 +13,6 @@
 
 #include "luaconf.h"
 
-#define LUA_VERSION   "Lua 5.1"
-#define LUA_RELEASE   "Lua 5.1.4"
-constexpr int LUA_VERSION_NUM = 501;
-#define LUA_COPYRIGHT   "Copyright (C) 1994-2008 Lua.org, PUC-Rio"
-#define LUA_AUTHORS   "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
-
 // mark for precompiled code (`<esc>Lua')
 #define   LUA_SIGNATURE   "\033Lua"
 
@@ -44,7 +38,6 @@ constexpr int LUA_ERRSYNTAX = 3;
 constexpr int LUA_ERRMEM = 4;
 constexpr int LUA_ERRERR = 5;
 
-
 typedef struct lua_State lua_State;
 
 using lua_CFunction = int(*)(lua_State *L);
@@ -52,9 +45,7 @@ using lua_CFunction = int(*)(lua_State *L);
 // functions that read/write blocks when loading/dumping Lua chunks
 
 using lua_Reader = const char*(*)(lua_State *L, void *ud, size_t *sz);
-
 using lua_Writer = int(*)(lua_State *L, const void* p, size_t sz, void* ud);
-
 
 // prototype for memory-allocation functions
 
@@ -293,7 +284,6 @@ extern int lua_gethookcount (lua_State *L);
 // From Lua 5.2.
 extern void *lua_upvalueid (lua_State *L, int idx, int n);
 extern void lua_upvaluejoin (lua_State *L, int idx1, int n1, int idx2, int n2);
-extern const lua_Number *lua_version (lua_State *L);
 extern void lua_copy (lua_State *L, int fromidx, int toidx);
 extern lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
 extern lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);

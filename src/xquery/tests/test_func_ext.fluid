@@ -185,14 +185,14 @@ end
 
 return {
    tests = {
-      'testStringCaseFunctions',
-      'testUriEncodingFunctions',
-      'testRegexFunctions',
-      'testMathFunctions',
-      'testTraceFunction',
-      'testErrorFunction',
-      'testDateTimeFunctions',
-      'testValueComparisonOperators'
+      testStringCaseFunctions,
+      testUriEncodingFunctions,
+      testRegexFunctions,
+      testMathFunctions,
+      testTraceFunction,
+      testErrorFunction,
+      testDateTimeFunctions,
+      testValueComparisonOperators
    },
    init = function(ScriptFolder)
    end,

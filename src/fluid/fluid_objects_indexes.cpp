@@ -27,7 +27,7 @@ static int object_newindex(lua_State *Lua)
             if (error >= ERR::ExceptionThreshold) {
                pf::Log log(__FUNCTION__);
                log.warning("Unable to write %s.%s: %s", def->Class->ClassName, keyname, GetErrorMsg(error));
-               auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+               auto prv = (prvFluid *)Lua->script->ChildPrivate;
                prv->CaughtError = error;
                /*if (prv->ThrowErrors)*/ luaL_error(Lua, GetErrorMsg(error));
             }
@@ -64,7 +64,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values,
    else if (Field->Flags & FD_STRUCT) {
       // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
          int aligned_size = ALIGN64(def->second.Size);
          auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
@@ -127,12 +127,12 @@ static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, i
    int type = lua_type(Lua, ValueIndex);
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, ValueIndex);
-      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else return ERR::SetValueNotFunction;
@@ -443,12 +443,12 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int Va
       else if (field->Flags & FD_FUNCTION) {
          if (type IS LUA_TSTRING) {
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
             lua_pushvalue(Lua, ValueIndex);
-            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else return ERR::SetValueNotFunction;
@@ -625,7 +625,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -641,7 +641,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -656,7 +656,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
          if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
             if (result) { // Structs are copied into standard Lua tables.
                if (field->Flags & FD_RESOURCE) {
-                   push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                   push_struct(Lua->script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
                }
                else named_struct_to_table(Lua, (CSTRING)field->Arg, result);
             }
@@ -672,7 +672,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -691,7 +691,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -707,7 +707,7 @@ static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -726,7 +726,7 @@ static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -742,7 +742,7 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -758,7 +758,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -777,7 +777,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }
@@ -795,7 +795,7 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    }
    else error = ERR::AccessObject;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    prv->CaughtError = error;
    return error != ERR::Okay ? 0 : 1;
 }

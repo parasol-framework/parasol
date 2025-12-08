@@ -80,44 +80,44 @@ function testConstructorTimezoneNormalisation()
 
    local err, canonicalDate = xml.mtEvaluate("xs:date('2024-01-02+00:00')")
    assert(err is ERR_Okay, 'xs:date should accept +00:00 offsets: ' .. mSys.GetErrorMsg(err))
-   assert(canonicalDate is '2024-01-02Z', 'xs:date should emit Z for zero offset, got: ' .. nz(canonicalDate, 'NIL'))
+   assert(canonicalDate is '2024-01-02Z', 'xs:date should emit Z for zero offset, got: ' .. tostring(canonicalDate))
 
    local err, canonicalTime = xml.mtEvaluate("xs:time('12:30:00-00:00')")
    assert(err is ERR_Okay, 'xs:time should accept -00:00 offsets: ' .. mSys.GetErrorMsg(err))
-   assert(canonicalTime is '12:30:00Z', 'xs:time should normalise zero offset to Z, got: ' .. nz(canonicalTime, 'NIL'))
+   assert(canonicalTime is '12:30:00Z', 'xs:time should normalise zero offset to Z, got: ' .. tostring(canonicalTime))
 
    local err, canonicalDateTime = xml.mtEvaluate("xs:dateTime('2024-01-02T12:30:45+00:00')")
    assert(err is ERR_Okay, 'xs:dateTime should accept +00:00 offsets: ' .. mSys.GetErrorMsg(err))
-   assert(canonicalDateTime is '2024-01-02T12:30:45Z', 'xs:dateTime should normalise zero offset to Z, got: ' .. nz(canonicalDateTime, 'NIL'))
+   assert(canonicalDateTime is '2024-01-02T12:30:45Z', 'xs:dateTime should normalise zero offset to Z, got: ' .. tostring(canonicalDateTime))
 
    local err, projectedDate = xml.mtEvaluate("xs:date(xs:dateTime('2024-05-01T06:30:00+00:00'))")
    assert(err is ERR_Okay, 'xs:date should accept xs:dateTime operands: ' .. mSys.GetErrorMsg(err))
-   assert(projectedDate is '2024-05-01Z', 'xs:date from dateTime should preserve timezone, got: ' .. nz(projectedDate, 'NIL'))
+   assert(projectedDate is '2024-05-01Z', 'xs:date from dateTime should preserve timezone, got: ' .. tostring(projectedDate))
 
    local err, projectedTime = xml.mtEvaluate("xs:time(xs:dateTime('2024-05-01T06:30:00+00:00'))")
    assert(err is ERR_Okay, 'xs:time should accept xs:dateTime operands: ' .. mSys.GetErrorMsg(err))
-   assert(projectedTime is '06:30:00Z', 'xs:time from dateTime should preserve timezone, got: ' .. nz(projectedTime, 'NIL'))
+   assert(projectedTime is '06:30:00Z', 'xs:time from dateTime should preserve timezone, got: ' .. tostring(projectedTime))
 
    local err, infValue = xml.mtEvaluate("xs:double('INF')")
    assert(err is ERR_Okay, 'xs:double should accept INF token: ' .. mSys.GetErrorMsg(err))
-   assert(infValue is 'Infinity', 'xs:double("INF") should return Infinity, got: ' .. nz(infValue, 'NIL'))
+   assert(infValue is 'Infinity', 'xs:double("INF") should return Infinity, got: ' .. tostring(infValue))
 
    local err, negInfValue = xml.mtEvaluate("xs:double('-INF')")
    assert(err is ERR_Okay, 'xs:double should accept -INF token: ' .. mSys.GetErrorMsg(err))
-   assert(negInfValue is '-Infinity', 'xs:double("-INF") should return -Infinity, got: ' .. nz(negInfValue, 'NIL'))
+   assert(negInfValue is '-Infinity', 'xs:double("-INF") should return -Infinity, got: ' .. tostring(negInfValue))
 
    local err, nanValue = xml.mtEvaluate("xs:double('NaN')")
    assert(err is ERR_Okay, 'xs:double should accept NaN token: ' .. mSys.GetErrorMsg(err))
-   assert(nanValue is 'NaN', 'xs:double("NaN") should return NaN, got: ' .. nz(nanValue, 'NIL'))
+   assert(nanValue is 'NaN', 'xs:double("NaN") should return NaN, got: ' .. tostring(nanValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
-      'testDateTimeExtraction',
-      'testDateTimeAdjustment',
-      'testConstructorTimezoneNormalisation'
+      testDateTimeExtraction,
+      testDateTimeAdjustment,
+      testConstructorTimezoneNormalisation
    },
    init = function(ScriptFolder)
    end,

@@ -250,8 +250,8 @@ end
 
 return {
    tests = {
-      'testMathPiConstant', 'testMathTrigonometricBasics', 'testMathInverseFunctions',
-      'testMathAtan2Quadrants', 'testMathExponentialsAndLogs', 'testMathPowAndSqrt',
-      'testMathSpecialValues', 'testMathSignedZeroAndSpecialCases'
+      testMathPiConstant, testMathTrigonometricBasics, testMathInverseFunctions,
+      testMathAtan2Quadrants, testMathExponentialsAndLogs, testMathPowAndSqrt,
+      testMathSpecialValues, testMathSignedZeroAndSpecialCases
    }
 }

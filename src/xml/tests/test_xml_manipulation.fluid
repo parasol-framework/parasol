@@ -305,9 +305,9 @@ end
 
 return {
    tests = {
-      'testInsertXML', 'testInsertXMLSiblings', 'testSetAttrib', 'testSetAttribRemove',
-      'testInsertContent', 'testRemoveTag', 'testRemoveMultipleTags', 'testMoveTags',
-      'testMoveTagsChildEnd', 'testMoveTagsPrev', 'testMoveTagsNext', 'testMoveMultipleTags',
-      'testInsertXPath'
+      testInsertXML, testInsertXMLSiblings, testSetAttrib, testSetAttribRemove,
+      testInsertContent, testRemoveTag, testRemoveMultipleTags, testMoveTags,
+      testMoveTagsChildEnd, testMoveTagsPrev, testMoveTagsNext, testMoveMultipleTags,
+      testInsertXPath
    }
 }

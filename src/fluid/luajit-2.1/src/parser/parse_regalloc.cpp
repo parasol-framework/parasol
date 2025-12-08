@@ -257,12 +257,13 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    if (e->k IS ExpKind::Upval) {
       ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
    }
-   else if (e->k IS ExpKind::Global) {
+   else if (e->k IS ExpKind::Global or e->k IS ExpKind::Unscoped) {
       // Check if trying to read blank identifier.
       if (is_blank_identifier(e->u.sval)) {
          lj_lex_error(fs->ls, fs->ls->tok, ErrMsg::XNEAR,
             "cannot read blank identifier");
       }
+      // For reads, both Global and Unscoped resolve to global table lookup
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
    }
    else if (e->k IS ExpKind::Indexed) {
@@ -489,7 +490,8 @@ static void bcemit_store(FuncState *fs, ExpDesc* var, ExpDesc *e)
       else if (e->k IS ExpKind::Num) ins = BCINS_AD(BC_USETN, var->u.s.info, const_num(fs, e));
       else ins = BCINS_AD(BC_USETV, var->u.s.info, expr_toanyreg(fs, e));
    }
-   else if (var->k IS ExpKind::Global) {
+   else if (var->k IS ExpKind::Global or var->k IS ExpKind::Unscoped) {
+      // Unscoped should normally be resolved in emit_lvalue_expr(), but handle it here defensively
       BCREG ra = expr_toanyreg(fs, e);
       ins = BCINS_AD(BC_GSET, ra, const_str(fs, var));
    }
@@ -630,7 +632,7 @@ void RegisterAllocator::verify_no_leaks(const char* Context) const
 
 void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* Context) const
 {
-   auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
+   auto prv = (prvFluid *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
       pf::Log("Parser").msg("Regalloc: reserve R%d..R%d (%d slots) at %s",
          int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
@@ -639,7 +641,7 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
 
 void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Context) const
 {
-   auto prv = (prvFluid *)this->func_state->L->Script->ChildPrivate;
+   auto prv = (prvFluid *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
       pf::Log("Parser").msg("Regalloc: release R%d..R%d (%d slots) at %s",
          int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);

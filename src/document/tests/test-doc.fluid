@@ -84,21 +84,21 @@ function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xbf1021d5) end
 
    return {
       tests = {
-        'testAlignment',
-        'testDialog',
-        'testFonts',
-        'testImages',
-        'testLayout',
-        'testLinks1',
-        'testLinks2',
-        'testLists',
-        'testLogic',
-        'testParagraphs',
-        'testTables',
-        'testWidgets'
+        testAlignment,
+        testDialog,
+        testFonts,
+        testImages,
+        testLayout,
+        testLinks1,
+        testLinks2,
+        testLists,
+        testLogic,
+        testParagraphs,
+        testTables,
+        testWidgets
       },
       init = function(Folder)
-         glDocFolder = Folder
+         global glDocFolder = Folder
       end,
       cleanup = function()
 

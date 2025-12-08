@@ -146,7 +146,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    if (auto error = MetaClass->get(FID_Module, module_name); error IS ERR::Okay) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       if (!prv->Includes.contains(module_name)) {
          prv->Includes.insert(module_name); // Mark the module as processed.
 
@@ -391,15 +391,15 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
-         if (Info->name) log.msg("%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->Script->CurrentLine + Lua->Script->LineOffset);
+         if (Info->name) log.msg("%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->script->CurrentLine + Lua->script->LineOffset);
       }
       else log.warning("lua_getinfo() failed.");
    }
    else if (Info->event IS LUA_HOOKRET) { }
    else if (Info->event IS LUA_HOOKTAILRET) { }
    else if (Info->event IS LUA_HOOKLINE) {
-      Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
-      if (Lua->Script->CurrentLine < 0) Lua->Script->CurrentLine = 0; // Just to be certain :-)
+      Lua->script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
+      if (Lua->script->CurrentLine < 0) Lua->script->CurrentLine = 0; // Just to be certain :-)
 /*
       if (lua_getinfo(Lua, "nSl", Info)) {
          log.msg("Line %d: %s: %s", Info->currentline, Info->what, Info->name);
@@ -490,7 +490,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPT
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Values) return;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    auto s_name = struct_name(StructName);
    if (prv->Structs.contains(s_name)) {
@@ -516,7 +516,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, 
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Data) return;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    auto s_name = struct_name(StructName);
    if (prv->Structs.contains(s_name)) {
       auto def = &prv->Structs[s_name];
@@ -525,12 +525,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, 
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
       // padded to 64-bit so that the potential for mishap is eliminated.
 
-      #ifdef _LP64
       int def_size = ALIGN64(def->Size);
-      #else
-      int def_size = ALIGN32(def->Size);
-      #endif
-
       char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
       if (aligned IS 'N') {
          log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);

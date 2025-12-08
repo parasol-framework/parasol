@@ -123,14 +123,14 @@ end
 
    return {
       tests = {
-         'testBindLocalhost',
-         'testBindAllInterfaces',
-         'testDefaultBinding',
-         'testBindWildcard',
-         'testBindIPv6Localhost',
-         'testBindIPv6AllInterfaces',
-         'testBindLocalhostString',
-         'testInvalidBindAddress',
-         'testConcurrentServers'
+         testBindLocalhost,
+         testBindAllInterfaces,
+         testDefaultBinding,
+         testBindWildcard,
+         testBindIPv6Localhost,
+         testBindIPv6AllInterfaces,
+         testBindLocalhostString,
+         testInvalidBindAddress,
+         testConcurrentServers
       }
    }

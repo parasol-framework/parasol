@@ -154,9 +154,9 @@ end
 
 return {
    tests = {
-      'testPathLoading', 'testObjectSource', 'testStringPathPrefix',
-      'testDataFeed', 'testDataFeedEmpty', 'testSourceSwitching',
-      'testInvalidFileHandling'
+      testPathLoading, testObjectSource, testStringPathPrefix,
+      testDataFeed, testDataFeedEmpty, testSourceSwitching,
+      testInvalidFileHandling
    },
    init = function(ScriptFolder)
    end,

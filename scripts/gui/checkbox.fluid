@@ -7,10 +7,10 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-local HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
-local ICON_SIZE = HEIGHT * 0.56
-local GAP       = HEIGHT * 0.35
+FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
+ICON_SIZE = HEIGHT * 0.56
+GAP       = HEIGHT * 0.35
 
 local function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.style.page.text)) > 127) then
@@ -33,7 +33,7 @@ local function toggleState(self)
 end
 
 gui.checkbox = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       events         = Options.events ?? { },
       parentViewport = Options.target,
       state          = Options.state ?? 0,

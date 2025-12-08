@@ -405,29 +405,29 @@ end
 
    return {
       tests = {
-         'testIntegerArrayConcat',
-         'testFloatArrayConcat',
-         'testByteArrayConcat',
-         'testDoubleArrayConcat',
-         'testWordArrayConcat',
-         'testSingleElementConcat',
-         'testFormatValidation',
-         'testStringArrayUnsupported',
+         testIntegerArrayConcat,
+         testFloatArrayConcat,
+         testByteArrayConcat,
+         testDoubleArrayConcat,
+         testWordArrayConcat,
+         testSingleElementConcat,
+         testFormatValidation,
+         testStringArrayUnsupported,
          -- Array safety
-         'testArrayBoundsChecking',
-         'testArraySizeValidation',
-         'testGetStringBounds',
-         'testArrayCopyBounds',
-         'testArrayWriteBounds',
+         testArrayBoundsChecking,
+         testArraySizeValidation,
+         testGetStringBounds,
+         testArrayCopyBounds,
+         testArrayWriteBounds,
          -- Table to array copying
-         'testTableToIntegerArrayCopy',
-         'testTableToFloatArrayCopy',
-         'testTableToByteArrayCopy',
-         'testTableToDoubleArrayCopy',
-         'testTableToWordArrayCopy',
-         'testTableCopyWithDestinationIndex',
-         'testTableCopyWithLimitedTotal',
-         'testTableCopyBoundsChecking',
-         'testTableCopyTypeConversion'
+         testTableToIntegerArrayCopy,
+         testTableToFloatArrayCopy,
+         testTableToByteArrayCopy,
+         testTableToDoubleArrayCopy,
+         testTableToWordArrayCopy,
+         testTableCopyWithDestinationIndex,
+         testTableCopyWithLimitedTotal,
+         testTableCopyBoundsChecking,
+         testTableCopyTypeConversion
       }
    }

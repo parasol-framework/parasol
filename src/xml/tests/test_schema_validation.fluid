@@ -93,17 +93,17 @@ end
 
 return {
    tests = {
-      'testLoadSchema',
-      'testValidateDocumentPass',
-      'testValidateDocumentPrefixedRoot',
-      'testValidateDocumentFail',
-      'testValidateWithoutSchema',
-      'testValidateDocumentWithoutContent',
-      'testValidateDocumentMismatchedRoot'
+      testLoadSchema,
+      testValidateDocumentPass,
+      testValidateDocumentPrefixedRoot,
+      testValidateDocumentFail,
+      testValidateWithoutSchema,
+      testValidateDocumentWithoutContent,
+      testValidateDocumentMismatchedRoot
    },
    init = function(ScriptFolder)
-      glScriptFolder = ScriptFolder
-      glXML = obj.new("xml", { path = ScriptFolder .. "schema_inventory.xml" })
+      global glScriptFolder = ScriptFolder
+      global glXML = obj.new("xml", { path = ScriptFolder .. "schema_inventory.xml" })
    end,
    cleanup = function()
       glXML = nil

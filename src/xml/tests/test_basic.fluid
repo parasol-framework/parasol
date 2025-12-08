@@ -24,7 +24,7 @@ function testIndexing()
 
       if #func.attribs > 0 then
          if func.attribs[0].name != 'function' then
-            error("Expected 'function', got '" .. nz(func.attribs[0].name,"NIL") .. "'")
+            error("Expected 'function', got '" .. tostring(func.attribs[0].name) .. "'")
          end
          totalFunctions++
       end
@@ -104,15 +104,15 @@ end
 
    return {
       tests = {
-         'testTagsArray',
-         'testIndexing',
-         'testGetAttrib',
-         'testSerialise',
-         'testLineCount',
-         'testSort'
+         testTagsArray,
+         testIndexing,
+         testGetAttrib,
+         testSerialise,
+         testLineCount,
+         testSort
       },
       init = function(ScriptFolder)
-         glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
+         global glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,
       cleanup = function()
          glXML = nil

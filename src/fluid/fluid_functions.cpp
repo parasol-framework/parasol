@@ -37,7 +37,7 @@ int fcmd_check(lua_State *Lua)
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERR error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(Lua, GetErrorMsg(error));
       }
@@ -55,7 +55,7 @@ int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERR error = ERR(lua_tointeger(Lua, 1));
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       prv->CaughtError = error;
       luaL_error(Lua, GetErrorMsg(error));
    }
@@ -107,7 +107,7 @@ int fcmd_raise(lua_State *Lua)
 int fcmd_catch_handler(lua_State *Lua)
 {
    lua_Debug ar;
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    if (lua_getstack(Lua, 2, &ar)) {
       lua_getinfo(Lua, "nSl", &ar);
       // ar.currentline, ar.name, ar.source, ar.short_src, ar.linedefined, ar.lastlinedefined, ar.what
@@ -120,7 +120,7 @@ int fcmd_catch_handler(lua_State *Lua)
 
 int fcmd_catch(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
       auto type = lua_type(Lua, 1);
@@ -320,12 +320,12 @@ static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
 
 int fcmd_unsubscribe_event(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    if (not prv) return 0;
 
    if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
-      if ((Lua->Script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
+      if ((Lua->script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
 
       auto erased = std::erase_if(prv->EventList, [&](const auto& event) {
          if (event.EventHandle IS handle) {
@@ -425,7 +425,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       lua_settop(Lua, 2);
       auto client_function = luaL_ref(Lua, LUA_REGISTRYINDEX);
       if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event, client_function), &handle); error IS ERR::Okay) {
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->EventList.emplace_back(client_function, event_id, handle);
          lua_pushlightuserdata(Lua, handle); // 1: Handle
          lua_pushinteger(Lua, int(error)); // 2: Error code
@@ -506,7 +506,7 @@ int fcmd_include(lua_State *Lua)
    int top = lua_gettop(Lua);
    for (int n=1; n <= top; n++) {
       CSTRING include = lua_tostring(Lua, n);
-      if (auto error = load_include(Lua->Script, include); error != ERR::Okay) {
+      if (auto error = load_include(Lua->script, include); error != ERR::Okay) {
          if (error IS ERR::FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
          else luaL_error(Lua, "Failed to process include file: %s", GetErrorMsg(error));
          return 0;
@@ -527,7 +527,7 @@ int fcmd_include(lua_State *Lua)
 
 int fcmd_require(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    CSTRING error_msg = nullptr;
    ERR error = ERR::Okay;
@@ -573,7 +573,7 @@ int fcmd_require(lua_State *Lua)
    }
 
    std::string path;
-   if (local) path.assign(Lua->Script->get<CSTRING>(FID_WorkingPath));
+   if (local) path.assign(Lua->script->get<CSTRING>(FID_WorkingPath));
    else path.assign("scripts:");
    path.append(module);
    path.append(".fluid");
@@ -630,7 +630,7 @@ int fcmd_require(lua_State *Lua)
 
 int fcmd_get_execution_state(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    lua_newtable(Lua);
    lua_pushstring(Lua, "inRequire");
    lua_pushboolean(Lua, prv->RequireCounter ? true : false);
@@ -816,7 +816,7 @@ int fcmd_exec(lua_State *Lua)
 
 int fcmd_arg(lua_State *Lua)
 {
-   objScript *Self = Lua->Script;
+   objScript *Self = Lua->script;
 
    int args = lua_gettop(Lua);
 

@@ -844,6 +844,7 @@ typedef struct global_State {
    MRef      jit_base;       // Current JIT code L->base or NULL.
    MRef      ctype_state;    // Pointer to C type state.
    PRNGState prng;           // Global PRNG state.
+   void     *funcnames;      // Map of GCproto* to function names (std::unordered_map<>*).
    GCRef     gcroot[GCROOT_MAX];  //  GC roots.
 } global_State;
 
@@ -915,15 +916,15 @@ struct lua_State {
    GCRef   env;         //  Thread environment (table of globals).
    void    *cframe;     //  End of C stack frame chain.
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
-   class objScript * Script;
-   uint8_t ProtectedGlobals; // Becomes true once all global constants are initialised
+   class objScript *script;
+   bool    protected_globals; // Becomes true once all global constants are initialised
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TValue close_err;  // Current error for __close handlers (nil if no error)
 
    // Constructor/destructor not actually used as yet.
 /*
-   lua_State(class objScript* pScript) : Script(pScript), ProtectedGlobals(false) {
+   lua_State(class objScript* pScript) : Script(pScript), protected_globals(false) {
 
    }
 
@@ -932,12 +933,12 @@ struct lua_State {
 */
 };
 
-[[nodiscard]] inline global_State* G(lua_State* L) noexcept
+[[nodiscard]] inline global_State * G(lua_State* L) noexcept
 {
    return mref(L->glref, global_State);
 }
 
-[[nodiscard]] inline TValue* registry(lua_State* L) noexcept
+[[nodiscard]] inline TValue * registry(lua_State* L) noexcept
 {
    return &G(L)->registrytv;
 }
@@ -955,9 +956,9 @@ LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line,
    const char* func, const char* fmt, ...);
 #endif
 
-// -- GC object definition and conversions --------------------------------
-
+//********************************************************************************************************************
 // GC header for generic access to common fields of GC objects.
+
 typedef struct GChead {
    GCHeader;
    uint8_t unused1;
@@ -1045,242 +1046,87 @@ template<typename T>
 
 // gcval: get GC object pointer from tagged value (just pointer math, no dereference)
 
-[[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept
-{
-   return (GCobj*)(gcrefu(o->gcr) & LJ_GCVMASK);
-}
+[[nodiscard]] inline GCobj* gcval(cTValue* o) noexcept { return (GCobj*)(gcrefu(o->gcr) & LJ_GCVMASK); }
 
 // String accessors
-[[nodiscard]] inline GCstr* strref(GCRef r) noexcept
-{
-   return &gcref(r)->str;
-}
+
+[[nodiscard]] inline GCstr* strref(GCRef r) noexcept { return &gcref(r)->str; }
 
 // Prototype accessors
-[[nodiscard]] inline GCstr* proto_chunkname(const GCproto* pt) noexcept
-{
-   return strref(pt->chunkname);
-}
 
-[[nodiscard]] inline const char* proto_chunknamestr(const GCproto* pt) noexcept
-{
-   return strdata(proto_chunkname(pt));
-}
+[[nodiscard]] inline GCstr* proto_chunkname(const GCproto* pt) noexcept { return strref(pt->chunkname); }
+[[nodiscard]] inline const char* proto_chunknamestr(const GCproto* pt) noexcept { return strdata(proto_chunkname(pt)); }
 
 // Table accessors
-[[nodiscard]] inline GCtab* tabref(GCRef r) noexcept
-{
-   return &gcref(r)->tab;
-}
+[[nodiscard]] inline GCtab* tabref(GCRef r) noexcept { return &gcref(r)->tab; }
 
 // Thread/state accessors
-[[nodiscard]] inline lua_State* mainthread(global_State* g) noexcept
-{
-   return &gcref(g->mainthref)->th;
-}
+
+[[nodiscard]] inline lua_State* mainthread(global_State* g) noexcept { return &gcref(g->mainthref)->th; }
 
 // Function accessors for currently executing function
 
-[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept
-{
-   return &gcval(L->base - 2)->fn;
-}
-
-[[nodiscard]] inline bool curr_funcisL(lua_State* L) noexcept
-{
-   return isluafunc(curr_func(L));
-}
-
-[[nodiscard]] inline GCproto* curr_proto(lua_State* L) noexcept
-{
-   return funcproto(curr_func(L));
-}
-
-[[nodiscard]] inline TValue* curr_topL(lua_State* L) noexcept
-{
-   return L->base + curr_proto(L)->framesize;
-}
-
-[[nodiscard]] inline TValue* curr_top(lua_State* L) noexcept
-{
-   return curr_funcisL(L) ? curr_topL(L) : L->top;
-}
+[[nodiscard]] inline GCfunc* curr_func(lua_State* L) noexcept { return &gcval(L->base - 2)->fn; }
+[[nodiscard]] inline bool curr_funcisL(lua_State* L) noexcept { return isluafunc(curr_func(L)); }
+[[nodiscard]] inline GCproto* curr_proto(lua_State* L) noexcept { return funcproto(curr_func(L)); }
+[[nodiscard]] inline TValue* curr_topL(lua_State* L) noexcept { return L->base + curr_proto(L)->framesize; }
+[[nodiscard]] inline TValue* curr_top(lua_State* L) noexcept { return curr_funcisL(L) ? curr_topL(L) : L->top; }
 
 // Upvalue list navigation
-[[nodiscard]] inline GCupval* uvprev(GCupval* uv) noexcept
-{
-   return &gcref(uv->prev)->uv;
-}
 
-[[nodiscard]] inline GCupval* uvnext(GCupval* uv) noexcept
-{
-   return &gcref(uv->next)->uv;
-}
+[[nodiscard]] inline GCupval* uvprev(GCupval* uv) noexcept { return &gcref(uv->prev)->uv; }
+[[nodiscard]] inline GCupval* uvnext(GCupval* uv) noexcept { return &gcref(uv->next)->uv; }
 
 // niltv defined at end of file (needs tvisnil which is defined below)
 
-// -- TValue getters/setters ----------------------------------------------
+//********************************************************************************************************************
+// TValue getters/setters
 
 // Type test functions - 64-bit GC64 mode only
-[[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept
-{
-   return uint32_t(o->it64 >> 47);
-}
 
-[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept
-{
-   return o->it64 IS -1;
-}
-
-[[nodiscard]] constexpr inline bool tvisfalse(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TFALSE;
-}
-
-[[nodiscard]] constexpr inline bool tvistrue(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TTRUE;
-}
-
-[[nodiscard]] constexpr inline bool tvisbool(cTValue* o) noexcept
-{
-   return tvisfalse(o) or tvistrue(o);
-}
-
-[[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TLIGHTUD;
-}
-
-[[nodiscard]] constexpr inline bool tvisstr(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TSTR;
-}
-
-[[nodiscard]] constexpr inline bool tvisfunc(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TFUNC;
-}
-
-[[nodiscard]] constexpr inline bool tvisthread(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TTHREAD;
-}
-
-[[nodiscard]] constexpr inline bool tvisproto(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TPROTO;
-}
-
-[[nodiscard]] constexpr inline bool tviscdata(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TCDATA;
-}
-
-[[nodiscard]] constexpr inline bool tvistab(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TTAB;
-}
-
-[[nodiscard]] constexpr inline bool tvisudata(cTValue* o) noexcept
-{
-   return itype(o) IS LJ_TUDATA;
-}
-
-[[nodiscard]] constexpr inline bool tvisnumber(cTValue* o) noexcept
-{
-   return itype(o) <= LJ_TISNUM;
-}
-
-[[nodiscard]] constexpr inline bool tvisint(cTValue* o) noexcept
-{
-   return LJ_DUALNUM and itype(o) IS LJ_TISNUM;
-}
-
-[[nodiscard]] constexpr inline bool tvisnum(cTValue* o) noexcept
-{
-   return itype(o) < LJ_TISNUM;
-}
-
-[[nodiscard]] constexpr inline bool tvistruecond(cTValue* o) noexcept
-{
-   return itype(o) < LJ_TISTRUECOND;
-}
-
-[[nodiscard]] constexpr inline bool tvispri(cTValue* o) noexcept
-{
-   return itype(o) >= LJ_TISPRI;
-}
-
-[[nodiscard]] constexpr inline bool tvistabud(cTValue* o) noexcept
-{
-   return itype(o) <= LJ_TISTABUD;
-}
-
-[[nodiscard]] constexpr inline bool tvisgcv(cTValue* o) noexcept
-{
-   return (itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV);
-}
+[[nodiscard]] constexpr inline uint32_t itype(cTValue* o) noexcept { return uint32_t(o->it64 >> 47); }
+[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept { return o->it64 IS -1; }
+[[nodiscard]] constexpr inline bool tvisfalse(cTValue* o) noexcept { return itype(o) IS LJ_TFALSE; }
+[[nodiscard]] constexpr inline bool tvistrue(cTValue* o) noexcept { return itype(o) IS LJ_TTRUE; }
+[[nodiscard]] constexpr inline bool tvisbool(cTValue* o) noexcept { return tvisfalse(o) or tvistrue(o); }
+[[nodiscard]] constexpr inline bool tvislightud(cTValue* o) noexcept { return itype(o) IS LJ_TLIGHTUD; }
+[[nodiscard]] constexpr inline bool tvisstr(cTValue* o) noexcept { return itype(o) IS LJ_TSTR; }
+[[nodiscard]] constexpr inline bool tvisfunc(cTValue* o) noexcept { return itype(o) IS LJ_TFUNC; }
+[[nodiscard]] constexpr inline bool tvisthread(cTValue* o) noexcept { return itype(o) IS LJ_TTHREAD; }
+[[nodiscard]] constexpr inline bool tvisproto(cTValue* o) noexcept { return itype(o) IS LJ_TPROTO; }
+[[nodiscard]] constexpr inline bool tviscdata(cTValue* o) noexcept { return itype(o) IS LJ_TCDATA; }
+[[nodiscard]] constexpr inline bool tvistab(cTValue* o) noexcept { return itype(o) IS LJ_TTAB; }
+[[nodiscard]] constexpr inline bool tvisudata(cTValue* o) noexcept { return itype(o) IS LJ_TUDATA; }
+[[nodiscard]] constexpr inline bool tvisnumber(cTValue* o) noexcept { return itype(o) <= LJ_TISNUM; }
+[[nodiscard]] constexpr inline bool tvisint(cTValue* o) noexcept { return LJ_DUALNUM and itype(o) IS LJ_TISNUM; }
+[[nodiscard]] constexpr inline bool tvisnum(cTValue* o) noexcept { return itype(o) < LJ_TISNUM; }
+[[nodiscard]] constexpr inline bool tvistruecond(cTValue* o) noexcept { return itype(o) < LJ_TISTRUECOND; }
+[[nodiscard]] constexpr inline bool tvispri(cTValue* o) noexcept { return itype(o) >= LJ_TISPRI; }
+[[nodiscard]] constexpr inline bool tvistabud(cTValue* o) noexcept { return itype(o) <= LJ_TISTABUD; }
+[[nodiscard]] constexpr inline bool tvisgcv(cTValue* o) noexcept { return (itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV); }
 
 // Special functions to test numbers for NaN, +0, -0, +1 and raw equality.
-[[nodiscard]] constexpr inline bool tvisnan(cTValue* o) noexcept
-{
-   return o->n != o->n;
-}
 
-[[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept
-{
-   return (o->u64 << 1) IS 0;
-}
-
-[[nodiscard]] constexpr inline bool tvispzero(cTValue* o) noexcept
-{
-   return o->u64 IS 0;
-}
-
-[[nodiscard]] constexpr inline bool tvismzero(cTValue* o) noexcept
-{
-   return o->u64 IS U64x(80000000, 00000000);
-}
-
-[[nodiscard]] constexpr inline bool tvispone(cTValue* o) noexcept
-{
-   return o->u64 IS U64x(3ff00000, 00000000);
-}
-
-[[nodiscard]] constexpr inline bool rawnumequal(cTValue* o1, cTValue* o2) noexcept
-{
-   return o1->u64 IS o2->u64;
-}
+[[nodiscard]] constexpr inline bool tvisnan(cTValue* o) noexcept { return o->n != o->n; }
+[[nodiscard]] constexpr inline bool tviszero(cTValue* o) noexcept { return (o->u64 << 1) IS 0; }
+[[nodiscard]] constexpr inline bool tvispzero(cTValue* o) noexcept { return o->u64 IS 0; }
+[[nodiscard]] constexpr inline bool tvismzero(cTValue* o) noexcept { return o->u64 IS U64x(80000000, 00000000); }
+[[nodiscard]] constexpr inline bool tvispone(cTValue* o) noexcept { return o->u64 IS U64x(3ff00000, 00000000); }
+[[nodiscard]] constexpr inline bool rawnumequal(cTValue* o1, cTValue* o2) noexcept { return o1->u64 IS o2->u64; }
 
 // Convert internal type to type map index - 64-bit GC64 mode
-[[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept
-{
-   return tvisnumber(o) ? ~LJ_TNUMX : ~itype(o);
-}
+
+[[nodiscard]] constexpr inline uint32_t itypemap(cTValue* o) noexcept { return tvisnumber(o) ? ~LJ_TNUMX : ~itype(o); }
 
 // Functions to get tagged values (gcval is defined in deferred section above)
 
-[[nodiscard]] inline int boolV(cTValue* o) noexcept
-{
-   return check_exp(tvisbool(o), int(LJ_TFALSE - itype(o)));
-}
+[[nodiscard]] inline int boolV(cTValue* o) noexcept { return check_exp(tvisbool(o), int(LJ_TFALSE - itype(o))); }
 
 // Lightuserdata segment/offset extraction - 64-bit only
-[[nodiscard]] constexpr inline uint64_t lightudseg(uint64_t u) noexcept
-{
-   return (u >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG) - 1);
-}
 
-[[nodiscard]] constexpr inline uint64_t lightudlo(uint64_t u) noexcept
-{
-   return u & ((uint64_t(1) << LJ_LIGHTUD_BITS_LO) - 1);
-}
-
-[[nodiscard]] constexpr inline uint32_t lightudup(uint64_t p) noexcept
-{
-   return uint32_t((p >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO - 32));
-}
+[[nodiscard]] constexpr inline uint64_t lightudseg(uint64_t u) noexcept { return (u >> LJ_LIGHTUD_BITS_LO) & ((1 << LJ_LIGHTUD_BITS_SEG) - 1); }
+[[nodiscard]] constexpr inline uint64_t lightudlo(uint64_t u) noexcept { return u & ((uint64_t(1) << LJ_LIGHTUD_BITS_LO) - 1); }
+[[nodiscard]] constexpr inline uint32_t lightudup(uint64_t p) noexcept { return uint32_t((p >> LJ_LIGHTUD_BITS_LO) << (LJ_LIGHTUD_BITS_LO - 32)); }
 
 // Lightuserdata value extraction - 64-bit only
 [[nodiscard]] static LJ_AINLINE void* lightudV(global_State* g, cTValue* o) noexcept
@@ -1419,43 +1265,15 @@ inline void setfuncV(lua_State* L, TValue* o, const GCfunc* v) noexcept
    setgcV(L, o, obj2gco(v), LJ_TFUNC);
 }
 
-inline void setcdataV(lua_State* L, TValue* o, const GCcdata* v) noexcept
-{
-   setgcV(L, o, obj2gco(v), LJ_TCDATA);
-}
+inline void setcdataV(lua_State* L, TValue* o, const GCcdata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TCDATA); }
+inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TTAB); }
+inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TUDATA); }
+constexpr inline void setnumV(TValue* o, lua_Number x) noexcept { o->n = x; }
+inline void setnanV(TValue* o) noexcept { o->u64 = U64x(fff80000, 00000000); }
+inline void setpinfV(TValue* o) noexcept { o->u64 = U64x(7ff00000, 00000000); }
+inline void setminfV(TValue* o) noexcept { o->u64 = U64x(fff00000, 00000000); }
 
-inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept
-{
-   setgcV(L, o, obj2gco(v), LJ_TTAB);
-}
-
-inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept
-{
-   setgcV(L, o, obj2gco(v), LJ_TUDATA);
-}
-
-constexpr inline void setnumV(TValue* o, lua_Number x) noexcept
-{
-   o->n = x;
-}
-
-inline void setnanV(TValue* o) noexcept
-{
-   o->u64 = U64x(fff80000, 00000000);
-}
-
-inline void setpinfV(TValue* o) noexcept
-{
-   o->u64 = U64x(7ff00000, 00000000);
-}
-
-inline void setminfV(TValue* o) noexcept
-{
-   o->u64 = U64x(fff00000, 00000000);
-}
-
-inline void setintV(TValue* o, int32_t i) noexcept
-{
+inline void setintV(TValue* o, int32_t i) noexcept {
 #if LJ_DUALNUM
    o->i = uint32_t(i);
    setitype(o, LJ_TISNUM);
@@ -1464,18 +1282,12 @@ inline void setintV(TValue* o, int32_t i) noexcept
 #endif
 }
 
-inline void setint64V(TValue* o, int64_t i) noexcept
-{
-   if (LJ_DUALNUM and LJ_LIKELY(i IS int64_t(int32_t(i))))
-      setintV(o, int32_t(i));
-   else
-      setnumV(o, lua_Number(i));
+inline void setint64V(TValue* o, int64_t i) noexcept {
+   if (LJ_DUALNUM and LJ_LIKELY(i IS int64_t(int32_t(i)))) setintV(o, int32_t(i));
+   else setnumV(o, lua_Number(i));
 }
 
-inline void setintptrV(TValue* o, intptr_t i) noexcept
-{
-   setint64V(o, i);
-}
+inline void setintptrV(TValue* o, intptr_t i) noexcept { setint64V(o, i); }
 
 // Copy tagged values.
 inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
@@ -1484,7 +1296,8 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
    checklivetv(L, o1, "copy of dead GC object");
 }
 
-// -- Number to integer conversion ----------------------------------------
+//********************************************************************************************************************
+// Number to integer conversion
 
 #if LJ_SOFTFP
 LJ_ASMF int32_t lj_vm_tobit(double x);
@@ -1506,14 +1319,11 @@ LJ_ASMF int32_t lj_vm_tobit(double x);
    return (int32_t)(n);
 }
 
-// This must match the JIT backend behavior. In particular for archs
-// that don't have a common hardware instruction for this conversion.
-// Note that signed FP to unsigned int conversions have an undefined
-// result and should never be relied upon in portable FFI code.
-// See also: C99 or C11 standard, 6.3.1.4, footnote of (1).
+// This must match the JIT backend behavior. In particular for archs that don't have a common hardware instruction for 
+// this conversion.  Note that signed FP to unsigned int conversions have an undefined result and should never be 
+// relied upon in portable FFI code.  See also: C99 or C11 standard, 6.3.1.4, footnote of (1).
 
-[[nodiscard]] inline uint64_t lj_num2u64(lua_Number n) noexcept
-{
+[[nodiscard]] inline uint64_t lj_num2u64(lua_Number n) noexcept {
 #if LJ_TARGET_X86ORX64
    int64_t i = (int64_t)n;
    if (i < 0) i = (int64_t)(n - 18446744073709551616.0);
@@ -1523,14 +1333,12 @@ LJ_ASMF int32_t lj_vm_tobit(double x);
 #endif
 }
 
-[[nodiscard]] inline int32_t numberVint(cTValue* o) noexcept
-{
+[[nodiscard]] inline int32_t numberVint(cTValue* o) noexcept {
    if (LJ_LIKELY(tvisint(o))) return intV(o);
    else return lj_num2int(numV(o));
 }
 
-[[nodiscard]] inline lua_Number numberVnum(cTValue* o) noexcept
-{
+[[nodiscard]] inline lua_Number numberVnum(cTValue* o) noexcept {
    if (LJ_UNLIKELY(tvisint(o))) return (lua_Number)intV(o);
    else return numV(o);
 }
@@ -1539,8 +1347,7 @@ LJ_ASMF int32_t lj_vm_tobit(double x);
 LJ_DATA const char* const lj_obj_typename[1 + LUA_TCDATA + 1];
 LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 
-[[nodiscard]] inline const char* lj_typename(cTValue* o) noexcept
-{
+[[nodiscard]] inline const char* lj_typename(cTValue* o) noexcept {
    return lj_obj_itypename[itypemap(o)];
 }
 
@@ -1548,9 +1355,8 @@ LJ_DATA const char* const lj_obj_itypename[~LJ_TNUMX + 1];
 LJ_FUNC int LJ_FASTCALL lj_obj_equal(cTValue* o1, cTValue* o2);
 LJ_FUNC const void* LJ_FASTCALL lj_obj_ptr(global_State* g, cTValue* o);
 
-// -- Late deferred function definitions (need tvisnil, G) -----------------
+// Late deferred function definitions (need tvisnil, G)
 
-[[nodiscard]] inline TValue* niltv(lua_State* L) noexcept
-{
+[[nodiscard]] inline TValue* niltv(lua_State* L) noexcept {
    return check_exp(tvisnil(&G(L)->nilnode.val), &G(L)->nilnode.val);
 }

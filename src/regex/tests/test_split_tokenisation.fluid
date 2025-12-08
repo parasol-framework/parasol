@@ -41,10 +41,10 @@ end
 
 return {
    tests = {
-      'testSimpleSplit',
-      'testConsecutiveDelimiters',
-      'testLeadingTrailingDelimiters',
-      'testWhitespaceSplit',
-      'testSplitContinuousFlag'
+      testSimpleSplit,
+      testConsecutiveDelimiters,
+      testLeadingTrailingDelimiters,
+      testWhitespaceSplit,
+      testSplitContinuousFlag
    }
 }

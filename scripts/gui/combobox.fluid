@@ -13,7 +13,7 @@ local BOX_HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 local MARGIN        = math.floor(FONT_HEIGHT * 0.5) + 1
 
 local function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.style.page.text)) > 127) then
+   if gui.rgbValue(gui.strToRGB(gui.style.page.text)) > 127 then
       return 'pearl'
    else
       return 'default' -- The default theme is dark

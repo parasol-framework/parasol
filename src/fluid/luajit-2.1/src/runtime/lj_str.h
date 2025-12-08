@@ -31,20 +31,17 @@ LJ_FUNC void LJ_FASTCALL lj_str_free(global_State* g, GCstr* s);
 LJ_FUNC void LJ_FASTCALL lj_str_init(lua_State* L);
 
 // Intern a null-terminated C string.
-[[nodiscard]] inline GCstr* lj_str_newz(lua_State* L, const char* s) noexcept
-{
+[[nodiscard]] inline GCstr* lj_str_newz(lua_State* L, const char* s) noexcept {
    return lj_str_new(L, s, strlen(s));
 }
 
 // Intern a string from std::string_view.
-[[nodiscard]] inline GCstr* lj_str_newsv(lua_State* L, std::string_view sv) noexcept
-{
+[[nodiscard]] inline GCstr* lj_str_newsv(lua_State* L, std::string_view sv) noexcept {
    return lj_str_new(L, sv.data(), sv.size());
 }
 
 // Calculate the memory size needed for a string of given length.
-[[nodiscard]] constexpr inline MSize lj_str_size(MSize len) noexcept
-{
+[[nodiscard]] constexpr inline MSize lj_str_size(MSize len) noexcept {
    return sizeof(GCstr) + ((len + 4) & ~MSize(3));
 }
 

@@ -32,7 +32,7 @@ end
 
    return {
       tests = {
-        'testGetList', 'testStringWidth', 'testSelectFont', 'testResolveFamily'
+        testGetList, testStringWidth, testSelectFont, testResolveFamily
       },
       init = nil,
       cleanup = function()

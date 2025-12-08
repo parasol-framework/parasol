@@ -40,10 +40,10 @@ end
 
 return {
    tests = {
-      'testGreedyAndLazy',
-      'testBoundedQuantifier',
-      'testOptionalGroup',
-      'testAlternationPrecedence',
-      'testZeroLengthMatchHandling'
+      testGreedyAndLazy,
+      testBoundedQuantifier,
+      testOptionalGroup,
+      testAlternationPrecedence,
+      testZeroLengthMatchHandling
    }
 }

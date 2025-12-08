@@ -264,11 +264,11 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
                if (AllocMemory(sizeof(FUNCTION), MEM::DATA, &func) IS ERR::Okay) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
-                     *func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
                   else {
                      lua_pushvalue(Lua, n);
-                     *func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
 
                   ((FUNCTION **)(argbuffer + j))[0] = func;
@@ -401,7 +401,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
             RMSG("Result-Arg: %s, Struct: %p", args[i].Name, ptr_struct);
             if (ptr_struct) {
                if (type & FD_RESOURCE) {
-                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? true : false, false);
+                  push_struct(Lua->script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? true : false, false);
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR::Okay) {

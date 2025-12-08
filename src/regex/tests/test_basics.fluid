@@ -34,10 +34,10 @@ end
 
 return {
    tests = {
-      'testConstructionMetadata',
-      'testFlagPersistence',
-      'testToStringOutput',
-      'testInvalidPatternRaises',
-      'testMatchWholeEnforcement'
+      testConstructionMetadata,
+      testFlagPersistence,
+      testToStringOutput,
+      testInvalidPatternRaises,
+      testMatchWholeEnforcement
    }
 }

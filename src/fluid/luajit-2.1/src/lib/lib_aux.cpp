@@ -302,7 +302,7 @@ extern lua_State* luaL_newstate(class objScript *Script)
 #else
    L = lua_newstate(LJ_ALLOCF_INTERNAL, nullptr);
 #endif
-   L->Script = Script;
+   L->script = Script;
    if (L) G(L)->panic = panic;
    return L;
 }

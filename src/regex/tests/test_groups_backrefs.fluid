@@ -58,13 +58,13 @@ end
 
 return {
    tests = {
-      'testNestedCaptures',
-      'testNonCapturingGroupCount',
-      'testOptionalBackreference',
-      'testBackreferenceInReplace',
-      'testSearchCapturesPreserveIndices',
-      'testNamedBackreference',
-      'testLookaheadNamedBackreference',
-      'testMixedNamedAndNumberedReferences'
+      testNestedCaptures,
+      testNonCapturingGroupCount,
+      testOptionalBackreference,
+      testBackreferenceInReplace,
+      testSearchCapturesPreserveIndices,
+      testNamedBackreference,
+      testLookaheadNamedBackreference,
+      testMixedNamedAndNumberedReferences
    }
 }

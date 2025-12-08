@@ -57,14 +57,14 @@ end
 
 return {
    tests = {
-      'testArrowSingleParam',
-      'testArrowMultipleParams',
-      'testArrowNoParams',
-      'testArrowThreeParams',
-      'testArrowBlockForm',
-      'testArrowWithEach',
-      'testArrowClosure',
-      'testArrowNested',
-      'testArrowComparison'
+      testArrowSingleParam,
+      testArrowMultipleParams,
+      testArrowNoParams,
+      testArrowThreeParams,
+      testArrowBlockForm,
+      testArrowWithEach,
+      testArrowClosure,
+      testArrowNested,
+      testArrowComparison
    }
 }

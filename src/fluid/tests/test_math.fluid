@@ -29,6 +29,6 @@ end
 
    return {
       tests = {
-         'testRound'
+         testRound
       }
    }

@@ -306,7 +306,7 @@ inline void build_read_table(object *Def)
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
          luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->CaughtError = ERR::DoesNotExist;
          return 0;
       }
@@ -318,7 +318,7 @@ inline void build_read_table(object *Def)
       }
       else {
          pf::Log(__FUNCTION__).warning("Field does not exist or is unreadable: %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         auto prv = (prvFluid *)Lua->script->ChildPrivate;
          prv->CaughtError = ERR::NoSupport;
          //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
       }
@@ -384,7 +384,7 @@ inline void build_read_table(object *Def)
    CSTRING class_name;
    CLASSID class_id;
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    NF objflags = NF::NIL;
    int type = lua_type(Lua, 1);
@@ -410,7 +410,7 @@ inline void build_read_table(object *Def)
 
    OBJECTPTR obj;
    if (auto error = NewObject(class_id, objflags, &obj); error IS ERR::Okay) {
-      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
+      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
 
       obj->CreatorMeta = Lua;
 
@@ -487,7 +487,7 @@ static int object_state(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    // TODO: At this time no cleanup is performed on prv->StateMap.  Ideally this would be done with a hook into garbage
    // collection cycles.
@@ -527,7 +527,7 @@ static int object_newchild(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
 
    CSTRING class_name;
    CLASSID class_id;
@@ -552,7 +552,7 @@ static int object_newchild(lua_State *Lua)
    OBJECTPTR obj;
    ERR error;
    if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
-      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
+      if (Lua->script->TargetID) obj->set(FID_Owner, Lua->script->TargetID);
 
       obj->CreatorMeta = Lua;
 
@@ -719,10 +719,10 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
       if ((iequals("self", object_name)) and (class_id IS CLASSID::NIL)) {
-         return object_find_ptr(Lua, Lua->Script);
+         return object_find_ptr(Lua, Lua->script);
       }
       else if (iequals("owner", object_name)) {
-         if (auto obj = Lua->Script->Owner) {
+         if (auto obj = Lua->script->Owner) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
@@ -738,7 +738,7 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 
       if (CheckObjectExists(object_id) != ERR::Okay) return 0;
 
-      if (auto obj = Lua->Script->Owner) {
+      if (auto obj = Lua->script->Owner) {
          return object_find_ptr(Lua, obj);
       }
    }
@@ -935,9 +935,9 @@ static int object_subscribe(lua_State *Lua)
    log.trace("Object: %d, Action: %s (ID %d)", def->UID, action, action_id);
 
    auto callback = C_FUNCTION(notify_action);
-   callback.Context = Lua->Script;
+   callback.Context = Lua->script;
    if (auto error = SubscribeAction(obj, action_id, &callback); error IS ERR::Okay) {
-      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto prv = (prvFluid *)Lua->script->ChildPrivate;
       auto &acsub = prv->ActionList.emplace_back();
 
       if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
@@ -991,7 +991,7 @@ static int object_unsubscribe(lua_State *Lua)
 
    log.trace("Object: %d, Action: %s", def->UID, action);
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    std::erase_if(prv->ActionList, [&](auto& item) {
       bool should_remove = (item.ObjectID IS def->UID) and ((action_id IS AC::NIL) or (item.ActionID IS action_id));
       if (should_remove) {
@@ -1030,7 +1030,7 @@ static int object_delaycall(lua_State *Lua)
          // owned by a Database object).
 
          if (auto obj = GetObjectPtr(def->UID)) {
-            if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
+            if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->script) or (obj->ownerID() IS Lua->script->TargetID)) {
                pf::Log log("obj.destruct");
                log.trace("Freeing Fluid-owned object #%d.", def->UID);
                FreeResource(obj); // We can't presume that the object pointer would be valid

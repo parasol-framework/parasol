@@ -393,12 +393,12 @@ end
 
    return {
       tests = {
-         'testConnectionFailures',
-         --'testBufferOverflowHandling',
-         'testNetworkTimeouts',
-         'testNTECloseHandling',
-         'testInvalidParameters',
-         'testResourceCleanup'
+         testConnectionFailures,
+         --testBufferOverflowHandling,
+         testNetworkTimeouts,
+         testNTECloseHandling,
+         testInvalidParameters,
+         testResourceCleanup
       },
       cleanup = function()
          glErrorScenarios = {}

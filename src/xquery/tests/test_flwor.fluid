@@ -360,11 +360,11 @@ end
 
 return {
    tests = {
-      'testLetSimpleArithmetic', 'testLetMultipleBindings', 'testLetDocumentComputation',
-      'testLetSyntaxErrors', 'testFlworNonNodeReturnError', 'testFlworRepeatedEvaluationConsistency',
-      'testWhereFiltersNodes', 'testOrderByAscendingStrings', 'testOrderByDescendingNumbers',
-      'testGroupByAggregatesSequences', 'testGroupBySequenceAccess', 'testCountProvidesPosition',
-      'testInvalidOrdering', 'testInvalidGroupByExpression', 'testNestedForProduct',
-      'testOrderByMultipleKeysEmptyHandling', 'testLetVariableShadowing'
+      testLetSimpleArithmetic, testLetMultipleBindings, testLetDocumentComputation,
+      testLetSyntaxErrors, testFlworNonNodeReturnError, testFlworRepeatedEvaluationConsistency,
+      testWhereFiltersNodes, testOrderByAscendingStrings, testOrderByDescendingNumbers,
+      testGroupByAggregatesSequences, testGroupBySequenceAccess, testCountProvidesPosition,
+      testInvalidOrdering, testInvalidGroupByExpression, testNestedForProduct,
+      testOrderByMultipleKeysEmptyHandling, testLetVariableShadowing
    }
 }

@@ -199,9 +199,9 @@ end
 
    return {
       tests = {
-         'testKeyFilter', 'testGroupFilter', 'testDeleteKeyAndGroup',
-         'testMerge', 'testWriteValues', 'testSorting', 'testReadValues',
-         'testSave'
+         testKeyFilter, testGroupFilter, testDeleteKeyAndGroup,
+         testMerge, testWriteValues, testSorting, testReadValues,
+         testSave
       },
       init = function()
 

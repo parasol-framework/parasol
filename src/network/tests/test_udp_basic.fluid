@@ -3,7 +3,7 @@ UDP Basic Communication Test
 --]]
 
    include 'network'
-   if not mNet then mNet = mod.load('network') end
+   mNet ?= mod.load('network')
 
 local glBasePort = 19800  -- Base port for UDP tests
 local glTestTimeout = 3.0
@@ -177,9 +177,9 @@ end
 
    return {
       tests = {
-         'testUDPConfiguration',
-         'testUDPErrorHandling',
-         'testUDPBasicIPv4',
-         'testUDPPacketSizes'
+         testUDPConfiguration,
+         testUDPErrorHandling,
+         testUDPBasicIPv4,
+         testUDPPacketSizes
       }
    }

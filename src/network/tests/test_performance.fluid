@@ -476,12 +476,12 @@ end
 
    return {
       tests = {
-         'testMessageThroughput',
-         'testLargeMessagePerformance',
-         'testConnectionScaling',
-         'testWriteQueuePerformance',
-         'testMemoryUsageUnderLoad',
-         'generatePerformanceReport'
+         testMessageThroughput,
+         testLargeMessagePerformance,
+         testConnectionScaling,
+         testWriteQueuePerformance,
+         testMemoryUsageUnderLoad,
+         generatePerformanceReport
       },
       cleanup = function()
          glThroughputStats = {}

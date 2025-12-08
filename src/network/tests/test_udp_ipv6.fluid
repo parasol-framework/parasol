@@ -3,7 +3,7 @@ UDP IPv6 Communication Test
 --]]
 
    include 'network'
-   if not mNet then mNet = mod.load('network') end
+   mNet ?= mod.load('network')
 
 local glBasePort = 19810  -- Base port for IPv6 UDP tests
 local glTestTimeout = 3.0
@@ -12,7 +12,7 @@ local glTestTimeout = 3.0
 -- Test basic UDP communication with IPv6
 
 function testUDPIPv6Basic()
-   glBasePort = glBasePort + 1
+   glBasePort++
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local messageReceived = false
@@ -61,7 +61,7 @@ end
 -- Test dual-stack IPv4/IPv6 UDP communication
 
 function testUDPDualStack()
-   glBasePort = glBasePort + 1
+   glBasePort++
    local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local ipv4Received = false
@@ -136,8 +136,8 @@ end
 
    return {
       tests = {
-         'testUDPIPv6Properties',
-         'testUDPIPv6Basic',
-         'testUDPDualStack'
+         testUDPIPv6Properties,
+         testUDPIPv6Basic,
+         testUDPDualStack
       }
    }

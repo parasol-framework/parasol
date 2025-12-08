@@ -3,7 +3,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function c_include(...)
+global function c_include(...)
    for k,v in ipairs({...}) do
       if v:find('^<(.+)>$') then
          priority('#include ' .. v)
@@ -17,11 +17,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function cpp_include(...)
+global function cpp_include(...)
    priority('#ifdef __cplusplus')
    for k,v in ipairs({...}) do
       if v:find('^<(.+)>$') then
-         local inc = v:match('^<parasol/(.+)>$')
+         inc = v:match('^<parasol/(.+)>$')
 
          if inc then inc = inc:gsub('[/%.]', '_') end
 
@@ -45,9 +45,9 @@ end
 -- FDL function
 -- Restricts the output of anything declared within the Function.
 
-function restrict(Function)
-   local status = glRestrict
-   glRestrict = 'ALL'
+global function restrict(Function)
+   status = glRestrict
+   global glRestrict = 'ALL'
    Function()
    glRestrict = status
 end
@@ -55,14 +55,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function module(Options, Function)
+global function module(Options, Function)
    if ((Options['timestamp'] ?? 0) > glIDLTimestamp) then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
-      glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
+      global glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
       return
    end
 
-   glModule = Options
+   global glModule = Options
 
    if glModule.name?? then
       priority('#pragma once')
@@ -88,12 +88,12 @@ function module(Options, Function)
    end
 
    if glModule.src then -- Primary source file
-      local content = file.readAll(glFDLFolder .. glModule.src)
+      content = file.readAll(glFDLFolder .. glModule.src)
       content = content:gsub('\r\n', '\n')
 
       -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-      local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
+      extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
          extracted_content ..= '\n' .. extract
       end
@@ -117,14 +117,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function header(Options, Function)
-   glHeaderPath = Options['path']
+global function header(Options, Function)
+   global glHeaderPath = Options['path']
    if glHeaderPath?? then
       priority('#pragma once')
       priority()
       priority('// Name:      ' .. glHeaderPath:lower() .. '.h')
    else
-      local s = ''
+      s = ''
       for i=1,10 do
          s = s .. string.char(math.random(65, 90))
       end
@@ -151,38 +151,38 @@ end
 --    { SHIFT = 'L_SHIFT|R_SHIFT' }
 --  )
 
-function flags(Prefix, Options, ...)
+global function flags(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' flags.')
    if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 
-   local out = { }
-   local sortedFlags = { }
+   out = { }
+   sortedFlags = { }
    if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
    end
 
-   local function outputFlagDef(Options, Prefix, flag_name, val)
+   function outputFlagDef(Options, Prefix, flag_name, val)
       if not Options.weak then
          if Options.bits is 16 then
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
          else
-            local hash_id = string.format('%08x', val):sub(-8)
+            hash_id = string.format('%08x', val):sub(-8)
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%s,', flag_name, hash_id) } )
          end
       elseif Options.bits is 16 then
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val) })
       else
          -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-         local hash_id = string.format('%08x', val):sub(-8)
+         hash_id = string.format('%08x', val):sub(-8)
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%s', Prefix, flag_name, hash_id) } )
       end
    end
 
    if not Options.weak then
-      local type_size = 'uint32_t'
+      type_size = 'uint32_t'
       if Options.bits is 64 then
          type_size = 'int64_t'
       elseif Options.bits is 16 then
@@ -194,23 +194,23 @@ function flags(Prefix, Options, ...)
       table.insert(out, '   NIL = 0,')
    end
 
-   local lookup = { }
+   lookup = { }
    local flags = {...}
-   local f = 0
+   f = 0
    for a=0, #flags - 1 do
       local flag_name
       if type(flags[a]) is 'string' then
-         local key, comment = flags[a]:match('^(.-):%s+(.+)$')
+         key, comment = flags[a]:match('^(.-):%s+(.+)$')
          if not key then key = flags[a] end
 
          for _, flag_name in ipairs(key:split('|')) do
-            local val = 1 << f
+            val = 1 << f
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
          end
       elseif type(flags[a]) is 'table' then
          for flag_name, ref in pairs(flags[a]) do
-            local val = 0
+            val = 0
 
             local key, comment
             if type(ref) != 'number' then
@@ -227,7 +227,6 @@ function flags(Prefix, Options, ...)
             if type(key) is 'number' then
                val = key
             else -- Process named reference(s) to other flags
-               local v
                for _, v in ipairs(key:split('|')) do
                   assert(lookup[v], "Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   val = val | lookup[v].value
@@ -276,7 +275,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function privateNames(List)
+global function privateNames(List)
    for k,v in pairs(List) do
       glPrivateNames[v] = true
    end
@@ -285,24 +284,24 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function hash(Prefix, Format, ...)
+global function hash(Prefix, Format, ...)
    for _, v in ipairs({...}) do
-      local hash_name = v:gsub('[^%w]', '_')
+      hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      local hash_id = string.format('%08x', v:hash()):sub(-8)
+      hash_id = string.format('%08x', v:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
    output()
 end
 
-function typedHash(Prefix, Type, ...)
+global function typedHash(Prefix, Type, ...)
    Type = cType({ type=Type }, Prefix)
    output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
    output('   NIL = 0,')
    for _, v in ipairs({...}) do
-      local hash_name = v:gsub('[^%w]', '_')
+      hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      local hash_id = string.format('%08x', v:hash()):sub(-8)
+      hash_id = string.format('%08x', v:hash()):sub(-8)
       output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
    end
    output('};')
@@ -312,13 +311,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function const(Prefix, Options, ...)
+global function const(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' constants.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 
-   local out = { }
+   out = { }
    if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
@@ -330,16 +329,16 @@ function const(Prefix, Options, ...)
       table.insert(out, '   NIL = 0,')
    end
 
-   local list = { }
+   list = { }
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         local key, comment = va:match('^(.-):%s+(.+)$')
+         key, comment = va:match('^(.-):%s+(.+)$')
          if not key then key = va end
          for _, v in ipairs(key:split('|')) do
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
       elseif type(va) is 'table' then
-         local sorted = { }
+         sorted = { }
          for name, value in pairs(va) do
             table.insert(sorted, { name = name, value = value })
          end
@@ -395,13 +394,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function enum(Prefix, Options, ...)
+global function enum(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' enum.')
    if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 
-   local out = { }
+   out = { }
    if Options.comment?? then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
@@ -413,13 +412,13 @@ function enum(Prefix, Options, ...)
       table.insert(out, '   NIL = 0,')
    end
 
-   local list = { }
-   local inc = (Options.start ?? 0)
+   list = { }
+   inc = (Options.start ?? 0)
    for k,va in ipairs({...}) do
       if type(va) is 'string' then
-         local key, comment = va:match('^(.-):%s+(.+)$')
+         key, comment = va:match('^(.-):%s+(.+)$')
          if not key then key = va end
-         local synonym = false
+         synonym = false
          for _, name in ipairs(key:split('|')) do
             if Options.type then
                table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
@@ -476,11 +475,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function platform(Platform, Function)
-   local saveHeader = glHeader
-   local saveOutput = glOutput
-   glHeader = { }
-   glOutput = { }
+global function platform(Platform, Function)
+   saveHeader = glHeader
+   saveOutput = glOutput
+   global glHeader = { }
+   global glOutput = { }
 
    local define
    if (Platform:lower() is 'windows') then
@@ -499,8 +498,8 @@ function platform(Platform, Function)
       error('Unrecognised platform "' .. Platform .. '"')
    end
 
-   local platformHeader = glHeader
-   local platformOutput = glOutput
+   platformHeader = glHeader
+   platformOutput = glOutput
    glHeader = saveHeader
    glOutput = saveOutput
 
@@ -528,17 +527,17 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
-function struct(Name, Options, Def, Append)
+global function struct(Name, Options, Def, Append)
    verbose('Processing struct ' .. tostring(Name))
 
-   local prevStruct = glCurrentStructure
-   glCurrentStructure = Name
+   prevStruct = glCurrentStructure
+   global glCurrentStructure = Name
 
    catch(function()
       Options = checkOptions(Options)
 
-      local out = { }
-      local full_name = Name
+      out = { }
+      full_name = Name
       if Options.version then
          table.insert(out, '#define VER_' .. Name:upper() .. ' ' .. Options.version)
          table.insert(out, '')
@@ -551,13 +550,13 @@ function struct(Name, Options, Def, Append)
          table.insert(out, 'typedef struct ' .. full_name ..  ' {')
       end
 
-      local fields = extractFields(Def, full_name)
+      fields = extractFields(Def, full_name)
 
-      local type_len = 0
-      local name_len = 0
-      local type_max = 0
+      type_len = 0
+      name_len = 0
+      type_max = 0
       for i, f in ipairs(fields) do
-         local field_name = cName(f, true)
+         field_name = cName(f, true)
          if field_name:len() > name_len then name_len = field_name:len() end
 
          if f.type:len() > type_len then
@@ -571,10 +570,10 @@ function struct(Name, Options, Def, Append)
          end
       end
 
-      local max_len = 3 + type_max + 1 + 2
+      max_len = 3 + type_max + 1 + 2
 
       for i, f in ipairs(fields) do
-         local field_name = cName(f, true)
+         field_name = cName(f, true)
          local left
          if field_name?? then -- field_name can be nil if the field describes a function pointer
             left = string.format('   %-' .. type_len .. 's %s;', (f.extType ?? f.type), field_name)
@@ -583,7 +582,7 @@ function struct(Name, Options, Def, Append)
          end
 
          if f.comment?? then
-            local clean_comment = f.comment:gsub('[`!@#]', '')
+            clean_comment = f.comment:gsub('[`!@#]', '')
             table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
@@ -626,10 +625,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Create a C/C++ field name from the definitions in a Field object.
 
-function cName(Field, CStruct)
+global function cName(Field, CStruct)
    if Field.isFunctionPtr then return '' end -- Functions have their name embedded in the type.
 
-   local name = Field.name
+   name = Field.name
    if CStruct then
       if (Field.type is 'OBJECTID') or (Field.type is 'MEMORYID') then
          if name:sub(-2) != 'ID' then
@@ -653,7 +652,7 @@ end
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
-function class(Name, Options, Spec, Private, Custom)
+global function class(Name, Options, Spec, Private, Custom)
    verbose('Processing class ' .. tostring(Name))
 
    Options = checkOptions(Options)
@@ -671,7 +670,7 @@ function class(Name, Options, Spec, Private, Custom)
    end
    class.references = { }
 
-   glActiveRefs = class.references
+   global glActiveRefs = class.references
 
    if type(class.src) is 'string' then class.src = { class.src } end -- Convert string to an array of strings
 
@@ -692,7 +691,7 @@ function class(Name, Options, Spec, Private, Custom)
 
    -- Process methods and fields defined in the source code (if available)
 
-   local cdef = parseClassFields(class, Spec)
+   cdef = parseClassFields(class, Spec)
 
    if not table.empty(Options.references) then
       for _, v in pairs(Options.references) do
@@ -713,20 +712,19 @@ function class(Name, Options, Spec, Private, Custom)
    if class.src then
       -- Process -METHOD- and -FIELD- definitions
 
-      local path
       for _, path in pairs(class.src) do
          if glFeedback is 'verbose' then
             print()
             print('Class file: ' .. glFDLFolder .. path)
          end
 
-         local content = file.readAll(glFDLFolder .. path)
+         content = file.readAll(glFDLFolder .. path)
          content = content:gsub('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
-         local patterns = {
+         patterns = {
             'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
             'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
          }
@@ -744,7 +742,7 @@ function class(Name, Options, Spec, Private, Custom)
 
          -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
-         local extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
+         extracted_content = (string.match(content, '^/%*+(.-)%*+/') ?? '') -- The first line might start with a comment.
          for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
             extracted_content = extracted_content .. '\n' .. extract
          end
@@ -782,8 +780,8 @@ function class(Name, Options, Spec, Private, Custom)
    -- Export method definitions for a class
 
    if class.methods then
-      local pfx  = class.methodPrefix
-      local lpfx = pfx:lower()
+      pfx  = class.methodPrefix
+      lpfx = pfx:lower()
 
       if glFeedback is 'verbose' then
          print('Generating ' .. #class.methods .. ' methods.')
@@ -791,8 +789,8 @@ function class(Name, Options, Spec, Private, Custom)
 
       for k, method in ipairs(class.methods) do
          if method.input?? then
-            local t = { }
-            local i = 1
+            t = { }
+            i = 1
             for str in string.gmatch(method.input, '([^;]+)') do
                t[i] = str:trim()
                i++
@@ -800,7 +798,7 @@ function class(Name, Options, Spec, Private, Custom)
 
             method.params = { }
             for _, v in ipairs(t) do
-               local param = { }
+               param = { }
                param.type, param.name = v:match('^(.+)%s([^%s]+)$')
                cType(param, 'Method ' .. method.name)
                table.insert(method.params, param)
@@ -815,8 +813,8 @@ function class(Name, Options, Spec, Private, Custom)
             method.funcName ..= Name
          end
 
-         local function pName(Param)
-            local name = Param.name
+         function pName(Param)
+            name = Param.name
             if (Param.type is 'OBJECTID') or (Param.type is 'MEMORYID') then
                if name:sub(-2) != 'ID' then
                   name ..= 'ID'
@@ -825,10 +823,10 @@ function class(Name, Options, Spec, Private, Custom)
             return name
          end
 
-         local struct_params = '' -- struct parameter types & names
-         local values = '' -- Parameter values
-         local results = false
-         local params = ''
+         struct_params = '' -- struct parameter types & names
+         values = '' -- Parameter values
+         results = false
+         params = ''
          if method.params then
             for _, param in ipairs(method.params) do
                struct_params ..= param.basicType .. ' ' .. pName(param) .. '; '
@@ -853,18 +851,18 @@ function class(Name, Options, Spec, Private, Custom)
             end
          end
 
-         local action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
+         action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
          if method.params and #method.params > 0 then
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
          else
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
          end
 
-         local name = method.name:decap()
+         name = method.name:decap()
          if name is 'delete' then name = 'del' end -- C++ keyword check
 
-         local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
-         local args = 'nullptr'
+         inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
+         args = 'nullptr'
 
          if method.params and #method.params > 0 then
             inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
@@ -922,7 +920,7 @@ function class(Name, Options, Spec, Private, Custom)
    -- Output internal C definitions for class methods & actions, if an output file has been specified.
 
    if Options.output?? then
-      local mdef = ''
+      mdef = ''
       if not table.empty(class.methods) then
          for k, m in ipairs(class.methods) do
             if not table.empty(m.params) then
@@ -952,7 +950,7 @@ function class(Name, Options, Spec, Private, Custom)
          mdef ..= "   { AC::NIL, nullptr }\n};\n\n"
       end
 
-      local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
+      file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
       file.acWrite("// Auto-generated by idl-c.fluid\n\n")
       if cdef?? then file.acWrite(cdef) end
       if mdef?? then file.acWrite(mdef) end
@@ -964,14 +962,14 @@ end
 -- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
 
-function functionNames(Prefix, ...)
-   glFunctionPrefix = (Prefix ?? '')
+global function functionNames(Prefix, ...)
+   global glFunctionPrefix = Prefix ?? ''
    for _, fname in ipairs({...}) do
       if fname:find('[^%w]') then
          error('Invalid function name "' .. fname .. '"')
       end
 
-      local func = {
+      func = {
          name  = fname,
          def   = '   void (*_' .. fname .. ')(void);',
          macro = function() -- Default macro, to be overridden by documented function
@@ -994,8 +992,8 @@ end
 -- FDL Function
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
-function methods(ClassName, Prefix, Methods)
-   verbose('Processing methods for class ' .. tostring(ClassName))
+global function methods(ClassName, Prefix, Methods)
+   verbose('Processing ' .. #Methods .. ' methods for class ' .. tostring(ClassName))
 
    local class = registerClass(ClassName)
    class.methodPrefix = Prefix
@@ -1011,6 +1009,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 
-function c_insert(Raw)
+global function c_insert(Raw)
    output(Raw)
 end

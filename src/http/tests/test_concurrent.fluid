@@ -152,9 +152,9 @@ end
 
    return {
       tests = {
-         'testParallelRequests',
-         'testConcurrentPOST',
-         'testHighLoadRequests'
+         testParallelRequests,
+         testConcurrentPOST,
+         testHighLoadRequests
       },
       init = function(Path)
          glServer = hslib.start({

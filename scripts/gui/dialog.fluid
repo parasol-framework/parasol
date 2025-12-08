@@ -21,7 +21,7 @@ local ICONS = {
    info      = 'items/info'
 }
 
-   gui ?= { }
+   if not gui then global gui = { } end
    gui.dialog ?= { }
 
 local function defaultIcon(self)

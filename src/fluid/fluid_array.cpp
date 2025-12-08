@@ -75,7 +75,7 @@ static int safe_type_size(int FieldType) {
 void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, int Total, bool Cache)
 {
    pf::Log log(__FUNCTION__);
-   auto Self = Lua->Script;
+   auto Self = Lua->script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
    FieldType &= (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_INT|FD_WORD|FD_BYTE|FD_CPP);
@@ -240,7 +240,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
 
 static int array_new(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto prv = (prvFluid *)Lua->script->ChildPrivate;
    if (auto type = lua_tostring(Lua, 2)) {
       pf::Log log(__FUNCTION__);
 

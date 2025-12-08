@@ -271,31 +271,6 @@ static bool test_string_byte_default_start(pf::Log& Log)
    return false;
 }
 
-static bool test_unpack_default_range(pf::Log& Log)
-{
-   LuaStateHolder Holder;
-   lua_State* L = Holder.get();
-   if (not L) {
-      Log.error("failed to create Lua state");
-      return false;
-   }
-   luaL_openlibs(L);
-
-   std::string Error;
-   if (not run_lua_test(L, "return unpack({10, 20, 30})", Error)) {
-      Log.error("test failed: %s", Error.c_str());
-      return false;
-   }
-
-   lua_Number A = lua_tonumber(L, -3);
-   lua_Number B = lua_tonumber(L, -2);
-   lua_Number C = lua_tonumber(L, -1);
-   if (A IS 10 and B IS 20 and C IS 30) return true;
-
-   Log.error("expected 10, 20, 30, got %g, %g, %g", A, B, C);
-   return false;
-}
-
 static bool test_table_concat_default_range(pf::Log& Log)
 {
    LuaStateHolder Holder;
@@ -453,14 +428,13 @@ static bool test_lj_tab_len_returns_element_count(pf::Log& Log)
 
 extern void indexing_unit_tests(int& Passed, int& Total)
 {
-   constexpr std::array<TestCase, 13> Tests = { {
+   constexpr std::array<TestCase, 12> Tests = { {
       { "array_first_element_access", test_array_first_element_access },
       { "table_length_operator", test_table_length_operator },
       { "ipairs_starting_index", test_ipairs_starting_index },
       { "table_insert_position", test_table_insert_position },
       { "string_find_returns_correct_index", test_string_find_returns_correct_index },
       { "string_byte_default_start", test_string_byte_default_start },
-      { "unpack_default_range", test_unpack_default_range },
       { "table_concat_default_range", test_table_concat_default_range },
       { "table_sort_operates_on_sequence", test_table_sort_operates_on_sequence },
       { "empty_table_length", test_empty_table_length },

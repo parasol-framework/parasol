@@ -357,6 +357,11 @@ struct StatementChildCounter {
       return Payload.values.size();
    }
 
+   [[nodiscard]] inline size_t operator()(const GlobalDeclStmtPayload &Payload) const
+   {
+      return Payload.values.size();
+   }
+
    [[nodiscard]] inline size_t operator()(const LocalFunctionStmtPayload &Payload) const
    {
       return Payload.function ? block_child_count(Payload.function->body) : 0;
@@ -461,6 +466,7 @@ RangeExprPayload::~RangeExprPayload() = default;
 IfClause::~IfClause() = default;
 AssignmentStmtPayload::~AssignmentStmtPayload() = default;
 LocalDeclStmtPayload::~LocalDeclStmtPayload() = default;
+GlobalDeclStmtPayload::~GlobalDeclStmtPayload() = default;
 LocalFunctionStmtPayload::~LocalFunctionStmtPayload() = default;
 FunctionStmtPayload::~FunctionStmtPayload() = default;
 IfStmtPayload::~IfStmtPayload() = default;

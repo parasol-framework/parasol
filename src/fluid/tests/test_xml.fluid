@@ -63,7 +63,7 @@ end
 
    return {
       tests = {
-        'testBasic', 'testDuplicates'
+        testBasic, testDuplicates
       },
       init = nil,
       cleanup = nil

@@ -12,7 +12,7 @@ end
 
 return {
    tests = {
-      'testMultiplicationBasic',
-      'testDivisionBasic'
+      testMultiplicationBasic,
+      testDivisionBasic
    }
 }

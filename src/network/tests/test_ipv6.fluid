@@ -225,9 +225,9 @@ end
 
    return {
       tests = {
-         'testIPv6AddressParsing',
-         'testIPv6Utilities',
-         'testIPv6DNSResolution',
-         'testIPv6ServerBinding'
+         testIPv6AddressParsing,
+         testIPv6Utilities,
+         testIPv6DNSResolution,
+         testIPv6ServerBinding
       }
    }

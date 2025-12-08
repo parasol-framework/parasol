@@ -11,7 +11,7 @@ Gradient Demonstration
    local win, viewport, gradient, gradientVP, rect
    local focalEllipse, contourShape, uiEvent
 
-   local LORES_COUNT = 10
+   LORES_COUNT = 10
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -42,8 +42,8 @@ function selectGradient(Text)
       gradient.x1 = 0
       gradient.x2 = 2.0
       uiEvent = function(ev)
-         local x = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
-         local y = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+         x = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
+         y = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
          gradient.x1 = x > y ? x * gradient.x2 :> y * gradient.x2
       end
    elseif Text is 'Contour Shape' then
@@ -53,8 +53,8 @@ function selectGradient(Text)
       gradient.x1 = 0.9
       gradient.x2 = 1.0
       uiEvent = function(ev)
-         local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
-         local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+         xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
+         yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
          gradient.x1 = xscale > yscale ? xscale :> yscale
       end
    elseif Text is 'Linear' then
@@ -98,7 +98,7 @@ function buildScene()
       fill='url(#gradient)', spacing=140, loopLimit=6, visibility='hidden'
    })
 
-   local cmbGradient = gui.combobox({
+   cmbGradient = gui.combobox({
       target = viewport,
       label  = 'Gradient:',
       text   = 'Radial',
@@ -119,7 +119,7 @@ function buildScene()
       }
    })
 
-   local cmbSpread = gui.combobox({
+   cmbSpread = gui.combobox({
       target = viewport,
       label  = 'Spread Method:',
       text   = 'Reflect',
@@ -142,7 +142,7 @@ function buildScene()
       }
    })
 
-   local cmbColours = gui.combobox({
+   cmbColours = gui.combobox({
       target = viewport,
       label  = 'Colour Map:',
       text   = 'Magma',
@@ -159,7 +159,7 @@ function buildScene()
       }
    })
 
-   local slResolution = gui.slider({
+   slResolution = gui.slider({
       target = viewport,
       label  = 'Resolution:',
       value  = 1,
@@ -175,7 +175,7 @@ function buildScene()
       }
    })
 
-   local iSave = gui.button({
+   iSave = gui.button({
       target  = viewport,
       xOffset = win.margins.right,
       y       = 10,
@@ -194,16 +194,16 @@ function buildScene()
                feedback    = function(Dialog, Path, Files)
                   Files ?? return
 
-                  local target_file = Path .. Files[1].filename
+                  target_file = Path .. Files[1].filename
 
-                  local bmp = gradientVP.buffer
+                  bmp = gradientVP.buffer
                   if bmp then
-                     local pic = obj.new('picture', {
+                     pic = obj.new('picture', {
                         width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
                         flags = 'NEW'
                      })
                      bmp.acCopyData(pic.bitmap)
-                     local file = obj.new('file', { flags='NEW|WRITE', path=target_file })
+                     file = obj.new('file', { flags='NEW|WRITE', path=target_file })
                      pic.acSaveImage(file)
                   end
                end
@@ -226,9 +226,9 @@ end
 
    buildScene()
 
-   local button_held = false
+   button_held = false
    check(gradientVP.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON, function(Viewport, Events)
-      local ev = Events
+      ev = Events
       while ev do
          if ev.type is JET_ABS_XY then
             if button_held is 1 then

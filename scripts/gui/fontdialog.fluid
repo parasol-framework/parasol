@@ -6,11 +6,11 @@ Documentation is available in the Parasol Wiki.
    require 'gui/listview'
    include 'display'
 
-   gui ?= { }
+   if not gui then global gui = { } end
    gui.dialog ?= { }
 
 gui.dialog.font = function(Options)
-   local mFont = mod.load('font')
+   if not mFont then global mFont = mod.load('font') end
 
    local self = { -- Public variables
       windowID    = nil,
@@ -33,7 +33,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 Ĉras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
 ]]
 
-   local lWindow, lFonts, vwSize, vwStyle, vwFace
+   local lWindow, lFonts, vwSize, vwStyle, vwFace, lFontsSorted
    local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
    local lOptions   = Options
    local lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }

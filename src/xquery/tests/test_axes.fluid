@@ -61,10 +61,10 @@ function testAttributeAxisHandling()
    })
 
    local err, attrValue = xml.mtEvaluate('/root/item/@category')
-   assert(attrValue is 'fiction', '@category should retrieve the category attribute value, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'fiction', '@category should retrieve the category attribute value, got ' .. tostring(attrValue))
 
    local err, attrValue = xml.mtEvaluate('/root/item/attribute::category')
-   assert(attrValue is 'fiction', 'attribute::category should expose the same value as @category, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'fiction', 'attribute::category should expose the same value as @category, got ' .. tostring(attrValue))
 
    local attributeNames = {}
    local err = xml.mtSearch('/root/item/attribute::*', function(XML, TagID, Attrib)
@@ -85,7 +85,7 @@ function testAttributeAxisHandling()
    assert(errAttr is ERR_Okay, '@* should support function predicates on attribute names: ' .. mSys.GetErrorMsg(errAttr))
 
    local err, attrValue = xml.mtEvaluate('/root/item/@*[starts-with(name(), "data")]')
-   assert(attrValue is 'x', 'starts-with(name()) should retrieve the data-extra attribute value, got ' .. nz(attrValue, 'NIL'))
+   assert(attrValue is 'x', 'starts-with(name()) should retrieve the data-extra attribute value, got ' .. tostring(attrValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -103,13 +103,13 @@ function testAttributeAxisContinuation()
    assert(errItem is ERR_Okay, 'Parent axis should resolve owning element from attribute context: ' .. mSys.GetErrorMsg(errItem))
 
    local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
-   assert(errAttrib is ERR_Okay and value is 'item-b', 'Attribute parent navigation should locate id="item-b", got ' .. nz(value, 'NIL'))
+   assert(errAttrib is ERR_Okay and value is 'item-b', 'Attribute parent navigation should locate id="item-b", got ' .. tostring(value))
 
    local errSection, sectionId = xml.mtSearch('//@code/ancestor::section[@id="section-2"]')
    assert(errSection is ERR_Okay, 'Ancestor axis should operate on attribute contexts: ' .. mSys.GetErrorMsg(errSection))
 
    local errSectionAttrib, sectionValue = xml.mtGetAttrib(sectionId, 'id')
-   assert(errSectionAttrib is ERR_Okay and sectionValue is 'section-2', 'Ancestor traversal from attribute should reach section-2, got ' .. nz(sectionValue, 'NIL'))
+   assert(errSectionAttrib is ERR_Okay and sectionValue is 'section-2', 'Ancestor traversal from attribute should reach section-2, got ' .. tostring(sectionValue))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ function testTextNodeAxes()
 
    local errTag, textTag = xml.mtGetTag(textId)
    assert(errTag is ERR_Okay and textTag.attribs[0].value is ' Second ',
-      'Whitespace in text nodes should be preserved when navigating axes, got ' .. nz(textTag.attribs[0].value, 'NIL'))
+      'Whitespace in text nodes should be preserved when navigating axes, got ' .. tostring(textTag.attribs[0].value))
 
    err, textId = xml.mtSearch('/root/descendant::text()')
    assert(err is ERR_Okay, 'Descendant axis should include text nodes produced by element content')
@@ -146,7 +146,7 @@ function testTextNodeAxes()
 
    errTag, textTag = xml.mtGetTag(textId)
    assert(errTag is ERR_Okay and textTag.attribs[0].value is ' Second ',
-      'preceding-sibling::text() should expose the whitespace-preserved node, got ' .. nz(textTag.attribs[0].value, 'NIL'))
+      'preceding-sibling::text() should expose the whitespace-preserved node, got ' .. tostring(textTag.attribs[0].value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -162,14 +162,14 @@ function testCommentNodeType()
 
    local errTag, commentTag = xml.mtGetTag(commentId)
    assert(errTag is ERR_Okay and commentTag.attribs[0].value is ' marker ',
-       'comment() should expose the comment content, got ' .. nz(commentTag.attribs[0].value, 'NIL'))
+       'comment() should expose the comment content, got ' .. tostring(commentTag.attribs[0].value))
 
    err, commentId = xml.mtSearch('/root/item/following-sibling::comment()')
    assert(err is ERR_Okay, 'comment() on following-sibling axis should locate subsequent comments, err=' .. mSys.GetErrorMsg(err))
 
    errTag, commentTag = xml.mtGetTag(commentId)
    assert(errTag is ERR_Okay and commentTag.attribs[0].value is ' trailer ',
-       'following-sibling::comment() should expose trailing comment, got ' .. nz(commentTag.attribs[0].value, 'NIL'))
+       'following-sibling::comment() should expose trailing comment, got ' .. tostring(commentTag.attribs[0].value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -456,12 +456,12 @@ end
 
 return {
    tests = {
-      'testParentAxisNavigation', 'testXPathAxes', 'testAttributeAxisHandling', 'testAttributeAxisContinuation',
-      'testUnionOperator', 'testTextNodeAxes',
-      'testCommentNodeType', 'testProcessingInstructionNodeType',
-      'testGenericNodeType', 'testNamespaceAxis',
-      'testXPathForwardAxes', 'testXPathReverseAxes', 'testAncestorOrSelfAxis',
-      'testXPathAxisCombinations', 'testSiblingFilteringForNumericPredicates'
+      testParentAxisNavigation, testXPathAxes, testAttributeAxisHandling, testAttributeAxisContinuation,
+      testUnionOperator, testTextNodeAxes,
+      testCommentNodeType, testProcessingInstructionNodeType,
+      testGenericNodeType, testNamespaceAxis,
+      testXPathForwardAxes, testXPathReverseAxes, testAncestorOrSelfAxis,
+      testXPathAxisCombinations, testSiblingFilteringForNumericPredicates
    },
    init = function(ScriptFolder)
    end,

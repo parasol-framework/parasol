@@ -434,6 +434,82 @@ LJLIB_CF(debug_traceback)
 }
 
 //********************************************************************************************************************
+// Returns the locality of a variable: "local", "upvalue", "global", or "nil".
+// Usage: debug.locality(name [, level])
+//   name  - the variable name as a string
+//   level - optional stack level (default 1 = caller's frame)
+
+LJLIB_CF(debug_locality)
+{
+   int arg;
+   lua_State* L1 = getthread(L, &arg);
+
+   // Check for nil or missing argument
+   if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
+      lua_pushliteral(L, "nil");
+      return 1;
+   }
+
+   const char* varname = luaL_checkstring(L, arg + 1);
+   int level = luaL_optint(L, arg + 2, 1);
+
+   // Get the stack frame at the specified level
+   lua_Debug ar;
+   if (!lua_getstack(L1, level, &ar)) {
+      // Invalid level - check global table only
+      lua_getglobal(L1, varname);
+      if (lua_isnil(L1, -1)) {
+         lua_pop(L1, 1);
+         lua_pushliteral(L, "nil");
+      }
+      else {
+         lua_pop(L1, 1);
+         lua_pushliteral(L, "global");
+      }
+      return 1;
+   }
+
+   // Search local variables in the frame
+   int slot = 1;
+   const char* name;
+   while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
+      lua_pop(L1, 1);  // Pop the value
+      if (strcmp(name, varname) == 0) {
+         lua_pushliteral(L, "local");
+         return 1;
+      }
+      slot++;
+   }
+
+   // Get the function at this level to check upvalues
+   if (lua_getinfo(L1, "f", &ar)) {
+      int uv = 1;
+      while ((name = lua_getupvalue(L1, -1, uv)) != nullptr) {
+         lua_pop(L1, 1);  // Pop the value
+         if (strcmp(name, varname) == 0) {
+            lua_pop(L1, 1);  // Pop the function
+            lua_pushliteral(L, "upvalue");
+            return 1;
+         }
+         uv++;
+      }
+      lua_pop(L1, 1);  // Pop the function
+   }
+
+   // Check global table
+   lua_getglobal(L1, varname);
+   if (lua_isnil(L1, -1)) {
+      lua_pop(L1, 1);
+      lua_pushliteral(L, "nil");
+   }
+   else {
+      lua_pop(L1, 1);
+      lua_pushliteral(L, "global");
+   }
+   return 1;
+}
+
+//********************************************************************************************************************
 
 #include "lj_libdef.h"
 

@@ -5,16 +5,11 @@
 
    require 'io/filesearch'
 
-   local proc = processing.new(5.0)
+   global proc = processing.new(5.0)
+   global glPicsProcessed = 0
 
-   local mGfx
-   local ex = catch(function()
-      mGfx = mod.load('display') -- Required for the 'icons:' volume
-   end)
-
-   if ex then
-      print('Display module is disabled in this build, skipping test')
-      return { }
+   if not mGfx then
+      global mGfx = mod.load('display') -- Required for the 'icons:' volume
    end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -45,7 +40,7 @@ function picProcessed(ActionID, pic, Error, Key)
 
    glPicsProcessed++
 
-   if (glPicsProcessed >= #glPictures) then
+   if glPicsProcessed >= #glPictures then
       --print('All pictures have been processed, exiting now.')
       proc.signal()
    end
@@ -86,7 +81,7 @@ end
 
    return {
       init = function()
-         glPictures = { }
+         global glPictures = { }
 
          local folder = 'icons:programs/'
          local list = ''
@@ -104,5 +99,5 @@ end
 
          if #glPictures is 0 then error('Failed to find any SVG files.') end
       end,
-      tests = { 'initPictures', 'testParallel', 'freePictures', 'initPictures', 'testSequential', 'freePictures' }
+      tests = { initPictures, testParallel, freePictures, initPictures, testSequential, freePictures }
    }

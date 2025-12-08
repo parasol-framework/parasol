@@ -4,8 +4,8 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   mGfx ?= mod.load('display')
-   mVec ?= mod.load('vector')
+   if not mGfx then global mGfx = mod.load('display') end
+   if not mVec then global mVec = mod.load('vector') end
 
    local lItemCounter   = 1
 
@@ -505,7 +505,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       BuildUI(vw)
       cursorActivity() -- Reset the cursor
-      vw?.border.acMoveToFront()
+      vw?.border?.acMoveToFront()
       vw.scene.surface.mtScheduleRedraw()
    end
 

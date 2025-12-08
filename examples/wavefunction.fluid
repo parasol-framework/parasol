@@ -7,7 +7,7 @@ WaveFunction Demonstration
    require 'gui/slider'
 
    local win, viewport, waveFunction, waveVP, rect, filter, text
-   local config = { n = 3, l = 2, m = 1, scale = 0.2 }
+   config = { n = 3, l = 2, m = 1, scale = 0.2 }
 
 function updateText()
    text.string = 'L: ' .. config.l .. ' < N\nM: -L >= ' .. config.m .. ' <= L\nN: ' .. config.n .. '\nScale: ' .. string.format('%.2f', config.scale)
@@ -37,7 +37,7 @@ end
    rect = waveVP.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', filter='url(#wavefunction)' })
    text = waveVP.new('VectorText', { x=10, y=30, string='N', fill='white', face='Source Sans Pro', fontSize=14 })
 
-   local cmbColours = gui.combobox({
+   cmbColours = gui.combobox({
       target = viewport,
       label  = 'Colour Map:',
       text   = 'Plasma',
@@ -54,7 +54,7 @@ end
       }
    })
 
-   local slL = gui.slider({
+   slL = gui.slider({
       target = viewport,
       label  = 'L:',
       value  = waveFunction.l,
@@ -74,7 +74,7 @@ end
       }
    })
 
-   local slM = gui.slider({
+   slM = gui.slider({
       target = viewport,
       label  = 'M:',
       value  = waveFunction.m,
@@ -94,7 +94,7 @@ end
       }
    })
 
-   local slN = gui.slider({
+   slN = gui.slider({
       target = viewport,
       label  = 'N:',
       value  = waveFunction.n,
@@ -114,7 +114,7 @@ end
       }
    })
 
-   local slScale = gui.slider({
+   slScale = gui.slider({
       target = viewport,
       label  = 'Scale:',
       value  = waveFunction.scale,

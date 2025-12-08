@@ -6,7 +6,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui'
    include 'display'
 
-   mGfx ?= mod.load('display')
+   if not mGfx then global mGfx = mod.load('display') end
 
 local DEFAULT_WIDTH  = 600
 local DEFAULT_HEIGHT = 400

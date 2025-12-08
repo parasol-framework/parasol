@@ -70,8 +70,8 @@ end
 
 return {
    tests = {
-      'testGeneralDurationComponents',
-      'testSpecificDurationTypes'
+      testGeneralDurationComponents,
+      testSpecificDurationTypes
    },
    init = function(ScriptFolder)
    end,

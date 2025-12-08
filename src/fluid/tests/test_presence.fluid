@@ -331,16 +331,16 @@ end
 
 return {
    tests = {
-      'testNil', 'testFalse', 'testZero', 'testEmptyString',
-      'testTruthyString', 'testTruthyNumber', 'testTrue', 'testInConditional',
-      'testInExpression', 'testChaining', 'testParentheses',
-      'testTableAccess', 'testRuntime', 'testConstants', 'testAgainstNz',
-      'testReturnsBool', 'testChainedAccess', 'testNegativeNumbers', 'testFunctionCalls',
-      'testBytecodeSemanticsTruthyString', 'testBytecodeSemanticsTruthyNumber',
-      'testBytecodeSemanticsFalseyString', 'testBytecodeSemanticsFalseyNumber',
-      'testBytecodeSemanticsTypeMismatchStringToNumber', 'testBytecodeSemanticsTypeMismatchNumberToString',
-      'testBytecodeSemanticsNil', 'testBytecodeSemanticsFalse',
-      'testBytecodeSemanticsAllTruthyValues', 'testBytecodeSemanticsAllFalseyValues',
-      'testFlags', 'testShortCircuit'
+      testNil, testFalse, testZero, testEmptyString,
+      testTruthyString, testTruthyNumber, testTrue, testInConditional,
+      testInExpression, testChaining, testParentheses,
+      testTableAccess, testRuntime, testConstants, testAgainstNz,
+      testReturnsBool, testChainedAccess, testNegativeNumbers, testFunctionCalls,
+      testBytecodeSemanticsTruthyString, testBytecodeSemanticsTruthyNumber,
+      testBytecodeSemanticsFalseyString, testBytecodeSemanticsFalseyNumber,
+      testBytecodeSemanticsTypeMismatchStringToNumber, testBytecodeSemanticsTypeMismatchNumberToString,
+      testBytecodeSemanticsNil, testBytecodeSemanticsFalse,
+      testBytecodeSemanticsAllTruthyValues, testBytecodeSemanticsAllFalseyValues,
+      testFlags, testShortCircuit
    }
 }

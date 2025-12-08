@@ -4,12 +4,12 @@ A basic demonstration of receiving keyboard input from a viewport.
 
    require 'gui/window'
 
-   local win = gui.window({ title='Keyboard Example', insideWidth=400, insideHeight=200,
+   win = gui.window({ title='Keyboard Example', insideWidth=400, insideHeight=200,
       maxWidth=600, maxHeight=300, minWidth=400, minHeight=200 })
 
-   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
+   viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
-   local text = viewport.new('VectorText', {
+   text = viewport.new('VectorText', {
       string='Press a key', face='Noto Sans', fontSize=60, y=50, x=10, fill='rgb(0,0,0)'
    })
 

@@ -154,12 +154,12 @@ end
 
    return {
       tests = {
-         'testPathExtract', 'testFolderScan', 'testScanDir',
-         'testStringify', 'testScanVolumes', 'testFileIcons',
-         'testAnalyseVolume', 'testAnalyseFile'
+         testPathExtract, testFolderScan, testScanDir,
+         testStringify, testScanVolumes, testFileIcons,
+         testAnalyseVolume, testAnalyseFile
       },
       init = function()
-         glRawPath = 'user:test.out'
+         global glRawPath = 'user:test.out'
          local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
          out.acWrite('ABCD', 4)
          out = nil

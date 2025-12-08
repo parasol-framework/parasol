@@ -225,14 +225,14 @@ end
 return {
    tests = {
       -- Run all tests
-      'testFilterKeepAll', 'testFilterDropFirst', 'testFilterDropFirstTwo', 'testFilterKeepFirstOnly',
-      'testFilterDropFirstKeepSecondDropRest', 'testFilterKeepValues234Only', 'testFilterKeepSecondAndFourthOnwards',
-      'testEmptyFilterDropsAll', 'testFilterWithMethodCalls', 'testFilterWithThreeReturnValues', 'testFilterFirstAndSecond',
+      testFilterKeepAll, testFilterDropFirst, testFilterDropFirstTwo, testFilterKeepFirstOnly,
+      testFilterDropFirstKeepSecondDropRest, testFilterKeepValues234Only, testFilterKeepSecondAndFourthOnwards,
+      testEmptyFilterDropsAll, testFilterWithMethodCalls, testFilterWithThreeReturnValues, testFilterFirstAndSecond,
       -- Edge case tests
-      'testFilterMorePositionsThanValues', 'testFilterExactPositions', 'testFilterSingleValue', 'testFilterNoValues',
-      'testNestedFilters', 'testFilterOnFilteredResult', 'testLongUnderscorePattern', 'testAlternatingPattern',
-      'testFilterMixedTypes', 'testFilterPreservesReferences',
+      testFilterMorePositionsThanValues, testFilterExactPositions, testFilterSingleValue, testFilterNoValues,
+      testNestedFilters, testFilterOnFilteredResult, testLongUnderscorePattern, testAlternatingPattern,
+      testFilterMixedTypes, testFilterPreservesReferences,
       -- Error case tests
-      'testErrorInvalidPatternCharacter', 'testErrorFilterOnNonCall', 'testErrorFilterOnVariable'
+      testErrorInvalidPatternCharacter, testErrorFilterOnNonCall, testErrorFilterOnVariable
    }
 }

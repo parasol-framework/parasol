@@ -48,7 +48,7 @@
 LJLIB_ASM(assert)      LJLIB_REC(.)
 {
    lj_lib_checkany(L, 1);
-   if (L->top == L->base + 1) lj_err_caller(L, ErrMsg::ASSERT);
+   if (L->top IS L->base + 1) lj_err_caller(L, ErrMsg::ASSERT);
    else if (is_any_type<LJ_TSTR, LJ_TNUMX>(L->base + 1)) lj_err_callermsg(L, strdata(lj_lib_checkstr(L, 2)));
    else lj_err_run(L);
    return FFH_UNREACHABLE;
@@ -99,8 +99,7 @@ LJLIB_ASM(type)      LJLIB_REC(.)
 //********************************************************************************************************************
 // Base library: iterators
 
-// This solves a circular dependency problem -- change FF_next_N as needed.
-static_assert((int)FF_next == FF_next_N);
+static_assert((int)FF_next IS FF_next_N); // This solves a circular dependency problem -- change FF_next_N as needed.
 
 LJLIB_ASM(next) LJLIB_REC(.) // Use of '.' indicates the function name in the recorder is unchanged
 {
@@ -122,9 +121,11 @@ static int ffh_pairs(lua_State* L, MMS mm)
    }
    else {
       LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
-      copyTV(L, o - 1, o); o--;
+      copyTV(L, o - 1, o); 
+      o--;
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
-      if (mm == MM_pairs) setnilV(o + 1); else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
+      if (mm IS MM_pairs) setnilV(o + 1); 
+      else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
    }
 }
@@ -166,8 +167,7 @@ LJLIB_ASM(setmetatable)      LJLIB_REC(.)
 {
    GCtab* t = lj_lib_checktab(L, 1);
    GCtab* mt = lj_lib_checktabornil(L, 2);
-   if (!tvisnil(lj_meta_lookup(L, L->base, MM_metatable)))
-      lj_err_caller(L, ErrMsg::PROTMT);
+   if (!tvisnil(lj_meta_lookup(L, L->base, MM_metatable))) lj_err_caller(L, ErrMsg::PROTMT);
    setgcref(t->metatable, obj2gco(mt));
    if (mt) { lj_gc_objbarriert(L, t, mt); }
    settabV(L, L->base - 2, t);
@@ -287,7 +287,7 @@ LJLIB_CF(__filter)      LJLIB_REC(.)
 LJLIB_ASM(tonumber)      LJLIB_REC(.)
 {
    int32_t base = lj_lib_optint(L, 2, 10);
-   if (base == 10) {
+   if (base IS 10) {
       TValue* o = lj_lib_checkany(L, 1);
       if (lj_strscan_numberobj(o)) {
          copyTV(L, L->base - 2, o);
@@ -300,7 +300,7 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
          if (ctype_isenum(ct->info)) ct = ctype_child(cts, ct);
          if (ctype_isnum(ct->info) or ctype_iscomplex(ct->info)) {
             if (LJ_DUALNUM and ctype_isinteger_or_bool(ct->info) &&
-               ct->size <= 4 and !(ct->size == 4 and (ct->info & CTF_UNSIGNED))) {
+               ct->size <= 4 and !(ct->size IS 4 and (ct->info & CTF_UNSIGNED))) {
                int32_t i;
                lj_cconv_ct_tv(cts, ctype_get(cts, CTID_INT32), (uint8_t*)&i, o, 0);
                setintV(L->base - 2, i);
@@ -320,13 +320,13 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
       unsigned long ul;
       LJ_CHECK_RANGE(L, 2, base, 2, 36, ErrMsg::BASERNG);
       while (isspace((unsigned char)(*p))) p++;
-      if (*p == '-') { p++; neg = 1; }
-      else if (*p == '+') { p++; }
+      if (*p IS '-') { p++; neg = 1; }
+      else if (*p IS '+') { p++; }
       if (isalnum((unsigned char)(*p))) {
          ul = strtoul(p, &ep, base);
          if (p != ep) {
             while (isspace((unsigned char)(*ep))) ep++;
-            if (*ep == '\0') {
+            if (*ep IS '\0') {
                if (LJ_DUALNUM and LJ_LIKELY(ul < 0x80000000u + neg)) {
                   if (neg) ul = (unsigned long)-(long)ul;
                   setintV(L->base - 2, (int32_t)ul);
@@ -346,8 +346,6 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
 }
 
 //********************************************************************************************************************
-// RAII Pattern: Uses StackFrame to ensure L->top is restored if metamethod lookup
-// or string formatting triggers an error, preventing stack inconsistencies.
 
 LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
@@ -368,7 +366,7 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
 }
 
 //********************************************************************************************************************
-//  Base library: throw and catch errors
+// Base library: throw and catch errors
 
 LJLIB_CF(error)
 {
@@ -400,12 +398,12 @@ LJLIB_CF(collectgarbage)
    int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  //  ORDER LUA_GC*
       "\4stop\7restart\7collect\5count\1\377\4step\10setpause\12setstepmul\1\377\11isrunning");
    int32_t data = lj_lib_optint(L, 2, 0);
-   if (opt == LUA_GCCOUNT) {
+   if (opt IS LUA_GCCOUNT) {
       setnumV(L->top, (lua_Number)G(L)->gc.total / 1024.0);
    }
    else {
       int res = lua_gc(L, opt, data);
-      if (opt == LUA_GCSTEP or opt == LUA_GCISRUNNING) setboolV(L->top, res);
+      if (opt IS LUA_GCSTEP or opt IS LUA_GCISRUNNING) setboolV(L->top, res);
       else setintV(L->top, res);
    }
    L->top++;
@@ -420,7 +418,7 @@ LJLIB_CF(newproxy)
 {
    lua_settop(L, 1);
    lua_newuserdata(L, 0);
-   if (lua_toboolean(L, 1) == 0) {  // newproxy(): without metatable.
+   if (lua_toboolean(L, 1) IS 0) {  // newproxy(): without metatable.
       return 1;
    }
    else if (lua_isboolean(L, 1)) {  // newproxy(true): with metatable.
@@ -558,11 +556,11 @@ LJLIB_CF(coroutine_status)
    if (!(L->top > L->base and tvisthread(L->base)))
       lj_err_arg(L, 1, ErrMsg::NOCORO);
    co = threadV(L->base);
-   if (co == L) s = "running";
-   else if (co->status == LUA_YIELD) s = "suspended";
+   if (co IS L) s = "running";
+   else if (co->status IS LUA_YIELD) s = "suspended";
    else if (co->status != LUA_OK) s = "dead";
    else if (co->base > tvref(co->stack) + 1 + 1) s = "normal";
-   else if (co->top == co->base) s = "dead";
+   else if (co->top IS co->base) s = "dead";
    else s = "suspended";
    lua_pushstring(L, s);
    return 1;
@@ -609,7 +607,7 @@ LJLIB_ASM(coroutine_yield)
 static int ffh_resume(lua_State* L, lua_State* co, int wrap)
 {
    if (co->cframe != nullptr or co->status > LUA_YIELD ||
-      (co->status == LUA_OK and co->top == co->base)) {
+      (co->status IS LUA_OK and co->top IS co->base)) {
       ErrMsg em = co->cframe ? ErrMsg::CORUN : ErrMsg::CODEAD;
       if (wrap) lj_err_caller(L, em);
       setboolV(L->base - 2, 0);
@@ -695,7 +693,7 @@ extern int luaopen_base(lua_State* L)
    // NOBARRIER: Table and value are the same.
    GCtab* env = tabref(L->env);
    settabV(L, lj_tab_setstr(L, env, lj_str_newlit(L, "_G")), env);
-   lua_pushliteral(L, LUA_VERSION);  //  top-3.
+   lua_pushliteral(L, "5.2");  //  top-3. // Lua version number, set as _VERSION
    newproxy_weaktable(L);  //  top-2.
    LJ_LIB_REG(L, "_G", base);
    LJ_LIB_REG(L, LUA_COLIBNAME, coroutine);

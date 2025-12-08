@@ -7,40 +7,41 @@ Image Filter Demonstration
    require 'gui/slider'
    require 'gui/button'
 
-   if not mVector then mVector = mod.load('vector') end
+   if not mVec then global mVec = mod.load('vector') end
 
-   local win, viewport, photo, mainVP, rect
-   local transformStyle = 'scale'
-   local glRotate = 0
-   local glScale = 1.0
+   local win, viewport, photo, mainVP, rect, picPhoto, glMatrix
 
-   glSelf = obj.find('self')
-   glPath = glSelf.workingPath
+   transformStyle = 'scale'
+   glRotate = 0
+   glScale = 1.0
+
+   glSelf = <{ obj.find('self') }>
+   glPath = <{ glSelf.workingPath }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
 function selectFilter(Text)
-   if Text == 'Bilinear' then
+   if Text is 'Bilinear' then
       mainVP.scene.sampleMethod = VSM_BILINEAR
-   elseif (Text == 'Bicubic') then
+   elseif (Text is 'Bicubic') then
       mainVP.scene.sampleMethod = VSM_BICUBIC
-   elseif Text == 'Blackman' then
+   elseif Text is 'Blackman' then
       mainVP.scene.sampleMethod = VSM_BLACKMAN
-   elseif Text == 'Sinc' then
+   elseif Text is 'Sinc' then
       mainVP.scene.sampleMethod = VSM_SINC
-   elseif Text == 'Nearest Neighbour' then
+   elseif Text is 'Nearest Neighbour' then
       mainVP.scene.sampleMethod = VSM_NEIGHBOUR
-   elseif Text == 'Spline16' then
+   elseif Text is 'Spline16' then
       mainVP.scene.sampleMethod = VSM_SPLINE16
-   elseif Text == 'Kaiser' then
+   elseif Text is 'Kaiser' then
       mainVP.scene.sampleMethod = VSM_KAISER
-   elseif Text == 'Quadric' then
+   elseif Text is 'Quadric' then
       mainVP.scene.sampleMethod = VSM_QUADRIC
-   elseif Text == 'Gaussian' then
+   elseif Text is 'Gaussian' then
       mainVP.scene.sampleMethod = VSM_GAUSSIAN
-   elseif Text == 'Bessel' then
+   elseif Text is 'Bessel' then
       mainVP.scene.sampleMethod = VSM_BESSEL
-   elseif Text == 'Mitchell' then
+   elseif Text is 'Mitchell' then
       mainVP.scene.sampleMethod = VSM_MITCHELL
    end
    mainVP.scene.surface.mtScheduleRedraw()
@@ -48,28 +49,27 @@ end
 
 function transform()
    if not glMatrix then
-      local err
       err, glMatrix = rect.mtNewMatrix(false)
    end
 
-   mVector.ResetMatrix(glMatrix)
+   mVec.ResetMatrix(glMatrix)
 
-   if transformStyle == 'zoom' then
-      local scaled_size = 1.0 / glScale
-      local half_scale = scaled_size * 0.5
+   if transformStyle is 'zoom' then
+      scaled_size = 1.0 / glScale
+      half_scale = scaled_size * 0.5
       rect.width  = scaled_size
       rect.height = scaled_size
 
-      mVector.Translate(glMatrix, -half_scale, -half_scale)
-      mVector.Rotate(glMatrix, glRotate)
-      mVector.Scale(glMatrix, glScale, glScale)
-      mVector.Translate(glMatrix, half_scale, half_scale)
-      mVector.Translate(glMatrix, 0.5-half_scale, 0.5-half_scale)
+      mVec.Translate(glMatrix, -half_scale, -half_scale)
+      mVec.Rotate(glMatrix, glRotate)
+      mVec.Scale(glMatrix, glScale, glScale)
+      mVec.Translate(glMatrix, half_scale, half_scale)
+      mVec.Translate(glMatrix, 0.5-half_scale, 0.5-half_scale)
    else
-      mVector.Rotate(glMatrix, glRotate, 0.5, 0.5)
-      mVector.Translate(glMatrix, -0.5, -0.5)
-      mVector.Scale(glMatrix, glScale, glScale)
-      mVector.Translate(glMatrix, 0.5, 0.5)
+      mVec.Rotate(glMatrix, glRotate, 0.5, 0.5)
+      mVec.Translate(glMatrix, -0.5, -0.5)
+      mVec.Scale(glMatrix, glScale, glScale)
+      mVec.Translate(glMatrix, 0.5, 0.5)
    end
 
    mainVP.scene.surface.mtScheduleRedraw()
@@ -78,7 +78,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function addPhoto()
-   local photo = viewport.scene.new('VectorImage', {
+   photo = viewport.scene.new('VectorImage', {
       name = 'photo', picture=picPhoto
    })
 
@@ -88,7 +88,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function addPattern()
-   local pattern = viewport.scene.new('VectorPattern', {
+   pattern = viewport.scene.new('VectorPattern', {
       name = 'pattern',
       width = 0.1, height = 0.1,
       units = VUNIT_BOUNDING_BOX,
@@ -127,7 +127,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function addGradient()
-   local pattern = viewport.scene.new('VectorPattern', {
+   pattern = viewport.scene.new('VectorPattern', {
       name = 'pattern_gradient',
       width = 0.1, height = 0.1,
       units = VUNIT_BOUNDING_BOX,
@@ -183,7 +183,7 @@ function buildScene()
 
    rect = mainVP.new('VectorRectangle', { name='rect_viewer', x=0, y=0, width=1, height=1, fill='url(#photo)' })
 
-   local cmbFilter = gui.combobox({
+   cmbFilter = gui.combobox({
       target = viewport,
       label  = 'Filter:',
       text   = 'Bicubic',
@@ -212,7 +212,7 @@ function buildScene()
 
    selectFilter('Bicubic')
 
-   local cmbImageType = gui.combobox({
+   cmbImageType = gui.combobox({
       target = viewport,
       label  = 'Image Type:',
       text   = 'Photo',
@@ -221,13 +221,13 @@ function buildScene()
       items  = { { item='Test Pattern' }, { item='Photo' }, { item='Gradient' } },
       events = {
          activate = function(Widget, Text)
-            if Text == 'Test Pattern' then
+            if Text is 'Test Pattern' then
                rect.fill = 'url(#pattern)'
                transformStyle = 'zoom'
-            elseif Text == 'Photo' then
+            elseif Text is 'Photo' then
                rect.fill = 'url(#photo)'
                transformStyle = 'scale'
-            elseif Text == 'Gradient' then
+            elseif Text is 'Gradient' then
                rect.fill = 'url(#gradient)'
                transformStyle = 'zoom'
             end
@@ -236,7 +236,7 @@ function buildScene()
       }
    })
 
-   local slRotate = gui.slider({
+   slRotate = gui.slider({
       target = viewport,
       label  = 'Rotate:',
       value  = 1,
@@ -252,7 +252,7 @@ function buildScene()
       }
    })
 
-   local slScale = gui.slider({
+   slScale = gui.slider({
       target = viewport,
       label  = 'Scale:',
       value  = 1,

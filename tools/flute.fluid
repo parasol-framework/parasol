@@ -17,6 +17,10 @@ Example usage:
 ]]
 
    require 'common'
+   
+   glFile = arg('file')
+   glTest = arg('test')
+   glSelf = obj.find('self')
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -24,13 +28,13 @@ function runTests()
    glTestTotal = 0
    glTestsPassed = 0
 
-   local err, t = mSys.AnalysePath(glFile)
+   err, t = mSys.AnalysePath(glFile)
    if (err != ERR_Okay) or (t != LOC_FILE) then
       print("The targeted source file doesn't exist: " .. glFile)
       return
    end
 
-   local body = loadFile(glFile)
+   body = loadFile(glFile)
 
    if not body then
       print("The Flute test file did not return a configuration table.  It is either not a Flute script or is misconfigured.")
@@ -43,8 +47,8 @@ function runTests()
    end
 
    if body.init then
-      local folder = file.splitPath(glFile)
-      local tests = body.init(folder)
+      folder = file.splitPath(glFile)
+      tests = body.init(folder)
       -- The init() function can opt to return a customised set of test references at runtime;
       -- useful if the test suite has dependencies on files for example.
       if tests then
@@ -54,26 +58,27 @@ function runTests()
 
    glTestTotal += #body.tests
 
-   local i = 0
+   i = 0
    for _,func in ipairs(body.tests) do
       i++
       skip = false
       local func_name
       if type(func) is "string" then
-         func_name = func
-         print("-- Test " .. i .. ": " .. func .. " --")
-         if (glTest) and (func != glTest) then
+         error('String-based function references are not supported.')
+      elseif type(func) is "function" then
+         func_name = tostring(func)
+         print("-- Test " .. i .. ": " .. func_name .. " --")
+         if glTest and (func_name != glTest) then
             skip = true
          end
-         func = _G[func]
       else
          print(i .. ". <Unnamed>")
       end
 
       if not skip and func then
-         local startTime = mSys.PreciseTime()
-         local status, result = pcall(func)
-         local totalTime = (mSys.PreciseTime() - startTime) / 1000000
+         startTime = mSys.PreciseTime()
+         status, result = pcall(func)
+         totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
          collectgarbage()
 
@@ -114,15 +119,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Unit tests should call logOutput() for the purpose of formally logging output for the current test.
 
-function logOutput(Message)
+global function logOutput(Message)
    print(Message)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
-
-   glFile = arg('file')
-   glTest = arg('test')
-   glSelf = obj.find('self')
 
    if not glFile?? then
       print(glHelp)

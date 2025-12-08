@@ -24,7 +24,7 @@ end
 
 return {
    tests = {
-      'testOptionalGroups',
-      'testNestedOptional'
+      testOptionalGroups,
+      testNestedOptional
    }
 }

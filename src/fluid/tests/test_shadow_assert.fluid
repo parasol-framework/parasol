@@ -131,16 +131,16 @@ end
 
 return {
    tests = {
-      'testAssertPassesNoEval',
-      'testAssertFails',
-      'testAssertDefaultMessage',
-      'testAssertComplexCondition',
-      'testAssertConditionSideEffects',
-      'testMultipleAsserts',
-      'testAssertExpensiveMessage',
-      'testAssertNil',
-      'testAssertZero',
-      'testAssertEmptyString',
-      'testAssertNoReturn'
+      testAssertPassesNoEval,
+      testAssertFails,
+      testAssertDefaultMessage,
+      testAssertComplexCondition,
+      testAssertConditionSideEffects,
+      testMultipleAsserts,
+      testAssertExpensiveMessage,
+      testAssertNil,
+      testAssertZero,
+      testAssertEmptyString,
+      testAssertNoReturn
    }
 }

@@ -7,7 +7,6 @@
 
 // C++ compatibility: provide unambiguous wrappers for overloaded math functions
 extern "C" {
-
    double cmath_log10(double x) { return log10(x); }
    double cmath_exp(double x) { return exp(x); }
    double cmath_sin(double x) { return sin(x); }
@@ -24,5 +23,4 @@ extern "C" {
    double cmath_log2(double x) { return log2(x); }
    double cmath_atan2(double y, double x) { return atan2(y, x); }
    double cmath_ldexp(double x, int exp) { return ldexp(x, exp); }
-
 }

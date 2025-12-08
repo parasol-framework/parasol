@@ -46,6 +46,7 @@ struct TokenDefinition {
    TOKEN_DEF(false,        "false",    true) \
    TOKEN_DEF(for,          "for",      true) \
    TOKEN_DEF(function,     "function", true) \
+   TOKEN_DEF(global,       "global",   true) \
    TOKEN_DEF(if,           "if",       true) \
    TOKEN_DEF(in,           "in",       true) \
    TOKEN_DEF(is,           "is",       true) \

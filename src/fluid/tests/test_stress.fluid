@@ -207,7 +207,7 @@ function testRecursion()
    assert(result is 832040, "Fibonacci calculation failed")
 
    -- Test mutual recursion
-   local function is_even(N)
+   global function is_even(N)
       if N is 0 then
          return true
       else
@@ -215,7 +215,7 @@ function testRecursion()
       end
    end
 
-   function is_odd(N)
+   global function is_odd(N)
       if N is 0 then
          return false
       else
@@ -268,14 +268,14 @@ end
 
    return {
       tests = {
-         'testLongAdditionChain',
-         'testDeepNesting',
-         'testLargeTableConstruction',
-         'testStringConcatenation',
-         'testManyLocalVariables',
-         'testComplexExpressions',
-         'testLoopIntensity',
-         'testRecursion',
-         'testDeferStatements'
+         testLongAdditionChain,
+         testDeepNesting,
+         testLargeTableConstruction,
+         testStringConcatenation,
+         testManyLocalVariables,
+         testComplexExpressions,
+         testLoopIntensity,
+         testRecursion,
+         testDeferStatements
       }
    }

@@ -62,8 +62,8 @@ end
 
 return {
    tests = {
-      'testQNameConstruction',
-      'testNamespaceUtilities'
+      testQNameConstruction,
+      testNamespaceUtilities
    },
    init = function(ScriptFolder)
    end,

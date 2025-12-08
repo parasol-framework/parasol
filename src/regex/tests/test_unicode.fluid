@@ -32,10 +32,10 @@ end
 
 return {
    tests = {
-      'testUnicodeEscapeMatches',
-      'testAstralSymbolDetection',
-      'testUnicodeProperties',
-      'testUnicodeCaseFolding',
-      'testSplitOnUnicodeWhitespace'
+      testUnicodeEscapeMatches,
+      testAstralSymbolDetection,
+      testUnicodeProperties,
+      testUnicodeCaseFolding,
+      testSplitOnUnicodeWhitespace
    }
 }

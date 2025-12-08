@@ -22,6 +22,7 @@ enum class TokenKind : uint16_t {
    TrueToken = TK_true,
    FalseToken = TK_false,
    Function = TK_function,
+   Global = TK_global,
    Local = TK_local,
    EndToken = TK_end,
    ReturnToken = TK_return,
@@ -104,6 +105,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::TrueToken: return "true";
       case TokenKind::FalseToken: return "false";
       case TokenKind::Function: return "function";
+      case TokenKind::Global: return "global";
       case TokenKind::Local: return "local";
       case TokenKind::EndToken: return "end";
       case TokenKind::ReturnToken: return "return";

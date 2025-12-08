@@ -153,25 +153,19 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
    Token current = this->ctx.tokens().current();
    switch (current.kind()) {
-      case TokenKind::Local:       return this->parse_local();
-      case TokenKind::Function:    return this->parse_function_stmt();
-      case TokenKind::ThunkToken:  return this->parse_function_stmt();
-      case TokenKind::If:          return this->parse_if();
-      case TokenKind::WhileToken:  return this->parse_while();
-      case TokenKind::Repeat:      return this->parse_repeat();
-      case TokenKind::For:         return this->parse_for();
-      case TokenKind::DoToken:     return this->parse_do();
-      case TokenKind::DeferToken:  return this->parse_defer();
-      case TokenKind::ReturnToken: return this->parse_return();
-
-      case TokenKind::BreakToken: {
-         return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
-      }
-
-      case TokenKind::ContinueToken: {
-         return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
-      }
-
+      case TokenKind::Local:         return this->parse_local();
+      case TokenKind::Global:        return this->parse_global();
+      case TokenKind::Function:      return this->parse_function_stmt();
+      case TokenKind::ThunkToken:    return this->parse_function_stmt();
+      case TokenKind::If:            return this->parse_if();
+      case TokenKind::WhileToken:    return this->parse_while();
+      case TokenKind::Repeat:        return this->parse_repeat();
+      case TokenKind::For:           return this->parse_for();
+      case TokenKind::DoToken:       return this->parse_do();
+      case TokenKind::DeferToken:    return this->parse_defer();
+      case TokenKind::ReturnToken:   return this->parse_return();
+      case TokenKind::BreakToken:    return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
+      case TokenKind::ContinueToken: return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
       case TokenKind::Semicolon:
          this->ctx.tokens().advance();
          return ParserResult<StmtNodePtr>::success(nullptr);
@@ -225,11 +219,130 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
       values = std::move(rhs.value_ref());
    }
 
+   // Check if any trailing expressions beyond the name count are bare identifiers,
+   // and if so, convert them to additional variable names.
+
+   auto& name_list = names.value_ref();
+   size_t name_count = name_list.size();
+
+   if (values.size() > name_count) {
+      for (size_t i = name_count; i < values.size(); ++i) {
+         ExprNodePtr& expr = values[i];
+         if (expr and expr->kind IS AstNodeKind::IdentifierExpr) {
+            auto* name_ref = std::get_if<NameRef>(&expr->data);
+            if (name_ref) { // Convert this identifier expression to a variable name
+               name_list.push_back(name_ref->identifier);
+            }
+         }
+         else {
+            // Non-identifier expression in trailing position - this is an error
+            Token bad = this->ctx.tokens().current();
+            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, bad, "expected identifier after values in local declaration");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedIdentifier;
+            error.token = bad;
+            error.message = "expected identifier after values in local declaration";
+            return ParserResult<StmtNodePtr>::failure(error);
+         }
+      }
+      // Remove the converted identifiers from the values list
+      values.resize(name_count);
+   }
+
    StmtNodePtr stmt = std::make_unique<StmtNode>();
    stmt->kind = AstNodeKind::LocalDeclStmt;
    stmt->span = local_token.span();
    LocalDeclStmtPayload payload;
-   payload.names = std::move(names.value_ref());
+   payload.names = std::move(name_list);
+   payload.values = std::move(values);
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses global variable declarations, forcing variables to be stored in the global table.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_global()
+{
+   Token global_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();
+
+   // Handle `global function name()` and `global thunk name()` syntax
+   
+   bool is_thunk = false;
+   if (this->ctx.check(TokenKind::ThunkToken)) {
+      is_thunk = true;
+      this->ctx.tokens().advance();
+   }
+
+   if (this->ctx.check(TokenKind::Function) or is_thunk) {
+      if (not is_thunk) this->ctx.tokens().advance();
+
+      Token function_token = global_token;
+      auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
+      auto fn = this->parse_function_literal(function_token, is_thunk);
+      if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
+      ExprNodePtr function_expr = std::move(fn.value_ref());
+
+      // Build a FunctionStmt with a simple name path (will store to global)
+
+      StmtNodePtr stmt = std::make_unique<StmtNode>();
+      stmt->kind = AstNodeKind::FunctionStmt;
+      stmt->span = this->span_from(global_token, name_token.value_ref());
+      FunctionStmtPayload payload;
+      payload.name.segments.push_back(make_identifier(name_token.value_ref()));
+      payload.name.is_explicit_global = true;  // Mark as explicitly global
+      payload.function = move_function_payload(function_expr);
+      stmt->data = std::move(payload);
+      return ParserResult<StmtNodePtr>::success(std::move(stmt));
+   }
+
+   auto names = this->parse_name_list();
+   if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
+
+   ExprNodeList values;
+   if (this->ctx.match(TokenKind::Equals).ok()) {
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+
+   // Check if any trailing expressions beyond the name count are bare identifiers,
+   // and if so, convert them to additional variable names.
+
+   auto &name_list = names.value_ref();
+   size_t name_count = name_list.size();
+
+   if (values.size() > name_count) {
+      for (size_t i = name_count; i < values.size(); ++i) {
+         ExprNodePtr& expr = values[i];
+         if (expr and expr->kind IS AstNodeKind::IdentifierExpr) {
+            if (auto *name_ref = std::get_if<NameRef>(&expr->data)) {
+               // Convert this identifier expression to a variable name
+               name_list.push_back(name_ref->identifier);
+            }
+         }
+         else {
+            // Non-identifier expression in trailing position - this is an error
+            Token bad = this->ctx.tokens().current();
+            this->ctx.emit_error(ParserErrorCode::ExpectedIdentifier, bad, "expected identifier after values in global declaration");
+            ParserError error;
+            error.code = ParserErrorCode::ExpectedIdentifier;
+            error.token = bad;
+            error.message = "expected identifier after values in global declaration";
+            return ParserResult<StmtNodePtr>::failure(error);
+         }
+      }
+      // Remove the converted identifiers from the values list
+      values.resize(name_count);
+   }
+
+   StmtNodePtr stmt = std::make_unique<StmtNode>();
+   stmt->kind = AstNodeKind::GlobalDeclStmt;
+   stmt->span = global_token.span();
+   GlobalDeclStmtPayload payload;
+   payload.names = std::move(name_list);
    payload.values = std::move(values);
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));

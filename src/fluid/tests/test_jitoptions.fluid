@@ -75,7 +75,7 @@ end
 
    return {
       tests = {
-      'testTraceTokens', 'testTraceExpect',
-      'testDumpBytecode', 'testTraceDiagnose', 'testTraceBoundary', 'testProfile'
+      testTraceTokens, testTraceExpect,
+      testDumpBytecode, testTraceDiagnose, testTraceBoundary, testProfile
       }
    }

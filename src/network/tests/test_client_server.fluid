@@ -3,7 +3,7 @@ Client-Server Network Communications test.  Creates a server socket and then sta
 --]]
 
    include 'network'
-   if not mNet then mNet = mod.load('network') end
+   mNet ?= mod.load('network')
 
    glTestSteps = 0
    glExpectedSteps = 6
@@ -343,9 +343,9 @@ end
 
    return {
       tests = {
-         'testStrToAddress',
-         'testClientServer',
-         'testBasicCommunication',
-         'testConnectionStates'
+         testStrToAddress,
+         testClientServer,
+         testBasicCommunication,
+         testConnectionStates
       }
    }

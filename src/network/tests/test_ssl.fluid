@@ -21,9 +21,9 @@ If SSL is not available, tests will be skipped with appropriate messages.
 
    mNet ?= mod.load('network')
 
-   glPort = 21605
-   glSSLSupported = false
-   glSSLTestData = 'SECRET_SSL_MESSAGE_123'
+   global glPort = 21605
+   global glSSLSupported = false
+   global glSSLTestData = 'SECRET_SSL_MESSAGE_123'
 
 function printableState(State)
    if (State is NTC_CONNECTED) then return 'CONNECTED'
@@ -65,7 +65,7 @@ end
 -- with SetSSL().
 
 function testBasicSSLCommunication()
-   if (not glSSLSupported) then return end
+   if not glSSLSupported then return end
 
    local proc = processing.new({ timeout = 5.0 })
    local ssl_handshake_complete = false
@@ -692,11 +692,11 @@ end
 
    return {
       tests = {
-         'testBasicSSLCommunication',
-         'testSSLStateTransitions',
-         'testSSLDataIntegrity',
-         'testCustomCertificate',
-         'testHTTPSConnection'
+         testBasicSSLCommunication,
+         testSSLStateTransitions,
+         testSSLDataIntegrity,
+         testCustomCertificate,
+         testHTTPSConnection
       },
       init = function()
          glSSLSupported = false

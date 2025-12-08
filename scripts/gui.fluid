@@ -2,9 +2,11 @@
 
    if gui then return end
 
-   mVec ?= mod.load('vector')
+   if not mVec then 
+      global mVec = mod.load('vector') 
+   end
 
-   gui = {
+   global gui = {
      theme = 'light',
      dpi = 160,
      _counter = 0,

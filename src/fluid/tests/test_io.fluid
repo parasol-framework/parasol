@@ -1,8 +1,8 @@
 -- $FLUID
 -- Flute tests for the Lua IO library
 
-local glTestFolder
-local glTestFiles = { }
+global glTestFolder
+global glTestFiles = { }
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test helper functions
@@ -422,25 +422,25 @@ end
 
 return {
    tests = {
-      'testIoOpen',
-      'testIoClose',
-      'testIoType',
-      'testIoTmpfile',
-      'testFileWrite',
-      'testFileRead',
-      'testFileSeek',
-      'testFileFlush',
-      'testIoLines',
-      'testFileLines',
-      'testIoInputOutput',
-      'testIoRead',
-      'testIoConstants',
-      'testErrorHandling',
-      'testIntegration'
+      testIoOpen,
+      testIoClose,
+      testIoType,
+      testIoTmpfile,
+      testFileWrite,
+      testFileRead,
+      testFileSeek,
+      testFileFlush,
+      testIoLines,
+      testFileLines,
+      testIoInputOutput,
+      testIoRead,
+      testIoConstants,
+      testErrorHandling,
+      testIntegration
    },
 
    init = function(Folder)
-      glTestFolder = 'temp:'
+      global glTestFolder = 'temp:'
    end,
 
    cleanup = function()

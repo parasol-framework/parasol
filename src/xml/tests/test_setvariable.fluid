@@ -88,11 +88,11 @@ end
 
    return {
       tests = {
-         'testBasicVariableReference',
-         'testVariableUpdate',
-         'testNonExistentVariable',
-         'testVariableRemoval',
-         'testMultipleVariables'
+         testBasicVariableReference,
+         testVariableUpdate,
+         testNonExistentVariable,
+         testVariableRemoval,
+         testMultipleVariables
       },
       init = function(ScriptFolder)
          -- No global initialization needed for these tests

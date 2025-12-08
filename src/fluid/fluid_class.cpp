@@ -129,7 +129,7 @@ static void free_all(objScript *Self)
 
 static int global_newindex(lua_State *Lua) // Write global variable via proxy
 {
-   if (Lua->ProtectedGlobals) {
+   if (Lua->protected_globals) {
       lua_pushvalue(Lua, 2);
       lua_rawget(Lua, lua_upvalueindex(1));
       int existing_type = lua_type(Lua, -1);
@@ -339,8 +339,8 @@ static ERR FLUID_Activate(objScript *Self)
    if (reload) {
       log.trace("The Lua script will be initialised from scratch.");
 
-      prv->Lua->Script             = Self;
-      prv->Lua->ProtectedGlobals   = false;
+      prv->Lua->script             = Self;
+      prv->Lua->protected_globals   = false;
 
       // Set up global variable protection that is JIT-compatible.
       // Key insight: __index can be a TABLE (JIT traces through it) instead of a FUNCTION (JIT aborts).
@@ -398,7 +398,7 @@ static ERR FLUID_Activate(objScript *Self)
          goto failure;
       }
 
-      prv->Lua->ProtectedGlobals = true;
+      prv->Lua->protected_globals = true;
 
       // Determine chunk name for better debug output.
       // Prefix with '@' to indicate file-based chunk (Lua convention), otherwise use '=' for special sources.

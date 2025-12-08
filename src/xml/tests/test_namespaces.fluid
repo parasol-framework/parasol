@@ -458,10 +458,10 @@ end
 
 return {
    tests = {
-      'testBasicNamespaceRegistration', 'testDefaultNamespace', 'testPrefixedNamespaces',
-      'testNestedScopes', 'testNamespaceXPath', 'testXPathNamespaceAliasResolution', 'testSerialization', 'testErrorHandling',
-      'testPrefixResolution', 'testNamespaceValidation', 'testExistingNamespaceHandling',
-      'testHierarchicalResolution', 'testDefaultNamespaceHierarchy', 'testUndefinedPrefix',
-      'testNamespaceScopingDuringParsing', 'testNamespaceScopingDuringResolution'
+      testBasicNamespaceRegistration, testDefaultNamespace, testPrefixedNamespaces,
+      testNestedScopes, testNamespaceXPath, testXPathNamespaceAliasResolution, testSerialization, testErrorHandling,
+      testPrefixResolution, testNamespaceValidation, testExistingNamespaceHandling,
+      testHierarchicalResolution, testDefaultNamespaceHierarchy, testUndefinedPrefix,
+      testNamespaceScopingDuringParsing, testNamespaceScopingDuringResolution
    }
 }
