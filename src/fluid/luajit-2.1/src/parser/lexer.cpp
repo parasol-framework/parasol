@@ -983,13 +983,16 @@ LexState::LexState(lua_State* L, lua_Reader Rfunc, void* Rdata, std::string_view
 {
    lj_buf_init(L, &this->sb);
 
-   // For bytecode streaming, we need to read the first chunk to determine if this is bytecode
+   // For streaming, read the first chunk to set up source for lex_next
    size_t sz;
    const char* buf = this->rfunc(L, this->rdata, &sz);
    if (buf and sz > 0) {
       this->p = buf;
       this->pe = buf + sz;
-      this->c = LexChar(uint8_t(buf[0]));
+      this->source = std::string_view(buf, sz);  // Initialize source for lex_next
+
+      // Read first character using lex_next (like the source constructor does)
+      lex_next(this);
 
       // Check for bytecode signature
       if (this->c IS LUA_SIGNATURE[0]) {

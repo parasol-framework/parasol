@@ -9,6 +9,8 @@
 #define lib_debug_c
 #define LUA_LIB
 
+#include <parasol/strings.hpp>
+
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
@@ -20,8 +22,10 @@
 #include "lib.h"
 #include "debug/error_guard.h"
 
-#include <cctype>    // For isalnum, isdigit
-#include <cstdlib>   // For strtod
+#include <cctype>       // For isalnum, isdigit
+#include <cstdlib>      // For strtod
+#include <string_view>  // For std::string_view
+#include <charconv>     // For std::from_chars
 
 //********************************************************************************************************************
 
@@ -75,7 +79,7 @@ LJLIB_CF(debug_setfenv)
 
 //********************************************************************************************************************
 
-static void settabss(lua_State* L, const char* i, const char* v)
+static void settabss(lua_State *L, CSTRING i, CSTRING v)
 {
    lua_pushstring(L, v);
    lua_setfield(L, -2, i);
@@ -83,7 +87,7 @@ static void settabss(lua_State* L, const char* i, const char* v)
 
 //********************************************************************************************************************
 
-static void settabsi(lua_State* L, const char* i, int v)
+static void settabsi(lua_State *L, CSTRING i, int v)
 {
    lua_pushinteger(L, v);
    lua_setfield(L, -2, i);
@@ -91,7 +95,7 @@ static void settabsi(lua_State* L, const char* i, int v)
 
 //********************************************************************************************************************
 
-static void settabsb(lua_State* L, const char* i, int v)
+static void settabsb(lua_State *L, CSTRING i, int v)
 {
    lua_pushboolean(L, v);
    lua_setfield(L, -2, i);
@@ -109,7 +113,7 @@ static int32_t debug_idx(int32_t Index)
 
 //********************************************************************************************************************
 
-static lua_State* getthread(lua_State* L, int* arg)
+static lua_State* getthread(lua_State *L, int* arg)
 {
    if (L->base < L->top and tvisthread(L->base)) {
       *arg = 1;
@@ -123,7 +127,7 @@ static lua_State* getthread(lua_State* L, int* arg)
 
 //********************************************************************************************************************
 
-static void treatstackoption(lua_State* L, lua_State* L1, const char* fname)
+static void treatstackoption(lua_State *L, lua_State *L1, CSTRING fname)
 {
    if (L == L1) {
       lua_pushvalue(L, -2);
@@ -139,8 +143,8 @@ LJLIB_CF(debug_getinfo)
 {
    lj_Debug ar;
    int arg, opt_f = 0, opt_L = 0;
-   lua_State* L1 = getthread(L, &arg);
-   const char* options = luaL_optstring(L, arg + 2, "flnSu");
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
    if (lua_isnumber(L, arg + 1)) {
       if (!lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
          setnilV(L->top - 1);
@@ -221,7 +225,7 @@ LJLIB_CF(debug_getlocal)
 LJLIB_CF(debug_setlocal)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
+   lua_State *L1 = getthread(L, &arg);
    lua_Debug ar;
    TValue* tv;
    if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
@@ -233,7 +237,7 @@ LJLIB_CF(debug_setlocal)
 
 //********************************************************************************************************************
 
-static int debug_getupvalue(lua_State* L, int get)
+static int debug_getupvalue(lua_State *L, int get)
 {
    int32_t n = debug_idx(lj_lib_checkint(L, 2));
    lj_lib_checkfunc(L, 1);
@@ -320,9 +324,9 @@ LJLIB_CF(debug_setuservalue)
 
 #define KEY_HOOK   (U64x(80000000,00000000)|'h')
 
-static void hookf(lua_State* L, lua_Debug* ar)
+static void hookf(lua_State *L, lua_Debug* ar)
 {
-   static const char* const hooknames[] =
+   static CSTRING const hooknames[] =
    { "call", "return", "line", "count", "tail return" };
    (L->top++)->u64 = KEY_HOOK;
    lua_rawget(L, LUA_REGISTRYINDEX);
@@ -336,7 +340,7 @@ static void hookf(lua_State* L, lua_Debug* ar)
 
 //********************************************************************************************************************
 
-static int makemask(const char* smask, int count)
+static int makemask(CSTRING smask, int count)
 {
    int mask = 0;
    if (strchr(smask, 'c')) mask |= LUA_MASKCALL;
@@ -370,7 +374,7 @@ LJLIB_CF(debug_sethook)
       func = nullptr; mask = 0; count = 0;  //  turn off hooks
    }
    else {
-      const char* smask = luaL_checkstring(L, arg + 2);
+      CSTRING smask = luaL_checkstring(L, arg + 2);
       luaL_checktype(L, arg + 1, LUA_TFUNCTION);
       count = luaL_optint(L, arg + 3, 0);
       func = hookf; mask = makemask(smask, count);
@@ -413,7 +417,7 @@ LJLIB_CF(debug_debug)
          return 0;
       if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||
          lua_pcall(L, 0, 0, 0)) {
-         const char* s = lua_tostring(L, -1);
+         CSTRING s = lua_tostring(L, -1);
          fputs(s ? s : "(error object is not a string)", stderr);
          fputs("\n", stderr);
       }
@@ -429,8 +433,8 @@ LJLIB_CF(debug_debug)
 LJLIB_CF(debug_traceback)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
-   const char* msg = lua_tostring(L, arg + 1);
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING msg = lua_tostring(L, arg + 1);
    if (msg == nullptr and L->top > L->base + arg) L->top = L->base + arg + 1;
    else luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));
    return 1;
@@ -445,7 +449,7 @@ LJLIB_CF(debug_traceback)
 LJLIB_CF(debug_locality)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
+   lua_State *L1 = getthread(L, &arg);
 
    // Check for nil or missing argument
    if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
@@ -453,7 +457,7 @@ LJLIB_CF(debug_locality)
       return 1;
    }
 
-   const char* varname = luaL_checkstring(L, arg + 1);
+   CSTRING varname = luaL_checkstring(L, arg + 1);
    int level = luaL_optint(L, arg + 2, 1);
 
    // Get the stack frame at the specified level
@@ -474,7 +478,7 @@ LJLIB_CF(debug_locality)
 
    // Search local variables in the frame
    int slot = 1;
-   const char* name;
+   CSTRING name;
    while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
       lua_pop(L1, 1);  // Pop the value
       if (strcmp(name, varname) == 0) {
@@ -516,78 +520,85 @@ LJLIB_CF(debug_locality)
 // Annotation string parser helper - parses a single value
 // Returns true on success (pushes value to stack), false on error
 
-static bool parse_annotation_value(lua_State* L, const char** p)
+static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 {
-   const char* s = *p;
+   // Skip leading whitespace
+   while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+      sv.remove_prefix(1);
+   }
 
-   // Skip whitespace
-   while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
+   if (sv.empty()) return false;
 
    // String literal (double or single quotes)
-   if (*s IS '"' or *s IS '\'') {
-      char quote = *s++;
-      const char* start = s;
-      while (*s and *s != quote) {
-         if (*s IS '\\' and *(s + 1)) s++;  // Skip escaped characters
-         s++;
+   if (sv.front() IS '"' or sv.front() IS '\'') {
+      char quote = sv.front();
+      sv.remove_prefix(1);
+
+      size_t end_pos = 0;
+      while (end_pos < sv.size() and sv[end_pos] != quote) {
+         if (sv[end_pos] IS '\\' and end_pos + 1 < sv.size()) end_pos++;  // Skip escaped characters
+         end_pos++;
       }
-      if (*s != quote) return false;
-      lua_pushlstring(L, start, s - start);
-      s++;
-      *p = s;
+      if (end_pos >= sv.size()) return false;  // Unterminated string
+
+      lua_pushlstring(L, sv.data(), end_pos);
+      sv.remove_prefix(end_pos + 1);  // Skip content and closing quote
       return true;
    }
 
    // Boolean literals
-   if (strncmp(s, "true", 4) IS 0 and not isalnum(s[4]) and s[4] != '_') {
+   if (sv.starts_with("true") and (sv.size() IS 4 or (not std::isalnum(sv[4]) and sv[4] != '_'))) {
       lua_pushboolean(L, 1);
-      *p = s + 4;
+      sv.remove_prefix(4);
       return true;
    }
-   if (strncmp(s, "false", 5) IS 0 and not isalnum(s[5]) and s[5] != '_') {
+   if (sv.starts_with("false") and (sv.size() IS 5 or (not std::isalnum(sv[5]) and sv[5] != '_'))) {
       lua_pushboolean(L, 0);
-      *p = s + 5;
+      sv.remove_prefix(5);
       return true;
    }
 
    // Number literal
-   if (isdigit(*s) or (*s IS '-' and isdigit(s[1]))) {
-      char* end;
-      double num = strtod(s, &end);
-      if (end > s) {
+   if (std::isdigit(sv.front()) or (sv.front() IS '-' and sv.size() > 1 and std::isdigit(sv[1]))) {
+      double num;
+      auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), num);
+      if (ec IS std::errc()) {
          lua_pushnumber(L, num);
-         *p = end;
+         sv.remove_prefix(ptr - sv.data());
          return true;
       }
       return false;
    }
 
    // Array literal: [item, item, ...] or {item, item, ...}
-   if (*s IS '[' or *s IS '{') {
-      char close = (*s IS '[') ? ']' : '}';
-      s++;
+   if (sv.front() IS '[' or sv.front() IS '{') {
+      char close = (sv.front() IS '[') ? ']' : '}';
+      sv.remove_prefix(1);
       lua_newtable(L);
       int idx = 0;
 
-      while (*s and *s != close) {
+      while (not sv.empty() and sv.front() != close) {
          // Skip whitespace
-         while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
-         if (*s IS close) break;
+         while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+            sv.remove_prefix(1);
+         }
+         if (not sv.empty() and sv.front() IS close) break;
 
          // Parse array element
-         if (not parse_annotation_value(L, &s)) {
+         if (not parse_annotation_value(L, sv)) {
             lua_pop(L, 1);  // Pop table
             return false;
          }
          lua_rawseti(L, -2, idx++);
 
          // Skip whitespace and comma
-         while (*s and (*s IS ' ' or *s IS '\t' or *s IS '\n')) s++;
-         if (*s IS ',') s++;
+         while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+            sv.remove_prefix(1);
+         }
+         if (not sv.empty() and sv.front() IS ',') sv.remove_prefix(1);
       }
 
-      if (*s IS close) s++;
-      *p = s;
+      if (not sv.empty() and sv.front() IS close) sv.remove_prefix(1);
       return true;
    }
 
@@ -598,87 +609,110 @@ static bool parse_annotation_value(lua_State* L, const char** p)
 // Parses annotation string syntax like: @Test(name="foo", labels=["a","b"]); @Requires(network=true)
 // Returns true on success (pushes annotations array to stack), false on parse error
 
-static bool lj_parse_annotation_string(lua_State* L, const char* str)
+static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
 {
    lua_newtable(L);  // Result array
    int anno_idx = 0;
 
-   const char* p = str;
-   while (*p) {
+   while (not sv.empty()) {
       // Skip whitespace and semicolons
-      while (*p and (*p IS ' ' or *p IS '\t' or *p IS '\n' or *p IS ';')) p++;
-      if (not *p) break;
+      while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n' or sv.front() IS ';')) {
+         sv.remove_prefix(1);
+      }
+      if (sv.empty()) break;
 
       // Expect @
-      if (*p != '@') {
+
+      if (sv.front() != '@') {
          lua_pop(L, 1);
          return false;
       }
-      p++;
+      sv.remove_prefix(1);
 
       // Parse annotation name (identifier)
-      const char* name_start = p;
-      while (*p and (isalnum(*p) or *p IS '_')) p++;
-      if (p IS name_start) {
+
+      size_t name_len = 0;
+      while (name_len < sv.size() and (std::isalnum(sv[name_len]) or sv[name_len] IS '_')) {
+         name_len++;
+      }
+
+      if (name_len IS 0) {
          lua_pop(L, 1);
          return false;
       }
 
       lua_newtable(L);  // Annotation entry
-      lua_pushlstring(L, name_start, p - name_start);
+      lua_pushlstring(L, sv.data(), name_len);
       lua_setfield(L, -2, "name");
+      sv.remove_prefix(name_len);
 
       // Parse optional arguments
-      while (*p and (*p IS ' ' or *p IS '\t')) p++;
-      if (*p IS '(') {
-         p++;
+      while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+         sv.remove_prefix(1);
+      }
+
+      if (not sv.empty() and sv.front() IS '(') {
+         sv.remove_prefix(1);
          lua_newtable(L);  // Args table
 
-         while (*p and *p != ')') {
+         while (not sv.empty() and sv.front() != ')') {
             // Skip whitespace
-            while (*p and (*p IS ' ' or *p IS '\t' or *p IS '\n')) p++;
-            if (*p IS ')') break;
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+               sv.remove_prefix(1);
+            }
+            if (not sv.empty() and sv.front() IS ')') break;
 
             // Parse key or bare identifier
-            const char* key_start = p;
-            while (*p and (isalnum(*p) or *p IS '_')) p++;
-            size_t key_len = p - key_start;
+            size_t key_len = 0;
+            while (key_len < sv.size() and (std::isalnum(sv[key_len]) or sv[key_len] IS '_')) {
+               key_len++;
+            }
+
             if (key_len IS 0) {
                lua_pop(L, 3);  // Pop args, entry, result
                return false;
             }
 
-            while (*p and (*p IS ' ' or *p IS '\t')) p++;
+            std::string_view key = sv.substr(0, key_len);
+            sv.remove_prefix(key_len);
 
-            if (*p IS '=') {
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+               sv.remove_prefix(1);
+            }
+
+            if (not sv.empty() and sv.front() IS '=') {
                // key=value pair
-               p++;
-               while (*p and (*p IS ' ' or *p IS '\t')) p++;
+               sv.remove_prefix(1);
+               while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+                  sv.remove_prefix(1);
+               }
 
                // Parse value (string, number, bool, array)
-               if (not parse_annotation_value(L, &p)) {
+               if (not parse_annotation_value(L, sv)) {
                   lua_pop(L, 3);  // Pop args, entry, result
                   return false;
                }
                // Use lua_pushlstring to create key, then lua_rawset
-               lua_pushlstring(L, key_start, key_len);  // Push key
+               lua_pushlstring(L, key.data(), key.size());  // Push key
                lua_pushvalue(L, -2);  // Copy value
                lua_rawset(L, -4);     // args[key] = value
                lua_pop(L, 1);         // Pop original value
             }
             else {
                // Bare identifier = true
-               lua_pushlstring(L, key_start, key_len);  // Push key
+               lua_pushlstring(L, key.data(), key.size());  // Push key
                lua_pushboolean(L, 1);  // Push value
                lua_rawset(L, -3);      // args[key] = true
             }
 
             // Skip comma
-            while (*p and (*p IS ' ' or *p IS '\t')) p++;
-            if (*p IS ',') p++;
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+               sv.remove_prefix(1);
+            }
+            if (not sv.empty() and sv.front() IS ',') sv.remove_prefix(1);
          }
 
-         if (*p IS ')') p++;
+         if (not sv.empty() and sv.front() IS ')') sv.remove_prefix(1);
          lua_setfield(L, -2, "args");
       }
       else {
@@ -746,7 +780,7 @@ LJLIB_CF(debug_anno_set)
    // Handle string input - parse annotation syntax
 
    if (lua_isstring(L, 2)) {
-      const char* str = lua_tostring(L, 2);
+      CSTRING str = lua_tostring(L, 2);
       if (not lj_parse_annotation_string(L, str)) {
          lua_pop(L, 1);  // Pop _ANNO
          return luaL_error(L, "Failed to parse annotation string");
@@ -823,7 +857,7 @@ LJLIB_CF(debug_anno_list)
 
 #include "lj_libdef.h"  // Includes LJLIB_MODULE_debug table
 
-extern int luaopen_debug(lua_State* L)
+extern int luaopen_debug(lua_State *L)
 {
    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
 

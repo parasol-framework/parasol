@@ -152,6 +152,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_block(std::span<const
 ParserResult<StmtNodePtr> AstBuilder::parse_statement()
 {
    Token current = this->ctx.tokens().current();
+
    switch (current.kind()) {
       case TokenKind::Local:         return this->parse_local();
       case TokenKind::Global:        return this->parse_global();
