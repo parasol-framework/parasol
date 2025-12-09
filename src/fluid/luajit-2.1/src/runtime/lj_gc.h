@@ -9,9 +9,23 @@
 #include "lj_obj.h"
 
 // Garbage collector states. Order matters.
-enum {
-   GCSpause, GCSpropagate, GCSatomic, GCSsweepstring, GCSsweep, GCSfinalize
+// Using enum class for type safety; values must match GCState.state field usage.
+enum class GCPhase : uint8_t {
+   Pause       = 0,
+   Propagate   = 1,
+   Atomic      = 2,
+   SweepString = 3,
+   Sweep       = 4,
+   Finalize    = 5
 };
+
+// Compatibility constants for existing code (will be deprecated over time).
+inline constexpr uint8_t GCSpause       = static_cast<uint8_t>(GCPhase::Pause);
+inline constexpr uint8_t GCSpropagate   = static_cast<uint8_t>(GCPhase::Propagate);
+inline constexpr uint8_t GCSatomic      = static_cast<uint8_t>(GCPhase::Atomic);
+inline constexpr uint8_t GCSsweepstring = static_cast<uint8_t>(GCPhase::SweepString);
+inline constexpr uint8_t GCSsweep       = static_cast<uint8_t>(GCPhase::Sweep);
+inline constexpr uint8_t GCSfinalize    = static_cast<uint8_t>(GCPhase::Finalize);
 
 // Bitmasks for marked field of GCobj.
 #define LJ_GC_WHITE0   0x01
@@ -156,6 +170,203 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 #define lj_gc_objbarrier(L, p, o) \
   { if (iswhite(obj2gco(o)) and isblack(obj2gco(p))) \
       lj_gc_barrierf(G(L), obj2gco(p), obj2gco(o)); }
+
+// -- GarbageCollector Facade Class ----------------------------------------
+//
+// Modern C++ interface to the garbage collector. Provides a type-safe,
+// object-oriented wrapper around the GC functions. This is a lightweight
+// facade that delegates to the existing C-style functions.
+//
+// Usage:
+//   GarbageCollector gc(G(L));
+//   gc.step(L);
+//   gc.fullCycle(L);
+//
+class GarbageCollector {
+   global_State* g_;
+
+public:
+   // Construct a GarbageCollector facade for the given global state.
+   explicit GarbageCollector(global_State* g) noexcept : g_(g) {}
+
+   // Non-copyable but movable (references global state).
+   GarbageCollector(const GarbageCollector&) = default;
+   GarbageCollector& operator=(const GarbageCollector&) = default;
+
+   // -- State Queries --
+
+   // Get the current GC phase.
+   [[nodiscard]] GCPhase phase() const noexcept {
+      return static_cast<GCPhase>(g_->gc.state);
+   }
+
+   // Get the current GC phase as raw uint8_t (for compatibility).
+   [[nodiscard]] uint8_t phaseRaw() const noexcept {
+      return g_->gc.state;
+   }
+
+   // Get total memory currently allocated.
+   [[nodiscard]] GCSize totalMemory() const noexcept {
+      return g_->gc.total;
+   }
+
+   // Get the GC threshold (collection triggers when total >= threshold).
+   [[nodiscard]] GCSize threshold() const noexcept {
+      return g_->gc.threshold;
+   }
+
+   // Get the estimated live memory after last collection.
+   [[nodiscard]] GCSize estimate() const noexcept {
+      return g_->gc.estimate;
+   }
+
+   // Get the current GC debt (how far behind schedule the GC is).
+   [[nodiscard]] GCSize debt() const noexcept {
+      return g_->gc.debt;
+   }
+
+   // Check if GC is currently paused.
+   [[nodiscard]] bool isPaused() const noexcept {
+      return g_->gc.state IS GCSpause;
+   }
+
+   // Check if GC is in mark phase (propagate or atomic).
+   [[nodiscard]] bool isMarking() const noexcept {
+      return g_->gc.state IS GCSpropagate or g_->gc.state IS GCSatomic;
+   }
+
+   // Check if GC is in sweep phase.
+   [[nodiscard]] bool isSweeping() const noexcept {
+      return g_->gc.state IS GCSsweepstring or g_->gc.state IS GCSsweep;
+   }
+
+   // Check if GC is in finalize phase.
+   [[nodiscard]] bool isFinalizing() const noexcept {
+      return g_->gc.state IS GCSfinalize;
+   }
+
+   // Check if there are pending finalizers.
+   [[nodiscard]] bool hasPendingFinalizers() const noexcept {
+      return gcref(g_->gc.mmudata) != nullptr;
+   }
+
+   // -- Collection Control --
+
+   // Perform incremental GC steps.
+   // Returns: 1 if finished a cycle, -1 if within threshold, 0 otherwise.
+   int step(lua_State* L) noexcept {
+      return lj_gc_step(L);
+   }
+
+   // Perform incremental GC steps, fixing the stack top first.
+   void stepFixTop(lua_State* L) noexcept {
+      lj_gc_step_fixtop(L);
+   }
+
+   // Perform a full GC cycle.
+   void fullCycle(lua_State* L) noexcept {
+      lj_gc_fullgc(L);
+   }
+
+   // Check if GC should run and step if needed.
+   void check(lua_State* L) noexcept {
+      if (LJ_UNLIKELY(g_->gc.total >= g_->gc.threshold)) {
+         lj_gc_step(L);
+      }
+   }
+
+   // -- Write Barriers --
+
+   // Forward barrier: mark white object when stored in black object.
+   void barrierForward(GCobj* parent, GCobj* child) noexcept {
+      lj_gc_barrierf(g_, parent, child);
+   }
+
+   // Backward barrier: make black table gray when storing to it.
+   void barrierBack(GCtab* t) noexcept {
+      lj_gc_barrierback(g_, t);
+   }
+
+   // Barrier for closed upvalue.
+   void barrierUpvalue(TValue* tv) noexcept {
+      lj_gc_barrieruv(g_, tv);
+   }
+
+   // -- Memory Statistics --
+
+   // Get the pause multiplier (controls delay between cycles).
+   [[nodiscard]] MSize pauseMultiplier() const noexcept {
+      return g_->gc.pause;
+   }
+
+   // Get the step multiplier (controls incremental step size).
+   [[nodiscard]] MSize stepMultiplier() const noexcept {
+      return g_->gc.stepmul;
+   }
+
+   // -- Finalization --
+
+   // Separate userdata with finalizers to the mmudata list.
+   // Returns the total size of userdata to be finalized.
+   size_t separateUdata(int all) noexcept {
+      return lj_gc_separateudata(g_, all);
+   }
+
+   // Finalize all pending userdata objects.
+   void finalizeUdata(lua_State* L) noexcept {
+      lj_gc_finalize_udata(L);
+   }
+
+#if LJ_HASFFI
+   // Finalize all pending cdata objects.
+   void finalizeCdata(lua_State* L) noexcept {
+      lj_gc_finalize_cdata(L);
+   }
+#endif
+
+   // Free all GC objects (called during state shutdown).
+   void freeAll() noexcept {
+      lj_gc_freeall(g_);
+   }
+
+   // -- Upvalue Management --
+
+   // Close an upvalue (moves it from stack to heap).
+   void closeUpvalue(GCupval* uv) noexcept {
+      lj_gc_closeuv(g_, uv);
+   }
+
+#if LJ_HASJIT
+   // -- JIT Integration --
+
+   // Barrier for trace object during propagation phase.
+   void barrierTrace(uint32_t traceno) noexcept {
+      lj_gc_barriertrace(g_, traceno);
+   }
+
+   // Perform multiple GC steps from JIT-compiled code.
+   int stepJit(MSize steps) noexcept {
+      return lj_gc_step_jit(g_, steps);
+   }
+#endif
+
+   // -- Access to underlying state --
+
+   // Get the underlying global_State pointer.
+   [[nodiscard]] global_State* globalState() const noexcept {
+      return g_;
+   }
+};
+
+// Factory function to create a GarbageCollector for a lua_State.
+[[nodiscard]] inline GarbageCollector gc(lua_State* L) noexcept {
+   return GarbageCollector(G(L));
+}
+
+// Factory function to create a GarbageCollector for a global_State.
+[[nodiscard]] inline GarbageCollector gc(global_State* g) noexcept {
+   return GarbageCollector(g);
+}
 
 // Allocator.
 LJ_FUNC void* lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
