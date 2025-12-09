@@ -85,10 +85,8 @@ static int asm_isk32(ASMState* as, IRRef ref, int32_t* k)
          *k = (int32_t)ir_k64(ir)->u64;
          return 1;
       }
-      else if (checki32((int64_t)ir_kint64(ir)->u64)) {
-         *k = (int32_t)ir_kint64(ir)->u64;
-         return 1;
-      }
+      // Note: ir_k64 already handles all 64-bit constant types (IR_KINT64, IR_KNUM,
+      // IR_KGC, IR_KPTR, IR_KKPTR), so no additional case is needed here.
    }
    return 0;
 }

@@ -795,6 +795,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
 //********************************************************************************************************************
 // Emit bytecode for a global variable declaration statement, explicitly storing values in the global table.
+// Handles multi-value returns from function calls (e.g., global a, b, c = f())
 
 ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPayload& payload)
 {
@@ -809,42 +810,44 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
       if (name) this->func_state.declared_globals.insert(name);
    }
 
-   // Evaluate all expressions first
-   std::vector<ExpDesc> values;
-   values.reserve(payload.values.size());
-
-   for (const ExprNodePtr& expr : payload.values) {
-      if (not expr) continue;
-      auto result = this->emit_expression(*expr);
-      if (not result.ok()) return ParserResult<IrEmitUnit>::failure(result.error_ref());
-      ExpDesc value = result.value_ref();
-      ExpressionValue ev(&this->func_state, value);
-      ev.discharge();
-      values.push_back(ev.legacy());
+   // Use emit_expression_list to get all values into consecutive registers
+   // This properly handles multi-value returns from function calls
+   ExpDesc tail(ExpKind::Void);
+   auto nexps = BCReg(0);
+   if (not payload.values.empty()) {
+      auto list = this->emit_expression_list(payload.values, nexps);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+      tail = list.value_ref();
    }
 
+   // Use assign_adjust to handle multi-value returns - this places values in consecutive registers
+   // and pads with nil if there are more variables than expressions
+   this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
+
+   // Now values are in consecutive registers starting at (freereg - nvars)
+   BCReg value_base = BCReg(this->func_state.freereg - nvars.raw());
+
    // Store each value to its corresponding global variable
-   auto nexps = BCReg(BCREG(values.size()));
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = payload.names[i.raw()];
+
+      // Skip blank identifiers - value is discarded
       if (is_blank_symbol(identifier)) continue;
 
       GCstr* name = identifier.symbol;
       if (not name) continue;
 
+      // Create global variable target
       ExpDesc var;
       var.init(ExpKind::Global, 0);
       var.u.sval = name;
 
-      if (i < nexps) {
-         // Assign the corresponding expression value
-         bcemit_store(&this->func_state, &var, &values[i.raw()]);
-      }
-      else {
-         // Assign nil for missing values
-         ExpDesc nil_value(ExpKind::Nil);
-         bcemit_store(&this->func_state, &var, &nil_value);
-      }
+      // Create source expression from the value register
+      ExpDesc value_expr;
+      value_expr.init(ExpKind::NonReloc, value_base + i);
+
+      // Store to global
+      bcemit_store(&this->func_state, &var, &value_expr);
    }
 
    this->func_state.reset_freereg();
@@ -2983,8 +2986,16 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    // Inherit declared globals from parent so nested functions recognize them
    child_state.declared_globals = parent_state->declared_globals;
 
-   // Use lastline which was set to the function expression's line by emit_expression()
-   child_state.linedefined = this->lex_state.lastline;
+   // Set linedefined to the earliest line that bytecode might reference.
+   // Note: SourceSpan.line represents the END line of a span (due to combine_spans behavior),
+   // so we need to find the first statement's line to get the actual start line.
+   // For functions with bodies, the first statement's span gives us the earliest bytecode line.
+   BCLine body_first_line = this->lex_state.lastline;
+   if (Payload.body and not Payload.body->statements.empty()) {
+      const StmtNodePtr& first_stmt = Payload.body->statements.front();
+      if (first_stmt) body_first_line = first_stmt->span.line;
+   }
+   child_state.linedefined = std::min(this->lex_state.lastline, body_first_line);
    child_state.bcbase = parent_state->bcbase + parent_state->pc;
    child_state.bclim = parent_state->bclim - parent_state->pc;
    bcemit_AD(&child_state, BC_FUNCF, 0, 0);
