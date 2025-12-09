@@ -199,7 +199,7 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 
       // 1st operand discharged by bcemit_binop_left, but need KNUM/KSHORT.
 
-      fs->assert(e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
+      fs_check_assert(fs,e1->is_num_constant() or e1->k IS ExpKind::NonReloc, "bad expr type %d", e1->k);
       ExpressionValue e1_toval(fs, *e1);
       e1_toval.to_val();
       *e1 = e1_toval.legacy();
@@ -412,7 +412,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    ExpressionValue lhs_value_discharge(fs, *lhs);
    lhs_value_discharge.discharge();
    *lhs = lhs_value_discharge.legacy();
-   fs->assert(lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
+   fs_check_assert(fs,lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -459,7 +459,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    allocator.reserve(BCReg(1));  // Reserve for callee
    if (LJ_FR2) allocator.reserve(BCReg(1));
    allocator.reserve(BCReg(2));  // Reserve for arguments
-   fs->assert(!fname.empty(), "bitlib name missing for bitwise operator");
+   fs_check_assert(fs,!fname.empty(), "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
 }
 
@@ -517,7 +517,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    ExpressionValue arg_value_discharge(fs, *arg);
    arg_value_discharge.discharge();
    *arg = arg_value_discharge.legacy();
-   fs->assert(arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
+   fs_check_assert(fs,arg->k IS ExpKind::NonReloc and arg->u.s.info IS base, "bitwise result not in base register");
 }
 
 //********************************************************************************************************************
@@ -556,10 +556,10 @@ static void bcemit_unop(FuncState* fs, BCOp op, ExpDesc* e)
          e->u.s.info = fs->freereg - 1;
          e->k = ExpKind::NonReloc;
       }
-      else fs->assert(e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
+      else fs_check_assert(fs,e->k IS ExpKind::NonReloc, "bad expr type %d", int(e->k));
    }
    else {
-      fs->assert(op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
+      fs_check_assert(fs,op IS BC_UNM or op IS BC_LEN, "bad unop %d", op);
       if (op IS BC_UNM and not e->has_jump()) {  // Constant-fold negations.
 #if LJ_HASFFI
          if (e->k IS ExpKind::CData) {  // Fold in-place since cdata is not interned.
@@ -792,7 +792,7 @@ void OperatorEmitter::complete_logical_and(ExprValue left, ExpDesc right)
    // - We need to merge the false paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   fs->assert(left_desc->t IS NO_JMP, "jump list not closed");
+   fs_check_assert(fs,left_desc->t IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, *right_desc);
@@ -880,7 +880,7 @@ void OperatorEmitter::complete_logical_or(ExprValue left, ExpDesc right)
    // - We need to merge the true paths and return right's result
 
    FuncState *fs = this->func_state;  // For lj_assertFS macro
-   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
+   fs_check_assert(fs,left_desc->f IS NO_JMP, "jump list not closed");
 
    // Discharge right operand
    ExpressionValue right_val(this->func_state, right);
@@ -1002,7 +1002,7 @@ void OperatorEmitter::complete_if_empty(ExprValue left, ExpDesc right)
    ExpDesc *left_desc = left.raw();
 
    FuncState* fs = this->func_state;
-   fs->assert(left_desc->f IS NO_JMP, "jump list not closed");
+   fs_check_assert(fs,left_desc->f IS NO_JMP, "jump list not closed");
 
    // If left->t has jumps, those are from the extended falsey checks in prepare phase
    // They skip RHS evaluation when LHS is truthy - we need to:
@@ -1104,7 +1104,7 @@ void OperatorEmitter::complete_concat(ExprValue left, ExpDesc right)
    if (right.k IS ExpKind::Relocable and bc_op(*bcptr(fs, &right)) IS BC_CAT) {
       // Chaining case: "a".."b".."c"
       // The previous BC_CAT starts at e1->u.s.info and we extend it
-      fs->assert(left_desc->u.s.info IS bc_b(*bcptr(fs, &right)) - 1, "bad CAT stack layout");
+      fs_check_assert(fs,left_desc->u.s.info IS bc_b(*bcptr(fs, &right)) - 1, "bad CAT stack layout");
       expr_free(fs, left_desc);
       setbc_b(bcptr(fs, &right), left_desc->u.s.info);
       left_desc->u.s.info = right.u.s.info;

@@ -31,10 +31,10 @@
 void lj_meta_init(lua_State *L)
 {
 #define MMNAME(name)   "__" #name
-   const char* metanames = MMDEF(MMNAME);
+   const char * metanames = MMDEF(MMNAME);
 #undef MMNAME
-   global_State* g = G(L);
-   const char* p, * q;
+   global_State *g = G(L);
+   const char *p, *q;
    uint32_t mm;
    for (mm = 0, p = metanames; *p; mm++, p = q) {
       GCstr *s;
@@ -52,7 +52,7 @@ cTValue *lj_meta_cache(GCtab* mt, MMS mm, GCstr *name)
 {
    cTValue *mo = lj_tab_getstr(mt, name);
    lj_assertX(mm <= MM_FAST, "bad metamethod %d", mm);
-   if (!mo or tvisnil(mo)) {  // No metamethod?
+   if (not mo or tvisnil(mo)) {  // No metamethod?
       mt->nomm |= (uint8_t)(1u << mm);  //  Set negative cache flag.
       return nullptr;
    }
@@ -62,9 +62,9 @@ cTValue *lj_meta_cache(GCtab* mt, MMS mm, GCstr *name)
 //********************************************************************************************************************
 // Lookup metamethod for object.
 
-cTValue *lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
+cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
 {
-   GCtab* mt;
+   GCtab *mt;
    if (tvistab(o)) mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
    else mt = tabref(basemt_obj(G(L), o));
@@ -82,9 +82,9 @@ cTValue *lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
 // Tailcall from C function.
 int lj_meta_tailcall(lua_State *L, cTValue *tv)
 {
-   TValue* base = L->base;
-   TValue* top = L->top;
-   const BCIns* pc = frame_pc(base - 1);  //  Preserve old PC from frame.
+   TValue *base = L->base;
+   TValue *top = L->top;
+   const BCIns *pc = frame_pc(base - 1);  //  Preserve old PC from frame.
    copyTV(L, base - 1 - LJ_FR2, tv);  //  Replace frame with new object.
    (top++)->u64 = LJ_CONT_TAILCALL;
    setframe_pc(top++, pc);
@@ -107,7 +107,7 @@ int lj_meta_tailcall(lua_State *L, cTValue *tv)
 //********************************************************************************************************************
 // Setup call to metamethod to be run by Assembler VM.
 
-static TValue* mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
+static TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue *b)
 {
    //           |-- framesize -> top       top+1       top+2 top+3
    // before:   [func slots ...]
@@ -120,7 +120,7 @@ static TValue* mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, c
    //                                       ignore   for lj_cont_nop
    // next PC:  [func slots ...]
 
-   TValue* top = L->top;
+   TValue *top = L->top;
    if (curr_funcisL(L)) top = curr_topL(L);
    setcont(top++, cont);  //  Assembler VM stores PC in upper word or FR2.
    setnilV(top++);
@@ -144,7 +144,7 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
       if (LJ_LIKELY(tvistab(o))) {
          GCtab* t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (!tvisnil(tv) or
+         if (not tvisnil(tv) or
             !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index)))
             return tv;
       }
@@ -165,21 +165,21 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
 //********************************************************************************************************************
 // Helper for TSET*. __newindex chain and metamethod.
 
-TValue* lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
+TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
 {
    TValue tmp;
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
       if (LJ_LIKELY(tvistab(o))) {
-         GCtab* t = tabV(o);
+         GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (LJ_LIKELY(!tvisnil(tv))) {
+         if (LJ_LIKELY(not tvisnil(tv))) {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             return (TValue*)tv;
          }
-         else if (!(mo = lj_meta_fast(L, tabref(t->metatable), MM_newindex))) {
+         else if (not (mo = lj_meta_fast(L, tabref(t->metatable), MM_newindex))) {
             t->nomm = 0;  //  Invalidate negative metamethod cache.
             lj_gc_anybarriert(L, t);
             if (tv != niltv(L)) return (TValue*)tv;
@@ -193,6 +193,7 @@ TValue* lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
          lj_err_optype(L, o, ErrMsg::OPINDEX);
          return nullptr;  //  unreachable
       }
+
       if (tvisfunc(mo)) {
          L->top = mmcall(L, lj_cont_nop, mo, o, k);
          // L->top+2 = v filled in by caller.
@@ -244,12 +245,13 @@ TValue* lj_meta_arith(lua_State *L, TValue* ra, cTValue *rb, cTValue *rc, BCREG 
 //********************************************************************************************************************
 // Helper for CAT. Coercion, iterative concat, __concat metamethod.
 
-TValue* lj_meta_cat(lua_State *L, TValue* top, int left)
+TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
 {
    int fromc = 0;
    if (left < 0) { left = -left; fromc = 1; }
+
    do {
-      if (!(tvisstr(top) or tvisnumber(top) or tvisbuf(top)) or
+      if (not (tvisstr(top) or tvisnumber(top) or tvisbuf(top)) or
          !(tvisstr(top - 1) or tvisnumber(top - 1) or tvisbuf(top - 1))) {
          cTValue *mo = lj_meta_lookup(L, top - 1, MM_concat);
          if (tvisnil(mo)) {
@@ -260,6 +262,7 @@ TValue* lj_meta_cat(lua_State *L, TValue* top, int left)
                return nullptr;  //  unreachable
             }
          }
+
          // One of the top two elements is not a string, call __cat metamethod:
          //
          // before:    [...][CAT stack .........................]
@@ -317,7 +320,7 @@ TValue* lj_meta_cat(lua_State *L, TValue* top, int left)
    } while (left >= 1);
 
    if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) {
-      if (!fromc) L->top = curr_topL(L);
+      if (not fromc) L->top = curr_topL(L);
       lj_gc_step(L);
    }
    return nullptr;
@@ -377,7 +380,7 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
    cTValue *o1mm = o1;
    if (op IS BC_ISEQV) {
       o2 = &L->base[bc_d(ins)];
-      if (!tviscdata(o1mm)) o1mm = o2;
+      if (not tviscdata(o1mm)) o1mm = o2;
    }
    else if (op IS BC_ISEQS) {
       setstrV(L, &tv, gco2str(proto_kgc(curr_proto(L), ~(ptrdiff_t)bc_d(ins))));
@@ -392,10 +395,8 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
       o2 = &tv;
    }
    mo = lj_meta_lookup(L, o1mm, MM_eq);
-   if (LJ_LIKELY(!tvisnil(mo)))
-      return mmcall(L, cont, mo, o1, o2);
-   else
-      return (TValue*)(intptr_t)(bc_op(ins) & 1);
+   if (LJ_LIKELY(not tvisnil(mo))) return mmcall(L, cont, mo, o1, o2);
+   else return (TValue*)(intptr_t)(bc_op(ins) & 1);
 }
 #endif
 
@@ -493,18 +494,12 @@ TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
          return (TValue*)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
       }
       else {
-      trymt:
+trymt:
          while (1) {
             ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
             MMS mm = (op & 2) ? MM_le : MM_lt;
             cTValue *mo = lj_meta_lookup(L, o1, mm);
-#if LJ_52
-            if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm))))
-#else
-            cTValue *mo2 = lj_meta_lookup(L, o2, mm);
-            if (tvisnil(mo) or !lj_obj_equal(mo, mo2))
-#endif
-            {
+            if (tvisnil(mo) and tvisnil((mo = lj_meta_lookup(L, o2, mm)))) {
                if (op & 2) {  // MM_le not found: retry with MM_lt.
                   cTValue *ot = o1; o1 = o2; o2 = ot;  //  Swap operands.
                   op ^= 3;  //  Use LT and flip condition.
@@ -520,7 +515,7 @@ TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
       goto trymt;
    }
    else {
-   err:
+err:
       lj_err_comp(L, o1, o2);
       return nullptr;
    }
@@ -547,7 +542,7 @@ void lj_meta_call(lua_State *L, TValue* func, TValue* top)
 {
    cTValue *mo = lj_meta_lookup(L, func, MM_call);
    TValue* p;
-   if (!tvisfunc(mo))
+   if (not tvisfunc(mo))
       lj_err_optype_call(L, func);
    for (p = top; p > func + 2; p--) copyTV(L, p, p - 1);
    copyTV(L, func + 2, func);
@@ -557,17 +552,21 @@ void lj_meta_call(lua_State *L, TValue* func, TValue* top)
 //********************************************************************************************************************
 // Helper for __close metamethod. Called during scope exit for to-be-closed variables.
 // Returns error code: 0 = success, non-zero = error during __close call.
+//
+// NOTE: This function is called from C error handling code (lj_err.cpp)
+// When an error occurs in __close, the error value is left at L->top - 1 and we must NOT restore L->top (which 
+// would hide the error).
 
 int lj_meta_close(lua_State *L, TValue* o, TValue* err)
 {
    cTValue *mo = lj_meta_lookup(L, o, MM_close);
    if (tvisnil(mo)) return 0;  // No __close metamethod, nothing to do.
 
-   global_State* g = G(L);
+   global_State *g = G(L);
    uint8_t oldh = hook_save(g);
    GCSize oldt = g->gc.threshold;
    int errcode;
-   TValue* top;
+   TValue *top;
 
    lj_trace_abort(g);
    hook_entergc(g);  // Disable hooks and new traces during __close.
@@ -600,9 +599,10 @@ int lj_meta_close(lua_State *L, TValue* o, TValue* err)
 
 void LJ_FASTCALL lj_meta_for(lua_State *L, TValue* o)
 {
-   if (!lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
-   if (!lj_strscan_numberobj(o + 1)) lj_err_msg(L, ErrMsg::FORLIM);
-   if (!lj_strscan_numberobj(o + 2)) lj_err_msg(L, ErrMsg::FORSTEP);
+   if (not lj_strscan_numberobj(o)) lj_err_msg(L, ErrMsg::FORINIT);
+   if (not lj_strscan_numberobj(o + 1)) lj_err_msg(L, ErrMsg::FORLIM);
+   if (not lj_strscan_numberobj(o + 2)) lj_err_msg(L, ErrMsg::FORSTEP);
+
    if (LJ_DUALNUM) {
       // Ensure all slots are integers or all slots are numbers.
       int32_t k[3];
@@ -618,6 +618,7 @@ void LJ_FASTCALL lj_meta_for(lua_State *L, TValue* o)
             nint += ((lua_Number)k[i] IS numV(o + i));
          }
       }
+
       if (nint IS 3) {  // Narrow to integers.
          setintV(o, k[0]);
          setintV(o + 1, k[1]);

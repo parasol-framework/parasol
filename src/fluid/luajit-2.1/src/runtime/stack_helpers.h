@@ -47,15 +47,11 @@
 //   |  call extern lj_meta_equal_thunk  // L->top NOT set!
 //
 // USAGE:
-//    TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
-//    {
+//    TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins) {
 //       VMHelperGuard guard(L);  // Fixes L->top, saves state
-//
-//       // Now safe to call Lua code
-//       if (lj_thunk_isthunk(o1)) {
+//       if (lj_thunk_isthunk(o1)) { // Now safe to call Lua code
 //          resolved_o1 = lj_thunk_resolve(L, ud);  // May call lua_pcall
 //       }
-//
 //       return result;
 //    }  // Guard restores L->base and L->top
 //
@@ -221,14 +217,13 @@ namespace Frame {
 // compile-time safety.
 
 class VMCall {
-   lua_State* LState;
-   TValue* base_;        // Base of call frame (function slot)
+   lua_State *LState;
+   TValue *base_;        // Base of call frame (function slot)
    int argCount_;        // Number of arguments pushed
 
 public:
    // Start a new VM call at the current top of stack
-   explicit VMCall(lua_State *L) noexcept
-      : LState(L), base_(L->top), argCount_(0) {}
+   explicit VMCall(lua_State *L) noexcept : LState(L), base_(L->top), argCount_(0) {}
 
    // Set the function to call (must be called first)
    VMCall & func(TValue *fn) noexcept {

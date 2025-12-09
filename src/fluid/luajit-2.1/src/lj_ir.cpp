@@ -188,7 +188,7 @@ static LJ_AINLINE IRRef ir_nextk(jit_State* J)
 static LJ_AINLINE IRRef ir_nextk64(jit_State* J)
 {
    IRRef ref = J->cur.nk - 2;
-   lj_assertJ(J->state != LJ_TRACE_ASM, "bad JIT state");
+   lj_assertJ(J->state != TraceState::ASM, "bad JIT state");
    if (LJ_UNLIKELY(ref < J->irbotlim)) lj_ir_growbot(J);
    J->cur.nk = ref;
    return ref;

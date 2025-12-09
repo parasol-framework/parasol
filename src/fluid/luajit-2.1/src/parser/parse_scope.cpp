@@ -30,7 +30,16 @@ void LexState::var_new(BCREG n, GCstr* name)
       if (this->sizevstack >= LJ_MAX_VSTACK) lj_lex_error(this, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
       lj_mem_growvec(this->L, this->vstack, this->sizevstack, LJ_MAX_VSTACK, VarInfo);
    }
-   fs->assert(name IS NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
+
+   // Anchor the variable name in the current function's constant table if it's a real string.
+   // This is necessary because identifiers may have been lexed while parsing a parent function,
+   // so they're anchored in the parent's kt, not the current function's kt.
+   if (name != NAME_BLANK and uintptr_t(name) >= VARNAME__MAX) {
+      TValue* tv = lj_tab_setstr(this->L, fs->kt, name);
+      if (tvisnil(tv)) setboolV(tv, 1);
+   }
+
+   fs_check_assert(fs, name IS NAME_BLANK or uintptr_t(name) < VARNAME__MAX or lj_tab_getstr(fs->kt, name) != nullptr, "unanchored variable name");
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
    setgcref(this->vstack[vtop].name, obj2gco(name));
    fs->varmap[fs->nactvar + n] = uint16_t(vtop);
@@ -107,7 +116,7 @@ static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
    // Otherwise create a new one.
 
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
-   fs->assert(e->k IS ExpKind::Local or e->k IS ExpKind::Upval, "bad expr type %d", e->k);
+   fs_check_assert(fs,e->k IS ExpKind::Local or e->k IS ExpKind::Upval, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
    fs->uvtmp[n] = uint16_t(e->k IS ExpKind::Local ? vidx : LJ_MAX_VSTACK + e->u.s.info);
    fs->nuv = n + 1;
@@ -216,8 +225,8 @@ void LexState::gola_close(VarInfo* vg)
    FuncState* fs = this->fs;
    BCPOS pc = vg->startpc;
    BCIns* ip = &fs->bcbase[pc].ins;
-   fs->assert(gola_is_jump(vg), "expected goto");
-   fs->assert(bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
+   fs_check_assert(fs,gola_is_jump(vg), "expected goto");
+   fs_check_assert(fs,bc_op(*ip) IS BC_JMP or bc_op(*ip) IS BC_UCLO, "bad bytecode op %d", bc_op(*ip));
    setbc_a(ip, vg->slot);
    if (bc_op(*ip) IS BC_JMP) {
       BCPos next = JumpListView::next(fs, BCPos(pc));
@@ -308,7 +317,7 @@ static void execute_defers(FuncState* fs, BCREG limit)
    while (i > limit) {
       VarInfo *v = &fs->var_get(--i);
       if (has_flag(v->info, VarInfoFlag::DeferArg)) {
-         fs->assert(argc < LJ_MAX_SLOTS, "too many defer args");
+         fs_check_assert(fs,argc < LJ_MAX_SLOTS, "too many defer args");
          argslots[argc++] = v->slot;
          continue;
       }
@@ -327,10 +336,10 @@ static void execute_defers(FuncState* fs, BCREG limit)
          argc = 0;
          continue;
       }
-      fs->assert(argc IS 0, "dangling defer arguments");
+      fs_check_assert(fs,argc IS 0, "dangling defer arguments");
    }
 
-   fs->assert(argc IS 0, "dangling defer arguments");
+   fs_check_assert(fs,argc IS 0, "dangling defer arguments");
    fs->freereg = oldfreereg;
 }
 
@@ -546,13 +555,13 @@ static void fs_fixup_k(FuncState* fs, GCproto* pt, void* kptr)
       Node* n = &node[i];
       if (tvhaskslot(&n->val)) {
          ptrdiff_t kidx = ptrdiff_t(tvkslot(&n->val));
-         fs->assert(!tvisint(&n->key), "unexpected integer key");
+         fs_check_assert(fs,!tvisint(&n->key), "unexpected integer key");
          if (tvisnum(&n->key)) {
             TValue* tv = &((TValue*)kptr)[kidx];
             if (LJ_DUALNUM) {
                lua_Number nn = numV(&n->key);
                int32_t k = lj_num2int(nn);
-               fs->assert(!tvismzero(&n->key), "unexpected -0 key");
+               fs_check_assert(fs,!tvismzero(&n->key), "unexpected -0 key");
                if (lua_Number(k) IS nn) setintV(tv, k);
                else *tv = n->key;
             }
@@ -604,7 +613,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint8_t* li = (uint8_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs->assert(delta >= 0 and delta < 256, "bad line delta");
+         fs_check_assert(fs,delta >= 0 and delta < 256, "bad line delta");
          li[i] = uint8_t(delta);
       } while (++i < n);
    }
@@ -612,7 +621,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint16_t* li = (uint16_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs->assert(delta >= 0 and delta < 65536, "bad line delta");
+         fs_check_assert(fs,delta >= 0 and delta < 65536, "bad line delta");
          li[i] = uint16_t(delta);
       } while (++i < n);
    }
@@ -620,7 +629,7 @@ static void fs_fixup_line(FuncState* fs, GCproto* pt,
       uint32_t* li = (uint32_t*)lineinfo;
       do {
          BCLine delta = base[i].line - first;
-         fs->assert(delta >= 0, "bad line delta");
+         fs_check_assert(fs,delta >= 0, "bad line delta");
          li[i] = uint32_t(delta);
       } while (++i < n);
    }
@@ -733,7 +742,7 @@ static void fs_fixup_ret(FuncState* fs)
 
    fs->bl->flags |= FuncScopeFlag::NoClose;  // Handled above.
    fscope_end(fs);
-   fs->assert(fs->bl IS nullptr, "bad scope nesting");
+   fs_check_assert(fs,fs->bl IS nullptr, "bad scope nesting");
 
    // May need to fixup returns encoded before first function was created.
 
