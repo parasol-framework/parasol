@@ -35,6 +35,63 @@ static constexpr uint32_t GCSWEEPMAX     = 40;
 static constexpr uint32_t GCSWEEPCOST    = 10;
 static constexpr uint32_t GCFINALIZECOST = 100;
 
+// -- RAII State Guards ----------------------------------------------------
+
+// RAII guard for GC finalizer state preservation.
+// Saves hook state and GC threshold on construction, restores on destruction.
+// Used during __gc metamethod calls to prevent re-entrant GC and hooks.
+class GCFinalizerGuard {
+   global_State* g_;
+   uint8_t savedHook_;
+   GCSize savedThreshold_;
+
+public:
+   explicit GCFinalizerGuard(global_State* g) noexcept
+      : g_(g)
+      , savedHook_(hook_save(g))
+      , savedThreshold_(g->gc.threshold)
+   {
+      hook_entergc(g);  // Disable hooks and new traces during __gc.
+      g->gc.threshold = LJ_MAX_MEM;  // Prevent GC steps.
+   }
+
+   ~GCFinalizerGuard() noexcept {
+      hook_restore(g_, savedHook_);
+      g_->gc.threshold = savedThreshold_;
+   }
+
+   // Query saved hook state (needed for profile dispatch updates).
+   [[nodiscard]] uint8_t savedHook() const noexcept { return savedHook_; }
+
+   // Non-copyable, non-movable.
+   GCFinalizerGuard(const GCFinalizerGuard&) = delete;
+   GCFinalizerGuard& operator=(const GCFinalizerGuard&) = delete;
+};
+
+// RAII guard for VM state during GC operations.
+// Saves current VM state and sets it to GC mode on construction.
+// Restores original state on destruction.
+class VMStateGuard {
+   global_State* g_;
+   int32_t savedState_;
+
+public:
+   explicit VMStateGuard(global_State* g) noexcept
+      : g_(g)
+      , savedState_(g->vmstate)
+   {
+      setvmstate(g, GC);
+   }
+
+   ~VMStateGuard() noexcept {
+      g_->vmstate = savedState_;
+   }
+
+   // Non-copyable, non-movable.
+   VMStateGuard(const VMStateGuard&) = delete;
+   VMStateGuard& operator=(const VMStateGuard&) = delete;
+};
+
 // -- Inline Functions for GC Object Colour Manipulation -------------------
 
 // Transition object from white to grey (marked but children not yet traversed).
@@ -557,25 +614,28 @@ static void gc_clearweak(global_State* g, GCobj* o)
 
 static void gc_call_finalizer(global_State* g, lua_State* L, cTValue* mo, GCobj* o)
 {
-   // Save and restore lots of state around the __gc callback.
-   uint8_t oldh = hook_save(g);
-   GCSize oldt = g->gc.threshold;
-   int errcode;
-   TValue* top;
    lj_trace_abort(g);
-   hook_entergc(g);  //  Disable hooks and new traces during __gc.
-   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
-   g->gc.threshold = LJ_MAX_MEM;  //  Prevent GC steps.
-   top = L->top;
+
+   // Use RAII guard for hook state and GC threshold preservation.
+   GCFinalizerGuard guard(g);
+
+   if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
+
+   // Set up the stack for the finalizer call.
+   TValue* top = L->top;
    copyTV(L, top++, mo);
    if (LJ_FR2) setnilV(top++);
    setgcV(L, top, o, ~o->gch.gct);
    L->top = top + 1;
-   errcode = lj_vm_pcall(L, top, 1 + 0, -1);  //  Stack: |mo|o| -> |
-   hook_restore(g, oldh);
-   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
-   g->gc.threshold = oldt;  //  Restore GC threshold.
-   if (errcode) lj_err_throw(L, errcode);  //  Propagate errors.
+
+   // Call the finalizer. Stack: |mo|o| -> |
+   int errcode = lj_vm_pcall(L, top, 1 + 0, -1);
+
+   if (LJ_HASPROFILE and (guard.savedHook() & HOOK_PROFILE)) lj_dispatch_update(g);
+
+   // Guard destructor restores hook state and threshold here.
+   // Propagate errors after state restoration.
+   if (errcode) lj_err_throw(L, errcode);
 }
 
 // Finalize one userdata or cdata object from the mmudata list.
@@ -783,10 +843,9 @@ static size_t gc_onestep(lua_State* L)
 int LJ_FASTCALL lj_gc_step(lua_State* L)
 {
    global_State* g = G(L);
-   GCSize lim;
-   int32_t ostate = g->vmstate;
-   setvmstate(g, GC);
-   lim = (GCSTEPSIZE / 100) * g->gc.stepmul;
+   VMStateGuard vm_guard(g);  // RAII: saves vmstate, sets to GC, restores on exit.
+
+   GCSize lim = (GCSTEPSIZE / 100) * g->gc.stepmul;
    if (lim IS 0) lim = LJ_MAX_MEM;
    if (g->gc.total > g->gc.threshold) g->gc.debt += g->gc.total - g->gc.threshold;
 
@@ -794,20 +853,17 @@ int LJ_FASTCALL lj_gc_step(lua_State* L)
       lim -= (GCSize)gc_onestep(L);
       if (g->gc.state IS GCSpause) {
          g->gc.threshold = (g->gc.estimate / 100) * g->gc.pause;
-         g->vmstate = ostate;
-         return 1;  //  Finished a GC cycle.
+         return 1;  // Finished a GC cycle.
       }
    } while (sizeof(lim) IS 8 ? ((int64_t)lim > 0) : ((int32_t)lim > 0));
 
    if (g->gc.debt < GCSTEPSIZE) {
       g->gc.threshold = g->gc.total + GCSTEPSIZE;
-      g->vmstate = ostate;
       return -1;
    }
    else {
       g->gc.debt -= GCSTEPSIZE;
       g->gc.threshold = g->gc.total;
-      g->vmstate = ostate;
       return 0;
    }
 }
@@ -836,23 +892,25 @@ int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps)
 void lj_gc_fullgc(lua_State* L)
 {
    global_State* g = G(L);
-   int32_t ostate = g->vmstate;
-   setvmstate(g, GC);
+   VMStateGuard vm_guard(g);  // RAII: saves vmstate, sets to GC, restores on exit.
+
    if (g->gc.state <= GCSatomic) {  // Caught somewhere in the middle.
-      setmref(g->gc.sweep, &g->gc.root);  //  Sweep everything (preserving it).
-      setgcrefnull(g->gc.gray);  //  Reset lists from partial propagation.
+      setmref(g->gc.sweep, &g->gc.root);  // Sweep everything (preserving it).
+      setgcrefnull(g->gc.gray);  // Reset lists from partial propagation.
       setgcrefnull(g->gc.grayagain);
       setgcrefnull(g->gc.weak);
-      g->gc.state = GCSsweepstring;  //  Fast forward to the sweep phase.
+      g->gc.state = GCSsweepstring;  // Fast forward to the sweep phase.
       g->gc.sweepstr = 0;
    }
-   while (g->gc.state IS GCSsweepstring or g->gc.state IS GCSsweep) gc_onestep(L);  //  Finish sweep.
+
+   // Finish any pending sweep.
+   while (g->gc.state IS GCSsweepstring or g->gc.state IS GCSsweep) gc_onestep(L);
    lj_assertG(g->gc.state IS GCSfinalize or g->gc.state IS GCSpause, "bad GC state");
+
    // Now perform a full GC.
    g->gc.state = GCSpause;
    do { gc_onestep(L); } while (g->gc.state != GCSpause);
    g->gc.threshold = (g->gc.estimate / 100) * g->gc.pause;
-   g->vmstate = ostate;
 }
 
 // Write barriers
