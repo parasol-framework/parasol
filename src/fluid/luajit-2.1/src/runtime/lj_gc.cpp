@@ -28,28 +28,58 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 
-#define GCSTEPSIZE     1024u
-#define GCSWEEPMAX     40
-#define GCSWEEPCOST    10
-#define GCFINALIZECOST 100
+// -- GC Configuration Constants ------------------------------------------
 
-// Macros to set GCobj colors and flags.
-#define white2gray(x)    ((x)->gch.marked &= (uint8_t)~LJ_GC_WHITES)
-#define gray2black(x)    ((x)->gch.marked |= LJ_GC_BLACK)
-#define isfinalized(u)   ((u)->marked & LJ_GC_FINALIZED)
+static constexpr uint32_t GCSTEPSIZE     = 1024u;
+static constexpr uint32_t GCSWEEPMAX     = 40;
+static constexpr uint32_t GCSWEEPCOST    = 10;
+static constexpr uint32_t GCFINALIZECOST = 100;
 
-// -- Mark phase ----------------------------------------------------------
+// -- Inline Functions for GC Object Colour Manipulation -------------------
 
-// Mark a TValue (if needed).
-#define gc_marktv(g, tv) \
-  { lj_assertG(!tvisgcv(tv) or (~itype(tv) IS gcval(tv)->gch.gct), "TValue and GC type mismatch"); \
-    if (tviswhite(tv)) gc_mark(g, gcV(tv)); }
+// Transition object from white to grey (marked but children not yet traversed).
+inline void white2gray(GCobj* x) noexcept
+{
+   x->gch.marked &= uint8_t(~LJ_GC_WHITES);
+}
 
-// Mark a GCobj (if needed).
-#define gc_markobj(g, o) { if (iswhite(obj2gco(o))) gc_mark(g, obj2gco(o)); }
+// Transition object from grey to black (marked and all children traversed).
+inline void gray2black(GCobj* x) noexcept
+{
+   x->gch.marked |= LJ_GC_BLACK;
+}
 
-// Mark a string object.
-#define gc_mark_str(s)      ((s)->marked &= (uint8_t)~LJ_GC_WHITES)
+// Check if userdata has been finalised.
+[[nodiscard]] inline bool isfinalized(const GCudata* u) noexcept
+{
+   return (u->marked & LJ_GC_FINALIZED) != 0;
+}
+
+// Mark a string object (strings go directly to black, never grey).
+inline void gc_mark_str(GCstr* s) noexcept
+{
+   s->marked &= uint8_t(~LJ_GC_WHITES);
+}
+
+// -- Mark Phase -----------------------------------------------------------
+
+// Forward declaration for gc_mark (used by gc_marktv and gc_markobj).
+static void gc_mark(global_State* g, GCobj* o);
+
+// Mark a TValue if it contains a white GC object.
+inline void gc_marktv(global_State* g, cTValue* tv) noexcept
+{
+   lj_assertG(!tvisgcv(tv) or (~itype(tv) IS gcval(tv)->gch.gct),
+      "TValue and GC type mismatch");
+   if (tviswhite(tv)) gc_mark(g, gcV(tv));
+}
+
+// Mark a GC object if it is white.
+template<typename T>
+inline void gc_markobj(global_State* g, T* o) noexcept
+{
+   if (iswhite(obj2gco(o))) gc_mark(g, obj2gco(o));
+}
 
 // Mark a white GCobj.
 static void gc_mark(global_State* g, GCobj* o)
@@ -415,9 +445,15 @@ static const GCFreeFunc gc_freefunc[] = {
   (GCFreeFunc)lj_udata_free
 };
 
-// Full sweep of a GC list.
+// Forward declaration for gc_sweep (used by gc_fullsweep).
+static GCRef* gc_sweep(global_State* g, GCRef* p, uint32_t lim);
 
-#define gc_fullsweep(g, p)   gc_sweep(g, (p), ~(uint32_t)0)
+// Full sweep of a GC list (sweeps all objects without limit).
+// Note: Return value may be discarded when sweeping for side effects only.
+inline GCRef* gc_fullsweep(global_State* g, GCRef* p) noexcept
+{
+   return gc_sweep(g, p, ~uint32_t(0));
+}
 
 // Partial sweep of a GC list.
 
@@ -473,7 +509,7 @@ static void gc_sweepstr(global_State* g, GCRef* chain)
 
 // Check whether we can clear a key or a value slot from a table.
 
-static int gc_mayclear(cTValue* o, int val)
+[[nodiscard]] static int gc_mayclear(cTValue* o, int val)
 {
    if (tvisgcv(o)) {  // Only collectable objects can be weak references.
       if (tvisstr(o)) {  // But strings cannot be used as weak references.
