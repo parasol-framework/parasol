@@ -202,7 +202,7 @@ end
 
    return {
       tests = {
-        testCreateCompress, testDecompressWild, testCompressFolder, testDecompressFolder, testStreamedCompression, 
+        testCreateCompress, testDecompressWild, testCompressFolder, testDecompressFolder, testStreamedCompression,
         testStreamedDecompression, testArchiveVolume, testIconArchive
       },
       init = nil,

@@ -22,6 +22,7 @@
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
 #include "lj_thunk.h"
+#include "stack_helpers.h"
 #include "lib.h"
 
 //********************************************************************************************************************
@@ -400,9 +401,14 @@ TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State *L, BCIns ins)
 
 //********************************************************************************************************************
 // Helper for thunk equality comparisons. Resolves thunk and compares with any type.
+// Called from VM assembler (vmeta_equal_thunk) which does NOT set L->top.
 
 TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State *L, BCIns ins)
 {
+   // VMHelperGuard fixes L->top (VM assembler doesn't set it) and saves/restores
+   // stack state in case thunk resolution triggers nested Lua calls with GC.
+   VMHelperGuard guard(L);
+
    int op = (int)bc_op(ins) & ~1;
    TValue tv;
    cTValue *o1 = &L->base[bc_a(ins)];

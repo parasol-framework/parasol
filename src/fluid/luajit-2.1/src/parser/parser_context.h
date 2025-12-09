@@ -12,6 +12,7 @@
 
 enum class ParserChannel : uint8_t {
    Error,
+   Warning,
    Expect,
    Advance
 };
@@ -144,6 +145,7 @@ public:
    void report_limit_error(FuncState& func_state, uint32_t limit, const char* what);
 
    void emit_error(ParserErrorCode code, const Token& token, std::string_view message);
+   void emit_warning(ParserErrorCode code, const Token& token, std::string_view message);
 
 private:
    void attach_to_lex();

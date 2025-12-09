@@ -6,6 +6,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- This test must result in playback of a low-tone, then followed by a high tone.
 
+@Test(requires='audio')
 function testSequentialPlayback()
    local proc = processing.new()
 
@@ -54,6 +55,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test left and right speaker panning
 
+@Test(requires='audio')
 function testPan()
    local proc = processing.new()
 
@@ -84,6 +86,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test volume adjustment and OnStop trigger rates.
 
+@Test(requires='audio')
 function testVolume()
    local proc = processing.new()
 
@@ -114,6 +117,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Increase the pitch repeatedly
 
+@Test(requires='audio')
 function testTones()
    local proc = processing.new()
 
@@ -139,6 +143,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test(requires='audio')
 function testBeep()
    glAudio.mtBeep(3000, 100, 5)
 end
@@ -147,6 +152,7 @@ end
 -- Test WAVE file saving by loading a file and saving it to a temp location, then comparing the binary content of
 -- both files.
 
+@Test(requires='audio')
 function testWaveSave()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    local output_file = obj.new('file', { path='temp:low-tone.wav', flags='!NEW|WRITE' })
@@ -209,14 +215,6 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = {
-        testSequentialPlayback,
-        testPan,
-        testVolume,
-        testTones,
-        testBeep,
-        testWaveSave
-      },
       init = function(Folder)
          glFolder = Folder
          glAudio = obj.new('audio', { name='SystemAudio' })

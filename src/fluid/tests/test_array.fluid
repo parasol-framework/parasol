@@ -1,6 +1,8 @@
 -- Flute tests for array.concat functionality
 
-function testIntegerArrayConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testIntegerArrayConcat()
    local int_array = array.new(5, "integer")
    int_array[0] = 10
    int_array[1] = 20
@@ -20,7 +22,9 @@ function testIntegerArrayConcat()
    end
 end
 
-function testFloatArrayConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFloatArrayConcat()
    local float_array = array.new(3, "float")
    float_array[0] = 1.5
    float_array[1] = 2.7
@@ -32,7 +36,9 @@ function testFloatArrayConcat()
    end
 end
 
-function testByteArrayConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testByteArrayConcat()
    local byte_array = array.new(4, "byte")
    byte_array[0] = 65  -- 'A'
    byte_array[1] = 66  -- 'B'
@@ -51,7 +57,9 @@ function testByteArrayConcat()
    end
 end
 
-function testDoubleArrayConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testDoubleArrayConcat()
    local double_array = array.new(2, "double")
    double_array[0] = 3.141592653589793
    double_array[1] = 2.718281828459045
@@ -62,7 +70,9 @@ function testDoubleArrayConcat()
    end
 end
 
-function testWordArrayConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testWordArrayConcat()
    local word_array = array.new(3, "word")
    word_array[0] = 1000
    word_array[1] = 2000
@@ -74,7 +84,9 @@ function testWordArrayConcat()
    end
 end
 
-function testSingleElementConcat()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testSingleElementConcat()
    local single_array = array.new(1, "integer")
    single_array[0] = 42
 
@@ -84,7 +96,9 @@ function testSingleElementConcat()
    end
 end
 
-function testFormatValidation()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testFormatValidation()
    local int_array = array.new(2, "integer")
    int_array[0] = 10
    int_array[1] = 20
@@ -115,7 +129,9 @@ function testFormatValidation()
    assert(result_escaped is "%d:10, %d:20", "Escaped %% test failed, expected '%d:10, %d:20', got '" .. result_escaped .. "'")
 end
 
-function testStringArrayUnsupported()
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testStringArrayUnsupported()
    -- String arrays should work for concat
    local string_array = array.new(3, "string")
    -- Note: We can't actually set string array values in current implementation
@@ -128,7 +144,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test basic array bounds checking
 
-function testArrayBoundsChecking()
+@Test function testArrayBoundsChecking()
    local arr = array.new(10, "integer")
 
    -- Test valid access
@@ -151,7 +167,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array size validation during creation
 
-function testArraySizeValidation()
+@Test function testArraySizeValidation()
    -- Test negative size rejection
    local status, err = pcall(function()
       return array.new(-5, "integer")
@@ -172,7 +188,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test getstring bounds checking on byte arrays
 
-function testGetStringBounds()
+@Test function testGetStringBounds()
    local str = "Hello World"
    local arr = array.new(str, "bytestring")
 
@@ -202,7 +218,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array copy bounds checking
 
-function testArrayCopyBounds()
+@Test function testArrayCopyBounds()
    local dest = array.new(10, "byte")
    local source = "Hello"
 
@@ -231,7 +247,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test write access bounds on arrays
 
-function testArrayWriteBounds()
+@Test function testArrayWriteBounds()
    local arr = array.new(5, "integer")
 
    -- Test valid write
@@ -254,7 +270,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test table to array copying functionality
 
-function testTableToIntegerArrayCopy()
+@Test function testTableToIntegerArrayCopy()
    local arr = array.new(5, "integer")
    local table_data = {10, 20, 30, 40, 50}
 
@@ -267,7 +283,7 @@ function testTableToIntegerArrayCopy()
    end
 end
 
-function testTableToFloatArrayCopy()
+@Test function testTableToFloatArrayCopy()
    local arr = array.new(4, "float")
    local table_data = {1.5, 2.7, 3.14, 4.8}
 
@@ -280,7 +296,7 @@ function testTableToFloatArrayCopy()
    end
 end
 
-function testTableToByteArrayCopy()
+@Test function testTableToByteArrayCopy()
    local arr = array.new(4, "byte")
    local table_data = {65, 66, 67, 68}  -- ASCII A, B, C, D
 
@@ -291,7 +307,7 @@ function testTableToByteArrayCopy()
    end
 end
 
-function testTableToDoubleArrayCopy()
+@Test function testTableToDoubleArrayCopy()
    local arr = array.new(3, "double")
    local table_data = {3.141592653589793, 2.718281828459045, 1.414213562373095}
 
@@ -303,7 +319,7 @@ function testTableToDoubleArrayCopy()
    end
 end
 
-function testTableToWordArrayCopy()
+@Test function testTableToWordArrayCopy()
    local arr = array.new(3, "word")
    local table_data = {1000, 2000, 3000}
 
@@ -314,7 +330,7 @@ function testTableToWordArrayCopy()
    end
 end
 
-function testTableCopyWithDestinationIndex()
+@Test function testTableCopyWithDestinationIndex()
    local arr = array.new(6, "integer")
 
    -- Initialize array with different values
@@ -339,7 +355,7 @@ function testTableCopyWithDestinationIndex()
    assert(arr[5] is 5, "Element after copy should be unchanged")
 end
 
-function testTableCopyWithLimitedTotal()
+@Test function testTableCopyWithLimitedTotal()
    local arr = array.new(5, "integer")
    local table_data = {10, 20, 30, 40, 50}
 
@@ -355,7 +371,7 @@ function testTableCopyWithLimitedTotal()
    assert(arr[4] is 0, "Element beyond copy should be 0")
 end
 
-function testTableCopyBoundsChecking()
+@Test function testTableCopyBoundsChecking()
    local arr = array.new(3, "integer")
    local table_data = {10, 20, 30, 40}  -- Table larger than array
 
@@ -379,7 +395,7 @@ function testTableCopyBoundsChecking()
    assert(not status3, "Should reject empty table")
 end
 
-function testTableCopyTypeConversion()
+@Test function testTableCopyTypeConversion()
    -- Test copying integers to float array
    local float_arr = array.new(3, "float")
    local int_table = {1, 2, 3}
@@ -400,34 +416,3 @@ function testTableCopyTypeConversion()
    assert(int_arr[1] is 2, "Float to integer conversion failed")
    assert(int_arr[2] is 3, "Float to integer conversion failed")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testIntegerArrayConcat,
-         testFloatArrayConcat,
-         testByteArrayConcat,
-         testDoubleArrayConcat,
-         testWordArrayConcat,
-         testSingleElementConcat,
-         testFormatValidation,
-         testStringArrayUnsupported,
-         -- Array safety
-         testArrayBoundsChecking,
-         testArraySizeValidation,
-         testGetStringBounds,
-         testArrayCopyBounds,
-         testArrayWriteBounds,
-         -- Table to array copying
-         testTableToIntegerArrayCopy,
-         testTableToFloatArrayCopy,
-         testTableToByteArrayCopy,
-         testTableToDoubleArrayCopy,
-         testTableToWordArrayCopy,
-         testTableCopyWithDestinationIndex,
-         testTableCopyWithLimitedTotal,
-         testTableCopyBoundsChecking,
-         testTableCopyTypeConversion
-      }
-   }

@@ -119,7 +119,7 @@ end
 
 global function parseMethod(Class, Extract)
    Extract = '-METHOD-\n' .. Extract:trim() .. '\n-END-\n'
-   
+
    name    = Extract:match('\n[Nn]ame:%s+(.-)\n')
    comment = Extract:match('\n[Cc]omment:%s+(.-)\n')
    if not name then

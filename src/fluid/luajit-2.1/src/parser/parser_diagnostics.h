@@ -27,7 +27,8 @@ enum class ParserErrorCode : uint16_t {
    TypeMismatchAssignment,
    TypeMismatchReturn,
    DeferredTypeRequired,
-   UndefinedVariable
+   UndefinedVariable,
+   ThunkDirectCall          // Warning: thunk called without assignment defeats memoization
 };
 
 struct ParserDiagnostic {

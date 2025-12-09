@@ -3,10 +3,10 @@
 -- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Fluid.
 --
 -- TODO: Support for JSON output of test results.
---       Support for parameterized tests.
+--       Support for parameterized tests from the command line.
 --       Support for test retries on failure.
 --       Support for test timeouts (mark as a fail after N seconds is exceeded).
---       Support for test filtering by tags or categories (dependent on annotations)
+--       Support for test filtering by annotated labels
 
 glHelp = [[
 Flute provides a standard framework for the execution of unit tests in Fluid.
@@ -17,16 +17,79 @@ Example usage:
 ]]
 
    require 'common'
-   
+
    glFile = arg('file')
    glTest = arg('test')
    glSelf = obj.find('self')
 
 ----------------------------------------------------------------------------------------------------------------------
 
+glNetworkAvailable = thunk():bool
+   catch(function()
+      if not mNet then
+         global mNet = mod.load('network')
+      end
+   end)
+   return mNet != nil
+end
+
+glAudioAvailable = thunk():bool
+   if not mAudio then
+      global mAudio = catch(function() return mod.load('audio') end)
+   end
+   return mAudio != nil
+end
+
+glDisplayAvailable = thunk():bool
+   if not mGfx then
+      global mGfx = catch(function() return mod.load('display') end)
+   end
+   return mGfx != nil
+end
+
+global glSSLAvailable = thunk():bool
+   glNetworkAvailable ?? return false
+
+   -- Test if SSL support is available by attempting to create SSL socket
+
+   ex, test_socket = catch(function()
+      return obj.new('netsocket', { name = 'SSLSupportTest', port = glPort, flags = 'SERVER|SSL' })
+   end)
+
+   if test_socket then
+      supported = false
+      if test_socket.error is ERR_Okay then
+         supported = true
+      end
+      test_socket = nil
+      collectgarbage()
+      return supported
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function checkAvailable(Requirement:str, Expectation:bool)
+   if Requirement is 'network' then
+      return glNetworkAvailable is Expectation
+   elseif Requirement is 'ssl' then
+      return glSSLAvailable is Expectation
+   elseif Requirement is 'audio' then
+      return glAudioAvailable is Expectation
+   elseif Requirement is 'display' then
+      return glDisplayAvailable is Expectation
+   else
+      error('Invalid requirement: ' .. Requirement)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 function runTests()
-   glTestTotal = 0
-   glTestsPassed = 0
+   global glTestTotal = 0
+   global glTestsPassed = 0
 
    err, t = mSys.AnalysePath(glFile)
    if (err != ERR_Okay) or (t != LOC_FILE) then
@@ -36,11 +99,80 @@ function runTests()
 
    body = loadFile(glFile)
 
+   -- Annotations have priority over the tests table.
+   --[[
+   _ANNO = {
+      [functionRef] = {
+         name = 'functionName',
+         source = 'path/to/file.fluid',
+         annotations = {
+            { name = 'Test', args = { key = value, ... } },
+            { name = 'Requires', args = { ... } }
+         }
+      }
+   }
+   --]]
+
+   all = debug.anno.list()
+   before_each = {}
+   after_each  = {}
+   before_all  = {}
+   after_all   = {}
+
+   if all then
+      body ?= {}
+      body.tests ?= {}
+
+      for func, entry in pairs(all) do
+         disabled = false
+         is_test  = false
+         test_name     = nil
+         test_timeout  = nil
+         test_priority = nil
+         test_labels   = nil
+         for k,v in pairs(entry.annotations) do
+            if v.name is 'Test' then
+               -- @Test Arguments: name, timeout, priority, labels
+               is_test = true
+               for k, v in pairs(v.args) do
+                  if k is 'name' then
+                     test_name = v
+                  elseif k is 'timeout' then
+                     test_timeout = v
+                  elseif k is 'priority' then
+                     test_priority = v
+                  elseif k is 'labels' then
+                     test_labels = v
+                  end
+               end
+            elseif v.name is 'Disabled' then
+               disabled = true
+            elseif v.name is 'BeforeEach' then
+               table.insert(before_each, func)
+            elseif v.name is 'AfterEach' then
+               table.insert(after_each, func)
+            elseif v.name is 'BeforeAll' then
+               table.insert(before_all, func)
+            elseif v.name is 'AfterAll' then
+               table.insert(after_all, func)
+            elseif v.name is 'Requires' then
+               for req, expect in pairs(v.args) do
+                  if not checkAvailable(req, expect ?? true) then disabled = true end
+               end
+            end
+         end
+
+         if not disabled and is_test then
+            table.insert(body.tests, func)
+         end
+      end
+   end
+
    if not body then
-      print("The Flute test file did not return a configuration table.  It is either not a Flute script or is misconfigured.")
+      print("The Flute test file did not return a configuration table or include annotations.  It is either not a Flute script or is misconfigured.")
       return
    elseif not body.tests then
-      -- This is considered legitimate - a test file may choose to have no tests.
+      -- Exporting no tests is considered legitimate - a test file may choose to have no tests.
       print("The Flute test file did not return any tests to execute.")
       glSelf.errorString = nil
       return
@@ -58,45 +190,72 @@ function runTests()
 
    glTestTotal += #body.tests
 
+   if #before_all > 0 then
+      for _,func in ipairs(before_all) do
+         func()
+      end
+   end
+
    i = 0
    for _,func in ipairs(body.tests) do
       i++
       skip = false
-      local func_name
-      if type(func) is "string" then
+      local func_name, func_ref
+      if type(func) is 'string' then
          error('String-based function references are not supported.')
-      elseif type(func) is "function" then
+      elseif type(func) is 'function' then
          func_name = tostring(func)
-         print("-- Test " .. i .. ": " .. func_name .. " --")
-         if glTest and (func_name != glTest) then
-            skip = true
-         end
+         func_ref = func
+      elseif type(func) is 'table' then
+         func_name = func.name
+         func_ref = func.func
       else
-         print(i .. ". <Unnamed>")
+         error('Invalid function reference type: ' .. type(func))
       end
 
-      if not skip and func then
+      print('-- Test ' .. i .. ': ' .. func_name .. ' --')
+      if glTest and (func_name != glTest) then
+         skip = true
+      end
+
+      if not skip and func_ref then
+         -- Run the test
          startTime = mSys.PreciseTime()
-         status, result = pcall(func)
+
+         if #before_each > 0 then
+            for _,func in ipairs(before_each) do
+               func()
+            end
+         end
+
+         status, result = pcall(func_ref)
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
+
+         if #after_each > 0 then
+            for _,func in ipairs(after_each) do
+               func()
+            end
+         end
 
          collectgarbage()
 
          if not status then
             if result?? then logOutput(result) end
-            print(string.format("FAIL: %.6f sec", totalTime))
+            print(string.format('FAIL: %.6f sec', totalTime))
          else
             if result?? then logOutput(result) end
-            print(string.format("PASS: %.6f sec", totalTime))
+            print(string.format('PASS: %.6f sec', totalTime))
             glTestsPassed = glTestsPassed + 1
          end
       else
-         if not func and func_name then
-            print('Function ' .. func_name .. ' not found.')
-         else
-            print('SKIPPED')
-         end
+         print('SKIPPED')
          glTestTotal -= 1
+      end
+   end
+
+   if #after_all > 0 then
+      for _,func in ipairs(after_all) do
+         func()
       end
    end
 
@@ -104,16 +263,16 @@ function runTests()
       body.cleanup()
    end
 
-   print("--")
+   print('--')
 
    if glTestsPassed < glTestTotal then
       -- Setting the errorString will ensure that an error code is returned to the shell.
-      glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
+      glSelf.errorString = 'Ran ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed
    else
       glSelf.errorString = nil
    end
 
-   print("Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed)
+   print('Ran ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -131,6 +290,6 @@ end
    end
 
    -- Setting an error string ensures that ctest will register a failure if the tests do not complete as planned.
-   glSelf.errorString = "Unexpected execution failure - tests not executed as planned."
+   glSelf.errorString = 'Unexpected execution failure - tests not executed as planned.'
 
    runTests()

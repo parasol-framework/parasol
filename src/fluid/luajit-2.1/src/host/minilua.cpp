@@ -2526,12 +2526,6 @@ if(strchr(what,'L'))
 collectvalidlines(L,f);
 return status;
 }
-static int isinstack(CallInfo*ci,const TValue*o){
-StkId p;
-for(p=ci->base;p<ci->top;p++)
-if(o==p)return 1;
-return 0;
-}
 static void luaG_typeerror(lua_State*L,const TValue*o,const char*op){
 const char*name=NULL;
 const char*t=luaT_typenames[ttype(o)];

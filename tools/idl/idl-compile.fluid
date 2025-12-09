@@ -12,14 +12,14 @@
    global glPath = glSelf.workingPath
    global glOutput = { }
    global glHeader = { }
-   
+
    global glProgram    = 'idl-compile'
    global glSource     = arg('src')
    global glOutputPath = arg('output')
    global glFeedback   = arg('feedback')
    global glFormat     = arg('format')
    global glAppend     = arg('append')
-   
+
    global glOrderedStructures = { }
    global glStructures = { }
    global glConstants = { }

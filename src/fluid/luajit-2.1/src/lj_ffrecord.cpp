@@ -199,7 +199,7 @@ static void LJ_FASTCALL recff_type(jit_State* J, RecordFFData* rd)
    else t = ~itype(&rd->argv[0]);
 
    // Check for thunk userdata with declared type
-   
+
    if (t IS ~LJ_TUDATA) {  // 12 = base value for userdata
       GCudata *ud = udataV(&rd->argv[0]);
       if (ud->udtype IS UDTYPE_THUNK) {

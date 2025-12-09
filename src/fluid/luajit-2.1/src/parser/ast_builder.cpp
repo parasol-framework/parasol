@@ -271,7 +271,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    this->ctx.tokens().advance();
 
    // Handle `global function name()` and `global thunk name()` syntax
-   
+
    bool is_thunk = false;
    if (this->ctx.check(TokenKind::ThunkToken)) {
       is_thunk = true;
@@ -1430,12 +1430,23 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       }
 
       case TokenKind::ThunkToken: {
+         // Anonymous thunk expression: thunk():type ... end
          Token thunk_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
          auto fn = this->parse_function_literal(thunk_token, true);
          if (not fn.ok()) return fn;
 
-         node = std::move(fn.value_ref());
+         // Only auto-invoke parameterless thunks to return thunk userdata
+         // Thunks with parameters remain callable functions
+         auto* payload = std::get_if<FunctionExprPayload>(&fn.value_ref()->data);
+         if (payload and payload->parameters.empty()) {
+            SourceSpan span = fn.value_ref()->span;
+            ExprNodeList call_args;
+            node = make_call_expr(span, std::move(fn.value_ref()), std::move(call_args), false);
+         }
+         else {
+            node = std::move(fn.value_ref());
+         }
          break;
       }
 

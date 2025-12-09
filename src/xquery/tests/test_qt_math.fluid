@@ -7,23 +7,21 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Helper to parse test XML and execute tests
 
-local function runTest(TestPath)
-   local xml = obj.new('xml', { path = TestPath })
+function runTest(TestPath)
+   xml = obj.new('xml', { path = TestPath })
 
-   local err, testSetId = xml.mtSearch('/test-set')
-   if err != ERR_Okay then
-      error('Failed to find <test-set> in ' .. TestPath .. ': ' .. (xml.errorMsg or mSys.GetErrorMsg(err)))
-   end
+   err, testSetId = xml.mtSearch('/test-set')
+   assert(err is ERR_Okay, 'Failed to find <test-set> in ' .. TestPath .. ': ' .. (xml.errorMsg or mSys.GetErrorMsg(err)))
 
-   local err, testSetName = xml.mtGetAttrib(testSetId, 'name')
+   err, testSetName = xml.mtGetAttrib(testSetId, 'name')
    if err != ERR_Okay then
       testSetName = 'unknown'
    end
 
-   local passed = 0
-   local total_tests = 0
+   passed = 0
+   total_tests = 0
 
-   local err, index = xml.mtSearch('//test-case', function(XML, TagID, Attrib)
+   err, index = xml.mtSearch('//test-case', function(XML, TagID, Attrib)
       local err, test_name = xml.mtGetAttrib(TagID, 'name')
       if err != ERR_Okay then
          print('  SKIP: (unnamed test case)')
@@ -39,7 +37,7 @@ local function runTest(TestPath)
 
       print(test_name .. ': ' .. test_query)
 
-      total_tests += 1
+      total_tests++
 
       -- Get expected result using XPath from the test-case
 
@@ -51,7 +49,7 @@ local function runTest(TestPath)
 
       -- Create a new XML context with math namespace for evaluation
 
-      local testXml = obj.new('xml', {
+      testXml = obj.new('xml', {
          statement = '<?xml version="1.0"?><root xmlns:math="http://www.w3.org/2005/xpath-functions/math"/>'
       })
 
@@ -70,27 +68,27 @@ local function runTest(TestPath)
          end
       end
 
-      local testPassed = false
+      testPassed = false
 
       if assert_eq then -- assert-eq: exact equality
          -- Get the tag and extract content
          local err, assertTag = xml.mtGetTag(assertEqId)
-         local expectedValue = ''
+         expectedValue = ''
          if assertTag and assertTag.children then
             for _, child in ipairs(assertTag.children) do
                if child.attribs and child.attribs[1] and child.attribs[1].name is '' then
-                  expectedValue = expectedValue .. (child.attribs[1].value or '')
+                  expectedValue ..= child.attribs[1].value or ''
                end
             end
          end
 
          -- Compare values (handle scientific notation)
-         local actual = tostring(actual_result):gsub('%s+', '')
-         local expected = tostring(expectedValue):gsub('%s+', '')
+         actual   = tostring(actual_result):gsub('%s+', '')
+         expected = tostring(expectedValue):gsub('%s+', '')
 
          -- For numeric comparison, convert to numbers if possible
-         local actualNum = tonumber(actual)
-         local expectedNum = tonumber(expected)
+         actualNum   = tonumber(actual)
+         expectedNum = tonumber(expected)
 
          if actualNum and expectedNum then
             -- Use epsilon comparison for floating point
@@ -103,7 +101,7 @@ local function runTest(TestPath)
 
          if testPassed then
             print('  PASS: ' .. test_name)
-            passed = passed + 1
+            passed++
          else
             print('  FAIL: ' .. test_name .. ' (expected ' .. expected .. ', got ' .. actual .. ')')
          end
@@ -111,7 +109,7 @@ local function runTest(TestPath)
          -- assert-empty: result should be empty sequence
          if not actual_result or actual_result is '' then
             print('  PASS: ' .. test_name)
-            passed += 1
+            passed++
             testPassed = true
          else
             print('  FAIL: ' .. test_name .. ' (expected empty, got ' .. tostring(actual_result) .. ')')
@@ -125,22 +123,22 @@ local function runTest(TestPath)
          if assertTag and assertTag.children then
             for _, child in ipairs(assertTag.children) do
                if child.attribs and child.attribs[1] and child.attribs[1].name is '' then
-                  expectedValue = expectedValue .. (child.attribs[1].value or '')
+                  expectedValue ..= child.attribs[1].value or ''
                end
             end
          end
 
-         local actual = tostring(actual_result)
-         local expected = tostring(expectedValue)
+         actual = tostring(actual_result)
+         expected = tostring(expectedValue)
          if actual is expected then
             print('  PASS: ' .. test_name)
-            passed += 1
+            passed++
             testPassed = true
          else
             print('  FAIL: ' .. test_name .. ' (expected "' .. expected .. '", got "' .. actual .. '")')
          end
       else
-         passed += 1
+         passed++
          print('  SKIP: ' .. test_name .. ' (unknown assertion type)')
       end
    end)
@@ -152,7 +150,7 @@ end
 
 return {
    init = function(ScriptFolder)
-      local math_folder = ScriptFolder .. 'QT3_1_0/math/'
+      math_folder = ScriptFolder .. 'QT3_1_0/math/'
 
       if mSys.AnalysePath(math_folder) != ERR_Okay then
          -- Assume the XQuery test package isn't installed on this machine
@@ -162,20 +160,24 @@ return {
 
       print('Searching for tests in: ' .. math_folder)
 
-      local tests = { }
+      counter = 1
 
       file.search(math_folder, {
          nameFilter  = '%.xml$',
          nameWild = true,
          matchFeedback = function(Path, FileName)
-            local func_name = FileName
-            table.insert(tests, func_name)
-            _G[func_name] = function()
+            test_func = function()
                runTest(Path .. FileName)
             end
+
+            func_name = FileName .. '_' .. counter
+
+            debug.anno.set(test_func, {
+               { name = "Test", args = { name = func_name, labels = { "xquery", "math" } } }
+            }, "test_qt_match.fluid", func_name)
+
+            counter++
          end
       })
-
-      return tests
    end
 }

@@ -15,7 +15,7 @@ Parameters:
    local glWinWidth, glWinHeight, glColours, glMode, glWindow, glSurface, glParticles, glViewport, glScene
    local glTimes, glTimerHandle, glFPS, glPrinted
    local glBestFPS = 0
-   
+
    local MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
    local MODE_VECTOR       = 2 -- Tests the speed of drawing circles via the scene graph and VectorEllipse objects
    local MODE_DIRECTVECTOR = 3 -- Tests the drawing speed of DrawPath() and bypasses the scene graph.
@@ -106,7 +106,7 @@ function timer(Subscriber, Elapsed, Current)
    moveflag = MTF_X | MTF_Y
    glWinWidth  = glSurface.width ?? 1
    glWinHeight = glSurface.height ?? 1
-   
+
    for _,p in pairs(glParticles) do
       -- Calculate next position of particle
 

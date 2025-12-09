@@ -204,10 +204,8 @@ if (MSVC)
    # Generate buildvm_arch.h using dynasm
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
-      COMMAND ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua
-         -LN ${LUAJIT_DASMFLAGS} -o ${BUILDVM_ARCH_H} ${LUAJIT_DASC}
-      DEPENDS ${MINILUA_TARGET} "${LUAJIT_DYNASM_DIR}/dynasm.lua" ${LUAJIT_DASC}
-         "${LUAJIT_SRC}/lj_arch.h"
+      COMMAND ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua -LN ${LUAJIT_DASMFLAGS} -o ${BUILDVM_ARCH_H} ${LUAJIT_DASC}
+      DEPENDS ${MINILUA_TARGET} "${LUAJIT_DYNASM_DIR}/dynasm.lua" ${LUAJIT_DASC} "${LUAJIT_SRC}/lj_arch.h"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       COMMENT "Generating buildvm_arch.h via dynasm for ${LUAJIT_ARCH}"
       VERBATIM
