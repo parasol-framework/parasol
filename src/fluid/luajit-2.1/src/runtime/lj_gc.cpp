@@ -4,6 +4,26 @@
 **
 ** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
+**
+** Algorithm Overview:
+** Implements a tri-colour incremental mark-and-sweep collector:
+** - White: Unmarked objects (candidates for collection)
+** - Grey: Marked but children not yet traversed
+** - Black: Marked and all children traversed
+**
+** GC Phases (in order):
+** 1. Pause     - Idle, waiting to start a new cycle
+** 2. Propagate - Incrementally marking grey objects black
+** 3. Atomic    - Non-interruptible transition from mark to sweep
+** 4. SweepStr  - Sweeping string interning table
+** 5. Sweep     - Sweeping main object list
+** 6. Finalize  - Running __gc metamethods
+**
+** Write Barriers:
+** - Forward barrier: When storing white object in black object during propagate
+** - Backward barrier: When storing to black table (makes table grey again)
+**
+** See also: lj_gc.h for the public API and GarbageCollector facade class.
 */
 
 #define lj_gc_c
@@ -28,10 +48,16 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 
-static constexpr uint32_t GCSTEPSIZE     = 1024u;
-static constexpr uint32_t GCSWEEPMAX     = 40;
-static constexpr uint32_t GCSWEEPCOST    = 10;
-static constexpr uint32_t GCFINALIZECOST = 100;
+#include <array>
+#include <span>
+
+// -- GC Configuration Constants -----------------------------------------------
+// These control the incremental GC stepping behaviour.
+
+static constexpr uint32_t GCSTEPSIZE     = 1024u;  // Base step size in bytes
+static constexpr uint32_t GCSWEEPMAX     = 40;     // Max objects to sweep per step
+static constexpr uint32_t GCSWEEPCOST    = 10;     // Cost estimate per sweep operation
+static constexpr uint32_t GCFINALIZECOST = 100;    // Cost estimate per finalizer call
 
 static void gc_mark(global_State *, GCobj *);
 static GCRef* gc_sweep(global_State *, GCRef *, uint32_t);
@@ -122,8 +148,9 @@ inline void gc_marktv(global_State *g, cTValue *tv) noexcept {
 
 //********************************************************************************************************************
 // Mark a GC object if it is white.
+// Uses C++20 concept to ensure T is a valid GC object type.
 
-template<typename T>
+template<GCObjectType T>
 inline void gc_markobj(global_State *g, T* o) noexcept {
    if (iswhite(obj2gco(o))) gc_mark(g, obj2gco(o));
 }
@@ -295,21 +322,21 @@ static int gc_traverse_tab(global_State *g, GCtab* t)
    if (weak IS LJ_GC_WEAK)  //  Nothing to mark if both keys/values are weak.
       return 1;
 
-   if (not (weak & LJ_GC_WEAKVAL)) {  // Mark array part.
-      MSize i, asize = t->asize;
-      for (i = 0; i < asize; i++)
-         gc_marktv(g, arrayslot(t, i));
+   // Mark array part using std::span for cleaner iteration.
+   if (not (weak & LJ_GC_WEAKVAL) and t->asize > 0) {
+      std::span<TValue> array_part(arrayslot(t, 0), t->asize);
+      for (TValue& tv : array_part)
+         gc_marktv(g, &tv);
    }
 
-   if (t->hmask > 0) {  // Mark hash part.
-      Node* node = noderef(t->node);
-      MSize i, hmask = t->hmask;
-      for (i = 0; i <= hmask; i++) {
-         Node* n = &node[i];
-         if (not tvisnil(&n->val)) {  // Mark non-empty slot.
-            lj_assertG(not tvisnil(&n->key), "mark of nil key in non-empty slot");
-            if (not (weak & LJ_GC_WEAKKEY)) gc_marktv(g, &n->key);
-            if (not (weak & LJ_GC_WEAKVAL)) gc_marktv(g, &n->val);
+   // Mark hash part using std::span for cleaner iteration.
+   if (t->hmask > 0) {
+      std::span<Node> hash_part(noderef(t->node), t->hmask + 1);
+      for (Node& n : hash_part) {
+         if (not tvisnil(&n.val)) {  // Mark non-empty slot.
+            lj_assertG(not tvisnil(&n.key), "mark of nil key in non-empty slot");
+            if (not (weak & LJ_GC_WEAKKEY)) gc_marktv(g, &n.key);
+            if (not (weak & LJ_GC_WEAKVAL)) gc_marktv(g, &n.val);
          }
       }
    }
@@ -489,25 +516,26 @@ static size_t gc_propagate_gray(global_State *g)
 
 // Type of GC free functions.
 
-typedef void (LJ_FASTCALL* GCFreeFunc)(global_State *g, GCobj* o);
+using GCFreeFunc = void (LJ_FASTCALL*)(global_State*, GCobj*);
 
 // GC free functions for LJ_TSTR .. LJ_TUDATA. ORDER LJ_T
+// Using std::array for type-safe bounds checking and modern C++ semantics.
 
-static const GCFreeFunc gc_freefunc[] = {
-  (GCFreeFunc)lj_str_free,
-  (GCFreeFunc)lj_func_freeuv,
-  (GCFreeFunc)lj_state_free,
-  (GCFreeFunc)lj_func_freeproto,
-  (GCFreeFunc)lj_func_free,
-  (GCFreeFunc)lj_trace_free,
+static const std::array<GCFreeFunc, 9> gc_freefunc = {{
+   (GCFreeFunc)lj_str_free,       // LJ_TSTR
+   (GCFreeFunc)lj_func_freeuv,    // LJ_TUPVAL
+   (GCFreeFunc)lj_state_free,     // LJ_TTHREAD
+   (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
+   (GCFreeFunc)lj_func_free,      // LJ_TFUNC
+   (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
 #if LJ_HASFFI
-  (GCFreeFunc)lj_cdata_free,
+   (GCFreeFunc)lj_cdata_free,     // LJ_TCDATA
 #else
-  (GCFreeFunc)0,
+   nullptr,                       // LJ_TCDATA (disabled)
 #endif
-  (GCFreeFunc)lj_tab_free,
-  (GCFreeFunc)lj_udata_free
-};
+   (GCFreeFunc)lj_tab_free,       // LJ_TTAB
+   (GCFreeFunc)lj_udata_free      // LJ_TUDATA
+}};
 
 
 // Full sweep of a GC list (sweeps all objects without limit).
@@ -591,24 +619,23 @@ static void gc_sweepstr(global_State *g, GCRef* chain)
 static void gc_clearweak(global_State *g, GCobj* o)
 {
    while (o) {
-      GCtab * t = gco2tab(o);
+      GCtab* t = gco2tab(o);
       lj_assertG((t->marked & LJ_GC_WEAK), "clear of non-weak table");
-      if ((t->marked & LJ_GC_WEAKVAL)) {
-         MSize i, asize = t->asize;
-         for (i = 0; i < asize; i++) {
-            // Clear array slot when value is about to be collected.
-            TValue* tv = arrayslot(t, i);
-            if (gc_mayclear(tv, 1)) setnilV(tv);
+
+      // Clear array part using std::span.
+      if ((t->marked & LJ_GC_WEAKVAL) and t->asize > 0) {
+         std::span<TValue> array_part(arrayslot(t, 0), t->asize);
+         for (TValue& tv : array_part) {
+            if (gc_mayclear(&tv, 1)) setnilV(&tv);
          }
       }
 
+      // Clear hash part using std::span.
       if (t->hmask > 0) {
-         Node* node = noderef(t->node);
-         MSize i, hmask = t->hmask;
-         for (i = 0; i <= hmask; i++) {
-            Node* n = &node[i];
-            // Clear hash slot when key or value is about to be collected.
-            if (not tvisnil(&n->val) and (gc_mayclear(&n->key, 0) or gc_mayclear(&n->val, 1))) setnilV(&n->val);
+         std::span<Node> hash_part(noderef(t->node), t->hmask + 1);
+         for (Node& n : hash_part) {
+            if (not tvisnil(&n.val) and (gc_mayclear(&n.key, 0) or gc_mayclear(&n.val, 1)))
+               setnilV(&n.val);
          }
       }
       o = gcref(t->gclist);

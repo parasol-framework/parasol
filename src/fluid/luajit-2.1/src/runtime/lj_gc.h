@@ -1,12 +1,46 @@
 /*
 ** Garbage collector.
 ** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+**
+** Public interface for the LuaJIT garbage collector.
+**
+** This header provides:
+** - GCPhase enum class for type-safe GC state representation
+** - GCObjectType C++20 concept for compile-time type constraints
+** - Colour test functions (iswhite, isblack, isgray, etc.)
+** - Write barrier functions and macros
+** - GarbageCollector facade class for modern OOP access
+** - Memory allocation functions
+**
+** Usage:
+**   // Using the facade class (recommended for new code)
+**   GarbageCollector collector = gc(L);
+**   if (collector.isPaused()) {
+**      collector.step(L);
+**   }
+**
+**   // Using C-style functions (for compatibility)
+**   lj_gc_step(L);
+**   lj_gc_fullgc(L);
+**
+** See also: lj_gc.cpp for implementation details.
 */
 
 #ifndef _LJ_GC_H
 #define _LJ_GC_H
 
 #include "lj_obj.h"
+#include <concepts>
+
+// Concept for types that can be garbage collected.
+// GC objects are accessed via the obj2gco() macro which converts any GC type
+// to a GCobj pointer, providing uniform access to the GCHeader fields.
+template<typename T>
+concept GCObjectType = requires(T* obj) {
+   // Must be convertible to GCobj* via obj2gco macro
+   { obj2gco(obj) } -> std::convertible_to<GCobj*>;
+};
+
 
 // Garbage collector states. Order matters.
 // Using enum class for type safety; values must match GCState.state field usage.
@@ -177,10 +211,35 @@ static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 // object-oriented wrapper around the GC functions. This is a lightweight
 // facade that delegates to the existing C-style functions.
 //
-// Usage:
-//   GarbageCollector gc(G(L));
-//   gc.step(L);
-//   gc.fullCycle(L);
+// The class is designed to be:
+// - Lightweight: Just a pointer wrapper, no overhead
+// - Non-owning: Does not manage the global_State lifetime
+// - Complete: Wraps all public GC functions
+//
+// Method Categories:
+// - State Queries: phase(), totalMemory(), isPaused(), isMarking(), etc.
+// - Collection Control: step(), fullCycle(), check()
+// - Write Barriers: barrierForward(), barrierBack(), barrierUpvalue()
+// - Finalization: separateUdata(), finalizeUdata(), freeAll()
+// - Upvalue Management: closeUpvalue()
+// - JIT Integration: barrierTrace(), stepJit() (when LJ_HASJIT)
+//
+// Example Usage:
+//   // Create facade from lua_State or global_State
+//   GarbageCollector collector = gc(L);
+//
+//   // Query GC state
+//   if (collector.isPaused()) {
+//      std::cout << "GC is idle\n";
+//   }
+//
+//   // Perform collection
+//   collector.step(L);           // Incremental step
+//   collector.fullCycle(L);      // Full collection
+//
+//   // Check memory usage
+//   GCSize total = collector.totalMemory();
+//   GCSize threshold = collector.threshold();
 //
 class GarbageCollector {
    global_State* g_;
