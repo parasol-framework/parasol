@@ -117,9 +117,15 @@ static GCtab* getcurrenv(lua_State *L)
 //
 // Resolve thunk at stack position, replacing the slot with the resolved value.
 // Returns pointer to the (possibly updated) value.
+// For positive indices, checks if the slot exists before attempting resolution.
 
 static TValue * thunk_resolve_at(lua_State *L, int idx)
 {
+   // For positive indices, check if slot exists before accessing
+   if (idx > 0) {
+      TValue *o = L->base + (idx - 1);
+      if (o >= L->top) return const_cast<TValue*>(niltv(L));  // Slot doesn't exist, return nil
+   }
    TValue *o = index2adr_stack(L, idx);
    if (o and lj_thunk_isthunk(o) and not L->resolving_thunk) {
       GCudata *ud = udataV(o);
@@ -141,6 +147,10 @@ static TValue * thunk_resolve_at(lua_State *L, int idx)
       // Restore slot pointer (stack may have been reallocated)
       o = restorestack(L, slot_offset);
 
+      // If resolution failed (e.g., error in thunk function), return the original slot
+      // which still contains the thunk userdata - let caller handle the error
+      if (not result) return o;
+
       // Copy resolved value to stack slot for consistency
       copyTV(L, o, result);
       return o;
@@ -150,11 +160,18 @@ static TValue * thunk_resolve_at(lua_State *L, int idx)
 
 //********************************************************************************************************************
 // Const variant for read-only access - resolves but returns const pointer
+// For positive indices, checks if the slot exists before attempting resolution.
+// This is important for optional arguments where the stack slot may not exist.
 
 static cTValue * thunk_resolve_const(lua_State *L, int idx)
 {
    if (idx <= LUA_REGISTRYINDEX) {
       return index2adr(L, idx);  // Pseudo-indices can't be thunks
+   }
+   // For positive indices, check if slot exists before attempting thunk resolution
+   if (idx > 0) {
+      TValue *o = L->base + (idx - 1);
+      if (o >= L->top) return niltv(L);  // Slot doesn't exist, return nil
    }
    return thunk_resolve_at(L, idx);
 }

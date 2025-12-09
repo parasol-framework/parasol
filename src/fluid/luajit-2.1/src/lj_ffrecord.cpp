@@ -330,8 +330,16 @@ static void LJ_FASTCALL recff___filter(jit_State* J, RecordFFData* rd)
    }
 
    // Extract constant values
+   // The mask may be IR_KNUM (floating point) or IR_KINT (integer) depending on the value
 
-   uint64_t mask = uint64_t(ir_knum(IR(tref_ref(tr_mask)))->u64);
+   IRIns* ir_mask = IR(tref_ref(tr_mask));
+   uint64_t mask;
+   if (ir_mask->o IS IR_KNUM) {
+      mask = uint64_t(ir_knum(ir_mask)->u64);
+   }
+   else {
+      mask = uint64_t(uint32_t(ir_mask->i));  // IR_KINT stores 32-bit integer
+   }
    int32_t count = IR(tref_ref(tr_count))->i;
    bool trailing_keep = !tref_isfalse(tr_trailing);
 
