@@ -103,17 +103,24 @@ end
 function testAnonymousThunkNoParams()
    local counter = 0
 
+   -- Parameterless anonymous thunks are auto-invoked, returning thunk userdata directly
    local lazy = thunk():num
       counter++
       return 100
    end
 
-   local val = lazy()
-   assert(counter is 0, "Anonymous thunk (no params) should not execute on call")
+   assert(counter is 0, "Anonymous thunk should not execute on assignment")
+   assert(isthunk(lazy), "lazy should be a thunk userdata")
 
-   local result = val + 0
-   assert(counter is 1, "Anonymous thunk should execute once")
+   -- Accessing the thunk triggers resolution
+   local result = lazy + 0
+   assert(counter is 1, "Anonymous thunk should execute once on access")
    assert(result is 100, "Should return 100, got " .. result)
+
+   -- Subsequent access uses cached value
+   local result2 = lazy + 0
+   assert(counter is 1, "Anonymous thunk should not execute again")
+   assert(result2 is 100, "Cached value should be 100")
 end
 
 ----------------------------------------------------------------------------------------------------------------------

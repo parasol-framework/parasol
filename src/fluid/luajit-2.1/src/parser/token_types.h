@@ -70,6 +70,7 @@ enum class TokenKind : uint16_t {
    DeferredTyped = TK_defer_typed,
    DeferredClose = TK_defer_close,
    ThunkToken = TK_thunk,
+   Annotate = TK_annotate,
    EndOfFile = TK_eof,
 #undef TOKEN_KIND_ENUM
 #undef TOKEN_KIND_ENUM_SYM
@@ -152,6 +153,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::DeferredOpen: return "<{";
       case TokenKind::DeferredTyped: return "<type{";
       case TokenKind::DeferredClose: return "}>";
+      case TokenKind::Annotate: return "@";
       case TokenKind::EndOfFile: return "<eof>";
       case TokenKind::LeftParen: return "(";
       case TokenKind::RightParen: return ")";

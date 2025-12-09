@@ -6,17 +6,17 @@ Refer to the Fluid I/O Wiki page for documentation.
    require 'common'
 
 file.search = function(Path, Options)
-   local lOptions = Options
-   local ADJUST_LOG = 0
-   local lStop = false
-   local isRegexFilter = false
+   lOptions      = Options
+   ADJUST_LOG    = 0
+   lStop         = false
+   isRegexFilter = false
 
-   local function contentMatch(Path)
-      if lOptions.contentFilter is nil then
+   function contentMatch(Path)
+      if not lOptions.contentFilter then
          return true
       end
 
-      local ex, fl = catch(function()
+      ex, fl = catch(function()
          return obj.new('file', { path=Path, flags='READ' } )
       end)
 
@@ -28,13 +28,13 @@ file.search = function(Path, Options)
             return false
          end
 
-         local bytes = fl.size
+         bytes = fl.size
          if bytes > 4096 then bytes = 4096 end
-         local buf = string.alloc(bytes)
-         local err, totalRead = fl.acRead(buf)
+         buf = string.alloc(bytes)
+         err, totalRead = fl.acRead(buf)
 
          while (err is ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
-            if (buf:find(lOptions.contentFilter) != nil) then return true end
+            if buf:find(lOptions.contentFilter) then return true end
             if fl.position is fl.size then return false end
             fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT)
             err, totalRead = fl.acRead(buf)
@@ -44,14 +44,14 @@ file.search = function(Path, Options)
       return false
    end
 
-   local function fileMatched(Path, FileName, File)
+   function fileMatched(Path, FileName, File)
       if lOptions.matchFeedback then
-         local result = lOptions.matchFeedback(Path, FileName, File)
+         result = lOptions.matchFeedback(Path, FileName, File)
          if result is ERR_Terminate then lStop = true end
       end
    end
 
-   local function dateLessThan(A, B) -- struct DateTime
+   function dateLessThan(A, B) -- struct DateTime
       if A.Year < B.Year then return true
       elseif A.Year > B.Year then return false end
 
@@ -74,35 +74,35 @@ file.search = function(Path, Options)
       return false -- Dates are exactly equal
    end
 
-   local function scanPath(Path, currentDepth)
-      if currentDepth is nil then currentDepth = 0 end
+   function scanPath(Path, currentDepth)
+      if not currentDepth then currentDepth = 0 end
       msg('scanPath() ' .. nz(Path, ':') .. ' (depth: ' .. currentDepth .. ')')
 
       if lStop then return end
 
       if (lOptions.maxDepth) and (currentDepth > lOptions.maxDepth) then return end
 
-      local count = 0
-      local flags = 0
-      if not lOptions.matchFolders then flags = bit.bor(flags, FL_EXCLUDE_FOLDERS) end
-      if lOptions.ignoreFiles then flags = bit.bor(flags, FL_EXCLUDE_FILES) end
+      count = 0
+      flags = 0
+      if not lOptions.matchFolders then flags = (flags | FL_EXCLUDE_FOLDERS) end
+      if lOptions.ignoreFiles then flags = (flags | FL_EXCLUDE_FILES) end
 
-      local ex, folder = catch(function()
+      ex, folder = catch(function()
          return obj.new('file', { src=Path, flags=flags } )
       end)
 
-      if not folder then return end
+      folder ?? return
 
-      local err, fl = folder.mtNext()
+      err, fl = folder.mtNext()
       while (err is ERR_Okay) and (not lStop) do
          count++
          processing.sleep(0)
 
-         local fileFolder, fileName = file.splitPath(fl.path)
+         fileFolder, fileName = file.splitPath(fl.path)
 
          -- Ensure that the filename matches our filter
 
-         local match = true
+         match = true
          if lOptions.nameFilter then
             local cmpName = fileName
             if not lOptions.caseSensitive then
@@ -137,13 +137,13 @@ file.search = function(Path, Options)
             if lOptions.matchFeedback then
                mSys.AdjustLogLevel(-ADJUST_LOG) -- Temporarily revert debug log so that child behaviour can be analysed
 
-                  local result = lOptions.matchFeedback(Path, fileName, fl)
+                  result = lOptions.matchFeedback(Path, fileName, fl)
                   if result is ERR_Terminate then lStop = true end
 
                mSys.AdjustLogLevel(ADJUST_LOG) -- Raise log level again
             end
          elseif lOptions.ignoreFeedback then
-            local result = lOptions.ignoreFeedback(Path, fileName, fl)
+            result = lOptions.ignoreFeedback(Path, fileName, fl)
             if result is ERR_Terminate then lStop = true end
          end
 
@@ -155,12 +155,12 @@ file.search = function(Path, Options)
       -- Recursively scan directory content (if we haven't reached max depth)
 
       if not lOptions.maxDepth or currentDepth < lOptions.maxDepth then
-         local ex, folder = catch(function()
+         ex, folder = catch(function()
             return obj.new('file', { src=Path, flags='!ExcludeFiles|Folder' } )
          end)
 
          if folder then
-            local err, fl = folder.mtNext()
+            err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
                count++
                if (fl.flags & FL_LINK)?? then
@@ -227,13 +227,13 @@ file.search = function(Path, Options)
    end
 
    if lOptions.maxDate then
-      local err, maxDate = mSys.StrReadDate(lOptions.maxDate)
+      err, maxDate = mSys.StrReadDate(lOptions.maxDate)
       if err != ERR_Okay then error('Invalid maxDate value.') end
       lOptions.maxDate = maxDate
    end
 
    if lOptions.minDate then
-      local err, minDate = mSys.StrReadDate(lOptions.minDate)
+      err, minDate = mSys.StrReadDate(lOptions.minDate)
       if err != ERR_Okay then error('Invalid minDate value.') end
       lOptions.minDate = minDate
    end

@@ -877,6 +877,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
    if (payload.name.symbol and not payload.name.is_blank) this->update_local_binding(payload.name.symbol, slot);
 
+   // Register annotations if present
+   if (not payload.function->annotations.empty()) {
+      auto anno_result = this->emit_annotation_registration(slot, payload.function->annotations, payload.name.symbol);
+      if (not anno_result.ok()) return anno_result;
+   }
+
    this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -940,6 +946,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
       this->update_local_binding(symbol, slot);
 
+      // Register annotations if present
+      if (not payload.function->annotations.empty()) {
+         auto anno_result = this->emit_annotation_registration(slot, payload.function->annotations, funcname);
+         if (not anno_result.ok()) return anno_result;
+      }
+
       this->func_state.reset_freereg();
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
@@ -953,8 +965,27 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 
    ExpDesc target = target_result.value_ref();
    ExpDesc value = function_value.value_ref();
+
+   // For annotation registration, we need the function in a register
+   // Materialise the function value to a register before the store
+   BCReg func_reg = BCReg(BCREG(0));
+   bool has_annotations = not payload.function->annotations.empty();
+   if (has_annotations) {
+      func_reg = BCReg(this->func_state.freereg);
+      this->materialise_to_next_reg(value, "annotated function");
+      // Reserve the function register so emit_annotation_registration doesn't overwrite it
+      bcreg_reserve(&this->func_state, 1);
+   }
+
    bcemit_store(&this->func_state, &target, &value);
    release_indexed_original(this->func_state, target);
+
+   // Register annotations if present
+   if (has_annotations) {
+      auto anno_result = this->emit_annotation_registration(func_reg, payload.function->annotations, funcname);
+      if (not anno_result.ok()) return anno_result;
+   }
+
    this->func_state.reset_freereg();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
@@ -3321,6 +3352,120 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
    }
 }
 
+//********************************************************************************************************************
+// Emit bytecode to register annotations for a function in the _ANNO global table.
+// This generates code equivalent to: debug.anno.set(func, "@Anno...", source, name)
+// The function reference is expected to be in the specified register.
+
+ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, const std::vector<AnnotationEntry>& Annotations, GCstr* Funcname)
+{
+   if (Annotations.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+
+   FuncState* fs = &this->func_state;
+   lua_State* L = fs->L;
+
+   // Build annotation string from parsed annotation entries
+   // Format: @Name(key=value, ...); @Name2; ...
+   std::string anno_str;
+   for (const auto& anno : Annotations) {
+      if (not anno_str.empty()) anno_str += "; ";
+      anno_str += "@";
+      if (anno.name) anno_str.append(strdata(anno.name), anno.name->len);
+
+      if (not anno.args.empty()) {
+         anno_str += "(";
+         bool first_arg = true;
+         for (const auto& [key, value] : anno.args) {
+            if (not first_arg) anno_str += ", ";
+            first_arg = false;
+            if (key) anno_str.append(strdata(key), key->len);
+            anno_str += "=";
+            switch (value.type) {
+               case AnnotationArgValue::Type::Bool:
+                  anno_str += value.bool_value ? "true" : "false";
+                  break;
+               case AnnotationArgValue::Type::Number:
+                  anno_str += std::to_string(value.number_value);
+                  break;
+               case AnnotationArgValue::Type::String:
+                  anno_str += "\"";
+                  if (value.string_value) anno_str.append(strdata(value.string_value), value.string_value->len);
+                  anno_str += "\"";
+                  break;
+               case AnnotationArgValue::Type::Array: {
+                  anno_str += "[";
+                  bool first_elem = true;
+                  for (const auto& elem : value.array_value) {
+                     if (not first_elem) anno_str += ",";
+                     first_elem = false;
+                     if (elem.type IS AnnotationArgValue::Type::String and elem.string_value) {
+                        anno_str += "\"";
+                        anno_str.append(strdata(elem.string_value), elem.string_value->len);
+                        anno_str += "\"";
+                     }
+                     else if (elem.type IS AnnotationArgValue::Type::Number) {
+                        anno_str += std::to_string(elem.number_value);
+                     }
+                     else if (elem.type IS AnnotationArgValue::Type::Bool) {
+                        anno_str += elem.bool_value ? "true" : "false";
+                     }
+                  }
+                  anno_str += "]";
+                  break;
+               }
+               default:
+                  anno_str += "nil";
+                  break;
+            }
+         }
+         anno_str += ")";
+      }
+   }
+
+   // Save base register and allocate space for the call
+   // With LJ_FR2=1, layout is: [base]=func, [base+1]=frame, [base+2]=arg1, [base+3]=arg2, ...
+   // So args start at base + 1 + LJ_FR2 = base + 2
+   BCREG base_raw = fs->freereg;
+
+   // Helper to get constant string index
+   auto str_const = [fs](GCstr* s) -> BCREG {
+      return const_gc(fs, obj2gco(s), LJ_TSTR);
+   };
+
+   // Load debug.anno.set into base register
+   // Step 1: GGET debug -> base
+   bcemit_AD(fs, BC_GGET, base_raw, str_const(lj_str_newlit(L, "debug")));
+
+   // Step 2: TGETS anno -> base (debug.anno)
+   bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "anno")));
+
+   // Step 3: TGETS set -> base (debug.anno.set)
+   bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "set")));
+
+   // Args start at base + 1 + LJ_FR2 (skip function slot and frame slot)
+   BCREG args_base = base_raw + 1 + LJ_FR2;
+
+   // Arg 1: function reference (copy from FuncReg)
+   bcemit_AD(fs, BC_MOV, args_base, FuncReg.raw());
+
+   // Arg 2: annotation string
+   bcemit_AD(fs, BC_KSTR, args_base + 1, str_const(lj_str_new(L, anno_str.c_str(), anno_str.size())));
+
+   // Arg 3: source file name
+   GCstr* source = this->lex_state.chunkname;
+   bcemit_AD(fs, BC_KSTR, args_base + 2, str_const(source ? source : lj_str_newlit(L, "<unknown>")));
+
+   // Arg 4: function name
+   bcemit_AD(fs, BC_KSTR, args_base + 3, str_const(Funcname ? Funcname : lj_str_newlit(L, "<anonymous>")));
+
+   // Emit call: debug.anno.set(func, annostr, source, name)
+   // BC_CALL A=base, B=2 (expect 1 result for discard), C=5 (4 args + 1)
+   bcemit_ABC(fs, BC_CALL, base_raw, 2, 5);
+
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
 // Report an unsupported statement node and return an internal invariant error.
 
 ParserResult<IrEmitUnit> IrEmitter::unsupported_stmt(AstNodeKind kind, const SourceSpan& span)

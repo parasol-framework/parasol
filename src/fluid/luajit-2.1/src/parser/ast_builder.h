@@ -1,8 +1,8 @@
-// AST builder that threads typed tokens through the parser and produces the schema declared in ast_nodes.h without 
+// AST builder that threads typed tokens through the parser and produces the schema declared in ast_nodes.h without
 // touching FuncState/bytecode state.
 //
-// The top-level parse contract is `parse_chunk()` which returns ownership of the root BlockStmt describing the 
-// current chunk; `IrEmitter::emit_chunk()` consumes that BlockStmt to generate bytecode, so the builder and emitter 
+// The top-level parse contract is `parse_chunk()` which returns ownership of the root BlockStmt describing the
+// current chunk; `IrEmitter::emit_chunk()` consumes that BlockStmt to generate bytecode, so the builder and emitter
 // can evolve independently while sharing a single AST boundary.
 
 #pragma once
@@ -37,6 +37,9 @@ private:
    ParserResult<StmtNodePtr> parse_local();
    ParserResult<StmtNodePtr> parse_global();
    ParserResult<StmtNodePtr> parse_function_stmt();
+   ParserResult<StmtNodePtr> parse_annotated_statement();
+   ParserResult<std::vector<AnnotationEntry>> parse_annotations();
+   ParserResult<AnnotationArgValue> parse_annotation_value();
    ParserResult<StmtNodePtr> parse_if();
    ParserResult<StmtNodePtr> parse_while();
    ParserResult<StmtNodePtr> parse_repeat();

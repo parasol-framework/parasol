@@ -95,9 +95,9 @@ static std::optional<BCREG> var_lookup_local(FuncState *fs, GCstr *n)
 static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
 {
    MSize n = fs->nuv;
-   
+
    // Check if upvalue already exists using range-based iteration.
-   
+
    auto uvmap_view = std::span(fs->uvmap.data(), n);
    for (MSize i = 0; auto uv_idx : uvmap_view) {
       if (uv_idx IS vidx) return i;  // Already exists.
@@ -105,7 +105,7 @@ static MSize var_lookup_uv(FuncState *fs, MSize vidx, ExpDesc* e)
    }
 
    // Otherwise create a new one.
-   
+
    checklimit(fs, fs->nuv, LJ_MAX_UPVAL, "upvalues");
    fs->assert(e->k IS ExpKind::Local or e->k IS ExpKind::Upval, "bad expr type %d", e->k);
    fs->uvmap[n] = uint16_t(vidx);
@@ -797,7 +797,7 @@ GCproto* LexState::fs_finish(BCLine Line)
    setgcref(pt->chunkname, obj2gco(this->chunkname));
 
    // Register the function name if one was provided (for named function declarations).
-      
+
    if (fs->funcname) lj_funcname_register(G(this->L), pt, strdata(fs->funcname), fs->funcname->len);
 
    // Build bitmap of locals with <close> attribute for error unwinding.

@@ -9,6 +9,8 @@
 #define lib_debug_c
 #define LUA_LIB
 
+#include <parasol/strings.hpp>
+
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
@@ -19,6 +21,11 @@
 #include "lj_debug.h"
 #include "lib.h"
 #include "debug/error_guard.h"
+
+#include <cctype>       // For isalnum, isdigit
+#include <cstdlib>      // For strtod
+#include <string_view>  // For std::string_view
+#include <charconv>     // For std::from_chars
 
 //********************************************************************************************************************
 
@@ -72,7 +79,7 @@ LJLIB_CF(debug_setfenv)
 
 //********************************************************************************************************************
 
-static void settabss(lua_State* L, const char* i, const char* v)
+static void settabss(lua_State *L, CSTRING i, CSTRING v)
 {
    lua_pushstring(L, v);
    lua_setfield(L, -2, i);
@@ -80,7 +87,7 @@ static void settabss(lua_State* L, const char* i, const char* v)
 
 //********************************************************************************************************************
 
-static void settabsi(lua_State* L, const char* i, int v)
+static void settabsi(lua_State *L, CSTRING i, int v)
 {
    lua_pushinteger(L, v);
    lua_setfield(L, -2, i);
@@ -88,7 +95,7 @@ static void settabsi(lua_State* L, const char* i, int v)
 
 //********************************************************************************************************************
 
-static void settabsb(lua_State* L, const char* i, int v)
+static void settabsb(lua_State *L, CSTRING i, int v)
 {
    lua_pushboolean(L, v);
    lua_setfield(L, -2, i);
@@ -106,7 +113,7 @@ static int32_t debug_idx(int32_t Index)
 
 //********************************************************************************************************************
 
-static lua_State* getthread(lua_State* L, int* arg)
+static lua_State* getthread(lua_State *L, int* arg)
 {
    if (L->base < L->top and tvisthread(L->base)) {
       *arg = 1;
@@ -120,7 +127,7 @@ static lua_State* getthread(lua_State* L, int* arg)
 
 //********************************************************************************************************************
 
-static void treatstackoption(lua_State* L, lua_State* L1, const char* fname)
+static void treatstackoption(lua_State *L, lua_State *L1, CSTRING fname)
 {
    if (L == L1) {
       lua_pushvalue(L, -2);
@@ -136,8 +143,8 @@ LJLIB_CF(debug_getinfo)
 {
    lj_Debug ar;
    int arg, opt_f = 0, opt_L = 0;
-   lua_State* L1 = getthread(L, &arg);
-   const char* options = luaL_optstring(L, arg + 2, "flnSu");
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
    if (lua_isnumber(L, arg + 1)) {
       if (!lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
          setnilV(L->top - 1);
@@ -218,7 +225,7 @@ LJLIB_CF(debug_getlocal)
 LJLIB_CF(debug_setlocal)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
+   lua_State *L1 = getthread(L, &arg);
    lua_Debug ar;
    TValue* tv;
    if (!lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
@@ -230,7 +237,7 @@ LJLIB_CF(debug_setlocal)
 
 //********************************************************************************************************************
 
-static int debug_getupvalue(lua_State* L, int get)
+static int debug_getupvalue(lua_State *L, int get)
 {
    int32_t n = debug_idx(lj_lib_checkint(L, 2));
    lj_lib_checkfunc(L, 1);
@@ -317,9 +324,9 @@ LJLIB_CF(debug_setuservalue)
 
 #define KEY_HOOK   (U64x(80000000,00000000)|'h')
 
-static void hookf(lua_State* L, lua_Debug* ar)
+static void hookf(lua_State *L, lua_Debug* ar)
 {
-   static const char* const hooknames[] =
+   static CSTRING const hooknames[] =
    { "call", "return", "line", "count", "tail return" };
    (L->top++)->u64 = KEY_HOOK;
    lua_rawget(L, LUA_REGISTRYINDEX);
@@ -333,7 +340,7 @@ static void hookf(lua_State* L, lua_Debug* ar)
 
 //********************************************************************************************************************
 
-static int makemask(const char* smask, int count)
+static int makemask(CSTRING smask, int count)
 {
    int mask = 0;
    if (strchr(smask, 'c')) mask |= LUA_MASKCALL;
@@ -367,7 +374,7 @@ LJLIB_CF(debug_sethook)
       func = nullptr; mask = 0; count = 0;  //  turn off hooks
    }
    else {
-      const char* smask = luaL_checkstring(L, arg + 2);
+      CSTRING smask = luaL_checkstring(L, arg + 2);
       luaL_checktype(L, arg + 1, LUA_TFUNCTION);
       count = luaL_optint(L, arg + 3, 0);
       func = hookf; mask = makemask(smask, count);
@@ -410,7 +417,7 @@ LJLIB_CF(debug_debug)
          return 0;
       if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||
          lua_pcall(L, 0, 0, 0)) {
-         const char* s = lua_tostring(L, -1);
+         CSTRING s = lua_tostring(L, -1);
          fputs(s ? s : "(error object is not a string)", stderr);
          fputs("\n", stderr);
       }
@@ -426,8 +433,8 @@ LJLIB_CF(debug_debug)
 LJLIB_CF(debug_traceback)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
-   const char* msg = lua_tostring(L, arg + 1);
+   lua_State *L1 = getthread(L, &arg);
+   CSTRING msg = lua_tostring(L, arg + 1);
    if (msg == nullptr and L->top > L->base + arg) L->top = L->base + arg + 1;
    else luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));
    return 1;
@@ -442,7 +449,7 @@ LJLIB_CF(debug_traceback)
 LJLIB_CF(debug_locality)
 {
    int arg;
-   lua_State* L1 = getthread(L, &arg);
+   lua_State *L1 = getthread(L, &arg);
 
    // Check for nil or missing argument
    if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
@@ -450,7 +457,7 @@ LJLIB_CF(debug_locality)
       return 1;
    }
 
-   const char* varname = luaL_checkstring(L, arg + 1);
+   CSTRING varname = luaL_checkstring(L, arg + 1);
    int level = luaL_optint(L, arg + 2, 1);
 
    // Get the stack frame at the specified level
@@ -471,7 +478,7 @@ LJLIB_CF(debug_locality)
 
    // Search local variables in the frame
    int slot = 1;
-   const char* name;
+   CSTRING name;
    while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
       lua_pop(L1, 1);  // Pop the value
       if (strcmp(name, varname) == 0) {
@@ -510,11 +517,355 @@ LJLIB_CF(debug_locality)
 }
 
 //********************************************************************************************************************
+// Annotation string parser helper - parses a single value
+// Returns true on success (pushes value to stack), false on error
 
-#include "lj_libdef.h"
+static bool parse_annotation_value(lua_State *L, std::string_view& sv)
+{
+   // Skip leading whitespace
+   while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+      sv.remove_prefix(1);
+   }
 
-extern int luaopen_debug(lua_State* L)
+   if (sv.empty()) return false;
+
+   // String literal (double or single quotes)
+   if (sv.front() IS '"' or sv.front() IS '\'') {
+      char quote = sv.front();
+      sv.remove_prefix(1);
+
+      size_t end_pos = 0;
+      while (end_pos < sv.size() and sv[end_pos] != quote) {
+         if (sv[end_pos] IS '\\' and end_pos + 1 < sv.size()) end_pos++;  // Skip escaped characters
+         end_pos++;
+      }
+      if (end_pos >= sv.size()) return false;  // Unterminated string
+
+      lua_pushlstring(L, sv.data(), end_pos);
+      sv.remove_prefix(end_pos + 1);  // Skip content and closing quote
+      return true;
+   }
+
+   // Boolean literals
+   if (sv.starts_with("true") and (sv.size() IS 4 or (not std::isalnum(sv[4]) and sv[4] != '_'))) {
+      lua_pushboolean(L, 1);
+      sv.remove_prefix(4);
+      return true;
+   }
+   if (sv.starts_with("false") and (sv.size() IS 5 or (not std::isalnum(sv[5]) and sv[5] != '_'))) {
+      lua_pushboolean(L, 0);
+      sv.remove_prefix(5);
+      return true;
+   }
+
+   // Number literal
+   if (std::isdigit(sv.front()) or (sv.front() IS '-' and sv.size() > 1 and std::isdigit(sv[1]))) {
+      double num;
+      auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), num);
+      if (ec IS std::errc()) {
+         lua_pushnumber(L, num);
+         sv.remove_prefix(ptr - sv.data());
+         return true;
+      }
+      return false;
+   }
+
+   // Array literal: [item, item, ...] or {item, item, ...}
+   if (sv.front() IS '[' or sv.front() IS '{') {
+      char close = (sv.front() IS '[') ? ']' : '}';
+      sv.remove_prefix(1);
+      lua_newtable(L);
+      int idx = 0;
+
+      while (not sv.empty() and sv.front() != close) {
+         // Skip whitespace
+         while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+            sv.remove_prefix(1);
+         }
+         if (not sv.empty() and sv.front() IS close) break;
+
+         // Parse array element
+         if (not parse_annotation_value(L, sv)) {
+            lua_pop(L, 1);  // Pop table
+            return false;
+         }
+         lua_rawseti(L, -2, idx++);
+
+         // Skip whitespace and comma
+         while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+            sv.remove_prefix(1);
+         }
+         if (not sv.empty() and sv.front() IS ',') sv.remove_prefix(1);
+      }
+
+      if (not sv.empty() and sv.front() IS close) sv.remove_prefix(1);
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Parses annotation string syntax like: @Test(name="foo", labels=["a","b"]); @Requires(network=true)
+// Returns true on success (pushes annotations array to stack), false on parse error
+
+static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
+{
+   lua_newtable(L);  // Result array
+   int anno_idx = 0;
+
+   while (not sv.empty()) {
+      // Skip whitespace and semicolons
+      while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n' or sv.front() IS ';')) {
+         sv.remove_prefix(1);
+      }
+      if (sv.empty()) break;
+
+      // Expect @
+
+      if (sv.front() != '@') {
+         lua_pop(L, 1);
+         return false;
+      }
+      sv.remove_prefix(1);
+
+      // Parse annotation name (identifier)
+
+      size_t name_len = 0;
+      while (name_len < sv.size() and (std::isalnum(sv[name_len]) or sv[name_len] IS '_')) {
+         name_len++;
+      }
+
+      if (name_len IS 0) {
+         lua_pop(L, 1);
+         return false;
+      }
+
+      lua_newtable(L);  // Annotation entry
+      lua_pushlstring(L, sv.data(), name_len);
+      lua_setfield(L, -2, "name");
+      sv.remove_prefix(name_len);
+
+      // Parse optional arguments
+      while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+         sv.remove_prefix(1);
+      }
+
+      if (not sv.empty() and sv.front() IS '(') {
+         sv.remove_prefix(1);
+         lua_newtable(L);  // Args table
+
+         while (not sv.empty() and sv.front() != ')') {
+            // Skip whitespace
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t' or sv.front() IS '\n')) {
+               sv.remove_prefix(1);
+            }
+            if (not sv.empty() and sv.front() IS ')') break;
+
+            // Parse key or bare identifier
+            size_t key_len = 0;
+            while (key_len < sv.size() and (std::isalnum(sv[key_len]) or sv[key_len] IS '_')) {
+               key_len++;
+            }
+
+            if (key_len IS 0) {
+               lua_pop(L, 3);  // Pop args, entry, result
+               return false;
+            }
+
+            std::string_view key = sv.substr(0, key_len);
+            sv.remove_prefix(key_len);
+
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+               sv.remove_prefix(1);
+            }
+
+            if (not sv.empty() and sv.front() IS '=') {
+               // key=value pair
+               sv.remove_prefix(1);
+               while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+                  sv.remove_prefix(1);
+               }
+
+               // Parse value (string, number, bool, array)
+               if (not parse_annotation_value(L, sv)) {
+                  lua_pop(L, 3);  // Pop args, entry, result
+                  return false;
+               }
+               // Use lua_pushlstring to create key, then lua_rawset
+               lua_pushlstring(L, key.data(), key.size());  // Push key
+               lua_pushvalue(L, -2);  // Copy value
+               lua_rawset(L, -4);     // args[key] = value
+               lua_pop(L, 1);         // Pop original value
+            }
+            else {
+               // Bare identifier = true
+               lua_pushlstring(L, key.data(), key.size());  // Push key
+               lua_pushboolean(L, 1);  // Push value
+               lua_rawset(L, -3);      // args[key] = true
+            }
+
+            // Skip comma
+            while (not sv.empty() and (sv.front() IS ' ' or sv.front() IS '\t')) {
+               sv.remove_prefix(1);
+            }
+            if (not sv.empty() and sv.front() IS ',') sv.remove_prefix(1);
+         }
+
+         if (not sv.empty() and sv.front() IS ')') sv.remove_prefix(1);
+         lua_setfield(L, -2, "args");
+      }
+      else {
+         // No args - set empty args table
+         lua_newtable(L);
+         lua_setfield(L, -2, "args");
+      }
+
+      lua_rawseti(L, -2, anno_idx++);
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+#define LJLIB_MODULE_debug_anno
+
+//********************************************************************************************************************
+// debug.anno.get(func) - Returns annotation entry for a function, or nil
+
+LJLIB_CF(debug_anno_get)
+{
+   lj_lib_checkfunc(L, 1);
+
+   // Get _ANNO global
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_pushnil(L);
+      return 1;
+   }
+
+   // Look up annotations for this function: _ANNO[func]
+   lua_pushvalue(L, 1);  // Push function reference
+   lua_gettable(L, -2);  // Get _ANNO[func]
+   lua_remove(L, -2);    // Remove _ANNO table
+   return 1;
+}
+
+//********************************************************************************************************************
+// debug.anno.set(func, annotations [, source [, name]]) - Sets annotations for a function
+// annotations can be a table or a string to parse
+// source is optional and defaults to "<runtime>"
+// name is optional function name (falls back to debug info, then "<anonymous>")
+
+LJLIB_CF(debug_anno_set)
+{
+   lj_lib_checkfunc(L, 1);
+   lj_lib_checkany(L, 2);
+
+   auto source = luaL_optstring(L, 3, "<runtime>");
+   auto name = luaL_optstring(L, 4, nullptr);
+
+   // Get or create _ANNO global
+
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_pushvalue(L, -1);
+      lua_setglobal(L, "_ANNO");
+   }
+
+   // Handle string input - parse annotation syntax
+
+   if (lua_isstring(L, 2)) {
+      CSTRING str = lua_tostring(L, 2);
+      if (not lj_parse_annotation_string(L, str)) {
+         lua_pop(L, 1);  // Pop _ANNO
+         return luaL_error(L, "Failed to parse annotation string");
+      }
+      // Parsed annotations array is now on stack
+   }
+   else if (lua_istable(L, 2)) {
+      lua_pushvalue(L, 2);  // Push annotations table/array
+   }
+   else {
+      lua_pop(L, 1);  // Pop _ANNO
+      lj_err_argt(L, 2, LUA_TTABLE);
+   }
+
+   // Create entry table with name, source, and annotations
+
+   lua_newtable(L);  // Entry table
+
+   // Get function name: use provided name, fall back to debug info, then "<anonymous>"
+
+   if (name) lua_pushstring(L, name);
+   else {
+      lua_Debug ar;
+      lua_pushvalue(L, 1);
+      if (lua_getinfo(L, ">n", &ar) and ar.name) lua_pushstring(L, ar.name);
+      else lua_pushliteral(L, "<anonymous>");
+   }
+   lua_setfield(L, -2, "name");
+
+   // Set source
+   lua_pushstring(L, source);
+   lua_setfield(L, -2, "source");
+
+   // Set annotations array
+   lua_pushvalue(L, -2);  // Push annotations array
+   lua_setfield(L, -2, "annotations");
+   lua_remove(L, -2);  // Remove standalone annotations array
+
+   // _ANNO[func] = entry
+   lua_pushvalue(L, 1);   // Push function reference as key
+   lua_pushvalue(L, -2);  // Push entry table as value
+   lua_settable(L, -4);   // _ANNO[func] = entry
+
+   lua_remove(L, -2);  // Remove _ANNO table
+   return 1;  // Return the entry table
+}
+
+//********************************************************************************************************************
+// debug.anno.list() - Returns shallow copy of entire _ANNO table
+
+LJLIB_CF(debug_anno_list)
+{
+   lua_getglobal(L, "_ANNO");
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);  // Return empty table if _ANNO doesn't exist
+   }
+   else {
+      // Create shallow copy
+      lua_newtable(L);
+      lua_pushnil(L);
+      while (lua_next(L, -3) != 0) {
+         lua_pushvalue(L, -2);  // Copy key
+         lua_pushvalue(L, -2);  // Copy value
+         lua_settable(L, -5);   // Set in new table
+         lua_pop(L, 1);         // Pop value, keep key for next iteration
+      }
+      lua_remove(L, -2);  // Remove original _ANNO
+   }
+   return 1;
+}
+
+//********************************************************************************************************************
+
+#include "lj_libdef.h"  // Includes LJLIB_MODULE_debug table
+
+extern int luaopen_debug(lua_State *L)
 {
    LJ_LIB_REG(L, LUA_DBLIBNAME, debug);
+
+   // Register debug.anno as a subtable of debug
+   lua_getglobal(L, LUA_DBLIBNAME);  // Get the debug table we just created
+   LJ_LIB_REG(L, nullptr, debug_anno);  // Create anno table without setting in globals
+   lua_setfield(L, -2, "anno");      // debug.anno = anno_table
+   lua_pop(L, 1);                     // Pop debug table
+
    return 1;
 }

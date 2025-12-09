@@ -121,10 +121,10 @@ static int ffh_pairs(lua_State* L, MMS mm)
    }
    else {
       LJ_CHECK_TYPE(L, 1, o, LUA_TTABLE);
-      copyTV(L, o - 1, o); 
+      copyTV(L, o - 1, o);
       o--;
       setfuncV(L, o - 1, funcV(lj_lib_upvalue(L, 1)));
-      if (mm IS MM_pairs) setnilV(o + 1); 
+      if (mm IS MM_pairs) setnilV(o + 1);
       else setintV(o + 1, -1);  // ipairs starts at -1, increments to 0
       return FFH_RES(3);
    }

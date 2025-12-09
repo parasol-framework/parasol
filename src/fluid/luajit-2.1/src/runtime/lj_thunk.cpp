@@ -67,7 +67,11 @@ void lj_thunk_new(lua_State *L, GCfunc *func, int expected_type)
 }
 
 //********************************************************************************************************************
-// Resolve a thunk if not already resolved
+// Resolve a thunk if not already resolved.
+//
+// IMPORTANT: Callers from VM assembler code (e.g., lj_meta_equal_thunk) must use
+// VMHelperGuard to ensure L->top is valid before calling this function.
+// This function handles stack reallocation during lua_pcall but does not fix L->top.
 
 TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
 {
@@ -81,23 +85,38 @@ TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
    // Get the deferred function
    GCfunc *fn = gco2func(gcref(payload->deferred_func));
 
-   // Push function to stack
-   TValue *base = L->top;
-   setfuncV(L, base, fn);
-   L->top = base + 1;
+   // Save stack offsets - the stack may be reallocated during lua_pcall.
+   // We save as byte offsets from L->stack, not raw pointers.
+   ptrdiff_t base_offset = savestack(L, L->base);
+   ptrdiff_t top_offset = savestack(L, L->top);
 
-   // Call the function (0 arguments, 1 result)
-   lua_call(L, 0, 1);
+   // Push function to stack. lua_pcall expects func at L->top - nargs - 1.
+   // With nargs=0, func should be at L->top - 1, so push it then call.
+   setfuncV(L, L->top, fn);
+   L->top++;
 
-   // Result is at L->top-1
+   // Use lua_pcall for protected call - this properly handles being called
+   // from VM assembler functions like lj_meta_equal_thunk
+   int status = lua_pcall(L, 0, 1, 0);
+
+   // Restore base in case stack was reallocated
+   L->base = restorestack(L, base_offset);
+
+   if (status != 0) {
+      // Error occurred - restore stack and propagate
+      L->top = restorestack(L, top_offset);
+      return nullptr;
+   }
+
+   // Result is at L->top - 1
    TValue *result = L->top - 1;
 
    // Cache the result
    copyTV(L, &payload->cached_value, result);
    payload->resolved = 1;
 
-   // Pop the result (it's cached in payload)
-   L->top--;
+   // Restore stack to original position (pop the result)
+   L->top = restorestack(L, top_offset);
 
    // GC barrier for the cached value if it's a GC object
    if (tvisgcv(&payload->cached_value)) {

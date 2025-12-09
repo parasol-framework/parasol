@@ -1568,7 +1568,7 @@ extern void parser_unit_tests(int& Passed, int& Total)
    constexpr std::array<TestCase, 19> tests = { {
       { "parser_profiler_captures_stages", test_parser_profiler_captures_stages },
       { "parser_profiler_disabled_noop", test_parser_profiler_disabled_noop },
-      { "literal_binary_ast", test_literal_binary_expr },
+      { "literal_binary_expr", test_literal_binary_expr },
       { "expression_entry_point", test_expression_entry_point },
       { "expression_list_entry_point", test_expression_list_entry_point },
       { "loop_ast", test_loop_ast },

@@ -232,6 +232,21 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
 }
 
 //********************************************************************************************************************
+// Emit a warning diagnostic (non-fatal)
+
+void ParserContext::emit_warning(ParserErrorCode code, const Token &token, std::string_view message)
+{
+   ParserDiagnostic diagnostic;
+   diagnostic.severity = ParserDiagnosticSeverity::Warning;
+   diagnostic.code     = code;
+   diagnostic.message.assign(message.begin(), message.end());
+   diagnostic.token    = token;
+   this->diag.report(diagnostic);
+
+   this->log_trace(ParserChannel::Warning, token, message);
+}
+
+//********************************************************************************************************************
 
 void ParserContext::attach_to_lex()
 {
@@ -290,11 +305,12 @@ void ParserContext::log_trace(ParserChannel Channel, const Token &token, std::st
    std::string name = this->describe_token(token);
    BCLine line = token.span().line;
    BCLine column = token.span().column;
-   
+
    VLF level = VLF::API;
    CSTRING channel;
    switch(Channel) {
       case ParserChannel::Error:   channel = "Error"; level = VLF::WARNING; break;
+      case ParserChannel::Warning: channel = "Warning"; level = VLF::WARNING; break;
       case ParserChannel::Expect:  channel = "Expect"; break;
       case ParserChannel::Advance: channel = "Advance"; break;
       default:                     channel = "Unknown"; break;

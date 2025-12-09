@@ -2,8 +2,8 @@
 
    if gui then return end
 
-   if not mVec then 
-      global mVec = mod.load('vector') 
+   if not mVec then
+      global mVec = mod.load('vector')
    end
 
    global gui = {

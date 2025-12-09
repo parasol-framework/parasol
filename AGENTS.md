@@ -107,6 +107,9 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - `defer() ... end` statement that runs code when de-scoped.
 - `goto`, labels, `==` and `~=` are deprecated
 - Zero-based indexing for tables and string functions.
+- Variables and functions are local by default.  Use `global` for defining global variables and `local` when controlling scope.
+- Anonymous function expressions with `=>`: `(i => print(i))
+- Support for ranges: `for i in {0..10} do`
 
 #### Fluid Coding Patterns
 

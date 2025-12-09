@@ -851,6 +851,7 @@ typedef struct global_State {
 // Forward declarations - defined after GCobj is complete
 inline lua_State* mainthread(global_State* g) noexcept;
 inline TValue* niltv(lua_State* L) noexcept;
+[[nodiscard]] constexpr inline bool tvisnil(cTValue* o) noexcept;  // Defined in TValue section
 
 // niltvg doesn't depend on GCobj, can be defined here
 [[nodiscard]] inline TValue* niltvg(global_State* g) noexcept
@@ -1319,8 +1320,8 @@ LJ_ASMF int32_t lj_vm_tobit(double x);
    return (int32_t)(n);
 }
 
-// This must match the JIT backend behavior. In particular for archs that don't have a common hardware instruction for 
-// this conversion.  Note that signed FP to unsigned int conversions have an undefined result and should never be 
+// This must match the JIT backend behavior. In particular for archs that don't have a common hardware instruction for
+// this conversion.  Note that signed FP to unsigned int conversions have an undefined result and should never be
 // relied upon in portable FFI code.  See also: C99 or C11 standard, 6.3.1.4, footnote of (1).
 
 [[nodiscard]] inline uint64_t lj_num2u64(lua_Number n) noexcept {

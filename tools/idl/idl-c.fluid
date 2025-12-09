@@ -16,7 +16,7 @@
    global glPath = glSelf.workingPath
    global glIDLTimestamp = 20241015
    math.randomseed(mSys.preciseTime())
-   
+
    global glFunctions      = { }
    global glFunctionLookup = { }
    global glMethods        = { }
@@ -30,7 +30,7 @@
    global glCategory       = nil
    global glCategories     = { }
    global glPrivateNames   = { }
-   
+
    global glProgram     = 'idl-c' -- FDL's can read this
    global glSource      = arg('src')
    global glOutputPath  = arg('output')
@@ -38,7 +38,7 @@
    global glOutputDefs  = arg('output-defs')
    global glOutputProto = arg('output-proto')
    global glPrototypes  = arg('prototypes')
-   
+
    require './include/utils'
    require './include/parser'
    require './include/functions'

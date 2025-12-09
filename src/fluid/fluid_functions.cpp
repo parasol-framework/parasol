@@ -767,7 +767,7 @@ int fcmd_loadfile(lua_State *Lua)
 
 //********************************************************************************************************************
 // Usage: exec(Statement)
-// 
+//
 // Executes a string statement within a pcall.  Returns results if there are any.  An execption will be raised if an
 // error occurs during statement execution.
 

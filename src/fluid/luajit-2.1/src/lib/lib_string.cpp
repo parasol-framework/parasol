@@ -713,6 +713,8 @@ static int singlematch(int c, const char* p, const char* ep)
 
 static const char* match(MatchState* ms, const char* s, const char* p);
 
+//********************************************************************************************************************
+
 static const char* matchbalance(MatchState* ms, const char* s, const char* p)
 {
    if (*p == 0 or *(p + 1) == 0)
@@ -736,8 +738,9 @@ static const char* matchbalance(MatchState* ms, const char* s, const char* p)
    return nullptr;  //  string ends out of balance
 }
 
-static const char* max_expand(MatchState* ms, const char* s,
-   const char* p, const char* ep)
+//********************************************************************************************************************
+
+static const char* max_expand(MatchState* ms, const char* s, const char* p, const char* ep)
 {
    ptrdiff_t i = 0;  //  counts maximum expand for item
    while ((s + i) < ms->src_end and singlematch(uchar(*(s + i)), p, ep))
@@ -751,22 +754,21 @@ static const char* max_expand(MatchState* ms, const char* s,
    return nullptr;
 }
 
-static const char* min_expand(MatchState* ms, const char* s,
-   const char* p, const char* ep)
+//********************************************************************************************************************
+
+static const char* min_expand(MatchState* ms, const char* s, const char* p, const char* ep)
 {
    for (;;) {
       const char* res = match(ms, s, ep + 1);
-      if (res != nullptr)
-         return res;
-      else if (s < ms->src_end and singlematch(uchar(*s), p, ep))
-         s++;  //  try with one more repetition
-      else
-         return nullptr;
+      if (res != nullptr) return res;
+      else if (s < ms->src_end and singlematch(uchar(*s), p, ep)) s++;  //  try with one more repetition
+      else return nullptr;
    }
 }
 
-static const char* start_capture(MatchState* ms, const char* s,
-   const char* p, int what)
+//********************************************************************************************************************
+
+static const char* start_capture(MatchState* ms, const char* s, const char* p, int what)
 {
    const char* res;
    int level = ms->level;
@@ -779,8 +781,9 @@ static const char* start_capture(MatchState* ms, const char* s,
    return res;
 }
 
-static const char* end_capture(MatchState* ms, const char* s,
-   const char* p)
+//********************************************************************************************************************
+
+static const char* end_capture(MatchState* ms, const char* s, const char* p)
 {
    int l = capture_to_close(ms);
    const char* res;
@@ -789,6 +792,8 @@ static const char* end_capture(MatchState* ms, const char* s,
       ms->capture[l].len = CAP_UNFINISHED;  //  undo capture
    return res;
 }
+
+//********************************************************************************************************************
 
 static const char* match_capture(MatchState* ms, const char* s, int l)
 {
@@ -801,6 +806,8 @@ static const char* match_capture(MatchState* ms, const char* s, int l)
    else
       return nullptr;
 }
+
+//********************************************************************************************************************
 
 static const char* match(MatchState* ms, const char* s, const char* p)
 {
@@ -889,6 +896,8 @@ init: //  using goto's to optimize tail recursion
    return s;
 }
 
+//********************************************************************************************************************
+
 static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
 {
    if (i >= ms->level) {
@@ -907,6 +916,8 @@ static void push_onecapture(MatchState* ms, int i, const char* s, const char* e)
    }
 }
 
+//********************************************************************************************************************
+
 static int push_captures(MatchState* ms, const char* s, const char* e)
 {
    int i;
@@ -916,6 +927,8 @@ static int push_captures(MatchState* ms, const char* s, const char* e)
       push_onecapture(ms, i, s, e);
    return nlevels;  //  number of strings pushed
 }
+
+//********************************************************************************************************************
 
 static int str_find_aux(lua_State* L, int find)
 {
@@ -968,15 +981,21 @@ static int str_find_aux(lua_State* L, int find)
    return 1;
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_find)      LJLIB_REC(.)
 {
    return str_find_aux(L, 1);
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_match)
 {
    return str_find_aux(L, 0);
 }
+
+//********************************************************************************************************************
 
 LJLIB_NOREG LJLIB_CF(string_gmatch_aux)
 {
@@ -1002,6 +1021,8 @@ LJLIB_NOREG LJLIB_CF(string_gmatch_aux)
    return 0;  //  not found
 }
 
+//********************************************************************************************************************
+
 LJLIB_CF(string_gmatch)
 {
    lj_lib_checkstr(L, 1);
@@ -1011,6 +1032,8 @@ LJLIB_CF(string_gmatch)
    lj_lib_pushcc(L, lj_cf_string_gmatch_aux, FF_string_gmatch_aux, 3);
    return 1;
 }
+
+//********************************************************************************************************************
 
 static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
 {
@@ -1030,8 +1053,9 @@ static void add_s(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
    }
 }
 
-static void add_value(MatchState* ms, luaL_Buffer* b,
-   const char* s, const char* e)
+//********************************************************************************************************************
+
+static void add_value(MatchState* ms, luaL_Buffer* b, const char* s, const char* e)
 {
    lua_State* L = ms->L;
    switch (lua_type(L, 3)) {
@@ -1063,6 +1087,8 @@ static void add_value(MatchState* ms, luaL_Buffer* b,
    }
    luaL_addvalue(b);  //  add result to accumulator
 }
+
+//********************************************************************************************************************
 
 LJLIB_CF(string_gsub)
 {
@@ -1105,7 +1131,7 @@ LJLIB_CF(string_gsub)
    return 2;
 }
 
-// ------------------------------------------------------------------------
+//********************************************************************************************************************
 
 LJLIB_CF(string_format)      LJLIB_REC(.)
 {

@@ -204,10 +204,8 @@ if (MSVC)
    # Generate buildvm_arch.h using dynasm
    add_custom_command(
       OUTPUT ${BUILDVM_ARCH_H}
-      COMMAND ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua
-         -LN ${LUAJIT_DASMFLAGS} -o ${BUILDVM_ARCH_H} ${LUAJIT_DASC}
-      DEPENDS ${MINILUA_TARGET} "${LUAJIT_DYNASM_DIR}/dynasm.lua" ${LUAJIT_DASC}
-         "${LUAJIT_SRC}/lj_arch.h"
+      COMMAND ${MINILUA_TARGET} ${LUAJIT_DYNASM_DIR}/dynasm.lua -LN ${LUAJIT_DASMFLAGS} -o ${BUILDVM_ARCH_H} ${LUAJIT_DASC}
+      DEPENDS ${MINILUA_TARGET} "${LUAJIT_DYNASM_DIR}/dynasm.lua" ${LUAJIT_DASC} "${LUAJIT_SRC}/lj_arch.h"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       COMMENT "Generating buildvm_arch.h via dynasm for ${LUAJIT_ARCH}"
       VERBATIM
@@ -663,7 +661,7 @@ set (FLUID_TESTS
    catch defer debuglog io object processing regex struct threads xml strings math array compound
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions
    unicode ellipsis safe_nav close type_annotations jit  pipe pipe_iteration arrow_functions result_filter
-   thunks deferred_expr shadow_assert ranges
+   thunks deferred_expr shadow_assert ranges annotations locality parser_annotations
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})

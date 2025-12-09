@@ -42,6 +42,9 @@ static CSTRING error_code_name(ParserErrorCode Code)
       case ParserErrorCode::TypeMismatchArgument:   return "Type mismatch (argument)";
       case ParserErrorCode::TypeMismatchAssignment: return "Type mismatch (assignment)";
       case ParserErrorCode::TypeMismatchReturn:     return "Type mismatch (return)";
+      case ParserErrorCode::DeferredTypeRequired:   return "Deferred type required";
+      case ParserErrorCode::UndefinedVariable:      return "Undefined variable";
+      case ParserErrorCode::ThunkDirectCall:        return "Thunk direct call";
       default: return "Unknown";
    }
 }
