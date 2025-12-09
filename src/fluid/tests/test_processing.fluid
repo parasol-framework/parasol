@@ -1,11 +1,10 @@
 -- Flute tests for the processing interface
 
------------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 
-function testMultipleSignals()
-   local signal_a = obj.new('xml', { flags='NEW' })
-   local signal_b = obj.new('xml', { flags='NEW' })
+@Test function testMultipleSignals()
+   signal_a = obj.new('xml', { flags='NEW' })
+   signal_b = obj.new('xml', { flags='NEW' })
 
    for i=1,1000 do -- Run enough times to sufficiently test thread locking
       msg('Iteration ' .. i)
@@ -19,15 +18,9 @@ function testMultipleSignals()
          signal_b.acSignal()
       end)
 
-      local proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
+      proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
       msg('Sleeping....')
-      local err = proc.sleep()
+      err = proc.sleep()
       assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = { testMultipleSignals }
-   }

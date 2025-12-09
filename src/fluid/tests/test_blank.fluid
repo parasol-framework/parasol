@@ -129,6 +129,52 @@ end
    assert(y is 40, "Failed multiple statements: expected y=40, got " .. y)
 end
 
+-- Mixed blank/unscoped assignment tests (blank becomes Global, others become Local)
+
+@Test function testMixedBlankFirst()
+   -- Blank first, new local second
+   _, a = 100, 200
+   assert(a is 200, "Failed mixed blank first: expected a=200, got " .. a)
+end
+
+@Test function testMixedBlankSecond()
+   -- New local first, blank second
+   b, _ = 300, 400
+   assert(b is 300, "Failed mixed blank second: expected b=300, got " .. b)
+end
+
+@Test function testMixedBlankMiddle()
+   -- New locals around blank in middle
+   c, _, d = 1, 2, 3
+   assert(c is 1, "Failed mixed blank middle: expected c=1, got " .. c)
+   assert(d is 3, "Failed mixed blank middle: expected d=3, got " .. d)
+end
+
+@Test function testMixedMultipleBlanks()
+   -- Multiple blanks with new locals
+   _, e, _, f = 10, 20, 30, 40
+   assert(e is 20, "Failed mixed multiple blanks: expected e=20, got " .. e)
+   assert(f is 40, "Failed mixed multiple blanks: expected f=40, got " .. f)
+end
+
+@Test function testMixedBlankWithExisting()
+   -- Mix of existing local, blank, and new local
+   local existing = 0
+   existing, _, newvar = 5, 6, 7
+   assert(existing is 5, "Failed mixed with existing: expected existing=5, got " .. existing)
+   assert(newvar is 7, "Failed mixed with existing: expected newvar=7, got " .. newvar)
+end
+
+@Test function testMixedSequentialAssignments()
+   -- Multiple sequential assignments mixing blanks and new locals
+   _, p = 1, 2
+   q, _ = 3, 4
+   _, r = 5, 6
+   assert(p is 2, "Failed sequential: expected p=2, got " .. p)
+   assert(q is 3, "Failed sequential: expected q=3, got " .. q)
+   assert(r is 6, "Failed sequential: expected r=6, got " .. r)
+end
+
 @Test function testBlankInTable()
    -- Blank identifiers work with table destructuring patterns
    t = {1, 2, 3}

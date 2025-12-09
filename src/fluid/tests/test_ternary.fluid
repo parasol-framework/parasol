@@ -2,411 +2,411 @@
 -- condition ? true_expr :> false_expr
 
 -- Basic ternary tests
-function testBasicTrue()
-   local v = true ? "A" :> "B"
+
+@Test function testBasicTrue()
+   v = true ? "A" :> "B"
    assert(v is "A", "Failed basic true: expected 'A', got " .. tostring(v))
 end
 
-function testBasicFalse()
-   local v2 = false ? "A" :> "B"
+@Test function testBasicFalse()
+   v2 = false ? "A" :> "B"
    assert(v2 is "B", "Failed basic false: expected 'B', got " .. tostring(v2))
 end
 
 -- Extended falsey semantics tests for full ternary
-function testExtendedFalseyNil()
-   local v = nil ? "A" :> "B"
+@Test function testExtendedFalseyNil()
+   v = nil ? "A" :> "B"
    assert(v is "B", "Failed nil: expected 'B', got " .. tostring(v))
 end
 
-function testExtendedFalseyZero()
-   local v = 0 ? "A" :> "B"
+@Test function testExtendedFalseyZero()
+   v = 0 ? "A" :> "B"
    assert(v is "B", "Failed zero: expected 'B', got " .. tostring(v))
 end
 
-function testExtendedFalseyEmptyString()
-   local v = "" ? "A" :> "B"
+@Test function testExtendedFalseyEmptyString()
+   v = "" ? "A" :> "B"
    assert(v is "B", "Failed empty string: expected 'B', got " .. tostring(v))
 end
 
-function testExtendedFalseyFalse()
-   local v = false ? "A" :> "B"
+@Test function testExtendedFalseyFalse()
+   v = false ? "A" :> "B"
    assert(v is "B", "Failed false: expected 'B', got " .. tostring(v))
 end
 
-function testExtendedTruthyNonZero()
-   local v = 5 ? "A" :> "B"
+@Test function testExtendedTruthyNonZero()
+   v = 5 ? "A" :> "B"
    assert(v is "A", "Failed non-zero: expected 'A', got " .. tostring(v))
 end
 
-function testExtendedTruthyNonEmptyString()
-   local v = "hello" ? "A" :> "B"
+@Test function testExtendedTruthyNonEmptyString()
+   v = "hello" ? "A" :> "B"
    assert(v is "A", "Failed non-empty string: expected 'A', got " .. tostring(v))
 end
 
 -- Short-circuit tests
-function testShortCircuitTrue()
-   local called = false
+@Test function testShortCircuitTrue()
+   called = false
 
-   local function false_branch()
+   function false_branch()
       called = true
       return "B"
    end
 
    -- This setup results in run-time evaluation
 
-   local function truth()
+   function truth()
       return true
    end
-   local is_true = truth()
+   is_true = truth()
 
-   local v = is_true ? "A" :> false_branch()
+   v = is_true ? "A" :> false_branch()
    assert(v is "A", "Failed short-circuit true")
    assert(not called, "False branch should not be called")
 
    -- This setup can be evaluated at compile-time
 
-   local v = true ? "A" :> false_branch()
+   v = true ? "A" :> false_branch()
    assert(v is "A", "Failed short-circuit true")
    assert(not called, "False branch should not be called")
 end
 
-function testShortCircuitFalse()
-   local called = false
-   local function true_branch()
+@Test function testShortCircuitFalse()
+   called = false
+   function true_branch()
       called = true
       return "A"
    end
-   local v = false ? true_branch() :> "B"
+   v = false ? true_branch() :> "B"
    assert(v is "B", "Failed short-circuit false")
    assert(not called, "True branch should not be called")
 end
 
 -- Nested ternary (right-associative)
-function testNestedRightAssociative()
-   local v = true ? (false ? "A" :> "B") :> "C"
+@Test function testNestedRightAssociative()
+   v = true ? (false ? "A" :> "B") :> "C"
    -- Parses as: true ? (false ? "A" :> "B") :> "C"
    -- Result: false ? "A" :> "B" = "B"
    assert(v is "B", "Failed nested: expected 'B', got " .. tostring(v))
 end
 
-function testNestedMultiLevel()
-   local v = false ? "A" :> true ? "B" :> "C"
+@Test function testNestedMultiLevel()
+   v = false ? "A" :> true ? "B" :> "C"
    -- Parses as: false ? "A" :> (true ? "B" :> "C")
    -- Result: true ? "B" :> "C" = "B"
    assert(v is "B", "Failed multi-level nested: expected 'B', got " .. tostring(v))
 end
 
 -- Runtime condition tests
-function testRuntimePositive()
-   local x = 5
-   local v = x > 0 ? "positive" :> "non-positive"
+@Test function testRuntimePositive()
+   x = 5
+   v = x > 0 ? "positive" :> "non-positive"
    assert(v is "positive", "Failed runtime positive: expected 'positive', got " .. tostring(v))
 end
 
-function testRuntimeNegative()
-   local x = -5
-   local v = x > 0 ? "positive" :> "non-positive"
+@Test function testRuntimeNegative()
+   x = -5
+   v = x > 0 ? "positive" :> "non-positive"
    assert(v is "non-positive", "Failed runtime negative: expected 'non-positive', got " .. tostring(v))
 end
 
 -- Precedence tests
-function testPrecedenceArithmetic()
-   local a, b = 5, 3
-   local v = a > b ? a :> b
+@Test function testPrecedenceArithmetic()
+   a, b = 5, 3
+   v = a > b ? a :> b
    assert(v is 5, "Failed precedence: expected 5, got " .. tostring(v))
 end
 
-function testPrecedenceComparison()
-   local a, b = 3, 5
-   local v = a > b ? a :> b
+@Test function testPrecedenceComparison()
+   a, b = 3, 5
+   v = a > b ? a :> b
    assert(v is 5, "Failed precedence comparison: expected 5, got " .. tostring(v))
 end
 
 -- Complex expressions in branches
-function testComplexExpressions()
-   local a, b = 10, 20
-   local v = a > b ? a + b :> a * b
+@Test function testComplexExpressions()
+   a, b = 10, 20
+   v = a > b ? a + b :> a * b
    assert(v is 200, "Failed complex expressions: expected 200, got " .. tostring(v))
 end
 
-function testFunctionCallInBranch()
-   local function double(x)
+@Test function testFunctionCallInBranch()
+   function double(x)
       return x * 2
    end
-   local x = 5
-   local v = x > 0 ? double(x) :> 0
+   x = 5
+   v = x > 0 ? double(x) :> 0
    assert(v is 10, "Failed function call in branch: expected 10, got " .. tostring(v))
 end
 
 -- Assignment tests
-function testAssignment()
-   local result
+@Test function testAssignment()
    result = true ? "yes" :> "no"
    assert(result is "yes", "Failed assignment: expected 'yes', got " .. tostring(result))
 end
 
-function testMultipleAssignments()
-   local a = true ? 1 :> 2
-   local b = false ? 3 :> 4
+@Test function testMultipleAssignments()
+   a = true ? 1 :> 2
+   b = false ? 3 :> 4
    assert(a is 1 and b is 4, "Failed multiple assignments")
 end
 
 -- Compile-time constant optimization tests
-function testConstantTrue()
-   local v = true ? "A" :> error("Should not be called")
+@Test function testConstantTrue()
+   v = true ? "A" :> error("Should not be called")
    assert(v is "A", "Failed constant true")
 end
 
-function testConstantFalse()
-   local v = false ? error("Should not be called") :> "B"
+@Test function testConstantFalse()
+   v = false ? error("Should not be called") :> "B"
    assert(v is "B", "Failed constant false")
 end
 
-function testConstantZero()
-   local v = 0 ? error("Should not be called") :> "B"
+@Test function testConstantZero()
+   v = 0 ? error("Should not be called") :> "B"
    assert(v is "B", "Failed constant zero")
 end
 
-function testConstantEmptyString()
-   local v = "" ? error("Should not be called") :> "B"
+@Test function testConstantEmptyString()
+   v = "" ? error("Should not be called") :> "B"
    assert(v is "B", "Failed constant empty string")
 end
 
-function testConstantNonZero()
-   local v = 5 ? "A" :> error("Should not be called")
+@Test function testConstantNonZero()
+   v = 5 ? "A" :> error("Should not be called")
    assert(v is "A", "Failed constant non-zero")
 end
 
-function testConstantNonEmptyString()
-   local v = "hello" ? "A" :> error("Should not be called")
+@Test function testConstantNonEmptyString()
+   v = "hello" ? "A" :> error("Should not be called")
    assert(v is "A", "Failed constant non-empty string")
 end
 
 -- Table/field tests
-function testTableField()
-   local t = { value = 10 }
-   local v = t.value > 5 ? "high" :> "low"
+@Test function testTableField()
+   t = { value = 10 }
+   v = t.value > 5 ? "high" :> "low"
    assert(v is "high", "Failed table field: expected 'high', got " .. tostring(v))
 end
 
 -- Return value tests
-function testReturnValue()
-   local function test()
+@Test function testReturnValue()
+   function test()
       return true ? "yes" :> "no"
    end
-   local result = test()
+   result = test()
    assert(result is "yes", "Failed return value: expected 'yes', got " .. tostring(result))
 end
 
 -- Edge cases
-function testChainedComparisons()
-   local a, b, c = 1, 2, 3
-   local v = a < b and b < c ? "ordered" :> "not ordered"
+@Test function testChainedComparisons()
+   a, b, c = 1, 2, 3
+   v = a < b and b < c ? "ordered" :> "not ordered"
    assert(v is "ordered", "Failed chained comparisons")
 end
 
-function testMixedOptionalAndFull()
-   local v = (5 ?? 0) > 3 ? "high" :> "low"
+@Test function testMixedOptionalAndFull()
+   v = (5 ?? 0) > 3 ? "high" :> "low"
    -- First: 5 ?? 0 = 5
    -- Then: 5 > 3 ? "high" :> "low" = "high"
    assert(v is "high", "Failed mixed optional and full: expected 'high', got " .. tostring(v))
 end
 
 -- Method call tests (critical for in_ternary flag implementation)
-function testMethodCallInTrueBranch()
-   local obj = {
+@Test function testMethodCallInTrueBranch()
+   obj = {
       getValue = function(self)
          return "method_result"
       end
    }
-   local v = true ? obj:getValue() :> "other"
+   v = true ? obj:getValue() :> "other"
    assert(v is "method_result", "Failed method call in true branch: expected 'method_result', got " .. tostring(v))
 end
 
-function testMethodCallInFalseBranch()
-   local obj = {
+@Test function testMethodCallInFalseBranch()
+   obj = {
       getValue = function(self)
          return "method_result"
       end
    }
-   local v = false ? "other" :> obj:getValue()
+   v = false ? "other" :> obj:getValue()
    assert(v is "method_result", "Failed method call in false branch: expected 'method_result', got " .. tostring(v))
 end
 
-function testNestedTernaryWithMethodCallInTrueBranch()
-   local obj = {
+@Test function testNestedTernaryWithMethodCallInTrueBranch()
+   obj = {
       getValue = function(self)
          return "inner_method"
       end
    }
    -- cond1 ? (cond2 ? obj:method() :> other) :> default
-   local v = true ? (true ? obj:getValue() :> "other") :> "default"
+   v = true ? (true ? obj:getValue() :> "other") :> "default"
    assert(v is "inner_method", "Failed nested ternary with method call in true branch: expected 'inner_method', got " .. tostring(v))
 end
 
-function testNestedTernaryWithMethodCallInFalseBranch()
-   local obj = {
+@Test function testNestedTernaryWithMethodCallInFalseBranch()
+   obj = {
       getValue = function(self)
          return "inner_method"
       end
    }
    -- cond1 ? true_val :> (cond2 ? obj:method() :> other)
-   local v = false ? "true_val" :> (true ? obj:getValue() :> "other")
+   v = false ? "true_val" :> (true ? obj:getValue() :> "other")
    assert(v is "inner_method", "Failed nested ternary with method call in false branch: expected 'inner_method', got " .. tostring(v))
 end
 
-function testMethodCallWithArgumentsInTernary()
-   local obj = {
+@Test function testMethodCallWithArgumentsInTernary()
+   obj = {
       multiply = function(self, x, y)
          return x * y
       end
    }
-   local v = true ? obj:multiply(5, 6) :> 0
+   v = true ? obj:multiply(5, 6) :> 0
    assert(v is 30, "Failed method call with arguments: expected 30, got " .. tostring(v))
 end
 
-function testMethodCallInCondition()
-   local obj = {
+@Test function testMethodCallInCondition()
+   obj = {
       isActive = function(self)
          return true
       end
    }
-   local v = obj:isActive() ? "active" :> "inactive"
+   v = obj:isActive() ? "active" :> "inactive"
    assert(v is "active", "Failed method call in condition: expected 'active', got " .. tostring(v))
 end
 
 -- Operator precedence and chaining tests
-function testTernaryWithArithmetic()
-   local v = 5 + 3 > 6 ? 10 :> 5
+@Test function testTernaryWithArithmetic()
+   v = 5 + 3 > 6 ? 10 :> 5
    -- Parses as: (5 + 3) > 6 ? 10 :> 5 = 8 > 6 ? 10 :> 5 = 10
    assert(v is 10, "Failed ternary with arithmetic: expected 10, got " .. tostring(v))
 end
 
-function testTernaryChainedWithAnd()
-   local a, b = 5, 10
-   local v = a > 0 and b > 0 ? "both positive" :> "not both positive"
+@Test function testTernaryChainedWithAnd()
+   a, b = 5, 10
+   v = a > 0 and b > 0 ? "both positive" :> "not both positive"
    assert(v is "both positive", "Failed ternary chained with and: expected 'both positive', got " .. tostring(v))
 end
 
-function testTernaryChainedWithOr()
-   local a, b = -5, 10
-   local v = a > 0 or b > 0 ? "at least one positive" :> "both negative"
+@Test function testTernaryChainedWithOr()
+   a, b = -5, 10
+   v = a > 0 or b > 0 ? "at least one positive" :> "both negative"
    assert(v is "at least one positive", "Failed ternary chained with or: expected 'at least one positive', got " .. tostring(v))
 end
 
-function testTernaryInArithmeticExpression()
-   local v = (true ? 10 :> 5) + 5
+@Test function testTernaryInArithmeticExpression()
+   v = (true ? 10 :> 5) + 5
    assert(v is 15, "Failed ternary in arithmetic expression: expected 15, got " .. tostring(v))
 end
 
-function testTernaryWithComparison()
-   local a, b, c = 5, 3, 8
-   local v = a > b ? c :> b
+@Test function testTernaryWithComparison()
+   a, b, c = 5, 3, 8
+   v = a > b ? c :> b
    assert(v is 8, "Failed ternary with comparison: expected 8, got " .. tostring(v))
 end
 
 -- Parentheses and grouping tests
-function testParenthesizedTernary()
-   local v = (true ? "A" :> "B")
+@Test function testParenthesizedTernary()
+   v = (true ? "A" :> "B")
    assert(v is "A", "Failed parenthesized ternary: expected 'A', got " .. tostring(v))
 end
 
-function testTernaryWithParenthesizedCondition()
-   local v = (5 > 3) ? "yes" :> "no"
+@Test function testTernaryWithParenthesizedCondition()
+   v = (5 > 3) ? "yes" :> "no"
    assert(v is "yes", "Failed ternary with parenthesized condition: expected 'yes', got " .. tostring(v))
 end
 
-function testTernaryWithParenthesizedBranches()
-   local v = true ? (10 + 5) :> (20 - 5)
+@Test function testTernaryWithParenthesizedBranches()
+   v = true ? (10 + 5) :> (20 - 5)
    assert(v is 15, "Failed ternary with parenthesized branches: expected 15, got " .. tostring(v))
 end
 
 -- Array/table indexing tests
-function testArrayIndexingInBranch()
-   local arr = { "first", "second", "third" }
-   local v = true ? arr[1] :> arr[2]
+@Test function testArrayIndexingInBranch()
+   arr = { "first", "second", "third" }
+   v = true ? arr[1] :> arr[2]
    assert(v is "second", "Failed array indexing in branch: expected 'second', got " .. tostring(v))
 end
 
-function testNestedTableAccessInBranch()
-   local t = {
+@Test function testNestedTableAccessInBranch()
+   t = {
       user = {
          name = "Alice",
          age = 30
       }
    }
-   local v = true ? t.user.name :> "Unknown"
+   v = true ? t.user.name :> "Unknown"
    assert(v is "Alice", "Failed nested table access in branch: expected 'Alice', got " .. tostring(v))
 end
 
 -- Multiple assignment tests
-function testTernaryInMultipleAssignment()
-   local a, b = true ? 1 :> 3, 4
+@Test function testTernaryInMultipleAssignment()
+   a, b = true ? 1 :> 3, 4
    -- Ternary returns single value, so only first gets assigned
    assert(a is 1, "Failed ternary in multiple assignment: expected a=1, got " .. tostring(a))
 end
 
 -- Whitespace and formatting tests (edge cases)
-function testTernaryWithExtraWhitespace()
-   local v = true ? "A" :> "B"
+@Test function testTernaryWithExtraWhitespace()
+   v = true ? "A" :> "B"
    assert(v is "A", "Failed ternary with whitespace: expected 'A', got " .. tostring(v))
 end
 
-function testTernaryNoSpaces()
-   local v = true?"A":>"B"
+@Test function testTernaryNoSpaces()
+   v = true?"A":>"B"
    assert(v is "A", "Failed ternary without spaces: expected 'A', got " .. tostring(v))
 end
 
 -- String concatenation in branches
-function testStringConcatenationInBranch()
-   local v = true ? "Hello" .. " " .. "World" :> "Goodbye"
+@Test function testStringConcatenationInBranch()
+   v = true ? "Hello" .. " " .. "World" :> "Goodbye"
    assert(v is "Hello World", "Failed string concatenation in branch: expected 'Hello World', got " .. tostring(v))
 end
 
 -- Negative numbers
-function testNegativeNumberInCondition()
-   local v = -5 ? "negative" :> "zero_or_positive"
+@Test function testNegativeNumberInCondition()
+   v = -5 ? "negative" :> "zero_or_positive"
    assert(v is "negative", "Failed negative number in condition: expected 'negative', got " .. tostring(v))
 end
 
-function testNegativeNumberInBranch()
-   local v = true ? -10 :> 10
+@Test function testNegativeNumberInBranch()
+   v = true ? -10 :> 10
    assert(v is -10, "Failed negative number in branch: expected -10, got " .. tostring(v))
 end
 
 -- Boolean expressions
-function testBooleanExpressionInCondition()
-   local v = (true and false) ? "true" :> "false"
+@Test function testBooleanExpressionInCondition()
+   v = (true and false) ? "true" :> "false"
    assert(v is "false", "Failed boolean expression in condition: expected 'false', got " .. tostring(v))
 end
 
 -- Empty branches (edge case)
-function testEmptyBranchesNotPossible()
+@Test function testEmptyBranchesNotPossible()
    -- Note: Empty branches would be syntax errors, but we test that valid expressions work
-   local v = true ? 1 :> 2
+   v = true ? 1 :> 2
    assert(v is 1, "Valid ternary should work")
 end
 
 -- Ternary as function argument
-function testTernaryAsFunctionArgument()
-   local function process(x)
+@Test function testTernaryAsFunctionArgument()
+   function process(x)
       return x * 2
    end
-   local v = process(true ? 5 :> 10)
+   v = process(true ? 5 :> 10)
    assert(v is 10, "Failed ternary as function argument: expected 10, got " .. tostring(v))
 
-   local function myFunc(value)
+   function myFunc(value)
       return value
    end
 
-   local Number = 1
-   local result = myFunc(Number ? 1 :> 2) -- This should pass Number (1) to myFunc, not 2
+   Number = 1
+   result = myFunc(Number ? 1 :> 2) -- This should pass Number (1) to myFunc, not 2
    assert(result is 1, "Expected 1, got " .. tostring(result))
 end
 
 -- Ternary in table constructor
-function testTernaryInTableConstructor()
-   local t = {
+@Test function testTernaryInTableConstructor()
+   t = {
       value = true ? "yes" :> "no",
       count = false ? 1 :> 2
    }
@@ -415,8 +415,8 @@ function testTernaryInTableConstructor()
 end
 
 -- Ternary with ?? operator (coalesce/or_question)
-function testTernaryWithOrQuestionOperator()
-   local v = (nil ?? "default") ? "fallback" :> "final"
+@Test function testTernaryWithOrQuestionOperator()
+   v = (nil ?? "default") ? "fallback" :> "final"
    -- First: nil ?? "default" = "default"
    -- Then: "default" ?? "fallback" :> "final" = "fallback" (truthy)
    assert(v is "fallback", "Failed ternary with ? operator: expected 'fallback', got " .. tostring(v))
@@ -426,50 +426,50 @@ end
 -- Test ternary in conjunction with concatenation - note that bugs raised could be in either feature or in
 -- combination of both
 
-function testConcat()
-   local function returnString(Arg)
+@Test function testConcat()
+   function returnString(Arg)
       if Arg then return Arg else return "Result" end
    end
 
-   local baseline = (nil and returnString('true') or returnString('false'))
+   baseline = (nil and returnString('true') or returnString('false'))
    assert(baseline is "false", "Failed baseline, got '" .. tostring(baseline) .. "'")
 
-   local ternary = (nil ? returnString('true') :> returnString('false'))
+   ternary = (nil ? returnString('true') :> returnString('false'))
    assert(ternary is "false", "Failed concat-function baseline, got '" .. tostring(ternary) .. "'")
 
-   local v = '' .. (nil ? returnString('true') :> returnString('false')) .. ''
+   v = '' .. (nil ? returnString('true') :> returnString('false')) .. ''
    assert(v is baseline, "Failed concat-function 1, got '" .. tostring(v) .. "'")
 
    local val
-   local v = '' .. (val ? returnString('ignore') :> 'false')
+   v = '' .. (val ? returnString('ignore') :> 'false')
    assert(v is "false", "Failed conat-function 2, got '" .. tostring(v) .. "'")
 end
 
-function testInFunction()
-   local Function = { status = 'Hello' }
+@Test function testInFunction()
+   Function = { status = 'Hello' }
 
    -- Ternary operator within a function
-   local result = string.find((Function.status ? 'then' :> 'else'), 'e')
+   result = string.find((Function.status ? 'then' :> 'else'), 'e')
    assert(result is 2, "Failed test: expected 3, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testEmbeddedConcat()
-   local test = 'thing'
-   local struct = 'struct'
-   local type = test ? ('class ' .. struct) :> ('struct ' .. struct)
+@Test function testEmbeddedConcat()
+   test = 'thing'
+   struct = 'struct'
+   type = test ? ('class ' .. struct) :> ('struct ' .. struct)
    assert(type is 'class struct', "Failed embedded concat test: expected 'class struct', got " .. tostring(type))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testInvalidTernary()
-   local script = obj.new('fluid', {
+@Test function testInvalidTernary()
+   script = obj.new('fluid', {
       statement = [[
-         local Options = { scale = false }
-         local self = Options.scale is false ?? nil :> true
-         local self = Options.missing is false ?? nil :> true
+         Options = { scale = false }
+         self = Options.scale is false ?? nil :> true
+         self = Options.missing is false ?? nil :> true
       ]]
    })
 
@@ -478,49 +478,8 @@ function testInvalidTernary()
    assert(string.find(script.errorString, 'Unexpected Token') != nil, "Expected invalid token error, got: " .. tostring(script.errorString))
 end
 
-function testConditionsInTernary()
-   local test_val = true
-   local result = test_val ? (1 < 2) :> (1 > 2)
+@Test function testConditionsInTernary()
+   test_val = true
+   result = test_val ? (1 < 2) :> (1 > 2)
    assert(result is true, "Expected true, got " .. tostring(result))
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testBasicTrue, testBasicFalse,
-      testExtendedFalseyNil, testExtendedFalseyZero, testExtendedFalseyEmptyString, testExtendedFalseyFalse,
-      testExtendedTruthyNonZero, testExtendedTruthyNonEmptyString, testShortCircuitTrue, testShortCircuitFalse,
-      testNestedRightAssociative, testNestedMultiLevel, testRuntimePositive, testRuntimeNegative,
-      testPrecedenceArithmetic, testPrecedenceComparison, testComplexExpressions, testFunctionCallInBranch,
-      testAssignment, testMultipleAssignments, testConstantTrue, testConstantFalse, testConstantZero,
-      testConstantEmptyString, testConstantNonZero, testConstantNonEmptyString, testTableField,
-      testReturnValue, testChainedComparisons, testMixedOptionalAndFull,
-      -- Method call tests (critical for in_ternary flag)
-      testMethodCallInTrueBranch, testMethodCallInFalseBranch,
-      testNestedTernaryWithMethodCallInTrueBranch, testNestedTernaryWithMethodCallInFalseBranch,
-      testMethodCallWithArgumentsInTernary, testMethodCallInCondition,
-      -- Operator precedence and chaining
-      testTernaryWithArithmetic, testTernaryChainedWithAnd, testTernaryChainedWithOr,
-      testTernaryInArithmeticExpression, testTernaryWithComparison,
-      -- Parentheses and grouping
-      testParenthesizedTernary, testTernaryWithParenthesizedCondition, testTernaryWithParenthesizedBranches,
-      -- Array/table indexing
-      testArrayIndexingInBranch, testNestedTableAccessInBranch,
-      -- Multiple assignment
-      testTernaryInMultipleAssignment,
-      -- Whitespace and formatting
-      testTernaryWithExtraWhitespace, testTernaryNoSpaces,
-      -- String operations
-      testStringConcatenationInBranch,
-      -- Negative numbers
-      testNegativeNumberInCondition, testNegativeNumberInBranch,
-      -- Boolean expressions
-      testBooleanExpressionInCondition,
-      -- Function arguments and table constructors
-      testTernaryAsFunctionArgument, testTernaryInTableConstructor,
-      -- Interaction with other operators
-      testTernaryWithOrQuestionOperator, testConcat, testInFunction, testInvalidTernary, testEmbeddedConcat,
-      testConditionsInTernary
-   }
-}

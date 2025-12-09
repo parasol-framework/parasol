@@ -1,5 +1,5 @@
 
-function testRound()
+@Test function testRound()
    -- Test basic rounding (no decimal places)
    assert(math.round(3.7) is 4, 'math.round(3.7) should be 4')
    assert(math.round(3.2) is 3, 'math.round(3.2) should be 3')
@@ -22,13 +22,5 @@ function testRound()
    assert(math.round(1234.5, -1) is 1230, 'math.round(1234.5, -1) should be 1230')
    assert(math.round(1234.5, -2) is 1200, 'math.round(1234.5, -2) should be 1200')
 
-   print('All math.round() tests passed!')
+   logOutput('All math.round() tests passed!')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testRound
-      }
-   }

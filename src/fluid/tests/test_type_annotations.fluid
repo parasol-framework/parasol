@@ -1,12 +1,12 @@
 -- Regression tests for Fluid parameter type annotations and static analysis helpers
 
 -- Compile a function with the provided signature and return the callable
-local function parameter_names(Signature)
-   local names = {}
+function parameter_names(Signature)
+   names = {}
    for entry in string.gmatch(Signature, "[^,]+") do
-      local trimmed = string.match(entry, "^%s*(.-)%s*$")
+      trimmed = string.match(entry, "^%s*(.-)%s*$")
       if trimmed?? then
-         local colon = string.find(trimmed, ":", 0, true)
+         colon = string.find(trimmed, ":", 0, true)
          if colon?? then trimmed = string.sub(trimmed, 0, colon) end
          table.insert(names, trimmed)
       end
@@ -14,40 +14,40 @@ local function parameter_names(Signature)
    return names
 end
 
-local function build_source(Signature)
-   local names = parameter_names(Signature)
-   local returns = table.concat(names, ", ")
+function build_source(Signature)
+   names = parameter_names(Signature)
+   returns = table.concat(names, ", ")
    if returns is "" then returns = "nil" end
    return "local function typed(" .. Signature .. ") return " .. returns .. " end return typed"
 end
 
-local function compile_signature(Signature)
-   local factory = exec(build_source(Signature))
+function compile_signature(Signature)
+   factory = exec(build_source(Signature))
    assert(type(factory) is "function", "Chunk did not produce a function")
    return factory
 end
 
-function testBasicParsing()
-   local typed = compile_signature("A:num, B:str, C:table")
-   local results = { typed(7, "hello", { value = true }) }
+@Test function testBasicParsing()
+   typed = compile_signature("A:num, B:str, C:table")
+   results = { typed(7, "hello", { value = true }) }
    assert(results[0] is 7, "Expected numeric argument to be returned")
    assert(results[1] is "hello", "Expected string argument to be returned")
    assert(type(results[2]) is "table", "Expected table argument to be returned, got " .. type(results[2]))
 end
 
-function testMixedParameters()
-   local mixed = compile_signature("Untyped, Typed:bool")
-   local results = { mixed("anything", true) }
+@Test function testMixedParameters()
+   mixed = compile_signature("Untyped, Typed:bool")
+   results = { mixed("anything", true) }
    assert(results[0] is "anything", "Untyped parameter should accept any value")
    assert(results[1] is true, "Typed boolean parameter should pass through")
 end
 
-local function assert_compiles(Signature)
-   local fn = exec(build_source(Signature))
-   assert(type(fn) is "function", "Expected a function from compiled chunk")
-end
+@Test function testAllTypeNames()
+   function assert_compiles(Signature)
+      fn = exec(build_source(Signature))
+      assert(type(fn) is "function", "Expected a function from compiled chunk")
+   end
 
-function testAllTypeNames()
    assert_compiles("N:num")
    assert_compiles("Number:number")
    assert_compiles("S:str")
@@ -65,19 +65,10 @@ function testAllTypeNames()
    assert_compiles("Data:cdata")
 end
 
-function testUnknownTypeRejected()
-   local ex, result = catch(function()
+@Test function testUnknownTypeRejected()
+   ex, result = catch(function()
       return exec("local function rejected(Value:unknown_type) return Value end return rejected")
    end)
 
    assert(ex, "Expected unknown type name to prevent compilation")
 end
-
-return {
-   tests = {
-      testBasicParsing,
-      testMixedParameters,
-      testAllTypeNames,
-      testUnknownTypeRejected,
-   }
-}

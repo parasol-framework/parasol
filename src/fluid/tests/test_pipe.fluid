@@ -140,7 +140,7 @@ end
 
 @Test function testInvalidFloatLimit()
    -- Floating-point limits like |2.5> should cause a parse error
-   local script = obj.new('fluid', {
+   script = obj.new('fluid', {
       statement = [[
          function identity(x) return x end
          result = 1 |2.5> identity()

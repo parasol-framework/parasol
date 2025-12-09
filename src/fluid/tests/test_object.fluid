@@ -3,8 +3,8 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Using pairs() on an object will iterate over its field meta data.
 
-function testPairs()
-   local script = obj.find("self")
+@Test function testPairs()
+   script = obj.find("self")
    for k,v in pairs(script) do
       print(string.format("%20s", k), " ", string.format("$%.8x", v))
    end
@@ -13,8 +13,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Using ipairs() on an object will iterate over its field meta data.
 
-function testIPairs()
-   local script = obj.find("self")
+@Test function testIPairs()
+   script = obj.find("self")
    for k,v in ipairs(script) do
       print(k, " ", v)
    end
@@ -22,13 +22,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testType()
-   local script = obj.find("self")
+@Test function testType()
+   script = obj.find("self")
    assert(getmetatable(script).__name is 'Fluid.obj', 'Expected metatable __name of Fluid.obj for script objecxt')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = { testPairs, testIPairs, testType }
-   }

@@ -1,12 +1,12 @@
 -- Flute regression tests for the defer keyword
 
-local function join(values)
+function join(values)
    return table.concat(values, ',')
 end
 
-function testBasicExecution()
-   local order = {}
-   local function subject()
+@Test function testBasicExecution()
+   order = {}
+   function subject()
       defer
          table.insert(order, 'deferred')
       end
@@ -17,10 +17,10 @@ function testBasicExecution()
    assert(join(order) is 'body,deferred', "Expected body before deferred handler, got '" .. join(order) .. "'")
 end
 
-function testDeferWithoutParens()
-   local order = {}
+@Test function testDeferWithoutParens()
+   order = {}
 
-   local function subject()
+   function subject()
       defer
          table.insert(order, 'alpha')
       end
@@ -37,9 +37,9 @@ function testDeferWithoutParens()
    assert(join(order) is 'body,beta,alpha', "Expected mix of defer syntaxes to preserve order, got '" .. join(order) .. "'")
 end
 
-function testLifoOrder()
-   local order = {}
-   local function subject()
+@Test function testLifoOrder()
+   order = {}
+   function subject()
       defer
          table.insert(order, 'first')
       end
@@ -56,7 +56,7 @@ function testLifoOrder()
    assert(join(order) is 'body,third,second,first', "Expected LIFO order for defers, got '" .. join(order) .. "'")
 end
 
-local function subjectReturn(order)
+function subjectReturn(order)
    defer
       table.insert(order, 'deferred')
    end
@@ -64,18 +64,18 @@ local function subjectReturn(order)
    return 'result'
 end
 
-function testEarlyReturn()
-   local order = {}
-   local value = subjectReturn(order)
+@Test function testEarlyReturn()
+   order = {}
+   value = subjectReturn(order)
 
    assert(value is 'result', "Expected subjectReturn result to be 'result', got '" .. tostring(value) .. "'")
    assert(join(order) is 'before-return,deferred', "Expected deferred handler to run after return, got '" .. join(order) .. "'")
 end
 
-function testNestedScopes()
-   local order = {}
+@Test function testNestedScopes()
+   order = {}
 
-   local function subject()
+   function subject()
       defer
          table.insert(order, 'outer')
       end
@@ -95,10 +95,10 @@ function testNestedScopes()
    assert(join(order) is 'inner-body,inner,after-inner,outer', "Expected inner defer before outer, got '" .. join(order) .. "'")
 end
 
-function testBreak()
-   local order = {}
+@Test function testBreak()
+   order = {}
 
-   local function subject()
+   function subject()
       for i = 1, 3 do
          defer
             table.insert(order, 'loop-' .. tostring(i))
@@ -112,10 +112,10 @@ function testBreak()
    assert(join(order) is 'before-break-1,loop-1', "Expected loop defer to run on break, got '" .. join(order) .. "'")
 end
 
-function testContinue()
-   local order = {}
+@Test function testContinue()
+   order = {}
 
-   local function subject()
+   function subject()
       for i = 1, 2 do
          defer
             table.insert(order, 'defer-' .. tostring(i))
@@ -133,11 +133,11 @@ function testContinue()
    assert(join(order) is 'body-1,continue-1,defer-1,body-2,after-2,defer-2', "Unexpected continue defer order: '" .. join(order) .. "'")
 end
 
-function testUpvalues()
-   local captures = {}
+@Test function testUpvalues()
+   captures = {}
 
-   local function subject()
-      local value = 10
+   function subject()
+      value = 10
       defer
          table.insert(captures, value)
       end
@@ -151,11 +151,11 @@ function testUpvalues()
    assert(join(captures) is 'body,30', "Expected upvalue capture to reflect latest value, got '" .. join(captures) .. "'")
 end
 
-function testArgumentSnapshot()
-   local events = {}
+@Test function testArgumentSnapshot()
+   events = {}
 
-   local function subject()
-      local value = 5
+   function subject()
+      value = 5
 
       defer(arg)
          table.insert(events, 'defer-' .. tostring(arg))
@@ -172,10 +172,10 @@ function testArgumentSnapshot()
       "Deferred argument should snapshot initial value: '" .. join(events) .. "'")
 end
 
-function testMultiReturnPreservesLocals()
-   local function subject()
-      local head = 'alpha'
-      local tail = 'omega'
+@Test function testMultiReturnPreservesLocals()
+   function subject()
+      head = 'alpha'
+      tail = 'omega'
 
       defer
          head = 'mutated-alpha'
@@ -185,16 +185,16 @@ function testMultiReturnPreservesLocals()
       return head, tail
    end
 
-   local first, second = subject()
+   first, second = subject()
 
    assert(first is 'alpha', "Expected first return value to remain 'alpha', got '" .. tostring(first) .. "'")
    assert(second is 'omega', "Expected second return value to remain 'omega', got '" .. tostring(second) .. "'")
 end
 
-function testConditionalScopes()
-   local order = {}
+@Test function testConditionalScopes()
+   order = {}
 
-   local function subject()
+   function subject()
       defer
          table.insert(order, 'outer')
       end
@@ -214,10 +214,10 @@ function testConditionalScopes()
    assert(join(order) is 'if-body,if-block,after-if,outer', "Unexpected conditional defer order: '" .. join(order) .. "'")
 end
 
-function testLoopMultipleDefers()
-   local order = {}
+@Test function testLoopMultipleDefers()
+   order = {}
 
-   local function subject()
+   function subject()
       for i = 1, 2 do
          defer
             table.insert(order, 'outer-' .. tostring(i))
@@ -235,8 +235,8 @@ function testLoopMultipleDefers()
    subject()
    assert(join(order) is 'inner-body-1,inner-1,loop-body-1,outer-1,inner-body-2,inner-2,loop-body-2,outer-2', "Unexpected nested loop defer order: '" .. join(order) .. "'")
 
-   local total = 0
-   local step = 1
+   total = 0
+   step = 1
    repeat
       defer
          total = total + step
@@ -247,11 +247,11 @@ function testLoopMultipleDefers()
    assert(total is 6, "Expected total to be 6 after loop")
 end
 
-function testHandlerError()
+@Test function testHandlerError()
    -- Phase 3 placeholder: deferred handler error propagation to be implemented.
 end
 
-local function recurse(n, order)
+function recurse(n, order)
    defer
       table.insert(order, 'defer-' .. tostring(n))
    end
@@ -262,17 +262,17 @@ local function recurse(n, order)
    table.insert(order, 'leave-' .. tostring(n))
 end
 
-function testRecursive()
-   local order = {}
+@Test function testRecursive()
+   order = {}
    recurse(3, order)
 
    assert(join(order) is 'enter-3,enter-2,enter-1,leave-1,defer-1,leave-2,defer-2,leave-3,defer-3', "Unexpected recursive defer order: '" .. join(order) .. "'")
 end
 
-function testClosureReturn()
-   local calls = {}
-   local function make()
-      local sum = 0
+@Test function testClosureReturn()
+   calls = {}
+   function make()
+      sum = 0
       defer
          sum += 5
          table.insert(calls, sum)
@@ -281,26 +281,26 @@ function testClosureReturn()
       return sum
    end
 
-   local value = make()
+   value = make()
    assert(value is 10, "Expected make() to return immediate sum, got " .. tostring(value))
    assert(join(calls) is '15', "Expected deferred closure to observe mutated state, got '" .. join(calls) .. "'")
 end
 
-function testResourceCleanupPattern()
-   local log = {}
+@Test function testResourceCleanupPattern()
+   log = {}
 
-   local function cleanup(resource, token)
+   function cleanup(resource, token)
       table.insert(log, 'cleanup-' .. resource.name .. '-' .. token)
    end
 
-   local function acquire(name)
+   function acquire(name)
       table.insert(log, 'acquire-' .. name)
       return { name = name }
    end
 
-   local function subject()
-      local resource = acquire('alpha')
-      local label = 'start'
+   function subject()
+      resource = acquire('alpha')
+      label = 'start'
 
       defer(handler, handle, token)
          handler(handle, token)
@@ -316,29 +316,3 @@ function testResourceCleanupPattern()
    assert(join(log) is 'acquire-alpha,body-beta-updated,cleanup-beta-start-token',
       "Resource cleanup should receive original token value: '" .. join(log) .. "'")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   local supportsErrorPropagation = false
-
-   local tests = {
-      testBasicExecution,
-      testDeferWithoutParens,
-      testLifoOrder,
-      testEarlyReturn,
-      testNestedScopes,
-      testBreak,
-      testContinue,
-      testUpvalues,
-      testConditionalScopes,
-      testLoopMultipleDefers,
-      testRecursive,
-      testClosureReturn,
-      testMultiReturnPreservesLocals,
-      testArgumentSnapshot,
-      testResourceCleanupPattern
-   }
-
-   return {
-      tests = tests
-   }

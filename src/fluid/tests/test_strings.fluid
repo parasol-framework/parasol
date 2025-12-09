@@ -1,27 +1,27 @@
 -- Flute tests for the custom string functions
 -- String functions that are JIT-optimised are executed in loops to ensure coverage of their fast calls.
 
-function testAlloc()
-   local s = string.alloc(10)
+@Test function testAlloc()
+   s = string.alloc(10)
    assert(#s is 10, "String size is not 10 characters, got " .. #s)
 
    -- Test zero size
-   local empty = string.alloc(0)
+   empty = string.alloc(0)
    assert(#empty is 0, "Zero alloc should create empty string, got " .. #empty)
 
    -- Test large size
-   local big = string.alloc(1000)
+   big = string.alloc(1000)
    assert(#big is 1000, "Large alloc failed, expected 1000, got " .. #big)
 end
 
-function testIndex()
+@Test function testIndex()
 --   getmetatable('').__index = function(str,i) return string.sub(str,i,i) end
---   local hw = "Hello World"
+--   hw = "Hello World"
 --   assert(string[1] is "H", "Expected 'H' at index 0, got '" .. tostring(string[1]) .. "'")
 end
 
-function testSplit()
-   local parts = string.split("\n\n\n", "\n")
+@Test function testSplit()
+   parts = string.split("\n\n\n", "\n")
    assert(#parts is 4, "Expected 4 parts for consecutive newlines, got " .. #parts)
    assert(parts[0] is "", "Expected empty string for first part, got '" .. parts[0] .. "'")
    assert(parts[1] is "", "Expected empty string for first part, got '" .. parts[1] .. "'")
@@ -29,14 +29,14 @@ function testSplit()
    assert(parts[3] is "", "Expected empty string for first part, got '" .. parts[3] .. "'")
 
    -- Basic comma split
-   local parts = string.split("a,b,c", ",")
+   parts = string.split("a,b,c", ",")
    assert(#parts is 3, "Expected 3 parts, got " .. #parts)
    assert(parts[0] is "a", "Expected 'a', got '" .. parts[0] .. "'")
    assert(parts[1] is "b", "Expected 'b', got '" .. parts[1] .. "'")
    assert(parts[2] is "c", "Expected 'c', got '" .. parts[2] .. "'")
 
    -- Whitespace split (default)
-   local words = string.split("hello world\ttab\nnewline")
+   words = string.split("hello world\ttab\nnewline")
    assert(#words is 4, "Expected 4 words, got " .. #words)
    assert(words[0] is "hello", "Expected 'hello', got '" .. words[0] .. "'")
    assert(words[1] is "world", "Expected 'world', got '" .. words[1] .. "'")
@@ -44,109 +44,109 @@ function testSplit()
    assert(words[3] is "newline", "Expected 'newline', got '" .. words[3] .. "'")
 
    -- Multi-character separator
-   local multi = string.split("one::two::three", "::")
+   multi = string.split("one::two::three", "::")
    assert(#multi is 3, "Expected 3 parts with :: separator, got " .. #multi)
    assert(multi[0] is "one", "Expected 'one', got '" .. multi[0] .. "'")
    assert(multi[1] is "two", "Expected 'two', got '" .. multi[1] .. "'")
    assert(multi[2] is "three", "Expected 'three', got '" .. multi[2] .. "'")
 
    -- Empty string
-   local empty = string.split("")
+   empty = string.split("")
    assert(#empty is 0, "Empty string split should return empty table, got " .. #empty)
 
    -- No separator found
-   local nosep = string.split("hello", ",")
+   nosep = string.split("hello", ",")
    assert(#nosep is 1, "No separator should return single item, got " .. #nosep)
    assert(nosep[0] is "hello", "Expected 'hello', got '" .. nosep[0] .. "'")
 end
 
-function testTrim()
+@Test function testTrim()
    -- Basic trim
-   local trimmed = string.trim("  hello world  ")
+   trimmed = string.trim("  hello world  ")
    assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
 
    -- Left whitespace only
-   local left = string.trim("  hello")
+   left = string.trim("  hello")
    assert(left is "hello", "Expected 'hello', got '" .. left .. "'")
 
    -- Right whitespace only
-   local right = string.trim("hello  ")
+   right = string.trim("hello  ")
    assert(right is "hello", "Expected 'hello', got '" .. right .. "'")
 
    -- Mixed whitespace types
-   local mixed = string.trim("\t\n  hello world  \r\n\t")
+   mixed = string.trim("\t\n  hello world  \r\n\t")
    assert(mixed is "hello world", "Expected 'hello world', got '" .. mixed .. "'")
 
    -- All whitespace
-   local allspace = string.trim("   \t\n\r   ")
+   allspace = string.trim("   \t\n\r   ")
    assert(allspace is "", "All whitespace should return empty string, got '" .. allspace .. "'")
 
    -- Empty string
-   local empty = string.trim("")
+   empty = string.trim("")
    assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- No whitespace
-   local none = string.trim("hello")
+   none = string.trim("hello")
    assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
-function testRTrim()
+@Test function testRTrim()
    -- Basic right trim
-   local trimmed = string.rtrim("hello world  ")
+   trimmed = string.rtrim("hello world  ")
    assert(trimmed is "hello world", "Expected 'hello world', got '" .. trimmed .. "'")
 
    -- Left whitespace preserved
-   local left = string.rtrim("  hello world  ")
+   left = string.rtrim("  hello world  ")
    assert(left is "  hello world", "Expected '  hello world', got '" .. left .. "'")
 
    -- Mixed whitespace types
-   local mixed = string.rtrim("hello world  \r\n\t")
+   mixed = string.rtrim("hello world  \r\n\t")
    assert(mixed is "hello world", "Expected 'hello world', got '" .. mixed .. "'")
 
    -- All whitespace
-   local allspace = string.rtrim("   \t\n\r   ")
+   allspace = string.rtrim("   \t\n\r   ")
    assert(allspace is "", "All whitespace should return empty string, got '" .. allspace .. "'")
 
    -- Empty string
-   local empty = string.rtrim("")
+   empty = string.rtrim("")
    assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- No whitespace
-   local none = string.rtrim("hello")
+   none = string.rtrim("hello")
    assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
-function testJoin()
+@Test function testJoin()
    -- Basic join
-   local joined = string.join({"hello", "world"}, " ")
+   joined = string.join({"hello", "world"}, " ")
    assert(joined is "hello world", "Expected 'hello world', got '" .. joined .. "'")
 
    -- CSV style
-   local csv = string.join({"a", "b", "c"}, ",")
+   csv = string.join({"a", "b", "c"}, ",")
    assert(csv is "a,b,c", "Expected 'a,b,c', got '" .. csv .. "'")
 
    -- No separator
-   local concat = string.join({"a", "b", "c"})
+   concat = string.join({"a", "b", "c"})
    assert(concat is "abc", "Expected 'abc', got '" .. concat .. "'")
 
    -- Mixed types (numbers should be converted)
-   local mixed = string.join({1, "hello", 2.5, "world"}, "-")
+   mixed = string.join({1, "hello", 2.5, "world"}, "-")
    assert(mixed is "1-hello-2.5-world", "Expected '1-hello-2.5-world', got '" .. mixed .. "'")
 
    -- Empty table
-   local empty = string.join({}, ",")
+   empty = string.join({}, ",")
    assert(empty is "", "Empty table should return empty string, got '" .. empty .. "'")
 
    -- Single item
-   local single = string.join({"hello"}, ",")
+   single = string.join({"hello"}, ",")
    assert(single is "hello", "Single item should return 'hello', got '" .. single .. "'")
 
    -- Empty strings in table
-   local withEmpty = string.join({"a", "", "b"}, ",")
+   withEmpty = string.join({"a", "", "b"}, ",")
    assert(withEmpty is "a,,b", "Expected 'a,,b', got '" .. withEmpty .. "'")
 end
 
-function testStartsWith()
+@Test function testStartsWith()
    -- Basic positive case
    assert(string.startsWith("hello world", "hello"), "Should start with 'hello'")
 
@@ -172,7 +172,7 @@ function testStartsWith()
    assert(not string.startsWith("Hello", "hello"), "Should be case sensitive")
 end
 
-function testEndsWith()
+@Test function testEndsWith()
    -- Basic positive case
    assert(string.endsWith("hello world", "world"), "Should end with 'world'")
 
@@ -198,387 +198,387 @@ function testEndsWith()
    assert(not string.endsWith("Hello", "hello"), "Should be case sensitive")
 end
 
-function testCap()
+@Test function testCap()
    -- Basic capitalization
-   local capped = string.cap("hello")
+   capped = string.cap("hello")
    assert(capped is "Hello", "Expected 'Hello', got '" .. capped .. "'")
 
    -- Already capitalized
-   local already = string.cap("Hello")
+   already = string.cap("Hello")
    assert(already is "Hello", "Expected 'Hello', got '" .. already .. "'")
 
    -- Single character
-   local single = string.cap("a")
+   single = string.cap("a")
    assert(single is "A", "Expected 'A', got '" .. single .. "'")
 
    -- Empty string
-   local empty = string.cap("")
+   empty = string.cap("")
    assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Non-alphabetic first character
-   local nonalpha = string.cap("123hello")
+   nonalpha = string.cap("123hello")
    assert(nonalpha is "123hello", "Expected '123hello', got '" .. nonalpha .. "'")
 
    -- Mixed case
-   local mixed = string.cap("hELLO")
+   mixed = string.cap("hELLO")
    assert(mixed is "HELLO", "Expected 'HELLO', got '" .. mixed .. "'")
 end
 
-function testDecap()
+@Test function testDecap()
    -- Basic decapitalization
-   local decapped = string.decap("Hello")
+   decapped = string.decap("Hello")
    assert(decapped is "hello", "Expected 'hello', got '" .. decapped .. "'")
 
    -- Already lowercase
-   local already = string.decap("hello")
+   already = string.decap("hello")
    assert(already is "hello", "Expected 'hello', got '" .. already .. "'")
 
    -- Single character
-   local single = string.decap("A")
+   single = string.decap("A")
    assert(single is "a", "Expected 'a', got '" .. single .. "'")
 
    -- Empty string
-   local empty = string.decap("")
+   empty = string.decap("")
    assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Non-alphabetic first character
-   local nonalpha = string.decap("123Hello")
+   nonalpha = string.decap("123Hello")
    assert(nonalpha is "123Hello", "Expected '123Hello', got '" .. nonalpha .. "'")
 
    -- Mixed case
-   local mixed = string.decap("HeLLo")
+   mixed = string.decap("HeLLo")
    assert(mixed is "heLLo", "Expected 'heLLo', got '" .. mixed .. "'")
 end
 
-function testHash()
+@Test function testHash()
    -- Basic hash (case insensitive by default)
-   local hash1 = string.hash("hello")
-   local hash2 = string.hash("HELLO")
+   hash1 = string.hash("hello")
+   hash2 = string.hash("HELLO")
    assert(hash1 is hash2, "Case insensitive hashes should match: " .. hash1 .. " != " .. hash2)
 
    -- Case sensitive hash
-   local hash3 = string.hash("hello", true)
-   local hash4 = string.hash("HELLO", true)
+   hash3 = string.hash("hello", true)
+   hash4 = string.hash("HELLO", true)
    assert(hash3 != hash4, "Case sensitive hashes should differ: " .. hash3 .. " is " .. hash4)
 
    -- Empty string
-   local emptyHash = string.hash("")
+   emptyHash = string.hash("")
    assert(emptyHash != 0, "Empty string hash should not be 0, got " .. emptyHash)
 
    -- Same string should produce same hash
-   local consistent1 = string.hash("test")
-   local consistent2 = string.hash("test")
+   consistent1 = string.hash("test")
+   consistent2 = string.hash("test")
    assert(consistent1 is consistent2, "Consistent hashing failed: " .. consistent1 .. " != " .. consistent2)
 
    -- Different strings should produce different hashes (highly likely)
-   local diff1 = string.hash("hello")
-   local diff2 = string.hash("world")
+   diff1 = string.hash("hello")
+   diff2 = string.hash("world")
    assert(diff1 != diff2, "Different strings produced same hash (collision): " .. diff1)
 end
 
-function testEscXML()
+@Test function testEscXML()
    -- Basic XML escaping
-   local escaped = string.escXML("Hello & goodbye")
+   escaped = string.escXML("Hello & goodbye")
    assert(escaped is "Hello &amp; goodbye", "Expected 'Hello &amp; goodbye', got '" .. escaped .. "'")
 
    -- Less than and greater than
-   local brackets = string.escXML("<tag>content</tag>")
+   brackets = string.escXML("<tag>content</tag>")
    assert(brackets is "&lt;tag&gt;content&lt;/tag&gt;", "Expected '&lt;tag&gt;content&lt;/tag&gt;', got '" .. brackets .. "'")
 
    -- All three special characters
-   local all = string.escXML("A & B < C > D")
+   all = string.escXML("A & B < C > D")
    assert(all is "A &amp; B &lt; C &gt; D", "Expected 'A &amp; B &lt; C &gt; D', got '" .. all .. "'")
 
    -- No special characters
-   local normal = string.escXML("Hello World")
+   normal = string.escXML("Hello World")
    assert(normal is "Hello World", "Expected 'Hello World', got '" .. normal .. "'")
 
    -- Empty string
-   local empty = string.escXML("")
+   empty = string.escXML("")
    assert(empty is "", "Empty string should remain empty, got '" .. empty .. "'")
 
    -- Nil input (should return empty string)
-   local nilResult = string.escXML(nil)
+   nilResult = string.escXML(nil)
    assert(nilResult is "", "Nil input should return empty string, got '" .. nilResult .. "'")
 
    -- Multiple ampersands (should not double-escape)
-   local amps = string.escXML("A & B & C")
+   amps = string.escXML("A & B & C")
    assert(amps is "A &amp; B &amp; C", "Expected 'A &amp; B &amp; C', got '" .. amps .. "'")
 
    -- Mixed with quotes (should not escape quotes)
-   local quotes = string.escXML('Hello "world" & <test>')
+   quotes = string.escXML('Hello "world" & <test>')
    assert(quotes is 'Hello "world" &amp; &lt;test&gt;', "Expected 'Hello \"world\" &amp; &lt;test&gt;', got '" .. quotes .. "'")
 end
 
-function testSub()
+@Test function testSub()
    -- string.substr() and sub() use exclusive end index (like JavaScript substring/Python slicing)
    -- string.substr(s, start, end) extracts chars from start to end-1
-   local s = "hello world"
+   s = "hello world"
 
    for i=0,1000 do
       -- Basic substring
-      local sub = string.substr(s, 0, 5) -- Indices 0,1,2,3,4 (not 5)
+      sub = string.substr(s, 0, 5) -- Indices 0,1,2,3,4 (not 5)
       assert(sub is "hello", "Expected 'hello', got '" .. sub .. "'")
 
       -- Start from middle
-      local mid = string.substr(s, 6, 11) -- Indices 6,7,8,9,10 (not 11)
+      mid = string.substr(s, 6, 11) -- Indices 6,7,8,9,10 (not 11)
       assert(mid is "world", "Expected 'world', got '" .. mid .. "'")
 
       -- Negative indices (count from end)
-      local neg = string.substr(s, -5, -1)
+      neg = string.substr(s, -5, -1)
       assert(neg is "world", "Expected 'world' from negative indices, got '" .. neg .. "'")
 
       -- Negative start, positive end
-      local mixed = string.substr(s, -5, 11)
+      mixed = string.substr(s, -5, 11)
       assert(mixed is "world", "Expected 'world' from mixed indices, got '" .. mixed .. "'")
 
       -- Default end
-      local toEnd = string.substr(s, 6)
+      toEnd = string.substr(s, 6)
       assert(toEnd is "world", "Expected 'world' with default end, got '" .. toEnd .. "'")
 
       -- Single character
-      local single = string.substr(s, 0, 1)
+      single = string.substr(s, 0, 1)
       assert(single is "h", "Expected 'h', got '" .. single .. "'")
 
       -- Empty range
-      local empty = string.substr(s, 5, 5)
+      empty = string.substr(s, 5, 5)
       assert(empty is "", "Expected empty string, got '" .. empty .. "'")
 
       -- Beyond string length
-      local beyond = string.substr(s, 0, 100)
+      beyond = string.substr(s, 0, 100)
       assert(#beyond is #s, "Expected length to match original string length, got " .. #beyond)
       assert(beyond is s, "Expected full string when end exceeds length, got '" .. beyond .. "'")
 
       -- Empty string
-      local emptyStr = string.substr("", 0, 0)
+      emptyStr = string.substr("", 0, 0)
       assert(emptyStr is "", "Expected empty string, got '" .. emptyStr .. "'")
    end
 end
 
-function testByte()
+@Test function testByte()
    for i=0,1000 do
       -- Single character (zero-indexed)
-      local b = string.byte("hello", 0)
+      b = string.byte("hello", 0)
       assert(b is 104, "Expected 104 (h), got " .. b)
 
       -- Multiple characters
-      local b1, b2, b3 = string.byte("abc", 0, 2)
+      b1, b2, b3 = string.byte("abc", 0, 2)
       assert(b1 is 97, "Expected 97 (a), got " .. b1)
       assert(b2 is 98, "Expected 98 (b), got " .. b2)
       assert(b3 is 99, "Expected 99 (c), got " .. b3)
 
       -- Default range (single character at index 0)
-      local def = string.byte("hello")
+      def = string.byte("hello")
       assert(def is 104, "Expected 104 (h) as default, got " .. def)
 
       -- Negative index (from end)
-      local neg = string.byte("hello", -1)
+      neg = string.byte("hello", -1)
       assert(neg is 111, "Expected 111 (o), got " .. neg)
 
       -- Range with negative end
-      local b4, b5 = string.byte("hello", -2, -1)
+      b4, b5 = string.byte("hello", -2, -1)
       assert(b4 is 108, "Expected 108 (l), got " .. b4)
       assert(b5 is 111, "Expected 111 (o), got " .. b5)
 
       -- Empty range
-      local empty = string.byte("hello", 5, 3)
+      empty = string.byte("hello", 5, 3)
       assert(empty is nil, "Expected nil for empty range, got " .. tostring(empty))
 
       -- Single character at last position
-      local last = string.byte("hello", 4)
+      last = string.byte("hello", 4)
       assert(last is 111, "Expected 111 (o), got " .. last)
    end
 end
 
-function testChar()
+@Test function testChar()
    for i=0,1000 do
       -- Single character
-      local c = string.char(65)
+      c = string.char(65)
       assert(c is "A", "Expected 'A', got '" .. c .. "'")
 
       -- Multiple characters
-      local multi = string.char(72, 101, 108, 108, 111)
+      multi = string.char(72, 101, 108, 108, 111)
       assert(multi is "Hello", "Expected 'Hello', got '" .. multi .. "'")
 
       -- Empty (no arguments)
-      local empty = string.char()
+      empty = string.char()
       assert(empty is "", "Expected empty string, got '" .. empty .. "'")
 
       -- Common characters
-      local space = string.char(32)
+      space = string.char(32)
       assert(space is " ", "Expected space, got '" .. space .. "'")
 
-      local newline = string.char(10)
+      newline = string.char(10)
       assert(newline is "\n", "Expected newline, got '" .. newline .. "'")
 
       -- Zero character
-      local zero = string.char(0)
+      zero = string.char(0)
       assert(#zero is 1, "Expected 1-byte string for null char, got " .. #zero)
    end
 end
 
-function testRep()
+@Test function testRep()
    for i=0,1000 do
       -- Basic repetition
-      local rep = string.rep("ab", 3)
+      rep = string.rep("ab", 3)
       assert(rep is "ababab", "Expected 'ababab', got '" .. rep .. "'")
 
       -- Single repetition
-      local single = string.rep("hello", 1)
+      single = string.rep("hello", 1)
       assert(single is "hello", "Expected 'hello', got '" .. single .. "'")
 
       -- Zero repetitions
-      local zero = string.rep("hello", 0)
+      zero = string.rep("hello", 0)
       assert(zero is "", "Expected empty string, got '" .. zero .. "'")
 
       -- With separator
-      local withSep = string.rep("abc", 3, ",")
+      withSep = string.rep("abc", 3, ",")
       assert(withSep is "abc,abc,abc", "Expected 'abc,abc,abc', got '" .. withSep .. "'")
 
       -- Separator with single repetition (no separator should appear)
-      local singleSep = string.rep("hello", 1, ",")
+      singleSep = string.rep("hello", 1, ",")
       assert(singleSep is "hello", "Expected 'hello' (no separator), got '" .. singleSep .. "'")
 
       -- Empty string repetition
-      local emptyRep = string.rep("", 5)
+      emptyRep = string.rep("", 5)
       assert(emptyRep is "", "Expected empty string, got '" .. emptyRep .. "'")
    end
 end
 
-function testReverse()
+@Test function testReverse()
    -- Basic reverse
-   local rev = string.reverse("hello")
+   rev = string.reverse("hello")
    assert(rev is "olleh", "Expected 'olleh', got '" .. rev .. "'")
 
    -- Single character
-   local single = string.reverse("a")
+   single = string.reverse("a")
    assert(single is "a", "Expected 'a', got '" .. single .. "'")
 
    -- Empty string
-   local empty = string.reverse("")
+   empty = string.reverse("")
    assert(empty is "", "Expected empty string, got '" .. empty .. "'")
 
    -- With spaces
-   local spaces = string.reverse("hello world")
+   spaces = string.reverse("hello world")
    assert(spaces is "dlrow olleh", "Expected 'dlrow olleh', got '" .. spaces .. "'")
 
    -- Palindrome
-   local palindrome = string.reverse("racecar")
+   palindrome = string.reverse("racecar")
    assert(palindrome is "racecar", "Expected 'racecar', got '" .. palindrome .. "'")
 end
 
-function testLowerUpper()
+@Test function testLowerUpper()
    -- Lower case
-   local lower = string.lower("HELLO WORLD")
+   lower = string.lower("HELLO WORLD")
    assert(lower is "hello world", "Expected 'hello world', got '" .. lower .. "'")
 
    -- Upper case
-   local upper = string.upper("hello world")
+   upper = string.upper("hello world")
    assert(upper is "HELLO WORLD", "Expected 'HELLO WORLD', got '" .. upper .. "'")
 
    -- Mixed case to lower
-   local mixedLower = string.lower("HeLLo WoRLd")
+   mixedLower = string.lower("HeLLo WoRLd")
    assert(mixedLower is "hello world", "Expected 'hello world', got '" .. mixedLower .. "'")
 
    -- Mixed case to upper
-   local mixedUpper = string.upper("HeLLo WoRLd")
+   mixedUpper = string.upper("HeLLo WoRLd")
    assert(mixedUpper is "HELLO WORLD", "Expected 'HELLO WORLD', got '" .. mixedUpper .. "'")
 
    -- Already lowercase
-   local alreadyLower = string.lower("hello")
+   alreadyLower = string.lower("hello")
    assert(alreadyLower is "hello", "Expected 'hello', got '" .. alreadyLower .. "'")
 
    -- Already uppercase
-   local alreadyUpper = string.upper("HELLO")
+   alreadyUpper = string.upper("HELLO")
    assert(alreadyUpper is "HELLO", "Expected 'HELLO', got '" .. alreadyUpper .. "'")
 
    -- Empty string
-   local emptyLower = string.lower("")
+   emptyLower = string.lower("")
    assert(emptyLower is "", "Expected empty string, got '" .. emptyLower .. "'")
 
-   local emptyUpper = string.upper("")
+   emptyUpper = string.upper("")
    assert(emptyUpper is "", "Expected empty string, got '" .. emptyUpper .. "'")
 
    -- Non-alphabetic characters
-   local numbersLower = string.lower("123!@#")
+   numbersLower = string.lower("123!@#")
    assert(numbersLower is "123!@#", "Expected '123!@#', got '" .. numbersLower .. "'")
 
-   local numbersUpper = string.upper("123!@#")
+   numbersUpper = string.upper("123!@#")
    assert(numbersUpper is "123!@#", "Expected '123!@#', got '" .. numbersUpper .. "'")
 end
 
-function testFind()
+@Test function testFind()
    -- Basic find (zero-indexed positions)
-   local s = "hello world"
-   local start, finish = string.find(s, "world")
+   s = "hello world"
+   start, finish = string.find(s, "world")
    assert(start is 6, "Expected start at 6, got " .. tostring(start))
    assert(finish is 10, "Expected finish at 10, got " .. tostring(finish))
 
    -- Find at beginning
-   local start2, finish2 = string.find(s, "hello")
+   start2, finish2 = string.find(s, "hello")
    assert(start2 is 0, "Expected start at 0, got " .. tostring(start2))
    assert(finish2 is 4, "Expected finish at 4, got " .. tostring(finish2))
 
    -- Not found
-   local notFound = string.find(s, "xyz")
+   notFound = string.find(s, "xyz")
    assert(notFound is nil, "Expected nil for not found, got " .. tostring(notFound))
 
    -- With start position
-   local start3, finish3 = string.find(s, "o", 5)
+   start3, finish3 = string.find(s, "o", 5)
    assert(start3 is 7, "Expected start at 7, got " .. tostring(start3))
    assert(finish3 is 7, "Expected finish at 7, got " .. tostring(finish3))
 
    -- Pattern matching (single character class)
-   local start4, finish4 = string.find("abc123def", "%d+")
+   start4, finish4 = string.find("abc123def", "%d+")
    assert(start4 is 3, "Expected start at 3, got " .. tostring(start4))
    assert(finish4 is 5, "Expected finish at 5, got " .. tostring(finish4))
 
    -- Plain text search (fourth parameter = true)
-   local start5, finish5 = string.find("test%dpattern", "%d", 0, true)
+   start5, finish5 = string.find("test%dpattern", "%d", 0, true)
    assert(start5 is 4, "Expected start at 4 for plain search, got " .. tostring(start5))
    assert(finish5 is 5, "Expected finish at 5 for plain search, got " .. tostring(finish5))
 
    -- Find with capture
-   local start6, finish6, capture = string.find("value=123", "=(%d+)")
+   start6, finish6, capture = string.find("value=123", "=(%d+)")
    assert(start6 is 5, "Expected start at 5, got " .. tostring(start6))
    assert(finish6 is 8, "Expected finish at 8, got " .. tostring(finish6))
    assert(capture is "123", "Expected capture '123', got '" .. tostring(capture) .. "'")
 end
 
-function testMatch()
+@Test function testMatch()
    -- Basic match
-   local m = string.match("hello world", "world")
+   m = string.match("hello world", "world")
    assert(m is "world", "Expected 'world', got '" .. tostring(m) .. "'")
 
    -- Pattern with capture
-   local num = string.match("value=123", "=(%d+)")
+   num = string.match("value=123", "=(%d+)")
    assert(num is "123", "Expected '123', got '" .. tostring(num) .. "'")
 
    -- Multiple captures
-   local a, b = string.match("x=10,y=20", "x=(%d+),y=(%d+)")
+   a, b = string.match("x=10,y=20", "x=(%d+),y=(%d+)")
    assert(a is "10", "Expected '10', got '" .. tostring(a) .. "'")
    assert(b is "20", "Expected '20', got '" .. tostring(b) .. "'")
 
    -- No match
-   local noMatch = string.match("hello", "xyz")
+   noMatch = string.match("hello", "xyz")
    assert(noMatch is nil, "Expected nil for no match, got " .. tostring(noMatch))
 
    -- Match at specific position (zero-indexed)
-   local m2 = string.match("hello world", "world", 6)
+   m2 = string.match("hello world", "world", 6)
    assert(m2 is "world", "Expected 'world' at position 6, got '" .. tostring(m2) .. "'")
 
    -- Pattern classes
-   local letters = string.match("abc123def", "%a+")
+   letters = string.match("abc123def", "%a+")
    assert(letters is "abc", "Expected 'abc', got '" .. tostring(letters) .. "'")
 
-   local digits = string.match("abc123def", "%d+")
+   digits = string.match("abc123def", "%d+")
    assert(digits is "123", "Expected '123', got '" .. tostring(digits) .. "'")
 end
 
-function testGmatch()
+@Test function testGmatch()
    -- Iterate over words
-   local s = "hello world test"
-   local words = {}
+   s = "hello world test"
+   words = {}
    for word in string.gmatch(s, "%S+") do
       words[#words] = word
    end
@@ -588,7 +588,7 @@ function testGmatch()
    assert(words[2] is "test", "Expected 'test', got '" .. words[2] .. "'")
 
    -- Iterate over numbers
-   local nums = {}
+   nums = {}
    for num in string.gmatch("a1b2c3", "%d") do
       nums[#nums] = num
    end
@@ -598,7 +598,7 @@ function testGmatch()
    assert(nums[2] is "3", "Expected '3', got '" .. nums[2] .. "'")
 
    -- Iterate with captures
-   local pairs = {}
+   pairs = {}
    for key, val in string.gmatch("x=1,y=2,z=3", "(%w+)=(%d+)") do
       pairs[#pairs] = {key, val}
    end
@@ -608,121 +608,91 @@ function testGmatch()
    assert(pairs[2][0] is "z" and pairs[2][1] is "3", "Expected z=3")
 
    -- Empty matches
-   local count = 0
+   count = 0
    for _ in string.gmatch("", "%S+") do
       count = count + 1
    end
    assert(count is 0, "Expected 0 matches for empty string, got " .. count)
 end
 
-function testGsub()
+@Test function testGsub()
    -- Basic substitution
-   local result, count = string.gsub("hello world", "world", "Lua")
+   result, count = string.gsub("hello world", "world", "Lua")
    assert(result is "hello Lua", "Expected 'hello Lua', got '" .. result .. "'")
    assert(count is 1, "Expected 1 substitution, got " .. count)
 
    -- Multiple substitutions
-   local result2, count2 = string.gsub("hello hello hello", "hello", "hi")
+   result2, count2 = string.gsub("hello hello hello", "hello", "hi")
    assert(result2 is "hi hi hi", "Expected 'hi hi hi', got '" .. result2 .. "'")
    assert(count2 is 3, "Expected 3 substitutions, got " .. count2)
 
    -- Limited substitutions
-   local result3, count3 = string.gsub("hello hello hello", "hello", "hi", 2)
+   result3, count3 = string.gsub("hello hello hello", "hello", "hi", 2)
    assert(result3 is "hi hi hello", "Expected 'hi hi hello', got '" .. result3 .. "'")
    assert(count3 is 2, "Expected 2 substitutions, got " .. count3)
 
    -- Pattern substitution
-   local result4 = string.gsub("abc123def456", "%d+", "X")
+   result4 = string.gsub("abc123def456", "%d+", "X")
    assert(result4 is "abcXdefX", "Expected 'abcXdefX', got '" .. result4 .. "'")
 
    -- Substitution with captures
-   local result5 = string.gsub("x=1,y=2", "(%w+)=(%d+)", "%1:%2")
+   result5 = string.gsub("x=1,y=2", "(%w+)=(%d+)", "%1:%2")
    assert(result5 is "x:1,y:2", "Expected 'x:1,y:2', got '" .. result5 .. "'")
 
    -- Function substitution
-   local result6 = string.gsub("hello world", "%w+", function(w) return #w end)
+   result6 = string.gsub("hello world", "%w+", function(w) return #w end)
    assert(result6 is "5 5", "Expected '5 5', got '" .. result6 .. "'")
 
    -- Table substitution
-   local replacements = {hello = "hi", world = "Lua"}
-   local result7 = string.gsub("hello world", "%w+", replacements)
+   replacements = {hello = "hi", world = "Lua"}
+   result7 = string.gsub("hello world", "%w+", replacements)
    assert(result7 is "hi Lua", "Expected 'hi Lua', got '" .. result7 .. "'")
 
    -- No match
-   local result8, count8 = string.gsub("hello", "xyz", "abc")
+   result8, count8 = string.gsub("hello", "xyz", "abc")
    assert(result8 is "hello", "Expected 'hello', got '" .. result8 .. "'")
    assert(count8 is 0, "Expected 0 substitutions, got " .. count8)
 end
 
-function testFormat()
+@Test function testFormat()
    for i=0,1000 do
       -- Basic integer
-      local f1 = string.format("value: %d", 42)
+      f1 = string.format("value: %d", 42)
       assert(f1 is "value: 42", "Expected 'value: 42', got '" .. f1 .. "'")
 
       -- Floating point
-      local f2 = string.format("pi: %.2f", 3.14159)
+      f2 = string.format("pi: %.2f", 3.14159)
       assert(f2 is "pi: 3.14", "Expected 'pi: 3.14', got '" .. f2 .. "'")
 
       -- String
-      local f3 = string.format("hello %s", "world")
+      f3 = string.format("hello %s", "world")
       assert(f3 is "hello world", "Expected 'hello world', got '" .. f3 .. "'")
 
       -- Multiple arguments
-      local f4 = string.format("%s = %d", "answer", 42)
+      f4 = string.format("%s = %d", "answer", 42)
       assert(f4 is "answer = 42", "Expected 'answer = 42', got '" .. f4 .. "'")
 
       -- Hexadecimal
-      local f5 = string.format("0x%x", 255)
+      f5 = string.format("0x%x", 255)
       assert(f5 is "0xff", "Expected '0xff', got '" .. f5 .. "'")
 
-      local f6 = string.format("0x%X", 255)
+      f6 = string.format("0x%X", 255)
       assert(f6 is "0xFF", "Expected '0xFF', got '" .. f6 .. "'")
 
       -- Padding
-      local f7 = string.format("%05d", 42)
+      f7 = string.format("%05d", 42)
       assert(f7 is "00042", "Expected '00042', got '" .. f7 .. "'")
 
       -- Character
-      local f8 = string.format("char: %c", 65)
+      f8 = string.format("char: %c", 65)
       assert(f8 is "char: A", "Expected 'char: A', got '" .. f8 .. "'")
 
       -- Percent sign
-      local f9 = string.format("100%%")
+      f9 = string.format("100%%")
       assert(f9 is "100%", "Expected '100%', got '" .. f9 .. "'")
 
       -- No arguments
-      local f10 = string.format("hello")
+      f10 = string.format("hello")
       assert(f10 is "hello", "Expected 'hello', got '" .. f10 .. "'")
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testAlloc,
-         testIndex,
-         testSplit,
-         testTrim,
-         testRTrim,
-         testJoin,
-         testStartsWith,
-         testEndsWith,
-         testCap,
-         testDecap,
-         testHash,
-         testEscXML,
-         testSub,
-         testByte,
-         testChar,
-         testRep,
-         testReverse,
-         testLowerUpper,
-         testFind,
-         testMatch,
-         testGmatch,
-         testGsub,
-         testFormat
-      }
-   }

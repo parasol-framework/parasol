@@ -2,7 +2,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoSetTableInput()
+@Test function testAnnoSetTableInput()
    function sampleFunc()
       return "test"
    end
@@ -20,7 +20,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoGet()
+@Test function testAnnoGet()
    function myFunction()
       return 42
    end
@@ -40,7 +40,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoGetNonAnnotated()
+@Test function testAnnoGetNonAnnotated()
    function unannotatedFunc()
       return "nothing"
    end
@@ -51,7 +51,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoList()
+@Test function testAnnoList()
    function func1() end
    function func2() end
    function func3() end
@@ -67,14 +67,14 @@ function testAnnoList()
    -- Verify all functions are present
    count = 0
    for func, entry in pairs(all) do
-      count += 1
+      count++
    end
    assert(count >= 3, "Expected at least 3 annotated functions, got " .. count)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingSimple()
+@Test function testAnnoStringParsingSimple()
    function testFunc() end
 
    entry = debug.anno.set(testFunc, '@Test(name="Simple Test")')
@@ -86,7 +86,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingMultiple()
+@Test function testAnnoStringParsingMultiple()
    function multiFunc() end
 
    entry = debug.anno.set(multiFunc, '@Test(name="Multi Test"); @Requires(network=true)')
@@ -99,7 +99,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingArray()
+@Test function testAnnoStringParsingArray()
    function arrayFunc() end
 
    entry = debug.anno.set(arrayFunc, '@Test(labels=["unit", "smoke", "critical"])')
@@ -115,7 +115,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingBareIdentifiers()
+@Test function testAnnoStringParsingBareIdentifiers()
    function bareFunc() end
 
    entry = debug.anno.set(bareFunc, '@SuppressWarnings(unused, deprecated)')
@@ -128,7 +128,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingNumbers()
+@Test function testAnnoStringParsingNumbers()
    function numFunc() end
 
    entry = debug.anno.set(numFunc, '@Test(timeoutMs=5000, priority=1)')
@@ -141,7 +141,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingBooleans()
+@Test function testAnnoStringParsingBooleans()
    function boolFunc() end
 
    entry = debug.anno.set(boolFunc, '@Requires(gfx=true, network=false)')
@@ -154,7 +154,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingMixed()
+@Test function testAnnoStringParsingMixed()
    function mixedFunc() end
 
    entry = debug.anno.set(mixedFunc, '@Test(name="Complex Test", labels=["a","b"], timeoutMs=3000, enabled=true)')
@@ -169,7 +169,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoStringParsingNoArgs()
+@Test function testAnnoStringParsingNoArgs()
    function noArgsFunc() end
 
    entry = debug.anno.set(noArgsFunc, '@Disabled')
@@ -181,7 +181,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoSourceDefaultValue()
+@Test function testAnnoSourceDefaultValue()
    function defaultSourceFunc() end
 
    -- Don't provide source parameter
@@ -191,7 +191,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoOverwriteExisting()
+@Test function testAnnoOverwriteExisting()
    function overwriteFunc() end
 
    -- Set initial annotations
@@ -207,7 +207,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoAnonymousFunction()
+@Test function testAnnoAnonymousFunction()
    anonymousFunc = function() return "anon" end
 
    entry = debug.anno.set(anonymousFunc, { { name = "Test", args = {} } })
@@ -217,7 +217,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoLocalFunction()
+@Test function testAnnoLocalFunction()
    function localFunc()
       return "local"
    end
@@ -229,7 +229,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoListReturnsShallowCopy()
+@Test function testAnnoListReturnsShallowCopy()
    function copyTestFunc() end
    debug.anno.set(copyTestFunc, { { name = "Test", args = {} } }, "<runtime>", "copyTestFunc")
 
@@ -242,7 +242,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnnoEmptyListWhenNoAnnotations()
+@Test function testAnnoEmptyListWhenNoAnnotations()
    -- Clear _ANNO if it exists
    global _ANNO = nil
 
@@ -251,32 +251,7 @@ function testAnnoEmptyListWhenNoAnnotations()
 
    count = 0
    for k, v in pairs(list) do
-      count += 1
+      count++
    end
    assert(count is 0, "Expected empty list, got " .. count .. " entries")
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testAnnoSetTableInput,
-      testAnnoGet,
-      testAnnoGetNonAnnotated,
-      testAnnoList,
-      testAnnoStringParsingSimple,
-      testAnnoStringParsingMultiple,
-      testAnnoStringParsingArray,
-      testAnnoStringParsingBareIdentifiers,
-      testAnnoStringParsingNumbers,
-      testAnnoStringParsingBooleans,
-      testAnnoStringParsingMixed,
-      testAnnoStringParsingNoArgs,
-      testAnnoSourceDefaultValue,
-      testAnnoOverwriteExisting,
-      testAnnoAnonymousFunction,
-      testAnnoLocalFunction,
-      testAnnoListReturnsShallowCopy,
-      testAnnoEmptyListWhenNoAnnotations
-   }
-}

@@ -1,55 +1,55 @@
 -- Flute tests for the ?? operator (if-empty: nil, false, 0, "")
 
-function testNil()
-   local v = nil ?? "A"
+@Test function testNil()
+   v = nil ?? "A"
    assert(v is "A", "Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'")
 
-   local Options = { quit = nil }
-   local v = (Options.quit ?? nil)
+   Options = { quit = nil }
+   v = (Options.quit ?? nil)
    assert(v is nil, "Expected nil, got " .. tostring(v))
 
    Options.quit = true
-   local v = (Options.quit ?? nil)
+   v = (Options.quit ?? nil)
    assert(v is true, "Expected true, got " .. tostring(v))
 end
 
-function testFalse()
-   local v = false ?? "A"
+@Test function testFalse()
+   v = false ?? "A"
    assert(v is "A", "Failed false case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-function testZero()
-   local v = 0 ?? "A"
+@Test function testZero()
+   v = 0 ?? "A"
    assert(v is "A", "Failed zero case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-function testEmptyString()
-   local v = "" ?? "A"
+@Test function testEmptyString()
+   v = "" ?? "A"
    assert(v is "A", "Failed empty string case: expected 'A', got '" .. tostring(v) .. "'")
 end
 
-function testTruthyString()
-   local v = "X" ?? "A"
+@Test function testTruthyString()
+   v = "X" ?? "A"
    assert(v is "X", "Failed truthy string case: expected 'X', got '" .. tostring(v) .. "'")
 end
 
-function testTruthyNumber()
-   local v = 5 ?? "A"
+@Test function testTruthyNumber()
+   v = 5 ?? "A"
    assert(v is 5, "Failed truthy number case: expected 5, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic checks with a function on either side
 
-function testFunction()
-   local function returnString()
+@Test function testFunction()
+   function returnString()
       return "Result"
    end
 
-   local v = returnString('ignore') ?? "A"
+   v = returnString('ignore') ?? "A"
    assert(v is "Result", "Failed function case 1, got '" .. tostring(v) .. "'")
 
-   local v = nil ?? returnString('ignore')
+   v = nil ?? returnString('ignore')
    assert(v is "Result", "Failed function case 2, got '" .. tostring(v) .. "'")
 end
 
@@ -57,28 +57,28 @@ end
 -- Test if-empty in conjunction with concatenation - note that bugs raised could be in either feature or in
 -- combination of both
 
-function testConcat()
-   local function returnString()
+@Test function testConcat()
+   function returnString()
       return "Result"
    end
 
-   local v = 'start ' .. (nil ?? returnString('ignore')) .. ' end'
+   v = 'start ' .. (nil ?? returnString('ignore')) .. ' end'
    assert(v is "start Result end", "Failed concat-function 1, got '" .. tostring(v) .. "'")
 
    local val
-   local v = '' .. (val ?? returnString('ignore'))
+   v = '' .. (val ?? returnString('ignore'))
    assert(v is "Result", "Failed concat-function 2, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- This unusual test has been observed as throwing errors in some cases
 
-function testConcatMsg()
-   local function fakeFunction(value)
+@Test function testConcatMsg()
+   function fakeFunction(value)
       assert(value is 1, "Expected LHS to be preserved, got '" .. tostring(value) .. "'")
       return nil
    end
-   local Number = 1
+   Number = 1
    fakeFunction(Number ?? 2) -- Our own function
    msg(Number ?? 2) -- A built-in function
    msg('<' .. (Number ?? 2) .. '>') -- A built-in function with concatenation
@@ -86,34 +86,34 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testTable()
-   local t = { a=1, b=2, c=3}
-   local v = t ?? 'Nothing'
+@Test function testTable()
+   t = { a=1, b=2, c=3}
+   v = t ?? 'Nothing'
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
-   local v = 'x' ?? { 'Nothing' }
+   v = 'x' ?? { 'Nothing' }
    assert(v is 'x', "Failed table case: expected table, got '" .. tostring(v) .. "'")
 
-   local v = t ?? { 'Nothing' }
+   v = t ?? { 'Nothing' }
    assert(v['a'] is 1, "Failed table case: expected table, got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testTableAccessLHS()
-   local t = { }
+@Test function testTableAccessLHS()
+   t = { }
    table.insert(t, 10)
    table.insert(t, 20)
    table.insert(t, 30)
    table.insert(t, 40)
 
-   local one = (t[0] ?? 0)
-   local two = (t[1] ?? 0)
+   one = (t[0] ?? 0)
+   two = (t[1] ?? 0)
 
    assert(one is 10, "Array access LHS test failed for first element: expected 10, got '" .. tostring(one) .. "'")
    assert(two is 20, "Array access LHS test failed for second element: expected 20, got '" .. tostring(two) .. "'")
 
-   local str = (0 ?? -1)
+   str = (0 ?? -1)
    assert(str is -1, "Array access LHS test failed for zero value: expected -1, got '" .. tostring(str) .. "'")
 
    -- Ternary version - establishes a benchmark
@@ -127,31 +127,31 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is truthy
 
-function testShortCircuitTruth()
-   local function rhs()
+@Test function testShortCircuitTruth()
+   function rhs()
       error("RHS should not be evaluated when LHS is truthy")
    end
-   local v = "X" ?? rhs()
+   v = "X" ?? rhs()
    assert(v is "X", "Failed short-circuit truth: expected 'X', got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is not evaluated when LHS is a RUNTIME truthy value (not compile-time constant)
 
-function testShortCircuitRuntimeTruthy()
-   local call_count = 0
-   local function rhs()
+@Test function testShortCircuitRuntimeTruthy()
+   call_count = 0
+   function rhs()
       call_count = call_count + 1
       return "RHS"
    end
 
    -- Use a function to get the LHS value so it's not a compile-time constant
-   local function getLHS()
+   function getLHS()
       return "Hello"
    end
 
-   local lhs_value = getLHS()
-   local result = lhs_value ?? rhs()
+   lhs_value = getLHS()
+   result = lhs_value ?? rhs()
 
    assert(result is "Hello", "Failed runtime short-circuit: expected 'Hello', got '" .. tostring(result) .. "'")
    assert(call_count is 0, "BUG: RHS was evaluated " .. tostring(call_count) .. " times when LHS was runtime truthy")
@@ -160,13 +160,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Ensure RHS is evaluated exactly once when LHS is extended-falsey
 
-function testRHSOnce()
-   local count = 0
-   local function rhs()
+@Test function testRHSOnce()
+   count = 0
+   function rhs()
       count += 1
       return "Y"
    end
-   local v = 0 ?? rhs()
+   v = 0 ?? rhs()
    assert(v is "Y", "Failed RHS once value: expected 'Y', got '" .. tostring(v) .. "'")
    assert(count is 1, "Failed RHS once count: expected 1, got " .. tostring(count))
 end
@@ -174,44 +174,44 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Chaining behaviour
 
-function testChaining()
-   local v1 = "" ?? 0 ?? "A"
+@Test function testChaining()
+   v1 = "" ?? 0 ?? "A"
    assert(v1 is "A", "Failed chaining case 1: expected 'A', got '" .. tostring(v1) .. "'")
 
-   local v2 = "X" ?? "" ?? "A"
+   v2 = "X" ?? "" ?? "A"
    assert(v2 is "X", "Failed chaining case 2: expected 'X', got '" .. tostring(v2) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Interaction with logical or: ensure semantics differ (0 and "" are treated as truthy by Lua or)
 
-function testDifferenceFromLuaOr()
-   local a = 0 or "B"      -- Lua or: 0 is truthy
-   local b = 0 ?? "B"        -- ??: 0 is falsey
+@Test function testDifferenceFromLuaOr()
+   a = 0 or "B"      -- Lua or: 0 is truthy
+   b = 0 ?? "B"        -- ??: 0 is falsey
    assert(a is 0, "Sanity: Lua 'or' should keep 0; got '" .. tostring(a) .. "'")
    assert(b is "B", "?? should replace 0 with RHS; got '" .. tostring(b) .. "'")
 
-   local c = "" or "C"      -- Lua or: empty string is truthy
-   local d = "" ?? "C"       -- ??: empty string is falsey
+   c = "" or "C"      -- Lua or: empty string is truthy
+   d = "" ?? "C"       -- ??: empty string is falsey
    assert(c is "", "Sanity: Lua 'or' should keep empty string; got '" .. tostring(c) .. "'")
    assert(d is "C", "?? should replace empty string with RHS; got '" .. tostring(d) .. "'")
 end
 
-function testRuntimeZero()
-   local x = 0
-   local v = x ?? "A"
+@Test function testRuntimeZero()
+   x = 0
+   v = x ?? "A"
    assert(v is "A", "Runtime zero test failed: expected 'A', got '" .. tostring(v) .. "'")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test the use of if-empty within a function
 
-function testIfEmptyArgumentLeakCapture()
-   local Function = { status = 'Hello' }
-   local record = { count = 0, first = nil, second = nil }
+@Test function testIfEmptyArgumentLeakCapture()
+   Function = { status = 'Hello' }
+   record = { count = 0, first = nil, second = nil }
 
-   local function capture(...)
-      local args = { ... }
+   function capture(...)
+      args = { ... }
       record.count = #args
       record.first = args[0]
       record.second = args[1]
@@ -224,10 +224,10 @@ function testIfEmptyArgumentLeakCapture()
    assert(record.second is nil, "Expected leaked slot to be cleared, got '" .. tostring(record.second) .. "'")
 end
 
-function testIfEmptyStringFindError()
-   local Function = { status = 'Hello' }
+@Test function testIfEmptyStringFindError()
+   Function = { status = 'Hello' }
 
-   local ok, start_index, end_index = pcall(function()
+   ok, start_index, end_index = pcall(function()
       return string.find((Function.status ?? 'then'), 'e')
    end)
 
@@ -236,120 +236,120 @@ function testIfEmptyStringFindError()
    assert(end_index is 1, "Expected search to end at index 1, got '" .. tostring(end_index) .. "'")
 end
 
-function testMethodCallInOptionalForm()
-   local obj = {
+@Test function testMethodCallInOptionalForm()
+   obj = {
       getValue = function(self)
          return "method_result"
       end
    }
-   local v = obj:getValue() ?? "default"
+   v = obj:getValue() ?? "default"
    assert(v is "method_result", "Failed method call in optional form: expected 'method_result', got " .. tostring(v))
 end
 
-function testNestedOptional()
-   local v = (nil ?? "A") ?? "B"
+@Test function testNestedOptional()
+   v = (nil ?? "A") ?? "B"
    -- First: nil ?? "A" = "A"
    -- Then: "A" ?? "B" = "A"
    assert(v is "A", "Failed nested optional: expected 'A', got " .. tostring(v))
 end
 
-function testOptionalReturnValue()
-   local function test()
+@Test function testOptionalReturnValue()
+   function test()
       return nil ?? "default"
    end
-   local result = test()
+   result = test()
    assert(result is "default", "Failed optional return value: expected 'default', got " .. tostring(result))
 end
 
-function testOptionalTableField()
-   local t = { msg = "Hello" }
-   local v = t.msg ?? "default"
+@Test function testOptionalTableField()
+   t = { msg = "Hello" }
+   v = t.msg ?? "default"
    assert(v is "Hello", "Failed optional table field: expected 'Hello', got " .. tostring(v))
 end
 
-function testOptionalMissingField()
-   local t = {}
-   local v = t.missing ?? "default"
+@Test function testOptionalMissingField()
+   t = {}
+   v = t.missing ?? "default"
    assert(v is "default", "Failed optional missing field: expected 'default', got " .. tostring(v))
 end
 
 -- Optional - falsey condition (empty string)
-function testOptionalEmptyString()
-   local name = "" ?? "Anonymous"
+@Test function testOptionalEmptyString()
+   name = "" ?? "Anonymous"
    assert(name is "Anonymous", "Failed optional empty string: expected 'Anonymous', got " .. tostring(name))
 end
 
 -- Optional - short-circuit
-function testOptionalShortCircuit()
-   local called = false
-   local function expensive()
+@Test function testOptionalShortCircuit()
+   called = false
+   function expensive()
       called = true
       return "default"
    end
-   local msg = "Hello" ?? expensive()
+   msg = "Hello" ?? expensive()
    assert(msg is "Hello", "Failed optional short-circuit: expected 'Hello', got " .. tostring(msg))
    assert(not called, "Expensive function should not be called")
 end
 
 -- Optional - runtime condition
-function testOptionalRuntimeTruthy()
-   local x = 10
-   local result = x ?? 0
+@Test function testOptionalRuntimeTruthy()
+   x = 10
+   result = x ?? 0
    assert(result is 10, "Failed optional runtime truthy: expected 10, got " .. tostring(result))
 end
 
-function testOptionalRuntimeFalsey()
-   local x = 0
-   local result = x ?? 100
+@Test function testOptionalRuntimeFalsey()
+   x = 0
+   result = x ?? 100
    assert(result is 100, "Failed optional runtime falsey: expected 100, got " .. tostring(result))
 end
 
 -- Optional - truthy condition
-function testOptionalTruthyString()
-   local msg = "Hello" ?? "No message"
+@Test function testOptionalTruthyString()
+   msg = "Hello" ?? "No message"
    assert(msg is "Hello", "Failed optional truthy string: expected 'Hello', got " .. tostring(msg))
 end
 
-function testOptionalTruthyNumber()
-   local count = 5 ?? 0
+@Test function testOptionalTruthyNumber()
+   count = 5 ?? 0
    assert(count is 5, "Failed optional truthy number: expected 5, got " .. tostring(count))
 end
 
-function testOptionalTruthyNegative()
-   local num = -10 ?? 0
+@Test function testOptionalTruthyNegative()
+   num = -10 ?? 0
    assert(num is -10, "Failed optional truthy negative: expected -10, got " .. tostring(num))
 end
 
 -- Optional - falsey condition (nil)
-function testOptionalNil()
-   local msg = nil ?? "No message given"
+@Test function testOptionalNil()
+   msg = nil ?? "No message given"
    assert(msg is "No message given", "Failed optional nil: expected 'No message given', got " .. tostring(msg))
 end
 
 -- Optional - falsey condition (false)
-function testOptionalFalse()
-   local msg = false ?? "No message given"
+@Test function testOptionalFalse()
+   msg = false ?? "No message given"
    assert(msg is "No message given", "Failed optional false: expected 'No message given', got " .. tostring(msg))
 end
 
 -- Optional - falsey condition (0)
-function testOptionalZero()
-   local count = 0 ?? 1
+@Test function testOptionalZero()
+   count = 0 ?? 1
    assert(count is 1, "Failed optional zero: expected 1, got " .. tostring(count))
 end
 
-function testInFunction()
-   local Function = { status = 'Hello' }
+@Test function testInFunction()
+   Function = { status = 'Hello' }
 
    -- If-empty operator within a function
-   local result = string.find((Function.status ?? 'then'), 'e')
+   result = string.find((Function.status ?? 'then'), 'e')
    assert(result is 1, "Failed test: expected 1, got " .. tostring(result))
 end
 
-function testShortHand()
-   local not_true = false
-   local returned_early = true
-   local function test()
+@Test function testShortHand()
+   not_true = false
+   returned_early = true
+   function test()
       not_true ?? return
       returned_early = false
    end
@@ -362,8 +362,8 @@ function testShortHand()
 end
 
 -- Test return with value
-function testShortHandReturnValue()
-   local function getValue(input)
+@Test function testShortHandReturnValue()
+   function getValue(input)
       input ?? return "default"
       return input
    end
@@ -377,9 +377,9 @@ function testShortHandReturnValue()
 end
 
 -- Test break in loop
-function testShortHandBreak()
-   local iterations = 0
-   local values = { 1, 2, 0, 4, 5 }  -- 0 at index 2 should break
+@Test function testShortHandBreak()
+   iterations = 0
+   values = { 1, 2, 0, 4, 5 }  -- 0 at index 2 should break
 
    for i = 0, #values - 1 do
       values[i] ?? break
@@ -390,9 +390,9 @@ function testShortHandBreak()
 end
 
 -- Test continue in loop
-function testShortHandContinue()
-   local sum = 0
-   local values = { 1, 0, 2, "", 3 }  -- Skip falsey values
+@Test function testShortHandContinue()
+   sum = 0
+   values = { 1, 0, 2, "", 3 }  -- Skip falsey values
 
    for i = 0, #values - 1 do
       values[i] ?? continue
@@ -403,13 +403,13 @@ function testShortHandContinue()
 end
 
 -- Test with runtime values (not compile-time constants)
-function testShortHandRuntimeCondition()
-   local function getCondition()
+@Test function testShortHandRuntimeCondition()
+   function getCondition()
       return nil
    end
 
-   local executed_body = false
-   local function test()
+   executed_body = false
+   function test()
       getCondition() ?? return
       executed_body = true
    end
@@ -419,9 +419,9 @@ function testShortHandRuntimeCondition()
 end
 
 -- Test truthy condition does not execute body
-function testShortHandTruthySkipsBody()
-   local body_executed = false
-   local function test()
+@Test function testShortHandTruthySkipsBody()
+   body_executed = false
+   function test()
       "truthy" ?? return
       body_executed = true
    end
@@ -430,30 +430,11 @@ function testShortHandTruthySkipsBody()
    assert(body_executed is true, "Body should execute when condition is truthy")
 end
 
-function testMultiValues()
-   local function getValues()
+@Test function testMultiValues()
+   function getValues()
       return 1, 2, 3
    end
 
-   local value = getValues() ?? 99
+   value = getValues() ?? 99
    assert(value is 1, "Failed multi-values case: expected 1, got " .. tostring(value))
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testNil, testFalse, testZero, testEmptyString, testTruthyString, testTruthyNumber,
-         testShortCircuitTruth, testShortCircuitRuntimeTruthy, testRHSOnce, testChaining, testDifferenceFromLuaOr,
-         testRuntimeZero, testTable, testFunction, testConcat, testConcatMsg,
-         testTableAccessLHS, testIfEmptyArgumentLeakCapture, testIfEmptyStringFindError,
-         testMethodCallInOptionalForm, testNestedOptional, testOptionalReturnValue,
-         testOptionalTableField, testOptionalMissingField, testOptionalEmptyString,
-         testOptionalShortCircuit, testOptionalRuntimeTruthy, testOptionalRuntimeFalsey,
-         testOptionalTruthyString, testOptionalTruthyNumber, testOptionalTruthyNegative,
-         testOptionalNil, testOptionalFalse, testOptionalZero, testInFunction, testShortHand,
-         testShortHandReturnValue, testShortHandBreak, testShortHandContinue,
-         testShortHandRuntimeCondition, testShortHandTruthySkipsBody,
-         testMultiValues
-      }
-   }

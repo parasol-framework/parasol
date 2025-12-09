@@ -4,9 +4,9 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that passes (message should not be evaluated)
 
-function testAssertPassesNoEval()
-   local message_evaluated = false
-   local function get_message()
+@Test function testAssertPassesNoEval()
+   message_evaluated = false
+   function get_message()
       message_evaluated = true
       return 'This should not be evaluated'
    end
@@ -18,8 +18,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that fails
 
-function testAssertFails()
-   local success, err = pcall(function()
+@Test function testAssertFails()
+   success, err = pcall(function()
       assert(false, 'Custom error message')
    end)
 
@@ -30,8 +30,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with no message (uses default)
 
-function testAssertDefaultMessage()
-   local success, err = pcall(function()
+@Test function testAssertDefaultMessage()
+   success, err = pcall(function()
       assert(false)
    end)
 
@@ -42,18 +42,18 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with complex condition
 
-function testAssertComplexCondition()
-   local x = 10
-   local y = 20
+@Test function testAssertComplexCondition()
+   x = 10
+   y = 20
    assert(x < y, 'x should be less than y')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with expression that has side effects in condition
 
-function testAssertConditionSideEffects()
-   local counter = 0
-   local function increment()
+@Test function testAssertConditionSideEffects()
+   counter = 0
+   function increment()
       counter++
       return true
    end
@@ -65,7 +65,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Multiple asserts in sequence
 
-function testMultipleAsserts()
+@Test function testMultipleAsserts()
    assert(1 is 1)
    assert(2 is 2, 'two is two')
    assert(true)
@@ -75,9 +75,9 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with string concatenation in message (lazy evaluation test)
 
-function testAssertExpensiveMessage()
-   local expensive_called = false
-   local function expensive_operation()
+@Test function testAssertExpensiveMessage()
+   expensive_called = false
+   function expensive_operation()
       expensive_called = true
       return 'expensive result'
    end
@@ -89,8 +89,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with nil condition
 
-function testAssertNil()
-   local success, err = pcall(function()
+@Test function testAssertNil()
+   success, err = pcall(function()
       assert(nil, 'nil is falsey')
    end)
 
@@ -100,47 +100,29 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with 0 (which is truthy in Lua)
 
-function testAssertZero()
+@Test function testAssertZero()
    assert(0, 'zero is truthy')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert with empty string (which is truthy in Lua)
 
-function testAssertEmptyString()
+@Test function testAssertEmptyString()
    assert('', 'empty string is truthy')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Assert does NOT return values (shadow optimization always applies)
 
-function testAssertNoReturn()
+@Test function testAssertNoReturn()
    -- Shadow function: assert() returns no values in all contexts.
    -- Unlike standard Lua where assert returns all its arguments, the shadow
    -- assert is optimised to never evaluate or return the message.
 
-   local a, b = assert(true, 'message')
+   a, b = assert(true, 'message')
 
    -- Both a and b should be nil since shadow assert() returns nothing
    if type(a) != 'nil' or type(b) != 'nil' then
       error('Shadow assert() should return no values, got ' .. tostring(a) .. ' and ' .. tostring(b))
    end
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testAssertPassesNoEval,
-      testAssertFails,
-      testAssertDefaultMessage,
-      testAssertComplexCondition,
-      testAssertConditionSideEffects,
-      testMultipleAsserts,
-      testAssertExpensiveMessage,
-      testAssertNil,
-      testAssertZero,
-      testAssertEmptyString,
-      testAssertNoReturn
-   }
-}

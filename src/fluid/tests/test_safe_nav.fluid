@@ -2,134 +2,134 @@
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeFieldOnNil()
-   local user = nil
-   local name = user?.profile?.details?.name
+@Test function testSafeFieldOnNil()
+   user = nil
+   name = user?.profile?.details?.name
    assert(name is nil, "Safe field on nil should yield nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeFieldChain()
-   local user = { profile = { name = "Alex" } }
-   local name = user.profile.name -- To prove no exception thrown for access
-   local name = user?.profile?.name
+@Test function testSafeFieldChain()
+   user = { profile = { name = "Alex" } }
+   name = user.profile.name -- To prove no exception thrown for access
+   name = user?.profile?.name
    assert(name is "Alex", "Safe field chain should return nested value, got " .. tostring(name))
-   local missing = user?.profile?.address
+   missing = user?.profile?.address
    assert(missing is nil, "Missing field in chain should yield nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeIndexOnNil()
-   local items = nil
-   local value = items?[1]
+@Test function testSafeIndexOnNil()
+   items = nil
+   value = items?[1]
    assert(value is nil, "Safe index on nil should yield nil, got " .. tostring(value))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeIndexValue()
-   local container = { values = { [1] = "First", [2] = "Second" } }
-   local value = container?.values?[2]
+@Test function testSafeIndexValue()
+   container = { values = { [1] = "First", [2] = "Second" } }
+   value = container?.values?[2]
    assert(value is "Second", "Safe index should return stored element when present, got " .. tostring(value))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeIndexShortCircuit()
-   local calls = 0
-   local function nextIndex()
+@Test function testSafeIndexShortCircuit()
+   calls = 0
+   function nextIndex()
       calls++
       return 2
    end
-   local arr = nil
-   local value = arr?[nextIndex()]
+   arr = nil
+   value = arr?[nextIndex()]
    assert(value is nil, "Safe index should produce nil when base is nil")
    assert(calls is 0, "Index expression must not be evaluated when base is nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeMethodOnNil()
-   local calls = 0
-   local function argument()
+@Test function testSafeMethodOnNil()
+   calls = 0
+   function argument()
       calls += 1
       return "ignored"
    end
-   local target = nil
-   local result = target?:speak(argument())
+   target = nil
+   result = target?:speak(argument())
    assert(result is nil, "Safe method on nil should yield nil")
    assert(calls is 0, "Method arguments must not be evaluated when base is nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeMethodValue()
-   local greeter = { prefix = "Hello" }
+@Test function testSafeMethodValue()
+   greeter = { prefix = "Hello" }
    function greeter:say(name)
       return self.prefix .. ", " .. name
    end
-   local result = greeter?:say("World")
+   result = greeter?:say("World")
    assert(result is "Hello, World", "Safe method should call method when base exists, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeMethodChain()
-   local account = { profile = { email = "user@example.com" } }
+@Test function testSafeMethodChain()
+   account = { profile = { email = "user@example.com" } }
    function account:getProfile()
       return self.profile
    end
-   local email = account?:getProfile()?.email
+   email = account?:getProfile()?.email
    assert(email is "user@example.com", "Safe method chain should propagate returned table, got " .. tostring(email))
-   local missing = nil?:getProfile()?.email
+   missing = nil?:getProfile()?.email
    assert(missing is nil, "Safe method chain should short-circuit on nil base, got " .. tostring(missing))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testIntegrationWithPresence()
-   local guest = nil
-   local display = guest?.profile?.name ?? "Guest"
+@Test function testIntegrationWithPresence()
+   guest = nil
+   display = guest?.profile?.name ?? "Guest"
    assert(display is "Guest", "Presence operator should provide default when safe chain yields nil, got " .. tostring(display))
-   local member = { profile = { name = "Chloe" } }
-   local memberDisplay = member?.profile?.name ?? "Guest"
+   member = { profile = { name = "Chloe" } }
+   memberDisplay = member?.profile?.name ?? "Guest"
    assert(memberDisplay is "Chloe", "Presence operator should see real value when safe chain succeeds")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeNavPresenceFallbackVariants()
-   local guest = nil
+@Test function testSafeNavPresenceFallbackVariants()
+   guest = nil
 
-   local constantFallback = guest?.profile?.name ?? "Guest"
+   constantFallback = guest?.profile?.name ?? "Guest"
    assert(constantFallback is "Guest", "Constant fallback should survive safe navigation presence chain")
 
-   local fallbackLabel = "Visitor"
-   local localFallback = guest?.profile?.name ?? fallbackLabel
+   fallbackLabel = "Visitor"
+   localFallback = guest?.profile?.name ?? fallbackLabel
    assert(localFallback is "Visitor", "Local fallback should be forwarded when chain is nil")
 
-   local function computeFallback()
+   function computeFallback()
       return "Computed"
    end
-   local computedFallback = guest?.profile?.name ?? computeFallback()
+   computedFallback = guest?.profile?.name ?? computeFallback()
    assert(computedFallback is "Computed", "Function fallback should be invoked when chain is nil")
 
-   local member = { profile = { name = "Chloe" } }
-   local truthyChain = member?.profile?.name ?? "Guest"
+   member = { profile = { name = "Chloe" } }
+   truthyChain = member?.profile?.name ?? "Guest"
    assert(truthyChain is "Chloe", "Truthy safe navigation chain should bypass the fallback value")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeNavPresenceInsideCallLosesFallback()
-   local guest = nil
-   local function capture(value)
+@Test function testSafeNavPresenceInsideCallLosesFallback()
+   guest = nil
+   function capture(value)
       return value
    end
-   local result = ""
-   local ok, err = pcall(function()
+   result = ""
+   ok, err = pcall(function()
       result = capture(guest?.profile?.name ?? "Guest")
    end)
    assert(ok is true, "Function call should succeed, err=" .. tostring(err))
@@ -138,13 +138,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeNavPresenceWithSiblingArgumentLosesFallback()
-   local guest = nil
-   local function capture(first, second)
+@Test function testSafeNavPresenceWithSiblingArgumentLosesFallback()
+   guest = nil
+   function capture(first, second)
       return first, second
    end
-   local firstResult, secondResult = "", ""
-   local ok, err = pcall(function()
+   firstResult, secondResult = "", ""
+   ok, err = pcall(function()
       firstResult, secondResult = capture(guest?.profile?.name ?? "Guest", "suffix")
    end)
    assert(ok is true, "Function call with extra argument should succeed, err=" .. tostring(err))
@@ -154,107 +154,107 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSafeFieldWithOrQuestion()
-   local fallback = { label = "Fallback" }
-   local label = fallback?.missingField ?? "Default"
+@Test function testSafeFieldWithOrQuestion()
+   fallback = { label = "Fallback" }
+   label = fallback?.missingField ?? "Default"
    assert(label is "Default", "?? should observe nil result from safe field, got " .. tostring(label))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe navigation with false values (should not treat as nil)
 
-function testSafeFieldFalseValue()
-   local obj = { flag = false }
-   local v = obj?.flag
+@Test function testSafeFieldFalseValue()
+   obj = { flag = false }
+   v = obj?.flag
    assert(v is false, "Safe field should return false, not nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe navigation with zero values (should not treat as nil)
 
-function testSafeFieldZeroValue()
-   local obj = { count = 0 }
-   local v = obj?.count
+@Test function testSafeFieldZeroValue()
+   obj = { count = 0 }
+   v = obj?.count
    assert(v is 0, "Safe field should return 0, not nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe navigation with empty string (should not treat as nil)
 
-function testSafeFieldEmptyString()
-   local obj = { text = "" }
-   local v = obj?.text
+@Test function testSafeFieldEmptyString()
+   obj = { text = "" }
+   v = obj?.text
    assert(v is "", "Safe field should return empty string, not nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test three-level chaining
 
-function testThreeLevelChaining()
-   local obj = { a = { b = { c = 123 } } }
-   local v = obj?.a?.b?.c
+@Test function testThreeLevelChaining()
+   obj = { a = { b = { c = 123 } } }
+   v = obj?.a?.b?.c
    assert(v is 123, "Three-level chaining should return nested value")
 
-   local obj2 = { a = { b = nil } }
-   local v2 = obj2?.a?.b?.c
+   obj2 = { a = { b = nil } }
+   v2 = obj2?.a?.b?.c
    assert(v2 is nil, "Three-level chaining should short-circuit on nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe method with multiple arguments
 
-function testSafeMethodMultipleArgs()
-   local calculator = {
+@Test function testSafeMethodMultipleArgs()
+   calculator = {
       add = function(self, a, b, c)
          return a + b + c
       end
    }
-   local result = calculator?:add(1, 2, 3)
+   result = calculator?:add(1, 2, 3)
    assert(result is 6, "Safe method should handle multiple arguments, got " .. tostring(result))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe index with variable key
 
-function testSafeIndexVariableKey()
-   local key = "mykey"
-   local obj = { mykey = "myvalue" }
-   local v = obj?[key]
+@Test function testSafeIndexVariableKey()
+   key = "mykey"
+   obj = { mykey = "myvalue" }
+   v = obj?[key]
    assert(v is "myvalue", "Safe index should work with variable keys")
 
-   local obj2 = nil
-   local v2 = obj2?[key]
+   obj2 = nil
+   v2 = obj2?[key]
    assert(v2 is nil, "Safe index on nil should return nil with variable key")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test mixed safe field and safe index
 
-function testMixedFieldAndIndex()
-   local obj = { arr = { [1] = "first", [2] = "second" } }
-   local v = obj?.arr?[2]
+@Test function testMixedFieldAndIndex()
+   obj = { arr = { [1] = "first", [2] = "second" } }
+   v = obj?.arr?[2]
    assert(v is "second", "Mixed safe field and index should work")
 
-   local obj2 = { arr = nil }
-   local v2 = obj2?.arr?[1]
+   obj2 = { arr = nil }
+   v2 = obj2?.arr?[1]
    assert(v2 is nil, "Mixed safe field and index should short-circuit")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe navigation on empty table
 
-function testSafeFieldOnEmptyTable()
-   local obj = {}
-   local v = obj?.missingField
+@Test function testSafeFieldOnEmptyTable()
+   obj = {}
+   v = obj?.missingField
    assert(v is nil, "Safe field on empty table should return nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test chaining with methods and fields
 
-function testChainingMethodsAndFields()
-   local ef_called = 0
-   local service = {
+@Test function testChainingMethodsAndFields()
+   ef_called = 0
+   service = {
       data = {
          value = 42,
          embedded_function = function(arg1, arg2, arg3)
@@ -269,20 +269,20 @@ function testChainingMethodsAndFields()
          return self.data
       end
    }
-   local v = service?:getData()?.value
+   v = service?:getData()?.value
    assert(v is 42, "Chaining methods and fields should work, got " .. tostring(v))
 
-   local nilService = nil
-   local v2 = nilService?:getData()?.value
+   nilService = nil
+   v2 = nilService?:getData()?.value
    assert(v2 is nil, "Chaining methods and fields should short-circuit on nil")
 
-   local v = service.data.embedded_function(1, "2", { "3" })
+   v = service.data.embedded_function(1, "2", { "3" })
    assert(v is 255, "Embedded function should return the correct value")
 
-   local v = service.data?.embedded_function(1, "2", { "3" })
+   v = service.data?.embedded_function(1, "2", { "3" })
    assert(v is 255, "Embedded function should return the correct value")
 
-   local v = service.data?.not_embedded_function()
+   v = service.data?.not_embedded_function()
    assert(not v, "Expected nil for function that doesn't exist")
 
    assert(ef_called is 2, "Embedded function should have been called 3 times, was called " .. tostring(ef_called) .. " times")
@@ -291,21 +291,21 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe index with numeric keys
 
-function testSafeIndexNumericKeys()
-   local arr = { 10, 20, 30, 40 }
-   local v = arr?[2]
+@Test function testSafeIndexNumericKeys()
+   arr = { 10, 20, 30, 40 }
+   v = arr?[2]
    assert(v is 30, "Safe index should work with numeric keys")
 
-   local nilArr = nil
-   local v2 = nilArr?[1]
+   nilArr = nil
+   v2 = nilArr?[1]
    assert(v2 is nil, "Safe index on nil array should return nil")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test complex chaining scenario
 
-function testComplexChaining()
-   local data = {
+@Test function testComplexChaining()
+   data = {
       users = {
          [1] = {
             profile = {
@@ -316,24 +316,24 @@ function testComplexChaining()
          }
       }
    }
-   local theme = data?.users?[1]?.profile?.settings?.theme
+   theme = data?.users?[1]?.profile?.settings?.theme
    assert(theme is "dark", "Complex chaining should work")
 
-   local data2 = { users = { [1] = { profile = nil } } }
-   local theme2 = data2?.users?[1]?.profile?.settings?.theme
+   data2 = { users = { [1] = { profile = nil } } }
+   theme2 = data2?.users?[1]?.profile?.settings?.theme
    assert(theme2 is nil, "Complex chaining should short-circuit")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test safe method returning nil
 
-function testSafeMethodReturningNil()
-   local obj = {
+@Test function testSafeMethodReturningNil()
+   obj = {
       getNil = function(self)
          return nil
       end
    }
-   local v = obj?:getNil()
+   v = obj?:getNil()
    assert(v is nil, "Safe method can return nil as a valid result")
 end
 
@@ -341,28 +341,12 @@ end
 -- Test safe navigation with if-empty on each level.  NB: Failure could mean a problem with either operator, or
 -- interference of one with the other.
 
-function testChainingWithIfEmpty()
-   local obj = { a = { b = nil } }
-   local v = (obj?.a?.b?.c) ?? "default"
+@Test function testChainingWithIfEmpty()
+   obj = { a = { b = nil } }
+   v = (obj?.a?.b?.c) ?? "default"
    assert(v is "default", "Chaining with if-empty should use default on nil, got " .. tostring(v))
 
-   local obj2 = { a = { b = { c = "value" } } }
-   local v2 = (obj2?.a?.b?.c) ?? "default"
+   obj2 = { a = { b = { c = "value" } } }
+   v2 = (obj2?.a?.b?.c) ?? "default"
    assert(v2 is "value", "Chaining with if-empty should use value when present")
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testSafeFieldOnNil, testSafeFieldChain, testSafeIndexOnNil, testSafeIndexValue,
-         testSafeIndexShortCircuit, testSafeMethodOnNil, testSafeMethodValue,
-         testSafeMethodChain, testIntegrationWithPresence, testSafeNavPresenceFallbackVariants, testSafeFieldWithOrQuestion,
-         testSafeFieldFalseValue, testSafeFieldZeroValue, testSafeFieldEmptyString,
-         testThreeLevelChaining, testSafeMethodMultipleArgs,
-         testSafeIndexVariableKey, testMixedFieldAndIndex, testSafeFieldOnEmptyTable,
-         testChainingMethodsAndFields, testSafeIndexNumericKeys, testComplexChaining,
-         testSafeMethodReturningNil, testChainingWithIfEmpty, testSafeNavPresenceInsideCallLosesFallback,
-         testSafeNavPresenceWithSiblingArgumentLosesFallback
-      }
-   }

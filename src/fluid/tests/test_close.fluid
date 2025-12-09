@@ -2,7 +2,7 @@
 
 -- Basic __close is called when scope ends
 
-function testBasicClose()
+@Test function testBasicClose()
    closed = false
    mt = {
       __close = function(self, err)
@@ -18,7 +18,7 @@ end
 
 -- __close receives self as first argument
 
-function testCloseSelfArg()
+@Test function testCloseSelfArg()
    received_self = nil
    obj_value = { data = 'test_value' }
    mt = {
@@ -36,7 +36,7 @@ end
 
 -- __close receives nil as second argument (normal exit)
 
-function testCloseNilErrArg()
+@Test function testCloseNilErrArg()
    received_err = 'not_nil'
    mt = {
       __close = function(self, err)
@@ -52,7 +52,7 @@ end
 
 -- <close> with nil value - should not crash
 
-function testCloseWithNil()
+@Test function testCloseWithNil()
    do
       local a <close> = nil
    end
@@ -61,7 +61,7 @@ end
 
 -- <close> with false value - should not crash
 
-function testCloseWithFalse()
+@Test function testCloseWithFalse()
    do
       local a <close> = false
    end
@@ -70,7 +70,7 @@ end
 
 -- Multiple close variables - LIFO order
 
-function testMultipleClosesLIFO()
+@Test function testMultipleClosesLIFO()
    order = {}
    function makeMt(n)
       return {
@@ -95,7 +95,7 @@ end
 
 -- Close in nested scopes
 
-function testNestedScopes()
+@Test function testNestedScopes()
    order = {}
    do
       local outer <close> = setmetatable({}, {
@@ -117,7 +117,7 @@ end
 
 -- Close with defer - close should run before defer
 
-function testCloseWithDefer()
+@Test function testCloseWithDefer()
    order = {}
    do
       defer
@@ -135,7 +135,7 @@ end
 
 -- Close on function return
 
-function testCloseOnReturn()
+@Test function testCloseOnReturn()
    closed = false
    mt = {
       __close = function(self, err)
@@ -156,7 +156,7 @@ end
 
 -- Close in for loop
 
-function testCloseInForLoop()
+@Test function testCloseInForLoop()
    close_count = 0
    mt = { __close = function() close_count += 1 end }
 
@@ -170,7 +170,7 @@ end
 
 -- Close on break
 
-function testCloseOnBreak()
+@Test function testCloseOnBreak()
    closed = false
    mt = { __close = function() closed = true end }
 
@@ -187,7 +187,7 @@ end
 
 -- Close on continue
 
-function testCloseOnContinue()
+@Test function testCloseOnContinue()
    close_count = 0
    mt = { __close = function() close_count += 1 end }
 
@@ -204,7 +204,7 @@ end
 
 -- Close with value that has no metatable
 
-function testCloseNoMetatable()
+@Test function testCloseNoMetatable()
    do
       local t <close> = {}
    end
@@ -213,7 +213,7 @@ end
 
 -- Close with metatable but no __close
 
-function testCloseMetatableNoClose()
+@Test function testCloseMetatableNoClose()
    mt = { __index = function() return 'value' end }
    do
       local obj <close> = setmetatable({}, mt)
@@ -223,7 +223,7 @@ end
 
 -- Mixed close values (some nil)
 
-function testMixedCloseValues()
+@Test function testMixedCloseValues()
    order = {}
    do
       local a <close> = setmetatable({}, {
@@ -245,7 +245,7 @@ end
 -- Tests that __close IS called when using pcall to catch errors,
 -- AND that the error value is passed to the __close handler.
 
-function testCloseWithPcall()
+@Test function testCloseWithPcall()
    closed = false
    received_err = nil
    mt = {
@@ -271,7 +271,7 @@ end
 
 -- Close with string value - should not crash
 
-function testCloseWithString()
+@Test function testCloseWithString()
    do
       local s <close> = 'hello'
    end
@@ -280,7 +280,7 @@ end
 
 -- Close with number value - should not crash
 
-function testCloseWithNumber()
+@Test function testCloseWithNumber()
    do
       local n <close> = 42
    end
@@ -289,7 +289,7 @@ end
 
 -- Multiple close handlers during error - all should be called with error
 
-function testMultipleCloseOnError()
+@Test function testMultipleCloseOnError()
    order = {}
    errors_received = {}
    function makeMt(n)
@@ -324,7 +324,7 @@ end
 
 -- Close in while loop
 
-function testCloseInWhileLoop()
+@Test function testCloseInWhileLoop()
    close_count = 0
    mt = { __close = function() close_count += 1 end }
    i = 0
@@ -340,7 +340,7 @@ end
 
 -- Close with xpcall
 
-function testCloseWithXpcall()
+@Test function testCloseWithXpcall()
    closed = false
    received_err = nil
    error_handler_called = false
@@ -373,7 +373,7 @@ end
 -- Note: With tail-call optimization, the order may vary. The important thing
 -- is that both handlers are called and the return value propagates correctly.
 
-function testNestedFunctionsClose()
+@Test function testNestedFunctionsClose()
    order = {}
    mt_outer = { __close = function() table.insert(order, 'outer') end }
    mt_inner = { __close = function() table.insert(order, 'inner') end }
@@ -405,7 +405,7 @@ end
 
 -- Close with early return in loop
 
-function testCloseEarlyReturnInLoop()
+@Test function testCloseEarlyReturnInLoop()
    close_count = 0
    mt = { __close = function() close_count += 1 end }
 
@@ -427,7 +427,7 @@ end
 
 -- Error in __close handler replaces original error (Lua 5.4 semantics)
 
-function testCloseHandlerError()
+@Test function testCloseHandlerError()
    order = {}
    mt1 = {
       __close = function(self, err)
@@ -461,7 +461,7 @@ end
 
 -- Multiple __close errors - last one wins
 
-function testMultipleCloseErrors()
+@Test function testMultipleCloseErrors()
    order = {}
    mt1 = {
       __close = function(self, err)
@@ -489,35 +489,3 @@ function testMultipleCloseErrors()
    assert(tostring(err):find('close2 error'), 'Last __close error should win: ' .. tostring(err))
    print('testMultipleCloseErrors: passed')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testBasicClose,
-      testCloseSelfArg,
-      testCloseNilErrArg,
-      testCloseWithNil,
-      testCloseWithFalse,
-      testMultipleClosesLIFO,
-      testNestedScopes,
-      testCloseWithDefer,
-      testCloseOnReturn,
-      testCloseInForLoop,
-      testCloseOnBreak,
-      testCloseOnContinue,
-      testCloseNoMetatable,
-      testCloseMetatableNoClose,
-      testMixedCloseValues,
-      testCloseWithPcall,
-      testCloseWithString,
-      testCloseWithNumber,
-      testMultipleCloseOnError,
-      testCloseInWhileLoop,
-      testCloseWithXpcall,
-      testNestedFunctionsClose,
-      testCloseEarlyReturnInLoop,
-      testCloseHandlerError,
-      testMultipleCloseErrors
-   }
-}

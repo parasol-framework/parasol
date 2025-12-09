@@ -3,7 +3,7 @@
 
    require 'common'
 
-function testBasic() --
+@Test function testBasic() --
    item = table.toXML({
       file = {
          icon = 'my_icon',
@@ -21,15 +21,12 @@ function testBasic() --
    -- <file icon="my_icon" name="my_name">filename.jpg<owner>123</><size sort=123>123</><group/>
    --   <date sort="F456">ABC</><permissions>RWX</></>
 
-   if not string.find(item, '^<file.->filename.jpg.+</>$') then
-      error('The file tag does not match the expected pattern.')
-   end
-
-   if not string.find(item, '<owner>123</>') then error('The owner tag is not defined correctly.') end
-   if not string.find(item, '<size sort=123>123</>') then error('The size tag is not defined correctly.') end
-   if not string.find(item, '<group/>') then error('The group tag is not defined correctly.') end
-   if not string.find(item, '<date sort="F456">ABC</>') then error('The date tag is not defined correctly.') end
-   if not string.find(item, '<permissions>RWX</>') then error('The date tag is not defined correctly.') end
+   assert(string.find(item, '^<file.->filename.jpg.+</>$'), 'The file tag does not match the expected pattern.')
+   assert(string.find(item, '<owner>123</>'), 'The owner tag is not defined correctly.')
+   assert(string.find(item, '<size sort=123>123</>'), 'The size tag is not defined correctly.')
+   assert(string.find(item, '<group/>'), 'The group tag is not defined correctly.')
+   assert(string.find(item, '<date sort="F456">ABC</>'), 'The date tag is not defined correctly.')
+   assert(string.find(item, '<permissions>RWX</>'), 'The date tag is not defined correctly.')
 
    print(item .. '\n')
 end
@@ -37,7 +34,7 @@ end
 -- If sequential XML tags will share the same name, it is essential to place each of them in a separate table
 -- as seen in this test.
 
-function testDuplicates()
+@Test function testDuplicates()
    files = table.toXML({
       receipt = {
          totalitems = 2,
@@ -52,19 +49,7 @@ function testDuplicates()
 
    print(files .. '\n')
 
-   local _, receipt_count = string.gsub(files, '^<receipt.+/>$', '')
-   local _, file_count = string.gsub(files, '<file.-/>', '')
-   if receipt_count != 1 or file_count != 2 then
-      error('Expected 1 receipt and 2 file tags.')
-   end
+   receipt_count = [_*]string.gsub(files, '^<receipt.+/>$', '')
+   file_count = [_*]string.gsub(files, '<file.-/>', '')
+   assert(receipt_count is 1 and file_count is 2, 'Expected 1 receipt and 2 file tags.')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-        testBasic, testDuplicates
-      },
-      init = nil,
-      cleanup = nil
-   }

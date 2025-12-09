@@ -1,85 +1,85 @@
 -- Flute tests for the postfix ?? operator (presence check)
 -- Returns boolean: true if value is truthy, false if falsey (nil, false, 0, "")
 
-function testNil()
-   local v = nil
+@Test function testNil()
+   v = nil
    assert((v??) is false, "Failed nil case: expected false")
 end
 
-function testFalse()
-   local v = false
+@Test function testFalse()
+   v = false
    assert((v??) is false, "Failed false case: expected false")
 end
 
-function testZero()
-   local v = 0
+@Test function testZero()
+   v = 0
    assert((v??) is false, "Failed zero case: expected false")
 end
 
-function testEmptyString()
-   local v = ""
+@Test function testEmptyString()
+   v = ""
    assert((v??) is false, "Failed empty string case: expected false")
 end
 
-function testTruthyString()
-   local v = "X"
+@Test function testTruthyString()
+   v = "X"
    assert((v??) is true, "Failed truthy string case: expected true")
 end
 
-function testTruthyNumber()
-   local v = 5
+@Test function testTruthyNumber()
+   v = 5
    assert((v??) is true, "Failed truthy number case: expected true")
 end
 
-function testTrue()
-   local v = true
+@Test function testTrue()
+   v = true
    assert((v??) is true, "Failed true case: expected true")
 end
 
 -- Test in conditionals
-function testInConditional()
-   local comment = "Hello"
+@Test function testInConditional()
+   comment = "Hello"
    if comment?? then
       -- Expected path
    else
       error("Should enter if block when comment is truthy")
    end
 
-   local empty = ""
+   empty = ""
    if empty?? then
       error("Should not enter if block when empty string")
    else
       -- Expected path
    end
 
-   local zero = 0
+   zero = 0
    if zero?? then
       error("Should not enter if block when zero")
    end
 end
 
 -- Test in expressions
-function testInExpression()
-   local name = "Alice"
-   local msg = name?? and "Hello, " .. name or "Hello, Guest"
+@Test function testInExpression()
+   name = "Alice"
+   msg = name?? and "Hello, " .. name or "Hello, Guest"
    assert(msg is "Hello, Alice", "Failed expression test with truthy name")
 
-   local empty_name = ""
-   local msg2 = empty_name?? and "Hello, " .. empty_name or "Hello, Guest"
+   empty_name = ""
+   msg2 = empty_name?? and "Hello, " .. empty_name or "Hello, Guest"
    assert(msg2 is "Hello, Guest", "Failed expression test with empty name")
 end
 
 -- Test chaining with logical operators
-function testChaining()
-   local comment = "Test"
-   local author = "User"
+@Test function testChaining()
+   comment = "Test"
+   author = "User"
    if comment?? and author?? then
       -- Expected path
    else
       error("Should enter if block when both are truthy")
    end
 
-   local empty_comment = ""
+   empty_comment = ""
    if empty_comment?? and author?? then
       error("Should not enter if block when comment is empty")
    end
@@ -92,43 +92,43 @@ function testChaining()
 end
 
 -- Test with parentheses
-function testParentheses()
-   local x = 5
-   local y = 10
-   local v = (x + y)??
+@Test function testParentheses()
+   x = 5
+   y = 10
+   v = (x + y)??
    assert(v is true, "Failed parentheses test: expected true for non-zero sum")
 
-   local z = -5
-   local w = (x + z)??
+   z = -5
+   w = (x + z)??
    assert(w is false, "Failed parentheses test: expected false for zero sum")
 end
 
 -- Test with table access
-function testTableAccess()
-   local t = { name = "Test" }
-   local v = t.name??
+@Test function testTableAccess()
+   t = { name = "Test" }
+   v = t.name??
    assert(v is true, "Failed table access test: expected true for non-empty string")
 
-   local t2 = { name = "" }
-   local v2 = t2.name??
+   t2 = { name = "" }
+   v2 = t2.name??
    assert(v2 is false, "Failed table access test: expected false for empty string")
 
-   local t3 = { value = 0 }
-   local v3 = t3.value??
+   t3 = { value = 0 }
+   v3 = t3.value??
    assert(v3 is false, "Failed table access test: expected false for zero")
 end
 
 -- Test runtime values
-function testRuntime()
-   local x = 0
-   local v = x??
+@Test function testRuntime()
+   x = 0
+   v = x??
    assert(v is false, "Runtime zero test failed: expected false")
 
    x = 5
    v = x??
    assert(v is true, "Runtime non-zero test failed: expected true")
 
-   local s = ""
+   s = ""
    v = s??
    assert(v is false, "Runtime empty string test failed: expected false")
 
@@ -136,7 +136,7 @@ function testRuntime()
    v = s??
    assert(v is true, "Runtime non-empty string test failed: expected true")
 
-   local b = false
+   b = false
    v = b??
    assert(v is false, "Runtime false test failed: expected false")
 
@@ -146,7 +146,7 @@ function testRuntime()
 end
 
 -- Test constant expressions
-function testConstants()
+@Test function testConstants()
    assert((nil??) is false, "Constant nil test failed")
    assert((false??) is false, "Constant false test failed")
    assert((0??) is false, "Constant zero test failed")
@@ -158,48 +158,48 @@ function testConstants()
 end
 
 -- Test against nz() function semantics
-function testAgainstNz()
-   local test_cases = { nil, false, 0, "", "test", 5, true, -1, "0" }
+@Test function testAgainstNz()
+   test_cases = { nil, false, 0, "", "test", 5, true, -1, "0" }
    for _, val in ipairs(test_cases) do
-      local nz_result = nz(val) and true or false
-      local op_result = (val??)
+      nz_result = nz(val) and true or false
+      op_result = (val??)
       assert(nz_result is op_result, "Mismatch with nz() for value: " .. tostring(val))
    end
 end
 
 -- Test that ?? returns boolean, not the value
-function testReturnsBool()
-   local v = "Hello"
-   local result = v??
+@Test function testReturnsBool()
+   v = "Hello"
+   result = v??
    assert(result is true, "Should return true, not the value")
    assert(result != "Hello", "Should return boolean, not the string value")
 
-   local n = 42
+   n = 42
    result = n??
    assert(result is true, "Should return true, not the value")
    assert(result != 42, "Should return boolean, not the numeric value")
 end
 
 -- Test chained field access
-function testChainedAccess()
-   local obj = { user = { name = "Alice" } }
+@Test function testChainedAccess()
+   obj = { user = { name = "Alice" } }
    assert((obj.user.name??) is true, "Failed chained access test")
 
-   local obj2 = { user = { name = "" } }
+   obj2 = { user = { name = "" } }
    assert((obj2.user.name??) is false, "Failed chained access with empty string")
 end
 
 -- Test with negative numbers
-function testNegativeNumbers()
-   local v = -5
+@Test function testNegativeNumbers()
+   v = -5
    assert((v??) is true, "Failed negative number test: expected true for -5")
 
-   local v2 = -0.0
+   v2 = -0.0
    assert((v2??) is false, "Failed negative zero test: expected false for -0.0")
 end
 
 -- Test with function calls (using nz() as test function)
-function testFunctionCalls()
+@Test function testFunctionCalls()
    assert((nz("test")??) is true, "Failed function call test with truthy result")
    assert((nz(nil, "")??) is false, "Failed function call test with falsey result")
 end
@@ -209,66 +209,66 @@ end
 -- These tests verify the actual runtime behavior
 
 -- Test: Verify truthy string returns true (proves jumps don't fire incorrectly)
-function testBytecodeSemanticsTruthyString()
-   local s = "test"
-   local result = s??
+@Test function testBytecodeSemanticsTruthyString()
+   s = "test"
+   result = s??
    assert(result is true, "Truthy string must return true - if false, BC_ISEQS may be skipping when equal (wrong)")
 end
 
 -- Test: Verify truthy number returns true
-function testBytecodeSemanticsTruthyNumber()
-   local n = 42
-   local result = n??
+@Test function testBytecodeSemanticsTruthyNumber()
+   n = 42
+   result = n??
    assert(result is true, "Truthy number must return true - if false, BC_ISEQN may be skipping when equal (wrong)")
 end
 
 -- Test: Verify falsey string returns false (proves jumps fire correctly)
-function testBytecodeSemanticsFalseyString()
-   local s = ""
-   local result = s??
+@Test function testBytecodeSemanticsFalseyString()
+   s = ""
+   result = s??
    assert(result is false, "Falsey string must return false - if true, BC_ISEQS may not be jumping when equal")
 end
 
 -- Test: Verify falsey number returns false
-function testBytecodeSemanticsFalseyNumber()
-   local n = 0
-   local result = n??
+@Test function testBytecodeSemanticsFalseyNumber()
+   n = 0
+   result = n??
    assert(result is false, "Falsey number must return false - if true, BC_ISEQN may not be jumping when equal")
 end
 
 -- Test: Verify type mismatch doesn't cause false positives (string vs number comparison)
-function testBytecodeSemanticsTypeMismatchStringToNumber()
-   local s = "hello"
+@Test function testBytecodeSemanticsTypeMismatchStringToNumber()
+   s = "hello"
    -- Comparing string to number (zero check) should not trigger false jump
-   local result = s??
+   result = s??
    assert(result is true, "String compared to number (zero check) should not trigger false - type mismatch handling")
 end
 
 -- Test: Verify type mismatch doesn't cause false positives (number vs string comparison)
-function testBytecodeSemanticsTypeMismatchNumberToString()
-   local n = 42
+@Test function testBytecodeSemanticsTypeMismatchNumberToString()
+   n = 42
    -- Comparing number to string (empty check) should not trigger false jump
-   local result = n??
+   result = n??
    assert(result is true, "Number compared to string (empty check) should not trigger false - type mismatch handling")
 end
 
 -- Test: Verify nil returns false correctly
-function testBytecodeSemanticsNil()
-   local v = nil
-   local result = v??
+@Test function testBytecodeSemanticsNil()
+   v = nil
+   result = v??
    assert(result is false, "Nil must return false - verifies BC_ISEQP behavior")
 end
 
 -- Test: Verify false returns false correctly
-function testBytecodeSemanticsFalse()
-   local v = false
-   local result = v??
+@Test function testBytecodeSemanticsFalse()
+   v = false
+   result = v??
    assert(result is false, "False must return false - verifies BC_ISEQP behavior")
 end
 
 -- Test: Comprehensive runtime truthy values
-function testBytecodeSemanticsAllTruthyValues()
-   local test_cases = {
+@Test function testBytecodeSemanticsAllTruthyValues()
+   test_cases = {
       {val = "hello", name = "non-empty string"},
       {val = 1, name = "positive number"},
       {val = -1, name = "negative number"},
@@ -278,28 +278,28 @@ function testBytecodeSemanticsAllTruthyValues()
       {val = {x=1}, name = "non-empty table"}
    }
    for _, tc in ipairs(test_cases) do
-      local result = (tc.val)??
+      result = (tc.val)??
       assert(result is true, "Truthy value '" .. tc.name .. "' must return true, got: " .. tostring(result))
    end
 end
 
 -- Test: Comprehensive runtime falsey values
-function testBytecodeSemanticsAllFalseyValues()
-   local test_cases = {
+@Test function testBytecodeSemanticsAllFalseyValues()
+   test_cases = {
       {val = nil, name = "nil"},
       {val = false, name = "false"},
       {val = 0, name = "zero"},
       {val = "", name = "empty string"}
    }
    for _, tc in ipairs(test_cases) do
-      local result = (tc.val)??
+      result = (tc.val)??
       assert(result is false, "Falsey value '" .. tc.name .. "' must return false, got: " .. tostring(result))
    end
 end
 
-function testFlags()
-   local trigger = 0
-   local perm = PERMIT_READ|PERMIT_WRITE
+@Test function testFlags()
+   trigger = 0
+   perm = PERMIT_READ|PERMIT_WRITE
    if (perm & PERMIT_READ)??  then trigger++ end
    if (perm & PERMIT_WRITE)?? then trigger++ end
    if (perm & PERMIT_READ|PERMIT_WRITE)??  then trigger++ end
@@ -307,12 +307,12 @@ function testFlags()
    assert(trigger is 3, "Expected 3 bit-flags to pass, got " .. trigger)
 end
 
-function testShortCircuit()
-   local function sideEffect()
+@Test function testShortCircuit()
+   function sideEffect()
       error("This function should not be called due to short-circuiting")
    end
-   local a = false
-   local b = true
+   a = false
+   b = true
 
    -- Short-circuit AND
    if (a?? and sideEffect()??) then
@@ -326,21 +326,3 @@ function testShortCircuit()
       error("Should enter this block since b is truthy")
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testNil, testFalse, testZero, testEmptyString,
-      testTruthyString, testTruthyNumber, testTrue, testInConditional,
-      testInExpression, testChaining, testParentheses,
-      testTableAccess, testRuntime, testConstants, testAgainstNz,
-      testReturnsBool, testChainedAccess, testNegativeNumbers, testFunctionCalls,
-      testBytecodeSemanticsTruthyString, testBytecodeSemanticsTruthyNumber,
-      testBytecodeSemanticsFalseyString, testBytecodeSemanticsFalseyNumber,
-      testBytecodeSemanticsTypeMismatchStringToNumber, testBytecodeSemanticsTypeMismatchNumberToString,
-      testBytecodeSemanticsNil, testBytecodeSemanticsFalse,
-      testBytecodeSemanticsAllTruthyValues, testBytecodeSemanticsAllFalseyValues,
-      testFlags, testShortCircuit
-   }
-}

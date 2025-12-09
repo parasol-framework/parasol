@@ -1,12 +1,12 @@
 -- $FLUID
 -- Comprehensive test suite for the URL module
 
-   url = require('net/url')
+   url = require 'net/url'
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test URL encoding/decoding
 
-function testEncoding()
+@Test function testEncoding()
    -- Basic encoding
    assert(url.encode('hello world') is 'hello%20world', 'Basic space encoding failed')
    assert(url.encode('hello+world') is 'hello%2Bworld', 'Plus sign encoding failed')
@@ -25,7 +25,7 @@ function testEncoding()
    assert(url.encodePlus('test+case') is 'test%2Bcase', 'Plus sign in plus encoding failed')
 end
 
-function testDecoding()
+@Test function testDecoding()
    -- Basic decoding
    assert(url.decode('hello%20world') is 'hello world', 'Basic space decoding failed')
    assert(url.decode('user%40example.com') is 'user@example.com', 'At sign decoding failed')
@@ -53,7 +53,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test query string parsing
 
-function testQueryParsing()
+@Test function testQueryParsing()
    -- Basic query parsing
    local params = url.parseQuery('name=John&age=30&city=New%20York')
    assert(params.name is 'John', 'Basic query param failed')
@@ -81,7 +81,7 @@ function testQueryParsing()
    assert(plus.name is 'John Doe', 'Plus decoding in name failed')
 end
 
-function testQueryList()
+@Test function testQueryList()
    -- Parse as list to preserve order
    local list = url.parseQueryList('first=1&second=2&first=3')
    assert(#list is 3, 'Query list should have 3 items')
@@ -90,7 +90,7 @@ function testQueryList()
    assert(list[3].key is 'first' and list[3].value is '3', 'Third item incorrect')
 end
 
-function testQueryBuilding()
+@Test function testQueryBuilding()
    -- Build from table
    local params = { name = 'John Doe', age = 30, active = true }
    local query = url.buildQuery(params)
@@ -124,7 +124,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test URL parsing
 
-function testBasicParsing()
+@Test function testBasicParsing()
    -- Simple HTTP URL
    local parts = url.parse('https://example.com/path?query=value#section')
    assert(parts.scheme is 'https', 'Scheme parsing failed')
@@ -148,7 +148,7 @@ function testBasicParsing()
    assert(withAuth.path is '/files/', 'Auth URL path failed')
 end
 
-function testIPv6Parsing()
+@Test function testIPv6Parsing()
    -- IPv6 host
    local ipv6 = url.parse('http://[2001:db8::1]:8080/path')
    assert(ipv6.host is '2001:db8::1', 'IPv6 host parsing failed')
@@ -161,7 +161,7 @@ function testIPv6Parsing()
    assert(ipv6NoPort.port is nil, 'IPv6 no port should be nil')
 end
 
-function testRelativeURLs()
+@Test function testRelativeURLs()
    -- Path-only URL
    local pathOnly = url.parse('/path/to/resource')
    assert(pathOnly.scheme is nil, 'Path-only should have no scheme')
@@ -179,7 +179,7 @@ function testRelativeURLs()
    assert(fragOnly.fragment is 'section', 'Fragment-only fragment failed')
 end
 
-function testURLUnparsing()
+@Test function testURLUnparsing()
    -- Round-trip test
    local original = 'https://user:pass@example.com:8080/path/to/resource;param=value?query=test&foo=bar#section'
    local parsed = url.parse(original)
@@ -199,7 +199,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test URL joining
 
-function testURLJoining()
+@Test function testURLJoining()
    -- Basic relative URL joining
    local joined = url.join('https://example.com/api/', 'users/123')
    assert(joined is 'https://example.com/api/users/123', 'Basic joining failed')
@@ -224,7 +224,7 @@ function testURLJoining()
    assert(absOverride is 'https://new.com/other', 'Absolute URL override failed')
 end
 
-function testPathNormalization()
+@Test function testPathNormalization()
    -- Basic normalization
    assert(url.normalize('/a/b/../c') is '/a/c', 'Basic .. normalization failed')
    assert(url.normalize('/a/./b') is '/a/b', 'Basic . normalization failed')
@@ -245,7 +245,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test utility functions
 
-function testUtilities()
+@Test function testUtilities()
    -- Absolute/relative detection
    assert(url.isAbsolute('https://example.com') is true, 'HTTP URL should be absolute')
    assert(url.isAbsolute('ftp://ftp.example.com') is true, 'FTP URL should be absolute')
@@ -272,7 +272,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test edge cases and error handling
 
-function testEdgeCases()
+@Test function testEdgeCases()
    -- Empty/nil URLs
    local nilResult = url.parse(nil)
    assert(nilResult is nil, 'Nil URL should return nil')
@@ -302,7 +302,7 @@ function testEdgeCases()
    assert(longParsed.path is '/' .. longPath, 'Long URL path parsing failed')
 end
 
-function testDefrag()
+@Test function testDefrag()
    -- URL with fragment
    local base, frag = url.defrag('https://example.com/path#section')
    assert(base is 'https://example.com/path', 'Defrag base incorrect')
@@ -318,30 +318,3 @@ function testDefrag()
    assert(emptyFragBase is 'https://example.com/path', 'Empty frag base incorrect')
    assert(emptyFrag is '', 'Empty fragment should be empty string')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testEncoding,
-      testDecoding,
-      testQueryParsing,
-      testQueryList,
-      testQueryBuilding,
-      testBasicParsing,
-      testIPv6Parsing,
-      testRelativeURLs,
-      testURLUnparsing,
-      testURLJoining,
-      testPathNormalization,
-      testUtilities,
-      testEdgeCases,
-      testDefrag
-   },
-   init = function(Folder)
-      -- No special initialization needed
-   end,
-   cleanup = function()
-      -- No cleanup needed
-   end
-}
