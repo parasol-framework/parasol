@@ -89,8 +89,8 @@ LJLIB_CF(table_insert)      LJLIB_REC(.)
 
 LJLIB_CF(table_remove)
 {
-   GCtab* t = lj_lib_checktab(L, 1);
-   int32_t len = (int32_t)lj_tab_len(t);
+   GCtab *t = lj_lib_checktab(L, 1);
+   auto len = (int32_t)lj_tab_len(t);
    int32_t pos;
 
    if (L->base + 1 >= L->top) {  // No position argument
@@ -107,7 +107,7 @@ LJLIB_CF(table_remove)
    copy_or_nil(L, L->top++, src);
 
    // Shift elements down (if not removing the last element)
-   int32_t last = len - 1;
+   auto last = len - 1;
    for (int32_t i = pos; i < last; i++) {
       TValue* dst = lj_tab_setint(L, t, i);
       src = lj_tab_getint(t, i + 1);
@@ -258,11 +258,10 @@ static void auxsort(lua_State* L, int l, int u)
 
 LJLIB_CF(table_sort)
 {
-   GCtab* t = lj_lib_checktab(L, 1);
+   GCtab *t = lj_lib_checktab(L, 1);
    int32_t n = (int32_t)lj_tab_len(t);
    lua_settop(L, 2);
-   if (!tvisnil(L->base + 1))
-      lj_lib_checkfunc(L, 2);
+   if (!tvisnil(L->base + 1)) lj_lib_checkfunc(L, 2);
    auxsort(L, 0, n - 1);  // 0-based: sort indices 0 to len-1
    return 0;
 }
@@ -304,7 +303,7 @@ LJLIB_NOREG LJLIB_CF(table_new) LJLIB_REC(.)
 
 LJLIB_CF(table_empty)
 {
-   GCtab* t = lj_lib_checktabornil(L, 1);
+   GCtab *t = lj_lib_checktabornil(L, 1);
    if (!t) {
       setboolV(L->top - 1, 1);
       return 1;
@@ -317,9 +316,7 @@ LJLIB_CF(table_empty)
 
    TValue key, kv[2];
    setnilV(&key);
-   if (lj_tab_next(t, &key, kv)) {
-      setboolV(L->top - 1, 0);  //  Found at least one entry.
-   }
+   if (lj_tab_next(t, &key, kv)) setboolV(L->top - 1, 0);  //  Found at least one entry.
    else setboolV(L->top - 1, 1);  //  Confirmed empty.
 
    return 1;

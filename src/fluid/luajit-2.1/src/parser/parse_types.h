@@ -509,12 +509,10 @@ struct FuncState {
    [[nodiscard]] constexpr bool has_active_scope() const noexcept { return bl != nullptr; }
 
    // --- Debug Assertions ---
+   // Assertions are implemented as methods that call the macro so __FILE__/__LINE__ work correctly.
+   // The variadic format arguments are forwarded to allow printf-style messages.
 
 #ifdef LUA_USE_ASSERT
-   inline void assert(bool Condition, const char *Message, ...) const {
-      lj_assertG_(G(L), Condition, Message);
-   }
-
    // Validate register allocation invariant: freereg >= nactvar
    inline void assert_regalloc() const {
       lj_assertG_(G(L), freereg >= nactvar, "bad register allocation: freereg < nactvar");
@@ -525,11 +523,19 @@ struct FuncState {
       lj_assertG_(G(L), freereg IS nactvar, "bad register state: freereg != nactvar");
    }
 #else
-   constexpr void assert(bool, const char *, ...) const noexcept { }
    constexpr void assert_regalloc() const noexcept { }
    constexpr void assert_freereg_at_locals() const noexcept { }
 #endif
 };
+
+// Parser assertion macro - expands __FILE__/__LINE__ at call site for accurate error locations.
+// Usage: fs_check_assert(fs, condition, "format string", args...);
+// Note: Cannot be a method because __FILE__/__LINE__ would resolve inside the method, not at call site.
+#ifdef LUA_USE_ASSERT
+   #define fs_check_assert(fs, c, ...) lj_assertG_(G((fs)->L), (c), __VA_ARGS__)
+#else
+   #define fs_check_assert(fs, c, ...) ((void)(fs))
+#endif
 
 // Binary and unary operators. ORDER OPR
 

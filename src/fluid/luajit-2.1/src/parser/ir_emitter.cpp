@@ -2910,7 +2910,10 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       //      return __create_thunk(function() return x * y end, type_tag)
       //   end
 
+      // Use lastline which was set by emit_expression() to the function definition line,
+      // not the body's span which may start at a later line.
       SourceSpan span = Payload.body->span;
+      span.line = this->lex_state.lastline;
 
       // Step 1: Create inner closure (no parameters, captures parent's as upvalues)
       // Move original body to inner function

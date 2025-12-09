@@ -1232,3 +1232,27 @@ extern int luaL_error(lua_State* L, const char* fmt, ...)
    lj_err_callermsg(L, msg);
    return 0;  //  unreachable
 }
+
+//********************************************************************************************************************
+// Internal assertion failure handler for LUA_USE_ASSERT and LUA_USE_APICHECK.
+
+#if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
+
+#include <cstdio>
+#include <cstdarg>
+
+LJ_NOINLINE void lj_assert_fail(global_State* g, const char* file, int line,
+   const char* func, const char* fmt, ...)
+{
+   va_list argp;
+   va_start(argp, fmt);
+   fprintf(stderr, "LuaJIT ASSERT FAILED: %s:%d: %s: ", file, line, func);
+   vfprintf(stderr, fmt, argp);
+   fprintf(stderr, "\n");
+   va_end(argp);
+   fflush(stderr);
+   UNUSED(g);
+   abort();
+}
+
+#endif

@@ -25,6 +25,7 @@
 #include "lj_strfmt.h"
 #include "lib/lib_utils.h"
 #include "runtime/lj_thunk.h"
+#include "runtime/stack_helpers.h"
 
 #define lj_checkapi_slot(idx) lj_checkapi((idx) <= (L->top - L->base), "stack slot %d out of range", (idx))
 
@@ -34,7 +35,7 @@
 static TValue * index2adr(lua_State *L, int idx)
 {
    if (idx > 0) {
-      TValue * o = L->base + (idx - 1);
+      TValue *o = L->base + (idx - 1);
       return o < L->top ? o : niltv(L);
    }
    else if (idx > LUA_REGISTRYINDEX) {
@@ -53,7 +54,7 @@ static TValue * index2adr(lua_State *L, int idx)
       GCfunc* fn = curr_func(L);
       lj_checkapi(fn->c.gct IS ~LJ_TFUNC and !isluafunc(fn), "calling frame is not a C function");
       if (idx IS LUA_ENVIRONINDEX) {
-         TValue * o = &G(L)->tmptv;
+         TValue *o = &G(L)->tmptv;
          settabV(L, o, tabref(fn->c.env));
          return o;
       }
@@ -367,7 +368,7 @@ extern int lua_iscfunction(lua_State *L, int idx)
 
 extern int lua_isnumber(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = index2adr(L, idx);
    TValue tmp;
    return (tvisnumber(o) or (tvisstr(o) and lj_strscan_number(strV(o), &tmp)));
 }
@@ -377,16 +378,16 @@ extern int lua_isnumber(lua_State *L, int idx)
 
 extern int lua_isstring(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = index2adr(L, idx);
    return (tvisstr(o) or tvisnumber(o));
 }
 
 //********************************************************************************************************************
 // Test if value is userdata or light userdata
 
-extern int lua_isuserdata(lua_State* L, int idx)
+extern int lua_isuserdata(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = index2adr(L, idx);
    return (tvisudata(o) or tvislightud(o));
 }
 
@@ -395,8 +396,8 @@ extern int lua_isuserdata(lua_State* L, int idx)
 
 extern int lua_rawequal(lua_State *L, int idx1, int idx2)
 {
-   cTValue * o1 = index2adr(L, idx1);
-   cTValue * o2 = index2adr(L, idx2);
+   cTValue *o1 = index2adr(L, idx1);
+   cTValue *o2 = index2adr(L, idx2);
    return (o1 IS niltv(L) or o2 IS niltv(L)) ? 0 : lj_obj_equal(o1, o2);
 }
 
@@ -415,14 +416,9 @@ extern int lua_equal(lua_State *L, int idx1, int idx2)
    else if (gcrefeq(o1->gcr, o2->gcr)) return 1;
    else if (!tvistabud(o1)) return 0;
    else {
-      TValue * base = lj_meta_equal(L, gcV(o1), gcV(o2), 0);
+      TValue *base = lj_meta_equal(L, gcV(o1), gcV(o2), 0);
       if ((uintptr_t)base <= 1) return (int)(uintptr_t)base;
-      else {
-         L->top = base + 2;
-         lj_vm_call(L, base, 1 + 1);
-         L->top -= 2 + LJ_FR2;
-         return tvistruecond(L->top + 1 + LJ_FR2);
-      }
+      return tvistruecond(MetaCall::invoke(L, base, 2, 1));
    }
 }
 
@@ -438,14 +434,9 @@ extern int lua_lessthan(lua_State *L, int idx1, int idx2)
    else if (tvisint(o1) and tvisint(o2)) return intV(o1) < intV(o2);
    else if (tvisnumber(o1) and tvisnumber(o2)) return numberVnum(o1) < numberVnum(o2);
    else {
-      TValue* base = lj_meta_comp(L, o1, o2, 0);
+      TValue *base = lj_meta_comp(L, o1, o2, 0);
       if ((uintptr_t)base <= 1) return (int)(uintptr_t)base;
-      else {
-         L->top = base + 2;
-         lj_vm_call(L, base, 1 + 1);
-         L->top -= 2 + LJ_FR2;
-         return tvistruecond(L->top + 1 + LJ_FR2);
-      }
+      return tvistruecond(MetaCall::invoke(L, base, 2, 1));
    }
 }
 
@@ -633,17 +624,18 @@ extern const char* luaL_optlstring(lua_State *L, int idx, const char* def, size_
 extern int luaL_checkoption(lua_State *L, int idx, const char* def, const char* const lst[])
 {
    ptrdiff_t i;
-   const char* s = lua_tolstring(L, idx, nullptr);
+   auto s = lua_tolstring(L, idx, nullptr);
    if (s IS nullptr and (s = def) IS nullptr) lj_err_argt(L, idx, LUA_TSTRING);
-   for (i = 0; lst[i]; i++)
+   for (i = 0; lst[i]; i++) {
       if (strcmp(lst[i], s) IS 0) return (int)i;
+   }
    lj_err_argv(L, idx, ErrMsg::INVOPTM, s);
 }
 
 //********************************************************************************************************************
 // Get length of value
 
-extern size_t lua_objlen(lua_State* L, int idx)
+extern size_t lua_objlen(lua_State *L, int idx)
 {
    TValue *o = index2adr(L, idx);
    if (tvisstr(o)) return strV(o)->len;
@@ -660,9 +652,9 @@ extern size_t lua_objlen(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get C function pointer if value is a C function
 
-extern lua_CFunction lua_tocfunction(lua_State* L, int idx)
+extern lua_CFunction lua_tocfunction(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = index2adr(L, idx);
    if (tvisfunc(o)) {
       BCOp op = bc_op(*mref(funcV(o)->c.pc, BCIns));
       if (op IS BC_FUNCC or op IS BC_FUNCCW) return funcV(o)->c.f;
@@ -673,9 +665,9 @@ extern lua_CFunction lua_tocfunction(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get pointer to userdata
 
-extern void* lua_touserdata(lua_State* L, int idx)
+extern void * lua_touserdata(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
+   cTValue *o = index2adr(L, idx);
    if (tvisudata(o)) return uddata(udataV(o));
    else if (tvislightud(o)) return lightudV(G(L), o);
    else return nullptr;
@@ -684,7 +676,7 @@ extern void* lua_touserdata(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get thread if value is a coroutine
 
-extern lua_State* lua_tothread(lua_State* L, int idx)
+extern lua_State* lua_tothread(lua_State *L, int idx)
 {
    cTValue* o = index2adr(L, idx);
    return (!tvisthread(o)) ? nullptr : threadV(o);
@@ -693,7 +685,7 @@ extern lua_State* lua_tothread(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get pointer representation of value
 
-extern const void* lua_topointer(lua_State* L, int idx)
+extern const void* lua_topointer(lua_State *L, int idx)
 {
    return lj_obj_ptr(G(L), index2adr(L, idx));
 }
@@ -701,7 +693,7 @@ extern const void* lua_topointer(lua_State* L, int idx)
 //********************************************************************************************************************
 // Stack setters (object creation)
 
-extern void lua_pushnil(lua_State* L)
+extern void lua_pushnil(lua_State *L)
 {
    setnilV(L->top);
    incr_top(L);
@@ -710,7 +702,7 @@ extern void lua_pushnil(lua_State* L)
 //********************************************************************************************************************
 // Push number onto stack
 
-extern void lua_pushnumber(lua_State* L, lua_Number n)
+extern void lua_pushnumber(lua_State *L, lua_Number n)
 {
    setnumV(L->top, n);
    if (LJ_UNLIKELY(tvisnan(L->top))) setnanV(L->top);  //  Canonicalize injected NaNs.
@@ -720,7 +712,7 @@ extern void lua_pushnumber(lua_State* L, lua_Number n)
 //********************************************************************************************************************
 // Push integer onto stack
 
-extern void lua_pushinteger(lua_State* L, lua_Integer n)
+extern void lua_pushinteger(lua_State *L, lua_Integer n)
 {
    setintptrV(L->top, n);
    incr_top(L);
@@ -729,7 +721,7 @@ extern void lua_pushinteger(lua_State* L, lua_Integer n)
 //********************************************************************************************************************
 // Push string of specified length onto stack
 
-extern void lua_pushlstring(lua_State* L, const char* str, size_t len)
+extern void lua_pushlstring(lua_State *L, const char* str, size_t len)
 {
    GCstr* s;
    lj_gc_check(L);
@@ -741,7 +733,7 @@ extern void lua_pushlstring(lua_State* L, const char* str, size_t len)
 //********************************************************************************************************************
 // Push null-terminated string onto stack
 
-extern void lua_pushstring(lua_State* L, const char* str)
+extern void lua_pushstring(lua_State *L, const char* str)
 {
    if (str IS nullptr) {
       setnilV(L->top);
@@ -758,7 +750,7 @@ extern void lua_pushstring(lua_State* L, const char* str)
 //********************************************************************************************************************
 // Push formatted string onto stack with varargs
 
-extern const char* lua_pushvfstring(lua_State* L, const char* fmt, va_list argp)
+extern const char* lua_pushvfstring(lua_State *L, const char* fmt, va_list argp)
 {
    lj_gc_check(L);
    return lj_strfmt_pushvf(L, fmt, argp);
@@ -767,7 +759,7 @@ extern const char* lua_pushvfstring(lua_State* L, const char* fmt, va_list argp)
 //********************************************************************************************************************
 // Push formatted string onto stack
 
-extern const char* lua_pushfstring(lua_State* L, const char* fmt, ...)
+extern const char* lua_pushfstring(lua_State *L, const char* fmt, ...)
 {
    const char* ret;
    va_list argp;
@@ -781,9 +773,9 @@ extern const char* lua_pushfstring(lua_State* L, const char* fmt, ...)
 //********************************************************************************************************************
 // Push C closure with upvalues onto stack
 
-extern void lua_pushcclosure(lua_State* L, lua_CFunction f, int n)
+extern void lua_pushcclosure(lua_State *L, lua_CFunction f, int n)
 {
-   GCfunc* fn;
+   GCfunc *fn;
    lj_gc_check(L);
    lj_checkapi_slot(n);
    fn = lj_func_newC(L, (MSize)n, getcurrenv(L));
@@ -798,7 +790,7 @@ extern void lua_pushcclosure(lua_State* L, lua_CFunction f, int n)
 //********************************************************************************************************************
 // Push boolean value onto stack
 
-extern void lua_pushboolean(lua_State* L, int b)
+extern void lua_pushboolean(lua_State *L, int b)
 {
    setboolV(L->top, (b != 0));
    incr_top(L);
@@ -807,7 +799,7 @@ extern void lua_pushboolean(lua_State* L, int b)
 //********************************************************************************************************************
 // Push light userdata pointer onto stack
 
-extern void lua_pushlightuserdata(lua_State* L, void* p)
+extern void lua_pushlightuserdata(lua_State *L, void* p)
 {
    p = lj_lightud_intern(L, p);
    setrawlightudV(L->top, p);
@@ -817,7 +809,7 @@ extern void lua_pushlightuserdata(lua_State* L, void* p)
 //********************************************************************************************************************
 // Create table and push onto stack
 
-extern void lua_createtable(lua_State* L, int narray, int nrec)
+extern void lua_createtable(lua_State *L, int narray, int nrec)
 {
    lj_gc_check(L);
    settabV(L, L->top, lj_tab_new_ah(L, narray, nrec));
@@ -827,7 +819,7 @@ extern void lua_createtable(lua_State* L, int narray, int nrec)
 //********************************************************************************************************************
 // Create new metatable in registry
 
-extern int luaL_newmetatable(lua_State* L, const char* tname)
+extern int luaL_newmetatable(lua_State *L, const char* tname)
 {
    GCtab* regt = tabV(registry(L));
    TValue* tv = lj_tab_setstr(L, regt, lj_str_newz(L, tname));
@@ -847,7 +839,7 @@ extern int luaL_newmetatable(lua_State* L, const char* tname)
 //********************************************************************************************************************
 // Push current thread onto stack
 
-extern int lua_pushthread(lua_State* L)
+extern int lua_pushthread(lua_State *L)
 {
    setthreadV(L, L->top, L);
    incr_top(L);
@@ -857,9 +849,9 @@ extern int lua_pushthread(lua_State* L)
 //********************************************************************************************************************
 // Create new coroutine thread
 
-extern lua_State* lua_newthread(lua_State* L)
+extern lua_State* lua_newthread(lua_State *L)
 {
-   lua_State* L1;
+   lua_State *L1;
    lj_gc_check(L);
    L1 = lj_state_new(L);
    setthreadV(L, L->top, L1);
@@ -870,7 +862,7 @@ extern lua_State* lua_newthread(lua_State* L)
 //********************************************************************************************************************
 // Create userdata and push onto stack
 
-extern void* lua_newuserdata(lua_State* L, size_t size)
+extern void* lua_newuserdata(lua_State *L, size_t size)
 {
    GCudata* ud;
    lj_gc_check(L);
@@ -884,22 +876,18 @@ extern void* lua_newuserdata(lua_State* L, size_t size)
 //********************************************************************************************************************
 // Concatenate top n stack values
 
-extern void lua_concat(lua_State* L, int n)
+extern void lua_concat(lua_State *L, int n)
 {
    lj_checkapi_slot(n);
    if (n >= 2) {
       n--;
       do {
-         TValue* top = lj_meta_cat(L, L->top - 1, -n);
+         TValue *top = lj_meta_cat(L, L->top - 1, -n);
          if (top IS nullptr) {
             L->top -= n;
             break;
          }
-         n -= (int)(L->top - (top - 2 * LJ_FR2));
-         L->top = top + 2;
-         lj_vm_call(L, top, 1 + 1);
-         L->top -= 1 + LJ_FR2;
-         copyTV(L, L->top - 1, L->top + LJ_FR2);
+         n -= MetaCall::invokeConcat(L, top);
       } while (--n > 0);
    }
    else if (n IS 0) {  // Push empty string.
@@ -912,34 +900,24 @@ extern void lua_concat(lua_State* L, int n)
 //********************************************************************************************************************
 // Object getters
 
-extern void lua_gettable(lua_State* L, int idx)
+extern void lua_gettable(lua_State *L, int idx)
 {
-   cTValue* t = index2adr_check(L, idx);
-   cTValue* v = lj_meta_tget(L, t, L->top - 1);
-   if (v IS nullptr) {
-      L->top += 2;
-      lj_vm_call(L, L->top - 2, 1 + 1);
-      L->top -= 2 + LJ_FR2;
-      v = L->top + 1 + LJ_FR2;
-   }
+   cTValue *t = index2adr_check(L, idx);
+   cTValue *v = lj_meta_tget(L, t, L->top - 1);
+   if (v IS nullptr) v = MetaCall::invokeGet(L);
    copyTV(L, L->top - 1, v);
 }
 
 //********************************************************************************************************************
 // Get table field by string key
 
-extern void lua_getfield(lua_State* L, int idx, const char* k)
+extern void lua_getfield(lua_State *L, int idx, const char* k)
 {
-   cTValue* v, * t = index2adr_check(L, idx);
+   cTValue *t = index2adr_check(L, idx);
    TValue key;
    setstrV(L, &key, lj_str_newz(L, k));
-   v = lj_meta_tget(L, t, &key);
-   if (v IS nullptr) {
-      L->top += 2;
-      lj_vm_call(L, L->top - 2, 1 + 1);
-      L->top -= 2 + LJ_FR2;
-      v = L->top + 1 + LJ_FR2;
-   }
+   cTValue *v = lj_meta_tget(L, t, &key);
+   if (v IS nullptr) v = MetaCall::invokeGet(L);
    copyTV(L, L->top, v);
    incr_top(L);
 }
@@ -947,9 +925,9 @@ extern void lua_getfield(lua_State* L, int idx, const char* k)
 //********************************************************************************************************************
 // Get raw table value without metamethods
 
-extern void lua_rawget(lua_State* L, int idx)
+extern void lua_rawget(lua_State *L, int idx)
 {
-   cTValue* t = index2adr(L, idx);
+   cTValue *t = index2adr(L, idx);
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    copyTV(L, L->top - 1, lj_tab_get(L, tabV(t), L->top - 1));
 }
@@ -957,9 +935,9 @@ extern void lua_rawget(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get raw table value by integer index
 
-extern void lua_rawgeti(lua_State* L, int idx, int n)
+extern void lua_rawgeti(lua_State *L, int idx, int n)
 {
-   cTValue* v, * t = index2adr(L, idx);
+   cTValue *v, *t = index2adr(L, idx);
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    v = lj_tab_getint(tabV(t), n);
    copy_or_nil(L, L->top, v);
@@ -969,18 +947,14 @@ extern void lua_rawgeti(lua_State* L, int idx, int n)
 //********************************************************************************************************************
 // Get metatable of value
 
-extern int lua_getmetatable(lua_State* L, int idx)
+extern int lua_getmetatable(lua_State *L, int idx)
 {
-   cTValue* o = index2adr(L, idx);
-   GCtab* mt = nullptr;
-   if (tvistab(o))
-      mt = tabref(tabV(o)->metatable);
-   else if (tvisudata(o))
-      mt = tabref(udataV(o)->metatable);
-   else
-      mt = tabref(basemt_obj(G(L), o));
-   if (mt IS nullptr)
-      return 0;
+   cTValue *o = index2adr(L, idx);
+   GCtab *mt = nullptr;
+   if (tvistab(o)) mt = tabref(tabV(o)->metatable);
+   else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
+   else mt = tabref(basemt_obj(G(L), o));
+   if (mt IS nullptr) return 0;
    settabV(L, L->top, mt);
    incr_top(L);
    return 1;
@@ -989,10 +963,10 @@ extern int lua_getmetatable(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get metatable field by string key
 
-extern int luaL_getmetafield(lua_State* L, int idx, const char* field)
+extern int luaL_getmetafield(lua_State *L, int idx, const char* field)
 {
    if (lua_getmetatable(L, idx)) {
-      cTValue* tv = lj_tab_getstr(tabV(L->top - 1), lj_str_newz(L, field));
+      cTValue *tv = lj_tab_getstr(tabV(L->top - 1), lj_str_newz(L, field));
       if (tv and !tvisnil(tv)) {
          copyTV(L, L->top - 1, tv);
          return 1;
@@ -1005,7 +979,7 @@ extern int luaL_getmetafield(lua_State* L, int idx, const char* field)
 //********************************************************************************************************************
 // Get function/userdata/thread environment table
 
-extern void lua_getfenv(lua_State* L, int idx)
+extern void lua_getfenv(lua_State *L, int idx)
 {
    cTValue* o = index2adr_check(L, idx);
    if (tvisfunc(o)) settabV(L, L->top, tabref(funcV(o)->c.env));
@@ -1018,28 +992,24 @@ extern void lua_getfenv(lua_State* L, int idx)
 //********************************************************************************************************************
 // Get next table key-value pair
 
-extern int lua_next(lua_State* L, int idx)
+extern int lua_next(lua_State *L, int idx)
 {
    cTValue* t = index2adr(L, idx);
    int more;
    lj_checkapi(tvistab(t), "stack slot %d is not a table", idx);
    more = lj_tab_next(tabV(t), L->top - 1, L->top - 1);
-   if (more > 0) {
-      incr_top(L);  //  Return new key and value slot.
-   }
+   if (more > 0) incr_top(L);  //  Return new key and value slot.
    else if (!more) {  // End of traversal.
       L->top--;  //  Remove key slot.
    }
-   else {
-      lj_err_msg(L, ErrMsg::NEXTIDX);
-   }
+   else lj_err_msg(L, ErrMsg::NEXTIDX);
    return more;
 }
 
 //********************************************************************************************************************
 // Get function upvalue by index
 
-extern const char* lua_getupvalue(lua_State* L, int idx, int n)
+extern const char* lua_getupvalue(lua_State *L, int idx, int n)
 {
    TValue* val;
    GCobj* o;
@@ -1054,7 +1024,7 @@ extern const char* lua_getupvalue(lua_State* L, int idx, int n)
 //********************************************************************************************************************
 // Get unique identifier for upvalue
 
-extern void* lua_upvalueid(lua_State* L, int idx, int n)
+extern void* lua_upvalueid(lua_State *L, int idx, int n)
 {
    GCfunc* fn = funcV(index2adr(L, idx));
    n--;
@@ -1065,10 +1035,10 @@ extern void* lua_upvalueid(lua_State* L, int idx, int n)
 //********************************************************************************************************************
 // Join two function upvalues
 
-extern void lua_upvaluejoin(lua_State* L, int idx1, int n1, int idx2, int n2)
+extern void lua_upvaluejoin(lua_State *L, int idx1, int n1, int idx2, int n2)
 {
-   GCfunc* fn1 = funcV(index2adr(L, idx1));
-   GCfunc* fn2 = funcV(index2adr(L, idx2));
+   GCfunc *fn1 = funcV(index2adr(L, idx1));
+   GCfunc *fn2 = funcV(index2adr(L, idx2));
    n1--; n2--;
    lj_checkapi(isluafunc(fn1), "stack slot %d is not a Lua function", idx1);
    lj_checkapi(isluafunc(fn2), "stack slot %d is not a Lua function", idx2);
@@ -1081,7 +1051,7 @@ extern void lua_upvaluejoin(lua_State* L, int idx1, int n1, int idx2, int n2)
 //********************************************************************************************************************
 // Test if value is userdata with metatable
 
-extern void* luaL_testudata(lua_State* L, int idx, const char* tname)
+extern void* luaL_testudata(lua_State *L, int idx, const char* tname)
 {
    cTValue* o = index2adr(L, idx);
    if (tvisudata(o)) {
@@ -1096,7 +1066,7 @@ extern void* luaL_testudata(lua_State* L, int idx, const char* tname)
 //********************************************************************************************************************
 // Check and return userdata with metatable
 
-extern void* luaL_checkudata(lua_State* L, int idx, const char* tname)
+extern void* luaL_checkudata(lua_State *L, int idx, const char* tname)
 {
    void* p = luaL_testudata(L, idx, tname);
    if (!p) lj_err_argtype(L, idx, tname);
@@ -1104,59 +1074,46 @@ extern void* luaL_checkudata(lua_State* L, int idx, const char* tname)
 }
 
 //********************************************************************************************************************
-// Object setters
-
-//********************************************************************************************************************
 // Set table value by key
 
-extern void lua_settable(lua_State* L, int idx)
+extern void lua_settable(lua_State *L, int idx)
 {
-   TValue* o;
-   cTValue* t = index2adr_check(L, idx);
+   cTValue *t = index2adr_check(L, idx);
    lj_checkapi_slot(2);
-   o = lj_meta_tset(L, t, L->top - 2);
+   TValue *o = lj_meta_tset(L, t, L->top - 2);
    if (o) {
       // NOBARRIER: lj_meta_tset ensures the table is not black.
       L->top -= 2;
       copyTV(L, o, L->top + 1);
    }
    else {
-      TValue* base = L->top;
-      copyTV(L, base + 2, base - 3 - 2 * LJ_FR2);
-      L->top = base + 3;
-      lj_vm_call(L, base, 0 + 1);
-      L->top -= 3 + LJ_FR2;
+      MetaCall::invokeSetTable(L, L->top);
    }
 }
 
 //********************************************************************************************************************
 // Set table field by string key
 
-extern void lua_setfield(lua_State* L, int idx, const char* k)
+extern void lua_setfield(lua_State *L, int idx, const char* k)
 {
-   TValue* o;
    TValue key;
-   cTValue* t = index2adr_check(L, idx);
+   cTValue *t = index2adr_check(L, idx);
    lj_checkapi_slot(1);
    setstrV(L, &key, lj_str_newz(L, k));
-   o = lj_meta_tset(L, t, &key);
+   TValue *o = lj_meta_tset(L, t, &key);
    if (o) {
       // NOBARRIER: lj_meta_tset ensures the table is not black.
       copyTV(L, o, --L->top);
    }
    else {
-      TValue* base = L->top;
-      copyTV(L, base + 2, base - 3 - 2 * LJ_FR2);
-      L->top = base + 3;
-      lj_vm_call(L, base, 0 + 1);
-      L->top -= 2 + LJ_FR2;
+      MetaCall::invokeSetField(L, L->top);
    }
 }
 
 //********************************************************************************************************************
 // Set raw table value without metamethods
 
-extern void lua_rawset(lua_State* L, int idx)
+extern void lua_rawset(lua_State *L, int idx)
 {
    GCtab* t = tabV(index2adr(L, idx));
    TValue* dst, * key;
@@ -1171,7 +1128,7 @@ extern void lua_rawset(lua_State* L, int idx)
 //********************************************************************************************************************
 // Set raw table value by integer index
 
-extern void lua_rawseti(lua_State* L, int idx, int n)
+extern void lua_rawseti(lua_State *L, int idx, int n)
 {
    GCtab* t = tabV(index2adr(L, idx));
    TValue* dst, * src;
@@ -1186,7 +1143,7 @@ extern void lua_rawseti(lua_State* L, int idx, int n)
 //********************************************************************************************************************
 // Set metatable of value
 
-extern int lua_setmetatable(lua_State* L, int idx)
+extern int lua_setmetatable(lua_State *L, int idx)
 {
    GCtab *mt;
    cTValue *o = index2adr_check(L, idx);
@@ -1229,7 +1186,7 @@ extern int lua_setmetatable(lua_State* L, int idx)
 //********************************************************************************************************************
 // Set metatable from registry
 
-extern void luaL_setmetatable(lua_State* L, const char* tname)
+extern void luaL_setmetatable(lua_State *L, const char* tname)
 {
    lua_getfield(L, LUA_REGISTRYINDEX, tname);
    lua_setmetatable(L, -2);
@@ -1238,7 +1195,7 @@ extern void luaL_setmetatable(lua_State* L, const char* tname)
 //********************************************************************************************************************
 // Set function/userdata/thread environment table
 
-extern int lua_setfenv(lua_State* L, int idx)
+extern int lua_setfenv(lua_State *L, int idx)
 {
    cTValue* o = index2adr_check(L, idx);
    GCtab* t;
@@ -1266,7 +1223,7 @@ extern int lua_setfenv(lua_State* L, int idx)
 //********************************************************************************************************************
 // Set function upvalue by index
 
-extern const char* lua_setupvalue(lua_State* L, int idx, int n)
+extern const char* lua_setupvalue(lua_State *L, int idx, int n)
 {
    cTValue *f = index2adr(L, idx);
    TValue *val;
@@ -1285,7 +1242,7 @@ extern const char* lua_setupvalue(lua_State* L, int idx, int n)
 //********************************************************************************************************************
 // Prepare base for function call
 
-static TValue* api_call_base(lua_State* L, int nargs)
+static TValue* api_call_base(lua_State *L, int nargs)
 {
    TValue* o = L->top, * base = o - nargs;
    L->top = o + 1;
@@ -1297,17 +1254,24 @@ static TValue* api_call_base(lua_State* L, int nargs)
 //********************************************************************************************************************
 // Call Lua function synchronously
 
-extern void lua_call(lua_State* L, int nargs, int nresults)
+extern void lua_call(lua_State *L, int nargs, int nresults)
 {
    lj_checkapi(L->status IS LUA_OK or L->status IS LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
+
+   // Stack integrity checks - catch issues from VM helpers that don't set L->top.
+   // See VMHelperGuard in stack_helpers.h for the proper fix pattern.
+   lj_checkapi(L->base >= tvref(L->stack), "stack base before stack start");
+   lj_checkapi(L->top >= L->base, "stack top before base - VM helper may need VMHelperGuard");
+   lj_checkapi(L->top <= tvref(L->maxstack), "stack overflow");
+
    lj_vm_call(L, api_call_base(L, nargs), nresults + 1);
 }
 
 //********************************************************************************************************************
 // Call Lua function with error handling
 
-extern int lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
+extern int lua_pcall(lua_State *L, int nargs, int nresults, int errfunc)
 {
    global_State* g = G(L);
    uint8_t oldh = hook_save(g);
@@ -1316,6 +1280,12 @@ extern int lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
 
    lj_checkapi(L->status IS LUA_OK or L->status IS LUA_ERRERR, "thread called in wrong state %d", L->status);
    lj_checkapi_slot(nargs + 1);
+
+   // Stack integrity checks - catch issues from VM helpers that don't set L->top.
+   // See VMHelperGuard in stack_helpers.h for the proper fix pattern.
+   lj_checkapi(L->base >= tvref(L->stack), "stack base before stack start");
+   lj_checkapi(L->top >= L->base, "stack top before base - VM helper may need VMHelperGuard");
+   lj_checkapi(L->top <= tvref(L->maxstack), "stack overflow");
 
    if (errfunc IS 0) ef = 0;
    else {
@@ -1330,7 +1300,7 @@ extern int lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
 //********************************************************************************************************************
 // Prepare C function call with userdata argument
 
-static TValue* cpcall(lua_State* L, lua_CFunction func, void* ud)
+static TValue* cpcall(lua_State *L, lua_CFunction func, void* ud)
 {
    GCfunc* fn = lj_func_newC(L, 0, getcurrenv(L));
    TValue* top = L->top;
@@ -1347,9 +1317,9 @@ static TValue* cpcall(lua_State* L, lua_CFunction func, void* ud)
 //********************************************************************************************************************
 // Call C function with error handling
 
-extern int lua_cpcall(lua_State* L, lua_CFunction func, void* ud)
+extern int lua_cpcall(lua_State *L, lua_CFunction func, void *ud)
 {
-   global_State* g = G(L);
+   global_State *g = G(L);
    uint8_t oldh = hook_save(g);
    int status;
    lj_checkapi(L->status IS LUA_OK or L->status IS LUA_ERRERR, "thread called in wrong state %d", L->status);
@@ -1361,7 +1331,7 @@ extern int lua_cpcall(lua_State* L, lua_CFunction func, void* ud)
 //********************************************************************************************************************
 // Call metamethod function
 
-extern int luaL_callmeta(lua_State* L, int idx, const char* field)
+extern int luaL_callmeta(lua_State *L, int idx, const char *field)
 {
    if (luaL_getmetafield(L, idx, field)) {
       TValue* top = L->top--;
@@ -1377,7 +1347,7 @@ extern int luaL_callmeta(lua_State* L, int idx, const char* field)
 //********************************************************************************************************************
 // Test if coroutine can yield
 
-extern int lua_isyieldable(lua_State* L)
+extern int lua_isyieldable(lua_State *L)
 {
    return cframe_canyield(L->cframe);
 }
@@ -1385,9 +1355,9 @@ extern int lua_isyieldable(lua_State* L)
 //********************************************************************************************************************
 // Suspend current coroutine
 
-extern int lua_yield(lua_State* L, int nresults)
+extern int lua_yield(lua_State *L, int nresults)
 {
-   void* cf = L->cframe;
+   void *cf = L->cframe;
    global_State* g = G(L);
    if (cframe_canyield(cf)) {
       cf = cframe_raw(cf);
@@ -1429,7 +1399,7 @@ extern int lua_yield(lua_State* L, int nresults)
 //********************************************************************************************************************
 // Resume suspended coroutine
 
-extern int lua_resume(lua_State* L, int nargs)
+extern int lua_resume(lua_State *L, int nargs)
 {
    if (L->cframe IS nullptr and L->status <= LUA_YIELD)
       return lj_vm_resume(L, L->status IS LUA_OK ? api_call_base(L, nargs) : L->top - nargs, 0, 0);
@@ -1442,7 +1412,7 @@ extern int lua_resume(lua_State* L, int nargs)
 //********************************************************************************************************************
 // Control garbage collection
 
-extern int lua_gc(lua_State* L, int what, int data)
+extern int lua_gc(lua_State *L, int what, int data)
 {
    global_State* g = G(L);
    int res = 0;
@@ -1492,7 +1462,7 @@ extern int lua_gc(lua_State* L, int what, int data)
 //********************************************************************************************************************
 // Get memory allocator function and userdata
 
-extern lua_Alloc lua_getallocf(lua_State* L, void** ud)
+extern lua_Alloc lua_getallocf(lua_State *L, void** ud)
 {
    global_State* g = G(L);
    if (ud) *ud = g->allocd;
@@ -1502,7 +1472,7 @@ extern lua_Alloc lua_getallocf(lua_State* L, void** ud)
 //********************************************************************************************************************
 // Set memory allocator function and userdata
 
-extern void lua_setallocf(lua_State* L, lua_Alloc f, void* ud)
+extern void lua_setallocf(lua_State *L, lua_Alloc f, void* ud)
 {
    global_State* g = G(L);
    g->allocd = ud;

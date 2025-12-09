@@ -109,6 +109,20 @@ if (ENABLE_UNIT_TESTS)
    list(APPEND LUAJIT_NON_MSVC_DEFS -DENABLE_UNIT_TESTS)
 endif ()
 
+# LUA_USE_ASSERT enables runtime assertions for early detection of VM state issues.
+# This catches problems like invalid stack state (L->top < L->base) in gc_traverse_frames.
+# See VMHelperGuard in stack_helpers.h for context on the issues this helps catch.
+#
+# IMPORTANT: LUA_USE_ASSERT is NOT added to LUAJIT_COMMON_DEFS or LUAJIT_NON_MSVC_DEFS
+# because host tools (minilua, buildvm) use those lists but don't link with the runtime
+# that provides lj_assert_fail(). Instead, we use:
+#   - Generator expressions for MSVC multi-config builds (in target_compile_definitions)
+#   - LUAJIT_LIBRARY_DEFS for non-MSVC single-config builds (in custom commands)
+set(LUAJIT_LIBRARY_DEFS "")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+   set(LUAJIT_LIBRARY_DEFS -DLUA_USE_ASSERT)
+endif ()
+
 # Common host tool sources (used by both MSVC and non-MSVC builds)
 set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
 set (LUAJIT_DYNASM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/dynasm")
@@ -259,7 +273,10 @@ if (MSVC)
       OUTPUT_NAME "lua51"
       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/luajit-2.1/lib"
    )
-   target_compile_definitions(luajit_lib PRIVATE ${LUAJIT_COMMON_DEFS} _CRT_SECURE_NO_DEPRECATE)
+   target_compile_definitions(luajit_lib PRIVATE
+      ${LUAJIT_COMMON_DEFS}
+      _CRT_SECURE_NO_DEPRECATE
+      $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
 
    target_include_directories(luajit_lib PRIVATE
       "${LUAJIT_SRC}"
@@ -520,6 +537,7 @@ else ()
          COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
+            ${LUAJIT_LIBRARY_DEFS}
             -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
             ${LUAJIT_INCLUDE_DIRS}
             -Wno-trigraphs
@@ -544,6 +562,7 @@ else ()
          COMMAND ${CMAKE_CXX_COMPILER} ${LUAJIT_COMMON_CXXFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${LUAJIT_NON_MSVC_DEFS}
+            ${LUAJIT_LIBRARY_DEFS}
             ${LUAJIT_INCLUDE_DIRS}
             -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
          DEPENDS ${LUAJIT_VM_S}
@@ -645,7 +664,8 @@ target_link_libraries (${MOD} PRIVATE
 target_compile_definitions(${MOD} PRIVATE
    LUAJIT_DISABLE_FFI
    LUAJIT_DISABLE_BUFFER
-   LUAJIT_ENABLE_LUA52COMPAT)
+   LUAJIT_ENABLE_LUA52COMPAT
+   $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
 
 if (ENABLE_UNIT_TESTS)
    target_compile_definitions(${MOD} PRIVATE ENABLE_UNIT_TESTS)

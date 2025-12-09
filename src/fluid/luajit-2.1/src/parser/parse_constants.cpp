@@ -7,7 +7,7 @@
 {
    lua_State* L = fs->L;
    TValue* o;
-   fs->assert(e->is_num_constant(), "bad usage");
+   fs_check_assert(fs, e->is_num_constant(), "bad usage: ExpKind=%d", int(e->k));
    o = lj_tab_set(L, fs->kt, &e->u.nval);
    if (tvhaskslot(o)) return tvkslot(o);
    o->u64 = fs->nkn;
@@ -33,7 +33,9 @@
 
 [[nodiscard]] BCREG const_str(FuncState* fs, ExpDesc* e)
 {
-   fs->assert(e->is_str_constant() or e->k IS ExpKind::Global, "bad usage");
+   // Accepts string constants, globals, and unscoped (all store string in u.sval)
+   fs_check_assert(fs, e->is_str_constant() or e->k IS ExpKind::Global or e->k IS ExpKind::Unscoped,
+      "bad usage: ExpKind=%d", int(e->k));
    return const_gc(fs, obj2gco(e->u.sval), LJ_TSTR);
 }
 
@@ -129,7 +131,7 @@ void JumpListView::patch_instruction(BCPOS Position, BCPOS Destination) const
    FuncState* fs = func_state;
    BCIns* instruction = &func_state->bcbase[Position].ins;
    BCPOS offset = Destination - (Position + 1) + BCBIAS_J;
-   fs->assert(not(Destination IS NO_JMP), "uninitialized jump target");
+   fs_check_assert(fs,not(Destination IS NO_JMP), "uninitialized jump target");
    if (offset > BCMAX_D) func_state->ls->err_syntax(ErrMsg::XJUMP);
    setbc_d(instruction, offset);
 }
@@ -172,7 +174,7 @@ void JumpListView::patch_to(BCPOS Target) const
    if (Target IS func_state->pc) patch_to_here();
    else {
       FuncState* fs = func_state;
-      fs->assert(Target < func_state->pc, "bad jump target");
+      fs_check_assert(fs,Target < func_state->pc, "bad jump target");
       patch_with_value(Target, NO_REG, Target);
    }
 }

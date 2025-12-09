@@ -1,7 +1,5 @@
-/*
-** Metamethod handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-*/
+// Metamethod handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 
 #pragma once
 
@@ -27,19 +25,18 @@ LJ_FUNC int lj_meta_tailcall(lua_State* L, cTValue* tv);
 }
 
 // C helpers for some instructions, called from assembler VM.
-LJ_FUNCA [[nodiscard]] cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k);
-LJ_FUNCA [[nodiscard]] TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k);
-LJ_FUNCA [[nodiscard]] TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb,
-   cTValue* rc, BCREG op);
-LJ_FUNCA [[nodiscard]] TValue* lj_meta_cat(lua_State* L, TValue* top, int left);
-LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o);
-LJ_FUNCA [[nodiscard]] TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne);
-LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins);
-LJ_FUNCA [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State* L, BCIns ins);
-LJ_FUNCA [[nodiscard]] TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
-LJ_FUNCA void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp);
-LJ_FUNCA void lj_meta_call(lua_State* L, TValue* func, TValue* top);
-LJ_FUNCA void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
+extern "C" [[nodiscard]] cTValue* lj_meta_tget(lua_State* L, cTValue* o, cTValue* k);
+extern "C" [[nodiscard]] TValue* lj_meta_tset(lua_State* L, cTValue* o, cTValue* k);
+extern "C" [[nodiscard]] TValue* lj_meta_arith(lua_State* L, TValue* ra, cTValue* rb, cTValue* rc, BCREG op);
+extern "C" [[nodiscard]] TValue* lj_meta_cat(lua_State* L, TValue* top, int left);
+extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_len(lua_State* L, cTValue* o);
+extern "C" [[nodiscard]] TValue* lj_meta_equal(lua_State* L, GCobj* o1, GCobj* o2, int ne);
+extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_cd(lua_State* L, BCIns ins);
+extern "C" [[nodiscard]] TValue* LJ_FASTCALL lj_meta_equal_thunk(lua_State* L, BCIns ins);
+extern "C" [[nodiscard]] TValue* lj_meta_comp(lua_State* L, cTValue* o1, cTValue* o2, int op);
+extern "C" void lj_meta_istype(lua_State* L, BCREG ra, BCREG tp);
+extern "C" void lj_meta_call(lua_State* L, TValue* func, TValue* top);
+extern "C" void LJ_FASTCALL lj_meta_for(lua_State* L, TValue* o);
 
 // Helper for __close metamethod during scope exit. Returns error code (0 = success).
-LJ_FUNC int lj_meta_close(lua_State* L, TValue* o, TValue* err);
+extern "C" int lj_meta_close(lua_State* L, TValue* o, TValue* err);
