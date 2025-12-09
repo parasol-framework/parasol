@@ -28,27 +28,25 @@
 #include "lj_dispatch.h"
 #include "lj_vm.h"
 
-#define GCSTEPSIZE   1024u
-#define GCSWEEPMAX   40
-#define GCSWEEPCOST   10
-#define GCFINALIZECOST   100
+#define GCSTEPSIZE     1024u
+#define GCSWEEPMAX     40
+#define GCSWEEPCOST    10
+#define GCFINALIZECOST 100
 
 // Macros to set GCobj colors and flags.
-#define white2gray(x)      ((x)->gch.marked &= (uint8_t)~LJ_GC_WHITES)
-#define gray2black(x)      ((x)->gch.marked |= LJ_GC_BLACK)
-#define isfinalized(u)      ((u)->marked & LJ_GC_FINALIZED)
+#define white2gray(x)    ((x)->gch.marked &= (uint8_t)~LJ_GC_WHITES)
+#define gray2black(x)    ((x)->gch.marked |= LJ_GC_BLACK)
+#define isfinalized(u)   ((u)->marked & LJ_GC_FINALIZED)
 
 // -- Mark phase ----------------------------------------------------------
 
 // Mark a TValue (if needed).
 #define gc_marktv(g, tv) \
-  { lj_assertG(!tvisgcv(tv) or (~itype(tv) == gcval(tv)->gch.gct), \
-          "TValue and GC type mismatch"); \
+  { lj_assertG(!tvisgcv(tv) or (~itype(tv) IS gcval(tv)->gch.gct), "TValue and GC type mismatch"); \
     if (tviswhite(tv)) gc_mark(g, gcV(tv)); }
 
 // Mark a GCobj (if needed).
-#define gc_markobj(g, o) \
-  { if (iswhite(obj2gco(o))) gc_mark(g, obj2gco(o)); }
+#define gc_markobj(g, o) { if (iswhite(obj2gco(o))) gc_mark(g, obj2gco(o)); }
 
 // Mark a string object.
 #define gc_mark_str(s)      ((s)->marked &= (uint8_t)~LJ_GC_WHITES)
@@ -60,41 +58,35 @@ static void gc_mark(global_State* g, GCobj* o)
    lj_assertG(iswhite(o), "mark of non-white object");
    lj_assertG(!isdead(g, o), "mark of dead object");
    white2gray(o);
-   if (LJ_UNLIKELY(gct == ~LJ_TUDATA)) {
+   if (LJ_UNLIKELY(gct IS ~LJ_TUDATA)) {
       GCtab* mt = tabref(gco2ud(o)->metatable);
       gray2black(o);  //  Userdata are never gray.
       if (mt) gc_markobj(g, mt);
       gc_markobj(g, tabref(gco2ud(o)->env));
       if (LJ_HASBUFFER and gco2ud(o)->udtype IS UDTYPE_BUFFER) {
          SBufExt* sbx = (SBufExt*)uddata(gco2ud(o));
-         if (sbufiscow(sbx) and gcref(sbx->cowref))
-            gc_markobj(g, gcref(sbx->cowref));
-         if (gcref(sbx->dict_str))
-            gc_markobj(g, gcref(sbx->dict_str));
-         if (gcref(sbx->dict_mt))
-            gc_markobj(g, gcref(sbx->dict_mt));
+         if (sbufiscow(sbx) and gcref(sbx->cowref)) gc_markobj(g, gcref(sbx->cowref));
+         if (gcref(sbx->dict_str)) gc_markobj(g, gcref(sbx->dict_str));
+         if (gcref(sbx->dict_mt)) gc_markobj(g, gcref(sbx->dict_mt));
       }
       else if (gco2ud(o)->udtype IS UDTYPE_THUNK) {
          // Mark thunk payload contents to prevent GC from collecting them
          ThunkPayload* payload = thunk_payload(gco2ud(o));
          // Mark the deferred function
-         if (gcref(payload->deferred_func))
-            gc_markobj(g, gcref(payload->deferred_func));
+         if (gcref(payload->deferred_func)) gc_markobj(g, gcref(payload->deferred_func));
          // Mark the cached value if it's a GC object
          if (payload->resolved and tvisgcv(&payload->cached_value))
             gc_markobj(g, gcval(&payload->cached_value));
       }
    }
-   else if (LJ_UNLIKELY(gct == ~LJ_TUPVAL)) {
+   else if (LJ_UNLIKELY(gct IS ~LJ_TUPVAL)) {
       GCupval* uv = gco2uv(o);
       gc_marktv(g, uvval(uv));
-      if (uv->closed)
-         gray2black(o);  //  Closed upvalues are never gray.
+      if (uv->closed) gray2black(o);  //  Closed upvalues are never gray.
    }
    else if (gct != ~LJ_TSTR and gct != ~LJ_TCDATA) {
-      lj_assertG(gct == ~LJ_TFUNC or gct == ~LJ_TTAB ||
-         gct == ~LJ_TTHREAD or gct == ~LJ_TPROTO or gct == ~LJ_TTRACE,
-         "bad GC type %d", gct);
+      lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB ||
+         gct IS ~LJ_TTHREAD or gct IS ~LJ_TPROTO or gct IS ~LJ_TTRACE, "bad GC type %d", gct);
       setgcrefr(o->gch.gclist, g->gc.gray);
       setgcref(g->gc.gray, o);
    }
@@ -127,7 +119,7 @@ static void gc_mark_uv(global_State* g)
 {
    GCupval* uv;
    for (uv = uvnext(&g->uvhead); uv != &g->uvhead; uv = uvnext(uv)) {
-      lj_assertG(uvprev(uvnext(uv)) == uv and uvnext(uvprev(uv)) == uv,
+      lj_assertG(uvprev(uvnext(uv)) IS uv and uvnext(uvprev(uv)) IS uv,
          "broken upvalue chain");
       if (isgray(obj2gco(uv)))
          gc_marktv(g, uvval(uv));
@@ -196,13 +188,13 @@ static int gc_traverse_tab(global_State* g, GCtab* t)
       const char* modestr = strVdata(mode);
       int c;
       while ((c = *modestr++)) {
-         if (c == 'k') weak |= LJ_GC_WEAKKEY;
-         else if (c == 'v') weak |= LJ_GC_WEAKVAL;
+         if (c IS 'k') weak |= LJ_GC_WEAKKEY;
+         else if (c IS 'v') weak |= LJ_GC_WEAKVAL;
       }
       if (weak) {  // Weak tables are cleared in the atomic phase.
 #if LJ_HASFFI
          CTState* cts = ctype_ctsG(g);
-         if (cts and cts->finalizer == t) {
+         if (cts and cts->finalizer IS t) {
             weak = (int)(~0u & ~LJ_GC_WEAKVAL);
          }
          else
@@ -215,7 +207,7 @@ static int gc_traverse_tab(global_State* g, GCtab* t)
       }
    }
 
-   if (weak == LJ_GC_WEAK)  //  Nothing to mark if both keys/values are weak.
+   if (weak IS LJ_GC_WEAK)  //  Nothing to mark if both keys/values are weak.
       return 1;
 
    if (!(weak & LJ_GC_WEAKVAL)) {  // Mark array part.
@@ -275,13 +267,11 @@ static void gc_marktrace(global_State* g, TraceNo traceno)
 static void gc_traverse_trace(global_State* g, GCtrace* T)
 {
    IRRef ref;
-   if (T->traceno == 0) return;
+   if (T->traceno IS 0) return;
    for (ref = T->nk; ref < REF_TRUE; ref++) {
       IRIns* ir = &T->ir[ref];
-      if (ir->o == IR_KGC)
-         gc_markobj(g, ir_kgc(ir));
-      if (irt_is64(ir->t) and ir->o != IR_KNULL)
-         ref++;
+      if (ir->o IS IR_KGC) gc_markobj(g, ir_kgc(ir));
+      if (irt_is64(ir->t) and ir->o != IR_KNULL) ref++;
    }
    if (T->link) gc_marktrace(g, T->link);
    if (T->nextroot) gc_marktrace(g, T->nextroot);
@@ -325,14 +315,14 @@ static MSize gc_traverse_frames(global_State* g, lua_State* th)
 
       // Validate function pointer before dereferencing
       lj_assertG(fn != nullptr, "null function in frame");
-      lj_assertG(fn->c.gct == ~LJ_TFUNC, "invalid function type in frame: %d", fn->c.gct);
+      lj_assertG(fn->c.gct IS ~LJ_TFUNC, "invalid function type in frame: %d", fn->c.gct);
 
       TValue* ftop = frame;
       if (isluafunc(fn)) ftop += funcproto(fn)->framesize;
       if (ftop > top) top = ftop;
       if (!LJ_FR2) gc_markobj(g, fn);  //  Need to mark hidden function (or L).
    }
-   top++;  //  Correct bias of -1 (frame == base-1).
+   top++;  //  Correct bias of -1 (frame IS base-1).
    if (top > tvref(th->maxstack)) top = tvref(th->maxstack);
    return (MSize)(top - bot);  //  Return minimum needed stack size.
 }
@@ -343,7 +333,7 @@ static void gc_traverse_thread(global_State* g, lua_State* th)
 {
    TValue* o, * top = th->top;
    for (o = tvref(th->stack) + 1 + LJ_FR2; o < top; o++) gc_marktv(g, o);
-   if (g->gc.state == GCSatomic) {
+   if (g->gc.state IS GCSatomic) {
       top = tvref(th->stack) + th->stacksize;
       for (; o < top; o++)  //  Clear unmarked slots.
          setnilV(o);
@@ -360,24 +350,24 @@ static size_t propagatemark(global_State* g)
    lj_assertG(isgray(o), "propagation of non-gray object");
    gray2black(o);
    setgcrefr(g->gc.gray, o->gch.gclist);  //  Remove from gray list.
-   if (LJ_LIKELY(gct == ~LJ_TTAB)) {
+   if (LJ_LIKELY(gct IS ~LJ_TTAB)) {
       GCtab* t = gco2tab(o);
       if (gc_traverse_tab(g, t) > 0)
          black2gray(o);  //  Keep weak tables gray.
       return sizeof(GCtab) + sizeof(TValue) * t->asize +
          (t->hmask ? sizeof(Node) * (t->hmask + 1) : 0);
    }
-   else if (LJ_LIKELY(gct == ~LJ_TFUNC)) {
+   else if (LJ_LIKELY(gct IS ~LJ_TFUNC)) {
       GCfunc* fn = gco2func(o);
       gc_traverse_func(g, fn);
       return isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) : sizeCfunc((MSize)fn->c.nupvalues);
    }
-   else if (LJ_LIKELY(gct == ~LJ_TPROTO)) {
+   else if (LJ_LIKELY(gct IS ~LJ_TPROTO)) {
       GCproto* pt = gco2pt(o);
       gc_traverse_proto(g, pt);
       return pt->sizept;
    }
-   else if (LJ_LIKELY(gct == ~LJ_TTHREAD)) {
+   else if (LJ_LIKELY(gct IS ~LJ_TTHREAD)) {
       lua_State* th = gco2th(o);
       setgcrefr(th->gclist, g->gc.grayagain);
       setgcref(g->gc.grayagain, o);
@@ -437,7 +427,7 @@ static GCRef* gc_sweep(global_State* g, GCRef* p, uint32_t lim)
    int ow = otherwhite(g);
    GCobj* o;
    while ((o = gcref(*p)) != nullptr and lim-- > 0) {
-      if (o->gch.gct == ~LJ_TTHREAD)  //  Need to sweep open upvalues, too.
+      if (o->gch.gct IS ~LJ_TTHREAD)  //  Need to sweep open upvalues, too.
          gc_fullsweep(g, &gco2th(o)->openupval);
 
       if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  // Black or current white?
@@ -446,9 +436,9 @@ static GCRef* gc_sweep(global_State* g, GCRef* p, uint32_t lim)
          p = &o->gch.nextgc;
       }
       else {  // Otherwise value is dead, free it.
-         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED, "sweep of unlive object");
+         lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED, "sweep of unlive object");
          setgcrefr(*p, o->gch.nextgc);
-         if (o == gcref(g->gc.root)) setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
+         if (o IS gcref(g->gc.root)) setgcrefr(g->gc.root, o->gch.nextgc);  //  Adjust list anchor.
          gc_freefunc[o->gch.gct - ~LJ_TSTR](g, o);
       }
    }
@@ -473,7 +463,7 @@ static void gc_sweepstr(global_State* g, GCRef* chain)
          p = &o->gch.nextgc;
       }
       else {  // Otherwise string is dead, free it.
-         lj_assertG(isdead(g, o) or ow == LJ_GC_SFIXED, "sweep of unlive string");
+         lj_assertG(isdead(g, o) or ow IS LJ_GC_SFIXED, "sweep of unlive string");
          setgcrefr(*p, o->gch.nextgc);
          lj_str_free(g, gco2str(o));
       }
@@ -549,8 +539,7 @@ static void gc_call_finalizer(global_State* g, lua_State* L, cTValue* mo, GCobj*
    hook_restore(g, oldh);
    if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
    g->gc.threshold = oldt;  //  Restore GC threshold.
-   if (errcode)
-      lj_err_throw(L, errcode);  //  Propagate errors.
+   if (errcode) lj_err_throw(L, errcode);  //  Propagate errors.
 }
 
 // Finalize one userdata or cdata object from the mmudata list.
@@ -559,14 +548,14 @@ static void gc_finalize(lua_State* L)
    global_State* g = G(L);
    GCobj* o = gcnext(gcref(g->gc.mmudata));
    cTValue* mo;
-   lj_assertG(tvref(g->jit_base) == nullptr, "finalizer called on trace");
+   lj_assertG(tvref(g->jit_base) IS nullptr, "finalizer called on trace");
    // Unchain from list of userdata to be finalized.
-   if (o == gcref(g->gc.mmudata))
+   if (o IS gcref(g->gc.mmudata))
       setgcrefnull(g->gc.mmudata);
    else
       setgcrefr(gcref(g->gc.mmudata)->gch.nextgc, o->gch.nextgc);
 #if LJ_HASFFI
-   if (o->gch.gct == ~LJ_TCDATA) {
+   if (o->gch.gct IS ~LJ_TCDATA) {
       TValue tmp, * tv;
       // Add cdata back to the GC list and make it white.
       setgcrefr(o->gch.nextgc, g->gc.root);
@@ -591,15 +580,13 @@ static void gc_finalize(lua_State* L)
    makewhite(g, o);
    // Resolve the __gc metamethod.
    mo = lj_meta_fastg(g, tabref(gco2ud(o)->metatable), MM_gc);
-   if (mo)
-      gc_call_finalizer(g, L, mo, o);
+   if (mo) gc_call_finalizer(g, L, mo, o);
 }
 
 // Finalize all userdata objects from mmudata list.
 void lj_gc_finalize_udata(lua_State* L)
 {
-   while (gcref(G(L)->gc.mmudata) != nullptr)
-      gc_finalize(L);
+   while (gcref(G(L)->gc.mmudata) != nullptr) gc_finalize(L);
 }
 
 #if LJ_HASFFI
@@ -716,7 +703,7 @@ static size_t gc_onestep(lua_State* L)
       setmref(g->gc.sweep, gc_sweep(g, mref(g->gc.sweep, GCRef), GCSWEEPMAX));
       lj_assertG(old >= g->gc.total, "sweep increased memory");
       g->gc.estimate -= old - g->gc.total;
-      if (gcref(*mref(g->gc.sweep, GCRef)) == nullptr) {
+      if (gcref(*mref(g->gc.sweep, GCRef)) IS nullptr) {
          if (g->str.num <= (g->str.mask >> 2) and g->str.mask > LJ_MIN_STRTAB * 2 - 1)
             lj_str_resize(L, g->str.mask >> 1);  //  Shrink string table.
          if (gcref(g->gc.mmudata)) {  // Need any finalizations?
@@ -764,18 +751,18 @@ int LJ_FASTCALL lj_gc_step(lua_State* L)
    int32_t ostate = g->vmstate;
    setvmstate(g, GC);
    lim = (GCSTEPSIZE / 100) * g->gc.stepmul;
-   if (lim == 0) lim = LJ_MAX_MEM;
+   if (lim IS 0) lim = LJ_MAX_MEM;
    if (g->gc.total > g->gc.threshold) g->gc.debt += g->gc.total - g->gc.threshold;
 
    do {
       lim -= (GCSize)gc_onestep(L);
-      if (g->gc.state == GCSpause) {
+      if (g->gc.state IS GCSpause) {
          g->gc.threshold = (g->gc.estimate / 100) * g->gc.pause;
          g->vmstate = ostate;
          return 1;  //  Finished a GC cycle.
       }
-   } while (sizeof(lim) == 8 ? ((int64_t)lim > 0) : ((int32_t)lim > 0));
-   
+   } while (sizeof(lim) IS 8 ? ((int64_t)lim > 0) : ((int32_t)lim > 0));
+
    if (g->gc.debt < GCSTEPSIZE) {
       g->gc.threshold = g->gc.total + GCSTEPSIZE;
       g->vmstate = ostate;
@@ -803,10 +790,10 @@ int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps)
    lua_State* L = gco2th(gcref(g->cur_L));
    L->base = tvref(G(L)->jit_base);
    L->top = curr_topL(L);
-   while (steps-- > 0 and lj_gc_step(L) == 0)
+   while (steps-- > 0 and lj_gc_step(L) IS 0)
       ;
    // Return 1 to force a trace exit.
-   return (G(L)->gc.state == GCSatomic or G(L)->gc.state == GCSfinalize);
+   return (G(L)->gc.state IS GCSatomic or G(L)->gc.state IS GCSfinalize);
 }
 
 // Perform a full GC cycle.
@@ -823,8 +810,8 @@ void lj_gc_fullgc(lua_State* L)
       g->gc.state = GCSsweepstring;  //  Fast forward to the sweep phase.
       g->gc.sweepstr = 0;
    }
-   while (g->gc.state == GCSsweepstring or g->gc.state == GCSsweep) gc_onestep(L);  //  Finish sweep.
-   lj_assertG(g->gc.state == GCSfinalize or g->gc.state == GCSpause, "bad GC state");
+   while (g->gc.state IS GCSsweepstring or g->gc.state IS GCSsweep) gc_onestep(L);  //  Finish sweep.
+   lj_assertG(g->gc.state IS GCSfinalize or g->gc.state IS GCSpause, "bad GC state");
    // Now perform a full GC.
    g->gc.state = GCSpause;
    do { gc_onestep(L); } while (g->gc.state != GCSpause);
@@ -838,13 +825,11 @@ void lj_gc_fullgc(lua_State* L)
 
 void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v)
 {
-   lj_assertG(isblack(o) and iswhite(v) and !isdead(g, v) and !isdead(g, o),
-      "bad object states for forward barrier");
-   lj_assertG(g->gc.state != GCSfinalize and g->gc.state != GCSpause,
-      "bad GC state");
+   lj_assertG(isblack(o) and iswhite(v) and !isdead(g, v) and !isdead(g, o), "bad object states for forward barrier");
+   lj_assertG(g->gc.state != GCSfinalize and g->gc.state != GCSpause, "bad GC state");
    lj_assertG(o->gch.gct != ~LJ_TTAB, "barrier object is not a table");
    // Preserve invariant during propagation. Otherwise it doesn't matter.
-   if (g->gc.state == GCSpropagate or g->gc.state == GCSatomic) gc_mark(g, v);  //  Move frontier forward.
+   if (g->gc.state IS GCSpropagate or g->gc.state IS GCSatomic) gc_mark(g, v);  //  Move frontier forward.
    else makewhite(g, o);  //  Make it white to avoid the following barrier.
 }
 
@@ -854,8 +839,7 @@ void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv)
 {
 #define TV2MARKED(x) \
   (*((uint8_t *)(x) - offsetof(GCupval, tv) + offsetof(GCupval, marked)))
-   if (g->gc.state == GCSpropagate or g->gc.state == GCSatomic)
-      gc_mark(g, gcV(tv));
+   if (g->gc.state IS GCSpropagate or g->gc.state IS GCSatomic) gc_mark(g, gcV(tv));
    else
       TV2MARKED(tv) = (TV2MARKED(tv) & (uint8_t)~LJ_GC_COLORS) | curwhite(g);
 #undef TV2MARKED
@@ -873,7 +857,7 @@ void lj_gc_closeuv(global_State* g, GCupval* uv)
    setgcrefr(o->gch.nextgc, g->gc.root);
    setgcref(g->gc.root, o);
    if (isgray(o)) {  // A closed upvalue is never gray, so fix this.
-      if (g->gc.state == GCSpropagate or g->gc.state == GCSatomic) {
+      if (g->gc.state IS GCSpropagate or g->gc.state IS GCSatomic) {
          gray2black(o);  //  Make it black and preserve invariant.
          if (tviswhite(&uv->tv)) lj_gc_barrierf(g, o, gcV(&uv->tv));
       }
@@ -888,7 +872,7 @@ void lj_gc_closeuv(global_State* g, GCupval* uv)
 // Mark a trace if it's saved during the propagation phase.
 void lj_gc_barriertrace(global_State* g, uint32_t traceno)
 {
-   if (g->gc.state == GCSpropagate or g->gc.state == GCSatomic)
+   if (g->gc.state IS GCSpropagate or g->gc.state IS GCSatomic)
       gc_marktrace(g, traceno);
 }
 
@@ -899,13 +883,11 @@ void lj_gc_barriertrace(global_State* g, uint32_t traceno)
 void* lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz)
 {
    global_State* g = G(L);
-   lj_assertG((osz == 0) == (p == nullptr), "realloc API violation");
+   lj_assertG((osz IS 0) IS (p IS nullptr), "realloc API violation");
    p = g->allocf(g->allocd, p, osz, nsz);
-   if (p == nullptr and nsz > 0)
-      lj_err_mem(L);
-   lj_assertG((nsz == 0) == (p == nullptr), "allocf API violation");
-   lj_assertG(checkptrGC(p),
-      "allocated memory address %p outside required range", p);
+   if (p IS nullptr and nsz > 0) lj_err_mem(L);
+   lj_assertG((nsz IS 0) IS (p IS nullptr), "allocf API violation");
+   lj_assertG(checkptrGC(p), "allocated memory address %p outside required range", p);
    g->gc.total = (g->gc.total - osz) + nsz;
    return p;
 }
@@ -916,7 +898,7 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size)
 {
    global_State* g = G(L);
    GCobj* o = (GCobj*)g->allocf(g->allocd, nullptr, 0, size);
-   if (o == nullptr) lj_err_mem(L);
+   if (o IS nullptr) lj_err_mem(L);
    lj_assertG(checkptrGC(o), "allocated memory address %p outside required range", o);
    g->gc.total += size;
    setgcrefr(o->gch.nextgc, g->gc.root);
@@ -936,4 +918,3 @@ void * lj_mem_grow(lua_State* L, void* p, MSize* szp, MSize lim, MSize esz)
    *szp = sz;
    return p;
 }
-
