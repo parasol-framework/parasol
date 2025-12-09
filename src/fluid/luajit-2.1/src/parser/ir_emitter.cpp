@@ -274,6 +274,15 @@ UnsupportedNodeRecorder glUnsupportedNodes;
 }
 
 //********************************************************************************************************************
+// Check if an ExpDesc represents a blank identifier target (used in assignments).
+// Blank identifiers are represented as Global with NAME_BLANK symbol.
+
+[[nodiscard]] static bool is_blank_target(const ExpDesc& expr)
+{
+   return expr.k IS ExpKind::Global and expr.u.sval IS NAME_BLANK;
+}
+
+//********************************************************************************************************************
 // Map an AST binary operator to its corresponding bytecode binary operator representation.
 
 [[nodiscard]] static std::optional<BinOpr> map_binary_operator(AstBinaryOperator op)
@@ -1502,13 +1511,21 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
          this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
       }
 
-      // Values are in consecutive registers starting at tail.u.s.aux (for calls)
-      BCReg value_base = BCReg(tail.u.s.aux);
+      // Values are in consecutive registers starting at (freereg - nvars) for non-calls
+      // For calls, tail.u.s.aux contains the base register
+      BCReg value_base = (tail.k IS ExpKind::Call) ? BCReg(tail.u.s.aux)
+                                                   : BCReg(this->func_state.freereg - nvars.raw());
 
       // Process targets from first to last
       for (size_t i = 0; i < targets.size(); ++i) {
          PreparedAssignment& target = targets[i];
          BCReg value_slot = value_base + BCReg(i);
+
+         // Skip blank identifiers - the value is discarded
+         if (is_blank_target(target.storage)) {
+            allocator.release(target.reserved);
+            continue;
+         }
 
          if (target.needs_var_add and target.pending_symbol) {
             // Create new local for this undeclared variable
@@ -1540,6 +1557,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       std::vector<PreparedAssignment>::reverse_iterator last)
    {
       for (; first != last; ++first) {
+         // Skip blank identifiers - the value is discarded
+         if (is_blank_target(first->storage)) continue;
+
          ExpDesc stack_value;
          stack_value.init(ExpKind::NonReloc, this->func_state.freereg - 1);
          bcemit_store(&this->func_state, &first->storage, &stack_value);
@@ -1557,7 +1577,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             tail.k = ExpKind::NonReloc;
          }
       }
-      bcemit_store(&this->func_state, &targets.back().storage, &tail);
+      // Skip blank identifiers for the last target
+      if (not is_blank_target(targets.back().storage)) {
+         bcemit_store(&this->func_state, &targets.back().storage, &tail);
+      }
       if (targets.size() > 1) {
          auto begin = targets.rbegin();
          ++begin;
@@ -3115,7 +3138,17 @@ ParserResult<ExpDesc> IrEmitter::emit_lvalue_expr(const ExprNode &Expr, bool All
 {
    switch (Expr.kind) {
       case AstNodeKind::IdentifierExpr: {
-         auto result = this->emit_identifier_expr(std::get<NameRef>(Expr.data));
+         const NameRef& name_ref = std::get<NameRef>(Expr.data);
+
+         // Blank identifiers (_) are treated specially - they discard values
+         if (name_ref.identifier.is_blank) {
+            ExpDesc blank_expr;
+            blank_expr.init(ExpKind::Global, 0);
+            blank_expr.u.sval = NAME_BLANK;
+            return ParserResult<ExpDesc>::success(blank_expr);
+         }
+
+         auto result = this->emit_identifier_expr(name_ref);
          if (not result.ok()) return result;
          ExpDesc value = result.value_ref();
          if (value.k IS ExpKind::Local) {

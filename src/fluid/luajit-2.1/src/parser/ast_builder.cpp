@@ -2233,7 +2233,8 @@ Identifier AstBuilder::make_identifier(const Token &Token)
    Identifier id;
    id.symbol   = Token.identifier();
    id.span     = Token.span();
-   id.is_blank = id.symbol IS NAME_BLANK;
+   // Check if the identifier is a blank placeholder (single underscore)
+   id.is_blank = id.symbol and id.symbol->len IS 1 and strdata(id.symbol)[0] IS '_';
    return id;
 }
 
