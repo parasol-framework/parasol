@@ -952,7 +952,7 @@ end
 
    loadActions()
 
-   if (parseFDLFile(glSource) is ERR_Okay) then
+   if parseFDLFile(glSource) is ERR_Okay then
       if glAbort then
          print('FDL processing cancelled, reason: ' .. glAbort)
          return

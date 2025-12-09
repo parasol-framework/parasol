@@ -56,7 +56,7 @@ end
 -- FDL function
 
 global function module(Options, Function)
-   if ((Options['timestamp'] ?? 0) > glIDLTimestamp) then
+   if (Options['timestamp'] ?? 0) > glIDLTimestamp then
       -- Do nothing if the timestamp is > than the timestamp on this idl-c release
       global glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
       return
@@ -153,7 +153,7 @@ end
 
 global function flags(Prefix, Options, ...)
    verbose('Processing ' .. tostring(Prefix) .. ' flags.')
-   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+   if glCustomTypes[Prefix] then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
 

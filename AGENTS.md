@@ -14,7 +14,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
-- Build and install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents`
+- Build and install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents --config [BuildType]`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.  In static builds, use `--target [module] parasol_cmd` to ensure that the parasol executable is rebuilt to include the changes.
 
 **Testing:**

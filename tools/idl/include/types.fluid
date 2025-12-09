@@ -113,7 +113,7 @@ global function getFieldType(Def, Type, CustomName, Option)
    elseif Type & FD_FUNCTION != 0 then
       Def.type = 'FUNCTION'
    elseif Type & FD_POINTER != 0 then
-      local ptr = 0
+      ptr = 0
       if Type & FD_INT != 0 then
          result = 'INT'
          ptr += 1
@@ -187,7 +187,7 @@ global function cType(Field, Origin)
    -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. INT *
 
    local resultValue
-   local special, result_type = Field.type:match('^([!&]+)(.+)')
+   special, result_type = Field.type:match('^([!&]+)(.+)')
    if special and result_type then
       if special:find('!') then Field.allocated = true end
       resultValue = true
@@ -225,8 +225,8 @@ global function cType(Field, Origin)
          end
       end
 
-      local _, count = Field.type:gsub('*', '')
-      local _, b_count = Field.docType:gsub('*', '')
+      _, count = Field.type:gsub('*', '')
+      _, b_count = Field.docType:gsub('*', '')
       if count > 0 and b_count is 0 then
          Field.docType = Field.docType .. ' ' .. string.rep('*', count)
       end
@@ -237,7 +237,7 @@ global function cType(Field, Origin)
    -- The use of cpp() converts the encapsulated type to its C++ variant.  E.g. 'str' becomes a std::string
 
    do
-      local cpp_type = Field.type:match('^cpp%((.+)%)$')
+      cpp_type = Field.type:match('^cpp%((.+)%)$')
       if cpp_type then
          Field.cpp  = true
          Field.type = cpp_type
@@ -248,7 +248,7 @@ global function cType(Field, Origin)
    end
 
    do
-      local const, struct = Field.type:match('^(c-)class%((.+)%)$')
+      const, struct = Field.type:match('^(c-)class%((.+)%)$')
       if struct then
          Field.isClass = true
       else
@@ -256,7 +256,7 @@ global function cType(Field, Origin)
       end
 
       if struct then
-         local ptr_struct = struct:match('%*(.+)')
+         ptr_struct = struct:match('%*(.+)')
          if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
@@ -297,9 +297,9 @@ global function cType(Field, Origin)
    end
 
    do -- Resources are structs, but with an FD_RESOURCE marker.
-      local const, struct = Field.type:match('^(c-)resource%((.+)%)$')
+      const, struct = Field.type:match('^(c-)resource%((.+)%)$')
       if struct then
-         local ptr_struct = struct:match('%*(.+)')
+         ptr_struct = struct:match('%*(.+)')
          if ptr_struct then struct = ptr_struct end
 
          Field.struct = struct
@@ -336,8 +336,8 @@ global function cType(Field, Origin)
    end
 
    do
-      local ref_obj = Field.type:match('^ext%((.+)%)$')
-      local extended = false
+      ref_obj = Field.type:match('^ext%((.+)%)$')
+      extended = false
       if ref_obj then -- 'ext' indicates an object class extended with private fields.
          extended = true
       else
@@ -345,7 +345,7 @@ global function cType(Field, Origin)
       end
 
       if ref_obj then
-         local ptr_object = ref_obj:match('%*(.+)')
+         ptr_object = ref_obj:match('%*(.+)')
          if ptr_object then
             Field.type = 'obj' .. ptr_object .. ' **'
             if extended then Field.extType = 'ext' .. ptr_object .. ' **' end
@@ -361,7 +361,7 @@ global function cType(Field, Origin)
    end
 
    do -- Example: bit(int)
-      local bitType = Field.type:match('^bit%((.+)%)$')
+      bitType = Field.type:match('^bit%((.+)%)$')
       if bitType then
          Field.type     = cType({ type=bitType, name='' }, Origin).type
          Field.name     = Field.name
@@ -372,7 +372,7 @@ global function cType(Field, Origin)
    end
 
    do -- Integer flags type reference, can be used for strongly typed enum flags
-      local prefix = Field.type:match('^flags%((%a+)%)')
+      prefix = Field.type:match('^flags%((%a+)%)')
       if prefix then
          Field.type     = prefix
          Field.fullType = glTypes.int
@@ -389,7 +389,7 @@ global function cType(Field, Origin)
    end
 
    do -- Integer/Char/Large type reference
-      local t, prefix = Field.type:match('^([intlargecharuso]+)%((%a+)%)')
+      t, prefix = Field.type:match('^([intlargecharuso]+)%((%a+)%)')
       if prefix then
          if t is 'char' then
             Field.type     = 'char'
@@ -426,7 +426,7 @@ global function cType(Field, Origin)
    end
 
    do -- Char arrays
-      local unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
+      unsigned, count = Field.type:match('^(u-)char%((.+)%)$')
       if count then
          Field.type = 'char'
          if unsigned?? then Field.type = 'unsigned ' .. Field.type end
@@ -437,7 +437,7 @@ global function cType(Field, Origin)
    end
 
    do -- Integer arrays
-      local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
+      unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
       if count then
          Field.type = unsigned?? ? 'uint32_t' :> 'int'
          Field.arraySize = tonumber(count)
@@ -447,7 +447,7 @@ global function cType(Field, Origin)
    end
 
    do -- Double arrays
-      local count = Field.type:match('^double%((.+)%)')
+      count = Field.type:match('^double%((.+)%)')
       if count then
          Field.type = 'double'
          Field.arraySize = tonumber(count)
@@ -457,7 +457,7 @@ global function cType(Field, Origin)
    end
 
    do -- Float arrays
-      local count = Field.type:match('^float%((.+)%)')
+      count = Field.type:match('^float%((.+)%)')
       if count then
          Field.type = 'float'
          Field.arraySize = tonumber(count)
@@ -467,9 +467,9 @@ global function cType(Field, Origin)
    end
 
    do
-      local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
+      const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
       if ptr_type then
-         local ptr_ctype = cType({ type=ptr_type }, Origin)
+         ptr_ctype = cType({ type=ptr_type }, Origin)
 
          Field.type = ptr_ctype.type .. ' *'
 
@@ -491,7 +491,7 @@ global function cType(Field, Origin)
    end
 
    do
-      local buf_type = Field.type:match('^buf%((.+)%)')
+      buf_type = Field.type:match('^buf%((.+)%)')
       if buf_type then
          Field.type = buf_type
          Field = cType(Field, Origin)
@@ -507,7 +507,7 @@ global function cType(Field, Origin)
    -- To describe complex embedded types of fixed size, use 'array(type,n)' such as 'array(struct(RGB8),256)'
 
    do
-      local array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
+      array_type, array_size = Field.type:match('^array%((.+),(%d+)%)$')
       if array_type then
          array_size = tonumber(array_size)
          if array_size is 0 then
@@ -532,7 +532,7 @@ global function cType(Field, Origin)
    end
 
    do
-      local array_type = Field.type:match('^array%((.+)%)$')
+      array_type = Field.type:match('^array%((.+)%)$')
       if array_type then
          Field.isArray = true
          Field.type = array_type
@@ -548,9 +548,9 @@ global function cType(Field, Origin)
    end
 
    do
-      local args = Field.type:match('^fptr%((.+)%)$')
+      args = Field.type:match('^fptr%((.+)%)$')
       if args then
-         local arglist = args:split(' ')
+         arglist = args:split(' ')
 
          -- Process function result type
 
@@ -561,7 +561,7 @@ global function cType(Field, Origin)
          if #arglist < 2 then
             Field.type ..= '(void)'
          else
-            local params = ''
+            params = ''
             for i=1, #arglist-1 do
                if params?? then params ..= ', ' end
                params ..=  cType({ type=arglist[i], name='' }, Origin).type

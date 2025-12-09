@@ -13,10 +13,10 @@ vfx.wipes = { shutter = { }, simple = { }, radial = { }, clock = { }, spiral = {
 ----------------------------------------------------------------------------------------------------------------------
 
 vfx.dist = function(X1, Y1, X2, Y2)
-   local a = math.abs(X2 - X1)
-   local b = math.abs(Y2 - Y1)
+   a = math.abs(X2 - X1)
+   b = math.abs(Y2 - Y1)
    if a > b then
-      local t = a
+      t = a
       a = b
       b = t
    end
@@ -30,8 +30,8 @@ vfx.config_circle = function(State, Options)
    State.cy = 0.5 * State.v_height
    if type(Options.cy) is 'number' then State.cy = Options.cy * State.v_height end
 
-   local ex = State.cx <= 0.5 ? State.v_width :> 0
-   local ey = State.cy <= 0.5 ? State.v_height :> 0
+   ex = State.cx <= 0.5 ? State.v_width :> 0
+   ey = State.cy <= 0.5 ? State.v_height :> 0
 
    State.max_radius = vfx.dist(State.cx, State.cy, ex, ey)
 end
@@ -42,12 +42,12 @@ end
 -- Example: vfx.chain({ vfx.zoomIn(Viewport, 0.5), vfx.fadeIn(Viewport, 0.25) }, Callback)
 
 vfx.chain = function(Effects, CallbackOnCompletion)
-   local state = { effects = Effects }
+   state = { effects = Effects }
 
    state.counter = #Effects
    for _, effect in ipairs(Effects) do
       effect.callback = function()
-         state.counter = state.counter - 1
+         state.counter -= 1
          if (state.counter is 0) and CallbackOnCompletion then
             CallbackOnCompletion(state)
          end
@@ -69,7 +69,7 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
    Options ?= { }
    Style ?= 'shutter'
 
-   local state = {
+   state = {
       name = 'wipe', viewport = Viewport, seconds = Seconds ?? 1.0, delay = Delay ?? 0,
       v_width = Viewport.width, v_height = Viewport.height,
       animate = vfx.wipes[Style].animate, callback = CallbackOnCompletion,
@@ -114,10 +114,10 @@ end
 -- Delay:   Delays the initial start of the effect, measured in seconds.
 
 vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'fadeIn', seconds = Seconds ?? 1.0, delay = Delay ?? 0, callback = CallbackOnCompletion }
+   state = { name = 'fadeIn', seconds = Seconds ?? 1.0, delay = Delay ?? 0, callback = CallbackOnCompletion }
 
-   Viewport.opacity = 0
    local err
+   Viewport.opacity = 0
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
@@ -129,7 +129,7 @@ vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
             state.time = nil
          end
       else
-         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         value = (CurrentTime - state.time) / (state.seconds * 1000000)
          if value >= 1.0 then
             Viewport.opacity = 1.0
             Viewport.acDraw()
@@ -149,7 +149,7 @@ end
 -- Scale the viewport from nothing to full-size within the allotted time.
 
 vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'zoomIn', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
+   state = { name = 'zoomIn', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -169,7 +169,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
             state.time = nil
          end
       else
-         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         value = (CurrentTime - state.time) / (state.seconds * 1000000)
          if value >= 1.0 then value = 1.0 end
 
          mVec.ResetMatrix(state.matrix)
@@ -192,7 +192,7 @@ end
 -- Scale the viewport from full-size to nothing within the allotted time.
 
 vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'zoomOut', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
+   state = { name = 'zoomOut', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -212,7 +212,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
             state.time = nil
          end
       else
-         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         value = (CurrentTime - state.time) / (state.seconds * 1000000)
          if value >= 1.0 then value = 1.0 end
 
          mVec.ResetMatrix(state.matrix)
@@ -236,7 +236,7 @@ end
 -- affects the number of shakes and maximum angle of rotation.
 
 vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
-   local state = { name = 'shake', intensity = (Intensity ?? 1.0), seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
+   state = { name = 'shake', intensity = (Intensity ?? 1.0), seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
 
    if state.intensity < 0.1 then
       state.intensity = 0.1
@@ -244,9 +244,9 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
       state.intensity = 2
    end
 
-   local MAX_ANGLE = 90 * Intensity
-   local QRT_ANGLE = MAX_ANGLE * 0.25
-   local SHAKES    = math.round(6 * Intensity)
+   MAX_ANGLE = 90 * Intensity
+   QRT_ANGLE = MAX_ANGLE * 0.25
+   SHAKES    = math.round(6 * Intensity)
    if SHAKES < 1 then SHAKES = 1 end
 
    local err
@@ -270,8 +270,8 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
             check(ERR_Terminate)
          end
 
-         local cycle = (state.seconds / SHAKES) * 1000000
-         local angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
+         cycle = (state.seconds / SHAKES) * 1000000
+         angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
 
          if angle < QRT_ANGLE then -- (45)
             angle = angle
@@ -294,7 +294,7 @@ end
 -- effects.
 
 vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
-   local state = { name = 'rotate', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
+   state = { name = 'rotate', seconds = (Seconds ?? 1.0), delay = (Delay ?? 0), callback = CallbackOnCompletion }
 
    local err
    err, state.matrix = Viewport.mtNewMatrix(false)
@@ -309,7 +309,7 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
             state.time = nil
          end
       else
-         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         value = (CurrentTime - state.time) / (state.seconds * 1000000)
          if value >= 1.0 then value = 1.0 end
 
          mVec.ResetMatrix(state.matrix)
@@ -330,7 +330,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 vfx.wipes.simple.init = function(State, Options)
-   if (Options.rotate) then
+   if Options.rotate then
       local err
       err, State.matrix = State.clip_path.mtNewMatrix(false)
       mVec.Rotate(State.matrix, Options.rotate, State.v_width * 0.5, State.v_height * 0.5)
@@ -339,13 +339,13 @@ end
 
 vfx.wipes.simple.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
-   local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
+   max_width = vfx.dist(0, 0, State.v_width, State.v_height)
 
    if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
 
    State.clip_path.acClear()
 
-   local pc = State.path_cmd
+   pc = State.path_cmd
    pc.type = PE_Move
    pc.x    = -((max_width - State.v_width) * 0.5)
    pc.y    = 0
@@ -368,28 +368,28 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 vfx.wipes.clock.animate = function(State, Options, Progress)
-   local radius = vfx.dist(0, 0, State.v_width+2, State.v_height+2) * 0.5
+   radius = vfx.dist(0, 0, State.v_width+2, State.v_height+2) * 0.5
 
    if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
 
    State.clip_path.acClear()
-   local bar_pos = 0
-   local height  = Progress * State.v_height
+   bar_pos = 0
+   height  = Progress * State.v_height
 
-   local angle = Progress * 360
-   local rad = math.rad(angle)
-   local cx = State.v_width * 0.5
-   local cy = State.v_height * 0.5
+   angle = Progress * 360
+   rad = math.rad(angle)
+   cx = State.v_width * 0.5
+   cy = State.v_height * 0.5
 
-   local x = (radius * math.sin(rad)) + cx
-   local y = (-radius * math.cos(rad)) + cy
+   x = (radius * math.sin(rad)) + cx
+   y = (-radius * math.cos(rad)) + cy
 
-   local top_right_pt    = 90 - math.deg(math.atan2((State.v_height*0.5), cx))
-   local bottom_right_pt = 180 - top_right_pt
-   local bottom_left_pt  = 180 + top_right_pt
-   local top_left_pt     = 360 - top_right_pt
+   top_right_pt    = 90 - math.deg(math.atan2((State.v_height*0.5), cx))
+   bottom_right_pt = 180 - top_right_pt
+   bottom_left_pt  = 180 + top_right_pt
+   top_left_pt     = 360 - top_right_pt
 
-   local pc = State.path_cmd
+   pc = State.path_cmd
 
    pc.type = PE_Move -- Center
    pc.x    = State.v_width * 0.5
@@ -456,7 +456,7 @@ vfx.wipes.radial.init = function(State, Options)
    })
 
    for i=1,State.segments-1 do
-      local radius = State.stroke_size + ((State.max_radius - State.stroke_size)) * (i / (State.segments-1)) - (State.stroke_size * 0.5)
+      radius = State.stroke_size + ((State.max_radius - State.stroke_size)) * (i / (State.segments-1)) - (State.stroke_size * 0.5)
       table.insert(State.ellipses, State.clip.viewport.new('VectorEllipse', {
          cx = State.cx, cy = State.cy, rx = radius, ry = radius, fill='none',
          stroke = 'rgb(255,255,255)', visibility = VIS_HIDDEN
@@ -465,13 +465,13 @@ vfx.wipes.radial.init = function(State, Options)
 end
 
 vfx.wipes.radial.animate = function(State, Options, Progress)
-   local size = (Progress / State.interval) * State.stroke_size
+   size = (Progress / State.interval) * State.stroke_size
    if size > State.stroke_size + 0.25 then size = State.stroke_size + 0.25 end
    State.center.radius = size
    State.center.visibility = VIS_VISIBLE
 
    for i=1,State.segments-1 do
-      local size = (Progress / (i * State.interval)) * State.stroke_size
+      size = (Progress / (i * State.interval)) * State.stroke_size
       if size > State.stroke_size + 0.25 then size = State.stroke_size + 0.25 end
       State.ellipses[i].strokeWidth = size
       State.ellipses[i].visibility = (size < 0.5) ? VIS_HIDDEN :> VIS_VISIBLE
@@ -499,7 +499,7 @@ vfx.wipes.spiral.init = function(State, Options)
 end
 
 vfx.wipes.spiral.animate = function(State, Options, Progress)
-   local radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
+   radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
    if radius < 0.001 then radius = 0.001 end
    State.spiral.radius = radius
    State.spiral.visibility = VIS_VISIBLE
@@ -517,21 +517,21 @@ end
 
 vfx.wipes.shutter.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
-   local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
+   max_width = vfx.dist(0, 0, State.v_width, State.v_height)
 
-   local segments = Options.segments ?? 10
+   segments = Options.segments ?? 10
    if segments > max_width * 0.33 then segments = max_width * 0.33 end
 
-   local pc = State.path_cmd
-   local interval   = 1.0 / segments
-   local bar_height = State.v_height / segments
+   pc = State.path_cmd
+   interval   = 1.0 / segments
+   bar_height = State.v_height / segments
 
    if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
 
    State.clip_path.acClear()
    for i=0,segments-1 do
-      local bar_pos = i * bar_height
-      local height  = (Progress / ((i * interval) + interval)) * bar_height
+      bar_pos = i * bar_height
+      height  = (Progress / ((i * interval) + interval)) * bar_height
 
       if height > bar_height then height = bar_height end
 
@@ -571,7 +571,7 @@ vfx.initTimer = function(State, Options)
             State.time = nil
          end
       else
-         local value = (CurrentTime - State.time) / (State.seconds * 1000000)
+         value = (CurrentTime - State.time) / (State.seconds * 1000000)
          if value >= 1.0 then
             if (State.free != nil) then State:free() end
             if State.callback then State.callback(State) end

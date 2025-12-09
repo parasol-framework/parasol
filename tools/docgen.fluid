@@ -30,7 +30,7 @@ function resolveSDKPath(Path)
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
-   if (err is ERR_Okay) then
+   if err is ERR_Okay then
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
       msg = ''
@@ -49,10 +49,7 @@ end
    resolveSDKPath(arg('sdk'))
 
    err, xsltproc_path = mSys.ResolvePath("xsltproc", RSF_PATH)
-
-   if not xsltproc_path then
-      error('xsltproc not found on system path, please install it first.')
-   end
+   assert(xsltproc_path, 'xsltproc not found on system path, please install it first.')
 
    cmdlist = ''
 

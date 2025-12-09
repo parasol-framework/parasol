@@ -7,18 +7,18 @@
 
    require 'io/filesearch'
 
-   glSelf = obj.find('self')
+   glSelf = <{ obj.find('self') }>
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
 function resolveSDKPath(Path)
    local sdk_path
-   local err = ERR_Failed
-   local search_list = { }
+   err = ERR_Failed
+   search_list = { }
    if not Path then
-      local search_path = 'CMakeLists.txt'
-      local limit = 5
+      search_path = 'CMakeLists.txt'
+      limit = 5
       while (err != ERR_Okay) and (limit > 0) do
          table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
@@ -33,7 +33,7 @@ function resolveSDKPath(Path)
    if (err is ERR_Okay) then
       sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
-      local msg = ''
+      msg = ''
       for _, path in ipairs(search_list) do
          msg ..= path .. '\n'
       end
@@ -48,18 +48,18 @@ end
 
    resolveSDKPath(arg('sdk'))
 
-   local state = mSys.GetSystemState()
+   state = mSys.GetSystemState()
 
-   local pandoc = arg('pandoc', 'c:Program Files/Pandoc/pandoc')
-   local md_folder = arg('wiki', 'sdk:docs/wiki/')
+   pandoc = arg('pandoc', 'c:Program Files/Pandoc/pandoc')
+   md_folder = arg('wiki', 'sdk:docs/wiki/')
 
-   local header = file.readAll('sdk:docs/wiki-header.html')
-   local footer = file.readAll('sdk:docs/wiki-footer.html')
+   header = file.readAll('sdk:docs/wiki-header.html')
+   footer = file.readAll('sdk:docs/wiki-footer.html')
 
-   local err, temp_output = mSys.ResolvePath('temp:markdown', RSF_NO_FILE_CHECK)
-   local output_files = { }
+   err, temp_output = mSys.ResolvePath('temp:markdown', RSF_NO_FILE_CHECK)
+   output_files = { }
 
-   local err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
+   err, pandoc_path = mSys.ResolvePath("pandoc", RSF_PATH)
 
    if not pandoc_path?? then
       if state.platform is 'Windows' then
@@ -74,17 +74,17 @@ end
       assert(pandoc_path, 'pandoc not found on system path, please install it first.')
    end
 
-   local cmdlist = ''
+   cmdlist = ''
 
    file.search(md_folder, {
       nameFilter = '^.*%.md$',
       nameWild   = true,
       matchFeedback = function(Path, FileName, File)
-         local title = FileName:gsub('-', ' ')
+         title = FileName:gsub('-', ' ')
          title = title:gsub('.md', '')
 
-         local src_path = Path .. FileName
-         local output_path = src_path:gsub('[/\\]wiki[/\\]', '/html/wiki/')
+         src_path = Path .. FileName
+         output_path = src_path:gsub('[/\\]wiki[/\\]', '/html/wiki/')
          output_path = output_path:gsub('%.md', '.html')
 
          err, res_src_path = mSys.ResolvePath(src_path)
@@ -96,8 +96,8 @@ end
          err, res_header_path = mSys.ResolvePath(glSelf.workingPath .. 'wiki-header.inc', RSF_NO_FILE_CHECK)
          assert(err is ERR_Okay, 'Failed to resolve path to wiki-header.inc')
 
-         local pandoc_output = temp_output .. '-' .. math.random(1000000) .. '.html'
-         local parameters = res_src_path .. ' -o ' .. pandoc_output .. ' -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
+         pandoc_output = temp_output .. '-' .. math.random(1000000) .. '.html'
+         parameters = res_src_path .. ' -o ' .. pandoc_output .. ' -f gfm -t html5 -c github-markdown.css --wrap=preserve --embed-resource'
 
          cmdlist ..= '"' .. pandoc_path .. '"' .. ' ' .. parameters .. '\n'
 
@@ -105,7 +105,7 @@ end
       end
    })
 
-   local output_path = arg('output') -- Optional output path for the generated script.
+   output_path = arg('output') -- Optional output path for the generated script.
 
    if state.platform is 'Windows' then
       if not output_path then output_path = 'temp:docgen.bat' end
@@ -115,14 +115,14 @@ end
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 
-   local fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
+   fl = obj.new('file', { src=output_path, flags='NEW|WRITE', permissions='READ|WRITE|EXEC' })
    fl.acWrite(cmdlist)
    fl.free()
 
    if (not arg('dry-run')) then
       print('Running generated script from ' .. output_path)
 
-      local task = obj.new('task', {
+      task = obj.new('task', {
          src   = output_path,
          flags = 'WAIT',
          outputCallback = function(Task, Data)
@@ -136,8 +136,8 @@ end
       mSys.DeleteFile(output_path)
 
       for k,v in pairs(output_files) do
-         local md_output = file.readAll(v.pandoc_output)
-         local fl = obj.new('file', { path=v.target_path, flags='WRITE|NEW' })
+         md_output = file.readAll(v.pandoc_output)
+         fl = obj.new('file', { path=v.target_path, flags='WRITE|NEW' })
 
          mod_header = header:gsub('<title>Parasol Wiki</title>', '<title>Parasol Wiki - ' .. v.title .. '</title>')
          md_output = md_output:gsub('<hr />', '<hr>') -- HTML5 compliance

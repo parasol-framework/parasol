@@ -1,16 +1,23 @@
 -- $FLUID:Batch
 -- Example: input=secrets.txt out-private=key.prv out-public=key.pub out-sig=secrets.txt.sig
 
+   glInput       = arg("input")
+   glPrivateFile = arg("out-private")
+   glPublicFile  = arg("out-public")
+   glSigFile     = arg("out-sig")
+   glBits        = tonumber(arg("bits"))
+   glPassword    = arg("password")
+
 ------------------------------------------------------------------------------
 
 function saveKeys()
    if glPrivateFile?? then
-      local file = obj.new("file", { path=glPrivateFile, flags="!NEW|WRITE" } )
+      file = obj.new("file", { path=glPrivateFile, flags="!NEW|WRITE" } )
       file.acWrite(privateKey)
    end
 
    if glPublicFile?? then
-      local file = obj.new("file", { path=glPublicFile, flags="!NEW|WRITE" } )
+      file = obj.new("file", { path=glPublicFile, flags="!NEW|WRITE" } )
       file.acWrite(publicKey)
    end
 end
@@ -21,19 +28,19 @@ function signFiles(destPath)
    if not destPath?? then return end
 
    print("Generating signature for file: \"" .. destPath .. "\"")
-   local input = obj.new("file", { path=destPath, flags="READ" } )
-   local error, sig = mSSL.CalcSigFromObject(input, 0, privateKey, nil, "sha256")
+   input = obj.new("file", { path=destPath, flags="READ" } )
+   error, sig = mSSL.CalcSigFromObject(input, 0, privateKey, nil, "sha256")
 
    if (error is ERR_Okay) and (sig != nil) then
       if glSigFile?? then
          print("Saving signature to " .. glSigFile)
-         local sigfile = obj.new("file", { path=glSigFile, flags="!NEW|WRITE" } )
+         sigfile = obj.new("file", { path=glSigFile, flags="!NEW|WRITE" } )
          sigfile.acWrite(sig)
       end
 
       input.acSeek(0, 0)
 
-      local error = mSSL.VerifySig(input, 0, publicKey, "sha256", sig)
+      error = mSSL.VerifySig(input, 0, publicKey, "sha256", sig)
       if (error != ERR_Okay) then print("Verification failed.")
       else print("Verification passed.") end
    else
@@ -42,13 +49,6 @@ function signFiles(destPath)
 end
 
 ------------------------------------------------------------------------------
-
-   glInput       = arg("input")
-   glPrivateFile = arg("out-private")
-   glPublicFile  = arg("out-public")
-   glSigFile     = arg("out-sig")
-   glBits        = tonumber(arg("bits"))
-   glPassword    = arg("password")
 
    print("SSL Key Generator\n")
 
@@ -65,12 +65,11 @@ end
       return
    end
 
-   mSys  = mod.load("core")
    mSSL  = mod.load("openssl")
 
    if not glBits?? then glBits = 2048 end
 
-   local error, privateKey, publicKey = mSSL.GenerateRSAKey(glBits, glPassword)
+   error, privateKey, publicKey = mSSL.GenerateRSAKey(glBits, glPassword)
 
    print(privateKey)
    print(publicKey)

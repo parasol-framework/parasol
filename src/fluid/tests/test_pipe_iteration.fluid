@@ -1,35 +1,33 @@
 -- Flute test suite for Fluid Pipe Iteration feature
 -- Tests the {range} |> function syntax for automatic iteration
---
-----------------------------------------------------------------------------------------------------------------------
 
-function testPipeIterationBasic()
+@Test function testPipeIterationBasic()
    -- Basic pipe iteration: {1..6} |> func calls func for each value
-   local sum = 0
+   sum = 0
    {1..6} |> i => do sum += i end
    assert(sum is 15, "pipe iteration should sum to 15 (1+2+3+4+5), got " .. sum)
 end
 
-function testPipeIterationInclusive()
+@Test function testPipeIterationInclusive()
    -- Inclusive range pipe iteration
-   local sum = 0
+   sum = 0
    {1...5} |> i => do sum += i end
    assert(sum is 15, "pipe iteration of {1...5} should sum to 15, got " .. sum)
 end
 
-function testPipeIterationWithPrint()
+@Test function testPipeIterationWithPrint()
    -- Capture values via pipe iteration
-   local captured = {}
+   captured = {}
    {0..3} |> function(i) captured[#captured] = i end
    assert(#captured is 3, "should capture 3 values, got " .. #captured)
    assert(captured[0] is 0, "first captured should be 0")
    assert(captured[2] is 2, "last captured should be 2")
 end
 
-function testPipeIterationChaining()
+@Test function testPipeIterationChaining()
    -- Chaining: pipe returns range for chaining
-   local log1 = {}
-   local log2 = {}
+   log1 = {}
+   log2 = {}
    {1..4} |> function(i) log1[#log1] = i end
           |> function(i) log2[#log2] = i * 2 end
    assert(#log1 is 3, "log1 should have 3 elements, got " .. #log1)
@@ -38,76 +36,76 @@ function testPipeIterationChaining()
    assert(log2[2] is 6, "log2[2] should be 6, got " .. tostring(log2[2]))
 end
 
-function testPipeIterationEarlyTermination()
+@Test function testPipeIterationEarlyTermination()
    -- Return false from callback to stop iteration
-   local count = 0
+   count = 0
    {1..100} |> function(i)
-      count += 1
+      count++
       if i >= 5 then return false end
    end
    assert(count is 5, "should stop after 5 iterations, got " .. count)
 end
 
-function testPipeIterationReverse()
+@Test function testPipeIterationReverse()
    -- Reverse range pipe iteration
-   local result = {}
+   result = {}
    {5...1} |> function(i) result[#result] = i end
    assert(#result is 5, "reverse range should have 5 elements, got " .. #result)
    assert(result[0] is 5, "first element should be 5")
    assert(result[4] is 1, "last element should be 1")
 end
 
-function testPipeIterationEmpty()
+@Test function testPipeIterationEmpty()
    -- Empty range should not iterate
-   local count = 0
-   {5..5} |> function(i) count += 1 end
+   count = 0
+   {5..5} |> function(i) count++ end
    assert(count is 0, "empty range should not iterate, got " .. count)
 end
 
-function testPipeIterationWithClosure()
+@Test function testPipeIterationWithClosure()
    -- Closure variables accessible in callback
-   local multiplier = 3
-   local results = {}
+   multiplier = 3
+   results = {}
    {1..4} |> function(i) results[#results] = i * multiplier end
    assert(results[0] is 3, "results[0] should be 3, got " .. tostring(results[0]))
    assert(results[2] is 9, "results[2] should be 9, got " .. tostring(results[2]))
 end
 
-function testPipeIterationReturnValue()
+@Test function testPipeIterationReturnValue()
    -- Pipe iteration should return original range for chaining
    -- NOTE: When using a variable, use :each() directly since parser can't detect range type
-   local r = {1..5}
-   local returned = r:each(function(i) end)
+   r = {1..5}
+   returned = r:each(function(i) end)
    assert(returned is r, "pipe iteration should return original range")
 end
 
-function testPipeNormalBehaviour()
+@Test function testPipeNormalBehaviour()
    -- Non-range pipes should work as before
-   local function double(x) return x * 2 end
-   local result = 5 |> double()
+   function double(x) return x * 2 end
+   result = 5 |> double()
    assert(result is 10, "normal pipe should still work, got " .. tostring(result))
 end
 
-function testPipeWithRangeVariable()
+@Test function testPipeWithRangeVariable()
    -- Pipe iteration with range stored in variable
    -- NOTE: When using a variable, use :each() directly since parser can't detect range type
-   local r = {1..6}
-   local sum = 0
+   r = {1..6}
+   sum = 0
    r:each(function(i) sum += i end)
    assert(sum is 15, "sum should be 15, got " .. sum)
 end
 
-function testPipeIterationWithIdentifier()
+@Test function testPipeIterationWithIdentifier()
    -- Pipe iteration with function stored in identifier
-   local sum = 0
-   local function accumulate(Value) sum += Value end
+   sum = 0
+   function accumulate(Value) sum += Value end
    {1..6} |> accumulate
    assert(sum is 15, "pipe to identifier should sum to 15, got " .. sum)
 end
 
-function testPipeIterationNested()
+@Test function testPipeIterationNested()
    -- Nested pipe iteration
-   local combinations = {}
+   combinations = {}
    {1..3} |> function(i)
       {1..3} |> function(j)
          combinations[#combinations] = i * 10 + j
@@ -119,30 +117,30 @@ function testPipeIterationNested()
    assert(combinations[3] is 22, "last combination should be 22, got " .. tostring(combinations[3]))
 end
 
-function testPipeIterationSingleElement()
+@Test function testPipeIterationSingleElement()
    -- Single element inclusive range
-   local count = 0
-   local value = nil
+   count = 0
+   value = nil
    {5...5} |> function(i)
-      count += 1
+      count++
       value = i
    end
    assert(count is 1, "single element range should iterate once, got " .. count)
    assert(value is 5, "value should be 5, got " .. tostring(value))
 end
 
-function testPipeIterationNegativeValues()
+@Test function testPipeIterationNegativeValues()
    -- Negative values in range
-   local result = {}
+   result = {}
    {-3..2} |> function(i) result[#result] = i end
    assert(#result is 5, "should have 5 elements, got " .. #result)
    assert(result[0] is -3, "first should be -3")
    assert(result[4] is 1, "last should be 1")
 end
 
-function testPipeIterationContinuesOnTrue()
+@Test function testPipeIterationContinuesOnTrue()
    -- Returning true should NOT terminate
-   local sum = 0
+   sum = 0
    {1..6} |> function(i)
       sum += i
       return true
@@ -150,47 +148,18 @@ function testPipeIterationContinuesOnTrue()
    assert(sum is 15, "returning true should complete iteration, got " .. sum)
 end
 
-function testPipeIterationContinuesOnNil()
+@Test function testPipeIterationContinuesOnNil()
    -- No return (nil) should continue
-   local count = 0
+   count = 0
    {1..6} |> function(i)
-      count += 1
+      count++
    end
    assert(count is 5, "no return should complete iteration, got " .. count)
 end
 
-function testPipeWithArrowFunction()
+@Test function testPipeWithArrowFunction()
    -- Arrow functions should work for pipe iteration
-   local sum = 0
+   sum = 0
    {1..6} |> (i => do sum += i end)
    assert(sum is 15, "arrow function should sum to 15, got " .. sum)
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testPipeIterationBasic,
-      testPipeIterationInclusive,
-      testPipeIterationWithPrint,
-      testPipeIterationChaining,
-      testPipeIterationEarlyTermination,
-      testPipeIterationReverse,
-      testPipeIterationEmpty,
-      testPipeIterationWithClosure,
-      testPipeIterationReturnValue,
-      testPipeNormalBehaviour,
-      testPipeWithRangeVariable,
-      testPipeIterationWithIdentifier,
-      testPipeIterationNested,
-      testPipeIterationSingleElement,
-      testPipeIterationNegativeValues,
-      testPipeIterationContinuesOnTrue,
-      testPipeIterationContinuesOnNil,
-      testPipeWithArrowFunction
-   },
-   init = function(Folder)
-   end,
-   cleanup = function()
-   end
-}

@@ -3,8 +3,8 @@
 -- Basic __close is called when scope ends
 
 function testBasicClose()
-   local closed = false
-   local mt = {
+   closed = false
+   mt = {
       __close = function(self, err)
          closed = true
       end
@@ -19,9 +19,9 @@ end
 -- __close receives self as first argument
 
 function testCloseSelfArg()
-   local received_self = nil
-   local obj_value = { data = 'test_value' }
-   local mt = {
+   received_self = nil
+   obj_value = { data = 'test_value' }
+   mt = {
       __close = function(self, err)
          received_self = self
       end
@@ -37,8 +37,8 @@ end
 -- __close receives nil as second argument (normal exit)
 
 function testCloseNilErrArg()
-   local received_err = 'not_nil'
-   local mt = {
+   received_err = 'not_nil'
+   mt = {
       __close = function(self, err)
          received_err = err
       end
@@ -71,8 +71,8 @@ end
 -- Multiple close variables - LIFO order
 
 function testMultipleClosesLIFO()
-   local order = {}
-   local function makeMt(n)
+   order = {}
+   function makeMt(n)
       return {
          __close = function(self, err)
             table.insert(order, n)
@@ -96,7 +96,7 @@ end
 -- Close in nested scopes
 
 function testNestedScopes()
-   local order = {}
+   order = {}
    do
       local outer <close> = setmetatable({}, {
          __close = function() table.insert(order, 'outer') end
@@ -118,7 +118,7 @@ end
 -- Close with defer - close should run before defer
 
 function testCloseWithDefer()
-   local order = {}
+   order = {}
    do
       defer
          table.insert(order, 'defer')
@@ -136,19 +136,19 @@ end
 -- Close on function return
 
 function testCloseOnReturn()
-   local closed = false
-   local mt = {
+   closed = false
+   mt = {
       __close = function(self, err)
          closed = true
       end
    }
 
-   local function inner()
+   function inner()
       local obj <close> = setmetatable({}, mt)
       return 42
    end
 
-   local result = inner()
+   result = inner()
    assert(closed, 'Close on return: __close should be called when function returns')
    assert(result is 42, 'Return value should be preserved: ' .. tostring(result))
    print('testCloseOnReturn: passed')
@@ -157,8 +157,8 @@ end
 -- Close in for loop
 
 function testCloseInForLoop()
-   local close_count = 0
-   local mt = { __close = function() close_count += 1 end }
+   close_count = 0
+   mt = { __close = function() close_count += 1 end }
 
    for i = 1, 3 do
       local obj <close> = setmetatable({}, mt)
@@ -171,8 +171,8 @@ end
 -- Close on break
 
 function testCloseOnBreak()
-   local closed = false
-   local mt = { __close = function() closed = true end }
+   closed = false
+   mt = { __close = function() closed = true end }
 
    for i = 1, 10 do
       local obj <close> = setmetatable({}, mt)
@@ -188,8 +188,8 @@ end
 -- Close on continue
 
 function testCloseOnContinue()
-   local close_count = 0
-   local mt = { __close = function() close_count += 1 end }
+   close_count = 0
+   mt = { __close = function() close_count += 1 end }
 
    for i = 1, 3 do
       local obj <close> = setmetatable({}, mt)
@@ -214,7 +214,7 @@ end
 -- Close with metatable but no __close
 
 function testCloseMetatableNoClose()
-   local mt = { __index = function() return 'value' end }
+   mt = { __index = function() return 'value' end }
    do
       local obj <close> = setmetatable({}, mt)
    end
@@ -224,7 +224,7 @@ end
 -- Mixed close values (some nil)
 
 function testMixedCloseValues()
-   local order = {}
+   order = {}
    do
       local a <close> = setmetatable({}, {
          __close = function() table.insert(order, 'a') end
@@ -246,21 +246,21 @@ end
 -- AND that the error value is passed to the __close handler.
 
 function testCloseWithPcall()
-   local closed = false
-   local received_err = nil
-   local mt = {
+   closed = false
+   received_err = nil
+   mt = {
       __close = function(self, err)
          closed = true
          received_err = err
       end
    }
 
-   local function inner()
+   function inner()
       local obj <close> = setmetatable({}, mt)
       error('test error message')
    end
 
-   local ok, err = pcall(inner)
+   ok, err = pcall(inner)
    assert(not ok, 'pcall should catch error')
    assert(closed, 'Close should be called when error is caught by pcall')
    -- The error must be passed to __close during error unwinding
@@ -290,9 +290,9 @@ end
 -- Multiple close handlers during error - all should be called with error
 
 function testMultipleCloseOnError()
-   local order = {}
-   local errors_received = {}
-   local function makeMt(n)
+   order = {}
+   errors_received = {}
+   function makeMt(n)
       return {
          __close = function(self, err)
             table.insert(order, n)
@@ -301,14 +301,14 @@ function testMultipleCloseOnError()
       }
    end
 
-   local function inner()
+   function inner()
       local a <close> = setmetatable({}, makeMt(0))
       local b <close> = setmetatable({}, makeMt(1))
       local c <close> = setmetatable({}, makeMt(2))
       error('multi close error')
    end
 
-   local ok = pcall(inner)
+   ok = pcall(inner)
    assert(not ok, 'pcall should catch error')
    assert(#order is 3, 'All three close handlers should be called: ' .. #order)
    assert(order[0] is 2, 'LIFO: 3 first, got ' .. tostring(order[0]))
@@ -325,9 +325,9 @@ end
 -- Close in while loop
 
 function testCloseInWhileLoop()
-   local close_count = 0
-   local mt = { __close = function() close_count += 1 end }
-   local i = 0
+   close_count = 0
+   mt = { __close = function() close_count += 1 end }
+   i = 0
 
    while i < 3 do
       local obj <close> = setmetatable({}, mt)
@@ -341,27 +341,27 @@ end
 -- Close with xpcall
 
 function testCloseWithXpcall()
-   local closed = false
-   local received_err = nil
-   local error_handler_called = false
-   local mt = {
+   closed = false
+   received_err = nil
+   error_handler_called = false
+   mt = {
       __close = function(self, err)
          closed = true
          received_err = err
       end
    }
 
-   local function inner()
+   function inner()
       local obj <close> = setmetatable({}, mt)
       error('xpcall test error')
    end
 
-   local function errorHandler(err)
+   function errorHandler(err)
       error_handler_called = true
       return 'handled: ' .. tostring(err)
    end
 
-   local ok, err = xpcall(inner, errorHandler)
+   ok, err = xpcall(inner, errorHandler)
    assert(not ok, 'xpcall should catch error')
    assert(error_handler_called, 'Error handler should be called')
    assert(closed, 'Close should be called with xpcall')
@@ -374,26 +374,26 @@ end
 -- is that both handlers are called and the return value propagates correctly.
 
 function testNestedFunctionsClose()
-   local order = {}
-   local mt_outer = { __close = function() table.insert(order, 'outer') end }
-   local mt_inner = { __close = function() table.insert(order, 'inner') end }
+   order = {}
+   mt_outer = { __close = function() table.insert(order, 'outer') end }
+   mt_inner = { __close = function() table.insert(order, 'inner') end }
 
-   local function inner()
+   function inner()
       local obj <close> = setmetatable({}, mt_inner)
       return 'from_inner'
    end
 
-   local function outer()
+   function outer()
       local obj <close> = setmetatable({}, mt_outer)
       return inner()
    end
 
-   local result = outer()
+   result = outer()
    assert(result is 'from_inner', 'Return value should propagate')
    assert(#order is 2, 'Both handlers should be called: got ' .. #order)
    -- Both 'inner' and 'outer' should be in the order table
-   local has_inner = false
-   local has_outer = false
+   has_inner = false
+   has_outer = false
    for _, v in ipairs(order) do
       if v is 'inner' then has_inner = true end
       if v is 'outer' then has_outer = true end
@@ -406,10 +406,10 @@ end
 -- Close with early return in loop
 
 function testCloseEarlyReturnInLoop()
-   local close_count = 0
-   local mt = { __close = function() close_count += 1 end }
+   close_count = 0
+   mt = { __close = function() close_count += 1 end }
 
-   local function inner()
+   function inner()
       for i = 1, 10 do
          local obj <close> = setmetatable({}, mt)
          if i is 3 then
@@ -419,7 +419,7 @@ function testCloseEarlyReturnInLoop()
       return 0
    end
 
-   local result = inner()
+   result = inner()
    assert(result is 3, 'Should return 3')
    assert(close_count is 3, 'Close should be called 3 times (iterations 1, 2, 3): ' .. close_count)
    print('testCloseEarlyReturnInLoop: passed')
@@ -428,27 +428,27 @@ end
 -- Error in __close handler replaces original error (Lua 5.4 semantics)
 
 function testCloseHandlerError()
-   local order = {}
-   local mt1 = {
+   order = {}
+   mt1 = {
       __close = function(self, err)
          table.insert(order, 'close1')
          error('close1 error')
       end
    }
-   local mt2 = {
+   mt2 = {
       __close = function(self, err)
          table.insert(order, 'close2')
          -- This handler should receive the error from close1 (or original)
       end
    }
 
-   local function inner()
+   function inner()
       local obj2 <close> = setmetatable({}, mt2)  -- Called second (LIFO)
       local obj1 <close> = setmetatable({}, mt1)  -- Called first (LIFO), throws
       error('original error')
    end
 
-   local ok, err = pcall(inner)
+   ok, err = pcall(inner)
    assert(not ok, 'pcall should catch error')
    -- Both close handlers should be called even when one throws
    assert(#order is 2, 'Both close handlers should be called: ' .. #order)
@@ -462,27 +462,27 @@ end
 -- Multiple __close errors - last one wins
 
 function testMultipleCloseErrors()
-   local order = {}
-   local mt1 = {
+   order = {}
+   mt1 = {
       __close = function(self, err)
          table.insert(order, 'close1')
          error('close1 error')
       end
    }
-   local mt2 = {
+   mt2 = {
       __close = function(self, err)
          table.insert(order, 'close2')
          error('close2 error')
       end
    }
 
-   local function inner()
+   function inner()
       local obj2 <close> = setmetatable({}, mt2)  -- Called second, also throws
       local obj1 <close> = setmetatable({}, mt1)  -- Called first, throws
       error('original error')
    end
 
-   local ok, err = pcall(inner)
+   ok, err = pcall(inner)
    assert(not ok, 'pcall should catch error')
    assert(#order is 2, 'Both close handlers should be called')
    -- The last error (from close2) should be the final error

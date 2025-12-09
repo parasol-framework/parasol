@@ -8,13 +8,13 @@ global function ignoreAction(actionID)
 end
 
 global glIgnoreList = { }
-glIgnoreList[AC_DataFeed] = true
-glIgnoreList[AC_Free] = true
+glIgnoreList[AC_DataFeed]    = true
+glIgnoreList[AC_Free]        = true
 glIgnoreList[AC_FreeWarning] = true
-glIgnoreList[AC_Init] = true
-glIgnoreList[AC_NewChild] = true
-glIgnoreList[AC_NewObject] = true
-glIgnoreList[AC_NewOwner] = true
+glIgnoreList[AC_Init]        = true
+glIgnoreList[AC_NewChild]    = true
+glIgnoreList[AC_NewObject]   = true
+glIgnoreList[AC_NewOwner]    = true
 glIgnoreList[AC_NewPlacement ?? 0] = true
 
 global function setAction(Action, Options)
@@ -365,8 +365,8 @@ global function saveDocuments()
          verbose('Processing documentation for class ' .. tostring(className))
 
          if cl.meta then
-            local status, err = pcall(function()
-               local out = docClass(cl) .. docTypes(cl.references) .. docStructures(cl.references) .. '</book>\n'
+            status, err = pcall(function()
+               out = docClass(cl) .. docTypes(cl.references) .. docStructures(cl.references) .. '</book>\n'
                local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
                print("Saving XML class documentation to \"" .. file.path .. '"')
                file.acWrite(out)
@@ -404,20 +404,20 @@ global function extractParagraph(Input, Caller, References)
    -- Wrap each line inside a <p> tag and take into account lines that start with XML tags such as <pre> or otherwise
    -- need special treatment.
 
-   local lines = Input:split('\n')
-   local output = ''
-   local currentParagraph = nil
+   lines = Input:split('\n')
+   output = ''
+   currentParagraph = nil
 
-   local function closeParagraph()
+   function closeParagraph()
       if currentParagraph then
          output ..= '<p>' .. currentParagraph .. '</p>\n'
          currentParagraph = nil
       end
    end
 
-   local i = 0
+   i = 0
    while i < #lines do
-      local line = string.trim(lines[i])
+      line = string.trim(lines[i])
       if line?? then
          local action
          if line:match('^!(%w*)$') then
@@ -450,7 +450,7 @@ global function extractParagraph(Input, Caller, References)
          if action is 'balance' then
             -- Process everything within the tag verbatim
             closeParagraph()
-            local balance = 0
+            balance = 0
             repeat
                string.gsub(lines[i], '<(.-)>', function(key,val)
                   if key:startsWith('/') then
@@ -594,9 +594,9 @@ global function substituteReferences(String, Class)
    -- Substitute external field references, identified as @File.Size or #File.Size
 
    String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
-      local meta = mSys.FindClass(ClassName:hash(), 0)
+      meta = mSys.FindClass(ClassName:hash(), 0)
       if meta then
-         local err, field, src = meta.mtFindField(FieldName:hash())
+         err, field, src = meta.mtFindField(FieldName:hash())
          if field then
             return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else
@@ -631,9 +631,9 @@ global function docClass(Class)
       print('No compiled meta information available for class ' .. Class.name)
       return
    end
-   local meta = Class.meta
+   meta = Class.meta
 
-   local out = '<?xml version="1.0"?>\n'
+   out = '<?xml version="1.0"?>\n'
    out ..= '<?xml-stylesheet type="text/xsl" href="class.xsl"?>\n\n'
    out ..= '<book>\n'
    out ..= '  <info>\n'
@@ -646,10 +646,10 @@ global function docClass(Class)
    if meta.fileExtension?? then out ..= '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
    if meta.fileDescription?? then out ..= '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
    out ..= '    <version>' .. (meta.classVersion ?? 1) .. '</version>\n'
-   local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
+   class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out ..= '    <id>' .. class_hash .. '</id>\n'
    out ..= '    <idstring>' .. Class.name:upper() .. '</idstring>\n'
-   local cat = meta.get('$category')
+   cat = meta.get('$category')
    if cat?? then
       out ..= '    <category>' .. cat .. '</category>\n'
    end
@@ -875,7 +875,6 @@ global function docModuleHeader()
 
    if not table.empty(srcFiles) then
       out ..= '    <source>\n'
-      local path
       for _, path in pairs(srcFiles) do
          filename = path:gsub('.*[:/\\](.-)', '%1', 1)
          path = path:match('(.*[:/\\])(.-)')
@@ -982,6 +981,7 @@ global function docFunction(Function)
    return out .. '  </function>\n\n'
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Output custom types - flags, enumerators etc
 
 global function docTypes(References)
@@ -1043,6 +1043,7 @@ global function docTypes(References)
    return out
 end
 
+----------------------------------------------------------------------------------------------------------------------
 -- Output structures.  Modules need to output all the structures; Classes output structures that are referenced.
 
 global function docStructures(References)

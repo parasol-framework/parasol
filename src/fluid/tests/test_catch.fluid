@@ -3,22 +3,19 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that catch() does nothing if no error is raised.
 
-function testCatchClean()
-   local err, a, b, c = catch(function()
-      local i = 1
+@Test function testCatchClean()
+   err, a, b, c = catch(function()
+      i = 1
       return 1, 2, 3, 4
    end,
    function(Exception)
       error(Exception.line .. ": An exception was raised despite doing nothing.")
    end)
 
-   if (err != ERR_Okay) then
-      error("Expected the error code to be ERR_Okay")
-   end
-
+   assert(err is ERR_Okay, "Expected the error code to be ERR_Okay")
    assert(a is 1 and b is 2 and c is 3, "Did not receive expected results from the successful function.")
 
-   local err, hello, world = catch(function()
+   err, hello, world = catch(function()
       return 'hello', 'world'
    end)
 
@@ -28,10 +25,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that a standard error() will result in the exception being caught.
 
-function testCatch()
-   local exception_raised = false
+@Test function testCatch()
+   exception_raised = false
 
-   local err = catch(function()
+   err = catch(function()
       error("Catch this! (Exception raised on purpose)")
    end,
    function(Exception)
@@ -46,10 +43,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that an ERROR result other than ERR_Okay will result in the generation of an exception.
 
-function testCatchErrorCode()
-   local exception_raised = false
+@Test function testCatchErrorCode()
+   exception_raised = false
 
-   local err, result = catch(function()
+   err, result = catch(function()
       mSys.AllocMemory(-10, 0)
    end,
    function(Exception)
@@ -65,11 +62,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that obj.new() raises exceptions correctly.
 
-function testCatchObject()
-   local exception_raised = false
+@Test function testCatchObject()
+   exception_raised = false
 
-   local err, result = catch(function()
-      local fl = obj.new("file", { path="File does not exist" })
+   err, result = catch(function()
+      fl = obj.new("file", { path="File does not exist" })
    end,
    function(Exception)
       print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
@@ -82,11 +79,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that object actions raise exceptions correctly.
 
-function testCatchObjectAction()
-   local exception_raised = false
+@Test function testCatchObjectAction()
+   exception_raised = false
 
-   local err, result = catch(function()
-      local time = obj.new("time", { })
+   err, result = catch(function()
+      time = obj.new("time", { })
       time.acUndo()
    end,
    function(Exception)
@@ -100,11 +97,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that errors returned from writing to object fields are caught.
 
-function testSetField()
-   local exception_raised = false
+@Test function testSetField()
+   exception_raised = false
 
-   local err, result = catch(function()
-      local time = obj.new("time", { })
+   err, result = catch(function()
+      time = obj.new("time", { })
       time.madeup_field = -1
    end,
    function(Exception)
@@ -118,10 +115,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that filtering for error codes works.
 
-function testCatchFilter()
+@Test function testCatchFilter()
    catch(function()
       catch(function()
-         local pic, err = obj.new("xml", { src="nowhere:nofile.xml" })
+         pic, err = obj.new("xml", { src="nowhere:nofile.xml" })
          print("Received error " .. err)
       end,
       { ERR_CreateObject, ERR_Init, ERR_File },
@@ -137,10 +134,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that unfiltered errors are thrown to the parent block.
 
-function testMissedFilter()
-   local status, msg = pcall(function()
+@Test function testMissedFilter()
+   status, msg = pcall(function()
       catch(function()
-         local xml = obj.new("xml", { flags="NEW" })
+         xml = obj.new("xml", { flags="NEW" })
          xml.acDraw()
          print("This must not be reached.")
       end,
@@ -160,23 +157,20 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test simple catch() with no function defined to handle the exception.
 
-function testNoThrow()
-   local ex, result = catch(function()
+@Test function testNoThrow()
+   ex, result = catch(function()
       error("Catch this! (Exception raised on purpose)")
    end)
 
-   if (ex is nil) then
-      error("Exception table was not returned.")
-   else
-      print("Received line " .. ex.line .. ", code " .. nz(ex.code,"LUA") .. ", msg: " .. ex.message)
-   end
+   assert(ex, "Exception table was not returned.")
+   print("Received line " .. ex.line .. ", code " .. nz(ex.code,"LUA") .. ", msg: " .. ex.message)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- This test exercises deep nesting of exception handlers to reliably trigger frame chain issues
 
-function testDeepNesting1()
-   local result = {}
+@Test function testDeepNesting1()
+   result = {}
 
    catch(function()
       catch(function()
@@ -209,12 +203,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testCrossLuaC1()
-   local result = {}
+@Test function testCrossLuaC1()
+   result = {}
 
    catch(function()
       catch(function()
-         local xml = obj.new("xml", { flags="NEW" })
+         xml = obj.new("xml", { flags="NEW" })
          xml.acDraw()  -- Raises error from C
       end,
       { ERR_Failed },  -- Wrong filter
@@ -234,13 +228,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testMultipleFilterLevels()
-   local result = {}
+@Test function testMultipleFilterLevels()
+   result = {}
 
    catch(function()
       catch(function()
          catch(function()
-            local xml = obj.new("xml", { flags="NEW" })
+            xml = obj.new("xml", { flags="NEW" })
             xml.acDraw()  -- Raises from C
          end,
          { ERR_Failed },  -- Wrong
@@ -263,8 +257,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testMixedLuaErrors()
-   local result = {}
+@Test function testMixedLuaErrors()
+   result = {}
 
    catch(function()
       catch(function()
@@ -295,11 +289,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testFilterChaining()
+@Test function testFilterChaining()
    -- Test the specific pattern from testMissedFilter
-   local status, msg = pcall(function()
+   status, msg = pcall(function()
       catch(function()
-         local xml = obj.new("xml", { flags="NEW" })
+         xml = obj.new("xml", { flags="NEW" })
          xml.acDraw()
       end,
       { ERR_Failed },  -- Filter for the wrong error code
@@ -313,12 +307,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testObjectMethodErrors()
-   local result = {}
+@Test function testObjectMethodErrors()
+   result = {}
 
    catch(function()
       catch(function()
-         local time = obj.new("time", {})
+         time = obj.new("time", {})
          time.acUndo()  -- Unsupported action
       end,
       { ERR_Failed },
@@ -336,13 +330,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testChainedObjectCalls()
-   local result = {}
+@Test function testChainedObjectCalls()
+   result = {}
 
    catch(function()
       catch(function()
          catch(function()
-            local time1 = obj.new("time", {})
+            time1 = obj.new("time", {})
             time1.acUndo()
          end,
          { ERR_Failed },
@@ -350,7 +344,7 @@ function testChainedObjectCalls()
             table.insert(result, "level3")
          end)
 
-         local time2 = obj.new("time", {})
+         time2 = obj.new("time", {})
          time2.acUndo()
       end,
       { ERR_Failed },
@@ -365,14 +359,3 @@ function testChainedObjectCalls()
 
    assert(#result is 1 and result[0] is "level1", "Chained object calls failed")
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testCatchClean, testCatch, testCatchErrorCode, testCatchFilter, testMissedFilter, testCatchObject,
-         testCatchObjectAction, testNoThrow, testSetField, testCatch, testDeepNesting1, testCrossLuaC1,
-         testMultipleFilterLevels, testMixedLuaErrors, testFilterChaining, testObjectMethodErrors,
-         testChainedObjectCalls
-      }
-   }
