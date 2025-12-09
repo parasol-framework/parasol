@@ -662,7 +662,7 @@
 
         <script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script>
         <script type="text/javascript" src="../../js/base.js"></script>
-        <script type="text/javascript">
+        <script type="text/javascript"><xsl:text disable-output-escaping="yes">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 
    var xslt = false;
@@ -709,7 +709,7 @@ ready(function(){
    }
 });
 
-         </script>
+         </xsl:text></script>
       </body>
     </html>
   </xsl:template>

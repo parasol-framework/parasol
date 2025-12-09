@@ -74,6 +74,16 @@ if (modDisplay) modDisplay-&gt;get(FID_ModBase, DisplayBase);
 <tr><th class="col-md-1">FieldNotSet</th><td>The module has not been successfully initialised.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Test" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Test</th><td id="tm-Test">Run unit tests for the module, if present.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Test" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR mod::Test(OBJECTPTR Object, CSTRING Options, INT * Passed, INT * Total)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Options</td><td>Optional CSV list of testing options.</td></tr>
+<tr><td>Passed</td><td>The number of tests that passed will be returned in this parameter.</td></tr>
+<tr><td>Total</td><td>The total number of tests that were executed will be returned in this parameter.</td></tr>
+</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
+<p>If a module is compiled with unit tests, calling the Test() method will execute them.  There is no explicit contract for what the unit tests should do, but it is typically expected that test results will be printed to the log.</p>
+<p>Unit tests should never be compiled into production releases of the code.</p>
+      
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Unit tests are not defined for the module.</td></tr>
+</tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Module class documentation © Paul Manias 1996-2025</div></div><div class="docs-content" style="display:none;" id="MOF"><h1>MOF Type</h1><p class="lead">Module flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MOF::LINK_LIBRARY</th><td>Module refers to a symbolic link library (e.g. libz DLL or SO)</td></tr>
 <tr><th>MOF::STATIC</th><td>This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</td></tr>
 <tr><th>MOF::SYSTEM_PROBE</th><td>Indicates that the module is being probed.  Do not use outside of the core library.</td></tr>

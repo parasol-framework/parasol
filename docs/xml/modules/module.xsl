@@ -653,7 +653,7 @@
 
         <script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script>
         <script type="text/javascript" src="../js/base.js"></script>
-        <script type="text/javascript">
+        <script type="text/javascript"><xsl:text disable-output-escaping="yes">
 var glCurrentMethod;
 
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
@@ -727,7 +727,8 @@ function showPage(Name, NoHistory)
 
    return false;
 }
-         </script>
+         </xsl:text>
+        </script>
       </body>
     </html>
   </xsl:template>
