@@ -641,13 +641,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_expression_stmt(const ExpressionStmtPay
 //********************************************************************************************************************
 // Emit bytecode for a conditional shorthand statement (executes body only for falsey values like nil, false, 0, or empty string).
 
-ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const ConditionalShorthandStmtPayload &Payload)
 {
-   if (not payload.condition or not payload.body) {
+   if (not Payload.condition or not Payload.body) {
       return this->unsupported_stmt(AstNodeKind::ConditionalShorthandStmt, SourceSpan{});
    }
 
-   auto condition_result = this->emit_expression(*payload.condition);
+   auto condition_result = this->emit_expression(*Payload.condition);
    if (not condition_result.ok()) {
       return ParserResult<IrEmitUnit>::failure(condition_result.error_ref());
    }
@@ -681,7 +681,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    check_zero.patch_to(body_start);
    check_empty.patch_to(body_start);
 
-   auto body_result = this->emit_statement(*payload.body);
+   auto body_result = this->emit_statement(*Payload.body);
    if (not body_result.ok()) return body_result;
 
    skip_body.patch_to(BCPos(this->func_state.pc));
@@ -696,16 +696,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
 //********************************************************************************************************************
 // Emit bytecode for a return statement, handling zero, single, or multiple return values.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Payload)
 {
    BCIns ins;
    this->func_state.flags |= PROTO_HAS_RETURN;
-   if (payload.values.empty()) {
+   if (Payload.values.empty()) {
       ins = BCINS_AD(BC_RET0, 0, 1);
    }
    else {
       auto count = BCReg(0);
-      auto list = this->emit_expression_list(payload.values, count);
+      auto list = this->emit_expression_list(Payload.values, count);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
 
       ExpDesc last = list.value_ref();
@@ -754,22 +754,32 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &pa
 //********************************************************************************************************************
 // Emit bytecode for a local variable declaration statement, allocating slots and initialising values.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayload &Payload)
 {
-   auto nvars = BCReg(BCREG(payload.names.size()));
+   auto nvars = BCReg(BCREG(Payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
+   // For local declarations with ?=, since the variables are newly declared (undefined),
+   // they are semantically empty, so we just perform a plain assignment.
+   // The ?= operator for local declarations is equivalent to plain = assignment.
+   // However, we still enforce that ?= only supports a single target variable for consistency.
+
+   if (Payload.op IS AssignmentOperator::IfEmpty and nvars != 1) {
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+         "conditional assignment (?=) only supports a single target variable"));
+   }
+
    for (auto i = BCReg(0); i < nvars; ++i) {
-      const Identifier& identifier = payload.names[i.raw()];
+      const Identifier& identifier = Payload.names[i.raw()];
       GCstr* symbol = identifier.symbol;
       this->lex_state.var_new(i, is_blank_symbol(identifier) ? NAME_BLANK : symbol);
    }
 
    ExpDesc tail;
    auto nexps = BCReg(0);
-   if (payload.values.empty()) tail = ExpDesc(ExpKind::Void);
+   if (Payload.values.empty()) tail = ExpDesc(ExpKind::Void);
    else {
-      auto list = this->emit_expression_list(payload.values, nexps);
+      auto list = this->emit_expression_list(Payload.values, nexps);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
       tail = list.value_ref();
    }
@@ -779,7 +789,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    auto base = BCReg(this->func_state.nactvar - nvars.raw());
 
    for (auto i = BCReg(0); i < nvars; ++i) {
-      const Identifier& identifier = payload.names[i.raw()];
+      const Identifier& identifier = Payload.names[i.raw()];
       if (not identifier.has_close) continue;
 
       // Check slot limit for closeslots bitmap (max 64 slots supported)
@@ -794,7 +804,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    }
 
    for (auto i = BCReg(0); i < nvars; ++i) {
-      const Identifier& identifier = payload.names[i.raw()];
+      const Identifier& identifier = Payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;
       this->update_local_binding(identifier.symbol, BCReg(base.raw() + i.raw()));
    }
@@ -806,57 +816,145 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 // Emit bytecode for a global variable declaration statement, explicitly storing values in the global table.
 // Handles multi-value returns from function calls (e.g., global a, b, c = f())
 
-ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPayload &Payload)
 {
-   auto nvars = BCReg(BCREG(payload.names.size()));
+   auto nvars = BCReg(BCREG(Payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    // Register all declared global names so nested functions can recognise them
 
-   for (const Identifier& identifier : payload.names) {
+   for (const Identifier& identifier : Payload.names) {
       if (is_blank_symbol(identifier)) continue;
       GCstr* name = identifier.symbol;
       if (name) this->func_state.declared_globals.insert(name);
    }
 
+   // Handle conditional assignment (?=) for global declarations
+   // The ?= operator only supports a single target variable
+
+   if (Payload.op IS AssignmentOperator::IfEmpty) {
+      if (nvars != 1) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+            "conditional assignment (?=) only supports a single target variable"));
+      }
+
+      const Identifier& identifier = Payload.names[0];
+      if (is_blank_symbol(identifier) or not identifier.symbol) {
+         this->func_state.reset_freereg();
+         return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+      }
+
+      GCstr* name = identifier.symbol;
+      RegisterGuard register_guard(&this->func_state);
+      RegisterAllocator allocator(&this->func_state);
+
+      // Load current global value into a register
+
+      ExpDesc global_var;
+      global_var.init(ExpKind::Global, 0);
+      global_var.u.sval = name;
+
+      ExpressionValue lhs_value(&this->func_state, global_var);
+      auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+
+      // Emit checks for empty values: nil, false, 0, ""
+
+      ExpDesc nilv(ExpKind::Nil);
+      ExpDesc falsev(ExpKind::False);
+      ExpDesc zerov(0.0);
+      ExpDesc emptyv(this->lex_state.intern_empty_string());
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+      ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+      ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
+      ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
+      ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      // Skip assignment if not empty
+
+      ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+      BCPos assign_pos = BCPos(this->func_state.pc);
+
+      // Emit the value expression(s) - if multiple values from RHS (e.g. function returning
+      // multiple values), we take only the first value and discard the rest
+
+      auto count = BCReg(0);
+      auto list = this->emit_expression_list(Payload.values, count);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+      ExpDesc rhs = list.value_ref();
+
+      // If we got multiple values (e.g. from a function call), adjust to take only the first one
+
+      if (count > 1 or rhs.k IS ExpKind::Call) {
+         this->lex_state.assign_adjust(1, count.raw(), &rhs);
+      }
+
+      ExpDesc target;
+      target.init(ExpKind::Global, 0);
+      target.u.sval = name;
+      bcemit_store(&this->func_state, &target, &rhs);
+
+      // Patch jumps
+      check_nil.patch_to(assign_pos);
+      check_false.patch_to(assign_pos);
+      check_zero.patch_to(assign_pos);
+      check_empty.patch_to(assign_pos);
+      skip_assign.patch_to(BCPos(this->func_state.pc));
+
+      register_guard.release_to(register_guard.saved());
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
    // Use emit_expression_list to get all values into consecutive registers
    // This properly handles multi-value returns from function calls
+
    ExpDesc tail(ExpKind::Void);
    auto nexps = BCReg(0);
-   if (not payload.values.empty()) {
-      auto list = this->emit_expression_list(payload.values, nexps);
+   if (not Payload.values.empty()) {
+      auto list = this->emit_expression_list(Payload.values, nexps);
       if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
       tail = list.value_ref();
    }
 
    // Use assign_adjust to handle multi-value returns - this places values in consecutive registers
    // and pads with nil if there are more variables than expressions
+
    this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
 
    // Now values are in consecutive registers starting at (freereg - nvars)
+
    BCReg value_base = BCReg(this->func_state.freereg - nvars.raw());
 
    // Store each value to its corresponding global variable
-   for (auto i = BCReg(0); i < nvars; ++i) {
-      const Identifier& identifier = payload.names[i.raw()];
 
-      // Skip blank identifiers - value is discarded
-      if (is_blank_symbol(identifier)) continue;
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      const Identifier& identifier = Payload.names[i.raw()];
+
+      if (is_blank_symbol(identifier)) continue; // Skip blank identifiers - value is discarded
 
       GCstr* name = identifier.symbol;
       if (not name) continue;
 
       // Create global variable target
+
       ExpDesc var;
       var.init(ExpKind::Global, 0);
       var.u.sval = name;
 
       // Create source expression from the value register
+
       ExpDesc value_expr;
       value_expr.init(ExpKind::NonReloc, value_base + i);
 
-      // Store to global
-      bcemit_store(&this->func_state, &var, &value_expr);
+      bcemit_store(&this->func_state, &var, &value_expr); // Store to global
    }
 
    this->func_state.reset_freereg();
@@ -866,11 +964,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
 //********************************************************************************************************************
 // Emit bytecode for a local function declaration, creating a local variable and assigning a function to it.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload &payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunctionStmtPayload &Payload)
 {
-   if (not payload.function) return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
+   if (not Payload.function) return this->unsupported_stmt(AstNodeKind::LocalFunctionStmt, SourceSpan{});
 
-   GCstr* symbol = payload.name.symbol ? payload.name.symbol : NAME_BLANK;
+   GCstr *symbol = Payload.name.symbol ? Payload.name.symbol : NAME_BLANK;
    auto slot = BCReg(this->func_state.freereg);
    this->lex_state.var_new(0, symbol);
    ExpDesc variable;
@@ -881,17 +979,19 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
    this->lex_state.var_add(1);
 
    // Pass the function name for tostring() support
-   auto function_value = this->emit_function_expr(*payload.function, payload.name.symbol);
+
+   auto function_value = this->emit_function_expr(*Payload.function, Payload.name.symbol);
    if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, slot, "local function literal");
    this->func_state.var_get(this->func_state.nactvar - 1).startpc = this->func_state.pc;
-   if (payload.name.symbol and not payload.name.is_blank) this->update_local_binding(payload.name.symbol, slot);
+   if (Payload.name.symbol and not Payload.name.is_blank) this->update_local_binding(Payload.name.symbol, slot);
 
    // Register annotations if present
-   if (not payload.function->annotations.empty()) {
-      auto anno_result = this->emit_annotation_registration(slot, payload.function->annotations, payload.name.symbol);
+
+   if (not Payload.function->annotations.empty()) {
+      auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, Payload.name.symbol);
       if (not anno_result.ok()) return anno_result;
    }
 
@@ -905,39 +1005,39 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 // Method syntax (function foo:bar()) and table paths (function foo.bar()) always store to the target.
 // Explicit global declarations (global function foo()) always store to global.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload &Payload)
 {
-   if (not payload.function) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
+   if (not Payload.function) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
 
    // If explicitly declared as global, register the name so nested functions can access it
 
-   if (payload.name.is_explicit_global and not payload.name.segments.empty()) {
-      GCstr *name = payload.name.segments.front().symbol;
+   if (Payload.name.is_explicit_global and not Payload.name.segments.empty()) {
+      GCstr *name = Payload.name.segments.front().symbol;
       if (name) this->func_state.declared_globals.insert(name);
    }
 
    // Check if this is a simple function name (not a path like foo.bar or method foo:bar)
    // and if protected_globals is enabled without explicit global declaration
 
-   bool is_simple_name = payload.name.segments.size() == 1 and not payload.name.method.has_value();
+   bool is_simple_name = Payload.name.segments.size() == 1 and not Payload.name.method.has_value();
    bool should_be_local = is_simple_name and this->func_state.L->protected_globals and
-      not payload.name.is_explicit_global;
+      not Payload.name.is_explicit_global;
 
    // Determine the function name for tostring() support.
    // For simple names, use the single segment. For paths like foo.bar, use the last segment.
    // For methods like foo:bar, use the method name.
 
    GCstr *funcname = nullptr;
-   if (payload.name.method.has_value() and payload.name.method->symbol) {
-      funcname = payload.name.method->symbol;
+   if (Payload.name.method.has_value() and Payload.name.method->symbol) {
+      funcname = Payload.name.method->symbol;
    }
-   else if (not payload.name.segments.empty()) {
-      funcname = payload.name.segments.back().symbol;
+   else if (not Payload.name.segments.empty()) {
+      funcname = Payload.name.segments.back().symbol;
    }
 
    if (should_be_local) {
       // Emit as a local function (same as local function foo())
-      GCstr *symbol = payload.name.segments.front().symbol;
+      GCstr *symbol = Payload.name.segments.front().symbol;
       if (not symbol) return this->unsupported_stmt(AstNodeKind::FunctionStmt, SourceSpan{});
 
       auto slot = BCReg(this->func_state.freereg);
@@ -950,7 +1050,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       this->lex_state.var_add(1);
 
       // Pass the function name for tostring() support
-      auto function_value = this->emit_function_expr(*payload.function, funcname);
+      auto function_value = this->emit_function_expr(*Payload.function, funcname);
       if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
       ExpDesc fn = function_value.value_ref();
@@ -959,8 +1059,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       this->update_local_binding(symbol, slot);
 
       // Register annotations if present
-      if (not payload.function->annotations.empty()) {
-         auto anno_result = this->emit_annotation_registration(slot, payload.function->annotations, funcname);
+      if (not Payload.function->annotations.empty()) {
+         auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, funcname);
          if (not anno_result.ok()) return anno_result;
       }
 
@@ -969,10 +1069,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    }
 
    // Original behaviour: store to global or table field
-   auto target_result = this->emit_function_lvalue(payload.name);
+   auto target_result = this->emit_function_lvalue(Payload.name);
    if (not target_result.ok()) return ParserResult<IrEmitUnit>::failure(target_result.error_ref());
    // Pass the function name for tostring() support
-   auto function_value = this->emit_function_expr(*payload.function, funcname);
+   auto function_value = this->emit_function_expr(*Payload.function, funcname);
    if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc target = target_result.value_ref();
@@ -981,7 +1081,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    // For annotation registration, we need the function in a register
    // Materialise the function value to a register before the store
    BCReg func_reg = BCReg(BCREG(0));
-   bool has_annotations = not payload.function->annotations.empty();
+   bool has_annotations = not Payload.function->annotations.empty();
    if (has_annotations) {
       func_reg = BCReg(this->func_state.freereg);
       this->materialise_to_next_reg(value, "annotated function");
@@ -994,7 +1094,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 
    // Register annotations if present
    if (has_annotations) {
-      auto anno_result = this->emit_annotation_registration(func_reg, payload.function->annotations, funcname);
+      auto anno_result = this->emit_annotation_registration(func_reg, Payload.function->annotations, funcname);
       if (not anno_result.ok()) return anno_result;
    }
 
@@ -1005,14 +1105,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 //********************************************************************************************************************
 // Emit bytecode for an if statement with one or more conditional clauses and an optional else clause.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload &Payload)
 {
-   if (payload.clauses.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   if (Payload.clauses.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    ControlFlowEdge escapelist = this->control_flow.make_unconditional();
-   for (size_t i = 0; i < payload.clauses.size(); ++i) {
-      const IfClause& clause = payload.clauses[i];
-      bool has_next = (i + 1) < payload.clauses.size();
+   for (size_t i = 0; i < Payload.clauses.size(); ++i) {
+      const IfClause& clause = Payload.clauses[i];
+      bool has_next = (i + 1) < Payload.clauses.size();
       if (clause.condition) {
          auto condexit_result = this->emit_condition_jump(*clause.condition);
          if (not condexit_result.ok()) return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
@@ -1043,16 +1143,16 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_stmt(const IfStmtPayload& payload)
 //********************************************************************************************************************
 // Emit bytecode for a while loop, evaluating the condition before each iteration.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload &Payload)
 {
-   if (payload.style != LoopStyle::WhileLoop or not payload.condition or not payload.body) {
+   if (Payload.style != LoopStyle::WhileLoop or not Payload.condition or not Payload.body) {
       return this->unsupported_stmt(AstNodeKind::WhileStmt, SourceSpan{});
    }
 
    FuncState* fs = &this->func_state;
    BCPos start = BCPos(fs->lasttarget = fs->pc);
    auto loop_stack_guard = this->push_loop_context(start);
-   auto condexit_result = this->emit_condition_jump(*payload.condition);
+   auto condexit_result = this->emit_condition_jump(*Payload.condition);
    if (not condexit_result.ok()) return ParserResult<IrEmitUnit>::failure(condexit_result.error_ref());
 
    ControlFlowEdge condexit = condexit_result.value_ref();
@@ -1062,7 +1162,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
       FuncScope loop_scope;
       ScopeGuard guard(fs, &loop_scope, FuncScopeFlag::Loop);
       loop = this->control_flow.make_unconditional(BCPos(bcemit_AD(fs, BC_LOOP, fs->nactvar, 0)));
-      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      auto block_result = this->emit_block(*Payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) {
          return block_result;
       }
@@ -1088,9 +1188,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload& paylo
 //********************************************************************************************************************
 // Emit bytecode for a repeat-until loop, executing the body at least once before testing the condition.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload &Payload)
 {
-   if (payload.style != LoopStyle::RepeatUntil or not payload.condition or not payload.body) {
+   if (Payload.style != LoopStyle::RepeatUntil or not Payload.condition or not Payload.body) {
       return this->unsupported_stmt(AstNodeKind::RepeatStmt, SourceSpan{});
    }
 
@@ -1108,11 +1208,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
       FuncScope inner_scope;
       ScopeGuard inner_guard(fs, &inner_scope, FuncScopeFlag::None);
       bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-      auto block_result = this->emit_block(*payload.body, FuncScopeFlag::None);
+      auto block_result = this->emit_block(*Payload.body, FuncScopeFlag::None);
       if (not block_result.ok()) return block_result;
 
       iter = fs->current_pc();
-      auto cond_result = this->emit_condition_jump(*payload.condition);
+      auto cond_result = this->emit_condition_jump(*Payload.condition);
       if (not cond_result.ok()) return ParserResult<IrEmitUnit>::failure(cond_result.error_ref());
 
       condexit = cond_result.value_ref();
@@ -1147,15 +1247,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload& payl
 //********************************************************************************************************************
 // Emit bytecode for a numeric for loop with start, stop, and optional step values.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPayload &Payload)
 {
-   if (not payload.start or not payload.stop or not payload.body) {
+   if (not Payload.start or not Payload.stop or not Payload.body) {
       return this->unsupported_stmt(AstNodeKind::NumericForStmt, SourceSpan{});
    }
 
    FuncState* fs = &this->func_state;
    auto base = fs->free_reg();
-   GCstr* control_symbol = payload.control.symbol ? payload.control.symbol : NAME_BLANK;
+   GCstr* control_symbol = Payload.control.symbol ? Payload.control.symbol : NAME_BLANK;
 
    FuncScope outer_scope;
    ScopeGuard loop_guard(fs, &outer_scope, FuncScopeFlag::Loop);
@@ -1165,20 +1265,20 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    this->lex_state.var_new_fixed(FORL_STEP, VARNAME_FOR_STEP);
    this->lex_state.var_new(FORL_EXT, control_symbol);
 
-   auto start_expr = this->emit_expression(*payload.start);
+   auto start_expr = this->emit_expression(*Payload.start);
    if (not start_expr.ok()) return ParserResult<IrEmitUnit>::failure(start_expr.error_ref());
 
    ExpDesc start_value = start_expr.value_ref();
    this->materialise_to_next_reg(start_value, "numeric for start");
 
-   auto stop_expr = this->emit_expression(*payload.stop);
+   auto stop_expr = this->emit_expression(*Payload.stop);
    if (not stop_expr.ok()) return ParserResult<IrEmitUnit>::failure(stop_expr.error_ref());
 
    ExpDesc stop_value = stop_expr.value_ref();
    this->materialise_to_next_reg(stop_value, "numeric for stop");
 
-   if (payload.step) {
-      auto step_expr = this->emit_expression(*payload.step);
+   if (Payload.step) {
+      auto step_expr = this->emit_expression(*Payload.step);
       if (not step_expr.ok()) return ParserResult<IrEmitUnit>::failure(step_expr.error_ref());
       ExpDesc step_value = step_expr.value_ref();
       this->materialise_to_next_reg(step_value, "numeric for step");
@@ -1203,17 +1303,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
       allocator.reserve(BCReg(1));
       std::array<BlockBinding, 1> loop_bindings{};
       std::span<const BlockBinding> binding_span;
-      if (payload.control.symbol and not payload.control.is_blank) {
-         loop_bindings[0].symbol = payload.control.symbol;
+      if (Payload.control.symbol and not Payload.control.is_blank) {
+         loop_bindings[0].symbol = Payload.control.symbol;
          loop_bindings[0].slot = BCReg(base.raw() + FORL_EXT);
          binding_span = std::span<const BlockBinding>(loop_bindings.data(), 1);
       }
-      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
+      auto block_result = this->emit_block_with_bindings(*Payload.body, FuncScopeFlag::None, binding_span);
       if (not block_result.ok()) return block_result;
    }
 
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_FORL, base, NO_JMP)));
-   fs->bcbase[loopend.head().raw()].line = payload.body->span.line;
+   fs->bcbase[loopend.head().raw()].line = Payload.body->span.line;
    loopend.patch_head(BCPos(loop.head().raw() + 1));
    loop.patch_head(fs->current_pc());
    this->loop_stack.back().continue_target = loopend.head();
@@ -1226,9 +1326,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
 //********************************************************************************************************************
 // Emit bytecode for a generic for loop using iterator functions (e.g., pairs, ipairs).
 
-ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPayload &Payload)
 {
-   if (payload.names.empty() or payload.iterators.empty() or not payload.body) {
+   if (Payload.names.empty() or Payload.iterators.empty() or not Payload.body) {
       return this->unsupported_stmt(AstNodeKind::GenericForStmt, SourceSpan{});
    }
 
@@ -1243,14 +1343,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    this->lex_state.var_new_fixed(nvars++, VARNAME_FOR_STATE);
    this->lex_state.var_new_fixed(nvars++, VARNAME_FOR_CTL);
 
-   for (const Identifier& identifier : payload.names) {
+   for (const Identifier& identifier : Payload.names) {
       GCstr* symbol = identifier.symbol ? identifier.symbol : NAME_BLANK;
       this->lex_state.var_new(nvars++, symbol);
    }
 
    BCPos exprpc = fs->current_pc();
    auto iterator_count = BCReg(0);
-   auto iter_values = this->emit_expression_list(payload.iterators, iterator_count);
+   auto iter_values = this->emit_expression_list(Payload.iterators, iterator_count);
    if (not iter_values.ok()) return ParserResult<IrEmitUnit>::failure(iter_values.error_ref());
 
    ExpDesc tail = iter_values.value_ref();
@@ -1274,7 +1374,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
       std::vector<BlockBinding> loop_bindings;
       loop_bindings.reserve(visible.raw());
       for (auto i = BCReg(0); i < visible; ++i) {
-         const Identifier& identifier = payload.names[i.raw()];
+         const Identifier& identifier = Payload.names[i.raw()];
          if (identifier.symbol and not identifier.is_blank) {
             BlockBinding binding;
             binding.symbol = identifier.symbol;
@@ -1283,7 +1383,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
          }
       }
       std::span<const BlockBinding> binding_span(loop_bindings.data(), loop_bindings.size());
-      auto block_result = this->emit_block_with_bindings(*payload.body, FuncScopeFlag::None, binding_span);
+      auto block_result = this->emit_block_with_bindings(*Payload.body, FuncScopeFlag::None, binding_span);
       if (not block_result.ok()) {
          return block_result;
       }
@@ -1292,8 +1392,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    loop.patch_head(fs->current_pc());
    BCPos iter = BCPos(bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars - BCREG(3) + BCREG(1), 3));
    ControlFlowEdge loopend = this->control_flow.make_unconditional(BCPos(bcemit_AJ(fs, BC_ITERL, base, NO_JMP)));
-   fs->bcbase[loopend.head().raw() - 1].line = payload.body->span.line;
-   fs->bcbase[loopend.head().raw()].line = payload.body->span.line;
+   fs->bcbase[loopend.head().raw() - 1].line = Payload.body->span.line;
+   fs->bcbase[loopend.head().raw()].line = Payload.body->span.line;
    loopend.patch_head(BCPos(loop.head().raw() + 1));
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(iter);
@@ -1305,9 +1405,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
 //********************************************************************************************************************
 // Emit bytecode for a defer statement, registering a function to execute when the current scope exits.
 
-ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payload)
+ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload &Payload)
 {
-   if (not payload.callable) return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
+   if (not Payload.callable) return this->unsupported_stmt(AstNodeKind::DeferStmt, SourceSpan{});
 
    FuncState* fs = &this->func_state;
    auto reg = fs->free_reg();
@@ -1318,14 +1418,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_defer_stmt(const DeferStmtPayload& payl
    VarInfo* info = &fs->var_get(fs->nactvar - 1);
    info->info |= VarInfoFlag::Defer;
 
-   auto function_value = this->emit_function_expr(*payload.callable);
+   auto function_value = this->emit_function_expr(*Payload.callable);
    if (not function_value.ok()) return ParserResult<IrEmitUnit>::failure(function_value.error_ref());
 
    ExpDesc fn = function_value.value_ref();
    this->materialise_to_reg(fn, reg, "defer callable");
 
    auto nargs = BCReg(0);
-   for (const ExprNodePtr& argument : payload.arguments) {
+   for (const ExprNodePtr& argument : Payload.arguments) {
       if (not argument) continue;
 
       auto arg_expr = this->emit_expression(*argument);
@@ -1872,7 +1972,7 @@ ParserResult<ExpDesc> IrEmitter::emit_vararg_expr()
 //********************************************************************************************************************
 // Emit bytecode for a unary expression (negation, not, length, or bitwise not).
 
-ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload &Payload)
 {
    if (not Payload.operand) return this->unsupported_expr(AstNodeKind::UnaryExpr, SourceSpan{});
    auto operand_result = this->emit_expression(*Payload.operand);
@@ -1895,7 +1995,7 @@ ParserResult<ExpDesc> IrEmitter::emit_unary_expr(const UnaryExprPayload& Payload
 //********************************************************************************************************************
 // Emit bytecode for an update expression (++, --), incrementing or decrementing a variable in place.
 
-ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload &Payload)
 {
    if (not Payload.target) return this->unsupported_expr(AstNodeKind::UpdateExpr, SourceSpan{});
 
@@ -1948,7 +2048,7 @@ ParserResult<ExpDesc> IrEmitter::emit_update_expr(const UpdateExprPayload& Paylo
 //********************************************************************************************************************
 // Emit bytecode for a binary expression (arithmetic, comparison, logical, bitwise, or concatenation operators).
 
-ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload& Payload)
+ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload &Payload)
 {
    auto lhs_result = this->emit_expression(*Payload.left);
    if (not lhs_result.ok()) return lhs_result;

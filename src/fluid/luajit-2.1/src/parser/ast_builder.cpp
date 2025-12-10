@@ -216,7 +216,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
 
    ExprNodeList values;
+   AssignmentOperator assign_op = AssignmentOperator::Plain;
+
+   // Check for plain = or conditional ?= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+   else if (this->ctx.match(TokenKind::CompoundIfEmpty).ok()) {
+      assign_op = AssignmentOperator::IfEmpty;
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
       values = std::move(rhs.value_ref());
@@ -256,6 +265,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    stmt->kind = AstNodeKind::LocalDeclStmt;
    stmt->span = local_token.span();
    LocalDeclStmtPayload payload;
+   payload.op = assign_op;
    payload.names = std::move(name_list);
    payload.values = std::move(values);
    stmt->data = std::move(payload);
@@ -305,7 +315,16 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
 
    ExprNodeList values;
+   AssignmentOperator assign_op = AssignmentOperator::Plain;
+
+   // Check for plain = or conditional ?= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+   else if (this->ctx.match(TokenKind::CompoundIfEmpty).ok()) {
+      assign_op = AssignmentOperator::IfEmpty;
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
       values = std::move(rhs.value_ref());
@@ -345,6 +364,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    stmt->kind = AstNodeKind::GlobalDeclStmt;
    stmt->span = global_token.span();
    GlobalDeclStmtPayload payload;
+   payload.op = assign_op;
    payload.names = std::move(name_list);
    payload.values = std::move(values);
    stmt->data = std::move(payload);

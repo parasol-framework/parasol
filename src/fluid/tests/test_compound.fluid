@@ -225,3 +225,123 @@ end
    t[0] += get_from_same(t)
    assert(t[0] is 10, 'indexed += RHS reading from same table should use original base for store')
 end
+
+@Test function testGlobalIfEmptyBasic()
+   -- Test global ?= assigns to undefined global
+   global gTestVar1 ?= 'assigned'
+   assert(gTestVar1 is 'assigned', 'global ?= should assign to undefined global')
+
+   -- Test global ?= does not overwrite existing truthy value
+   gTestVar2 = 'existing'
+   global gTestVar2 ?= 'ignored'
+   assert(gTestVar2 is 'existing', 'global ?= should not overwrite truthy value')
+end
+
+@Test function testGlobalIfEmptyFalseyValues()
+   -- Test global ?= assigns when value is nil
+   global gNilVar = nil
+   global gNilVar ?= 'from nil'
+   assert(gNilVar is 'from nil', 'global ?= should assign when value is nil')
+
+   -- Test global ?= assigns when value is false
+   global gFalseVar = false
+   global gFalseVar ?= 'from false'
+   assert(gFalseVar is 'from false', 'global ?= should assign when value is false')
+
+   -- Test global ?= assigns when value is zero
+   global gZeroVar = 0
+   global gZeroVar ?= 99
+   assert(gZeroVar is 99, 'global ?= should assign when value is zero')
+
+   -- Test global ?= assigns when value is empty string
+   global gEmptyVar = ''
+   global gEmptyVar ?= 'from empty'
+   assert(gEmptyVar is 'from empty', 'global ?= should assign when value is empty string')
+end
+
+@Test function testGlobalIfEmptyWithFunctionCall()
+   -- Test global ?= with function call on RHS
+   function getDefault()
+      return 'default value'
+   end
+   global gFuncVar ?= getDefault()
+   assert(gFuncVar is 'default value', 'global ?= should work with function call RHS')
+end
+
+@Test function testGlobalIfEmptyMultiReturn()
+   -- Test global ?= takes only first return value from multi-return function
+   function multiReturn()
+      return 'first', 'second', 'third'
+   end
+   global gMultiVar ?= multiReturn()
+   assert(gMultiVar is 'first', 'global ?= should take only first return value')
+end
+
+@Test function testGlobalIfEmptyShortCircuit()
+   -- Test global ?= does not evaluate RHS when LHS is truthy
+   global gCallCount = 0
+   function countedFallback()
+      gCallCount++
+      return 'fallback'
+   end
+
+   global gTruthyVar = 'truthy'
+   global gTruthyVar ?= countedFallback()
+   assert(gCallCount is 0, 'global ?= should not evaluate RHS when LHS is truthy')
+   assert(gTruthyVar is 'truthy', 'global ?= should preserve truthy value')
+
+   -- Now test with falsey value
+   global gFalseyVar = 0
+   global gFalseyVar ?= countedFallback()
+   assert(gCallCount is 1, 'global ?= should evaluate RHS when LHS is falsey')
+   assert(gFalseyVar is 'fallback', 'global ?= should assign fallback when LHS is falsey')
+end
+
+@Test function testLocalIfEmptyBasic()
+   -- Test local ?= assigns to newly declared local
+   local lTestVar ?= 'assigned'
+   assert(lTestVar is 'assigned', 'local ?= should assign to new local')
+end
+
+@Test function testLocalIfEmptyWithFunctionCall()
+   -- Test local ?= with function call on RHS
+   function getLocalDefault()
+      return 123
+   end
+   local lFuncVar ?= getLocalDefault()
+   assert(lFuncVar is 123, 'local ?= should work with function call RHS')
+end
+
+@Test function testLocalIfEmptyMultiReturn()
+   -- Test local ?= takes only first return value from multi-return function
+   function localMultiReturn()
+      return 100, 200, 300
+   end
+   local lMultiVar ?= localMultiReturn()
+   assert(lMultiVar is 100, 'local ?= should take only first return value')
+end
+
+@Test function testLocalIfEmptyInLoop()
+   -- Test local ?= works correctly in loop scope
+   results = {}
+   for i in {0..3} do
+      local loopVar ?= i * 10
+      results[i] = loopVar
+   end
+   assert(results[0] is 0, 'local ?= in loop should assign correctly for i=0')
+   assert(results[1] is 10, 'local ?= in loop should assign correctly for i=1')
+   assert(results[2] is 20, 'local ?= in loop should assign correctly for i=2')
+end
+
+@Test function testLocalIfEmptyInCondition()
+   -- Test local ?= works correctly in conditional scope
+   function maybeGet(flag)
+      if flag then
+         local condVar ?= 'from condition'
+         return condVar
+      end
+      return 'not taken'
+   end
+   assert(maybeGet(true) is 'from condition', 'local ?= in condition should work')
+   assert(maybeGet(false) is 'not taken', 'local ?= path not taken should return default')
+end
