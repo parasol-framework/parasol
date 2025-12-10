@@ -263,9 +263,7 @@ function runTests()
       end
    end
 
-   if body.cleanup then
-      body.cleanup()
-   end
+   body?.cleanup()
 
    print('--')
 

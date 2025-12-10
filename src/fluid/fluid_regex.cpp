@@ -286,20 +286,20 @@ static int regex_split(lua_State *Lua)
 //********************************************************************************************************************
 // Property and method access: __index
 
-constexpr auto HASH_pattern  = pf::strihash("pattern");
-constexpr auto HASH_flags    = pf::strihash("flags");
-constexpr auto HASH_error    = pf::strihash("error");
-constexpr auto HASH_test     = pf::strihash("test");
-constexpr auto HASH_match    = pf::strihash("match");
-constexpr auto HASH_search   = pf::strihash("search");
-constexpr auto HASH_replace  = pf::strihash("replace");
-constexpr auto HASH_split    = pf::strihash("split");
+constexpr auto HASH_pattern  = pf::strhash("pattern");
+constexpr auto HASH_flags    = pf::strhash("flags");
+constexpr auto HASH_error    = pf::strhash("error");
+constexpr auto HASH_test     = pf::strhash("test");
+constexpr auto HASH_match    = pf::strhash("match");
+constexpr auto HASH_search   = pf::strhash("search");
+constexpr auto HASH_replace  = pf::strhash("replace");
+constexpr auto HASH_split    = pf::strhash("split");
 
 static int regex_get(lua_State *Lua)
 {
    if (auto r = (struct fregex *)luaL_checkudata(Lua, 1, "Fluid.regex")) {
       if (auto field = luaL_checkstring(Lua, 2)) {
-         const auto hash = pf::strihash(field);
+         const auto hash = pf::strhash(field);
 
          switch(hash) {
             case HASH_pattern: lua_pushstring(Lua, r->pattern.c_str()); return 1;
