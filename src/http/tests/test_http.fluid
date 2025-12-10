@@ -8,21 +8,21 @@ collected too early.
 --]]
 
    require 'common'
-   hslib = require 'net/httpserver'
-   json = require 'json'
+   local hslib = require 'net/httpserver'
+   local json = require 'json'
    include 'http'
 
-   glOutFile = 'temp:http-output.txt'
-   SERVER_PORT = 18942
+   local glOutFile = 'temp:http-output.txt'
+   local SERVER_PORT = 18942
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Test GET, outputFile and stateChanged callback
 
-@Test function testGetLocal()
-   proc = processing.new({ timeout = 10.0 })
-   content = ''
+function testGetLocal()
+   local proc = processing.new({ timeout = 10.0 })
+   local content = ''
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/test_http.fluid',
       method     = 'GET',
       connectTimeout = 10,
@@ -36,7 +36,7 @@ collected too early.
       end
    })
 
-   err = http.acActivate()
+   local err = http.acActivate()
    assert(err is ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
@@ -51,13 +51,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- POST to a local server using chunking (contentLength is -1)
 
-@Test function testPostStringLocal()
-   proc = processing.new({ timeout = 5.0 })
-   content = ''
-   testPostStringCompleted = nil
-   outgoing_body = 'fname=smith&lname=jones'
+function testPostStringLocal()
+   local proc = processing.new({ timeout = 5.0 })
+   local content = ''
+   local testPostStringCompleted
+   local outgoing_body = 'fname=smith&lname=jones'
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/post',
       method     = 'post',
       flags      = HTF_NO_HEAD,
@@ -81,14 +81,14 @@ end
 
    assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
-   err = proc.sleep()
+   local err = proc.sleep()
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(nz(content), 'No content received.')
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
-   js_content = json.decode(content)
+   local js_content = json.decode(content)
    assert(js_content.body is outgoing_body, 'Unexpected response: ' .. content)
 end
 
@@ -96,12 +96,12 @@ end
 -- curl -v -X POST http://httpbin.org/post -d "fname=smith&lname=jones"
 -- POST to an external server using chunking (contentLength is -1)
 
-@Test function testPostStringExt()
-   proc = processing.new({ timeout = 5.0 })
-   testPostStringCompleted = nil
-   content = ''
+function testPostStringExt()
+   local proc = processing.new({ timeout = 5.0 })
+   local testPostStringCompleted
+   local content = ''
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'http://httpbin.org/post',
       method     = 'post',
       flags      = HTF_NO_HEAD,
@@ -125,7 +125,7 @@ end
 
    assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
-   err = proc.sleep()
+   local err = proc.sleep()
 
    if (http.status >= 500) then
       print('httpbin.org service unavailable; cannot perform test.')
@@ -138,7 +138,7 @@ end
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
    assert(nz(content), 'No content received.')
 
-   form = json.decode(content)
+   local form = json.decode(content)
    assert(form, 'No JSON response received.')
    assert(form.form.fname is 'smith', 'Unexpected response: ' .. content)
 end
@@ -146,12 +146,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- POST to a local server using a string body and a predefined size (no chunking)
 
-@Test function testPostStringFile()
-   proc = processing.new({ timeout = 5.0 })
-   outgoing_body = 'fname=joe&lname=bloggs'
-   content = ''
+function testPostStringFile()
+   local proc = processing.new({ timeout = 5.0 })
+   local outgoing_body = 'fname=joe&lname=bloggs'
+   local content = ''
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/post',
       method     = 'post',
       contentType = 'text/plain',
@@ -170,23 +170,23 @@ end
 
    assert(http.acActivate() is ERR_Okay, "HTTP object failed to activate.")
 
-   err = proc.sleep()
+   local err = proc.sleep()
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 
    assert(http.error is ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState is HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(http.status is 200, 'Unexpected HTTP status: ' .. http.status)
 
-   js_content = json.decode(content)
+   local js_content = json.decode(content)
    assert(js_content.body is outgoing_body, 'Unexpected response in body: ' .. content)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test function testSSLOverProxy()
-   proc = processing.new({ timeout = 5.0 })
+function testSSLOverProxy()
+   local proc = processing.new({ timeout = 5.0 })
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src         = 'https://www.google.co.uk/',
       method      = 'get',
       outputFile  = glOutFile,
@@ -194,7 +194,7 @@ end
       proxyport   = '8080'
    })
 
-   err = http.acActivate()
+   local err = http.acActivate()
    assert(err is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
    err = proc.sleep(5.0)
@@ -204,16 +204,16 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- curl -v -X GET https://www.google.com
 
-@Test function testHTTPS()
-   content = nil
-   proc = processing.new({ timeout = 5.0 })
+function testHTTPS()
+   local content
+   local proc = processing.new({ timeout = 5.0 })
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'https://www.google.com',
       method     = 'get',
       outputFile = glOutFile,
       stateChanged = function(HTTP, State)
-         if State is HGS_COMPLETED then
+         if (State is HGS_COMPLETED) then
             msg('State changed to COMPLETED.')
          end
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -225,9 +225,9 @@ end
 
    assert(http.acActivate() is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
-   err = proc.sleep(5.0)
+   local err = proc.sleep(5.0)
 
-   content = file.readAll(glOutFile)
+   local content = file.readAll(glOutFile)
    print(string.format('%.80s [%d bytes]', content, content:len()))
    assert(content, 'No content received.')
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
@@ -237,11 +237,11 @@ end
 -- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
 -- all be handled in the background.
 
-@Test function testRedirectedHTTPS()
-   content = nil
-   proc = processing.new({ timeout = 5.0 })
+function testRedirectedHTTPS()
+   local content
+   local proc = processing.new({ timeout = 5.0 })
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'https://www.google.co.uk',
       method     = 'get',
       outputFile = glOutFile,
@@ -257,22 +257,22 @@ end
       end
    })
 
-   err = http.acActivate()
+   local err = http.acActivate()
    assert(err is ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
-   err = proc.sleep(5.0)
+   local err = proc.sleep(5.0)
    assert(err is ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    assert(content, 'No content received.')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testMultiPart()
-   proc = processing.new({ timeout = 5.0 })
-   content = ''
-   boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
+function testMultiPart()
+   local proc = processing.new({ timeout = 5.0 })
+   local content = ''
+   local boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src         = 'http://127.0.0.1/upload',
       method      = 'post',
       outputFile  = glOutFile,
@@ -283,10 +283,10 @@ end
       end
    } )
 
-   str = ''
-   CRLF = string.char(13,10)
-   filepath = args('inFile')
-   filename = string.gsub(filepath, '.*[:/\\](.-)', '%1', 1)
+   local str = ''
+   local CRLF = string.char(13,10)
+   local filepath = args('inFile')
+   local filename = string.gsub(filepath, '.*[:/\\](.-)', '%1', 1)
 
    // Parameters
 
@@ -305,18 +305,20 @@ end
    str ..= "Content-Disposition: form-data; name=\"file\"; filename=\"" .. filename .. "\"" .. CRLF
    str ..= 'Content-Type: application/octet-stream' .. CRLF .. CRLF
 
-   headfile = obj.new('file', { src='temp:http-head', flags='WRITE|NEW' } )
+   local headfile = obj.new('file', { src='temp:http-head', flags='WRITE|NEW' } )
    headfile.acWrite(str, str:len())
 
-   tailfile = obj.new('file', { src='temp:http-tail', flags='WRITE|NEW' } )
+   local tailfile = obj.new('file', { src='temp:http-tail', flags='WRITE|NEW' } )
    str = CRLF .. '--' .. boundary .. '--' .. CRLF
    tailfile.acWrite(str, str:len())
 
-   srcfile = obj.new('file', { src=filepath, flags='READ' } )
+   local srcfile = obj.new('file', { src=filepath, flags='READ' } )
 
-   http.size = headfile.size + tailfile.size + srcfile.size
-   http.inputfile = headfile.location .. '|' .. srcfile.location .. '|' .. tailfile.location
-   http.acActivate()
+   if (srcfile) then
+      http.size = headfile.size + tailfile.size + srcfile.size
+      http.inputfile = headfile.location .. '|' .. srcfile.location .. '|' .. tailfile.location
+      http.acActivate()
+   end
 
    headfile = nil
    tailfile = nil
@@ -328,11 +330,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- ipv6.google.com test-ipv6.com ipv6.he.net ipv6.cloudflare.com
 
-@Test function testIPV6()
-   proc = processing.new({ timeout = 10.0 })
-   content = ''
+function testIPV6()
+   local proc = processing.new({ timeout = 10.0 })
+   local content = ''
 
-   http = obj.new('http', {
+   local http = obj.new('http', {
       src        = 'http://ipv6.google.com/',
       method     = 'get',
       connectTimeout = 10,
@@ -349,7 +351,7 @@ end
       end
    })
 
-   err = http.acActivate()
+   local err = http.acActivate()
    assert(err is ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
@@ -369,47 +371,57 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@BeforeAll function init(State)
-   print('Serving files from ' .. State.folder)
+   return {
+      tests = {
+        testGetLocal,
+        testPostStringLocal,
+        testPostStringExt,
+        testPostStringFile,
+        testHTTPS,
+        testRedirectedHTTPS,
+        testIPV6
+      },
+      init = function(Path)
+         print('Serving files from ' .. Path)
 
-   global glServer = hslib.start({
-      port    = SERVER_PORT,
-      folder  = State.folder,
-      verbose = true,
-      routes = {
-         { pattern = '/api/test',
-            method = 'GET',
-            handler = function(req, res)
-               res.json({ message = 'GET route works!' })
-            end
-         },
-         { pattern = '/post',
-            method = 'POST',
-            handler = function(req, res)
-               -- Return the request data for testing
-               res.json({
-                  message = 'Simple post works!',
-                  body = req.body,
-                  headers = req.headers
-               })
-            end
-         },
-         { pattern = '/api/users/:id',
-            method = 'POST',
-            handler = function(req, res)
-               userId = req.params.id
-               res.json({
-                  message = 'User route works!',
-                  userId = userId,
-                  method = req.method
-               })
-            end
-         }
-      }
-   })
-end
-
-@AfterAll function cleanup()
-   glServer.stop()
-   mSys.DeleteFile(glOutFile)
-end
+         global glServer = hslib.start({
+            port    = SERVER_PORT,
+            folder  = Path,
+            verbose = true,
+            routes = {
+              { pattern = '/api/test',
+                method = 'GET',
+                handler = function(req, res)
+                   res.json({ message = 'GET route works!' })
+                end
+              },
+              { pattern = '/post',
+                method = 'POST',
+                handler = function(req, res)
+                   -- Return the request data for testing
+                   res.json({
+                      message = 'Simple post works!',
+                      body = req.body,
+                      headers = req.headers
+                   })
+                end
+               },
+              { pattern = '/api/users/:id',
+                method = 'POST',
+                handler = function(req, res)
+                   local userId = req.params.id
+                   res.json({
+                      message = 'User route works!',
+                      userId = userId,
+                      method = req.method
+                   })
+                end
+               }
+            }
+         })
+      end,
+      cleanup = function()
+         glServer.stop()
+         mSys.DeleteFile(glOutFile)
+      end
+   }

@@ -548,7 +548,7 @@ global function cType(Field, Origin)
    end
 
    do
-      args = Field.type:match('^fptr%((.+)%)$')
+      local args = Field.type:match('^fptr%((.+)%)$')
       if args then
          arglist = args:split(' ')
 

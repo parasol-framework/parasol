@@ -40,7 +40,7 @@ end
    err, file = folder.mtNext()
    count = 0
    while err is ERR_Okay do
-      count += 1
+      count++
       date = file.date
       if not date then error("Unable to get file's modification date.") end
 
@@ -64,9 +64,9 @@ end
 
 @Test function testScanDir()
    err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
-   if (err is ERR_Okay) then
+   if err is ERR_Okay then
       err = mSys.ScanDir(dir)
-      while (err is ERR_Okay) do
+      while err is ERR_Okay do
          fl = dir.info
          created = fl.created
 
@@ -91,7 +91,7 @@ end
       volumes = { }
       names = nil
       err = mSys.ScanDir(dir)
-      while (err is ERR_Okay) do
+      while err is ERR_Okay do
          fl = dir.info
          names = not names ? fl.name :> names .. ' ' .. fl.name
          volumes[fl.name] = true
@@ -137,7 +137,7 @@ end
 
    for k, v in ipairs(icon_pairs) do
       icon = obj.new('file', { path=v.path }).icon
-      if (icon != v.icon) then
+      if icon != v.icon then
          error('Icon for ' .. v.path .. ' evaluated to ' .. icon .. ' instead of expected "' .. v.icon .. '"')
       end
    end

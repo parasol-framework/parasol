@@ -924,7 +924,7 @@ global function docFunction(Function)
    -- Function arguments
 
    if not table.empty(Function.input) then
-      args = ''
+      local args = ''
       for k, fa in ipairs(Function.input) do
          ref = ''
          if fa.ref then

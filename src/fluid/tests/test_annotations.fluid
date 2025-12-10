@@ -121,7 +121,7 @@ end
    entry = debug.anno.set(bareFunc, '@SuppressWarnings(unused, deprecated)')
    assert(entry != nil, "Bare identifier parsing should succeed")
    assert(#entry.annotations is 1, "Expected 1 annotation")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.unused is true, "Expected unused=true")
    assert(args.deprecated is true, "Expected deprecated=true")
 end
@@ -134,7 +134,7 @@ end
    entry = debug.anno.set(numFunc, '@Test(timeoutMs=5000, priority=1)')
    assert(entry != nil, "Number parsing should succeed")
    assert(#entry.annotations is 1, "Expected 1 annotation")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.timeoutMs is 5000, "Expected timeoutMs=5000, got " .. tostring(args.timeoutMs))
    assert(args.priority is 1, "Expected priority=1, got " .. tostring(args.priority))
 end
@@ -147,7 +147,7 @@ end
    entry = debug.anno.set(boolFunc, '@Requires(gfx=true, network=false)')
    assert(entry != nil, "Boolean parsing should succeed")
    assert(#entry.annotations is 1, "Expected 1 annotation")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.gfx is true, "Expected gfx=true")
    assert(args.network is false, "Expected network=false")
 end
@@ -160,7 +160,7 @@ end
    entry = debug.anno.set(mixedFunc, '@Test(name="Complex Test", labels=["a","b"], timeoutMs=3000, enabled=true)')
    assert(entry != nil, "Mixed type parsing should succeed")
    assert(#entry.annotations is 1, "Expected 1 annotation")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.name is "Complex Test", "Expected name 'Complex Test'")
    assert(#args.labels is 2, "Expected 2 labels")
    assert(args.timeoutMs is 3000, "Expected timeoutMs=3000")

@@ -79,7 +79,7 @@ function testParserNumericAnnotation()
 
    entry = debug.anno.get(numericFunc)
    assert(entry != nil, "Numeric annotation should work")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.timeoutMs is 5000, "Expected timeoutMs=5000, got " .. tostring(args.timeoutMs))
    assert(args.priority is 1, "Expected priority=1, got " .. tostring(args.priority))
 end
@@ -95,7 +95,7 @@ function testParserBooleanAnnotation()
 
    entry = debug.anno.get(boolFunc)
    assert(entry != nil, "Boolean annotation should work")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.gfx is true, "Expected gfx=true")
    assert(args.network is false, "Expected network=false")
 end
@@ -111,7 +111,7 @@ function testParserBareIdentifiers()
 
    entry = debug.anno.get(bareIdFunc)
    assert(entry != nil, "Bare identifier annotation should work")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.unused is true, "Expected unused=true")
    assert(args.deprecated is true, "Expected deprecated=true")
 end
@@ -156,7 +156,7 @@ function testParserMixedAnnotation()
 
    entry = debug.anno.get(mixedFunc)
    assert(entry != nil, "Mixed type annotation should work")
-   args = entry.annotations[0].args
+   local args = entry.annotations[0].args
    assert(args.name is "Mixed Test", "Expected name 'Mixed Test'")
    assert(#args.labels is 2, "Expected 2 labels")
    assert(args.timeoutMs is 3000, "Expected timeoutMs=3000")

@@ -2,11 +2,19 @@
 Tests for resolving server names in parallel.
 --]]
 
-   mNet ?= mod.load('network')
+global glDomains = { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
+global glTotalResolved = 0
 
-   local glSelf = obj.find('self')
-   local proc = processing.new({ timeout = 5.0 })
-   global glDomains, glTotalResolved
+@BeforeAll function init()
+   global mNet ?= mod.load('network')
+   global glSelf = obj.find('self')
+   global proc = processing.new({ timeout = 5.0 })
+end
+
+@AfterAll function cleanup()
+   glDomains = nil
+   glTotalResolved = nil
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -134,22 +142,3 @@ end
 
    assert(address_resolved is true, 'Failed to resolve the IP address.')
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testBlockingNameResolution,
-         testNameResolutionAsync,
-         testBlockingAddressResolution,
-         testDuplication
-      },
-      init = function()
-         global glDomains = { 'google.com', 'parasol.ws', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
-         global glTotalResolved = 0
-      end,
-      cleanup = function()
-         glDomains = nil
-         glTotalResolved = nil
-      end
-   }

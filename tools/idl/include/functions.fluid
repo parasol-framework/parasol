@@ -862,7 +862,7 @@ global function class(Name, Options, Spec, Private, Custom)
          if name is 'delete' then name = 'del' end -- C++ keyword check
 
          inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
-         args = 'nullptr'
+         local args = 'nullptr'
 
          if method.params and #method.params > 0 then
             inline ..= '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'

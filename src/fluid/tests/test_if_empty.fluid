@@ -211,7 +211,7 @@ end
    record = { count = 0, first = nil, second = nil }
 
    function capture(...)
-      args = { ... }
+      local args = { ... }
       record.count = #args
       record.first = args[0]
       record.second = args[1]

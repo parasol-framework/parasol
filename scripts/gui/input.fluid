@@ -5,19 +5,19 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local function reportActivate(self, State)
-   if not self.events.activate then return end
-   local text = self.text.string
-   local hash = string.hash(text)
+function reportActivate(self, State)
+   self.events.activate ?? return
+   text = self.text.string
+   hash = string.hash(text)
    if hash != self.hash then
       self.hash = hash
       self.events.activate(self, { text=text, state=State })
    end
 end
 
-local function validateInput(self)
+function validateInput(self)
    if self.inputMask then
-      local userInput = self.text.string ?? ''
+      userInput = self.text.string ?? ''
       if string.len(userInput) > 0 then
          if not string.find(userInput, self.inputMask) then
             self.text.string = self._lastGoodInput
@@ -31,7 +31,7 @@ local function validateInput(self)
 end
 
 gui.input = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       events         = Options.events ?? { },
       label          = Options.label,
       parentViewport = Options.target,
@@ -65,10 +65,10 @@ gui.input = function(Options)
 
    if not Options.target then error('A target viewport is required.') end
 
-   local font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
-   local box_height = math.floor(font_max_height * 1.35) + 1
+   font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
+   box_height = math.floor(font_max_height * 1.35) + 1
 
-   local vps = { -- Viewport settings
+   vps = { -- Viewport settings
       name    = 'vp_input',
       x       = Options.x,
       y       = Options.y,
@@ -92,7 +92,7 @@ gui.input = function(Options)
       width = self.viewport.width,
       yOffset = 0,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-         local new_width = Width - self.labelWidth
+         new_width = Width - self.labelWidth
          if Vector.width != new_width then
             Vector.width = new_width
          end
@@ -152,7 +152,7 @@ gui.input = function(Options)
       string    = Options.text,
       lineLimit = 1,
       textFlags = (function()
-         local flags = VTXF_EDITABLE
+         flags = VTXF_EDITABLE
          if Options.secret then flags = bit.bor(flags, VTXF_SECRET) end
          return flags
       end)()

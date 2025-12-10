@@ -158,7 +158,7 @@ end
 
 @Test function testCloseInForLoop()
    close_count = 0
-   mt = { __close = function() close_count += 1 end }
+   mt = { __close = function() close_count++ end }
 
    for i = 1, 3 do
       local obj <close> = setmetatable({}, mt)
@@ -189,7 +189,7 @@ end
 
 @Test function testCloseOnContinue()
    close_count = 0
-   mt = { __close = function() close_count += 1 end }
+   mt = { __close = function() close_count++ end }
 
    for i = 1, 3 do
       local obj <close> = setmetatable({}, mt)
@@ -326,12 +326,12 @@ end
 
 @Test function testCloseInWhileLoop()
    close_count = 0
-   mt = { __close = function() close_count += 1 end }
+   mt = { __close = function() close_count++ end }
    i = 0
 
    while i < 3 do
       local obj <close> = setmetatable({}, mt)
-      i += 1
+      i++
    end
 
    assert(close_count is 3, 'Close should be called each while iteration: ' .. close_count)
@@ -407,7 +407,7 @@ end
 
 @Test function testCloseEarlyReturnInLoop()
    close_count = 0
-   mt = { __close = function() close_count += 1 end }
+   mt = { __close = function() close_count++ end }
 
    function inner()
       for i = 1, 10 do
