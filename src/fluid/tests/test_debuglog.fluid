@@ -5,17 +5,17 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default behaviour (stack trace only)
 
-function testDefaultStackTrace()
-   local function innerFunc()
-      local err, result = glSelf.mtDebugLog()
+@Test function testDefaultStackTrace()
+   function innerFunc()
+      err, result = glSelf.mtDebugLog()
       return result
    end
 
-   local function middleFunc()
+   function middleFunc()
       return innerFunc()
    end
 
-   local result = middleFunc()
+   result = middleFunc()
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace header')
    -- innerFunc does not appear in the stack because mtDebugLog starts inspection at level 1, skipping its own frame and showing the Lua caller
@@ -26,16 +26,16 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test locals option
 
-function testLocals()
-   local function testFunc()
-      local x = 42
-      local name = 'test'
-      local flag = true
-      local err, result = glSelf.mtDebugLog('locals')
+@Test function testLocals()
+   function testFunc()
+      x = 42
+      name = 'test'
+      flag = true
+      err, result = glSelf.mtDebugLog('locals')
       return result
    end
 
-   local result = testFunc()
+   result = testFunc()
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'LOCALS'), 'Should contain locals header')
    assert(string.find(result, 'x'), 'Should contain variable x')
@@ -49,18 +49,18 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test upvalues option
 
-function testUpvalues()
-   local counter = 10
-   local config = { enabled = true }
+@Test function testUpvalues()
+   counter = 10
+   config = { enabled = true }
 
-   local function closure()
+   function closure()
       counter++
       if config.enabled then end  -- Use config so it becomes an upvalue
-      local err, result = glSelf.mtDebugLog('upvalues')
+      err, result = glSelf.mtDebugLog('upvalues')
       return result
    end
 
-   local result = closure()
+   result = closure()
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'UPVALUES'), 'Should contain upvalues header')
@@ -74,8 +74,8 @@ end
 global testGlobal = 'visible'
 global anotherGlobal = 123
 
-function testGlobals()
-   local err, result = glSelf.mtDebugLog('globals')
+@Test function testGlobals()
+   err, result = glSelf.mtDebugLog('globals')
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'GLOBALS'), 'Should contain globals header')
@@ -88,8 +88,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test memory option
 
-function testMemory()
-   local err, result = glSelf.mtDebugLog('memory')
+@Test function testMemory()
+   err, result = glSelf.mtDebugLog('memory')
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'MEMORY STATISTICS'), 'Should contain memory header')
@@ -100,8 +100,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test state option
 
-function testState()
-   local err, result = glSelf.mtDebugLog('state')
+@Test function testState()
+   err, result = glSelf.mtDebugLog('state')
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'STATE'), 'Should contain state header')
@@ -112,9 +112,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test multiple options (CSV list)
 
-function testMultipleOptions()
-   local x = 100
-   local err, result = glSelf.mtDebugLog('stack,locals,memory')
+@Test function testMultipleOptions()
+   x = 100
+   err, result = glSelf.mtDebugLog('stack,locals,memory')
    msg(result)
 
    assert(result, 'DebugLog should return a result')
@@ -126,9 +126,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test 'all' option
 
-function testAllOption()
-   local y = 50
-   local err, result = glSelf.mtDebugLog('all')
+@Test function testAllOption()
+   y = 50
+   err, result = glSelf.mtDebugLog('all')
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'CALL STACK'), 'Should contain stack trace')
@@ -140,14 +140,14 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test compact mode
 
-function testCompactMode()
-   local function compactTest()
-      local x = 42
-      local err, result = glSelf.mtDebugLog('stack,locals,compact')
+@Test function testCompactMode()
+   function compactTest()
+      x = 42
+      err, result = glSelf.mtDebugLog('stack,locals,compact')
       return result
    end
 
-   local result = compactTest()
+   result = compactTest()
 
    assert(result, 'DebugLog should return a result')
    -- In compact mode, should NOT contain the header separators
@@ -160,14 +160,14 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test with long strings (truncation)
 
-function testLongString()
-   local function longStringTest()
-      local longStr = 'This is a very long string that should be truncated to forty characters maximum'
-      local err, result = glSelf.mtDebugLog('locals')
+@Test function testLongString()
+   function longStringTest()
+      longStr = 'This is a very long string that should be truncated to forty characters maximum'
+      err, result = glSelf.mtDebugLog('locals')
       return result
    end
 
-   local result = longStringTest()
+   result = longStringTest()
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'longStr'), 'Should contain variable longStr')
@@ -177,20 +177,20 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test with various data types
 
-function testVariousTypes()
-   local function typeTest()
-      local numVar = 3.14
-      local strVar = 'hello'
-      local boolVar = false
-      local nilVar = nil
-      local tableVar = { a = 1, b = 2 }
-      local funcVar = function() end
+@Test function testVariousTypes()
+   function typeTest()
+      numVar = 3.14
+      strVar = 'hello'
+      boolVar = false
+      nilVar = nil
+      tableVar = { a = 1, b = 2 }
+      funcVar = function() end
 
-      local err, result = glSelf.mtDebugLog('locals')
+      err, result = glSelf.mtDebugLog('locals')
       return result
    end
 
-   local result = typeTest()
+   result = typeTest()
 
    assert(result, 'DebugLog should return a result')
    assert(string.find(result, 'numVar'), 'Should contain numVar')
@@ -210,22 +210,22 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test nested function calls in stack trace
 
-function testNestedStack()
-   local function level3()
-      local err, result = glSelf.mtDebugLog('stack')
+@Test function testNestedStack()
+   function level3()
+      err, result = glSelf.mtDebugLog('stack')
       msg(result)
       return result
    end
 
-   local function level2()
+   function level2()
       return level3()
    end
 
-   local function level1()
+   function level1()
       return level2()
    end
 
-   local result = level1()
+   result = level1()
 
    assert(result, 'DebugLog should return a result')
    -- The stack should contain source locations for the nested calls
@@ -236,14 +236,14 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test funcinfo option (Phase 1 feature)
 
-function testFuncInfo()
-   local function calculateTotal(a, b, c)
-      local sum = a + b + c
-      local err, result = glSelf.mtDebugLog('funcinfo')
+@Test function testFuncInfo()
+   function calculateTotal(a, b, c)
+      sum = a + b + c
+      err, result = glSelf.mtDebugLog('funcinfo')
       return result
    end
 
-   local result = calculateTotal(10, 20, 30)
+   result = calculateTotal(10, 20, 30)
 
    assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'FUNCTION INFORMATION'), 'Should contain function info header')
@@ -266,16 +266,16 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test disassembly option (Phase 3.1 feature)
 
-function testDisassembly()
-   local function sampleFunction(a, b)
-      local scale = b * 2
-      local total = a + scale
-      local err, result = glSelf.mtDebugLog('disasm')
+@Test function testDisassembly()
+   function sampleFunction(a, b)
+      scale = b * 2
+      total = a + scale
+      err, result = glSelf.mtDebugLog('disasm')
       msg(result)
       return result
    end
 
-   local result = sampleFunction(5, 7)
+   result = sampleFunction(5, 7)
 
    assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'BYTECODE DISASSEMBLY'), 'Should contain disassembly header')
@@ -285,28 +285,28 @@ function testDisassembly()
 
    -- Test disassembly of a compiled script
 
-   local script = obj.new('fluid', { statement = [[
+   script = obj.new('fluid', { statement = [[
 local function sampleFunction(a, b) -- Local function
-   local scale = b * 2
-   local total = a + scale
+   scale = b * 2
+   total = a + scale
    return result
 end
 
-function testFunc() -- Global function
+global function testFunc() -- Global function
    x = 42
-   local name = 'test'
+   name = 'test'
    flag = true
    return result
 end
 
-   local a = 'a_var'
+   a = 'a_var'
    b = 'b_var'
    c = a .. b
 ]]
    })
 
    script.acActivate()
-   local err, result = script.mtDebugLog('disasm')
+   err, result = script.mtDebugLog('disasm')
    msg(result)
    assert(err is ERR_Okay, 'DebugLog on script should succeed')
    assert(result??, 'DebugLog should return a result for script')
@@ -316,40 +316,18 @@ end
 
 -- Test binary dump option (Phase 3.2 feature)
 
-function testBytecodeDump()
-   local function captureDump(a, b)
-      local temp = a + b
-      local err, result = glSelf.mtDebugLog('dump')
+@Test function testBytecodeDump()
+   function captureDump(a, b)
+      temp = a + b
+      err, result = glSelf.mtDebugLog('dump')
       msg(result)
       return result
    end
 
-   local result = captureDump(4, 9)
+   result = captureDump(4, 9)
 
    assert(result??, 'DebugLog should return a result')
    assert(string.find(result, 'BYTECODE DUMP'), 'Should contain dump header')
    assert(string.find(result, 'Bytes:%s*%d+'), 'Should report byte count')
    assert(string.find(result, '%d+:%s*%x%x'), 'Should contain hexadecimal byte output')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testDefaultStackTrace,
-         testLocals,
-         testUpvalues,
-         testGlobals,
-         testMemory,
-         testState,
-         testMultipleOptions,
-         testAllOption,
-         testCompactMode,
-         testLongString,
-         testVariousTypes,
-         testNestedStack,
-         testFuncInfo,
-         testDisassembly,
-         testBytecodeDump
-      }
-   }

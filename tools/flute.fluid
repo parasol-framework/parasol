@@ -87,6 +87,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+function sortTests(Tests:table)
+   if (#Tests <= 1) then return end
+
+   table.sort(Tests, function(a,b)
+      return (a.priority ?? 0) < (b.priority ?? 0)
+   end)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 function runTests()
    global glTestTotal = 0
    global glTestsPassed = 0
@@ -118,6 +128,18 @@ function runTests()
    after_each  = {}
    before_all  = {}
    after_all   = {}
+
+   if body and body.tests then
+      nt = { }
+      local order = 1
+      for f in values(body.tests) do
+         if type(f) is 'function' then
+            table.insert(nt, { func = f, priority = order, name = tostring(f) })
+            order++
+         end
+      end
+      body.tests = nt
+   end
 
    if all then
       body ?= {}
@@ -163,7 +185,15 @@ function runTests()
          end
 
          if not disabled and is_test then
-            table.insert(body.tests, func)
+            table.insert(body.tests, {
+               func     = func,
+               name     = test_name ?? tostring(func),
+               timeout  = test_timeout,
+               priority = test_priority,
+               labels   = test_labels,
+               disabled = disabled,
+               is_test  = is_test
+            })
          end
       end
    end
@@ -179,12 +209,11 @@ function runTests()
    end
 
    if body.init then
+      print('Warning: Deprecated use of init() function in ' .. glFile)
       folder = file.splitPath(glFile)
       tests = body.init(folder)
-      -- The init() function can opt to return a customised set of test references at runtime;
-      -- useful if the test suite has dependencies on files for example.
       if tests then
-         body.tests = tests
+         error('Support for returning tests from the init() function is deprecated, use annotations.')
       end
    end
 
@@ -195,13 +224,15 @@ function runTests()
          folder = [*_]file.splitPath(glFile)
       }
 
-      for _,func in ipairs(before_all) do
+      for func in values(before_all) do
          func(state)
       end
    end
 
+   sortTests(body.tests)
+
    i = 0
-   for _,func in ipairs(body.tests) do
+   for func in values(body.tests) do
       i++
       skip = false
       local func_name, func_ref
@@ -227,7 +258,7 @@ function runTests()
          startTime = mSys.PreciseTime()
 
          if #before_each > 0 then
-            for _,func in ipairs(before_each) do
+            for func in values(before_each) do
                func()
             end
          end
@@ -236,7 +267,7 @@ function runTests()
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
          if #after_each > 0 then
-            for _,func in ipairs(after_each) do
+            for func in values(after_each) do
                func()
             end
          end
@@ -258,7 +289,7 @@ function runTests()
    end
 
    if #after_all > 0 then
-      for _,func in ipairs(after_all) do
+      for func in values(after_all) do
          func()
       end
    end

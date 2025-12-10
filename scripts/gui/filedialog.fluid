@@ -10,13 +10,13 @@ Documentation is available in the Parasol Wiki.
    require 'gui/input'
    require 'gui/window'
 
-   if not gui then global gui = { } end
+   global gui ?= { }
    gui.dialog ?= { }
 
-local GAP = 8
+GAP = 8
 
 gui.dialog.file = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       windowID    = nil,
       currentPath = file.splitPath(Options.path),
       multiSelect = Options.multiSelect ?? false,
@@ -25,11 +25,11 @@ gui.dialog.file = function(Options)
       target      = Options.target
    }
 
-   local function processFeedback()
-      local list = self.fileview.view.selectedItems()
+   function processFeedback()
+      list = self.fileview.view.selectedItems()
 
       if (self.warnExists is true) and (#list > 0) then
-         local error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
+         error, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
          if type is LOC_FILE then
             local msg
 
@@ -39,7 +39,7 @@ gui.dialog.file = function(Options)
                msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
             end
 
-            local confirm = gui.dialog.message({
+            confirm = gui.dialog.message({
                target  = self.target,
                modal   = true,
                options = { { id=-1, text='No', icon='items/cancel' },
@@ -118,9 +118,9 @@ gui.dialog.file = function(Options)
 
    -- Okay and cancel buttons
 
-   local footer = self.window.margins.bottom
+   footer = self.window.margins.bottom
 
-   local lCancelButton = gui.button({
+   lCancelButton = gui.button({
       target  = self.viewport,
       text    = Options.cancelText ?? 'Cancel',
       xOffset = GAP,
@@ -135,7 +135,7 @@ gui.dialog.file = function(Options)
       }
    })
 
-   local lOkayButton = gui.button({
+   lOkayButton = gui.button({
       target     = self.viewport,
       text       = Options.okText ?? 'Okay',
       xOffset    = lCancelButton.viewport.width + (GAP * 2),
@@ -150,11 +150,11 @@ gui.dialog.file = function(Options)
 
    -- Filter selection
 
-   local fv_filters = { name='All Files', ext='', selected=false }
+   fv_filters = { name='All Files', ext='', selected=false }
    if Options.filterList and (#Options.filterList > 0) then
       -- Pick the first item as being selected if none other is chosen.
 
-      local selection = false
+      selection = false
       for _, item in pairs(Options.filterList) do
          if item.selected then
             selection = true
@@ -171,7 +171,7 @@ gui.dialog.file = function(Options)
 
    -- File view area
 
-   local viewRegion = self.viewport.new('VectorViewport', {
+   viewRegion = self.viewport.new('VectorViewport', {
       x        = 0,
       y        = self.pathbox.viewport.y + self.pathbox.viewport.height,
       width    = '100%',
@@ -207,9 +207,9 @@ end
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
-      local state = getExecutionState()
+      state = getExecutionState()
       if state.inRequire != true then
-         local dlg = gui.dialog.file({
+         dlg = gui.dialog.file({
             popOver      = arg('popOver'),
             target       = arg('target'),
             modal        = arg('modal'),

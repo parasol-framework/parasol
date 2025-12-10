@@ -7,20 +7,33 @@
 
    global proc = processing.new(5.0)
    global glPicsProcessed = 0
+   global mGfx ?= mod.load('display') -- Required for the 'icons:' volume
 
-   if not mGfx then
-      global mGfx = mod.load('display') -- Required for the 'icons:' volume
-   end
+@BeforeAll function init()
+   global glPictures = { }
 
------------------------------------------------------------------------------------------------------------------------
+   folder = 'icons:programs/'
+   list = ''
+   print('Scanning "' .. folder .. '" for SVGs')
+   file.search(folder, {
+      nameFilter = '.+%.svg',
+      nameWild   = 'lua',
+      matchFeedback = function(Path, FileName, File)
+         list ..= FileName .. ' '
+         table.insert(glPictures, { path=Path .. FileName })
+      end
+   })
+
+   print('Found ' .. #glPictures .. ' SVG files: ' .. list)
+
+   if #glPictures is 0 then error('Failed to find any SVG files.') end
+end
 
 function initPictures()
    for k, v in ipairs(glPictures) do
       v.pic = obj.new('picture', { path=v.path, flags='QUERY' } )
    end
 end
-
------------------------------------------------------------------------------------------------------------------------
 
 function freePictures()
    for k, v in ipairs(glPictures) do
@@ -48,9 +61,11 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testParallel()
+@Test function testParallel()
+   initPictures()
+
    glPicsProcessed = 0
-   local count = 0
+   count = 0
 
    for k, v in ipairs(glPictures) do
       if v.pic then
@@ -64,40 +79,21 @@ function testParallel()
    if count > 0 then
       err = proc.sleep()
    end
+
+   freePictures()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- This is the control test for demonstrating how fast parallel execution can actually be versus sequential execution.
 
-function testSequential()
+@Test function testSequential()
+   initPictures()
+
    for k, v in ipairs(glPictures) do
       if v.pic != nil then
          v.pic.acActivate()
       end
    end
+
+   freePictures()
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      init = function()
-         global glPictures = { }
-
-         local folder = 'icons:programs/'
-         local list = ''
-         print('Scanning "' .. folder .. '" for SVGs')
-         file.search(folder, {
-            nameFilter = '.+%.svg',
-            nameWild   = 'lua',
-            matchFeedback = function(Path, FileName, File)
-               list ..= FileName .. ' '
-               table.insert(glPictures, { path=Path .. FileName })
-            end
-         })
-
-         print('Found ' .. #glPictures .. ' SVG files: ' .. list)
-
-         if #glPictures is 0 then error('Failed to find any SVG files.') end
-      end,
-      tests = { initPictures, testParallel, freePictures, initPictures, testSequential, freePictures }
-   }

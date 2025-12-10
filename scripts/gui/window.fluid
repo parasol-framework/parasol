@@ -8,10 +8,10 @@ Documentation is available in the Parasol Wiki.
 
    if not mGfx then global mGfx = mod.load('display') end
 
-local DEFAULT_WIDTH  = 600
-local DEFAULT_HEIGHT = 400
+DEFAULT_WIDTH  = 600
+DEFAULT_HEIGHT = 400
 
-local lStyle = (function()
+lStyle = (function()
    if mSys.AnalysePath('style:window.fluid') is ERR_Okay then
       return loadFile('style:window.fluid')
    else
@@ -19,12 +19,12 @@ local lStyle = (function()
    end
 end)()
 
-local function hosted(self)
+function hosted(self)
    self.hosted ?= self.surface and self.surface.parent ? false :> true
    return self.hosted
 end
 
-local function iconTheme()
+function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
       return 'pearl'
    else
@@ -33,7 +33,7 @@ local function iconTheme()
 end
 
 gui.window = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       events       = (Options.events ?? { }),
       aspectRatio  = Options.aspectRatio??,
       minimiseEnabled = Options.minimise??,
@@ -167,7 +167,7 @@ gui.window = function(Options)
    self.applySmartLimits = function(self)
       self.smartLimitsEnabled = true
       if not hosted(self) then
-         local err, info = mGfx.GetSurfaceInfo(self.surface.parent)
+         err, info = mGfx.GetSurfaceInfo(self.surface.parent)
          if err is ERR_Okay then
             self.surface.topLimit    = 0
             self.surface.bottomLimit = -self.surface.height + self.surface.topMargin
@@ -202,25 +202,25 @@ gui.window = function(Options)
       end
 
       if hosted(self) then -- Send the maximisation request to the display
-         local display = obj.find(self.surface.display)
+         display = obj.find(self.surface.display)
          display.flags = display.flags | SCR_MAXIMISE
          return
       end
 --[[
-      local margins = { }
-      local parent = self.surface.parent
+      margins = { }
+      parent = self.surface.parent
 
       if ((margins.Left = parent.LeftMargin) < 0) margins.Left = 0
       if ((margins.Top = parent.TopMargin) < 0) margins.Top = 0
       margins.Right  = parent.Width - parent.RightMargin
       margins.Bottom = parent.Height - parent.BottomMargin
 
-      local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+      err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
 
-      local x = vx
-      local y = vy
-      local x2 = vx + vwidth
-      local y2 = vy + vheight
+      x = vx
+      y = vy
+      x2 = vx + vwidth
+      y2 = vy + vheight
 
       if (margins.left > x)    then x = margins.left end
       if (margins.top > y)     then y = margins.top end
@@ -262,29 +262,29 @@ gui.window = function(Options)
 
    self.parentSize = function(self)
       if hosted(self) then
-         local err, info = mGfx.getDisplayInfo(0)
+         err, info = mGfx.getDisplayInfo(0)
          return info.width, info.height
       else
-         local x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
+         x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
          return width, height
       end
    end
 
    self.show = function(self, Center)
       if Options.center or Center then -- Options.center is obsolete
-         local x, y = (function()
+         x, y = (function()
             if self.surface.popOver then
-               local err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
+               err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
                if err is ERR_Okay then
                   x += ((powidth - self.surface.width) / 2)
                   y += ((poheight - self.surface.height) / 2)
-                  local err, px, py = [*__**__]mGfx.GetSurfaceCoords(self.surface.parent)
+                  err, px, py = [*__**__]mGfx.GetSurfaceCoords(self.surface.parent)
                   if err is ERR_Okay then
                      return x - px, y - py
                   end
                end
             elseif self.surface.parent then
-               local err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(self.surface.parent)
+               err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(self.surface.parent)
                if err is ERR_Okay then
                   x = vx + ((vwidth - self.surface.width) / 2)
                   y = vy + ((vheight - self.surface.height) / 2)
@@ -292,7 +292,7 @@ gui.window = function(Options)
                   return x, y
                end
             else
-               local err, display = mGfx.GetDisplayInfo(0)
+               err, display = mGfx.GetDisplayInfo(0)
                if err is ERR_Okay then
                   return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
                end
@@ -330,7 +330,7 @@ gui.window = function(Options)
 
    self._desktop = obj.find('desktop')
 
-   local surface_opts = {
+   surface_opts = {
       name      = 'winsurface',
       parent    = self._desktop,
       width     = Options.width ?? DEFAULT_WIDTH,
@@ -452,7 +452,7 @@ gui.window = function(Options)
    if self.surface.popOver != 0 then
       -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
 
-      local info = struct.new('SurfaceInfo')
+      info = struct.new('SurfaceInfo')
       if (mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay) then
          if (info.flags & RNF_STICK_TO_FRONT)?? then
             self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
@@ -476,7 +476,7 @@ gui.window = function(Options)
       if not self.closeEnabled then return end
 
       if self.events and self.events.close then
-         local result = self.events.close(self)
+         result = self.events.close(self)
          if result != nil then -- If client returns something, the window stays open
             msg('Client requested that the window stay open.')
             raise(ERR_Cancelled)
@@ -508,8 +508,8 @@ gui.window = function(Options)
 
    -- Return an interface for the window so that garbage collection is correctly managed
 
-   local proxy = newproxy(true)
-   local m = getmetatable(proxy)
+   proxy = newproxy(true)
+   m = getmetatable(proxy)
 
    m.__index = function(t, k) return self[k] end
    m.__newindex = function(t, k, v) self[k] = v end

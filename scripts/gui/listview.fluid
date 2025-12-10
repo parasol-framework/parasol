@@ -6,16 +6,16 @@ Documentation is available in the Parasol Wiki.
 
    require 'gui/libview'
 
-local ICON_SIZE = 16
-local VSPACING  = 1
-local EDGE      = 4
+ICON_SIZE = 16
+VSPACING  = 1
+EDGE      = 4
 
 local LINE_HEIGHT, FONT_HEIGHT, LINE_OFFSET
 
-local function rearrangeItems(View)
+function rearrangeItems(View)
    View.zones = { }
    View._last_y = 0
-   local y = 0
+   y = 0
    for _, item in pairs(View.items) do
       item._y = y
       if item._vectors.viewport then
@@ -33,10 +33,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.listView = function(Options)
-   local lTextAttrib = Options.textAttrib ?? 'name'
-   local lCompact    = Options.compact ?? 0
+   lTextAttrib = Options.textAttrib ?? 'name'
+   lCompact    = Options.compact ?? 0
 
-   local function setListTextFill(Item, Fill)
+   function setListTextFill(Item, Fill)
       if Item._vectors.text then
          Item._vectors.text.fill = Fill
       end
@@ -44,7 +44,7 @@ gui.listView = function(Options)
 
    -- When an item is hovered, create a highlight for it.
 
-   local function highlightItem(View, Item, Highlighted)
+   function highlightItem(View, Item, Highlighted)
       if Item._vectors.viewport is nil then return end
 
       if not Item._vectors.highlight then
@@ -77,14 +77,14 @@ gui.listView = function(Options)
       end
    end
 
-   local function newItems(View, Items)
+   function newItems(View, Items)
       if #Items is 0 then return end
 
-      local width  = View.frame.width - EDGE - EDGE
-      local height = View.frame.height
-      local x      = EDGE
-      local y      = View._last_y
-      local widest_item = 0
+      width  = View.frame.width - EDGE - EDGE
+      height = View.frame.height
+      x      = EDGE
+      y      = View._last_y
+      widest_item = 0
 
       for _, item in pairs(Items) do
          if not item._vectors then item._vectors = { } end
@@ -123,14 +123,14 @@ gui.listView = function(Options)
             item._vectors.viewport.y = y + EDGE
          end
 
-         local MARGIN = math.round(LINE_HEIGHT * 0.3)
-         local ICON_MARGIN = 0
+         MARGIN = math.round(LINE_HEIGHT * 0.3)
+         ICON_MARGIN = 0
 
          if not Options.noIcons then
             ICON_MARGIN = ICON_SIZE + MARGIN
          end
 
-         local vp = item._vectors.viewport
+         vp = item._vectors.viewport
 
          if item.icon then
             pcall(function()
@@ -160,7 +160,7 @@ gui.listView = function(Options)
             end)
          end
 
-         local item_name = item[lTextAttrib]
+         item_name = item[lTextAttrib]
          if item_name then
             if not item._vectors.text then
                item._vectors.text = vp.new('VectorText', {
@@ -181,7 +181,7 @@ gui.listView = function(Options)
             end
             --font.wrapEdge = x + item.Width
 
-            local err, bx, by, bw, bh = item._vectors.text.mtGetBoundary(0)
+            err, bx, by, bw, bh = item._vectors.text.mtGetBoundary(0)
 
             width = MARGIN + ICON_MARGIN + bw + MARGIN
 
@@ -226,13 +226,13 @@ gui.listView = function(Options)
       end
    end
 
-   local function constructListView(View)
+   function constructListView(View)
       LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
       LINE_HEIGHT = math.round(LINE_HEIGHT * 1.5)
       LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
 
-      if not View.icons then View.icons = { } end
-      if not View.hIcons then View.hIcons = { } end
+      View.icons ?= { }
+      View.hIcons ?= { }
 
       View._last_y = 0
       if #View.items > 0 then newItems(View, View.items) end
@@ -240,7 +240,7 @@ gui.listView = function(Options)
       collectgarbage()
    end
 
-   local vw = gui.initView(Options, constructListView, newItems)
+   vw = gui.initView(Options, constructListView, newItems)
 
    vw.sort = function(Attrib, Ascending)
       vw.sortItems(Attrib, Ascending)
