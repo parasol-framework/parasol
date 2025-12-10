@@ -3,6 +3,37 @@
 
    include 'xml'
    require 'io/filesearch'
+   
+@BeforeAll function init(State)
+   math_folder = State.folder .. 'QT3_1_0/math/'
+
+   if mSys.AnalysePath(math_folder) != ERR_Okay then
+      -- Assume the XQuery test package isn't installed on this machine
+      print('Math folder not found at: ' .. math_folder)
+   end
+
+   print('Searching for tests in: ' .. math_folder)
+
+   counter = 1
+
+   file.search(math_folder, {
+      nameFilter  = '%.xml$',
+      nameWild = true,
+      matchFeedback = function(Path, FileName)
+         test_func = function()
+            runTest(Path .. FileName)
+         end
+
+         func_name = FileName .. '_' .. counter
+
+         debug.anno.set(test_func, {
+            { name = "Test", args = { name = func_name, labels = { "xquery", "math" } } }
+         }, "test_qt_match.fluid", func_name)
+
+         counter++
+      end
+   })
+end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Helper to parse test XML and execute tests
@@ -145,39 +176,3 @@ function runTest(TestPath)
 
    assert(passed is total_tests, 'Passed ' .. passed .. ' of ' .. total_tests .. ' tests')
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   init = function(ScriptFolder)
-      math_folder = ScriptFolder .. 'QT3_1_0/math/'
-
-      if mSys.AnalysePath(math_folder) != ERR_Okay then
-         -- Assume the XQuery test package isn't installed on this machine
-         print('Math folder not found at: ' .. math_folder)
-         return { }
-      end
-
-      print('Searching for tests in: ' .. math_folder)
-
-      counter = 1
-
-      file.search(math_folder, {
-         nameFilter  = '%.xml$',
-         nameWild = true,
-         matchFeedback = function(Path, FileName)
-            test_func = function()
-               runTest(Path .. FileName)
-            end
-
-            func_name = FileName .. '_' .. counter
-
-            debug.anno.set(test_func, {
-               { name = "Test", args = { name = func_name, labels = { "xquery", "math" } } }
-            }, "test_qt_match.fluid", func_name)
-
-            counter++
-         end
-      })
-   end
-}
