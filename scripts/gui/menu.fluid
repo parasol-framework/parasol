@@ -7,18 +7,18 @@ To be used in conjunction with the gui.menubar or as an independent pop-up only.
    require 'gui'
    include 'display'
 
-   if not mGfx then global mGfx = mod.load('display') end
+   global mGfx ?= mod.load('display')
 
-local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
-local ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)
-local VMARGIN      = math.floor(ITEM_HEIGHT * 0.33)
-local HMARGIN      = 6
-local ICON_SIZE    = math.floor(ITEM_HEIGHT * 0.8)
-local KB_HIGHLIGHT = 'rgba(0,0,0,.5)'
-local ICON_STRIP   = 'rgba(255,255,255,.15)'
+FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
+ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)
+VMARGIN      = math.floor(ITEM_HEIGHT * 0.33)
+HMARGIN      = 6
+ICON_SIZE    = math.floor(ITEM_HEIGHT * 0.8)
+KB_HIGHLIGHT = 'rgba(0,0,0,.5)'
+ICON_STRIP   = 'rgba(255,255,255,.15)'
 
 gui.menu = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       surface  = nil,
       rootMenu = true,
       reverseX = false,
@@ -36,12 +36,12 @@ gui.menu = function(Options)
       items    = { }
    }
 
-   local function initVectorScene()
-      local showIcons = Options.showIcons ?? true
-      local TEXT_X = HMARGIN
+   function initVectorScene()
+      showIcons = Options.showIcons ?? true
+      TEXT_X = HMARGIN
 
       if showIcons then
-         local iconsPresent = false
+         iconsPresent = false
          for _, item in ipairs(Options.config) do
             if item['icon'] then
                iconsPresent = true
@@ -78,13 +78,13 @@ gui.menu = function(Options)
       })
 
       self.items = { }
-      local widestItem = 0
-      local widestKey = 0
-      local y = VMARGIN
+      widestItem = 0
+      widestKey = 0
+      y = VMARGIN
       for _, item in ipairs(Options.config) do
          if item['item'] then
-            local mi = { y=y, config=item }
-            local vText = self.viewport.new('VectorText', {
+            mi = { y=y, config=item }
+            vText = self.viewport.new('VectorText', {
                x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
@@ -93,7 +93,7 @@ gui.menu = function(Options)
                string   = item['item']
             })
 
-            local err, bx, by, bw, bh = vText.mtGetBoundary(0)
+            err, bx, by, bw, bh = vText.mtGetBoundary(0)
 
             mi.text = vText
             mi.textY = y + math.floor((vText.lineSpacing + vText.displayHeight) * 0.5)
@@ -102,7 +102,7 @@ gui.menu = function(Options)
 
             if showIcons and item['icon'] then
                pcall(function()
-                  local info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.menu.icon)
+                  info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.menu.icon)
                   item.iconView = self.viewport.new('VectorRectangle', {
                      x = HMARGIN, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
                   })
@@ -110,17 +110,17 @@ gui.menu = function(Options)
             end
 
             if item['key'] then
-               local key = item['key']
+               key = item['key']
                if item['qualifier'] then
                   key = item['qualifier'] .. ' + ' .. key
                end
 
-               local kb_highlight = self.viewport.new('VectorRectangle', {
+               kb_highlight = self.viewport.new('VectorRectangle', {
                   fill = KB_HIGHLIGHT, xOffset = HMARGIN, y = y + 2, width = 1, height = ITEM_HEIGHT - 4,
                   roundX = ITEM_HEIGHT * 0.5, roundY = ITEM_HEIGHT * 0.5
                })
 
-               local vKey = self.viewport.new('VectorText', {
+               vKey = self.viewport.new('VectorText', {
                   x        = self.surface.width,
                   face     = gui.fonts.menu.face,
                   fontSize = string.format('%.2fpt', gui.fonts.menu.size),
@@ -129,7 +129,7 @@ gui.menu = function(Options)
                   string   = key
                })
 
-               local err, bx, by, bw, bh = vKey.mtGetBoundary(0)
+               err, bx, by, bw, bh = vKey.mtGetBoundary(0)
 
                vKey.y = y + math.floor((vKey.lineSpacing + vKey.displayHeight) * 0.5)
 
@@ -147,7 +147,7 @@ gui.menu = function(Options)
          end
       end
 
-      local width = TEXT_X + widestItem + (HMARGIN * 6) + widestKey + HMARGIN
+      width = TEXT_X + widestItem + (HMARGIN * 6) + widestKey + HMARGIN
 
       self.surface.width  = width
       self.surface.height = y + VMARGIN
@@ -162,7 +162,7 @@ gui.menu = function(Options)
    -- toggle() alternates the visible state of the menu.  A TimeLapse is supported so that rapid changes to
    -- menu visibility can be avoided.
 
-   local lastTime = 0
+   lastTime = 0
    self.toggle = function(TimeLapse)
       local timelapse
       if TimeLapse and (TimeLapse >= 0) then
@@ -171,7 +171,7 @@ gui.menu = function(Options)
          timelapse = 5000
       end
 
-      local currentTime = mSys.PreciseTime()
+      currentTime = mSys.PreciseTime()
       if self.timeShow > self.timeHide then -- Hide the menu
          if (currentTime - self.timeShow >= timelapse) then self.hide() end
          lastTime = currentTime
@@ -197,17 +197,17 @@ gui.menu = function(Options)
    end
 
    self.show = function()
-      local surface = self.surface
+      surface = self.surface
       if bit.band(surface.flags, RNF_VISIBLE) != 0 then return end
 
       self.reverseX = (Options.reverseX ?? false)
 
       if self.popup then
-         local err, cursor_x, cursor_y = mGfx.getCursorPos()
+         err, cursor_x, cursor_y = mGfx.getCursorPos()
          if err is ERR_Okay then
-            local parent = { }
+            parent = { }
 
-            local sp = surface.parent
+            sp = surface.parent
             if sp then
                err, parentInfo = mGfx.GetSurfaceInfo(sp)
                if err is ERR_Okay then
@@ -219,7 +219,7 @@ gui.menu = function(Options)
                   error('Failed to analyse parent surface: ' .. mSys.GetErrorMsg(err))
                end
             else
-               local err, scrInfo = mGfx.GetDisplayInfo(0)
+               err, scrInfo = mGfx.GetDisplayInfo(0)
                if err is ERR_Okay then
                   parent.width  = scrInfo.width
                   parent.height = scrInfo.height
@@ -252,7 +252,7 @@ gui.menu = function(Options)
                   end
                end
 
-               local y = cursor_y - parent.absY - 1
+               y = cursor_y - parent.absY - 1
                if y + surface.height > parent.height - 2 then
                   y -= surface.height + surface.bottomMargin
                end
@@ -262,10 +262,10 @@ gui.menu = function(Options)
          end
       elseif self.parentMenu then -- Display this menu relative to a parent menu in the hierarchy
 --[[
-         local parent = { x=0, y = 0, width = 0 }
-         local parent = self.parentMenu
+         parent = { x=0, y = 0, width = 0 }
+         parent = self.parentMenu
          if parent.menuSurfaceID then
-            local err, info = mGfx.GetSurfaceInfo(parent.MenuSurfaceID)
+            err, info = mGfx.GetSurfaceInfo(parent.MenuSurfaceID)
             if err is ERR_Okay then
                parent.x = info.x
                parent.y = info.y
@@ -274,7 +274,7 @@ gui.menu = function(Options)
          end
          parent.currentMenu = self
 
-         local x = parent.x + parent.width - gui.style.widget.margin
+         x = parent.x + parent.width - gui.style.widget.margin
          if self.reverseX then
             x = parent.x - surface.width + gui.style.widget.margin
             if x < 2 then
@@ -300,27 +300,27 @@ gui.menu = function(Options)
       elseif self.relative then
          -- Correct the position of the menu according to the relative vector that it is offset from.
 
-         local err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
+         err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
          if err is ERR_Okay then
-            local rel = { absX = target.absX, absY = target.absY }
-            local target = { absX = 0, absY = 0, height = 4096 }
+            rel = { absX = target.absX, absY = target.absY }
+            target = { absX = 0, absY = 0, height = 4096 }
 
             if Options.target then
-               local err, target = mGfx.GetSurfaceInfo(Options.target)
+               err, target = mGfx.GetSurfaceInfo(Options.target)
                if err is ERR_Okay then
                   target.absX   = target.absX
                   target.absY   = target.absY
                   target.height = target.height
                end
             else
-               local err, display = mGfx.GetDisplayInfo(0)
+               err, display = mGfx.GetDisplayInfo(0)
                if err is ERR_Okay then
                   target.height = display.height
                end
             end
 
-            local x = rel.absX + self.x - target.absX
-            local y = rel.absY + self.y - target.absY
+            x = rel.absX + self.x - target.absX
+            y = rel.absY + self.y - target.absY
 
             if lReverseY then
                y = rel.absY + (Options.y ?? 0) - target.absY - surface.height
@@ -343,7 +343,7 @@ gui.menu = function(Options)
       self.timeShow = mSys.PreciseTime()
    end
 
-   local function highlightItem(Item)
+   function highlightItem(Item)
       if Item is self.hItem then
          return
       elseif Item then
@@ -370,7 +370,7 @@ gui.menu = function(Options)
       end
    end
 
-   local function timer(Elapsed, CurrentTime)
+   function timer(Elapsed, CurrentTime)
       if lCurrentItem and lCurrentItem.tip?? then
          gui.tooltip({ text=lCurrentItem.tip })
       end
@@ -380,18 +380,18 @@ gui.menu = function(Options)
 
    -- Main entry point --
 
-   if not Options.config then error('A config value is required to define the Menu items') end
+   assert(Options.config, 'A config value is required to define the Menu items')
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
-   self.surface.width      = (Options.width ?? 400)
+   self.surface.width      = Options.width ?? 400
    self.surface.parent     = Options.target
-   self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
+   self.surface.flags      = RNF_STICK_TO_FRONT | RNF_COMPOSITE
    self.surface.x          = -10000
    self.surface.y          = -10000
    self.surface.windowType = 'NONE'
    self.surface.height     = 400
-   if self.surface.init() != ERR_Okay then error('Failed to initialise surface.') end
+   assert(self.surface.init() is ERR_Okay, 'Failed to initialise surface.')
 
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
    self.viewport = self.scene.new('VectorViewport', { })
@@ -428,7 +428,7 @@ gui.menu = function(Options)
                check(ERR_Terminate)
             end
 
-            if bit.band(Qualifiers, KQ_PRESSED) is 0 then return end
+            if (Qualifiers & KQ_PRESSED) is 0 then return end
             if Value is KEY_UP then
             elseif Value is KEY_DOWN then
 
@@ -442,7 +442,7 @@ gui.menu = function(Options)
    end)
 
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
-      local ev = Events
+      ev = Events
       while ev do
          if ev.type is JET_BUTTON_1 then
             if ev.value is 1 then
@@ -457,7 +457,7 @@ gui.menu = function(Options)
                end
             end
          elseif ev.type is JET_ABS_XY then
-            local highlightFound = false
+            highlightFound = false
             for _, item in pairs(self.items) do
                if not item.lineBreak then
                   if (ev.y >= item.y) and (ev.y < item.y + item.height) then

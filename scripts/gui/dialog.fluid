@@ -7,11 +7,11 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui/window'
 
-local LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
-local MIN_WIDTH = 300
-local MAX_WIDTH = 600
+LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
+MIN_WIDTH = 300
+MAX_WIDTH = 600
 
-local ICONS = {
+ICONS = {
    error     = 'items/error',
    critical  = 'items/error',
    warning   = 'items/alert_circle',
@@ -21,10 +21,10 @@ local ICONS = {
    info      = 'items/info'
 }
 
-   if not gui then global gui = { } end
+   global gui ?= { }
    gui.dialog ?= { }
 
-local function defaultIcon(self)
+function defaultIcon(self)
    if self.type and ICONS[self.type] then
       return ICONS[self.type]
    end
@@ -32,14 +32,14 @@ local function defaultIcon(self)
 end
 
 gui.dialog.message = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       document = nil,
       options  = Options.options,
       type     = Options.type,
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
-      message    = Options.message,
-      fmtMessage = Options.fmtMessage,
+      message     = Options.message,
+      fmtMessage  = Options.fmtMessage,
       scaleWindow = Options.scale is false ? nil :> true -- Scale by default
    }
 
@@ -53,9 +53,9 @@ gui.dialog.message = function(Options)
 
    -- Configure the window according to initial doc size
 
-   local function matchWindowToDocSize(self, Document)
-      local page_width  = Document.pageWidth
-      local page_height = Document.pageHeight
+   function matchWindowToDocSize(self, Document)
+      page_width  = Document.pageWidth
+      page_height = Document.pageHeight
 
       if page_width < 100 then page_width = 100 end
       if page_height < 100 then page_height = 100 end
@@ -74,16 +74,16 @@ gui.dialog.message = function(Options)
       end
    end
 
-   local function docEvent(Document, EventFlag, Parameters)
+   function docEvent(Document, EventFlag, Parameters)
       if (EventFlag & DEF_LINK_ACTIVATED)?? then
          if self.feedback then
-            local responseIndex = tonumber(Parameters.response)
-            local response = self.options[responseIndex]
-            local state = { }
+            responseIndex = tonumber(Parameters.response)
+            response = self.options[responseIndex]
+            state = { }
 
             state.checkbox = Document.getKey('checkbox') is '1' ? true :> false
 
-            local input = Document.getKey('input')
+            input = Document.getKey('input')
             if input?? then state.input = input end
 
             if self.inputRequired and not state.input then
@@ -101,8 +101,8 @@ gui.dialog.message = function(Options)
       end
    end
 
-   local function buildDocument()
-      local option_icons = ''
+   function buildDocument()
+      option_icons = ''
 
       -- At minimum, there must be an OK option.
 
@@ -117,7 +117,7 @@ gui.dialog.message = function(Options)
          end
       end
 
-      local doc = [[
+      doc = [[
 <?xml version="1.0"?>
 
 <svg xmlns="http://www.w3.org/2000/svg">
@@ -132,24 +132,24 @@ gui.dialog.message = function(Options)
 
       if Options.envTemplate then
          -- The EnvTemplate can redefine the default body, GUI templates etc
-         doc = doc .. options.envTemplate .. '\n'
+         doc ..= options.envTemplate .. '\n'
       end
 
       if Options.template then
          -- A dialog-specific template can override the body style and change any class templates,
          -- header and footer etc
-         doc = doc .. '<include src="' .. options.template .. '"/>\n'
+         doc ..= '<include src="' .. options.template .. '"/>\n'
       end
 
       icon = Options.image ?? defaultIcon(self)
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
-      local msg = self.fmtMessage
+      msg = self.fmtMessage
       if not msg?? then
          msg = string.escXML(self.message ?? '')
          msg = string.gsub(msg, '\n', '<br/>')
       end
 
-      doc = doc .. [[
+      doc ..= [[
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
@@ -159,16 +159,16 @@ gui.dialog.message = function(Options)
 ]]
 
       if Options.userInput then
-         local inputOptions = ''
+         inputOptions = ''
          if Options.secret then inputOptions = 'secret="true"' end
 
-         local msg = type(Options.userInput) is 'string' ? Options.userInput :> ''
+         msg = type(Options.userInput) is 'string' ? Options.userInput :> ''
 
          doc ..= '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then
-         local checkbox_value = 'false'
+         checkbox_value = 'false'
          if Options.checkboxState then checkbox_value = 'true' end
          doc ..= '<p><checkbox name="checkbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
       end
@@ -218,17 +218,17 @@ gui.dialog.message = function(Options)
 
    -- Work out the dialog width based on the message.
 
-   local dlg_width = MIN_WIDTH
+   dlg_width = MIN_WIDTH
    if self.message?? then
-      local longest = 10
+      longest = 10
       for word in self.message:gmatch("%S+") do
          if word:len() > longest then longest = word:len() end
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    elseif self.fmtMessage?? then
-      local xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
-      local err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
-      local longest = 10
+      xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
+      err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
+      longest = 10
       for word in content:gmatch("%S+") do
          if word:len() > longest then longest = word:len() end
       end
@@ -252,9 +252,7 @@ gui.dialog.message = function(Options)
       modal        = Options.modal ?? false,
       events = {
          close = function(Window)
-            if (self.feedback != nil) then
-               self.feedback(self, nil, nil)
-            end
+            self?.feedback(self, nil, nil)
 
             if self.waiting then processing.signal() end
             table.clear(self)
@@ -274,9 +272,7 @@ gui.dialog.message = function(Options)
 
    lDoc.acDataFeed(0, DATA_XML, buildDocument())
 
-   if self.input then
-      self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
-   end
+   self?.input?.textinput?.mtSelectArea(0, 0, 20000, 20000)
 
    matchWindowToDocSize(self, lDoc)
 
@@ -289,7 +285,7 @@ gui.dialog.message = function(Options)
 end
 
 gui.dialog.error = function(Title, Message, Options)
-   if not Options then Options = { } end
+   Options ?= { }
    Options.type = 'error'
    Options.title = Title
    Options.message = Message
@@ -300,9 +296,9 @@ end
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
-      local state = getExecutionState()
-      if (state.inRequire != true) then
-         local dlg = gui.dialog.message({
+      state = getExecutionState()
+      if state.inRequire != true then
+         dlg = gui.dialog.message({
             popover    = arg('popover'),
             target     = arg('target'),
             modal      = arg('modal'),

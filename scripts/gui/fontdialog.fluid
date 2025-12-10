@@ -12,7 +12,7 @@ Documentation is available in the Parasol Wiki.
 gui.dialog.font = function(Options)
    if not mFont then global mFont = mod.load('font') end
 
-   local self = { -- Public variables
+   self = { -- Public variables
       windowID    = nil,
       face        = 'Noto Sans',
       pointSize   = 12,
@@ -21,7 +21,7 @@ gui.dialog.font = function(Options)
       colour      = { r=0, g=0, b=0, a=255 }
    }
 
-   local lLongText = [[
+   lLongText = [[
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas varius dignissim sapien eu pellentesque. Ètiam libero velit, vehicula nec ante non, sodales ultricies metus. Phasellus commodo dolor turpis. Âliquam sed pellentesque magna, non luctus sapien. Ètiam molestie dui nibh, nec finibus velit molestie non. Ut feugiat maximus elit nec mattis. Suspendisse porta vestibulum faucibus. Sed iaculis placerat justo id lobortis. Interdum et malesuada fames ac ante ipsum primis in faucibus.
 
 Morbi tincidunt varius ante sit amet pulvinar. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nulla ante orci, faucibus non odio viverra, tempus rutrum ex. Mauris sit amet hendrerit quam. Vestibulum tincidunt magna suscipit ultrices congue. Aliquam et blandit tellus, ut porta libero. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras vulputate congue eros sed placerat. Nunc eleifend nec felis sit amet fermentum. Cras suscipit ullamcorper eros, id consectetur quam blandit ac.
@@ -34,17 +34,17 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 ]]
 
    local lWindow, lFonts, vwSize, vwStyle, vwFace, lFontsSorted
-   local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
-   local lOptions   = Options
-   local lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
-   local WIDGET_GAP = 6
+   lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
+   lOptions   = Options
+   lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+   WIDGET_GAP = 6
 
-   local function exampleMargin()
+   function exampleMargin()
       return math.round(self.examplePage.width * 0.05)
    end
 
-   local function sendFeedback(Accepted)
-      local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
+   function sendFeedback(Accepted)
+      colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
       self.compactFace = self.face .. ':' .. self.pointSize .. ':' .. self.style .. ':' .. colour
 
       if lOptions.feedback then
@@ -55,16 +55,16 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       return true
    end
 
-   local function refreshGuidelines()
+   function refreshGuidelines()
       if self.exampleText then
-         local seq = ''
-         local gap       = exampleMargin()
-         local spacing   = self.exampleText.lineSpacing
-         local pageWidth = self.examplePage.width
-         local baseline  = self.exampleText.y
+         seq = ''
+         gap       = exampleMargin()
+         spacing   = self.exampleText.lineSpacing
+         pageWidth = self.examplePage.width
+         baseline  = self.exampleText.y
 
-         local x1 = gap
-         local x2 = pageWidth - gap
+         x1 = gap
+         x2 = pageWidth - gap
          for y = baseline, self.examplePage.height, spacing do
             seq ..= string.format('M%f,%f L%f,%f ', x1, y, x2, y)
          end
@@ -77,13 +77,13 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
    end
 
-   local function refreshExample()
+   function refreshExample()
       if not self.guidelines then
          self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgba(0,0,180,.25)' })
       end
 
-      local pageWidth = self.examplePage.width
-      local gap = exampleMargin()
+      pageWidth = self.examplePage.width
+      gap = exampleMargin()
 
       if self.exampleText then
          self.exampleText.free()
@@ -118,14 +118,14 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    -- Retrieve the system list of known installed fonts and convert it to a Lua table.
 
-   local function getFonts()
-      local err, list = mFont.GetList()
+   function getFonts()
+      err, list = mFont.GetList()
       if not list then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
 
       lFonts       = { }
       lFontsSorted = { }
-      local font   = list
-      local index  = 0
+      font   = list
+      index  = 0
       while font do
          lFonts[font.name] = { }
          lFonts[font.name].order  = index
@@ -145,8 +145,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
    end
 
-   local function showFontSizes(List)
-      local sizes = { }
+   function showFontSizes(List)
+      sizes = { }
       for _, v in ipairs(List) do
          table.insert(sizes, { id=v, name=v })
       end
@@ -155,19 +155,19 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    -- Refresh the style list for the selected face
 
-   local function showStyles(Face)
-      local styles = { }
+   function showStyles(Face)
+      styles = { }
       if lFonts[Face].alias?? then Face = lFonts[Face].alias end
-      local font_styles = lFonts[Face].styles ?? { 'Regular' }
+      font_styles = lFonts[Face].styles ?? { 'Regular' }
       for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })
       end
       vwStyle.loadItems(styles)
    end
 
-   local function highlightSize(Size)
+   function highlightSize(Size)
       if not Size then return end
-      local selectSize = Size
+      selectSize = Size
       for _,v in ipairs(lSizes) do
          if v <= Size then
             selectSize = v
@@ -186,7 +186,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Disassemble any compact font face definition.
 
    if lOptions.face then
-      local s = string.split(face, ':') -- FaceName, Size, Style, Colour
+      s = string.split(face, ':') -- FaceName, Size, Style, Colour
       if s[0] then lOptions.face = s[0] end
       if s[1] then lOptions.pointSize = s[1] end
       if s[2] then lOptions.style = s[2] end
@@ -225,7 +225,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    -- Okay and cancel buttons
 
-   local footer = lWindow.margins.bottom
+   footer = lWindow.margins.bottom
 
    lCancelButton = gui.button({
       target  = self.viewport,
@@ -292,7 +292,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       noIcons    = true,
       textAttrib = 'name',
       itemSelected = function(View, Reason, Item)
-         local selection = Item.name
+         selection = Item.name
          self.pointSize = tonumber(selection)
          if self.pointSize < 4 then
             self.pointSize = 4
@@ -346,7 +346,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          -- Highlight the correct style, trying to keep the current setting if possible.
 
          if self.style and lFonts[self.face] then
-            local supported = false
+            supported = false
             for _, v in ipairs(lFonts[self.face].styles) do
                if v is self.style then
                   supported = true
@@ -365,7 +365,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
          refreshExample()
 
-         local sizes = lFonts[Item.name].sizes
+         sizes = lFonts[Item.name].sizes
          if (lFonts[Item.name].scalable) or (sizes is nil) or (#sizes is 0) then
             sizes = lSizes
          end
@@ -377,9 +377,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
    })
 
-   local faces = { }
+   faces = { }
    for _, font in ipairs(lFontsSorted) do
-      local new_font = { id=font.name, name=font.name }
+      new_font = { id=font.name, name=font.name }
       if font.alias?? then font = lFonts[font.alias] end
       new_font.icon = font.scalable ? 'items/font' :> 'layout/text_sans'
       table.insert(faces, new_font)
@@ -408,9 +408,9 @@ end
    -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
-      local state = getExecutionState()
+      state = getExecutionState()
       if state.inRequire != true then
-         local dlg = font.dialog({
+         dlg = font.dialog({
             popOver    = arg('popOver'),
             target     = arg('target'),
             modal      = arg('modal'),

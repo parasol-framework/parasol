@@ -4,21 +4,21 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   if not mGfx then global mGfx = mod.load('display') end
-   if not mVec then global mVec = mod.load('vector') end
+   global mGfx ?= mod.load('display')
+   global mVec ?= mod.load('vector')
 
-   local lItemCounter   = 1
+   glItemCounter   = 1
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function checkCursorImage(View)
+function checkCursorImage(View)
    if View.pointerLocked and not View.activeZone then
       mGfx.restoreCursor(PTC_DEFAULT, View.scene.surface)
       View.pointerLocked = nil
    end
 end
 
-local function highlightItem(View, Item:table)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
+function highlightItem(View, Item:table)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
    if Item is View.hItem then return end
 
    if Item != View.hItem then
@@ -30,7 +30,7 @@ local function highlightItem(View, Item:table)  -- Simplifies the process of hig
    View.viewport.acDraw()
 end
 
-local function clearItems(View)
+function clearItems(View)
    if View.items then
       for _, item in pairs(View.items) do
          item?:_free()
@@ -43,7 +43,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function deselectAll(View)
+function deselectAll(View)
    for _, i in ipairs(View.items) do
       if i._selected then
          i._selected = false
@@ -52,18 +52,18 @@ local function deselectAll(View)
    end
 end
 
-local function deselectItem(View, Item)
+function deselectItem(View, Item)
    if View.sItem is Item then View.sItem = nil end
 
    Item._selected = false
    Item?._selectEvent(View, Item)
 end
 
-local function lastItem(View)
+function lastItem(View)
    return View.items[#View.items-1]
 end
 
-local function selectItem(View, Item)
+function selectItem(View, Item)
    if Item is View.sItem then return end
 
    View.sItem = Item
@@ -83,26 +83,26 @@ end
 --   user:      Selected by user interaction (click or keypress)
 --   manual:    Item was manually selected (by the application, not the user).
 
-local function reportItemSelected(View, Reason, Item)
+function reportItemSelected(View, Reason, Item)
    View?.itemSelected(View, Reason, Item)
 end
 
-local function reportItemDeselected(View, Reason, Item)
+function reportItemDeselected(View, Reason, Item)
    View?.itemDeselected(View, Reason, Item)
 end
 
-local function reportItemActivated(View, Reason, Item)
+function reportItemActivated(View, Reason, Item)
    if Item.activity then Item.activity(Item) end
    View?.itemActivated(View, Reason, Item)
 end
 
-local function reportActiveChange(View, Reason, Item)
+function reportActiveChange(View, Reason, Item)
    View?.activeChange(View, Reason, Item)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function simpleSelect(View, Item)
+function simpleSelect(View, Item)
    if View.sItem then
       deselectItem(View, View.sItem)
       reportItemDeselected(View, 'user', View.sItem)
@@ -114,7 +114,7 @@ local function simpleSelect(View, Item)
    View.scene.surface.mtScheduleRedraw()
 end
 
-local function selectNext(View, Filter)
+function selectNext(View, Filter)
    if not View.sItem then
       for _, item in ipairs(View.items) do
          if (not item.hidden) and Filter(item) then
@@ -123,7 +123,7 @@ local function selectNext(View, Filter)
          end
       end
    else
-      local found = false
+      found = false
       for _, item in ipairs(View.items) do
          if item is View.sItem then
             found = true
@@ -135,19 +135,19 @@ local function selectNext(View, Filter)
    end
 end
 
-local function selectPrev(View, Filter)
+function selectPrev(View, Filter)
    if not View.sItem then
       for i=0, #View.items-1 do
-         local item = View.items[#View.items - i]
+         item = View.items[#View.items - i]
          if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
          end
       end
    else
-      local found = false
+      found = false
       for i=0, #View.items-1 do
-         local item = View.items[#View.items - i]
+         item = View.items[#View.items - i]
          if item is View.sItem then
             found = true
          elseif found and (not item.hidden) and Filter(item) then
@@ -161,7 +161,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.initView = function(Options, BuildUI, NewItems)
-   local vw = {
+   vw = {
       lookup     = { }, -- Lookup items by ID
       activeZone = nil,
       zones      = { },
@@ -197,13 +197,13 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.addItems = function(Items)
       assert(Items, 'No Items provided')
 
-      local new_items = { }
+      new_items = { }
       for k, item in pairs(Items) do
-         local new_item = {
-            _id = lItemCounter,
+         new_item = {
+            _id = glItemCounter,
             _vectors = { },
             _free = function(Item) -- This hook can be overridden by the client
-               local vp = Item._vectors.viewport
+               vp = Item._vectors.viewport
                Item._vectors.viewport = nil
 
                for k, v in pairs(Item._vectors) do
@@ -222,8 +222,8 @@ gui.initView = function(Options, BuildUI, NewItems)
 
          table.insert(vw.items, new_item)
          if NewItems then table.insert(new_items, new_item) end
-         vw.lookup[lItemCounter] = new_item
-         lItemCounter++
+         vw.lookup[glItemCounter] = new_item
+         glItemCounter++
       end
 
       if NewItems and (#new_items > 0) then NewItems(vw, new_items) end -- Report new items to view manager
@@ -231,7 +231,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    -- Generic callback for the user hovering and interacting with listed items
 
-   local function itemHoverCallback(Zone, CursorX, CursorY)
+   function itemHoverCallback(Zone, CursorX, CursorY)
       highlightItem(vw, Zone.item)
 
       vw.hoveredItem = {
@@ -247,12 +247,12 @@ gui.initView = function(Options, BuildUI, NewItems)
       }
    end
 
-   local function cursorActivity()
+   function cursorActivity()
       if not vw.activeZone and vw.cursorX then
          for _, zone in pairs(vw.zones) do
             if (vw.cursorY >= zone.y) and (vw.cursorY < zone.y + zone.height) then
                if ((not zone.width) or ((vw.cursorX >= zone.x) and (vw.cursorX < zone.x + zone.width))) then
-                  local cursor = zone.hoverCallback(zone, vw.cursorX, vw.cursorY)
+                  cursor = zone.hoverCallback(zone, vw.cursorX, vw.cursorY)
                   if not cursor then checkCursorImage(vw) end
                   break
                end
@@ -290,7 +290,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- Clears a view of all internal content and updates the display.
 
    vw.clear = function()
-      local activate = false
+      activate = false
       if vw.sItem then
          reportItemDeselected(vw, 'clear', vw.sItem)
          activate = true
@@ -403,7 +403,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- Return a table of all selected items
 
    vw.selectedItems = function()
-      local list = { }
+      list = { }
       for _, item in ipairs(vw.items) do
          if item._selected then
             table.insert(list, item)
@@ -462,9 +462,9 @@ gui.initView = function(Options, BuildUI, NewItems)
       Attrib ?= 'name'
       Ascending ?= true
 
-      if (#vw.items <= 1) then return end
+      if #vw.items <= 1 then return end
 
-      if (type(vw.items[0][Attrib]) is 'table') then
+      if type(vw.items[0][Attrib]) is 'table' then
          if vw.items[0][Attrib]['sort'] then
             table.sort(vw.items, function(a,b)
                return Ascending ? (a[Attrib].sort < b[Attrib].sort) :> (a[Attrib].sort > b[Attrib].sort)
@@ -596,7 +596,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             -- TODO: item activation
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
             if vw.hItem then
-               local scan = vw.hItem.prev
+               scan = vw.hItem.prev
                while scan do
                   scan = scan.prev -- TODO: prev is not supported yet
                end
@@ -607,7 +607,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             end
          elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) then
             if vw.hItem then
-               local scan = vw.hItem.next
+               scan = vw.hItem.next
                while scan do
                   scan = scan.next -- TODO: next is not supported yet
                end
@@ -621,7 +621,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    end)
 
    vw.page.mtSubscribeInput((JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING | JTYPE_EXT_MOVEMENT), function(Viewport, Events)
-      local ev = Events
+      ev = Events
       while ev do
          if ev.type is JET_CROSSED_IN then
             vw.cursorX = ev.x

@@ -16,11 +16,11 @@ Documentation is available in the Parasol Wiki.
    require 'json'
    include 'vector'
 
-local lSys = mSys.GetSystemState()
+glState = mSys.GetSystemState()
 
-local copy_list = [[
+glCopyList = [[
    require 'gui/file'
-   local source_size = arg('source:size')
+   source_size = arg('source:size')
    if source_size?? then
       glList = { }
       for i=0, source_size-1 do
@@ -33,16 +33,16 @@ local copy_list = [[
    file.ui.copy(glList, arg('dest'), { move=Move })
 ]]
 
-local TBID = {
+TBID = {
    ROOT=1, PARENT=2, FILTER=3, PREV=5, NEXT=6, CUT=8, COPY=9, PASTE=10,
    BOOKMARK=12, CREATE_FOLDER=13, RENAME=14, DELETE=15, COL_VIEW=17, LIST_VIEW=18, FONT=19
 }
 
-local lFolderFill = gui.rgbValue(gui.strToRGB(gui.style.page.bkgd)) > 127 ? 'rgb(20,20,110)' :> 'rgb(245,245,255)'
+glFolderFill = gui.rgbValue(gui.strToRGB(gui.style.page.bkgd)) > 127 ? 'rgb(20,20,110)' :> 'rgb(245,245,255)'
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local glExtensions = {
+glExtensions = {
   txt  = { icon = 'filetypes/text' },
   text = { icon = 'filetypes/text' },
   psd  = { icon = 'filetypes/image' },
@@ -83,7 +83,7 @@ local glExtensions = {
   torrent = { icon = 'filetypes/download' }
 }
 
-local function extToIcon(Ext)
+function extToIcon(Ext)
    if glExtensions[Ext] then
       return 'icons:' .. glExtensions[Ext].icon
    else
@@ -93,16 +93,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function sortNum(Value)
+function sortNum(Value)
    return string.format('%014.0f', Value)
 end
 
-local function getFileIcon(Path)
+function getFileIcon(Path)
    local icon
    catch(function()
       icon = obj.new('file', { path=Path }).icon
       if icon is 'icons:filetypes/empty' then
-         local ext = Path:gsub('^(.+)%.([^:/\\]+)$', '%2')
+         ext = Path:gsub('^(.+)%.([^:/\\]+)$', '%2')
          icon = extToIcon(ext)
       elseif not icon then
          icon = 'folders/folder'
@@ -114,15 +114,15 @@ local function getFileIcon(Path)
    return icon
 end
 
-local function printableTime(Time)
+function printableTime(Time)
    return string.format('%04d-%02d-%02d %02d:%02d:%02d',
       Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
 end
 
 -- Returns the surface that is acting as the window.  Returns 0 if no window surface is detected.
 
-local function parentWindow(Surface)
-   local scan = obj.find(Surface.parent)
+function parentWindow(Surface)
+   scan = obj.find(Surface.parent)
    while scan do
       if mSys.GetClassID(mSys.GetOwnerID(scan.id)) is ID_WINDOW then
          return scan
@@ -131,8 +131,8 @@ local function parentWindow(Surface)
    end
 end
 
-local function convertPermissions(Permissions)
-   local out = ''
+function convertPermissions(Permissions)
+   out = ''
    if (Permissions & PERMIT_READ)??  then out ..= 'r' else out ..= '-' end
    if (Permissions & PERMIT_WRITE)?? then out ..= 'w' else out ..= '-' end
    if (Permissions & PERMIT_EXEC)??  then out ..= 'x' else out ..= '-' end
@@ -161,7 +161,7 @@ local function convertPermissions(Permissions)
    return out
 end
 
-local function updateFileAttributes(Item, Info)
+function updateFileAttributes(Item, Info)
    if Item.date then
       if Item.type is 'folder' then
          Item.date.sort = 'D' .. sortNum(Info.timestamp)
@@ -179,14 +179,14 @@ local function updateFileAttributes(Item, Info)
    end
 end
 
-local function defineViewColumns(Path)
+function defineViewColumns(Path)
    if not Path then
       return {
          { attrib='name',      title='Name',       width=16, showIcons=true },
          { attrib='freespace', title='Free Space', width=7, type='bytesize', align='right' },
          { attrib='totalsize', title='Total Size', width=7, type='bytesize', align='right' }
       }
-   elseif (lSys.platform is 'Linux') or (lSys.platform is 'Native') then
+   elseif (glState.platform is 'Linux') or (glState.platform is 'Native') then
       return {
          { attrib='name',        title='Name',        width=16, showIcons=true },
          { attrib='size',        title='Size',        width=7, type='bytesize', align='right' },
@@ -206,7 +206,7 @@ end
 
 -- Return allowed file extensions as a string list, which is cached.
 
-local function getFilters(self)
+function getFilters(self)
    if self._filters then return self._filters end
    self._filters = { }
    if self.filterList then
@@ -225,8 +225,8 @@ local function getFilters(self)
    return self._filters
 end
 
-local function selectedFilters(self)
-   local count = 0
+function selectedFilters(self)
+   count = 0
    for _, filter in ipairs(self.filterList) do
       if filter.selected then count++ end
    end
@@ -235,9 +235,9 @@ end
 
 -- Returns true if Filename should be visible
 
-local function filterCheck(self, Filename)
-   local Filename = Filename:lower()
-   local filters = getFilters(self)
+function filterCheck(self, Filename)
+   Filename = Filename:lower()
+   filters = getFilters(self)
    if #filters is 0 then return true end
    for _, f in pairs(filters) do
       if Filename:endsWith(f) then return true end
@@ -247,9 +247,9 @@ end
 
 -- Re-evaluate the hidden status of each file
 
-local function applyFilters(self)
-   local filters = getFilters(self)
-   local redraw = false
+function applyFilters(self)
+   filters = getFilters(self)
+   redraw = false
    if #filters is 0 then -- No filter, all files will be visible
       for _, item in ipairs(self.view.items) do
          if item.hidden then
@@ -278,11 +278,11 @@ local function applyFilters(self)
    end
 end
 
-local function displayFilters(self)
+function displayFilters(self)
    if #self.filterList < 1 then return end
 
    if not self.filterViewport then -- Construct the filter list
-      local bkgd = gui.interpolateRGB(gui.strToRGB(gui.palette.base), gui.strToRGB(gui.palette.bkgd), 0.1)
+      bkgd = gui.interpolateRGB(gui.strToRGB(gui.palette.base), gui.strToRGB(gui.palette.bkgd), 0.1)
 
       self.filterViewport = self.view.viewport.new('VectorViewport', {
          visibility = VIS_HIDDEN, x = 0, y = self.toolbar.viewport.height, xOffset = 0, height = 1
@@ -307,7 +307,7 @@ local function displayFilters(self)
          if item.selected then item.highlight.visibility = VIS_VISIBLE end
 
          item.vp.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Events)
-            local ev = Events
+            ev = Events
             while ev do
                if (ev.flags & JTYPE_BUTTON)?? then
                   if ev.type is JET_BUTTON_1 and ev.value is 1 then
@@ -321,7 +321,7 @@ local function displayFilters(self)
                         self._filters = nil
                      end
 
-                     local filter_count = selectedFilters(self)
+                     filter_count = selectedFilters(self)
                      if filter_count > 0 then
                         self.toolbar.applySticker(TBID.FILTER, filter_count)
                      else
@@ -348,7 +348,7 @@ local function displayFilters(self)
 
    -- Toggle the filter list
 
-   local list_y = self.view.totalTop
+   list_y = self.view.totalTop
    if self.filterViewport.visibility != VIS_HIDDEN then
       self.filterViewport.visibility = VIS_HIDDEN
    else
@@ -363,17 +363,17 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local lBkgdTasks = { }
+lBkgdTasks = { }
 
 -- Paste from a list of files to a destination folder.
 
-local function copyFromList(Folder, List, Move)
+function copyFromList(Folder, List, Move)
    assert(file.isFolder(Folder), 'Invalid folder target of ' .. Folder)
 
    catch(function()
       msg('copyFromList("' .. Folder ..  ')')
 
-      local params = { '--dest', Folder }
+      params = { '--dest', Folder }
       if Move then table.insert(params, '--move') end
       table.insert(params, '--source')
       table.insert(params, '{')
@@ -382,7 +382,7 @@ local function copyFromList(Folder, List, Move)
       end
       table.insert(params, '}')
 
-      local task = obj.new('task', {
+      task = obj.new('task', {
          location   = 'parasol:fluid',
          parameters = params,
          flags      = '!Pipe',
@@ -393,7 +393,7 @@ local function copyFromList(Folder, List, Move)
       })
 
       task.acActivate()
-      task.acWrite(copy_list)
+      task.acWrite(glCopyList)
       task.acWrite(nil)
       lBkgdTasks[task.id] = task
    end,
@@ -404,18 +404,17 @@ end
 
 -- Paste from a clipboard to a folder using a new thread
 
-local function pasteFromClipboard(Folder)
+function pasteFromClipboard(Folder)
    if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
 
-   local paste_script = obj.new('script', { statement = [[
+   paste_script = obj.new('script', { statement = [[
    require 'io/filemgr'
    file.ui.paste(arg('dest'))
 ]] })
    paste_script.acSetKey('dest', Folder)
 
    if enable_threading then
-      if not self.threads then self.threads = { } end
-
+      self.threads ?= { }
       self.threads[paste_script.id] = paste_script
 
       thread.action(paste_script, 'Activate', function(ActionID, Script, Error, ScriptID)
@@ -435,7 +434,7 @@ end
 
 -- Returns a single item structure identifying a file/folder/volume
 
-local function createFileItem(self, Info)
+function createFileItem(self, Info)
    if not self.showHidden then
       if (Info.flags & RDF_HIDDEN)?? then return end
    end
@@ -444,13 +443,13 @@ local function createFileItem(self, Info)
 
    local new_item
    if (Info.flags & RDF_VOLUME)?? then -- Get the icon to use for displaying the volume
-      local icon = getFileIcon(Info.name .. ':')
+      icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
       if not icon then icon = 'folders/folder_shortcut' end
-      local colour = 'blue'
-      local total_size = nil
-      local free_space = nil
-      local device = obj.new('storagedevice', { volume = Info.name .. ':' } )
+      colour = 'blue'
+      total_size = nil
+      free_space = nil
+      device = obj.new('storagedevice', { volume = Info.name .. ':' } )
       if (device.deviceFlags & DEVICE_BOOKMARK)?? then -- User shortcut
          colour = 'carbon'
       elseif (device.deviceFlags & (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC))?? then
@@ -459,8 +458,8 @@ local function createFileItem(self, Info)
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
       end
 
-      local display_name = Info.name ..':'
-      local err, label = mSys.ReadInfoTag(Info, 'Label')
+      display_name = Info.name ..':'
+      err, label = mSys.ReadInfoTag(Info, 'Label')
       if err is ERR_Okay then
          display_name = display_name .. ' (' .. label .. ')'
       end
@@ -494,7 +493,7 @@ local function createFileItem(self, Info)
          iconTheme   = 'yellow',
          sort        = '\x03' .. Info.name:lower(),
          filename    = Info.name,
-         fill        = lFolderFill,
+         fill        = glFolderFill,
          name        = { sort = 'D' .. display_name:lower(), value = display_name },
          insensitive = true,
          owner       = mSys.ResolveUserID(Info.UserID),
@@ -540,8 +539,8 @@ end
 
 -- Convert file information to an Item and add it to the view
 
-local function addFileItem(self, Info)
-   local item = createFileItem(self, Info)
+function addFileItem(self, Info)
+   item = createFileItem(self, Info)
 
    if item then
       self.view.addItem(item)
@@ -551,7 +550,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.fileview = function(Options)
-   local self = {
+   self = {
       window        = nil,
       path          = Options.path,
       timer         = nil,
@@ -566,13 +565,12 @@ gui.fileview = function(Options)
       filterList    = Options.filterList
    }
 
-   local lOptions = Options
-   local lDoc
-   local lDir
+   lOptions = Options
+   local lDoc, lDir
 
-   local function loadPrefs()
+   function loadPrefs()
       catch(function()
-         local js = file.readAll('user:config/filesystem.json')
+         js = file.readAll('user:config/filesystem.json')
          if js?? then
             js = json.decode(js)
             if js['showHidden'] then self.showHidden = true end
@@ -584,15 +582,15 @@ gui.fileview = function(Options)
 
    -- Returns the item for a given file or folder name.
 
-   local function findItem(Name)
+   function findItem(Name)
       if self._file_table[Name] then return self._file_table[Name] end
    end
 
-   local function eventVolumeCreated(Info)
+   function eventVolumeCreated(Info)
       if self.path then return end
 
       if not findItem(Info.name) then -- Add missing volume
-         local err, info = mSys.GetFileInfo(Info.name .. ':')
+         err, info = mSys.GetFileInfo(Info.name .. ':')
          if (err is ERR_Okay) and (info.flags & RDF_HIDDEN) is 0 then
             addFileItem(self, info)
             self.view.sort()
@@ -600,7 +598,7 @@ gui.fileview = function(Options)
       end
    end
 
-   local function eventVolumeDeleted(Info)
+   function eventVolumeDeleted(Info)
       if self.path then return end
 
       --if delete_item(self.view.items[0], self.view, Info.name .. ':') then
@@ -608,7 +606,7 @@ gui.fileview = function(Options)
       --end
    end
 
-   local function deleteItem(File)
+   function deleteItem(File)
       for _, item in pairs(self.view.items) do
          if File is (item.name.value ?? ''):gsub('^(.-)[:/\\]+$', '%1') then
             self.view.removeItem(item)
@@ -619,11 +617,11 @@ gui.fileview = function(Options)
       return false
    end
 
-   local function incrementalRefresh(Elapsed, CurrentTime, Current)
+   function incrementalRefresh(Elapsed, CurrentTime, Current)
       if self.inRefresh or self.watch then return end
 
       if not lDir then
-         local flags = RDF_FOLDERS|RDF_PERMISSIONS|RDF_DATE|RDF_SIZE|RDF_TAGS
+         flags = RDF_FOLDERS|RDF_PERMISSIONS|RDF_DATE|RDF_SIZE|RDF_TAGS
          if not lNoFiles then flags = flags|RDF_FILE end
 
          local err
@@ -634,10 +632,10 @@ gui.fileview = function(Options)
          end
       end
 
-      local refresh = false
-      local sort = false
+      refresh = false
+      sort = false
 
-      local dirinfo = lDir
+      dirinfo = lDir
       for filecount=0,5 do
          if mSys.ScanDir(dirinfo) != ERR_Okay then
             -- Reached end of the folder - reset the scan
@@ -656,7 +654,7 @@ gui.fileview = function(Options)
             break
          end
 
-         local info = dirinfo.info
+         info = dirinfo.info
 
          if (info.Flags & RDF_VOLUME)?? and (info.Flags & RDF_HIDDEN)?? then
             -- Ignore hidden volumes
@@ -664,10 +662,10 @@ gui.fileview = function(Options)
             addFileItem(self, info)
             break
          else
-            local item = findItem(info.name)
+            item = findItem(info.name)
             if item then -- File found, extract the timestamp and test it against the file.
-               local timestamp = 0
-               local size = 0
+               timestamp = 0
+               size = 0
                if item.date then timestamp = tonumber(item.date.sort) end
                if item.size then size = tonumber(item.size.sort) end
 
@@ -685,11 +683,11 @@ gui.fileview = function(Options)
       end
 
       if #self.view.items > 0 then -- Check for deleted files
-         local path = self.path ?? ''
+         path = self.path ?? ''
 
          if not self.path then -- Do not resolve the path when at the root view
          else -- Use ResolvePath() to prevent problems with multi-folder volumes
-            local err, resolved_path = mSys.ResolvePath(path, RSF_NO_FILE_CHECK)
+            err, resolved_path = mSys.ResolvePath(path, RSF_NO_FILE_CHECK)
             if err is ERR_Okay then
                path = resolved_path
             end
@@ -699,24 +697,24 @@ gui.fileview = function(Options)
             -- Windows doesn't cope well when constantly refreshing UNC paths (folders sometimes fail analysis).
 
          else
-            local delete_count = 0
-            local restart = true
+            delete_count = 0
+            restart = true
             while restart is true do
                restart = false
 
-               local vw_items = self.view.items
+               vw_items = self.view.items
                if #vw_items is 0 then break end
                if (self._delete_index is nil) or (self._delete_index is -1) or (self._delete_index > #vw_items - 1) then
                   self._delete_index = #vw_items - 1
                end
 
-               local item = vw_items[self._delete_index]
+               item = vw_items[self._delete_index]
                if not item then break end
 
                while (delete_count < 10) and item do
                   delete_count++
                   if item.filename then -- Extract the full name of the file for analysis
-                     local item_path = path .. item.filename
+                     item_path = path .. item.filename
                      if item.type is 'volume' then
                         item_path ..= ':'
                      elseif item.type is 'folder' then
@@ -740,7 +738,7 @@ gui.fileview = function(Options)
       if sort then self.view.sort() end
    end
 
-   local function pathWatch(MonitoredFile, Path, Custom, Flags)
+   function pathWatch(MonitoredFile, Path, Custom, Flags)
       if self.inRefresh then return end
 
       if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
@@ -794,7 +792,7 @@ gui.fileview = function(Options)
          end
       elseif (Flags & (MFF_ATTRIB|MFF_CLOSED))?? and File then
          if info_err is ERR_Okay then
-            local item = findItem(Path)
+            item = findItem(Path)
             if item then
                updateFileAttributes(item, info)
             else
@@ -808,8 +806,8 @@ gui.fileview = function(Options)
       end
    end
 
-   local function shortcutBrowse()
-      local txtPath = obj.find('txtPath')
+   function shortcutBrowse()
+      txtPath = obj.find('txtPath')
 
       if txtPath?? then
          self.dlgShortcutBrowse = gui.dialog.file({
@@ -828,11 +826,11 @@ gui.fileview = function(Options)
    -- Execute a command with a given Mode.  All files listed in the Items argument will be passed to the object as
    -- a mass execution operation.
 
-   local function openFiles(Items, Mode)
+   function openFiles(Items, Mode)
       if not Items or not self.path then return end
 
       for _,item in pairs(Items) do
-         local err, class_id, command = mSys.IdentifyFile(self.path .. item.name.value, Mode, 0)
+         err, class_id, command = mSys.IdentifyFile(self.path .. item.name.value, Mode, 0)
          if err is ERR_Okay then
             obj.new('task', { path = command }).acActivate()
          end
@@ -841,9 +839,9 @@ gui.fileview = function(Options)
 
    -- Check if there is a document tag associated with the current path.
 
-   local function checkDocView()
+   function checkDocView()
       if self.showDocs then
-         local docfile = mSys.GetDocView(self.path ?? ':')
+         docfile = mSys.GetDocView(self.path ?? ':')
          if docfile then
             if lDoc then
                lDoc.path = docfile
@@ -864,18 +862,18 @@ gui.fileview = function(Options)
       end
    end
 
-   local function responseRename(Dialog, Response, State)
+   function responseRename(Dialog, Response, State)
       if Response.id > 0 then
-         local dir = false
+         dir = false
          if string.find(Dialog.var.src, '^.+[:/\\]$') then
             dir = true
          end
 
-         local dest = self.path .. State.input
+         dest = self.path .. State.input
 
          if Dialog.var.src is dest then return end
 
-         local err, path = mSys.ResolvePath(dest, RSF_NO_FILE_CHECK|RSF_CASE_SENSITIVE)
+         err, path = mSys.ResolvePath(dest, RSF_NO_FILE_CHECK|RSF_CASE_SENSITIVE)
          if err is ERR_Okay then -- Use ResolvePath() to prevent problems with multi-folder volumes
             err = mSys.AnalysePath(path, 0)
          end
@@ -900,11 +898,11 @@ gui.fileview = function(Options)
             self.dlgRenameReplace.var = { table.unpack(Dialog.var), dest=dest }
          else
             catch(function()
-               local fl = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )
+               fl = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )
                if fl.acRename(State.input) is ERR_Okay and not self.watch then
-                  local item = findItem(Dialog.var.name)
+                  item = findItem(Dialog.var.name)
                   if item then
-                     local new_name = State.input
+                     new_name = State.input
                      if item.type is 'folder' then
                         item.name.value = new_name .. '/'
                         item.filename   = new_name .. '/'
@@ -1000,7 +998,7 @@ gui.fileview = function(Options)
    self.cutFiles = function()
       if not self.path then return end
 
-      local clipboard = obj.new('clipboard')
+      clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
       for _,item in pairs(self.view.selectedItems()) do
          clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name.value, CEF_DELETE)
@@ -1010,7 +1008,7 @@ gui.fileview = function(Options)
    self.copyFiles = function() -- Copy all user-selected files and directories from the view to the clipboard
       if not self.path then return end
 
-      local clipboard = obj.new('clipboard')
+      clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
       for _,item in pairs(self.view.selectedItems()) do
          clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name.value, CEF_EXTEND)
@@ -1023,7 +1021,7 @@ gui.fileview = function(Options)
    self.copyFilesTo = function(Dest)
       if self.path and Dest?? then
          for _, items in pairs(self.view.selectedItems()) do
-            local file_list = { }
+            file_list = { }
             for _, item in pairs(items) do
                table.insert(file_list, self.path .. item.name)
             end
@@ -1040,7 +1038,7 @@ gui.fileview = function(Options)
       if not self.path then return end
       if self.limitPath and self.limitPath:lower() is self.path:lower() then return end
 
-      local reduced_path, count = self.path:sub(0, -2):gsub('(.+[:/\\]+).+', '%1', 1)
+      reduced_path, count = self.path:sub(0, -2):gsub('(.+[:/\\]+).+', '%1', 1)
 
       if count is 0 then
          self.browse(nil)
@@ -1070,10 +1068,10 @@ gui.fileview = function(Options)
             inputRequired = true,
             feedback = function(Dialog, Response, State)
                if Response.id > 0 and State.input?? then
-                  local path = self.path .. State.input .. '/'
+                  path = self.path .. State.input .. '/'
                   if mSys.CreateFolder(path, 0) is ERR_Okay then
                      if not self.watch then
-                        local err, info = mSys.GetFileInfo(path)
+                        err, info = mSys.GetFileInfo(path)
                         if err is ERR_Okay then
                            addFileItem(self, info)
                            self.view.sort()
@@ -1098,7 +1096,7 @@ gui.fileview = function(Options)
 
       Shortcut ?= ''
       Path ?= ''
-      local inject = [[<table columns="50,0" width="100%" vspacing="4">]]
+      inject = [[<table columns="50,0" width="100%" vspacing="4">]]
          .. [[<row><cell>Name:</cell><cell><input name="txtName" string="]] .. Shortcut .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>]]
          .. [[<row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="]] .. Path .. [[" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.shortcutBrowse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>]]
          .. [[</table>]]
@@ -1117,8 +1115,8 @@ gui.fileview = function(Options)
          inject = inject,
          feedback = function(Dialog, Response, State)
             if Response.id > 0 then
-               local txtName = obj.find('txtName')
-               local txtPath = obj.find('txtPath')
+               txtName = obj.find('txtName')
+               txtPath = obj.find('txtPath')
                if txtName?? and txtPath?? then
                   mSys.SetVolume(txtName.string, txtPath.string, nil, nil, nil, ASSIGN_REPLACE|ASSIGN_SAVE)
                end
@@ -1132,14 +1130,14 @@ gui.fileview = function(Options)
    -- Delete all currently selected files, following user confirmation.
 
    self.deleteFiles = function()
-      local items = self.view.selectedItems()
+      items = self.view.selectedItems()
 
       local msg
       if #items > 1 then
          msg = 'Are you sure that you want to delete the ' .. #items .. ' selected items?'
       else
-         local fl = items[0].filename ?? 'NIL'
-         local item_type = items[0].type ?? 'NIL'
+         fl = items[0].filename ?? 'NIL'
+         item_type = items[0].type ?? 'NIL'
          msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
@@ -1156,7 +1154,7 @@ gui.fileview = function(Options)
             if Response.id > 0 then
                self.view.deselectAll()
 
-               local statement = ''
+               statement = ''
                for i,fl in pairs(Dialog.files) do
                   statement = statement .. 'mSys.DeleteFile("' .. fl .. '")\n'
                end
@@ -1194,9 +1192,9 @@ gui.fileview = function(Options)
 
    self.moveFilesTo = function(Dest)
       if self.path and Dest?? then
-         local items = self.view.selectedItems()
+         items = self.view.selectedItems()
          if #items > 0 then
-            local file_list = { }
+            file_list = { }
             for _, item in pairs(items) do
                table.insert(file_list, self.path .. item.name.value)
             end
@@ -1224,7 +1222,7 @@ gui.fileview = function(Options)
    self.renameFile = function()
       if not self.path?? then return end
 
-      local sel = self.selection()
+      sel = self.selection()
       if not sel?? then return end
 
       self.dlgRename = gui.dialog.message({
@@ -1254,29 +1252,29 @@ gui.fileview = function(Options)
    -- If the source has slow read access, system messages are processsed at regular intervals.
    -- See also incrementalRefresh()
 
-   local function refreshFiles()
+   function refreshFiles()
       msg('refreshFiles() ' .. (self.path ?? 'ROOT') .. ' [Limited Logging]')
 
       self._file_table = { }
-      local msg_time  = mSys.PreciseTime()
-      local orig_path = self.path
-      local flags     = RDF_READ_ALL|RDF_TAGS
+      msg_time  = mSys.PreciseTime()
+      orig_path = self.path
+      flags     = RDF_READ_ALL|RDF_TAGS
       if lNoFiles then flags = flags & bit.bxor(RDF_FILE) end
-      local err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
+      err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
       if err is ERR_Okay then
          mSys.AdjustLogLevel(1)
 
-            local items = { }
+            items = { }
             while mSys.ScanDir(dir_info) is ERR_Okay do
                if self.path != orig_path then -- Sanity check in case the user changes the path
                   mSys.AdjustLogLevel(-1)
                   return true
                end
 
-               local item = createFileItem(self, dir_info.info)
+               item = createFileItem(self, dir_info.info)
                if item then table.insert(items, item) end
 
-               local current_time = mSys.PreciseTime()
+               current_time = mSys.PreciseTime()
                if current_time - msg_time > 20000 then
                   if #items > 1 then
                      self.view.addItems(items)
@@ -1319,7 +1317,7 @@ gui.fileview = function(Options)
       end
    end
 
-   local function configureView(self, ViewOptions)
+   function configureView(self, ViewOptions)
       self.view.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
          if (Qualifiers & KQ_PRESSED) is 0 then return end
          if self.hasFocus != true then return end
@@ -1361,7 +1359,7 @@ gui.fileview = function(Options)
             self.parentFolder()
          else -- Activate file
             if lOptions.autoMode then
-               local tags = { Item, -1 }
+               tags = { Item, -1 }
 
                if tags[0] != -1 then
                   if lOptions.autoMode is 'open' then
@@ -1381,7 +1379,7 @@ gui.fileview = function(Options)
       end
 
       if Options.toolBar then
-         local bkgd = self.view.viewport.new('VectorRectangle', {
+         bkgd = self.view.viewport.new('VectorRectangle', {
             x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
          })
 
@@ -1415,7 +1413,7 @@ gui.fileview = function(Options)
                      displayFilters(self)
                   end)
 
-                  local filter_count = selectedFilters(self)
+                  filter_count = selectedFilters(self)
                   if filter_count > 0 then
                      Bar.applySticker(TBID.FILTER, filter_count)
                   end
@@ -1455,7 +1453,7 @@ gui.fileview = function(Options)
                   Bar.addItem(TBID.BOOKMARK, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
                      if not self.path or (string.len(self.path) < 3) then return end
 
-                     local current_path = self.path
+                     current_path = self.path
 
                      gui.dialog.message({
                         modal     = true,
@@ -1547,7 +1545,7 @@ gui.fileview = function(Options)
 
       msg('Performing a full refresh of the file view: ' .. tostring(self.path))
 
-      local success, err = pcall(function()
+      success, err = pcall(function()
          if lDir then lDir = nil end
 
          if self.path?? then
@@ -1603,7 +1601,7 @@ gui.fileview = function(Options)
 
    self.selection = function()
       if self.view.sItem then
-         local name = self.view.sItem.name.value
+         name = self.view.sItem.name.value
          return name:gsub('^(.-)[:/\\]+$', '%1') -- Strip trailing folder symbols
       end
    end
@@ -1624,7 +1622,7 @@ gui.fileview = function(Options)
 
    -- View initialisation
 
-   local vo = {
+   vo = {
       target    = Options.target,
       fontFace  = gui.fonts.filesys.face,
       fontSize  = gui.fonts.filesys.size,
@@ -1649,7 +1647,7 @@ gui.fileview = function(Options)
    -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
    -- requested from the FileView.
 
-   local drag_clipboard = obj.new('clipboard', {
+   drag_clipboard = obj.new('clipboard', {
       name  = 'fvDragClipboard',
       flags = '!DragDrop',
       requestHandler = function(Clipboard, Requester, Item, Datatypes)
@@ -1659,14 +1657,14 @@ gui.fileview = function(Options)
          end
 
          if Datatypes[0] is DATA_FILE then
-            local items = self.view.dragItems
+            items = self.view.dragItems
             if #items > 0 then
-               local files = { }
+               files = { }
                for i=0,#items-1 do
                   table.insert(files, { file = { path=self.path .. items[i].name.value } })
                end
 
-               local xml = {
+               xml = {
                   receipt = {
                      totalitems = #items,
                      id = Item,
@@ -1686,17 +1684,17 @@ gui.fileview = function(Options)
       self.view.subscribe('dragdrop', function(ScriptID, Args, Reference)
          -- This notification is received when something is dropped onto the viewport.
 
-         local dest_tag = self.view.hItem
+         dest_tag = self.view.hItem
 
          input.requestItem(Args.source, Args.item, 'file', function(Items)
             drag_clipboard.mtRemove(CLIPTYPE_FILE)
 
-            local dest = self.path
+            dest = self.path
 
             -- If the item is being dropped onto a folder, the destination path will be our Path & the folder name.
 
             if dest_tag != -1 then
-               local tag = self.view.xml.tags[dest_tag+1]
+               tag = self.view.xml.tags[dest_tag+1]
                if 'dir' is tag.attrib.name then
                   dest = (self.path ? '') .. dest_tag.name
                end
@@ -1704,16 +1702,16 @@ gui.fileview = function(Options)
 
             if not dest?? or dest is ':' then return end
 
-            local dev_dest = obj.new('storagedevice', { volume = dest })
-            local dest_device_id = dev_dest.deviceID
-            local count = 0
+            dev_dest = obj.new('storagedevice', { volume = dest })
+            dest_device_id = dev_dest.deviceID
+            count = 0
             for _, item in pairs(Items) do
                if 'file' is item.item then
                   if item.path != dest then
-                     local dev_src = obj.new('storagedevice', { volume = item.path })
-                     local src_device_id = dev_src.deviceID
+                     dev_src = obj.new('storagedevice', { volume = item.path })
+                     src_device_id = dev_src.deviceID
 
-                     local flags = 0
+                     flags = 0
                      if dest_device_id != nil and src_dev_id != nil and dest_device_id is src_device_id then
                         flags = flags|CEF_DELETE
                      elseif (dev_src.deviceFlags is dev_dest.deviceFlags) and

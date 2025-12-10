@@ -8,15 +8,15 @@ Internal script for combobox drop-down menus.
 
    if not mGfx then global mGfx = mod.load('display') end
 
-local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
-local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
-local VMARGIN = math.floor(ITEM_HEIGHT * 0.33)
-local HMARGIN = 6
-local ICON_SIZE = math.floor(ITEM_HEIGHT * 0.8)
-local ITEM_SPACING = 1.2
+FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
+ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
+VMARGIN = math.floor(ITEM_HEIGHT * 0.33)
+HMARGIN = 6
+ICON_SIZE = math.floor(ITEM_HEIGHT * 0.8)
+ITEM_SPACING = 1.2
 
 gui.dropdown = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       surface  = nil,
       timeShow = 0,
       timeHide = 0,
@@ -29,12 +29,12 @@ gui.dropdown = function(Options)
       items    = { }
    }
 
-   local function initVectorScene()
-      local showIcons = Options.showIcons is false ? nil :> true
-      local TEXT_X = HMARGIN
+   function initVectorScene()
+      showIcons = Options.showIcons is false ? nil :> true
+      TEXT_X = HMARGIN
 
       if showIcons then
-         local iconsPresent = false
+         iconsPresent = false
          for _, item in ipairs(Options.config) do
             if item.icon then
                iconsPresent = true
@@ -45,7 +45,7 @@ gui.dropdown = function(Options)
 
       -- To use the clip, set the 'mask' field of any drawable vector.
       self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
-      local clipRect = self.clip.viewport.new('VectorRectangle', {
+      clipRect = self.clip.viewport.new('VectorRectangle', {
          x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1
       })
 
@@ -74,13 +74,13 @@ gui.dropdown = function(Options)
       })
 
       self.items = { }
-      local widestItem = 0
-      local widestKey = 0
-      local y = VMARGIN
+      widestItem = 0
+      widestKey = 0
+      y = VMARGIN
       for _, item in ipairs(Options.config) do
          if item['item'] then
-            local mi = { y=y, config=item }
-            local vText = self.viewport.new('VectorText', {
+            mi = { y=y, config=item }
+            vText = self.viewport.new('VectorText', {
                x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
@@ -90,7 +90,7 @@ gui.dropdown = function(Options)
                string   = item['item']
             })
 
-            local err, bx, by, bw, bh = vText.mtGetBoundary(0)
+            err, bx, by, bw, bh = vText.mtGetBoundary(0)
 
             mi.text = vText
             mi.textY = y + ((vText.lineSpacing + vText.displayHeight) * 0.5)
@@ -115,7 +115,7 @@ gui.dropdown = function(Options)
 
             vText.y = mi.textY
             mi.height = vText.lineSpacing * ITEM_SPACING
-            y = y + mi.height
+            y += mi.height
 
             table.insert(self.items, mi)
          end
@@ -128,11 +128,11 @@ gui.dropdown = function(Options)
    -- toggle() alternates the visible state of the menu.  A TimeLapse is supported so that rapid changes to
    -- menu visibility can be avoided.
 
-   local lastTime = 0
+   lastTime = 0
    self.toggle = function(TimeLapse)
-      local timelapse = TimeLapse and TimeLapse >= 0 ? TimeLapse * 1000 :> 5000
+      timelapse = TimeLapse and TimeLapse >= 0 ? TimeLapse * 1000 :> 5000
 
-      local currentTime = mSys.PreciseTime()
+      currentTime = mSys.PreciseTime()
       if self.timeShow > self.timeHide then -- Hide the menu
          if (currentTime - self.timeShow >= timelapse) then self.hide() end
          lastTime = currentTime
@@ -158,16 +158,16 @@ gui.dropdown = function(Options)
    end
 
    self.show = function()
-      local surface = self.surface
+      surface = self.surface
       if (surface.flags & RNF_VISIBLE) != 0 then return end
 
       if self.relative then
          -- Correct the position of the menu according to the relative vector that it is offset from.
 
-         local err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
+         err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
          if err is ERR_Okay then
-            local rel = { absX = target.absX, absY = target.absY }
-            local target = { absX = 0, absY = 0, height = 4096 }
+            rel = { absX = target.absX, absY = target.absY }
+            target = { absX = 0, absY = 0, height = 4096 }
 
             if Options.target then
                local err, target = mGfx.GetSurfaceInfo(Options.target)
@@ -177,14 +177,14 @@ gui.dropdown = function(Options)
                   target.height = target.height
                end
             else
-               local err, display = mGfx.GetDisplayInfo(0)
+               err, display = mGfx.GetDisplayInfo(0)
                if err is ERR_Okay then
                   target.height = display.height
                end
             end
 
-            local x = rel.absX + self.x - target.absX
-            local y = rel.absY + self.y - target.absY
+            x = rel.absX + self.x - target.absX
+            y = rel.absY + self.y - target.absY
 
             if lReverseY then
                y = rel.absY + (Options.y ?? 0) - target.absY - surface.height
@@ -203,7 +203,7 @@ gui.dropdown = function(Options)
       self.timeShow = mSys.PreciseTime()
    end
 
-   local function highlightItem(Item)
+   function highlightItem(Item)
       if Item is self.hItem then
          return
       elseif Item then
@@ -240,7 +240,7 @@ gui.dropdown = function(Options)
 
    -- Main entry point --
 
-   if not Options.config then error('A config value is required to define the Menu items') end
+   assert(Options.config, 'A config value is required to define the Menu items')
 
    self.surface = obj.new('surface')
    self.surface.name       = 'menu'
@@ -292,7 +292,7 @@ gui.dropdown = function(Options)
    end)
 
    self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport, Events)
-      local ev = Events
+      ev = Events
       while ev do
          if ev.type is JET_BUTTON_1 then
             if ev.value is 1 then
@@ -303,7 +303,7 @@ gui.dropdown = function(Options)
                end
             end
          elseif ev.type is JET_ABS_XY then
-            local highlightFound = false
+            highlightFound = false
             for _, item in pairs(self.items) do
                if not item.lineBreak then
                   if (ev.y >= item.y) and (ev.y < item.y + item.height) then

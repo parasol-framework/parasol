@@ -9,20 +9,20 @@ Documentation is available in the Parasol Wiki.
    include 'vector'
 
 local lClickX, lClickY
-local lCounter = 0
-local lTipDelay = 0.75
+lCounter = 0
+lTipDelay = 0.75
 
-local TI_ICON  = 1
-local TI_BREAK = 2
-local TI_GROUP = 3
+TI_ICON  = 1
+TI_BREAK = 2
+TI_GROUP = 3
 
-local function counter()
+function counter()
    lCounter++
    return lCounter
 end
 
 gui.toolbar = function(Options)
-   local self = { -- Public variables
+   self = { -- Public variables
       host           = nil,
       viewport       = nil,  -- The main viewport for the toolbar
       _groupMargin   = 4,
@@ -40,28 +40,28 @@ gui.toolbar = function(Options)
       _groupBorder   = Options.groupBorder ?? gui.style.widget.stroke
    }
 
-   local function sendFeedback()
+   function sendFeedback()
       if self._current and self._current.callback then
          self._current.callback(self, self._current)
       end
    end
 
-   local function firstIcon() -- Return the first item that is an icon
-      local item = self._first
+   function firstIcon() -- Return the first item that is an icon
+      item = self._first
       while ((item != nil) and (item.type != TI_ICON)) do item = item.next end
       return item
    end
 
-   local function lastIcon() -- Return the last item that is an icon
-      local item = self._last
+   function lastIcon() -- Return the last item that is an icon
+      item = self._last
       while ((item != nil) and (item.type != TI_ICON)) do item = item.prev end
       return item
    end
 
-   local function newItem(Type, Name, ID)
+   function newItem(Type, Name, ID)
       if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
 
-      local item = { type=Type, id=ID, name=Name, x=0, y=0, width=0, height=0 }
+      item = { type=Type, id=ID, name=Name, x=0, y=0, width=0, height=0 }
       if Name?? then
          item.displayName = string.translate(Name)
       end
@@ -76,14 +76,14 @@ gui.toolbar = function(Options)
       return item
    end
 
-   local function cancelTipTimer()
+   function cancelTipTimer()
       if self._tipTimer then
          mSys.UpdateTimer(self._tipTimer, 0)
          self._tipTimer = nil
       end
    end
 
-   local function startTipTimer()
+   function startTipTimer()
       if self._tipTimer then -- Reset existing timer
          mSys.UpdateTimer(self._tipTimer, lTipDelay)
       else
@@ -100,8 +100,8 @@ gui.toolbar = function(Options)
 
    -- Return the toolbar item located at position (x,y)
 
-   local function getCursorItem(X, Y)
-      local item = self._first
+   function getCursorItem(X, Y)
+      item = self._first
       while (item) do
          if (X >= item.x) and (X < item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
             if item.type is TI_ICON then return item end
@@ -112,7 +112,7 @@ gui.toolbar = function(Options)
 
    -- Highlight selected item (for keyboard item selection)
 
-   local function highlightItem(Item)
+   function highlightItem(Item)
       if self.kbIcon.x is Item.x then return end
 
       self._current = Item
@@ -130,8 +130,8 @@ gui.toolbar = function(Options)
 
    -- Main routine for arranging items within the toolbar's viewport.
 
-   local function arrangeItems()
-      local groupOffset = 0
+   function arrangeItems()
+      groupOffset = 0
       if self._groupCount > 0 then
          groupOffset = self._groupMargin
       end
@@ -159,7 +159,7 @@ gui.toolbar = function(Options)
          end
       end
 
-      local item = self._first
+      item = self._first
 
       local x, y
       if self._horizontal then
@@ -170,8 +170,8 @@ gui.toolbar = function(Options)
          y = 0
       end
 
-      local currentGroup = nil
-      local spanCount = 0
+      currentGroup = nil
+      spanCount = 0
       while item do
          -- Note that groups are converted to breaks when in flush mode.
          if item.type is TI_BREAK then
@@ -180,7 +180,7 @@ gui.toolbar = function(Options)
             item.width  = 6
             item.height = self._iconSize + (self._cellMargin * 2)
 
-            local seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
+            seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
             self.vg.new('VectorPath', {
                name = 'break', stroke = self._groupBorder, sequence = seq, dashArray = '1, 1'
             })
@@ -240,12 +240,12 @@ gui.toolbar = function(Options)
                end
                item.icon.acMoveToFront()
             elseif item.displayName?? then
-               local fill_name = 'tbar_' .. self._iconTheme
+               fill_name = 'tbar_' .. self._iconTheme
                gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
                item.textFill = 'url(#' .. fill_name .. ')'
 
                if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-                  local alt_name = 'tbar_' .. self._iconHighlight
+                  alt_name = 'tbar_' .. self._iconHighlight
                   gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1, 'boundingbox', true)
                   item.textAltFill = 'url(#' .. alt_name .. ')'
                end
@@ -259,7 +259,7 @@ gui.toolbar = function(Options)
                   string   = item.displayName
                })
 
-               local err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
+               err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
                item.width = bw + (self._cellMargin * 2)
                item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.displaySize * 0.5)
 
@@ -331,7 +331,7 @@ gui.toolbar = function(Options)
 
    self.addBreak = function()
       if not self._first then return end -- At least one item must precede a break
-      local item = newItem(TI_BREAK, 'break', nil)
+      item = newItem(TI_BREAK, 'break', nil)
       self._arranged = false
       return item
    end
@@ -341,7 +341,7 @@ gui.toolbar = function(Options)
    -- standard format of 'category/icon'.
 
    self.addItem = function(ID, Name, Tip, Icon, Function)
-      local item = newItem(TI_ICON, Name, ID)
+      item = newItem(TI_ICON, Name, ID)
       item.callback = Function
 
       if Tip then
@@ -374,7 +374,7 @@ gui.toolbar = function(Options)
       if Options.flush then
          return self.addBreak()
       else
-         local item = newItem(TI_GROUP, Name, ID)
+         item = newItem(TI_GROUP, Name, ID)
          item.group = { span=Span }
          self._groupCount++
          return item
@@ -384,7 +384,7 @@ gui.toolbar = function(Options)
    -- Individual toolbar items can be disabled with this method.  Reverse this action with enableItem().
 
    self.disableItem = function(ID)
-      local item = self._lookup[ID]
+      item = self._lookup[ID]
       if item and (not item.disabled) then
          item.disabled = true
          self.viewport.acDraw()
@@ -394,7 +394,7 @@ gui.toolbar = function(Options)
    -- Items that have been disabled can be re-enabled by calling this method.
 
    self.enableItem = function(ID)
-      local item = self._lookup[ID]
+      item = self._lookup[ID]
       if item and item.disabled then
          item.disabled = false
          self.viewport.acDraw()
@@ -404,7 +404,7 @@ gui.toolbar = function(Options)
    -- This method will reverse a previous call to selectItem() for a given item.
 
    self.deselectItem = function(ID)
-      local item = self._lookup[ID]
+      item = self._lookup[ID]
       if item and item.selected then
          item.selected = false
          self.viewport.acDraw()
@@ -416,10 +416,10 @@ gui.toolbar = function(Options)
    -- Annotate a toolbar item with a sticker.
 
    self.applySticker = function(ID, Content)
-      local item = self._lookup[ID]
+      item = self._lookup[ID]
       if not item then return end
 
-      local sticker_size = math.floor(self._iconSize * 0.5)
+      sticker_size = math.floor(self._iconSize * 0.5)
 
       if not item.sticker then item.sticker = { } end
 
@@ -441,7 +441,7 @@ gui.toolbar = function(Options)
       if Content then
          if type(Content) is 'number' then
             if Content > 9 then
-               local size = math.floor(self._iconSize * 0.33)
+               size = math.floor(self._iconSize * 0.33)
                gui.createIcon(self.viewport.scene, 'items/add', size, 'pearl', 'sticker_plus')
                item.sticker.content = item.sticker.viewport.new('VectorRectangle', {
                   fill = 'url(#sticker_plus)', x=math.floor((sticker_size - size)*0.5), y=math.floor((sticker_size - size)*0.5), width=size, height=size
@@ -456,7 +456,7 @@ gui.toolbar = function(Options)
             if Content:len() > 1 then Content = Content:sub(0,1) end
          end
 
-         local font_size = sticker_size * 0.75
+         font_size = sticker_size * 0.75
          item.sticker.content = item.sticker.viewport.new('VectorText', {
             face='Noto Sans', fontStyle='bold', fontSize=font_size,
             x=math.floor(sticker_size*0.5), y=math.floor(sticker_size-((sticker_size-font_size))),
@@ -466,7 +466,7 @@ gui.toolbar = function(Options)
    end
 
    self.removeSticker = function(ID)
-      local item = self._lookup[ID]
+      item = self._lookup[ID]
       if not item then return end
       if item.sticker then
          item.sticker.viewport.free()
@@ -479,9 +479,9 @@ gui.toolbar = function(Options)
    -- deselectItem() method.  If Exclusive is true, all other items are deselected.
 
    self.selectItem = function(ID, Exclusive)
-      local redraw = false
-      local found  = false
-      local item   = firstIcon()
+      redraw = false
+      found  = false
+      item   = firstIcon()
       while item do
          if item.type is TI_ICON then
             if item.id is ID then
@@ -503,7 +503,7 @@ gui.toolbar = function(Options)
       if not found then raise(ERR_Search) end
    end
 
-   local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
+   function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
       if (self._current is Item) and (StateChanged != true) then return end
 
       if self._current then
@@ -549,8 +549,8 @@ gui.toolbar = function(Options)
       self.viewport.acDraw()
    end
 
-   local function inputFeedback(Viewport, Events) -- Internal input handler
-      local ev = Events
+   function inputFeedback(Viewport, Events) -- Internal input handler
+      ev = Events
       while ev do
          if ev.type is JET_CROSSED_IN then
 
@@ -562,7 +562,7 @@ gui.toolbar = function(Options)
          elseif (ev.flags & JTYPE_MOVEMENT)?? then
             if self._clicked then return end
 
-            local item = getCursorItem(ev.x, ev.y)
+            item = getCursorItem(ev.x, ev.y)
             hoverUpdate(item)
 
             if item and item.tip then
@@ -592,8 +592,8 @@ gui.toolbar = function(Options)
 
                   hoverUpdate(self._current, true)
 
-                  local delta_x = ev.x - lClickX
-                  local delta_y = ev.y - lClickY
+                  delta_x = ev.x - lClickX
+                  delta_y = ev.y - lClickY
                   if delta_x < 0 then delta_x = -delta_x end
                   if delta_y < 0 then delta_y = -delta_y end
 
@@ -673,7 +673,7 @@ gui.toolbar = function(Options)
             sendFeedback()
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
             if self._current then
-               local scan = self._current.prev
+               scan = self._current.prev
                while scan and (scan.type != TI_ICON) do
                   scan = scan.prev
                end
@@ -684,7 +684,7 @@ gui.toolbar = function(Options)
             end
          elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) then
             if self._current then
-               local scan = self._current.next
+               scan = self._current.next
                while scan and (scan.type != TI_ICON) do
                   scan = scan.next
                end
@@ -699,7 +699,7 @@ gui.toolbar = function(Options)
 
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), inputFeedback)
 
-   local kbfill = 'rgba(0,0,0,.5)'
+   kbfill = 'rgba(0,0,0,.5)'
    if Options.theme != 'light' then
       kbfill = 'rgba(255,255,255,.78)'
    end
