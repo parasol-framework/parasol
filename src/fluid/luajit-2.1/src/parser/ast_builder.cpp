@@ -62,6 +62,7 @@ static bool is_compound_assignment(TokenKind Kind)
       case TokenKind::CompoundMod:
       case TokenKind::CompoundConcat:
       case TokenKind::CompoundIfEmpty:
+      case TokenKind::CompoundIfNil:
          return true;
       default:
          return false;
@@ -218,7 +219,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    ExprNodeList values;
    AssignmentOperator assign_op = AssignmentOperator::Plain;
 
-   // Check for plain = or conditional ??= assignment
+   // Check for plain = or conditional ?=/??= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
@@ -226,6 +227,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    }
    else if (this->ctx.match(TokenKind::CompoundIfEmpty).ok()) {
       assign_op = AssignmentOperator::IfEmpty;
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+   else if (this->ctx.match(TokenKind::CompoundIfNil).ok()) {
+      assign_op = AssignmentOperator::IfNil;
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
       values = std::move(rhs.value_ref());
@@ -317,7 +324,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    ExprNodeList values;
    AssignmentOperator assign_op = AssignmentOperator::Plain;
 
-   // Check for plain = or conditional ??= assignment
+   // Check for plain = or conditional ?=/??= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
@@ -325,6 +332,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    }
    else if (this->ctx.match(TokenKind::CompoundIfEmpty).ok()) {
       assign_op = AssignmentOperator::IfEmpty;
+      auto rhs = this->parse_expression_list();
+      if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
+      values = std::move(rhs.value_ref());
+   }
+   else if (this->ctx.match(TokenKind::CompoundIfNil).ok()) {
+      assign_op = AssignmentOperator::IfNil;
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
       values = std::move(rhs.value_ref());
@@ -1225,6 +1238,10 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
       case TokenKind::CompoundIfEmpty:
          has_assignment = true;
          assignment = AssignmentOperator::IfEmpty;
+         break;
+      case TokenKind::CompoundIfNil:
+         has_assignment = true;
+         assignment = AssignmentOperator::IfNil;
          break;
       default:
          break;

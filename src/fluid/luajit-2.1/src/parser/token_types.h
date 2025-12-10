@@ -59,6 +59,7 @@ enum class TokenKind : uint16_t {
    CompoundMod = TK_cmod,
    CompoundConcat = TK_cconcat,
    CompoundIfEmpty = TK_cif_empty,
+   CompoundIfNil = TK_cif_nil,
    SafeField = TK_safe_field,
    SafeIndex = TK_safe_index,
    SafeMethod = TK_safe_method,
@@ -143,6 +144,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::CompoundMod: return "%=";
       case TokenKind::CompoundConcat: return "..=";
       case TokenKind::CompoundIfEmpty: return "??=";
+      case TokenKind::CompoundIfNil: return "?=";
       case TokenKind::SafeField: return "?.";
       case TokenKind::SafeIndex: return "?[";
       case TokenKind::SafeMethod: return "?:";

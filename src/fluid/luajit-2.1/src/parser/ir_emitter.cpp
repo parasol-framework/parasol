@@ -759,14 +759,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    auto nvars = BCReg(BCREG(Payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
-   // For local declarations with ??=, since the variables are newly declared (undefined),
-   // they are semantically empty, so we just perform a plain assignment.
-   // The ??= operator for local declarations is equivalent to plain = assignment.
-   // However, we still enforce that ??= only supports a single target variable for consistency.
+   // For local declarations with ??= or ?=, since the variables are newly declared (undefined),
+   // they are semantically empty/nil, so we just perform a plain assignment.
+   // The ??= and ?= operators for local declarations are equivalent to plain = assignment.
+   // However, we still enforce that ??= and ?= only support a single target variable for consistency.
 
-   if (Payload.op IS AssignmentOperator::IfEmpty and nvars != 1) {
+   if ((Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil) and nvars != 1) {
       return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-         "conditional assignment (??=) only supports a single target variable"));
+         "conditional assignment (?=/??=) only supports a single target variable"));
    }
 
    for (auto i = BCReg(0); i < nvars; ++i) {
@@ -906,6 +906,75 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
       check_false.patch_to(assign_pos);
       check_zero.patch_to(assign_pos);
       check_empty.patch_to(assign_pos);
+      skip_assign.patch_to(BCPos(this->func_state.pc));
+
+      register_guard.release_to(register_guard.saved());
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   // Handle conditional assignment (?=) for global declarations - only checks for nil
+   // The ?= operator only supports a single target variable
+
+   if (Payload.op IS AssignmentOperator::IfNil) {
+      if (nvars != 1) {
+         return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
+            "conditional assignment (?=) only supports a single target variable"));
+      }
+
+      const Identifier& identifier = Payload.names[0];
+      if (is_blank_symbol(identifier) or not identifier.symbol) {
+         this->func_state.reset_freereg();
+         return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+      }
+
+      GCstr* name = identifier.symbol;
+      RegisterGuard register_guard(&this->func_state);
+      RegisterAllocator allocator(&this->func_state);
+
+      // Load current global value into a register
+
+      ExpDesc global_var;
+      global_var.init(ExpKind::Global, 0);
+      global_var.u.sval = name;
+
+      ExpressionValue lhs_value(&this->func_state, global_var);
+      auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+
+      // Only check for nil (simpler and faster than ??=)
+
+      ExpDesc nilv(ExpKind::Nil);
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+      ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      // Skip assignment if not nil
+
+      ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+      BCPos assign_pos = BCPos(this->func_state.pc);
+
+      // Emit the value expression(s) - if multiple values from RHS (e.g. function returning
+      // multiple values), we take only the first value and discard the rest
+
+      auto count = BCReg(0);
+      auto list = this->emit_expression_list(Payload.values, count);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+      ExpDesc rhs = list.value_ref();
+
+      // If we got multiple values (e.g. from a function call), adjust to take only the first one
+
+      if (count > 1 or rhs.k IS ExpKind::Call) {
+         this->lex_state.assign_adjust(1, count.raw(), &rhs);
+      }
+
+      ExpDesc target;
+      target.init(ExpKind::Global, 0);
+      target.u.sval = name;
+      bcemit_store(&this->func_state, &target, &rhs);
+
+      // Patch jumps
+      check_nil.patch_to(assign_pos);
       skip_assign.patch_to(BCPos(this->func_state.pc));
 
       register_guard.release_to(register_guard.saved());
@@ -1498,9 +1567,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
    // For compound assignments (+=, -=, etc.), do NOT create new locals for unscoped variables.
    // The variable must already exist - we should modify the existing storage.
-   // For plain (=) and if-empty (??=) assignments, allow new local creation.
-   // If-empty on an undeclared variable creates a local and assigns (since undefined is "empty").
-   bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty);
+   // For plain (=) and if-empty/if-nil (?=/??=) assignments, allow new local creation.
+   // If-empty/if-nil on an undeclared variable creates a local and assigns (since undefined is empty/nil).
+   bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil);
 
    auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal);
    if (not targets_result.ok()) return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
@@ -1521,6 +1590,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
    PreparedAssignment target = std::move(targets.front());
    if (Payload.op IS AssignmentOperator::IfEmpty) {
       return this->emit_if_empty_assignment(std::move(target), Payload.values);
+   }
+   if (Payload.op IS AssignmentOperator::IfNil) {
+      return this->emit_if_nil_assignment(std::move(target), Payload.values);
    }
 
    return this->emit_compound_assignment(Payload.op, std::move(target), Payload.values);
@@ -1866,6 +1938,96 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    check_false.patch_to(BCPos(assign_pos));
    check_zero.patch_to(BCPos(assign_pos));
    check_empty.patch_to(BCPos(assign_pos));
+   skip_assign.patch_to(BCPos(this->func_state.pc));
+
+   register_guard.release_to(register_guard.saved());
+   allocator.release(target.reserved);
+   allocator.release(copies.reserved);
+   release_indexed_original(this->func_state, target.storage);
+   this->func_state.reset_freereg();
+   register_guard.adopt_saved(BCReg(this->func_state.freereg));
+   return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+// Emit bytecode for an if-nil assignment (?=), assigning only if the target is nil.
+// This is a faster alternative to ??= when only nil checks are needed.
+
+ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment target, const ExprNodeList& values)
+{
+   if (values.empty() or not vkisvar(target.storage.k)) {
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
+   }
+
+   // If the target is a newly created local (from an undeclared variable), skip the nil
+   // check and go straight to assignment. The variable is undefined, which is nil.
+
+   if (target.newly_created) {
+      auto count = BCReg(0);
+      auto list = this->emit_expression_list(values, count);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+      if (count != 1) {
+         const ExprNodePtr& node = values.front();
+         SourceSpan span = node ? node->span : SourceSpan{};
+         return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+      }
+
+      // Finalize deferred local variable now that expression is evaluated
+
+      if (target.needs_var_add and target.pending_symbol) {
+         this->lex_state.var_new(BCReg(0), target.pending_symbol);
+         this->lex_state.var_add(BCReg(1));
+         BCReg slot = BCReg(this->func_state.nactvar - 1);
+         // Update target.storage to point to the new local
+         target.storage.init(ExpKind::Local, slot);
+         target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
+         this->update_local_binding(target.pending_symbol, slot);
+      }
+
+      ExpDesc rhs = list.value_ref();
+      bcemit_store(&this->func_state, &target.storage, &rhs);
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   }
+
+   auto count = BCReg(0);
+   RegisterGuard register_guard(&this->func_state);
+
+   // Use RegisterAllocator::duplicate_table_operands()
+   RegisterAllocator allocator(&this->func_state);
+   TableOperandCopies copies = allocator.duplicate_table_operands(target.storage);
+   ExpDesc working = copies.duplicated;
+
+   // Use ExpressionValue for discharge operations
+   ExpressionValue lhs_value(&this->func_state, working);
+   auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+
+   // Only check for nil (simpler and faster than ??= which checks nil, false, 0, and empty string)
+   ExpDesc nilv(ExpKind::Nil);
+
+   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+   ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   BCPos assign_pos = BCPos(this->func_state.pc);
+
+   auto list = this->emit_expression_list(values, count);
+   if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+   if (count != 1) {
+      const ExprNodePtr& node = values.front();
+      SourceSpan span = node ? node->span : SourceSpan{};
+      return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
+   }
+
+   ExpDesc rhs = list.value_ref();
+   ExpressionValue rhs_value(&this->func_state, rhs);
+   rhs_value.discharge();
+   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
+   bcemit_store(&this->func_state, &target.storage, &rhs);
+
+   check_nil.patch_to(BCPos(assign_pos));
    skip_assign.patch_to(BCPos(this->func_state.pc));
 
    register_guard.release_to(register_guard.saved());

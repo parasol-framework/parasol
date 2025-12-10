@@ -214,7 +214,8 @@ enum class AssignmentOperator : uint8_t {
    Divide,
    Modulo,
    Concat,
-   IfEmpty
+   IfEmpty,
+   IfNil
 };
 
 enum class LoopStyle : uint8_t {
