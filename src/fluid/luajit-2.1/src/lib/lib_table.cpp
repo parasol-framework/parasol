@@ -333,34 +333,6 @@ LJLIB_CF(table_clear)   LJLIB_REC(.)
 }
 
 //********************************************************************************************************************
-
-//********************************************************************************************************************
-// Helper to check if a TValue is a range userdata and extract it
-
-static fluid_range* get_range_from_tvalue(lua_State* L, cTValue* tv)
-{
-   if (not tvisudata(tv)) return nullptr;
-
-   GCudata* ud = udataV(tv);
-   GCtab* mt = tabref(ud->metatable);
-   if (not mt) return nullptr;
-
-   // Get the expected metatable for ranges
-   lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
-   if (lua_isnil(L, -1)) {
-      lua_pop(L, 1);
-      return nullptr;
-   }
-   GCtab* range_mt = tabV(L->top - 1);
-   lua_pop(L, 1);
-
-   // Compare metatables
-   if (mt != range_mt) return nullptr;
-
-   return (fluid_range*)uddata(ud);
-}
-
-//********************************************************************************************************************
 // Custom __index handler for tables
 // Handles range userdata keys for table slicing, delegates other keys to raw table access
 
@@ -374,12 +346,26 @@ static int table_index_handler(lua_State* L)
       return 1;
    }
 
-   GCtab* t = tabV(L->base);
-   cTValue* key = L->base + 1;
+   GCtab *t = tabV(L->base);
+   cTValue *key = L->base + 1;
+     
+   fluid_range *r = nullptr;
+   if (tvisudata(key)) {  // Check for range userdata (table slicing)
+      GCudata *ud = udataV(key);
+      if (GCtab *mt = tabref(ud->metatable)) { // Get the expected metatable for ranges
+         lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
+         if (lua_isnil(L, -1)) lua_pop(L, 1);
+         else {
+            GCtab *range_mt = tabV(L->top - 1);
+            lua_pop(L, 1);
+            if (mt IS range_mt) {
+               r = (fluid_range *)uddata(ud);
+            }
+         }
+      }
+   }
 
-   // Check for range userdata (table slicing)
-   fluid_range* r = get_range_from_tvalue(L, key);
-   if (r) {
+   if (r) { // Return a new table based on the range slice
       int32_t len = (int32_t)lj_tab_len(t);
       int32_t start = r->start;
       int32_t stop = r->stop;
@@ -432,20 +418,19 @@ static int table_index_handler(lua_State* L)
       }
 
       // Calculate result size for pre-allocation
+
       int32_t result_size = 0;
-      if (forward) {
-         result_size = ((effective_stop - start) / step) + 1;
-      }
-      else {
-         result_size = ((start - effective_stop) / (-step)) + 1;
-      }
+      if (forward) result_size = ((effective_stop - start) / step) + 1;
+      else result_size = ((start - effective_stop) / (-step)) + 1;
 
       // Create result table with pre-allocated size
+
       lua_createtable(L, result_size, 0);
       int result_table_idx = lua_gettop(L);
       int32_t result_idx = 0;
 
       // Copy elements using Lua API for safety
+
       if (forward) {
          for (int32_t i = start; i <= effective_stop; i += step) {
             cTValue* src = lj_tab_getint(t, i);
