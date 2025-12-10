@@ -135,7 +135,8 @@ void lj_str_resize(lua_State* L, MSize newmask)
    MSize i;
 
    // No resizing during GC traversal or if already too big.
-   if (g->gc.state IS GCSsweepstring or newmask >= LJ_MAX_STRTAB - 1)
+   GarbageCollector collector = gc(g);
+   if (collector.phase() IS GCPhase::SweepString or newmask >= LJ_MAX_STRTAB - 1)
       return;
 
    newtab = lj_mem_newvec(L, newmask + 1, GCRef);
@@ -224,7 +225,8 @@ static LJ_NOINLINE GCstr* lj_str_rehash_chain(lua_State* L, LuaStrHash hashc,
    const char* str, MSize len)
 {
    global_State* g = G(L);
-   int ow = g->gc.state IS GCSsweepstring ? otherwhite(g) : 0;  // Sweeping?
+   GarbageCollector collector = gc(g);
+   int ow = collector.phase() IS GCPhase::SweepString ? otherwhite(g) : 0;  // Sweeping?
    GCRef* strtab = g->str.tab;
    MSize strmask = g->str.mask;
    GCobj* o = gcref(strtab[hashc & strmask]);

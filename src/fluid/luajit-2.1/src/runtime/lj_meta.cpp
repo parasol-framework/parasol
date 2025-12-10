@@ -319,9 +319,9 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
       }
    } while (left >= 1);
 
-   if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) {
+   if (G(L)->gc.total >= G(L)->gc.threshold) {
       if (not fromc) L->top = curr_topL(L);
-      lj_gc_step(L);
+      gc(G(L)).step(L);
    }
    return nullptr;
 }
@@ -333,11 +333,11 @@ TValue* LJ_FASTCALL lj_meta_len(lua_State *L, cTValue *o)
 {
    cTValue *mo = lj_meta_lookup(L, o, MM_len);
    if (tvisnil(mo)) {
-      if (LJ_52 and tvistab(o)) tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
+      if (tvistab(o)) tabref(tabV(o)->metatable)->nomm |= (uint8_t)(1u << MM_len);
       else lj_err_optype(L, o, ErrMsg::OPLEN);
       return nullptr;
    }
-   return mmcall(L, lj_cont_ra, mo, o, LJ_52 ? o : niltv(L));
+   return mmcall(L, lj_cont_ra, mo, o, o);
 }
 
 //********************************************************************************************************************
@@ -484,18 +484,20 @@ TValue* lj_meta_comp(lua_State *L, cTValue *o1, cTValue *o2, int op)
       ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
       MMS mm = (op & 2) ? MM_le : MM_lt;
       cTValue *mo = lj_meta_lookup(L, tviscdata(o1) ? o1 : o2, mm);
-      if (LJ_UNLIKELY(tvisnil(mo))) goto err;
+      if (tvisnil(mo)) {
+         lj_err_comp(L, o1, o2);
+         return nullptr;
+      }
       return mmcall(L, cont, mo, o1, o2);
    }
-   else if (LJ_52 or itype(o1) IS itype(o2)) {
+   else {
       // Never called with two numbers.
       if (tvisstr(o1) and tvisstr(o2)) {
          int32_t res = lj_str_cmp(strV(o1), strV(o2));
          return (TValue*)(intptr_t)(((op & 2) ? res <= 0 : res < 0) ^ (op & 1));
       }
       else {
-trymt:
-         while (1) {
+         while (true) {
             ASMFunction cont = (op & 1) ? lj_cont_condf : lj_cont_condt;
             MMS mm = (op & 2) ? MM_le : MM_lt;
             cTValue *mo = lj_meta_lookup(L, o1, mm);
@@ -505,19 +507,12 @@ trymt:
                   op ^= 3;  //  Use LT and flip condition.
                   continue;
                }
-               goto err;
+               lj_err_comp(L, o1, o2);
+               return nullptr;
             }
             return mmcall(L, cont, mo, o1, o2);
          }
       }
-   }
-   else if (tvisbool(o1) and tvisbool(o2)) {
-      goto trymt;
-   }
-   else {
-err:
-      lj_err_comp(L, o1, o2);
-      return nullptr;
    }
 }
 
@@ -542,8 +537,7 @@ void lj_meta_call(lua_State *L, TValue* func, TValue* top)
 {
    cTValue *mo = lj_meta_lookup(L, func, MM_call);
    TValue* p;
-   if (not tvisfunc(mo))
-      lj_err_optype_call(L, func);
+   if (not tvisfunc(mo)) lj_err_optype_call(L, func);
    for (p = top; p > func + 2; p--) copyTV(L, p, p - 1);
    copyTV(L, func + 2, func);
    copyTV(L, func, mo);
@@ -554,7 +548,7 @@ void lj_meta_call(lua_State *L, TValue* func, TValue* top)
 // Returns error code: 0 = success, non-zero = error during __close call.
 //
 // NOTE: This function is called from C error handling code (lj_err.cpp)
-// When an error occurs in __close, the error value is left at L->top - 1 and we must NOT restore L->top (which 
+// When an error occurs in __close, the error value is left at L->top - 1 and we must NOT restore L->top (which
 // would hide the error).
 
 int lj_meta_close(lua_State *L, TValue* o, TValue* err)
@@ -564,30 +558,31 @@ int lj_meta_close(lua_State *L, TValue* o, TValue* err)
 
    global_State *g = G(L);
    uint8_t oldh = hook_save(g);
-   GCSize oldt = g->gc.threshold;
    int errcode;
    TValue *top;
 
    lj_trace_abort(g);
    hook_entergc(g);  // Disable hooks and new traces during __close.
    if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
-   g->gc.threshold = LJ_MAX_MEM;  // Prevent GC steps.
 
-   top = L->top;
-   copyTV(L, top++, mo);         // Push __close function
-   setnilV(top++);               // Frame slot for LJ_FR2
-   TValue* argbase = top;        // First argument position (for lj_vm_pcall base)
-   copyTV(L, top++, o);          // Push object (first argument)
-   if (err) copyTV(L, top++, err); // Push error value (second argument)
-   else setnilV(top++);            // Push nil for normal scope exit
-   L->top = top;
+   {
+      GCPauseGuard pause_gc(g);  // Prevent GC steps during __close call
 
-   // Call __close(obj, err) with protection. nres1=1 means 0 results expected.
-   errcode = lj_vm_pcall(L, argbase, 1, -1);
+      top = L->top;
+      copyTV(L, top++, mo);         // Push __close function
+      setnilV(top++);               // Frame slot for LJ_FR2
+      TValue* argbase = top;        // First argument position (for lj_vm_pcall base)
+      copyTV(L, top++, o);          // Push object (first argument)
+      if (err) copyTV(L, top++, err); // Push error value (second argument)
+      else setnilV(top++);            // Push nil for normal scope exit
+      L->top = top;
+
+      // Call __close(obj, err) with protection. nres1=1 means 0 results expected.
+      errcode = lj_vm_pcall(L, argbase, 1, -1);
+   }  // GC threshold automatically restored here
 
    hook_restore(g, oldh);
    if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
-   g->gc.threshold = oldt;  // Restore GC threshold.
 
    // Unlike __gc, we return the error code instead of propagating.
    // The caller decides how to handle errors from __close.

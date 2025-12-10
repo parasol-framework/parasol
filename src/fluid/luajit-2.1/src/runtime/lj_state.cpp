@@ -221,7 +221,11 @@ static void close_state(lua_State *L)
    }
    funcnames_free(g);
    lj_func_closeuv(L, tvref(L->stack));
-   lj_gc_freeall(g);
+
+   // Free all GC objects during shutdown
+   GarbageCollector collector = gc(g);
+   collector.freeAll();
+
    lj_assertG(gcref(g->gc.root) == obj2gco(L),
       "main thread is not first GC object");
    lj_assertG(g->str.num == 0, "leaked %d strings", g->str.num);
@@ -303,7 +307,7 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
    setnilV(&g->nilnode.val);
    setnilV(&g->nilnode.key);
    lj_buf_init(nullptr, &g->tmpbuf);
-   g->gc.state = GCSpause;
+   g->gc.state = GCPhase::Pause;
    setgcref(g->gc.root, obj2gco(L));
    setmref(g->gc.sweep, &g->gc.root);
    g->gc.total = sizeof(GG_State);
@@ -324,8 +328,11 @@ extern lua_State* lua_newstate(lua_Alloc allocf, void* allocd)
 
 static TValue* cpfinalize(lua_State *L, lua_CFunction dummy, void* ud)
 {
-   lj_gc_finalize_cdata(L);
-   lj_gc_finalize_udata(L);
+   GarbageCollector collector = gc(G(L));
+#if LJ_HASFFI
+   collector.finalizeCdata(L);
+#endif
+   collector.finalizeUdata(L);
    // Frame pop omitted.
    return nullptr;
 }
@@ -335,11 +342,15 @@ static TValue* cpfinalize(lua_State *L, lua_CFunction dummy, void* ud)
 extern void lua_close(lua_State *L)
 {
    global_State* g = G(L);
+   GarbageCollector collector = gc(g);
    int i;
    L = mainthread(g);  //  Only the main thread can be closed.
    setgcrefnull(g->cur_L);
    lj_func_closeuv(L, tvref(L->stack));
-   lj_gc_separateudata(g, 1);  //  Separate udata which have GC metamethods.
+
+   // Separate userdata which have GC metamethods
+   collector.separateUdata(1);
+
    G2J(g)->flags &= ~JIT_F_ON;
    G2J(g)->state = TraceState::IDLE;
    lj_dispatch_update(g);
@@ -350,7 +361,10 @@ extern void lua_close(lua_State *L)
       L->cframe = nullptr;
       if (lj_vm_cpcall(L, nullptr, nullptr, cpfinalize) == LUA_OK) {
          if (++i >= 10) break;
-         lj_gc_separateudata(g, 1);  //  Separate udata again.
+
+         // Separate userdata again
+         collector.separateUdata(1);
+
          if (gcref(g->gc.mmudata) == nullptr) break;  //  Until nothing is left to do.
       }
    }
@@ -394,4 +408,3 @@ void LJ_FASTCALL lj_state_free(global_State* g, lua_State *L)
    lj_mem_freevec(g, tvref(L->stack), L->stacksize, TValue);
    lj_mem_freet(g, L);
 }
-

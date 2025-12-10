@@ -1122,8 +1122,7 @@ static TRef rec_mm_len(jit_State* J, TRef tr, TValue* tv)
       lj_record_call(J, func, 2);
    }
    else {
-      if (LJ_52 and tref_istab(tr))
-         return emitir(IRTI(IR_ALEN), tr, TREF_NIL);
+      if (tref_istab(tr)) return emitir(IRTI(IR_ALEN), tr, TREF_NIL);
       lj_trace_err(J, LJ_TRERR_NOMM);
    }
    return 0;  //  No result yet.
@@ -1174,13 +1173,13 @@ static void rec_mm_equal(jit_State* J, RecordIndex* ix, int op)
 }
 
 // Record call to ordered comparison metamethods (for arbitrary objects).
+
 static void rec_mm_comp(jit_State* J, RecordIndex* ix, int op)
 {
    ix->tab = ix->val;
    copyTV(J->L, &ix->tabv, &ix->valv);
    while (1) {
       MMS mm = (op & 2) ? MM_le : MM_lt;  //  Try __le + __lt or only __lt.
-#if LJ_52
       if (not lj_record_mm_lookup(J, ix, mm)) {  // Lookup mm on 1st operand.
          ix->tab = ix->key;
          copyTV(J->L, &ix->tabv, &ix->keyv);
@@ -1189,33 +1188,7 @@ static void rec_mm_comp(jit_State* J, RecordIndex* ix, int op)
       }
       rec_mm_callcomp(J, ix, op);
       return;
-#else
-      if (lj_record_mm_lookup(J, ix, mm)) {  // Lookup mm on 1st operand.
-         cTValue* bv;
-         TRef mo1 = ix->mobj;
-         TValue mo1v;
-         copyTV(J->L, &mo1v, &ix->mobjv);
-         // Avoid the 2nd lookup and the objcmp if the metatables are equal.
-         bv = &ix->keyv;
-         if (tvistab(bv) and tabref(tabV(bv)->metatable) IS ix->mtv) {
-            TRef mt2 = emitir(IRT(IR_FLOAD, IRT_TAB), ix->key, IRFL_TAB_META);
-            emitir(IRTG(IR_EQ, IRT_TAB), mt2, ix->mt);
-         }
-         else if (tvisudata(bv) and tabref(udataV(bv)->metatable) IS ix->mtv) {
-            TRef mt2 = emitir(IRT(IR_FLOAD, IRT_TAB), ix->key, IRFL_UDATA_META);
-            emitir(IRTG(IR_EQ, IRT_TAB), mt2, ix->mt);
-         }
-         else {  // Lookup metamethod on 2nd operand and compare both.
-            ix->tab = ix->key;
-            copyTV(J->L, &ix->tabv, bv);
-            if (not lj_record_mm_lookup(J, ix, mm) or
-               lj_record_objcmp(J, mo1, ix->mobj, &mo1v, &ix->mobjv))
-               goto nomatch;
-         }
-         rec_mm_callcomp(J, ix, op);
-         return;
-      }
-#endif
+
    nomatch:
       // Lookup failed. Retry with  __lt and swapped operands.
       if (not (op & 2)) break;  //  Already at __lt. Interpreter will throw.
