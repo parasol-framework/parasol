@@ -759,6 +759,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    auto nvars = BCReg(BCREG(payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
+   // For local declarations with ?=, since the variables are newly declared (undefined),
+   // they are semantically empty, so we just perform a plain assignment.
+   // The ?= operator for local declarations is equivalent to plain = assignment.
+
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = payload.names[i.raw()];
       GCstr* symbol = identifier.symbol;
@@ -817,6 +821,72 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
       if (is_blank_symbol(identifier)) continue;
       GCstr* name = identifier.symbol;
       if (name) this->func_state.declared_globals.insert(name);
+   }
+
+   // Handle conditional assignment (?=) for global declarations
+   // For each global, check if it's empty before assigning
+   if (payload.op IS AssignmentOperator::IfEmpty and nvars IS 1 and payload.values.size() IS 1) {
+      const Identifier& identifier = payload.names[0];
+      if (is_blank_symbol(identifier) or not identifier.symbol) {
+         this->func_state.reset_freereg();
+         return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+      }
+
+      GCstr* name = identifier.symbol;
+      RegisterGuard register_guard(&this->func_state);
+      RegisterAllocator allocator(&this->func_state);
+
+      // Load current global value into a register
+      ExpDesc global_var;
+      global_var.init(ExpKind::Global, 0);
+      global_var.u.sval = name;
+
+      ExpressionValue lhs_value(&this->func_state, global_var);
+      auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
+
+      // Emit checks for empty values: nil, false, 0, ""
+      ExpDesc nilv(ExpKind::Nil);
+      ExpDesc falsev(ExpKind::False);
+      ExpDesc zerov(0.0);
+      ExpDesc emptyv(this->lex_state.intern_empty_string());
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
+      ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
+      ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
+      ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
+      ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+
+      // Skip assignment if not empty
+      ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+      BCPos assign_pos = BCPos(this->func_state.pc);
+
+      // Emit the value expression and store to global
+      auto count = BCReg(0);
+      auto list = this->emit_expression_list(payload.values, count);
+      if (not list.ok()) return ParserResult<IrEmitUnit>::failure(list.error_ref());
+
+      ExpDesc rhs = list.value_ref();
+      ExpDesc target;
+      target.init(ExpKind::Global, 0);
+      target.u.sval = name;
+      bcemit_store(&this->func_state, &target, &rhs);
+
+      // Patch jumps
+      check_nil.patch_to(assign_pos);
+      check_false.patch_to(assign_pos);
+      check_zero.patch_to(assign_pos);
+      check_empty.patch_to(assign_pos);
+      skip_assign.patch_to(BCPos(this->func_state.pc));
+
+      register_guard.release_to(register_guard.saved());
+      this->func_state.reset_freereg();
+      return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
 
    // Use emit_expression_list to get all values into consecutive registers
