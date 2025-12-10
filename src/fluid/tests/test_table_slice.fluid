@@ -296,3 +296,32 @@ end
    -- Original should be unchanged
    assert(t[1] is 20, "modifying slice should not affect original table")
 end
+
+-- Metatable Interaction Tests
+
+@Test function testTableSliceWithUnrelatedMetatable()
+   -- Table with a metatable that defines __len but not __index
+   t = {10, 20, 30, 40, 50}
+   setmetatable(t, { __len = function() return 100 end })
+
+   -- This should still work even though table has a metatable
+   result = t[{1..4}]
+   assert(#result is 3, "slice should work even with unrelated metatable, got " .. #result)
+   assert(result[0] is 20, "first element should be 20")
+   assert(result[1] is 30, "second element should be 30")
+   assert(result[2] is 40, "third element should be 40")
+end
+
+@Test function testTableSliceWithCustomIndex()
+   -- Table with custom __index should use that, not base metatable
+   t = {10, 20, 30, 40, 50}
+   setmetatable(t, {
+      __index = function(tbl, key)
+         return 999  -- Always return 999
+      end
+   })
+
+   -- Custom __index should take precedence
+   result = t[{1..4}]
+   assert(result is 999, "custom __index should override base metatable")
+end

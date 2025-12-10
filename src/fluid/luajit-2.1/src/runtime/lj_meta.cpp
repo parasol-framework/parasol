@@ -146,11 +146,18 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
          cTValue *tv = lj_tab_get(L, t, k);
          if (not tvisnil(tv)) return tv;
 
-         // Try table's own metatable first, then fall back to base metatable
-
+         // Try table's own metatable first
          GCtab *mt = tabref(t->metatable);
-         if (not mt) mt = tabref(basemt_it(G(L), LJ_TTAB));
-         if (not (mo = lj_meta_fast(L, mt, MM_index))) return tv;
+         if (mt) mo = lj_meta_fast(L, mt, MM_index);
+         else mo = nullptr;
+
+         // If no __index in table's metatable, try base metatable
+         if (not mo) {
+            mt = tabref(basemt_it(G(L), LJ_TTAB));
+            if (mt) mo = lj_meta_fast(L, mt, MM_index);
+         }
+
+         if (not mo) return tv;
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, ErrMsg::OPINDEX);
@@ -296,12 +303,10 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
          // next step: [...][CAT stack ............]
 
          TValue* e, * o = top;
-         uint64_t tlen = tvisstr(o) ? strV(o)->len :
-            tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+         uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
-            o--; tlen += tvisstr(o) ? strV(o)->len :
-               tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+            o--; tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);
