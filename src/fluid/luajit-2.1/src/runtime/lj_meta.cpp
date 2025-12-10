@@ -142,11 +142,15 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
       if (LJ_LIKELY(tvistab(o))) {
-         GCtab* t = tabV(o);
+         GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
-         if (not tvisnil(tv) or
-            !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index)))
-            return tv;
+         if (not tvisnil(tv)) return tv;
+
+         // Try table's own metatable first, then fall back to base metatable
+
+         GCtab *mt = tabref(t->metatable);
+         if (not mt) mt = tabref(basemt_it(G(L), LJ_TTAB));
+         if (not (mo = lj_meta_fast(L, mt, MM_index))) return tv;
       }
       else if (tvisnil(mo = lj_meta_lookup(L, o, MM_index))) {
          lj_err_optype(L, o, ErrMsg::OPINDEX);

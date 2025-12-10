@@ -17,8 +17,10 @@
 #include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_ff.h"
+#include "lj_meta.h"
 #include "lib.h"
 #include "lib_utils.h"
+#include "lib_range.h"
 
 #define LJLIB_MODULE_table
 
@@ -332,6 +334,157 @@ LJLIB_CF(table_clear)   LJLIB_REC(.)
 
 //********************************************************************************************************************
 
+//********************************************************************************************************************
+// Helper to check if a TValue is a range userdata and extract it
+
+static fluid_range* get_range_from_tvalue(lua_State* L, cTValue* tv)
+{
+   if (not tvisudata(tv)) return nullptr;
+
+   GCudata* ud = udataV(tv);
+   GCtab* mt = tabref(ud->metatable);
+   if (not mt) return nullptr;
+
+   // Get the expected metatable for ranges
+   lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      return nullptr;
+   }
+   GCtab* range_mt = tabV(L->top - 1);
+   lua_pop(L, 1);
+
+   // Compare metatables
+   if (mt != range_mt) return nullptr;
+
+   return (fluid_range*)uddata(ud);
+}
+
+//********************************************************************************************************************
+// Custom __index handler for tables
+// Handles range userdata keys for table slicing, delegates other keys to raw table access
+
+static int table_index_handler(lua_State* L)
+{
+   // Argument 1: the table
+   // Argument 2: the key (range userdata or other)
+
+   if (not tvistab(L->base)) {
+      lua_pushnil(L);
+      return 1;
+   }
+
+   GCtab* t = tabV(L->base);
+   cTValue* key = L->base + 1;
+
+   // Check for range userdata (table slicing)
+   fluid_range* r = get_range_from_tvalue(L, key);
+   if (r) {
+      int32_t len = (int32_t)lj_tab_len(t);
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+      int32_t step = r->step;
+
+      // Handle negative indices (always inclusive for negative ranges, per design doc)
+      // This matches string slicing behaviour
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;  // Negative indices ignore inclusive flag
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Determine iteration direction based on resolved indices, not original step
+      // This allows {1...-1} to iterate forward from 1 to the last element
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+
+      // For forward iteration, we need positive step; for reverse, negative step
+      // If the step sign doesn't match direction, use default
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
+      }
+
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
+
+      // Check for empty/invalid ranges
+      if (forward and start > effective_stop) {
+         lua_createtable(L, 0, 0);
+         return 1;
+      }
+      if (not forward and start < effective_stop) {
+         lua_createtable(L, 0, 0);
+         return 1;
+      }
+
+      // Calculate result size for pre-allocation
+      int32_t result_size = 0;
+      if (forward) {
+         result_size = ((effective_stop - start) / step) + 1;
+      }
+      else {
+         result_size = ((start - effective_stop) / (-step)) + 1;
+      }
+
+      // Create result table with pre-allocated size
+      lua_createtable(L, result_size, 0);
+      int result_table_idx = lua_gettop(L);
+      int32_t result_idx = 0;
+
+      // Copy elements using Lua API for safety
+      if (forward) {
+         for (int32_t i = start; i <= effective_stop; i += step) {
+            cTValue* src = lj_tab_getint(t, i);
+            if (src and not tvisnil(src)) {
+               copyTV(L, L->top, src);
+               L->top++;
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+            else {
+               lua_pushnil(L);
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+         }
+      }
+      else {
+         for (int32_t i = start; i >= effective_stop; i += step) {
+            cTValue* src = lj_tab_getint(t, i);
+            if (src and not tvisnil(src)) {
+               copyTV(L, L->top, src);
+               L->top++;
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+            else {
+               lua_pushnil(L);
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+         }
+      }
+
+      return 1;
+   }
+
+   // Not a range - perform raw table access
+   lua_rawget(L, 1);
+   return 1;
+}
+
+//********************************************************************************************************************
+
 static int luaopen_table_new(lua_State* L)
 {
    return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
@@ -347,5 +500,23 @@ extern int luaopen_table(lua_State* L)
    lua_getglobal(L, "unpack");
    lua_setfield(L, -2, "unpack");
    lj_lib_prereg(L, "table.new", luaopen_table_new, tabV(L->top - 1));
+
+   // Create metatable for table type with __index handler for range slicing
+   GCtab* mt = lj_tab_new(L, 0, 1);
+   global_State* g = G(L);
+
+   // Set as base metatable for tables
+   // NOBARRIER: basemt is a GC root.
+   setgcref(basemt_it(g, LJ_TTAB), obj2gco(mt));
+
+   // Create the __index handler function and set it in the metatable
+   lua_pushcfunction(L, table_index_handler);
+   TValue* index_slot = lj_tab_setstr(L, mt, mmname_str(g, MM_index));
+   setfuncV(L, index_slot, funcV(L->top - 1));
+   lua_pop(L, 1);
+
+   // Update the metatable's negative-metamethod cache to indicate __index is present
+   mt->nomm = (uint8_t)(~(1u << MM_index));
+
    return 1;
 }
