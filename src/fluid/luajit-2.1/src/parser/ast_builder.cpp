@@ -757,6 +757,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
 {
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
+
+   // Check for anonymous for loop: for {range} do
+   // This allows iterating over a range without declaring a loop variable.
+   if (this->ctx.check(TokenKind::LeftBrace)) {
+      return this->parse_anonymous_for(token);
+   }
+
    auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
    if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
 
@@ -909,6 +916,123 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    GenericForStmtPayload payload;
    payload.names = std::move(names);
    payload.iterators = std::move(iterator_nodes);
+   payload.body = std::move(body.value_ref());
+   stmt->data = std::move(payload);
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses anonymous for loops: for {range} do ... end
+// This allows iterating over a range without declaring a loop variable, useful when the iteration
+// count matters but the index value is not needed.
+//
+// Examples:
+//    for {0..10} do print("hello") end     -- prints "hello" 10 times
+//    for {1...5} do total += 1 end         -- increments total 5 times
+//
+// The implementation creates a blank identifier internally and leverages the existing for-loop
+// machinery, including JIT optimisation for constant ranges.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
+{
+   // Parse the iterator expression (expected to be a range like {0..10})
+   auto iterator = this->parse_expression();
+   if (not iterator.ok()) return ParserResult<StmtNodePtr>::failure(iterator.error_ref());
+
+   ExprNodePtr iter_expr = std::move(iterator.value_ref());
+
+   // Create a blank identifier for the anonymous loop variable
+   Identifier blank_id;
+   blank_id.symbol = nullptr;
+   blank_id.is_blank = true;
+   blank_id.span = ForToken.span();
+
+   // JIT Optimisation: Convert constant range literals to numeric for loops.
+   // This allows the JIT to compile `for {1..10} do` into optimised BC_FORI/BC_FORL bytecode.
+   if (iter_expr and iter_expr->kind IS AstNodeKind::RangeExpr) {
+      auto* range_payload = std::get_if<RangeExprPayload>(&iter_expr->data);
+      if (range_payload and range_payload->start and range_payload->stop) {
+         SourceSpan span = iter_expr->span;
+
+         // Check if both start and stop are numeric literals for compile-time optimisation.
+         bool start_is_num = range_payload->start->kind IS AstNodeKind::LiteralExpr and
+            std::get_if<LiteralValue>(&range_payload->start->data) and
+            std::get<LiteralValue>(range_payload->start->data).kind IS LiteralKind::Number;
+         bool stop_is_num = range_payload->stop->kind IS AstNodeKind::LiteralExpr and
+            std::get_if<LiteralValue>(&range_payload->stop->data) and
+            std::get<LiteralValue>(range_payload->stop->data).kind IS LiteralKind::Number;
+
+         if (start_is_num and stop_is_num) {
+            lua_Number start_val = std::get<LiteralValue>(range_payload->start->data).number_value;
+            lua_Number stop_val = std::get<LiteralValue>(range_payload->stop->data).number_value;
+            bool inclusive = range_payload->inclusive;
+
+            // Determine step direction based on start/stop values
+            lua_Number step_val = (start_val <= stop_val) ? 1.0 : -1.0;
+
+            // For exclusive ranges, adjust stop
+            lua_Number final_stop = stop_val;
+            if (not inclusive) {
+               final_stop = (step_val > 0) ? (stop_val - 1) : (stop_val + 1);
+            }
+
+            // Move the start expression from the range
+            ExprNodePtr start_expr = std::move(range_payload->start);
+
+            // Create literals for stop and step
+            LiteralValue stop_lit;
+            stop_lit.kind = LiteralKind::Number;
+            stop_lit.number_value = final_stop;
+            ExprNodePtr final_stop_expr = make_literal_expr(span, stop_lit);
+
+            LiteralValue step_lit;
+            step_lit.kind = LiteralKind::Number;
+            step_lit.number_value = step_val;
+            ExprNodePtr step_expr = make_literal_expr(span, step_lit);
+
+            this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
+            auto body = this->parse_scoped_block({ TokenKind::EndToken });
+            if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
+            this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
+            StmtNodePtr stmt = std::make_unique<StmtNode>();
+            stmt->kind = AstNodeKind::NumericForStmt;
+            stmt->span = ForToken.span();
+            NumericForStmtPayload payload;
+            payload.control = std::move(blank_id);
+            payload.start = std::move(start_expr);
+            payload.stop = std::move(final_stop_expr);
+            payload.step = std::move(step_expr);
+            payload.body = std::move(body.value_ref());
+            stmt->data = std::move(payload);
+            return ParserResult<StmtNodePtr>::success(std::move(stmt));
+         }
+      }
+   }
+
+   // Generic for loop fallback: wrap range in a call to get the iterator
+   if (iter_expr and iter_expr->kind IS AstNodeKind::RangeExpr) {
+      SourceSpan span = iter_expr->span;
+      ExprNodePtr callee = std::move(iter_expr);
+      ExprNodeList args;
+      iter_expr = make_call_expr(span, std::move(callee), std::move(args), false);
+   }
+
+   this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
+   auto body = this->parse_scoped_block({ TokenKind::EndToken });
+   if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
+   this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+
+   StmtNodePtr stmt = std::make_unique<StmtNode>();
+   stmt->kind = AstNodeKind::GenericForStmt;
+   stmt->span = ForToken.span();
+
+   GenericForStmtPayload payload;
+   payload.names.push_back(std::move(blank_id));
+
+   ExprNodeList iterators;
+   iterators.push_back(std::move(iter_expr));
+   payload.iterators = std::move(iterators);
    payload.body = std::move(body.value_ref());
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
