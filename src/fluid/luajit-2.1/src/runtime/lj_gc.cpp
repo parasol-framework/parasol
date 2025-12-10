@@ -960,7 +960,7 @@ void lj_gc_fullgc(lua_State *L)
 void lj_gc_barrierf(global_State *g, GCobj* o, GCobj* v)
 {
    lj_assertG(isblack(o) and iswhite(v) and !isdead(g, v) and !isdead(g, o), "bad object states for forward barrier");
-   lj_assertG(g->gc.state != uint8_t(GCPhase::Finalize) and g->gc.state != uint8_t(GCPhase::Pause), "bad GC state");
+   lj_assertG(g->gc.state != GCPhase::Finalize and g->gc.state != GCPhase::Pause, "bad GC state");
    lj_assertG(o->gch.gct != ~LJ_TTAB, "barrier object is not a table");
    // Preserve invariant during propagation. Otherwise it doesn't matter.
    if (g->gc.state IS (GCPhase::Propagate) or g->gc.state IS (GCPhase::Atomic)) gc_mark(g, v);  //  Move frontier forward.
