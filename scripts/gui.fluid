@@ -312,7 +312,7 @@ end
 -- for live rendering (higher quality transforms).
 
 gui.createIcon = function(Scene, Path, Size, Theme, Name)
-   Size ?= 16
+   Size ??= 16
    assert(Path, 'No Path specified.')
    local lGradient = gui.iconThemes.default
    local icon = { size=Size }
@@ -330,12 +330,12 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
          error('gui.createIcon() theme ' .. Theme .. ' not recognised.')
       end
 
-      Name ?= Theme:lower() .. '/' .. Path:lower()
+      Name ??= Theme:lower() .. '/' .. Path:lower()
    else
       error('Invalid Theme specified.')
    end
 
-   Name ?= Path
+   Name ??= Path
 
    if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
       return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
@@ -512,5 +512,5 @@ end
          end
       end
 
-      gui.fonts[k].style ?= 'Regular'
+      gui.fonts[k].style ??= 'Regular'
    end

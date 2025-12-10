@@ -26,33 +26,33 @@ end
 
 @Test function testIfEmptyAssignment()
    count = 5
-   count ?= 1
-   assert(count is 5, 'count ?= should leave truthy values unchanged')
+   count ??= 1
+   assert(count is 5, 'count ??= should leave truthy values unchanged')
 
    local missing
-   missing ?= 42
+   missing ??= 42
    assert(missing is 42, 'nil LHS should receive the default value')
 
    zero = 0
-   zero ?= 7
-   assert(zero is 7, 'zero should trigger ?= assignment')
+   zero ??= 7
+   assert(zero is 7, 'zero should trigger ??= assignment')
 
    empty = ''
-   empty ?= 'fallback'
-   assert(empty is 'fallback', 'empty string should trigger ?= assignment')
+   empty ??= 'fallback'
+   assert(empty is 'fallback', 'empty string should trigger ??= assignment')
 
    store = { retries = 0, label = 'ready', slots = { '' } }
-   store.retries ?= 3
-   assert(store.retries is 3, 'table field ?= should assign when falsey')
+   store.retries ??= 3
+   assert(store.retries is 3, 'table field ??= should assign when falsey')
 
-   store.label ?= 'idle'
-   assert(store.label is 'ready', 'table field ?= should skip when truthy')
+   store.label ??= 'idle'
+   assert(store.label is 'ready', 'table field ??= should skip when truthy')
 
-   store.slots[1] ?= 'filled'
-   assert(store.slots[1] is 'filled', 'indexed ?= should assign when entry is falsey')
+   store.slots[1] ??= 'filled'
+   assert(store.slots[1] is 'filled', 'indexed ??= should assign when entry is falsey')
 
-   store.slots[1] ?= 'ignored'
-   assert(store.slots[1] is 'filled', 'indexed ?= should not reassign when entry is truthy')
+   store.slots[1] ??= 'ignored'
+   assert(store.slots[1] is 'filled', 'indexed ??= should not reassign when entry is truthy')
 end
 
 @Test function testIfEmptyShortCircuit()
@@ -63,14 +63,152 @@ end
    end
 
    present = 'has data'
-   present ?= fallback()
-   assert(calls is 0, 'truthy ?= should not evaluate the RHS')
-   assert(present is 'has data', 'truthy ?= should keep the existing value')
+   present ??= fallback()
+   assert(calls is 0, 'truthy ??= should not evaluate the RHS')
+   assert(present is 'has data', 'truthy ??= should keep the existing value')
 
    blank = ''
-   blank ?= fallback()
-   assert(blank is 'value', 'falsey ?= should evaluate the RHS')
-   assert(calls is 1, 'falsey ?= should evaluate the RHS exactly once')
+   blank ??= fallback()
+   assert(blank is 'value', 'falsey ??= should evaluate the RHS')
+   assert(calls is 1, 'falsey ??= should evaluate the RHS exactly once')
+end
+
+-- Tests for the ?= (if-nil) operator - only assigns when LHS is nil
+-- Unlike ??= which checks for all falsey values (nil, false, 0, ""),
+-- ?= only checks for nil, making it simpler and faster.
+
+@Test function testIfNilAssignment()
+   -- Test that ?= does NOT assign when value is truthy
+   count = 5
+   count ?= 1
+   assert(count is 5, 'count ?= should leave truthy values unchanged')
+
+   -- Test that ?= DOES assign when value is nil
+   local missing
+   missing ?= 42
+   assert(missing is 42, 'nil LHS should receive the default value with ?=')
+
+   -- Test that ?= does NOT assign when value is false (unlike ??=)
+   falsey = false
+   falsey ?= true
+   assert(falsey is false, 'false should NOT trigger ?= assignment (only nil does)')
+
+   -- Test that ?= does NOT assign when value is 0 (unlike ??=)
+   zero = 0
+   zero ?= 7
+   assert(zero is 0, 'zero should NOT trigger ?= assignment (only nil does)')
+
+   -- Test that ?= does NOT assign when value is empty string (unlike ??=)
+   empty = ''
+   empty ?= 'fallback'
+   assert(empty is '', 'empty string should NOT trigger ?= assignment (only nil does)')
+
+   -- Test with table fields
+   store = { label = 'ready' }
+   store.retries ?= 3  -- retries is nil
+   assert(store.retries is 3, 'table field ?= should assign when nil')
+
+   store.label ?= 'idle'
+   assert(store.label is 'ready', 'table field ?= should skip when not nil')
+
+   -- Test with indexed access
+   store.slots = { }
+   store.slots[1] ?= 'filled'
+   assert(store.slots[1] is 'filled', 'indexed ?= should assign when entry is nil')
+
+   store.slots[1] ?= 'ignored'
+   assert(store.slots[1] is 'filled', 'indexed ?= should not reassign when entry is not nil')
+end
+
+@Test function testIfNilShortCircuit()
+   calls = 0
+   function fallback()
+      calls++
+      return 'value'
+   end
+
+   present = 'has data'
+   present ?= fallback()
+   assert(calls is 0, 'non-nil ?= should not evaluate the RHS')
+   assert(present is 'has data', 'non-nil ?= should keep the existing value')
+
+   local unset
+   unset ?= fallback()
+   assert(unset is 'value', 'nil ?= should evaluate the RHS')
+   assert(calls is 1, 'nil ?= should evaluate the RHS exactly once')
+
+   -- Unlike ??=, false should NOT trigger RHS evaluation
+   calls = 0
+   falseVal = false
+   falseVal ?= fallback()
+   assert(calls is 0, 'false with ?= should NOT evaluate the RHS')
+   assert(falseVal is false, 'false ?= should keep the false value')
+end
+
+@Test function testIfNilVsIfEmpty()
+   -- Test that ?= and ??= behave differently for false
+   val1 = false
+   val2 = false
+   val1 ?= 'from-ifnil'
+   val2 ??= 'from-ifempty'
+   assert(val1 is false, '?= should not assign when value is false')
+   assert(val2 is 'from-ifempty', '??= should assign when value is false')
+
+   -- Test that ?= and ??= behave differently for 0
+   val1 = 0
+   val2 = 0
+   val1 ?= 1
+   val2 ??= 1
+   assert(val1 is 0, '?= should not assign when value is 0')
+   assert(val2 is 1, '??= should assign when value is 0')
+
+   -- Test that ?= and ??= behave differently for empty string
+   val1 = ''
+   val2 = ''
+   val1 ?= 'default'
+   val2 ??= 'default'
+   assert(val1 is '', '?= should not assign when value is empty string')
+   assert(val2 is 'default', '??= should assign when value is empty string')
+
+   -- Test that both behave the same for nil
+   val1 = nil
+   val2 = nil
+   val1 ?= 'assigned'
+   val2 ??= 'assigned'
+   assert(val1 is 'assigned', '?= should assign when value is nil')
+   assert(val2 is 'assigned', '??= should assign when value is nil')
+end
+
+@Test function testGlobalIfNilBasic()
+   -- Test global ?= assigns to undefined global
+   global gTestNilVar1 ?= 'assigned'
+   assert(gTestNilVar1 is 'assigned', 'global ?= should assign to undefined global')
+
+   -- Test global ?= does not overwrite existing value
+   global gTestNilVar2 = 'existing'
+   global gTestNilVar2 ?= 'ignored'
+   assert(gTestNilVar2 is 'existing', 'global ?= should not overwrite existing value')
+
+   -- Test global ?= does not overwrite false (unlike ??=)
+   global gTestNilVar3 = false
+   global gTestNilVar3 ?= 'from-false'
+   assert(gTestNilVar3 is false, 'global ?= should not overwrite false')
+
+   -- Test global ?= does not overwrite 0 (unlike ??=)
+   global gTestNilVar4 = 0
+   global gTestNilVar4 ?= 1
+   assert(gTestNilVar4 is 0, 'global ?= should not overwrite 0')
+end
+
+@Test function testLocalIfNilBasic()
+   -- local ?= should assign to a new undefined variable
+   local newVar ?= 'created'
+   assert(newVar is 'created', 'local ?= should assign to new variable')
+
+   -- local ?= should not overwrite existing value
+   local existingVar = 'present'
+   existingVar ?= 'ignored'
+   assert(existingVar is 'present', 'local ?= should not overwrite existing value')
 end
 
 @Test function testIncrement()
@@ -227,58 +365,58 @@ end
 end
 
 @Test function testGlobalIfEmptyBasic()
-   -- Test global ?= assigns to undefined global
-   global gTestVar1 ?= 'assigned'
-   assert(gTestVar1 is 'assigned', 'global ?= should assign to undefined global')
+   -- Test global ??= assigns to undefined global
+   global gTestVar1 ??= 'assigned'
+   assert(gTestVar1 is 'assigned', 'global ??= should assign to undefined global')
 
-   -- Test global ?= does not overwrite existing truthy value
+   -- Test global ??= does not overwrite existing truthy value
    gTestVar2 = 'existing'
-   global gTestVar2 ?= 'ignored'
-   assert(gTestVar2 is 'existing', 'global ?= should not overwrite truthy value')
+   global gTestVar2 ??= 'ignored'
+   assert(gTestVar2 is 'existing', 'global ??= should not overwrite truthy value')
 end
 
 @Test function testGlobalIfEmptyFalseyValues()
-   -- Test global ?= assigns when value is nil
+   -- Test global ??= assigns when value is nil
    global gNilVar = nil
-   global gNilVar ?= 'from nil'
-   assert(gNilVar is 'from nil', 'global ?= should assign when value is nil')
+   global gNilVar ??= 'from nil'
+   assert(gNilVar is 'from nil', 'global ??= should assign when value is nil')
 
-   -- Test global ?= assigns when value is false
+   -- Test global ??= assigns when value is false
    global gFalseVar = false
-   global gFalseVar ?= 'from false'
-   assert(gFalseVar is 'from false', 'global ?= should assign when value is false')
+   global gFalseVar ??= 'from false'
+   assert(gFalseVar is 'from false', 'global ??= should assign when value is false')
 
-   -- Test global ?= assigns when value is zero
+   -- Test global ??= assigns when value is zero
    global gZeroVar = 0
-   global gZeroVar ?= 99
-   assert(gZeroVar is 99, 'global ?= should assign when value is zero')
+   global gZeroVar ??= 99
+   assert(gZeroVar is 99, 'global ??= should assign when value is zero')
 
-   -- Test global ?= assigns when value is empty string
+   -- Test global ??= assigns when value is empty string
    global gEmptyVar = ''
-   global gEmptyVar ?= 'from empty'
-   assert(gEmptyVar is 'from empty', 'global ?= should assign when value is empty string')
+   global gEmptyVar ??= 'from empty'
+   assert(gEmptyVar is 'from empty', 'global ??= should assign when value is empty string')
 end
 
 @Test function testGlobalIfEmptyWithFunctionCall()
-   -- Test global ?= with function call on RHS
+   -- Test global ??= with function call on RHS
    function getDefault()
       return 'default value'
    end
-   global gFuncVar ?= getDefault()
-   assert(gFuncVar is 'default value', 'global ?= should work with function call RHS')
+   global gFuncVar ??= getDefault()
+   assert(gFuncVar is 'default value', 'global ??= should work with function call RHS')
 end
 
 @Test function testGlobalIfEmptyMultiReturn()
-   -- Test global ?= takes only first return value from multi-return function
+   -- Test global ??= takes only first return value from multi-return function
    function multiReturn()
       return 'first', 'second', 'third'
    end
-   global gMultiVar ?= multiReturn()
-   assert(gMultiVar is 'first', 'global ?= should take only first return value')
+   global gMultiVar ??= multiReturn()
+   assert(gMultiVar is 'first', 'global ??= should take only first return value')
 end
 
 @Test function testGlobalIfEmptyShortCircuit()
-   -- Test global ?= does not evaluate RHS when LHS is truthy
+   -- Test global ??= does not evaluate RHS when LHS is truthy
    global gCallCount = 0
    function countedFallback()
       gCallCount++
@@ -286,62 +424,62 @@ end
    end
 
    global gTruthyVar = 'truthy'
-   global gTruthyVar ?= countedFallback()
-   assert(gCallCount is 0, 'global ?= should not evaluate RHS when LHS is truthy')
-   assert(gTruthyVar is 'truthy', 'global ?= should preserve truthy value')
+   global gTruthyVar ??= countedFallback()
+   assert(gCallCount is 0, 'global ??= should not evaluate RHS when LHS is truthy')
+   assert(gTruthyVar is 'truthy', 'global ??= should preserve truthy value')
 
    -- Now test with falsey value
    global gFalseyVar = 0
-   global gFalseyVar ?= countedFallback()
-   assert(gCallCount is 1, 'global ?= should evaluate RHS when LHS is falsey')
-   assert(gFalseyVar is 'fallback', 'global ?= should assign fallback when LHS is falsey')
+   global gFalseyVar ??= countedFallback()
+   assert(gCallCount is 1, 'global ??= should evaluate RHS when LHS is falsey')
+   assert(gFalseyVar is 'fallback', 'global ??= should assign fallback when LHS is falsey')
 end
 
 @Test function testLocalIfEmptyBasic()
-   -- Test local ?= assigns to newly declared local
-   local lTestVar ?= 'assigned'
-   assert(lTestVar is 'assigned', 'local ?= should assign to new local')
+   -- Test local ??= assigns to newly declared local
+   local lTestVar ??= 'assigned'
+   assert(lTestVar is 'assigned', 'local ??= should assign to new local')
 end
 
 @Test function testLocalIfEmptyWithFunctionCall()
-   -- Test local ?= with function call on RHS
+   -- Test local ??= with function call on RHS
    function getLocalDefault()
       return 123
    end
-   local lFuncVar ?= getLocalDefault()
-   assert(lFuncVar is 123, 'local ?= should work with function call RHS')
+   local lFuncVar ??= getLocalDefault()
+   assert(lFuncVar is 123, 'local ??= should work with function call RHS')
 end
 
 @Test function testLocalIfEmptyMultiReturn()
-   -- Test local ?= takes only first return value from multi-return function
+   -- Test local ??= takes only first return value from multi-return function
    function localMultiReturn()
       return 100, 200, 300
    end
-   local lMultiVar ?= localMultiReturn()
-   assert(lMultiVar is 100, 'local ?= should take only first return value')
+   local lMultiVar ??= localMultiReturn()
+   assert(lMultiVar is 100, 'local ??= should take only first return value')
 end
 
 @Test function testLocalIfEmptyInLoop()
-   -- Test local ?= works correctly in loop scope
+   -- Test local ??= works correctly in loop scope
    results = {}
    for i in {0..3} do
-      local loopVar ?= i * 10
+      local loopVar ??= i * 10
       results[i] = loopVar
    end
-   assert(results[0] is 0, 'local ?= in loop should assign correctly for i=0')
-   assert(results[1] is 10, 'local ?= in loop should assign correctly for i=1')
-   assert(results[2] is 20, 'local ?= in loop should assign correctly for i=2')
+   assert(results[0] is 0, 'local ??= in loop should assign correctly for i=0')
+   assert(results[1] is 10, 'local ??= in loop should assign correctly for i=1')
+   assert(results[2] is 20, 'local ??= in loop should assign correctly for i=2')
 end
 
 @Test function testLocalIfEmptyInCondition()
-   -- Test local ?= works correctly in conditional scope
+   -- Test local ??= works correctly in conditional scope
    function maybeGet(flag)
       if flag then
-         local condVar ?= 'from condition'
+         local condVar ??= 'from condition'
          return condVar
       end
       return 'not taken'
    end
-   assert(maybeGet(true) is 'from condition', 'local ?= in condition should work')
-   assert(maybeGet(false) is 'not taken', 'local ?= path not taken should return default')
+   assert(maybeGet(true) is 'from condition', 'local ??= in condition should work')
+   assert(maybeGet(false) is 'not taken', 'local ??= path not taken should return default')
 end

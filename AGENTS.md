@@ -103,13 +103,16 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - C-style bitwise operators: `&`, `|`, `~`, `<<`, `>>`
 - C-style ternary operator: `condition ? true_val :> false_val`
 - Falsey value checks with `??`, e.g. `if value?? then ...`
-- `?=` and `??` conditional operators as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
+- `??=` and `??` conditional operators as a convenience for redefining falsey values, e.g. `result = value1 ?? value2`
+- `?=` is an if-nil compound operator
 - `defer() ... end` statement that runs code when de-scoped.
 - `goto`, labels, `==` and `~=` are deprecated
 - Zero-based indexing for tables and string functions.
 - Variables and functions are local by default.  Use `global` for defining global variables and `local` when controlling scope.
 - Anonymous function expressions with `=>`: `(i => print(i))`
 - Support for ranges: `for i in {0..10} do`
+
+A complete breakdown of these features is located in `docs/wiki/Fluid-Reference-Manual.md`
 
 #### Fluid Coding Patterns
 
@@ -235,7 +238,7 @@ For Fluid code, verify:
 cmake --build build/agents --config [BuildType] --parallel
 
 # Install after successful build
-cmake --install build/agents
+cmake --install build/agents --config [BuildType]
 ```
 
 **Module Build Commands:**

@@ -273,38 +273,38 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test that if-empty assignment (?=) works on undeclared variables
--- An undeclared variable is effectively nil, so ?= should assign and create a local
+-- Test that if-empty assignment (??=) works on undeclared variables
+-- An undeclared variable is effectively nil, so ??= should assign and create a local
 
 @Test function testIfEmptyOnUndeclared()
-   -- undeclaredIfEmptyVar doesn't exist, so it's nil, so ?= should assign
-   undeclaredIfEmptyVar ?= 'assigned because nil'
+   -- undeclaredIfEmptyVar doesn't exist, so it's nil, so ??= should assign
+   undeclaredIfEmptyVar ??= 'assigned because nil'
    assert(undeclaredIfEmptyVar is 'assigned because nil', 'If-empty should assign to nil/undeclared variable')
    assert(debug.locality('undeclaredIfEmptyVar') is 'local', 'If-empty on undeclared should create local')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test that if-empty assignment (?=) respects existing values
+-- Test that if-empty assignment (??=) respects existing values
 
 @Test function testIfEmptyRespectsExisting()
    local existingVar = 'original'
-   existingVar ?= 'should not replace'
+   existingVar ??= 'should not replace'
    assert(existingVar is 'original', 'If-empty should not replace existing truthy value')
 
    local nilVar = nil
-   nilVar ?= 'replaced nil'
+   nilVar ??= 'replaced nil'
    assert(nilVar is 'replaced nil', 'If-empty should replace nil')
 
    local falseVar = false
-   falseVar ?= 'replaced false'
+   falseVar ??= 'replaced false'
    assert(falseVar is 'replaced false', 'If-empty should replace false')
 
    local zeroVar = 0
-   zeroVar ?= 'replaced zero'
+   zeroVar ??= 'replaced zero'
    assert(zeroVar is 'replaced zero', 'If-empty should replace zero')
 
    local emptyVar = ''
-   emptyVar ?= 'replaced empty'
+   emptyVar ??= 'replaced empty'
    assert(emptyVar is 'replaced empty', 'If-empty should replace empty string')
 end
 

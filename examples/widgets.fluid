@@ -184,7 +184,7 @@ end
                popOver = win.surface,
                colour  = '255,0,0',
                feedback = function(Colour)
-                  if (not Colour) then
+                  if not Colour then
                      print('Dialog was cancelled.')
                      return
                   end
@@ -349,7 +349,7 @@ end
                Icon.effect = nil
             end)
 
-            if sndAlarm then sndAlarm.acActivate() end
+            sndAlarm?.acActivate()
          end
       }
    })
@@ -380,7 +380,7 @@ end
                Icon.viewport = nil
             end)
 
-            if sndWilhelm then sndWilhelm.acActivate() end
+            sndWilhelm?.acActivate()
          end
       }
    })
