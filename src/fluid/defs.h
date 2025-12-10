@@ -284,6 +284,9 @@ struct prvFluid {
    uint16_t Catch;                     // Operating within a catch() block if > 0
    uint16_t RequireCounter;
    int      ErrorLine;                 // Line at which the last error was thrown.
+   int      CatchDepth = -1;           // Lua stack frame count for scope isolation in catch().
+                                       // Set by fcmd_catch() via lua_getstack() frame counting.
+                                       // Only calls at exactly this depth throw exceptions.
 };
 
 struct array {

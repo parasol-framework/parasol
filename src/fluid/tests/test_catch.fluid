@@ -359,3 +359,114 @@ end
 
    assert(#result is 1 and result[0] is "level1", "Chained object calls failed")
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test scope isolation: nested function calls within catch() should NOT throw exceptions.
+-- The catch() behavior should only apply to DIRECT calls within the catch block, not to
+-- functions called from within those functions.
+
+@Test function testScopeIsolation()
+   helper_called = false
+   helper_error = nil
+
+   -- Helper function that returns an error code normally
+   function helper()
+      helper_called = true
+      -- This should return error normally, NOT throw, because we're in a nested call
+      helper_error = mSys.AllocMemory(-10, 0)  -- Returns ERR::Args
+      return helper_error
+   end
+
+   exception_from_helper = false
+   exception_from_direct = false
+
+   ex = catch(function()
+      -- Call helper - this should NOT throw even though it returns an error
+      result = helper()
+      -- This direct call SHOULD throw
+      mSys.AllocMemory(-10, 0)
+   end,
+   function(Exception)
+      -- We should only get here from the direct call, not from helper()
+      if helper_error != nil then
+         exception_from_direct = true
+      else
+         exception_from_helper = true
+      end
+   end)
+
+   assert(helper_called, "Helper function should have been called")
+   assert(helper_error is ERR_Args, "Helper should have returned ERR_Args, got: " .. tostring(helper_error))
+   assert(exception_from_direct, "Exception should have been raised from direct call")
+   assert(not exception_from_helper, "Exception should NOT have been raised from helper()")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test that object method errors in nested functions don't throw
+
+@Test function testScopeIsolationObjectMethod()
+   helper_result = nil
+
+   function helper_with_action()
+      time = obj.new("time", {})
+      helper_result = time.acUndo()  -- Returns ERR::NoAction
+      return helper_result
+   end
+
+   direct_exception = false
+
+   ex = catch(function()
+      -- Call helper - should NOT throw
+      err = helper_with_action()
+      -- Direct call - SHOULD throw
+      time = obj.new("time", {})
+      time.acUndo()
+   end,
+   function(Exception)
+      if helper_result != nil then
+         direct_exception = true
+      end
+   end)
+
+   assert(helper_result is ERR_NoAction, "Helper should have returned ERR_NoAction, got: " .. tostring(helper_result))
+   assert(direct_exception, "Exception should have been raised from direct action call")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test multiple levels of nested function calls
+
+@Test function testDeepNestedFunctions()
+   level1_called = false
+   level2_called = false
+   level3_error = nil
+
+   function level3()
+      level3_error = mSys.AllocMemory(-10, 0)  -- Should NOT throw
+      return level3_error
+   end
+
+   function level2()
+      level2_called = true
+      return level3()
+   end
+
+   function level1()
+      level1_called = true
+      return level2()
+   end
+
+   direct_threw = false
+
+   ex = catch(function()
+      result = level1()  -- Deep nesting - should NOT throw
+      mSys.AllocMemory(-10, 0)  -- Direct call - SHOULD throw
+   end,
+   function(Exception)
+      direct_threw = true
+   end)
+
+   assert(level1_called, "level1 should have been called")
+   assert(level2_called, "level2 should have been called")
+   assert(level3_error is ERR_Args, "level3 should have returned ERR_Args")
+   assert(direct_threw, "Direct call should have thrown")
+end
