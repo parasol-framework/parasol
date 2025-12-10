@@ -20,16 +20,16 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function name_resolved(NetLookup, Error)
-   local host = NetLookup.hostName ?? 'NIL'
+   host = NetLookup.hostName ?? 'NIL'
 
    assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
 
-   local total_ips = 0
+   total_ips = 0
 
    print('Resolved host name "' .. host .. '" (' .. (glTotalResolved+1) .. '/' .. #glDomains .. ')')
 
-   local ip_list = nil
-   local addresses = NetLookup.addresses
+   ip_list = nil
+   addresses = NetLookup.addresses
    if addresses then
       total_ips = #addresses
       for index, ip in pairs(addresses) do
@@ -42,7 +42,7 @@ function name_resolved(NetLookup, Error)
       end
    end
 
-   local msg = 'Resolved ' .. host .. ' with ' .. total_ips .. ' IP addresses.'
+   msg = 'Resolved ' .. host .. ' with ' .. total_ips .. ' IP addresses.'
    if ip_list then msg ..= '  IPs: ' .. ip_list end
    print(msg)
 
@@ -58,10 +58,10 @@ end
 -- for the same host.  In the log output you may see a thread being created for the first resolve, then the second call
 -- will hit the local DNS cache and return immediately.
 
-function testDuplication()
-   local resolved = 0
+@Test(requires='network') function testDuplication()
+   resolved = 0
 
-   local domains = { 'google.com', 'reddit.com' }
+   domains = { 'google.com', 'reddit.com' }
    function duplicate_resolved(NetLookup, Error)
       assert(Error is ERR_Okay, 'Failed to resolve ' .. NetLookup.hostName .. ', error ' ..mSys.GetErrorMsg(Error))
       print('Resolved: ' .. NetLookup.hostName)
@@ -71,15 +71,15 @@ function testDuplication()
    end
 
    for k,v in pairs(domains) do
-      local nlA = obj.new('NetLookup', { callback = duplicate_resolved, flags=NLF_NO_CACHE })
-      local nlB = obj.new('NetLookup', { callback = duplicate_resolved })
+      nlA = obj.new('NetLookup', { callback = duplicate_resolved, flags=NLF_NO_CACHE })
+      nlB = obj.new('NetLookup', { callback = duplicate_resolved })
 
-      local err = nlA.mtResolveName(v)
+      err = nlA.mtResolveName(v)
       err = proc.sleep()
       assert(err is ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
       print('First lookup processed successfully.')
 
-      local save = resolved
+      save = resolved
       err = nlB.mtResolveName(v)
       if save is resolved then
          err = proc.sleep()
@@ -92,27 +92,27 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Non-blocking name resolution (default)
 
-function testNameResolutionAsync()
-   local nl = obj.new('NetLookup', { callback=name_resolved, flags=NLF_NO_CACHE })
+@Test(requires='network') function testNameResolutionAsync()
+   nl = obj.new('NetLookup', { callback=name_resolved, flags=NLF_NO_CACHE })
 
    glTotalResolved = 0
    for k,v in pairs(glDomains) do
       nl.mtResolveName(v)
    end
 
-   local err = proc.sleep(5.0)
+   err = proc.sleep(5.0)
    if (err is ERR_TimeOut) then error('Name resolution timed-out.') end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Blocking name resolution
 
-function testBlockingNameResolution()
-   local nl = obj.new('NetLookup', { callback = name_resolved, flags=NLF_NO_CACHE })
+@Test(requires='network') function testBlockingNameResolution()
+   nl = obj.new('NetLookup', { callback = name_resolved, flags=NLF_NO_CACHE })
 
    glTotalResolved = 0
    for k,v in pairs(glDomains) do
-      local expected_total = glTotalResolved + 1
+      expected_total = glTotalResolved + 1
       nl.mtBlockingResolveName(v)
       assert(expected_total is glTotalResolved, 'Name was not resolved when ResolveName() had returned, got ' .. glTotalResolved .. '/' .. expected_total)
    end
@@ -120,11 +120,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testBlockingAddressResolution()
-   local address_resolved = false
-   local nl = obj.new('NetLookup', {
+@Test(requires='network') function testBlockingAddressResolution()
+   address_resolved = false
+   nl = obj.new('NetLookup', {
       callback = function(NetLookup, Error)
-         local host = NetLookup.hostName ?? 'NIL'
+         host = NetLookup.hostName ?? 'NIL'
          assert(Error is ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
          assert(host is 'dns.google', 'IP resolved to ' .. host)
          address_resolved = true

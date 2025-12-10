@@ -27,104 +27,104 @@ Sort = 1
 glMerge = 'Ignore this\r\n[MergedGroup]\r\nHello=World\r\n'
 
 function newConfig()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
+   cfg = obj.new('config', { })
+   err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
    assert(err is ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
    return cfg
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testKeyFilter()
-   local cfg = newConfig()
+@Test function testKeyFilter()
+   cfg = newConfig()
 
    cfg.keyFilter = 'Name=Clean' -- Keep the clean font and filter out Courier Sans
 
    -- Expect success
-   local err, value = cfg.mtReadValue('Clean', 'Points')
+   err, value = cfg.mtReadValue('Clean', 'Points')
    assert(err is ERR_Okay, 'ReadInt() returned ' .. mSys.GetErrorMsg(err))
    assert(value is '8', 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
-   local err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
+   err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value != 'Yes', 'The [Courier Sans].Scalable value was not filtered out as expected.')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testGroupFilter()
-   local cfg = newConfig()
+@Test function testGroupFilter()
+   cfg = newConfig()
 
    cfg.groupFilter = 'Courier Sans' -- Keep Courier Sans
 
    -- Expect success
-   local err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
+   err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value is 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
-   local err, value = cfg.mtReadValue('Clean', 'Points')
+   err, value = cfg.mtReadValue('Clean', 'Points')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value != '8', 'The [Clean].Points value was not filtered out as expected.')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testDeleteKeyAndGroup()
-   local cfg = newConfig()
+@Test function testDeleteKeyAndGroup()
+   cfg = newConfig()
 
-   local err, value = cfg.mtReadValue('Clean', 'Styles')
+   err, value = cfg.mtReadValue('Clean', 'Styles')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtDeleteKey('Clean', 'Styles')
+   err, value = cfg.mtDeleteKey('Clean', 'Styles')
    assert(err is ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue('Clean', 'Styles')
+   err, value = cfg.mtReadValue('Clean', 'Styles')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtDeleteGroup('Clean')
+   err, value = cfg.mtDeleteGroup('Clean')
    assert(err is ERR_Okay, 'DeleteKey() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue('Clean', 'Name')
+   err, value = cfg.mtReadValue('Clean', 'Name')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testMerge()
-   local cfg = newConfig()
+@Test function testMerge()
+   cfg = newConfig()
 
-   local cfgMerge = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glMerge, 0)
+   cfgMerge = obj.new('config', { })
+   err = cfg.acDataFeed(0, DATA_TEXT, glMerge, 0)
 
-   local err = cfg.mtMerge(cfgMerge);
+   err = cfg.mtMerge(cfgMerge);
    assert(err is ERR_Okay, 'Merge() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue(nil, 'Styles')
+   err, value = cfg.mtReadValue(nil, 'Styles')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue('MergedGroup', 'Hello')
+   err, value = cfg.mtReadValue('MergedGroup', 'Hello')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value is 'World', 'Expected the World, received ' .. nz(value,'NIL'))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testWriteValues()
-   local cfg = newConfig()
+@Test function testWriteValues()
+   cfg = newConfig()
 
-   local err = cfg.mtWriteValue('Clean', 'New', 'Value')
+   err = cfg.mtWriteValue('Clean', 'New', 'Value')
    assert(err is ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err = cfg.mtWriteValue('NewGroup', 'fruit', 'orange')
+   err = cfg.mtWriteValue('NewGroup', 'fruit', 'orange')
    assert(err is ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue('Clean', 'New')
+   err, value = cfg.mtReadValue('Clean', 'New')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value is 'Value', 'Expected a Value, received ' .. nz(value,'NIL'))
 
-   local err, value = cfg.mtReadValue('NewGroup', 'fruit')
+   err, value = cfg.mtReadValue('NewGroup', 'fruit')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
    assert(value is 'orange', 'Expected an orange, received ' .. nz(value,'NIL'))
 end
@@ -132,49 +132,49 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Test case sensitivity
 
-function testReadValues()
-   local cfg = newConfig()
+@Test function testReadValues()
+   cfg = newConfig()
 
-   local err, value = cfg.mtReadValue('CLEAN', 'Styles')
+   err, value = cfg.mtReadValue('CLEAN', 'Styles')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, value = cfg.mtReadValue('Clean', 'STYLES')
+   err, value = cfg.mtReadValue('Clean', 'STYLES')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSorting()
-   local cfg = newConfig()
+@Test function testSorting()
+   cfg = newConfig()
 
-   local err = cfg.mtSortByKey('Sort', true)
+   err = cfg.mtSortByKey('Sort', true)
    assert(err is ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
 
-   local err, groupName = cfg.mtGetGroupFromIndex(0)
+   err, groupName = cfg.mtGetGroupFromIndex(0)
    assert(groupName is 'Clean', 'First group is incorrect, returned ' .. groupName)
-   local err, groupName = cfg.mtGetGroupFromIndex(1)
+   err, groupName = cfg.mtGetGroupFromIndex(1)
    assert(groupName is 'Courier Sans', 'Second group is incorrect, returned ' .. groupName)
-   local err, groupName = cfg.mtGetGroupFromIndex(2)
+   err, groupName = cfg.mtGetGroupFromIndex(2)
    assert(groupName is 'Alpha', 'Third group is incorrect, returned ' .. groupName)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testSave()
-   local cfg = newConfig()
-   local err, value = cfg.mtDeleteGroup('Courier Sans')
-   local err, value = cfg.mtDeleteGroup('Alpha')
-   local file = obj.new('file', { path='temp:test-write.cfg', flags='NEW|WRITE' })
+@Test function testSave()
+   cfg = newConfig()
+   err, value = cfg.mtDeleteGroup('Courier Sans')
+   err, value = cfg.mtDeleteGroup('Alpha')
+   file = obj.new('file', { path='temp:test-write.cfg', flags='NEW|WRITE' })
    assert(cfg.acSaveToObject(file) is ERR_Okay, 'Failed to save config file.')
    file = nil
    collectgarbage()
 
-   local file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
-   local buf = string.alloc(file.size)
-   local err, result = file.acRead(buf, file.size)
+   file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
+   buf = string.alloc(file.size)
+   err, result = file.acRead(buf, file.size)
    if (err is ERR_Okay) then
 
-   local expected_output = [[
+   expected_output = [[
 
 [Clean]
 Fixed:Bold Italic = fonts:fixed/clean.fon
@@ -187,25 +187,10 @@ Styles = Bold,Bold Italic,Italic,Regular
 
       assert(buf:len() is expected_output:len(), 'Wrote ' .. file.size .. ' bytes, expected ' .. expected_output:len())
 
-      for i=1,buf:len() do
-         if (buf:byte(i) != expected_output:byte(i)) then
+      for i=0,buf:len()-1 do
+         if buf:byte(i) != expected_output:byte(i) then
             error('Written output is invalid:\n---\n' .. buf .. '---\n' .. expected_output .. '---\n')
          end
       end
    end
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testKeyFilter, testGroupFilter, testDeleteKeyAndGroup,
-         testMerge, testWriteValues, testSorting, testReadValues,
-         testSave
-      },
-      init = function()
-
-      end,
-      cleanup = function()
-      end
-   }

@@ -191,8 +191,12 @@ function runTests()
    glTestTotal += #body.tests
 
    if #before_all > 0 then
+      state = {
+         folder = [*_]file.splitPath(glFile)
+      }
+
       for _,func in ipairs(before_all) do
-         func()
+         func(state)
       end
    end
 

@@ -11,25 +11,12 @@ glJSON = '{ "string":"foo bar",\n' ..
          '  "an-object":{ "field1":"value1", "field2":2 }\n' ..
          '}\n'
 
-   modJSON = mod.load('json')
+   mJson = mod.load('json')
 
-function testLoadJSON()
+@Test function testLoadJSON()
    print('Interpreting JSON statement:\n' .. glJSON)
 
-   local json = obj.new('json', { statement=glJSON, flags='!READABLE' } )
-
-   if (json is nil) then error('Failed to load JSON data.'); end
+   json = obj.new('json', { statement=glJSON, flags='!READABLE' } )
 
    print(json.statement)
 end
-
-//=====================================================================================================================
-
-   return {
-      tests = {
-        testLoadJSON
-      },
-      init = nil,
-      cleanup = function()
-      end
-   }

@@ -25,8 +25,8 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test address validation and error handling
 
-function testStrToAddress()
-   local invalidAddresses = {
+@Test function testStrToAddress()
+   invalidAddresses = {
       'gggg::1',           -- Invalid hex digits
       '1::2::3',           -- Double double-colon
       '1:2:3:4:5:6:7:8:9', -- Too many groups
@@ -34,11 +34,11 @@ function testStrToAddress()
    }
 
    for i, addr in ipairs(invalidAddresses) do
-      local dest = struct.new('IPAddress')
+      dest = struct.new('IPAddress')
       assert(mNet.StrToAddress(addr, dest) != ERR_Okay, 'StrToAddress should fail for invalid IPv6 address: ' .. addr)
    end
 
-   local validAddresses = {
+   validAddresses = {
       '::1',                   -- Loopback
       '::',                    -- Any address
       '2001:db8::1',           -- Documentation prefix
@@ -47,23 +47,23 @@ function testStrToAddress()
    }
 
    for i, addr in ipairs(validAddresses) do
-      local dest = struct.new('IPAddress')
+      dest = struct.new('IPAddress')
       assert(mNet.StrToAddress(addr, dest) is ERR_Okay, 'StrToAddress should succeed for IPv6 address: ' .. addr)
    end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testClientServer()
-   local proc = processing.new({ timeout = 5.0 })
+@Test function testClientServer()
+   proc = processing.new({ timeout = 5.0 })
 
-   local sockServer = obj.new('netsocket', {
+   sockServer = obj.new('netsocket', {
       name = 'Server',
       address = '127.0.0.1',
       feedback = function(Socket, Client, State)
          if (State is NTC_CONNECTED) then
             print('[Server] Connection established to new client.')
-            local err, len = Client.acWrite('Hello from the server')
+            err, len = Client.acWrite('Hello from the server')
             assert(err is ERR_Okay, '[Server] Failed to send message to the client: ' .. mSys.GetErrorMsg(err))
          else
             print('[Server] Ignoring state ' .. printableState(State))
@@ -72,10 +72,10 @@ function testClientServer()
       incoming = function(Socket, Client)
          assert(Socket, '[Server] Socket parameter not defined.')
          assert(Client, '[Server] Client parameter not defined.')
-         local buffer = string.alloc(1024)
-         local err, read_len = Client.acRead(buffer)
+         buffer = string.alloc(1024)
+         err, read_len = Client.acRead(buffer)
          assert(err is ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
-         local msg = buffer:sub(0, read_len)
+         msg = buffer:sub(0, read_len)
          print('[Server] Received: ' .. msg)
          if (string.match(msg, 'Reply.*')) then
             glTestCompleted = true
@@ -86,23 +86,23 @@ function testClientServer()
       flags = 'SERVER'
    } )
 
-   local clientSocket = obj.new('netsocket', {
+   clientSocket = obj.new('netsocket', {
       name = 'Client',
       feedback = function(Socket, State)
          assert(Socket, 'Socket parameter not defined.')
          if (State is NTC_CONNECTED) then
             print('[Client] Writing hello message to the server...')
-            local err, len = Socket.acWrite('Hello from the client.')
+            err, len = Socket.acWrite('Hello from the client.')
             assert(err is ERR_Okay, '[Client] Failed to write chars, error: ' .. mSys.GetErrorMsg(err))
          end
       end,
       incoming = function(Socket, Script)
-         local buffer = string.alloc(1024)
-         local err, read_len = Socket.acRead(buffer)
+         buffer = string.alloc(1024)
+         err, read_len = Socket.acRead(buffer)
          assert(err is ERR_Okay, '[Client] Failed to read data from the socket.')
          print('[Client] Received: ' .. buffer:sub(0,read_len))
          print('[Client] Sending reply to server...')
-         local err, len = Socket.acWrite('Reply from the client.')
+         err, len = Socket.acWrite('Reply from the client.')
          assert(err is ERR_Okay, '[Client] Failed to send reply, error: ' .. mSys.GetErrorMsg(err))
       end
    } )
@@ -110,7 +110,7 @@ function testClientServer()
    print('Connecting client to the server...')
 
    if (clientSocket.mtConnect('127.0.0.1', glPort) != ERR_Okay) then error('Failed to connect to server.') end
-   local err = proc.sleep()
+   err = proc.sleep()
    assert(err is ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
    assert(glTestCompleted, 'The test did not complete the steps as expected.')
 end
@@ -118,19 +118,19 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- One-on-one basic communication test between client and server.
 
-function testBasicCommunication()
-   local proc = processing.new({ timeout = 10.0 })
+@Test function testBasicCommunication()
+   proc = processing.new({ timeout = 10.0 })
 
    glPort = glPort + 1
 
    -- Create server socket with comprehensive message handling
-   local sockServer = obj.new('netsocket', {
+   sockServer = obj.new('netsocket', {
       name = 'BasicTestServer',
       feedback = function(Socket, Client, State)
          print('[Server] Client state change: ' .. printableState(State))
          if (State is NTC_CONNECTED) then
             print('[Server] Client connected, sending welcome message...')
-            local err, len = Client.acWrite('WELCOME:Server ready for communication')
+            err, len = Client.acWrite('WELCOME:Server ready for communication')
             assert(err is ERR_Okay, '[Server] Failed to send welcome message: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
          elseif (State is NTC_DISCONNECTED) then
@@ -142,8 +142,8 @@ function testBasicCommunication()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.alloc(2048)
-         local err, read_len = Client.acRead(buffer)
+         buffer = string.alloc(2048)
+         err, read_len = Client.acRead(buffer)
          if (err != ERR_Okay) then
             if (err is ERR_Disconnected) then
                if not read_msg_sent then print('[Server] Client disconnected on Read()') end
@@ -154,20 +154,20 @@ function testBasicCommunication()
             error('[Server] Failed to read data from client: ' .. mSys.GetErrorMsg(err))
          end
 
-         local msg = buffer:sub(0, read_len)
+         msg = buffer:sub(0, read_len)
          print('[Server] Received: ' .. msg)
 
          if (string.match(msg, 'ACK:WELCOME')) then
             print('[Server] Client acknowledged welcome, requesting data...')
-            local err, len = Client.acWrite('REQUEST:Send your test data')
+            err, len = Client.acWrite('REQUEST:Send your test data')
             assert(err is ERR_Okay, '[Server] Failed to send data request: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'DATA:')) then
-            local data = string.match(msg, 'DATA:(.*)')
+            data = string.match(msg, 'DATA:(.*)')
             glServerData = data
             print('[Server] Received data: ' .. data)
-            local err, len = Client.acWrite('CONFIRM:Data received successfully')
+            err, len = Client.acWrite('CONFIRM:Data received successfully')
             assert(err is ERR_Okay, '[Server] Failed to send confirmation: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
@@ -181,7 +181,7 @@ function testBasicCommunication()
    })
 
    -- Create client socket with state-aware message handling
-   local clientSocket = obj.new('netsocket', {
+   clientSocket = obj.new('netsocket', {
       name = 'BasicTestClient',
       feedback = function(Socket, State)
          print('[Client] Connection state: ' .. printableState(State))
@@ -192,28 +192,28 @@ function testBasicCommunication()
          end
       end,
       incoming = function(Socket)
-         local buffer = string.alloc(2048)
-         local err, read_len = Socket.acRead(buffer)
+         buffer = string.alloc(2048)
+         err, read_len = Socket.acRead(buffer)
          assert(err is ERR_Okay, '[Client] Failed to read data from server: ' .. mSys.GetErrorMsg(err))
 
-         local msg = buffer:sub(0, read_len)
+         msg = buffer:sub(0, read_len)
          print('[Client] Received: ' .. msg)
 
          if (string.match(msg, 'WELCOME:')) then
             print('[Client] Received welcome, sending acknowledgment...')
-            local err, len = Socket.acWrite('ACK:WELCOME received, client ready')
+            err, len = Socket.acWrite('ACK:WELCOME received, client ready')
             assert(err is ERR_Okay, '[Client] Failed to send acknowledgment: ' .. mSys.GetErrorMsg(err))
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'REQUEST:')) then
             print('[Client] Received data request, sending test data...')
             glClientData = 'TestPayload123'
-            local err, len = Socket.acWrite('DATA:' .. glClientData)
+            err, len = Socket.acWrite('DATA:' .. glClientData)
             assert(err is ERR_Okay, '[Client] Failed to send data: ' .. mSys.GetErrorMsg(err))
 
          elseif (string.match(msg, 'CONFIRM:')) then
             print('[Client] Server confirmed data receipt, completing test...')
-            local err, len = Socket.acWrite('COMPLETE:Test finished')
+            err, len = Socket.acWrite('COMPLETE:Test finished')
             assert(err is ERR_Okay, '[Client] Failed to send completion: ' .. mSys.GetErrorMsg(err))
             raise(ERR_Terminate)
          end
@@ -221,12 +221,12 @@ function testBasicCommunication()
    })
 
    print('[Client] Attempting connection to server...')
-   local err = clientSocket.mtConnect('127.0.0.1', glPort)
+   err = clientSocket.mtConnect('127.0.0.1', glPort)
    assert(err is ERR_Okay, '[Client] Failed to connect to server: ' .. mSys.GetErrorMsg(err))
 
    -- Wait for test completion with timeout
 
-   local err = proc.sleep(5)
+   err = proc.sleep(5)
    assert(err is ERR_Okay, 'Test failed to complete: ' .. mSys.GetErrorMsg(err))
 
    -- Verify test completion and data integrity
@@ -243,15 +243,15 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testConnectionStates()
-   local proc = processing.new({ timeout = 5.0 })
-   local stateChanges = {}
+@Test function testConnectionStates()
+   proc = processing.new({ timeout = 5.0 })
+   stateChanges = {}
 
    glPort = glPort + 1
 
    print('Testing connection state transitions...')
 
-   local server = obj.new('netsocket', {
+   server = obj.new('netsocket', {
       name = 'StateTestServer',
       feedback = function(Socket, Client, State)
          print('Server received state change.')
@@ -261,7 +261,7 @@ function testConnectionStates()
       flags = 'SERVER'
    })
 
-   local client = obj.new('netsocket', {
+   client = obj.new('netsocket', {
       name = 'StateTestClient',
       feedback = function(Socket, State)
          print('Client received state change.')
@@ -278,8 +278,8 @@ function testConnectionStates()
    -- Verify expected state transitions occurred
    assert(#stateChanges >= 2, 'Expected at least 2 state changes, got: ' .. #stateChanges)
 
-   local foundClientConnected = false
-   local foundServerConnected = false
+   foundClientConnected = false
+   foundServerConnected = false
    for i, state in ipairs(stateChanges) do
       print('State change ' .. i .. ': ' .. state)
       if (string.match(state, 'CLIENT_CONNECTED')) then foundClientConnected = true end
@@ -294,22 +294,22 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testConnectionTimeout()
-   local timeoutDuration = 0.5
-   local startTime = mSys.PreciseTime()
-   local connectionTimedOut = false
-   local proc = processing.new({ timeout = timeoutDuration + 2.0 })
+@Test function testConnectionTimeout()
+   timeoutDuration = 0.5
+   startTime = mSys.PreciseTime()
+   connectionTimedOut = false
+   proc = processing.new({ timeout = timeoutDuration + 2.0 })
 
    -- Try connecting to an IP address that should not respond (RFC 5737 test address)
    -- 192.0.2.1 is reserved for documentation and should not be routable
-   local testAddress = '192.0.2.1'
-   local testPort = 12345
+   testAddress = '192.0.2.1'
+   testPort = 12345
 
-   local clientSocket = obj.new('netsocket', {
+   clientSocket = obj.new('netsocket', {
       name = 'TimeoutTestClient',
       feedback = function(Socket, State)
-         local currentTime = mSys.PreciseTime()
-         local elapsed = (currentTime - startTime) / 1000000.0  -- Convert to seconds
+         currentTime = mSys.PreciseTime()
+         elapsed = (currentTime - startTime) / 1000000.0  -- Convert to seconds
          print(string.format('[Client] State: %s after %.2fs', printableState(State), elapsed))
 
          if (State is NTC_DISCONNECTED) then
@@ -323,12 +323,12 @@ function testConnectionTimeout()
 
    print(string.format('[Client] Attempting connection to %s:%d with %.1fs timeout...', testAddress, testPort, timeoutDuration))
 
-   local err = clientSocket.mtConnect(testAddress, testPort, timeoutDuration)
+   err = clientSocket.mtConnect(testAddress, testPort, timeoutDuration)
    assert(err is ERR_Okay, '[Client] Connect() call failed: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
-   local endTime = mSys.PreciseTime()
-   local totalElapsed = (endTime - startTime) / 1000000.0
+   endTime = mSys.PreciseTime()
+   totalElapsed = (endTime - startTime) / 1000000.0
 
    -- Verify the timeout occurred within expected time bounds
    assert(connectionTimedOut, 'Connection timeout did not occur')
@@ -338,14 +338,3 @@ function testConnectionTimeout()
 
    print(string.format('Connection timeout test completed successfully! (%.2fs elapsed)', totalElapsed))
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testStrToAddress,
-         testClientServer,
-         testBasicCommunication,
-         testConnectionStates
-      }
-   }

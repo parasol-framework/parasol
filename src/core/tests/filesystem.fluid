@@ -4,11 +4,23 @@ Tests for file functions
 
    glPath = 'parasol:'
 
+@BeforeAll function init()
+   global glRawPath = 'user:test.out'
+   out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
+   out.acWrite('ABCD', 4)
+   out = nil
+   collectgarbage()
+end
+
+@AfterAll function cleanup()
+   mSys.DeleteFile(glRawPath)
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Test that the standard extraction pattern for folder and file names works as expected.
 
-function testPathExtract()
-   local pattern = '([^:/]+)/-$'
+@Test function testPathExtract()
+   pattern = '([^:/]+)/-$'
 
    assert(string.match('temp:test.txt', pattern) is 'test.txt', 'Failed to extract "test.txt"')
    assert(string.match('temp:folder/', pattern) is 'folder', 'Failed to extract "folder"')
@@ -21,18 +33,18 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testFolderScan()
-   local folder = obj.new('file', { src=glPath } )
+@Test function testFolderScan()
+   folder = obj.new('file', { src=glPath } )
 
-   local names
-   local err, file = folder.mtNext()
-   local count = 0
+   names = nil
+   err, file = folder.mtNext()
+   count = 0
    while err is ERR_Okay do
       count += 1
-      local date = file.date
+      date = file.date
       if not date then error("Unable to get file's modification date.") end
 
-      local name = file.path:match('([^:/]+)/-$')
+      name = file.path:match('([^:/]+)/-$')
 
       if not names then
          names = '"' .. tostring(name) .. '"'
@@ -50,13 +62,13 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testScanDir()
-   local err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
+@Test function testScanDir()
+   err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
    if (err is ERR_Okay) then
-      local err = mSys.ScanDir(dir)
+      err = mSys.ScanDir(dir)
       while (err is ERR_Okay) do
-         local fl = dir.info
-         local created = fl.created
+         fl = dir.info
+         created = fl.created
 
          logOutput(fl.name .. ', Size: ' .. fl.size .. ', Date: ' .. created.year .. '/' .. created.month .. '/' .. created.day)
 
@@ -73,14 +85,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testScanVolumes()
-   local err, dir = mSys.OpenDir(':', bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
+@Test function testScanVolumes()
+   err, dir = mSys.OpenDir(':', RDF_FILES | RDF_FOLDERS | RDF_TAGS)
    if err is ERR_Okay then
-      local volumes = { }
-      local names
-      local err = mSys.ScanDir(dir)
+      volumes = { }
+      names = nil
+      err = mSys.ScanDir(dir)
       while (err is ERR_Okay) do
-         local fl = dir.info
+         fl = dir.info
          names = not names ? fl.name :> names .. ' ' .. fl.name
          volumes[fl.name] = true
          err = mSys.ScanDir(dir)
@@ -88,10 +100,9 @@ function testScanVolumes()
 
       logOutput(names)
 
-      if not volumes['parasol'] then error("The expected 'parasol' volume is not present.") end
-      --if not volumes['bin'] then error("The expected 'bin' volume is not present.") end
-      if not volumes['user'] then error("The expected 'user' volume is not present.") end
-      if not volumes['system'] then error("The expected 'system' volume is not present.") end
+      assert(volumes['parasol'], "The expected 'parasol' volume is not present.")
+      assert(volumes['user'], "The expected 'user' volume is not present.")
+      assert(volumes['system'], "The expected 'system' volume is not present.")
    else
       error("OpenDir() error: " .. mSys.GetErrorMsg(err))
    end
@@ -100,10 +111,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
 
-function testStringify()
-   local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
-   local buf = string.alloc(fl.size)
-   local err, result = fl.acRead(buf, fl.size)
+@Test function testStringify()
+   fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
+   buf = string.alloc(fl.size)
+   err, result = fl.acRead(buf, fl.size)
    assert(err is ERR_Okay, 'Failed to read file ' .. fl.location)
 
    fl.acSeek(POS_START, 0)
@@ -112,20 +123,20 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testFileIcons()
+@Test function testFileIcons()
    if mSys.AnalysePath('icons:') != ERR_Okay then
       -- Icons not available, skip test
       return
    end
 
-   local icon_pairs = {
+   icon_pairs = {
       { path='fonts:fonts.cfg',            icon='icons:filetypes/text' },
       { path='fonts:truetype/Micro-6.ttf', icon='icons:filetypes/font' },
       { path='scripts:common.fluid',       icon='icons:filetypes/source' }
    }
 
    for k, v in ipairs(icon_pairs) do
-      local icon = obj.new('file', { path=v.path }).icon
+      icon = obj.new('file', { path=v.path }).icon
       if (icon != v.icon) then
          error('Icon for ' .. v.path .. ' evaluated to ' .. icon .. ' instead of expected "' .. v.icon .. '"')
       end
@@ -134,38 +145,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnalyseVolume()
-   local err, type = mSys.AnalysePath('user:')
+@Test function testAnalyseVolume()
+   err, type = mSys.AnalysePath('user:')
    assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
-
    assert(type is LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testAnalyseFile()
-   local err, type = mSys.AnalysePath('scripts:gui.fluid')
+@Test function testAnalyseFile()
+   err, type = mSys.AnalysePath('scripts:gui.fluid')
    assert(err is ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
-
    assert(type is LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testPathExtract, testFolderScan, testScanDir,
-         testStringify, testScanVolumes, testFileIcons,
-         testAnalyseVolume, testAnalyseFile
-      },
-      init = function()
-         global glRawPath = 'user:test.out'
-         local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
-         out.acWrite('ABCD', 4)
-         out = nil
-         collectgarbage()
-      end,
-      cleanup = function()
-         mSys.DeleteFile(glRawPath)
-      end
-   }
