@@ -23,4 +23,4 @@ target_precompile_headers(${MOD} PRIVATE
    <parasol/modules/display.h>
    <parasol/modules/svg.h>)
 
-flute_test (doc_output "tests/test-doc.fluid")
+flute_test (doc_output "tests/test_doc.fluid")
