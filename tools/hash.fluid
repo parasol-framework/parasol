@@ -8,8 +8,8 @@
    comment    = arg("comment")
    hashString = arg("string")
 
-   pattern ?= "#define HASH_<NAME> 0x<HASH>"
-   comment ?= "/* <COMMENT> */"
+   pattern ??= "#define HASH_<NAME> 0x<HASH>"
+   comment ??= "/* <COMMENT> */"
 
    if (not hashString) and (not srcPath) then
       print("COMMAND PARAMETERS\n")

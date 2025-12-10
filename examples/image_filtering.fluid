@@ -7,7 +7,7 @@ Image Filter Demonstration
    require 'gui/slider'
    require 'gui/button'
 
-   if not mVec then global mVec = mod.load('vector') end
+   mVec ?= mod.load('vector')
 
    local win, viewport, photo, mainVP, rect, picPhoto, glMatrix
 

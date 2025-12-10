@@ -131,7 +131,7 @@ global function enum(Prefix, Options, ...)
    for k, enum_def in ipairs({...}) do
       if type(enum_def) is 'string' then
          val = enum_def:match('^(.-):%s+.+$')  -- Scrap any comment for this value
-         val ?= enum_def
+         val ??= enum_def
 
          for _, name in ipairs(val:split('|')) do
             list[name] = inc
@@ -536,7 +536,7 @@ global function saveOutput()
          if e?? then e ..= ',' end
          if type(const.value) is 'string' then
             val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
-            val ?= const.value
+            val ??= const.value
             e ..= const.name .. '="' .. const.value .. '"'
          else
             hexval = string.format('%x', const.value)

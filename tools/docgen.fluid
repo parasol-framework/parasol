@@ -85,10 +85,10 @@ end
 
    state = mSys.GetSystemState()
    if state.platform is 'Windows' then
-      output_path ?= 'temp:docgen.bat'
+      output_path ??= 'temp:docgen.bat'
       cmdlist = cmdlist:gsub('\\','\\\\')
    else
-      output_path ?= 'temp:docgen.sh'
+      output_path ??= 'temp:docgen.sh'
       cmdlist = '#!/bin/bash\n' .. cmdlist
    end
 

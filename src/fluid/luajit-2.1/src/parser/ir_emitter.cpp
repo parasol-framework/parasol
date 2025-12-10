@@ -766,7 +766,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
 
    if ((Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil) and nvars != 1) {
       return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-         "conditional assignment (?=/??=) only supports a single target variable"));
+         "conditional assignment (?=/?\?=) only supports a single target variable"));
    }
 
    for (auto i = BCReg(0); i < nvars; ++i) {
@@ -825,8 +825,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
 
    for (const Identifier& identifier : Payload.names) {
       if (is_blank_symbol(identifier)) continue;
-      GCstr* name = identifier.symbol;
-      if (name) this->func_state.declared_globals.insert(name);
+      if (GCstr *name = identifier.symbol) this->func_state.declared_globals.insert(name);
    }
 
    // Handle conditional assignment (??=) for global declarations
@@ -835,7 +834,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
    if (Payload.op IS AssignmentOperator::IfEmpty) {
       if (nvars != 1) {
          return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-            "conditional assignment (??=) only supports a single target variable"));
+            "conditional assignment (?\?=) only supports a single target variable"));
       }
 
       const Identifier& identifier = Payload.names[0];
@@ -844,7 +843,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
          return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
       }
 
-      GCstr* name = identifier.symbol;
+      GCstr *name = identifier.symbol;
       RegisterGuard register_guard(&this->func_state);
       RegisterAllocator allocator(&this->func_state);
 

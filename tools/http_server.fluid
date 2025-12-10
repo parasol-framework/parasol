@@ -27,7 +27,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    glOptions = { }
 
-   glConfigFile ?= 'user:config/http_server_cfg.fluid'
+   glConfigFile ??= 'user:config/http_server_cfg.fluid'
 
    if mSys.AnalysePath(glConfigFile) is ERR_Okay then
       loadFile(glConfigFile, glOptions)
