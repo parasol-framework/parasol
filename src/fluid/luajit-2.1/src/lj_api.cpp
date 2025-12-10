@@ -1426,33 +1426,32 @@ extern int lua_resume(lua_State *L, int nargs)
 extern int lua_gc(lua_State *L, int what, int data)
 {
    global_State* g = G(L);
+   GarbageCollector collector = gc(g);
    int res = 0;
    switch (what) {
-      case LUA_GCSTOP:    g->gc.threshold = LJ_MAX_MEM; break;
-      case LUA_GCRESTART: g->gc.threshold = data IS -1 ? (g->gc.total / 100) * g->gc.pause : g->gc.total; break;
-      case LUA_GCCOLLECT: lj_gc_fullgc(L); break;
-      case LUA_GCCOUNT:   res = (int)(g->gc.total >> 10); break;
-      case LUA_GCCOUNTB:  res = (int)(g->gc.total & 0x3ff); break;
+      case LUA_GCSTOP:    collector.stop(); break;
+      case LUA_GCRESTART: collector.restart(data); break;
+      case LUA_GCCOLLECT: collector.fullCycle(L); break;
+      case LUA_GCCOUNT:   res = (int)(collector.totalMemory() >> 10); break;
+      case LUA_GCCOUNTB:  res = (int)(collector.totalMemory() & 0x3ff); break;
       case LUA_GCSTEP: {
          GCSize a = (GCSize)data << 10;
          g->gc.threshold = (a <= g->gc.total) ? (g->gc.total - a) : 0;
          while (g->gc.total >= g->gc.threshold)
-            if (lj_gc_step(L) > 0) {
+            if (collector.step(L) > 0) {
                res = 1;
                break;
             }
          break;
       }
       case LUA_GCSETPAUSE:
-         res = (int)(g->gc.pause);
-         g->gc.pause = (MSize)data;
+         res = (int)collector.setPause((MSize)data);
          break;
       case LUA_GCSETSTEPMUL:
-         res = (int)(g->gc.stepmul);
-         g->gc.stepmul = (MSize)data;
+         res = (int)collector.setStepMultiplier((MSize)data);
          break;
       case LUA_GCISRUNNING:
-         res = (g->gc.threshold != LJ_MAX_MEM);
+         res = collector.isRunning() ? 1 : 0;
          break;
       default:
          res = -1;  //  Invalid option.

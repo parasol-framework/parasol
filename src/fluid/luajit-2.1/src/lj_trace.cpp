@@ -159,7 +159,7 @@ static void trace_save(jit_State* J, GCtrace* T)
       J->cur.traceno = 0;
    J->curfinal = nullptr;
    setgcrefp(J->trace[T->traceno], T);
-   lj_gc_barriertrace(J2G(J), T->traceno);
+   gc(J2G(J)).barrierTrace(T->traceno);  // Phase 4 migration: use GarbageCollector facade
    lj_gdbjit_addtrace(J, T);
 #ifdef LUAJIT_USE_PERFTOOLS
    perftools_addtrace(T);
@@ -904,9 +904,9 @@ int LJ_FASTCALL lj_trace_exit(jit_State* J, void* exptr)
    else if (LJ_HASPROFILE and (G(L)->hookmask & HOOK_PROFILE)) {
       // Just exit to interpreter.
    }
-   else if (G(L)->gc.state == GCSatomic or G(L)->gc.state == GCSfinalize) {
+   else if (gc(G(L)).isFinalizing() or gc(G(L)).phase() IS GCPhase::Atomic) {
       if (!(G(L)->hookmask & HOOK_GC))
-         lj_gc_step(L);  //  Exited because of GC: drive GC forward.
+         gc(G(L)).step(L);  //  Exited because of GC: drive GC forward.
    }
    else {
       trace_hotside(J, pc);

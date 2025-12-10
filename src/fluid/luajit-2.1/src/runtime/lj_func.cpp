@@ -95,7 +95,7 @@ void LJ_FASTCALL lj_func_closeuv(lua_State* L, TValue* level)
       }
       else {
          unlinkuv(g, uv);
-         lj_gc_closeuv(g, uv);
+         gc(g).closeUpvalue(uv);  // Phase 4 migration: use GarbageCollector facade
       }
    }
 }

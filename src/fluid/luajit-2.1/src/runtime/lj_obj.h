@@ -730,11 +730,7 @@ enum {
 #define MMDEF_FFI(_)
 #endif
 
-#if LJ_52 || LJ_HASFFI
 #define MMDEF_PAIRS(_) _(pairs) _(ipairs)
-#else
-#define MMDEF_PAIRS(_)
-#endif
 
 // X-macro defining all metamethods - used for enum generation and name strings
 #define MMDEF(_) \
@@ -758,12 +754,6 @@ typedef enum : uint8_t {
    MM_FAST = MM_len
 } MMS;
 
-// Sentinel values for when pairs/ipairs are not available (Lua 5.1 mode)
-#if !LJ_52
-inline constexpr uint8_t MM_pairs  = 255;
-inline constexpr uint8_t MM_ipairs = 255;
-#endif
-
 // GC root IDs
 typedef enum : uint32_t {
    GCROOT_MMNAME,                              // Metamethod names
@@ -780,26 +770,38 @@ typedef enum : uint32_t {
 #define basemt_obj(g, o)    ((g)->gcroot[GCROOT_BASEMT+itypemap(o)])
 #define mmname_str(g, mm)   (strref((g)->gcroot[GCROOT_MMNAME+int(mm)]))
 
+// Garbage collector states. Order matters.
+// Using enum class for type safety; values must match GCState.state field usage.
+
+enum class GCPhase : uint8_t {
+   Pause       = 0,
+   Propagate   = 1,
+   Atomic      = 2,
+   SweepString = 3,
+   Sweep       = 4,
+   Finalize    = 5
+};
+
 // Garbage collector state.
 typedef struct GCState {
    GCSize total;         // Memory currently allocated.
    GCSize threshold;     // Memory threshold.
    uint8_t currentwhite; // Current white color.
-   uint8_t state;        // GC state.
+   GCPhase state;        // GC state.
    uint8_t nocdatafin;   // No cdata finalizer called.
    uint8_t lightudnum;   //  Number of lightuserdata segments - 1 (64-bit only).
-   MSize sweepstr;  // Sweep position in string table.
-   GCRef root;      // List of all collectable objects.
-   MRef sweep;      // Sweep position in root list.
-   GCRef gray;      // List of gray objects.
-   GCRef grayagain; // List of objects for atomic traversal.
-   GCRef weak;      // List of weak tables (to be cleared).
-   GCRef mmudata;   // List of userdata (to be finalized).
-   GCSize debt;     // Debt (how much GC is behind schedule).
-   GCSize estimate; // Estimate of memory actually in use.
-   MSize stepmul;   // Incremental GC step granularity.
-   MSize pause;     // Pause between successive GC cycles.
-   MRef lightudseg;   //  Upper bits of lightuserdata segments (64-bit).
+   MSize sweepstr;       // Sweep position in string table.
+   GCRef root;           // List of all collectable objects.
+   MRef sweep;           // Sweep position in root list.
+   GCRef gray;           // List of gray objects.
+   GCRef grayagain;      // List of objects for atomic traversal.
+   GCRef weak;           // List of weak tables (to be cleared).
+   GCRef mmudata;        // List of userdata (to be finalized).
+   GCSize debt;          // Debt (how much GC is behind schedule).
+   GCSize estimate;      // Estimate of memory actually in use.
+   MSize stepmul;        // Incremental GC step granularity.
+   MSize pause;          // Pause between successive GC cycles.
+   MRef lightudseg;      //  Upper bits of lightuserdata segments (64-bit).
 } GCState;
 
 // String interning state.
