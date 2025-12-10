@@ -540,7 +540,7 @@ struct LocalDeclStmtPayload {
    LocalDeclStmtPayload& operator=(const LocalDeclStmtPayload&) = delete;
    LocalDeclStmtPayload(LocalDeclStmtPayload&&) noexcept = default;
    LocalDeclStmtPayload& operator=(LocalDeclStmtPayload&&) noexcept = default;
-   AssignmentOperator op = AssignmentOperator::Plain;  // Supports ?= conditional assignment
+   AssignmentOperator op = AssignmentOperator::Plain;  // Supports ??= conditional assignment
    std::vector<Identifier> names;
    ExprNodeList values;
    ~LocalDeclStmtPayload();
@@ -552,7 +552,7 @@ struct GlobalDeclStmtPayload {
    GlobalDeclStmtPayload& operator=(const GlobalDeclStmtPayload&) = delete;
    GlobalDeclStmtPayload(GlobalDeclStmtPayload&&) noexcept = default;
    GlobalDeclStmtPayload& operator=(GlobalDeclStmtPayload&&) noexcept = default;
-   AssignmentOperator op = AssignmentOperator::Plain;  // Supports ?= conditional assignment
+   AssignmentOperator op = AssignmentOperator::Plain;  // Supports ??= conditional assignment
    std::vector<Identifier> names;
    ExprNodeList values;
    ~GlobalDeclStmtPayload();

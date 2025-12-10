@@ -218,7 +218,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    ExprNodeList values;
    AssignmentOperator assign_op = AssignmentOperator::Plain;
 
-   // Check for plain = or conditional ?= assignment
+   // Check for plain = or conditional ??= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());
@@ -317,7 +317,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    ExprNodeList values;
    AssignmentOperator assign_op = AssignmentOperator::Plain;
 
-   // Check for plain = or conditional ?= assignment
+   // Check for plain = or conditional ??= assignment
    if (this->ctx.match(TokenKind::Equals).ok()) {
       auto rhs = this->parse_expression_list();
       if (not rhs.ok()) return ParserResult<StmtNodePtr>::failure(rhs.error_ref());

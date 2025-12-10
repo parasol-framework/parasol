@@ -142,7 +142,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::CompoundDiv: return "/=";
       case TokenKind::CompoundMod: return "%=";
       case TokenKind::CompoundConcat: return "..=";
-      case TokenKind::CompoundIfEmpty: return "?=";
+      case TokenKind::CompoundIfEmpty: return "??=";
       case TokenKind::SafeField: return "?.";
       case TokenKind::SafeIndex: return "?[";
       case TokenKind::SafeMethod: return "?:";

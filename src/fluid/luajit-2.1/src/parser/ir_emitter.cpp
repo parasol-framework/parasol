@@ -759,14 +759,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
    auto nvars = BCReg(BCREG(Payload.names.size()));
    if (nvars IS 0) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
-   // For local declarations with ?=, since the variables are newly declared (undefined),
+   // For local declarations with ??=, since the variables are newly declared (undefined),
    // they are semantically empty, so we just perform a plain assignment.
-   // The ?= operator for local declarations is equivalent to plain = assignment.
-   // However, we still enforce that ?= only supports a single target variable for consistency.
+   // The ??= operator for local declarations is equivalent to plain = assignment.
+   // However, we still enforce that ??= only supports a single target variable for consistency.
 
    if (Payload.op IS AssignmentOperator::IfEmpty and nvars != 1) {
       return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-         "conditional assignment (?=) only supports a single target variable"));
+         "conditional assignment (??=) only supports a single target variable"));
    }
 
    for (auto i = BCReg(0); i < nvars; ++i) {
@@ -829,13 +829,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
       if (name) this->func_state.declared_globals.insert(name);
    }
 
-   // Handle conditional assignment (?=) for global declarations
-   // The ?= operator only supports a single target variable
+   // Handle conditional assignment (??=) for global declarations
+   // The ??= operator only supports a single target variable
 
    if (Payload.op IS AssignmentOperator::IfEmpty) {
       if (nvars != 1) {
          return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InternalInvariant,
-            "conditional assignment (?=) only supports a single target variable"));
+            "conditional assignment (??=) only supports a single target variable"));
       }
 
       const Identifier& identifier = Payload.names[0];
@@ -1498,7 +1498,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
    // For compound assignments (+=, -=, etc.), do NOT create new locals for unscoped variables.
    // The variable must already exist - we should modify the existing storage.
-   // For plain (=) and if-empty (?=) assignments, allow new local creation.
+   // For plain (=) and if-empty (??=) assignments, allow new local creation.
    // If-empty on an undeclared variable creates a local and assigns (since undefined is "empty").
    bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty);
 
@@ -1775,7 +1775,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_compound_assignment(AssignmentOperator 
 }
 
 //********************************************************************************************************************
-// Emit bytecode for an if-empty assignment (?=), assigning only if the target is nil, false, 0, or empty string.
+// Emit bytecode for an if-empty assignment (??=), assigning only if the target is nil, false, 0, or empty string.
 
 ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment target, const ExprNodeList& values)
 {
@@ -3375,7 +3375,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression_list(const ExprNodeList &expres
 //********************************************************************************************************************
 // Prepare assignment targets by resolving lvalues and duplicating table operands to prevent register clobbering.
 // When AllocNewLocal is false, unscoped variables will NOT create new locals even when protected_globals
-// is true. This is used for compound assignments (+=, -=) and if-empty assignments (?=) where the variable
+// is true. This is used for compound assignments (+=, -=) and if-empty assignments (??=) where the variable
 // must already exist - we should modify the existing storage, not create a new local.
 
 ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targets(const ExprNodeList &Targets, bool AllocNewLocal)
