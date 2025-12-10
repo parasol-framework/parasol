@@ -156,6 +156,102 @@ LJLIB_ASM(ipairs)      LJLIB_REC(xpairs 1)
 }
 
 //********************************************************************************************************************
+// values() iterator - iterates over table values only, discarding keys
+// Usage: for v in values(tbl) do ... end
+// Equivalent to: for _, v in pairs(tbl) do ... end
+
+static int values_iterator_next(lua_State* L)
+{
+   // Upvalue 1: the table being iterated
+   // Upvalue 2: state table containing the current key at index 0
+   GCfunc* fn = curr_func(L);
+   GCtab* t = tabV(&fn->c.upvalue[0]);
+   GCtab* state = tabV(&fn->c.upvalue[1]);
+   TValue* key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
+
+   TValue result[2];
+   if (lj_tab_next(t, key_slot, result)) {
+      // Update the key in state table for next iteration
+      copyTV(L, key_slot, &result[0]);
+      // Return only the value
+      copyTV(L, L->top, &result[1]);
+      L->top++;
+      return 1;
+   }
+   return 0;  // End of iteration
+}
+
+LJLIB_CF(values)
+{
+   GCtab* t = lj_lib_checktab(L, 1);
+
+   // Push the table as upvalue 1
+   settabV(L, L->top, t);
+   L->top++;
+
+   // Create state table to hold the mutable key (upvalue 2)
+   GCtab* state = lj_tab_new(L, 0, 1);
+   settabV(L, L->top, state);
+   TValue* key_slot = lj_tab_setint(L, state, 0);
+   setnilV(key_slot);
+   L->top++;
+
+   // Create closure with 2 upvalues
+   lua_pushcclosure(L, values_iterator_next, 2);
+   lua_pushnil(L);  // State (not used)
+   lua_pushnil(L);  // Initial control variable
+   return 3;
+}
+
+//********************************************************************************************************************
+// keys() iterator - iterates over table keys only, discarding values
+// Usage: for k in keys(tbl) do ... end
+// Equivalent to: for k, _ in pairs(tbl) do ... end
+
+static int keys_iterator_next(lua_State* L)
+{
+   // Upvalue 1: the table being iterated
+   // Upvalue 2: state table containing the current key at index 0
+   GCfunc* fn = curr_func(L);
+   GCtab* t = tabV(&fn->c.upvalue[0]);
+   GCtab* state = tabV(&fn->c.upvalue[1]);
+   TValue* key_slot = lj_tab_setint(L, state, 0);  // Get mutable slot
+
+   TValue result[2];
+   if (lj_tab_next(t, key_slot, result)) {
+      // Update the key in state table for next iteration
+      copyTV(L, key_slot, &result[0]);
+      // Return only the key
+      copyTV(L, L->top, &result[0]);
+      L->top++;
+      return 1;
+   }
+   return 0;  // End of iteration
+}
+
+LJLIB_CF(keys)
+{
+   GCtab* t = lj_lib_checktab(L, 1);
+
+   // Push the table as upvalue 1
+   settabV(L, L->top, t);
+   L->top++;
+
+   // Create state table to hold the mutable key (upvalue 2)
+   GCtab* state = lj_tab_new(L, 0, 1);
+   settabV(L, L->top, state);
+   TValue* key_slot = lj_tab_setint(L, state, 0);
+   setnilV(key_slot);
+   L->top++;
+
+   // Create closure with 2 upvalues
+   lua_pushcclosure(L, keys_iterator_next, 2);
+   lua_pushnil(L);  // State (not used)
+   lua_pushnil(L);  // Initial control variable
+   return 3;
+}
+
+//********************************************************************************************************************
 // Base library: getters and setters
 
 LJLIB_ASM_(getmetatable)   LJLIB_REC(.)
