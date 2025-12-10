@@ -1,12 +1,10 @@
 -- Visual FX interface.  Applies cosmetic effects to viewports.
 
-   if not mVec then global mVec = mod.load('vector') end
+   global mVec ?= mod.load('vector')
 
-if not vfx then
-   global vfx = {
+   global vfx ?= {
       fps = 1/60 -- Desired FPS for the effects, ideally matches the display
    }
-end
 
 vfx.wipes = { shutter = { }, simple = { }, radial = { }, clock = { }, spiral = { }, shape = { }, pixelate = { } }
 

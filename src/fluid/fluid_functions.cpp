@@ -70,9 +70,6 @@ int fcmd_raise(lua_State *Lua)
 // The caught error code is returned by default, or if no exception handler is defined then the entire exception table
 // is returned.
 //
-// Be aware that the scope of the catch will extend into any sub-routines that are called.  Mis-use of catch() can be
-// confusing for this reason, and pcall() is more appropriate when broad exception handling is desired.
-//
 // catch() is most useful for creating small code segments that limit any failures to their own scope.
 //
 //   err, result = catch(function()
@@ -140,11 +137,34 @@ int fcmd_catch(lua_State *Lua)
             bool caught_by_filter = false;
             prv->Catch++; // Flag to convert ERR results to exceptions.
             prv->CaughtError = ERR::Okay;
+
+            // Scope isolation: Only direct calls within catch() should throw exceptions,
+            // not calls made from nested Lua functions.
+            //
+            // We count Lua stack frames using lua_getstack(). This function returns non-zero
+            // if a stack frame exists at the given level (0 = current function, 1 = caller, etc).
+            // The lua_Debug struct is populated but we only use lua_getstack() as a probe here.
+            //
+            // Note: lua_Debug.i_ci is an internal LuaJIT field that proved unreliable for depth
+            // tracking - its values are not predictable across different call contexts. Counting
+            // frames via lua_getstack() is portable and consistent.
+            //
+            // The +2 offset accounts for frames added by lua_pcall: the catch function itself
+            // and the pcall error handler. Direct calls from the catch body will have exactly
+            // CatchDepth frames; nested function calls will have more.
+            
+            int prev_depth = prv->CatchDepth;
+            lua_Debug ar;
+            int depth = 0;
+            while (lua_getstack(Lua, depth, &ar)) depth++;
+            prv->CatchDepth = depth + 2;
+
             lua_pushcfunction(Lua, fcmd_catch_handler);
             lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
             int result_top = lua_gettop(Lua);
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
+               prv->CatchDepth = prev_depth;
 
                // lua_pcall() leaves the error object on the top of the stack.  luaL_ref() will
                // pop that value and store a registry reference for later use.
@@ -221,6 +241,7 @@ int fcmd_catch(lua_State *Lua)
             }
             else { // pcall() was successful
                prv->Catch--;
+               prv->CatchDepth = prev_depth;
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
                lua_pushinteger(Lua, int(ERR::Okay));
                int result_count = lua_gettop(Lua) - result_top + 1;
@@ -241,11 +262,21 @@ int fcmd_catch(lua_State *Lua)
          prv->Catch++; // Indicate to other routines that errors must be converted to exceptions.
          prv->CaughtError = ERR::Okay;
 
+         // Scope isolation via stack frame counting - see detailed comment in the
+         // two-function catch() branch above. Save previous depth for nested catch() support.
+         
+         int prev_depth = prv->CatchDepth;
+         lua_Debug ar;
+         int depth = 0;
+         while (lua_getstack(Lua, depth, &ar)) depth++;
+         prv->CatchDepth = depth + 2;
+
          lua_pushcfunction(Lua, fcmd_catch_handler);
          lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
          auto result_top = lua_gettop(Lua);
          if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
             prv->Catch--;
+            prv->CatchDepth = prev_depth;
 
             // -1 is the pcall() error string result
             // -2 is fcmd_catch_handler()
@@ -275,6 +306,7 @@ int fcmd_catch(lua_State *Lua)
          }
          else {
             prv->Catch--; // Successful call
+            prv->CatchDepth = prev_depth;
             lua_pushnil(Lua); // Use nil to indicate that no exception occurred
             auto result_count = lua_gettop(Lua) - result_top + 1;
             lua_insert(Lua, -result_count); // Push the error code in front of any other results

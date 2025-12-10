@@ -5,10 +5,19 @@ inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING A
 {
    auto prv = (prvFluid *)Lua->script->ChildPrivate;
    if ((Error >= ERR::ExceptionThreshold) and (prv->Catch)) {
-      char msg[180];
-      prv->CaughtError = Error;
-      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
-      luaL_error(prv->Lua, msg);
+      // Scope isolation: Only throw exceptions for direct calls within catch(),
+      // not for calls made from nested Lua functions. We count stack frames using
+      // lua_getstack() which returns non-zero while valid frames exist at each level.
+      // CatchDepth was set by fcmd_catch() to the expected frame count for direct calls.
+      lua_Debug ar;
+      int depth = 0;
+      while (lua_getstack(Lua, depth, &ar)) depth++;
+      if (depth IS prv->CatchDepth) {
+         char msg[180];
+         prv->CaughtError = Error;
+         snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
+         luaL_error(prv->Lua, msg);
+      }
    }
 }
 

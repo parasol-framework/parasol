@@ -706,8 +706,17 @@ static int module_call(lua_State *Lua)
          else {
             lua_pushinteger(Lua, (int)rc);
             if ((prv->Catch) and (restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold))) {
-               prv->CaughtError = ERR(rc);
-               luaL_error(prv->Lua, GetErrorMsg(ERR(rc)));
+               // Scope isolation: Only throw exceptions for direct calls within catch(),
+               // not for calls made from nested Lua functions. We count stack frames using
+               // lua_getstack() which returns non-zero while valid frames exist at each level.
+               // CatchDepth was set by fcmd_catch() to the expected frame count for direct calls.
+               lua_Debug ar;
+               int depth = 0;
+               while (lua_getstack(Lua, depth, &ar)) depth++;
+               if (depth IS prv->CatchDepth) {
+                  prv->CaughtError = ERR(rc);
+                  luaL_error(prv->Lua, GetErrorMsg(ERR(rc)));
+               }
             }
          }
       }
