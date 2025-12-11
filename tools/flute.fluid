@@ -20,6 +20,7 @@ Example usage:
 
    glFile = arg('file')
    glTest = arg('test')
+   glHotPath = arg('hotPath') -- Force hot-path execution for all tests.
    glSelf = obj.find('self')
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -152,6 +153,7 @@ function runTests()
          test_timeout  = nil
          test_priority = nil
          test_labels   = nil
+         test_hotpath  = nil
          for k,v in pairs(entry.annotations) do
             if v.name is 'Test' then
                -- @Test Arguments: name, timeout, priority, labels
@@ -165,6 +167,8 @@ function runTests()
                      test_priority = v
                   elseif k is 'labels' then
                      test_labels = v
+                  elseif k is 'hotpath' then
+                     test_hotpath = v
                   end
                end
             elseif v.name is 'Disabled' then
@@ -192,7 +196,8 @@ function runTests()
                priority = test_priority,
                labels   = test_labels,
                disabled = disabled,
-               is_test  = is_test
+               is_test  = is_test,
+               hotpath  = test_hotpath
             })
          end
       end
@@ -235,52 +240,51 @@ function runTests()
    for func in values(body.tests) do
       i++
       skip = false
-      local func_name, func_ref
-      if type(func) is 'string' then
-         error('String-based function references are not supported.')
-      elseif type(func) is 'function' then
-         func_name = tostring(func)
-         func_ref = func
-      elseif type(func) is 'table' then
-         func_name = func.name
-         func_ref = func.func
-      else
-         error('Invalid function reference type: ' .. type(func))
-      end
-
-      print('-- Test ' .. i .. ': ' .. func_name .. ' --')
-      if glTest and (func_name != glTest) then
+      assert(func.name, 'Test function is missing a name.')
+      assert(func.func, 'Test function is missing a function reference.')
+      
+      print('-- Test ' .. i .. ': ' .. func.name .. ' --')
+      if glTest and (func.name != glTest) then
          skip = true
       end
 
-      if not skip and func_ref then
+      if not skip and func.func then
          -- Run the test
          startTime = mSys.PreciseTime()
 
          if #before_each > 0 then
-            for func in values(before_each) do
-               func()
+            for f in values(before_each) do
+               f()
             end
          end
 
-         status, result = pcall(func_ref)
+         local status, result
+         if func.hotpath or glHotPath then
+            -- The hot-path involves calling the test repeatedly to exercise the JIT compiler.
+            status = pcall(function()
+               for {0..100} do
+                  func.func()
+               end
+            end)
+         else
+            status, result = pcall(func.func)
+         end
+
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
          if #after_each > 0 then
-            for func in values(after_each) do
-               func()
+            for f in values(after_each) do
+               f()
             end
          end
 
          collectgarbage()
 
          if not status then
-            if result?? then logOutput(result) end
             print(string.format('FAIL: %.6f sec', totalTime))
          else
-            if result?? then logOutput(result) end
             print(string.format('PASS: %.6f sec', totalTime))
-            glTestsPassed = glTestsPassed + 1
+            glTestsPassed++
          end
       else
          print('SKIPPED')
