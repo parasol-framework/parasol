@@ -33,20 +33,27 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - No-match fallback emits nil via `materialise_to_reg(nilv, result_reg, ...)`
 - Escape jumps added for no-else cases to skip nil fallback when pattern matches
 
-### Next Steps: Phase 8 (Guards with `when` clause)
-1. Parse optional `when <condition>` after pattern but before `->`
-2. Store guard expression in `case_arm.guard` (field already exists in `ChooseCase`)
-3. Emit pattern comparison first, then emit guard condition check if pattern matches
-4. Guard failure should jump to next case (like pattern mismatch)
-5. Test with: `choose value from _ when value > 25 -> 'large' else -> 'small' end`
+### Next Steps: Phase 12 (Nested Choose & Complex Results)
+Phase 11 (Statement Context) is now complete. The next phase is:
+1. Support `choose` in result expressions (nested choose)
+2. Support `choose` in guard expressions
+3. Support deeply nested `choose` expressions
+4. Support complex result expressions (arithmetic, function calls, tables, methods)
+
+**Tests to enable:** Section 12-13 in `test_choose_from.fluid`
 
 ### Known Quirks
-- String patterns required a lookahead fix in `parse_suffixed()` (lines 2020-2024) to prevent Lua's implicit call
+- String patterns required a lookahead fix in `parse_suffixed()` (lines 2222-2228) to prevent Lua's implicit call
   syntax from consuming the next pattern as a function argument
+- Tuple patterns required `in_choose_expression` flag and lookahead in `parse_suffixed()` (lines 2230-2250) to
+  detect `(tuple) ->` and prevent implicit call parsing of tuple patterns
 - Relational patterns required lookahead fix in `match_binary_operator()` to prevent `< expr ->` from being parsed
   as binary expression
+- Guard expressions required `in_guard_expression` flag to disable relational pattern lookahead (operators like `>` should be binary operators in guards, not pattern starters)
+- Wildcard `_` detection updated to check for both `_ ->` and `_ when` to distinguish from blank identifier
 - Table patterns use `type()` function call for type checking (no dedicated bytecode)
-- Tests: `test_choose_from.fluid` (38 tests covering Phases 1-7)
+- Tuple patterns with all wildcards `(_, _)` are treated as catch-all (is_wildcard = true)
+- Tests: `test_choose_from.fluid` (63 tests covering Phases 1-11)
 
 ---
 
@@ -173,55 +180,94 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - Open record semantics: extra keys ignored, missing keys cause nil comparison to fail
 - Tests in `test_choose_from.fluid` Section 7 (11 tests passing)
 
-### Phase 8: Guards (`when` clause)
-- [ ] Parse `when <condition>` after patterns
-- [ ] Evaluate guard only after pattern matches
-- [ ] Support guards with all pattern types
-- [ ] Enable test: `testGuardTrue`
-- [ ] Enable test: `testGuardFalse`
-- [ ] Enable test: `testGuardWithLiteral`
-- [ ] Enable test: `testGuardWithLiteralFails`
-- [ ] Enable test: `testGuardWithTablePattern`
-- [ ] Enable test: `testGuardEvaluatedAfterPatternMatch`
-- [ ] Enable test: `testGuardWithComplexExpression`
-- [ ] Enable test: `testMultipleGuardsFirstWins`
+### Phase 8: Guards (`when` clause) ✅ COMPLETE (2025-12-12)
+- [x] Parse `when <condition>` after patterns
+- [x] Evaluate guard only after pattern matches
+- [x] Support guards with all pattern types
+- [x] Enable test: `testGuardTrue`
+- [x] Enable test: `testGuardFalse`
+- [x] Enable test: `testGuardWithLiteral`
+- [x] Enable test: `testGuardWithLiteralFails`
+- [x] Enable test: `testGuardWithTablePattern`
+- [x] Enable test: `testGuardEvaluatedAfterPatternMatch`
+- [x] Enable test: `testGuardWithComplexExpression`
+- [x] Enable test: `testMultipleGuardsFirstWins`
 
-### Phase 9: Tuple Patterns
-- [ ] Parse tuple scrutinee `(expr, expr, ...)`
-- [ ] Parse tuple patterns `(pattern, pattern, ...)`
-- [ ] Validate arity consistency (compile-time error on mismatch)
-- [ ] Evaluate tuple elements into temporaries
-- [ ] Support `_` wildcard in tuple positions
-- [ ] Support function returns as tuple scrutinee
-- [ ] Enable test: `testTupleExactMatch`
-- [ ] Enable test: `testTupleWithWildcard`
-- [ ] Enable test: `testTupleOnYAxis`
-- [ ] Enable test: `testTupleElsewhere`
-- [ ] Enable test: `testTupleFromVariables`
-- [ ] Enable test: `testTupleThreeElements`
-- [ ] Enable test: `testTupleAllWildcards`
-- [ ] Enable test: `testTupleFromFunctionReturn`
-- [ ] Enable test: `testTupleWithStrings`
-- [ ] Enable test: `testTupleWithMixedTypes`
+**Implementation Notes:**
+- Added `in_guard_expression` flag to `AstBuilder` class to disable relational pattern lookahead during guard parsing
+- Parser checks for `when` keyword after pattern and before `->` arrow
+- Guard expressions parsed with standard `parse_expression()` - can use all operators including `<`, `<=`, `>`, `>=`
+- Wildcard pattern detection updated to recognize `_ when` (not just `_ ->`)
+- Emitter generates guard condition check using BC_ISF (is false) bytecode with jump on failure
+- Guards work with wildcards, literal patterns, relational patterns, and table patterns
+- Guard failure jumps to next case (same as pattern mismatch)
+- Tests in `test_choose_from.fluid` Section 8 (9 tests passing)
 
-### Phase 10: Expression Contexts (Advanced)
-- [ ] Support `choose` in return statements
-- [ ] Support `choose` in table constructors
-- [ ] Support `choose` as function arguments
-- [ ] Support `choose` in arithmetic expressions
-- [ ] Support `choose` in string concatenation
-- [ ] Implement IIFE wrapping for complex expression positions
-- [ ] Enable test: `testInReturn`
-- [ ] Enable test: `testInTableConstructor`
-- [ ] Enable test: `testInFunctionArgument`
-- [ ] Enable test: `testInArithmeticExpression`
-- [ ] Enable test: `testInConcatenation`
+### Phase 9: Tuple Patterns ✅ COMPLETE (2025-12-12)
+- [x] Parse tuple scrutinee `(expr, expr, ...)`
+- [x] Parse tuple patterns `(pattern, pattern, ...)`
+- [x] Validate arity consistency (compile-time error on mismatch)
+- [x] Evaluate tuple elements into temporaries
+- [x] Support `_` wildcard in tuple positions
+- [ ] Support function returns as tuple scrutinee (DEFERRED - requires arity inference from patterns)
+- [x] Enable test: `testTupleExactMatch`
+- [x] Enable test: `testTupleWithWildcard`
+- [x] Enable test: `testTupleOnYAxis`
+- [x] Enable test: `testTupleElsewhere`
+- [x] Enable test: `testTupleFromVariables`
+- [x] Enable test: `testTupleThreeElements`
+- [x] Enable test: `testTupleAllWildcards`
+- [ ] Enable test: `testTupleFromFunctionReturn` (DEFERRED - commented out)
+- [x] Enable test: `testTupleWithStrings`
+- [x] Enable test: `testTupleWithMixedTypes`
 
-### Phase 11: Statement Context
-- [ ] Support `choose` as standalone statement (no assignment)
-- [ ] Generate if/elseif/else without result variable
-- [ ] Enable test: `testStatementContextSideEffects`
-- [ ] Enable test: `testStatementContextFunctionCalls`
+**Implementation Notes:**
+- Added `scrutinee_tuple` (ExprNodeList) and helper methods to `ChooseExprPayload` in `ast_nodes.h`
+- Added `tuple_patterns` (ExprNodeList), `tuple_wildcards` (vector<bool>), `is_tuple_pattern` to `ChooseCase`
+- Added `in_choose_expression` flag to `AstBuilder` for tuple pattern lookahead detection
+- Parser detects `(expr, expr, ...)` after `choose` keyword as tuple scrutinee
+- Parser detects `(pattern, pattern, ...)` in pattern position when `tuple_arity > 0`
+- Wildcards in tuple positions detected via lookahead for `_` followed by `,` or `)`
+- Arity mismatch generates compile-time error with clear message
+- Emitter evaluates tuple elements into consecutive registers
+- Emitter generates ISNE* bytecode for each non-wildcard tuple position (conjunctive AND)
+- Lookahead in `parse_suffixed()` prevents `result (tuple) -> next` from being parsed as function call
+- Tests in `test_choose_from.fluid` Section 9 (9 tests passing, 1 deferred)
+
+### Phase 10: Expression Contexts (Advanced) ✅ COMPLETE (2025-12-12)
+- [x] Support `choose` in return statements
+- [x] Support `choose` in table constructors
+- [x] Support `choose` as function arguments
+- [x] Support `choose` in arithmetic expressions
+- [x] Support `choose` in string concatenation
+- [x] Implement IIFE wrapping for complex expression positions (NOT NEEDED - direct register approach works)
+- [x] Enable test: `testInReturn`
+- [x] Enable test: `testInTableConstructor`
+- [x] Enable test: `testInFunctionArgument`
+- [x] Enable test: `testInArithmeticExpression`
+- [x] Enable test: `testInConcatenation`
+
+**Implementation Notes:**
+- All Phase 10 tests were already passing without additional code changes
+- The emitter's register-based approach produces a valid `ExpDesc` with `ExpKind::NonReloc` that works in all expression contexts
+- No IIFE wrapping is needed because `choose` evaluates directly to a register that can be used anywhere an expression is expected
+- Tests verified in `test_choose_from.fluid` Section 10 (6 tests passing)
+
+### Phase 11: Statement Context ✅ COMPLETE (2025-12-12)
+- [x] Support `choose` as standalone statement (no assignment)
+- [x] Support statements (assignments) after `->` arrow in case branches
+- [x] Generate appropriate bytecode for statement vs expression results
+- [x] Enable test: `testStatementContextSideEffects`
+- [x] Enable test: `testStatementContextFunctionCalls`
+
+**Implementation Notes:**
+- Added `StmtNodePtr result_stmt` and `bool has_statement_result` to `ChooseCase` struct in `ast_nodes.h`
+- Parser detects assignment patterns after `->` by checking for `=`, `+=`, `-=`, etc. operators after parsing the LHS
+- Supports all assignment forms: plain `=`, compound `+=`/`-=`/etc., multi-target `a, b = ...`, member `.field =`, index `[i] =`
+- Emitter calls `emit_statement()` for statement results instead of `emit_expression()`
+- When any case has a statement result, the entire `choose` expression returns nil
+- Function calls as results work as expressions (their return value is the result)
+- Tests in `test_choose_from.fluid` Section 11 (2 tests passing)
 
 ### Phase 12: Nested Choose & Complex Results
 - [ ] Support `choose` in result expressions

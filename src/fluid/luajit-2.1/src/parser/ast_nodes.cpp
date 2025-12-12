@@ -795,6 +795,19 @@ ExprNodePtr make_choose_expr(SourceSpan Span, ExprNodePtr Scrutinee, std::vector
    return node;
 }
 
+ExprNodePtr make_choose_expr_tuple(SourceSpan Span, ExprNodeList ScrutineeTuple, std::vector<ChooseCase> Cases)
+{
+   assert_node(ScrutineeTuple.size() >= 2, "tuple scrutinee requires at least 2 elements");
+   ChooseExprPayload payload;
+   payload.scrutinee_tuple = std::move(ScrutineeTuple);
+   payload.cases = std::move(Cases);
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::ChooseExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters,
    bool is_vararg, std::unique_ptr<BlockStmt> body, bool IsThunk, FluidType ThunkReturnType)
 {

@@ -374,12 +374,12 @@ end
    end
    assert(result is 'active only', "Expected 'active only', got " .. tostring(result))
 end
---[==[
+
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 8: Guards (when clause)
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testGuardTrue()
+@Test function testGuardTrue()
    value = 50
    result = choose value from
       _ when value > 25 -> 'large'
@@ -388,7 +388,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test; @Disabled function testGuardFalse()
+@Test function testGuardFalse()
    value = 10
    result = choose value from
       _ when value > 25 -> 'large'
@@ -397,7 +397,7 @@ end
    assert(result is 'small', "Expected 'small', got " .. tostring(result))
 end
 
-@Test; @Disabled function testGuardWithLiteral()
+@Test function testGuardWithLiteral()
    status = 200
    priority = 5
    result = choose status from
@@ -408,7 +408,7 @@ end
    assert(result is 'high priority OK', "Expected 'high priority OK', got " .. tostring(result))
 end
 
-@Test; @Disabled function testGuardWithLiteralFails()
+@Test function testGuardWithLiteralFails()
    status = 200
    priority = 1
    result = choose status from
@@ -419,7 +419,7 @@ end
    assert(result is 'normal OK', "Expected 'normal OK' when guard fails, got " .. tostring(result))
 end
 
-@Test; @Disabled function testGuardWithTablePattern()
+@Test function testGuardWithTablePattern()
    notification = { type = 'message', priority = 8 }
    result = choose notification from
       { type = 'message' } when notification.priority > 5 -> 'urgent message'
@@ -429,7 +429,7 @@ end
    assert(result is 'urgent message', "Expected 'urgent message', got " .. tostring(result))
 end
 
-@Test; @Disabled function testGuardEvaluatedAfterPatternMatch()
+@Test function testGuardEvaluatedAfterPatternMatch()
    evaluated = false
    function checkGuard()
       evaluated = true
@@ -445,7 +445,7 @@ end
    assert(evaluated is false, "Guard should not be evaluated when pattern doesn't match")
 end
 
-@Test; @Disabled function testGuardWithComplexExpression()
+@Test function testGuardWithComplexExpression()
    data = { x = 10, y = 20 }
    result = choose data from
       {} when data.x + data.y > 25 -> 'sum large'
@@ -455,7 +455,7 @@ end
    assert(result is 'sum large', "Expected 'sum large', got " .. tostring(result))
 end
 
-@Test; @Disabled function testMultipleGuardsFirstWins()
+@Test function testMultipleGuardsFirstWins()
    value = 50
    result = choose value from
       _ when value > 40 -> 'first guard'
@@ -469,7 +469,7 @@ end
 -- SECTION 9: Tuple Patterns
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testTupleExactMatch()
+@Test function testTupleExactMatch()
    result = choose (0, 0) from
       (0, 0) -> 'origin'
       else -> 'not origin'
@@ -477,7 +477,7 @@ end
    assert(result is 'origin', "Expected 'origin', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleWithWildcard()
+@Test function testTupleWithWildcard()
    result = choose (5, 0) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -487,7 +487,7 @@ end
    assert(result is 'on x-axis', "Expected 'on x-axis', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleOnYAxis()
+@Test function testTupleOnYAxis()
    result = choose (0, 7) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -497,7 +497,7 @@ end
    assert(result is 'on y-axis', "Expected 'on y-axis', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleElsewhere()
+@Test function testTupleElsewhere()
    result = choose (3, 4) from
       (0, 0) -> 'origin'
       (_, 0) -> 'on x-axis'
@@ -507,7 +507,7 @@ end
    assert(result is 'elsewhere', "Expected 'elsewhere', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleFromVariables()
+@Test function testTupleFromVariables()
    dx, dy = 0, 5
    result = choose (dx, dy) from
       (0, 0) -> 'standing'
@@ -518,7 +518,7 @@ end
    assert(result is 'vertical', "Expected 'vertical', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleThreeElements()
+@Test function testTupleThreeElements()
    result = choose (1, 2, 3) from
       (0, 0, 0) -> 'origin'
       (1, _, _) -> 'x is 1'
@@ -528,14 +528,15 @@ end
    assert(result is 'x is 1', "Expected 'x is 1', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleAllWildcards()
+@Test function testTupleAllWildcards()
    result = choose (5, 10) from
       (_, _) -> 'any pair'
    end
    assert(result is 'any pair', "Expected 'any pair', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleFromFunctionReturn()
+-- TODO: Requires function multi-return as tuple scrutinee (deferred)
+--[[ @Test function testTupleFromFunctionReturn()
    function getCoords()
       return 10, 20
    end
@@ -546,9 +547,9 @@ end
       else -> 'other'
    end
    assert(result is 'specific point', "Expected 'specific point', got " .. tostring(result))
-end
+end --]]
 
-@Test; @Disabled function testTupleWithStrings()
+@Test function testTupleWithStrings()
    result = choose ('GET', '/api') from
       ('GET', '/') -> 'home'
       ('GET', '/api') -> 'api get'
@@ -558,7 +559,7 @@ end
    assert(result is 'api get', "Expected 'api get', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTupleWithMixedTypes()
+@Test function testTupleWithMixedTypes()
    result = choose ('error', 404) from
       ('success', _) -> 'success'
       ('error', 404) -> 'not found error'
@@ -572,7 +573,7 @@ end
 -- SECTION 10: Expression Context
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testInLocalAssignment()
+@Test function testInLocalAssignment()
    x = choose 1 from
       1 -> 'one'
       else -> 'other'
@@ -580,7 +581,7 @@ end
    assert(x is 'one', "Expected 'one', got " .. tostring(x))
 end
 
-@Test; @Disabled function testInReturn()
+@Test function testInReturn()
    function getStatus(code)
       return choose code from
          200 -> 'OK'
@@ -594,7 +595,7 @@ end
    assert(getStatus(500) is 'Unknown', "Expected 'Unknown'")
 end
 
-@Test; @Disabled function testInTableConstructor()
+@Test function testInTableConstructor()
    t = {
       status = choose 200 from
          200 -> 'ok'
@@ -606,7 +607,7 @@ end
    assert(t.code is 200, "Expected 200, got " .. tostring(t.code))
 end
 
-@Test; @Disabled function testInFunctionArgument()
+@Test function testInFunctionArgument()
    function process(value)
       return 'processed: ' .. value
    end
@@ -618,7 +619,7 @@ end
    assert(result is 'processed: one', "Expected 'processed: one', got " .. tostring(result))
 end
 
-@Test; @Disabled function testInArithmeticExpression()
+@Test function testInArithmeticExpression()
    multiplier = (choose 'double' from
       'double' -> 2
       'triple' -> 3
@@ -628,7 +629,7 @@ end
    assert(result is 20, "Expected 20, got " .. tostring(result))
 end
 
-@Test; @Disabled function testInConcatenation()
+@Test function testInConcatenation()
    result = 'Status: ' .. (choose 200 from
       200 -> 'OK'
       else -> 'Error'
@@ -640,7 +641,7 @@ end
 -- SECTION 11: Statement Context
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testStatementContextSideEffects()
+@Test function testStatementContextSideEffects()
    result = nil
    choose 'save' from
       'save' -> result = 'saved'
@@ -650,10 +651,10 @@ end
    assert(result is 'saved', "Expected 'saved', got " .. tostring(result))
 end
 
-@Test; @Disabled function testStatementContextFunctionCalls()
+@Test function testStatementContextFunctionCalls()
    log = {}
    function logAction(action)
-      log[#log + 1] = action
+      log[#log] = action  -- Use #log for 0-based indexing (Fluid convention)
    end
 
    choose 'create' from
@@ -669,7 +670,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 12: Nested Choose Expressions
 ----------------------------------------------------------------------------------------------------------------------
-
+--[==[
 @Test; @Disabled function testNestedChooseInResult()
    outer = 'a'
    inner = 1

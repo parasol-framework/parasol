@@ -3186,10 +3186,12 @@ ParserResult<ExpDesc> IrEmitter::emit_range_expr(const RangeExprPayload &Payload
 //********************************************************************************************************************
 // Emit bytecode for a choose expression: choose scrutinee from pattern -> result ... end
 // Generates if/elseif/else chain for pattern matching with equality tests.
+// Supports tuple scrutinee: choose (expr1, expr2, ...) from (pattern1, pattern2, ...) -> result end
 
 ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Payload)
 {
-   if (not Payload.scrutinee or Payload.cases.empty()) {
+   // Validate: must have either single scrutinee or tuple scrutinee, and at least one case
+   if ((not Payload.scrutinee and not Payload.is_tuple_scrutinee()) or Payload.cases.empty()) {
       return this->unsupported_expr(AstNodeKind::ChooseExpr, SourceSpan{});
    }
 
@@ -3197,14 +3199,52 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    RegisterGuard register_guard(fs);
    RegisterAllocator allocator(fs);
 
-   // 1. Evaluate scrutinee into a temporary register
-   auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
-   if (not scrutinee_result.ok()) return scrutinee_result;
-   ExpressionValue scrutinee_value(fs, scrutinee_result.value_ref());
-   BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
+   // Determine if tuple or single scrutinee
+   bool is_tuple = Payload.is_tuple_scrutinee();
+   size_t tuple_arity = Payload.tuple_arity();
+   std::vector<BCReg> scrutinee_regs;  // Registers holding scrutinee values (1 for single, N for tuple)
+   BCReg result_reg;
 
-   // 2. Allocate result register (same as scrutinee for simplicity)
-   BCReg result_reg = scrutinee_reg;
+   if (is_tuple) {
+      // Evaluate tuple scrutinee elements into consecutive registers
+      BCReg base_reg = BCReg(fs->freereg);
+
+      for (size_t i = 0; i < tuple_arity; ++i) {
+         const ExprNodePtr& elem = Payload.scrutinee_tuple[i];
+         auto elem_result = this->emit_expression(*elem);
+         if (not elem_result.ok()) return elem_result;
+
+         ExpressionValue elem_value(fs, elem_result.value_ref());
+         BCReg reg = elem_value.discharge_to_any_reg(allocator);
+
+         // Move to consecutive position if needed
+         if (reg.raw() != base_reg.raw() + int(i)) {
+            bcemit_AD(fs, BC_MOV, base_reg.raw() + int(i), reg);
+            allocator.collapse_freereg(reg);
+            // Reserve the destination slot
+            if (fs->freereg <= base_reg.raw() + int(i)) {
+               fs->freereg = base_reg.raw() + int(i) + 1;
+            }
+         }
+         scrutinee_regs.push_back(BCReg(base_reg.raw() + int(i)));
+      }
+
+      result_reg = base_reg;  // Result goes into first scrutinee register
+   }
+   else {
+      // 1. Evaluate single scrutinee into a temporary register
+      auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
+      if (not scrutinee_result.ok()) return scrutinee_result;
+      ExpressionValue scrutinee_value(fs, scrutinee_result.value_ref());
+      BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
+      scrutinee_regs.push_back(scrutinee_reg);
+
+      // 2. Allocate result register (same as scrutinee for simplicity)
+      result_reg = scrutinee_reg;
+   }
+
+   // For single scrutinee, use the first (only) element
+   BCReg scrutinee_reg = scrutinee_regs.empty() ? BCReg(0) : scrutinee_regs[0];
 
    // 3. Create escape list for jumps to end of choose expression
    ControlFlowEdge escapelist = this->control_flow.make_unconditional();
@@ -3215,9 +3255,12 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    ExpDesc falsev(ExpKind::False);
 
    // Check if there's an else clause or wildcard - if not, we need to emit nil for no-match
+   // Also check if any case has a statement result (Phase 11: statement context)
    bool has_else = false;
+   bool has_statement_results = false;
    for (const auto& arm : Payload.cases) {
-      if (arm.is_else or arm.is_wildcard) { has_else = true; break; }
+      if (arm.is_else or arm.is_wildcard) { has_else = true; }
+      if (arm.has_statement_result) { has_statement_results = true; }
    }
 
    // 4. Generate if/elseif chain for each case
@@ -3227,24 +3270,141 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
       if (case_arm.is_else or case_arm.is_wildcard) {
          // Else/wildcard branch - just emit result directly (no comparison)
-         if (not case_arm.result) {
+         if (not case_arm.result and not case_arm.has_statement_result) {
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
-         auto result = this->emit_expression(*case_arm.result);
-         if (not result.ok()) return result;
-         ExpressionValue result_value(fs, result.value_ref());
-         result_value.discharge();
-         this->materialise_to_reg(result_value.legacy(), result_reg, case_arm.is_wildcard ? "choose wildcard branch" : "choose else branch");
-         allocator.collapse_freereg(BCReg(result_reg));
 
-         if (has_next) {
-            // Jump to end after wildcard/else (in case there are more branches)
+         ControlFlowEdge guard_jump;
+
+         // Emit guard condition check if present (Phase 8) - wildcards can have guards too
+         if (case_arm.guard) {
+            auto guard_result = this->emit_expression(*case_arm.guard);
+            if (not guard_result.ok()) return guard_result;
+
+            ExpressionValue guard_value(fs, guard_result.value_ref());
+            BCReg guard_reg = guard_value.discharge_to_any_reg(allocator);
+
+            // Jump to next case if guard is falsey (BC_ISF = jump if false)
+            bcemit_INS(fs, BCINS_AD(BC_ISF, 0, guard_reg));
+            guard_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+
+            allocator.collapse_freereg(guard_reg);
+         }
+
+         // Emit result - either expression or statement (Phase 11)
+         if (case_arm.has_statement_result) {
+            auto stmt_result = this->emit_statement(*case_arm.result_stmt);
+            if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
+         }
+         else {
+            auto result = this->emit_expression(*case_arm.result);
+            if (not result.ok()) return result;
+            ExpressionValue result_value(fs, result.value_ref());
+            result_value.discharge();
+            this->materialise_to_reg(result_value.legacy(), result_reg, case_arm.is_wildcard ? "choose wildcard branch" : "choose else branch");
+            allocator.collapse_freereg(BCReg(result_reg));
+         }
+
+         if (has_next or guard_jump.valid()) {
+            // Jump to end after wildcard/else (in case there are more branches or guard can fail)
             escapelist.append(BCPos(bcemit_jmp(fs)));
          }
+
+         // Patch guard failure jump to after this case's result
+         if (guard_jump.valid()) {
+            guard_jump.patch_here();
+         }
+      }
+      else if (case_arm.is_tuple_pattern) {
+         // Tuple pattern match: compare each scrutinee position with corresponding pattern
+         if (not case_arm.result and not case_arm.has_statement_result) {
+            return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
+         }
+
+         ControlFlowEdge false_jump = this->control_flow.make_unconditional();
+
+         // For each tuple position, emit comparison if not a wildcard
+         for (size_t pos = 0; pos < case_arm.tuple_patterns.size(); ++pos) {
+            // Skip wildcard positions
+            if (case_arm.tuple_wildcards[pos]) continue;
+
+            const ExprNodePtr& pat = case_arm.tuple_patterns[pos];
+            if (not pat) continue;  // Null indicates wildcard placeholder
+
+            auto pat_result = this->emit_expression(*pat);
+            if (not pat_result.ok()) return pat_result;
+            ExpDesc pattern_expr = pat_result.value_ref();
+
+            BCReg scr_reg = scrutinee_regs[pos];
+
+            // Generate ISNE* comparison for this position (same logic as single-value patterns)
+            if (pattern_expr.k IS ExpKind::Nil) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scr_reg, const_pri(&nilv)));
+            }
+            else if (pattern_expr.k IS ExpKind::True) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scr_reg, const_pri(&truev)));
+            }
+            else if (pattern_expr.k IS ExpKind::False) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEP, scr_reg, const_pri(&falsev)));
+            }
+            else if (pattern_expr.k IS ExpKind::Num) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNEN, scr_reg, const_num(fs, &pattern_expr)));
+            }
+            else if (pattern_expr.k IS ExpKind::Str) {
+               bcemit_INS(fs, BCINS_AD(BC_ISNES, scr_reg, const_str(fs, &pattern_expr)));
+            }
+            else {
+               // Non-constant value - materialise to register and use ISNEV
+               ExpressionValue pat_val(fs, pattern_expr);
+               BCReg pat_reg = pat_val.discharge_to_any_reg(allocator);
+               bcemit_INS(fs, BCINS_AD(BC_ISNEV, scr_reg, pat_reg));
+               allocator.collapse_freereg(pat_reg);
+            }
+
+            // Jump to next case if this position doesn't match (conjunctive AND)
+            false_jump.append(BCPos(bcemit_jmp(fs)));
+         }
+
+         // Emit guard condition check if present
+         if (case_arm.guard) {
+            auto guard_result = this->emit_expression(*case_arm.guard);
+            if (not guard_result.ok()) return guard_result;
+
+            ExpressionValue guard_value(fs, guard_result.value_ref());
+            BCReg guard_reg = guard_value.discharge_to_any_reg(allocator);
+
+            // Jump to next case if guard is falsey (BC_ISF = jump if false)
+            bcemit_INS(fs, BCINS_AD(BC_ISF, 0, guard_reg));
+            false_jump.append(BCPos(bcemit_jmp(fs)));
+
+            allocator.collapse_freereg(guard_reg);
+         }
+
+         // Emit result - either expression or statement (Phase 11)
+         if (case_arm.has_statement_result) {
+            auto stmt_result = this->emit_statement(*case_arm.result_stmt);
+            if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
+         }
+         else {
+            auto result = this->emit_expression(*case_arm.result);
+            if (not result.ok()) return result;
+            ExpressionValue result_value(fs, result.value_ref());
+            result_value.discharge();
+            this->materialise_to_reg(result_value.legacy(), result_reg, "choose tuple case result");
+            allocator.collapse_freereg(BCReg(result_reg));
+         }
+
+         // Jump to end after this case
+         if (has_next or not has_else) {
+            escapelist.append(BCPos(bcemit_jmp(fs)));
+         }
+
+         // Patch false jump to next case
+         false_jump.patch_here();
       }
       else {
-         // Pattern match: compare scrutinee_reg with pattern value
-         if (not case_arm.pattern or not case_arm.result) {
+         // Single-value pattern match: compare scrutinee_reg with pattern value
+         if (not case_arm.pattern or (not case_arm.result and not case_arm.has_statement_result)) {
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
 
@@ -3389,13 +3549,34 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             allocator.collapse_freereg(pattern_reg);
          }
 
-         // Emit result expression for this case (executed when pattern matches)
-         auto result = this->emit_expression(*case_arm.result);
-         if (not result.ok()) return result;
-         ExpressionValue result_value(fs, result.value_ref());
-         result_value.discharge();
-         this->materialise_to_reg(result_value.legacy(), result_reg, "choose case result");
-         allocator.collapse_freereg(BCReg(result_reg));
+         // Emit guard condition check if present (Phase 8)
+         if (case_arm.guard) {
+            auto guard_result = this->emit_expression(*case_arm.guard);
+            if (not guard_result.ok()) return guard_result;
+
+            ExpressionValue guard_value(fs, guard_result.value_ref());
+            BCReg guard_reg = guard_value.discharge_to_any_reg(allocator);
+
+            // Jump to next case if guard is falsey (BC_ISF = jump if false)
+            bcemit_INS(fs, BCINS_AD(BC_ISF, 0, guard_reg));
+            false_jump.append(BCPos(bcemit_jmp(fs)));
+
+            allocator.collapse_freereg(guard_reg);
+         }
+
+         // Emit result - either expression or statement (Phase 11)
+         if (case_arm.has_statement_result) {
+            auto stmt_result = this->emit_statement(*case_arm.result_stmt);
+            if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
+         }
+         else {
+            auto result = this->emit_expression(*case_arm.result);
+            if (not result.ok()) return result;
+            ExpressionValue result_value(fs, result.value_ref());
+            result_value.discharge();
+            this->materialise_to_reg(result_value.legacy(), result_reg, "choose case result");
+            allocator.collapse_freereg(BCReg(result_reg));
+         }
 
          // Jump to end after this case (needed if there are more cases OR if there's no else)
          if (has_next or not has_else) {
@@ -3407,13 +3588,20 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       }
    }
 
-   // If there's no else clause, emit nil as the fallback value
-   if (not has_else) {
+   // If there's no else clause and we're in expression mode, emit nil as the fallback value
+   // Skip nil fallback for statement-only choose expressions
+   if (not has_else and not has_statement_results) {
       this->materialise_to_reg(nilv, result_reg, "choose no-match fallback");
    }
 
    // 5. Patch all escape jumps to current position
    escapelist.patch_here();
+
+   // For statement-mode choose, return nil since there's no meaningful result
+   if (has_statement_results) {
+      ExpDesc result(ExpKind::Nil);
+      return ParserResult<ExpDesc>::success(result);
+   }
 
    // Preserve result register by adjusting what RegisterGuard will restore to
    if (register_guard.saved() > BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());

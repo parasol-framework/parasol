@@ -518,12 +518,17 @@ struct ChooseCase {
    ChooseCase(ChooseCase&&) noexcept = default;
    ChooseCase& operator=(ChooseCase&&) noexcept = default;
 
-   ExprNodePtr pattern;     // Pattern to match (nullptr for else or wildcard)
+   ExprNodePtr pattern;     // Pattern to match (nullptr for else or wildcard or tuple)
+   ExprNodeList tuple_patterns;    // Patterns for tuple match positions (empty if single-value)
+   std::vector<bool> tuple_wildcards; // True for wildcard positions in tuple patterns
    ExprNodePtr guard;       // Optional when clause (nullptr if none)
-   ExprNodePtr result;      // Result expression
+   ExprNodePtr result;      // Result expression (nullptr if statement result)
+   StmtNodePtr result_stmt; // Result statement for statement context (nullptr if expression result)
    bool is_else = false;    // True if this is the else branch
    bool is_wildcard = false; // True if pattern is _ (matches any value, no comparison)
    bool is_table_pattern = false; // True if pattern is { key = value, ... } (table pattern)
+   bool is_tuple_pattern = false; // True if pattern is (p1, p2, ...) (tuple pattern)
+   bool has_statement_result = false; // True if result is a statement (assignment) rather than expression
    ChooseRelationalOp relational_op = ChooseRelationalOp::None; // Relational pattern operator (< <= > >=)
    SourceSpan span{};
 
@@ -538,8 +543,13 @@ struct ChooseExprPayload {
    ChooseExprPayload(ChooseExprPayload&&) noexcept = default;
    ChooseExprPayload& operator=(ChooseExprPayload&&) noexcept = default;
 
-   ExprNodePtr scrutinee;           // The value being matched
+   ExprNodePtr scrutinee;           // Single value being matched (nullptr if tuple)
+   ExprNodeList scrutinee_tuple;    // Tuple scrutinee elements (empty if single-value)
    std::vector<ChooseCase> cases;   // Pattern cases
+
+   // Helper methods for tuple scrutinee
+   bool is_tuple_scrutinee() const { return not scrutinee_tuple.empty(); }
+   size_t tuple_arity() const { return scrutinee_tuple.size(); }
 
    ~ChooseExprPayload();
 };
@@ -845,6 +855,7 @@ ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> p
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
 ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases);
+ExprNodePtr make_choose_expr_tuple(SourceSpan span, ExprNodeList scrutinee_tuple, std::vector<ChooseCase> cases);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);
