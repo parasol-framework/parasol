@@ -97,6 +97,18 @@ function sortTests(Tests:table)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+--[[
+_ANNO = {
+   [functionRef] = {
+      name = 'functionName',
+      source = 'path/to/file.fluid',
+      annotations = {
+         { name = 'Test', args = { key = value, ... } },
+         { name = 'Requires', args = { ... } }
+      }
+   }
+}
+--]]
 
 function runTests()
    global glTestTotal = 0
@@ -108,21 +120,7 @@ function runTests()
       return
    end
 
-   body = loadFile(glFile)
-
-   -- Annotations have priority over the tests table.
-   --[[
-   _ANNO = {
-      [functionRef] = {
-         name = 'functionName',
-         source = 'path/to/file.fluid',
-         annotations = {
-            { name = 'Test', args = { key = value, ... } },
-            { name = 'Requires', args = { ... } }
-         }
-      }
-   }
-   --]]
+   loadFile(glFile)
 
    all = debug.anno.list()
    before_each = {}
@@ -130,20 +128,8 @@ function runTests()
    before_all  = {}
    after_all   = {}
 
-   if body and body.tests then
-      nt = { }
-      local order = 1
-      for f in values(body.tests) do
-         if type(f) is 'function' then
-            table.insert(nt, { func = f, priority = order, name = tostring(f) })
-            order++
-         end
-      end
-      body.tests = nt
-   end
-
    if all then
-      body ?= {}
+      global body ?= {}
       body.tests ?= {}
 
       for func, entry in pairs(all) do
@@ -174,7 +160,8 @@ function runTests()
             elseif v.name is 'Disabled' then
                disabled = true
             elseif v.name is 'BeforeEach' then
-               table.insert(before_each, func)
+               -- BeforeEach can carry arguments that determine the default parameters for all tests.
+               table.insert(before_each, { func=func, args=v.args })
             elseif v.name is 'AfterEach' then
                table.insert(after_each, func)
             elseif v.name is 'BeforeAll' then
@@ -201,25 +188,16 @@ function runTests()
             })
          end
       end
+   else
+      print("The Flute test file did not include annotations.  It is either not a Flute script or is misconfigured.")
+      return
    end
 
-   if not body then
-      print("The Flute test file did not return a configuration table or include annotations.  It is either not a Flute script or is misconfigured.")
-      return
-   elseif not body.tests then
+   if not body.tests then
       -- Exporting no tests is considered legitimate - a test file may choose to have no tests.
       print("The Flute test file did not return any tests to execute.")
       glSelf.errorString = nil
       return
-   end
-
-   if body.init then
-      print('Warning: Deprecated use of init() function in ' .. glFile)
-      folder = file.splitPath(glFile)
-      tests = body.init(folder)
-      if tests then
-         error('Support for returning tests from the init() function is deprecated, use annotations.')
-      end
    end
 
    glTestTotal += #body.tests
@@ -237,37 +215,40 @@ function runTests()
    sortTests(body.tests)
 
    i = 0
-   for func in values(body.tests) do
+   for test in values(body.tests) do
       i++
       skip = false
-      assert(func.name, 'Test function is missing a name.')
-      assert(func.func, 'Test function is missing a function reference.')
+      assert(test.name, 'Test function is missing a name.')
+      assert(test.func, 'Test function is missing a function reference.')
       
-      print('-- Test ' .. i .. ': ' .. func.name .. ' --')
-      if glTest and (func.name != glTest) then
+      print('-- Test ' .. i .. ': ' .. test.name .. ' --')
+      if glTest and (test.name != glTest) then
          skip = true
       end
 
-      if not skip and func.func then
+      if not skip and test.func then
          -- Run the test
          startTime = mSys.PreciseTime()
 
          if #before_each > 0 then
-            for f in values(before_each) do
-               f()
+            for entry in values(before_each) do
+               if entry.args.hotpath then
+                  test.hotpath ?= true
+               end
+               entry.func()
             end
          end
 
          local status, result
-         if func.hotpath or glHotPath then
+         if test.hotpath or glHotPath then
             -- The hot-path involves calling the test repeatedly to exercise the JIT compiler.
             status = pcall(function()
                for {0..100} do
-                  func.func()
+                  test.func()
                end
             end)
          else
-            status, result = pcall(func.func)
+            status, result = pcall(test.func)
          end
 
          totalTime = (mSys.PreciseTime() - startTime) / 1000000

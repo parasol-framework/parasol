@@ -1,5 +1,8 @@
 -- Flute tests for the ?? operator (if-empty: nil, false, 0, "")
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testNil()
    v = nil ?? "A"
    assert(v is "A", "Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'")

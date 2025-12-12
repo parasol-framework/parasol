@@ -1,6 +1,9 @@
 -- Flute tests for the custom string functions
 -- String functions that are JIT-optimised are executed in loops to ensure coverage of their fast calls.
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testAlloc()
    s = string.alloc(10)
    assert(#s is 10, "String size is not 10 characters, got " .. #s)

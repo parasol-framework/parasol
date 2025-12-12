@@ -2,11 +2,14 @@
 Flute tests for the struct interface.
 --]]
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
    ex, mFont = catch(function() return mod.load("font") end)
 
    if ex then
-      print("Font module is disabled in this build, skipping test")
-      return { }
+      logOutput("Font module is disabled in this build, skipping test")
+      return
    end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -21,19 +24,19 @@ Flute tests for the struct interface.
    while font do
       if not font.hidden then
          if font.scalable is 1 then
-            print("Scalable: " .. font.name)
+            logOutput("Scalable: " .. font.name)
          else
-            print("Bitmap: " .. font.name)
+            logOutput("Bitmap: " .. font.name)
          end
-         print("Styles: " .. font.styles)
+         logOutput("Styles: " .. font.styles)
 
          points = ""
          for _, p in ipairs(font.points) do
             if points?? then points ..= ", " end
             points ..= p
          end
-         if points?? then print("Available in fixed sizes: " .. points) end
-         print("")
+         if points?? then logOutput("Available in fixed sizes: " .. points) end
+         logOutput("")
       end
 
       font = font.next

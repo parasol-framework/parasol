@@ -1,5 +1,8 @@
 -- Flute test suite for Fluid Range type
-----------------------------------------------------------------------------------------------------------------------
+
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 
 @Test function testNonRangeTable()
    -- Verify that the parser isn't confused by .. in a non-range table

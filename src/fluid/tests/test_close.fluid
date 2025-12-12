@@ -1,5 +1,8 @@
 -- Tests for <close> attribute and __close metamethod support.
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 -- Basic __close is called when scope ends
 
 @Test function testBasicClose()
