@@ -1221,9 +1221,52 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          case_arm.pattern = nullptr;
       }
       else {
-         // Check for wildcard pattern '_'
+         // Check for relational pattern operators (< <= > >=)
          Token current = this->ctx.tokens().current();
-         if (current.is_identifier()) {
+         if (current.raw() IS '<') {
+            this->ctx.tokens().advance();  // consume '<'
+            if (this->ctx.check(TokenKind::Equals)) {
+               this->ctx.tokens().advance();  // consume '=' (for <=)
+               case_arm.relational_op = ChooseRelationalOp::LessEqual;
+            }
+            else {
+               case_arm.relational_op = ChooseRelationalOp::LessThan;
+            }
+            // Parse the comparison value expression
+            auto pattern = this->parse_expression();
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
+         else if (current.raw() IS '>') {
+            this->ctx.tokens().advance();  // consume '>'
+            if (this->ctx.check(TokenKind::Equals)) {
+               this->ctx.tokens().advance();  // consume '=' (for >=)
+               case_arm.relational_op = ChooseRelationalOp::GreaterEqual;
+            }
+            else {
+               case_arm.relational_op = ChooseRelationalOp::GreaterThan;
+            }
+            // Parse the comparison value expression
+            auto pattern = this->parse_expression();
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
+         else if (this->ctx.check(TokenKind::LessEqual)) {
+            this->ctx.tokens().advance();  // consume '<='
+            case_arm.relational_op = ChooseRelationalOp::LessEqual;
+            auto pattern = this->parse_expression();
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
+         else if (this->ctx.check(TokenKind::GreaterEqual)) {
+            this->ctx.tokens().advance();  // consume '>='
+            case_arm.relational_op = ChooseRelationalOp::GreaterEqual;
+            auto pattern = this->parse_expression();
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
+         // Check for wildcard pattern '_'
+         else if (current.is_identifier()) {
             GCstr* name = current.identifier();
             if (name->len IS 1 and strdata(name)[0] IS '_') {
                // Peek ahead to check if next token is '->' (to confirm this is pattern position)
@@ -2731,16 +2774,38 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 3;
          info.right = 3;
          return info;
-      case TokenKind::LessEqual:
+      case TokenKind::LessEqual: {
+         // Check if this is actually the start of a choose case relational pattern
+         // (<= followed by expression then ->). If so, don't treat it as a binary operator.
+         Token peek1 = this->ctx.tokens().peek(1);
+         Token peek2 = this->ctx.tokens().peek(2);
+         if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         // Handle negative numbers: <= -number ->
+         if (peek1.raw() IS '-') {
+            Token peek3 = this->ctx.tokens().peek(3);
+            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         }
          info.op = AstBinaryOperator::LessEqual;
          info.left = 3;
          info.right = 3;
          return info;
-      case TokenKind::GreaterEqual:
+      }
+      case TokenKind::GreaterEqual: {
+         // Check if this is actually the start of a choose case relational pattern
+         // (>= followed by expression then ->). If so, don't treat it as a binary operator.
+         Token peek1 = this->ctx.tokens().peek(1);
+         Token peek2 = this->ctx.tokens().peek(2);
+         if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         // Handle negative numbers: >= -number ->
+         if (peek1.raw() IS '-') {
+            Token peek3 = this->ctx.tokens().peek(3);
+            if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         }
          info.op = AstBinaryOperator::GreaterEqual;
          info.left = 3;
          info.right = 3;
          return info;
+      }
       case TokenKind::AndToken:
          info.op = AstBinaryOperator::LogicalAnd;
          info.left = 2;
@@ -2782,6 +2847,27 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    }
 
    if (token.raw() IS '<') {
+      // Check if this is actually the start of a choose case relational pattern
+      // (< followed by expression then ->). If so, don't treat it as a binary operator.
+      // Look ahead: if we see < expr -> or < -expr ->, this is a pattern start.
+      Token peek1 = this->ctx.tokens().peek(1);
+      Token peek2 = this->ctx.tokens().peek(2);
+      if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+      // Handle negative numbers: < -number ->
+      if (peek1.raw() IS '-') {
+         Token peek3 = this->ctx.tokens().peek(3);
+         if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+      }
+      // Also check for <= pattern: < = expr -> or < = -expr ->
+      if (peek1.kind() IS TokenKind::Equals) {
+         Token peek3 = this->ctx.tokens().peek(3);
+         if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         // Handle <= -number ->
+         if (peek2.raw() IS '-') {
+            Token peek4 = this->ctx.tokens().peek(4);
+            if (peek4.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         }
+      }
       info.op = AstBinaryOperator::LessThan;
       info.left = 3;
       info.right = 3;
@@ -2789,6 +2875,26 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    }
 
    if (token.raw() IS '>') {
+      // Check if this is actually the start of a choose case relational pattern
+      // (> followed by expression then ->). If so, don't treat it as a binary operator.
+      Token peek1 = this->ctx.tokens().peek(1);
+      Token peek2 = this->ctx.tokens().peek(2);
+      if (peek2.kind() IS TokenKind::CaseArrow) return std::nullopt;
+      // Handle negative numbers: > -number ->
+      if (peek1.raw() IS '-') {
+         Token peek3 = this->ctx.tokens().peek(3);
+         if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+      }
+      // Also check for >= pattern: > = expr -> or > = -expr ->
+      if (peek1.kind() IS TokenKind::Equals) {
+         Token peek3 = this->ctx.tokens().peek(3);
+         if (peek3.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         // Handle >= -number ->
+         if (peek2.raw() IS '-') {
+            Token peek4 = this->ctx.tokens().peek(4);
+            if (peek4.kind() IS TokenKind::CaseArrow) return std::nullopt;
+         }
+      }
       info.op = AstBinaryOperator::GreaterThan;
       info.left = 3;
       info.right = 3;

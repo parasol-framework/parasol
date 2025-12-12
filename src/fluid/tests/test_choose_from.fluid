@@ -32,7 +32,7 @@ end
    assert(result is 'Unknown', "Expected 'Unknown', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicLiteralString()
+@Test function testBasicLiteralString()
    result = choose 'hello' from
       'hello' -> 'greeting'
       'goodbye' -> 'farewell'
@@ -41,7 +41,7 @@ end
    assert(result is 'greeting', "Expected 'greeting', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicLiteralBoolean()
+@Test function testBasicLiteralBoolean()
    result = choose true from
       true -> 'yes'
       false -> 'no'
@@ -50,7 +50,7 @@ end
    assert(result is 'yes', "Expected 'yes', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicLiteralBooleanFalse()
+@Test function testBasicLiteralBooleanFalse()
    result = choose false from
       true -> 'yes'
       false -> 'no'
@@ -59,7 +59,7 @@ end
    assert(result is 'no', "Expected 'no', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicLiteralNil()
+@Test function testBasicLiteralNil()
    result = choose nil from
       nil -> 'nothing'
       else -> 'something'
@@ -67,7 +67,7 @@ end
    assert(result is 'nothing', "Expected 'nothing', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicNegativeNumber()
+@Test function testBasicNegativeNumber()
    result = choose -42 from
       -42 -> 'negative forty-two'
       42 -> 'forty-two'
@@ -76,7 +76,7 @@ end
    assert(result is 'negative forty-two', "Expected 'negative forty-two', got " .. tostring(result))
 end
 
-@Test; @Disabled function testBasicFloatingPoint()
+@Test function testBasicFloatingPoint()
    result = choose 3.14 from
       3.14 -> 'pi'
       2.71 -> 'e'
@@ -89,7 +89,7 @@ end
 -- SECTION 2: Variable Scrutinee (Runtime Evaluation)
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testVariableScrutinee()
+@Test function testVariableScrutinee()
    status = 200
    result = choose status from
       200 -> 'OK'
@@ -99,7 +99,7 @@ end
    assert(result is 'OK', "Expected 'OK', got " .. tostring(result))
 end
 
-@Test; @Disabled function testScrutineeEvaluatedOnce()
+@Test function testScrutineeEvaluatedOnce()
    call_count = 0
    function getValue()
       call_count += 1
@@ -115,7 +115,7 @@ end
    assert(call_count is 1, "Scrutinee should be evaluated exactly once, was called " .. tostring(call_count) .. " times")
 end
 
-@Test; @Disabled function testExpressionScrutinee()
+@Test function testExpressionScrutinee()
    a, b = 10, 5
    result = choose a + b from
       15 -> 'fifteen'
@@ -129,7 +129,7 @@ end
 -- SECTION 3: No Else Branch (Default nil Behaviour)
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testNoElseReturnsNil()
+@Test function testNoElseReturnsNil()
    result = choose 999 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -137,7 +137,7 @@ end
    assert(result is nil, "Expected nil when no match and no else, got " .. tostring(result))
 end
 
-@Test; @Disabled function testNoElseWithMatch()
+@Test function testNoElseWithMatch()
    result = choose 200 from
       200 -> 'OK'
       404 -> 'Not Found'
@@ -149,7 +149,7 @@ end
 -- SECTION 4: First-Match-Wins (Order Dependency)
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testFirstMatchWins()
+@Test function testFirstMatchWins()
    result = choose 'test' from
       'test' -> 'first'
       'test' -> 'second'
@@ -158,7 +158,7 @@ end
    assert(result is 'first', "Expected 'first' (first match wins), got " .. tostring(result))
 end
 
-@Test; @Disabled function testFirstMatchWinsWithWildcard()
+@Test function testFirstMatchWinsWithWildcard()
    result = choose 42 from
       _ -> 'wildcard'
       42 -> 'literal'
@@ -198,7 +198,7 @@ end
 -- SECTION 6: Relational Patterns
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testRelationalLessThan()
+@Test function testRelationalLessThan()
    result = choose 25 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -207,7 +207,7 @@ end
    assert(result is 'small', "Expected 'small', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalLessThanSecondMatch()
+@Test function testRelationalLessThanSecondMatch()
    result = choose 45 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -216,7 +216,7 @@ end
    assert(result is 'medium', "Expected 'medium', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalLessThanElse()
+@Test function testRelationalLessThanElse()
    result = choose 100 from
       < 30 -> 'small'
       < 60 -> 'medium'
@@ -225,7 +225,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalLessThanOrEqual()
+@Test function testRelationalLessThanOrEqual()
    result = choose 30 from
       <= 30 -> 'at most 30'
       else -> 'more than 30'
@@ -233,7 +233,7 @@ end
    assert(result is 'at most 30', "Expected 'at most 30', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalGreaterThan()
+@Test function testRelationalGreaterThan()
    result = choose 100 from
       > 50 -> 'large'
       else -> 'small'
@@ -241,7 +241,7 @@ end
    assert(result is 'large', "Expected 'large', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalGreaterThanOrEqual()
+@Test function testRelationalGreaterThanOrEqual()
    result = choose 50 from
       >= 50 -> 'at least 50'
       else -> 'less than 50'
@@ -249,7 +249,7 @@ end
    assert(result is 'at least 50', "Expected 'at least 50', got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalBoundaryCondition()
+@Test function testRelationalBoundaryCondition()
    -- Test exact boundary
    result = choose 30 from
       < 30 -> 'below'
@@ -258,7 +258,7 @@ end
    assert(result is 'at or above', "Expected 'at or above' for boundary value, got " .. tostring(result))
 end
 
-@Test; @Disabled function testRelationalWithNegativeNumbers()
+@Test function testRelationalWithNegativeNumbers()
    result = choose -10 from
       < 0 -> 'negative'
       >= 0 -> 'non-negative'
@@ -266,7 +266,7 @@ end
    end
    assert(result is 'negative', "Expected 'negative', got " .. tostring(result))
 end
-
+--[==[
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 7: Table Patterns (Open Record Semantics)
 ----------------------------------------------------------------------------------------------------------------------
@@ -1159,3 +1159,4 @@ end
    assert(result is 'first', "Expected 'first'")
    assert(guard_evaluated is false, "Guard should not be evaluated when pattern doesn't match")
 end
+--]==]

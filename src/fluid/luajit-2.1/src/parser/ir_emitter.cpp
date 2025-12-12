@@ -3252,10 +3252,36 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          if (not pattern_result.ok()) return pattern_result;
          ExpDesc pattern_expr = pattern_result.value_ref();
 
-         // Generate: if scrutinee_reg != pattern_value then jump to next case
-         // Use ISNE* bytecode for "not equal" comparison (jump if not equal)
          ControlFlowEdge false_jump;
-         if (pattern_expr.k IS ExpKind::Nil) {
+
+         // Check for relational pattern (< <= > >=)
+         if (case_arm.relational_op != ChooseRelationalOp::None) {
+            // Relational patterns require both operands in registers
+            // Generate: jump if condition is NOT satisfied (inverted logic)
+            // For < pattern: jump if scrutinee >= pattern (use BC_ISGE)
+            // For <= pattern: jump if scrutinee > pattern (use BC_ISGT)
+            // For > pattern: jump if scrutinee <= pattern (use BC_ISLE)
+            // For >= pattern: jump if scrutinee < pattern (use BC_ISLT)
+            ExpressionValue pattern_value(fs, pattern_expr);
+            BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
+
+            BCOp bc_op;
+            switch (case_arm.relational_op) {
+               case ChooseRelationalOp::LessThan:     bc_op = BC_ISGE; break; // jump if NOT <
+               case ChooseRelationalOp::LessEqual:   bc_op = BC_ISGT; break; // jump if NOT <=
+               case ChooseRelationalOp::GreaterThan: bc_op = BC_ISLE; break; // jump if NOT >
+               case ChooseRelationalOp::GreaterEqual: bc_op = BC_ISLT; break; // jump if NOT >=
+               default: bc_op = BC_ISGE; break; // Shouldn't reach here
+            }
+
+            bcemit_INS(fs, BCINS_AD(bc_op, scrutinee_reg, pattern_reg));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            allocator.collapse_freereg(pattern_reg);
+         }
+         // Equality pattern (default)
+         else if (pattern_expr.k IS ExpKind::Nil) {
+            // Generate: if scrutinee_reg != pattern_value then jump to next case
+            // Use ISNE* bytecode for "not equal" comparison (jump if not equal)
             bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&nilv)));
             false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
          }
@@ -3292,8 +3318,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          this->materialise_to_reg(result_value.legacy(), result_reg, "choose case result");
          allocator.collapse_freereg(BCReg(result_reg));
 
-         if (has_next) {
-            // Jump to end after this case
+         // Jump to end after this case (needed if there are more cases OR if there's no else)
+         if (has_next or not has_else) {
             escapelist.append(BCPos(bcemit_jmp(fs)));
          }
 

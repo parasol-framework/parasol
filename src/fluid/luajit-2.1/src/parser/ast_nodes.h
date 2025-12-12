@@ -501,6 +501,15 @@ struct RangeExprPayload {
    ~RangeExprPayload();
 };
 
+// Relational operator for choose expression patterns (Phase 6)
+enum class ChooseRelationalOp : uint8_t {
+   None,         // Equality comparison (default)
+   LessThan,     // < pattern
+   LessEqual,    // <= pattern
+   GreaterThan,  // > pattern
+   GreaterEqual  // >= pattern
+};
+
 // A single case arm in a choose expression
 struct ChooseCase {
    ChooseCase() = default;
@@ -514,6 +523,7 @@ struct ChooseCase {
    ExprNodePtr result;      // Result expression
    bool is_else = false;    // True if this is the else branch
    bool is_wildcard = false; // True if pattern is _ (matches any value, no comparison)
+   ChooseRelationalOp relational_op = ChooseRelationalOp::None; // Relational pattern operator (< <= > >=)
    SourceSpan span{};
 
    ~ChooseCase();
