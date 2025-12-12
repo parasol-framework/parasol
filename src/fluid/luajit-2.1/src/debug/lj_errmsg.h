@@ -143,6 +143,7 @@ ERRDEF(XLEFTCOMPOUND,   "syntax error in left hand expression in compound assign
 ERRDEF(XRIGHTCOMPOUND,   "syntax error in right hand expression in compound assignment")
 ERRDEF(XNOTASSIGNABLE,   "syntax error expression not assignable")
 ERRDEF(XCONTINUE,   "no loop to continue")
+ERRDEF(XBLANKREAD, "cannot read blank identifier " LUA_QL("_"))
 ERRDEF(XLUNDEF,   "undefined label " LUA_QS)
 ERRDEF(XLDUP,   "duplicate label " LUA_QS)
 ERRDEF(XGSCOPE,   "<goto %s> jumps into the scope of local " LUA_QS)

@@ -2111,6 +2111,12 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference)
 {
+   // Blank identifiers cannot be read - they are only valid as assignment targets
+   if (reference.identifier.is_blank) {
+      return ParserResult<ExpDesc>::failure(this->make_error(ParserErrorCode::UnexpectedToken,
+         "cannot read blank identifier '_'"));
+   }
+
    ExpDesc resolved;
    this->lex_state.var_lookup_symbol(reference.identifier.symbol, &resolved);
    return ParserResult<ExpDesc>::success(resolved);
@@ -3208,10 +3214,10 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    ExpDesc truev(ExpKind::True);
    ExpDesc falsev(ExpKind::False);
 
-   // Check if there's an else clause - if not, we need to emit nil for no-match
+   // Check if there's an else clause or wildcard - if not, we need to emit nil for no-match
    bool has_else = false;
    for (const auto& arm : Payload.cases) {
-      if (arm.is_else) { has_else = true; break; }
+      if (arm.is_else or arm.is_wildcard) { has_else = true; break; }
    }
 
    // 4. Generate if/elseif chain for each case
@@ -3219,8 +3225,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       const ChooseCase& case_arm = Payload.cases[i];
       bool has_next = (i + 1) < Payload.cases.size();
 
-      if (case_arm.is_else) {
-         // Else branch - just emit result directly
+      if (case_arm.is_else or case_arm.is_wildcard) {
+         // Else/wildcard branch - just emit result directly (no comparison)
          if (not case_arm.result) {
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
@@ -3228,8 +3234,13 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          if (not result.ok()) return result;
          ExpressionValue result_value(fs, result.value_ref());
          result_value.discharge();
-         this->materialise_to_reg(result_value.legacy(), result_reg, "choose else branch");
+         this->materialise_to_reg(result_value.legacy(), result_reg, case_arm.is_wildcard ? "choose wildcard branch" : "choose else branch");
          allocator.collapse_freereg(BCReg(result_reg));
+
+         if (has_next) {
+            // Jump to end after wildcard/else (in case there are more branches)
+            escapelist.append(BCPos(bcemit_jmp(fs)));
+         }
       }
       else {
          // Pattern match: compare scrutinee_reg with pattern value

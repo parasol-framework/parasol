@@ -1221,10 +1221,38 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          case_arm.pattern = nullptr;
       }
       else {
-         // Parse pattern (Phase 1: only literal expressions)
-         auto pattern = this->parse_expression();
-         if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
-         case_arm.pattern = std::move(pattern.value_ref());
+         // Check for wildcard pattern '_'
+         Token current = this->ctx.tokens().current();
+         if (current.is_identifier()) {
+            GCstr* name = current.identifier();
+            if (name->len IS 1 and strdata(name)[0] IS '_') {
+               // Peek ahead to check if next token is '->' (to confirm this is pattern position)
+               Token next = this->ctx.tokens().peek(1);
+               if (next.kind() IS TokenKind::CaseArrow) {
+                  this->ctx.tokens().advance();  // consume '_'
+                  case_arm.is_wildcard = true;
+                  case_arm.pattern = nullptr;
+               }
+               else {
+                  // Not a wildcard pattern, parse as normal expression
+                  auto pattern = this->parse_expression();
+                  if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+                  case_arm.pattern = std::move(pattern.value_ref());
+               }
+            }
+            else {
+               // Parse pattern (Phase 1: only literal expressions)
+               auto pattern = this->parse_expression();
+               if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+               case_arm.pattern = std::move(pattern.value_ref());
+            }
+         }
+         else {
+            // Parse pattern (Phase 1: only literal expressions)
+            auto pattern = this->parse_expression();
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
       }
 
       // Expect '->'

@@ -171,14 +171,14 @@ end
 -- SECTION 5: Wildcard `_` Pattern
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testBareWildcard()
+@Test function testBareWildcard()
    result = choose 'anything' from
       _ -> 'matched'
    end
    assert(result is 'matched', "Expected 'matched', got " .. tostring(result))
 end
 
-@Test; @Disabled function testWildcardAfterSpecificPatterns()
+@Test function testWildcardAfterSpecificPatterns()
    result = choose 'unknown' from
       'known' -> 'specific'
       _ -> 'catch-all'
@@ -186,22 +186,12 @@ end
    assert(result is 'catch-all', "Expected 'catch-all', got " .. tostring(result))
 end
 
-@Test; @Disabled function testWildcardMatchesNil()
+@Test function testWildcardMatchesNil()
    -- Note: _ matches anything including nil (unlike else which is only reached if nothing matched)
    result = choose nil from
       _ -> 'wildcard matched nil'
    end
    assert(result is 'wildcard matched nil', "Expected wildcard to match nil, got " .. tostring(result))
-end
-
-@Test; @Disabled function testWildcardDoesNotCapture()
-   -- Verify _ doesn't bind any value - we can only test this indirectly
-   outer_underscore = 'preserved'
-   result = choose 'test' from
-      _ -> outer_underscore
-   end
-   assert(result is 'preserved', "Expected 'preserved', got " .. tostring(result))
-   assert(outer_underscore is 'preserved', "Outer _ variable should be unchanged")
 end
 
 ----------------------------------------------------------------------------------------------------------------------

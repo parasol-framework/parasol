@@ -509,10 +509,11 @@ struct ChooseCase {
    ChooseCase(ChooseCase&&) noexcept = default;
    ChooseCase& operator=(ChooseCase&&) noexcept = default;
 
-   ExprNodePtr pattern;     // Pattern to match (nullptr for else)
+   ExprNodePtr pattern;     // Pattern to match (nullptr for else or wildcard)
    ExprNodePtr guard;       // Optional when clause (nullptr if none)
    ExprNodePtr result;      // Result expression
    bool is_else = false;    // True if this is the else branch
+   bool is_wildcard = false; // True if pattern is _ (matches any value, no comparison)
    SourceSpan span{};
 
    ~ChooseCase();
