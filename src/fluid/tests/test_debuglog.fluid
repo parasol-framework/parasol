@@ -1,6 +1,6 @@
 -- Flute tests for the DebugLog() method
 
-   global glSelf = obj.find('self')
+   glSelf = obj.find('self')
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default behaviour (stack trace only)

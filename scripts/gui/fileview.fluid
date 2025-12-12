@@ -1035,7 +1035,7 @@ gui.fileview = function(Options)
    -- Jumps to the parent folder of a FileView's current path.
 
    self.parentFolder = function()
-      if not self.path then return end
+      self.path ?? return
       if self.limitPath and self.limitPath:lower() is self.path:lower() then return end
 
       reduced_path, count = self.path:sub(0, -2):gsub('(.+[:/\\]+).+', '%1', 1)
@@ -1220,10 +1220,10 @@ gui.fileview = function(Options)
    -- Prompt the user to rename the most recently selected item in the file view.
 
    self.renameFile = function()
-      if not self.path?? then return end
+      self.path ?? return
 
       sel = self.selection()
-      if not sel?? then return end
+      sel ?? return
 
       self.dlgRename = gui.dialog.message({
          title     = 'Rename',

@@ -20,6 +20,7 @@ Example usage:
 
    glFile = arg('file')
    glTest = arg('test')
+   glHotPath = arg('hotPath') -- Force hot-path execution for all tests.
    glSelf = obj.find('self')
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -96,6 +97,18 @@ function sortTests(Tests:table)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+--[[
+_ANNO = {
+   [functionRef] = {
+      name = 'functionName',
+      source = 'path/to/file.fluid',
+      annotations = {
+         { name = 'Test', args = { key = value, ... } },
+         { name = 'Requires', args = { ... } }
+      }
+   }
+}
+--]]
 
 function runTests()
    global glTestTotal = 0
@@ -107,21 +120,7 @@ function runTests()
       return
    end
 
-   body = loadFile(glFile)
-
-   -- Annotations have priority over the tests table.
-   --[[
-   _ANNO = {
-      [functionRef] = {
-         name = 'functionName',
-         source = 'path/to/file.fluid',
-         annotations = {
-            { name = 'Test', args = { key = value, ... } },
-            { name = 'Requires', args = { ... } }
-         }
-      }
-   }
-   --]]
+   loadFile(glFile)
 
    all = debug.anno.list()
    before_each = {}
@@ -129,20 +128,8 @@ function runTests()
    before_all  = {}
    after_all   = {}
 
-   if body and body.tests then
-      nt = { }
-      local order = 1
-      for f in values(body.tests) do
-         if type(f) is 'function' then
-            table.insert(nt, { func = f, priority = order, name = tostring(f) })
-            order++
-         end
-      end
-      body.tests = nt
-   end
-
    if all then
-      body ?= {}
+      global body ?= {}
       body.tests ?= {}
 
       for func, entry in pairs(all) do
@@ -152,6 +139,7 @@ function runTests()
          test_timeout  = nil
          test_priority = nil
          test_labels   = nil
+         test_hotpath  = nil
          for k,v in pairs(entry.annotations) do
             if v.name is 'Test' then
                -- @Test Arguments: name, timeout, priority, labels
@@ -165,12 +153,15 @@ function runTests()
                      test_priority = v
                   elseif k is 'labels' then
                      test_labels = v
+                  elseif k is 'hotpath' then
+                     test_hotpath = v
                   end
                end
             elseif v.name is 'Disabled' then
                disabled = true
             elseif v.name is 'BeforeEach' then
-               table.insert(before_each, func)
+               -- BeforeEach can carry arguments that determine the default parameters for all tests.
+               table.insert(before_each, { func=func, args=v.args })
             elseif v.name is 'AfterEach' then
                table.insert(after_each, func)
             elseif v.name is 'BeforeAll' then
@@ -192,29 +183,21 @@ function runTests()
                priority = test_priority,
                labels   = test_labels,
                disabled = disabled,
-               is_test  = is_test
+               is_test  = is_test,
+               hotpath  = test_hotpath
             })
          end
       end
+   else
+      print("The Flute test file did not include annotations.  It is either not a Flute script or is misconfigured.")
+      return
    end
 
-   if not body then
-      print("The Flute test file did not return a configuration table or include annotations.  It is either not a Flute script or is misconfigured.")
-      return
-   elseif not body.tests then
+   if not body.tests then
       -- Exporting no tests is considered legitimate - a test file may choose to have no tests.
       print("The Flute test file did not return any tests to execute.")
       glSelf.errorString = nil
       return
-   end
-
-   if body.init then
-      print('Warning: Deprecated use of init() function in ' .. glFile)
-      folder = file.splitPath(glFile)
-      tests = body.init(folder)
-      if tests then
-         error('Support for returning tests from the init() function is deprecated, use annotations.')
-      end
    end
 
    glTestTotal += #body.tests
@@ -232,55 +215,62 @@ function runTests()
    sortTests(body.tests)
 
    i = 0
-   for func in values(body.tests) do
+   for test in values(body.tests) do
       i++
       skip = false
-      local func_name, func_ref
-      if type(func) is 'string' then
-         error('String-based function references are not supported.')
-      elseif type(func) is 'function' then
-         func_name = tostring(func)
-         func_ref = func
-      elseif type(func) is 'table' then
-         func_name = func.name
-         func_ref = func.func
-      else
-         error('Invalid function reference type: ' .. type(func))
-      end
-
-      print('-- Test ' .. i .. ': ' .. func_name .. ' --')
-      if glTest and (func_name != glTest) then
+      assert(test.name, 'Test function is missing a name.')
+      assert(test.func, 'Test function is missing a function reference.')
+      
+      print('-- Test ' .. i .. ': ' .. test.name .. ' --')
+      if glTest and (test.name != glTest) then
          skip = true
       end
 
-      if not skip and func_ref then
+      if not skip and test.func then
          -- Run the test
          startTime = mSys.PreciseTime()
 
          if #before_each > 0 then
-            for func in values(before_each) do
-               func()
+            for entry in values(before_each) do
+               if entry.args.hotpath then
+                  test.hotpath ?= true
+               end
+               entry.func()
             end
          end
 
-         status, result = pcall(func_ref)
+         local status, result = pcall(test.func)
+         local hotpath_status = true
+         if status and (test.hotpath or glHotPath) then
+            -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
+            local count = 0
+            hotpath_status = pcall(function()
+               for {0..100} do
+                  test.func()
+                  count++
+               end
+            end)
+         end
+
          totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
          if #after_each > 0 then
-            for func in values(after_each) do
-               func()
+            for f in values(after_each) do
+               f()
             end
          end
 
          collectgarbage()
 
          if not status then
-            if result?? then logOutput(result) end
             print(string.format('FAIL: %.6f sec', totalTime))
          else
-            if result?? then logOutput(result) end
-            print(string.format('PASS: %.6f sec', totalTime))
-            glTestsPassed = glTestsPassed + 1
+            if not hotpath_status then
+               print(string.format('FAIL (HOT-PATH): %.6f sec', totalTime))
+            else
+               print(string.format('PASS: %.6f sec', totalTime))
+               glTestsPassed++
+            end
          end
       else
          print('SKIPPED')

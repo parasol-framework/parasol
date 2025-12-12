@@ -2,6 +2,9 @@
 -- Syntax: lhs |> rhs_call() - pipes lhs as first argument(s) to rhs_call
 -- Limit syntax: lhs |N> rhs_call() - limits to N return values from lhs
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testBasicPipe()
    function add_one(x)
       return x + 1

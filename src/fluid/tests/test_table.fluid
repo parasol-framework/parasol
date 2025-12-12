@@ -1,5 +1,8 @@
 -- Flute tests for table.empty()
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function test_nil_and_empty()
    -- nil is treated as an empty table
    assert(table.empty(nil) is true, "nil should be considered empty")

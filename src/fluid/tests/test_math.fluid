@@ -21,6 +21,4 @@
    -- Test negative decimal places (rounding to tens, hundreds, etc.)
    assert(math.round(1234.5, -1) is 1230, 'math.round(1234.5, -1) should be 1230')
    assert(math.round(1234.5, -2) is 1200, 'math.round(1234.5, -2) should be 1200')
-
-   logOutput('All math.round() tests passed!')
 end

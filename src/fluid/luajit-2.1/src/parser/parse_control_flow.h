@@ -38,6 +38,7 @@ public:
    inline void patch_with_value(BCPos ValueTarget, BCReg Register, BCPos DefaultTarget) const;
    [[nodiscard]] inline bool produces_values() const;
    inline void drop_values() const;
+   inline void release() const;
 
 private:
    friend class ControlFlowGraph;
@@ -203,4 +204,9 @@ inline bool ControlFlowEdge::produces_values() const
 inline void ControlFlowEdge::drop_values() const
 {
    if (this->graph) this->graph->drop_edge_values(this->index);
+}
+
+inline void ControlFlowEdge::release() const
+{
+   if (this->graph) this->graph->mark_resolved(this->index);
 }

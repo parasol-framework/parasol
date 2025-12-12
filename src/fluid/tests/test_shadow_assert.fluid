@@ -1,6 +1,9 @@
 -- Internally, assert() silently transforms assert() calls so that the message is deferred.
 -- This avoids evaluating the message when the assertion passes.
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic assert that passes (message should not be evaluated)
 

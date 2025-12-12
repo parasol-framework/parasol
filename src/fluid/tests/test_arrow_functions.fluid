@@ -1,5 +1,8 @@
 -- Arrow function syntax tests
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testArrowSingleParam()
    double = i => i * 2
    assert(double(5) is 10)

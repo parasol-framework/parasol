@@ -1,6 +1,9 @@
 -- Flute tests for horizontal ellipsis (…) operator
 -- The … Unicode character (U+2026) should map to ... (varargs)
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testEllipsisBasic()
    function variadic(…)
       return {…}

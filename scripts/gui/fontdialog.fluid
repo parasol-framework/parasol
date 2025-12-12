@@ -4,13 +4,15 @@ Documentation is available in the Parasol Wiki.
 
    require 'common'
    require 'gui/listview'
+   require 'gui/window'
+   require 'gui/button'
    include 'display'
 
-   if not gui then global gui = { } end
+   global gui ?= { }
    gui.dialog ?= { }
 
 gui.dialog.font = function(Options)
-   if not mFont then global mFont = mod.load('font') end
+   global mFont ?= mod.load('font')
 
    self = { -- Public variables
       windowID    = nil,
@@ -120,7 +122,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function getFonts()
       err, list = mFont.GetList()
-      if not list then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
+      assert(list, 'Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err))
 
       lFonts       = { }
       lFontsSorted = { }
@@ -166,7 +168,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    end
 
    function highlightSize(Size)
-      if not Size then return end
+      Size ?? return
       selectSize = Size
       for _,v in ipairs(lSizes) do
          if v <= Size then

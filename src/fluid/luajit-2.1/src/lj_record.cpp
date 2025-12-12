@@ -198,8 +198,8 @@ static TRef sloadt(jit_State* J, int32_t slot, IRType t, int mode)
 static TRef sload(jit_State* J, int32_t slot)
 {
    IRType t = itype2irt(&J->L->base[slot]);
-   TRef ref = emitir_raw(IRTG(IR_SLOAD, t), (int32_t)J->baseslot + slot,
-      IRSLOAD_TYPECHECK);
+   int32_t abs_slot = (int32_t)J->baseslot + slot;
+   TRef ref = emitir_raw(IRTG(IR_SLOAD, t), abs_slot, IRSLOAD_TYPECHECK);
    if (irtype_ispri(t)) ref = TREF_PRI(t);  //  Canonicalize primitive refs.
    J->base[slot] = ref;
    return ref;

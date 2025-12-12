@@ -1,5 +1,8 @@
 -- Flute tests for the catch() function
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Check that catch() does nothing if no error is raised.
 

@@ -17,9 +17,7 @@
 #include "lj_bc.h"
 #include "lj_ff.h"
 #include "lj_strfmt.h"
-#if LJ_HASJIT
 #include "lj_jit.h"
-#endif
 #if LJ_HASFFI
 #include "lj_ccallback.h"
 #endif
@@ -81,11 +79,9 @@ void lj_dispatch_update(global_State* g)
 {
    uint8_t oldmode = g->dispatchmode;
    uint8_t mode = 0;
-#if LJ_HASJIT
    mode |= (G2J(g)->flags & JIT_F_ON) ? DISPMODE_JIT : 0;
    mode |= G2J(g)->state != TraceState::IDLE ?
       (DISPMODE_REC | DISPMODE_INS | DISPMODE_CALL) : 0;
-#endif
 #if LJ_HASPROFILE
    mode |= (g->hookmask & HOOK_PROFILE) ? (DISPMODE_PROF | DISPMODE_INS) : 0;
 #endif
@@ -181,17 +177,14 @@ void lj_dispatch_update(global_State* g)
          disp[BC_FUNCV] = f_funcv;
       }
 
-#if LJ_HASJIT
       // Reset hotcounts for JIT off to on transition.
       if ((mode & DISPMODE_JIT) and !(oldmode & DISPMODE_JIT))
          lj_dispatch_init_hotcount(g);
-#endif
    }
 }
 
 // -- JIT mode setting ----------------------------------------------------
 
-#if LJ_HASJIT
 // Set JIT mode for a single prototype.
 static void setptmode(global_State* g, GCproto* pt, int mode)
 {
@@ -219,7 +212,6 @@ static void setptmode_all(global_State* g, GCproto* pt, int mode)
       }
    }
 }
-#endif
 
 // Public API function: control the JIT engine.
 int luaJIT_setmode(lua_State* L, int idx, int mode)
@@ -370,7 +362,6 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
    setcframe_pc(cf, pc);
    slots = cur_topslot(pt, pc, cframe_multres_n(cf));
    L->top = L->base + slots;  //  Fix top.
-#if LJ_HASJIT
    {
       jit_State* J = G2J(g);
       if (J->state != TraceState::IDLE) {
@@ -383,7 +374,6 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State* L, const BCIns* pc)
             "unbalanced stack after tracing of instruction");
       }
    }
-#endif
    if ((g->hookmask & LUA_MASKCOUNT) and g->hookcount == 0) {
       g->hookcount = g->hookcstart;
       callhook(L, LUA_HOOKCOUNT, -1);
@@ -429,11 +419,8 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
       GCfunc* fn = curr_func(L);
    BCOp op;
    global_State* g = G(L);
-#if LJ_HASJIT
    jit_State* J = G2J(g);
-#endif
    int missing = call_init(L, fn);
-#if LJ_HASJIT
    J->L = L;
    if ((uintptr_t)pc & 1) {  // Marker for hot call.
 #ifdef LUA_USE_ASSERT
@@ -455,7 +442,6 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
       lj_assertG(L->top - L->base == delta,
          "unbalanced stack after hot instruction");
    }
-#endif
    if ((g->hookmask & LUA_MASKCALL)) {
       int i;
       for (i = 0; i < missing; i++)  //  Add missing parameters.
@@ -465,21 +451,16 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State* L, const BCIns* pc)
       while (missing-- > 0 and tvisnil(L->top - 1))
          L->top--;
    }
-#if LJ_HASJIT
    out :
-#endif
    op = bc_op(pc[-1]);  //  Get FUNC* op.
-#if LJ_HASJIT
    // Use the non-hotcounting variants if JIT is off or while recording.
    if ((!(J->flags & JIT_F_ON) or J->state != TraceState::IDLE) &&
       (op == BC_FUNCF or op == BC_FUNCV))
       op = (BCOp)((int)op + (int)BC_IFUNCF - (int)BC_FUNCF);
-#endif
    ERRNO_RESTORE
       return makeasmfunc(lj_bc_ofs[op]);  //  Return static dispatch target.
 }
 
-#if LJ_HASJIT
 // Stitch a new trace.
 void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
 {
@@ -494,4 +475,3 @@ void LJ_FASTCALL lj_dispatch_stitch(jit_State* J, const BCIns* pc)
    setcframe_pc(cf, oldpc);
    ERRNO_RESTORE
 }
-#endif

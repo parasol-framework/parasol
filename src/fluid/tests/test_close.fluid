@@ -1,5 +1,8 @@
 -- Tests for <close> attribute and __close metamethod support.
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 -- Basic __close is called when scope ends
 
 @Test function testBasicClose()
@@ -13,7 +16,6 @@
       local obj <close> = setmetatable({}, mt)
    end
    assert(closed, 'Basic close: __close should be called when scope ends')
-   print('testBasicClose: passed')
 end
 
 -- __close receives self as first argument
@@ -31,7 +33,6 @@ end
    end
    assert(received_self is obj_value, 'Self should be the closed object')
    assert(received_self.data is 'test_value', 'Self should have correct data')
-   print('testCloseSelfArg: passed')
 end
 
 -- __close receives nil as second argument (normal exit)
@@ -47,7 +48,6 @@ end
       local obj <close> = setmetatable({}, mt)
    end
    assert(received_err is nil, 'Error arg should be nil for normal scope exit')
-   print('testCloseNilErrArg: passed')
 end
 
 -- <close> with nil value - should not crash
@@ -56,7 +56,6 @@ end
    do
       local a <close> = nil
    end
-   print('testCloseWithNil: passed')
 end
 
 -- <close> with false value - should not crash
@@ -65,7 +64,6 @@ end
    do
       local a <close> = false
    end
-   print('testCloseWithFalse: passed')
 end
 
 -- Multiple close variables - LIFO order
@@ -90,7 +88,6 @@ end
    assert(order[0] is 3, 'LIFO order: first closed should be 3, got ' .. tostring(order[0]))
    assert(order[1] is 2, 'LIFO order: second closed should be 2, got ' .. tostring(order[1]))
    assert(order[2] is 1, 'LIFO order: third closed should be 1, got ' .. tostring(order[2]))
-   print('testMultipleClosesLIFO: passed')
 end
 
 -- Close in nested scopes
@@ -112,7 +109,6 @@ end
    assert(order[0] is 'inner', 'Inner scope closes first: ' .. tostring(order[0]))
    assert(order[1] is 'between', 'Between event: ' .. tostring(order[1]))
    assert(order[2] is 'outer', 'Outer scope closes last: ' .. tostring(order[2]))
-   print('testNestedScopes: passed')
 end
 
 -- Close with defer - close should run before defer
@@ -130,7 +126,6 @@ end
    assert(#order is 2, 'Both close and defer should run')
    assert(order[0] is 'close', 'Close should run before defer: ' .. tostring(order[0]))
    assert(order[1] is 'defer', 'Defer should run after close: ' .. tostring(order[1]))
-   print('testCloseWithDefer: passed')
 end
 
 -- Close on function return
@@ -151,7 +146,6 @@ end
    result = inner()
    assert(closed, 'Close on return: __close should be called when function returns')
    assert(result is 42, 'Return value should be preserved: ' .. tostring(result))
-   print('testCloseOnReturn: passed')
 end
 
 -- Close in for loop
@@ -165,7 +159,6 @@ end
    end
 
    assert(close_count is 3, 'Close should be called each iteration: ' .. close_count)
-   print('testCloseInForLoop: passed')
 end
 
 -- Close on break
@@ -182,7 +175,6 @@ end
    end
 
    assert(closed, 'Close should be called on break')
-   print('testCloseOnBreak: passed')
 end
 
 -- Close on continue
@@ -199,7 +191,6 @@ end
    end
 
    assert(close_count is 3, 'Close should be called each iteration including continue: ' .. close_count)
-   print('testCloseOnContinue: passed')
 end
 
 -- Close with value that has no metatable
@@ -208,7 +199,6 @@ end
    do
       local t <close> = {}
    end
-   print('testCloseNoMetatable: passed')
 end
 
 -- Close with metatable but no __close
@@ -218,7 +208,6 @@ end
    do
       local obj <close> = setmetatable({}, mt)
    end
-   print('testCloseMetatableNoClose: passed')
 end
 
 -- Mixed close values (some nil)
@@ -238,7 +227,6 @@ end
    assert(#order is 2, 'Only non-nil values should trigger close')
    assert(order[0] is 'c', 'LIFO: c first')
    assert(order[1] is 'a', 'LIFO: a second')
-   print('testMixedCloseValues: passed')
 end
 
 -- Close on error path (using pcall)
@@ -266,7 +254,6 @@ end
    -- The error must be passed to __close during error unwinding
    assert(received_err != nil, 'Error should be passed to __close handler')
    assert(tostring(received_err):find('test error message'), 'Error message should contain "test error message": got ' .. tostring(received_err))
-   print('testCloseWithPcall: passed (with error propagation)')
 end
 
 -- Close with string value - should not crash
@@ -275,7 +262,6 @@ end
    do
       local s <close> = 'hello'
    end
-   print('testCloseWithString: passed')
 end
 
 -- Close with number value - should not crash
@@ -284,7 +270,6 @@ end
    do
       local n <close> = 42
    end
-   print('testCloseWithNumber: passed')
 end
 
 -- Multiple close handlers during error - all should be called with error
@@ -319,7 +304,6 @@ end
       assert(errors_received[i] != nil, 'Handler ' .. i .. ' should receive error')
       assert(tostring(errors_received[i]):find('multi close error'), 'Handler ' .. i .. ' should get correct error')
    end
-   print('testMultipleCloseOnError: passed')
 end
 
 -- Close in while loop
@@ -335,7 +319,6 @@ end
    end
 
    assert(close_count is 3, 'Close should be called each while iteration: ' .. close_count)
-   print('testCloseInWhileLoop: passed')
 end
 
 -- Close with xpcall
@@ -366,7 +349,6 @@ end
    assert(error_handler_called, 'Error handler should be called')
    assert(closed, 'Close should be called with xpcall')
    assert(received_err != nil, 'Error should be passed to __close')
-   print('testCloseWithXpcall: passed')
 end
 
 -- Nested function calls with close
@@ -400,7 +382,6 @@ end
    end
    assert(has_inner, 'Inner close should be called')
    assert(has_outer, 'Outer close should be called')
-   print('testNestedFunctionsClose: passed')
 end
 
 -- Close with early return in loop
@@ -422,7 +403,6 @@ end
    result = inner()
    assert(result is 3, 'Should return 3')
    assert(close_count is 3, 'Close should be called 3 times (iterations 1, 2, 3): ' .. close_count)
-   print('testCloseEarlyReturnInLoop: passed')
 end
 
 -- Error in __close handler replaces original error (Lua 5.4 semantics)
@@ -456,7 +436,6 @@ end
    assert(order[1] is 'close2', 'close2 second (LIFO)')
    -- The error should be from close1, not the original (per Lua 5.4)
    assert(tostring(err):find('close1 error'), 'Error from __close should replace original: ' .. tostring(err))
-   print('testCloseHandlerError: passed')
 end
 
 -- Multiple __close errors - last one wins
@@ -487,5 +466,4 @@ end
    assert(#order is 2, 'Both close handlers should be called')
    -- The last error (from close2) should be the final error
    assert(tostring(err):find('close2 error'), 'Last __close error should win: ' .. tostring(err))
-   print('testMultipleCloseErrors: passed')
 end

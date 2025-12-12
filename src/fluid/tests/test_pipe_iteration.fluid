@@ -1,6 +1,9 @@
 -- Flute test suite for Fluid Pipe Iteration feature
 -- Tests the {range} |> function syntax for automatic iteration
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testPipeIterationBasic()
    -- Basic pipe iteration: {1..6} |> func calls func for each value
    sum = 0

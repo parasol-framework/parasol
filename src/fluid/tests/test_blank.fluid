@@ -1,6 +1,9 @@
 -- Flute tests for the blank identifier (_) feature
 -- The blank identifier allows explicitly ignoring values in assignments and for loops
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testBasicAssignment()
    x, _ = 10, 20
    assert(x is 10, "Failed basic assignment: expected x=10, got " .. x)

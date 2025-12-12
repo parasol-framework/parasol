@@ -1,5 +1,8 @@
 -- Flute regression tests for the defer keyword
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 function join(values)
    return table.concat(values, ',')
 end

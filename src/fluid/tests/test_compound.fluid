@@ -1,5 +1,8 @@
 -- Flute tests for the compound operators
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testCompoundAssignment()
    value = 5
    value += 3

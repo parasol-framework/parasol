@@ -1,5 +1,8 @@
 -- Flute tests for array.concat functionality
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testIntegerArrayConcat()
    int_array = array.new(5, "integer")
    int_array[0] = 10

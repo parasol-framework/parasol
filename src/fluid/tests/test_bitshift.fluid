@@ -1,6 +1,9 @@
 -- Comprehensive tests for bitshift operators
 -- C style precedence must be observed
 
+@BeforeEach(hotpath=true) 
+function enforce_hotpath() end
+
 @Test function testBinaryBitwiseBasics()
    assert((1 << 3) is bit.lshift(1, 3), '<< should map to bit.lshift')
    assert((8 >> 1) is bit.rshift(8, 1), '>> should map to bit.rshift (logical)')
