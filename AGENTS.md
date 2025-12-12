@@ -5,26 +5,24 @@ This file provides guidance to Agentic programs when working with code in this r
 ### Essential Build Commands
 
 **Configure build:**
-- Debug: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
-- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON -DENABLE_UNIT_TESTS=ON`
+- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
 - Modular/Static builds: Use `-DPARASOL_STATIC=OFF` for modular builds and `-DPARASOL_STATIC=OFF` for static.
-- Prefer to use a Debug build.
+- Always use Debug builds.  The user may provide a separate Release build if needed.
 
 **Build and install:**
-- Build and install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents --config [BuildType]`
+- Build and install: `cmake --build build/agents --config Debug --parallel && cmake --install build/agents --config Debug`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.  In static builds, use `--target [module] parasol_cmd` to ensure that the parasol executable is rebuilt to include the changes.
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
-- Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure`
-- Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents --output-on-failure -L TEST_LABEL`
+- Run all integration tests: `ctest --build-config Debug --test-dir build/agents --output-on-failure`
+- Run single integration test: `ctest --build-config Debug --test-dir build/agents --output-on-failure -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
 - Statements can be tested on the commandline with `--statement`, e.g. `parasol --statement "print('Hello')"`
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
 
 **Verify:**
-- If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.  Prefer `Debug` if both are in use.
 - You can inspect the version, git commit hash and build type of the build by running `parasol` with `--version`.
 
 ### CMake Configuration Options
@@ -34,15 +32,14 @@ Key build options (use with `-D` flag):
 - `BUILD_TESTS=ON/OFF` - Enable/disable test building
 - `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from FDL files
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
-- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in Debug builds (has no effect on Release builds).
+- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages via log.trace() in Debug builds (has no effect on Release builds).
 
 ### Development in the Cloud
 
 When working in ephemeral cloud environments:
 
-- Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
-- If no `build/agents` folder exists, prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
-- If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
+- Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config Debug --parallel`.
+- If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug ...` rather than deleting the entire build tree.
 - If `parasol` is not already installed at `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
 - If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
@@ -232,19 +229,19 @@ For Fluid code, verify:
 **Full Build Commands:**
 ```bash
 # Build everything
-cmake --build build/agents --config [BuildType] --parallel
+cmake --build build/agents --config Debug --parallel
 
 # Install after successful build
-cmake --install build/agents --config [BuildType]
+cmake --install build/agents --config Debug
 ```
 
 **Module Build Commands:**
 ```bash
 # Build specific module (e.g., network, vector, svg, etc.)
-cmake --build build/agents --config [BuildType] --target [module_name] --parallel
+cmake --build build/agents --config Debug --target [module_name] --parallel
 
 # Examples:
-cmake --build build/agents --config [BuildType] --target network --parallel    # For network changes
+cmake --build build/agents --config Debug --target network --parallel    # For network changes
 ```
 
 ### Documentation
