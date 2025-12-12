@@ -239,12 +239,12 @@ function runTests()
             end
          end
 
-         local status, result = pcall(test.func)
+         local status, error_msg = pcall(test.func)
          local hotpath_status = true
          if status and (test.hotpath or glHotPath) then
             -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
             local count = 0
-            hotpath_status = pcall(function()
+            hotpath_status, error_msg = pcall(function()
                for {0..100} do
                   test.func()
                   count++
@@ -263,9 +263,11 @@ function runTests()
          collectgarbage()
 
          if not status then
+            if error_msg then print(error_msg) end
             print(string.format('FAIL: %.6f sec', totalTime))
          else
             if not hotpath_status then
+               if error_msg then print(error_msg) end
                print(string.format('FAIL (HOT-PATH): %.6f sec', totalTime))
             else
                print(string.format('PASS: %.6f sec', totalTime))
