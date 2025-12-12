@@ -546,10 +546,12 @@ struct ChooseExprPayload {
    ExprNodePtr scrutinee;           // Single value being matched (nullptr if tuple)
    ExprNodeList scrutinee_tuple;    // Tuple scrutinee elements (empty if single-value)
    std::vector<ChooseCase> cases;   // Pattern cases
+   size_t inferred_tuple_arity = 0; // Non-zero when arity was inferred from first pattern (for func() returning N values)
 
    // Helper methods for tuple scrutinee
    bool is_tuple_scrutinee() const { return not scrutinee_tuple.empty(); }
    size_t tuple_arity() const { return scrutinee_tuple.size(); }
+   bool has_inferred_arity() const { return inferred_tuple_arity > 0; }
 
    ~ChooseExprPayload();
 };
@@ -854,7 +856,7 @@ ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, boo
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
-ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases);
+ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases, size_t inferred_arity = 0);
 ExprNodePtr make_choose_expr_tuple(SourceSpan span, ExprNodeList scrutinee_tuple, std::vector<ChooseCase> cases);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);

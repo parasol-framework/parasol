@@ -782,12 +782,13 @@ ExprNodePtr make_range_expr(SourceSpan Span, ExprNodePtr Start, ExprNodePtr Stop
    return node;
 }
 
-ExprNodePtr make_choose_expr(SourceSpan Span, ExprNodePtr Scrutinee, std::vector<ChooseCase> Cases)
+ExprNodePtr make_choose_expr(SourceSpan Span, ExprNodePtr Scrutinee, std::vector<ChooseCase> Cases, size_t InferredArity)
 {
    assert_node(ensure_operand(Scrutinee), "choose expression requires scrutinee expression");
    ChooseExprPayload payload;
    payload.scrutinee = std::move(Scrutinee);
    payload.cases = std::move(Cases);
+   payload.inferred_tuple_arity = InferredArity;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::ChooseExpr;
    node->span = Span;

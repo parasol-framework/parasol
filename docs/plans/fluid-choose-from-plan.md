@@ -33,12 +33,13 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - No-match fallback emits nil via `materialise_to_reg(nilv, result_reg, ...)`
 - Escape jumps added for no-else cases to skip nil fallback when pattern matches
 
-### Next Steps: Phase 15 (Short-Circuit Evaluation)
-Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
-1. Ensure unmatched branches are not evaluated
-2. Ensure guards are not evaluated when pattern fails
+### Next Steps: Phase 19 (Documentation)
+Phase 18 (Real-World Use Cases) is now complete. The final phase is:
+1. Update Fluid Reference Manual with `choose` syntax
+2. Add desugaring examples and semantic rules
+3. Document gotchas and edge cases
 
-**Tests to enable:** Section 20 in `test_choose_from.fluid`
+**Implementation is feature-complete.** All 94 tests passing.
 
 ### Known Quirks
 - String patterns required a lookahead fix in `parse_suffixed()` (lines 2222-2228) to prevent Lua's implicit call
@@ -51,7 +52,7 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - Wildcard `_` detection updated to check for both `_ ->` and `_ when` to distinguish from blank identifier
 - Table patterns use `type()` function call for type checking (no dedicated bytecode)
 - Tuple patterns with all wildcards `(_, _)` are treated as catch-all (is_wildcard = true)
-- Tests: `test_choose_from.fluid` (80 tests covering Phases 1-14)
+- Tests: `test_choose_from.fluid` (94 tests covering Phases 1-18)
 
 ---
 
@@ -95,8 +96,8 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - [x] Guarantee single evaluation of scrutinee
 - [x] Implement direct assignment desugaring for simple contexts
 - [x] Enable test: `testVariableScrutinee`
-- [ ] Enable test: `testScrutineeEvaluatedOnce` (needs function call pattern)
-- [ ] Enable test: `testExpressionScrutinee` (needs arithmetic expressions)
+- [x] Enable test: `testScrutineeEvaluatedOnce` (needs function call pattern)
+- [x] Enable test: `testExpressionScrutinee` (needs arithmetic expressions)
 - [x] Enable test: `testInLocalAssignment`
 
 **Note:** Basic variable scrutinee works. Scrutinee evaluated once into temporary register.
@@ -105,8 +106,8 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - [x] Implement `nil` result when no `else` and no match
 - [x] Verify first-match-wins ordering
 - [x] Enable test: `testNoElseReturnsNil`
-- [ ] Enable test: `testNoElseWithMatch`
-- [ ] Enable test: `testFirstMatchWins`
+- [x] Enable test: `testNoElseWithMatch`
+- [x] Enable test: `testFirstMatchWins`
 
 **Note:** No-match returns nil implemented via fallback `materialise_to_reg(nilv, ...)` in emitter.
 
@@ -168,7 +169,7 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - [x] Enable test: `testEmptyTablePatternAgainstEmptyTable`
 - [x] Enable test: `testTablePatternWithNumericValues`
 - [x] Enable test: `testTablePatternWithBooleanValues`
-- [ ] Enable test: `testTableIdentityVsEquality` (deferred - in Section 15)
+- [x] Enable test: `testTableIdentityVsEquality` (deferred - in Section 15)
 
 **Implementation Notes:**
 - Added `is_table_pattern` flag to `ChooseCase` struct in `ast_nodes.h`
@@ -301,7 +302,7 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - [x] Enable test: `testInfinityHandling`
 - [x] Enable test: `testChooseWithTernary`
 - [x] Enable test: `testChooseWithCoalesce`
-- [ ] Enable test: `testNoImplicitTypeCoercion` (deferred - in Section 15)
+- [x] Enable test: `testNoImplicitTypeCoercion`
 
 **Implementation Notes:**
 - No code changes required - edge cases work naturally with existing bytecode generation
@@ -328,35 +329,61 @@ Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
 - Works correctly with `defer` blocks (defer executes after function returns)
 - Tests in `test_choose_from.fluid` Section 19 (3 tests passing)
 
-### Phase 15: Short-Circuit Evaluation
-- [ ] Ensure unmatched branches are not evaluated
-- [ ] Ensure guards are not evaluated when pattern fails
-- [ ] Enable test: `testShortCircuitBranchNotEvaluated`
-- [ ] Enable test: `testShortCircuitGuardNotEvaluated`
+### Phase 15: Short-Circuit Evaluation ✅ COMPLETE (2025-12-12)
+- [x] Ensure unmatched branches are not evaluated
+- [x] Ensure guards are not evaluated when pattern fails
+- [x] Enable test: `testShortCircuitBranchNotEvaluated`
+- [x] Enable test: `testShortCircuitGuardNotEvaluated`
 
-### Phase 16: Syntax Error Handling
-- [ ] Error on missing `from` keyword
-- [ ] Error on missing `end` keyword
-- [ ] Error on missing `->` arrow
-- [ ] Error on `else` not being last
-- [ ] Error on tuple arity mismatch
-- [ ] Enable test: `testSyntaxErrorMissingFrom`
-- [ ] Enable test: `testSyntaxErrorMissingEnd`
-- [ ] Enable test: `testSyntaxErrorMissingArrow`
-- [ ] Enable test: `testSyntaxErrorElseNotLast`
-- [ ] Enable test: `testSyntaxErrorTupleArityMismatch`
+**Implementation Notes:**
+- No code changes required - short-circuit behavior is inherent in the if/elseif bytecode generation
+- Result expressions are only emitted after their pattern/guard checks pass
+- Guard expressions only emitted after pattern match succeeds (BC_ISF jump skips on failure)
+- Tests in `test_choose_from.fluid` Section 20 (2 tests passing)
+- Additional coverage from `testGuardEvaluatedAfterPatternMatch` in Section 8
 
-### Phase 17: Performance & Stress Testing
-- [ ] Verify many-branch performance
-- [ ] Verify repeated evaluation in loops
-- [ ] Enable test: `testManyBranches`
-- [ ] Enable test: `testRepeatedEvaluation`
+### Phase 16: Syntax Error Handling ✅ COMPLETE (2025-12-12)
+- [x] Error on missing `from` keyword
+- [x] Error on missing `end` keyword
+- [x] Error on missing `->` arrow
+- [x] Error on `else` not being last
+- [x] Error on tuple arity mismatch
+- [x] Enable test: `testSyntaxErrorMissingFrom`
+- [x] Enable test: `testSyntaxErrorMissingEnd`
+- [x] Enable test: `testSyntaxErrorMissingArrow`
+- [x] Enable test: `testSyntaxErrorElseNotLast`
+- [x] Enable test: `testSyntaxErrorTupleArityMismatch`
 
-### Phase 18: Real-World Use Cases
-- [ ] Enable test: `testHttpStatusHandling`
-- [ ] Enable test: `testEventDispatch`
-- [ ] Enable test: `testStateTransition`
-- [ ] Enable test: `testIconSelection`
+**Implementation Notes:**
+- Syntax error tests use `obj.new('fluid', { statement = ... })` to test compile-time errors
+- Missing `from`, `end`, `->` all produce parser errors as expected
+- Tuple arity mismatch produces compile-time error with clear message
+- `else`-not-last validation added in `parse_choose_expr()` - tracks `seen_else` flag and emits error if any case follows else
+- Tests in `test_choose_from.fluid` Section 18 (5 tests passing)
+
+### Phase 17: Performance & Stress Testing ✅ COMPLETE (2025-12-12)
+- [x] Verify many-branch performance
+- [x] Verify repeated evaluation in loops
+- [x] Enable test: `testManyBranches`
+- [x] Enable test: `testRepeatedEvaluation`
+
+**Implementation Notes:**
+- 13-branch choose expression works correctly (tests matching at branch 8)
+- Repeated evaluation in loops works correctly
+- Tests in `test_choose_from.fluid` Section 16 (2 tests passing)
+
+### Phase 18: Real-World Use Cases ✅ COMPLETE (2025-12-12)
+- [x] Enable test: `testHttpStatusHandling`
+- [x] Enable test: `testEventDispatch`
+- [x] Enable test: `testStateTransition`
+- [x] Enable test: `testIconSelection`
+
+**Implementation Notes:**
+- HTTP status handling demonstrates relational patterns for range-based classification
+- Event dispatch demonstrates table patterns with guards for complex matching
+- State transition demonstrates tuple patterns for multi-value matching
+- Icon selection demonstrates combining table patterns, guards, and nil patterns
+- Tests in `test_choose_from.fluid` Section 17 (4 tests passing)
 
 ### Phase 19: Documentation
 - [ ] Update Fluid Reference Manual with `choose` syntax

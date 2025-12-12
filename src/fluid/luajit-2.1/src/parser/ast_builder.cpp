@@ -1252,8 +1252,51 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
    // Set flag to indicate we're parsing choose expression cases (for tuple pattern lookahead)
    this->in_choose_expression = true;
 
+   // Lookahead to detect tuple patterns when scrutinee is single expression
+   // This enables `choose func() from (0, 0) -> ...` where func() returns 2 values
+   size_t inferred_tuple_arity = 0;
+   if (tuple_arity IS 0 and this->ctx.check(TokenKind::LeftParen)) {
+      size_t pos = 1;
+      int paren_depth = 1;
+      size_t comma_count = 0;
+
+      // Scan for commas at paren depth 1
+      while (paren_depth > 0 and pos < 100) {
+         Token ahead = this->ctx.tokens().peek(pos);
+         if (ahead.kind() IS TokenKind::LeftParen) paren_depth++;
+         else if (ahead.kind() IS TokenKind::RightParen) paren_depth--;
+         else if (ahead.kind() IS TokenKind::Comma and paren_depth IS 1) comma_count++;
+         pos++;
+      }
+
+      // Check if followed by -> or 'when' (indicating this is a pattern, not a call)
+      if (paren_depth IS 0) {
+         Token after_paren = this->ctx.tokens().peek(pos);
+         if ((after_paren.kind() IS TokenKind::CaseArrow or after_paren.kind() IS TokenKind::When)
+             and comma_count > 0) {
+            // This is a tuple pattern! Infer arity
+            inferred_tuple_arity = comma_count + 1;
+            tuple_arity = inferred_tuple_arity;  // Enable tuple pattern parsing
+         }
+      }
+   }
+
+   bool seen_else = false;  // Track if else branch has been parsed
+
    // Parse cases until 'end'
    while (not this->ctx.check(TokenKind::EndToken) and not this->ctx.check(TokenKind::EndOfFile)) {
+      // Validate else is last - no cases allowed after else
+      if (seen_else) {
+         Token current = this->ctx.tokens().current();
+         std::string msg = "'else' must be the last case in choose expression";
+         this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
+         ParserError error;
+         error.code = ParserErrorCode::UnexpectedToken;
+         error.message = msg;
+         this->in_choose_expression = false;  // Clean up flag before returning
+         return ParserResult<ExprNodePtr>::failure(error);
+      }
+
       ChooseCase case_arm;
       case_arm.span = this->ctx.tokens().current().span();
 
@@ -1261,6 +1304,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          this->ctx.tokens().advance();  // consume 'else'
          case_arm.is_else = true;
          case_arm.pattern = nullptr;
+         seen_else = true;  // Mark that else has been seen
       }
       else {
          // Check for tuple pattern (p1, p2, ...) - only valid when scrutinee is a tuple
@@ -1522,15 +1566,17 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
    // Reset flag - we're done parsing choose expression
    this->in_choose_expression = false;
 
-   // Build choose expression - use tuple version if scrutinee is a tuple
-   if (tuple_arity > 0) {
+   // Build choose expression - use tuple version if scrutinee is an explicit tuple
+   if (tuple_arity > 0 and not scrutinee_tuple.empty()) {
+      // Explicit tuple scrutinee: (a, b)
       return ParserResult<ExprNodePtr>::success(
          make_choose_expr_tuple(choose_token.span(), std::move(scrutinee_tuple), std::move(cases))
       );
    }
    else {
+      // Single scrutinee (possibly with inferred tuple arity for function returns)
       return ParserResult<ExprNodePtr>::success(
-         make_choose_expr(choose_token.span(), std::move(single_scrutinee), std::move(cases))
+         make_choose_expr(choose_token.span(), std::move(single_scrutinee), std::move(cases), inferred_tuple_arity)
       );
    }
 }
