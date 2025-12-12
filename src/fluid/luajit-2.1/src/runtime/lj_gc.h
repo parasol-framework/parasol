@@ -40,15 +40,15 @@ concept GCObjectType = requires(T* obj) {
 };
 
 // Bitmasks for marked field of GCobj.
-#define LJ_GC_WHITE0   0x01
-#define LJ_GC_WHITE1   0x02
-#define LJ_GC_BLACK   0x04
-#define LJ_GC_FINALIZED   0x08
+#define LJ_GC_WHITE0    0x01
+#define LJ_GC_WHITE1    0x02
+#define LJ_GC_BLACK     0x04
+#define LJ_GC_FINALIZED 0x08
 #define LJ_GC_WEAKKEY   0x08
 #define LJ_GC_WEAKVAL   0x10
-#define LJ_GC_CDATA_FIN   0x10
-#define LJ_GC_FIXED   0x20
-#define LJ_GC_SFIXED   0x40
+#define LJ_GC_CDATA_FIN 0x10
+#define LJ_GC_FIXED     0x20
+#define LJ_GC_SFIXED    0x40
 
 #define LJ_GC_WHITES   (LJ_GC_WHITE0 | LJ_GC_WHITE1)
 #define LJ_GC_COLORS   (LJ_GC_WHITES | LJ_GC_BLACK)
@@ -121,35 +121,35 @@ inline void markfinalized(GCobj* x) noexcept
 }
 
 // Collector.
-LJ_FUNC size_t lj_gc_separateudata(global_State* g, int all);
-LJ_FUNC void lj_gc_finalize_udata(lua_State* L);
+extern "C" size_t lj_gc_separateudata(global_State* g, int all);
+extern "C" void lj_gc_finalize_udata(lua_State* L);
 #if LJ_HASFFI
-LJ_FUNC void lj_gc_finalize_cdata(lua_State* L);
+extern "C" void lj_gc_finalize_cdata(lua_State* L);
 #else
 #define lj_gc_finalize_cdata(L)      UNUSED(L)
 #endif
-LJ_FUNC void lj_gc_freeall(global_State* g);
-LJ_FUNCA int LJ_FASTCALL lj_gc_step(lua_State* L);
-LJ_FUNCA void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);
-LJ_FUNC int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps);
-LJ_FUNC void lj_gc_fullgc(lua_State* L);
+extern "C" void lj_gc_freeall(global_State* g);
+extern "C" int LJ_FASTCALL lj_gc_step(lua_State* L);
+extern "C" void LJ_FASTCALL lj_gc_step_fixtop(lua_State* L);
+extern "C" int LJ_FASTCALL lj_gc_step_jit(global_State* g, MSize steps);
+extern "C" void lj_gc_fullgc(lua_State* L);
 
 // GC check: drive collector forward if the GC threshold has been reached.
 #define lj_gc_check(L) { if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) lj_gc_step(L); }
 #define lj_gc_check_fixtop(L) { if (LJ_UNLIKELY(G(L)->gc.total >= G(L)->gc.threshold)) lj_gc_step_fixtop(L); }
 
 // Write barriers.
-LJ_FUNC void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v);
-LJ_FUNCA void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv);
-LJ_FUNC void lj_gc_closeuv(global_State* g, GCupval* uv);
-LJ_FUNC void lj_gc_barriertrace(global_State* g, uint32_t traceno);
+extern "C" void lj_gc_barrierf(global_State* g, GCobj* o, GCobj* v);
+extern "C" void LJ_FASTCALL lj_gc_barrieruv(global_State* g, TValue* tv);
+extern "C" void lj_gc_closeuv(global_State* g, GCupval* uv);
+extern "C" void lj_gc_barriertrace(global_State* g, uint32_t traceno);
 
 // Move the GC propagation frontier back for tables (make it gray again).
 static LJ_AINLINE void lj_gc_barrierback(global_State* g, GCtab* t)
 {
    GCobj *o = obj2gco(t);
    lj_assertG(isblack(o) and !isdead(g, o), "bad object states for backward barrier");
-   lj_assertG(g->gc.state != uint8_t(GCPhase::Finalize) and g->gc.state != uint8_t(GCPhase::Pause), "bad GC state");
+   lj_assertG(g->gc.state != GCPhase::Finalize and g->gc.state != GCPhase::Pause, "bad GC state");
    black2gray(o);
    setgcrefr(t->gclist, g->gc.grayagain);
    setgcref(g->gc.grayagain, o);
@@ -464,9 +464,9 @@ public:
 
 // Allocator.
 
-LJ_FUNC void * lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
-LJ_FUNC void * LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size);
-LJ_FUNC void * lj_mem_grow(lua_State* L, void* p, MSize* szp, MSize lim, MSize esz);
+extern "C" void * lj_mem_realloc(lua_State* L, void* p, GCSize osz, GCSize nsz);
+extern "C" void * LJ_FASTCALL lj_mem_newgco(lua_State* L, GCSize size);
+extern "C" void * lj_mem_grow(lua_State* L, void* p, MSize* szp, MSize lim, MSize esz);
 
 #define lj_mem_new(L, s)   lj_mem_realloc(L, NULL, 0, (s))
 
