@@ -523,6 +523,7 @@ struct ChooseCase {
    ExprNodePtr result;      // Result expression
    bool is_else = false;    // True if this is the else branch
    bool is_wildcard = false; // True if pattern is _ (matches any value, no comparison)
+   bool is_table_pattern = false; // True if pattern is { key = value, ... } (table pattern)
    ChooseRelationalOp relational_op = ChooseRelationalOp::None; // Relational pattern operator (< <= > >=)
    SourceSpan span{};
 

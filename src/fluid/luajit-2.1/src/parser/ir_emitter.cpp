@@ -3254,8 +3254,87 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
          ControlFlowEdge false_jump;
 
+         // Check for table pattern { key = value, ... }
+         if (case_arm.is_table_pattern) {
+            // Table pattern: { key1 = value1, key2 = value2, ... }
+            const auto* table_payload = std::get_if<TableExprPayload>(&case_arm.pattern->data);
+            if (not table_payload) {
+               return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
+            }
+
+            lua_State* L = this->lex_state.L;
+
+            // Helper to get constant string index
+            auto str_const = [fs](GCstr* s) -> BCReg {
+               return BCReg(const_gc(fs, obj2gco(s), LJ_TSTR));
+            };
+
+            // Step 1: Type check - scrutinee must be a table
+            // Call type(scrutinee) and compare result with "table"
+            BCREG temp_base = fs->freereg;
+            allocator.reserve(BCReg(2 + LJ_FR2));  // function slot, frame link, arg
+
+            // Load 'type' global function -> temp_base
+            bcemit_AD(fs, BC_GGET, temp_base, str_const(lj_str_newlit(L, "type")));
+
+            // Copy scrutinee as argument -> temp_base + 1 + LJ_FR2
+            bcemit_AD(fs, BC_MOV, temp_base + 1 + LJ_FR2, scrutinee_reg);
+
+            // Call type(scrutinee) -> result in temp_base
+            // BC_CALL A=base, B=2 (expect 1 result), C=2 (1 arg + 1)
+            bcemit_ABC(fs, BC_CALL, temp_base, 2, 2);
+
+            // Compare result with "table" string - jump if NOT equal
+            bcemit_INS(fs, BCINS_AD(BC_ISNES, temp_base, str_const(lj_str_newlit(L, "table"))));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+
+            allocator.collapse_freereg(BCReg(temp_base));
+
+            // Step 2: For each field in the pattern, check existence and value
+            for (const TableField& field : table_payload->fields) {
+               if (field.kind != TableFieldKind::Record or not field.name.has_value()) {
+                  continue;  // Skip non-record fields (should have been caught by parser)
+               }
+
+               // Get field value: TGETS field_reg, scrutinee_reg, "key"
+               BCREG field_reg = fs->freereg;
+               allocator.reserve(BCReg(1));
+               bcemit_ABC(fs, BC_TGETS, field_reg, scrutinee_reg, str_const(field.name->symbol));
+
+               // Emit expected value expression and compare
+               auto value_result = this->emit_expression(*field.value);
+               if (not value_result.ok()) return value_result;
+               ExpDesc val = value_result.value_ref();
+
+               // Generate ISNE* comparison based on value type - jump if NOT equal
+               if (val.k IS ExpKind::Nil) {
+                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&nilv)));
+               }
+               else if (val.k IS ExpKind::True) {
+                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&truev)));
+               }
+               else if (val.k IS ExpKind::False) {
+                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&falsev)));
+               }
+               else if (val.k IS ExpKind::Num) {
+                  bcemit_INS(fs, BCINS_AD(BC_ISNEN, field_reg, const_num(fs, &val)));
+               }
+               else if (val.k IS ExpKind::Str) {
+                  bcemit_INS(fs, BCINS_AD(BC_ISNES, field_reg, const_str(fs, &val)));
+               }
+               else {
+                  // Non-constant value - materialise to register and use ISNEV
+                  ExpressionValue val_expr(fs, val);
+                  BCReg val_reg = val_expr.discharge_to_any_reg(allocator);
+                  bcemit_INS(fs, BCINS_AD(BC_ISNEV, field_reg, val_reg));
+                  allocator.collapse_freereg(val_reg);
+               }
+               false_jump.append(BCPos(bcemit_jmp(fs)));
+               allocator.collapse_freereg(BCReg(field_reg));
+            }
+         }
          // Check for relational pattern (< <= > >=)
-         if (case_arm.relational_op != ChooseRelationalOp::None) {
+         else if (case_arm.relational_op != ChooseRelationalOp::None) {
             // Relational patterns require both operands in registers
             // Generate: jump if condition is NOT satisfied (inverted logic)
             // For < pattern: jump if scrutinee >= pattern (use BC_ISGE)

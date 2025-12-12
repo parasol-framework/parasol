@@ -33,22 +33,20 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - No-match fallback emits nil via `materialise_to_reg(nilv, result_reg, ...)`
 - Escape jumps added for no-else cases to skip nil fallback when pattern matches
 
-### Next Steps: Phase 7 (Table Patterns)
-1. Detect `{` at start of pattern to enter table pattern parsing
-2. Parse key-value pairs from pattern: `{ key1 = value1, key2 = value2 }`
-3. Generate type check first: `if type(scrutinee) != 'table' then jump`
-4. Generate key existence checks: `if scrutinee.key1 == nil then jump`
-5. Generate value comparisons: `if scrutinee.key1 != value1 then jump`
-6. Handle empty table pattern `{}` - just type check
-7. Test with: `choose obj from { status = 'ok' } -> 'success' else -> 'failure' end`
+### Next Steps: Phase 8 (Guards with `when` clause)
+1. Parse optional `when <condition>` after pattern but before `->`
+2. Store guard expression in `case_arm.guard` (field already exists in `ChooseCase`)
+3. Emit pattern comparison first, then emit guard condition check if pattern matches
+4. Guard failure should jump to next case (like pattern mismatch)
+5. Test with: `choose value from _ when value > 25 -> 'large' else -> 'small' end`
 
 ### Known Quirks
 - String patterns required a lookahead fix in `parse_suffixed()` (lines 2020-2024) to prevent Lua's implicit call
   syntax from consuming the next pattern as a function argument
 - Relational patterns required lookahead fix in `match_binary_operator()` to prevent `< expr ->` from being parsed
   as binary expression
-- Tests: `test_choose_from_phase1.fluid` (16 tests), `test_choose_from_phase5.fluid` (22 tests),
-  `test_choose_from_phase6.fluid` (27 tests)
+- Table patterns use `type()` function call for type checking (no dedicated bytecode)
+- Tests: `test_choose_from.fluid` (38 tests covering Phases 1-7)
 
 ---
 
@@ -148,24 +146,32 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - Fixed escape jump logic to handle no-else cases (jump over nil fallback when pattern matches)
 - Created `test_choose_from_phase6.fluid` with 27 passing tests
 
-### Phase 7: Table Patterns
-- [ ] Implement table type check (`type(__value) is 'table'`)
-- [ ] Implement open record matching (extra keys ignored)
-- [ ] Implement shallow key-value comparison
-- [ ] Handle missing keys (pattern fails)
-- [ ] Implement empty table pattern `{}`
-- [ ] Enable test: `testTablePatternExactMatch`
-- [ ] Enable test: `testTablePatternOpenRecord`
-- [ ] Enable test: `testTablePatternMultipleKeys`
-- [ ] Enable test: `testTablePatternMissingKey`
-- [ ] Enable test: `testTablePatternKeyValueMismatch`
-- [ ] Enable test: `testTablePatternAgainstNil`
-- [ ] Enable test: `testTablePatternAgainstNonTable`
-- [ ] Enable test: `testEmptyTablePattern`
-- [ ] Enable test: `testEmptyTablePatternAgainstEmptyTable`
-- [ ] Enable test: `testTablePatternWithNumericValues`
-- [ ] Enable test: `testTablePatternWithBooleanValues`
-- [ ] Enable test: `testTableIdentityVsEquality`
+### Phase 7: Table Patterns ✅ COMPLETE (2025-12-12)
+- [x] Implement table type check (`type(__value) is 'table'`)
+- [x] Implement open record matching (extra keys ignored)
+- [x] Implement shallow key-value comparison
+- [x] Handle missing keys (pattern fails)
+- [x] Implement empty table pattern `{}`
+- [x] Enable test: `testTablePatternExactMatch`
+- [x] Enable test: `testTablePatternOpenRecord`
+- [x] Enable test: `testTablePatternMultipleKeys`
+- [x] Enable test: `testTablePatternMissingKey`
+- [x] Enable test: `testTablePatternKeyValueMismatch`
+- [x] Enable test: `testTablePatternAgainstNil`
+- [x] Enable test: `testTablePatternAgainstNonTable`
+- [x] Enable test: `testEmptyTablePattern`
+- [x] Enable test: `testEmptyTablePatternAgainstEmptyTable`
+- [x] Enable test: `testTablePatternWithNumericValues`
+- [x] Enable test: `testTablePatternWithBooleanValues`
+- [ ] Enable test: `testTableIdentityVsEquality` (deferred - in Section 15)
+
+**Implementation Notes:**
+- Added `is_table_pattern` flag to `ChooseCase` struct in `ast_nodes.h`
+- Parser detects `{` at pattern start and sets `is_table_pattern = true`, reuses `parse_expression()` for table parsing
+- Emitter generates: (1) type check via `type()` call + BC_ISNES comparison, (2) BC_TGETS + ISNE* for each field
+- Empty pattern `{}` only does type check, matches any table
+- Open record semantics: extra keys ignored, missing keys cause nil comparison to fail
+- Tests in `test_choose_from.fluid` Section 7 (11 tests passing)
 
 ### Phase 8: Guards (`when` clause)
 - [ ] Parse `when <condition>` after patterns

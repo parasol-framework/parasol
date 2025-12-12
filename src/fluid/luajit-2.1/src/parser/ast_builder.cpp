@@ -1265,6 +1265,13 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
             if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
             case_arm.pattern = std::move(pattern.value_ref());
          }
+         // Check for table pattern { key = value, ... }
+         else if (this->ctx.check(TokenKind::LeftBrace)) {
+            case_arm.is_table_pattern = true;
+            auto pattern = this->parse_expression();  // Reuse existing table parsing
+            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            case_arm.pattern = std::move(pattern.value_ref());
+         }
          // Check for wildcard pattern '_'
          else if (current.is_identifier()) {
             GCstr* name = current.identifier();

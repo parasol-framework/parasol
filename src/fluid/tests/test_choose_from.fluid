@@ -266,12 +266,12 @@ end
    end
    assert(result is 'negative', "Expected 'negative', got " .. tostring(result))
 end
---[==[
+
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 7: Table Patterns (Open Record Semantics)
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testTablePatternExactMatch()
+@Test function testTablePatternExactMatch()
    data = { type = 'message' }
    result = choose data from
       { type = 'message' } -> 'is message'
@@ -280,7 +280,7 @@ end
    assert(result is 'is message', "Expected 'is message', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternOpenRecord()
+@Test function testTablePatternOpenRecord()
    -- Extra keys should be ignored (open record semantics)
    data = { type = 'message', unread = true, timestamp = 12345 }
    result = choose data from
@@ -290,7 +290,7 @@ end
    assert(result is 'is message', "Expected 'is message' with extra keys, got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternMultipleKeys()
+@Test function testTablePatternMultipleKeys()
    data = { type = 'message', unread = true }
    result = choose data from
       { type = 'message', unread = true } -> 'unread message'
@@ -300,7 +300,7 @@ end
    assert(result is 'unread message', "Expected 'unread message', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternMissingKey()
+@Test function testTablePatternMissingKey()
    -- Pattern should fail if required key is missing
    data = { type = 'message' }
    result = choose data from
@@ -310,7 +310,7 @@ end
    assert(result is 'fallback', "Expected 'fallback' when key is missing, got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternKeyValueMismatch()
+@Test function testTablePatternKeyValueMismatch()
    data = { type = 'notification' }
    result = choose data from
       { type = 'message' } -> 'is message'
@@ -319,7 +319,7 @@ end
    assert(result is 'not message', "Expected 'not message' for value mismatch, got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternAgainstNil()
+@Test function testTablePatternAgainstNil()
    result = choose nil from
       { type = 'message' } -> 'is message'
       nil -> 'is nil'
@@ -328,7 +328,7 @@ end
    assert(result is 'is nil', "Expected 'is nil', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternAgainstNonTable()
+@Test function testTablePatternAgainstNonTable()
    result = choose 'string value' from
       { type = 'message' } -> 'is message'
       else -> 'not a table'
@@ -336,7 +336,7 @@ end
    assert(result is 'not a table', "Expected 'not a table', got " .. tostring(result))
 end
 
-@Test; @Disabled function testEmptyTablePattern()
+@Test function testEmptyTablePattern()
    -- Empty pattern {} should match any table
    data = { anything = 'here' }
    result = choose data from
@@ -346,7 +346,7 @@ end
    assert(result is 'is a table', "Expected 'is a table', got " .. tostring(result))
 end
 
-@Test; @Disabled function testEmptyTablePatternAgainstEmptyTable()
+@Test function testEmptyTablePatternAgainstEmptyTable()
    data = {}
    result = choose data from
       {} -> 'empty table'
@@ -355,7 +355,7 @@ end
    assert(result is 'empty table', "Expected 'empty table', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternWithNumericValues()
+@Test function testTablePatternWithNumericValues()
    data = { status = 200, count = 5 }
    result = choose data from
       { status = 200 } -> 'ok status'
@@ -365,7 +365,7 @@ end
    assert(result is 'ok status', "Expected 'ok status', got " .. tostring(result))
 end
 
-@Test; @Disabled function testTablePatternWithBooleanValues()
+@Test function testTablePatternWithBooleanValues()
    data = { active = true, visible = false }
    result = choose data from
       { active = true, visible = true } -> 'active and visible'
@@ -374,7 +374,7 @@ end
    end
    assert(result is 'active only', "Expected 'active only', got " .. tostring(result))
 end
-
+--[==[
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 8: Guards (when clause)
 ----------------------------------------------------------------------------------------------------------------------
