@@ -51,11 +51,11 @@ RegisterSpan RegisterAllocator::reserve_span_soft(BCReg Count)
    if (not Count.raw()) return RegisterSpan();
 
    BCReg start = this->reserve_slots(Count);
-   // ExpectedTop=0 marks this as a "soft" span: the allocator will not enforce
-   // strict RAII checks or adjust freereg when the span is released. Callers
-   // using soft spans are responsible for collapsing freereg themselves (for
-   // example, by restoring freereg to nactvar at the end of an assignment).
-   return RegisterSpan(this, start, Count, BCReg(0));
+   // Soft spans do not enforce RAII cleanup - callers manage freereg explicitly.
+   // We pass nullptr for the allocator so that the span's destructor becomes a no-op.
+   // This is critical because soft spans may outlive the allocator that created them
+   // (e.g. when returned in PreparedAssignment structs from prepare_assignment_targets).
+   return RegisterSpan(nullptr, start, Count, BCReg(0));
 }
 
 void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg ExpectedTop)

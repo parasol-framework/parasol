@@ -2083,6 +2083,12 @@ ParserResult<ControlFlowEdge> IrEmitter::emit_condition_jump(const ExprNode& exp
    ExpDesc result = condition.value_ref();
    if (result.k IS ExpKind::Nil) result.k = ExpKind::False;
    bcemit_branch_t(&this->func_state, &result);
+
+   // After processing the condition expression, reset freereg to nactvar.
+   // The condition has been fully evaluated and emitted as a conditional jump -
+   // any temporary registers used during evaluation are no longer needed.
+   this->func_state.reset_freereg();
+
    return ParserResult<ControlFlowEdge>::success(this->control_flow.make_false_edge(BCPos(result.f)));
 }
 
