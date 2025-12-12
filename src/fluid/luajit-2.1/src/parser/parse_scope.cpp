@@ -360,6 +360,20 @@ static void bcemit_close(FuncState* fs, BCREG slot)
    RegisterAllocator allocator(fs);
    LexState* ls = fs->ls;
 
+   // Emit BC_UCLO to prevent the JIT from recording through the close handler sequence.
+   // The inline bytecode for calling __close metamethods uses temporary registers in ways
+   // that confuse the JIT's type tracking, leading to assertion failures during hot-path
+   // execution. BC_UCLO triggers LJ_TRERR_NYIBC which cleanly aborts JIT recording.
+   // The jump offset of 0 means no branch is taken - it just marks this code as non-JIT-able.
+   //
+   // TODO: For better JIT performance, consider implementing native JIT support for __close:
+   // 1. Add a dedicated BC_CLOSE bytecode that handles the __close metamethod call directly
+   // 2. Implement JIT recording support for BC_CLOSE in lj_record.cpp (rec_close function)
+   // 3. Generate optimised machine code that inlines the nil/false checks and metamethod lookup
+   // 4. This would allow hot loops containing <close> variables to be fully JIT-compiled
+
+   bcemit_AJ(fs, BC_UCLO, slot, 0);
+
    // Track jumps that skip the close operation
    BCPOS skip_jumps[4];
    int num_skip_jumps = 0;
