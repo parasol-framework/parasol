@@ -2062,6 +2062,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::ResultFilterExpr: return this->emit_result_filter_expr(std::get<ResultFilterPayload>(expr.data));
       case AstNodeKind::TableExpr:        return this->emit_table_expr(std::get<TableExprPayload>(expr.data));
       case AstNodeKind::RangeExpr:        return this->emit_range_expr(std::get<RangeExprPayload>(expr.data));
+      case AstNodeKind::ChooseExpr:       return this->emit_choose_expr(std::get<ChooseExprPayload>(expr.data));
       case AstNodeKind::FunctionExpr:     return this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
       default: return this->unsupported_expr(expr.kind, expr.span);
    }
@@ -3173,6 +3174,137 @@ ParserResult<ExpDesc> IrEmitter::emit_range_expr(const RangeExprPayload &Payload
    result.u.s.aux = base;
    fs->freereg = base + 1;
 
+   return ParserResult<ExpDesc>::success(result);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for a choose expression: choose scrutinee from pattern -> result ... end
+// Generates if/elseif/else chain for pattern matching with equality tests.
+
+ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Payload)
+{
+   if (not Payload.scrutinee or Payload.cases.empty()) {
+      return this->unsupported_expr(AstNodeKind::ChooseExpr, SourceSpan{});
+   }
+
+   FuncState* fs = &this->func_state;
+   RegisterGuard register_guard(fs);
+   RegisterAllocator allocator(fs);
+
+   // 1. Evaluate scrutinee into a temporary register
+   auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
+   if (not scrutinee_result.ok()) return scrutinee_result;
+   ExpressionValue scrutinee_value(fs, scrutinee_result.value_ref());
+   BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
+
+   // 2. Allocate result register (same as scrutinee for simplicity)
+   BCReg result_reg = scrutinee_reg;
+
+   // 3. Create escape list for jumps to end of choose expression
+   ControlFlowEdge escapelist = this->control_flow.make_unconditional();
+
+   // Prepare constant ExpDescs for primitive comparisons
+   ExpDesc nilv(ExpKind::Nil);
+   ExpDesc truev(ExpKind::True);
+   ExpDesc falsev(ExpKind::False);
+
+   // Check if there's an else clause - if not, we need to emit nil for no-match
+   bool has_else = false;
+   for (const auto& arm : Payload.cases) {
+      if (arm.is_else) { has_else = true; break; }
+   }
+
+   // 4. Generate if/elseif chain for each case
+   for (size_t i = 0; i < Payload.cases.size(); ++i) {
+      const ChooseCase& case_arm = Payload.cases[i];
+      bool has_next = (i + 1) < Payload.cases.size();
+
+      if (case_arm.is_else) {
+         // Else branch - just emit result directly
+         if (not case_arm.result) {
+            return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
+         }
+         auto result = this->emit_expression(*case_arm.result);
+         if (not result.ok()) return result;
+         ExpressionValue result_value(fs, result.value_ref());
+         result_value.discharge();
+         this->materialise_to_reg(result_value.legacy(), result_reg, "choose else branch");
+         allocator.collapse_freereg(BCReg(result_reg));
+      }
+      else {
+         // Pattern match: compare scrutinee_reg with pattern value
+         if (not case_arm.pattern or not case_arm.result) {
+            return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
+         }
+
+         auto pattern_result = this->emit_expression(*case_arm.pattern);
+         if (not pattern_result.ok()) return pattern_result;
+         ExpDesc pattern_expr = pattern_result.value_ref();
+
+         // Generate: if scrutinee_reg != pattern_value then jump to next case
+         // Use ISNE* bytecode for "not equal" comparison (jump if not equal)
+         ControlFlowEdge false_jump;
+         if (pattern_expr.k IS ExpKind::Nil) {
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&nilv)));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+         }
+         else if (pattern_expr.k IS ExpKind::True) {
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&truev)));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+         }
+         else if (pattern_expr.k IS ExpKind::False) {
+            bcemit_INS(fs, BCINS_AD(BC_ISNEP, scrutinee_reg, const_pri(&falsev)));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+         }
+         else if (pattern_expr.k IS ExpKind::Num) {
+            bcemit_INS(fs, BCINS_AD(BC_ISNEN, scrutinee_reg, const_num(fs, &pattern_expr)));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+         }
+         else if (pattern_expr.k IS ExpKind::Str) {
+            bcemit_INS(fs, BCINS_AD(BC_ISNES, scrutinee_reg, const_str(fs, &pattern_expr)));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+         }
+         else {
+            // Non-constant pattern - need to materialise and use ISNEV
+            ExpressionValue pattern_value(fs, pattern_expr);
+            BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
+            bcemit_INS(fs, BCINS_AD(BC_ISNEV, scrutinee_reg, pattern_reg));
+            false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+            allocator.collapse_freereg(pattern_reg);
+         }
+
+         // Emit result expression for this case (executed when pattern matches)
+         auto result = this->emit_expression(*case_arm.result);
+         if (not result.ok()) return result;
+         ExpressionValue result_value(fs, result.value_ref());
+         result_value.discharge();
+         this->materialise_to_reg(result_value.legacy(), result_reg, "choose case result");
+         allocator.collapse_freereg(BCReg(result_reg));
+
+         if (has_next) {
+            // Jump to end after this case
+            escapelist.append(BCPos(bcemit_jmp(fs)));
+         }
+
+         // Patch false jump to next case
+         false_jump.patch_here();
+      }
+   }
+
+   // If there's no else clause, emit nil as the fallback value
+   if (not has_else) {
+      this->materialise_to_reg(nilv, result_reg, "choose no-match fallback");
+   }
+
+   // 5. Patch all escape jumps to current position
+   escapelist.patch_here();
+
+   // Preserve result register by adjusting what RegisterGuard will restore to
+   if (register_guard.saved() > BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
+   else register_guard.disarm();
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, result_reg);
    return ParserResult<ExpDesc>::success(result);
 }
 

@@ -49,6 +49,7 @@ private:
    ParserResult<StmtNodePtr> parse_defer();
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_expression_stmt();
+   ParserResult<ExprNodePtr> parse_choose_expr();
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);

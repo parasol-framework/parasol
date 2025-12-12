@@ -598,6 +598,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             State->mark_token_start();
             lex_next(State);
             if (auto tok = check_compound(State, TK_csub)) return tok;
+            if (State->c IS '>') { lex_next(State); return TK_case_arrow; }  // ->
             if (State->c != '-') return '-';
 
             lex_next(State);

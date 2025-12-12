@@ -168,6 +168,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::DoToken:       return this->parse_do();
       case TokenKind::DeferToken:    return this->parse_defer();
       case TokenKind::ReturnToken:   return this->parse_return();
+      case TokenKind::Choose: {
+         auto expr = this->parse_choose_expr();
+         if (not expr.ok()) return ParserResult<StmtNodePtr>::failure(expr.error_ref());
+         return ParserResult<StmtNodePtr>::success(make_expression_stmt(current.span(), std::move(expr.value_ref())));
+      }
       case TokenKind::BreakToken:    return make_control_stmt(this->ctx, AstNodeKind::BreakStmt, current);
       case TokenKind::ContinueToken: return make_control_stmt(this->ctx, AstNodeKind::ContinueStmt, current);
       case TokenKind::Semicolon:
@@ -1188,6 +1193,62 @@ ParserResult<StmtNodePtr> AstBuilder::parse_return()
 }
 
 //********************************************************************************************************************
+// Parses a choose expression: choose scrutinee from pattern -> result ... end
+
+ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
+{
+   Token choose_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // consume 'choose'
+
+   // Parse scrutinee expression
+   auto scrutinee = this->parse_expression();
+   if (not scrutinee.ok()) return ParserResult<ExprNodePtr>::failure(scrutinee.error_ref());
+
+   // Expect 'from' keyword
+   auto from_match = this->ctx.consume(TokenKind::From, ParserErrorCode::ExpectedToken);
+   if (not from_match.ok()) return ParserResult<ExprNodePtr>::failure(from_match.error_ref());
+
+   std::vector<ChooseCase> cases;
+
+   // Parse cases until 'end'
+   while (not this->ctx.check(TokenKind::EndToken) and not this->ctx.check(TokenKind::EndOfFile)) {
+      ChooseCase case_arm;
+      case_arm.span = this->ctx.tokens().current().span();
+
+      if (this->ctx.check(TokenKind::Else)) {
+         this->ctx.tokens().advance();  // consume 'else'
+         case_arm.is_else = true;
+         case_arm.pattern = nullptr;
+      }
+      else {
+         // Parse pattern (Phase 1: only literal expressions)
+         auto pattern = this->parse_expression();
+         if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+         case_arm.pattern = std::move(pattern.value_ref());
+      }
+
+      // Expect '->'
+      auto arrow_match = this->ctx.consume(TokenKind::CaseArrow, ParserErrorCode::ExpectedToken);
+      if (not arrow_match.ok()) return ParserResult<ExprNodePtr>::failure(arrow_match.error_ref());
+
+      // Parse result expression
+      auto result = this->parse_expression();
+      if (not result.ok()) return ParserResult<ExprNodePtr>::failure(result.error_ref());
+      case_arm.result = std::move(result.value_ref());
+
+      cases.push_back(std::move(case_arm));
+   }
+
+   // Consume 'end'
+   auto end_match = this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
+   if (not end_match.ok()) return ParserResult<ExprNodePtr>::failure(end_match.error_ref());
+
+   return ParserResult<ExprNodePtr>::success(
+      make_choose_expr(choose_token.span(), std::move(scrutinee.value_ref()), std::move(cases))
+   );
+}
+
+//********************************************************************************************************************
 // Parses expression statements, handling assignments, compound assignments, conditional shorthands, and standalone expressions.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
@@ -1611,6 +1672,13 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          break;
       }
 
+      case TokenKind::Choose: {
+         auto choose_result = this->parse_choose_expr();
+         if (not choose_result.ok()) return choose_result;
+         node = std::move(choose_result.value_ref());
+         break;
+      }
+
       case TokenKind::LeftBrace: {
          auto table = this->parse_table_literal();
          if (not table.ok()) return table;
@@ -1947,6 +2015,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
       }
 
       if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::String) {
+         // For string tokens, check if this is actually the start of a choose case pattern
+         // (string followed by ->). If so, don't treat it as a call argument.
+         if (token.kind() IS TokenKind::String) {
+            Token next = this->ctx.tokens().peek(1);
+            if (next.kind() IS TokenKind::CaseArrow) break;
+         }
          bool forwards = false;
          auto args = this->parse_call_arguments(&forwards);
          if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
@@ -2381,6 +2455,7 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
       case TokenKind::ReturnToken:
       case TokenKind::BreakToken:
       case TokenKind::ContinueToken:
+      case TokenKind::Choose:
          return true;
       default:
          return false;

@@ -81,6 +81,7 @@ enum class AstNodeKind : uint16_t {
    FunctionExpr,
    DeferredExpr,  // Deferred expression <{ expr }>
    RangeExpr,     // Range literal {start..stop} or {start...stop}
+   ChooseExpr,    // Choose expression: choose value from pattern -> result ... end
    BlockStmt,
    AssignmentStmt,
    LocalDeclStmt,
@@ -500,6 +501,37 @@ struct RangeExprPayload {
    ~RangeExprPayload();
 };
 
+// A single case arm in a choose expression
+struct ChooseCase {
+   ChooseCase() = default;
+   ChooseCase(const ChooseCase&) = delete;
+   ChooseCase& operator=(const ChooseCase&) = delete;
+   ChooseCase(ChooseCase&&) noexcept = default;
+   ChooseCase& operator=(ChooseCase&&) noexcept = default;
+
+   ExprNodePtr pattern;     // Pattern to match (nullptr for else)
+   ExprNodePtr guard;       // Optional when clause (nullptr if none)
+   ExprNodePtr result;      // Result expression
+   bool is_else = false;    // True if this is the else branch
+   SourceSpan span{};
+
+   ~ChooseCase();
+};
+
+// Choose expression payload: choose scrutinee from pattern -> result ... end
+struct ChooseExprPayload {
+   ChooseExprPayload() = default;
+   ChooseExprPayload(const ChooseExprPayload&) = delete;
+   ChooseExprPayload& operator=(const ChooseExprPayload&) = delete;
+   ChooseExprPayload(ChooseExprPayload&&) noexcept = default;
+   ChooseExprPayload& operator=(ChooseExprPayload&&) noexcept = default;
+
+   ExprNodePtr scrutinee;           // The value being matched
+   std::vector<ChooseCase> cases;   // Pattern cases
+
+   ~ChooseExprPayload();
+};
+
 struct ExprNode {
    AstNodeKind kind = AstNodeKind::LiteralExpr;
    SourceSpan span{};
@@ -508,7 +540,7 @@ struct ExprNode {
       PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
       IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
       ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload,
-      RangeExprPayload>
+      RangeExprPayload, ChooseExprPayload>
       data;
 };
 
@@ -800,6 +832,7 @@ ExprNodePtr make_table_expr(SourceSpan span, std::vector<TableField> fields, boo
 ExprNodePtr make_function_expr(SourceSpan span, std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 ExprNodePtr make_deferred_expr(SourceSpan span, ExprNodePtr inner, FluidType type = FluidType::Unknown, bool type_explicit = false);
 ExprNodePtr make_range_expr(SourceSpan span, ExprNodePtr start, ExprNodePtr stop, bool inclusive);
+ExprNodePtr make_choose_expr(SourceSpan span, ExprNodePtr scrutinee, std::vector<ChooseCase> cases);
 std::unique_ptr<FunctionExprPayload> make_function_payload(std::vector<FunctionParameter> parameters, bool is_vararg, std::unique_ptr<BlockStmt> body, bool is_thunk = false, FluidType thunk_return_type = FluidType::Any);
 std::unique_ptr<BlockStmt> make_block(SourceSpan span, StmtNodeList statements);
 StmtNodePtr make_assignment_stmt(SourceSpan span, AssignmentOperator op, ExprNodeList targets, ExprNodeList values);
