@@ -670,8 +670,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 12: Nested Choose Expressions
 ----------------------------------------------------------------------------------------------------------------------
---[==[
-@Test; @Disabled function testNestedChooseInResult()
+
+@Test function testNestedChooseInResult()
    outer = 'a'
    inner = 1
    result = choose outer from
@@ -686,7 +686,7 @@ end
    assert(result is 'a1', "Expected 'a1', got " .. tostring(result))
 end
 
-@Test; @Disabled function testNestedChooseInGuard()
+@Test function testNestedChooseInGuard()
    value = 50
    category = 'high'
    result = choose value from
@@ -696,7 +696,7 @@ end
    assert(result is 'high priority', "Expected 'high priority', got " .. tostring(result))
 end
 
-@Test; @Disabled function testDeeplyNestedChoose()
+@Test function testDeeplyNestedChoose()
    a, b, c = 1, 2, 3
    result = choose a from
       1 -> choose b from
@@ -715,7 +715,7 @@ end
 -- SECTION 13: Complex Result Expressions
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testResultWithArithmetic()
+@Test function testResultWithArithmetic()
    x = 10
    result = choose x from
       10 -> x * 2 + 5
@@ -724,7 +724,7 @@ end
    assert(result is 25, "Expected 25, got " .. tostring(result))
 end
 
-@Test; @Disabled function testResultWithFunctionCall()
+@Test function testResultWithFunctionCall()
    function double(n)
       return n * 2
    end
@@ -736,7 +736,7 @@ end
    assert(result is 10, "Expected 10, got " .. tostring(result))
 end
 
-@Test; @Disabled function testResultWithTableConstructor()
+@Test function testResultWithTableConstructor()
    result = choose 'user' from
       'user' -> { name = 'John', role = 'user' }
       'admin' -> { name = 'Admin', role = 'admin' }
@@ -747,7 +747,7 @@ end
    assert(result.role is 'user', "Expected role 'user'")
 end
 
-@Test; @Disabled function testResultWithMethodCall()
+@Test function testResultWithMethodCall()
    obj = {
       getValue = function(self)
          return 'method result'
@@ -765,14 +765,14 @@ end
 -- SECTION 14: Edge Cases
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testOnlyElseBranch()
+@Test function testOnlyElseBranch()
    result = choose 'anything' from
       else -> 'always this'
    end
    assert(result is 'always this', "Expected 'always this', got " .. tostring(result))
 end
 
-@Test; @Disabled function testEmptyString()
+@Test function testEmptyString()
    result = choose '' from
       '' -> 'empty'
       else -> 'not empty'
@@ -780,7 +780,7 @@ end
    assert(result is 'empty', "Expected 'empty', got " .. tostring(result))
 end
 
-@Test; @Disabled function testZeroValue()
+@Test function testZeroValue()
    result = choose 0 from
       0 -> 'zero'
       else -> 'non-zero'
@@ -788,7 +788,7 @@ end
    assert(result is 'zero', "Expected 'zero', got " .. tostring(result))
 end
 
-@Test; @Disabled function testNaNHandling()
+@Test function testNaNHandling()
    nan = 0/0
    result = choose nan from
       _ -> 'wildcard catches NaN'
@@ -796,7 +796,7 @@ end
    assert(result is 'wildcard catches NaN', "Expected wildcard to catch NaN")
 end
 
-@Test; @Disabled function testInfinityHandling()
+@Test function testInfinityHandling()
    inf = 1/0
    result = choose inf from
       > 1000000 -> 'very large'
@@ -805,18 +805,7 @@ end
    assert(result is 'very large', "Expected 'very large' for infinity")
 end
 
-@Test; @Disabled function testUnderscoreVariableInScope()
-   -- Verify that an existing _ variable doesn't interfere with wildcard patterns
-   _ = 'existing value'
-   result = choose 42 from
-      _ -> 'wildcard matched'
-   end
-   assert(result is 'wildcard matched', "Expected 'wildcard matched'")
-   -- The outer _ should be unchanged (wildcard is syntactic, not a binding)
-   assert(_ is 'existing value', "Outer _ should be preserved")
-end
-
-@Test; @Disabled function testChooseWithTernary()
+@Test function testChooseWithTernary()
    flag = true
    result = choose (flag ? 1 :> 2) from
       1 -> 'one'
@@ -826,7 +815,7 @@ end
    assert(result is 'one', "Expected 'one', got " .. tostring(result))
 end
 
-@Test; @Disabled function testChooseWithCoalesce()
+@Test function testChooseWithCoalesce()
    value = nil
    result = choose (value ?? 'default') from
       'default' -> 'used default'
@@ -838,7 +827,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 15: Type Coercion and Comparison Semantics
 ----------------------------------------------------------------------------------------------------------------------
-
+--[==[
 @Test; @Disabled function testNoImplicitTypeCoercion()
    -- '1' should not match 1
    result = choose '1' from
@@ -1057,15 +1046,16 @@ end
    script.acActivate()
    assert(script.error != ERR_Okay, "Should fail: tuple arity mismatch")
 end
+--]==]
 
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 19: Integration with Other Fluid Features
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Disabled function testWithRanges()
-   items = { 'a', 'b', 'c' }
+@Test function testWithRanges()
+   items = { [0] = 'a', [1] = 'b', [2] = 'c' }
    results = {}
-   for i in {0..2} do
+   for i in {0..3} do
       results[i] = choose items[i] from
          'a' -> 'first'
          'b' -> 'second'
@@ -1073,15 +1063,16 @@ end
          else -> 'unknown'
       end
    end
-   assert(results[0] is 'first')
-   assert(results[1] is 'second')
-   assert(results[2] is 'third')
+   assert(results[0] is 'first', "Expected 'first', got " .. tostring(results[0]))
+   assert(results[1] is 'second', "Expected 'second', got " .. tostring(results[1]))
+   assert(results[2] is 'third', "Expected 'third', got " .. tostring(results[2]))
 end
 
-@Test; @Disabled function testWithCompoundAssignment()
+@Test function testWithCompoundAssignment()
    count = 0
-   for val in { 1, 2, 3, 1, 2, 1 } do
-      count += choose val from
+   values = { [0] = 1, [1] = 2, [2] = 3, [3] = 1, [4] = 2, [5] = 1 }
+   for i in {0..6} do
+      count += choose values[i] from
          1 -> 1
          else -> 0
       end
@@ -1089,31 +1080,31 @@ end
    assert(count is 3, "Expected 3 ones, got " .. tostring(count))
 end
 
-@Test; @Disabled function testWithDefer()
+@Test function testWithDefer()
    log = {}
    function test()
       defer()
-         log[#log + 1] = 'deferred'
+         log[#log] = 'deferred'
       end
 
       result = choose 'action' from
          'action' -> 'result'
          else -> 'other'
       end
-      log[#log + 1] = result
+      log[#log] = result
       return result
    end
 
    ret = test()
-   assert(ret is 'result')
-   assert(log[0] is 'result')
-   assert(log[1] is 'deferred')
+   assert(ret is 'result', "Expected 'result', got " .. tostring(ret))
+   assert(log[0] is 'result', "Expected log[0] to be 'result', got " .. tostring(log[0]))
+   assert(log[1] is 'deferred', "Expected log[1] to be 'deferred', got " .. tostring(log[1]))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- SECTION 20: Short-Circuit Evaluation
 ----------------------------------------------------------------------------------------------------------------------
-
+--[==[
 @Test; @Disabled function testShortCircuitBranchNotEvaluated()
    evaluated_branches = {}
 

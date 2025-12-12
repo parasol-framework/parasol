@@ -33,14 +33,12 @@ detailed syntax specifications, semantic rules, and design rationale, refer to
 - No-match fallback emits nil via `materialise_to_reg(nilv, result_reg, ...)`
 - Escape jumps added for no-else cases to skip nil fallback when pattern matches
 
-### Next Steps: Phase 12 (Nested Choose & Complex Results)
-Phase 11 (Statement Context) is now complete. The next phase is:
-1. Support `choose` in result expressions (nested choose)
-2. Support `choose` in guard expressions
-3. Support deeply nested `choose` expressions
-4. Support complex result expressions (arithmetic, function calls, tables, methods)
+### Next Steps: Phase 15 (Short-Circuit Evaluation)
+Phase 14 (Integration with Fluid Features) is now complete. The next phase is:
+1. Ensure unmatched branches are not evaluated
+2. Ensure guards are not evaluated when pattern fails
 
-**Tests to enable:** Section 12-13 in `test_choose_from.fluid`
+**Tests to enable:** Section 20 in `test_choose_from.fluid`
 
 ### Known Quirks
 - String patterns required a lookahead fix in `parse_suffixed()` (lines 2222-2228) to prevent Lua's implicit call
@@ -53,7 +51,7 @@ Phase 11 (Statement Context) is now complete. The next phase is:
 - Wildcard `_` detection updated to check for both `_ ->` and `_ when` to distinguish from blank identifier
 - Table patterns use `type()` function call for type checking (no dedicated bytecode)
 - Tuple patterns with all wildcards `(_, _)` are treated as catch-all (is_wildcard = true)
-- Tests: `test_choose_from.fluid` (63 tests covering Phases 1-11)
+- Tests: `test_choose_from.fluid` (80 tests covering Phases 1-14)
 
 ---
 
@@ -269,44 +267,66 @@ Phase 11 (Statement Context) is now complete. The next phase is:
 - Function calls as results work as expressions (their return value is the result)
 - Tests in `test_choose_from.fluid` Section 11 (2 tests passing)
 
-### Phase 12: Nested Choose & Complex Results
-- [ ] Support `choose` in result expressions
-- [ ] Support `choose` in guard expressions
-- [ ] Support deeply nested `choose`
-- [ ] Support complex result expressions (arithmetic, function calls, tables, methods)
-- [ ] Enable test: `testNestedChooseInResult`
-- [ ] Enable test: `testNestedChooseInGuard`
-- [ ] Enable test: `testDeeplyNestedChoose`
-- [ ] Enable test: `testResultWithArithmetic`
-- [ ] Enable test: `testResultWithFunctionCall`
-- [ ] Enable test: `testResultWithTableConstructor`
-- [ ] Enable test: `testResultWithMethodCall`
+### Phase 12: Nested Choose & Complex Results ✅ COMPLETE (2025-12-12)
+- [x] Support `choose` in result expressions
+- [x] Support `choose` in guard expressions
+- [x] Support deeply nested `choose`
+- [x] Support complex result expressions (arithmetic, function calls, tables, methods)
+- [x] Enable test: `testNestedChooseInResult`
+- [x] Enable test: `testNestedChooseInGuard`
+- [x] Enable test: `testDeeplyNestedChoose`
+- [x] Enable test: `testResultWithArithmetic`
+- [x] Enable test: `testResultWithFunctionCall`
+- [x] Enable test: `testResultWithTableConstructor`
+- [x] Enable test: `testResultWithMethodCall`
 
-### Phase 13: Edge Cases & Type Semantics
-- [ ] Handle empty string matching
-- [ ] Handle zero value matching
-- [ ] Handle NaN with wildcard
-- [ ] Handle infinity with relational patterns
-- [ ] Ensure no implicit type coercion
-- [ ] Support `choose` with only `else` branch
-- [ ] Enable test: `testOnlyElseBranch`
-- [ ] Enable test: `testEmptyString`
-- [ ] Enable test: `testZeroValue`
-- [ ] Enable test: `testNaNHandling`
-- [ ] Enable test: `testInfinityHandling`
-- [ ] Enable test: `testNoImplicitTypeCoercion`
+**Implementation Notes:**
+- No code changes required - the parser's use of `parse_expression()` for result expressions already supports all expression types
+- Nested choose works via standard recursive expression parsing/emission
+- Guards already supported via `parse_expression()` with `in_guard_expression` flag
+- Tests in `test_choose_from.fluid` Sections 12-13 (7 tests passing)
 
-### Phase 14: Integration with Fluid Features
-- [ ] Verify interaction with ternary operator
-- [ ] Verify interaction with coalesce operator `??`
-- [ ] Verify interaction with ranges
-- [ ] Verify interaction with compound assignment
-- [ ] Verify interaction with `defer`
-- [ ] Enable test: `testChooseWithTernary`
-- [ ] Enable test: `testChooseWithCoalesce`
-- [ ] Enable test: `testWithRanges`
-- [ ] Enable test: `testWithCompoundAssignment`
-- [ ] Enable test: `testWithDefer`
+### Phase 13: Edge Cases & Type Semantics ✅ COMPLETE (2025-12-12)
+- [x] Handle empty string matching
+- [x] Handle zero value matching
+- [x] Handle NaN with wildcard
+- [x] Handle infinity with relational patterns
+- [x] Support `choose` with only `else` branch
+- [x] Verify interaction with ternary operator
+- [x] Verify interaction with coalesce operator `??`
+- [x] Enable test: `testOnlyElseBranch`
+- [x] Enable test: `testEmptyString`
+- [x] Enable test: `testZeroValue`
+- [x] Enable test: `testNaNHandling`
+- [x] Enable test: `testInfinityHandling`
+- [x] Enable test: `testChooseWithTernary`
+- [x] Enable test: `testChooseWithCoalesce`
+- [ ] Enable test: `testNoImplicitTypeCoercion` (deferred - in Section 15)
+
+**Implementation Notes:**
+- No code changes required - edge cases work naturally with existing bytecode generation
+- Empty string `''` matches via standard ISNES bytecode
+- Zero `0` matches via standard ISNEN bytecode
+- NaN handled by wildcard `_` (NaN never equals itself, so literal patterns won't match)
+- Infinity handled correctly by relational patterns (`> 1000000` matches `inf`)
+- `else`-only branch works - generates no pattern checks, directly executes else result
+- Ternary and coalesce operators work in scrutinee position via standard expression parsing
+- Tests in `test_choose_from.fluid` Section 14 (7 tests passing)
+
+### Phase 14: Integration with Fluid Features ✅ COMPLETE (2025-12-12)
+- [x] Verify interaction with ranges
+- [x] Verify interaction with compound assignment
+- [x] Verify interaction with `defer`
+- [x] Enable test: `testWithRanges`
+- [x] Enable test: `testWithCompoundAssignment`
+- [x] Enable test: `testWithDefer`
+
+**Implementation Notes:**
+- No code changes required - `choose` expressions integrate naturally with other Fluid features
+- Works inside `for` loops with range iteration
+- Works with compound assignment operators (`+=`)
+- Works correctly with `defer` blocks (defer executes after function returns)
+- Tests in `test_choose_from.fluid` Section 19 (3 tests passing)
 
 ### Phase 15: Short-Circuit Evaluation
 - [ ] Ensure unmatched branches are not evaluated
