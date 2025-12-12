@@ -1928,9 +1928,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    }
 
    ExpDesc rhs = list.value_ref();
-   ExpressionValue rhs_value(&this->func_state, rhs);
-   rhs_value.discharge();
-   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
    bcemit_store(&this->func_state, &target.storage, &rhs);
 
    check_nil.patch_to(BCPos(assign_pos));
@@ -2021,9 +2018,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
    }
 
    ExpDesc rhs = list.value_ref();
-   ExpressionValue rhs_value(&this->func_state, rhs);
-   rhs_value.discharge();
-   this->materialise_to_reg(rhs_value.legacy(), lhs_reg, "assignment RHS");
    bcemit_store(&this->func_state, &target.storage, &rhs);
 
    check_nil.patch_to(BCPos(assign_pos));
