@@ -2,16 +2,13 @@
 
 This file provides guidance to Agentic programs when working with code in this repository.
 
-## Build System and Common Commands
-
-Parasol uses CMake for building. It can be built as either modular (shared libraries) or static libraries.
-
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON -DENABLE_UNIT_TESTS=ON`
-- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/debug-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DENABLE_UNIT_TESTS=ON`
-- Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
+- Debug: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
+- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON -DENABLE_UNIT_TESTS=ON`
+- Modular/Static builds: Use `-DPARASOL_STATIC=OFF` for modular builds and `-DPARASOL_STATIC=OFF` for static.
+- Prefer to use a Debug build.
 
 **Build and install:**
 - Build and install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents --config [BuildType]`
@@ -27,7 +24,7 @@ Parasol uses CMake for building. It can be built as either modular (shared libra
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
 
 **Verify:**
-- If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.
+- If a `build/agents` folder already exists, check if the configuration is `Release` or `Debug` before using it for the first time.  Prefer `Debug` if both are in use.
 - You can inspect the version, git commit hash and build type of the build by running `parasol` with `--version`.
 
 ### CMake Configuration Options
@@ -84,7 +81,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Unique engine built on LuaJIT 2.1 for performance and extensively modified for C++, utilising C++20 capabilities.
 - Provides high-level access to all framework APIs
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
-- Test scripts use `.fluid` extension
+- All Fluid scripts use `.fluid` extension
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
 - The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
