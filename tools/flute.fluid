@@ -116,8 +116,8 @@ function runTests()
    global glTestTotal = 0
    global glTestsPassed = 0
 
-   err, t = mSys.AnalysePath(glFile)
-   if (err != ERR_Okay) or (t != LOC_FILE) then
+   err, glFile = mSys.ResolvePath(glFile)
+   if err != ERR_Okay then
       print("The targeted source file doesn't exist: " .. glFile)
       return
    end

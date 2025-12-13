@@ -79,6 +79,15 @@ public:
    // Called AFTER evaluating RHS to emit BC_CAT instruction with chaining support
    void complete_concat(ExprValue left, ExpDesc right);
 
+   // Bitwise operator - preparation phase
+   // Called BEFORE evaluating RHS to reserve call frame registers for bit.* library call
+   // This ensures RHS is evaluated into the correct argument register
+   void prepare_bitwise(ExprValue left);
+
+   // Bitwise operator - completion phase
+   // Called AFTER evaluating RHS to emit bit.* library call
+   void complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right);
+
    // Presence check operator (x?)
    // Emits bytecode to check if value is truthy (extended falsey semantics)
    // Returns boolean: true if truthy, false if falsey (nil, false, 0, "")

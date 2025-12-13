@@ -268,7 +268,16 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
                   }
                   else log.warning("Unknown JIT option \"%s\" specified.", trimmed.c_str());
                }
+
                log.msg("JIT options \"%s\" set to $%.8x", value.c_str(), (uint32_t)glJitOptions);
+
+               if (glJitOptions != JOF::NIL) {
+                  if (GetResource(RES::LOG_LEVEL) < 5) {
+                     // Automatically raise the log level to see JIT messages.  Helpful for AI
+                     // agents that forget this requirement.
+                     SetResource(RES::LOG_LEVEL, 5);
+                  }
+               }
             }
             else log.warning("No value for --jit-options");
          }
