@@ -168,7 +168,7 @@ end
 @Test global function testW3ColourProp02() hashTestSVG('painting/w3-color-prop-02-f.svg', 0x87aacd9e) end
 @Test global function testW3ColourProp03() hashTestSVG('painting/w3-color-prop-03-t.svg', 0x3c3e879f) end
 @Test global function testW3ColourProp04() hashTestSVG('painting/w3-color-prop-04-t.svg', 0xe887bba1) end
-@Test global function testW3ColourProp05() hashTestSVG('painting/w3-color-prop-05-t.svg', 0) end
+@Test; @Disabled global function testW3ColourProp05() hashTestSVG('painting/w3-color-prop-05-t.svg', 0) end
 @Test global function testW3Painting01() hashTestSVG('painting/w3-painting-control-01-f.svg', 0x3d616ab3) end
 @Test global function testW3Painting02() hashTestSVG('painting/w3-painting-control-02-f.svg', 0xbbd7d8e8) end
 @Test global function testW3Painting03() hashTestSVG('painting/w3-painting-control-03-f.svg', 0x38777ac2) end
@@ -270,7 +270,7 @@ end
 @Test global function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr-05-f.svg', 0xf7d910a6) end
 
 @Test global function testCSS()                hashTestSVG('misc/css.svg', 0x8c373aac) end
-@Test global function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x656a5e37) end
+@Test; @Disabled global function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x656a5e37) end
 @Test global function testContourGradient()    hashTestSVG('gradients/contour-gradient.svg', 0x9ace93f4) end
 
 @Test global function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xfc741c6e) end

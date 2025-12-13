@@ -375,19 +375,35 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
 
    // If base is the same as LHS or RHS register, we must move that operand first before
    // loading callee to base. This prevents clobbering.
+   // Note: Only NonReloc needs checking here because:
+   // - Local slots are always < nactvar, but base is always >= nactvar (from bcemit_bit_call)
+   // - Relocable expressions don't have an assigned register yet
+   // - Constants don't occupy registers
    bool lhs_was_base = (lhs->k IS ExpKind::NonReloc and lhs->u.s.info IS base);
    bool rhs_was_base = (rhs->k IS ExpKind::NonReloc and rhs->u.s.info IS base);
 
+   // Save original ExpDesc values before any moves. This is critical when both operands
+   // are at the base register (same expression or aliased). After moving LHS, the original
+   // register value is needed to correctly move RHS.
+   ExpDesc lhs_original = *lhs;
+   ExpDesc rhs_original = *rhs;
+
+   // Defensive assertions: verify our assumptions about register allocation
+   fs_check_assert(fs, not (lhs->k IS ExpKind::Local and lhs->u.s.info IS base),
+      "unexpected: Local at base register (base should be >= nactvar)");
+   fs_check_assert(fs, not (rhs->k IS ExpKind::Local and rhs->u.s.info IS base),
+      "unexpected: Local at base register (base should be >= nactvar)");
+
    if (lhs_was_base) {
-      // LHS is at base, move it to arg1 first
-      ExpressionValue lhs_value(fs, *lhs);
+      // LHS is at base, move it to arg1 first (use original value)
+      ExpressionValue lhs_value(fs, lhs_original);
       lhs_value.to_reg(allocator, arg1);
       *lhs = lhs_value.legacy();
    }
 
    if (rhs_was_base) {
-      // RHS is at base, move it to arg2 first
-      ExpressionValue rhs_value(fs, *rhs);
+      // RHS is at base, move it to arg2 first (use original value)
+      ExpressionValue rhs_value(fs, rhs_original);
       rhs_value.to_reg(allocator, BCReg(arg2));
       *rhs = rhs_value.legacy();
    }
@@ -480,7 +496,7 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
    else base = fs->freereg;
 
    allocator.reserve(BCReg(1));  // Reserve for callee
-   if (LJ_FR2) allocator.reserve(BCReg(1));
+   allocator.reserve(BCReg(1));
    allocator.reserve(BCReg(2));  // Reserve for arguments
    fs_check_assert(fs,!fname.empty(), "bitlib name missing for bitwise operator");
    bcemit_shift_call_at_base(fs, fname, lhs, rhs, base);
@@ -497,7 +513,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
    BCReg arg_reg = BCReg(int(base) + 1  + 1);
 
    allocator.reserve(BCReg(1));  // Reserve for callee
-   if (LJ_FR2) allocator.reserve(BCReg(1));  // Reserve for frame link on x64
+   allocator.reserve(BCReg(1));  // Reserve for frame link on x64
 
    // Place argument in register.
 
@@ -773,16 +789,16 @@ void OperatorEmitter::prepare_bitwise(ExprValue left)
    }
 
    // Calculate base register for the call frame
-   BCREG base = fs->freereg;
+   BCREG frame_base = fs->freereg;
 
    // Reserve: callee slot
    local_alloc.reserve(BCReg(1));
 
-   // Reserve: frame link slot (LJ_FR2)
-   if (LJ_FR2) local_alloc.reserve(BCReg(1));
+   // Reserve: frame link slot
+   local_alloc.reserve(BCReg(1));
 
    // Move LHS to arg1 slot (base+2 with LJ_FR2)
-   BCREG arg1 = base + 1 + LJ_FR2;
+   BCREG arg1 = frame_base + 1 + LJ_FR2;
    ExpressionValue lhs_to_arg1(fs, *left_desc);
    lhs_to_arg1.to_reg(local_alloc, BCReg(arg1));
    *left_desc = lhs_to_arg1.legacy();
@@ -794,11 +810,11 @@ void OperatorEmitter::prepare_bitwise(ExprValue left)
    // Store base in aux field and set flag so complete_bitwise can retrieve it
    ExprFlag saved_flags = left_desc->flags;
    left_desc->flags = saved_flags | ExprFlag::BitwiseBase;
-   left_desc->u.s.aux = base;
+   left_desc->u.s.aux = frame_base;
 
    if (should_trace_operators(fs)) {
-      pf::Log("Parser").msg("[%d] prepare_bitwise: base=%d, arg1=%d, freereg=%d (arg2 slot)",
-         fs->ls->linenumber, base, arg1, fs->freereg);
+      pf::Log("Parser").msg("[%d] prepare_bitwise: frame_base=%d, arg1=%d, freereg=%d (arg2 slot)",
+         fs->ls->linenumber, frame_base, arg1, fs->freereg);
    }
 }
 
@@ -820,15 +836,13 @@ void OperatorEmitter::complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right
       return;
    }
 
-   // Get the base register from aux field
-   BCREG base;
-   if (expr_consume_flag(lhs, ExprFlag::BitwiseBase)) {
-      base = lhs->u.s.aux;
-   }
-   else {
-      // Fallback: shouldn't happen if prepare_bitwise was called
-      base = fs->freereg;
-   }
+   // Get the base register from aux field (set by prepare_bitwise)
+
+   fs_check_assert(fs, has_flag(lhs->flags, ExprFlag::BitwiseBase),
+      "complete_bitwise called without prepare_bitwise (missing BitwiseBase flag)");
+
+   (void)expr_consume_flag(lhs, ExprFlag::BitwiseBase);
+   BCREG base = lhs->u.s.aux;
 
    BCREG arg1 = base + 1 + LJ_FR2;
    BCREG arg2 = arg1 + 1;
@@ -884,8 +898,7 @@ void OperatorEmitter::complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right
    *lhs = lhs_discharge.legacy();
 
    if (should_trace_operators(fs)) {
-      pf::Log("Parser").msg("[%d] complete_bitwise %s: emitted call at base=%d",
-         fs->ls->linenumber, get_binop_name(opr), base);
+      pf::Log("Parser").msg("[%d] complete_bitwise %s: emitted call at base=%d", fs->ls->linenumber, get_binop_name(opr), base);
    }
 }
 

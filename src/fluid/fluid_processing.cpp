@@ -198,7 +198,7 @@ static int processing_flush(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: task = processing.task()
 //
-// Returns a Fluid object that references the current task.
+// Returns an object that references the current task.
 
 static int processing_task(lua_State *Lua)
 {

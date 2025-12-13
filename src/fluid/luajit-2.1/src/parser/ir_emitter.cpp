@@ -2385,20 +2385,18 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // Calculate base register for the call frame.
    // Check if LHS is at the top of the stack to avoid orphaning registers when chaining
    // operations (e.g., 1 | 2 | 4 produces AST: (1 | 2) | 4, so LHS is the previous result).
-   BCREG base;
+   BCREG call_base;
    if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->nactvar and lhs.u.s.info + 1 IS fs->freereg) {
       // LHS is at the top - reuse its register to avoid orphaning
-      base = lhs.u.s.info;
+      call_base = lhs.u.s.info;
    }
-   else {
-      base = fs->freereg;
-   }
+   else call_base = fs->freereg;
 
    CSTRING op_name = priority[int(opr)].name;
    size_t op_name_len = priority[int(opr)].name_len;
 
    // Calculate argument slots
-   BCREG arg1 = base + 1 + LJ_FR2;
+   BCREG arg1 = call_base + 1 + LJ_FR2;
    BCREG arg2 = arg1 + 1;
 
    // Convert LHS to value form
@@ -2407,7 +2405,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    lhs = lhs_toval.legacy();
 
    // Check if LHS is at base (for chaining). If so, move it before loading callee.
-   bool lhs_was_base = (lhs.k IS ExpKind::NonReloc and lhs.u.s.info IS base);
+   bool lhs_was_base = (lhs.k IS ExpKind::NonReloc and lhs.u.s.info IS call_base);
    if (lhs_was_base) {
       ExpressionValue lhs_to_arg1(fs, lhs);
       lhs_to_arg1.to_reg(allocator, BCReg(arg1));
@@ -2417,28 +2415,32 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // Ensure freereg is past the call frame to prevent callee loading from clobbering
    if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
 
-   // Load bit.fname to base FIRST (this matches explicit bit.band() bytecode pattern)
-   // Critical for JIT compatibility - JIT expects callee loaded before arguments
+   // Sequence for JIT compatibility (matches explicit bit.band() bytecode pattern):
+   // 1. Check and move any operands (e.g., LHS) that conflict with the call_base register.
+   // 2. Load bit.fname (the callee) to the call_base register.
+   // 3. Move any remaining operands as needed.
+   // Critical for JIT compatibility - JIT expects callee loaded before arguments.
+
    ExpDesc callee, key;
    callee.init(ExpKind::Global, 0);
    callee.u.sval = this->lex_state.keepstr("bit");
 
-   // Discharge Global directly to base register (GGET base, "bit")
+   // Discharge Global directly to call_base register (GGET call_base, "bit")
    ExpressionValue callee_val(fs, callee);
-   callee_val.to_reg(allocator, BCReg(base));
+   callee_val.to_reg(allocator, BCReg(call_base));
    callee = callee_val.legacy();
 
-   // Now index into the table at base (TGETS base, base, "fname")
+   // Now index into the table at call_base (TGETS call_base, call_base, "fname")
    key.init(ExpKind::Str, 0);
    key.u.sval = this->lex_state.keepstr(std::string_view(op_name, op_name_len));
    expr_index(fs, &callee, &key);
 
-   // Discharge the indexed result to base (in-place, like explicit bit.band)
+   // Discharge the indexed result to call_base (in-place, like explicit bit.band)
    ExpressionValue callee_indexed(fs, callee);
-   callee_indexed.to_reg(allocator, BCReg(base));
+   callee_indexed.to_reg(allocator, BCReg(call_base));
    callee = callee_indexed.legacy();
 
-   // Now move LHS to arg1 if it wasn't at base
+   // Now move LHS to arg1 if it wasn't at call_base
    if (not lhs_was_base) {
       ExpressionValue lhs_to_arg1(fs, lhs);
       lhs_to_arg1.to_reg(allocator, BCReg(arg1));
@@ -2462,9 +2464,9 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // Emit CALL instruction
    fs->freereg = arg2 + 1;
    lhs.k = ExpKind::Call;
-   lhs.u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
-   lhs.u.s.aux = base;
-   fs->freereg = base + 1;
+   lhs.u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, call_base, 2, fs->freereg - call_base - LJ_FR2));
+   lhs.u.s.aux = call_base;
+   fs->freereg = call_base + 1;
 
    // Discharge call result
    ExpressionValue result_val(fs, lhs);
