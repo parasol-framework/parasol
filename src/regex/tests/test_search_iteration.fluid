@@ -1,6 +1,6 @@
 -- Search iteration behaviour and result normalisation
 
-function testSearchFindsAllMatches()
+@Test function testSearchFindsAllMatches()
    local matcher = regex.new("\\d+")
    local results = matcher.search("a1b22c333")
    assert(results and #results is 3, "Search should locate all numeric runs")
@@ -9,13 +9,13 @@ function testSearchFindsAllMatches()
    assert(results[2][0] is "333", "Third match should capture final run")
 end
 
-function testSearchReturnsNilWhenMissing()
+@Test function testSearchReturnsNilWhenMissing()
    local matcher = regex.new("xyz")
    local results = matcher.search("abc")
    assert(results is nil, "Search should return nil when no results are found")
 end
 
-function testSearchProvidesFullAndGroup()
+@Test function testSearchProvidesFullAndGroup()
    local matcher = regex.new("(ab)c?")
    local results = matcher.search("ab cab abc")
    assert(results and #results is 2, "Search should record both matches")
@@ -23,25 +23,15 @@ function testSearchProvidesFullAndGroup()
    assert(results[1][0] is "abc" and results[1][1] is "ab", "Second match should show shared capture")
 end
 
-function testSearchNotNullFlag()
+@Test function testSearchNotNullFlag()
    local matcher = regex.new("a*")
    local results = matcher.search("bbb", regex.NOT_NULL)
    assert(results is nil, "NOT_NULL should filter out zero length matches in search")
 end
 
-function testSearchContinuousFlag()
+@Test function testSearchContinuousFlag()
    local matcher = regex.new("\\w+")
    local results = matcher.search("skip this", regex.CONTINUOUS)
    assert(results and #results is 1, "CONTINUOUS should only match from start of string")
    assert(results[0][0] is "skip", "Match should represent prefix token")
 end
-
-return {
-   tests = {
-      testSearchFindsAllMatches,
-      testSearchReturnsNilWhenMissing,
-      testSearchProvidesFullAndGroup,
-      testSearchNotNullFlag,
-      testSearchContinuousFlag
-   }
-}

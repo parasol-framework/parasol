@@ -25,6 +25,8 @@ public:
 
 private:
    ParserContext& ctx;
+   bool in_guard_expression = false;  // True when parsing 'when' clause guard expression
+   bool in_choose_expression = false; // True when parsing choose expression cases (for tuple pattern detection)
 
    struct BinaryOpInfo {
       AstBinaryOperator op = AstBinaryOperator::Add;
@@ -49,6 +51,7 @@ private:
    ParserResult<StmtNodePtr> parse_defer();
    ParserResult<StmtNodePtr> parse_return();
    ParserResult<StmtNodePtr> parse_expression_stmt();
+   ParserResult<ExprNodePtr> parse_choose_expr();
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr base);

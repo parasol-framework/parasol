@@ -1,15 +1,12 @@
 -- Flute tests for the blank identifier (_) feature
 -- The blank identifier allows explicitly ignoring values in assignments and for loops
 
-@BeforeEach(hotpath=true) 
-function enforce_hotpath() end
-
-@Test function testBasicAssignment()
+@Test(hotpath=true) function testBasicAssignment()
    x, _ = 10, 20
    assert(x is 10, "Failed basic assignment: expected x=10, got " .. x)
 end
 
-@Test function testBlankFirst()
+@Test(hotpath=true) function testBlankFirst()
    _, x = 10, 20
    assert(x is 20, "Failed blank first: expected x=20, got " .. x)
 end
@@ -19,13 +16,13 @@ end
    assert(x is 10, "Failed blank last: expected x=10, got " .. x)
 end
 
-@Test function testBlankMiddle()
+@Test(hotpath=true) function testBlankMiddle()
    x, _, y = 1, 2, 3
    assert(x is 1, "Failed blank middle: expected x=1, got " .. x)
    assert(y is 3, "Failed blank middle: expected y=3, got " .. y)
 end
 
-@Test function testMultipleBlanks()
+@Test(hotpath=true) function testMultipleBlanks()
    _, _, x = 1, 2, 3
    assert(x is 3, "Failed multiple blanks: expected x=3, got " .. x)
 end
@@ -35,12 +32,12 @@ end
    _, _, _ = 1, 2, 3
 end
 
-@Test function testBlankWithNil()
+@Test(hotpath=true) function testBlankWithNil()
    x, _ = 10, nil
    assert(x is 10, "Failed blank with nil: expected x=10, got " .. x)
 end
 
-@Test function testBlankPartialAssignment()
+@Test(hotpath=true) function testBlankPartialAssignment()
    -- When RHS has fewer values than LHS, blanks still work
    x, _, y = 10, 20
    assert(x is 10, "Failed partial assignment: expected x=10, got " .. x)
@@ -49,7 +46,7 @@ end
 
 -- For loop tests
 
-@Test function testForLoopBlankIndex()
+@Test(hotpath=true) function testForLoopBlankIndex()
    t = {10, 20, 30}
    sum = 0
    for _, value in ipairs(t) do
@@ -58,7 +55,7 @@ end
    assert(sum is 60, "Failed for loop blank index: expected sum=60, got " .. sum)
 end
 
-@Test function testForLoopBlankValue()
+@Test(hotpath=true) function testForLoopBlankValue()
    t = {10, 20, 30}
    count = 0
    for i, _ in ipairs(t) do
@@ -67,7 +64,7 @@ end
    assert(count is 3, "Failed for loop blank value: expected count=3, got " .. count)
 end
 
-@Test function testForLoopPairsBlank()
+@Test(hotpath=true) function testForLoopPairsBlank()
    t = {a=1, b=2, c=3}
    sum = 0
    for _, val in pairs(t) do
@@ -76,7 +73,7 @@ end
    assert(sum is 6, "Failed for loop pairs blank: expected sum=6, got " .. sum)
 end
 
-@Test function testForLoopPairsBlankValue()
+@Test(hotpath=true) function testForLoopPairsBlankValue()
    t = {a=1, b=2, c=3}
    keys = {}
    for key, _ in pairs(t) do
@@ -85,7 +82,7 @@ end
    assert(#keys is 3, "Failed for loop pairs blank value: expected 3 keys, got " .. #keys)
 end
 
-@Test function testForLoopMultipleBlanks()
+@Test(hotpath=true) function testForLoopMultipleBlanks()
    -- In generic for, only first variable can be omitted in standard Lua
    -- Additional blanks still work
    t = {10, 20, 30}
@@ -98,7 +95,7 @@ end
 
 -- Function return tests
 
-@Test function testFunctionReturn()
+@Test(hotpath=true) function testFunctionReturn()
    function getValues()
       return 1, 2, 3
    end
@@ -106,7 +103,7 @@ end
    assert(x is 3, "Failed function return: expected x=3, got " .. x)
 end
 
-@Test function testFunctionReturnBlankFirst()
+@Test(hotpath=true) function testFunctionReturnBlankFirst()
    function getValues2()
       return 10, 20
    end
@@ -116,7 +113,7 @@ end
 
 -- Edge cases
 
-@Test function testNestedFunctions()
+@Test(hotpath=true) function testNestedFunctions()
    function outer()
       _, x = 1, 2
       return x
@@ -125,7 +122,7 @@ end
    assert(result is 2, "Failed nested function: expected result=2, got " .. result)
 end
 
-@Test function testMultipleStatements()
+@Test(hotpath=true) function testMultipleStatements()
    x, _ = 10, 20
    _, y = 30, 40
    assert(x is 10, "Failed multiple statements: expected x=10, got " .. x)
@@ -168,7 +165,7 @@ end
    assert(newvar is 7, "Failed mixed with existing: expected newvar=7, got " .. newvar)
 end
 
-@Test function testMixedSequentialAssignments()
+@Test(hotpath=true) function testMixedSequentialAssignments()
    -- Multiple sequential assignments mixing blanks and new locals
    _, p = 1, 2
    q, _ = 3, 4
@@ -178,7 +175,7 @@ end
    assert(r is 6, "Failed sequential: expected r=6, got " .. r)
 end
 
-@Test function testBlankInTable()
+@Test(hotpath=true) function testBlankInTable()
    -- Blank identifiers work with table destructuring patterns
    t = {1, 2, 3}
    _, _, x = t[0], t[1], t[2]
@@ -187,7 +184,7 @@ end
 
 -- Non-local assignment tests
 
-@Test function testNonLocalAssignment()
+@Test(hotpath=true) function testNonLocalAssignment()
    -- Blank identifier in non-local assignment (not local declaration)
    local function getValues()
       return 1, 2, 3
@@ -202,7 +199,7 @@ end
    -- No assertion needed - just verify it doesn't error
 end
 
-@Test function testNonLocalInFunction()
+@Test(hotpath=true) function testNonLocalInFunction()
    -- Non-local assignment inside a function
    function test()
       global _, x = 10, 20
@@ -210,4 +207,35 @@ end
    end
    result = test()
    assert(result is 20, "Failed non-local in function: expected result=20, got " .. result)
+end
+
+-- Error case tests
+
+@Test function testBlankReadError()
+   script = obj.new('fluid', { statement = [[ return _ ]] })
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
+end
+
+@Test function testBlankReadInExpressionError() -- Reading blank identifier in an expression context should fail
+   script = obj.new('fluid', { statement = [[ print(_) ]] })
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
+end
+
+@Test function testBlankReadInConcatError() -- Reading blank identifier in string concatenation should fail
+   script = obj.new('fluid', { statement = "x = 'test' .. _" })
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
+end
+
+@Test function testBlankReadInArithmeticError()
+   -- Reading blank identifier in arithmetic should fail
+   script = obj.new('fluid', { statement = "x = 1 + _" })
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
 end

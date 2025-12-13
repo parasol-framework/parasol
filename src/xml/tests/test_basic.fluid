@@ -1,12 +1,20 @@
 -- Flute tests for XML
 
+@BeforeAll function init(State)
+   global glXML = obj.new("xml", { path = State.folder .. "test.xml" })
+end
+
+@AfterAll function cleanup()
+   glXML = nil
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Check that the Tags array works as expected when used in Fluid
 
-function testTagsArray()
-   local tags = glXML.tags
+@Test function testTagsArray()
+   tags = glXML.tags
 
-   local expected = 2
+   expected = 2
    assert(#tags is expected, "Expected a tag count of " .. expected)
 
    expected = 7
@@ -16,10 +24,10 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test the FindTag() callbacks and GetTag() method.
 
-function testIndexing()
-   local totalFunctions = 0
+@Test function testIndexing()
+   totalFunctions = 0
 
-   local err, index, taglist = glXML.mtSearch("/book/function", function(XML, TagID, Attrib)
+   err, index, taglist = glXML.mtSearch("/book/function", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
 
       if #func.attribs > 0 then
@@ -38,11 +46,11 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test the GetAttrib() method
 
-function testGetAttrib()
-   local err, index = glXML.mtSearch("/book/function/input/param")
+@Test function testGetAttrib()
+   err, index = glXML.mtSearch("/book/function/input/param")
    assert(err is ERR_Okay, "Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
 
-   local err, value = glXML.mtGetAttrib(index, 'type')
+   err, value = glXML.mtGetAttrib(index, 'type')
    assert(err is ERR_Okay, "Failed to retrieve 'type' attribute, error: " .. mSys.GetErrorMsg(err))
 
    if (value != 'struct rkFont *') then
@@ -52,16 +60,16 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testSerialise()
-   local err, str = glXML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+@Test function testSerialise()
+   err, str = glXML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
    assert(err is ERR_Okay, "Serialise() failed.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test that line number counting works correctly
 
-function testLineCount()
-   local xml_content = [[<?xml version="1.0"?>
+@Test function testLineCount()
+   xml_content = [[<?xml version="1.0"?>
 <root>
    <item>First</item>
    <item>Second</item>
@@ -70,25 +78,25 @@ function testLineCount()
    </item>
 </root>]]
 
-   local _, newline_count = xml_content:gsub('\n', '')
+   _, newline_count = xml_content:gsub('\n', '')
 
-   local expected_lines = newline_count
+   expected_lines = newline_count
    if xml_content:sub(-1) != '\n' then
       expected_lines = expected_lines + 1
    end
 
-   local xml = obj.new("xml", { statement = xml_content })
+   xml = obj.new("xml", { statement = xml_content })
    assert(xml.lineNo is expected_lines, "Expected line count of " .. expected_lines .. " but got " .. xml.lineNo)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testSort()
-   local err = glXML.mtSort('/book', 'name')
+@Test function testSort()
+   err = glXML.mtSort('/book', 'name')
    assert(err is ERR_Okay, 'Attempt to sort failed: ' .. mSys.GetErrorMsg(err))
 
    local first, last
-   local err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
+   err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
       print(func.children[0].attribs[0].value)
       if (not first) then first = func.children[0].attribs[0].value end
@@ -99,22 +107,3 @@ function testSort()
    assert(first is "A.FirstFunction", "List not sorted as expected.")
    assert(last is "Z.LastFunction", "List not sorted as expected.")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testTagsArray,
-         testIndexing,
-         testGetAttrib,
-         testSerialise,
-         testLineCount,
-         testSort
-      },
-      init = function(ScriptFolder)
-         global glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
-      end,
-      cleanup = function()
-         glXML = nil
-      end
-   }

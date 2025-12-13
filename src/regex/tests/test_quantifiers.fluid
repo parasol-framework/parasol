@@ -1,6 +1,6 @@
 -- Coverage for quantifiers, alternation precedence, and optional constructs
 
-function testGreedyAndLazy()
+@Test function testGreedyAndLazy()
    local greedy = regex.new("<.+>")
    local lazy = regex.new("<.+?>")
    local text = "<em>bold</em>"
@@ -12,38 +12,28 @@ function testGreedyAndLazy()
    assert(match[0][0] is "<em>", "Lazy quantifier should stop at first closing bracket, got " .. tostring(match[0][0]))
 end
 
-function testBoundedQuantifier()
+@Test function testBoundedQuantifier()
    local matcher = regex.new("^\\d{2,4}$")
    assert(matcher.test("42"), "Lower bound of range should pass")
    assert(matcher.test("1234"), "Upper bound of range should pass")
    assert(not matcher.test("12345"), "Values beyond upper bound should fail")
 end
 
-function testOptionalGroup()
+@Test function testOptionalGroup()
    local matcher = regex.new("colou?r")
    assert(matcher.test("color"), "Optional group should allow American spelling")
    assert(matcher.test("colour"), "Optional group should allow British spelling")
 end
 
-function testAlternationPrecedence()
+@Test function testAlternationPrecedence()
    local matcher = regex.new("(cat|dog)s?")
    assert(matcher.test("cats"), "Alternation should apply before suffix quantifier")
    assert(matcher.test("dog"), "Optional suffix should allow singular form")
    assert(matcher.test("cater"), "Initial match to cat should succeed")
 end
 
-function testZeroLengthMatchHandling()
+@Test function testZeroLengthMatchHandling()
    local matcher = regex.new("a*")
    local result = matcher.search("bbb")
    assert(result and result[0][0] is "", "Zero length matches should be represented as empty strings, got " .. tostring(result[0][0]))
 end
-
-return {
-   tests = {
-      testGreedyAndLazy,
-      testBoundedQuantifier,
-      testOptionalGroup,
-      testAlternationPrecedence,
-      testZeroLengthMatchHandling
-   }
-}

@@ -15,7 +15,8 @@ enum { JUMP_BREAK, JUMP_CONTINUE };
 
 static int is_blank_identifier(GCstr *name)
 {
-   return (name != nullptr and name->len IS 1 and *(strdata(name)) IS '_');
+   if (name IS NAME_BLANK) return 1;
+   return (name != nullptr and uintptr_t(name) >= VARNAME__MAX and name->len IS 1 and *(strdata(name)) IS '_');
 }
 
 //********************************************************************************************************************

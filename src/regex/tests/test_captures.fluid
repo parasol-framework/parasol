@@ -1,6 +1,6 @@
 -- Flute tests verifying capture normalisation behaviour
 
-function testOptionalGroups()
+@Test function testOptionalGroups()
    local matcher = regex.new("(\\d+)(\\.\\d+)?")
    local result = matcher.match("42")
 
@@ -11,7 +11,7 @@ function testOptionalGroups()
    assert(result[2] is "", "Optional group should be empty when not matched")
 end
 
-function testNestedOptional()
+@Test function testNestedOptional()
    local matcher = regex.new("(a|(b|c))?d")
    local result = matcher.match("d")
 
@@ -21,10 +21,3 @@ function testNestedOptional()
    assert(result[1] is "", "Outer optional group should be empty")
    assert(result[2] is "", "Inner alternation should be empty")
 end
-
-return {
-   tests = {
-      testOptionalGroups,
-      testNestedOptional
-   }
-}

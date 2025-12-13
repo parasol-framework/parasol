@@ -37,6 +37,7 @@ struct TokenDefinition {
 #define TOKEN_DEF_LIST \
    TOKEN_DEF(and,          "and",      true) \
    TOKEN_DEF(break,        "break",    true) \
+   TOKEN_DEF(choose,       "choose",   true) \
    TOKEN_DEF(continue,     "continue", true) \
    TOKEN_DEF(defer,        "defer",    true) \
    TOKEN_DEF(do,           "do",       true) \
@@ -45,6 +46,7 @@ struct TokenDefinition {
    TOKEN_DEF(end,          "end",      true) \
    TOKEN_DEF(false,        "false",    true) \
    TOKEN_DEF(for,          "for",      true) \
+   TOKEN_DEF(from,         "from",     true) \
    TOKEN_DEF(function,     "function", true) \
    TOKEN_DEF(global,       "global",   true) \
    TOKEN_DEF(if,           "if",       true) \
@@ -60,7 +62,9 @@ struct TokenDefinition {
    TOKEN_DEF(thunk,        "thunk",    true) \
    TOKEN_DEF(true,         "true",     true) \
    TOKEN_DEF(until,        "until",    true) \
+   TOKEN_DEF(when,         "when",     true) \
    TOKEN_DEF(while,        "while",    true) \
+   TOKEN_DEF(case_arrow,   "->",       false) \
    TOKEN_DEF(if_empty,     "??",       false) \
    TOKEN_DEF(safe_field,   "?.",       false) \
    TOKEN_DEF(safe_index,   "?[",       false) \

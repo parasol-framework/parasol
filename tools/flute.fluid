@@ -23,6 +23,8 @@ Example usage:
    glHotPath = arg('hotPath') -- Force hot-path execution for all tests.
    glSelf = obj.find('self')
 
+   jit.opt.start("hotloop=3") -- Lower threshold to trigger JIT sooner, simplifies debugging
+
 ----------------------------------------------------------------------------------------------------------------------
 
 glNetworkAvailable = thunk():bool
@@ -220,7 +222,7 @@ function runTests()
       skip = false
       assert(test.name, 'Test function is missing a name.')
       assert(test.func, 'Test function is missing a function reference.')
-      
+
       print('-- Test ' .. i .. ': ' .. test.name .. ' --')
       if glTest and (test.name != glTest) then
          skip = true
@@ -245,7 +247,7 @@ function runTests()
             -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
             local count = 0
             hotpath_status, error_msg = pcall(function()
-               for {0..100} do
+               for {0..5} do
                   test.func()
                   count++
                end

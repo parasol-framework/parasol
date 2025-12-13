@@ -344,6 +344,17 @@ struct ExpressionChildCounter {
       if (Payload.stop) total++;
       return total;
    }
+
+   [[nodiscard]] inline size_t operator()(const ChooseExprPayload &Payload) const
+   {
+      size_t total = Payload.scrutinee ? 1 : 0;
+      for (const ChooseCase& c : Payload.cases) {
+         if (c.pattern) total++;
+         if (c.guard) total++;
+         if (c.result) total++;
+      }
+      return total;
+   }
 };
 
 struct StatementChildCounter {
@@ -463,6 +474,8 @@ TableExprPayload::~TableExprPayload() = default;
 FunctionExprPayload::~FunctionExprPayload() = default;
 DeferredExprPayload::~DeferredExprPayload() = default;
 RangeExprPayload::~RangeExprPayload() = default;
+ChooseCase::~ChooseCase() = default;
+ChooseExprPayload::~ChooseExprPayload() = default;
 IfClause::~IfClause() = default;
 AssignmentStmtPayload::~AssignmentStmtPayload() = default;
 LocalDeclStmtPayload::~LocalDeclStmtPayload() = default;
@@ -764,6 +777,33 @@ ExprNodePtr make_range_expr(SourceSpan Span, ExprNodePtr Start, ExprNodePtr Stop
    payload.inclusive = Inclusive;
    ExprNodePtr node = std::make_unique<ExprNode>();
    node->kind = AstNodeKind::RangeExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_choose_expr(SourceSpan Span, ExprNodePtr Scrutinee, std::vector<ChooseCase> Cases, size_t InferredArity)
+{
+   assert_node(ensure_operand(Scrutinee), "choose expression requires scrutinee expression");
+   ChooseExprPayload payload;
+   payload.scrutinee = std::move(Scrutinee);
+   payload.cases = std::move(Cases);
+   payload.inferred_tuple_arity = InferredArity;
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::ChooseExpr;
+   node->span = Span;
+   node->data = std::move(payload);
+   return node;
+}
+
+ExprNodePtr make_choose_expr_tuple(SourceSpan Span, ExprNodeList ScrutineeTuple, std::vector<ChooseCase> Cases)
+{
+   assert_node(ScrutineeTuple.size() >= 2, "tuple scrutinee requires at least 2 elements");
+   ChooseExprPayload payload;
+   payload.scrutinee_tuple = std::move(ScrutineeTuple);
+   payload.cases = std::move(Cases);
+   ExprNodePtr node = std::make_unique<ExprNode>();
+   node->kind = AstNodeKind::ChooseExpr;
    node->span = Span;
    node->data = std::move(payload);
    return node;

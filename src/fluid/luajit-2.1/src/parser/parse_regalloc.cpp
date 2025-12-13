@@ -260,8 +260,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
    else if (e->k IS ExpKind::Global or e->k IS ExpKind::Unscoped) {
       // Check if trying to read blank identifier.
       if (is_blank_identifier(e->u.sval)) {
-         lj_lex_error(fs->ls, fs->ls->tok, ErrMsg::XNEAR,
-            "cannot read blank identifier");
+         lj_lex_error(fs->ls, 0, ErrMsg::XBLANKREAD);
       }
       // For reads, both Global and Unscoped resolve to global table lookup
       ins = BCINS_AD(BC_GGET, 0, const_str(fs, e));
