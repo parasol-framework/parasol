@@ -2908,20 +2908,20 @@ void IrEmitter::optimise_assert(const ExprNodeList &Args)
    ExprNodePtr &msg_arg = const_cast<ExprNodePtr&>(Args[1]);
    SourceSpan span = msg_arg->span;
 
-   // Step 1: Build return statement with the message expression
+   // Build return statement with the message expression
    ExprNodeList return_values;
    return_values.push_back(std::move(msg_arg));
    StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
-   // Step 2: Build thunk body containing just the return statement
+   // Build thunk body containing just the return statement
    StmtNodeList body_stmts;
    body_stmts.push_back(std::move(return_stmt));
    auto body = make_block(span, std::move(body_stmts));
 
-   // Step 3: Build anonymous thunk function (no parameters, is_thunk=true, returns string)
+   // Build anonymous thunk function (no parameters, is_thunk=true, returns string)
    ExprNodePtr thunk_func = make_function_expr(span, {}, false, std::move(body), true, FluidType::Str);
 
-   // Step 4: Build immediate call to thunk (no arguments)
+   // Build immediate call to thunk (no arguments)
    ExprNodeList call_args;
    msg_arg = make_call_expr(span, std::move(thunk_func), std::move(call_args), false);
 }
@@ -3195,73 +3195,93 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       return this->unsupported_expr(AstNodeKind::ChooseExpr, SourceSpan{});
    }
 
-   FuncState* fs = &this->func_state;
+   FuncState *fs = &this->func_state;
    RegisterGuard register_guard(fs);
    RegisterAllocator allocator(fs);
 
    // Determine if tuple or single scrutinee
+
    bool is_tuple = Payload.is_tuple_scrutinee();
    size_t tuple_arity = Payload.tuple_arity();
    std::vector<BCReg> scrutinee_regs;  // Registers holding scrutinee values (1 for single, N for tuple)
    BCReg result_reg;
 
    if (is_tuple) {
-      // Evaluate tuple scrutinee elements into consecutive registers
-      BCReg base_reg = BCReg(fs->freereg);
+      // JIT safety: For local variables (like function parameters), compare directly against
+      // their original registers (like single-scrutinee does). For non-locals (constants,
+      // expressions), load them into new registers.
+      //
+      // A JIT bug occurs when we copy a parameter to a new register (MOV R3, R0) and then
+      // the JIT trace records this aliasing relationship incorrectly. By comparing directly
+      // against the original parameter registers (R0, R1), we avoid the aliasing issue.
+      //
+      // Result register is allocated FIRST to ensure it doesn't conflict with any
+      // scrutinee registers.
+
+      result_reg = BCReg(fs->freereg);
+      allocator.reserve(BCReg(1));
 
       for (size_t i = 0; i < tuple_arity; ++i) {
          const ExprNodePtr& elem = Payload.scrutinee_tuple[i];
          auto elem_result = this->emit_expression(*elem);
          if (not elem_result.ok()) return elem_result;
 
+         // Check if this element is a local variable BEFORE discharging
+         bool elem_is_local = elem_result.value_ref().is_local();
+
          ExpressionValue elem_value(fs, elem_result.value_ref());
          BCReg reg = elem_value.discharge_to_any_reg(allocator);
 
-         // Move to consecutive position if needed
-         if (reg.raw() != base_reg.raw() + int(i)) {
-            bcemit_AD(fs, BC_MOV, base_reg.raw() + int(i), reg);
-            allocator.collapse_freereg(reg);
-            // Reserve the destination slot
-            if (fs->freereg <= base_reg.raw() + int(i)) {
-               fs->freereg = base_reg.raw() + int(i) + 1;
-            }
+         if (elem_is_local) {
+            // For locals (params), use the original register directly - no copy
+            // This avoids creating MOV R3, R0 which confuses the JIT tracer
+            scrutinee_regs.push_back(reg);
          }
-         scrutinee_regs.push_back(BCReg(base_reg.raw() + int(i)));
+         else { // For non-locals (constants, expressions), allocate a dedicated register
+            BCReg dest = fs->free_reg();
+            if (reg.raw() != dest.raw()) {
+               bcemit_AD(fs, BC_MOV, dest, reg);
+               allocator.collapse_freereg(reg);
+            }
+            allocator.reserve(BCReg(1));
+            scrutinee_regs.push_back(dest);
+         }
       }
-
-      result_reg = base_reg;  // Result goes into first scrutinee register
    }
    else if (Payload.has_inferred_arity()) {
       // Function call returning multiple values - arity inferred from first tuple pattern
+      
       size_t arity = Payload.inferred_tuple_arity;
       BCReg base_reg = BCReg(fs->freereg);
 
       // Emit the scrutinee expression (should be a function call)
+
       auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
       if (not scrutinee_result.ok()) return scrutinee_result;
 
       ExpDesc scrutinee_expr = scrutinee_result.value_ref();
 
       // If it's a call, adjust to capture N return values
+      
       if (scrutinee_expr.k IS ExpKind::Call) {
          // Use setbc_b to request exactly 'arity' results
          // B = arity + 1 means "expect arity results"
+      
          setbc_b(ir_bcptr(fs, &scrutinee_expr), int(arity) + 1);
 
          // Reserve registers for all return values
-         if (arity > 1) {
-            allocator.reserve(BCReg(arity - 1));
-         }
+
+         if (arity > 1) allocator.reserve(BCReg(arity - 1));
 
          // Fill scrutinee_regs with consecutive registers
+
          for (size_t i = 0; i < arity; ++i) {
             scrutinee_regs.push_back(BCReg(base_reg.raw() + int(i)));
          }
 
          result_reg = base_reg;  // Result goes into first register
       }
-      else {
-         // Not a call - treat as single value (fall through to single-value comparison will fail)
+      else { // Not a call - treat as single value (fall through to single-value comparison will fail)
          ExpressionValue scrutinee_value(fs, scrutinee_expr);
          BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
          scrutinee_regs.push_back(scrutinee_reg);
@@ -3270,11 +3290,13 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    }
    else {
       // 1. Evaluate single scrutinee into a temporary register
+
       auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
       if (not scrutinee_result.ok()) return scrutinee_result;
 
       // Check if scrutinee is a local variable BEFORE discharging
       // (discharge changes Local to NonReloc, losing this information)
+
       bool scrutinee_is_local = scrutinee_result.value_ref().is_local();
 
       ExpressionValue scrutinee_value(fs, scrutinee_result.value_ref());
@@ -3286,28 +3308,31 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       //   result register to avoid clobbering the live variable.
       // - If scrutinee is a constant/temporary, reuse the same register for efficiency
       //   and correct semantics (assignment expects result in that register).
+
       if (scrutinee_is_local) {
          result_reg = fs->free_reg();
          allocator.reserve(BCReg(1));
       }
-      else {
-         result_reg = scrutinee_reg;
-      }
+      else result_reg = scrutinee_reg;
    }
 
    // For single scrutinee, use the first (only) element
+
    BCReg scrutinee_reg = scrutinee_regs.empty() ? BCReg(0) : scrutinee_regs[0];
 
-   // 3. Create escape list for jumps to end of choose expression
+   // Create escape list for jumps to end of choose expression
+
    ControlFlowEdge escapelist = this->control_flow.make_unconditional();
 
    // Prepare constant ExpDescs for primitive comparisons
+
    ExpDesc nilv(ExpKind::Nil);
    ExpDesc truev(ExpKind::True);
    ExpDesc falsev(ExpKind::False);
 
    // Check if there's an else clause or wildcard - if not, we need to emit nil for no-match
-   // Also check if any case has a statement result (Phase 11: statement context)
+   // Also check if any case has a statement result
+
    bool has_else = false;
    bool has_statement_results = false;
    for (const auto& arm : Payload.cases) {
@@ -3315,7 +3340,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       if (arm.has_statement_result) { has_statement_results = true; }
    }
 
-   // 4. Generate if/elseif chain for each case
+   // Generate if/elseif chain for each case
+
    for (size_t i = 0; i < Payload.cases.size(); ++i) {
       const ChooseCase& case_arm = Payload.cases[i];
       bool has_next = (i + 1) < Payload.cases.size();
@@ -3328,7 +3354,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
          ControlFlowEdge guard_jump;
 
-         // Emit guard condition check if present (Phase 8) - wildcards can have guards too
+         // Emit guard condition check if present - wildcards can have guards too
+
          if (case_arm.guard) {
             auto guard_result = this->emit_expression(*case_arm.guard);
             if (not guard_result.ok()) return guard_result;
@@ -3337,13 +3364,15 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             BCReg guard_reg = guard_value.discharge_to_any_reg(allocator);
 
             // Jump to next case if guard is falsey (BC_ISF = jump if false)
+
             bcemit_INS(fs, BCINS_AD(BC_ISF, 0, guard_reg));
             guard_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 
             allocator.collapse_freereg(guard_reg);
          }
 
-         // Emit result - either expression or statement (Phase 11)
+         // Emit result - either expression or statement
+
          if (case_arm.has_statement_result) {
             auto stmt_result = this->emit_statement(*case_arm.result_stmt);
             if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
@@ -3363,12 +3392,12 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          }
 
          // Patch guard failure jump to after this case's result
-         if (guard_jump.valid()) {
-            guard_jump.patch_here();
-         }
+
+         if (guard_jump.valid()) guard_jump.patch_here();
       }
       else if (case_arm.is_tuple_pattern) {
          // Tuple pattern match: compare each scrutinee position with corresponding pattern
+
          if (not case_arm.result and not case_arm.has_statement_result) {
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
@@ -3390,6 +3419,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             BCReg scr_reg = scrutinee_regs[pos];
 
             // Generate ISNE* comparison for this position (same logic as single-value patterns)
+
             if (pattern_expr.k IS ExpKind::Nil) {
                bcemit_INS(fs, BCINS_AD(BC_ISNEP, scr_reg, const_pri(&nilv)));
             }
@@ -3405,8 +3435,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             else if (pattern_expr.k IS ExpKind::Str) {
                bcemit_INS(fs, BCINS_AD(BC_ISNES, scr_reg, const_str(fs, &pattern_expr)));
             }
-            else {
-               // Non-constant value - materialise to register and use ISNEV
+            else { // Non-constant value - materialise to register and use ISNEV
                ExpressionValue pat_val(fs, pattern_expr);
                BCReg pat_reg = pat_val.discharge_to_any_reg(allocator);
                bcemit_INS(fs, BCINS_AD(BC_ISNEV, scr_reg, pat_reg));
@@ -3418,6 +3447,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          }
 
          // Emit guard condition check if present
+
          if (case_arm.guard) {
             auto guard_result = this->emit_expression(*case_arm.guard);
             if (not guard_result.ok()) return guard_result;
@@ -3426,13 +3456,15 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             BCReg guard_reg = guard_value.discharge_to_any_reg(allocator);
 
             // Jump to next case if guard is falsey (BC_ISF = jump if false)
+
             bcemit_INS(fs, BCINS_AD(BC_ISF, 0, guard_reg));
             false_jump.append(BCPos(bcemit_jmp(fs)));
 
             allocator.collapse_freereg(guard_reg);
          }
 
-         // Emit result - either expression or statement (Phase 11)
+         // Emit result - either expression or statement
+
          if (case_arm.has_statement_result) {
             auto stmt_result = this->emit_statement(*case_arm.result_stmt);
             if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
@@ -3447,15 +3479,16 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          }
 
          // Jump to end after this case
-         if (has_next or not has_else) {
-            escapelist.append(BCPos(bcemit_jmp(fs)));
-         }
+
+         if (has_next or not has_else) escapelist.append(BCPos(bcemit_jmp(fs)));
 
          // Patch false jump to next case
+
          false_jump.patch_here();
       }
       else {
          // Single-value pattern match: compare scrutinee_reg with pattern value
+
          if (not case_arm.pattern or (not case_arm.result and not case_arm.has_statement_result)) {
             return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
          }
@@ -3467,75 +3500,73 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          ControlFlowEdge false_jump;
 
          // Check for table pattern { key = value, ... }
+
          if (case_arm.is_table_pattern) {
             // Table pattern: { key1 = value1, key2 = value2, ... }
-            const auto* table_payload = std::get_if<TableExprPayload>(&case_arm.pattern->data);
-            if (not table_payload) {
-               return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
-            }
 
-            lua_State* L = this->lex_state.L;
+            const auto *table_payload = std::get_if<TableExprPayload>(&case_arm.pattern->data);
+            if (not table_payload) return this->unsupported_expr(AstNodeKind::ChooseExpr, case_arm.span);
+
+            lua_State *L = this->lex_state.L;
 
             // Helper to get constant string index
             auto str_const = [fs](GCstr* s) -> BCReg {
                return BCReg(const_gc(fs, obj2gco(s), LJ_TSTR));
             };
 
-            // Step 1: Type check - scrutinee must be a table
+            // Type check - scrutinee must be a table
             // Call type(scrutinee) and compare result with "table"
+
             BCREG temp_base = fs->freereg;
             allocator.reserve(BCReg(2 + LJ_FR2));  // function slot, frame link, arg
 
             // Load 'type' global function -> temp_base
+
             bcemit_AD(fs, BC_GGET, temp_base, str_const(lj_str_newlit(L, "type")));
 
             // Copy scrutinee as argument -> temp_base + 1 + LJ_FR2
+
             bcemit_AD(fs, BC_MOV, temp_base + 1 + LJ_FR2, scrutinee_reg);
 
             // Call type(scrutinee) -> result in temp_base
             // BC_CALL A=base, B=2 (expect 1 result), C=2 (1 arg + 1)
+
             bcemit_ABC(fs, BC_CALL, temp_base, 2, 2);
 
             // Compare result with "table" string - jump if NOT equal
+
             bcemit_INS(fs, BCINS_AD(BC_ISNES, temp_base, str_const(lj_str_newlit(L, "table"))));
             false_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
 
             allocator.collapse_freereg(BCReg(temp_base));
 
-            // Step 2: For each field in the pattern, check existence and value
+            // For each field in the pattern, check existence and value
+
             for (const TableField& field : table_payload->fields) {
                if (field.kind != TableFieldKind::Record or not field.name.has_value()) {
                   continue;  // Skip non-record fields (should have been caught by parser)
                }
 
                // Get field value: TGETS field_reg, scrutinee_reg, "key"
+
                BCREG field_reg = fs->freereg;
                allocator.reserve(BCReg(1));
                bcemit_ABC(fs, BC_TGETS, field_reg, scrutinee_reg, str_const(field.name->symbol));
 
                // Emit expected value expression and compare
+
                auto value_result = this->emit_expression(*field.value);
                if (not value_result.ok()) return value_result;
                ExpDesc val = value_result.value_ref();
 
                // Generate ISNE* comparison based on value type - jump if NOT equal
-               if (val.k IS ExpKind::Nil) {
-                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&nilv)));
-               }
-               else if (val.k IS ExpKind::True) {
-                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&truev)));
-               }
-               else if (val.k IS ExpKind::False) {
-                  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&falsev)));
-               }
-               else if (val.k IS ExpKind::Num) {
-                  bcemit_INS(fs, BCINS_AD(BC_ISNEN, field_reg, const_num(fs, &val)));
-               }
-               else if (val.k IS ExpKind::Str) {
-                  bcemit_INS(fs, BCINS_AD(BC_ISNES, field_reg, const_str(fs, &val)));
-               }
-               else {
-                  // Non-constant value - materialise to register and use ISNEV
+
+               if (val.k IS ExpKind::Nil)        bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&nilv)));
+               else if (val.k IS ExpKind::True)  bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&truev)));
+               else if (val.k IS ExpKind::False) bcemit_INS(fs, BCINS_AD(BC_ISNEP, field_reg, const_pri(&falsev)));
+               else if (val.k IS ExpKind::Num)   bcemit_INS(fs, BCINS_AD(BC_ISNEN, field_reg, const_num(fs, &val)));
+               else if (val.k IS ExpKind::Str)   bcemit_INS(fs, BCINS_AD(BC_ISNES, field_reg, const_str(fs, &val)));
+               else { // Non-constant value - materialise to register and use ISNEV
                   ExpressionValue val_expr(fs, val);
                   BCReg val_reg = val_expr.discharge_to_any_reg(allocator);
                   bcemit_INS(fs, BCINS_AD(BC_ISNEV, field_reg, val_reg));
@@ -3553,14 +3584,15 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             // For <= pattern: jump if scrutinee > pattern (use BC_ISGT)
             // For > pattern: jump if scrutinee <= pattern (use BC_ISLE)
             // For >= pattern: jump if scrutinee < pattern (use BC_ISLT)
+
             ExpressionValue pattern_value(fs, pattern_expr);
             BCReg pattern_reg = pattern_value.discharge_to_any_reg(allocator);
 
             BCOp bc_op;
             switch (case_arm.relational_op) {
                case ChooseRelationalOp::LessThan:     bc_op = BC_ISGE; break; // jump if NOT <
-               case ChooseRelationalOp::LessEqual:   bc_op = BC_ISGT; break; // jump if NOT <=
-               case ChooseRelationalOp::GreaterThan: bc_op = BC_ISLE; break; // jump if NOT >
+               case ChooseRelationalOp::LessEqual:    bc_op = BC_ISGT; break; // jump if NOT <=
+               case ChooseRelationalOp::GreaterThan:  bc_op = BC_ISLE; break; // jump if NOT >
                case ChooseRelationalOp::GreaterEqual: bc_op = BC_ISLT; break; // jump if NOT >=
                default: bc_op = BC_ISGE; break; // Shouldn't reach here
             }
@@ -3601,7 +3633,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             allocator.collapse_freereg(pattern_reg);
          }
 
-         // Emit guard condition check if present (Phase 8)
+         // Emit guard condition check if present
+
          if (case_arm.guard) {
             auto guard_result = this->emit_expression(*case_arm.guard);
             if (not guard_result.ok()) return guard_result;
@@ -3616,7 +3649,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
             allocator.collapse_freereg(guard_reg);
          }
 
-         // Emit result - either expression or statement (Phase 11)
+         // Emit result - either expression or statement
+
          if (case_arm.has_statement_result) {
             auto stmt_result = this->emit_statement(*case_arm.result_stmt);
             if (not stmt_result.ok()) return ParserResult<ExpDesc>::failure(stmt_result.error_ref());
@@ -3631,9 +3665,8 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
          }
 
          // Jump to end after this case (needed if there are more cases OR if there's no else)
-         if (has_next or not has_else) {
-            escapelist.append(BCPos(bcemit_jmp(fs)));
-         }
+
+         if (has_next or not has_else) escapelist.append(BCPos(bcemit_jmp(fs)));
 
          // Patch false jump to next case
          false_jump.patch_here();
@@ -3642,20 +3675,24 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
    // If there's no else clause and we're in expression mode, emit nil as the fallback value
    // Skip nil fallback for statement-only choose expressions
+
    if (not has_else and not has_statement_results) {
       this->materialise_to_reg(nilv, result_reg, "choose no-match fallback");
    }
 
-   // 5. Patch all escape jumps to current position
+   // Patch all escape jumps to current position
+
    escapelist.patch_here();
 
    // For statement-mode choose, return nil since there's no meaningful result
+
    if (has_statement_results) {
       ExpDesc result(ExpKind::Nil);
       return ParserResult<ExpDesc>::success(result);
    }
 
    // Preserve result register by adjusting what RegisterGuard will restore to
+
    if (register_guard.saved() > BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
    else register_guard.disarm();
 
@@ -3674,6 +3711,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
    if (not Payload.body) return this->unsupported_expr(AstNodeKind::FunctionExpr, SourceSpan{});
 
    // Handle thunk functions via AST transformation
+
    if (Payload.is_thunk) {
       // Transform:
       //   thunk compute(x, y):num
@@ -3687,11 +3725,13 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
       // Use lastline which was set by emit_expression() to the function definition line,
       // not the body's span which may start at a later line.
+
       SourceSpan span = Payload.body->span;
       span.line = this->lex_state.lastline;
 
-      // Step 1: Create inner closure (no parameters, captures parent's as upvalues)
+      // Create inner closure (no parameters, captures parent's as upvalues)
       // Move original body to inner function
+
       auto inner_body = std::make_unique<BlockStmt>();
       inner_body->span = span;
       for (auto& stmt : Payload.body->statements) {
@@ -3700,7 +3740,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
 
       ExprNodePtr inner_fn = make_function_expr(span, {}, false, std::move(inner_body), false, FluidType::Any);
 
-      // Step 2: Create call to __create_thunk(inner_fn, type_tag)
+      // Create call to __create_thunk(inner_fn, type_tag)
       NameRef create_thunk_ref;
       create_thunk_ref.identifier.symbol = lj_str_newlit(this->lex_state.L, "__create_thunk");
       create_thunk_ref.identifier.span = span;
@@ -3721,17 +3761,17 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       // Create call expression
       ExprNodePtr thunk_call = make_call_expr(span, std::move(create_thunk_fn), std::move(call_args), false);
 
-      // Step 3: Create return statement
+      // Create return statement
       ExprNodeList return_values;
       return_values.push_back(std::move(thunk_call));
       StmtNodePtr return_stmt = make_return_stmt(span, std::move(return_values), false);
 
-      // Step 4: Create wrapper body with just the return statement
+      // Create wrapper body with just the return statement
       auto wrapper_body = std::make_unique<BlockStmt>();
       wrapper_body->span = span;
       wrapper_body->statements.push_back(std::move(return_stmt));
 
-      // Step 5: Create wrapper function payload (same parameters, not a thunk)
+      // Create wrapper function payload (same parameters, not a thunk)
       FunctionExprPayload wrapper_payload;
       wrapper_payload.parameters = Payload.parameters;  // Copy parameters
       wrapper_payload.is_vararg = Payload.is_vararg;
@@ -4229,13 +4269,13 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    };
 
    // Load debug.anno.set into base register
-   // Step 1: GGET debug -> base
+   // GGET debug -> base
    bcemit_AD(fs, BC_GGET, base_raw, str_const(lj_str_newlit(L, "debug")));
 
-   // Step 2: TGETS anno -> base (debug.anno)
+   // TGETS anno -> base (debug.anno)
    bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "anno")));
 
-   // Step 3: TGETS set -> base (debug.anno.set)
+   // TGETS set -> base (debug.anno.set)
    bcemit_ABC(fs, BC_TGETS, base_raw, base_raw, str_const(lj_str_newlit(L, "set")));
 
    // Args start at base + 1 + LJ_FR2 (skip function slot and frame slot)
