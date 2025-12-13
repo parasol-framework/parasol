@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Test basic XML parsing from Statement field
 
-function testStatementParsing()
+@Test function testStatementParsing()
    local xml = obj.new("xml", {
       statement = '<?xml version="1.0"?><root><child attr="value">Content</child></root>',
       flags = XMF_STRIP_HEADERS
@@ -20,7 +20,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test CDATA parsing
 
-function testCDATAParsing()
+@Test function testCDATAParsing()
    local xml = obj.new("xml", {
       statement = '<root><![CDATA[Some <special> & content]]></root>'
    })
@@ -35,7 +35,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test comment handling
 
-function testCommentHandling()
+@Test function testCommentHandling()
    local xml = obj.new("xml", {
       statement = '<root><!-- This is a comment --><child/></root>'
    })
@@ -47,7 +47,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test attribute parsing with various quote types
 
-function testAttributeParsing()
+@Test function testAttributeParsing()
    local xml = obj.new("xml", {
       statement = '<root attr1="value1" attr2=\'value2\' attr3=unquoted><child/></root>'
    })
@@ -68,7 +68,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test nested tag structure
 
-function testNestedStructure()
+@Test function testNestedStructure()
    local xml = obj.new("xml", {
       statement = '<root><level1><level2><level3>Deep content</level3></level2></level1></root>'
    })
@@ -87,7 +87,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test self-closing tags
 
-function testSelfClosingTags()
+@Test function testSelfClosingTags()
    local xml = obj.new("xml", {
       statement = '<root><self-closed attr="value"/><normal>content</normal></root>'
    })
@@ -103,7 +103,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XML instructions
 
-function testXMLInstructions()
+@Test function testXMLInstructions()
    local xml = obj.new("xml", {
       statement = '<?xml version="1.0" encoding="UTF-8"?><?stylesheet type="text/xsl" href="style.xsl"?><root/>'
    })
@@ -115,7 +115,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test mixed content
 
-function testMixedContent()
+@Test function testMixedContent()
    local xml = obj.new("xml", {
       statement = '<root>Text before <child>Child content</child> Text after</root>'
    })
@@ -130,7 +130,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test empty elements
 
-function testEmptyElements()
+@Test function testEmptyElements()
    local xml = obj.new("xml", {
       statement = '<root><empty></empty><empty-self/></root>'
    })
@@ -140,20 +140,3 @@ function testEmptyElements()
    assert(children[0].attribs[0].name is "empty", "First empty element name incorrect")
    assert(children[1].attribs[0].name is "empty-self", "Second empty element name incorrect")
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testStatementParsing,
-      testCDATAParsing, testCommentHandling,
-      testAttributeParsing, testNestedStructure, testSelfClosingTags,
-      testXMLInstructions, testMixedContent, testEmptyElements
-   },
-   init = function(ScriptFolder)
-      -- No global init needed for these tests
-   end,
-   cleanup = function()
-      -- No cleanup needed
-   end
-}

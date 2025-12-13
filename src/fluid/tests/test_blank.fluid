@@ -215,21 +215,21 @@ end
    script = obj.new('fluid', { statement = [[ return _ ]] })
    script.acActivate()
    assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
-   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. err)
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
 end
 
 @Test function testBlankReadInExpressionError() -- Reading blank identifier in an expression context should fail
    script = obj.new('fluid', { statement = [[ print(_) ]] })
    script.acActivate()
    assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
-   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. err)
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
 end
 
 @Test function testBlankReadInConcatError() -- Reading blank identifier in string concatenation should fail
    script = obj.new('fluid', { statement = "x = 'test' .. _" })
    script.acActivate()
    assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
-   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. err)
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
 end
 
 @Test function testBlankReadInArithmeticError()
@@ -237,5 +237,5 @@ end
    script = obj.new('fluid', { statement = "x = 1 + _" })
    script.acActivate()
    assert(script.error != ERR_Okay, "Expected loadstring to fail when reading blank identifier")
-   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. err)
+   assert(script.errorString:find("blank identifier") != nil, "Error message should mention 'blank identifier', got: " .. script.errorString)
 end

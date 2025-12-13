@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 -- Test basic time object creation and Query action
 
-function testTimeCreation()
+@Test function testTimeCreation()
    local time_obj = obj.new('time')
    time_obj.acQuery()
 
@@ -23,7 +23,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test SystemTime field functionality
 
-function testSystemTime()
+@Test function testSystemTime()
    local time_obj = obj.new('time')
    time_obj.acQuery()
 
@@ -44,7 +44,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test TimeStamp field functionality
 
-function testTimeStamp()
+@Test function testTimeStamp()
    local time_obj = obj.new('time')
    time_obj.acQuery()
    local timestamp = time_obj.timeStamp
@@ -54,7 +54,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test specific date and time setting
 
-function testSetTimeFields()
+@Test function testSetTimeFields()
    local time_obj = obj.new('time')
 
    -- Set a specific date and time: 2024-03-15 14:30:45
@@ -83,7 +83,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test day of week calculation for known dates
 
-function testDayOfWeekCalculation()
+@Test function testDayOfWeekCalculation()
    local time_obj = obj.new('time')
    time_obj.acQuery()
 
@@ -95,7 +95,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test consistency between multiple queries
 
-function testConsistentQueries()
+@Test function testConsistentQueries()
    local time1 = obj.new('time')
    local time2 = obj.new('time')
 
@@ -115,7 +115,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test leap year handling
 
-function testLeapYearDates()
+@Test function testLeapYearDates()
    local time_obj = obj.new('time')
 
    -- Test February 29th in leap year 2024
@@ -140,7 +140,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test edge case dates
 
-function testEdgeCaseDates()
+@Test function testEdgeCaseDates()
    local time_obj = obj.new('time')
 
    -- Test end of year
@@ -169,7 +169,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test microsecond precision
 
-function testMicrosecondPrecision()
+@Test function testMicrosecondPrecision()
    local time_obj = obj.new('time')
    time_obj.acQuery()
 
@@ -192,7 +192,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Test SetTime method (requires admin privileges on Windows)
 
-function testSetTimeMethod()
+@Test; @Disable function testSetTimeMethod()
    local time_obj = obj.new('time')
 
    -- Get current time first
@@ -235,20 +235,3 @@ function testSetTimeMethod()
       print('SetTime method failed (expected if not running with admin privileges)')
    end
 end
-
-------------------------------------------------------------------------------------------------------------------------
-
-   return {
-      tests = {
-         testTimeCreation,
-         testSystemTime,
-         testTimeStamp,
-         testSetTimeFields,
-         testDayOfWeekCalculation,
-         testConsistentQueries,
-         testLeapYearDates,
-         testEdgeCaseDates,
-         testMicrosecondPrecision,
-         --testSetTimeMethod
-      }
-   }

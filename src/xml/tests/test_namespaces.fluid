@@ -6,7 +6,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 -- Test basic namespace registration
 
-function testBasicNamespaceRegistration()
+@Test function testBasicNamespaceRegistration()
    local xml = obj.new("xml", { flags=XMF_NAMESPACE_AWARE })
 
    -- Test namespace registration
@@ -28,7 +28,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default namespace handling
 
-function testDefaultNamespace()
+@Test function testDefaultNamespace()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns="http://default.example.com"><child>content</child></root>'
@@ -47,7 +47,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test prefixed namespaces
 
-function testPrefixedNamespaces()
+@Test function testPrefixedNamespaces()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns1="http://example.com/ns1" xmlns:ns2="http://example.com/ns2">' ..
@@ -69,7 +69,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test nested namespace scopes
 
-function testNestedScopes()
+@Test function testNestedScopes()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns1="http://example.com/ns1">' ..
@@ -93,7 +93,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace XPath queries
 
-function testNamespaceXPath()
+@Test function testNamespaceXPath()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="http://example.com/ns">' ..
@@ -119,7 +119,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Regression: XPath namespace alias resolution should compare namespace URIs
 
-function testXPathNamespaceAliasResolution()
+@Test function testXPathNamespaceAliasResolution()
    local xml = obj.new("xml", {
       flags = XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="http://example.com/primary" xmlns:alias="http://example.com/primary">' ..
@@ -139,7 +139,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace serialization
 
-function testSerialization()
+@Test function testSerialization()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="http://example.com/ns">' ..
@@ -161,7 +161,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test error handling
 
-function testErrorHandling()
+@Test function testErrorHandling()
    local xml = obj.new("xml", { flags=XMF_NAMESPACE_AWARE })
 
    -- Test error cases
@@ -182,7 +182,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test prefix resolution
 
-function testPrefixResolution()
+@Test function testPrefixResolution()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:test="http://test.example.com"><test:child/></root>'
@@ -206,7 +206,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace validation
 
-function testNamespaceValidation()
+@Test function testNamespaceValidation()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:valid="http://valid.example.com">' ..
@@ -229,7 +229,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test with existing namespace test
 
-function testExistingNamespaceHandling()
+@Test function testExistingNamespaceHandling()
    -- This extends the existing test in test_error_handling.fluid
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
@@ -249,7 +249,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test hierarchical namespace resolution with nested scope redefinition
 
-function testHierarchicalResolution()
+@Test function testHierarchicalResolution()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns1="http://root.example.com">' ..
@@ -288,7 +288,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test default namespace resolution at different levels
 
-function testDefaultNamespaceHierarchy()
+@Test function testDefaultNamespaceHierarchy()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns="http://default1.example.com">' ..
@@ -329,7 +329,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test undefined prefix resolution
 
-function testUndefinedPrefix()
+@Test function testUndefinedPrefix()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="http://example.com"><child>content</child></root>'
@@ -349,7 +349,7 @@ end
 -- Test namespace scoping during parsing
 -- Verifies that namespace declarations in nested elements don't leak to sibling elements
 
-function testNamespaceScopingDuringParsing()
+@Test function testNamespaceScopingDuringParsing()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="a"><ns:item1/><child xmlns:ns="b"><ns:item2/></child><ns:item3/></root>'
@@ -405,7 +405,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test namespace resolution during XPath queries (complementary to parsing test)
 
-function testNamespaceScopingDuringResolution()
+@Test function testNamespaceScopingDuringResolution()
    local xml = obj.new("xml", {
       flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:ns="a"><ns:item id="1"/><child xmlns:ns="b"><ns:item id="2"/></child><ns:item id="3"/></root>'
@@ -452,16 +452,3 @@ function testNamespaceScopingDuringResolution()
    assert(ns1Hash is ns3Hash, "Item1 and item3 should resolve to same namespace (both 'a')")
    assert(ns2Hash != ns1Hash, "Item2 should resolve to different namespace ('b')")
 end
-
------------------------------------------------------------------------------------------------------------------------
--- Return test suite
-
-return {
-   tests = {
-      testBasicNamespaceRegistration, testDefaultNamespace, testPrefixedNamespaces,
-      testNestedScopes, testNamespaceXPath, testXPathNamespaceAliasResolution, testSerialization, testErrorHandling,
-      testPrefixResolution, testNamespaceValidation, testExistingNamespaceHandling,
-      testHierarchicalResolution, testDefaultNamespaceHierarchy, testUndefinedPrefix,
-      testNamespaceScopingDuringParsing, testNamespaceScopingDuringResolution
-   }
-}

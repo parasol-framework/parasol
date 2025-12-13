@@ -3250,7 +3250,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
    }
    else if (Payload.has_inferred_arity()) {
       // Function call returning multiple values - arity inferred from first tuple pattern
-      
+
       size_t arity = Payload.inferred_tuple_arity;
       BCReg base_reg = BCReg(fs->freereg);
 
@@ -3262,11 +3262,11 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       ExpDesc scrutinee_expr = scrutinee_result.value_ref();
 
       // If it's a call, adjust to capture N return values
-      
+
       if (scrutinee_expr.k IS ExpKind::Call) {
          // Use setbc_b to request exactly 'arity' results
          // B = arity + 1 means "expect arity results"
-      
+
          setbc_b(ir_bcptr(fs, &scrutinee_expr), int(arity) + 1);
 
          // Reserve registers for all return values
@@ -3281,15 +3281,17 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
          result_reg = base_reg;  // Result goes into first register
       }
-      else { // Not a call - treat as single value (fall through to single-value comparison will fail)
-         ExpressionValue scrutinee_value(fs, scrutinee_expr);
-         BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
-         scrutinee_regs.push_back(scrutinee_reg);
-         result_reg = scrutinee_reg;
+      else {
+         // Not a call - cannot match a single value against tuple patterns.
+         // Emit an error to prevent out-of-bounds access when iterating tuple patterns.
+         return ParserResult<ExpDesc>::failure(this->make_error(
+            ParserErrorCode::UnexpectedToken,
+            "tuple patterns require a function call that returns multiple values, not a single expression"
+         ));
       }
    }
    else {
-      // 1. Evaluate single scrutinee into a temporary register
+      // Evaluate single scrutinee into a temporary register
 
       auto scrutinee_result = this->emit_expression(*Payload.scrutinee);
       if (not scrutinee_result.ok()) return scrutinee_result;
@@ -3303,7 +3305,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
       BCReg scrutinee_reg = scrutinee_value.discharge_to_any_reg(allocator);
       scrutinee_regs.push_back(scrutinee_reg);
 
-      // 2. Determine result register allocation strategy:
+      // Determine result register allocation strategy:
       // - If scrutinee is a local variable (e.g., loop variable), allocate a SEPARATE
       //   result register to avoid clobbering the live variable.
       // - If scrutinee is a constant/temporary, reuse the same register for efficiency
@@ -3693,7 +3695,7 @@ ParserResult<ExpDesc> IrEmitter::emit_choose_expr(const ChooseExprPayload &Paylo
 
    // Preserve result register by adjusting what RegisterGuard will restore to
 
-   if (register_guard.saved() > BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
+   if (register_guard.saved() >= BCReg(result_reg + 1)) register_guard.adopt_saved(register_guard.saved());
    else register_guard.disarm();
 
    ExpDesc result;

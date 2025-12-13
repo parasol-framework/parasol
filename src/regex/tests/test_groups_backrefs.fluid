@@ -1,6 +1,6 @@
 -- Group handling, numbering, and backreference semantics
 
-function testNestedCaptures()
+@Test function testNestedCaptures()
    local matcher = regex.new("((\\w+)-(\\d+))")
    local match = matcher.match("item-42")
    assert(match, "Nested groups should capture content")
@@ -10,26 +10,26 @@ function testNestedCaptures()
    assert(match[3] is "42", "Inner numeric capture should extract suffix")
 end
 
-function testNonCapturingGroupCount()
+@Test function testNonCapturingGroupCount()
    local matcher = regex.new("(?:pre-)?(value)")
    local match = matcher.match("pre-value")
    assert(match and #match is 2, "Non capturing groups should not appear in result table")
    assert(match[1] is "value", "Capturing group should contain the payload")
 end
 
-function testOptionalBackreference()
+@Test function testOptionalBackreference()
    local matcher = regex.new("(\\w+)\\s+\\1")
    assert(matcher.test("hello hello"), "Backreference should match repeated word")
    assert(not matcher.test("hello world"), "Mismatched second word should fail backreference")
 end
 
-function testBackreferenceInReplace()
+@Test function testBackreferenceInReplace()
    local matcher = regex.new("(\\w+),(\\w+)")
    local result = matcher.replace("last,first", "$2 $1")
    assert(result is "first last", "Replacement should respect capture ordering")
 end
 
-function testSearchCapturesPreserveIndices()
+@Test function testSearchCapturesPreserveIndices()
    local matcher = regex.new("(a)?b")
    local results = matcher.search("bbab")
    assert(results and #results is 3, "Search should produce one entry per match")
@@ -38,33 +38,20 @@ function testSearchCapturesPreserveIndices()
    assert(results[2][1] is "a", "Third match should record captured character")
 end
 
-function testNamedBackreference()
+@Test function testNamedBackreference()
    local matcher = regex.new("(?<word>\\w+)-\\k<word>")
    assert(matcher.test("repeat-repeat"), "Named backreference should accept identical tokens")
    assert(not matcher.test("repeat-other"), "Named backreference should reject differing suffix")
 end
 
-function testLookaheadNamedBackreference()
+@Test function testLookaheadNamedBackreference()
    local matcher = regex.new("^(?=(?<prefix>\\w{3}))\\w+\\k<prefix>$")
    assert(matcher.test("foobarfoo"), "Lookahead capture should be reusable later in the pattern")
    assert(not matcher.test("foobarbar"), "Lookahead capture should still enforce the trailing repetition")
 end
 
-function testMixedNamedAndNumberedReferences()
+@Test function testMixedNamedAndNumberedReferences()
    local matcher = regex.new("^(?<word>\\w+)-(\\d+) \\1 \\k<word>$")
    assert(matcher.test("value-01 value value"), "Named and numbered references should target the same capture")
    assert(not matcher.test("value-01 value other"), "Mismatch should cause the combined reference check to fail")
 end
-
-return {
-   tests = {
-      testNestedCaptures,
-      testNonCapturingGroupCount,
-      testOptionalBackreference,
-      testBackreferenceInReplace,
-      testSearchCapturesPreserveIndices,
-      testNamedBackreference,
-      testLookaheadNamedBackreference,
-      testMixedNamedAndNumberedReferences
-   }
-}

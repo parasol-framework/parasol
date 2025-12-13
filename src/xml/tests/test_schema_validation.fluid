@@ -1,5 +1,18 @@
 -- Schema validation tests for XML module
 
+global glScriptFolder
+global glXML
+
+@BeforeAll function init(State)
+   glScriptFolder = State.folder
+   glXML = obj.new("xml", { path = State.folder .. "schema_inventory.xml" })
+end
+
+@AfterAll function cleanup()
+   glXML = nil
+   glScriptFolder = nil
+end
+
 glInvalidXML = [[<?xml version="1.0" encoding="UTF-8"?>
 <inventory xmlns="http://example.com/inventory">
    <item>
@@ -26,20 +39,20 @@ glPrefixedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 </inv:inventory>
 ]]
 
-function testLoadSchema()
+@Test(priority=0) function testLoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
 
    assert(bit.band(glXML.flags, XMF_HAS_SCHEMA) != 0, "XMF_HAS_SCHEMA undefined")
 end
 
-function testValidateDocumentPass()
+@Test(priority=1) function testValidateDocumentPass()
    local err = glXML.mtValidateDocument()
    assert(err is ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
    assert(glXML.errorMsg is "" or glXML.errorMsg is nil, "ErrorMsg should be cleared after successful validation.")
 end
 
-function testValidateDocumentPrefixedRoot()
+@Test(priority=2) function testValidateDocumentPrefixedRoot()
    local doc = obj.new("xml", { statement = glPrefixedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for prefixed root document: " .. mSys.GetErrorMsg(err))
@@ -50,7 +63,7 @@ function testValidateDocumentPrefixedRoot()
       "Prefixed root document should not report an error message, found: " .. tostring(doc.errorMsg))
 end
 
-function testValidateDocumentFail()
+@Test(priority=3) function testValidateDocumentFail()
    local invalid = obj.new("xml", { statement = glInvalidXML })
    local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
@@ -61,7 +74,7 @@ function testValidateDocumentFail()
       "ValidateDocument() did not populate errorMsg on failure.")
 end
 
-function testValidateWithoutSchema()
+@Test(priority=4) function testValidateWithoutSchema()
    local doc = obj.new("xml", { path = glScriptFolder .. "schema_inventory.xml" })
    local err = doc.mtValidateDocument()
    assert(err is ERR_NoSupport, "ValidateDocument() without schema should return NoSupport, got: " .. mSys.GetErrorMsg(err))
@@ -69,7 +82,7 @@ function testValidateWithoutSchema()
       "Unexpected error message when schema is missing: " .. tostring(doc.errorMsg))
 end
 
-function testValidateDocumentWithoutContent()
+@Test(priority=5) function testValidateDocumentWithoutContent()
    local doc = obj.new("xml")
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for empty document: " .. mSys.GetErrorMsg(err))
@@ -80,7 +93,7 @@ function testValidateDocumentWithoutContent()
       "Unexpected error message for document without parsed tags: " .. tostring(doc.errorMsg))
 end
 
-function testValidateDocumentMismatchedRoot()
+@Test(priority=6) function testValidateDocumentMismatchedRoot()
    local doc = obj.new("xml", { statement = glMismatchedRootXML })
    local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err is ERR_Okay, "Failed to load schema for mismatched root document: " .. mSys.GetErrorMsg(err))
@@ -90,23 +103,3 @@ function testValidateDocumentMismatchedRoot()
    assert(doc.errorMsg is "Schema does not define root element 'catalog'.",
       "Unexpected error message for mismatched root element: " .. tostring(doc.errorMsg))
 end
-
-return {
-   tests = {
-      testLoadSchema,
-      testValidateDocumentPass,
-      testValidateDocumentPrefixedRoot,
-      testValidateDocumentFail,
-      testValidateWithoutSchema,
-      testValidateDocumentWithoutContent,
-      testValidateDocumentMismatchedRoot
-   },
-   init = function(ScriptFolder)
-      global glScriptFolder = ScriptFolder
-      global glXML = obj.new("xml", { path = ScriptFolder .. "schema_inventory.xml" })
-   end,
-   cleanup = function()
-      glXML = nil
-      glScriptFolder = nil
-   end
-}

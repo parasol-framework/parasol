@@ -1024,6 +1024,20 @@ end
    assert(script.error != ERR_Okay, "Should fail: tuple arity mismatch")
 end
 
+@Test function testSyntaxErrorTuplePatternOnSingleValue()
+   -- Tuple patterns require a function call returning multiple values, not a single expression
+   script = obj.new('fluid', {
+      statement = [[
+         result = choose 1 from
+            (1, 2) -> 'matched'
+            else -> 'other'
+         end
+      ]]
+   })
+   script.acActivate()
+   assert(script.error != ERR_Okay, "Should fail: tuple pattern on single value")
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration with Other Fluid Features
 

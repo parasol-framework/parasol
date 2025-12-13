@@ -1,9 +1,15 @@
 -- Tests for different XML data source methods
 
+@AfterAll function cleanup()
+   -- Clean up any remaining test files
+   mSys.DeleteFile('temp:test_xml_path.xml')
+   mSys.DeleteFile('temp:test_switch.xml')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading from file path
 
-function testPathLoading()
+@Test(priority=1) function testPathLoading()
    -- Create a temporary XML file for testing
    local testXML = '<?xml version="1.0"?><testRoot><testChild>Path content</testChild></testRoot>'
    local file = obj.new('file', { path = 'temp:test_xml_path.xml', flags = 'WRITE|NEW' })
@@ -24,7 +30,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading from object source
 
-function testObjectSource()
+@Test(priority=2) function testObjectSource()
    -- Create a memory object with XML content
    local testXML = '<sourceRoot><sourceChild>Object content</sourceChild></sourceRoot>'
    local memory = obj.new('file', { flags = 'READ|WRITE|NEW|BUFFER' })
@@ -44,7 +50,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test string: path prefix
 
-function testStringPathPrefix()
+@Test(priority=3) function testStringPathPrefix()
    local testXML = '<stringRoot><stringChild>String path content</stringChild></stringRoot>'
 
    -- Use string: prefix to treat path as XML content
@@ -57,7 +63,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test DataFeed action
 
-function testDataFeed()
+@Test(priority=4) function testDataFeed()
    local xml = obj.new("xml", { statement = '<root><existing>Original</existing></root>' })
 
    -- Feed additional XML data
@@ -72,7 +78,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test DataFeed with empty XML
 
-function testDataFeedEmpty()
+@Test(priority=5) function testDataFeedEmpty()
    local xml = obj.new("xml") -- Start with empty XML
 
    -- Feed XML data to empty object
@@ -93,7 +99,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test reloading from different sources
 
-function testSourceSwitching()
+@Test(priority=6) function testSourceSwitching()
    -- Start with statement
    local xml = obj.new("xml", { statement = '<initial>Statement content</initial>' })
    assert(xml.tags[0].attribs[0].name is "initial", "Initial load should work")
@@ -119,7 +125,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test loading large files
 
-function testLargeFileLoading()
+@Test(priority=7) function testLargeFileLoading()
    -- Generate large XML content
    local parts = {'<largeRoot>'}
    for i = 0, 499 do
@@ -137,7 +143,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test invalid file handling
 
-function testInvalidFileHandling()
+@Test(priority=8) function testInvalidFileHandling()
    -- Try to load non-existent file
 
    local ex, xml = catch(function() return obj.new("xml", { path = 'temp:nonexistent.xml' }) end)
@@ -149,20 +155,3 @@ function testInvalidFileHandling()
       assert(xml2.parseError != ERR_Okay, "Should report error for invalid XML")
    end)
 end
-
------------------------------------------------------------------------------------------------------------------------
-
-return {
-   tests = {
-      testPathLoading, testObjectSource, testStringPathPrefix,
-      testDataFeed, testDataFeedEmpty, testSourceSwitching,
-      testInvalidFileHandling
-   },
-   init = function(ScriptFolder)
-   end,
-   cleanup = function()
-      -- Clean up any remaining test files
-      mSys.DeleteFile('temp:test_xml_path.xml')
-      mSys.DeleteFile('temp:test_switch.xml')
-   end
-}

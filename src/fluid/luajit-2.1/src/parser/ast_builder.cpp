@@ -1353,12 +1353,16 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
             }
 
             auto close_paren = this->ctx.consume(TokenKind::RightParen, ParserErrorCode::ExpectedToken);
-            if (not close_paren.ok()) return ParserResult<ExprNodePtr>::failure(close_paren.error_ref());
+            if (not close_paren.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(close_paren.error_ref());
+            }
 
             // Arity validation - compile error on mismatch
             if (case_arm.tuple_patterns.size() != tuple_arity) {
                std::string msg = "tuple pattern has " + std::to_string(case_arm.tuple_patterns.size()) +
                   " elements but scrutinee has " + std::to_string(tuple_arity);
+               this->in_choose_expression = false;
                this->ctx.emit_error(ParserErrorCode::UnexpectedToken, current, msg);
                ParserError error;
                error.code = ParserErrorCode::UnexpectedToken;
@@ -1371,9 +1375,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
             for (bool wc : case_arm.tuple_wildcards) {
                if (not wc) { all_wildcards = false; break; }
             }
-            if (all_wildcards) {
-               case_arm.is_wildcard = true;
-            }
+
+            if (all_wildcards) case_arm.is_wildcard = true;
          }
          // Check for relational pattern operators (< <= > >=)
          else if (current.raw() IS '<') {
@@ -1382,12 +1385,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                this->ctx.tokens().advance();  // consume '=' (for <=)
                case_arm.relational_op = ChooseRelationalOp::LessEqual;
             }
-            else {
-               case_arm.relational_op = ChooseRelationalOp::LessThan;
-            }
+            else case_arm.relational_op = ChooseRelationalOp::LessThan;
+
             // Parse the comparison value expression
+
             auto pattern = this->parse_expression();
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
          else if (current.raw() IS '>') {
@@ -1396,33 +1402,45 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                this->ctx.tokens().advance();  // consume '=' (for >=)
                case_arm.relational_op = ChooseRelationalOp::GreaterEqual;
             }
-            else {
-               case_arm.relational_op = ChooseRelationalOp::GreaterThan;
-            }
+            else case_arm.relational_op = ChooseRelationalOp::GreaterThan;
+
             // Parse the comparison value expression
+
             auto pattern = this->parse_expression();
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
          else if (this->ctx.check(TokenKind::LessEqual)) {
             this->ctx.tokens().advance();  // consume '<='
             case_arm.relational_op = ChooseRelationalOp::LessEqual;
             auto pattern = this->parse_expression();
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
          else if (this->ctx.check(TokenKind::GreaterEqual)) {
             this->ctx.tokens().advance();  // consume '>='
             case_arm.relational_op = ChooseRelationalOp::GreaterEqual;
             auto pattern = this->parse_expression();
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
          // Check for table pattern { key = value, ... }
          else if (this->ctx.check(TokenKind::LeftBrace)) {
             case_arm.is_table_pattern = true;
             auto pattern = this->parse_expression();  // Reuse existing table parsing
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
          // Check for wildcard pattern '_'
@@ -1439,21 +1457,30 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
                else {
                   // Not a wildcard pattern, parse as normal expression
                   auto pattern = this->parse_expression();
-                  if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+                  if (not pattern.ok()) {
+                     this->in_choose_expression = false;
+                     return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+                  }
                   case_arm.pattern = std::move(pattern.value_ref());
                }
             }
             else {
                // Parse pattern (Phase 1: only literal expressions)
                auto pattern = this->parse_expression();
-               if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+               if (not pattern.ok()) {
+                  this->in_choose_expression = false;
+                  return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+               }
                case_arm.pattern = std::move(pattern.value_ref());
             }
          }
          else {
             // Parse pattern (Phase 1: only literal expressions)
             auto pattern = this->parse_expression();
-            if (not pattern.ok()) return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            if (not pattern.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(pattern.error_ref());
+            }
             case_arm.pattern = std::move(pattern.value_ref());
          }
       }
@@ -1475,12 +1502,18 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
 
       // Expect '->'
       auto arrow_match = this->ctx.consume(TokenKind::CaseArrow, ParserErrorCode::ExpectedToken);
-      if (not arrow_match.ok()) return ParserResult<ExprNodePtr>::failure(arrow_match.error_ref());
+      if (not arrow_match.ok()) {
+         this->in_choose_expression = false;
+         return ParserResult<ExprNodePtr>::failure(arrow_match.error_ref());
+      }
 
       // Parse result - could be expression OR statement (assignment)
       // Detect assignment by parsing first expression and checking for assignment operator
       auto first_expr = this->parse_expression();
-      if (not first_expr.ok()) return ParserResult<ExprNodePtr>::failure(first_expr.error_ref());
+      if (not first_expr.ok()) {
+         this->in_choose_expression = false;
+         return ParserResult<ExprNodePtr>::failure(first_expr.error_ref());
+      }
 
       // Check if this is an assignment statement
       Token maybe_assign = this->ctx.tokens().current();
@@ -1513,7 +1546,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          // Handle multi-target assignment: a, b, c = ...
          while (this->ctx.match(TokenKind::Comma).ok()) {
             auto extra = this->parse_expression();
-            if (not extra.ok()) return ParserResult<ExprNodePtr>::failure(extra.error_ref());
+            if (not extra.ok()) {
+               this->in_choose_expression = false;
+               return ParserResult<ExprNodePtr>::failure(extra.error_ref());
+            }
             targets.push_back(std::move(extra.value_ref()));
          }
 
@@ -1534,7 +1570,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_choose_expr()
          this->ctx.tokens().advance();  // consume assignment operator
 
          auto values = this->parse_expression_list();
-         if (not values.ok()) return ParserResult<ExprNodePtr>::failure(values.error_ref());
+         if (not values.ok()) {
+            this->in_choose_expression = false;
+            return ParserResult<ExprNodePtr>::failure(values.error_ref());
+         }
 
          StmtNodePtr stmt = std::make_unique<StmtNode>();
          stmt->kind = AstNodeKind::AssignmentStmt;
