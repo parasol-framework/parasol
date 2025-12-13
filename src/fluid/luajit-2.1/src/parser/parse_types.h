@@ -49,7 +49,8 @@ enum class ExpKind : uint8_t {
 enum class ExprFlag : uint8_t {
    None = 0x00u,
    PostfixIncStmt = 0x01u,
-   HasRhsReg = 0x02u
+   HasRhsReg = 0x02u,
+   BitwiseBase = 0x04u  // aux contains base register for bitwise call frame
 };
 
 enum class FuncScopeFlag : uint8_t {
