@@ -28,25 +28,22 @@ Example usage:
 ----------------------------------------------------------------------------------------------------------------------
 
 glNetworkAvailable = thunk():bool
-   catch(function()
-      if not mNet then
-         global mNet = mod.load('network')
-      end
-   end)
+   global mNet ?= catch(function() return mod.load('network') end)
    return mNet != nil
 end
 
 glAudioAvailable = thunk():bool
-   if not mAudio then
-      global mAudio = catch(function() return mod.load('audio') end)
-   end
+   global mAudio ?= catch(function() return mod.load('audio') end)
    return mAudio != nil
 end
 
+glFontAvailable = thunk():bool
+   global mFont ?= catch(function() return mod.load('font') end)
+   return mFont != nil
+end
+
 glDisplayAvailable = thunk():bool
-   if not mGfx then
-      global mGfx = catch(function() return mod.load('display') end)
-   end
+   global mGfx ?= catch(function() return mod.load('display') end)
    return mGfx != nil
 end
 
@@ -79,6 +76,8 @@ function checkAvailable(Requirement:str, Expectation:bool)
       return glNetworkAvailable is Expectation
    elseif Requirement is 'ssl' then
       return glSSLAvailable is Expectation
+   elseif Requirement is 'font' then
+      return glFontAvailable is Expectation
    elseif Requirement is 'audio' then
       return glAudioAvailable is Expectation
    elseif Requirement is 'display' then
@@ -91,7 +90,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function sortTests(Tests:table)
-   if (#Tests <= 1) then return end
+   if #Tests <= 1 then return end
 
    table.sort(Tests, function(a,b)
       return (a.priority ?? 0) < (b.priority ?? 0)
@@ -147,16 +146,12 @@ function runTests()
                -- @Test Arguments: name, timeout, priority, labels
                is_test = true
                for k, v in pairs(v.args) do
-                  if k is 'name' then
-                     test_name = v
-                  elseif k is 'timeout' then
-                     test_timeout = v
-                  elseif k is 'priority' then
-                     test_priority = v
-                  elseif k is 'labels' then
-                     test_labels = v
-                  elseif k is 'hotpath' then
-                     test_hotpath = v
+                  choose k from
+                     'name'     -> test_name     = v
+                     'timeout'  -> test_timeout  = v
+                     'priority' -> test_priority = v
+                     'labels'   -> test_labels   = v
+                     'hotpath'  -> test_hotpath  = v
                   end
                end
             elseif v.name is 'Disabled' then
@@ -242,7 +237,7 @@ function runTests()
          end
 
          local status, error_msg = pcall(test.func)
-         local hotpath_status = true
+         hotpath_status = true
          if status and (test.hotpath or glHotPath) then
             -- First test succeeded.  The hot-path test involves calling the test repeatedly to exercise the JIT compiler.
             local count = 0
@@ -265,11 +260,11 @@ function runTests()
          collectgarbage()
 
          if not status then
-            if error_msg then print(error_msg) end
+            not error_msg ?? print(error_msg)
             print(string.format('FAIL: %.6f sec', totalTime))
          else
             if not hotpath_status then
-               if error_msg then print(error_msg) end
+               not error_msg ?? print(error_msg)
                print(string.format('FAIL (HOT-PATH): %.6f sec', totalTime))
             else
                print(string.format('PASS: %.6f sec', totalTime))
@@ -290,8 +285,6 @@ function runTests()
 
    body?.cleanup()
 
-   print('--')
-
    if glTestsPassed < glTestTotal then
       -- Setting the errorString will ensure that an error code is returned to the shell.
       glSelf.errorString = 'Ran ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed
@@ -299,7 +292,7 @@ function runTests()
       glSelf.errorString = nil
    end
 
-   print('Ran ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed)
+   print('--\nRan ' .. glTestTotal .. ' tests, passed ' .. glTestsPassed)
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -1342,8 +1342,8 @@ static TRef rec_idx_key(jit_State* J, RecordIndex* ix, IRRef* rbref, IRType1* rb
    key = ix->key;
    if (tref_isnumber(key)) {
       int32_t k = numberVint(&ix->keyv);
-      if (not tvisint(&ix->keyv) and numV(&ix->keyv) != (lua_Number)k)
-         k = LJ_MAX_ASIZE;
+      if (not tvisint(&ix->keyv) and numV(&ix->keyv) != (lua_Number)k) k = LJ_MAX_ASIZE;
+
       if (k >= 0 and (MSize)k < LJ_MAX_ASIZE) {  // 0-based: potential array key?
          TRef ikey = lj_opt_narrow_index(J, key);
          TRef asizeref = emitir(IRTI(IR_FLOAD), ix->tab, IRFL_TAB_ASIZE);
@@ -1355,8 +1355,7 @@ static TRef rec_idx_key(jit_State* J, RecordIndex* ix, IRRef* rbref, IRType1* rb
          }
          else {  // Currently not in array (may be an array extension)?
             emitir(IRTGI(IR_ULE), asizeref, ikey);  //  Inv. bounds check.
-            if (k IS 0 and tref_isk(key))
-               key = lj_ir_knum_zero(J);  //  Canonicalize 0 or +-0.0 to +0.0.
+            if (k IS 0 and tref_isk(key)) key = lj_ir_knum_zero(J);  //  Canonicalize 0 or +-0.0 to +0.0.
             // And continue with the hash lookup.
          }
       }
@@ -1381,11 +1380,11 @@ static TRef rec_idx_key(jit_State* J, RecordIndex* ix, IRRef* rbref, IRType1* rb
       return lj_ir_kkptr(J, niltvg(J2G(J)));
    }
 
-   if (tref_isinteger(key))  //  Hash keys are based on numbers, not ints.
+   if (tref_isinteger(key)) { //  Hash keys are based on numbers, not ints.
       key = emitir(IRTN(IR_CONV), key, IRCONV_NUM_INT);
+   }
 
-      if (tref_isk(key)) {
-      // Optimize lookup of constant hash keys.
+   if (tref_isk(key)) { // Optimize lookup of constant hash keys.
       MSize hslot = (MSize)((char*)ix->oldv - (char*)&noderef(t->node)[0].val);
       if (t->hmask > 0 and hslot <= t->hmask * (MSize)sizeof(Node) and
          hslot <= 65535 * (MSize)sizeof(Node)) {

@@ -1,22 +1,10 @@
---[[
-Flute tests for the struct interface.
---]]
-
-@BeforeEach(hotpath=true) 
-function enforce_hotpath() end
-
-   ex, mFont = catch(function() return mod.load("font") end)
-
-   if ex then
-      logOutput("Font module is disabled in this build, skipping test")
-      return
-   end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Retrieve a known struct from a function and then list its field values.  GetList() is chosen in particular because
 -- it features a null-terminated array in the Points field.
 
-@Test function testFontList()
+@Test(hotpath=true); @Requires(font=true)
+function testFontList()
    err, list = mFont.GetList()
    assert(list, "Failed to retrieve list of fonts, error: " .. mSys.GetErrorMsg(err))
 
@@ -35,7 +23,7 @@ function enforce_hotpath() end
             if points?? then points ..= ", " end
             points ..= p
          end
-         if points?? then logOutput("Available in fixed sizes: " .. points) end
+         not points ?? logOutput("Available in fixed sizes: " .. points)
          logOutput("")
       end
 
