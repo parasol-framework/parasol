@@ -23,7 +23,7 @@ Example usage:
    glSelf    = obj.find('self')
    glLabels  = arg('labels')?:split(',') ?? { }
 
-   jit.opt.start("hotloop=1") -- Lower threshold to trigger JIT sooner, simplifies debugging
+   jit.opt.start("hotloop=3") -- Lower threshold to trigger JIT sooner, simplifies debugging
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -175,7 +175,7 @@ function runTests()
             else
                label_present = false
                inverse = false
-               
+
                for _, label_filter in ipairs(glLabels) do
                   if label_filter:startsWith('~') then
                      inverse = true

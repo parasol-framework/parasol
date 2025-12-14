@@ -195,10 +195,11 @@ static APTR find_core()
       }
    }
 
-   // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path.
+   // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path
+   // so that zlib, freetype and so forth are found.
 
-   auto dll_folder = folder + "lib";
-   SetDllDirectoryA(folder.c_str());
+   auto dll_folder = folder + "lib\\lib";
+   SetDllDirectoryA(dll_folder.c_str());
 
    APTR handle;
    core_lib = folder + "lib\\core.dll";
