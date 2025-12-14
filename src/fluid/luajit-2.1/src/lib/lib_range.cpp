@@ -1019,7 +1019,6 @@ static int range_call(lua_State *L)
 
 //********************************************************************************************************************
 // range.slice(obj, range) - Generic slicing for tables and strings.
-// This is the primary slicing function - rawslice() and table.slice() delegate to this.
 // For tables: returns a new table with elements from the range
 // For strings: returns a substring based on the range
 
@@ -1215,7 +1214,8 @@ LJLIB_CF(range_slice)
    return range_slice_impl(L);
 }
 
-// Exported wrapper for use by rawslice() and table.slice()
+// Exported wrapper
+
 int lj_range_slice(lua_State *L)
 {
    return range_slice_impl(L);

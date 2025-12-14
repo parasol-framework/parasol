@@ -30,6 +30,6 @@ fluid_range *check_range(lua_State *L, int idx);
 
 fluid_range *check_range_tv(lua_State *L, cTValue *tv);
 
-// Slice function for tables and strings - exported for use by rawslice() and table.slice()
+// Slice function for tables and strings
 
 int lj_range_slice(lua_State *L);
