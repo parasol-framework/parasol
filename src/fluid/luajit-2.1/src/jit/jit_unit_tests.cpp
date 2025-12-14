@@ -15,22 +15,22 @@
 
 namespace {
 
-// Mock jit_State for testing FrameManager operations
-struct MockJitState {
-   TRef slot[LJ_MAX_JSLOTS];
-   TRef* base;
-   BCREG baseslot;
-   BCREG maxslot;
-   int32_t framedepth;
+// For unit tests, we use the real jit_State structure but only initialize the fields
+// we need. This avoids layout mismatch issues with mocks.
+// Verify that jit_State has the expected layout for the fields we access:
+static_assert(offsetof(jit_State, base) IS offsetof(jit_State, cur) + sizeof(GCtrace) + sizeof(void*) * 5,
+   "jit_State::base offset unexpected");
+static_assert(offsetof(jit_State, baseslot) IS offsetof(jit_State, base) + sizeof(TRef*) + sizeof(uint32_t) + sizeof(BCREG),
+   "jit_State::baseslot offset unexpected");
 
-   MockJitState() {
-      memset(slot, 0, sizeof(slot));
-      baseslot = FRC::MIN_BASESLOT;
-      base = slot + baseslot;
-      maxslot = 0;
-      framedepth = 0;
-   }
-};
+// Helper to initialize a jit_State for testing frame operations only
+static void init_test_jit_state(jit_State& J) {
+   memset(&J, 0, sizeof(J));
+   J.baseslot = FRC::MIN_BASESLOT;
+   J.base = J.slot + J.baseslot;
+   J.maxslot = 0;
+   J.framedepth = 0;
+}
 
 // Test that FRC constants match the expected values for LJ_FR2=1
 static bool test_frc_constants(pf::Log& log)
@@ -54,22 +54,23 @@ static bool test_frc_constants(pf::Log& log)
 // Test push/pop symmetry for call frames
 static bool test_frame_push_pop_symmetry(pf::Log& log)
 {
-   MockJitState mock;
-   FrameManager fm((jit_State*)&mock);
+   jit_State J;
+   init_test_jit_state(J);
+   FrameManager fm(&J);
 
-   BCREG initial_baseslot = mock.baseslot;
+   BCREG initial_baseslot = J.baseslot;
 
    // Push frame at slot 5: base moves by 5 + 2 (header) = 7
    fm.push_call_frame(5);
-   if (mock.baseslot != initial_baseslot + 5 + FRC::HEADER_SIZE) {
-      log.error("push_call_frame: expected baseslot=%u, got %u", initial_baseslot + 5 + FRC::HEADER_SIZE, mock.baseslot);
+   if (J.baseslot != initial_baseslot + 5 + FRC::HEADER_SIZE) {
+      log.error("push_call_frame: expected baseslot=%u, got %u", initial_baseslot + 5 + FRC::HEADER_SIZE, J.baseslot);
       return false;
    }
 
    // Pop Lua frame with cbase=5: base moves back by 5 + 2 = 7
    fm.pop_lua_frame(5);
-   if (mock.baseslot != initial_baseslot) {
-      log.error("pop_lua_frame: expected baseslot=%u, got %u", initial_baseslot, mock.baseslot);
+   if (J.baseslot != initial_baseslot) {
+      log.error("pop_lua_frame: expected baseslot=%u, got %u", initial_baseslot, J.baseslot);
       return false;
    }
 
@@ -79,26 +80,28 @@ static bool test_frame_push_pop_symmetry(pf::Log& log)
 // Test delta-only pop (for vararg/pcall frames)
 static bool test_delta_frame_pop(pf::Log& log)
 {
-   MockJitState mock;
-   FrameManager fm((jit_State*)&mock);
+   jit_State J;
+   init_test_jit_state(J);
 
    // Start at base + some offset
-   mock.baseslot = 10;
-   mock.base = mock.slot + mock.baseslot;
+   J.baseslot = 10;
+   J.base = J.slot + J.baseslot;
+
+   FrameManager fm(&J);
 
    // Push frame at slot 3
    fm.push_call_frame(3);  // Now at 10 + 3 + 2 = 15
 
-   if (mock.baseslot != 15) {
-      log.error("push_call_frame: expected baseslot=15, got %u", mock.baseslot);
+   if (J.baseslot != 15) {
+      log.error("push_call_frame: expected baseslot=15, got %u", J.baseslot);
       return false;
    }
 
    // Pop delta-only (vararg frames use just the delta, no header adjustment)
    fm.pop_delta_frame(3);  // Back by 3 only = 12
 
-   if (mock.baseslot != 12) {
-      log.error("pop_delta_frame: expected baseslot=12, got %u", mock.baseslot);
+   if (J.baseslot != 12) {
+      log.error("pop_delta_frame: expected baseslot=12, got %u", J.baseslot);
       return false;
    }
 
@@ -108,11 +111,12 @@ static bool test_delta_frame_pop(pf::Log& log)
 // Test func_slot accessor
 static bool test_func_slot_access(pf::Log& log)
 {
-   MockJitState mock;
-   FrameManager fm((jit_State*)&mock);
+   jit_State J;
+   init_test_jit_state(J);
+   FrameManager fm(&J);
 
    // Set a value at the function slot position
-   mock.base[FRC::FUNC_SLOT_OFFSET] = 0x12345678;
+   J.base[FRC::FUNC_SLOT_OFFSET] = 0x12345678;
 
    TRef result = fm.func_slot();
    if (result != 0x12345678) {
@@ -122,9 +126,9 @@ static bool test_func_slot_access(pf::Log& log)
 
    // Test writing through func_slot
    fm.func_slot() = 0xDEADBEEF;
-   if (mock.base[FRC::FUNC_SLOT_OFFSET] != 0xDEADBEEF) {
+   if (J.base[FRC::FUNC_SLOT_OFFSET] != 0xDEADBEEF) {
       log.error("func_slot write: expected 0xDEADBEEF, got 0x%x",
-              mock.base[FRC::FUNC_SLOT_OFFSET]);
+              J.base[FRC::FUNC_SLOT_OFFSET]);
       return false;
    }
 
@@ -134,11 +138,12 @@ static bool test_func_slot_access(pf::Log& log)
 // Test overflow detection
 static bool test_overflow_detection(pf::Log& log)
 {
-   MockJitState mock;
-   mock.baseslot = LJ_MAX_JSLOTS - 10;
-   mock.base = mock.slot + mock.baseslot;
+   jit_State J;
+   init_test_jit_state(J);
+   J.baseslot = LJ_MAX_JSLOTS - 10;
+   J.base = J.slot + J.baseslot;
 
-   FrameManager fm((jit_State*)&mock);
+   FrameManager fm(&J);
 
    // Should detect overflow
    if (not fm.would_overflow(15)) {
@@ -158,8 +163,9 @@ static bool test_overflow_detection(pf::Log& log)
 // Test at_root_baseslot
 static bool test_root_baseslot_detection(pf::Log& log)
 {
-   MockJitState mock;
-   FrameManager fm((jit_State*)&mock);
+   jit_State J;
+   init_test_jit_state(J);
+   FrameManager fm(&J);
 
    // At initialization, should be at root
    if (not fm.at_root_baseslot()) {
@@ -180,24 +186,25 @@ static bool test_root_baseslot_detection(pf::Log& log)
 // Test compact_tailcall memory move
 static bool test_compact_tailcall(pf::Log& log)
 {
-   MockJitState mock;
-   mock.baseslot = 10;
-   mock.base = mock.slot + mock.baseslot;
+   jit_State J;
+   init_test_jit_state(J);
+   J.baseslot = 10;
+   J.base = J.slot + J.baseslot;
 
    // Set up some test values
-   mock.base[5] = 0xAAAA;  // func at slot 5
-   mock.base[6] = 0xBBBB;  // frame marker
-   mock.base[7] = 0xCCCC;  // arg 1
-   mock.base[8] = 0xDDDD;  // arg 2
+   J.base[5] = 0xAAAA;  // func at slot 5
+   J.base[6] = 0xBBBB;  // frame marker
+   J.base[7] = 0xCCCC;  // arg 1
+   J.base[8] = 0xDDDD;  // arg 2
 
-   FrameManager fm((jit_State*)&mock);
+   FrameManager fm(&J);
    fm.compact_tailcall(5, 2);  // Move func + 2 args + header
 
    // Check that values moved to function slot position
-   if (mock.base[FRC::FUNC_SLOT_OFFSET] != 0xAAAA or
-       mock.base[FRC::FUNC_SLOT_OFFSET + 1] != 0xBBBB or
-       mock.base[FRC::FUNC_SLOT_OFFSET + 2] != 0xCCCC or
-       mock.base[FRC::FUNC_SLOT_OFFSET + 3] != 0xDDDD) {
+   if (J.base[FRC::FUNC_SLOT_OFFSET] != 0xAAAA or
+       J.base[FRC::FUNC_SLOT_OFFSET + 1] != 0xBBBB or
+       J.base[FRC::FUNC_SLOT_OFFSET + 2] != 0xCCCC or
+       J.base[FRC::FUNC_SLOT_OFFSET + 3] != 0xDDDD) {
       log.error("compact_tailcall: values not moved correctly");
       return false;
    }
