@@ -26,11 +26,13 @@
 #include <sys/wait.h>
 #endif
 
-// -- Module registration
+#ifndef CSTRING
+#define CSTRING const char*
+#endif
 
-extern const char* luaL_findtable(lua_State* L, int idx, const char* fname, int szhint)
+extern CSTRING luaL_findtable(lua_State* L, int idx, CSTRING fname, int szhint)
 {
-   const char* e;
+   CSTRING e;
    lua_pushvalue(L, idx);
    do {
       e = strchr(fname, '.');
@@ -61,21 +63,20 @@ static int libsize(const luaL_Reg* l)
    return size;
 }
 
-extern void luaL_pushmodule(lua_State* L, const char* modname, int sizehint)
+extern void luaL_pushmodule(lua_State* L, CSTRING modname, int sizehint)
 {
    luaL_findtable(L, LUA_REGISTRYINDEX, "_LOADED", 16);
    lua_getfield(L, -1, modname);
    if (!lua_istable(L, -1)) {
       lua_pop(L, 1);
-      if (luaL_findtable(L, LUA_GLOBALSINDEX, modname, sizehint) != nullptr)
-         lj_err_callerv(L, ErrMsg::BADMODN, modname);
+      if (luaL_findtable(L, LUA_GLOBALSINDEX, modname, sizehint) != nullptr) lj_err_callerv(L, ErrMsg::BADMODN, modname);
       lua_pushvalue(L, -1);
       lua_setfield(L, -3, modname);  //  _LOADED[modname] = new table.
    }
    lua_remove(L, -2);  //  Remove _LOADED table.
 }
 
-extern void luaL_openlib(lua_State* L, const char* libname, const luaL_Reg* l, int nup)
+extern void luaL_openlib(lua_State* L, CSTRING libname, const luaL_Reg* l, int nup)
 {
    lj_lib_checkfpu(L);
    if (libname) {
@@ -87,7 +88,7 @@ extern void luaL_openlib(lua_State* L, const char* libname, const luaL_Reg* l, i
    else lua_pop(L, nup);  //  Remove upvalues.
 }
 
-extern void luaL_register(lua_State* L, const char* libname, const luaL_Reg* l)
+extern void luaL_register(lua_State* L, CSTRING libname, const luaL_Reg* l)
 {
    luaL_openlib(L, libname, l, 0);
 }
@@ -105,9 +106,9 @@ extern void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
    lua_pop(L, nup);  //  Remove upvalues.
 }
 
-extern const char* luaL_gsub(lua_State* L, const char* s, const char* p, const char* r)
+extern CSTRING luaL_gsub(lua_State* L, CSTRING s, CSTRING p, CSTRING r)
 {
-   const char* wild;
+   CSTRING wild;
    size_t l = strlen(p);
    luaL_Buffer b;
    luaL_buffinit(L, &b);
@@ -121,7 +122,7 @@ extern const char* luaL_gsub(lua_State* L, const char* s, const char* p, const c
    return lua_tostring(L, -1);
 }
 
-// -- Buffer handling
+// Buffer handling
 
 #define bufflen(B)   ((size_t)((B)->p - (B)->buffer))
 #define bufffree(B)   ((size_t)(LUAL_BUFFERSIZE - bufflen(B)))
@@ -161,7 +162,7 @@ extern char* luaL_prepbuffer(luaL_Buffer* B)
    return B->buffer;
 }
 
-extern void luaL_addlstring(luaL_Buffer* B, const char* s, size_t l)
+extern void luaL_addlstring(luaL_Buffer* B, CSTRING s, size_t l)
 {
    if (l <= bufffree(B)) {
       memcpy(B->p, s, l);
@@ -175,7 +176,7 @@ extern void luaL_addlstring(luaL_Buffer* B, const char* s, size_t l)
    }
 }
 
-extern void luaL_addstring(luaL_Buffer* B, const char* s)
+extern void luaL_addstring(luaL_Buffer* B, CSTRING s)
 {
    luaL_addlstring(B, s, strlen(s));
 }
@@ -191,7 +192,7 @@ extern void luaL_addvalue(luaL_Buffer* B)
 {
    lua_State* L = B->L;
    size_t vl;
-   const char* s = lua_tolstring(L, -1, &vl);
+   CSTRING s = lua_tolstring(L, -1, &vl);
    if (vl <= bufffree(B)) {  // fit into buffer?
       memcpy(B->p, s, vl);  //  put it there
       B->p += vl;
@@ -211,13 +212,13 @@ extern void luaL_buffinit(lua_State* L, luaL_Buffer* B)
    B->lvl = 0;
 }
 
-// -- Reference management
+// Reference management
 
 #define FREELIST_REF   0
 
 // Convert a stack index to an absolute index.
-#define abs_index(L, i) \
-  ((i) > 0 or (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
+
+#define abs_index(L, i) ((i) > 0 or (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 
 extern int luaL_ref(lua_State* L, int t)
 {
@@ -254,11 +255,11 @@ extern void luaL_unref(lua_State* L, int t, int ref)
    }
 }
 
-// -- Default allocator and panic function
+// Default allocator and panic function
 
 static int panic(lua_State* L)
 {
-   const char* s = lua_tostring(L, -1);
+   CSTRING s = lua_tostring(L, -1);
    fputs("PANIC: unprotected error in call to Lua API (", stderr);
    fputs(s ? s : "?", stderr);
    fputc(')', stderr); fputc('\n', stderr);
@@ -297,24 +298,11 @@ extern lua_State* luaL_newstate(void)
 extern lua_State* luaL_newstate(class objScript *Script)
 {
    lua_State* L;
-#if LJ_64 && !LJ_GC64
-   L = lj_state_newstate(LJ_ALLOCF_INTERNAL, nullptr);
-#else
    L = lua_newstate(LJ_ALLOCF_INTERNAL, nullptr);
-#endif
    L->script = Script;
    if (L) G(L)->panic = panic;
    return L;
 }
-
-#if LJ_64 && !LJ_GC64
-extern lua_State* lua_newstate(lua_Alloc f, void* ud)
-{
-   UNUSED(f); UNUSED(ud);
-   fputs("Must use luaL_newstate() for 64 bit target\n", stderr);
-   return nullptr;
-}
-#endif
 
 #endif
 

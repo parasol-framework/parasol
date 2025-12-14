@@ -154,10 +154,12 @@ LJLIB_CF(bit_tohex)      LJLIB_REC(.)
    uint32_t b = (uint32_t)bit_checkbit(L, 1);
    int32_t n = L->base + 1 >= L->top ? 8 : bit_checkbit(L, 2);
 #endif
+
    SBuf* sb = lj_buf_tmp_(L);
    SFormat sf = (STRFMT_UINT | STRFMT_T_HEX);
    if (n < 0) { n = -n; sf |= STRFMT_F_UPPER; }
    sf |= ((SFormat)((n + 1) & 255) << STRFMT_SH_PREC);
+
 #if LJ_HASFFI
    if (n < 16) b &= ((uint64_t)1 << 4 * n) - 1;
 #else

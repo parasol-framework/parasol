@@ -1,10 +1,8 @@
 -- $FLUID
 -- Flute tests for the Lua IO library
 
-@BeforeAll function init(Folder)
-   global glTestFolder = 'temp:'
-   global glTestFiles = { }
-end
+glTestFolder = 'temp:'
+glTestFiles = { }
 
 @AfterAll function cleanup()
    for k, v in pairs(glTestFiles) do
@@ -18,8 +16,7 @@ end
 
 function createTestFile(name, content)
    path = glTestFolder .. name
-   file = obj.new('file', { path=path, flags='NEW|WRITE' })
-   assert(file, 'Failed to create test file: ' .. name)
+   file = obj.new('file', { path=path, flags=FL_NEW|FL_WRITE })
    if content then
       file.acWrite(content)
    end
@@ -33,9 +30,7 @@ function fileExists(path)
 end
 
 function readFileContent(path)
-   file = obj.new('file', { path=path, flags='READ' })
-   if not file then return nil end
-
+   file = obj.new('file', { path=path, flags=FL_READ })
    buffer = string.alloc(4096)
    err, bytes = file.acRead(buffer)
    if err is ERR_Okay and bytes > 0 then
@@ -47,14 +42,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Basic file operations tests
 
-@Test function testIoOpen()
-   logOutput('Testing io.open()...')
-
+@Test(labels=['io', 'file']) function ioOpen()
    -- Test opening an existing file for reading
    test_path = createTestFile('test_read.txt', 'Hello, World!')
    file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for reading')
-   assert(io.type(file) is 'file', 'io.type should return "file"')
+   assert(io.type(file) is 'file', "io.type should return 'file'")
    file:close()
 
    -- Test opening a new file for writing
@@ -83,9 +76,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIoClose()
-   logOutput('Testing io.close()...')
-
+@Test(labels=['io', 'file']) function ioClose()
    test_path = createTestFile('test_close.txt', 'test')
    file = io.open(test_path, 'r')
    assert(file, 'Failed to open file')
@@ -97,13 +88,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIoType()
-   logOutput('Testing io.type()...')
-
+@Test(labels=['io', 'file']) function ioType()
    test_path = createTestFile('test_type.txt', 'test')
    file = io.open(test_path, 'r')
 
-   assert(io.type(file) is 'file', 'Should return "file" for open file')
+   assert(io.type(file) is 'file', "Should return 'file' for open file")
    assert(io.type('not a file') is nil, 'Should return nil for non-file object')
 
    file:close()
@@ -112,9 +101,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIoTmpfile()
-   logOutput('Testing io.tmpfile()...')
-
+@Test(labels=['io', 'file']) function ioTmpfile()
    tmpfile = io.tmpfile()
    assert(tmpfile, 'Failed to create temporary file')
    assert(io.type(tmpfile) is 'file', 'Temporary file should be a valid file object')
@@ -129,9 +116,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- File handle method tests
 
-@Test function testFileWrite()
-   logOutput('Testing file:write()...')
-
+@Test(labels=['io', 'file']) function fileWrite()
    test_path = glTestFolder .. 'test_file_write.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for writing')
@@ -153,9 +138,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFileRead()
-   logOutput('Testing file:read()...')
-
+@Test(labels=['io', 'file']) function fileRead()
    -- Create test file with various content types
    test_content = '123\n456.789\nHello World\nLine 4\n'
    test_path = createTestFile('test_read.txt', test_content)
@@ -201,9 +184,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFileSeek()
-   logOutput('Testing file:seek()...')
-
+@Test(labels=['io', 'file']) function fileSeek()
    test_path = createTestFile('test_seek.txt', '0123456789')
    file = io.open(test_path, 'r')
    assert(file, 'Failed to open file for seeking')
@@ -229,9 +210,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testFileFlush()
-   logOutput('Testing file:flush()...')
-
+@Test(labels=['io', 'file']) function fileFlush()
    test_path = glTestFolder .. 'test_flush.txt'
    file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for flushing')
@@ -247,9 +226,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Lines iteration tests
 
-@Test function testIoLines()
-   logOutput('Testing io.lines()...')
-
+@Test(labels=['io', "lines"]) function ioLines()
    -- Create test file with multiple lines
    lines_content = 'Line 1\nLine 2\nLine 3\n'
    test_path = createTestFile('test_lines.txt', lines_content)
@@ -268,9 +245,7 @@ end
    assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
 end
 
-@Test function testFileLines()
-   logOutput('Testing file:lines()...')
-
+@Test(labels=['io', "lines"]) function fileLines()
    lines_content = 'First\nSecond\nThird\n'
    test_path = createTestFile('test_file_lines.txt', lines_content)
    file = io.open(test_path, 'r')
@@ -279,7 +254,7 @@ end
    line_count = 0
    collected_lines = {}
    for line in file:lines() do
-      line_count = line_count + 1
+      line_count++
       table.insert(collected_lines, line)
    end
 
@@ -294,9 +269,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Default input/output tests
 
-@Test function testIoInputOutput()
-   logOutput('Testing io.input() and io.output()...')
-
+@Test(labels=['io', "defaults"]) function inputOutput()
    -- Test setting default input
    input_path = createTestFile('test_input.txt', 'input test data')
    input_file = io.input(input_path)
@@ -329,10 +302,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Constants tests
 
-@Test function testIoConstants()
-   assert(io.stdin != nil, 'io.stdin not defined')
-   assert(io.stdout != nil, 'io.stdout not defined')
-   assert(io.stderr != nil, 'io.stderr not defined')
+@Test(labels=['io']) function ioConstants()
+   assert(io.stdin, 'io.stdin not defined')
+   assert(io.stdout, 'io.stdout not defined')
+   assert(io.stderr, 'io.stderr not defined')
 
    -- Test that constants can be used with io.input (if supported)
    err, result = catch(function()
@@ -343,13 +316,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Error handling tests
 
-@Test function testErrorHandling()
-   logOutput('Testing error handling...')
-
+@Test(labels=['io', "error"]) function errorHandling()
    -- Test opening invalid file
    file, err = io.open('/invalid/path/file.txt', 'r')
    assert(file is nil, 'Should return nil for invalid file path')
-   assert(err != nil, 'Should return error message for invalid file path')
+   assert(err, 'Should return error message for invalid file path')
 
    -- Test operations on closed file
    test_path = createTestFile('test_closed.txt', 'test')
@@ -359,20 +330,18 @@ end
    success, error_msg = catch(function()
       file:write('should fail')
    end)
-   assert(success is nil, 'Writing to closed file should fail')
+   assert(not success, 'Writing to closed file should fail')
 
    success, error_msg = catch(function()
       file:seek('set', 0)
    end)
-   assert(success is nil, 'Seeking in closed file should fail')
+   assert(not success, 'Seeking in closed file should fail')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration tests
 
-@Test function testIoRead()
-   logOutput('Testing io.read()...')
-
+@Test(labels=['io', "read"]) function ioRead()
    -- Test reading from default input
    input_path = createTestFile('test_io_read.txt', 'io read test\nsecond line\n')
    io.input(input_path)
@@ -388,9 +357,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function testIntegration()
-   logOutput('Testing integrated IO operations...')
-
+@Test(labels=['io', "full"]) function integration()
    -- Create a test file, write data, read it back line by line
    test_data = 'First line of data\nSecond line of data\nThird line of data\n'
    test_path = glTestFolder .. 'integration_test.txt'

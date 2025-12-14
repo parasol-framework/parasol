@@ -16,6 +16,8 @@
 #include "lj_str.h"
 #include "lualib.h"
 #include "lj_thunk.h"
+#include "lj_trace.h"
+#include "lj_dispatch.h"
 
 using std::floor;
 using std::pow;
@@ -72,6 +74,11 @@ void lj_thunk_new(lua_State *L, GCfunc *func, int expected_type)
 // IMPORTANT: Callers from VM assembler code (e.g., lj_meta_equal_thunk) must use
 // VMHelperGuard to ensure L->top is valid before calling this function.
 // This function handles stack reallocation during lua_pcall but does not fix L->top.
+//
+// JIT SAFETY: Thunk resolution aborts any ongoing trace and temporarily disables JIT
+// recording by setting HOOK_GC. This prevents the JIT from recording across the lua_pcall
+// boundary, which would cause snapshot_framelinks() to fail when it encounters the
+// protected C frame created by lua_pcall.
 
 TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
 {
@@ -85,19 +92,35 @@ TValue* lj_thunk_resolve(lua_State *L, GCudata *thunk_udata)
    // Get the deferred function
    GCfunc *fn = gco2func(gcref(payload->deferred_func));
 
+   // Abort any ongoing trace and disable JIT recording during thunk resolution.
+   // The JIT cannot record across lua_pcall boundaries because the protected C frame
+   // breaks the frame chain that snapshot_framelinks() expects to traverse.
+
+   global_State *g = G(L);
+   uint8_t oldh = hook_save(g);
+   lj_trace_abort(g);
+   hook_entergc(g);  // Disable hooks and new traces during thunk resolution.
+   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
+
    // Save stack offsets - the stack may be reallocated during lua_pcall.
    // We save as byte offsets from L->stack, not raw pointers.
+
    ptrdiff_t base_offset = savestack(L, L->base);
    ptrdiff_t top_offset = savestack(L, L->top);
 
    // Push function to stack. lua_pcall expects func at L->top - nargs - 1.
    // With nargs=0, func should be at L->top - 1, so push it then call.
+
    setfuncV(L, L->top, fn);
    L->top++;
 
    // Use lua_pcall for protected call - this properly handles being called
    // from VM assembler functions like lj_meta_equal_thunk
    int status = lua_pcall(L, 0, 1, 0);
+
+   // Restore hooks to re-enable JIT recording
+   hook_restore(g, oldh);
+   if (LJ_HASPROFILE and (oldh & HOOK_PROFILE)) lj_dispatch_update(g);
 
    // Restore base in case stack was reallocated
    L->base = restorestack(L, base_offset);
@@ -309,24 +332,28 @@ static int thunk_concat(lua_State *L)
 // Comparison metamethods
 
 // Equality - compares resolved values using full Lua equality semantics
+
 static int thunk_eq(lua_State *L)
 {
    TValue *a = resolve_at(L, 0);
    TValue *b = resolve_at(L, 1);
 
    // Same pointer means equal
+
    if (a IS b) {
       setboolV(L->top++, 1);
       return 1;
    }
 
    // Use lj_obj_equal for basic equality (numbers, strings, primitives, reference equality)
+
    if (lj_obj_equal(a, b)) {
       setboolV(L->top++, 1);
       return 1;
    }
 
    // For tables and userdata with same type, check __eq metamethod
+
    if (itype(a) IS itype(b)) {
       if (tvistab(a) or tvisudata(a)) {
          GCobj *gcobj_a = gcV(a);
@@ -360,6 +387,7 @@ static int thunk_eq(lua_State *L)
 }
 
 // Less than - compares resolved values
+
 static int thunk_lt(lua_State *L)
 {
    TValue *a = resolve_at(L, 0);
@@ -368,18 +396,17 @@ static int thunk_lt(lua_State *L)
    int result;
    if (tvisnumber(a) and tvisnumber(b)) {
       result = (getnumvalue(a) < getnumvalue(b));
-   } else if (tvisstr(a) and tvisstr(b)) {
+   } 
+   else if (tvisstr(a) and tvisstr(b)) {
       // String comparison
       GCstr *sa = strV(a);
       GCstr *sb = strV(b);
       size_t len = (sa->len < sb->len) ? sa->len : sb->len;
       int cmp = memcmp(strdata(sa), strdata(sb), len);
-      if (cmp IS 0) {
-         result = (sa->len < sb->len);
-      } else {
-         result = (cmp < 0);
-      }
-   } else {
+      if (cmp IS 0) result = (sa->len < sb->len);
+      else result = (cmp < 0);
+   } 
+   else {
       lj_err_comp(L, a, b);
       return 0;
    }
@@ -397,18 +424,17 @@ static int thunk_le(lua_State *L)
    int result;
    if (tvisnumber(a) and tvisnumber(b)) {
       result = (getnumvalue(a) <= getnumvalue(b));
-   } else if (tvisstr(a) and tvisstr(b)) {
+   } 
+   else if (tvisstr(a) and tvisstr(b)) {
       // String comparison
       GCstr *sa = strV(a);
       GCstr *sb = strV(b);
       size_t len = (sa->len < sb->len) ? sa->len : sb->len;
       int cmp = memcmp(strdata(sa), strdata(sb), len);
-      if (cmp IS 0) {
-         result = (sa->len <= sb->len);
-      } else {
-         result = (cmp <= 0);
-      }
-   } else {
+      if (cmp IS 0) result = (sa->len <= sb->len);
+      else result = (cmp <= 0);
+   } 
+   else {
       lj_err_comp(L, a, b);
       return 0;
    }
@@ -430,13 +456,13 @@ static int thunk_index(lua_State *L)
       cTValue *res = lj_tab_get(L, t, key);
 
       // If not found and table has metatable, try __index
+
       if (tvisnil(res)) {
          GCtab *mt = tabref(t->metatable);
          if (mt) {
             cTValue *idx = lj_tab_getstr(mt, lj_str_newlit(L, "__index"));
             if (idx and not tvisnil(idx)) {
-               if (tvisfunc(idx)) {
-                  // __index is a function: call __index(table, key)
+               if (tvisfunc(idx)) { // __index is a function: call __index(table, key)
                   copyTV(L, L->top, idx);
                   copyTV(L, L->top + 1, o);
                   copyTV(L, L->top + 2, key);
@@ -444,8 +470,8 @@ static int thunk_index(lua_State *L)
                   lua_call(L, 2, 1);
                   // Result is already at L->top-1, which is now L->top after lua_call returns
                   return 1;
-               } else if (tvistab(idx)) {
-                  // __index is a table: look up key in that table
+               } 
+               else if (tvistab(idx)) { // __index is a table: look up key in that table
                   res = lj_tab_get(L, tabV(idx), key);
                }
             }
@@ -456,6 +482,7 @@ static int thunk_index(lua_State *L)
    }
 
    // Handle userdata (e.g., Parasol objects) - delegate to their metatable's __index
+
    if (tvisudata(o)) {
       GCudata *ud = udataV(o);
       GCtab *mt = tabref(ud->metatable);
@@ -470,7 +497,8 @@ static int thunk_index(lua_State *L)
                L->top += 3;
                lua_call(L, 2, 1);
                return 1;
-            } else if (tvistab(idx)) {
+            } 
+            else if (tvistab(idx)) {
                // __index is a table: look up key in that table
                cTValue *res = lj_tab_get(L, tabV(idx), key);
                copyTV(L, L->top++, res);
@@ -501,6 +529,7 @@ static int thunk_newindex(lua_State *L)
       GCtab *t = tabV(o);
 
       // Check if key exists in table - if not, check for __newindex metamethod
+
       cTValue *existing = lj_tab_get(L, t, key);
       if (tvisnil(existing)) {
          GCtab *mt = tabref(t->metatable);
@@ -516,7 +545,8 @@ static int thunk_newindex(lua_State *L)
                   L->top += 4;
                   lua_call(L, 3, 0);
                   return 0;
-               } else if (tvistab(newidx)) {
+               } 
+               else if (tvistab(newidx)) {
                   // __newindex is a table: set key in that table
                   GCtab *target = tabV(newidx);
                   TValue *slot = lj_tab_set(L, target, key);
@@ -551,7 +581,8 @@ static int thunk_newindex(lua_State *L)
                L->top += 4;
                lua_call(L, 3, 0);
                return 0;
-            } else if (tvistab(newidx)) {
+            } 
+            else if (tvistab(newidx)) {
                // __newindex is a table: set key in that table
                GCtab *t = tabV(newidx);
                TValue *slot = lj_tab_set(L, t, key);
@@ -581,7 +612,8 @@ static int thunk_len(lua_State *L)
    if (tvistab(o)) {
       setintV(L->top++, (int32_t)lj_tab_len(tabV(o)));
       return 1;
-   } else if (tvisstr(o)) {
+   } 
+   else if (tvisstr(o)) {
       setintV(L->top++, (int32_t)strV(o)->len);
       return 1;
    }
@@ -628,7 +660,9 @@ static int thunk_call(lua_State *L)
 
    // Resolved to a function - call with the arguments
    // Push function
+   
    copyTV(L, L->top, o);
+   
    // Copy arguments
    for (int i = 0; i < nargs; i++) {
       copyTV(L, L->top + 1 + i, L->base + 1 + i);
@@ -649,19 +683,19 @@ static int thunk_tostring(lua_State *L)
    if (tvisstr(o)) {
       copyTV(L, L->top++, o);
       return 1;
-   } else if (tvisnumber(o)) {
+   } 
+   else if (tvisnumber(o)) {
       GCstr *s = lj_strfmt_number(L, o);
       setstrV(L, L->top++, s);
       return 1;
-   } else if (tvisnil(o)) {
+   } 
+   else if (tvisnil(o)) {
       setstrV(L, L->top++, lj_str_newlit(L, "nil"));
       return 1;
-   } else if (tvisbool(o)) {
-      if (boolV(o)) {
-         setstrV(L, L->top++, lj_str_newlit(L, "true"));
-      } else {
-         setstrV(L, L->top++, lj_str_newlit(L, "false"));
-      }
+   } 
+   else if (tvisbool(o)) {
+      if (boolV(o)) setstrV(L, L->top++, lj_str_newlit(L, "true"));
+      else setstrV(L, L->top++, lj_str_newlit(L, "false"));
       return 1;
    }
 
