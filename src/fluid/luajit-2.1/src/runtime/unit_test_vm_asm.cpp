@@ -1628,7 +1628,7 @@ static bool test_asm_string_sub_start_underflow(pf::Log& Log)
 //********************************************************************************************************************
 // Test runner
 
-extern void vm_asm_unit_tests(int& Passed, int& Total)
+extern void vm_asm_unit_tests(int &Passed, int &Total)
 {
 #if LJ_TARGET_X86ORX64
    constexpr std::array<TestCase, 23> Tests = { {
@@ -1679,7 +1679,7 @@ extern void vm_asm_unit_tests(int& Passed, int& Total)
       }
    }
 
-#if LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)
+#if !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)
    // lj_vm_modi tests (separate array due to conditional compilation)
    constexpr std::array<TestCase, 6> ModiTests = { {
       { "modi_positive_positive", test_modi_positive_positive },

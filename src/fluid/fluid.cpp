@@ -296,15 +296,21 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+
 static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+
 #ifdef ENABLE_UNIT_TESTS
-extern void indexing_unit_tests(int& Passed, int& Total);
-extern void vm_asm_unit_tests(int& Passed, int& Total);
+extern void indexing_unit_tests(int &, int &);
+extern void vm_asm_unit_tests(int &, int &);
+extern void jit_frame_unit_tests(int &, int &);
+extern void parser_unit_tests(int &, int &);
 #endif
 
 static void MODTest(CSTRING Options, int *Passed, int *Total)
@@ -324,6 +330,11 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
       pf::Log log("FluidTests");
       log.branch("Running VM assembly unit tests...");
       vm_asm_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running JIT frame unit tests...");
+      jit_frame_unit_tests(*Passed, *Total);
    }
 #else
    pf::Log("FluidTests").warning("Unit tests are disabled in this build.");
