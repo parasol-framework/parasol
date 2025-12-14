@@ -156,6 +156,8 @@ static ERR process_args(void)
 }
 
 //********************************************************************************************************************
+// Note: In Windows, if the program is failing to load and no output is printed, pipe to Out-Host to see error messages.
+// E.g. .\parasol.exe --version | Out-Host
 
 extern "C" int main(int argc, char **argv)
 {

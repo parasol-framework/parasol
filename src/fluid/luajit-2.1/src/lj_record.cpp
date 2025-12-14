@@ -166,8 +166,9 @@ static void rec_check_slots(jit_State *J)
 static TRef sloadt(jit_State *J, int32_t slot, IRType t, int mode)
 {
    // Caller may set IRT_GUARD in t.
+   SlotView slots(J);
    TRef ref = emitir_raw(IRT(IR_SLOAD, t), (int32_t)J->baseslot + slot, mode);
-   J->base[slot] = ref;
+   slots[slot] = ref;
    return ref;
 }
 
@@ -176,11 +177,12 @@ static TRef sloadt(jit_State *J, int32_t slot, IRType t, int mode)
 
 static TRef sload(jit_State *J, int32_t slot)
 {
+   SlotView slots(J);
    IRType t = itype2irt(&J->L->base[slot]);
    int32_t abs_slot = (int32_t)J->baseslot + slot;
    TRef ref = emitir_raw(IRTG(IR_SLOAD, t), abs_slot, IRSLOAD_TYPECHECK);
    if (irtype_ispri(t)) ref = TREF_PRI(t);  //  Canonicalize primitive refs.
-   J->base[slot] = ref;
+   slots[slot] = ref;
    return ref;
 }
 
@@ -188,13 +190,16 @@ static TRef sload(jit_State *J, int32_t slot)
 // Get TRef from slot. Load slot and specialize if not done already.
 
 #define getslot(J, s)   (J->base[(s)] ? J->base[(s)] : sload(J, (int32_t)(s)))
+// Note: getslot macro retained for compatibility; SlotView can be used for new code:
+//   SlotView slots(J); TRef tr = slots.is_loaded(s) ? slots[s] : sload(J, s);
 
 //********************************************************************************************************************
 // Get TRef for current function.
 
 static TRef getcurrf(jit_State *J)
 {
-   if (J->base[FRC::FUNC_SLOT_OFFSET]) return J->base[FRC::FUNC_SLOT_OFFSET];
+   SlotView slots(J);
+   if (slots.func()) return slots.func();
    // Non-base frame functions ought to be loaded already.
    lj_assertJ(J->baseslot IS FRC::MIN_BASESLOT, "bad baseslot");
    return sloadt(J, FRC::FUNC_SLOT_OFFSET, IRT_FUNC, IRSLOAD_READONLY);
@@ -855,6 +860,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    TValue* frame = J->L->base - 1;
    ptrdiff_t i;
    FrameManager fm(J);
+   SlotView slots(J);
    for (i = 0; i < gotresults; i++)
       (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
    while (frame_ispcall(frame)) {  // Immediately resolve pcall() returns.
@@ -864,7 +870,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       gotresults++;
       rbase += cbase;
       fm.pop_delta_frame(cbase);
-      J->base[--rbase] = TREF_TRUE;  //  Prepend true to results.
+      slots[--rbase] = TREF_TRUE;  //  Prepend true to results.
       frame = frame_prevd(frame);
       J->needsnap = 1;  //  Stop catching on-trace errors.
    }
@@ -873,8 +879,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    if (FRC::at_root_depth(J) and J->pt and bc_isret(bc_op(*J->pc)) and
       (not frame_islua(frame) or (J->parent IS 0 and J->exitno IS 0 and !bc_isret(bc_op(J->cur.startins))))) {
       // NYI: specialize to frame type and return directly, not via RET*.
-      for (i = 0; i < (ptrdiff_t)rbase; i++) J->base[i] = 0;  //  Purge dead slots.
-      J->maxslot = rbase + (BCREG)gotresults;
+      slots.clear_range(0, rbase);  //  Purge dead slots.
+      slots.set_maxslot(rbase + (BCREG)gotresults);
       lj_record_stop(J, TraceLink::RETURN, 0);  //  Return to interpreter.
       return;
    }
@@ -897,7 +903,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       if (pt->flags & PROTO_NOJIT) lj_trace_err(J, LJ_TRERR_CJITOFF);
       if (FRC::at_root_depth(J) and J->pt and frame IS J->L->base - 1) {
          if (check_downrec_unroll(J, pt)) {
-            J->maxslot = (BCREG)(rbase + gotresults);
+            slots.set_maxslot((BCREG)(rbase + gotresults));
             lj_snap_purge(J);
             lj_record_stop(J, TraceLink::DOWNREC, J->cur.traceno);  //  Down-rec.
             return;
@@ -906,8 +912,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       }
 
       for (i = 0; i < nresults; i++)  //  Adjust results.
-         J->base[i + FRC::FUNC_SLOT_OFFSET] = i < gotresults ? J->base[rbase + i] : TREF_NIL;
-      J->maxslot = cbase + (BCREG)nresults;
+         slots[i + FRC::FUNC_SLOT_OFFSET] = i < gotresults ? slots[rbase + i] : TREF_NIL;
+      slots.set_maxslot(cbase + (BCREG)nresults);
       if (J->framedepth > 0) {  // Return to a frame that is part of the trace.
          (void)FRC::dec_depth(J);
          lj_assertJ(J->baseslot > cbase + FRC::HEADER_SIZE, "bad baseslot for return");
@@ -929,8 +935,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
          J->needsnap = 1;
          lj_assertJ(fm.at_root_baseslot(), "bad baseslot for return");
          // Shift result slots up and clear the slots of the new frame below.
-         fm.copy_results(cbase, FRC::FUNC_SLOT_OFFSET, nresults);
-         fm.clear_frame(FRC::FUNC_SLOT_OFFSET, cbase + FRC::HEADER_SIZE);
+         slots.copy(cbase, FRC::FUNC_SLOT_OFFSET, nresults);
+         slots.clear_range(FRC::FUNC_SLOT_OFFSET, cbase + FRC::HEADER_SIZE);
       }
    }
    else if (frame_iscont(frame)) {  // Return to continuation frame.
@@ -938,24 +944,24 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       BCREG cbase = (BCREG)frame_delta(frame);
       if (FRC::dec_depth_by(J, 2) < 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
       fm.pop_delta_frame(cbase);
-      J->maxslot = cbase - FRC::CONT_FRAME_SIZE;
+      slots.set_maxslot(cbase - FRC::CONT_FRAME_SIZE);
       if (cont IS lj_cont_ra) {
          // Copy result to destination slot.
          BCREG dst = bc_a(*(frame_contpc(frame) - 1));
-         J->base[dst] = gotresults ? J->base[cbase + rbase] : TREF_NIL;
-         if (dst >= J->maxslot) J->maxslot = dst + 1;
+         slots[dst] = gotresults ? slots[cbase + rbase] : TREF_NIL;
+         slots.ensure_slot(dst);
       }
       else if (cont IS lj_cont_nop) {
          // Nothing to do here.
       }
       else if (cont IS lj_cont_cat) {
          BCREG bslot = bc_b(*(frame_contpc(frame) - 1));
-         TRef tr = gotresults ? J->base[cbase + rbase] : TREF_NIL;
-         if (bslot != J->maxslot) {  // Concatenate the remainder.
+         TRef tr = gotresults ? slots[cbase + rbase] : TREF_NIL;
+         if (bslot != slots.maxslot()) {  // Concatenate the remainder.
             TValue* b = J->L->base, save;  //  Simulate lower frame and result.
             // Can't handle MM_concat + CALLT + fast func side-effects.
             if (J->postproc != LJ_POST_NONE) lj_trace_err(J, LJ_TRERR_NYIRETL);
-            J->base[J->maxslot] = tr;
+            slots[slots.maxslot()] = tr;
             copyTV(J->L, &save, b - FRC::CONT_FRAME_SIZE);
             if (gotresults) copyTV(J->L, b - FRC::CONT_FRAME_SIZE, b + rbase);
             else setnilV(b - FRC::CONT_FRAME_SIZE);
@@ -968,8 +974,8 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
 
          if (tr) {  // Store final result.
             BCREG dst = bc_a(*(frame_contpc(frame) - 1));
-            J->base[dst] = tr;
-            if (dst >= J->maxslot) J->maxslot = dst + 1;
+            slots[dst] = tr;
+            slots.ensure_slot(dst);
          }  // Otherwise continue with another __concat call.
       }
       else { // Result type already specialized.
@@ -986,11 +992,12 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
 
 static BCREG rec_mm_prep(jit_State *J, ASMFunction cont)
 {
-   BCREG s, top = cont IS lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
-   J->base[top] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
-   J->base[top + 1] = TREF_CONT;
+   SlotView slots(J);
+   BCREG top = cont IS lj_cont_cat ? slots.maxslot() : curr_proto(J->L)->framesize;
+   slots[top] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
+   slots[top + 1] = TREF_CONT;
    FRC::inc_depth(J);
-   for (s = J->maxslot; s < top; s++) J->base[s] = 0;  //  Clear frame gap to avoid resurrecting previous refs.
+   slots.clear_range(slots.maxslot(), top - slots.maxslot());  //  Clear frame gap to avoid resurrecting previous refs.
    return top + FRC::HEADER_SIZE;
 }
 
@@ -1438,14 +1445,17 @@ TRef lj_record_idx(jit_State *J, RecordIndex* ix)
 handlemm:
       if (tref_isfunc(ix->mobj)) {  // Handle metamethod call.
          BCREG func = rec_mm_prep(J, ix->val ? lj_cont_nop : lj_cont_ra);
-         TRef* base = J->base + func + 1;
+         SlotView slots(J);
          TValue* tv = J->L->base + func + 1;
-         base[-1] = ix->mobj; base[1] = ix->tab; base[2] = ix->key;
+         // Setup call frame: slots[func] = mobj, slots[func+2..] = args
+         slots[func] = ix->mobj;
+         slots[func + FRC::HEADER_SIZE] = ix->tab;
+         slots[func + FRC::HEADER_SIZE + 1] = ix->key;
          setfuncV(J->L, tv - 1, funcV(&ix->mobjv));
          copyTV(J->L, tv + 1, &ix->tabv);
          copyTV(J->L, tv + 2, &ix->keyv);
          if (ix->val) {
-            base[3] = ix->val;
+            slots[func + FRC::HEADER_SIZE + 2] = ix->val;
             copyTV(J->L, tv + 3, &ix->valv);
             lj_record_call(J, func, 3);  //  mobj(tab, key, val)
             return 0;
@@ -1530,8 +1540,7 @@ handlemm:
 
          if (oldv IS niltvg(J2G(J))) {  // Need to insert a new key.
             TRef key = ix->key;
-            if (tref_isinteger(key))  //  NEWREF needs a TValue as a key.
-               key = emitir(IRTN(IR_CONV), key, IRCONV_NUM_INT);
+            if (tref_isinteger(key)) key = emitir(IRTN(IR_CONV), key, IRCONV_NUM_INT); //  NEWREF needs a TValue as a key.
             xref = emitir(IRT(IR_NEWREF, IRT_PGC), ix->tab, key);
             keybarrier = 0;  //  NEWREF already takes care of the key barrier.
 #ifdef LUAJIT_ENABLE_TABLE_BUMP
@@ -1859,20 +1868,21 @@ static void rec_func_jit(jit_State *J, TraceNo lnk)
 
 static void rec_varg(jit_State *J, BCREG dst, ptrdiff_t nresults)
 {
+   SlotView slots(J);
    int32_t numparams = J->pt->numparams;
    ptrdiff_t nvararg = frame_delta(J->L->base - 1) - numparams - FRC::HEADER_SIZE;
    lj_assertJ(frame_isvarg(J->L->base - 1), "VARG in non-vararg frame");
-   if (dst > J->maxslot) J->base[dst - 1] = 0;  //  Prevent resurrection of unrelated slot.
+   if (dst > slots.maxslot()) slots.clear(dst - 1);  //  Prevent resurrection of unrelated slot.
    if (J->framedepth > 0) {  // Simple case: varargs defined on-trace.
       ptrdiff_t i;
       if (nvararg < 0) nvararg = 0;
       if (nresults IS -1) {
          nresults = nvararg;
-         J->maxslot = dst + (BCREG)nvararg;
+         slots.set_maxslot(dst + (BCREG)nvararg);
       }
-      else if (dst + nresults > J->maxslot) J->maxslot = dst + (BCREG)nresults;
+      else if (dst + nresults > slots.maxslot()) slots.set_maxslot(dst + (BCREG)nresults);
 
-      for (i = 0; i < nresults; i++) J->base[dst + i] = i < nvararg ? getslot(J, i - nvararg + FRC::FUNC_SLOT_OFFSET) : TREF_NIL;
+      for (i = 0; i < nresults; i++) slots[dst + i] = i < nvararg ? getslot(J, i - nvararg + FRC::FUNC_SLOT_OFFSET) : TREF_NIL;
    }
    else {  // Unknown number of varargs passed to trace.
       TRef fr = emitir(IRTI(IR_SLOAD), 1, IRSLOAD_READONLY | IRSLOAD_FRAME);
@@ -1888,15 +1898,15 @@ static void rec_varg(jit_State *J, BCREG dst, ptrdiff_t nresults)
             vbase = emitir(IRT(IR_ADD, IRT_PGC), vbase, lj_ir_kint(J, frofs - 8));
             for (i = 0; i < nload; i++) {
                IRType t = itype2irt(&J->L->base[i + FRC::FUNC_SLOT_OFFSET - nvararg]);
-               J->base[dst + i] = lj_record_vload(J, vbase, i, t);
+               slots[dst + i] = lj_record_vload(J, vbase, i, t);
             }
          }
          else {
             emitir(IRTGI(IR_LE), fr, lj_ir_kint(J, frofs));
             nvararg = 0;
          }
-         for (i = nvararg; i < nresults; i++) J->base[dst + i] = TREF_NIL;
-         if (dst + (BCREG)nresults > J->maxslot) J->maxslot = dst + (BCREG)nresults;
+         for (i = nvararg; i < nresults; i++) slots[dst + i] = TREF_NIL;
+         if (dst + (BCREG)nresults > slots.maxslot()) slots.set_maxslot(dst + (BCREG)nresults);
       }
       else {
          setintV(&J->errinfo, BC_VARG);
@@ -1904,7 +1914,7 @@ static void rec_varg(jit_State *J, BCREG dst, ptrdiff_t nresults)
       }
    }
 
-   if (J->baseslot + J->maxslot >= LJ_MAX_JSLOTS) lj_trace_err(J, LJ_TRERR_STACKOV);
+   if (J->baseslot + slots.maxslot() >= LJ_MAX_JSLOTS) lj_trace_err(J, LJ_TRERR_STACKOV);
 }
 
 //********************************************************************************************************************
@@ -2016,7 +2026,7 @@ void lj_record_ins(jit_State *J)
    TRef ra, rb, rc;
 
    // Perform post-processing action before recording the next instruction.
-   if (LJ_UNLIKELY(J->postproc != LJ_POST_NONE)) {
+   if (J->postproc != LJ_POST_NONE) {
       switch (J->postproc) {
          case LJ_POST_FIXCOMP:  //  Fixup comparison.
             pc = (const BCIns*)(uintptr_t)J2G(J)->tmptv.u64;
@@ -2070,7 +2080,7 @@ void lj_record_ins(jit_State *J)
    }
 
    // Skip some bytecodes.
-   if (LJ_UNLIKELY(J->bcskip > 0)) {
+   if (J->bcskip > 0) {
       J->bcskip--;
       return;
    }
@@ -2288,7 +2298,8 @@ void lj_record_ins(jit_State *J)
    case BC_MOV:
       // Clear gap of method call to avoid resurrecting previous refs.
       if (ra > J->maxslot) {
-         memset(J->base + J->maxslot, 0, (ra - J->maxslot) * sizeof(TRef));
+         SlotView slots(J);
+         slots.clear_range(slots.maxslot(), ra - slots.maxslot());
       }
       break;
 
@@ -2300,9 +2311,12 @@ void lj_record_ins(jit_State *J)
       break;
 
    case BC_KNIL:
-      if (ra > J->maxslot) J->base[ra - 1] = 0;
-      while (ra <= rc) J->base[ra++] = TREF_NIL;
-      if (rc >= J->maxslot) J->maxslot = rc + 1;
+      {
+         SlotView slots(J);
+         if (ra > slots.maxslot()) slots.clear(ra - 1);
+         while (ra <= rc) slots[ra++] = TREF_NIL;
+         if (rc >= slots.maxslot()) slots.set_maxslot(rc + 1);
+      }
       break;
 
 #if LJ_HASFFI
@@ -2365,10 +2379,12 @@ void lj_record_ins(jit_State *J)
       // -- Calls and vararg handling
 
    case BC_ITERC:
-      J->base[ra] = getslot(J, ra - 3);
-      J->base[ra + FRC::HEADER_SIZE] = getslot(J, ra - 2);
-      J->base[ra + FRC::HEADER_SIZE + 1] = getslot(J, ra - 1);
-      {  // Do the actual copy now because lj_record_call needs the values.
+      {
+         SlotView slots(J);
+         slots[ra] = getslot(J, ra - 3);
+         slots[ra + FRC::HEADER_SIZE] = getslot(J, ra - 2);
+         slots[ra + FRC::HEADER_SIZE + 1] = getslot(J, ra - 1);
+         // Do the actual copy now because lj_record_call needs the values.
          TValue* b = &J->L->base[ra];
          copyTV(J->L, b, b - 3);
          copyTV(J->L, b + FRC::HEADER_SIZE, b - 2);
@@ -2507,10 +2523,11 @@ void lj_record_ins(jit_State *J)
 
    // rc IS 0 if we have no result yet, e.g. pending __index metamethod call.
    if (bcmode_a(op) IS BCMdst and rc) {
-      J->base[ra] = rc;
-      if (ra >= J->maxslot) {
-         if (ra > J->maxslot) J->base[ra - 1] = 0;
-         J->maxslot = ra + 1;
+      SlotView slots(J);
+      slots[ra] = rc;
+      if (ra >= slots.maxslot()) {
+         if (ra > slots.maxslot()) slots.clear(ra - 1);
+         slots.set_maxslot(ra + 1);
       }
    }
 

@@ -408,6 +408,233 @@ static bool test_ir_rollback_point_needs_rollback(pf::Log& log)
    return true;
 }
 
+//********************************************************************************************************************
+// SlotView Tests
+
+// Test SlotView basic read/write access
+static bool test_slotview_basic_access(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Write to slot 0
+   slots[0] = 0x12345678;
+   if (J.base[0] != 0x12345678) {
+      log.error("SlotView write: expected 0x12345678, got 0x%x", J.base[0]);
+      return false;
+   }
+
+   // Read from slot 0
+   TRef result = slots[0];
+   if (result != 0x12345678) {
+      log.error("SlotView read: expected 0x12345678, got 0x%x", result);
+      return false;
+   }
+
+   // Write to negative slot (function slot)
+   slots[FRC::FUNC_SLOT_OFFSET] = 0xDEADBEEF;
+   if (J.base[FRC::FUNC_SLOT_OFFSET] != 0xDEADBEEF) {
+      log.error("SlotView negative write: expected 0xDEADBEEF, got 0x%x", J.base[FRC::FUNC_SLOT_OFFSET]);
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView func() accessor
+static bool test_slotview_func_accessor(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Set function slot through direct base access
+   J.base[FRC::FUNC_SLOT_OFFSET] = 0xCAFEBABE;
+
+   // Read through func()
+   if (slots.func() != 0xCAFEBABE) {
+      log.error("SlotView func() read: expected 0xCAFEBABE, got 0x%x", slots.func());
+      return false;
+   }
+
+   // Write through func()
+   slots.func() = 0xFEEDFACE;
+   if (J.base[FRC::FUNC_SLOT_OFFSET] != 0xFEEDFACE) {
+      log.error("SlotView func() write: expected 0xFEEDFACE, got 0x%x", J.base[FRC::FUNC_SLOT_OFFSET]);
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView is_loaded() helper
+static bool test_slotview_is_loaded(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Initially slot should be empty (0)
+   J.base[5] = 0;
+   if (slots.is_loaded(5)) {
+      log.error("is_loaded: should be false for empty slot");
+      return false;
+   }
+
+   // After setting a value, should be loaded
+   J.base[5] = 0x123;
+   if (not slots.is_loaded(5)) {
+      log.error("is_loaded: should be true for non-empty slot");
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView clear operations
+static bool test_slotview_clear(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Test single slot clear
+   J.base[3] = 0xABCD;
+   slots.clear(3);
+   if (J.base[3] != 0) {
+      log.error("clear: slot should be 0, got 0x%x", J.base[3]);
+      return false;
+   }
+
+   // Test range clear
+   J.base[0] = 0x111;
+   J.base[1] = 0x222;
+   J.base[2] = 0x333;
+   J.base[3] = 0x444;
+   slots.clear_range(0, 4);
+   for (int i = 0; i < 4; i++) {
+      if (J.base[i] != 0) {
+         log.error("clear_range: slot %d should be 0, got 0x%x", i, J.base[i]);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView copy operation
+static bool test_slotview_copy(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Set up source slots
+   J.base[10] = 0xAAAA;
+   J.base[11] = 0xBBBB;
+   J.base[12] = 0xCCCC;
+
+   // Copy to different location
+   slots.copy(0, 10, 3);
+
+   if (J.base[0] != 0xAAAA or J.base[1] != 0xBBBB or J.base[2] != 0xCCCC) {
+      log.error("copy: values not copied correctly");
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView maxslot operations
+static bool test_slotview_maxslot(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   J.maxslot = 5;
+   SlotView slots(&J);
+
+   // Test maxslot getter
+   if (slots.maxslot() != 5) {
+      log.error("maxslot: expected 5, got %u", slots.maxslot());
+      return false;
+   }
+
+   // Test set_maxslot
+   slots.set_maxslot(10);
+   if (J.maxslot != 10) {
+      log.error("set_maxslot: expected 10, got %u", J.maxslot);
+      return false;
+   }
+
+   // Test ensure_slot (should expand if needed)
+   slots.ensure_slot(15);
+   if (J.maxslot != 16) {  // ensure_slot sets maxslot to slot + 1
+      log.error("ensure_slot: expected 16, got %u", J.maxslot);
+      return false;
+   }
+
+   // Test ensure_slot (should not shrink)
+   slots.ensure_slot(5);
+   if (J.maxslot != 16) {
+      log.error("ensure_slot: should not shrink, expected 16, got %u", J.maxslot);
+      return false;
+   }
+
+   // Test shrink_to
+   slots.shrink_to(8);
+   if (J.maxslot != 8) {
+      log.error("shrink_to: expected 8, got %u", J.maxslot);
+      return false;
+   }
+
+   // Test shrink_to (should not expand)
+   slots.shrink_to(20);
+   if (J.maxslot != 8) {
+      log.error("shrink_to: should not expand, expected 8, got %u", J.maxslot);
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test SlotView ptr() accessor
+static bool test_slotview_ptr(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   SlotView slots(&J);
+
+   // Verify ptr returns correct address
+   TRef* ptr = slots.ptr(5);
+   if (ptr != &J.base[5]) {
+      log.error("ptr: returned incorrect address");
+      return false;
+   }
+
+   // Verify can write through ptr
+   *ptr = 0x9999;
+   if (J.base[5] != 0x9999) {
+      log.error("ptr: write through ptr failed");
+      return false;
+   }
+
+   // Test negative index ptr
+   TRef* func_ptr = slots.ptr(FRC::FUNC_SLOT_OFFSET);
+   if (func_ptr != &J.base[FRC::FUNC_SLOT_OFFSET]) {
+      log.error("ptr: negative index returned incorrect address");
+      return false;
+   }
+
+   return true;
+}
+
 struct TestCase {
    const char* name;
    bool (*fn)(pf::Log&);
@@ -420,7 +647,7 @@ struct TestCase {
 
 extern void jit_frame_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 13> tests = { {
+   constexpr std::array<TestCase, 20> tests = { {
       // FrameManager and FRC constants
       { "frc_constants", test_frc_constants },
       { "frame_push_pop_symmetry", test_frame_push_pop_symmetry },
@@ -435,7 +662,15 @@ extern void jit_frame_unit_tests(int &Passed, int &Total)
       { "frame_depth_guard_decrement", test_frame_depth_guard_decrement },
       { "frame_depth_guard_helpers", test_frame_depth_guard_helpers },
       { "ir_rollback_point_basic", test_ir_rollback_point_basic },
-      { "ir_rollback_point_needs_rollback", test_ir_rollback_point_needs_rollback }
+      { "ir_rollback_point_needs_rollback", test_ir_rollback_point_needs_rollback },
+      // SlotView
+      { "slotview_basic_access", test_slotview_basic_access },
+      { "slotview_func_accessor", test_slotview_func_accessor },
+      { "slotview_is_loaded", test_slotview_is_loaded },
+      { "slotview_clear", test_slotview_clear },
+      { "slotview_copy", test_slotview_copy },
+      { "slotview_maxslot", test_slotview_maxslot },
+      { "slotview_ptr", test_slotview_ptr }
    } };
 
    for (const TestCase& test : tests) {

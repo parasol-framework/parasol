@@ -6,6 +6,7 @@
 #include "../debug/lj_jit.h"
 #include "../runtime/lj_frame.h"
 #include "../lj_iropt.h"
+#include <cassert>
 
 // Named constants for frame layout (2-slot frame mode, LJ_FR2=1)
 
@@ -126,6 +127,9 @@ public:
    [[nodiscard]] bool at_root_baseslot() const {
       return J->baseslot IS FRC::MIN_BASESLOT;
    }
+
+   // Get underlying jit_State (for SlotView construction)
+   [[nodiscard]] jit_State* state() const { return J; }
 };
 
 //********************************************************************************************************************
@@ -229,5 +233,98 @@ struct IRRollbackPoint {
    // Conditionally rollback if needed
    void rollback_if_forwarded(jit_State *J, TRef result) {
       if (needs_rollback(result)) rollback(J);
+   }
+};
+
+//********************************************************************************************************************
+// SlotView - Type-safe view into slot array with bounds checking.
+//
+// The JIT recorder maintains a slot array (J->slot) with J->base pointing into it.  Valid slot indices relative to
+// J->base range from FRC::FUNC_SLOT_OFFSET (-2) to J->maxslot-1.  This class provides bounds-checked access in debug
+// builds while maintaining zero overhead in release builds.
+//
+// Usage:
+//   SlotView slots(J);
+//   TRef val = slots[0];           // Access slot 0 (bounds checked in debug)
+//   slots[ra] = result;            // Write to slot ra
+//   TRef func = slots.func();      // Access function slot (base[-2])
+//
+// The bounds checking uses assert() which is only active in debug builds, so there is no runtime overhead in
+// release builds.
+
+class SlotView {
+   jit_State *J;
+
+   // Internal bounds check helper (only active in debug builds)
+   void check_bounds([[maybe_unused]] int32_t idx) const {
+      assert(idx >= FRC::FUNC_SLOT_OFFSET && "slot index below minimum");
+      assert(idx < int32_t(LJ_MAX_JSLOTS - J->baseslot) && "slot index exceeds maximum");
+   }
+
+public:
+   explicit SlotView(jit_State *j) : J(j) {}
+
+   // Bounds-checked read access
+   [[nodiscard]] TRef operator[](int32_t idx) const {
+      check_bounds(idx);
+      return J->base[idx];
+   }
+
+   // Bounds-checked write access (returns reference)
+   [[nodiscard]] TRef& operator[](int32_t idx) {
+      check_bounds(idx);
+      return J->base[idx];
+   }
+
+   // Access function slot directly (common operation)
+   [[nodiscard]] TRef func() const { return J->base[FRC::FUNC_SLOT_OFFSET]; }
+   [[nodiscard]] TRef& func() { return J->base[FRC::FUNC_SLOT_OFFSET]; }
+
+   // Check if a slot has been loaded (non-zero TRef)
+   [[nodiscard]] bool is_loaded(int32_t idx) const { return (*this)[idx] != 0; }
+
+   // Clear a single slot
+   void clear(int32_t idx) { (*this)[idx] = 0; }
+
+   // Clear a range of slots [start, start+count)
+   void clear_range(int32_t start, BCREG count) {
+      assert(start >= FRC::FUNC_SLOT_OFFSET && "clear_range start below minimum");
+      assert(start + int32_t(count) <= int32_t(LJ_MAX_JSLOTS - J->baseslot) && "clear_range exceeds maximum");
+      memset(&J->base[start], 0, sizeof(TRef) * count);
+   }
+
+   // Copy slots: copy count slots from src to dest (handles overlapping regions)
+   void copy(int32_t dest, int32_t src, ptrdiff_t count) {
+      assert(dest >= FRC::FUNC_SLOT_OFFSET && src >= FRC::FUNC_SLOT_OFFSET && "copy indices below minimum");
+      assert(dest + count <= int32_t(LJ_MAX_JSLOTS - J->baseslot) && "copy dest exceeds maximum");
+      assert(src + count <= int32_t(LJ_MAX_JSLOTS - J->baseslot) && "copy src exceeds maximum");
+      memmove(&J->base[dest], &J->base[src], sizeof(TRef) * count);
+   }
+
+   // Get pointer to slot (for passing to functions that need TRef*)
+   [[nodiscard]] TRef* ptr(int32_t idx) {
+      assert(idx >= FRC::FUNC_SLOT_OFFSET && "ptr index below minimum");
+      return &J->base[idx];
+   }
+
+   [[nodiscard]] const TRef* ptr(int32_t idx) const {
+      assert(idx >= FRC::FUNC_SLOT_OFFSET && "ptr index below minimum");
+      return &J->base[idx];
+   }
+
+   // Get current maxslot value
+   [[nodiscard]] BCREG maxslot() const { return J->maxslot; }
+
+   // Set maxslot (updates J->maxslot)
+   void set_maxslot(BCREG val) { J->maxslot = val; }
+
+   // Expand maxslot if needed (common pattern: ensure slot is within range)
+   void ensure_slot(BCREG slot) {
+      if (slot >= J->maxslot) J->maxslot = slot + 1;
+   }
+
+   // Shrink maxslot if slot is below current max (common pattern for dead slot elimination)
+   void shrink_to(BCREG slot) {
+      if (slot < J->maxslot) J->maxslot = slot;
    }
 };
