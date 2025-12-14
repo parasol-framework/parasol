@@ -39,9 +39,10 @@ static fluid_range * get_range(lua_State *L, int idx)
 }
 
 //********************************************************************************************************************
-// Helper to check if a value is a range userdata (returns nullptr if not)
+// Check if a stack value at the given index is a range userdata (returns nullptr if not).
+// This function is exported via lib_range.h for use by lib_table.cpp.
 
-static fluid_range * check_range(lua_State *L, int idx)
+fluid_range *check_range(lua_State *L, int idx)
 {
    if (void *ud = lua_touserdata(L, idx)) {
       if (lua_getmetatable(L, idx)) {
@@ -52,6 +53,34 @@ static fluid_range * check_range(lua_State *L, int idx)
          }
          lua_pop(L, 2);
       }
+   }
+   return nullptr;
+}
+
+//********************************************************************************************************************
+// Check if a TValue is a range userdata (for use in metamethod implementations).
+// This avoids stack manipulation and is more efficient for internal use.
+
+fluid_range *check_range_tv(lua_State *L, cTValue *tv)
+{
+   if (not tvisudata(tv)) return nullptr;
+
+   GCudata *ud = udataV(tv);
+   GCtab *mt = tabref(ud->metatable);
+   if (not mt) return nullptr;
+
+   // Get the expected metatable for ranges from the registry
+   lua_getfield(L, LUA_REGISTRYINDEX, RANGE_METATABLE);
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      return nullptr;
+   }
+
+   GCtab *range_mt = tabV(L->top - 1);
+   lua_pop(L, 1);
+
+   if (mt IS range_mt) {
+      return (fluid_range *)uddata(ud);
    }
    return nullptr;
 }
@@ -983,6 +1012,164 @@ static int range_call(lua_State *L)
    lua_pushnil(L);       // State (not used, range is in upvalue)
    lua_pushnil(L);       // Initial control variable (nil triggers first iteration logic)
    return 3;
+}
+
+//********************************************************************************************************************
+// range.slice(obj, range) - Generic slicing for tables and strings.
+// This is the primary slicing function - rawslice() and table.slice() delegate to this.
+// For tables: returns a new table with elements from the range
+// For strings: returns a substring based on the range
+
+static int range_slice_impl(lua_State *L)
+{
+   fluid_range *r = check_range(L, 2);
+   if (not r) lj_err_argt(L, 2, LUA_TUSERDATA);
+
+   cTValue *o = L->base;
+
+   // String slicing
+   if (tvisstr(o)) {
+      GCstr *str = strV(o);
+      int32_t len = int32_t(str->len);
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+
+      // Handle negative indices (always inclusive for negative ranges)
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Apply exclusive semantics if not inclusive
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         effective_stop = stop - 1;
+      }
+
+      // Bounds checking
+      if (start < 0) start = 0;
+      if (effective_stop >= len) effective_stop = len - 1;
+
+      // Handle empty/invalid ranges
+      if (start > effective_stop or start >= len) {
+         lua_pushstring(L, "");
+         return 1;
+      }
+
+      // Return substring
+      int32_t sublen = effective_stop - start + 1;
+      lua_pushlstring(L, strdata(str) + start, size_t(sublen));
+      return 1;
+   }
+
+   // Table slicing
+   if (tvistab(o)) {
+      GCtab *t = tabV(o);
+      int32_t len = int32_t(lj_tab_len(t));
+      int32_t start = r->start;
+      int32_t stop = r->stop;
+      int32_t step = r->step;
+
+      // Handle negative indices
+      bool use_inclusive = r->inclusive;
+      if (start < 0 or stop < 0) {
+         use_inclusive = true;
+         if (start < 0) start += len;
+         if (stop < 0) stop += len;
+      }
+
+      // Determine iteration direction
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
+      int32_t effective_stop = stop;
+      if (not use_inclusive) {
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
+      }
+
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
+
+      // Check for empty/invalid ranges
+      if (forward and start > effective_stop) {
+         lua_createtable(L, 0, 0);
+         return 1;
+      }
+      if (not forward and start < effective_stop) {
+         lua_createtable(L, 0, 0);
+         return 1;
+      }
+
+      // Calculate result size
+      int32_t result_size = 0;
+      if (forward) result_size = ((effective_stop - start) / step) + 1;
+      else result_size = ((start - effective_stop) / (-step)) + 1;
+
+      // Create result table
+      lua_createtable(L, result_size, 0);
+      int result_table_idx = lua_gettop(L);
+      int32_t result_idx = 0;
+
+      // Copy elements
+      if (forward) {
+         for (int32_t i = start; i <= effective_stop; i += step) {
+            cTValue *src = lj_tab_getint(t, i);
+            if (src and not tvisnil(src)) {
+               copyTV(L, L->top, src);
+               L->top++;
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+            else {
+               lua_pushnil(L);
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+         }
+      }
+      else {
+         for (int32_t i = start; i >= effective_stop; i += step) {
+            cTValue *src = lj_tab_getint(t, i);
+            if (src and not tvisnil(src)) {
+               copyTV(L, L->top, src);
+               L->top++;
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+            else {
+               lua_pushnil(L);
+               lua_rawseti(L, result_table_idx, result_idx++);
+            }
+         }
+      }
+
+      return 1;
+   }
+
+   // Unsupported type
+   lj_err_argt(L, 1, LUA_TTABLE);
+   return 0;
+}
+
+LJLIB_CF(range_slice)
+{
+   return range_slice_impl(L);
+}
+
+// Exported wrapper for use by rawslice() and table.slice()
+int lj_range_slice(lua_State *L)
+{
+   return range_slice_impl(L);
 }
 
 //********************************************************************************************************************

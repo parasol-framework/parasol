@@ -1787,10 +1787,16 @@ ParserResult<ExpDesc> IrEmitter::emit_member_expr(const MemberExprPayload &Paylo
 
 //********************************************************************************************************************
 // Emit bytecode for an index expression (table[key]), indexing a table with an arbitrary key.
+// Special case: if key is a range expression, emit a call to table.slice() instead.
 
 ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload)
 {
    if (not Payload.table or not Payload.index) return this->unsupported_expr(AstNodeKind::IndexExpr, SourceSpan{});
+
+   // Check if index is a range expression - handle at parse time by emitting table.slice() call
+   if (Payload.index->kind IS AstNodeKind::RangeExpr) {
+      return this->emit_table_slice_call(Payload);
+   }
 
    auto table_result = this->emit_expression(*Payload.table);
    if (not table_result.ok()) return table_result;
@@ -1809,6 +1815,63 @@ ParserResult<ExpDesc> IrEmitter::emit_index_expr(const IndexExprPayload &Payload
    key = key_toval.legacy();
    expr_index(&this->func_state, &table, &key);
    return ParserResult<ExpDesc>::success(table);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for slicing: expr[{range}] -> range.slice(expr, range)
+// This is called when the parser detects that the index is a RangeExpr.
+// Works for both tables and strings - range.slice dispatches based on type at runtime.
+
+ParserResult<ExpDesc> IrEmitter::emit_table_slice_call(const IndexExprPayload &Payload)
+{
+   FuncState *fs = &this->func_state;
+   RegisterAllocator allocator(fs);
+
+   // Capture the call base register before emitting anything
+   BCReg call_base = fs->free_reg();
+
+   // Load range.slice function (range global, then access .slice field)
+   ExpDesc range_lib;
+   range_lib.init(ExpKind::Global, 0);
+   range_lib.u.sval = fs->ls->keepstr("range");
+
+   // Discharge range global to a register
+   ExpressionValue range_value(fs, range_lib);
+   range_value.discharge_to_any_reg(allocator);
+   range_lib = range_value.legacy();
+
+   // Access the .slice field
+   ExpDesc slice_key(fs->ls->keepstr("slice"));
+   expr_index(fs, &range_lib, &slice_key);
+
+   // Materialise the function to call base register
+   this->materialise_to_next_reg(range_lib, "range.slice function");
+
+   // Reserve register for frame link (LJ_FR2)
+   allocator.reserve(BCReg(1));
+
+   // Emit base expression (table or string) as arg1
+   auto base_result = this->emit_expression(*Payload.table);
+   if (not base_result.ok()) return base_result;
+   ExpDesc base_arg = base_result.value_ref();
+   this->materialise_to_next_reg(base_arg, "slice base arg");
+
+   // Emit range expression as arg2 (this will call range() constructor)
+   auto range_result = this->emit_expression(*Payload.index);
+   if (not range_result.ok()) return range_result;
+   ExpDesc range_arg = range_result.value_ref();
+   this->materialise_to_next_reg(range_arg, "slice range arg");
+
+   // Emit CALL instruction: range.slice(expr, range)
+   // BC_CALL A=base, B=2 (expect 1 result), C=3 (2 args + 1)
+   BCIns ins = BCINS_ABC(BC_CALL, call_base, 2, 3);
+
+   ExpDesc result;
+   result.init(ExpKind::Call, bcemit_INS(fs, ins));
+   result.u.s.aux = call_base;
+   fs->freereg = call_base + 1;
+
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************

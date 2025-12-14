@@ -1,14 +1,14 @@
 // Range library header for Fluid.
 // Copyright (C) 2025 Paul Manias.
-//
-// Shared definitions for the Range type used by lib_range.cpp and lib_string.cpp
 
-#ifndef LIB_RANGE_H
-#define LIB_RANGE_H
+#pragma once
 
 #include <cstdint>
 
-//********************************************************************************************************************
+struct lua_State;
+union TValue;
+using cTValue = const TValue;
+
 // Range structure - stored as userdata payload
 
 struct fluid_range {
@@ -19,6 +19,17 @@ struct fluid_range {
 };
 
 // Metatable name for range userdata
+
 static constexpr const char* RANGE_METATABLE = "Fluid.range";
 
-#endif // LIB_RANGE_H
+// Check if a stack value at the given index is a range userdata.  Returns the fluid_range pointer if it is, nullptr otherwise.
+
+fluid_range *check_range(lua_State *L, int idx);
+
+// Check if a TValue is a range userdata (for use in metamethod implementations).  Returns the fluid_range pointer if it is, nullptr otherwise.
+
+fluid_range *check_range_tv(lua_State *L, cTValue *tv);
+
+// Slice function for tables and strings - exported for use by rawslice() and table.slice()
+
+int lj_range_slice(lua_State *L);
