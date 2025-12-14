@@ -138,6 +138,7 @@ static int range_each(lua_State* L)
    }
 
    // Check for empty range before setting up callback
+
    if ((step > 0 and r->start > stop) or (step < 0 and r->start < stop)) {
       lua_pushvalue(L, 1);
       return 1;
@@ -147,6 +148,7 @@ static int range_each(lua_State* L)
    int callback_index = lua_gettop(L);
 
    // Invoke callback and check for early termination (returns false)
+
    auto invoke_callback = [L, callback_index](int32_t Value) -> bool {
       lua_pushvalue(L, callback_index);
       lua_pushinteger(L, Value);
@@ -1204,7 +1206,7 @@ static int range_slice_impl(lua_State *L)
    }
 
    // Unsupported type
-   lj_err_arg(L, 1, "table or string expected");
+   lj_err_arg(L, 1, ErrMsg::SLARGRNG);
    return 0;
 }
 
