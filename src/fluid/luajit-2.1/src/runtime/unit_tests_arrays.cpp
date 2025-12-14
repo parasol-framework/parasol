@@ -445,6 +445,14 @@ static bool test_setarrayV(pf::Log& Log)
 // Phase 3 Tests: Bytecode C Helpers
 //********************************************************************************************************************
 
+// Helper to check if TValue contains an integer value (handles LJ_DUALNUM=0 case)
+static bool tv_is_integer(cTValue* o, int32_t expected)
+{
+   if (tvisint(o)) return intV(o) IS expected;
+   if (tvisnum(o)) return numberVint(o) IS expected;
+   return false;
+}
+
 static bool test_arr_getidx_int32(pf::Log& Log)
 {
    LuaStateHolder Holder;
@@ -463,19 +471,19 @@ static bool test_arr_getidx_int32(pf::Log& Log)
 
    TValue result;
    lj_arr_getidx(L, arr, 0, &result);
-   if (!tvisint(&result) or intV(&result) != 100) {
+   if (not tv_is_integer(&result, 100)) {
       Log.error("arr_getidx at index 0 failed: expected 100");
       return false;
    }
 
    lj_arr_getidx(L, arr, 5, &result);
-   if (!tvisint(&result) or intV(&result) != 600) {
+   if (not tv_is_integer(&result, 600)) {
       Log.error("arr_getidx at index 5 failed: expected 600");
       return false;
    }
 
    lj_arr_getidx(L, arr, 9, &result);
-   if (!tvisint(&result) or intV(&result) != 1000) {
+   if (not tv_is_integer(&result, 1000)) {
       Log.error("arr_getidx at index 9 failed: expected 1000");
       return false;
    }
@@ -610,7 +618,7 @@ static bool test_arr_roundtrip(pf::Log& Log)
    for (int32_t i = 0; i < 100; i++) {
       TValue result;
       lj_arr_getidx(L, arr, i, &result);
-      if (!tvisint(&result) or intV(&result) != i * i) {
+      if (not tv_is_integer(&result, i * i)) {
          Log.error("roundtrip failed at index %d: expected %d", i, i * i);
          return false;
       }
@@ -642,7 +650,7 @@ static bool test_arr_byte_type(pf::Log& Log)
    for (int i = 0; i < 256; i++) {
       TValue result;
       lj_arr_getidx(L, arr, i, &result);
-      if (!tvisint(&result) or intV(&result) != i) {
+      if (not tv_is_integer(&result, i)) {
          Log.error("byte array roundtrip failed at index %d", i);
          return false;
       }

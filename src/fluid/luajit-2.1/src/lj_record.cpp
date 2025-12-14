@@ -2601,6 +2601,13 @@ void lj_record_ins(jit_State *J)
       rec_tsetm(J, ra, (BCREG)(J->L->top - J->L->base), (int32_t)rcv->u32.lo);
       break;
 
+      // Array ops - currently NYI, fall through to error
+   case BC_AGETV: case BC_AGETB:
+   case BC_ASETV: case BC_ASETB:
+      setintV(&J->errinfo, (int32_t)op);
+      lj_trace_err_info(J, LJ_TRERR_NYIBC);
+      break;
+
       // -- Calls and vararg handling
 
    case BC_ITERC:
