@@ -1157,7 +1157,7 @@ static int range_slice_impl(lua_State *L)
    }
 
    // Unsupported type
-   lj_err_argt(L, 1, LUA_TTABLE);
+   lj_err_arg(L, 1, "table or string expected");
    return 0;
 }
 
