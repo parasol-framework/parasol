@@ -20,13 +20,22 @@ enum {
    CONST_STDERR = -3
 };
 
-// File handle userdata structure
+// File handle userdata structure.  Uses file identifiers exclusively so that we don't have to be concerned about
+// invalid pointers.
 
 struct FileHandle {
-   objFile *file;
-   bool auto_close;
+   OBJECTID file_id = 0;
+   bool auto_close = true;
 
-   FileHandle(objFile *f, bool ac = true) : file(f), auto_close(ac) {}
+   FileHandle(objFile *f, bool ac = true) : file_id(f->UID), auto_close(ac) {}
+
+   ~FileHandle() {
+      objFile *fl;
+      if ((auto_close) and (file_id) and ((fl = (objFile *)GetObjectPtr(file_id)))) {
+         FreeResource(fl);
+      }
+      file_id = 0;
+   }
 };
 
 // Helper functions
@@ -48,9 +57,6 @@ inline int push_file_handle(lua_State *Lua, objFile *File, bool AutoClose = true
 inline int file_gc(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (handle->auto_close and handle->file) {
-         FreeResource(handle->file);
-      }
       handle->~FileHandle();
    }
    return 0;
@@ -112,11 +118,7 @@ static int io_close(lua_State *Lua)
    }
 
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (handle->file) {
-         FreeResource(handle->file);
-         handle->file = nullptr;
-      }
-
+      handle->~FileHandle();
       lua_pushboolean(Lua, 1);
       return 1;
    }
@@ -338,7 +340,7 @@ static int io_output(lua_State *Lua)
 
 // Iterator state for io.lines
 struct LinesIterator {
-   FileHandle *file_handle;
+   FileHandle *file_handle = nullptr;
    bool close_on_finish;
 
    LinesIterator(FileHandle *fh, bool close) : file_handle(fh), close_on_finish(close) {}
@@ -347,21 +349,22 @@ struct LinesIterator {
 static int lines_iterator(lua_State *Lua)
 {
    auto iter = (LinesIterator *)lua_touserdata(Lua, lua_upvalueindex(1));
+   
+   if (not iter->file_handle) return 0; // End iteration
 
-   if (!iter->file_handle or !iter->file_handle->file) {
-      return 0; // End iteration
-   }
+   auto file = (objFile *)GetObjectPtr(iter->file_handle->file_id);
+
+   if (not file) return 0; // End iteration
 
    struct fl::ReadLine args;
-   if (Action(fl::ReadLine::id, iter->file_handle->file, &args) IS ERR::Okay) {
+   if (Action(fl::ReadLine::id, file, &args) IS ERR::Okay) {
       lua_pushstring(Lua, args.Result);
       return 1;
    }
-   else {
-      // End of file or error - close if needed
-      if (iter->close_on_finish and iter->file_handle->file) {
-         FreeResource(iter->file_handle->file);
-         iter->file_handle->file = nullptr;
+   else { // End of file or error - close if we own it
+      if (iter->close_on_finish) {
+         iter->file_handle->~FileHandle();
+         iter->file_handle = nullptr;
       }
       return 0; // End iteration
    }
@@ -370,9 +373,9 @@ static int lines_iterator(lua_State *Lua)
 static int lines_iterator_gc(lua_State *Lua)
 {
    auto iter = (LinesIterator *)lua_touserdata(Lua, 1);
-   if (iter->close_on_finish and iter->file_handle and iter->file_handle->file) {
-      FreeResource(iter->file_handle->file);
-      iter->file_handle->file = nullptr;
+   if (iter->close_on_finish and iter->file_handle) {
+      iter->file_handle->~FileHandle();
+      iter->file_handle = nullptr;
    }
    iter->~LinesIterator();
    return 0;
@@ -419,7 +422,7 @@ static int io_lines(lua_State *Lua)
    else {
       // File handle provided
       file_handle = check_file_handle(Lua, 1);
-      close_on_finish = false; // Don't close provided handle
+      close_on_finish = false; // Don't close provided handle - we don't own it
    }
 
    // Create iterator state
@@ -469,7 +472,7 @@ static int io_type(lua_State *Lua)
    if (lua_type(Lua, 1) IS LUA_TUSERDATA) {
       auto handle = (FileHandle *)luaL_testudata(Lua, 1, "Fluid.file");
       if (handle) {
-         if (handle->file) lua_pushstring(Lua, "file");
+         if (handle->file_id) lua_pushstring(Lua, "file");
          else lua_pushstring(Lua, "closed file");
          return 1;
       }
@@ -485,18 +488,25 @@ static int io_type(lua_State *Lua)
 static int file_read(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (!handle->file) {
+      if (!handle->file_id) {
          lua_pushnil(Lua);
          lua_pushstring(Lua, "Attempted to use a closed file");
          return 2;
       }
+      
+      auto file = (objFile *)GetObjectPtr(handle->file_id);
+      if (not file) {
+         lua_pushnil(Lua);
+         lua_pushstring(Lua, "Attempted to use an orphaned file handle");
+         return 2;
+      }
 
       int nargs = lua_gettop(Lua);
-
+      
       // Default to reading a line if no arguments
       if (nargs IS 1) {
          struct fl::ReadLine args;
-         if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+         if (Action(fl::ReadLine::id, file, &args) IS ERR::Okay) {
             lua_pushstring(Lua, args.Result);
             return 1;
          }
@@ -515,7 +525,7 @@ static int file_read(lua_State *Lua)
                switch (format[1]) {
                   case 'n': { // Read a number
                      struct fl::ReadLine args;
-                     if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+                     if (Action(fl::ReadLine::id, file, &args) IS ERR::Okay) {
                         lua_pushnumber(Lua, std::strtod(args.Result, nullptr));
                      }
                      else lua_pushnil(Lua);
@@ -523,16 +533,16 @@ static int file_read(lua_State *Lua)
                   }
 
                   case 'a': { // Read entire file
-                     auto current_pos = handle->file->Position;
-                     handle->file->seekEnd(0);
-                     auto file_size = handle->file->Position;
-                     handle->file->seek(current_pos, SEEK::START);
+                     auto current_pos = file->Position;
+                     file->seekEnd(0);
+                     auto file_size = file->Position;
+                     file->seek(current_pos, SEEK::START);
 
                      auto remaining = file_size - current_pos;
                      if (remaining > 0) {
                         std::string buffer(remaining, '\0');
                         int bytes_read;
-                        if (acRead(handle->file, buffer.data(), remaining, &bytes_read) IS ERR::Okay) {
+                        if (acRead(file, buffer.data(), remaining, &bytes_read) IS ERR::Okay) {
                            buffer.resize(bytes_read);
                            lua_pushlstring(Lua, buffer.data(), bytes_read);
                         }
@@ -544,7 +554,7 @@ static int file_read(lua_State *Lua)
 
                   case 'l': { // Read a line (default behavior)
                      struct fl::ReadLine args;
-                     if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+                     if (Action(fl::ReadLine::id, file, &args) IS ERR::Okay) {
                         lua_pushstring(Lua, args.Result);
                      }
                      else lua_pushnil(Lua);
@@ -566,7 +576,7 @@ static int file_read(lua_State *Lua)
             if (bytes_to_read > 0) {
                std::string buffer(bytes_to_read, '\0');
                int bytes_read;
-               if (acRead(handle->file, buffer.data(), bytes_to_read, &bytes_read) IS ERR::Okay and bytes_read > 0) {
+               if (acRead(file, buffer.data(), bytes_to_read, &bytes_read) IS ERR::Okay and bytes_read > 0) {
                   buffer.resize(bytes_read);
                   lua_pushlstring(Lua, buffer.data(), bytes_read);
                }
@@ -592,7 +602,8 @@ static int file_read(lua_State *Lua)
 static int file_write(lua_State *Lua)
 {
    auto handle = check_file_handle(Lua, 1);
-   if (!handle->file) {
+   auto file = (objFile *)GetObjectPtr(handle->file_id);
+   if (not file) {
       lua_pushnil(Lua);
       lua_pushstring(Lua, "Attempted to use a closed file");
       return 2;
@@ -604,7 +615,7 @@ static int file_write(lua_State *Lua)
       auto str = luaL_checklstring(Lua, i, &len);
 
       int result;
-      if (acWrite(handle->file, str, len, &result) != ERR::Okay) {
+      if (acWrite(file, str, len, &result) != ERR::Okay) {
          lua_pushnil(Lua);
          lua_pushstring(Lua, "Write failed");
          return 2;
@@ -627,14 +638,7 @@ static int file_close(lua_State *Lua)
 static int file_flush(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      if (!handle->file) {
-         lua_pushnil(Lua);
-         lua_pushstring(Lua, "Attempted to use a closed file");
-         return 2;
-      }
-
-      acFlush(handle->file);
-
+      acFlush(GetObjectPtr(handle->file_id));
       lua_pushboolean(Lua, 1);
       return 1;
    }
@@ -649,7 +653,8 @@ static int file_flush(lua_State *Lua)
 static int file_seek(lua_State *Lua)
 {
    auto handle = check_file_handle(Lua, 1);
-   if (!handle->file) {
+   auto file = (objFile *)GetObjectPtr(handle->file_id);
+   if (!file) {
       lua_pushnil(Lua);
       lua_pushstring(Lua, "Attempted to use a closed file");
       return 2;
@@ -663,8 +668,8 @@ static int file_seek(lua_State *Lua)
    else if (iequals("cur", whence_str)) whence = SEEK::CURRENT;
    else if (iequals("end", whence_str)) whence = SEEK::END;
 
-   if (acSeek(handle->file, offset, whence) IS ERR::Okay) {
-      lua_pushnumber(Lua, handle->file->Position);
+   if (acSeek(file, offset, whence) IS ERR::Okay) {
+      lua_pushnumber(Lua, file->Position);
       return 1;
    }
    else {
@@ -679,7 +684,7 @@ static int file_seek(lua_State *Lua)
 static int file_lines(lua_State *Lua)
 {
    auto handle = check_file_handle(Lua, 1);
-   if (!handle->file) {
+   if (not handle->file_id) {
       luaL_error(Lua, "Attempted to use a closed file");
       return 0;
    }

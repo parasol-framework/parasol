@@ -6,7 +6,6 @@
 --       Support for parameterized tests from the command line.
 --       Support for test retries on failure.
 --       Support for test timeouts (mark as a fail after N seconds is exceeded).
---       Support for test filtering by annotated labels
 
 glHelp = [[
 Flute provides a standard framework for the execution of unit tests in Fluid.
@@ -18,12 +17,13 @@ Example usage:
 
    require 'common'
 
-   glFile = arg('file')
-   glTest = arg('test')
+   glFile    = arg('file')
+   glTest    = arg('test')?:split(',') ?? { }
    glHotPath = arg('hotPath') -- Force hot-path execution for all tests.
-   glSelf = obj.find('self')
+   glSelf    = obj.find('self')
+   glLabels  = arg('labels')?:split(',') ?? { }
 
-   jit.opt.start("hotloop=3") -- Lower threshold to trigger JIT sooner, simplifies debugging
+   jit.opt.start("hotloop=1") -- Lower threshold to trigger JIT sooner, simplifies debugging
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -57,10 +57,7 @@ global glSSLAvailable = thunk():bool
    end)
 
    if test_socket then
-      supported = false
-      if test_socket.error is ERR_Okay then
-         supported = true
-      end
+      supported = test_socket.error is ERR_Okay
       test_socket = nil
       collectgarbage()
       return supported
@@ -172,6 +169,40 @@ function runTests()
             end
          end
 
+         if #glLabels > 0 then -- User is filtering on at least one label
+            if test_labels is nil then
+               disabled = true
+            else
+               label_present = false
+               inverse = false
+               
+               for _, label_filter in ipairs(glLabels) do
+                  if label_filter:startsWith('~') then
+                     inverse = true
+                     label_filter = label_filter:sub(1)
+                  end
+
+                  for _, test_label in ipairs(test_labels) do
+                     if label_filter is test_label then
+                        label_present = true
+                        break
+                     end
+                  end
+                  if label_present then break end
+               end
+
+               if inverse then
+                  if label_present then
+                     disabled = true
+                  end
+               else
+                  if not label_present then
+                     disabled = true
+                  end
+               end
+            end
+         end
+
          if not disabled and is_test then
             table.insert(body.tests, {
                func     = func,
@@ -219,8 +250,17 @@ function runTests()
       assert(test.func, 'Test function is missing a function reference.')
 
       print('-- Test ' .. i .. ': ' .. test.name .. ' --')
-      if glTest and (test.name != glTest) then
+
+      -- Filter by test name if requested
+
+      if #glTest > 0 then
          skip = true
+         for v in values(glTest) do
+            if test.name is v then
+               skip = false
+               break
+            end
+         end
       end
 
       if not skip and test.func then

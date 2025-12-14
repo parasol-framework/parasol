@@ -885,7 +885,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_while_stmt(const LoopStmtPayload &Paylo
 
    this->loop_stack.back().continue_edge.patch_to(start);
    this->loop_stack.back().break_edge.patch_here();
-   loop_stack_guard.release();
 
    if (glPrintMsg) { // Verify no register leaks at loop exit
       RegisterAllocator verifier(fs);
@@ -943,7 +942,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_repeat_stmt(const LoopStmtPayload &Payl
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(BCPos(iter));
    this->loop_stack.back().break_edge.patch_here();
-   loop_stack_guard.release();
 
    if (glPrintMsg) {
       // Verify no register leaks at loop exit
@@ -1029,7 +1027,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_numeric_for_stmt(const NumericForStmtPa
    this->loop_stack.back().continue_target = loopend.head();
    this->loop_stack.back().continue_edge.patch_to(loopend.head());
    this->loop_stack.back().break_edge.patch_here();
-   loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -1108,7 +1105,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_generic_for_stmt(const GenericForStmtPa
    this->loop_stack.back().continue_target = iter;
    this->loop_stack.back().continue_edge.patch_to(iter);
    this->loop_stack.back().break_edge.patch_here();
-   loop_stack_guard.release();
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
