@@ -254,9 +254,11 @@ function runTests()
       -- Filter by test name if requested
 
       if #glTest > 0 then
+         skip = true
          for v in values(glTest) do
-            if test.name != v then
-               skip = true
+            if test.name is v then
+               skip = false
+               break
             end
          end
       end
