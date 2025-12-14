@@ -635,6 +635,200 @@ static bool test_slotview_ptr(pf::Log& log)
    return true;
 }
 
+//********************************************************************************************************************
+// IRBuilder Tests
+
+// Test IRBuilder construction and state accessor
+static bool test_irbuilder_construction(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   J.cur.nins = 100;
+   J.cur.nk = 50;
+
+   IRBuilder ir(&J);
+
+   // Verify state accessor
+   if (ir.state() != &J) {
+      log.error("IRBuilder: state() returned wrong pointer");
+      return false;
+   }
+
+   // Verify nins accessor
+   if (ir.nins() != 100) {
+      log.error("IRBuilder: nins() expected 100, got %u", ir.nins());
+      return false;
+   }
+
+   // Verify nk accessor
+   if (ir.nk() != 50) {
+      log.error("IRBuilder: nk() expected 50, got %u", ir.nk());
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder at() method for IR access
+static bool test_irbuilder_at(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+
+   // Set up a mock IR instruction
+   IRRef test_ref = REF_BIAS + 10;
+   J.cur.ir[test_ref].ot = IRT(IR_ADD, IRT_INT);
+   J.cur.ir[test_ref].op1 = 5;
+   J.cur.ir[test_ref].op2 = 6;
+
+   IRBuilder ir(&J);
+   IRIns* ins = ir.at(test_ref);
+
+   // Verify we got the right instruction
+   if (ins != &J.cur.ir[test_ref]) {
+      log.error("IRBuilder at(): returned wrong pointer");
+      return false;
+   }
+
+   // Verify we can read through it
+   if (ins->op1 != 5 or ins->op2 != 6) {
+      log.error("IRBuilder at(): wrong operand values");
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder constant emission wrappers
+static bool test_irbuilder_constants(pf::Log& log)
+{
+   // Note: We can only test that the methods compile and the wrapper pattern is correct.
+   // Full constant emission requires a properly initialised JIT state which is complex to mock.
+   // The actual functionality is tested via integration tests.
+
+   // Static assertions to verify method signatures exist
+   jit_State J;
+   init_test_jit_state(J);
+   IRBuilder ir(&J);
+
+   // Verify the builder compiles with the expected method signatures
+   // (These would crash if actually called without proper JIT initialisation,
+   // but the tests verify the interface is correct)
+
+   // Type check: kint returns TRef
+   auto kint_fn = &IRBuilder::kint;
+   (void)kint_fn;
+
+   // Type check: knum returns TRef
+   auto knum_fn = &IRBuilder::knum;
+   (void)knum_fn;
+
+   // Type check: knull returns TRef
+   auto knull_fn = &IRBuilder::knull;
+   (void)knull_fn;
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder typed emission helper signatures
+static bool test_irbuilder_typed_helpers(pf::Log& log)
+{
+   // Verify the typed helper method signatures compile correctly
+   jit_State J;
+   init_test_jit_state(J);
+   IRBuilder ir(&J);
+
+   // Verify emit_int signature: (IROp, TRef, TRef) -> TRef
+   auto emit_int_fn = static_cast<TRef (IRBuilder::*)(IROp, TRef, TRef)>(&IRBuilder::emit_int);
+   (void)emit_int_fn;
+
+   // Verify emit_num signature
+   auto emit_num_fn = static_cast<TRef (IRBuilder::*)(IROp, TRef, TRef)>(&IRBuilder::emit_num);
+   (void)emit_num_fn;
+
+   // Verify guard signature: (IROp, IRType, TRef, TRef) -> TRef
+   auto guard_fn = static_cast<TRef (IRBuilder::*)(IROp, IRType, TRef, TRef)>(&IRBuilder::guard);
+   (void)guard_fn;
+
+   // Verify guard_int signature
+   auto guard_int_fn = static_cast<TRef (IRBuilder::*)(IROp, TRef, TRef)>(&IRBuilder::guard_int);
+   (void)guard_int_fn;
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder fload helper signatures
+static bool test_irbuilder_fload_helpers(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   IRBuilder ir(&J);
+
+   // Verify fload signatures compile
+   auto fload_fn = &IRBuilder::fload;
+   (void)fload_fn;
+
+   auto fload_int_fn = &IRBuilder::fload_int;
+   (void)fload_int_fn;
+
+   auto fload_ptr_fn = &IRBuilder::fload_ptr;
+   (void)fload_ptr_fn;
+
+   auto fload_tab_fn = &IRBuilder::fload_tab;
+   (void)fload_tab_fn;
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder conversion helper signatures
+static bool test_irbuilder_conv_helpers(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   IRBuilder ir(&J);
+
+   // Verify conv signatures compile
+   auto conv_fn = &IRBuilder::conv;
+   (void)conv_fn;
+
+   auto conv_num_int_fn = &IRBuilder::conv_num_int;
+   (void)conv_num_int_fn;
+
+   auto conv_int_num_fn = &IRBuilder::conv_int_num;
+   (void)conv_int_num_fn;
+
+   return true;
+}
+
+//********************************************************************************************************************
+// Test IRBuilder guard helper signatures
+static bool test_irbuilder_guard_helpers(pf::Log& log)
+{
+   jit_State J;
+   init_test_jit_state(J);
+   IRBuilder ir(&J);
+
+   // Verify guard helper signatures compile
+   auto guard_eq_fn = &IRBuilder::guard_eq;
+   (void)guard_eq_fn;
+
+   auto guard_ne_fn = &IRBuilder::guard_ne;
+   (void)guard_ne_fn;
+
+   auto guard_eq_int_fn = &IRBuilder::guard_eq_int;
+   (void)guard_eq_int_fn;
+
+   auto guard_ne_int_fn = &IRBuilder::guard_ne_int;
+   (void)guard_ne_int_fn;
+
+   return true;
+}
+
 struct TestCase {
    const char* name;
    bool (*fn)(pf::Log&);
@@ -647,7 +841,7 @@ struct TestCase {
 
 extern void jit_frame_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 20> tests = { {
+   constexpr std::array<TestCase, 27> tests = { {
       // FrameManager and FRC constants
       { "frc_constants", test_frc_constants },
       { "frame_push_pop_symmetry", test_frame_push_pop_symmetry },
@@ -670,7 +864,15 @@ extern void jit_frame_unit_tests(int &Passed, int &Total)
       { "slotview_clear", test_slotview_clear },
       { "slotview_copy", test_slotview_copy },
       { "slotview_maxslot", test_slotview_maxslot },
-      { "slotview_ptr", test_slotview_ptr }
+      { "slotview_ptr", test_slotview_ptr },
+      // IRBuilder
+      { "irbuilder_construction", test_irbuilder_construction },
+      { "irbuilder_at", test_irbuilder_at },
+      { "irbuilder_constants", test_irbuilder_constants },
+      { "irbuilder_typed_helpers", test_irbuilder_typed_helpers },
+      { "irbuilder_fload_helpers", test_irbuilder_fload_helpers },
+      { "irbuilder_conv_helpers", test_irbuilder_conv_helpers },
+      { "irbuilder_guard_helpers", test_irbuilder_guard_helpers }
    } };
 
    for (const TestCase& test : tests) {

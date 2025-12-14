@@ -328,3 +328,150 @@ public:
       if (slot < J->maxslot) J->maxslot = slot;
    }
 };
+
+//********************************************************************************************************************
+// IRBuilder - Type-safe wrapper for IR emission.
+//
+// The JIT recorder emits IR instructions using macros like `emitir(ot, a, b)` and `emitir_raw(ot, a, b)`.  IRBuilder
+// provides a type-safe class interface that makes the code more readable and easier to maintain.
+//
+// Usage:
+//   IRBuilder ir(J);
+//
+//   // Emit with optimization pass (equivalent to emitir macro)
+//   TRef result = ir.emit(IRT(IR_ADD, IRT_INT), a, b);
+//
+//   // Emit raw without optimization (equivalent to emitir_raw macro)
+//   TRef raw = ir.emit_raw(IRT(IR_SLOAD, t), slot, mode);
+//
+//   // Emit guard instruction
+//   ir.guard(IR_EQ, a, b, IRT_INT);
+//
+//   // Access IR instruction by reference (equivalent to IR(ref) macro)
+//   IRIns* ins = ir.at(ref);
+//
+// The class maintains a pointer to jit_State and delegates to the existing lj_ir_* functions.
+
+class IRBuilder {
+   jit_State *J;
+
+public:
+   explicit IRBuilder(jit_State *j) : J(j) {}
+
+   // Access IR instruction by reference (replaces IR(ref) macro)
+   [[nodiscard]] IRIns* at(IRRef ref) const { return &J->cur.ir[ref]; }
+
+   // Emit IR with optimization pass (replaces emitir macro)
+   // Passes the instruction through lj_opt_fold for CSE and constant folding
+   TRef emit(uint32_t ot, TRef a, TRef b) {
+      lj_ir_set(J, ot, a, b);
+      return lj_opt_fold(J);
+   }
+
+   // Single-operand emission (common case)
+   TRef emit(uint32_t ot, TRef a) { return emit(ot, a, 0); }
+
+   // Emit raw IR without optimization (replaces emitir_raw macro)
+   // Bypasses folding, used for SLOADs and other cases where optimization is unwanted
+   TRef emit_raw(uint32_t ot, TRef a, TRef b) {
+      lj_ir_set(J, ot, a, b);
+      return lj_ir_emit(J);
+   }
+
+   // Single-operand raw emission
+   TRef emit_raw(uint32_t ot, TRef a) { return emit_raw(ot, a, 0); }
+
+   //=================================================================================================================
+   // Typed emission helpers - provide clearer semantics than raw IRT() macros
+   //=================================================================================================================
+
+   // Emit integer-typed instruction: IRT(op, IRT_INT)
+   TRef emit_int(IROp op, TRef a, TRef b = 0) { return emit(IRTI(op), a, b); }
+
+   // Emit number-typed instruction: IRT(op, IRT_NUM)
+   TRef emit_num(IROp op, TRef a, TRef b = 0) { return emit(IRTN(op), a, b); }
+
+   // Emit guard instruction: IRTG(op, type)
+   TRef guard(IROp op, IRType t, TRef a, TRef b = 0) { return emit(IRTG(op, t), a, b); }
+
+   // Emit integer guard: IRTGI(op)
+   TRef guard_int(IROp op, TRef a, TRef b = 0) { return emit(IRTGI(op), a, b); }
+
+   //=================================================================================================================
+   // Common IR patterns - encapsulate frequently used instruction sequences
+   //=================================================================================================================
+
+   // Load field from object: FLOAD
+   TRef fload(TRef obj, IRFieldID field, IRType t) {
+      return emit(IRT(IR_FLOAD, t), obj, field);
+   }
+
+   // Integer field load (common case)
+   TRef fload_int(TRef obj, IRFieldID field) {
+      return emit(IRTI(IR_FLOAD), obj, field);
+   }
+
+   // Pointer field load
+   TRef fload_ptr(TRef obj, IRFieldID field) {
+      return emit(IRT(IR_FLOAD, IRT_PGC), obj, field);
+   }
+
+   // Table field load
+   TRef fload_tab(TRef obj, IRFieldID field) {
+      return emit(IRT(IR_FLOAD, IRT_TAB), obj, field);
+   }
+
+   // Type conversion: CONV
+   TRef conv(TRef val, uint32_t convmode) { return emit(IRT(IR_CONV, convmode >> IRCONV_DSH), val, convmode); }
+
+   // Integer to number conversion
+   TRef conv_num_int(TRef val) { return emit(IRTN(IR_CONV), val, IRCONV_NUM_INT); }
+
+   // Number to integer conversion with check
+   TRef conv_int_num(TRef val) { return emit(IRTGI(IR_CONV), val, IRCONV_INT_NUM | IRCONV_CHECK); }
+
+   // Emit NOP instruction (used to prevent snapshot coalescing)
+   void nop() { emit_raw(IRT(IR_NOP, IRT_NIL), 0, 0); }
+
+   //=================================================================================================================
+   // Guard emission helpers
+   //=================================================================================================================
+
+   // Emit equality guard
+   void guard_eq(TRef a, TRef b, IRType t) { guard(IR_EQ, t, a, b); }
+
+   // Emit inequality guard
+   void guard_ne(TRef a, TRef b, IRType t) { guard(IR_NE, t, a, b); }
+
+   // Integer equality guard
+   void guard_eq_int(TRef a, TRef b) { guard_int(IR_EQ, a, b); }
+
+   // Integer inequality guard
+   void guard_ne_int(TRef a, TRef b) { guard_int(IR_NE, a, b); }
+
+   //=================================================================================================================
+   // Constant emission (delegates to lj_ir_k* functions)
+   //=================================================================================================================
+
+   TRef kint(int32_t k) { return lj_ir_kint(J, k); }
+   TRef knum(lua_Number n) { return lj_ir_knum(J, n); }
+   TRef kstr(GCstr *str) { return lj_ir_kstr(J, str); }
+   TRef ktab(GCtab *tab) { return lj_ir_ktab(J, tab); }
+   TRef kfunc(GCfunc *fn) { return lj_ir_kfunc(J, fn); }
+   TRef kptr(void *ptr) { return lj_ir_kptr(J, ptr); }
+   TRef kkptr(void *ptr) { return lj_ir_kkptr(J, ptr); }
+   TRef knull(IRType t) { return lj_ir_knull(J, t); }
+
+   //=================================================================================================================
+   // State accessors
+   //=================================================================================================================
+
+   // Get current number of IR instructions
+   [[nodiscard]] IRRef nins() const { return J->cur.nins; }
+
+   // Get number of constants
+   [[nodiscard]] IRRef nk() const { return J->cur.nk; }
+
+   // Get underlying jit_State (for advanced usage)
+   [[nodiscard]] jit_State* state() const { return J; }
+};
