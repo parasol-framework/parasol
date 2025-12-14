@@ -633,6 +633,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
 if (ENABLE_UNIT_TESTS)
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_vm_asm.cpp")
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_tests_arrays.cpp")
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/jit/jit_unit_tests.cpp")
 
    # Add MASM assembly file for register capture on MSVC x64

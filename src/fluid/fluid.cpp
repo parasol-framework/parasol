@@ -311,6 +311,7 @@ extern void indexing_unit_tests(int &, int &);
 extern void vm_asm_unit_tests(int &, int &);
 extern void jit_frame_unit_tests(int &, int &);
 extern void parser_unit_tests(int &, int &);
+extern void array_unit_tests(int &, int &);
 #endif
 
 static void MODTest(CSTRING Options, int *Passed, int *Total)
@@ -335,6 +336,11 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
       pf::Log log("FluidTests");
       log.branch("Running JIT frame unit tests...");
       jit_frame_unit_tests(*Passed, *Total);
+   }
+   {
+      pf::Log log("FluidTests");
+      log.branch("Running array unit tests...");
+      array_unit_tests(*Passed, *Total);
    }
 #else
    pf::Log("FluidTests").warning("Unit tests are disabled in this build.");

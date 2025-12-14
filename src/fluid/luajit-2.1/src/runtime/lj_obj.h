@@ -330,8 +330,9 @@ inline constexpr uint32_t LJ_TTRACE    = ~9u;
 inline constexpr uint32_t LJ_TCDATA    = ~10u;
 inline constexpr uint32_t LJ_TTAB      = ~11u;
 inline constexpr uint32_t LJ_TUDATA    = ~12u;
+inline constexpr uint32_t LJ_TARRAY    = ~13u;   // Native array type
 // This is just the canonical number type used in some places.
-inline constexpr uint32_t LJ_TNUMX     = ~13u;
+inline constexpr uint32_t LJ_TNUMX     = ~14u;
 
 // Integers have itype == LJ_TISNUM doubles have itype < LJ_TISNUM
 // Always LJ_TNUMX for 64-bit GC64 mode
@@ -705,6 +706,72 @@ inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
    setmref(t->freetop, v);
 }
 
+// -- Array object --------------------------------------------------------
+
+// Array element type constants
+enum ArrayElemType : uint8_t {
+   ARRAY_ELEM_BYTE    = 0,   // int8_t / uint8_t
+   ARRAY_ELEM_INT16   = 1,   // int16_t
+   ARRAY_ELEM_INT32   = 2,   // int32_t
+   ARRAY_ELEM_INT64   = 3,   // int64_t
+   ARRAY_ELEM_FLOAT   = 4,   // float
+   ARRAY_ELEM_DOUBLE  = 5,   // double
+   ARRAY_ELEM_PTR     = 6,   // void*
+   ARRAY_ELEM_STRING  = 7,   // GCstr* (pointer to interned string)
+   ARRAY_ELEM_STRUCT  = 8,   // Structured data (uses structdef)
+   ARRAY_ELEM__MAX
+};
+
+// Array flags
+inline constexpr uint8_t ARRAY_FLAG_READONLY  = 0x01;  // Cannot modify elements
+inline constexpr uint8_t ARRAY_FLAG_EXTERNAL  = 0x02;  // Data not owned by array
+inline constexpr uint8_t ARRAY_FLAG_COLOCATED = 0x04;  // Data follows GCarray header
+
+// Forward declaration for GCarray
+struct GCarray;
+
+// Native typed array object. Fixed-size, homogeneous element storage.
+typedef struct GCarray {
+   GCHeader;
+   uint8_t elemtype;        // Element type (ArrayElemType constants)
+   uint8_t flags;           // Array flags (read-only, struct-backed, etc.)
+   MRef data;               // Pointer to element storage
+   GCRef gclist;            // GC list for marking
+   GCRef metatable;         // Optional metatable (must be at same offset as GCtab/GCudata)
+   MSize len;               // Number of elements
+   MSize capacity;          // Allocated capacity (elements, not bytes)
+   MSize elemsize;          // Size of each element in bytes
+   GCRef structdef;         // Optional: struct definition for struct arrays
+} GCarray;
+
+// Ensure metatable field is at the same offset as in GCtab and GCudata
+static_assert(offsetof(GCarray, metatable) IS offsetof(GCtab, metatable));
+static_assert(offsetof(GCarray, gclist) IS offsetof(GCtab, gclist));
+
+// Array accessor functions
+[[nodiscard]] inline void* arraydata(GCarray* arr) noexcept
+{
+   return mref(arr->data, void);
+}
+
+[[nodiscard]] inline MSize arraylen(GCarray* arr) noexcept
+{
+   return arr->len;
+}
+
+[[nodiscard]] inline bool array_is_readonly(GCarray* arr) noexcept
+{
+   return (arr->flags & ARRAY_FLAG_READONLY) != 0;
+}
+
+[[nodiscard]] inline MSize sizearraycolo(MSize len, MSize elemsize) noexcept
+{
+   return MSize(sizeof(GCarray)) + len * elemsize;
+}
+
+// Forward declaration - defined after GCobj is complete
+inline GCarray* arrayref(GCRef r) noexcept;
+
 // -- State objects -------------------------------------------------------
 
 // VM states.
@@ -999,6 +1066,7 @@ typedef union GCobj {
    GCfunc fn;
    GCcdata cd;
    GCtab tab;
+   GCarray arr;
    GCudata ud;
 } GCobj;
 
@@ -1043,6 +1111,11 @@ typedef union GCobj {
    return check_exp(o->gch.gct IS ~LJ_TUDATA, &o->ud);
 }
 
+[[nodiscard]] inline GCarray* gco2arr(GCobj* o) noexcept
+{
+   return check_exp(o->gch.gct IS ~LJ_TARRAY, &o->arr);
+}
+
 // Convert any collectable object into a GCobj pointer.
 template<typename T>
 [[nodiscard]] inline GCobj* obj2gco(T* v) noexcept
@@ -1067,6 +1140,9 @@ template<typename T>
 
 // Table accessors
 [[nodiscard]] inline GCtab* tabref(GCRef r) noexcept { return &gcref(r)->tab; }
+
+// Array accessors
+[[nodiscard]] inline GCarray* arrayref(GCRef r) noexcept { return &gcref(r)->arr; }
 
 // Thread/state accessors
 
@@ -1105,6 +1181,7 @@ template<typename T>
 [[nodiscard]] constexpr inline bool tviscdata(cTValue* o) noexcept { return itype(o) IS LJ_TCDATA; }
 [[nodiscard]] constexpr inline bool tvistab(cTValue* o) noexcept { return itype(o) IS LJ_TTAB; }
 [[nodiscard]] constexpr inline bool tvisudata(cTValue* o) noexcept { return itype(o) IS LJ_TUDATA; }
+[[nodiscard]] constexpr inline bool tvisarray(cTValue* o) noexcept { return itype(o) IS LJ_TARRAY; }
 [[nodiscard]] constexpr inline bool tvisnumber(cTValue* o) noexcept { return itype(o) <= LJ_TISNUM; }
 [[nodiscard]] constexpr inline bool tvisint(cTValue* o) noexcept { return LJ_DUALNUM and itype(o) IS LJ_TISNUM; }
 [[nodiscard]] constexpr inline bool tvisnum(cTValue* o) noexcept { return itype(o) < LJ_TISNUM; }
@@ -1185,6 +1262,11 @@ template<typename T>
 [[nodiscard]] inline GCudata* udataV(cTValue* o) noexcept
 {
    return check_exp(tvisudata(o), &gcval(o)->ud);
+}
+
+[[nodiscard]] inline GCarray* arrayV(cTValue* o) noexcept
+{
+   return check_exp(tvisarray(o), &gcval(o)->arr);
 }
 
 [[nodiscard]] inline lua_Number numV(cTValue* o) noexcept
@@ -1276,6 +1358,7 @@ inline void setfuncV(lua_State* L, TValue* o, const GCfunc* v) noexcept
 inline void setcdataV(lua_State* L, TValue* o, const GCcdata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TCDATA); }
 inline void settabV(lua_State* L, TValue* o, const GCtab* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TTAB); }
 inline void setudataV(lua_State* L, TValue* o, const GCudata* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TUDATA); }
+inline void setarrayV(lua_State* L, TValue* o, const GCarray* v) noexcept { setgcV(L, o, obj2gco(v), LJ_TARRAY); }
 constexpr inline void setnumV(TValue* o, lua_Number x) noexcept { o->n = x; }
 inline void setnanV(TValue* o) noexcept { o->u64 = U64x(fff80000, 00000000); }
 inline void setpinfV(TValue* o) noexcept { o->u64 = U64x(7ff00000, 00000000); }

@@ -1,0 +1,186 @@
+// Native array handling.
+// Copyright (C) 2025 Paul Manias
+
+#define lj_array_c
+#define LUA_CORE
+
+#include "lj_obj.h"
+#include "lj_gc.h"
+#include "lj_err.h"
+#include "lj_array.h"
+#include "lj_tab.h"
+
+#include <cstring>
+
+// Element sizes for each type
+static const MSize glElemSizes[] = {
+   sizeof(uint8_t),    // ARRAY_ELEM_BYTE
+   sizeof(int16_t),    // ARRAY_ELEM_INT16
+   sizeof(int32_t),    // ARRAY_ELEM_INT32
+   sizeof(int64_t),    // ARRAY_ELEM_INT64
+   sizeof(float),      // ARRAY_ELEM_FLOAT
+   sizeof(double),     // ARRAY_ELEM_DOUBLE
+   sizeof(void*),      // ARRAY_ELEM_PTR
+   sizeof(GCRef),      // ARRAY_ELEM_STRING
+   0                   // ARRAY_ELEM_STRUCT (variable)
+};
+
+//********************************************************************************************************************
+
+MSize lj_array_elemsize(uint8_t elemtype)
+{
+   lj_assertX(elemtype < ARRAY_ELEM__MAX, "invalid array element type");
+   return glElemSizes[elemtype];
+}
+
+//********************************************************************************************************************
+// Create a new array with colocated storage
+
+GCarray * lj_array_new(lua_State *L, uint32_t Length, uint8_t Type)
+{
+   MSize elemsize = lj_array_elemsize(Type);
+   lj_assertL(elemsize > 0 or Type IS ARRAY_ELEM_STRUCT, "invalid element type for array creation");
+
+   GCarray *arr;
+   MSize total_size = sizearraycolo(Length, elemsize);
+
+   arr = (GCarray *)lj_mem_newgco(L, total_size);
+   arr->gct      = ~LJ_TARRAY;
+   arr->elemtype = Type;
+   arr->flags    = ARRAY_FLAG_COLOCATED;
+   arr->len      = Length;
+   arr->capacity = Length;
+   arr->elemsize = elemsize;
+   setgcrefnull(arr->gclist);
+   setgcrefnull(arr->metatable);
+   setgcrefnull(arr->structdef);
+
+   // Data is colocated immediately after the header
+   auto data = (void *)(arr + 1);
+   setmref(arr->data, data);
+
+   memset(data, 0, Length * elemsize);
+
+   return arr;
+}
+
+//********************************************************************************************************************
+// Create array backed by external memory
+
+GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length, uint8_t Type, uint8_t Flags)
+{
+   auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+   arr->gct      = ~LJ_TARRAY;
+   arr->elemtype = Type;
+   arr->flags    = Flags | ARRAY_FLAG_EXTERNAL;
+   arr->len      = Length;
+   arr->capacity = Length;
+   arr->elemsize = lj_array_elemsize(Type);
+   setgcrefnull(arr->gclist);
+   setgcrefnull(arr->metatable);
+   setgcrefnull(arr->structdef);
+   setmref(arr->data, Data);
+
+   return arr;
+}
+
+//********************************************************************************************************************
+
+void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
+{
+   MSize size;
+   if (Array->flags & ARRAY_FLAG_COLOCATED) {
+      size = sizearraycolo(Array->capacity, Array->elemsize);
+   }
+   else {
+      size = sizeof(GCarray);
+      // Note: External data is not freed - caller manages it
+   }
+
+   lj_mem_free(g, Array, size);
+}
+
+//********************************************************************************************************************
+
+void * lj_array_index(GCarray *Array, uint32_t Idx)
+{
+   auto base = (uint8_t*)mref(Array->data, void);
+   return base + (Idx * Array->elemsize);
+}
+
+//********************************************************************************************************************
+
+void* lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
+{
+   if (Idx >= Array->len) {
+      lj_err_callerv(L, ErrMsg::ARROB, int(Idx + 1), int(Array->len));  // 1-based in error
+   }
+   return lj_array_index(Array, Idx);
+}
+
+//********************************************************************************************************************
+
+void lj_array_copy(lua_State *L, GCarray *Dst, uint32_t DstIdx, GCarray *Src, uint32_t SrcIdx, uint32_t Count)
+{
+   // Validate bounds
+   if (SrcIdx + Count > Src->len or DstIdx + Count > Dst->len) {
+      lj_err_caller(L, ErrMsg::IDXRNG);
+   }
+
+   // Check read-only
+   if (Dst->flags & ARRAY_FLAG_READONLY) {
+      lj_err_caller(L, ErrMsg::ARRRO);
+   }
+
+   // Only allow copy between same element types
+   if (Dst->elemtype != Src->elemtype) {
+      lj_err_caller(L, ErrMsg::ARRTYPE);
+   }
+
+   void* dst_ptr = lj_array_index(Dst, DstIdx);
+   void* src_ptr = lj_array_index(Src, SrcIdx);
+   size_t byte_count = Count * Dst->elemsize;
+
+   // Use memmove to handle overlapping regions
+   memmove(dst_ptr, src_ptr, byte_count);
+}
+
+//********************************************************************************************************************
+
+GCtab* lj_array_to_table(lua_State *L, GCarray *Array)
+{
+   GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
+   auto array_part = tvref(t->array);
+
+   auto data = (uint8_t*)mref(Array->data, void);
+   for (MSize i = 0; i < Array->len; i++) {
+      auto slot = &array_part[i];  // 0-based indexing (Fluid standard)
+      void *elem = data + (i * Array->elemsize);
+
+      switch (Array->elemtype) {
+         case ARRAY_ELEM_BYTE:
+            setintV(slot, *(uint8_t*)elem);
+            break;
+         case ARRAY_ELEM_INT16:
+            setintV(slot, *(int16_t*)elem);
+            break;
+         case ARRAY_ELEM_INT32:
+            setintV(slot, *(int32_t*)elem);
+            break;
+         case ARRAY_ELEM_INT64:
+            setnumV(slot, lua_Number(*(int64_t*)elem));
+            break;
+         case ARRAY_ELEM_FLOAT:
+            setnumV(slot, *(float*)elem);
+            break;
+         case ARRAY_ELEM_DOUBLE:
+            setnumV(slot, *(double*)elem);
+            break;
+         default:
+            setnilV(slot);
+            break;
+      }
+   }
+
+   return t;
+}

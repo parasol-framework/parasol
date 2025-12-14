@@ -199,6 +199,13 @@ ERRDEF(BUFFER_EOB,   "unexpected end of buffer")
 ERRDEF(BUFFER_LEFTOV,   "left-over data in buffer")
 #endif
 
+// Array errors.
+ERRDEF(ARROB,   "array index %d out of bounds (size %d)")
+ERRDEF(ARRRO,   "attempt to modify read-only array")
+ERRDEF(ARRTYPE, "invalid array element type")
+ERRDEF(ARRARG,  "array expected")
+ERRDEF(ARRSTR,  "byte array expected for string extraction")
+
 #undef ERRDEF
 
 /* Detecting unused error messages:
