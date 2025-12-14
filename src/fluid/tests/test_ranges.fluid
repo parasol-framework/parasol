@@ -1,6 +1,6 @@
 -- Flute test suite for Fluid Range type
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 @Test function testNonRangeTable()
@@ -1118,4 +1118,54 @@ end
    s = "Hello"
    result = range.slice(s, {10..15})
    assert(result is "", "slice beyond string should return empty string")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- String Slicing with Reverse and Step Tests
+-- Verifies that strings support the same reverse/step semantics as tables
+
+@Test function testStringSliceReverse()
+   s = "abcdef"
+   result = s[{5...0}]
+   assert(result is "fedcba", "reverse string slice should return 'fedcba', got: " .. result)
+end
+
+@Test function testStringSliceReverseExclusive()
+   s = "abcdef"
+   result = s[{5..0}]
+   assert(result is "fedcb", "reverse exclusive string slice should return 'fedcb', got: " .. result)
+end
+
+@Test function testStringSliceWithStep()
+   s = "abcdefghij"
+   r = range(0, 10, true, 2)  -- Every 2nd character: a, c, e, g, i
+   result = range.slice(s, r)
+   assert(result is "acegi", "stepped string slice should return 'acegi', got: " .. result)
+end
+
+@Test function testStringSliceReverseWithStep()
+   s = "abcdefghij"
+   r = range(9, 0, true, -2)  -- Reverse every 2nd: j, h, f, d, b
+   result = range.slice(s, r)
+   assert(result is "jhfdb", "reverse stepped string slice should return 'jhfdb', got: " .. result)
+end
+
+@Test function testStringSliceForwardStep3()
+   s = "abcdefghijkl"
+   r = range(0, 12, true, 3)  -- Every 3rd: a, d, g, j
+   result = range.slice(s, r)
+   assert(result is "adgj", "step 3 string slice should return 'adgj', got: " .. result)
+end
+
+@Test function testStringSliceReverseNegativeIndices()
+   s = "Hello, World!"
+   result = s[{-1...-13}]  -- Full reverse
+   assert(result is "!dlroW ,olleH", "reverse negative indices should return '!dlroW ,olleH', got: " .. result)
+end
+
+@Test function testStringSliceSimpleForwardUnchanged()
+   -- Verify simple forward slices still work correctly
+   s = "Hello, World!"
+   result = s[{0..5}]
+   assert(result is "Hello", "simple forward slice should return 'Hello', got: " .. result)
 end

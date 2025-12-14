@@ -1,7 +1,7 @@
 -- Flute test suite for Table Slice Support (range-based indexing)
 ----------------------------------------------------------------------------------------------------------------------
 
-@BeforeEach(hotpath=true) 
+@BeforeEach(hotpath=true)
 function enforce_hotpath() end
 
 -- Basic Exclusive Slicing Tests

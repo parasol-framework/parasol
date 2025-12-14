@@ -22,6 +22,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_err.h"
+#include "lj_buf.h"
 #include "lj_tab.h"
 #include "lj_str.h"
 #include "lib.h"
@@ -1033,6 +1034,7 @@ static int range_slice_impl(lua_State *L)
       int32_t len = int32_t(str->len);
       int32_t start = r->start;
       int32_t stop = r->stop;
+      int32_t step = r->step;
 
       // Handle negative indices (always inclusive for negative ranges)
       bool use_inclusive = r->inclusive;
@@ -1042,25 +1044,70 @@ static int range_slice_impl(lua_State *L)
          if (stop < 0) stop += len;
       }
 
-      // Apply exclusive semantics if not inclusive
+      // Determine iteration direction
+      bool forward = (start <= stop);
+      if (step IS 0) step = forward ? 1 : -1;
+      if (forward and step < 0) step = 1;
+      if (not forward and step > 0) step = -1;
+
+      // Calculate effective stop for exclusive ranges
       int32_t effective_stop = stop;
       if (not use_inclusive) {
-         effective_stop = stop - 1;
+         if (forward) effective_stop = stop - 1;
+         else effective_stop = stop + 1;
       }
 
-      // Bounds checking
-      if (start < 0) start = 0;
-      if (effective_stop >= len) effective_stop = len - 1;
+      // Bounds clipping
+      if (forward) {
+         if (start < 0) start = 0;
+         if (effective_stop >= len) effective_stop = len - 1;
+      }
+      else {
+         if (start >= len) start = len - 1;
+         if (effective_stop < 0) effective_stop = 0;
+      }
 
-      // Handle empty/invalid ranges
-      if (start > effective_stop or start >= len) {
+      // Check for empty/invalid ranges
+      if (forward and start > effective_stop) {
+         lua_pushstring(L, "");
+         return 1;
+      }
+      if (not forward and start < effective_stop) {
          lua_pushstring(L, "");
          return 1;
       }
 
-      // Return substring
-      int32_t sublen = effective_stop - start + 1;
-      lua_pushlstring(L, strdata(str) + start, size_t(sublen));
+      // For simple forward contiguous slices (step=1), use efficient substring
+      if (forward and step IS 1) {
+         int32_t sublen = effective_stop - start + 1;
+         lua_pushlstring(L, strdata(str) + start, size_t(sublen));
+         return 1;
+      }
+
+      // For reverse or stepped slices, build the result character by character
+      int32_t result_size = 0;
+      if (forward) result_size = ((effective_stop - start) / step) + 1;
+      else result_size = ((start - effective_stop) / (-step)) + 1;
+
+      // Use LuaJIT's string buffer
+      SBuf *sb = lj_buf_tmp_(L);
+      lj_buf_reset(sb);
+      lj_buf_need(sb, MSize(result_size));
+
+      const char *src = strdata(str);
+
+      if (forward) {
+         for (int32_t i = start; i <= effective_stop; i += step) {
+            *sb->w++ = src[i];
+         }
+      }
+      else {
+         for (int32_t i = start; i >= effective_stop; i += step) {
+            *sb->w++ = src[i];
+         }
+      }
+
+      setstrV(L, L->top++, lj_buf_str(L, sb));
       return 1;
    }
 
