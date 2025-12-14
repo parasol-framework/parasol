@@ -70,6 +70,7 @@ LJLIB_PUSH("trace")
 LJLIB_PUSH("cdata")
 LJLIB_PUSH("table")
 LJLIB_PUSH(top-9)  //  userdata
+LJLIB_PUSH("array")
 LJLIB_PUSH("number")
 LJLIB_ASM(type)      LJLIB_REC(.)
 {

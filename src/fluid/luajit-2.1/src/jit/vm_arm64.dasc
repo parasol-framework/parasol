@@ -140,6 +140,7 @@
 |.type NARGS8,		int
 |.type TRACE,		GCtrace
 |.type SBUF,		SBuf
+|.type ARRAY,		GCarray
 |
 |//-----------------------------------------------------------------------
 |
@@ -236,6 +237,7 @@
 |.macro checkstr, reg, target; checktp reg, LJ_TSTR, target; .endmacro
 |.macro checktab, reg, target; checktp reg, LJ_TTAB, target; .endmacro
 |.macro checkfunc, reg, target; checktp reg, LJ_TFUNC, target; .endmacro
+|.macro checkarray, reg, target; checktp reg, LJ_TARRAY, target; .endmacro
 |.macro checkint, reg, target
 |  cmp TISNUMhi, reg, lsr #32
 |  bne target
@@ -719,6 +721,56 @@ static void build_subroutines(BuildCtx *ctx)
   |  bl extern lj_tab_setinth  // (lua_State *L, GCtab *t, int32_t key)
   |  // Returns TValue *.
   |  b ->BC_TSETR_Z
+  |
+  |//-- Array metamethod fallbacks -----------------------------------------
+  |
+  |->vmeta_agetv:
+  |  add CARG2, BASE, RB, lsl #3
+  |   add CARG3, BASE, RC, lsl #3
+  |   str BASE, L->base
+  |  mov CARG1, L
+  |   str PC, SAVE_PC
+  |  bl extern lj_arr_get		// (lua_State *L, TValue *o, TValue *k)
+  |  // Returns TValue * (finished) or NULL (metamethod).
+  |  cbz CRET1, >3
+  |   ldr TMP0, [CRET1]
+  |   str TMP0, [BASE, RA, lsl #3]
+  |  ins_next
+  |
+  |3:  // Call __index metamethod.
+  |   sub TMP1, BASE, #FRAME_CONT
+  |  ldr BASE, L->top
+  |    mov NARGS8:RC, #16		// 2 args for func(t, k).
+  |  ldr LFUNC:CARG3, [BASE, FRAME_FUNC]  // Guaranteed to be a function here.
+  |   str PC, [BASE, #-24]		// [cont|PC]
+  |   sub PC, BASE, TMP1
+  |  and LFUNC:CARG3, CARG3, #LJ_GCVMASK
+  |  b ->vm_call_dispatch_f
+  |
+  |->vmeta_asetv:
+  |  add CARG2, BASE, RB, lsl #3
+  |   add CARG3, BASE, RC, lsl #3
+  |   str BASE, L->base
+  |  mov CARG1, L
+  |   str PC, SAVE_PC
+  |  bl extern lj_arr_set		// (lua_State *L, TValue *o, TValue *k)
+  |  // Returns TValue * (finished) or NULL (metamethod).
+  |   ldr TMP0, [BASE, RA, lsl #3]
+  |  cbz CRET1, >3
+  |  // NOBARRIER: lj_arr_set ensures the array handles GC properly.
+  |   str TMP0, [CRET1]
+  |  ins_next
+  |
+  |3:  // Call __newindex metamethod.
+  |   sub TMP1, BASE, #FRAME_CONT
+  |  ldr BASE, L->top
+  |    mov NARGS8:RC, #24		// 3 args for func(t, k, v).
+  |  ldr LFUNC:CARG3, [BASE, FRAME_FUNC]  // Guaranteed to be a function here.
+  |   str TMP0, [BASE, #16]		// Copy value to third argument.
+  |   str PC, [BASE, #-24]		// [cont|PC]
+  |   sub PC, BASE, TMP1
+  |  and LFUNC:CARG3, CARG3, #LJ_GCVMASK
+  |  b ->vm_call_dispatch_f
   |
   |//-- Comparison metamethods ---------------------------------------------
   |
@@ -3414,6 +3466,90 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
     |  barrierback TAB:CARG2, TMP2w, TMP1
     |  b <4
+    break;
+
+  //  -- Array ops ---------------------------------------------------------
+
+  case BC_AGETV:
+    |  // RA = dst, RB = array, RC = key
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load array
+    |   ldr TMP1, [BASE, RC, lsl #3]	// Load key
+    |  checkarray TMP2, ->vmeta_agetv
+    |  // Check if key is integer
+    |   cmp TISNUMhi, TMP1, lsr #32
+    |  bne ->vmeta_agetv
+    |  // Bounds check (0-based indexing)
+    |   ldr TMP3w, ARRAY:TMP2->len
+    |  cmp TMP1w, TMP3w
+    |  bhs ->vmeta_agetv
+    |  // Call helper to get element
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  sxtw CARG3, TMP1w
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_getidx
+    |  ins_next
+    break;
+
+  case BC_AGETB:
+    |  // RA = dst, RB = array, RC = literal index (0-255, 0-based)
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load array
+    |  checkarray TMP2, ->vmeta_agetv
+    |  // Bounds check
+    |   ldr TMP3w, ARRAY:TMP2->len
+    |  cmp RCw, TMP3w
+    |  bhs ->vmeta_agetv
+    |  // Call helper to get element
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  mov CARG3, RC
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_getidx
+    |  ins_next
+    break;
+
+  case BC_ASETV:
+    |  // RA = src, RB = array, RC = key
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load array
+    |   ldr TMP1, [BASE, RC, lsl #3]	// Load key
+    |  checkarray TMP2, ->vmeta_asetv
+    |  // Check read-only flag
+    |  ldrb TMP3w, ARRAY:TMP2->flags
+    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_FLAG_READONLY = 0x01
+    |  // Check if key is integer
+    |   cmp TISNUMhi, TMP1, lsr #32
+    |  bne ->vmeta_asetv
+    |  // Bounds check (0-based indexing)
+    |   ldr TMP3w, ARRAY:TMP2->len
+    |  cmp TMP1w, TMP3w
+    |  bhs ->vmeta_asetv
+    |  // Call helper to set element
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  sxtw CARG3, TMP1w
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_setidx
+    |  ins_next
+    break;
+
+  case BC_ASETB:
+    |  // RA = src, RB = array, RC = literal index (0-255, 0-based)
+    |  ldr TMP2, [BASE, RB, lsl #3]	// Load array
+    |  checkarray TMP2, ->vmeta_asetv
+    |  // Check read-only flag
+    |  ldrb TMP3w, ARRAY:TMP2->flags
+    |  tbnz TMP3w, #0, ->vmeta_asetv	// ARRAY_FLAG_READONLY = 0x01
+    |  // Bounds check
+    |   ldr TMP3w, ARRAY:TMP2->len
+    |  cmp RCw, TMP3w
+    |  bhs ->vmeta_asetv
+    |  // Call helper to set element
+    |  mov CARG1, L
+    |  mov CARG2, ARRAY:TMP2
+    |  mov CARG3, RC
+    |  add CARG4, BASE, RA, lsl #3
+    |  bl extern lj_arr_setidx
+    |  ins_next
     break;
 
   //  -- Calls and vararg handling -----------------------------------------

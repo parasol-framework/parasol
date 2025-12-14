@@ -13,6 +13,7 @@
 #include "lj_gc.h"
 #include "lj_array.h"
 #include "lj_tab.h"
+#include "lj_vmarray.h"
 
 #include <cmath>
 #include <cstring>
@@ -317,16 +318,29 @@ static bool test_array_to_table(pf::Log& Log)
    }
 
    TValue* array_part = tvref(t->array);
-   if (!tvisint(&array_part[1]) or intV(&array_part[1]) != 100) {
-      Log.error("table[1] is not 100");
+
+   // Helper to get int value from TValue (handles both DUALNUM and non-DUALNUM modes)
+   auto getintval = [](cTValue* o) -> int32_t {
+      if (tvisint(o)) return intV(o);
+      if (tvisnum(o)) return int32_t(numV(o));
+      return 0;
+   };
+
+   // 0-based indexing: array[0] = 100, array[2] = 300, array[4] = 500
+   if (!tvisnumber(&array_part[0])) {
+      Log.error("table[0] is not a number, itype=%u", itype(&array_part[0]));
       return false;
    }
-   if (!tvisint(&array_part[3]) or intV(&array_part[3]) != 300) {
-      Log.error("table[3] is not 300");
+   if (getintval(&array_part[0]) != 100) {
+      Log.error("table[0] has wrong value, expected 100");
       return false;
    }
-   if (!tvisint(&array_part[5]) or intV(&array_part[5]) != 500) {
-      Log.error("table[5] is not 500");
+   if (!tvisnumber(&array_part[2]) or getintval(&array_part[2]) != 300) {
+      Log.error("table[2] is not 300");
+      return false;
+   }
+   if (!tvisnumber(&array_part[4]) or getintval(&array_part[4]) != 500) {
+      Log.error("table[4] is not 500");
       return false;
    }
 
@@ -428,6 +442,220 @@ static bool test_setarrayV(pf::Log& Log)
 }
 
 //********************************************************************************************************************
+// Phase 3 Tests: Bytecode C Helpers
+//********************************************************************************************************************
+
+static bool test_arr_getidx_int32(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   int32_t* data = (int32_t*)mref(arr->data, void);
+   for (int i = 0; i < 10; i++) {
+      data[i] = (i + 1) * 100;  // 100, 200, 300, ...
+   }
+
+   TValue result;
+   lj_arr_getidx(L, arr, 0, &result);
+   if (!tvisint(&result) or intV(&result) != 100) {
+      Log.error("arr_getidx at index 0 failed: expected 100");
+      return false;
+   }
+
+   lj_arr_getidx(L, arr, 5, &result);
+   if (!tvisint(&result) or intV(&result) != 600) {
+      Log.error("arr_getidx at index 5 failed: expected 600");
+      return false;
+   }
+
+   lj_arr_getidx(L, arr, 9, &result);
+   if (!tvisint(&result) or intV(&result) != 1000) {
+      Log.error("arr_getidx at index 9 failed: expected 1000");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_arr_getidx_double(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
+   double* data = (double*)mref(arr->data, void);
+   data[0] = 3.14159;
+   data[2] = -2.71828;
+   data[4] = 1.41421;
+
+   TValue result;
+   lj_arr_getidx(L, arr, 0, &result);
+   if (!tvisnum(&result) or std::abs(numV(&result) - 3.14159) > 1e-5) {
+      Log.error("arr_getidx double at index 0 failed");
+      return false;
+   }
+
+   lj_arr_getidx(L, arr, 2, &result);
+   if (!tvisnum(&result) or std::abs(numV(&result) + 2.71828) > 1e-5) {
+      Log.error("arr_getidx double at index 2 failed");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_arr_setidx_int32(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   int32_t* data = (int32_t*)mref(arr->data, void);
+
+   // Set values using lj_arr_setidx
+   TValue val;
+   setintV(&val, 12345);
+   lj_arr_setidx(L, arr, 0, &val);
+
+   setintV(&val, 67890);
+   lj_arr_setidx(L, arr, 5, &val);
+
+   setintV(&val, -99999);
+   lj_arr_setidx(L, arr, 9, &val);
+
+   // Verify values were stored correctly
+   if (data[0] != 12345) {
+      Log.error("arr_setidx at index 0 failed: got %d, expected 12345", data[0]);
+      return false;
+   }
+   if (data[5] != 67890) {
+      Log.error("arr_setidx at index 5 failed: got %d, expected 67890", data[5]);
+      return false;
+   }
+   if (data[9] != -99999) {
+      Log.error("arr_setidx at index 9 failed: got %d, expected -99999", data[9]);
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_arr_setidx_double(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
+   double* data = (double*)mref(arr->data, void);
+
+   TValue val;
+   setnumV(&val, 3.14159);
+   lj_arr_setidx(L, arr, 0, &val);
+
+   setnumV(&val, -2.71828);
+   lj_arr_setidx(L, arr, 2, &val);
+
+   if (std::abs(data[0] - 3.14159) > 1e-5) {
+      Log.error("arr_setidx double at index 0 failed");
+      return false;
+   }
+   if (std::abs(data[2] + 2.71828) > 1e-5) {
+      Log.error("arr_setidx double at index 2 failed");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_arr_roundtrip(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 100, ARRAY_ELEM_INT32);
+
+   // Write values using setidx, read back using getidx
+   for (int32_t i = 0; i < 100; i++) {
+      TValue val;
+      setintV(&val, i * i);
+      lj_arr_setidx(L, arr, i, &val);
+   }
+
+   for (int32_t i = 0; i < 100; i++) {
+      TValue result;
+      lj_arr_getidx(L, arr, i, &result);
+      if (!tvisint(&result) or intV(&result) != i * i) {
+         Log.error("roundtrip failed at index %d: expected %d", i, i * i);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static bool test_arr_byte_type(pf::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 256, ARRAY_ELEM_BYTE);
+   uint8_t* data = (uint8_t*)mref(arr->data, void);
+
+   // Test byte array stores and retrieves correctly
+   for (int i = 0; i < 256; i++) {
+      TValue val;
+      setintV(&val, i);
+      lj_arr_setidx(L, arr, i, &val);
+   }
+
+   for (int i = 0; i < 256; i++) {
+      TValue result;
+      lj_arr_getidx(L, arr, i, &result);
+      if (!tvisint(&result) or intV(&result) != i) {
+         Log.error("byte array roundtrip failed at index %d", i);
+         return false;
+      }
+      if (data[i] != uint8_t(i)) {
+         Log.error("byte array data mismatch at index %d", i);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
 // Test runner
 //********************************************************************************************************************
 
@@ -435,7 +663,8 @@ static bool test_setarrayV(pf::Log& Log)
 
 void array_unit_tests(int& Passed, int& Total)
 {
-   constexpr std::array<TestCase, 11> Tests = { {
+   constexpr std::array<TestCase, 17> Tests = { {
+      // Phase 1: Core Data Structures
       { "array_creation_byte", test_array_creation_byte },
       { "array_creation_int32", test_array_creation_int32 },
       { "array_creation_double", test_array_creation_double },
@@ -444,9 +673,17 @@ void array_unit_tests(int& Passed, int& Total)
       { "array_external", test_array_external },
       { "array_to_table", test_array_to_table },
       { "array_type_tag", test_array_type_tag },
+      // Phase 2: VM Type System
       { "tvalue_array", test_tvalue_array },
       { "typename_array", test_typename_array },
-      { "setarrayV", test_setarrayV }
+      { "setarrayV", test_setarrayV },
+      // Phase 3: Bytecode C Helpers
+      { "arr_getidx_int32", test_arr_getidx_int32 },
+      { "arr_getidx_double", test_arr_getidx_double },
+      { "arr_setidx_int32", test_arr_setidx_int32 },
+      { "arr_setidx_double", test_arr_setidx_double },
+      { "arr_roundtrip", test_arr_roundtrip },
+      { "arr_byte_type", test_arr_byte_type }
    } };
 
    if (NewObject(CLASSID::FLUID, &glArrayTestScript) != ERR::Okay) return;

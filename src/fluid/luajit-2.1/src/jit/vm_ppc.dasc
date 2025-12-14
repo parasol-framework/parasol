@@ -348,6 +348,7 @@
 |.type NARGS8,		int
 |.type TRACE,		GCtrace
 |.type SBUF,		SBuf
+|.type ARRAY,		GCarray
 |
 |//-----------------------------------------------------------------------
 |
@@ -470,6 +471,7 @@
 |.macro checkstr, reg; cmpwi reg, LJ_TSTR; .endmacro
 |.macro checktab, reg; cmpwi reg, LJ_TTAB; .endmacro
 |.macro checkfunc, reg; cmpwi reg, LJ_TFUNC; .endmacro
+|.macro checkarray, reg; cmpwi reg, LJ_TARRAY; .endmacro
 |.macro checknil, reg; cmpwi reg, LJ_TNIL; .endmacro
 |
 |.macro branch_RD
@@ -1094,6 +1096,76 @@ static void build_subroutines(BuildCtx *ctx)
   |  stw SAVE1, 4(CRET1)
   |.endif
   |  b ->cont_nop
+  |
+  |//-- Array metamethod fallbacks -----------------------------------------
+  |
+  |->vmeta_agetv:
+  |  decode_RB8 RB, INS
+  |   decode_RC8 RC, INS
+  |  add CARG2, BASE, RB
+  |   add CARG3, BASE, RC
+  |   stp BASE, L->base
+  |  mr CARG1, L
+  |  stw PC, SAVE_PC
+  |  blex lj_arr_get			// (lua_State *L, TValue *o, TValue *k)
+  |  // Returns TValue * (finished) or NULL (metamethod).
+  |   lp TMP0, L->base
+  |  cmplwi CRET1, 0
+  |   lp TMP1, 0(CRET1)
+  |   lp TMP2, 4(CRET1)
+  |   mr BASE, TMP0
+  |  beq >3
+  |   decode_RA8 RA, INS
+  |   stp TMP1, 0(BASE)
+  |   stwux TMP2, RA, BASE
+  |  ins_next
+  |
+  |3:  // Call __index metamethod.
+  |  lp TMP0, L->top
+  |   li TMP3, -24
+  |    addi BASE, TMP0, FRAME_CONT
+  |   stpx PC, TMP0, TMP3		// [cont|PC]
+  |   mr PC, BASE
+  |    sub PC, PC, TMP0
+  |  lpx LFUNC:RB, TMP0, TMP3		// Guaranteed to be a function here.
+  |  b ->vm_call_dispatch_f
+  |
+  |->vmeta_asetv:
+  |  decode_RB8 RB, INS
+  |   decode_RC8 RC, INS
+  |  add CARG2, BASE, RB
+  |   add CARG3, BASE, RC
+  |   stp BASE, L->base
+  |  mr CARG1, L
+  |  stw PC, SAVE_PC
+  |  blex lj_arr_set			// (lua_State *L, TValue *o, TValue *k)
+  |  // Returns TValue * (finished) or NULL (metamethod).
+  |   lp TMP0, L->base
+  |  cmplwi CRET1, 0
+  |   mr BASE, TMP0
+  |  beq >3
+  |  // NOBARRIER: lj_arr_set ensures the array handles GC properly.
+  |   decode_RA8 RA, INS
+  |   lpx TMP1, BASE, RA
+  |   lpux TMP2, RA, BASE
+  |   stp TMP1, 0(CRET1)
+  |   stw TMP2, 4(CRET1)
+  |  ins_next
+  |
+  |3:  // Call __newindex metamethod.
+  |   decode_RA8 RA, INS
+  |  lp TMP0, L->top
+  |   li TMP3, -24
+  |    addi BASE, TMP0, FRAME_CONT
+  |   lpx TMP1, BASE, RA		// Copy value to third argument.
+  |   lpux TMP2, RA, BASE
+  |   stpx PC, TMP0, TMP3		// [cont|PC]
+  |   mr PC, BASE
+  |    sub PC, PC, TMP0
+  |   stp TMP1, 16(TMP0)
+  |   stw TMP2, 20(TMP0)
+  |  lpx LFUNC:RB, TMP0, TMP3		// Guaranteed to be a function here.
+  |  b ->vm_call_dispatch_f
   |
   |//-- Comparison metamethods ---------------------------------------------
   |
@@ -5126,6 +5198,110 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
     |  barrierback TAB:CARG2, TMP3, TMP0
     |  b <4
+    break;
+
+  //  -- Array ops ---------------------------------------------------------
+
+  case BC_AGETV:
+    |  // RA = dst, RB = array, RC = key
+    |  lpx TMP1, BASE, RB		// Load array
+    |   lpx TMP2, BASE, RC		// Load key (hi word)
+    |   lwzx TMP3, RA, RC		// Load key (lo word) - index
+    |  lwz ITYPE, 0(TMP1)
+    |   checkarray ITYPE
+    |  bne ->vmeta_agetv
+    |  // Check if key is integer
+    |  checknum TMP2
+    |  bgt ->vmeta_agetv
+    |  // Bounds check (0-based indexing)
+    |  lwz TMP0, ARRAY:TMP1->len
+    |  cmplw TMP3, TMP0
+    |  bge ->vmeta_agetv
+    |  // Call helper to get element
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:TMP1
+    |  mr CARG3, TMP3
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_getidx
+    |  ins_next
+    break;
+
+  case BC_AGETB:
+    |  // RA = dst, RB = array, RC = literal index (0-255, 0-based)
+    |  lpx TMP1, BASE, RB		// Load array
+    |  lwz ITYPE, 0(TMP1)
+    |   checkarray ITYPE
+    |  bne ->vmeta_agetv
+    |  // Bounds check
+    |  lwz TMP0, ARRAY:TMP1->len
+    |  cmplw RC, TMP0
+    |  bge ->vmeta_agetv
+    |  // Call helper to get element
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:TMP1
+    |  mr CARG3, RC
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_getidx
+    |  ins_next
+    break;
+
+  case BC_ASETV:
+    |  // RA = src, RB = array, RC = key
+    |  lpx TMP1, BASE, RB		// Load array
+    |   lpx TMP2, BASE, RC		// Load key (hi word)
+    |   lwzx TMP3, RA, RC		// Load key (lo word) - index
+    |  lwz ITYPE, 0(TMP1)
+    |   checkarray ITYPE
+    |  bne ->vmeta_asetv
+    |  // Check read-only flag
+    |  lbz TMP0, ARRAY:TMP1->flags
+    |  andix. TMP0, TMP0, ARRAY_FLAG_READONLY
+    |  bne ->vmeta_asetv
+    |  // Check if key is integer
+    |  checknum TMP2
+    |  bgt ->vmeta_asetv
+    |  // Bounds check (0-based indexing)
+    |  lwz TMP0, ARRAY:TMP1->len
+    |  cmplw TMP3, TMP0
+    |  bge ->vmeta_asetv
+    |  // Call helper to set element
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:TMP1
+    |  mr CARG3, TMP3
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_setidx
+    |  ins_next
+    break;
+
+  case BC_ASETB:
+    |  // RA = src, RB = array, RC = literal index (0-255, 0-based)
+    |  lpx TMP1, BASE, RB		// Load array
+    |  lwz ITYPE, 0(TMP1)
+    |   checkarray ITYPE
+    |  bne ->vmeta_asetv
+    |  // Check read-only flag
+    |  lbz TMP0, ARRAY:TMP1->flags
+    |  andix. TMP0, TMP0, ARRAY_FLAG_READONLY
+    |  bne ->vmeta_asetv
+    |  // Bounds check
+    |  lwz TMP0, ARRAY:TMP1->len
+    |  cmplw RC, TMP0
+    |  bge ->vmeta_asetv
+    |  // Call helper to set element
+    |   add CARG4, BASE, RA
+    |  stp BASE, L->base
+    |  mr CARG1, L
+    |  mr CARG2, ARRAY:TMP1
+    |  mr CARG3, RC
+    |  stw PC, SAVE_PC
+    |  blex lj_arr_setidx
+    |  ins_next
     break;
 
   //  -- Calls and vararg handling -----------------------------------------

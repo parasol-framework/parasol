@@ -147,6 +147,12 @@ constexpr uint8_t  NO_REG = BCMAX_A;
   _(TSETM,   base,   ___,   num,   newindex) \
   _(TSETR,   var,   var,   var,   newindex) \
   \
+  /* Array ops. */ \
+  _(AGETV,   dst,   var,   var,   index) \
+  _(AGETB,   dst,   var,   lit,   index) \
+  _(ASETV,   var,   var,   var,   newindex) \
+  _(ASETB,   var,   var,   lit,   newindex) \
+  \
   /* Calls and vararg handling. T = tail call. */ \
   _(CALLM,   base,   lit,   lit,   call) \
   _(CALL,   base,   lit,   lit,   call) \

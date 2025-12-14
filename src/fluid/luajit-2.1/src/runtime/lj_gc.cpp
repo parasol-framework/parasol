@@ -47,6 +47,7 @@
 #include "lj_trace.h"
 #include "lj_dispatch.h"
 #include "lj_vm.h"
+#include "lj_array.h"
 
 #include <array>
 #include <span>
@@ -189,6 +190,19 @@ static void gc_mark(global_State *g, GCobj* o)
       GCupval* uv = gco2uv(o);
       gc_marktv(g, uvval(uv));
       if (uv->closed) gray2black(o);  //  Closed upvalues are never gray.
+   }
+   else if (LJ_UNLIKELY(gct IS ~LJ_TARRAY)) {
+      GCarray* arr = gco2arr(o);
+      gray2black(o);  //  Arrays are never gray.
+      GCtab* mt = tabref(arr->metatable);
+      if (mt) gc_markobj(g, mt);
+      // If array contains GC references (strings), mark them
+      if (arr->elemtype IS ARRAY_ELEM_STRING) {
+         GCRef* refs = (GCRef*)mref(arr->data, void);
+         for (MSize i = 0; i < arr->len; i++) {
+            if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));
+         }
+      }
    }
    else if (gct != ~LJ_TSTR and gct != ~LJ_TCDATA) {
       lj_assertG(gct IS ~LJ_TFUNC or gct IS ~LJ_TTAB or
@@ -516,10 +530,10 @@ static size_t gc_propagate_gray(global_State *g)
 
 using GCFreeFunc = void (LJ_FASTCALL*)(global_State*, GCobj*);
 
-// GC free functions for LJ_TSTR .. LJ_TUDATA. ORDER LJ_T
+// GC free functions for LJ_TSTR .. LJ_TARRAY. ORDER LJ_T
 // Using std::array for type-safe bounds checking and modern C++ semantics.
 
-static const std::array<GCFreeFunc, 9> gc_freefunc = {{
+static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_str_free,       // LJ_TSTR
    (GCFreeFunc)lj_func_freeuv,    // LJ_TUPVAL
    (GCFreeFunc)lj_state_free,     // LJ_TTHREAD
@@ -532,7 +546,8 @@ static const std::array<GCFreeFunc, 9> gc_freefunc = {{
    nullptr,                       // LJ_TCDATA (disabled)
 #endif
    (GCFreeFunc)lj_tab_free,       // LJ_TTAB
-   (GCFreeFunc)lj_udata_free      // LJ_TUDATA
+   (GCFreeFunc)lj_udata_free,     // LJ_TUDATA
+   (GCFreeFunc)lj_array_free      // LJ_TARRAY
 }};
 
 
