@@ -185,6 +185,8 @@ typedef struct CCallInfo {
   _(ANY,   lj_prng_u64d,      1,  FS, NUM, CCI_CASTU64) \
   _(ANY,   lj_vm_modi,      2,  FN, INT, 0) \
   _(ANY,   cmath_log10,      1,   N, NUM, XA_FP) \
+  _(ANY,   deg,             1,   N, NUM, XA_FP) \
+  _(ANY,   rad,             1,   N, NUM, XA_FP) \
   _(ANY,   cmath_exp,      1,   N, NUM, XA_FP) \
   _(ANY,   cmath_sin,      1,   N, NUM, XA_FP) \
   _(ANY,   cmath_cos,      1,   N, NUM, XA_FP) \

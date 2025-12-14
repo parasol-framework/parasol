@@ -8,6 +8,8 @@
 // C++ compatibility: provide unambiguous wrappers for overloaded math functions
 extern "C" {
    double cmath_log10(double x) { return log10(x); }
+   double deg(double x) { return x * 57.29577951308232; }
+   double rad(double x) { return x * 0.017453292519943295; }
    double cmath_exp(double x) { return exp(x); }
    double cmath_sin(double x) { return sin(x); }
    double cmath_cos(double x) { return cos(x); }

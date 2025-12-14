@@ -61,12 +61,13 @@ static fluid_range* get_range_from_tvalue(lua_State* L, cTValue* tv)
 
 #define LJLIB_MODULE_string
 
-LJLIB_LUA(string_len) /*
-  function(s)
-    CHECK_str(s)
-    return #s
-  end
-*/
+LJLIB_CF(string_len)
+{
+   GCstr *s = lj_lib_checkstr(L, 1);
+   int32_t len = (int32_t)s->len;
+   setintV(L->top - 1, len);
+   return 1;
+}
 
 // NOTE: ASM version exists
 
@@ -107,9 +108,6 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
 }
 
 // NOTE: Backed by an ASM implementation
-// If you switch to the C implementation then you need to reduce GG_NUM_ASMFF in lj_dispatch.h
-
-#if 1
 // string_sub:	Declares an assembly ffunc as its primary implementation. The C code that follows is the fallback (called when the ffunc jumps to ->fff_fallback).
 // string_range 1: Tells the JIT recorder how to handle this function. string_range is the recorder function name, 1 is a parameter distinguishing it from other range operations.
 
@@ -124,33 +122,6 @@ LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
    setintV(L->base + 2, end_val);
    return FFH_RETRY;
 }
-#else
-LJ_LIB_CF(string_sub)
-{
-   GCstr* s = lj_lib_checkstr(L, 1);
-   int32_t len = (int32_t)s->len;
-   int32_t start = lj_lib_checkint(L, 2);
-   int32_t end = lj_lib_optint(L, 3, -1);
-
-   // Convert exclusive end to inclusive (only for positive indices)
-   if (end > 0) end--;
-
-   if (end < 0) end += len;
-   if (start < 0) start += len;
-   if (start < 0) start = 0;
-   if (end > len - 1) end = len - 1;
-   if (start > end) {
-      setstrV(L, L->top - 1, &G(L)->strempty);
-      return 1;
-   }
-
-   int32_t sublen = end - start + 1;
-   GCstr* result = lj_str_new(L, strdata(s) + start, (size_t)sublen);
-   setstrV(L, L->top - 1, result);
-   lj_gc_check(L);
-   return 1;
-}
-#endif
 
 // string.substr() is now an alias for string.sub() - both use exclusive end semantics.
 // The ASM implementation jumps directly to string_sub.

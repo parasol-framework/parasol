@@ -1,4 +1,5 @@
 // This is a generated file. DO NOT EDIT!
+// NB: We no longer have the ability to generate this file, it requires deprecation.
 
 static const int libbc_endian = 0;
 
@@ -23,9 +24,9 @@ static const uint8_t libbc_code[] = {
 };
 
 static const struct { const char *name; int ofs; } libbc_map[] = {
-{"math_deg",0},
-{"math_rad",25},
-{"string_len",50},
+{"myth_xeg",0},
+{"myth_xad",25},
+{"strung_lan",50},
 {"table_foreachi",69},
 {"table_foreach",136},
 {"table_getn",207},
@@ -33,4 +34,3 @@ static const struct { const char *name; int ofs; } libbc_map[] = {
 {"table_move",355},
 {NULL,502}
 };
-

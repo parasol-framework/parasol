@@ -32,11 +32,13 @@ LJLIB_ASM(math_sqrt)      LJLIB_REC(math_unary IRFPM_SQRT)
    lj_lib_checknum(L, 1);
    return FFH_RETRY;
 }
-LJLIB_ASM_(math_log10)      LJLIB_REC(math_call IRCALL_cmath_log10)
-LJLIB_ASM_(math_exp)      LJLIB_REC(math_call IRCALL_cmath_exp)
-LJLIB_ASM_(math_sin)      LJLIB_REC(math_call IRCALL_cmath_sin)
-LJLIB_ASM_(math_cos)      LJLIB_REC(math_call IRCALL_cmath_cos)
-LJLIB_ASM_(math_tan)        LJLIB_REC(math_call IRCALL_cmath_tan)
+LJLIB_ASM_(math_log10)     LJLIB_REC(math_call IRCALL_cmath_log10)
+LJLIB_ASM_(math_deg)       LJLIB_REC(math_call IRCALL_deg)
+LJLIB_ASM_(math_rad)       LJLIB_REC(math_call IRCALL_rad)
+LJLIB_ASM_(math_exp)       LJLIB_REC(math_call IRCALL_cmath_exp)
+LJLIB_ASM_(math_sin)       LJLIB_REC(math_call IRCALL_cmath_sin)
+LJLIB_ASM_(math_cos)       LJLIB_REC(math_call IRCALL_cmath_cos)
+LJLIB_ASM_(math_tan)       LJLIB_REC(math_call IRCALL_cmath_tan)
 LJLIB_ASM_(math_asin)      LJLIB_REC(math_call IRCALL_cmath_asin)
 LJLIB_ASM_(math_acos)      LJLIB_REC(math_call IRCALL_cmath_acos)
 LJLIB_ASM_(math_atan)      LJLIB_REC(math_call IRCALL_cmath_atan)
@@ -61,9 +63,6 @@ LJLIB_ASM(math_log)      LJLIB_REC(math_log)
    }
    return FFH_RETRY;
 }
-
-LJLIB_LUA(math_deg) //  function(x) return x * 57.29577951308232 end
-LJLIB_LUA(math_rad) //  function(x) return x * 0.017453292519943295 end
 
 LJLIB_ASM(math_atan2)      LJLIB_REC(.)
 {
