@@ -19,6 +19,7 @@
 #include "lj_ff.h"
 #include "lib.h"
 #include "lib_utils.h"
+#include "lib_range.h"
 
 #define LJLIB_MODULE_table
 
@@ -328,6 +329,17 @@ LJLIB_CF(table_clear)   LJLIB_REC(.)
 {
    lj_tab_clear(lj_lib_checktab(L, 1));
    return 0;
+}
+
+//********************************************************************************************************************
+// Table slicing: returns a new table with elements from the specified range.
+// Usage: table.slice(t, range) -> table
+// Delegates to range.slice() for the actual implementation.
+
+LJLIB_CF(table_slice)
+{
+   lj_lib_checktab(L, 1);  // Validate first arg is a table
+   return lj_range_slice(L);
 }
 
 //********************************************************************************************************************

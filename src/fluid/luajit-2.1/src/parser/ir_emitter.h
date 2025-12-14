@@ -179,6 +179,7 @@ private:
    ParserResult<ExpDesc> emit_pipe_expr(const PipeExprPayload& payload);
    ParserResult<ExpDesc> emit_member_expr(const MemberExprPayload& payload);
    ParserResult<ExpDesc> emit_index_expr(const IndexExprPayload& payload);
+   ParserResult<ExpDesc> emit_table_slice_call(const IndexExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_member_expr(const SafeMemberExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_index_expr(const SafeIndexExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_call_expr(const CallExprPayload& payload);

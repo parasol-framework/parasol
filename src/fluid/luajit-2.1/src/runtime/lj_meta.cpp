@@ -142,7 +142,7 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
       if (LJ_LIKELY(tvistab(o))) {
-         GCtab* t = tabV(o);
+         GCtab *t = tabV(o);
          cTValue *tv = lj_tab_get(L, t, k);
          if (not tvisnil(tv) or
             !(mo = lj_meta_fast(L, tabref(t->metatable), MM_index)))
@@ -292,12 +292,10 @@ TValue * lj_meta_cat(lua_State *L, TValue* top, int left)
          // next step: [...][CAT stack ............]
 
          TValue* e, * o = top;
-         uint64_t tlen = tvisstr(o) ? strV(o)->len :
-            tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+         uint64_t tlen = tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          SBuf* sb;
          do {
-            o--; tlen += tvisstr(o) ? strV(o)->len :
-               tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
+            o--; tlen += tvisstr(o) ? strV(o)->len : tvisbuf(o) ? sbufxlen(bufV(o)) : STRFMT_MAXBUF_NUM;
          } while (--left > 0 and (tvisstr(o - 1) or tvisnumber(o - 1)));
          if (tlen >= LJ_MAX_STR) lj_err_msg(L, ErrMsg::STROV);
          sb = lj_buf_tmp_(L);

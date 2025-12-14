@@ -685,7 +685,7 @@ set (FLUID_TESTS
    bitshift bitwise if_empty presence blank ternary table stress unit_tests jitoptions
    unicode ellipsis safe_nav close type_annotations jit  pipe pipe_iteration arrow_functions result_filter
    thunks deferred_expr shadow_assert ranges annotations locality anonymous_for key_values
-   choose_from flow
+   choose_from flow table_slice
 )
 
 foreach (TEST_NAME ${FLUID_TESTS})
