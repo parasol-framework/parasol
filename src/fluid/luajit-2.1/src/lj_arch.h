@@ -292,8 +292,8 @@
 #define LJ_ABI_SOFTFP      0
 #endif
 
-#define LJ_SOFTFP      (!LJ_ARCH_HASFPU)
-#define LJ_SOFTFP32      (LJ_SOFTFP && LJ_32)
+#define LJ_SOFTFP      0
+#define LJ_SOFTFP32    0
 
 #if LJ_ARCH_ENDIAN == LUAJIT_BE
 #define LJ_LE         0

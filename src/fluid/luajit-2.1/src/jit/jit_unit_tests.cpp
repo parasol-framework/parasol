@@ -676,7 +676,15 @@ static bool test_irbuilder_at(pf::Log& log)
    jit_State J;
    init_test_jit_state(J);
 
-   // Set up a mock IR instruction
+   // Allocate a local IR buffer large enough to handle REF_BIAS indexing.
+   // J.cur.ir is accessed as ir[REF_BIAS + offset], so we need the buffer to be large enough.
+   // We use a static buffer to avoid stack overflow and allow safe pointer arithmetic.
+   static std::array<IRIns, REF_BIAS + 64> ir_buffer{};
+
+   // Point ir to the start of the buffer - ir[REF_BIAS] will access element REF_BIAS
+   J.cur.ir = ir_buffer.data();
+
+   // Set up a mock IR instruction at REF_BIAS + 10
    IRRef test_ref = REF_BIAS + 10;
    J.cur.ir[test_ref].ot = IRT(IR_ADD, IRT_INT);
    J.cur.ir[test_ref].op1 = 5;
