@@ -290,7 +290,7 @@ void lj_record_stop(jit_State *J, TraceLink linktype, TraceNo lnk)
    J->cur.linktype = linktype;
    J->cur.link = (uint16_t)lnk;
    // Looping back at the same stack level?
-   if (lnk IS J->cur.traceno and J->framedepth + J->retdepth IS 0) {
+   if (lnk IS J->cur.traceno and FRC::at_trace_root(J)) {
       if ((J->flags & JIT_F_OPT_LOOP))  //  Shall we try to create a loop?
          goto nocanon;  //  Do not canonicalize or we lose the narrowing.
       if (J->cur.root)  //  Otherwise ensure we always link to the root trace.
@@ -604,7 +604,7 @@ static int innerloopleft(jit_State *J, const BCIns *pc)
 static void rec_loop_interp(jit_State *J, const BCIns *pc, LoopEvent ev)
 {
    if (J->parent IS 0 and J->exitno IS 0) {
-      if (pc IS J->startpc and J->framedepth + J->retdepth IS 0) {
+      if (pc IS J->startpc and FRC::at_trace_root(J)) {
          if (bc_op(J->cur.startins) IS BC_ITERN) return;  //  See rec_itern().
          // Same loop?
          if (ev IS LOOPEV_LEAVE)  //  Must loop back to form a root trace.
@@ -643,7 +643,7 @@ static void rec_loop_jit(jit_State *J, TraceNo lnk, LoopEvent ev)
    }
    else if (ev != LOOPEV_LEAVE) {  // Side trace enters a compiled loop.
       J->instunroll = 0;  //  Cannot continue across a compiled loop op.
-      if (J->pc IS J->startpc and J->framedepth + J->retdepth IS 0)
+      if (J->pc IS J->startpc and FRC::at_trace_root(J))
          lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);  //  Form extra loop.
       else lj_record_stop(J, TraceLink::ROOT, lnk);  //  Link to the loop.
    }  // Side trace continues across a loop that's left or not entered.
@@ -666,7 +666,7 @@ static LoopEvent rec_itern(jit_State *J, BCREG ra, BCREG rb)
    // Since ITERN is recorded at the start, we need our own loop detection.
    if (J->pc IS J->startpc and
       (J->cur.nins > REF_FIRST + 1 or (J->cur.nins IS REF_FIRST + 1 and J->cur.ir[REF_FIRST].o != IR_PROF)) and
-      J->framedepth + J->retdepth IS 0 and J->parent IS 0 and J->exitno IS 0) {
+      FRC::at_trace_root(J) and J->parent IS 0 and J->exitno IS 0) {
       J->instunroll = 0;  //  Cannot continue unrolling across an ITERN.
       lj_record_stop(J, TraceLink::LOOP, J->cur.traceno);  //  Looping trace.
       return LOOPEV_ENTER;
@@ -794,7 +794,7 @@ void lj_record_call(jit_State *J, BCREG func, ptrdiff_t nargs)
    rec_call_setup(J, func, nargs);
    FrameManager fm(J);
    // Bump frame.
-   J->framedepth++;
+   FRC::inc_depth(J);
    fm.push_call_frame(func);
    if (fm.would_overflow(J->maxslot)) lj_trace_err(J, LJ_TRERR_STACKOV);
 }
@@ -808,7 +808,7 @@ void lj_record_tailcall(jit_State *J, BCREG func, ptrdiff_t nargs)
    FrameManager fm(J);
    if (frame_isvarg(J->L->base - 1)) {
       BCREG cbase = (BCREG)frame_delta(J->L->base - 1);
-      if (--J->framedepth < 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
+      if (FRC::dec_depth(J) < 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
       fm.pop_delta_frame(cbase);
       func += cbase;
    }
@@ -859,7 +859,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       (void)getslot(J, rbase + i);  //  Ensure all results have a reference.
    while (frame_ispcall(frame)) {  // Immediately resolve pcall() returns.
       BCREG cbase = (BCREG)frame_delta(frame);
-      if (--J->framedepth <= 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
+      if (FRC::dec_depth(J) <= 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
       lj_assertJ(J->baseslot > FRC::MIN_BASESLOT, "bad baseslot for return");
       gotresults++;
       rbase += cbase;
@@ -870,7 +870,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    }
 
    // Return to lower frame via interpreter for unhandled cases.
-   if (J->framedepth IS 0 and J->pt and bc_isret(bc_op(*J->pc)) and
+   if (FRC::at_root_depth(J) and J->pt and bc_isret(bc_op(*J->pc)) and
       (not frame_islua(frame) or (J->parent IS 0 and J->exitno IS 0 and !bc_isret(bc_op(J->cur.startins))))) {
       // NYI: specialize to frame type and return directly, not via RET*.
       for (i = 0; i < (ptrdiff_t)rbase; i++) J->base[i] = 0;  //  Purge dead slots.
@@ -881,7 +881,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
 
    if (frame_isvarg(frame)) {
       BCREG cbase = (BCREG)frame_delta(frame);
-      if (--J->framedepth < 0)  //  NYI: return of vararg func to lower frame.
+      if (FRC::dec_depth(J) < 0)  //  NYI: return of vararg func to lower frame.
          lj_trace_err(J, LJ_TRERR_NYIRETL);
       lj_assertJ(J->baseslot > FRC::MIN_BASESLOT, "bad baseslot for return");
       rbase += cbase;
@@ -895,7 +895,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
       BCREG cbase = bc_a(callins);
       GCproto* pt = funcproto(frame_func(frame - (cbase + FRC::HEADER_SIZE)));
       if (pt->flags & PROTO_NOJIT) lj_trace_err(J, LJ_TRERR_CJITOFF);
-      if (J->framedepth IS 0 and J->pt and frame IS J->L->base - 1) {
+      if (FRC::at_root_depth(J) and J->pt and frame IS J->L->base - 1) {
          if (check_downrec_unroll(J, pt)) {
             J->maxslot = (BCREG)(rbase + gotresults);
             lj_snap_purge(J);
@@ -909,7 +909,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
          J->base[i + FRC::FUNC_SLOT_OFFSET] = i < gotresults ? J->base[rbase + i] : TREF_NIL;
       J->maxslot = cbase + (BCREG)nresults;
       if (J->framedepth > 0) {  // Return to a frame that is part of the trace.
-         J->framedepth--;
+         (void)FRC::dec_depth(J);
          lj_assertJ(J->baseslot > cbase + FRC::HEADER_SIZE, "bad baseslot for return");
          fm.pop_lua_frame(cbase);
       }
@@ -936,7 +936,7 @@ void lj_record_ret(jit_State *J, BCREG rbase, ptrdiff_t gotresults)
    else if (frame_iscont(frame)) {  // Return to continuation frame.
       ASMFunction cont = frame_contf(frame);
       BCREG cbase = (BCREG)frame_delta(frame);
-      if ((J->framedepth -= 2) < 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
+      if (FRC::dec_depth_by(J, 2) < 0) lj_trace_err(J, LJ_TRERR_NYIRETL);
       fm.pop_delta_frame(cbase);
       J->maxslot = cbase - FRC::CONT_FRAME_SIZE;
       if (cont IS lj_cont_ra) {
@@ -989,7 +989,7 @@ static BCREG rec_mm_prep(jit_State *J, ASMFunction cont)
    BCREG s, top = cont IS lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
    J->base[top] = lj_ir_k64(J, IR_KNUM, u64ptr(contptr(cont)));
    J->base[top + 1] = TREF_CONT;
-   J->framedepth++;
+   FRC::inc_depth(J);
    for (s = J->maxslot; s < top; s++) J->base[s] = 0;  //  Clear frame gap to avoid resurrecting previous refs.
    return top + FRC::HEADER_SIZE;
 }
@@ -1331,13 +1331,12 @@ static void rec_idx_abc(jit_State *J, TRef asizeref, TRef ikey, uint32_t asize)
 //********************************************************************************************************************
 // Record indexed key lookup.
 
-static TRef rec_idx_key(jit_State *J, RecordIndex* ix, IRRef* rbref, IRType1* rbguard)
+static TRef rec_idx_key(jit_State *J, RecordIndex* ix, IRRollbackPoint *rbp)
 {
    TRef key;
    GCtab* t = tabV(&ix->tabv);
    ix->oldv = lj_tab_get(J->L, t, &ix->keyv);  //  Lookup previous value.
-   *rbref = 0;
-   rbguard->irt = 0;
+   *rbp = {};  // Initialize rollback point to unmarked state
 
    // Integer keys are looked up in the array part first.
    key = ix->key;
@@ -1390,8 +1389,7 @@ static TRef rec_idx_key(jit_State *J, RecordIndex* ix, IRRef* rbref, IRType1* rb
       if (t->hmask > 0 and hslot <= t->hmask * (MSize)sizeof(Node) and
          hslot <= 65535 * (MSize)sizeof(Node)) {
          TRef node, kslot, hm;
-         *rbref = J->cur.nins;  //  Mark possible rollback point.
-         *rbguard = J->guardemit;
+         rbp->mark(J);  //  Mark possible rollback point.
          hm = emitir(IRTI(IR_FLOAD), ix->tab, IRFL_TAB_HMASK);
          emitir(IRTGI(IR_EQ), hm, lj_ir_kint(J, (int32_t)t->hmask));
          node = emitir(IRT(IR_FLOAD, IRT_PGC), ix->tab, IRFL_TAB_NODE);
@@ -1429,8 +1427,7 @@ TRef lj_record_idx(jit_State *J, RecordIndex* ix)
 {
    TRef xref;
    IROp xrefop, loadop;
-   IRRef rbref;
-   IRType1 rbguard;
+   IRRollbackPoint rbp;
    cTValue *oldv;
 
    while (not tref_istab(ix->tab)) {  // Handle non-table lookup.
@@ -1487,7 +1484,7 @@ handlemm:
    }
 
    // Record the key lookup.
-   xref = rec_idx_key(J, ix, &rbref, &rbguard);
+   xref = rec_idx_key(J, ix, &rbp);
    xrefop = (IROp)IR(tref_ref(xref))->o;
    loadop = xrefop IS IR_AREF ? IR_ALOAD : IR_HLOAD;
    // The lj_meta_tset() inconsistency is gone, but better play safe.
@@ -1502,10 +1499,7 @@ handlemm:
       }
       else res = emitir(IRTG(loadop, t), xref, 0);
 
-      if (tref_ref(res) < rbref) {  // HREFK + load forwarded?
-         lj_ir_rollback(J, rbref);  //  Rollback to eliminate hmask guard.
-         J->guardemit = rbguard;
-      }
+      rbp.rollback_if_forwarded(J, res);  // Rollback hmask guard if HREFK + load forwarded.
 
       if (t IS IRT_NIL and ix->idxchain and lj_record_mm_lookup(J, ix, MM_index)) goto handlemm;
       if (irtype_ispri(t)) res = TREF_PRI(t);  //  Canonicalize primitives.
@@ -1514,10 +1508,7 @@ handlemm:
    else {  // Indexed store.
       GCtab* mt = tabref(tabV(&ix->tabv)->metatable);
       int keybarrier = tref_isgcv(ix->key) and !tref_isnil(ix->val);
-      if (tref_ref(xref) < rbref) {  // HREFK forwarded?
-         lj_ir_rollback(J, rbref);  //  Rollback to eliminate hmask guard.
-         J->guardemit = rbguard;
-      }
+      rbp.rollback_if_forwarded(J, xref);  // Rollback hmask guard if HREFK forwarded.
 
       if (tvisnil(oldv)) {  // Previous value was nil?
          // Need to duplicate the hasmm check for the early guards.
@@ -1772,7 +1763,7 @@ static void check_call_unroll(jit_State *J, TraceNo lnk)
    if (J->pc IS J->startpc) {
       if (count + J->tailcalled > J->param[JIT_P_recunroll]) {
          J->pc++;
-         if (J->framedepth + J->retdepth IS 0) lj_record_stop(J, TraceLink::TAILREC, J->cur.traceno);  //  Tail-rec.
+         if (FRC::at_trace_root(J)) lj_record_stop(J, TraceLink::TAILREC, J->cur.traceno);  //  Tail-rec.
          else lj_record_stop(J, TraceLink::UPREC, J->cur.traceno);  //  Up-recursion.
       }
    }
@@ -1824,7 +1815,7 @@ static void rec_func_vararg(jit_State *J)
    }
 
    J->maxslot = fixargs;
-   J->framedepth++;
+   FRC::inc_depth(J);
    J->base += vframe;
    J->baseslot += vframe;
 }
@@ -1855,7 +1846,7 @@ static void rec_func_jit(jit_State *J, TraceNo lnk)
       return;
    }
    J->instunroll = 0;  //  Cannot continue across a compiled function.
-   if (J->pc IS J->startpc and J->framedepth + J->retdepth IS 0) {
+   if (J->pc IS J->startpc and FRC::at_trace_root(J)) {
       lj_record_stop(J, TraceLink::TAILREC, J->cur.traceno);  //  Extra tail-rec.
    }
    else lj_record_stop(J, TraceLink::ROOT, lnk);  //  Link to the function.
@@ -2086,8 +2077,7 @@ void lj_record_ins(jit_State *J)
 
    // Record only closed loops for root traces.
    pc = J->pc;
-   if (J->framedepth IS 0 and
-      (MSize)((char*)pc - (char*)J->bc_min) >= J->bc_extent)
+   if (FRC::at_root_depth(J) and (MSize)((char*)pc - (char*)J->bc_min) >= J->bc_extent)
       lj_trace_err(J, LJ_TRERR_LLEAVE);
 
 #ifdef LUA_USE_ASSERT
