@@ -152,7 +152,7 @@ set (BUILDVM_SOURCES
 
 # Common compiler flags and paths (use lists instead of strings for proper handling)
 set (LUAJIT_HOST_CFLAGS -O2 -Wall)
-set (LUAJIT_INCLUDE_DIRS -I${PROJECT_SOURCE_DIR}/include -I${CMAKE_BINARY_DIR} -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/lib -I${LUAJIT_SRC}/parser -I${LUAJIT_SRC}/runtime)
+set (LUAJIT_INCLUDE_DIRS -I${PROJECT_SOURCE_DIR}/include -I${CMAKE_BINARY_DIR} -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR} -I${LUAJIT_SRC}/bytecode -I${LUAJIT_SRC}/debug -I${LUAJIT_SRC}/jit -I${LUAJIT_SRC}/lib -I${LUAJIT_SRC}/parser -I${LUAJIT_SRC}/runtime)
 set (LUAJIT_COMMON_CXXFLAGS -fPIC -O2 -fomit-frame-pointer -Wall -std=c++20)
 
 # Platform-specific math library (empty on Windows, -lm on Unix)
@@ -282,6 +282,7 @@ if (MSVC)
       "${LUAJIT_SRC}"
       "${LUAJIT_SRC}/bytecode"
       "${LUAJIT_SRC}/debug"
+      "${LUAJIT_SRC}/jit"
       "${LUAJIT_SRC}/lib"
       "${LUAJIT_SRC}/parser"
       "${LUAJIT_SRC}/runtime"
@@ -632,6 +633,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
 if (ENABLE_UNIT_TESTS)
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_indexing.cpp")
    list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/runtime/unit_test_vm_asm.cpp")
+   list (APPEND FLUID_SOURCES "${LUAJIT_SRC}/jit/jit_unit_tests.cpp")
 
    # Add MASM assembly file for register capture on MSVC x64
    if (MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -649,6 +651,7 @@ target_sources (${MOD} PRIVATE ${FLUID_SOURCES})
 target_include_directories (${MOD} PRIVATE
    "${LUAJIT_SRC}/bytecode"
    "${LUAJIT_SRC}/debug"
+   "${LUAJIT_SRC}/jit"
    "${LUAJIT_SRC}/lib"
    "${LUAJIT_SRC}/parser"
    "${LUAJIT_SRC}/runtime"

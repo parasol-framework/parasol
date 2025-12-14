@@ -484,20 +484,20 @@ inline constexpr int32_t SCALE_NUM_GCO = int32_t(sizeof(lua_Number) / sizeof(GCR
 
 typedef struct GCproto {
    GCHeader;
-   uint8_t numparams;   //  Number of parameters.
-   uint8_t framesize;   //  Fixed frame size.
+   uint8_t numparams; //  Number of parameters.
+   uint8_t framesize; //  Fixed frame size.
    MSize sizebc;      //  Number of bytecode instructions.
-   uint32_t unused_gc64;  // Padding for 64-bit alignment
+   uint32_t unused_gc64; // Padding for 64-bit alignment
    GCRef gclist;
-   MRef k;      //  Split constant array (points to the middle).
-   MRef uv;      //  Upvalue list. local slot|0x8000 or parent uv idx.
-   MSize sizekgc;   //  Number of collectable constants.
+   MRef k;            //  Split constant array (points to the middle).
+   MRef uv;           //  Upvalue list. local slot|0x8000 or parent uv idx.
+   MSize sizekgc;     //  Number of collectable constants.
    MSize sizekn;      //  Number of lua_Number constants.
    MSize sizept;      //  Total size including colocated arrays.
-   uint8_t sizeuv;   //  Number of upvalues.
-   uint8_t flags;   //  Miscellaneous flags (see below).
-   uint16_t trace;   //  Anchor for chain of root traces.
-   // ------ The following fields are for debugging/tracebacks only ------
+   uint8_t sizeuv;    //  Number of upvalues.
+   uint8_t flags;     //  Miscellaneous flags (see below).
+   uint16_t trace;    //  Anchor for chain of root traces.
+   //  The following fields are for debugging/tracebacks only ------
    GCRef chunkname;   //  Name of the chunk this function was defined in.
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
@@ -587,6 +587,7 @@ typedef struct GCupval {
 } GCupval;
 
 // Forward declarations - defined after GCobj is complete
+
 inline GCupval* uvprev(GCupval* uv) noexcept;
 inline GCupval* uvnext(GCupval* uv) noexcept;
 
@@ -595,7 +596,7 @@ inline GCupval* uvnext(GCupval* uv) noexcept;
    return mref(uv->v, TValue);
 }
 
-// -- Function object (closures) ------------------------------------------
+// Function object (closures)
 
 // Common header for functions. env should be at same offset in GCudata.
 #define GCfuncHeader \
@@ -651,13 +652,14 @@ inline constexpr uint8_t FF_C   = 1;
    return sizeof(GCfuncL) - sizeof(GCRef) + sizeof(GCRef) * n;
 }
 
-// -- Table object --------------------------------------------------------
+// Table object
 
 // Hash node.
+
 typedef struct Node {
    TValue val;      //  Value object. Must be first field.
    TValue key;      //  Key object.
-   MRef next;      //  Hash chain.
+   MRef next;       //  Hash chain.
 } Node;
 
 static_assert(offsetof(Node, val) == 0);
@@ -665,13 +667,13 @@ static_assert(offsetof(Node, val) == 0);
 typedef struct GCtab {
    GCHeader;
    uint8_t nomm;      //  Negative cache for fast metamethods.
-   int8_t colo;      //  Array colocation.
-   MRef array;      //  Array part.
+   int8_t colo;       //  Array colocation.
+   MRef array;        //  Array part.
    GCRef gclist;
    GCRef metatable;   //  Must be at same offset in GCudata.
-   MRef node;      //  Hash part.
-   uint32_t asize;   //  Size of array part (keys [0, asize-1]).
-   uint32_t hmask;   //  Hash part mask (size of hash part - 1).
+   MRef node;         //  Hash part.
+   uint32_t asize;    //  Size of array part (keys [0, asize-1]).
+   uint32_t hmask;    //  Hash part mask (size of hash part - 1).
    MRef freetop;      //  Top of free elements.
 } GCtab;
 
@@ -708,9 +710,9 @@ inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
 // VM states.
 enum {
    LJ_VMST_INTERP,   //  Interpreter.
-   LJ_VMST_C,      //  C function.
-   LJ_VMST_GC,      //  Garbage collector.
-   LJ_VMST_EXIT,      //  Trace exit handler.
+   LJ_VMST_C,        //  C function.
+   LJ_VMST_GC,       //  Garbage collector.
+   LJ_VMST_EXIT,     //  Trace exit handler.
    LJ_VMST_RECORD,   //  Trace recorder.
    LJ_VMST_OPT,      //  Optimizer.
    LJ_VMST_ASM,      //  Assembler.
@@ -745,6 +747,7 @@ enum {
 
 // Metamethod IDs - uses typedef enum because MMDEF generates conditional members
 // and the X-macro pattern is required for string generation in lj_meta.cpp
+
 typedef enum : uint8_t {
 #define MMENUM(name)   MM_##name,
    MMDEF(MMENUM)
@@ -755,6 +758,7 @@ typedef enum : uint8_t {
 } MMS;
 
 // GC root IDs
+
 typedef enum : uint32_t {
    GCROOT_MMNAME,                              // Metamethod names
    GCROOT_MMNAME_LAST = GCROOT_MMNAME + MM__MAX - 1,
@@ -948,11 +952,12 @@ struct lua_State {
 
 // Forward declarations - defined after GCobj is complete
 // Functions to access the currently executing (Lua) function.
-inline GCfunc* curr_func(lua_State* L) noexcept;
-inline bool curr_funcisL(lua_State* L) noexcept;
-inline GCproto* curr_proto(lua_State* L) noexcept;
-inline TValue* curr_topL(lua_State* L) noexcept;
-inline TValue* curr_top(lua_State* L) noexcept;
+
+inline GCfunc * curr_func(lua_State *) noexcept;
+inline bool curr_funcisL(lua_State *) noexcept;
+inline GCproto * curr_proto(lua_State *) noexcept;
+inline TValue * curr_topL(lua_State *) noexcept;
+inline TValue * curr_top(lua_State *) noexcept;
 
 #if defined(LUA_USE_ASSERT) || defined(LUA_USE_APICHECK)
 LJ_FUNC_NORET void lj_assert_fail(global_State* g, const char* file, int line,
@@ -1302,19 +1307,11 @@ inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 //********************************************************************************************************************
 // Number to integer conversion
 
-#if LJ_SOFTFP
-LJ_ASMF int32_t lj_vm_tobit(double x);
-#endif
-
 [[nodiscard]] inline int32_t lj_num2bit(lua_Number n) noexcept
 {
-#if LJ_SOFTFP
-   return lj_vm_tobit(n);
-#else
    TValue o;
    o.n = n + 6755399441055744.0;  //  2^52 + 2^51
    return (int32_t)o.u32.lo;
-#endif
 }
 
 [[nodiscard]] constexpr inline int32_t lj_num2int(lua_Number n) noexcept
