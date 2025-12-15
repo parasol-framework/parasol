@@ -23,11 +23,19 @@
 
 static objScript* glArrayTestScript = nullptr;
 
+// Helper: dostring equivalent - loads and executes a string
+static int dostring(lua_State *L, const char* s)
+{
+   int result = luaL_loadbuffer(L, s, strlen(s), "test");
+   if (result IS 0) result = lua_pcall(L, 0, LUA_MULTRET, 0);
+   return result;
+}
+
 namespace {
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log& Log);
+   bool (*fn)(pf::Log &Log);
 };
 
 struct LuaStateHolder {
@@ -50,13 +58,13 @@ private:
 };
 
 //********************************************************************************************************************
-// Phase 1 Tests: Core Data Structures
+// Core Data Structures
 //********************************************************************************************************************
 
-static bool test_array_creation_byte(pf::Log& Log)
+static bool test_array_creation_byte(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -66,27 +74,27 @@ static bool test_array_creation_byte(pf::Log& Log)
    GCarray* arr = lj_array_new(L, 100, ARRAY_ELEM_BYTE);
 
    if (not arr) {
-      Log.error("byte array creation failed");
+      Log.error("char array creation failed");
       return false;
    }
    if (arr->len != 100) {
-      Log.error("byte array has incorrect length: %d", arr->len);
+      Log.error("char array has incorrect length: %d", arr->len);
       return false;
    }
    if (arr->elemtype != ARRAY_ELEM_BYTE) {
-      Log.error("byte array has incorrect elemtype: %d", arr->elemtype);
+      Log.error("char array has incorrect elemtype: %d", arr->elemtype);
       return false;
    }
    if (arr->elemsize != sizeof(uint8_t)) {
-      Log.error("byte array has incorrect elemsize: %d", arr->elemsize);
+      Log.error("char array has incorrect elemsize: %d", arr->elemsize);
       return false;
    }
    if (!(arr->flags & ARRAY_FLAG_COLOCATED)) {
-      Log.error("byte array should be colocated");
+      Log.error("char array should be colocated");
       return false;
    }
    if (mref(arr->data, void) IS nullptr) {
-      Log.error("byte array data pointer is null");
+      Log.error("char array data pointer is null");
       return false;
    }
 
@@ -94,7 +102,7 @@ static bool test_array_creation_byte(pf::Log& Log)
    uint8_t* data = (uint8_t*)mref(arr->data, void);
    for (int i = 0; i < 100; i++) {
       if (data[i] != 0) {
-         Log.error("byte array not zero-initialised at index %d", i);
+         Log.error("char array not zero-initialised at index %d", i);
          return false;
       }
    }
@@ -102,10 +110,10 @@ static bool test_array_creation_byte(pf::Log& Log)
    return true;
 }
 
-static bool test_array_creation_int32(pf::Log& Log)
+static bool test_array_creation_int32(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -143,10 +151,10 @@ static bool test_array_creation_int32(pf::Log& Log)
    return true;
 }
 
-static bool test_array_creation_double(pf::Log& Log)
+static bool test_array_creation_double(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -180,10 +188,10 @@ static bool test_array_creation_double(pf::Log& Log)
    return true;
 }
 
-static bool test_array_index_access(pf::Log& Log)
+static bool test_array_index_access(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -218,7 +226,7 @@ static bool test_array_index_access(pf::Log& Log)
    return true;
 }
 
-static bool test_array_elemsize(pf::Log& Log)
+static bool test_array_elemsize(pf::Log &Log)
 {
    if (lj_array_elemsize(ARRAY_ELEM_BYTE) != 1) {
       Log.error("ARRAY_ELEM_BYTE size incorrect");
@@ -252,10 +260,10 @@ static bool test_array_elemsize(pf::Log& Log)
    return true;
 }
 
-static bool test_array_external(pf::Log& Log)
+static bool test_array_external(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -293,10 +301,10 @@ static bool test_array_external(pf::Log& Log)
    return true;
 }
 
-static bool test_array_to_table(pf::Log& Log)
+static bool test_array_to_table(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -347,10 +355,10 @@ static bool test_array_to_table(pf::Log& Log)
    return true;
 }
 
-static bool test_array_type_tag(pf::Log& Log)
+static bool test_array_type_tag(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -368,13 +376,13 @@ static bool test_array_type_tag(pf::Log& Log)
 }
 
 //********************************************************************************************************************
-// Phase 2 Tests: VM Type System Integration
+// VM Type System Integration
 //********************************************************************************************************************
 
-static bool test_tvalue_array(pf::Log& Log)
+static bool test_tvalue_array(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -403,7 +411,7 @@ static bool test_tvalue_array(pf::Log& Log)
    return true;
 }
 
-static bool test_typename_array(pf::Log& Log)
+static bool test_typename_array(pf::Log &Log)
 {
    const char* name = lj_obj_itypename[~LJ_TARRAY];
    if (strcmp(name, "array") != 0) {
@@ -414,10 +422,10 @@ static bool test_typename_array(pf::Log& Log)
    return true;
 }
 
-static bool test_setarrayV(pf::Log& Log)
+static bool test_setarrayV(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -442,7 +450,7 @@ static bool test_setarrayV(pf::Log& Log)
 }
 
 //********************************************************************************************************************
-// Phase 3 Tests: Bytecode C Helpers
+// Bytecode C Helpers
 //********************************************************************************************************************
 
 // Helper to check if TValue contains an integer value (handles LJ_DUALNUM=0 case)
@@ -453,10 +461,10 @@ static bool tv_is_integer(cTValue* o, int32_t expected)
    return false;
 }
 
-static bool test_arr_getidx_int32(pf::Log& Log)
+static bool test_arr_getidx_int32(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -491,10 +499,10 @@ static bool test_arr_getidx_int32(pf::Log& Log)
    return true;
 }
 
-static bool test_arr_getidx_double(pf::Log& Log)
+static bool test_arr_getidx_double(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -523,10 +531,10 @@ static bool test_arr_getidx_double(pf::Log& Log)
    return true;
 }
 
-static bool test_arr_setidx_int32(pf::Log& Log)
+static bool test_arr_setidx_int32(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -564,10 +572,10 @@ static bool test_arr_setidx_int32(pf::Log& Log)
    return true;
 }
 
-static bool test_arr_setidx_double(pf::Log& Log)
+static bool test_arr_setidx_double(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -596,10 +604,10 @@ static bool test_arr_setidx_double(pf::Log& Log)
    return true;
 }
 
-static bool test_arr_roundtrip(pf::Log& Log)
+static bool test_arr_roundtrip(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -627,10 +635,10 @@ static bool test_arr_roundtrip(pf::Log& Log)
    return true;
 }
 
-static bool test_arr_byte_type(pf::Log& Log)
+static bool test_arr_byte_type(pf::Log &Log)
 {
    LuaStateHolder Holder;
-   lua_State* L = Holder.get();
+   lua_State *L = Holder.get();
    if (not L) {
       Log.error("failed to create Lua state");
       return false;
@@ -664,15 +672,309 @@ static bool test_arr_byte_type(pf::Log& Log)
 }
 
 //********************************************************************************************************************
+// Library Functions
+
+static bool test_lib_fastarray_new(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test fastarray.new via Lua
+   const char* code = R"(
+      local arr = fastarray.new(100, "int")
+      return arr != nil and fastarray.len(arr) is 100 and fastarray.type(arr) is "int"
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray.new test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray.new did not create array correctly");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_index(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test array indexing via library metamethods
+   const char* code = R"(
+      local arr = fastarray.new(10, "int")
+      arr[0] = 100
+      arr[5] = 500
+      arr[9] = 900
+      return arr[0] is 100 and arr[5] is 500 and arr[9] is 900
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray index test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray indexing did not work correctly");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_table(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test fastarray.table conversion
+   const char* code = R"(
+      local arr = fastarray.new(5, "int")
+      arr[0] = 10
+      arr[1] = 20
+      arr[2] = 30
+      arr[3] = 40
+      arr[4] = 50
+      local t = fastarray.table(arr)
+      return t[0] is 10 and t[2] is 30 and t[4] is 50
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray.table test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray.table conversion failed");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_copy(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test fastarray.copy
+   const char* code = R"(
+      local src = fastarray.new(5, "int")
+      local dst = fastarray.new(5, "int")
+      src[0] = 100
+      src[1] = 200
+      src[2] = 300
+      src[3] = 400
+      src[4] = 500
+      fastarray.copy(dst, src)
+      return dst[0] is 100 and dst[2] is 300 and dst[4] is 500
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray.copy test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray.copy did not copy correctly");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_string(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test fastarray.getstring and setstring
+   const char* code = R"(
+      local arr = fastarray.new(10, "char")
+      fastarray.setstring(arr, "hello")
+      local s = fastarray.getstring(arr, 0, 5)
+      return s is "hello"
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray string test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray string operations failed");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_fill(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test fastarray.fill
+   const char* code = R"(
+      local arr = fastarray.new(10, "int")
+      fastarray.fill(arr, 42)
+      local ok = true
+      for i = 0, 9 do
+         if arr[i] != 42 then ok = false end
+      end
+      return ok
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray.fill test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray.fill did not fill correctly");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_len_operator(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test # operator via __len metamethod
+   const char* code = R"(
+      local arr = fastarray.new(42, "double")
+      return #arr is 42
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray # operator test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray # operator did not return correct length");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_tostring(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test tostring via __tostring metamethod
+   const char* code = R"(
+      local arr = fastarray.new(100, "double")
+      local s = tostring(arr)
+      return s is 'array(100, "double")'
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray tostring test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray tostring did not return expected format");
+      return false;
+   }
+
+   return true;
+}
+
+static bool test_lib_fastarray_double_type(pf::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   // Test double array type
+   const char* code = R"(
+      local arr = fastarray.new(5, "double")
+      arr[0] = 3.14159
+      arr[2] = -2.71828
+      arr[4] = 1.41421
+      local ok = math.abs(arr[0] - 3.14159) < 0.00001
+      ok = ok and math.abs(arr[2] + 2.71828) < 0.00001
+      ok = ok and math.abs(arr[4] - 1.41421) < 0.00001
+      return ok
+   )";
+
+   if (dostring(L, code) != 0) {
+      Log.error("fastarray double type test code failed: %s", lua_tostring(L, -1));
+      return false;
+   }
+
+   if (not lua_toboolean(L, -1)) {
+      Log.error("fastarray double type did not work correctly");
+      return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
 // Test runner
 //********************************************************************************************************************
 
 } // namespace
 
-void array_unit_tests(int& Passed, int& Total)
+void array_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 17> Tests = { {
-      // Phase 1: Core Data Structures
+   constexpr std::array<TestCase, 26> Tests = { {
+      // Core Data Structures
       { "array_creation_byte", test_array_creation_byte },
       { "array_creation_int32", test_array_creation_int32 },
       { "array_creation_double", test_array_creation_double },
@@ -681,17 +983,27 @@ void array_unit_tests(int& Passed, int& Total)
       { "array_external", test_array_external },
       { "array_to_table", test_array_to_table },
       { "array_type_tag", test_array_type_tag },
-      // Phase 2: VM Type System
+      // VM Type System
       { "tvalue_array", test_tvalue_array },
       { "typename_array", test_typename_array },
       { "setarrayV", test_setarrayV },
-      // Phase 3: Bytecode C Helpers
+      // Bytecode C Helpers
       { "arr_getidx_int32", test_arr_getidx_int32 },
       { "arr_getidx_double", test_arr_getidx_double },
       { "arr_setidx_int32", test_arr_setidx_int32 },
       { "arr_setidx_double", test_arr_setidx_double },
       { "arr_roundtrip", test_arr_roundtrip },
-      { "arr_byte_type", test_arr_byte_type }
+      { "arr_byte_type", test_arr_byte_type },
+      // Library Functions
+      { "lib_fastarray_new", test_lib_fastarray_new },
+      { "lib_fastarray_index", test_lib_fastarray_index },
+      { "lib_fastarray_table", test_lib_fastarray_table },
+      { "lib_fastarray_copy", test_lib_fastarray_copy },
+      { "lib_fastarray_string", test_lib_fastarray_string },
+      { "lib_fastarray_fill", test_lib_fastarray_fill },
+      { "lib_fastarray_len_operator", test_lib_fastarray_len_operator },
+      { "lib_fastarray_tostring", test_lib_fastarray_tostring },
+      { "lib_fastarray_double_type", test_lib_fastarray_double_type }
    } };
 
    if (NewObject(CLASSID::FLUID, &glArrayTestScript) != ERR::Okay) return;
@@ -716,10 +1028,5 @@ void array_unit_tests(int& Passed, int& Total)
 }
 
 #else
-
-void array_unit_tests(int&, int&)
-{
-   // Unit tests disabled
-}
 
 #endif // ENABLE_UNIT_TESTS

@@ -137,6 +137,7 @@ set (LJLIB_C
    "${LUAJIT_SRC}/lib/lib_string.cpp"
    "${LUAJIT_SRC}/lib/lib_table.cpp"
    "${LUAJIT_SRC}/lib/lib_range.cpp"
+   "${LUAJIT_SRC}/lib/lib_array.cpp"
    "${LUAJIT_SRC}/lib/lib_debug.cpp"
    "${LUAJIT_SRC}/lib/lib_jit.cpp"
 )
@@ -613,6 +614,7 @@ set (FLUID_SOURCES "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_str
    "${LUAJIT_SRC}/lib/lib.cpp"
    "${LUAJIT_SRC}/lib/load.cpp"
    "${LUAJIT_SRC}/lib/lib_aux.cpp"
+   "${LUAJIT_SRC}/lib/lib_array.cpp"
    "${LUAJIT_SRC}/lib/lib_base.cpp"
    "${LUAJIT_SRC}/lib/lib_bit.cpp"
    "${LUAJIT_SRC}/lib/lib_debug.cpp"

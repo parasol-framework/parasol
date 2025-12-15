@@ -380,15 +380,6 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 
 // VM security
 
-/* Don't make any changes here. Instead build with:
-**   make "XCFLAGS=-DLUAJIT_SECURITY_flag=value"
-**
-** Important note to distro maintainers: DO NOT change the defaults for a
-** regular distro build -- neither upwards, nor downwards!
-** These build-time configurable security flags are intended for embedders
-** who may have specific needs wrt. security vs. performance.
-*/
-
 // Security defaults.
 #ifndef LUAJIT_SECURITY_PRNG
 // PRNG init: 0 = fixed/insecure, 1 = secure from OS.
@@ -397,12 +388,12 @@ extern void* LJ_WIN_LOADLIBA(const char* path);
 
 #ifndef LUAJIT_SECURITY_STRHASH
 // String hash: 0 = sparse only, 1 = sparse + dense.
-#define LUAJIT_SECURITY_STRHASH   1
+#define LUAJIT_SECURITY_STRHASH   0
 #endif
 
 #ifndef LUAJIT_SECURITY_STRID
 // String IDs: 0 = linear, 1 = reseed < 255, 2 = reseed < 15, 3 = random.
-#define LUAJIT_SECURITY_STRID   1
+#define LUAJIT_SECURITY_STRID   0
 #endif
 
 #ifndef LUAJIT_SECURITY_MCODE

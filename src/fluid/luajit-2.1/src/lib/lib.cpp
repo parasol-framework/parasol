@@ -198,7 +198,7 @@ TValue* lj_lib_checkany(lua_State* L, int narg)
    return o;
 }
 
-GCstr* lj_lib_checkstr(lua_State* L, int narg)
+GCstr * lj_lib_checkstr(lua_State* L, int narg)
 {
    TValue* o = L->base + narg - 1;
    if (o < L->top) {
@@ -210,9 +210,8 @@ GCstr* lj_lib_checkstr(lua_State* L, int narg)
          o = L->base + narg - 1;
          copyTV(L, o, resolved);
       }
-      if (LJ_LIKELY(tvisstr(o))) {
-         return strV(o);
-      }
+
+      if (LJ_LIKELY(tvisstr(o))) return strV(o);
       else if (tvisnumber(o)) {
          GCstr* s = lj_strfmt_number(L, o);
          setstrV(L, o, s);
@@ -388,4 +387,3 @@ badtype:
    return 0;  //  unreachable
 }
 #endif
-

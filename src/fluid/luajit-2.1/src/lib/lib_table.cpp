@@ -50,7 +50,7 @@ LJLIB_CF(table_foreachi)
 
 LJLIB_CF(table_foreach)
 {
-   GCtab *t = lj_lib_checktab(L, 1);
+   (void)lj_lib_checktab(L, 1);
    lj_lib_checkfunc(L, 2);
 
    lua_pushnil(L);  // Initial key for iteration

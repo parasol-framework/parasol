@@ -14,6 +14,7 @@
 #include "runtime/lj_thunk.h"
 
 extern "C" int luaopen_range(lua_State* L);
+extern "C" int luaopen_fastarray(lua_State* L);
 
 static const luaL_Reg lj_lib_load[] = {
   { "",               luaopen_base },
@@ -24,6 +25,7 @@ static const luaL_Reg lj_lib_load[] = {
   { LUA_BITLIBNAME,   luaopen_bit },
   { LUA_JITLIBNAME,   luaopen_jit },
   { "range",          luaopen_range },
+  { "fastarray",      luaopen_fastarray },
   { nullptr,      nullptr }
 };
 

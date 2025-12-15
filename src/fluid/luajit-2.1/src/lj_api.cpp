@@ -970,6 +970,7 @@ extern int lua_getmetatable(lua_State *L, int idx)
    GCtab *mt = nullptr;
    if (tvistab(o)) mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
+   else if (tvisarray(o)) mt = tabref(arrayV(o)->metatable);
    else mt = tabref(basemt_obj(G(L), o));
    if (mt IS nullptr) return 0;
    settabV(L, L->top, mt);
@@ -1182,6 +1183,10 @@ extern int lua_setmetatable(lua_State *L, int idx)
    else if (tvisudata(o)) {
       setgcref(udataV(o)->metatable, obj2gco(mt));
       if (mt) lj_gc_objbarrier(L, udataV(o), mt);
+   }
+   else if (tvisarray(o)) {
+      setgcref(arrayV(o)->metatable, obj2gco(mt));
+      if (mt) lj_gc_objbarrier(L, arrayV(o), mt);
    }
    else {
       // Flush cache, since traces specialize to basemt. But not during __gc.

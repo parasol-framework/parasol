@@ -123,19 +123,13 @@ void* lj_array_index_checked(lua_State *L, GCarray *Array, uint32_t Idx)
 void lj_array_copy(lua_State *L, GCarray *Dst, uint32_t DstIdx, GCarray *Src, uint32_t SrcIdx, uint32_t Count)
 {
    // Validate bounds
-   if (SrcIdx + Count > Src->len or DstIdx + Count > Dst->len) {
-      lj_err_caller(L, ErrMsg::IDXRNG);
-   }
+   if (SrcIdx + Count > Src->len or DstIdx + Count > Dst->len) lj_err_caller(L, ErrMsg::IDXRNG);
 
    // Check read-only
-   if (Dst->flags & ARRAY_FLAG_READONLY) {
-      lj_err_caller(L, ErrMsg::ARRRO);
-   }
+   if (Dst->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    // Only allow copy between same element types
-   if (Dst->elemtype != Src->elemtype) {
-      lj_err_caller(L, ErrMsg::ARRTYPE);
-   }
+   if (Dst->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
 
    void* dst_ptr = lj_array_index(Dst, DstIdx);
    void* src_ptr = lj_array_index(Src, SrcIdx);
@@ -152,33 +146,19 @@ GCtab* lj_array_to_table(lua_State *L, GCarray *Array)
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
 
-   auto data = (uint8_t*)mref(Array->data, void);
+   auto data = (uint8_t *)mref(Array->data, void);
    for (MSize i = 0; i < Array->len; i++) {
       auto slot = &array_part[i];  // 0-based indexing (Fluid standard)
       void *elem = data + (i * Array->elemsize);
 
       switch (Array->elemtype) {
-         case ARRAY_ELEM_BYTE:
-            setintV(slot, *(uint8_t*)elem);
-            break;
-         case ARRAY_ELEM_INT16:
-            setintV(slot, *(int16_t*)elem);
-            break;
-         case ARRAY_ELEM_INT32:
-            setintV(slot, *(int32_t*)elem);
-            break;
-         case ARRAY_ELEM_INT64:
-            setnumV(slot, lua_Number(*(int64_t*)elem));
-            break;
-         case ARRAY_ELEM_FLOAT:
-            setnumV(slot, *(float*)elem);
-            break;
-         case ARRAY_ELEM_DOUBLE:
-            setnumV(slot, *(double*)elem);
-            break;
-         default:
-            setnilV(slot);
-            break;
+         case ARRAY_ELEM_BYTE:   setintV(slot, *(uint8_t*)elem); break;
+         case ARRAY_ELEM_INT16:  setintV(slot, *(int16_t*)elem); break;
+         case ARRAY_ELEM_INT32:  setintV(slot, *(int32_t*)elem); break;
+         case ARRAY_ELEM_INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
+         case ARRAY_ELEM_FLOAT:  setnumV(slot, *(float*)elem); break;
+         case ARRAY_ELEM_DOUBLE: setnumV(slot, *(double*)elem); break;
+         default: setnilV(slot); break;
       }
    }
 

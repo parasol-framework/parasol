@@ -257,28 +257,30 @@ typedef struct SBuf {
 // Tags and values
 
 // Frame link.
+
 typedef union {
    int32_t ftsz;      //  Frame type and size of previous frame.
    MRef pcr;      //  Or PC for Lua frames.
 } FrameLink;
 
 // Tagged value.
+
 typedef LJ_ALIGN(8) union TValue {
    uint64_t u64;      //  64 bit pattern overlaps number.
    lua_Number n;      //  Number object overlaps split tag/value object.
-   GCRef gcr;      //  GCobj reference with tag.
+   GCRef gcr;         //  GCobj reference with tag.
    int64_t it64;
    struct {
       LJ_ENDIAN_LOHI(
          int32_t i;   //  Integer value.
-      , uint32_t it;   //  Internal object tag. Must overlap MSW of number.
+      , uint32_t it;  //  Internal object tag. Must overlap MSW of number.
          )
    };
    int64_t ftsz;      //  Frame type and size of previous frame, or PC.
 
    struct {
       LJ_ENDIAN_LOHI(
-         uint32_t lo;   //  Lower 32 bits of number.
+         uint32_t lo;  //  Lower 32 bits of number.
       , uint32_t hi;   //  Upper 32 bits of number.
          )
    } u32;
@@ -286,37 +288,32 @@ typedef LJ_ALIGN(8) union TValue {
 
 using cTValue = const TValue;
 
-[[nodiscard]] inline TValue* tvref(MRef r) noexcept
-{
-   return mref(r, TValue);
-}
+[[nodiscard]] inline TValue* tvref(MRef r) noexcept { return mref(r, TValue); }
 
 // More external and GCobj tags for internal objects.
+
 inline constexpr int LAST_TT     = LUA_TTHREAD;
 inline constexpr int LUA_TPROTO  = LAST_TT + 1;
 inline constexpr int LUA_TCDATA  = LAST_TT + 2;
 
-/*
-** Format for 64 bit GC references (LJ_GC64):
-**
-** The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next
-** 4 bits hold the internal tag. The lowest 47 bits either hold a pointer,
-** a zero-extended 32 bit integer or all bits set to 1 for primitive types.
-**
-**                     ------MSW------.------LSW------
-** primitive types    |1..1|itype|1..................1|
-** GC objects         |1..1|itype|-------GCRef--------|
-** lightuserdata      |1..1|itype|seg|------ofs-------|
-** int (LJ_DUALNUM)   |1..1|itype|0..0|-----int-------|
-** number              ------------double-------------
-**
-** ORDER LJ_T
-** Primitive types nil/false/true must be first, lightuserdata next.
-** GC objects are at the end, table/userdata must be lowest.
-** Also check lj_ir.h for similar ordering constraints.
-*/
+// Format for 64 bit GC references (LJ_GC64):
+//
+// The upper 13 bits must be 1 (0xfff8...) for a special NaN. The next 4 bits hold the internal tag. The lowest 47
+// bits either hold a pointer, a zero-extended 32 bit integer or all bits set to 1 for primitive types.
+//
+//                     ------MSW------.------LSW------
+// primitive types    |1..1|itype|1..................1|
+// GC objects         |1..1|itype|-------GCRef--------|
+// lightuserdata      |1..1|itype|seg|------ofs-------|
+// int (LJ_DUALNUM)   |1..1|itype|0..0|-----int-------|
+// number              ------------double-------------
+//
+// ORDER LJ_T
+// Primitive types nil/false/true must be first, lightuserdata next.  GC objects are at the end, table/userdata
+// must be lowest.  Also check lj_ir.h for similar ordering constraints.
 
 // Internal type tags. ORDER LJ_T
+
 inline constexpr uint32_t LJ_TNIL      = ~0u;
 inline constexpr uint32_t LJ_TFALSE    = ~1u;
 inline constexpr uint32_t LJ_TTRUE     = ~2u;
@@ -352,40 +349,33 @@ inline constexpr uint64_t LJ_GCVMASK = (uint64_t(1) << 47) - 1;
 inline constexpr int LJ_LIGHTUD_BITS_SEG = 8;
 inline constexpr int LJ_LIGHTUD_BITS_LO  = 47 - LJ_LIGHTUD_BITS_SEG;
 
-// -- String object -------------------------------------------------------
+//********************************************************************************************************************
+// String object
 
 typedef uint32_t LuaStrHash;   //  String hash value.
 typedef uint32_t StrID;      //  String ID.
 
 // String object header. String payload follows.
 typedef struct GCstr {
-   GCHeader;
-   uint8_t reserved;   //  Used by lexer for fast lookup of reserved words.
-   uint8_t hashalg;    //  Hash algorithm.
-   StrID sid;          //  Interned string ID.
-   LuaStrHash hash;    //  Hash of string.
-   MSize len;          //  Size of string.
+   GCHeader;           // 16-bit aligned
+   uint8_t reserved;   // Used by lexer for fast lookup of reserved words.
+   uint8_t _unused1;   // Unused.
+   StrID sid;          // Interned string ID.
+   LuaStrHash hash;    // Hash of string.
+   MSize len;          // Size of string.
 } GCstr;
 
-// String accessor functions - strref defined after GCobj, others are simple
 inline GCstr* strref(GCRef r) noexcept;  // Defined after GCobj
 
-[[nodiscard]] inline const char* strdata(const GCstr* s) noexcept
-{
-   return (const char*)(s + 1);
-}
-
-[[nodiscard]] inline char* strdatawr(GCstr* s) noexcept
-{
-   return (char*)(s + 1);
-}
+[[nodiscard]] inline const char* strdata(const GCstr* s) noexcept { return (const char*)(s + 1); }
+[[nodiscard]] inline char* strdatawr(GCstr* s) noexcept { return (char*)(s + 1); }
 
 // strVdata uses strV which is defined later
 #define strVdata(o)   strdata(strV(o))
 
-// -- Userdata object -----------------------------------------------------
+//********************************************************************************************************************
+// Userdata object
 
-// Userdata object. Payload follows.
 typedef struct GCudata {
    GCHeader;
    uint8_t udtype;   //  Userdata type.
@@ -406,8 +396,9 @@ enum {
    UDTYPE__MAX
 };
 
-// Thunk userdata payload - stored after GCudata header
-// Used for deferred/lazy evaluation of expressions
+//********************************************************************************************************************
+// Thunk userdata payload - stored after GCudata header.  Used for deferred/lazy evaluation of expressions
+
 typedef struct ThunkPayload {
    GCRef deferred_func;    // The deferred closure (GCfunc)
    TValue cached_value;    // Cached resolved value
@@ -419,19 +410,12 @@ typedef struct ThunkPayload {
 // Helper to get thunk payload from userdata
 #define thunk_payload(u)  ((ThunkPayload *)uddata(u))
 
-[[nodiscard]] inline void* uddata(GCudata* u) noexcept
-{
-   return (void*)(u + 1);
-}
+[[nodiscard]] inline void* uddata(GCudata* u) noexcept { return (void*)(u + 1); }
+[[nodiscard]] inline MSize sizeudata(const GCudata* u) noexcept { return sizeof(GCudata) + u->len; }
 
-[[nodiscard]] inline MSize sizeudata(const GCudata* u) noexcept
-{
-   return sizeof(GCudata) + u->len;
-}
+//********************************************************************************************************************
+// C data object
 
-// -- C data object -------------------------------------------------------
-
-// C data object. Payload follows.
 typedef struct GCcdata {
    GCHeader;
    uint16_t ctypeid;   //  C type ID.
@@ -706,11 +690,10 @@ inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
    setmref(t->freetop, v);
 }
 
-// -- Array object --------------------------------------------------------
-
 // Array element type constants
+
 enum ArrayElemType : uint8_t {
-   ARRAY_ELEM_BYTE    = 0,   // int8_t / uint8_t
+   ARRAY_ELEM_BYTE    = 0,   // byte
    ARRAY_ELEM_INT16   = 1,   // int16_t
    ARRAY_ELEM_INT32   = 2,   // int32_t
    ARRAY_ELEM_INT64   = 3,   // int64_t
@@ -877,15 +860,11 @@ typedef struct GCState {
 
 // String interning state.
 typedef struct StrInternState {
-   GCRef* tab;       //  String hash table anchors.
+   GCRef *tab;       //  String hash table anchors.
    MSize mask;       //  String hash mask (size of hash table - 1).
    MSize num;        //  Number of strings in hash table.
    StrID id;         //  Next string ID.
-   uint8_t idreseed; //  String ID reseed counter.
    uint8_t second;   //  String interning table uses secondary hashing.
-   uint8_t unused1;
-   uint8_t unused2;
-   LJ_ALIGN(8) uint64_t seed;   //  Random string seed.
 } StrInternState;
 
 // Global state, shared by all threads of a Lua universe.

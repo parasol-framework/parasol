@@ -67,6 +67,7 @@ cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
    GCtab *mt;
    if (tvistab(o)) mt = tabref(tabV(o)->metatable);
    else if (tvisudata(o)) mt = tabref(udataV(o)->metatable);
+   else if (tvisarray(o)) mt = tabref(arrayV(o)->metatable);
    else mt = tabref(basemt_obj(G(L), o));
 
    if (mt) {

@@ -61,7 +61,7 @@ static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
 //********************************************************************************************************************
 // Helper to store TValue into array element based on element type
 
-static void arr_store_elem(lua_State* L, GCarray *Array, uint32_t Idx, cTValue *Val)
+static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *Val)
 {
    void *elem = lj_array_index(Array, Idx);
 
@@ -105,7 +105,6 @@ static void arr_store_elem(lua_State* L, GCarray *Array, uint32_t Idx, cTValue *
 
 extern "C" cTValue* lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
 {
-   // Type check - must be array
    if (not tvisarray(O)) {
       // Not an array - check for __index metamethod
       cTValue *mo = lj_meta_lookup(L, O, MM_index);
@@ -125,10 +124,8 @@ extern "C" cTValue* lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
    int32_t idx = arr_idx_from_tv(K);
    if (idx < 0 or MSize(idx) >= arr->len) {
       // Check for __index metamethod on array's metatable
-      GCtab *mt = tabref(arr->metatable);
-      if (mt) {
-         cTValue *mo = lj_meta_fast(L, mt, MM_index);
-         if (mo) {
+      if (GCtab *mt = tabref(arr->metatable)) {
+         if (cTValue *mo = lj_meta_fast(L, mt, MM_index)) {
             // Metamethod exists - return nullptr to trigger it
             // The assembler VM will handle calling the metamethod
             return nullptr;
@@ -151,9 +148,8 @@ extern "C" cTValue* lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
 // Helper for ASETV/ASETB. Array set with metamethod support.
 // Returns pointer to store location, or nullptr to trigger metamethod call.
 
-extern "C" TValue* lj_arr_set(lua_State* L, cTValue *O, cTValue *K)
+extern "C" TValue * lj_arr_set(lua_State *L, cTValue *O, cTValue *K)
 {
-   // Type check - must be array
    if (not tvisarray(O)) {
       // Not an array - check for __newindex metamethod
       cTValue *mo = lj_meta_lookup(L, O, MM_newindex);
@@ -201,9 +197,7 @@ extern "C" TValue* lj_arr_set(lua_State* L, cTValue *O, cTValue *K)
 
 extern "C" void lj_arr_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue *Result)
 {
-   if (Idx < 0 or MSize(Idx) >= Array->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, Idx, int(Array->len));
-   }
+   if (Idx < 0 or MSize(Idx) >= Array->len) lj_err_callerv(L, ErrMsg::ARROB, Idx, int(Array->len));
    arr_load_elem(Array, uint32_t(Idx), Result);
 }
 
@@ -212,11 +206,7 @@ extern "C" void lj_arr_getidx(lua_State *L, GCarray *Array, int32_t Idx, TValue 
 
 extern "C" void lj_arr_setidx(lua_State *L, GCarray *Array, int32_t Idx, cTValue *Val)
 {
-   if (Idx < 0 or MSize(Idx) >= Array->len) {
-      lj_err_callerv(L, ErrMsg::ARROB, Idx, int(Array->len));
-   }
-   if (Array->flags & ARRAY_FLAG_READONLY) {
-      lj_err_caller(L, ErrMsg::ARRRO);
-   }
+   if (Idx < 0 or MSize(Idx) >= Array->len) lj_err_callerv(L, ErrMsg::ARROB, Idx, int(Array->len));
+   if (Array->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
    arr_store_elem(L, Array, uint32_t(Idx), Val);
 }
