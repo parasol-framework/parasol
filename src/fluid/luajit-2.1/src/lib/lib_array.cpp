@@ -60,42 +60,42 @@ static GCarray * lib_optarray(lua_State *L, int NArg)
 //********************************************************************************************************************
 // Helper to parse element type string
 
-static uint8_t parse_elemtype(lua_State *L, int NArg)
+static AET parse_elemtype(lua_State *L, int NArg)
 {
    GCstr *type_str = lj_lib_checkstr(L, NArg);
 
    switch (type_str->hash) {
-      case HASH_INT:     return ARRAY_ELEM_INT32;
-      case HASH_BYTE:    return ARRAY_ELEM_BYTE;
-      case HASH_CHAR:    return ARRAY_ELEM_BYTE;
-      case HASH_INT16:   return ARRAY_ELEM_INT16;
-      case HASH_INT64:   return ARRAY_ELEM_INT64;
-      case HASH_FLOAT:   return ARRAY_ELEM_FLOAT;
-      case HASH_DOUBLE:  return ARRAY_ELEM_DOUBLE;
-      case HASH_STRING:  return ARRAY_ELEM_STRING;
-      case HASH_STRUCT:  return ARRAY_ELEM_STRUCT;
-      case HASH_POINTER: return ARRAY_ELEM_PTR;
+      case HASH_INT:     return AET::_INT32;
+      case HASH_BYTE:    return AET::_BYTE;
+      case HASH_CHAR:    return AET::_BYTE;
+      case HASH_INT16:   return AET::_INT16;
+      case HASH_INT64:   return AET::_INT64;
+      case HASH_FLOAT:   return AET::_FLOAT;
+      case HASH_DOUBLE:  return AET::_DOUBLE;
+      case HASH_STRING:  return AET::_STRING;
+      case HASH_STRUCT:  return AET::_STRUCT;
+      case HASH_POINTER: return AET::_PTR;
    }
 
    lj_err_argv(L, NArg, ErrMsg::BADTYPE, "valid array type", strdata(type_str));
-   return 0;  // unreachable
+   return AET(0);  // unreachable
 }
 
 //********************************************************************************************************************
 // Helper to get element type name
 
-static const char* elemtype_name(uint8_t Type)
+static CSTRING elemtype_name(AET Type)
 {
    switch (Type) {
-      case ARRAY_ELEM_BYTE:   return "char";
-      case ARRAY_ELEM_INT16:  return "int16";
-      case ARRAY_ELEM_INT32:  return "int";
-      case ARRAY_ELEM_INT64:  return "int64";
-      case ARRAY_ELEM_FLOAT:  return "float";
-      case ARRAY_ELEM_DOUBLE: return "double";
-      case ARRAY_ELEM_PTR:    return "pointer";
-      case ARRAY_ELEM_STRING: return "string";
-      case ARRAY_ELEM_STRUCT: return "struct";
+      case AET::_BYTE:   return "char";
+      case AET::_INT16:  return "int16";
+      case AET::_INT32:  return "int";
+      case AET::_INT64:  return "int64";
+      case AET::_FLOAT:  return "float";
+      case AET::_DOUBLE: return "double";
+      case AET::_PTR:    return "pointer";
+      case AET::_STRING: return "string";
+      case AET::_STRUCT: return "struct";
       default: return "unknown";
    }
 }
@@ -118,7 +118,7 @@ LJLIB_CF(array_new)
    int32_t size = lj_lib_checkint(L, 1);
    if (size < 0) lj_err_argv(L, 1, ErrMsg::NUMRNG, "non-negative", "negative");
 
-   uint8_t elemtype = parse_elemtype(L, 2);
+   auto elemtype = parse_elemtype(L, 2);
    GCarray *arr = lj_array_new(L, uint32_t(size), elemtype);
 
    // Set metatable from registry
@@ -226,31 +226,31 @@ LJLIB_CF(array_concat)
       if (i > 0) result += join_str;
 
       switch(arr->elemtype) {
-         case ARRAY_ELEM_STRING:
+         case AET::_STRING:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<CSTRING>()[i]);
             break;
-         case ARRAY_ELEM_PTR:
+         case AET::_PTR:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<void **>()[i]);
             break;
-         case ARRAY_ELEM_FLOAT:
+         case AET::_FLOAT:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<float>()[i]);
             break;
-         case ARRAY_ELEM_DOUBLE:
+         case AET::_DOUBLE:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<double>()[i]);
             break;
-         case ARRAY_ELEM_INT64:
+         case AET::_INT64:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<long long>()[i]);
             break;
-         case ARRAY_ELEM_INT32:
+         case AET::_INT32:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<int>()[i]);
             break;
-         case ARRAY_ELEM_INT16:
+         case AET::_INT16:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<int16_t>()[i]);
             break;
-         case ARRAY_ELEM_BYTE:
+         case AET::_BYTE:
             snprintf(buffer, sizeof(buffer), format, arr->data.get<int8_t>()[i]);
             break;
-         case ARRAY_ELEM_STRUCT:
+         case AET::_STRUCT:
             luaL_error(L, "concat() does not support struct arrays.");
             return 0;
          default:
@@ -306,7 +306,7 @@ LJLIB_CF(array_getstring)
 {
    GCarray *arr = lib_checkarray(L, 1);
 
-   if (arr->elemtype != ARRAY_ELEM_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
+   if (arr->elemtype != AET::_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
 
    auto start = uint32_t(lj_lib_optint(L, 2, 0));
    auto len = uint32_t(lj_lib_optint(L, 3, int32_t(arr->len - start)));
@@ -335,7 +335,7 @@ LJLIB_CF(array_setstring)
    GCarray *arr = lib_checkarray(L, 1);
    GCstr *str = lj_lib_checkstr(L, 2);
 
-   if (arr->elemtype != ARRAY_ELEM_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
+   if (arr->elemtype != AET::_BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
    if (arr->flags & ARRAY_FLAG_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    auto start = uint32_t(lj_lib_optint(L, 3, 0));
@@ -425,12 +425,12 @@ LJLIB_CF(array_fill)
    for (uint32_t i = 0; i < count; i++) {
       void* elem = base + (start + i) * arr->elemsize;
       switch (arr->elemtype) {
-         case ARRAY_ELEM_BYTE:   *(uint8_t*)elem = uint8_t(value); break;
-         case ARRAY_ELEM_INT16:  *(int16_t*)elem = int16_t(value); break;
-         case ARRAY_ELEM_INT32:  *(int32_t*)elem = int32_t(value); break;
-         case ARRAY_ELEM_INT64:  *(int64_t*)elem = int64_t(value); break;
-         case ARRAY_ELEM_FLOAT:  *(float*)elem = float(value); break;
-         case ARRAY_ELEM_DOUBLE: *(double*)elem = value; break;
+         case AET::_BYTE:   *(uint8_t*)elem = uint8_t(value); break;
+         case AET::_INT16:  *(int16_t*)elem = int16_t(value); break;
+         case AET::_INT32:  *(int32_t*)elem = int32_t(value); break;
+         case AET::_INT64:  *(int64_t*)elem = int64_t(value); break;
+         case AET::_FLOAT:  *(float*)elem = float(value); break;
+         case AET::_DOUBLE: *(double*)elem = value; break;
          default: break;
       }
    }
@@ -452,14 +452,14 @@ LJLIB_CF(array___index)
    void* elem = lj_array_index(arr, uint32_t(idx));
 
    switch (arr->elemtype) {
-      case ARRAY_ELEM_BYTE:   setintV(L->top, *(uint8_t*)elem); break;
-      case ARRAY_ELEM_INT16:  setintV(L->top, *(int16_t*)elem); break;
-      case ARRAY_ELEM_INT32:  setintV(L->top, *(int32_t*)elem); break;
-      case ARRAY_ELEM_INT64:  setnumV(L->top, lua_Number(*(int64_t*)elem)); break;
-      case ARRAY_ELEM_FLOAT:  setnumV(L->top, *(float*)elem); break;
-      case ARRAY_ELEM_DOUBLE: setnumV(L->top, *(double*)elem); break;
-      case ARRAY_ELEM_PTR:    setrawlightudV(L->top, *(void**)elem); break;
-      case ARRAY_ELEM_STRING: {
+      case AET::_BYTE:   setintV(L->top, *(uint8_t*)elem); break;
+      case AET::_INT16:  setintV(L->top, *(int16_t*)elem); break;
+      case AET::_INT32:  setintV(L->top, *(int32_t*)elem); break;
+      case AET::_INT64:  setnumV(L->top, lua_Number(*(int64_t*)elem)); break;
+      case AET::_FLOAT:  setnumV(L->top, *(float*)elem); break;
+      case AET::_DOUBLE: setnumV(L->top, *(double*)elem); break;
+      case AET::_PTR:    setrawlightudV(L->top, *(void**)elem); break;
+      case AET::_STRING: {
          GCRef ref = *(GCRef *)elem;
          if (gcref(ref)) setstrV(L, L->top, gco2str(gcref(ref)));
          else setnilV(L->top);
@@ -491,13 +491,13 @@ LJLIB_CF(array___newindex)
    lua_Number num = 0;
    if (tvisint(val)) num = lua_Number(intV(val));
    else if (tvisnum(val)) num = numV(val);
-   else if (arr->elemtype IS ARRAY_ELEM_STRING and tvisstr(val)) {
+   else if (arr->elemtype IS AET::_STRING and tvisstr(val)) {
       GCstr* str = strV(val);
       setgcref(*(GCRef*)elem, obj2gco(str));
       lj_gc_objbarrier(L, arr, str);
       return 0;
    }
-   else if (arr->elemtype IS ARRAY_ELEM_PTR and tvislightud(val)) {
+   else if (arr->elemtype IS AET::_PTR and tvislightud(val)) {
       *(void**)elem = (void*)(val->u64 & LJ_GCVMASK);
       return 0;
    }
@@ -505,12 +505,12 @@ LJLIB_CF(array___newindex)
    else lj_err_caller(L, ErrMsg::ARRTYPE);
 
    switch (arr->elemtype) {
-      case ARRAY_ELEM_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
-      case ARRAY_ELEM_INT16:  *(int16_t*)elem = int16_t(num); break;
-      case ARRAY_ELEM_INT32:  *(int32_t*)elem = int32_t(num); break;
-      case ARRAY_ELEM_INT64:  *(int64_t*)elem = int64_t(num); break;
-      case ARRAY_ELEM_FLOAT:  *(float*)elem = float(num); break;
-      case ARRAY_ELEM_DOUBLE: *(double*)elem = num; break;
+      case AET::_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
+      case AET::_INT16:  *(int16_t*)elem = int16_t(num); break;
+      case AET::_INT32:  *(int32_t*)elem = int32_t(num); break;
+      case AET::_INT64:  *(int64_t*)elem = int64_t(num); break;
+      case AET::_FLOAT:  *(float*)elem = float(num); break;
+      case AET::_DOUBLE: *(double*)elem = num; break;
       default: lj_err_caller(L, ErrMsg::ARRTYPE); break;
    }
 

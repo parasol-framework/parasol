@@ -833,7 +833,7 @@ static int array_tostring(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Register the array interface.
+// Register the array interface. [DEPRECATED]
 
 void register_array_class(lua_State *Lua)
 {

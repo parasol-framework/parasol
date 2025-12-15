@@ -71,7 +71,7 @@ static bool test_array_creation_byte(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 100, ARRAY_ELEM_BYTE);
+   GCarray* arr = lj_array_new(L, 100, AET::_BYTE);
 
    if (not arr) {
       Log.error("char array creation failed");
@@ -81,7 +81,7 @@ static bool test_array_creation_byte(pf::Log &Log)
       Log.error("char array has incorrect length: %d", arr->len);
       return false;
    }
-   if (arr->elemtype != ARRAY_ELEM_BYTE) {
+   if (arr->elemtype != AET::_BYTE) {
       Log.error("char array has incorrect elemtype: %d", arr->elemtype);
       return false;
    }
@@ -120,7 +120,7 @@ static bool test_array_creation_int32(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 50, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 50, AET::_INT32);
 
    if (not arr) {
       Log.error("int32 array creation failed");
@@ -161,7 +161,7 @@ static bool test_array_creation_double(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 25, ARRAY_ELEM_DOUBLE);
+   GCarray* arr = lj_array_new(L, 25, AET::_DOUBLE);
 
    if (not arr) {
       Log.error("double array creation failed");
@@ -198,7 +198,7 @@ static bool test_array_index_access(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 10, AET::_INT32);
    int32_t* data = (int32_t*)mref<void>(arr->data);
 
    for (int i = 0; i < 10; i++) {
@@ -228,32 +228,32 @@ static bool test_array_index_access(pf::Log &Log)
 
 static bool test_array_elemsize(pf::Log &Log)
 {
-   if (lj_array_elemsize(ARRAY_ELEM_BYTE) != 1) {
-      Log.error("ARRAY_ELEM_BYTE size incorrect");
+   if (lj_array_elemsize(AET::_BYTE) != 1) {
+      Log.error("AET::_BYTE size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_INT16) != 2) {
-      Log.error("ARRAY_ELEM_INT16 size incorrect");
+   if (lj_array_elemsize(AET::_INT16) != 2) {
+      Log.error("AET::_INT16 size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_INT32) != 4) {
-      Log.error("ARRAY_ELEM_INT32 size incorrect");
+   if (lj_array_elemsize(AET::_INT32) != 4) {
+      Log.error("AET::_INT32 size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_INT64) != 8) {
-      Log.error("ARRAY_ELEM_INT64 size incorrect");
+   if (lj_array_elemsize(AET::_INT64) != 8) {
+      Log.error("AET::_INT64 size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_FLOAT) != 4) {
-      Log.error("ARRAY_ELEM_FLOAT size incorrect");
+   if (lj_array_elemsize(AET::_FLOAT) != 4) {
+      Log.error("AET::_FLOAT size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_DOUBLE) != 8) {
-      Log.error("ARRAY_ELEM_DOUBLE size incorrect");
+   if (lj_array_elemsize(AET::_DOUBLE) != 8) {
+      Log.error("AET::_DOUBLE size incorrect");
       return false;
    }
-   if (lj_array_elemsize(ARRAY_ELEM_PTR) != sizeof(void*)) {
-      Log.error("ARRAY_ELEM_PTR size incorrect");
+   if (lj_array_elemsize(AET::_PTR) != sizeof(void*)) {
+      Log.error("AET::_PTR size incorrect");
       return false;
    }
 
@@ -273,7 +273,7 @@ static bool test_array_external(pf::Log &Log)
    // Create external buffer
    int32_t external_data[5] = { 10, 20, 30, 40, 50 };
 
-   GCarray* arr = lj_array_new_external(L, external_data, 5, ARRAY_ELEM_INT32, ARRAY_FLAG_READONLY);
+   GCarray* arr = lj_array_new_external(L, external_data, 5, AET::_INT32, ARRAY_FLAG_READONLY);
 
    if (not arr) {
       Log.error("external array creation failed");
@@ -311,7 +311,7 @@ static bool test_array_to_table(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 5, AET::_INT32);
    int32_t* data = (int32_t*)mref<void>(arr->data);
    data[0] = 100;
    data[1] = 200;
@@ -365,7 +365,7 @@ static bool test_array_type_tag(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_BYTE);
+   GCarray* arr = lj_array_new(L, 10, AET::_BYTE);
 
    if (arr->gct != uint8_t(~LJ_TARRAY)) {
       Log.error("array has incorrect GC type tag: %d, expected %d", arr->gct, uint8_t(~LJ_TARRAY));
@@ -389,7 +389,7 @@ static bool test_tvalue_array(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 10, AET::_INT32);
 
    // Create a TValue holding the array
    TValue tv;
@@ -432,7 +432,7 @@ static bool test_setarrayV(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
+   GCarray* arr = lj_array_new(L, 5, AET::_DOUBLE);
 
    TValue tv;
    setarrayV(L, &tv, arr);
@@ -471,7 +471,7 @@ static bool test_arr_getidx_int32(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 10, AET::_INT32);
    int32_t* data = (int32_t*)mref<void>(arr->data);
    for (int i = 0; i < 10; i++) {
       data[i] = (i + 1) * 100;  // 100, 200, 300, ...
@@ -509,7 +509,7 @@ static bool test_arr_getidx_double(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
+   GCarray* arr = lj_array_new(L, 5, AET::_DOUBLE);
    double* data = (double*)mref<void>(arr->data);
    data[0] = 3.14159;
    data[2] = -2.71828;
@@ -541,7 +541,7 @@ static bool test_arr_setidx_int32(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 10, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 10, AET::_INT32);
    int32_t* data = (int32_t*)mref<void>(arr->data);
 
    // Set values using lj_arr_setidx
@@ -582,7 +582,7 @@ static bool test_arr_setidx_double(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 5, ARRAY_ELEM_DOUBLE);
+   GCarray* arr = lj_array_new(L, 5, AET::_DOUBLE);
    double* data = (double*)mref<void>(arr->data);
 
    TValue val;
@@ -614,7 +614,7 @@ static bool test_arr_roundtrip(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 100, ARRAY_ELEM_INT32);
+   GCarray* arr = lj_array_new(L, 100, AET::_INT32);
 
    // Write values using setidx, read back using getidx
    for (int32_t i = 0; i < 100; i++) {
@@ -645,7 +645,7 @@ static bool test_arr_byte_type(pf::Log &Log)
    }
    luaL_openlibs(L);
 
-   GCarray* arr = lj_array_new(L, 256, ARRAY_ELEM_BYTE);
+   GCarray* arr = lj_array_new(L, 256, AET::_BYTE);
    uint8_t* data = (uint8_t*)mref<void>(arr->data);
 
    // Test byte array stores and retrieves correctly

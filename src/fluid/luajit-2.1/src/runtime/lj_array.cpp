@@ -13,33 +13,34 @@
 #include <cstring>
 
 // Element sizes for each type
+
 static const MSize glElemSizes[] = {
-   sizeof(uint8_t),    // ARRAY_ELEM_BYTE
-   sizeof(int16_t),    // ARRAY_ELEM_INT16
-   sizeof(int32_t),    // ARRAY_ELEM_INT32
-   sizeof(int64_t),    // ARRAY_ELEM_INT64
-   sizeof(float),      // ARRAY_ELEM_FLOAT
-   sizeof(double),     // ARRAY_ELEM_DOUBLE
-   sizeof(void*),      // ARRAY_ELEM_PTR
-   sizeof(GCRef),      // ARRAY_ELEM_STRING
-   0                   // ARRAY_ELEM_STRUCT (variable)
+   sizeof(uint8_t),    // AET::BYTE
+   sizeof(int16_t),    // AET::INT16
+   sizeof(int32_t),    // AET::INT32
+   sizeof(int64_t),    // AET::INT64
+   sizeof(float),      // AET::FLOAT
+   sizeof(double),     // AET::DOUBLE
+   sizeof(void*),      // AET::PTR
+   sizeof(GCRef),      // AET::STRING
+   0                   // AET::STRUCT (variable)
 };
 
 //********************************************************************************************************************
 
 MSize lj_array_elemsize(uint8_t elemtype)
 {
-   lj_assertX(elemtype < ARRAY_ELEM__MAX, "invalid array element type");
+   lj_assertX(elemtype < AET::_MAX, "invalid array element type");
    return glElemSizes[elemtype];
 }
 
 //********************************************************************************************************************
 // Create a new array with colocated storage
 
-GCarray * lj_array_new(lua_State *L, uint32_t Length, uint8_t Type)
+extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type)
 {
    MSize elemsize = lj_array_elemsize(Type);
-   lj_assertL(elemsize > 0 or Type IS ARRAY_ELEM_STRUCT, "invalid element type for array creation");
+   lj_assertL(elemsize > 0 or Type IS AET::_STRUCT, "invalid element type for array creation");
 
    GCarray *arr;
    MSize total_size = sizearraycolo(Length, elemsize);
@@ -67,7 +68,7 @@ GCarray * lj_array_new(lua_State *L, uint32_t Length, uint8_t Type)
 //********************************************************************************************************************
 // Create array backed by external memory
 
-GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length, uint8_t Type, uint8_t Flags)
+extern GCarray * lj_array_new_external(lua_State *L, void *Data, uint32_t Length, AET Type, uint8_t Flags)
 {
    auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
    arr->gct      = ~LJ_TARRAY;
@@ -104,7 +105,7 @@ void LJ_FASTCALL lj_array_free(global_State *g, GCarray *Array)
 
 void * lj_array_index(GCarray *Array, uint32_t Idx)
 {
-   auto base = (uint8_t*)mref<void>(Array->data);
+   uint8_t *base = Array->data.get<uint8_t>();
    return base + (Idx * Array->elemsize);
 }
 
@@ -131,8 +132,8 @@ void lj_array_copy(lua_State *L, GCarray *Dst, uint32_t DstIdx, GCarray *Src, ui
    // Only allow copy between same element types
    if (Dst->elemtype != Src->elemtype) lj_err_caller(L, ErrMsg::ARRTYPE);
 
-   void* dst_ptr = lj_array_index(Dst, DstIdx);
-   void* src_ptr = lj_array_index(Src, SrcIdx);
+   void *dst_ptr = lj_array_index(Dst, DstIdx);
+   void *src_ptr = lj_array_index(Src, SrcIdx);
    size_t byte_count = Count * Dst->elemsize;
 
    // Use memmove to handle overlapping regions
@@ -146,18 +147,18 @@ GCtab* lj_array_to_table(lua_State *L, GCarray *Array)
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
 
-   auto data = (uint8_t *)mref<void>(Array->data);
+   auto data = Array->data.get<uint8_t>();
    for (MSize i = 0; i < Array->len; i++) {
       auto slot = &array_part[i];  // 0-based indexing (Fluid standard)
       void *elem = data + (i * Array->elemsize);
 
       switch (Array->elemtype) {
-         case ARRAY_ELEM_BYTE:   setintV(slot, *(uint8_t*)elem); break;
-         case ARRAY_ELEM_INT16:  setintV(slot, *(int16_t*)elem); break;
-         case ARRAY_ELEM_INT32:  setintV(slot, *(int32_t*)elem); break;
-         case ARRAY_ELEM_INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
-         case ARRAY_ELEM_FLOAT:  setnumV(slot, *(float*)elem); break;
-         case ARRAY_ELEM_DOUBLE: setnumV(slot, *(double*)elem); break;
+         case AET::_BYTE:   setintV(slot, *(uint8_t*)elem); break;
+         case AET::_INT16:  setintV(slot, *(int16_t*)elem); break;
+         case AET::_INT32:  setintV(slot, *(int32_t*)elem); break;
+         case AET::_INT64:  setnumV(slot, lua_Number(*(int64_t*)elem)); break;
+         case AET::_FLOAT:  setnumV(slot, *(float*)elem); break;
+         case AET::_DOUBLE: setnumV(slot, *(double*)elem); break;
          default: setnilV(slot); break;
       }
    }

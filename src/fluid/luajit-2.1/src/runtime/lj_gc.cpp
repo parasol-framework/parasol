@@ -197,7 +197,7 @@ static void gc_mark(global_State *g, GCobj* o)
       GCtab* mt = tabref(arr->metatable);
       if (mt) gc_markobj(g, mt);
       // If array contains GC references (strings), mark them
-      if (arr->elemtype IS ARRAY_ELEM_STRING) {
+      if (arr->elemtype IS AET::_STRING) {
          GCRef* refs = (GCRef*)mref<void>(arr->data);
          for (MSize i = 0; i < arr->len; i++) {
             if (gcref(refs[i])) gc_markobj(g, gcref(refs[i]));

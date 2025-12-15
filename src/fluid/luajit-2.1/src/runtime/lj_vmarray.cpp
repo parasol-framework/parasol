@@ -38,17 +38,17 @@ static void arr_load_elem(GCarray *Array, uint32_t Idx, TValue *Result)
    void *elem = lj_array_index(Array, Idx);
 
    switch (Array->elemtype) {
-      case ARRAY_ELEM_BYTE:   setintV(Result, *(uint8_t*)elem); break;
-      case ARRAY_ELEM_INT16:  setintV(Result, *(int16_t*)elem); break;
-      case ARRAY_ELEM_INT32:  setintV(Result, *(int32_t*)elem); break;
-      case ARRAY_ELEM_INT64:  setnumV(Result, lua_Number(*(int64_t*)elem)); break;
-      case ARRAY_ELEM_FLOAT:  setnumV(Result, *(float*)elem); break;
-      case ARRAY_ELEM_DOUBLE: setnumV(Result, *(double*)elem); break;
-      case ARRAY_ELEM_PTR:
+      case AET::_BYTE:   setintV(Result, *(uint8_t*)elem); break;
+      case AET::_INT16:  setintV(Result, *(int16_t*)elem); break;
+      case AET::_INT32:  setintV(Result, *(int32_t*)elem); break;
+      case AET::_INT64:  setnumV(Result, lua_Number(*(int64_t*)elem)); break;
+      case AET::_FLOAT:  setnumV(Result, *(float*)elem); break;
+      case AET::_DOUBLE: setnumV(Result, *(double*)elem); break;
+      case AET::_PTR:
          // Store raw pointer value as light userdata
          setrawlightudV(Result, *(void**)elem);
          break;
-      case ARRAY_ELEM_STRING: {
+      case AET::_STRING: {
          GCRef ref = *(GCRef*)elem;
          if (gcref(ref)) setstrV(nullptr, Result, gco2str(gcref(ref)));
          else setnilV(Result);
@@ -70,7 +70,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    lua_Number num = 0;
    if (tvisint(Val)) num = lua_Number(intV(Val));
    else if (tvisnum(Val)) num = numV(Val);
-   else if (Array->elemtype IS ARRAY_ELEM_STRING and tvisstr(Val)) {
+   else if (Array->elemtype IS AET::_STRING and tvisstr(Val)) {
       // String storage
       GCstr *str = strV(Val);
       setgcref(*(GCRef*)elem, obj2gco(str));
@@ -78,7 +78,7 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
       lj_gc_objbarrier(L, Array, str);
       return;
    }
-   else if (Array->elemtype IS ARRAY_ELEM_PTR and tvislightud(Val)) {
+   else if (Array->elemtype IS AET::_PTR and tvislightud(Val)) {
       // Extract raw pointer (note: lightudV on 64-bit requires global_State)
       *(void**)elem = (void*)(Val->u64 & LJ_GCVMASK);
       return;
@@ -89,12 +89,12 @@ static void arr_store_elem(lua_State *L, GCarray *Array, uint32_t Idx, cTValue *
    }
 
    switch (Array->elemtype) {
-      case ARRAY_ELEM_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
-      case ARRAY_ELEM_INT16:  *(int16_t*)elem = int16_t(num); break;
-      case ARRAY_ELEM_INT32:  *(int32_t*)elem = int32_t(num); break;
-      case ARRAY_ELEM_INT64:  *(int64_t*)elem = int64_t(num); break;
-      case ARRAY_ELEM_FLOAT:  *(float*)elem = float(num); break;
-      case ARRAY_ELEM_DOUBLE: *(double*)elem = num; break;
+      case AET::_BYTE:   *(uint8_t*)elem = uint8_t(num); break;
+      case AET::_INT16:  *(int16_t*)elem = int16_t(num); break;
+      case AET::_INT32:  *(int32_t*)elem = int32_t(num); break;
+      case AET::_INT64:  *(int64_t*)elem = int64_t(num); break;
+      case AET::_FLOAT:  *(float*)elem = float(num); break;
+      case AET::_DOUBLE: *(double*)elem = num; break;
       default: lj_err_caller(L, ErrMsg::ARRTYPE); break;
    }
 }

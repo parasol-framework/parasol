@@ -626,17 +626,17 @@ inline void setfreetop(GCtab* t, Node*, Node* v) noexcept
 
 // Array element type constants
 
-enum ArrayElemType : uint8_t {
-   ARRAY_ELEM_BYTE    = 0,   // byte
-   ARRAY_ELEM_INT16   = 1,   // int16_t
-   ARRAY_ELEM_INT32   = 2,   // int32_t
-   ARRAY_ELEM_INT64   = 3,   // int64_t
-   ARRAY_ELEM_FLOAT   = 4,   // float
-   ARRAY_ELEM_DOUBLE  = 5,   // double
-   ARRAY_ELEM_PTR     = 6,   // void*
-   ARRAY_ELEM_STRING  = 7,   // GCstr* (pointer to interned string)
-   ARRAY_ELEM_STRUCT  = 8,   // Structured data (uses structdef)
-   ARRAY_ELEM__MAX
+enum AET : uint8_t {
+   _BYTE    = 0,   // byte
+   _INT16   = 1,   // int16_t
+   _INT32   = 2,   // int32_t
+   _INT64   = 3,   // int64_t
+   _FLOAT   = 4,   // float
+   _DOUBLE  = 5,   // double
+   _PTR     = 6,   // void*
+   _STRING  = 7,   // GCstr* (pointer to interned string)
+   _STRUCT  = 8,   // Structured data (uses structdef)
+   _MAX
 };
 
 // Array flags
@@ -650,9 +650,9 @@ struct GCarray;
 // Native typed array object. Fixed-size, homogeneous element storage.
 typedef struct GCarray {
    GCHeader;
-   uint8_t elemtype;        // Element type (ArrayElemType constants)
+   AET   elemtype;        // Element type (ArrayElemType constants)
    uint8_t flags;           // Array flags (read-only, struct-backed, etc.)
-   MRef data;               // Pointer to element storage
+   MRef  data;               // Pointer to element storage
    GCRef gclist;            // GC list for marking
    GCRef metatable;         // Optional metatable (must be at same offset as GCtab/GCudata)
    MSize len;               // Number of elements

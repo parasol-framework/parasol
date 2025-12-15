@@ -80,11 +80,13 @@ ExternalProject_Add(libffi-3.3
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
 # Define build directory for generated files (avoids polluting source tree)
+
 set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
 file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
 file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}/jit")
 
 # Generated header files
+
 set (LUAJIT_GENERATED_HEADERS
    "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
    "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
@@ -118,6 +120,7 @@ endif ()
 # that provides lj_assert_fail(). Instead, we use:
 #   - Generator expressions for MSVC multi-config builds (in target_compile_definitions)
 #   - LUAJIT_LIBRARY_DEFS for non-MSVC single-config builds (in custom commands)
+
 set(LUAJIT_LIBRARY_DEFS "")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
    set(LUAJIT_LIBRARY_DEFS -DLUA_USE_ASSERT)

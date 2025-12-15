@@ -1,10 +1,8 @@
-/*
-** Table handling.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-**
-** Major portions taken verbatim or adapted from the Lua interpreter.
-** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
-*/
+// Table handling.
+// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+//
+// Major portions taken verbatim or adapted from the Lua interpreter.
+// Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 
 #define lj_tab_c
 #define LUA_CORE
@@ -36,8 +34,7 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
    uint32_t hsize;
    Node* node;
    lj_assertL(hbits != 0, "zero hash size");
-   if (hbits > LJ_MAX_HBITS)
-      lj_err_msg(L, ErrMsg::TABOV);
+   if (hbits > LJ_MAX_HBITS) lj_err_msg(L, ErrMsg::TABOV);
    hsize = 1u << hbits;
    node = lj_mem_newvec(L, hsize, Node);
    setmref(t->node, node);
@@ -50,6 +47,7 @@ static LJ_AINLINE void newhpart(lua_State* L, GCtab* t, uint32_t hbits)
 //    Even state-of-the-art C compilers won't produce good code without this.
 
 // Clear hash part of table.
+
 static LJ_AINLINE void clearhpart(GCtab* t)
 {
    uint32_t i, hmask = t->hmask;
@@ -64,6 +62,7 @@ static LJ_AINLINE void clearhpart(GCtab* t)
 }
 
 // Clear array part of table.
+
 static LJ_AINLINE void clearapart(GCtab* t)
 {
    uint32_t i, asize = t->asize;
@@ -73,9 +72,10 @@ static LJ_AINLINE void clearapart(GCtab* t)
 }
 
 // Create a new table. Note: the slots are not initialized (yet).
-static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
+
+static GCtab * newtab(lua_State* L, uint32_t asize, uint32_t hbits)
 {
-   GCtab* t;
+   GCtab *t;
 
    // First try to colocate the array part.
 
@@ -118,21 +118,20 @@ static GCtab* newtab(lua_State* L, uint32_t asize, uint32_t hbits)
    return t;
 }
 
-/* Create a new table.
-**
-** IMPORTANT NOTE: The API differs from lua_createtable()!
-**
-** The array size is non-inclusive. E.g. asize=128 creates array slots
-** for 0..127, but not for 128. If you need slots 1..128, pass asize=129
-** (slot 0 is wasted in this case).
-**
-** The hash size is given in hash bits. hbits=0 means no hash part.
-** hbits=1 creates 2 hash slots, hbits=2 creates 4 hash slots and so on.
-*/
+// Create a new table.
+//
+// IMPORTANT NOTE: The API differs from lua_createtable()!
+//
+// The array size is non-inclusive. E.g. asize=128 creates array slots
+// for 0..127, but not for 128. If you need slots 1..128, pass asize=129
+// (slot 0 is wasted in this case).
+//
+// The hash size is given in hash bits. hbits=0 means no hash part.
+// hbits=1 creates 2 hash slots, hbits=2 creates 4 hash slots and so on.
 
-GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
+GCtab * lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 {
-   GCtab* t = newtab(L, asize, hbits);
+   GCtab *t = newtab(L, asize, hbits);
    clearapart(t);
    if (t->hmask > 0) clearhpart(t);
    return t;
@@ -140,26 +139,25 @@ GCtab* lj_tab_new(lua_State* L, uint32_t asize, uint32_t hbits)
 
 // The API of this function conforms to lua_createtable().
 // 0-based: asize = a for a array elements at indices 0..a-1
-GCtab* lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
+
+GCtab * lj_tab_new_ah(lua_State* L, int32_t a, int32_t h)
 {
    return lj_tab_new(L, (uint32_t)(a > 0 ? a : 0), hsize2hbits(h));
 }
 
-#if LJ_HASJIT
-GCtab* LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
+GCtab * LJ_FASTCALL lj_tab_new1(lua_State* L, uint32_t ahsize)
 {
-   GCtab* t = newtab(L, ahsize & 0xffffff, ahsize >> 24);
+   GCtab *t = newtab(L, ahsize & 0xffffff, ahsize >> 24);
    clearapart(t);
    if (t->hmask > 0) clearhpart(t);
    return t;
 }
-#endif
 
 // Duplicate a table.
 
-GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
+GCtab * LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
 {
-   GCtab* t;
+   GCtab *t;
    uint32_t asize, hmask;
    t = newtab(L, kt->asize, kt->hmask > 0 ? lj_fls(kt->hmask) + 1 : 0);
    lj_assertL(kt->asize == t->asize and kt->hmask == t->hmask, "mismatched size of table and template");
@@ -199,6 +197,7 @@ GCtab* LJ_FASTCALL lj_tab_dup(lua_State* L, const GCtab* kt)
 }
 
 // Clear a table.
+
 void LJ_FASTCALL lj_tab_clear(GCtab* t)
 {
    clearapart(t);
@@ -210,21 +209,19 @@ void LJ_FASTCALL lj_tab_clear(GCtab* t)
 }
 
 // Free a table.
+
 void LJ_FASTCALL lj_tab_free(global_State* g, GCtab* t)
 {
-   if (t->hmask > 0)
-      lj_mem_freevec(g, noderef(t->node), t->hmask + 1, Node);
-   if (t->asize > 0 and LJ_MAX_COLOSIZE != 0 and t->colo <= 0)
+   if (t->hmask > 0) lj_mem_freevec(g, noderef(t->node), t->hmask + 1, Node);
+   if (t->asize > 0 and LJ_MAX_COLOSIZE != 0 and t->colo <= 0) {
       lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
-   if (LJ_MAX_COLOSIZE != 0 and t->colo)
-      lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
-   else
-      lj_mem_freet(g, t);
+   }
+   if (LJ_MAX_COLOSIZE != 0 and t->colo) lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
+   else lj_mem_freet(g, t);
 }
 
-// -- Table resizing ------------------------------------------------------
-
 // Resize a table to fit the new array/hash part sizes.
+
 void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
 {
    Node* oldnode = noderef(t->node);
@@ -240,19 +237,19 @@ void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits)
          TValue* oarray = tvref(t->array);
          array = lj_mem_newvec(L, asize, TValue);
          t->colo = (int8_t)(t->colo | 0x80);  //  Mark as separated (colo < 0).
-         for (i = 0; i < oldasize; i++)
-            copyTV(L, &array[i], &oarray[i]);
+         for (i = 0; i < oldasize; i++) copyTV(L, &array[i], &oarray[i]);
       }
       else {
-         array = (TValue*)lj_mem_realloc(L, tvref(t->array),
-            oldasize * sizeof(TValue), asize * sizeof(TValue));
+         array = (TValue*)lj_mem_realloc(L, tvref(t->array), oldasize * sizeof(TValue), asize * sizeof(TValue));
       }
       setmref(t->array, array);
       t->asize = asize;
       for (i = oldasize; i < asize; i++)  //  Clear newly allocated slots.
          setnilV(&array[i]);
    }
+
    // Create new (empty) hash part.
+
    if (hbits) {
       newhpart(L, t, hbits);
       clearhpart(t);
@@ -315,6 +312,7 @@ static uint32_t countarray(const GCtab* t, uint32_t* bins)
          if (i > top)
             break;
       }
+
       array = tvref(t->array);
       for (n = 0; i <= top; i++)
          if (!tvisnil(&array[i]))
